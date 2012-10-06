@@ -10,7 +10,7 @@
 from setuptools import setup, find_packages
 
 setup(
-    name='Pulp RPM Support',
+    name='pulp_rpm',
     version='2.0.0',
     license='GPLv2+',
     packages=find_packages(),
