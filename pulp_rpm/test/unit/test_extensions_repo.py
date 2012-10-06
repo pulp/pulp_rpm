@@ -14,7 +14,7 @@ import os
 from pulp.client.commands import options
 from pulp.client.commands.repo import cudl
 from pulp.client.extensions.core import TAG_SUCCESS
-from pulp.common.json_compat import json
+from pulp.common.compat import json
 
 from pulp_rpm.common import ids
 from pulp_rpm.extension.admin import repo, repo_options
