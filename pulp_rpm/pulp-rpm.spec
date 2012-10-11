@@ -250,6 +250,9 @@ A collection of yum plugins supplementing Pulp consumer operations.
 
 
 %changelog
+* Thu Oct 11 2012 Jeff Ortel <jortel@redhat.com> 0.0.331-1
+- new package built with tito
+
 * Fri Oct 05 2012 Jeff Ortel <jortel@redhat.com> 0.0.331-1
 - 853503 - fix the unit remove logic to not worry about symlinks causing
   packagegroup category to fail (pkilambi@redhat.com)
