@@ -1,17 +1,26 @@
 
-import sys
 import os
 import tempfile
 import shutil
 
 import mock_yum
-from mock import Mock
+from mock import Mock, patch
 from mock_yum import YumBase
 from rpm_support_base import PulpRPMTests
 from pulp.agent.lib.container import Container, SYSTEM, CONTENT, BIND
 from pulp.agent.lib.dispatcher import Dispatcher
 from pulp.agent.lib.conduit import Conduit
+from pulp.common.config import Config
 
+
+class TestConduit(Conduit):
+
+    def __init__(self, cfg=None):
+        self.cfg = (cfg or {})
+
+    def get_consumer_config(self):
+        cfg = Config(self.cfg)
+        return cfg
 
 class Deployer:
 
@@ -472,15 +481,88 @@ class TestGroups(HandlerTest):
 class TestBind(HandlerTest):
 
     TYPE_ID = 'yum_distributor'
+    REPO_ID = 'test-repo'
+    REPOSITORY = {'id':REPO_ID, 'display_name':'test-repo-name'}
+    DETAILS = {
+        'protocols':{'http':'http://myfake.com/content'},
+        'server_name':'test-server',
+        'relative_path':'/tmp/lib/pulp/xxx',
+        'ca_cert':'CA-CERT',
+        'client_cert':'CLIENT-CERT',
+    }
+    DEFINITION = {'type_id':TYPE_ID, 'repository':REPOSITORY, 'details':DETAILS}
+    TEST_DIR = '/tmp/pulp-test'
+    MIRROR_DIR = os.path.join(TEST_DIR, 'mirrors')
+    GPG_DIR = os.path.join(TEST_DIR, 'gpg')
+    CERT_DIR = os.path.join(TEST_DIR, 'certs')
+    REPO_DIR = os.path.join(TEST_DIR, 'etc/yum.repos.d')
+    REPO_FILE = os.path.join(REPO_DIR, 'pulp-test.repo')
+    CONFIGURATION = {
+        'filesystem':{
+            'repo_file':REPO_FILE,
+            'mirror_list_dir':MIRROR_DIR,
+            'gpg_keys_dir':GPG_DIR,
+            'cert_dir':CERT_DIR,
+        }
+    }
 
     def setUp(self):
         HandlerTest.setUp(self)
         handler = self.container.find(self.TYPE_ID, role=BIND)
         self.assertTrue(handler is not None, msg='%s handler not loaded' % self.TYPE_ID)
+        shutil.rmtree(self.TEST_DIR, ignore_errors=True)
+        os.makedirs(self.TEST_DIR)
+        os.makedirs(self.REPO_DIR)
+        os.makedirs(self.MIRROR_DIR)
+        os.makedirs(self.GPG_DIR)
+        os.makedirs(self.CERT_DIR)
 
-    def test_bind(self):
-        # TODO: implement test
-        pass
+    def tearDown(self):
+        HandlerTest.tearDown(self)
+        shutil.rmtree(self.TEST_DIR, ignore_errors=True)
+
+    @patch('pulp_rpm.handler.repolib.Lock')
+    def test_bind(self, mock_lock):
+        # Test
+        options = {}
+        conduit = TestConduit(self.CONFIGURATION)
+        definitions = [self.DEFINITION]
+        report = self.dispatcher.bind(conduit, definitions, options)
+        # Verify
+        self.assertTrue(report.status)
+        self.assertTrue(os.path.isfile(self.REPO_FILE))
+        repofile = Config(self.REPO_FILE)
+        self.assertEqual(repofile[self.REPO_ID]['name'], self.REPOSITORY['display_name'])
+        self.assertEqual(repofile[self.REPO_ID]['enabled'], '1')
+
+    @patch('pulp_rpm.handler.repolib.Lock')
+    def test_rebind(self, mock_lock):
+        # Test
+        options = {}
+        conduit = TestConduit(self.CONFIGURATION)
+        definitions = [self.DEFINITION]
+        report = self.dispatcher.rebind(conduit, definitions, options)
+        # Verify
+        self.assertTrue(report.status)
+        self.assertTrue(os.path.isfile(self.REPO_FILE))
+        repofile = Config(self.REPO_FILE)
+        self.assertEqual(repofile[self.REPO_ID]['name'], self.REPOSITORY['display_name'])
+        self.assertEqual(repofile[self.REPO_ID]['enabled'], '1')
+
+    @patch('pulp_rpm.handler.repolib.Lock')
+    def test_unbind(self, mock_lock):
+        # Setup
+        self.test_bind()
+        # Test
+        options = {}
+        conduit = TestConduit(self.CONFIGURATION)
+        definitions = [self.DEFINITION]
+        report = self.dispatcher.unbind(conduit, self.REPO_ID, options)
+        # Verify
+        self.assertTrue(report.status)
+        self.assertTrue(os.path.isfile(self.REPO_FILE))
+        repofile = Config(self.REPO_FILE)
+        self.assertFalse(self.REPO_ID in repofile)
 
 
 class TestLinux(HandlerTest):

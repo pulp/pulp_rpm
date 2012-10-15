@@ -13,7 +13,6 @@
 
 import os
 
-from iniparse import INIConfig
 from pulp.agent.lib.handler import BindHandler
 from pulp.agent.lib.report import BindReport, CleanReport
 from pulp_rpm.handler import repolib
@@ -22,43 +21,29 @@ from logging import getLogger
 log = getLogger(__name__)
 
 
-# TODO: Pass-in instead of hard code
-class ConsumerConfig(INIConfig):
-    def __init__(self):
-        path = '/etc/pulp/consumer/consumer.conf'
-        fp = open(path)
-        try:
-            INIConfig.__init__(self, fp)
-        finally:
-            fp.close()
-
-
 class RepoHandler(BindHandler):
     """
     A yum repository bind request handler.
     Manages the /etc/yum.repos.d/pulp.repo based on bind requests.
     """
 
-    def bind(self, conduit, definitions):
+    def bind(self, conduit, definitions, options):
         """
         Bind a repository.
         @param conduit: A handler conduit.
         @type conduit: L{pulp.agent.lib.conduit.Conduit}
         @param definitions: A list of bind definitions.
-        Definition:
-            {consumer_id:<str>,
-             repo_id:<str>,
-             distributor_id:<str>,
-             href:<str>,
-             type_id:<str>,
-             details:<dict>}
+        Each definition is:
+            {type_id:<str>, repository:<repository>, details:<dict>}
         @type definitions: list
+        @param options: Bind options.
+        @type options: dict
         @return: A bind report.
         @rtype: L{BindReport}
         """
         log.info('bind: %s', definitions)
         report = BindReport()
-        cfg = ConsumerConfig()
+        cfg = conduit.get_consumer_config().graph()
         for definition in definitions:
             details = definition['details']
             repository = definition['repository']
@@ -79,40 +64,39 @@ class RepoHandler(BindHandler):
         report.succeeded()
         return report
 
-    def rebind(self, conduit, definitions):
+    def rebind(self, conduit, definitions, options):
         """
         (Re)bind a repository.
         @param conduit: A handler conduit.
         @type conduit: L{pulp.agent.lib.conduit.Conduit}
-        @param definitions: A list of bind definitions.
-        Definition:
-            {consumer_id:<str>,
-             repo_id:<str>,
-             distributor_id:<str>,
-             href:<str>,
-             type_id:<str>,
-             details:<dict>}
+        @param definitions: A list of bind definEach definition is:itions.
+        Each definition is:
+            {type_id:<str>, repository:<repository>, details:<dict>}
         @type definitions: list
+        @param options: Rebind options.
+        @type options: dict
         @return: A rebind report.
         @rtype: L{BindReport}
         """
         log.info('(re)bind: %s', definitions)
         self.clean(conduit)
-        return self.bind(conduit, definitions)
+        return self.bind(conduit, definitions, options)
 
-    def unbind(self, conduit, repoid):
+    def unbind(self, conduit, repoid, options):
         """
         Bind a repository.
             @param conduit: A handler conduit.
         @type conduit: L{pulp.agent.lib.conduit.Conduit}
         @param repoid: A repository ID.
         @type repoid: str
+        @param options: Unbind options.
+        @type options: dict
         @return: An unbind report.
         @rtype: L{BindReport}
         """
         log.info('unbind: %s', repoid)
         report = BindReport()
-        cfg = ConsumerConfig()
+        cfg = conduit.get_consumer_config().graph()
         repolib.unbind(
             cfg.filesystem.repo_file,
             os.path.join(cfg.filesystem.mirror_list_dir, repoid),
