@@ -250,6 +250,9 @@ A collection of yum plugins supplementing Pulp consumer operations.
 
 
 %changelog
+* Tue Oct 16 2012 Jeff Ortel <jortel@redhat.com> 0.0.331-2
+- Move .spec to git root. (jortel@redhat.com)
+
 * Thu Oct 11 2012 Jeff Ortel <jortel@redhat.com> 0.0.331-1
 - new package built with tito
 
