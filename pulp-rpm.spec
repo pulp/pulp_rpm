@@ -18,7 +18,7 @@
 
 Name: pulp-rpm
 Version: 0.0.331
-Release: 2%{?dist}
+Release: 3%{?dist}
 Summary: Support for RPM content in the Pulp platform
 Group: Development/Languages
 License: GPLv2
@@ -71,28 +71,28 @@ mkdir -p %{buildroot}/%{_usr}/lib/yum-plugins/
 mkdir -p %{buildroot}/%{_var}/www
 
 # Configuration
-cp -R etc/httpd %{buildroot}/%{_sysconfdir}
-cp -R etc/pulp %{buildroot}/%{_sysconfdir}
-cp -R etc/yum %{buildroot}/%{_sysconfdir}
+cp -R pulp_rpm/etc/httpd %{buildroot}/%{_sysconfdir}
+cp -R pulp_rpm/etc/pulp %{buildroot}/%{_sysconfdir}
+cp -R pulp_rpm/etc/yum %{buildroot}/%{_sysconfdir}
 
 # WSGI
-cp -R srv %{buildroot}
+cp -R pulp_rpm/srv %{buildroot}
 
 # WWW
 ln -s %{_var}/lib/pulp/published %{buildroot}/%{_var}/www/pub
 
 # Extensions
-cp -R extensions/admin/* %{buildroot}/%{_usr}/lib/pulp/admin/extensions
-cp -R extensions/consumer/* %{buildroot}/%{_usr}/lib/pulp/consumer/extensions
+cp -R pulp_rpm/extensions/admin/* %{buildroot}/%{_usr}/lib/pulp/admin/extensions
+cp -R pulp_rpm/extensions/consumer/* %{buildroot}/%{_usr}/lib/pulp/consumer/extensions
 
 # Agent Handlers
-cp handlers/* %{buildroot}/%{_usr}/lib/pulp/agent/handlers
+cp pulp_rpm/handlers/* %{buildroot}/%{_usr}/lib/pulp/agent/handlers
 
 # Plugins
-cp -R plugins/* %{buildroot}/%{_usr}/lib/pulp/plugins
+cp -R pulp_rpm/plugins/* %{buildroot}/%{_usr}/lib/pulp/plugins
 
 # Yum (plugins)
-cp -R usr/lib/yum-plugins %{buildroot}/%{_usr}/lib
+cp -R pulp_rpm/usr/lib/yum-plugins %{buildroot}/%{_usr}/lib
 
 # Remove egg info
 rm -rf %{buildroot}/%{python_sitelib}/*.egg-info
