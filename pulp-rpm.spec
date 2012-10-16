@@ -18,7 +18,7 @@
 
 Name: pulp-rpm
 Version: 0.0.331
-Release: 1%{?dist}
+Release: 2%{?dist}
 Summary: Support for RPM content in the Pulp platform
 Group: Development/Languages
 License: GPLv2
@@ -47,13 +47,13 @@ handlers that provide RPM support.
 %setup -q
 
 %build
-pushd src
+pushd pulp_rpm/src
 %{__python} setup.py build
 popd
 
 %install
 rm -rf %{buildroot}
-pushd src
+pushd pulp_rpm/src
 %{__python} setup.py install -O1 --skip-build --root %{buildroot}
 popd
 
