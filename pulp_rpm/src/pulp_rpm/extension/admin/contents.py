@@ -256,7 +256,7 @@ class SearchErrataCommand(UnitAssociationCriteriaCommand):
 
     def errata(self, **kwargs):
         if kwargs['erratum-id'] is None:
-            _content_command(self.context, [TYPE_ERRATUM], self.write_erratum, **kwargs)
+            _content_command(self.context, [TYPE_ERRATUM], **kwargs)
         else:
             # Collect data
             repo_id = kwargs.pop('repo-id')
@@ -267,15 +267,6 @@ class SearchErrataCommand(UnitAssociationCriteriaCommand):
             }
             _content_command(self.context, [TYPE_ERRATUM], self.write_erratum_detail, **new_kwargs)
 
-    def write_erratum(self, erratum_list):
-        """
-        Write an erratum's metadata out.
-
-        :param erratum_list: list of erratum documents; will be of length 1
-        :type  erratum_list: list
-        """
-        self.context.prompt.render_document(erratum_list[0]['metadata'])
-
     def write_erratum_detail(self, erratum_list):
         """
         Write an erratum out in a specially formatted way. It is not known why this
@@ -284,8 +275,7 @@ class SearchErrataCommand(UnitAssociationCriteriaCommand):
         :param erratum_list: list one erratum documents; will be of length 1
         :type  erratum_list: list
         """
-        erratum = erratum_list[0]
-        erratum_meta = erratum['metadata']
+        erratum_meta = erratum_list[0]
 
         self.context.prompt.render_title(_('Erratum: %(e)s') % {'e' : erratum_meta['id']})
 
