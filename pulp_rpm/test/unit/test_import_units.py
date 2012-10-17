@@ -22,6 +22,7 @@ import tempfile
 import time
 import unittest
 import itertools
+import random
 
 from grinder.BaseFetch import BaseFetch
 
@@ -30,7 +31,7 @@ sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)) + "/../../plugins/
 import importer_mocks
 from yum_importer import importer_rpm
 from yum_importer.importer import YumImporter
-from pulp_rpm.common.ids import TYPE_ID_RPM, UNIT_KEY_RPM, TYPE_ID_IMPORTER_YUM, TYPE_ID_ERRATA, TYPE_ID_DISTRO
+from pulp_rpm.common.ids import TYPE_ID_RPM, UNIT_KEY_RPM, TYPE_ID_IMPORTER_YUM, TYPE_ID_ERRATA, TYPE_ID_DISTRO, TYPE_ID_PKG_CATEGORY, TYPE_ID_PKG_GROUP
 from pulp_rpm.yum_plugin import util
 
 from pulp.plugins.model import Repository, Unit
@@ -323,6 +324,72 @@ class TestImportUnits(rpm_support_base.PulpRPMTests):
         self.assertEqual(len(associated_units), len(distro_unit))
         for u in associated_units:
             self.assertTrue(u in distro_unit)
+
+    def create_dummy_pkg_group_unit(self, repo_id, pkg_grp_id):
+        random_int = int(random.random())
+        type_id = TYPE_ID_PKG_GROUP
+        unit_key = {}
+        unit_key["id"] = pkg_grp_id
+        unit_key["repo_id"] = repo_id
+        metadata = {}
+        metadata["name"] = "name_%s" % (random_int)
+        metadata["description"] = "description_%s" % (random_int)
+        metadata["default"] = True
+        metadata["user_visible"] = True
+        metadata["langonly"] = "1"
+        metadata["display_order"] = 1
+        metadata["mandatory_package_names"] = ["test_mand_pkg_name_%s" % (random_int)]
+        metadata["conditional_package_names"] = [
+            ("test_pkg_name_cond_1",["value%s"%(random.random()), "value_%s" % (random.random())])
+        ]
+        metadata["optional_package_names"] = ["test_opt_pkg_name_%s" % (random_int)]
+        metadata["default_package_names"] = ["test_default_pkg_name_%s" % (random_int)]
+        metadata["translated_description"] = {}
+        metadata["translated_name"] = {}
+        path = None
+        return Unit(type_id, unit_key, metadata, path)
+
+    def create_dummy_pkg_category_unit(self, repo_id, pkg_cat_id, grpids):
+        random_int = int(random.random())
+        type_id = TYPE_ID_PKG_CATEGORY
+        unit_key = {}
+        unit_key["id"] = pkg_cat_id
+        unit_key["repo_id"] = repo_id
+        metadata = {}
+        metadata["name"] = "name_%s" % (random_int)
+        metadata["description"] = "description_%s" % (random_int)
+        metadata["display_order"] = 1
+        metadata["translated_name"] = ""
+        metadata["translated_description"] = ""
+        metadata["packagegroupids"] = grpids
+        path = None
+        return Unit(type_id, unit_key, metadata, path)
+
+    def test_package_category_unit_import(self):
+        # REPO A (source)
+        repoA = mock.Mock(spec=Repository)
+        repoA.working_dir = self.data_dir
+        repoA.id = "test_pkg_cat_unit_copy"
+        # REPO B (target)
+        repoB = mock.Mock(spec=Repository)
+        repoB.working_dir = self.working_dir
+        repoB.id = "repoB"
+        # Create 2 pkg groups
+        grp_a = self.create_dummy_pkg_group_unit(repoA.id, "group_a")
+        # Create 2 pkg categories
+        cat_a = self.create_dummy_pkg_category_unit(repoA.id, "cat_a", ["group_a"])
+        # Add the grps/cats to the publish_conduit
+        existing_units=[grp_a, cat_a]
+        conduit = importer_mocks.get_import_conduit([cat_a], existing_units=existing_units)
+        config = importer_mocks.get_basic_config()
+        importer = YumImporter()
+        # Test
+        result = importer.import_units(repoA, repoB, conduit, config, [cat_a])
+        # Verify
+        associated_units = [mock_call[0][0] for mock_call in conduit.associate_unit.call_args_list]
+        self.assertEqual(len(associated_units), 2)
+        for u in associated_units:
+            self.assertTrue(u in [cat_a, grp_a])
 
 class TestImportDependencies(rpm_support_base.PulpRPMTests):
 

@@ -23,7 +23,7 @@ import itertools
 from yum_importer.comps import ImporterComps
 from yum_importer.errata import ImporterErrata, link_errata_rpm_units
 from yum_importer.importer_rpm import ImporterRPM, get_existing_units, form_lookup_key
-from pulp.server.db.model.criteria import UnitAssociationCriteria
+from pulp.server.db.model.criteria import UnitAssociationCriteria, Criteria
 from pulp.plugins.importer import Importer
 from pulp.plugins.model import Unit, SyncReport
 from pulp_rpm.common.ids import TYPE_ID_IMPORTER_YUM, TYPE_ID_PKG_GROUP, TYPE_ID_PKG_CATEGORY, TYPE_ID_DISTRO,\
@@ -300,9 +300,9 @@ class YumImporter(Importer):
             if u.type_id == TYPE_ID_ERRATA:
                 # if erratum, lookup deps and process associated units
                 self._import_errata_unit_rpms(source_repo, u, import_conduit, config, existing_rpm_units_dict)
-            if u.type_id in [TYPE_ID_PKG_CATEGORY, TYPE_ID_PKG_GROUP]:
-                #TODO
-                pass
+            if u.type_id == TYPE_ID_PKG_CATEGORY:
+                self._import_pkg_category_unit(source_repo, u, import_conduit, config)
+
         _LOG.debug("%s units from %s have been associated to %s" % (len(units), source_repo.id, dest_repo.id))
 
     def _import_errata_unit_rpms(self, source_repo, erratum_unit, import_conduit, config, existing_rpm_units=None):
@@ -327,8 +327,23 @@ class YumImporter(Importer):
                 else:
                     _LOG.debug("rpm unit %s not found; skipping" % pinfo)
 
-    def _import_unit_dependencies(self, source_repo, units, import_conduit, config, existing_rpm_units=None):
+    def _import_pkg_category_unit(self, source_repo, pkg_category_unit, import_conduit, config):
         """
+        looks up the package category and associated groups within and imports the units
+        """
+        pkg_group_unit_ids = pkg_category_unit.metadata['packagegroupids']
+        for pgid in pkg_group_unit_ids:
+            criteria = Criteria(filters={'id' : pgid})
+            found_pkggrp = import_conduit.search_all_units(type_id=TYPE_ID_PKG_GROUP, criteria=criteria)
+            if not len(found_pkggrp):
+                # couldnt find the pkggrp, continue to the next one
+                _LOG.debug(" Package group id %s not found" % found_pkggrp)
+                continue
+            import_conduit.associate_unit(found_pkggrp[0])
+            _LOG.debug("Associated Package group id %s" % found_pkggrp)
+
+    def _import_unit_dependencies(self, source_repo, units, import_conduit, config, existing_rpm_units=None):
+        """errata
         Lookup any dependencies associated with the units and associate them through the import conduit
         """
         if not config.get('resolve_dependencies'):
