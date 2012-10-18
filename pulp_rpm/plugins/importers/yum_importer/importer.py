@@ -297,12 +297,15 @@ class YumImporter(Importer):
             if u.type_id == TYPE_ID_RPM:
                 # if its an rpm unit process dependencies and import them as well
                 self._import_unit_dependencies(source_repo, [u], import_conduit, config, existing_rpm_units=existing_rpm_units_dict)
-            if u.type_id == TYPE_ID_ERRATA:
+            elif u.type_id == TYPE_ID_ERRATA:
                 # if erratum, lookup deps and process associated units
                 self._import_errata_unit_rpms(source_repo, u, import_conduit, config, existing_rpm_units_dict)
-            if u.type_id == TYPE_ID_PKG_CATEGORY:
+            elif u.type_id == TYPE_ID_PKG_GROUP:
+                # pkg group unit associated, lookup child units underneath and import them as well
+                self._import_pkg_group_unit(source_repo, u, import_conduit, config)
+            elif u.type_id == TYPE_ID_PKG_CATEGORY:
+                # pkg category associated, lookup pkg groups underneath and import them as well
                 self._import_pkg_category_unit(source_repo, u, import_conduit, config)
-
         _LOG.debug("%s units from %s have been associated to %s" % (len(units), source_repo.id, dest_repo.id))
 
     def _import_errata_unit_rpms(self, source_repo, erratum_unit, import_conduit, config, existing_rpm_units=None):
@@ -340,7 +343,43 @@ class YumImporter(Importer):
                 _LOG.debug(" Package group id %s not found" % found_pkggrp)
                 continue
             import_conduit.associate_unit(found_pkggrp[0])
+            # import any associated packages
+            self._import_pkg_group_unit(source_repo, found_pkggrp[0], import_conduit, config)
             _LOG.debug("Associated Package group id %s" % found_pkggrp)
+
+    def _import_pkg_group_unit(self, source_repo, pkg_group_unit, import_conduit, config):
+        """
+        look up package groups and associated packages and import the units
+        """
+        mandatory_pkg_names = pkg_group_unit.metadata["mandatory_package_names"] or []
+        optional_pkg_names = pkg_group_unit.metadata["optional_package_names"] or []
+        conditional_pkg_names = [cond_pkg[0] for cond_pkg in pkg_group_unit.metadata["conditional_package_names"]]
+        default_pkg_names = pkg_group_unit.metadata['default_package_names'] or []
+        for pname in mandatory_pkg_names + optional_pkg_names + conditional_pkg_names + default_pkg_names:
+            criteria = Criteria(filters={'name' : pname})
+            found_pkgs = import_conduit.search_all_units(type_id=[TYPE_ID_RPM, TYPE_ID_SRPM], criteria=criteria )
+            if not len(found_pkgs):
+                continue
+            newest = self._find_newest_pkg(found_pkgs)
+            map(import_conduit.associate_unit, newest)
+
+    def _find_newest_pkg(self, list_rpms):
+        """
+        compare and return the newest rpm unit from the list of rpm units
+        @param list_rpms: list of rpm units
+        @return: returns newest rpm unit by rpm.name, rpm.arch
+        """
+        newest = {}
+        for pkg in list_rpms:
+            pkg_unit_key = pkg.unit_key
+            print pkg_unit_key
+            if (pkg_unit_key["name"], pkg_unit_key["arch"]) not in newest:
+                newest[(pkg_unit_key["name"], pkg_unit_key["arch"])] = pkg
+            else:
+                pkg2 = newest[(pkg_unit_key["name"], pkg_unit_key["arch"])]
+                if util.is_rpm_newer(pkg_unit_key, pkg2.unit_key):
+                    newest[(pkg_unit_key["name"], pkg_unit_key["arch"])] = pkg
+        return newest.values()
 
     def _import_unit_dependencies(self, source_repo, units, import_conduit, config, existing_rpm_units=None):
         """errata

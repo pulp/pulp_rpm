@@ -69,7 +69,10 @@ def get_import_conduit(source_units=None, existing_units=None):
         ret_val = []
         if existing_units:
             for u in existing_units:
-                ret_val.append(u)
+                if u.type_id is None:
+                    ret_val.append(u)
+                elif u.type_id in ["rpm", "srpm"]:
+                    ret_val.append(u)
         return ret_val
     import_conduit = mock.Mock(spec=ImportUnitConduit)
     import_conduit.get_source_units.side_effect = get_source_units

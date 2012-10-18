@@ -387,9 +387,125 @@ class TestImportUnits(rpm_support_base.PulpRPMTests):
         result = importer.import_units(repoA, repoB, conduit, config, [cat_a])
         # Verify
         associated_units = [mock_call[0][0] for mock_call in conduit.associate_unit.call_args_list]
-        self.assertEqual(len(associated_units), 2)
         for u in associated_units:
             self.assertTrue(u in [cat_a, grp_a])
+
+    def test_package_group_unit_import(self):
+        # REPO A (source)
+        repoA = mock.Mock(spec=Repository)
+        repoA.working_dir = self.data_dir
+        repoA.id = "test_pkg_grp_unit_copy"
+        # REPO B (target)
+        repoB = mock.Mock(spec=Repository)
+        repoB.working_dir = self.working_dir
+        repoB.id = "repoB"
+        # Create 2 pkg groups
+        grp_a = self.create_dummy_pkg_group_unit(repoA.id, "group_a")
+        verify_units =[grp_a]
+        source_units = []
+        storage_path = '%s/pulp-dot-1.0-test/0.1.1/1.fc11/x86_64/435d92e6c09248b501b8d2ae786f92ccfad69fab8b1bc774e2b66ff6c0d83979/pulp-dot-2.0-test-0.1.2-1.fc11.x86_64.rpm' % (self.pkg_dir)
+        filename = os.path.basename(storage_path)
+        unit_key = {
+            'name':'pulp-dot-1.0-test',
+            'version':'0.1.1',
+            'release':'1.fc11',
+            'epoch':'0',
+            'arch':'x86_64',
+            'checksum':'435d92e6c09248b501b8d2ae786f92ccfad69fab8b1bc774e2b66ff6c0d83979',
+            'checksumtype':'sha256',
+        }
+        metadata = {
+            'filename':filename
+        }
+        u = Unit(TYPE_ID_RPM, unit_key, metadata, storage_path)
+        source_units.append(u)
+        verify_units.append(u)
+        storage_path = '%s/pulp-dot-2.0-test/0.1.2/1.fc11/x86_64/435d92e6c09248b501b8d2ae786f92ccfad69fab8b1bc774e2b66ff6c0d83979/pulp-dot-2.0-test-0.1.2-1.fc11.x86_64.rpm' % (self.pkg_dir)
+        filename = os.path.basename(storage_path)
+        unit_key = {
+            'name':'pulp-dot-2.0-test',
+            'version':'0.1.2',
+            'release':'1.fc11',
+            'epoch':'0',
+            'arch':'x86_64',
+            'checksum':'435d92e6c09248b501b8d2ae786f92ccfad69fab8b1bc774e2b66ff6c0d83979',
+            'checksumtype':'sha256',
+        }
+        metadata = {
+            'filename':filename
+        }
+        u = Unit(TYPE_ID_RPM, unit_key, metadata, storage_path)
+        source_units.append(u)
+        verify_units.append(u)
+        storage_path = '%s/pulp-test-package/0.3.1/1.fc11/x86_64/6bce3f26e1fc0fc52ac996f39c0d0e14fc26fb8077081d5b4dbfb6431b08aa9f/pulp-test-package-0.3.1-1.fc11.x86_64.rpm' % (self.pkg_dir)
+        filename = os.path.basename(storage_path)
+        unit_key = {
+            'name':'pulp-test-package',
+            'version':'0.3.1',
+            'release':'1.fc11',
+            'epoch':'0',
+            'arch':'x86_64',
+            'checksum':'6bce3f26e1fc0fc52ac996f39c0d0e14fc26fb8077081d5b4dbfb6431b08aa9f',
+            'checksumtype':'sha256',
+        }
+        metadata = {
+            'filename':filename
+        }
+        u = Unit(TYPE_ID_RPM, unit_key, metadata, storage_path)
+        source_units.append(u)
+        verify_old_version_skipped = [u]
+        storage_path = '%s/pulp-test-package/0.3.2/1.fc11/x86_64/6bce3f26e1fc0fc52ac996f39c0d0e14fc26fb8077081d5b4dbfb6431b08aa9f/pulp-test-package-0.3.1-1.fc11.x86_64.rpm' % (self.pkg_dir)
+        filename = os.path.basename(storage_path)
+        unit_key = {
+            'name':'pulp-test-package',
+            'version':'0.3.2',
+            'release':'1.fc11',
+            'epoch':'0',
+            'arch':'x86_64',
+            'checksum':'6bce3f26e1fc0fc52ac996f39c0d0e14fc26fb8077081d5b4dbfb6431b08aa9f',
+            'checksumtype':'sha256',
+        }
+        metadata = {
+            'filename':filename
+        }
+        u = Unit(TYPE_ID_RPM, unit_key, metadata, storage_path)
+        source_units.append(u)
+        verify_units.append(u)
+        storage_path = '%s/pulp-test-optional-package/0.3.2/1.fc11/x86_64/6bce3f26e1fc0fc52ac996f39c0d0e14fc26fb8077081d5b4dbfb6431b08aa9f/pulp-test-package-0.3.1-1.fc11.x86_64.rpm' % (self.pkg_dir)
+        filename = os.path.basename(storage_path)
+        unit_key = {
+            'name':'pulp-optional-package',
+            'version':'0.1.1',
+            'release':'1.fc11',
+            'epoch':'0',
+            'arch':'x86_64',
+            'checksum':'6bce3f26e1fc0fc52ac996f39c0d0e14fc26fb8077081d5b4dbfb6431b08aa9f',
+            'checksumtype':'sha256',
+        }
+        metadata = {
+            'filename':filename
+        }
+        u = Unit(TYPE_ID_RPM, unit_key, metadata, storage_path)
+        source_units.append(u)
+        verify_units.append(u)
+        grp_a.metadata['mandatory_package_names'] = ["pulp-test-package",]
+        grp_a.metadata['default_package_names'] = ["pulp-dot-2.0-test"]
+        grp_a.metadata['optional_package_names'] = ["pulp-optional-package"]
+        grp_a.metadata['conditional_package_names'] = [('pulp-dot-1.0-test', [])]
+        existing_units = [grp_a]
+        conduit = importer_mocks.get_import_conduit(source_units + [grp_a], existing_units=source_units + existing_units)
+        config = importer_mocks.get_basic_config()
+        importer = YumImporter()
+        # Test
+        result = importer.import_units(repoA, repoB, conduit, config, [grp_a])
+        # Verify
+        associated_units = [mock_call[0][0] for mock_call in conduit.associate_unit.call_args_list]
+        # verify expected units are in associate units
+        for u in verify_units:
+            self.assertTrue(u in associated_units)
+        # verify that the version compare worked and skipped old versions
+        for u in verify_old_version_skipped:
+            self.assertFalse(u in associated_units)
 
 class TestImportDependencies(rpm_support_base.PulpRPMTests):
 
