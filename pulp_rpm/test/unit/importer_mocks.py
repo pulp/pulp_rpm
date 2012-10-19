@@ -65,9 +65,19 @@ def get_import_conduit(source_units=None, existing_units=None):
                 else:
                     ret_val.append(u)
         return ret_val
+    def search_all_units(type_id=None, criteria=None):
+        ret_val = []
+        if existing_units:
+            for u in existing_units:
+                if u.type_id is None:
+                    ret_val.append(u)
+                elif u.type_id in ["rpm", "srpm"]:
+                    ret_val.append(u)
+        return ret_val
     import_conduit = mock.Mock(spec=ImportUnitConduit)
     import_conduit.get_source_units.side_effect = get_source_units
     import_conduit.get_units.side_effect = get_units
+    import_conduit.search_all_units.side_effect = search_all_units
     return import_conduit
 
 def get_upload_conduit(type_id=None, unit_key=None, metadata=None, relative_path=None, pkg_dir=None):
