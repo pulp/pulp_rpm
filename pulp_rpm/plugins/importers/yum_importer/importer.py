@@ -311,6 +311,22 @@ class YumImporter(Importer):
     def _import_errata_unit_rpms(self, source_repo, erratum_unit, import_conduit, config, existing_rpm_units=None):
         """
         lookup rpms units associated with an erratum; resolve deps and import rpm units
+        @param source_repo: metadata describing the repository containing the
+               units to import
+        @type  source_repo: L{pulp.plugins.data.Repository}
+
+        @param erratum_unit: erratum unit to lookup child units for to import
+               into
+        @type  erratum_unit: L{pulp.plugins.data.Unit}
+
+        @param import_conduit: provides access to relevant Pulp functionality
+        @type  import_conduit: L{pulp.plugins.conduits.unit_import.ImportUnitConduit}
+
+        @param config: plugin configuration
+        @type  config: L{pulp.plugins.plugins.config.PluginCallConfiguration}
+
+        @param existing_rpm_units: optional list of pre-filtered units to import
+        @type  existing_rpm_units: list of L{pulp.plugins.data.Unit}
         """
         pkglist = erratum_unit.metadata['pkglist']
         existing_rpm_units = existing_rpm_units or {}
@@ -333,6 +349,20 @@ class YumImporter(Importer):
     def _import_pkg_category_unit(self, source_repo, pkg_category_unit, import_conduit, config):
         """
         looks up the package category and associated groups within and imports the units
+        @param source_repo: metadata describing the repository containing the
+               units to import
+        @type  source_repo: L{pulp.plugins.data.Repository}
+
+        @param pkg_category_unit: package category unit to lookup child units for to import
+               into
+        @type  pkg_category_unit: L{pulp.plugins.data.Unit}
+
+        @param import_conduit: provides access to relevant Pulp functionality
+        @type  import_conduit: L{pulp.plugins.conduits.unit_import.ImportUnitConduit}
+
+        @param config: plugin configuration
+        @type  config: L{pulp.plugins.plugins.config.PluginCallConfiguration}
+
         """
         pkg_group_unit_ids = pkg_category_unit.metadata['packagegroupids']
         for pgid in pkg_group_unit_ids:
@@ -350,6 +380,19 @@ class YumImporter(Importer):
     def _import_pkg_group_unit(self, source_repo, pkg_group_unit, import_conduit, config):
         """
         look up package groups and associated packages and import the units
+        @param source_repo: metadata describing the repository containing the
+               units to import
+        @type  source_repo: L{pulp.plugins.data.Repository}
+
+        @param pkg_group_unit: package group unit to lookup child units for to import
+               into
+        @type  pkg_group_unit: L{pulp.plugins.data.Unit}
+
+        @param import_conduit: provides access to relevant Pulp functionality
+        @type  import_conduit: L{pulp.plugins.conduits.unit_import.ImportUnitConduit}
+
+        @param config: plugin configuration
+        @type  config: L{pulp.plugins.plugins.config.PluginCallConfiguration}
         """
         mandatory_pkg_names = pkg_group_unit.metadata["mandatory_package_names"] or []
         optional_pkg_names = pkg_group_unit.metadata["optional_package_names"] or []
@@ -357,7 +400,7 @@ class YumImporter(Importer):
         default_pkg_names = pkg_group_unit.metadata['default_package_names'] or []
         for pname in mandatory_pkg_names + optional_pkg_names + conditional_pkg_names + default_pkg_names:
             criteria = Criteria(filters={'name' : pname})
-            found_pkgs = import_conduit.search_all_units(type_id=[TYPE_ID_RPM, TYPE_ID_SRPM], criteria=criteria )
+            found_pkgs = import_conduit.search_all_units(type_id=TYPE_ID_RPM, criteria=criteria)
             if not len(found_pkgs):
                 continue
             newest = self._find_newest_pkg(found_pkgs)
@@ -372,7 +415,6 @@ class YumImporter(Importer):
         newest = {}
         for pkg in list_rpms:
             pkg_unit_key = pkg.unit_key
-            print pkg_unit_key
             if (pkg_unit_key["name"], pkg_unit_key["arch"]) not in newest:
                 newest[(pkg_unit_key["name"], pkg_unit_key["arch"])] = pkg
             else:
@@ -382,7 +424,7 @@ class YumImporter(Importer):
         return newest.values()
 
     def _import_unit_dependencies(self, source_repo, units, import_conduit, config, existing_rpm_units=None):
-        """errata
+        """
         Lookup any dependencies associated with the units and associate them through the import conduit
         """
         if not config.get('resolve_dependencies'):
