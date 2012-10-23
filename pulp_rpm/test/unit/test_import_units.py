@@ -260,12 +260,11 @@ class TestImportUnits(rpm_support_base.PulpRPMTests):
         repoB.working_dir = self.working_dir
         repoB.id = "repoB"
         conduit = importer_mocks.get_import_conduit(errata_unit, existing_units=existing_units)
-        config = importer_mocks.get_basic_config()
+        config = importer_mocks.get_basic_config(blacklist=['patb'])
         importer = YumImporter()
         # Test
         result = importer.import_units(repoA, repoB, conduit, config, errata_unit)
         # Verify
-        print conduit.associate_unit.call_args_list
         associated_units = [mock_call[0][0] for mock_call in conduit.associate_unit.call_args_list]
         self.assertEqual(len(associated_units), len(errata_unit))
         for u in associated_units:
@@ -506,6 +505,7 @@ class TestImportUnits(rpm_support_base.PulpRPMTests):
         # verify that the version compare worked and skipped old versions
         for u in verify_old_version_skipped:
             self.assertFalse(u in associated_units)
+
 
 class TestImportDependencies(rpm_support_base.PulpRPMTests):
 
