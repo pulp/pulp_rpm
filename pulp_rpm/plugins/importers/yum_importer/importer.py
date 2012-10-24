@@ -329,7 +329,6 @@ class YumImporter(Importer):
             if len(found_blklist):
                 blacklist.extend(found_blklist)
         blacklist = [unit.unit_key for unit in blacklist]
-        print "BLLL",blacklist
         return blacklist
 
     def _import_errata_unit_rpms(self, source_repo, erratum_unit, import_conduit, config, existing_rpm_units=None, blacklist_units=None):
@@ -363,7 +362,6 @@ class YumImporter(Importer):
                 rpm_key = form_lookup_key(pinfo)
                 if rpm_key in existing_rpm_units.keys():
                     if rpm_key in blacklist_units:
-                        print "blacklisted",rpm_key
                         _LOG.debug("package %s blacklisted; skip import" % pinfo)
                         continue
                     rpm_unit = existing_rpm_units[rpm_key]
