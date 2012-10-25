@@ -326,7 +326,7 @@ class YumImporter(Importer):
         for p in pattern:
             criteria = UnitAssociationCriteria(type_ids=TYPE_ID_RPM, unit_filters={'filename' : {'$regex' : p}})
             found_blklist = import_conduit.get_source_units(criteria=criteria)
-            if len(found_blklist):
+            if found_blklist:
                 blacklist.extend(found_blklist)
         blacklist = [unit.unit_key for unit in blacklist]
         return blacklist
