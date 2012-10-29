@@ -74,8 +74,8 @@ class RpmStatusRenderer(StatusRenderer):
             self.render_packages_step(progress_report)
             self.render_distributions_step(progress_report)
             self.render_generate_metadata_step(progress_report)
-            self.render_publish_http_step(progress_report)
             self.render_publish_https_step(progress_report)
+            self.render_publish_http_step(progress_report)
 
     def render_metadata_step(self, progress_report):
 
