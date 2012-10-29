@@ -22,20 +22,22 @@
 
 
 # Python
+from ConfigParser import SafeConfigParser
 from M2Crypto import X509
 import shutil
-import sys
 import os
 import unittest
 import urlparse
 
+import mock
+
 import pulp_rpm.repo_auth.oid_validation as oid_validation
-from pulp_rpm.repo_auth.oid_validation import OidValidator
 from pulp_rpm.repo_auth.repo_cert_utils import RepoCertUtils
 
 # -- constants ------------------------------------------------------------------
 
 CERT_TEST_DIR = '/tmp/test_oid_validation/'
+CONFIG_FILENAME = '/etc/pulp/repo_auth.conf'
 
 # -- mocks ----------------------------------------------------------------------
 
@@ -68,7 +70,8 @@ class TestOidValidation(unittest.TestCase):
     def setUp(self):
 #        self.validator = OidValidator(self.config)
 #        self.clean()
-        pass
+        self.config = SafeConfigParser()
+        self.config.read(CONFIG_FILENAME)
 
     def print_debug(self):
         valid_ca = X509.load_cert_string(VALID_CA)
@@ -86,12 +89,7 @@ class TestOidValidation(unittest.TestCase):
         #print "CA is: %s, with hash of: %s" % (ca_cert.get_subject(), ca_cert.get_subject().as_hash())
         return cert.verify(ca_cert.get_pubkey())
 
-    def test_fake(self):
-        # Just to make nosetests not fail; delete when fixing this class
-        pass
-
-    def __test_basic_validate(self):
-        self.auth_api.disable_global_repo_auth()
+    def test_basic_validate(self):
         repo_cert_utils = RepoCertUtils(config=self.config)
 
         cert_pem = FULL_CLIENT_CERT
@@ -148,7 +146,9 @@ class TestOidValidation(unittest.TestCase):
         self.assertTrue(response_x)
         self.assertTrue(response_y)
 
-    def __test_scenario_2(self):
+    @mock.patch('pulp_rpm.repo_auth.protected_repo_utils.ProtectedRepoUtils.read_protected_repo_listings')
+    @mock.patch('pulp_rpm.repo_auth.repo_cert_utils.RepoCertUtils.read_consumer_cert_bundle')
+    def test_scenario_2(self, mock_read_bundle, mock_read_listings):
         """
         Setup
         - Global auth disabled
@@ -159,15 +159,13 @@ class TestOidValidation(unittest.TestCase):
         Expected
         - Denied to repo X, permitted for repo Y
         """
-
-        # Setup
-        self.auth_api.disable_global_repo_auth()
-
         repo_x_bundle = {'ca' : INVALID_CA, 'key' : ANYKEY, 'cert' : ANYCERT, }
-        self.repo_api.create('repo-x', 'Repo X', 'noarch', consumer_cert_data=repo_x_bundle,
-                             feed='http://repos.fedorapeople.org/repos/pulp/pulp/fedora-14/x86_64')
-        self.repo_api.create('repo-y', 'Repo Y', 'noarch',
-                             feed='http://repos.fedorapeople.org/repos/pulp/pulp/fedora-13/x86_64')
+        #self.repo_api.create('repo-x', 'Repo X', 'noarch', consumer_cert_data=repo_x_bundle,
+                             #feed='http://repos.fedorapeople.org/repos/pulp/pulp/fedora-14/x86_64')
+        #self.repo_api.create('repo-y', 'Repo Y', 'noarch',
+                             #feed='http://repos.fedorapeople.org/repos/pulp/pulp/fedora-13/x86_64')
+        mock_read_listings.return_value = {'/pulp/pulp/fedora-14/x86_64': 'repo-x'}
+        mock_read_bundle.return_value = repo_x_bundle
 
         # Test
         request_x = mock_environ(FULL_CLIENT_CERT, 'https://localhost/pulp/repos/repos/pulp/pulp/fedora-14/x86_64/')
@@ -180,7 +178,9 @@ class TestOidValidation(unittest.TestCase):
         self.assertTrue(not response_x)
         self.assertTrue(response_y)
 
-    def __test_scenario_3(self):
+    @mock.patch('pulp_rpm.repo_auth.protected_repo_utils.ProtectedRepoUtils.read_protected_repo_listings')
+    @mock.patch('pulp_rpm.repo_auth.repo_cert_utils.RepoCertUtils.read_consumer_cert_bundle')
+    def test_scenario_3(self, mock_read_bundle, mock_read_listings):
         """
         Setup
         - Global auth disabled
@@ -193,13 +193,11 @@ class TestOidValidation(unittest.TestCase):
         """
 
         # Setup
-        self.auth_api.disable_global_repo_auth()
+        #self.auth_api.disable_global_repo_auth()
 
         repo_y_bundle = {'ca' : VALID_CA, 'key' : ANYKEY, 'cert' : ANYCERT, }
-        self.repo_api.create('repo-x', 'Repo X', 'noarch',
-                             feed='http://repos.fedorapeople.org/repos/pulp/pulp/fedora-14/x86_64')
-        self.repo_api.create('repo-y', 'Repo Y', 'noarch', consumer_cert_data=repo_y_bundle,
-                             feed='http://repos.fedorapeople.org/repos/pulp/pulp/fedora-13/x86_64')
+        mock_read_listings.return_value = {'/pulp/pulp/fedora-13/x86_64': 'repo-x'}
+        mock_read_bundle.return_value = repo_y_bundle
 
         # Test
         request_x = mock_environ(LIMITED_CLIENT_CERT, 'https://localhost/pulp/repos/repos/pulp/pulp/fedora-14/x86_64/')
