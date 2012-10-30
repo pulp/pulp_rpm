@@ -59,7 +59,6 @@ popd
 
 # Directories
 mkdir -p /srv
-mkdir -p %{buildroot}/%{_sysconfdir}/pki/pulp/content
 mkdir -p %{buildroot}/%{_sysconfdir}/pulp
 mkdir -p %{buildroot}/%{_usr}/lib
 mkdir -p %{buildroot}/%{_usr}/lib/pulp/plugins
@@ -154,7 +153,6 @@ to provide RPM specific support.
 %{python_sitelib}/pulp_rpm/yum_plugin/
 %config(noreplace) %{_sysconfdir}/pulp/repo_auth.conf
 %config(noreplace) %{_sysconfdir}/httpd/conf.d/pulp_rpm.conf
-%dir %{_sysconfdir}/pki/pulp/content
 %{_usr}/lib/pulp/plugins/types/rpm_support.json
 %{_usr}/lib/pulp/plugins/importers/yum_importer/
 %{_usr}/lib/pulp/plugins/distributors/yum_distributor/
