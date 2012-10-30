@@ -64,24 +64,6 @@ class RepoHandler(BindHandler):
         report.succeeded()
         return report
 
-    def rebind(self, conduit, definitions, options):
-        """
-        (Re)bind a repository.
-        @param conduit: A handler conduit.
-        @type conduit: L{pulp.agent.lib.conduit.Conduit}
-        @param definitions: A list of bind definEach definition is:itions.
-        Each definition is:
-            {type_id:<str>, repository:<repository>, details:<dict>}
-        @type definitions: list
-        @param options: Rebind options.
-        @type options: dict
-        @return: A rebind report.
-        @rtype: L{BindReport}
-        """
-        log.info('(re)bind: %s', definitions)
-        self.clean(conduit)
-        return self.bind(conduit, definitions, options)
-
     def unbind(self, conduit, repoid, options):
         """
         Bind a repository.

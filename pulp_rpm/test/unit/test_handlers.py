@@ -526,22 +526,8 @@ class TestBind(HandlerTest):
         # Test
         options = {}
         conduit = TestConduit(self.CONFIGURATION)
-        definitions = [self.DEFINITION]
+        definitions = [dict(self.DEFINITION)]
         report = self.dispatcher.bind(conduit, definitions, options)
-        # Verify
-        self.assertTrue(report.status)
-        self.assertTrue(os.path.isfile(self.REPO_FILE))
-        repofile = Config(self.REPO_FILE)
-        self.assertEqual(repofile[self.REPO_ID]['name'], self.REPOSITORY['display_name'])
-        self.assertEqual(repofile[self.REPO_ID]['enabled'], '1')
-
-    @patch('pulp_rpm.handler.repolib.Lock')
-    def test_rebind(self, mock_lock):
-        # Test
-        options = {}
-        conduit = TestConduit(self.CONFIGURATION)
-        definitions = [self.DEFINITION]
-        report = self.dispatcher.rebind(conduit, definitions, options)
         # Verify
         self.assertTrue(report.status)
         self.assertTrue(os.path.isfile(self.REPO_FILE))
@@ -552,7 +538,10 @@ class TestBind(HandlerTest):
     @patch('pulp_rpm.handler.repolib.Lock')
     def test_unbind(self, mock_lock):
         # Setup
-        self.test_bind()
+        options = {}
+        conduit = TestConduit(self.CONFIGURATION)
+        definitions = [dict(self.DEFINITION)]
+        self.dispatcher.bind(conduit, definitions, options)
         # Test
         options = {}
         conduit = TestConduit(self.CONFIGURATION)
