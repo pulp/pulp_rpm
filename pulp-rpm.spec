@@ -17,7 +17,7 @@
 # ---- Pulp (rpm) --------------------------------------------------------------
 
 Name: pulp-rpm
-Version: 0.0.334
+Version: 0.0.335
 Release: 1%{?dist}
 Summary: Support for RPM content in the Pulp platform
 Group: Development/Languages
@@ -248,6 +248,12 @@ A collection of yum plugins supplementing Pulp consumer operations.
 
 
 %changelog
+* Tue Oct 30 2012 Jeff Ortel <jortel@redhat.com> 0.0.335-1
+- 871075 - removing inclusion of a directory that shouldn't be part of this
+  package. Its presence was causing problems because apache didn't have
+  permission to write to it. This directory will be auto-created when needed if
+  it doesn't already exist. (mhrivnak@redhat.com)
+
 * Mon Oct 29 2012 Jeff Ortel <jortel@redhat.com> 0.0.334-1
 - Adding blacklist support for errata import (pkilambi@redhat.com)
 
