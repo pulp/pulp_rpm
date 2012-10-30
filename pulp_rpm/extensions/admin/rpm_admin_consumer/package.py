@@ -19,6 +19,9 @@ from gettext import gettext as _
 from command import PollingCommand
 from pulp.client.extensions.extensions import PulpCliSection
 from pulp.bindings.exceptions import NotFoundException
+from pulp_rpm.extension.admin.content_schedules import (
+    ContentListScheduleCommand, ContentCreateScheduleCommand, ContentDeleteScheduleCommand,
+    ContentUpdateScheduleCommand, ContentNextRunCommand)
 from okaara.prompt import COLOR_GREEN, COLOR_RED, MOVE_UP, CLEAR_REMAINDER
 
 TYPE_ID = 'rpm'
@@ -80,7 +83,6 @@ class ProgressTracker:
             self.prompt.write(self.details, COLOR_RED)
             return
 
-
 class PackageSection(PulpCliSection):
 
     def __init__(self, context):
@@ -88,30 +90,73 @@ class PackageSection(PulpCliSection):
             self,
             'package',
             _('package installation management'))
-        for Command in (Install, Update, Uninstall):
-            command = Command(context)
-            command.create_option(
-                '--consumer-id',
-                _('identifies the consumer'),
-                required=True)
-            command.create_flag(
-                '--no-commit',
-                _('transaction not committed'))
-            command.create_flag(
-                '--reboot',
-                _('reboot after successful transaction'))
-            self.add_command(command)
+        for Section in (InstallSection, UpdateSection, UninstallSection):
+            self.add_subsection(Section(context))
 
+class InstallSection(PulpCliSection):
+
+    def __init__(self, context):
+        PulpCliSection.__init__(
+            self,
+            'install',
+            _('run or schedule a package installation task'))
+
+        self.add_subsection(SchedulesSection(context, 'package install'))
+        self.add_command(Install(context))
+
+class UpdateSection(PulpCliSection):
+
+    def __init__(self, context):
+        PulpCliSection.__init__(
+            self,
+            'update',
+            _('run or schedule a package update task'))
+
+        self.add_subsection(SchedulesSection(context, 'package update'))
+        self.add_command(Update(context))
+
+class UninstallSection(PulpCliSection):
+
+    def __init__(self, context):
+        PulpCliSection.__init__(
+            self,
+            'uninstall',
+            _('run or schedule a package removal task'))
+
+        self.add_subsection(SchedulesSection(context, 'package uninstall'))
+        self.add_command(Uninstall(context))
+
+class SchedulesSection(PulpCliSection):
+    def __init__(self, context, action):
+        PulpCliSection.__init__(
+            self,
+            'schedules',
+            _('manage consumer %s schedules' % action))
+        self.add_command(ContentListScheduleCommand(context, action))
+        self.add_command(ContentCreateScheduleCommand(context, action))
+        self.add_command(ContentDeleteScheduleCommand(context, action))
+        self.add_command(ContentUpdateScheduleCommand(context, action))
+        self.add_command(ContentNextRunCommand(context, action))
 
 class Install(PollingCommand):
 
     def __init__(self, context):
         PollingCommand.__init__(
             self,
-            'install',
-            _('install packages'),
+            'run',
+            _('triggers an immediate package install on a consumer'),
             self.run,
             context)
+        self.create_option(
+            '--consumer-id',
+            _('identifies the consumer'),
+            required=True)
+        self.create_flag(
+            '--no-commit',
+            _('transaction not committed'))
+        self.create_flag(
+            '--reboot',
+            _('reboot after successful transaction'))
         self.create_option(
             '--name',
             _('package name; may repeat for multiple packages'),
@@ -192,17 +237,26 @@ class Install(PollingCommand):
                 deps,
                 order=filter,
                 filters=filter)
-
-
+    
 class Update(PollingCommand):
 
     def __init__(self, context):
         PollingCommand.__init__(
             self,
-            'update',
-            _('update (installed) packages'),
+            'run',
+            _('triggers an immediate package update on a consumer'),
             self.run,
             context)
+        self.create_option(
+            '--consumer-id',
+            _('identifies the consumer'),
+            required=True)
+        self.create_flag(
+            '--no-commit',
+            _('transaction not committed'))
+        self.create_flag(
+            '--reboot',
+            _('reboot after successful transaction'))
         self.create_option(
             '--name',
             _('package name; may repeat for multiple packages'),
@@ -301,16 +355,25 @@ class Update(PollingCommand):
                 order=filter,
                 filters=filter)
 
-
 class Uninstall(PollingCommand):
 
     def __init__(self, context):
         PollingCommand.__init__(
             self,
-            'uninstall',
-            _('uninstall packages'),
+            'run',
+            _('triggers an immediate package removal on a consumer'),
             self.run,
             context)
+        self.create_option(
+            '--consumer-id',
+            _('identifies the consumer'),
+            required=True)
+        self.create_flag(
+            '--no-commit',
+            _('transaction not committed'))
+        self.create_flag(
+            '--reboot',
+            _('reboot after successful transaction'))
         self.create_option(
             '--name',
             _('package name; may repeat for multiple packages'),
