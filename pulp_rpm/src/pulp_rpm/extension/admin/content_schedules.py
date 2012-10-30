@@ -17,11 +17,15 @@ from pulp.client.commands.schedule import (
 from pulp.client.commands.options import OPTION_CONSUMER_ID
 from pulp.client.extensions.extensions import PulpCliOption
 
+# -- constants ----------------------------------------------------------------
+
+TYPE_ID = 'rpm'
+
 # -- commands -----------------------------------------------------------------
 
 class ContentListScheduleCommand(ListScheduleCommand):
     def __init__(self, context, action):
-        strategy = ConsumerContentScheduleStrategy(context)
+        strategy = ConsumerContentScheduleStrategy(context, action)
         DESC_LIST = _('list scheduled %s operations' % action)
         super(ContentListScheduleCommand, self).__init__(context, strategy,
                                                      description=DESC_LIST)
@@ -30,7 +34,7 @@ class ContentListScheduleCommand(ListScheduleCommand):
 
 class ContentCreateScheduleCommand(CreateScheduleCommand):
     def __init__(self, context, action):
-        strategy = ConsumerContentScheduleStrategy(context)
+        strategy = ConsumerContentScheduleStrategy(context, action)
         DESC_CREATE = _('adds a new scheduled %s operation' % action)
         super(ContentCreateScheduleCommand, self).__init__(context, strategy,
                                                        description=DESC_CREATE)
@@ -41,8 +45,8 @@ class ContentCreateScheduleCommand(CreateScheduleCommand):
 
 class ContentDeleteScheduleCommand(DeleteScheduleCommand):
     def __init__(self, context, action):
-        strategy = ConsumerContentScheduleStrategy(context)
-        DESC_DELETE = _('delete a %s schedule' % action)
+        strategy = ConsumerContentScheduleStrategy(context, action)
+        DESC_DELETE = _('deletes a %s schedule' % action)
         super(ContentDeleteScheduleCommand, self).__init__(context, strategy,
                                                        description=DESC_DELETE)
         self.add_option(OPTION_CONSUMER_ID)
@@ -50,7 +54,7 @@ class ContentDeleteScheduleCommand(DeleteScheduleCommand):
 
 class ContentUpdateScheduleCommand(UpdateScheduleCommand):
     def __init__(self, context, action):
-        strategy = ConsumerContentScheduleStrategy(context)
+        strategy = ConsumerContentScheduleStrategy(context, action)
         DESC_UPDATE = _('updates an existing %s schedule' % action)
         super(ContentUpdateScheduleCommand, self).__init__(context, strategy,
                                                        description=DESC_UPDATE)
@@ -59,7 +63,7 @@ class ContentUpdateScheduleCommand(UpdateScheduleCommand):
 
 class ContentNextRunCommand(NextRunCommand):
     def __init__(self, context, action):
-        strategy = ConsumerContentScheduleStrategy(context)
+        strategy = ConsumerContentScheduleStrategy(context, action)
         DESC_NEXT_RUN = _('displays the next scheduled %s for a consumer' % action)
         super(ContentNextRunCommand, self).__init__(context, strategy,
                                                 description=DESC_NEXT_RUN)
@@ -71,27 +75,32 @@ class ConsumerContentScheduleStrategy(ScheduleStrategy):
 
     # See super class for method documentation
 
-    def __init__(self, context):
+    def __init__(self, context, action):
         super(ConsumerContentScheduleStrategy, self).__init__()
         self.context = context
+        self.action = action
         self.api = context.server.consumer_content_schedules
 
     def create_schedule(self, schedule, failure_threshold, enabled, kwargs):
         consumer_id = kwargs[OPTION_CONSUMER_ID.keyword]
-
-        # Eventually we'll support passing in sync arguments to the scheduled
-        # call. When we do, override_config will be created here from kwargs.
-        override_config = {}
-        return self.api.add_schedule(consumer_id, schedule, override_config, failure_threshold, enabled)
+        units = []
+        for name in kwargs['name']:
+            unit_key = dict(name=name)
+            unit = dict(type_id=TYPE_ID, unit_key=unit_key)
+            units.append(unit)
+        # Eventually we'll support passing in content install arguments to the scheduled
+        # call. When we do, options will be created here from kwargs.
+        options = {}
+        return self.api.add_schedule(self.action, consumer_id, schedule, failure_threshold, enabled, options, units)
 
     def delete_schedule(self, schedule_id, kwargs):
         consumer_id = kwargs[OPTION_CONSUMER_ID.keyword]
-        return self.api.delete_schedule(consumer_id, schedule_id)
+        return self.api.delete_schedule(self.action, consumer_id, schedule_id)
 
     def retrieve_schedules(self, kwargs):
         consumer_id = kwargs[OPTION_CONSUMER_ID.keyword]
-        return self.api.list_schedules(consumer_id)
+        return self.api.list_schedules(self.action, consumer_id)
 
     def update_schedule(self, schedule_id, **kwargs):
         consumer_id = kwargs.pop(OPTION_CONSUMER_ID.keyword)
-        return self.api.update_schedule(consumer_id, schedule_id, **kwargs)
+        return self.api.update_schedule(self.action, consumer_id, schedule_id, **kwargs)

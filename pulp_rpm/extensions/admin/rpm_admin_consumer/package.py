@@ -101,7 +101,7 @@ class InstallSection(PulpCliSection):
             'install',
             _('run or schedule a package installation task'))
 
-        self.add_subsection(SchedulesSection(context, 'package install'))
+        self.add_subsection(SchedulesSection(context, 'install'))
         self.add_command(Install(context))
 
 class UpdateSection(PulpCliSection):
@@ -112,7 +112,7 @@ class UpdateSection(PulpCliSection):
             'update',
             _('run or schedule a package update task'))
 
-        self.add_subsection(SchedulesSection(context, 'package update'))
+        self.add_subsection(SchedulesSection(context, 'update'))
         self.add_command(Update(context))
 
 class UninstallSection(PulpCliSection):
@@ -123,7 +123,7 @@ class UninstallSection(PulpCliSection):
             'uninstall',
             _('run or schedule a package removal task'))
 
-        self.add_subsection(SchedulesSection(context, 'package uninstall'))
+        self.add_subsection(SchedulesSection(context, 'uninstall'))
         self.add_command(Uninstall(context))
 
 class SchedulesSection(PulpCliSection):
@@ -131,7 +131,7 @@ class SchedulesSection(PulpCliSection):
         PulpCliSection.__init__(
             self,
             'schedules',
-            _('manage consumer %s schedules' % action))
+            _('manage consumer package %s schedules' % action))
         self.add_command(ContentListScheduleCommand(context, action))
         self.add_command(ContentCreateScheduleCommand(context, action))
         self.add_command(ContentDeleteScheduleCommand(context, action))
