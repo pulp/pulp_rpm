@@ -160,10 +160,6 @@ class TestOidValidation(unittest.TestCase):
         - Denied to repo X, permitted for repo Y
         """
         repo_x_bundle = {'ca' : INVALID_CA, 'key' : ANYKEY, 'cert' : ANYCERT, }
-        #self.repo_api.create('repo-x', 'Repo X', 'noarch', consumer_cert_data=repo_x_bundle,
-                             #feed='http://repos.fedorapeople.org/repos/pulp/pulp/fedora-14/x86_64')
-        #self.repo_api.create('repo-y', 'Repo Y', 'noarch',
-                             #feed='http://repos.fedorapeople.org/repos/pulp/pulp/fedora-13/x86_64')
         mock_read_listings.return_value = {'/pulp/pulp/fedora-14/x86_64': 'repo-x'}
         mock_read_bundle.return_value = repo_x_bundle
 
@@ -191,9 +187,6 @@ class TestOidValidation(unittest.TestCase):
         Expected
         - Permitted to repo X, denied from repo Y
         """
-
-        # Setup
-        #self.auth_api.disable_global_repo_auth()
 
         repo_y_bundle = {'ca' : VALID_CA, 'key' : ANYKEY, 'cert' : ANYCERT, }
         mock_read_listings.return_value = {'/pulp/pulp/fedora-13/x86_64': 'repo-x'}
