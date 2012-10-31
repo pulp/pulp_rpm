@@ -36,7 +36,7 @@ def bind(repo_filename,
          keys_root_dir,
          cert_root_dir,
          repo_id,
-         repo_data,
+         repo_name,
          url_list,
          gpg_keys,
          cacert,
@@ -74,8 +74,8 @@ def bind(repo_filename,
     @param repo_id: uniquely identifies the repo being updated
     @type  repo_id: string
 
-    @param repo_data: contains data on the repo being bound
-    @type  repo_data: dict {string: string}
+    @param repo_name: the repo name
+    @type  repo_name: str
 
     @param url_list: list of URLs that will be used to access the repo; this call
                      will determine the best way to represent the URL list in
@@ -110,8 +110,8 @@ def bind(repo_filename,
         # Therefore, any of the major data components (repo data, url list, keys)
         # may be None.
 
-        if repo_data is not None:
-            repo = _convert_repo(repo_id, enabled, repo_data['display_name'])
+        if repo_name is not None:
+            repo = _convert_repo(repo_id, enabled, repo_name)
         else:
             repo = repo_file.get_repo(repo_id)
 

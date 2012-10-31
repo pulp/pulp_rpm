@@ -482,15 +482,17 @@ class TestBind(HandlerTest):
 
     TYPE_ID = 'yum_distributor'
     REPO_ID = 'test-repo'
-    REPOSITORY = {'id':REPO_ID, 'display_name':'test-repo-name'}
+    REPO_NAME = 'My test-repository'
     DETAILS = {
         'protocols':{'http':'http://myfake.com/content'},
         'server_name':'test-server',
         'relative_path':'/tmp/lib/pulp/xxx',
         'ca_cert':'CA-CERT',
         'client_cert':'CLIENT-CERT',
+        'repo_name':REPO_NAME,
     }
-    DEFINITION = {'type_id':TYPE_ID, 'repository':REPOSITORY, 'details':DETAILS}
+    BINDING = {'type_id':TYPE_ID, 'repo_id':REPO_ID, 'details':DETAILS}
+    UNBINDING = {'type_id':TYPE_ID, 'repo_id':REPO_ID}
     TEST_DIR = '/tmp/pulp-test'
     MIRROR_DIR = os.path.join(TEST_DIR, 'mirrors')
     GPG_DIR = os.path.join(TEST_DIR, 'gpg')
@@ -526,13 +528,13 @@ class TestBind(HandlerTest):
         # Test
         options = {}
         conduit = TestConduit(self.CONFIGURATION)
-        definitions = [dict(self.DEFINITION)]
-        report = self.dispatcher.bind(conduit, definitions, options)
+        bindings = [dict(self.BINDING)]
+        report = self.dispatcher.bind(conduit, bindings, options)
         # Verify
         self.assertTrue(report.status)
         self.assertTrue(os.path.isfile(self.REPO_FILE))
         repofile = Config(self.REPO_FILE)
-        self.assertEqual(repofile[self.REPO_ID]['name'], self.REPOSITORY['display_name'])
+        self.assertEqual(repofile[self.REPO_ID]['name'], self.REPO_NAME)
         self.assertEqual(repofile[self.REPO_ID]['enabled'], '1')
 
     @patch('pulp_rpm.handler.repolib.Lock')
@@ -540,13 +542,32 @@ class TestBind(HandlerTest):
         # Setup
         options = {}
         conduit = TestConduit(self.CONFIGURATION)
-        definitions = [dict(self.DEFINITION)]
-        self.dispatcher.bind(conduit, definitions, options)
+        bindings = [dict(self.BINDING)]
+        self.dispatcher.bind(conduit, bindings, options)
         # Test
         options = {}
         conduit = TestConduit(self.CONFIGURATION)
-        definitions = [self.DEFINITION]
-        report = self.dispatcher.unbind(conduit, self.REPO_ID, options)
+        bindings = [self.UNBINDING]
+        report = self.dispatcher.unbind(conduit, bindings, options)
+        # Verify
+        self.assertTrue(report.status)
+        self.assertTrue(os.path.isfile(self.REPO_FILE))
+        repofile = Config(self.REPO_FILE)
+        self.assertFalse(self.REPO_ID in repofile)
+
+    @patch('pulp_rpm.handler.repolib.Lock')
+    def test_unbind_all(self, mock_lock):
+        # Setup
+        options = {}
+        conduit = TestConduit(self.CONFIGURATION)
+        bindings = [dict(self.BINDING)]
+        self.dispatcher.bind(conduit, bindings, options)
+        # Test
+        options = {}
+        conduit = TestConduit(self.CONFIGURATION)
+        bindings = [dict(self.UNBINDING)]
+        bindings[0]['type_id'] = None
+        report = self.dispatcher.unbind(conduit, bindings, options)
         # Verify
         self.assertTrue(report.status)
         self.assertTrue(os.path.isfile(self.REPO_FILE))

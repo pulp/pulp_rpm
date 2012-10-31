@@ -27,64 +27,62 @@ class RepoHandler(BindHandler):
     Manages the /etc/yum.repos.d/pulp.repo based on bind requests.
     """
 
-    def bind(self, conduit, definitions, options):
+    def bind(self, conduit, binding, options):
         """
         Bind a repository.
         @param conduit: A handler conduit.
         @type conduit: L{pulp.agent.lib.conduit.Conduit}
-        @param definitions: A list of bind definitions.
-        Each definition is:
-            {type_id:<str>, repository:<repository>, details:<dict>}
-        @type definitions: list
+        @param binding: A binding to add/update.
+          A binding is: {type_id:<str>, repo_id:<str>, details:<dict>}
+        @type binding: dict
         @param options: Bind options.
         @type options: dict
         @return: A bind report.
         @rtype: L{BindReport}
         """
-        log.info('bind: %s', definitions)
-        report = BindReport()
+        log.info('bind: %s, options:%s', binding, options)
         cfg = conduit.get_consumer_config().graph()
-        for definition in definitions:
-            details = definition['details']
-            repository = definition['repository']
-            repoid = repository['id']
-            urls = self.__urls(details)
-            repolib.bind(
-                cfg.filesystem.repo_file,
-                os.path.join(cfg.filesystem.mirror_list_dir, repoid),
-                cfg.filesystem.gpg_keys_dir,
-                cfg.filesystem.cert_dir,
-                repoid,
-                repository,
-                urls,
-                details.get('gpg_keys', []),
-                details.get('ca_cert'),
-                details.get('client_cert'),
-                len(urls) > 0,)
+        details = binding['details']
+        repo_id = binding['repo_id']
+        repo_name = details['repo_name']
+        urls = self.__urls(details)
+        report = BindReport(repo_id)
+        repolib.bind(
+            cfg.filesystem.repo_file,
+            os.path.join(cfg.filesystem.mirror_list_dir, repo_id),
+            cfg.filesystem.gpg_keys_dir,
+            cfg.filesystem.cert_dir,
+            repo_id,
+            repo_name,
+            urls,
+            details.get('gpg_keys', []),
+            details.get('ca_cert'),
+            details.get('client_cert'),
+            len(urls) > 0,)
         report.succeeded()
         return report
 
-    def unbind(self, conduit, repoid, options):
+    def unbind(self, conduit, repo_id, options):
         """
         Bind a repository.
             @param conduit: A handler conduit.
         @type conduit: L{pulp.agent.lib.conduit.Conduit}
-        @param repoid: A repository ID.
-        @type repoid: str
+        @param repo_id: A repository ID.
+        @type repo_id: str
         @param options: Unbind options.
         @type options: dict
         @return: An unbind report.
         @rtype: L{BindReport}
         """
-        log.info('unbind: %s', repoid)
-        report = BindReport()
+        log.info('unbind: %s, options:%s', repo_id, options)
         cfg = conduit.get_consumer_config().graph()
+        report = BindReport(repo_id)
         repolib.unbind(
             cfg.filesystem.repo_file,
-            os.path.join(cfg.filesystem.mirror_list_dir, repoid),
+            os.path.join(cfg.filesystem.mirror_list_dir, repo_id),
             cfg.filesystem.gpg_keys_dir,
             cfg.filesystem.cert_dir,
-            repoid)
+            repo_id)
         report.succeeded()
         return report
 
