@@ -23,8 +23,8 @@ from pulp.bindings.exceptions import NotFoundException
 from pulp_rpm.extension.admin.content_schedules import (
     ContentListScheduleCommand, ContentCreateScheduleCommand, ContentDeleteScheduleCommand,
     ContentUpdateScheduleCommand, ContentNextRunCommand)
+from pulp_rpm.common.ids import TYPE_ID_ERRATA
 
-TYPE_ID = 'erratum'
 
 class ErrataSection(PulpCliSection):
 
@@ -53,7 +53,7 @@ class SchedulesSection(PulpCliSection):
             'schedules',
             _('manage consumer errata %s schedules' % action))
         self.add_command(ContentListScheduleCommand(context, action))
-        self.add_command(ContentCreateScheduleCommand(context, action))
+        self.add_command(ContentCreateScheduleCommand(context, action, content_type=TYPE_ID_ERRATA))
         self.add_command(ContentDeleteScheduleCommand(context, action))
         self.add_command(ContentUpdateScheduleCommand(context, action))
         self.add_command(ContentNextRunCommand(context, action))        
@@ -99,7 +99,7 @@ class Install(PollingCommand):
             reboot=reboot,)
         for errata_id in kwargs['errata-id']:
             unit_key = dict(id=errata_id)
-            unit = dict(type_id=TYPE_ID, unit_key=unit_key)
+            unit = dict(type_id=TYPE_ID_ERRATA, unit_key=unit_key)
             units.append(unit)
         self.install(consumer_id, units, options)
 
@@ -127,15 +127,15 @@ class Install(PollingCommand):
         # reported as failed
         if not task.result['status']:
             msg = 'Install failed'
-            details = task.result['details'][TYPE_ID]['details']
+            details = task.result['details'][TYPE_ID_ERRATA]['details']
             prompt.render_failure_message(_(msg))
             prompt.render_failure_message(details['message'])
             return
         msg = 'Install Succeeded'
         prompt.render_success_message(_(msg))
         # reported as succeeded
-        if task.result['details'].has_key(TYPE_ID):
-            details = task.result['details'][TYPE_ID]['details']
+        if task.result['details'].has_key(TYPE_ID_ERRATA):
+            details = task.result['details'][TYPE_ID_ERRATA]['details']
             filter = ['name', 'version', 'arch', 'repoid']
             resolved = details['resolved']
             if resolved:

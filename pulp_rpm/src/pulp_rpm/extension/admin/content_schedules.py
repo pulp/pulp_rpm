@@ -16,10 +16,7 @@ from pulp.client.commands.schedule import (
     UpdateScheduleCommand, NextRunCommand, ScheduleStrategy)
 from pulp.client.commands.options import OPTION_CONSUMER_ID
 from pulp.client.extensions.extensions import PulpCliOption
-
-# -- constants ----------------------------------------------------------------
-
-TYPE_ID = 'rpm'
+from pulp_rpm.common.ids import TYPE_ID_RPM, TYPE_ID_ERRATA, TYPE_ID_PKG_GROUP
 
 # -- commands -----------------------------------------------------------------
 
@@ -33,14 +30,22 @@ class ContentListScheduleCommand(ListScheduleCommand):
 
 
 class ContentCreateScheduleCommand(CreateScheduleCommand):
-    def __init__(self, context, action):
-        strategy = ConsumerContentScheduleStrategy(context, action)
+    def __init__(self, context, action, content_type):
+        strategy = ConsumerContentScheduleStrategy(context, action, content_type)
         DESC_CREATE = _('adds a new scheduled %s operation' % action)
         super(ContentCreateScheduleCommand, self).__init__(context, strategy,
                                                        description=DESC_CREATE)
         self.add_option(OPTION_CONSUMER_ID)
-        self.add_option(PulpCliOption('--name', _('package name; may repeat for multiple packages'),
-                                      required=True, allow_multiple=True, aliases=['-n']))
+        assert(content_type in (TYPE_ID_RPM, TYPE_ID_ERRATA, TYPE_ID_PKG_GROUP))
+        if content_type == TYPE_ID_RPM:
+            self.add_option(PulpCliOption('--name', _('package name; may be repeated for multiple packages'),
+                                          required=True, allow_multiple=True, aliases=['-n']))
+        elif content_type == TYPE_ID_ERRATA:
+            self.add_option(PulpCliOption('--errata-id', _('erratum id; may be repeated for multiple errata'),
+                                          required=True, allow_multiple=True, aliases=['-e']))
+        elif content_type == TYPE_ID_PKG_GROUP:
+            self.add_option(PulpCliOption('--name', _('package-group name; may be repeated for multiple package-groups'),
+                                          required=True, allow_multiple=True, aliases=['-n']))
 
 
 class ContentDeleteScheduleCommand(DeleteScheduleCommand):
@@ -69,29 +74,39 @@ class ContentNextRunCommand(NextRunCommand):
                                                 description=DESC_NEXT_RUN)
         self.add_option(OPTION_CONSUMER_ID)
 
+
 # -- framework classes --------------------------------------------------------
 
 class ConsumerContentScheduleStrategy(ScheduleStrategy):
 
     # See super class for method documentation
 
-    def __init__(self, context, action):
+    def __init__(self, context, action, content_type=None):
         super(ConsumerContentScheduleStrategy, self).__init__()
         self.context = context
         self.action = action
+        self.content_type = content_type
         self.api = context.server.consumer_content_schedules
 
     def create_schedule(self, schedule, failure_threshold, enabled, kwargs):
         consumer_id = kwargs[OPTION_CONSUMER_ID.keyword]
         units = []
-        for name in kwargs['name']:
-            unit_key = dict(name=name)
-            unit = dict(type_id=TYPE_ID, unit_key=unit_key)
-            units.append(unit)
+        assert(self.content_type in (TYPE_ID_RPM, TYPE_ID_ERRATA, TYPE_ID_PKG_GROUP))
+        if self.content_type in (TYPE_ID_RPM, TYPE_ID_PKG_GROUP):
+            for name in kwargs['name']:
+                unit_key = dict(name=name)
+                unit = dict(type_id=self.content_type, unit_key=unit_key)
+                units.append(unit)
+        else:
+            for errata_id in kwargs['errata-id']:
+                unit_key = dict(id=errata_id)
+                unit = dict(type_id=self.content_type, unit_key=unit_key)
+                units.append(unit)
+
         # Eventually we'll support passing in content install arguments to the scheduled
         # call. When we do, options will be created here from kwargs.
         options = {}
-        return self.api.add_schedule(self.action, consumer_id, schedule, failure_threshold, enabled, options, units)
+        return self.api.add_schedule(self.action, consumer_id, schedule, units, failure_threshold, enabled, options)
 
     def delete_schedule(self, schedule_id, kwargs):
         consumer_id = kwargs[OPTION_CONSUMER_ID.keyword]

@@ -22,8 +22,8 @@ from pulp.bindings.exceptions import NotFoundException
 from pulp_rpm.extension.admin.content_schedules import (
     ContentListScheduleCommand, ContentCreateScheduleCommand, ContentDeleteScheduleCommand,
     ContentUpdateScheduleCommand, ContentNextRunCommand)
+from pulp_rpm.common.ids import TYPE_ID_PKG_GROUP
 
-TYPE_ID = 'package_group'
 
 class GroupSection(PulpCliSection):
 
@@ -64,7 +64,7 @@ class SchedulesSection(PulpCliSection):
             'schedules',
             _('manage consumer package-group %s schedules' % action))
         self.add_command(ContentListScheduleCommand(context, action))
-        self.add_command(ContentCreateScheduleCommand(context, action))
+        self.add_command(ContentCreateScheduleCommand(context, action, content_type=TYPE_ID_PKG_GROUP))
         self.add_command(ContentDeleteScheduleCommand(context, action))
         self.add_command(ContentUpdateScheduleCommand(context, action))
         self.add_command(ContentNextRunCommand(context, action))
@@ -110,7 +110,7 @@ class Install(PollingCommand):
             reboot=reboot,)
         for name in kwargs['name']:
             unit_key = dict(name=name)
-            unit = dict(type_id=TYPE_ID, unit_key=unit_key)
+            unit = dict(type_id=TYPE_ID_PKG_GROUP, unit_key=unit_key)
             units.append(unit)
         self.install(consumer_id, units, options)
 
@@ -138,14 +138,14 @@ class Install(PollingCommand):
         # reported as failed
         if not task.result['status']:
             msg = 'Install failed'
-            details = task.result['details'][TYPE_ID]['details']
+            details = task.result['details'][TYPE_ID_PKG_GROUP]['details']
             prompt.render_failure_message(_(msg))
             prompt.render_failure_message(details['message'])
             return
         msg = 'Install Succeeded'
         prompt.render_success_message(_(msg))
         # reported as succeeded
-        details = task.result['details'][TYPE_ID]['details']
+        details = task.result['details'][TYPE_ID_PKG_GROUP]['details']
         filter = ['name', 'version', 'arch', 'repoid']
         resolved = details['resolved']
         if resolved:
@@ -202,7 +202,7 @@ class Uninstall(PollingCommand):
             reboot=reboot,)
         for name in kwargs['name']:
             unit_key = dict(name=name)
-            unit = dict(type_id=TYPE_ID, unit_key=unit_key)
+            unit = dict(type_id=TYPE_ID_PKG_GROUP, unit_key=unit_key)
             units.append(unit)
         self.uninstall(consumer_id, units, options)
 
@@ -230,14 +230,14 @@ class Uninstall(PollingCommand):
         # reported as failed
         if not task.result['status']:
             msg = 'Uninstall Failed'
-            details = task.result['details'][TYPE_ID]['details']
+            details = task.result['details'][TYPE_ID_PKG_GROUP]['details']
             prompt.render_failure_message(_(msg))
             prompt.render_failure_message(details['message'])
             return
         msg = 'Uninstall Succeeded'
         prompt.render_success_message(_(msg))
         # reported as succeeded
-        details = task.result['details'][TYPE_ID]['details']
+        details = task.result['details'][TYPE_ID_PKG_GROUP]['details']
         filter = ['name', 'version', 'arch', 'repoid']
         resolved = details['resolved']
         if resolved:
