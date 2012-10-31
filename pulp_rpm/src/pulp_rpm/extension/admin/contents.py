@@ -190,24 +190,26 @@ class SearchDistributionsCommand(UnitAssociationCriteriaCommand):
 
     def write_distro(self, distro_list):
         """
-        Write a distro out in a specially formatted way. It is not known why this
-        was originally needed.
+        Write a distro out in a specially formatted way. This call assumes
+        there will be either 0 or 1 distributions in the repository.
 
         :param distro_list: list of distribution documents; will be of length 1
         :type  distro_list: list
         """
+        if len(distro_list) == 0:
+            return
+
         distro = distro_list[0]
-        distro_meta = distro['metadata']
 
         # Distro Metadata
         # id, family, arch, variant, _storage_path
 
         data = {
-            'id'      : distro_meta['id'],
-            'family'  : distro_meta['family'],
-            'arch'    : distro_meta['arch'],
-            'variant' : distro_meta['variant'],
-            'path'    : distro_meta['_storage_path'],
+            'id'      : distro['id'],
+            'family'  : distro['family'],
+            'arch'    : distro['arch'],
+            'variant' : distro['variant'],
+            'path'    : distro['_storage_path'],
             }
 
         self.context.prompt.write(_('Id:            %(id)s') % data)
@@ -220,7 +222,7 @@ class SearchDistributionsCommand(UnitAssociationCriteriaCommand):
         # Files
         # filename, relativepath, checksum, checksumtype, size
         self.context.prompt.write(_('Files:'))
-        for f in distro_meta['files']:
+        for f in distro['files']:
             data = {
                 'filename' : f['filename'],
                 'path'     : f['relativepath'],
