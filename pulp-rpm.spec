@@ -17,7 +17,7 @@
 # ---- Pulp (rpm) --------------------------------------------------------------
 
 Name: pulp-rpm
-Version: 0.0.331
+Version: 0.0.335
 Release: 1%{?dist}
 Summary: Support for RPM content in the Pulp platform
 Group: Development/Languages
@@ -47,19 +47,18 @@ handlers that provide RPM support.
 %setup -q
 
 %build
-pushd src
+pushd pulp_rpm/src
 %{__python} setup.py build
 popd
 
 %install
 rm -rf %{buildroot}
-pushd src
+pushd pulp_rpm/src
 %{__python} setup.py install -O1 --skip-build --root %{buildroot}
 popd
 
 # Directories
 mkdir -p /srv
-mkdir -p %{buildroot}/%{_sysconfdir}/pki/pulp/content
 mkdir -p %{buildroot}/%{_sysconfdir}/pulp
 mkdir -p %{buildroot}/%{_usr}/lib
 mkdir -p %{buildroot}/%{_usr}/lib/pulp/plugins
@@ -71,28 +70,28 @@ mkdir -p %{buildroot}/%{_usr}/lib/yum-plugins/
 mkdir -p %{buildroot}/%{_var}/www
 
 # Configuration
-cp -R etc/httpd %{buildroot}/%{_sysconfdir}
-cp -R etc/pulp %{buildroot}/%{_sysconfdir}
-cp -R etc/yum %{buildroot}/%{_sysconfdir}
+cp -R pulp_rpm/etc/httpd %{buildroot}/%{_sysconfdir}
+cp -R pulp_rpm/etc/pulp %{buildroot}/%{_sysconfdir}
+cp -R pulp_rpm/etc/yum %{buildroot}/%{_sysconfdir}
 
 # WSGI
-cp -R srv %{buildroot}
+cp -R pulp_rpm/srv %{buildroot}
 
 # WWW
 ln -s %{_var}/lib/pulp/published %{buildroot}/%{_var}/www/pub
 
 # Extensions
-cp -R extensions/admin/* %{buildroot}/%{_usr}/lib/pulp/admin/extensions
-cp -R extensions/consumer/* %{buildroot}/%{_usr}/lib/pulp/consumer/extensions
+cp -R pulp_rpm/extensions/admin/* %{buildroot}/%{_usr}/lib/pulp/admin/extensions
+cp -R pulp_rpm/extensions/consumer/* %{buildroot}/%{_usr}/lib/pulp/consumer/extensions
 
 # Agent Handlers
-cp handlers/* %{buildroot}/%{_usr}/lib/pulp/agent/handlers
+cp pulp_rpm/handlers/* %{buildroot}/%{_usr}/lib/pulp/agent/handlers
 
 # Plugins
-cp -R plugins/* %{buildroot}/%{_usr}/lib/pulp/plugins
+cp -R pulp_rpm/plugins/* %{buildroot}/%{_usr}/lib/pulp/plugins
 
 # Yum (plugins)
-cp -R usr/lib/yum-plugins %{buildroot}/%{_usr}/lib
+cp -R pulp_rpm/usr/lib/yum-plugins %{buildroot}/%{_usr}/lib
 
 # Remove egg info
 rm -rf %{buildroot}/%{python_sitelib}/*.egg-info
@@ -154,7 +153,6 @@ to provide RPM specific support.
 %{python_sitelib}/pulp_rpm/yum_plugin/
 %config(noreplace) %{_sysconfdir}/pulp/repo_auth.conf
 %config(noreplace) %{_sysconfdir}/httpd/conf.d/pulp_rpm.conf
-%dir %{_sysconfdir}/pki/pulp/content
 %{_usr}/lib/pulp/plugins/types/rpm_support.json
 %{_usr}/lib/pulp/plugins/importers/yum_importer/
 %{_usr}/lib/pulp/plugins/distributors/yum_distributor/
@@ -250,6 +248,27 @@ A collection of yum plugins supplementing Pulp consumer operations.
 
 
 %changelog
+* Tue Oct 30 2012 Jeff Ortel <jortel@redhat.com> 0.0.335-1
+- 871075 - removing inclusion of a directory that shouldn't be part of this
+  package. Its presence was causing problems because apache didn't have
+  permission to write to it. This directory will be auto-created when needed if
+  it doesn't already exist. (mhrivnak@redhat.com)
+
+* Mon Oct 29 2012 Jeff Ortel <jortel@redhat.com> 0.0.334-1
+- Adding blacklist support for errata import (pkilambi@redhat.com)
+
+* Mon Oct 22 2012 Jeff Ortel <jortel@redhat.com> 0.0.333-1
+- 867577 - Fixed unnecessary metadata lookup (jason.dobies@redhat.com)
+
+* Wed Oct 17 2012 Jeff Ortel <jortel@redhat.com> 0.0.332-1
+- version alignment
+
+* Tue Oct 16 2012 Jeff Ortel <jortel@redhat.com> 0.0.331-3
+- Fix build errors. (jortel@redhat.com)
+
+* Tue Oct 16 2012 Jeff Ortel <jortel@redhat.com> 0.0.331-2
+- Move .spec to git root. (jortel@redhat.com)
+
 * Thu Oct 11 2012 Jeff Ortel <jortel@redhat.com> 0.0.331-1
 - new package built with tito
 
