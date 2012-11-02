@@ -28,8 +28,7 @@ from pulp_rpm.common.ids import TYPE_ID_PKG_GROUP
 class GroupSection(PulpCliSection):
 
     def __init__(self, context):
-        PulpCliSection.__init__(
-            self,
+        super(__class__, self).__init__(
             'package-group',
             _('package-group installation management'))
         for Section in (InstallSection, UninstallSection):
@@ -38,8 +37,7 @@ class GroupSection(PulpCliSection):
 class InstallSection(PulpCliSection):
 
     def __init__(self, context):
-        PulpCliSection.__init__(
-            self,
+        super(__class__, self).__init__(
             'install',
             _('run or schedule a package-group installation task'))
 
@@ -49,8 +47,7 @@ class InstallSection(PulpCliSection):
 class UninstallSection(PulpCliSection):
 
     def __init__(self, context):
-        PulpCliSection.__init__(
-            self,
+        super(__class__, self).__init__(
             'uninstall',
             _('run or schedule a package-group removal task'))
 
@@ -59,8 +56,7 @@ class UninstallSection(PulpCliSection):
 
 class SchedulesSection(PulpCliSection):
     def __init__(self, context, action):
-        PulpCliSection.__init__(
-            self,
+        super(__class__, self).__init__(
             'schedules',
             _('manage consumer package-group %s schedules' % action))
         self.add_command(ContentListScheduleCommand(context, action))
@@ -72,8 +68,7 @@ class SchedulesSection(PulpCliSection):
 class Install(PollingCommand):
 
     def __init__(self, context):
-        PollingCommand.__init__(
-            self,
+        super(__class__, self).__init__(
             'run',
             _('triggers an immediate package-group install on a consumer'),
             self.run,
@@ -169,8 +164,7 @@ class Install(PollingCommand):
 class Uninstall(PollingCommand):
 
     def __init__(self, context):
-        PollingCommand.__init__(
-            self,
+        super(__class__, self).__init__(
             'run',
             _('triggers an immediate package-group removal on a consumer'),
             self.run,
