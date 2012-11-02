@@ -29,9 +29,9 @@ from pulp.client.extensions.core import TAG_SUCCESS
 
 
 TASK = {
-    'task_id':'TASK123',
-    'task_group_id':None,
-    'tags':{},
+    'call_request_id':'TASK123',
+    'call_request_group_id':None,
+    'call_request_tags':{},
     'state':'finished',
     'start_time':None,
     'finish_time':None,
@@ -66,7 +66,7 @@ TASK = {
 
 class Task:
     def __init__(self):
-        self.task_id = TASK['task_id']
+        self.task_id = TASK['call_request_id']
 
 
 class Request:
