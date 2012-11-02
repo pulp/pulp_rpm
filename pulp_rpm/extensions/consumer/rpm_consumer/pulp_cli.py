@@ -15,7 +15,7 @@ from gettext import gettext as _
 
 from pulp.bindings.exceptions import NotFoundException
 from pulp.client.consumer_utils import load_consumer_id
-from pulp.client.extensions.extensions import PulpCliCommand, PulpCliOption
+from pulp.client.extensions.extensions import PulpCliCommand, PulpCliOption, PulpCliFlag
 
 YUM_DISTRIBUTOR_TYPE_ID = 'yum_distributor'
 
@@ -74,8 +74,8 @@ class UnbindCommand(PulpCliCommand):
         PulpCliCommand.__init__(self, name, description, self.unbind)
         self.context = context
         self.prompt = context.prompt
-
         self.add_option(PulpCliOption('--repo-id', 'repository id', required=True))
+        self.add_option(PulpCliFlag('--hard', 'perform a hard unbind'))
 
     def unbind(self, **kwargs):
         consumer_id = load_consumer_id(self.context)
@@ -85,9 +85,10 @@ class UnbindCommand(PulpCliCommand):
             return
 
         repo_id = kwargs['repo-id']
+        hard = kwargs['hard']
 
         try:
-            self.context.server.bind.unbind(consumer_id, repo_id, YUM_DISTRIBUTOR_TYPE_ID)
+            self.context.server.bind.unbind(consumer_id, repo_id, YUM_DISTRIBUTOR_TYPE_ID, hard)
             m = 'Consumer [%(c)s] successfully unbound from repository [%(r)s]'
             self.prompt.render_success_message(_(m) % {'c' : consumer_id, 'r' : repo_id})
         except NotFoundException:
