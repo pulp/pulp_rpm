@@ -17,7 +17,6 @@ Importer plugin for Yum functionality
 import gettext
 import os
 import shutil
-import time
 import itertools
 
 from yum_importer.comps import ImporterComps
@@ -289,17 +288,22 @@ class YumImporter(Importer):
         if not units:
             # If no units are passed in, assume we will use all units from source repo
             units = import_conduit.get_source_units()
+        blacklist_units = self._query_blacklist_units(import_conduit, config)
         _LOG.info("Importing %s units from %s to %s" % (len(units), source_repo.id, dest_repo.id))
         existing_rpm_units_dict = get_existing_units(import_conduit, criteria=UnitAssociationCriteria(type_ids=[TYPE_ID_RPM, TYPE_ID_SRPM]))
         for u in units:
+            if u.unit_key in blacklist_units:
+                continue
             import_conduit.associate_unit(u)
             # do any additional work associated with the unit
             if u.type_id == TYPE_ID_RPM:
                 # if its an rpm unit process dependencies and import them as well
-                self._import_unit_dependencies(source_repo, [u], import_conduit, config, existing_rpm_units=existing_rpm_units_dict)
+                self._import_unit_dependencies(source_repo, [u], import_conduit, config,
+                    existing_rpm_units=existing_rpm_units_dict, blacklist_units=blacklist_units)
             elif u.type_id == TYPE_ID_ERRATA:
                 # if erratum, lookup deps and process associated units
-                self._import_errata_unit_rpms(source_repo, u, import_conduit, config, existing_rpm_units_dict)
+                self._import_errata_unit_rpms(source_repo, u, import_conduit, config,
+                    existing_rpm_units_dict, blacklist_units=blacklist_units)
             elif u.type_id == TYPE_ID_PKG_GROUP:
                 # pkg group unit associated, lookup child units underneath and import them as well
                 self._import_pkg_group_unit(source_repo, u, import_conduit, config)
@@ -308,7 +312,26 @@ class YumImporter(Importer):
                 self._import_pkg_category_unit(source_repo, u, import_conduit, config)
         _LOG.debug("%s units from %s have been associated to %s" % (len(units), source_repo.id, dest_repo.id))
 
-    def _import_errata_unit_rpms(self, source_repo, erratum_unit, import_conduit, config, existing_rpm_units=None):
+    def _query_blacklist_units(self, import_conduit, config):
+        """
+        @param unfiltered_units: list of prefiltered units L{pulp.plugins.data.Unit}
+        @type  unfiltered_units: list of L{pulp.plugins.data.Unit}
+        @param config: plugin configuration
+        @type  config: L{pulp.plugins.plugins.config.PluginCallConfiguration}
+        """
+        blacklist = []
+        if not config.get('blacklist'):
+            return blacklist
+        pattern =  config.get('blacklist')
+        for p in pattern:
+            criteria = UnitAssociationCriteria(type_ids=TYPE_ID_RPM, unit_filters={'filename' : {'$regex' : p}})
+            found_blklist = import_conduit.get_source_units(criteria=criteria)
+            if found_blklist:
+                blacklist.extend(found_blklist)
+        blacklist = [unit.unit_key for unit in blacklist]
+        return blacklist
+
+    def _import_errata_unit_rpms(self, source_repo, erratum_unit, import_conduit, config, existing_rpm_units=None, blacklist_units=None):
         """
         lookup rpms units associated with an erratum; resolve deps and import rpm units
         @param source_repo: metadata describing the repository containing the
@@ -338,6 +361,9 @@ class YumImporter(Importer):
                 pinfo['checksumtype'], pinfo['checksum'] = pinfo['sum']
                 rpm_key = form_lookup_key(pinfo)
                 if rpm_key in existing_rpm_units.keys():
+                    if rpm_key in blacklist_units:
+                        _LOG.debug("package %s blacklisted; skip import" % pinfo)
+                        continue
                     rpm_unit = existing_rpm_units[rpm_key]
                     import_conduit.associate_unit(rpm_unit)
                     # process any deps
@@ -406,7 +432,7 @@ class YumImporter(Importer):
             newest = self._find_newest_pkg(found_pkgs)
             map(import_conduit.associate_unit, newest)
 
-    def _find_newest_pkg(self, list_rpms):
+    def _find_newest_pkg(self, list_rpms, blacklist_units=None):
         """
         compare and return the newest rpm unit from the list of rpm units
         @param list_rpms: list of rpm units
@@ -415,6 +441,8 @@ class YumImporter(Importer):
         newest = {}
         for pkg in list_rpms:
             pkg_unit_key = pkg.unit_key
+            if blacklist_units and pkg_unit_key in blacklist_units:
+                continue
             if (pkg_unit_key["name"], pkg_unit_key["arch"]) not in newest:
                 newest[(pkg_unit_key["name"], pkg_unit_key["arch"])] = pkg
             else:
@@ -423,7 +451,7 @@ class YumImporter(Importer):
                     newest[(pkg_unit_key["name"], pkg_unit_key["arch"])] = pkg
         return newest.values()
 
-    def _import_unit_dependencies(self, source_repo, units, import_conduit, config, existing_rpm_units=None):
+    def _import_unit_dependencies(self, source_repo, units, import_conduit, config, existing_rpm_units=None, blacklist_units=None):
         """
         Lookup any dependencies associated with the units and associate them through the import conduit
         """
@@ -436,7 +464,8 @@ class YumImporter(Importer):
             self.find_missing_dependencies(source_repo, units, import_conduit, config, existing_rpm_units=existing_rpm_units)
         _LOG.debug("missing deps found %s" % missing_deps)
         for dep in missing_deps:
-            import_conduit.associate_unit(dep)
+            if dep.unit_key not in blacklist_units:
+                import_conduit.associate_unit(dep)
 
     def remove_units(self, repo, units, config):
         """

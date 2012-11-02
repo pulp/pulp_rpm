@@ -54,7 +54,12 @@ def get_sync_conduit(type_id=None, existing_units=None, pkg_dir=None):
 
 def get_import_conduit(source_units=None, existing_units=None):
     def get_source_units(criteria=None):
-        return source_units
+        units = []
+        for u in source_units:
+            if criteria and u.type_id not in criteria.type_ids:
+                continue
+            units.append(u)
+        return units
     def get_units(criteria=None):
         ret_val = []
         if existing_units:

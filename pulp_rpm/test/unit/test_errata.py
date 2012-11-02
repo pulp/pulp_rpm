@@ -30,6 +30,7 @@ from pulp.plugins.model import Repository, Unit
 from pulp_rpm.common.ids import TYPE_ID_RPM, TYPE_ID_IMPORTER_YUM, TYPE_ID_ERRATA
 import rpm_support_base
 
+
 class TestErrata(rpm_support_base.PulpRPMTests):
 
     def setUp(self):
@@ -38,7 +39,8 @@ class TestErrata(rpm_support_base.PulpRPMTests):
 
         self.working_dir = os.path.join(self.temp_dir, "working")
         os.makedirs(self.working_dir)
-        self.repo_dir = os.path.join(os.path.abspath(os.path.dirname(__file__)), "data", "test_repo")
+        self.repo_dir = os.path.join(os.path.abspath(os.path.dirname(__file__)), "data",
+                                     "test_repo")
         self.data_dir = os.path.join(os.path.abspath(os.path.dirname(__file__)), "data")
 
         self.pkg_dir = os.path.join(self.temp_dir, "packages")
@@ -49,7 +51,6 @@ class TestErrata(rpm_support_base.PulpRPMTests):
     def test_metadata(self):
         metadata = YumImporter.metadata()
         self.assertEquals(metadata["id"], TYPE_ID_IMPORTER_YUM)
-        print metadata["types"]
         self.assertTrue(TYPE_ID_ERRATA in metadata["types"])
 
     def test_errata_sync(self):
@@ -77,7 +78,6 @@ class TestErrata(rpm_support_base.PulpRPMTests):
 
     def test_get_available_errata(self):
         errata_items_found = errata.get_available_errata(self.repo_dir)
-        print len(errata_items_found)
         self.assertEqual(52, len(errata_items_found))
 
     def test_get_existing_errata(self):
@@ -93,7 +93,6 @@ class TestErrata(rpm_support_base.PulpRPMTests):
     def test_new_errata_units(self):
         # existing errata is newer or same as available errata; should skip sync for 1 errata
         available_errata = errata.get_available_errata(self.repo_dir)
-        print len(available_errata)
         self.assertEqual(52, len(available_errata))
         unit_key = dict()
         unit_key['id'] = "RHBA-2007:0112"
@@ -104,14 +103,13 @@ class TestErrata(rpm_support_base.PulpRPMTests):
         created_existing_units = errata.get_existing_errata(sync_conduit)
         self.assertEquals(len(created_existing_units), 1)
         self.assertEquals(len(existing_units), len(created_existing_units))
-        new_errata, new_units, sync_conduit = errata.get_new_errata_units(available_errata, sync_conduit)
-        print len(available_errata) - len(created_existing_units), len(new_errata)
+        new_errata, new_units, sync_conduit = errata.get_new_errata_units(available_errata,
+                                                                          sync_conduit)
         self.assertEquals(len(available_errata), len(new_errata))
 
     def test_update_errata_units(self):
         # existing errata is older than available; should purge and resync
         available_errata = errata.get_available_errata(self.repo_dir)
-        print len(available_errata)
         self.assertEqual(52, len(available_errata))
         unit_key = dict()
         unit_key['id'] = "RHBA-2007:0112"
