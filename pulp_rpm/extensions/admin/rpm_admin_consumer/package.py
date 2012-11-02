@@ -86,7 +86,7 @@ class ProgressTracker:
 class PackageSection(PulpCliSection):
 
     def __init__(self, context):
-        super(__class__, self).__init__(
+        super(self.__class__, self).__init__(
             'package',
             _('package installation management'))
         for Section in (InstallSection, UpdateSection, UninstallSection):
@@ -95,7 +95,7 @@ class PackageSection(PulpCliSection):
 class InstallSection(PulpCliSection):
 
     def __init__(self, context):
-        super(__class__, self).__init__(
+        super(self.__class__, self).__init__(
             'install',
             _('run or schedule a package installation task'))
 
@@ -105,7 +105,7 @@ class InstallSection(PulpCliSection):
 class UpdateSection(PulpCliSection):
 
     def __init__(self, context):
-        super(__class__, self).__init__(
+        super(self.__class__, self).__init__(
             'update',
             _('run or schedule a package update task'))
 
@@ -115,7 +115,7 @@ class UpdateSection(PulpCliSection):
 class UninstallSection(PulpCliSection):
 
     def __init__(self, context):
-        super(__class__, self).__init__(
+        super(self.__class__, self).__init__(
             'uninstall',
             _('run or schedule a package removal task'))
 
@@ -124,7 +124,7 @@ class UninstallSection(PulpCliSection):
 
 class SchedulesSection(PulpCliSection):
     def __init__(self, context, action):
-        super(__class__, self).__init__(
+        super(self.__class__, self).__init__(
             'schedules',
             _('manage consumer package %s schedules' % action))
         self.add_command(ContentListScheduleCommand(context, action))
@@ -136,7 +136,7 @@ class SchedulesSection(PulpCliSection):
 class Install(PollingCommand):
 
     def __init__(self, context):
-        super(__class__, self).__init__(
+        super(self.__class__, self).__init__(
             'run',
             _('triggers an immediate package install on a consumer'),
             self.run,
@@ -231,11 +231,11 @@ class Install(PollingCommand):
                 deps,
                 order=filter,
                 filters=filter)
-    
+
 class Update(PollingCommand):
 
     def __init__(self, context):
-        super(__class__, self).__init__(
+        super(self.__class__, self).__init__(
             'run',
             _('triggers an immediate package update on a consumer'),
             self.run,
@@ -351,7 +351,7 @@ class Update(PollingCommand):
 class Uninstall(PollingCommand):
 
     def __init__(self, context):
-        super(__class__, self).__init__(
+        super(self.__class__, self).__init__(
             'run',
             _('triggers an immediate package removal on a consumer'),
             self.run,

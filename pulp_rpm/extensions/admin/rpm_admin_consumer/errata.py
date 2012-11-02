@@ -29,7 +29,7 @@ from pulp_rpm.common.ids import TYPE_ID_ERRATA
 class ErrataSection(PulpCliSection):
 
     def __init__(self, context):
-        super(__class__, self).__init__(
+        super(self.__class__, self).__init__(
             'errata',
             _('errata installation management'))
         self.add_subsection(InstallSection(context))
@@ -37,7 +37,7 @@ class ErrataSection(PulpCliSection):
 class InstallSection(PulpCliSection):
 
     def __init__(self, context):
-        super(__class__, self).__init__(
+        super(self.__class__, self).__init__(
             'install',
             _('run or schedule an errata installation task'))
 
@@ -46,19 +46,19 @@ class InstallSection(PulpCliSection):
 
 class SchedulesSection(PulpCliSection):
     def __init__(self, context, action):
-        super(__class__, self).__init__(
+        super(self.__class__, self).__init__(
             'schedules',
             _('manage consumer errata %s schedules' % action))
         self.add_command(ContentListScheduleCommand(context, action))
         self.add_command(ContentCreateScheduleCommand(context, action, content_type=TYPE_ID_ERRATA))
         self.add_command(ContentDeleteScheduleCommand(context, action))
         self.add_command(ContentUpdateScheduleCommand(context, action))
-        self.add_command(ContentNextRunCommand(context, action))        
+        self.add_command(ContentNextRunCommand(context, action))
 
 class Install(PollingCommand):
 
     def __init__(self, context):
-        super(__class__, self).__init__(
+        super(self.__class__, self).__init__(
             'run',
             _('triggers an immediate errata install on a consumer'),
             self.run,
