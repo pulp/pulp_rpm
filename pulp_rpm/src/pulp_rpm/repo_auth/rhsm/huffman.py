@@ -117,7 +117,7 @@ class HuffmanNode(object):
             try:
                 right, count = heapq.heappop(queue)
             except IndexError:
-                # no more nodes to compare, so a is the root node of the tree
+                # no more nodes to compare, so left is the root node of the tree
                 return left
             heapq.heappush(queue, (cls.combine(left, right), next(counter)))
 
