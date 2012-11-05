@@ -46,6 +46,10 @@ def initialize(context):
     copy_section.add_command(copy.RpmCopyCommand(context))
     copy_section.add_command(copy.SrpmCopyCommand(context))
     copy_section.add_command(copy.DrpmCopyCommand(context))
+    copy_section.add_command(copy.ErrataCopyCommand(context))
+    copy_section.add_command(copy.DistributionCopyCommand(context))
+    copy_section.add_command(copy.PackageGroupCopyCommand(context))
+    copy_section.add_command(copy.PackageCategoryCopyCommand(context))
 
     remove_section = structure.repo_remove_section(context.cli)
     remove_section.add_command(remove.RpmRemoveCommand(context))

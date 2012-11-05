@@ -12,13 +12,17 @@
 from gettext import gettext as _
 
 from pulp.client.commands.unit import UnitCopyCommand
-from pulp_rpm.common.ids import TYPE_ID_RPM, TYPE_ID_SRPM, TYPE_ID_DRPM
+from pulp_rpm.common.ids import TYPE_ID_RPM, TYPE_ID_SRPM, TYPE_ID_DRPM, TYPE_ID_ERRATA, TYPE_ID_DISTRO, TYPE_ID_PKG_GROUP, TYPE_ID_PKG_CATEGORY
 
 # -- constants ----------------------------------------------------------------
 
 DESC_RPM = _('copy RPMs from one repository to another')
 DESC_SRPM = _('copy SRPMs from one repository to another')
 DESC_DRPM = _('copy DRPMs from one repository to another')
+DESC_ERRATA = _('copy errata from one repository to another')
+DESC_DISTRIBUTION = _('copy distributions from one repository to another')
+DESC_PKG_GROUP = _('copy package groups from one repository to another')
+DESC_PKG_CATEGORY = _('copy package categories from one repository to another')
 
 
 # -- commands -----------------------------------------------------------------
@@ -48,6 +52,42 @@ class DrpmCopyCommand(UnitCopyCommand):
         def drpm_copy(**kwargs):
             return _copy(self.context, TYPE_ID_DRPM, **kwargs)
         super(DrpmCopyCommand, self).__init__(drpm_copy, name='drpm', description=DESC_DRPM)
+        
+
+class ErrataCopyCommand(UnitCopyCommand):
+
+    def __init__(self, context):
+        self.context = context
+        def errata_copy(**kwargs):
+            return _copy(self.context, TYPE_ID_ERRATA, **kwargs)
+        super(ErrataCopyCommand, self).__init__(errata_copy, name='errata', description=DESC_ERRATA)
+
+
+class DistributionCopyCommand(UnitCopyCommand):
+
+    def __init__(self, context):
+        self.context = context
+        def distribution_copy(**kwargs):
+            return _copy(self.context, TYPE_ID_DISTRO, **kwargs)
+        super(DistributionCopyCommand, self).__init__(distribution_copy, name='distribution', description=DESC_DISTRIBUTION)
+
+
+class PackageGroupCopyCommand(UnitCopyCommand):
+
+    def __init__(self, context):
+        self.context = context
+        def package_group_copy(**kwargs):
+            return _copy(self.context, TYPE_ID_PKG_GROUP, **kwargs)
+        super(PackageGroupCopyCommand, self).__init__(package_group_copy, name='group', description=DESC_PKG_GROUP)
+
+
+class PackageCategoryCopyCommand(UnitCopyCommand):
+
+    def __init__(self, context):
+        self.context = context
+        def package_category_copy(**kwargs):
+            return _copy(self.context, TYPE_ID_PKG_CATEGORY, **kwargs)
+        super(PackageCategoryCopyCommand, self).__init__(package_category_copy, name='category', description=DESC_PKG_CATEGORY)
 
 
 def _copy(context, type_id, **kwargs):
