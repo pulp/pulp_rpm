@@ -26,6 +26,7 @@ import rpm_support_base
 
 from rpm_admin_consumer import package, group
 from pulp.client.extensions.core import TAG_SUCCESS
+from pulp_rpm.common.ids import TYPE_ID_RPM, TYPE_ID_PKG_GROUP
 
 
 TASK = {
@@ -44,7 +45,7 @@ TASK = {
         'status':True,
         'reboot_scheduled':False,
         'details':{
-            package.TYPE_ID:{
+            TYPE_ID_RPM:{
                 'status':True,
                 'details':{
                    'resolved':[
@@ -52,7 +53,7 @@ TASK = {
                    'deps':[]
                 }
             },
-            group.TYPE_ID:{
+            TYPE_ID_PKG_GROUP:{
                 'status':True,
                 'details':{
                    'resolved':[

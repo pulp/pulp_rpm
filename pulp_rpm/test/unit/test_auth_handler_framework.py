@@ -14,8 +14,6 @@ import os
 import sys
 import unittest
 
-# Grrrrr
-sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)) + "/../../src/")
 import pulp_rpm.repo_auth.auth_handler_framework as auth_framework
 
 
