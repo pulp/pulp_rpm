@@ -26,7 +26,7 @@ from iso_distributor.exporter import RepoExporter
 from iso_distributor import iso_util
 from pulp.server.db.model.criteria import UnitAssociationCriteria
 
-from pulp_rpm.common.ids import TYPE_ID_DISTRIBUTOR_ISO, TYPE_ID_DISTRO, TYPE_ID_DRPM, TYPE_ID_ERRATA, TYPE_ID_PKG_GROUP,\
+from pulp_rpm.common.ids import TYPE_ID_DISTRIBUTOR_EXPORT, TYPE_ID_DISTRO, TYPE_ID_DRPM, TYPE_ID_ERRATA, TYPE_ID_PKG_GROUP,\
         TYPE_ID_PKG_CATEGORY, TYPE_ID_RPM, TYPE_ID_SRPM
 from pulp_rpm.yum_plugin import comps_util
 _LOG = util.getLogger(__name__)
@@ -60,8 +60,8 @@ class ISODistributor(Distributor):
     @classmethod
     def metadata(cls):
         return {
-            'id'           : TYPE_ID_DISTRIBUTOR_ISO,
-            'display_name' : 'Iso Distributor',
+            'id'           : TYPE_ID_DISTRIBUTOR_EXPORT,
+            'display_name' : 'Export Distributor',
             'types'        : [TYPE_ID_RPM, TYPE_ID_SRPM, TYPE_ID_DRPM, TYPE_ID_ERRATA, TYPE_ID_DISTRO, TYPE_ID_PKG_CATEGORY, TYPE_ID_PKG_GROUP]
         }
 
