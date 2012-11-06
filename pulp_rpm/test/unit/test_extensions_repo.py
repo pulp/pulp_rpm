@@ -137,9 +137,9 @@ class RpmRepoCreateCommandTests(rpm_support_base.PulpClientTests):
         self.assertEqual(yum_config['skip'], [ids.TYPE_ID_RPM])
 
         iso_distributor = body['distributors'][1]
-        self.assertEqual(ids.TYPE_ID_DISTRIBUTOR_ISO, iso_distributor['distributor_id'])
+        self.assertEqual(ids.TYPE_ID_DISTRIBUTOR_EXPORT, iso_distributor['distributor_id'])
         self.assertEqual(False, iso_distributor['auto_publish'])
-        self.assertEqual(ids.ISO_DISTRIBUTOR_ID, iso_distributor['distributor_id'])
+        self.assertEqual(ids.EXPORT_DISTRIBUTOR_ID, iso_distributor['distributor_id'])
 
         iso_config = iso_distributor['distributor_config']
         self.assertEqual(iso_config['http'], True)
@@ -205,6 +205,6 @@ class RpmRepoUpdateCommand(rpm_support_base.PulpClientTests):
         self.assertEqual(yum_dist_config['http'], True)
         self.assertEqual(yum_dist_config['https'], True)
         
-        iso_dist_config = body['distributor_configs'][ids.ISO_DISTRIBUTOR_ID]
+        iso_dist_config = body['distributor_configs'][ids.EXPORT_DISTRIBUTOR_ID]
         self.assertEqual(iso_dist_config['http'], True)
         self.assertEqual(iso_dist_config['https'], True)

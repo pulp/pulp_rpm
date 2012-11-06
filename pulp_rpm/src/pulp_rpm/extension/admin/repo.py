@@ -145,8 +145,8 @@ class RpmRepoCreateCommand(CreateRepositoryCommand):
         distributors = [
             dict(distributor_type=ids.TYPE_ID_DISTRIBUTOR_YUM, distributor_config=yum_distributor_config,
                  auto_publish=True, distributor_id=ids.YUM_DISTRIBUTOR_ID),
-            dict(distributor_type=ids.TYPE_ID_DISTRIBUTOR_ISO, distributor_config=iso_distributor_config,
-                 auto_publish=False, distributor_id=ids.ISO_DISTRIBUTOR_ID)
+            dict(distributor_type=ids.TYPE_ID_DISTRIBUTOR_EXPORT, distributor_config=iso_distributor_config,
+                 auto_publish=False, distributor_id=ids.EXPORT_DISTRIBUTOR_ID)
         ]
 
         # Create the repository; let exceptions bubble up to the framework exception handler
@@ -198,7 +198,7 @@ class RpmRepoUpdateCommand(UpdateRepositoryCommand):
             return
 
         distributor_configs = {ids.TYPE_ID_DISTRIBUTOR_YUM : yum_distributor_config,
-                               ids.TYPE_ID_DISTRIBUTOR_ISO : iso_distributor_config}
+                               ids.TYPE_ID_DISTRIBUTOR_EXPORT : iso_distributor_config}
 
         response = self.context.server.repo.update_repo_and_plugins(
             repo_id, display_name, description, notes,

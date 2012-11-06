@@ -36,7 +36,7 @@ class RpmIsoExportCommand(RunPublishRepositoryCommand):
 
         super(RpmIsoExportCommand, self).__init__(context=context, 
                                                   renderer=RpmIsoStatusRenderer(context),
-                                                  distributor_id=ids.TYPE_ID_DISTRIBUTOR_ISO, 
+                                                  distributor_id=ids.TYPE_ID_DISTRIBUTOR_EXPORT, 
                                                   description=DESC_EXPORT_RUN,
                                                   override_config_options=override_config_options)
 
