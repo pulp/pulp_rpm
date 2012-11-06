@@ -17,8 +17,8 @@
 # ---- Pulp (rpm) --------------------------------------------------------------
 
 Name: pulp-rpm
-Version: 0.0.335
-Release: 1%{?dist}
+Version: 0.0.336
+Release: 1
 Summary: Support for RPM content in the Pulp platform
 Group: Development/Languages
 License: GPLv2
@@ -248,6 +248,15 @@ A collection of yum plugins supplementing Pulp consumer operations.
 
 
 %changelog
+* Mon Nov 05 2012 Jeff Ortel <jortel@redhat.com> 0.0.336-1
+- 868022 - updating CLI section descriptions (mhrivnak@redhat.com)
+- 871175 - updating unit tests because of new call request fields according to
+  latest changes in pulp's dispatch system (skarmark@redhat.com)
+- 869101 - Fixed handling of returned results (jason.dobies@redhat.com)
+- 869373 - Reversed the order to account for the situation where, in the middle
+  of the HTTPS publish, the HTTP publish both starts and completes.
+  (jason.dobies@redhat.com)
+
 * Tue Oct 30 2012 Jeff Ortel <jortel@redhat.com> 0.0.335-1
 - 871075 - removing inclusion of a directory that shouldn't be part of this
   package. Its presence was causing problems because apache didn't have
