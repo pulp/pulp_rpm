@@ -13,11 +13,14 @@
 # http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt.
 
 # Migrating all old rpm repositories to have export_distributor along with yum_distributor
+import logging
 
 from pulp.server.db.model.repository import RepoDistributor
 from pulp_rpm.common import ids
 
 EXPORT_DISTRIBUTOR_CONFIG = {"http" : False, "https" : True}
+
+_LOG = logging.getLogger('pulp')
 
 def _migrate_rpm_repositories():
     collection = RepoDistributor.get_collection()
@@ -38,6 +41,7 @@ def _migrate_rpm_repositories():
                 collection.save(export_distributor, safe=True)
 
 
-def migrate():
+def migrate(*args, **kwargs):
+    _LOG.info("Export distributor migration for rpm repositories started")
     _migrate_rpm_repositories()
-
+    _LOG.info("Export distributor migration for rpm repositories finished")
