@@ -38,11 +38,13 @@ def get_sync_conduit(type_id=None, existing_units=None, pkg_dir=None):
                     ret_val.append(u)
         return ret_val
 
-    def serach_all_units(type_id=None, criteria=None):
+    def serach_all_units(type_id, criteria):
         ret_val = []
         if existing_units:
             for u in existing_units:
-                ret_val.append(u)
+                if u.type_id == type_id:
+                    if u.unit_key['id'] == criteria['filters']['id']:
+                        ret_val.append(u)
         return ret_val
 
     sync_conduit = mock.Mock(spec=RepoSyncConduit)
@@ -51,6 +53,7 @@ def get_sync_conduit(type_id=None, existing_units=None, pkg_dir=None):
     sync_conduit.search_all_units.side_effect = serach_all_units
 
     return sync_conduit
+
 
 def get_import_conduit(source_units=None, existing_units=None):
     def get_source_units(criteria=None):
