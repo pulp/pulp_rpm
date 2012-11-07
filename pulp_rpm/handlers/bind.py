@@ -59,7 +59,7 @@ class RepoHandler(BindHandler):
             details.get('ca_cert'),
             details.get('client_cert'),
             len(urls) > 0,)
-        report.succeeded()
+        report.set_succeeded()
         return report
 
     def unbind(self, conduit, repo_id, options):
@@ -83,7 +83,7 @@ class RepoHandler(BindHandler):
             cfg.filesystem.gpg_keys_dir,
             cfg.filesystem.cert_dir,
             repo_id)
-        report.succeeded()
+        report.set_succeeded()
         return report
 
     def clean(self, conduit):
@@ -97,7 +97,7 @@ class RepoHandler(BindHandler):
         log.info('clean')
         report = CleanReport()
         # TODO: revist this **
-        report.succeeded()
+        report.set_succeeded()
         return report
 
     def __urls(self, details):
