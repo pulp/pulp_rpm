@@ -41,11 +41,11 @@ TASK = {
     'response':None,
     'reasons':None,
     'result':{
-        'status':True,
+        'succeeded':True,
         'reboot_scheduled':False,
         'details':{
             package.TYPE_ID:{
-                'status':True,
+                'succeeded':True,
                 'details':{
                    'resolved':[
                         {'name':'zsh-1.0'}],
@@ -53,7 +53,7 @@ TASK = {
                 }
             },
             group.TYPE_ID:{
-                'status':True,
+                'succeeded':True,
                 'details':{
                    'resolved':[
                         {'name':'zsh-1.0'}],

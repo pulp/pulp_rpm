@@ -97,23 +97,23 @@ class TestPackages(HandlerTest):
         for unit in removed:
             resolved.append(unit)
             deps = YumBase.REMOVE_DEPS
-        self.assertTrue(report.status)
-        chgcnt = len(resolved) + len(deps)
+        self.assertTrue(report.succeeded)
+        num_changes = len(resolved) + len(deps)
         if reboot:
-            chgcnt += 1
-        self.assertEquals(report.chgcnt, chgcnt)
+            num_changes += 1
+        self.assertEquals(report.num_changes, num_changes)
         self.assertEquals(len(report.details), 1)
         report = report.details[self.TYPE_ID]
-        self.assertTrue(report['status'])
+        self.assertTrue(report['succeeded'])
         self.assertEquals(len(report['details']['resolved']), len(resolved))
         self.assertEquals(len(report['details']['deps']), len(deps))
 
     def verify_failed(self, report):
-        self.assertFalse(report.status)
-        self.assertEquals(report.chgcnt, 0)
+        self.assertFalse(report.succeeded)
+        self.assertEquals(report.num_changes, 0)
         self.assertEquals(len(report.details), 1)
         report = report.details[self.TYPE_ID]
-        self.assertFalse(report['status'])
+        self.assertFalse(report['succeeded'])
         self.assertTrue('message' in report['details'])
         self.assertTrue('trace' in report['details'])
 
@@ -345,23 +345,23 @@ class TestGroups(HandlerTest):
         for group in removed:
             resolved += [str(p) for p in YumBase.GROUPS[group]]
             deps = YumBase.REMOVE_DEPS
-        self.assertTrue(report.status)
-        chgcnt = len(resolved)+len(deps)
+        self.assertTrue(report.succeeded)
+        num_changes = len(resolved)+len(deps)
         if reboot:
-            chgcnt += 1
-        self.assertEquals(report.chgcnt, chgcnt)
+            num_changes += 1
+        self.assertEquals(report.num_changes, num_changes)
         self.assertEquals(len(report.details), 1)
         report = report.details[self.TYPE_ID]
-        self.assertTrue(report['status'])
+        self.assertTrue(report['succeeded'])
         self.assertEquals(len(report['details']['resolved']), len(resolved))
         self.assertEquals(len(report['details']['deps']), len(deps))
 
     def verify_failed(self, report):
-        self.assertFalse(report.status)
-        self.assertEquals(report.chgcnt, 0)
+        self.assertFalse(report.succeeded)
+        self.assertEquals(report.num_changes, 0)
         self.assertEquals(len(report.details), 1)
         report = report.details[self.TYPE_ID]
-        self.assertFalse(report['status'])
+        self.assertFalse(report['succeeded'])
         self.assertTrue('message' in report['details'])
         self.assertTrue('trace' in report['details'])
 
@@ -531,7 +531,7 @@ class TestBind(HandlerTest):
         bindings = [dict(self.BINDING)]
         report = self.dispatcher.bind(conduit, bindings, options)
         # Verify
-        self.assertTrue(report.status)
+        self.assertTrue(report.succeeded)
         self.assertTrue(os.path.isfile(self.REPO_FILE))
         repofile = Config(self.REPO_FILE)
         self.assertEqual(repofile[self.REPO_ID]['name'], self.REPO_NAME)
@@ -550,7 +550,7 @@ class TestBind(HandlerTest):
         bindings = [self.UNBINDING]
         report = self.dispatcher.unbind(conduit, bindings, options)
         # Verify
-        self.assertTrue(report.status)
+        self.assertTrue(report.succeeded)
         self.assertTrue(os.path.isfile(self.REPO_FILE))
         repofile = Config(self.REPO_FILE)
         self.assertFalse(self.REPO_ID in repofile)
@@ -569,7 +569,7 @@ class TestBind(HandlerTest):
         bindings[0]['type_id'] = None
         report = self.dispatcher.unbind(conduit, bindings, options)
         # Verify
-        self.assertTrue(report.status)
+        self.assertTrue(report.succeeded)
         self.assertTrue(os.path.isfile(self.REPO_FILE))
         repofile = Config(self.REPO_FILE)
         self.assertFalse(self.REPO_ID in repofile)

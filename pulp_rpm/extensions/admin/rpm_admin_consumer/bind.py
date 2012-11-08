@@ -49,15 +49,15 @@ class UnbindCommand(PulpCliCommand):
         super(UnbindCommand, self).__init__(name, description, self.bind)
         self.create_option('--consumer-id', _('identifies the consumer'), required=True)
         self.create_option('--repo-id', _('repository to unbind'), required=True)
-        self.create_flag('--hard', _('perform a hard unbind'))
+        self.create_flag('--force', _('delete the binding immediately and discontinue tracking consumer actions'))
         self.context = context
 
     def bind(self, **kwargs):
         id = kwargs['consumer-id']
         repo_id = kwargs['repo-id']
-        hard = kwargs['hard']
+        force = kwargs['force']
         try:
-            self.context.server.bind.unbind(id, repo_id, YUM_DISTRIBUTOR_ID, hard)
+            self.context.server.bind.unbind(id, repo_id, YUM_DISTRIBUTOR_ID, force)
             m = 'Consumer [%(c)s] successfully unbound from repository [%(r)s]'
             self.context.prompt.render_success_message(_(m) % {'c' : id, 'r' : repo_id})
         except NotFoundException:
