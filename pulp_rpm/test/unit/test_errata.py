@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright © 2011 Red Hat, Inc.
+# Copyright © 2012 Red Hat, Inc.
 #
 # This software is licensed to you under the GNU General Public
 # License as published by the Free Software Foundation; either version
@@ -25,8 +25,9 @@ import tempfile
 from yum_importer import errata
 from yum_importer import importer_rpm
 from yum_importer.importer import YumImporter
-from pulp.plugins.model import Repository, Unit
 
+from pulp.plugins.model import Repository, Unit
+from pulp.server.db.model.repository import RepoContentUnit
 from pulp_rpm.common.ids import TYPE_ID_RPM, TYPE_ID_IMPORTER_YUM, TYPE_ID_ERRATA
 import rpm_support_base
 
@@ -76,6 +77,65 @@ class TestErrata(rpm_support_base.PulpRPMTests):
         self.assertEquals(details["num_security_errata"], 7)
         self.assertEquals(details["num_enhancement_errata"], 9)
 
+    def test_errata_sync_with_repos_that_share_upstream_url(self):
+        # This test is for https://bugzilla.redhat.com/show_bug.cgi?id=870495
+        feed_url = "http://example.com/test_repo/"
+
+        # Set up repo_1 and sync it
+        importer_1 = YumImporter()
+        repo_1 = mock.Mock(spec=Repository)
+        repo_1.working_dir = self.working_dir
+        repo_1.id = "test_repo_1"
+        sync_conduit_1 = importer_mocks.get_sync_conduit()
+        config_1 = importer_mocks.get_basic_config(feed_url=feed_url)
+        self.simulate_sync(repo_1, self.repo_dir)
+        importer_errata_1 = errata.ImporterErrata()
+        status_1, summary_1, details_1 = importer_errata_1.sync(repo_1, sync_conduit_1, config_1)
+        self.assertTrue(status_1)
+        self.assertTrue(summary_1 is not None)
+        self.assertTrue(details_1 is not None)
+        self.assertEquals(summary_1["num_new_errata"], 52)
+        self.assertEquals(summary_1["num_existing_errata"], 0)
+        self.assertEquals(summary_1["num_orphaned_errata"], 0)
+        self.assertEquals(details_1["num_bugfix_errata"], 36)
+        self.assertEquals(details_1["num_security_errata"], 7)
+        self.assertEquals(details_1["num_enhancement_errata"], 9)
+        # We should have called save_unit() once for each errata, in sync().
+        self.assertEqual(len(sync_conduit_1.save_unit.mock_calls), 52)
+
+        # Now let's set up another repo with the same URL, and then sync. We should get the same
+        # errata.
+        importer_2 = YumImporter()
+        repo_2 = mock.Mock(spec=Repository)
+        working_dir_2 = os.path.join(self.temp_dir, "working_2")
+        os.makedirs(working_dir_2)
+        repo_2.working_dir = working_dir_2
+        repo_2.id = "test_repo_2"
+        unit_key = {'id': "RHBA-2007:0112"}
+        metadata = {'updated' : "2007-03-14 00:00:00",
+                    'pkglist': [{'name': 'RHEL Virtualization (v. 5 for 32-bit x86)'}]}
+        existing_units = [Unit(TYPE_ID_ERRATA, unit_key, metadata, '')]
+        existing_units[0].updated = metadata['updated']
+        sync_conduit_2 = importer_mocks.get_sync_conduit(existing_units=existing_units)
+        config_2 = importer_mocks.get_basic_config(feed_url=feed_url)
+        self.simulate_sync(repo_2, self.repo_dir)
+        importer_errata_2 = errata.ImporterErrata()
+        status_2, summary_2, details_2 = importer_errata_2.sync(repo_2, sync_conduit_2, config_2)
+        self.assertTrue(status_2)
+        self.assertTrue(summary_2 is not None)
+        self.assertTrue(details_2 is not None)
+        self.assertEquals(summary_2["num_new_errata"], 51)
+        self.assertEquals(summary_2["num_existing_errata"], 1)
+        self.assertEquals(summary_2["num_orphaned_errata"], 0)
+        self.assertEquals(details_2["num_bugfix_errata"], 35)
+        self.assertEquals(details_2["num_security_errata"], 7)
+        self.assertEquals(details_2["num_enhancement_errata"], 9)
+
+        # There should be the same number of calls to save_unit() as there are errata,
+        # because sync() calls it once for each of the 51 new erratum, and get_new_errata_units()
+        # also calls it once for the one errata that already existed
+        self.assertEqual(len(sync_conduit_2.save_unit.mock_calls), 52)
+
     def test_get_available_errata(self):
         errata_items_found = errata.get_available_errata(self.repo_dir)
         self.assertEqual(52, len(errata_items_found))
@@ -106,6 +166,29 @@ class TestErrata(rpm_support_base.PulpRPMTests):
         new_errata, new_units, sync_conduit = errata.get_new_errata_units(available_errata,
                                                                           sync_conduit)
         self.assertEquals(len(available_errata), len(new_errata))
+
+    def test_get_new_errata_units_saves_existing_units(self):
+        # This test is for https://bugzilla.redhat.com/show_bug.cgi?id=870495
+        available_errata = errata.get_available_errata(self.repo_dir)
+        self.assertEqual(52, len(available_errata))
+        unit_key = {'id': "RHBA-2007:0112"}
+        metadata = {'updated' : "2007-03-14 00:00:00",
+                    'pkglist': [{'name': 'RHEL Virtualization (v. 5 for 32-bit x86)'}]}
+        existing_units = [Unit(TYPE_ID_ERRATA, unit_key, metadata, '')]
+        existing_units[0].updated = metadata['updated']
+        sync_conduit = importer_mocks.get_sync_conduit(existing_units=existing_units)
+        created_existing_units = errata.get_existing_errata(sync_conduit)
+        self.assertEquals(len(created_existing_units), 1)
+        self.assertEquals(len(existing_units), len(created_existing_units))
+        new_errata, new_units, sync_conduit = errata.get_new_errata_units(available_errata,
+                                                                          sync_conduit)
+        # The one pre-existing errata makes the number of new errata one less
+        self.assertEquals(len(new_errata), len(available_errata) - 1)
+        # The one existing unit that we passed in as an existing unit should cause save_unit() to be
+        # called one time
+        self.assertEqual(len(sync_conduit.save_unit.mock_calls), 1)
+        # Assert that save_unit was called with the pre-existing errata
+        self.assertEqual(sync_conduit.save_unit.mock_calls[0][1][0], existing_units[0])
 
     def test_update_errata_units(self):
         # existing errata is older than available; should purge and resync
