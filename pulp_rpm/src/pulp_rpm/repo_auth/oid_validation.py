@@ -172,7 +172,7 @@ class OidValidator:
         cert = certificate.create_from_pem(cert_pem)
 
         # Extract the repo portion of the URL
-        repo_dest = dest[dest.find(RELATIVE_URL) + len(RELATIVE_URL) + 1:]
+        repo_dest = dest[dest.find(RELATIVE_URL) + len(RELATIVE_URL):]
 
         try:
             valid = cert.check_path(repo_dest)
