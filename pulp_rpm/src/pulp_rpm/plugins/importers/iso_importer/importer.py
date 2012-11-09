@@ -16,6 +16,7 @@ import logging
 
 from pulp.plugins.importer import Importer
 
+from pulp_rpm.common import ids
 
 logger = logging.getLogger(__name__)
 
@@ -42,7 +43,11 @@ class ISOImporter(Importer):
 
     @classmethod
     def metadata(cls):
-        raise NotImplementedError()
+        return {
+            'id': ids.TYPE_ID_IMPORTER_ISO,
+            'display_name': 'ISO Importer',
+            'types': [ids.TYPE_ID_ISO]
+        }
 
     def sync_repo(self, repo, sync_conduit, config):
         sync.perform_sync(repo, sync_conduit, config)

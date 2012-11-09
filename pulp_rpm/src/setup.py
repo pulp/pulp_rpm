@@ -17,6 +17,9 @@ setup(
     author='Pulp Team',
     author_email='pulp-list@redhat.com',
     entry_points = {
+        'pulp.distributors': [
+            'distributor = pulp_rpm.plugins.distributors.iso_distributor.distributor:entry_point',
+        ],
         'pulp.importers': [
             'importer = pulp_rpm.plugins.importers.iso_importer.importer:entry_point',
         ],

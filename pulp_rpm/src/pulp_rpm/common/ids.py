@@ -10,7 +10,9 @@
 # http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt.
 
 TYPE_ID_DISTRIBUTOR_EXPORT = "export_distributor"
+TYPE_ID_DISTRIBUTOR_ISO = "iso_distributor"
 TYPE_ID_DISTRIBUTOR_YUM = "yum_distributor"
+TYPE_ID_IMPORTER_ISO = "iso_importer"
 TYPE_ID_IMPORTER_YUM = "yum_importer"
 TYPE_ID_PROFILER_RPM_ERRATA = "rpm_errata_profiler"
 
@@ -24,6 +26,7 @@ YUM_DISTRIBUTOR_ID = 'yum_distributor'
 # Set when the distributor is added to the repo and later to refer to it specifically
 EXPORT_DISTRIBUTOR_ID = 'export_distributor'
 
+TYPE_ID_ISO = 'iso'
 TYPE_ID_RPM = "rpm"
 TYPE_ID_SRPM = "srpm"
 UNIT_KEY_RPM = (
