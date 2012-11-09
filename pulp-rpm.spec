@@ -146,6 +146,7 @@ Group: Development/Languages
 Requires: python-pulp-rpm-common = %{pulp_version}
 Requires: pulp-server = %{pulp_version}
 Requires: createrepo >= 0.9.8-3
+Requires: python-rhsm >= 1.0.4-1
 
 %description plugins
 Provides a collection of platform plugins that extend the Pulp platform
