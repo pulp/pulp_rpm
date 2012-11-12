@@ -164,7 +164,7 @@ class Install(PollingCommand):
     def succeeded(self, id, task):
         prompt = self.context.prompt
         # reported as failed
-        if not task.result['status']:
+        if not task.result['succeeded']:
             msg = 'Install failed'
             details = task.result['details'][TYPE_ID]['details']
             prompt.render_failure_message(_(msg))
@@ -272,7 +272,7 @@ class Update(PollingCommand):
     def succeeded(self, id, task):
         prompt = self.context.prompt
         # reported as failed
-        if not task.result['status']:
+        if not task.result['succeeded']:
             msg = 'Update failed'
             details = task.result['details'][TYPE_ID]['details']
             prompt.render_failure_message(_(msg))
@@ -358,7 +358,7 @@ class Uninstall(PollingCommand):
     def succeeded(self, id, task):
         prompt = self.context.prompt
         # reported as failed
-        if not task.result['status']:
+        if not task.result['succeeded']:
             msg = 'Uninstall Failed'
             details = task.result['details'][TYPE_ID]['details']
             prompt.render_failure_message(_(msg))
