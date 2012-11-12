@@ -42,19 +42,19 @@ TASK = {
     'response':None,
     'reasons':None,
     'result':{
-        'status':True,
+        'succeeded':True,
         'reboot_scheduled':False,
         'details':{
-            TYPE_ID_RPM:{
-                'status':True,
+            package.TYPE_ID:{
+                'succeeded':True,
                 'details':{
                    'resolved':[
                         {'name':'zsh-1.0'}],
                    'deps':[]
                 }
             },
-            TYPE_ID_PKG_GROUP:{
-                'status':True,
+            group.TYPE_ID:{
+                'succeeded':True,
                 'details':{
                    'resolved':[
                         {'name':'zsh-1.0'}],

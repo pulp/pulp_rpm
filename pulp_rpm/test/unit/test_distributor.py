@@ -624,7 +624,7 @@ class TestDistributor(rpm_support_base.PulpRPMTests):
 
     def test_consumer_payload(self):
         PAYLOAD_FIELDS = [ 'server_name', 'relative_path',
-                          'protocols', 'gpg_keys', 'client_cert', 'ca_cert']
+                          'protocols', 'gpg_keys', 'client_cert', 'ca_cert', 'repo_name']
         http = True
         https = True
         relative_url = "/pub/content/"
@@ -636,6 +636,7 @@ class TestDistributor(rpm_support_base.PulpRPMTests):
         repo = mock.Mock(spec=Repository)
         repo.working_dir = self.repo_working_dir
         repo.id = "test_payload"
+        repo.display_name = 'Nice Repo'
         payload = distributor.create_consumer_payload(repo, config)
         for field in PAYLOAD_FIELDS:
             print field
