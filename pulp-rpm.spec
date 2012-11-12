@@ -17,7 +17,7 @@
 # ---- Pulp (rpm) --------------------------------------------------------------
 
 Name: pulp-rpm
-Version: 0.0.336
+Version: 0.0.337
 Release: 1
 Summary: Support for RPM content in the Pulp platform
 Group: Development/Languages
@@ -253,6 +253,15 @@ A collection of yum plugins supplementing Pulp consumer operations.
 
 
 %changelog
+* Mon Nov 12 2012 Jeff Ortel <jortel@redhat.com> 0.0.337-1
+- moved consumer section, commands, and sub-section under rpm root section
+  (jason.connor@gmail.com)
+- 870495 - Call sync conduit's save_unit() for pre-existing errata.
+  (rbarlow@redhat.com)
+- Adding a copy of python-rhsm with new v3 entitlement cert authorization. Also
+  integrated pulp_rpm's v1 authorization into python-rhsm.
+  (mhrivnak@redhat.com)
+
 * Mon Nov 05 2012 Jeff Ortel <jortel@redhat.com> 0.0.336-1
 - 868022 - updating CLI section descriptions (mhrivnak@redhat.com)
 - 871175 - updating unit tests because of new call request fields according to
