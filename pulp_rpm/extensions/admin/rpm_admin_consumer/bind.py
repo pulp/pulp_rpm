@@ -21,10 +21,8 @@ YUM_DISTRIBUTOR_ID = 'yum_distributor'
 class BindCommand(PulpCliCommand):
     def __init__(self, context, name, description):
         super(BindCommand, self).__init__(name, description, self.bind)
-
         self.create_option('--consumer-id', _('identifies the consumer'), required=True)
         self.create_option('--repo-id', _('repository to bind'), required=True)
-
         self.context = context
 
     def bind(self, **kwargs):
@@ -49,18 +47,17 @@ class BindCommand(PulpCliCommand):
 class UnbindCommand(PulpCliCommand):
     def __init__(self, context, name, description):
         super(UnbindCommand, self).__init__(name, description, self.bind)
-
         self.create_option('--consumer-id', _('identifies the consumer'), required=True)
-        self.create_option('--repo-id', _('repository to bind'), required=True)
-
+        self.create_option('--repo-id', _('repository to unbind'), required=True)
+        self.create_flag('--force', _('delete the binding immediately and discontinue tracking consumer actions'))
         self.context = context
 
     def bind(self, **kwargs):
         id = kwargs['consumer-id']
         repo_id = kwargs['repo-id']
-
+        force = kwargs['force']
         try:
-            self.context.server.bind.unbind(id, repo_id, YUM_DISTRIBUTOR_ID)
+            self.context.server.bind.unbind(id, repo_id, YUM_DISTRIBUTOR_ID, force)
             m = 'Consumer [%(c)s] successfully unbound from repository [%(r)s]'
             self.context.prompt.render_success_message(_(m) % {'c' : id, 'r' : repo_id})
         except NotFoundException:

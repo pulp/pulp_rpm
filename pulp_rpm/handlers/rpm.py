@@ -24,27 +24,27 @@ log = getLogger(__name__)
 class PackageReport(ContentReport):
     """
     Package (install|update|uninstall) report.
-    Calculates the chgcnt.
+    Calculates the num_changes.
     """
 
-    def succeeded(self, details):
-        chgcnt = \
+    def set_succeeded(self, details):
+        num_changes = \
             len(details['resolved'])+ \
             len(details['deps'])
-        ContentReport.succeeded(self, details, chgcnt)
+        ContentReport.set_succeeded(self, details, num_changes)
 
 
 class GroupReport(ContentReport):
     """
     Package Group (install|update|uninstall) report.
-    Calculates the chgcnt.
+    Calculates the num_changes.
     """
 
-    def succeeded(self, details):
-        chgcnt = \
+    def set_succeeded(self, details):
+        num_changes = \
             len(details['resolved'])+ \
             len(details['deps'])
-        ContentReport.succeeded(self, details, chgcnt)
+        ContentReport.set_succeeded(self, details, num_changes)
 
 
 class PackageProgress(ProgressReport):
@@ -97,7 +97,7 @@ class PackageHandler(ContentHandler):
         pkg = self.__impl(conduit, options)
         names = [key['name'] for key in units]
         details = pkg.install(names)
-        report.succeeded(details)
+        report.set_succeeded(details)
         return report
 
     def update(self, conduit, units, options):
@@ -123,7 +123,7 @@ class PackageHandler(ContentHandler):
         names = [key['name'] for key in units if key]
         if names or all:
             details = pkg.update(names)
-            report.succeeded(details)
+            report.set_succeeded(details)
         return report
 
     def uninstall(self, conduit, units, options):
@@ -144,7 +144,7 @@ class PackageHandler(ContentHandler):
         pkg = self.__impl(conduit, options)
         names = [key['name'] for key in units]
         details = pkg.uninstall(names)
-        report.succeeded(details)
+        report.set_succeeded(details)
         return report
     
     def profile(self, conduit):
@@ -157,7 +157,7 @@ class PackageHandler(ContentHandler):
         """
         report = ProfileReport()
         details = get_profile("rpm").collect()
-        report.succeeded(details)
+        report.set_succeeded(details)
         return report
 
     def __impl(self, conduit, options):
@@ -200,7 +200,7 @@ class GroupHandler(ContentHandler):
         grp = self.__impl(conduit, options)
         names = [key['name'] for key in units]
         details = grp.install(names)
-        report.succeeded(details)
+        report.set_succeeded(details)
         return report
 
     def uninstall(self, conduit, units, options):
@@ -219,7 +219,7 @@ class GroupHandler(ContentHandler):
         grp = self.__impl(conduit, options)
         names = [key['name'] for key in units]
         details = grp.uninstall(names)
-        report.succeeded(details)
+        report.set_succeeded(details)
         return report
 
     def __impl(self, conduit, options):
