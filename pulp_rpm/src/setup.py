@@ -16,4 +16,9 @@ setup(
     packages=find_packages(),
     author='Pulp Team',
     author_email='pulp-list@redhat.com',
+    entry_points = {
+        'pulp.server.db.migrations': [
+            'pulp_rpm = pulp_rpm.migrations'
+        ]
+    } 
     )

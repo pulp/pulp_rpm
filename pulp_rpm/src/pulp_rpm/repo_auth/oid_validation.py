@@ -28,7 +28,7 @@ The * represents the product ID and is not used as part of this calculation.
 from ConfigParser import SafeConfigParser
 import re
 
-from pulp_rpm.repo_auth import certificate
+from pulp_rpm.repo_auth.rhsm import certificate
 from pulp_rpm.repo_auth.protected_repo_utils import ProtectedRepoUtils
 from pulp_rpm.repo_auth.repo_cert_utils import RepoCertUtils
 
@@ -157,59 +157,29 @@ class OidValidator:
         return bundle
 
     def _check_extensions(self, cert_pem, dest, log_func):
+        """
+        Checks the requested destination path against the entitlement cert.
 
-        cert = certificate.Certificate(content=cert_pem)
-        extensions = cert.extensions()
+        :param cert_pem: certificate as PEM
+        :type  cert_pem: str
+        :param dest: path of desired destination
+        :type  dest: str
+        :param log_func: function used for logging
+        :type  log_func: callable taking 1 argument of type basestring
+        :return: True iff request is authorized, else False
+        :rtype:  bool
+        """
+        cert = certificate.create_from_pem(cert_pem)
 
         # Extract the repo portion of the URL
-        repo_dest = dest[dest.find(RELATIVE_URL) + len(RELATIVE_URL) + 1:]
-        # Remove any initial or trailing slashes
-        repo_dest = repo_dest.strip('/')
+        repo_dest = dest[dest.find(RELATIVE_URL) + len(RELATIVE_URL):]
 
-        valid = False
-        for e in extensions:
-            if self._is_download_url_ext(e):
-                oid_url = extensions[e]
-
-                if self._validate_url(oid_url, repo_dest):
-                    valid = True
-                    break
-
+        try:
+            valid = cert.check_path(repo_dest)
+        except AttributeError:
+            # not an entitlement certificate, so no entitlements
+            valid = False
         if not valid:
             log_func('Request denied to destination [%s]' % dest)
 
         return valid
-
-    def _is_download_url_ext(self, ext_oid):
-        '''
-        Tests to see if the given OID corresponds to a download URL value.
-
-        @param ext_oid: OID being tested; cannot be None
-        @type  ext_oid: a certificiate.OID object
-
-        @return: True if the OID contains download URL information; False otherwise
-        @rtype:  boolean
-        '''
-        result = ext_oid.match('1.3.6.1.4.1.2312.9.2.') and ext_oid.match('.1.6')
-        return result
-
-    def _validate_url(self, oid_url, dest):
-        '''
-        Returns whether or not the destination matches the OID download URL.
-
-        @return: True if the OID permits the destination; False otherwise
-        @rtype:  bool
-        '''
-
-        # Swap out all $ variables (e.g. $basearch, $version) for a reg ex wildcard in that location
-        #
-        # For example, the following entitlement:
-        #   content/dist/rhel/server/$version/$basearch/os
-        #
-        # Should allow any value for the variables:
-        #   content/dist/rhel/server/.+?/.+?/os
-
-        # Remove initial and trailing '/', and substitute the $variables for
-        # equivalent regular expressions in oid_url.
-        oid_re = re.sub(r'\$[^/]+(/|$)', '[^/]+/', oid_url.strip('/'))
-        return re.match(oid_re, dest) is not None

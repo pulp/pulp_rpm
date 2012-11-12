@@ -26,7 +26,7 @@ import importer_mocks
 sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)) + "/../../plugins/importers/")
 sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)) + "/../../plugins/distributors/")
 
-from iso_distributor.groupdistributor import GroupISODistributor, TYPE_ID_DISTRIBUTOR_ISO,\
+from iso_distributor.groupdistributor import GroupISODistributor, TYPE_ID_DISTRIBUTOR_EXPORT,\
     TYPE_ID_RPM, TYPE_ID_SRPM, TYPE_ID_DRPM, TYPE_ID_ERRATA, TYPE_ID_DISTRO, TYPE_ID_PKG_CATEGORY, TYPE_ID_PKG_GROUP
 from iso_distributor.exporter import RepoExporter
 from iso_distributor.generate_iso import GenerateIsos
@@ -79,7 +79,7 @@ class TestGroupISODistributor(rpm_support_base.PulpRPMTests):
 
     def test_metadata(self):
         metadata = GroupISODistributor.metadata()
-        self.assertEquals(metadata["id"], TYPE_ID_DISTRIBUTOR_ISO)
+        self.assertEquals(metadata["id"], TYPE_ID_DISTRIBUTOR_EXPORT)
         for type in [TYPE_ID_RPM, TYPE_ID_SRPM, TYPE_ID_DRPM, TYPE_ID_ERRATA, TYPE_ID_DISTRO,
                      TYPE_ID_PKG_CATEGORY, TYPE_ID_PKG_GROUP]:
             self.assertTrue(type in metadata["types"])

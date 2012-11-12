@@ -87,18 +87,19 @@ def get_orphaned_errata(available_errata, existing_errata):
             orphaned_errata[key] = existing_errata[key]
     return orphaned_errata
 
+
 def get_new_errata_units(available_errata, sync_conduit):
     """
-        Determines which errata to add  or remove and will initialize new units
+    Determines which errata to add  or remove and will initialize new units
 
-        @param available_errata a dict of available errata
-        @type available_errata {}
-
-        @param sync_conduit
-        @type sync_conduit pulp.server.content.conduits.repo_sync.RepoSyncConduit
-
-        @return a tuple of 2 dictionaries.  First dict is of new errata, second dict is of new units
-        @rtype ({}, {}, pulp.server.content.conduits.repo_sync.RepoSyncConduit)
+    :param available_errata: a dict of available errata
+    :type  available_errata: dict
+    :param sync_conduit:     The sync conduit to save new units to
+    :type  sync_conduit:     pulp.server.content.conduits.repo_sync.RepoSyncConduit
+    :return:                  A tuple of 2 dictionaries and the sync conduit.  First dict is of new
+                             errata, second dict is of new units, and I (rbarlow) am not sure why we
+                             are returning the sync conduit, but apparently we are.
+    :rtype:                  tuple
     """
     new_errata = {}
     new_units = {}
@@ -106,7 +107,8 @@ def get_new_errata_units(available_errata, sync_conduit):
         criteria = Criteria(filters={'id' : key})
         try:
             # errata id is unique and will return only 1 entry if matched
-            existing_erratum = sync_conduit.search_all_units(type_id=TYPE_ID_ERRATA, criteria=criteria)[0]
+            existing_erratum = sync_conduit.search_all_units(type_id=TYPE_ID_ERRATA,
+                                                             criteria=criteria)[0]
         except IndexError:
             existing_erratum = None
         if existing_erratum:
@@ -122,9 +124,11 @@ def get_new_errata_units(available_errata, sync_conduit):
                     if elist['name'] not in coll_names:
                         # merge the pkglist and save
                         existing_erratum.metadata['pkglist'].append(elist)
-                        #sync_conduit.save_unit(existing_erratum)
                         new_units[key] = existing_erratum
                         new_errata[key] = available_errata[key]
+                # We need to save this erratum, so that the repo_content_units collection is sure to
+                # have an entry for the repo for this sync_conduit
+                sync_conduit.save_unit(existing_erratum)
                 continue
         # If we're here, the existing erratum is outdated or doesnt exist. Let's create/update
         # new available erratum.
@@ -134,6 +138,7 @@ def get_new_errata_units(available_errata, sync_conduit):
         metadata =  form_errata_metadata(erratum)
         new_units[key] = sync_conduit.init_unit(TYPE_ID_ERRATA, unit_key, metadata, None)
     return new_errata, new_units, sync_conduit
+
 
 def form_errata_unit_key(erratum):
     unit_key = {}

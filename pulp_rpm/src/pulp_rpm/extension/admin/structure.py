@@ -38,7 +38,7 @@ SECTION_PUBLISH_SCHEDULES = 'schedules'
 
 SECTION_EXPORT = 'export'
 
-DESC_ROOT = _('contains commands for working with repositories containing RPM-related content')
+DESC_ROOT = _('manage RPM-related content and features')
 DESC_REPO = _('repository lifecycle commands')
 
 DESC_COPY = _('copies one or more content units between repositories')
