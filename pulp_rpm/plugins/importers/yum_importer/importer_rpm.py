@@ -520,7 +520,7 @@ class ImporterRPM(object):
             _LOG.info("Sync of %s has been canceled." % repo.id)
             return False, {}, {}
         end_download = time.time()
-        _LOG.info("Finished download of %s in % seconds.  %s" % (repo.id, end_download-start_download, report))
+        _LOG.info("Finished download of %s in %s seconds.  %s" % (repo.id, end_download-start_download, report))
         # determine the checksum type from downloaded metadata
         set_repo_checksum_type(repo, sync_conduit, config)
         # preserve the custom metadata on scratchpad to lookup downloaded data
