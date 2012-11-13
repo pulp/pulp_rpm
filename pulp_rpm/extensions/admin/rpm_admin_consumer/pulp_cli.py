@@ -15,6 +15,7 @@ from gettext import gettext as _
 
 from pulp_rpm.extension.admin import structure
 
+import basics
 from consumer_group_bind import (ConsumerGroupBindCommand,
                                  ConsumerGroupUnbindCommand)
 from consumer_group_package import ConsumerGroupPackageSection
@@ -30,10 +31,12 @@ def initialize(context):
     consumer_description = _('register, bind, and interact with rpm consumers')
     consumer_section = root_section.create_subsection('consumer', consumer_description)
 
-    # New subsections
-    consumer_section.add_subsection(PackageSection(context))
-    consumer_section.add_subsection(GroupSection(context))
-    consumer_section.add_subsection(ErrataSection(context))
+    # Basic consumer commands
+    consumer_section.add_command(basics.ListCommand(context))
+    consumer_section.add_command(basics.UpdateCommand(context))
+    consumer_section.add_command(basics.UnregisterCommand(context))
+    consumer_section.add_command(basics.SearchCommand(context))
+    consumer_section.add_command(basics.HistoryCommand(context))
 
     m = 'binds a consumer to a repository'
     consumer_section.add_command(BindCommand(context, 'bind', _(m)))
@@ -41,8 +44,12 @@ def initialize(context):
     m = 'removes the binding between a consumer and a repository'
     consumer_section.add_command(UnbindCommand(context, 'unbind', _(m)))
 
-    # consumer groups
+    # New subsections
+    consumer_section.add_subsection(PackageSection(context))
+    consumer_section.add_subsection(GroupSection(context))
+    consumer_section.add_subsection(ErrataSection(context))
 
+    # consumer groups
     consumer_group_description = _('rpm consumer group commands')
     consumer_group_section = consumer_section.create_subsection('group', consumer_group_description)
 
