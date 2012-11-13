@@ -45,7 +45,7 @@ TASK = {
         'succeeded':True,
         'reboot_scheduled':False,
         'details':{
-            package.TYPE_ID:{
+            TYPE_ID_RPM:{
                 'succeeded':True,
                 'details':{
                    'resolved':[
@@ -53,7 +53,7 @@ TASK = {
                    'deps':[]
                 }
             },
-            group.TYPE_ID:{
+            TYPE_ID_PKG_GROUP:{
                 'succeeded':True,
                 'details':{
                    'resolved':[
