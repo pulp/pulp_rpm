@@ -13,6 +13,7 @@
 from pulp.plugins.distributor import Distributor
 
 from pulp_rpm.common import ids
+from pulp_rpm.plugins.distributors.iso_distributor import configuration
 
 
 def entry_point():
@@ -42,3 +43,6 @@ class ISODistributor(Distributor):
             'display_name': 'ISO Distributor',
             'types': [ids.TYPE_ID_ISO]
         }
+
+    def validate_config(self, repo, config, related_repos):
+        return configuration.validate(config)

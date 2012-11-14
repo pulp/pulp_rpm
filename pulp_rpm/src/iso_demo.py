@@ -16,7 +16,7 @@ from pulp_rpm.common import ids
 from pulp.common import pic
 from okaara.prompt import Prompt, COLOR_LIGHT_PURPLE, COLOR_LIGHT_BLUE
 
-ISO_FEED = 'http://cdn.rcm-qa.redhat.com/content/dist/rhel/server/6/6Server/x86_64/iso/'
+ISO_FEED = 'http://pkilambi.fedorapeople.org/test_file_repo/'
 DISTRIBUTOR_ID = 'iso_dist'
 
 # -- ui -----------------------------------------------------------------------
@@ -46,8 +46,8 @@ def create_repo(repo_id):
 
 def add_iso_importer(repo_id, queries):
     importer_config = {
-        constants.CONFIG_FEED : ISO_FEED,
-        constants.CONFIG_QUERIES : queries,
+        'feed_url': ISO_FEED,
+        'queries': queries,
     }
 
     body = {
@@ -59,8 +59,8 @@ def add_iso_importer(repo_id, queries):
 
 def add_iso_distributor(repo_id):
     distributor_config = {
-        constants.CONFIG_SERVE_HTTP : True,
-        constants.CONFIG_SERVE_HTTPS : True,
+        'serve_http': True,
+        'serve_https': True,
     }
 
     body = {
@@ -75,7 +75,7 @@ def sync(repo_id):
     pic.POST('/v2/repositories/%s/actions/sync/' % repo_id)
 
 def list_units(prompt, repo_id):
-    criteria = {'type_ids' : [constants.TYPE_ID_ISO]}
+    criteria = {'type_ids' : [ids.TYPE_ID_ISO]}
     body = {'criteria' : criteria}
 
     status, body = pic.POST('/v2/repositories/%s/search/units/' % repo_id, body=body)

@@ -17,6 +17,7 @@ import logging
 from pulp.plugins.importer import Importer
 
 from pulp_rpm.common import ids
+from pulp_rpm.plugins.importers.iso_importer import configuration, sync
 
 logger = logging.getLogger(__name__)
 
@@ -50,10 +51,10 @@ class ISOImporter(Importer):
         }
 
     def sync_repo(self, repo, sync_conduit, config):
-        sync.perform_sync(repo, sync_conduit, config)
+        return sync.perform_sync(repo, sync_conduit, config)
 
     def upload_unit(self, repo, type_id, unit_key, metadata, file_path, conduit, config):
         raise NotImplementedError()
 
     def validate_config(self, repo, config, related_repos):
-        raise NotImplementedError()
+        return configuration.validate(config)
