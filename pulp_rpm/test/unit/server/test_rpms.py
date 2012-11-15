@@ -24,8 +24,8 @@ import unittest
 
 from grinder.BaseFetch import BaseFetch
 
-sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)) + "/../../src/")
-sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)) + "/../../plugins/importers/")
+sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)) + "/../../../src/")
+sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)) + "/../../../plugins/importers/")
 
 import importer_mocks
 import rpm_support_base
@@ -54,7 +54,7 @@ class TestRPMs(rpm_support_base.PulpRPMTests):
         self.temp_dir = tempfile.mkdtemp()
         self.working_dir = os.path.join(self.temp_dir, "working")
         self.pkg_dir = os.path.join(self.temp_dir, "packages")
-        self.data_dir = os.path.abspath(os.path.join(os.path.abspath(os.path.dirname(__file__)), "data"))
+        self.data_dir = os.path.abspath(os.path.join(os.path.abspath(os.path.dirname(__file__)), "../data"))
 
     def clean(self):
         shutil.rmtree(self.temp_dir)

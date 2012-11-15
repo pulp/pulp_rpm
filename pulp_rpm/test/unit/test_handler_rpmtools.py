@@ -9,26 +9,22 @@
 # have received a copy of GPLv2 along with this software; if not, see
 # http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt.
 
-import os
-import sys
+import unittest
 
 import mock_yum
 from mock import Mock
 from mock_yum import YumBase
-from rpm_support_base import PulpRPMTests
 
 
-class ToolTest(PulpRPMTests):
+class ToolTest(unittest.TestCase):
 
     def setUp(self):
-        PulpRPMTests.setUp(self)
         mock_yum.install()
         from pulp_rpm.handler.rpmtools import Package, PackageGroup
         self.Package = Package
         self.PackageGroup = PackageGroup
 
     def tearDown(self):
-        PulpRPMTests.tearDown(self)
         YumBase.reset()
 
 
@@ -267,10 +263,9 @@ class TestGroups(ToolTest):
         self.assertFalse(YumBase.processTransaction.called)
 
 
-class TestProgressReport(PulpRPMTests):
+class TestProgressReport(unittest.TestCase):
 
     def setUp(self):
-        PulpRPMTests.setUp(self)
         from yum.callbacks import PT_MESSAGES
         from pulp_rpm.handler.rpmtools import\
             ProcessTransCallback,\

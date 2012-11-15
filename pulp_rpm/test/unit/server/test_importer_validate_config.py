@@ -17,7 +17,7 @@ import sys
 import tempfile
 import unittest
 
-sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)) + "/../../plugins/importers/")
+sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)) + "/../../../plugins/importers/")
 
 from yum_importer.importer import YumImporter
 import importer_mocks
@@ -42,7 +42,7 @@ class TestValidateConfig(rpm_support_base.PulpRPMTests):
         shutil.rmtree(self.temp_dir)
 
     def init(self):
-        self.data_dir = os.path.abspath(os.path.join(os.path.abspath(os.path.dirname(__file__)), "data"))
+        self.data_dir = os.path.abspath(os.path.join(os.path.abspath(os.path.dirname(__file__)), "../data"))
 
     def test_config_feed_url(self):
 
