@@ -23,8 +23,8 @@ import unittest
 from uuid import uuid4
 import importer_mocks
 
-sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)) + "/../../plugins/importers/")
-sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)) + "/../../plugins/distributors/")
+sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)) + "/../../../plugins/importers/")
+sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)) + "/../../../plugins/distributors/")
 
 from iso_distributor.groupdistributor import GroupISODistributor, TYPE_ID_DISTRIBUTOR_EXPORT,\
     TYPE_ID_RPM, TYPE_ID_SRPM, TYPE_ID_DRPM, TYPE_ID_ERRATA, TYPE_ID_DISTRO, TYPE_ID_PKG_CATEGORY, TYPE_ID_PKG_GROUP
@@ -72,7 +72,7 @@ class TestGroupISODistributor(rpm_support_base.PulpRPMTests):
         self.repo_iso_working_dir = os.path.join(self.temp_dir, "repo_working_dir", "isos")
         os.makedirs(self.repo_iso_working_dir)
 
-        self.data_dir = os.path.abspath(os.path.join(os.path.abspath(os.path.dirname(__file__)), "./data"))
+        self.data_dir = os.path.abspath(os.path.join(os.path.abspath(os.path.dirname(__file__)), "../data"))
 
     def clean(self):
         shutil.rmtree(self.temp_dir)

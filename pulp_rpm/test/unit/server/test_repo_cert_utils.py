@@ -27,21 +27,21 @@ from pulp_rpm.repo_auth.repo_cert_utils import M2CRYPTO_HAS_CRL_SUPPORT
 # Config file
 
 # Used to sign the test certificate
-VALID_CA = os.path.abspath(os.path.dirname(__file__)) + '/data/test_repo_cert_utils/valid_ca.crt'
+VALID_CA = os.path.abspath(os.path.dirname(__file__)) + '/../data/test_repo_cert_utils/valid_ca.crt'
 
 # Not used to sign the test certificate  :)
-INVALID_CA = os.path.abspath(os.path.dirname(__file__)) + '/data/test_repo_cert_utils/invalid_ca.crt'
+INVALID_CA = os.path.abspath(os.path.dirname(__file__)) + '/../data/test_repo_cert_utils/invalid_ca.crt'
 
 # Test certificate
-CERT = os.path.abspath(os.path.dirname(__file__)) + '/data/test_repo_cert_utils/cert.crt'
+CERT = os.path.abspath(os.path.dirname(__file__)) + '/../data/test_repo_cert_utils/cert.crt'
 
-CA_CHAIN_TEST_DATA = os.path.abspath(os.path.dirname(__file__)) + '/data/test_repo_cert_utils/chain'
-CRL_TEST_DATA = os.path.abspath(os.path.dirname(__file__)) + '/data/test_repo_cert_utils/crl'
-CRL_EXPIRED_TEST_DATA = os.path.abspath(os.path.dirname(__file__)) + '/data/test_repo_cert_utils/crl_expired'
+CA_CHAIN_TEST_DATA = os.path.abspath(os.path.dirname(__file__)) + '/../data/test_repo_cert_utils/chain'
+CRL_TEST_DATA = os.path.abspath(os.path.dirname(__file__)) + '/../data/test_repo_cert_utils/crl'
+CRL_EXPIRED_TEST_DATA = os.path.abspath(os.path.dirname(__file__)) + '/../data/test_repo_cert_utils/crl_expired'
 
 CONFIG = SafeConfigParser()
-CONFIG.read([os.path.abspath(os.path.dirname(__file__)) + '/data/test-override-pulp.conf',
-            os.path.abspath(os.path.dirname(__file__)) + '/data/test-override-repoauth.conf'])
+CONFIG.read([os.path.abspath(os.path.dirname(__file__)) + '/../data/test-override-pulp.conf',
+            os.path.abspath(os.path.dirname(__file__)) + '/../data/test-override-repoauth.conf'])
 
 # -- test cases ----------------------------------------------------------------------
 

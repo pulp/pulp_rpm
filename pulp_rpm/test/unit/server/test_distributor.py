@@ -22,8 +22,8 @@ import time
 import unittest
 from uuid import uuid4
 
-sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)) + "/../../plugins/importers/")
-sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)) + "/../../plugins/distributors/")
+sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)) + "/../../../plugins/importers/")
+sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)) + "/../../../plugins/distributors/")
 
 from yum_distributor.distributor import YumDistributor
 from pulp_rpm.common.ids import TYPE_ID_DISTRIBUTOR_YUM, TYPE_ID_RPM, TYPE_ID_SRPM
@@ -58,7 +58,7 @@ class TestDistributor(rpm_support_base.PulpRPMTests):
 
         self.repo_working_dir = os.path.join(self.temp_dir, "repo_working_dir")
         os.makedirs(self.repo_working_dir)
-        self.data_dir = os.path.abspath(os.path.join(os.path.abspath(os.path.dirname(__file__)), "./data"))
+        self.data_dir = os.path.abspath(os.path.join(os.path.abspath(os.path.dirname(__file__)), "../data"))
 
     def clean(self):
         shutil.rmtree(self.temp_dir)

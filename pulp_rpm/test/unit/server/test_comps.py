@@ -24,9 +24,9 @@ from pulp_rpm.yum_plugin import comps_util, util
 from pulp.server.db import connection
 
 
-sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)) + "/../../src/")
-sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)) + "/../../plugins/importers/")
-sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)) + "/../../plugins/distributors/")
+sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)) + "/../../../src/")
+sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)) + "/../../../plugins/importers/")
+sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)) + "/../../../plugins/distributors/")
 
 import distributor_mocks
 import importer_mocks
@@ -44,7 +44,7 @@ class TestComps(rpm_support_base.PulpRPMTests):
 
     def setUp(self):
         super(TestComps, self).setUp()
-        self.data_dir = os.path.join(os.path.abspath(os.path.dirname(__file__)), "data")
+        self.data_dir = os.path.join(os.path.abspath(os.path.dirname(__file__)), "../data")
         self.temp_dir = tempfile.mkdtemp()
         self.pkg_dir = os.path.join(self.temp_dir, "packages")
         if not os.path.exists(self.pkg_dir):
