@@ -12,16 +12,22 @@
 # http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt.
 import logging
 
+from pulp_rpm.common import constants
 
 logger = logging.getLogger(__name__)
 
 
 # TODO: Make sure feed_url is a string, not unicode
-CONFIG_DEFAULTS = {'num_threads': 5}
-CONFIG_TYPES = {'feed_url': str, 'num_threads': int, 'ssl_ca_cert': str,
-                'ssl_client_cert': str, 'proxy_url': str,
-                'proxy_port': int, 'proxy_user': str,
-                'proxy_password': str, 'max_speed': float}
+CONFIG_DEFAULTS = {constants.CONFIG_NUM_THREADS: 5}
+# This is used when we try to validate these values, to ensure they can all be cast to expected
+# types.
+CONFIG_TYPES = {constants.CONFIG_FEED_URL: str, constants.CONFIG_NUM_THREADS: int,
+                constants.CONFIG_SSL_CA_CERT: str, constants.CONFIG_SSL_CLIENT_CERT: str,
+                constants.CONFIG_PROXY_URL: str, constants.CONFIG_PROXY_PORT: int,
+                constants.CONFIG_PROXY_USER: str, constants.CONFIG_PROXY_PASSWORD: str,
+                constants.CONFIG_MAX_SPEED: float, constants.CONFIG_SERVE_HTTP: bool,
+                constants.CONFIG_SERVE_HTTPS: bool, constants.CONFIG_HTTP_DIR: str,
+                constants.CONFIG_HTTPS_DIR: str}
 
 
 def validate(config):

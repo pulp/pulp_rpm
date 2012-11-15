@@ -13,7 +13,7 @@
 from pulp.plugins.distributor import Distributor
 
 from pulp_rpm.common import ids
-from pulp_rpm.plugins.distributors.iso_distributor import configuration
+from pulp_rpm.plugins.distributors.iso_distributor import configuration, publish
 
 
 def entry_point():
@@ -43,6 +43,21 @@ class ISODistributor(Distributor):
             'display_name': 'ISO Distributor',
             'types': [ids.TYPE_ID_ISO]
         }
+
+    def publish_repo(self, repo, publish_conduit, config):
+        """
+        Publish the ISO repository.
+
+        :param repo:            metadata describing the repo
+        :type  repo:            pulp.plugins.model.Repository
+        :param publish_conduit: The conduit for publishing a repo
+        :type  publish_conduit: pulp.plugins.conduits.repo_publish.RepoPublishConduit
+        :param config:          plugin configuration
+        :type  config:          pulp.plugins.config.PluginConfiguration
+        :return:                report describing the publish operation
+        :rtype:                 pulp.plugins.model.PublishReport
+        """
+        return publish.publish(repo, publish_conduit, config)
 
     def validate_config(self, repo, config, related_repos):
         return configuration.validate(config)

@@ -11,7 +11,7 @@
 # have received a copy of GPLv2 along with this software; if not, see
 # http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt.
 
-from pulp_rpm.common import ids
+from pulp_rpm.common import constants, ids
 
 from pulp.common import pic
 from okaara.prompt import Prompt, COLOR_LIGHT_PURPLE, COLOR_LIGHT_BLUE
@@ -46,8 +46,8 @@ def create_repo(repo_id):
 
 def add_iso_importer(repo_id, queries):
     importer_config = {
-        'feed_url': ISO_FEED,
-        'queries': queries,
+        constants.CONFIG_FEED_URL: ISO_FEED,
+        constants.CONFIG_QUERIES: queries,
     }
 
     body = {
@@ -59,8 +59,8 @@ def add_iso_importer(repo_id, queries):
 
 def add_iso_distributor(repo_id):
     distributor_config = {
-        'serve_http': True,
-        'serve_https': True,
+        constants.CONFIG_SERVE_HTTP: True,
+        constants.CONFIG_SERVE_HTTPS: True,
     }
 
     body = {

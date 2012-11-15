@@ -22,3 +22,21 @@ COMPLETE_STATES = (STATE_COMPLETE, STATE_FAILED, STATE_SKIPPED)
 # Used as a note on a repository to indicate it is a Puppet repository
 REPO_NOTE_KEY = '_repo-type' # needs to be standard across extensions
 REPO_NOTE_RPM = 'rpm-repo'
+
+# Importer configuration key names
+CONFIG_FEED_URL        = 'feed_url'
+CONFIG_MAX_SPEED       = 'max_speed'
+CONFIG_NUM_THREADS     = 'num_threads'
+CONFIG_PROXY_PASSWORD  = 'proxy_password'
+CONFIG_PROXY_PORT      = 'proxy_port'
+CONFIG_PROXY_URL       = 'proxy_url'
+CONFIG_PROXY_USER      = 'proxy_user'
+CONFIG_QUERIES         = 'queries'
+CONFIG_SSL_CA_CERT     = 'ssl_ca_cert'
+CONFIG_SSL_CLIENT_CERT = 'ssl_client_cert'
+
+# Distributor configuration key names
+CONFIG_HTTP_DIR        = 'http_dir'
+CONFIG_HTTPS_DIR       = 'https_dir'
+CONFIG_SERVE_HTTP      = 'serve_http'
+CONFIG_SERVE_HTTPS     = 'serve_https'

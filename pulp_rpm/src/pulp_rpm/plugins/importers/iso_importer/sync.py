@@ -18,7 +18,7 @@ import shutil
 from grinder.FileFetch import FileGrinder
 import pulp.server.util
 
-from pulp_rpm.common import ids
+from pulp_rpm.common import constants, ids
 from pulp_rpm.common.constants import STATE_RUNNING, STATE_COMPLETE
 from pulp_rpm.common.sync_progress import SyncProgressReport
 from pulp_rpm.plugins.importers.iso_importer import configuration
@@ -27,6 +27,13 @@ from pulp_rpm.plugins.importers.iso_importer import configuration
 logger = logging.getLogger(__name__)
 
 
+# TODO: We probably don't need this if we're going to have Grinder download stuff to the final
+#       destination directory.
+RELATIVE_GRINDER_WORKING_DIR = 'grinder'
+
+
+# TODO: Reproduce folder structures that may have been found on the server (or will Grinder do
+#       this?)
 # TODO: Delete Units that we have that weren't found in the repo
 def perform_sync(repo, sync_conduit, config):
     """
@@ -42,15 +49,18 @@ def perform_sync(repo, sync_conduit, config):
     # Set up the Grinder and get stuff. Unfortunately, it seems that Grinder insists on downloading
     # all the files on every sync, unless there are ways to use Grinder that I haven't found yet.
     # After all, I am not very familiar with Grinder...
-    grinder = FileGrinder('', config.get('feed_url'),
-                          int(config.get('num_threads') or
-                              configuration.CONFIG_DEFAULTS['num_threads']),
-                          cacert=config.get('ssl_ca_cert'), clicert=config.get('ssl_client_cert'),
-                          proxy_url=config.get('proxy_url'), proxy_port=config.get('proxy_port'),
-                          proxy_user=config.get('proxy_user'),
-                          proxy_pass=config.get('proxy_password'),
-                          max_speed=config.get('max_speed'))
-    store_path = os.path.join(repo.working_dir, 'pulp_test_yo')
+    # TODO: Get Grinder to download the ISOs to their final location
+    grinder = FileGrinder('', config.get(constants.CONFIG_FEED_URL),
+                          int(config.get(constants.CONFIG_NUM_THREADS) or
+                              configuration.CONFIG_DEFAULTS[constants.CONFIG_NUM_THREADS]),
+                          cacert=config.get(constants.CONFIG_SSL_CA_CERT),
+                          clicert=config.get(constants.CONFIG_SSL_CLIENT_CERT),
+                          proxy_url=config.get(constants.CONFIG_PROXY_URL),
+                          proxy_port=config.get(constants.CONFIG_PROXY_PORT),
+                          proxy_user=config.get(constants.CONFIG_PROXY_USER),
+                          proxy_pass=config.get(constants.CONFIG_PROXY_PASSWORD),
+                          max_speed=config.get(constants.CONFIG_MAX_SPEED))
+    store_path = os.path.join(repo.working_dir, RELATIVE_GRINDER_WORKING_DIR)
     report = grinder.fetch(store_path, callback=grinder_progress_callback)
     # Copy the stuff in there to the permanent location
     _create_units(sync_conduit, grinder.downloadinfo)
@@ -86,18 +96,17 @@ def grinder_progress_callback(progress_report):
 
 def _create_units(sync_conduit, grinder_downloadinfo):
     for iso in grinder_downloadinfo:
-        logger.debug('iso: %s'%iso)
         unit_key = {'name': iso['fileName'], 'checksum_type': iso['checksumtype'],
                     'checksum': iso['checksum']}
-        metadata = {}
-        relative_path = os.path.join(unit_key['checksum_type'], unit_key['checksum'])
+        metadata = {'size': iso['size']}
+        relative_path = os.path.join(unit_key['checksum_type'], unit_key['checksum'],
+            unit_key['name'])
         unit = sync_conduit.init_unit(ids.TYPE_ID_ISO, unit_key, metadata, relative_path)
         # Copy the unit to the storage_path
-        logger.debug('storage_path: %s'%unit.storage_path)
-        temporary_file_location = os.path.join(iso['savepath'], unit_key['name'])
-        permanent_file_location = os.path.join(unit.storage_path, unit_key['name'])
+        temporary_file_location = iso['savepath']
+        permanent_file_location = unit.storage_path
         # We only need to copy the file to the permanent location if it isn't already there.
-        if not os.path.exists(permanent_file_location):
+        if not os.path.exists(os.path.dirname(permanent_file_location)):
             try:
                 # Create the destination directory
                 os.makedirs(os.path.dirname(permanent_file_location))
