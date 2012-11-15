@@ -23,8 +23,8 @@ from pulp.plugins.model import Consumer, Repository, Unit
 from pulp.server.managers import factory
 from pulp.server.managers.consumer.cud import ConsumerManager
 
-sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)) + "/../../src/")
-sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)) + "/../../plugins/profilers/")
+sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)) + "/../../../src/")
+sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)) + "/../../../plugins/profilers/")
 from pulp_rpm.common.ids import TYPE_ID_PROFILER_RPM_ERRATA, TYPE_ID_ERRATA, TYPE_ID_RPM, UNIT_KEY_RPM
 from pulp_rpm.yum_plugin import comps_util, util, updateinfo
 
@@ -36,7 +36,7 @@ class TestErrataProfiler(rpm_support_base.PulpRPMTests):
 
     def setUp(self):
         super(TestErrataProfiler, self).setUp()
-        self.data_dir = os.path.join(os.path.abspath(os.path.dirname(__file__)), "data")
+        self.data_dir = os.path.join(os.path.abspath(os.path.dirname(__file__)), "../data")
         self.temp_dir = tempfile.mkdtemp()
         self.working_dir = os.path.join(self.temp_dir, "working")
         if not os.path.exists(self.working_dir):
