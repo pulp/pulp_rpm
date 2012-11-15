@@ -22,10 +22,10 @@ import time
 import traceback
 import unittest
 
-sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)) + "/../../../src/")
-sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)) + "/../../plugins/importers/")
-sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)) + "/../../plugins/distributors/")
-sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)) + "/../../common")
+sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)) + "/../../../../src/")
+sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)) + "/../../../plugins/importers/")
+sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)) + "/../../../plugins/distributors/")
+sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)) + "/../../../common")
 
 from pulp_rpm.yum_plugin  import metadata
 
@@ -46,7 +46,7 @@ class TestMetadata(rpm_support_base.PulpRPMTests):
 
     def init(self):
         self.temp_dir = tempfile.mkdtemp()
-        self.data_dir = os.path.abspath(os.path.join(os.path.abspath(os.path.dirname(__file__)), "data"))
+        self.data_dir = os.path.abspath(os.path.join(os.path.abspath(os.path.dirname(__file__)), "../data"))
         self.repodata_dir = os.path.join(self.data_dir, "test_repo_metadata/repodata/")
 
     def clean(self):

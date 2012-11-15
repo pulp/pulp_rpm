@@ -23,8 +23,8 @@ from pulp_rpm.repo_auth.protected_repo_utils import ProtectedRepoListingFile, Pr
 TEST_FILE = '/tmp/test-protected-repo-listing'
 
 CONFIG = SafeConfigParser()
-CONFIG.read([os.path.abspath(os.path.dirname(__file__)) + '/data/test-override-pulp.conf',
-             os.path.abspath(os.path.dirname(__file__)) + '/data/test-override-repoauth.conf'])
+CONFIG.read([os.path.abspath(os.path.dirname(__file__)) + '/../data/test-override-pulp.conf',
+             os.path.abspath(os.path.dirname(__file__)) + '/../data/test-override-repoauth.conf'])
 
 # -- test cases ----------------------------------------------------------------------
 
