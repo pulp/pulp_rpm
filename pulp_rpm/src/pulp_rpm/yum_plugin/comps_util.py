@@ -399,7 +399,7 @@ def write_comps_xml(repo_working_dir, existing_groups, existing_cats):
     comps_xml = form_comps_xml_from_units(existing_groups, existing_cats)
     if not comps_xml:
         return None
-    out_path = os.path.join(repo_working_dir, "comps.xml")
+    out_path = os.path.join(repo_working_dir, "group.xml")
     f = open(out_path, "w")
     try:
         try:

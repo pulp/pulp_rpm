@@ -397,7 +397,7 @@ class TestComps(rpm_support_base.PulpRPMTests):
         self.assertTrue(report.success_flag)
         self.assertEqual(report.summary["num_package_groups_published"], 2)
         self.assertEqual(report.summary["num_package_categories_published"], 2)
-        expected_comps_xml = os.path.join(repo.working_dir, "comps.xml")
+        expected_comps_xml = os.path.join(repo.working_dir, "group.xml")
         self.assertTrue(os.path.exists(expected_comps_xml))
         #
         # Find the path that createrepo added the comps.xml as
@@ -509,7 +509,7 @@ class TestComps(rpm_support_base.PulpRPMTests):
             cats, cat_units = comps.get_new_category_units(avail_cats, {}, sync_conduit, repo)
             yum_distributor = YumDistributor()
             comps_xml_out_path = comps_util.write_comps_xml(repo.working_dir, group_units.values(), cat_units.values())
-            self.assertEqual(comps_xml_out_path, os.path.join(repo.working_dir, "comps.xml"))
+            self.assertEqual(comps_xml_out_path, os.path.join(repo.working_dir, "group.xml"))
             yc = yum.comps.Comps()
             yc.add(comps_xml_out_path)
             self.assertTrue(len(group_units), len(yc.groups))
