@@ -11,12 +11,14 @@
 
 import os
 
+from mock import patch
+
 from pulp.client.commands import options
 from pulp.client.commands.repo import cudl
 from pulp.client.extensions.core import TAG_SUCCESS
 from pulp.common.compat import json
 
-from pulp_rpm.common import ids
+from pulp_rpm.common import constants, ids
 from pulp_rpm.extension.admin import repo, repo_options
 import rpm_support_base
 
@@ -150,7 +152,7 @@ class RpmRepoCreateCommandTests(rpm_support_base.PulpClientTests):
         self.assertEqual([TAG_SUCCESS], self.prompt.get_write_tags())
 
 
-class RpmRepoUpdateCommand(rpm_support_base.PulpClientTests):
+class RpmRepoUpdateCommandTests(rpm_support_base.PulpClientTests):
 
     def test_create_structure(self):
         command = repo.RpmRepoUpdateCommand(self.context)
@@ -208,3 +210,34 @@ class RpmRepoUpdateCommand(rpm_support_base.PulpClientTests):
         iso_dist_config = body['distributor_configs'][ids.EXPORT_DISTRIBUTOR_ID]
         self.assertEqual(iso_dist_config['http'], True)
         self.assertEqual(iso_dist_config['https'], True)
+
+
+class RpmRepoListCommandTests(rpm_support_base.PulpClientTests):
+
+    @patch('pulp.client.commands.repo.cudl.ListRepositoriesCommand.get_repositories')
+    def test_get_repositories(self, mock_super_get):
+        # Setup
+        super_repos = [
+            {'repo_id' : 'matching',
+             'notes' : {constants.REPO_NOTE_KEY : constants.REPO_NOTE_RPM,},
+             'distributors' : [
+                 {'id' : ids.YUM_DISTRIBUTOR_ID},
+                 {'id' : ids.EXPORT_DISTRIBUTOR_ID}
+             ]
+            },
+            {'repo_id' : 'non-rpm-repo',
+             'notes' : {}}
+        ]
+        mock_super_get.return_value = super_repos
+
+        # Test
+        command = repo.RpmRepoListCommand(self.context)
+        repos = command.get_repositories(None)
+
+        # Verify
+        self.assertEqual(1, len(repos))
+        self.assertEqual(repos[0]['repo_id'], 'matching')
+
+        #   Make sure the export distributor was removed
+        self.assertEqual(len(repos[0]['distributors']), 1)
+        self.assertEqual(repos[0]['distributors'][0]['id'], ids.YUM_DISTRIBUTOR_ID)
