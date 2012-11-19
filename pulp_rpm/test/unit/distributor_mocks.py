@@ -26,17 +26,20 @@ def get_publish_conduit(type_id=None, existing_units=None, pkg_dir=None, checksu
     def get_units(repoid=None, criteria=None):
         ret_val = []
         if existing_units:
+            count = 0
             for u in existing_units:
+                count += 1
                 if criteria:
-                    if not criteria.unit_filters:
-                        if u.type_id in criteria.type_ids:
-                            ret_val.append(u)
-                    else:
-                        if u.type_id == 'erratum':
-                            start_date = criteria.unit_filters['issued']['$gte']
-                            end_date   = criteria.unit_filters['issued']['$lte']
-                            if start_date <= u.metadata['issued'] <= end_date:
+                    if count > criteria.skip:
+                        if not criteria.unit_filters:
+                            if u.type_id in criteria.type_ids:
                                 ret_val.append(u)
+                        else:
+                            if u.type_id == 'erratum':
+                                start_date = criteria.unit_filters['issued']['$gte']
+                                end_date   = criteria.unit_filters['issued']['$lte']
+                                if start_date <= u.metadata['issued'] <= end_date:
+                                    ret_val.append(u)
                 else:
                     ret_val.append(u)
         return ret_val

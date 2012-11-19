@@ -25,7 +25,6 @@ from pulp_rpm.common.ids import TYPE_ID_DISTRO, TYPE_ID_DRPM, TYPE_ID_ERRATA, TY
 from pulp_rpm.yum_plugin import comps_util, util, metadata, updateinfo
 from pulp_rpm.repo_auth import protected_repo_utils, repo_cert_utils
 
-
 # -- constants ----------------------------------------------------------------
 
 _LOG = util.getLogger(__name__)
@@ -388,22 +387,22 @@ class YumDistributor(Distributor):
             return publish_conduit.build_failure_report(summary, details)
         skip_list = config.get('skip') or []
         # Determine Content in this repo
-        unfiltered_units = publish_conduit.get_units()
-        # filter compatible units
-        rpm_units = filter(lambda u : u.type_id in [TYPE_ID_RPM, TYPE_ID_SRPM], unfiltered_units)
-        drpm_units = filter(lambda u : u.type_id == TYPE_ID_DRPM, unfiltered_units)
+        rpm_units = []
         rpm_errors = []
         if 'rpm' not in skip_list:
-            _LOG.debug("Publish on %s invoked. %s existing units, %s of which are supported to be published." \
-                    % (repo.id, len(unfiltered_units), len(rpm_units)))
+            for type_id in [TYPE_ID_RPM, TYPE_ID_SRPM]:
+                criteria = UnitAssociationCriteria(type_ids=type_id,
+                    unit_fields=['id', 'name', 'version', 'release', 'arch', 'epoch', '_storage_path', "checksum", "checksumtype" ])
+                rpm_units += publish_conduit.get_units(criteria=criteria)
             # Create symlinks under repo.working_dir
             rpm_status, rpm_errors = self.handle_symlinks(rpm_units, repo.working_dir, progress_callback)
             if not rpm_status:
                 _LOG.error("Unable to publish %s items" % (len(rpm_errors)))
+        drpm_units = []
         drpm_errors = []
         if 'drpm' not in skip_list:
-            _LOG.debug("Publish on %s invoked. %s existing units, %s of which are supported to be published." \
-                    % (repo.id, len(unfiltered_units), len(drpm_units)))
+            criteria = UnitAssociationCriteria(type_ids=TYPE_ID_DRPM)
+            drpm_units = publish_conduit.get_units(criteria=criteria)
             # Create symlinks under repo.working_dir
             drpm_status, drpm_errors = self.handle_symlinks(drpm_units, repo.working_dir, progress_callback)
             if not drpm_status:
@@ -411,8 +410,10 @@ class YumDistributor(Distributor):
         pkg_errors = rpm_errors + drpm_errors
         pkg_units = rpm_units +  drpm_units
         distro_errors = []
-        distro_units = filter(lambda u: u.type_id == TYPE_ID_DISTRO, unfiltered_units)
+        distro_units =  []
         if 'distribution' not in skip_list:
+            criteria = UnitAssociationCriteria(type_ids=TYPE_ID_DISTRO)
+            distro_units = publish_conduit.get_units(criteria=criteria)
             # symlink distribution files if any under repo.working_dir
             distro_status, distro_errors = self.symlink_distribution_unit_files(distro_units, repo.working_dir, progress_callback)
             if not distro_status:
@@ -442,10 +443,10 @@ class YumDistributor(Distributor):
             metadata_status, metadata_errors = metadata.generate_metadata(
                 repo.working_dir, publish_conduit, config, progress_callback, groups_xml_path)
         else:
-            # default to per package metadata
-            metadata_status, metadata_errors = metadata.generate_yum_metadata(repo.working_dir, rpm_units,
-                config, progress_callback, is_cancelled=self.canceled, group_xml_path=groups_xml_path,
-                updateinfo_xml_path=updateinfo_xml_path, repo_scratchpad=publish_conduit.get_repo_scratchpad())
+            metadata_status, metadata_errors = metadata.generate_yum_metadata(repo.working_dir, publish_conduit, config,
+                progress_callback, is_cancelled=self.canceled, group_xml_path=groups_xml_path, updateinfo_xml_path=updateinfo_xml_path,
+                repo_scratchpad=publish_conduit.get_repo_scratchpad(), limit=300)
+
         metadata_end_time = time.time()
         relpath = self.get_repo_relative_path(repo, config)
         if relpath.startswith("/"):
@@ -504,7 +505,7 @@ class YumDistributor(Distributor):
             summary["skip_metadata_update"] = True
         else:
             summary["skip_metadata_update"] = False
-        details["errors"] = pkg_errors + distro_errors + metadata_errors
+        details["errors"] = pkg_errors + distro_errors # metadata_errors
         details['time_metadata_sec'] = metadata_end_time - metadata_start_time
         # metadata generate skipped vs run
         _LOG.info("Publish complete:  summary = <%s>, details = <%s>" % (summary, details))
