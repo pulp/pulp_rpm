@@ -17,7 +17,7 @@
 # ---- Pulp (rpm) --------------------------------------------------------------
 
 Name: pulp-rpm
-Version: 0.0.339
+Version: 0.0.340
 Release: 1
 Summary: Support for RPM content in the Pulp platform
 Group: Development/Languages
@@ -253,6 +253,10 @@ A collection of yum plugins supplementing Pulp consumer operations.
 
 
 %changelog
+* Mon Nov 19 2012 Jeff Ortel <jortel@redhat.com> 0.0.340-1
+- 875163 - use group as the xml filename when generating comps so modifyrepo
+  uses that as type id which yum expects (pkilambi@redhat.com)
+
 * Wed Nov 14 2012 Jeff Ortel <jortel@redhat.com> 0.0.339-1
 - 876174 - Migrated over missing consumer commands (jason.dobies@redhat.com)
 
