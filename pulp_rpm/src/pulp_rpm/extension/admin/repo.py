@@ -234,7 +234,8 @@ class RpmRepoListCommand(ListRepositoriesCommand):
         # There isn't really anything compelling in the exporter distributor
         # to display to the user, so remove it entirely.
         for r in rpm_repos:
-            r['distributors'] = [x for x in r['distributors'] if x['id'] == YUM_DISTRIBUTOR_ID]
+            if 'distributors' in r:
+                r['distributors'] = [x for x in r['distributors'] if x['id'] == YUM_DISTRIBUTOR_ID]
 
         return rpm_repos
 
