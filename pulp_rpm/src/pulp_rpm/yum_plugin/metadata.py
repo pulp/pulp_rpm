@@ -17,7 +17,6 @@ import os
 import shlex
 import shutil
 import subprocess
-import tempfile
 import threading
 import signal
 import time
