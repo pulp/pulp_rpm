@@ -178,8 +178,9 @@ class ISODistributor(Distributor):
             progress_status["errata"]["state"] = "STARTED"
             criteria = UnitAssociationCriteria(type_ids=[TYPE_ID_ERRATA], unit_filters=date_filter)
             errata_units = publish_conduit.get_units(criteria=criteria)
-            criteria = UnitAssociationCriteria(type_ids=[TYPE_ID_RPM, TYPE_ID_SRPM, TYPE_ID_DRPM])
-            rpm_units = publish_conduit.get_units(criteria=criteria)
+            rpm_units = self.__get_rpm_units(publish_conduit)
+            drpm_criteria = UnitAssociationCriteria(type_ids=TYPE_ID_DRPM)
+            rpm_units += publish_conduit.get_units(criteria=drpm_criteria)
             rpm_units = repo_exporter.get_errata_rpms(errata_units, rpm_units)
             rpm_summary, rpm_errors = repo_exporter.export_rpms(rpm_units, progress_callback=progress_callback)
             if self.cancelled:
@@ -193,8 +194,9 @@ class ISODistributor(Distributor):
         else:
             # export everything
             # export rpms
-            criteria = UnitAssociationCriteria(type_ids=[TYPE_ID_RPM, TYPE_ID_SRPM, TYPE_ID_DRPM])
-            rpm_units = publish_conduit.get_units(criteria=criteria)
+            rpm_units = self.__get_rpm_units(publish_conduit)
+            drpm_criteria = UnitAssociationCriteria(type_ids=TYPE_ID_DRPM)
+            rpm_units += publish_conduit.get_units(criteria=drpm_criteria)
             rpm_summary, rpm_errors = repo_exporter.export_rpms(rpm_units, progress_callback=progress_callback)
             # export package groups
             groups_xml_path = None
@@ -239,7 +241,7 @@ class ISODistributor(Distributor):
             self.summary = dict(self.summary.items() + rpm_summary.items() + distro_summary.items())
         # generate metadata
         metadata_status, metadata_errors = metadata.generate_yum_metadata(
-            repo_working_dir, rpm_units, config, progress_callback, is_cancelled=self.cancelled,
+            repo_working_dir, publish_conduit, config, progress_callback, is_cancelled=self.cancelled,
             group_xml_path=groups_xml_path, updateinfo_xml_path=updateinfo_xml_path, repo_scratchpad=publish_conduit.get_repo_scratchpad())
         _LOG.info("metadata generation complete at target location %s" % repo_working_dir)
         self.details["errors"] += metadata_errors
@@ -251,6 +253,14 @@ class ISODistributor(Distributor):
         if self.details["errors"]:
             return publish_conduit.build_failure_report(self.summary, self.details)
         return publish_conduit.build_success_report(self.summary, self.details)
+
+    def __get_rpm_units(self, publish_conduit):
+        rpm_units = []
+        for type_id in [TYPE_ID_RPM, TYPE_ID_SRPM]:
+            criteria = UnitAssociationCriteria(type_ids=type_id,
+                unit_fields=['id', 'name', 'version', 'release', 'arch', 'epoch', '_storage_path', "checksum", "checksumtype" ])
+            rpm_units += publish_conduit.get_units(criteria=criteria)
+        return rpm_units
 
     def _publish_isos(self, repo, config, progress_callback=None):
         """
