@@ -34,7 +34,6 @@ SECTION_CONTENTS = 'content'
 SECTION_SYNC = 'sync'
 SECTION_SYNC_SCHEDULES = 'schedules'
 SECTION_PUBLISH = 'publish'
-SECTION_PUBLISH_SCHEDULES = 'schedules'
 
 SECTION_EXPORT = 'export'
 
@@ -49,7 +48,6 @@ DESC_CONTENTS = _('search the contents of a repository')
 DESC_SYNC = _('run, schedule, or view the status of sync tasks')
 DESC_SYNC_SCHEDULES = _('manage repository sync schedules')
 DESC_PUBLISH = _('run, schedule, or view the status of publish tasks')
-DESC_PUBLISH_SCHEDULES = _('manage repository publish schedules')
 
 DESC_EXPORT = _('run or view the status of ISO export of a repository')
 
@@ -107,9 +105,6 @@ def ensure_repo_structure(cli):
     sync_section = repo_sync_section(cli)
     sync_section.create_subsection(SECTION_SYNC_SCHEDULES, DESC_SYNC_SCHEDULES)
 
-    publish_section = repo_publish_section(cli)
-    publish_section.create_subsection(SECTION_PUBLISH_SCHEDULES, DESC_PUBLISH_SCHEDULES)
-    
     return repo_section
 
 # -- section retrieval --------------------------------------------------------
@@ -149,9 +144,6 @@ def repo_publish_section(cli):
 def repo_export_section(cli):
     return _find_section(cli, SECTION_ROOT, SECTION_REPO, SECTION_EXPORT)
 
-
-def repo_publish_schedules_section(cli):
-    return _find_section(cli, SECTION_ROOT, SECTION_REPO, SECTION_PUBLISH, SECTION_PUBLISH_SCHEDULES)
 
 # -- private ------------------------------------------------------------------
 
