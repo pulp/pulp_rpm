@@ -18,7 +18,7 @@
 
 Name: pulp-rpm
 Version: 2.0.6
-Release: 0.2.beta
+Release: 0.3.beta
 Summary: Support for RPM content in the Pulp platform
 Group: Development/Languages
 License: GPLv2
@@ -253,6 +253,20 @@ A collection of yum plugins supplementing Pulp consumer operations.
 
 
 %changelog
+* Tue Nov 20 2012 Jeff Ortel <jortel@redhat.com> 2.0.6-0.3.beta
+- 878548 - Added empty conf files for the plugins in case we need to tell users
+  to edit them in the future. I'd have liked to add comments about possible
+  values, but comments aren't supported in JSON. (jason.dobies@redhat.com)
+- 877488 - Removing publish schedules section (jason.dobies@redhat.com)
+- 873419 - searching for RPMs with the --details flag works properly again
+  (mhrivnak@redhat.com)
+- 876260 - Fixed the export_distributor removal fix (jason.dobies@redhat.com)
+- 875163 - Remove the export distributor from being displayed in --details
+  (jason.dobies@redhat.com)
+- 875163 - use group as the xml filename when generating comps so modifyrepo
+  uses that as type id which yum expects (pkilambi@redhat.com)
+- 876174 - Migrated over missing consumer commands (jason.dobies@redhat.com)
+
 * Mon Nov 12 2012 Jeff Ortel <jortel@redhat.com> 2.0.6-0.2.beta
 - 
 
