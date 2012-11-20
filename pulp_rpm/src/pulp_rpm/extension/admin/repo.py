@@ -22,6 +22,7 @@ from pulp.client.commands import options as std_options
 from pulp.common.util import encode_unicode
 
 from pulp_rpm.common import constants, ids
+from pulp_rpm.common.ids import YUM_DISTRIBUTOR_ID
 from pulp_rpm.extension.admin import repo_options
 
 # -- constants ----------------------------------------------------------------
@@ -229,6 +230,12 @@ class RpmRepoListCommand(ListRepositoriesCommand):
             notes = repo['notes']
             if constants.REPO_NOTE_KEY in notes and notes[constants.REPO_NOTE_KEY] == constants.REPO_NOTE_RPM:
                 rpm_repos.append(repo)
+
+        # There isn't really anything compelling in the exporter distributor
+        # to display to the user, so remove it entirely.
+        for r in rpm_repos:
+            if 'distributors' in r:
+                r['distributors'] = [x for x in r['distributors'] if x['id'] == YUM_DISTRIBUTOR_ID]
 
         return rpm_repos
 

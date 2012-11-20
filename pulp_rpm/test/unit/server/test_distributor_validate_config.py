@@ -12,7 +12,7 @@
 # http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt.
 import os
 import sys
-sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)) + "/../../plugins/distributors/")
+sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)) + "/../../../plugins/distributors/")
 
 from yum_distributor.distributor import YumDistributor
 from pulp.plugins.model import Repository
@@ -37,7 +37,7 @@ class TestValidateConfig(rpm_support_base.PulpRPMTests):
         super(TestValidateConfig, self).tearDown()
 
     def init(self):
-        self.data_dir = os.path.abspath(os.path.join(os.path.abspath(os.path.dirname(__file__)), "./data"))
+        self.data_dir = os.path.abspath(os.path.join(os.path.abspath(os.path.dirname(__file__)), "../data"))
 
     def test_config_relative_path(self):
 

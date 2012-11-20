@@ -16,11 +16,12 @@ Identity certificates are meant to be used by other Pulp components
 to grant access without needing to care about specific entitlements.
 
 The is_valid method is the logic driver. It performs the following functions:
-  - Validates the client certificate against the CA certificate configured for Pulp
+  - DOES NOT validate the client certificate against the CA certificate
+    configured for Pulp
   - Ensures the CN of the certificate matches the identity string
 '''
 
-from pulp_rpm.repo_auth import certificate
+from pulp_rpm.repo_auth.rhsm import certificate
 
 
 IDENTITY_CN = 'pulp-identity'
@@ -40,16 +41,13 @@ def authenticate(environ):
 
 def _is_valid(cert_pem):
     '''
-    Returns if the specified  certificate should be able to access a certain URL.
+    validates the cert's common name as being pulp's identity
 
-    @param dest: destination URL trying to be accessed
-    @type  dest: string
-
-    @param cert_pem: PEM encoded client certificate sent with the request
-    @type  cert_pem: string
+    :param cert_pem: PEM encoded client certificate sent with the request
+    :type  cert_pem: string
     '''
 
-    cert = certificate.Certificate(content=cert_pem)
+    cert = certificate.create_from_pem(cert_pem)
     cn = cert.subject()['CN']
 
     return cn == IDENTITY_CN

@@ -1,17 +1,26 @@
 
-import sys
 import os
 import tempfile
 import shutil
+import unittest
 
 import mock_yum
-from mock import Mock
+from mock import Mock, patch
 from mock_yum import YumBase
-from rpm_support_base import PulpRPMTests
 from pulp.agent.lib.container import Container, SYSTEM, CONTENT, BIND
 from pulp.agent.lib.dispatcher import Dispatcher
 from pulp.agent.lib.conduit import Conduit
+from pulp.common.config import Config
 
+
+class TestConduit(Conduit):
+
+    def __init__(self, cfg=None):
+        self.cfg = (cfg or {})
+
+    def get_consumer_config(self):
+        cfg = Config(self.cfg)
+        return cfg
 
 class Deployer:
 
@@ -48,10 +57,9 @@ class Deployer:
             shutil.copy(path, target)
 
 
-class HandlerTest(PulpRPMTests):
+class HandlerTest(unittest.TestCase):
 
     def setUp(self):
-        PulpRPMTests.setUp(self)
         mock_yum.install()
         self.deployer = Deployer()
         dpath, hpath = self.deployer.install()
@@ -61,7 +69,6 @@ class HandlerTest(PulpRPMTests):
         os.system = Mock()
 
     def tearDown(self):
-        PulpRPMTests.tearDown(self)
         self.deployer.uninstall()
         os.system = self.__system
         YumBase.reset()
@@ -88,23 +95,23 @@ class TestPackages(HandlerTest):
         for unit in removed:
             resolved.append(unit)
             deps = YumBase.REMOVE_DEPS
-        self.assertTrue(report.status)
-        chgcnt = len(resolved) + len(deps)
+        self.assertTrue(report.succeeded)
+        num_changes = len(resolved) + len(deps)
         if reboot:
-            chgcnt += 1
-        self.assertEquals(report.chgcnt, chgcnt)
+            num_changes += 1
+        self.assertEquals(report.num_changes, num_changes)
         self.assertEquals(len(report.details), 1)
         report = report.details[self.TYPE_ID]
-        self.assertTrue(report['status'])
+        self.assertTrue(report['succeeded'])
         self.assertEquals(len(report['details']['resolved']), len(resolved))
         self.assertEquals(len(report['details']['deps']), len(deps))
 
     def verify_failed(self, report):
-        self.assertFalse(report.status)
-        self.assertEquals(report.chgcnt, 0)
+        self.assertFalse(report.succeeded)
+        self.assertEquals(report.num_changes, 0)
         self.assertEquals(len(report.details), 1)
         report = report.details[self.TYPE_ID]
-        self.assertFalse(report['status'])
+        self.assertFalse(report['succeeded'])
         self.assertTrue('message' in report['details'])
         self.assertTrue('trace' in report['details'])
 
@@ -336,23 +343,23 @@ class TestGroups(HandlerTest):
         for group in removed:
             resolved += [str(p) for p in YumBase.GROUPS[group]]
             deps = YumBase.REMOVE_DEPS
-        self.assertTrue(report.status)
-        chgcnt = len(resolved)+len(deps)
+        self.assertTrue(report.succeeded)
+        num_changes = len(resolved)+len(deps)
         if reboot:
-            chgcnt += 1
-        self.assertEquals(report.chgcnt, chgcnt)
+            num_changes += 1
+        self.assertEquals(report.num_changes, num_changes)
         self.assertEquals(len(report.details), 1)
         report = report.details[self.TYPE_ID]
-        self.assertTrue(report['status'])
+        self.assertTrue(report['succeeded'])
         self.assertEquals(len(report['details']['resolved']), len(resolved))
         self.assertEquals(len(report['details']['deps']), len(deps))
 
     def verify_failed(self, report):
-        self.assertFalse(report.status)
-        self.assertEquals(report.chgcnt, 0)
+        self.assertFalse(report.succeeded)
+        self.assertEquals(report.num_changes, 0)
         self.assertEquals(len(report.details), 1)
         report = report.details[self.TYPE_ID]
-        self.assertFalse(report['status'])
+        self.assertFalse(report['succeeded'])
         self.assertTrue('message' in report['details'])
         self.assertTrue('trace' in report['details'])
 
@@ -472,15 +479,98 @@ class TestGroups(HandlerTest):
 class TestBind(HandlerTest):
 
     TYPE_ID = 'yum_distributor'
+    REPO_ID = 'test-repo'
+    REPO_NAME = 'My test-repository'
+    DETAILS = {
+        'protocols':{'http':'http://myfake.com/content'},
+        'server_name':'test-server',
+        'relative_path':'/tmp/lib/pulp/xxx',
+        'ca_cert':'CA-CERT',
+        'client_cert':'CLIENT-CERT',
+        'repo_name':REPO_NAME,
+    }
+    BINDING = {'type_id':TYPE_ID, 'repo_id':REPO_ID, 'details':DETAILS}
+    UNBINDING = {'type_id':TYPE_ID, 'repo_id':REPO_ID}
+    TEST_DIR = '/tmp/pulp-test'
+    MIRROR_DIR = os.path.join(TEST_DIR, 'mirrors')
+    GPG_DIR = os.path.join(TEST_DIR, 'gpg')
+    CERT_DIR = os.path.join(TEST_DIR, 'certs')
+    REPO_DIR = os.path.join(TEST_DIR, 'etc/yum.repos.d')
+    REPO_FILE = os.path.join(REPO_DIR, 'pulp-test.repo')
+    CONFIGURATION = {
+        'filesystem':{
+            'repo_file':REPO_FILE,
+            'mirror_list_dir':MIRROR_DIR,
+            'gpg_keys_dir':GPG_DIR,
+            'cert_dir':CERT_DIR,
+        }
+    }
 
     def setUp(self):
         HandlerTest.setUp(self)
         handler = self.container.find(self.TYPE_ID, role=BIND)
         self.assertTrue(handler is not None, msg='%s handler not loaded' % self.TYPE_ID)
+        shutil.rmtree(self.TEST_DIR, ignore_errors=True)
+        os.makedirs(self.TEST_DIR)
+        os.makedirs(self.REPO_DIR)
+        os.makedirs(self.MIRROR_DIR)
+        os.makedirs(self.GPG_DIR)
+        os.makedirs(self.CERT_DIR)
 
-    def test_bind(self):
-        # TODO: implement test
-        pass
+    def tearDown(self):
+        HandlerTest.tearDown(self)
+        shutil.rmtree(self.TEST_DIR, ignore_errors=True)
+
+    @patch('pulp_rpm.handler.repolib.Lock')
+    def test_bind(self, mock_lock):
+        # Test
+        options = {}
+        conduit = TestConduit(self.CONFIGURATION)
+        bindings = [dict(self.BINDING)]
+        report = self.dispatcher.bind(conduit, bindings, options)
+        # Verify
+        self.assertTrue(report.succeeded)
+        self.assertTrue(os.path.isfile(self.REPO_FILE))
+        repofile = Config(self.REPO_FILE)
+        self.assertEqual(repofile[self.REPO_ID]['name'], self.REPO_NAME)
+        self.assertEqual(repofile[self.REPO_ID]['enabled'], '1')
+
+    @patch('pulp_rpm.handler.repolib.Lock')
+    def test_unbind(self, mock_lock):
+        # Setup
+        options = {}
+        conduit = TestConduit(self.CONFIGURATION)
+        bindings = [dict(self.BINDING)]
+        self.dispatcher.bind(conduit, bindings, options)
+        # Test
+        options = {}
+        conduit = TestConduit(self.CONFIGURATION)
+        bindings = [self.UNBINDING]
+        report = self.dispatcher.unbind(conduit, bindings, options)
+        # Verify
+        self.assertTrue(report.succeeded)
+        self.assertTrue(os.path.isfile(self.REPO_FILE))
+        repofile = Config(self.REPO_FILE)
+        self.assertFalse(self.REPO_ID in repofile)
+
+    @patch('pulp_rpm.handler.repolib.Lock')
+    def test_unbind_all(self, mock_lock):
+        # Setup
+        options = {}
+        conduit = TestConduit(self.CONFIGURATION)
+        bindings = [dict(self.BINDING)]
+        self.dispatcher.bind(conduit, bindings, options)
+        # Test
+        options = {}
+        conduit = TestConduit(self.CONFIGURATION)
+        bindings = [dict(self.UNBINDING)]
+        bindings[0]['type_id'] = None
+        report = self.dispatcher.unbind(conduit, bindings, options)
+        # Verify
+        self.assertTrue(report.succeeded)
+        self.assertTrue(os.path.isfile(self.REPO_FILE))
+        repofile = Config(self.REPO_FILE)
+        self.assertFalse(self.REPO_ID in repofile)
 
 
 class TestLinux(HandlerTest):

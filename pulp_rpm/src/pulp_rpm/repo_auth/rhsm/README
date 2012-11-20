@@ -1,0 +1,10 @@
+This is a copy of the latest (10/28/2012) python-rhsm, which has v3 entitlement
+certificate checking that we need. Once that feature makes it into the distros
+we care about, this should all go away. Current projections are no sooner than
+April, 2013.
+
+PLEASE make any changes upstream at https://github.com/candlepin/python-rhsm
+first, and then apply those changes here.
+
+As one note, this does still depend on rhsm._certificate being available from
+the original package, which should be available through the usual means.

@@ -43,7 +43,7 @@ class LinuxHandler(SystemHandler):
             log.info(command)
             os.system(command)
             details = dict(minutes=minutes)
-            report.succeeded(details, chgcnt=1)
+            report.set_succeeded(details)
         else:
             report.succeeded()
         return report

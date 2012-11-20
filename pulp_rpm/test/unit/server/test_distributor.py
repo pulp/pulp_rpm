@@ -22,8 +22,8 @@ import time
 import unittest
 from uuid import uuid4
 
-sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)) + "/../../plugins/importers/")
-sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)) + "/../../plugins/distributors/")
+sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)) + "/../../../plugins/importers/")
+sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)) + "/../../../plugins/distributors/")
 
 from yum_distributor.distributor import YumDistributor
 from pulp_rpm.common.ids import TYPE_ID_DISTRIBUTOR_YUM, TYPE_ID_RPM, TYPE_ID_SRPM
@@ -58,7 +58,7 @@ class TestDistributor(rpm_support_base.PulpRPMTests):
 
         self.repo_working_dir = os.path.join(self.temp_dir, "repo_working_dir")
         os.makedirs(self.repo_working_dir)
-        self.data_dir = os.path.abspath(os.path.join(os.path.abspath(os.path.dirname(__file__)), "./data"))
+        self.data_dir = os.path.abspath(os.path.join(os.path.abspath(os.path.dirname(__file__)), "../data"))
 
     def clean(self):
         shutil.rmtree(self.temp_dir)
@@ -624,7 +624,7 @@ class TestDistributor(rpm_support_base.PulpRPMTests):
 
     def test_consumer_payload(self):
         PAYLOAD_FIELDS = [ 'server_name', 'relative_path',
-                          'protocols', 'gpg_keys', 'client_cert', 'ca_cert']
+                          'protocols', 'gpg_keys', 'client_cert', 'ca_cert', 'repo_name']
         http = True
         https = True
         relative_url = "/pub/content/"
@@ -636,6 +636,7 @@ class TestDistributor(rpm_support_base.PulpRPMTests):
         repo = mock.Mock(spec=Repository)
         repo.working_dir = self.repo_working_dir
         repo.id = "test_payload"
+        repo.display_name = 'Nice Repo'
         payload = distributor.create_consumer_payload(repo, config)
         for field in PAYLOAD_FIELDS:
             print field

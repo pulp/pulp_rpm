@@ -42,11 +42,11 @@ TASK = {
     'response':None,
     'reasons':None,
     'result':{
-        'status':True,
+        'succeeded':True,
         'reboot_scheduled':False,
         'details':{
             TYPE_ID_RPM:{
-                'status':True,
+                'succeeded':True,
                 'details':{
                    'resolved':[
                         {'name':'zsh-1.0'}],
@@ -54,7 +54,7 @@ TASK = {
                 }
             },
             TYPE_ID_PKG_GROUP:{
-                'status':True,
+                'succeeded':True,
                 'details':{
                    'resolved':[
                         {'name':'zsh-1.0'}],
