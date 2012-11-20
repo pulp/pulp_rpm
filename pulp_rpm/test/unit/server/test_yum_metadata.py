@@ -76,7 +76,8 @@ class TestYumMetadataGenerate(rpm_support_base.PulpRPMTests):
         mock_publish_conduit = distributor_mocks.get_publish_conduit()
         mock_publish_conduit.set_progress = mock.Mock()
         mock_publish_conduit.set_progress.side_effect = set_progress
-        status, errors = metadata.generate_yum_metadata(mock_repo.working_dir, [units_to_write], config, progress_callback=progress_callback, repo_scratchpad=repo_scratchpad)
+        status, errors = metadata.generate_yum_metadata(mock_repo.working_dir, mock_publish_conduit, config,
+            progress_callback=progress_callback, repo_scratchpad=repo_scratchpad)
         self.assertEquals(status, True)
         self.assertEquals(metadata_progress_status['metadata']['state'], "FINISHED")
 
@@ -106,7 +107,8 @@ class TestYumMetadataGenerate(rpm_support_base.PulpRPMTests):
         mock_publish_conduit.set_progress = mock.Mock()
         mock_publish_conduit.set_progress.side_effect = set_progress
 
-        status, errors = metadata.generate_yum_metadata(mock_repo.working_dir, [units_to_write], config, progress_callback=progress_callback, is_cancelled=True, repo_scratchpad=repo_scratchpad)
+        status, errors = metadata.generate_yum_metadata(mock_repo.working_dir, mock_publish_conduit, config,
+            progress_callback=progress_callback, is_cancelled=True, repo_scratchpad=repo_scratchpad)
         self.assertEquals(status, False)
         self.assertEquals(metadata_progress_status['metadata']['state'], "CANCELED")
 
