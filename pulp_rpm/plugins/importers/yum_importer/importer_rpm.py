@@ -633,8 +633,15 @@ class ImporterRPM(object):
                     (len(rpm_info['available_rpms']), repo.id, (end_metadata-start_metadata)))
 
         # Determine what exists and what has been orphaned, or exists in Pulp but has been removed from the source repo
-        criteria = UnitAssociationCriteria(type_ids=[RPM_TYPE_ID, SRPM_TYPE_ID])
-        rpm_info['existing_rpm_units'] = get_existing_units(sync_conduit, criteria)
+        # Limit the data we retrieve from the DB to reduce memory consumption
+        valid_fields = []
+        valid_fields.extend(RPM_UNIT_KEY)
+        valid_fields.append("_storage_path")
+        rpm_info['existing_rpm_units'] = {}
+        criteria = UnitAssociationCriteria(type_ids=[SRPM_TYPE_ID], unit_fields=valid_fields)
+        rpm_info['existing_rpm_units'].update(get_existing_units(sync_conduit, criteria))
+        criteria = UnitAssociationCriteria(type_ids=[RPM_TYPE_ID], unit_fields=valid_fields)
+        rpm_info['existing_rpm_units'].update(get_existing_units(sync_conduit, criteria))
         rpm_info['orphaned_rpm_units'] = get_orphaned_units(rpm_info['available_rpms'], rpm_info['existing_rpm_units'])
 
         # Determine new and missing items
