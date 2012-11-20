@@ -119,15 +119,30 @@ class SearchRpmsCommand(UnitAssociationCriteriaCommand):
         self.context = context
 
     def rpm(self, **kwargs):
-
-        # This inner function breaks the --details support. I don't have time to
-        # deal with it right now, so I filed a bug to address revisiting this
-        # entire module as a whole and address it then (860693).
-        # jdob, Sep 26, 2012
-
         def out_func(document_list, filter=FIELDS_RPM):
-            # Inner function to filter rpm fields to display to the end user
-            self.context.prompt.render_document_list(document_list, filters=filter)
+            """Inner function to filter rpm fields to display to the end user"""
+
+            order = []
+
+            # if the --details option has been specified, we need to manually
+            # apply filtering to the unit data itself, since okaara's filtering
+            # only operates at the top level of the document.
+            if kwargs.get(self.ASSOCIATION_FLAG.keyword):
+                # including most fields
+                filter = ['updated', 'repo_id', 'created', 'unit_id', 'metadata',
+                          'unit_type_id', 'owner_type', 'id', 'owner_id']
+                # display the unit info first
+                order = ['metadata']
+
+                # apply the same filtering that would normally be done by okaara
+                for doc in document_list:
+                    for key in doc['metadata'].keys():
+                        if key not in FIELDS_RPM:
+                            del doc['metadata'][key]
+
+            self.context.prompt.render_document_list(
+                document_list, filters=filter, order=order)
+
         _content_command(self.context, [TYPE_RPM], out_func=out_func, **kwargs)
 
 
