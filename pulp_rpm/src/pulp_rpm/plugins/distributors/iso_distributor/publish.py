@@ -14,6 +14,7 @@ from gettext import gettext as _
 import csv
 import logging
 import os
+import shutil
 
 from pulp_rpm.common import constants
 from pulp_rpm.common.publish_progress import PublishProgressReport
@@ -81,14 +82,14 @@ def _get_build_dir(repo):
 def _copy_to_hosted_location(repo, config):
     build_dir = _get_build_dir(repo)
 
-    http_dest_dir = os.path.join(config.get(constants.CONFIG_HTTP_DIR), repo.id)
+    http_dest_dir = os.path.join(constants.HTTP_ISO_PUBLISH_DIR, repo.id)
     _rmtree_if_exists(http_dest_dir)
-    if self.config.get_boolean(constants.CONFIG_SERVE_HTTP):
+    if config.get_boolean(constants.CONFIG_SERVE_HTTP):
         shutil.copytree(build_dir, http_dest_dir, symlinks=True)
 
-    https_dest_dir = os.path.join(config.get(constants.CONFIG_HTTPS_DIR), repo.id)
+    https_dest_dir = os.path.join(constants.HTTPS_ISO_PUBLISH_DIR, repo.id)
     _rmtree_if_exists(https_dest_dir)
-    if self.config.get_boolean(constants.CONFIG_SERVE_HTTPS):
+    if config.get_boolean(constants.CONFIG_SERVE_HTTPS):
         shutil.copytree(build_dir, https_dest_dir, symlinks=True)
 
 

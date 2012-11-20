@@ -40,3 +40,6 @@ CONFIG_HTTP_DIR        = 'http_dir'
 CONFIG_HTTPS_DIR       = 'https_dir'
 CONFIG_SERVE_HTTP      = 'serve_http'
 CONFIG_SERVE_HTTPS     = 'serve_https'
+
+HTTP_ISO_PUBLISH_DIR="/var/lib/pulp/published/http/isos"
+HTTPS_ISO_PUBLISH_DIR="/var/lib/pulp/published/https/isos"

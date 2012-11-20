@@ -61,6 +61,7 @@ def add_iso_distributor(repo_id):
     distributor_config = {
         constants.CONFIG_SERVE_HTTP: True,
         constants.CONFIG_SERVE_HTTPS: True,
+        constants.CONFIG_HTTP_DIR: '',
     }
 
     body = {
@@ -82,7 +83,7 @@ def list_units(prompt, repo_id):
 
     units = [u['metadata'] for u in body]
     for u in units:
-        msg = '  Name: %-15s Version: %-15s Author: %-15s' % (u['name'], u['version'], u['author'])
+        msg = '  Name: %-15s Size: %-15s Checksum: %-15s' % (u['name'], u['size'], u['checksum'])
         prompt.write(msg)
 
 def publish(repo_id):
