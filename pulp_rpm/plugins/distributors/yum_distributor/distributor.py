@@ -445,7 +445,7 @@ class YumDistributor(Distributor):
         else:
             metadata_status, metadata_errors = metadata.generate_yum_metadata(repo.working_dir, publish_conduit, config,
                 progress_callback, is_cancelled=self.canceled, group_xml_path=groups_xml_path, updateinfo_xml_path=updateinfo_xml_path,
-                repo_scratchpad=publish_conduit.get_repo_scratchpad(), limit=300)
+                repo_scratchpad=publish_conduit.get_repo_scratchpad())
 
         metadata_end_time = time.time()
         relpath = self.get_repo_relative_path(repo, config)
