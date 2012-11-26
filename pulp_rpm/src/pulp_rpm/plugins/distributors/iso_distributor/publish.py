@@ -103,6 +103,27 @@ def _symlink_units(repo, units):
                 if e.errno != errno.EEXIST:
                     raise
         symlink_filename = os.path.join(build_dir, unit.unit_key['name'])
+        if os.path.exists(symlink_filename):
+            # There's already something there with the desired symlink filename. Let's try and see
+            # if it points at the right thing. If it does, we don't need to do anything. If it does
+            # not, we should remove what's there and add the correct symlink.
+            try:
+                existing_link_path = os.readlink(symlink_filename)
+                if existing_link_path == unit.storage_path:
+                    # We don't need to do anything more for this unit, so move on to the next one
+                    continue
+                # The existing symlink is incorrect, so let's remove it
+                os.remove(symlink_filename)
+            except OSError, e:
+                # This will happen if we attempt to call readlink() on a file that wasn't a symlink.
+                # We should remove the file and add the symlink. There error code should be EINVAL.
+                # If it isn't, something else is wrong and we should raise.
+                if e.errno != errno.EINVAL:
+                    raise e
+                # Remove the file that's at the symlink_filename path
+                os.remove(symlink_filename)
+        # If we've gotten here, we've removed any existing file at the symlink_filename path, so now
+        # we should recreate it.
         os.symlink(unit.storage_path, symlink_filename)
 
 

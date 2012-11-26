@@ -10,6 +10,7 @@
 # NON-INFRINGEMENT, or FITNESS FOR A PARTICULAR PURPOSE. You should
 # have received a copy of GPLv2 along with this software; if not, see
 # http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt.
+import sys
 
 from pulp_rpm.common import constants, ids
 
@@ -99,28 +100,29 @@ def main():
 
     repo_ids = ['one', 'two', 'author', 'httpd']
 
-    title(p, 'Creating & Configuring Repositories')
-    p.write('  Repository: one    Queries: thias/php')
-    p.write('  Repository: two    Queries: thias/php, larstobi/dns')
-    p.write('  Repository: author Queries: thias')
-    p.write('  Repository: httpd  Queries: httpd')
+    if not '--skip-delete' in sys.argv:
+        title(p, 'Creating & Configuring Repositories')
+        p.write('  Repository: one    Queries: thias/php')
+        p.write('  Repository: two    Queries: thias/php, larstobi/dns')
+        p.write('  Repository: author Queries: thias')
+        p.write('  Repository: httpd  Queries: httpd')
 
-    for r in repo_ids:
-        delete_repo(r)
-        create_repo(r)
+        for r in repo_ids:
+            delete_repo(r)
+            create_repo(r)
 
-    add_iso_importer('one', ['thias/php'])
-    add_iso_importer('two', ['thias/php', 'larstobi/dns'])
-    add_iso_importer('author', ['thias'])
-    add_iso_importer('httpd', ['httpd'])
+        add_iso_importer('one', ['thias/php'])
+        add_iso_importer('two', ['thias/php', 'larstobi/dns'])
+        add_iso_importer('author', ['thias'])
+        add_iso_importer('httpd', ['httpd'])
 
-    add_iso_distributor('one')
-    add_iso_distributor('two')
-    add_iso_distributor('author')
-    add_iso_distributor('httpd')
+        add_iso_distributor('one')
+        add_iso_distributor('two')
+        add_iso_distributor('author')
+        add_iso_distributor('httpd')
 
-    pause(p)
-    p.write('')
+        pause(p)
+        p.write('')
 
     title(p, 'Synchronizing Repositories')
 

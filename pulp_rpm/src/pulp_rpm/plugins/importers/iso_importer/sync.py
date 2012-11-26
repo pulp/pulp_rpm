@@ -27,10 +27,27 @@ from pulp_rpm.plugins.importers.iso_importer import configuration
 logger = logging.getLogger(__name__)
 
 
+# TODO: Remove dangling symlinks when remove units is called, or when syncing finds that files have
+#       been removed from the upstream repo
+
 # TODO: We probably don't need this if we're going to have Grinder download stuff to the final
 #       destination directory.
 RELATIVE_GRINDER_WORKING_DIR = 'grinder'
 
+# TODO: Delete the PULP_MANIFEST file after sync.
+
+# Grinder doesn't allow us to get the manifest before downloading content, and it also doesn't allow
+# us to prescribe how the files should be laid out in the fs. We originally designed this module to
+# simply retrieve the files from Grinder and then move them to the final destination path, but that
+# design led to Grinder downloading the entire repository on each run, since there is also no API to
+# tell Grinder which files have already been downloaded. Due to all of these circumstances, we need
+# to have Grinder download the content to the final destination instead of downloading it to a
+# temporary working location. jdob and I talked, and we decided to just hardcode this path for now,
+# and in the future we can reimplement Grinder to work in a more favorable fashion. Hardcoding the
+# path is necessary, because we cannot use init_unit to get the path from Pulp since we need the
+# path before Grinder does anything.
+EVIL_HARDCODED_GRINDER_DESTINATION_PATH = os.path.join('/', 'var', 'lib', 'pulp', 'content',
+                                                       'grinder2')
 
 # TODO: Reproduce folder structures that may have been found on the server (or will Grinder do
 #       this?)
@@ -50,17 +67,20 @@ def perform_sync(repo, sync_conduit, config):
     # all the files on every sync, unless there are ways to use Grinder that I haven't found yet.
     # After all, I am not very familiar with Grinder...
     # TODO: Get Grinder to download the ISOs to their final location
+    store_path = EVIL_HARDCODED_GRINDER_DESTINATION_PATH
+
+    store_path = os.path.join(repo.working_dir, RELATIVE_GRINDER_WORKING_DIR)
     grinder = FileGrinder('', config.get(constants.CONFIG_FEED_URL),
                           int(config.get(constants.CONFIG_NUM_THREADS) or
                               configuration.CONFIG_DEFAULTS[constants.CONFIG_NUM_THREADS]),
                           cacert=config.get(constants.CONFIG_SSL_CA_CERT),
                           clicert=config.get(constants.CONFIG_SSL_CLIENT_CERT),
+                          files_location=store_path,
                           proxy_url=config.get(constants.CONFIG_PROXY_URL),
                           proxy_port=config.get(constants.CONFIG_PROXY_PORT),
                           proxy_user=config.get(constants.CONFIG_PROXY_USER),
                           proxy_pass=config.get(constants.CONFIG_PROXY_PASSWORD),
                           max_speed=config.get(constants.CONFIG_MAX_SPEED))
-    store_path = os.path.join(repo.working_dir, RELATIVE_GRINDER_WORKING_DIR)
     report = grinder.fetch(store_path, callback=grinder_progress_callback)
     # Copy the stuff in there to the permanent location
     _create_units(sync_conduit, grinder.downloadinfo)
@@ -103,9 +123,12 @@ def _create_units(sync_conduit, grinder_downloadinfo):
             unit_key['name'])
         unit = sync_conduit.init_unit(ids.TYPE_ID_ISO, unit_key, metadata, relative_path)
         # Copy the unit to the storage_path
-        temporary_file_location = iso['savepath']
+        temporary_file_location = os.path.join(iso['savepath'], iso['fileName'][:3],
+                                               iso['fileName'], iso['checksum'], iso['fileName'])
         permanent_file_location = unit.storage_path
-        # We only need to copy the file to the permanent location if it isn't already there.
+        logger.debug('temporary_file_location: %s'%temporary_file_location)
+        logger.debug('permanent_file_location: %s'%permanent_file_location)
+        # We only need to create the permanent location if it isn't already there.
         if not os.path.exists(os.path.dirname(permanent_file_location)):
             try:
                 # Create the destination directory
@@ -116,5 +139,9 @@ def _create_units(sync_conduit, grinder_downloadinfo):
                 # we need to raise this mammajamma
                 if e.errno != errno.EEXIST:
                     raise
-            shutil.move(temporary_file_location, permanent_file_location)
+        logger.debug('temporary_file_location: %s'%temporary_file_location)
+        logger.debug('permanent_file_location: %s'%permanent_file_location)
+        shutil.move(temporary_file_location, permanent_file_location)
+        # TODO: Does this work? If so, doc it
+        os.symlink(permanent_file_location, temporary_file_location)
         unit = sync_conduit.save_unit(unit)
