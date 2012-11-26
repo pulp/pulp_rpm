@@ -126,10 +126,8 @@ def main():
 
     title(p, 'Synchronizing Repositories')
 
-    sync('one')
-    sync('two')
-    sync('author')
-    sync('httpd')
+    for repo_id in repo_ids:
+        sync(repo_id)
 
     pause(p)
     p.write('')
