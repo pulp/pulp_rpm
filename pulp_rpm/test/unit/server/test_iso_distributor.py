@@ -47,7 +47,7 @@ class TestISODistributor(rpm_support_base.PulpRPMTests):
 
     def tearDown(self):
         super(TestISODistributor, self).tearDown()
-#        self.clean()
+        self.clean()
 
     def init(self):
         self.temp_dir = tempfile.mkdtemp()
