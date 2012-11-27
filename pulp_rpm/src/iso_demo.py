@@ -45,10 +45,9 @@ def create_repo(repo_id):
     body = {'id' : repo_id}
     pic.POST('/v2/repositories/', body=body)
 
-def add_iso_importer(repo_id, queries):
+def add_iso_importer(repo_id):
     importer_config = {
         constants.CONFIG_FEED_URL: ISO_FEED,
-        constants.CONFIG_QUERIES: queries,
     }
 
     body = {
@@ -62,7 +61,6 @@ def add_iso_distributor(repo_id):
     distributor_config = {
         constants.CONFIG_SERVE_HTTP: True,
         constants.CONFIG_SERVE_HTTPS: True,
-        constants.CONFIG_HTTP_DIR: '',
     }
 
     body = {
@@ -102,19 +100,19 @@ def main():
 
     if not '--skip-delete' in sys.argv:
         title(p, 'Creating & Configuring Repositories')
-        p.write('  Repository: one    Queries: thias/php')
-        p.write('  Repository: two    Queries: thias/php, larstobi/dns')
-        p.write('  Repository: author Queries: thias')
-        p.write('  Repository: httpd  Queries: httpd')
+        p.write('  Repository: one')
+        p.write('  Repository: two')
+        p.write('  Repository: author')
+        p.write('  Repository: httpd')
 
         for r in repo_ids:
             delete_repo(r)
             create_repo(r)
 
-        add_iso_importer('one', ['thias/php'])
-        add_iso_importer('two', ['thias/php', 'larstobi/dns'])
-        add_iso_importer('author', ['thias'])
-        add_iso_importer('httpd', ['httpd'])
+        add_iso_importer('one')
+        add_iso_importer('two')
+        add_iso_importer('author')
+        add_iso_importer('httpd')
 
         add_iso_distributor('one')
         add_iso_distributor('two')

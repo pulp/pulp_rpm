@@ -31,15 +31,12 @@ CONFIG_PROXY_PASSWORD  = 'proxy_password'
 CONFIG_PROXY_PORT      = 'proxy_port'
 CONFIG_PROXY_URL       = 'proxy_url'
 CONFIG_PROXY_USER      = 'proxy_user'
-CONFIG_QUERIES         = 'queries'
 CONFIG_SSL_CA_CERT     = 'ssl_ca_cert'
 CONFIG_SSL_CLIENT_CERT = 'ssl_client_cert'
 
 # Distributor configuration key names
-CONFIG_HTTP_DIR        = 'http_dir'
-CONFIG_HTTPS_DIR       = 'https_dir'
 CONFIG_SERVE_HTTP      = 'serve_http'
 CONFIG_SERVE_HTTPS     = 'serve_https'
 
-HTTP_ISO_PUBLISH_DIR="/var/lib/pulp/published/http/isos"
-HTTPS_ISO_PUBLISH_DIR="/var/lib/pulp/published/https/isos"
+ISO_HTTP_DIR = "/var/lib/pulp/published/http/isos"
+ISO_HTTPS_DIR = "/var/lib/pulp/published/https/isos"

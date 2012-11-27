@@ -71,8 +71,7 @@ def perform_sync(repo, sync_conduit, config):
 
     store_path = os.path.join(repo.working_dir, RELATIVE_GRINDER_WORKING_DIR)
     grinder = FileGrinder('', config.get(constants.CONFIG_FEED_URL),
-                          int(config.get(constants.CONFIG_NUM_THREADS) or
-                              configuration.CONFIG_DEFAULTS[constants.CONFIG_NUM_THREADS]),
+                          int(config.get(constants.CONFIG_NUM_THREADS) or 5),
                           cacert=config.get(constants.CONFIG_SSL_CA_CERT),
                           clicert=config.get(constants.CONFIG_SSL_CLIENT_CERT),
                           files_location=store_path,

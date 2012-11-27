@@ -17,19 +17,6 @@ from pulp_rpm.common import constants
 logger = logging.getLogger(__name__)
 
 
-# TODO: Make sure feed_url is a string, not unicode
-CONFIG_DEFAULTS = {constants.CONFIG_NUM_THREADS: 5}
-# This is used when we try to validate these values, to ensure they can all be cast to expected
-# types.
-CONFIG_TYPES = {constants.CONFIG_FEED_URL: str, constants.CONFIG_NUM_THREADS: int,
-                constants.CONFIG_SSL_CA_CERT: str, constants.CONFIG_SSL_CLIENT_CERT: str,
-                constants.CONFIG_PROXY_URL: str, constants.CONFIG_PROXY_PORT: int,
-                constants.CONFIG_PROXY_USER: str, constants.CONFIG_PROXY_PASSWORD: str,
-                constants.CONFIG_MAX_SPEED: float, constants.CONFIG_SERVE_HTTP: bool,
-                constants.CONFIG_SERVE_HTTPS: bool, constants.CONFIG_HTTP_DIR: str,
-                constants.CONFIG_HTTPS_DIR: str}
-
-
 def validate(config):
     """
     Validates the configuration for an ISO importer.
@@ -41,10 +28,45 @@ def validate(config):
                    messages
     :rtype:        tuple
     """
-    # Set the config defaults
-    config.default_config = CONFIG_DEFAULTS
+    validators = (
+        _validate_feed_url,
+        _validate_max_speed,
+    )
 
-    for config_key, config_type in enumerate(CONFIG_TYPES):
-        current_value = config.get(config_key)
-        # if current_value is not None and not isinstance(current_value, CONFIG_TYPES[config_key]):
+    for v in validators:
+        valid, error_message = v(config)
+        if not valid:
+            return valid, error_message
+
     return True, None
+
+
+# TODO: Should we validate that the URL is a valid URL? Currently we only validate that it is set to
+#       something that evaluates to True.
+def _validate_feed_url(config):
+    """
+    Make sure the feed_url is set.
+
+    :rtype: tuple
+    """
+    feed_url = config.get(constants.CONFIG_FEED_URL)
+    if not feed_url:
+        return False, _('<%(feed_url)s> is a required configuration parameter.')%{
+            'feed_url': constants.CONFIG_FEED_URL}
+    return True, None
+
+
+def _validate_max_speed(config):
+    """
+    Make sure the max speed can be cast to a number, if it is defined.
+
+    :rtype: tuple
+    """
+    max_speed = config.get(constants.CONFIG_MAX_SPEED)
+    # max_speed is not required
+    if max_speed is None:
+        return True, None
+    try:
+        max_speed = float(max_speed)
+    except ValueError:
+        return False, _('The configuration parameter <%(max_speed)s> must be set to a numerical value, but is currently set to <%(max_speed)s>.')
