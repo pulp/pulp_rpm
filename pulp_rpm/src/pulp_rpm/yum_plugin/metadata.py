@@ -27,6 +27,9 @@ from createrepo import yumbased, GzipFile
 
 from pulp_rpm.yum_plugin import util
 from pulp.common.util import encode_unicode, decode_unicode
+import yum
+from pulp.server.db.model.criteria import UnitAssociationCriteria
+from pulp_rpm.common.ids import TYPE_ID_RPM, TYPE_ID_SRPM, TYPE_ID_DISTRIBUTOR_YUM
 
 _LOG = util.getLogger(__name__)
 __yum_lock = threading.Lock()
@@ -517,6 +520,9 @@ xmlns:rpm="http://linux.duke.edu/metadata/rpm" packages="%s"> \n""" % len(self.u
         Finally the gzipped xmls are closed when all the units are written.
         """
         _LOG.info("Performing per unit metadata merge on %s units" % len(self.units))
+        if self.is_cancelled:
+            _LOG.warn("cancelling merge unit metadata")
+            raise CancelException()
         start = time.time()
         self.init_primary_xml()
         self.init_filelists_xml()
@@ -642,6 +648,17 @@ xmlns:rpm="http://linux.duke.edu/metadata/rpm" packages="%s"> \n""" % len(self.u
             if self.backup_repodata_dir:
                 shutil.rmtree(self.backup_repodata_dir)
 
+    def final_repodata_move(self):
+        # setup the yum config to do the final steps of generating sqlite db files
+        try:
+            mdgen = MetaDataGenerator(self.metadata_conf)
+            mdgen.doRepoMetadata()
+            # do the final move to the repodata location from .repodata
+            mdgen.doFinalMove()
+        except:
+            # might have missing metadata count not perform final move
+            _LOG.error("Error performing final move, could be missing pkg metadata files")
+
     def run(self):
         """
         Invokes the metadata generation by taking a backup of existing repodata;
@@ -652,11 +669,7 @@ xmlns:rpm="http://linux.duke.edu/metadata/rpm" packages="%s"> \n""" % len(self.u
         self._backup_existing_repodata()
         # extract the per rpm unit metadata and merge to create package xml data
         self.merge_unit_metadata()
-        # setup the yum config to do the final steps of generating sqlite db files
-        mdgen = MetaDataGenerator(self.metadata_conf)
-        mdgen.doRepoMetadata()
-        # do the final move to the repodata location from .repodata
-        mdgen.doFinalMove()
+        self.final_repodata_move()
         # lookup and merge updateinfo, comps and other metadata
         self.merge_comps_xml()
         self.merge_updateinfo_xml()
@@ -664,16 +677,16 @@ xmlns:rpm="http://linux.duke.edu/metadata/rpm" packages="%s"> \n""" % len(self.u
         self.merge_custom_repodata()
 
 
-def generate_yum_metadata(repo_dir, units_to_write, config, progress_callback=None,
-                          is_cancelled=False, group_xml_path=None, updateinfo_xml_path=None, repo_scratchpad=None):
+def generate_yum_metadata(repo_dir, publish_conduit, config, progress_callback=None,
+                          is_cancelled=False, group_xml_path=None, updateinfo_xml_path=None, repo_scratchpad=None, limit=500):
     """
       build all the necessary info and invoke createrepo to generate metadata
 
       @param repo_dir: repository dir where the repodata directory is created/exists
       @type  repo_dir: str
 
-      @param units_to_write: List of rpm units from which repodata is taken and merged
-      @type units_to_write: [AssociatedUnit]
+      @param publish_conduit: publish conduit
+      @type publish_conduit: pulp.plugins.conduits.repo_publish.RepoPublishConduit
 
       @param config: plugin configuration
       @type  config: L{pulp.server.content.plugins.config.PluginCallConfiguration}
@@ -704,10 +717,37 @@ def generate_yum_metadata(repo_dir, units_to_write, config, progress_callback=No
     start = time.time()
     try:
         set_progress("metadata", metadata_progress_status, progress_callback)
+        units_to_write = []
+        for type_id in [TYPE_ID_RPM, TYPE_ID_SRPM]:
+            criteria = UnitAssociationCriteria(type_ids=type_id,
+                        unit_fields=['id', 'name', 'version', 'release', 'arch', 'epoch',
+                                     '_storage_path', "checksum", "checksumtype" , "repodata"], limit=limit)
+            units_to_write += publish_conduit.get_units(criteria=criteria)
         create_yum_metadata = YumMetadataGenerator(repo_dir, units_to_write, checksum_type=checksum_type,
             skip_metadata_types=skip_metadata_types, is_cancelled=is_cancelled, group_xml_path=group_xml_path,
             updateinfo_xml_path=updateinfo_xml_path, custom_metadata_dict=custom_metadata)
-        create_yum_metadata.run()
+        create_yum_metadata._backup_existing_repodata()
+        skip = 0
+        if is_cancelled:
+            _LOG.warn("cancel metadata generation")
+            raise CancelException()
+        while len(units_to_write) > 0:
+            skip += len(units_to_write)
+            _LOG.info("Processed %s" % skip)
+            create_yum_metadata.merge_unit_metadata()
+            units_to_write = []
+            for type_id in [TYPE_ID_RPM, TYPE_ID_SRPM]:
+                criteria = UnitAssociationCriteria(type_ids=type_id,
+                            unit_fields=['id', 'name', 'version', 'release', 'arch', 'epoch',
+                                         '_storage_path', "checksum", "checksumtype" , "repodata"], limit=limit, skip=skip)
+                units_to_write += publish_conduit.get_units(criteria=criteria)
+        create_yum_metadata.final_repodata_move()
+        # lookup and merge updateinfo, comps and other metadata
+        create_yum_metadata.merge_comps_xml()
+        create_yum_metadata.merge_updateinfo_xml()
+        # merge any custom metadata stored on the scratchpad, this includes prestodelta
+        create_yum_metadata.merge_custom_repodata()
+#        create_yum_metadata.run()
     except CancelException, ce:
         metadata_progress_status = {"state" : "CANCELED"}
         set_progress("metadata", metadata_progress_status, progress_callback)

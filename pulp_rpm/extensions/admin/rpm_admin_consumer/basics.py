@@ -33,7 +33,7 @@ from pulp.client.arg_utils import args_to_notes_dict
 
 DESC_HISTORY = _('displays the history of operations on a consumer')
 DESC_LIST = _('lists summary of consumers registered to the Pulp server')
-DESC_SEARCH = _('binds a consumer to a repository distributor for consuming published content')
+DESC_SEARCH = _('search consumers')
 DESC_UNREGISTER = _('unregisters a consumer')
 DESC_UPDATE = _('changes metadata on an existing consumer')
 
