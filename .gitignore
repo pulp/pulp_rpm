@@ -29,3 +29,9 @@ pip-log.txt
 # PyCharm
 .idea
 cover
+
+# Sphinx
+*/docs/*/_build
+
+# Vim
+*.swp
