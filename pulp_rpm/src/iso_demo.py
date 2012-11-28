@@ -96,28 +96,17 @@ def main():
     pic.connect()
     pic.LOG_BODIES = False
 
-    repo_ids = ['one', 'two', 'author', 'httpd']
+    repo_ids = ['one']
 
     if not '--skip-delete' in sys.argv:
         title(p, 'Creating & Configuring Repositories')
         p.write('  Repository: one')
-        p.write('  Repository: two')
-        p.write('  Repository: author')
-        p.write('  Repository: httpd')
 
         for r in repo_ids:
             delete_repo(r)
             create_repo(r)
-
-        add_iso_importer('one')
-        add_iso_importer('two')
-        add_iso_importer('author')
-        add_iso_importer('httpd')
-
-        add_iso_distributor('one')
-        add_iso_distributor('two')
-        add_iso_distributor('author')
-        add_iso_distributor('httpd')
+            add_iso_importer(r)
+            add_iso_distributor(r)
 
         pause(p)
         p.write('')
@@ -132,27 +121,18 @@ def main():
 
     title(p, 'Publishing Repositories')
 
-    publish('one')
-    publish('two')
-    publish('author')
-    publish('httpd')
+    for repo_id in repo_ids:
+        publish(repo_id)
 
     pause(p)
     p.write('')
 
     title(p, 'Displaying Repository Contents')
 
-    p.write('Repository: one', color=COLOR_LIGHT_BLUE)
-    list_units(p, 'one')
-    p.write('')
-    p.write('Repository: two', color=COLOR_LIGHT_BLUE)
-    list_units(p, 'two')
-    p.write('')
-    p.write('Repository: author', color=COLOR_LIGHT_BLUE)
-    list_units(p, 'author')
-    p.write('')
-    p.write('Repository: httpd', color=COLOR_LIGHT_BLUE)
-    list_units(p, 'httpd')
+    for repo_id in repo_ids:
+        p.write('Repository: %s'%repo_id, color=COLOR_LIGHT_BLUE)
+        list_units(p, repo_id)
+        p.write('')
 
 if __name__ == '__main__':
     main()

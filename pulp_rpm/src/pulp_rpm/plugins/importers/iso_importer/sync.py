@@ -15,24 +15,21 @@ import logging
 import os
 import shutil
 
-from grinder.FileFetch import FileGrinder
-import pulp.server.util
-
 from pulp_rpm.common import constants, ids
 from pulp_rpm.common.constants import STATE_RUNNING, STATE_COMPLETE
 from pulp_rpm.common.sync_progress import SyncProgressReport
 from pulp_rpm.plugins.importers.iso_importer import configuration
+from pulp_rpm.plugins.importers.iso_importer.bumper import ISOBumper
 
+from pulp.common.util import encode_unicode
+from pulp.plugins.conduits.mixins import UnitAssociationCriteria
+import pulp.server.util
 
 logger = logging.getLogger(__name__)
 
 
 # TODO: Remove dangling symlinks when remove units is called, or when syncing finds that files have
 #       been removed from the upstream repo
-
-# TODO: We probably don't need this if we're going to have Grinder download stuff to the final
-#       destination directory.
-RELATIVE_GRINDER_WORKING_DIR = 'grinder'
 
 # TODO: Delete the PULP_MANIFEST file after sync.
 
@@ -46,12 +43,10 @@ RELATIVE_GRINDER_WORKING_DIR = 'grinder'
 # and in the future we can reimplement Grinder to work in a more favorable fashion. Hardcoding the
 # path is necessary, because we cannot use init_unit to get the path from Pulp since we need the
 # path before Grinder does anything.
-EVIL_HARDCODED_GRINDER_DESTINATION_PATH = os.path.join('/', 'var', 'lib', 'pulp', 'content',
-                                                       'grinder2')
 
-# TODO: Reproduce folder structures that may have been found on the server (or will Grinder do
-#       this?)
-# TODO: Delete Units that we have that weren't found in the repo
+# TODO: Reproduce folder structures that may have been found on the server
+# TODO: optionally delete Units that we have that weren't found in the repo
+# TODO: optionally don't check the checksum and size
 def perform_sync(repo, sync_conduit, config):
     """
     Perform the sync operation accoring to the config for the given repo, and return a report. The
@@ -63,32 +58,51 @@ def perform_sync(repo, sync_conduit, config):
     progress_report.metadata_state = STATE_RUNNING
     progress_report.modules_state = STATE_RUNNING
 
-    # Set up the Grinder and get stuff. Unfortunately, it seems that Grinder insists on downloading
-    # all the files on every sync, unless there are ways to use Grinder that I haven't found yet.
-    # After all, I am not very familiar with Grinder...
-    # TODO: Get Grinder to download the ISOs to their final location
-    store_path = EVIL_HARDCODED_GRINDER_DESTINATION_PATH
+    max_speed = config.get(constants.CONFIG_MAX_SPEED)
+    if max_speed is not None:
+        max_speed = float(max_speed)
+    num_threads = config.get(constants.CONFIG_NUM_THREADS)
+    if num_threads is not None:
+        num_threads = int(num_threads)
+    bumper = ISOBumper(feed_url=encode_unicode(config.get(constants.CONFIG_FEED_URL)),
+                       working_directory=repo.working_dir,
+                       max_speed=max_speed, num_threads=num_threads,
+                       ssl_client_cert=config.get(constants.CONFIG_SSL_CLIENT_CERT),
+                       ssl_ca_cert=config.get(constants.CONFIG_SSL_CA_CERT),
+                       proxy_url=config.get(constants.CONFIG_PROXY_URL),
+                       proxy_port=config.get(constants.CONFIG_PROXY_PORT),
+                       proxy_user=config.get(constants.CONFIG_PROXY_USER),
+                       proxy_password=config.get(constants.CONFIG_PROXY_PASSWORD))
 
-    store_path = os.path.join(repo.working_dir, RELATIVE_GRINDER_WORKING_DIR)
-    grinder = FileGrinder('', config.get(constants.CONFIG_FEED_URL),
-                          int(config.get(constants.CONFIG_NUM_THREADS) or 5),
-                          cacert=config.get(constants.CONFIG_SSL_CA_CERT),
-                          clicert=config.get(constants.CONFIG_SSL_CLIENT_CERT),
-                          files_location=store_path,
-                          proxy_url=config.get(constants.CONFIG_PROXY_URL),
-                          proxy_port=config.get(constants.CONFIG_PROXY_PORT),
-                          proxy_user=config.get(constants.CONFIG_PROXY_USER),
-                          proxy_pass=config.get(constants.CONFIG_PROXY_PASSWORD),
-                          max_speed=config.get(constants.CONFIG_MAX_SPEED))
-    report = grinder.fetch(store_path, callback=grinder_progress_callback)
-    # Copy the stuff in there to the permanent location
-    _create_units(sync_conduit, grinder.downloadinfo)
+    manifest = bumper.manifest
+    missing_isos = _filter_missing_isos(sync_conduit, manifest)
+    bumper.download_files(missing_isos)
+
+    # Move the downloaded stuff and junk to the permanent location
+    _create_units(sync_conduit, missing_isos)
 
     # Report that we are finished
     progress_report.metadata_state = STATE_COMPLETE
     progress_report.modules_state = STATE_COMPLETE
     report = progress_report.build_final_report()
     return report
+
+
+def _filter_missing_isos(sync_conduit, manifest):
+    def _unit_key_str(unit_key_dict):
+        return '%s-%s-%s'%(unit_key_dict['name'], unit_key_dict['checksum_type'],
+                           unit_key_dict['checksum'])
+
+    available_units_by_key = dict([(_unit_key_str(u), u) for u in manifest])
+
+    module_criteria = UnitAssociationCriteria(type_ids=[ids.TYPE_ID_ISO])
+    existing_isos = sync_conduit.get_units(criteria=module_criteria)
+    existing_iso_keys = set([_unit_key_str(m.unit_key) for m in existing_isos])
+    available_iso_keys = set([_unit_key_str(u) for u in manifest])
+
+    missing_iso_keys = list(available_iso_keys - existing_iso_keys)
+    missing_isos = [available_units_by_key[k] for k in missing_iso_keys]
+    return missing_isos
 
 
 # TODO: Handle Grinder callback. We can probaby make this a function that returns a function so that
@@ -113,20 +127,17 @@ def grinder_progress_callback(progress_report):
     pass
 
 
-def _create_units(sync_conduit, grinder_downloadinfo):
-    for iso in grinder_downloadinfo:
-        unit_key = {'name': iso['fileName'], 'checksum_type': iso['checksumtype'],
+def _create_units(sync_conduit, new_units):
+    for iso in new_units:
+        unit_key = {'name': iso['name'], 'checksum_type': iso['checksum_type'],
                     'checksum': iso['checksum']}
         metadata = {'size': iso['size']}
         relative_path = os.path.join(unit_key['checksum_type'], unit_key['checksum'],
-            unit_key['name'])
+                                     unit_key['name'])
         unit = sync_conduit.init_unit(ids.TYPE_ID_ISO, unit_key, metadata, relative_path)
         # Copy the unit to the storage_path
-        temporary_file_location = os.path.join(iso['savepath'], iso['fileName'][:3],
-                                               iso['fileName'], iso['checksum'], iso['fileName'])
+        temporary_file_location = iso['path']
         permanent_file_location = unit.storage_path
-        logger.debug('temporary_file_location: %s'%temporary_file_location)
-        logger.debug('permanent_file_location: %s'%permanent_file_location)
         # We only need to create the permanent location if it isn't already there.
         if not os.path.exists(os.path.dirname(permanent_file_location)):
             try:
@@ -138,9 +149,5 @@ def _create_units(sync_conduit, grinder_downloadinfo):
                 # we need to raise this mammajamma
                 if e.errno != errno.EEXIST:
                     raise
-        logger.debug('temporary_file_location: %s'%temporary_file_location)
-        logger.debug('permanent_file_location: %s'%permanent_file_location)
         shutil.move(temporary_file_location, permanent_file_location)
-        # TODO: Does this work? If so, doc it
-        os.symlink(permanent_file_location, temporary_file_location)
         unit = sync_conduit.save_unit(unit)
