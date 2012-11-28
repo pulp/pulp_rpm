@@ -973,3 +973,15 @@ class TestRPMs(rpm_support_base.PulpRPMTests):
         self.assertEquals(summary["num_synced_new_rpms"], 12)
         pkgs = self.get_files_in_dir("*.rpm", self.pkg_dir)
         self.assertEquals(len(pkgs), 12)
+
+    def test_feedless_repo_sync(self):
+        repo = mock.Mock(spec=Repository)
+        repo.working_dir = self.working_dir
+        repo.id = "test_feedless_repo_sync"
+        sync_conduit = importer_mocks.get_sync_conduit(type_id=TYPE_ID_RPM, pkg_dir=self.pkg_dir)
+        sync_conduit.set_progress = mock.Mock()
+        config = importer_mocks.get_basic_config()
+        importer = YumImporter()
+        status, summary, details = importer._sync_repo(repo, sync_conduit, config)
+        self.assertFalse(status)
+        self.assertEquals(summary['error'], "Cannot perform repository sync on a repository with no feed")

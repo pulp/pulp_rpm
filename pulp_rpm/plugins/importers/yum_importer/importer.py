@@ -497,6 +497,14 @@ class YumImporter(Importer):
         return report
 
     def _sync_repo(self, repo, sync_conduit, config):
+        summary = {}
+        details = {}
+        if not config.get("feed_url", None):
+            # No feed url found, return a sync failure
+            msg = _("Cannot perform repository sync on a repository with no feed")
+            _LOG.error(msg)
+            summary['error'] = msg
+            return False, summary, details
         progress_status = {
                 "metadata": {"state": "NOT_STARTED"},
                 "content": {"state": "NOT_STARTED"},
@@ -510,8 +518,6 @@ class YumImporter(Importer):
             sync_conduit.set_progress(progress_status)
 
         sync_conduit.set_progress(progress_status)
-        summary = {}
-        details = {}
         # sync rpms
         rpm_status, summary["packages"], details["packages"] = self.importer_rpm.sync(repo, sync_conduit, config, progress_callback)
 
