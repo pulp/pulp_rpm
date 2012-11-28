@@ -10,6 +10,12 @@ Sync and Publish a Repo
 .. briefly show how to do this
 
 
+Consumer
+--------
+
+.. example of binding and pushing content out
+
+
 Next Steps
 ----------
 

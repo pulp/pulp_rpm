@@ -1,6 +1,8 @@
 Installation
 ============
 
+.. don't duplicate platform install stuff
+
 Prerequisites
 -------------
 
