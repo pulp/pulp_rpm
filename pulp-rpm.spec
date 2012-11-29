@@ -60,6 +60,7 @@ popd
 # Directories
 mkdir -p /srv
 mkdir -p %{buildroot}/%{_sysconfdir}/pulp
+mkdir -p %{buildroot}/%{_sysconfdir}/pki/pulp/content
 mkdir -p %{buildroot}/%{_usr}/lib
 mkdir -p %{buildroot}/%{_usr}/lib/pulp/plugins
 mkdir -p %{buildroot}/%{_usr}/lib/pulp/admin/extensions
@@ -165,6 +166,7 @@ to provide RPM specific support.
 %{_usr}/lib/pulp/plugins/profilers/rpm_errata_profiler/
 %defattr(-,apache,apache,-)
 %{_var}/www/pub
+%{_sysconfdir}/pki/pulp/content/
 /srv/pulp/repo_auth.wsgi
 %doc
 
