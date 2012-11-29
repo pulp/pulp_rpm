@@ -387,28 +387,23 @@ class YumDistributor(Distributor):
             return publish_conduit.build_failure_report(summary, details)
         skip_list = config.get('skip') or []
         # Determine Content in this repo
-        rpm_units = []
-        rpm_errors = []
+        pkg_units = []
+        pkg_errors = []
         if 'rpm' not in skip_list:
             for type_id in [TYPE_ID_RPM, TYPE_ID_SRPM]:
                 criteria = UnitAssociationCriteria(type_ids=type_id,
                     unit_fields=['id', 'name', 'version', 'release', 'arch', 'epoch', '_storage_path', "checksum", "checksumtype" ])
-                rpm_units += publish_conduit.get_units(criteria=criteria)
+                pkg_units += publish_conduit.get_units(criteria=criteria)
+            drpm_units = []
+            if 'drpm' not in skip_list:
+                criteria = UnitAssociationCriteria(type_ids=TYPE_ID_DRPM)
+                drpm_units = publish_conduit.get_units(criteria=criteria)
+            pkg_units += drpm_units
             # Create symlinks under repo.working_dir
-            rpm_status, rpm_errors = self.handle_symlinks(rpm_units, repo.working_dir, progress_callback)
-            if not rpm_status:
-                _LOG.error("Unable to publish %s items" % (len(rpm_errors)))
-        drpm_units = []
-        drpm_errors = []
-        if 'drpm' not in skip_list:
-            criteria = UnitAssociationCriteria(type_ids=TYPE_ID_DRPM)
-            drpm_units = publish_conduit.get_units(criteria=criteria)
-            # Create symlinks under repo.working_dir
-            drpm_status, drpm_errors = self.handle_symlinks(drpm_units, repo.working_dir, progress_callback)
-            if not drpm_status:
-                _LOG.error("Unable to publish %s items" % (len(drpm_errors)))
-        pkg_errors = rpm_errors + drpm_errors
-        pkg_units = rpm_units +  drpm_units
+            pkg_status, pkg_errors = self.handle_symlinks(pkg_units, repo.working_dir, progress_callback)
+            if not pkg_status:
+                _LOG.error("Unable to publish %s items" % (len(pkg_errors)))
+
         distro_errors = []
         distro_units =  []
         if 'distribution' not in skip_list:
