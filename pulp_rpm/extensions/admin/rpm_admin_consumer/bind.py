@@ -31,8 +31,8 @@ class BindCommand(PulpCliCommand):
 
         try:
             self.context.server.bind.bind(id, repo_id, YUM_DISTRIBUTOR_ID)
-            m = 'Consumer [%(c)s] successfully bound to repository [%(r)s]'
-            self.context.prompt.render_success_message(_(m) % {'c' : id, 'r' : repo_id})
+            m = _('Consumer [%(c)s] successfully bound to repository [%(r)s]')
+            self.context.prompt.render_success_message(m % {'c' : id, 'r' : repo_id})
         except NotFoundException, e:
             resources = e.extra_data['resources']
             if 'consumer' in resources:
@@ -58,14 +58,13 @@ class UnbindCommand(PulpCliCommand):
         force = kwargs['force']
         try:
             self.context.server.bind.unbind(id, repo_id, YUM_DISTRIBUTOR_ID, force)
-            m = 'Consumer [%(c)s] successfully unbound from repository [%(r)s]'
-            self.context.prompt.render_success_message(_(m) % {'c' : id, 'r' : repo_id})
+            m = _('Consumer [%(c)s] successfully unbound from repository [%(r)s]')
+            self.context.prompt.render_success_message(m % {'c' : id, 'r' : repo_id})
         except NotFoundException, e:
-            bind_id = e.extra_data['resources']['resource_id']
-            m = 'Binding [consumer: %(c)s, repository: %(r)s, distributor: %(d)s] does not exist on the server'
+            bind_id = e.extra_data['resources']['bind_id']
+            m = _('Binding [consumer: %(c)s, repository: %(r)s] does not exist on the server')
             d = {
                 'c' : bind_id['consumer_id'],
                 'r' : bind_id['repo_id'],
-                'd' : bind_id['distributor_id']
             }
-            self.context.prompt.write(_(m) % d, tag='not-found')
+            self.context.prompt.write(m % d, tag='not-found')
