@@ -91,6 +91,12 @@ class UnbindCommand(PulpCliCommand):
             self.context.server.bind.unbind(consumer_id, repo_id, YUM_DISTRIBUTOR_TYPE_ID, force)
             m = 'Consumer [%(c)s] successfully unbound from repository [%(r)s]'
             self.prompt.render_success_message(_(m) % {'c' : consumer_id, 'r' : repo_id})
-        except NotFoundException:
-            m = 'Consumer [%(c)s] does not exist on the server'
-            self.prompt.render_failure_message(_(m) % {'c' : consumer_id}, tag='not-found')
+        except NotFoundException, e:
+            bind_id = e.extra_data['resources']['resource_id']
+            m = 'Binding [consumer: %(c)s, repository: %(r)s, distributor: %(d)s] does not exist on the server'
+            d = {
+                'c' : bind_id['consumer_id'],
+                'r' : bind_id['repo_id'],
+                'd' : bind_id['distributor_id']
+            }
+            self.context.prompt.write(_(m) % d, tag='not-found')
