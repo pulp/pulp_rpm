@@ -214,10 +214,9 @@ class RpmRepoUpdateCommandTests(rpm_support_base.PulpClientTests):
 
 class RpmRepoListCommandTests(rpm_support_base.PulpClientTests):
 
-    @patch('pulp.client.commands.repo.cudl.ListRepositoriesCommand.get_repositories')
-    def test_get_repositories(self, mock_super_get):
+    def test_get_repositories(self):
         # Setup
-        super_repos = [
+        repos = [
             {'repo_id' : 'matching',
              'notes' : {constants.REPO_NOTE_KEY : constants.REPO_NOTE_RPM,},
              'distributors' : [
@@ -228,11 +227,11 @@ class RpmRepoListCommandTests(rpm_support_base.PulpClientTests):
             {'repo_id' : 'non-rpm-repo',
              'notes' : {}}
         ]
-        mock_super_get.return_value = super_repos
+        self.server_mock.request.return_value = 200, repos
 
         # Test
         command = repo.RpmRepoListCommand(self.context)
-        repos = command.get_repositories(None)
+        repos = command.get_repositories({})
 
         # Verify
         self.assertEqual(1, len(repos))
@@ -241,3 +240,28 @@ class RpmRepoListCommandTests(rpm_support_base.PulpClientTests):
         #   Make sure the export distributor was removed
         self.assertEqual(len(repos[0]['distributors']), 1)
         self.assertEqual(repos[0]['distributors'][0]['id'], ids.YUM_DISTRIBUTOR_ID)
+
+    def test_get_other_repositories(self):
+        # Setup
+        repos = [
+            {'repo_id' : 'matching',
+             'notes' : {constants.REPO_NOTE_KEY : constants.REPO_NOTE_RPM,},
+             'distributors' : [
+                 {'id' : ids.YUM_DISTRIBUTOR_ID},
+                 {'id' : ids.EXPORT_DISTRIBUTOR_ID}
+             ]
+            },
+            {'repo_id' : 'non-rpm-repo-1',
+             'notes' : {}},
+        ]
+        self.server_mock.request.return_value = 200, repos
+
+        # Test
+        command = repo.RpmRepoListCommand(self.context)
+        repos = command.get_other_repositories({})
+
+        # Verify
+        self.assertEqual(1, len(repos))
+        self.assertEqual(repos[0]['repo_id'], 'non-rpm-repo-1')
+
+
