@@ -18,7 +18,7 @@
 
 Name: pulp-rpm
 Version: 2.0.6
-Release: 0.9.beta
+Release: 0.10.beta
 Summary: Support for RPM content in the Pulp platform
 Group: Development/Languages
 License: GPLv2
@@ -255,6 +255,18 @@ A collection of yum plugins supplementing Pulp consumer operations.
 
 
 %changelog
+* Thu Nov 29 2012 Jeff Ortel <jortel@redhat.com> 2.0.6-0.10.beta
+- 877047 - if a file already exists, do not try to create a symlink
+  (pkilambi@redhat.com)
+- 881639 - fix error message when binding does not exist. (jortel@redhat.com)
+- 869099 - fix to the plugin progress callback so delta rpm progress doesnt
+  override rpm progress (pkilambi@redhat.com)
+- 866491 - Translate bad data property name into CLI flag
+  (jason.dobies@redhat.com)
+- 858855 - Directory created at runtime but included here so that it's cleaned
+  up when rpm plugins are uninstalled. (jortel@redhat.com)
+- 862290 - Added support for non-RPM repo listing (jason.dobies@redhat.com)
+
 * Mon Nov 26 2012 Jay Dobies <jason.dobies@redhat.com> 2.0.6-0.9.beta
 - 
 
