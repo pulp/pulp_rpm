@@ -10,7 +10,9 @@
 # http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt.
 
 from gettext import gettext as _
+import sys
 
+from pulp.bindings.exceptions import BadRequestException
 from pulp.client.commands.unit import UnitCopyCommand
 from pulp_rpm.common.ids import TYPE_ID_RPM, TYPE_ID_SRPM, TYPE_ID_DRPM, TYPE_ID_ERRATA, TYPE_ID_DISTRO, TYPE_ID_PKG_GROUP, TYPE_ID_PKG_CATEGORY
 
@@ -107,8 +109,18 @@ def _copy(context, type_id, **kwargs):
     to_repo = kwargs['to-repo-id']
     kwargs['type_ids'] = [type_id]
 
-    # If rejected an exception will bubble up and be handled by middleware
-    response = context.server.repo_unit.copy(from_repo, to_repo, **kwargs)
+    # If rejected an exception will bubble up and be handled by middleware.
+    # The only caveat is if the source repo ID is invalid, it will come back
+    # from the server as source_repo_id. The client-side name for this value
+    # is from-repo-id, so do a quick substitution in the exception and then
+    # reraise it for the middleware to handle like normal.
+    try:
+        response = context.server.repo_unit.copy(from_repo, to_repo, **kwargs)
+    except BadRequestException, e:
+        if 'source_repo_id' in e.extra_data.get('property_names', []):
+            e.extra_data['property_names'].remove('source_repo_id')
+            e.extra_data['property_names'].append('from-repo-id')
+        raise e, None, sys.exc_info()[2]
 
     progress_msg = _('Progress on this task can be viewed using the '
                      'commands under "repo tasks".')
