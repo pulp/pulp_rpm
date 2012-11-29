@@ -644,6 +644,10 @@ class YumDistributor(Distributor):
                 self.set_progress("distribution", distro_progress_status, progress_callback)
                 source_path = os.path.join(source_path_dir, dfile['relativepath'])
                 symlink_path = os.path.join(symlink_dir, dfile['relativepath'])
+                if os.path.exists(symlink_path):
+                    # path already exists, skip symlink
+                    distro_progress_status["items_left"] -= 1
+                    continue
                 if not os.path.exists(source_path):
                     msg = "Source path: %s is missing" % source_path
                     errors.append((source_path, symlink_path, msg))
