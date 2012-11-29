@@ -25,39 +25,35 @@ from pulp.common.util import encode_unicode
 from pulp.plugins.conduits.mixins import UnitAssociationCriteria
 import pulp.server.util
 
+
 logger = logging.getLogger(__name__)
 
 
 # TODO: Remove dangling symlinks when remove units is called, or when syncing finds that files have
 #       been removed from the upstream repo
 
-# TODO: Delete the PULP_MANIFEST file after sync.
-
-# Grinder doesn't allow us to get the manifest before downloading content, and it also doesn't allow
-# us to prescribe how the files should be laid out in the fs. We originally designed this module to
-# simply retrieve the files from Grinder and then move them to the final destination path, but that
-# design led to Grinder downloading the entire repository on each run, since there is also no API to
-# tell Grinder which files have already been downloaded. Due to all of these circumstances, we need
-# to have Grinder download the content to the final destination instead of downloading it to a
-# temporary working location. jdob and I talked, and we decided to just hardcode this path for now,
-# and in the future we can reimplement Grinder to work in a more favorable fashion. Hardcoding the
-# path is necessary, because we cannot use init_unit to get the path from Pulp since we need the
-# path before Grinder does anything.
-
 # TODO: Reproduce folder structures that may have been found on the server
 # TODO: optionally delete Units that we have that weren't found in the repo
 # TODO: optionally don't check the checksum and size
+# TODO: Error handling
 def perform_sync(repo, sync_conduit, config):
     """
     Perform the sync operation accoring to the config for the given repo, and return a report. The
     sync progress will be reported through the sync_conduit.
 
-    :rtype: pulp.plugins.model.SyncReport
+    :param sync_conduit: The sync_conduit that gives us access to the local repository
+    :type  sync_conduit: pulp.server.conduits.repo_sync.RepoSyncConduit
+    :param config:       The configuration for the importer
+    :type  config:       pulp.server.plugins.config.PluginCallConfiguration
+    :return:             The sync report
+    :rtype:              pulp.plugins.model.SyncReport
     """
+    # Build the progress report and set it to the running state
     progress_report = SyncProgressReport(sync_conduit)
     progress_report.metadata_state = STATE_RUNNING
     progress_report.modules_state = STATE_RUNNING
 
+    # Cast our config parameters to the correct types and use them to build an ISOBumper
     max_speed = config.get(constants.CONFIG_MAX_SPEED)
     if max_speed is not None:
         max_speed = float(max_speed)
@@ -74,12 +70,13 @@ def perform_sync(repo, sync_conduit, config):
                        proxy_user=config.get(constants.CONFIG_PROXY_USER),
                        proxy_password=config.get(constants.CONFIG_PROXY_PASSWORD))
 
+    # Get the manifest and download the ISOs that we are missing
     manifest = bumper.manifest
     missing_isos = _filter_missing_isos(sync_conduit, manifest)
-    bumper.download_files(missing_isos)
+    new_isos = bumper.download_resources(missing_isos)
 
     # Move the downloaded stuff and junk to the permanent location
-    _create_units(sync_conduit, missing_isos)
+    _create_units(sync_conduit, new_isos)
 
     # Report that we are finished
     progress_report.metadata_state = STATE_COMPLETE
@@ -89,6 +86,22 @@ def perform_sync(repo, sync_conduit, config):
 
 
 def _filter_missing_isos(sync_conduit, manifest):
+    """
+    Use the sync_conduit and the ISOBumper manifest to determine which ISOs are at the feed_url that
+    are not in our local store. Return a subset of the given manifest that represents the missing
+    ISOs. The manifest format is described in the docblock for
+    pulp_rpm.plugins.importers.iso_importer.bumper.ISOBumper.manifest.
+
+    :param sync_conduit: The sync_conduit that gives us access to the local repository
+    :type  sync_conduit: pulp.server.conduits.repo_sync.RepoSyncConduit
+    :param manifest:     A list of dictionaries that describe the ISOs that are available at the
+                         feed_url that we are syncing with
+    :type  manifest:     list
+    :return:             A list of dictionaries that describe the ISOs that we should retrieve from
+                         the feed_url. These dictionaries are in the same format as they were in the
+                         manifest.
+    :rtype:              list
+    """
     def _unit_key_str(unit_key_dict):
         return '%s-%s-%s'%(unit_key_dict['name'], unit_key_dict['checksum_type'],
                            unit_key_dict['checksum'])
@@ -105,37 +118,26 @@ def _filter_missing_isos(sync_conduit, manifest):
     return missing_isos
 
 
-# TODO: Handle Grinder callback. We can probaby make this a function that returns a function so that
-#       we can pass the sync_conduit for reporting.
-def grinder_progress_callback(progress_report):
-    # These are the attributes that the progress_report should have
-    # self.items_total = itemTotal    # Total number of items
-    # self.items_left = itemLeft      # Number of items left to process
-    # self.size_total = sizeTotal     # Total number of bytes 
-    # self.size_left = sizeLeft       # Bytes left to process
-    # self.item_name = itemName       # Name of last item worked on
-    # self.status = status            # Status Message
-    # self.item_type = itemType       # Type of item fetched
-    # self.num_error = 0              # Number of Errors
-    # self.num_success = 0            # Number of Successes
-    # self.num_download = 0           # Number of actual downloads
-    # self.details = {}               # Details about specific file types
-    # self.error_details = []         # Details about specific errors that were observed
-                                      # List of tuples. Tuple format [0] = item info,
-                                      # [1] = exception details
-    # self.step = None
-    pass
+def _create_units(sync_conduit, new_isos):
+    """
+    For each ISO specified in new_isos, create a new Pulp Unit and move the file from its temporary
+    storage location to the storage location specified by the Unit. new_isos is a list of
+    dictionaries that describe the isos that have been downloaded, and is the same format as the
+    return value from pulp_rpm.plugins.importers.iso_importer.bumper.ISOBumper.download_resources.
 
-
-def _create_units(sync_conduit, new_units):
-    for iso in new_units:
+    :param sync_conduit: The sync_conduit that gives us access to the local repository
+    :type  sync_conduit: pulp.server.conduits.repo_sync.RepoSyncConduit
+    :param new_isos:     A list of dictionaries describing the newly downloaded ISOs.
+    :type  new_isos:     list
+    """
+    for iso in new_isos:
         unit_key = {'name': iso['name'], 'checksum_type': iso['checksum_type'],
                     'checksum': iso['checksum']}
         metadata = {'size': iso['size']}
         relative_path = os.path.join(unit_key['checksum_type'], unit_key['checksum'],
                                      unit_key['name'])
         unit = sync_conduit.init_unit(ids.TYPE_ID_ISO, unit_key, metadata, relative_path)
-        # Copy the unit to the storage_path
+        # Move the unit to the storage_path
         temporary_file_location = iso['path']
         permanent_file_location = unit.storage_path
         # We only need to create the permanent location if it isn't already there.
