@@ -24,7 +24,7 @@ sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)) + '/../../extensio
 
 import rpm_support_base
 
-from rpm_admin_consumer import package, group
+from rpm_admin_consumer import package, group, errata
 from pulp.client.extensions.core import TAG_SUCCESS
 from pulp_rpm.common.ids import TYPE_ID_RPM, TYPE_ID_PKG_GROUP
 
@@ -196,6 +196,31 @@ class TestGroups(rpm_support_base.PulpClientTests):
             'importkeys':False,
             'reboot':False,
         }
+        command.run(**args)
+
+        # Verify
+        passed = self.server_mock.request.call_args[0]
+        self.assertEqual('GET', passed[0])
+        self.assertEqual('/pulp/api/v2/tasks/TASK123/', passed[1])
+        tags = self.prompt.get_write_tags()
+        self.assertEqual(5, len(tags))
+        self.assertEqual(tags[0], TAG_SUCCESS)
+
+
+class TestErrata(rpm_support_base.PulpClientTests):
+
+    def test_install(self):
+        # Setup
+        command = errata.Install(self.context)
+        self.server_mock.request = Mock(side_effect=Request('install'))
+        # Test
+        args = {
+            'consumer-id':'xyz',
+            'errata-id':'MY-ERRATA',
+            'no-commit':False,
+            'import-keys':False,
+            'reboot':False,
+            }
         command.run(**args)
 
         # Verify
