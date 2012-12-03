@@ -407,6 +407,16 @@ class YumDistributor(Distributor):
         distro_errors = []
         distro_units =  []
         if 'distribution' not in skip_list:
+            repo_scratchpad = publish_conduit.get_repo_scratchpad()
+            if repo_scratchpad.has_key('orphaned_distribution_paths'):
+                for orphaned_rel_path in repo_scratchpad['orphaned_distribution_paths']:
+                    orphaned_path = os.path.join(repo.working_dir, orphaned_rel_path)
+                    if os.path.islink(orphaned_path):
+                        _LOG.info("cleaning up orphaned distribution path %s" % orphaned_path)
+                        util.remove_symlink(repo.working_dir, orphaned_path)
+                # reset the scratch pad
+                repo_scratchpad['orphaned_distribution_paths'] = []
+                publish_conduit.set_repo_scratchpad(repo_scratchpad)
             criteria = UnitAssociationCriteria(type_ids=TYPE_ID_DISTRO)
             distro_units = publish_conduit.get_units(criteria=criteria)
             # symlink distribution files if any under repo.working_dir

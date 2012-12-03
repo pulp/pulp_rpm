@@ -585,14 +585,21 @@ class ImporterRPM(object):
             _LOG.info("skipping drpm summary report")
 
         if 'distribution' not in skip_content_types:
+            orphaned_distro_paths = []
             for u in distro_info['orphaned_distro_units'].values():
                 try:
+                    files = [f['relativepath'] for f in u.metadata['files']]
                     remove_unit(sync_conduit, u)
+                    orphaned_distro_paths += files
                 except Exception, e:
                     unit_info = str(u.unit_key)
                     _LOG.exception("Unable to remove: %s" % (unit_info))
                     removal_errors.append((unit_info, str(e)))
             orphaned_distros = filter(lambda u: u.type_id == 'distribution', distro_info['orphaned_distro_units'].values())
+            #preserve orphaned paths on scratchpad for clean up
+            existing_scratchpad = sync_conduit.get_repo_scratchpad() or {}
+            existing_scratchpad['orphaned_distribution_paths'] = orphaned_distro_paths
+            sync_conduit.set_repo_scratchpad(existing_scratchpad)
             # filter out distribution specific data if any
             summary["num_synced_new_distributions"] = len(distro_info['new_distro_units'])
             summary["num_synced_new_distributions_files"] = len(all_new_distro_files)
