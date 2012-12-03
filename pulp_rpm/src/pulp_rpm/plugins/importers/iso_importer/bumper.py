@@ -25,6 +25,13 @@ ISO_METADATA_FILENAME = 'PULP_MANIFEST'
 logger = logging.getLogger(__name__)
 
 
+class DownloadValidationError(Exception):
+    """
+    This Exception is raised when a download fails validation.
+    """
+    pass
+
+
 class Bumper(object):
     """
     This is the superclass that type specific Bumpers should subclass. It has basic facilities for
@@ -98,7 +105,7 @@ class Bumper(object):
         downloaded_resources = []
         for resource in resources:
             destination_path = os.path.join(self.working_directory, resource['name'])
-            with open(destination_path, 'w') as destination_file:
+            with open(destination_path, 'wb') as destination_file:
                 self._download_resource(resource, destination_file)
             downloaded_resource = resource
             downloaded_resource['path'] = destination_path
@@ -107,6 +114,9 @@ class Bumper(object):
 
     # TODO: Figure out how to cancel a download
     # http://curl.haxx.se/mail/curlpython-2009-02/0003.html
+    # This details a way we might be able to cancel and also achieve multiple simultaneous
+    # downloads:
+    # http://pycurl.cvs.sourceforge.net/viewvc/pycurl/pycurl/examples/retriever-multi.py?revision=1.29&view=markup
     def _download_resource(self, resource, destination_file):
         """
         Download the given resource and save it to the destination_file. The resource should be a
@@ -139,6 +149,15 @@ class Bumper(object):
             raise exceptions.FileNotFoundException(url)
         elif status != 200:
             raise exceptions.FileRetrievalException(url)
+        _validate_download(resource, destination_file)
+
+
+    def _validate_download(self, resource, destination_file):
+        """
+        This method can be overridden by subclasses to validate the download, if desired. This
+        implementation just passes.
+        """
+        pass
 
 
 class ISOBumper(Bumper):
@@ -188,3 +207,43 @@ class ISOBumper(Bumper):
                                    'size': size, 'url': urljoin(self.feed_url, name)})
 
         return self._manifest
+
+    def _validate_download(self, resource, destination_file):
+        """
+        The PULP_MANIFEST file gives us a checksum for each ISO and its size, which we have access
+        to through the resource parameter. This method validates the destination_file to ensure that
+        the checksum and size match. This method only performs validation if the resource has
+        'checksum' or 'size' attributes. destination_file must be a file-like object, and contains
+        the data to be validated. This method will raise a DownloadValidationException if there is a
+        problem, otherwise it returns silently.
+
+        :param resource:         A dictionary describing the resource that we have downloaded. In
+                                 order for validation to be performed, this must contain 'checksum'
+                                 and/or size attributes.
+        :type  resource:         dict
+        :param destination_file: The file-like object to be validated.
+        :type  destination_file: object
+        """
+        try:
+            starting_position = destination_file.tell()
+
+            # Validate the size, if we know what it should be
+            if hasattr(resource, 'size'):
+                # seek to the end to find the file size with tell()
+                destination_file.seek(0, 2)
+                size = destination_file.tell()
+                if size != resource['size']:
+                    raise DownloadValidationException(_('Downloading <%(name)s> failed validation. '
+                        'The manifest specified that the file should be %(expected)s bytes, but '
+                        'the downloaded file is %(found)s bytes.')%{'name': resource['name'],
+                            'expected': resource['size'], 'found': size})
+
+            # Validate the checksum, if we know what it should be
+            # TODO: Actually do validation with chunking and stuff
+            if hasattr(resource, 'checksum'):
+                hasher = hashlib.sha256()
+                hasher.update()
+                hasher.hexdigest()
+        finally:
+            # be kind, rewind
+            destination_file.seek(starting_position)
