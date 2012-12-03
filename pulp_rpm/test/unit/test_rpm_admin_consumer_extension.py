@@ -220,7 +220,7 @@ class TestErrata(rpm_support_base.PulpClientTests):
             'no-commit':False,
             'import-keys':False,
             'reboot':False,
-            }
+        }
         command.run(**args)
 
         # Verify
