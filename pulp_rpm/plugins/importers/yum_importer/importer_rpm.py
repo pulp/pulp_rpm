@@ -598,7 +598,7 @@ class ImporterRPM(object):
             orphaned_distros = filter(lambda u: u.type_id == 'distribution', distro_info['orphaned_distro_units'].values())
             #preserve orphaned paths on scratchpad for clean up
             existing_scratchpad = sync_conduit.get_repo_scratchpad() or {}
-            existing_scratchpad['orphaned_distribution_paths'] = orphaned_distro_paths
+            existing_scratchpad.update({'orphaned_distribution_paths' : orphaned_distro_paths})
             sync_conduit.set_repo_scratchpad(existing_scratchpad)
             # filter out distribution specific data if any
             summary["num_synced_new_distributions"] = len(distro_info['new_distro_units'])
