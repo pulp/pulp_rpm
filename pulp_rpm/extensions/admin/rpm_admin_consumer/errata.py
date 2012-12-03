@@ -15,7 +15,6 @@
 Contains errata management section and commands.
 """
 
-import time
 from gettext import gettext as _
 from command import PollingCommand
 from pulp.client.extensions.extensions import PulpCliSection
@@ -23,7 +22,7 @@ from pulp.bindings.exceptions import NotFoundException
 from pulp_rpm.extension.admin.content_schedules import (
     ContentListScheduleCommand, ContentCreateScheduleCommand, ContentDeleteScheduleCommand,
     ContentUpdateScheduleCommand, ContentNextRunCommand)
-from pulp_rpm.common.ids import TYPE_ID_ERRATA
+from pulp_rpm.common.ids import TYPE_ID_ERRATA, TYPE_ID_RPM
 
 
 class ErrataSection(PulpCliSection):
@@ -121,31 +120,36 @@ class Install(PollingCommand):
     def succeeded(self, id, task):
         prompt = self.context.prompt
         # reported as failed
-        if not task.result['status']:
-            msg = 'Install failed'
-            details = task.result['details'][TYPE_ID_ERRATA]['details']
-            prompt.render_failure_message(_(msg))
+        # note: actually implemented on the agent as a package install so the
+        # task.result will contain RPM units that failed to be installed or updated.
+        if not task.result['succeeded']:
+            msg = _('Install failed')
+            details = task.result['details'][TYPE_ID_RPM]['details']
+            prompt.render_failure_message(msg)
             prompt.render_failure_message(details['message'])
             return
-        msg = 'Install Succeeded'
-        prompt.render_success_message(_(msg))
+        msg = _('Install Succeeded')
+        prompt.render_success_message(msg)
         # reported as succeeded
-        if task.result['details'].has_key(TYPE_ID_ERRATA):
-            details = task.result['details'][TYPE_ID_ERRATA]['details']
+        # note: actually implemented on the agent as a package install so the
+        # task.result will contain RPM units that were installed or updated
+        # to satisfy the errata.
+        if task.result['details'].has_key(TYPE_ID_RPM):
+            details = task.result['details'][TYPE_ID_RPM]['details']
             filter = ['name', 'version', 'arch', 'repoid']
             resolved = details['resolved']
             if resolved:
-                prompt.render_title('Installed')
+                prompt.render_title(_('Installed'))
                 prompt.render_document_list(
                     resolved,
                     order=filter,
                     filters=filter)
             else:
-                msg = 'Errata installed'
-                prompt.render_success_message(_(msg))
+                msg = _('Errata installed')
+                prompt.render_success_message(msg)
             deps = details['deps']
             if deps:
-                prompt.render_title('Installed for dependency')
+                prompt.render_title(_('Installed for dependency'))
                 prompt.render_document_list(
                     deps,
                     order=filter,
