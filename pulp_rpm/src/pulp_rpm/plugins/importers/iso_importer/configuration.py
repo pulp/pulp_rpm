@@ -29,6 +29,7 @@ def validate(config):
     :rtype:        tuple
     """
     validators = (
+        # TODO: Don't worry about validating feed_url, or maybe a quick regex or something.
         _validate_feed_url,
         _validate_max_speed,
     )
@@ -50,6 +51,7 @@ def _validate_feed_url(config):
     :rtype: tuple
     """
     feed_url = config.get(constants.CONFIG_FEED_URL)
+    # TODO: feed_urls are not required. So don't require them.
     if not feed_url:
         return False, _('<%(feed_url)s> is a required configuration parameter.')%{
             'feed_url': constants.CONFIG_FEED_URL}

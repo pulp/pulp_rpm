@@ -73,6 +73,7 @@ def perform_sync(repo, sync_conduit, config):
     # Get the manifest and download the ISOs that we are missing
     manifest = bumper.manifest
     missing_isos = _filter_missing_isos(sync_conduit, manifest)
+    # TODO: Consider processing each ISO completely instead of downloading them all and them _create_units
     new_isos = bumper.download_resources(missing_isos)
 
     # Move the downloaded stuff and junk to the permanent location
@@ -134,6 +135,7 @@ def _create_units(sync_conduit, new_isos):
         unit_key = {'name': iso['name'], 'checksum_type': iso['checksum_type'],
                     'checksum': iso['checksum']}
         metadata = {'size': iso['size']}
+        # TODO: Put name first
         relative_path = os.path.join(unit_key['checksum_type'], unit_key['checksum'],
                                      unit_key['name'])
         unit = sync_conduit.init_unit(ids.TYPE_ID_ISO, unit_key, metadata, relative_path)
@@ -141,15 +143,5 @@ def _create_units(sync_conduit, new_isos):
         temporary_file_location = iso['path']
         permanent_file_location = unit.storage_path
         # We only need to create the permanent location if it isn't already there.
-        if not os.path.exists(os.path.dirname(permanent_file_location)):
-            try:
-                # Create the destination directory
-                os.makedirs(os.path.dirname(permanent_file_location))
-            except OSError, e:
-                # If we encounter a race where something else creates this directory between our
-                # check for existence and now, we can move on because the path now exists. Otherwise
-                # we need to raise this mammajamma
-                if e.errno != errno.EEXIST:
-                    raise
         shutil.move(temporary_file_location, permanent_file_location)
         unit = sync_conduit.save_unit(unit)

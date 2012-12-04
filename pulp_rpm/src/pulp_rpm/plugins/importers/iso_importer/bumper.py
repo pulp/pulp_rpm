@@ -11,8 +11,10 @@
 # have received a copy of GPLv2 along with this software; if not, see
 # http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt.
 from cStringIO import StringIO
+from gettext import gettext as _
 from urlparse import urljoin
 import csv
+import hashlib
 import logging
 import os
 
@@ -20,6 +22,8 @@ import pycurl
 
 
 ISO_METADATA_FILENAME = 'PULP_MANIFEST'
+# How many bytes we want to read into RAM at a time when validating a download checksum
+VALIDATION_CHUNK_SIZE = 32*1024*1024
 
 
 logger = logging.getLogger(__name__)
@@ -104,8 +108,9 @@ class Bumper(object):
         """
         downloaded_resources = []
         for resource in resources:
+            # Make this overridable by being it's own method
             destination_path = os.path.join(self.working_directory, resource['name'])
-            with open(destination_path, 'wb') as destination_file:
+            with open(destination_path, 'w+b') as destination_file:
                 self._download_resource(resource, destination_file)
             downloaded_resource = resource
             downloaded_resource['path'] = destination_path
@@ -117,6 +122,7 @@ class Bumper(object):
     # This details a way we might be able to cancel and also achieve multiple simultaneous
     # downloads:
     # http://pycurl.cvs.sourceforge.net/viewvc/pycurl/pycurl/examples/retriever-multi.py?revision=1.29&view=markup
+    # TODO: Split Curl creation out into another method
     def _download_resource(self, resource, destination_file):
         """
         Download the given resource and save it to the destination_file. The resource should be a
@@ -129,6 +135,7 @@ class Bumper(object):
         :param destination_file: A file-like object in which to store the resource.
         :type  destination_file: object
         """
+        logger.debug(_('Retrieving %(url)s')%{'url': resource['url']})
         curl = pycurl.Curl()
         curl.setopt(pycurl.VERBOSE, 0)
         # Close out the connection on our end in the event the remote host
@@ -149,7 +156,8 @@ class Bumper(object):
             raise exceptions.FileNotFoundException(url)
         elif status != 200:
             raise exceptions.FileRetrievalException(url)
-        _validate_download(resource, destination_file)
+        # TODO: add pre/post hooks stuff
+        self._validate_download(resource, destination_file)
 
 
     def _validate_download(self, resource, destination_file):
@@ -157,6 +165,7 @@ class Bumper(object):
         This method can be overridden by subclasses to validate the download, if desired. This
         implementation just passes.
         """
+        logger.debug('Wrong method.')
         pass
 
 
@@ -167,6 +176,8 @@ class ISOBumper(Bumper):
     manifest interface for you to inspect the available units, and also provides facilities for you
     to specify which units you would like it to retrieve and where you would like it to place them.
     """
+    # TODO: Make this not a property
+    # TODO: Remove caching
     @property
     def manifest(self):
         """
@@ -204,7 +215,7 @@ class ISOBumper(Bumper):
             name, checksum, size = unit
             # TODO: Is the checksum type correct?
             self._manifest.append({'name': name, 'checksum': checksum, 'checksum_type': 'sha256',
-                                   'size': size, 'url': urljoin(self.feed_url, name)})
+                                   'size': int(size), 'url': urljoin(self.feed_url, name)})
 
         return self._manifest
 
@@ -224,26 +235,31 @@ class ISOBumper(Bumper):
         :param destination_file: The file-like object to be validated.
         :type  destination_file: object
         """
-        try:
-            starting_position = destination_file.tell()
+        logger.debug('Validating %s'%resource)
+        # Validate the size, if we know what it should be
+        if 'size' in resource:
+            # seek to the end to find the file size with tell()
+            destination_file.seek(0, 2)
+            size = destination_file.tell()
+            logger.debug('Validating that the download size is %s'%resource['size'])
+            if size != resource['size']:
+                raise DownloadValidationError(_('Downloading <%(name)s> failed validation. '
+                    'The manifest specified that the file should be %(expected)s bytes, but '
+                    'the downloaded file is %(found)s bytes.')%{'name': resource['name'],
+                        'expected': resource['size'], 'found': size})
 
-            # Validate the size, if we know what it should be
-            if hasattr(resource, 'size'):
-                # seek to the end to find the file size with tell()
-                destination_file.seek(0, 2)
-                size = destination_file.tell()
-                if size != resource['size']:
-                    raise DownloadValidationException(_('Downloading <%(name)s> failed validation. '
-                        'The manifest specified that the file should be %(expected)s bytes, but '
-                        'the downloaded file is %(found)s bytes.')%{'name': resource['name'],
-                            'expected': resource['size'], 'found': size})
-
-            # Validate the checksum, if we know what it should be
-            # TODO: Actually do validation with chunking and stuff
-            if hasattr(resource, 'checksum'):
-                hasher = hashlib.sha256()
-                hasher.update()
-                hasher.hexdigest()
-        finally:
-            # be kind, rewind
-            destination_file.seek(starting_position)
+        # Validate the checksum, if we know what it should be
+        # TODO: Actually do validation with chunking and stuff
+        if 'checksum' in resource:
+            logger.debug('Validating that the checksum is %s'%resource['checksum'])
+            destination_file.seek(0)
+            hasher = hashlib.sha256()
+            logger.debug("destination_file.closed: %s"%destination_file.closed)
+            bits = destination_file.read(VALIDATION_CHUNK_SIZE)
+            while bits:
+                hasher.update(bits)
+                bits = destination_file.read(VALIDATION_CHUNK_SIZE)
+            # Verify that, son!
+            if hasher.hexdigest() != resource['checksum']:
+                raise DownloadValidationError(_('Downloading <%(name)s failed checksum validation.')%{
+                                                    'name': resource['name']})
