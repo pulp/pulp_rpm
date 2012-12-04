@@ -15,11 +15,11 @@ import glob
 import os
 import sys
 import mock
-import unittest
+import shutil
 import tempfile
 
-sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)) + "/../../../src/")
 sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)) + "/../../../plugins/importers/")
+
 import importer_mocks
 import rpm_support_base
 from yum_importer import importer_rpm, distribution
@@ -38,6 +38,7 @@ class TestDistribution(rpm_support_base.PulpRPMTests):
 
     def tearDown(self):
         super(TestDistribution, self).tearDown()
+        shutil.rmtree(self.temp_dir)
 
     def test_metadata(self):
         metadata = YumImporter.metadata()
