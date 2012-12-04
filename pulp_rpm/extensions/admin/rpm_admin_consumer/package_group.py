@@ -25,36 +25,36 @@ from pulp_rpm.extension.admin.content_schedules import (
 from pulp_rpm.common.ids import TYPE_ID_PKG_GROUP
 
 
-class GroupSection(PulpCliSection):
+class PackageGroupSection(PulpCliSection):
 
     def __init__(self, context):
         super(self.__class__, self).__init__(
             'package-group',
             _('package-group installation management'))
-        for Section in (InstallSection, UninstallSection):
+        for Section in (PackageGroupInstallSection, PackageGroupUninstallSection):
             self.add_subsection(Section(context))
 
-class InstallSection(PulpCliSection):
+class PackageGroupInstallSection(PulpCliSection):
 
     def __init__(self, context):
         super(self.__class__, self).__init__(
             'install',
             _('run or schedule a package-group installation task'))
 
-        self.add_subsection(SchedulesSection(context, 'install'))
-        self.add_command(Install(context))
+        self.add_subsection(PackageGroupSchedulesSection(context, 'install'))
+        self.add_command(PackageGroupInstallCommand(context))
 
-class UninstallSection(PulpCliSection):
+class PackageGroupUninstallSection(PulpCliSection):
 
     def __init__(self, context):
         super(self.__class__, self).__init__(
             'uninstall',
             _('run or schedule a package-group removal task'))
 
-        self.add_subsection(SchedulesSection(context, 'uninstall'))
-        self.add_command(Uninstall(context))
+        self.add_subsection(PackageGroupSchedulesSection(context, 'uninstall'))
+        self.add_command(PackageGroupUninstallCommand(context))
 
-class SchedulesSection(PulpCliSection):
+class PackageGroupSchedulesSection(PulpCliSection):
     def __init__(self, context, action):
         super(self.__class__, self).__init__(
             'schedules',
@@ -65,7 +65,7 @@ class SchedulesSection(PulpCliSection):
         self.add_command(ContentUpdateScheduleCommand(context, action))
         self.add_command(ContentNextRunCommand(context, action))
 
-class Install(PollingCommand):
+class PackageGroupInstallCommand(PollingCommand):
 
     def __init__(self, context):
         super(self.__class__, self).__init__(
@@ -161,7 +161,7 @@ class Install(PollingCommand):
                 filters=filter)
 
 
-class Uninstall(PollingCommand):
+class PackageGroupUninstallCommand(PollingCommand):
 
     def __init__(self, context):
         super(self.__class__, self).__init__(
