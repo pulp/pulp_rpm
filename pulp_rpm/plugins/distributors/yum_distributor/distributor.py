@@ -700,7 +700,7 @@ class YumDistributor(Distributor):
                     if os.path.islink(orphaned_path):
                         _LOG.debug("cleaning up orphaned distribution path %s" % orphaned_path)
                         util.remove_symlink(repo_working_dir, orphaned_path)
-                    # remove the 
+                    # remove the cleaned up distroid from scratchpad
                 del scratchpad[constants.PUBLISHED_DISTRIBUTION_FILES_KEY][distroid]
         return scratchpad
 
