@@ -24,6 +24,7 @@ from pulp_rpm.common.ids import TYPE_ID_DISTRO, TYPE_ID_DRPM, TYPE_ID_ERRATA, TY
         TYPE_ID_RPM, TYPE_ID_SRPM, TYPE_ID_DISTRIBUTOR_YUM
 from pulp_rpm.yum_plugin import comps_util, util, metadata, updateinfo
 from pulp_rpm.repo_auth import protected_repo_utils, repo_cert_utils
+import pulp_rpm.common.constants as constants
 
 # -- constants ----------------------------------------------------------------
 
@@ -678,7 +679,7 @@ class YumDistributor(Distributor):
                     distro_progress_status["items_left"] -= 1
                     continue
                 distro_progress_status["items_left"] -= 1
-            scratchpad.update({'published_distributions' : {u.id : published_distro_files}})
+            scratchpad.update({constants.PUBLISHED_DISTRIBUTION_FILES_KEY : {u.id : published_distro_files}})
         publish_conduit.set_scratchpad(scratchpad)
         if errors:
             distro_progress_status["error_details"] = errors
@@ -691,7 +692,7 @@ class YumDistributor(Distributor):
 
     def _handle_orphaned_distributions(self, units, repo_working_dir, scratchpad):
         distro_unit_ids = [u.id for u in units]
-        published_distro_units = scratchpad.get('published_distributions', [])
+        published_distro_units = scratchpad.get(constants.PUBLISHED_DISTRIBUTION_FILES_KEY, [])
         for distroid in published_distro_units:
             if distroid not in distro_unit_ids:
                 # distro id on scratchpad not in the repo; remove the associated symlinks
@@ -700,7 +701,7 @@ class YumDistributor(Distributor):
                         _LOG.debug("cleaning up orphaned distribution path %s" % orphaned_path)
                         util.remove_symlink(repo_working_dir, orphaned_path)
                     # remove the 
-                del scratchpad['published_distributions'][distroid]
+                del scratchpad[constants.PUBLISHED_DISTRIBUTION_FILES_KEY][distroid]
         return scratchpad
 
     def create_consumer_payload(self, repo, config):
