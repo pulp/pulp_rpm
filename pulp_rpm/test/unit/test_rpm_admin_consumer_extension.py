@@ -24,7 +24,7 @@ sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)) + '/../../extensio
 
 import rpm_support_base
 
-from rpm_admin_consumer import package, group
+from rpm_admin_consumer import package, package_group
 from pulp.client.extensions.core import TAG_SUCCESS
 from pulp_rpm.common.ids import TYPE_ID_RPM, TYPE_ID_PKG_GROUP
 
@@ -164,7 +164,7 @@ class TestGroups(rpm_support_base.PulpClientTests):
 
     def test_install(self):
         # Setup
-        command = group.Install(self.context)
+        command = package_group.PackageGroupInstallCommand(self.context)
         self.server_mock.request = Mock(side_effect=Request('install'))
         # Test
         args = {
@@ -186,7 +186,7 @@ class TestGroups(rpm_support_base.PulpClientTests):
 
     def test_uninstall(self):
         # Setup
-        command = group.Uninstall(self.context)
+        command = package_group.PackageGroupUninstallCommand(self.context)
         self.server_mock.request = Mock(side_effect=Request('uninstall'))
         # Test
         args = {
