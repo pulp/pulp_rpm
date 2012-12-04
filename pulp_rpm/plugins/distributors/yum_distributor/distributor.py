@@ -24,6 +24,7 @@ from pulp_rpm.common.ids import TYPE_ID_DISTRO, TYPE_ID_DRPM, TYPE_ID_ERRATA, TY
         TYPE_ID_RPM, TYPE_ID_SRPM, TYPE_ID_DISTRIBUTOR_YUM
 from pulp_rpm.yum_plugin import comps_util, util, metadata, updateinfo
 from pulp_rpm.repo_auth import protected_repo_utils, repo_cert_utils
+import pulp_rpm.common.constants as constants
 
 # -- constants ----------------------------------------------------------------
 
@@ -410,7 +411,7 @@ class YumDistributor(Distributor):
             criteria = UnitAssociationCriteria(type_ids=TYPE_ID_DISTRO)
             distro_units = publish_conduit.get_units(criteria=criteria)
             # symlink distribution files if any under repo.working_dir
-            distro_status, distro_errors = self.symlink_distribution_unit_files(distro_units, repo.working_dir, progress_callback)
+            distro_status, distro_errors = self.symlink_distribution_unit_files(distro_units, repo.working_dir, publish_conduit, progress_callback)
             if not distro_status:
                 _LOG.error("Unable to publish distribution tree %s items" % (len(distro_errors)))
 
@@ -608,7 +609,7 @@ class YumDistributor(Distributor):
         _LOG.info("Copied repodata from %s to %s" % (src_working_dir, tgt_working_dir))
         return True
 
-    def symlink_distribution_unit_files(self, units, symlink_dir, progress_callback=None):
+    def symlink_distribution_unit_files(self, units, symlink_dir, publish_conduit, progress_callback=None):
         """
         Publishing distriubution unit involves publishing files underneath the unit.
         Distribution is an aggregate unit with distribution files. This call
@@ -630,6 +631,9 @@ class YumDistributor(Distributor):
         distro_progress_status = self.init_progress()
         self.set_progress("distribution", distro_progress_status, progress_callback)
         _LOG.debug("Process symlinking distribution files with %s units to %s dir" % (len(units), symlink_dir))
+        # handle orphaned
+        existing_scratchpad = publish_conduit.get_scratchpad() or {}
+        scratchpad = self._handle_orphaned_distributions(units, symlink_dir, existing_scratchpad)
         errors = []
         for u in units:
             source_path_dir  = u.storage_path
@@ -640,6 +644,7 @@ class YumDistributor(Distributor):
             _LOG.debug("Found %s distribution files to symlink" % len(distro_files))
             distro_progress_status['items_total'] = len(distro_files)
             distro_progress_status['items_left'] = len(distro_files)
+            published_distro_files = []
             for dfile in distro_files:
                 self.set_progress("distribution", distro_progress_status, progress_callback)
                 source_path = os.path.join(source_path_dir, dfile['relativepath'])
@@ -647,6 +652,7 @@ class YumDistributor(Distributor):
                 if os.path.exists(symlink_path):
                     # path already exists, skip symlink
                     distro_progress_status["items_left"] -= 1
+                    published_distro_files.append(symlink_path)
                     continue
                 if not os.path.exists(source_path):
                     msg = "Source path: %s is missing" % source_path
@@ -663,6 +669,7 @@ class YumDistributor(Distributor):
                         distro_progress_status["items_left"] -= 1
                         continue
                     distro_progress_status['num_success'] += 1
+                    published_distro_files.append(symlink_path)
                 except Exception, e:
                     tb_info = traceback.format_exc()
                     _LOG.error("%s" % tb_info)
@@ -672,6 +679,8 @@ class YumDistributor(Distributor):
                     distro_progress_status["items_left"] -= 1
                     continue
                 distro_progress_status["items_left"] -= 1
+            scratchpad.update({constants.PUBLISHED_DISTRIBUTION_FILES_KEY : {u.id : published_distro_files}})
+        publish_conduit.set_scratchpad(scratchpad)
         if errors:
             distro_progress_status["error_details"] = errors
             distro_progress_status["state"] = "FAILED"
@@ -680,6 +689,20 @@ class YumDistributor(Distributor):
         distro_progress_status["state"] = "FINISHED"
         self.set_progress("distribution", distro_progress_status, progress_callback)
         return True, []
+
+    def _handle_orphaned_distributions(self, units, repo_working_dir, scratchpad):
+        distro_unit_ids = [u.id for u in units]
+        published_distro_units = scratchpad.get(constants.PUBLISHED_DISTRIBUTION_FILES_KEY, [])
+        for distroid in published_distro_units:
+            if distroid not in distro_unit_ids:
+                # distro id on scratchpad not in the repo; remove the associated symlinks
+                for orphaned_path in published_distro_units[distroid]:
+                    if os.path.islink(orphaned_path):
+                        _LOG.debug("cleaning up orphaned distribution path %s" % orphaned_path)
+                        util.remove_symlink(repo_working_dir, orphaned_path)
+                    # remove the cleaned up distroid from scratchpad
+                del scratchpad[constants.PUBLISHED_DISTRIBUTION_FILES_KEY][distroid]
+        return scratchpad
 
     def create_consumer_payload(self, repo, config):
         payload = {}
