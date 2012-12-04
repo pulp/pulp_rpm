@@ -16,7 +16,7 @@ from pulp.client.commands.unit import UnitRemoveCommand
 
 from pulp_rpm.common.ids import (TYPE_ID_RPM, TYPE_ID_SRPM, TYPE_ID_DRPM,
                                  TYPE_ID_ERRATA, TYPE_ID_PKG_GROUP,
-                                 TYPE_ID_PKG_CATEGORY)
+                                 TYPE_ID_PKG_CATEGORY, TYPE_ID_DISTRO)
 
 # -- constants ----------------------------------------------------------------
 
@@ -26,6 +26,7 @@ DESC_DRPM = _('remove DRPMs from a repository')
 DESC_ERRATA = _('remove errata from a repository')
 DESC_GROUP = _('remove package groups from a repository')
 DESC_CATEGORY = _('remove package categories from a repository')
+DESC_DISTRIBUTION = _('remove distributions from a repository')
 
 # -- commands -----------------------------------------------------------------
 
@@ -101,3 +102,9 @@ class PackageCategoryRemoveCommand(_BaseRemoveCommand):
     def __init__(self, context):
         super(PackageCategoryRemoveCommand, self).__init__(context, 'category',
                                                            DESC_CATEGORY, TYPE_ID_PKG_CATEGORY)
+
+class DistributionRemoveCommand(_BaseRemoveCommand):
+
+    def __init__(self, context):
+        super(DistributionRemoveCommand, self).__init__(context, 'distribution',
+                                                           DESC_DISTRIBUTION, TYPE_ID_DISTRO)
