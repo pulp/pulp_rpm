@@ -51,6 +51,12 @@ def get_publish_conduit(type_id=None, existing_units=None, pkg_dir=None, checksu
 
         return scratchpad
 
+    def get_scratchpad():
+        scratchpad = None
+        if checksum_type:
+            scratchpad = {"checksum_type" : checksum_type, 'published_distributions' : {}}
+        return scratchpad
+
     publish_conduit = mock.Mock(spec=RepoPublishConduit)
     publish_conduit.get_units = mock.Mock()
     publish_conduit.get_units.side_effect = get_units
@@ -60,6 +66,8 @@ def get_publish_conduit(type_id=None, existing_units=None, pkg_dir=None, checksu
     publish_conduit.build_success_report = build_success_report
     publish_conduit.get_repo_scratchpad = mock.Mock()
     publish_conduit.get_repo_scratchpad.side_effect = get_repo_scratchpad
+    publish_conduit.get_scratchpad = mock.Mock()
+    publish_conduit.get_scratchpad.side_effect = get_scratchpad
     return publish_conduit
 
 
