@@ -14,6 +14,7 @@
 from ConfigParser import SafeConfigParser
 import gettext
 import os
+import re
 import shutil
 import time
 import traceback
@@ -39,6 +40,7 @@ SUPPORTED_UNIT_TYPES = [TYPE_ID_RPM, TYPE_ID_SRPM, TYPE_ID_DRPM, TYPE_ID_DISTRO]
 HTTP_PUBLISH_DIR="/var/lib/pulp/published/http/repos"
 HTTPS_PUBLISH_DIR="/var/lib/pulp/published/https/repos"
 CONFIG_REPO_AUTH="/etc/pulp/repo_auth.conf"
+
 ###
 # Config Options Explained
 ###
@@ -86,6 +88,19 @@ class YumDistributor(Distributor):
         }
 
     def validate_config(self, repo, config, related_repos):
+        """
+        Validate the distributor config. A tuple of status, msg will be returned. Status indicates success or failure
+        with True/False values, and in the event of failure, msg will contain an error message.
+
+        :param repo:          The repo that the config is for
+        :type  repo:          pulp.server.db.model.repository.Repo
+        :param config:        The configuration to be validated
+        :type  config:        pulp.server.content.plugins.config.PluginCallConfiguration
+        :param related_repos: Repositories that are related to repo
+        :type  related_repos: list
+        :return:              tuple of status, message
+        :rtype:               tuple
+        """
         _LOG.info("validate_config invoked, config values are: %s" % (config.repo_plugin_config))
         auth_cert_bundle = {}
         for key in REQUIRED_CONFIG_KEYS:
@@ -96,10 +111,15 @@ class YumDistributor(Distributor):
                 return False, msg
             if key == 'relative_url':
                 relative_path = config.get('relative_url')
-                if relative_path is not None and not isinstance(relative_path, basestring):
-                    msg = _("relative_url should be a basestring; got %s instead" % relative_path)
-                    _LOG.error(msg)
-                    return False, msg
+                if relative_path is not None:
+                    if not isinstance(relative_path, basestring):
+                        msg = _("relative_url should be a basestring; got %s instead" % relative_path)
+                        _LOG.error(msg)
+                        return False, msg
+                    if re.match('[^a-zA-Z0-9/_-]+', relative_path):
+                        msg = _('relative_url must contain only alphanumerics, underscores, and dashes.')
+                        _LOG.error(msg)
+                        return False, msg
             if key == 'http':
                 config_http = config.get('http')
                 if config_http is not None and not isinstance(config_http, bool):
