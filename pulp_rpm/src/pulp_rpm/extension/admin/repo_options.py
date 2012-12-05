@@ -147,8 +147,8 @@ d = _('if "true", on each successful sync the repository will automatically be '
       'defaults to "true"')
 OPT_AUTO_PUBLISH = PulpCliOption('--auto-publish', d, required=False, parse_func=parsers.parse_boolean)
 
-d = _('relative path the repository will be served from; defaults to relative '
-      'path of the feed URL')
+d = _('relative path the repository will be served from. Only alphanumeric characters, forward slashes, underscores '
+      'and dashes are allowed. It defaults to the relative path of the feed URL')
 OPT_RELATIVE_URL = PulpCliOption('--relative-url', d, required=False)
 
 d = _('if "true", the repository will be served over HTTP; defaults to false')
