@@ -40,6 +40,7 @@ SUPPORTED_UNIT_TYPES = [TYPE_ID_RPM, TYPE_ID_SRPM, TYPE_ID_DRPM, TYPE_ID_DISTRO]
 HTTP_PUBLISH_DIR="/var/lib/pulp/published/http/repos"
 HTTPS_PUBLISH_DIR="/var/lib/pulp/published/https/repos"
 CONFIG_REPO_AUTH="/etc/pulp/repo_auth.conf"
+
 ###
 # Config Options Explained
 ###
@@ -115,7 +116,7 @@ class YumDistributor(Distributor):
                         msg = _("relative_url should be a basestring; got %s instead" % relative_path)
                         _LOG.error(msg)
                         return False, msg
-                    if re.match('[^a-zA-Z0-9_-]+', relative_path):
+                    if re.match('[^a-zA-Z0-9/_-]+', relative_path):
                         msg = _('relative_url must contain only alphanumerics, underscores, and dashes.')
                         _LOG.error(msg)
                         return False, msg

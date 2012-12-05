@@ -65,6 +65,12 @@ class TestValidateConfig(rpm_support_base.PulpRPMTests):
         state, msg = self.distributor.validate_config(self.repo, config, [])
         self.assertTrue(state)
 
+        # relative_url should be allowed to have a forward slash character
+        relative_url = "/jdob/repos/awesome-repo"
+        config = distributor_mocks.get_basic_config(relative_url=relative_url, http=http, https=https)
+        state, msg = self.distributor.validate_config(self.repo, config, [])
+        self.assertTrue(state)
+
     def test_config_http(self):
 
         http = "true"
