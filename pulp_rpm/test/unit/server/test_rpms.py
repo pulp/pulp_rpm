@@ -533,11 +533,9 @@ class TestRPMs(rpm_support_base.PulpRPMTests):
                     importer_rpm.form_rpm_unit_key(rpm), 
                     importer_rpm.form_rpm_metadata(rpm),
                     rpm_save_path)
-            importer_rpm.remove_unit(sync_conduit, repo, unit)
-            self.assertFalse(os.path.exists(rpm_save_path))
-            self.assertFalse(os.path.exists(symlink_save_path))
-        self.assertEquals(len(self.get_files_in_dir("*.rpm", self.pkg_dir)), 0)
-        self.assertEquals(len(self.get_files_in_dir("*.rpm", repo.working_dir)), 0)
+            importer_rpm.remove_unit(sync_conduit, unit)
+            self.assertTrue(os.path.exists(rpm_save_path))
+            self.assertTrue(os.path.exists(symlink_save_path))
 
     def test_remove_old_packages(self):
         feed_url = "http://jmatthews.fedorapeople.org/repo_multiple_versions/"
@@ -581,8 +579,6 @@ class TestRPMs(rpm_support_base.PulpRPMTests):
         self.assertEquals(summary["num_orphaned_rpms"], 5)
         self.assertEquals(summary["num_synced_new_rpms"], 0)
         self.assertEquals(summary["num_not_synced_rpms"], 0)
-        pkgs = self.get_files_in_dir("*.rpm", self.pkg_dir)
-        self.assertEquals(len(pkgs), 7)
 
         config = importer_mocks.get_basic_config(feed_url=feed_url, remove_old=True, num_old_packages=0)
         importerRPM = importer_rpm.ImporterRPM()
@@ -592,8 +588,6 @@ class TestRPMs(rpm_support_base.PulpRPMTests):
         self.assertEquals(summary["num_orphaned_rpms"], 11)
         self.assertEquals(summary["num_synced_new_rpms"], 0)
         self.assertEquals(summary["num_not_synced_rpms"], 0)
-        pkgs = self.get_files_in_dir("*.rpm", self.pkg_dir)
-        self.assertEquals(len(pkgs), 1)
 
     def test_srpm_sync(self):
         feed_url = "http://pkilambi.fedorapeople.org/test_srpm_repo/"
