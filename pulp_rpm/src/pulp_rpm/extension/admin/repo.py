@@ -110,6 +110,9 @@ class RpmRepoCreateCommand(CreateRepositoryCommand):
         # it is derived from the feed_url
         if 'relative_url' not in yum_distributor_config:
             if 'feed_url' in importer_config:
+                if importer_config['feed_url'] is None:
+                    self.prompt.render_failure_message(_('Given repository feed URL is invalid.'))
+                    return
                 url_parse = urlparse(encode_unicode(importer_config['feed_url']))
 
                 if url_parse[2] in ('', '/'):
