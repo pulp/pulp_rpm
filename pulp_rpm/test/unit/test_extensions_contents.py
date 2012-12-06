@@ -12,7 +12,7 @@
 # http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt.
 
 import mock
-from pulp.client.commands.criteria import UnitAssociationCriteriaCommand
+from pulp.client.commands.criteria import DisplayUnitAssociationsCommand
 
 from pulp_rpm.extension.admin import contents
 from rpm_support_base import PulpClientTests
@@ -78,7 +78,7 @@ class TestContentCommand(PulpClientTests):
 
         contents._content_command(
             self.context, ['rpm'], **{'repo-id':'repo1', 'limit':1,
-            UnitAssociationCriteriaCommand.ASSOCIATION_FLAG.keyword:True}
+            DisplayUnitAssociationsCommand.ASSOCIATION_FLAG.keyword:True}
         )
 
         # make sure we get the unit and association data
@@ -95,18 +95,18 @@ class TestRPMsCommand(PulpClientTests):
 
     @mock.patch.object(contents, '_content_command')
     def test_basic_call(self, mock_content_command):
-        self.command.rpm(**{UnitAssociationCriteriaCommand.ASSOCIATION_FLAG.keyword: False})
+        self.command.rpm(**{DisplayUnitAssociationsCommand.ASSOCIATION_FLAG.keyword: False})
 
         # make sure it calls the generic command
         self.assertEqual(mock_content_command.call_count, 1)
         self.assertEqual(mock_content_command.call_args[0][1], [contents.TYPE_RPM])
         self.assertEqual(
-            mock_content_command.call_args[1][UnitAssociationCriteriaCommand.ASSOCIATION_FLAG.keyword],
+            mock_content_command.call_args[1][DisplayUnitAssociationsCommand.ASSOCIATION_FLAG.keyword],
             False)
 
     @mock.patch.object(contents, '_content_command')
     def test_out_func_details_false(self, mock_content_command):
-        self.command.rpm(**{UnitAssociationCriteriaCommand.ASSOCIATION_FLAG.keyword: False})
+        self.command.rpm(**{DisplayUnitAssociationsCommand.ASSOCIATION_FLAG.keyword: False})
 
         # just using the mock to get our hands on the out_func
         out_func = mock_content_command.call_args[1]['out_func']
@@ -119,7 +119,7 @@ class TestRPMsCommand(PulpClientTests):
 
     @mock.patch.object(contents, '_content_command')
     def test_out_func_details_true(self, mock_content_command):
-        self.command.rpm(**{UnitAssociationCriteriaCommand.ASSOCIATION_FLAG.keyword: True})
+        self.command.rpm(**{DisplayUnitAssociationsCommand.ASSOCIATION_FLAG.keyword: True})
 
         # just using the mock to get our hands on the out_func
         out_func = mock_content_command.call_args[1]['out_func']
