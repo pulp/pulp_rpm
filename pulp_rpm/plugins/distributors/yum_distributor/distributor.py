@@ -20,6 +20,7 @@ import time
 import traceback
 
 from pulp.plugins.distributor import Distributor
+from pulp.server.config import config as pulp_server_config
 from pulp.server.db.model.criteria import UnitAssociationCriteria
 from pulp_rpm.common.ids import TYPE_ID_DISTRO, TYPE_ID_DRPM, TYPE_ID_ERRATA, TYPE_ID_PKG_GROUP, TYPE_ID_PKG_CATEGORY,\
         TYPE_ID_RPM, TYPE_ID_SRPM, TYPE_ID_DISTRIBUTOR_YUM
@@ -727,16 +728,15 @@ class YumDistributor(Distributor):
     def create_consumer_payload(self, repo, config):
         payload = {}
         ##TODO for jdob: load the pulp.conf and make it accessible to distributor
-        pulp_conf = load_config(config_file="/etc/pulp/server.conf")
         payload['repo_name'] = repo.display_name
-        payload['server_name'] = pulp_conf.get('server', 'server_name')
-        ssl_ca_path = pulp_conf.get('security', 'ssl_ca_certificate')
+        payload['server_name'] = pulp_server_config.get('server', 'server_name')
+        ssl_ca_path = pulp_server_config.get('security', 'ssl_ca_certificate')
         if os.path.exists(ssl_ca_path):
-            payload['ca_cert'] = open(pulp_conf.get('security', 'ssl_ca_certificate')).read()
+            payload['ca_cert'] = open(pulp_server_config.get('security', 'ssl_ca_certificate')).read()
         else:
             payload['ca_cert'] = config.get('https_ca')
         payload['relative_path'] = \
-            '/'.join((pulp_conf.get('server', 'relative_url'),
+            '/'.join((pulp_server_config.get('server', 'relative_url'),
                       self.get_repo_relative_path(repo, config)))
         payload['protocols'] = []
         if config.get('http'):
