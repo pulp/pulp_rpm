@@ -18,7 +18,7 @@
 
 Name: pulp-rpm
 Version: 2.0.6
-Release: 0.11.beta
+Release: 0.12.beta
 Summary: Support for RPM content in the Pulp platform
 Group: Development/Languages
 License: GPLv2
@@ -255,6 +255,24 @@ A collection of yum plugins supplementing Pulp consumer operations.
 
 
 %changelog
+* Thu Dec 06 2012 Jeff Ortel <jortel@redhat.com> 2.0.6-0.12.beta
+- 881355 - fixed errata install CLI result parsing. (jortel@redhat.com)
+- 882421 - moving remove() method into the platform library so it can be used
+  by other extension families (mhrivnak@redhat.com)
+- 874241 - Alter the CLI help text to specify that relative_urls must match our
+  regex. (rbarlow@redhat.com)
+- 874241 - Allow relative URLs to have the forward slash character.
+  (rbarlow@redhat.com)
+- 874241 - Only allow alphanumerics, underscores, and dashes in the
+  relative_url. (rbarlow@redhat.com)
+- 876637 - adding validation for empty feed url (skarmark@redhat.com)
+- 881932 - updated bind/unbind output. (jortel@redhat.com)
+- 880441 - Ported over group commands from builtins (temporary hack for 2.0)
+  (jason.dobies@redhat.com)
+- 880391 - added remove distribution cli command (skarmark@redhat.com)
+- 877161 - importer side of changes to orphan distribution units
+  (pkilambi@redhat.com)
+
 * Thu Nov 29 2012 Jeff Ortel <jortel@redhat.com> 2.0.6-0.11.beta
 - 
 
