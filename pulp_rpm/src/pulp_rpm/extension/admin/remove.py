@@ -67,11 +67,11 @@ class PackageGroupRemoveCommand(UnitRemoveCommand):
 class PackageCategoryRemoveCommand(UnitRemoveCommand):
 
     def __init__(self, context):
-        super(PackageCategoryRemoveCommand, self).__init__(context, 'category',
-                                                           DESC_CATEGORY, TYPE_ID_PKG_CATEGORY)
+        super(PackageCategoryRemoveCommand, self).__init__(
+                context, name='category', description=DESC_CATEGORY, type_id=TYPE_ID_PKG_CATEGORY)
 
 class DistributionRemoveCommand(UnitRemoveCommand):
 
     def __init__(self, context):
-        super(DistributionRemoveCommand, self).__init__(context, 'distribution',
-                                                           DESC_DISTRIBUTION, TYPE_ID_DISTRO)
+        super(DistributionRemoveCommand, self).__init__(
+                context, name='distribution', description=DESC_DISTRIBUTION, type_id=TYPE_ID_DISTRO)
