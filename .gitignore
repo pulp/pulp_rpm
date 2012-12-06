@@ -26,6 +26,9 @@ pip-log.txt
 #Mr Developer
 .mr.developer.cfg
 
+# Ninja IDE
+*.nja
+
 # PyCharm
 .idea
 cover

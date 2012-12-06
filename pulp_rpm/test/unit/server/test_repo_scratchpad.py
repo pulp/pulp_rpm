@@ -11,12 +11,13 @@
 # have received a copy of GPLv2 along with this software; if not, see
 # http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt.
 import os
+import shutil
 import sys
 import mock
 import unittest
 import tempfile
 sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)) + "/../../../src/")
-sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)) + "/../../plugins/importers/")
+sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)) + "/../../../plugins/importers/")
 sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)) + "/../../common")
 
 import importer_mocks
@@ -35,6 +36,10 @@ class TestRepoScratchpad(rpm_support_base.PulpRPMTests):
 
     def tearDown(self):
         super(TestRepoScratchpad, self).tearDown()
+        self.clean()
+
+    def clean(self):
+        shutil.rmtree(self.temp_dir)
 
     def test_repo_scratchpad_settings(self):
         global repo_scratchpad
