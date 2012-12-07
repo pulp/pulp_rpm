@@ -18,7 +18,7 @@
 
 Name: pulp-rpm
 Version: 2.0.6
-Release: 0.12.beta
+Release: 0.13.beta
 Summary: Support for RPM content in the Pulp platform
 Group: Development/Languages
 License: GPLv2
@@ -255,6 +255,9 @@ A collection of yum plugins supplementing Pulp consumer operations.
 
 
 %changelog
+* Fri Dec 07 2012 Jeff Ortel <jortel@redhat.com> 2.0.6-0.13.beta
+- 
+
 * Thu Dec 06 2012 Jeff Ortel <jortel@redhat.com> 2.0.6-0.12.beta
 - 881355 - fixed errata install CLI result parsing. (jortel@redhat.com)
 - 882421 - moving remove() method into the platform library so it can be used
