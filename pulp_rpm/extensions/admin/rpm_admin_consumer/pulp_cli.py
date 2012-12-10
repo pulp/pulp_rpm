@@ -19,9 +19,11 @@ import basics
 from consumer_group_bind import (ConsumerGroupBindCommand,
                                  ConsumerGroupUnbindCommand)
 from consumer_group_package import ConsumerGroupPackageSection
+import consumer_group_cudl
+import consumer_group_members
 from bind import BindCommand, UnbindCommand
 from errata import ErrataSection
-from group import GroupSection
+from package_group import PackageGroupSection
 from package import PackageSection
 
 # -- framework hook -----------------------------------------------------------
@@ -46,12 +48,18 @@ def initialize(context):
 
     # New subsections
     consumer_section.add_subsection(PackageSection(context))
-    consumer_section.add_subsection(GroupSection(context))
+    consumer_section.add_subsection(PackageGroupSection(context))
     consumer_section.add_subsection(ErrataSection(context))
 
-    # consumer groups
-    consumer_group_description = _('rpm consumer group commands')
+    # Consumer groups
+    consumer_group_description = _('consumer group commands')
     consumer_group_section = consumer_section.create_subsection('group', consumer_group_description)
+
+    consumer_group_section.add_command(consumer_group_cudl.CreateConsumerGroupCommand(context))
+    consumer_group_section.add_command(consumer_group_cudl.UpdateConsumerGroupCommand(context))
+    consumer_group_section.add_command(consumer_group_cudl.DeleteConsumerGroupCommand(context))
+    consumer_group_section.add_command(consumer_group_cudl.ListConsumerGroupsCommand(context))
+    consumer_group_section.add_command(consumer_group_cudl.SearchConsumerGroupsCommand(context))
 
     m = _('binds each consumer in a consumer group to a repository')
     consumer_group_section.add_command(
@@ -60,6 +68,14 @@ def initialize(context):
     m = _('unbinds each consumer in a consumer group from a repository')
     consumer_group_section.add_command(
         ConsumerGroupUnbindCommand(context, 'unbind', m))
+
+    # Consumer group membership
+    members_description = _('manage members of repository groups')
+    members_section = consumer_group_section.create_subsection('members', members_description)
+
+    members_section.add_command(consumer_group_members.ListConsumerGroupMembersCommand(context))
+    members_section.add_command(consumer_group_members.AddConsumerGroupMembersCommand(context))
+    members_section.add_command(consumer_group_members.RemoveConsumerGroupMembersCommand(context))
 
     # New subsections for group subsection
     consumer_group_section.add_subsection(ConsumerGroupPackageSection(context))

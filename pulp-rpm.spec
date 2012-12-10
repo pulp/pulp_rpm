@@ -18,7 +18,7 @@
 
 Name: pulp-rpm
 Version: 2.0.6
-Release: 0.9.beta
+Release: 0.14.beta
 Summary: Support for RPM content in the Pulp platform
 Group: Development/Languages
 License: GPLv2
@@ -60,6 +60,7 @@ popd
 # Directories
 mkdir -p /srv
 mkdir -p %{buildroot}/%{_sysconfdir}/pulp
+mkdir -p %{buildroot}/%{_sysconfdir}/pki/pulp/content
 mkdir -p %{buildroot}/%{_usr}/lib
 mkdir -p %{buildroot}/%{_usr}/lib/pulp/plugins
 mkdir -p %{buildroot}/%{_usr}/lib/pulp/admin/extensions
@@ -147,7 +148,7 @@ Requires: python-pulp-rpm-common = %{pulp_version}
 Requires: pulp-server = %{pulp_version}
 Requires: createrepo >= 0.9.8-3
 Requires: python-rhsm >= 1.0.4-1
-
+Requires: grinder >= 0.1.10-1
 %description plugins
 Provides a collection of platform plugins that extend the Pulp platform
 to provide RPM specific support.
@@ -165,6 +166,7 @@ to provide RPM specific support.
 %{_usr}/lib/pulp/plugins/profilers/rpm_errata_profiler/
 %defattr(-,apache,apache,-)
 %{_var}/www/pub
+%{_sysconfdir}/pki/pulp/content/
 /srv/pulp/repo_auth.wsgi
 %doc
 
@@ -253,6 +255,45 @@ A collection of yum plugins supplementing Pulp consumer operations.
 
 
 %changelog
+* Mon Dec 10 2012 Jeff Ortel <jortel@redhat.com> 2.0.6-0.14.beta
+- 885264 - require grinder 0.1.10 (jortel@redhat.com)
+
+* Fri Dec 07 2012 Jeff Ortel <jortel@redhat.com> 2.0.6-0.13.beta
+- 
+
+* Thu Dec 06 2012 Jeff Ortel <jortel@redhat.com> 2.0.6-0.12.beta
+- 881355 - fixed errata install CLI result parsing. (jortel@redhat.com)
+- 882421 - moving remove() method into the platform library so it can be used
+  by other extension families (mhrivnak@redhat.com)
+- 874241 - Alter the CLI help text to specify that relative_urls must match our
+  regex. (rbarlow@redhat.com)
+- 874241 - Allow relative URLs to have the forward slash character.
+  (rbarlow@redhat.com)
+- 874241 - Only allow alphanumerics, underscores, and dashes in the
+  relative_url. (rbarlow@redhat.com)
+- 876637 - adding validation for empty feed url (skarmark@redhat.com)
+- 881932 - updated bind/unbind output. (jortel@redhat.com)
+- 880441 - Ported over group commands from builtins (temporary hack for 2.0)
+  (jason.dobies@redhat.com)
+- 880391 - added remove distribution cli command (skarmark@redhat.com)
+- 877161 - importer side of changes to orphan distribution units
+  (pkilambi@redhat.com)
+
+* Thu Nov 29 2012 Jeff Ortel <jortel@redhat.com> 2.0.6-0.11.beta
+- 
+
+* Thu Nov 29 2012 Jeff Ortel <jortel@redhat.com> 2.0.6-0.10.beta
+- 877047 - if a file already exists, do not try to create a symlink
+  (pkilambi@redhat.com)
+- 881639 - fix error message when binding does not exist. (jortel@redhat.com)
+- 869099 - fix to the plugin progress callback so delta rpm progress doesnt
+  override rpm progress (pkilambi@redhat.com)
+- 866491 - Translate bad data property name into CLI flag
+  (jason.dobies@redhat.com)
+- 858855 - Directory created at runtime but included here so that it's cleaned
+  up when rpm plugins are uninstalled. (jortel@redhat.com)
+- 862290 - Added support for non-RPM repo listing (jason.dobies@redhat.com)
+
 * Mon Nov 26 2012 Jay Dobies <jason.dobies@redhat.com> 2.0.6-0.9.beta
 - 
 

@@ -110,6 +110,9 @@ class RpmRepoCreateCommand(CreateRepositoryCommand):
         # it is derived from the feed_url
         if 'relative_url' not in yum_distributor_config:
             if 'feed_url' in importer_config:
+                if importer_config['feed_url'] is None:
+                    self.prompt.render_failure_message(_('Given repository feed URL is invalid.'))
+                    return
                 url_parse = urlparse(encode_unicode(importer_config['feed_url']))
 
                 if url_parse[2] in ('', '/'):
@@ -220,10 +223,16 @@ class RpmRepoUpdateCommand(UpdateRepositoryCommand):
 class RpmRepoListCommand(ListRepositoriesCommand):
 
     def __init__(self, context):
-        super(RpmRepoListCommand, self).__init__(context)
+        repos_title = _('RPM Repositories')
+        super(RpmRepoListCommand, self).__init__(context, repos_title=repos_title)
+
+        # Both get_repositories and get_other_repositories will act on the full
+        # list of repositories. Lazy cache the data here since both will be
+        # called in succession, saving the round trip to the server.
+        self.all_repos_cache = None
 
     def get_repositories(self, query_params, **kwargs):
-        all_repos = super(RpmRepoListCommand, self).get_repositories(query_params, **kwargs)
+        all_repos = self._all_repos(query_params, **kwargs)
 
         rpm_repos = []
         for repo in all_repos:
@@ -238,6 +247,26 @@ class RpmRepoListCommand(ListRepositoriesCommand):
                 r['distributors'] = [x for x in r['distributors'] if x['id'] == YUM_DISTRIBUTOR_ID]
 
         return rpm_repos
+
+    def get_other_repositories(self, query_params, **kwargs):
+        all_repos = self._all_repos(query_params, **kwargs)
+
+        non_rpm_repos = []
+        for repo in all_repos:
+            notes = repo['notes']
+            if notes.get(constants.REPO_NOTE_KEY, None) != constants.REPO_NOTE_RPM:
+                non_rpm_repos.append(repo)
+
+        return non_rpm_repos
+
+    def _all_repos(self, query_params, **kwargs):
+
+        # This is safe from any issues with concurrency due to how the CLI works
+        if self.all_repos_cache is None:
+            self.all_repos_cache = self.context.server.repo.repositories(query_params).response_body
+
+        return self.all_repos_cache
+
 
 
 class RpmRepoSearchCommand(CriteriaCommand):
