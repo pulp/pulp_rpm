@@ -41,8 +41,8 @@ class Bumper(object):
     This is the superclass that type specific Bumpers should subclass. It has basic facilities for
     retrieving files from the Interweb.
     """
-    def __init__(self, feed_url, working_directory, max_speed=None, num_threads=5,
-                 ssl_client_cert=None, ssl_ca_cert=None, proxy_url=None, proxy_port=None,
+    def __init__(self, feed_url, working_path, max_speed=None, num_threads=5,
+                 ssl_client_cert=None, ssl_client_key=None, ssl_ca_cert=None, proxy_url=None, proxy_port=None,
                  proxy_user=None, proxy_password=None):
         """
         Configure the Bumper for the feed specified by feed_url. All other parameters are
@@ -53,9 +53,9 @@ class Bumper(object):
 
         :param feed_url:          The URL of the feed from which we will download content.
         :type  feed_url:          str
-        :param working_directory: The path on the local disk where the downloaded files should be
+        :param working_path:      The path on the local disk where the downloaded files should be
                                   saved.
-        :type  working_directory: basestring
+        :type  working_path:      basestring
         :param max_speed:         The maximum speed that the download should happen at. This
                                   parameter is currently ignored, but is here for future expansion.
         :type  max_speed:         float
@@ -66,6 +66,8 @@ class Bumper(object):
                                   downloading files. This parameter is currently ignored, but is
                                   here for future expansion.
         :type  ssl_client_cert:   str
+        :param ssl_client_key:    The key for the SSL client certificate
+        :type  ssl_client_key:    str
         :param ssl_ca_cert:       A certificate authority certificate that we will use to
                                   authenticate the feed. This parameter is currently ignored, but is
                                   here for future expansion.
@@ -82,7 +84,7 @@ class Bumper(object):
                                   parameter is currently ignored, but is here for future expansion.
         """
         self.feed_url          = feed_url
-        self.working_directory = working_directory
+        self.working_path      = working_path
         self.max_speed         = max_speed
         self.num_threads       = num_threads
         self.proxy_url         = proxy_url
@@ -90,11 +92,17 @@ class Bumper(object):
         self.proxy_user        = proxy_user
         self.proxy_password    = proxy_password
         self.ssl_client_cert   = ssl_client_cert
+        self.ssl_client_key    = ssl_client_key
         self.ssl_ca_cert       = ssl_ca_cert
+
+        # A list of paths that we have created while messing around that should be removed when we are done doing stuff
+        self._paths_to_cleanup = []
+        # A list of methods that should be called after download is finished
+        self._post_download_hooks = [self._cleanup_paths]
 
     def download_resources(self, resources):
         """
-        This method will fetch the given resources to self.working_directory. resources should be a
+        This method will fetch the given resources to self.working_path. resources should be a
         list of dictionaries, each of which must contain the keys 'name' and 'url'. A list of
         the resources that were downloaded will be returned, which is essentially the same as the
         resources list (in the case of no errors), each with an additional 'path' key that specifies
@@ -109,13 +117,50 @@ class Bumper(object):
         downloaded_resources = []
         for resource in resources:
             # Make this overridable by being it's own method
-            destination_path = os.path.join(self.working_directory, resource['name'])
+            destination_path = os.path.join(self.working_path, resource['name'])
             with open(destination_path, 'w+b') as destination_file:
                 self._download_resource(resource, destination_file)
             downloaded_resource = resource
             downloaded_resource['path'] = destination_path
             downloaded_resources.append(downloaded_resource)
         return downloaded_resources
+
+    def _cleanup_paths(self):
+        """
+        Calls os.unlink() on all paths in self._paths_to_cleanup, and removes them from that list.
+        """
+        for path in self._paths_to_cleanup:
+            os.unlink(path)
+
+    def _configure_curl_ssl_parameters(self, curl):
+        """
+        Configure our curl for SSL.
+
+        :param curl: The Curl instance we want to configure for SSL
+        :type  curl: pycurl.Curl
+        """
+        # This will make sure we don't download content from any peer unless their SSL cert checks out against a CA
+        # We could make this an option, but it doesn't seem wise.
+        curl.setopt(pycurl.SSL_VERIFYPEER, True)
+        # Unfortunately, pycurl doesn't accept the bits for SSL keys or certificates, but instead insists on being
+        # handed a path. We will use a FIFO to hand the bits to pycurl.
+        _fifo_working_path = (os.path.join(self.working_path, 'SSL_FIFOS'))
+        if not os.path.exists(_fifo_working_path):
+            os.mkdir(_fifo_working_path, 0700)
+            self._paths_to_cleanup.append(_fifo_working_path)
+        pycurl_ssl_option_paths = {
+            pycurl.CAPATH:  {'path': os.path.join(_fifo_working_path, 'ca.crt'), 'data': self.ssl_ca_cert},
+            pycurl.SSLCERT: {'path': os.path.join(_fifo_working_path, 'client.crt'), 'data': self.ssl_client_cert},
+            pycurl.SSLKEY:  {'path': os.path.join(_fifo_working_path, 'client.key'), 'data': self.ssl_client_key}}
+        for pycurl_setting, ssl_data in pycurl_ssl_option_paths.items():
+            path = ssl_data['path']
+            if os.path.exists(path):
+                os.unlink(path)
+            os.mkfifo(path, 0600)
+            self._paths_to_cleanup.append(path)
+            with open(path, 'w') as ssl_file:
+                ssl_file.write(ssl_data['data'])
+            curl.setopt(pycurl_setting, path)
 
     # TODO: Figure out how to cancel a download
     # http://curl.haxx.se/mail/curlpython-2009-02/0003.html
@@ -145,11 +190,14 @@ class Bumper(object):
         curl.setopt(pycurl.LOW_SPEED_TIME, 5 * 60)
         curl.setopt(pycurl.URL, resource['url'])
         curl.setopt(pycurl.WRITEFUNCTION, destination_file.write)
+        curl.setopt(pycurl.PROGRESSFUNCTION, self._progress_report)
+        self._configure_curl_ssl_parameters(curl)
 
         # get the file
         curl.perform()
         status = curl.getinfo(curl.HTTP_CODE)
         curl.close()
+        logger.debug('cURL status: %s'%status)
         if status == 401:
             raise exceptions.UnauthorizedException(url)
         elif status == 404:
@@ -157,8 +205,25 @@ class Bumper(object):
         elif status != 200:
             raise exceptions.FileRetrievalException(url)
         # TODO: add pre/post hooks stuff
-        self._validate_download(resource, destination_file)
+        for hook in self._post_download_hooks:
+            hook()
+        self._validate_download(resource, self.destination_file)
 
+    # TODO: Support this progress report callback
+    def _progress_report(self, dltotal, dlnow, ultotal, ulnow):
+        """
+        This is the callback that we give to pycurl to report back to us about the download progress.
+
+        :param dltotal: How much there is to download
+        :type  dltotal: float
+        :param dlnow:   How much we have already downloaded
+        :type  dlnow:   float
+        :param ultotal: How much there is to upload
+        :type  ultotal: float
+        :param ulnow:   How much we have already uploaded
+        :type  ulnow:   float:
+        """
+        pass
 
     def _validate_download(self, resource, destination_file):
         """

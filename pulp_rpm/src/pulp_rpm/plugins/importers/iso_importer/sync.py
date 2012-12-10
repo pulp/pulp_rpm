@@ -61,9 +61,10 @@ def perform_sync(repo, sync_conduit, config):
     if num_threads is not None:
         num_threads = int(num_threads)
     bumper = ISOBumper(feed_url=encode_unicode(config.get(constants.CONFIG_FEED_URL)),
-                       working_directory=repo.working_dir,
+                       working_path=repo.working_dir,
                        max_speed=max_speed, num_threads=num_threads,
                        ssl_client_cert=config.get(constants.CONFIG_SSL_CLIENT_CERT),
+                       ssl_client_key=config.get(constants.CONFIG_SSL_CLIENT_KEY),
                        ssl_ca_cert=config.get(constants.CONFIG_SSL_CA_CERT),
                        proxy_url=config.get(constants.CONFIG_PROXY_URL),
                        proxy_port=config.get(constants.CONFIG_PROXY_PORT),

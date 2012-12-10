@@ -33,6 +33,7 @@ CONFIG_PROXY_URL       = 'proxy_url'
 CONFIG_PROXY_USER      = 'proxy_user'
 CONFIG_SSL_CA_CERT     = 'ssl_ca_cert'
 CONFIG_SSL_CLIENT_CERT = 'ssl_client_cert'
+CONFIG_SSL_CLIENT_KEY  = 'ssl_client_key'
 
 # Distributor configuration key names
 CONFIG_SERVE_HTTP      = 'serve_http'

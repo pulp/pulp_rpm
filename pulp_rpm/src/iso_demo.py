@@ -17,7 +17,6 @@ from pulp_rpm.common import constants, ids
 from pulp.common import pic
 from okaara.prompt import Prompt, COLOR_LIGHT_PURPLE, COLOR_LIGHT_BLUE
 
-ISO_FEED = 'http://pkilambi.fedorapeople.org/test_file_repo/'
 DISTRIBUTOR_ID = 'iso_dist'
 
 # -- ui -----------------------------------------------------------------------
@@ -33,21 +32,21 @@ def title(p, text):
 
 # -- functional ---------------------------------------------------------------
 
-def delete_repo(repo_id):
-    url = '/v2/repositories/%s/' % repo_id
+def delete_repo(repo):
+    url = '/v2/repositories/%s/' % repo['id']
     try:
         pic.GET(url)
     except pic.RequestError:
         return
     pic.DELETE(url)
 
-def create_repo(repo_id):
-    body = {'id' : repo_id}
+def create_repo(repo):
+    body = {'id' : repo['id']}
     pic.POST('/v2/repositories/', body=body)
 
-def add_iso_importer(repo_id):
+def add_iso_importer(repo):
     importer_config = {
-        constants.CONFIG_FEED_URL: ISO_FEED,
+        constants.CONFIG_FEED_URL: repo['feed'],
     }
 
     body = {
@@ -55,9 +54,9 @@ def add_iso_importer(repo_id):
         'importer_config' : importer_config,
     }
 
-    pic.POST('/v2/repositories/%s/importers/' % repo_id, body=body)
+    pic.POST('/v2/repositories/%s/importers/' % repo['id'], body=body)
 
-def add_iso_distributor(repo_id):
+def add_iso_distributor(repo):
     distributor_config = {
         constants.CONFIG_SERVE_HTTP: True,
         constants.CONFIG_SERVE_HTTPS: True,
@@ -69,40 +68,42 @@ def add_iso_distributor(repo_id):
         'distributor_id' : DISTRIBUTOR_ID,
     }
 
-    pic.POST('/v2/repositories/%s/distributors/' % repo_id, body=body)
+    pic.POST('/v2/repositories/%s/distributors/' % repo['id'], body=body)
 
-def sync(repo_id):
-    pic.POST('/v2/repositories/%s/actions/sync/' % repo_id)
+def sync(repo):
+    pic.POST('/v2/repositories/%s/actions/sync/'%repo['id'])
 
-def list_units(prompt, repo_id):
+def list_units(prompt, repo):
     criteria = {'type_ids' : [ids.TYPE_ID_ISO]}
     body = {'criteria' : criteria}
 
-    status, body = pic.POST('/v2/repositories/%s/search/units/' % repo_id, body=body)
+    status, body = pic.POST('/v2/repositories/%s/search/units/'%repo['id'], body=body)
 
     units = [u['metadata'] for u in body]
     for u in units:
         msg = '  Name: %-15s Size: %-15s Checksum: %-15s' % (u['name'], u['size'], u['checksum'])
         prompt.write(msg)
 
-def publish(repo_id):
-    body = {'id' : DISTRIBUTOR_ID}
-    pic.POST('/v2/repositories/%s/actions/publish/' % repo_id, body=body)
 
-# -- script -------------------------------------------------------------------
+def publish(repo):
+    body = {'id' : DISTRIBUTOR_ID}
+    pic.POST('/v2/repositories/%s/actions/publish/'%repo['id'], body=body)
+
 
 def main():
     p = Prompt()
     pic.connect()
     pic.LOG_BODIES = False
 
-    repo_ids = ['one']
+    repos = [{'id': 'test', 'feed': 'http://pkilambi.fedorapeople.org/test_file_repo/'},
+             {'id': 'cdn',
+                'feed': 'https://cdn.redhat.com/content/dist/rhel/server/6/6Server/x86_64/iso'},]
 
     if not '--skip-delete' in sys.argv:
         title(p, 'Creating & Configuring Repositories')
-        p.write('  Repository: one')
 
-        for r in repo_ids:
+        for r in repos:
+            p.write('  Repository: %s'%r['id'])
             delete_repo(r)
             create_repo(r)
             add_iso_importer(r)
@@ -113,25 +114,25 @@ def main():
 
     title(p, 'Synchronizing Repositories')
 
-    for repo_id in repo_ids:
-        sync(repo_id)
+    for repo in repos:
+        sync(repo)
 
     pause(p)
     p.write('')
 
     title(p, 'Publishing Repositories')
 
-    for repo_id in repo_ids:
-        publish(repo_id)
+    for repo in repos:
+        publish(repo)
 
     pause(p)
     p.write('')
 
     title(p, 'Displaying Repository Contents')
 
-    for repo_id in repo_ids:
-        p.write('Repository: %s'%repo_id, color=COLOR_LIGHT_BLUE)
-        list_units(p, repo_id)
+    for repo in repos:
+        p.write('Repository: %s'%repo, color=COLOR_LIGHT_BLUE)
+        list_units(p, repo)
         p.write('')
 
 if __name__ == '__main__':
