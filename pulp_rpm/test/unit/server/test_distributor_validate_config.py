@@ -40,7 +40,6 @@ class TestValidateConfig(rpm_support_base.PulpRPMTests):
         self.data_dir = os.path.abspath(os.path.join(os.path.abspath(os.path.dirname(__file__)), "../data"))
 
     def test_config_relative_path(self):
-
         http = True
         https = False
         relative_url = 123
@@ -49,6 +48,25 @@ class TestValidateConfig(rpm_support_base.PulpRPMTests):
         self.assertFalse(state)
 
         relative_url = "test_path"
+        config = distributor_mocks.get_basic_config(relative_url=relative_url, http=http, https=https)
+        state, msg = self.distributor.validate_config(self.repo, config, [])
+        self.assertTrue(state)
+
+        # For https://bugzilla.redhat.com/show_bug.cgi?id=874241 we will assert that crazy characters don't validate
+        relative_url = '@#%^&*()'
+        config = distributor_mocks.get_basic_config(relative_url=relative_url, http=http, https=https)
+        state, msg = self.distributor.validate_config(self.repo, config, [])
+        self.assertFalse(state)
+        self.assertEqual(msg, 'relative_url must contain only alphanumerics, underscores, and dashes.')
+
+        # relative_url should be allowed to be empty string
+        relative_url = ""
+        config = distributor_mocks.get_basic_config(relative_url=relative_url, http=http, https=https)
+        state, msg = self.distributor.validate_config(self.repo, config, [])
+        self.assertTrue(state)
+
+        # relative_url should be allowed to have a forward slash character
+        relative_url = "/jdob/repos/awesome-repo"
         config = distributor_mocks.get_basic_config(relative_url=relative_url, http=http, https=https)
         state, msg = self.distributor.validate_config(self.repo, config, [])
         self.assertTrue(state)

@@ -15,9 +15,10 @@ import os
 import sys
 import mock
 import unittest
+import shutil
 
 sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)) + "/../../../src/")
-sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)) + "/../../plugins/importers/")
+sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)) + "/../../../plugins/importers/")
 sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)) + "/../../common")
 import importer_mocks
 import tempfile
@@ -48,6 +49,10 @@ class TestErrata(rpm_support_base.PulpRPMTests):
 
     def tearDown(self):
         super(TestErrata, self).tearDown()
+        self.clean()
+
+    def clean(self):
+        shutil.rmtree(self.temp_dir)
 
     def test_metadata(self):
         metadata = YumImporter.metadata()

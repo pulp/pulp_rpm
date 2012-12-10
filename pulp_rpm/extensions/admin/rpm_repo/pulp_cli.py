@@ -58,6 +58,7 @@ def initialize(context):
     remove_section.add_command(remove.ErrataRemoveCommand(context))
     remove_section.add_command(remove.PackageGroupRemoveCommand(context))
     remove_section.add_command(remove.PackageCategoryRemoveCommand(context))
+    remove_section.add_command(remove.DistributionRemoveCommand(context))
 
     contents_section = structure.repo_contents_section(context.cli)
     contents_section.add_command(contents.SearchRpmsCommand(context))

@@ -23,6 +23,8 @@ COMPLETE_STATES = (STATE_COMPLETE, STATE_FAILED, STATE_SKIPPED)
 REPO_NOTE_KEY = '_repo-type' # needs to be standard across extensions
 REPO_NOTE_RPM = 'rpm-repo'
 
+PUBLISHED_DISTRIBUTION_FILES_KEY = 'published_distributions'
+
 # Importer configuration key names
 CONFIG_FEED_URL        = 'feed_url'
 CONFIG_MAX_SPEED       = 'max_speed'
