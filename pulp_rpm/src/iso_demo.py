@@ -48,6 +48,8 @@ def add_iso_importer(repo):
     importer_config = {
         constants.CONFIG_FEED_URL: repo['feed'],
     }
+    if 'ssl_ca_cert' in repo:
+        importer_config[constants.CONFIG_SSL_CA_CERT] = repo['ssl_ca_cert']
 
     body = {
         'importer_type_id' : ids.TYPE_ID_IMPORTER_ISO,
@@ -95,9 +97,13 @@ def main():
     pic.connect()
     pic.LOG_BODIES = False
 
-    repos = [{'id': 'test', 'feed': 'http://pkilambi.fedorapeople.org/test_file_repo/'},
+    with open('redhat-uep.pem', 'r') as ca_file:
+        ssl_ca_cert = ca_file.read()
+
+    repos = [#{'id': 'test', 'feed': 'http://pkilambi.fedorapeople.org/test_file_repo/'},
              {'id': 'cdn',
-                'feed': 'https://cdn.redhat.com/content/dist/rhel/server/6/6Server/x86_64/iso'},]
+              'feed': 'https://cdn.redhat.com/content/dist/rhel/server/6/6Server/x86_64/iso',
+              'ssl_ca_cert': ssl_ca_cert},]
 
     if not '--skip-delete' in sys.argv:
         title(p, 'Creating & Configuring Repositories')
@@ -131,7 +137,7 @@ def main():
     title(p, 'Displaying Repository Contents')
 
     for repo in repos:
-        p.write('Repository: %s'%repo, color=COLOR_LIGHT_BLUE)
+        p.write('Repository: %s'%repo['id'], color=COLOR_LIGHT_BLUE)
         list_units(p, repo)
         p.write('')
 

@@ -29,6 +29,13 @@ VALIDATION_CHUNK_SIZE = 32*1024*1024
 logger = logging.getLogger(__name__)
 
 
+class CACertError(Exception):
+    """
+    This Exception is raised when PycURL doesn't have a CA certificate that can authenticate the remote server.
+    """
+    pass
+
+
 class DownloadValidationError(Exception):
     """
     This Exception is raised when a download fails validation.
@@ -96,6 +103,7 @@ class Bumper(object):
         self.ssl_ca_cert       = ssl_ca_cert
 
         # A list of paths that we have created while messing around that should be removed when we are done doing stuff
+        # It is a LIFO, and the paths will be removed in reverse order
         self._paths_to_cleanup = []
         # A list of methods that should be called after download is finished
         self._post_download_hooks = [self._cleanup_paths]
@@ -127,10 +135,15 @@ class Bumper(object):
 
     def _cleanup_paths(self):
         """
-        Calls os.unlink() on all paths in self._paths_to_cleanup, and removes them from that list.
+        Calls os.unlink() or os.rmdir on all paths in self._paths_to_cleanup in reverse order, and removes them from
+        that list.
         """
-        for path in self._paths_to_cleanup:
-            os.unlink(path)
+        while self._paths_to_cleanup:
+            path = self._paths_to_cleanup.pop()
+            if os.path.isdir(path):
+                os.rmdir(path)
+            else:
+                os.unlink(path)
 
     def _configure_curl_ssl_parameters(self, curl):
         """
@@ -141,26 +154,40 @@ class Bumper(object):
         """
         # This will make sure we don't download content from any peer unless their SSL cert checks out against a CA
         # We could make this an option, but it doesn't seem wise.
+        logger.debug('setting SSL_VERIFYPEER')
+        logger.debug('os.getuid(): %s'%os.getuid())
         curl.setopt(pycurl.SSL_VERIFYPEER, True)
         # Unfortunately, pycurl doesn't accept the bits for SSL keys or certificates, but instead insists on being
         # handed a path. We will use a FIFO to hand the bits to pycurl.
-        _fifo_working_path = (os.path.join(self.working_path, 'SSL_FIFOS'))
+        _fifo_working_path = os.path.join(self.working_path, 'SSL_FIFOS')
         if not os.path.exists(_fifo_working_path):
+            logger.debug('Making %s'%_fifo_working_path)
             os.mkdir(_fifo_working_path, 0700)
             self._paths_to_cleanup.append(_fifo_working_path)
         pycurl_ssl_option_paths = {
-            pycurl.CAPATH:  {'path': os.path.join(_fifo_working_path, 'ca.crt'), 'data': self.ssl_ca_cert},
-            pycurl.SSLCERT: {'path': os.path.join(_fifo_working_path, 'client.crt'), 'data': self.ssl_client_cert},
-            pycurl.SSLKEY:  {'path': os.path.join(_fifo_working_path, 'client.key'), 'data': self.ssl_client_key}}
+            pycurl.CAPATH:  {'path': os.path.join(_fifo_working_path, 'ca.pem'), 'data': self.ssl_ca_cert},
+            pycurl.SSLCERT: {'path': os.path.join(_fifo_working_path, 'client.pem'), 'data': self.ssl_client_cert},
+            pycurl.SSLKEY:  {'path': os.path.join(_fifo_working_path, 'client-key.pem'), 'data': self.ssl_client_key}}
+        logger.debug(pycurl_ssl_option_paths)
         for pycurl_setting, ssl_data in pycurl_ssl_option_paths.items():
-            path = ssl_data['path']
-            if os.path.exists(path):
-                os.unlink(path)
-            os.mkfifo(path, 0600)
-            self._paths_to_cleanup.append(path)
-            with open(path, 'w') as ssl_file:
-                ssl_file.write(ssl_data['data'])
-            curl.setopt(pycurl_setting, path)
+            logger.debug(pycurl_setting)
+            logger.debug(ssl_data)
+            # We don't want to do anything if the user didn't pass us any certs or keys
+            if ssl_data['data']:
+                path = ssl_data['path']
+                if os.path.exists(path):
+                    os.unlink(path)
+                logger.debug("Adding %s to cleaup"%path)
+                self._paths_to_cleanup.append(path)
+                with open(path, 'w') as ssl_file:
+                    logger.debug('Writing to the file')
+                    ssl_file.write(ssl_data['data'])
+                logger.debug('Telling pycurl about the file')
+                logger.debug('pycurl_setting: %s'%pycurl_setting)
+                logger.debug('path: %s'%path)
+                logger.debug(type(path))
+                curl.setopt(pycurl_setting, path.encode('utf8'))
+        logger.debug('DONE')
 
     # TODO: Figure out how to cancel a download
     # http://curl.haxx.se/mail/curlpython-2009-02/0003.html
@@ -191,10 +218,23 @@ class Bumper(object):
         curl.setopt(pycurl.URL, resource['url'])
         curl.setopt(pycurl.WRITEFUNCTION, destination_file.write)
         curl.setopt(pycurl.PROGRESSFUNCTION, self._progress_report)
-        self._configure_curl_ssl_parameters(curl)
+        logger.debug('About to _configure_curl_ssl_parameters()')
+        if self.ssl_ca_cert or self.ssl_client_cert or self.ssl_client_key:
+            self._configure_curl_ssl_parameters(curl)
+        logger.debug('Done!')
 
         # get the file
-        curl.perform()
+        logger.debug('curl.perform()')
+        try:
+            curl.perform()
+        except pycurl.error, e:
+            # TODO: Figure out which pycurl exceptions we want to handle. They are all listed in
+            #       /usr/include/curl/curl.h
+            if e[0] == pycurl.E_SSL_CACERT:
+                raise CACertError(e.message)
+            else:
+                raise e
+        logger.debug('Done!')
         status = curl.getinfo(curl.HTTP_CODE)
         curl.close()
         logger.debug('cURL status: %s'%status)
@@ -207,7 +247,7 @@ class Bumper(object):
         # TODO: add pre/post hooks stuff
         for hook in self._post_download_hooks:
             hook()
-        self._validate_download(resource, self.destination_file)
+        self._validate_download(resource, destination_file)
 
     # TODO: Support this progress report callback
     def _progress_report(self, dltotal, dlnow, ultotal, ulnow):
@@ -230,7 +270,6 @@ class Bumper(object):
         This method can be overridden by subclasses to validate the download, if desired. This
         implementation just passes.
         """
-        logger.debug('Wrong method.')
         pass
 
 
