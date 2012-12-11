@@ -165,7 +165,7 @@ class Bumper(object):
             os.mkdir(_fifo_working_path, 0700)
             self._paths_to_cleanup.append(_fifo_working_path)
         pycurl_ssl_option_paths = {
-            pycurl.CAPATH:  {'path': os.path.join(_fifo_working_path, 'ca.pem'), 'data': self.ssl_ca_cert},
+            pycurl.CAINFO:  {'path': os.path.join(_fifo_working_path, 'ca.pem'), 'data': self.ssl_ca_cert},
             pycurl.SSLCERT: {'path': os.path.join(_fifo_working_path, 'client.pem'), 'data': self.ssl_client_cert},
             pycurl.SSLKEY:  {'path': os.path.join(_fifo_working_path, 'client-key.pem'), 'data': self.ssl_client_key}}
         logger.debug(pycurl_ssl_option_paths)
