@@ -20,7 +20,18 @@ Server
 ------
 
 If you followed the Pulp User Guide install instructions, you already have RPM
-support installed. If not, just install the following package.
+support installed. If not, follow these steps.
+
+Consider stopping Pulp. If you need Apache to keep running other web apps, or if
+you need Pulp to continue serving static content, it is usually sufficient to
+disable access to Pulp's REST API. That will be left as an exercise for the reader.
+Otherwise, just stop Apache:
+
+::
+
+  $ sudo apachectl stop
+
+Next, install the package.
 
 ::
 
