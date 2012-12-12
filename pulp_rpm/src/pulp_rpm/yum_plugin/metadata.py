@@ -588,6 +588,7 @@ xmlns:rpm="http://linux.duke.edu/metadata/rpm" packages="%s"> \n""" % self.unit_
                     _LOG.debug("No repodata found for the unit; continue")
                     continue
         finally:
+            self.unit_count += len(units)
             end = time.time()
         _LOG.info("per unit metadata merge completed in %s seconds" % (end - start))
 
