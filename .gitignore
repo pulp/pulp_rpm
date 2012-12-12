@@ -34,7 +34,7 @@ pip-log.txt
 cover
 
 # Sphinx
-*/docs/*/_build
+docs/*/_build
 
 # Vim
 *.swp
