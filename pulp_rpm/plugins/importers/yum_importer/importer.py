@@ -27,6 +27,7 @@ from pulp.plugins.importer import Importer
 from pulp.plugins.model import Unit, SyncReport
 from pulp_rpm.common.ids import TYPE_ID_IMPORTER_YUM, TYPE_ID_PKG_GROUP, TYPE_ID_PKG_CATEGORY, TYPE_ID_DISTRO,\
         TYPE_ID_DRPM, TYPE_ID_ERRATA, TYPE_ID_RPM, TYPE_ID_SRPM
+from pulp_rpm.common import constants
 from pulp_rpm.yum_plugin import util, depsolver
 from pulp_rpm.yum_plugin.metadata import get_package_xml
 
@@ -499,25 +500,44 @@ class YumImporter(Importer):
     def _sync_repo(self, repo, sync_conduit, config):
         summary = {}
         details = {}
-        if not config.get("feed_url", None):
-            # No feed url found, return a sync failure
-            msg = _("Cannot perform repository sync on a repository with no feed")
-            _LOG.error(msg)
-            summary['error'] = msg
-            return False, summary, details
-        progress_status = {
-                "metadata": {"state": "NOT_STARTED"},
-                "content": {"state": "NOT_STARTED"},
-                "errata": {"state": "NOT_STARTED"},
-                "comps": {"state": "NOT_STARTED"},
-                }
+
         def progress_callback(type_id, status):
             if type_id == "content":
                 progress_status["metadata"]["state"] = "FINISHED"
             progress_status[type_id] = status
             sync_conduit.set_progress(progress_status)
 
+        # Before anything else, begin the progress reporting
+        progress_status = {
+            "metadata": {"state": "NOT_STARTED"},
+            "content": {"state": "NOT_STARTED"},
+            "errata": {"state": "NOT_STARTED"},
+            "comps": {"state": "NOT_STARTED"},
+        }
         sync_conduit.set_progress(progress_status)
+
+        # No feed url found, return a sync failure
+        if not config.get("feed_url", None):
+            msg = _("Cannot perform repository sync on a repository with no feed")
+
+            # I can't find any sort of standard way of editing the progress
+            # report. From what I can tell, it's entirely recreated each time.
+            # So I'm just updating the initial one from above here. We need to
+            # indicate to the client the reason the metadata step failed.
+            progress_status['metadata']['state'] = constants.STATE_FAILED
+            progress_status['metadata']['error'] = msg
+
+            # Make sure to flag the other steps to indicate they won't take place
+            progress_status['content']['state'] = constants.STATE_SKIPPED
+            progress_status['errata']['state'] = constants.STATE_SKIPPED
+            progress_status['comps']['state'] = constants.STATE_SKIPPED
+
+            sync_conduit.set_progress(progress_status)
+
+            # End the sync, indicating a failure
+            summary['error'] = msg
+            return False, summary, details
+
         # sync rpms
         rpm_status, summary["packages"], details["packages"] = self.importer_rpm.sync(repo, sync_conduit, config, progress_callback)
 
