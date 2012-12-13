@@ -42,6 +42,12 @@ HTTP_PUBLISH_DIR="/var/lib/pulp/published/http/repos"
 HTTPS_PUBLISH_DIR="/var/lib/pulp/published/https/repos"
 CONFIG_REPO_AUTH="/etc/pulp/repo_auth.conf"
 
+# This needs to be a config option in the distributor's .conf file. But for 2.0,
+# I don't have time to add that and realistically, people won't be reconfiguring
+# it anyway. This is to replace having it in Pulp's server.conf, which definitely
+# isn't the place for it.
+RELATIVE_URL = '/pulp/repos'
+
 ###
 # Config Options Explained
 ###
@@ -736,7 +742,7 @@ class YumDistributor(Distributor):
         else:
             payload['ca_cert'] = config.get('https_ca')
         payload['relative_path'] = \
-            '/'.join((pulp_server_config.get('server', 'relative_url'),
+            '/'.join((RELATIVE_URL,
                       self.get_repo_relative_path(repo, config)))
         payload['protocols'] = []
         if config.get('http'):
