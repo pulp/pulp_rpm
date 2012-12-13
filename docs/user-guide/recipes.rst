@@ -184,7 +184,7 @@ Now ``repo_1`` has errata and other units, and ``repo_2`` has no units at all.
 Suppose that we would like to pull all of the security updates from ``repo_1``
 to ``repo_2``. I can determine which errata are RHSA by using a regex filter::
 
-    $ pulp-admin rpm repo content errata --filters='{"id": {"$regex": "^RHSA"}}' \
+    $ pulp-admin rpm repo content errata --match="type=security" \
     > --repo-id=repo_1 --fields=id
     Id: RHSA-2007:0114
 
@@ -204,12 +204,12 @@ Running that same command for ``repo_2`` doesn't show any errata, so let's use
 the unit copy command to bring these RHSAs over, but not the RHBAs or the
 RHEAs::
 
-    $ pulp-admin rpm repo copy errata --filters='{"id": {"$regex": "^RHSA"}}' \
+    $ pulp-admin rpm repo copy errata --match="type=security" \
     > --from-repo-id=repo_1 --to-repo-id=repo_2
     Progress on this task can be viewed using the commands under "repo tasks".
 
 We can inspect the progress of this operation using
-:command:`pulp-admin repo tasks list --repo-id=repo_1`. There are only a few
+``pulp-admin repo tasks list --repo-id=repo_1``. There are only a few
 errata to be copied here so it should be complete shortly. Now we can inspect
 the contents of ``repo_2``::
 
@@ -227,6 +227,9 @@ the contents of ``repo_2``::
     Id: RHSA-2009:0382
 
     Id: RHSA-2009:1472
+
+Create Your Own Errata
+----------------------
 
 .. others?
 
