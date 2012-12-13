@@ -18,7 +18,7 @@
 
 Name: pulp-rpm
 Version: 2.0.6
-Release: 0.14.beta
+Release: 0.15.beta
 Summary: Support for RPM content in the Pulp platform
 Group: Development/Languages
 License: GPLv2
@@ -255,6 +255,16 @@ A collection of yum plugins supplementing Pulp consumer operations.
 
 
 %changelog
+* Thu Dec 13 2012 Jeff Ortel <jortel@redhat.com> 2.0.6-0.15.beta
+- 886240 - repo sync for a repo created with a feed of /var/lib/pulp of another
+  repo results in less number of contents than the original repo
+  (jmatthews@redhat.com)
+- 886240 - repo sync for a repo created with a feed of /var/lib/pulp of another
+  repo results in less number of contents than the original repo Updated logic
+  for pagination of package metadata (jmatthews@redhat.com)
+- 857528 - Added missing feed message to the progress report so the client sees
+  it (jason.dobies@redhat.com)
+
 * Mon Dec 10 2012 Jeff Ortel <jortel@redhat.com> 2.0.6-0.14.beta
 - 885264 - require grinder 0.1.10 (jortel@redhat.com)
 
