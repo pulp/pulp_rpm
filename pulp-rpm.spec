@@ -18,7 +18,7 @@
 
 Name: pulp-rpm
 Version: 2.0.6
-Release: 0.15.beta
+Release: 0.17.beta
 Summary: Support for RPM content in the Pulp platform
 Group: Development/Languages
 License: GPLv2
@@ -255,6 +255,12 @@ A collection of yum plugins supplementing Pulp consumer operations.
 
 
 %changelog
+* Thu Dec 13 2012 Jeff Ortel <jortel@redhat.com> 2.0.6-0.17.beta
+- 887026 - The yum distributor should not have been storing this value in
+  server.conf. (jason.dobies@redhat.com)
+- 886986 - Default to verifying feed SSL certificates. (rbarlow@redhat.com)
+- 885264 - bump grinder requires to: 0.1.11-1. (jortel@redhat.com)
+
 * Thu Dec 13 2012 Jeff Ortel <jortel@redhat.com> 2.0.6-0.15.beta
 - 886240 - repo sync for a repo created with a feed of /var/lib/pulp of another
   repo results in less number of contents than the original repo
