@@ -128,7 +128,7 @@ d = _('full path to the CA certificate that should be used to verify the '
 OPT_FEED_CA_CERT = PulpCliOption('--feed-ca-cert', d, required=False)
 
 d = _('if "true", the feed\'s SSL certificate will be verified against the '
-      'feed_ca_cert; defaults to false')
+      'feed_ca_cert; defaults to true')
 OPT_VERIFY_FEED_SSL = PulpCliOption('--verify-feed-ssl', d, required=False,
                                     parse_func=parsers.parse_boolean)
 
