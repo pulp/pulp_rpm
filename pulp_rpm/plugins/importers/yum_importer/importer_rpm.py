@@ -235,8 +235,10 @@ def get_yumRepoGrinder(repo_id, repo_working_dir, config):
     proxy_port = force_ascii(config.get("proxy_port"))
     proxy_user = force_ascii(config.get("proxy_user"))
     proxy_pass = force_ascii(config.get("proxy_pass"))
+    sslverify = config.get_boolean("ssl_verify")
     # Default to verifying SSL
-    sslverify = config.get("ssl_verify") or 1
+    if sslverify is None:
+        sslverify = True
     # Note ssl_ca_cert, ssl_client_cert, and ssl_client_key are all written in the main importer
     # int the validate_config method
     cacert = None
