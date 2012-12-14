@@ -216,7 +216,13 @@ def get_available(repo_dir, md_types=None, group_file=None, group_type=None):
             _LOG.debug("Parsing yum package group/category from metadata type '%s' with value %s" % (group_type, \
                     group_file))
             if group_file and group_type == "group":
-                yc.add(group_file)
+                if group_file.endswith(".gz"):
+                    # Have seen instances where "modifyrepo" sticks a "gzipped" file
+                    # under "group" instead of "group_gz"
+                    comps_gzipped = gzip.GzipFile(group_file, 'r')
+                    yc.add(comps_gzipped)
+                else:
+                    yc.add(group_file)
             elif group_file and group_type == "group_gz":
                 comps_gzipped = gzip.GzipFile(group_file, 'r')
                 yc.add(comps_gzipped)

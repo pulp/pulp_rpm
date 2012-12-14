@@ -38,9 +38,11 @@ def get_available_errata(repo_dir):
     ftypes = util.get_repomd_filetypes(repomd_xml)
     errata_from_xml = {}
     if "updateinfo" not in ftypes:
+        _LOG.info("Unable to find 'updateinfo' in %s" % (ftypes))
         return errata_from_xml
     updateinfo_xml_path = os.path.join(repo_dir, util.get_repomd_filetype_path(repomd_xml, "updateinfo"))
     if not os.path.exists(updateinfo_xml_path):
+        _LOG.info("Unable to find errata file at %s")
         return {}
     try:
         errata_from_xml = updateinfo.get_errata(updateinfo_xml_path)
@@ -246,7 +248,7 @@ class ImporterErrata(object):
         start = time.time()
         repo_dir = "%s/%s" % (repo.working_dir, repo.id)
         available_errata = get_available_errata(repo_dir)
-        _LOG.debug("Available Errata %s" % len(available_errata))
+        _LOG.info("Available Errata %s" % len(available_errata))
         progress = {"state":"IN_PROGRESS", "num_errata":len(available_errata)}
         set_progress(progress)
 
@@ -282,4 +284,5 @@ class ImporterErrata(object):
         _LOG.debug("Errata Summary: %s \n Details: %s" % (summary, details))
         progress = {"state":"FINISHED", "num_errata":len(available_errata)}
         set_progress(progress)
+        _LOG.info("Finished errata sync")
         return True, summary, details
