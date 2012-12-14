@@ -608,3 +608,19 @@ class TestRepolib(unittest.TestCase):
 
         # Verify
         # The above shouldn't throw an error; the net effect is still that the repo is unbound
+
+
+    def test_delete_repo_file(self):
+        """
+        Tests that calling delete_repo_file deletes the repo file.
+        """
+
+        # Setup
+        repolib.bind(TEST_REPO_FILENAME, TEST_MIRROR_LIST_FILENAME, TEST_KEYS_DIR, TEST_CERT_DIR, REPO_ID, REPO_NAME, ['http://pulp'], {}, None, None, ENABLED, LOCK)
+        self.assertTrue(os.path.exists(TEST_REPO_FILENAME))
+
+        # Test
+        repolib.delete_repo_file(TEST_REPO_FILENAME, LOCK)
+
+        # Verify
+        self.assertFalse(os.path.exists(TEST_REPO_FILENAME))

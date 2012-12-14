@@ -96,7 +96,8 @@ class RepoHandler(BindHandler):
         """
         log.info('clean')
         report = CleanReport()
-        # TODO: revist this **
+        cfg = conduit.get_consumer_config().graph()
+        repolib.delete_repo_file(cfg.filesystem.repo_file)
         report.set_succeeded()
         return report
 
