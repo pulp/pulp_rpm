@@ -582,6 +582,7 @@ class TestBind(HandlerTest):
         self.assertTrue(os.path.isfile(self.REPO_FILE))
         # Test
         self.dispatcher.clean(conduit)
+        # Verify
         self.assertFalse(os.path.isfile(self.REPO_FILE))
 
 

@@ -170,7 +170,7 @@ def unbind(repo_filename, mirror_list_filename, keys_root_dir, cert_root_dir, re
     @param repo_id: identifies the repo in the repo file to delete
     @type  repo_id: string
 
-    @param lock: if the default lock is unacceptble, it may be overridden in this variable
+    @param lock: if the default lock is unacceptable, it may be overridden in this variable
     @type  lock: L{Lock}
     """
 
@@ -207,12 +207,15 @@ def unbind(repo_filename, mirror_list_filename, keys_root_dir, cert_root_dir, re
 
 def delete_repo_file(repo_filename, lock=None):
     """
-    Clean bind artifacts.
-    @param repo_filename: full path to the location of the repo file in which
-                          the repo will be removed; if this file does not exist
+    Delete the repo file.
+
+    @param repo_filename: full path to the location of the repo file which
+                          will be deleted; if this file does not exist
                           this call has no effect
     @type  repo_filename: string
-    @return:
+
+    @param lock: if the default lock is unacceptable, it may be overridden in this variable
+    @type  lock: L{Lock}
     """
     if not lock:
         lock = Lock(LOCK_FILE)
