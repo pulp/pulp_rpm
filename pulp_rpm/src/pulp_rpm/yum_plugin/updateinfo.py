@@ -175,5 +175,4 @@ def updateinfo(errata_units, save_location):
             f.close()
     except Exception, e:
         log.error("Error writing updateinfo.xml to path %s: %s" % (updateinfo_path, e))
-        print "error %s" % (e)
     return updateinfo_path
