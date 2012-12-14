@@ -167,8 +167,13 @@ def updateinfo(errata_units, save_location):
     updateinfo_path = None
     try:
         updateinfo_path = "%s/%s" % (save_location, "updateinfo.xml")
-        updateinfo_xml = um.xml(fileobj=open(updateinfo_path, 'wt'))
-        log.info("updateinfo.xml generated and written to file %s" % updateinfo_path)
-    except:
-        log.error("Error writing updateinfo.xml to path %s" % updateinfo_path)
+        f = open(updateinfo_path, 'wt')
+        try:
+            updateinfo_xml = um.xml(fileobj=f)
+            log.info("updateinfo.xml generated and written to file %s" % updateinfo_path)
+        finally:
+            f.close()
+    except Exception, e:
+        log.error("Error writing updateinfo.xml to path %s: %s" % (updateinfo_path, e))
+        print "error %s" % (e)
     return updateinfo_path
