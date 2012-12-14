@@ -269,7 +269,7 @@ class RpmRepoListCommandTests(rpm_support_base.PulpClientTests):
         self.assertTrue('feed_ssl_configured' in imp_config)
         self.assertEqual(imp_config['feed_ssl_configured'], 'True')
 
-    def test_get_repositories_strip_ssl_cert(self):
+    def test_get_repositories_strip_ssl_key(self):
         # Setup
         repos = [
             {'repo_id' : 'matching',
