@@ -29,6 +29,10 @@ from pulp_rpm.handler.repo_file import Repo, RepoFile, MirrorListFile, RepoKeyFi
 
 log = getLogger(__name__)
 
+
+LOCK_FILE = '/var/run/subsys/pulp/repolib.pid'
+
+
 # -- public ----------------------------------------------------------------
 
 def bind(repo_filename, 
@@ -97,7 +101,7 @@ def bind(repo_filename,
     """
 
     if not lock:
-        lock = Lock('/var/run/subsys/pulp/repolib.pid')
+        lock = Lock(LOCK_FILE)
 
     lock.acquire()
     try:
@@ -171,7 +175,7 @@ def unbind(repo_filename, mirror_list_filename, keys_root_dir, cert_root_dir, re
     """
 
     if not lock:
-        lock = Lock('/var/run/subsys/pulp/repolib.pid')
+        lock = Lock(LOCK_FILE)
 
     lock.acquire()
     try:
@@ -201,6 +205,24 @@ def unbind(repo_filename, mirror_list_filename, keys_root_dir, cert_root_dir, re
     finally:
         lock.release()
 
+def delete_repo_file(repo_filename, lock=None):
+    """
+    Clean bind artifacts.
+    @param repo_filename: full path to the location of the repo file in which
+                          the repo will be removed; if this file does not exist
+                          this call has no effect
+    @type  repo_filename: string
+    @return:
+    """
+    if not lock:
+        lock = Lock(LOCK_FILE)
+
+    lock.acquire()
+    try:
+        repo_file = RepoFile(repo_filename)
+        repo_file.delete()
+    finally:
+        lock.release()
 
 def mirror_list_filename(dir, repo_id):
     """
