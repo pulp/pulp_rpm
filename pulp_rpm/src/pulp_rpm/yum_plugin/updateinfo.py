@@ -35,6 +35,23 @@ if yum.__version__ < (3,2,28):
     UpdateMetadata.add_notice = add_notice
 
 
+# Work around for:  https://bugzilla.redhat.com/show_bug.cgi?id=886240#c13
+# Yum's UpdateMetadata.xml() is injecting an extra </pkglist> if an errata spans more than 1 collection
+# Our fix is to remove all but the last closing </pkglist>
+def remove_extra_pkglist_closing_tag(self):
+    # Assumes that the XML should be formated with only one <pkglist>...</pkglist>
+    # Therefore all extra </pkglist> beyond the final closing tag are invalid
+    orig_xml = YUM_UPDATE_MD_UPDATE_NOTICE_ORIG_XML_METHOD(self)
+    num_closing_pkglist_tags = orig_xml.count("</pkglist>")
+    fixed_xml = orig_xml.replace('</pkglist>', '', num_closing_pkglist_tags-1)
+    return fixed_xml
+YUM_UPDATE_MD_UPDATE_NOTICE_ORIG_XML_METHOD = yum.update_md.UpdateNotice.xml
+yum.update_md.UpdateNotice.xml = remove_extra_pkglist_closing_tag
+# End of workaround for https://bugzilla.redhat.com/show_bug.cgi?id=886240#c13
+
+
+
+
 def get_update_notices(path_to_updateinfo):
     """
     path_to_updateinfo:  path to updateinfo.xml
