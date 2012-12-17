@@ -217,7 +217,7 @@ class RpmRepoListCommandTests(rpm_support_base.PulpClientTests):
     def test_get_repositories(self):
         # Setup
         repos = [
-            {'repo_id' : 'matching',
+            {'id' : 'matching',
              'notes' : {constants.REPO_NOTE_KEY : constants.REPO_NOTE_RPM,},
              'importers' : [
                  {'config' : {}}
@@ -227,7 +227,7 @@ class RpmRepoListCommandTests(rpm_support_base.PulpClientTests):
                  {'id' : ids.EXPORT_DISTRIBUTOR_ID}
              ]
             },
-            {'repo_id' : 'non-rpm-repo',
+            {'id' : 'non-rpm-repo',
              'notes' : {}}
         ]
         self.server_mock.request.return_value = 200, repos
@@ -238,23 +238,42 @@ class RpmRepoListCommandTests(rpm_support_base.PulpClientTests):
 
         # Verify
         self.assertEqual(1, len(repos))
-        self.assertEqual(repos[0]['repo_id'], 'matching')
+        self.assertEqual(repos[0]['id'], 'matching')
 
         #   Make sure the export distributor was removed
         self.assertEqual(len(repos[0]['distributors']), 1)
         self.assertEqual(repos[0]['distributors'][0]['id'], ids.YUM_DISTRIBUTOR_ID)
 
+    def test_get_repositories_no_details(self):
+        # Setup
+        repos = [
+            {'id' : 'foo',
+             'display_name' : 'bar',
+             'notes' : {constants.REPO_NOTE_KEY : constants.REPO_NOTE_RPM,}}
+        ]
+        self.server_mock.request.return_value = 200, repos
+
+        # Test
+        command = repo.RpmRepoListCommand(self.context)
+        repos = command.get_repositories({})
+
+        # Verify
+        self.assertEqual(1, len(repos))
+        self.assertEqual(repos[0]['id'], 'foo')
+        self.assertTrue('importers' not in repos[0])
+        self.assertTrue('distributors' not in repos[0])
+
     def test_get_repositories_strip_ssl_cert(self):
         # Setup
         repos = [
-            {'repo_id' : 'matching',
+            {'id' : 'matching',
              'notes' : {constants.REPO_NOTE_KEY : constants.REPO_NOTE_RPM,},
              'importers' : [
                  {'config' : {'ssl_client_cert' : 'foo'}}
              ],
              'distributors' : []
             },
-            {'repo_id' : 'non-rpm-repo',
+            {'id' : 'non-rpm-repo',
              'notes' : {}}
         ]
         self.server_mock.request.return_value = 200, repos
@@ -272,14 +291,14 @@ class RpmRepoListCommandTests(rpm_support_base.PulpClientTests):
     def test_get_repositories_strip_ssl_key(self):
         # Setup
         repos = [
-            {'repo_id' : 'matching',
+            {'id' : 'matching',
              'notes' : {constants.REPO_NOTE_KEY : constants.REPO_NOTE_RPM,},
              'importers' : [
                  {'config' : {'ssl_client_key' : 'foo'}}
              ],
              'distributors' : []
             },
-            {'repo_id' : 'non-rpm-repo',
+            {'id' : 'non-rpm-repo',
              'notes' : {}}
         ]
         self.server_mock.request.return_value = 200, repos
