@@ -29,10 +29,11 @@ from pulp.server.managers.auth.cert.cert_generator import SerialNumber
 from pulp.server.db import connection
 from pulp.server.logs import start_logging, stop_logging
 from pulp.server.managers import factory as manager_factory
-
+import pulp_rpm.common.constants as constants
 
 SerialNumber.PATH = '/tmp/sn.dat'
 
+TEMP_DISTRO_STORAGE_DIR = '/tmp/pulp/var/lib/pulp/content/distribution/'
 
 class PulpRPMTests(unittest.TestCase):
     """
@@ -50,11 +51,14 @@ class PulpRPMTests(unittest.TestCase):
         name = config.config.get('database', 'name')
         connection.initialize(name)
         manager_factory.initialize()
+        constants.DISTRIBUTION_STORAGE_PATH = TEMP_DISTRO_STORAGE_DIR
+
 
     @classmethod
     def tearDownClass(cls):
         name = config.config.get('database', 'name')
         connection._connection.drop_database(name)
+        shutil.rmtree('/tmp/pulp')
 
     def setUp(self):
         super(PulpRPMTests, self).setUp()
