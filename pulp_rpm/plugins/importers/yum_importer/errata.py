@@ -267,12 +267,8 @@ class ImporterErrata(object):
         _LOG.info("%s new_errata, %s new_units" % (len(new_errata), len(new_units)))
         # Save the new units
         for u in new_units.values():
-            try:
-                _LOG.debug("Calling sync_conduit.save_unit(%s)" % (u))
-                sync_conduit.save_unit(u)
-            except Exception, e:
-                _LOG.error("Caught exception, %s" % (e))
-    
+            sync_conduit.save_unit(u)
+
         # clean up any orphaned errata
         for u in orphaned_units.values():
             _LOG.debug("Removing orphaned unit: %s " % (u))
