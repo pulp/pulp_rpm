@@ -2,7 +2,7 @@ Introduction
 ============
 
 RPM Support for Pulp allows you to create and publish repositories of RPM
-packages (including RPM, SRPM, DRPM, errata, and distributions).
+packages (including RPM, SRPM, DRPM, errata, distributions, etc.).
 
 * Automatically retrieve packages from external repositories and store them in
   local Pulp repositories, which are hosted by the Pulp server.

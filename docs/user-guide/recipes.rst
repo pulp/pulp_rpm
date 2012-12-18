@@ -15,6 +15,14 @@ case, we will mirror the `Foreman <http://theforeman.org/>`_ repository.
   $ pulp-admin rpm repo create --repo-id=foreman --feed=http://yum.theforeman.org/rc/el6/i386/ --relative-url=foreman
   Successfully created repository [foreman]
 
+* ``--repo-id`` is required and must be unique.
+* ``--relative-url`` is optional and was used here to make the path to the repository
+  friendlier.
+* ``--feed`` is only required if you want to sync content from an external yum
+  repository, which in this case we do.
+
+::
+
   $ pulp-admin rpm repo sync run --repo-id=foreman
   +----------------------------------------------------------------------+
                      Synchronizing Repository [foreman]
@@ -65,7 +73,7 @@ A local copy of the repository is now available at
 `https://localhost/pulp/repos/foreman/ <https://localhost/pulp/repos/foreman/>`_.
 (adjust the hostname as necessary)
 
-To keep the repository current, it might be desireable to synchronize it on a
+To keep the repository current, it might be desirable to synchronize it on a
 regular schedule. The following command sets a schedule of synchronizing once
 a day.
 

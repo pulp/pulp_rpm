@@ -5,8 +5,8 @@ Protected Repositories
 ----------------------
 
 Repository authentication allows the creation of *protected* repositories in the
-Pulp server. Consumers attempting to use protected repositories require some
-form of authentication in order to be granted access.
+Pulp server. Consumers attempting to access protected repositories with yum
+operations require some form of authentication in order to be granted access.
 
 Two configuration file changes are necessary to enable repository authentication.
 
@@ -51,6 +51,22 @@ credentials under ``/etc/pki/pulp/content/``. The following files are relevant:
   If the private key for the consumer certificate above is not included in the
   certificate itself, it may be located in this file and will be sent to
   bound consumers at the same time as the certificate.
+
+
+Individual Repository Authentication
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Individual repositories can be setup to do SSL authentication. This allows you
+to use authentication on only specific repositories while leaving others
+unprotected, or to have different credentials for some repositories than others.
+
+The three certificates listed above can be passed to the repository ``create``
+or ``update`` command using the following options respectively:
+
+* ``--feed-ca-cert``
+* ``--feed-cert``
+* ``--feed-key``
+
 
 Certificate Revocation Lists
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^

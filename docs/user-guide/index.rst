@@ -7,8 +7,8 @@ Contents:
    :maxdepth: 2
 
    introduction
-   configuration
    installation
+   configuration
    quick-start
    recipes
    features

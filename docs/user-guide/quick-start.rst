@@ -11,8 +11,15 @@ repository.
 
 ::
 
-  $ pulp-admin rpm repo create --repo-id=pulp --relative-url=pulp_beta --feed=http://repos.fedorapeople.org/repos/pulp/pulp/v2/beta/fedora-17/x86_64/
+  $ pulp-admin rpm repo create --repo-id=pulp --relative-url=pulp_beta \
+  --feed=http://repos.fedorapeople.org/repos/pulp/pulp/v2/beta/fedora-17/x86_64/
   Successfully created repository [pulp]
+
+* ``--repo-id`` is required and must be unique.
+* ``--relative-url`` is optional and was used here to make the path to the repository
+  friendlier.
+* ``--feed`` is only required if you want to sync content from an external yum
+  repository, which in this case we do.
 
 Now let's sync the repository, which downloads all of the packages from the remote
 repository and stores them in our new repository.
@@ -88,10 +95,11 @@ install and system reboot.
 
 
 Now we can proceed with binding to a specific repository. Binding causes the Pulp
-repository to be setup on the consumer as a normal yum repository. Binding also
-allows the server to initiate the installation of packages from that repository
-onto the consumer. In this case, repository "zoo" has already been created on the
-Pulp server and contains packages.
+repository to be setup on the consumer as a normal yum repository. Bound repositories
+are added to the file ``/etc/yum.repos.d/pulp.repo``. Binding also allows the
+server to initiate the installation of packages from that repository onto the
+consumer. In this case, repository "zoo" has already been created on the Pulp
+server and contains packages.
 
 ::
 
@@ -103,12 +111,17 @@ Pulp server and contains packages.
   Task Id: 14782cfa-bdb7-4307-b2b1-f1a0b4331d66
 
 
+.. note::
+  The binding request is asynchronous and does not complete until the server has
+  responded with binding information. This is why you see task IDs in the output
+  above. That said, it happens very quickly and will almost certainly be done
+  before you can type your next command.
+
 At this point, the consumer is ready to install packages from the "zoo" repository.
 Let's initiate a package install from the server.
 
 ::
 
-  $ # run this on the server
   $ pulp-admin rpm consumer package install run --consumer-id=con1 -n wolf
   Install task created with id [0ad6f101-3abc-43c4-b103-04719239e5ae]
 
