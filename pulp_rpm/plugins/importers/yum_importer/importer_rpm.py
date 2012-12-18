@@ -231,7 +231,7 @@ def get_yumRepoGrinder(repo_id, repo_working_dir, config):
     """
     repo_label = repo_id
     repo_url = config.get("feed_url")
-    num_threads = config.get("num_threads") or 5
+    num_threads = config.get("num_threads") or 1
     proxy_url = force_ascii(config.get("proxy_url"))
     proxy_port = force_ascii(config.get("proxy_port"))
     proxy_user = force_ascii(config.get("proxy_user"))
