@@ -114,10 +114,18 @@ def get_new_errata_units(available_errata, sync_conduit):
         except IndexError:
             existing_erratum = None
         if existing_erratum:
-            if available_errata[key]['updated'] < existing_erratum.metadata['updated']:
+            if available_errata[key]['updated'] and existing_erratum.metadata['updated']:
+                available_errata_date = available_errata[key]['updated']
+                existing_errata_date = existing_erratum.metadata['updated']
+            else:
+                # updated date is missing, lets use issued date instead
+                available_errata_date = available_errata[key]['issued']
+                existing_errata_date = existing_erratum.metadata['issued']
+
+            if available_errata_date < existing_errata_date:
                 # erratum we have is already newer, skip to the next one
                 continue
-            elif available_errata[key]['updated'] == existing_erratum.metadata['updated']:
+            elif available_errata_date == existing_errata_date:
                 # Its the same errata as we already have, but the pkglist collections could be
                 # different. compare the collection name in the list of what we already have
                 # if the collection name is missing we add it to delta.
@@ -256,12 +264,14 @@ class ImporterErrata(object):
         existing_errata = get_existing_errata(sync_conduit, criteria=criteria)
         orphaned_units = get_orphaned_errata(available_errata, existing_errata)
         new_errata, new_units, sync_conduit = get_new_errata_units(available_errata, sync_conduit)
+        _LOG.info("%s new_errata, %s new_units" % (len(new_errata), len(new_units)))
         # Save the new units
         for u in new_units.values():
             sync_conduit.save_unit(u)
 
         # clean up any orphaned errata
         for u in orphaned_units.values():
+            _LOG.debug("Removing orphaned unit: %s " % (u))
             sync_conduit.remove_unit(u)
         # link errata with rpm units
         link_report = link_errata_rpm_units(sync_conduit, new_units)
