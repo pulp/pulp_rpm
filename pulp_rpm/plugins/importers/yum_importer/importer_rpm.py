@@ -21,6 +21,7 @@ from grinder.RepoFetch import YumRepoGrinder
 from pulp.server.db.model.criteria import UnitAssociationCriteria
 from pulp_rpm.yum_plugin import util, metadata
 from yum_importer import distribution, drpm
+import pulp_rpm.common.constants as constants
 
 _LOG = util.getLogger(__name__)
 
@@ -261,7 +262,7 @@ def get_yumRepoGrinder(repo_id, repo_working_dir, config):
         proxy_url=proxy_url, proxy_port=proxy_port, proxy_user=proxy_user,\
         proxy_pass=proxy_pass, sslverify=sslverify, packages_location="./",\
         remove_old=remove_old, numOldPackages=num_old_packages, skip=skip, max_speed=max_speed,\
-        purge_orphaned=purge_orphaned, distro_location=None, tmp_path=repo_working_dir)
+        purge_orphaned=purge_orphaned, distro_location=constants.DISTRIBUTION_STORAGE_PATH, tmp_path=repo_working_dir)
     return yumRepoGrinder
 
 def _search_for_error(rpm_dict):

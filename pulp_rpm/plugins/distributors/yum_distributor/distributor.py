@@ -671,6 +671,18 @@ class YumDistributor(Distributor):
             _LOG.debug("Found %s distribution files to symlink" % len(distro_files))
             distro_progress_status['items_total'] = len(distro_files)
             distro_progress_status['items_left'] = len(distro_files)
+            # Lookup treeinfo file in the source location
+            src_treeinfo_path = None
+            for treeinfo in constants.TREE_INFO_LIST:
+                src_treeinfo_path = os.path.join(source_path_dir, treeinfo)
+                if os.path.exists(src_treeinfo_path):
+                    # we found the treeinfo file
+                    break
+            if src_treeinfo_path is not None:
+                # create a symlink from content location to repo location.
+                symlink_treeinfo_path = os.path.join(symlink_dir, treeinfo)
+                _LOG.debug("creating treeinfo symlink from %s to %s" % (src_treeinfo_path, symlink_treeinfo_path))
+                util.create_symlink(src_treeinfo_path, symlink_treeinfo_path)
             published_distro_files = []
             for dfile in distro_files:
                 self.set_progress("distribution", distro_progress_status, progress_callback)
