@@ -23,3 +23,12 @@ COMPLETE_STATES = (STATE_COMPLETE, STATE_FAILED, STATE_SKIPPED)
 REPO_NOTE_KEY = '_repo-type' # needs to be standard across extensions
 REPO_NOTE_RPM = 'rpm-repo'
 PUBLISHED_DISTRIBUTION_FILES_KEY = 'published_distributions'
+
+# There is no clean way to get the distribution storage location outside of the unit;
+# we need this path when initializing grinder so the treeinfo file gets compied and
+# symlinked to the right path. Once we have a nicer way of getting this path replace this
+DISTRIBUTION_STORAGE_PATH = '/var/lib/pulp/content/distribution/'
+
+# During publish we need to lookup and make sure the treeinfo exists; since the treeinfo
+# can be '.treeinfo' or 'treeinfo' (in cdn case) we need to check which one exists
+TREE_INFO_LIST = ['.treeinfo', 'treeinfo']
