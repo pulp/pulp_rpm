@@ -250,7 +250,7 @@ For this command we asked Pulp to find errata that had their type field set to
 "security". We can also find these by applying a regex to the id field::
 
     $ pulp-admin rpm repo content errata \
-    > --filters='{"id": {"$regex": "^RHSA"}}' --repo-id=repo
+    > --match id=^RHSA --repo-id=repo
 
 In this example, we asked MongoDB to look for errata that had an ``id`` that
 matched our supplied
@@ -333,7 +333,7 @@ copy::
 
 Now ``repo_1`` has errata and other units, and ``repo_2`` has no units at all.
 Suppose that we would like to pull all of the security updates from ``repo_1``
-to ``repo_2``. We can determine which errata are RHSA by using a regex filter::
+to ``repo_2``. We can determine which errata are RHSA by using a match filter::
 
     $ pulp-admin rpm repo content errata --match type=security \
     > --repo-id=repo_1 --fields=id
