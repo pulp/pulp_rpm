@@ -18,16 +18,27 @@ Pulp RPM supports the following types:
 * Package Category
 
 Errata
-------
+^^^^^^
 
 .. probably deserves its own section, especially since there are extra consumer-side features
 .. how to create package group, what are the requirements, what is the CSV, etc.
 .. push count? what is that?
 
+`Red Hat <http://www.redhat.com>`_ provides security, bug fix, and enhancement
+updates for supported Red Hat Enterprise products. These security updates are
+provided through the Red Hat CDN, and are described by errata. Pulp supports
+these errata types with a number of related features.
+
+Errata are synchronized from upstream repositories. Errata can also be
+:ref:`copied <copy-errata-recipe>` from one repository to another.
+Administrators can also :ref:`upload <create-errata-recipe>` their own errata to
+a repository. Please see the :doc:`recipes` documentation to learn how to
+perform these operations.
+
 Protected Repositories
 ----------------------
 
-`Red Hat <http://www.redhat.com>`_ protects its repositories with SSL-based
+Red Hat protects its repositories with SSL-based
 entitlement certificates. Pulp supports both ends of that operation:
 
 Each Pulp repository can be configured with a client entitlement certificate and
