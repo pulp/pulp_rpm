@@ -572,6 +572,19 @@ class TestBind(HandlerTest):
         repofile = Config(self.REPO_FILE)
         self.assertFalse(self.REPO_ID in repofile)
 
+    @patch('pulp_rpm.handler.repolib.Lock')
+    def test_clean(self, mock_lock):
+        # Setup
+        options = {}
+        conduit = TestConduit(self.CONFIGURATION)
+        bindings = [dict(self.BINDING)]
+        self.dispatcher.bind(conduit, bindings, options)
+        self.assertTrue(os.path.isfile(self.REPO_FILE))
+        # Test
+        self.dispatcher.clean(conduit)
+        # Verify
+        self.assertFalse(os.path.isfile(self.REPO_FILE))
+
 
 class TestLinux(HandlerTest):
 

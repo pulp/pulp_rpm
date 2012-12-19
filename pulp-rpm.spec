@@ -18,7 +18,7 @@
 
 Name: pulp-rpm
 Version: 2.0.6
-Release: 0.14.beta
+Release: 0.18.beta
 Summary: Support for RPM content in the Pulp platform
 Group: Development/Languages
 License: GPLv2
@@ -148,7 +148,7 @@ Requires: python-pulp-rpm-common = %{pulp_version}
 Requires: pulp-server = %{pulp_version}
 Requires: createrepo >= 0.9.8-3
 Requires: python-rhsm >= 1.0.4-1
-Requires: grinder >= 0.1.10-1
+Requires: grinder >= 0.1.11-1
 %description plugins
 Provides a collection of platform plugins that extend the Pulp platform
 to provide RPM specific support.
@@ -255,6 +255,44 @@ A collection of yum plugins supplementing Pulp consumer operations.
 
 
 %changelog
+* Tue Dec 18 2012 Jeff Ortel <jortel@redhat.com> 2.0.6-0.18.beta
+- 887959 - Removing NameVirtualHost entries from plugin httpd conf files and
+  adding it only at one place in main pulp.conf (skarmark@redhat.com)
+- 886240 - fixing distribution sync and publish * set the distro location when
+  grinder is invoked so treeinfo gets downloaded and symlinked to right
+  location * fix the publish to lookup treeinfo and symlink to publish location
+  (pkilambi@redhat.com)
+- 886240 - yum's update_md skips updated date via xml generation, adding a
+  check to see if its missing and fallback to issued date instead
+  (pkilambi@redhat.com)
+- 887388 - Fixed issue with non --details listing (jason.dobies@redhat.com)
+- 886240 - Fixes generation of updateinfo XML if an errata spans more than 1
+  collection, yum will output the XML with an extra '</pkglist>' interspersed
+  between each <collection>. (jmatthews@redhat.com)
+- 887388 - Strip out the feed SSL info and replace with safe message
+  (jason.dobies@redhat.com)
+- 887368 - implement bind handler clean(). (jortel@redhat.com)
+- 886240 - updated comps parsing so it will auto wrap a file with GzipFile if
+  it ends with .gz, even if comes from 'groups' data and not 'group_gz'
+  (jmatthews@redhat.com)
+- 887123 - Process --verify-feed-ssl as a boolan. (rbarlow@redhat.com)
+
+* Thu Dec 13 2012 Jeff Ortel <jortel@redhat.com> 2.0.6-0.17.beta
+- 887026 - The yum distributor should not have been storing this value in
+  server.conf. (jason.dobies@redhat.com)
+- 886986 - Default to verifying feed SSL certificates. (rbarlow@redhat.com)
+- 885264 - bump grinder requires to: 0.1.11-1. (jortel@redhat.com)
+
+* Thu Dec 13 2012 Jeff Ortel <jortel@redhat.com> 2.0.6-0.15.beta
+- 886240 - repo sync for a repo created with a feed of /var/lib/pulp of another
+  repo results in less number of contents than the original repo
+  (jmatthews@redhat.com)
+- 886240 - repo sync for a repo created with a feed of /var/lib/pulp of another
+  repo results in less number of contents than the original repo Updated logic
+  for pagination of package metadata (jmatthews@redhat.com)
+- 857528 - Added missing feed message to the progress report so the client sees
+  it (jason.dobies@redhat.com)
+
 * Mon Dec 10 2012 Jeff Ortel <jortel@redhat.com> 2.0.6-0.14.beta
 - 885264 - require grinder 0.1.10 (jortel@redhat.com)
 

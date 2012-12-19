@@ -381,14 +381,11 @@ class YumMetadataGenerator(object):
     """
     Yum metadata generator using per package snippet approach
     """
-    def __init__(self, repodir, rpm_units_to_write, checksum_type="sha256",
+    def __init__(self, repodir, checksum_type="sha256",
                  skip_metadata_types=None, is_cancelled=False, group_xml_path=None, updateinfo_xml_path=None, custom_metadata_dict=None):
         """
         @param repodir: repository dir where the repodata directory is created/exists
         @type  repodir: str
-
-        @param rpm_units_to_write: List of rpm units from which repodata is taken and merged
-        @type rpm_units_to_write: [AssociatedUnit]
 
         @param checksum_type: checksum type to use when generating repodata; default is sha256
         @type  checksum_type: str
@@ -406,13 +403,12 @@ class YumMetadataGenerator(object):
         @param custom_metadata_dict: {}
         """
         self.repodir = repodir
-        self.units = rpm_units_to_write
+        self.unit_count = 0
+
         self.checksum_type = checksum_type
         self.skip = skip_metadata_types or []
 
-        self.primary_xml = None
-        self.filelists_xml = None
-        self.other_xml = None
+
         self.backup_repodata_dir = None
         self.is_cancelled=is_cancelled
         self.group_xml_path= group_xml_path
@@ -420,6 +416,19 @@ class YumMetadataGenerator(object):
         self.custom_metadata = custom_metadata_dict or {}
         self.setup_temp_working_dir()
         self.metadata_conf = self.setup_metadata_conf()
+
+        self.primary_xml = None
+        self.filelists_xml = None
+        self.other_xml = None
+
+        self.temp_primary_xml_path = os.path.join(self.temp_working_dir, "temp_primary.xml.gz")
+        self.temp_filelists_xml_path = os.path.join(self.temp_working_dir, "temp_filelists.xml.gz")
+        self.temp_other_xml_path =  os.path.join(self.temp_working_dir, "temp_other.xml.gz")
+
+        self.primary_xml_path = os.path.join(self.temp_working_dir, "primary.xml.gz")
+        self.filelists_xml_path = os.path.join(self.temp_working_dir, "filelists.xml.gz")
+        self.other_xml_path =  os.path.join(self.temp_working_dir, "other.xml.gz")
+
 
     def setup_temp_working_dir(self):
         """
@@ -429,6 +438,8 @@ class YumMetadataGenerator(object):
         self.temp_working_dir = os.path.join(self.repodir, ".repodata")
         if not os.path.isdir(self.temp_working_dir):
             os.makedirs(self.temp_working_dir, mode=0755)
+
+
 
     def _backup_existing_repodata(self):
         """
@@ -461,34 +472,45 @@ class YumMetadataGenerator(object):
         conf.sumtype = self.checksum_type
         return conf
 
-    def init_primary_xml(self):
-        """
-        Initialize the primary xml file where metadata snippets are written
-        """
-        filename = os.path.join(self.temp_working_dir, "primary.xml.gz")
-        self.primary_xml= GzipFile(filename, 'w', compresslevel=9)
-        self.primary_xml.write("""<?xml version="1.0" encoding="UTF-8"?>\n <metadata xmlns="http://linux.duke.edu/metadata/common"
-xmlns:rpm="http://linux.duke.edu/metadata/rpm" packages="%s"> \n""" % len(self.units))
+    def init_xml(self):
+        self.primary_xml= GzipFile(self.temp_primary_xml_path, 'w', compresslevel=9)
+        self.filelists_xml= GzipFile(self.temp_filelists_xml_path, 'w', compresslevel=9)
+        self.other_xml= GzipFile(self.temp_other_xml_path, 'w', compresslevel=9)
 
-    def init_filelists_xml(self):
+    def prepend_text(self, input_path, output_path, text, gzip=True):
         """
-        Initialize the filelists xml file where metadata snippets are written
-        """
-        filename = os.path.join(self.temp_working_dir, "filelists.xml.gz")
-        self.filelists_xml= GzipFile(filename, 'w', compresslevel=9)
-        self.filelists_xml.write("""<?xml version="1.0" encoding="UTF-8"?>
-<filelists xmlns="http://linux.duke.edu/metadata/filelists" packages="%s"> \n""" % len(self.units))
+        @param input_path: path to input file we want to prepend 'text' to
+        @type input_path: str
 
-    def init_other_xml(self):
-        """
-        Initialize the other xml file where metadata snippets are written
-        """
-        filename = os.path.join(self.temp_working_dir, "other.xml.gz")
-        self.other_xml= GzipFile(filename, 'w', compresslevel=9)
-        self.other_xml.write("""<?xml version="1.0" encoding="UTF-8"?>
-<otherdata xmlns="http://linux.duke.edu/metadata/other" packages="%s"> \n""" % len(self.units))
+        @param output_path: output path that will be 'text' plus contents of file referred to with 'input_path'
+        @type output_path: str
 
-    def close_primary_xml(self):
+        @param text: text blob to prepend to file
+        @type text: str
+
+        @param gzip: True will gzip file contents
+        @type gzip: bool
+        @return:
+        """
+        if gzip:
+            in_f = GzipFile(input_path, 'r', compresslevel=9)
+            out_f = GzipFile(output_path, 'w', compresslevel=9)
+        else:
+            in_f = open(input_path, 'w')
+            out_f = open(output_path, 'w')
+
+        try:
+            out_f.write(text)
+            while True:
+                data = in_f.read(size=1024*1024)
+                if not data:
+                    break
+                out_f.write(data)
+        finally:
+            in_f.close()
+            out_f.close()
+
+    def _close_primary_xml(self):
         """
         All the data should be written at this point; invoke this to
         close the primary xml gzipped file
@@ -496,7 +518,12 @@ xmlns:rpm="http://linux.duke.edu/metadata/rpm" packages="%s"> \n""" % len(self.u
         self.primary_xml.write("""\n </metadata>""")
         self.primary_xml.close()
 
-    def close_filelists_xml(self):
+        blob = """<?xml version="1.0" encoding="UTF-8"?>\n <metadata xmlns="http://linux.duke.edu/metadata/common"
+xmlns:rpm="http://linux.duke.edu/metadata/rpm" packages="%s"> \n""" % self.unit_count
+        self.prepend_text(self.temp_primary_xml_path, self.primary_xml_path, blob)
+
+
+    def _close_filelists_xml(self):
         """
         All the data should be written at this point; invoke this to
         close the filelists xml gzipped file
@@ -504,7 +531,11 @@ xmlns:rpm="http://linux.duke.edu/metadata/rpm" packages="%s"> \n""" % len(self.u
         self.filelists_xml.write("""\n </filelists>""")
         self.filelists_xml.close()
 
-    def close_other_xml(self):
+        blob = """<?xml version="1.0" encoding="UTF-8"?>
+<filelists xmlns="http://linux.duke.edu/metadata/filelists" packages="%s"> \n""" % self.unit_count
+        self.prepend_text(self.temp_filelists_xml_path, self.filelists_xml_path, blob)
+
+    def _close_other_xml(self):
         """
         All the data should be written at this point; invoke this to
         close the other xml gzipped file
@@ -512,23 +543,36 @@ xmlns:rpm="http://linux.duke.edu/metadata/rpm" packages="%s"> \n""" % len(self.u
         self.other_xml.write("""\n </otherdata>""")
         self.other_xml.close()
 
-    def merge_unit_metadata(self):
+        blob = """<?xml version="1.0" encoding="UTF-8"?>
+<otherdata xmlns="http://linux.duke.edu/metadata/other" packages="%s"> \n""" % self.unit_count
+        self.prepend_text(self.temp_other_xml_path, self.other_xml_path, blob)
+
+    def close_xml(self):
+        """
+        Closes all open xml file handles
+        @return:
+        """
+        self._close_primary_xml()
+        self._close_filelists_xml()
+        self._close_other_xml()
+
+    def merge_unit_metadata(self, units):
         """
         This performs the actual merge of the snippets. The xml files are initialized and
         each unit metadata is written to the xml files. These units here should be rpm
         units. If a unit doesnt have repodata info, log the message and skip that unit.
         Finally the gzipped xmls are closed when all the units are written.
+        
+        @param units: List of rpm units from which repodata is taken and merged
+        @type units: [AssociatedUnit]
         """
-        _LOG.info("Performing per unit metadata merge on %s units" % len(self.units))
+        _LOG.info("Performing per unit metadata merge on %s units" % len(units))
         if self.is_cancelled:
             _LOG.warn("cancelling merge unit metadata")
             raise CancelException()
         start = time.time()
-        self.init_primary_xml()
-        self.init_filelists_xml()
-        self.init_other_xml()
         try:
-            for unit in self.units:
+            for unit in units:
                 if self.is_cancelled:
                     _LOG.warn("cancelling merge unit metadata")
                     raise CancelException()
@@ -544,9 +588,7 @@ xmlns:rpm="http://linux.duke.edu/metadata/rpm" packages="%s"> \n""" % len(self.u
                     _LOG.debug("No repodata found for the unit; continue")
                     continue
         finally:
-            self.close_primary_xml()
-            self.close_filelists_xml()
-            self.close_other_xml()
+            self.unit_count += len(units)
             end = time.time()
         _LOG.info("per unit metadata merge completed in %s seconds" % (end - start))
 
@@ -659,7 +701,7 @@ xmlns:rpm="http://linux.duke.edu/metadata/rpm" packages="%s"> \n""" % len(self.u
             # might have missing metadata count not perform final move
             _LOG.error("Error performing final move, could be missing pkg metadata files")
 
-    def run(self):
+    def run(self, units):
         """
         Invokes the metadata generation by taking a backup of existing repodata;
         looking up units and merging the per unit snippets; generate sqlite db,
@@ -668,7 +710,10 @@ xmlns:rpm="http://linux.duke.edu/metadata/rpm" packages="%s"> \n""" % len(self.u
         # backup existing repodata dir
         self._backup_existing_repodata()
         # extract the per rpm unit metadata and merge to create package xml data
-        self.merge_unit_metadata()
+        self.init_xml()
+        self.merge_unit_metadata(units)
+        self.close_xml()
+
         self.final_repodata_move()
         # lookup and merge updateinfo, comps and other metadata
         self.merge_comps_xml()
@@ -717,37 +762,43 @@ def generate_yum_metadata(repo_dir, publish_conduit, config, progress_callback=N
     start = time.time()
     try:
         set_progress("metadata", metadata_progress_status, progress_callback)
-        units_to_write = []
-        for type_id in [TYPE_ID_RPM, TYPE_ID_SRPM]:
-            criteria = UnitAssociationCriteria(type_ids=type_id,
-                        unit_fields=['id', 'name', 'version', 'release', 'arch', 'epoch',
-                                     '_storage_path', "checksum", "checksumtype" , "repodata"], limit=limit)
-            units_to_write += publish_conduit.get_units(criteria=criteria)
-        create_yum_metadata = YumMetadataGenerator(repo_dir, units_to_write, checksum_type=checksum_type,
+
+        create_yum_metadata = YumMetadataGenerator(repo_dir, checksum_type=checksum_type,
             skip_metadata_types=skip_metadata_types, is_cancelled=is_cancelled, group_xml_path=group_xml_path,
             updateinfo_xml_path=updateinfo_xml_path, custom_metadata_dict=custom_metadata)
         create_yum_metadata._backup_existing_repodata()
-        skip = 0
+
         if is_cancelled:
             _LOG.warn("cancel metadata generation")
             raise CancelException()
-        while len(units_to_write) > 0:
-            skip += len(units_to_write)
-            _LOG.info("Processed %s" % skip)
-            create_yum_metadata.merge_unit_metadata()
-            units_to_write = []
-            for type_id in [TYPE_ID_RPM, TYPE_ID_SRPM]:
+
+        create_yum_metadata.init_xml()
+        unit_count = 0
+        for type_id in [TYPE_ID_RPM, TYPE_ID_SRPM]:
+            skip = 0
+            # RPMs & SRPMs processed independently so we can use criteria to limit fields for returned results
+            while True:
                 criteria = UnitAssociationCriteria(type_ids=type_id,
-                            unit_fields=['id', 'name', 'version', 'release', 'arch', 'epoch',
-                                         '_storage_path', "checksum", "checksumtype" , "repodata"], limit=limit, skip=skip)
-                units_to_write += publish_conduit.get_units(criteria=criteria)
+                    unit_fields=['id', 'name', 'version', 'release', 'arch', 'epoch',
+                                 '_storage_path', "checksum", "checksumtype" , "repodata"], limit=limit, skip=skip)
+                units = publish_conduit.get_units(criteria)
+                if not units:
+                    break
+                _LOG.info("generate_yum_metadata processing %s units of type %s, %s total units have already been processed" % \
+                          (len(units), type_id, unit_count))
+                skip += len(units)
+                unit_count += len(units)
+                create_yum_metadata.merge_unit_metadata(units)
+        _LOG.info("generate_yum_metadata finished processing %s units" % (unit_count))
+        create_yum_metadata.close_xml()
+
         create_yum_metadata.final_repodata_move()
         # lookup and merge updateinfo, comps and other metadata
         create_yum_metadata.merge_comps_xml()
         create_yum_metadata.merge_updateinfo_xml()
         # merge any custom metadata stored on the scratchpad, this includes prestodelta
         create_yum_metadata.merge_custom_repodata()
-#        create_yum_metadata.run()
+
     except CancelException, ce:
         metadata_progress_status = {"state" : "CANCELED"}
         set_progress("metadata", metadata_progress_status, progress_callback)
