@@ -228,6 +228,8 @@ the contents of ``repo_2``::
 
     Id: RHSA-2009:1472
 
+.. _create-errata-recipe:
+
 Create Your Own Errata
 ----------------------
 

@@ -24,15 +24,16 @@ Errata
 .. how to create package group, what are the requirements, what is the CSV, etc.
 .. push count? what is that?
 
-`Red Hat <http://www.redhat.com>`_ provides security updates for supported Red
-Hat Enterprise products. These security updates are provided through the Red
-Hat CDN as errata updates. Pulp supports these errata types with a number of
-related features.
+`Red Hat <http://www.redhat.com>`_ provides security, bug fix, and enhancement
+updates for supported Red Hat Enterprise products. These security updates are
+provided through the Red Hat CDN, and are described by errata. Pulp supports
+these errata types with a number of related features.
 
-Errata can be :ref:`copied <copy-errata-recipe>` from one repository to
-another. Admins can also upload their own errata to a repository by providing a
-conforming CSV formatted file. Please see the :doc:`recipes` documentation to
-learn how to perform these operations.
+Errata are synchronized from upstream repositories. Errata can also be
+:ref:`copied <copy-errata-recipe>` from one repository to another.
+Administrators can also :ref:`upload <create-errata-recipe>` their own errata to
+a repository. Please see the :doc:`recipes` documentation to learn how to
+perform these operations.
 
 Protected Repositories
 ----------------------
