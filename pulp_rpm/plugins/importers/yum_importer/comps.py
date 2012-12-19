@@ -20,7 +20,6 @@ import sys
 import time
 import yum
 import lzma
-import bz2
 from pulp_rpm.common.ids import TYPE_ID_PKG_GROUP, TYPE_ID_PKG_CATEGORY, UNIT_KEY_PKG_GROUP, \
         METADATA_PKG_GROUP, UNIT_KEY_PKG_CATEGORY, METADATA_PKG_CATEGORY
 from pulp_rpm.yum_plugin import comps_util, util
@@ -224,8 +223,6 @@ def get_available(repo_dir, md_types=None, group_file=None, group_type=None):
                     comps_data = gzip.GzipFile(group_file, 'r')
                 elif group_file.endswith('xz'):
                     comps_data = lzma.LZMAFile(group_file, 'r')
-                elif group_file.endswith('bz2'):
-                    comps_data = bz2.BZ2File(group_file, 'r')
                 else:
                     comps_data = group_file
                 yc.add(comps_data)
