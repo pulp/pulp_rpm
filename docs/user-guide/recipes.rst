@@ -171,3 +171,7 @@ required to fit the selected packages.
 
 The resulting ISOs are now available at `https://localhost/pulp/isos/pulp/
 <https://localhost/pulp/isos/pulp/>`_ (adjust hostname as necessary)
+
+Copy Package Groups
+-------------------
+
