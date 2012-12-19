@@ -515,3 +515,20 @@ class TestComps(rpm_support_base.PulpRPMTests):
             self.assertTrue(len(group_units), len(yc.groups))
             self.assertTrue(len(cat_units), len(yc.categories))
 
+    def test_comps_imports_with_xz_compression(self):
+        # Test with a valid xz group.xml.xz
+        repo_dir = os.path.join(self.data_dir, "test_comps_with_xz_compress")
+        self.assertTrue(os.path.exists(repo_dir))
+        groups, categories = comps.get_available(repo_dir, md_types=["group"])
+        print len(groups), len(categories)
+        self.assertEqual(len(groups), 202)
+        self.assertEqual(len(categories), 10)
+
+        for g in groups.values():
+            keys = g.keys()
+            for key_name in METADATA_PKG_GROUP:
+                self.assertTrue(key_name in keys)
+        for c in categories.values():
+            keys = c.keys()
+            for key_name in METADATA_PKG_CATEGORY:
+                self.assertTrue(key_name in keys)
