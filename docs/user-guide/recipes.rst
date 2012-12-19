@@ -231,5 +231,111 @@ the contents of ``repo_2``::
 Create Your Own Errata
 ----------------------
 
+You can also create your own errata on a repo using the Pulp client. In order to
+do this, you will need to create a few
+`CSV <http://en.wikipedia.org/wiki/Comma-separated_values>`_ files and provide a
+few data fields to the :command:`pulp-admin` client.
+
+Let's begin by making a repo and syncing it::
+
+    $ pulp-admin rpm repo create --repo-id=repo \
+    > --feed=http://repos.fedorapeople.org/repos/pulp/pulp/demo_repos/pulp_unittest/
+    Successfully created repository [repo]
+
+    $ pulp-admin rpm repo sync run --repo-id=repo
+
+Now let's create a new errata that references one of the test packages from this
+repo called pulp-test-package. The first file that we will need to provide is a
+references CSV file. This CSV should have four columns: href, type, id, and
+description, giving a link to the referenced bug report or CVE, the type of the
+reference, the ID of the reference, and a brief description. Here is an example,
+named references.csv, wherein you can see that pulp-test-package-0.2.1 has some
+serious issues::
+
+    http://bugzilla.redhat.com/bugzilla/show_bug.cgi?id=123456,bugzilla,123456,pulp-test-package-0.2.1 prints mean error messages to users
+    http://bugzilla.redhat.com/bugzilla/show_bug.cgi?id=654321,bugzilla,654321,pulp-test-package-0.2.1 causes users' machines to run out of bits/bytes/whatever. The users must wait until the next supply comes next week
+
+Next, we will need to provide a list of packages that the errata applies to.
+This CSV provides a list of packages that address the issue that the errata
+tracks with the following columns: name, version, release, epoch, arch,
+filename, checksum, checksum_type, and src. For example, let's create
+package_list.csv for this::
+
+    pulp-test-package,0.3.1,1.fc11,0,x86_64,pulp-test-package-0.3.1-1.fc11.x86_64.rpm,6bce3f26e1fc0fc52ac996f39c0d0e14fc26fb8077081d5b4dbfb6431b08aa9f,sha256,pulp-test-package-0.3.1-1.fc11.src.rpm
+
+Now that we have these two files, we can create our new errata like so::
+
+    $ pulp-admin rpm repo uploads erratum --erratum_id=DEMO_ID_1 \
+    > --title="1: pulp-test-package bit conservation" \
+    > --description="1: pulp-test-package now conserves your precious bits." \
+    > --version=1 --release="el6" --type="bugzilla" --status="final" \
+    > --updated="`date`" --issued="`date`" --reference-csv=references.csv \
+    > --pkglist-csv=package_list.csv --from=pulp-list@redhat.com --repo-id=repo
+    +----------------------------------------------------------------------+
+                                  Unit Upload
+    +----------------------------------------------------------------------+
+
+    Extracting necessary metadata for each request...
+    ... completed
+
+    Creating upload requests on the server...
+    [==================================================] 100%
+    Initializing upload
+    ... completed
+
+    Starting upload of selected units. If this process is stopped through ctrl+c,
+    the uploads will be paused and may be resumed later using the resume command or
+    cancelled entirely using the cancel command.
+
+    Importing into the repository...
+    ... completed
+
+    Deleting the upload request...
+    ... completed
+
+And now we are able to see that our errata is part of the repo::
+
+    $ pulp-admin rpm repo content errata --repo-id=repo --match="type=bugzilla"
+    Description:      1: pulp-test-package now conserves your precious bits.
+    From Str:         pulp-list@redhat.com
+    Id:               DEMO_ID_1
+    Issued:           Wed Dec 19 12:19:18 EST 2012
+    Pkglist:          
+      Name:     el6
+      Packages: 
+        Arch:     x86_64
+        Epoch:    0
+        Filename: pulp-test-package-0.3.1-1.fc11.x86_64.rpm
+        Name:     pulp-test-package
+        Release:  1.fc11
+        Src:      pulp-test-package-0.3.1-1.fc11.src.rpm
+        Sums:     6bce3f26e1fc0fc52ac996f39c0d0e14fc26fb8077081d5b4dbfb6431b08aa9f
+        Type:     sha256
+        Version:  0.3.1
+      Short:    
+    Pushcount:        1
+    Reboot Suggested: False
+    References:       
+      Href:  http://bugzilla.redhat.com/bugzilla/show_bug.cgi?id=123456
+      Id:    123456
+      Title: pulp-test-package-0.2.1 prints mean error messages to users
+      Type:  bugzilla
+      Href:  http://bugzilla.redhat.com/bugzilla/show_bug.cgi?id=654321
+      Id:    654321
+      Title: pulp-test-package-0.2.1 causes users' machines to run out of
+             bits/bytes/whatever. The users must wait until the next supply comes
+             next week
+      Type:  bugzilla
+    Release:          el6
+    Rights:           None
+    Severity:         None
+    Solution:         None
+    Status:           final
+    Summary:          None
+    Title:            1: pulp-test-package bit conservation
+    Type:             bugzilla
+    Updated:          Wed Dec 19 12:19:18 EST 2012
+    Version:          1
+
 .. others?
 
