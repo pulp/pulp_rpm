@@ -333,7 +333,7 @@ copy::
 
 Now ``repo_1`` has errata and other units, and ``repo_2`` has no units at all.
 Suppose that we would like to pull all of the security updates from ``repo_1``
-to ``repo_2``. I can determine which errata are RHSA by using a regex filter::
+to ``repo_2``. We can determine which errata are RHSA by using a regex filter::
 
     $ pulp-admin rpm repo content errata --match="type=security" \
     > --repo-id=repo_1 --fields=id
