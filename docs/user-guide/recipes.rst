@@ -1,11 +1,12 @@
 .. _recipes:
 
+*******
 Recipes
-=======
+*******
 
 
 Mirror a Remote Repository
---------------------------
+==========================
 
 This is an example of creating a local mirror of a remote repository. In this
 case, we will mirror the `Foreman <http://theforeman.org/>`_ repository.
@@ -102,7 +103,7 @@ creating the repository, as in this example:
 
 
 Sync a Protected Repo
----------------------
+=====================
 
 Syncing against a protected repository requires specifying some SSL certificates.
 The ``pulp-admin rpm repo create`` command does a good job of documenting these
@@ -143,12 +144,12 @@ have permission to read the certificates and key.
 
 
 Publish a Protected Repo
-------------------------
+========================
 
 .. rbarlow will write this as part of https://bugzilla.redhat.com/show_bug.cgi?id=887032
 
 Publish ISOs
-------------
+============
 
 Given a repository "foo" that contains packages, it is possible to publish all
 of its packages as ISO images. There are extra command line options that can
@@ -171,6 +172,9 @@ required to fit the selected packages.
 
 The resulting ISOs are now available at `https://localhost/pulp/isos/pulp/
 <https://localhost/pulp/isos/pulp/>`_ (adjust hostname as necessary)
+
+Errata
+======
 
 .. _search-errata:
 
@@ -490,6 +494,157 @@ And now we are able to see that our errata is part of the repo::
     Updated:          Wed Dec 19 12:19:18 EST 2012
     Version:          1
 
-Copy Package Groups
--------------------
+Package Groups
+==============
 
+.. _creating_package_groups:
+
+Create Your Own Package Groups
+------------------------------
+
+You can easily define your own package groups with the :command:`pulp_admin`
+utility. Let's create and sync a repo::
+
+    $ pulp-admin rpm repo create --repo-id=repo_1 \
+    > --feed=http://repos.fedorapeople.org/repos/pulp/pulp/demo_repos/pulp_unittest/
+    Successfully created repository [repo_1]
+
+    $ pulp-admin rpm repo sync run --repo-id=repo_1
+
+Now let's build a package group for our demo repo test files::
+
+   $ pulp-admin rpm repo uploads group --repo-id=repo_1 --group-id=pulp_test \
+   > --name="Pulp Test" --description="A package group of Pulp test files." \
+   > --mand-name=pulp-dot-2.0-test --mand-name=pulp-test-package
+   +----------------------------------------------------------------------+
+                                 Unit Upload
+   +----------------------------------------------------------------------+
+
+   Extracting necessary metadata for each request...
+   ... completed
+
+   Creating upload requests on the server...
+   [==================================================] 100%
+   Initializing upload
+   ... completed
+
+   Starting upload of selected units. If this process is stopped through ctrl+c,
+   the uploads will be paused and may be resumed later using the resume command or
+   cancelled entirely using the cancel command.
+
+   Importing into the repository...
+   ... completed
+
+   Deleting the upload request...
+   ... completed
+
+We can see that the package group is now part of our repo::
+
+   $ pulp-admin rpm repo content group --repo-id=repo_1 --match id=pulp_test
+   Conditional Package Names:
+   Default:                   False
+   Default Package Names:     None
+   Description:               A package group of Pulp test files.
+   Display Order:             0
+   Id:                        pulp_test
+   Langonly:                  None
+   Mandatory Package Names:   pulp-dot-2.0-test, pulp-test-package
+   Name:                      Pulp Test
+   Optional Package Names:    None
+   Repo Id:                   repo_1
+   Translated Description:
+   Translated Name:
+   User Visible:              False
+
+Copying Package Groups Between Repos
+------------------------------------
+
+Package groups can be copied from one repository to another, which will bring
+along the packages it references as well. For this example, we will assume
+you've performed the steps from the :ref:`creating_package_groups` section.
+
+We'll begin by creating a new empty repo, ``repo_2``::
+
+   $ pulp-admin rpm repo create --repo-id=repo_2
+   Successfully created repository [repo_2]
+
+And now we will copy our package group, ``pulp_test`` from ``repo_1`` to
+``repo_2``::
+
+   $ pulp-admin rpm repo copy group --match id=pulp_test --from-repo-id=repo_1 \
+   > --to-repo-id=repo_2
+   Progress on this task can be viewed using the commands under "repo tasks".
+
+This task should complete fairly quickly since there isn't much to do with our
+tiny example repo, but we can check on the progress to verify when it is
+finished::
+
+    $ pulp-admin repo tasks list --repo-id=repo_1
+    +----------------------------------------------------------------------+
+                                     Tasks
+    +----------------------------------------------------------------------+
+
+    Operations:  associate
+    Resources:   repo_2 (repository), repo_1 (repository)
+    State:       Successful
+    Start Time:  2012-12-20T16:26:44Z
+    Finish Time: 2012-12-20T16:26:44Z
+    Result:      N/A
+    Task Id:     9f1d0146-cc28-47a8-b0f4-b1b49f84e058
+
+Now we can inspect ``repo_2`` and see that the package group and its RPMs have
+been copied there::
+
+    $ pulp-admin rpm repo content group --repo-id=repo_2
+    Conditional Package Names:
+    Default:                   False
+    Default Package Names:     None
+    Description:               A package group of Pulp test files.
+    Display Order:             0
+    Id:                        pulp_test
+    Langonly:                  None
+    Mandatory Package Names:   pulp-dot-2.0-test, pulp-test-package
+    Name:                      Pulp Test
+    Optional Package Names:    None
+    Repo Id:                   repo_1
+    Translated Description:
+    Translated Name:
+    User Visible:              False
+
+    $ pulp-admin rpm repo content rpm --repo-id=repo_2
+    Arch:         x86_64
+    Buildhost:    gibson
+    Checksum:     435d92e6c09248b501b8d2ae786f92ccfad69fab8b1bc774e2b66ff6c0d83979
+    Checksumtype: sha256
+    Description:  Test package to see how we deal with packages with dots in the
+                  name
+    Epoch:        0
+    Filename:     pulp-dot-2.0-test-0.1.2-1.fc11.x86_64.rpm
+    License:      MIT
+    Name:         pulp-dot-2.0-test
+    Provides:     [[u'pulp-dot-2.0-test(x86-64)', u'EQ', [u'0', u'0.1.2',
+                  u'1.fc11']], [u'pulp-dot-2.0-test', u'EQ', [u'0', u'0.1.2',
+                  u'1.fc11']], [u'config(pulp-dot-2.0-test)', u'EQ', [u'0',
+                  u'0.1.2', u'1.fc11']]]
+    Release:      1.fc11
+    Requires:
+    Vendor:
+    Version:      0.1.2
+
+    Arch:         x86_64
+    Buildhost:    gibson
+    Checksum:     6bce3f26e1fc0fc52ac996f39c0d0e14fc26fb8077081d5b4dbfb6431b08aa9f
+    Checksumtype: sha256
+    Description:  Test package.  Nothing to see here.
+    Epoch:        0
+    Filename:     pulp-test-package-0.3.1-1.fc11.x86_64.rpm
+    License:      MIT
+    Name:         pulp-test-package
+    Provides:     [[u'pulp-test-package(x86-64)', u'EQ', [u'0', u'0.3.1',
+                  u'1.fc11']], [u'pulp-test-package', u'EQ', [u'0', u'0.3.1',
+                  u'1.fc11']], [u'config(pulp-test-package)', u'EQ', [u'0',
+                  u'0.3.1', u'1.fc11']]]
+    Release:      1.fc11
+    Requires:
+    Vendor:
+    Version:      0.3.1
