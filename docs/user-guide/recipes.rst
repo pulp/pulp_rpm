@@ -576,7 +576,7 @@ And now we will copy our package group, ``pulp_test`` from ``repo_1`` to
    Progress on this task can be viewed using the commands under "repo tasks".
 
 This task should complete fairly quickly since there isn't much to do with our
-tiny example repo, but we can check on the progress to verify when it is
+tiny example repo, but we can check on the progress to verify that it is
 finished::
 
     $ pulp-admin repo tasks list --repo-id=repo_1
