@@ -661,7 +661,7 @@ You can also define your own package categories with the :command:`pulp_admin`
 utility. Let's create and sync a repo::
 
     $ pulp-admin rpm repo create --repo-id=repo_1 \
-    > --feed=http://repos.fedorapeople.org/repos/pulp/pulp/demo_repos/pulp_unittest/
+      --feed=http://repos.fedorapeople.org/repos/pulp/pulp/demo_repos/pulp_unittest/
     Successfully created repository [repo_1]
 
     $ pulp-admin rpm repo sync run --repo-id=repo_1
@@ -669,22 +669,22 @@ utility. Let's create and sync a repo::
 Now let's build two package groups for our demo repo test files::
 
    $ pulp-admin rpm repo uploads group --repo-id=repo_1 \
-   > --group-id=pulp_test_packages --name="Pulp Test Packages" \
-   > --description="A package group of Pulp test files." \
-   > --mand-name=pulp-dot-2.0-test --mand-name=pulp-test-package
+     --group-id=pulp_test_packages --name="Pulp Test Packages" \
+     --description="A package group of Pulp test files." \
+     --mand-name=pulp-dot-2.0-test --mand-name=pulp-test-package
 
    $ pulp-admin rpm repo uploads group --repo-id=repo_1 \
-   > --group-id=pulp_dotted_name_packages --name="Pulp Dotted Name Packages" \
-   > --description="A group of packages that have dots in their names." \
-   > --mand-name=pulp-dot-2.0-test
+     --group-id=pulp_dotted_name_packages --name="Pulp Dotted Name Packages" \
+     --description="A group of packages that have dots in their names." \
+     --mand-name=pulp-dot-2.0-test
 
 And now we can easily create a package category that is a collection of these
 two groups::
 
     $ pulp-admin rpm repo uploads category --repo-id=repo_1 \
-    > --category-id=example_category --name="Example Category" \
-    > --description="An Example Category" --group=pulp_test_packages \
-    > --group=pulp_dotted_name_packages
+      --category-id=example_category --name="Example Category" \
+      --description="An Example Category" --group=pulp_test_packages \
+      --group=pulp_dotted_name_packages
     +----------------------------------------------------------------------+
                                   Unit Upload
     +----------------------------------------------------------------------+
@@ -710,7 +710,7 @@ two groups::
 The package category details can be listed as well::
 
     $ pulp-admin rpm repo content category --repo-id=repo_1 \
-    > --match id=example_category
+      --match id=example_category
     Description:            An Example Category
     Display Order:          0
     Id:                     example_category
@@ -734,7 +734,7 @@ second repo::
 Now let's copy ``example_category`` from ``repo_1`` to ``repo_2``::
 
     $ pulp-admin rpm repo copy category --match id=example_category \
-    > --from-repo-id=repo_1 --to-repo-id=repo_2
+      --from-repo-id=repo_1 --to-repo-id=repo_2
     Progress on this task can be viewed using the commands under "repo tasks".
 
 We should check out the task to see when it's done with the repo tasks command::
