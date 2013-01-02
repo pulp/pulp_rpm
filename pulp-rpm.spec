@@ -256,6 +256,9 @@ A collection of yum plugins supplementing Pulp consumer operations.
 
 
 %changelog
+* Wed Jan 02 2013 Jeff Ortel <jortel@redhat.com> 2.0.6-1
+- 
+
 * Thu Dec 20 2012 Jeff Ortel <jortel@redhat.com> 2.0.6-0.19.rc
 - 
 
