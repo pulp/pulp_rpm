@@ -20,8 +20,6 @@ Pulp RPM supports the following types:
 Errata
 ^^^^^^
 
-.. probably deserves its own section, especially since there are extra consumer-side features
-.. how to create package group, what are the requirements, what is the CSV, etc.
 .. push count? what is that?
 
 `Red Hat <http://www.redhat.com>`_ provides security, bug fix, and enhancement
