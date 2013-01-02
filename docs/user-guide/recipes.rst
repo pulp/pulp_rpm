@@ -187,8 +187,8 @@ have been issued on or after a date, and also how to search for errata by type.
 Let's start by defining a repo cleverly called ``repo`` with a demo feed::
 
     $ pulp-admin rpm repo create --repo-id=repo \
-    > --feed=http://repos.fedorapeople.org/repos/pulp/pulp/demo_repos/pulp_unittest/ \
-    > --relative-url=repo
+      --feed=http://repos.fedorapeople.org/repos/pulp/pulp/demo_repos/pulp_unittest/ \
+      --relative-url=repo
     Successfully created repository [repo]
 
 Now let's sync the repo so it has some errata for us to search::
@@ -202,7 +202,7 @@ were issued on or after December 1, 2009. For this example, I will include the
 you can season that flag to taste, or omit it if you want to see everything::
 
     $ pulp-admin rpm repo content errata --filters='{"issued": {"$gte": "2009-12-01"}}' \
-    > --repo-id=repo --fields=id
+      --repo-id=repo --fields=id
     Id: RHBA-2010:0010
 
     Id: RHBA-2010:0205
@@ -235,7 +235,7 @@ Advisories (RHBAs), and Product Enhancement Advisories (RHEAs). Suppose we
 wanted to know which RHSAs were available in a repo. We would run this command::
 
     $ pulp-admin rpm repo content errata --match type=security \
-    > --repo-id=repo --fields=id
+      --repo-id=repo --fields=id
     Id: RHSA-2007:0114
 
     Id: RHSA-2007:0323
@@ -254,7 +254,7 @@ For this command we asked Pulp to find errata that had their type field set to
 "security". We can also find these by applying a regex to the id field::
 
     $ pulp-admin rpm repo content errata \
-    > --match id=^RHSA --repo-id=repo
+      --match id=^RHSA --repo-id=repo
 
 In this example, we asked MongoDB to look for errata that had an ``id`` that
 matched our supplied
@@ -274,12 +274,12 @@ sample upstream repository, and then copy an erratum from it to the other.
 Let's begin by creating our two repositories, ``repo_1`` and ``repo_2``::
 
     $ pulp-admin rpm repo create --repo-id=repo_1 \
-    > --feed=http://repos.fedorapeople.org/repos/pulp/pulp/demo_repos/pulp_unittest/ \
-    > --relative-url=repo_1
+      --feed=http://repos.fedorapeople.org/repos/pulp/pulp/demo_repos/pulp_unittest/ \
+      --relative-url=repo_1
     Successfully created repository [repo_1]
 
     $ pulp-admin rpm repo create --repo-id=repo_2 \
-    > --relative-url=repo_2
+      --relative-url=repo_2
     Successfully created repository [repo_2]
     
 Next, we will sync ``repo_1``, so that it will have some errata that we can
@@ -340,7 +340,7 @@ Suppose that we would like to pull all of the security updates from ``repo_1``
 to ``repo_2``. We can determine which errata are RHSA by using a match filter::
 
     $ pulp-admin rpm repo content errata --match type=security \
-    > --repo-id=repo_1 --fields=id
+      --repo-id=repo_1 --fields=id
     Id: RHSA-2007:0114
 
     Id: RHSA-2007:0323
@@ -360,7 +360,7 @@ the unit copy command to bring these RHSAs over, but not the RHBAs or the
 RHEAs::
 
     $ pulp-admin rpm repo copy errata --match type=security \
-    > --from-repo-id=repo_1 --to-repo-id=repo_2
+      --from-repo-id=repo_1 --to-repo-id=repo_2
     Progress on this task can be viewed using the commands under "repo tasks".
 
 We can inspect the progress of this operation using
@@ -396,7 +396,7 @@ few data fields to the :command:`pulp-admin` client.
 Let's begin by making a repo and syncing it::
 
     $ pulp-admin rpm repo create --repo-id=repo \
-    > --feed=http://repos.fedorapeople.org/repos/pulp/pulp/demo_repos/pulp_unittest/
+      --feed=http://repos.fedorapeople.org/repos/pulp/pulp/demo_repos/pulp_unittest/
     Successfully created repository [repo]
 
     $ pulp-admin rpm repo sync run --repo-id=repo
@@ -423,11 +423,11 @@ package_list.csv for this::
 Now that we have these two files, we can create our new errata like so::
 
     $ pulp-admin rpm repo uploads erratum --erratum_id=DEMO_ID_1 \
-    > --title="1: pulp-test-package bit conservation" \
-    > --description="1: pulp-test-package now conserves your precious bits." \
-    > --version=1 --release="el6" --type="bugzilla" --status="final" \
-    > --updated="`date`" --issued="`date`" --reference-csv=references.csv \
-    > --pkglist-csv=package_list.csv --from=pulp-list@redhat.com --repo-id=repo
+      --title="1: pulp-test-package bit conservation" \
+      --description="1: pulp-test-package now conserves your precious bits." \
+      --version=1 --release="el6" --type="bugzilla" --status="final" \
+      --updated="`date`" --issued="`date`" --reference-csv=references.csv \
+      --pkglist-csv=package_list.csv --from=pulp-list@redhat.com --repo-id=repo
     +----------------------------------------------------------------------+
                                   Unit Upload
     +----------------------------------------------------------------------+
@@ -506,7 +506,7 @@ You can easily define your own package groups with the :command:`pulp_admin`
 utility. Let's create and sync a repo::
 
     $ pulp-admin rpm repo create --repo-id=repo_1 \
-    > --feed=http://repos.fedorapeople.org/repos/pulp/pulp/demo_repos/pulp_unittest/
+      --feed=http://repos.fedorapeople.org/repos/pulp/pulp/demo_repos/pulp_unittest/
     Successfully created repository [repo_1]
 
     $ pulp-admin rpm repo sync run --repo-id=repo_1
@@ -514,8 +514,8 @@ utility. Let's create and sync a repo::
 Now let's build a package group for our demo repo test files::
 
    $ pulp-admin rpm repo uploads group --repo-id=repo_1 --group-id=pulp_test \
-   > --name="Pulp Test" --description="A package group of Pulp test files." \
-   > --mand-name=pulp-dot-2.0-test --mand-name=pulp-test-package
+     --name="Pulp Test" --description="A package group of Pulp test files." \
+     --mand-name=pulp-dot-2.0-test --mand-name=pulp-test-package
    +----------------------------------------------------------------------+
                                  Unit Upload
    +----------------------------------------------------------------------+
@@ -572,7 +572,7 @@ And now we will copy our package group, ``pulp_test`` from ``repo_1`` to
 ``repo_2``::
 
    $ pulp-admin rpm repo copy group --match id=pulp_test --from-repo-id=repo_1 \
-   > --to-repo-id=repo_2
+     --to-repo-id=repo_2
    Progress on this task can be viewed using the commands under "repo tasks".
 
 This task should complete fairly quickly since there isn't much to do with our
