@@ -35,7 +35,7 @@ from yum_importer import importer_rpm
 from yum_importer import errata, distribution
 from pulp.plugins.model import Repository, Unit, RepositoryGroup
 from pulp_rpm.repo_auth.repo_cert_utils import M2CRYPTO_HAS_CRL_SUPPORT
-import distributor_mocks
+import group_distributor_mocks as distributor_mocks
 import rpm_support_base
 
 class TestGroupISODistributor(rpm_support_base.PulpRPMTests):

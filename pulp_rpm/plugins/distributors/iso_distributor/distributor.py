@@ -76,7 +76,6 @@ class ISODistributor(Distributor):
             }
 
     def validate_config(self, repo, config, related_repos):
-        _LOG.info("validate_config invoked, config values are: %s" % (config.repo_plugin_config))
         for key in REQUIRED_CONFIG_KEYS:
             value = config.get(key)
             if value is None:

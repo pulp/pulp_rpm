@@ -42,6 +42,12 @@ HTTP_PUBLISH_DIR="/var/lib/pulp/published/http/repos"
 HTTPS_PUBLISH_DIR="/var/lib/pulp/published/https/repos"
 CONFIG_REPO_AUTH="/etc/pulp/repo_auth.conf"
 
+# This needs to be a config option in the distributor's .conf file. But for 2.0,
+# I don't have time to add that and realistically, people won't be reconfiguring
+# it anyway. This is to replace having it in Pulp's server.conf, which definitely
+# isn't the place for it.
+RELATIVE_URL = '/pulp/repos'
+
 ###
 # Config Options Explained
 ###
@@ -102,7 +108,6 @@ class YumDistributor(Distributor):
         :return:              tuple of status, message
         :rtype:               tuple
         """
-        _LOG.info("validate_config invoked, config values are: %s" % (config.repo_plugin_config))
         auth_cert_bundle = {}
         for key in REQUIRED_CONFIG_KEYS:
             value = config.get(key)
@@ -560,7 +565,6 @@ class YumDistributor(Distributor):
         @rtype (bool, [str])
         """
         packages_progress_status = self.init_progress()
-        _LOG.debug("handle_symlinks invoked with %s units to %s dir" % (len(units), symlink_dir))
         self.set_progress("packages", packages_progress_status, progress_callback)
         errors = []
         packages_progress_status["items_total"] = len(units)
@@ -665,6 +669,18 @@ class YumDistributor(Distributor):
             _LOG.debug("Found %s distribution files to symlink" % len(distro_files))
             distro_progress_status['items_total'] = len(distro_files)
             distro_progress_status['items_left'] = len(distro_files)
+            # Lookup treeinfo file in the source location
+            src_treeinfo_path = None
+            for treeinfo in constants.TREE_INFO_LIST:
+                src_treeinfo_path = os.path.join(source_path_dir, treeinfo)
+                if os.path.exists(src_treeinfo_path):
+                    # we found the treeinfo file
+                    break
+            if src_treeinfo_path is not None:
+                # create a symlink from content location to repo location.
+                symlink_treeinfo_path = os.path.join(symlink_dir, treeinfo)
+                _LOG.debug("creating treeinfo symlink from %s to %s" % (src_treeinfo_path, symlink_treeinfo_path))
+                util.create_symlink(src_treeinfo_path, symlink_treeinfo_path)
             published_distro_files = []
             for dfile in distro_files:
                 self.set_progress("distribution", distro_progress_status, progress_callback)
@@ -736,7 +752,7 @@ class YumDistributor(Distributor):
         else:
             payload['ca_cert'] = config.get('https_ca')
         payload['relative_path'] = \
-            '/'.join((pulp_server_config.get('server', 'relative_url'),
+            '/'.join((RELATIVE_URL,
                       self.get_repo_relative_path(repo, config)))
         payload['protocols'] = []
         if config.get('http'):

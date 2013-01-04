@@ -23,7 +23,7 @@ def get_publish_conduit(type_id=None, existing_units=None, pkg_dir=None, checksu
     def build_failure_report(summary, details):
         return PublishReport(False, summary, details)
 
-    def get_units(criteria=None):
+    def get_units(repoid=None, criteria=None):
         ret_val = []
         if existing_units:
             count = 0
@@ -58,10 +58,15 @@ def get_publish_conduit(type_id=None, existing_units=None, pkg_dir=None, checksu
         return scratchpad
 
     publish_conduit = mock.Mock(spec=RepoPublishConduit)
+    publish_conduit.get_units = mock.Mock()
     publish_conduit.get_units.side_effect = get_units
+    publish_conduit.build_failure_report = mock.Mock()
     publish_conduit.build_failure_report = build_failure_report
+    publish_conduit.build_success_report = mock.Mock()
     publish_conduit.build_success_report = build_success_report
+    publish_conduit.get_repo_scratchpad = mock.Mock()
     publish_conduit.get_repo_scratchpad.side_effect = get_repo_scratchpad
+    publish_conduit.get_scratchpad = mock.Mock()
     publish_conduit.get_scratchpad.side_effect = get_scratchpad
     return publish_conduit
 

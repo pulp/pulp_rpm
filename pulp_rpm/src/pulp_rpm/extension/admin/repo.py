@@ -246,6 +246,23 @@ class RpmRepoListCommand(ListRepositoriesCommand):
             if 'distributors' in r:
                 r['distributors'] = [x for x in r['distributors'] if x['id'] == YUM_DISTRIBUTOR_ID]
 
+        # Strip out the certificate and private key if present
+        for r in rpm_repos:
+            # The importers will only be present in a --details view, so make
+            # sure it's there before proceeding
+            if 'importers' not in r:
+                continue
+
+            imp_config = r['importers'][0]['config'] # there can only be one importer
+
+            # If either are present, tell the user the feed is using SSL
+            if 'ssl_client_cert' in imp_config or 'ssl_client_key' in imp_config:
+                imp_config['feed_ssl_configured'] = 'True'
+
+            # Remove the actual values so they aren't displayed
+            imp_config.pop('ssl_client_cert', None)
+            imp_config.pop('ssl_client_key', None)
+
         return rpm_repos
 
     def get_other_repositories(self, query_params, **kwargs):

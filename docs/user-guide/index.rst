@@ -8,6 +8,7 @@ Contents:
 
    introduction
    installation
+   configuration
    quick-start
    recipes
    features

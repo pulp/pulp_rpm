@@ -308,6 +308,8 @@ def get_relpath_from_unit(unit):
         relpath = unit.metadata["filename"]
     elif unit.unit_key.has_key("fileName"):
         relpath = unit.unit_key["fileName"]
+    elif unit.unit_key.has_key("filename"):
+        relpath = unit.unit_key["filename"]
     else:
         relpath = os.path.basename(unit.storage_path)
     return relpath
