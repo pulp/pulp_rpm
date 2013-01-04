@@ -84,7 +84,6 @@ class YumImporter(Importer):
         }
 
     def validate_config(self, repo, config, related_repos):
-        _LOG.info("validate_config invoked, config values are: %s" % (config.repo_plugin_config))
         for key in REQUIRED_CONFIG_KEYS:
             if key not in config.keys():
                 msg = _("Missing required configuration key: %(key)s" % {"key":key})
@@ -260,12 +259,6 @@ class YumImporter(Importer):
                     return False, msg
 
         return True, None
-
-    def importer_added(self, repo, config):
-        _LOG.info("importer_added invoked")
-
-    def importer_removed(self, repo, config):
-        _LOG.info("importer_removed invoked")
 
     def import_units(self, source_repo, dest_repo, import_conduit, config, units=None):
         """
@@ -468,19 +461,6 @@ class YumImporter(Importer):
             if dep.unit_key not in blacklist_units:
                 import_conduit.associate_unit(dep)
 
-    def remove_units(self, repo, units, config):
-        """
-        @param repo: metadata describing the repository
-        @type  repo: L{pulp.plugins.data.Repository}
-
-        @param units: list of objects describing the units to import in this call
-        @type  units: list of L{pulp.plugins.data.Unit}
-
-        @param remove_conduit: provides access to relevant Pulp functionality
-        @type  remove_conduit: ?
-        """
-        _LOG.info("remove_units invoked for %s units" % (len(units)))
-
     # -- actions --------------------------------------------------------------
 
     def sync_repo(self, repo, sync_conduit, config):
@@ -550,7 +530,6 @@ class YumImporter(Importer):
         return (rpm_status and errata_status and comps_status), summary, details
 
     def upload_unit(self, repo, type_id, unit_key, metadata, file_path, conduit, config):
-        _LOG.info("Upload Unit Invoked: repo.id <%s> type_id <%s>, unit_key <%s>" % (repo.id, type_id, unit_key))
         try:
             num_units_saved = 0
             status, summary, details = self._upload_unit(repo, type_id, unit_key, metadata, file_path, conduit, config)
@@ -657,7 +636,6 @@ class YumImporter(Importer):
         return True, summary, details
 
     def resolve_dependencies(self, repo, units, dependency_conduit, config):
-        _LOG.info("Resolve Dependencies Invoked")
         result_dict = {}
         pkglist =  self.pkglist(units)
         dsolve = depsolver.DepSolver([repo], pkgs=pkglist)
@@ -682,7 +660,6 @@ class YumImporter(Importer):
         result_dict['unresolved'] = unsolved
         result_dict['printable_dependency_result'] = dsolve.printable_result(results)
         dsolve.cleanup()
-        _LOG.debug("result dict %s" % result_dict)
         return result_dict
 
     def cancel_sync_repo(self, call_request, call_report):

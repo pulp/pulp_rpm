@@ -108,7 +108,6 @@ class YumDistributor(Distributor):
         :return:              tuple of status, message
         :rtype:               tuple
         """
-        _LOG.info("validate_config invoked, config values are: %s" % (config.repo_plugin_config))
         auth_cert_bundle = {}
         for key in REQUIRED_CONFIG_KEYS:
             value = config.get(key)
@@ -566,7 +565,6 @@ class YumDistributor(Distributor):
         @rtype (bool, [str])
         """
         packages_progress_status = self.init_progress()
-        _LOG.debug("handle_symlinks invoked with %s units to %s dir" % (len(units), symlink_dir))
         self.set_progress("packages", packages_progress_status, progress_callback)
         errors = []
         packages_progress_status["items_total"] = len(units)
