@@ -89,6 +89,9 @@ class RpmStatusRenderer(StatusRenderer):
             self.metadata_last_state = new_state
         render_general_spinner_step(self.prompt, self.metadata_spinner, current_state, self.metadata_last_state, _('Downloading metadata...'), update_func)
 
+        if self.metadata_last_state == constants.STATE_FAILED:
+            self.prompt.render_failure_message(progress_report['yum_importer']['metadata']['error'])
+
     def render_download_step(self, progress_report):
 
         # Example Data:
@@ -138,8 +141,8 @@ class RpmStatusRenderer(StatusRenderer):
         data = progress_report['yum_importer']['content']
         state = data['state']
 
-        # Render nothing if we haven't begun yet
-        if state == constants.STATE_NOT_STARTED:
+        # Render nothing if we haven't begun yet or if this step is skipped
+        if state in (constants.STATE_NOT_STARTED, constants.STATE_SKIPPED):
             return
 
         details = data['details']
@@ -262,7 +265,7 @@ class RpmStatusRenderer(StatusRenderer):
         data = progress_report['yum_distributor']['packages']
         state = data['state']
 
-        if state == constants.STATE_NOT_STARTED:
+        if state in (constants.STATE_NOT_STARTED, constants.STATE_SKIPPED):
             return
 
         # Only render this on the first non-not-started state
@@ -302,7 +305,7 @@ class RpmStatusRenderer(StatusRenderer):
         data = progress_report['yum_distributor']['distribution']
         state = data['state']
 
-        if state == constants.STATE_NOT_STARTED:
+        if state in (constants.STATE_NOT_STARTED, constants.STATE_SKIPPED):
             return
 
         # Only render this on the first non-not-started state

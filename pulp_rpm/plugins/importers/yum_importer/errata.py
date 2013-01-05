@@ -38,9 +38,11 @@ def get_available_errata(repo_dir):
     ftypes = util.get_repomd_filetypes(repomd_xml)
     errata_from_xml = {}
     if "updateinfo" not in ftypes:
+        _LOG.info("Unable to find 'updateinfo' in %s" % (ftypes))
         return errata_from_xml
     updateinfo_xml_path = os.path.join(repo_dir, util.get_repomd_filetype_path(repomd_xml, "updateinfo"))
     if not os.path.exists(updateinfo_xml_path):
+        _LOG.info("Unable to find errata file at %s")
         return {}
     try:
         errata_from_xml = updateinfo.get_errata(updateinfo_xml_path)
@@ -112,10 +114,18 @@ def get_new_errata_units(available_errata, sync_conduit):
         except IndexError:
             existing_erratum = None
         if existing_erratum:
-            if available_errata[key]['updated'] < existing_erratum.metadata['updated']:
+            if available_errata[key]['updated'] and existing_erratum.metadata['updated']:
+                available_errata_date = available_errata[key]['updated']
+                existing_errata_date = existing_erratum.metadata['updated']
+            else:
+                # updated date is missing, lets use issued date instead
+                available_errata_date = available_errata[key]['issued']
+                existing_errata_date = existing_erratum.metadata['issued']
+
+            if available_errata_date < existing_errata_date:
                 # erratum we have is already newer, skip to the next one
                 continue
-            elif available_errata[key]['updated'] == existing_erratum.metadata['updated']:
+            elif available_errata_date == existing_errata_date:
                 # Its the same errata as we already have, but the pkglist collections could be
                 # different. compare the collection name in the list of what we already have
                 # if the collection name is missing we add it to delta.
@@ -246,7 +256,7 @@ class ImporterErrata(object):
         start = time.time()
         repo_dir = "%s/%s" % (repo.working_dir, repo.id)
         available_errata = get_available_errata(repo_dir)
-        _LOG.debug("Available Errata %s" % len(available_errata))
+        _LOG.info("Available Errata %s" % len(available_errata))
         progress = {"state":"IN_PROGRESS", "num_errata":len(available_errata)}
         set_progress(progress)
 
@@ -254,12 +264,14 @@ class ImporterErrata(object):
         existing_errata = get_existing_errata(sync_conduit, criteria=criteria)
         orphaned_units = get_orphaned_errata(available_errata, existing_errata)
         new_errata, new_units, sync_conduit = get_new_errata_units(available_errata, sync_conduit)
+        _LOG.info("%s new_errata, %s new_units" % (len(new_errata), len(new_units)))
         # Save the new units
         for u in new_units.values():
             sync_conduit.save_unit(u)
 
         # clean up any orphaned errata
         for u in orphaned_units.values():
+            _LOG.debug("Removing orphaned unit: %s " % (u))
             sync_conduit.remove_unit(u)
         # link errata with rpm units
         link_report = link_errata_rpm_units(sync_conduit, new_units)
@@ -282,4 +294,5 @@ class ImporterErrata(object):
         _LOG.debug("Errata Summary: %s \n Details: %s" % (summary, details))
         progress = {"state":"FINISHED", "num_errata":len(available_errata)}
         set_progress(progress)
+        _LOG.info("Finished errata sync")
         return True, summary, details

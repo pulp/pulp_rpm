@@ -29,6 +29,10 @@ from pulp_rpm.handler.repo_file import Repo, RepoFile, MirrorListFile, RepoKeyFi
 
 log = getLogger(__name__)
 
+
+LOCK_FILE = '/var/run/subsys/pulp/repolib.pid'
+
+
 # -- public ----------------------------------------------------------------
 
 def bind(repo_filename, 
@@ -97,7 +101,7 @@ def bind(repo_filename,
     """
 
     if not lock:
-        lock = Lock('/var/run/subsys/pulp/repolib.pid')
+        lock = Lock(LOCK_FILE)
 
     lock.acquire()
     try:
@@ -166,12 +170,12 @@ def unbind(repo_filename, mirror_list_filename, keys_root_dir, cert_root_dir, re
     @param repo_id: identifies the repo in the repo file to delete
     @type  repo_id: string
 
-    @param lock: if the default lock is unacceptble, it may be overridden in this variable
+    @param lock: if the default lock is unacceptable, it may be overridden in this variable
     @type  lock: L{Lock}
     """
 
     if not lock:
-        lock = Lock('/var/run/subsys/pulp/repolib.pid')
+        lock = Lock(LOCK_FILE)
 
     lock.acquire()
     try:
@@ -201,6 +205,27 @@ def unbind(repo_filename, mirror_list_filename, keys_root_dir, cert_root_dir, re
     finally:
         lock.release()
 
+def delete_repo_file(repo_filename, lock=None):
+    """
+    Delete the repo file.
+
+    @param repo_filename: full path to the location of the repo file which
+                          will be deleted; if this file does not exist
+                          this call has no effect
+    @type  repo_filename: string
+
+    @param lock: if the default lock is unacceptable, it may be overridden in this variable
+    @type  lock: L{Lock}
+    """
+    if not lock:
+        lock = Lock(LOCK_FILE)
+
+    lock.acquire()
+    try:
+        repo_file = RepoFile(repo_filename)
+        repo_file.delete()
+    finally:
+        lock.release()
 
 def mirror_list_filename(dir, repo_id):
     """

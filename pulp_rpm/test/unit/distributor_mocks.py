@@ -23,20 +23,23 @@ def get_publish_conduit(type_id=None, existing_units=None, pkg_dir=None, checksu
     def build_failure_report(summary, details):
         return PublishReport(False, summary, details)
 
-    def get_units(repoid=None, criteria=None):
+    def get_units(criteria=None):
         ret_val = []
         if existing_units:
+            count = 0
             for u in existing_units:
+                count += 1
                 if criteria:
-                    if not criteria.unit_filters:
-                        if u.type_id in criteria.type_ids:
-                            ret_val.append(u)
-                    else:
-                        if u.type_id == 'erratum':
-                            start_date = criteria.unit_filters['issued']['$gte']
-                            end_date   = criteria.unit_filters['issued']['$lte']
-                            if start_date <= u.metadata['issued'] <= end_date:
+                    if count > criteria.skip:
+                        if not criteria.unit_filters:
+                            if u.type_id in criteria.type_ids:
                                 ret_val.append(u)
+                        else:
+                            if u.type_id == 'erratum':
+                                start_date = criteria.unit_filters['issued']['$gte']
+                                end_date   = criteria.unit_filters['issued']['$lte']
+                                if start_date <= u.metadata['issued'] <= end_date:
+                                    ret_val.append(u)
                 else:
                     ret_val.append(u)
         return ret_val
@@ -48,15 +51,18 @@ def get_publish_conduit(type_id=None, existing_units=None, pkg_dir=None, checksu
 
         return scratchpad
 
+    def get_scratchpad():
+        scratchpad = None
+        if checksum_type:
+            scratchpad = {"checksum_type" : checksum_type, 'published_distributions' : {}}
+        return scratchpad
+
     publish_conduit = mock.Mock(spec=RepoPublishConduit)
-    publish_conduit.get_units = mock.Mock()
     publish_conduit.get_units.side_effect = get_units
-    publish_conduit.build_failure_report = mock.Mock()
     publish_conduit.build_failure_report = build_failure_report
-    publish_conduit.build_success_report = mock.Mock()
     publish_conduit.build_success_report = build_success_report
-    publish_conduit.get_repo_scratchpad = mock.Mock()
     publish_conduit.get_repo_scratchpad.side_effect = get_repo_scratchpad
+    publish_conduit.get_scratchpad.side_effect = get_scratchpad
     return publish_conduit
 
 

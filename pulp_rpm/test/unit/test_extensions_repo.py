@@ -11,12 +11,14 @@
 
 import os
 
+from mock import patch
+
 from pulp.client.commands import options
 from pulp.client.commands.repo import cudl
 from pulp.client.extensions.core import TAG_SUCCESS
 from pulp.common.compat import json
 
-from pulp_rpm.common import ids
+from pulp_rpm.common import constants, ids
 from pulp_rpm.extension.admin import repo, repo_options
 import rpm_support_base
 
@@ -150,7 +152,7 @@ class RpmRepoCreateCommandTests(rpm_support_base.PulpClientTests):
         self.assertEqual([TAG_SUCCESS], self.prompt.get_write_tags())
 
 
-class RpmRepoUpdateCommand(rpm_support_base.PulpClientTests):
+class RpmRepoUpdateCommandTests(rpm_support_base.PulpClientTests):
 
     def test_create_structure(self):
         command = repo.RpmRepoUpdateCommand(self.context)
@@ -208,3 +210,130 @@ class RpmRepoUpdateCommand(rpm_support_base.PulpClientTests):
         iso_dist_config = body['distributor_configs'][ids.EXPORT_DISTRIBUTOR_ID]
         self.assertEqual(iso_dist_config['http'], True)
         self.assertEqual(iso_dist_config['https'], True)
+
+
+class RpmRepoListCommandTests(rpm_support_base.PulpClientTests):
+
+    def test_get_repositories(self):
+        # Setup
+        repos = [
+            {'id' : 'matching',
+             'notes' : {constants.REPO_NOTE_KEY : constants.REPO_NOTE_RPM,},
+             'importers' : [
+                 {'config' : {}}
+             ],
+             'distributors' : [
+                 {'id' : ids.YUM_DISTRIBUTOR_ID},
+                 {'id' : ids.EXPORT_DISTRIBUTOR_ID}
+             ]
+            },
+            {'id' : 'non-rpm-repo',
+             'notes' : {}}
+        ]
+        self.server_mock.request.return_value = 200, repos
+
+        # Test
+        command = repo.RpmRepoListCommand(self.context)
+        repos = command.get_repositories({})
+
+        # Verify
+        self.assertEqual(1, len(repos))
+        self.assertEqual(repos[0]['id'], 'matching')
+
+        #   Make sure the export distributor was removed
+        self.assertEqual(len(repos[0]['distributors']), 1)
+        self.assertEqual(repos[0]['distributors'][0]['id'], ids.YUM_DISTRIBUTOR_ID)
+
+    def test_get_repositories_no_details(self):
+        # Setup
+        repos = [
+            {'id' : 'foo',
+             'display_name' : 'bar',
+             'notes' : {constants.REPO_NOTE_KEY : constants.REPO_NOTE_RPM,}}
+        ]
+        self.server_mock.request.return_value = 200, repos
+
+        # Test
+        command = repo.RpmRepoListCommand(self.context)
+        repos = command.get_repositories({})
+
+        # Verify
+        self.assertEqual(1, len(repos))
+        self.assertEqual(repos[0]['id'], 'foo')
+        self.assertTrue('importers' not in repos[0])
+        self.assertTrue('distributors' not in repos[0])
+
+    def test_get_repositories_strip_ssl_cert(self):
+        # Setup
+        repos = [
+            {'id' : 'matching',
+             'notes' : {constants.REPO_NOTE_KEY : constants.REPO_NOTE_RPM,},
+             'importers' : [
+                 {'config' : {'ssl_client_cert' : 'foo'}}
+             ],
+             'distributors' : []
+            },
+            {'id' : 'non-rpm-repo',
+             'notes' : {}}
+        ]
+        self.server_mock.request.return_value = 200, repos
+
+        # Test
+        command = repo.RpmRepoListCommand(self.context)
+        repos = command.get_repositories({})
+
+        # Verify
+        imp_config = repos[0]['importers'][0]['config']
+        self.assertTrue('ssl_client_cert' not in imp_config)
+        self.assertTrue('feed_ssl_configured' in imp_config)
+        self.assertEqual(imp_config['feed_ssl_configured'], 'True')
+
+    def test_get_repositories_strip_ssl_key(self):
+        # Setup
+        repos = [
+            {'id' : 'matching',
+             'notes' : {constants.REPO_NOTE_KEY : constants.REPO_NOTE_RPM,},
+             'importers' : [
+                 {'config' : {'ssl_client_key' : 'foo'}}
+             ],
+             'distributors' : []
+            },
+            {'id' : 'non-rpm-repo',
+             'notes' : {}}
+        ]
+        self.server_mock.request.return_value = 200, repos
+
+        # Test
+        command = repo.RpmRepoListCommand(self.context)
+        repos = command.get_repositories({})
+
+        # Verify
+        imp_config = repos[0]['importers'][0]['config']
+        self.assertTrue('ssl_client_key' not in imp_config)
+        self.assertTrue('feed_ssl_configured' in imp_config)
+        self.assertEqual(imp_config['feed_ssl_configured'], 'True')
+
+    def test_get_other_repositories(self):
+        # Setup
+        repos = [
+            {'repo_id' : 'matching',
+             'notes' : {constants.REPO_NOTE_KEY : constants.REPO_NOTE_RPM,},
+             'distributors' : [
+                 {'id' : ids.YUM_DISTRIBUTOR_ID},
+                 {'id' : ids.EXPORT_DISTRIBUTOR_ID}
+             ]
+            },
+            {'repo_id' : 'non-rpm-repo-1',
+             'notes' : {}},
+        ]
+        self.server_mock.request.return_value = 200, repos
+
+        # Test
+        command = repo.RpmRepoListCommand(self.context)
+        repos = command.get_other_repositories({})
+
+        # Verify
+        self.assertEqual(1, len(repos))
+        self.assertEqual(repos[0]['repo_id'], 'non-rpm-repo-1')
+
+

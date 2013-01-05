@@ -19,6 +19,7 @@ import os
 import sys
 import time
 import yum
+import lzma
 from pulp_rpm.common.ids import TYPE_ID_PKG_GROUP, TYPE_ID_PKG_CATEGORY, UNIT_KEY_PKG_GROUP, \
         METADATA_PKG_GROUP, UNIT_KEY_PKG_CATEGORY, METADATA_PKG_CATEGORY
 from pulp_rpm.yum_plugin import comps_util, util
@@ -216,7 +217,15 @@ def get_available(repo_dir, md_types=None, group_file=None, group_type=None):
             _LOG.debug("Parsing yum package group/category from metadata type '%s' with value %s" % (group_type, \
                     group_file))
             if group_file and group_type == "group":
-                yc.add(group_file)
+                if group_file.endswith(".gz"):
+                    # Have seen instances where "modifyrepo" sticks a "gzipped" file
+                    # under "group" instead of "group_gz"
+                    comps_data = gzip.GzipFile(group_file, 'r')
+                elif group_file.endswith('xz'):
+                    comps_data = lzma.LZMAFile(group_file, 'r')
+                else:
+                    comps_data = group_file
+                yc.add(comps_data)
             elif group_file and group_type == "group_gz":
                 comps_gzipped = gzip.GzipFile(group_file, 'r')
                 yc.add(comps_gzipped)

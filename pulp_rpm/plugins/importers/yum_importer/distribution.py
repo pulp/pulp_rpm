@@ -52,6 +52,23 @@ def get_existing_distro_units(sync_conduit):
         existing_distro_units[key] = u
     return existing_distro_units
 
+def get_orphaned_distros(available_distros, existing_distros):
+    """
+    @param available_distros a dict of distributions
+    @type available_distros {}
+
+    @param existing_distros dict of units
+    @type existing_distros {key:pulp.server.content.plugins.model.Unit}
+
+    @return a dictionary of orphaned units, key is the distribution id and the value is the unit
+    @rtype {key:pulp.server.content.plugins.model.Unit}
+    """
+    orphaned_distros = {}
+    for key in existing_distros:
+        if key not in available_distros:
+            orphaned_distros[key] = existing_distros[key]
+    return orphaned_distros
+
 def get_new_distros_and_units(available_distros, existing_distro_units, sync_conduit):
     """
     Determines what distro are new and will initialize new units to match these distros

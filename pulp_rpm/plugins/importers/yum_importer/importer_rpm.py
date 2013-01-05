@@ -21,6 +21,7 @@ from grinder.RepoFetch import YumRepoGrinder
 from pulp.server.db.model.criteria import UnitAssociationCriteria
 from pulp_rpm.yum_plugin import util, metadata
 from yum_importer import distribution, drpm
+import pulp_rpm.common.constants as constants
 
 _LOG = util.getLogger(__name__)
 
@@ -230,12 +231,15 @@ def get_yumRepoGrinder(repo_id, repo_working_dir, config):
     """
     repo_label = repo_id
     repo_url = config.get("feed_url")
-    num_threads = config.get("num_threads") or 5
+    num_threads = config.get("num_threads") or 1
     proxy_url = force_ascii(config.get("proxy_url"))
     proxy_port = force_ascii(config.get("proxy_port"))
     proxy_user = force_ascii(config.get("proxy_user"))
     proxy_pass = force_ascii(config.get("proxy_pass"))
-    sslverify = config.get("ssl_verify") or 0
+    sslverify = config.get_boolean("ssl_verify")
+    # Default to verifying SSL
+    if sslverify is None:
+        sslverify = True
     # Note ssl_ca_cert, ssl_client_cert, and ssl_client_key are all written in the main importer
     # int the validate_config method
     cacert = None
@@ -258,7 +262,7 @@ def get_yumRepoGrinder(repo_id, repo_working_dir, config):
         proxy_url=proxy_url, proxy_port=proxy_port, proxy_user=proxy_user,\
         proxy_pass=proxy_pass, sslverify=sslverify, packages_location="./",\
         remove_old=remove_old, numOldPackages=num_old_packages, skip=skip, max_speed=max_speed,\
-        purge_orphaned=purge_orphaned, distro_location=None, tmp_path=repo_working_dir)
+        purge_orphaned=purge_orphaned, distro_location=constants.DISTRIBUTION_STORAGE_PATH, tmp_path=repo_working_dir)
     return yumRepoGrinder
 
 def _search_for_error(rpm_dict):
@@ -275,31 +279,19 @@ def search_for_errors(new_rpms, missing_rpms):
     errors.update(_search_for_error(missing_rpms))
     return errors
 
-def remove_unit(sync_conduit, repo, unit):
+def remove_unit(sync_conduit, unit):
     """
     @param sync_conduit
     @type sync_conduit L{pulp.server.content.conduits.repo_sync.RepoSyncConduit}
-
-    @param repo
-    @type repo  L{pulp.server.content.plugins.data.Repository}
 
     @param unit
     @type unit L{pulp.server.content.plugins.model.Unit}
 
     Goals:
-     1) Remove the unit from the database
-     2) Remove the unit from the file system
-     3) Remove the symlink stored under the repo.workingdir
+     UnAssociate the unit from the database and let pulp clean the filesystem
     """
-    _LOG.info("Removing unit <%s>" % (unit))
+    _LOG.info("Unassociating unit <%s>" % (unit))
     sync_conduit.remove_unit(unit)
-    error = False
-    sym_link = os.path.join(repo.working_dir, repo.id, unit.metadata["filename"])
-    paths = [unit.storage_path, sym_link]
-    for f in paths:
-        if os.path.lexists(f):
-            _LOG.debug("Delete: %s" % (f))
-            os.unlink(f)
 
 def set_repo_checksum_type(repo, sync_conduit, config):
     """
@@ -546,7 +538,7 @@ class ImporterRPM(object):
 
             for u in rpm_info['orphaned_rpm_units'].values():
                 try:
-                    remove_unit(sync_conduit, repo, u)
+                    remove_unit(sync_conduit, u)
                 except Exception, e:
                     unit_info = str(u.unit_key)
                     _LOG.exception("Unable to remove: %s" % (unit_info))
@@ -597,11 +589,20 @@ class ImporterRPM(object):
             _LOG.info("skipping drpm summary report")
 
         if 'distribution' not in skip_content_types:
+            for u in distro_info['orphaned_distro_units'].values():
+                try:
+                    remove_unit(sync_conduit, u)
+                except Exception, e:
+                    unit_info = str(u.unit_key)
+                    _LOG.exception("Unable to remove: %s" % (unit_info))
+                    removal_errors.append((unit_info, str(e)))
+            orphaned_distros = filter(lambda u: u.type_id == 'distribution', distro_info['orphaned_distro_units'].values())
             # filter out distribution specific data if any
             summary["num_synced_new_distributions"] = len(distro_info['new_distro_units'])
             summary["num_synced_new_distributions_files"] = len(all_new_distro_files)
             summary["num_resynced_distributions"] = len(distro_info['missing_distro_units'])
             summary["num_resynced_distribution_files"] = len(all_missing_distro_files)
+            summary["num_orphaned_distributions"] = len(orphaned_distros)
         else:
             _LOG.info("skipping distro summary report")
         end = time.time()
@@ -617,7 +618,7 @@ class ImporterRPM(object):
         status = True
         if removal_errors or details["sync_report"]["errors"]:
             status = False
-        _LOG.debug("STATUS: %s; SUMMARY: %s; DETAILS: %s" % (status, summary, details))
+        _LOG.info("STATUS: %s; SUMMARY: %s; DETAILS: %s" % (status, summary, details))
         return status, summary, details
 
     def _setup_rpms(self, repo, sync_conduit, verify_options, skip_content_types):
@@ -633,8 +634,15 @@ class ImporterRPM(object):
                     (len(rpm_info['available_rpms']), repo.id, (end_metadata-start_metadata)))
 
         # Determine what exists and what has been orphaned, or exists in Pulp but has been removed from the source repo
-        criteria = UnitAssociationCriteria(type_ids=[RPM_TYPE_ID, SRPM_TYPE_ID])
-        rpm_info['existing_rpm_units'] = get_existing_units(sync_conduit, criteria)
+        # Limit the data we retrieve from the DB to reduce memory consumption
+        valid_fields = []
+        valid_fields.extend(RPM_UNIT_KEY)
+        valid_fields.append("_storage_path")
+        rpm_info['existing_rpm_units'] = {}
+        criteria = UnitAssociationCriteria(type_ids=[SRPM_TYPE_ID], unit_fields=valid_fields)
+        rpm_info['existing_rpm_units'].update(get_existing_units(sync_conduit, criteria))
+        criteria = UnitAssociationCriteria(type_ids=[RPM_TYPE_ID], unit_fields=valid_fields)
+        rpm_info['existing_rpm_units'].update(get_existing_units(sync_conduit, criteria))
         rpm_info['orphaned_rpm_units'] = get_orphaned_units(rpm_info['available_rpms'], rpm_info['existing_rpm_units'])
 
         # Determine new and missing items
@@ -679,7 +687,7 @@ class ImporterRPM(object):
         distro_items = self.yumRepoGrinder.getDistroItems()
         distro_info['available_distros'] = distribution.get_available_distributions(distro_items)
         distro_info['existing_distro_units'] = distribution.get_existing_distro_units(sync_conduit)
-        distro_info['orphaned_distro_units'] = []
+        distro_info['orphaned_distro_units'] = distribution.get_orphaned_distros(distro_info['available_distros'], distro_info['existing_distro_units'])
         end_metadata = time.time()
         _LOG.info("%s distributions are available in the source repo %s, calculated in %s seconds" %\
                   (len(distro_info['available_distros']), repo.id, (end_metadata-start_metadata)))

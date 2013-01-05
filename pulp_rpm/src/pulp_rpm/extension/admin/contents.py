@@ -13,7 +13,7 @@ from gettext import gettext as _
 import logging
 
 from pulp.client.extensions.extensions import PulpCliOptionGroup, PulpCliOption
-from pulp.client.commands.criteria import UnitAssociationCriteriaCommand
+from pulp.client.commands.criteria import DisplayUnitAssociationsCommand
 
 # -- constants ----------------------------------------------------------------
 
@@ -111,7 +111,7 @@ DESC_ERRATA = _('search errata in a repository')
 
 # -- commands -----------------------------------------------------------------
 
-class SearchRpmsCommand(UnitAssociationCriteriaCommand):
+class SearchRpmsCommand(DisplayUnitAssociationsCommand):
 
     def __init__(self, context):
         super(SearchRpmsCommand, self).__init__(self.rpm, name='rpm',
@@ -119,19 +119,34 @@ class SearchRpmsCommand(UnitAssociationCriteriaCommand):
         self.context = context
 
     def rpm(self, **kwargs):
-
-        # This inner function breaks the --details support. I don't have time to
-        # deal with it right now, so I filed a bug to address revisiting this
-        # entire module as a whole and address it then (860693).
-        # jdob, Sep 26, 2012
-
         def out_func(document_list, filter=FIELDS_RPM):
-            # Inner function to filter rpm fields to display to the end user
-            self.context.prompt.render_document_list(document_list, filters=filter)
+            """Inner function to filter rpm fields to display to the end user"""
+
+            order = []
+
+            # if the --details option has been specified, we need to manually
+            # apply filtering to the unit data itself, since okaara's filtering
+            # only operates at the top level of the document.
+            if kwargs.get(self.ASSOCIATION_FLAG.keyword):
+                # including most fields
+                filter = ['updated', 'repo_id', 'created', 'unit_id', 'metadata',
+                          'unit_type_id', 'owner_type', 'id', 'owner_id']
+                # display the unit info first
+                order = ['metadata']
+
+                # apply the same filtering that would normally be done by okaara
+                for doc in document_list:
+                    for key in doc['metadata'].keys():
+                        if key not in FIELDS_RPM:
+                            del doc['metadata'][key]
+
+            self.context.prompt.render_document_list(
+                document_list, filters=filter, order=order)
+
         _content_command(self.context, [TYPE_RPM], out_func=out_func, **kwargs)
 
 
-class SearchSrpmsCommand(UnitAssociationCriteriaCommand):
+class SearchSrpmsCommand(DisplayUnitAssociationsCommand):
 
     def __init__(self, context):
         super(SearchSrpmsCommand, self).__init__(self.srpm, name='srpm',
@@ -142,7 +157,7 @@ class SearchSrpmsCommand(UnitAssociationCriteriaCommand):
         _content_command(self.context, [TYPE_SRPM], **kwargs)
 
 
-class SearchDrpmsCommand(UnitAssociationCriteriaCommand):
+class SearchDrpmsCommand(DisplayUnitAssociationsCommand):
 
     def __init__(self, context):
         super(SearchDrpmsCommand, self).__init__(self.drpm, name='drpm',
@@ -153,7 +168,7 @@ class SearchDrpmsCommand(UnitAssociationCriteriaCommand):
         _content_command(self.context, [TYPE_DRPM], **kwargs)
 
 
-class SearchPackageGroupsCommand(UnitAssociationCriteriaCommand):
+class SearchPackageGroupsCommand(DisplayUnitAssociationsCommand):
 
     def __init__(self, context):
         super(SearchPackageGroupsCommand, self).__init__(self.package_group,
@@ -165,7 +180,7 @@ class SearchPackageGroupsCommand(UnitAssociationCriteriaCommand):
         _content_command(self.context, [TYPE_PACKAGE_GROUP], **kwargs)
 
 
-class SearchPackageCategoriesCommand(UnitAssociationCriteriaCommand):
+class SearchPackageCategoriesCommand(DisplayUnitAssociationsCommand):
 
     def __init__(self, context):
         super(SearchPackageCategoriesCommand, self).__init__(self.package_category,
@@ -177,7 +192,7 @@ class SearchPackageCategoriesCommand(UnitAssociationCriteriaCommand):
         _content_command(self.context, [TYPE_PACKAGE_CATEGORY], **kwargs)
 
 
-class SearchDistributionsCommand(UnitAssociationCriteriaCommand):
+class SearchDistributionsCommand(DisplayUnitAssociationsCommand):
 
     def __init__(self, context):
         super(SearchDistributionsCommand, self).__init__(self.distribution,
@@ -241,7 +256,7 @@ class SearchDistributionsCommand(UnitAssociationCriteriaCommand):
             self.context.prompt.render_spacer()
 
 
-class SearchErrataCommand(UnitAssociationCriteriaCommand):
+class SearchErrataCommand(DisplayUnitAssociationsCommand):
 
     def __init__(self, context):
         super(SearchErrataCommand, self).__init__(self.errata, name='errata',
@@ -358,7 +373,7 @@ def _content_command(context, type_ids, out_func=None, **kwargs):
     kwargs['type_ids'] = type_ids
     units = context.server.repo_unit.search(repo_id, **kwargs).response_body
 
-    if not kwargs.get(UnitAssociationCriteriaCommand.ASSOCIATION_FLAG.keyword):
+    if not kwargs.get(DisplayUnitAssociationsCommand.ASSOCIATION_FLAG.keyword):
         units = [u['metadata'] for u in units]
 
     out_func(units)

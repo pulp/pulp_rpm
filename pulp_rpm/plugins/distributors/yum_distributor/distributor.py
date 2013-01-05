@@ -14,17 +14,19 @@
 from ConfigParser import SafeConfigParser
 import gettext
 import os
+import re
 import shutil
 import time
 import traceback
 
 from pulp.plugins.distributor import Distributor
+from pulp.server.config import config as pulp_server_config
 from pulp.server.db.model.criteria import UnitAssociationCriteria
 from pulp_rpm.common.ids import TYPE_ID_DISTRO, TYPE_ID_DRPM, TYPE_ID_ERRATA, TYPE_ID_PKG_GROUP, TYPE_ID_PKG_CATEGORY,\
         TYPE_ID_RPM, TYPE_ID_SRPM, TYPE_ID_DISTRIBUTOR_YUM
 from pulp_rpm.yum_plugin import comps_util, util, metadata, updateinfo
 from pulp_rpm.repo_auth import protected_repo_utils, repo_cert_utils
-
+import pulp_rpm.common.constants as constants
 
 # -- constants ----------------------------------------------------------------
 
@@ -39,6 +41,13 @@ SUPPORTED_UNIT_TYPES = [TYPE_ID_RPM, TYPE_ID_SRPM, TYPE_ID_DRPM, TYPE_ID_DISTRO]
 HTTP_PUBLISH_DIR="/var/lib/pulp/published/http/repos"
 HTTPS_PUBLISH_DIR="/var/lib/pulp/published/https/repos"
 CONFIG_REPO_AUTH="/etc/pulp/repo_auth.conf"
+
+# This needs to be a config option in the distributor's .conf file. But for 2.0,
+# I don't have time to add that and realistically, people won't be reconfiguring
+# it anyway. This is to replace having it in Pulp's server.conf, which definitely
+# isn't the place for it.
+RELATIVE_URL = '/pulp/repos'
+
 ###
 # Config Options Explained
 ###
@@ -86,7 +95,19 @@ class YumDistributor(Distributor):
         }
 
     def validate_config(self, repo, config, related_repos):
-        _LOG.info("validate_config invoked, config values are: %s" % (config.repo_plugin_config))
+        """
+        Validate the distributor config. A tuple of status, msg will be returned. Status indicates success or failure
+        with True/False values, and in the event of failure, msg will contain an error message.
+
+        :param repo:          The repo that the config is for
+        :type  repo:          pulp.server.db.model.repository.Repo
+        :param config:        The configuration to be validated
+        :type  config:        pulp.server.content.plugins.config.PluginCallConfiguration
+        :param related_repos: Repositories that are related to repo
+        :type  related_repos: list
+        :return:              tuple of status, message
+        :rtype:               tuple
+        """
         auth_cert_bundle = {}
         for key in REQUIRED_CONFIG_KEYS:
             value = config.get(key)
@@ -96,10 +117,15 @@ class YumDistributor(Distributor):
                 return False, msg
             if key == 'relative_url':
                 relative_path = config.get('relative_url')
-                if relative_path is not None and not isinstance(relative_path, basestring):
-                    msg = _("relative_url should be a basestring; got %s instead" % relative_path)
-                    _LOG.error(msg)
-                    return False, msg
+                if relative_path is not None:
+                    if not isinstance(relative_path, basestring):
+                        msg = _("relative_url should be a basestring; got %s instead" % relative_path)
+                        _LOG.error(msg)
+                        return False, msg
+                    if re.match('[^a-zA-Z0-9/_-]+', relative_path):
+                        msg = _('relative_url must contain only alphanumerics, underscores, and dashes.')
+                        _LOG.error(msg)
+                        return False, msg
             if key == 'http':
                 config_http = config.get('http')
                 if config_http is not None and not isinstance(config_http, bool):
@@ -388,33 +414,30 @@ class YumDistributor(Distributor):
             return publish_conduit.build_failure_report(summary, details)
         skip_list = config.get('skip') or []
         # Determine Content in this repo
-        unfiltered_units = publish_conduit.get_units()
-        # filter compatible units
-        rpm_units = filter(lambda u : u.type_id in [TYPE_ID_RPM, TYPE_ID_SRPM], unfiltered_units)
-        drpm_units = filter(lambda u : u.type_id == TYPE_ID_DRPM, unfiltered_units)
-        rpm_errors = []
+        pkg_units = []
+        pkg_errors = []
         if 'rpm' not in skip_list:
-            _LOG.debug("Publish on %s invoked. %s existing units, %s of which are supported to be published." \
-                    % (repo.id, len(unfiltered_units), len(rpm_units)))
+            for type_id in [TYPE_ID_RPM, TYPE_ID_SRPM]:
+                criteria = UnitAssociationCriteria(type_ids=type_id,
+                    unit_fields=['id', 'name', 'version', 'release', 'arch', 'epoch', '_storage_path', "checksum", "checksumtype" ])
+                pkg_units += publish_conduit.get_units(criteria=criteria)
+            drpm_units = []
+            if 'drpm' not in skip_list:
+                criteria = UnitAssociationCriteria(type_ids=TYPE_ID_DRPM)
+                drpm_units = publish_conduit.get_units(criteria=criteria)
+            pkg_units += drpm_units
             # Create symlinks under repo.working_dir
-            rpm_status, rpm_errors = self.handle_symlinks(rpm_units, repo.working_dir, progress_callback)
-            if not rpm_status:
-                _LOG.error("Unable to publish %s items" % (len(rpm_errors)))
-        drpm_errors = []
-        if 'drpm' not in skip_list:
-            _LOG.debug("Publish on %s invoked. %s existing units, %s of which are supported to be published." \
-                    % (repo.id, len(unfiltered_units), len(drpm_units)))
-            # Create symlinks under repo.working_dir
-            drpm_status, drpm_errors = self.handle_symlinks(drpm_units, repo.working_dir, progress_callback)
-            if not drpm_status:
-                _LOG.error("Unable to publish %s items" % (len(drpm_errors)))
-        pkg_errors = rpm_errors + drpm_errors
-        pkg_units = rpm_units +  drpm_units
+            pkg_status, pkg_errors = self.handle_symlinks(pkg_units, repo.working_dir, progress_callback)
+            if not pkg_status:
+                _LOG.error("Unable to publish %s items" % (len(pkg_errors)))
+
         distro_errors = []
-        distro_units = filter(lambda u: u.type_id == TYPE_ID_DISTRO, unfiltered_units)
+        distro_units =  []
         if 'distribution' not in skip_list:
+            criteria = UnitAssociationCriteria(type_ids=TYPE_ID_DISTRO)
+            distro_units = publish_conduit.get_units(criteria=criteria)
             # symlink distribution files if any under repo.working_dir
-            distro_status, distro_errors = self.symlink_distribution_unit_files(distro_units, repo.working_dir, progress_callback)
+            distro_status, distro_errors = self.symlink_distribution_unit_files(distro_units, repo.working_dir, publish_conduit, progress_callback)
             if not distro_status:
                 _LOG.error("Unable to publish distribution tree %s items" % (len(distro_errors)))
 
@@ -442,10 +465,10 @@ class YumDistributor(Distributor):
             metadata_status, metadata_errors = metadata.generate_metadata(
                 repo.working_dir, publish_conduit, config, progress_callback, groups_xml_path)
         else:
-            # default to per package metadata
-            metadata_status, metadata_errors = metadata.generate_yum_metadata(repo.working_dir, rpm_units,
-                config, progress_callback, is_cancelled=self.canceled, group_xml_path=groups_xml_path,
-                updateinfo_xml_path=updateinfo_xml_path, repo_scratchpad=publish_conduit.get_repo_scratchpad())
+            metadata_status, metadata_errors = metadata.generate_yum_metadata(repo.working_dir, publish_conduit, config,
+                progress_callback, is_cancelled=self.canceled, group_xml_path=groups_xml_path, updateinfo_xml_path=updateinfo_xml_path,
+                repo_scratchpad=publish_conduit.get_repo_scratchpad())
+
         metadata_end_time = time.time()
         relpath = self.get_repo_relative_path(repo, config)
         if relpath.startswith("/"):
@@ -504,7 +527,7 @@ class YumDistributor(Distributor):
             summary["skip_metadata_update"] = True
         else:
             summary["skip_metadata_update"] = False
-        details["errors"] = pkg_errors + distro_errors + metadata_errors
+        details["errors"] = pkg_errors + distro_errors # metadata_errors
         details['time_metadata_sec'] = metadata_end_time - metadata_start_time
         # metadata generate skipped vs run
         _LOG.info("Publish complete:  summary = <%s>, details = <%s>" % (summary, details))
@@ -542,7 +565,6 @@ class YumDistributor(Distributor):
         @rtype (bool, [str])
         """
         packages_progress_status = self.init_progress()
-        _LOG.debug("handle_symlinks invoked with %s units to %s dir" % (len(units), symlink_dir))
         self.set_progress("packages", packages_progress_status, progress_callback)
         errors = []
         packages_progress_status["items_total"] = len(units)
@@ -612,7 +634,7 @@ class YumDistributor(Distributor):
         _LOG.info("Copied repodata from %s to %s" % (src_working_dir, tgt_working_dir))
         return True
 
-    def symlink_distribution_unit_files(self, units, symlink_dir, progress_callback=None):
+    def symlink_distribution_unit_files(self, units, symlink_dir, publish_conduit, progress_callback=None):
         """
         Publishing distriubution unit involves publishing files underneath the unit.
         Distribution is an aggregate unit with distribution files. This call
@@ -634,6 +656,9 @@ class YumDistributor(Distributor):
         distro_progress_status = self.init_progress()
         self.set_progress("distribution", distro_progress_status, progress_callback)
         _LOG.debug("Process symlinking distribution files with %s units to %s dir" % (len(units), symlink_dir))
+        # handle orphaned
+        existing_scratchpad = publish_conduit.get_scratchpad() or {}
+        scratchpad = self._handle_orphaned_distributions(units, symlink_dir, existing_scratchpad)
         errors = []
         for u in units:
             source_path_dir  = u.storage_path
@@ -644,10 +669,28 @@ class YumDistributor(Distributor):
             _LOG.debug("Found %s distribution files to symlink" % len(distro_files))
             distro_progress_status['items_total'] = len(distro_files)
             distro_progress_status['items_left'] = len(distro_files)
+            # Lookup treeinfo file in the source location
+            src_treeinfo_path = None
+            for treeinfo in constants.TREE_INFO_LIST:
+                src_treeinfo_path = os.path.join(source_path_dir, treeinfo)
+                if os.path.exists(src_treeinfo_path):
+                    # we found the treeinfo file
+                    break
+            if src_treeinfo_path is not None:
+                # create a symlink from content location to repo location.
+                symlink_treeinfo_path = os.path.join(symlink_dir, treeinfo)
+                _LOG.debug("creating treeinfo symlink from %s to %s" % (src_treeinfo_path, symlink_treeinfo_path))
+                util.create_symlink(src_treeinfo_path, symlink_treeinfo_path)
+            published_distro_files = []
             for dfile in distro_files:
                 self.set_progress("distribution", distro_progress_status, progress_callback)
                 source_path = os.path.join(source_path_dir, dfile['relativepath'])
                 symlink_path = os.path.join(symlink_dir, dfile['relativepath'])
+                if os.path.exists(symlink_path):
+                    # path already exists, skip symlink
+                    distro_progress_status["items_left"] -= 1
+                    published_distro_files.append(symlink_path)
+                    continue
                 if not os.path.exists(source_path):
                     msg = "Source path: %s is missing" % source_path
                     errors.append((source_path, symlink_path, msg))
@@ -663,6 +706,7 @@ class YumDistributor(Distributor):
                         distro_progress_status["items_left"] -= 1
                         continue
                     distro_progress_status['num_success'] += 1
+                    published_distro_files.append(symlink_path)
                 except Exception, e:
                     tb_info = traceback.format_exc()
                     _LOG.error("%s" % tb_info)
@@ -672,6 +716,8 @@ class YumDistributor(Distributor):
                     distro_progress_status["items_left"] -= 1
                     continue
                 distro_progress_status["items_left"] -= 1
+            scratchpad.update({constants.PUBLISHED_DISTRIBUTION_FILES_KEY : {u.id : published_distro_files}})
+        publish_conduit.set_scratchpad(scratchpad)
         if errors:
             distro_progress_status["error_details"] = errors
             distro_progress_status["state"] = "FAILED"
@@ -681,19 +727,32 @@ class YumDistributor(Distributor):
         self.set_progress("distribution", distro_progress_status, progress_callback)
         return True, []
 
+    def _handle_orphaned_distributions(self, units, repo_working_dir, scratchpad):
+        distro_unit_ids = [u.id for u in units]
+        published_distro_units = scratchpad.get(constants.PUBLISHED_DISTRIBUTION_FILES_KEY, [])
+        for distroid in published_distro_units:
+            if distroid not in distro_unit_ids:
+                # distro id on scratchpad not in the repo; remove the associated symlinks
+                for orphaned_path in published_distro_units[distroid]:
+                    if os.path.islink(orphaned_path):
+                        _LOG.debug("cleaning up orphaned distribution path %s" % orphaned_path)
+                        util.remove_symlink(repo_working_dir, orphaned_path)
+                    # remove the cleaned up distroid from scratchpad
+                del scratchpad[constants.PUBLISHED_DISTRIBUTION_FILES_KEY][distroid]
+        return scratchpad
+
     def create_consumer_payload(self, repo, config):
         payload = {}
         ##TODO for jdob: load the pulp.conf and make it accessible to distributor
-        pulp_conf = load_config(config_file="/etc/pulp/server.conf")
         payload['repo_name'] = repo.display_name
-        payload['server_name'] = pulp_conf.get('server', 'server_name')
-        ssl_ca_path = pulp_conf.get('security', 'ssl_ca_certificate')
+        payload['server_name'] = pulp_server_config.get('server', 'server_name')
+        ssl_ca_path = pulp_server_config.get('security', 'ssl_ca_certificate')
         if os.path.exists(ssl_ca_path):
-            payload['ca_cert'] = open(pulp_conf.get('security', 'ssl_ca_certificate')).read()
+            payload['ca_cert'] = open(pulp_server_config.get('security', 'ssl_ca_certificate')).read()
         else:
             payload['ca_cert'] = config.get('https_ca')
         payload['relative_path'] = \
-            '/'.join((pulp_conf.get('server', 'relative_url'),
+            '/'.join((RELATIVE_URL,
                       self.get_repo_relative_path(repo, config)))
         payload['protocols'] = []
         if config.get('http'):

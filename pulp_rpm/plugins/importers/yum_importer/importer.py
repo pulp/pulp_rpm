@@ -27,6 +27,7 @@ from pulp.plugins.importer import Importer
 from pulp.plugins.model import Unit, SyncReport
 from pulp_rpm.common.ids import TYPE_ID_IMPORTER_YUM, TYPE_ID_PKG_GROUP, TYPE_ID_PKG_CATEGORY, TYPE_ID_DISTRO,\
         TYPE_ID_DRPM, TYPE_ID_ERRATA, TYPE_ID_RPM, TYPE_ID_SRPM
+from pulp_rpm.common import constants
 from pulp_rpm.yum_plugin import util, depsolver
 from pulp_rpm.yum_plugin.metadata import get_package_xml
 
@@ -83,7 +84,6 @@ class YumImporter(Importer):
         }
 
     def validate_config(self, repo, config, related_repos):
-        _LOG.info("validate_config invoked, config values are: %s" % (config.repo_plugin_config))
         for key in REQUIRED_CONFIG_KEYS:
             if key not in config.keys():
                 msg = _("Missing required configuration key: %(key)s" % {"key":key})
@@ -259,12 +259,6 @@ class YumImporter(Importer):
                     return False, msg
 
         return True, None
-
-    def importer_added(self, repo, config):
-        _LOG.info("importer_added invoked")
-
-    def importer_removed(self, repo, config):
-        _LOG.info("importer_removed invoked")
 
     def import_units(self, source_repo, dest_repo, import_conduit, config, units=None):
         """
@@ -467,19 +461,6 @@ class YumImporter(Importer):
             if dep.unit_key not in blacklist_units:
                 import_conduit.associate_unit(dep)
 
-    def remove_units(self, repo, units, config):
-        """
-        @param repo: metadata describing the repository
-        @type  repo: L{pulp.plugins.data.Repository}
-
-        @param units: list of objects describing the units to import in this call
-        @type  units: list of L{pulp.plugins.data.Unit}
-
-        @param remove_conduit: provides access to relevant Pulp functionality
-        @type  remove_conduit: ?
-        """
-        _LOG.info("remove_units invoked for %s units" % (len(units)))
-
     # -- actions --------------------------------------------------------------
 
     def sync_repo(self, repo, sync_conduit, config):
@@ -497,21 +478,46 @@ class YumImporter(Importer):
         return report
 
     def _sync_repo(self, repo, sync_conduit, config):
-        progress_status = {
-                "metadata": {"state": "NOT_STARTED"},
-                "content": {"state": "NOT_STARTED"},
-                "errata": {"state": "NOT_STARTED"},
-                "comps": {"state": "NOT_STARTED"},
-                }
+        summary = {}
+        details = {}
+
         def progress_callback(type_id, status):
             if type_id == "content":
                 progress_status["metadata"]["state"] = "FINISHED"
             progress_status[type_id] = status
             sync_conduit.set_progress(progress_status)
 
+        # Before anything else, begin the progress reporting
+        progress_status = {
+            "metadata": {"state": "NOT_STARTED"},
+            "content": {"state": "NOT_STARTED"},
+            "errata": {"state": "NOT_STARTED"},
+            "comps": {"state": "NOT_STARTED"},
+        }
         sync_conduit.set_progress(progress_status)
-        summary = {}
-        details = {}
+
+        # No feed url found, return a sync failure
+        if not config.get("feed_url", None):
+            msg = _("Cannot perform repository sync on a repository with no feed")
+
+            # I can't find any sort of standard way of editing the progress
+            # report. From what I can tell, it's entirely recreated each time.
+            # So I'm just updating the initial one from above here. We need to
+            # indicate to the client the reason the metadata step failed.
+            progress_status['metadata']['state'] = constants.STATE_FAILED
+            progress_status['metadata']['error'] = msg
+
+            # Make sure to flag the other steps to indicate they won't take place
+            progress_status['content']['state'] = constants.STATE_SKIPPED
+            progress_status['errata']['state'] = constants.STATE_SKIPPED
+            progress_status['comps']['state'] = constants.STATE_SKIPPED
+
+            sync_conduit.set_progress(progress_status)
+
+            # End the sync, indicating a failure
+            summary['error'] = msg
+            return False, summary, details
+
         # sync rpms
         rpm_status, summary["packages"], details["packages"] = self.importer_rpm.sync(repo, sync_conduit, config, progress_callback)
 
@@ -524,7 +530,6 @@ class YumImporter(Importer):
         return (rpm_status and errata_status and comps_status), summary, details
 
     def upload_unit(self, repo, type_id, unit_key, metadata, file_path, conduit, config):
-        _LOG.info("Upload Unit Invoked: repo.id <%s> type_id <%s>, unit_key <%s>" % (repo.id, type_id, unit_key))
         try:
             num_units_saved = 0
             status, summary, details = self._upload_unit(repo, type_id, unit_key, metadata, file_path, conduit, config)
@@ -631,7 +636,6 @@ class YumImporter(Importer):
         return True, summary, details
 
     def resolve_dependencies(self, repo, units, dependency_conduit, config):
-        _LOG.info("Resolve Dependencies Invoked")
         result_dict = {}
         pkglist =  self.pkglist(units)
         dsolve = depsolver.DepSolver([repo], pkgs=pkglist)
@@ -656,7 +660,6 @@ class YumImporter(Importer):
         result_dict['unresolved'] = unsolved
         result_dict['printable_dependency_result'] = dsolve.printable_result(results)
         dsolve.cleanup()
-        _LOG.debug("result dict %s" % result_dict)
         return result_dict
 
     def cancel_sync_repo(self, call_request, call_report):

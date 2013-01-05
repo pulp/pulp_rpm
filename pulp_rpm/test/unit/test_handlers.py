@@ -2,11 +2,11 @@
 import os
 import tempfile
 import shutil
+import unittest
 
 import mock_yum
 from mock import Mock, patch
 from mock_yum import YumBase
-from rpm_support_base import PulpRPMTests
 from pulp.agent.lib.container import Container, SYSTEM, CONTENT, BIND
 from pulp.agent.lib.dispatcher import Dispatcher
 from pulp.agent.lib.conduit import Conduit
@@ -57,10 +57,9 @@ class Deployer:
             shutil.copy(path, target)
 
 
-class HandlerTest(PulpRPMTests):
+class HandlerTest(unittest.TestCase):
 
     def setUp(self):
-        PulpRPMTests.setUp(self)
         mock_yum.install()
         self.deployer = Deployer()
         dpath, hpath = self.deployer.install()
@@ -70,7 +69,6 @@ class HandlerTest(PulpRPMTests):
         os.system = Mock()
 
     def tearDown(self):
-        PulpRPMTests.tearDown(self)
         self.deployer.uninstall()
         os.system = self.__system
         YumBase.reset()
@@ -573,6 +571,19 @@ class TestBind(HandlerTest):
         self.assertTrue(os.path.isfile(self.REPO_FILE))
         repofile = Config(self.REPO_FILE)
         self.assertFalse(self.REPO_ID in repofile)
+
+    @patch('pulp_rpm.handler.repolib.Lock')
+    def test_clean(self, mock_lock):
+        # Setup
+        options = {}
+        conduit = TestConduit(self.CONFIGURATION)
+        bindings = [dict(self.BINDING)]
+        self.dispatcher.bind(conduit, bindings, options)
+        self.assertTrue(os.path.isfile(self.REPO_FILE))
+        # Test
+        self.dispatcher.clean(conduit)
+        # Verify
+        self.assertFalse(os.path.isfile(self.REPO_FILE))
 
 
 class TestLinux(HandlerTest):

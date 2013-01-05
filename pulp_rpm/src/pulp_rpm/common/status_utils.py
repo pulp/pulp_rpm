@@ -40,7 +40,7 @@ def render_general_spinner_step(prompt, spinner, current_state, last_state, star
     """
 
     # Render nothing if we haven't begun yet
-    if current_state == constants.STATE_NOT_STARTED:
+    if current_state in (constants.STATE_NOT_STARTED, constants.STATE_SKIPPED):
         return
 
     # Only render this on the first non-not-started state
