@@ -17,8 +17,8 @@
 # ---- Pulp (rpm) --------------------------------------------------------------
 
 Name: pulp-rpm
-Version: 2.0.6
-Release: 0.8.beta
+Version: 2.1.0
+Release: 0.1.alpha
 Summary: Support for RPM content in the Pulp platform
 Group: Development/Languages
 License: GPLv2
@@ -60,6 +60,7 @@ popd
 # Directories
 mkdir -p /srv
 mkdir -p %{buildroot}/%{_sysconfdir}/pulp
+mkdir -p %{buildroot}/%{_sysconfdir}/pki/pulp/content
 mkdir -p %{buildroot}/%{_usr}/lib
 mkdir -p %{buildroot}/%{_usr}/lib/pulp/plugins
 mkdir -p %{buildroot}/%{_usr}/lib/pulp/admin/extensions
@@ -101,7 +102,7 @@ rm -rf %{buildroot}
 
 
 # define required pulp platform version
-%global pulp_version %{version}-%{release}
+%global pulp_version %{version}
 
 
 # ---- RPM Common --------------------------------------------------------------
@@ -147,7 +148,8 @@ Requires: python-pulp-rpm-common = %{pulp_version}
 Requires: pulp-server = %{pulp_version}
 Requires: createrepo >= 0.9.8-3
 Requires: python-rhsm >= 1.0.4-1
-
+Requires: grinder >= 0.1.12-1
+Requires: pyliblzma
 %description plugins
 Provides a collection of platform plugins that extend the Pulp platform
 to provide RPM specific support.
@@ -165,6 +167,7 @@ to provide RPM specific support.
 %{_usr}/lib/pulp/plugins/profilers/rpm_errata_profiler/
 %defattr(-,apache,apache,-)
 %{_var}/www/pub
+%{_sysconfdir}/pki/pulp/content/
 /srv/pulp/repo_auth.wsgi
 %doc
 
@@ -253,21 +256,111 @@ A collection of yum plugins supplementing Pulp consumer operations.
 
 
 %changelog
-* Wed Nov 21 2012 Jay Dobies <jason.dobies@redhat.com> 2.0.6-0.8.beta
+* Thu Dec 20 2012 Jeff Ortel <jortel@redhat.com> 2.0.6-0.19.rc
 - 
 
-* Wed Nov 21 2012 Jay Dobies <jason.dobies@redhat.com> 2.0.6-0.7.beta
+* Wed Dec 19 2012 Jeff Ortel <jortel@redhat.com> 2.0.6-0.19.beta
 - 
 
-* Mon Nov 19 2012 Jeff Ortel <jortel@redhat.com> 0.0.341-1
+* Tue Dec 18 2012 Jeff Ortel <jortel@redhat.com> 2.0.6-0.18.beta
+- 887959 - Removing NameVirtualHost entries from plugin httpd conf files and
+  adding it only at one place in main pulp.conf (skarmark@redhat.com)
+- 886240 - fixing distribution sync and publish * set the distro location when
+  grinder is invoked so treeinfo gets downloaded and symlinked to right
+  location * fix the publish to lookup treeinfo and symlink to publish location
+  (pkilambi@redhat.com)
+- 886240 - yum's update_md skips updated date via xml generation, adding a
+  check to see if its missing and fallback to issued date instead
+  (pkilambi@redhat.com)
+- 887388 - Fixed issue with non --details listing (jason.dobies@redhat.com)
+- 886240 - Fixes generation of updateinfo XML if an errata spans more than 1
+  collection, yum will output the XML with an extra '</pkglist>' interspersed
+  between each <collection>. (jmatthews@redhat.com)
+- 887388 - Strip out the feed SSL info and replace with safe message
+  (jason.dobies@redhat.com)
+- 887368 - implement bind handler clean(). (jortel@redhat.com)
+- 886240 - updated comps parsing so it will auto wrap a file with GzipFile if
+  it ends with .gz, even if comes from 'groups' data and not 'group_gz'
+  (jmatthews@redhat.com)
+- 887123 - Process --verify-feed-ssl as a boolan. (rbarlow@redhat.com)
+
+* Thu Dec 13 2012 Jeff Ortel <jortel@redhat.com> 2.0.6-0.17.beta
+- 887026 - The yum distributor should not have been storing this value in
+  server.conf. (jason.dobies@redhat.com)
+- 886986 - Default to verifying feed SSL certificates. (rbarlow@redhat.com)
+- 885264 - bump grinder requires to: 0.1.11-1. (jortel@redhat.com)
+
+* Thu Dec 13 2012 Jeff Ortel <jortel@redhat.com> 2.0.6-0.15.beta
+- 886240 - repo sync for a repo created with a feed of /var/lib/pulp of another
+  repo results in less number of contents than the original repo
+  (jmatthews@redhat.com)
+- 886240 - repo sync for a repo created with a feed of /var/lib/pulp of another
+  repo results in less number of contents than the original repo Updated logic
+  for pagination of package metadata (jmatthews@redhat.com)
+- 857528 - Added missing feed message to the progress report so the client sees
+  it (jason.dobies@redhat.com)
+
+* Mon Dec 10 2012 Jeff Ortel <jortel@redhat.com> 2.0.6-0.14.beta
+- 885264 - require grinder 0.1.10 (jortel@redhat.com)
+
+* Fri Dec 07 2012 Jeff Ortel <jortel@redhat.com> 2.0.6-0.13.beta
 - 
 
-* Mon Nov 19 2012 Jeff Ortel <jortel@redhat.com> 0.0.340-1
+* Thu Dec 06 2012 Jeff Ortel <jortel@redhat.com> 2.0.6-0.12.beta
+- 881355 - fixed errata install CLI result parsing. (jortel@redhat.com)
+- 882421 - moving remove() method into the platform library so it can be used
+  by other extension families (mhrivnak@redhat.com)
+- 874241 - Alter the CLI help text to specify that relative_urls must match our
+  regex. (rbarlow@redhat.com)
+- 874241 - Allow relative URLs to have the forward slash character.
+  (rbarlow@redhat.com)
+- 874241 - Only allow alphanumerics, underscores, and dashes in the
+  relative_url. (rbarlow@redhat.com)
+- 876637 - adding validation for empty feed url (skarmark@redhat.com)
+- 881932 - updated bind/unbind output. (jortel@redhat.com)
+- 880441 - Ported over group commands from builtins (temporary hack for 2.0)
+  (jason.dobies@redhat.com)
+- 880391 - added remove distribution cli command (skarmark@redhat.com)
+- 877161 - importer side of changes to orphan distribution units
+  (pkilambi@redhat.com)
+
+* Thu Nov 29 2012 Jeff Ortel <jortel@redhat.com> 2.0.6-0.11.beta
+- 
+
+* Thu Nov 29 2012 Jeff Ortel <jortel@redhat.com> 2.0.6-0.10.beta
+- 877047 - if a file already exists, do not try to create a symlink
+  (pkilambi@redhat.com)
+- 881639 - fix error message when binding does not exist. (jortel@redhat.com)
+- 869099 - fix to the plugin progress callback so delta rpm progress doesnt
+  override rpm progress (pkilambi@redhat.com)
+- 866491 - Translate bad data property name into CLI flag
+  (jason.dobies@redhat.com)
+- 858855 - Directory created at runtime but included here so that it's cleaned
+  up when rpm plugins are uninstalled. (jortel@redhat.com)
+- 862290 - Added support for non-RPM repo listing (jason.dobies@redhat.com)
+
+* Mon Nov 26 2012 Jay Dobies <jason.dobies@redhat.com> 2.0.6-0.9.beta
+- 
+
+* Tue Nov 20 2012 Jeff Ortel <jortel@redhat.com> 2.0.6-0.3.beta
+- 878548 - Added empty conf files for the plugins in case we need to tell users
+  to edit them in the future. I'd have liked to add comments about possible
+  values, but comments aren't supported in JSON. (jason.dobies@redhat.com)
+- 877488 - Removing publish schedules section (jason.dobies@redhat.com)
+- 873419 - searching for RPMs with the --details flag works properly again
+  (mhrivnak@redhat.com)
+- 876260 - Fixed the export_distributor removal fix (jason.dobies@redhat.com)
+- 875163 - Remove the export distributor from being displayed in --details
+  (jason.dobies@redhat.com)
 - 875163 - use group as the xml filename when generating comps so modifyrepo
   uses that as type id which yum expects (pkilambi@redhat.com)
-
-* Wed Nov 14 2012 Jeff Ortel <jortel@redhat.com> 0.0.339-1
 - 876174 - Migrated over missing consumer commands (jason.dobies@redhat.com)
+
+* Mon Nov 12 2012 Jeff Ortel <jortel@redhat.com> 2.0.6-0.2.beta
+- 
+
+* Mon Nov 12 2012 Jeff Ortel <jortel@redhat.com> 2.0.6-0.1.beta
+- 
 
 * Mon Nov 12 2012 Jeff Ortel <jortel@redhat.com> 0.0.338-1
 - 
