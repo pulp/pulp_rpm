@@ -569,8 +569,6 @@ class YumImporter(Importer):
             return False, summary, details
         relative_path = "%s/%s/%s/%s/%s/%s" % (unit_key['name'], unit_key['version'],
                                                         unit_key['release'], unit_key['arch'], unit_key['checksum'], metadata['filename'])
-        # get the xml dumps for the pkg
-        metadata["repodata"] = get_package_xml(file_path)
         u = conduit.init_unit(TYPE_ID_RPM, unit_key, metadata, relative_path)
         new_path = u.storage_path
         try:
@@ -590,6 +588,8 @@ class YumImporter(Importer):
             details['errors'].append(msg)
             _LOG.error(msg)
             return False, summary, details
+        # get the xml dumps for the pkg
+        u.metadata["repodata"] = get_package_xml(new_path)
         conduit.save_unit(u)
         summary['num_units_processed'] = len([file_path])
         summary['num_units_saved'] = len([file_path])
