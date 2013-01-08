@@ -11,11 +11,15 @@
 # NON-INFRINGEMENT, or FITNESS FOR A PARTICULAR PURPOSE. You should
 # have received a copy of GPLv2 along with this software; if not, see
 # http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt.
-
+import os
 import subprocess
-import sys 
+import sys
 
-PACKAGES = [ 
+# Find and eradicate any existing .pyc files, so they do not eradicate us!
+PROJECT_DIR = os.path.dirname(__file__)
+subprocess.call(['find', PROJECT_DIR, '-name', '*.pyc', '-delete'])
+
+PACKAGES = [
     'pulp_rpm',
     'rpm_admin_consumer',
     'rpm_repo',
@@ -29,7 +33,7 @@ PACKAGES = [
 
 TESTS = 'pulp_rpm/test/unit'
 
-args = [ 
+args = [
     'nosetests',
     '--with-coverage',
     '--cover-html',
