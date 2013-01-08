@@ -97,13 +97,15 @@ def main():
     pic.connect()
     pic.LOG_BODIES = False
 
-    with open('redhat-uep.pem', 'r') as ca_file:
+    with open('/home/rbarlow/Downloads/redhat-uep.pem', 'r') as ca_file:
         ssl_ca_cert = ca_file.read()
 
-    repos = [#{'id': 'test', 'feed': 'http://pkilambi.fedorapeople.org/test_file_repo/'},
+    repos = [{'id': 'test', 'feed': 'http://pkilambi.fedorapeople.org/test_file_repo/'},
              {'id': 'cdn',
               'feed': 'https://cdn.redhat.com/content/dist/rhel/server/6/6Server/x86_64/iso',
-              'ssl_ca_cert': ssl_ca_cert},]
+              constants.CONFIG_SSL_CA_CERT: ssl_ca_cert,
+              constants.CONFIG_SSL_CLIENT_CERT: ssl_client_cert,
+              constants.CONFIF_SSL CLIENT_KEY: ssl_client_key},]
 
     if not '--skip-delete' in sys.argv:
         title(p, 'Creating & Configuring Repositories')
