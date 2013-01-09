@@ -59,17 +59,28 @@ class TestUploadUnit(rpm_support_base.PulpRPMTests):
         config = importer_mocks.get_basic_config()
         importer = YumImporter()
         file_path = "%s/%s" % (self.data_dir, "incisura-7.1.4-1.elfake.noarch.rpm")
-        metadata = {'filename' : "incisura-7.1.4-1.elfake.noarch.rpm", 'checksum' : 'e0e98e76e4e06dad65a82b0111651d7aca5b00fe'}
+        mdata = {'filename' : "incisura-7.1.4-1.elfake.noarch.rpm", 'checksum' : 'e0e98e76e4e06dad65a82b0111651d7aca5b00fe'}
         unit_key = {'name' : 'incisura', 'version' : '7.1.4', 'release' : '1', 'arch' : 'noarch', 'checksum' : 'e0e98e76e4e06dad65a82b0111651d7aca5b00fe', 'checksumtype' : 'sha1'}
         type_id = "rpm"
-        status, summary, details = importer._upload_unit(repo, type_id, unit_key, metadata, file_path, upload_conduit, config)
+        status, summary, details = importer._upload_unit(repo, type_id, unit_key, mdata, file_path, upload_conduit, config)
         self.assertTrue(status)
         self.assertTrue(summary is not None)
         self.assertTrue(details is not None)
+        # validate if metadata was generated
+        self.assertTrue(mdata.has_key('repodata'))
+        self.assertTrue(mdata['repodata']['primary'] is not None)
+        self.assertTrue(mdata['repodata']['other'] is not None)
+        self.assertTrue(mdata['repodata']['filelists'] is not None)
+        primary_snippet = mdata['repodata']['primary']
+        location_start_index = primary_snippet.find("href=")
+        # verify the location matches the basename of the package
+        self.assertTrue(primary_snippet[location_start_index:location_start_index + len("href=") + len("incisura-7.1.4-1.elfake.noarch.rpm") + 2 ] ==
+                        "href=\"incisura-7.1.4-1.elfake.noarch.rpm\"")
         self.assertEquals(summary["num_units_saved"], 1)
         self.assertEquals(summary["num_units_processed"], 1)
         self.assertEquals(summary["filename"], "incisura-7.1.4-1.elfake.noarch.rpm")
         self.assertEquals(details["errors"], [])
+
 
     def test_upload_erratum(self):
         repo = mock.Mock(spec=Repository)
