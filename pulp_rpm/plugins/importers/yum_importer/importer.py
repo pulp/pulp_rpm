@@ -18,6 +18,7 @@ import gettext
 import os
 import shutil
 import itertools
+import copy
 
 from yum_importer.comps import ImporterComps
 from yum_importer.errata import ImporterErrata, link_errata_rpm_units
@@ -288,23 +289,46 @@ class YumImporter(Importer):
         for u in units:
             if u.unit_key in blacklist_units:
                 continue
-            import_conduit.associate_unit(u)
             # do any additional work associated with the unit
             if u.type_id == TYPE_ID_RPM:
+                import_conduit.associate_unit(u)
                 # if its an rpm unit process dependencies and import them as well
                 self._import_unit_dependencies(source_repo, [u], import_conduit, config,
                     existing_rpm_units=existing_rpm_units_dict, blacklist_units=blacklist_units)
             elif u.type_id == TYPE_ID_ERRATA:
+                import_conduit.associate_unit(u)
                 # if erratum, lookup deps and process associated units
                 self._import_errata_unit_rpms(source_repo, u, import_conduit, config,
                     existing_rpm_units_dict, blacklist_units=blacklist_units)
             elif u.type_id == TYPE_ID_PKG_GROUP:
+                u = self._safe_copy_unit(u)
+                u.unit_key['repo_id'] = dest_repo.id
+                import_conduit.save_unit(u)
                 # pkg group unit associated, lookup child units underneath and import them as well
                 self._import_pkg_group_unit(source_repo, u, import_conduit, config)
             elif u.type_id == TYPE_ID_PKG_CATEGORY:
+                u = self._safe_copy_unit(u)
+                u.unit_key['repo_id'] = dest_repo.id
+                import_conduit.save_unit(u)
                 # pkg category associated, lookup pkg groups underneath and import them as well
                 self._import_pkg_category_unit(source_repo, u, import_conduit, config)
+            elif u.type_id == TYPE_ID_DISTRO:
+                import_conduit.associate_unit(u)
         _LOG.debug("%s units from %s have been associated to %s" % (len(units), source_repo.id, dest_repo.id))
+
+    def _safe_copy_unit(self, unit):
+        """
+        Creates a deep copy of the unit and cleans out the _ fields
+        @param unit: pulp.plugins.data.Unit object to clone
+        @return: cloned unit pulp.plugins.data.Unit
+        """
+        u = copy.deepcopy(unit)
+        u.id = None
+        # remove all the _ fields so save_unit defaults them
+        for key in u.metadata.keys():
+            if key.startswith('_') :
+                del u.metadata[key]
+        return u
 
     def _query_blacklist_units(self, import_conduit, config):
         """
