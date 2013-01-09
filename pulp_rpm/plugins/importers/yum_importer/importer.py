@@ -317,6 +317,11 @@ class YumImporter(Importer):
         _LOG.debug("%s units from %s have been associated to %s" % (len(units), source_repo.id, dest_repo.id))
 
     def _safe_copy_unit(self, unit):
+        """
+        Creates a deep copy of the unit and cleans out the _ fields
+        @param unit: pulp.plugins.data.Unit object to clone
+        @return: cloned unit pulp.plugins.data.Unit
+        """
         u = copy.deepcopy(unit)
         u.id = None
         # remove all the _ fields so save_unit defaults them
