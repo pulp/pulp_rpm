@@ -112,3 +112,13 @@ class TestYumMetadataGenerate(rpm_support_base.PulpRPMTests):
         self.assertEquals(status, False)
         self.assertEquals(metadata_progress_status['metadata']['state'], "CANCELED")
 
+
+    def test_change_location_tag(self):
+        test_primary_snippet = """<package type="rpm"><name>feedless</name><arch>noarch</arch><version epoch="0" ver="1.0" rel="1"/><checksum type="sha" pkgid="YES">c1181097439ae4c69793c91febd8513475fb7ed6</checksum><summary>dummy testing pkg</summary><description>A dumb 1Mb pkg.</description><packager/><url/><time file="1299184404" build="1299168170"/><size package="1050973" installed="2097152" archive="1048976"/><location href="/var/lib/pulp/content/Package/feedless-1.0-1.noarch.rpm"/><format><rpm:license>GPLv2</rpm:license><rpm:vendor/><rpm:group>Application</rpm:group><rpm:buildhost>pulp-qe-rhel5.usersys.redhat.com</rpm:buildhost><rpm:sourcerpm>feedless-1.0-1.src.rpm</rpm:sourcerpm><rpm:header-range start="456" end="1846"/><rpm:provides><rpm:entry name="feedless" flags="EQ" epoch="0" ver="1.0" rel="1"/></rpm:provides><rpm:requires><rpm:entry name="rpmlib(CompressedFileNames)" flags="LE" epoch="0" ver="3.0.4" rel="1" pre="1"/><rpm:entry name="rpmlib(PayloadFilesHavePrefix)" flags="LE" epoch="0" ver="4.0" rel="1" pre="1"/></rpm:requires></format></package>"""
+        changed_primary_snippet = metadata.change_location_tag(test_primary_snippet, "feedless-1.0-1.noarch.rpm")
+        location_start_index = changed_primary_snippet.find("href=")
+        location_info = changed_primary_snippet[location_start_index:location_start_index + len("href=") + len("feedless-1.0-1.noarch.rpm") + 2 ]
+        # verify the location matches the basename of the package
+        self.assertTrue(location_info == "href=\"feedless-1.0-1.noarch.rpm\"")
+
+
