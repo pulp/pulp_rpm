@@ -501,7 +501,12 @@ class TestImportUnits(rpm_support_base.PulpRPMTests):
         associated_units = [mock_call[0][0] for mock_call in conduit.associate_unit.call_args_list]
         # verify expected units are in associate units
         for u in verify_units:
-            self.assertTrue(u in associated_units)
+            if u.type_id not in [TYPE_ID_PKG_GROUP, TYPE_ID_PKG_CATEGORY]:
+                self.assertTrue(u in associated_units)
+        # validate saved package groups
+        saved_units = [mock_call[0][0] for mock_call in conduit.save_unit.call_args_list]
+        for u in saved_units:
+            self.assertTrue(u.unit_key['repo_id'] == "repoB")
         # verify that the version compare worked and skipped old versions
         for u in verify_old_version_skipped:
             self.assertFalse(u in associated_units)
