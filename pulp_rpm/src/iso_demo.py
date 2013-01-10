@@ -50,6 +50,10 @@ def add_iso_importer(repo):
     }
     if 'ssl_ca_cert' in repo:
         importer_config[constants.CONFIG_SSL_CA_CERT] = repo['ssl_ca_cert']
+    if constants.CONFIG_SSL_CLIENT_CERT in repo:
+        importer_config[constants.CONFIG_SSL_CLIENT_CERT] = repo[constants.CONFIG_SSL_CLIENT_CERT]
+    if constants.CONFIG_SSL_CLIENT_KEY in repo:
+        importer_config[constants.CONFIG_SSL_CLIENT_KEY] = repo[constants.CONFIG_SSL_CLIENT_KEY]
 
     body = {
         'importer_type_id' : ids.TYPE_ID_IMPORTER_ISO,
@@ -99,13 +103,19 @@ def main():
 
     with open('/home/rbarlow/Downloads/redhat-uep.pem', 'r') as ca_file:
         ssl_ca_cert = ca_file.read()
+    with open('/home/rbarlow/Downloads/8a85f9843affb61f013b1c7ddf6a64da.pem') as \
+            ssl_client_cert_file:
+        ssl_client_cert = ssl_client_cert_file.read()
+    with open('/home/rbarlow/Downloads/8a85f9843affb61f013b1c7ddf6a64da-key.pem') as \
+            ssl_client_key_file:
+        ssl_client_key = ssl_client_key_file.read()
 
-    repos = [{'id': 'test', 'feed': 'http://pkilambi.fedorapeople.org/test_file_repo/'},
+    repos = [# {'id': 'test', 'feed': 'http://pkilambi.fedorapeople.org/test_file_repo/'},
              {'id': 'cdn',
               'feed': 'https://cdn.redhat.com/content/dist/rhel/server/6/6Server/x86_64/iso',
               constants.CONFIG_SSL_CA_CERT: ssl_ca_cert,
               constants.CONFIG_SSL_CLIENT_CERT: ssl_client_cert,
-              constants.CONFIF_SSL CLIENT_KEY: ssl_client_key},]
+              constants.CONFIG_SSL_CLIENT_KEY: ssl_client_key},]
 
     if not '--skip-delete' in sys.argv:
         title(p, 'Creating & Configuring Repositories')

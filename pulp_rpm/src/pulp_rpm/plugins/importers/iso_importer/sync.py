@@ -74,7 +74,8 @@ def perform_sync(repo, sync_conduit, config):
     # Get the manifest and download the ISOs that we are missing
     manifest = bumper.manifest
     missing_isos = _filter_missing_isos(sync_conduit, manifest)
-    # TODO: Consider processing each ISO completely instead of downloading them all and them _create_units
+    # TODO: Consider processing each ISO completely instead of downloading them all and then
+    # _create_units
     new_isos = bumper.download_resources(missing_isos)
 
     # Move the downloaded stuff and junk to the permanent location

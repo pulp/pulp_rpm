@@ -43,14 +43,21 @@ class DownloadValidationError(Exception):
     pass
 
 
+class HTTPForbiddenException(Exception):
+    """
+    This Exception is raised when the remote server returns a 403 status.
+    """
+    pass
+
+
 class Bumper(object):
     """
     This is the superclass that type specific Bumpers should subclass. It has basic facilities for
     retrieving files from the Interweb.
     """
     def __init__(self, feed_url, working_path, max_speed=None, num_threads=5,
-                 ssl_client_cert=None, ssl_client_key=None, ssl_ca_cert=None, proxy_url=None, proxy_port=None,
-                 proxy_user=None, proxy_password=None):
+                 ssl_client_cert=None, ssl_client_key=None, ssl_ca_cert=None, proxy_url=None,
+                 proxy_port=None, proxy_user=None, proxy_password=None):
         """
         Configure the Bumper for the feed specified by feed_url. All other parameters are
         optional, and currently many of them are unused. The unused parameters are in place to
@@ -91,6 +98,9 @@ class Bumper(object):
                                   parameter is currently ignored, but is here for future expansion.
         """
         self.feed_url          = feed_url
+        # It's very important that feed_url end with a trailing slash due to our use of urljoin.
+        if self.feed_url[-1] != '/':
+            self.feed_url = '%s/'%self.feed_url
         self.working_path      = working_path
         self.max_speed         = max_speed
         self.num_threads       = num_threads
@@ -152,26 +162,27 @@ class Bumper(object):
         :param curl: The Curl instance we want to configure for SSL
         :type  curl: pycurl.Curl
         """
-        # This will make sure we don't download content from any peer unless their SSL cert checks out against a CA
+        # This will make sure we don't download content from any peer unless their SSL cert checks
+        # out against a CA
         # We could make this an option, but it doesn't seem wise.
         logger.debug('setting SSL_VERIFYPEER')
         logger.debug('os.getuid(): %s'%os.getuid())
         curl.setopt(pycurl.SSL_VERIFYPEER, True)
-        # Unfortunately, pycurl doesn't accept the bits for SSL keys or certificates, but instead insists on being
-        # handed a path. We will use a FIFO to hand the bits to pycurl.
-        _fifo_working_path = os.path.join(self.working_path, 'SSL_FIFOS')
-        if not os.path.exists(_fifo_working_path):
-            logger.debug('Making %s'%_fifo_working_path)
-            os.mkdir(_fifo_working_path, 0700)
-            self._paths_to_cleanup.append(_fifo_working_path)
+        # Unfortunately, pycurl doesn't accept the bits for SSL keys or certificates, but instead
+        # insists on being handed a path. We must use a file to hand the bits to pycurl.
+        _ssl_working_path = os.path.join(self.working_path, 'SSL_CERTIFICATES')
+        if not os.path.exists(_ssl_working_path):
+            logger.debug('Making %s'%_ssl_working_path)
+            os.mkdir(_ssl_working_path, 0700)
+            self._paths_to_cleanup.append(_ssl_working_path)
         pycurl_ssl_option_paths = {
-            pycurl.CAINFO:  {'path': os.path.join(_fifo_working_path, 'ca.pem'), 'data': self.ssl_ca_cert},
-            pycurl.SSLCERT: {'path': os.path.join(_fifo_working_path, 'client.pem'), 'data': self.ssl_client_cert},
-            pycurl.SSLKEY:  {'path': os.path.join(_fifo_working_path, 'client-key.pem'), 'data': self.ssl_client_key}}
-        logger.debug(pycurl_ssl_option_paths)
+            pycurl.CAINFO:  {'path': os.path.join(_ssl_working_path, 'ca.pem'),
+                             'data': self.ssl_ca_cert},
+            pycurl.SSLCERT: {'path': os.path.join(_ssl_working_path, 'client.pem'),
+                             'data': self.ssl_client_cert},
+            pycurl.SSLKEY:  {'path': os.path.join(_ssl_working_path, 'client-key.pem'),
+                             'data': self.ssl_client_key}}
         for pycurl_setting, ssl_data in pycurl_ssl_option_paths.items():
-            logger.debug(pycurl_setting)
-            logger.debug(ssl_data)
             # We don't want to do anything if the user didn't pass us any certs or keys
             if ssl_data['data']:
                 path = ssl_data['path']
@@ -183,10 +194,12 @@ class Bumper(object):
                     logger.debug('Writing to the file')
                     ssl_file.write(ssl_data['data'])
                 logger.debug('Telling pycurl about the file')
+                logger.debug('pycurl.CAINFO: %s'%pycurl.CAINFO)
+                logger.debug('pycurl.SSLCERT: %s'%pycurl.SSLCERT)
+                logger.debug('pycurl.SSLKEY: %s'%pycurl.SSLKEY)
                 logger.debug('pycurl_setting: %s'%pycurl_setting)
                 logger.debug('path: %s'%path)
-                logger.debug(type(path))
-                curl.setopt(pycurl_setting, path.encode('utf8'))
+                curl.setopt(pycurl_setting, str(path))
         logger.debug('DONE')
 
     # TODO: Figure out how to cancel a download
@@ -238,12 +251,15 @@ class Bumper(object):
         status = curl.getinfo(curl.HTTP_CODE)
         curl.close()
         logger.debug('cURL status: %s'%status)
+        # TODO: Make Exception handling here awesome
         if status == 401:
             raise exceptions.UnauthorizedException(url)
+        elif status == 403:
+            raise HTTPForbiddenException(resource['url'])
         elif status == 404:
             raise exceptions.FileNotFoundException(url)
         elif status != 200:
-            raise exceptions.FileRetrievalException(url)
+            raise exceptions.FileRetrievalException(url, status)
         # TODO: add pre/post hooks stuff
         for hook in self._post_download_hooks:
             hook()
