@@ -178,7 +178,7 @@ class YumImporter(Importer):
 
             if key == 'proxy_port':
                 proxy_port = config.get('proxy_port')
-                if proxy_port is not None and isinstance(proxy_port, int):
+                if proxy_port is not None and not isinstance(proxy_port, int):
                     msg = _("Invalid proxy port: %s" % proxy_port)
                     _LOG.error(msg)
                     return False, msg
