@@ -10,14 +10,12 @@
 # NON-INFRINGEMENT, or FITNESS FOR A PARTICULAR PURPOSE. You should
 # have received a copy of GPLv2 along with this software; if not, see
 # http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt.
-
 """
 Contains classes and functions related to tracking the progress of the ISO
 importer.
 """
-
-#from pulp_puppet.common import reporting
 from pulp_rpm.common.constants import STATE_NOT_STARTED, STATE_COMPLETE
+
 
 class SyncProgressReport(object):
     """

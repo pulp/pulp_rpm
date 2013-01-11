@@ -31,7 +31,8 @@ logger = logging.getLogger(__name__)
 
 class CACertError(Exception):
     """
-    This Exception is raised when PycURL doesn't have a CA certificate that can authenticate the remote server.
+    This Exception is raised when PycURL doesn't have a CA certificate that can authenticate the
+    remote server.
     """
     pass
 
@@ -112,8 +113,8 @@ class Bumper(object):
         self.ssl_client_key    = ssl_client_key
         self.ssl_ca_cert       = ssl_ca_cert
 
-        # A list of paths that we have created while messing around that should be removed when we are done doing stuff
-        # It is a LIFO, and the paths will be removed in reverse order
+        # A list of paths that we have created while messing around that should be removed when we
+        # are done doing stuff. It is a LIFO, and the paths will be removed in reverse order.
         self._paths_to_cleanup = []
         # A list of methods that should be called after download is finished
         self._post_download_hooks = [self._cleanup_paths]
@@ -145,8 +146,8 @@ class Bumper(object):
 
     def _cleanup_paths(self):
         """
-        Calls os.unlink() or os.rmdir on all paths in self._paths_to_cleanup in reverse order, and removes them from
-        that list.
+        Calls os.unlink() or os.rmdir on all paths in self._paths_to_cleanup in reverse order, and
+        removes them from that list.
         """
         while self._paths_to_cleanup:
             path = self._paths_to_cleanup.pop()
@@ -165,14 +166,11 @@ class Bumper(object):
         # This will make sure we don't download content from any peer unless their SSL cert checks
         # out against a CA
         # We could make this an option, but it doesn't seem wise.
-        logger.debug('setting SSL_VERIFYPEER')
-        logger.debug('os.getuid(): %s'%os.getuid())
         curl.setopt(pycurl.SSL_VERIFYPEER, True)
         # Unfortunately, pycurl doesn't accept the bits for SSL keys or certificates, but instead
         # insists on being handed a path. We must use a file to hand the bits to pycurl.
         _ssl_working_path = os.path.join(self.working_path, 'SSL_CERTIFICATES')
         if not os.path.exists(_ssl_working_path):
-            logger.debug('Making %s'%_ssl_working_path)
             os.mkdir(_ssl_working_path, 0700)
             self._paths_to_cleanup.append(_ssl_working_path)
         pycurl_ssl_option_paths = {
@@ -188,19 +186,10 @@ class Bumper(object):
                 path = ssl_data['path']
                 if os.path.exists(path):
                     os.unlink(path)
-                logger.debug("Adding %s to cleaup"%path)
                 self._paths_to_cleanup.append(path)
                 with open(path, 'w') as ssl_file:
-                    logger.debug('Writing to the file')
                     ssl_file.write(ssl_data['data'])
-                logger.debug('Telling pycurl about the file')
-                logger.debug('pycurl.CAINFO: %s'%pycurl.CAINFO)
-                logger.debug('pycurl.SSLCERT: %s'%pycurl.SSLCERT)
-                logger.debug('pycurl.SSLKEY: %s'%pycurl.SSLKEY)
-                logger.debug('pycurl_setting: %s'%pycurl_setting)
-                logger.debug('path: %s'%path)
                 curl.setopt(pycurl_setting, str(path))
-        logger.debug('DONE')
 
     # TODO: Figure out how to cancel a download
     # http://curl.haxx.se/mail/curlpython-2009-02/0003.html
@@ -220,7 +209,6 @@ class Bumper(object):
         :param destination_file: A file-like object in which to store the resource.
         :type  destination_file: object
         """
-        logger.debug(_('Retrieving %(url)s')%{'url': resource['url']})
         curl = pycurl.Curl()
         curl.setopt(pycurl.VERBOSE, 0)
         # Close out the connection on our end in the event the remote host
@@ -231,13 +219,10 @@ class Bumper(object):
         curl.setopt(pycurl.URL, resource['url'])
         curl.setopt(pycurl.WRITEFUNCTION, destination_file.write)
         curl.setopt(pycurl.PROGRESSFUNCTION, self._progress_report)
-        logger.debug('About to _configure_curl_ssl_parameters()')
         if self.ssl_ca_cert or self.ssl_client_cert or self.ssl_client_key:
             self._configure_curl_ssl_parameters(curl)
-        logger.debug('Done!')
 
         # get the file
-        logger.debug('curl.perform()')
         try:
             curl.perform()
         except pycurl.error, e:
@@ -247,10 +232,8 @@ class Bumper(object):
                 raise CACertError(e.message)
             else:
                 raise e
-        logger.debug('Done!')
         status = curl.getinfo(curl.HTTP_CODE)
         curl.close()
-        logger.debug('cURL status: %s'%status)
         # TODO: Make Exception handling here awesome
         if status == 401:
             raise exceptions.UnauthorizedException(url)
@@ -268,7 +251,8 @@ class Bumper(object):
     # TODO: Support this progress report callback
     def _progress_report(self, dltotal, dlnow, ultotal, ulnow):
         """
-        This is the callback that we give to pycurl to report back to us about the download progress.
+        This is the callback that we give to pycurl to report back to us about the download
+        progress.
 
         :param dltotal: How much there is to download
         :type  dltotal: float
@@ -355,13 +339,11 @@ class ISOBumper(Bumper):
         :param destination_file: The file-like object to be validated.
         :type  destination_file: object
         """
-        logger.debug('Validating %s'%resource)
         # Validate the size, if we know what it should be
         if 'size' in resource:
             # seek to the end to find the file size with tell()
             destination_file.seek(0, 2)
             size = destination_file.tell()
-            logger.debug('Validating that the download size is %s'%resource['size'])
             if size != resource['size']:
                 raise DownloadValidationError(_('Downloading <%(name)s> failed validation. '
                     'The manifest specified that the file should be %(expected)s bytes, but '
@@ -369,17 +351,15 @@ class ISOBumper(Bumper):
                         'expected': resource['size'], 'found': size})
 
         # Validate the checksum, if we know what it should be
-        # TODO: Actually do validation with chunking and stuff
         if 'checksum' in resource:
-            logger.debug('Validating that the checksum is %s'%resource['checksum'])
             destination_file.seek(0)
             hasher = hashlib.sha256()
-            logger.debug("destination_file.closed: %s"%destination_file.closed)
             bits = destination_file.read(VALIDATION_CHUNK_SIZE)
             while bits:
                 hasher.update(bits)
                 bits = destination_file.read(VALIDATION_CHUNK_SIZE)
             # Verify that, son!
             if hasher.hexdigest() != resource['checksum']:
-                raise DownloadValidationError(_('Downloading <%(name)s failed checksum validation.')%{
-                                                    'name': resource['name']})
+                raise DownloadValidationError(
+                    _('Downloading <%(name)s failed checksum validation.')%{
+                        'name': resource['name']})

@@ -27,7 +27,6 @@ def validate(config):
     :return:       tuple of (is_valid, error_message)
     :rtype:        tuple
     """
-    logger.debug(config.keys())
     validate_args = (
         (constants.CONFIG_SERVE_HTTP,),
         (constants.CONFIG_SERVE_HTTPS,),

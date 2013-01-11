@@ -160,7 +160,6 @@ class PublishProgressReport(object):
         self.modules_error_count += 1
         self.modules_individual_errors = self.modules_individual_errors or {}
         error_key = '%s-%s-%s' % (unit.unit_key['name'], unit.unit_key['version'], unit.unit_key['author'])
-        # self.modules_individual_errors[error_key] = reporting.format_traceback(traceback)
 
 # -- report creation methods ----------------------------------------------
 
@@ -173,8 +172,6 @@ class PublishProgressReport(object):
             'error_count' : self.modules_error_count,
             'individual_errors' : self.modules_individual_errors,
             'error_message' : self.modules_error_message,
-            # 'error' : reporting.format_exception(self.modules_exception),
-            # 'traceback' : reporting.format_traceback(self.modules_traceback),
         }
         return modules_report
 

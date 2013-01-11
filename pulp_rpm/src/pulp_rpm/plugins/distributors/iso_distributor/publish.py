@@ -55,8 +55,6 @@ def publish(repo, publish_conduit, config):
         # TODO: Revisit this and figure out a better way to communicate specific failure
         progress_report.publish_http = constants.STATE_FAILED
         report = progress_report.build_final_report()
-        # TODO: Don't raise here
-        raise
         return report
 
 
