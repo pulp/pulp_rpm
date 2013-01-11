@@ -12,10 +12,10 @@
 # http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt.
 
 class ISO(object):
-    def __init__(self, name, size, checksum):
+    def __init__(self, name, checksum, size):
         self.name = name
-        self.size = size
         self.checksum = checksum
+        self.size = size
 
 
 class ISORepositoryMetadata(object):
@@ -27,4 +27,4 @@ class ISORepositoryMetadata(object):
     def update_from_csv(self, metadata_csv):
         metadata_reader = csv.Reader(metadata_csv)
         for row in metadata_reader:
-            self.isos.append(ISO(name=row[0], size=row[1], checksum=row[2]))
+            self.isos.append(ISO(name=row[0], checksum=row[1], size=row[2]))
