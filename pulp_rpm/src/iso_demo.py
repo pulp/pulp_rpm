@@ -45,19 +45,9 @@ def create_repo(repo):
     pic.POST('/v2/repositories/', body=body)
 
 def add_iso_importer(repo):
-    importer_config = {
-        constants.CONFIG_FEED_URL: repo['feed'],
-    }
-    if 'ssl_ca_cert' in repo:
-        importer_config[constants.CONFIG_SSL_CA_CERT] = repo['ssl_ca_cert']
-    if constants.CONFIG_SSL_CLIENT_CERT in repo:
-        importer_config[constants.CONFIG_SSL_CLIENT_CERT] = repo[constants.CONFIG_SSL_CLIENT_CERT]
-    if constants.CONFIG_SSL_CLIENT_KEY in repo:
-        importer_config[constants.CONFIG_SSL_CLIENT_KEY] = repo[constants.CONFIG_SSL_CLIENT_KEY]
-
     body = {
         'importer_type_id' : ids.TYPE_ID_IMPORTER_ISO,
-        'importer_config' : importer_config,
+        'importer_config' : repo,
     }
 
     pic.POST('/v2/repositories/%s/importers/' % repo['id'], body=body)
@@ -111,11 +101,16 @@ def main():
         ssl_client_key = ssl_client_key_file.read()
 
     repos = [# {'id': 'test', 'feed': 'http://pkilambi.fedorapeople.org/test_file_repo/'},
-             {'id': 'cdn',
-              'feed': 'https://cdn.redhat.com/content/dist/rhel/server/6/6Server/x86_64/iso',
-              constants.CONFIG_SSL_CA_CERT: ssl_ca_cert,
-              constants.CONFIG_SSL_CLIENT_CERT: ssl_client_cert,
-              constants.CONFIG_SSL_CLIENT_KEY: ssl_client_key},]
+             #{'id': 'cdn',
+             # 'feed': 'https://cdn.redhat.com/content/dist/rhel/server/6/6Server/x86_64/iso',
+             # constants.CONFIG_SSL_CA_CERT: ssl_ca_cert,
+             # constants.CONFIG_SSL_CLIENT_CERT: ssl_client_cert,
+             # constants.CONFIG_SSL_CLIENT_KEY: ssl_client_key},
+             {'id': 'proxy',
+              constants.CONFIG_FEED_URL: 'http://pkilambi.fedorapeople.org/test_file_repo/',
+              constants.CONFIG_PROXY_URL: 'localhost', constants.CONFIG_PROXY_PORT: 3128,
+              constants.CONFIG_PROXY_USER: 'rbarlow', constants.CONFIG_PROXY_PASSWORD: 'password'}
+             ]
 
     if not '--skip-delete' in sys.argv:
         title(p, 'Creating & Configuring Repositories')

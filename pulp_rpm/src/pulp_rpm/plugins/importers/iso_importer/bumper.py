@@ -63,8 +63,7 @@ class Bumper(object):
         Configure the Bumper for the feed specified by feed_url. All other parameters are
         optional, and currently many of them are unused. The unused parameters are in place to
         specify the method signature for the future when we are able to implement the features. The
-        unused parameters are: max_speed, num_threads, ssl_client_cert, ssl_ca_cert, proxy_url,
-        proxy_port, proxy_user, and proxy_password.
+        unused parameters are: max_speed and num_threads
 
         :param feed_url:          The URL of the feed from which we will download content.
         :type  feed_url:          str
@@ -78,25 +77,23 @@ class Bumper(object):
                                   currently ignored, but is here for future expansion.
         :type  num_threads:       int
         :param ssl_client_cert:   The ssl cert that should be passed to the feed server when
-                                  downloading files. This parameter is currently ignored, but is
-                                  here for future expansion.
+                                  downloading files.
         :type  ssl_client_cert:   str
         :param ssl_client_key:    The key for the SSL client certificate
         :type  ssl_client_key:    str
         :param ssl_ca_cert:       A certificate authority certificate that we will use to
-                                  authenticate the feed. This parameter is currently ignored, but is
-                                  here for future expansion.
+                                  authenticate the feed.
         :type  ssl_ca_cert:       str
-        :param proxy_url:         The URL for a proxy server to use to download content. This
-                                  parameter is currently ignored, but is here for future expansion.
+        :param proxy_url:         The hostname for a proxy server to use to download content. An
+                                  optional http:// is allowed on the beginning of the string, but
+                                  will be ignored.
         :type  proxy_url:         str
-        :param proxy_port:        The port for the proxy server. This parameter is currently
-                                  ignored, but is here for future expansion.
+        :param proxy_port:        The port for the proxy server.
         :type  proxy_port:        int
-        :param proxy_user:        The username to use to authenticate to the proxy server. This
-                                  parameter is currently ignored, but is here for future expansion.
-        :param proxy_password:    The password to use to authenticate to the proxy server. This
-                                  parameter is currently ignored, but is here for future expansion.
+        :param proxy_user:        The username to use to authenticate to the proxy server.
+        :type  proxy_user:        str
+        :param proxy_password:    The password to use to authenticate to the proxy server.
+        :type  proxy_password:    str
         """
         self.feed_url          = feed_url
         # It's very important that feed_url end with a trailing slash due to our use of urljoin.
@@ -107,6 +104,7 @@ class Bumper(object):
         self.num_threads       = num_threads
         self.proxy_url         = proxy_url
         self.proxy_port        = proxy_port
+        # TODO: Raise an exception if we have a proxy username but no password
         self.proxy_user        = proxy_user
         self.proxy_password    = proxy_password
         self.ssl_client_cert   = ssl_client_cert
@@ -155,6 +153,21 @@ class Bumper(object):
                 os.rmdir(path)
             else:
                 os.unlink(path)
+
+    def _configure_curl_proxy_parameters(self, curl):
+        """
+        Configure the given curl object to use our proxy settings.
+        :param curl: The Curl instance we want to configure for proxy support
+        :type  curl: pycurl.Curl
+        """
+        if self.proxy_url:
+            curl.setopt(pycurl.PROXY, str(self.proxy_url))
+            curl.setopt(pycurl.PROXYPORT, int(self.proxy_port))
+            curl.setopt(pycurl.PROXYTYPE, pycurl.PROXYTYPE_HTTP)
+            if self.proxy_user:
+                curl.setopt(pycurl.PROXYAUTH, pycurl.HTTPAUTH_BASIC)
+                curl.setopt(pycurl.PROXYUSERPWD, '%s:%s'%(str(self.proxy_user),
+                                                          str(self.proxy_password)))
 
     def _configure_curl_ssl_parameters(self, curl):
         """
@@ -221,6 +234,7 @@ class Bumper(object):
         curl.setopt(pycurl.PROGRESSFUNCTION, self._progress_report)
         if self.ssl_ca_cert or self.ssl_client_cert or self.ssl_client_key:
             self._configure_curl_ssl_parameters(curl)
+        self._configure_curl_proxy_parameters(curl)
 
         # get the file
         try:
@@ -241,6 +255,9 @@ class Bumper(object):
             raise HTTPForbiddenException(resource['url'])
         elif status == 404:
             raise exceptions.FileNotFoundException(url)
+        elif status == 407:
+            # This happens if Squid gets mad at you for failing to auth
+            raise ProxyExceptionThatWeNeedToCreate(url)
         elif status != 200:
             raise exceptions.FileRetrievalException(url, status)
         # TODO: add pre/post hooks stuff
