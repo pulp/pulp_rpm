@@ -142,11 +142,23 @@ have permission to read the certificates and key.
   Tree Files: 0/7 items
   Files:      0/0 items
 
-
-Publish a Protected Repo
-========================
-
-.. rbarlow will write this as part of https://bugzilla.redhat.com/show_bug.cgi?id=887032
+If you would prefer not to use the entitlement certificates from an existing
+RHEL installation, you can also acquire the entitlement certificate, key, and
+`CA certificate <https://access.redhat.com/management/ca_cert/download>`_ using
+the Red Hat Customer Portal. To retrieve the entitlement certificate and key,
+you will need to view your
+`Registered Consumers <https://access.redhat.com/management/consumers/>`_. On
+that page, there is a "Systems" tab, and in that tab there is a link to
+`Register a system <https://access.redhat.com/management/consumer/consumers/create/system>`_.
+Fill out the form with the relevant details for your Pulp Server, and click
+"Register". Once you have registered your system, you must now attach a
+subscription to it with the "Attach a subscription" link on the page for the
+newly registered system. In the pop up, select the subscriptions that you want
+to apply to the Pulp Server and click "Attach selected". You will now see the
+selected subscriptions in the "Attached Subscriptions" table, and you can use
+the "Download" link from the "Entitlement Certificate" column to retrieve the
+certificate and key, bundled into a single file. You can pass that same file as
+the ``--feed-cert`` and ``--feed-key`` options when you create the repo.
 
 Publish ISOs
 ============
