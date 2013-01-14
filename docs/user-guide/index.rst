@@ -12,6 +12,7 @@ Contents:
    quick-start
    recipes
    features
+   troubleshooting
 
 
 Indices and tables
