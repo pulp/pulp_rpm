@@ -18,7 +18,7 @@
 
 Name: pulp-rpm
 Version: 2.0.7
-Release: 0.1.beta
+Release: 0.2.beta
 Summary: Support for RPM content in the Pulp platform
 Group: Development/Languages
 License: GPLv2
@@ -256,6 +256,12 @@ A collection of yum plugins supplementing Pulp consumer operations.
 
 
 %changelog
+* Tue Jan 15 2013 Jeff Ortel <jortel@redhat.com> 2.0.7-0.2.beta
+- 894467 - Fixed incorrect validation for proxy port (jason.dobies@redhat.com)
+- 887041 - Add troubleshooting section to docs. (rbarlow@redhat.com)
+- 887032 - Added docs about how to get entitlement certificates.
+  (rbarlow@redhat.com)
+
 * Fri Jan 11 2013 Jeff Ortel <jortel@redhat.com> 2.0.7-0.1.beta
 - 891423 - fix pkg group and category copy (pkilambi@redhat.com)
 - 891731 - fix the metadata for uploaded rpms to remove relaptive paths from
