@@ -14,7 +14,6 @@
 
 import copy
 import logging
-from pymongo.errors import DuplicateKeyError
 
 from pulp.server.managers import factory
 from pulp.server.managers.repo.unit_association_query import UnitAssociationCriteria
