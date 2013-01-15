@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# Migration script to set custom metadata on repo scratchpad
+# Migration script to set the repoid on pkg group and category units.
 #
 # Copyright © 2010-2012 Red Hat, Inc.
 #
