@@ -102,7 +102,11 @@ rm -rf %{buildroot}
 
 
 # define required pulp platform version
+%if %{release} < 1
 %global pulp_version %{version}-%{release}
+%else
+%global pulp_version %{version}
+%endif
 
 
 # ---- RPM Common --------------------------------------------------------------
