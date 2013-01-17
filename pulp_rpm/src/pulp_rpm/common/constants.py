@@ -41,6 +41,10 @@ CONFIG_SSL_CLIENT_KEY  = 'ssl_client_key'
 CONFIG_SERVE_HTTP      = 'serve_http'
 CONFIG_SERVE_HTTPS     = 'serve_https'
 
+# The default number of threads to be used with downloading ISOs. We should convert the RPM code to
+# use this same value.
+DEFAULT_NUM_THREADS = 2
+
 ISO_HTTP_DIR = "/var/lib/pulp/published/http/isos"
 ISO_HTTPS_DIR = "/var/lib/pulp/published/https/isos"
 

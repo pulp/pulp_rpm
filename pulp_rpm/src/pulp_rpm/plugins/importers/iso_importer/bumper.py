@@ -13,15 +13,25 @@
 from cStringIO import StringIO
 from gettext import gettext as _
 from urlparse import urljoin
+import copy
 import csv
 import hashlib
 import logging
 import os
+import signal
 
 import pycurl
 
+# According to the libcurl documentation, we want to ignore SIGPIPE when using NOSIGNAL, which we
+# want to do to improve threading:
+# http://curl.haxx.se/libcurl/c/curl_easy_setopt.html#CURLOPTNOSIGNAL
+signal.signal(signal.SIGPIPE, signal.SIG_IGN)
 
+# TODO: Uh, do some science to determine what the ideal default is here
+DEFAULT_NUM_THREADS = 2
 ISO_METADATA_FILENAME = 'PULP_MANIFEST'
+# How long we want to wait between loops on the MultiCurl select() method
+SELECT_TIMEOUT = 1.0
 # How many bytes we want to read into RAM at a time when validating a download checksum
 VALIDATION_CHUNK_SIZE = 32*1024*1024
 
@@ -53,37 +63,23 @@ class HTTPForbiddenException(Exception):
 
 class Bumper(object):
     """
-    This is the superclass that type specific Bumpers should subclass. It has basic facilities for
-    retrieving files from the Interweb.
+    This is a wrapper around pycurl. It has basic facilities for retrieving files from the Interweb.
     """
-    def __init__(self, feed_url, working_path, max_speed=None, num_threads=5,
-                 ssl_client_cert=None, ssl_client_key=None, ssl_ca_cert=None, proxy_url=None,
-                 proxy_port=None, proxy_user=None, proxy_password=None):
+    def __init__(self, working_path, max_speed=None, num_threads=DEFAULT_NUM_THREADS,
+                 proxy_url=None, proxy_port=None, proxy_user=None, proxy_password=None):
         """
-        Configure the Bumper for the feed specified by feed_url. All other parameters are
-        optional, and currently many of them are unused. The unused parameters are in place to
-        specify the method signature for the future when we are able to implement the features. The
-        unused parameters are: max_speed and num_threads
+        Configure a new Bumper to use the given parameters. working_path tells Bumper where it can
+        store temporary working files, such as SSL certificates. All other parameters are
+        optional. max_speed is currently unused.
 
-        :param feed_url:          The URL of the feed from which we will download content.
-        :type  feed_url:          str
         :param working_path:      The path on the local disk where the downloaded files should be
                                   saved.
         :type  working_path:      basestring
         :param max_speed:         The maximum speed that the download should happen at. This
                                   parameter is currently ignored, but is here for future expansion.
         :type  max_speed:         float
-        :param num_threads:       How many threads should be used during download. This parameter is
-                                  currently ignored, but is here for future expansion.
+        :param num_threads:       How many threads should be used during download.
         :type  num_threads:       int
-        :param ssl_client_cert:   The ssl cert that should be passed to the feed server when
-                                  downloading files.
-        :type  ssl_client_cert:   str
-        :param ssl_client_key:    The key for the SSL client certificate
-        :type  ssl_client_key:    str
-        :param ssl_ca_cert:       A certificate authority certificate that we will use to
-                                  authenticate the feed.
-        :type  ssl_ca_cert:       str
         :param proxy_url:         The hostname for a proxy server to use to download content. An
                                   optional http:// is allowed on the beginning of the string, but
                                   will be ignored.
@@ -95,21 +91,14 @@ class Bumper(object):
         :param proxy_password:    The password to use to authenticate to the proxy server.
         :type  proxy_password:    str
         """
-        self.feed_url          = feed_url
-        # It's very important that feed_url end with a trailing slash due to our use of urljoin.
-        if self.feed_url[-1] != '/':
-            self.feed_url = '%s/'%self.feed_url
         self.working_path      = working_path
         self.max_speed         = max_speed
-        self.num_threads       = num_threads
+        self.num_threads       = int(num_threads)
         self.proxy_url         = proxy_url
         self.proxy_port        = proxy_port
         # TODO: Raise an exception if we have a proxy username but no password
         self.proxy_user        = proxy_user
         self.proxy_password    = proxy_password
-        self.ssl_client_cert   = ssl_client_cert
-        self.ssl_client_key    = ssl_client_key
-        self.ssl_ca_cert       = ssl_ca_cert
 
         # A list of paths that we have created while messing around that should be removed when we
         # are done doing stuff. It is a LIFO, and the paths will be removed in reverse order.
@@ -117,29 +106,164 @@ class Bumper(object):
         # A list of methods that should be called after download is finished
         self._post_download_hooks = [self._cleanup_paths]
 
+    def _configure_curl(self, curl, resource):
+        """
+        Configure the given Curl object to download the resource described by resource.
+
+        :param curl:     The Curl we need to configure
+        :type  curl:     pycurl.Curl
+        :param resource: The resource that this curl will be used to download. The resource should
+                         be a dictionary that has at least 'url' and 'destination' keys. The url
+                         should be the location that the Curl will be used to retrieve the resource
+                         from. destination can be a string or a filelike object. If it is a string,
+                         it will be interpreted as a local filesystem path at which the resource
+                         should be stored. If it is a file-like object, it's write() method will be
+                         used to store the resource. The resource may also optionally include
+                         'ssl_ca_cert', 'ssl_client_cert', or 'ssl_client_key' keys, used to include
+                         CA certificates, client certificates, or client keys that should be used to
+                         retrieve this resource over SSL.
+        :type  resource: dict
+        """
+        curl.setopt(pycurl.VERBOSE, 0)
+        # Set the NOSIGNAL option, which is necessary for multi-threaded operation
+        curl.setopt(pycurl.NOSIGNAL, 1)
+        # Close out the connection on our end in the event the remote host
+        # stops responding. This is interpretted as "If less than 1000 bytes are
+        # sent in a 5 minute interval, abort the connection."
+        curl.setopt(pycurl.LOW_SPEED_LIMIT, 1000)
+        curl.setopt(pycurl.LOW_SPEED_TIME, 5 * 60)
+        curl.setopt(pycurl.PROGRESSFUNCTION, self._progress_report)
+
+        curl.setopt(pycurl.URL, resource['url'])
+        if (hasattr(resource, 'ssl_ca_cert') and resource['ssl_ca_cert']) \
+                or (hasattr(resource, 'ssl_client_cert') and resource['ssl_client_cert']) \
+                or (hasattr(resource, 'ssl_client_key') and resource['ssl_client_key']):
+            self._configure_curl_ssl_parameters(curl, resource)
+        if self.proxy_url:
+            self._configure_curl_proxy_parameters(curl)
+
+        # Configure the Curl to store the bits at resource['destination']
+        if isinstance(resource['destination'], basestring):
+            curl.destination_file = open(resource['destination'], 'w+b')
+        else:
+            curl.destination_file = resource['destination']
+        curl.setopt(pycurl.WRITEFUNCTION, curl.destination_file.write)
+
+        # It's handy to be able to determine which resource this curl is currently configured for
+        curl.resource = resource
+
+    def _build_multi_curl(self):
+        multi_curl = pycurl.CurlMulti()
+        multi_curl.handles = []
+        for i in range(10): #self.num_threads):
+            curl = pycurl.Curl()
+            multi_curl.handles.append(curl)
+        return multi_curl
+
+    # TODO: Add a way to communicate errors in the return from this method. Perhaps a DownloadReport
+    #       sort of object, or something along those lines.
     def download_resources(self, resources):
         """
-        This method will fetch the given resources to self.working_path. resources should be a
-        list of dictionaries, each of which must contain the keys 'name' and 'url'. A list of
-        the resources that were downloaded will be returned, which is essentially the same as the
-        resources list (in the case of no errors), each with an additional 'path' key that specifies
-        an absolute path on disk where the resource was saved.
+        This method will fetch the given resources. resources should be a list of dictionaries, each
+        of which must contain the keys 'url' and 'destination'. The url should be the location from
+        which the resource should be fetched. destination can be a string or a filelike object. If
+        it is a string, it will be interpreted as a local filesystem path at which the resource
+        should be stored. If it is a file-like object, it's write() method will be used to store the
+        resource. A copy of the list of the resources will be returned.
 
-        :param resources: A list of dictionaries keyed by 'name' and 'url'.
+        :param resources: A list of dictionaries keyed by at least 'url' and 'destination'.
         :type  resources: list
         :return:          The resources that were downloaded, each with the 'path' key set to the
                           absolute path on disk where the resource was stored.
         :rtype:           list
         """
         downloaded_resources = []
-        for resource in resources:
-            # Make this overridable by being it's own method
-            destination_path = os.path.join(self.working_path, resource['name'])
-            with open(destination_path, 'w+b') as destination_file:
-                self._download_resource(resource, destination_file)
-            downloaded_resource = resource
-            downloaded_resource['path'] = destination_path
-            downloaded_resources.append(downloaded_resource)
+        failed_resources = []
+        multi_curl = self._build_multi_curl()
+
+        # This indexes the position in the resources list of the next resource that we need to
+        # retrieve. When it equals the number of resources in the list, we are done.
+        next_resource_index = 0
+        # We should copy these, so we can keep the references to all the handles in the multi_curl
+        free_curls = copy(multi_curl.handles)
+        multi_curl.busy_handles = []
+        while len(downloaded_resources) + len(failed_resources) < len(resources):
+            while next_resource_index < len(resources) and free_curls:
+                resource = resources[next_resource_index]
+                curl = free_curls.pop()
+                self._configure_curl(curl, resource)
+                multi_curl.add_handle(curl)
+                multi_curl.busy_handles.append(curl)
+                multi_curl.select(SELECT_TIMEOUT)
+                next_resource_index += 1
+            multi_curl.select(SELECT_TIMEOUT)
+            while True:
+                return_code, num_handles = multi_curl.perform()
+                # curl can return a code telling you that you must call perform() again immediately.
+                if return_code != pycurl.E_CALL_MULTI_PERFORM:
+                    break
+            while True:
+                num_queued_messages, finished_curls, error_list = multi_curl.info_read()
+                # Handle the finished curls
+                for curl in finished_curls:
+                    logger.info(_('Successfully retrieved %(url)s')%{'url': curl.resource['url']})
+                    # We should only close the destination file if the caller gave us a path to a
+                    # file and not a file object.
+                    if isinstance(curl.resource['destination'], basestring):
+                        curl.destination_file.close()
+                    curl.destination_file = None
+                    downloaded_resources.append(curl.resource)
+                    curl.resource = None
+                    multi_curl.remove_handle(curl)
+                    free_curls.append(curl)
+                # Handle the error'd curls
+                # TODO: uh, actually do something more useful than just logging it
+                for curl, error_code, error_message in error_list:
+                    logger.error(_('Error while retrieving %(url)s: %(m)s.')%{
+                        'url': curl.resource['url'], 'm': error_message})
+                    # TODO: Figure out which pycurl exceptions we want to handle. They are all
+                    #       listed in /usr/include/curl/curl.h
+                    if error_code == pycurl.E_SSL_CACERT:
+                        raise CACertError(e.message)
+                    else:
+                        raise e
+                    status = curl.getinfo(curl.HTTP_CODE)
+                    curl.close()
+                    # TODO: Make Exception handling here awesome
+                    if status == 401:
+                        raise exceptions.UnauthorizedException(url)
+                    elif status == 403:
+                        raise HTTPForbiddenException(resource['url'])
+                    elif status == 404:
+                        raise exceptions.FileNotFoundException(url)
+                    elif status == 407:
+                        # This happens if Squid gets mad at you for failing to auth
+                        raise ProxyExceptionThatWeNeedToCreate(url)
+                    elif status != 200:
+                        raise exceptions.FileRetrievalException(url, status)
+
+                    self._validate_download(resource, curl.destination_file)
+
+                    # We should only close the destination file if the caller gave us a path to a
+                    # file and not a file object.
+                    if isinstance(curl.resource['destination'], basestring):
+                        curl.destination_file.close()
+                    curl.destination_file = None
+                    failed_resources.append(curl.resource)
+                    curl.resource = None
+                    multi_curl.remove_handle(curl)
+                    free_curls.append(curl)
+                # If there aren't any more messages to process, let's break the loop
+                if num_queued_messages == 0:
+                    break
+
+        # Close the Curls and the MultiCurl, and run the post download hooks
+        for curl in multi_curl.handles:
+            curl.close()
+        multi_curl.close()
+        for hook in self._post_download_hooks:
+            hook()
+
         return downloaded_resources
 
     def _cleanup_paths(self):
@@ -160,21 +284,26 @@ class Bumper(object):
         :param curl: The Curl instance we want to configure for proxy support
         :type  curl: pycurl.Curl
         """
-        if self.proxy_url:
-            curl.setopt(pycurl.PROXY, str(self.proxy_url))
-            curl.setopt(pycurl.PROXYPORT, int(self.proxy_port))
-            curl.setopt(pycurl.PROXYTYPE, pycurl.PROXYTYPE_HTTP)
-            if self.proxy_user:
-                curl.setopt(pycurl.PROXYAUTH, pycurl.HTTPAUTH_BASIC)
-                curl.setopt(pycurl.PROXYUSERPWD, '%s:%s'%(str(self.proxy_user),
-                                                          str(self.proxy_password)))
+        curl.setopt(pycurl.PROXY, str(self.proxy_url))
+        curl.setopt(pycurl.PROXYPORT, int(self.proxy_port))
+        curl.setopt(pycurl.PROXYTYPE, pycurl.PROXYTYPE_HTTP)
+        if self.proxy_user:
+            curl.setopt(pycurl.PROXYAUTH, pycurl.HTTPAUTH_BASIC)
+            curl.setopt(pycurl.PROXYUSERPWD, '%s:%s'%(str(self.proxy_user),
+                                                      str(self.proxy_password)))
 
-    def _configure_curl_ssl_parameters(self, curl):
+    def _configure_curl_ssl_parameters(self, curl, resource):
         """
-        Configure our curl for SSL.
+        Configure our curl for SSL. This method will write the ssl data given in the resource
+        dictionary to temporary files, and then will configure the Curl object to use those files
+        when retrieving the resource.
 
-        :param curl: The Curl instance we want to configure for SSL
-        :type  curl: pycurl.Curl
+        :param curl:     The Curl instance we want to configure for SSL
+        :type  curl:     pycurl.Curl
+        :param resource: The resource we are configuring this Curl for. It should be a dictionary
+                         containing at least one of these keys: 'ssl_ca_cert', 'ssl_client_cert', or
+                         'ssl_client_key'.
+        :type  resource: dict
         """
         # This will make sure we don't download content from any peer unless their SSL cert checks
         # out against a CA
@@ -186,13 +315,21 @@ class Bumper(object):
         if not os.path.exists(_ssl_working_path):
             os.mkdir(_ssl_working_path, 0700)
             self._paths_to_cleanup.append(_ssl_working_path)
-        pycurl_ssl_option_paths = {
-            pycurl.CAINFO:  {'path': os.path.join(_ssl_working_path, 'ca.pem'),
-                             'data': self.ssl_ca_cert},
-            pycurl.SSLCERT: {'path': os.path.join(_ssl_working_path, 'client.pem'),
-                             'data': self.ssl_client_cert},
-            pycurl.SSLKEY:  {'path': os.path.join(_ssl_working_path, 'client-key.pem'),
-                             'data': self.ssl_client_key}}
+
+        pycurl_ssl_option_paths = {}
+        if hasattr(resource['ssl_ca_cert']) and resource['ssl_ca_cert']:
+            pycurl_ssl_option_paths[pycurl.CAINFO] = \
+                {'path': os.path.join(_ssl_working_path, '%(u)s-ca.pem'%{'u': resource['url']}),
+                 'data': resource['ssl_ca_cert']}
+        if hasattr(resource['ssl_client_cert']) and resource['ssl_client_cert']:
+            pycurl_ssl_option_paths[pycurl.SSLCERT] = \
+                {'path': os.path.join(_ssl_working_path, '%(u)s-cert.pem'%{'u': resource['url']}),
+                 'data': resource['ssl_client_cert']}
+        if hasattr(resource['ssl_client_key']) and resource['ssl_client_key']:
+            pycurl_ssl_option_paths[pycurl.SSLKEY] = \
+                {'path': os.path.join(_ssl_working_path,'%(u)s-key.pem'%{'u': resource['url']}),
+                 'data': resource['ssl_client_key']}
+
         for pycurl_setting, ssl_data in pycurl_ssl_option_paths.items():
             # We don't want to do anything if the user didn't pass us any certs or keys
             if ssl_data['data']:
@@ -203,67 +340,6 @@ class Bumper(object):
                 with open(path, 'w') as ssl_file:
                     ssl_file.write(ssl_data['data'])
                 curl.setopt(pycurl_setting, str(path))
-
-    # TODO: Figure out how to cancel a download
-    # http://curl.haxx.se/mail/curlpython-2009-02/0003.html
-    # This details a way we might be able to cancel and also achieve multiple simultaneous
-    # downloads:
-    # http://pycurl.cvs.sourceforge.net/viewvc/pycurl/pycurl/examples/retriever-multi.py?revision=1.29&view=markup
-    # TODO: Split Curl creation out into another method
-    def _download_resource(self, resource, destination_file):
-        """
-        Download the given resource and save it to the destination_file. The resource should be a
-        dictionary with a 'url' key that specifies the location of the resource.
-        destination_file should be an opened file-like object that must have a write() method.
-
-        :param resource:         A dictionary with a 'url' key that specifies the URL to the
-                                 resource to be downloaded
-        :type  resource:         dict
-        :param destination_file: A file-like object in which to store the resource.
-        :type  destination_file: object
-        """
-        curl = pycurl.Curl()
-        curl.setopt(pycurl.VERBOSE, 0)
-        # Close out the connection on our end in the event the remote host
-        # stops responding. This is interpretted as "If less than 1000 bytes are
-        # sent in a 5 minute interval, abort the connection."
-        curl.setopt(pycurl.LOW_SPEED_LIMIT, 1000)
-        curl.setopt(pycurl.LOW_SPEED_TIME, 5 * 60)
-        curl.setopt(pycurl.URL, resource['url'])
-        curl.setopt(pycurl.WRITEFUNCTION, destination_file.write)
-        curl.setopt(pycurl.PROGRESSFUNCTION, self._progress_report)
-        if self.ssl_ca_cert or self.ssl_client_cert or self.ssl_client_key:
-            self._configure_curl_ssl_parameters(curl)
-        self._configure_curl_proxy_parameters(curl)
-
-        # get the file
-        try:
-            curl.perform()
-        except pycurl.error, e:
-            # TODO: Figure out which pycurl exceptions we want to handle. They are all listed in
-            #       /usr/include/curl/curl.h
-            if e[0] == pycurl.E_SSL_CACERT:
-                raise CACertError(e.message)
-            else:
-                raise e
-        status = curl.getinfo(curl.HTTP_CODE)
-        curl.close()
-        # TODO: Make Exception handling here awesome
-        if status == 401:
-            raise exceptions.UnauthorizedException(url)
-        elif status == 403:
-            raise HTTPForbiddenException(resource['url'])
-        elif status == 404:
-            raise exceptions.FileNotFoundException(url)
-        elif status == 407:
-            # This happens if Squid gets mad at you for failing to auth
-            raise ProxyExceptionThatWeNeedToCreate(url)
-        elif status != 200:
-            raise exceptions.FileRetrievalException(url, status)
-        # TODO: add pre/post hooks stuff
-        for hook in self._post_download_hooks:
-            hook()
-        self._validate_download(resource, destination_file)
 
     # TODO: Support this progress report callback
     def _progress_report(self, dltotal, dlnow, ultotal, ulnow):
@@ -290,20 +366,93 @@ class Bumper(object):
         pass
 
 
-class ISOBumper(Bumper):
+class Manifest(object):
+    """
+    A RepoBumper is an Abstract base class that has an interface that is useful for retrieving files
+    from a repository. The difference between a RepoBumper and a Bumper lies mostly in the ability
+    to process some sort of manifest to provide a list of available resources in the repository, and
+    also in the assumption that SSL connection settings will be used consistently for all files that
+    need to be retrieved. A RepoBumper will automatically inject these SSL settings into each
+    resource that is returned in the manifest.
+    """
+    def __init__(self, working_path, repo_url, max_speed=None, num_threads=DEFAULT_NUM_THREADS,
+                 proxy_url=None, proxy_port=None, proxy_user=None, proxy_password=None,
+                 ssl_client_cert=None, ssl_client_key=None, ssl_ca_cert=None):
+        """
+        Configure the Bumper for the repository specified by repo_url. All parameters except
+        working_path and repo_url are optional.
+
+        :param working_path:      The path on the local disk where the downloaded files should be
+                                  saved. It is also where SSL certificates and keys will be stored
+                                  if they are specified.
+        :type  working_path:      basestring
+        :param repo_url:          The URL of the repository from which we will download content.
+        :type  repo_url:          str
+        :param max_speed:         The maximum speed that the download should happen at. This
+                                  parameter is currently ignored, but is here for future expansion.
+        :type  max_speed:         float
+        :param num_threads:       How many threads should be used during download.
+        :type  num_threads:       int
+        :param proxy_url:         The hostname for a proxy server to use to download content. An
+                                  optional http:// is allowed on the beginning of the string, but
+                                  will be ignored.
+        :type  proxy_url:         str
+        :param proxy_port:        The port for the proxy server.
+        :type  proxy_port:        int
+        :param proxy_user:        The username to use to authenticate to the proxy server.
+        :type  proxy_user:        str
+        :param proxy_password:    The password to use to authenticate to the proxy server.
+        :type  proxy_password:    str
+        :param ssl_client_cert:   The ssl cert that should be passed to the repository server when
+                                  downloading files.
+        :type  ssl_client_cert:   str
+        :param ssl_client_key:    The key for the SSL client certificate
+        :type  ssl_client_key:    str
+        :param ssl_ca_cert:       A certificate authority certificate that we will use to
+                                  authenticate the repository.
+        :type  ssl_ca_cert:       str
+        """
+        super(RepoBumper, self).__init__(
+            working_path=working_path, max_speed=max_speed, num_threads=num_threads,
+            proxy_url=proxy_url, proxy_port=proxy_port, proxy_user=proxy_user,
+            proxy_password=proxy_password)
+
+        # It's very important that repo_url end with a trailing slash due to our use of urljoin.
+        self.repo_url          = repo_url
+        if self.repo_url[-1] != '/':
+            self.repo_url = '%s/'%self.repo_url
+
+        self.ssl_client_cert   = ssl_client_cert
+        self.ssl_client_key    = ssl_client_key
+        self.ssl_ca_cert       = ssl_ca_cert
+
+    def _add_ssl_parameters_to_resource(self, resource):
+        """
+        This method will add SSL CA certificates, client certificates, and keys to the resource, if
+        this RepoBumper was configured with any of those parameters.
+
+        :param resource: The resource that may need SSL information
+        :type  resource: dict
+        """
+        if self.ssl_client_cert:
+            resource['ssl_client_cert'] = self.ssl_client_cert
+        if self.ssl_client_key:
+            resource['ssl_client_key'] = self.ssl_client_key
+        if self.ssl_ca_cert:
+            resource['ssl_ca_cert'] = self.ssl_ca_cert
+
+
+class ISOManifest(object):
     """
     An ISOBumper is capable of retrieving ISOs from an RPM repository for you, if that repository
     provides the expected PULP_MANIFEST file at the given URL. The Bumper provides a friendly
     manifest interface for you to inspect the available units, and also provides facilities for you
     to specify which units you would like it to retrieve and where you would like it to place them.
     """
-    # TODO: Make this not a property
-    # TODO: Remove caching
-    @property
-    def manifest(self):
+    def get_manifest(self):
         """
         This handy property returns an ISOManifest object to you, which has a handy interface for
-        inspecting which ISO units are available at the feed URL. The manifest will be a list of
+        inspecting which ISO units are available at the repo URL. The manifest will be a list of
         dictionaries the each specify an ISO, with the following keys:
 
         name:          The name of the ISO
@@ -315,30 +464,28 @@ class ISOBumper(Bumper):
         These dictionaries are in the format that self._download_resource() expects for its resource
         parameter, isn't that handy?
 
-        :return: A list of dictionaries that describe the available ISOs at the feed_url. They will
+        :return: A list of dictionaries that describe the available ISOs at the repo_url. They will
                  have the following keys: name, checksum, checksum_type, size, and url.
         :rtype:  dict
         """
-        # We don't want to retrieve the manifest more than once when callers use this property, so
-        # if we already have the manifest return it.
-        if hasattr(self, '_manifest'):
-            return self._manifest
-        manifest_resource = {'url': urljoin(self.feed_url, ISO_METADATA_FILENAME)}
-        # Let's just store the manifest in memory.
-        manifest_bits = StringIO()
-        self._download_resource(manifest_resource, manifest_bits)
+        # Let's store the manifest in memory.
+        manifest_resource = {'url': urljoin(self.repo_url, ISO_METADATA_FILENAME),
+                             'destination': StringIO()}
+        self._add_ssl_parameters_to_resource(manifest_resource)
+        self.download_resources([manifest_resource])
 
         # Interpret the manifest as a CSV
-        manifest_bits.seek(0)
-        manifest_csv = csv.reader(manifest_bits)
-        self._manifest = []
+        manifest_resource['destination'].seek(0)
+        manifest_csv = csv.reader(manifest_resource['destination'])
+        manifest = []
         for unit in manifest_csv:
             name, checksum, size = unit
-            # TODO: Is the checksum type correct?
-            self._manifest.append({'name': name, 'checksum': checksum, 'checksum_type': 'sha256',
-                                   'size': int(size), 'url': urljoin(self.feed_url, name)})
-
-        return self._manifest
+            resource = {'name': name, 'checksum': checksum, 'size': int(size),
+                        'url': urljoin(self.repo_url, name),
+                        'destination': os.path.join(self.working_path, name)}
+            self._add_ssl_parameters_to_resource(resource)
+            manifest.append(resource)
+        return manifest
 
     def _validate_download(self, resource, destination_file):
         """

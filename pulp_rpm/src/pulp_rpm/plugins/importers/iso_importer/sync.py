@@ -60,7 +60,9 @@ def perform_sync(repo, sync_conduit, config):
     num_threads = config.get(constants.CONFIG_NUM_THREADS)
     if num_threads is not None:
         num_threads = int(num_threads)
-    bumper = ISOBumper(feed_url=encode_unicode(config.get(constants.CONFIG_FEED_URL)),
+    else:
+        num_threads = constants.DEFAULT_NUM_THREADS
+    bumper = ISOBumper(repo_url=encode_unicode(config.get(constants.CONFIG_FEED_URL)),
                        working_path=repo.working_dir,
                        max_speed=max_speed, num_threads=num_threads,
                        ssl_client_cert=config.get(constants.CONFIG_SSL_CLIENT_CERT),
@@ -72,7 +74,7 @@ def perform_sync(repo, sync_conduit, config):
                        proxy_password=config.get(constants.CONFIG_PROXY_PASSWORD))
 
     # Get the manifest and download the ISOs that we are missing
-    manifest = bumper.manifest
+    manifest = bumper.get_manifest()
     missing_isos = _filter_missing_isos(sync_conduit, manifest)
     # TODO: Consider processing each ISO completely instead of downloading them all and then
     # _create_units
@@ -106,8 +108,7 @@ def _filter_missing_isos(sync_conduit, manifest):
     :rtype:              list
     """
     def _unit_key_str(unit_key_dict):
-        return '%s-%s-%s'%(unit_key_dict['name'], unit_key_dict['checksum_type'],
-                           unit_key_dict['checksum'])
+        return '%s-%s-%s'%(unit_key_dict['name'], unit_key_dict['checksum'], unit_key_dict['size'])
 
     available_units_by_key = dict([(_unit_key_str(u), u) for u in manifest])
 
@@ -134,15 +135,13 @@ def _create_units(sync_conduit, new_isos):
     :type  new_isos:     list
     """
     for iso in new_isos:
-        unit_key = {'name': iso['name'], 'checksum_type': iso['checksum_type'],
-                    'checksum': iso['checksum']}
-        metadata = {'size': iso['size']}
+        unit_key = {'name': iso['name'], 'size': iso['size'], 'checksum': iso['checksum']}
+        metadata = {}
         # TODO: Put name first
-        relative_path = os.path.join(unit_key['checksum_type'], unit_key['checksum'],
-                                     unit_key['name'])
+        relative_path = os.path.join(unit_key['name'], unit_key['checksum'], str(unit_key['size']))
         unit = sync_conduit.init_unit(ids.TYPE_ID_ISO, unit_key, metadata, relative_path)
         # Move the unit to the storage_path
-        temporary_file_location = iso['path']
+        temporary_file_location = iso['destination']
         permanent_file_location = unit.storage_path
         # We only need to create the permanent location if it isn't already there.
         shutil.move(temporary_file_location, permanent_file_location)
