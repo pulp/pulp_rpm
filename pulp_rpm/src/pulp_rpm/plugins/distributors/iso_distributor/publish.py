@@ -52,7 +52,9 @@ def publish(repo, publish_conduit, config):
         progress_report.update_progress()
         return progress_report.build_final_report()
     except Exception, e:
-        # TODO: Revisit this and figure out a better way to communicate specific failure
+        # TODO: Revisit this and figure out a better way to communicate specific failure, and obvs.
+        #       remove the raise statement because that's dumb.
+        raise
         progress_report.publish_http = constants.STATE_FAILED
         report = progress_report.build_final_report()
         return report
@@ -66,7 +68,7 @@ def _build_metadata(repo, units):
         metadata_csv = csv.writer(metadata)
         for unit in units:
             metadata_csv.writerow([unit.unit_key['name'], unit.unit_key['checksum'],
-                                   unit.metadata['size']])
+                                   unit.unit_key['size']])
     finally:
         # Only try to close metadata if we were able to open it successfully
         if 'metadata' in dir():

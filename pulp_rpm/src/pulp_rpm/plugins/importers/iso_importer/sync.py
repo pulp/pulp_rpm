@@ -120,7 +120,8 @@ class ISOSyncRun(object):
         :rtype:              list
         """
         def _unit_key_str(unit_key_dict):
-            return '%s-%s-%s'%(unit_key_dict['name'], unit_key_dict['checksum'], unit_key_dict['size'])
+            return '%s-%s-%s'%(unit_key_dict['name'], unit_key_dict['checksum'],
+                               unit_key_dict['size'])
 
         available_units_by_key = dict([(_unit_key_str(u), u) for u in manifest])
 
