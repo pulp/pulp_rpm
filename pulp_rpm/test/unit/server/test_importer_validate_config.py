@@ -120,6 +120,15 @@ class TestValidateConfig(rpm_support_base.PulpRPMTests):
         state, msg = self.importer.validate_config(self.repo, config, [])
         self.assertTrue(state)
 
+    def test_config_proxy_port(self):
+        config = importer_mocks.get_basic_config(proxy_port=100)
+        state, msg = self.importer.validate_config(self.repo, config, [])
+        self.assertTrue(state)
+
+        config = importer_mocks.get_basic_config(proxy_port='port')
+        state, msg = self.importer.validate_config(self.repo, config, [])
+        self.assertFalse(state)
+
     def test_config_max_speed(self):
         feed_url = "http://example.redhat.com/"
         max_speed = "fake_speed"
