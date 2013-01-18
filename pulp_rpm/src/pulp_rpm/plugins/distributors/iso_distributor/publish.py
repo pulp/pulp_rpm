@@ -64,6 +64,8 @@ def _build_metadata(repo, units):
     build_dir = _get_build_dir(repo)
     metadata_filename = os.path.join(build_dir, PULP_MANIFEST_FILENAME)
     try:
+        # TODO: This fails if the destination folder doesn't already exist, which will happen if
+        #       there are 0 units.
         metadata = open(metadata_filename, 'w')
         metadata_csv = csv.writer(metadata)
         for unit in units:

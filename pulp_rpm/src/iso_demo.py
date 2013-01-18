@@ -74,8 +74,10 @@ def cancel_sync(repo):
     tasks = pic.GET('/pulp/api/v2/tasks/?%s&%s'%(urllib.urlencode({'tag': repo_tag}),
                                                  urllib.urlencode({'tag': sync_tag})))
     task_id = tasks[1][0]['task_id']
+    state = tasks[1][0]['state']
     try:
-        pic.DELETE('/pulp/api/v2/tasks/%s/'%task_id)
+        if state == 'running':
+            pic.DELETE('/pulp/api/v2/tasks/%s/'%task_id)
     except:
         pass
 
