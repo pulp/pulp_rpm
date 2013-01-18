@@ -29,9 +29,6 @@ import pulp.server.util
 logger = logging.getLogger(__name__)
 
 
-# TODO: Remove dangling symlinks when remove units is called, or when syncing finds that files have
-#       been removed from the upstream repo
-
 # TODO: Reproduce folder structures that may have been found on the server
 # TODO: optionally delete Units that we have that weren't found in the repo
 # TODO: optionally don't check the checksum and size
@@ -47,6 +44,7 @@ class ISOSyncRun(object):
         """
         self.bumper.download_canceled = True
 
+    # TODO: Check if the feed_url is set, and raise an error if it's missing.
     def perform_sync(self, repo, sync_conduit, config):
         """
         Perform the sync operation accoring to the config for the given repo, and return a report.
@@ -61,8 +59,6 @@ class ISOSyncRun(object):
         """
         # Build the progress report and set it to the running state
         progress_report = SyncProgressReport(sync_conduit)
-        progress_report.metadata_state = STATE_RUNNING
-        progress_report.modules_state = STATE_RUNNING
 
         # Cast our config parameters to the correct types and use them to build an ISOBumper
         max_speed = config.get(constants.CONFIG_MAX_SPEED)
@@ -73,6 +69,8 @@ class ISOSyncRun(object):
             num_threads = int(num_threads)
         else:
             num_threads = constants.DEFAULT_NUM_THREADS
+        progress_report.metadata_state = STATE_RUNNING
+        progress_report.update_progress()
         self.bumper = ISOBumper(
                            repo_url=encode_unicode(config.get(constants.CONFIG_FEED_URL)),
                            working_path=repo.working_dir,
@@ -87,6 +85,9 @@ class ISOSyncRun(object):
 
         # Get the manifest and download the ISOs that we are missing
         manifest = self.bumper.get_manifest()
+        progress_report.metadata_state = STATE_COMPLETE
+        progress_report.modules_state = STATE_RUNNING
+        progress_report.update_progress()
         missing_isos = self._filter_missing_isos(sync_conduit, manifest)
         # TODO: Consider processing each ISO completely instead of downloading them all and then
         # _create_units
@@ -96,7 +97,6 @@ class ISOSyncRun(object):
         self._create_units(sync_conduit, new_isos)
 
         # Report that we are finished
-        progress_report.metadata_state = STATE_COMPLETE
         progress_report.modules_state = STATE_COMPLETE
         report = progress_report.build_final_report()
         return report
@@ -135,6 +135,8 @@ class ISOSyncRun(object):
         return missing_isos
 
 
+    # TODO: Have Bumper download the files to their final location instead of to the working
+    #       directory and then move them.
     def _create_units(self, sync_conduit, new_isos):
         """
         For each ISO specified in new_isos, create a new Pulp Unit and move the file from its
@@ -151,7 +153,6 @@ class ISOSyncRun(object):
         for iso in new_isos:
             unit_key = {'name': iso['name'], 'size': iso['size'], 'checksum': iso['checksum']}
             metadata = {}
-            # TODO: Put name first
             relative_path = os.path.join(unit_key['name'], unit_key['checksum'],
                                          str(unit_key['size']))
             unit = sync_conduit.init_unit(ids.TYPE_ID_ISO, unit_key, metadata, relative_path)

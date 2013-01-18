@@ -17,6 +17,9 @@ class ISO(object):
         self.checksum = checksum
         self.size = size
 
+    def __str__(self):
+        return str(self.name)
+
 
 class ISORepositoryMetadata(object):
     def __init__(self, metadata_csv=None):

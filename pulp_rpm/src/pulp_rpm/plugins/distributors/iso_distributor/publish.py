@@ -44,6 +44,8 @@ def publish(repo, publish_conduit, config):
     logger.info(_('Beginning publish for repository <%(repo)s>')%{'repo': repo.id})
 
     try:
+        # TODO: Consider moving the unit retrieval into the _symlink step. Jay thinks this will be
+        #       nice if we ever want to batch this work.
         units = publish_conduit.get_units()
         _symlink_units(repo, units)
         # TODO: Remove any symlinks from previous units that are now deleted
@@ -60,6 +62,8 @@ def publish(repo, publish_conduit, config):
         return report
 
 
+# TODO: Let's move this to the ISOManifest class, which will be handy for parsing and reading
+#       the manifests. Then we can use that during publishing.
 def _build_metadata(repo, units):
     build_dir = _get_build_dir(repo)
     metadata_filename = os.path.join(build_dir, PULP_MANIFEST_FILENAME)
@@ -78,7 +82,7 @@ def _build_metadata(repo, units):
 
 
 def _get_build_dir(repo):
-    return os.path.join(repo.working_dir, BUILD_DIRNAME, repo.id)
+    return os.path.join(repo.working_dir, BUILD_DIRNAME)
 
 
 def _copy_to_hosted_location(repo, config):
@@ -96,14 +100,17 @@ def _copy_to_hosted_location(repo, config):
 
 
 def _symlink_units(repo, units):
+    if not os.path.exists(build_dir):
+        try:
+            os.makedirs(build_dir)
+        except OSError, e:
+            # If the path already exists, it's because it was somehow created between us checking if
+            # it existed before and creating it. This is OK, so let's only raise if it was a
+            # different error.
+            if e.errno != errno.EEXIST:
+                raise
     for unit in units:
         build_dir = _get_build_dir(repo)
-        if not os.path.exists(build_dir):
-            try:
-                os.makedirs(build_dir)
-            except OSError, e:
-                if e.errno != errno.EEXIST:
-                    raise
         symlink_filename = os.path.join(build_dir, unit.unit_key['name'])
         if os.path.exists(symlink_filename):
             # There's already something there with the desired symlink filename. Let's try and see
