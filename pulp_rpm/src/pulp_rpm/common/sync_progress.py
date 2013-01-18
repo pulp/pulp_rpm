@@ -14,9 +14,10 @@
 Contains classes and functions related to tracking the progress of the ISO
 importer.
 """
-from pulp_rpm.common.constants import STATE_NOT_STARTED, STATE_COMPLETE
+from pulp_rpm.common.constants import STATE_COMPLETE, STATE_FAILED, STATE_NOT_STARTED
 
 
+# TODO: Change all references to modules in here to ISOs.
 class SyncProgressReport(object):
     """
     Used to carry the state of the sync run as it proceeds. This object is used

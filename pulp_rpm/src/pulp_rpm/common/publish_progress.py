@@ -17,6 +17,7 @@ Contains classes and functions related to tracking the progress of an ISO distri
 from pulp_rpm.common.constants import STATE_COMPLETE, STATE_FAILED, STATE_NOT_STARTED
 
 
+# TODO: Don't refer to modules in here, but to ISOs instead.
 class PublishProgressReport(object):
     """
     Used to carry the state of the publish run as it proceeds. This object is used
