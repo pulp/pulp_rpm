@@ -60,6 +60,8 @@ def publish(repo, publish_conduit, config):
         return report
 
 
+# TODO: Let's move this to the ISOManifest class, which will be handy for parsing and reading
+#       the manifests. Then we can use that during publishing.
 def _build_metadata(repo, units):
     build_dir = _get_build_dir(repo)
     metadata_filename = os.path.join(build_dir, PULP_MANIFEST_FILENAME)
@@ -96,14 +98,17 @@ def _copy_to_hosted_location(repo, config):
 
 
 def _symlink_units(repo, units):
+    if not os.path.exists(build_dir):
+        try:
+            os.makedirs(build_dir)
+        except OSError, e:
+            # If the path already exists, it's because it was somehow created between us checking if
+            # it existed before and creating it. This is OK, so let's only raise if it was a
+            # different error.
+            if e.errno != errno.EEXIST:
+                raise
     for unit in units:
         build_dir = _get_build_dir(repo)
-        if not os.path.exists(build_dir):
-            try:
-                os.makedirs(build_dir)
-            except OSError, e:
-                if e.errno != errno.EEXIST:
-                    raise
         symlink_filename = os.path.join(build_dir, unit.unit_key['name'])
         if os.path.exists(symlink_filename):
             # There's already something there with the desired symlink filename. Let's try and see
