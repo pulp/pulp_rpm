@@ -49,8 +49,8 @@ class ISOSyncRun(object):
 
     def perform_sync(self, repo, sync_conduit, config):
         """
-        Perform the sync operation accoring to the config for the given repo, and return a report. The
-        sync progress will be reported through the sync_conduit.
+        Perform the sync operation accoring to the config for the given repo, and return a report.
+        The sync progress will be reported through the sync_conduit.
 
         :param sync_conduit: The sync_conduit that gives us access to the local repository
         :type  sync_conduit: pulp.server.conduits.repo_sync.RepoSyncConduit
@@ -104,9 +104,9 @@ class ISOSyncRun(object):
 
     def _filter_missing_isos(self, sync_conduit, manifest):
         """
-        Use the sync_conduit and the ISOBumper manifest to determine which ISOs are at the feed_url that
-        are not in our local store. Return a subset of the given manifest that represents the missing
-        ISOs. The manifest format is described in the docblock for
+        Use the sync_conduit and the ISOBumper manifest to determine which ISOs are at the feed_url
+        that are not in our local store. Return a subset of the given manifest that represents the
+        missing ISOs. The manifest format is described in the docblock for
         pulp_rpm.plugins.importers.iso_importer.bumper.ISOBumper.manifest.
 
         :param sync_conduit: The sync_conduit that gives us access to the local repository
@@ -114,9 +114,9 @@ class ISOSyncRun(object):
         :param manifest:     A list of dictionaries that describe the ISOs that are available at the
                              feed_url that we are syncing with
         :type  manifest:     list
-        :return:             A list of dictionaries that describe the ISOs that we should retrieve from
-                             the feed_url. These dictionaries are in the same format as they were in the
-                             manifest.
+        :return:             A list of dictionaries that describe the ISOs that we should retrieve
+                             from the feed_url. These dictionaries are in the same format as they
+                             were in the manifest.
         :rtype:              list
         """
         def _unit_key_str(unit_key_dict):
@@ -137,10 +137,11 @@ class ISOSyncRun(object):
 
     def _create_units(self, sync_conduit, new_isos):
         """
-        For each ISO specified in new_isos, create a new Pulp Unit and move the file from its temporary
-        storage location to the storage location specified by the Unit. new_isos is a list of
-        dictionaries that describe the isos that have been downloaded, and is the same format as the
-        return value from pulp_rpm.plugins.importers.iso_importer.bumper.ISOBumper.download_resources.
+        For each ISO specified in new_isos, create a new Pulp Unit and move the file from its
+        temporary storage location to the storage location specified by the Unit. new_isos is a list
+        of dictionaries that describe the isos that have been downloaded, and is the same format as
+        the return value from
+        pulp_rpm.plugins.importers.iso_importer.bumper.ISOBumper.download_resources.
 
         :param sync_conduit: The sync_conduit that gives us access to the local repository
         :type  sync_conduit: pulp.server.conduits.repo_sync.RepoSyncConduit
@@ -151,7 +152,8 @@ class ISOSyncRun(object):
             unit_key = {'name': iso['name'], 'size': iso['size'], 'checksum': iso['checksum']}
             metadata = {}
             # TODO: Put name first
-            relative_path = os.path.join(unit_key['name'], unit_key['checksum'], str(unit_key['size']))
+            relative_path = os.path.join(unit_key['name'], unit_key['checksum'],
+                                         str(unit_key['size']))
             unit = sync_conduit.init_unit(ids.TYPE_ID_ISO, unit_key, metadata, relative_path)
             # Move the unit to the storage_path
             temporary_file_location = iso['destination']
