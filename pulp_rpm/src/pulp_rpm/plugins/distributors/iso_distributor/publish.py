@@ -44,6 +44,8 @@ def publish(repo, publish_conduit, config):
     logger.info(_('Beginning publish for repository <%(repo)s>')%{'repo': repo.id})
 
     try:
+        # TODO: Consider moving the unit retrieval into the _symlink step. Jay thinks this will be
+        #       nice if we ever want to batch this work.
         units = publish_conduit.get_units()
         _symlink_units(repo, units)
         # TODO: Remove any symlinks from previous units that are now deleted
