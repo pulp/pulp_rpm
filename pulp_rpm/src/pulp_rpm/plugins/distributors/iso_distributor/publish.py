@@ -78,7 +78,7 @@ def _build_metadata(repo, units):
 
 
 def _get_build_dir(repo):
-    return os.path.join(repo.working_dir, BUILD_DIRNAME, repo.id)
+    return os.path.join(repo.working_dir, BUILD_DIRNAME)
 
 
 def _copy_to_hosted_location(repo, config):
