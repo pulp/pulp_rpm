@@ -14,7 +14,7 @@
 Contains classes and functions related to tracking the progress of an ISO distributor.
 """
 
-from pulp_rpm.common.constants import STATE_NOT_STARTED, STATE_COMPLETE
+from pulp_rpm.common.constants import STATE_COMPLETE, STATE_FAILED, STATE_NOT_STARTED
 
 
 class PublishProgressReport(object):
