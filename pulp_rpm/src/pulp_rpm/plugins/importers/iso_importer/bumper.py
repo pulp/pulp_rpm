@@ -10,10 +10,10 @@
 # NON-INFRINGEMENT, or FITNESS FOR A PARTICULAR PURPOSE. You should
 # have received a copy of GPLv2 along with this software; if not, see
 # http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt.
+from copy import copy
 from cStringIO import StringIO
 from gettext import gettext as _
 from urlparse import urljoin
-import copy
 import csv
 import hashlib
 import logging
@@ -155,7 +155,7 @@ class Bumper(object):
     def _build_multi_curl(self):
         multi_curl = pycurl.CurlMulti()
         multi_curl.handles = []
-        for i in range(10): #self.num_threads):
+        for i in range(self.num_threads):
             curl = pycurl.Curl()
             multi_curl.handles.append(curl)
         return multi_curl
@@ -366,7 +366,7 @@ class Bumper(object):
         pass
 
 
-class Manifest(object):
+class RepoBumper(Bumper):
     """
     A RepoBumper is an Abstract base class that has an interface that is useful for retrieving files
     from a repository. The difference between a RepoBumper and a Bumper lies mostly in the ability
@@ -442,7 +442,7 @@ class Manifest(object):
             resource['ssl_ca_cert'] = self.ssl_ca_cert
 
 
-class ISOManifest(object):
+class ISOBumper(RepoBumper):
     """
     An ISOBumper is capable of retrieving ISOs from an RPM repository for you, if that repository
     provides the expected PULP_MANIFEST file at the given URL. The Bumper provides a friendly
