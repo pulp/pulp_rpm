@@ -99,6 +99,7 @@ class Bumper(object):
         # TODO: Raise an exception if we have a proxy username but no password
         self.proxy_user        = proxy_user
         self.proxy_password    = proxy_password
+        self.download_canceled = False
 
         # A list of paths that we have created while messing around that should be removed when we
         # are done doing stuff. It is a LIFO, and the paths will be removed in reverse order.
@@ -187,7 +188,8 @@ class Bumper(object):
         # We should copy these, so we can keep the references to all the handles in the multi_curl
         free_curls = copy(multi_curl.handles)
         multi_curl.busy_handles = []
-        while len(downloaded_resources) + len(failed_resources) < len(resources):
+        while len(downloaded_resources) + len(failed_resources) < len(resources) \
+                and not self.download_canceled:
             while next_resource_index < len(resources) and free_curls:
                 resource = resources[next_resource_index]
                 curl = free_curls.pop()
@@ -211,9 +213,9 @@ class Bumper(object):
                     # file and not a file object.
                     if isinstance(curl.resource['destination'], basestring):
                         curl.destination_file.close()
-                    curl.destination_file = None
                     downloaded_resources.append(curl.resource)
-                    curl.resource = None
+                    del curl.destination_file
+                    del curl.resource
                     multi_curl.remove_handle(curl)
                     free_curls.append(curl)
                 # Handle the error'd curls
@@ -248,9 +250,9 @@ class Bumper(object):
                     # file and not a file object.
                     if isinstance(curl.resource['destination'], basestring):
                         curl.destination_file.close()
-                    curl.destination_file = None
                     failed_resources.append(curl.resource)
-                    curl.resource = None
+                    del curl.destination_file
+                    del curl.resource
                     multi_curl.remove_handle(curl)
                     free_curls.append(curl)
                 # If there aren't any more messages to process, let's break the loop
@@ -259,6 +261,8 @@ class Bumper(object):
 
         # Close the Curls and the MultiCurl, and run the post download hooks
         for curl in multi_curl.handles:
+            if hasattr(curl, 'destination_file'):
+                curl.destination_file.close()
             curl.close()
         multi_curl.close()
         for hook in self._post_download_hooks:

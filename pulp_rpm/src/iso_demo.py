@@ -11,11 +11,13 @@
 # have received a copy of GPLv2 along with this software; if not, see
 # http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt.
 import sys
+import urllib
 
 from pulp_rpm.common import constants, ids
 
 from pulp.common import pic
 from okaara.prompt import Prompt, COLOR_LIGHT_PURPLE, COLOR_LIGHT_BLUE
+import pulp.common.tags as tag_utils
 
 DISTRIBUTOR_ID = 'iso_dist'
 
@@ -65,6 +67,17 @@ def add_iso_distributor(repo):
     }
 
     pic.POST('/v2/repositories/%s/distributors/' % repo['id'], body=body)
+
+def cancel_sync(repo):
+    repo_tag = tag_utils.resource_tag(tag_utils.RESOURCE_REPOSITORY_TYPE, repo['id'])
+    sync_tag = tag_utils.action_tag(tag_utils.ACTION_SYNC_TYPE)
+    tasks = pic.GET('/pulp/api/v2/tasks/?%s&%s'%(urllib.urlencode({'tag': repo_tag}),
+                                                 urllib.urlencode({'tag': sync_tag})))
+    task_id = tasks[1][0]['task_id']
+    try:
+        pic.DELETE('/pulp/api/v2/tasks/%s/'%task_id)
+    except:
+        pass
 
 def sync(repo):
     pic.POST('/v2/repositories/%s/actions/sync/'%repo['id'])
@@ -132,6 +145,14 @@ def main():
 
     for repo in repos:
         sync(repo)
+
+    pause(p)
+    p.write('')
+
+    title(p, 'Canceling Syncs')
+
+    for repo in repos:
+        cancel_sync(repo)
 
     pause(p)
     p.write('')

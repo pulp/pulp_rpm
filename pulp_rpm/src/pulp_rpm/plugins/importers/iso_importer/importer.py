@@ -37,7 +37,7 @@ class ISOImporter(Importer):
     All methods that are missing docstrings are documented in the Importer superclass.
     """
     def cancel_sync_repo(self, call_request, call_report):
-        raise NotImplementedError()
+        self.iso_sync.cancel_sync()
 
     def import_units(self, source_repo, dest_repo, import_conduit, config, units=None):
         raise NotImplementedError()
@@ -51,7 +51,8 @@ class ISOImporter(Importer):
         }
 
     def sync_repo(self, repo, sync_conduit, config):
-        return sync.perform_sync(repo, sync_conduit, config)
+        self.iso_sync = sync.ISOSyncRun()
+        return self.iso_sync.perform_sync(repo, sync_conduit, config)
 
     def upload_unit(self, repo, type_id, unit_key, metadata, file_path, conduit, config):
         raise NotImplementedError()
