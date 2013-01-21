@@ -33,6 +33,9 @@ pip-log.txt
 .idea
 cover
 
+# Ninja IDE
+*.nja
+
 # Sphinx
 docs/*/_build
 

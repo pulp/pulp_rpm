@@ -167,6 +167,7 @@ to provide RPM specific support.
 %config(noreplace) %{_sysconfdir}/pulp/repo_auth.conf
 %config(noreplace) %{_sysconfdir}/httpd/conf.d/pulp_rpm.conf
 %{_usr}/lib/pulp/plugins/types/rpm_support.json
+%{_usr}/lib/pulp/plugins/types/iso_support.json
 %{_usr}/lib/pulp/plugins/importers/yum_importer/
 %{_usr}/lib/pulp/plugins/distributors/yum_distributor/
 %{_usr}/lib/pulp/plugins/distributors/iso_distributor/
