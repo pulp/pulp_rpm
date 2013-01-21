@@ -42,7 +42,7 @@ class ISOSyncRun(object):
         """
         This method will cancel a sync that is in progress.
         """
-        self.bumper.download_canceled = True
+        self.bumper.cancel_download()
 
     # TODO: Check if the feed_url is set, and raise an error if it's missing.
     def perform_sync(self, repo, sync_conduit, config):

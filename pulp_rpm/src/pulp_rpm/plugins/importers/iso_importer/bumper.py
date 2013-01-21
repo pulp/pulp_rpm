@@ -91,21 +91,24 @@ class Bumper(object):
         :param proxy_password:    The password to use to authenticate to the proxy server.
         :type  proxy_password:    str
         """
-        self.working_path      = working_path
-        self.max_speed         = max_speed
-        self.num_threads       = int(num_threads)
-        self.proxy_url         = proxy_url
-        self.proxy_port        = proxy_port
+        self.working_path       = working_path
+        self.max_speed          = max_speed
+        self.num_threads        = int(num_threads)
+        self.proxy_url          = proxy_url
+        self.proxy_port         = proxy_port
         # TODO: Raise an exception if we have a proxy username but no password
-        self.proxy_user        = proxy_user
-        self.proxy_password    = proxy_password
-        self.download_canceled = False
+        self.proxy_user         = proxy_user
+        self.proxy_password     = proxy_password
+        self._download_canceled = False
 
         # A list of paths that we have created while messing around that should be removed when we
         # are done doing stuff. It is a LIFO, and the paths will be removed in reverse order.
         self._paths_to_cleanup = []
         # A list of methods that should be called after download is finished
         self._post_download_hooks = [self._cleanup_paths]
+
+    def cancel_download(self):
+        self._download_canceled = True
 
     def _configure_curl(self, curl, resource):
         """
@@ -189,7 +192,7 @@ class Bumper(object):
         free_curls = copy(multi_curl.handles)
         multi_curl.busy_handles = []
         while len(downloaded_resources) + len(failed_resources) < len(resources) \
-                and not self.download_canceled:
+                and not self._download_canceled:
             while next_resource_index < len(resources) and free_curls:
                 resource = resources[next_resource_index]
                 curl = free_curls.pop()
