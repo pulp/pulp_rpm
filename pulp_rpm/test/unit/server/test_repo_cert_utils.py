@@ -111,7 +111,9 @@ class TestCertStorage(unittest.TestCase):
 
     def setUp(self):
         self.utils = repo_cert_utils.RepoCertUtils(CONFIG)
+        self.clean()
 
+    def tearDown(self):
         self.clean()
 
     def test_write_feed_certs(self):
@@ -138,7 +140,7 @@ class TestCertStorage(unittest.TestCase):
 
     def test_write_consumer_certs(self):
         """
-        Tests writing repo consumer certificates to disk.        
+        Tests writing repo consumer certificates to disk.
         """
 
         # Setup
@@ -195,7 +197,7 @@ class TestCertStorage(unittest.TestCase):
         self.assertEqual(1, len(read_bundle))
         self.assertTrue('ca' in read_bundle)
         self.assertEqual(read_bundle['ca'], bundle['ca'])
-        
+
     def test_write_read_partial_bundle(self):
         """
         Tests that only a subset of the bundle components can be specified and still
@@ -354,7 +356,7 @@ class TestCertVerify(unittest.TestCase):
 
     def setUp(self):
         self.utils = repo_cert_utils.RepoCertUtils(CONFIG)
-        
+
     def test_valid(self):
         """
         Tests that verifying a cert with its signing CA returns true.
@@ -432,7 +434,7 @@ class TestCertVerify(unittest.TestCase):
 
         # Test
         self.assertTrue(self.utils.validate_certificate_pem(cert, ca, crl_dir=CRL_TEST_DATA))
-    
+
     def test_cert_with_expired_crl(self):
         """
         Tests that verifying a valid PEM encoded cert string with a CA and expired CRL returns false.
@@ -461,7 +463,7 @@ class TestCertVerify(unittest.TestCase):
             return
         ca_path = os.path.join(CRL_TEST_DATA, "certs/Pulp_CA.cert")
         revoked_cert_path = os.path.join(CRL_TEST_DATA, "revoked/Pulp_client.cert")
-        
+
         # Setup
         f = open(ca_path)
         ca = f.read()
