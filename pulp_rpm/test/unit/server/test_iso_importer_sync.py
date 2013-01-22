@@ -11,6 +11,7 @@
 # have received a copy of GPLv2 along with this software; if not, see
 # http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt.
 import os
+import shutil
 import tempfile
 
 from pulp_rpm.common.constants import STATE_COMPLETE
@@ -29,6 +30,10 @@ class TestISOSyncRun(PulpRPMTests):
     """
     def setUp(self):
         self.iso_sync_run = ISOSyncRun()
+        self.temp_dir = tempfile.mkdtemp()
+
+    def tearDown(self):
+        shutil.rmtree(self.temp_dir)
 
     def test_cancel_sync(self):
         """
@@ -39,37 +44,6 @@ class TestISOSyncRun(PulpRPMTests):
         self.iso_sync_run.bumper = FakeBumper()
         self.iso_sync_run.cancel_sync()
         self.iso_sync_run.bumper.cancel_download.assert_called_once_with()
-
-    # TODO: Remove the mocks on the progress report, once we have written it
-    @patch('pulp_rpm.plugins.importers.iso_importer.sync.ISOBumper', autospec=True)
-    @patch('pulp_rpm.plugins.importers.iso_importer.sync.SyncProgressReport', autospec=True)
-    def test_perform_sync_mock(self, progress_report, bumper):
-        """
-        Assert that we perform all of the correct calls to various things during perform_sync().
-        """
-        repo = MagicMock(spec=Repository)
-        repo.working_dir = '/fake/working/dir'
-        sync_conduit = importer_mocks.get_sync_conduit(type_id=TYPE_ID_ISO, pkg_dir='/fake/pkg/dir')
-        config = importer_mocks.get_basic_config(
-            feed_url='http://fake.com/iso_feed/', max_speed='500.0', num_threads='7',
-            ssl_client_cert="Trust me, I'm who I say I am.", ssl_client_key="Secret Key",
-            ssl_ca_cert="Uh, I guess that's the right server.",
-            proxy_url='http://proxy.com', proxy_port='1234', proxy_user="the_dude",
-            proxy_password='bowling')
-        bumper.get_manifest.return_value = [{'name': 'rhel-7.iso',
-            'url': 'https://cdn.redhat.com/rhel-7.iso'}]
-
-        report = self.iso_sync_run.perform_sync(repo, sync_conduit, config)
-
-        # Let's assert that the Bumper was used correctly
-        bumper.assert_called_once_with(
-            repo_url='http://fake.com/iso_feed/', working_path='/fake/working/dir', max_speed=500.0,
-            num_threads=7, ssl_client_cert="Trust me, I'm who I say I am.",
-            ssl_client_key="Secret Key", ssl_ca_cert="Uh, I guess that's the right server.",
-            proxy_url='http://proxy.com', proxy_port='1234', proxy_user="the_dude",
-            proxy_password='bowling')
-        self.iso_sync_run.bumper.get_manifest.assert_called_once_with()
-        self.iso_sync_run.bumper.download_resources.assert_called_once_with([])
 
     # TODO: Can we think of a way to assert that the correct Curl calls were made?
     # TODO: Remove the mocks on the progress report, once we have written it
@@ -83,11 +57,9 @@ class TestISOSyncRun(PulpRPMTests):
         Assert that we perform all of the correct calls to various things during perform_sync().
         """
         repo = MagicMock(spec=Repository)
-        # TODO: Delete this mammajamma, or maybe use a with statement if we can
-        temp_dir = tempfile.mkdtemp()
-        working_dir = os.path.join(temp_dir, "working")
+        working_dir = os.path.join(self.temp_dir, "working")
         os.mkdir(working_dir)
-        pkg_dir = os.path.join(temp_dir, 'content')
+        pkg_dir = os.path.join(self.temp_dir, 'content')
         os.mkdir(pkg_dir)
         repo.working_dir = working_dir
         sync_conduit = importer_mocks.get_sync_conduit(type_id=TYPE_ID_ISO, pkg_dir=pkg_dir)

@@ -81,7 +81,8 @@ def get_sync_conduit(type_id=None, existing_units=None, pkg_dir=None):
     def side_effect(type_id, key, metadata, rel_path):
         if rel_path and pkg_dir:
             rel_path = os.path.join(pkg_dir, rel_path)
-            os.makedirs(os.path.dirname(rel_path))
+            if not os.path.exists(os.path.dirname(rel_path)):
+                os.makedirs(os.path.dirname(rel_path))
         unit = Unit(type_id, key, metadata, rel_path)
         existing_units.append(unit)
         return unit
