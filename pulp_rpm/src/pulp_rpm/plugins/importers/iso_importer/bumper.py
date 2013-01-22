@@ -231,7 +231,7 @@ class Bumper(object):
                     if error_code == pycurl.E_SSL_CACERT:
                         raise CACertError(e.message)
                     else:
-                        raise e
+                        raise Exception('pycurl error code %s was raised.'%error_code)
                     status = curl.getinfo(curl.HTTP_CODE)
                     curl.close()
                     # TODO: Make Exception handling here awesome
@@ -456,6 +456,12 @@ class ISOBumper(RepoBumper):
     manifest interface for you to inspect the available units, and also provides facilities for you
     to specify which units you would like it to retrieve and where you would like it to place them.
     """
+    def download_resources(self, resources):
+        resources = super(self.__class__, self).download_resources(resources)
+        for resource in resources:
+            self._validate_download(resource)
+        return resources
+
     def get_manifest(self):
         """
         This handy property returns an ISOManifest object to you, which has a handy interface for
@@ -494,7 +500,7 @@ class ISOBumper(RepoBumper):
             manifest.append(resource)
         return manifest
 
-    def _validate_download(self, resource, destination_file):
+    def _validate_download(self, resource):
         """
         The PULP_MANIFEST file gives us a checksum for each ISO and its size, which we have access
         to through the resource parameter. This method validates the destination_file to ensure that
@@ -507,30 +513,38 @@ class ISOBumper(RepoBumper):
                                  order for validation to be performed, this must contain 'checksum'
                                  and/or size attributes.
         :type  resource:         dict
-        :param destination_file: The file-like object to be validated.
-        :type  destination_file: object
         """
-        # Validate the size, if we know what it should be
-        if 'size' in resource:
-            # seek to the end to find the file size with tell()
-            destination_file.seek(0, 2)
-            size = destination_file.tell()
-            if size != resource['size']:
-                raise DownloadValidationError(_('Downloading <%(name)s> failed validation. '
-                    'The manifest specified that the file should be %(expected)s bytes, but '
-                    'the downloaded file is %(found)s bytes.')%{'name': resource['name'],
-                        'expected': resource['size'], 'found': size})
+        if isinstance(resource['destination'], basestring):
+            destination_file = open(resource['destination'])
+        else:
+            destination_file = resource['destination']
+        try:
+            # Validate the size, if we know what it should be
+            if 'size' in resource:
+                # seek to the end to find the file size with tell()
+                destination_file.seek(0, 2)
+                size = destination_file.tell()
+                if size != resource['size']:
+                    raise DownloadValidationError(_('Downloading <%(name)s> failed validation. '
+                        'The manifest specified that the file should be %(expected)s bytes, but '
+                        'the downloaded file is %(found)s bytes.')%{'name': resource['name'],
+                            'expected': resource['size'], 'found': size})
 
-        # Validate the checksum, if we know what it should be
-        if 'checksum' in resource:
-            destination_file.seek(0)
-            hasher = hashlib.sha256()
-            bits = destination_file.read(VALIDATION_CHUNK_SIZE)
-            while bits:
-                hasher.update(bits)
+            # Validate the checksum, if we know what it should be
+            if 'checksum' in resource:
+                destination_file.seek(0)
+                hasher = hashlib.sha256()
                 bits = destination_file.read(VALIDATION_CHUNK_SIZE)
-            # Verify that, son!
-            if hasher.hexdigest() != resource['checksum']:
-                raise DownloadValidationError(
-                    _('Downloading <%(name)s failed checksum validation.')%{
-                        'name': resource['name']})
+                while bits:
+                    hasher.update(bits)
+                    bits = destination_file.read(VALIDATION_CHUNK_SIZE)
+                # Verify that, son!
+                if hasher.hexdigest() != resource['checksum']:
+                    raise DownloadValidationError(
+                        _('Downloading <%(name)s> failed checksum validation. The manifest '
+                          'specified the checksum to be %(c)s, but it was %(f)s.')%{
+                            'name': resource['name'], 'c': resource['checksum'],
+                            'f': hasher.hexdigest()})
+        finally:
+            if isinstance(resource['destination'], basestring):
+                destination_file.close()

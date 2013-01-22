@@ -50,6 +50,8 @@ class ISOSyncRun(object):
         Perform the sync operation accoring to the config for the given repo, and return a report.
         The sync progress will be reported through the sync_conduit.
 
+        :param repo:         Metadata describing the repository
+        :type  repo:         pulp.server.plugins.model.Repository
         :param sync_conduit: The sync_conduit that gives us access to the local repository
         :type  sync_conduit: pulp.server.conduits.repo_sync.RepoSyncConduit
         :param config:       The configuration for the importer
@@ -154,11 +156,10 @@ class ISOSyncRun(object):
             unit_key = {'name': iso['name'], 'size': iso['size'], 'checksum': iso['checksum']}
             metadata = {}
             relative_path = os.path.join(unit_key['name'], unit_key['checksum'],
-                                         str(unit_key['size']))
+                                         str(unit_key['size']), unit_key['name'])
             unit = sync_conduit.init_unit(ids.TYPE_ID_ISO, unit_key, metadata, relative_path)
             # Move the unit to the storage_path
             temporary_file_location = iso['destination']
             permanent_file_location = unit.storage_path
-            # We only need to create the permanent location if it isn't already there.
             shutil.move(temporary_file_location, permanent_file_location)
             unit = sync_conduit.save_unit(unit)
