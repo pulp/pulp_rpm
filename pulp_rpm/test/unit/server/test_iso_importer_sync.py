@@ -74,7 +74,7 @@ class TestISOSyncRun(PulpRPMTests):
 
         # There should now be three Units in the DB, one for each of the three ISOs that our mocks
         # got us.
-        units = sync_conduit.get_units()
+        units = [tuple(call)[1][0] for call in sync_conduit.save_unit.mock_calls]
         self.assertEqual(len(units), 3)
         expected_units = {
             'test.iso': {

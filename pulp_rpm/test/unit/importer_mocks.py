@@ -84,7 +84,6 @@ def get_sync_conduit(type_id=None, existing_units=None, pkg_dir=None):
             if not os.path.exists(os.path.dirname(rel_path)):
                 os.makedirs(os.path.dirname(rel_path))
         unit = Unit(type_id, key, metadata, rel_path)
-        existing_units.append(unit)
         return unit
 
     def get_units(criteria=None):
@@ -98,7 +97,7 @@ def get_sync_conduit(type_id=None, existing_units=None, pkg_dir=None):
                     ret_val.append(u)
         return ret_val
 
-    def serach_all_units(type_id, criteria):
+    def search_all_units(type_id, criteria):
         ret_val = []
         if existing_units:
             for u in existing_units:
@@ -107,13 +106,10 @@ def get_sync_conduit(type_id=None, existing_units=None, pkg_dir=None):
                         ret_val.append(u)
         return ret_val
 
-    if existing_units is None:
-        existing_units = []
-
     sync_conduit = mock.Mock(spec=RepoSyncConduit)
     sync_conduit.init_unit.side_effect = side_effect
     sync_conduit.get_units.side_effect = get_units
-    sync_conduit.search_all_units.side_effect = serach_all_units
+    sync_conduit.search_all_units.side_effect = search_all_units
 
     return sync_conduit
 
