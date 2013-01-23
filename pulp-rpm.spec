@@ -123,7 +123,7 @@ A collection of modules shared among all RPM components.
 
 %files -n python-pulp-rpm-common
 %defattr(-,root,root,-)
-%{python_sitelib}/pulp_rpm
+%dir %{python_sitelib}/pulp_rpm
 %{python_sitelib}/pulp_rpm/__init__.py*
 %{python_sitelib}/pulp_rpm/common/
 %doc
@@ -162,6 +162,7 @@ to provide RPM specific support.
 
 %files plugins
 %defattr(-,root,root,-)
+%{python_sitelib}/pulp_rpm/migrations/
 %{python_sitelib}/pulp_rpm/repo_auth/
 %{python_sitelib}/pulp_rpm/yum_plugin/
 %config(noreplace) %{_sysconfdir}/pulp/repo_auth.conf
