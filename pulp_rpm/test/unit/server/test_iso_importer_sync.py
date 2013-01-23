@@ -45,7 +45,9 @@ class TestISOSyncRun(PulpRPMTests):
         self.iso_sync_run.cancel_sync()
         self.iso_sync_run.bumper.cancel_download.assert_called_once_with()
 
-    # TODO: Can we think of a way to assert that the correct Curl calls were made?
+    # TODO: Can we think of a way to assert that the correct Curl calls were made? It might be
+    #       possible by either refactoring the mock, or by having the mock maintain a list of the
+    #       curl Mocks it generated.
     # TODO: Remove the mocks on the progress report, once we have written it
     @patch('pulp_rpm.plugins.importers.iso_importer.bumper.pycurl.Curl',
            side_effect=importer_mocks.ISOCurl)
