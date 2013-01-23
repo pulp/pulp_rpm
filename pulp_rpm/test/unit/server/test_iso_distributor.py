@@ -22,6 +22,7 @@ import time
 import unittest
 from uuid import uuid4
 import importer_mocks
+from glob import glob
 
 sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)) + "/../../../plugins/importers/")
 sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)) + "/../../../plugins/distributors/")
@@ -74,6 +75,8 @@ class TestISODistributor(rpm_support_base.PulpRPMTests):
 
     def clean(self):
         shutil.rmtree(self.temp_dir)
+        for iso_file in glob('/tmp/pulpiso-*'):
+            os.remove(iso_file)
 
     def test_metadata(self):
         metadata = ISODistributor.metadata()

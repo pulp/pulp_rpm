@@ -42,7 +42,7 @@ class ISOSyncRun(object):
         """
         This method will cancel a sync that is in progress.
         """
-        self.bumper.download_canceled = True
+        self.bumper.cancel_download()
 
     # TODO: Check if the feed_url is set, and raise an error if it's missing.
     def perform_sync(self, repo, sync_conduit, config):
@@ -50,6 +50,8 @@ class ISOSyncRun(object):
         Perform the sync operation accoring to the config for the given repo, and return a report.
         The sync progress will be reported through the sync_conduit.
 
+        :param repo:         Metadata describing the repository
+        :type  repo:         pulp.server.plugins.model.Repository
         :param sync_conduit: The sync_conduit that gives us access to the local repository
         :type  sync_conduit: pulp.server.conduits.repo_sync.RepoSyncConduit
         :param config:       The configuration for the importer
@@ -104,9 +106,9 @@ class ISOSyncRun(object):
 
     def _filter_missing_isos(self, sync_conduit, manifest):
         """
-        Use the sync_conduit and the ISOBumper manifest to determine which ISOs are at the feed_url that
-        are not in our local store. Return a subset of the given manifest that represents the missing
-        ISOs. The manifest format is described in the docblock for
+        Use the sync_conduit and the ISOBumper manifest to determine which ISOs are at the feed_url
+        that are not in our local store. Return a subset of the given manifest that represents the
+        missing ISOs. The manifest format is described in the docblock for
         pulp_rpm.plugins.importers.iso_importer.bumper.ISOBumper.manifest.
 
         :param sync_conduit: The sync_conduit that gives us access to the local repository
@@ -114,9 +116,9 @@ class ISOSyncRun(object):
         :param manifest:     A list of dictionaries that describe the ISOs that are available at the
                              feed_url that we are syncing with
         :type  manifest:     list
-        :return:             A list of dictionaries that describe the ISOs that we should retrieve from
-                             the feed_url. These dictionaries are in the same format as they were in the
-                             manifest.
+        :return:             A list of dictionaries that describe the ISOs that we should retrieve
+                             from the feed_url. These dictionaries are in the same format as they
+                             were in the manifest.
         :rtype:              list
         """
         def _unit_key_str(unit_key_dict):
@@ -154,11 +156,10 @@ class ISOSyncRun(object):
             unit_key = {'name': iso['name'], 'size': iso['size'], 'checksum': iso['checksum']}
             metadata = {}
             relative_path = os.path.join(unit_key['name'], unit_key['checksum'],
-                                         str(unit_key['size']))
+                                         str(unit_key['size']), unit_key['name'])
             unit = sync_conduit.init_unit(ids.TYPE_ID_ISO, unit_key, metadata, relative_path)
             # Move the unit to the storage_path
             temporary_file_location = iso['destination']
             permanent_file_location = unit.storage_path
-            # We only need to create the permanent location if it isn't already there.
             shutil.move(temporary_file_location, permanent_file_location)
             unit = sync_conduit.save_unit(unit)
