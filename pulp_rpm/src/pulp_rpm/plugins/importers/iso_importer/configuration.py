@@ -52,10 +52,11 @@ def _validate_feed_url(config):
     :rtype: tuple
     """
     feed_url = config.get(constants.CONFIG_FEED_URL)
-    # TODO: feed_urls are not required. So don't require them.
+    # feed_urls are not required.
     if not feed_url:
-        return False, _('<%(feed_url)s> is a required configuration parameter.')%{
-            'feed_url': constants.CONFIG_FEED_URL}
+        return True, None
+    if not isinstance(feed_url, basestring):
+        return False, _('<%(feed_url)s> must be a string.')%{'feed_url': constants.CONFIG_FEED_URL}
     return True, None
 
 

@@ -14,6 +14,7 @@
 from gettext import gettext as _
 import logging
 
+from pulp.plugins.conduits.mixins import UnitAssociationCriteria
 from pulp.plugins.importer import Importer
 
 from pulp_rpm.common import ids
@@ -47,9 +48,6 @@ class ISOImporter(Importer):
            into the repository that uses this importer
          * A user is attempting to add an orphaned unit into a repository.
 
-        This call should perform any changes to the destination repository's
-        working directory as necessary.
-
         The units argument is optional. If None, all units in the source
         repository should be imported. The conduit is used to query for those
         units. If specified, only the units indicated should be imported (this
@@ -72,10 +70,13 @@ class ISOImporter(Importer):
         @param units:          optional list of pre-filtered units to import
         @type  units:          list of L{pulp.server.plugins.model.Unit}
         """
-        # We don't maintain state in our working directory, so all we need to do is to implement
-        # this method (so that the default superclass behavior of raising NotImplemented is
-        # overridden) and pass
-        pass
+        if units is None:
+            criteria = UnitAssociationCriteria(type_ids=[ids.TYPE_ID_ISO])
+            units = import_conduit.get_source_units(criteria=criteria)
+
+        for u in units:
+            import_conduit.associate_unit(u)
+
 
     @classmethod
     def metadata(cls):

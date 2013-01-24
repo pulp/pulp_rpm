@@ -21,38 +21,9 @@ import pulp.common.tags as tag_utils
 
 DISTRIBUTOR_ID = 'iso_dist'
 
-# -- ui -----------------------------------------------------------------------
-
 def pause(p):
     p.prompt('Press enter to continue...', allow_empty=True)
 
-def divider(p):
-    p.write('==============================')
-
-def title(p, text):
-    p.write(text, color=COLOR_LIGHT_PURPLE)
-
-# -- functional ---------------------------------------------------------------
-
-def delete_repo(repo):
-    url = '/v2/repositories/%s/' % repo['id']
-    try:
-        pic.GET(url)
-    except pic.RequestError:
-        return
-    pic.DELETE(url)
-
-def create_repo(repo):
-    body = {'id' : repo['id']}
-    pic.POST('/v2/repositories/', body=body)
-
-def add_iso_importer(repo):
-    body = {
-        'importer_type_id' : ids.TYPE_ID_IMPORTER_ISO,
-        'importer_config' : repo,
-    }
-
-    pic.POST('/v2/repositories/%s/importers/' % repo['id'], body=body)
 
 def add_iso_distributor(repo):
     distributor_config = {
@@ -68,21 +39,61 @@ def add_iso_distributor(repo):
 
     pic.POST('/v2/repositories/%s/distributors/' % repo['id'], body=body)
 
+
+def add_iso_importer(repo):
+    body = {
+        'importer_type_id' : ids.TYPE_ID_IMPORTER_ISO,
+        'importer_config' : repo,
+    }
+
+    pic.POST('/v2/repositories/%s/importers/' % repo['id'], body=body)
+
+
 def cancel_sync(repo):
     repo_tag = tag_utils.resource_tag(tag_utils.RESOURCE_REPOSITORY_TYPE, repo['id'])
     sync_tag = tag_utils.action_tag(tag_utils.ACTION_SYNC_TYPE)
     tasks = pic.GET('/pulp/api/v2/tasks/?%s&%s'%(urllib.urlencode({'tag': repo_tag}),
                                                  urllib.urlencode({'tag': sync_tag})))
-    task_id = tasks[1][0]['task_id']
-    state = tasks[1][0]['state']
-    try:
-        if state == 'running':
-            pic.DELETE('/pulp/api/v2/tasks/%s/'%task_id)
-    except:
-        pass
+    if tasks[1]:
+        task_id = tasks[1][0]['task_id']
+        state = tasks[1][0]['state']
+        try:
+            if state == 'running':
+                pic.DELETE('/pulp/api/v2/tasks/%s/'%task_id)
+        except:
+            pass
 
-def sync(repo):
-    pic.POST('/v2/repositories/%s/actions/sync/'%repo['id'])
+
+def create_repo(repo):
+    body = {'id' : repo['id']}
+    pic.POST('/v2/repositories/', body=body)
+
+
+def copy_unit(source_repo, destination_repo, unit_name):
+    body = {
+        'source_repo_id': source_repo['id'],
+        'criteria': {
+            'type_ids': [ids.TYPE_ID_ISO],
+            'filters': {
+                'unit': {'name': unit_name},
+            }
+        }
+    }
+    pic.POST('/pulp/api/v2/repositories/%s/actions/associate/'%destination_repo['id'], body=body)
+
+
+def delete_repo(repo):
+    url = '/v2/repositories/%s/' % repo['id']
+    try:
+        pic.GET(url)
+    except pic.RequestError:
+        return
+    pic.DELETE(url)
+
+
+def divider(p):
+    p.write('==============================')
+
 
 def list_units(prompt, repo):
     criteria = {'type_ids' : [ids.TYPE_ID_ISO]}
@@ -99,6 +110,27 @@ def list_units(prompt, repo):
 def publish(repo):
     body = {'id' : DISTRIBUTOR_ID}
     pic.POST('/v2/repositories/%s/actions/publish/'%repo['id'], body=body)
+
+
+def remove_unit(repo, unit_name):
+    body = {
+        'criteria': {
+            'type_ids': [ids.TYPE_ID_ISO],
+            'filters': {
+                'unit': {'name': unit_name},
+            }
+        }
+    }
+    pic.POST('/pulp/api/v2/repositories/%s/actions/unassociate/'%repo['id'], body=body)
+
+
+def sync(repo):
+    if constants.CONFIG_FEED_URL in repo:
+        pic.POST('/v2/repositories/%s/actions/sync/'%repo['id'])
+
+
+def title(p, text):
+    p.write(text, color=COLOR_LIGHT_PURPLE)
 
 
 def main():
@@ -127,49 +159,70 @@ def main():
               constants.CONFIG_FEED_URL: 'http://pkilambi.fedorapeople.org/test_file_repo/',
               constants.CONFIG_PROXY_URL: 'localhost', constants.CONFIG_PROXY_PORT: 3128,
               constants.CONFIG_PROXY_USER: 'rbarlow', constants.CONFIG_PROXY_PASSWORD: 'password'},
+             {'id': 'no_feed',},
              #{'id': 'local',
              # constants.CONFIG_FEED_URL: 'file:///var/lib/pulp/published/http/isos/proxy/',}
              ]
 
-    if not '--skip-delete' in sys.argv:
+    if '--delete' in sys.argv:
         title(p, 'Creating & Configuring Repositories')
-
         for r in repos:
             p.write('  Repository: %s'%r['id'])
             delete_repo(r)
             create_repo(r)
             add_iso_importer(r)
             add_iso_distributor(r)
-
         pause(p)
         p.write('')
 
     title(p, 'Synchronizing Repositories')
-
     for repo in repos:
         sync(repo)
-
     pause(p)
     p.write('')
 
     title(p, 'Canceling Syncs')
-
     for repo in repos:
         cancel_sync(repo)
-
-    pause(p)
-    p.write('')
-
-    title(p, 'Publishing Repositories')
-
-    for repo in repos:
-        publish(repo)
-
     pause(p)
     p.write('')
 
     title(p, 'Displaying Repository Contents')
+    for repo in repos:
+        p.write('Repository: %s'%repo['id'], color=COLOR_LIGHT_BLUE)
+        list_units(p, repo)
+        p.write('')
+    pause(p)
+    p.write('')
 
+    # Let's copy two isos into the empty repo
+    title(p, 'Copying Units')
+    copy_unit(repos[0], repos[3], 'test.iso')
+    copy_unit(repos[0], repos[3], 'test3.iso')
+    pause(p)
+    p.write('')
+
+    title(p, 'Displaying Repository Contents')
+    for repo in repos:
+        p.write('Repository: %s'%repo['id'], color=COLOR_LIGHT_BLUE)
+        list_units(p, repo)
+        p.write('')
+    pause(p)
+    p.write('')
+
+    # Let's remove test3.iso from the empty repo
+    title(p, 'Removing test3.iso from the feedless repo')
+    remove_unit(repos[3], 'test3.iso')
+    pause(p)
+    p.write('')
+
+    title(p, 'Publishing Repositories')
+    for repo in repos:
+        publish(repo)
+    pause(p)
+    p.write('')
+
+    title(p, 'Displaying Repository Contents')
     for repo in repos:
         p.write('Repository: %s'%repo['id'], color=COLOR_LIGHT_BLUE)
         list_units(p, repo)
