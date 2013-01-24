@@ -174,6 +174,7 @@ to provide RPM specific support.
 %{_usr}/lib/pulp/plugins/profilers/rpm_errata_profiler/
 %defattr(-,apache,apache,-)
 %{_var}/www/pub
+%dir %{_var}/lib/pulp/published
 %{_sysconfdir}/pki/pulp/content/
 /srv/pulp/repo_auth.wsgi
 %doc
