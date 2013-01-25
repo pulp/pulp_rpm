@@ -30,7 +30,6 @@ def validate(config):
     :rtype:        tuple
     """
     validators = (
-        # TODO: Don't worry about validating feed_url, or maybe a quick regex or something.
         _validate_feed_url,
         _validate_max_speed,
     )
@@ -43,8 +42,6 @@ def validate(config):
     return True, None
 
 
-# TODO: Should we validate that the URL is a valid URL? Currently we only validate that it is set to
-#       something that evaluates to True.
 def _validate_feed_url(config):
     """
     Make sure the feed_url is set.

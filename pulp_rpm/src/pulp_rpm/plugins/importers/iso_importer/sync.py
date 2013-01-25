@@ -29,10 +29,6 @@ import pulp.server.util
 logger = logging.getLogger(__name__)
 
 
-# TODO: Reproduce folder structures that may have been found on the server
-# TODO: optionally delete Units that we have that weren't found in the repo
-# TODO: optionally don't check the checksum and size
-# TODO: Error handling
 class ISOSyncRun(object):
     """
     This class maintains state for a single repository sync. We need to keep the state so that we
@@ -44,7 +40,6 @@ class ISOSyncRun(object):
         """
         self.bumper.cancel_download()
 
-    # TODO: Check if the feed_url is set, and raise an error if it's missing.
     def perform_sync(self, repo, sync_conduit, config):
         """
         Perform the sync operation accoring to the config for the given repo, and return a report.
@@ -91,8 +86,6 @@ class ISOSyncRun(object):
         progress_report.modules_state = STATE_RUNNING
         progress_report.update_progress()
         missing_isos = self._filter_missing_isos(sync_conduit, manifest)
-        # TODO: Consider processing each ISO completely instead of downloading them all and then
-        # _create_units
         new_isos = self.bumper.download_resources(missing_isos)
 
         # Move the downloaded stuff and junk to the permanent location
@@ -137,8 +130,6 @@ class ISOSyncRun(object):
         return missing_isos
 
 
-    # TODO: Have Bumper download the files to their final location instead of to the working
-    #       directory and then move them.
     def _create_units(self, sync_conduit, new_isos):
         """
         For each ISO specified in new_isos, create a new Pulp Unit and move the file from its

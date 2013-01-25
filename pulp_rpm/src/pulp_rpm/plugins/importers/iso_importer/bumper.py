@@ -27,7 +27,6 @@ import pycurl
 # http://curl.haxx.se/libcurl/c/curl_easy_setopt.html#CURLOPTNOSIGNAL
 signal.signal(signal.SIGPIPE, signal.SIG_IGN)
 
-# TODO: Uh, do some science to determine what the ideal default is here
 DEFAULT_NUM_THREADS = 2
 ISO_METADATA_FILENAME = 'PULP_MANIFEST'
 # How long we want to wait between loops on the MultiCurl select() method
@@ -96,7 +95,6 @@ class Bumper(object):
         self.num_threads        = int(num_threads)
         self.proxy_url          = proxy_url
         self.proxy_port         = proxy_port
-        # TODO: Raise an exception if we have a proxy username but no password
         self.proxy_user         = proxy_user
         self.proxy_password     = proxy_password
         self._download_canceled = False
@@ -164,8 +162,6 @@ class Bumper(object):
             multi_curl.handles.append(curl)
         return multi_curl
 
-    # TODO: Add a way to communicate errors in the return from this method. Perhaps a DownloadReport
-    #       sort of object, or something along those lines.
     def download_resources(self, resources):
         """
         This method will fetch the given resources. resources should be a list of dictionaries, each
@@ -222,19 +218,15 @@ class Bumper(object):
                     multi_curl.remove_handle(curl)
                     free_curls.append(curl)
                 # Handle the error'd curls
-                # TODO: uh, actually do something more useful than just logging it
                 for curl, error_code, error_message in error_list:
                     logger.error(_('Error while retrieving %(url)s: %(m)s.')%{
                         'url': curl.resource['url'], 'm': error_message})
-                    # TODO: Figure out which pycurl exceptions we want to handle. They are all
-                    #       listed in /usr/include/curl/curl.h
                     if error_code == pycurl.E_SSL_CACERT:
                         raise CACertError(e.message)
                     else:
                         raise Exception('pycurl error code %s was raised.'%error_code)
                     status = curl.getinfo(curl.HTTP_CODE)
                     curl.close()
-                    # TODO: Make Exception handling here awesome
                     if status == 401:
                         raise exceptions.UnauthorizedException(url)
                     elif status == 403:
@@ -350,7 +342,6 @@ class Bumper(object):
                     ssl_file.write(ssl_data['data'])
                 curl.setopt(pycurl_setting, str(path))
 
-    # TODO: Support this progress report callback
     def _progress_report(self, dltotal, dlnow, ultotal, ulnow):
         """
         This is the callback that we give to pycurl to report back to us about the download

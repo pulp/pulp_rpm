@@ -44,32 +44,22 @@ def publish(repo, publish_conduit, config):
     logger.info(_('Beginning publish for repository <%(repo)s>')%{'repo': repo.id})
 
     try:
-        # TODO: Consider moving the unit retrieval into the _symlink step. Jay thinks this will be
-        #       nice if we ever want to batch this work.
         units = publish_conduit.get_units()
         _symlink_units(repo, units)
-        # TODO: Remove any symlinks from previous units that are now deleted
         _build_metadata(repo, units)
         _copy_to_hosted_location(repo, config)
         progress_report.update_progress()
         return progress_report.build_final_report()
     except Exception, e:
-        # TODO: Revisit this and figure out a better way to communicate specific failure, and obvs.
-        #       remove the raise statement because that's dumb.
-        raise
         progress_report.publish_http = constants.STATE_FAILED
         report = progress_report.build_final_report()
         return report
 
 
-# TODO: Let's move this to the ISOManifest class, which will be handy for parsing and reading
-#       the manifests. Then we can use that during publishing.
 def _build_metadata(repo, units):
     build_dir = _get_build_dir(repo)
     metadata_filename = os.path.join(build_dir, PULP_MANIFEST_FILENAME)
     try:
-        # TODO: This fails if the destination folder doesn't already exist, which will happen if
-        #       there are 0 units.
         metadata = open(metadata_filename, 'w')
         metadata_csv = csv.writer(metadata)
         for unit in units:
