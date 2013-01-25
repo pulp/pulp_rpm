@@ -33,7 +33,8 @@ REPO_NAME = 'Repository 1'
 ENABLED = True
 
 # Lock that doesn't require root privileges
-LOCK = Lock('/tmp/test_repolib_lock.pid')
+_LOCK_FILE = '/tmp/test_repolib_lock.pid'
+LOCK = Lock(_LOCK_FILE)
 
 # -- test classes ---------------------------------------------------------------------
 
@@ -49,7 +50,7 @@ class TestRepolib(unittest.TestCase):
 
         if os.path.exists(TEST_KEYS_DIR):
             shutil.rmtree(TEST_KEYS_DIR)
-            
+
         if os.path.exists(TEST_CERT_DIR):
             shutil.rmtree(TEST_CERT_DIR)
 
@@ -67,6 +68,9 @@ class TestRepolib(unittest.TestCase):
 
         if os.path.exists(TEST_CERT_DIR):
             shutil.rmtree(TEST_CERT_DIR)
+
+        if os.path.exists(_LOCK_FILE):
+            os.remove(_LOCK_FILE)
 
     # -- bind tests ------------------------------------------------------------------
 
@@ -97,7 +101,7 @@ class TestRepolib(unittest.TestCase):
 
         self.assertEqual(loaded['baseurl'], url_list[0])
         self.assertTrue('mirrorlist' not in loaded)
-        
+
         path = loaded['sslcacert']
         f = open(path)
         content = f.read()
@@ -270,7 +274,7 @@ class TestRepolib(unittest.TestCase):
         self.assertEqual(loaded['gpgcheck'], '0')
         self.assertEqual(loaded['gpgkey'], None)
         self.assertTrue(not os.path.exists(os.path.join(TEST_KEYS_DIR, REPO_ID)))
-        
+
     def test_clear_cacert(self):
         # setup
         repolib.bind(
@@ -281,8 +285,8 @@ class TestRepolib(unittest.TestCase):
             REPO_ID,
             REPO_NAME,
             ['http://pulp'],
-            [], 
-            CACERT, 
+            [],
+            CACERT,
             CLIENTCERT,
             ENABLED,
             LOCK)
@@ -294,8 +298,8 @@ class TestRepolib(unittest.TestCase):
             REPO_ID,
             REPO_NAME,
             ['http://pulp'],
-            [], 
-            None, 
+            [],
+            None,
             CLIENTCERT,
             ENABLED,
             LOCK)
@@ -322,8 +326,8 @@ class TestRepolib(unittest.TestCase):
             REPO_ID,
             REPO_NAME,
             ['http://pulp'],
-            [], 
-            CACERT, 
+            [],
+            CACERT,
             CLIENTCERT,
             ENABLED,
             LOCK)
@@ -335,8 +339,8 @@ class TestRepolib(unittest.TestCase):
             REPO_ID,
             REPO_NAME,
             ['http://pulp'],
-            [], 
-            CACERT, 
+            [],
+            CACERT,
             None,
             ENABLED,
             LOCK)
@@ -352,7 +356,7 @@ class TestRepolib(unittest.TestCase):
         f.close()
         self.assertEqual(CACERT, content)
         self.assertTrue(loaded['sslverify'], '1')
-        
+
     def test_update_cacert(self):
         # setup
         NEWCACERT = 'THE-NEW-CA-CERT'
@@ -364,8 +368,8 @@ class TestRepolib(unittest.TestCase):
             REPO_ID,
             REPO_NAME,
             ['http://pulp'],
-            [], 
-            CACERT, 
+            [],
+            CACERT,
             CLIENTCERT,
             ENABLED,
             LOCK)
@@ -377,8 +381,8 @@ class TestRepolib(unittest.TestCase):
             REPO_ID,
             REPO_NAME,
             ['http://pulp'],
-            [], 
-            NEWCACERT, 
+            [],
+            NEWCACERT,
             CLIENTCERT,
             ENABLED,
             LOCK)
@@ -399,7 +403,7 @@ class TestRepolib(unittest.TestCase):
         f.close()
         self.assertEqual(CLIENTCERT, content)
         self.assertTrue(loaded['sslverify'], '1')
-        
+
     def test_update_clientcert(self):
         # setup
         NEWCLIENTCRT = 'THE-NEW-CLIENT-CERT'
@@ -411,8 +415,8 @@ class TestRepolib(unittest.TestCase):
             REPO_ID,
             REPO_NAME,
             ['http://pulp'],
-            [], 
-            CACERT, 
+            [],
+            CACERT,
             CLIENTCERT,
             ENABLED,
             LOCK)
@@ -423,9 +427,9 @@ class TestRepolib(unittest.TestCase):
             TEST_CERT_DIR,
             REPO_ID,
             REPO_NAME,
-            ['http://pulp'], 
+            ['http://pulp'],
             [],
-            CACERT, 
+            CACERT,
             NEWCLIENTCRT,
             ENABLED,
             LOCK)
@@ -535,7 +539,7 @@ class TestRepolib(unittest.TestCase):
         repo_file.load(allow_missing=False) # the file should still be there, so error if it doesn't
 
         self.assertEqual(0, len(repo_file.all_repos()))
-        
+
         certdir = os.path.join(TEST_CERT_DIR, repoid)
         self.assertFalse(os.path.exists(certdir))
 

@@ -14,6 +14,7 @@
 
 from ConfigParser import SafeConfigParser
 import os
+import shutil
 import unittest
 
 from pulp_rpm.repo_auth.protected_repo_utils import ProtectedRepoListingFile, ProtectedRepoUtils
@@ -38,6 +39,9 @@ class TestProtectedRepoUtils(unittest.TestCase):
     def tearDown(self):
         if os.path.exists(TEST_FILE):
             os.remove(TEST_FILE)
+        global_cert_location = CONFIG.get('repos', 'global_cert_location')
+        if os.path.exists(global_cert_location):
+            shutil.rmtree(global_cert_location)
 
     def test_add_protected_repo(self):
         """
@@ -75,7 +79,7 @@ class TestProtectedRepoUtils(unittest.TestCase):
         listings = self.utils.read_protected_repo_listings()
 
         self.assertEqual(0, len(listings))
-        
+
 class TestProtectedRepoListingFile(unittest.TestCase):
 
     def setUp(self):
@@ -85,6 +89,9 @@ class TestProtectedRepoListingFile(unittest.TestCase):
     def tearDown(self):
         if os.path.exists(TEST_FILE):
             os.remove(TEST_FILE)
+        global_cert_location = CONFIG.get('repos', 'global_cert_location')
+        if os.path.exists(global_cert_location):
+            shutil.rmtree(global_cert_location)
 
     def test_save_load_delete_with_repos(self):
         """
