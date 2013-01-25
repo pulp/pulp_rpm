@@ -12,18 +12,77 @@
 # http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt.
 
 import os
-import mock
+
 from pulp.plugins.conduits.repo_sync import RepoSyncConduit
 from pulp.plugins.conduits.upload import UploadConduit
 from pulp.plugins.conduits.unit_import import ImportUnitConduit
 from pulp.plugins.conduits.dependency import DependencyResolutionConduit
 from pulp.plugins.config import PluginCallConfiguration
 from pulp.plugins.model import Unit
+import mock
+import pycurl
+
+def ISOCurl():
+    def perform():
+        curl._file_to_write(curl._datas_to_write[curl._data_to_write_index])
+
+    def setopt(opt, setting):
+        if opt == pycurl.WRITEFUNCTION:
+            curl._file_to_write = setting
+        if opt == pycurl.URL:
+            name_index_map = {'MANIFEST': 0, 'test.iso': 1, 'test2.iso': 2, 'test3.iso': 3}
+            for key, value in name_index_map.items():
+                if key in setting:
+                    curl._data_to_write_index = value
+                    return
+
+    curl = mock.MagicMock()
+    curl.close = mock.MagicMock()
+    curl.perform = mock.MagicMock(side_effect=perform)
+    curl.setopt = mock.MagicMock(side_effect=setopt)
+    curl._datas_to_write = [
+        'test.iso,f02d5a72cd2d57fa802840a76b44c6c6920a8b8e6b90b20e26c03876275069e0,16\n'
+        'test2.iso,c7fbc0e821c0871805a99584c6a384533909f68a6bbe9a2a687d28d9f3b10c16,22\n'
+        'test3.iso,94f7fe923212286855dea858edac1b4a292301045af0ddb275544e5251a50b3c,34',
+        'This is a file.\n',
+        'This is another file.\n',
+        'Are you starting to get the idea?\n']
+    return curl
+
+def CurlMulti():
+    def add_handle(curl):
+        curl._is_active = True
+        curl_multi._curls.append(curl)
+
+    def info_read():
+        return (0, [c for c in curl_multi._curls if c._is_active], [])
+
+    def perform():
+        for curl in curl_multi._curls:
+            curl.perform()
+
+        return (0, len(curl_multi._curls))
+
+    def remove_handle(curl):
+        curl._is_active = False
+        curl_multi._curls.remove(curl)
+
+    curl_multi = mock.MagicMock()
+    curl_multi._curls = []
+    curl_multi.add_handle = mock.MagicMock(side_effect=add_handle)
+    curl_multi.close = mock.MagicMock()
+    curl_multi.perform = mock.MagicMock(side_effect=perform)
+    curl_multi.info_read = mock.MagicMock(side_effect=info_read)
+    curl_multi.remove_handle = mock.MagicMock(side_effect=remove_handle)
+    curl_multi.select = mock.MagicMock()
+    return curl_multi
 
 def get_sync_conduit(type_id=None, existing_units=None, pkg_dir=None):
     def side_effect(type_id, key, metadata, rel_path):
         if rel_path and pkg_dir:
             rel_path = os.path.join(pkg_dir, rel_path)
+            if not os.path.exists(os.path.dirname(rel_path)):
+                os.makedirs(os.path.dirname(rel_path))
         unit = Unit(type_id, key, metadata, rel_path)
         return unit
 
@@ -38,7 +97,7 @@ def get_sync_conduit(type_id=None, existing_units=None, pkg_dir=None):
                     ret_val.append(u)
         return ret_val
 
-    def serach_all_units(type_id, criteria):
+    def search_all_units(type_id, criteria):
         ret_val = []
         if existing_units:
             for u in existing_units:
@@ -50,7 +109,7 @@ def get_sync_conduit(type_id=None, existing_units=None, pkg_dir=None):
     sync_conduit = mock.Mock(spec=RepoSyncConduit)
     sync_conduit.init_unit.side_effect = side_effect
     sync_conduit.get_units.side_effect = get_units
-    sync_conduit.search_all_units.side_effect = serach_all_units
+    sync_conduit.search_all_units.side_effect = search_all_units
 
     return sync_conduit
 
@@ -158,6 +217,6 @@ def get_basic_config(*arg, **kwargs):
     repo_plugin_config = {}
     for key in kwargs:
         repo_plugin_config[key] = kwargs[key]
-    config = PluginCallConfiguration(plugin_config, 
+    config = PluginCallConfiguration(plugin_config,
             repo_plugin_config=repo_plugin_config)
     return config
