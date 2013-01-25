@@ -44,7 +44,8 @@ CONFIG_SERVE_HTTPS     = 'serve_https'
 
 # The default number of threads to be used with downloading ISOs. We should convert the RPM code to
 # use this same value.
-DEFAULT_NUM_THREADS = 2
+# TODO: Should we do science to optimize this number for pycurl?
+DEFAULT_NUM_THREADS = 5
 
 ISO_HTTP_DIR = "/var/lib/pulp/published/http/isos"
 ISO_HTTPS_DIR = "/var/lib/pulp/published/https/isos"
