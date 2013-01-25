@@ -21,7 +21,7 @@ def format_exception(e):
     """ 
     Formats the given exception to be included in the report.
 
-    :return: string representtion of the exception
+    :return: string representation of the exception
     :rtype:  str
     """
     return str(e)
