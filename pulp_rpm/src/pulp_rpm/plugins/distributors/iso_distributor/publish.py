@@ -100,6 +100,7 @@ def _copy_to_hosted_location(repo, config):
 
 
 def _symlink_units(repo, units):
+    build_dir = _get_build_dir(repo)
     if not os.path.exists(build_dir):
         try:
             os.makedirs(build_dir)
@@ -110,7 +111,6 @@ def _symlink_units(repo, units):
             if e.errno != errno.EEXIST:
                 raise
     for unit in units:
-        build_dir = _get_build_dir(repo)
         symlink_filename = os.path.join(build_dir, unit.unit_key['name'])
         if os.path.exists(symlink_filename):
             # There's already something there with the desired symlink filename. Let's try and see

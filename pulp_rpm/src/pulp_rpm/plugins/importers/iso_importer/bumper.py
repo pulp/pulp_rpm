@@ -139,9 +139,9 @@ class Bumper(object):
         curl.setopt(pycurl.PROGRESSFUNCTION, self._progress_report)
 
         curl.setopt(pycurl.URL, resource['url'])
-        if (hasattr(resource, 'ssl_ca_cert') and resource['ssl_ca_cert']) \
-                or (hasattr(resource, 'ssl_client_cert') and resource['ssl_client_cert']) \
-                or (hasattr(resource, 'ssl_client_key') and resource['ssl_client_key']):
+        if ('ssl_ca_cert' in resource and resource['ssl_ca_cert']) \
+                or ('ssl_client_cert' in resource and resource['ssl_client_cert']) \
+                or ('ssl_client_key'in resource and resource['ssl_client_key']):
             self._configure_curl_ssl_parameters(curl, resource)
         if self.proxy_url:
             self._configure_curl_proxy_parameters(curl)
@@ -324,17 +324,17 @@ class Bumper(object):
             self._paths_to_cleanup.append(_ssl_working_path)
 
         pycurl_ssl_option_paths = {}
-        if hasattr(resource['ssl_ca_cert']) and resource['ssl_ca_cert']:
+        if 'ssl_ca_cert' in resource and resource['ssl_ca_cert']:
             pycurl_ssl_option_paths[pycurl.CAINFO] = \
-                {'path': os.path.join(_ssl_working_path, '%(u)s-ca.pem'%{'u': resource['url']}),
+                {'path': os.path.join(_ssl_working_path, '%(n)s-ca.pem'%{'n': resource['name']}),
                  'data': resource['ssl_ca_cert']}
-        if hasattr(resource['ssl_client_cert']) and resource['ssl_client_cert']:
+        if 'ssl_client_cert' in resource and resource['ssl_client_cert']:
             pycurl_ssl_option_paths[pycurl.SSLCERT] = \
-                {'path': os.path.join(_ssl_working_path, '%(u)s-cert.pem'%{'u': resource['url']}),
+                {'path': os.path.join(_ssl_working_path, '%(n)s-cert.pem'%{'n': resource['name']}),
                  'data': resource['ssl_client_cert']}
-        if hasattr(resource['ssl_client_key']) and resource['ssl_client_key']:
+        if 'ssl_client_key' in resource and resource['ssl_client_key']:
             pycurl_ssl_option_paths[pycurl.SSLKEY] = \
-                {'path': os.path.join(_ssl_working_path,'%(u)s-key.pem'%{'u': resource['url']}),
+                {'path': os.path.join(_ssl_working_path,'%(n)s-key.pem'%{'n': resource['name']}),
                  'data': resource['ssl_client_key']}
 
         for pycurl_setting, ssl_data in pycurl_ssl_option_paths.items():
@@ -344,6 +344,8 @@ class Bumper(object):
                 if os.path.exists(path):
                     os.unlink(path)
                 self._paths_to_cleanup.append(path)
+                if not os.path.exists(os.path.dirname(path)):
+                    os.makedirs(os.path.dirname(path))
                 with open(path, 'w') as ssl_file:
                     ssl_file.write(ssl_data['data'])
                 curl.setopt(pycurl_setting, str(path))
@@ -483,7 +485,7 @@ class ISOBumper(RepoBumper):
         """
         # Let's store the manifest in memory.
         manifest_resource = {'url': urljoin(self.repo_url, ISO_METADATA_FILENAME),
-                             'destination': StringIO()}
+                             'destination': StringIO(), 'name': ISO_METADATA_FILENAME}
         self._add_ssl_parameters_to_resource(manifest_resource)
         self.download_resources([manifest_resource])
 
