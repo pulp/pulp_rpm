@@ -62,7 +62,7 @@ class TestISOImporter(PulpRPMTests):
                         Unit(ids.TYPE_ID_ISO, {'name': 'test3.iso'}, {}, '/path/test3.iso')]
         import_conduit = importer_mocks.get_import_conduit(source_units=source_units)
         # source_repo, dest_repo, and config aren't used by import_units, so we'll just set them to
-        # None for simplicity. Let's use test.iso and test3.iso, leaving our test2.iso.
+        # None for simplicity. Let's use test.iso and test3.iso, leaving out test2.iso.
         self.iso_importer.import_units(None, None, import_conduit, None,
                                        units=[source_units[i] for i in range(0, 3, 2)])
 
