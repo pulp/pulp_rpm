@@ -28,16 +28,16 @@ class TestISOImporter(PulpRPMTests):
         """
         Make sure that when units=None, we import all units from the import_conduit.
         """
-        # source_repo, dest_repo, and config aren't used by import_units, so we'll just set them to
-        # None for simplicity.
         source_units = [Unit(ids.TYPE_ID_ISO, {'name': 'test.iso'}, {}, '/path/test.iso'),
                         Unit(ids.TYPE_ID_ISO, {'name': 'test2.iso'}, {}, '/path/test2.iso'),
                         Unit(ids.TYPE_ID_ISO, {'name': 'test3.iso'}, {}, '/path/test3.iso')]
         import_conduit = importer_mocks.get_import_conduit(source_units=source_units)
+        # source_repo, dest_repo, and config aren't used by import_units, so we'll just set them to
+        # None for simplicity.
         self.iso_importer.import_units(None, None, import_conduit, None, units=None)
 
-        # There should have been two calls to the import_conduit. One to get_source_units(), and one
-        # to associate units.
+        # There should have been four calls to the import_conduit. One to get_source_units(), and
+        # three to associate units.
         # get_source_units should have a UnitAssociationCriteria that specified ISOs, so we'll
         # assert that behavior.
         self.assertEqual(len(import_conduit.get_source_units.call_args_list), 1)
@@ -49,6 +49,32 @@ class TestISOImporter(PulpRPMTests):
         # correct Units.
         self.assertEqual(len(import_conduit.associate_unit.call_args_list), 3)
         expected_unit_names = ['test.iso', 'test2.iso', 'test3.iso']
+        actual_unit_names = [tuple(call)[0][0].unit_key['name'] \
+                             for call in import_conduit.associate_unit.call_args_list]
+        self.assertEqual(actual_unit_names, expected_unit_names)
+
+    def test_import_units__units_some(self):
+        """
+        Make sure that when units are passed, we import only those units.
+        """
+        source_units = [Unit(ids.TYPE_ID_ISO, {'name': 'test.iso'}, {}, '/path/test.iso'),
+                        Unit(ids.TYPE_ID_ISO, {'name': 'test2.iso'}, {}, '/path/test2.iso'),
+                        Unit(ids.TYPE_ID_ISO, {'name': 'test3.iso'}, {}, '/path/test3.iso')]
+        import_conduit = importer_mocks.get_import_conduit(source_units=source_units)
+        # source_repo, dest_repo, and config aren't used by import_units, so we'll just set them to
+        # None for simplicity. Let's use test.iso and test3.iso, leaving our test2.iso.
+        self.iso_importer.import_units(None, None, import_conduit, None,
+                                       units=[source_units[i] for i in range(0, 3, 2)])
+
+        # There should have been two calls to the import_conduit. None to get_source_units(), and
+        # two to associate units.
+        self.assertEqual(len(import_conduit.get_source_units.call_args_list), 0)
+
+        # There are two Units, so there should be two calls to associate_unit since we passed which
+        # units we wanted to import. Let's make sure the two calls were made with the
+        # correct Units.
+        self.assertEqual(len(import_conduit.associate_unit.call_args_list), 2)
+        expected_unit_names = ['test.iso', 'test3.iso']
         actual_unit_names = [tuple(call)[0][0].unit_key['name'] \
                              for call in import_conduit.associate_unit.call_args_list]
         self.assertEqual(actual_unit_names, expected_unit_names)
