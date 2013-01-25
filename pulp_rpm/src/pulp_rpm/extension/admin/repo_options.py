@@ -72,7 +72,7 @@ OPT_FEED = PulpCliOption('--feed', d, required=False)
 
 d = _('if "true", only the newest version of a given package is downloaded; '
       'defaults to false')
-OPT_NEWEST = PulpCliOption('--only-newest', d, required=False)
+OPT_NEWEST = PulpCliOption('--only-newest', d, required=False, parse_func=parsers.parse_boolean)
 
 d = _('comma-separated list of types to omit when synchronizing, if not '
       'specified all types will be synchronized; valid values are: %(t)s')
