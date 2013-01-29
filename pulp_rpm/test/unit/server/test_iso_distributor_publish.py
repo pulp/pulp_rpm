@@ -62,3 +62,21 @@ class TestPublish(PulpRPMTests):
         expected_manifest_rows = [['test.iso', 'sum1', '1'], ['test2.iso', 'sum2', '2'],
                                   ['test3.iso', 'sum3', '3']]
         self.assertEqual(manifest_rows, expected_manifest_rows)
+
+    def test__get_or_create_build_dir(self):
+        """
+        _get_or_create_build_dir() should create the directory the first time it is called, and
+        should return the path to it both times it is called.
+        """
+        repo = MagicMock(spec=Repository)
+        repo.working_dir = self.temp_dir
+
+        # Assert that the build dir does not exist
+        expected_build_dir = os.path.join(self.temp_dir, publish.BUILD_DIRNAME)
+        self.assertFalse(os.path.exists(expected_build_dir))
+
+        build_dir = publish._get_or_create_build_dir(repo)
+
+        # Assert that the build dir is correct and has been created
+        self.assertEqual(build_dir, expected_build_dir)
+        self.assertTrue(os.path.exists(build_dir))
