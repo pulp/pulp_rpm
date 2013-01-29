@@ -25,7 +25,7 @@ sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)) + '/../../extensio
 import rpm_support_base
 
 from rpm_admin_consumer import package, package_group, errata
-from pulp.client.extensions.core import TAG_SUCCESS
+from pulp.client.extensions.core import TAG_SUCCESS, TAG_FAILURE
 from pulp_rpm.common.ids import TYPE_ID_RPM, TYPE_ID_PKG_GROUP
 
 
@@ -50,7 +50,10 @@ TASK = {
                 'details':{
                    'resolved':[
                         {'name':'zsh-1.0'}],
-                   'deps':[]
+                   'deps':[],
+                   'errors':{
+                        'fail-test': 'No package(s) available to install'
+                    },
                 }
             },
             TYPE_ID_PKG_GROUP:{
@@ -96,7 +99,7 @@ class TestPackages(rpm_support_base.PulpClientTests):
         # Test
         args = {
             'consumer-id':'xyz',
-            'name':['zsh'],
+            'name':['zsh','fail-test'],
             'no-commit':False,
             'import-keys':False,
             'reboot':False,
@@ -108,8 +111,9 @@ class TestPackages(rpm_support_base.PulpClientTests):
         self.assertEqual('GET', passed[0])
         self.assertEqual('/pulp/api/v2/tasks/TASK123/', passed[1])
         tags = self.prompt.get_write_tags()
-        self.assertEqual(5, len(tags))
+        self.assertEqual(6, len(tags))
         self.assertEqual(tags[0], TAG_SUCCESS)
+        self.assertEqual(tags[5], TAG_FAILURE)
 
     def test_update(self):
         # Setup

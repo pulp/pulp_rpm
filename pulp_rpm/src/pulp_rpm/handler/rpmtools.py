@@ -25,6 +25,7 @@ from optparse import OptionParser
 from yum.plugins import TYPE_CORE, TYPE_INTERACTIVE
 from yum.rpmtrans import RPMBaseCallback, RPMTransaction
 from yum.callbacks import DownloadBaseCallback, PT_MESSAGES
+from yum.Errors import InstallError
 
 
 log = getLogger(__name__)
@@ -115,13 +116,17 @@ class Package:
         @param names: A list of package names.
         @type names: [str,]
         @return: Packages installed.
-            {resolved=[Package,],deps=[Package,]}
+            {resolved=[Package,],deps=[Package,],errors={}}
         @rtype: dict
         """
         yb = Yum(self.importkeys, self.progress)
+        errors = {}
         try:
             for info in names:
-                yb.install(pattern=info)
+                try:
+                    yb.install(pattern=info)
+                except InstallError, e:
+                    errors[info] = str(e)
             yb.resolveDeps()
             resolved, deps = self.installed(yb.tsInfo)
             if self.apply and resolved:
@@ -130,7 +135,7 @@ class Package:
                 yb.progress.set_status(True)
         finally:
             yb.close()
-        return dict(resolved=resolved, deps=deps)
+        return dict(resolved=resolved, deps=deps, errors=errors)
 
     def uninstall(self, names):
         """
