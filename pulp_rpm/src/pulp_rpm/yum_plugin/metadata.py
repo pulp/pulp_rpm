@@ -626,6 +626,8 @@ xmlns:rpm="http://linux.duke.edu/metadata/rpm" packages="%s"> \n""" % self.unit_
         current_repo_dir = os.path.join(self.repodir, "repodata")
 
         for ftype, fxml in self.custom_metadata.items():
+            if ftype in self.skip:
+                continue
             if not fxml:
                 continue
             ftype_xml_path = os.path.join(self.repodir, "%s.xml" % ftype)
@@ -778,6 +780,15 @@ def generate_yum_metadata(repo_dir, publish_conduit, config, progress_callback=N
     metadata_progress_status = {"state" : "IN_PROGRESS"}
     skip_metadata_types = config.get('skip') or []
     skip_metadata_types = convert_content_to_metadata_type(skip_metadata_types)
+    skip_pkg_tags = config.get('skip_pkg_tags', True)
+    if skip_pkg_tags:
+        # ignore pkgtags, these are not actively used today
+        # comments from yum maintainer:
+        # It was thought of and implemented in Fedora,
+        # with the idea being that users could use the website
+        # to add random tags to any package... but AFAIK it's
+        # basically turned off now, and basically ignored.
+        skip_metadata_types.append('pkgtags')
     checksum_type = repo_scratchpad.get('checksum_type', DEFAULT_CHECKSUM)
     custom_metadata = {}
     if repo_scratchpad.has_key("repodata"):
