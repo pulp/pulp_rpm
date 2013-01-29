@@ -160,6 +160,10 @@ class TestPublish(PulpRPMTests):
         self.assertEqual(build_dir, expected_build_dir)
         self.assertTrue(os.path.exists(build_dir))
 
+        # It should not blow up if we call it again
+        build_dir = publish._get_or_create_build_dir(repo)
+        self.assertEqual(build_dir, expected_build_dir)
+
     def test__symlink_units(self):
         """
         Make sure that the _symlink_units creates all the correct symlinks.
