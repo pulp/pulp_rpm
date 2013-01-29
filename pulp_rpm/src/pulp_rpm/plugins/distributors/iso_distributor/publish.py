@@ -24,7 +24,6 @@ logger = logging.getLogger(__name__)
 
 
 BUILD_DIRNAME = 'build'
-PULP_MANIFEST_FILENAME = 'PULP_MANIFEST'
 
 
 def publish(repo, publish_conduit, config):
@@ -57,12 +56,13 @@ def publish(repo, publish_conduit, config):
 
 
 def _build_metadata(repo, units):
-    build_dir = _get_build_dir(repo)
-    metadata_filename = os.path.join(build_dir, PULP_MANIFEST_FILENAME)
+    build_dir = _get_or_create_build_dir(repo)
+    metadata_filename = os.path.join(build_dir, constants.ISO_MANIFEST_FILENAME)
     try:
         metadata = open(metadata_filename, 'w')
         metadata_csv = csv.writer(metadata)
         for unit in units:
+            print unit.unit_key['name']
             metadata_csv.writerow([unit.unit_key['name'], unit.unit_key['checksum'],
                                    unit.unit_key['size']])
     finally:
@@ -71,12 +71,31 @@ def _build_metadata(repo, units):
             metadata.close()
 
 
-def _get_build_dir(repo):
-    return os.path.join(repo.working_dir, BUILD_DIRNAME)
+def _get_or_create_build_dir(repo):
+    """
+    This will generate a path for a build directory for the given repository. If the path doesn't
+    exist, it will create it.
+
+    :param repo: The repository you need the build directory for
+    :type  repo: pulp.plugins.model.Repository
+    :return:     The build path
+    :rtype:      basestring
+    """
+    build_dir = os.path.join(repo.working_dir, BUILD_DIRNAME)
+    if not os.path.exists(build_dir):
+        try:
+            os.makedirs(build_dir)
+        except OSError, e:
+            # If the path already exists, it's because it was somehow created between us checking if
+            # it existed before and creating it. This is OK, so let's only raise if it was a
+            # different error.
+            if e.errno != errno.EEXIST:
+                raise
+    return build_dir
 
 
 def _copy_to_hosted_location(repo, config):
-    build_dir = _get_build_dir(repo)
+    build_dir = _get_or_create_build_dir(repo)
 
     http_dest_dir = os.path.join(constants.ISO_HTTP_DIR, repo.id)
     _rmtree_if_exists(http_dest_dir)
@@ -90,16 +109,7 @@ def _copy_to_hosted_location(repo, config):
 
 
 def _symlink_units(repo, units):
-    build_dir = _get_build_dir(repo)
-    if not os.path.exists(build_dir):
-        try:
-            os.makedirs(build_dir)
-        except OSError, e:
-            # If the path already exists, it's because it was somehow created between us checking if
-            # it existed before and creating it. This is OK, so let's only raise if it was a
-            # different error.
-            if e.errno != errno.EEXIST:
-                raise
+    build_dir = _get_or_create_build_dir(repo)
     for unit in units:
         symlink_filename = os.path.join(build_dir, unit.unit_key['name'])
         if os.path.exists(symlink_filename):
