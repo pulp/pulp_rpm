@@ -231,12 +231,11 @@ class Install(PollingCommand):
                 deps,
                 order=filter,
                 filters=filter)
-        if 'errors' in details:
-            errors = details['errors']
-            if errors:
-                prompt.render_failure_message(_('Failed to install following packages:'))
-                for key, value in errors.items():
-                    prompt.write(_('%(pkg)s : %(msg)s\n') % {'pkg': key, 'msg': value})
+        errors = details.get('errors', None)
+        if errors:
+            prompt.render_failure_message(_('Failed to install following packages:'))
+            for key, value in errors.items():
+                prompt.write(_('%(pkg)s : %(msg)s\n') % {'pkg': key, 'msg': value})
 
 class Update(PollingCommand):
 
