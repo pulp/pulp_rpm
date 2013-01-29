@@ -35,7 +35,7 @@ _ = gettext.gettext
 
 REQUIRED_CONFIG_KEYS = ["relative_url", "http", "https"]
 OPTIONAL_CONFIG_KEYS = ["protected", "auth_cert", "auth_ca", "https_ca", "gpgkey",  "checksum_type",
-                        "skip", "https_publish_dir", "http_publish_dir", "use_createrepo"]
+                        "skip", "https_publish_dir", "http_publish_dir", "use_createrepo", "skip_pkg_tags"]
 
 SUPPORTED_UNIT_TYPES = [TYPE_ID_RPM, TYPE_ID_SRPM, TYPE_ID_DRPM, TYPE_ID_DISTRO]
 HTTP_PUBLISH_DIR="/var/lib/pulp/published/http/repos"
