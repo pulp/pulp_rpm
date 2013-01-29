@@ -122,3 +122,19 @@ class TestPublish(PulpRPMTests):
         # Assert that the build dir is correct and has been created
         self.assertEqual(build_dir, expected_build_dir)
         self.assertTrue(os.path.exists(build_dir))
+
+    def test__symlink_units(self):
+        """
+        Make sure that the _symlink_units creates all the correct symlinks.
+        """
+        repo = MagicMock(spec=Repository)
+        repo.working_dir = self.temp_dir
+
+        publish._symlink_units(repo, self.existing_units)
+
+        build_dir = publish._get_or_create_build_dir(repo)
+        for unit in self.existing_units:
+            expected_symlink_path = os.path.join(build_dir, unit.unit_key['name'])
+            self.assertTrue(os.path.islink(expected_symlink_path))
+            expected_symlink_destination = os.path.join('/', 'path', unit.unit_key['name'])
+            self.assertEqual(os.path.realpath(expected_symlink_path), expected_symlink_destination)

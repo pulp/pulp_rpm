@@ -125,6 +125,9 @@ def _get_or_create_build_dir(repo):
 
 
 def _symlink_units(repo, units):
+    """
+    For each unit, put a symlink in the build dir that points to its canonical location on disk.
+    """
     build_dir = _get_or_create_build_dir(repo)
     for unit in units:
         symlink_filename = os.path.join(build_dir, unit.unit_key['name'])
