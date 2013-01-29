@@ -17,8 +17,8 @@
 # ---- Pulp (rpm) --------------------------------------------------------------
 
 Name: pulp-rpm
-Version: 2.0.7
-Release: 2
+Version: 2.0.8
+Release: 0.1.beta
 Summary: Support for RPM content in the Pulp platform
 Group: Development/Languages
 License: GPLv2
@@ -263,6 +263,10 @@ A collection of yum plugins supplementing Pulp consumer operations.
 
 
 %changelog
+* Tue Jan 29 2013 Jeff Ortel <jortel@redhat.com> 2.0.8-0.1.beta
+- 782490 - pkgtags are currently ignored, skip them by default. User has a
+  choice to enable it in yum_distributor config (pkilambi@redhat.com)
+
 * Thu Jan 24 2013 Jeff Ortel <jortel@redhat.com> 2.0.7-2
 - 
 
