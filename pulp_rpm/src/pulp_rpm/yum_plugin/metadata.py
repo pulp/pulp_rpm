@@ -786,7 +786,7 @@ def generate_yum_metadata(repo_dir, publish_conduit, config, progress_callback=N
         # comments from yum maintainer:
         # It was thought of and implemented in Fedora,
         # with the idea being that users could use the website
-        # to add random tags to any package … but AFAIK it's
+        # to add random tags to any package... but AFAIK it's
         # basically turned off now, and basically ignored.
         skip_metadata_types.append('pkgtags')
     checksum_type = repo_scratchpad.get('checksum_type', DEFAULT_CHECKSUM)
