@@ -95,9 +95,6 @@ cp -R pulp_rpm/plugins/* %{buildroot}/%{_usr}/lib/pulp/plugins
 # Yum (plugins)
 cp -R pulp_rpm/usr/lib/yum-plugins %{buildroot}/%{_usr}/lib
 
-# Remove egg info
-rm -rf %{buildroot}/%{python_sitelib}/*.egg-info
-
 %clean
 rm -rf %{buildroot}
 
@@ -167,6 +164,7 @@ to provide RPM specific support.
 %{python_sitelib}/pulp_rpm/repo_auth/
 %{python_sitelib}/pulp_rpm/yum_plugin/
 %{python_sitelib}/pulp_rpm/plugins/
+%{python_sitelib}/*.egg-info
 %config(noreplace) %{_sysconfdir}/pulp/repo_auth.conf
 %config(noreplace) %{_sysconfdir}/httpd/conf.d/pulp_rpm.conf
 %{_usr}/lib/pulp/plugins/types/rpm_support.json
