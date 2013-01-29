@@ -62,7 +62,6 @@ def _build_metadata(repo, units):
         metadata = open(metadata_filename, 'w')
         metadata_csv = csv.writer(metadata)
         for unit in units:
-            print unit.unit_key['name']
             metadata_csv.writerow([unit.unit_key['name'], unit.unit_key['checksum'],
                                    unit.unit_key['size']])
     finally:
