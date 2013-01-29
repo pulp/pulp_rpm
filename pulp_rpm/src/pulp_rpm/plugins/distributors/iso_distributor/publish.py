@@ -12,6 +12,7 @@
 # http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt.
 from gettext import gettext as _
 import csv
+import errno
 import logging
 import os
 import shutil
@@ -50,7 +51,8 @@ def publish(repo, publish_conduit, config):
         progress_report.update_progress()
         return progress_report.build_final_report()
     except Exception, e:
-        progress_report.publish_http = constants.STATE_FAILED
+        progress_report.publish_http  = constants.STATE_FAILED
+        progress_report.publish_https = constants.STATE_FAILED
         report = progress_report.build_final_report()
         return report
 
@@ -136,7 +138,7 @@ def _symlink_units(repo, units):
     build_dir = _get_or_create_build_dir(repo)
     for unit in units:
         symlink_filename = os.path.join(build_dir, unit.unit_key['name'])
-        if os.path.exists(symlink_filename):
+        if os.path.exists(symlink_filename) or os.path.islink(symlink_filename):
             # There's already something there with the desired symlink filename. Let's try and see
             # if it points at the right thing. If it does, we don't need to do anything. If it does
             # not, we should remove what's there and add the correct symlink.
