@@ -56,6 +56,14 @@ def publish(repo, publish_conduit, config):
 
 
 def _build_metadata(repo, units):
+    """
+    Create the manifest file for the given units, and write it to the build directory.
+    
+    :param repo:  The repo that we are creating the manifest for
+    :type  repo:  pulp.plugins.model.Repository
+    :param units: The units to be included in the manifest
+    :type  units: list
+    """
     build_dir = _get_or_create_build_dir(repo)
     metadata_filename = os.path.join(build_dir, constants.ISO_MANIFEST_FILENAME)
     try:
@@ -68,6 +76,29 @@ def _build_metadata(repo, units):
         # Only try to close metadata if we were able to open it successfully
         if 'metadata' in dir():
             metadata.close()
+
+
+def _copy_to_hosted_location(repo, config):
+    """
+    Copy the contents of the build directory to the publishing directories. The config will be used
+    to determine whether we are supposed to publish to HTTP and HTTPS.
+
+    :param repo:            The repo you want to publish.
+    :type  repo:            pulp.plugins.model.Repository
+    :param config:          plugin configuration
+    :type  config:          pulp.plugins.config.PluginConfiguration
+    """
+    build_dir = _get_or_create_build_dir(repo)
+
+    http_dest_dir = os.path.join(constants.ISO_HTTP_DIR, repo.id)
+    _rmtree_if_exists(http_dest_dir)
+    if config.get_boolean(constants.CONFIG_SERVE_HTTP):
+        shutil.copytree(build_dir, http_dest_dir, symlinks=True)
+
+    https_dest_dir = os.path.join(constants.ISO_HTTPS_DIR, repo.id)
+    _rmtree_if_exists(https_dest_dir)
+    if config.get_boolean(constants.CONFIG_SERVE_HTTPS):
+        shutil.copytree(build_dir, https_dest_dir, symlinks=True)
 
 
 def _get_or_create_build_dir(repo):
@@ -91,20 +122,6 @@ def _get_or_create_build_dir(repo):
             if e.errno != errno.EEXIST:
                 raise
     return build_dir
-
-
-def _copy_to_hosted_location(repo, config):
-    build_dir = _get_or_create_build_dir(repo)
-
-    http_dest_dir = os.path.join(constants.ISO_HTTP_DIR, repo.id)
-    _rmtree_if_exists(http_dest_dir)
-    if config.get_boolean(constants.CONFIG_SERVE_HTTP):
-        shutil.copytree(build_dir, http_dest_dir, symlinks=True)
-
-    https_dest_dir = os.path.join(constants.ISO_HTTPS_DIR, repo.id)
-    _rmtree_if_exists(https_dest_dir)
-    if config.get_boolean(constants.CONFIG_SERVE_HTTPS):
-        shutil.copytree(build_dir, https_dest_dir, symlinks=True)
 
 
 def _symlink_units(repo, units):
