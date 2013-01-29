@@ -127,6 +127,11 @@ def _get_or_create_build_dir(repo):
 def _symlink_units(repo, units):
     """
     For each unit, put a symlink in the build dir that points to its canonical location on disk.
+    
+    :param repo:  The repo that we are creating the symlinks for
+    :type  repo:  pulp.plugins.model.Repository
+    :param units: The units to be symlinked
+    :type  units: list
     """
     build_dir = _get_or_create_build_dir(repo)
     for unit in units:
@@ -156,5 +161,11 @@ def _symlink_units(repo, units):
 
 
 def _rmtree_if_exists(path):
+    """
+    If the given path exists, remove it recursively. Else, do nothing.
+
+    :param path: The path you want to recursively delete.
+    :type  path: basestring
+    """
     if os.path.exists(path):
         shutil.rmtree(path)

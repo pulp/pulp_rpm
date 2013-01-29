@@ -138,3 +138,21 @@ class TestPublish(PulpRPMTests):
             self.assertTrue(os.path.islink(expected_symlink_path))
             expected_symlink_destination = os.path.join('/', 'path', unit.unit_key['name'])
             self.assertEqual(os.path.realpath(expected_symlink_path), expected_symlink_destination)
+
+    def test__rmtree_if_exists(self):
+        """
+        Let's just make sure this simple thing doesn't barf.
+        """
+        a_directory = os.path.join(self.temp_dir, 'a_directory')
+        test_filename = os.path.join(a_directory, 'test.txt')
+        os.makedirs(a_directory)
+        with open(test_filename, 'w') as test:
+            test.write("Please don't barf.")
+
+        # This should not cause any problems, and test.txt should still exist
+        publish._rmtree_if_exists(os.path.join(self.temp_dir, 'fake_path'))
+        self.assertTrue(os.path.exists(test_filename))
+
+        # Now let's remove a_directory
+        publish._rmtree_if_exists(a_directory)
+        self.assertFalse(os.path.exists(a_directory))
