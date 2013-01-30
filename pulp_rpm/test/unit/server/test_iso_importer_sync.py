@@ -23,12 +23,14 @@ import importer_mocks
 
 from mock import call, MagicMock, patch
 from pulp.plugins.model import Repository
+import pycurl
 
 class TestISOSyncRun(PulpRPMTests):
     """
     Test the ISOSyncRun object.
     """
     def setUp(self):
+        importer_mocks.ISOCurl._curls = []
         self.iso_sync_run = ISOSyncRun()
         self.temp_dir = tempfile.mkdtemp()
 
@@ -95,3 +97,34 @@ class TestISOSyncRun(PulpRPMTests):
             with open(unit.storage_path) as data:
                 contents = data.read()
             self.assertEqual(contents, expected_unit['contents'])
+
+        # There should be ten curl objects that were created since we set num_threads to 5, and they
+        # get built twice (once when we download the manifest, and once when we download the ISOs.)
+        self.assertEqual(len(importer_mocks.ISOCurl._curls), 10)
+        # Let's inspect the Curl that gets used to retrieve the manifest, to make sure all the
+        # correct calls were made with it
+        curl = importer_mocks.ISOCurl._curls[4]
+        # There should be 16 calls to setopt, each of which will be verified below
+        self.assertEqual(len(curl.setopt.call_args_list), 16)
+        curl.setopt.assert_any_call(pycurl.VERBOSE, 0)
+        curl.setopt.assert_any_call(pycurl.NOSIGNAL, 1)
+        curl.setopt.assert_any_call(pycurl.LOW_SPEED_LIMIT, 1000)
+        curl.setopt.assert_any_call(pycurl.LOW_SPEED_TIME, 300)
+        curl.setopt.assert_any_call(pycurl.PROGRESSFUNCTION,
+                                    self.iso_sync_run.bumper._progress_report)
+        curl.setopt.assert_any_call(pycurl.URL, 'http://fake.com/iso_feed/PULP_MANIFEST')
+        curl.setopt.assert_any_call(pycurl.SSL_VERIFYPEER, True)
+        curl.setopt.assert_any_call(pycurl.CAINFO, os.path.join(working_dir, 'SSL_CERTIFICATES',
+                                                                'PULP_MANIFEST-ca.pem'))
+        curl.setopt.assert_any_call(pycurl.SSLCERT, os.path.join(working_dir, 'SSL_CERTIFICATES',
+                                                                 'PULP_MANIFEST-cert.pem'))
+        curl.setopt.assert_any_call(pycurl.SSLKEY, os.path.join(working_dir, 'SSL_CERTIFICATES',
+                                                                'PULP_MANIFEST-key.pem'))
+        curl.setopt.assert_any_call(pycurl.PROXY, 'http://proxy.com')
+        curl.setopt.assert_any_call(pycurl.PROXYPORT, 1234)
+        curl.setopt.assert_any_call(pycurl.PROXYTYPE, pycurl.PROXYTYPE_HTTP)
+        curl.setopt.assert_any_call(pycurl.PROXYAUTH, pycurl.HTTPAUTH_BASIC)
+        curl.setopt.assert_any_call(pycurl.PROXYUSERPWD, 'the_dude:bowling')
+        # We can't assert the last call this way, because the second argument is the write function
+        # of a StringIO, but we can still inspect the last call
+        self.assertEqual(curl.setopt.call_args_list[15][0][0], pycurl.WRITEFUNCTION)

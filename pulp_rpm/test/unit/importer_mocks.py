@@ -47,6 +47,7 @@ def ISOCurl():
         'This is a file.\n',
         'This is another file.\n',
         'Are you starting to get the idea?\n']
+    ISOCurl._curls.append(curl)
     return curl
 
 def CurlMulti():
