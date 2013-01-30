@@ -22,7 +22,7 @@ from rpm_support_base import PulpRPMTests
 import importer_mocks
 
 from mock import call, MagicMock, patch
-from pulp.plugins.model import Repository
+from pulp.plugins.model import Repository, Unit
 import pycurl
 
 class TestISOSyncRun(PulpRPMTests):
@@ -33,6 +33,12 @@ class TestISOSyncRun(PulpRPMTests):
         importer_mocks.ISOCurl._curls = []
         self.iso_sync_run = ISOSyncRun()
         self.temp_dir = tempfile.mkdtemp()
+        self.existing_units = [
+            Unit(TYPE_ID_ISO, {'name': 'test.iso', 'size': 1, 'checksum': 'sum1'},
+                {}, '/path/test.iso'),
+            Unit(TYPE_ID_ISO,{'name': 'test2.iso', 'size': 2, 'checksum': 'sum2'},
+                {}, '/path/test2.iso'),
+        ]
 
     def tearDown(self):
         shutil.rmtree(self.temp_dir)
@@ -128,3 +134,20 @@ class TestISOSyncRun(PulpRPMTests):
         # We can't assert the last call this way, because the second argument is the write function
         # of a StringIO, but we can still inspect the last call
         self.assertEqual(curl.setopt.call_args_list[15][0][0], pycurl.WRITEFUNCTION)
+
+    def test__filter_missing_isos(self):
+        """
+        Make sure this method returns the items from the manifest that weren't in the sync_conduit.
+        """
+        sync_conduit = importer_mocks.get_sync_conduit(type_id=TYPE_ID_ISO,
+                                                       existing_units=self.existing_units)
+        # Let's put all three mammajammas in the manifest
+        manifest = [
+            {'name': 'test.iso', 'size': 1, 'checksum': 'sum1'},
+            {'name': 'test2.iso', 'size': 2, 'checksum': 'sum2'},
+            {'name': 'test3.iso', 'size': 3, 'checksum': 'sum3'},
+        ]
+        missing_isos = self.iso_sync_run._filter_missing_isos(sync_conduit, manifest)
+
+        # Only the third item from the manifest should be missing
+        self.assertEqual(missing_isos, [iso for iso in manifest if iso['name'] == 'test3.iso'])
