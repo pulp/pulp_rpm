@@ -60,7 +60,7 @@ class TestISOSyncRun(PulpRPMTests):
     @patch('pulp_rpm.plugins.importers.iso_importer.sync.SyncProgressReport', autospec=True)
     def test_perform_sync(self, progress_report, curl_multi, curl):
         """
-        Assert that we perform all of the correct calls to various things during perform_sync().
+        Assert that perform_sync() makes appropriate changes to the DB and filesystem.
         """
         repo = MagicMock(spec=Repository)
         working_dir = os.path.join(self.temp_dir, "working")
@@ -70,7 +70,7 @@ class TestISOSyncRun(PulpRPMTests):
         repo.working_dir = working_dir
         sync_conduit = importer_mocks.get_sync_conduit(type_id=TYPE_ID_ISO, pkg_dir=pkg_dir)
         config = importer_mocks.get_basic_config(
-            feed_url='http://fake.com/iso_feed/', max_speed='500.0', num_threads='5',
+            feed_url='http://fake.com/iso_feed/', max_speed='500.0',
             ssl_client_cert="Trust me, I'm who I say I am.", ssl_client_key="Secret Key",
             ssl_ca_cert="Uh, I guess that's the right server.",
             proxy_url='http://proxy.com', proxy_port='1234', proxy_user="the_dude",
@@ -103,6 +103,31 @@ class TestISOSyncRun(PulpRPMTests):
             with open(unit.storage_path) as data:
                 contents = data.read()
             self.assertEqual(contents, expected_unit['contents'])
+
+    @patch('pulp_rpm.plugins.importers.iso_importer.bumper.pycurl.Curl',
+           side_effect=importer_mocks.ISOCurl)
+    @patch('pulp_rpm.plugins.importers.iso_importer.bumper.pycurl.CurlMulti',
+           side_effect=importer_mocks.CurlMulti)
+    @patch('pulp_rpm.plugins.importers.iso_importer.sync.SyncProgressReport', autospec=True)
+    def test_perform_sync_inspect_setopt_calls(self, progress_report, curl_multi, curl):
+        """
+        Assert that we perform all of the correct calls to various things during perform_sync().
+        """
+        repo = MagicMock(spec=Repository)
+        working_dir = os.path.join(self.temp_dir, "working")
+        os.mkdir(working_dir)
+        pkg_dir = os.path.join(self.temp_dir, 'content')
+        os.mkdir(pkg_dir)
+        repo.working_dir = working_dir
+        sync_conduit = importer_mocks.get_sync_conduit(type_id=TYPE_ID_ISO, pkg_dir=pkg_dir)
+        config = importer_mocks.get_basic_config(
+            feed_url='http://fake.com/iso_feed/', max_speed='500.0', num_threads='5',
+            ssl_client_cert="Trust me, I'm who I say I am.", ssl_client_key="Secret Key",
+            ssl_ca_cert="Uh, I guess that's the right server.",
+            proxy_url='http://proxy.com', proxy_port='1234', proxy_user="the_dude",
+            proxy_password='bowling')
+
+        report = self.iso_sync_run.perform_sync(repo, sync_conduit, config)
 
         # There should be ten curl objects that were created since we set num_threads to 5, and they
         # get built twice (once when we download the manifest, and once when we download the ISOs.)
