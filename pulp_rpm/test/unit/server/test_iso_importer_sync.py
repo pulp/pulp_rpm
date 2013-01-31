@@ -135,6 +135,41 @@ class TestISOSyncRun(PulpRPMTests):
         # of a StringIO, but we can still inspect the last call
         self.assertEqual(curl.setopt.call_args_list[15][0][0], pycurl.WRITEFUNCTION)
 
+    def test__create_units(self):
+        """
+        Make sure we make the right calls to the sync_conduit and perform the correct move
+        operations.
+        """
+        test_path = os.path.join(self.temp_dir, 'test.iso')
+        test_data = 'If it weren’t for C, we’d all be programming in BASI and OBOL.'
+        with open(test_path, 'w') as test_file:
+            test_file.write(test_data)
+        pkg_dir = os.path.join(self.temp_dir, 'content')
+        os.mkdir(pkg_dir)
+        sync_conduit = importer_mocks.get_sync_conduit(type_id=TYPE_ID_ISO, pkg_dir=pkg_dir)
+        # Let's just run it with one Unit
+        new_iso = {'name': 'test.iso', 'size': 1, 'checksum': 'sum1', 'destination': test_path}
+        self.iso_sync_run._create_units(sync_conduit, [new_iso])
+
+        # There should have been two calls to the sync_conduit. Once to initialize the unit, and
+        # once to save it
+        expected_relative_path = os.path.join(new_iso['name'], new_iso['checksum'],
+                                              str(new_iso['size']), new_iso['name'])
+        sync_conduit.init_unit.assert_called_once_with(
+            TYPE_ID_ISO,
+            {'name': new_iso['name'], 'size': new_iso['size'], 'checksum': new_iso['checksum']},
+            {}, expected_relative_path)
+        self.assertEqual(sync_conduit.save_unit.call_count, 1)
+        unit = sync_conduit.save_unit.call_args_list[0][0][0]
+        self.assertEqual(unit.unit_key['name'], new_iso['name'])
+
+        # The file should have been moved to the final destination
+        expected_destination = os.path.join(self.temp_dir, 'content', expected_relative_path)
+        with open(expected_destination) as written_file:
+            self.assertEqual(written_file.read(), test_data)
+        # Since this performed a move operation, the file should not exist at the original path
+        self.assertFalse(os.path.exists(test_path))
+
     def test__filter_missing_isos(self):
         """
         Make sure this method returns the items from the manifest that weren't in the sync_conduit.

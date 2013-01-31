@@ -97,6 +97,32 @@ class ISOSyncRun(object):
         return report
 
 
+    def _create_units(self, sync_conduit, new_isos):
+        """
+        For each ISO specified in new_isos, create a new Pulp Unit and move the file from its
+        temporary storage location to the storage location specified by the Unit. new_isos is a list
+        of dictionaries that describe the isos that have been downloaded, and is the same format as
+        the return value from
+        pulp_rpm.plugins.importers.iso_importer.bumper.ISOBumper.download_resources.
+
+        :param sync_conduit: The sync_conduit that gives us access to the local repository
+        :type  sync_conduit: pulp.server.conduits.repo_sync.RepoSyncConduit
+        :param new_isos:     A list of dictionaries describing the newly downloaded ISOs.
+        :type  new_isos:     list
+        """
+        for iso in new_isos:
+            unit_key = {'name': iso['name'], 'size': iso['size'], 'checksum': iso['checksum']}
+            metadata = {}
+            relative_path = os.path.join(unit_key['name'], unit_key['checksum'],
+                                         str(unit_key['size']), unit_key['name'])
+            unit = sync_conduit.init_unit(ids.TYPE_ID_ISO, unit_key, metadata, relative_path)
+            # Move the unit to the storage_path
+            temporary_file_location = iso['destination']
+            permanent_file_location = unit.storage_path
+            shutil.move(temporary_file_location, permanent_file_location)
+            unit = sync_conduit.save_unit(unit)
+
+
     def _filter_missing_isos(self, sync_conduit, manifest):
         """
         Use the sync_conduit and the ISOBumper manifest to determine which ISOs are at the feed_url
@@ -128,29 +154,3 @@ class ISOSyncRun(object):
         missing_iso_keys = list(available_iso_keys - existing_iso_keys)
         missing_isos = [available_units_by_key[k] for k in missing_iso_keys]
         return missing_isos
-
-
-    def _create_units(self, sync_conduit, new_isos):
-        """
-        For each ISO specified in new_isos, create a new Pulp Unit and move the file from its
-        temporary storage location to the storage location specified by the Unit. new_isos is a list
-        of dictionaries that describe the isos that have been downloaded, and is the same format as
-        the return value from
-        pulp_rpm.plugins.importers.iso_importer.bumper.ISOBumper.download_resources.
-
-        :param sync_conduit: The sync_conduit that gives us access to the local repository
-        :type  sync_conduit: pulp.server.conduits.repo_sync.RepoSyncConduit
-        :param new_isos:     A list of dictionaries describing the newly downloaded ISOs.
-        :type  new_isos:     list
-        """
-        for iso in new_isos:
-            unit_key = {'name': iso['name'], 'size': iso['size'], 'checksum': iso['checksum']}
-            metadata = {}
-            relative_path = os.path.join(unit_key['name'], unit_key['checksum'],
-                                         str(unit_key['size']), unit_key['name'])
-            unit = sync_conduit.init_unit(ids.TYPE_ID_ISO, unit_key, metadata, relative_path)
-            # Move the unit to the storage_path
-            temporary_file_location = iso['destination']
-            permanent_file_location = unit.storage_path
-            shutil.move(temporary_file_location, permanent_file_location)
-            unit = sync_conduit.save_unit(unit)
