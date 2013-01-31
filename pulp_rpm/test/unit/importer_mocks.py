@@ -136,11 +136,17 @@ def get_dependency_conduit(type_id=None, unit_key=None, metadata=None, existing_
         if existing_units:
             for u in existing_units:
                 if criteria:
+                    if criteria.skip:
+                        return []
                     if u.type_id in criteria.type_ids:
                         ret_val.append(u)
                 else:
                     ret_val.append(u)
         return ret_val
+
+    def get_repo_scratchpad(repoid=None):
+        return {}
+
 
     dependency_conduit = mock.Mock(spec=DependencyResolutionConduit)
     dependency_conduit.get_units = mock.Mock()
@@ -150,6 +156,9 @@ def get_dependency_conduit(type_id=None, unit_key=None, metadata=None, existing_
 
     dependency_conduit.build_success_report = mock.Mock()
     dependency_conduit.build_success_report.side_effect = side_effect
+
+    dependency_conduit.get_repo_scratchpad = mock.Mock()
+    dependency_conduit.get_repo_scratchpad.side_effect = get_repo_scratchpad
 
     return dependency_conduit
 
