@@ -81,8 +81,8 @@ class TestISODistributor(PulpRPMTests):
         report = self.iso_distributor.publish_repo(repo, publish_conduit, config)
 
         # Let's verify that the publish directory looks right
-        publishing_paths = [os.path.join(dir, 'lebowski') \
-                          for dir in [constants.ISO_HTTP_DIR, constants.ISO_HTTPS_DIR]]
+        publishing_paths = [os.path.join(directory, 'lebowski') \
+                          for directory in [constants.ISO_HTTP_DIR, constants.ISO_HTTPS_DIR]]
         for publishing_path in publishing_paths:
             for unit in self.existing_units:
                 expected_symlink_path = os.path.join(publishing_path, unit.unit_key['name'])
@@ -102,3 +102,27 @@ class TestISODistributor(PulpRPMTests):
             expected_manifest_rows = [['test.iso', 'sum1', '1'], ['test2.iso', 'sum2', '2'],
                                       ['test3.iso', 'sum3', '3']]
             self.assertEqual(manifest_rows, expected_manifest_rows)
+
+    def test_validate_config(self):
+        # validate_config doesn't use the repo or related_repos args, so we'll just pass None for
+        # ease
+        config = distributor_mocks.get_basic_config(**{constants.CONFIG_SERVE_HTTP: True,
+                                                       constants.CONFIG_SERVE_HTTPS: True})
+        status, error_message = self.iso_distributor.validate_config(None, config, None)
+        self.assertTrue(status)
+        self.assertEqual(error_message, None)
+        
+        # Try setting the HTTP one to a string, which should be OK as long as it's still True
+        config = distributor_mocks.get_basic_config(**{constants.CONFIG_SERVE_HTTP: "True",
+                                                       constants.CONFIG_SERVE_HTTPS: True})
+        status, error_message = self.iso_distributor.validate_config(None, config, None)
+        self.assertTrue(status)
+        self.assertEqual(error_message, None)
+        
+        # Now try setting the HTTPS one to an invalid string
+        config = distributor_mocks.get_basic_config(**{constants.CONFIG_SERVE_HTTP: True,
+                                                       constants.CONFIG_SERVE_HTTPS: "Heyo!"})
+        status, error_message = self.iso_distributor.validate_config(None, config, None)
+        self.assertFalse(status)
+        self.assertEqual(error_message,
+                         'The value for <serve_https> must be either "true" or "false"')
