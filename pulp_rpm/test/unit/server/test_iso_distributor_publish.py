@@ -11,6 +11,7 @@
 # have received a copy of GPLv2 along with this software; if not, see
 # http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt.
 import csv
+import errno
 import os
 import shutil
 import tempfile
@@ -164,6 +165,46 @@ class TestPublish(PulpRPMTests):
         build_dir = publish._get_or_create_build_dir(repo)
         self.assertEqual(build_dir, expected_build_dir)
 
+    def test__get_or_create_build_dir_already_exists(self):
+        """
+        _get_or_create_build_dir() should correctly handle the situation when the build_dir already exists.
+        """
+        repo = MagicMock(spec=Repository)
+        repo.working_dir = self.temp_dir
+
+        # Assert that the build dir does not exist
+        expected_build_dir = os.path.join(self.temp_dir, publish.BUILD_DIRNAME)
+        os.makedirs(expected_build_dir)
+        self.assertTrue(os.path.exists(expected_build_dir))
+
+        build_dir = publish._get_or_create_build_dir(repo)
+
+        # Assert that the build dir is correct and has been created
+        self.assertEqual(build_dir, expected_build_dir)
+        self.assertTrue(os.path.exists(build_dir))
+
+    @patch("os.makedirs")
+    def test__get_or_create_build_dir_oserror(self, makedirs):
+        """
+        Let's raise the OSError that this method tries to catch to make sure we raise it appropriately.
+        """
+        os_error = OSError()
+        os_error.errno = errno.ENOSPC
+        makedirs.side_effect = os_error
+        
+        repo = MagicMock(spec=Repository)
+        repo.working_dir = self.temp_dir
+
+        # Assert that the build dir does not exist
+        expected_build_dir = os.path.join(self.temp_dir, publish.BUILD_DIRNAME)
+        self.assertFalse(os.path.exists(expected_build_dir))
+
+        try:
+            publish._get_or_create_build_dir(repo)
+            self.fail("An OSError should have been raised but was not.")
+        except OSError, e:
+            self.assertEqual(e.errno, errno.ENOSPC)
+
     def test__symlink_units(self):
         """
         Make sure that the _symlink_units creates all the correct symlinks.
@@ -187,6 +228,61 @@ class TestPublish(PulpRPMTests):
             self.assertTrue(os.path.islink(expected_symlink_path))
             expected_symlink_destination = os.path.join('/', 'path', unit.unit_key['name'])
             self.assertEqual(os.path.realpath(expected_symlink_path), expected_symlink_destination)
+
+    @patch('os.symlink', side_effect=os.symlink)
+    def test__symlink_units_existing_correct_link(self, symlink):
+        """
+        Make sure that the _symlink_units handles an existing correct link well.
+        """
+        repo = MagicMock(spec=Repository)
+        repo.working_dir = self.temp_dir
+
+        # There's some logic in _symlink_units to handle preexisting files and symlinks, so let's
+        # create some fakes to see if it does the right thing
+        build_dir = publish._get_or_create_build_dir(repo)
+        unit = self.existing_units[0]
+        expected_symlink_destination = os.path.join('/', 'path', unit.unit_key['name'])
+        os.symlink(expected_symlink_destination,
+                   os.path.join(build_dir, unit.unit_key['name']))
+        # Now let's reset the Mock so that we can make sure it doesn't get called during _symlink
+        symlink.reset_mock()
+
+        publish._symlink_units(repo, [unit])
+
+        # The call count for symlink should be 0, because the _symlink_units call should have noticed that the
+        # symlink was already correct and thus should have skipped it
+        self.assertEqual(symlink.call_count, 0)
+        expected_symlink_path = os.path.join(build_dir, unit.unit_key['name'])
+        self.assertTrue(os.path.islink(expected_symlink_path))
+        self.assertEqual(os.path.realpath(expected_symlink_path), expected_symlink_destination)
+
+    @patch('os.readlink')
+    def test__symlink_units_os_error(self, readlink):
+        """
+        Make sure that the _symlink_units handles an OSError correctly, for the case where it doesn't raise
+        EINVAL. We already have a test that raises EINVAL (test__symlink_units places an ordinary file there.)
+        """
+        os_error = OSError()
+        # This would be an unexpected error for reading a symlink!
+        os_error.errno = errno.ENOSPC
+        readlink.side_effect = os_error
+
+        repo = MagicMock(spec=Repository)
+        repo.working_dir = self.temp_dir
+
+        # There's some logic in _symlink_units to handle preexisting files and symlinks, so let's
+        # create some fakes to see if it does the right thing
+        build_dir = publish._get_or_create_build_dir(repo)
+        unit = self.existing_units[0]
+        expected_symlink_destination = os.path.join('/', 'path', unit.unit_key['name'])
+        os.symlink(expected_symlink_destination,
+                   os.path.join(build_dir, unit.unit_key['name']))
+
+        try:
+            publish._symlink_units(repo, [unit])
+            self.fail('An OSError should have been raised, but was not!')
+        except OSError, e:
+            self.assertEqual(e.errno, errno.ENOSPC)
 
     def test__rmtree_if_exists(self):
         """
