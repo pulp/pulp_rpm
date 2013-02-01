@@ -69,5 +69,10 @@ def _validate_max_speed(config):
         return True, None
     try:
         max_speed = float(max_speed)
+        if max_speed <= 0:
+            raise ValueError()
     except ValueError:
-        return False, _('The configuration parameter <%(max_speed)s> must be set to a numerical value, but is currently set to <%(max_speed)s>.')
+        return False, _('The configuration parameter <%(max_speed_name)s> must be set to a positive '
+                        'numerical value, but is currently set to <%(max_speed_value)s>.')%{
+                            'max_speed_name': constants.CONFIG_MAX_SPEED, 'max_speed_value': max_speed}
+    return True, None
