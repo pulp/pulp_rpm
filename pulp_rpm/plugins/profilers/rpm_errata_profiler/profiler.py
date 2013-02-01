@@ -15,6 +15,7 @@
 Profiler plugin to support RPM Errata functionality
 """
 import gettext
+import copy
 
 from pulp.plugins.model import ApplicabilityReport
 from pulp.plugins.profiler import Profiler, InvalidUnitsRequested
@@ -80,7 +81,7 @@ class RPMErrataProfiler(Profiler):
     # -- applicability ---------------------------------------------------------
 
 
-    def unit_applicable(self, consumer, unit, config, conduit):
+    def units_applicable(self, consumer, repo_ids, unit_type_id, unit_keys, config, conduit):
         """
         Determine whether the content unit is applicable to
         the specified consumer.  The definition of "applicable" is content
@@ -101,13 +102,29 @@ class RPMErrataProfiler(Profiler):
         @return: An applicability report.
         @rtype: L{pulp.plugins.model.ApplicabilityReport}
         """
-        applicable = False
-        applicable_rpms, upgrade_details = self.translate(unit, consumer, conduit)
-        if applicable_rpms:
-            applicable = True
-        summary = {}
-        details = {"applicable_rpms": applicable_rpms, "upgrade_details":upgrade_details}
-        return ApplicabilityReport(unit, applicable, summary, details)
+        if unit_type_id != TYPE_ID_ERRATA:
+            error_msg = _("units_applicable invoked with type_id [%s], expected [%s]") % (unit_type_id, TYPE_ID_ERRATA)
+            _LOG.error(error_msg)
+            raise InvalidUnitsRequested(unit_keys, error_msg)
+        
+        applicability_reports = []
+        
+        # If repo_ids or units are empty lists, no need to check for applicability.
+        if not repo_ids or not unit_keys:
+            return applicability_reports
+
+        # For each unit 
+        for unit in unit_keys:
+            report_unit_copy = copy.deepcopy(unit)
+            applicable_rpms, upgrade_details = self.translate(unit, repo_ids, consumer, conduit)
+            if applicable_rpms:
+                applicable = True
+                summary = {}
+                details = {"applicable_rpms": applicable_rpms, "upgrade_details":upgrade_details}
+          
+                applicability_reports.append(ApplicabilityReport(report_unit_copy, summary, details))
+
+        return applicability_reports
 
 
     # -- Below are helper methods not part of the Profiler interface ----
@@ -134,12 +151,12 @@ class RPMErrataProfiler(Profiler):
         """
         translated_units = []
         for unit in units:
-            values, upgrade_details = self.translate(unit, consumer, conduit)
+            values, upgrade_details = self.translate(unit, conduit.get_bindings(consumer.id), consumer, conduit)
             if values:
                 translated_units.extend(values)
         return translated_units
 
-    def translate(self, unit, consumer, conduit):
+    def translate(self, unit, repo_ids, consumer, conduit):
         """
         Translates an erratum to a list of rpm units
         The rpm units refer to the upgraded packages referenced by the erratum
@@ -163,40 +180,34 @@ class RPMErrataProfiler(Profiler):
 
         @rtype ([{'unit_key':{'name':name.arch}, 'type_id':'rpm'}], {'name arch':{'available':{}, 'installed':{}}   })
         """
-        if unit["type_id"] != TYPE_ID_ERRATA:
-            error_msg = _("unit_applicable invoked with type_id [%s], expected [%s]") % (unit["type_id"], TYPE_ID_ERRATA)
-            _LOG.error(error_msg)
-            raise InvalidUnitsRequested([unit], error_msg)
-        errata = self.find_unit_associated_to_consumer(unit["type_id"], unit["unit_key"], consumer, conduit)
+        errata = self.find_unit_associated_to_consumer(TYPE_ID_ERRATA, unit, repo_ids, consumer, conduit)
         if not errata:
             error_msg = _("Unable to find errata with unit_key [%s] in bound repos [%s] to consumer [%s]") % \
-                    (unit["unit_key"], conduit.get_bindings(consumer.id), consumer.id)
-            _LOG.error(error_msg)
-            raise InvalidUnitsRequested([unit], error_msg)
-        updated_rpms = self.get_rpms_from_errata(errata)
-        _LOG.info("Errata <%s> refers to %s updated rpms of: %s" % (errata.unit_key['id'], len(updated_rpms), updated_rpms))
-        applicable_rpms, upgrade_details = self.rpms_applicable_to_consumer(consumer, updated_rpms)
-        if applicable_rpms:
-            _LOG.info("Rpms: <%s> were found to be related to errata <%s> and applicable to consumer <%s>" % (applicable_rpms, errata, consumer.id))
-        # Return as list of name.arch values
-        ret_val = []
-        for ar in applicable_rpms:
-            pkg_name = "%s.%s" % (ar["name"], ar["arch"])
-            data = {"unit_key":{"name":pkg_name}, "type_id":TYPE_ID_RPM}
-            ret_val.append(data)
-        _LOG.info("Translated errata <%s> to <%s>" % (errata, ret_val))
-        return ret_val, upgrade_details
+                    (unit, repo_ids, consumer.id)
+            _LOG.info(error_msg)
+            return None, None
+            #raise InvalidUnitsRequested([unit], error_msg)
+        else:
+            updated_rpms = self.get_rpms_from_errata(errata)
+            _LOG.info("Errata <%s> refers to %s updated rpms of: %s" % (errata.unit_key['id'], len(updated_rpms), updated_rpms))
+            applicable_rpms, upgrade_details = self.rpms_applicable_to_consumer(consumer, updated_rpms)
+            if applicable_rpms:
+                _LOG.info("Rpms: <%s> were found to be related to errata <%s> and applicable to consumer <%s>" % (applicable_rpms, errata, consumer.id))
+            # Return as list of name.arch values
+            ret_val = []
+            for ar in applicable_rpms:
+                pkg_name = "%s.%s" % (ar["name"], ar["arch"])
+                data = {"unit_key":{"name":pkg_name}, "type_id":TYPE_ID_RPM}
+                ret_val.append(data)
+            _LOG.info("Translated errata <%s> to <%s>" % (errata, ret_val))
+            return ret_val, upgrade_details
 
-    def find_unit_associated_to_consumer(self, unit_type, unit_key, consumer, conduit):
+    def find_unit_associated_to_consumer(self, unit_type, unit_key, repo_ids, consumer, conduit):
         criteria = UnitAssociationCriteria(type_ids=[unit_type], unit_filters=unit_key)
-        return self.find_unit_associated_to_consumer_by_criteria(criteria, consumer, conduit)
+        return self.find_unit_associated_to_consumer_by_criteria(criteria, repo_ids, consumer, conduit)
 
-    def find_unit_associated_to_consumer_by_criteria(self, criteria, consumer, conduit):
-        # We don't know what repo the unit could belong to
-        # and we don't have a means for querying all repos at once
-        # so we are iterating over each repo
-        bound_repo_ids = conduit.get_bindings(consumer.id)
-        for repo_id in bound_repo_ids:
+    def find_unit_associated_to_consumer_by_criteria(self, criteria, repo_ids, consumer, conduit):
+        for repo_id in repo_ids:
             result = conduit.get_units(repo_id, criteria)
             _LOG.info("Found %s items when searching in repo <%s> for <%s>" % (len(result), repo_id, criteria))
             if result:
