@@ -153,7 +153,6 @@ def _symlink_units(repo, units):
                 # This will happen if we attempt to call readlink() on a file that wasn't a symlink.
                 # We should remove the file and add the symlink. There error code should be EINVAL.
                 # If it isn't, something else is wrong and we should raise.
-                print e.errno
                 if e.errno != errno.EINVAL:
                     raise e
                 # Remove the file that's at the symlink_filename path
