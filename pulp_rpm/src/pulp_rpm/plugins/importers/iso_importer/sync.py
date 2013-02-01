@@ -10,7 +10,6 @@
 # NON-INFRINGEMENT, or FITNESS FOR A PARTICULAR PURPOSE. You should
 # have received a copy of GPLv2 along with this software; if not, see
 # http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt.
-import errno
 import logging
 import os
 import shutil
@@ -18,12 +17,10 @@ import shutil
 from pulp_rpm.common import constants, ids
 from pulp_rpm.common.constants import STATE_RUNNING, STATE_COMPLETE
 from pulp_rpm.common.sync_progress import SyncProgressReport
-from pulp_rpm.plugins.importers.iso_importer import configuration
 from pulp_rpm.plugins.importers.iso_importer.bumper import ISOBumper
 
 from pulp.common.util import encode_unicode
 from pulp.plugins.conduits.mixins import UnitAssociationCriteria
-import pulp.server.util
 
 
 logger = logging.getLogger(__name__)

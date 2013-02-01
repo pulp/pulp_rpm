@@ -14,7 +14,6 @@ import os
 import shutil
 import tempfile
 
-from pulp_rpm.common.constants import STATE_COMPLETE
 from pulp_rpm.common.ids import TYPE_ID_ISO
 from pulp_rpm.plugins.importers.iso_importer.bumper import ISOBumper
 from pulp_rpm.plugins.importers.iso_importer.sync import ISOSyncRun
