@@ -54,26 +54,26 @@ class RPMErrataProfiler(Profiler):
         specified consumer.  It is requested that the profiler translate
         the units as needed.
 
-        @param consumer: A consumer.
-        @type consumer: L{pulp.server.plugins.model.Consumer}
+        :param consumer: A consumer.
+        :type consumer: L{pulp.server.plugins.model.Consumer}
 
-        @param units: A list of content units to be installed.
-        @type units: list of:
+        :param units: A list of content units to be installed.
+        :type units: list of:
             { type_id:<str>, unit_key:<dict> }
 
-        @param options: Install options; based on unit type.
-        @type options: dict
+        :param options: Install options; based on unit type.
+        :type options: dict
 
-        @param config: plugin configuration
-        @type config: L{pulp.server.plugins.config.PluginCallConfiguration}
+        :param config: plugin configuration
+        :type config: L{pulp.server.plugins.config.PluginCallConfiguration}
 
-        @param conduit: provides access to relevant Pulp functionality
-        @type conduit: L{pulp.plugins.conduits.profile.ProfilerConduit}
+        :param conduit: provides access to relevant Pulp functionality
+        :type conduit: L{pulp.plugins.conduits.profile.ProfilerConduit}
 
-        @return:    a list of dictionaries containing info on the 'translated units'.
+        :return:    a list of dictionaries containing info on the 'translated units'.
                     each dictionary contains a 'name' key which refers 
                     to the rpm name associated to the errata
-        @rtype [{'unit_key':{'name':name.arch}, 'type_id':'rpm'}]
+        :rtype [{'unit_key':{'name':name.arch}, 'type_id':'rpm'}]
         """
         return self.translate_units(units, consumer, conduit)
 
@@ -87,20 +87,26 @@ class RPMErrataProfiler(Profiler):
         the specified consumer.  The definition of "applicable" is content
         type specific and up to the descision of the profiler.
 
-        @param consumer: A consumer.
-        @type consumer: L{pulp.server.plugins.model.Consumer}
+        :param consumer: A consumer.
+        :type consumer: L{pulp.server.plugins.model.Consumer}
 
-        @param unit: A content unit: { type_id:<str>, unit_key:<dict> }
-        @type unit: dict
+        :param repo_ids: Repo ids to confine the applicability search to.
+        :type repo_ids: list of str
 
-        @param config: plugin configuration
-        @type config: L{pulp.server.plugins.config.PluginCallConfiguration}
+        :param unit_type_id: Common type id of all given unit keys
+        :type unit_type_id: str
 
-        @param conduit: provides access to relevant Pulp functionality
-        @type conduit: L{pulp.plugins.conduits.profile.ProfilerConduit}
+        :param unit_keys: list of unit keys to identify units 
+        :type unit_keys: list of dict
 
-        @return: An applicability report.
-        @rtype: L{pulp.plugins.model.ApplicabilityReport}
+        :param config: plugin configuration
+        :type config: L{pulp.server.plugins.config.PluginCallConfiguration}
+
+        :param conduit: provides access to relevant Pulp functionality
+        :type conduit: L{pulp.plugins.conduits.profile.ProfilerConduit}
+
+        :return: An applicability report.
+        :rtype: L{pulp.plugins.model.ApplicabilityReport}
         """
         if unit_type_id != TYPE_ID_ERRATA:
             error_msg = _("units_applicable invoked with type_id [%s], expected [%s]") % (unit_type_id, TYPE_ID_ERRATA)
@@ -134,20 +140,20 @@ class RPMErrataProfiler(Profiler):
         Will translate passed in errata unit_keys to a list of dictionaries
         containing the associated RPM names applicable to the consumer.
 
-        @param units: A list of content units to be uninstalled.
-        @type units: list of:
+        :param units: A list of content units to be uninstalled.
+        :type units: list of:
             { type_id:<str>, unit_key:<dict> }
 
-        @param consumer: A consumer.
-        @type consumer: L{pulp.server.plugins.model.Consumer}
+        :param consumer: A consumer.
+        :type consumer: L{pulp.server.plugins.model.Consumer}
 
-        @param conduit: provides access to relevant Pulp functionality
-        @type conduit: L{pulp.plugins.conduits.profile.ProfilerConduit}
+        :param conduit: provides access to relevant Pulp functionality
+        :type conduit: L{pulp.plugins.conduits.profile.ProfilerConduit}
 
-        @return:    a list of dictionaries containing info on the 'translated units'.
+        :return:    a list of dictionaries containing info on the 'translated units'.
                     each dictionary contains a 'name' key which refers 
                     to the rpm name associated to the errata
-        @rtype [{'unit_key':{'name':name.arch}, 'type_id':'rpm'}]
+        :rtype [{'unit_key':{'name':name.arch}, 'type_id':'rpm'}]
         """
         translated_units = []
         for unit in units:
@@ -158,27 +164,30 @@ class RPMErrataProfiler(Profiler):
 
     def translate(self, unit, repo_ids, consumer, conduit):
         """
-        Translates an erratum to a list of rpm units
+        Translates an erratum to a list of rpm units from given repo_ids.
         The rpm units refer to the upgraded packages referenced by the erratum
         only those rpms which will upgrade an existing rpm on the consumer are returned
 
-        @param unit: A content unit: { type_id:<str>, unit_key:<dict> }
-        @type unit: dict
+        :param unit: A content unit key
+        :type unit: dict
 
-        @param consumer: A consumer.
-        @type consumer: L{pulp.server.plugins.model.Consumer}
+        :param repo_ids: Repo ids to confine the unit search to.
+        :type repo_ids: list of str
 
-        @param conduit: provides access to relevant Pulp functionality
-        @type conduit: L{pulp.plugins.conduits.profile.ProfilerConduit}
+        :param consumer: A consumer.
+        :type consumer: L{pulp.server.plugins.model.Consumer}
 
-        @return:    a tuple consisting of
+        :param conduit: provides access to relevant Pulp functionality
+        :type conduit: L{pulp.plugins.conduits.profile.ProfilerConduit}
+
+        :return:    a tuple consisting of
                         list of dictionaries containing info on the 'translated units'.
                         each dictionary contains a 'name' key which refers 
                         to the rpm name associated to the errata
 
                         dictionary containing information on what existing rpms will be upgraded
 
-        @rtype ([{'unit_key':{'name':name.arch}, 'type_id':'rpm'}], {'name arch':{'available':{}, 'installed':{}}   })
+        :rtype ([{'unit_key':{'name':name.arch}, 'type_id':'rpm'}], {'name arch':{'available':{}, 'installed':{}}   })
         """
         errata = self.find_unit_associated_to_consumer(TYPE_ID_ERRATA, unit, repo_ids, consumer, conduit)
         if not errata:
@@ -216,11 +225,11 @@ class RPMErrataProfiler(Profiler):
 
     def get_rpms_from_errata(self, errata):
         """
-        @param errata
-        @type errata: pulp.plugins.model.Unit
+        :param errata
+        :type errata: pulp.plugins.model.Unit
 
-        @return list of rpms, which are each a dict of nevra info
-        @rtype: [{}]
+        :return list of rpms, which are each a dict of nevra info
+        :rtype: [{}]
         """
         rpms = []
         if not errata.metadata.has_key("pkglist"):
@@ -233,20 +242,20 @@ class RPMErrataProfiler(Profiler):
 
     def rpms_applicable_to_consumer(self, consumer, errata_rpms):
         """
-        @param consumer:
-        @type consumer: L{pulp.server.plugins.model.Consumer}
+        :param consumer:
+        :type consumer: L{pulp.server.plugins.model.Consumer}
 
-        @param errata_rpms: 
-        @type errata_rpms: list of dicts
+        :param errata_rpms: 
+        :type errata_rpms: list of dicts
 
-        @return:    tuple, first entry list of dictionaries of applicable 
+        :return:    tuple, first entry list of dictionaries of applicable 
                     rpm entries, second entry dictionary with more info 
                     of which installed rpm will be upgraded by what rpm
 
                     Note:
                     This method does not take into consideration if the consumer
                     is bound to the repo containing the RPM.
-        @rtype: ([{}], {})
+        :rtype: ([{}], {})
         """
         applicable_rpms = []
         older_rpms = {}
