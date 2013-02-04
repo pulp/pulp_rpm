@@ -29,6 +29,7 @@ from grinder.BaseFetch import BaseFetch
 sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)) + "/../../../src/")
 sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)) + "/../../../plugins/importers/")
 import importer_mocks
+import constants
 from yum_importer import importer_rpm
 from yum_importer.importer import YumImporter
 from pulp_rpm.common.ids import TYPE_ID_RPM, UNIT_KEY_RPM, TYPE_ID_IMPORTER_YUM, TYPE_ID_ERRATA, TYPE_ID_DISTRO, TYPE_ID_PKG_CATEGORY, TYPE_ID_PKG_GROUP
@@ -553,7 +554,9 @@ class TestImportDependencies(rpm_support_base.PulpRPMTests):
         # clean up dir created by yum's repostorage
         if os.path.exists("./test_resolve_deps"):
             shutil.rmtree("test_resolve_deps")
-
+        if os.path.exists("/tmp/test_resolve_deps"):
+            shutil.rmtree("/tmp/test_resolve_deps")
+            
     def get_files_in_dir(self, pattern, path):
         files = []
         for d,_,_ in os.walk(path):
@@ -562,9 +565,17 @@ class TestImportDependencies(rpm_support_base.PulpRPMTests):
 
     def existing_units(self):
         units = []
-        for unit in [self.UNIT_KEY_A, self.UNIT_KEY_B]:
-            unit = Unit(TYPE_ID_RPM, unit, {}, '')
-            units.append(unit)
+#        for unit in [self.UNIT_KEY_A, self.UNIT_KEY_B]:
+#            unit = Unit(TYPE_ID_RPM, unit, {}, '')
+#            units.append(unit)
+
+        unit = Unit(TYPE_ID_RPM, self.UNIT_KEY_A, {}, '')
+        unit.metadata = constants.PULP_SERVER_RPM_METADATA
+        units.append(unit)
+
+        unit = Unit(TYPE_ID_RPM, self.UNIT_KEY_B, {}, '')
+        unit.metadata = constants.PULP_RPM_SERVER_RPM_METADATA
+        units.append(unit)
         return units
 
     def test_import(self):
@@ -595,11 +606,11 @@ class TestImportDependencies(rpm_support_base.PulpRPMTests):
         existing_units = self.existing_units()
         # REPO A (source)
         repoA = mock.Mock(spec=Repository)
-        repoA.working_dir = self.data_dir
+        repoA.working_dir = "/tmp/test_resolve_deps"
         repoA.id = "test_resolve_deps"
         # REPO B (target)
         repoB = mock.Mock(spec=Repository)
-        repoB.working_dir = self.working_dir
+        repoB.working_dir = "/tmp/test_resolve_deps"
         repoB.id = "repo_b"
         units = [Unit(TYPE_ID_RPM, self.UNIT_KEY_B, {}, '')]
         conduit = importer_mocks.get_import_conduit(units, existing_units=existing_units)
