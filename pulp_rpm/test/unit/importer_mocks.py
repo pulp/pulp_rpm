@@ -68,6 +68,8 @@ def get_import_conduit(source_units=None, existing_units=None):
         if existing_units:
             for u in existing_units:
                 if criteria:
+                    if criteria.skip:
+                        return []
                     if u.type_id in criteria.type_ids:
                         ret_val.append(u)
                 else:
@@ -85,12 +87,18 @@ def get_import_conduit(source_units=None, existing_units=None):
     def save_unit(unit):
         units = []
         return units.append(unit)
+
+    def get_repo_scratchpad(repoid=None):
+        return {}
+
     import_conduit = mock.Mock(spec=ImportUnitConduit)
     import_conduit.get_source_units.side_effect = get_source_units
     import_conduit.get_units.side_effect = get_units
     import_conduit.search_all_units.side_effect = search_all_units
     import_conduit.save_unit = mock.Mock()
     import_conduit.save_unit.side_effect = save_unit
+    import_conduit.get_repo_scratchpad = mock.Mock()
+    import_conduit.get_repo_scratchpad.side_effect = get_repo_scratchpad
     return import_conduit
 
 def get_upload_conduit(type_id=None, unit_key=None, metadata=None, relative_path=None, pkg_dir=None):
