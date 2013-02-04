@@ -665,8 +665,8 @@ class YumImporter(Importer):
         # generate metadata for the source repo
         metadata_status, metadata_errors = self._generate_metadata(repo, dependency_conduit, config)
         if not metadata_status:
-            # let depsolver use existing metadata if available or
-            # handle the failure if metadata is missing, just log it
+            # unable to generate metadata, lets fail right here as dependency resolver wont handle this
+            # gracefully.
             msg = "Failed to generate metadata for repo %s; Error %s" % (repo.id, metadata_errors)
             _LOG.error(msg)
             raise metadata.GenerateYumMetadataException(msg)
