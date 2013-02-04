@@ -29,7 +29,7 @@ from pulp.plugins.model import Unit, SyncReport
 from pulp_rpm.common.ids import TYPE_ID_IMPORTER_YUM, TYPE_ID_PKG_GROUP, TYPE_ID_PKG_CATEGORY, TYPE_ID_DISTRO,\
         TYPE_ID_DRPM, TYPE_ID_ERRATA, TYPE_ID_RPM, TYPE_ID_SRPM
 from pulp_rpm.common import constants
-from pulp_rpm.yum_plugin import util, depsolver
+from pulp_rpm.yum_plugin import util, depsolver, metadata
 from pulp_rpm.yum_plugin.metadata import get_package_xml
 
 _ = gettext.gettext
@@ -41,15 +41,15 @@ OPTIONAL_CONFIG_KEYS = ['feed_url', 'ssl_verify', 'ssl_ca_cert', 'ssl_client_cer
                         'proxy_url', 'proxy_port', 'proxy_pass', 'proxy_user',
                         'max_speed', 'verify_size', 'verify_checksum', 'num_threads',
                         'newest', 'remove_old', 'num_old_packages', 'purge_orphaned', 'skip', 'checksum_type',
-                        'num_retries', 'retry_delay']
+                        'num_retries', 'retry_delay', 'resolve_dependencies']
 ###
 # Config Options Explained
 ###
 # feed_url: Repository URL
 # ssl_verify: True/False to control if yum/curl should perform SSL verification of the host
-# ssl_ca_cert: Path to SSL CA certificate used for ssl verification
-# ssl_client_cert: Path to SSL Client certificate, used for protected repository access
-# ssl_client_key: Path to SSL Client key, used for protected repository access
+# ssl_ca_cert: String with SSL CA certificate used for ssl verification
+# ssl_client_cert: String with SSL Client certificate, used for protected repository access
+# ssl_client_key: String with SSL Client key, used for protected repository access
 # proxy_url: Proxy URL
 # proxy_port: Port Port
 # proxy_user: Username for Proxy
@@ -662,6 +662,14 @@ class YumImporter(Importer):
     def resolve_dependencies(self, repo, units, dependency_conduit, config):
         result_dict = {}
         pkglist =  self.pkglist(units)
+        # generate metadata for the source repo
+        metadata_status, metadata_errors = self._generate_metadata(repo, dependency_conduit, config)
+        if not metadata_status:
+            # let depsolver use existing metadata if available or
+            # handle the failure if metadata is missing, just log it
+            msg = "Failed to generate metadata for repo %s; Error %s" % (repo.id, metadata_errors)
+            _LOG.error(msg)
+            raise metadata.GenerateYumMetadataException(msg)
         dsolve = depsolver.DepSolver([repo], pkgs=pkglist)
         if config.get('recursive'):
             results = dsolve.getRecursiveDepList()
@@ -685,6 +693,15 @@ class YumImporter(Importer):
         result_dict['printable_dependency_result'] = dsolve.printable_result(results)
         dsolve.cleanup()
         return result_dict
+
+    def _generate_metadata(self, repo, conduit, config):
+        _LOG.info("Generating metadata for source repo %s" % repo.id)
+        metadata_status, metadata_errors = metadata.generate_yum_metadata(
+            os.path.join(repo.working_dir, repo.id), conduit, config,
+            is_cancelled=self.canceled, repo_scratchpad=conduit.get_repo_scratchpad())
+        _LOG.debug("metadata generation complete; metadata status : %s; errors : %s" %
+                  (metadata_status, metadata_errors))
+        return metadata_status, metadata_errors
 
     def cancel_sync_repo(self, call_request, call_report):
         self.canceled = True

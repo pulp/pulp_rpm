@@ -209,7 +209,7 @@ class Install(PollingCommand):
             prompt.render_failure_message(_(msg))
             prompt.render_failure_message(details['message'])
             return
-        msg = 'Install Succeeded'
+        msg = 'Install Completed'
         prompt.render_success_message(_(msg))
         # reported as succeeded
         details = task.result['details'][TYPE_ID_RPM]['details']
@@ -231,6 +231,11 @@ class Install(PollingCommand):
                 deps,
                 order=filter,
                 filters=filter)
+        errors = details.get('errors', None)
+        if errors:
+            prompt.render_failure_message(_('Failed to install following packages:'))
+            for key, value in errors.items():
+                prompt.write(_('%(pkg)s : %(msg)s\n') % {'pkg': key, 'msg': value})
 
 class Update(PollingCommand):
 
@@ -325,7 +330,7 @@ class Update(PollingCommand):
             prompt.render_failure_message(_(msg))
             prompt.render_failure_message(details['message'])
             return
-        msg = 'Update Succeeded'
+        msg = 'Update Completed'
         prompt.render_success_message(_(msg))
         # reported as succeeded
         details = task.result['details'][TYPE_ID_RPM]['details']
@@ -419,7 +424,7 @@ class Uninstall(PollingCommand):
             prompt.render_failure_message(_(msg))
             prompt.render_failure_message(details['message'])
             return
-        msg = 'Uninstall Succeeded'
+        msg = 'Uninstall Completed'
         prompt.render_success_message(_(msg))
         # reported as succeeded
         details = task.result['details'][TYPE_ID_RPM]['details']

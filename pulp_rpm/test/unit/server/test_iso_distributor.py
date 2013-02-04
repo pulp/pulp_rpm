@@ -22,6 +22,7 @@ import time
 import unittest
 from uuid import uuid4
 import importer_mocks
+from glob import glob
 
 sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)) + "/../../../plugins/importers/")
 sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)) + "/../../../plugins/distributors/")
@@ -74,6 +75,8 @@ class TestISODistributor(rpm_support_base.PulpRPMTests):
 
     def clean(self):
         shutil.rmtree(self.temp_dir)
+        for iso_file in glob('/tmp/pulpiso-*'):
+            os.remove(iso_file)
 
     def test_metadata(self):
         metadata = ISODistributor.metadata()
@@ -113,11 +116,9 @@ class TestISODistributor(rpm_support_base.PulpRPMTests):
         iso_distributor = ISODistributor()
         publish_conduit = distributor_mocks.get_publish_conduit(existing_units=existing_units, pkg_dir=self.pkg_dir)
         config = distributor_mocks.get_basic_config(https_publish_dir=self.https_publish_dir, http=False, https=True)
-        print symlink_dir
         #        status, errors = iso_distributor._export_rpms(existing_units, symlink_dir)
         repo_exporter = RepoExporter(symlink_dir)
         status, errors = repo_exporter.export_rpms(existing_units)
-        print status, errors
         self.assertTrue(status)
         self.assertEquals(len(os.listdir(symlink_dir)), 3)
 
@@ -186,11 +187,9 @@ class TestISODistributor(rpm_support_base.PulpRPMTests):
         iso_distributor = ISODistributor()
         publish_conduit = distributor_mocks.get_publish_conduit(existing_units=existing_units, pkg_dir=self.pkg_dir)
         config = distributor_mocks.get_basic_config(https_publish_dir=self.https_publish_dir, http=False, https=True)
-        print symlink_dir
         repo_exporter = RepoExporter(symlink_dir)
 #        rpm_units = iso_distributor._get_errata_rpms(errata_unit, existing_units)
         rpm_units = repo_exporter.get_errata_rpms(errata_unit, existing_units)
-        print "RPMS in ERRATA",rpm_units
         #        iso_distributor._export_rpms(rpm_units, self.repo_working_dir)
         repo_exporter.export_rpms(rpm_units)
         status, errors = repo_exporter.export_errata(errata_unit)
@@ -198,7 +197,6 @@ class TestISODistributor(rpm_support_base.PulpRPMTests):
         self.assertTrue(os.path.exists("%s/%s" % (symlink_dir, "updateinfo.xml")))
         self.assertTrue(status)
         ftypes = util.get_repomd_filetypes("%s/%s" % (symlink_dir, "repodata/repomd.xml"))
-        print ftypes
         self.assertTrue("updateinfo" in ftypes)
 
     def test_distribution_exports(self):
@@ -248,10 +246,8 @@ class TestISODistributor(rpm_support_base.PulpRPMTests):
         repo_exporter = RepoExporter(symlink_dir)
 #        status, errors = iso_distributor._export_distributions([distro_unit], symlink_dir)
         status, errors = repo_exporter.export_distributions([distro_unit])
-        print status, errors
         self.assertTrue(status)
         for file in metadata['files']:
-            print os.path.isfile("%s/%s" % (symlink_dir, file['relativepath']))
             self.assertTrue(os.path.isfile("%s/%s" % (symlink_dir, file['relativepath'])))
 
     def test_repo_export_isos(self):
@@ -288,7 +284,6 @@ class TestISODistributor(rpm_support_base.PulpRPMTests):
         # test https publish
         config = distributor_mocks.get_basic_config(http_publish_dir=self.http_publish_dir, https_publish_dir=self.https_publish_dir, http=False, https=True, generate_metadata=True)
         report = iso_distributor.publish_repo(repo, publish_conduit, config)
-        print report
         self.assertTrue(os.path.exists("%s/%s" % (self.https_publish_dir, repo.id)))
         self.assertEquals(len(os.listdir(self.http_publish_dir)), 0)
         # test http publish
@@ -312,7 +307,6 @@ class TestISODistributor(rpm_support_base.PulpRPMTests):
         self.assertEquals(len(os.listdir(self.https_publish_dir)), 0)
         isos_list = os.listdir("%s/%s" % (self.http_publish_dir, repo.id))
         self.assertEqual(len(isos_list), 1)
-        print isos_list
         # make sure the iso name uses the prefix
         self.assertTrue( isos_list[0].startswith(iso_prefix))
 
@@ -419,7 +413,6 @@ class TestISODistributor(rpm_support_base.PulpRPMTests):
         'solution' : ''}
         errata_unit = [Unit(TYPE_ID_ERRATA, unit_key, mdata, ''), Unit(TYPE_ID_ERRATA, unit_key_2,  mdata_2, '')]
         existing_units += errata_unit
-        print existing_units
         repo.working_dir = "%s/%s" % (self.repo_working_dir, "export")
         iso_distributor = ISODistributor()
         publish_conduit = distributor_mocks.get_publish_conduit(existing_units=existing_units, pkg_dir=self.pkg_dir)
@@ -552,7 +545,6 @@ class TestISODistributor(rpm_support_base.PulpRPMTests):
         config = distributor_mocks.get_basic_config(http=True, https=False, skip=["rpm", "erratum", "packagegroup"])
         publish_conduit = distributor_mocks.get_publish_conduit(existing_units=[], pkg_dir=self.pkg_dir)
         report = distributor.publish_repo(repo, publish_conduit, config)
-        print report.summary
         summary_keys = {"rpm" : ["num_package_units_attempted", "num_package_units_exported", "num_package_units_errors"],
                         "distribution" : ["num_distribution_units_attempted", "num_distribution_units_exported", "num_distribution_units_errors"],
                         "packagegroup" : ["num_package_groups_exported", "num_package_categories_exported"],

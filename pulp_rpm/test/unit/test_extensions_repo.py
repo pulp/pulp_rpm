@@ -151,6 +151,28 @@ class RpmRepoCreateCommandTests(rpm_support_base.PulpClientTests):
 
         self.assertEqual([TAG_SUCCESS], self.prompt.get_write_tags())
 
+    def test_run_through_cli(self):
+        """
+        See the note in test_run_through_cli under the create tests for
+        more info.
+        """
+
+        # Setup
+        self.server_mock.request.return_value = 201, {}
+
+        # Test
+        command = repo.RpmRepoUpdateCommand(self.context)
+        self.cli.add_command(command)
+        self.cli.run("update --repo-id r --only-newest true".split())
+
+        # Verify
+        self.assertEqual(1, self.server_mock.request.call_count)
+
+        body = self.server_mock.request.call_args[0][2]
+        body = json.loads(body)
+
+        self.assertEqual(body['importer_config']['newest'], True) # not the string "true"
+
 
 class RpmRepoUpdateCommandTests(rpm_support_base.PulpClientTests):
 
@@ -210,6 +232,37 @@ class RpmRepoUpdateCommandTests(rpm_support_base.PulpClientTests):
         iso_dist_config = body['distributor_configs'][ids.EXPORT_DISTRIBUTOR_ID]
         self.assertEqual(iso_dist_config['http'], True)
         self.assertEqual(iso_dist_config['https'], True)
+
+    def test_run_through_cli(self):
+        """
+        This test isn't complete, but is at minimum being included to verify
+        903262 (--only-newest being parsed correctly). Ideally this should be
+        flushed out to test all of the options.
+
+        The test above kicks in after okaara has parsed the user input,
+        simulating what okaara would pass to the command itself. That's fine,
+        but doesn't pick up on issues in the parsing itself. This test will
+        simulate the string entered by the user from the command line and
+        force okaara to do the parsing and hand those results to the command.
+        """
+
+        # Setup
+        self.server_mock.request.return_value = 201, {}
+
+        # Test
+        command = repo.RpmRepoCreateCommand(self.context)
+        self.cli.add_command(command)
+        self.cli.run("create --repo-id r --only-newest true".split())
+
+        # Verify
+        self.assertEqual(1, self.server_mock.request.call_count)
+
+        body = self.server_mock.request.call_args[0][2]
+        body = json.loads(body)
+
+        self.assertEqual(body['id'], 'r')
+        self.assertEqual(body['importer_config']['newest'], True) # not the string "true"
+
 
 
 class RpmRepoListCommandTests(rpm_support_base.PulpClientTests):

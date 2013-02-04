@@ -17,8 +17,8 @@
 # ---- Pulp (rpm) --------------------------------------------------------------
 
 Name: pulp-rpm
-Version: 2.0.8
-Release: 1
+Version: 2.1.0
+Release: 0.1.alpha
 Summary: Support for RPM content in the Pulp platform
 Group: Development/Languages
 License: GPLv2
@@ -66,7 +66,8 @@ mkdir -p %{buildroot}/%{_usr}/lib/pulp/plugins
 mkdir -p %{buildroot}/%{_usr}/lib/pulp/admin/extensions
 mkdir -p %{buildroot}/%{_usr}/lib/pulp/consumer/extensions
 mkdir -p %{buildroot}/%{_usr}/lib/pulp/agent/handlers
-mkdir -p %{buildroot}/%{_var}/lib/pulp/published
+mkdir -p %{buildroot}/%{_var}/lib/pulp/published/http
+mkdir -p %{buildroot}/%{_var}/lib/pulp/published/https
 mkdir -p %{buildroot}/%{_usr}/lib/yum-plugins/
 mkdir -p %{buildroot}/%{_var}/www
 
@@ -93,9 +94,6 @@ cp -R pulp_rpm/plugins/* %{buildroot}/%{_usr}/lib/pulp/plugins
 
 # Yum (plugins)
 cp -R pulp_rpm/usr/lib/yum-plugins %{buildroot}/%{_usr}/lib
-
-# Remove egg info
-rm -rf %{buildroot}/%{python_sitelib}/*.egg-info
 
 %clean
 rm -rf %{buildroot}
@@ -165,15 +163,19 @@ to provide RPM specific support.
 %{python_sitelib}/pulp_rpm/migrations/
 %{python_sitelib}/pulp_rpm/repo_auth/
 %{python_sitelib}/pulp_rpm/yum_plugin/
+%{python_sitelib}/pulp_rpm/plugins/
+%{python_sitelib}/*.egg-info
 %config(noreplace) %{_sysconfdir}/pulp/repo_auth.conf
 %config(noreplace) %{_sysconfdir}/httpd/conf.d/pulp_rpm.conf
 %{_usr}/lib/pulp/plugins/types/rpm_support.json
+%{_usr}/lib/pulp/plugins/types/iso_support.json
 %{_usr}/lib/pulp/plugins/importers/yum_importer/
 %{_usr}/lib/pulp/plugins/distributors/yum_distributor/
 %{_usr}/lib/pulp/plugins/distributors/iso_distributor/
 %{_usr}/lib/pulp/plugins/profilers/rpm_errata_profiler/
 %defattr(-,apache,apache,-)
 %{_var}/www/pub
+%{_var}/lib/pulp/published/
 %{_sysconfdir}/pki/pulp/content/
 /srv/pulp/repo_auth.wsgi
 %doc
@@ -263,47 +265,15 @@ A collection of yum plugins supplementing Pulp consumer operations.
 
 
 %changelog
-* Fri Feb 01 2013 Jeff Ortel <jortel@redhat.com> 2.0.8-1
-- 
-
-* Wed Jan 30 2013 Jeff Ortel <jortel@redhat.com> 2.0.8-0.2.beta
-- 782490 - include the distributor config key as part of key list
-  (pkilambi@redhat.com)
-
-* Tue Jan 29 2013 Jeff Ortel <jortel@redhat.com> 2.0.8-0.1.beta
-- 782490 - pkgtags are currently ignored, skip them by default. User has a
-  choice to enable it in yum_distributor config (pkilambi@redhat.com)
-
-* Thu Jan 24 2013 Jeff Ortel <jortel@redhat.com> 2.0.7-2
-- 
-
-* Wed Jan 23 2013 Jeff Ortel <jortel@redhat.com> 2.0.7-0.6.beta
-- 896027 - pulp-rpm-common owns site-packages/pulp_rpm directory only.
-  (jortel@redhat.com)
-
-* Tue Jan 22 2013 Jeff Ortel <jortel@redhat.com> 2.0.7-1
-- 
-
-* Tue Jan 22 2013 Jeff Ortel <jortel@redhat.com> 2.0.7-0.5.beta
-- 
-
-* Wed Jan 16 2013 Jeff Ortel <jortel@redhat.com> 2.0.7-0.4.beta
-- 
-
-* Wed Jan 16 2013 Jeff Ortel <jortel@redhat.com> 2.0.7-0.3.beta
-- 
-
-* Tue Jan 15 2013 Jeff Ortel <jortel@redhat.com> 2.0.7-0.2.beta
+* Sat Jan 19 2013 Jeff Ortel <jortel@redhat.com> 2.1.0-0.1.alpha
 - 894467 - Fixed incorrect validation for proxy port (jason.dobies@redhat.com)
-- 887041 - Add troubleshooting section to docs. (rbarlow@redhat.com)
-- 887032 - Added docs about how to get entitlement certificates.
-  (rbarlow@redhat.com)
-
-* Fri Jan 11 2013 Jeff Ortel <jortel@redhat.com> 2.0.7-0.1.beta
 - 891423 - fix pkg group and category copy (pkilambi@redhat.com)
 - 891731 - fix the metadata for uploaded rpms to remove relaptive paths from
   location tags (pkilambi@redhat.com)
 - 891760 - Remove unnecessary and risky logging statements.
+  (rbarlow@redhat.com)
+- 887041 - Add troubleshooting section to docs. (rbarlow@redhat.com)
+- 887032 - Added docs about how to get entitlement certificates.
   (rbarlow@redhat.com)
 - 887959 - Removing NameVirtualHost entries from plugin httpd conf files and
   adding it only at one place in main pulp.conf (skarmark@redhat.com)

@@ -30,6 +30,12 @@ DIR_ADMIN_EXTENSIONS = '/usr/lib/pulp/admin/extensions/'
 DIR_CONSUMER_EXTENSIONS = '/usr/lib/pulp/consumer/extensions/'
 DIR_PLUGINS = '/usr/lib/pulp/plugins'
 
+DIRS = (
+    '/var/lib/pulp/published',
+    '/var/lib/pulp/published/http',
+    '/var/lib/pulp/published/https',
+)
+
 LINKS = (
     # RPM Support Configuration
     ('pulp_rpm/etc/httpd/conf.d/pulp_rpm.conf', '/etc/httpd/conf.d/pulp_rpm.conf'),
@@ -53,6 +59,7 @@ LINKS = (
 
     # RPM Support Plugins
     ('pulp_rpm/plugins/types/rpm_support.json', DIR_PLUGINS + '/types/rpm_support.json'),
+    ('pulp_rpm/plugins/types/iso_support.json', DIR_PLUGINS + '/types/iso_support.json'),
     ('pulp_rpm/plugins/importers/yum_importer', DIR_PLUGINS + '/importers/yum_importer'),
     ('pulp_rpm/plugins/distributors/yum_distributor', DIR_PLUGINS + '/distributors/yum_distributor'),
     ('pulp_rpm/plugins/distributors/iso_distributor', DIR_PLUGINS + '/distributors/iso_distributor'),
@@ -105,6 +112,15 @@ def debug(opts, msg):
     sys.stderr.write('%s\n' % msg)
 
 
+def create_dirs(opts):
+    for d in DIRS:
+        if os.path.exists(d) and os.path.isdir(d):
+            debug(opts, 'skipping %s exists' % d)
+            continue
+        debug(opts, 'creating directory: %s' % d)
+        os.makedirs(d, 0777)
+
+
 def getlinks():
     links = []
     for l in LINKS:
@@ -120,11 +136,19 @@ def getlinks():
 
 def install(opts):
     warnings = []
+    create_dirs(opts)
     currdir = os.path.abspath(os.path.dirname(__file__))
     for src, dst in getlinks():
         warning_msg = create_link(opts, os.path.join(currdir,src), dst)
         if warning_msg:
             warnings.append(warning_msg)
+
+    # Link between pulp and apache
+    create_link(opts, '/var/lib/pulp/published', '/var/www/pub')
+
+    # Grant apache write access permissions
+    os.system('chmod 3775 /var/www/pub')
+    os.system('chown -R apache:apache /var/lib/pulp/published')
 
     if warnings:
         print "\n***\nPossible problems:  Please read below\n***"
