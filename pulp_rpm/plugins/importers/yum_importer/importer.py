@@ -667,7 +667,9 @@ class YumImporter(Importer):
         if not metadata_status:
             # let depsolver use existing metadata if available or
             # handle the failure if metadata is missing, just log it
-            _LOG.error("Failed to generate metadata for repo %s; Error %s" % (repo.id, metadata_errors))
+            msg = "Failed to generate metadata for repo %s; Error %s" % (repo.id, metadata_errors)
+            _LOG.error(msg)
+            raise metadata.GenerateYumMetadataException(msg)
         dsolve = depsolver.DepSolver([repo], pkgs=pkglist)
         if config.get('recursive'):
             results = dsolve.getRecursiveDepList()

@@ -29,36 +29,7 @@ from pulp.plugins.model import Repository, Unit
 from yum_importer.importer_rpm import RPM_TYPE_ID
 import rpm_support_base
 
-class TestResolveDeps(rpm_support_base.PulpRPMTests):
-
-    def setUp(self):
-        super(TestResolveDeps, self).setUp()
-        self.temp_dir = tempfile.mkdtemp()
-        self.working_dir = os.path.join(self.temp_dir, "working")
-        self.pkg_dir = os.path.join(self.temp_dir, "packages")
-        self.data_dir = os.path.abspath(os.path.join(os.path.abspath(os.path.dirname(__file__)), "../data"))
-
-    def tearDown(self):
-        super(TestResolveDeps, self).tearDown()
-        self.clean()
-
-    def clean(self):
-        shutil.rmtree(self.temp_dir)
-        # clean up dir created by yum's repostorage
-        if os.path.exists("./test_resolve_deps"):
-            shutil.rmtree("test_resolve_deps")
-        if os.path.exists("/tmp/test_resolve_deps"):
-            shutil.rmtree("/tmp/test_resolve_deps")
-
-    def test_resolve_deps(self):
-        repo = mock.Mock(spec=Repository)
-        repo.working_dir = "/tmp/test_resolve_deps"
-        repo.id = "test_resolve_deps"
-
-        unit_key_a = {'id' : '','name' :'pulp-server', 'version' :'0.0.309', 'release' : '1.fc17', 'epoch':'0', 'arch' : 'noarch', 'checksumtype' : 'sha256',
-                      'checksum': 'ee5afa0aaf8bd2130b7f4a9b35f4178336c72e95358dd33bda8acaa5f28ea6e9', 'type_id' : 'rpm'}
-
-        metadata = {'repodata' : {"primary" : """<package type="rpm">
+PULP_SERVER_RPM_METADATA =  {'repodata' : {"primary" : """<package type="rpm">
   <name>pulp-server</name>
   <arch>noarch</arch>
   <version epoch="0" ver="0.0.309" rel="1.fc17"/>
@@ -125,11 +96,8 @@ class TestResolveDeps(rpm_support_base.PulpRPMTests):
     <file type="dir">/etc/pulp/logging</file>
   </format>
 </package>"""}}
-        unit_key_a_obj = Unit(RPM_TYPE_ID, unit_key_a, {}, '')
-        unit_key_a_obj.metadata = metadata
-        unit_key_b = {'id' : '', 'name' :'pulp-rpm-server', 'version' :'0.0.309', 'release' :'1.fc17', 'epoch':'0','arch' : 'noarch', 'checksumtype' :'sha256',
-                      'checksum': '1e6c3a3bae26423fe49d26930b986e5f5ee25523c13f875dfcd4bf80f770bf56', 'type_id' : 'rpm', }
-        metadata = {'repodata' : {"primary" : """<package type="rpm">
+
+PULP_RPM_SERVER_RPM_METADATA = {'repodata' : {"primary" : """<package type="rpm">
   <name>pulp-rpm-server</name>
   <arch>noarch</arch>
   <version epoch="0" ver="0.0.309" rel="1.fc17"/>
@@ -158,8 +126,43 @@ to provide the Pulp platform (plus) RPM support packages.</description>
     </rpm:requires>
   </format>
 </package>"""}}
-        unit_key_b_obj = Unit(RPM_TYPE_ID, unit_key_b, metadata, '')
-        unit_key_b_obj.metadata = metadata
+
+class TestResolveDeps(rpm_support_base.PulpRPMTests):
+
+    def setUp(self):
+        super(TestResolveDeps, self).setUp()
+        self.temp_dir = tempfile.mkdtemp()
+        self.working_dir = os.path.join(self.temp_dir, "working")
+        self.pkg_dir = os.path.join(self.temp_dir, "packages")
+        self.data_dir = os.path.abspath(os.path.join(os.path.abspath(os.path.dirname(__file__)), "../data"))
+
+    def tearDown(self):
+        super(TestResolveDeps, self).tearDown()
+        self.clean()
+
+    def clean(self):
+        shutil.rmtree(self.temp_dir)
+        # clean up dir created by yum's repostorage
+        if os.path.exists("./test_resolve_deps"):
+            shutil.rmtree("test_resolve_deps")
+        if os.path.exists("/tmp/test_resolve_deps"):
+            shutil.rmtree("/tmp/test_resolve_deps")
+
+    def test_resolve_deps(self):
+        repo = mock.Mock(spec=Repository)
+        repo.working_dir = "/tmp/test_resolve_deps"
+        repo.id = "test_resolve_deps"
+
+        unit_key_a = {'id' : '','name' :'pulp-server', 'version' :'0.0.309', 'release' : '1.fc17', 'epoch':'0', 'arch' : 'noarch', 'checksumtype' : 'sha256',
+                      'checksum': 'ee5afa0aaf8bd2130b7f4a9b35f4178336c72e95358dd33bda8acaa5f28ea6e9', 'type_id' : 'rpm'}
+
+        unit_key_a_obj = Unit(RPM_TYPE_ID, unit_key_a, {}, '')
+        unit_key_a_obj.metadata = PULP_SERVER_RPM_METADATA
+        unit_key_b = {'id' : '', 'name' :'pulp-rpm-server', 'version' :'0.0.309', 'release' :'1.fc17', 'epoch':'0','arch' : 'noarch', 'checksumtype' :'sha256',
+                      'checksum': '1e6c3a3bae26423fe49d26930b986e5f5ee25523c13f875dfcd4bf80f770bf56', 'type_id' : 'rpm', }
+
+        unit_key_b_obj = Unit(RPM_TYPE_ID, unit_key_b, {}, '')
+        unit_key_b_obj.metadata = PULP_RPM_SERVER_RPM_METADATA
         existing_units = []
         for unit in [unit_key_a_obj, unit_key_b_obj]:
             existing_units.append(unit)

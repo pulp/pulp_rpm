@@ -55,6 +55,8 @@ class ModifyRepoError(CreateRepoError):
 class CancelException(Exception):
     pass
 
+class GenerateYumMetadataException(Exception):
+    pass
 
 def set_progress(type_id, status, progress_callback):
     if progress_callback:
