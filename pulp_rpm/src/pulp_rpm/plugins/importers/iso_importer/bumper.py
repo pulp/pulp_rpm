@@ -22,13 +22,14 @@ import signal
 
 import pycurl
 
+from pulp_rpm.common import constants
+
 # According to the libcurl documentation, we want to ignore SIGPIPE when using NOSIGNAL, which we
 # want to do to improve threading:
 # http://curl.haxx.se/libcurl/c/curl_easy_setopt.html#CURLOPTNOSIGNAL
 signal.signal(signal.SIGPIPE, signal.SIG_IGN)
 
 DEFAULT_NUM_THREADS = 2
-ISO_METADATA_FILENAME = 'PULP_MANIFEST'
 # How long we want to wait between loops on the MultiCurl select() method
 SELECT_TIMEOUT = 1.0
 # How many bytes we want to read into RAM at a time when validating a download checksum
@@ -475,8 +476,8 @@ class ISOBumper(RepoBumper):
         :rtype:  dict
         """
         # Let's store the manifest in memory.
-        manifest_resource = {'url': urljoin(self.repo_url, ISO_METADATA_FILENAME),
-                             'destination': StringIO(), 'name': ISO_METADATA_FILENAME}
+        manifest_resource = {'url': urljoin(self.repo_url, constants.ISO_MANIFEST_FILENAME),
+                             'destination': StringIO(), 'name': constants.ISO_MANIFEST_FILENAME}
         self._add_ssl_parameters_to_resource(manifest_resource)
         self.download_resources([manifest_resource])
 

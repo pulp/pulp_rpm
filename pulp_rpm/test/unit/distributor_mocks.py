@@ -66,12 +66,11 @@ def get_publish_conduit(type_id=None, existing_units=None, pkg_dir=None, checksu
     return publish_conduit
 
 
-
 def get_basic_config(*arg, **kwargs):
     plugin_config = {}
     repo_plugin_config = {}
     for key in kwargs:
         repo_plugin_config[key] = kwargs[key]
-    config = PluginCallConfiguration(plugin_config, 
+    config = PluginCallConfiguration(plugin_config,
             repo_plugin_config=repo_plugin_config)
     return config

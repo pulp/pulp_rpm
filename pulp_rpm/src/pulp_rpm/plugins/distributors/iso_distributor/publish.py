@@ -12,6 +12,7 @@
 # http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt.
 from gettext import gettext as _
 import csv
+import errno
 import logging
 import os
 import shutil
@@ -24,7 +25,6 @@ logger = logging.getLogger(__name__)
 
 
 BUILD_DIRNAME = 'build'
-PULP_MANIFEST_FILENAME = 'PULP_MANIFEST'
 
 
 def publish(repo, publish_conduit, config):
@@ -51,14 +51,23 @@ def publish(repo, publish_conduit, config):
         progress_report.update_progress()
         return progress_report.build_final_report()
     except Exception, e:
-        progress_report.publish_http = constants.STATE_FAILED
+        progress_report.publish_http  = constants.STATE_FAILED
+        progress_report.publish_https = constants.STATE_FAILED
         report = progress_report.build_final_report()
         return report
 
 
 def _build_metadata(repo, units):
-    build_dir = _get_build_dir(repo)
-    metadata_filename = os.path.join(build_dir, PULP_MANIFEST_FILENAME)
+    """
+    Create the manifest file for the given units, and write it to the build directory.
+    
+    :param repo:  The repo that we are creating the manifest for
+    :type  repo:  pulp.plugins.model.Repository
+    :param units: The units to be included in the manifest
+    :type  units: list
+    """
+    build_dir = _get_or_create_build_dir(repo)
+    metadata_filename = os.path.join(build_dir, constants.ISO_MANIFEST_FILENAME)
     try:
         metadata = open(metadata_filename, 'w')
         metadata_csv = csv.writer(metadata)
@@ -71,12 +80,17 @@ def _build_metadata(repo, units):
             metadata.close()
 
 
-def _get_build_dir(repo):
-    return os.path.join(repo.working_dir, BUILD_DIRNAME)
-
-
 def _copy_to_hosted_location(repo, config):
-    build_dir = _get_build_dir(repo)
+    """
+    Copy the contents of the build directory to the publishing directories. The config will be used
+    to determine whether we are supposed to publish to HTTP and HTTPS.
+
+    :param repo:            The repo you want to publish.
+    :type  repo:            pulp.plugins.model.Repository
+    :param config:          plugin configuration
+    :type  config:          pulp.plugins.config.PluginConfiguration
+    """
+    build_dir = _get_or_create_build_dir(repo)
 
     http_dest_dir = os.path.join(constants.ISO_HTTP_DIR, repo.id)
     _rmtree_if_exists(http_dest_dir)
@@ -89,8 +103,17 @@ def _copy_to_hosted_location(repo, config):
         shutil.copytree(build_dir, https_dest_dir, symlinks=True)
 
 
-def _symlink_units(repo, units):
-    build_dir = _get_build_dir(repo)
+def _get_or_create_build_dir(repo):
+    """
+    This will generate a path for a build directory for the given repository. If the path doesn't
+    exist, it will create it.
+
+    :param repo: The repository you need the build directory for
+    :type  repo: pulp.plugins.model.Repository
+    :return:     The build path
+    :rtype:      basestring
+    """
+    build_dir = os.path.join(repo.working_dir, BUILD_DIRNAME)
     if not os.path.exists(build_dir):
         try:
             os.makedirs(build_dir)
@@ -100,9 +123,22 @@ def _symlink_units(repo, units):
             # different error.
             if e.errno != errno.EEXIST:
                 raise
+    return build_dir
+
+
+def _symlink_units(repo, units):
+    """
+    For each unit, put a symlink in the build dir that points to its canonical location on disk.
+    
+    :param repo:  The repo that we are creating the symlinks for
+    :type  repo:  pulp.plugins.model.Repository
+    :param units: The units to be symlinked
+    :type  units: list
+    """
+    build_dir = _get_or_create_build_dir(repo)
     for unit in units:
         symlink_filename = os.path.join(build_dir, unit.unit_key['name'])
-        if os.path.exists(symlink_filename):
+        if os.path.exists(symlink_filename) or os.path.islink(symlink_filename):
             # There's already something there with the desired symlink filename. Let's try and see
             # if it points at the right thing. If it does, we don't need to do anything. If it does
             # not, we should remove what's there and add the correct symlink.
@@ -127,5 +163,11 @@ def _symlink_units(repo, units):
 
 
 def _rmtree_if_exists(path):
+    """
+    If the given path exists, remove it recursively. Else, do nothing.
+
+    :param path: The path you want to recursively delete.
+    :type  path: basestring
+    """
     if os.path.exists(path):
         shutil.rmtree(path)
