@@ -10,8 +10,6 @@
 # NON-INFRINGEMENT, or FITNESS FOR A PARTICULAR PURPOSE. You should
 # have received a copy of GPLv2 along with this software; if not, see
 # http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt.
-
-from gettext import gettext as _
 import logging
 
 from pulp.plugins.conduits.mixins import UnitAssociationCriteria
@@ -88,7 +86,9 @@ class ISOImporter(Importer):
 
     def sync_repo(self, repo, sync_conduit, config):
         self.iso_sync = sync.ISOSyncRun()
-        return self.iso_sync.perform_sync(repo, sync_conduit, config)
+        report = self.iso_sync.perform_sync(repo, sync_conduit, config)
+        self.iso_sync = None
+        return report
 
     def upload_unit(self, repo, type_id, unit_key, metadata, file_path, conduit, config):
         raise NotImplementedError()

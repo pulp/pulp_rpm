@@ -23,7 +23,12 @@ pip-log.txt
 #Translations
 *.mo
 
-#Mr Developer
+# Eclipse
+.project
+.pydevproject
+.settings
+
+# Mr Developer
 .mr.developer.cfg
 
 # Ninja IDE
