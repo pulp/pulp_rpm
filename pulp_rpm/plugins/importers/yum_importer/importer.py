@@ -47,9 +47,9 @@ OPTIONAL_CONFIG_KEYS = ['feed_url', 'ssl_verify', 'ssl_ca_cert', 'ssl_client_cer
 ###
 # feed_url: Repository URL
 # ssl_verify: True/False to control if yum/curl should perform SSL verification of the host
-# ssl_ca_cert: Path to SSL CA certificate used for ssl verification
-# ssl_client_cert: Path to SSL Client certificate, used for protected repository access
-# ssl_client_key: Path to SSL Client key, used for protected repository access
+# ssl_ca_cert: String with SSL CA certificate used for ssl verification
+# ssl_client_cert: String with SSL Client certificate, used for protected repository access
+# ssl_client_key: String with SSL Client key, used for protected repository access
 # proxy_url: Proxy URL
 # proxy_port: Port Port
 # proxy_user: Username for Proxy

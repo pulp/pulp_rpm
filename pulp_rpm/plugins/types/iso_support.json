@@ -1,0 +1,9 @@
+{"types": [
+    {
+        "id": "iso",
+        "display_name": "ISO",
+        "description": "ISO",
+        "unit_key": ["name", "checksum", "size"],
+        "search_indexes": []
+    }
+]}
