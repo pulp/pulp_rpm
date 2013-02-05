@@ -18,7 +18,7 @@
 
 Name: pulp-rpm
 Version: 2.1.0
-Release: 0.1.alpha
+Release: 0.2.alpha
 Summary: Support for RPM content in the Pulp platform
 Group: Development/Languages
 License: GPLv2
@@ -265,6 +265,21 @@ A collection of yum plugins supplementing Pulp consumer operations.
 
 
 %changelog
+* Tue Feb 05 2013 Jeff Ortel <jortel@redhat.com> 2.1.0-0.2.alpha
+- 782490 - include the distributor config key as part of key list
+  (pkilambi@redhat.com)
+- 876725 - minor update to effectively use details.get (skarmark@redhat.com)
+- 782490 - pkgtags are currently ignored, skip them by default. User has a
+  choice to enable it in yum_distributor config (pkilambi@redhat.com)
+- 903387 - include /var/lib/pulp/published in pulp-rpm-plugins.
+  (jortel@redhat.com)
+- 896027 - pulp-rpm-common owns site-packages/pulp_rpm directory only.
+  (jortel@redhat.com)
+- 903262 - Added boolean parser to only-newest command
+  (jason.dobies@redhat.com)
+- 876725 - adding support for best effort install of content and unit tests
+  (skarmark@redhat.com)
+
 * Sat Jan 19 2013 Jeff Ortel <jortel@redhat.com> 2.1.0-0.1.alpha
 - 894467 - Fixed incorrect validation for proxy port (jason.dobies@redhat.com)
 - 891423 - fix pkg group and category copy (pkilambi@redhat.com)
