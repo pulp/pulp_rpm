@@ -15,7 +15,6 @@
 Profiler plugin to support RPM Errata functionality
 """
 import gettext
-import copy
 
 from pulp.plugins.model import ApplicabilityReport
 from pulp.plugins.profiler import Profiler, InvalidUnitsRequested
@@ -38,14 +37,6 @@ class RPMErrataProfiler(Profiler):
                 'types': [TYPE_ID_ERRATA],
                 }
 
-    def update_profile(self, consumer, profile, config, conduit):
-        pass
-
-    def update_units(self, consumer, units, options, config, conduit):
-        raise NotImplementedError()
-
-    def uninstall_units(self, consumer, units, options, config, conduit):
-        raise NotImplementedError()
 
     def install_units(self, consumer, units, options, config, conduit):
         """
@@ -55,7 +46,7 @@ class RPMErrataProfiler(Profiler):
         the units as needed.
 
         :param consumer: A consumer.
-        :type consumer: L{pulp.server.plugins.model.Consumer}
+        :type consumer: pulp.server.plugins.model.Consumer
 
         :param units: A list of content units to be installed.
         :type units: list of:
@@ -65,10 +56,10 @@ class RPMErrataProfiler(Profiler):
         :type options: dict
 
         :param config: plugin configuration
-        :type config: L{pulp.server.plugins.config.PluginCallConfiguration}
+        :type config: pulp.server.plugins.config.PluginCallConfiguration
 
         :param conduit: provides access to relevant Pulp functionality
-        :type conduit: L{pulp.plugins.conduits.profile.ProfilerConduit}
+        :type conduit: pulp.plugins.conduits.profile.ProfilerConduit
 
         :return:    a list of dictionaries containing info on the 'translated units'.
                     each dictionary contains a 'name' key which refers 
@@ -88,9 +79,9 @@ class RPMErrataProfiler(Profiler):
         type specific and up to the descision of the profiler.
 
         :param consumer: A consumer.
-        :type consumer: L{pulp.server.plugins.model.Consumer}
+        :type consumer: pulp.server.plugins.model.Consumer
 
-        :param repo_ids: Repo ids to confine the applicability search to.
+        :param repo_ids: Repo ids to restrict the applicability search to.
         :type repo_ids: list of str
 
         :param unit_type_id: Common type id of all given unit keys
@@ -100,13 +91,13 @@ class RPMErrataProfiler(Profiler):
         :type unit_keys: list of dict
 
         :param config: plugin configuration
-        :type config: L{pulp.server.plugins.config.PluginCallConfiguration}
+        :type config: pulp.server.plugins.config.PluginCallConfiguration
 
         :param conduit: provides access to relevant Pulp functionality
-        :type conduit: L{pulp.plugins.conduits.profile.ProfilerConduit}
+        :type conduit: pulp.plugins.conduits.profile.ProfilerConduit
 
         :return: An applicability report.
-        :rtype: L{pulp.plugins.model.ApplicabilityReport}
+        :rtype: pulp.plugins.model.ApplicabilityReport
         """
         if unit_type_id != TYPE_ID_ERRATA:
             error_msg = _("units_applicable invoked with type_id [%s], expected [%s]") % (unit_type_id, TYPE_ID_ERRATA)
@@ -123,7 +114,6 @@ class RPMErrataProfiler(Profiler):
         for unit in unit_keys:
             applicable_rpms, upgrade_details = self.translate(unit, repo_ids, consumer, conduit)
             if applicable_rpms:
-                applicable = True
                 summary = {}
                 details = {"applicable_rpms": applicable_rpms, "upgrade_details":upgrade_details}
           
@@ -144,10 +134,10 @@ class RPMErrataProfiler(Profiler):
             { type_id:<str>, unit_key:<dict> }
 
         :param consumer: A consumer.
-        :type consumer: L{pulp.server.plugins.model.Consumer}
+        :type consumer: pulp.server.plugins.model.Consumer
 
         :param conduit: provides access to relevant Pulp functionality
-        :type conduit: L{pulp.plugins.conduits.profile.ProfilerConduit}
+        :type conduit: pulp.plugins.conduits.profile.ProfilerConduit
 
         :return:    a list of dictionaries containing info on the 'translated units'.
                     each dictionary contains a 'name' key which refers 
@@ -170,14 +160,14 @@ class RPMErrataProfiler(Profiler):
         :param unit: A content unit key
         :type unit: dict
 
-        :param repo_ids: Repo ids to confine the unit search to.
+        :param repo_ids: Repo ids to restrict the unit search to.
         :type repo_ids: list of str
 
         :param consumer: A consumer.
-        :type consumer: L{pulp.server.plugins.model.Consumer}
+        :type consumer: pulp.server.plugins.model.Consumer
 
         :param conduit: provides access to relevant Pulp functionality
-        :type conduit: L{pulp.plugins.conduits.profile.ProfilerConduit}
+        :type conduit: pulp.plugins.conduits.profile.ProfilerConduit
 
         :return:    a tuple consisting of
                         list of dictionaries containing info on the 'translated units'.
@@ -194,7 +184,6 @@ class RPMErrataProfiler(Profiler):
                     (unit, repo_ids, consumer.id)
             _LOG.info(error_msg)
             return None, None
-            #raise InvalidUnitsRequested([unit], error_msg)
         else:
             updated_rpms = self.get_rpms_from_errata(errata)
             _LOG.info("Errata <%s> refers to %s updated rpms of: %s" % (errata.unit_key['id'], len(updated_rpms), updated_rpms))
@@ -242,7 +231,7 @@ class RPMErrataProfiler(Profiler):
     def rpms_applicable_to_consumer(self, consumer, errata_rpms):
         """
         :param consumer:
-        :type consumer: L{pulp.server.plugins.model.Consumer}
+        :type consumer: pulp.server.plugins.model.Consumer
 
         :param errata_rpms: 
         :type errata_rpms: list of dicts

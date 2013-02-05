@@ -15,7 +15,6 @@
 Profiler plugin to support RPM Package functionality
 """
 import gettext
-import copy
 
 from pulp.plugins.model import ApplicabilityReport
 from pulp.plugins.profiler import Profiler, InvalidUnitsRequested
@@ -47,9 +46,9 @@ class RPMPkgProfiler(Profiler):
         are applicable to the specified consumer with given repo_ids.
 
         :param consumer: A consumer.
-        :type consumer: L{pulp.server.plugins.model.Consumer}
+        :type consumer: pulp.server.plugins.model.Consumer
         
-        :param repo_ids: Repo ids to confine the applicability search to.
+        :param repo_ids: Repo ids to restrict the applicability search to.
         :type repo_ids: list of str
 
         :param unit_type_id: Common type id of all given unit keys
@@ -59,13 +58,13 @@ class RPMPkgProfiler(Profiler):
         :type unit_keys: list of dict
 
         :param config: plugin configuration
-        :type config: L{pulp.server.plugins.config.PluginCallConfiguration}
+        :type config: pulp.server.plugins.config.PluginCallConfiguration
 
         :param conduit: provides access to relevant Pulp functionality
-        :type conduit: L{pulp.plugins.conduits.profile.ProfilerConduit}
+        :type conduit: pulp.plugins.conduits.profile.ProfilerConduit
 
         :return: A list of applicability reports.
-        :rtype: List of L{pulp.plugins.model.ApplicabilityReport}
+        :rtype: List of pulp.plugins.model.ApplicabilityReport
         """
         
         if unit_type_id != TYPE_ID_RPM:
@@ -102,13 +101,13 @@ class RPMPkgProfiler(Profiler):
         :type unit: dict
 
         :param consumer: A consumer.
-        :type consumer: L{pulp.server.plugins.model.Consumer}
+        :type consumer: pulp.server.plugins.model.Consumer
 
-        :param repo_ids: Repo ids to confine the applicability search to.
+        :param repo_ids: Repo ids to restrict the applicability search to.
         :type repo_ids: list
 
         :param conduit: provides access to relevant Pulp functionality
-        :type conduit: L{pulp.plugins.conduits.profile.ProfilerConduit}
+        :type conduit: pulp.plugins.conduits.profile.ProfilerConduit
 
         :return:    a tuple consisting of applicable flag and upgrade details
 
@@ -151,7 +150,7 @@ class RPMPkgProfiler(Profiler):
         Checks whether given rpm upgrades an rpm on the consumer.
 
         :param consumer: a profiled consumer
-        :type consumer: L{pulp.server.plugins.model.Consumer}
+        :type consumer: pulp.server.plugins.model.Consumer
 
         :param rpm: a package rpm
         :type rpm: dict
