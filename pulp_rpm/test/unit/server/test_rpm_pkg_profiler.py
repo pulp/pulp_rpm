@@ -112,7 +112,6 @@ class TestRpmPkgProfiler(rpm_support_base.PulpRPMTests):
         prof = RPMPkgProfiler()
         report_list = prof.units_applicable(self.test_consumer, ["test_repo_id"], TYPE_ID_RPM, example_rpms, None, conduit)
         self.assertFalse(report_list == [])
-        self.assertEqual(report_list[0].unit, rpm_unit.unit_key)
 
     def test_unit_applicable_same_name_diff_arch(self):
         rpm_unit_key = self.create_profile_entry("emoticons", 0, "0.1", "2", "x86_64", "Test Vendor")

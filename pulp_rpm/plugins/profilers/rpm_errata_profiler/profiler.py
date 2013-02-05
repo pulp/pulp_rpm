@@ -121,14 +121,13 @@ class RPMErrataProfiler(Profiler):
 
         # For each unit 
         for unit in unit_keys:
-            report_unit_copy = copy.deepcopy(unit)
             applicable_rpms, upgrade_details = self.translate(unit, repo_ids, consumer, conduit)
             if applicable_rpms:
                 applicable = True
                 summary = {}
                 details = {"applicable_rpms": applicable_rpms, "upgrade_details":upgrade_details}
           
-                applicability_reports.append(ApplicabilityReport(report_unit_copy, summary, details))
+                applicability_reports.append(ApplicabilityReport(summary, details))
 
         return applicability_reports
 

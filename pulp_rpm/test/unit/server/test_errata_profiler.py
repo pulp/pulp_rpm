@@ -181,7 +181,6 @@ class TestErrataProfiler(rpm_support_base.PulpRPMTests):
         prof = RPMErrataProfiler()
         report_list = prof.units_applicable(self.test_consumer, ["test_repo_id"], TYPE_ID_ERRATA, example_errata, None, conduit)
         self.assertFalse(report_list == [])
-        self.assertEqual(report_list[0].unit, errata_unit.unit_key)
 
     def test_unit_applicable_same_name_diff_arch(self):
         # Errata refers to RPMs that are x86_64, the test consumer is i386

@@ -81,12 +81,11 @@ class RPMPkgProfiler(Profiler):
 
         # For each unit 
         for unit_key in unit_keys:
-            report_unit_key = copy.deepcopy(unit_key)
             applicable, upgrade_details = self.find_applicable(unit_key, consumer, repo_ids, conduit)
             if applicable:
                 details = upgrade_details
                 summary = {}
-                applicability_reports.append(ApplicabilityReport(report_unit_key, summary, details))
+                applicability_reports.append(ApplicabilityReport(summary, details))
 
         return applicability_reports
 
