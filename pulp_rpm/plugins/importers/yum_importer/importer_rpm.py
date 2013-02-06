@@ -147,7 +147,7 @@ def form_rpm_unit_key(rpm):
 
 def form_rpm_metadata(rpm):
     metadata = {}
-    for key in ("filename", "vendor", "description", "buildhost", "license", "vendor", "requires", "provides", "relativepath", "repodata"):
+    for key in ("filename", "vendor", "description", "buildhost", "license", "vendor", "requires", "provides", "relativepath", "changelog", "files", "repodata"):
         metadata[key] = rpm[key]
     return metadata
 
