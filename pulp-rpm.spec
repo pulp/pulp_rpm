@@ -152,7 +152,7 @@ Requires: python-pulp-rpm-common = %{pulp_version}
 Requires: pulp-server = %{pulp_version}
 Requires: createrepo >= 0.9.8-3
 Requires: python-rhsm >= 1.0.4-1
-Requires: grinder >= 0.1.12-1
+Requires: grinder >= 0.1.14-1
 Requires: pyliblzma
 %description plugins
 Provides a collection of platform plugins that extend the Pulp platform
