@@ -110,7 +110,8 @@ class TestRPMs(rpm_support_base.PulpRPMTests):
                                   'filelists' : 'test_filelists_xml',
                                   'other' : 'test_other_xml'},
                     'changelog' : [],
-                    'files' : []
+                    'filelist' : [],
+                    'files' : {}
                 },
                 ('pulp-dot-2.0-test', '0', '0.1.2', 'x86_64', 'pulp-dot-2.0-test-0.1.2-1.fc11.x86_64.rpm', 'sha256', '435d92e6c09248b501b8d2ae786f92ccfad69fab8b1bc774e2b66ff6c0d83979'):{
                     'size': 2359, 
@@ -141,7 +142,8 @@ class TestRPMs(rpm_support_base.PulpRPMTests):
                                   'filelists' : 'test_filelists_xml',
                                   'other' : 'test_other_xml'},
                     'changelog' : [],
-                    'files' : []
+                    'filelist' : [],
+                    'files' : {}
                 }, 
                 ('pulp-test-package', '0', '0.3.1', 'x86_64', 'pulp-test-package-0.3.1-1.fc11.x86_64.rpm', 'sha256', '6bce3f26e1fc0fc52ac996f39c0d0e14fc26fb8077081d5b4dbfb6431b08aa9f'): {
                     'size': 2216, 
@@ -172,7 +174,8 @@ class TestRPMs(rpm_support_base.PulpRPMTests):
                                   'filelists' : 'test_filelists_xml',
                                   'other' : 'test_other_xml'},
                     'changelog' : [],
-                    'files' : []
+                    'filelist' : [],
+                    'files' : {}
                     }
                 }
         return rpms
@@ -185,7 +188,7 @@ class TestRPMs(rpm_support_base.PulpRPMTests):
         for k in UNIT_KEY_RPM:
             rpm[k] = value
         for k in ("filename", "vendor", "description", "buildhost", "license",
-                "vendor", "requires", "provides", "pkgpath", "relativepath", "changelog", "files", "repodata"):
+                "vendor", "requires", "provides", "pkgpath", "relativepath", "changelog", "filelist", "files", "repodata"):
             rpm[k] = value
         return rpm
     
