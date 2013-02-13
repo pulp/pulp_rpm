@@ -115,6 +115,40 @@ Metadata
  metadata xml snippets for srpm package. This includes primary, filelists and other xmls.
  Example format: {"primary" : <primary_xml>, "filelist" : <filelist_xml>, "other" : <other_xml> }.
 
+DRPM
+----
+
+Unit Key
+--------
+``epoch``
+ Epoch of the rpm package
+
+``version``
+ Version of the rpm package
+
+``release``
+ Release of the rpm package
+
+``filename``
+ filename of the drpm package
+
+``checksum``
+ checksum of the drpm package
+
+``checksumtype``
+ checksum type of the drpm package
+
+Metadata
+--------
+``size``
+ Size of the drpm
+
+``sequence``
+ delta rpm sequence
+
+``new_package``
+ new rpm package associated with the drpm package.
+
 Errata
 ------
 
@@ -204,3 +238,72 @@ Metadata
 
 ``files``
  Files associated with the distribution tree.
+
+Package Group
+-------------
+
+Unit Key
+^^^^^^^^
+``id``
+ Package group Id
+
+``repo_id``
+ Repository id the package group id is associated.
+
+Metadata
+^^^^^^^^
+``name``
+ Name of the Package group
+
+``description``
+ Description of the package group
+
+``default``
+ Include this package group by default. Valid values are `True` and `False`
+
+``user_visible``
+ If the packagegroup should be visible when queried. Valid values are `True` and `False`
+
+``langonly``
+ Language support groups are selected based on this option.
+
+``display_order``
+ Display order of the package group.
+
+``mandatory_package_names``
+ Mandatory package names to include in the package group.
+
+``conditional_package_names``
+ Conditional package names to include in the package group.
+
+``optional_package_names``
+ Optional package names to include in the package group.
+
+``default_package_names``
+ Default package names to include in the package group.
+
+Package Group Category
+----------------------
+
+Unit Key
+^^^^^^^^
+``id``
+ Package group category Id
+
+``repo_id``
+ Repository id the package group category id is associated.
+
+
+Metadata
+^^^^^^^^
+``name``
+ Name of the package group category.
+
+``description``
+ Description of the package group category.
+
+``display_order``
+ Display order of the package group category.
+
+``packagegroupids``
+ Package group ids associated with the package category.
