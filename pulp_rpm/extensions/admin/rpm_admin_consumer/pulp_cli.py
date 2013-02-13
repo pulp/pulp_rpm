@@ -13,15 +13,19 @@
 
 from gettext import gettext as _
 
+from pulp.client.commands.consumer.manage import (
+    ConsumerUnregisterCommand, ConsumerUpdateCommand)
+from pulp.client.commands.consumer.query import (
+    ConsumerListCommand, ConsumerSearchCommand, ConsumerHistoryCommand)
+
 from pulp_rpm.extension.admin import structure
 
-import basics
+import consumer_group_cudl
+import consumer_group_members
+from bind import YumConsumerBindCommand, YumConsumerUnbindCommand
 from consumer_group_bind import (ConsumerGroupBindCommand,
                                  ConsumerGroupUnbindCommand)
 from consumer_group_package import ConsumerGroupPackageSection
-import consumer_group_cudl
-import consumer_group_members
-from bind import BindCommand, UnbindCommand
 from errata import ErrataSection
 from package_group import PackageGroupSection
 from package import PackageSection
@@ -34,17 +38,14 @@ def initialize(context):
     consumer_section = root_section.create_subsection('consumer', consumer_description)
 
     # Basic consumer commands
-    consumer_section.add_command(basics.ListCommand(context))
-    consumer_section.add_command(basics.UpdateCommand(context))
-    consumer_section.add_command(basics.UnregisterCommand(context))
-    consumer_section.add_command(basics.SearchCommand(context))
-    consumer_section.add_command(basics.HistoryCommand(context))
+    consumer_section.add_command(ConsumerListCommand(context))
+    consumer_section.add_command(ConsumerUpdateCommand(context))
+    consumer_section.add_command(ConsumerUnregisterCommand(context))
+    consumer_section.add_command(ConsumerSearchCommand(context))
+    consumer_section.add_command(ConsumerHistoryCommand(context))
 
-    m = 'binds a consumer to a repository'
-    consumer_section.add_command(BindCommand(context, 'bind', _(m)))
-
-    m = 'removes the binding between a consumer and a repository'
-    consumer_section.add_command(UnbindCommand(context, 'unbind', _(m)))
+    consumer_section.add_command(YumConsumerBindCommand(context))
+    consumer_section.add_command(YumConsumerUnbindCommand(context))
 
     # New subsections
     consumer_section.add_subsection(PackageSection(context))
