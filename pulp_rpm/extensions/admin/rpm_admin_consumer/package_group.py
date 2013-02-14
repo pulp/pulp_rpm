@@ -19,8 +19,8 @@ from gettext import gettext as _
 
 from pulp.client.commands.consumer import content as consumer_content
 from pulp.client.extensions.extensions import PulpCliSection
-from pulp_rpm.extension.admin.content_schedules import YumConsumerContentCreateScheduleCommand
 from pulp_rpm.common.ids import TYPE_ID_PKG_GROUP
+from pulp_rpm.extension.admin.content_schedules import YumConsumerContentCreateScheduleCommand
 
 # sections ---------------------------------------------------------------------
 
@@ -86,6 +86,7 @@ class YumConsumerPackageGroupInstallCommand(consumer_content.ConsumerContentInst
 
     def run(self, **kwargs):
         kwargs[consumer_content.OPTION_CONTENT_TYPE_ID.keyword] = TYPE_ID_PKG_GROUP
+        kwargs[consumer_content.OPTION_CONTENT_UNIT.keyword] = kwargs['name']
         super(self.__class__, self).run(**kwargs)
 
     def succeeded(self, id, task):
@@ -139,6 +140,7 @@ class YumConsumerPackageGroupUninstallCommand(consumer_content.ConsumerContentUn
 
     def run(self, **kwargs):
         kwargs[consumer_content.OPTION_CONTENT_TYPE_ID.keyword] = TYPE_ID_PKG_GROUP
+        kwargs[consumer_content.OPTION_CONTENT_UNIT.keyword] = kwargs['name']
         super(self.__class__, self).run(**kwargs)
 
     def succeeded(self, id, task):

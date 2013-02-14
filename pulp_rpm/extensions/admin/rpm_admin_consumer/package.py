@@ -19,7 +19,6 @@ from gettext import gettext as _
 
 from okaara.prompt import COLOR_RED
 
-from pulp.bindings.exceptions import NotFoundException
 from pulp.client.commands.consumer import content as consumer_content
 from pulp.client.extensions.extensions import PulpCliSection
 from pulp_rpm.common.ids import TYPE_ID_RPM
@@ -111,6 +110,21 @@ class YumConsumerPackageInstallCommand(consumer_content.ConsumerContentInstallCo
         super(self.__class__, self).__init__(context, description=description,
                                              progress_tracker=progress_tracker)
 
+        self.options.remove(consumer_content.OPTION_CONTENT_TYPE_ID)
+        self.options.remove(consumer_content.OPTION_CONTENT_UNIT)
+
+        self.create_option(
+            '--name',
+            _('package name; may repeat for multiple packages'),
+            required=True,
+            allow_multiple=True,
+            aliases=['-n'])
+
+    def run(self, **kwargs):
+        kwargs[consumer_content.OPTION_CONTENT_TYPE_ID.keyword] = TYPE_ID_RPM
+        kwargs[consumer_content.OPTION_CONTENT_UNIT.keyword] = kwargs['name']
+        super(self.__class__, self).run(**kwargs)
+
     def succeeded(self, id, task):
         prompt = self.context.prompt
         # reported as failed
@@ -157,31 +171,20 @@ class YumConsumerPackageUpdateCommand(consumer_content.ConsumerContentUpdateComm
         super(self.__class__, self).__init__(context, description=description,
                                              progress_tracker=progress_tracker)
 
-    def update(self, consumer_id, units, options):
-        prompt = self.context.prompt
-        server = self.context.server
-        if not units:
-            msg = 'No packages specified'
-            prompt.render_failure_message(_(msg))
-            return
-        try:
-            response = server.consumer_content.update(consumer_id, units=units, options=options)
-            task = response.response_body
-            msg = _('Update task created with id [%(id)s]') % dict(id=task.task_id)
-            prompt.render_success_message(msg)
-            response = server.tasks.get_task(task.task_id)
-            task = response.response_body
-            if self.rejected(task):
-                return
-            if self.postponed(task):
-                return
-            self.process(consumer_id, task)
-        except NotFoundException:
-            msg = _('Consumer [%s] not found') % consumer_id
-            prompt.write(msg, tag='not-found')
+        self.options.remove(consumer_content.OPTION_CONTENT_TYPE_ID)
+        self.options.remove(consumer_content.OPTION_CONTENT_UNIT)
 
-    def progress(self, report):
-        self.progress_tracker.display(report)
+        self.create_option(
+            '--name',
+            _('package name; may repeat for multiple packages'),
+            required=True,
+            allow_multiple=True,
+            aliases=['-n'])
+
+    def run(self, **kwargs):
+        kwargs[consumer_content.OPTION_CONTENT_TYPE_ID.keyword] = TYPE_ID_RPM
+        kwargs[consumer_content.OPTION_CONTENT_UNIT.keyword] = kwargs['name']
+        super(self.__class__, self).run(**kwargs)
 
     def succeeded(self, id, task):
         prompt = self.context.prompt
@@ -223,6 +226,21 @@ class YumConsumerPackageUninstallCommand(consumer_content.ConsumerContentUninsta
         progress_tracker = YumConsumerPackageProgressTracker(context.prompt)
         super(self.__class__, self).__init__(context, description=description,
                                              progress_tracker=progress_tracker)
+
+        self.options.remove(consumer_content.OPTION_CONTENT_TYPE_ID)
+        self.options.remove(consumer_content.OPTION_CONTENT_UNIT)
+
+        self.create_option(
+            '--name',
+            _('package name; may repeat for multiple packages'),
+            required=True,
+            allow_multiple=True,
+            aliases=['-n'])
+
+    def run(self, **kwargs):
+        kwargs[consumer_content.OPTION_CONTENT_TYPE_ID.keyword] = TYPE_ID_RPM
+        kwargs[consumer_content.OPTION_CONTENT_UNIT.keyword] = kwargs['name']
+        super(self.__class__, self).run(**kwargs)
 
     def succeeded(self, id, task):
         prompt = self.context.prompt
