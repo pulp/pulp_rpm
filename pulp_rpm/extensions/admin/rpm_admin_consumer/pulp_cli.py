@@ -27,7 +27,7 @@ from consumer_group_bind import ConsumerGroupBindCommand, ConsumerGroupUnbindCom
 from consumer_group_package import ConsumerGroupPackageSection
 from errata import ErrataSection
 from package import YumConsumerPackageSection
-from package_group import PackageGroupSection
+from package_group import YumConsumerPackageGroupSection
 
 # -- framework hook -----------------------------------------------------------
 
@@ -48,7 +48,7 @@ def initialize(context):
 
     # New subsections
     consumer_section.add_subsection(YumConsumerPackageSection(context))
-    consumer_section.add_subsection(PackageGroupSection(context))
+    consumer_section.add_subsection(YumConsumerPackageGroupSection(context))
     consumer_section.add_subsection(ErrataSection(context))
 
     # Consumer groups
