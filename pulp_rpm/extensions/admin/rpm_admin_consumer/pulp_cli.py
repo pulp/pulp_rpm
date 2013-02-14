@@ -23,12 +23,11 @@ from pulp_rpm.extension.admin import structure
 import consumer_group_cudl
 import consumer_group_members
 from bind import YumConsumerBindCommand, YumConsumerUnbindCommand
-from consumer_group_bind import (ConsumerGroupBindCommand,
-                                 ConsumerGroupUnbindCommand)
+from consumer_group_bind import ConsumerGroupBindCommand, ConsumerGroupUnbindCommand
 from consumer_group_package import ConsumerGroupPackageSection
 from errata import ErrataSection
+from package import YumConsumerPackageSection
 from package_group import PackageGroupSection
-from package import PackageSection
 
 # -- framework hook -----------------------------------------------------------
 
@@ -48,7 +47,7 @@ def initialize(context):
     consumer_section.add_command(YumConsumerUnbindCommand(context))
 
     # New subsections
-    consumer_section.add_subsection(PackageSection(context))
+    consumer_section.add_subsection(YumConsumerPackageSection(context))
     consumer_section.add_subsection(PackageGroupSection(context))
     consumer_section.add_subsection(ErrataSection(context))
 
