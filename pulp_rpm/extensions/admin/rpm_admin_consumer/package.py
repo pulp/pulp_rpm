@@ -16,57 +16,19 @@ Contains package (RPM) management section and commands.
 """
 
 from gettext import gettext as _
-from command import PollingCommand
-from pulp.client.extensions.extensions import PulpCliSection
+
+from okaara.prompt import COLOR_RED
+
 from pulp.bindings.exceptions import NotFoundException
-from pulp_rpm.extension.admin.content_schedules import (
-    ContentListScheduleCommand, ContentCreateScheduleCommand, ContentDeleteScheduleCommand,
-    ContentUpdateScheduleCommand, ContentNextRunCommand)
+from pulp.client.commands.consumer import content as consumer_content
+from pulp.client.extensions.extensions import PulpCliSection
 from pulp_rpm.common.ids import TYPE_ID_RPM
-from okaara.prompt import COLOR_GREEN, COLOR_RED, MOVE_UP, CLEAR_REMAINDER
+from pulp_rpm.extension.admin.content_schedules import (
+    YumConsumerContentCreateScheduleCommand, YumConsumerContentScheduleStrategy)
 
+# progress tracker -------------------------------------------------------------
 
-class ProgressTracker:
-
-    def __init__(self, prompt):
-        self.prompt = prompt
-        self.next_step = 0
-        self.details = None
-        self.OK = prompt.color('OK', COLOR_GREEN)
-        self.FAILED = prompt.color('FAILED', COLOR_RED)
-
-    def reset(self):
-        self.next_step = 0
-        self.details = None
-
-    def display(self, report):
-        self.display_steps(report['steps'])
-        self.display_details(report['details'])
-
-    def display_steps(self, steps):
-        num_steps = len(steps)
-        self.backup()
-        for i in range(self.next_step, num_steps):
-            self.write_step(steps[i])
-            self.next_step = i
-
-    def backup(self):
-        lines = 1
-        if self.details:
-            lines += len(self.details.split('\n'))
-        self.prompt.move(MOVE_UP % lines)
-        self.prompt.clear(CLEAR_REMAINDER)
-
-    def write_step(self, step):
-        name, status = step
-        if status is None:
-            self.prompt.write(name)
-            return
-        if status:
-            status = self.OK
-        else:
-            status = self.FAILED
-        self.prompt.write('%-40s[ %s ]' % (name, status))
+class YumConsumerPackageProgressTracker(consumer_content.ConsumerContentProgressTracker):
 
     def display_details(self, details):
         action = details.get('action')
@@ -83,122 +45,72 @@ class ProgressTracker:
             self.prompt.write(self.details, COLOR_RED)
             return
 
-class PackageSection(PulpCliSection):
+# sections ---------------------------------------------------------------------
+
+class YumConsumerPackageSection(PulpCliSection):
 
     def __init__(self, context):
-        super(self.__class__, self).__init__(
-            'package',
-            _('package installation management'))
-        for Section in (InstallSection, UpdateSection, UninstallSection):
+        description = _('package installation management')
+        super(self.__class__, self).__init__( 'package', description)
+
+        for Section in (YumConsumerPackageInstallSection,
+                        YumConsumerPackageUpdateSection,
+                        YumConsumerPackageUninstallSection):
             self.add_subsection(Section(context))
 
-class InstallSection(PulpCliSection):
+
+class YumConsumerPackageInstallSection(PulpCliSection):
 
     def __init__(self, context):
-        super(self.__class__, self).__init__(
-            'install',
-            _('run or schedule a package installation task'))
+        description = _('run or schedule a package installation task')
+        super(self.__class__, self).__init__('install', description)
 
-        self.add_subsection(SchedulesSection(context, 'install'))
-        self.add_command(Install(context))
+        self.add_command(YumConsumerPackageInstallCommand(context))
+        self.add_subsection(YumConsumerSchedulesSection(context, 'install'))
 
-class UpdateSection(PulpCliSection):
+
+class YumConsumerPackageUpdateSection(PulpCliSection):
 
     def __init__(self, context):
         super(self.__class__, self).__init__(
             'update',
             _('run or schedule a package update task'))
 
-        self.add_subsection(SchedulesSection(context, 'update'))
-        self.add_command(Update(context))
+        self.add_command(YumConsumerPackageUpdateCommand(context))
+        self.add_subsection(YumConsumerSchedulesSection(context, 'update'))
 
-class UninstallSection(PulpCliSection):
+
+class YumConsumerPackageUninstallSection(PulpCliSection):
 
     def __init__(self, context):
         super(self.__class__, self).__init__(
             'uninstall',
             _('run or schedule a package removal task'))
 
-        self.add_subsection(SchedulesSection(context, 'uninstall'))
-        self.add_command(Uninstall(context))
+        self.add_command(YumConsumerPackageUninstallCommand(context))
+        self.add_subsection(YumConsumerSchedulesSection(context, 'uninstall'))
 
-class SchedulesSection(PulpCliSection):
+
+class YumConsumerSchedulesSection(PulpCliSection):
     def __init__(self, context, action):
         super(self.__class__, self).__init__(
             'schedules',
             _('manage consumer package %s schedules' % action))
-        self.add_command(ContentListScheduleCommand(context, action))
-        self.add_command(ContentCreateScheduleCommand(context, action, content_type=TYPE_ID_RPM))
-        self.add_command(ContentDeleteScheduleCommand(context, action))
-        self.add_command(ContentUpdateScheduleCommand(context, action))
-        self.add_command(ContentNextRunCommand(context, action))
+        self.add_command(consumer_content.ConsumerContentListScheduleCommand(context, action))
+        self.add_command(YumConsumerContentCreateScheduleCommand(context, action, TYPE_ID_RPM))
+        self.add_command(consumer_content.ConsumerContentDeleteScheduleCommand(context, action))
+        self.add_command(consumer_content.ConsumerContentUpdateScheduleCommand(context, action))
+        self.add_command(consumer_content.ConsumerContentNextRunCommand(context, action))
 
-class Install(PollingCommand):
+# commands ---------------------------------------------------------------------
+
+class YumConsumerPackageInstallCommand(consumer_content.ConsumerContentInstallCommand):
 
     def __init__(self, context):
-        super(self.__class__, self).__init__(
-            'run',
-            _('triggers an immediate package install on a consumer'),
-            self.run,
-            context)
-        self.create_option(
-            '--consumer-id',
-            _('identifies the consumer'),
-            required=True)
-        self.create_flag(
-            '--no-commit',
-            _('transaction not committed'))
-        self.create_flag(
-            '--reboot',
-            _('reboot after successful transaction'))
-        self.create_option(
-            '--name',
-            _('package name; may repeat for multiple packages'),
-            required=True,
-            allow_multiple=True,
-            aliases=['-n'])
-        self.create_flag(
-            '--import-keys',
-            _('import GPG keys as needed'))
-        self.progress_tracker = ProgressTracker(context.prompt)
-
-    def run(self, **kwargs):
-        consumer_id = kwargs['consumer-id']
-        apply = (not kwargs['no-commit'])
-        importkeys = kwargs['import-keys']
-        reboot = kwargs['reboot']
-        units = []
-        options = dict(
-            apply=apply,
-            importkeys=importkeys,
-            reboot=reboot,)
-        for name in kwargs['name']:
-            unit_key = dict(name=name)
-            unit = dict(type_id=TYPE_ID_RPM, unit_key=unit_key)
-            units.append(unit)
-        self.install(consumer_id, units, options)
-
-    def install(self, consumer_id, units, options):
-        prompt = self.context.prompt
-        server = self.context.server
-        try:
-            response = server.consumer_content.install(consumer_id, units=units, options=options)
-            task = response.response_body
-            msg = _('Install task created with id [%(id)s]') % dict(id=task.task_id)
-            prompt.render_success_message(msg)
-            response = server.tasks.get_task(task.task_id)
-            task = response.response_body
-            if self.rejected(task):
-                return
-            if self.postponed(task):
-                return
-            self.process(consumer_id, task)
-        except NotFoundException:
-            msg = _('Consumer [%s] not found') % consumer_id
-            prompt.write(msg, tag='not-found')
-
-    def progress(self, report):
-        self.progress_tracker.display(report)
+        description = _('triggers an immediate package install on a consumer')
+        progress_tracker = YumConsumerPackageProgressTracker(context.prompt)
+        super(self.__class__, self).__init__(context, description=description,
+                                             progress_tracker=progress_tracker)
 
     def succeeded(self, id, task):
         prompt = self.context.prompt
@@ -237,63 +149,14 @@ class Install(PollingCommand):
             for key, value in errors.items():
                 prompt.write(_('%(pkg)s : %(msg)s\n') % {'pkg': key, 'msg': value})
 
-class Update(PollingCommand):
+
+class YumConsumerPackageUpdateCommand(consumer_content.ConsumerContentUpdateCommand):
 
     def __init__(self, context):
-        super(self.__class__, self).__init__(
-            'run',
-            _('triggers an immediate package update on a consumer'),
-            self.run,
-            context)
-        self.create_option(
-            '--consumer-id',
-            _('identifies the consumer'),
-            required=True)
-        self.create_flag(
-            '--no-commit',
-            _('transaction not committed'))
-        self.create_flag(
-            '--reboot',
-            _('reboot after successful transaction'))
-        self.create_option(
-            '--name',
-            _('package name; may repeat for multiple packages'),
-            required=False,
-            allow_multiple=True,
-            aliases=['-n'])
-        self.create_flag(
-            '--import-keys',
-            _('import GPG keys as needed'))
-        self.create_flag(
-            '--all',
-            _('update all packages'),
-            aliases=['-a'])
-        self.progress_tracker = ProgressTracker(context.prompt)
-
-    def run(self, **kwargs):
-        consumer_id = kwargs['consumer-id']
-        all = kwargs['all']
-        names = kwargs['name']
-        apply = (not kwargs['no-commit'])
-        importkeys = kwargs['import-keys']
-        reboot = kwargs['reboot']
-        units = []
-        options = dict(
-            all=all,
-            apply=apply,
-            importkeys=importkeys,
-            reboot=reboot,)
-        if all: # ALL
-            unit = dict(type_id=TYPE_ID_RPM, unit_key=None)
-            self.update(consumer_id, [unit], options)
-            return
-        if names is None:
-            names = []
-        for name in names:
-            unit_key = dict(name=name)
-            unit = dict(type_id=TYPE_ID_RPM, unit_key=unit_key)
-            units.append(unit)
-        self.update(consumer_id, units, options)
+        description = _('triggers an immediate package update on a consumer')
+        progress_tracker = YumConsumerPackageProgressTracker(context.prompt)
+        super(self.__class__, self).__init__(context, description=description,
+                                             progress_tracker=progress_tracker)
 
     def update(self, consumer_id, units, options):
         prompt = self.context.prompt
@@ -353,67 +216,14 @@ class Update(PollingCommand):
                 order=filter,
                 filters=filter)
 
-class Uninstall(PollingCommand):
+
+class YumConsumerPackageUninstallCommand(consumer_content.ConsumerContentUninstallCommand):
 
     def __init__(self, context):
-        super(self.__class__, self).__init__(
-            'run',
-            _('triggers an immediate package removal on a consumer'),
-            self.run,
-            context)
-        self.create_option(
-            '--consumer-id',
-            _('identifies the consumer'),
-            required=True)
-        self.create_flag(
-            '--no-commit',
-            _('transaction not committed'))
-        self.create_flag(
-            '--reboot',
-            _('reboot after successful transaction'))
-        self.create_option(
-            '--name',
-            _('package name; may repeat for multiple packages'),
-            required=True,
-            allow_multiple=True,
-            aliases=['-n'])
-        self.progress_tracker = ProgressTracker(context.prompt)
-
-    def run(self, **kwargs):
-        consumer_id = kwargs['consumer-id']
-        apply = (not kwargs['no-commit'])
-        reboot = kwargs['reboot']
-        units = []
-        options = dict(
-            apply=apply,
-            reboot=reboot,)
-        for name in kwargs['name']:
-            unit_key = dict(name=name)
-            unit = dict(type_id=TYPE_ID_RPM, unit_key=unit_key)
-            units.append(unit)
-        self.uninstall(consumer_id, units, options)
-
-    def uninstall(self, consumer_id, units, options):
-        prompt = self.context.prompt
-        server = self.context.server
-        try:
-            response = server.consumer_content.uninstall(consumer_id, units=units, options=options)
-            task = response.response_body
-            msg = _('Uninstall task created with id [%(id)s]') % dict(id=task.task_id)
-            prompt.render_success_message(msg)
-            response = server.tasks.get_task(task.task_id)
-            task = response.response_body
-            if self.rejected(task):
-                return
-            if self.postponed(task):
-                return
-            self.process(consumer_id, task)
-        except NotFoundException:
-            msg = _('Consumer [%s] not found') % consumer_id
-            prompt.write(msg, tag='not-found')
-
-    def progress(self, report):
-        self.progress_tracker.display(report)
+        description = _('triggers an immediate package removal on a consumer')
+        progress_tracker = YumConsumerPackageProgressTracker(context.prompt)
+        super(self.__class__, self).__init__(context, description=description,
+                                             progress_tracker=progress_tracker)
 
     def succeeded(self, id, task):
         prompt = self.context.prompt
