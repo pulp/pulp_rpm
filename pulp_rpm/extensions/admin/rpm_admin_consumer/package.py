@@ -23,8 +23,7 @@ from pulp.bindings.exceptions import NotFoundException
 from pulp.client.commands.consumer import content as consumer_content
 from pulp.client.extensions.extensions import PulpCliSection
 from pulp_rpm.common.ids import TYPE_ID_RPM
-from pulp_rpm.extension.admin.content_schedules import (
-    YumConsumerContentCreateScheduleCommand, YumConsumerContentScheduleStrategy)
+from pulp_rpm.extension.admin.content_schedules import YumConsumerContentCreateScheduleCommand
 
 # progress tracker -------------------------------------------------------------
 
