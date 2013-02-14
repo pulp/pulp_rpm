@@ -16,106 +16,68 @@ Contains errata management section and commands.
 """
 
 from gettext import gettext as _
-from command import PollingCommand
-from pulp.client.extensions.extensions import PulpCliSection
+
 from pulp.bindings.exceptions import NotFoundException
-from pulp_rpm.extension.admin.content_schedules import (
-    ContentListScheduleCommand, ContentCreateScheduleCommand, ContentDeleteScheduleCommand,
-    ContentUpdateScheduleCommand, ContentNextRunCommand)
+from pulp.client.commands.consumer import content as consumer_content
+from pulp.client.extensions.extensions import PulpCliSection
 from pulp_rpm.common.ids import TYPE_ID_ERRATA, TYPE_ID_RPM
+from pulp_rpm.extension.admin.content_schedules import YumConsumerContentCreateScheduleCommand
 
+# sections ---------------------------------------------------------------------
 
-class ErrataSection(PulpCliSection):
+class YumConsumerErrataSection(PulpCliSection):
 
     def __init__(self, context):
         super(self.__class__, self).__init__(
             'errata',
             _('errata installation management'))
-        self.add_subsection(InstallSection(context))
+        self.add_subsection(YumConsumerErrataInstallSection(context))
 
-class InstallSection(PulpCliSection):
+
+class YumConsumerErrataInstallSection(PulpCliSection):
 
     def __init__(self, context):
         super(self.__class__, self).__init__(
             'install',
             _('run or schedule an errata installation task'))
 
-        self.add_subsection(SchedulesSection(context, 'install'))
-        self.add_command(Install(context))
+        self.add_command(YumConsumerErrataInstall(context))
+        self.add_subsection(YumConsumerErrataSchedulesSection(context, 'install'))
 
-class SchedulesSection(PulpCliSection):
+
+class YumConsumerErrataSchedulesSection(PulpCliSection):
     def __init__(self, context, action):
         super(self.__class__, self).__init__(
             'schedules',
             _('manage consumer errata %s schedules' % action))
-        self.add_command(ContentListScheduleCommand(context, action))
-        self.add_command(ContentCreateScheduleCommand(context, action, content_type=TYPE_ID_ERRATA))
-        self.add_command(ContentDeleteScheduleCommand(context, action))
-        self.add_command(ContentUpdateScheduleCommand(context, action))
-        self.add_command(ContentNextRunCommand(context, action))
+        self.add_command(consumer_content.ConsumerContentListScheduleCommand(context, action))
+        self.add_command(YumConsumerContentCreateScheduleCommand(context, action, TYPE_ID_ERRATA))
+        self.add_command(consumer_content.ConsumerContentDeleteScheduleCommand(context, action))
+        self.add_command(consumer_content.ConsumerContentUpdateScheduleCommand(context, action))
+        self.add_command(consumer_content.ConsumerContentNextRunCommand(context, action))
 
-class Install(PollingCommand):
+# commands ---------------------------------------------------------------------
+
+class YumConsumerErrataInstall(consumer_content.ConsumerContentInstallCommand):
 
     def __init__(self, context):
-        super(self.__class__, self).__init__(
-            'run',
-            _('triggers an immediate errata install on a consumer'),
-            self.run,
-            context)
-        self.create_option(
-            '--consumer-id',
-            _('identifies the consumer'),
-            required=True)
-        self.create_flag(
-            '--no-commit',
-            _('transaction not committed'))
-        self.create_flag(
-            '--reboot',
-            _('reboot after successful transaction'))
+        description = _('triggers an immediate errata install on a consumer')
+        super(self.__class__, self).__init__(context, description=description)
+
+        self.options.remove(consumer_content.OPTION_CONTENT_TYPE_ID)
+        self.options.remove(consumer_content.OPTION_CONTENT_UNIT)
+
         self.create_option(
             '--errata-id',
             _('erratum id; may repeat for multiple errata'),
             required=True,
             allow_multiple=True,
             aliases=['-e'])
-        self.create_flag(
-            '--import-keys',
-            _('import GPG keys as needed'))
 
     def run(self, **kwargs):
-        consumer_id = kwargs['consumer-id']
-        apply = (not kwargs['no-commit'])
-        importkeys = kwargs['import-keys']
-        reboot = kwargs['reboot']
-        units = []
-        options = dict(
-            apply=apply,
-            importkeys=importkeys,
-            reboot=reboot,)
-        for errata_id in kwargs['errata-id']:
-            unit_key = dict(id=errata_id)
-            unit = dict(type_id=TYPE_ID_ERRATA, unit_key=unit_key)
-            units.append(unit)
-        self.install(consumer_id, units, options)
-
-    def install(self, consumer_id, units, options):
-        prompt = self.context.prompt
-        server = self.context.server
-        try:
-            response = server.consumer_content.install(consumer_id, units=units, options=options)
-            task = response.response_body
-            msg = _('Install task created with id [%s]') % task.task_id
-            prompt.render_success_message(msg)
-            response = server.tasks.get_task(task.task_id)
-            task = response.response_body
-            if self.rejected(task):
-                return
-            if self.postponed(task):
-                return
-            self.process(consumer_id, task)
-        except NotFoundException:
-            msg = _('Consumer [%s] not found') % consumer_id
-            prompt.write(msg, tag='not-found')
+        kwargs[consumer_content.OPTION_CONTENT_TYPE_ID.keyword] = TYPE_ID_ERRATA
+        kwargs[consumer_content.OPTION_CONTENT_UNIT.keyword] = kwargs['errata-id']
+        super(self.__class__, self).run(**kwargs)
 
     def succeeded(self, id, task):
         prompt = self.context.prompt
