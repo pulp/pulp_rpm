@@ -17,7 +17,6 @@ Contains errata management section and commands.
 
 from gettext import gettext as _
 
-from pulp.bindings.exceptions import NotFoundException
 from pulp.client.commands.consumer import content as consumer_content
 from pulp.client.extensions.extensions import PulpCliSection
 from pulp_rpm.common.ids import TYPE_ID_ERRATA, TYPE_ID_RPM
