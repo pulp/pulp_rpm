@@ -395,8 +395,8 @@ def change_location_tag(primary_xml_snippet, relpath):
     start_index = primary_xml_snippet.find("<location ")
     end_index = primary_xml_snippet.find("/>", start_index) + 2 # adjust to end of closing tag
 
-    first_portion = primary_xml_snippet[:start_index]
-    end_portion = primary_xml_snippet[end_index:]
+    first_portion = primary_xml_snippet[:start_index].decode("ascii", "ignore")
+    end_portion = primary_xml_snippet[end_index:].decode("ascii", "ignore")
     location = """<location href="%s"/>""" % (basename)
     return first_portion + location + end_portion
 

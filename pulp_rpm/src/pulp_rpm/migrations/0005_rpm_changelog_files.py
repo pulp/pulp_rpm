@@ -38,10 +38,17 @@ def _migrate_rpm_unit_changelog_files():
         po = yumbased.CreateRepoPackage(ts, pkg_path)
         for key in ["changelog", "filelist", "files"]:
             if key not in rpm_unit or not rpm_unit[key]:
-                rpm_unit[key] = getattr(po, key)
+                if key == "changelog":
+                    data = map(lambda x: __encoding(x), po[key])
+                else:
+                    data = getattr(po, key)
+                rpm_unit[key] = data
                 _log.debug("missing pkg: %s ; key %s" % (rpm_unit, key))
         collection.save(rpm_unit, safe=True)
     _log.info("Migrated rpms to include rpm changelog and filelist metadata")
+
+def __encoding(s):
+    return s.decode("ascii", "ignore")
 
 def migrate(*args, **kwargs):
     _migrate_rpm_unit_changelog_files()
