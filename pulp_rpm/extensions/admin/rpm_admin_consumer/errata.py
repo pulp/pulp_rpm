@@ -22,33 +22,35 @@ from pulp.client.extensions.extensions import PulpCliSection
 from pulp_rpm.common.ids import TYPE_ID_ERRATA, TYPE_ID_RPM
 from pulp_rpm.extension.admin.content_schedules import YumConsumerContentCreateScheduleCommand
 
+from options import FLAG_IMPORT_KEYS, FLAG_NO_COMMIT, FLAG_REBOOT
+
 # sections ---------------------------------------------------------------------
 
 class YumConsumerErrataSection(PulpCliSection):
 
     def __init__(self, context):
-        super(self.__class__, self).__init__(
-            'errata',
-            _('errata installation management'))
+        description = _('errata installation management')
+        super(self.__class__, self).__init__('errata', description)
+
         self.add_subsection(YumConsumerErrataInstallSection(context))
 
 
 class YumConsumerErrataInstallSection(PulpCliSection):
 
     def __init__(self, context):
-        super(self.__class__, self).__init__(
-            'install',
-            _('run or schedule an errata installation task'))
+        description = _('run or schedule an errata installation task')
+        super(self.__class__, self).__init__('install', description)
 
         self.add_command(YumConsumerErrataInstall(context))
         self.add_subsection(YumConsumerErrataSchedulesSection(context, 'install'))
 
 
 class YumConsumerErrataSchedulesSection(PulpCliSection):
+
     def __init__(self, context, action):
-        super(self.__class__, self).__init__(
-            'schedules',
-            _('manage consumer errata %s schedules' % action))
+        description = _('manage consumer errata %s schedules' % action)
+        super(self.__class__, self).__init__('schedules', description)
+
         self.add_command(consumer_content.ConsumerContentListScheduleCommand(context, action))
         self.add_command(YumConsumerContentCreateScheduleCommand(context, action, TYPE_ID_ERRATA))
         self.add_command(consumer_content.ConsumerContentDeleteScheduleCommand(context, action))
@@ -63,9 +65,7 @@ class YumConsumerErrataInstall(consumer_content.ConsumerContentInstallCommand):
         description = _('triggers an immediate errata install on a consumer')
         super(self.__class__, self).__init__(context, description=description)
 
-        self.options.remove(consumer_content.OPTION_CONTENT_TYPE_ID)
-        self.options.remove(consumer_content.OPTION_CONTENT_UNIT)
-
+    def add_content_options(self):
         self.create_option(
             '--errata-id',
             _('erratum id; may repeat for multiple errata'),
@@ -73,22 +73,31 @@ class YumConsumerErrataInstall(consumer_content.ConsumerContentInstallCommand):
             allow_multiple=True,
             aliases=['-e'])
 
-    def run(self, **kwargs):
-        kwargs[consumer_content.OPTION_CONTENT_TYPE_ID.keyword] = TYPE_ID_ERRATA
-        kwargs[consumer_content.OPTION_CONTENT_UNIT.keyword] = kwargs['errata-id']
-        super(self.__class__, self).run(**kwargs)
+    def add_install_options(self):
+        self.add_flag(FLAG_NO_COMMIT)
+        self.add_flag(FLAG_REBOOT)
+        self.add_flag(FLAG_IMPORT_KEYS)
 
-    def succeeded(self, id, task):
+    def get_install_options(self, kwargs):
+        commit = not kwargs[FLAG_NO_COMMIT.keyword]
+        reboot = kwargs[FLAG_REBOOT.keyword]
+        import_keys = kwargs[FLAG_IMPORT_KEYS.keyword]
+
+        return {'apply': commit,
+                'reboot': reboot,
+                'importkeys': import_keys}
+
+    def get_content_units(self, kwargs):
+
+        def _unit_dict(unit_id):
+            return {'type_id': TYPE_ID_ERRATA,
+                    'unit_key': {'errata-id': unit_id}}
+
+        units = map(_unit_dict, kwargs['errata-id'])
+        return units
+
+    def succeeded(self, consumer_id, task):
         prompt = self.context.prompt
-        # reported as failed
-        # note: actually implemented on the agent as a package install so the
-        # task.result will contain RPM units that failed to be installed or updated.
-        if not task.result['succeeded']:
-            msg = _('Install failed')
-            details = task.result['details'][TYPE_ID_RPM]['details']
-            prompt.render_failure_message(msg)
-            prompt.render_failure_message(details['message'])
-            return
         msg = _('Install Succeeded')
         prompt.render_success_message(msg)
         # reported as succeeded
@@ -116,3 +125,8 @@ class YumConsumerErrataInstall(consumer_content.ConsumerContentInstallCommand):
                     order=filter,
                     filters=filter)
 
+    def failed(self, consumer_id, task):
+        msg = _('Install Failed')
+        details = task.result['details'][TYPE_ID_RPM]['details']
+        self.context.prompt.render_failure_message(msg)
+        self.context.prompt.render_failure_message(details['message'])

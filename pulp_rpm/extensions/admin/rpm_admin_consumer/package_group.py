@@ -22,6 +22,8 @@ from pulp.client.extensions.extensions import PulpCliSection
 from pulp_rpm.common.ids import TYPE_ID_PKG_GROUP
 from pulp_rpm.extension.admin.content_schedules import YumConsumerContentCreateScheduleCommand
 
+from options import FLAG_IMPORT_KEYS, FLAG_NO_COMMIT, FLAG_REBOOT
+
 # sections ---------------------------------------------------------------------
 
 class YumConsumerPackageGroupSection(PulpCliSection):
@@ -74,9 +76,7 @@ class YumConsumerPackageGroupInstallCommand(consumer_content.ConsumerContentInst
         description = _('triggers an immediate package-group install on a consumer')
         super(self.__class__, self).__init__(context, description=description)
 
-        self.options.remove(consumer_content.OPTION_CONTENT_TYPE_ID)
-        self.options.remove(consumer_content.OPTION_CONTENT_UNIT)
-
+    def add_content_options(self):
         self.create_option(
             '--name',
             _('package group name; may repeat for multiple groups'),
@@ -84,20 +84,30 @@ class YumConsumerPackageGroupInstallCommand(consumer_content.ConsumerContentInst
             allow_multiple=True,
             aliases=['-n'])
 
-    def run(self, **kwargs):
-        kwargs[consumer_content.OPTION_CONTENT_TYPE_ID.keyword] = TYPE_ID_PKG_GROUP
-        kwargs[consumer_content.OPTION_CONTENT_UNIT.keyword] = kwargs['name']
-        super(self.__class__, self).run(**kwargs)
+    def add_install_options(self):
+        self.add_flag(FLAG_NO_COMMIT)
+        self.add_flag(FLAG_REBOOT)
+        self.add_flag(FLAG_IMPORT_KEYS)
 
-    def succeeded(self, id, task):
+    def get_install_options(self, kwargs):
+        commit = not kwargs[FLAG_NO_COMMIT.keyword]
+        reboot = kwargs[FLAG_REBOOT.keyword]
+        import_keys =  kwargs[FLAG_IMPORT_KEYS.keyword]
+
+        return {'apply': commit,
+                'reboot': reboot,
+                'importkeys': import_keys}
+
+    def get_content_units(self, kwargs):
+
+        def _unit_dict(unit_name):
+            return {'type_id': TYPE_ID_PKG_GROUP,
+                    'unit_key': {'name': unit_name}}
+
+        return map(_unit_dict, kwargs['name'])
+
+    def succeeded(self, consumer_id, task):
         prompt = self.context.prompt
-        # reported as failed
-        if not task.result['succeeded']:
-            msg = 'Install failed'
-            details = task.result['details'][TYPE_ID_PKG_GROUP]['details']
-            prompt.render_failure_message(_(msg))
-            prompt.render_failure_message(details['message'])
-            return
         msg = 'Install Succeeded'
         prompt.render_success_message(_(msg))
         # reported as succeeded
@@ -121,6 +131,12 @@ class YumConsumerPackageGroupInstallCommand(consumer_content.ConsumerContentInst
                 order=filter,
                 filters=filter)
 
+    def failed(self, consumer_id, task):
+        msg = 'Install failed'
+        details = task.result['details'][TYPE_ID_PKG_GROUP]['details']
+        self.context.prompt.render_failure_message(_(msg))
+        self.context.prompt.render_failure_message(details['message'])
+
 
 class YumConsumerPackageGroupUninstallCommand(consumer_content.ConsumerContentUninstallCommand):
 
@@ -128,9 +144,7 @@ class YumConsumerPackageGroupUninstallCommand(consumer_content.ConsumerContentUn
         description = _('triggers an immediate package-group removal on a consumer')
         super(self.__class__, self).__init__(context, description=description)
 
-        self.options.remove(consumer_content.OPTION_CONTENT_TYPE_ID)
-        self.options.remove(consumer_content.OPTION_CONTENT_UNIT)
-
+    def add_content_options(self):
         self.create_option(
             '--name',
             _('package group name; may repeat for multiple groups'),
@@ -138,20 +152,27 @@ class YumConsumerPackageGroupUninstallCommand(consumer_content.ConsumerContentUn
             allow_multiple=True,
             aliases=['-n'])
 
-    def run(self, **kwargs):
-        kwargs[consumer_content.OPTION_CONTENT_TYPE_ID.keyword] = TYPE_ID_PKG_GROUP
-        kwargs[consumer_content.OPTION_CONTENT_UNIT.keyword] = kwargs['name']
-        super(self.__class__, self).run(**kwargs)
+    def add_uninstall_options(self):
+        self.add_flag(FLAG_NO_COMMIT)
+        self.add_flag(FLAG_REBOOT)
 
-    def succeeded(self, id, task):
+    def get_uninstall_options(self, kwargs):
+        commit = not kwargs[FLAG_NO_COMMIT.keyword]
+        reboot = kwargs[FLAG_REBOOT.keyword]
+
+        return {'apply': commit,
+                'reboot': reboot}
+
+    def get_content_units(self, kwargs):
+
+        def _unit_dict(unit_name):
+            return {'type_id': TYPE_ID_PKG_GROUP,
+                    'unit_key': {'name': unit_name}}
+
+        return map(_unit_dict, kwargs['name'])
+
+    def succeeded(self, consumer_id, task):
         prompt = self.context.prompt
-        # reported as failed
-        if not task.result['succeeded']:
-            msg = 'Uninstall Failed'
-            details = task.result['details'][TYPE_ID_PKG_GROUP]['details']
-            prompt.render_failure_message(_(msg))
-            prompt.render_failure_message(details['message'])
-            return
         msg = 'Uninstall Succeeded'
         prompt.render_success_message(_(msg))
         # reported as succeeded
@@ -174,3 +195,9 @@ class YumConsumerPackageGroupUninstallCommand(consumer_content.ConsumerContentUn
                 deps,
                 order=filter,
                 filters=filter)
+
+    def failed(self, consumer_id, task):
+        msg = 'Uninstall Failed'
+        details = task.result['details'][TYPE_ID_PKG_GROUP]['details']
+        self.context.prompt.render_failure_message(_(msg))
+        self.context.prompt.render_failure_message(details['message'])

@@ -24,6 +24,8 @@ from pulp.client.extensions.extensions import PulpCliSection
 from pulp_rpm.common.ids import TYPE_ID_RPM
 from pulp_rpm.extension.admin.content_schedules import YumConsumerContentCreateScheduleCommand
 
+from options import FLAG_ALL_CONTENT, FLAG_IMPORT_KEYS, FLAG_NO_COMMIT, FLAG_REBOOT
+
 # progress tracker -------------------------------------------------------------
 
 class YumConsumerPackageProgressTracker(consumer_content.ConsumerContentProgressTracker):
@@ -70,9 +72,8 @@ class YumConsumerPackageInstallSection(PulpCliSection):
 class YumConsumerPackageUpdateSection(PulpCliSection):
 
     def __init__(self, context):
-        super(self.__class__, self).__init__(
-            'update',
-            _('run or schedule a package update task'))
+        description = _('run or schedule a package update task')
+        super(self.__class__, self).__init__('update', description)
 
         self.add_command(YumConsumerPackageUpdateCommand(context))
         self.add_subsection(YumConsumerSchedulesSection(context, 'update'))
@@ -81,19 +82,19 @@ class YumConsumerPackageUpdateSection(PulpCliSection):
 class YumConsumerPackageUninstallSection(PulpCliSection):
 
     def __init__(self, context):
-        super(self.__class__, self).__init__(
-            'uninstall',
-            _('run or schedule a package removal task'))
+        description = _('run or schedule a package removal task')
+        super(self.__class__, self).__init__('uninstall', description)
 
         self.add_command(YumConsumerPackageUninstallCommand(context))
         self.add_subsection(YumConsumerSchedulesSection(context, 'uninstall'))
 
 
 class YumConsumerSchedulesSection(PulpCliSection):
+
     def __init__(self, context, action):
-        super(self.__class__, self).__init__(
-            'schedules',
-            _('manage consumer package %s schedules' % action))
+        description = _('manage consumer package %s schedules' % action)
+        super(self.__class__, self).__init__('schedules', description)
+
         self.add_command(consumer_content.ConsumerContentListScheduleCommand(context, action))
         self.add_command(YumConsumerContentCreateScheduleCommand(context, action, TYPE_ID_RPM))
         self.add_command(consumer_content.ConsumerContentDeleteScheduleCommand(context, action))
@@ -110,9 +111,7 @@ class YumConsumerPackageInstallCommand(consumer_content.ConsumerContentInstallCo
         super(self.__class__, self).__init__(context, description=description,
                                              progress_tracker=progress_tracker)
 
-        self.options.remove(consumer_content.OPTION_CONTENT_TYPE_ID)
-        self.options.remove(consumer_content.OPTION_CONTENT_UNIT)
-
+    def add_content_options(self):
         self.create_option(
             '--name',
             _('package name; may repeat for multiple packages'),
@@ -120,20 +119,30 @@ class YumConsumerPackageInstallCommand(consumer_content.ConsumerContentInstallCo
             allow_multiple=True,
             aliases=['-n'])
 
-    def run(self, **kwargs):
-        kwargs[consumer_content.OPTION_CONTENT_TYPE_ID.keyword] = TYPE_ID_RPM
-        kwargs[consumer_content.OPTION_CONTENT_UNIT.keyword] = kwargs['name']
-        super(self.__class__, self).run(**kwargs)
+    def add_install_options(self):
+        self.add_flag(FLAG_NO_COMMIT)
+        self.add_flag(FLAG_REBOOT)
+        self.add_flag(FLAG_IMPORT_KEYS)
 
-    def succeeded(self, id, task):
+    def get_install_options(self, kwargs):
+        commit = not kwargs[FLAG_NO_COMMIT.keyword]
+        reboot = kwargs[FLAG_REBOOT.keyword]
+        import_keys = kwargs[FLAG_IMPORT_KEYS.keyword]
+
+        return {'apply': commit,
+                'reboot': reboot,
+                'importkeys': import_keys}
+
+    def get_content_units(self, kwargs):
+
+        def _unit_dict(unit_name):
+            return {'type_id': TYPE_ID_RPM,
+                    'unit_key': {'name': unit_name}}
+
+        return map(_unit_dict, kwargs['name'])
+
+    def succeeded(self, consumer_id, task):
         prompt = self.context.prompt
-        # reported as failed
-        if not task.result['succeeded']:
-            msg = 'Install failed'
-            details = task.result['details'][TYPE_ID_RPM]['details']
-            prompt.render_failure_message(_(msg))
-            prompt.render_failure_message(details['message'])
-            return
         msg = 'Install Completed'
         prompt.render_success_message(_(msg))
         # reported as succeeded
@@ -162,6 +171,12 @@ class YumConsumerPackageInstallCommand(consumer_content.ConsumerContentInstallCo
             for key, value in errors.items():
                 prompt.write(_('%(pkg)s : %(msg)s\n') % {'pkg': key, 'msg': value})
 
+    def failed(self, consumer_id, task):
+        msg = 'Install failed'
+        details = task.result['details'][TYPE_ID_RPM]['details']
+        self.context.prompt.render_failure_message(_(msg))
+        self.context.prompt.render_failure_message(details['message'])
+
 
 class YumConsumerPackageUpdateCommand(consumer_content.ConsumerContentUpdateCommand):
 
@@ -171,9 +186,7 @@ class YumConsumerPackageUpdateCommand(consumer_content.ConsumerContentUpdateComm
         super(self.__class__, self).__init__(context, description=description,
                                              progress_tracker=progress_tracker)
 
-        self.options.remove(consumer_content.OPTION_CONTENT_TYPE_ID)
-        self.options.remove(consumer_content.OPTION_CONTENT_UNIT)
-
+    def add_content_options(self):
         self.create_option(
             '--name',
             _('package name; may repeat for multiple packages'),
@@ -181,20 +194,34 @@ class YumConsumerPackageUpdateCommand(consumer_content.ConsumerContentUpdateComm
             allow_multiple=True,
             aliases=['-n'])
 
-    def run(self, **kwargs):
-        kwargs[consumer_content.OPTION_CONTENT_TYPE_ID.keyword] = TYPE_ID_RPM
-        kwargs[consumer_content.OPTION_CONTENT_UNIT.keyword] = kwargs['name']
-        super(self.__class__, self).run(**kwargs)
+    def add_update_options(self):
+        self.add_flag(FLAG_NO_COMMIT)
+        self.add_flag(FLAG_REBOOT)
+        self.add_flag(FLAG_IMPORT_KEYS)
+        self.add_flag(FLAG_ALL_CONTENT)
 
-    def succeeded(self, id, task):
+    def get_update_options(self, kwargs):
+        commit = not kwargs[FLAG_NO_COMMIT.keyword]
+        reboot = kwargs[FLAG_REBOOT.keyword]
+        import_keys = kwargs[FLAG_IMPORT_KEYS.keyword]
+
+        return {'apply': commit,
+                'reboot': reboot,
+                'importkeys': import_keys}
+
+    def get_content_units(self, kwargs):
+
+        if kwargs[FLAG_ALL_CONTENT.keyword]:
+            return [{'type_id': TYPE_ID_RPM, 'unit_key': None}]
+
+        def _unit_dict(unit_name):
+            return {'type_id': TYPE_ID_RPM,
+                    'unit_key': {'name': unit_name}}
+
+        return map(_unit_dict, kwargs['name'])
+
+    def succeeded(self, consumer_id, task):
         prompt = self.context.prompt
-        # reported as failed
-        if not task.result['succeeded']:
-            msg = 'Update failed'
-            details = task.result['details'][TYPE_ID_RPM]['details']
-            prompt.render_failure_message(_(msg))
-            prompt.render_failure_message(details['message'])
-            return
         msg = 'Update Completed'
         prompt.render_success_message(_(msg))
         # reported as succeeded
@@ -213,10 +240,13 @@ class YumConsumerPackageUpdateCommand(consumer_content.ConsumerContentUpdateComm
         deps = details['deps']
         if deps:
             prompt.render_title('Installed for dependency')
-            prompt.render_document_list(
-                deps,
-                order=filter,
-                filters=filter)
+            prompt.render_document_list(deps, order=filter, filters=filter)
+
+    def failed(self, consumer_id, task):
+        msg = 'Update failed'
+        details = task.result['details'][TYPE_ID_RPM]['details']
+        self.context.prompt.render_failure_message(_(msg))
+        self.context.prompt.render_failure_message(details['message'])
 
 
 class YumConsumerPackageUninstallCommand(consumer_content.ConsumerContentUninstallCommand):
@@ -227,9 +257,7 @@ class YumConsumerPackageUninstallCommand(consumer_content.ConsumerContentUninsta
         super(self.__class__, self).__init__(context, description=description,
                                              progress_tracker=progress_tracker)
 
-        self.options.remove(consumer_content.OPTION_CONTENT_TYPE_ID)
-        self.options.remove(consumer_content.OPTION_CONTENT_UNIT)
-
+    def add_content_options(self):
         self.create_option(
             '--name',
             _('package name; may repeat for multiple packages'),
@@ -237,20 +265,27 @@ class YumConsumerPackageUninstallCommand(consumer_content.ConsumerContentUninsta
             allow_multiple=True,
             aliases=['-n'])
 
-    def run(self, **kwargs):
-        kwargs[consumer_content.OPTION_CONTENT_TYPE_ID.keyword] = TYPE_ID_RPM
-        kwargs[consumer_content.OPTION_CONTENT_UNIT.keyword] = kwargs['name']
-        super(self.__class__, self).run(**kwargs)
+    def add_uninstall_options(self):
+        self.add_flag(FLAG_NO_COMMIT)
+        self.add_flag(FLAG_REBOOT)
 
-    def succeeded(self, id, task):
+    def get_uninstall_options(self, kwargs):
+        commit = not kwargs[FLAG_NO_COMMIT.keyword]
+        reboot = kwargs[FLAG_REBOOT.keyword]
+
+        return {'apply': commit,
+                'reboot': reboot}
+
+    def get_content_units(self, kwargs):
+
+        def _unit_dict(unit_name):
+            return {'type_id': TYPE_ID_RPM,
+                    'unit_key': {'name': unit_name}}
+
+        return map(_unit_dict, kwargs['name'])
+
+    def succeeded(self, consumer_id, task):
         prompt = self.context.prompt
-        # reported as failed
-        if not task.result['succeeded']:
-            msg = 'Uninstall Failed'
-            details = task.result['details'][TYPE_ID_RPM]['details']
-            prompt.render_failure_message(_(msg))
-            prompt.render_failure_message(details['message'])
-            return
         msg = 'Uninstall Completed'
         prompt.render_success_message(_(msg))
         # reported as succeeded
@@ -273,3 +308,9 @@ class YumConsumerPackageUninstallCommand(consumer_content.ConsumerContentUninsta
                 deps,
                 order=filter,
                 filters=filter)
+
+    def failed(self, consumer_id, task):
+        msg = 'Uninstall Failed'
+        details = task.result['details'][TYPE_ID_RPM]['details']
+        self.context.prompt.render_failure_message(_(msg))
+        self.context.prompt.render_failure_message(details['message'])
