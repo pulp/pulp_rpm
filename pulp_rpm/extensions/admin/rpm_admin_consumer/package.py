@@ -112,12 +112,11 @@ class YumConsumerPackageInstallCommand(consumer_content.ConsumerContentInstallCo
                                              progress_tracker=progress_tracker)
 
     def add_content_options(self):
-        self.create_option(
-            '--name',
-            _('package name; may repeat for multiple packages'),
-            required=True,
-            allow_multiple=True,
-            aliases=['-n'])
+        self.create_option('--name',
+                           _('package name; may repeat for multiple packages'),
+                           required=True,
+                           allow_multiple=True,
+                           aliases=['-n'])
 
     def add_install_options(self):
         self.add_flag(FLAG_NO_COMMIT)
@@ -143,38 +142,39 @@ class YumConsumerPackageInstallCommand(consumer_content.ConsumerContentInstallCo
 
     def succeeded(self, consumer_id, task):
         prompt = self.context.prompt
-        msg = 'Install Completed'
-        prompt.render_success_message(_(msg))
-        # reported as succeeded
+        msg = _('Install Succeeded')
+        prompt.render_success_message(msg)
+
         details = task.result['details'][TYPE_ID_RPM]['details']
-        filter = ['name', 'version', 'arch', 'repoid']
         resolved = details['resolved']
+        fields = ['name', 'version', 'arch', 'repoid']
+
         if resolved:
-            prompt.render_title('Installed')
-            prompt.render_document_list(
-                resolved,
-                order=filter,
-                filters=filter)
+            prompt.render_title(_('Installed'))
+            prompt.render_document_list(resolved, order=fields, filters=fields)
+
         else:
-            msg = 'Packages already installed'
-            prompt.render_success_message(_(msg))
+            msg = _('Packages already installed')
+            prompt.render_success_message(msg)
+
         deps = details['deps']
+
         if deps:
-            prompt.render_title('Installed for dependency')
-            prompt.render_document_list(
-                deps,
-                order=filter,
-                filters=filter)
+            prompt.render_title(_('Installed for Dependencies'))
+            prompt.render_document_list(deps, order=fields, filters=fields)
+
         errors = details.get('errors', None)
+
         if errors:
             prompt.render_failure_message(_('Failed to install following packages:'))
+
             for key, value in errors.items():
                 prompt.write(_('%(pkg)s : %(msg)s\n') % {'pkg': key, 'msg': value})
 
     def failed(self, consumer_id, task):
-        msg = 'Install failed'
+        msg = _('Install Failed')
         details = task.result['details'][TYPE_ID_RPM]['details']
-        self.context.prompt.render_failure_message(_(msg))
+        self.context.prompt.render_failure_message(msg)
         self.context.prompt.render_failure_message(details['message'])
 
 
@@ -187,12 +187,11 @@ class YumConsumerPackageUpdateCommand(consumer_content.ConsumerContentUpdateComm
                                              progress_tracker=progress_tracker)
 
     def add_content_options(self):
-        self.create_option(
-            '--name',
-            _('package name; may repeat for multiple packages'),
-            required=True,
-            allow_multiple=True,
-            aliases=['-n'])
+        self.create_option('--name',
+                           _('package name; may repeat for multiple packages'),
+                           required=True,
+                           allow_multiple=True,
+                           aliases=['-n'])
 
     def add_update_options(self):
         self.add_flag(FLAG_NO_COMMIT)
@@ -222,30 +221,31 @@ class YumConsumerPackageUpdateCommand(consumer_content.ConsumerContentUpdateComm
 
     def succeeded(self, consumer_id, task):
         prompt = self.context.prompt
-        msg = 'Update Completed'
-        prompt.render_success_message(_(msg))
-        # reported as succeeded
+        msg = _('Update Succeeded')
+        prompt.render_success_message(msg)
+
         details = task.result['details'][TYPE_ID_RPM]['details']
-        filter = ['name', 'version', 'arch', 'repoid']
         resolved = details['resolved']
+        fields = ['name', 'version', 'arch', 'repoid']
+
         if resolved:
-            prompt.render_title('Updated')
-            prompt.render_document_list(
-                resolved,
-                order=filter,
-                filters=filter)
+            prompt.render_title(_('Updated'))
+            prompt.render_document_list(resolved, order=fields, filters=fields)
+
         else:
-            msg = 'No updates needed'
-            prompt.render_success_message(_(msg))
+            msg = _('No updates needed')
+            prompt.render_success_message(msg)
+
         deps = details['deps']
+
         if deps:
-            prompt.render_title('Installed for dependency')
-            prompt.render_document_list(deps, order=filter, filters=filter)
+            prompt.render_title(_('Installed for Dependencies'))
+            prompt.render_document_list(deps, order=fields, filters=fields)
 
     def failed(self, consumer_id, task):
-        msg = 'Update failed'
+        msg = _('Update Failed')
         details = task.result['details'][TYPE_ID_RPM]['details']
-        self.context.prompt.render_failure_message(_(msg))
+        self.context.prompt.render_failure_message(msg)
         self.context.prompt.render_failure_message(details['message'])
 
 
@@ -258,12 +258,11 @@ class YumConsumerPackageUninstallCommand(consumer_content.ConsumerContentUninsta
                                              progress_tracker=progress_tracker)
 
     def add_content_options(self):
-        self.create_option(
-            '--name',
-            _('package name; may repeat for multiple packages'),
-            required=True,
-            allow_multiple=True,
-            aliases=['-n'])
+        self.create_option('--name',
+                           _('package name; may repeat for multiple packages'),
+                           required=True,
+                           allow_multiple=True,
+                           aliases=['-n'])
 
     def add_uninstall_options(self):
         self.add_flag(FLAG_NO_COMMIT)
@@ -286,31 +285,29 @@ class YumConsumerPackageUninstallCommand(consumer_content.ConsumerContentUninsta
 
     def succeeded(self, consumer_id, task):
         prompt = self.context.prompt
-        msg = 'Uninstall Completed'
-        prompt.render_success_message(_(msg))
-        # reported as succeeded
+        msg = _('Uninstall Completed')
+        prompt.render_success_message(msg)
+
         details = task.result['details'][TYPE_ID_RPM]['details']
-        filter = ['name', 'version', 'arch', 'repoid']
         resolved = details['resolved']
+        fields = ['name', 'version', 'arch', 'repoid']
+
         if resolved:
-            prompt.render_title('Uninstalled')
-            prompt.render_document_list(
-                resolved,
-                order=filter,
-                filters=filter)
+            prompt.render_title(_('Uninstalled'))
+            prompt.render_document_list(resolved, order=fields, filters=fields)
+
         else:
-            msg = 'No matching packages found to uninstall'
-            prompt.render_success_message(_(msg))
+            msg = _('No matching packages found to uninstall')
+            prompt.render_success_message(msg)
+
         deps = details['deps']
+
         if deps:
-            prompt.render_title('Uninstalled for dependency')
-            prompt.render_document_list(
-                deps,
-                order=filter,
-                filters=filter)
+            prompt.render_title(_('Uninstalled for Dependencies'))
+            prompt.render_document_list(deps, order=fields, filters=fields)
 
     def failed(self, consumer_id, task):
-        msg = 'Uninstall Failed'
+        msg = _('Uninstall Failed')
         details = task.result['details'][TYPE_ID_RPM]['details']
-        self.context.prompt.render_failure_message(_(msg))
+        self.context.prompt.render_failure_message(msg)
         self.context.prompt.render_failure_message(details['message'])

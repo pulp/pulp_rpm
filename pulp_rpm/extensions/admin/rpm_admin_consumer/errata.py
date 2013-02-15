@@ -66,12 +66,11 @@ class YumConsumerErrataInstall(consumer_content.ConsumerContentInstallCommand):
         super(self.__class__, self).__init__(context, description=description)
 
     def add_content_options(self):
-        self.create_option(
-            '--errata-id',
-            _('erratum id; may repeat for multiple errata'),
-            required=True,
-            allow_multiple=True,
-            aliases=['-e'])
+        self.create_option('--errata-id',
+                           _('erratum id; may repeat for multiple errata'),
+                           required=True,
+                           allow_multiple=True,
+                           aliases=['-e'])
 
     def add_install_options(self):
         self.add_flag(FLAG_NO_COMMIT)
@@ -100,30 +99,29 @@ class YumConsumerErrataInstall(consumer_content.ConsumerContentInstallCommand):
         prompt = self.context.prompt
         msg = _('Install Succeeded')
         prompt.render_success_message(msg)
-        # reported as succeeded
+
         # note: actually implemented on the agent as a package install so the
         # task.result will contain RPM units that were installed or updated
         # to satisfy the errata.
+
         if task.result['details'].has_key(TYPE_ID_RPM):
             details = task.result['details'][TYPE_ID_RPM]['details']
-            filter = ['name', 'version', 'arch', 'repoid']
             resolved = details['resolved']
+            fields = ['name', 'version', 'arch', 'repoid']
+
             if resolved:
                 prompt.render_title(_('Installed'))
-                prompt.render_document_list(
-                    resolved,
-                    order=filter,
-                    filters=filter)
+                prompt.render_document_list(resolved, order=fields, filters=fields)
+
             else:
                 msg = _('Errata installed')
                 prompt.render_success_message(msg)
+
             deps = details['deps']
+
             if deps:
                 prompt.render_title(_('Installed for dependency'))
-                prompt.render_document_list(
-                    deps,
-                    order=filter,
-                    filters=filter)
+                prompt.render_document_list(deps, order=fields, filters=fields)
 
     def failed(self, consumer_id, task):
         msg = _('Install Failed')
