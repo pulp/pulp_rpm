@@ -25,7 +25,7 @@ class YumConsumerContentCreateScheduleCommand(ConsumerContentCreateScheduleComma
         assert(content_type in (TYPE_ID_RPM, TYPE_ID_ERRATA, TYPE_ID_PKG_GROUP))
 
         strategy = strategy or YumConsumerContentScheduleStrategy(context, action, content_type)
-        super(self.__class__, self).__init__(context, action, strategy)
+        super(YumConsumerContentCreateScheduleCommand, self).__init__(context, action, strategy)
 
         # This will be substituted by the options below
         self.options.remove(OPTION_CONTENT_TYPE_ID)
@@ -50,7 +50,7 @@ class YumConsumerContentScheduleStrategy(ConsumerContentScheduleStrategy):
     def __init__(self, context, action, content_type):
         assert content_type in (TYPE_ID_RPM, TYPE_ID_ERRATA, TYPE_ID_PKG_GROUP)
 
-        super(self.__class__, self).__init__(context, action)
+        super(YumConsumerContentScheduleStrategy, self).__init__(context, action)
 
         self.content_type = content_type
 
