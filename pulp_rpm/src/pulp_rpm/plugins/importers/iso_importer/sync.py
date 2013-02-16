@@ -10,49 +10,37 @@
 # NON-INFRINGEMENT, or FITNESS FOR A PARTICULAR PURPOSE. You should
 # have received a copy of GPLv2 along with this software; if not, see
 # http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt.
+from cStringIO import StringIO
+from gettext import gettext as _
+from urlparse import urljoin
+import csv
+import hashlib
 import logging
 import os
-import shutil
 
 from pulp_rpm.common import constants, ids
-from pulp_rpm.common.constants import STATE_RUNNING, STATE_COMPLETE
+from pulp_rpm.common.constants import STATE_COMPLETE, STATE_RUNNING, STATE_FAILED
 from pulp_rpm.common.sync_progress import SyncProgressReport
-from pulp_rpm.plugins.importers.iso_importer.bumper import ISOBumper
 
+from pulp.common.download import factory, listener, request
+from pulp.common.download.config import DownloaderConfig
 from pulp.common.util import encode_unicode
 from pulp.plugins.conduits.mixins import UnitAssociationCriteria
 
 
 logger = logging.getLogger(__name__)
+# How many bytes we want to read into RAM at a time when validating a download checksum
+VALIDATION_CHUNK_SIZE = 32*1024*1024
 
 
-class ISOSyncRun(object):
+class ISOSyncRun(listener.DownloadEventListener):
     """
-    This class maintains state for a single repository sync. We need to keep the state so that we
-    can cancel a sync that is in progress.
+    This class maintains state for a single repository sync (do not reuse it). We need to keep the state so
+    that we can cancel a sync that is in progress. It subclasses DownloadEventListener so it can pass itself
+    to the downloader library and receive the callbacks when downloads are complete.
     """
-    def cancel_sync(self):
-        """
-        This method will cancel a sync that is in progress.
-        """
-        self.bumper.cancel_download()
-
-    def perform_sync(self, repo, sync_conduit, config):
-        """
-        Perform the sync operation accoring to the config for the given repo, and return a report.
-        The sync progress will be reported through the sync_conduit.
-
-        :param repo:         Metadata describing the repository
-        :type  repo:         pulp.server.plugins.model.Repository
-        :param sync_conduit: The sync_conduit that gives us access to the local repository
-        :type  sync_conduit: pulp.server.conduits.repo_sync.RepoSyncConduit
-        :param config:       The configuration for the importer
-        :type  config:       pulp.server.plugins.config.PluginCallConfiguration
-        :return:             The sync report
-        :rtype:              pulp.plugins.model.SyncReport
-        """
-        # Build the progress report and set it to the running state
-        progress_report = SyncProgressReport(sync_conduit)
+    def __init__(self, sync_conduit, config):
+        self.sync_conduit = sync_conduit
 
         # Cast our config parameters to the correct types and use them to build an ISOBumper
         max_speed = config.get(constants.CONFIG_MAX_SPEED)
@@ -63,72 +51,152 @@ class ISOSyncRun(object):
             num_threads = int(num_threads)
         else:
             num_threads = constants.DEFAULT_NUM_THREADS
-        progress_report.metadata_state = STATE_RUNNING
-        progress_report.update_progress()
-        self.bumper = ISOBumper(
-                           repo_url=encode_unicode(config.get(constants.CONFIG_FEED_URL)),
-                           working_path=repo.working_dir,
-                           max_speed=max_speed, num_threads=num_threads,
-                           ssl_client_cert=config.get(constants.CONFIG_SSL_CLIENT_CERT),
-                           ssl_client_key=config.get(constants.CONFIG_SSL_CLIENT_KEY),
-                           ssl_ca_cert=config.get(constants.CONFIG_SSL_CA_CERT),
-                           proxy_url=config.get(constants.CONFIG_PROXY_URL),
-                           proxy_port=config.get(constants.CONFIG_PROXY_PORT),
-                           proxy_user=config.get(constants.CONFIG_PROXY_USER),
-                           proxy_password=config.get(constants.CONFIG_PROXY_PASSWORD))
+        self.repo_url = encode_unicode(config.get(constants.CONFIG_FEED_URL))
+        downloader_config = {
+            'max_speed': max_speed, 'num_threads': num_threads,
+            'ssl_client_cert': config.get(constants.CONFIG_SSL_CLIENT_CERT),
+            'ssl_client_key': config.get(constants.CONFIG_SSL_CLIENT_KEY),
+            'ssl_ca_cert': config.get(constants.CONFIG_SSL_CA_CERT), 'ssl_verify_host': 1,
+            'ssl_verify_peer': 1, 'proxy_url': config.get(constants.CONFIG_PROXY_URL),
+            'proxy_port': config.get(constants.CONFIG_PROXY_PORT),
+            'proxy_user': config.get(constants.CONFIG_PROXY_USER),
+            'proxy_password': config.get(constants.CONFIG_PROXY_PASSWORD)}
+        downloader_config = DownloaderConfig(protocol='https', **downloader_config)
+
+        # We will pass self as the event_listener, so that we can receive the callbacks in this class
+        self.downloader = factory.get_downloader(downloader_config, self)
+        self.progress_report = SyncProgressReport(sync_conduit)
+
+    def cancel_sync(self):
+        """
+        This method will cancel a sync that is in progress.
+        """
+        # We used to support sync cancellation, but the current downloader implementation does not support it
+        # and so for now we will just pass
+        pass
+
+    def download_failed(self, report):
+        """
+        This is the callback that we will get from the downloader library when any individual download fails.
+        """
+        # If we have a download failure during the metadata phase, we should set the report to failed for that
+        # phase. Otherwise, we should set the isos phase to failed.
+        if self.progress_report.metadata_state == STATE_RUNNING:
+            self.progress_report.metadata_state = STATE_FAILED
+            self.progress_report.update_progress()
+        del self._url_iso_map[report.url]
+
+    def download_succeeded(self, report):
+        """
+        This is the callback that we will get from the downloader library when it succeeds in downloading a
+        file. This method will check to see if we are in the ISO downloading stage, and if we are, it will add
+        the new ISO to the database.
+        
+        :param report: The report of the file we downloaded
+        :type  report: pulp.common.download.report.DownloadReport
+        """
+        # If we are in a complete state on downloading the metadata, then this must be one of our ISOs.
+        if self.progress_report.isos_state == STATE_RUNNING:
+            iso = self._url_iso_map[report.url]
+            try:
+                self._validate_download(iso)
+                self.sync_conduit.save_unit(iso['unit'])
+                # We can drop this ISO from the url --> ISO map
+                del self._url_iso_map[report.url]
+            except ValueError:
+                self.download_failed(report)
+
+    def perform_sync(self, repo):
+        """
+        Perform the sync operation accoring to the config for the given repo, and return a report.
+        The sync progress will be reported through the sync_conduit.
+
+        :param repo:         Metadata describing the repository
+        :type  repo:         pulp.server.plugins.model.Repository
+        :return:             The sync report
+        :rtype:              pulp.plugins.model.SyncReport
+        """
+        # Build the progress report and set it to the running state
 
         # Get the manifest and download the ISOs that we are missing
-        manifest = self.bumper.get_manifest()
-        progress_report.metadata_state = STATE_COMPLETE
-        progress_report.modules_state = STATE_RUNNING
-        progress_report.update_progress()
-        missing_isos = self._filter_missing_isos(sync_conduit, manifest)
-        new_isos = self.bumper.download_resources(missing_isos)
+        self.progress_report.metadata_state = STATE_RUNNING
+        self.progress_report.update_progress()
+        manifest = self._download_manifest()
+        self.progress_report.metadata_state = STATE_COMPLETE
 
-        # Move the downloaded stuff and junk to the permanent location
-        self._create_units(sync_conduit, new_isos)
+        # Go get them filez
+        self.progress_report.isos_state = STATE_RUNNING
+        self.progress_report.update_progress()
+        missing_isos = self._filter_missing_isos(manifest)
+        self._download_isos(missing_isos)
 
         # Report that we are finished
-        progress_report.modules_state = STATE_COMPLETE
-        report = progress_report.build_final_report()
+        self.progress_report.isos_state = STATE_COMPLETE
+        report = self.progress_report.build_final_report()
         return report
 
-
-    def _create_units(self, sync_conduit, new_isos):
+    def _download_isos(self, manifest):
         """
-        For each ISO specified in new_isos, create a new Pulp Unit and move the file from its
-        temporary storage location to the storage location specified by the Unit. new_isos is a list
-        of dictionaries that describe the isos that have been downloaded, and is the same format as
-        the return value from
-        pulp_rpm.plugins.importers.iso_importer.bumper.ISOBumper.download_resources.
-
-        :param sync_conduit: The sync_conduit that gives us access to the local repository
-        :type  sync_conduit: pulp.server.conduits.repo_sync.RepoSyncConduit
-        :param new_isos:     A list of dictionaries describing the newly downloaded ISOs.
-        :type  new_isos:     list
+        Makes the calls to retrieve the ISOs from the manifest, storing them on disk and recording them in the
+        Pulp database.
+        
+        :param manifest: The manifest containing a list of ISOs we want to download. It is a list of
+                         dictionaries with at least the following keys: name, checksum, size, and url.
+        :type  manifest: list
         """
-        for iso in new_isos:
+        # For each ISO in the manifest, we need to determine a relative path where we want it to be stored,
+        # and initialize the Unit that will represent it
+        for iso in manifest:
             unit_key = {'name': iso['name'], 'size': iso['size'], 'checksum': iso['checksum']}
             metadata = {}
             relative_path = os.path.join(unit_key['name'], unit_key['checksum'],
                                          str(unit_key['size']), unit_key['name'])
-            unit = sync_conduit.init_unit(ids.TYPE_ID_ISO, unit_key, metadata, relative_path)
-            # Move the unit to the storage_path
-            temporary_file_location = iso['destination']
-            permanent_file_location = unit.storage_path
-            shutil.move(temporary_file_location, permanent_file_location)
-            unit = sync_conduit.save_unit(unit)
+            unit = self.sync_conduit.init_unit(ids.TYPE_ID_ISO, unit_key, metadata, relative_path)
+            iso['destination'] = unit.storage_path
+            iso['unit'] = unit
+        # We need to build a list of DownloadRequests
+        download_requests = [request.DownloadRequest(iso['url'], iso['destination']) for iso in manifest]
+        # Let's build an index from URL to the manifest unit dictionary, so that we can access data like the
+        # name, checksum, and size as we process completed downloads
+        self._url_iso_map = dict([(iso['url'], iso) for iso in manifest]) 
+        self.downloader.download(download_requests)
 
+    def _download_manifest(self):
+        """
+        Download the manifest file, and process it to return a list of the available Units. The available
+        units will be a list of dictionaries that describe the available ISOs, with these keys: name,
+        checksum, size, and url.
+        
+        :return:     list of available ISOs
+        :rtype:      list
+        """
+        # I probably should have called this manifest destination, but I couldn't help myself
+        manifest_url = urljoin(self.repo_url, constants.ISO_MANIFEST_FILENAME)
+        manifest_destiny = StringIO()
+        manifest_request = request.DownloadRequest(manifest_url, manifest_destiny)
+        self.downloader.download([manifest_request])
+        # We can inspect the report status to see if we had an error when retrieving the manifest.
+        if self.progress_report.metadata_state == STATE_FAILED:
+            raise IOError(_("Could not retrieve %(url)s")%{'url': manifest_url})
 
-    def _filter_missing_isos(self, sync_conduit, manifest):
+        # Now let's process the manifest and return a list of resources that we'd like to download
+        manifest_destiny.seek(0)
+        manifest_csv = csv.reader(manifest_destiny)
+        manifest = []
+        for unit in manifest_csv:
+            name, checksum, size = unit
+            resource = {'name': name, 'checksum': checksum, 'size': int(size),
+                        'url': urljoin(self.repo_url, name)}
+            manifest.append(resource)
+        return manifest
+
+    def _filter_missing_isos(self, manifest):
         """
         Use the sync_conduit and the ISOBumper manifest to determine which ISOs are at the feed_url
         that are not in our local store. Return a subset of the given manifest that represents the
         missing ISOs. The manifest format is described in the docblock for
         pulp_rpm.plugins.importers.iso_importer.bumper.ISOBumper.manifest.
 
-        :param sync_conduit: The sync_conduit that gives us access to the local repository
-        :type  sync_conduit: pulp.server.conduits.repo_sync.RepoSyncConduit
         :param manifest:     A list of dictionaries that describe the ISOs that are available at the
                              feed_url that we are syncing with
         :type  manifest:     list
@@ -144,10 +212,53 @@ class ISOSyncRun(object):
         available_units_by_key = dict([(_unit_key_str(u), u) for u in manifest])
 
         module_criteria = UnitAssociationCriteria(type_ids=[ids.TYPE_ID_ISO])
-        existing_isos = sync_conduit.get_units(criteria=module_criteria)
+        existing_isos = self.sync_conduit.get_units(criteria=module_criteria)
         existing_iso_keys = set([_unit_key_str(m.unit_key) for m in existing_isos])
         available_iso_keys = set([_unit_key_str(u) for u in manifest])
 
         missing_iso_keys = list(available_iso_keys - existing_iso_keys)
         missing_isos = [available_units_by_key[k] for k in missing_iso_keys]
         return missing_isos
+
+    def _validate_download(self, iso):
+        """
+        Validate the size and the checksum of the given downloaded unit. is should be a dictionary with at
+        least these keys: name, checksum, size, and destination.
+        
+        :param iso: A dictionary describing the ISO file we want to validate
+        :type  iso: dict
+        """
+        if isinstance(iso['destination'], basestring):
+            destination_file = open(iso['destination'])
+        else:
+            destination_file = iso['destination']
+        try:
+            # Validate the size, if we know what it should be
+            if 'size' in iso:
+                # seek to the end to find the file size with tell()
+                destination_file.seek(0, 2)
+                size = destination_file.tell()
+                if size != iso['size']:
+                    raise ValueError(_('Downloading <%(name)s> failed validation. '
+                        'The manifest specified that the file should be %(expected)s bytes, but '
+                        'the downloaded file is %(found)s bytes.')%{'name': iso['name'],
+                            'expected': iso['size'], 'found': size})
+
+            # Validate the checksum, if we know what it should be
+            if 'checksum' in iso:
+                destination_file.seek(0)
+                hasher = hashlib.sha256()
+                bits = destination_file.read(VALIDATION_CHUNK_SIZE)
+                while bits:
+                    hasher.update(bits)
+                    bits = destination_file.read(VALIDATION_CHUNK_SIZE)
+                # Verify that, son!
+                if hasher.hexdigest() != iso['checksum']:
+                    raise ValueError(
+                        _('Downloading <%(name)s> failed checksum validation. The manifest '
+                          'specified the checksum to be %(c)s, but it was %(f)s.')%{
+                            'name': iso['name'], 'c': iso['checksum'],
+                            'f': hasher.hexdigest()})
+        finally:
+            if isinstance(iso['destination'], basestring):
+                destination_file.close()
