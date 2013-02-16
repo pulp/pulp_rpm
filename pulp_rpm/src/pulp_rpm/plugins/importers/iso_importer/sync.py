@@ -80,7 +80,7 @@ class ISOSyncRun(listener.DownloadEventListener):
         This is the callback that we will get from the downloader library when any individual download fails.
         """
         # If we have a download failure during the metadata phase, we should set the report to failed for that
-        # phase. Otherwise, we should set the isos phase to failed.
+        # phase.
         if self.progress_report.metadata_state == STATE_RUNNING:
             self.progress_report.metadata_state = STATE_FAILED
             self.progress_report.update_progress()
@@ -95,7 +95,7 @@ class ISOSyncRun(listener.DownloadEventListener):
         :param report: The report of the file we downloaded
         :type  report: pulp.common.download.report.DownloadReport
         """
-        # If we are in a complete state on downloading the metadata, then this must be one of our ISOs.
+        # If we are in the isos stage, then this must be one of our ISOs.
         if self.progress_report.isos_state == STATE_RUNNING:
             iso = self._url_iso_map[report.url]
             try:
@@ -106,13 +106,11 @@ class ISOSyncRun(listener.DownloadEventListener):
             except ValueError:
                 self.download_failed(report)
 
-    def perform_sync(self, repo):
+    def perform_sync(self):
         """
-        Perform the sync operation accoring to the config for the given repo, and return a report.
+        Perform the sync operation accoring to the config, and return a report.
         The sync progress will be reported through the sync_conduit.
 
-        :param repo:         Metadata describing the repository
-        :type  repo:         pulp.server.plugins.model.Repository
         :return:             The sync report
         :rtype:              pulp.plugins.model.SyncReport
         """
@@ -170,8 +168,8 @@ class ISOSyncRun(listener.DownloadEventListener):
         :return:     list of available ISOs
         :rtype:      list
         """
-        # I probably should have called this manifest destination, but I couldn't help myself
         manifest_url = urljoin(self.repo_url, constants.ISO_MANIFEST_FILENAME)
+        # I probably should have called this manifest destination, but I couldn't help myself
         manifest_destiny = StringIO()
         manifest_request = request.DownloadRequest(manifest_url, manifest_destiny)
         self.downloader.download([manifest_request])

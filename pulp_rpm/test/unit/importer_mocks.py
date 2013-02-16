@@ -33,8 +33,6 @@ def ISOCurl():
         curl.fp.write(curl._datas_to_write[curl._data_to_write_index])
 
     def setopt(opt, setting):
-        if opt == pycurl.WRITEFUNCTION:
-            curl._function_to_write = setting
         if opt == pycurl.URL:
             name_index_map = {'MANIFEST': 0, 'test.iso': 1, 'test2.iso': 2, 'test3.iso': 3}
             for key, value in name_index_map.items():
@@ -53,7 +51,6 @@ def ISOCurl():
         'This is a file.\n',
         'This is another file.\n',
         'Are you starting to get the idea?\n']
-    ISOCurl._curls.append(curl)
     return curl
 
 def CurlMulti():

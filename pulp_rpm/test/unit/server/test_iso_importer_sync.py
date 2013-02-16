@@ -26,17 +26,13 @@ import importer_mocks
 from mock import MagicMock, patch
 from pulp.common.download.report import DownloadReport
 from pulp.plugins.model import Repository, Unit
-import pycurl
+
 
 class TestISOSyncRun(PulpRPMTests):
     """
     Test the ISOSyncRun object.
     """
     def setUp(self):
-        # This clears out the _curls from other unit tests, so that we can see all the ones that were created
-        # for each of these tests
-        importer_mocks.ISOCurl._curls = []
-
         self.config = importer_mocks.get_basic_config(
             feed_url='http://fake.com/iso_feed/', max_speed=500.0, num_threads=5,
             ssl_client_cert="Trust me, I'm who I say I am.", ssl_client_key="Secret Key",
@@ -140,8 +136,6 @@ class TestISOSyncRun(PulpRPMTests):
         # The url_iso map should be empty now
         self.assertEqual(self.iso_sync_run._url_iso_map, {})
         # The sync conduit should have been called to save the unit
-        expected_relative_path = os.path.join(iso['name'], iso['checksum'],
-                                                  str(iso['size']), iso['name'])
         self.sync_conduit.save_unit.assert_any_call(unit)
         # The download should not fail
         self.assertEqual(download_failed.call_count, 0)
@@ -180,7 +174,7 @@ class TestISOSyncRun(PulpRPMTests):
         os.mkdir(working_dir)
         repo.working_dir = working_dir
 
-        report = self.iso_sync_run.perform_sync(repo)
+        report = self.iso_sync_run.perform_sync()
 
         # There should now be three Units in the DB, one for each of the three ISOs that our mocks
         # got us.
