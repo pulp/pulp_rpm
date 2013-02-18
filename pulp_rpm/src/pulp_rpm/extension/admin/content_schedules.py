@@ -37,7 +37,7 @@ class YumConsumerContentCreateScheduleCommand(ConsumerContentCreateScheduleComma
             self.add_option(PulpCliOption('--errata-id', _('erratum id; may be repeated for multiple errata'),
                                           required=True, allow_multiple=True, aliases=['-e']))
         elif content_type == TYPE_ID_PKG_GROUP:
-            self.add_option(PulpCliOption('--name', _('package-group name; may be repeated for multiple package-groups'),
+            self.add_option(PulpCliOption('--name', _('package group name; may be repeated for multiple package groups'),
                                           required=True, allow_multiple=True, aliases=['-n']))
 
 
