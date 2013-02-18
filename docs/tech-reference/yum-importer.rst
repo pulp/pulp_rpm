@@ -11,7 +11,8 @@ configuration values are optional.
 ``ssl_verify``
  Indicates if the server's SSL certificate is verified against the CA certificate
  uploaded. The certificate should be verified against the CA for each client request.
- Has no effect for non-SSL feeds. Valid values to this option are ``True`` and ``False``.
+ Has no effect for non-SSL feeds. Valid values to this option are ``True`` and ``False``;
+ defaults to ``True``.
 
 ``ssl_ca_cert``
  CA certificate string used to validate the feed source's SSL certificate (for feeds
