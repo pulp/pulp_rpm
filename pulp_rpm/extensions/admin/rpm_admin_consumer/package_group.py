@@ -16,237 +16,194 @@ Contains package (RPM) group management section and commands.
 """
 
 from gettext import gettext as _
-from command import PollingCommand
+
+from pulp.client.commands.consumer import content as consumer_content
 from pulp.client.extensions.extensions import PulpCliSection
-from pulp.bindings.exceptions import NotFoundException
-from pulp_rpm.extension.admin.content_schedules import (
-    ContentListScheduleCommand, ContentCreateScheduleCommand, ContentDeleteScheduleCommand,
-    ContentUpdateScheduleCommand, ContentNextRunCommand)
 from pulp_rpm.common.ids import TYPE_ID_PKG_GROUP
+from pulp_rpm.extension.admin.content_schedules import YumConsumerContentCreateScheduleCommand
 
+from options import FLAG_IMPORT_KEYS, FLAG_NO_COMMIT, FLAG_REBOOT
 
-class PackageGroupSection(PulpCliSection):
+# sections ---------------------------------------------------------------------
+
+class YumConsumerPackageGroupSection(PulpCliSection):
 
     def __init__(self, context):
-        super(self.__class__, self).__init__(
-            'package-group',
-            _('package-group installation management'))
-        for Section in (PackageGroupInstallSection, PackageGroupUninstallSection):
+        description = _('package group installation management')
+        super(self.__class__, self).__init__('package-group', description)
+
+        for Section in (YumConsumerPackageGroupInstallSection,
+                        YumConsumerPackageGroupUninstallSection):
             self.add_subsection(Section(context))
 
-class PackageGroupInstallSection(PulpCliSection):
+
+class YumConsumerPackageGroupInstallSection(PulpCliSection):
 
     def __init__(self, context):
-        super(self.__class__, self).__init__(
-            'install',
-            _('run or schedule a package-group installation task'))
+        description = _('run or schedule a package group installation task')
+        super(self.__class__, self).__init__('install', description)
 
-        self.add_subsection(PackageGroupSchedulesSection(context, 'install'))
-        self.add_command(PackageGroupInstallCommand(context))
+        self.add_command(YumConsumerPackageGroupInstallCommand(context))
+        self.add_subsection(YumConsumerPackageGroupSchedulesSection(context, 'install'))
 
-class PackageGroupUninstallSection(PulpCliSection):
+
+class YumConsumerPackageGroupUninstallSection(PulpCliSection):
 
     def __init__(self, context):
-        super(self.__class__, self).__init__(
-            'uninstall',
-            _('run or schedule a package-group removal task'))
+        description = _('run or schedule a package group removal task')
+        super(self.__class__, self).__init__('uninstall', description)
 
-        self.add_subsection(PackageGroupSchedulesSection(context, 'uninstall'))
-        self.add_command(PackageGroupUninstallCommand(context))
+        self.add_command(YumConsumerPackageGroupUninstallCommand(context))
+        self.add_subsection(YumConsumerPackageGroupSchedulesSection(context, 'uninstall'))
 
-class PackageGroupSchedulesSection(PulpCliSection):
+
+class YumConsumerPackageGroupSchedulesSection(PulpCliSection):
     def __init__(self, context, action):
-        super(self.__class__, self).__init__(
-            'schedules',
-            _('manage consumer package-group %s schedules' % action))
-        self.add_command(ContentListScheduleCommand(context, action))
-        self.add_command(ContentCreateScheduleCommand(context, action, content_type=TYPE_ID_PKG_GROUP))
-        self.add_command(ContentDeleteScheduleCommand(context, action))
-        self.add_command(ContentUpdateScheduleCommand(context, action))
-        self.add_command(ContentNextRunCommand(context, action))
+        description = _('manage consumer package group %s schedules' % action)
+        super(self.__class__, self).__init__('schedules', description)
 
-class PackageGroupInstallCommand(PollingCommand):
+        self.add_command(consumer_content.ConsumerContentListScheduleCommand(context, action))
+        self.add_command(YumConsumerContentCreateScheduleCommand(context, action, TYPE_ID_PKG_GROUP))
+        self.add_command(consumer_content.ConsumerContentDeleteScheduleCommand(context, action))
+        self.add_command(consumer_content.ConsumerContentUpdateScheduleCommand(context, action))
+        self.add_command(consumer_content.NextRunCommand(context, action))
 
-    def __init__(self, context):
-        super(self.__class__, self).__init__(
-            'run',
-            _('triggers an immediate package-group install on a consumer'),
-            self.run,
-            context)
-        self.create_option(
-            '--consumer-id',
-            _('identifies the consumer'),
-            required=True)
-        self.create_flag(
-            '--no-commit',
-            _('transaction not committed'))
-        self.create_flag(
-            '--reboot',
-            _('reboot after successful transaction'))
-        self.create_option(
-            '--name',
-            _('package group name; may repeat for multiple groups'),
-            required=True,
-            allow_multiple=True,
-            aliases=['-n'])
-        self.create_flag(
-            '--import-keys',
-            _('import GPG keys as needed'))
+# commands ---------------------------------------------------------------------
 
-    def run(self, **kwargs):
-        consumer_id = kwargs['consumer-id']
-        apply = (not kwargs['no-commit'])
-        importkeys = kwargs['import-keys']
-        reboot = kwargs['reboot']
-        units = []
-        options = dict(
-            apply=apply,
-            importkeys=importkeys,
-            reboot=reboot,)
-        for name in kwargs['name']:
-            unit_key = dict(name=name)
-            unit = dict(type_id=TYPE_ID_PKG_GROUP, unit_key=unit_key)
-            units.append(unit)
-        self.install(consumer_id, units, options)
-
-    def install(self, consumer_id, units, options):
-        prompt = self.context.prompt
-        server = self.context.server
-        try:
-            response = server.consumer_content.install(consumer_id, units=units, options=options)
-            task = response.response_body
-            msg = _('Install task created with id [%(id)s]') % dict(id=task.task_id)
-            prompt.render_success_message(msg)
-            response = server.tasks.get_task(task.task_id)
-            task = response.response_body
-            if self.rejected(task):
-                return
-            if self.postponed(task):
-                return
-            self.process(consumer_id, task)
-        except NotFoundException:
-            msg = _('Consumer [%s] not found') % consumer_id
-            prompt.write(msg, tag='not-found')
-
-    def succeeded(self, id, task):
-        prompt = self.context.prompt
-        # reported as failed
-        if not task.result['succeeded']:
-            msg = 'Install failed'
-            details = task.result['details'][TYPE_ID_PKG_GROUP]['details']
-            prompt.render_failure_message(_(msg))
-            prompt.render_failure_message(details['message'])
-            return
-        msg = 'Install Succeeded'
-        prompt.render_success_message(_(msg))
-        # reported as succeeded
-        details = task.result['details'][TYPE_ID_PKG_GROUP]['details']
-        filter = ['name', 'version', 'arch', 'repoid']
-        resolved = details['resolved']
-        if resolved:
-            prompt.render_title('Installed')
-            prompt.render_document_list(
-                resolved,
-                order=filter,
-                filters=filter)
-        else:
-            msg = 'Packages for groups already installed'
-            prompt.render_success_message(_(msg))
-        deps = details['deps']
-        if deps:
-            prompt.render_title('Installed for dependency')
-            prompt.render_document_list(
-                deps,
-                order=filter,
-                filters=filter)
-
-
-class PackageGroupUninstallCommand(PollingCommand):
+class YumConsumerPackageGroupInstallCommand(consumer_content.ConsumerContentInstallCommand):
 
     def __init__(self, context):
-        super(self.__class__, self).__init__(
-            'run',
-            _('triggers an immediate package-group removal on a consumer'),
-            self.run,
-            context)
-        self.create_option(
-            '--consumer-id',
-            _('identifies the consumer'),
-            required=True)
-        self.create_flag(
-            '--no-commit',
-            _('transaction not committed'))
-        self.create_flag(
-            '--reboot',
-            _('reboot after successful transaction'))
-        self.create_option(
-            '--name',
-            _('package group name; may repeat for multiple groups'),
-            required=True,
-            allow_multiple=True,
-            aliases=['-n'])
+        description = _('triggers an immediate package group install on a consumer')
+        super(self.__class__, self).__init__(context, description=description)
 
-    def run(self, **kwargs):
-        consumer_id = kwargs['consumer-id']
-        apply = (not kwargs['no-commit'])
-        reboot = kwargs['reboot']
-        units = []
-        options = dict(
-            apply=apply,
-            reboot=reboot,)
-        for name in kwargs['name']:
-            unit_key = dict(name=name)
-            unit = dict(type_id=TYPE_ID_PKG_GROUP, unit_key=unit_key)
-            units.append(unit)
-        self.uninstall(consumer_id, units, options)
+    def add_content_options(self):
+        self.create_option('--name',
+                           _('package group name; may repeat for multiple groups'),
+                           required=True,
+                           allow_multiple=True,
+                           aliases=['-n'])
 
-    def uninstall(self, consumer_id, units, options):
-        prompt = self.context.prompt
-        server = self.context.server
-        try:
-            response = server.consumer_content.uninstall(consumer_id, units=units, options=options)
-            task = response.response_body
-            msg = _('Uninstall task created with id[%(id)s]') % dict(id=task.task_id)
-            prompt.render_success_message(msg)
-            response = server.tasks.get_task(task.task_id)
-            task = response.response_body
-            if self.rejected(task):
-                return
-            if self.postponed(task):
-                return
-            self.process(consumer_id, task)
-        except NotFoundException:
-            msg = _('Consumer [%s] not found') % consumer_id
-            prompt.write(msg, tag='not-found')
+    def add_install_options(self):
+        self.add_flag(FLAG_NO_COMMIT)
+        self.add_flag(FLAG_REBOOT)
+        self.add_flag(FLAG_IMPORT_KEYS)
 
-    def succeeded(self, id, task):
-        prompt = self.context.prompt
-        # reported as failed
+    def get_install_options(self, kwargs):
+        commit = not kwargs[FLAG_NO_COMMIT.keyword]
+        reboot = kwargs[FLAG_REBOOT.keyword]
+        import_keys =  kwargs[FLAG_IMPORT_KEYS.keyword]
+
+        return {'apply': commit,
+                'reboot': reboot,
+                'importkeys': import_keys}
+
+    def get_content_units(self, kwargs):
+
+        def _unit_dict(unit_name):
+            return {'type_id': TYPE_ID_PKG_GROUP,
+                    'unit_key': {'name': unit_name}}
+
+        return map(_unit_dict, kwargs['name'])
+
+    def succeeded(self, consumer_id, task):
+        # succeeded and failed are task-based, which is not indicative of
+        # whether or not the operation succeeded or failed; that is in the
+        # report stored as the task's result
         if not task.result['succeeded']:
-            msg = 'Uninstall Failed'
-            details = task.result['details'][TYPE_ID_PKG_GROUP]['details']
-            prompt.render_failure_message(_(msg))
-            prompt.render_failure_message(details['message'])
-            return
-        msg = 'Uninstall Succeeded'
-        prompt.render_success_message(_(msg))
-        # reported as succeeded
+            return self.failed(consumer_id, task)
+
+        prompt = self.context.prompt
+        msg = _('Install Succeeded')
+        prompt.render_success_message(msg)
+
         details = task.result['details'][TYPE_ID_PKG_GROUP]['details']
-        filter = ['name', 'version', 'arch', 'repoid']
         resolved = details['resolved']
+        fields = ['name', 'version', 'arch', 'repoid']
+
         if resolved:
-            prompt.render_title('Uninstalled')
-            prompt.render_document_list(
-                resolved,
-                order=filter,
-                filters=filter)
+            prompt.render_title(_('Installed'))
+            prompt.render_document_list(resolved, order=fields, filters=fields)
+
         else:
-            msg = 'No matching packages found to uninstall'
-            prompt.render_success_message(_(msg))
+            msg = _('Packages for groups already installed')
+            prompt.render_success_message(msg)
+
         deps = details['deps']
+
         if deps:
-            prompt.render_title('Uninstalled for dependency')
-            prompt.render_document_list(
-                deps,
-                order=filter,
-                filters=filter)
+            prompt.render_title(_('Installed for Dependencies'))
+            prompt.render_document_list(deps, order=fields, filters=fields)
+
+    def failed(self, consumer_id, task):
+        msg = _('Install Failed')
+        details = task.result['details'][TYPE_ID_PKG_GROUP]['details']
+        self.context.prompt.render_failure_message(_(msg))
+        self.context.prompt.render_failure_message(details['message'])
+
+
+class YumConsumerPackageGroupUninstallCommand(consumer_content.ConsumerContentUninstallCommand):
+
+    def __init__(self, context):
+        description = _('triggers an immediate package group removal on a consumer')
+        super(self.__class__, self).__init__(context, description=description)
+
+    def add_content_options(self):
+        self.create_option('--name',
+                           _('package group name; may repeat for multiple groups'),
+                           required=True,
+                           allow_multiple=True,
+                           aliases=['-n'])
+
+    def add_uninstall_options(self):
+        self.add_flag(FLAG_NO_COMMIT)
+        self.add_flag(FLAG_REBOOT)
+
+    def get_uninstall_options(self, kwargs):
+        commit = not kwargs[FLAG_NO_COMMIT.keyword]
+        reboot = kwargs[FLAG_REBOOT.keyword]
+
+        return {'apply': commit,
+                'reboot': reboot}
+
+    def get_content_units(self, kwargs):
+
+        def _unit_dict(unit_name):
+            return {'type_id': TYPE_ID_PKG_GROUP,
+                    'unit_key': {'name': unit_name}}
+
+        return map(_unit_dict, kwargs['name'])
+
+    def succeeded(self, consumer_id, task):
+        # succeeded and failed are task-based, which is not indicative of
+        # whether or not the operation succeeded or failed; that is in the
+        # report stored as the task's result
+        if not task.result['succeeded']:
+            return self.failed(consumer_id, task)
+
+        prompt = self.context.prompt
+        msg = _('Uninstall Succeeded')
+        prompt.render_success_message(msg)
+
+        details = task.result['details'][TYPE_ID_PKG_GROUP]['details']
+        resolved = details['resolved']
+        fields = ['name', 'version', 'arch', 'repoid']
+
+        if resolved:
+            prompt.render_title(_('Uninstalled'))
+            prompt.render_document_list(resolved, order=fields, filters=fields)
+
+        else:
+            msg = _('No matching packages found to uninstall')
+            prompt.render_success_message(msg)
+
+        deps = details['deps']
+
+        if deps:
+            prompt.render_title(_('Uninstalled for Dependencies'))
+            prompt.render_document_list(deps, order=fields, filters=fields)
+
+    def failed(self, consumer_id, task):
+        msg = _('Uninstall Failed')
+        details = task.result['details'][TYPE_ID_PKG_GROUP]['details']
+        self.context.prompt.render_failure_message(msg)
+        self.context.prompt.render_failure_message(details['message'])
