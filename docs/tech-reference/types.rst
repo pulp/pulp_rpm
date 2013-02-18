@@ -2,8 +2,8 @@ Types
 =====
 
 The following are the supported unit types for the yum plugin. Each unit has a
-unit type and metadata components to it. Unit type is a unique combination of fields
-and metadata constitutes rest of the information associated to the unit.
+unit type and metadata component. Unit type is a unique combination of fields,
+and metadata constitutes the rest of the information associated to the unit.
 
 RPM
 ----
@@ -30,35 +30,35 @@ Unit Key
  Checksum type used to generate the rpm checksum value
 
 ``checksum``
- Checksum of the rpm package. This is not the rpm header checksum.
+ Checksum of the rpm package. This is the checksum of the package itself and not the rpm header checksum
 
 Metadata
 ^^^^^^^^
 
 ``filename``
- Filename of the rpm package.
+ Filename of the rpm package
 
 ``vendor``
- The organization responsible for building this rpm package.
+ The organization responsible for building this rpm package
 
 ``description``
- A more verbose description of the rpm package.
+ A more verbose description of the rpm package
 
 ``buildhost``
  The hostname of the build machine on which this package is built
 
 ``license``
- The license information of the vendor.
+ The license information of the vendor
 
 ``requires``
- Used to include required package dependencies for this rpm package.
+ Used to include required package dependencies for this rpm package
 
 ``provides``
  Used to include rpm provides information
 
 ``repodata``
  metadata xml snippets for rpm package. This includes primary, filelists and other xmls.
- Example format: {"primary" : <primary_xml>, "filelist" : <filelist_xml>, "other" : <other_xml> }.
+ Example format: ``{"primary" : <primary_xml>, "filelist" : <filelist_xml>, "other" : <other_xml> }``
 
 SRPM
 ----
@@ -85,35 +85,35 @@ Unit Key
  Checksum type used to generate the srpm checksum value
 
 ``checksum``
- Checksum of the srpm package. This is not the srpm header checksum.
+ Checksum of the srpm package. This is not the srpm header checksum
 
 Metadata
 ^^^^^^^^
 
 ``filename``
- Filename of the srpm package.
+ Filename of the srpm package
 
 ``vendor``
- The organization responsible for building this srpm package.
+ The organization responsible for building this srpm package
 
 ``description``
- A more verbose description of the srpm package.
+ A more verbose description of the srpm package
 
 ``buildhost``
  The hostname of the build machine on which this package is built
 
 ``license``
- The license information of the vendor.
+ The license information of the vendor
 
 ``requires``
- Used to include the required package dependencies for this srpm package.
+ Used to include the required package dependencies for this srpm package
 
 ``provides``
- Used to include srpm provides information.
+ Used to include srpm provides information
 
 ``repodata``
  metadata xml snippets for srpm package. This includes primary, filelists and other xmls.
- Example format: {"primary" : <primary_xml>, "filelist" : <filelist_xml>, "other" : <other_xml> }.
+ Example format: ``{"primary" : <primary_xml>, "filelist" : <filelist_xml>, "other" : <other_xml> }``
 
 DRPM
 ----
@@ -147,7 +147,7 @@ Metadata
  delta rpm sequence
 
 ``new_package``
- new rpm package associated with the drpm package.
+ new rpm package associated with the drpm package
 
 Errata
 ------
@@ -156,16 +156,16 @@ Unit Key
 ^^^^^^^^
 
 ``id``
- Erratum Id string.
+ Erratum Id string
 
 Metadata
 ^^^^^^^^
 
 ``title``
- Title of the erratum.
+ Title of the erratum
 
 ``description``
- A more detailed description of the erratum.
+ A more detailed description of the erratum
 
 ``version``
  Version of the erratum
@@ -174,7 +174,7 @@ Metadata
  Release of the erratum
 
 ``type``
- Type of erratum. Valid values include security, bugfix and enhancement erratum
+ Type of erratum. Valid values include "security", "bugfix" and "enhancement" erratum
 
 ``status``
  Status of the erratum. Example status: "final"
@@ -186,31 +186,31 @@ Metadata
  Issued date of the erratum. Expected format "YYYY-MM-DD HH:MM:SS"
 
 ``severity``
- severity of the erratum. Valid values include Low, Moderate, High
+ severity of the erratum. Valid values include "Low", "Moderate", "High"
 
 ``references``
  Reference information associated with this erratum
 
 ``pkglist``
- Includes package information associated with this erratum.
+ Includes package information associated with this erratum
 
 ``rights``
- Copyrights information associated for the erratum.
+ Copyrights information associated for the erratum
 
 ``summary``
- Detailed summary information for this erratum.
+ Detailed summary information for this erratum
 
 ``solution``
- Detailed Solution information for this erratum.
+ Detailed Solution information for this erratum
 
 ``from_str``
- Typically an email address of the erratum issuer.
+ Typically an email address of the erratum issuer
 
 ``pushcount``
- Number of times the erratum has been pushed.
+ Number of times the erratum has been pushed
 
 ``reboot_suggested``
- Flag indicating if this erratum is installed it will require a reboot of the system.
+ Flag indicating if this erratum is installed it will require a reboot of the system
 
 Distribution
 -------------
@@ -219,7 +219,7 @@ Unit Key
 ^^^^^^^^
 
 ``id``
- Id of the distribution to be inventoried.
+ ID of the distribution to be inventoried
 
 ``family``
  Family of the distribution tree. For example: Red Hat Enterprise Linux
@@ -245,15 +245,15 @@ Package Group
 Unit Key
 ^^^^^^^^
 ``id``
- Package group Id
+ Package group ID
 
 ``repo_id``
- Repository id the package group id is associated.
+ Repository id the package group id is associated
 
 Metadata
 ^^^^^^^^
 ``name``
- Name of the Package group
+ Name of the package group
 
 ``description``
  Description of the package group
@@ -265,22 +265,22 @@ Metadata
  If the packagegroup should be visible when queried. Valid values are `True` and `False`
 
 ``langonly``
- Language support groups are selected based on this option.
+ Language support groups are selected based on this option
 
 ``display_order``
- Display order of the package group.
+ Display order of the package group
 
 ``mandatory_package_names``
- Mandatory package names to include in the package group.
+ Mandatory package names to include in the package group
 
 ``conditional_package_names``
- Conditional package names to include in the package group.
+ Conditional package names to include in the package group
 
 ``optional_package_names``
- Optional package names to include in the package group.
+ Optional package names to include in the package group
 
 ``default_package_names``
- Default package names to include in the package group.
+ Default package names to include in the package group
 
 Package Group Category
 ----------------------
@@ -288,22 +288,22 @@ Package Group Category
 Unit Key
 ^^^^^^^^
 ``id``
- Package group category Id
+ Package group category ID
 
 ``repo_id``
- Repository id the package group category id is associated.
+ Repository id to which the package group category id is associated
 
 
 Metadata
 ^^^^^^^^
 ``name``
- Name of the package group category.
+ Name of the package group category
 
 ``description``
- Description of the package group category.
+ Description of the package group category
 
 ``display_order``
- Display order of the package group category.
+ Display order of the package group category
 
 ``packagegroupids``
- Package group ids associated with the package category.
+ Package group ids associated with the package category
