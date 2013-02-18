@@ -16,57 +16,19 @@ Contains package (RPM) management section and commands.
 """
 
 from gettext import gettext as _
-from command import PollingCommand
+
+from okaara.prompt import COLOR_RED
+
+from pulp.client.commands.consumer import content as consumer_content
 from pulp.client.extensions.extensions import PulpCliSection
-from pulp.bindings.exceptions import NotFoundException
-from pulp_rpm.extension.admin.content_schedules import (
-    ContentListScheduleCommand, ContentCreateScheduleCommand, ContentDeleteScheduleCommand,
-    ContentUpdateScheduleCommand, ContentNextRunCommand)
 from pulp_rpm.common.ids import TYPE_ID_RPM
-from okaara.prompt import COLOR_GREEN, COLOR_RED, MOVE_UP, CLEAR_REMAINDER
+from pulp_rpm.extension.admin.content_schedules import YumConsumerContentCreateScheduleCommand
 
+from options import FLAG_ALL_CONTENT, FLAG_IMPORT_KEYS, FLAG_NO_COMMIT, FLAG_REBOOT
 
-class ProgressTracker:
+# progress tracker -------------------------------------------------------------
 
-    def __init__(self, prompt):
-        self.prompt = prompt
-        self.next_step = 0
-        self.details = None
-        self.OK = prompt.color('OK', COLOR_GREEN)
-        self.FAILED = prompt.color('FAILED', COLOR_RED)
-
-    def reset(self):
-        self.next_step = 0
-        self.details = None
-
-    def display(self, report):
-        self.display_steps(report['steps'])
-        self.display_details(report['details'])
-
-    def display_steps(self, steps):
-        num_steps = len(steps)
-        self.backup()
-        for i in range(self.next_step, num_steps):
-            self.write_step(steps[i])
-            self.next_step = i
-
-    def backup(self):
-        lines = 1
-        if self.details:
-            lines += len(self.details.split('\n'))
-        self.prompt.move(MOVE_UP % lines)
-        self.prompt.clear(CLEAR_REMAINDER)
-
-    def write_step(self, step):
-        name, status = step
-        if status is None:
-            self.prompt.write(name)
-            return
-        if status:
-            status = self.OK
-        else:
-            status = self.FAILED
-        self.prompt.write('%-40s[ %s ]' % (name, status))
+class YumConsumerPackageProgressTracker(consumer_content.ConsumerContentProgressTracker):
 
     def display_details(self, details):
         action = details.get('action')
@@ -83,366 +45,287 @@ class ProgressTracker:
             self.prompt.write(self.details, COLOR_RED)
             return
 
-class PackageSection(PulpCliSection):
+# sections ---------------------------------------------------------------------
+
+class YumConsumerPackageSection(PulpCliSection):
 
     def __init__(self, context):
-        super(self.__class__, self).__init__(
-            'package',
-            _('package installation management'))
-        for Section in (InstallSection, UpdateSection, UninstallSection):
+        description = _('package installation management')
+        super(self.__class__, self).__init__( 'package', description)
+
+        for Section in (YumConsumerPackageInstallSection,
+                        YumConsumerPackageUpdateSection,
+                        YumConsumerPackageUninstallSection):
             self.add_subsection(Section(context))
 
-class InstallSection(PulpCliSection):
+
+class YumConsumerPackageInstallSection(PulpCliSection):
 
     def __init__(self, context):
-        super(self.__class__, self).__init__(
-            'install',
-            _('run or schedule a package installation task'))
+        description = _('run or schedule a package installation task')
+        super(self.__class__, self).__init__('install', description)
 
-        self.add_subsection(SchedulesSection(context, 'install'))
-        self.add_command(Install(context))
+        self.add_command(YumConsumerPackageInstallCommand(context))
+        self.add_subsection(YumConsumerSchedulesSection(context, 'install'))
 
-class UpdateSection(PulpCliSection):
 
-    def __init__(self, context):
-        super(self.__class__, self).__init__(
-            'update',
-            _('run or schedule a package update task'))
-
-        self.add_subsection(SchedulesSection(context, 'update'))
-        self.add_command(Update(context))
-
-class UninstallSection(PulpCliSection):
+class YumConsumerPackageUpdateSection(PulpCliSection):
 
     def __init__(self, context):
-        super(self.__class__, self).__init__(
-            'uninstall',
-            _('run or schedule a package removal task'))
+        description = _('run or schedule a package update task')
+        super(self.__class__, self).__init__('update', description)
 
-        self.add_subsection(SchedulesSection(context, 'uninstall'))
-        self.add_command(Uninstall(context))
+        self.add_command(YumConsumerPackageUpdateCommand(context))
+        self.add_subsection(YumConsumerSchedulesSection(context, 'update'))
 
-class SchedulesSection(PulpCliSection):
+
+class YumConsumerPackageUninstallSection(PulpCliSection):
+
+    def __init__(self, context):
+        description = _('run or schedule a package removal task')
+        super(self.__class__, self).__init__('uninstall', description)
+
+        self.add_command(YumConsumerPackageUninstallCommand(context))
+        self.add_subsection(YumConsumerSchedulesSection(context, 'uninstall'))
+
+
+class YumConsumerSchedulesSection(PulpCliSection):
+
     def __init__(self, context, action):
-        super(self.__class__, self).__init__(
-            'schedules',
-            _('manage consumer package %s schedules' % action))
-        self.add_command(ContentListScheduleCommand(context, action))
-        self.add_command(ContentCreateScheduleCommand(context, action, content_type=TYPE_ID_RPM))
-        self.add_command(ContentDeleteScheduleCommand(context, action))
-        self.add_command(ContentUpdateScheduleCommand(context, action))
-        self.add_command(ContentNextRunCommand(context, action))
+        description = _('manage consumer package %s schedules' % action)
+        super(self.__class__, self).__init__('schedules', description)
 
-class Install(PollingCommand):
+        self.add_command(consumer_content.ConsumerContentListScheduleCommand(context, action))
+        self.add_command(YumConsumerContentCreateScheduleCommand(context, action, TYPE_ID_RPM))
+        self.add_command(consumer_content.ConsumerContentDeleteScheduleCommand(context, action))
+        self.add_command(consumer_content.ConsumerContentUpdateScheduleCommand(context, action))
+        self.add_command(consumer_content.ConsumerContentNextRunCommand(context, action))
+
+# commands ---------------------------------------------------------------------
+
+class YumConsumerPackageInstallCommand(consumer_content.ConsumerContentInstallCommand):
 
     def __init__(self, context):
-        super(self.__class__, self).__init__(
-            'run',
-            _('triggers an immediate package install on a consumer'),
-            self.run,
-            context)
-        self.create_option(
-            '--consumer-id',
-            _('identifies the consumer'),
-            required=True)
-        self.create_flag(
-            '--no-commit',
-            _('transaction not committed'))
-        self.create_flag(
-            '--reboot',
-            _('reboot after successful transaction'))
-        self.create_option(
-            '--name',
-            _('package name; may repeat for multiple packages'),
-            required=True,
-            allow_multiple=True,
-            aliases=['-n'])
-        self.create_flag(
-            '--import-keys',
-            _('import GPG keys as needed'))
-        self.progress_tracker = ProgressTracker(context.prompt)
+        description = _('triggers an immediate package install on a consumer')
+        progress_tracker = YumConsumerPackageProgressTracker(context.prompt)
+        super(self.__class__, self).__init__(context, description=description,
+                                             progress_tracker=progress_tracker)
 
-    def run(self, **kwargs):
-        consumer_id = kwargs['consumer-id']
-        apply = (not kwargs['no-commit'])
-        importkeys = kwargs['import-keys']
-        reboot = kwargs['reboot']
-        units = []
-        options = dict(
-            apply=apply,
-            importkeys=importkeys,
-            reboot=reboot,)
-        for name in kwargs['name']:
-            unit_key = dict(name=name)
-            unit = dict(type_id=TYPE_ID_RPM, unit_key=unit_key)
-            units.append(unit)
-        self.install(consumer_id, units, options)
+    def add_content_options(self):
+        self.create_option('--name',
+                           _('package name; may repeat for multiple packages'),
+                           required=True,
+                           allow_multiple=True,
+                           aliases=['-n'])
 
-    def install(self, consumer_id, units, options):
-        prompt = self.context.prompt
-        server = self.context.server
-        try:
-            response = server.consumer_content.install(consumer_id, units=units, options=options)
-            task = response.response_body
-            msg = _('Install task created with id [%(id)s]') % dict(id=task.task_id)
-            prompt.render_success_message(msg)
-            response = server.tasks.get_task(task.task_id)
-            task = response.response_body
-            if self.rejected(task):
-                return
-            if self.postponed(task):
-                return
-            self.process(consumer_id, task)
-        except NotFoundException:
-            msg = _('Consumer [%s] not found') % consumer_id
-            prompt.write(msg, tag='not-found')
+    def add_install_options(self):
+        self.add_flag(FLAG_NO_COMMIT)
+        self.add_flag(FLAG_REBOOT)
+        self.add_flag(FLAG_IMPORT_KEYS)
 
-    def progress(self, report):
-        self.progress_tracker.display(report)
+    def get_install_options(self, kwargs):
+        commit = not kwargs[FLAG_NO_COMMIT.keyword]
+        reboot = kwargs[FLAG_REBOOT.keyword]
+        import_keys = kwargs[FLAG_IMPORT_KEYS.keyword]
 
-    def succeeded(self, id, task):
-        prompt = self.context.prompt
-        # reported as failed
+        return {'apply': commit,
+                'reboot': reboot,
+                'importkeys': import_keys}
+
+    def get_content_units(self, kwargs):
+
+        def _unit_dict(unit_name):
+            return {'type_id': TYPE_ID_RPM,
+                    'unit_key': {'name': unit_name}}
+
+        return map(_unit_dict, kwargs['name'])
+
+    def succeeded(self, consumer_id, task):
+        # succeeded and failed are task-based, which is not indicative of
+        # whether or not the operation succeeded or failed; that is in the
+        # report stored as the task's result
         if not task.result['succeeded']:
-            msg = 'Install failed'
-            details = task.result['details'][TYPE_ID_RPM]['details']
-            prompt.render_failure_message(_(msg))
-            prompt.render_failure_message(details['message'])
-            return
-        msg = 'Install Completed'
-        prompt.render_success_message(_(msg))
-        # reported as succeeded
+            return self.failed(consumer_id, task)
+
+        prompt = self.context.prompt
+        msg = _('Install Succeeded')
+        prompt.render_success_message(msg)
+
         details = task.result['details'][TYPE_ID_RPM]['details']
-        filter = ['name', 'version', 'arch', 'repoid']
         resolved = details['resolved']
+        fields = ['name', 'version', 'arch', 'repoid']
+
         if resolved:
-            prompt.render_title('Installed')
-            prompt.render_document_list(
-                resolved,
-                order=filter,
-                filters=filter)
+            prompt.render_title(_('Installed'))
+            prompt.render_document_list(resolved, order=fields, filters=fields)
+
         else:
-            msg = 'Packages already installed'
-            prompt.render_success_message(_(msg))
+            msg = _('Packages already installed')
+            prompt.render_success_message(msg)
+
         deps = details['deps']
+
         if deps:
-            prompt.render_title('Installed for dependency')
-            prompt.render_document_list(
-                deps,
-                order=filter,
-                filters=filter)
+            prompt.render_title(_('Installed for Dependencies'))
+            prompt.render_document_list(deps, order=fields, filters=fields)
+
         errors = details.get('errors', None)
+
         if errors:
             prompt.render_failure_message(_('Failed to install following packages:'))
+
             for key, value in errors.items():
                 prompt.write(_('%(pkg)s : %(msg)s\n') % {'pkg': key, 'msg': value})
 
-class Update(PollingCommand):
+    def failed(self, consumer_id, task):
+        msg = _('Install Failed')
+        details = task.result['details'][TYPE_ID_RPM]['details']
+        self.context.prompt.render_failure_message(msg)
+        self.context.prompt.render_failure_message(details['message'])
+
+
+class YumConsumerPackageUpdateCommand(consumer_content.ConsumerContentUpdateCommand):
 
     def __init__(self, context):
-        super(self.__class__, self).__init__(
-            'run',
-            _('triggers an immediate package update on a consumer'),
-            self.run,
-            context)
-        self.create_option(
-            '--consumer-id',
-            _('identifies the consumer'),
-            required=True)
-        self.create_flag(
-            '--no-commit',
-            _('transaction not committed'))
-        self.create_flag(
-            '--reboot',
-            _('reboot after successful transaction'))
-        self.create_option(
-            '--name',
-            _('package name; may repeat for multiple packages'),
-            required=False,
-            allow_multiple=True,
-            aliases=['-n'])
-        self.create_flag(
-            '--import-keys',
-            _('import GPG keys as needed'))
-        self.create_flag(
-            '--all',
-            _('update all packages'),
-            aliases=['-a'])
-        self.progress_tracker = ProgressTracker(context.prompt)
+        description = _('triggers an immediate package update on a consumer')
+        progress_tracker = YumConsumerPackageProgressTracker(context.prompt)
+        super(self.__class__, self).__init__(context, description=description,
+                                             progress_tracker=progress_tracker)
 
-    def run(self, **kwargs):
-        consumer_id = kwargs['consumer-id']
-        all = kwargs['all']
-        names = kwargs['name']
-        apply = (not kwargs['no-commit'])
-        importkeys = kwargs['import-keys']
-        reboot = kwargs['reboot']
-        units = []
-        options = dict(
-            all=all,
-            apply=apply,
-            importkeys=importkeys,
-            reboot=reboot,)
-        if all: # ALL
-            unit = dict(type_id=TYPE_ID_RPM, unit_key=None)
-            self.update(consumer_id, [unit], options)
-            return
-        if names is None:
-            names = []
-        for name in names:
-            unit_key = dict(name=name)
-            unit = dict(type_id=TYPE_ID_RPM, unit_key=unit_key)
-            units.append(unit)
-        self.update(consumer_id, units, options)
+    def add_content_options(self):
+        self.create_option('--name',
+                           _('package name; may repeat for multiple packages'),
+                           required=True,
+                           allow_multiple=True,
+                           aliases=['-n'])
 
-    def update(self, consumer_id, units, options):
-        prompt = self.context.prompt
-        server = self.context.server
-        if not units:
-            msg = 'No packages specified'
-            prompt.render_failure_message(_(msg))
-            return
-        try:
-            response = server.consumer_content.update(consumer_id, units=units, options=options)
-            task = response.response_body
-            msg = _('Update task created with id [%(id)s]') % dict(id=task.task_id)
-            prompt.render_success_message(msg)
-            response = server.tasks.get_task(task.task_id)
-            task = response.response_body
-            if self.rejected(task):
-                return
-            if self.postponed(task):
-                return
-            self.process(consumer_id, task)
-        except NotFoundException:
-            msg = _('Consumer [%s] not found') % consumer_id
-            prompt.write(msg, tag='not-found')
+    def add_update_options(self):
+        self.add_flag(FLAG_NO_COMMIT)
+        self.add_flag(FLAG_REBOOT)
+        self.add_flag(FLAG_IMPORT_KEYS)
+        self.add_flag(FLAG_ALL_CONTENT)
 
-    def progress(self, report):
-        self.progress_tracker.display(report)
+    def get_update_options(self, kwargs):
+        commit = not kwargs[FLAG_NO_COMMIT.keyword]
+        reboot = kwargs[FLAG_REBOOT.keyword]
+        import_keys = kwargs[FLAG_IMPORT_KEYS.keyword]
 
-    def succeeded(self, id, task):
-        prompt = self.context.prompt
-        # reported as failed
+        return {'apply': commit,
+                'reboot': reboot,
+                'importkeys': import_keys}
+
+    def get_content_units(self, kwargs):
+
+        if kwargs[FLAG_ALL_CONTENT.keyword]:
+            return [{'type_id': TYPE_ID_RPM, 'unit_key': None}]
+
+        def _unit_dict(unit_name):
+            return {'type_id': TYPE_ID_RPM,
+                    'unit_key': {'name': unit_name}}
+
+        return map(_unit_dict, kwargs['name'])
+
+    def succeeded(self, consumer_id, task):
+        # succeeded and failed are task-based, which is not indicative of
+        # whether or not the operation succeeded or failed; that is in the
+        # report stored as the task's result
         if not task.result['succeeded']:
-            msg = 'Update failed'
-            details = task.result['details'][TYPE_ID_RPM]['details']
-            prompt.render_failure_message(_(msg))
-            prompt.render_failure_message(details['message'])
-            return
-        msg = 'Update Completed'
-        prompt.render_success_message(_(msg))
-        # reported as succeeded
-        details = task.result['details'][TYPE_ID_RPM]['details']
-        filter = ['name', 'version', 'arch', 'repoid']
-        resolved = details['resolved']
-        if resolved:
-            prompt.render_title('Updated')
-            prompt.render_document_list(
-                resolved,
-                order=filter,
-                filters=filter)
-        else:
-            msg = 'No updates needed'
-            prompt.render_success_message(_(msg))
-        deps = details['deps']
-        if deps:
-            prompt.render_title('Installed for dependency')
-            prompt.render_document_list(
-                deps,
-                order=filter,
-                filters=filter)
+            return self.failed(consumer_id, task)
 
-class Uninstall(PollingCommand):
+        prompt = self.context.prompt
+        msg = _('Update Succeeded')
+        prompt.render_success_message(msg)
+
+        details = task.result['details'][TYPE_ID_RPM]['details']
+        resolved = details['resolved']
+        fields = ['name', 'version', 'arch', 'repoid']
+
+        if resolved:
+            prompt.render_title(_('Updated'))
+            prompt.render_document_list(resolved, order=fields, filters=fields)
+
+        else:
+            msg = _('No updates needed')
+            prompt.render_success_message(msg)
+
+        deps = details['deps']
+
+        if deps:
+            prompt.render_title(_('Installed for Dependencies'))
+            prompt.render_document_list(deps, order=fields, filters=fields)
+
+    def failed(self, consumer_id, task):
+        msg = _('Update Failed')
+        details = task.result['details'][TYPE_ID_RPM]['details']
+        self.context.prompt.render_failure_message(msg)
+        self.context.prompt.render_failure_message(details['message'])
+
+
+class YumConsumerPackageUninstallCommand(consumer_content.ConsumerContentUninstallCommand):
 
     def __init__(self, context):
-        super(self.__class__, self).__init__(
-            'run',
-            _('triggers an immediate package removal on a consumer'),
-            self.run,
-            context)
-        self.create_option(
-            '--consumer-id',
-            _('identifies the consumer'),
-            required=True)
-        self.create_flag(
-            '--no-commit',
-            _('transaction not committed'))
-        self.create_flag(
-            '--reboot',
-            _('reboot after successful transaction'))
-        self.create_option(
-            '--name',
-            _('package name; may repeat for multiple packages'),
-            required=True,
-            allow_multiple=True,
-            aliases=['-n'])
-        self.progress_tracker = ProgressTracker(context.prompt)
+        description = _('triggers an immediate package removal on a consumer')
+        progress_tracker = YumConsumerPackageProgressTracker(context.prompt)
+        super(self.__class__, self).__init__(context, description=description,
+                                             progress_tracker=progress_tracker)
 
-    def run(self, **kwargs):
-        consumer_id = kwargs['consumer-id']
-        apply = (not kwargs['no-commit'])
-        reboot = kwargs['reboot']
-        units = []
-        options = dict(
-            apply=apply,
-            reboot=reboot,)
-        for name in kwargs['name']:
-            unit_key = dict(name=name)
-            unit = dict(type_id=TYPE_ID_RPM, unit_key=unit_key)
-            units.append(unit)
-        self.uninstall(consumer_id, units, options)
+    def add_content_options(self):
+        self.create_option('--name',
+                           _('package name; may repeat for multiple packages'),
+                           required=True,
+                           allow_multiple=True,
+                           aliases=['-n'])
 
-    def uninstall(self, consumer_id, units, options):
-        prompt = self.context.prompt
-        server = self.context.server
-        try:
-            response = server.consumer_content.uninstall(consumer_id, units=units, options=options)
-            task = response.response_body
-            msg = _('Uninstall task created with id [%(id)s]') % dict(id=task.task_id)
-            prompt.render_success_message(msg)
-            response = server.tasks.get_task(task.task_id)
-            task = response.response_body
-            if self.rejected(task):
-                return
-            if self.postponed(task):
-                return
-            self.process(consumer_id, task)
-        except NotFoundException:
-            msg = _('Consumer [%s] not found') % consumer_id
-            prompt.write(msg, tag='not-found')
+    def add_uninstall_options(self):
+        self.add_flag(FLAG_NO_COMMIT)
+        self.add_flag(FLAG_REBOOT)
 
-    def progress(self, report):
-        self.progress_tracker.display(report)
+    def get_uninstall_options(self, kwargs):
+        commit = not kwargs[FLAG_NO_COMMIT.keyword]
+        reboot = kwargs[FLAG_REBOOT.keyword]
 
-    def succeeded(self, id, task):
-        prompt = self.context.prompt
-        # reported as failed
+        return {'apply': commit,
+                'reboot': reboot}
+
+    def get_content_units(self, kwargs):
+
+        def _unit_dict(unit_name):
+            return {'type_id': TYPE_ID_RPM,
+                    'unit_key': {'name': unit_name}}
+
+        return map(_unit_dict, kwargs['name'])
+
+    def succeeded(self, consumer_id, task):
+        # succeeded and failed are task-based, which is not indicative of
+        # whether or not the operation succeeded or failed; that is in the
+        # report stored as the task's result
         if not task.result['succeeded']:
-            msg = 'Uninstall Failed'
-            details = task.result['details'][TYPE_ID_RPM]['details']
-            prompt.render_failure_message(_(msg))
-            prompt.render_failure_message(details['message'])
-            return
-        msg = 'Uninstall Completed'
-        prompt.render_success_message(_(msg))
-        # reported as succeeded
+            return self.failed(consumer_id, task)
+
+        prompt = self.context.prompt
+        msg = _('Uninstall Completed')
+        prompt.render_success_message(msg)
+
         details = task.result['details'][TYPE_ID_RPM]['details']
-        filter = ['name', 'version', 'arch', 'repoid']
         resolved = details['resolved']
+        fields = ['name', 'version', 'arch', 'repoid']
+
         if resolved:
-            prompt.render_title('Uninstalled')
-            prompt.render_document_list(
-                resolved,
-                order=filter,
-                filters=filter)
+            prompt.render_title(_('Uninstalled'))
+            prompt.render_document_list(resolved, order=fields, filters=fields)
+
         else:
-            msg = 'No matching packages found to uninstall'
-            prompt.render_success_message(_(msg))
+            msg = _('No matching packages found to uninstall')
+            prompt.render_success_message(msg)
+
         deps = details['deps']
+
         if deps:
-            prompt.render_title('Uninstalled for dependency')
-            prompt.render_document_list(
-                deps,
-                order=filter,
-                filters=filter)
+            prompt.render_title(_('Uninstalled for Dependencies'))
+            prompt.render_document_list(deps, order=fields, filters=fields)
+
+    def failed(self, consumer_id, task):
+        msg = _('Uninstall Failed')
+        details = task.result['details'][TYPE_ID_RPM]['details']
+        self.context.prompt.render_failure_message(msg)
+        self.context.prompt.render_failure_message(details['message'])
