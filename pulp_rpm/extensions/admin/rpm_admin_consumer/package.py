@@ -141,6 +141,12 @@ class YumConsumerPackageInstallCommand(consumer_content.ConsumerContentInstallCo
         return map(_unit_dict, kwargs['name'])
 
     def succeeded(self, consumer_id, task):
+        # succeeded and failed are task-based, which is not indicative of
+        # whether or not the operation succeeded or failed; that is in the
+        # report stored as the task's result
+        if not task.result['succeeded']:
+            return self.failed(consumer_id, task)
+
         prompt = self.context.prompt
         msg = _('Install Succeeded')
         prompt.render_success_message(msg)
@@ -220,6 +226,12 @@ class YumConsumerPackageUpdateCommand(consumer_content.ConsumerContentUpdateComm
         return map(_unit_dict, kwargs['name'])
 
     def succeeded(self, consumer_id, task):
+        # succeeded and failed are task-based, which is not indicative of
+        # whether or not the operation succeeded or failed; that is in the
+        # report stored as the task's result
+        if not task.result['succeeded']:
+            return self.failed(consumer_id, task)
+
         prompt = self.context.prompt
         msg = _('Update Succeeded')
         prompt.render_success_message(msg)
@@ -284,6 +296,12 @@ class YumConsumerPackageUninstallCommand(consumer_content.ConsumerContentUninsta
         return map(_unit_dict, kwargs['name'])
 
     def succeeded(self, consumer_id, task):
+        # succeeded and failed are task-based, which is not indicative of
+        # whether or not the operation succeeded or failed; that is in the
+        # report stored as the task's result
+        if not task.result['succeeded']:
+            return self.failed(consumer_id, task)
+
         prompt = self.context.prompt
         msg = _('Uninstall Completed')
         prompt.render_success_message(msg)
