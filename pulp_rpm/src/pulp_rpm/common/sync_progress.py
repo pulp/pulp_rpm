@@ -57,16 +57,16 @@ class SyncProgressReport(object):
         r.metadata_exception = m['error']
         r.metadata_traceback = m['traceback']
 
-        m = report['modules']
-        r.modules_state = m['state']
-        r.modules_execution_time = m['execution_time']
-        r.modules_total_count = m['total_count']
-        r.modules_finished_count = m['finished_count']
-        r.modules_error_count = m['error_count']
-        r.modules_individual_errors = m['individual_errors']
-        r.modules_error_message = m['error_message']
-        r.modules_exception = m['error']
-        r.modules_traceback = m['traceback']
+        m = report['isos']
+        r.isos_state = m['state']
+        r.isos_execution_time = m['execution_time']
+        r.isos_total_count = m['total_count']
+        r.isos_finished_count = m['finished_count']
+        r.isos_error_count = m['error_count']
+        r.isos_individual_errors = m['individual_errors']
+        r.isos_error_message = m['error_message']
+        r.isos_exception = m['error']
+        r.isos_traceback = m['traceback']
 
         return r
 
@@ -83,16 +83,16 @@ class SyncProgressReport(object):
         self.metadata_exception = None
         self.metadata_traceback = None
 
-        # Module download
-        self.modules_state = STATE_NOT_STARTED
-        self.modules_execution_time = None
-        self.modules_total_count = None
-        self.modules_finished_count = None
-        self.modules_error_count = None
-        self.modules_individual_errors = None # mapping of module to its error
-        self.modules_error_message = None # overall execution error
-        self.modules_exception = None
-        self.modules_traceback = None
+        # ISO download
+        self.isos_state = STATE_NOT_STARTED
+        self.isos_execution_time = None
+        self.isos_total_count = None
+        self.isos_finished_count = None
+        self.isos_error_count = None
+        self.isos_individual_errors = None # mapping of iso to its error
+        self.isos_error_message = None # overall execution error
+        self.isos_exception = None
+        self.isos_traceback = None
 
     # -- public methods -------------------------------------------------------
 
@@ -113,21 +113,21 @@ class SyncProgressReport(object):
 
         # Report fields
         total_execution_time = -1
-        if self.metadata_execution_time is not None and self.modules_execution_time is not None:
-            total_execution_time = self.metadata_execution_time + self.modules_execution_time
+        if self.metadata_execution_time is not None and self.isos_execution_time is not None:
+            total_execution_time = self.metadata_execution_time + self.isos_execution_time
 
         summary = {
             'total_execution_time' : total_execution_time
         }
 
         details = {
-            'total_count' : self.modules_total_count,
-            'finished_count' : self.modules_finished_count,
-            'error_count' : self.modules_error_count,
+            'total_count' : self.isos_total_count,
+            'finished_count' : self.isos_finished_count,
+            'error_count' : self.isos_error_count,
         }
 
         # Determine if the report was successful or failed
-        all_step_states = (self.metadata_state, self.modules_state)
+        all_step_states = (self.metadata_state, self.isos_state)
         unsuccessful_steps = [s for s in all_step_states if s != STATE_COMPLETE]
 
         if len(unsuccessful_steps) == 0:
@@ -148,18 +148,18 @@ class SyncProgressReport(object):
 
         report = {
             'metadata' : self._metadata_section(),
-            'modules'  : self._modules_section(),
+            'isos'  : self._isos_section(),
         }
         return report
 
-    def add_failed_module(self, module, exception, traceback):
+    def add_failed_iso(self, iso, exception, traceback):
         """
-        Updates the progress report that a module failed to be imported.
+        Updates the progress report that a iso failed to be imported.
         """
-        self.modules_error_count += 1
-        self.modules_individual_errors = self.modules_individual_errors or {}
-        error_key = '%s-%s-%s' % (module.name, module.version, module.author)
-        self.modules_individual_errors[error_key] = {
+        self.isos_error_count += 1
+        self.isos_individual_errors = self.isos_individual_errors or {}
+        error_key = '%s-%s-%s' % (iso.name, iso.version, iso.author)
+        self.isos_individual_errors[error_key] = {
             'exception' : reporting.format_exception(exception),
             'traceback' : reporting.format_traceback(traceback),
         }
@@ -179,16 +179,16 @@ class SyncProgressReport(object):
         }
         return metadata_report
 
-    def _modules_section(self):
-        modules_report = {
-            'state' : self.modules_state,
-            'execution_time' : self.modules_execution_time,
-            'total_count' : self.modules_total_count,
-            'finished_count' : self.modules_finished_count,
-            'error_count' : self.modules_error_count,
-            'individual_errors' : self.modules_individual_errors,
-            'error_message' : self.modules_error_message,
-            'error' : reporting.format_exception(self.modules_exception),
-            'traceback' : reporting.format_traceback(self.modules_traceback),
+    def _isos_section(self):
+        isos_report = {
+            'state' : self.isos_state,
+            'execution_time' : self.isos_execution_time,
+            'total_count' : self.isos_total_count,
+            'finished_count' : self.isos_finished_count,
+            'error_count' : self.isos_error_count,
+            'individual_errors' : self.isos_individual_errors,
+            'error_message' : self.isos_error_message,
+            'error' : reporting.format_exception(self.isos_exception),
+            'traceback' : reporting.format_traceback(self.isos_traceback),
         }
-        return modules_report
+        return isos_report
