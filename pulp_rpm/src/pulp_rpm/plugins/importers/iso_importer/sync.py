@@ -41,6 +41,10 @@ class ISOSyncRun(listener.DownloadEventListener):
     """
     def __init__(self, sync_conduit, config):
         self.sync_conduit = sync_conduit
+        self._repo_url = encode_unicode(config.get(constants.CONFIG_FEED_URL))
+        self._validate_downloads = config.get(constants.CONFIG_VALIDATE_DOWNLOADS)
+        if self._validate_downloads is None:
+            self._validate_downloads = True
 
         # Cast our config parameters to the correct types and use them to build an ISOBumper
         max_speed = config.get(constants.CONFIG_MAX_SPEED)
@@ -51,7 +55,6 @@ class ISOSyncRun(listener.DownloadEventListener):
             num_threads = int(num_threads)
         else:
             num_threads = constants.DEFAULT_NUM_THREADS
-        self.repo_url = encode_unicode(config.get(constants.CONFIG_FEED_URL))
         downloader_config = {
             'max_speed': max_speed, 'num_threads': num_threads,
             'ssl_client_cert': config.get(constants.CONFIG_SSL_CLIENT_CERT),
@@ -99,7 +102,8 @@ class ISOSyncRun(listener.DownloadEventListener):
         if self.progress_report.isos_state == STATE_RUNNING:
             iso = self._url_iso_map[report.url]
             try:
-                self._validate_download(iso)
+                if self._validate_downloads:
+                    self._validate_download(iso)
                 self.sync_conduit.save_unit(iso['unit'])
                 # We can drop this ISO from the url --> ISO map
                 del self._url_iso_map[report.url]
@@ -168,7 +172,7 @@ class ISOSyncRun(listener.DownloadEventListener):
         :return:     list of available ISOs
         :rtype:      list
         """
-        manifest_url = urljoin(self.repo_url, constants.ISO_MANIFEST_FILENAME)
+        manifest_url = urljoin(self._repo_url, constants.ISO_MANIFEST_FILENAME)
         # I probably should have called this manifest destination, but I couldn't help myself
         manifest_destiny = StringIO()
         manifest_request = request.DownloadRequest(manifest_url, manifest_destiny)
@@ -184,7 +188,7 @@ class ISOSyncRun(listener.DownloadEventListener):
         for unit in manifest_csv:
             name, checksum, size = unit
             resource = {'name': name, 'checksum': checksum, 'size': int(size),
-                        'url': urljoin(self.repo_url, name)}
+                        'url': urljoin(self._repo_url, name)}
             manifest.append(resource)
         return manifest
 

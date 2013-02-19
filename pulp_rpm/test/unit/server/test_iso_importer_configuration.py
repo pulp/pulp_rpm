@@ -62,3 +62,24 @@ class TestValidateMaxSpeed(PulpRPMTests):
         self.assertFalse(status)
         self.assertEqual(error_message, 'The configuration parameter <max_speed> must be set to a positive '
                                         'numerical value, but is currently set to <-1.0>.')
+
+
+class TestValidateValidateDownloads(PulpRPMTests):
+    def test_invalid_config(self):
+        config = importer_mocks.get_basic_config(**{constants.CONFIG_VALIDATE_DOWNLOADS: 1})
+        status, error_message = configuration.validate(config)
+        self.assertFalse(status)
+        self.assertEqual(error_message, 'The configuration parameter <validate_downloads> must be set to a '
+                                        'boolean value, but is currently set to <1>.')
+
+    def test_string_true(self):
+        config = importer_mocks.get_basic_config(**{constants.CONFIG_VALIDATE_DOWNLOADS: 'true'})
+        status, error_message = configuration.validate(config)
+        self.assertTrue(status)
+        self.assertEqual(error_message, None)
+
+    def test_valid_config(self):
+        config = importer_mocks.get_basic_config(**{constants.CONFIG_VALIDATE_DOWNLOADS: True})
+        status, error_message = configuration.validate(config)
+        self.assertTrue(status)
+        self.assertEqual(error_message, None)

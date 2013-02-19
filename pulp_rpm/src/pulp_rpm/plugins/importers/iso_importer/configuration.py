@@ -32,6 +32,7 @@ def validate(config):
     validators = (
         _validate_feed_url,
         _validate_max_speed,
+        _validate_validate_downloads,
     )
 
     for v in validators:
@@ -76,3 +77,26 @@ def _validate_max_speed(config):
                         'numerical value, but is currently set to <%(max_speed_value)s>.')%{
                             'max_speed_name': constants.CONFIG_MAX_SPEED, 'max_speed_value': max_speed}
     return True, None
+
+
+def _validate_validate_downloads(config):
+    """
+    This (humorously named) method will validate the optional config option called "validate_downloads". If it
+    is set, it must be a boolean, otherwise it may be None.
+    
+    :param config: the config to be validated
+    :type  config: pulp.plugins.config.PluginCallConfiguration
+    :return:       tuple of (is_valid, error_message)
+    :rtype:        tuple
+    """
+    validate_downloads = config.get(constants.CONFIG_VALIDATE_DOWNLOADS)
+    if validate_downloads is None:
+        # validate_downloads is not a required parameter
+        return True, None
+    if isinstance(validate_downloads, basestring):
+        validate_downloads = config.get_boolean(constants.CONFIG_VALIDATE_DOWNLOADS)
+    if isinstance(validate_downloads, bool):
+        return True, None
+    return False, _('The configuration parameter <%(name)s> must be set to a boolean value, but is currently '
+                    'set to <%(value)s>.')%{'name': constants.CONFIG_VALIDATE_DOWNLOADS,
+                                            'value': validate_downloads}
