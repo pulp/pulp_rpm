@@ -30,7 +30,7 @@ class YumConsumerPackageGroupSection(PulpCliSection):
 
     def __init__(self, context):
         description = _('package group installation management')
-        super(self.__class__, self).__init__('package-group', description)
+        super(YumConsumerPackageGroupSection, self).__init__('package-group', description)
 
         for Section in (YumConsumerPackageGroupInstallSection,
                         YumConsumerPackageGroupUninstallSection):
@@ -41,7 +41,7 @@ class YumConsumerPackageGroupInstallSection(PulpCliSection):
 
     def __init__(self, context):
         description = _('run or schedule a package group installation task')
-        super(self.__class__, self).__init__('install', description)
+        super(YumConsumerPackageGroupInstallSection, self).__init__('install', description)
 
         self.add_command(YumConsumerPackageGroupInstallCommand(context))
         self.add_subsection(YumConsumerPackageGroupSchedulesSection(context, 'install'))
@@ -51,7 +51,7 @@ class YumConsumerPackageGroupUninstallSection(PulpCliSection):
 
     def __init__(self, context):
         description = _('run or schedule a package group removal task')
-        super(self.__class__, self).__init__('uninstall', description)
+        super(YumConsumerPackageGroupUninstallSection, self).__init__('uninstall', description)
 
         self.add_command(YumConsumerPackageGroupUninstallCommand(context))
         self.add_subsection(YumConsumerPackageGroupSchedulesSection(context, 'uninstall'))
@@ -60,7 +60,7 @@ class YumConsumerPackageGroupUninstallSection(PulpCliSection):
 class YumConsumerPackageGroupSchedulesSection(PulpCliSection):
     def __init__(self, context, action):
         description = _('manage consumer package group %s schedules' % action)
-        super(self.__class__, self).__init__('schedules', description)
+        super(YumConsumerPackageGroupSchedulesSection, self).__init__('schedules', description)
 
         self.add_command(consumer_content.ConsumerContentListScheduleCommand(context, action))
         self.add_command(YumConsumerContentCreateScheduleCommand(context, action, TYPE_ID_PKG_GROUP))
@@ -74,7 +74,7 @@ class YumConsumerPackageGroupInstallCommand(consumer_content.ConsumerContentInst
 
     def __init__(self, context):
         description = _('triggers an immediate package group install on a consumer')
-        super(self.__class__, self).__init__(context, description=description)
+        super(YumConsumerPackageGroupInstallCommand, self).__init__(context, description=description)
 
     def add_content_options(self):
         self.create_option('--name',
@@ -145,7 +145,7 @@ class YumConsumerPackageGroupUninstallCommand(consumer_content.ConsumerContentUn
 
     def __init__(self, context):
         description = _('triggers an immediate package group removal on a consumer')
-        super(self.__class__, self).__init__(context, description=description)
+        super(YumConsumerPackageGroupUninstallCommand, self).__init__(context, description=description)
 
     def add_content_options(self):
         self.create_option('--name',

@@ -41,7 +41,7 @@ class YumConsumerErrataInstallSection(PulpCliSection):
         description = _('run or schedule an errata installation task')
         super(self.__class__, self).__init__('install', description)
 
-        self.add_command(YumConsumerErrataInstall(context))
+        self.add_command(YumConsumerErrataInstallCommand(context))
         self.add_subsection(YumConsumerErrataSchedulesSection(context, 'install'))
 
 
@@ -59,11 +59,11 @@ class YumConsumerErrataSchedulesSection(PulpCliSection):
 
 # commands ---------------------------------------------------------------------
 
-class YumConsumerErrataInstall(consumer_content.ConsumerContentInstallCommand):
+class YumConsumerErrataInstallCommand(consumer_content.ConsumerContentInstallCommand):
 
     def __init__(self, context):
         description = _('triggers an immediate errata install on a consumer')
-        super(self.__class__, self).__init__(context, description=description)
+        super(YumConsumerErrataInstallCommand, self).__init__(context, description=description)
 
     def add_content_options(self):
         self.create_option('--errata-id',

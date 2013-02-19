@@ -51,7 +51,7 @@ class YumConsumerPackageSection(PulpCliSection):
 
     def __init__(self, context):
         description = _('package installation management')
-        super(self.__class__, self).__init__( 'package', description)
+        super(YumConsumerPackageSection, self).__init__( 'package', description)
 
         for Section in (YumConsumerPackageInstallSection,
                         YumConsumerPackageUpdateSection,
@@ -63,7 +63,7 @@ class YumConsumerPackageInstallSection(PulpCliSection):
 
     def __init__(self, context):
         description = _('run or schedule a package installation task')
-        super(self.__class__, self).__init__('install', description)
+        super(YumConsumerPackageInstallSection, self).__init__('install', description)
 
         self.add_command(YumConsumerPackageInstallCommand(context))
         self.add_subsection(YumConsumerSchedulesSection(context, 'install'))
@@ -73,7 +73,7 @@ class YumConsumerPackageUpdateSection(PulpCliSection):
 
     def __init__(self, context):
         description = _('run or schedule a package update task')
-        super(self.__class__, self).__init__('update', description)
+        super(YumConsumerPackageUpdateSection, self).__init__('update', description)
 
         self.add_command(YumConsumerPackageUpdateCommand(context))
         self.add_subsection(YumConsumerSchedulesSection(context, 'update'))
@@ -83,7 +83,7 @@ class YumConsumerPackageUninstallSection(PulpCliSection):
 
     def __init__(self, context):
         description = _('run or schedule a package removal task')
-        super(self.__class__, self).__init__('uninstall', description)
+        super(YumConsumerPackageUninstallSection, self).__init__('uninstall', description)
 
         self.add_command(YumConsumerPackageUninstallCommand(context))
         self.add_subsection(YumConsumerSchedulesSection(context, 'uninstall'))
@@ -93,7 +93,7 @@ class YumConsumerSchedulesSection(PulpCliSection):
 
     def __init__(self, context, action):
         description = _('manage consumer package %s schedules' % action)
-        super(self.__class__, self).__init__('schedules', description)
+        super(YumConsumerSchedulesSection, self).__init__('schedules', description)
 
         self.add_command(consumer_content.ConsumerContentListScheduleCommand(context, action))
         self.add_command(YumConsumerContentCreateScheduleCommand(context, action, TYPE_ID_RPM))
@@ -108,8 +108,8 @@ class YumConsumerPackageInstallCommand(consumer_content.ConsumerContentInstallCo
     def __init__(self, context):
         description = _('triggers an immediate package install on a consumer')
         progress_tracker = YumConsumerPackageProgressTracker(context.prompt)
-        super(self.__class__, self).__init__(context, description=description,
-                                             progress_tracker=progress_tracker)
+        super(YumConsumerPackageInstallCommand, self).__init__(context, description=description,
+                                                               progress_tracker=progress_tracker)
 
     def add_content_options(self):
         self.create_option('--name',
@@ -189,8 +189,8 @@ class YumConsumerPackageUpdateCommand(consumer_content.ConsumerContentUpdateComm
     def __init__(self, context):
         description = _('triggers an immediate package update on a consumer')
         progress_tracker = YumConsumerPackageProgressTracker(context.prompt)
-        super(self.__class__, self).__init__(context, description=description,
-                                             progress_tracker=progress_tracker)
+        super(YumConsumerPackageUpdateCommand, self).__init__(context, description=description,
+                                                              progress_tracker=progress_tracker)
 
     def add_content_options(self):
         self.create_option('--name',
@@ -266,8 +266,8 @@ class YumConsumerPackageUninstallCommand(consumer_content.ConsumerContentUninsta
     def __init__(self, context):
         description = _('triggers an immediate package removal on a consumer')
         progress_tracker = YumConsumerPackageProgressTracker(context.prompt)
-        super(self.__class__, self).__init__(context, description=description,
-                                             progress_tracker=progress_tracker)
+        super(YumConsumerPackageUninstallCommand, self).__init__(context, description=description,
+                                                                 progress_tracker=progress_tracker)
 
     def add_content_options(self):
         self.create_option('--name',
