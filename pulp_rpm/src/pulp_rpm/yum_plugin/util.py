@@ -365,3 +365,18 @@ def is_rpm_newer(a, b):
         return True
     return False
 
+def encode_string_to_utf8(data):
+    if not data:
+        return data
+    ENCODING_LIST = ['iso-8859-1', ]
+    encoded_data = None
+    for code in ENCODING_LIST:
+        try:
+            encoded_data = data.decode(code).encode('utf8')
+            return encoded_data
+        except UnicodeDecodeError:
+            # try others
+            continue
+    if not encoded_data:
+        return data
+
