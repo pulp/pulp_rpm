@@ -115,11 +115,9 @@ class TestISOImporter(PulpRPMTests):
         metadata = importer.ISOImporter.metadata()
         self.assertEqual(metadata, {'id': ids.TYPE_ID_IMPORTER_ISO, 'display_name': 'ISO Importer',
                                     'types': [ids.TYPE_ID_ISO]})
-    
-    @mock.patch('pulp_rpm.plugins.importers.iso_importer.bumper.pycurl.Curl',
-           side_effect=importer_mocks.ISOCurl)
-    @mock.patch('pulp_rpm.plugins.importers.iso_importer.bumper.pycurl.CurlMulti',
-           side_effect=importer_mocks.CurlMulti)
+
+    @mock.patch('pulp.common.download.backends.curl.pycurl.Curl', side_effect=importer_mocks.ISOCurl)
+    @mock.patch('pulp.common.download.backends.curl.pycurl.CurlMulti', side_effect=importer_mocks.CurlMulti)
     @mock.patch('pulp_rpm.plugins.importers.iso_importer.sync.SyncProgressReport', autospec=True)
     def test_sync_repo(self, progress_report, curl_multi, curl):
         repo = mock.MagicMock(spec=Repository)
