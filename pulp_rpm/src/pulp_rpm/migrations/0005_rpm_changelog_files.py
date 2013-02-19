@@ -40,13 +40,19 @@ def _migrate_rpm_unit_changelog_files():
         for key in ["changelog", "filelist", "files"]:
             if key not in rpm_unit or not rpm_unit[key]:
                 if key == "changelog":
-                    data = map(lambda x: util.encode_string_to_utf8(x), po[key])
+                    data = map(lambda x: __encode_changelog(x), po[key])
                 else:
                     data = getattr(po, key)
                 rpm_unit[key] = data
                 _log.debug("missing pkg: %s ; key %s" % (rpm_unit, key))
         collection.save(rpm_unit, safe=True)
     _log.info("Migrated rpms to include rpm changelog and filelist metadata")
+
+def __encode_changelog(changelog_tuple):
+    timestamp, email, description = changelog_tuple
+    email = util.encode_string_to_utf8(email)
+    description = util.encode_string_to_utf8(description)
+    return (timestamp, email, description)
 
 def migrate(*args, **kwargs):
     _migrate_rpm_unit_changelog_files()
