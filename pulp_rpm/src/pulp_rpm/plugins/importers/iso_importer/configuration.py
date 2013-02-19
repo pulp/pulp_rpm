@@ -74,7 +74,7 @@ def _cast_to_int_without_allowing_floats(value):
 
 def _validate_feed_url(config):
     """
-    Make sure the feed_url is set.
+    Make sure the feed_url is a string, if it is set.
 
     :rtype: tuple
     """
@@ -83,7 +83,9 @@ def _validate_feed_url(config):
     if not feed_url:
         return True, None
     if not isinstance(feed_url, basestring):
-        return False, _('<%(feed_url)s> must be a string.')%{'feed_url': constants.CONFIG_FEED_URL}
+        msg = _('<%(feed_url)s> must be a string.')
+        msg = msg%{'feed_url': constants.CONFIG_FEED_URL}
+        return False, msg
     return True, None
 
 
@@ -102,15 +104,16 @@ def _validate_max_speed(config):
         if max_speed <= 0:
             raise ValueError()
     except ValueError:
-        return False, _('The configuration parameter <%(max_speed_name)s> must be set to a positive '
-                        'numerical value, but is currently set to <%(max_speed_value)s>.')%{
-                            'max_speed_name': constants.CONFIG_MAX_SPEED, 'max_speed_value': max_speed}
+        msg = _('The configuration parameter <%(max_speed_name)s> must be set to a positive numerical value, '
+                'but is currently set to <%(max_speed_value)s>.')
+        msg = msg%{'max_speed_name': constants.CONFIG_MAX_SPEED, 'max_speed_value': max_speed}
+        return False, msg
     return True, None
 
 
 def _validate_num_threads(config):
     """
-    Make sure the num_threads value is a positive integer.
+    Make sure the num_threads value is a positive integer, if it is set.
     
     :param config: The configuration object that we are validating.
     :type  config: pulp.plugins.config.PluginCallConfiguration
@@ -127,17 +130,18 @@ def _validate_num_threads(config):
         if num_threads < 1:
             raise ValueError()
     except ValueError:
-        error_message = _('The configuration parameter <%(num_threads_name)s> must be set to a positive '
-                          'integer, but is currently set to <%(num_threads)s>.')%{
-                            'num_threads_name': constants.CONFIG_NUM_THREADS, 'num_threads': num_threads}
-        return False, error_message
+        msg = _('The configuration parameter <%(num_threads_name)s> must be set to a positive integer, but '
+                'is currently set to <%(num_threads)s>.')
+        msg = msg%{'num_threads_name': constants.CONFIG_NUM_THREADS, 'num_threads': num_threads}
+        return False, msg
     # No errors, so return success
     return True, None
 
 
 def _validate_proxy_password(config):
     """
-    Make sure the proxy_password is set if the proxy_user is set, and that it is a string.
+    The proxy_password setting is optional. However, if it is set, it must be a string. Also, if it is set,
+    proxy_user must also be set.
     
     :param config: The configuration object that we are validating.
     :type  config: pulp.plugins.config.PluginCallConfiguration
@@ -150,26 +154,24 @@ def _validate_proxy_password(config):
         # Proxy password is not required
         return True, None
     if not isinstance(proxy_password, basestring):
-        return False, _('The configuration parameter <%(proxy_password_name)s> should be a string, but it '
-                        'was %(type)s.')%{'proxy_password_name': constants.CONFIG_PROXY_PASSWORD,
-                                          'type': type(proxy_password)}
+        msg = _('The configuration parameter <%(proxy_password_name)s> should be a string, but it was '
+                '%(type)s.')
+        msg = msg%{'proxy_password_name': constants.CONFIG_PROXY_PASSWORD, 'type': type(proxy_password)}
+        return False, msg
     # If proxy_password is set, proxy_username must also be set
     if not config.get(constants.CONFIG_PROXY_USER):
-        return False, _('The configuration parameter <%(password_name)s> requires the <%(username_name)s> '
-                        'parameter to also be set.')%{'password_name': constants.CONFIG_PROXY_PASSWORD,
-                                                      'username_name': constants.CONFIG_PROXY_USER}
-    # We also require the URL to be set if the password is set
-    if not config.get(constants.CONFIG_PROXY_URL):
-        return False, _('The configuration parameter <%(password_name)s> requires the <%(url_name)s> '
-                        'parameter to also be set.')%{'password_name': constants.CONFIG_PROXY_PASSWORD,
-                                                      'url_name': constants.CONFIG_PROXY_URL}
+        msg = _('The configuration parameter <%(password_name)s> requires the <%(username_name)s> parameter '
+                'to also be set.')
+        msg = msg%{'password_name': constants.CONFIG_PROXY_PASSWORD,
+                   'username_name': constants.CONFIG_PROXY_USER}
+        return False, msg
     return True, None
 
 
 def _validate_proxy_port(config):
     """
-    Make sure the proxy_url is set if the proxy_port is set. Also, if it is set, make sure it is a positive
-    integer.
+    The proxy_port is optional. If it is set, this will make sure the proxy_url is also set, and that the port
+    is a positive integer.
     
     :param config: The configuration object that we are validating.
     :type  config: pulp.plugins.config.PluginCallConfiguration
@@ -182,25 +184,26 @@ def _validate_proxy_port(config):
         # Proxy port is not required
         return True, None
     if not config.get(constants.CONFIG_PROXY_URL):
-        return False, _('The configuration parameter <%(name)s> requires the <%(url_name)s> '
-                        'parameter to also be set.')%{'name': constants.CONFIG_PROXY_PORT,
-                                                      'url_name': constants.CONFIG_PROXY_URL}
+        msg = _('The configuration parameter <%(name)s> requires the <%(url_name)s> parameter to also be '
+                'set.')
+        msg = msg%{'name': constants.CONFIG_PROXY_PORT, 'url_name': constants.CONFIG_PROXY_URL}
+        return False, msg
     try:
         proxy_port = _cast_to_int_without_allowing_floats(proxy_port)
         if proxy_port < 1:
             raise ValueError()
     except ValueError:
-        error_message = _('The configuration parameter <%(name)s> must be set to a positive '
-                          'integer, but is currently set to <%(value)s>.')%{
-                            'name': constants.CONFIG_PROXY_PORT, 'value': proxy_port}
-        return False, error_message
+        msg = _('The configuration parameter <%(name)s> must be set to a positive integer, but is currently '
+                'set to <%(value)s>.')
+        msg = msg%{'name': constants.CONFIG_PROXY_PORT, 'value': proxy_port}
+        return False, msg
     # No errors, so return success
     return True, None
 
 
 def _validate_proxy_url(config):
     """
-    Make sure the proxy_url is a string, if it is set
+    Make sure the proxy_url is a string, if it is set.
     
     :param config: The configuration object that we are validating.
     :type  config: pulp.plugins.config.PluginCallConfiguration
@@ -213,15 +216,16 @@ def _validate_proxy_url(config):
         # Proxy url is not required
         return True, None
     if not isinstance(proxy_url, basestring):
-        return False, _('The configuration parameter <%(name)s> should be a string, but it '
-                        'was %(type)s.')%{'name': constants.CONFIG_PROXY_URL,
-                                          'type': type(proxy_url)}
+        msg = _('The configuration parameter <%(name)s> should be a string, but it was %(type)s.')
+        msg = msg%{'name': constants.CONFIG_PROXY_URL, 'type': type(proxy_url)}
+        return False, msg
     return True, None
 
 
 def _validate_proxy_username(config):
     """
-    Make sure the proxy_password is set if the proxy_user is set, and that the username is a string.
+    The proxy_username is optional. If it is set, this method will ensure that it is a string, and it will
+    also ensure that the proxy_password and proxy_url settings are set.
     
     :param config: The configuration object that we are validating.
     :type  config: pulp.plugins.config.PluginCallConfiguration
@@ -234,25 +238,28 @@ def _validate_proxy_username(config):
         # Proxy username is not required
         return True, None
     if not isinstance(proxy_username, basestring):
-        return False, _('The configuration parameter <%(name)s> should be a string, but it '
-                        'was %(type)s.')%{'name': constants.CONFIG_PROXY_USER,
-                                          'type': type(proxy_username)}
+        msg = _('The configuration parameter <%(name)s> should be a string, but it was %(type)s.')
+        msg = msg%{'name': constants.CONFIG_PROXY_USER, 'type': type(proxy_username)}
+        return False, msg
     # If proxy_password is set, proxy_username must also be set
     if not config.get(constants.CONFIG_PROXY_PASSWORD):
-        return False, _('The configuration parameter <%(username_name)s> requires the <%(password_name)s> '
-                        'parameter to also be set.')%{'password_name': constants.CONFIG_PROXY_PASSWORD,
-                                                      'username_name': constants.CONFIG_PROXY_USER}
-    # We also require the URL to be set if the password is set
+        msg = _('The configuration parameter <%(username_name)s> requires the <%(password_name)s> parameter '
+                'to also be set.')
+        msg = msg%{'password_name': constants.CONFIG_PROXY_PASSWORD,
+                   'username_name': constants.CONFIG_PROXY_USER}
+        return False, msg
+    # We also require the URL to be set if the username is set
     if not config.get(constants.CONFIG_PROXY_URL):
-        return False, _('The configuration parameter <%(username_name)s> requires the <%(url_name)s> '
-                        'parameter to also be set.')%{'username_name': constants.CONFIG_PROXY_USER,
-                                                      'url_name': constants.CONFIG_PROXY_URL}
+        msg = _('The configuration parameter <%(username_name)s> requires the <%(url_name)s> parameter to '
+                'also be set.')
+        msg = msg%{'username_name': constants.CONFIG_PROXY_USER, 'url_name': constants.CONFIG_PROXY_URL}
+        return False, msg
     return True, None
 
 
 def _validate_ssl_ca_cert(config):
     """
-    Make sure the ssl_ca_cert is a string, if it is set
+    Make sure the ssl_ca_cert is a string, if it is set.
     
     :param config: The configuration object that we are validating.
     :type  config: pulp.plugins.config.PluginCallConfiguration
@@ -265,15 +272,15 @@ def _validate_ssl_ca_cert(config):
         # ssl_ca_cert is not required
         return True, None
     if not isinstance(ssl_ca_cert, basestring):
-        return False, _('The configuration parameter <%(name)s> should be a string, but it '
-                        'was %(type)s.')%{'name': constants.CONFIG_SSL_CA_CERT,
-                                          'type': type(ssl_ca_cert)}
+        msg = _('The configuration parameter <%(name)s> should be a string, but it was %(type)s.')
+        msg = msg%{'name': constants.CONFIG_SSL_CA_CERT, 'type': type(ssl_ca_cert)}
+        return False, msg
     return True, None
 
 
 def _validate_ssl_client_cert(config):
     """
-    Make sure the ssl_client_cert is a string, if it is set
+    Make sure the ssl_client_cert is a string, if it is set.
     
     :param config: The configuration object that we are validating.
     :type  config: pulp.plugins.config.PluginCallConfiguration
@@ -286,9 +293,9 @@ def _validate_ssl_client_cert(config):
         # ssl_client_cert is not required
         return True, None
     if not isinstance(ssl_client_cert, basestring):
-        return False, _('The configuration parameter <%(name)s> should be a string, but it '
-                        'was %(type)s.')%{'name': constants.CONFIG_SSL_CLIENT_CERT,
-                                          'type': type(ssl_client_cert)}
+        msg = _('The configuration parameter <%(name)s> should be a string, but it was %(type)s.')
+        msg = msg%{'name': constants.CONFIG_SSL_CLIENT_CERT, 'type': type(ssl_client_cert)}
+        return False, msg
     return True, None
 
 
@@ -307,12 +314,13 @@ def _validate_ssl_client_key(config):
         # ssl_client_key is not required
         return True, None
     if not isinstance(ssl_client_key, basestring):
-        return False, _('The configuration parameter <%(name)s> should be a string, but it '
-                        'was %(type)s.')%{'name': constants.CONFIG_SSL_CLIENT_KEY,
-                                          'type': type(ssl_client_key)}
+        msg = _('The configuration parameter <%(name)s> should be a string, but it was %(type)s.')
+        msg = msg%{'name': constants.CONFIG_SSL_CLIENT_KEY, 'type': type(ssl_client_key)}
+        return False, msg
     # If the key is set, we should also have a cert
     if not config.get(constants.CONFIG_SSL_CLIENT_CERT):
-        return False, _('The configuration parameter <%(key_name)s> requires the <%(cert_name)s> '
-                        'parameter to also be set.')%{'key_name': constants.CONFIG_SSL_CLIENT_KEY,
-                                                      'cert_name': constants.CONFIG_SSL_CLIENT_CERT}
+        msg = _('The configuration parameter <%(key_name)s> requires the <%(cert_name)s> parameter to also '
+                'be set.')
+        msg = msg%{'key_name': constants.CONFIG_SSL_CLIENT_KEY, 'cert_name': constants.CONFIG_SSL_CLIENT_CERT}
+        return False, msg
     return True, None

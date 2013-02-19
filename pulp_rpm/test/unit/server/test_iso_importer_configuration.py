@@ -128,14 +128,6 @@ class TestValidateProxyPassword(PulpRPMTests):
         self.assertEqual(error_message, "The configuration parameter <proxy_password> should be a string, "
                                         "but it was <type 'int'>.")
 
-    def test_password_requires_url(self):
-        config = importer_mocks.get_basic_config(**{constants.CONFIG_PROXY_PASSWORD: 'duderino',
-                                                    constants.CONFIG_PROXY_USER: 'the_dude'})
-        status, error_message = configuration.validate(config)
-        self.assertFalse(status)
-        self.assertEqual(error_message, 'The configuration parameter <proxy_password> requires the '
-                                        '<proxy_url> parameter to also be set.')
-
     def test_password_requires_username(self):
         config = importer_mocks.get_basic_config(**{constants.CONFIG_PROXY_PASSWORD: 'duderino'})
         status, error_message = configuration.validate(config)
