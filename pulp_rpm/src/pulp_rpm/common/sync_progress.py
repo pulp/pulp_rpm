@@ -83,7 +83,7 @@ class SyncProgressReport(object):
         self.metadata_exception = None
         self.metadata_traceback = None
 
-        # Module download
+        # ISO download
         self.isos_state = STATE_NOT_STARTED
         self.isos_execution_time = None
         self.isos_total_count = None

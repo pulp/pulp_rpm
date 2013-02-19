@@ -42,7 +42,7 @@ class ISOSyncRun(listener.DownloadEventListener):
     def __init__(self, sync_conduit, config):
         self.sync_conduit = sync_conduit
 
-        # Cast our config parameters to the correct types and use them to build an ISOBumper
+        # Cast our config parameters to the correct types and use them to build a Downloader
         max_speed = config.get(constants.CONFIG_MAX_SPEED)
         if max_speed is not None:
             max_speed = float(max_speed)
@@ -130,6 +130,7 @@ class ISOSyncRun(listener.DownloadEventListener):
 
         # Report that we are finished
         self.progress_report.isos_state = STATE_COMPLETE
+        self.progress_report.update_progress()
         report = self.progress_report.build_final_report()
         return report
 
@@ -190,10 +191,10 @@ class ISOSyncRun(listener.DownloadEventListener):
 
     def _filter_missing_isos(self, manifest):
         """
-        Use the sync_conduit and the ISOBumper manifest to determine which ISOs are at the feed_url
+        Use the sync_conduit and the manifest to determine which ISOs are at the feed_url
         that are not in our local store. Return a subset of the given manifest that represents the
-        missing ISOs. The manifest format is described in the docblock for
-        pulp_rpm.plugins.importers.iso_importer.bumper.ISOBumper.manifest.
+        missing ISOs. The manifest is a list of dictionaries that must contain at a minimum the following
+        keys: name, checksum, size.
 
         :param manifest:     A list of dictionaries that describe the ISOs that are available at the
                              feed_url that we are syncing with
@@ -220,17 +221,13 @@ class ISOSyncRun(listener.DownloadEventListener):
 
     def _validate_download(self, iso):
         """
-        Validate the size and the checksum of the given downloaded unit. is should be a dictionary with at
+        Validate the size and the checksum of the given downloaded iso. iso should be a dictionary with at
         least these keys: name, checksum, size, and destination.
         
         :param iso: A dictionary describing the ISO file we want to validate
         :type  iso: dict
         """
-        if isinstance(iso['destination'], basestring):
-            destination_file = open(iso['destination'])
-        else:
-            destination_file = iso['destination']
-        try:
+        with open(iso['destination']) as destination_file:
             # Validate the size, if we know what it should be
             if 'size' in iso:
                 # seek to the end to find the file size with tell()
@@ -257,6 +254,3 @@ class ISOSyncRun(listener.DownloadEventListener):
                           'specified the checksum to be %(c)s, but it was %(f)s.')%{
                             'name': iso['name'], 'c': iso['checksum'],
                             'f': hasher.hexdigest()})
-        finally:
-            if isinstance(iso['destination'], basestring):
-                destination_file.close()

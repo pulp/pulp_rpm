@@ -117,11 +117,12 @@ class TestISOSyncRun(PulpRPMTests):
 
     @patch('pulp_rpm.plugins.importers.iso_importer.sync.ISOSyncRun.download_failed')
     def test_download_succeeded(self, download_failed):
-        destination = StringIO()
-        destination.write(
-            'Descartes walks into a bar and sits down, the bartender walks up to him and says "You, my man, '
-            'look like you need a stiff drink." Descartes considers this, and shakes his head "No, I don\'t '
-            'think-" and ceases to exist.')
+        destination = os.path.join(self.temp_dir, 'test.txt')
+        with open(destination, 'w') as test_file:
+            test_file.write(
+                'Descartes walks into a bar and sits down, the bartender walks up to him and says "You, my '
+                'man, look like you need a stiff drink." Descartes considers this, and shakes his head "No, '
+                'I don\'t think-" and ceases to exist.')
         unit = 'fake_unit'
         iso = {'name': 'test.txt', 'size': 217, 'destination': destination,
                'checksum': 'a1552efee6f04012bc7e1f3e02c00c6177b08217cead958c47ec83cb8f97f835',
@@ -142,8 +143,9 @@ class TestISOSyncRun(PulpRPMTests):
 
     @patch('pulp_rpm.plugins.importers.iso_importer.sync.ISOSyncRun.download_failed')
     def test_download_succeeded_fails_checksum(self, download_failed):
-        destination = StringIO()
-        destination.write('What happens when you combine a mosquito with a mountain climber? Nothing. You '
+        destination = os.path.join(self.temp_dir, 'test.txt')
+        with open(destination, 'w') as test_file:
+            test_file.write('What happens when you combine a mosquito with a mountain climber? Nothing. You '
                           'can\'t cross a vector with a scalar.')
         unit = 'fake_unit'
         iso = {'name': 'test.txt', 'size': 114, 'destination': destination,
@@ -301,49 +303,36 @@ class TestISOSyncRun(PulpRPMTests):
         # This should validate, i.e., should not raise any Exception
         self.iso_sync_run._validate_download(iso)
 
-    def test__validate_download_with_stringio(self):
-        destination = StringIO()
-        destination.write(
-            'A neutron walks into a bar. "I\'d like a beer" he says. The bartender promptly serves up a '
-            'beer. "How much will that be?" asks the neutron. "For you?" replies the bartender, "no charge".')
-        iso = {'name': 'test.txt', 'size': 185, 'destination': destination,
-               'checksum': '3c520c6ac45514095021220dab8b8d515bf447bac844573ec01ce20269590574'}
-
-        # This should validate, i.e., should not raise any Exception
-        self.iso_sync_run._validate_download(iso)
-
     def test__validate_download_wrong_checksum(self):
-        destination = StringIO()
-        destination.write('Two chemists walk into a bar, the first one says "I\'ll have some H2O." to which '
-                          'the other adds "I\'ll have some H2O, too." The second chemist died.')
+        destination = os.path.join(self.temp_dir, 'test.txt')
+        with open(destination, 'w') as test_file:
+            test_file.write('Two chemists walk into a bar, the first one says "I\'ll have some H2O." to '
+                            'which the other adds "I\'ll have some H2O, too." The second chemist died.')
         iso = {'name': 'test.txt', 'size': 146, 'destination': destination,
                'checksum': 'terrible_pun'}
 
         # This should raise a ValueError with an appropriate error message
         try:
             self.iso_sync_run._validate_download(iso)
-            raise Exception()
+            self.fail('A ValueError should have been raised, but it was not.')
         except ValueError, e:
             self.assertEqual(
                 str(e), 'Downloading <test.txt> failed checksum validation. The manifest specified the '
                         'checksum to be terrible_pun, but it was '
                         'dfec884065223f24c3ef333d4c7dcc0eb785a683cfada51ce071410b32a905e8.')
-        except Exception:
-            self.fail('A ValueError should have been raised, but it was not.')
 
     def test__validate_download_wrong_size(self):
-        destination = StringIO()
-        destination.write("Hey girl, what's your sine? It must be math.pi/2 because you're the 1.")
+        destination = os.path.join(self.temp_dir, 'test.txt')
+        with open(destination, 'w') as test_file:
+            test_file.write("Hey girl, what's your sine? It must be math.pi/2 because you're the 1.")
         iso = {'name': 'test.txt', 'size': math.pi, 'destination': destination,
                'checksum': '2b046422425d6f01a920278c55d8842a8989bacaea05b29d1d2082fae91c6041'}
 
         # This should raise a ValueError with an appropriate error message
         try:
             self.iso_sync_run._validate_download(iso)
-            raise Exception()
+            self.fail('A ValueError should have been raised, but it was not.')
         except ValueError, e:
             self.assertEqual(
                 str(e), 'Downloading <test.txt> failed validation. The manifest specified that the '
                         'file should be 3.14159265359 bytes, but the downloaded file is 70 bytes.')
-        except Exception:
-            self.fail('A ValueError should have been raised, but it was not.')
