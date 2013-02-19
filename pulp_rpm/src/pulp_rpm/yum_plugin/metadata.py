@@ -397,7 +397,7 @@ def change_location_tag(primary_xml_snippet, relpath):
 
     first_portion = util.encode_string_to_utf8(primary_xml_snippet[:start_index])
     end_portion = util.encode_string_to_utf8(primary_xml_snippet[end_index:])
-    location = """<location href="%s"/>""" % (basename)
+    location = util.encode_string_to_utf8("""<location href="%s"/>""" % (basename))
     return first_portion + location + end_portion
 
 
