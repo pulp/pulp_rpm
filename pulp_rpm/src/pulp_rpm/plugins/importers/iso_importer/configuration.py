@@ -79,13 +79,24 @@ def _validate_feed_url(config):
     :rtype: tuple
     """
     feed_url = config.get(constants.CONFIG_FEED_URL)
-    # feed_urls are not required.
-    if not feed_url:
+    # feed_urls are not required if all of the other feed related settings are None
+    dependencies = [
+        constants.CONFIG_MAX_SPEED, constants.CONFIG_NUM_THREADS, constants.CONFIG_PROXY_PASSWORD,
+        constants.CONFIG_PROXY_PORT, constants.CONFIG_PROXY_URL, constants.CONFIG_PROXY_USER,
+        constants.CONFIG_SSL_CA_CERT, constants.CONFIG_SSL_CLIENT_CERT, constants.CONFIG_SSL_CLIENT_KEY]
+    if not feed_url and all([config.get(setting) is None for setting in dependencies]):
         return True, None
+    elif not feed_url:
+        msg = _('The configuration parameter <%(name)s> is required when any of the following other '
+                'parameters are defined: ' + ', '.join(dependencies))
+        msg = msg%{'name': constants.CONFIG_FEED_URL}
+        return False, msg
+
     if not isinstance(feed_url, basestring):
         msg = _('<%(feed_url)s> must be a string.')
         msg = msg%{'feed_url': constants.CONFIG_FEED_URL}
         return False, msg
+
     return True, None
 
 
@@ -99,6 +110,7 @@ def _validate_max_speed(config):
     # max_speed is not required
     if max_speed is None:
         return True, None
+
     try:
         max_speed = float(max_speed)
         if max_speed <= 0:
@@ -108,6 +120,7 @@ def _validate_max_speed(config):
                 'but is currently set to <%(max_speed_value)s>.')
         msg = msg%{'max_speed_name': constants.CONFIG_MAX_SPEED, 'max_speed_value': max_speed}
         return False, msg
+
     return True, None
 
 
@@ -125,6 +138,7 @@ def _validate_num_threads(config):
     if num_threads is None:
         # We don't require num_threads to be set
         return True, None
+
     try:
         num_threads = _cast_to_int_without_allowing_floats(num_threads)
         if num_threads < 1:
@@ -134,6 +148,7 @@ def _validate_num_threads(config):
                 'is currently set to <%(num_threads)s>.')
         msg = msg%{'num_threads_name': constants.CONFIG_NUM_THREADS, 'num_threads': num_threads}
         return False, msg
+
     # No errors, so return success
     return True, None
 
@@ -150,21 +165,23 @@ def _validate_proxy_password(config):
     :rtype:        tuple
     """
     proxy_password = config.get(constants.CONFIG_PROXY_PASSWORD)
-    if proxy_password is None:
+    if proxy_password is None and config.get(constants.CONFIG_PROXY_USER) is None:
         # Proxy password is not required
         return True, None
+    elif proxy_password is None:
+        # If proxy_password is set, proxy_username must also be set
+        msg = _('The configuration parameter <%(username_name)s> requires the <%(password_name)s> parameter '
+                'to also be set.')
+        msg = msg%{'password_name': constants.CONFIG_PROXY_PASSWORD,
+                   'username_name': constants.CONFIG_PROXY_USER}
+        return False, msg
+
     if not isinstance(proxy_password, basestring):
         msg = _('The configuration parameter <%(proxy_password_name)s> should be a string, but it was '
                 '%(type)s.')
         msg = msg%{'proxy_password_name': constants.CONFIG_PROXY_PASSWORD, 'type': type(proxy_password)}
         return False, msg
-    # If proxy_password is set, proxy_username must also be set
-    if not config.get(constants.CONFIG_PROXY_USER):
-        msg = _('The configuration parameter <%(password_name)s> requires the <%(username_name)s> parameter '
-                'to also be set.')
-        msg = msg%{'password_name': constants.CONFIG_PROXY_PASSWORD,
-                   'username_name': constants.CONFIG_PROXY_USER}
-        return False, msg
+
     return True, None
 
 
@@ -183,11 +200,7 @@ def _validate_proxy_port(config):
     if proxy_port is None:
         # Proxy port is not required
         return True, None
-    if not config.get(constants.CONFIG_PROXY_URL):
-        msg = _('The configuration parameter <%(name)s> requires the <%(url_name)s> parameter to also be '
-                'set.')
-        msg = msg%{'name': constants.CONFIG_PROXY_PORT, 'url_name': constants.CONFIG_PROXY_URL}
-        return False, msg
+
     try:
         proxy_port = _cast_to_int_without_allowing_floats(proxy_port)
         if proxy_port < 1:
@@ -197,6 +210,7 @@ def _validate_proxy_port(config):
                 'set to <%(value)s>.')
         msg = msg%{'name': constants.CONFIG_PROXY_PORT, 'value': proxy_port}
         return False, msg
+
     # No errors, so return success
     return True, None
 
@@ -211,10 +225,16 @@ def _validate_proxy_url(config):
                    an error message in the second when the first is False
     :rtype:        tuple
     """
+    dependencies = [constants.CONFIG_PROXY_PASSWORD, constants.CONFIG_PROXY_PORT, constants.CONFIG_PROXY_USER]
     proxy_url = config.get(constants.CONFIG_PROXY_URL)
-    if proxy_url is None:
+    if proxy_url is None and all([config.get(parameter) is None for parameter in dependencies]):
         # Proxy url is not required
         return True, None
+    elif proxy_url is None:
+        msg = _('The configuration parameter <%(name)s> is required when any of the following other '
+                'parameters are defined: ' + ', '.join(dependencies))
+        msg = msg%{'name': constants.CONFIG_PROXY_URL}
+        return False, msg
     if not isinstance(proxy_url, basestring):
         msg = _('The configuration parameter <%(name)s> should be a string, but it was %(type)s.')
         msg = msg%{'name': constants.CONFIG_PROXY_URL, 'type': type(proxy_url)}
@@ -234,26 +254,22 @@ def _validate_proxy_username(config):
     :rtype:        tuple
     """
     proxy_username = config.get(constants.CONFIG_PROXY_USER)
-    if proxy_username is None:
-        # Proxy username is not required
+    # Proxy username is not required unless the password is set
+    if proxy_username is None and config.get(constants.CONFIG_PROXY_PASSWORD) is None:
         return True, None
-    if not isinstance(proxy_username, basestring):
-        msg = _('The configuration parameter <%(name)s> should be a string, but it was %(type)s.')
-        msg = msg%{'name': constants.CONFIG_PROXY_USER, 'type': type(proxy_username)}
-        return False, msg
-    # If proxy_password is set, proxy_username must also be set
-    if not config.get(constants.CONFIG_PROXY_PASSWORD):
-        msg = _('The configuration parameter <%(username_name)s> requires the <%(password_name)s> parameter '
+    elif proxy_username is None:
+        # If proxy_password is set, proxy_username must also be set
+        msg = _('The configuration parameter <%(password_name)s> requires the <%(username_name)s> parameter '
                 'to also be set.')
         msg = msg%{'password_name': constants.CONFIG_PROXY_PASSWORD,
                    'username_name': constants.CONFIG_PROXY_USER}
         return False, msg
-    # We also require the URL to be set if the username is set
-    if not config.get(constants.CONFIG_PROXY_URL):
-        msg = _('The configuration parameter <%(username_name)s> requires the <%(url_name)s> parameter to '
-                'also be set.')
-        msg = msg%{'username_name': constants.CONFIG_PROXY_USER, 'url_name': constants.CONFIG_PROXY_URL}
+
+    if not isinstance(proxy_username, basestring):
+        msg = _('The configuration parameter <%(name)s> should be a string, but it was %(type)s.')
+        msg = msg%{'name': constants.CONFIG_PROXY_USER, 'type': type(proxy_username)}
         return False, msg
+
     return True, None
 
 
@@ -289,13 +305,21 @@ def _validate_ssl_client_cert(config):
     :rtype:        tuple
     """
     ssl_client_cert = config.get(constants.CONFIG_SSL_CLIENT_CERT)
-    if ssl_client_cert is None:
+    if ssl_client_cert is None and config.get(constants.CONFIG_SSL_CLIENT_KEY) is None:
         # ssl_client_cert is not required
         return True, None
+    elif ssl_client_cert is None:
+        # If the key is set, we should also have a cert
+        msg = _('The configuration parameter <%(key_name)s> requires the <%(cert_name)s> parameter to also '
+                'be set.')
+        msg = msg%{'key_name': constants.CONFIG_SSL_CLIENT_KEY, 'cert_name': constants.CONFIG_SSL_CLIENT_CERT}
+        return False, msg
+
     if not isinstance(ssl_client_cert, basestring):
         msg = _('The configuration parameter <%(name)s> should be a string, but it was %(type)s.')
         msg = msg%{'name': constants.CONFIG_SSL_CLIENT_CERT, 'type': type(ssl_client_cert)}
         return False, msg
+
     return True, None
 
 
@@ -313,14 +337,10 @@ def _validate_ssl_client_key(config):
     if ssl_client_key is None:
         # ssl_client_key is not required
         return True, None
+
     if not isinstance(ssl_client_key, basestring):
         msg = _('The configuration parameter <%(name)s> should be a string, but it was %(type)s.')
         msg = msg%{'name': constants.CONFIG_SSL_CLIENT_KEY, 'type': type(ssl_client_key)}
         return False, msg
-    # If the key is set, we should also have a cert
-    if not config.get(constants.CONFIG_SSL_CLIENT_CERT):
-        msg = _('The configuration parameter <%(key_name)s> requires the <%(cert_name)s> parameter to also '
-                'be set.')
-        msg = msg%{'key_name': constants.CONFIG_SSL_CLIENT_KEY, 'cert_name': constants.CONFIG_SSL_CLIENT_CERT}
-        return False, msg
+
     return True, None
