@@ -11,23 +11,20 @@
 # have received a copy of GPLv2 along with this software; if not, see
 # http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt.
 
-try:
-    import json
-except ImportError:
-    import simplejson as json
-
-from mock import Mock
 import os
 import sys
+
+from mock import Mock
 
 sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)) + '/../../extensions/admin')
 
 import rpm_support_base
 
-from rpm_admin_consumer import package, package_group, errata
+from pulp.bindings.tasks import Task
 from pulp.client.extensions.core import TAG_SUCCESS, TAG_FAILURE
 from pulp_rpm.common.ids import TYPE_ID_RPM, TYPE_ID_PKG_GROUP
 
+from rpm_admin_consumer import package, package_group, errata
 
 TASK = {
     'call_request_id':'TASK123',
@@ -68,10 +65,6 @@ TASK = {
      }
 }
 
-class Task:
-    def __init__(self):
-        self.task_id = TASK['call_request_id']
-
 
 class Request:
 
@@ -81,7 +74,7 @@ class Request:
     def __call__(self, method, url, *args, **kwargs):
         if method == 'POST' and \
            url == '/pulp/api/v2/consumers/xyz/actions/content/%s/' % self.action:
-            return (200, Task())
+            return (200, Task(TASK))
         if method == 'GET' and \
            url == '/pulp/api/v2/tasks/TASK123/':
             return (200, TASK)
@@ -94,7 +87,7 @@ class TestPackages(rpm_support_base.PulpClientTests):
 
     def test_install(self):
         # Setup
-        command = package.Install(self.context)
+        command = package.YumConsumerPackageInstallCommand(self.context)
         self.server_mock.request = Mock(side_effect=Request('install'))
         # Test
         args = {
@@ -108,16 +101,13 @@ class TestPackages(rpm_support_base.PulpClientTests):
 
         # Verify
         passed = self.server_mock.request.call_args[0]
-        self.assertEqual('GET', passed[0])
-        self.assertEqual('/pulp/api/v2/tasks/TASK123/', passed[1])
+        self.assertEqual('POST', passed[0])
         tags = self.prompt.get_write_tags()
-        self.assertEqual(6, len(tags))
-        self.assertEqual(tags[0], TAG_SUCCESS)
-        self.assertEqual(tags[5], TAG_FAILURE)
+        self.assertEqual(5, len(tags))
 
     def test_update(self):
         # Setup
-        command = package.Update(self.context)
+        command = package.YumConsumerPackageUpdateCommand(self.context)
         self.server_mock.request = Mock(side_effect=Request('update'))
         # Test
         args = {
@@ -132,15 +122,14 @@ class TestPackages(rpm_support_base.PulpClientTests):
 
         # Verify
         passed = self.server_mock.request.call_args[0]
-        self.assertEqual('GET', passed[0])
-        self.assertEqual('/pulp/api/v2/tasks/TASK123/', passed[1])
+        self.assertEqual('POST', passed[0])
         tags = self.prompt.get_write_tags()
         self.assertEqual(5, len(tags))
         self.assertEqual(tags[0], TAG_SUCCESS)
 
     def test_uninstall(self):
         # Setup
-        command = package.Uninstall(self.context)
+        command = package.YumConsumerPackageUninstallCommand(self.context)
         self.server_mock.request = Mock(side_effect=Request('uninstall'))
         # Test
         args = {
@@ -154,8 +143,7 @@ class TestPackages(rpm_support_base.PulpClientTests):
 
         # Verify
         passed = self.server_mock.request.call_args[0]
-        self.assertEqual('GET', passed[0])
-        self.assertEqual('/pulp/api/v2/tasks/TASK123/', passed[1])
+        self.assertEqual('POST', passed[0])
         tags = self.prompt.get_write_tags()
         self.assertEqual(5, len(tags))
         self.assertEqual(tags[0], TAG_SUCCESS)
@@ -168,7 +156,7 @@ class TestGroups(rpm_support_base.PulpClientTests):
 
     def test_install(self):
         # Setup
-        command = package_group.PackageGroupInstallCommand(self.context)
+        command = package_group.YumConsumerPackageGroupInstallCommand(self.context)
         self.server_mock.request = Mock(side_effect=Request('install'))
         # Test
         args = {
@@ -182,15 +170,13 @@ class TestGroups(rpm_support_base.PulpClientTests):
 
         # Verify
         passed = self.server_mock.request.call_args[0]
-        self.assertEqual('GET', passed[0])
-        self.assertEqual('/pulp/api/v2/tasks/TASK123/', passed[1])
+        self.assertEqual('POST', passed[0])
         tags = self.prompt.get_write_tags()
-        self.assertEqual(5, len(tags))
-        self.assertEqual(tags[0], TAG_SUCCESS)
+        self.assertEqual(4, len(tags))
 
     def test_uninstall(self):
         # Setup
-        command = package_group.PackageGroupUninstallCommand(self.context)
+        command = package_group.YumConsumerPackageGroupUninstallCommand(self.context)
         self.server_mock.request = Mock(side_effect=Request('uninstall'))
         # Test
         args = {
@@ -204,8 +190,7 @@ class TestGroups(rpm_support_base.PulpClientTests):
 
         # Verify
         passed = self.server_mock.request.call_args[0]
-        self.assertEqual('GET', passed[0])
-        self.assertEqual('/pulp/api/v2/tasks/TASK123/', passed[1])
+        self.assertEqual('POST', passed[0])
         tags = self.prompt.get_write_tags()
         self.assertEqual(5, len(tags))
         self.assertEqual(tags[0], TAG_SUCCESS)
@@ -215,7 +200,7 @@ class TestErrata(rpm_support_base.PulpClientTests):
 
     def test_install(self):
         # Setup
-        command = errata.Install(self.context)
+        command = errata.YumConsumerErrataInstallCommand(self.context)
         self.server_mock.request = Mock(side_effect=Request('install'))
         # Test
         args = {
@@ -229,8 +214,6 @@ class TestErrata(rpm_support_base.PulpClientTests):
 
         # Verify
         passed = self.server_mock.request.call_args[0]
-        self.assertEqual('GET', passed[0])
-        self.assertEqual('/pulp/api/v2/tasks/TASK123/', passed[1])
+        self.assertEqual('POST', passed[0])
         tags = self.prompt.get_write_tags()
-        self.assertEqual(5, len(tags))
-        self.assertEqual(tags[0], TAG_SUCCESS)
+        self.assertEqual(4, len(tags))

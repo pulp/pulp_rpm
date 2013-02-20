@@ -15,71 +15,34 @@
 import mock
 
 from pulp.client.commands.options import OPTION_CONSUMER_ID
-from pulp.client.commands.schedule import (
-    DeleteScheduleCommand, ListScheduleCommand, CreateScheduleCommand,
-    UpdateScheduleCommand, NextRunCommand)
+from pulp.client.commands.schedule import CreateScheduleCommand
 
 import rpm_support_base
-from pulp_rpm.extension.admin import content_schedules
+from pulp_rpm.extension.admin.content_schedules import (
+    YumConsumerContentCreateScheduleCommand, YumConsumerContentScheduleStrategy)
 from pulp_rpm.common.ids import TYPE_ID_RPM, TYPE_ID_PKG_GROUP, TYPE_ID_ERRATA
 
 SCHEDULE_INSTALL_ACTIONS = ('install', 'uninstall', 'update')
 
 class StructureTests(rpm_support_base.PulpClientTests):
 
-    def test_content_list_schedule_command(self):
-        for action in SCHEDULE_INSTALL_ACTIONS:
-            command = content_schedules.ContentListScheduleCommand(self.context, action=action)
-
-            self.assertTrue(isinstance(command, ListScheduleCommand))
-            self.assertTrue(OPTION_CONSUMER_ID in command.options)
-            self.assertEqual(command.name, 'list')
-            self.assertTrue(action in command.description)
-
     def test_rpm_create_schedule_command(self):
         for content_type in (TYPE_ID_RPM, TYPE_ID_PKG_GROUP, TYPE_ID_ERRATA):
             for action in SCHEDULE_INSTALL_ACTIONS:
-                command = content_schedules.ContentCreateScheduleCommand(self.context, action=action, 
-                                                                         content_type=content_type)
+                command = YumConsumerContentCreateScheduleCommand(self.context, action=action,
+                                                                  content_type=content_type)
 
                 self.assertTrue(isinstance(command, CreateScheduleCommand))
                 self.assertTrue(OPTION_CONSUMER_ID in command.options)
                 self.assertEqual(command.name, 'create')
                 self.assertTrue(action in command.description)
 
-    def test_rpm_delete_schedule_command(self):
-        for action in SCHEDULE_INSTALL_ACTIONS:
-            command = content_schedules.ContentDeleteScheduleCommand(self.context, action=action)
-
-            self.assertTrue(isinstance(command, DeleteScheduleCommand))
-            self.assertTrue(OPTION_CONSUMER_ID in command.options)
-            self.assertEqual(command.name, 'delete')
-            self.assertTrue(action in command.description)
-
-    def test_rpm_update_schedule_command(self):
-        for action in SCHEDULE_INSTALL_ACTIONS:
-            command = content_schedules.ContentUpdateScheduleCommand(self.context, action=action)
-
-            self.assertTrue(isinstance(command, UpdateScheduleCommand))
-            self.assertTrue(OPTION_CONSUMER_ID in command.options)
-            self.assertEqual(command.name, 'update')
-            self.assertTrue(action in command.description)
-
-    def test_rpm_next_run_command(self):
-        for action in SCHEDULE_INSTALL_ACTIONS:
-            command = content_schedules.ContentNextRunCommand(self.context, action=action)
-
-            self.assertTrue(isinstance(command, NextRunCommand))
-            self.assertTrue(OPTION_CONSUMER_ID in command.options)
-            self.assertEqual(command.name, 'next')
-            self.assertTrue(action in command.description)
-
 
 class ConsumerContentInstallScheduleStrategyTests(rpm_support_base.PulpClientTests):
 
     def setUp(self):
         super(ConsumerContentInstallScheduleStrategyTests, self).setUp()
-        self.strategy = content_schedules.ConsumerContentScheduleStrategy(self.context, 'install', TYPE_ID_RPM)
+        self.strategy = YumConsumerContentScheduleStrategy(self.context, 'install', TYPE_ID_RPM)
 
     @mock.patch('pulp.bindings.consumer.ConsumerContentSchedulesAPI.add_schedule')
     def test_create_schedule(self, mock_add):
@@ -156,7 +119,7 @@ class ConsumerContentUninstallScheduleStrategyTests(rpm_support_base.PulpClientT
 
     def setUp(self):
         super(ConsumerContentUninstallScheduleStrategyTests, self).setUp()
-        self.strategy = content_schedules.ConsumerContentScheduleStrategy(self.context, 'uninstall', TYPE_ID_RPM)
+        self.strategy = YumConsumerContentScheduleStrategy(self.context, 'uninstall', TYPE_ID_RPM)
 
     @mock.patch('pulp.bindings.consumer.ConsumerContentSchedulesAPI.add_schedule')
     def test_create_schedule(self, mock_add):
@@ -233,7 +196,7 @@ class ConsumerContentUpdateScheduleStrategyTests(rpm_support_base.PulpClientTest
 
     def setUp(self):
         super(ConsumerContentUpdateScheduleStrategyTests, self).setUp()
-        self.strategy = content_schedules.ConsumerContentScheduleStrategy(self.context, 'update', TYPE_ID_RPM)
+        self.strategy = YumConsumerContentScheduleStrategy(self.context, 'update', TYPE_ID_RPM)
 
     @mock.patch('pulp.bindings.consumer.ConsumerContentSchedulesAPI.add_schedule')
     def test_create_schedule(self, mock_add):
