@@ -64,7 +64,9 @@ class TestISOSyncRun(PulpRPMTests):
         
         # Now let's assert that all the right things happened during initialization
         self.assertEqual(iso_sync_run.sync_conduit, self.sync_conduit)
-        self.assertEqual(iso_sync_run.repo_url, 'http://fake.com/iso_feed/')
+        self.assertEqual(iso_sync_run._repo_url, 'http://fake.com/iso_feed/')
+        # Validation of downloads should be enabled by default
+        self.assertEqual(iso_sync_run._validate_downloads, True)
 
         # Inspect the downloader
         downloader = iso_sync_run.downloader
@@ -142,11 +144,81 @@ class TestISOSyncRun(PulpRPMTests):
         self.assertEqual(download_failed.call_count, 0)
 
     @patch('pulp_rpm.plugins.importers.iso_importer.sync.ISOSyncRun.download_failed')
-    def test_download_succeeded_fails_checksum(self, download_failed):
+    def test_download_succeeded_honors_validate_downloads_set_false(self, download_failed):
+        """
+        We have a setting that makes download validation optional. This test ensures that download_succeeded()
+        honors that setting.
+        """
+        # In this config, we will set validate_downloads to False, which should make our "wrong_checksum" OK
+        config = importer_mocks.get_basic_config(feed_url='http://fake.com/iso_feed/',
+                                                 validate_downloads=False)
+
+        iso_sync_run = ISOSyncRun(self.sync_conduit, config)
+
+        destination = StringIO()
+        destination.write('What happens when you combine a mosquito with a mountain climber? Nothing. You '
+                          'can\'t cross a vector with a scalar.')
+        unit = 'fake_unit'
+        iso = {'name': 'test.txt', 'size': 114, 'destination': destination,
+               'checksum': 'wrong checksum',
+               'unit': unit, 'url': 'http://fake.com'}
+        report = DownloadReport(iso['url'], destination)
+        # We need to put this on the url_iso_map so that the iso can be retrieved for validation
+        iso_sync_run._url_iso_map = {iso['url']: iso}
+        iso_sync_run.progress_report.isos_state = STATE_RUNNING
+
+        iso_sync_run.download_succeeded(report)
+
+        # The url_iso map should be empty now
+        self.assertEqual(iso_sync_run._url_iso_map, {})
+        # The sync conduit should have been called to save the unit
+        self.sync_conduit.save_unit.assert_any_call(unit)
+        # The download should not fail
+        self.assertEqual(download_failed.call_count, 0)
+
+    @patch('pulp_rpm.plugins.importers.iso_importer.sync.ISOSyncRun.download_failed')
+    def test_download_succeeded_honors_validate_downloads_set_true(self, download_failed):
+        """
+        We have a setting that makes download validation optional. This test ensures that download_succeeded()
+        honors that setting.
+        """
+        # In this config, we will set validate_downloads to False, which should make our "wrong_checksum" OK
+        config = importer_mocks.get_basic_config(feed_url='http://fake.com/iso_feed/',
+                                                 validate_downloads=True)
+
+        iso_sync_run = ISOSyncRun(self.sync_conduit, config)
+
         destination = os.path.join(self.temp_dir, 'test.txt')
         with open(destination, 'w') as test_file:
-            test_file.write('What happens when you combine a mosquito with a mountain climber? Nothing. You '
-                          'can\'t cross a vector with a scalar.')
+            test_file.write('Boring test data.')
+        unit = 'fake_unit'
+        iso = {'name': 'test.txt', 'size': 114, 'destination': destination,
+               'checksum': 'wrong checksum',
+               'unit': unit, 'url': 'http://fake.com'}
+        report = DownloadReport(iso['url'], destination)
+        # We need to put this on the url_iso_map so that the iso can be retrieved for validation
+        iso_sync_run._url_iso_map = {iso['url']: iso}
+        iso_sync_run.progress_report.isos_state = STATE_RUNNING
+
+        iso_sync_run.download_succeeded(report)
+
+        # Because we fail validation, the save_unit step will not be called
+        self.assertEqual(self.sync_conduit.save_unit.call_count, 0)
+        # The download should be marked failed
+        self.assertEqual(download_failed.call_count, 1)
+        download_failed.assert_called_once_with(report)
+
+    @patch('pulp_rpm.plugins.importers.iso_importer.sync.ISOSyncRun.download_failed')
+    def test_download_succeeded_fails_checksum(self, download_failed):
+        """
+        This test verifies that download_succeeded does the right thing if the checksum fails. Note
+        that we are also implicitly testing that the default behavior is to validate downloads by
+        not setting it in this test. There are two other tests that verify that setting the boolean
+        explicitly is honored.
+        """
+        destination = os.path.join(self.temp_dir, 'test.txt')
+        with open(destination, 'w') as test_file:
+            test_file.write('Boring test data.')
         unit = 'fake_unit'
         iso = {'name': 'test.txt', 'size': 114, 'destination': destination,
                'checksum': 'wrong checksum',
