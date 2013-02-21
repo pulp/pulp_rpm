@@ -40,6 +40,7 @@ def validate(config):
         _validate_ssl_ca_cert,
         _validate_ssl_client_cert,
         _validate_ssl_client_key,
+        _validate_validate_downloads,
     )
 
     for v in validators:
@@ -83,7 +84,8 @@ def _validate_feed_url(config):
     dependencies = [
         constants.CONFIG_MAX_SPEED, constants.CONFIG_NUM_THREADS, constants.CONFIG_PROXY_PASSWORD,
         constants.CONFIG_PROXY_PORT, constants.CONFIG_PROXY_URL, constants.CONFIG_PROXY_USER,
-        constants.CONFIG_SSL_CA_CERT, constants.CONFIG_SSL_CLIENT_CERT, constants.CONFIG_SSL_CLIENT_KEY]
+        constants.CONFIG_SSL_CA_CERT, constants.CONFIG_SSL_CLIENT_CERT, constants.CONFIG_SSL_CLIENT_KEY,
+        constants.CONFIG_VALIDATE_DOWNLOADS]
     if not feed_url and all([config.get(setting) is None for setting in dependencies]):
         return True, None
     elif not feed_url:
@@ -344,3 +346,27 @@ def _validate_ssl_client_key(config):
         return False, msg
 
     return True, None
+
+
+def _validate_validate_downloads(config):
+    """
+    This (humorously named) method will validate the optional config option called
+    "validate_downloads". If it is set, it must be a boolean, otherwise it may be None.
+    
+    :param config: the config to be validated
+    :type  config: pulp.plugins.config.PluginCallConfiguration
+    :return:       tuple of (is_valid, error_message)
+    :rtype:        tuple
+    """
+    validate_downloads = config.get(constants.CONFIG_VALIDATE_DOWNLOADS)
+    if validate_downloads is None:
+        # validate_downloads is not a required parameter
+        return True, None
+    if isinstance(validate_downloads, basestring):
+        validate_downloads = config.get_boolean(constants.CONFIG_VALIDATE_DOWNLOADS)
+    if isinstance(validate_downloads, bool):
+        return True, None
+    msg = _('The configuration parameter <%(name)s> must be set to a boolean value, but is '
+            'currently set to <%(value)s>.')
+    msg = msg%{'name': constants.CONFIG_VALIDATE_DOWNLOADS, 'value': validate_downloads}
+    return False, msg
