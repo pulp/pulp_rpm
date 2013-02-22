@@ -63,6 +63,7 @@ class TestValidateFeedUrl(PulpRPMTests):
              constants.CONFIG_PROXY_USER: 'big_kahuna_burger', constants.CONFIG_PROXY_URL: 'http://test.com'},
             {constants.CONFIG_PROXY_URL: 'http://test.com', constants.CONFIG_PROXY_PORT: '3037'},
             {constants.CONFIG_PROXY_URL: 'http://test.com'},
+            {constants.CONFIG_REMOVE_MISSING_UNITS: True},
             {constants.CONFIG_SSL_CA_CERT: 'cert'},
             {constants.CONFIG_SSL_CLIENT_CERT: 'cert'},
             {constants.CONFIG_SSL_CLIENT_CERT: 'cert', constants.CONFIG_SSL_CLIENT_KEY: 'key'},
@@ -76,7 +77,8 @@ class TestValidateFeedUrl(PulpRPMTests):
                     error_message,
                     'The configuration parameter <feed_url> is required when any of the following other '
                     'parameters are defined: max_speed, num_threads, proxy_password, proxy_port, proxy_url, '
-                    'proxy_user, ssl_ca_cert, ssl_client_cert, ssl_client_key, validate_downloads')
+                    'proxy_user, remove_missing_units, ssl_ca_cert, ssl_client_cert, ssl_client_key, '
+                    'validate_downloads')
 
     def test_valid(self):
         config = importer_mocks.get_basic_config(**{constants.CONFIG_FEED_URL: "http://test.com/feed"})
@@ -296,6 +298,30 @@ class TestValidateProxyUsername(PulpRPMTests):
         self.assertEqual(error_message, None)
 
 
+class TestValidateRemoveMissingUnits(PulpRPMTests):
+    def test_invalid_config(self):
+        config = importer_mocks.get_basic_config(**{constants.CONFIG_REMOVE_MISSING_UNITS: 'trizue',
+                                                    constants.CONFIG_FEED_URL: 'http://feed.com'})
+        status, error_message = configuration.validate(config)
+        self.assertFalse(status)
+        self.assertEqual(error_message, 'The configuration parameter <remove_missing_units> must be set to a '
+                                        'boolean value, but is currently set to <trizue>.')
+
+    def test_string_false(self):
+        config = importer_mocks.get_basic_config(**{constants.CONFIG_REMOVE_MISSING_UNITS: 'false',
+                                                    constants.CONFIG_FEED_URL: 'http://feed.com'})
+        status, error_message = configuration.validate(config)
+        self.assertTrue(status)
+        self.assertEqual(error_message, None)
+
+    def test_valid_config(self):
+        config = importer_mocks.get_basic_config(**{constants.CONFIG_REMOVE_MISSING_UNITS: True,
+                                                    constants.CONFIG_FEED_URL: 'http://feed.com'})
+        status, error_message = configuration.validate(config)
+        self.assertTrue(status)
+        self.assertEqual(error_message, None)
+
+
 class TestValidateSSLOptions(PulpRPMTests):
     def test_ca_cert_is_non_string(self):
         config = importer_mocks.get_basic_config(**{constants.CONFIG_SSL_CA_CERT: 7,
@@ -336,6 +362,9 @@ class TestValidateSSLOptions(PulpRPMTests):
             constants.CONFIG_SSL_CLIENT_CERT: 'Client Certificate!',
             constants.CONFIG_FEED_URL: 'http://test.com'}
         config = importer_mocks.get_basic_config(**params)
+        status, error_message = configuration.validate(config)
+        self.assertTrue(status)
+        self.assertEqual(error_message, None)
 
 
 class TestValidateValidateDownloads(PulpRPMTests):
@@ -357,9 +386,6 @@ class TestValidateValidateDownloads(PulpRPMTests):
     def test_valid_config(self):
         config = importer_mocks.get_basic_config(**{constants.CONFIG_VALIDATE_DOWNLOADS: True,
                                                     constants.CONFIG_FEED_URL: 'http://feed.com'})
-        status, error_message = configuration.validate(config)
-        self.assertTrue(status)
-        self.assertEqual(error_message, None)
         status, error_message = configuration.validate(config)
         self.assertTrue(status)
         self.assertEqual(error_message, None)
