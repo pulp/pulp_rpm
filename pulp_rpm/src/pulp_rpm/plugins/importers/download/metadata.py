@@ -124,7 +124,7 @@ class MetadataFiles(object):
             file_handle = open(md['local_path'], 'rb')
             hash_obj.update(file_handle.read())
             file_handle.close()
-            if hash_obj.hexdigest() != md['checksum']['value']:
+            if hash_obj.hexdigest() != md['checksum']['hex_digest']:
                 raise RuntimeError('%s failed verification, checksum mismatch' % md['local_path'])
 
 
@@ -146,7 +146,7 @@ def process_repomd_data_element(data_element):
     checksum_element = data_element.find(CHECKSUM_TAG)
     if checksum_element is not None:
         file_info['checksum'] = {'algorithm': checksum_element.attrib['type'],
-                                 'value': checksum_element.text}
+                                 'hex_digest': checksum_element.text}
 
     size_element = data_element.find(SIZE_TAG)
     if size_element is not None:
@@ -155,7 +155,7 @@ def process_repomd_data_element(data_element):
     open_checksum_element = data_element.find(OPEN_CHECKSUM_TAG)
     if open_checksum_element is not None:
         file_info['open_checksum'] = {'algorithm': open_checksum_element.attrib['type'],
-                                      'value': open_checksum_element.text}
+                                      'hex_digest': open_checksum_element.text}
 
     open_size_element = data_element.find(OPEN_SIZE_TAG)
     if open_size_element is not None:
