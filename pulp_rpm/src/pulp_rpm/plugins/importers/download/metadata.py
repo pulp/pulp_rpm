@@ -11,9 +11,11 @@
 # You should have received a copy of GPLv2 along with this software; if not,
 # see http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt
 
-from cStringIO import StringIO
+import hashlib
+import os
 from datetime import datetime
 from pprint import pprint
+from tempfile import mkdtemp
 from xml.etree.cElementTree import iterparse
 
 
@@ -23,7 +25,8 @@ from pulp.common.download.listener import DownloadEventListener
 from pulp.common.download.request import DownloadRequest
 
 
-REPOMD_RELATIVE_PATH = 'repodata/repomd.xml'
+REPOMD_FILE_NAME = 'repomd.xml'
+REPOMD_URL_RELATIVE_PATH = 'repodata/%s' % REPOMD_FILE_NAME
 
 SPEC_URL = 'http://linux.duke.edu/metadata/repo'
 
@@ -38,33 +41,32 @@ OPEN_CHECKSUM_TAG = '{%s}open-checksum' % SPEC_URL
 OPEN_SIZE_TAG = '{%s}open-size' % SPEC_URL
 
 
-class MetadataFiles(DownloadEventListener):
+class MetadataFiles(object):
 
-    def __init__(self, repo_url):
+    def __init__(self, repo_url, dst_dir=None):
         super(MetadataFiles, self).__init__()
         self.repo_url = repo_url
+        self.dst_dir = dst_dir or mkdtemp()
 
         downloader_config = DownloaderConfig('https')
-        self.downloader = download_factory.get_downloader(downloader_config, self)
-
-        self.raw_metadata_xml_io = StringIO()
+        self.downloader = download_factory.get_downloader(downloader_config, MetadataDownloadEventListener())
 
         self.revision = None
         self.metadata = {}
 
-    def download_succeeded(self, report):
-        self.raw_metadata_xml_io.seek(0)
-
-    def download_failed(self, report):
-        raise RuntimeError('%s download failed' % REPOMD_RELATIVE_PATH)
-
     def download_repomd(self):
-        repomd_url = join_url_path(self.repo_url, REPOMD_RELATIVE_PATH)
-        repomd_request = DownloadRequest(repomd_url, self.raw_metadata_xml_io)
+        repomd_dst_path = os.path.join(self.dst_dir, REPOMD_FILE_NAME)
+        repomd_url = join_url_path(self.repo_url, REPOMD_URL_RELATIVE_PATH)
+        repomd_request = DownloadRequest(repomd_url, repomd_dst_path)
         self.downloader.download([repomd_request])
 
     def parse_repomd(self):
-        parser = iterparse(self.raw_metadata_xml_io, events=('start', 'end'))
+        repomd_file_path = os.path.join(self.dst_dir, REPOMD_FILE_NAME)
+
+        if not os.path.exists(repomd_file_path):
+            raise RuntimeError('%s has not been downloaded' % REPOMD_FILE_NAME)
+
+        parser = iterparse(repomd_file_path, events=('start', 'end'))
         xml_iterator = iter(parser)
 
         # get a hold of the root element so that we can clear it
@@ -85,7 +87,51 @@ class MetadataFiles(DownloadEventListener):
                 file_info = process_repomd_data_element(element)
                 self.metadata[file_info['name']] = file_info
 
-        root_element.clear()
+    def download_metadata_files(self):
+        if not self.metadata:
+            raise RuntimeError('%s has not been parsed' % REPOMD_FILE_NAME)
+
+        download_request_list = []
+
+        for md in self.metadata.values():
+            url = join_url_path(self.repo_url, md['relative_path'])
+            dst = os.path.join(self.dst_dir, md['relative_path'].rsplit('/', 1)[-1])
+
+            md['local_path'] = dst
+
+            request = DownloadRequest(url, dst)
+            download_request_list.append(request)
+
+        self.downloader.download(download_request_list)
+
+    def verify_metadata_files(self):
+        for md in self.metadata.values():
+            if 'local_path' not in md:
+                raise RuntimeError('%s has not been downloaded' % md['relative_path'].rsplit('/', 1)[-1])
+
+            #if 'size' not in md:
+            #    continue
+            #    raise RuntimeError('%s cannot be verified, no file size' % md['local_path'])
+
+            #local_file_size = os.path.getsize(md['local_path'])
+            #if local_file_size != md['size'] * 1024:
+            #    raise RuntimeError('%s failed verification, file size mismatch' % md['local_path'])
+
+            if 'checksum' not in md:
+                raise RuntimeError('%s cannot be verified, no checksum' % md['local_path'])
+
+            hash_obj = getattr(hashlib, md['checksum']['algorithm'], hashlib.sha256)()
+            file_handle = open(md['local_path'], 'rb')
+            hash_obj.update(file_handle.read())
+            file_handle.close()
+            if hash_obj.hexdigest() != md['checksum']['value']:
+                raise RuntimeError('%s failed verification, checksum mismatch' % md['local_path'])
+
+
+class MetadataDownloadEventListener(DownloadEventListener):
+
+    def download_failed(self, report):
+        raise RuntimeError('%s download failed' % report.url)
 
 # utilities --------------------------------------------------------------------
 
@@ -136,8 +182,11 @@ def download_metadata(repo_url):
     metadata_files = MetadataFiles(repo_url)
     metadata_files.download_repomd()
     metadata_files.parse_repomd()
+    metadata_files.download_metadata_files()
+    metadata_files.verify_metadata_files()
     finish = datetime.now()
     pprint(metadata_files.metadata)
+    print metadata_files.dst_dir
     print 'time elapsed: %s' % str(finish - start)
 
 
