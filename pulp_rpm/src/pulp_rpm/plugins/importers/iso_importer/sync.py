@@ -41,13 +41,9 @@ class ISOSyncRun(listener.DownloadEventListener):
     """
     def __init__(self, sync_conduit, config):
         self.sync_conduit = sync_conduit
-        self._remove_missing_units = config.get(constants.CONFIG_REMOVE_MISSING_UNITS)
-        if self._remove_missing_units is None:
-            self._remove_missing_units = False
+        self._remove_missing_units = config.get(constants.CONFIG_REMOVE_MISSING_UNITS, default=False)
         self._repo_url = encode_unicode(config.get(constants.CONFIG_FEED_URL))
-        self._validate_downloads = config.get(constants.CONFIG_VALIDATE_DOWNLOADS)
-        if self._validate_downloads is None:
-            self._validate_downloads = True
+        self._validate_downloads = config.get(constants.CONFIG_VALIDATE_DOWNLOADS, default=True)
 
         # Cast our config parameters to the correct types and use them to build a Downloader
         max_speed = config.get(constants.CONFIG_MAX_SPEED)
@@ -223,26 +219,26 @@ class ISOSyncRun(listener.DownloadEventListener):
                                  unit_key_dict['size'])
 
         module_criteria = UnitAssociationCriteria(type_ids=[ids.TYPE_ID_ISO])
-        existing_isos = self.sync_conduit.get_units(criteria=module_criteria)
+        existing_units = self.sync_conduit.get_units(criteria=module_criteria)
 
-        available_units_by_key = dict([(_unit_key_str(u), u) for u in manifest])
-        existing_isos_by_key = dict([(_unit_key_str(u.unit_key), u) for u in existing_isos])
+        available_isos_by_key = dict([(_unit_key_str(iso), iso) for iso in manifest])
+        existing_units_by_key = dict([(_unit_key_str(unit.unit_key), unit) for unit in existing_units])
 
-        existing_iso_keys = set([_unit_key_str(m.unit_key) for m in existing_isos])
-        available_iso_keys = set([_unit_key_str(u) for u in manifest])
+        existing_unit_keys = set([_unit_key_str(unit.unit_key) for unit in existing_units])
+        available_iso_keys = set([_unit_key_str(iso) for iso in manifest])
 
-        local_missing_iso_keys = list(available_iso_keys - existing_iso_keys)
-        local_missing_isos = [available_units_by_key[k] for k in local_missing_iso_keys]
-        remote_missing_iso_keys = list(existing_iso_keys - available_iso_keys)
-        remote_missing_isos = [existing_isos_by_key[k] for k in remote_missing_iso_keys]
+        local_missing_iso_keys = list(available_iso_keys - existing_unit_keys)
+        local_missing_isos = [available_isos_by_key[k] for k in local_missing_iso_keys]
+        remote_missing_unit_keys = list(existing_unit_keys - available_iso_keys)
+        remote_missing_units = [existing_units_by_key[k] for k in remote_missing_unit_keys]
 
-        return local_missing_isos, remote_missing_isos
+        return local_missing_isos, remote_missing_units
 
     def _remove_units(self, units):
         """
         Use the sync_conduit's remove_unit call for each unit in units.
 
-        :param units: List of Units that we want to remove from the repository
+        :param units: List of pulp.plugins.model.Units that we want to remove from the repository
         :type  units: list
         """
         for unit in units:

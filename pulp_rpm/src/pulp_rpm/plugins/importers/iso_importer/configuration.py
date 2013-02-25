@@ -304,7 +304,7 @@ def _validate_proxy_username(config):
 
 def _validate_remove_missing_units(config):
     """
-    This method will validate the optional config option called "remove_missing_units". If it is set, it must
+    This method will validate the optional config setting called "remove_missing_units". If it is set, it must
     be a boolean, otherwise it may be None.
 
     :param config: the config to be validated
