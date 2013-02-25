@@ -28,7 +28,7 @@ class TestValidate(PulpRPMTests):
         # An empty config is actually valid
         config = importer_mocks.get_basic_config()
         status, error_message = configuration.validate(config)
-        self.assertTrue(status)
+        self.assertTrue(status is True)
         self.assertEqual(error_message, None)
 
     def test_invalid_config(self):
@@ -36,7 +36,7 @@ class TestValidate(PulpRPMTests):
                                                     constants.CONFIG_MAX_SPEED: "A Thousand",
                                                     constants.CONFIG_NUM_THREADS: 7})
         status, error_message = configuration.validate(config)
-        self.assertFalse(status)
+        self.assertTrue(status is False)
         self.assertEqual(error_message, 'The configuration parameter <max_speed> must be set to a positive '
                                         'numerical value, but is currently set to <A Thousand>.')
 
@@ -45,7 +45,7 @@ class TestValidate(PulpRPMTests):
             **{constants.CONFIG_FEED_URL: "http://test.com/feed", constants.CONFIG_MAX_SPEED: 56.6,
                constants.CONFIG_NUM_THREADS: 3})
         status, error_message = configuration.validate(config)
-        self.assertTrue(status)
+        self.assertTrue(status is True)
         self.assertEqual(error_message, None)
 
 
@@ -53,7 +53,7 @@ class TestValidateFeedUrl(PulpRPMTests):
     def test_invalid_config(self):
         config = importer_mocks.get_basic_config(**{constants.CONFIG_FEED_URL: 42})
         status, error_message = configuration.validate(config)
-        self.assertFalse(status)
+        self.assertTrue(status is False)
         self.assertEqual(error_message, '<feed_url> must be a string.')
 
     def test_required_when_other_parameters_are_present(self):
@@ -63,6 +63,7 @@ class TestValidateFeedUrl(PulpRPMTests):
              constants.CONFIG_PROXY_USER: 'big_kahuna_burger', constants.CONFIG_PROXY_URL: 'http://test.com'},
             {constants.CONFIG_PROXY_URL: 'http://test.com', constants.CONFIG_PROXY_PORT: '3037'},
             {constants.CONFIG_PROXY_URL: 'http://test.com'},
+            {constants.CONFIG_REMOVE_MISSING_UNITS: True},
             {constants.CONFIG_SSL_CA_CERT: 'cert'},
             {constants.CONFIG_SSL_CLIENT_CERT: 'cert'},
             {constants.CONFIG_SSL_CLIENT_CERT: 'cert', constants.CONFIG_SSL_CLIENT_KEY: 'key'},
@@ -71,17 +72,18 @@ class TestValidateFeedUrl(PulpRPMTests):
                 # missing
                 config = importer_mocks.get_basic_config(**parameters)
                 status, error_message = configuration.validate(config)
-                self.assertFalse(status)
+                self.assertTrue(status is False)
                 self.assertEqual(
                     error_message,
                     'The configuration parameter <feed_url> is required when any of the following other '
                     'parameters are defined: max_speed, num_threads, proxy_password, proxy_port, proxy_url, '
-                    'proxy_user, ssl_ca_cert, ssl_client_cert, ssl_client_key, validate_downloads')
+                    'proxy_user, remove_missing_units, ssl_ca_cert, ssl_client_cert, ssl_client_key, '
+                    'validate_downloads')
 
     def test_valid(self):
         config = importer_mocks.get_basic_config(**{constants.CONFIG_FEED_URL: "http://test.com/feed"})
         status, error_message = configuration.validate(config)
-        self.assertTrue(status)
+        self.assertTrue(status is True)
         self.assertEqual(error_message, None)
 
 
@@ -90,14 +92,14 @@ class TestValidateMaxSpeed(PulpRPMTests):
         config = importer_mocks.get_basic_config(**{constants.CONFIG_MAX_SPEED: 1.0,
                                                     constants.CONFIG_FEED_URL: 'http://test.com'})
         status, error_message = configuration.validate(config)
-        self.assertTrue(status)
+        self.assertTrue(status is True)
         self.assertEqual(error_message, None)
 
     def test_invalid_config(self):
         config = importer_mocks.get_basic_config(**{constants.CONFIG_MAX_SPEED: -1.0,
                                                     constants.CONFIG_FEED_URL: 'http://test.com'})
         status, error_message = configuration.validate(config)
-        self.assertFalse(status)
+        self.assertTrue(status is False)
         self.assertEqual(error_message, 'The configuration parameter <max_speed> must be set to a positive '
                                         'numerical value, but is currently set to <-1.0>.')
 
@@ -105,7 +107,7 @@ class TestValidateMaxSpeed(PulpRPMTests):
         config = importer_mocks.get_basic_config(**{constants.CONFIG_MAX_SPEED: '-42.0',
                                                     constants.CONFIG_FEED_URL: 'http://test.com'})
         status, error_message = configuration.validate(config)
-        self.assertFalse(status)
+        self.assertTrue(status is False)
         self.assertEqual(
             error_message, 'The configuration parameter <max_speed> must be set to a positive '
                            'numerical value, but is currently set to <-42.0>.')
@@ -114,7 +116,7 @@ class TestValidateMaxSpeed(PulpRPMTests):
         config = importer_mocks.get_basic_config(**{constants.CONFIG_MAX_SPEED: '512.0',
                                                     constants.CONFIG_FEED_URL: 'http://test.com'})
         status, error_message = configuration.validate(config)
-        self.assertTrue(status)
+        self.assertTrue(status is True)
         self.assertEqual(error_message, None)
 
 
@@ -123,7 +125,7 @@ class TestValidateNumThreads(PulpRPMTests):
         config = importer_mocks.get_basic_config(**{constants.CONFIG_NUM_THREADS: math.pi,
                                                     constants.CONFIG_FEED_URL: 'http://test.com'})
         status, error_message = configuration.validate(config)
-        self.assertFalse(status)
+        self.assertTrue(status is False)
         self.assertEqual(error_message, 'The configuration parameter <num_threads> must be set to a positive '
                                         'integer, but is currently set to <%s>.'%math.pi)
 
@@ -131,7 +133,7 @@ class TestValidateNumThreads(PulpRPMTests):
         config = importer_mocks.get_basic_config(**{constants.CONFIG_NUM_THREADS: '%s'%math.e,
                                                     constants.CONFIG_FEED_URL: 'http://test.com'})
         status, error_message = configuration.validate(config)
-        self.assertFalse(status)
+        self.assertTrue(status is False)
         self.assertEqual(error_message, 'The configuration parameter <num_threads> must be set to a positive '
                                         'integer, but is currently set to <%s>.'%math.e)
 
@@ -139,21 +141,21 @@ class TestValidateNumThreads(PulpRPMTests):
         config = importer_mocks.get_basic_config(**{constants.CONFIG_NUM_THREADS: 11,
                                                     constants.CONFIG_FEED_URL: 'http://test.com'})
         status, error_message = configuration.validate(config)
-        self.assertTrue(status)
+        self.assertTrue(status is True)
         self.assertEqual(error_message, None)
 
     def test_validate_str(self):
         config = importer_mocks.get_basic_config(**{constants.CONFIG_NUM_THREADS: '2',
                                                     constants.CONFIG_FEED_URL: 'http://test.com'})
         status, error_message = configuration.validate(config)
-        self.assertTrue(status)
+        self.assertTrue(status is True)
         self.assertEqual(error_message, None)
 
     def test_zero(self):
         config = importer_mocks.get_basic_config(**{constants.CONFIG_NUM_THREADS: 0,
                                                     constants.CONFIG_FEED_URL: 'http://test.com'})
         status, error_message = configuration.validate(config)
-        self.assertFalse(status)
+        self.assertTrue(status is False)
         self.assertEqual(error_message, 'The configuration parameter <num_threads> must be set to a positive '
                                         'integer, but is currently set to <0>.')
 
@@ -164,7 +166,7 @@ class TestValidateProxyPassword(PulpRPMTests):
                       constants.CONFIG_FEED_URL: 'http://test.com'}
         config = importer_mocks.get_basic_config(**parameters)
         status, error_message = configuration.validate(config)
-        self.assertFalse(status)
+        self.assertTrue(status is False)
         self.assertEqual(error_message, "The configuration parameter <proxy_password> should be a string, "
                                         "but it was <type 'int'>.")
 
@@ -174,7 +176,7 @@ class TestValidateProxyPassword(PulpRPMTests):
             constants.CONFIG_PROXY_URL: 'http://test.com'}
         config = importer_mocks.get_basic_config(**parameters)
         status, error_message = configuration.validate(config)
-        self.assertFalse(status)
+        self.assertTrue(status is False)
         self.assertEqual(error_message, 'The configuration parameter <proxy_password> requires the '
                                         '<proxy_user> parameter to also be set.')
 
@@ -184,7 +186,7 @@ class TestValidateProxyPassword(PulpRPMTests):
                       constants.CONFIG_FEED_URL: 'http://test.com'}
         config = importer_mocks.get_basic_config(**parameters)
         status, error_message = configuration.validate(config)
-        self.assertTrue(status)
+        self.assertTrue(status is True)
         self.assertEqual(error_message, None)
 
 
@@ -194,7 +196,7 @@ class TestValidateProxyPort(PulpRPMTests):
                       constants.CONFIG_FEED_URL: 'http://test.com'}
         config = importer_mocks.get_basic_config(**parameters)
         status, error_message = configuration.validate(config)
-        self.assertFalse(status)
+        self.assertTrue(status is False)
         self.assertEqual(error_message, 'The configuration parameter <proxy_port> must be set to a positive '
                                         'integer, but is currently set to <%s>.'%math.pi)
 
@@ -204,7 +206,7 @@ class TestValidateProxyPort(PulpRPMTests):
             constants.CONFIG_FEED_URL: 'http://test.com'}
         config = importer_mocks.get_basic_config(**parameters)
         status, error_message = configuration.validate(config)
-        self.assertFalse(status)
+        self.assertTrue(status is False)
         self.assertEqual(error_message, 'The configuration parameter <proxy_port> must be set to a positive '
                                         'integer, but is currently set to <%s>.'%math.e)
 
@@ -213,7 +215,7 @@ class TestValidateProxyPort(PulpRPMTests):
                       constants.CONFIG_FEED_URL: 'http://test.com'}
         config = importer_mocks.get_basic_config(**parameters)
         status, error_message = configuration.validate(config)
-        self.assertTrue(status)
+        self.assertTrue(status is True)
         self.assertEqual(error_message, None)
 
     def test_validate_str(self):
@@ -221,7 +223,7 @@ class TestValidateProxyPort(PulpRPMTests):
                       constants.CONFIG_FEED_URL: 'http://test.com'}
         config = importer_mocks.get_basic_config(**parameters)
         status, error_message = configuration.validate(config)
-        self.assertTrue(status)
+        self.assertTrue(status is True)
         self.assertEqual(error_message, None)
 
     def test_zero(self):
@@ -229,7 +231,7 @@ class TestValidateProxyPort(PulpRPMTests):
                       constants.CONFIG_FEED_URL: 'http://test.com'}
         config = importer_mocks.get_basic_config(**parameters)
         status, error_message = configuration.validate(config)
-        self.assertFalse(status)
+        self.assertTrue(status is False)
         self.assertEqual(error_message, 'The configuration parameter <proxy_port> must be set to a positive '
                                         'integer, but is currently set to <0>.')
 
@@ -244,7 +246,7 @@ class TestValidateProxyURL(PulpRPMTests):
                 # missing
                 config = importer_mocks.get_basic_config(**parameters)
                 status, error_message = configuration.validate(config)
-                self.assertFalse(status)
+                self.assertTrue(status is False)
                 self.assertEqual(
                     error_message,
                     'The configuration parameter <proxy_url> is required when any of the following other '
@@ -254,7 +256,7 @@ class TestValidateProxyURL(PulpRPMTests):
         config = importer_mocks.get_basic_config(**{constants.CONFIG_PROXY_URL: 7,
                                                     constants.CONFIG_FEED_URL: 'http://test.com'})
         status, error_message = configuration.validate(config)
-        self.assertFalse(status)
+        self.assertTrue(status is False)
         self.assertEqual(error_message, "The configuration parameter <proxy_url> should be a string, "
                                         "but it was <type 'int'>.")
 
@@ -262,7 +264,7 @@ class TestValidateProxyURL(PulpRPMTests):
         config = importer_mocks.get_basic_config(**{constants.CONFIG_PROXY_URL: 'http://fake.com/',
                                                     constants.CONFIG_FEED_URL: 'http://test.com'})
         status, error_message = configuration.validate(config)
-        self.assertTrue(status)
+        self.assertTrue(status is True)
         self.assertEqual(error_message, None)
 
 
@@ -273,7 +275,7 @@ class TestValidateProxyUsername(PulpRPMTests):
                       constants.CONFIG_FEED_URL: 'http://test2.com'}
         config = importer_mocks.get_basic_config(**parameters)
         status, error_message = configuration.validate(config)
-        self.assertFalse(status)
+        self.assertTrue(status is False)
         self.assertEqual(error_message, "The configuration parameter <proxy_user> should be a string, "
                                         "but it was <type 'int'>.")
 
@@ -282,7 +284,7 @@ class TestValidateProxyUsername(PulpRPMTests):
                       constants.CONFIG_PROXY_URL: 'http://fake.com'}
         config = importer_mocks.get_basic_config(**parameters)
         status, error_message = configuration.validate(config)
-        self.assertFalse(status)
+        self.assertTrue(status is False)
         self.assertEqual(error_message, 'The configuration parameter <proxy_user> requires the '
                                         '<proxy_password> parameter to also be set.')
 
@@ -292,7 +294,31 @@ class TestValidateProxyUsername(PulpRPMTests):
                   constants.CONFIG_FEED_URL: 'http://test.com'}
         config = importer_mocks.get_basic_config(**params)
         status, error_message = configuration.validate(config)
-        self.assertTrue(status)
+        self.assertTrue(status is True)
+        self.assertEqual(error_message, None)
+
+
+class TestValidateRemoveMissingUnits(PulpRPMTests):
+    def test_invalid_config(self):
+        config = importer_mocks.get_basic_config(**{constants.CONFIG_REMOVE_MISSING_UNITS: 'trizue',
+                                                    constants.CONFIG_FEED_URL: 'http://feed.com'})
+        status, error_message = configuration.validate(config)
+        self.assertTrue(status is False)
+        self.assertEqual(error_message, 'The configuration parameter <remove_missing_units> must be set to a '
+                                        'boolean value, but is currently set to <trizue>.')
+
+    def test_string_false(self):
+        config = importer_mocks.get_basic_config(**{constants.CONFIG_REMOVE_MISSING_UNITS: 'false',
+                                                    constants.CONFIG_FEED_URL: 'http://feed.com'})
+        status, error_message = configuration.validate(config)
+        self.assertTrue(status is True)
+        self.assertEqual(error_message, None)
+
+    def test_valid_config(self):
+        config = importer_mocks.get_basic_config(**{constants.CONFIG_REMOVE_MISSING_UNITS: True,
+                                                    constants.CONFIG_FEED_URL: 'http://feed.com'})
+        status, error_message = configuration.validate(config)
+        self.assertTrue(status is True)
         self.assertEqual(error_message, None)
 
 
@@ -301,7 +327,7 @@ class TestValidateSSLOptions(PulpRPMTests):
         config = importer_mocks.get_basic_config(**{constants.CONFIG_SSL_CA_CERT: 7,
                                                     constants.CONFIG_FEED_URL: 'http://test.com'})
         status, error_message = configuration.validate(config)
-        self.assertFalse(status)
+        self.assertTrue(status is False)
         self.assertEqual(error_message, "The configuration parameter <ssl_ca_cert> should be a string, "
                                         "but it was <type 'int'>.")
 
@@ -309,7 +335,7 @@ class TestValidateSSLOptions(PulpRPMTests):
         config = importer_mocks.get_basic_config(**{constants.CONFIG_SSL_CLIENT_CERT: 8,
                                                     constants.CONFIG_FEED_URL: 'http://test.com'})
         status, error_message = configuration.validate(config)
-        self.assertFalse(status)
+        self.assertTrue(status is False)
         self.assertEqual(error_message, "The configuration parameter <ssl_client_cert> should be a string, "
                                         "but it was <type 'int'>.")
 
@@ -318,7 +344,7 @@ class TestValidateSSLOptions(PulpRPMTests):
                   constants.CONFIG_FEED_URL: 'http://test.com'}
         config = importer_mocks.get_basic_config(**params)
         status, error_message = configuration.validate(config)
-        self.assertFalse(status)
+        self.assertTrue(status is False)
         self.assertEqual(error_message, "The configuration parameter <ssl_client_key> should be a string, "
                                         "but it was <type 'int'>.")
 
@@ -326,7 +352,7 @@ class TestValidateSSLOptions(PulpRPMTests):
         config = importer_mocks.get_basic_config(**{constants.CONFIG_SSL_CLIENT_KEY: 'Client Key!',
                                                     constants.CONFIG_FEED_URL: 'http://test.com'})
         status, error_message = configuration.validate(config)
-        self.assertFalse(status)
+        self.assertTrue(status is False)
         self.assertEqual(error_message, 'The configuration parameter <ssl_client_key> requires the '
                                         '<ssl_client_cert> parameter to also be set.')
 
@@ -334,8 +360,12 @@ class TestValidateSSLOptions(PulpRPMTests):
         params = {
             constants.CONFIG_SSL_CA_CERT: 'CA Certificate!',
             constants.CONFIG_SSL_CLIENT_CERT: 'Client Certificate!',
+            constants.CONFIG_SSL_CLIENT_KEY: 'Client Key!',
             constants.CONFIG_FEED_URL: 'http://test.com'}
         config = importer_mocks.get_basic_config(**params)
+        status, error_message = configuration.validate(config)
+        self.assertTrue(status is True)
+        self.assertEqual(error_message, None)
 
 
 class TestValidateValidateDownloads(PulpRPMTests):
@@ -343,7 +373,7 @@ class TestValidateValidateDownloads(PulpRPMTests):
         config = importer_mocks.get_basic_config(**{constants.CONFIG_VALIDATE_DOWNLOADS: 1,
                                                     constants.CONFIG_FEED_URL: 'http://feed.com'})
         status, error_message = configuration.validate(config)
-        self.assertFalse(status)
+        self.assertTrue(status is False)
         self.assertEqual(error_message, 'The configuration parameter <validate_downloads> must be set to a '
                                         'boolean value, but is currently set to <1>.')
 
@@ -351,15 +381,12 @@ class TestValidateValidateDownloads(PulpRPMTests):
         config = importer_mocks.get_basic_config(**{constants.CONFIG_VALIDATE_DOWNLOADS: 'true',
                                                     constants.CONFIG_FEED_URL: 'http://feed.com'})
         status, error_message = configuration.validate(config)
-        self.assertTrue(status)
+        self.assertTrue(status is True)
         self.assertEqual(error_message, None)
 
     def test_valid_config(self):
         config = importer_mocks.get_basic_config(**{constants.CONFIG_VALIDATE_DOWNLOADS: True,
                                                     constants.CONFIG_FEED_URL: 'http://feed.com'})
         status, error_message = configuration.validate(config)
-        self.assertTrue(status)
-        self.assertEqual(error_message, None)
-        status, error_message = configuration.validate(config)
-        self.assertTrue(status)
+        self.assertTrue(status is True)
         self.assertEqual(error_message, None)
