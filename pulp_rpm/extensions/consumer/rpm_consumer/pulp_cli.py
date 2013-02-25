@@ -21,18 +21,21 @@ YUM_DISTRIBUTOR_TYPE_ID = 'yum_distributor'
 
 # -- framework hook -----------------------------------------------------------
 
+RPM_SECTION = 'rpm'
+SECTION_DESC = _('manage RPM-related features')
+
 def initialize(context):
 
-    # Replace the existing bind command with one scoped specifically to the
-    # yum distributor
-    context.cli.remove_command('bind')
-    context.cli.remove_command('unbind')
+    rpm_section = context.cli.find_section(RPM_SECTION) or context.cli.create_section(
+        RPM_SECTION, SECTION_DESC
+    )
 
     d = _('binds this consumer to a Pulp repository')
-    context.cli.add_command(BindCommand(context, 'bind', d))
+    rpm_section.add_command(BindCommand(context, 'bind', d))
 
     d = _('unbinds this consumer from a Pulp repository')
-    context.cli.add_command(UnbindCommand(context, 'unbind', d))
+    rpm_section.add_command(UnbindCommand(context, 'unbind', d))
+
 
 class BindCommand(PulpCliCommand):
 
