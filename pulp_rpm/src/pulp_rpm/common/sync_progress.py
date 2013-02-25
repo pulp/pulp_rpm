@@ -15,7 +15,7 @@ Contains classes and functions related to tracking the progress of the ISO
 importer.
 """
 from pulp_rpm.common import reporting
-from pulp_rpm.common.constants import STATE_COMPLETE, STATE_FAILED, STATE_NOT_STARTED
+from pulp_rpm.common.constants import STATE_COMPLETE, STATE_NOT_STARTED
 
 
 class SyncProgressReport(object):
@@ -26,6 +26,92 @@ class SyncProgressReport(object):
     be used to produce the final report to return to Pulp to describe the
     sync.
     """
+    def __init__(self, conduit):
+        self.conduit = conduit
+
+        # Manifest download & parsing
+        self.manifest_state = STATE_NOT_STARTED
+        self.manifest_query_finished_count = None
+        self.manifest_query_total_count = None
+        self.manifest_current_query = None
+        self.manifest_execution_time = None
+        self.manifest_error_message = None
+        self.manifest_exception = None
+        self.manifest_traceback = None
+
+        # ISO download
+        self.isos_state = STATE_NOT_STARTED
+        self.isos_execution_time = None
+        self.isos_total_count = None
+        self.isos_finished_count = None
+        self.isos_error_count = None
+        # mapping of iso to its error
+        self.isos_individual_errors = None
+        # overall execution error
+        self.isos_error_message = None
+        self.isos_exception = None
+        self.isos_traceback = None
+
+    def add_failed_iso(self, iso, exception, traceback):
+        """
+        Updates the progress report that a iso failed to be imported.
+        """
+        self.isos_error_count += 1
+        self.isos_individual_errors = self.isos_individual_errors or {}
+        error_key = '%s-%s-%s' % (iso.name, iso.version, iso.author)
+        self.isos_individual_errors[error_key] = {
+            'exception': reporting.format_exception(exception),
+            'traceback': reporting.format_traceback(traceback),
+        }
+
+    def build_final_report(self):
+        """
+        Assembles the final report to return to Pulp at the end of the sync.
+        The conduit will include information that it has tracked over the
+        course of its usage, therefore this call should only be invoked
+        when it is time to return the report.
+        """
+
+        # Report fields
+        total_execution_time = -1
+        if self.manifest_execution_time is not None and self.isos_execution_time is not None:
+            total_execution_time = self.manifest_execution_time + self.isos_execution_time
+
+        summary = {
+            'total_execution_time': total_execution_time
+        }
+
+        details = {
+            'total_count': self.isos_total_count,
+            'finished_count': self.isos_finished_count,
+            'error_count': self.isos_error_count,
+        }
+
+        # Determine if the report was successful or failed
+        all_step_states = (self.manifest_state, self.isos_state)
+        unsuccessful_steps = [s for s in all_step_states if s != STATE_COMPLETE]
+
+        if len(unsuccessful_steps) == 0:
+            report = self.conduit.build_success_report(summary, details)
+        else:
+            report = self.conduit.build_failure_report(summary, details)
+
+        return report
+
+    def build_progress_report(self):
+        """
+        Returns the actual report that should be sent to Pulp as the current
+        progress of the sync.
+
+        :return: description of the current state of the sync
+        :rtype:  dict
+        """
+
+        report = {
+            'manifest': self._generate_manifest_section(),
+            'isos': self._generate_isos_section(),
+        }
+        return report
 
     @classmethod
     def from_progress_dict(cls, report):
@@ -47,15 +133,15 @@ class SyncProgressReport(object):
 
         r = cls(None)
 
-        m = report['metadata']
-        r.metadata_state = m['state']
-        r.metadata_execution_time = m['execution_time']
-        r.metadata_current_query = m['current_query']
-        r.metadata_query_finished_count = m['query_finished_count']
-        r.metadata_query_total_count = m['query_total_count']
-        r.metadata_error_message = m['error_message']
-        r.metadata_exception = m['error']
-        r.metadata_traceback = m['traceback']
+        m = report['manifest']
+        r.manifest_state = m['state']
+        r.manifest_execution_time = m['execution_time']
+        r.manifest_current_query = m['current_query']
+        r.manifest_query_finished_count = m['query_finished_count']
+        r.manifest_query_total_count = m['query_total_count']
+        r.manifest_error_message = m['error_message']
+        r.manifest_exception = m['error']
+        r.manifest_traceback = m['traceback']
 
         m = report['isos']
         r.isos_state = m['state']
@@ -70,32 +156,6 @@ class SyncProgressReport(object):
 
         return r
 
-    def __init__(self, conduit):
-        self.conduit = conduit
-
-        # Metadata download & parsing
-        self.metadata_state = STATE_NOT_STARTED
-        self.metadata_query_finished_count = None
-        self.metadata_query_total_count = None
-        self.metadata_current_query = None
-        self.metadata_execution_time = None
-        self.metadata_error_message = None
-        self.metadata_exception = None
-        self.metadata_traceback = None
-
-        # ISO download
-        self.isos_state = STATE_NOT_STARTED
-        self.isos_execution_time = None
-        self.isos_total_count = None
-        self.isos_finished_count = None
-        self.isos_error_count = None
-        self.isos_individual_errors = None # mapping of iso to its error
-        self.isos_error_message = None # overall execution error
-        self.isos_exception = None
-        self.isos_traceback = None
-
-    # -- public methods -------------------------------------------------------
-
     def update_progress(self):
         """
         Sends the current state of the progress report to Pulp.
@@ -103,92 +163,29 @@ class SyncProgressReport(object):
         report = self.build_progress_report()
         self.conduit.set_progress(report)
 
-    def build_final_report(self):
-        """
-        Assembles the final report to return to Pulp at the end of the sync.
-        The conduit will include information that it has tracked over the
-        course of its usage, therefore this call should only be invoked
-        when it is time to return the report.
-        """
-
-        # Report fields
-        total_execution_time = -1
-        if self.metadata_execution_time is not None and self.isos_execution_time is not None:
-            total_execution_time = self.metadata_execution_time + self.isos_execution_time
-
-        summary = {
-            'total_execution_time' : total_execution_time
-        }
-
-        details = {
-            'total_count' : self.isos_total_count,
-            'finished_count' : self.isos_finished_count,
-            'error_count' : self.isos_error_count,
-        }
-
-        # Determine if the report was successful or failed
-        all_step_states = (self.metadata_state, self.isos_state)
-        unsuccessful_steps = [s for s in all_step_states if s != STATE_COMPLETE]
-
-        if len(unsuccessful_steps) == 0:
-            report = self.conduit.build_success_report(summary, details)
-        else:
-            report = self.conduit.build_failure_report(summary, details)
-
-        return report
-
-    def build_progress_report(self):
-        """
-        Returns the actual report that should be sent to Pulp as the current
-        progress of the sync.
-
-        :return: description of the current state of the sync
-        :rtype:  dict
-        """
-
-        report = {
-            'metadata' : self._metadata_section(),
-            'isos'  : self._isos_section(),
-        }
-        return report
-
-    def add_failed_iso(self, iso, exception, traceback):
-        """
-        Updates the progress report that a iso failed to be imported.
-        """
-        self.isos_error_count += 1
-        self.isos_individual_errors = self.isos_individual_errors or {}
-        error_key = '%s-%s-%s' % (iso.name, iso.version, iso.author)
-        self.isos_individual_errors[error_key] = {
-            'exception' : reporting.format_exception(exception),
-            'traceback' : reporting.format_traceback(traceback),
-        }
-
-    # -- report creation methods ----------------------------------------------
-
-    def _metadata_section(self):
-        metadata_report = {
-            'state' : self.metadata_state,
-            'execution_time' : self.metadata_execution_time,
-            'current_query' : self.metadata_current_query,
-            'query_finished_count' : self.metadata_query_finished_count,
-            'query_total_count' : self.metadata_query_total_count,
-            'error_message' : self.metadata_error_message,
-            'error' : reporting.format_exception(self.metadata_exception),
-            'traceback' : reporting.format_traceback(self.metadata_traceback),
-        }
-        return metadata_report
-
-    def _isos_section(self):
+    def _generate_isos_section(self):
         isos_report = {
-            'state' : self.isos_state,
-            'execution_time' : self.isos_execution_time,
-            'total_count' : self.isos_total_count,
-            'finished_count' : self.isos_finished_count,
-            'error_count' : self.isos_error_count,
-            'individual_errors' : self.isos_individual_errors,
-            'error_message' : self.isos_error_message,
-            'error' : reporting.format_exception(self.isos_exception),
-            'traceback' : reporting.format_traceback(self.isos_traceback),
+            'state': self.isos_state,
+            'execution_time': self.isos_execution_time,
+            'total_count': self.isos_total_count,
+            'finished_count': self.isos_finished_count,
+            'error_count': self.isos_error_count,
+            'individual_errors': self.isos_individual_errors,
+            'error_message': self.isos_error_message,
+            'error': reporting.format_exception(self.isos_exception),
+            'traceback': reporting.format_traceback(self.isos_traceback),
         }
         return isos_report
+
+    def _generate_manifest_section(self):
+        manifest_report = {
+            'state': self.manifest_state,
+            'execution_time': self.manifest_execution_time,
+            'current_query': self.manifest_current_query,
+            'query_finished_count': self.manifest_query_finished_count,
+            'query_total_count': self.manifest_query_total_count,
+            'error_message': self.manifest_error_message,
+            'error': reporting.format_exception(self.manifest_exception),
+            'traceback': reporting.format_traceback(self.manifest_traceback),
+        }
+        return manifest_report

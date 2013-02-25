@@ -117,8 +117,6 @@ class ISOSyncRun(listener.DownloadEventListener):
         :return:             The sync report
         :rtype:              pulp.plugins.model.SyncReport
         """
-        # Build the progress report and set it to the running state
-
         # Get the manifest and download the ISOs that we are missing
         self.progress_report.metadata_state = STATE_RUNNING
         self.progress_report.update_progress()
