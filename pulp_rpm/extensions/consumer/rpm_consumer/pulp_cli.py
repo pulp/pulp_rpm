@@ -26,7 +26,10 @@ SECTION_DESC = _('manage RPM-related features')
 
 def initialize(context):
 
-    rpm_section = context.cli.find_section(RPM_SECTION) or context.cli.create_section(
+    if context.cli.find_section(RPM_SECTION) is not None:
+        return
+
+    rpm_section = context.cli.create_section(
         RPM_SECTION, SECTION_DESC
     )
 
