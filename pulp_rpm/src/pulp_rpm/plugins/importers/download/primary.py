@@ -90,10 +90,11 @@ def primary_package_list_generator(primary_xml_handle):
     root_element = xml_iterator.next()[1]
 
     for event, element in xml_iterator:
+        # if we're not at a fully parsed package element, keep going
         if event != 'end' or element.tag != PACKAGE_TAG:
             continue
 
-        root_element.clear()
+        root_element.clear() # clear all previously parsed ancestors of the root
 
         package_info = _process_package_element(element)
         yield package_info
