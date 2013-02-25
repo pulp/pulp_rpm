@@ -30,7 +30,7 @@ from pulp.plugins.conduits.mixins import UnitAssociationCriteria
 
 logger = logging.getLogger(__name__)
 # How many bytes we want to read into RAM at a time when validating a download checksum
-VALIDATION_CHUNK_SIZE = 32*1024*1024
+VALIDATION_CHUNK_SIZE = 32 * 1024 * 1024
 
 
 class ISOSyncRun(listener.DownloadEventListener):
@@ -41,10 +41,9 @@ class ISOSyncRun(listener.DownloadEventListener):
     """
     def __init__(self, sync_conduit, config):
         self.sync_conduit = sync_conduit
+        self._remove_missing_units = config.get(constants.CONFIG_REMOVE_MISSING_UNITS, default=False)
         self._repo_url = encode_unicode(config.get(constants.CONFIG_FEED_URL))
-        self._validate_downloads = config.get(constants.CONFIG_VALIDATE_DOWNLOADS)
-        if self._validate_downloads is None:
-            self._validate_downloads = True
+        self._validate_downloads = config.get(constants.CONFIG_VALIDATE_DOWNLOADS, default=True)
 
         # Cast our config parameters to the correct types and use them to build a Downloader
         max_speed = config.get(constants.CONFIG_MAX_SPEED)
@@ -94,7 +93,7 @@ class ISOSyncRun(listener.DownloadEventListener):
         This is the callback that we will get from the downloader library when it succeeds in downloading a
         file. This method will check to see if we are in the ISO downloading stage, and if we are, it will add
         the new ISO to the database.
-        
+
         :param report: The report of the file we downloaded
         :type  report: pulp.common.download.report.DownloadReport
         """
@@ -129,8 +128,10 @@ class ISOSyncRun(listener.DownloadEventListener):
         # Go get them filez
         self.progress_report.isos_state = STATE_RUNNING
         self.progress_report.update_progress()
-        missing_isos = self._filter_missing_isos(manifest)
-        self._download_isos(missing_isos)
+        local_missing_isos, remote_missing_isos = self._filter_missing_isos(manifest)
+        self._download_isos(local_missing_isos)
+        if self._remove_missing_units:
+            self._remove_units(remote_missing_isos)
 
         # Report that we are finished
         self.progress_report.isos_state = STATE_COMPLETE
@@ -142,7 +143,7 @@ class ISOSyncRun(listener.DownloadEventListener):
         """
         Makes the calls to retrieve the ISOs from the manifest, storing them on disk and recording them in the
         Pulp database.
-        
+
         :param manifest: The manifest containing a list of ISOs we want to download. It is a list of
                          dictionaries with at least the following keys: name, checksum, size, and url.
         :type  manifest: list
@@ -161,7 +162,7 @@ class ISOSyncRun(listener.DownloadEventListener):
         download_requests = [request.DownloadRequest(iso['url'], iso['destination']) for iso in manifest]
         # Let's build an index from URL to the manifest unit dictionary, so that we can access data like the
         # name, checksum, and size as we process completed downloads
-        self._url_iso_map = dict([(iso['url'], iso) for iso in manifest]) 
+        self._url_iso_map = dict([(iso['url'], iso) for iso in manifest])
         self.downloader.download(download_requests)
 
     def _download_manifest(self):
@@ -169,7 +170,7 @@ class ISOSyncRun(listener.DownloadEventListener):
         Download the manifest file, and process it to return a list of the available Units. The available
         units will be a list of dictionaries that describe the available ISOs, with these keys: name,
         checksum, size, and url.
-        
+
         :return:     list of available ISOs
         :rtype:      list
         """
@@ -180,7 +181,7 @@ class ISOSyncRun(listener.DownloadEventListener):
         self.downloader.download([manifest_request])
         # We can inspect the report status to see if we had an error when retrieving the manifest.
         if self.progress_report.metadata_state == STATE_FAILED:
-            raise IOError(_("Could not retrieve %(url)s")%{'url': manifest_url})
+            raise IOError(_("Could not retrieve %(url)s") % {'url': manifest_url})
 
         # Now let's process the manifest and return a list of resources that we'd like to download
         manifest_destiny.seek(0)
@@ -196,38 +197,58 @@ class ISOSyncRun(listener.DownloadEventListener):
     def _filter_missing_isos(self, manifest):
         """
         Use the sync_conduit and the manifest to determine which ISOs are at the feed_url
-        that are not in our local store. Return a subset of the given manifest that represents the
-        missing ISOs. The manifest is a list of dictionaries that must contain at a minimum the following
-        keys: name, checksum, size.
+        that are not in our local store, as well as which ISOs are in our local store that are not available
+        at the feed_url. Return a 2-tuple with this information. The first element of the tuple will be a
+        subset of the given manifest that represents the missing ISOs. The second element will be a list of
+        units that represent the ISOs we have in our local store that weren't found at the feed_url. The
+        manifest is a list of dictionaries that must contain at a minimum the following keys: name, checksum,
+        size.
 
         :param manifest:     A list of dictionaries that describe the ISOs that are available at the
-                             feed_url that we are syncing with
+                             feed_url that we are synchronizing with
         :type  manifest:     list
-        :return:             A list of dictionaries that describe the ISOs that we should retrieve
-                             from the feed_url. These dictionaries are in the same format as they
-                             were in the manifest.
-        :rtype:              list
+        :return:             A 2-tuple. The first element of the tuple is a list of dictionaries that describe
+                             the ISOs that we should retrieve from the feed_url. These dictionaries are in the
+                             same format as they were in the manifest. The second element of the tuple is a
+                             list of units that represent the ISOs that we have in our local repo that were
+                             not found in the remote repo.
+        :rtype:              tuple
         """
         def _unit_key_str(unit_key_dict):
-            return '%s-%s-%s'%(unit_key_dict['name'], unit_key_dict['checksum'],
-                               unit_key_dict['size'])
-
-        available_units_by_key = dict([(_unit_key_str(u), u) for u in manifest])
+            return '%s-%s-%s' % (unit_key_dict['name'], unit_key_dict['checksum'],
+                                 unit_key_dict['size'])
 
         module_criteria = UnitAssociationCriteria(type_ids=[ids.TYPE_ID_ISO])
-        existing_isos = self.sync_conduit.get_units(criteria=module_criteria)
-        existing_iso_keys = set([_unit_key_str(m.unit_key) for m in existing_isos])
-        available_iso_keys = set([_unit_key_str(u) for u in manifest])
+        existing_units = self.sync_conduit.get_units(criteria=module_criteria)
 
-        missing_iso_keys = list(available_iso_keys - existing_iso_keys)
-        missing_isos = [available_units_by_key[k] for k in missing_iso_keys]
-        return missing_isos
+        available_isos_by_key = dict([(_unit_key_str(iso), iso) for iso in manifest])
+        existing_units_by_key = dict([(_unit_key_str(unit.unit_key), unit) for unit in existing_units])
+
+        existing_unit_keys = set([_unit_key_str(unit.unit_key) for unit in existing_units])
+        available_iso_keys = set([_unit_key_str(iso) for iso in manifest])
+
+        local_missing_iso_keys = list(available_iso_keys - existing_unit_keys)
+        local_missing_isos = [available_isos_by_key[k] for k in local_missing_iso_keys]
+        remote_missing_unit_keys = list(existing_unit_keys - available_iso_keys)
+        remote_missing_units = [existing_units_by_key[k] for k in remote_missing_unit_keys]
+
+        return local_missing_isos, remote_missing_units
+
+    def _remove_units(self, units):
+        """
+        Use the sync_conduit's remove_unit call for each unit in units.
+
+        :param units: List of pulp.plugins.model.Units that we want to remove from the repository
+        :type  units: list
+        """
+        for unit in units:
+            self.sync_conduit.remove_unit(unit)
 
     def _validate_download(self, iso):
         """
         Validate the size and the checksum of the given downloaded iso. iso should be a dictionary with at
         least these keys: name, checksum, size, and destination.
-        
+
         :param iso: A dictionary describing the ISO file we want to validate
         :type  iso: dict
         """
@@ -240,7 +261,7 @@ class ISOSyncRun(listener.DownloadEventListener):
                 if size != iso['size']:
                     raise ValueError(_('Downloading <%(name)s> failed validation. '
                         'The manifest specified that the file should be %(expected)s bytes, but '
-                        'the downloaded file is %(found)s bytes.')%{'name': iso['name'],
+                        'the downloaded file is %(found)s bytes.') % {'name': iso['name'],
                             'expected': iso['size'], 'found': size})
 
             # Validate the checksum, if we know what it should be
@@ -255,6 +276,6 @@ class ISOSyncRun(listener.DownloadEventListener):
                 if hasher.hexdigest() != iso['checksum']:
                     raise ValueError(
                         _('Downloading <%(name)s> failed checksum validation. The manifest '
-                          'specified the checksum to be %(c)s, but it was %(f)s.')%{
+                          'specified the checksum to be %(c)s, but it was %(f)s.') % {
                             'name': iso['name'], 'c': iso['checksum'],
                             'f': hasher.hexdigest()})

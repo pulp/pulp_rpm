@@ -43,11 +43,20 @@ class TestISOSyncRun(PulpRPMTests):
         self.temp_dir = tempfile.mkdtemp()
         self.pkg_dir = os.path.join(self.temp_dir, 'content')
         os.mkdir(self.pkg_dir)
+
+        # These checksums correspond to the checksums of the files that our curl mocks will generate. Our
+        # curl mocks do not have a test4.iso, so that one is to test removal of old ISOs during sync
         self.existing_units = [
-            Unit(TYPE_ID_ISO, {'name': 'test.iso', 'size': 1, 'checksum': 'sum1'},
-                {}, '/path/test.iso'),
-            Unit(TYPE_ID_ISO,{'name': 'test2.iso', 'size': 2, 'checksum': 'sum2'},
-                {}, '/path/test2.iso'),]
+            Unit(TYPE_ID_ISO,
+                 {'name': 'test.iso', 'size': 16,
+                  'checksum': 'f02d5a72cd2d57fa802840a76b44c6c6920a8b8e6b90b20e26c03876275069e0'},
+                 {}, '/path/test.iso'),
+            Unit(TYPE_ID_ISO,
+                 {'name': 'test2.iso', 'size': 22,
+                  'checksum': 'c7fbc0e821c0871805a99584c6a384533909f68a6bbe9a2a687d28d9f3b10c16'},
+                 {}, '/path/test2.iso'),
+            Unit(TYPE_ID_ISO, {'name': 'test4.iso', 'size': 4, 'checksum': 'sum4'},
+                 {}, '/path/test4.iso')]
         self.sync_conduit = importer_mocks.get_sync_conduit(type_id=TYPE_ID_ISO, pkg_dir=self.pkg_dir,
                                                             existing_units=self.existing_units)
 
@@ -61,12 +70,14 @@ class TestISOSyncRun(PulpRPMTests):
         Make sure the __init__ method does cool stuff.
         """
         iso_sync_run = ISOSyncRun(self.sync_conduit, self.config)
-        
+
         # Now let's assert that all the right things happened during initialization
         self.assertEqual(iso_sync_run.sync_conduit, self.sync_conduit)
         self.assertEqual(iso_sync_run._repo_url, 'http://fake.com/iso_feed/')
         # Validation of downloads should be enabled by default
         self.assertEqual(iso_sync_run._validate_downloads, True)
+        # Deleting missing ISOs should be enabled by default
+        self.assertEqual(iso_sync_run._remove_missing_units, False)
 
         # Inspect the downloader
         downloader = iso_sync_run.downloader
@@ -248,33 +259,107 @@ class TestISOSyncRun(PulpRPMTests):
         os.mkdir(working_dir)
         repo.working_dir = working_dir
 
-        report = self.iso_sync_run.perform_sync()
+        self.iso_sync_run.perform_sync()
 
-        # There should now be three Units in the DB, one for each of the three ISOs that our mocks
-        # got us.
+        # There should now be three Units in the DB, but only test3.iso is the new one
         units = [tuple(call)[1][0] for call in self.sync_conduit.save_unit.mock_calls]
-        self.assertEqual(len(units), 3)
-        expected_units = {
-            'test.iso': {
-                'checksum': 'f02d5a72cd2d57fa802840a76b44c6c6920a8b8e6b90b20e26c03876275069e0',
-                'size': 16, 'contents': 'This is a file.\n'},
-            'test2.iso': {
-                'checksum': 'c7fbc0e821c0871805a99584c6a384533909f68a6bbe9a2a687d28d9f3b10c16',
-                'size': 22, 'contents': 'This is another file.\n'},
-            'test3.iso': {
-                'checksum': '94f7fe923212286855dea858edac1b4a292301045af0ddb275544e5251a50b3c',
-                'size': 34, 'contents': 'Are you starting to get the idea?\n'}}
-        for unit in units:
-            expected_unit = expected_units[unit.unit_key['name']]
-            self.assertEqual(unit.unit_key['checksum'], expected_unit['checksum'])
-            self.assertEqual(unit.unit_key['size'], expected_unit['size'])
-            expected_storage_path = os.path.join(
-                self.pkg_dir, unit.unit_key['name'], unit.unit_key['checksum'],
-                str(unit.unit_key['size']), unit.unit_key['name'])
-            self.assertEqual(unit.storage_path, expected_storage_path)
-            with open(unit.storage_path) as data:
-                contents = data.read()
-            self.assertEqual(contents, expected_unit['contents'])
+        self.assertEqual(len(units), 1)
+        expected_unit = {'checksum': '94f7fe923212286855dea858edac1b4a292301045af0ddb275544e5251a50b3c',
+                         'size': 34, 'contents': 'Are you starting to get the idea?\n', 'name': 'test3.iso'}
+        unit = units[0]
+        self.assertEqual(unit.unit_key['checksum'], expected_unit['checksum'])
+        self.assertEqual(unit.unit_key['size'], expected_unit['size'])
+        expected_storage_path = os.path.join(
+            self.pkg_dir, unit.unit_key['name'], unit.unit_key['checksum'],
+            str(unit.unit_key['size']), unit.unit_key['name'])
+        self.assertEqual(unit.storage_path, expected_storage_path)
+        with open(unit.storage_path) as data:
+            contents = data.read()
+        self.assertEqual(contents, expected_unit['contents'])
+        # There should be 0 calls to sync_conduit.remove_unit, since remove_missing_units is False by default
+        self.assertEqual(self.sync_conduit.remove_unit.call_count, 0)
+
+    @patch('pulp.common.download.backends.curl.pycurl.Curl', side_effect=importer_mocks.ISOCurl)
+    @patch('pulp.common.download.backends.curl.pycurl.CurlMulti', side_effect=importer_mocks.CurlMulti)
+    @patch('pulp_rpm.plugins.importers.iso_importer.sync.SyncProgressReport', autospec=True)
+    def test_perform_sync_remove_missing_units_set_false(self, progress_report, curl_multi, curl):
+        # Make sure the missing ISOs don't get removed if they aren't supposed to
+        config = importer_mocks.get_basic_config(
+            feed_url='http://fake.com/iso_feed/', max_speed=500.0, num_threads=5,
+            proxy_url='http://proxy.com', proxy_port=1234, proxy_user="the_dude",
+            proxy_password='bowling', remove_missing_units=False,
+            ssl_client_cert="Trust me, I'm who I say I am.", ssl_client_key="Secret Key",
+            ssl_ca_cert="Uh, I guess that's the right server.")
+
+        iso_sync_run = ISOSyncRun(self.sync_conduit, config)
+
+        repo = MagicMock(spec=Repository)
+        working_dir = os.path.join(self.temp_dir, "working")
+        os.mkdir(working_dir)
+        repo.working_dir = working_dir
+
+        report = iso_sync_run.perform_sync()
+
+        # There should now be three Units in the DB
+        units = [tuple(call)[1][0] for call in self.sync_conduit.save_unit.mock_calls]
+        self.assertEqual(len(units), 1)
+        expected_unit = {'checksum': '94f7fe923212286855dea858edac1b4a292301045af0ddb275544e5251a50b3c',
+                         'size': 34, 'contents': 'Are you starting to get the idea?\n', 'name': 'test3.iso'}
+        unit = units[0]
+        self.assertEqual(unit.unit_key['checksum'], expected_unit['checksum'])
+        self.assertEqual(unit.unit_key['size'], expected_unit['size'])
+        expected_storage_path = os.path.join(
+            self.pkg_dir, unit.unit_key['name'], unit.unit_key['checksum'],
+            str(unit.unit_key['size']), unit.unit_key['name'])
+        self.assertEqual(unit.storage_path, expected_storage_path)
+        with open(unit.storage_path) as data:
+            contents = data.read()
+        self.assertEqual(contents, expected_unit['contents'])
+        # There should be 0 calls to sync_conduit.remove_unit, since remove_missing_units is False by default
+        self.assertEqual(self.sync_conduit.remove_unit.call_count, 0)
+
+    @patch('pulp.common.download.backends.curl.pycurl.Curl', side_effect=importer_mocks.ISOCurl)
+    @patch('pulp.common.download.backends.curl.pycurl.CurlMulti', side_effect=importer_mocks.CurlMulti)
+    @patch('pulp_rpm.plugins.importers.iso_importer.sync.SyncProgressReport', autospec=True)
+    def test_perform_sync_remove_missing_units_set_true(self, progress_report, curl_multi, curl):
+        # Make sure the missing ISOs get removed when they are supposed to
+        # Make sure the missing ISOs don't get removed if they aren't supposed to
+        config = importer_mocks.get_basic_config(
+            feed_url='http://fake.com/iso_feed/', max_speed=500.0, num_threads=5,
+            proxy_url='http://proxy.com', proxy_port=1234, proxy_user="the_dude",
+            proxy_password='bowling', remove_missing_units=True,
+            ssl_client_cert="Trust me, I'm who I say I am.", ssl_client_key="Secret Key",
+            ssl_ca_cert="Uh, I guess that's the right server.")
+
+        iso_sync_run = ISOSyncRun(self.sync_conduit, config)
+
+        repo = MagicMock(spec=Repository)
+        working_dir = os.path.join(self.temp_dir, "working")
+        os.mkdir(working_dir)
+        repo.working_dir = working_dir
+
+        report = iso_sync_run.perform_sync()
+
+        # There should now be three Units in the DB
+        units = [tuple(call)[1][0] for call in self.sync_conduit.save_unit.mock_calls]
+        self.assertEqual(len(units), 1)
+        expected_unit = {'checksum': '94f7fe923212286855dea858edac1b4a292301045af0ddb275544e5251a50b3c',
+                         'size': 34, 'contents': 'Are you starting to get the idea?\n', 'name': 'test3.iso'}
+        unit = units[0]
+        self.assertEqual(unit.unit_key['checksum'], expected_unit['checksum'])
+        self.assertEqual(unit.unit_key['size'], expected_unit['size'])
+        expected_storage_path = os.path.join(
+            self.pkg_dir, unit.unit_key['name'], unit.unit_key['checksum'],
+            str(unit.unit_key['size']), unit.unit_key['name'])
+        self.assertEqual(unit.storage_path, expected_storage_path)
+        with open(unit.storage_path) as data:
+            contents = data.read()
+        self.assertEqual(contents, expected_unit['contents'])
+
+        # There should be 0 calls to sync_conduit.remove_unit, since remove_missing_units is False by default
+        self.assertEqual(self.sync_conduit.remove_unit.call_count, 1)
+        removed_unit = self.sync_conduit.remove_unit.mock_calls[0][1][0]
+        self.assertEqual(removed_unit.unit_key, {'name': 'test4.iso', 'size': 4, 'checksum': 'sum4'}) 
 
     @patch('pulp.common.download.backends.curl.pycurl.Curl', side_effect=importer_mocks.ISOCurl)
     @patch('pulp.common.download.backends.curl.pycurl.CurlMulti', side_effect=importer_mocks.CurlMulti)
@@ -324,11 +409,11 @@ class TestISOSyncRun(PulpRPMTests):
 
         expected_manifest = [
             {'url': 'http://fake.com/iso_feed/test.iso', 'name': 'test.iso', 'size': 16,
-             'checksum': 'f02d5a72cd2d57fa802840a76b44c6c6920a8b8e6b90b20e26c03876275069e0',},
+             'checksum': 'f02d5a72cd2d57fa802840a76b44c6c6920a8b8e6b90b20e26c03876275069e0'},
             {'url': 'http://fake.com/iso_feed/test2.iso', 'name': 'test2.iso', 'size': 22,
-             'checksum': 'c7fbc0e821c0871805a99584c6a384533909f68a6bbe9a2a687d28d9f3b10c16',},
+             'checksum': 'c7fbc0e821c0871805a99584c6a384533909f68a6bbe9a2a687d28d9f3b10c16'},
             {'url': 'http://fake.com/iso_feed/test3.iso', 'name': 'test3.iso', 'size': 34,
-             'checksum': '94f7fe923212286855dea858edac1b4a292301045af0ddb275544e5251a50b3c',}]
+             'checksum': '94f7fe923212286855dea858edac1b4a292301045af0ddb275544e5251a50b3c'}]
 
         self.assertEqual(manifest, expected_manifest)
 
@@ -352,18 +437,24 @@ class TestISOSyncRun(PulpRPMTests):
 
     def test__filter_missing_isos(self):
         """
-        Make sure this method returns the items from the manifest that weren't in the sync_conduit.
+        Make sure this method returns the items from the manifest that weren't in the sync_conduit. By
+        default, remove_missing_units is False, so we will also assert that the return value of this method
+        doesn't suggest removing any ISOs.
         """
         # Let's put all three mammajammas in the manifest
         manifest = [
-            {'name': 'test.iso', 'size': 1, 'checksum': 'sum1'},
-            {'name': 'test2.iso', 'size': 2, 'checksum': 'sum2'},
-            {'name': 'test3.iso', 'size': 3, 'checksum': 'sum3'},
-        ]
-        missing_isos = self.iso_sync_run._filter_missing_isos(manifest)
+            {'name': iso.unit_key['name'], 'size': iso.unit_key['size'],
+             'checksum': iso.unit_key['checksum']} \
+                    for iso in self.existing_units if iso.unit_key['name'] != 'test4.iso']
 
-        # Only the third item from the manifest should be missing
-        self.assertEqual(missing_isos, [iso for iso in manifest if iso['name'] == 'test3.iso'])
+        local_missing_isos, remote_missing_isos = self.iso_sync_run._filter_missing_isos(manifest)
+
+        # Only the third item from the manifest should be missing locally
+        self.assertEqual(local_missing_isos, [iso for iso in manifest if iso['name'] == 'test3.iso'])
+        # The remote repo doesn't have test4.iso, and so this method should tell us
+        self.assertEqual(len(remote_missing_isos), 1)
+        remote_missing_iso = remote_missing_isos[0]
+        self.assertEqual(remote_missing_iso.unit_key, {'name': 'test4.iso', 'size': 4, 'checksum': 'sum4'})
 
     def test__validate_download_with_regular_file(self):
         destination = os.path.join(self.temp_dir, 'test.txt')
