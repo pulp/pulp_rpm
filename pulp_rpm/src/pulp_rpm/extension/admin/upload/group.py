@@ -11,6 +11,7 @@
 
 from gettext import gettext as _
 
+from pulp.client import parsers
 from pulp.client.commands.options import OPTION_REPO_ID
 from pulp.client.commands.repo.upload import UploadCommand
 from pulp.client.extensions.extensions import PulpCliFlag, PulpCliOption
@@ -54,10 +55,10 @@ d = _('sets the "langonly" attribute for the package group')
 OPT_LANGONLY = PulpCliOption('--langonly', d, allow_multiple=False, required=False)
 
 d = _('set "default" flag on package group to True')
-OPT_DEFAULT = PulpCliFlag('--default', d)
+OPT_DEFAULT = PulpCliOption('--default', d, allow_multiple=False, required=False, parse_func=parsers.parse_boolean)
 
 d = _('set "user_visible" flag on package group to True')
-OPT_USER_VISIBLE = PulpCliFlag('--user-visible', d)
+OPT_USER_VISIBLE = PulpCliOption('--user-visible', d, allow_multiple=False, required=False, parse_func=parsers.parse_boolean)
 
 
 class CreatePackageGroupCommand(UploadCommand) :
