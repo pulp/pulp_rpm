@@ -81,3 +81,70 @@ class CreatePackageGroupCommand(rpm_support_base.PulpClientTests):
         self.assertEqual(metadata['display_order'], 'test-order')
         self.assertEqual(metadata['translated_description'], {})
         self.assertEqual(metadata['translated_name'], '')
+
+    def test_user_visible_option(self):
+        # Setup
+        self.cli.add_command(self.command)
+        mock_generate = mock.MagicMock()
+        self.command.generate_metadata = mock_generate
+
+        # Test
+        cmd = 'group --repo-id repo-a --group-id group-a --name name-a ' \
+              '--description desc-a --user-visible true'
+        exit_code = self.cli.run(cmd.split())
+
+        # Verify
+        self.assertEqual(exit_code, 0)
+
+        kwargs = mock_generate.call_args[1]
+        self.assertTrue('user-visible' in kwargs)
+        self.assertEqual(kwargs['user-visible'], True)  # ensure correct parsing to boolean
+
+    def test_user_visible_unparsable(self):
+        # Setup
+        self.cli.add_command(self.command)
+        mock_generate = mock.MagicMock()
+        self.command.generate_metadata = mock_generate
+
+        # Test
+        cmd = 'group --repo-id repo-a --group-id group-a --name name-a ' \
+              '--description desc-a --user-visible foo'
+        exit_code = self.cli.run(cmd.split())
+
+        # Verify
+        self.assertTrue(exit_code != 0)
+        self.assertEqual(mock_generate.call_count, 0)  # command shouldn't even get this far
+
+    def test_default_option(self):
+        # Setup
+        self.cli.add_command(self.command)
+        mock_generate = mock.MagicMock()
+        self.command.generate_metadata = mock_generate
+
+        # Test
+        cmd = 'group --repo-id repo-a --group-id group-a --name name-a ' \
+              '--description desc-a --default false'
+        exit_code = self.cli.run(cmd.split())
+
+        # Verify
+        self.assertEqual(exit_code, 0)
+
+        kwargs = mock_generate.call_args[1]
+        self.assertTrue('default' in kwargs)
+        self.assertEqual(kwargs['default'], False)  # ensure correct parsing to boolean
+
+    def test_default_option(self):
+        # Setup
+        self.cli.add_command(self.command)
+        mock_generate = mock.MagicMock()
+        self.command.generate_metadata = mock_generate
+
+        # Test
+        cmd = 'group --repo-id repo-a --group-id group-a --name name-a ' \
+              '--description desc-a --default foo'
+        exit_code = self.cli.run(cmd.split())
+
+        # Verify
+        self.assertTrue(exit_code != 0)
+        self.assertEqual(mock_generate.call_count, 0)  # command shouldn't even get this far
+
