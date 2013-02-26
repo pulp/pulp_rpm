@@ -175,21 +175,3 @@ def join_url_path(url, relative_path):
         relative_path = relative_path[1:]
     return '/'.join((url, relative_path))
 
-# main -------------------------------------------------------------------------
-
-def download_metadata(repo_url):
-    start = datetime.now()
-    metadata_files = MetadataFiles(repo_url)
-    metadata_files.download_repomd()
-    metadata_files.parse_repomd()
-    metadata_files.download_metadata_files()
-    metadata_files.verify_metadata_files()
-    finish = datetime.now()
-    pprint(metadata_files.metadata)
-    print metadata_files.dst_dir
-    print 'time elapsed: %s' % str(finish - start)
-
-
-if __name__ == '__main__':
-    repo_url = 'http://repos.fedorapeople.org/repos/pulp/pulp/demo_repos/pulp_unittest/'
-    download_metadata(repo_url)

@@ -11,9 +11,7 @@
 # You should have received a copy of GPLv2 along with this software; if not,
 # see http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt
 
-import gzip
-from xml.etree.ElementTree import iterparse
-#from xml.etree.cElementTree import iterparse
+from xml.etree.cElementTree import iterparse
 
 
 COMMON_SPEC_URL = 'http://linux.duke.edu/metadata/common'
@@ -215,42 +213,4 @@ def _process_file_element(file_element):
     file_info['path'] = file_element.text
 
     return file_info
-
-# testing ----------------------------------------------------------------------
-
-def parse_primary(primary_xml_file_path):
-    import resource
-    from datetime import datetime
-    from pprint import pprint
-
-    if primary_xml_file_path.endswith('.gz'):
-        primary_handle = gzip.open(primary_xml_file_path, 'r')
-    else:
-        primary_handle = open(primary_xml_file_path, 'r')
-
-    usage = resource.getrusage(resource.RUSAGE_SELF)
-    start_mem_usage = usage.ru_idrss + usage.ru_ixrss
-
-    start_time = datetime.now()
-
-    package_info_generator = primary_package_list_generator(primary_handle)
-
-    for package_info in package_info_generator:
-        #pprint(package_info)
-        pass
-
-    finish_time = datetime.now()
-
-    usage = resource.getrusage(resource.RUSAGE_SELF)
-    finish_mem_usage = usage.ru_idrss + usage.ru_ixrss
-
-    print 'time elapsed: %s' % str(finish_time - start_time)
-    print 'memory usage: %s' % str(finish_mem_usage - start_mem_usage)
-
-
-if __name__ == '__main__':
-    import sys
-    primary_path = sys.argv[-1]
-    #primary_path = '/Users/jasonconnor/Downloads/ebab889576b7c4300036a89f8d41014a10c28874b8e3842e7a7cc0c6b83e30a3-primary.xml.gz'
-    parse_primary(primary_path)
 
