@@ -15,10 +15,10 @@ from urlparse import urlparse
 
 from pulp.client.arg_utils import (InvalidConfig, convert_file_contents,
                                    convert_removed_options)
-from pulp.client.commands.criteria import CriteriaCommand
 from pulp.client.commands.repo.cudl import (CreateRepositoryCommand, ListRepositoriesCommand,
                                             UpdateRepositoryCommand)
 from pulp.client.commands import options as std_options
+from pulp.common import constants as pulp_constants
 from pulp.common.util import encode_unicode
 
 from pulp_rpm.common import constants, ids
@@ -96,7 +96,7 @@ class RpmRepoCreateCommand(CreateRepositoryCommand):
         notes = kwargs.pop(std_options.OPTION_NOTES.keyword) or {}
 
         # Add a note to indicate this is a Puppet repository
-        notes[constants.REPO_NOTE_KEY] = constants.REPO_NOTE_RPM
+        notes[pulp_constants.REPO_NOTE_TYPE_KEY] = constants.REPO_NOTE_RPM
 
         try:
             importer_config = args_to_importer_config(kwargs)
@@ -237,7 +237,7 @@ class RpmRepoListCommand(ListRepositoriesCommand):
         rpm_repos = []
         for repo in all_repos:
             notes = repo['notes']
-            if constants.REPO_NOTE_KEY in notes and notes[constants.REPO_NOTE_KEY] == constants.REPO_NOTE_RPM:
+            if pulp_constants.REPO_NOTE_TYPE_KEY in notes and notes[pulp_constants.REPO_NOTE_TYPE_KEY] == constants.REPO_NOTE_RPM:
                 rpm_repos.append(repo)
 
         # There isn't really anything compelling in the exporter distributor
@@ -271,7 +271,7 @@ class RpmRepoListCommand(ListRepositoriesCommand):
         non_rpm_repos = []
         for repo in all_repos:
             notes = repo['notes']
-            if notes.get(constants.REPO_NOTE_KEY, None) != constants.REPO_NOTE_RPM:
+            if notes.get(pulp_constants.REPO_NOTE_TYPE_KEY, None) != constants.REPO_NOTE_RPM:
                 non_rpm_repos.append(repo)
 
         return non_rpm_repos
@@ -284,32 +284,6 @@ class RpmRepoListCommand(ListRepositoriesCommand):
 
         return self.all_repos_cache
 
-
-
-class RpmRepoSearchCommand(CriteriaCommand):
-
-    def __init__(self, context):
-        super(RpmRepoSearchCommand, self).__init__(self.run, name='search',
-                                                   description=DESC_SEARCH,
-                                                   include_search=True)
-
-        self.context = context
-        self.prompt = context.prompt
-
-    def run(self, **kwargs):
-        self.prompt.render_title(_('Repositories'))
-
-        # Limit to only RPM repositories
-        if kwargs.get('str-eq', None) is None:
-            kwargs['str-eq'] = []
-        kwargs['str-eq'].append(['notes.%s' % constants.REPO_NOTE_KEY, constants.REPO_NOTE_RPM])
-
-        # Server call
-        repo_list = self.context.server.repo_search.search(**kwargs)
-
-        # Display the results
-        order = ['id', 'display_name', 'description']
-        self.prompt.render_document_list(repo_list, order=order)
 
 # -- utilities ----------------------------------------------------------------
 
