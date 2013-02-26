@@ -14,8 +14,10 @@
 Contains classes and functions related to tracking the progress of the ISO
 importer.
 """
+from datetime import datetime
+
 from pulp_rpm.common import reporting
-from pulp_rpm.common.constants import STATE_COMPLETE, STATE_NOT_STARTED
+from pulp_rpm.common.constants import STATE_COMPLETE, STATE_FAILED, STATE_NOT_STARTED, STATE_RUNNING
 
 
 class SyncProgressReport(object):
@@ -30,38 +32,51 @@ class SyncProgressReport(object):
         self.conduit = conduit
 
         # Manifest download & parsing
-        self.manifest_state = STATE_NOT_STARTED
-        self.manifest_query_finished_count = None
-        self.manifest_query_total_count = None
-        self.manifest_current_query = None
+        self._manifest_state = STATE_NOT_STARTED
+        # How long retrieving the manifest took, in seconds
         self.manifest_execution_time = None
         self.manifest_error_message = None
         self.manifest_exception = None
         self.manifest_traceback = None
 
         # ISO download
-        self.isos_state = STATE_NOT_STARTED
+        self._isos_state = STATE_NOT_STARTED
         self.isos_execution_time = None
+        self.isos_total_bytes = None
         self.isos_total_count = None
-        self.isos_finished_count = None
-        self.isos_error_count = None
+        self.isos_finished_bytes = 0
+        self.isos_finished_count = 0
+        self.isos_error_count = 0
         # mapping of iso to its error
-        self.isos_individual_errors = None
+        self.isos_individual_errors = {}
         # overall execution error
         self.isos_error_message = None
         self.isos_exception = None
         self.isos_traceback = None
 
-    def add_failed_iso(self, iso, exception, traceback):
+    def _get_isos_state(self):
+        return self._isos_state
+
+    def _set_isos_state(self, new_state):
+        self._set_timed_state('_isos_state', '_isos_start_time', 'isos_execution_time', new_state)
+
+    isos_state = property(_get_isos_state, _set_isos_state)
+
+    def _get_manifest_state(self):
+        return self._manifest_state
+
+    def _set_manifest_state(self, new_state):
+        self._set_timed_state('_manifest_state', '_manifest_start_time', 'manifest_execution_time', new_state)
+
+    manifest_state = property(_get_manifest_state, _set_manifest_state)
+
+    def add_failed_iso(self, iso, error_report):
         """
         Updates the progress report that a iso failed to be imported.
         """
         self.isos_error_count += 1
-        self.isos_individual_errors = self.isos_individual_errors or {}
-        error_key = '%s-%s-%s' % (iso.name, iso.version, iso.author)
-        self.isos_individual_errors[error_key] = {
-            'exception': reporting.format_exception(exception),
-            'traceback': reporting.format_traceback(traceback),
+        self.isos_individual_errors[iso['name']] = {
+            'error_report': error_report,
         }
 
     def build_final_report(self):
@@ -71,6 +86,8 @@ class SyncProgressReport(object):
         course of its usage, therefore this call should only be invoked
         when it is time to return the report.
         """
+        if self.isos_error_count != 0:
+            self.isos_state = STATE_FAILED
 
         # Report fields
         total_execution_time = -1
@@ -136,9 +153,6 @@ class SyncProgressReport(object):
         m = report['manifest']
         r.manifest_state = m['state']
         r.manifest_execution_time = m['execution_time']
-        r.manifest_current_query = m['current_query']
-        r.manifest_query_finished_count = m['query_finished_count']
-        r.manifest_query_total_count = m['query_total_count']
         r.manifest_error_message = m['error_message']
         r.manifest_exception = m['error']
         r.manifest_traceback = m['traceback']
@@ -181,11 +195,40 @@ class SyncProgressReport(object):
         manifest_report = {
             'state': self.manifest_state,
             'execution_time': self.manifest_execution_time,
-            'current_query': self.manifest_current_query,
-            'query_finished_count': self.manifest_query_finished_count,
-            'query_total_count': self.manifest_query_total_count,
             'error_message': self.manifest_error_message,
             'error': reporting.format_exception(self.manifest_exception),
             'traceback': reporting.format_traceback(self.manifest_traceback),
         }
         return manifest_report
+
+    def _set_timed_state(self, state_attribute_name, start_time_attribute_name, execution_time_attribute_name,
+                         new_state):
+        """
+        For the manifest_state and isos_state attributes, we have special setter properties that also time
+        how long it takes them to move from a running state to a complete or failed state. This method is used
+        by both of those properties to keep track of how long the state transition takes, and it also sets the
+        appropriate state on the progress report.
+
+        :param state_attribute_name:          The name of the attribute on self where the new state should be
+                                              stored
+        :type  state_attribute_name:          basestring
+        :param start_time_attribute_name:     The name of an attribute on self that should be used to store
+                                              the time when the attribute entered a running state.
+        :type  start_time_attribute_name:     basestring
+        :param execution_time_attribute_name: The name of an attribute on self that should be used to store
+                                              the calculated execution time.
+        :type  execution_time_attribute_name: basestring
+        :param new_state:                     The new state that should be set onto self.state_attribute_name
+        :type  new_state:                     basestring
+        """
+        current_state = getattr(self, state_attribute_name)
+        if current_state == STATE_NOT_STARTED and new_state == STATE_RUNNING:
+            setattr(self, start_time_attribute_name, datetime.utcnow())
+
+        if current_state == STATE_RUNNING and new_state in [STATE_COMPLETE or STATE_FAILED]:
+            execution_time = datetime.utcnow() - getattr(self, start_time_attribute_name)
+            execution_time = (execution_time.days * 3600 * 24) + \
+                             execution_time.seconds
+            setattr(self, execution_time_attribute_name, execution_time)
+
+        setattr(self, state_attribute_name, new_state)
