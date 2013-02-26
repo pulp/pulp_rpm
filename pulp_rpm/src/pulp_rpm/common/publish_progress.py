@@ -26,81 +26,43 @@ class PublishProgressReport(object):
     result of the operation.
     """
 
-    @classmethod
-    def from_progress_dict(cls, report):
-        """
-        Parses the output from the build_progress_report method into an instance
-        of this class. The intention is to use this client-side to reconstruct
-        the instance as it is retrieved from the server.
-
-        The build_final_report call on instances returned from this call will
-        not function as it requires the server-side conduit to be provided.
-        Additionally, any exceptions and tracebacks will be a text representation
-        instead of formal objects.
-
-        :param report: progress report retrieved from the server's task
-        :type  report: dict
-        :return: instance populated with the state in the report
-        :rtype:  PublishProgressReport
-        """
-
-        r = cls(None)
-
-        m = report['modules']
-        r.modules_state = m['state']
-        r.modules_execution_time = m['execution_time']
-        r.modules_total_count = m['total_count']
-        r.modules_finished_count = m['finished_count']
-        r.modules_error_count = m['error_count']
-        r.modules_individual_errors = m['individual_errors']
-        r.modules_error_message = m['error_message']
-        r.modules_exception = m['error']
-        r.modules_traceback = m['traceback']
-
-        m = report['metadata']
-        r.metadata_state = m['state']
-        r.metadata_execution_time = m['execution_time']
-        r.metadata_error_message = m['error_message']
-        r.metadata_exception = m['error']
-        r.metadata_traceback = m['traceback']
-
-        m = report['publishing']
-        r.publish_http = m['http']
-        r.publish_https = m['https']
-
-        return r
-
     def __init__(self, conduit):
         self.conduit = conduit
 
         # Modules symlink step
-        self.modules_state = STATE_NOT_STARTED
-        self.modules_execution_time = None
-        self.modules_total_count = None
-        self.modules_finished_count = None
-        self.modules_error_count = None
-        self.modules_individual_errors = None # mapping of module to its error
-        self.modules_error_message = None # overall execution error
-        self.modules_exception = None
-        self.modules_traceback = None
+        self.isos_state = STATE_NOT_STARTED
+        self.isos_execution_time = None
+        self.isos_total_count = None
+        self.isos_finished_count = 0
+        self.isos_error_count = 0
+        # mapping of iso to its error
+        self.isos_individual_errors = {}
+        # overall execution error
+        self.isos_error_message = None
+        self.isos_exception = None
+        self.isos_traceback = None
 
-        # Metadata generation
-        self.metadata_state = STATE_NOT_STARTED
-        self.metadata_execution_time = None
-        self.metadata_error_message = None
-        self.metadata_exception = None
-        self.metadata_traceback = None
+        # Manifest generation
+        self.manifest_state = STATE_NOT_STARTED
+        self.manifest_execution_time = None
+        self.manifest_error_message = None
+        self.manifest_exception = None
+        self.manifest_traceback = None
 
         # Publishing
         self.publish_http = STATE_NOT_STARTED
         self.publish_https = STATE_NOT_STARTED
 
-    def update_progress(self):
+    def add_failed_iso(self, unit, error_message):
         """
-        Sends the current state of the progress report to Pulp.
+        Updates the progress report that a iso failed to be built to the
+        repository.
+
+        :param unit: Pulp representation of the iso
+        :type  unit: pulp.plugins.model.AssociatedUnit
         """
-        report = self.build_progress_report()
-        self.conduit.set_progress(report)
+        self.isos_error_count += 1
+        self.isos_individual_errors[unit.unit_key['name']] = error_message
 
     def build_final_report(self):
         """
@@ -112,17 +74,18 @@ class PublishProgressReport(object):
 
         # Report fields
         total_execution_time = -1
-        if self.metadata_execution_time is not None and self.modules_execution_time is not None:
-            total_execution_time = self.metadata_execution_time + self.modules_execution_time
+        if self.manifest_execution_time is not None and self.isos_execution_time is not None:
+            total_execution_time = self.manifest_execution_time + self.isos_execution_time
 
         summary = {
-            'total_execution_time' : total_execution_time
+            'total_execution_time': total_execution_time
         }
 
-        details = {} # intentionally empty; not sure what to put in here
+        # intentionally empty; not sure what to put in here
+        details = {}
 
         # Determine if the report was successful or failed
-        all_step_states = (self.metadata_state, self.modules_state, self.publish_http,
+        all_step_states = (self.manifest_state, self.isos_state, self.publish_http,
                            self.publish_https)
         unsuccessful_steps = [s for s in all_step_states if s != STATE_COMPLETE]
 
@@ -143,51 +106,86 @@ class PublishProgressReport(object):
         """
 
         report = {
-            'modules' : self._modules_section(),
-            'metadata' : self._metadata_section(),
-            'publishing' : self._publishing_section(),
+            'isos': self._isos_section(),
+            'manifest': self._manifest_section(),
+            'publishing': self._publishing_section(),
         }
         return report
 
-    def add_failed_module(self, unit, traceback):
+    @classmethod
+    def from_progress_dict(cls, report):
         """
-        Updates the progress report that a module failed to be built to the
-        repository.
+        Parses the output from the build_progress_report method into an instance
+        of this class. The intention is to use this client-side to reconstruct
+        the instance as it is retrieved from the server.
 
-        :param unit: Pulp representation of the module
-        :type  unit: pulp.plugins.model.AssociatedUnit
+        The build_final_report call on instances returned from this call will
+        not function as it requires the server-side conduit to be provided.
+        Additionally, any exceptions and tracebacks will be a text representation
+        instead of formal objects.
+
+        :param report: progress report retrieved from the server's task
+        :type  report: dict
+        :return: instance populated with the state in the report
+        :rtype:  PublishProgressReport
         """
-        self.modules_error_count += 1
-        self.modules_individual_errors = self.modules_individual_errors or {}
-        error_key = '%s-%s-%s' % (unit.unit_key['name'], unit.unit_key['version'], unit.unit_key['author'])
 
-# -- report creation methods ----------------------------------------------
+        r = cls(None)
 
-    def _modules_section(self):
-        modules_report = {
-            'state' : self.modules_state,
-            'execution_time' : self.modules_execution_time,
-            'total_count' : self.modules_total_count,
-            'finished_count' : self.modules_finished_count,
-            'error_count' : self.modules_error_count,
-            'individual_errors' : self.modules_individual_errors,
-            'error_message' : self.modules_error_message,
+        m = report['isos']
+        r.isos_state = m['state']
+        r.isos_execution_time = m['execution_time']
+        r.isos_total_count = m['total_count']
+        r.isos_finished_count = m['finished_count']
+        r.isos_error_count = m['error_count']
+        r.isos_individual_errors = m['individual_errors']
+        r.isos_error_message = m['error_message']
+        r.isos_exception = m['error']
+        r.isos_traceback = m['traceback']
+
+        m = report['manifest']
+        r.manifest_state = m['state']
+        r.manifest_execution_time = m['execution_time']
+        r.manifest_error_message = m['error_message']
+        r.manifest_exception = m['error']
+        r.manifest_traceback = m['traceback']
+
+        m = report['publishing']
+        r.publish_http = m['http']
+        r.publish_https = m['https']
+
+        return r
+
+    def update_progress(self):
+        """
+        Sends the current state of the progress report to Pulp.
+        """
+        report = self.build_progress_report()
+        self.conduit.set_progress(report)
+
+    def _isos_section(self):
+        isos_report = {
+            'state': self.isos_state,
+            'execution_time': self.isos_execution_time,
+            'total_count': self.isos_total_count,
+            'finished_count': self.isos_finished_count,
+            'error_count': self.isos_error_count,
+            'individual_errors': self.isos_individual_errors,
+            'error_message': self.isos_error_message
         }
-        return modules_report
+        return isos_report
 
-    def _metadata_section(self):
-        metadata_report = {
-            'state' : self.metadata_state,
-            'execution_time' : self.metadata_execution_time,
-            'error_message' : self.metadata_error_message,
-            # 'error' : reporting.format_exception(self.metadata_exception),
-            # 'traceback' : reporting.format_traceback(self.metadata_traceback),
+    def _manifest_section(self):
+        manifest_report = {
+            'state': self.manifest_state,
+            'execution_time': self.manifest_execution_time,
+            'error_message': self.manifest_error_message,
             }
-        return metadata_report
+        return manifest_report
 
     def _publishing_section(self):
         publishing_report = {
-            'http' : self.publish_http,
-            'https' : self.publish_https,
+            'http': self.publish_http,
+            'https': self.publish_https,
         }
         return publishing_report

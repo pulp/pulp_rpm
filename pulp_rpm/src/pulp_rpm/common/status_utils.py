@@ -136,4 +136,3 @@ def render_itemized_in_progress_state(prompt, data, type_name, progress_bar, sta
             prompt.render_failure_message(message)
 
         prompt.render_spacer()
-
