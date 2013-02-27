@@ -741,7 +741,7 @@ class YumDistributor(Distributor):
                 del scratchpad[constants.PUBLISHED_DISTRIBUTION_FILES_KEY][distroid]
         return scratchpad
 
-    def create_consumer_payload(self, repo, config):
+    def create_consumer_payload(self, repo, config, binding_config):
         payload = {}
         ##TODO for jdob: load the pulp.conf and make it accessible to distributor
         payload['repo_name'] = repo.display_name
