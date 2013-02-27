@@ -16,7 +16,7 @@ import os
 import shutil
 import tempfile
 
-from pulp_rpm.common import constants, ids, publish_progress
+from pulp_rpm.common import constants, ids, progress
 from pulp_rpm.plugins.distributors.iso_distributor import publish
 from rpm_support_base import PulpRPMTests
 import distributor_mocks
@@ -96,7 +96,7 @@ class TestPublish(PulpRPMTests):
         """
         repo = MagicMock(spec=Repository)
         repo.working_dir = self.temp_dir
-        progress_report = publish_progress.PublishProgressReport(self.publish_conduit)
+        progress_report = progress.PublishProgressReport(self.publish_conduit)
 
         publish._build_metadata(repo, self.existing_units, progress_report)
 
@@ -119,7 +119,7 @@ class TestPublish(PulpRPMTests):
         repo = MagicMock(spec=Repository)
         repo.id = 'lebowski'
         repo.working_dir = self.temp_dir
-        progress_report = publish_progress.PublishProgressReport(self.publish_conduit)
+        progress_report = progress.PublishProgressReport(self.publish_conduit)
         config = distributor_mocks.get_basic_config(**{constants.CONFIG_SERVE_HTTP: True,
                                                        constants.CONFIG_SERVE_HTTPS: True})
 
@@ -214,7 +214,7 @@ class TestPublish(PulpRPMTests):
         """
         repo = MagicMock(spec=Repository)
         repo.working_dir = self.temp_dir
-        progress_report = publish_progress.PublishProgressReport(self.publish_conduit)
+        progress_report = progress.PublishProgressReport(self.publish_conduit)
 
         # There's some logic in _symlink_units to handle preexisting files and symlinks, so let's
         # create some fakes to see if it does the right thing
@@ -240,7 +240,7 @@ class TestPublish(PulpRPMTests):
         """
         repo = MagicMock(spec=Repository)
         repo.working_dir = self.temp_dir
-        progress_report = publish_progress.PublishProgressReport(self.publish_conduit)
+        progress_report = progress.PublishProgressReport(self.publish_conduit)
 
         # There's some logic in _symlink_units to handle preexisting files and symlinks, so let's
         # create some fakes to see if it does the right thing
@@ -274,7 +274,7 @@ class TestPublish(PulpRPMTests):
 
         repo = MagicMock(spec=Repository)
         repo.working_dir = self.temp_dir
-        progress_report = publish_progress.PublishProgressReport(self.publish_conduit)
+        progress_report = progress.PublishProgressReport(self.publish_conduit)
 
         # There's some logic in _symlink_units to handle preexisting files and symlinks, so let's
         # create some fakes to see if it does the right thing

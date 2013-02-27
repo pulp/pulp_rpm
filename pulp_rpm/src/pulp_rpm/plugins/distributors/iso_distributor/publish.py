@@ -18,7 +18,7 @@ import os
 import shutil
 
 from pulp_rpm.common import constants
-from pulp_rpm.common.publish_progress import PublishProgressReport
+from pulp_rpm.common.progress import PublishProgressReport
 
 
 logger = logging.getLogger(__name__)
