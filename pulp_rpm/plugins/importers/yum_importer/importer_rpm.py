@@ -215,6 +215,7 @@ def force_ascii(value):
         retval = value.encode('ascii', 'ignore')
     return retval
 
+
 def get_yumRepoGrinder(repo_id, repo_working_dir, config):
     """
     @param repo_id repo id
@@ -231,7 +232,7 @@ def get_yumRepoGrinder(repo_id, repo_working_dir, config):
     """
     repo_label = repo_id
     repo_url = config.get("feed_url")
-    num_threads = config.get("num_threads") or 1
+    num_threads = config.get("num_threads") or 4
     proxy_url = force_ascii(config.get("proxy_url"))
     proxy_port = force_ascii(config.get("proxy_port"))
     proxy_user = force_ascii(config.get("proxy_user"))
@@ -264,6 +265,7 @@ def get_yumRepoGrinder(repo_id, repo_working_dir, config):
         remove_old=remove_old, numOldPackages=num_old_packages, skip=skip, max_speed=max_speed,\
         purge_orphaned=purge_orphaned, distro_location=constants.DISTRIBUTION_STORAGE_PATH, tmp_path=repo_working_dir)
     return yumRepoGrinder
+
 
 def _search_for_error(rpm_dict):
     errors = {}
