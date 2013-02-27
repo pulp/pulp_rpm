@@ -85,7 +85,7 @@ a day.
 
 
 Use a Proxy
------------
+===========
 
 Using a web proxy is fairly straight-forward. Proxy details are specified when
 creating the repository, as in this example:
@@ -100,6 +100,21 @@ creating the repository, as in this example:
 .. warning::
   The password is stored in clear text and may be presented in clear text by the
   command line utility. Do not use sensitive credentials for your web proxy.
+
+Alternatively, Pulp can be configured to use a specific proxy for all yum
+repositories by adding the following settings to
+``/usr/lib/pulp/plugins/importers/yum_importer/yum_importer.conf``
+
+::
+
+  {
+   "proxy_url" : "<url>",
+   "proxy_port" : <port>,
+   "proxy_user" : "<username>",
+   "proxy_pass" : "<pass>"
+  }
+
+.. note:: This is a JSON file, so care must be taken when editing it.
 
 
 Sync a Protected Repo
