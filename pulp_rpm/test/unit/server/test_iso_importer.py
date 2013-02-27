@@ -22,13 +22,14 @@ import importer_mocks
 from pulp.plugins.model import Repository, Unit
 import mock
 
+
 class TestEntryPoint(PulpRPMTests):
     def test_entry_point(self):
         iso_importer, config = importer.entry_point()
         self.assertEqual(iso_importer, importer.ISOImporter)
         self.assertEqual(config, {})
-        
-        
+
+
 class TestISOImporter(PulpRPMTests):
     """
     Test the ISOImporter object.
@@ -40,19 +41,19 @@ class TestISOImporter(PulpRPMTests):
 
     def tearDown(self):
         shutil.rmtree(self.temp_dir)
-        
+
     def test_cancel_sync_repo(self):
         """
         Make sure the cancel sync gets passed on.
         """
         self.iso_importer.iso_sync = mock.MagicMock(spec=sync.ISOSyncRun)
-        
+
         # We can pass None for both arguments, because cancel_sync_repo doesn't use its args
         self.iso_importer.cancel_sync_repo(None, None)
-        
+
         # Assert that the mock cancel has been called once, with no args
         self.iso_importer.iso_sync.cancel_sync.assert_called_once_with()
-        
+
     def test_import_units__units_none(self):
         """
         Make sure that when units=None, we import all units from the import_conduit.
@@ -118,8 +119,7 @@ class TestISOImporter(PulpRPMTests):
 
     @mock.patch('pulp.common.download.backends.curl.pycurl.Curl', side_effect=importer_mocks.ISOCurl)
     @mock.patch('pulp.common.download.backends.curl.pycurl.CurlMulti', side_effect=importer_mocks.CurlMulti)
-    @mock.patch('pulp_rpm.plugins.importers.iso_importer.sync.SyncProgressReport', autospec=True)
-    def test_sync_repo(self, progress_report, curl_multi, curl):
+    def test_sync_repo(self, curl_multi, curl):
         repo = mock.MagicMock(spec=Repository)
         working_dir = os.path.join(self.temp_dir, "working")
         os.mkdir(working_dir)
@@ -133,10 +133,10 @@ class TestISOImporter(PulpRPMTests):
             ssl_ca_cert="Uh, I guess that's the right server.",
             proxy_url='http://proxy.com', proxy_port='1234', proxy_user="the_dude",
             proxy_password='bowling')
-        
+
         # Now run the sync
         report = self.iso_importer.sync_repo(repo, sync_conduit, config)
-        
+
         # There should now be three Units in the DB, one for each of the three ISOs that our mocks
         # got us.
         units = [tuple(call)[1][0] for call in sync_conduit.save_unit.mock_calls]
@@ -162,14 +162,14 @@ class TestISOImporter(PulpRPMTests):
             with open(unit.storage_path) as data:
                 contents = data.read()
             self.assertEqual(contents, expected_unit['contents'])
-            
+
     def test_upload_unit(self):
         """
         This method should raise NotImplemented.
         """
         self.assertRaises(NotImplementedError, self.iso_importer.upload_unit, None, None, None, None, None,
                           None, None)
-    
+
     def test_validate_config(self):
         """
         We already have a seperate test module for config validation, but we can get 100% test coverage with
@@ -181,7 +181,7 @@ class TestISOImporter(PulpRPMTests):
         status, error_message = self.iso_importer.validate_config(None, config, None)
         self.assertTrue(status)
         self.assertEqual(error_message, None)
-        
+
         config = importer_mocks.get_basic_config(**{constants.CONFIG_FEED_URL: "http://test.com/feed",
                                                     constants.CONFIG_MAX_SPEED: -42})
         status, error_message = self.iso_importer.validate_config(None, config, None)
