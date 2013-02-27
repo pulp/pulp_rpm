@@ -184,7 +184,7 @@ class TestErrataApplicability(PulpRPMTests):
             manager = managers.consumer_manager()
             manager.register(id)
             manager = managers.consumer_bind_manager()
-            manager.bind(id, self.REPO_ID, FakeDistributor.ID)
+            manager.bind(id, self.REPO_ID, FakeDistributor.ID, True, None)
             self.populate_profile(id, env)
 
     def populate_profile(self, id, env):
