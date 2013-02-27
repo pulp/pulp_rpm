@@ -13,11 +13,6 @@
 
 from gettext import gettext as _
 
-from pulp.client.commands.consumer.manage import (
-    ConsumerUnregisterCommand, ConsumerUpdateCommand)
-from pulp.client.commands.consumer.query import (
-    ConsumerListCommand, ConsumerSearchCommand, ConsumerHistoryCommand)
-
 from pulp_rpm.extension.admin import structure
 
 import consumer_group_cudl
@@ -37,12 +32,6 @@ def initialize(context):
     consumer_section = root_section.create_subsection('consumer', consumer_description)
 
     # Basic consumer commands
-    consumer_section.add_command(ConsumerListCommand(context))
-    consumer_section.add_command(ConsumerUpdateCommand(context))
-    consumer_section.add_command(ConsumerUnregisterCommand(context))
-    consumer_section.add_command(ConsumerSearchCommand(context))
-    consumer_section.add_command(ConsumerHistoryCommand(context))
-
     consumer_section.add_command(YumConsumerBindCommand(context))
     consumer_section.add_command(YumConsumerUnbindCommand(context))
 
