@@ -114,6 +114,8 @@ repositories by adding the following settings to
    "proxy_pass" : "<pass>"
   }
 
+.. note:: This is a JSON file, so care must be taken when editing it.
+
 
 Sync a Protected Repo
 =====================
