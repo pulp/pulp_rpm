@@ -637,7 +637,7 @@ class TestDistributor(rpm_support_base.PulpRPMTests):
         repo.working_dir = self.repo_working_dir
         repo.id = "test_payload"
         repo.display_name = 'Nice Repo'
-        payload = distributor.create_consumer_payload(repo, config)
+        payload = distributor.create_consumer_payload(repo, config, None)
         for field in PAYLOAD_FIELDS:
             print field
             self.assertTrue(field in payload)
