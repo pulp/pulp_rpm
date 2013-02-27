@@ -225,7 +225,7 @@ class SyncProgressReport(object):
         if current_state == STATE_NOT_STARTED and new_state == STATE_RUNNING:
             setattr(self, start_time_attribute_name, datetime.utcnow())
 
-        if current_state == STATE_RUNNING and new_state in [STATE_COMPLETE or STATE_FAILED]:
+        if current_state == STATE_RUNNING and new_state in [STATE_COMPLETE, STATE_FAILED]:
             execution_time = datetime.utcnow() - getattr(self, start_time_attribute_name)
             execution_time = (execution_time.days * 3600 * 24) + \
                              execution_time.seconds
