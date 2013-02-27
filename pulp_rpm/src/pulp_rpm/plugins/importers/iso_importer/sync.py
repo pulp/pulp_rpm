@@ -81,12 +81,30 @@ class ISOSyncRun(listener.DownloadEventListener):
         """
         This is the callback that we will get from the downloader library when any individual download fails.
         """
-        # If we have a download failure during the metadata phase, we should set the report to failed for that
+        # If we have a download failure during the manifest phase, we should set the report to failed for that
         # phase.
-        if self.progress_report.metadata_state == STATE_RUNNING:
-            self.progress_report.metadata_state = STATE_FAILED
+        if self.progress_report.manifest_state == STATE_RUNNING:
+            self.progress_report.manifest_state = STATE_FAILED
+        elif self.progress_report.isos_state == STATE_RUNNING:
+            iso = self._url_iso_map[report.url]
+            self.progress_report.add_failed_iso(iso, report.error_report)
+            del self._url_iso_map[report.url]
+        self.progress_report.update_progress()
+
+    def download_progress(self, report):
+        """
+        We will get notified from time to time about some bytes we've downloaded. We can update our progress
+        report with this information so the client can see the progress.
+
+        :param report: The report of the file we are downloading
+        :type  report: pulp.common.download.report.DownloadReport
+        """
+        if self.progress_report.isos_state == STATE_RUNNING:
+            iso = self._url_iso_map[report.url]
+            additional_bytes_downloaded = report.bytes_downloaded - iso['bytes_downloaded']
+            self.progress_report.isos_finished_bytes += additional_bytes_downloaded
+            iso['bytes_downloaded'] = report.bytes_downloaded
             self.progress_report.update_progress()
-        del self._url_iso_map[report.url]
 
     def download_succeeded(self, report):
         """
@@ -99,12 +117,16 @@ class ISOSyncRun(listener.DownloadEventListener):
         """
         # If we are in the isos stage, then this must be one of our ISOs.
         if self.progress_report.isos_state == STATE_RUNNING:
+            # This will update our bytes downloaded
+            self.download_progress(report)
             iso = self._url_iso_map[report.url]
             try:
                 if self._validate_downloads:
                     self._validate_download(iso)
                 self.sync_conduit.save_unit(iso['unit'])
                 # We can drop this ISO from the url --> ISO map
+                self.progress_report.isos_finished_count += 1
+                self.progress_report.update_progress()
                 del self._url_iso_map[report.url]
             except ValueError:
                 self.download_failed(report)
@@ -117,13 +139,11 @@ class ISOSyncRun(listener.DownloadEventListener):
         :return:             The sync report
         :rtype:              pulp.plugins.model.SyncReport
         """
-        # Build the progress report and set it to the running state
-
         # Get the manifest and download the ISOs that we are missing
-        self.progress_report.metadata_state = STATE_RUNNING
+        self.progress_report.manifest_state = STATE_RUNNING
         self.progress_report.update_progress()
         manifest = self._download_manifest()
-        self.progress_report.metadata_state = STATE_COMPLETE
+        self.progress_report.manifest_state = STATE_COMPLETE
 
         # Go get them filez
         self.progress_report.isos_state = STATE_RUNNING
@@ -148,6 +168,8 @@ class ISOSyncRun(listener.DownloadEventListener):
                          dictionaries with at least the following keys: name, checksum, size, and url.
         :type  manifest: list
         """
+        self.progress_report.isos_total_bytes = 0
+        self.progress_report.isos_total_count = len(manifest)
         # For each ISO in the manifest, we need to determine a relative path where we want it to be stored,
         # and initialize the Unit that will represent it
         for iso in manifest:
@@ -158,6 +180,10 @@ class ISOSyncRun(listener.DownloadEventListener):
             unit = self.sync_conduit.init_unit(ids.TYPE_ID_ISO, unit_key, metadata, relative_path)
             iso['destination'] = unit.storage_path
             iso['unit'] = unit
+            iso['bytes_downloaded'] = 0
+            # Set the total bytes onto the report
+            self.progress_report.isos_total_bytes += iso['size']
+        self.progress_report.update_progress()
         # We need to build a list of DownloadRequests
         download_requests = [request.DownloadRequest(iso['url'], iso['destination']) for iso in manifest]
         # Let's build an index from URL to the manifest unit dictionary, so that we can access data like the
@@ -180,7 +206,7 @@ class ISOSyncRun(listener.DownloadEventListener):
         manifest_request = request.DownloadRequest(manifest_url, manifest_destiny)
         self.downloader.download([manifest_request])
         # We can inspect the report status to see if we had an error when retrieving the manifest.
-        if self.progress_report.metadata_state == STATE_FAILED:
+        if self.progress_report.manifest_state == STATE_FAILED:
             raise IOError(_("Could not retrieve %(url)s") % {'url': manifest_url})
 
         # Now let's process the manifest and return a list of resources that we'd like to download
