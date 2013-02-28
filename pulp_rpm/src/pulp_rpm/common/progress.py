@@ -24,7 +24,7 @@ class ISOProgressReport(object):
     def __init__(self, conduit):
         self.conduit = conduit
 
-        # ISO download
+        # These variables track the state of the ISO download stage
         self._isos_state = STATE_NOT_STARTED
         self.isos_execution_time = None
         self.isos_total_count = None
@@ -37,7 +37,7 @@ class ISOProgressReport(object):
         self.isos_exception = None
         self.isos_traceback = None
 
-        # Manifest generation
+        # Manifest download and generation
         self._manifest_state = STATE_NOT_STARTED
         self.manifest_execution_time = None
         self.manifest_error_message = None
@@ -199,7 +199,7 @@ class PublishProgressReport(ISOProgressReport):
     def __init__(self, conduit):
         super(self.__class__, self).__init__(conduit)
 
-        # Publishing
+        # Publishing state
         self.publish_http = STATE_NOT_STARTED
         self.publish_https = STATE_NOT_STARTED
 
@@ -291,6 +291,7 @@ class SyncProgressReport(ISOProgressReport):
     def __init__(self, conduit):
         super(self.__class__, self).__init__(conduit)
 
+        # Let's also track how many bytes we've got on the ISOs
         self.isos_total_bytes = None
         self.isos_finished_bytes = 0
 
