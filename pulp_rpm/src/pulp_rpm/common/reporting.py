@@ -18,7 +18,7 @@ import traceback
 
 
 def format_exception(e):
-    """ 
+    """
     Formats the given exception to be included in the report.
 
     :return: string representation of the exception
@@ -28,7 +28,7 @@ def format_exception(e):
 
 
 def format_traceback(tb):
-    """ 
+    """
     Formats the given traceback to be included in the report.
 
     :return: string representation of the traceback

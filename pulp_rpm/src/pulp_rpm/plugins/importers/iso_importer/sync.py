@@ -20,7 +20,7 @@ import os
 
 from pulp_rpm.common import constants, ids
 from pulp_rpm.common.constants import STATE_COMPLETE, STATE_RUNNING, STATE_FAILED
-from pulp_rpm.common.sync_progress import SyncProgressReport
+from pulp_rpm.common.progress import SyncProgressReport
 
 from pulp.common.download import factory, listener, request
 from pulp.common.download.config import DownloaderConfig
