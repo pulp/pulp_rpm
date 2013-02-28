@@ -28,7 +28,7 @@ class Packages(object):
         self.primary_packages_iter = primary_packages_iter
         self.dst_dir = dst_dir or mkdtemp()
 
-        downloader_config = DownloaderConfig(protocol='https', max_concurrent=20)
+        downloader_config = DownloaderConfig(protocol='http')
         event_listener = PackagesDownloadEventListener()
         self.downloader = download_factory.get_downloader(downloader_config, event_listener)
 

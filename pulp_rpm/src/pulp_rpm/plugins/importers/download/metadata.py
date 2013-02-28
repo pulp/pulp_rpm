@@ -48,7 +48,7 @@ class MetadataFiles(object):
         self.repo_url = repo_url
         self.dst_dir = dst_dir or mkdtemp()
 
-        downloader_config = DownloaderConfig('https')
+        downloader_config = DownloaderConfig('http')
         self.downloader = download_factory.get_downloader(downloader_config, MetadataDownloadEventListener())
 
         self.revision = None
