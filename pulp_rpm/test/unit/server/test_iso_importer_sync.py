@@ -18,7 +18,7 @@ import tempfile
 
 from pulp_rpm.common.constants import STATE_COMPLETE, STATE_FAILED, STATE_RUNNING
 from pulp_rpm.common.ids import TYPE_ID_ISO
-from pulp_rpm.common.sync_progress import SyncProgressReport
+from pulp_rpm.common.progress import SyncProgressReport
 from pulp_rpm.plugins.importers.iso_importer.sync import ISOSyncRun
 from rpm_support_base import PulpRPMTests
 import importer_mocks
