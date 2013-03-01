@@ -12,14 +12,13 @@
 # http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt.
 
 import os
-
 from gettext import gettext as _
 
-from pulp_rpm.common import ids
-
 from pulp.client.commands.repo import cudl, sync_publish, upload
+from pulp.client.commands.repo.query import RepoSearchCommand
 from pulp.client.upload import manager as upload_lib
 
+from pulp_rpm.common import constants, ids
 from pulp_rpm.extension.admin import (contents, copy, export, remove, repo,
                                       status, structure, sync_schedules)
 from pulp_rpm.extension.admin.upload import (category, errata, package)
@@ -40,7 +39,7 @@ def initialize(context):
     repo_section.add_command(repo.RpmRepoUpdateCommand(context))
     repo_section.add_command(cudl.DeleteRepositoryCommand(context))
     repo_section.add_command(repo.RpmRepoListCommand(context))
-    repo_section.add_command(repo.RpmRepoSearchCommand(context))
+    repo_section.add_command(RepoSearchCommand(context, constants.REPO_NOTE_RPM))
 
     copy_section = structure.repo_copy_section(context.cli)
     copy_section.add_command(copy.RpmCopyCommand(context))
