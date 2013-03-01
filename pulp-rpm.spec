@@ -174,11 +174,11 @@ to provide RPM specific support.
 %{_usr}/lib/pulp/plugins/distributors/iso_distributor/
 %{_usr}/lib/pulp/plugins/profilers/rpm_errata_profiler/
 %{_usr}/lib/pulp/plugins/profilers/rpm_pkg_profiler/
+%{_sysconfdir}/pulp/vhosts80/rpm.conf
 %defattr(-,apache,apache,-)
 %{_var}/www/pub
 %{_var}/lib/pulp/published/
 %{_sysconfdir}/pki/pulp/content/
-%{_sysconfdir}/pulp/vhosts80/rpm.conf
 /srv/pulp/repo_auth.wsgi
 %doc
 
