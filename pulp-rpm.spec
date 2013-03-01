@@ -178,6 +178,7 @@ to provide RPM specific support.
 %{_var}/www/pub
 %{_var}/lib/pulp/published/
 %{_sysconfdir}/pki/pulp/content/
+%{_sysconfdir}/pulp/vhosts80/rpm.conf
 /srv/pulp/repo_auth.wsgi
 %doc
 
