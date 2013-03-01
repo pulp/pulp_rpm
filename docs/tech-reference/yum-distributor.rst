@@ -1,3 +1,5 @@
+The Yum Distributor id is ``yum_distributor``.
+
 Yum Distributor Configuration options
 =====================================
 

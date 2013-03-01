@@ -1,3 +1,5 @@
+The Yum Importer id is ``yum_importer``.
+
 Yum Importer Configuration options
 ==================================
 

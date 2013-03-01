@@ -14,7 +14,9 @@ Contents:
    types
    yum-importer
    yum-distributor
-
+   export-distributor
+   iso-importer
+   iso-distributor
 
 
 Indices and tables
@@ -23,4 +25,3 @@ Indices and tables
 * :ref:`genindex`
 * :ref:`modindex`
 * :ref:`search`
-
