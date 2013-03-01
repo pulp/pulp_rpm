@@ -95,7 +95,7 @@ class RpmRepoCreateCommand(CreateRepositoryCommand):
         display_name = kwargs.pop(std_options.OPTION_NAME.keyword, None)
         notes = kwargs.pop(std_options.OPTION_NOTES.keyword) or {}
 
-        # Add a note to indicate this is a Puppet repository
+        # Add a note to indicate this is an RPM repository
         notes[pulp_constants.REPO_NOTE_TYPE_KEY] = constants.REPO_NOTE_RPM
 
         try:
