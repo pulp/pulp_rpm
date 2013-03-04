@@ -18,7 +18,7 @@
 
 Name: pulp-rpm
 Version: 2.1.0
-Release: 0.18.alpha
+Release: 0.19.alpha
 Summary: Support for RPM content in the Pulp platform
 Group: Development/Languages
 License: GPLv2
@@ -267,6 +267,15 @@ A collection of yum plugins supplementing Pulp consumer operations.
 
 
 %changelog
+* Mon Mar 04 2013 Jeff Ortel <jortel@redhat.com> 2.1.0-0.19.alpha
+- 902514 - removed the <VirtualHost *:80> block in favor of using the
+  platform's authoritative one. (mhrivnak@redhat.com)
+- 916336 - Change the default num_threads to 4. (rbarlow@redhat.com)
+- 913172 - Fixed a section heading and added info about configuring a proxy for
+  global use (mhrivnak@redhat.com)
+- 889565 - Corrected configuration options from being flags to options
+  (jason.dobies@redhat.com)
+
 * Tue Feb 26 2013 Jeff Ortel <jortel@redhat.com> 2.1.0-0.18.alpha
 - 
 
