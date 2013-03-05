@@ -1,17 +1,19 @@
+===============
+Yum Distributor
+===============
+
 The Yum Distributor id is ``yum_distributor``.
 
-Yum Distributor Configuration options
-=====================================
+Configuration Parameters 
+========================
 
 The following options are available to the yum distributor configuration.
 In the event a repository does not have a feed, the relative path is also
 required. If a feed is specified,the relative path will be derived from it
 unless otherwise overridden.
 
-``relative_url``
- Relative path at which the repository will be served. If this is not specified,
- the relative path is derived from the ``feed_url`` option. For example:
- ``relative_url="rhel_6.2" may translate to publishing at http://localhost/pulp/repos/rhel_6.2``
+Required Configuration Parameters
+---------------------------------
 
 ``http``
  Flag indicating if the repository will be served over a non-SSL connection.
@@ -24,6 +26,14 @@ unless otherwise overridden.
  consumers bound to this repository have the necessary certificate to validate
  the SSL connection. Valid values to this option are ``True`` and ``False``.
  This option is required.
+
+Optional Configuration Parameters
+---------------------------------
+
+``relative_url``
+ Relative path at which the repository will be served. If this is not specified,
+ the relative path is derived from the ``feed_url`` option. For example:
+ ``relative_url="rhel_6.2" may translate to publishing at http://localhost/pulp/repos/rhel_6.2``
 
 ``protected``
  Protect the published repository with repo authentication. Valid values to this

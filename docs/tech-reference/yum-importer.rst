@@ -1,7 +1,12 @@
-The Yum Importer id is ``yum_importer``.
+============
+Yum Importer
+============
 
-Yum Importer Configuration options
-==================================
+The Yum Importer can be used to sync an RPM repository with an upstream feed. The Yum Importer id is
+``yum_importer``.
+
+Configuration Parameters
+========================
 
 The following options are available to the yum importer configuration. All
 configuration values are optional.
