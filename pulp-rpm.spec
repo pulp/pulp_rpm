@@ -18,7 +18,7 @@
 
 Name: pulp-rpm
 Version: 2.1.0
-Release: 0.19.alpha
+Release: 0.20.beta
 Summary: Support for RPM content in the Pulp platform
 Group: Development/Languages
 License: GPLv2
@@ -267,6 +267,9 @@ A collection of yum plugins supplementing Pulp consumer operations.
 
 
 %changelog
+* Tue Mar 05 2013 Jeff Ortel <jortel@redhat.com> 2.1.0-0.20.beta
+- 
+
 * Mon Mar 04 2013 Jeff Ortel <jortel@redhat.com> 2.1.0-0.19.alpha
 - 902514 - removed the <VirtualHost *:80> block in favor of using the
   platform's authoritative one. (mhrivnak@redhat.com)
