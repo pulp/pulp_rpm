@@ -12,8 +12,7 @@ Contents:
    :maxdepth: 2
 
    types
-   yum-importer
-   yum-distributor
+   yum-plugins
    export-distributor
    iso-importer
    iso-distributor
