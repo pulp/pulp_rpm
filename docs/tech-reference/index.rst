@@ -11,12 +11,9 @@ Contents:
 .. toctree::
    :maxdepth: 2
 
-   types
    yum-plugins
    export-distributor
-   iso-importer
-   iso-distributor
-
+   iso-plugins
 
 Indices and tables
 ==================

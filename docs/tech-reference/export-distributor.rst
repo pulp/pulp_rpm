@@ -10,7 +10,7 @@ Configuration Parameters
 
 The following options are available to the yum distributor configuration.
 In the event a repository does not have a feed, the relative path is also
-required. If a feed is specified,the relative path will be derived from it
+required. If a feed is specified, the relative path will be derived from it
 unless otherwise overridden.
 
 Required Configuration Parameters

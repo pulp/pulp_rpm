@@ -41,9 +41,11 @@ class ISOSyncRun(listener.DownloadEventListener):
     """
     def __init__(self, sync_conduit, config):
         self.sync_conduit = sync_conduit
-        self._remove_missing_units = config.get(constants.CONFIG_REMOVE_MISSING_UNITS, default=False)
+        self._remove_missing_units = config.get(constants.CONFIG_REMOVE_MISSING_UNITS,
+                                                default=constants.CONFIG_REMOVE_MISSING_UNITS_DEFAULT)
         self._repo_url = encode_unicode(config.get(constants.CONFIG_FEED_URL))
-        self._validate_downloads = config.get(constants.CONFIG_VALIDATE_DOWNLOADS, default=True)
+        self._validate_downloads = config.get(constants.CONFIG_VALIDATE_DOWNLOADS,
+                                              default=constants.CONFIG_VALIDATE_DOWNLOADS_DEFAULT)
 
         # Cast our config parameters to the correct types and use them to build a Downloader
         max_speed = config.get(constants.CONFIG_MAX_SPEED)
@@ -53,7 +55,7 @@ class ISOSyncRun(listener.DownloadEventListener):
         if num_threads is not None:
             num_threads = int(num_threads)
         else:
-            num_threads = constants.DEFAULT_NUM_THREADS
+            num_threads = constants.CONFIG_NUM_THREADS_DEFAULT
         downloader_config = {
             'max_speed': max_speed, 'num_threads': num_threads,
             'ssl_client_cert': config.get(constants.CONFIG_SSL_CLIENT_CERT),

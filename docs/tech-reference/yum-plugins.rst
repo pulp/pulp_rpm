@@ -7,10 +7,13 @@ Yum Types
 
 The following are the supported unit types for the Yum plugins. Each unit has a
 unit type and metadata component. Unit type is a unique combination of fields,
-and metadata constitutes the rest of the information associated to the unit.
+and metadata constitutes the rest of the information associated to the unit. The order of the unit fields is
+significant (and they are listed in order), as they together represent the unit key.
 
 RPM
 ----
+
+The RPM's ID is ``rpm``.
 
 Unit Key
 ^^^^^^^^
@@ -67,6 +70,8 @@ Metadata
 SRPM
 ----
 
+The SRPM's ID is ``srpm``.
+
 Unit Key
 ^^^^^^^^
 
@@ -122,8 +127,10 @@ Metadata
 DRPM
 ----
 
+The DRPM's ID is ``drpm``.
+
 Unit Key
---------
+^^^^^^^^
 ``epoch``
  Epoch of the rpm package
 
@@ -143,7 +150,7 @@ Unit Key
  checksum type of the drpm package
 
 Metadata
---------
+^^^^^^^^
 ``size``
  Size of the drpm
 
@@ -155,6 +162,8 @@ Metadata
 
 Errata
 ------
+
+The Erratum's ID is ``erratum``.
 
 Unit Key
 ^^^^^^^^
@@ -219,6 +228,8 @@ Metadata
 Distribution
 -------------
 
+The distribution type's ID is ``distribution``.
+
 Unit Key
 ^^^^^^^^
 
@@ -245,6 +256,8 @@ Metadata
 
 Package Group
 -------------
+
+The Package Group's ID is ``package_group``.
 
 Unit Key
 ^^^^^^^^
@@ -288,6 +301,8 @@ Metadata
 
 Package Group Category
 ----------------------
+
+The Package Group Category's ID is ``package_category``.
 
 Unit Key
 ^^^^^^^^
