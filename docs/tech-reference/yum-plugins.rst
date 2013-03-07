@@ -169,7 +169,7 @@ Unit Key
 ^^^^^^^^
 
 ``id``
- Erratum Id string
+ Erratum ID string
 
 Metadata
 ^^^^^^^^
@@ -265,7 +265,7 @@ Unit Key
  Package group ID
 
 ``repo_id``
- Repository id the package group id is associated
+ Repository ID the package group ID is associated
 
 Metadata
 ^^^^^^^^
@@ -310,7 +310,7 @@ Unit Key
  Package group category ID
 
 ``repo_id``
- Repository id to which the package group category id is associated
+ Repository ID to which the package group category ID is associated
 
 
 Metadata
@@ -325,12 +325,12 @@ Metadata
  Display order of the package group category
 
 ``packagegroupids``
- Package group ids associated with the package category
+ Package group IDs associated with the package category
 
 Yum Importer
 ============
 
-The Yum Importer can be used to sync an RPM repository with an upstream feed. The Yum Importer id is
+The Yum Importer can be used to sync an RPM repository with an upstream feed. The Yum Importer ID is
 ``yum_importer``.
 
 Configuration Parameters
@@ -426,15 +426,12 @@ configuration values are optional.
 Yum Distributor
 ===============
 
-The Yum Distributor id is ``yum_distributor``.
+The Yum Distributor ID is ``yum_distributor``.
 
 Configuration Parameters 
 ------------------------
 
-The following options are available to the yum distributor configuration.
-In the event a repository does not have a feed, the relative path is also
-required. If a feed is specified,the relative path will be derived from it
-unless otherwise overridden.
+The following options are available to the Yum Distributor configuration.
 
 Required Configuration Parameters
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
