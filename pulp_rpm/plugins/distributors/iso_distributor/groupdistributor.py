@@ -44,9 +44,9 @@ OPTIONAL_CONFIG_KEYS = ["https_ca", "https_publish_dir","http_publish_dir", "sta
 # http_publish_dir      - Optional parameter to override the HTTP_PUBLISH_DIR
 # https_publish_dir     - Optional parameter to override the HTTPS_PUBLISH_DIR
 # skip                  - List of what content types to skip during export, options:
-#                         ["rpm", "errata", "distribution", "packagegroup"]
-# iso_prefix            - prefix to use in the generated iso naming, default: <repoid>-<current_date>.iso
-
+#                         ["rpm", "errata", "distribution"]
+# iso_prefix            - prefix to use in the generated iso naming, default: pulp-repos. The ISO is named with
+#                         this template: '<prefix>-<timestamp>-<disc_number>.iso'
 # -- plugins ------------------------------------------------------------------
 
 class GroupISODistributor(GroupDistributor):
@@ -108,7 +108,7 @@ class GroupISODistributor(GroupDistributor):
             if key == 'skip':
                 metadata_types = config.get('skip')
                 if metadata_types is not None and not isinstance(metadata_types, list):
-                    msg = _("skip should be a dictionary; got %s instead" % metadata_types)
+                    msg = _("skip should be a list; got %s instead" % metadata_types)
                     _LOG.error(msg)
                     return False, msg
             if key == 'https_ca':
