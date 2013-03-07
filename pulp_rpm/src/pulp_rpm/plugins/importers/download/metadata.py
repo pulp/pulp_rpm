@@ -13,8 +13,6 @@
 
 import hashlib
 import os
-from datetime import datetime
-from pprint import pprint
 from tempfile import mkdtemp
 from xml.etree.cElementTree import iterparse
 
@@ -24,6 +22,7 @@ from pulp.common.download.config import DownloaderConfig
 from pulp.common.download.listener import DownloadEventListener
 from pulp.common.download.request import DownloadRequest
 
+# repomd.xml element tags ------------------------------------------------------
 
 REPOMD_FILE_NAME = 'repomd.xml'
 REPOMD_URL_RELATIVE_PATH = 'repodata/%s' % REPOMD_FILE_NAME
@@ -40,27 +39,69 @@ SIZE_TAG = '{%s}size' % SPEC_URL
 OPEN_CHECKSUM_TAG = '{%s}open-checksum' % SPEC_URL
 OPEN_SIZE_TAG = '{%s}open-size' % SPEC_URL
 
+# metadata files downloader, parser, and validator -----------------------------
 
 class MetadataFiles(object):
+    """
+    Stateful downloader, parser, and validator of the metadata files of a Yum
+    repository.
 
-    def __init__(self, repo_url, dst_dir=None):
+    Given a Yum repository URL, this class presents a clean work flow for
+    fetching and validating the metadata files of that repo. The workflow is as
+    follows:
+
+    1. instantiate MetadataFiles instance with repository URL
+    2. call `download_repomd` method
+    3. call `parse_repomd` method
+    4. call `download_metadata_files` method
+    5. optionally call `validate_metadata_files` method
+
+    If all goes well, the instance will have have populated its `metadata` dict
+    with `key` -> file path information
+
+    Keys of interest:
+
+     * `primary`: path the primary.xml file containing the metadata of all packages in the repository
+     * `filelists`: path the filelists.xml file containing the files provided by all of the packages in the repository
+     * `other`
+     * `group`
+     * `group_gz`
+     * `updateinfo`
+
+    :ivar repo_url: Yum repository URL
+    :ivar dst_dir: Directory to store downloaded metadata files in, temporary directory created if not provided
+    :ivar event_listener: pulp.common.download.listener.DownloadEventListener instance
+    :ivar downloader: pulp.common.download.backends.base.DownloaderBackend instance
+    :ivar revision: revision number of the metadata, set during the `parse_repomd` call
+    :ivar metadata: dictionary of the main metadata type keys to the corresponding file paths
+    """
+
+    def __init__(self, repo_url, dst_dir=None, event_listener=None):
         super(MetadataFiles, self).__init__()
         self.repo_url = repo_url
         self.dst_dir = dst_dir or mkdtemp()
 
         downloader_config = DownloaderConfig('http')
-        self.downloader = download_factory.get_downloader(downloader_config, MetadataDownloadEventListener())
+        self.downloader = download_factory.get_downloader(downloader_config, event_listener)
 
         self.revision = None
         self.metadata = {}
 
     def download_repomd(self):
+        """
+        Download the main repomd.xml file.
+        """
         repomd_dst_path = os.path.join(self.dst_dir, REPOMD_FILE_NAME)
         repomd_url = join_url_path(self.repo_url, REPOMD_URL_RELATIVE_PATH)
         repomd_request = DownloadRequest(repomd_url, repomd_dst_path)
         self.downloader.download([repomd_request])
 
+    # TODO (jconnonr 2013-03-07) add a method to validate/verify the repomd.xml file
+
     def parse_repomd(self):
+        """
+        Parse the downloaded repomd.xml file and populate the metadata dictionary.
+        """
         repomd_file_path = os.path.join(self.dst_dir, REPOMD_FILE_NAME)
 
         if not os.path.exists(repomd_file_path):
@@ -88,6 +129,9 @@ class MetadataFiles(object):
                 self.metadata[file_info['name']] = file_info
 
     def download_metadata_files(self):
+        """
+        Download the remaining metadata files.
+        """
         if not self.metadata:
             raise RuntimeError('%s has not been parsed' % REPOMD_FILE_NAME)
 
@@ -105,6 +149,9 @@ class MetadataFiles(object):
         self.downloader.download(download_request_list)
 
     def verify_metadata_files(self):
+        """
+        Optionally verify the metadata files using both reported size and checksum.
+        """
         for md in self.metadata.values():
             if 'local_path' not in md:
                 raise RuntimeError('%s has not been downloaded' % md['relative_path'].rsplit('/', 1)[-1])
@@ -127,15 +174,25 @@ class MetadataFiles(object):
             if hash_obj.hexdigest() != md['checksum']['hex_digest']:
                 raise RuntimeError('%s failed verification, checksum mismatch' % md['local_path'])
 
-
-class MetadataDownloadEventListener(DownloadEventListener):
-
-    def download_failed(self, report):
-        raise RuntimeError('%s download failed' % report.url)
-
 # utilities --------------------------------------------------------------------
 
 def process_repomd_data_element(data_element):
+    """
+    Process the data elements of the repomd.xml file.
+
+    This returns a file information dictionary with the following keys:
+
+     * `name`: name of the element
+     * `relative_path`: the path of the metadata file, relevant to the repository URL
+     * `checksum`: dictionary of `algorithm` and `hex_digest` keys and values
+     * `size`: size of the metadata file, in bytes
+     * `open_checksum`: optional checksum dictionary of uncompressed metadata file
+     * `open_size`: optional size of the uncompressed metadata file, in bytes
+
+    :param data_element: XML data element parsed from the repomd.xml file
+    :return: file_info dictionary
+    :rtype: dict
+    """
 
     file_info = {'name': data_element.attrib['type']}
 
@@ -169,6 +226,17 @@ def process_repomd_data_element(data_element):
 
 
 def join_url_path(url, relative_path):
+    """
+    Utility method that joins a file's relative URL to the end of the
+    repository's URL
+
+    :param url: repository's URL
+    :type url: str
+    :param relative_path: file's relative path
+    :type relative_path: str
+    :return: file's full URL
+    :rtype: str
+    """
     if url.endswith('/'):
         url = url[:-1]
     if relative_path.startswith('/'):

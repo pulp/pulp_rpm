@@ -13,6 +13,7 @@
 
 from xml.etree.cElementTree import iterparse
 
+# primary.xml element tags -----------------------------------------------------
 
 COMMON_SPEC_URL = 'http://linux.duke.edu/metadata/common'
 RPM_SPEC_URL = 'http://linux.duke.edu/metadata/rpm'
@@ -44,6 +45,12 @@ RPM_PROVIDES_TAG = '{%s}provides' % RPM_SPEC_URL
 RPM_REQUIRES_TAG = '{%s}requires' % RPM_SPEC_URL
 RPM_ENTRY_TAG = '{%s}entry' % RPM_SPEC_URL
 
+# package information dictionary -----------------------------------------------
+
+# the package information dictionary is a combination of the PACKAGE_INFO_SKEL
+# and PACKAGE_FORMAT_SKEL dictionaries
+# all fields, along with their default values, are guaranteed to be there
+
 PACKAGE_INFO_SKEL = {'type': None,
                      'name': None,
                      'arch': None,
@@ -69,17 +76,37 @@ PACKAGE_FORMAT_SKEL = {'vendor': None,
                        'provides': [],
                        'files': []}
 
+# RPM entry dictionary ---------------------------------------------------------
+
+# RPM entry dictionaries will make up the values in the requires and provides lists
+
 RPM_ENTRY_SKEL = {'name': None,
                   'version': None,
                   'release': None,
                   'epoch': None,
                   'flags': None}
 
+# file information dictionary --------------------------------------------------
+
+# file information dictionaries will make up the values in the files lists
+
 FILE_INFO_SKEL = {'path': None}
 
-# parser -----------------------------------------------------------------------
+# primary.xml file parser parser -----------------------------------------------
 
 def primary_package_list_generator(primary_xml_handle):
+    """
+    Parser for primary.xml file that is implemented as a generator.
+
+    This generator reads enough of the primary.xml file into memory to parse a
+    single package's information. It then yields a corresponding package
+    information dictionary. Then repeats.
+
+    :param primary_xml_handle: open file handle pointing to the beginning of a primary.xml file
+    :type primary_xml_handle: file-like object
+    :return: generator of package information dictionaries
+    :rtype: generator
+    """
     parser = iterparse(primary_xml_handle, events=('start', 'end'))
     xml_iterator = iter(parser)
 
@@ -97,8 +124,17 @@ def primary_package_list_generator(primary_xml_handle):
         package_info = _process_package_element(element)
         yield package_info
 
+# element processing methods ---------------------------------------------------
 
 def _process_package_element(package_element):
+    """
+    Process a parsed primary.xml package element into a package information
+    dictionary.
+
+    :param package_element: parsed primary.xml package element
+    :return: package information dictionary
+    :rtype: dict
+    """
     package_info = PACKAGE_INFO_SKEL.copy()
     package_info['type'] = package_element.attrib['type']
 
@@ -147,13 +183,20 @@ def _process_package_element(package_element):
         package_info['relative_url_path'] = location_element.attrib['href']
 
     format_element = package_element.find(FORMAT_TAG)
-    #pprint(format_element.__dict__)
     package_info.update(_process_format_element(format_element))
 
     return package_info
 
 
 def _process_format_element(format_element):
+    """
+    Process a parsed primary.xml package format element (child element of
+    package element) into a package format dictionary.
+
+    :param format_element: parsed primary.xml package format element
+    :return: package format dictionary
+    :rtype: dict
+    """
     package_format = PACKAGE_FORMAT_SKEL.copy()
 
     if format_element is None:
@@ -196,6 +239,14 @@ def _process_format_element(format_element):
 
 
 def _process_rpm_entry_element(rpm_entry_element):
+    """
+    Process a parsed RPM entry element (child elements of both provides and
+    requires elements) into an RPM entry dictionary.
+
+    :param rpm_entry_element: parsed RPM entry element
+    :return: RPM entry dictionary
+    :rtype: dict
+    """
     rpm_entry = RPM_ENTRY_SKEL.copy()
 
     rpm_entry['name'] = rpm_entry_element.attrib['name']
@@ -208,6 +259,14 @@ def _process_rpm_entry_element(rpm_entry_element):
 
 
 def _process_file_element(file_element):
+    """
+    Process a parsed file element (child element of the files element) into a
+    file information dictionary.
+
+    :param file_element: parsed file element
+    :return: file information dictionary
+    :rtype: dict
+    """
     file_info = FILE_INFO_SKEL.copy()
 
     file_info['path'] = file_element.text
