@@ -43,6 +43,7 @@ LINKS = (
     ('pulp_rpm/etc/pulp/agent/conf.d/rpm.conf', '/etc/pulp/agent/conf.d/rpm.conf'),
     ('pulp_rpm/etc/pulp/agent/conf.d/bind.conf', '/etc/pulp/agent/conf.d/bind.conf'),
     ('pulp_rpm/etc/pulp/agent/conf.d/linux.conf', '/etc/pulp/agent/conf.d/linux.conf'),
+    ('pulp_rpm/etc/pulp/vhosts80/rpm.conf', '/etc/pulp/vhosts80/rpm.conf'),
     ('pulp_rpm/etc/yum/pluginconf.d/pulp-profile-update.conf', '/etc/yum/pluginconf.d/pulp-profile-update.conf'),
 
     # RPM and ISO Support Admin Extensions

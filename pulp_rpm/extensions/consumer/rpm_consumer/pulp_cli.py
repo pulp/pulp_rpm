@@ -14,8 +14,11 @@
 from gettext import gettext as _
 
 from pulp.bindings.exceptions import NotFoundException
+from pulp.client.commands.repo.query import RepoSearchCommand
 from pulp.client.consumer_utils import load_consumer_id
 from pulp.client.extensions.extensions import PulpCliCommand, PulpCliOption, PulpCliFlag
+
+from pulp_rpm.common import constants
 
 YUM_DISTRIBUTOR_TYPE_ID = 'yum_distributor'
 
@@ -23,6 +26,7 @@ YUM_DISTRIBUTOR_TYPE_ID = 'yum_distributor'
 
 RPM_SECTION = 'rpm'
 SECTION_DESC = _('manage RPM-related features')
+SEARCH_NAME = 'repos'
 
 def initialize(context):
 
@@ -38,6 +42,8 @@ def initialize(context):
 
     d = _('unbinds this consumer from a Pulp repository')
     rpm_section.add_command(UnbindCommand(context, 'unbind', d))
+
+    rpm_section.add_command(RepoSearchCommand(context, constants.REPO_NOTE_RPM, name=SEARCH_NAME))
 
 
 class BindCommand(PulpCliCommand):

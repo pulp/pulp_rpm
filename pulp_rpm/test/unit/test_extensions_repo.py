@@ -17,6 +17,7 @@ from pulp.client.commands import options
 from pulp.client.commands.repo import cudl
 from pulp.client.extensions.core import TAG_SUCCESS
 from pulp.common.compat import json
+from pulp.common import constants as pulp_constants
 
 from pulp_rpm.common import constants, ids
 from pulp_rpm.extension.admin import repo, repo_options
@@ -271,7 +272,7 @@ class RpmRepoListCommandTests(rpm_support_base.PulpClientTests):
         # Setup
         repos = [
             {'id' : 'matching',
-             'notes' : {constants.REPO_NOTE_KEY : constants.REPO_NOTE_RPM,},
+             'notes' : {pulp_constants.REPO_NOTE_TYPE_KEY : constants.REPO_NOTE_RPM,},
              'importers' : [
                  {'config' : {}}
              ],
@@ -302,7 +303,7 @@ class RpmRepoListCommandTests(rpm_support_base.PulpClientTests):
         repos = [
             {'id' : 'foo',
              'display_name' : 'bar',
-             'notes' : {constants.REPO_NOTE_KEY : constants.REPO_NOTE_RPM,}}
+             'notes' : {pulp_constants.REPO_NOTE_TYPE_KEY : constants.REPO_NOTE_RPM,}}
         ]
         self.server_mock.request.return_value = 200, repos
 
@@ -320,7 +321,7 @@ class RpmRepoListCommandTests(rpm_support_base.PulpClientTests):
         # Setup
         repos = [
             {'id' : 'matching',
-             'notes' : {constants.REPO_NOTE_KEY : constants.REPO_NOTE_RPM,},
+             'notes' : {pulp_constants.REPO_NOTE_TYPE_KEY : constants.REPO_NOTE_RPM,},
              'importers' : [
                  {'config' : {'ssl_client_cert' : 'foo'}}
              ],
@@ -345,7 +346,7 @@ class RpmRepoListCommandTests(rpm_support_base.PulpClientTests):
         # Setup
         repos = [
             {'id' : 'matching',
-             'notes' : {constants.REPO_NOTE_KEY : constants.REPO_NOTE_RPM,},
+             'notes' : {pulp_constants.REPO_NOTE_TYPE_KEY : constants.REPO_NOTE_RPM,},
              'importers' : [
                  {'config' : {'ssl_client_key' : 'foo'}}
              ],
@@ -370,7 +371,7 @@ class RpmRepoListCommandTests(rpm_support_base.PulpClientTests):
         # Setup
         repos = [
             {'repo_id' : 'matching',
-             'notes' : {constants.REPO_NOTE_KEY : constants.REPO_NOTE_RPM,},
+             'notes' : {pulp_constants.REPO_NOTE_TYPE_KEY : constants.REPO_NOTE_RPM,},
              'distributors' : [
                  {'id' : ids.YUM_DISTRIBUTOR_ID},
                  {'id' : ids.EXPORT_DISTRIBUTOR_ID}
