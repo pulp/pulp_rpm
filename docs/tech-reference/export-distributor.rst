@@ -1,14 +1,15 @@
-==================
-Export Distributor
-==================
+===================
+Export Distributors
+===================
 
-The Export Distributor can be used to build an ISO image out of the content available in RPM repositories.
-The Export Distributor ID is ``export_distributor``.
+There are two export distributors, one that allows exporting a single repository, and another that allows you to
+export a repository group. The export distributors build ISO images out of the content available in RPM
+repositories. Both distributors use the same ID, ``export_distributor``.
 
 Configuration Parameters
 ========================
 
-The following options are available when configuring the Export Distributor.
+The following options are available when configuring the export distributors.
 
 Required Configuration Parameters
 ---------------------------------
