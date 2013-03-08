@@ -68,12 +68,13 @@ def main(repo_url):
         primary_file_handle = open(primary_file_path, 'r')
 
     package_info_generator = primary.primary_package_list_generator(primary_file_handle)
-    package_info_list = [{'relative_url_path': p['relative_url_path']} for p in package_info_generator]
+    #package_info_list = [{'relative_url_path': p['relative_url_path']} for p in package_info_generator]
 
-    primary_parse_time = datetime.now()
-    primary_parse_rusage = resource.getrusage(resource.RUSAGE_SELF)
+    #primary_parse_time = datetime.now()
+    #primary_parse_rusage = resource.getrusage(resource.RUSAGE_SELF)
 
-    packages_manager = packages.Packages(repo_url, package_info_list)
+    #packages_manager = packages.Packages(repo_url, package_info_list)
+    packages_manager = packages.Packages(repo_url, package_info_generator)
     packages_manager.download_packages()
 
     package_download_time = datetime.now()
@@ -83,8 +84,9 @@ def main(repo_url):
     print 'repomd parse time: %s' % str(repomd_parse_time - repomd_download_time)
     print 'metadata files download time: %s' % str(metadata_files_download_time - repomd_parse_time)
     #print 'metadata files verification time: %s' % str(metadata_files_verify_time - metadata_files_download_time)
-    print 'primary.xml parse time: %s' % str(primary_parse_time - metadata_files_verify_time)
-    print 'package download time: %s' % str(package_download_time - primary_parse_time)
+    #print 'primary.xml parse time: %s' % str(primary_parse_time - metadata_files_verify_time)
+    #print 'package download time: %s' % str(package_download_time - primary_parse_time)
+    print 'package download time: %s' % str(package_download_time - metadata_files_verify_time)
 
     print ''
 
@@ -93,7 +95,8 @@ def main(repo_url):
 
     rusage_list = (start_rusage, repomd_download_rusage, repomd_parse_rusage,
                    metadata_files_download_rusage, metadata_files_verify_rusage,
-                   primary_parse_rusage, package_download_rusage)
+                   #primary_parse_rusage, package_download_rusage)
+                   package_download_rusage)
 
     print 'minimum memory usage: %s' % str(reduce_memory_usage(min, rusage_list))
     print 'maximum memory usage: %s' % str(reduce_memory_usage(max, rusage_list))
