@@ -12,7 +12,6 @@
 # see http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt
 
 import os
-from tempfile import mkdtemp
 from urlparse import urljoin
 
 from pulp.common.download import factory as download_factory
@@ -29,15 +28,15 @@ class Packages(object):
 
     :ivar repo_url: Yum repository's URL
     :ivar packages_information_iterator: iterator of package information dictionaries
-    :ivar dst_dir: Directory to store downloaded packages in, temporary directory created if not provided
+    :ivar dst_dir: Directory to store downloaded packages in
     :ivar event_listener: pulp.common.download.listener.DownloadEventListener instance
     :ivar downloader: pulp.common.download.backends.base.DownloadBackend instance
     """
 
-    def __init__(self, repo_url, packages_information_iterator, dst_dir=None, event_listener=None):
+    def __init__(self, repo_url, packages_information_iterator, dst_dir, event_listener=None):
         self.repo_url = repo_url
         self.packages_information_iterator = packages_information_iterator
-        self.dst_dir = dst_dir or mkdtemp()
+        self.dst_dir = dst_dir
 
         downloader_config = DownloaderConfig(protocol='http')
         self.downloader = download_factory.get_downloader(downloader_config, event_listener)

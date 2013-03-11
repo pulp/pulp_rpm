@@ -13,7 +13,6 @@
 
 import hashlib
 import os
-from tempfile import mkdtemp
 from urlparse import urljoin
 from xml.etree.cElementTree import iterparse
 
@@ -69,17 +68,17 @@ class MetadataFiles(object):
      * `updateinfo`
 
     :ivar repo_url: Yum repository URL
-    :ivar dst_dir: Directory to store downloaded metadata files in, temporary directory created if not provided
+    :ivar dst_dir: Directory to store downloaded metadata files in
     :ivar event_listener: pulp.common.download.listener.DownloadEventListener instance
     :ivar downloader: pulp.common.download.backends.base.DownloaderBackend instance
     :ivar revision: revision number of the metadata, set during the `parse_repomd` call
     :ivar metadata: dictionary of the main metadata type keys to the corresponding file paths
     """
 
-    def __init__(self, repo_url, dst_dir=None, event_listener=None):
+    def __init__(self, repo_url, dst_dir, event_listener=None):
         super(MetadataFiles, self).__init__()
         self.repo_url = repo_url
-        self.dst_dir = dst_dir or mkdtemp()
+        self.dst_dir = dst_dir
 
         downloader_config = DownloaderConfig('http')
         self.downloader = download_factory.get_downloader(downloader_config, event_listener)
