@@ -11,6 +11,7 @@
 # You should have received a copy of GPLv2 along with this software; if not,
 # see http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt
 
+from copy import deepcopy
 from xml.etree.cElementTree import iterparse
 
 # primary.xml element tags -----------------------------------------------------
@@ -72,10 +73,9 @@ PACKAGE_FORMAT_SKEL = {'vendor': None,
                        'group': None,
                        'header_range': {'start': None, 'end': None},
                        'build_host': None,
-                       # the following will have lists for values after parsing
-                       'requires': None,
-                       'provides': None,
-                       'files': None}
+                       'requires': [],
+                       'provides': [],
+                       'files': []}
 
 # RPM entry dictionary ---------------------------------------------------------
 
@@ -136,7 +136,10 @@ def _process_package_element(package_element):
     :return: package information dictionary
     :rtype: dict
     """
-    package_info = PACKAGE_INFO_SKEL.copy()
+    # NOTE the use of deepcopy relies on cpython's very sensible policy of never
+    # duplicating string literals, this may not hold up in other implementations
+    # the python interpreter.
+    package_info = deepcopy(PACKAGE_INFO_SKEL)
     package_info['type'] = package_element.attrib['type']
 
     name_element = package_element.find(NAME_TAG)
@@ -198,7 +201,10 @@ def _process_format_element(format_element):
     :return: package format dictionary
     :rtype: dict
     """
-    package_format = PACKAGE_FORMAT_SKEL.copy()
+    # NOTE the use of deepcopy relies on cpython's very sensible policy of never
+    # duplicating string literals, this may not hold up in other implementations
+    # the python interpreter.
+    package_format = deepcopy(PACKAGE_FORMAT_SKEL)
 
     if format_element is None:
         return package_format
@@ -226,17 +232,13 @@ def _process_format_element(format_element):
 
     provides_element = format_element.find(RPM_PROVIDES_TAG)
     if provides_element is not None:
-        package_format['provides'] = [_process_rpm_entry_element(e) for e in provides_element.findall(RPM_ENTRY_TAG)]
-    else:
-        package_format['provides'] = []
+        package_format['provides'].extend(_process_rpm_entry_element(e) for e in provides_element.findall(RPM_ENTRY_TAG))
 
     requires_element = format_element.find(RPM_REQUIRES_TAG)
     if requires_element is not None:
-        package_format['requires'] = [_process_rpm_entry_element(e) for e in requires_element.findall(RPM_ENTRY_TAG)]
-    else:
-        package_format['requires'] = []
+        package_format['requires'].extend(_process_rpm_entry_element(e) for e in requires_element.findall(RPM_ENTRY_TAG))
 
-    package_format['files'] = [_process_file_element(e) for e in format_element.findall(FILE_TAG)]
+    package_format['files'].extend(_process_file_element(e) for e in format_element.findall(FILE_TAG))
 
     return package_format
 
@@ -250,7 +252,10 @@ def _process_rpm_entry_element(rpm_entry_element):
     :return: RPM entry dictionary
     :rtype: dict
     """
-    rpm_entry = RPM_ENTRY_SKEL.copy()
+    # NOTE the use of deepcopy relies on cpython's very sensible policy of never
+    # duplicating string literals, this may not hold up in other implementations
+    # the python interpreter.
+    rpm_entry = deepcopy(RPM_ENTRY_SKEL)
 
     rpm_entry['name'] = rpm_entry_element.attrib['name']
     rpm_entry['version'] = rpm_entry_element.attrib.get('ver', None)
@@ -270,7 +275,10 @@ def _process_file_element(file_element):
     :return: file information dictionary
     :rtype: dict
     """
-    file_info = FILE_INFO_SKEL.copy()
+    # NOTE the use of deepcopy relies on cpython's very sensible policy of never
+    # duplicating string literals, this may not hold up in other implementations
+    # the python interpreter.
+    file_info = deepcopy(FILE_INFO_SKEL)
 
     file_info['path'] = file_element.text
 
