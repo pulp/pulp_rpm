@@ -100,5 +100,3 @@ class TestDRPMS(rpm_support_base.PulpRPMTests):
 
     def test_purge_drpms(self):
         pass
-
-
