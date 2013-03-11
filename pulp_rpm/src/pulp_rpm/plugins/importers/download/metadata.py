@@ -14,12 +14,12 @@
 import hashlib
 import os
 from tempfile import mkdtemp
+from urlparse import urljoin
 from xml.etree.cElementTree import iterparse
 
 
 from pulp.common.download import factory as download_factory
 from pulp.common.download.config import DownloaderConfig
-from pulp.common.download.listener import DownloadEventListener
 from pulp.common.download.request import DownloadRequest
 
 # repomd.xml element tags ------------------------------------------------------
@@ -92,7 +92,7 @@ class MetadataFiles(object):
         Download the main repomd.xml file.
         """
         repomd_dst_path = os.path.join(self.dst_dir, REPOMD_FILE_NAME)
-        repomd_url = join_url_path(self.repo_url, REPOMD_URL_RELATIVE_PATH)
+        repomd_url = urljoin(self.repo_url, REPOMD_URL_RELATIVE_PATH)
         repomd_request = DownloadRequest(repomd_url, repomd_dst_path)
         self.downloader.download([repomd_request])
 
@@ -104,7 +104,7 @@ class MetadataFiles(object):
         """
         repomd_file_path = os.path.join(self.dst_dir, REPOMD_FILE_NAME)
 
-        if not os.path.exists(repomd_file_path):
+        if not os.access(repomd_file_path, os.F_OK | os.R_OK):
             raise RuntimeError('%s has not been downloaded' % REPOMD_FILE_NAME)
 
         parser = iterparse(repomd_file_path, events=('start', 'end'))
@@ -121,7 +121,6 @@ class MetadataFiles(object):
             root_element.clear()
 
             if element.tag == REVISION_TAG:
-                # XXX cast this to an int?
                 self.revision = element.text
 
             if element.tag == DATA_TAG:
@@ -138,7 +137,7 @@ class MetadataFiles(object):
         download_request_list = []
 
         for md in self.metadata.values():
-            url = join_url_path(self.repo_url, md['relative_path'])
+            url = urljoin(self.repo_url, md['relative_path'])
             dst = os.path.join(self.dst_dir, md['relative_path'].rsplit('/', 1)[-1])
 
             md['local_path'] = dst
@@ -156,21 +155,24 @@ class MetadataFiles(object):
             if 'local_path' not in md:
                 raise RuntimeError('%s has not been downloaded' % md['relative_path'].rsplit('/', 1)[-1])
 
-            #if 'size' not in md:
-            #    continue
-            #    raise RuntimeError('%s cannot be verified, no file size' % md['local_path'])
+            # XXX (jconnor 2013-03-11) the size verification seems to be broken here
+            if 'size' not in md:
+                raise RuntimeError('%s cannot be verified, no file size' % md['local_path'])
 
-            #local_file_size = os.path.getsize(md['local_path'])
-            #if local_file_size != md['size'] * 1024:
-            #    raise RuntimeError('%s failed verification, file size mismatch' % md['local_path'])
+            local_file_size = os.path.getsize(md['local_path'])
+            if local_file_size != md['size'] * 1024:
+                raise RuntimeError('%s failed verification, file size mismatch' % md['local_path'])
 
             if 'checksum' not in md:
                 raise RuntimeError('%s cannot be verified, no checksum' % md['local_path'])
 
-            hash_obj = getattr(hashlib, md['checksum']['algorithm'], hashlib.sha256)()
-            file_handle = open(md['local_path'], 'rb')
-            hash_obj.update(file_handle.read())
-            file_handle.close()
+            hash_constructor = getattr(hashlib, md['checksum']['algorithm'], None)
+            if hash_constructor is None:
+                raise RuntimeError('%s failed verification, unsupported hash algorithm: %s' % (md['local_path'], md['checksum']['algorithm']))
+
+            hash_obj = hash_constructor()
+            with open(md['local_path'], 'rb') as file_handle:
+                hash_obj.update(file_handle.read())
             if hash_obj.hexdigest() != md['checksum']['hex_digest']:
                 raise RuntimeError('%s failed verification, checksum mismatch' % md['local_path'])
 
@@ -183,7 +185,7 @@ def process_repomd_data_element(data_element):
     This returns a file information dictionary with the following keys:
 
      * `name`: name of the element
-     * `relative_path`: the path of the metadata file, relevant to the repository URL
+     * `relative_path`: the path of the metadata file, relative to the repository URL
      * `checksum`: dictionary of `algorithm` and `hex_digest` keys and values
      * `size`: size of the metadata file, in bytes
      * `open_checksum`: optional checksum dictionary of uncompressed metadata file
@@ -223,23 +225,4 @@ def process_repomd_data_element(data_element):
     data_element.clear()
 
     return file_info
-
-
-def join_url_path(url, relative_path):
-    """
-    Utility method that joins a file's relative URL to the end of the
-    repository's URL
-
-    :param url: repository's URL
-    :type url: str
-    :param relative_path: file's relative path
-    :type relative_path: str
-    :return: file's full URL
-    :rtype: str
-    """
-    if url.endswith('/'):
-        url = url[:-1]
-    if relative_path.startswith('/'):
-        relative_path = relative_path[1:]
-    return '/'.join((url, relative_path))
 

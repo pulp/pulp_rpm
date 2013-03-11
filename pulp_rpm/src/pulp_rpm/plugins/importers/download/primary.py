@@ -72,9 +72,10 @@ PACKAGE_FORMAT_SKEL = {'vendor': None,
                        'group': None,
                        'header_range': {'start': None, 'end': None},
                        'build_host': None,
-                       'requires': [],
-                       'provides': [],
-                       'files': []}
+                       # the following will have lists for values after parsing
+                       'requires': None,
+                       'provides': None,
+                       'files': None}
 
 # RPM entry dictionary ---------------------------------------------------------
 
@@ -225,15 +226,17 @@ def _process_format_element(format_element):
 
     provides_element = format_element.find(RPM_PROVIDES_TAG)
     if provides_element is not None:
-        rpm_elements = [_process_rpm_entry_element(e) for e in provides_element.findall(RPM_ENTRY_TAG)]
-        package_format['provides'].extend(rpm_elements)
+        package_format['provides'] = [_process_rpm_entry_element(e) for e in provides_element.findall(RPM_ENTRY_TAG)]
+    else:
+        package_format['provides'] = []
 
     requires_element = format_element.find(RPM_REQUIRES_TAG)
     if requires_element is not None:
-        rpm_elements = [_process_rpm_entry_element(e) for e in requires_element.findall(RPM_ENTRY_TAG)]
-        package_format['requires'].extend(rpm_elements)
+        package_format['requires'] = [_process_rpm_entry_element(e) for e in requires_element.findall(RPM_ENTRY_TAG)]
+    else:
+        package_format['requires'] = []
 
-    package_format['files'].extend(_process_file_element(e) for e in format_element.findall(FILE_TAG))
+    package_format['files'] = [_process_file_element(e) for e in format_element.findall(FILE_TAG)]
 
     return package_format
 

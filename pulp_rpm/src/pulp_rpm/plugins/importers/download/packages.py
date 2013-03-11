@@ -13,6 +13,7 @@
 
 import os
 from tempfile import mkdtemp
+from urlparse import urljoin
 
 from pulp.common.download import factory as download_factory
 from pulp.common.download.config import DownloaderConfig
@@ -56,31 +57,11 @@ class Packages(object):
         :rtype: generator
         """
         for package_info in self.packages_information_iterator:
-            url = join_url_path(self.repo_url, package_info['relative_url_path'])
+            url = urljoin(self.repo_url, package_info['relative_url_path'])
 
             file_name = package_info['relative_url_path'].rsplit('/', 1)[-1]
             destination = os.path.join(self.dst_dir, file_name)
 
             request = DownloadRequest(url, destination, package_info)
             yield request
-
-# utility functions ------------------------------------------------------------
-
-def join_url_path(url, relative_path):
-    """
-    Utility method that joins a file's relative URL to the end of the
-    repository's URL
-
-    :param url: repository's URL
-    :type url: str
-    :param relative_path: file's relative path
-    :type relative_path: str
-    :return: file's full URL
-    :rtype: str
-    """
-    if url.endswith('/'):
-        url = url[:-1]
-    if relative_path.startswith('/'):
-        relative_path = relative_path[1:]
-    return '/'.join((url, relative_path))
 
