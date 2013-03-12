@@ -18,7 +18,7 @@
 
 Name: pulp-rpm
 Version: 2.1.0
-Release: 0.10.alpha
+Release: 0.19.alpha
 Summary: Support for RPM content in the Pulp platform
 Group: Development/Languages
 License: GPLv2
@@ -152,7 +152,7 @@ Requires: python-pulp-rpm-common = %{pulp_version}
 Requires: pulp-server = %{pulp_version}
 Requires: createrepo >= 0.9.8-3
 Requires: python-rhsm >= 1.0.4-1
-Requires: grinder >= 0.1.14-1
+Requires: grinder >= 0.1.15
 Requires: pyliblzma
 %description plugins
 Provides a collection of platform plugins that extend the Pulp platform
@@ -174,6 +174,7 @@ to provide RPM specific support.
 %{_usr}/lib/pulp/plugins/distributors/iso_distributor/
 %{_usr}/lib/pulp/plugins/profilers/rpm_errata_profiler/
 %{_usr}/lib/pulp/plugins/profilers/rpm_pkg_profiler/
+%{_sysconfdir}/pulp/vhosts80/rpm.conf
 %defattr(-,apache,apache,-)
 %{_var}/www/pub
 %{_var}/lib/pulp/published/
@@ -266,6 +267,34 @@ A collection of yum plugins supplementing Pulp consumer operations.
 
 
 %changelog
+* Mon Mar 04 2013 Jeff Ortel <jortel@redhat.com> 2.1.0-0.19.alpha
+- 902514 - removed the <VirtualHost *:80> block in favor of using the
+  platform's authoritative one. (mhrivnak@redhat.com)
+- 916336 - Change the default num_threads to 4. (rbarlow@redhat.com)
+- 913172 - Fixed a section heading and added info about configuring a proxy for
+  global use (mhrivnak@redhat.com)
+- 889565 - Corrected configuration options from being flags to options
+  (jason.dobies@redhat.com)
+
+* Tue Feb 26 2013 Jeff Ortel <jortel@redhat.com> 2.1.0-0.18.alpha
+- 
+
+* Tue Feb 26 2013 Jeff Ortel <jortel@redhat.com> 2.1.0-0.17.alpha
+- 
+
+* Mon Feb 25 2013 Jeff Ortel <jortel@redhat.com> 2.1.0-0.16.alpha
+- 
+
+* Fri Feb 22 2013 Jeff Ortel <jortel@redhat.com> 2.1.0-0.14.alpha
+- 905119 - Remove unused /ks alias from the pulp_rpm.conf file.
+  (rbarlow@redhat.com)
+
+* Thu Feb 21 2013 Jeff Ortel <jortel@redhat.com> 2.1.0-0.13.alpha
+- 
+
+* Tue Feb 19 2013 Jeff Ortel <jortel@redhat.com> 2.1.0-0.12.alpha
+- 
+
 * Thu Feb 14 2013 Jeff Ortel <jortel@redhat.com> 2.1.0-0.10.alpha
 - 
 

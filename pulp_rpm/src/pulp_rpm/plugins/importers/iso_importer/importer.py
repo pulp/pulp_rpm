@@ -85,8 +85,8 @@ class ISOImporter(Importer):
         }
 
     def sync_repo(self, repo, sync_conduit, config):
-        self.iso_sync = sync.ISOSyncRun()
-        report = self.iso_sync.perform_sync(repo, sync_conduit, config)
+        self.iso_sync = sync.ISOSyncRun(sync_conduit, config)
+        report = self.iso_sync.perform_sync()
         self.iso_sync = None
         return report
 

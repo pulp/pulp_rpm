@@ -103,7 +103,7 @@ server and contains packages.
 
 ::
 
-  $ pulp-consumer bind --repo-id=zoo
+  $ pulp-consumer rpm bind --repo-id=zoo
   Bind tasks successfully created:
 
   Task Id: 44d64951-857a-4985-bfd9-dd6ead841065

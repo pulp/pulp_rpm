@@ -20,31 +20,33 @@ STATE_SKIPPED = 'SKIPPED'
 COMPLETE_STATES = (STATE_COMPLETE, STATE_FAILED, STATE_SKIPPED)
 
 # Used as a note on a repository to indicate it is a Puppet repository
-REPO_NOTE_KEY = '_repo-type' # needs to be standard across extensions
 REPO_NOTE_RPM = 'rpm-repo'
 REPO_NOTE_ISO = 'iso-repo'
 
 PUBLISHED_DISTRIBUTION_FILES_KEY = 'published_distributions'
 
 # Importer configuration key names
-CONFIG_FEED_URL        = 'feed_url'
-CONFIG_MAX_SPEED       = 'max_speed'
-CONFIG_NUM_THREADS     = 'num_threads'
-CONFIG_PROXY_PASSWORD  = 'proxy_password'
-CONFIG_PROXY_PORT      = 'proxy_port'
-CONFIG_PROXY_URL       = 'proxy_url'
-CONFIG_PROXY_USER      = 'proxy_user'
-CONFIG_SSL_CA_CERT     = 'ssl_ca_cert'
-CONFIG_SSL_CLIENT_CERT = 'ssl_client_cert'
-CONFIG_SSL_CLIENT_KEY  = 'ssl_client_key'
+CONFIG_FEED_URL                     = 'feed_url'
+CONFIG_MAX_SPEED                    = 'max_speed'
+CONFIG_NUM_THREADS                  = 'num_threads'
+# The default number of threads to be used with downloading ISOs. We should convert the RPM code to
+# use this same value.
+CONFIG_NUM_THREADS_DEFAULT          = 5
+CONFIG_PROXY_PASSWORD               = 'proxy_password'
+CONFIG_PROXY_PORT                   = 'proxy_port'
+CONFIG_PROXY_URL                    = 'proxy_url'
+CONFIG_PROXY_USER                   = 'proxy_user'
+CONFIG_REMOVE_MISSING_UNITS         = 'remove_missing_units'
+CONFIG_REMOVE_MISSING_UNITS_DEFAULT = False
+CONFIG_SSL_CA_CERT                  = 'ssl_ca_cert'
+CONFIG_SSL_CLIENT_CERT              = 'ssl_client_cert'
+CONFIG_SSL_CLIENT_KEY               = 'ssl_client_key'
+CONFIG_VALIDATE_DOWNLOADS           = 'validate_downloads'
+CONFIG_VALIDATE_DOWNLOADS_DEFAULT   = True
 
 # Distributor configuration key names
 CONFIG_SERVE_HTTP      = 'serve_http'
 CONFIG_SERVE_HTTPS     = 'serve_https'
-
-# The default number of threads to be used with downloading ISOs. We should convert the RPM code to
-# use this same value.
-DEFAULT_NUM_THREADS = 5
 
 ISO_HTTP_DIR = "/var/lib/pulp/published/http/isos"
 ISO_HTTPS_DIR = "/var/lib/pulp/published/https/isos"

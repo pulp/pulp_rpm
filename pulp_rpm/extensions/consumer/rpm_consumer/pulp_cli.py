@@ -14,25 +14,37 @@
 from gettext import gettext as _
 
 from pulp.bindings.exceptions import NotFoundException
+from pulp.client.commands.repo.query import RepoSearchCommand
 from pulp.client.consumer_utils import load_consumer_id
 from pulp.client.extensions.extensions import PulpCliCommand, PulpCliOption, PulpCliFlag
+
+from pulp_rpm.common import constants
 
 YUM_DISTRIBUTOR_TYPE_ID = 'yum_distributor'
 
 # -- framework hook -----------------------------------------------------------
 
+RPM_SECTION = 'rpm'
+SECTION_DESC = _('manage RPM-related features')
+SEARCH_NAME = 'repos'
+
 def initialize(context):
 
-    # Replace the existing bind command with one scoped specifically to the
-    # yum distributor
-    context.cli.remove_command('bind')
-    context.cli.remove_command('unbind')
+    if context.cli.find_section(RPM_SECTION) is not None:
+        return
+
+    rpm_section = context.cli.create_section(
+        RPM_SECTION, SECTION_DESC
+    )
 
     d = _('binds this consumer to a Pulp repository')
-    context.cli.add_command(BindCommand(context, 'bind', d))
+    rpm_section.add_command(BindCommand(context, 'bind', d))
 
     d = _('unbinds this consumer from a Pulp repository')
-    context.cli.add_command(UnbindCommand(context, 'unbind', d))
+    rpm_section.add_command(UnbindCommand(context, 'unbind', d))
+
+    rpm_section.add_command(RepoSearchCommand(context, constants.REPO_NOTE_RPM, name=SEARCH_NAME))
+
 
 class BindCommand(PulpCliCommand):
 
