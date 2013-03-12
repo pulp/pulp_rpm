@@ -13,6 +13,7 @@
 
 import hashlib
 import os
+from copy import deepcopy
 from urlparse import urljoin
 from xml.etree.cElementTree import iterparse
 
@@ -37,6 +38,15 @@ CHECKSUM_TAG = '{%s}checksum' % SPEC_URL
 SIZE_TAG = '{%s}size' % SPEC_URL
 OPEN_CHECKSUM_TAG = '{%s}open-checksum' % SPEC_URL
 OPEN_SIZE_TAG = '{%s}open-size' % SPEC_URL
+
+# metadata file information skeleton -------------------------------------------
+
+FILE_INFO_SKEL = {'name': None,
+                  'relative_path': None,
+                  'checksum': {'algorithm': None, 'hex_digest': None},
+                  'size': None,
+                  'open_checksum': {'algorithm': None, 'hex_digest': None},
+                  'open_size': None}
 
 # metadata files downloader, parser, and validator -----------------------------
 
@@ -154,15 +164,15 @@ class MetadataFiles(object):
             if 'local_path' not in md:
                 raise RuntimeError('%s has not been downloaded' % md['relative_path'].rsplit('/', 1)[-1])
 
-            # XXX (jconnor 2013-03-11) the size verification seems to be broken here
-            if 'size' not in md:
+            if md['size'] is None:
                 raise RuntimeError('%s cannot be verified, no file size' % md['local_path'])
 
             local_file_size = os.path.getsize(md['local_path'])
-            if local_file_size != md['size'] * 1024:
+            # prevents the rounding errors better than: md['size'] * 1024
+            if local_file_size / 1024 != md['size']:
                 raise RuntimeError('%s failed verification, file size mismatch' % md['local_path'])
 
-            if 'checksum' not in md:
+            if md['checksum']['algorithm'] is None:
                 raise RuntimeError('%s cannot be verified, no checksum' % md['local_path'])
 
             hash_constructor = getattr(hashlib, md['checksum']['algorithm'], None)
@@ -195,7 +205,7 @@ def process_repomd_data_element(data_element):
     :rtype: dict
     """
 
-    file_info = {'name': data_element.attrib['type']}
+    file_info = deepcopy(FILE_INFO_SKEL)
 
     location_element = data_element.find(LOCATION_TAG)
     if location_element is not None:
@@ -203,8 +213,8 @@ def process_repomd_data_element(data_element):
 
     checksum_element = data_element.find(CHECKSUM_TAG)
     if checksum_element is not None:
-        file_info['checksum'] = {'algorithm': checksum_element.attrib['type'],
-                                 'hex_digest': checksum_element.text}
+        file_info['checksum']['algorithm'] = checksum_element.attrib['type']
+        file_info['checksum']['hex_digest'] = checksum_element.text
 
     size_element = data_element.find(SIZE_TAG)
     if size_element is not None:
@@ -212,8 +222,8 @@ def process_repomd_data_element(data_element):
 
     open_checksum_element = data_element.find(OPEN_CHECKSUM_TAG)
     if open_checksum_element is not None:
-        file_info['open_checksum'] = {'algorithm': open_checksum_element.attrib['type'],
-                                      'hex_digest': open_checksum_element.text}
+        file_info['open_checksum']['algorithm'] = open_checksum_element.attrib['type']
+        file_info['open_checksum']['hex_digest'] = open_checksum_element.text
 
     open_size_element = data_element.find(OPEN_SIZE_TAG)
     if open_size_element is not None:
