@@ -12,6 +12,7 @@
 # have received a copy of GPLv2 along with this software; if not, see
 # http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt.
 
+from uuid import uuid4
 import mock
 import os
 import shutil
@@ -20,25 +21,26 @@ import tempfile
 import threading
 import time
 import unittest
-from uuid import uuid4
-import importer_mocks
 
 sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)) + "/../../../plugins/importers/")
 sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)) + "/../../../plugins/distributors/")
 
-from iso_distributor.groupdistributor import GroupISODistributor, TYPE_ID_DISTRIBUTOR_EXPORT,\
-    TYPE_ID_RPM, TYPE_ID_SRPM, TYPE_ID_DRPM, TYPE_ID_ERRATA, TYPE_ID_DISTRO, TYPE_ID_PKG_CATEGORY, TYPE_ID_PKG_GROUP
+from pulp.plugins.model import Repository, Unit, RepositoryGroup
+
+from iso_distributor import iso_util
 from iso_distributor.exporter import RepoExporter
 from iso_distributor.generate_iso import GenerateIsos
-from iso_distributor import iso_util
-from yum_importer import importer_rpm
-from yum_importer import errata, distribution
-from pulp.plugins.model import Repository, Unit, RepositoryGroup
+from iso_distributor.groupdistributor import (GroupISODistributor, TYPE_ID_DISTRIBUTOR_EXPORT,
+                                              TYPE_ID_RPM, TYPE_ID_SRPM, TYPE_ID_DRPM, TYPE_ID_ERRATA,
+                                              TYPE_ID_DISTRO, TYPE_ID_PKG_CATEGORY, TYPE_ID_PKG_GROUP)
 from pulp_rpm.repo_auth.repo_cert_utils import M2CRYPTO_HAS_CRL_SUPPORT
+from rpm_support_base import PULP_UNITTEST_REPO_URL, PulpRPMTests
+from yum_importer import distribution, errata, importer_rpm
 import group_distributor_mocks as distributor_mocks
-import rpm_support_base
+import importer_mocks
 
-class TestGroupISODistributor(rpm_support_base.PulpRPMTests):
+
+class TestGroupISODistributor(PulpRPMTests):
 
     def setUp(self):
         super(TestGroupISODistributor, self).setUp()
@@ -178,12 +180,10 @@ class TestGroupISODistributor(rpm_support_base.PulpRPMTests):
         auth_cert = open(os.path.join(self.data_dir, "cert.crt")).read()
         config = distributor_mocks.get_basic_config(http=http, https=https,
             https_ca=auth_cert)
-        print auth_cert
         state, msg = distributor.validate_config(repo, config, [])
         self.assertTrue(state)
 
     def test_group_publish_isos(self):
-        feed_url = "file://%s/pulp_unittest/" % self.data_dir
         repo_1 = mock.Mock(spec=Repository)
         repo_1.id = "test_repo_for_export_1"
         repo_1.working_dir = self.repo_working_dir
@@ -193,12 +193,14 @@ class TestGroupISODistributor(rpm_support_base.PulpRPMTests):
         repo_2.working_dir = self.repo_working_dir
         repo_2.checksumtype = 'sha'
         sync_conduit = importer_mocks.get_sync_conduit(type_id=TYPE_ID_RPM, existing_units=[], pkg_dir=self.pkg_dir)
-        config = importer_mocks.get_basic_config(feed_url=feed_url)
+        config = importer_mocks.get_basic_config(feed_url=PULP_UNITTEST_REPO_URL)
         importerRPM = importer_rpm.ImporterRPM()
         status, summary, details = importerRPM.sync(repo_1, sync_conduit, config)
         status, summary, details = importerRPM.sync(repo_2, sync_conduit, config)
-        unit_key_a = {'id' : '','name' :'pulp-dot-2.0-test', 'version' :'0.1.2', 'release' : '1.fc11', 'epoch':'0', 'arch' : 'x86_64', 'checksumtype' : 'sha256',
-                      'checksum': '435d92e6c09248b501b8d2ae786f92ccfad69fab8b1bc774e2b66ff6c0d83979', 'type_id' : 'rpm'}
+        unit_key_a = {
+            'id' : '','name' :'pulp-dot-2.0-test', 'version' :'0.1.2', 'release' : '1.fc11', 'epoch':'0',
+            'arch' : 'x86_64', 'checksumtype' : 'sha256',
+            'checksum': '435d92e6c09248b501b8d2ae786f92ccfad69fab8b1bc774e2b66ff6c0d83979', 'type_id' : 'rpm'}
         unit_a = Unit(TYPE_ID_RPM, unit_key_a, {'updated' : ''}, '')
         unit_a.storage_path = "%s/pulp-dot-2.0-test/0.1.2/1.fc11/x86_64/435d92e6c09248b501b8d2ae786f92ccfad69fab8b1bc774e2b66ff6c0d83979/pulp-dot-2.0-test-0.1.2-1.fc11.x86_64.rpm" % self.pkg_dir
         unit_key_b = {'id' : '', 'name' :'pulp-test-package', 'version' :'0.2.1', 'release' :'1.fc11', 'epoch':'0','arch' : 'x86_64', 'checksumtype' :'sha256',
@@ -244,7 +246,6 @@ class TestGroupISODistributor(rpm_support_base.PulpRPMTests):
         self.assertTrue(os.path.exists("%s/%s" % (self.http_publish_dir, repo_group.id)))
         self.assertEquals(len(os.listdir(self.https_publish_dir)), 0)
         isos_list = os.listdir("%s/%s" % (self.http_publish_dir, repo_group.id))
-        print isos_list
         self.assertEqual(len(isos_list), 1)
         # make sure the iso name defaults to repoid
         self.assertTrue( isos_list[0].startswith("test-isos"))
@@ -271,7 +272,6 @@ class TestGroupISODistributor(rpm_support_base.PulpRPMTests):
         publish_conduit.set_progress = mock.Mock()
         publish_conduit.set_progress.side_effect = set_progress
         distributor.publish_group(repo_group, publish_conduit, config)
-        print distributor.group_progress_status
         self.assertTrue(progress_status is not None)
         self.assertEqual(progress_status['group-id'], repo_group.id)
         self.assertTrue("rpms" in progress_status['repositories'][repo.id])
