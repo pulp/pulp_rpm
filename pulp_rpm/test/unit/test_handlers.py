@@ -488,6 +488,7 @@ class TestBind(HandlerTest):
         'ca_cert':'CA-CERT',
         'client_cert':'CLIENT-CERT',
         'repo_name':REPO_NAME,
+        'gpg_keys': {'key1': 'GPG_1'},
     }
     BINDING = {'type_id':TYPE_ID, 'repo_id':REPO_ID, 'details':DETAILS}
     UNBINDING = {'type_id':TYPE_ID, 'repo_id':REPO_ID}
