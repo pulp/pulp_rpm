@@ -43,7 +43,6 @@ DEMO_REPOS_PATH = os.path.join(TEST_DATA_DIR, 'repos.fedorapeople.org', 'repos',
 
 PULP_UNITTEST_REPO_PATH = os.path.join(DEMO_REPOS_PATH, 'pulp_unittest')
 PULP_UNITTEST_REPO_URL = urljoin('file://', PULP_UNITTEST_REPO_PATH)
-TEST_DRPM_REPO_URL = urljoin('file://', os.path.join(DEMO_REPOS_PATH, 'test_drpm_repo'))
 TEST_SRPM_REPO_URL = urljoin(
     'file://', os.path.join(TEST_DATA_DIR, 'pkilambi.fedorapeople.org',
                             'test_srpm_repo'))
