@@ -212,7 +212,7 @@ class RepoExporter(object):
         """
         Export distribution unit involves including files within the unit.
         Distribution is an aggregate unit with distribution files. This call
-        looksup each distribution unit and symlinks the files from the storage location
+        looks up each distribution unit and symlinks the files from the storage location
         to working directory.
 
         @param units: list of associated units to be exported

@@ -12,6 +12,7 @@
 # http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt.
 
 from ConfigParser import SafeConfigParser
+from urlparse import urljoin
 import logging
 import os
 import mock
@@ -31,9 +32,20 @@ from pulp.server.logs import start_logging, stop_logging
 from pulp.server.managers import factory as manager_factory
 import pulp_rpm.common.constants as constants
 
-SerialNumber.PATH = '/tmp/sn.dat'
 
+SerialNumber.PATH = '/tmp/sn.dat'
 TEMP_DISTRO_STORAGE_DIR = '/tmp/pulp/var/lib/pulp/content/distribution/'
+
+
+TEST_DATA_DIR = os.path.join(os.path.dirname(__file__), 'data')
+PULP_UNITTEST_REPO_PATH = os.path.join(TEST_DATA_DIR, 'repos.fedorapeople.org', 'repos', 'pulp', 'pulp',
+                                       'demo_repos', 'pulp_unittest')
+PULP_UNITTEST_REPO_URL = urljoin('file://', PULP_UNITTEST_REPO_PATH)
+TEST_SRPM_REPO_URL = urljoin('file://', os.path.join(TEST_DATA_DIR, 'pkilambi.fedorapeople.org',
+                                                     'test_srpm_repo'))
+REPO_MULTIPLE_VERSIONS_URL = urljoin('file://', os.path.join(TEST_DATA_DIR, 'jmatthews.fedorapeople.org',
+                                                             'repo_multiple_versions'))
+
 
 class PulpRPMTests(unittest.TestCase):
     """
