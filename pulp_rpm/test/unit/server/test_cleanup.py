@@ -84,18 +84,14 @@ class TestCleanup(rpm_support_base.PulpRPMTests):
         self.assertFalse(os.path.exists(expected_dir))
         yum_repo = yum.yumRepo.YumRepository(repo_id)
         try:
-            try:
-                yum_repo.basecachedir = self.working_dir
-                yum_repo.base_persistdir = self.working_dir
-                yum_repo.cache = 0
-                yum_repo.metadata_expire = 0
-                yum_repo.baseurl = [feed_url]
-                yum_repo.baseurlSetup()
-                self.assertFalse(os.path.exists(expected_dir))
-                yum_repo.dirSetup()
-            except Exception, e:
-                pass
-                #traceback.print_exc(file=sys.stdout)
+            yum_repo.basecachedir = self.working_dir
+            yum_repo.base_persistdir = self.working_dir
+            yum_repo.cache = 0
+            yum_repo.metadata_expire = 0
+            yum_repo.baseurl = [feed_url]
+            yum_repo.baseurlSetup()
+            self.assertFalse(os.path.exists(expected_dir))
+            yum_repo.dirSetup()
         finally:
             yum_repo.close()
         self.assertFalse(os.path.exists(expected_dir))
