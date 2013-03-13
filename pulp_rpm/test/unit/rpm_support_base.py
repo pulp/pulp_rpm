@@ -38,13 +38,17 @@ TEMP_DISTRO_STORAGE_DIR = '/tmp/pulp/var/lib/pulp/content/distribution/'
 
 
 TEST_DATA_DIR = os.path.join(os.path.dirname(__file__), 'data')
-PULP_UNITTEST_REPO_PATH = os.path.join(TEST_DATA_DIR, 'repos.fedorapeople.org', 'repos', 'pulp', 'pulp',
-                                       'demo_repos', 'pulp_unittest')
+DEMO_REPOS_PATH = os.path.join(TEST_DATA_DIR, 'repos.fedorapeople.org', 'repos', 'pulp',
+                               'pulp', 'demo_repos')
+PULP_UNITTEST_REPO_PATH = os.path.join(DEMO_REPOS_PATH, 'pulp_unittest')
 PULP_UNITTEST_REPO_URL = urljoin('file://', PULP_UNITTEST_REPO_PATH)
-TEST_SRPM_REPO_URL = urljoin('file://', os.path.join(TEST_DATA_DIR, 'pkilambi.fedorapeople.org',
-                                                     'test_srpm_repo'))
-REPO_MULTIPLE_VERSIONS_URL = urljoin('file://', os.path.join(TEST_DATA_DIR, 'jmatthews.fedorapeople.org',
-                                                             'repo_multiple_versions'))
+TEST_SRPM_REPO_URL = urljoin(
+    'file://', os.path.join(TEST_DATA_DIR, 'pkilambi.fedorapeople.org',
+                            'test_srpm_repo'))
+REPO_MULTIPLE_VERSIONS_URL = urljoin(
+    'file://', os.path.join(TEST_DATA_DIR, 'jmatthews.fedorapeople.org',
+                            'repo_multiple_versions'))
+ZOO_REPO_URL = urljoin('file://', os.path.join(DEMO_REPOS_PATH, 'zoo'))
 
 
 class PulpRPMTests(unittest.TestCase):
