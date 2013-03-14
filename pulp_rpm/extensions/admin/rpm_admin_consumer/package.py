@@ -140,12 +140,12 @@ class YumConsumerPackageInstallCommand(consumer_content.ConsumerContentInstallCo
 
         return map(_unit_dict, kwargs['name'])
 
-    def succeeded(self, consumer_id, task):
+    def succeeded(self, task):
         # succeeded and failed are task-based, which is not indicative of
         # whether or not the operation succeeded or failed; that is in the
         # report stored as the task's result
         if not task.result['succeeded']:
-            return self.failed(consumer_id, task)
+            return self.failed(task)
 
         prompt = self.context.prompt
         msg = _('Install Succeeded')
@@ -177,7 +177,7 @@ class YumConsumerPackageInstallCommand(consumer_content.ConsumerContentInstallCo
             for key, value in errors.items():
                 prompt.write(_('%(pkg)s : %(msg)s\n') % {'pkg': key, 'msg': value})
 
-    def failed(self, consumer_id, task):
+    def failed(self, task):
         msg = _('Install Failed')
         details = task.result['details'][TYPE_ID_RPM]['details']
         self.context.prompt.render_failure_message(msg)
@@ -225,12 +225,12 @@ class YumConsumerPackageUpdateCommand(consumer_content.ConsumerContentUpdateComm
 
         return map(_unit_dict, kwargs['name'])
 
-    def succeeded(self, consumer_id, task):
+    def succeeded(self, task):
         # succeeded and failed are task-based, which is not indicative of
         # whether or not the operation succeeded or failed; that is in the
         # report stored as the task's result
         if not task.result['succeeded']:
-            return self.failed(consumer_id, task)
+            return self.failed(task)
 
         prompt = self.context.prompt
         msg = _('Update Succeeded')
@@ -254,7 +254,7 @@ class YumConsumerPackageUpdateCommand(consumer_content.ConsumerContentUpdateComm
             prompt.render_title(_('Installed for Dependencies'))
             prompt.render_document_list(deps, order=fields, filters=fields)
 
-    def failed(self, consumer_id, task):
+    def failed(self, task):
         msg = _('Update Failed')
         details = task.result['details'][TYPE_ID_RPM]['details']
         self.context.prompt.render_failure_message(msg)
@@ -295,12 +295,12 @@ class YumConsumerPackageUninstallCommand(consumer_content.ConsumerContentUninsta
 
         return map(_unit_dict, kwargs['name'])
 
-    def succeeded(self, consumer_id, task):
+    def succeeded(self, task):
         # succeeded and failed are task-based, which is not indicative of
         # whether or not the operation succeeded or failed; that is in the
         # report stored as the task's result
         if not task.result['succeeded']:
-            return self.failed(consumer_id, task)
+            return self.failed(task)
 
         prompt = self.context.prompt
         msg = _('Uninstall Completed')
@@ -324,7 +324,7 @@ class YumConsumerPackageUninstallCommand(consumer_content.ConsumerContentUninsta
             prompt.render_title(_('Uninstalled for Dependencies'))
             prompt.render_document_list(deps, order=fields, filters=fields)
 
-    def failed(self, consumer_id, task):
+    def failed(self, task):
         msg = _('Uninstall Failed')
         details = task.result['details'][TYPE_ID_RPM]['details']
         self.context.prompt.render_failure_message(msg)
