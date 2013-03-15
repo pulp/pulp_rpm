@@ -17,11 +17,7 @@ import os
 import shutil
 import sys
 import tempfile
-import threading
-import time
-import unittest
 from glob import glob
-from uuid import uuid4
 
 from pulp.plugins.model import Repository, Unit
 
@@ -33,13 +29,32 @@ from iso_distributor.distributor import (
     ISODistributor, TYPE_ID_DISTRIBUTOR_EXPORT, TYPE_ID_RPM, TYPE_ID_SRPM, TYPE_ID_DRPM, TYPE_ID_ERRATA,
     TYPE_ID_DISTRO, TYPE_ID_PKG_CATEGORY, TYPE_ID_PKG_GROUP)
 from iso_distributor.exporter import RepoExporter
-from iso_distributor.generate_iso import GenerateIsos
+from pulp_rpm.common import constants
 from pulp_rpm.repo_auth.repo_cert_utils import M2CRYPTO_HAS_CRL_SUPPORT
 from pulp_rpm.yum_plugin import util, updateinfo
 from rpm_support_base import PULP_UNITTEST_REPO_PATH, PULP_UNITTEST_REPO_URL, PulpRPMTests
 from yum_importer import distribution, errata, importer_rpm
 import distributor_mocks
 import importer_mocks
+
+
+class TestISOUtil(PulpRPMTests):
+    """
+    Test the export distributor's iso_util.py module.
+    """
+    def test_get_http_publish_iso_dir_default(self):
+        """
+        Assert that the default http_publish dir is the same as what is found in constants.py.
+        """
+        http_publish_dir = iso_util.get_http_publish_iso_dir()
+        self.assertEqual(http_publish_dir, constants.EXPORT_HTTP_DIR)
+
+    def test_get_https_publish_iso_dir_default(self):
+        """
+        Assert that the default https_publish dir is the same as what is found in constants.py.
+        """
+        https_publish_dir = iso_util.get_https_publish_iso_dir()
+        self.assertEqual(https_publish_dir, constants.EXPORT_HTTPS_DIR)
 
 
 class TestISODistributor(PulpRPMTests):
@@ -61,16 +76,16 @@ class TestISODistributor(PulpRPMTests):
         self.distro_dir = os.path.join(self.temp_dir, "distribution")
         os.makedirs(self.distro_dir)
         #publish_dir simulates /var/lib/pulp/published
-        self.http_publish_dir = os.path.join(self.temp_dir, "publish", "http", "isos")
+        self.http_publish_dir = os.path.join(self.temp_dir, "publish", "http", "exports")
         os.makedirs(self.http_publish_dir)
 
-        self.https_publish_dir = os.path.join(self.temp_dir, "publish", "https", "isos")
+        self.https_publish_dir = os.path.join(self.temp_dir, "publish", "https", "exports")
         os.makedirs(self.https_publish_dir)
 
         self.repo_working_dir = os.path.join(self.temp_dir, "repo_working_dir")
         os.makedirs(self.repo_working_dir)
 
-        self.repo_iso_working_dir = os.path.join(self.temp_dir, "repo_working_dir", "isos")
+        self.repo_iso_working_dir = os.path.join(self.temp_dir, "repo_working_dir", "exports")
         os.makedirs(self.repo_iso_working_dir)
 
         self.data_dir = os.path.abspath(os.path.join(os.path.abspath(os.path.dirname(__file__)), "../data"))
