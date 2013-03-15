@@ -30,7 +30,7 @@ sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)) + "/../../../plugi
 
 import distributor_mocks
 import importer_mocks
-import rpm_support_base
+from rpm_support_base import PulpRPMTests, PULP_UNITTEST_REPO_PATH, PULP_UNITTEST_REPO_URL
 from yum_distributor.distributor import YumDistributor
 from yum_importer import comps
 from yum_importer.comps import ImporterComps
@@ -39,8 +39,7 @@ from pulp_rpm.common.ids import METADATA_PKG_GROUP, METADATA_PKG_CATEGORY, TYPE_
 from pulp_rpm.yum_plugin import comps_util
 
 
-
-class TestComps(rpm_support_base.PulpRPMTests):
+class TestComps(PulpRPMTests):
 
     def setUp(self):
         super(TestComps, self).setUp()
@@ -108,14 +107,12 @@ class TestComps(rpm_support_base.PulpRPMTests):
 
         yi = YumImporter()
         skip = ["packagegroup"]
-        repo_src_dir = os.path.join(self.data_dir, "pulp_unittest")
-        feed_url = "file://%s" % (repo_src_dir)
-        config = importer_mocks.get_basic_config(feed_url=feed_url,skip_content_types=skip)
+        config = importer_mocks.get_basic_config(feed_url=PULP_UNITTEST_REPO_URL, skip_content_types=skip)
         repo = mock.Mock(spec=Repository)
         repo.working_dir = self.working_dir
         repo.id = "test_skip_packagegroup"
         # Simulate a repo sync, copy the source contents to the repo.working_dir
-        self.simulate_sync(repo, repo_src_dir)
+        self.simulate_sync(repo, PULP_UNITTEST_REPO_PATH)
 
         sync_conduit = importer_mocks.get_sync_conduit(pkg_dir=self.pkg_dir)
         sync_conduit.set_progress = mock.Mock()
@@ -159,14 +156,12 @@ class TestComps(rpm_support_base.PulpRPMTests):
             updated_progress = progress
 
         ic = ImporterComps()
-        repo_src_dir = os.path.join(self.data_dir, "pulp_unittest")
-        feed_url = "file://%s" % (repo_src_dir)
-        config = importer_mocks.get_basic_config(feed_url=feed_url)
+        config = importer_mocks.get_basic_config(feed_url=PULP_UNITTEST_REPO_URL)
         repo = mock.Mock(spec=Repository)
         repo.id = "test_basic_sync_groups"
         repo.working_dir = self.working_dir
         # Simulate a repo sync, copy the source contents to the repo.working_dir
-        self.simulate_sync(repo, repo_src_dir)
+        self.simulate_sync(repo, PULP_UNITTEST_REPO_PATH)
 
         sync_conduit = importer_mocks.get_sync_conduit(pkg_dir=self.pkg_dir)
         status, summary, details = ic.sync(repo, sync_conduit, config, set_progress)
@@ -185,18 +180,15 @@ class TestComps(rpm_support_base.PulpRPMTests):
         self.assertTrue(md_file == None)
         self.assertTrue(md_type == None)
 
-        repodata_dir = os.path.join(self.data_dir, "pulp_unittest")
-        md_file, md_type = comps.get_groups_metadata_file(repodata_dir)
+        md_file, md_type = comps.get_groups_metadata_file(PULP_UNITTEST_REPO_PATH)
         self.assertEquals(md_file, "repodata/comps.xml")
         self.assertEqual(md_type, "group")
 
-        repodata_dir = os.path.join(self.data_dir, "pulp_unittest")
-        md_file, md_type = comps.get_groups_metadata_file(repodata_dir, md_types=["group"])
+        md_file, md_type = comps.get_groups_metadata_file(PULP_UNITTEST_REPO_PATH, md_types=["group"])
         self.assertEquals(md_file, "repodata/comps.xml")
         self.assertEqual(md_type, "group")
 
-        repodata_dir = os.path.join(self.data_dir, "pulp_unittest")
-        md_file, md_type = comps.get_groups_metadata_file(repodata_dir, md_types=["group_gz"])
+        md_file, md_type = comps.get_groups_metadata_file(PULP_UNITTEST_REPO_PATH, md_types=["group_gz"])
         self.assertEquals(md_file, "repodata/comps.xml.gz")
         self.assertEqual(md_type, "group_gz")
 
@@ -212,9 +204,8 @@ class TestComps(rpm_support_base.PulpRPMTests):
 
     def test_get_available(self):
         # Test with a valid comps.xml
-        repo_dir = os.path.join(self.data_dir, "pulp_unittest")
-        self.assertTrue(os.path.exists(repo_dir))
-        groups, categories = comps.get_available(repo_dir, md_types=["group"])
+        self.assertTrue(os.path.exists(PULP_UNITTEST_REPO_PATH))
+        groups, categories = comps.get_available(PULP_UNITTEST_REPO_PATH, md_types=["group"])
         self.assertEqual(len(groups), 3)
         self.assertEqual(len(categories), 2)
         for g in groups.values():
@@ -226,9 +217,8 @@ class TestComps(rpm_support_base.PulpRPMTests):
             for key_name in METADATA_PKG_CATEGORY:
                 self.assertTrue(key_name in keys)
 
-        repo_dir = os.path.join(self.data_dir, "pulp_unittest")
-        self.assertTrue(os.path.exists(repo_dir))
-        groups, categories = comps.get_available(repo_dir, md_types=["foo", "bar"])
+        self.assertTrue(os.path.exists(PULP_UNITTEST_REPO_PATH))
+        groups, categories = comps.get_available(PULP_UNITTEST_REPO_PATH, md_types=["foo", "bar"])
         self.assertEqual(len(groups), 0)
         self.assertEqual(len(categories), 0)
         for g in groups.values():
@@ -240,9 +230,8 @@ class TestComps(rpm_support_base.PulpRPMTests):
             for key_name in METADATA_PKG_CATEGORY:
                 self.assertTrue(key_name in keys)
 
-        repo_dir = os.path.join(self.data_dir, "pulp_unittest")
-        self.assertTrue(os.path.exists(repo_dir))
-        groups, categories = comps.get_available(repo_dir)
+        self.assertTrue(os.path.exists(PULP_UNITTEST_REPO_PATH))
+        groups, categories = comps.get_available(PULP_UNITTEST_REPO_PATH)
         self.assertEqual(len(groups), 3)
         self.assertEqual(len(categories), 2)
         for g in groups.values():
@@ -256,9 +245,8 @@ class TestComps(rpm_support_base.PulpRPMTests):
 
     def test_get_available_with_gzipped_comps(self):
         # Test with a valid gzipped comps.xml.gz
-        repo_dir = os.path.join(self.data_dir, "pulp_unittest")
-        self.assertTrue(os.path.exists(repo_dir))
-        groups, categories = comps.get_available(repo_dir, md_types=["group_gz"])
+        self.assertTrue(os.path.exists(PULP_UNITTEST_REPO_PATH))
+        groups, categories = comps.get_available(PULP_UNITTEST_REPO_PATH, md_types=["group_gz"])
         self.assertEqual(len(groups), 3)
         self.assertEqual(len(categories), 2)
 
@@ -520,7 +508,6 @@ class TestComps(rpm_support_base.PulpRPMTests):
         repo_dir = os.path.join(self.data_dir, "test_comps_with_xz_compress")
         self.assertTrue(os.path.exists(repo_dir))
         groups, categories = comps.get_available(repo_dir, md_types=["group"])
-        print len(groups), len(categories)
         self.assertEqual(len(groups), 202)
         self.assertEqual(len(categories), 10)
 

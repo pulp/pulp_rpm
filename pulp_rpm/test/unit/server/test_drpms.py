@@ -10,24 +10,27 @@
 # NON-INFRINGEMENT, or FITNESS FOR A PARTICULAR PURPOSE. You should
 # have received a copy of GPLv2 along with this software; if not, see
 # http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt.
-import os
-import sys
+
 import mock
-import unittest
-import tempfile
+import os
 import shutil
+import sys
+import tempfile
+
+from pulp.plugins.model import Repository
+
 sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)) + "/../../../src/")
 sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)) + "/../../../plugins/importers/")
 sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)) + "/../../common")
-import importer_mocks
 
+from pulp_rpm.common.ids import UNIT_KEY_DRPM, TYPE_ID_IMPORTER_YUM, TYPE_ID_DRPM
+from rpm_support_base import PulpRPMTests
 from yum_importer import drpm, importer_rpm
 from yum_importer.importer import YumImporter
-from pulp.plugins.model import Repository
-from pulp_rpm.common.ids import UNIT_KEY_DRPM, TYPE_ID_IMPORTER_YUM, TYPE_ID_DRPM
-import rpm_support_base
+import importer_mocks
 
-class TestDRPMS(rpm_support_base.PulpRPMTests):
+
+class TestDRPMS(PulpRPMTests):
 
     def setUp(self):
         super(TestDRPMS, self).setUp()
@@ -48,48 +51,6 @@ class TestDRPMS(rpm_support_base.PulpRPMTests):
         self.assertEquals(metadata["id"], TYPE_ID_IMPORTER_YUM)
         self.assertTrue(TYPE_ID_DRPM in metadata["types"])
 
-    def test_drpm_sync(self):
-        global repo_scratchpad
-        repo_scratchpad = {}
-
-        def set_repo_scratchpad(data):
-            global repo_scratchpad
-            repo_scratchpad = data
-
-        def get_repo_scratchpad():
-            global repo_scratchpad
-            return repo_scratchpad
-        feed_url = "http://repos.fedorapeople.org/repos/pulp/pulp/demo_repos/test_drpm_repo/"
-        repo = mock.Mock(spec=Repository)
-        repo.working_dir = self.working_dir
-        repo.id = "test_repo"
-        sync_conduit = importer_mocks.get_sync_conduit(pkg_dir=self.pkg_dir)
-        sync_conduit.set_repo_scratchpad = mock.Mock(side_effect=set_repo_scratchpad)
-        sync_conduit.get_repo_scratchpad = mock.Mock(side_effect=get_repo_scratchpad)
-        config = importer_mocks.get_basic_config(feed_url=feed_url)
-        importerRPM = importer_rpm.ImporterRPM()
-        status, summary, details = importerRPM.sync(repo, sync_conduit, config)
-        self.assertTrue(status)
-        self.assertTrue(summary is not None)
-        self.assertTrue(details is not None)
-        self.assertEquals(summary["num_synced_new_drpms"], 18)
-        self.assertEquals(summary["num_resynced_drpms"], 0)
-        self.assertEquals(summary["num_orphaned_drpms"], 0)
-        # validate drpms on filesystem
-        def get_drpm_list(dir):
-            dpkgs = []
-            for root, dirs, files in os.walk(dir):
-                for file in files:
-                    dpkgs.append("%s/%s" % (root, file))
-            return dpkgs
-        dpkgs = filter(lambda x: x.endswith(".drpm"), get_drpm_list(self.pkg_dir))
-        self.assertEquals(len(dpkgs), 18)
-        # Confirm symlinks
-        sym_links = filter(lambda x: x.endswith(".drpm"), get_drpm_list(repo.working_dir))
-        self.assertEquals(len(sym_links), 18)
-        for link in sym_links:
-            self.assertTrue(os.path.islink(link))
-
     def test_get_available_drpms(self):
         deltarpm = {}
         for k in UNIT_KEY_DRPM:
@@ -97,6 +58,3 @@ class TestDRPMS(rpm_support_base.PulpRPMTests):
         available_drpms = drpm.get_available_drpms([deltarpm])
         lookup_key = drpm.form_lookup_drpm_key(deltarpm)
         self.assertEqual(available_drpms[lookup_key], deltarpm)
-
-    def test_purge_drpms(self):
-        pass
