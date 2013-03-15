@@ -18,7 +18,7 @@ from urlparse import urljoin
 from xml.etree.cElementTree import iterparse
 
 
-from pulp.common.download import factory as download_factory
+from pulp.common.download.backends.curl import HTTPSCurlDownloadBackend
 from pulp.common.download.config import DownloaderConfig
 from pulp.common.download.request import DownloadRequest
 
@@ -36,6 +36,7 @@ DATA_TAG = '{%s}data' % SPEC_URL
 LOCATION_TAG = '{%s}location' % SPEC_URL
 CHECKSUM_TAG = '{%s}checksum' % SPEC_URL
 SIZE_TAG = '{%s}size' % SPEC_URL
+TIMESTAMP_TAG = '{%s}timestamp' % SPEC_URL
 OPEN_CHECKSUM_TAG = '{%s}open-checksum' % SPEC_URL
 OPEN_SIZE_TAG = '{%s}open-size' % SPEC_URL
 
@@ -45,6 +46,7 @@ FILE_INFO_SKEL = {'name': None,
                   'relative_path': None,
                   'checksum': {'algorithm': None, 'hex_digest': None},
                   'size': None,
+                  'timestamp': None,
                   'open_checksum': {'algorithm': None, 'hex_digest': None},
                   'open_size': None}
 
@@ -91,7 +93,7 @@ class MetadataFiles(object):
         self.dst_dir = dst_dir
 
         downloader_config = DownloaderConfig('http')
-        self.downloader = download_factory.get_downloader(downloader_config, event_listener)
+        self.downloader = HTTPSCurlDownloadBackend(downloader_config, event_listener)
 
         self.revision = None
         self.metadata = {}
@@ -197,6 +199,7 @@ def process_repomd_data_element(data_element):
      * `relative_path`: the path of the metadata file, relative to the repository URL
      * `checksum`: dictionary of `algorithm` and `hex_digest` keys and values
      * `size`: size of the metadata file, in bytes
+     * `timestamp`: unix timestamp of the file's creation, as a float
      * `open_checksum`: optional checksum dictionary of uncompressed metadata file
      * `open_size`: optional size of the uncompressed metadata file, in bytes
 
@@ -206,6 +209,8 @@ def process_repomd_data_element(data_element):
     """
 
     file_info = deepcopy(FILE_INFO_SKEL)
+
+    file_info['name'] = data_element.attrib['type']
 
     location_element = data_element.find(LOCATION_TAG)
     if location_element is not None:
@@ -219,6 +224,10 @@ def process_repomd_data_element(data_element):
     size_element = data_element.find(SIZE_TAG)
     if size_element is not None:
         file_info['size'] = int(size_element.text)
+
+    timestamp_element = data_element.find(TIMESTAMP_TAG)
+    if timestamp_element is not None:
+        file_info['timestamp'] = float(timestamp_element.text)
 
     open_checksum_element = data_element.find(OPEN_CHECKSUM_TAG)
     if open_checksum_element is not None:

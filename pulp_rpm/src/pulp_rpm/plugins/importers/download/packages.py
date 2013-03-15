@@ -14,7 +14,7 @@
 import os
 from urlparse import urljoin
 
-from pulp.common.download import factory as download_factory
+from pulp.common.download.backends.curl import HTTPSCurlDownloadBackend
 from pulp.common.download.config import DownloaderConfig
 from pulp.common.download.request import DownloadRequest
 
@@ -39,7 +39,7 @@ class Packages(object):
         self.dst_dir = dst_dir
 
         downloader_config = DownloaderConfig(protocol='http')
-        self.downloader = download_factory.get_downloader(downloader_config, event_listener)
+        self.downloader = HTTPSCurlDownloadBackend(downloader_config, event_listener)
 
     def download_packages(self):
         """
