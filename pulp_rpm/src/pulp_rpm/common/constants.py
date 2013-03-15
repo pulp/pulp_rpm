@@ -48,6 +48,8 @@ CONFIG_VALIDATE_DOWNLOADS_DEFAULT   = True
 CONFIG_SERVE_HTTP      = 'serve_http'
 CONFIG_SERVE_HTTPS     = 'serve_https'
 
+EXPORT_HTTP_DIR="/var/lib/pulp/published/http/exports"
+EXPORT_HTTPS_DIR="/var/lib/pulp/published/https/exports"
 ISO_HTTP_DIR = "/var/lib/pulp/published/http/isos"
 ISO_HTTPS_DIR = "/var/lib/pulp/published/https/isos"
 ISO_MANIFEST_FILENAME = 'PULP_MANIFEST'
