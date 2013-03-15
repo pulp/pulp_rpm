@@ -25,12 +25,13 @@ class Listener(DownloadEventListener):
 
     def download_succeeded(self, report):
         model = models.from_package_info(report.data)
-        # init unit, which is idempotent
-        unit = self.sync_conduit.init_unit(model.TYPE, model.unit_key, model.metadata, model.relative_path)
-        # move to final location
-        shutil.move(report.destination, unit.storage_path)
-        # save unit
-        self.sync_conduit.save_unit(unit)
+        if model:
+            # init unit, which is idempotent
+            unit = self.sync_conduit.init_unit(model.TYPE, model.unit_key, model.metadata, model.relative_path)
+            # move to final location
+            shutil.move(report.destination, unit.storage_path)
+            # save unit
+            self.sync_conduit.save_unit(unit)
 
     def download_failed(self, report):
         pass

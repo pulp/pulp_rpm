@@ -13,6 +13,7 @@
 
 from gettext import gettext as _
 import gzip
+import logging
 import shutil
 import tempfile
 
@@ -23,7 +24,20 @@ from pulp_rpm.plugins.importers.download import metadata, primary, packages
 from pulp_rpm.plugins.importers.yum.listener import Listener
 
 
+_LOGGER = logging.getLogger(__name__)
+
+
+def entry_point():
+    """
+    Entry point that pulp platform uses to load the importer
+    :return: importer class and its config
+    :rtype:  Importer, {}
+    """
+    return YumImporter, {}
+
+
 class YumImporter(Importer):
+    @classmethod
     def metadata(cls):
         return {
             'id': ids.TYPE_ID_IMPORTER_YUM,
@@ -50,14 +64,15 @@ class YumImporter(Importer):
         conduit.save_unit(unit)
 
     def sync_repo(self, repo, sync_conduit, config):
-        feed = config[constants.CONFIG_FEED_URL]
+        _LOGGER.info(config)
+        feed = config.get(constants.CONFIG_FEED_URL)
         current_units = sync_conduit.get_units()
         event_listener = Listener(sync_conduit)
         tmp_dir = tempfile.mkdtemp()
         try:
             metadata_files = metadata.MetadataFiles(feed, tmp_dir)
-            metadata_files.download_remomd()
-            metadata_files.parse_remomd()
+            metadata_files.download_repomd()
+            metadata_files.parse_repomd()
             #metadata_files.verify_metadata_files()
 
             primary_file_path = metadata_files.metadata['primary']['local_path']

@@ -20,9 +20,9 @@ setup(
     packages=find_packages(),
     author='Pulp Team',
     author_email='pulp-list@redhat.com',
-    #entry_points = {
-        #'pulp.importers': [
-            #'importer = pulp_rpm.plugins.importers.iso_importer.importer:entry_point',
-            #],
-    #}
+    entry_points = {
+        'pulp.importers': [
+            'importer = pulp_rpm.plugins.importers.yum.importer:entry_point',
+            ],
+    }
 )
