@@ -657,61 +657,6 @@ class TestRPMs(PulpRPMTests):
         # force the package dir to be a relative path with the checksum components in the path
         self.assertEquals(yumRepoGrinder.pkgpath, "./")
 
-    def test_bandwidth_limit(self):
-        # This test assumes an available bandwidth of more than 100KB for 2 threads
-        feed_url = 'http://repos.fedorapeople.org/repos/pulp/pulp/demo_repos/test_bandwidth_repo_smaller/'
-        expected_size_bytes = 209888 # 5 1MB RPMs are in this repo
-        expected_num_packages = 2
-        num_threads = 2
-        max_speed = 25 # KB/sec
-
-        repo = mock.Mock(spec=Repository)
-        repo.working_dir = self.working_dir
-        repo.id = "test_bandwidth_limit"
-        sync_conduit = importer_mocks.get_sync_conduit(existing_units=[], pkg_dir=self.pkg_dir)
-        config = importer_mocks.get_basic_config(feed_url=feed_url, num_threads=num_threads, max_speed=max_speed)
-
-        start = time.time()
-        importerRPM = importer_rpm.ImporterRPM()
-        status, summary, details = importerRPM.sync(repo, sync_conduit, config)
-        end = time.time()
-        self.assertTrue(status)
-        self.assertEquals(summary["num_synced_new_rpms"], expected_num_packages)
-        self.assertEquals(summary["num_resynced_rpms"], 0)
-        self.assertEquals(summary["num_not_synced_rpms"], 0)
-        self.assertEquals(summary["num_orphaned_rpms"], 0)
-        self.assertEquals(details["size_total"], expected_size_bytes)
-
-        expected = (float(expected_size_bytes)/(num_threads*max_speed*1000))
-        actual_A = end - start
-        self.assertTrue(actual_A > expected)
-        #
-        # Clean up and resync with no bandwidth limit
-        # Ensure result is quicker than above
-        #
-        max_speed = 0
-        self.clean()
-        self.init()
-        repo = mock.Mock(spec=Repository)
-        repo.working_dir = self.working_dir
-        repo.id = "test_bandwidth_limit"
-        sync_conduit = importer_mocks.get_sync_conduit(existing_units=[], pkg_dir=self.pkg_dir)
-        config = importer_mocks.get_basic_config(feed_url=feed_url, num_threads=num_threads, max_speed=max_speed)
-        start = time.time()
-        importerRPM = importer_rpm.ImporterRPM()
-        status, summary, details = importerRPM.sync(repo, sync_conduit, config)
-        end = time.time()
-        self.assertTrue(status)
-        self.assertEquals(summary["num_synced_new_rpms"], expected_num_packages)
-        self.assertEquals(summary["num_resynced_rpms"], 0)
-        self.assertEquals(summary["num_not_synced_rpms"], 0)
-        self.assertEquals(summary["num_orphaned_rpms"], 0)
-        self.assertEquals(details["size_total"], expected_size_bytes)
-        # This check is presenting a problem in rhel-6.
-        # Current thinking is that the packages in this repo are not large enough
-        # to test the bandwidth limit.
-        # self.assertTrue(end-start < actual_A)
-
     def test_remote_sync_with_bad_url(self):
         feed_url = "http://repos.fedorapeople.org/INTENTIONAL_BAD_URL/demo_repos/pulp_unittest/"
         repo = mock.Mock(spec=Repository)
