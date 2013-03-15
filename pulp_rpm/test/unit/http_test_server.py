@@ -78,7 +78,7 @@ class HTTPStaticTestServer(object):
 
 # utilities --------------------------------------------------------------------
 
-def relative_path_to_data_dir(base_data_dir):
+def relative_path_to_data_dir(base_data_dir=''):
     """
     Determine the relative path to a given base data directory from the current
     working directory, if possible
@@ -93,9 +93,12 @@ def relative_path_to_data_dir(base_data_dir):
     :raise RuntimeError: if the relative path cannot be determined
     """
 
-    possible_data_dir_path = os.path.join('pulp_rpm/test/unit/data', base_data_dir)
+    # not using os.path.join as it's too clever and removes ..
+    # this disallows execution from sub-directories, such as 'server'
+    possible_data_dir_path = '/'.join(('pulp/test/unit/data', base_data_dir))
 
     while possible_data_dir_path:
+        print possible_data_dir_path
 
         if os.path.exists(possible_data_dir_path):
             return possible_data_dir_path
