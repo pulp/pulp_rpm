@@ -14,8 +14,16 @@
 import os.path
 
 
+def from_package_info(package_info):
+    package_type = package_info['type']
+
+    if package_type == 'rpm':
+        return RPM.from_package_info(package_info)
+
+
 class RPM(object):
     UNIT_KEY_NAMES = ('name', 'epoch', 'version', 'release', 'arch', 'checksumtype', 'checksum')
+    TYPE = 'rpm'
 
     def __init__(self, name, epoch, version, release, arch, checksumtype, checksum, metadata):
         for name in self.UNIT_KEY_NAMES:
@@ -36,3 +44,19 @@ class RPM(object):
             unit_key['name'], unit_key['version'], unit_key['release'],
             unit_key['arch'], unit_key['checksum'], self.metadata['filename']
         )
+
+    @classmethod
+    def from_package_info(cls, package_info):
+        unit_key = {}
+        metadata = {}
+        for key, value in package_info.iter_items():
+            if key == 'checksum':
+                unit_key['checksum'] = value['hex_digest']
+                unit_key['checksumtype'] = value['algorithm']
+            elif key in cls.UNIT_KEY_NAMES:
+                unit_key[key] = value
+            else:
+                metadata[key] = value
+        unit_key['metadata'] = metadata
+
+        return cls(**unit_key)
