@@ -197,8 +197,9 @@ required to fit the selected packages.
   This command may be exited by pressing ctrl+c without affecting the actual
   operation on the server.
 
-The resulting ISOs are now available at `https://localhost/pulp/isos/pulp/
-<https://localhost/pulp/isos/pulp/>`_ (adjust hostname as necessary)
+The resulting ISOs are made available at ``/pulp/exports/<repo-id>/``. For example,
+`http://localhost/pulp/exports/foo/ <http://localhost/pulp/exports/foo/>`_
+(adjust hostname and repo-id as necessary.)
 
 Errata
 ======

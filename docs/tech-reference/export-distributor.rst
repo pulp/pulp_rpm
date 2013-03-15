@@ -4,7 +4,9 @@ Export Distributors
 
 There are two export distributors, one that allows exporting a single repository, and another that allows you to
 export a repository group. The export distributors build ISO images out of the content available in RPM
-repositories. Both distributors use the same ID, ``export_distributor``.
+repositories. Both distributors use the same ID, ``export_distributor``. Exported ISOs will be published over
+HTTP or HTTPS at the path ``/pulp/exports/<repo-id>/``. For example,
+http://pulp-server.yourdomain.com/pulp/exports/foo/ for a repo with ID foo.
 
 Configuration Parameters
 ========================
