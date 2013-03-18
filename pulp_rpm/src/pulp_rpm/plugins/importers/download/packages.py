@@ -38,7 +38,7 @@ class Packages(object):
         self.packages_information_iterator = packages_information_iterator
         self.dst_dir = dst_dir
 
-        downloader_config = DownloaderConfig(protocol='http')
+        downloader_config = DownloaderConfig()
         self.downloader = HTTPSCurlDownloader(downloader_config, event_listener)
 
     def download_packages(self):

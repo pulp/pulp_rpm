@@ -92,7 +92,7 @@ class MetadataFiles(object):
         self.repo_url = repo_url
         self.dst_dir = dst_dir
 
-        downloader_config = DownloaderConfig('http')
+        downloader_config = DownloaderConfig()
         self.downloader = HTTPSCurlDownloader(downloader_config, event_listener)
 
         self.revision = None

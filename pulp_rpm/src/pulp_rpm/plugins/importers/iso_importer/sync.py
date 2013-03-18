@@ -66,7 +66,7 @@ class ISOSyncRun(listener.DownloadEventListener):
             'proxy_port': config.get(constants.CONFIG_PROXY_PORT),
             'proxy_user': config.get(constants.CONFIG_PROXY_USER),
             'proxy_password': config.get(constants.CONFIG_PROXY_PASSWORD)}
-        downloader_config = DownloaderConfig(protocol='https', **downloader_config)
+        downloader_config = DownloaderConfig(**downloader_config)
 
         # We will pass self as the event_listener, so that we can receive the callbacks in this class
         self.downloader = HTTPSCurlDownloader(downloader_config, self)
