@@ -12,6 +12,9 @@
 # http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt.
 
 import os.path
+import logging
+
+_LOGGER = logging.getLogger(__name__)
 
 
 def from_package_info(package_info):
@@ -21,7 +24,26 @@ def from_package_info(package_info):
         return RPM.from_package_info(package_info)
 
 
-class RPM(object):
+class Package(object):
+    @property
+    def unit_key(self):
+        key = {}
+        for name in self.UNIT_KEY_NAMES:
+            key[name] = getattr(self, name)
+        return key
+
+
+class DRPM(Package):
+    UNIT_KEY_NAMES = ('epoch',  'version', 'release', 'filename', 'checksumtype', 'checksum')
+    TYPE = 'drpm'
+
+    def __init__(self, name, epoch, version, release, arch, checksumtype, checksum, metadata):
+        for name in self.UNIT_KEY_NAMES:
+            setattr(self, name, locals()[name])
+        self.metadata = metadata
+
+
+class RPM(Package):
     UNIT_KEY_NAMES = ('name', 'epoch', 'version', 'release', 'arch', 'checksumtype', 'checksum')
     TYPE = 'rpm'
 
@@ -31,25 +53,18 @@ class RPM(object):
         self.metadata = metadata
 
     @property
-    def unit_key(self):
-        key = {}
-        for name in self.UNIT_KEY_NAMES:
-            key[name] = getattr(self, name)
-        return key
-
-    @property
     def relative_path(self):
         unit_key = self.unit_key
         return os.path.join(
             unit_key['name'], unit_key['version'], unit_key['release'],
-            unit_key['arch'], unit_key['checksum'], self.metadata['filename']
+            unit_key['arch'], unit_key['checksum'], self.metadata['relative_url_path']
         )
 
     @classmethod
     def from_package_info(cls, package_info):
         unit_key = {}
         metadata = {}
-        for key, value in package_info.iter_items():
+        for key, value in package_info.iteritems():
             if key == 'checksum':
                 unit_key['checksum'] = value['hex_digest']
                 unit_key['checksumtype'] = value['algorithm']
@@ -60,3 +75,17 @@ class RPM(object):
         unit_key['metadata'] = metadata
 
         return cls(**unit_key)
+
+    @property
+    def key_string_without_version(self):
+        keys = [key for key in self.UNIT_KEY_NAMES if key not in ['epoch', 'version', 'release']]
+        keys.append(self.TYPE)
+        return '-'.join(keys)
+
+    @property
+    def version(self):
+        values = []
+        for name in ('epoch', 'version', 'release'):
+            if name in self.UNIT_KEY_NAMES:
+                values.append(getattr(self, name))
+        return ''.join(values)

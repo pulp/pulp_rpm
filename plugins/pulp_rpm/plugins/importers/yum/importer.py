@@ -12,16 +12,13 @@
 # http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt.
 
 from gettext import gettext as _
-import gzip
 import logging
 import shutil
-import tempfile
 
 from pulp.plugins.importer import Importer
 
-from pulp_rpm.common import ids, models, constants
-from pulp_rpm.plugins.importers.download import metadata, primary, packages
-from pulp_rpm.plugins.importers.yum.listener import Listener
+from pulp_rpm.common import ids, models
+from pulp_rpm.plugins.importers.yum import sync
 
 
 _LOGGER = logging.getLogger(__name__)
@@ -64,35 +61,4 @@ class YumImporter(Importer):
         conduit.save_unit(unit)
 
     def sync_repo(self, repo, sync_conduit, config):
-        _LOGGER.info(config)
-        feed = config.get(constants.CONFIG_FEED_URL)
-        current_units = sync_conduit.get_units()
-        event_listener = Listener(sync_conduit)
-        tmp_dir = tempfile.mkdtemp()
-        try:
-            metadata_files = metadata.MetadataFiles(feed, tmp_dir)
-            metadata_files.download_repomd()
-            metadata_files.parse_repomd()
-            #metadata_files.verify_metadata_files()
-
-            primary_file_path = metadata_files.metadata['primary']['local_path']
-
-            if primary_file_path.endswith('.gz'):
-                primary_file_handle = gzip.open(primary_file_path, 'r')
-            else:
-                primary_file_handle = open(primary_file_path, 'r')
-
-            with primary_file_handle:
-                package_info_generator = primary.primary_package_list_generator(primary_file_handle)
-                units_to_download = self._filtered_unit_generator(package_info_generator, current_units)
-
-                packages_manager = packages.Packages(feed, units_to_download, tmp_dir, event_listener)
-                packages_manager.download_packages()
-
-        finally:
-            shutil.rmtree(tmp_dir, ignore_errors=True)
-
-    def _filtered_unit_generator(self, units, current_units):
-        for unit in units:
-            # decide if this unit should be downloaded
-            yield unit
+        return sync.sync_repo(repo, sync_conduit, config)

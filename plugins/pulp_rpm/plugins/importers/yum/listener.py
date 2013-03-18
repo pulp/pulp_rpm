@@ -11,11 +11,14 @@
 # have received a copy of GPLv2 along with this software; if not, see
 # http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt.
 
+import logging
 import shutil
 
 from pulp.common.download.listener import DownloadEventListener
 
 from pulp_rpm.common import models
+
+_LOGGER = logging.getLogger(__name__)
 
 
 class Listener(DownloadEventListener):
