@@ -18,7 +18,7 @@ from urlparse import urljoin
 from xml.etree.cElementTree import iterparse
 
 
-from pulp.common.download.backends.curl import HTTPSCurlDownloadBackend
+from pulp.common.download.downloaders.curl import HTTPSCurlDownloader
 from pulp.common.download.config import DownloaderConfig
 from pulp.common.download.request import DownloadRequest
 
@@ -93,7 +93,7 @@ class MetadataFiles(object):
         self.dst_dir = dst_dir
 
         downloader_config = DownloaderConfig('http')
-        self.downloader = HTTPSCurlDownloadBackend(downloader_config, event_listener)
+        self.downloader = HTTPSCurlDownloader(downloader_config, event_listener)
 
         self.revision = None
         self.metadata = {}
