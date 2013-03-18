@@ -12,6 +12,7 @@
 # see http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt
 
 import gzip
+import os
 import StringIO
 import unittest
 
@@ -33,7 +34,9 @@ class PrimaryXMLParserTests(unittest.TestCase):
             handle.close()
 
     def test_compressed_primary(self):
-        with gzip.open(TEST_REPO_PRIMARY_XML_PATH, 'r') as handle:
+        current_path = os.path.dirname(__file__)
+        primary_xml_path = os.path.join(current_path, TEST_REPO_PRIMARY_XML_PATH)
+        with gzip.open(primary_xml_path, 'r') as handle:
             generator = primary.primary_package_list_generator(handle)
 
             for file_info in generator:
