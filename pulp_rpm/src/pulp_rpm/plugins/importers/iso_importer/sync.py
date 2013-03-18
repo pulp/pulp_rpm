@@ -22,8 +22,9 @@ from pulp_rpm.common import constants, ids
 from pulp_rpm.common.constants import STATE_COMPLETE, STATE_RUNNING, STATE_FAILED
 from pulp_rpm.common.progress import SyncProgressReport
 
-from pulp.common.download import factory, listener, request
+from pulp.common.download import listener, request
 from pulp.common.download.config import DownloaderConfig
+from pulp.common.download.downloaders.curl import HTTPSCurlDownloader
 from pulp.common.util import encode_unicode
 from pulp.plugins.conduits.mixins import UnitAssociationCriteria
 
@@ -68,7 +69,7 @@ class ISOSyncRun(listener.DownloadEventListener):
         downloader_config = DownloaderConfig(protocol='https', **downloader_config)
 
         # We will pass self as the event_listener, so that we can receive the callbacks in this class
-        self.downloader = factory.get_downloader(downloader_config, self)
+        self.downloader = HTTPSCurlDownloader(downloader_config, self)
         self.progress_report = SyncProgressReport(sync_conduit)
 
     def cancel_sync(self):
