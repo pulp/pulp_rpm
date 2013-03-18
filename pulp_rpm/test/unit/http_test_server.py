@@ -95,7 +95,7 @@ def relative_path_to_data_dir(base_data_dir=''):
 
     # not using os.path.join as it's too clever and removes ..
     # this disallows execution from sub-directories, such as 'server'
-    possible_data_dir_path = '/'.join(('pulp/test/unit/data', base_data_dir))
+    possible_data_dir_path = '/'.join(('pulp_rpm/test/unit/data', base_data_dir))
 
     while possible_data_dir_path:
         print possible_data_dir_path
