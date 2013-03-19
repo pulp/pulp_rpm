@@ -301,11 +301,8 @@ class YumImporter(Importer):
                 self._import_errata_unit_rpms(source_repo, u, import_conduit, config,
                     existing_rpm_units_dict, blacklist_units=blacklist_units)
             elif u.type_id == TYPE_ID_PKG_GROUP:
-                u = self._safe_copy_unit(u)
-                u.unit_key['repo_id'] = dest_repo.id
-                import_conduit.save_unit(u)
                 # pkg group unit associated, lookup child units underneath and import them as well
-                self._import_pkg_group_unit(source_repo, u, import_conduit, config)
+                self._import_pkg_group_unit(source_repo, dest_repo, u, import_conduit, config)
             elif u.type_id == TYPE_ID_PKG_CATEGORY:
                 u = self._safe_copy_unit(u)
                 u.unit_key['repo_id'] = dest_repo.id
@@ -415,9 +412,10 @@ class YumImporter(Importer):
             if not len(found_pkggrp):
                 # couldnt find the pkggrp, continue to the next one
                 continue
-            self.import_units(source_repo, dest_repo, import_conduit, config, [found_pkggrp[0]])
+            # import any associated packages
+            self._import_pkg_group_unit(source_repo, dest_repo, found_pkggrp[0], import_conduit, config)
 
-    def _import_pkg_group_unit(self, source_repo, pkg_group_unit, import_conduit, config):
+    def _import_pkg_group_unit(self, source_repo, dest_repo, pkg_group_unit, import_conduit, config):
         """
         look up package groups and associated packages and import the units
         @param source_repo: metadata describing the repository containing the
@@ -434,6 +432,10 @@ class YumImporter(Importer):
         @param config: plugin configuration
         @type  config: L{pulp.plugins.plugins.config.PluginCallConfiguration}
         """
+        pkg_group_unit = self._safe_copy_unit(pkg_group_unit)
+        pkg_group_unit.unit_key['repo_id'] = dest_repo.id
+        import_conduit.save_unit(pkg_group_unit)
+
         mandatory_pkg_names = pkg_group_unit.metadata["mandatory_package_names"] or []
         optional_pkg_names = pkg_group_unit.metadata["optional_package_names"] or []
         conditional_pkg_names = [cond_pkg[0] for cond_pkg in pkg_group_unit.metadata["conditional_package_names"]]
