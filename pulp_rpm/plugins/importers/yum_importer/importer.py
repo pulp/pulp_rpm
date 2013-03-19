@@ -311,7 +311,7 @@ class YumImporter(Importer):
                 u.unit_key['repo_id'] = dest_repo.id
                 import_conduit.save_unit(u)
                 # pkg category associated, lookup pkg groups underneath and import them as well
-                self._import_pkg_category_unit(source_repo, u, import_conduit, config)
+                self._import_pkg_category_unit(source_repo, dest_repo, u, import_conduit, config)
             elif u.type_id == TYPE_ID_DISTRO:
                 import_conduit.associate_unit(u)
         _LOG.debug("%s units from %s have been associated to %s" % (len(units), source_repo.id, dest_repo.id))
@@ -390,7 +390,7 @@ class YumImporter(Importer):
                 else:
                     _LOG.debug("rpm unit %s not found; skipping" % pinfo)
 
-    def _import_pkg_category_unit(self, source_repo, pkg_category_unit, import_conduit, config):
+    def _import_pkg_category_unit(self, source_repo, dest_repo, pkg_category_unit, import_conduit, config):
         """
         looks up the package category and associated groups within and imports the units
         @param source_repo: metadata describing the repository containing the
@@ -414,12 +414,8 @@ class YumImporter(Importer):
             found_pkggrp = import_conduit.search_all_units(type_id=TYPE_ID_PKG_GROUP, criteria=criteria)
             if not len(found_pkggrp):
                 # couldnt find the pkggrp, continue to the next one
-                _LOG.debug(" Package group id %s not found" % found_pkggrp)
                 continue
-            import_conduit.associate_unit(found_pkggrp[0])
-            # import any associated packages
-            self._import_pkg_group_unit(source_repo, found_pkggrp[0], import_conduit, config)
-            _LOG.debug("Associated Package group id %s" % found_pkggrp)
+            self.import_units(source_repo, dest_repo, import_conduit, config, [found_pkggrp[0]])
 
     def _import_pkg_group_unit(self, source_repo, pkg_group_unit, import_conduit, config):
         """
