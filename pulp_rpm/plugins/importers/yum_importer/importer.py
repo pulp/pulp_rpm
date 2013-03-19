@@ -417,20 +417,23 @@ class YumImporter(Importer):
 
     def _import_pkg_group_unit(self, source_repo, dest_repo, pkg_group_unit, import_conduit, config):
         """
-        look up package groups and associated packages and import the units
-        @param source_repo: metadata describing the repository containing the
-               units to import
-        @type  source_repo: L{pulp.plugins.data.Repository}
+        Import a package group unit from source_repo into dest_repo. It will make a copy
+        of the unit, alter its repo_id to reflect the ID of the dest_repo, and it will
+        look up package groups and associated packages and import them.
 
-        @param pkg_group_unit: package group unit to lookup child units for to import
-               into
-        @type  pkg_group_unit: L{pulp.plugins.data.Unit}
-
-        @param import_conduit: provides access to relevant Pulp functionality
-        @type  import_conduit: L{pulp.plugins.conduits.unit_import.ImportUnitConduit}
-
-        @param config: plugin configuration
-        @type  config: L{pulp.plugins.plugins.config.PluginCallConfiguration}
+        :param source_repo:    metadata describing the repository containing the units
+                               to import
+        :type  source_repo:    pulp.plugins.model.Repository
+        :param dest_repo:      The repository that the package group needs to be copied
+                               to
+        :type  dest_repo:      pulp.plugins.model.Repository
+        :param pkg_group_unit: package group unit to lookup child units for to import
+                               into
+        :type  pkg_group_unit: pulp.plugins.model.Unit
+        :param import_conduit: provides access to relevant Pulp functionality
+        :type  import_conduit: pulp.plugins.conduits.unit_import.ImportUnitConduit
+        :param config:         plugin configuration
+        :type  config:         pulp.plugins.plugins.config.PluginCallConfiguration
         """
         pkg_group_unit = self._safe_copy_unit(pkg_group_unit)
         pkg_group_unit.unit_key['repo_id'] = dest_repo.id
