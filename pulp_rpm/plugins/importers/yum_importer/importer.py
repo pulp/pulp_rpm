@@ -304,9 +304,6 @@ class YumImporter(Importer):
                 # pkg group unit associated, lookup child units underneath and import them as well
                 self._import_pkg_group_unit(source_repo, dest_repo, u, import_conduit, config)
             elif u.type_id == TYPE_ID_PKG_CATEGORY:
-                u = self._safe_copy_unit(u)
-                u.unit_key['repo_id'] = dest_repo.id
-                import_conduit.save_unit(u)
                 # pkg category associated, lookup pkg groups underneath and import them as well
                 self._import_pkg_category_unit(source_repo, dest_repo, u, import_conduit, config)
             elif u.type_id == TYPE_ID_DISTRO:
@@ -405,6 +402,10 @@ class YumImporter(Importer):
         @type  config: L{pulp.plugins.plugins.config.PluginCallConfiguration}
 
         """
+        pkg_category_unit = self._safe_copy_unit(pkg_category_unit)
+        pkg_category_unit.unit_key['repo_id'] = dest_repo.id
+        import_conduit.save_unit(pkg_category_unit)
+
         pkg_group_unit_ids = pkg_category_unit.metadata['packagegroupids']
         for pgid in pkg_group_unit_ids:
             criteria = Criteria(filters={'id' : pgid})
@@ -419,7 +420,7 @@ class YumImporter(Importer):
         """
         Import a package group unit from source_repo into dest_repo. It will make a copy
         of the unit, alter its repo_id to reflect the ID of the dest_repo, and it will
-        look up package groups and associated packages and import them.
+        look up associated packages and import them.
 
         :param source_repo:    metadata describing the repository containing the units
                                to import
