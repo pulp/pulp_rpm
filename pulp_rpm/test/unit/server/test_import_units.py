@@ -390,6 +390,45 @@ class TestImportUnits(PulpRPMTests):
         for u in associated_units:
             self.assertTrue(u in [cat_a, grp_a])
 
+    def test__import_pkg_group_unit_munges_repo_id(self):
+        """
+        In a fix for https://bugzilla.redhat.com/show_bug.cgi?id=920322, we want to make
+        sure the package group import process changes the repo_id on any units being
+        imported.
+        """
+        # Create a source repository
+        source_repo = mock.Mock(spec=Repository)
+        source_repo.working_dir = self.data_dir
+        source_repo.id = 'source_repo'
+        # Create a destination repository
+        dest_repo = mock.Mock(spec=Repository)
+        dest_repo.working_dir = self.working_dir
+        dest_repo.id = 'dest_repo'
+        # Create a package group
+        pkg_group_unit = self.create_dummy_pkg_group_unit(source_repo.id,
+                                                          "package_group")
+        # Now make a config mock, an import_conduit mock, and an importer
+        config = importer_mocks.get_basic_config()
+        import_conduit = importer_mocks.get_import_conduit(
+            existing_units=[pkg_group_unit])
+        importer = YumImporter()
+
+        importer._import_pkg_group_unit(source_repo, dest_repo, pkg_group_unit,
+                               import_conduit, config)
+
+        # Let's inspect the calls made to the import_conduit.save() unit. There should
+        # be a call with a copied pkg_group_unit that has the repo_id changed to
+        # dest_repo. save_unit() should have been called once with a copy of our package
+        # group.
+        self.assertEqual(import_conduit.save_unit.call_count, 1)
+        package_group_copy = import_conduit.save_unit.mock_calls[0][1][0]
+        self.assertEqual(package_group_copy.unit_key['repo_id'], dest_repo.id)
+        self.assertEqual(package_group_copy.unit_key['id'],
+                         pkg_group_unit.unit_key['id'])
+        # Make sure the copy is actually a different object by asserting that it has a
+        # different id
+        self.assertNotEqual(id(package_group_copy), id(pkg_group_unit))
+
     def test_package_group_unit_import(self):
         # REPO A (source)
         repoA = mock.Mock(spec=Repository)
