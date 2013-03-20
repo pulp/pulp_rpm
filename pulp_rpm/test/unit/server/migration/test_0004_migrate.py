@@ -63,6 +63,39 @@ class Migration0004Tests(rpm_support_base.PulpRPMTests):
         RepoImporter.get_collection().remove()
         Repo.get_collection().remove()
 
+    def test_migrate_duplicates(self):
+        """
+        This tests the correct behavior when we try to change the repo_id on an object, and end up causing
+        a duplicate error due to our uniqueness constraint.
+        """
+        # Let's put two units here with the same IDs with two different repo_ids, and the run the
+        # migration.
+        source_repo_group_id = add_unit('group', self.source_repo_id, ids.TYPE_ID_PKG_GROUP)
+        dest_repo_group_id = add_unit('group', self.dest_repo_id, ids.TYPE_ID_PKG_GROUP)
+
+        associate_unit(source_repo_group_id, self.dest_repo_id, ids.TYPE_ID_PKG_GROUP)
+        associate_unit(dest_repo_group_id, self.dest_repo_id, ids.TYPE_ID_PKG_GROUP)
+
+        # Migrate should not cause a DuplicateKeyError
+        self.migration.migrate()
+
+        # Verify that only the one group remains, because the migration should have removed the one that
+        # would have become a duplicate
+        group_collection = types_db.type_units_collection(ids.TYPE_ID_PKG_GROUP)
+        all_groups = list(group_collection.find())
+        self.assertEqual(len(all_groups), 1)
+        dest_group = all_groups[0]
+        self.assertEqual(dest_group['id'], 'group')
+        self.assertEqual(dest_group['repo_id'], self.dest_repo_id)
+
+        # Let's make sure that the association for this unit is correct
+        query_manager = factory.repo_unit_association_query_manager()
+        dest_units = query_manager.get_units(self.dest_repo_id)
+        self.assertEqual(len(dest_units), 1)
+        dest_unit = dest_units[0]
+        self.assertEqual(dest_unit['unit_type_id'], ids.TYPE_ID_PKG_GROUP)
+        self.assertEqual(dest_unit['unit_id'], dest_group['_id'])
+
     def test_migrate_groups(self):
         # Setup
         orig_group_id = add_unit('g1', self.source_repo_id, ids.TYPE_ID_PKG_GROUP)

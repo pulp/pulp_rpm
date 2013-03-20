@@ -15,10 +15,13 @@
 import copy
 import logging
 
+from pulp.plugins.types import database as types_db
 from pulp.server.managers import factory
-from pulp.server.managers.repo.unit_association_query import UnitAssociationCriteria
 from pulp.server.managers.repo.cud import RepoContentUnit
-from pulp_rpm.common.ids import TYPE_ID_PKG_GROUP, TYPE_ID_PKG_CATEGORY
+from pulp.server.managers.repo.unit_association_query import UnitAssociationCriteria
+import pymongo.errors
+
+from pulp_rpm.common import ids
 
 _log = logging.getLogger('pulp')
 
@@ -55,13 +58,22 @@ def _fix_pkg_group_category_repoid(repoid, typeid):
             # take a copy of the unit and fix the repoid
             new_unit_metadata = _safe_copy_unit(unit['metadata'])
             new_unit_metadata['repo_id'] = repoid
-            new_unit_id = content_mgr.add_content_unit(content_type=typeid, unit_id=None, unit_metadata=new_unit_metadata)
-            # Grab the association doc itself from the DB directly
-            association = RepoContentUnit.get_collection().find_one({'_id' : unit['_id']})
-            # Update to point to the new unit
-            association['unit_id'] = new_unit_id
-            # Save it back to the DB
-            RepoContentUnit.get_collection().save(association, safe=True)
+            try:
+                new_unit_id = content_mgr.add_content_unit(content_type=typeid, unit_id=None, unit_metadata=new_unit_metadata)
+                # Grab the association doc itself from the DB directly
+                association = RepoContentUnit.get_collection().find_one({'_id' : unit['_id']})
+                # Update to point to the new unit
+                association['unit_id'] = new_unit_id
+                # Save it back to the DB
+                RepoContentUnit.get_collection().save(association, safe=True)
+            except pymongo.errors.DuplicateKeyError:
+                # If migrating this Unit to have the correct repo_id causes a duplicate, then there already
+                # is a Unit that has the correct metadata in place in this repository. Because of this, we
+                # should delete the duplicate unit
+                unit_collection = types_db.type_units_collection(typeid)
+                unit_collection.remove({'_id': unit['metadata']['_id']})
+                # Delete the association
+                RepoContentUnit.get_collection().remove({'_id': unit['_id']})
 
 def _safe_copy_unit(unit):
     """
@@ -83,7 +95,7 @@ def _migrate_units():
     repoids = _get_repos()
     for repoid in repoids:
         # process package group units
-        for typeid in [TYPE_ID_PKG_GROUP, TYPE_ID_PKG_CATEGORY]:
+        for typeid in [ids.TYPE_ID_PKG_GROUP, ids.TYPE_ID_PKG_CATEGORY]:
             _log.debug("Processing repo id %s with type %s" % (repoid, typeid))
             _fix_pkg_group_category_repoid(repoid, typeid)
 
