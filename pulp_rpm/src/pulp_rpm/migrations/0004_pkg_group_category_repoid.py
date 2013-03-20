@@ -30,6 +30,7 @@ factory.initialize()
 ass_query_mgr =  factory.repo_unit_association_query_manager()
 ass_mgr = factory.repo_unit_association_manager()
 content_mgr = factory.content_manager()
+repo_mgr = factory.repo_manager()
 
 def _get_repos():
     """
@@ -69,11 +70,10 @@ def _fix_pkg_group_category_repoid(repoid, typeid):
             except pymongo.errors.DuplicateKeyError:
                 # If migrating this Unit to have the correct repo_id causes a duplicate, then there already
                 # is a Unit that has the correct metadata in place in this repository. Because of this, we
-                # should delete the duplicate unit
-                unit_collection = types_db.type_units_collection(typeid)
-                unit_collection.remove({'_id': unit['metadata']['_id']})
-                # Delete the association
+                # should remove the association of the unit with the repository
                 RepoContentUnit.get_collection().remove({'_id': unit['_id']})
+                # Since we removed a Unit from the repo, we should decrement the repo unit count
+                repo_mgr.update_unit_count(repoid, typeid, -1)
 
 def _safe_copy_unit(unit):
     """
