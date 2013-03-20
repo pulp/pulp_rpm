@@ -159,27 +159,12 @@ class RpmStatusRenderer(StatusRenderer):
 
             self.download_last_state = state
 
-            # For the progress bar to work, we can't write anything after it until
-            # we're completely finished with it. Assemble the download summary into
-            # a string and let the progress bar render it.
-            message_data = {
-                'rpm_done'    : details['rpm']['items_total'] - details['rpm']['items_left'],
-                'rpm_total'   : details['rpm']['items_total'],
-                'delta_done'  : details['delta_rpm']['items_total'] - details['delta_rpm']['items_left'],
-                'delta_total' : details['delta_rpm']['items_total'],
-                'tree_done'   : details['tree_file']['items_total'] - details['tree_file']['items_left'],
-                'tree_total'  : details['tree_file']['items_total'],
-                'file_done'   : details['file']['items_total'] - details['file']['items_left'],
-                'file_total'  : details['file']['items_total'],
-                }
+            template  = _('RPMs:       %(rpm_done)s/%(rpm_total)s items\n'
+                          'SRPMs:      %(srpm_done)s/%(srpm_total)s items\n'
+                          'Delta RPMs: %(drpm_done)s/%(drpm_total)s items\n'
+                          'Tree Files: %(tree_done)s/%(tree_total)s items\n')
 
-            template  = 'RPMs:       %(rpm_done)s/%(rpm_total)s items\n'
-            template += 'Delta RPMs: %(delta_done)s/%(delta_total)s items\n'
-            template += 'Tree Files: %(tree_done)s/%(tree_total)s items\n'
-            template += 'Files:      %(file_done)s/%(file_total)s items'
-            template = _(template)
-
-            bar_message = template % message_data
+            bar_message = template % details
 
             overall_done = data['size_total'] - data['size_left']
             overall_total = data['size_total']

@@ -14,6 +14,7 @@
 import gzip
 import shutil
 import tempfile
+from pulp_rpm.plugins.importers.yum.report import ContentReport
 
 from pulp_rpm.common import constants, models
 from pulp_rpm.plugins.importers.download import metadata, primary, packages
@@ -53,9 +54,10 @@ def _get_primary_metadata_file_handle(metadata_files):
 
 
 def sync_repo(repo, sync_conduit, config):
+    content_report = ContentReport()
     progress_status = {
         'metadata': {'state': 'NOT_STARTED'},
-        'content': {'state': 'NOT_STARTED'},
+        'content': content_report,
         'errata': {'state': 'NOT_STARTED'},
         'comps': {'state': 'NOT_STARTED'},
     }
@@ -68,19 +70,19 @@ def sync_repo(repo, sync_conduit, config):
     try:
         progress_status['metadata']['state'] = constants.STATE_RUNNING
         sync_conduit.set_progress(progress_status)
-        progress_status['metadata']['state'] = constants.STATE_COMPLETE
-        sync_conduit.set_progress(progress_status)
 
         metadata_files = get_metadata(feed, tmp_dir)
         primary_file_handle = _get_primary_metadata_file_handle(metadata_files)
 
-        progress_status['content']['state'] = constants.STATE_RUNNING
-        details = {}
-        progress_status['content']['details'] = details
+        progress_status['metadata']['state'] = constants.STATE_COMPLETE
+        sync_conduit.set_progress(progress_status)
+
+        content_report['state'] = constants.STATE_RUNNING
         sync_conduit.set_progress(progress_status)
         with primary_file_handle:
+            # scan through all the metadata to decide which packages to download
             package_info_generator = primary.primary_package_list_generator(primary_file_handle)
-            to_download, unit_count = first_sweep(package_info_generator, current_units)
+            to_download, unit_counts, total_size = first_sweep(package_info_generator, current_units)
 
             primary_file_handle.seek(0)
             package_info_generator = primary.primary_package_list_generator(primary_file_handle)
@@ -102,15 +104,21 @@ def sync_repo(repo, sync_conduit, config):
 
 def first_sweep(package_info_generator, current_units):
     # TODO: consider current units
-    count = 0
+    counts = {
+        models.RPM: 0,
+        models.SRPM: 0,
+        models.DRPM: 0,
+    }
+    size_in_bytes = 0
     to_download = {}
     for pkg in package_info_generator:
         model = models.from_package_info(pkg)
         versions = to_download.setdefault(model.key_string_without_version, [])
         # TODO: if only syncing newest version, do a comparison here and evict old versions
         versions.append(model.version)
-        count += 1
-    return to_download, count
+        counts[model.TYPE] += 1
+        size_in_bytes += model.metadata['size']
+    return to_download, counts, size_in_bytes
 
 
 def _filtered_unit_generator(units, to_download):

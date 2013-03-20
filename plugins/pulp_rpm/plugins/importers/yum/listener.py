@@ -22,19 +22,34 @@ _LOGGER = logging.getLogger(__name__)
 
 
 class Listener(DownloadEventListener):
-    def __init__(self, sync_conduit):
+    def __init__(self, sync_conduit, success_callback, failure_callback):
         super(Listener, self).__init__()
         self.sync_conduit = sync_conduit
+        self.success_callback = success_callback
+        self.failure_callback = failure_callback
 
     def download_succeeded(self, report):
+        """
+
+        :param report:
+        :type  report: pulp.common.download.report.DownloadReport
+        :return:
+        """
         model = models.from_package_info(report.data)
-        if model:
-            # init unit, which is idempotent
-            unit = self.sync_conduit.init_unit(model.TYPE, model.unit_key, model.metadata, model.relative_path)
-            # move to final location
-            shutil.move(report.destination, unit.storage_path)
-            # save unit
-            self.sync_conduit.save_unit(unit)
+        # init unit, which is idempotent
+        unit = self.sync_conduit.init_unit(model.TYPE, model.unit_key, model.metadata, model.relative_path)
+        # move to final location
+        shutil.move(report.destination, unit.storage_path)
+        # save unit
+        self.sync_conduit.save_unit(unit)
+        self.success_callback(model)
 
     def download_failed(self, report):
-        pass
+        """
+
+        :param report:
+        :type  report: pulp.common.download.report.DownloadReport
+        :return:
+        """
+        model = models.from_package_info(report.data)
+        self.failure_callback(model, report.error_report)
