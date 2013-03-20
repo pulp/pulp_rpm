@@ -116,11 +116,7 @@ class RPMErrataProfiler(Profiler):
             if applicable_rpms:
                 errata_details = upgrade_details.pop("errata_details")
                 summary = {}
-                details = {"applicable_rpms": applicable_rpms,
-                           "errata_details": errata_details,
-                           "upgrade_details": upgrade_details}
-
-                applicability_reports.append(ApplicabilityReport(summary, details))
+                applicability_reports.append(ApplicabilityReport(summary, errata_details))
 
         return applicability_reports
 
