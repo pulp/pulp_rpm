@@ -761,7 +761,7 @@ class YumDistributor(Distributor):
             payload['protocols'].append('https')
         payload['gpg_keys'] = []
         if config.get('gpgkey') is not None:
-            payload['gpg_keys'] = config.get('gpgkey')
+            payload['gpg_keys'] = {'pulp.key': config.get('gpgkey')}
         payload['client_cert'] = None
         if config.get('auth_cert') and config.get('auth_ca'):
             payload['client_cert'] = config.get('auth_cert')
