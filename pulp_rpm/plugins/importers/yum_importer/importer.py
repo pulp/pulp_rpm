@@ -386,21 +386,20 @@ class YumImporter(Importer):
 
     def _import_pkg_category_unit(self, source_repo, dest_repo, pkg_category_unit, import_conduit, config):
         """
-        looks up the package category and associated groups within and imports the units
-        @param source_repo: metadata describing the repository containing the
-               units to import
-        @type  source_repo: L{pulp.plugins.data.Repository}
+        Imports the given package category unit to the repository, ensuring that its repo_id is set to the
+        destination repository's id. It then looks up the associated package groups, and imports them as
+        well.
 
-        @param pkg_category_unit: package category unit to lookup child units for to import
-               into
-        @type  pkg_category_unit: L{pulp.plugins.data.Unit}
-
-        @param import_conduit: provides access to relevant Pulp functionality
-        @type  import_conduit: L{pulp.plugins.conduits.unit_import.ImportUnitConduit}
-
-        @param config: plugin configuration
-        @type  config: L{pulp.plugins.plugins.config.PluginCallConfiguration}
-
+        :param source_repo:       metadata describing the repository containing the units to import
+        :type  source_repo:       pulp.plugins.model.Repository
+        :param dest_repo:         The repository that the package category needs to be copied to
+        :type  dest_repo:         pulp.plugins.model.Repository
+        :param pkg_category_unit: package category unit to lookup child units for to import into
+        :type  pkg_category_unit: pulp.plugins.data.Unit
+        :param import_conduit:    provides access to relevant Pulp functionality
+        :type  import_conduit:    pulp.plugins.conduits.unit_import.ImportUnitConduit
+        :param config:            plugin configuration
+        :type  config:            pulp.plugins.plugins.config.PluginCallConfiguration
         """
         pkg_category_unit = self._safe_copy_unit(pkg_category_unit)
         pkg_category_unit.unit_key['repo_id'] = dest_repo.id
