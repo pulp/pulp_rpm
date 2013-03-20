@@ -114,9 +114,12 @@ class RPMErrataProfiler(Profiler):
         for unit in unit_keys:
             applicable_rpms, upgrade_details = self.translate(unit, repo_ids, consumer, conduit)
             if applicable_rpms:
+                errata_details = upgrade_details.pop("errata_details")
                 summary = {}
-                details = {"applicable_rpms": applicable_rpms, "upgrade_details":upgrade_details}
-          
+                details = {"applicable_rpms": applicable_rpms,
+                           "errata_details": errata_details,
+                           "upgrade_details": upgrade_details}
+
                 applicability_reports.append(ApplicabilityReport(summary, details))
 
         return applicability_reports
@@ -178,7 +181,7 @@ class RPMErrataProfiler(Profiler):
 
         :rtype ([{'unit_key':{'name':name.arch}, 'type_id':'rpm'}], {'name arch':{'available':{}, 'installed':{}}   })
         """
-        errata = self.find_unit_associated_to_consumer(TYPE_ID_ERRATA, unit, repo_ids, consumer, conduit)
+        errata = self.find_unit_associated_to_repos(TYPE_ID_ERRATA, unit, repo_ids, conduit)
         if not errata:
             error_msg = _("Unable to find errata with unit_key [%s] in bound repos [%s] to consumer [%s]") % \
                     (unit, repo_ids, consumer.id)
@@ -197,13 +200,17 @@ class RPMErrataProfiler(Profiler):
                 data = {"unit_key":{"name":pkg_name}, "type_id":TYPE_ID_RPM}
                 ret_val.append(data)
             _LOG.info("Translated errata <%s> to <%s>" % (errata, ret_val))
+            # Add applicable errata details to the applicability report
+            errata_details = errata.metadata
+            errata_details['id'] = errata.unit_key['id']
+            upgrade_details['errata_details'] = errata_details
             return ret_val, upgrade_details
 
-    def find_unit_associated_to_consumer(self, unit_type, unit_key, repo_ids, consumer, conduit):
+    def find_unit_associated_to_repos(self, unit_type, unit_key, repo_ids, conduit):
         criteria = UnitAssociationCriteria(type_ids=[unit_type], unit_filters=unit_key)
-        return self.find_unit_associated_to_consumer_by_criteria(criteria, repo_ids, consumer, conduit)
+        return self.find_unit_associated_to_repos_by_criteria(criteria, repo_ids, conduit)
 
-    def find_unit_associated_to_consumer_by_criteria(self, criteria, repo_ids, consumer, conduit):
+    def find_unit_associated_to_repos_by_criteria(self, criteria, repo_ids, conduit):
         for repo_id in repo_ids:
             result = conduit.get_units(repo_id, criteria)
             _LOG.info("Found %s items when searching in repo <%s> for <%s>" % (len(result), repo_id, criteria))
