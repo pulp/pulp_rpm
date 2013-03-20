@@ -17,7 +17,7 @@ Errata Support for Yum Importer
 import os
 import time
 import yum
-from pulp_rpm.common.ids import TYPE_ID_ERRATA, UNIT_KEY_ERRATA, METADATA_ERRATA
+from pulp_rpm.common.ids import TYPE_ID_ERRATA, UNIT_KEY_ERRATA, METADATA_ERRATA, UNIT_KEY_RPM
 from pulp_rpm.yum_plugin import util, updateinfo
 from pulp.server.db.model.criteria import UnitAssociationCriteria, Criteria
 from yum_importer import importer_rpm
@@ -187,10 +187,18 @@ def link_errata_rpm_units(sync_conduit, new_errata_units):
     @return a link_report dictionry.
     @rtype {}
     """
+    valid_fields = []
+    valid_fields.extend(UNIT_KEY_RPM)
+    valid_fields.append("_storage_path")
     link_report = {}
+    existing_rpms = {}
     # link errata and rpm units
-    criteria = UnitAssociationCriteria(type_ids=[importer_rpm.RPM_TYPE_ID, importer_rpm.SRPM_TYPE_ID])
-    existing_rpms = importer_rpm.get_existing_units(sync_conduit, criteria=criteria)
+    criteria = UnitAssociationCriteria(type_ids=[importer_rpm.RPM_TYPE_ID], unit_fields=valid_fields)
+    partial_rpms = importer_rpm.get_existing_units(sync_conduit, criteria=criteria)
+    existing_rpms.update(partial_rpms)
+    criteria = UnitAssociationCriteria(type_ids=[importer_rpm.SRPM_TYPE_ID], unit_fields=valid_fields)
+    partial_rpms = importer_rpm.get_existing_units(sync_conduit, criteria=criteria)
+    existing_rpms.update(partial_rpms)
     link_report['linked_units'] = []
     link_report['missing_rpms'] = []
     for u in new_errata_units.values():
