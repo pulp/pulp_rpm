@@ -133,6 +133,7 @@ A collection of modules shared among all RPM components.
 Summary: The RPM extension common library
 Group: Development/Languages
 Requires: python-pulp-rpm-common = %{pulp_version}
+Requires: rpm-python
 
 %description -n python-pulp-rpm-extension
 A collection of components shared among RPM extensions.
