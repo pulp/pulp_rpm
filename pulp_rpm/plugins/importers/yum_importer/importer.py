@@ -304,9 +304,6 @@ class YumImporter(Importer):
                 # pkg group unit associated, lookup child units underneath and import them as well
                 self._import_pkg_group_unit(source_repo, dest_repo, u, import_conduit, config)
             elif u.type_id == TYPE_ID_PKG_CATEGORY:
-                u = self._safe_copy_unit(u)
-                u.unit_key['repo_id'] = dest_repo.id
-                import_conduit.save_unit(u)
                 # pkg category associated, lookup pkg groups underneath and import them as well
                 self._import_pkg_category_unit(source_repo, dest_repo, u, import_conduit, config)
             elif u.type_id == TYPE_ID_DISTRO:
@@ -389,22 +386,25 @@ class YumImporter(Importer):
 
     def _import_pkg_category_unit(self, source_repo, dest_repo, pkg_category_unit, import_conduit, config):
         """
-        looks up the package category and associated groups within and imports the units
-        @param source_repo: metadata describing the repository containing the
-               units to import
-        @type  source_repo: L{pulp.plugins.data.Repository}
+        Imports the given package category unit to the repository, ensuring that its repo_id is set to the
+        destination repository's id. It then looks up the associated package groups, and imports them as
+        well.
 
-        @param pkg_category_unit: package category unit to lookup child units for to import
-               into
-        @type  pkg_category_unit: L{pulp.plugins.data.Unit}
-
-        @param import_conduit: provides access to relevant Pulp functionality
-        @type  import_conduit: L{pulp.plugins.conduits.unit_import.ImportUnitConduit}
-
-        @param config: plugin configuration
-        @type  config: L{pulp.plugins.plugins.config.PluginCallConfiguration}
-
+        :param source_repo:       metadata describing the repository containing the units to import
+        :type  source_repo:       pulp.plugins.model.Repository
+        :param dest_repo:         The repository that the package category needs to be copied to
+        :type  dest_repo:         pulp.plugins.model.Repository
+        :param pkg_category_unit: package category unit to lookup child units for to import into
+        :type  pkg_category_unit: pulp.plugins.data.Unit
+        :param import_conduit:    provides access to relevant Pulp functionality
+        :type  import_conduit:    pulp.plugins.conduits.unit_import.ImportUnitConduit
+        :param config:            plugin configuration
+        :type  config:            pulp.plugins.plugins.config.PluginCallConfiguration
         """
+        pkg_category_unit = self._safe_copy_unit(pkg_category_unit)
+        pkg_category_unit.unit_key['repo_id'] = dest_repo.id
+        import_conduit.save_unit(pkg_category_unit)
+
         pkg_group_unit_ids = pkg_category_unit.metadata['packagegroupids']
         for pgid in pkg_group_unit_ids:
             criteria = Criteria(filters={'id' : pgid})
@@ -419,7 +419,7 @@ class YumImporter(Importer):
         """
         Import a package group unit from source_repo into dest_repo. It will make a copy
         of the unit, alter its repo_id to reflect the ID of the dest_repo, and it will
-        look up package groups and associated packages and import them.
+        look up associated packages and import them.
 
         :param source_repo:    metadata describing the repository containing the units
                                to import
