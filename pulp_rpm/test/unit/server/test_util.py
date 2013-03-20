@@ -1,6 +1,6 @@
-#!/usr/bin/python
+# -*- coding: utf-8 -*-
 #
-# Copyright (c) 2012 Red Hat, Inc.
+# Copyright © 2013 Red Hat, Inc.
 #
 #
 # This software is licensed to you under the GNU General Public
@@ -54,3 +54,19 @@ class TestUtil(rpm_support_base.PulpRPMTests):
         self.assertFalse(util.is_rpm_newer(newer_a, rpm_b))
 
 
+class TestStringToUnicode(unittest.TestCase):
+    def test_ascii(self):
+        result = util.string_to_unicode('abc')
+        self.assertTrue(isinstance(result, unicode))
+
+    def test_empty(self):
+        result = util.string_to_unicode('')
+        self.assertTrue(isinstance(result, unicode))
+
+    def test_latin1(self):
+        result = util.string_to_unicode('/usr/share/doc/man-pages-da-0.1.1/l\xe6smig')
+        self.assertTrue(isinstance(result, unicode))
+
+    def test_utf8(self):
+        result = util.string_to_unicode(u'€'.encode('utf8'))
+        self.assertTrue(isinstance(result, unicode))

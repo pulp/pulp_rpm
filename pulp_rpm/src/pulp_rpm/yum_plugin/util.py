@@ -366,18 +366,26 @@ def is_rpm_newer(a, b):
         return True
     return False
 
-def encode_string_to_utf8(data):
-    if not data:
-        return data
-    ENCODING_LIST = ['iso-8859-1', ]
-    encoded_data = None
+
+ENCODING_LIST = ('utf8', 'iso-8859-1')
+
+def string_to_unicode(data):
+    """
+    Make a best effort to decode a string, trying encodings in a sensible order
+    based on unscientific expectations of each one's probability of use.
+    ISO 8859-1 (aka latin1) will never fail, so this will always return some
+    unicode object. Lack of decoding error does not mean decoding was correct
+    though.
+
+    :param data:        string to decode
+    :type  data:        str
+
+    :return: data as a unicode object
+    :rtype:  unicode
+    """
     for code in ENCODING_LIST:
         try:
-            encoded_data = data.decode(code).encode('utf8')
-            return encoded_data
-        except UnicodeDecodeError:
+            return data.decode(code)
+        except UnicodeError:
             # try others
             continue
-    if not encoded_data:
-        return data
-
