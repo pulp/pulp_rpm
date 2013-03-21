@@ -64,7 +64,8 @@ class RepomdParsingTests(unittest.TestCase):
 
     def test_test_repo(self):
         # this relies on the pulp_rpm/test/unit/data/test_repo/ repository
-        repodata_path = TEST_REPO_PATH + 'repodata'
+        current_path = os.path.dirname(__file__)
+        repodata_path = os.path.join(current_path, TEST_REPO_PATH + 'repodata')
         metadata_files = metadata.MetadataFiles(TEST_URL, repodata_path) # url param unused
         metadata_files.parse_repomd()
 

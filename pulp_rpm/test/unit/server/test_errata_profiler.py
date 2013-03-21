@@ -157,7 +157,7 @@ class TestErrataProfiler(rpm_support_base.PulpRPMTests):
         prof = RPMErrataProfiler()
         applicable_rpms, upgrade_details = prof.translate(example_errata, ["test_repo_id"], self.test_consumer, conduit)
         self.assertEqual(len(applicable_rpms), 2)
-        self.assertEqual(len(upgrade_details), 2)
+        self.assertEqual(len(upgrade_details), 3)
 
     def test_translate_bad_unit_id(self):
         bad_unit = Unit("BAD_UNIT_ID", {"id":"bad_id"}, {}, None)

@@ -189,24 +189,26 @@ def verify_download(missing_rpms, new_rpms, new_units, verify_options={}):
     @param new_units
     @type new_units {key:pulp.server.content.plugins.model.Unit}
 
-    @return dict of rpms which have not been downloaded
-    @rtype {}
+    @return list of rpms which have not been downloaded
+    @rtype []
     """
-    not_synced = {}
+    not_synced = []
     for key in new_rpms.keys():
         rpm = new_rpms[key]
         rpm_path = os.path.join(rpm["pkgpath"], rpm["filename"])
         if not util.verify_exists(rpm_path, rpm['checksum'], rpm['checksumtype'], rpm['size'], verify_options):
-            not_synced[key] = rpm
+            not_synced.append(rpm)
             del new_rpms[key]
+            if key in new_units:
+                del new_units[key]
     for key in missing_rpms.keys():
         rpm = missing_rpms[key]
         rpm_path = os.path.join(rpm["pkgpath"], rpm["filename"])
         if not util.verify_exists(rpm_path, rpm['checksum'], rpm['checksumtype'], rpm['size'], verify_options):
-            not_synced[key] = rpm
+            not_synced.append(rpm)
             del missing_rpms[key]
-    for key in not_synced:
-        del new_units[key]
+            if key in new_units:
+                del new_units[key]
     return not_synced
 
 def force_ascii(value):
@@ -522,7 +524,7 @@ class ImporterRPM(object):
 
         # -------------- process the download results to a report ---------------
         errors = {}
-        not_synced = {}
+        not_synced = []
         removal_errors = []
         summary = {}
         if 'rpm' not in skip_content_types:
@@ -549,7 +551,7 @@ class ImporterRPM(object):
             new_rpms = filter(lambda u: u.type_id == 'rpm', rpm_info['new_rpm_units'].values())
             missing_rpms = filter(lambda u: u.type_id == 'rpm', rpm_info['missing_rpm_units'].values())
             orphaned_rpms = filter(lambda u: u.type_id == 'rpm', rpm_info['orphaned_rpm_units'].values())
-            not_synced_rpms = filter(lambda r: r["arch"] != 'srpm', not_synced.values())
+            not_synced_rpms = filter(lambda r: r["arch"] != 'srpm', not_synced)
 
             summary["num_rpms"] = len(rpm_info['available_rpms'])
             summary["num_synced_new_rpms"] = len(new_rpms)
@@ -562,7 +564,7 @@ class ImporterRPM(object):
             new_srpms = filter(lambda u: u.type_id == 'srpm', rpm_info['new_rpm_units'].values())
             missing_srpms = filter(lambda u: u.type_id == 'srpm', rpm_info['missing_rpm_units'].values())
             orphaned_srpms = filter(lambda u: u.type_id == 'srpm', rpm_info['orphaned_rpm_units'].values())
-            not_synced_srpms = filter(lambda r: r["arch"] == 'srpm', not_synced.values())
+            not_synced_srpms = filter(lambda r: r["arch"] == 'srpm', not_synced)
 
             summary["num_synced_new_srpms"] = len(new_srpms)
             summary["num_resynced_srpms"] = len(missing_srpms)

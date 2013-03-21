@@ -61,6 +61,7 @@ popd
 mkdir -p /srv
 mkdir -p %{buildroot}/%{_sysconfdir}/pulp
 mkdir -p %{buildroot}/%{_sysconfdir}/pki/pulp/content
+mkdir -p %{buildroot}/%{_sysconfdir}/yum.repos.d
 mkdir -p %{buildroot}/%{_usr}/lib
 mkdir -p %{buildroot}/%{_usr}/lib/pulp/plugins
 mkdir -p %{buildroot}/%{_usr}/lib/pulp/admin/extensions
@@ -94,6 +95,9 @@ cp -R pulp_rpm/plugins/* %{buildroot}/%{_usr}/lib/pulp/plugins
 
 # Yum (plugins)
 cp -R pulp_rpm/usr/lib/yum-plugins %{buildroot}/%{_usr}/lib
+
+# Ghost
+touch %{buildroot}/%{_sysconfdir}/yum.repos.d/pulp.repo
 
 %clean
 rm -rf %{buildroot}
@@ -133,6 +137,7 @@ A collection of modules shared among all RPM components.
 Summary: The RPM extension common library
 Group: Development/Languages
 Requires: python-pulp-rpm-common = %{pulp_version}
+Requires: rpm-python
 
 %description -n python-pulp-rpm-extension
 A collection of components shared among RPM extensions.
@@ -241,6 +246,7 @@ management and Linux specific commands such as system reboot.
 %{_sysconfdir}/pulp/agent/conf.d/bind.conf
 %{_sysconfdir}/pulp/agent/conf.d/linux.conf
 %{_sysconfdir}/pulp/agent/conf.d/rpm.conf
+%ghost %{_sysconfdir}/yum.repos.d/pulp.repo
 %{_usr}/lib/pulp/agent/handlers/bind.py*
 %{_usr}/lib/pulp/agent/handlers/linux.py*
 %{_usr}/lib/pulp/agent/handlers/rpm.py*
