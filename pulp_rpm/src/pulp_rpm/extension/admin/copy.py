@@ -32,64 +32,57 @@ DESC_PKG_CATEGORY = _('copy package categories from one repository to another')
 class RpmCopyCommand(UnitCopyCommand):
 
     def __init__(self, context):
-        self.context = context
         def rpm_copy(**kwargs):
             return _copy(self.context, TYPE_ID_RPM, **kwargs)
-        super(RpmCopyCommand, self).__init__(rpm_copy, name='rpm', description=DESC_RPM)
+        super(RpmCopyCommand, self).__init__(context, name='rpm', description=DESC_RPM, method=rpm_copy)
 
 
 class SrpmCopyCommand(UnitCopyCommand):
 
     def __init__(self, context):
-        self.context = context
         def srpm_copy(**kwargs):
             return _copy(self.context, TYPE_ID_SRPM, **kwargs)
-        super(SrpmCopyCommand, self).__init__(srpm_copy, name='srpm', description=DESC_SRPM)
+        super(SrpmCopyCommand, self).__init__(context, name='srpm', description=DESC_SRPM, method=srpm_copy)
 
 
 class DrpmCopyCommand(UnitCopyCommand):
 
     def __init__(self, context):
-        self.context = context
         def drpm_copy(**kwargs):
             return _copy(self.context, TYPE_ID_DRPM, **kwargs)
-        super(DrpmCopyCommand, self).__init__(drpm_copy, name='drpm', description=DESC_DRPM)
+        super(DrpmCopyCommand, self).__init__(context, name='drpm', description=DESC_DRPM, method=drpm_copy)
         
 
 class ErrataCopyCommand(UnitCopyCommand):
 
     def __init__(self, context):
-        self.context = context
         def errata_copy(**kwargs):
             return _copy(self.context, TYPE_ID_ERRATA, **kwargs)
-        super(ErrataCopyCommand, self).__init__(errata_copy, name='errata', description=DESC_ERRATA)
+        super(ErrataCopyCommand, self).__init__(context, name='errata', description=DESC_ERRATA, method=errata_copy)
 
 
 class DistributionCopyCommand(UnitCopyCommand):
 
     def __init__(self, context):
-        self.context = context
         def distribution_copy(**kwargs):
             return _copy(self.context, TYPE_ID_DISTRO, **kwargs)
-        super(DistributionCopyCommand, self).__init__(distribution_copy, name='distribution', description=DESC_DISTRIBUTION)
+        super(DistributionCopyCommand, self).__init__(context, name='distribution', description=DESC_DISTRIBUTION, method=distribution_copy)
 
 
 class PackageGroupCopyCommand(UnitCopyCommand):
 
     def __init__(self, context):
-        self.context = context
         def package_group_copy(**kwargs):
             return _copy(self.context, TYPE_ID_PKG_GROUP, **kwargs)
-        super(PackageGroupCopyCommand, self).__init__(package_group_copy, name='group', description=DESC_PKG_GROUP)
+        super(PackageGroupCopyCommand, self).__init__(context, name='group', description=DESC_PKG_GROUP, method=package_group_copy)
 
 
 class PackageCategoryCopyCommand(UnitCopyCommand):
 
     def __init__(self, context):
-        self.context = context
         def package_category_copy(**kwargs):
             return _copy(self.context, TYPE_ID_PKG_CATEGORY, **kwargs)
-        super(PackageCategoryCopyCommand, self).__init__(package_category_copy, name='category', description=DESC_PKG_CATEGORY)
+        super(PackageCategoryCopyCommand, self).__init__(context, name='category', description=DESC_PKG_CATEGORY, method=package_category_copy)
 
 
 def _copy(context, type_id, **kwargs):
