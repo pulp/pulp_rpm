@@ -61,6 +61,7 @@ popd
 mkdir -p /srv
 mkdir -p %{buildroot}/%{_sysconfdir}/pulp
 mkdir -p %{buildroot}/%{_sysconfdir}/pki/pulp/content
+mkdir -p %{buildroot}/%{_sysconfdir}/yum.repos.d
 mkdir -p %{buildroot}/%{_usr}/lib
 mkdir -p %{buildroot}/%{_usr}/lib/pulp/plugins
 mkdir -p %{buildroot}/%{_usr}/lib/pulp/admin/extensions
@@ -94,6 +95,9 @@ cp -R pulp_rpm/plugins/* %{buildroot}/%{_usr}/lib/pulp/plugins
 
 # Yum (plugins)
 cp -R pulp_rpm/usr/lib/yum-plugins %{buildroot}/%{_usr}/lib
+
+# Ghost
+touch %{buildroot}/%{_sysconfdir}/yum.repos.d/pulp.repo
 
 %clean
 rm -rf %{buildroot}
