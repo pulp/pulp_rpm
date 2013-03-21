@@ -20,6 +20,10 @@ _LOGGER = logging.getLogger(__name__)
 
 class Package(object):
     UNIT_KEY_NAMES = tuple()
+    def __init__(self, local_vars):
+        for name in self.UNIT_KEY_NAMES:
+            setattr(self, name, local_vars[name])
+        self.metadata = local_vars['metadata']
 
     @property
     def unit_key(self):
@@ -51,7 +55,7 @@ class Package(object):
         return '-'.join(keys)
 
     @property
-    def version(self):
+    def complete_version(self):
         values = []
         for name in ('epoch', 'version', 'release'):
             if name in self.UNIT_KEY_NAMES:
@@ -64,9 +68,7 @@ class DRPM(Package):
     TYPE = 'drpm'
 
     def __init__(self, name, epoch, version, release, arch, checksumtype, checksum, metadata):
-        for name in self.UNIT_KEY_NAMES:
-            setattr(self, name, locals()[name])
-        self.metadata = metadata
+        Package.__init__(self, locals())
 
 
 class RPM(Package):
@@ -74,9 +76,7 @@ class RPM(Package):
     TYPE = 'rpm'
 
     def __init__(self, name, epoch, version, release, arch, checksumtype, checksum, metadata):
-        for name in self.UNIT_KEY_NAMES:
-            setattr(self, name, locals()[name])
-        self.metadata = metadata
+        Package.__init__(self, locals())
 
     @property
     def relative_path(self):

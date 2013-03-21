@@ -12,14 +12,16 @@
 # http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt.
 
 import gzip
+import logging
 import shutil
 import tempfile
-from pulp_rpm.plugins.importers.yum.report import ContentReport
 
 from pulp_rpm.common import constants, models
 from pulp_rpm.plugins.importers.download import metadata, primary, packages
 from pulp_rpm.plugins.importers.yum.listener import Listener
+from pulp_rpm.plugins.importers.yum.report import ContentReport
 
+_LOGGER = logging.getLogger(__name__)
 
 def get_metadata(feed, tmp_dir):
     """
@@ -65,7 +67,7 @@ def sync_repo(repo, sync_conduit, config):
 
     feed = config.get(constants.CONFIG_FEED_URL)
     current_units = sync_conduit.get_units()
-    event_listener = Listener(sync_conduit)
+    event_listener = Listener(sync_conduit, progress_status)
     tmp_dir = tempfile.mkdtemp()
     try:
         progress_status['metadata']['state'] = constants.STATE_RUNNING
@@ -77,12 +79,13 @@ def sync_repo(repo, sync_conduit, config):
         progress_status['metadata']['state'] = constants.STATE_COMPLETE
         sync_conduit.set_progress(progress_status)
 
-        content_report['state'] = constants.STATE_RUNNING
-        sync_conduit.set_progress(progress_status)
         with primary_file_handle:
             # scan through all the metadata to decide which packages to download
             package_info_generator = primary.primary_package_list_generator(primary_file_handle)
             to_download, unit_counts, total_size = first_sweep(package_info_generator, current_units)
+            content_report.set_initial_values(unit_counts, total_size)
+            content_report['state'] = constants.STATE_RUNNING
+            sync_conduit.set_progress(progress_status)
 
             primary_file_handle.seek(0)
             package_info_generator = primary.primary_package_list_generator(primary_file_handle)
@@ -105,9 +108,9 @@ def sync_repo(repo, sync_conduit, config):
 def first_sweep(package_info_generator, current_units):
     # TODO: consider current units
     counts = {
-        models.RPM: 0,
-        models.SRPM: 0,
-        models.DRPM: 0,
+        models.RPM.TYPE: 0,
+        models.SRPM.TYPE: 0,
+        models.DRPM.TYPE: 0,
     }
     size_in_bytes = 0
     to_download = {}
@@ -115,7 +118,7 @@ def first_sweep(package_info_generator, current_units):
         model = models.from_package_info(pkg)
         versions = to_download.setdefault(model.key_string_without_version, [])
         # TODO: if only syncing newest version, do a comparison here and evict old versions
-        versions.append(model.version)
+        versions.append(model.complete_version)
         counts[model.TYPE] += 1
         size_in_bytes += model.metadata['size']
     return to_download, counts, size_in_bytes

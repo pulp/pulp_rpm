@@ -22,11 +22,10 @@ _LOGGER = logging.getLogger(__name__)
 
 
 class Listener(DownloadEventListener):
-    def __init__(self, sync_conduit, success_callback, failure_callback):
+    def __init__(self, sync_conduit, progress_report):
         super(Listener, self).__init__()
         self.sync_conduit = sync_conduit
-        self.success_callback = success_callback
-        self.failure_callback = failure_callback
+        self.progress_report = progress_report
 
     def download_succeeded(self, report):
         """
@@ -42,7 +41,8 @@ class Listener(DownloadEventListener):
         shutil.move(report.destination, unit.storage_path)
         # save unit
         self.sync_conduit.save_unit(unit)
-        self.success_callback(model)
+        self.progress_report['content'].success(model)
+        self.sync_conduit.set_progress(self.progress_report)
 
     def download_failed(self, report):
         """
@@ -52,4 +52,5 @@ class Listener(DownloadEventListener):
         :return:
         """
         model = models.from_package_info(report.data)
-        self.failure_callback(model, report.error_report)
+        self.progress_report['content'].failure(model, report.error_report)
+        self.sync_conduit.set_progress(self.progress_report)
