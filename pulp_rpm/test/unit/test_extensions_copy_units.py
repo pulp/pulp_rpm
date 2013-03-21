@@ -139,7 +139,3 @@ class OtherCopyCommandsTests(rpm_support_base.PulpClientTests):
         self.assertEqual(command.description, copy_commands.DESC_PKG_CATEGORY)
         self.assertEqual(command.type_id, TYPE_ID_PKG_CATEGORY)
 
-
-
-
-
