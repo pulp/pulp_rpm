@@ -395,9 +395,9 @@ def change_location_tag(primary_xml_snippet, relpath):
     start_index = primary_xml_snippet.find("<location ")
     end_index = primary_xml_snippet.find("/>", start_index) + 2 # adjust to end of closing tag
 
-    first_portion = util.encode_string_to_utf8(primary_xml_snippet[:start_index])
-    end_portion = util.encode_string_to_utf8(primary_xml_snippet[end_index:])
-    location = util.encode_string_to_utf8("""<location href="%s"/>""" % (basename))
+    first_portion = util.string_to_unicode(primary_xml_snippet[:start_index])
+    end_portion = util.string_to_unicode(primary_xml_snippet[end_index:])
+    location = util.string_to_unicode("""<location href="%s"/>""" % (basename))
     return first_portion + location + end_portion
 
 

@@ -10,6 +10,9 @@
 # have received a copy of GPLv2 along with this software; if not, see
 # http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt.
 
+import os.path
+import sys
+
 from pulp.plugins.types import database as types_db
 from pulp.plugins.types.model import TypeDefinition
 from pulp.server.db.model.repository import Repo, RepoContentUnit, RepoImporter
@@ -18,7 +21,12 @@ from pulp.server.managers import factory
 
 from pulp_rpm.common import ids
 
-import rpm_support_base
+try:
+    import rpm_support_base
+except ImportError:
+    path = os.path.join(os.path.dirname(__file__), '../../')
+    sys.path.append(path)
+    import rpm_support_base
 
 
 # Trimmed down versions of the type defs
