@@ -25,7 +25,6 @@ try:
     import rpm_support_base
 except ImportError:
     path = os.path.join(os.path.dirname(__file__), '../../')
-    print path
     sys.path.append(path)
     import rpm_support_base
 
