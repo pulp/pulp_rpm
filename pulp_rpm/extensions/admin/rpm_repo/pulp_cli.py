@@ -19,7 +19,7 @@ from pulp.client.commands.repo.query import RepoSearchCommand
 from pulp.client.upload import manager as upload_lib
 
 from pulp_rpm.common import constants, ids
-from pulp_rpm.extension.admin import (contents, copy, export, remove, repo,
+from pulp_rpm.extension.admin import (contents, copy_commands, export, remove, repo,
                                       status, structure, sync_schedules)
 from pulp_rpm.extension.admin.upload import (category, errata, package)
 from pulp_rpm.extension.admin.upload import group as package_group
@@ -42,13 +42,13 @@ def initialize(context):
     repo_section.add_command(RepoSearchCommand(context, constants.REPO_NOTE_RPM))
 
     copy_section = structure.repo_copy_section(context.cli)
-    copy_section.add_command(copy.RpmCopyCommand(context))
-    copy_section.add_command(copy.SrpmCopyCommand(context))
-    copy_section.add_command(copy.DrpmCopyCommand(context))
-    copy_section.add_command(copy.ErrataCopyCommand(context))
-    copy_section.add_command(copy.DistributionCopyCommand(context))
-    copy_section.add_command(copy.PackageGroupCopyCommand(context))
-    copy_section.add_command(copy.PackageCategoryCopyCommand(context))
+    copy_section.add_command(copy_commands.RpmCopyCommand(context))
+    copy_section.add_command(copy_commands.SrpmCopyCommand(context))
+    copy_section.add_command(copy_commands.DrpmCopyCommand(context))
+    copy_section.add_command(copy_commands.ErrataCopyCommand(context))
+    copy_section.add_command(copy_commands.DistributionCopyCommand(context))
+    copy_section.add_command(copy_commands.PackageGroupCopyCommand(context))
+    copy_section.add_command(copy_commands.PackageCategoryCopyCommand(context))
 
     remove_section = structure.repo_remove_section(context.cli)
     remove_section.add_command(remove.RpmRemoveCommand(context))
