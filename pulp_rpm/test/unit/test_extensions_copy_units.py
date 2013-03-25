@@ -9,214 +9,133 @@
 # have received a copy of GPLv2 along with this software; if not, see
 # http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt.
 
-import os
-import mock
-import sys
-
-from pulp.client.commands import options
 from pulp.client.commands.unit import UnitCopyCommand
 
-from pulp_rpm.common import ids
-from pulp_rpm.extension.admin import copy
+from pulp_rpm.common.ids import (TYPE_ID_RPM, TYPE_ID_SRPM, TYPE_ID_DRPM, TYPE_ID_ERRATA, TYPE_ID_DISTRO,
+                                 TYPE_ID_PKG_GROUP, TYPE_ID_PKG_CATEGORY)
+from pulp_rpm.extension.admin import copy_commands
 import rpm_support_base
 
 
-class CopyRpmCommandTests(rpm_support_base.PulpClientTests):
-
-    FROM_REPO_ID = 'test-repo-src'
-    TO_REPO_ID = 'test-repo-dst'
-    TYPE_IDS = [ids.TYPE_ID_RPM]
-    RECURSIVE = True
-
-    def setUp(self):
-        super(CopyRpmCommandTests, self).setUp()
-        self.command = copy.RpmCopyCommand(self.context)
-
-    def test_structure(self):
-        self.assertTrue(isinstance(self.command, UnitCopyCommand))
-
-        # Ensure the correct metadata
-        self.assertEqual(self.command.name, 'rpm')
-        self.assertEqual(self.command.description, copy.DESC_RPM)
-
-    @mock.patch('pulp.bindings.repository.RepositoryUnitAPI.copy')
-    def test_copy(self, mock_binding):
-        # Setup
-        
-        data = {
-            'from-repo-id' : self.FROM_REPO_ID,
-            'to-repo-id' : self.TO_REPO_ID,
-            'recursive' : self.RECURSIVE,
-        }
-
-        # Test
-        copy._copy(self.context, ids.TYPE_ID_RPM, **data)
-
-        # Verify
-        passed = dict([('type_ids', self.TYPE_IDS), 
-                 ('to-repo-id', self.TO_REPO_ID), 
-                 ('from-repo-id', self.FROM_REPO_ID),
-                 ('recursive', self.RECURSIVE)])
-
-        mock_binding.assert_called_with(self.FROM_REPO_ID, self.TO_REPO_ID, **passed)
-
-
-class CopyErrataCommandTests(rpm_support_base.PulpClientTests):
-
-    FROM_REPO_ID = 'test-repo-src'
-    TO_REPO_ID = 'test-repo-dst'
-    TYPE_IDS = [ids.TYPE_ID_ERRATA]
-    RECURSIVE = True
+class RecursiveCopyCommandTests(rpm_support_base.PulpClientTests):
+    """
+    This test case isn't interested in testing the functionality of the base UnitCopyCommand
+    class. It exists to test the customizations made on top of it, so don't expect there to be
+    a ton going on in here.
+    """
 
     def setUp(self):
-        super(CopyErrataCommandTests, self).setUp()
-        self.command = copy.ErrataCopyCommand(self.context)
+        super(RecursiveCopyCommandTests, self).setUp()
+
+        self.name = 'copy'
+        self.description = 'fake-description'
+        self.type_id = 'fake-type'
+        self.command = copy_commands.RecursiveCopyCommand(self.context, self.name, self.description,
+                                                          self.type_id)
 
     def test_structure(self):
+        # Correct hierarchy of functionality
         self.assertTrue(isinstance(self.command, UnitCopyCommand))
 
-        # Ensure the correct metadata
-        self.assertEqual(self.command.name, 'errata')
-        self.assertEqual(self.command.description, copy.DESC_ERRATA)
+        # Correct propagation of constructor arguments
+        self.assertEqual(self.command.name, self.name)
+        self.assertEqual(self.command.description, self.description)
+        self.assertEqual(self.command.type_id, self.type_id)
 
-    @mock.patch('pulp.bindings.repository.RepositoryUnitAPI.copy')
-    def test_copy(self, mock_binding):
-        # Setup
-        
-        data = {
-            'from-repo-id' : self.FROM_REPO_ID,
-            'to-repo-id' : self.TO_REPO_ID,
-            'recursive' : self.RECURSIVE,
-        }
+        # Addition of the recursive flag
+        self.assertTrue(copy_commands.FLAG_RECURSIVE in self.command.options)
 
+    def test_generate_override_config(self):
         # Test
-        copy._copy(self.context, ids.TYPE_ID_ERRATA, **data)
+        user_input = {copy_commands.FLAG_RECURSIVE.keyword : True}
+        override_config = self.command.generate_override_config(**user_input)
 
         # Verify
-        passed = dict([('type_ids', self.TYPE_IDS), 
-                 ('to-repo-id', self.TO_REPO_ID), 
-                 ('from-repo-id', self.FROM_REPO_ID),
-                 ('recursive', self.RECURSIVE)])
+        self.assertEqual(override_config, {'recursive' : True})
 
-        mock_binding.assert_called_with(self.FROM_REPO_ID, self.TO_REPO_ID, **passed)
-
-
-class CopyPackageGrpCommandTests(rpm_support_base.PulpClientTests):
-
-    FROM_REPO_ID = 'test-repo-src'
-    TO_REPO_ID = 'test-repo-dst'
-    TYPE_IDS = [ids.TYPE_ID_PKG_GROUP]
-    RECURSIVE = True
-
-    def setUp(self):
-        super(CopyPackageGrpCommandTests, self).setUp()
-        self.command = copy.PackageGroupCopyCommand(self.context)
-
-    def test_structure(self):
-        self.assertTrue(isinstance(self.command, UnitCopyCommand))
-
-        # Ensure the correct metadata
-        self.assertEqual(self.command.name, 'group')
-        self.assertEqual(self.command.description, copy.DESC_PKG_GROUP)
-
-    @mock.patch('pulp.bindings.repository.RepositoryUnitAPI.copy')
-    def test_copy(self, mock_binding):
-        # Setup
-        
-        data = {
-            'from-repo-id' : self.FROM_REPO_ID,
-            'to-repo-id' : self.TO_REPO_ID,
-            'recursive' : self.RECURSIVE,
-        }
-
+    def test_generate_override_config_no_recursive(self):
         # Test
-        copy._copy(self.context, ids.TYPE_ID_PKG_GROUP, **data)
+        user_input = {copy_commands.FLAG_RECURSIVE.keyword : None}
+        override_config = self.command.generate_override_config(**user_input)
 
         # Verify
-        passed = dict([('type_ids', self.TYPE_IDS), 
-                 ('to-repo-id', self.TO_REPO_ID), 
-                 ('from-repo-id', self.FROM_REPO_ID),
-                 ('recursive', self.RECURSIVE)])
-
-        mock_binding.assert_called_with(self.FROM_REPO_ID, self.TO_REPO_ID, **passed)
+        self.assertEqual(override_config, {})
 
 
-class CopyPackageCategoryCommandTests(rpm_support_base.PulpClientTests):
+class OtherCopyCommandsTests(rpm_support_base.PulpClientTests):
+    """
+    Again, this test isn't concerned with testing the base command's functionality, but rather the
+    correct usage of it. Given the size of the command code, rather than make a class per command, I
+    lumping them all in here and doing one method per command.
+    """
 
-    FROM_REPO_ID = 'test-repo-src'
-    TO_REPO_ID = 'test-repo-dst'
-    TYPE_IDS = [ids.TYPE_ID_PKG_CATEGORY]
-    RECURSIVE = True
-
-    def setUp(self):
-        super(CopyPackageCategoryCommandTests, self).setUp()
-        self.command = copy.PackageCategoryCopyCommand(self.context)
-
-    def test_structure(self):
-        self.assertTrue(isinstance(self.command, UnitCopyCommand))
-
-        # Ensure the correct metadata
-        self.assertEqual(self.command.name, 'category')
-        self.assertEqual(self.command.description, copy.DESC_PKG_CATEGORY)
-
-    @mock.patch('pulp.bindings.repository.RepositoryUnitAPI.copy')
-    def test_copy(self, mock_binding):
-        # Setup
-        
-        data = {
-            'from-repo-id' : self.FROM_REPO_ID,
-            'to-repo-id' : self.TO_REPO_ID,
-            'recursive' : self.RECURSIVE,
-        }
-
+    def test_rpm_copy_command(self):
         # Test
-        copy._copy(self.context, ids.TYPE_ID_PKG_CATEGORY, **data)
+        command = copy_commands.RpmCopyCommand(self.context)
 
         # Verify
-        passed = dict([('type_ids', self.TYPE_IDS), 
-                 ('to-repo-id', self.TO_REPO_ID), 
-                 ('from-repo-id', self.FROM_REPO_ID),
-                 ('recursive', self.RECURSIVE)])
+        self.assertTrue(isinstance(command, copy_commands.RecursiveCopyCommand))
+        self.assertEqual(command.name, 'rpm')
+        self.assertEqual(command.description, copy_commands.DESC_RPM)
+        self.assertEqual(command.type_id, TYPE_ID_RPM)
 
-        mock_binding.assert_called_with(self.FROM_REPO_ID, self.TO_REPO_ID, **passed)
-        
-
-class CopyDistributionCommandTests(rpm_support_base.PulpClientTests):
-
-    FROM_REPO_ID = 'test-repo-src'
-    TO_REPO_ID = 'test-repo-dst'
-    TYPE_IDS = [ids.TYPE_ID_DISTRO]
-    RECURSIVE = True
-
-    def setUp(self):
-        super(CopyDistributionCommandTests, self).setUp()
-        self.command = copy.DistributionCopyCommand(self.context)
-
-    def test_structure(self):
-        self.assertTrue(isinstance(self.command, UnitCopyCommand))
-
-        # Ensure the correct metadata
-        self.assertEqual(self.command.name, 'distribution')
-        self.assertEqual(self.command.description, copy.DESC_DISTRIBUTION)
-
-    @mock.patch('pulp.bindings.repository.RepositoryUnitAPI.copy')
-    def test_copy(self, mock_binding):
-        # Setup
-        
-        data = {
-            'from-repo-id' : self.FROM_REPO_ID,
-            'to-repo-id' : self.TO_REPO_ID,
-            'recursive' : self.RECURSIVE,
-        }
-
+    def test_srpm_copy_command(self):
         # Test
-        copy._copy(self.context, ids.TYPE_ID_DISTRO, **data)
+        command = copy_commands.SrpmCopyCommand(self.context)
 
         # Verify
-        passed = dict([('type_ids', self.TYPE_IDS), 
-                 ('to-repo-id', self.TO_REPO_ID), 
-                 ('from-repo-id', self.FROM_REPO_ID),
-                 ('recursive', self.RECURSIVE)])
+        self.assertTrue(isinstance(command, copy_commands.RecursiveCopyCommand))
+        self.assertEqual(command.name, 'srpm')
+        self.assertEqual(command.description, copy_commands.DESC_SRPM)
+        self.assertEqual(command.type_id, TYPE_ID_SRPM)
 
-        mock_binding.assert_called_with(self.FROM_REPO_ID, self.TO_REPO_ID, **passed)
-        
+    def test_drpm_copy_command(self):
+        # Test
+        command = copy_commands.DrpmCopyCommand(self.context)
+
+        # Verify
+        self.assertTrue(isinstance(command, copy_commands.RecursiveCopyCommand))
+        self.assertEqual(command.name, 'drpm')
+        self.assertEqual(command.description, copy_commands.DESC_DRPM)
+        self.assertEqual(command.type_id, TYPE_ID_DRPM)
+
+    def test_errata_copy_command(self):
+        # Test
+        command = copy_commands.ErrataCopyCommand(self.context)
+
+        # Verify
+        self.assertTrue(isinstance(command, copy_commands.RecursiveCopyCommand))
+        self.assertEqual(command.name, 'errata')
+        self.assertEqual(command.description, copy_commands.DESC_ERRATA)
+        self.assertEqual(command.type_id, TYPE_ID_ERRATA)
+
+    def test_distribution_copy_command(self):
+        # Test
+        command = copy_commands.DistributionCopyCommand(self.context)
+
+        # Verify
+        self.assertTrue(isinstance(command, copy_commands.RecursiveCopyCommand))
+        self.assertEqual(command.name, 'distribution')
+        self.assertEqual(command.description, copy_commands.DESC_DISTRIBUTION)
+        self.assertEqual(command.type_id, TYPE_ID_DISTRO)
+
+    def test_group_copy_command(self):
+        # Test
+        command = copy_commands.PackageGroupCopyCommand(self.context)
+
+        # Verify
+        self.assertTrue(isinstance(command, copy_commands.RecursiveCopyCommand))
+        self.assertEqual(command.name, 'group')
+        self.assertEqual(command.description, copy_commands.DESC_PKG_GROUP)
+        self.assertEqual(command.type_id, TYPE_ID_PKG_GROUP)
+
+    def test_rpm_copy_command(self):
+        # Test
+        command = copy_commands.PackageCategoryCopyCommand(self.context)
+
+        # Verify
+        self.assertTrue(isinstance(command, copy_commands.RecursiveCopyCommand))
+        self.assertEqual(command.name, 'category')
+        self.assertEqual(command.description, copy_commands.DESC_PKG_CATEGORY)
+        self.assertEqual(command.type_id, TYPE_ID_PKG_CATEGORY)
+
