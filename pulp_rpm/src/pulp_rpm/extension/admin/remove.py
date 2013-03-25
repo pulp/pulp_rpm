@@ -70,6 +70,7 @@ class PackageCategoryRemoveCommand(UnitRemoveCommand):
         super(PackageCategoryRemoveCommand, self).__init__(
                 context, name='category', description=DESC_CATEGORY, type_id=TYPE_ID_PKG_CATEGORY)
 
+
 class DistributionRemoveCommand(UnitRemoveCommand):
 
     def __init__(self, context):
