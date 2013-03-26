@@ -79,9 +79,9 @@ class ConsumerGroupInstall(PollingCommand):
             unit_key = dict(name=name)
             unit = dict(type_id=TYPE_ID, unit_key=unit_key)
             units.append(unit)
-        self.install(consumer_group_id, units, options)
+        self.install(consumer_group_id, units, options, kwargs)
 
-    def install(self, consumer_group_id, units, options):
+    def install(self, consumer_group_id, units, options, kwargs):
         prompt = self.context.prompt
         server = self.context.server
         try:
@@ -92,7 +92,7 @@ class ConsumerGroupInstall(PollingCommand):
             prompt.render_success_message(msg)
             response = server.tasks.get_task(task.task_id)
             task = response.response_body
-            self.poll([task])
+            self.poll([task], kwargs)
         except NotFoundException:
             msg = _('Consumer Group [%(g)s] not found') % {'g' : consumer_group_id}
             prompt.write(msg, tag='not-found')
@@ -168,7 +168,7 @@ class ConsumerGroupUpdate(PollingCommand):
             reboot=reboot,)
         if all: # ALL
             unit = dict(type_id=TYPE_ID, unit_key=None)
-            self.update(id, [unit], options)
+            self.update(id, [unit], options, kwargs)
             return
         if names is None:
             names = []
@@ -176,9 +176,9 @@ class ConsumerGroupUpdate(PollingCommand):
             unit_key = dict(name=name)
             unit = dict(type_id=TYPE_ID, unit_key=unit_key)
             units.append(unit)
-        self.update(consumer_group_id, units, options)
+        self.update(consumer_group_id, units, options, kwargs)
 
-    def update(self, consumer_group_id, units, options):
+    def update(self, consumer_group_id, units, options, kwargs):
         prompt = self.context.prompt
         server = self.context.server
         if not units:
@@ -192,7 +192,7 @@ class ConsumerGroupUpdate(PollingCommand):
             prompt.render_success_message(msg)
             response = server.tasks.get_task(task.task_id)
             task = response.response_body
-            self.poll([task])
+            self.poll([task], kwargs)
         except NotFoundException:
             msg = _('Consumer Group [%(g)s] not found') % {'g' : consumer_group_id}
             prompt.write(msg, tag='not-found')
@@ -258,9 +258,9 @@ class ConsumerGroupUninstall(PollingCommand):
             unit_key = dict(name=name)
             unit = dict(type_id=TYPE_ID, unit_key=unit_key)
             units.append(unit)
-        self.uninstall(consumer_group_id, units, options)
+        self.uninstall(consumer_group_id, units, options, kwargs)
 
-    def uninstall(self, consumer_group_id, units, options):
+    def uninstall(self, consumer_group_id, units, options, kwargs):
         prompt = self.context.prompt
         server = self.context.server
         try:
@@ -270,7 +270,7 @@ class ConsumerGroupUninstall(PollingCommand):
             prompt.render_success_message(msg)
             response = server.tasks.get_task(task.task_id)
             task = response.response_body
-            self.poll([task])
+            self.poll([task], kwargs)
         except NotFoundException:
             msg = _('Consumer Group [%s] not found') % consumer_group_id
             prompt.write(msg, tag='not-found')
