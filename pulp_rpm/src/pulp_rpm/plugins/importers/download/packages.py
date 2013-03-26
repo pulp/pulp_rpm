@@ -13,10 +13,42 @@
 
 import os
 from urlparse import urljoin
+from xml.etree.ElementTree import iterparse
 
 from pulp.common.download.downloaders.curl import HTTPSCurlDownloader
 from pulp.common.download.config import DownloaderConfig
 from pulp.common.download.request import DownloadRequest
+
+
+def package_list_generator(xml_handle, package_tag, processor):
+    """
+    Parser for primary.xml file that is implemented as a generator.
+
+    This generator reads enough of the primary.xml file into memory to parse a
+    single package's information. It then yields a corresponding package
+    information dictionary. Then repeats.
+
+    :param primary_xml_handle: open file handle pointing to the beginning of a primary.xml file
+    :type primary_xml_handle: file-like object
+    :return: generator of package information dictionaries
+    :rtype: generator
+    """
+    parser = iterparse(xml_handle, events=('start', 'end'))
+    xml_iterator = iter(parser)
+
+    # get a hold of the root element so we can clear it
+    # this prevents the entire parsed document from building up in memory
+    root_element = xml_iterator.next()[1]
+
+    for event, element in xml_iterator:
+        # if we're not at a fully parsed package element, keep going
+        if event != 'end' or element.tag != package_tag:
+            continue
+
+        root_element.clear() # clear all previously parsed ancestors of the root
+
+        package_info = processor(element)
+        yield package_info
 
 
 class Packages(object):
@@ -56,9 +88,10 @@ class Packages(object):
         :rtype: generator
         """
         for package_info in self.packages_information_iterator:
-            url = urljoin(self.repo_url, package_info['relative_url_path'])
+            relative_path = package_info.get('relative_url_path') or package_info.get('filename')
+            url = urljoin(self.repo_url, relative_path)
 
-            file_name = package_info['relative_url_path'].rsplit('/', 1)[-1]
+            file_name = relative_path.rsplit('/', 1)[-1]
             destination = os.path.join(self.dst_dir, file_name)
 
             request = DownloadRequest(url, destination, package_info)

@@ -12,7 +12,6 @@
 # see http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt
 
 from copy import deepcopy
-from xml.etree.cElementTree import iterparse
 
 # primary.xml element tags -----------------------------------------------------
 
@@ -58,7 +57,8 @@ PACKAGE_INFO_SKEL = {'type': None,
                      'version': None,
                      'release': None,
                      'epoch': None,
-                     'checksum': {'algorithm': None, 'hex_digest': None},
+                     'checksum': None,
+                     'checksumtype': None,
                      'summary': None,
                      'description': None,
                      'changelog': None,
@@ -93,41 +93,9 @@ RPM_ENTRY_SKEL = {'name': None,
 
 FILE_INFO_SKEL = {'path': None}
 
-# primary.xml file parser parser -----------------------------------------------
-
-def primary_package_list_generator(primary_xml_handle):
-    """
-    Parser for primary.xml file that is implemented as a generator.
-
-    This generator reads enough of the primary.xml file into memory to parse a
-    single package's information. It then yields a corresponding package
-    information dictionary. Then repeats.
-
-    :param primary_xml_handle: open file handle pointing to the beginning of a primary.xml file
-    :type primary_xml_handle: file-like object
-    :return: generator of package information dictionaries
-    :rtype: generator
-    """
-    parser = iterparse(primary_xml_handle, events=('start', 'end'))
-    xml_iterator = iter(parser)
-
-    # get a hold of the root element so we can clear it
-    # this prevents the entire parsed document from building up in memory
-    root_element = xml_iterator.next()[1]
-
-    for event, element in xml_iterator:
-        # if we're not at a fully parsed package element, keep going
-        if event != 'end' or element.tag != PACKAGE_TAG:
-            continue
-
-        root_element.clear() # clear all previously parsed ancestors of the root
-
-        package_info = _process_package_element(element)
-        yield package_info
-
 # element processing methods ---------------------------------------------------
 
-def _process_package_element(package_element):
+def process_package_element(package_element):
     """
     Process a parsed primary.xml package element into a package information
     dictionary.
@@ -158,8 +126,8 @@ def _process_package_element(package_element):
 
     checksum_element = package_element.find(CHECKSUM_TAG)
     if checksum_element is not None:
-        package_info['checksum']['algorithm'] = checksum_element.attrib['type']
-        package_info['checksum']['hex_digest'] = checksum_element.text
+        package_info['checksumtype'] = checksum_element.attrib['type']
+        package_info['checksum'] = checksum_element.text
 
     summary_element = package_element.find(SUMMARY_TAG)
     if summary_element is not None:

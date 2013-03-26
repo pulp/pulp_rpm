@@ -16,7 +16,7 @@ import os
 import StringIO
 import unittest
 
-from pulp_rpm.plugins.importers.download import primary
+from pulp_rpm.plugins.importers.download import primary, packages
 
 
 TEST_REPO_PRIMARY_XML_PATH = '../data/test_repo/repodata/primary.xml.gz'
@@ -27,7 +27,9 @@ class PrimaryXMLParserTests(unittest.TestCase):
     def test_generator_instantiation(self):
         handle = StringIO.StringIO()
         try:
-            primary.primary_package_list_generator(handle)
+            packages.package_list_generator(
+                handle, primary.PACKAGE_TAG, primary.process_package_element
+            )
         except Exception, e:
             self.fail(str(e))
         finally:
@@ -37,7 +39,9 @@ class PrimaryXMLParserTests(unittest.TestCase):
         current_path = os.path.dirname(__file__)
         primary_xml_path = os.path.join(current_path, TEST_REPO_PRIMARY_XML_PATH)
         with gzip.open(primary_xml_path, 'r') as handle:
-            generator = primary.primary_package_list_generator(handle)
+            generator = packages.package_list_generator(
+                handle, primary.PACKAGE_TAG, primary.process_package_element
+            )
 
             for file_info in generator:
                 # assert the file_info dictionaries were built correctly by looking

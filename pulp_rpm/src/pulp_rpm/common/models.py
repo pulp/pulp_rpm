@@ -37,10 +37,7 @@ class Package(object):
         unit_key = {}
         metadata = {}
         for key, value in package_info.iteritems():
-            if key == 'checksum':
-                unit_key['checksum'] = value['hex_digest']
-                unit_key['checksumtype'] = value['algorithm']
-            elif key in cls.UNIT_KEY_NAMES:
+            if key in cls.UNIT_KEY_NAMES:
                 unit_key[key] = value
             else:
                 metadata[key] = value
@@ -67,8 +64,12 @@ class DRPM(Package):
     UNIT_KEY_NAMES = ('epoch',  'version', 'release', 'filename', 'checksumtype', 'checksum')
     TYPE = 'drpm'
 
-    def __init__(self, name, epoch, version, release, arch, checksumtype, checksum, metadata):
+    def __init__(self, epoch, version, release, filename, checksumtype, checksum, metadata):
         Package.__init__(self, locals())
+
+    @property
+    def relative_path(self):
+        return self.filename
 
 
 class RPM(Package):

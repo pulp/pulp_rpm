@@ -17,7 +17,7 @@ import shutil
 import tempfile
 
 from pulp_rpm.common import constants, models
-from pulp_rpm.plugins.importers.download import metadata, primary, packages
+from pulp_rpm.plugins.importers.download import metadata, primary, packages, presto
 from pulp_rpm.plugins.importers.yum.listener import Listener
 from pulp_rpm.plugins.importers.yum.report import ContentReport
 
@@ -39,20 +39,20 @@ def get_metadata(feed, tmp_dir):
     return metadata_files
 
 
-def _get_primary_metadata_file_handle(metadata_files):
+def _get_metadata_file_handle(name, metadata_files):
     """
 
     :param metadata_files:
     :type  metadata_files:  pulp_rpm.plugins.importers.download.metadata.MetadataFiles
     :return:
     """
-    primary_file_path = metadata_files.metadata['primary']['local_path']
+    file_path = metadata_files.metadata[name]['local_path']
 
-    if primary_file_path.endswith('.gz'):
-        primary_file_handle = gzip.open(primary_file_path, 'r')
+    if file_path.endswith('.gz'):
+        file_handle = gzip.open(file_path, 'r')
     else:
-        primary_file_handle = open(primary_file_path, 'r')
-    return primary_file_handle
+        file_handle = open(file_path, 'r')
+    return file_handle
 
 
 def sync_repo(repo, sync_conduit, config):
@@ -74,25 +74,57 @@ def sync_repo(repo, sync_conduit, config):
         sync_conduit.set_progress(progress_status)
 
         metadata_files = get_metadata(feed, tmp_dir)
-        primary_file_handle = _get_primary_metadata_file_handle(metadata_files)
-
         progress_status['metadata']['state'] = constants.STATE_COMPLETE
         sync_conduit.set_progress(progress_status)
 
+        primary_file_handle = _get_metadata_file_handle('primary', metadata_files)
         with primary_file_handle:
             # scan through all the metadata to decide which packages to download
-            package_info_generator = primary.primary_package_list_generator(primary_file_handle)
-            to_download, unit_counts, total_size = first_sweep(package_info_generator, current_units)
-            content_report.set_initial_values(unit_counts, total_size)
-            content_report['state'] = constants.STATE_RUNNING
-            sync_conduit.set_progress(progress_status)
+            package_info_generator = packages.package_list_generator(primary_file_handle,
+                                                                     primary.PACKAGE_TAG,
+                                                                     primary.process_package_element)
+            rpms_to_download, rpms_count, rpms_total_size = first_sweep(package_info_generator, current_units)
 
-            primary_file_handle.seek(0)
-            package_info_generator = primary.primary_package_list_generator(primary_file_handle)
-            units_to_download = _filtered_unit_generator(package_info_generator, to_download)
+        presto_file_handle = _get_metadata_file_handle('prestodelta', metadata_files)
+        with presto_file_handle:
+            package_info_generator = packages.package_list_generator(presto_file_handle,
+                                                                     presto.PACKAGE_TAG,
+                                                                     presto.process_package_element)
+            drpms_to_download, drpms_count, drpms_total_size = first_sweep(package_info_generator, current_units)
+
+
+
+        unit_counts = {
+            'rpm': rpms_count,
+            'drpm': drpms_count,
+        }
+        total_size = sum((rpms_total_size, drpms_total_size))
+        content_report.set_initial_values(unit_counts, total_size)
+        content_report['state'] = constants.STATE_RUNNING
+        sync_conduit.set_progress(progress_status)
+
+
+        primary_file_handle = _get_metadata_file_handle('primary', metadata_files)
+        with primary_file_handle:
+            package_info_generator = packages.package_list_generator(primary_file_handle,
+                                                                     primary.PACKAGE_TAG,
+                                                                     primary.process_package_element)
+            units_to_download = _filtered_unit_generator(package_info_generator, rpms_to_download)
 
             packages_manager = packages.Packages(feed, units_to_download, tmp_dir, event_listener)
             packages_manager.download_packages()
+
+        presto_file_handle = _get_metadata_file_handle('prestodelta', metadata_files)
+        with presto_file_handle:
+            package_info_generator = packages.package_list_generator(presto_file_handle,
+                                                                     presto.PACKAGE_TAG,
+                                                                     presto.process_package_element)
+            units_to_download = _filtered_unit_generator(package_info_generator, drpms_to_download)
+
+            packages_manager = packages.Packages(feed, units_to_download, tmp_dir, event_listener)
+            packages_manager.download_packages()
+
+
         progress_status['content']['state'] = constants.STATE_COMPLETE
         progress_status['errata']['state'] = constants.STATE_SKIPPED
         progress_status['comps']['state'] = constants.STATE_SKIPPED
@@ -107,21 +139,17 @@ def sync_repo(repo, sync_conduit, config):
 
 def first_sweep(package_info_generator, current_units):
     # TODO: consider current units
-    counts = {
-        models.RPM.TYPE: 0,
-        models.SRPM.TYPE: 0,
-        models.DRPM.TYPE: 0,
-    }
     size_in_bytes = 0
+    count = 0
     to_download = {}
     for pkg in package_info_generator:
         model = models.from_package_info(pkg)
         versions = to_download.setdefault(model.key_string_without_version, [])
         # TODO: if only syncing newest version, do a comparison here and evict old versions
         versions.append(model.complete_version)
-        counts[model.TYPE] += 1
         size_in_bytes += model.metadata['size']
-    return to_download, counts, size_in_bytes
+        count += 1
+    return to_download, count, size_in_bytes
 
 
 def _filtered_unit_generator(units, to_download):

@@ -160,7 +160,6 @@ class RpmStatusRenderer(StatusRenderer):
             self.download_last_state = state
 
             template  = _('RPMs:       %(rpm_done)s/%(rpm_total)s items\n'
-                          'SRPMs:      %(srpm_done)s/%(srpm_total)s items\n'
                           'Delta RPMs: %(drpm_done)s/%(drpm_total)s items\n'
                           'Tree Files: %(tree_done)s/%(tree_total)s items\n')
 

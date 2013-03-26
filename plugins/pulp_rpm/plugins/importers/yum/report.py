@@ -2,13 +2,11 @@ from pulp_rpm.common import constants, models
 
 type_done_map = {
     models.RPM.TYPE: 'rpm_done',
-    models.SRPM.TYPE: 'srpm_done',
     models.DRPM.TYPE: 'drpm_done',
 }
 
 type_total_map = {
     'rpm_total' : models.RPM.TYPE,
-    'srpm_total' : models.SRPM.TYPE,
     'drpm_total' : models.DRPM.TYPE,
 }
 
@@ -24,8 +22,6 @@ class ContentReport(dict):
         self['details'] = {
             'rpm_done' : 0,
             'rpm_total': 0,
-            'srpm_done' : 0,
-            'srpm_total': 0,
             'drpm_done' : 0,
             'drpm_total': 0,
             'tree_done' : 0,
