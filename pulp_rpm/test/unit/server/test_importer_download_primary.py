@@ -36,13 +36,15 @@ class PrimaryXMLParserTests(unittest.TestCase):
     def test_compressed_primary(self):
         current_path = os.path.dirname(__file__)
         primary_xml_path = os.path.join(current_path, TEST_REPO_PRIMARY_XML_PATH)
-        with gzip.open(primary_xml_path, 'r') as handle:
-            generator = primary.primary_package_list_generator(handle)
+        handle =  gzip.open(primary_xml_path, 'r')
+        generator = primary.primary_package_list_generator(handle)
 
-            for file_info in generator:
-                # assert the file_info dictionaries were built correctly by looking
-                # for keys from each section
-                self.assertTrue('type' in file_info)
-                self.assertFalse(file_info['type'] is None)
-                self.assertTrue('vendor' in file_info)
+        for file_info in generator:
+            # assert the file_info dictionaries were built correctly by looking
+            # for keys from each section
+            self.assertTrue('type' in file_info)
+            self.assertFalse(file_info['type'] is None)
+            self.assertTrue('vendor' in file_info)
+
+        handle.close()
 
