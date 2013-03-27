@@ -11,8 +11,6 @@
 # You should have received a copy of GPLv2 along with this software; if not,
 # see http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt
 
-COMMON_SPEC_URL = 'http://linux.duke.edu/metadata/common'
-
 PACKAGE_TAG = 'newpackage'
 
 def process_package_element(element):
@@ -35,6 +33,6 @@ def process_package_element(element):
         'filename': filename.text,
         'sequence': sequence.text,
         'size': int(size.text),
-        'checksum': size.text,
+        'checksum': checksum.text,
         'checksumtype': checksum.attrib['type'],
     }
