@@ -39,6 +39,8 @@ class Package(object):
         for key, value in package_info.iteritems():
             if key in cls.UNIT_KEY_NAMES:
                 unit_key[key] = value
+            elif key == 'type':
+                continue
             else:
                 metadata[key] = value
         unit_key['metadata'] = metadata
