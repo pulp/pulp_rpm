@@ -12,19 +12,34 @@
 
 from gettext import gettext as _
 
-from pulp_rpm.common.ids import (TYPE_ID_RPM, TYPE_ID_SRPM, TYPE_ID_DRPM, TYPE_ID_ERRATA, TYPE_ID_DISTRO,
-                                 TYPE_ID_PKG_GROUP, TYPE_ID_PKG_CATEGORY)
+from pulp_rpm.common.ids import (TYPE_ID_RPM, TYPE_ID_SRPM, TYPE_ID_DRPM, TYPE_ID_ERRATA,
+                                 TYPE_ID_DISTRO, TYPE_ID_PKG_GROUP, TYPE_ID_PKG_CATEGORY)
 
 
-def display_units(prompt, copied_units, unit_threshold):
-    if len(copied_units) == 0:
+def display_units(prompt, units, unit_threshold):
+    """
+    Used to display a list of units that were received from a server-side operation, such as
+    associate or unassociate. This call will determine whether or not to display a list of each
+    unit or simply summary information.
+
+    The units parameter must be a list of dictionaries containing two keys: type_id and unit_key.
+    The data returned from the server will likely be in this format already/
+
+    :param units: list of unit IDs from the server
+    :type  units: list
+    :param unit_threshold: maximum number of units to display by name; if len(units) is greater than
+           this, a summary with counts by type will be displayed instead
+    :type  unit_threshold: int
+    """
+
+    if len(units) == 0:
         prompt.write(_('Nothing found that matches the given criteria.'), tag='too-few')
 
-    elif len(copied_units) >= unit_threshold:
-        _summary(prompt, copied_units)
+    elif len(units) >= unit_threshold:
+        _summary(prompt, units)
 
     else:
-        _details(prompt, copied_units)
+        _details(prompt, units)
 
 def _summary(prompt, copied_units):
     """
@@ -54,8 +69,8 @@ def _details(prompt, copied_units):
     # The unit keys will differ by type, so the formatting of a particular entry will have to be
     # handled on a type by type basis.
     type_formatters = {
-        TYPE_ID_RPM : _detailed_package,
-        TYPE_ID_SRPM : _detailed_package,
+        TYPE_ID_RPM : _details_package,
+        TYPE_ID_SRPM : _details_package,
         TYPE_ID_DRPM : _details_drpm,
         TYPE_ID_ERRATA : _details_errata,
         TYPE_ID_DISTRO : _details_distribution,
@@ -86,7 +101,7 @@ def _details(prompt, copied_units):
         for u in formatted_units:
             prompt.write('  %s' % u, tag='unit-entry-%s' % type_id)
 
-def _detailed_package(package):
+def _details_package(package):
     return '%s-%s-%s-%s' % (package['name'], package['version'], package['release'], package['arch'])
 
 def _details_drpm(drpm):

@@ -19,6 +19,7 @@ from pulp_rpm.common.ids import (TYPE_ID_RPM, TYPE_ID_SRPM, TYPE_ID_DRPM, TYPE_I
                                  TYPE_ID_PKG_GROUP, TYPE_ID_PKG_CATEGORY)
 from pulp_rpm.extension.admin import units_display
 
+
 class UnitsDisplayTests(unittest.TestCase):
 
     def setUp(self):
