@@ -15,6 +15,7 @@ from pulp.client.commands.unit import UnitCopyCommand
 from pulp.client.extensions.extensions import PulpCliFlag
 from pulp_rpm.common.ids import (TYPE_ID_RPM, TYPE_ID_SRPM, TYPE_ID_DRPM, TYPE_ID_ERRATA, TYPE_ID_DISTRO,
                                  TYPE_ID_PKG_GROUP, TYPE_ID_PKG_CATEGORY)
+from pulp_rpm.extension.admin import units_display
 
 # -- constants ----------------------------------------------------------------
 
@@ -30,6 +31,9 @@ DESC_RECURSIVE = _('if specified, any dependencies of units being copied that ar
                    'will be copied as well')
 FLAG_RECURSIVE = PulpCliFlag('--recursive', DESC_RECURSIVE)
 
+# Number of modules after which this command won't bother printing them all to the screen
+DEFAULT_UNIT_THRESHOLD = 100
+
 # -- commands -----------------------------------------------------------------
 
 class RecursiveCopyCommand(UnitCopyCommand):
@@ -42,10 +46,12 @@ class RecursiveCopyCommand(UnitCopyCommand):
     stick with the approach that it's supported for all of them.
     """
 
-    def __init__(self, context, name, description, type_id):
+    def __init__(self, context, name, description, type_id, unit_threshold=DEFAULT_UNIT_THRESHOLD):
         UnitCopyCommand.__init__(self, context, name=name, description=description, type_id=type_id)
 
         self.add_flag(FLAG_RECURSIVE)
+
+        self.unit_threshold = unit_threshold
 
     def generate_override_config(self, **kwargs):
         override_config = {}
@@ -55,6 +61,17 @@ class RecursiveCopyCommand(UnitCopyCommand):
 
         return override_config
 
+    def succeeded(self, task):
+        """
+        It would seem to make sense that each subclass would define its own version of succeeded to
+        properly format the list of units for its specific type. However, it's possible multiple types
+        were copied at the same time, despite the fact that the commands are scoped to a type
+        (ex: recursively copying a package group). The simplest approach is for
+        this handling to be done here in the base class so that every subclass can display every type.
+        """
+
+        copied_units = task.result  # entries are a dict containing unit_key and type_id
+        units_display.display_units(self.prompt, copied_units, self.unit_threshold)
 
 class RpmCopyCommand(RecursiveCopyCommand):
 
