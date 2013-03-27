@@ -13,6 +13,7 @@
 
 import gzip
 import logging
+import lzma
 import shutil
 import tempfile
 
@@ -50,6 +51,8 @@ def _get_metadata_file_handle(name, metadata_files):
 
     if file_path.endswith('.gz'):
         file_handle = gzip.open(file_path, 'r')
+    elif file_path.endswith('.xz'):
+        file_handle = lzma.LZMAFile(file_path, 'r')
     else:
         file_handle = open(file_path, 'r')
     return file_handle
