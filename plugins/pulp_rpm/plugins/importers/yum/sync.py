@@ -17,7 +17,9 @@ import lzma
 import shutil
 import tempfile
 
-from pulp_rpm.common import constants, models
+from pulp.plugins.model import SyncReport
+
+from pulp_rpm.common import constants
 from pulp_rpm.plugins.importers.download import metadata, primary, packages, presto, updateinfo
 from pulp_rpm.plugins.importers.yum.listener import DownloadListener
 from pulp_rpm.plugins.importers.yum.report import ContentReport
@@ -83,6 +85,8 @@ class RepoSync(object):
             self.sync_conduit.set_progress(self.progress_status)
         finally:
             shutil.rmtree(self.tmp_dir, ignore_errors=True)
+
+        return SyncReport(True, self.content_report['items_total'], 0, 0, {}, self.progress_status)
 
 
     def get_metadata(self):
