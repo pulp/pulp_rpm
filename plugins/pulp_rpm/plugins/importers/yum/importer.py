@@ -61,4 +61,4 @@ class YumImporter(Importer):
         conduit.save_unit(unit)
 
     def sync_repo(self, repo, sync_conduit, config):
-        return sync.sync_repo(repo, sync_conduit, config)
+        return sync.RepoSync(repo, sync_conduit, config).run()

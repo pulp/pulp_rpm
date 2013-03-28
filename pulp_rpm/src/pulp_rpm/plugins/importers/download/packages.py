@@ -87,13 +87,12 @@ class Packages(object):
         :return: download request generator
         :rtype: generator
         """
-        for package_info in self.packages_information_iterator:
-            relative_path = package_info.get('relative_url_path') or package_info.get('filename')
-            url = urljoin(self.repo_url, relative_path)
+        for model in self.packages_information_iterator:
+            url = urljoin(self.repo_url, model.relative_path)
 
-            file_name = relative_path.rsplit('/', 1)[-1]
+            file_name = model.relative_path.rsplit('/', 1)[-1]
             destination = os.path.join(self.dst_dir, file_name)
 
-            request = DownloadRequest(url, destination, package_info)
+            request = DownloadRequest(url, destination, model)
             yield request
 

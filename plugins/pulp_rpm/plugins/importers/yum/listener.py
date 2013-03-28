@@ -21,9 +21,9 @@ from pulp_rpm.common import models
 _LOGGER = logging.getLogger(__name__)
 
 
-class Listener(DownloadEventListener):
+class DownloadListener(DownloadEventListener):
     def __init__(self, sync_conduit, progress_report):
-        super(Listener, self).__init__()
+        super(DownloadListener, self).__init__()
         self.sync_conduit = sync_conduit
         self.progress_report = progress_report
 
@@ -34,7 +34,7 @@ class Listener(DownloadEventListener):
         :type  report: pulp.common.download.report.DownloadReport
         :return:
         """
-        model = models.from_package_info(report.data)
+        model = report.data
         # init unit, which is idempotent
         unit = self.sync_conduit.init_unit(model.TYPE, model.unit_key, model.metadata, model.relative_path)
         # move to final location
@@ -54,3 +54,4 @@ class Listener(DownloadEventListener):
         model = models.from_package_info(report.data)
         self.progress_report['content'].failure(model, report.error_report)
         self.sync_conduit.set_progress(self.progress_report)
+

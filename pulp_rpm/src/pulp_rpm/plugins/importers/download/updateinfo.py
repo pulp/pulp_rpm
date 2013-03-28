@@ -11,10 +11,11 @@
 # You should have received a copy of GPLv2 along with this software; if not,
 # see http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt
 
+from pulp_rpm.common import models
+
 PACKAGE_TAG = 'update'
 
 def process_package_element(element):
-
     ret = {
         'from': element.attrib['from'],
         'status': element.attrib['status'],
@@ -24,16 +25,19 @@ def process_package_element(element):
         'title': element.find('title').text,
         'description': element.find('description').text,
         'issued': element.find('issued').attrib['date'],
-        'updated': element.find('updated').attrib['date'],
         'references': map(_parse_reference, element.find('references') or []),
         'pkglist': map(_parse_collection, element.find('pkglist') or []),
     }
 
-    for attr_name in ('rights', 'severity', 'summary', 'solution'):
+    for attr_name in ('rights', 'severity', 'summary', 'solution', 'release', 'pushcount'):
         child = element.find(attr_name)
         if child:
             ret[attr_name] = child.text
-    return ret
+    for attr_name in ('updated',):
+        child = element.find(attr_name)
+        if child:
+            ret[attr_name] = child.attrib[attr_name]
+    return models.Errata.from_package_info(ret)
 
 
 def _parse_reference(element):
@@ -61,14 +65,19 @@ def _parse_package(element):
     sum_element = element.find('sum')
     ret = {
         'arch': element.attrib['arch'],
-        'epoch': element.attrib['epoch'],
         'name': element.attrib['name'],
         'version': element.attrib['version'],
         'release': element.attrib['release'],
         'src': element.attrib['src'],
         'filename': element.find('filename').text,
-        'sum': (sum_element.attrib['type'], sum_element.text),
     }
+    for attr_name in ('epoch',):
+        if attr_name in element.attrib:
+            ret[attr_name] = element.attrib[attr_name]
+
+    if sum_element:
+        ret['sum'] = (sum_element.attrib['type'], sum_element.text),
+
     reboot_suggested = element.find('reboot_suggested')
     if reboot_suggested:
         ret['reboot_suggested'] = reboot_suggested.text

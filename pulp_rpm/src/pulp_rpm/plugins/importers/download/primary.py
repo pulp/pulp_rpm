@@ -14,6 +14,7 @@
 from copy import deepcopy
 
 # primary.xml element tags -----------------------------------------------------
+from pulp_rpm.common import models
 
 COMMON_SPEC_URL = 'http://linux.duke.edu/metadata/common'
 RPM_SPEC_URL = 'http://linux.duke.edu/metadata/rpm'
@@ -157,7 +158,7 @@ def process_package_element(package_element):
     format_element = package_element.find(FORMAT_TAG)
     package_info.update(_process_format_element(format_element))
 
-    return package_info
+    return models.RPM.from_package_info(package_info)
 
 
 def _process_format_element(format_element):

@@ -39,7 +39,7 @@ class Package(object):
         for key, value in package_info.iteritems():
             if key in cls.UNIT_KEY_NAMES:
                 unit_key[key] = value
-            elif key == 'type':
+            elif key == 'type' and cls != Errata:
                 continue
             else:
                 metadata[key] = value
@@ -90,8 +90,12 @@ class RPM(Package):
         )
 
 
-class SRPM(RPM):
-    TYPE = 'srpm'
+class Errata(Package):
+    UNIT_KEY_NAMES = ('id',)
+    TYPE = 'erratum'
+
+    def __init__(self, id, metadata):
+        Package.__init__(self, locals())
 
 
 class PackageGroup(Package):
@@ -101,12 +105,13 @@ class PackageGroup(Package):
 
 type_map = {
     RPM.TYPE: RPM,
-    SRPM.TYPE: SRPM,
     DRPM.TYPE: DRPM,
+    Errata.TYPE: Errata,
 }
 
 
 def from_package_info(package_info):
+    # TODO: maybe get rid of this
     package_type = package_info['type']
 
     if package_type in type_map:
