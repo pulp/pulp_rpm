@@ -62,3 +62,9 @@ DISTRIBUTION_STORAGE_PATH = '/var/lib/pulp/content/distribution/'
 # During publish we need to lookup and make sure the treeinfo exists; since the treeinfo
 # can be '.treeinfo' or 'treeinfo' (in cdn case) we need to check which one exists
 TREE_INFO_LIST = ['.treeinfo', 'treeinfo']
+
+# -- extensions ---------------------------------------------------------------
+
+# Number of units to display by name for operations that return a list of
+# modules that were acted on, such as copy and remove
+DISPLAY_UNITS_THRESHOLD = 100
