@@ -41,27 +41,26 @@ def display_units(prompt, units, unit_threshold):
     else:
         _details(prompt, units)
 
-def _summary(prompt, copied_units):
+def _summary(prompt, units):
     """
-    Displays a shortened view of the copied units. This implementation will display a count of
-    units copied by type.
+    Displays a shortened view of the units. This implementation will display a count of units by type.
     """
 
     # Create count by each by type
     unit_count_by_type = {}
-    for u in copied_units:
+    for u in units:
         count = unit_count_by_type.setdefault(u['type_id'], 0)
         unit_count_by_type[u['type_id']] = count + 1
 
-    msg = _('Copy Summary:')
+    msg = _('Summary:')
     prompt.write(msg, tag='summary')
     for type_id, count in unit_count_by_type.items():
         entry = '  %s: %s' % (type_id, count)
         prompt.write(entry, tag='count-entry')
 
-def _details(prompt, copied_units):
+def _details(prompt, units):
     """
-    Displays information about each unit that was copied. If multiple types are present, the
+    Displays information about each unit. If multiple types are present, the
     list will be broken down by type. As each unit is rendered, care should be taken to not call
     this with a large amount of units as it will flood the user's terminal.
     """
@@ -80,10 +79,10 @@ def _details(prompt, copied_units):
 
     # Restructure into a list of unit keys by type
     units_by_type = {}
-    map(lambda u : units_by_type.setdefault(u['type_id'], []).append(u['unit_key']), copied_units)
+    map(lambda u : units_by_type.setdefault(u['type_id'], []).append(u['unit_key']), units)
 
     # Each unit is formatted to accomodate its unit key and displayed
-    prompt.write(_('Copied Units:'), tag='header')
+    prompt.write(_('Units:'), tag='header')
 
     sorted_type_ids = sorted(units_by_type.keys())
     for type_id in sorted_type_ids:
