@@ -16,7 +16,6 @@ import shutil
 
 from pulp.common.download.listener import DownloadEventListener
 
-from pulp_rpm.common import models
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -51,7 +50,7 @@ class DownloadListener(DownloadEventListener):
         :type  report: pulp.common.download.report.DownloadReport
         :return:
         """
-        model = models.from_package_info(report.data)
+        model = report.data
         self.progress_report['content'].failure(model, report.error_report)
         self.sync_conduit.set_progress(self.progress_report)
 

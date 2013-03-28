@@ -102,18 +102,3 @@ class PackageGroup(Package):
     UNIT_KEY_NAMES = ('id', 'repo_id')
     TYPE = 'package_group'
 
-
-type_map = {
-    RPM.TYPE: RPM,
-    DRPM.TYPE: DRPM,
-    Errata.TYPE: Errata,
-}
-
-
-def from_package_info(package_info):
-    # TODO: maybe get rid of this
-    package_type = package_info['type']
-
-    if package_type in type_map:
-        return type_map[package_type].from_package_info(package_info)
-
