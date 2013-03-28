@@ -278,7 +278,7 @@ class YumImporter(Importer):
         @type  config: L{pulp.plugins.plugins.config.PluginCallConfiguration}
 
         @param units: optional list of pre-filtered units to import
-        @type  units: list of L{pulp.plugins.data.Unit}
+        @type  units: list of pulp.plugins.data.Unit
         """
         if not units:
             # If no units are passed in, assume we will use all units from source repo
@@ -309,6 +309,8 @@ class YumImporter(Importer):
             elif u.type_id == TYPE_ID_DISTRO:
                 import_conduit.associate_unit(u)
         _LOG.debug("%s units from %s have been associated to %s" % (len(units), source_repo.id, dest_repo.id))
+
+        return units
 
     def _safe_copy_unit(self, unit):
         """

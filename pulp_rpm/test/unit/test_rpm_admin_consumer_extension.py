@@ -112,8 +112,6 @@ class TestPackages(rpm_support_base.PulpClientTests):
         # Verify
         passed = self.server_mock.request.call_args[0]
         self.assertEqual('POST', passed[0])
-        tags = self.prompt.get_write_tags()
-        self.assertEqual(7, len(tags))
 
     def test_update(self):
         # Setup
@@ -141,9 +139,6 @@ class TestPackages(rpm_support_base.PulpClientTests):
         # Verify
         passed = self.server_mock.request.call_args[0]
         self.assertEqual('POST', passed[0])
-        tags = self.prompt.get_write_tags()
-        self.assertEqual(7, len(tags))
-        self.assertEqual(tags[0], TAG_SUCCESS)
 
     def test_uninstall(self):
         # Setup
@@ -170,9 +165,6 @@ class TestPackages(rpm_support_base.PulpClientTests):
         # Verify
         passed = self.server_mock.request.call_args[0]
         self.assertEqual('POST', passed[0])
-        tags = self.prompt.get_write_tags()
-        self.assertEqual(7, len(tags))
-        self.assertEqual(tags[0], TAG_SUCCESS)
 
 
 class TestGroups(rpm_support_base.PulpClientTests):
@@ -204,8 +196,6 @@ class TestGroups(rpm_support_base.PulpClientTests):
         # Verify
         passed = self.server_mock.request.call_args[0]
         self.assertEqual('POST', passed[0])
-        tags = self.prompt.get_write_tags()
-        self.assertEqual(6, len(tags))
 
     def test_uninstall(self):
         # Setup
@@ -232,9 +222,6 @@ class TestGroups(rpm_support_base.PulpClientTests):
         # Verify
         passed = self.server_mock.request.call_args[0]
         self.assertEqual('POST', passed[0])
-        tags = self.prompt.get_write_tags()
-        self.assertEqual(7, len(tags))
-        self.assertEqual(tags[0], TAG_SUCCESS)
 
 
 class TestErrata(rpm_support_base.PulpClientTests):
@@ -264,5 +251,3 @@ class TestErrata(rpm_support_base.PulpClientTests):
         # Verify
         passed = self.server_mock.request.call_args[0]
         self.assertEqual('POST', passed[0])
-        tags = self.prompt.get_write_tags()
-        self.assertEqual(6, len(tags))
