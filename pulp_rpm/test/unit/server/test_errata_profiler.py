@@ -179,7 +179,7 @@ class TestErrataProfiler(rpm_support_base.PulpRPMTests):
         example_errata = [errata_unit.unit_key]
 
         prof = RPMErrataProfiler()
-        report_list = prof.units_applicable(self.test_consumer, ["test_repo_id"], TYPE_ID_ERRATA, example_errata, None, conduit)
+        report_list = prof.find_applicable_units(self.test_consumer, ["test_repo_id"], TYPE_ID_ERRATA, example_errata, None, conduit)
         self.assertFalse(report_list == [])
 
     def test_unit_applicable_same_name_diff_arch(self):
@@ -193,7 +193,7 @@ class TestErrataProfiler(rpm_support_base.PulpRPMTests):
         conduit = profiler_mocks.get_profiler_conduit(existing_units=existing_units, repo_bindings=[test_repo])
         example_errata = [errata_unit.unit_key]
         prof = RPMErrataProfiler()
-        report_list = prof.units_applicable(self.test_consumer_i386, ["test_repo_id"], TYPE_ID_ERRATA, example_errata, None, conduit)
+        report_list = prof.find_applicable_units(self.test_consumer_i386, ["test_repo_id"], TYPE_ID_ERRATA, example_errata, None, conduit)
         self.assertTrue(report_list == [])
 
     def test_unit_applicable_updated_rpm_already_installed(self):
@@ -205,7 +205,7 @@ class TestErrataProfiler(rpm_support_base.PulpRPMTests):
         conduit = profiler_mocks.get_profiler_conduit(existing_units=existing_units, repo_bindings=[test_repo])
         example_errata = [errata_unit.unit_key]
         prof = RPMErrataProfiler()
-        report_list = prof.units_applicable(self.test_consumer_been_updated, ["test_repo_id"], TYPE_ID_ERRATA, example_errata, None, conduit)
+        report_list = prof.find_applicable_units(self.test_consumer_been_updated, ["test_repo_id"], TYPE_ID_ERRATA, example_errata, None, conduit)
         self.assertTrue(report_list == [])
 
     def test_unit_applicable_false(self):
@@ -218,7 +218,7 @@ class TestErrataProfiler(rpm_support_base.PulpRPMTests):
         example_errata = [errata_unit.unit_key]
 
         prof = RPMErrataProfiler()
-        report_list = prof.units_applicable(self.test_consumer, ["test_repo_id"], TYPE_ID_ERRATA, example_errata, None, conduit)
+        report_list = prof.find_applicable_units(self.test_consumer, ["test_repo_id"], TYPE_ID_ERRATA, example_errata, None, conduit)
         self.assertTrue(report_list == [])
 
     def test_install_units(self):

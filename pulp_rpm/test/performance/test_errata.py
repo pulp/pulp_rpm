@@ -257,7 +257,7 @@ class TestErrataApplicability(PulpRPMTests):
         print 'Testing applicability ....'
         timer = Timer()
         timer.start()
-        applicable = manager.units_applicable(criteria, units)
+        applicable = manager.find_applicable_units(criteria, units)
         timer.stop()
         print 'Finished: [%s] in: %s' % (env, timer)
         for id, report in applicable.items():
@@ -276,7 +276,7 @@ class TestErrataApplicability(PulpRPMTests):
         print 'Testing applicability ....'
         timer = Timer()
         timer.start()
-        applicable = manager.units_applicable(criteria, units)
+        applicable = manager.find_applicable_units(criteria, units)
         timer.stop()
         print 'Finished: [%s] in: %s' % (env, timer)
         for id, report in applicable.items():
@@ -295,7 +295,7 @@ class TestErrataApplicability(PulpRPMTests):
         print 'Testing applicability ....'
         timer = Timer()
         timer.start()
-        applicable = manager.units_applicable(criteria, units)
+        applicable = manager.find_applicable_units(criteria, units)
         timer.stop()
         print 'Finished: [%s] in: %s' % (env, timer)
         for id, report in applicable.items():
@@ -314,7 +314,7 @@ class TestErrataApplicability(PulpRPMTests):
         print 'Testing applicability ....'
         timer = Timer()
         timer.start()
-        applicable = manager.units_applicable(criteria, units)
+        applicable = manager.find_applicable_units(criteria, units)
         timer.stop()
         print 'Finished: [%s] in: %s' % (env, timer)
         for id, report in applicable.items():
