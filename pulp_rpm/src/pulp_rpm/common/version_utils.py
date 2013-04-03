@@ -146,7 +146,7 @@ def _encode_int(segment):
     if len(str_segment) > 99:
         raise TooManyDigits()
 
-    digit_prefix = ('0' * (2 - len(str(len(str_segment))))) + str(len(str_segment))
+    digit_prefix = '%02d' % len(str_segment)
 
     return digit_prefix + NUMBER_DIVIDER + str_segment
 
