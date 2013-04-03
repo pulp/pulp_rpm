@@ -110,7 +110,7 @@ class TestRpmPkgProfiler(rpm_support_base.PulpRPMTests):
         example_rpms = [rpm_unit.unit_key]
 
         prof = RPMPkgProfiler()
-        report_list = prof.units_applicable(self.test_consumer, ["test_repo_id"], TYPE_ID_RPM, example_rpms, None, conduit)
+        report_list = prof.find_applicable_units(self.test_consumer, ["test_repo_id"], TYPE_ID_RPM, example_rpms, None, conduit)
         self.assertFalse(report_list == [])
 
     def test_unit_applicable_same_name_diff_arch(self):
@@ -122,7 +122,7 @@ class TestRpmPkgProfiler(rpm_support_base.PulpRPMTests):
         example_rpms = [rpm_unit.unit_key]
 
         prof = RPMPkgProfiler()
-        report_list = prof.units_applicable(self.test_consumer_i386, ["test_repo_id"], TYPE_ID_RPM, example_rpms, None, conduit)
+        report_list = prof.find_applicable_units(self.test_consumer_i386, ["test_repo_id"], TYPE_ID_RPM, example_rpms, None, conduit)
         self.assertTrue(report_list == [])
 
     def test_unit_applicable_updated_rpm_already_installed(self):
@@ -134,7 +134,7 @@ class TestRpmPkgProfiler(rpm_support_base.PulpRPMTests):
         example_rpms = [rpm_unit.unit_key]
 
         prof = RPMPkgProfiler()
-        report_list = prof.units_applicable(self.test_consumer_been_updated, ["test_repo_id"], TYPE_ID_RPM, example_rpms, None, conduit)
+        report_list = prof.find_applicable_units(self.test_consumer_been_updated, ["test_repo_id"], TYPE_ID_RPM, example_rpms, None, conduit)
         self.assertTrue(report_list == [])
 
     def test_unit_applicable_false(self):
@@ -146,6 +146,6 @@ class TestRpmPkgProfiler(rpm_support_base.PulpRPMTests):
         example_rpms = [rpm_unit.unit_key]
 
         prof = RPMPkgProfiler()
-        report_list = prof.units_applicable(self.test_consumer_i386, ["test_repo_id"], TYPE_ID_RPM, example_rpms, None, conduit)
+        report_list = prof.find_applicable_units(self.test_consumer_i386, ["test_repo_id"], TYPE_ID_RPM, example_rpms, None, conduit)
         self.assertTrue(report_list == [])
 
