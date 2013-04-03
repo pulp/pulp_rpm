@@ -23,7 +23,7 @@ from pulp_rpm.common.version_utils import encode
 class EncodeTests(unittest.TestCase):
 
     def test_empty_string(self):
-        self.assertEqual(encode(''), '')
+        self.assertRaises(ValueError, encode, '')
 
     def test_none(self):
         self.assertRaises(ValueError, encode, None)

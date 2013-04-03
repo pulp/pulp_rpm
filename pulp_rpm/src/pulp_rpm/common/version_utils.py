@@ -51,7 +51,7 @@ import re
 NUMBER_DIVIDER = '-'
 
 # Used to ensure letters are considered older than numbers
-LETTERS_TEMPLATE = '$%s'  # substitute in subsegment
+LETTERS_TEMPLATE = '$%s'  # substitute in segment
 
 # From the Fedora link above:
 #  "digits" and "letters" are defined as ASCII digits ('0'-'9') and ASCII letters
@@ -78,27 +78,51 @@ def encode(field):
 
     :return: encoded value that should be used for comparison searches and sorting
     """
-    if field is None:
-        raise ValueError('field must be a string')
+    if field in (None, ''):
+        raise ValueError('field must be a non-empty string')
 
-    segments = field.split('.')
-    munged_segments = []
-    for segment in segments:
+    try:
+        all_segments = reduce(_split_segments, field).split('.')
+        encoded_segments = map(_encode_segment, all_segments)
+        encoded_field = '.'.join(encoded_segments)
+    except TooManyDigits:
+        raise ValueError('Cannot not encode %s; too many digits in the field' % field)
 
-        try:
-            if _is_int(segment):
-                translated = _encode_int(segment)
-            else:
-                translated = _encode_string(segment)
-            munged_segments.append(translated)
+    return encoded_field
 
-        except TooManyDigits:
-            raise ValueError('Cannot encode %s, too many digits in version number' % field)
+# -- private ------------------------------------------------------------------
 
-    sort_index = '.'.join(munged_segments)
-    return sort_index
+def _split_segments(x, y):
+    """
+    Used in the reduce to break apart any combined letters/numbers into separate
+    segments.
 
-# -- encoding algorithms ------------------------------------------------------
+    From the Fedora link above:
+      Each label is separated into a list of maximal alphabetic or numeric sections, with
+      separators (non-alphanumeric characters) ignored. If there is any extra non-alphanumeric
+      character at the end, that. So, '2.0.1' becomes ('2', '0', '1'), while ('2xFg33.+f.5')
+      becomes ('2', 'xFg', '33', 'f', '5').
+
+    :type x: str
+    :type y: str
+    """
+    if _is_int(x[-1]) != _is_int(y) and y != '.' and x[-1] != '.':
+        y = '.' + y
+    return x + y
+
+def _encode_segment(x):
+    """
+    Encodes a particular segment, taking into account if its contents are numbers
+    or letters.
+
+    :type x: str
+    :rtype: str
+    """
+    if _is_int(x):
+        return _encode_int(x)
+    else:
+        clean = filter(VALID_REGEX.match, x)
+        return LETTERS_TEMPLATE % clean
 
 def _encode_int(segment):
     """
@@ -125,66 +149,6 @@ def _encode_int(segment):
     digit_prefix = ('0' * (2 - len(str(len(str_segment))))) + str(len(str_segment))
 
     return digit_prefix + NUMBER_DIVIDER + str_segment
-
-
-def _encode_string(segment):
-    """
-    Translates a segment with at least one non-numeric character into its munged format.
-    """
-
-    # From the Fedora link above:
-    #  Each label is separated into a list of maximal alphabetic or numeric sections,
-    #  with separators (non-alphanumeric characters) ignored. If there is any extra
-    #  non-alphanumeric character at the end, that. So, '2.0.1' becomes ('2', '0', '1'),
-    #  while ('2xFg33.+f.5') becomes ('2', 'xFg', '33', 'f', '5').
-    #
-    # So for a mixed case like 1alpha, we need to split it apart by periods so that the
-    # 1 is considered separate from the alpha. This is to support having 1.1 be greater than
-    # 1.1alpha.
-
-    encoded_segments = []
-    segment_iter = enumerate(segment)
-
-    for i, x in segment_iter:
-
-        sub_segment = x
-
-        # Early check in case a non-alphanumeric character is found; we throw them away
-        if not VALID_REGEX.match(sub_segment):
-            continue
-
-        # 3451b^c235fc  -> 1.bc.235.fc
-
-        # The subsegments are split into numbers and letters. Figure out which type
-        # we're dealing with and how many of that type follow it.
-        last_type_is_int = _is_int(sub_segment)
-        subsegment_inclusion_count = _count_until(segment[i + 1:], not last_type_is_int)
-
-        for i in range(0, subsegment_inclusion_count):
-            candidate = next(segment_iter)[1]
-
-            # The inclusion count is until the next value that will cause a new subsegment
-            # (i.e. if processing letters, it'll be until the first number). It's safe
-            # to throw away invalid stuff here without breaking the count.
-            if VALID_REGEX.match(candidate):
-                sub_segment += candidate
-
-        # If the new subsegment is an int, need to fully treat it as such.
-        if _is_int(sub_segment):
-            sub_segment = _encode_int(sub_segment)
-        else:
-            sub_segment = LETTERS_TEMPLATE % sub_segment
-
-        # Keep track of all subsegments to assemble later.
-        encoded_segments.append(sub_segment)
-
-    # Based on the version compare rules, it's possible that one segment should be treated
-    # as multiple. Assemble all found pieces here using the segment notation.
-    encoded = '.'.join(encoded_segments)
-
-    return encoded
-
-# -- utilities ----------------------------------------------------------------
 
 def _count_until(chars, find_int):
     """
