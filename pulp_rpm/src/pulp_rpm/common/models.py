@@ -82,6 +82,7 @@ class Distribution(Package):
         return self.id
 
     def process_download_reports(self, reports):
+        _LOGGER.info([r.data for r in reports])
         metadata_files = self.metadata.setdefault('files', [])
         for report in reports:
 
@@ -101,10 +102,6 @@ class Distribution(Package):
                 'savepath': report.destination,
                 'size': report.total_bytes,
             })
-            shutil.move(
-                report.destination,
-                os.path.join(constants.DISTRIBUTION_STORAGE_PATH, self.id, report.data['relativepath'])
-            )
 
 
 class DRPM(Package):

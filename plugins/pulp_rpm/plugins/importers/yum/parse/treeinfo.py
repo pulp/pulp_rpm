@@ -16,6 +16,7 @@ import logging
 import os
 import os.path
 import shutil
+import tempfile
 
 from pulp.common.download.config import DownloaderConfig
 from pulp.common.download.downloaders.curl import HTTPCurlDownloader
@@ -31,28 +32,40 @@ SECTION_CHECKSUMS = 'checksums'
 _LOGGER = logging.getLogger(__name__)
 
 
-def main(sync_conduit, feed, tmp_dir):
-    treefile_path = get_treefile(feed, tmp_dir)
+def main(sync_conduit, feed, working_dir):
+    tmp_dir = tempfile.mkdtemp(dir=working_dir)
+    _LOGGER.info('TREE TMPDIR: ' + tmp_dir)
     try:
-        model, files = parse_treefile(treefile_path)
-    except ValueError:
-        return
-    config = DownloaderConfig()
-    listener = AggregatingEventListener()
-    downloader = HTTPCurlDownloader(config, listener)
-    downloader.download(file_to_download_request(f, feed, tmp_dir) for f in files)
-    if len(listener.failed_reports) == 0:
-        model.process_download_reports(listener.succeeded_reports)
-        unit = sync_conduit.init_unit(ids.TYPE_ID_DISTRO, model.unit_key, model.metadata, model.relative_path)
-        shutil.move(treefile_path, unit.storage_path)
-        sync_conduit.save_unit(unit)
-    else:
-        # TODO: log something?
-        pass
+        treefile_path = get_treefile(feed, tmp_dir)
+        if not treefile_path:
+            # no tree file found
+            return
+        try:
+            model, files = parse_treefile(treefile_path)
+        except ValueError:
+            return
+        config = DownloaderConfig()
+        listener = AggregatingEventListener()
+        downloader = HTTPCurlDownloader(config, listener)
+        downloader.download(file_to_download_request(f, feed, tmp_dir) for f in files)
+        if len(listener.failed_reports) == 0:
+            unit = sync_conduit.init_unit(ids.TYPE_ID_DISTRO, model.unit_key, model.metadata, model.relative_path)
+            _LOGGER.info(unit.storage_path)
+            model.process_download_reports(listener.succeeded_reports)
+            # remove pre-existing dir
+            shutil.rmtree(unit.storage_path, ignore_errors=True)
+            shutil.move(tmp_dir, unit.storage_path)
+            # mkdtemp is very paranoid, so we'll change to more sensible perms
+            os.chmod(unit.storage_path, 0o775)
+            sync_conduit.save_unit(unit)
+        else:
+            # TODO: log something?
+            pass
+    finally:
+        shutil.rmtree(tmp_dir, ignore_errors=True)
 
 
 def file_to_download_request(file_dict, feed, storage_path):
-    _LOGGER.info(locals())
     savepath = os.path.join(storage_path, file_dict['relativepath'])
     # make directories such as "images"
     if not os.path.exists(os.path.dirname(savepath)):

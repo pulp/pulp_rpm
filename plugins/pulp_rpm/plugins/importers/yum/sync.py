@@ -51,6 +51,7 @@ def _get_metadata_file_handle(name, metadata_files):
 
 class RepoSync(object):
     def __init__(self, repo, sync_conduit, config):
+        self.working_dir = repo.working_dir
         self.content_report = ContentReport()
         self.progress_status = {
             'metadata': {'state': 'NOT_STARTED'},
@@ -65,7 +66,9 @@ class RepoSync(object):
         self.current_units = sync_conduit.get_units()
 
     def run(self):
-        self.tmp_dir = tempfile.mkdtemp()
+        # using this tmp dir ensures that cleanup leaves nothing behind, since
+        # we delete below
+        self.tmp_dir = tempfile.mkdtemp(dir=self.working_dir)
         try:
             self.progress_status['metadata']['state'] = constants.STATE_RUNNING
             self.sync_conduit.set_progress(self.progress_status)
