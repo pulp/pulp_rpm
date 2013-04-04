@@ -77,11 +77,16 @@ class RPMErrataProfiler(Profiler):
         Determine whether the content units are applicable to
         the specified consumers.  The definition of "applicable" is content
         type specific and up to the descision of the profiler.
+        Consumers and repo ids are specified as a dictionary:
+
+        {<consumer_id> : {'profiled_consumer' : <profiled_consumer>,
+                         'repo_ids' : <repo_ids>},
+         ...
+        }
 
         :param consumer_profile_and_repo_ids: A dictionary with consumer profile and repo ids
                         to be considered for applicability, keyed by consumer id.
-        :type consumer_profile_and_repo_ids: dict of <consumer_id> : {'profiled_consumer' : <profiled_consumer>,
-                                                                      'repo_ids' : <repo_ids>}
+        :type consumer_profile_and_repo_ids: dict
 
         :param unit_type_id: Common type id of all given unit keys
         :type unit_type_id: str
@@ -209,8 +214,7 @@ class RPMErrataProfiler(Profiler):
 
         :param consumer_profile_and_repo_ids: A dictionary with consumer profile and repo ids
                         to be considered for applicability, keyed by consumer id.
-        :type consumer_profile_and_repo_ids: dict of <consumer_id> : {'profiled_consumer' : <profiled_consumer>,
-                                                                      'repo_ids' : <repo_ids>}
+        :type consumer_profile_and_repo_ids: dict
 
         :param conduit: provides access to relevant Pulp functionality
         :type conduit: pulp.plugins.conduits.profile.ProfilerConduit

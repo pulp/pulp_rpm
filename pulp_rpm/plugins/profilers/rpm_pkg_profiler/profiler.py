@@ -44,11 +44,16 @@ class RPMPkgProfiler(Profiler):
         """
         Determine whether content units with given unit_keys and unit_type_id 
         are applicable to the specified consumer with given repo_ids.
+        Consumers and repo ids are specified as a dictionary:
+
+        {<consumer_id> : {'profiled_consumer' : <profiled_consumer>,
+                         'repo_ids' : <repo_ids>},
+         ...
+        }
 
         :param consumer_profile_and_repo_ids: A dictionary with consumer profile and repo ids
                         to be considered for applicability, keyed by consumer id.
-        :type consumer_profile_and_repo_ids: dict of <consumer_id> : {'profiled_consumer' : <profiled_consumer>,
-                                                                      'repo_ids' : <repo_ids>}
+        :type consumer_profile_and_repo_ids: dict
 
         :param unit_type_id: Common type id of all given unit keys
         :type unit_type_id: str
