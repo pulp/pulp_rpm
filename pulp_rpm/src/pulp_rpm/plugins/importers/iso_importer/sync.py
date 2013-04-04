@@ -63,7 +63,7 @@ class ISOSyncRun(listener.DownloadEventListener):
             'ssl_ca_cert': config.get(constants.CONFIG_SSL_CA_CERT), 'ssl_verify_host': 1,
             'ssl_verify_peer': 1, 'proxy_url': config.get(constants.CONFIG_PROXY_URL),
             'proxy_port': config.get(constants.CONFIG_PROXY_PORT),
-            'proxy_user': config.get(constants.CONFIG_PROXY_USER),
+            'proxy_username': config.get(constants.CONFIG_PROXY_USER),
             'proxy_password': config.get(constants.CONFIG_PROXY_PASSWORD)}
         downloader_config = DownloaderConfig(protocol='https', **downloader_config)
 
