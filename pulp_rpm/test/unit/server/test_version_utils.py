@@ -26,7 +26,7 @@ class EncodeTests(unittest.TestCase):
         self.assertRaises(ValueError, encode, '')
 
     def test_none(self):
-        self.assertRaises(ValueError, encode, None)
+        self.assertRaises(TypeError, encode, None)
 
     def test_numbers(self):
         self.assertEqual(encode('1.1'), '01-1.01-1')
@@ -89,48 +89,48 @@ class DatabaseSortTests(rpm_support_base.PulpRPMTests):
     def test_numbers(self):
         # If both the elements are numbers, the larger number is considered newer. So 5 is newer than 4
         # and 10 is newer than 2.
-        self.assert_greater_than('5', '4')
-        self.assert_greater_than('1.2', '1.1')
-        self.assert_greater_than('3.9', '3.1')
-        self.assert_greater_than('3.10', '3.9')
-        self.assert_greater_than('3.11', '3.10')
+        self.assert_greater_than_or_equal('5', '4')
+        self.assert_greater_than_or_equal('1.2', '1.1')
+        self.assert_greater_than_or_equal('3.9', '3.1')
+        self.assert_greater_than_or_equal('3.10', '3.9')
+        self.assert_greater_than_or_equal('3.11', '3.10')
 
     def test_letters(self):
-        self.assert_greater_than('beta', 'alpha')
-        self.assert_greater_than('0.2.beta.1', '0.2.alpha.17')
+        self.assert_greater_than_or_equal('beta', 'alpha')
+        self.assert_greater_than_or_equal('0.2.beta.1', '0.2.alpha.17')
 
     def test_letter_case(self):
         # If both the elements are alphabetic, they are compared using the Unix strcmp function, with the
         # greater string resulting in a newer element. So 'add' is newer than 'ZULU' (because lowercase
         # characters win in strcmp comparisons).
-        self.assert_greater_than('add', 'ZULU')  # see fedora link in version_utils
+        self.assert_greater_than_or_equal('add', 'ZULU')  # see fedora link in version_utils
 
     def test_letters_v_numbers(self):
         # If one of the elements is a number, while the other is alphabetic, the numeric elements is
         # considered newer. So 10 is newer than 'abc', and 0 is newer than 'Z'.
-        self.assert_greater_than('0', 'Z')
-        self.assert_greater_than('10', 'abc')
+        self.assert_greater_than_or_equal('0', 'Z')
+        self.assert_greater_than_or_equal('10', 'abc')
 
     def test_mixed(self):
         # '2a' is older than '2.0', because numbers are considered newer than letters.
-        self.assert_greater_than('2.0', '2a')
+        self.assert_greater_than_or_equal('2.0', '2a')
 
     def test_different_length_ints(self):
         # The elements in the list are compared one by one using the following algorithm. In case one
         # of the lists run out, the other label wins as the newer label. So, for example, (1, 2) is
         # newer than (1, 1), and (1, 2, 0) is newer than (1, 2).
-        self.assert_greater_than('1.2', '1.1.0')
-        self.assert_greater_than('1.2.0', '1.2')
+        self.assert_greater_than_or_equal('1.2', '1.1.0')
+        self.assert_greater_than_or_equal('1.2.0', '1.2')
 
     def test_different_length_letters(self):
         # If both the elements are alphabetic, they are compared using the Unix strcmp function, with the
         # greater string resulting in a newer element. So 'aba' is newer than 'ab'.
-        self.assert_greater_than('aba', 'ab')
+        self.assert_greater_than_or_equal('aba', 'ab')
 
     def test_leading_zeroes(self):
-        self.assert_greater_than('1.002', '1.1')
+        self.assert_greater_than_or_equal('1.002', '1.1')
 
-    def assert_greater_than(self, version1, version2):
+    def assert_greater_than_or_equal(self, version1, version2):
         encoded1 = encode(version1)
         encoded2 = encode(version2)
 
@@ -151,14 +151,3 @@ class UtilityTests(unittest.TestCase):
         self.assertTrue(version_utils._is_int('1'))
         self.assertTrue(version_utils._is_int('10'))
         self.assertTrue(not version_utils._is_int('foo'))
-
-    def test_count_until_int(self):
-        self.assertEqual(version_utils._count_until('12a3bcd', True), 0)
-        self.assertEqual(version_utils._count_until('a3bcd', True), 1)
-
-    def test_count_util_letter(self):
-        self.assertEqual(version_utils._count_until('12a3bcd', False), 2)
-
-    def test_count_until_not_found(self):
-        self.assertEqual(version_utils._count_until('abcde', True), 5)
-        self.assertEqual(version_utils._count_until('123', False), 3)

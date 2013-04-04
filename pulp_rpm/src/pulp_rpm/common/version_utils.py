@@ -37,7 +37,7 @@ Examples:
 * 5.256  -> 01-5.03-256
 * 1.1a   -> 01-1.01-1.$a
 * 1.a+   -> 01-1.$a
-* 12a3bc -> 01-1.01-2.$a.01-3.$bc
+* 12a3bc -> 02-12.$a.01-3.$bc
 * 2xFg33.+f.5 -> 01-2.$xFg.02-33.$f.01-5
 
 Resources:
@@ -62,7 +62,7 @@ LETTERS_TEMPLATE = '$%s'  # substitute in segment
 #  separators (non-alphanumeric characters) ignored.
 #
 # This regex is used on a single character to determine if it should be included.
-VALID_REGEX = re.compile(r'[a-zA-Z0-9]')
+LETTER_REGEX = re.compile(r'[a-zA-Z]')
 
 
 class TooManyDigits(ValueError): pass
@@ -78,7 +78,10 @@ def encode(field):
 
     :return: encoded value that should be used for comparison searches and sorting
     """
-    if field in (None, ''):
+    if not isinstance(field, basestring):
+        raise TypeError('field must be a non-empty string')
+
+    if len(field) == 0:
         raise ValueError('field must be a non-empty string')
 
     try:
@@ -94,8 +97,8 @@ def encode(field):
 
 def _split_segments(x, y):
     """
-    Used in the reduce to break apart any combined letters/numbers into separate
-    segments.
+    Used in the reduce() on the original version to break apart any combined letters/numbers
+    into separate segments.
 
     From the Fedora link above:
       Each label is separated into a list of maximal alphabetic or numeric sections, with
@@ -110,6 +113,7 @@ def _split_segments(x, y):
         y = '.' + y
     return x + y
 
+
 def _encode_segment(x):
     """
     Encodes a particular segment, taking into account if its contents are numbers
@@ -121,8 +125,9 @@ def _encode_segment(x):
     if _is_int(x):
         return _encode_int(x)
     else:
-        clean = filter(VALID_REGEX.match, x)
+        clean = filter(LETTER_REGEX.match, x)
         return LETTERS_TEMPLATE % clean
+
 
 def _encode_int(segment):
     """
@@ -150,24 +155,6 @@ def _encode_int(segment):
 
     return digit_prefix + NUMBER_DIVIDER + str_segment
 
-def _count_until(chars, find_int):
-    """
-    Returns the number of characters until the first int or letter is found. The find_int
-    flag indicates which of those two is being searched for. If the searched for item is
-    not found, the count is considered to be all characters in the provided string.
-
-    :type chars: str
-    :type find_int: bool
-
-    :return: number of characters until the first letter/number is found
-    :rtype:  int or None
-    """
-    for i in range(0, len(chars)):
-        type_is_int = _is_int(chars[i])
-        if (type_is_int and find_int) or (not type_is_int and not find_int):
-            return i
-
-    return len(chars)
 
 def _is_int(x):
     """
