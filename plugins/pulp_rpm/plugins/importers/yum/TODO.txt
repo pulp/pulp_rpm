@@ -20,3 +20,5 @@ Validate importer config
 Integrate with eventlet downloader and its config options (when it's done)
 
 Create a unified way in the platform for plugins to have user-editable config files
+
+Include total repo size (bytes and units) in sync task report: https://bugzilla.redhat.com/show_bug.cgi?id=861409

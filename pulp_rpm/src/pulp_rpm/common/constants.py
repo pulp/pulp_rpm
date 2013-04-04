@@ -55,7 +55,7 @@ ISO_HTTPS_DIR = "/var/lib/pulp/published/https/isos"
 ISO_MANIFEST_FILENAME = 'PULP_MANIFEST'
 
 # There is no clean way to get the distribution storage location outside of the unit;
-# we need this path when initializing grinder so the treeinfo file gets compied and
+# we need this path when initializing grinder so the treeinfo file gets copied and
 # symlinked to the right path. Once we have a nicer way of getting this path replace this
 DISTRIBUTION_STORAGE_PATH = '/var/lib/pulp/content/distribution/'
 

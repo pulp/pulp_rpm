@@ -13,6 +13,8 @@
 
 import os.path
 import logging
+import shutil
+from pulp_rpm.common import ids, constants
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -20,6 +22,7 @@ _LOGGER = logging.getLogger(__name__)
 
 class Package(object):
     UNIT_KEY_NAMES = tuple()
+    TYPE = None
     def __init__(self, local_vars):
         for name in self.UNIT_KEY_NAMES:
             setattr(self, name, local_vars[name])
@@ -62,6 +65,48 @@ class Package(object):
         return ''.join(values)
 
 
+class Distribution(Package):
+    UNIT_KEY_NAMES = ('id', 'family', 'variant', 'version', 'arch')
+    TYPE = 'distribution'
+
+    def __init__(self, family, variant, version, arch):
+        kwargs = locals()
+        # I don't know why this is the "id", but am following the pattern of the
+        # original importer
+        kwargs['id'] = '-'.join(('ks', family, variant, version, arch))
+        kwargs['metadata'] = {}
+        super(Distribution, self).__init__(kwargs)
+
+    @property
+    def relative_path(self):
+        return self.id
+
+    def process_download_reports(self, reports):
+        metadata_files = self.metadata.setdefault('files', [])
+        for report in reports:
+
+            metadata_files.append({
+                'checksum': report.data['checksum'],
+                'checksumtype': report.data['checksumtype'],
+                'downloadurl': report.url,
+                'filename': os.path.basename(report.data['relativepath']),
+                'fileName': os.path.basename(report.data['relativepath']),
+                'item_type': ids.TYPE_ID_DISTRO,
+                'pkgpath': os.path.join(
+                    constants.DISTRIBUTION_STORAGE_PATH,
+                    self.id,
+                    os.path.dirname(report.data['relativepath']),
+                ),
+                'relativepath': report.data['relativepath'],
+                'savepath': report.destination,
+                'size': report.total_bytes,
+            })
+            shutil.move(
+                report.destination,
+                os.path.join(constants.DISTRIBUTION_STORAGE_PATH, self.id, report.data['relativepath'])
+            )
+
+
 class DRPM(Package):
     UNIT_KEY_NAMES = ('epoch',  'version', 'release', 'filename', 'checksumtype', 'checksum')
     TYPE = 'drpm'
@@ -101,4 +146,3 @@ class Errata(Package):
 class PackageGroup(Package):
     UNIT_KEY_NAMES = ('id', 'repo_id')
     TYPE = 'package_group'
-
