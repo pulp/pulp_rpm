@@ -70,7 +70,6 @@ class PulpRPMTests(unittest.TestCase):
         manager_factory.initialize()
         constants.DISTRIBUTION_STORAGE_PATH = TEMP_DISTRO_STORAGE_DIR
 
-
     @classmethod
     def tearDownClass(cls):
         name = config.config.get('database', 'name')
