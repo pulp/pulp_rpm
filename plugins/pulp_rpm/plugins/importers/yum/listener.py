@@ -14,15 +14,34 @@
 import logging
 import shutil
 
-from pulp.common.download.listener import DownloadEventListener
+from pulp.common.download.listener import DownloadEventListener, AggregatingEventListener
 
 
 _LOGGER = logging.getLogger(__name__)
 
 
-class DownloadListener(DownloadEventListener):
+class DistroFileListener(AggregatingEventListener):
+    def __init__(self, progress_report, progress_callback):
+        super(DistroFileListener, self).__init__()
+        self.progress_report = progress_report
+        self.progress_callback = progress_callback
+
+    def download_succeeded(self, report):
+        self._decrement()
+        super(DistroFileListener, self).download_succeeded(report)
+
+    def download_failed(self, report):
+        self._decrement()
+        super(DistroFileListener, self).download_succeeded(report)
+
+    def _decrement(self):
+        self.progress_report['items_left'] -= 1
+        self.progress_callback()
+
+
+class ContentListener(DownloadEventListener):
     def __init__(self, sync_conduit, progress_report):
-        super(DownloadListener, self).__init__()
+        super(ContentListener, self).__init__()
         self.sync_conduit = sync_conduit
         self.progress_report = progress_report
 

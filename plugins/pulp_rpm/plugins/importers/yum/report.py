@@ -11,6 +11,18 @@ type_total_map = {
 }
 
 
+class DistributionReport(dict):
+    def __init__(self):
+        self['error_details'] = []
+        self['items_total'] = 0
+        self['items_left'] = 0
+        self['state'] = constants.STATE_NOT_STARTED
+
+    def set_initial_values(self, items_total):
+        self.items_total = items_total
+        self.items_left = items_total
+
+
 class ContentReport(dict):
     def __init__(self):
         self['error_details'] = []
@@ -24,8 +36,6 @@ class ContentReport(dict):
             'rpm_total': 0,
             'drpm_done' : 0,
             'drpm_total': 0,
-            'tree_done' : 0,
-            'tree_total': 0,
         }
 
     def set_initial_values(self, counts, total_size):

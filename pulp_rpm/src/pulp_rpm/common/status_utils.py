@@ -76,6 +76,10 @@ def render_itemized_in_progress_state(prompt, data, type_name, progress_bar, sta
     steps for packages and distributions. There might be a cleaner way
     but I was having trouble updating the correct state variable and frankly
     I'm out of time. Feel free to fix this if you are inspired.
+
+    :param data:    dict with keys "items_total" and "items_left", values
+                    being ints
+    :type  data:    dict
     """
     
     # For the progress bar to work, we can't write anything after it until

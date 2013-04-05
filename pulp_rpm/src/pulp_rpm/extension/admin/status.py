@@ -29,12 +29,13 @@ class RpmStatusRenderer(StatusRenderer):
         # Sync Steps
         self.metadata_last_state = constants.STATE_NOT_STARTED
         self.download_last_state = constants.STATE_NOT_STARTED
+        self.distribution_sync_last_state = constants.STATE_NOT_STARTED
         self.errata_last_state = constants.STATE_NOT_STARTED
         self.comps_last_state = constants.STATE_NOT_STARTED
 
         # Publish Steps
         self.packages_last_state = constants.STATE_NOT_STARTED
-        self.distributions_last_state = constants.STATE_NOT_STARTED
+        self.distribution_publish_last_state = constants.STATE_NOT_STARTED
         self.generate_metadata_last_state = constants.STATE_NOT_STARTED
         self.publish_http_last_state = constants.STATE_NOT_STARTED
         self.publish_https_last_state = constants.STATE_NOT_STARTED
@@ -42,11 +43,12 @@ class RpmStatusRenderer(StatusRenderer):
         # UI Widgets
         self.metadata_spinner = self.prompt.create_spinner()
         self.download_bar = self.prompt.create_progress_bar()
+        self.distribution_sync_bar = self.prompt.create_progress_bar()
         self.errata_spinner = self.prompt.create_spinner()
         self.comps_spinner = self.prompt.create_spinner()
 
         self.packages_bar = self.prompt.create_progress_bar()
-        self.distributions_bar = self.prompt.create_progress_bar()
+        self.distribution_publish_bar = self.prompt.create_progress_bar()
         self.generate_metadata_spinner = self.prompt.create_spinner()
         self.publish_http_spinner = self.prompt.create_spinner()
         self.publish_https_spinner = self.prompt.create_spinner()
@@ -66,13 +68,14 @@ class RpmStatusRenderer(StatusRenderer):
         if 'yum_importer' in progress_report:
             self.render_metadata_step(progress_report)
             self.render_download_step(progress_report)
+            self.render_distribution_sync_step(progress_report)
             self.render_errata_step(progress_report)
             self.render_comps_step(progress_report)
 
         # Publish Steps
         if 'yum_distributor' in progress_report:
             self.render_packages_step(progress_report)
-            self.render_distributions_step(progress_report)
+            self.render_distribution_publish_step(progress_report)
             self.render_generate_metadata_step(progress_report)
             self.render_publish_https_step(progress_report)
             self.render_publish_http_step(progress_report)
@@ -91,6 +94,22 @@ class RpmStatusRenderer(StatusRenderer):
 
         if self.metadata_last_state == constants.STATE_FAILED:
             self.prompt.render_failure_message(progress_report['yum_importer']['metadata']['error'])
+
+    def render_distribution_sync_step(self, progress_report):
+        state = progress_report['state']
+        # Render nothing if we haven't begun yet or if this step is skipped
+        if state in (constants.STATE_NOT_STARTED, constants.STATE_SKIPPED):
+            return
+
+        # Only render this on the first non-not-started state
+        if self.distribution_sync_last_state == constants.STATE_NOT_STARTED:
+            self.prompt.write(_('Downloading distribution files...'))
+
+        if (state in (constants.STATE_RUNNING, constants.STATE_COMPLETE) and
+                    self.distribution_sync_last_state not in constants.COMPLETE_STATES):
+            render_itemized_in_progress_state(self.prompt, progress_report, _('distributions'), self.distribution_sync_bar, state)
+
+        self.distribution_sync_last_state = state
 
     def render_download_step(self, progress_report):
 
@@ -160,8 +179,7 @@ class RpmStatusRenderer(StatusRenderer):
             self.download_last_state = state
 
             template  = _('RPMs:       %(rpm_done)s/%(rpm_total)s items\n'
-                          'Delta RPMs: %(drpm_done)s/%(drpm_total)s items\n'
-                          'Tree Files: %(tree_done)s/%(tree_total)s items\n')
+                          'Delta RPMs: %(drpm_done)s/%(drpm_total)s items\n')
 
             bar_message = template % details
 
@@ -171,7 +189,7 @@ class RpmStatusRenderer(StatusRenderer):
             # If all of the packages are already downloaded and up to date,
             # the total bytes to process will be 0. This means the download
             # step is basically finished, so fill the progress bar.
-            if overall_total is 0:
+            if overall_total == 0:
                 overall_total = overall_done = 1
 
             self.download_bar.render(overall_done, overall_total, message=bar_message)
@@ -274,7 +292,7 @@ class RpmStatusRenderer(StatusRenderer):
             self.prompt.write(_('... failed'))
             self.packages_last_state = constants.STATE_FAILED
 
-    def render_distributions_step(self, progress_report):
+    def render_distribution_publish_step(self, progress_report):
 
         # Example Data:
         # "distribution": {
@@ -293,26 +311,26 @@ class RpmStatusRenderer(StatusRenderer):
             return
 
         # Only render this on the first non-not-started state
-        if self.distributions_last_state  == constants.STATE_NOT_STARTED:
+        if self.distribution_publish_last_state  == constants.STATE_NOT_STARTED:
             self.prompt.write(_('Publishing distributions...'))
 
         # If it's running or finished, the output is still the same. This way,
         # if the status is viewed after this step, the content download
         # summary is still available.
 
-        if state in (constants.STATE_RUNNING, constants.STATE_COMPLETE) and self.distributions_last_state not in constants.COMPLETE_STATES:
+        if state in (constants.STATE_RUNNING, constants.STATE_COMPLETE) and self.distribution_publish_last_state not in constants.COMPLETE_STATES:
 
-            self.distributions_last_state = state
-            render_itemized_in_progress_state(self.prompt, data, _('distributions'), self.distributions_bar, state)
+            self.distribution_publish_last_state = state
+            render_itemized_in_progress_state(self.prompt, data, _('distributions'), self.distribution_publish_bar, state)
 
-        elif state == constants.STATE_FAILED and self.distributions_last_state not in constants.COMPLETE_STATES:
+        elif state == constants.STATE_FAILED and self.distribution_publish_last_state not in constants.COMPLETE_STATES:
 
             # This state means something went horribly wrong. There won't be
             # individual package error details which is why they are only
             # displayed above and not in this case.
 
             self.prompt.write(_('... failed'))
-            self.distributions_last_state = constants.STATE_FAILED
+            self.distribution_publish_last_state = constants.STATE_FAILED
 
     def render_comps_step(self, progress_report):
         # Example Data:
@@ -398,7 +416,7 @@ class RpmIsoStatusRenderer(StatusRenderer):
         # Publish Steps
         if 'iso_distributor' in progress_report:
             self.render_rpms_step(progress_report)
-            self.render_distributions_step(progress_report)
+            self.render_distribution_publish_step(progress_report)
             self.render_generate_metadata_step(progress_report)
             self.render_isos_step(progress_report)
             self.render_publish_https_step(progress_report)
@@ -446,7 +464,7 @@ class RpmIsoStatusRenderer(StatusRenderer):
             self.rpms_last_state = constants.STATE_FAILED
 
 
-    def render_distributions_step(self, progress_report):
+    def render_distribution_publish_step(self, progress_report):
 
         # Example Data:
         # "distribution": {

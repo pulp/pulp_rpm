@@ -11,6 +11,7 @@
 # have received a copy of GPLv2 along with this software; if not, see
 # http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt.
 
+import functools
 import gzip
 import logging
 import lzma
@@ -21,9 +22,9 @@ from pulp.plugins.model import SyncReport
 
 from pulp_rpm.common import constants
 from pulp_rpm.plugins.importers.download import metadata, primary, packages, presto, updateinfo
-from pulp_rpm.plugins.importers.yum.listener import DownloadListener
+from pulp_rpm.plugins.importers.yum.listener import ContentListener
 from pulp_rpm.plugins.importers.yum.parse import treeinfo
-from pulp_rpm.plugins.importers.yum.report import ContentReport
+from pulp_rpm.plugins.importers.yum.report import ContentReport, DistributionReport
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -59,17 +60,21 @@ class RepoSync(object):
     def __init__(self, repo, sync_conduit, config):
         self.working_dir = repo.working_dir
         self.content_report = ContentReport()
+        self.distribution_report = DistributionReport()
         self.progress_status = {
             'metadata': {'state': 'NOT_STARTED'},
             'content': self.content_report,
+            'distribution': self.distribution_report,
             'errata': {'state': 'NOT_STARTED'},
             'comps': {'state': 'NOT_STARTED'},
         }
-        sync_conduit.set_progress(self.progress_status)
+        self.set_progress = functools.partial(self.sync_conduit.set_progress, self.progress_status)
+        self.set_progress()
         self.sync_conduit = sync_conduit
         self.config = config
         self.feed = config.get(constants.CONFIG_FEED_URL)
         self.current_units = sync_conduit.get_units()
+        self.set_progress = functools.partial(self.sync_conduit.set_progress, self.progress_status)
 
     def run(self):
         # using this tmp dir ensures that cleanup leaves nothing behind, since
@@ -77,23 +82,28 @@ class RepoSync(object):
         self.tmp_dir = tempfile.mkdtemp(dir=self.working_dir)
         try:
             self.progress_status['metadata']['state'] = constants.STATE_RUNNING
-            self.sync_conduit.set_progress(self.progress_status)
+            self.set_progress()
             metadata_files = self.get_metadata()
             self.progress_status['metadata']['state'] = constants.STATE_COMPLETE
-            self.sync_conduit.set_progress(self.progress_status)
+            self.set_progress()
 
             self.content_report['state'] = constants.STATE_RUNNING
-            self.sync_conduit.set_progress(self.progress_status)
+            self.set_progress()
             self.get_content(metadata_files)
             self.content_report['state'] = constants.STATE_COMPLETE
-            self.sync_conduit.set_progress(self.progress_status)
+            self.set_progress()
+
+            self.distribution_report['state'] = constants.STATE_RUNNING
+            self.set_progress()
+            treeinfo.main(self.sync_conduit, self.feed, self.tmp_dir, self.distribution_report, self.set_progress)
+            self.set_progress()
 
             self.progress_status['errata']['state'] = constants.STATE_RUNNING
-            self.sync_conduit.set_progress(self.progress_status)
+            self.set_progress()
             self.get_errata(metadata_files)
             self.progress_status['errata']['state'] = constants.STATE_COMPLETE
-            self.sync_conduit.set_progress(self.progress_status)
-            treeinfo.main(self.sync_conduit, self.feed, self.tmp_dir)
+            self.set_progress()
+
         finally:
             shutil.rmtree(self.tmp_dir, ignore_errors=True)
 
@@ -107,7 +117,7 @@ class RepoSync(object):
         :return:
         :rtype:  pulp_rpm.plugins.importers.download.metadata.MetadataFiles
         """
-        self.sync_conduit.set_progress(self.progress_status)
+        self.set_progress()
 
         metadata_files = metadata.MetadataFiles(self.feed, self.tmp_dir)
         metadata_files.download_repomd()
@@ -130,7 +140,7 @@ class RepoSync(object):
         }
         total_size = sum((rpms_total_size, drpms_total_size))
         self.content_report.set_initial_values(unit_counts, total_size)
-        self.sync_conduit.set_progress(self.progress_status)
+        self.set_progress()
         return rpms_to_download, drpms_to_download
 
     def decide_rpms_to_download(self, metadata_files):
@@ -158,7 +168,7 @@ class RepoSync(object):
 
     def download(self, metadata_files, rpms_to_download, drpms_to_download):
         # TODO: probably should make this more generic
-        event_listener = DownloadListener(self.sync_conduit, self.progress_status)
+        event_listener = ContentListener(self.sync_conduit, self.progress_status)
         primary_file_handle = _get_metadata_file_handle('primary', metadata_files)
         with primary_file_handle:
             package_info_generator = packages.package_list_generator(primary_file_handle,
@@ -182,10 +192,10 @@ class RepoSync(object):
 
         self.progress_status['content']['state'] = constants.STATE_COMPLETE
         self.progress_status['errata']['state'] = constants.STATE_RUNNING
-        self.sync_conduit.set_progress(self.progress_status)
+        self.set_progress()
 
         self.progress_status['comps']['state'] = constants.STATE_SKIPPED
-        self.sync_conduit.set_progress(self.progress_status)
+        self.set_progress()
 
         report = self.sync_conduit.build_success_report({}, {})
         return report

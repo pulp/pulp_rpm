@@ -23,6 +23,7 @@ from pulp.common.download.listener import AggregatingEventListener
 from pulp.common.download.request import DownloadRequest
 
 from pulp_rpm.common import constants, ids, models
+from pulp_rpm.plugins.importers.yum.listener import DistroFileListener
 
 SECTION_GENERAL = 'general'
 SECTION_STAGE2 = 'stage2'
@@ -31,7 +32,7 @@ SECTION_CHECKSUMS = 'checksums'
 _LOGGER = logging.getLogger(__name__)
 
 
-def main(sync_conduit, feed, working_dir):
+def main(sync_conduit, feed, working_dir, report, progress_callback):
     # this temporary dir will hopefully be moved to the unit's storage path
     # if all downloads go well. If not, it will be deleted below, ensuring a
     # complete cleanup
@@ -40,13 +41,18 @@ def main(sync_conduit, feed, working_dir):
         treefile_path = get_treefile(feed, tmp_dir)
         if not treefile_path:
             # no tree file found
+            report['state'] = constants.STATE_COMPLETE
             return
+
         try:
             model, files = parse_treefile(treefile_path)
         except ValueError:
+            report['state'] = constants.STATE_FAILED
             return
+
+        report.set_initial_values(len(files))
         config = DownloaderConfig()
-        listener = AggregatingEventListener()
+        listener = DistroFileListener(report, progress_callback)
         downloader = HTTPCurlDownloader(config, listener)
         downloader.download(file_to_download_request(f, feed, tmp_dir) for f in files)
         if len(listener.failed_reports) == 0:
@@ -61,7 +67,9 @@ def main(sync_conduit, feed, working_dir):
             sync_conduit.save_unit(unit)
         else:
             # TODO: log something?
-            pass
+            report['state'] = constants.STATE_FAILED
+            return
+        report['state'] = constants.STATE_COMPLETE
     finally:
         shutil.rmtree(tmp_dir, ignore_errors=True)
 
@@ -151,4 +159,3 @@ def parse_treefile(path):
     # TODO: look at "images-*" sections
 
     return model, files.values()
-
