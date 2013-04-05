@@ -19,6 +19,7 @@ import gettext
 from pulp.plugins.model import ApplicabilityReport
 from pulp.plugins.profiler import Profiler, InvalidUnitsRequested
 from pulp.plugins.conduits.mixins import UnitAssociationCriteria
+from pulp_rpm.common import constants
 from pulp_rpm.common.ids import TYPE_ID_PROFILER_RPM_ERRATA, TYPE_ID_ERRATA, TYPE_ID_RPM, UNIT_KEY_RPM
 from pulp_rpm.yum_plugin import util
 
@@ -72,17 +73,33 @@ class RPMErrataProfiler(Profiler):
     # -- applicability ---------------------------------------------------------
 
 
-    def units_applicable(self, consumer, repo_ids, unit_type_id, unit_keys, config, conduit):
+    def find_applicable_units(self, consumer_profile_and_repo_ids, unit_type_id, unit_keys, config, conduit):
         """
-        Determine whether the content unit is applicable to
-        the specified consumer.  The definition of "applicable" is content
+        Determine whether the content units are applicable to
+        the specified consumers.  The definition of "applicable" is content
         type specific and up to the descision of the profiler.
+        Consumers and repo ids are specified as a dictionary:
 
-        :param consumer: A consumer.
-        :type consumer: pulp.server.plugins.model.Consumer
+        {<consumer_id> : {'profiled_consumer' : <profiled_consumer>,
+                         'repo_ids' : <repo_ids>},
+         ...
+        }
 
-        :param repo_ids: Repo ids to restrict the applicability search to.
-        :type repo_ids: list of str
+        If report_style in the config is 'by_consumer', it returns a dictionary 
+        with a list of applicability reports keyed by a consumer id -
+
+        {
+            <consumer_id1> : [<ApplicabilityReport>],
+            <consumer_id2> : [<ApplicabilityReport>]},
+        }
+
+        If report_style in the config is 'by_units', it returns a list of applicability
+        reports. Each applicability report contains consumer_ids in the
+        summary to indicate all the applicable consumers.
+
+        :param consumer_profile_and_repo_ids: A dictionary with consumer profile and repo ids
+                        to be considered for applicability, keyed by consumer id.
+        :type consumer_profile_and_repo_ids: dict
 
         :param unit_type_id: Common type id of all given unit keys
         :type unit_type_id: str
@@ -96,29 +113,41 @@ class RPMErrataProfiler(Profiler):
         :param conduit: provides access to relevant Pulp functionality
         :type conduit: pulp.plugins.conduits.profile.ProfilerConduit
 
-        :return: An applicability report.
-        :rtype: pulp.plugins.model.ApplicabilityReport
+        :return: A list of applicability reports or a dict of applicability reports keyed by a consumer id
+        :rtype: List of pulp.plugins.model.ApplicabilityReport or dict
         """
         if unit_type_id != TYPE_ID_ERRATA:
-            error_msg = _("units_applicable invoked with type_id [%s], expected [%s]") % (unit_type_id, TYPE_ID_ERRATA)
+            error_msg = _("find_applicable_units invoked with type_id [%s], expected [%s]") % (unit_type_id, TYPE_ID_ERRATA)
             _LOG.error(error_msg)
             raise InvalidUnitsRequested(unit_keys, error_msg)
-        
-        applicability_reports = []
-        
-        # If repo_ids or units are empty lists, no need to check for applicability.
-        if not repo_ids or not unit_keys:
-            return applicability_reports
 
-        # For each unit 
-        for unit in unit_keys:
-            applicable_rpms, upgrade_details = self.translate(unit, repo_ids, consumer, conduit)
-            if applicable_rpms:
-                errata_details = upgrade_details.pop("errata_details")
-                summary = {}
-                applicability_reports.append(ApplicabilityReport(summary, errata_details))
+        # Set default report style
+        report_style = constants.APPLICABILITY_REPORT_STYLE_BY_UNITS
+        if config:
+            report_style = config.get(constants.CONFIG_APPLICABILITY_REPORT_STYLE)
 
-        return applicability_reports
+        if report_style == constants.APPLICABILITY_REPORT_STYLE_BY_UNITS:
+            reports = []
+        else:
+            reports = {}
+
+        if not consumer_profile_and_repo_ids:
+            return reports
+        
+        # Collect applicability reports for each unit
+        for unit_key in unit_keys:
+            applicable_consumers, errata_details = self.find_applicable(unit_key, consumer_profile_and_repo_ids, conduit)
+            if applicable_consumers:
+                details = errata_details
+                summary = {'unit_key' : details["id"]}
+                if report_style == constants.APPLICABILITY_REPORT_STYLE_BY_UNITS:
+                    summary['applicable_consumers'] = applicable_consumers
+                    reports.append(ApplicabilityReport(summary, details))
+                else:
+                    for consumer_id in applicable_consumers:
+                        reports.setdefault(consumer_id, []).append(ApplicabilityReport(summary, details))
+
+        return reports
 
 
     # -- Below are helper methods not part of the Profiler interface ----
@@ -202,6 +231,48 @@ class RPMErrataProfiler(Profiler):
             upgrade_details['errata_details'] = errata_details
             return ret_val, upgrade_details
 
+
+    def find_applicable(self, unit_key, consumer_profile_and_repo_ids, conduit):
+        """
+        Find whether an errata with given unit_key is applicable
+        to given consumers.
+
+        :param unit_key: A content unit key
+        :type unit_key: dict
+
+        :param consumer_profile_and_repo_ids: A dictionary with consumer profile and repo ids
+                        to be considered for applicability, keyed by consumer id.
+        :type consumer_profile_and_repo_ids: dict
+
+        :param conduit: provides access to relevant Pulp functionality
+        :type conduit: pulp.plugins.conduits.profile.ProfilerConduit
+
+        :return: a tuple consisting of applicable consumers and errata details
+
+        :rtype: (list of str, dict)
+        """
+        applicable_consumers = []
+        errata_details = None
+
+        for consumer_id, consumer_details in consumer_profile_and_repo_ids.items():
+            errata = self.find_unit_associated_to_repos(TYPE_ID_ERRATA, unit_key, consumer_details['repo_ids'], conduit)
+            if not errata:
+                error_msg = _("Unable to find errata with unit_key [%s] in bound repos [%s] to consumer [%s]") % \
+                    (unit_key, consumer_details['repo_ids'], consumer_id)
+                _LOG.debug(error_msg)
+            else:
+                updated_rpms = self.get_rpms_from_errata(errata)
+                _LOG.debug("Errata <%s> refers to %s updated rpms of: %s" % (errata.unit_key['id'], len(updated_rpms), updated_rpms))
+                applicable_rpms, upgrade_details = self.rpms_applicable_to_consumer(consumer_details['profiled_consumer'], updated_rpms)
+                if applicable_rpms:
+                    _LOG.debug("Rpms: <%s> were found to be related to errata <%s> and applicable to consumer <%s>" % (applicable_rpms, errata, consumer_id))
+                    errata_details = errata.metadata
+                    errata_details['id'] = errata.unit_key['id']
+                    applicable_consumers.append(consumer_id)
+
+        return applicable_consumers, errata_details
+
+
     def find_unit_associated_to_repos(self, unit_type, unit_key, repo_ids, conduit):
         criteria = UnitAssociationCriteria(type_ids=[unit_type], unit_filters=unit_key)
         return self.find_unit_associated_to_repos_by_criteria(criteria, repo_ids, conduit)
@@ -233,10 +304,10 @@ class RPMErrataProfiler(Profiler):
 
     def rpms_applicable_to_consumer(self, consumer, errata_rpms):
         """
-        :param consumer:
+        :param consumer: profiled consumer
         :type consumer: pulp.server.plugins.model.Consumer
 
-        :param errata_rpms: 
+        :param errata_rpms: list of errata rpms
         :type errata_rpms: list of dicts
 
         :return:    tuple, first entry list of dictionaries of applicable 
