@@ -19,14 +19,13 @@ from pulp_rpm.common import ids, constants
 _LOGGER = logging.getLogger(__name__)
 
 
-
 class Package(object):
     UNIT_KEY_NAMES = tuple()
     TYPE = None
     def __init__(self, local_vars):
         for name in self.UNIT_KEY_NAMES:
             setattr(self, name, local_vars[name])
-        self.metadata = local_vars['metadata']
+        self.metadata = local_vars.get('metadata', {})
 
     @property
     def unit_key(self):
@@ -74,18 +73,30 @@ class Distribution(Package):
         # I don't know why this is the "id", but am following the pattern of the
         # original importer
         kwargs['id'] = '-'.join(('ks', family, variant, version, arch))
-        kwargs['metadata'] = {}
         super(Distribution, self).__init__(kwargs)
 
     @property
     def relative_path(self):
+        """
+        For this model, the relative path will be a directory in which all
+        related files get stored. For most unit types, this path is to one
+        file.
+        """
         return self.id
 
     def process_download_reports(self, reports):
+        """
+        Once downloading is complete, add information about each file to this
+        model instance. This is required before saving the new unit.
+
+        :param reports: list of successful download reports
+        :type  reports: list(pulp.common.download.report.DownloadReport)
+        """
         _LOGGER.info([r.data for r in reports])
         metadata_files = self.metadata.setdefault('files', [])
         for report in reports:
-
+            # the following data model is mostly intended to match what the
+            # previous importer generated.
             metadata_files.append({
                 'checksum': report.data['checksum'],
                 'checksumtype': report.data['checksumtype'],

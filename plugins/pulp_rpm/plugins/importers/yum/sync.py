@@ -30,10 +30,16 @@ _LOGGER = logging.getLogger(__name__)
 
 def _get_metadata_file_handle(name, metadata_files):
     """
+    Given a standard name for a metadata file, as appears in a repomd.xml file
+    as a "data" element's "type", return an open file handle in read mode for
+    that file.
 
-    :param metadata_files:
+    :param metadata_files:  Object representing all of the discovered metadata
+                            files for the repository currently being operated
+                            on
     :type  metadata_files:  pulp_rpm.plugins.importers.download.metadata.MetadataFiles
-    :return:
+
+    :return: file
     """
     try:
         file_path = metadata_files.metadata[name]['local_path']
@@ -150,8 +156,6 @@ class RepoSync(object):
             drpms_total_size = 0
         return drpms_to_download, drpms_count, drpms_total_size
 
-
-
     def download(self, metadata_files, rpms_to_download, drpms_to_download):
         # TODO: probably should make this more generic
         event_listener = DownloadListener(self.sync_conduit, self.progress_status)
@@ -199,6 +203,16 @@ class RepoSync(object):
                 self.sync_conduit.save_unit(unit)
 
     def first_sweep(self, package_info_generator, current_units):
+        """
+        Given an iterator of Package instances available for download, and a list
+        of units currently in the repo, scan through the Packages to decide which
+        should be downloaded. If package_info_generator is in fact a generator,
+        this will not consume much memory.
+
+        :param package_info_generator:
+        :param current_units:
+        :return:
+        """
         # TODO: consider current units
         size_in_bytes = 0
         count = 0

@@ -14,7 +14,6 @@
 import ConfigParser
 import logging
 import os
-import os.path
 import shutil
 import tempfile
 
@@ -33,8 +32,10 @@ _LOGGER = logging.getLogger(__name__)
 
 
 def main(sync_conduit, feed, working_dir):
+    # this temporary dir will hopefully be moved to the unit's storage path
+    # if all downloads go well. If not, it will be deleted below, ensuring a
+    # complete cleanup
     tmp_dir = tempfile.mkdtemp(dir=working_dir)
-    _LOGGER.info('TREE TMPDIR: ' + tmp_dir)
     try:
         treefile_path = get_treefile(feed, tmp_dir)
         if not treefile_path:
@@ -79,7 +80,16 @@ def file_to_download_request(file_dict, feed, storage_path):
 
 
 def get_treefile(feed, tmp_dir):
-    # try to get treeinfo file
+    """
+    Download the treefile and return its full path on disk, or None if not found
+
+    :param feed:    URL to the repository
+    :type  feed:    str
+    :param tmp_dir: full path to the temporary directory being used
+    :type  tmp_dir: str
+    :return:        full path to treefile on disk, or None if not found
+    :rtype:         str or NoneType
+    """
     for filename in constants.TREE_INFO_LIST:
         path = os.path.join(tmp_dir, filename)
         url = os.path.join(feed, filename)
@@ -94,6 +104,15 @@ def get_treefile(feed, tmp_dir):
 
 
 def parse_treefile(path):
+    """
+    The treefile seems to be approximately in INI format, which can be read
+    by the standard library's ConfigParser.
+
+    :param path:    full path to the treefile
+    :return:        instance of Distribution model, and a list of dicts
+                    describing the distribution's files
+    :rtype:         (pulp_rpm.common.models.Distribution, dict)
+    """
     parser = ConfigParser.RawConfigParser()
     with open(path) as open_file:
         parser.readfp(open_file)
@@ -105,8 +124,12 @@ def parse_treefile(path):
             parser.get(SECTION_GENERAL, 'arch'),
         )
     except (ConfigParser.NoSectionError, ConfigParser.NoOptionError):
-        raise ValueError
+        raise ValueError('invalid treefile: could not find unit key components')
     files = {}
+    # this section is likely to have all the files we care about listed with
+    # checksums. But, it might not. Other sections checked below will only add
+    # files to the "files" dict if they are not already present. For those cases,
+    # there will not be checksums available.
     if parser.has_section(SECTION_CHECKSUMS):
         for item in parser.items(SECTION_CHECKSUMS):
             relativepath = item[0]
