@@ -120,9 +120,12 @@ class RPMErrataProfiler(Profiler):
             error_msg = _("find_applicable_units invoked with type_id [%s], expected [%s]") % (unit_type_id, TYPE_ID_ERRATA)
             _LOG.error(error_msg)
             raise InvalidUnitsRequested(unit_keys, error_msg)
-        
-        report_style = config.get(constants.CONFIG_APPLICABILITY_REPORT_STYLE,
-                                  default=constants.APPLICABILITY_REPORT_STYLE_BY_UNITS)
+
+        # Set default report style
+        report_style = constants.APPLICABILITY_REPORT_STYLE_BY_UNITS
+        if config:
+            report_style = config.get(constants.CONFIG_APPLICABILITY_REPORT_STYLE)
+
         if report_style == constants.APPLICABILITY_REPORT_STYLE_BY_UNITS:
             reports = []
         else:

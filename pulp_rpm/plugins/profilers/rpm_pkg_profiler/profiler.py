@@ -90,8 +90,11 @@ class RPMPkgProfiler(Profiler):
             _LOG.error(error_msg)
             raise InvalidUnitsRequested(unit_keys, error_msg)
 
-        report_style = config.get(constants.CONFIG_APPLICABILITY_REPORT_STYLE,
-                                  default=constants.APPLICABILITY_REPORT_STYLE_BY_UNITS)
+        # Set default report style
+        report_style = constants.APPLICABILITY_REPORT_STYLE_BY_UNITS
+        if config:
+            report_style = config.get(constants.CONFIG_APPLICABILITY_REPORT_STYLE)
+
         if report_style == constants.APPLICABILITY_REPORT_STYLE_BY_UNITS:
             reports = []
         else:
