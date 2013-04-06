@@ -43,9 +43,13 @@ class ISOSyncRun(listener.DownloadEventListener):
         self.sync_conduit = sync_conduit
         self._remove_missing_units = config.get(constants.CONFIG_REMOVE_MISSING_UNITS,
                                                 default=constants.CONFIG_REMOVE_MISSING_UNITS_DEFAULT)
-        self._repo_url = encode_unicode(config.get(constants.CONFIG_FEED_URL))
         self._validate_downloads = config.get(constants.CONFIG_VALIDATE_DOWNLOADS,
                                               default=constants.CONFIG_VALIDATE_DOWNLOADS_DEFAULT)
+        self._repo_url = encode_unicode(config.get(constants.CONFIG_FEED_URL))
+        # The _repo_url must end in a trailing slash, because we will use urljoin to determine the path to
+        # PULP_MANIFEST later
+        if self._repo_url[-1] != '/':
+            self._repo_url = self._repo_url + '/'
 
         # Cast our config parameters to the correct types and use them to build a Downloader
         max_speed = config.get(constants.CONFIG_MAX_SPEED)
