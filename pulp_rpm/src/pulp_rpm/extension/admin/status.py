@@ -96,7 +96,8 @@ class RpmStatusRenderer(StatusRenderer):
             self.prompt.render_failure_message(progress_report['yum_importer']['metadata']['error'])
 
     def render_distribution_sync_step(self, progress_report):
-        state = progress_report['state']
+        data = progress_report['yum_importer']['distribution']
+        state = data['state']
         # Render nothing if we haven't begun yet or if this step is skipped
         if state in (constants.STATE_NOT_STARTED, constants.STATE_SKIPPED):
             return
@@ -107,7 +108,7 @@ class RpmStatusRenderer(StatusRenderer):
 
         if (state in (constants.STATE_RUNNING, constants.STATE_COMPLETE) and
                     self.distribution_sync_last_state not in constants.COMPLETE_STATES):
-            render_itemized_in_progress_state(self.prompt, progress_report, _('distributions'), self.distribution_sync_bar, state)
+            render_itemized_in_progress_state(self.prompt, data, _('distributions'), self.distribution_sync_bar, state)
 
         self.distribution_sync_last_state = state
 

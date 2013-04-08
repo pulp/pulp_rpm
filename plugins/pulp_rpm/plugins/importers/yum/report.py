@@ -19,8 +19,8 @@ class DistributionReport(dict):
         self['state'] = constants.STATE_NOT_STARTED
 
     def set_initial_values(self, items_total):
-        self.items_total = items_total
-        self.items_left = items_total
+        self['items_total'] = items_total
+        self['items_left'] = items_total
 
 
 class ContentReport(dict):

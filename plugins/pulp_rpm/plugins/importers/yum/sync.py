@@ -68,9 +68,9 @@ class RepoSync(object):
             'errata': {'state': 'NOT_STARTED'},
             'comps': {'state': 'NOT_STARTED'},
         }
+        self.sync_conduit = sync_conduit
         self.set_progress = functools.partial(self.sync_conduit.set_progress, self.progress_status)
         self.set_progress()
-        self.sync_conduit = sync_conduit
         self.config = config
         self.feed = config.get(constants.CONFIG_FEED_URL)
         self.current_units = sync_conduit.get_units()
