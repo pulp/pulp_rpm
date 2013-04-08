@@ -68,3 +68,8 @@ TREE_INFO_LIST = ['.treeinfo', 'treeinfo']
 # Number of units to display by name for operations that return a list of
 # modules that were acted on, such as copy and remove
 DISPLAY_UNITS_THRESHOLD = 100
+
+# Profiler configuration key name
+CONFIG_APPLICABILITY_REPORT_STYLE = 'report_style'
+APPLICABILITY_REPORT_STYLE_BY_UNITS = 'by_units'
+APPLICABILITY_REPORT_STYLE_BY_CONSUMERS = 'by_consumers'
