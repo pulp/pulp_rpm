@@ -91,7 +91,7 @@ class TestISOSyncRun(PulpRPMTests):
             'ssl_ca_cert': "Uh, I guess that's the right server.", 'ssl_verify_host': 2,
             'ssl_verify_peer': 1, 'proxy_url': 'http://proxy.com',
             'proxy_port': 1234,
-            'proxy_user': 'the_dude',
+            'proxy_username': 'the_dude',
             'proxy_password': 'bowling'}
         for key, value in expected_downloader_config.items():
             self.assertEquals(getattr(downloader.config, key), value)
