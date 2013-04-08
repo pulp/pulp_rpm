@@ -62,3 +62,8 @@ DISTRIBUTION_STORAGE_PATH = '/var/lib/pulp/content/distribution/'
 # During publish we need to lookup and make sure the treeinfo exists; since the treeinfo
 # can be '.treeinfo' or 'treeinfo' (in cdn case) we need to check which one exists
 TREE_INFO_LIST = ['.treeinfo', 'treeinfo']
+
+# Profiler configuration key name
+CONFIG_APPLICABILITY_REPORT_STYLE = 'report_style'
+APPLICABILITY_REPORT_STYLE_BY_UNITS = 'by_units'
+APPLICABILITY_REPORT_STYLE_BY_CONSUMERS = 'by_consumers'
