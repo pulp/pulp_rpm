@@ -150,15 +150,16 @@ def parse_treefile(path):
                 'checksum': checksum,
                 'checksumtype': checksumtype
             }
-    if parser.has_section(SECTION_STAGE2):
-        for item in parser.items(SECTION_STAGE2):
-            if item[0] not in files:
-                relativepath = item[0]
-                files[relativepath] = {
-                    'relativepath': relativepath,
-                    'checksum': None,
-                    'checksumtype': None,
-                }
-    # TODO: look at "images-*" sections
+
+    for section_name in parser.sections():
+        if section_name.startswith('images-') or section_name == SECTION_STAGE2:
+            for item in parser.items(section_name):
+                if item[1] not in files:
+                    relativepath = item[1]
+                    files[relativepath] = {
+                        'relativepath': relativepath,
+                        'checksum': None,
+                        'checksumtype': None,
+                    }
 
     return model, files.values()
