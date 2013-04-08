@@ -230,7 +230,7 @@ class TestRPMs(PulpRPMTests):
             self.assertTrue(os.path.islink(link))
         # Test SaveThread is working and sync_conduit.save_unit was called 4 times
         #  4 calls = 3 RPMs and 1 Distribution
-        self.assertEquals(sync_conduit.save_unit.call_count, 1)
+        self.assertEquals(sync_conduit.save_unit.call_count, 4)
 
     def test_cancel_sync(self):
         global updated_progress
