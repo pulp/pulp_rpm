@@ -113,51 +113,9 @@ class RpmStatusRenderer(StatusRenderer):
         self.distribution_sync_last_state = state
 
     def render_download_step(self, progress_report):
-
-        # Example Data:
-        # "content": {
-        #    "num_success": 21,
-        #    "size_total": 3871257,
-        #    "items_left": 0,
-        #    "items_total": 21,
-        #    "state": "FINISHED",
-        #    "size_left": 0,
-        #    "details": {
-        #        "tree_file": {
-        #            "num_success": 0,
-        #            "size_total": 0,
-        #            "items_left": 0,
-        #            "items_total": 0,
-        #            "size_left": 0,
-        #            "num_error": 0
-        #        },
-        #        "rpm": {
-        #            "num_success": 21,
-        #            "size_total": 3871257,
-        #            "items_left": 0,
-        #            "items_total": 21,
-        #            "size_left": 0,
-        #            "num_error": 0
-        #        },
-        #        "delta_rpm": {
-        #            "num_success": 0,
-        #            "size_total": 0,
-        #            "items_left": 0,
-        #            "items_total": 0,
-        #            "size_left": 0,
-        #            "num_error": 0
-        #        },
-        #        "file": {
-        #            "num_success": 0,
-        #            "size_total": 0,
-        #            "items_left": 0,
-        #            "items_total": 0,
-        #            "size_left": 0,
-        #            "num_error": 0
-        #        }
-        #    },
-        # }
-
+        """
+        :type  progress_report: pulp_rpm.plugins.importers.yum.report.ContentReport
+        """
         data = progress_report['yum_importer']['content']
         state = data['state']
 

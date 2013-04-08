@@ -11,9 +11,11 @@
 # You should have received a copy of GPLv2 along with this software; if not,
 # see http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt
 
-import hashlib
-import os
 from copy import deepcopy
+import gzip
+import hashlib
+import lzma
+import os
 from urlparse import urljoin
 from xml.etree.cElementTree import iterparse
 
@@ -186,6 +188,28 @@ class MetadataFiles(object):
                 hash_obj.update(file_handle.read())
             if hash_obj.hexdigest() != md['checksum']['hex_digest']:
                 raise RuntimeError('%s failed verification, checksum mismatch' % md['local_path'])
+
+    def get_metadata_file_handle(self, name):
+        """
+        Given a standard name for a metadata file, as appears in a repomd.xml file
+        as a "data" element's "type", return an open file handle in read mode for
+        that file.
+
+        :return: file
+        """
+        try:
+            file_path = self.metadata[name]['local_path']
+        except KeyError:
+            return
+
+        if file_path.endswith('.gz'):
+            file_handle = gzip.open(file_path, 'r')
+        elif file_path.endswith('.xz'):
+            file_handle = lzma.LZMAFile(file_path, 'r')
+        else:
+            file_handle = open(file_path, 'r')
+        return file_handle
+
 
 # utilities --------------------------------------------------------------------
 

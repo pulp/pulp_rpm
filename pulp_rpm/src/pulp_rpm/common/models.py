@@ -92,7 +92,6 @@ class Distribution(Package):
         :param reports: list of successful download reports
         :type  reports: list(pulp.common.download.report.DownloadReport)
         """
-        _LOGGER.info([r.data for r in reports])
         metadata_files = self.metadata.setdefault('files', [])
         for report in reports:
             # the following data model is mostly intended to match what the
