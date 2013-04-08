@@ -11,7 +11,7 @@
 # http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt.
 
 """
-Adds encoded sorting indexes for version and release to  RPMs, SRPMs, and DRPMs that do not
+Adds encoded sorting indexes for version and release to RPMs, SRPMs, and DRPMs that do not
 already have them.
 """
 
