@@ -102,9 +102,8 @@ def _split_segments(x, y):
 
     From the Fedora link above:
       Each label is separated into a list of maximal alphabetic or numeric sections, with
-      separators (non-alphanumeric characters) ignored. If there is any extra non-alphanumeric
-      character at the end, that. So, '2.0.1' becomes ('2', '0', '1'), while ('2xFg33.+f.5')
-      becomes ('2', 'xFg', '33', 'f', '5').
+      separators (non-alphanumeric characters) ignored. So, '2.0.1' becomes ('2', '0', '1'),
+      while ('2xFg33.+f.5') becomes ('2', 'xFg', '33', 'f', '5').
 
     :type x: str
     :type y: str

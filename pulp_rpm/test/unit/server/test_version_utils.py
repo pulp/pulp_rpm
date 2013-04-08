@@ -65,9 +65,8 @@ class EncodeTests(unittest.TestCase):
 
     def test_non_letter_removal(self):
         # Each label is separated into a list of maximal alphabetic or numeric sections, with separators
-        # (non-alphanumeric characters) ignored. If there is any extra non-alphanumeric character at the
-        # end, that. So, '2.0.1' becomes ('2', '0', '1'), while ('2xFg33.+f.5') becomes
-        # ('2', 'xFg', '33', 'f', '5').
+        # (non-alphanumeric characters) ignored. So, '2.0.1' becomes ('2', '0', '1'), while
+        # ('2xFg33.+f.5') becomes ('2', 'xFg', '33', 'f', '5').
         #
         # Test: Notice that the + is removed, in addition to the splitting apart of numbers and letters.
         self.assertEqual(encode('2xFg33.+f.5'), '01-2.$xFg.02-33.$f.01-5')
