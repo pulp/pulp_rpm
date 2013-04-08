@@ -97,6 +97,20 @@ class TestISOSyncRun(PulpRPMTests):
             self.assertEquals(getattr(downloader.config, key), value)
         self.assertEquals(type(iso_sync_run.progress_report), SyncProgressReport)
 
+    def test__init___with_feed_lacking_trailing_slash(self):
+        """
+        In bug https://bugzilla.redhat.com/show_bug.cgi?id=949004 we had a problem where feed URLs that didn't
+        have trailing slashes would get their last URL component clobbered when we used urljoin to determine
+        the path to PULP_MANIFEST. The solution is to have __init__() automatically append a trailing slash to
+        URLs that lack it so that urljoin will determine the correct path to PULP_MANIFEST.
+        """
+        config = importer_mocks.get_basic_config(feed_url='http://fake.com/no_trailing_slash')
+
+        iso_sync_run = ISOSyncRun(self.sync_conduit, config)
+
+        # Humorously enough, the _repo_url attribute named no_trailing_slash should now have a trailing slash
+        self.assertEqual(iso_sync_run._repo_url, 'http://fake.com/no_trailing_slash/')
+
     def test_cancel_sync(self):
         """
         Test what happens if cancel_sync is called when there is no Bumper.
