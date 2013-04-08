@@ -88,7 +88,7 @@ class TestISOSyncRun(PulpRPMTests):
             'max_speed': 500.0, 'num_threads': 5,
             'ssl_client_cert': "Trust me, I'm who I say I am.",
             'ssl_client_key': 'Secret Key',
-            'ssl_ca_cert': "Uh, I guess that's the right server.", 'ssl_verify_host': 1,
+            'ssl_ca_cert': "Uh, I guess that's the right server.", 'ssl_verify_host': 2,
             'ssl_verify_peer': 1, 'proxy_url': 'http://proxy.com',
             'proxy_port': 1234,
             'proxy_user': 'the_dude',
