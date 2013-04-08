@@ -36,6 +36,7 @@ class DistroFileListener(AggregatingEventListener):
 
     def _decrement(self):
         self.progress_report['items_left'] -= 1
+        _LOGGER.info('decrementing')
         self.progress_callback()
 
 

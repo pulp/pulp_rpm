@@ -21,7 +21,7 @@ import tempfile
 from pulp.plugins.model import SyncReport
 
 from pulp_rpm.common import constants
-from pulp_rpm.plugins.importers.download import metadata, primary, packages, presto, updateinfo
+from pulp_rpm.plugins.importers.yum.repomd import metadata, primary, packages, updateinfo, presto
 from pulp_rpm.plugins.importers.yum.listener import ContentListener
 from pulp_rpm.plugins.importers.yum.parse import treeinfo
 from pulp_rpm.plugins.importers.yum.report import ContentReport, DistributionReport
@@ -95,11 +95,10 @@ class RepoSync(object):
 
             self.distribution_report['state'] = constants.STATE_RUNNING
             self.set_progress()
-            treeinfo.main(self.sync_conduit, self.feed, self.tmp_dir, self.distribution_report, self.set_progress)
+            treeinfo.sync(self.sync_conduit, self.feed, self.tmp_dir, self.distribution_report, self.set_progress)
             self.set_progress()
 
             self.progress_status['errata']['state'] = constants.STATE_RUNNING
-            self.set_progress()
             self.get_errata(metadata_files)
             self.progress_status['errata']['state'] = constants.STATE_COMPLETE
             self.set_progress()
@@ -191,7 +190,6 @@ class RepoSync(object):
                 packages_manager.download_packages()
 
         self.progress_status['content']['state'] = constants.STATE_COMPLETE
-        self.progress_status['errata']['state'] = constants.STATE_RUNNING
         self.set_progress()
 
         self.progress_status['comps']['state'] = constants.STATE_SKIPPED

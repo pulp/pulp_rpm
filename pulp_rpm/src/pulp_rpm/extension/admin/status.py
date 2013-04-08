@@ -247,8 +247,10 @@ class RpmStatusRenderer(StatusRenderer):
         #    "state": "FINISHED",
         #    "num_errata": 0
         # }
-
         current_state = progress_report['yum_importer']['errata']['state']
+        if current_state in (constants.STATE_NOT_STARTED, constants.STATE_SKIPPED):
+            return
+
         def update_func(new_state):
             self.errata_last_state = new_state
         render_general_spinner_step(self.prompt, self.errata_spinner, current_state, self.errata_last_state, _('Importing errata...'), update_func)
