@@ -57,11 +57,13 @@ class ISOSyncRun(listener.DownloadEventListener):
         else:
             num_threads = constants.CONFIG_NUM_THREADS_DEFAULT
         downloader_config = {
-            'max_speed': max_speed, 'num_threads': num_threads,
+            'max_speed': max_speed,
+            'num_threads': num_threads,
             'ssl_client_cert': config.get(constants.CONFIG_SSL_CLIENT_CERT),
             'ssl_client_key': config.get(constants.CONFIG_SSL_CLIENT_KEY),
-            'ssl_ca_cert': config.get(constants.CONFIG_SSL_CA_CERT), 'ssl_verify_host': 1,
-            'ssl_verify_peer': 1, 'proxy_url': config.get(constants.CONFIG_PROXY_URL),
+            'ssl_ca_cert': config.get(constants.CONFIG_SSL_CA_CERT),
+            'ssl_verify_host': 2, 'ssl_verify_peer': 1,
+            'proxy_url': config.get(constants.CONFIG_PROXY_URL),
             'proxy_port': config.get(constants.CONFIG_PROXY_PORT),
             'proxy_user': config.get(constants.CONFIG_PROXY_USER),
             'proxy_password': config.get(constants.CONFIG_PROXY_PASSWORD)}
