@@ -93,7 +93,6 @@ class RPMPkgProfiler(Profiler):
         report_style = constants.APPLICABILITY_REPORT_STYLE_BY_UNITS
         if config:
             report_style = config.get(constants.CONFIG_APPLICABILITY_REPORT_STYLE)
-
         if report_style == constants.APPLICABILITY_REPORT_STYLE_BY_UNITS:
             reports = []
         else:
