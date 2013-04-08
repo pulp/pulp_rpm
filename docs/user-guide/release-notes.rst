@@ -1,6 +1,33 @@
-=============
-Release Notes
-=============
+======================
+Pulp 2.1 Release Notes
+======================
+
+Pulp 2.1.1
+==========
+
+Pulp 2.1.1 is a bugfix release that also comes with a few performance improvements.
+
+Noteworthy Bugs Fixed
+---------------------
+
+`947208 <https://bugzilla.redhat.com/show_bug.cgi?id=947208>`_ - RFE: Add proxy server support to the ISO
+importer
+
+`949004 <https://bugzilla.redhat.com/show_bug.cgi?id=949004>`_ - The ISO Importer does not build the URL for the
+PULP_MANIFEST correctly
+
+`949008 <https://bugzilla.redhat.com/show_bug.cgi?id=949008>`_ - The ISO importer set the SSL_VERIFY_HOST value
+to 1, when it should be 2
+
+Upgrade Instructions
+--------------------
+
+Upgrade the Pulp Packages
+^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Please see the
+`Pulp Platform upgrade instructions <https://pulp-user-guide.readthedocs.org/en/pulp-2.1.1/release-notes.html>`_
+for information on how to complete the upgrade.
 
 Pulp 2.1.0
 ==========
