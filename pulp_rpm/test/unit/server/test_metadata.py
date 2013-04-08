@@ -210,3 +210,20 @@ class TestMetadata(rpm_support_base.PulpRPMTests):
         repodata_xml = metadata.get_package_xml(bad_package_path)
         self.assertEquals(repodata_xml, {})
 
+    def test_yum_package_details(self):
+        src_repo_dir = os.path.join(self.data_dir, "repos.fedorapeople.org/repos/pulp/pulp/demo_repos")
+        yum_pkg_details = metadata.YumPackageDetails(src_repo_dir, "pulp_unittest")
+        self.assertTrue(yum_pkg_details.init())
+        self.assertEquals(yum_pkg_details.get_details("bad_value_not_in_repo.rpm"), {})
+        expected_files = ["pulp-dot-2.0-test-0.1.2-1.fc11.x86_64.rpm",
+            "pulp-test-package-0.3.1-1.fc11.x86_64.rpm",
+            "pulp-test-package-0.2.1-1.fc11.x86_64.rpm"]
+        for f in expected_files:
+            details = yum_pkg_details.get_details(f)
+            self.assertTrue(details)
+            self.assertTrue(details["repodata"]["primary"])
+            self.assertTrue(details["repodata"]["filelists"])
+            self.assertTrue(details["repodata"]["other"])
+        yum_pkg_details.close()
+
+
