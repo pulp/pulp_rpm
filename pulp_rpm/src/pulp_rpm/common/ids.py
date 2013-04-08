@@ -62,10 +62,10 @@ METADATA_PKG_CATEGORY = (
 
 TYPE_ID_DISTRO = "distribution"
 UNIT_KEY_DISTRO = ("id", "family", "variant", "version", "arch")
-METADATA_DISTRO = ("files",)
+METADATA_DISTRO = ("files",) 
 
 TYPE_ID_DRPM = "drpm"
 UNIT_KEY_DRPM = (
 "epoch", "version", "release", "filename", "checksum", "checksumtype")
 
-METADATA_DRPM = ("size", "sequence", "new_package")
+METADATA_DRPM = ("size", "sequence", "new_package", "relativepath")
