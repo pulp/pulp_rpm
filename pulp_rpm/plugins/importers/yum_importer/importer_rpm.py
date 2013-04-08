@@ -24,6 +24,7 @@ from pulp.server.db.model.criteria import UnitAssociationCriteria
 from pulp_rpm.yum_plugin import util, metadata
 from yum_importer import distribution, drpm
 import pulp_rpm.common.constants as constants
+from pulp_rpm.common import version_utils
 from pulp_rpm.common.ids import TYPE_ID_DRPM, TYPE_ID_DISTRO
 
 _LOG = util.getLogger(__name__)
@@ -152,6 +153,10 @@ def form_rpm_metadata(rpm):
     metadata = {}
     for key in ("filename", "relativepath"):
         metadata[key] = rpm[key]
+
+    metadata['version_sort_index'] = version_utils.encode(rpm['version'])
+    metadata['release_sort_index'] = version_utils.encode(rpm['release'])
+
     return metadata
 
 def form_lookup_key(rpm):
