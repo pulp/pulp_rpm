@@ -10,6 +10,8 @@ Pulp 2.1.1 is a bugfix release that also comes with a few performance improvemen
 Noteworthy Bugs Fixed
 ---------------------
 
+`873313 <https://bugzilla.redhat.com/show_bug.cgi?id=873313>`_ - Very high memory usage during repo sync
+
 `947208 <https://bugzilla.redhat.com/show_bug.cgi?id=947208>`_ - RFE: Add proxy server support to the ISO
 importer
 
