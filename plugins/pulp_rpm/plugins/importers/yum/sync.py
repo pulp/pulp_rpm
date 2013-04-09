@@ -19,7 +19,7 @@ import tempfile
 from pulp.plugins.model import SyncReport
 
 from pulp_rpm.common import constants
-from pulp_rpm.plugins.importers.yum.repomd import metadata, primary, packages, updateinfo, presto
+from pulp_rpm.plugins.importers.yum.repomd import metadata, primary, packages, updateinfo, presto, group
 from pulp_rpm.plugins.importers.yum.listener import ContentListener
 from pulp_rpm.plugins.importers.yum.parse import treeinfo
 from pulp_rpm.plugins.importers.yum.report import ContentReport, DistributionReport
@@ -45,6 +45,7 @@ class RepoSync(object):
         self.config = config
         self.feed = config.get(constants.CONFIG_FEED_URL)
         self.current_units = sync_conduit.get_units()
+        self.repo = repo
 
     def run(self):
         # using this tmp dir ensures that cleanup leaves nothing behind, since
@@ -74,7 +75,10 @@ class RepoSync(object):
             self.progress_status['errata']['state'] = constants.STATE_COMPLETE
             self.set_progress()
 
-            self.progress_status['comps']['state'] = constants.STATE_SKIPPED
+            self.progress_status['comps']['state'] = constants.STATE_RUNNING
+            self.set_progress()
+            self.get_groups(metadata_files)
+            self.progress_status['comps']['state'] = constants.STATE_COMPLETE
             self.set_progress()
 
         finally:
@@ -171,6 +175,23 @@ class RepoSync(object):
             package_info_generator = packages.package_list_generator(errata_file_handle,
                                                                      updateinfo.PACKAGE_TAG,
                                                                      updateinfo.process_package_element)
+            for model in package_info_generator:
+                unit = self.sync_conduit.init_unit(model.TYPE, model.unit_key, model.metadata, None)
+                self.sync_conduit.save_unit(unit)
+
+    def get_groups(self, metadata_files):
+        try:
+            group_file_handle = metadata_files.get_metadata_file_handle('group_gz')
+        except KeyError:
+            try:
+                group_file_handle = metadata_files.get_metadata_file_handle('group')
+            except KeyError:
+                return
+        process_func = functools.partial(group.process_package_element, self.repo.id)
+        with group_file_handle:
+            package_info_generator = packages.package_list_generator(group_file_handle,
+                                                                     group.PACKAGE_TAG,
+                                                                     process_func)
             for model in package_info_generator:
                 unit = self.sync_conduit.init_unit(model.TYPE, model.unit_key, model.metadata, None)
                 self.sync_conduit.save_unit(unit)

@@ -4,8 +4,6 @@ Fix the database representation of DRPMs.
 
 Compare versions of packages (non-trivial algorithm whose only documentation says "don't re-implement this anywhere else". Great.)
 
-Sync errata
-Sync distributions
 Sync groups
 Don't sync units we already have
 Optionally sync only newest version of each package

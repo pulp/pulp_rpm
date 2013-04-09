@@ -92,6 +92,7 @@ class Distribution(Package):
         :param reports: list of successful download reports
         :type  reports: list(pulp.common.download.report.DownloadReport)
         """
+        # TODO: maybe this shouldn't be in common
         metadata_files = self.metadata.setdefault('files', [])
         for report in reports:
             # the following data model is mostly intended to match what the
@@ -153,3 +154,6 @@ class Errata(Package):
 class PackageGroup(Package):
     UNIT_KEY_NAMES = ('id', 'repo_id')
     TYPE = 'package_group'
+
+    def __init__(self, id, repo_id, metadata):
+        Package.__init__(self, locals())
