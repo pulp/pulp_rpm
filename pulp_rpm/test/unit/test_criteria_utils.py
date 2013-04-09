@@ -14,7 +14,7 @@ import unittest
 from pulp.client.commands.criteria import CriteriaCommand
 
 from pulp_rpm.common import version_utils
-from pulp_rpm.extension.admin import criteria_utils
+from pulp_rpm.extension import criteria_utils
 
 
 class ParseKeyValueTests(unittest.TestCase):
