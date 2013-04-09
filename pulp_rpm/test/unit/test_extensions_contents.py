@@ -155,6 +155,3 @@ class SearchErrataCommand(PulpClientTests):
         self.assertEqual(command.context, self.context)
         self.assertEqual(command.name, 'errata')
         self.assertEqual(command.description, contents.DESC_ERRATA)
-
-
-
