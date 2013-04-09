@@ -18,7 +18,7 @@ from pulp.client.commands.unit import UnitRemoveCommand
 from pulp_rpm.common.ids import (TYPE_ID_RPM, TYPE_ID_SRPM, TYPE_ID_DRPM, TYPE_ID_ERRATA, TYPE_ID_DISTRO,
                                  TYPE_ID_PKG_GROUP, TYPE_ID_PKG_CATEGORY)
 from pulp_rpm.extension.admin import remove as remove_commands
-from pulp_rpm.extension.admin.remove import BaseRemoveCommand
+from pulp_rpm.extension.admin.remove import BaseRemoveCommand, PackageRemoveCommand
 import rpm_support_base
 
 
@@ -47,6 +47,24 @@ class BaseRemoveCommandTests(rpm_support_base.PulpClientTests):
         mock_display.assert_called_once_with(self.prompt, fake_units, self.command.unit_threshold)
 
 
+class PackageRemoveCommandTests(rpm_support_base.PulpClientTests):
+    """
+    Simply verifies the criteria_utils is called from the overridden methods.
+    """
+
+    @mock.patch('pulp_rpm.extension.criteria_utils.parse_key_value')
+    def test_key_value(self, mock_parse):
+        command = remove_commands.PackageRemoveCommand(self.context, 'copy', '', '')
+        command._parse_key_value('foo')
+        mock_parse.assert_called_once_with('foo')
+
+    @mock.patch('pulp_rpm.extension.criteria_utils.parse_sort')
+    def test_sort(self, mock_parse):
+        command = remove_commands.PackageRemoveCommand(self.context, 'copy', '', '')
+        command._parse_sort('foo')
+        mock_parse.assert_called_once_with(remove_commands.BaseRemoveCommand, 'foo')
+
+
 class RemoveCommandsTests(rpm_support_base.PulpClientTests):
     """
     The command implementations are simply configuration to the base commands, so rather than
@@ -59,7 +77,7 @@ class RemoveCommandsTests(rpm_support_base.PulpClientTests):
         command = remove_commands.RpmRemoveCommand(self.context)
 
         # Verify
-        self.assertTrue(isinstance(command, BaseRemoveCommand))
+        self.assertTrue(isinstance(command, PackageRemoveCommand))
         self.assertEqual(command.name, 'rpm')
         self.assertEqual(command.description, remove_commands.DESC_RPM)
         self.assertEqual(command.type_id, TYPE_ID_RPM)
@@ -69,7 +87,7 @@ class RemoveCommandsTests(rpm_support_base.PulpClientTests):
         command = remove_commands.SrpmRemoveCommand(self.context)
 
         # Verify
-        self.assertTrue(isinstance(command, BaseRemoveCommand))
+        self.assertTrue(isinstance(command, PackageRemoveCommand))
         self.assertEqual(command.name, 'srpm')
         self.assertEqual(command.description, remove_commands.DESC_SRPM)
         self.assertEqual(command.type_id, TYPE_ID_SRPM)
