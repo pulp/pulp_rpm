@@ -72,6 +72,7 @@ class RecursiveCopyCommand(UnitCopyCommand):
         copied_units = task.result  # entries are a dict containing unit_key and type_id
         units_display.display_units(self.prompt, copied_units, self.unit_threshold)
 
+
 class RpmCopyCommand(RecursiveCopyCommand):
 
     def __init__(self, context):

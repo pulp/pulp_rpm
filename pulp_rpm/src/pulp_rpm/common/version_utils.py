@@ -64,6 +64,10 @@ LETTERS_TEMPLATE = '$%s'  # substitute in segment
 # This regex is used on a single character to determine if it should be included.
 LETTER_REGEX = re.compile(r'[a-zA-Z]')
 
+# Keys the encoded fields are stored under in the unit's metadata
+VERSION_INDEX = 'version_sort_index'
+RELEASE_INDEX = 'release_sort_index'
+
 
 class TooManyDigits(ValueError): pass
 
