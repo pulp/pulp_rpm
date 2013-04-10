@@ -44,9 +44,13 @@ class ISOSyncRun(listener.DownloadEventListener):
         self.sync_conduit = sync_conduit
         self._remove_missing_units = config.get(constants.CONFIG_REMOVE_MISSING_UNITS,
                                                 default=constants.CONFIG_REMOVE_MISSING_UNITS_DEFAULT)
-        self._repo_url = encode_unicode(config.get(constants.CONFIG_FEED_URL))
         self._validate_downloads = config.get(constants.CONFIG_VALIDATE_DOWNLOADS,
                                               default=constants.CONFIG_VALIDATE_DOWNLOADS_DEFAULT)
+        self._repo_url = encode_unicode(config.get(constants.CONFIG_FEED_URL))
+        # The _repo_url must end in a trailing slash, because we will use urljoin to determine the path to
+        # PULP_MANIFEST later
+        if self._repo_url[-1] != '/':
+            self._repo_url = self._repo_url + '/'
 
         # Cast our config parameters to the correct types and use them to build a Downloader
         max_speed = config.get(constants.CONFIG_MAX_SPEED)
@@ -58,13 +62,15 @@ class ISOSyncRun(listener.DownloadEventListener):
         else:
             num_threads = constants.CONFIG_NUM_THREADS_DEFAULT
         downloader_config = {
-            'max_speed': max_speed, 'num_threads': num_threads,
+            'max_speed': max_speed,
+            'num_threads': num_threads,
             'ssl_client_cert': config.get(constants.CONFIG_SSL_CLIENT_CERT),
             'ssl_client_key': config.get(constants.CONFIG_SSL_CLIENT_KEY),
-            'ssl_ca_cert': config.get(constants.CONFIG_SSL_CA_CERT), 'ssl_verify_host': 1,
-            'ssl_verify_peer': 1, 'proxy_url': config.get(constants.CONFIG_PROXY_URL),
+            'ssl_ca_cert': config.get(constants.CONFIG_SSL_CA_CERT),
+            'ssl_verify_host': 2, 'ssl_verify_peer': 1,
+            'proxy_url': config.get(constants.CONFIG_PROXY_URL),
             'proxy_port': config.get(constants.CONFIG_PROXY_PORT),
-            'proxy_user': config.get(constants.CONFIG_PROXY_USER),
+            'proxy_username': config.get(constants.CONFIG_PROXY_USER),
             'proxy_password': config.get(constants.CONFIG_PROXY_PASSWORD)}
         downloader_config = DownloaderConfig(**downloader_config)
 

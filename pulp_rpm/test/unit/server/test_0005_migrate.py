@@ -14,19 +14,12 @@
 from bson import BSON
 import glob
 import os.path
-import sys
 
 import mock
 from rpmUtils import transaction
-
 from pulp.server.db.migrate.models import MigrationModule
 
-try:
-    import rpm_support_base
-except ImportError:
-    path = os.path.join(os.path.dirname(__file__), '../../')
-    sys.path.append(path)
-    import rpm_support_base
+import rpm_support_base
 
 
 class TestMigrationAddMetadata(rpm_support_base.PulpRPMTests):

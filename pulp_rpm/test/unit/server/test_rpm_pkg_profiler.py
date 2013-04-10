@@ -52,6 +52,9 @@ class TestRpmPkgProfiler(rpm_support_base.PulpRPMTests):
         self.consumer_id_been_updated = "%s.been_updated" % (self.consumer_id)
         self.profiles_been_updated = self.get_test_profile_been_updated()
         self.test_consumer_been_updated = Consumer(self.consumer_id_been_updated, self.profiles_been_updated)
+        # Set applicability report override_config
+        self.override_config_consumer = {'report_style' : 'by_consumers'}
+        self.override_config_units = {'report_style' : 'by_units'}
 
     def tearDown(self):
         super(TestRpmPkgProfiler, self).tearDown()
@@ -110,7 +113,11 @@ class TestRpmPkgProfiler(rpm_support_base.PulpRPMTests):
         example_rpms = [rpm_unit.unit_key]
 
         prof = RPMPkgProfiler()
-        report_list = prof.units_applicable(self.test_consumer, ["test_repo_id"], TYPE_ID_RPM, example_rpms, None, conduit)
+        consumer_profile_and_repo_ids = {self.consumer_id:
+                                            {'profiled_consumer':self.test_consumer,
+                                             'repo_ids':["test_repo_id"]}
+                                        }
+        report_list = prof.find_applicable_units(consumer_profile_and_repo_ids, TYPE_ID_RPM, example_rpms, {}, conduit)
         self.assertFalse(report_list == [])
 
     def test_unit_applicable_same_name_diff_arch(self):
@@ -122,8 +129,13 @@ class TestRpmPkgProfiler(rpm_support_base.PulpRPMTests):
         example_rpms = [rpm_unit.unit_key]
 
         prof = RPMPkgProfiler()
-        report_list = prof.units_applicable(self.test_consumer_i386, ["test_repo_id"], TYPE_ID_RPM, example_rpms, None, conduit)
-        self.assertTrue(report_list == [])
+        consumer_profile_and_repo_ids = {self.consumer_id_i386:
+                                            {'profiled_consumer':self.test_consumer_i386,
+                                             'repo_ids':["test_repo_id"]}
+                                        }
+        report_dict = prof.find_applicable_units(consumer_profile_and_repo_ids, TYPE_ID_RPM, example_rpms, 
+                                                 self.override_config_consumer, conduit)
+        self.assertTrue(report_dict == {})
 
     def test_unit_applicable_updated_rpm_already_installed(self):
         rpm_unit_key = self.create_profile_entry("emoticons", 0, "0.1", "2", "x86_64", "Test Vendor")
@@ -134,8 +146,13 @@ class TestRpmPkgProfiler(rpm_support_base.PulpRPMTests):
         example_rpms = [rpm_unit.unit_key]
 
         prof = RPMPkgProfiler()
-        report_list = prof.units_applicable(self.test_consumer_been_updated, ["test_repo_id"], TYPE_ID_RPM, example_rpms, None, conduit)
-        self.assertTrue(report_list == [])
+        consumer_profile_and_repo_ids = {self.consumer_id_been_updated:
+                                            {'profiled_consumer':self.test_consumer_been_updated,
+                                             'repo_ids':["test_repo_id"]}
+                                        }
+        report_dict = prof.find_applicable_units(consumer_profile_and_repo_ids, TYPE_ID_RPM, example_rpms, 
+                                                 self.override_config_consumer, conduit)
+        self.assertTrue(report_dict == {})
 
     def test_unit_applicable_false(self):
         rpm_unit_key = self.create_profile_entry("bla-bla", 0, "0.1", "2", "x86_64", "Test Vendor")
@@ -146,6 +163,11 @@ class TestRpmPkgProfiler(rpm_support_base.PulpRPMTests):
         example_rpms = [rpm_unit.unit_key]
 
         prof = RPMPkgProfiler()
-        report_list = prof.units_applicable(self.test_consumer_i386, ["test_repo_id"], TYPE_ID_RPM, example_rpms, None, conduit)
+        consumer_profile_and_repo_ids = {self.consumer_id_i386:
+                                            {'profiled_consumer':self.test_consumer_i386,
+                                             'repo_ids':["test_repo_id"]}
+                                        }
+        report_list = prof.find_applicable_units(consumer_profile_and_repo_ids, TYPE_ID_RPM, example_rpms, 
+                                                 self.override_config_units, conduit)
         self.assertTrue(report_list == [])
 

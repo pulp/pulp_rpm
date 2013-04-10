@@ -88,14 +88,28 @@ class TestISOSyncRun(PulpRPMTests):
             'max_speed': 500.0, 'num_threads': 5,
             'ssl_client_cert': "Trust me, I'm who I say I am.",
             'ssl_client_key': 'Secret Key',
-            'ssl_ca_cert': "Uh, I guess that's the right server.", 'ssl_verify_host': 1,
+            'ssl_ca_cert': "Uh, I guess that's the right server.", 'ssl_verify_host': 2,
             'ssl_verify_peer': 1, 'proxy_url': 'http://proxy.com',
             'proxy_port': 1234,
-            'proxy_user': 'the_dude',
+            'proxy_username': 'the_dude',
             'proxy_password': 'bowling'}
         for key, value in expected_downloader_config.items():
             self.assertEquals(getattr(downloader.config, key), value)
         self.assertEquals(type(iso_sync_run.progress_report), SyncProgressReport)
+
+    def test__init___with_feed_lacking_trailing_slash(self):
+        """
+        In bug https://bugzilla.redhat.com/show_bug.cgi?id=949004 we had a problem where feed URLs that didn't
+        have trailing slashes would get their last URL component clobbered when we used urljoin to determine
+        the path to PULP_MANIFEST. The solution is to have __init__() automatically append a trailing slash to
+        URLs that lack it so that urljoin will determine the correct path to PULP_MANIFEST.
+        """
+        config = importer_mocks.get_basic_config(feed_url='http://fake.com/no_trailing_slash')
+
+        iso_sync_run = ISOSyncRun(self.sync_conduit, config)
+
+        # Humorously enough, the _repo_url attribute named no_trailing_slash should now have a trailing slash
+        self.assertEqual(iso_sync_run._repo_url, 'http://fake.com/no_trailing_slash/')
 
     def test_cancel_sync(self):
         """
