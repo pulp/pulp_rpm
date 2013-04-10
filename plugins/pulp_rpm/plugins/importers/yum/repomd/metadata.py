@@ -210,6 +210,12 @@ class MetadataFiles(object):
             file_handle = open(file_path, 'r')
         return file_handle
 
+    def get_group_file_handle(self):
+        group_file_handle = self.get_metadata_file_handle('group_gz')
+        if group_file_handle is None:
+            group_file_handle = self.get_metadata_file_handle('group')
+        return group_file_handle
+
 
 # utilities --------------------------------------------------------------------
 

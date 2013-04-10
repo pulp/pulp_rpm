@@ -13,8 +13,7 @@
 
 import os.path
 import logging
-import shutil
-from pulp_rpm.common import ids, constants
+from pulp_rpm.common import constants
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -103,7 +102,7 @@ class Distribution(Package):
                 'downloadurl': report.url,
                 'filename': os.path.basename(report.data['relativepath']),
                 'fileName': os.path.basename(report.data['relativepath']),
-                'item_type': ids.TYPE_ID_DISTRO,
+                'item_type': self.TYPE,
                 'pkgpath': os.path.join(
                     constants.DISTRIBUTION_STORAGE_PATH,
                     self.id,
@@ -154,6 +153,14 @@ class Errata(Package):
 class PackageGroup(Package):
     UNIT_KEY_NAMES = ('id', 'repo_id')
     TYPE = 'package_group'
+
+    def __init__(self, id, repo_id, metadata):
+        Package.__init__(self, locals())
+
+
+class PackageCategory(Package):
+    UNIT_KEY_NAMES = ('id', 'repo_id')
+    TYPE = 'package_category'
 
     def __init__(self, id, repo_id, metadata):
         Package.__init__(self, locals())

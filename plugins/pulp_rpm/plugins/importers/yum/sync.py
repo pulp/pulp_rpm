@@ -78,6 +78,7 @@ class RepoSync(object):
             self.progress_status['comps']['state'] = constants.STATE_RUNNING
             self.set_progress()
             self.get_groups(metadata_files)
+            self.get_categories(metadata_files)
             self.progress_status['comps']['state'] = constants.STATE_COMPLETE
             self.set_progress()
 
@@ -180,23 +181,29 @@ class RepoSync(object):
                 self.sync_conduit.save_unit(unit)
 
     def get_groups(self, metadata_files):
-        group_file_handle = None
-        try:
-            group_file_handle = metadata_files.get_metadata_file_handle('group_gz')
-        except KeyError:
-            pass
-        if group_file_handle is None:
-            try:
-                group_file_handle = metadata_files.get_metadata_file_handle('group')
-            except KeyError:
-                pass
+        group_file_handle = metadata_files.get_group_file_handle()
         if group_file_handle is None:
         # TODO: log something?
             return
-        process_func = functools.partial(group.process_package_element, self.repo.id)
+        process_func = functools.partial(group.process_group_element, self.repo.id)
         with group_file_handle:
             package_info_generator = packages.package_list_generator(group_file_handle,
-                                                                     group.PACKAGE_TAG,
+                                                                     group.GROUP_TAG,
+                                                                     process_func)
+            for model in package_info_generator:
+                unit = self.sync_conduit.init_unit(model.TYPE, model.unit_key, model.metadata, None)
+                self.sync_conduit.save_unit(unit)
+
+    def get_categories(self, metadata_files):
+        group_file_handle = metadata_files.get_group_file_handle()
+        if group_file_handle is None:
+        # TODO: log something?
+            return
+
+        process_func = functools.partial(group.process_category_element, self.repo.id)
+        with group_file_handle:
+            package_info_generator = packages.package_list_generator(group_file_handle,
+                                                                     group.CATEGORY_TAG,
                                                                      process_func)
             for model in package_info_generator:
                 unit = self.sync_conduit.init_unit(model.TYPE, model.unit_key, model.metadata, None)

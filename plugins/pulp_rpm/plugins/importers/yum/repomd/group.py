@@ -17,10 +17,11 @@ from pulp_rpm.common import models
 
 _LOGGER = logging.getLogger(__name__)
 
-PACKAGE_TAG = 'group'
+GROUP_TAG = 'group'
+CATEGORY_TAG = 'category'
 
 
-def process_package_element(repo_id, element):
+def process_group_element(repo_id, element):
     packagelist = element.find('packagelist')
     conditional, default, mandatory, optional = _parse_packagelist(packagelist.findall('packagereq'))
     langonly = element.find('langonly') or element.find('lang_only')
@@ -44,6 +45,25 @@ def process_package_element(repo_id, element):
         'translated_description': translated_description,
         'translated_name': translated_name,
         'user_visible': _parse_bool(element.find('uservisible').text),
+    })
+
+
+def process_category_element(repo_id, element):
+    description, translated_description = _parse_translated(element.findall('description'))
+    name, translated_name = _parse_translated(element.findall('name'))
+    display_order = element.find('display_order')
+    groups = element.find('grouplist').findall('groupid')
+
+    return models.PackageCategory.from_package_info({
+        'description': description.text,
+        # default of 1024 is from yum's own parsing of these objects
+        'display_order': int(display_order.text) if display_order else 1024,
+        'packagegroupids': [group.text for group in groups],
+        'id': element.find('id').text,
+        'name': name.text,
+        'repo_id': repo_id,
+        'translated_description': translated_description,
+        'translated_name': translated_name,
     })
 
 
@@ -79,3 +99,5 @@ def _parse_translated(items):
         else:
             value = item
     return value, translated_value
+
+
