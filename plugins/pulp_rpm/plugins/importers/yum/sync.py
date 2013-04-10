@@ -180,13 +180,19 @@ class RepoSync(object):
                 self.sync_conduit.save_unit(unit)
 
     def get_groups(self, metadata_files):
+        group_file_handle = None
         try:
             group_file_handle = metadata_files.get_metadata_file_handle('group_gz')
         except KeyError:
+            pass
+        if group_file_handle is None:
             try:
                 group_file_handle = metadata_files.get_metadata_file_handle('group')
             except KeyError:
-                return
+                pass
+        if group_file_handle is None:
+        # TODO: log something?
+            return
         process_func = functools.partial(group.process_package_element, self.repo.id)
         with group_file_handle:
             package_info_generator = packages.package_list_generator(group_file_handle,

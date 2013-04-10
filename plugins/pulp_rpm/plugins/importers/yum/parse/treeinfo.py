@@ -126,7 +126,11 @@ def parse_treefile(path):
     """
     parser = ConfigParser.RawConfigParser()
     with open(path) as open_file:
-        parser.readfp(open_file)
+        try:
+            parser.readfp(open_file)
+        except ConfigParser.ParsingError:
+            # wouldn't need this if ParsingError subclassed ValueError.
+            raise ValueError('could not parse treeinfo file')
     try:
         model = models.Distribution(
             parser.get(SECTION_GENERAL, 'family'),
