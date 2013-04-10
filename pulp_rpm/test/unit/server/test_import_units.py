@@ -409,7 +409,7 @@ class TestImportUnits(PulpRPMTests):
                                                           "package_group")
         # Now make a config mock, an import_conduit mock, and an importer
         config = importer_mocks.get_basic_config()
-        import_conduit = importer_mocks.get_import_conduit(
+        import_conduit = importer_mocks.get_import_conduit(source_units=[],
             existing_units=[pkg_group_unit])
         importer = YumImporter()
 
