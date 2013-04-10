@@ -14,6 +14,7 @@ Contents:
    yum-plugins
    export-distributor
    iso-plugins
+   sort-index
 
 Indices and tables
 ==================
