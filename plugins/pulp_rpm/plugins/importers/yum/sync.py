@@ -172,13 +172,7 @@ class RepoSync(object):
         errata_file_handle = metadata_files.get_metadata_file_handle('updateinfo')
         if not errata_file_handle:
             return
-        with errata_file_handle:
-            package_info_generator = packages.package_list_generator(errata_file_handle,
-                                                                     updateinfo.PACKAGE_TAG,
-                                                                     updateinfo.process_package_element)
-            for model in package_info_generator:
-                unit = self.sync_conduit.init_unit(model.TYPE, model.unit_key, model.metadata, None)
-                self.sync_conduit.save_unit(unit)
+        return self.get_general(errata_file_handle, updateinfo.process_package_element, updateinfo.PACKAGE_TAG)
 
     def get_groups(self, metadata_files):
         group_file_handle = metadata_files.get_group_file_handle()
@@ -186,13 +180,7 @@ class RepoSync(object):
         # TODO: log something?
             return
         process_func = functools.partial(group.process_group_element, self.repo.id)
-        with group_file_handle:
-            package_info_generator = packages.package_list_generator(group_file_handle,
-                                                                     group.GROUP_TAG,
-                                                                     process_func)
-            for model in package_info_generator:
-                unit = self.sync_conduit.init_unit(model.TYPE, model.unit_key, model.metadata, None)
-                self.sync_conduit.save_unit(unit)
+        return self.get_general(group_file_handle, group.GROUP_TAG, process_func)
 
     def get_categories(self, metadata_files):
         group_file_handle = metadata_files.get_group_file_handle()
@@ -201,9 +189,12 @@ class RepoSync(object):
             return
 
         process_func = functools.partial(group.process_category_element, self.repo.id)
-        with group_file_handle:
-            package_info_generator = packages.package_list_generator(group_file_handle,
-                                                                     group.CATEGORY_TAG,
+        return self.get_general(group_file_handle, group.CATEGORY_TAG, process_func)
+
+    def get_general(self, file_handle, tag, process_func):
+        with file_handle:
+            package_info_generator = packages.package_list_generator(file_handle,
+                                                                     tag,
                                                                      process_func)
             for model in package_info_generator:
                 unit = self.sync_conduit.init_unit(model.TYPE, model.unit_key, model.metadata, None)
