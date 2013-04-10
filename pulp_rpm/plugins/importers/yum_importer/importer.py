@@ -407,8 +407,8 @@ class YumImporter(Importer):
 
         pkg_group_unit_ids = pkg_category_unit.metadata['packagegroupids']
         for pgid in pkg_group_unit_ids:
-            criteria = Criteria(filters={'id' : pgid})
-            found_pkggrp = import_conduit.search_all_units(type_id=TYPE_ID_PKG_GROUP, criteria=criteria)
+            criteria = UnitAssociationCriteria(type_ids=[TYPE_ID_PKG_GROUP], unit_filters={'id' : pgid})
+            found_pkggrp = import_conduit.get_source_units(criteria=criteria)
             if not len(found_pkggrp):
                 # couldnt find the pkggrp, continue to the next one
                 continue
@@ -444,8 +444,8 @@ class YumImporter(Importer):
         conditional_pkg_names = [cond_pkg[0] for cond_pkg in pkg_group_unit.metadata["conditional_package_names"]]
         default_pkg_names = pkg_group_unit.metadata['default_package_names'] or []
         for pname in mandatory_pkg_names + optional_pkg_names + conditional_pkg_names + default_pkg_names:
-            criteria = Criteria(filters={'name' : pname})
-            found_pkgs = import_conduit.search_all_units(type_id=TYPE_ID_RPM, criteria=criteria)
+            criteria = UnitAssociationCriteria(type_ids=[TYPE_ID_RPM], unit_filters={'name' : pname})
+            found_pkgs = import_conduit.get_source_units(criteria=criteria)
             if not len(found_pkgs):
                 continue
             newest = self._find_newest_pkg(found_pkgs)
