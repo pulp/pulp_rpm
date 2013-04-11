@@ -236,6 +236,7 @@ class RepoSync(object):
         for unit in units:
             # TODO: decide if this unit should be downloaded
             if to_download is None:
+                # assume we want to download everything
                 yield unit
             versions = to_download.get(unit.key_string_without_version, set())
             if unit.complete_version_serialized in versions:
