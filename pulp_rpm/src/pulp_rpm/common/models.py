@@ -13,7 +13,7 @@
 
 import os.path
 import logging
-from pulp_rpm.common import constants
+from pulp_rpm.common import constants, version_utils
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -48,9 +48,14 @@ class Package(object):
 
         return cls(**unit_key)
 
+    def __str__(self):
+        return '%s: %s' % (self.TYPE, '-'.join(getattr(self, name) for name in self.UNIT_KEY_NAMES))
+
+
+class VersionedPackage(Package):
     @property
     def key_string_without_version(self):
-        keys = [key for key in self.UNIT_KEY_NAMES if key not in ['epoch', 'version', 'release']]
+        keys = [getattr(self, key) for key in self.UNIT_KEY_NAMES if key not in ['epoch', 'version', 'release', 'checksum', 'checksumtype']]
         keys.append(self.TYPE)
         return '-'.join(keys)
 
@@ -60,7 +65,17 @@ class Package(object):
         for name in ('epoch', 'version', 'release'):
             if name in self.UNIT_KEY_NAMES:
                 values.append(getattr(self, name))
-        return ''.join(values)
+        return tuple(values)
+
+    @property
+    def complete_version_serialized(self):
+        return tuple(version_utils.encode(field) for field in self.complete_version)
+
+    def __cmp__(self, other):
+        return cmp(
+            self.complete_version_serialized,
+            other.complete_version_serialized
+        )
 
 
 class Distribution(Package):
@@ -114,7 +129,7 @@ class Distribution(Package):
             })
 
 
-class DRPM(Package):
+class DRPM(VersionedPackage):
     UNIT_KEY_NAMES = ('epoch',  'version', 'release', 'filename', 'checksumtype', 'checksum')
     TYPE = 'drpm'
 
@@ -126,7 +141,7 @@ class DRPM(Package):
         return self.filename
 
 
-class RPM(Package):
+class RPM(VersionedPackage):
     UNIT_KEY_NAMES = ('name', 'epoch', 'version', 'release', 'arch', 'checksumtype', 'checksum')
     TYPE = 'rpm'
 

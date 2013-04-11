@@ -65,9 +65,9 @@ class Packages(object):
     :ivar downloader: pulp.common.download.backends.base.DownloadBackend instance
     """
 
-    def __init__(self, repo_url, packages_information_iterator, dst_dir, event_listener=None):
+    def __init__(self, repo_url, package_model_iterator, dst_dir, event_listener=None):
         self.repo_url = repo_url
-        self.packages_information_iterator = packages_information_iterator
+        self.package_model_iterator = package_model_iterator
         self.dst_dir = dst_dir
 
         downloader_config = DownloaderConfig()
@@ -87,7 +87,7 @@ class Packages(object):
         :return: download request generator
         :rtype: generator
         """
-        for model in self.packages_information_iterator:
+        for model in self.package_model_iterator:
             url = urljoin(self.repo_url, model.relative_path)
 
             file_name = model.relative_path.rsplit('/', 1)[-1]

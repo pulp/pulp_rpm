@@ -19,6 +19,7 @@ from pulp.plugins.importer import Importer
 
 from pulp_rpm.common import ids, models
 from pulp_rpm.plugins.importers.yum import sync
+from pulp_rpm.plugins.importers.yum.config import Config
 
 
 _LOGGER = logging.getLogger(__name__)
@@ -61,4 +62,4 @@ class YumImporter(Importer):
         conduit.save_unit(unit)
 
     def sync_repo(self, repo, sync_conduit, config):
-        return sync.RepoSync(repo, sync_conduit, config).run()
+        return sync.RepoSync(repo, sync_conduit, Config(config)).run()

@@ -14,6 +14,7 @@
 from copy import deepcopy
 import gzip
 import hashlib
+import logging
 import lzma
 import os
 from urlparse import urljoin
@@ -23,6 +24,9 @@ from xml.etree.cElementTree import iterparse
 from pulp.common.download.downloaders.curl import HTTPSCurlDownloader
 from pulp.common.download.config import DownloaderConfig
 from pulp.common.download.request import DownloadRequest
+
+
+_LOGGER = logging.getLogger(__name__)
 
 # repomd.xml element tags ------------------------------------------------------
 

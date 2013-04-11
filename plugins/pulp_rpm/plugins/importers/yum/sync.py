@@ -43,7 +43,6 @@ class RepoSync(object):
         self.set_progress = functools.partial(self.sync_conduit.set_progress, self.progress_status)
         self.set_progress()
         self.config = config
-        self.feed = config.get(constants.CONFIG_FEED_URL)
         self.current_units = sync_conduit.get_units()
         self.repo = repo
 
@@ -66,7 +65,7 @@ class RepoSync(object):
 
             self.distribution_report['state'] = constants.STATE_RUNNING
             self.set_progress()
-            treeinfo.sync(self.sync_conduit, self.feed, self.tmp_dir, self.distribution_report, self.set_progress)
+            treeinfo.sync(self.sync_conduit, self.config.feed, self.tmp_dir, self.distribution_report, self.set_progress)
             self.set_progress()
 
             self.progress_status['errata']['state'] = constants.STATE_RUNNING
@@ -93,7 +92,7 @@ class RepoSync(object):
         :return:
         :rtype:  pulp_rpm.plugins.importers.download.metadata.MetadataFiles
         """
-        metadata_files = metadata.MetadataFiles(self.feed, self.tmp_dir)
+        metadata_files = metadata.MetadataFiles(self.config.feed, self.tmp_dir)
         metadata_files.download_repomd()
         metadata_files.parse_repomd()
         metadata_files.download_metadata_files()
@@ -146,23 +145,23 @@ class RepoSync(object):
         event_listener = ContentListener(self.sync_conduit, self.progress_status)
         primary_file_handle = metadata_files.get_metadata_file_handle('primary')
         with primary_file_handle:
-            package_info_generator = packages.package_list_generator(primary_file_handle,
+            package_model_generator = packages.package_list_generator(primary_file_handle,
                                                                      primary.PACKAGE_TAG,
                                                                      primary.process_package_element)
-            units_to_download = self._filtered_unit_generator(package_info_generator, rpms_to_download)
+            units_to_download = self._filtered_unit_generator(package_model_generator, rpms_to_download)
 
-            packages_downloader = packages.Packages(self.feed, units_to_download, self.tmp_dir, event_listener)
+            packages_downloader = packages.Packages(self.config.feed, units_to_download, self.tmp_dir, event_listener)
             packages_downloader.download_packages()
 
         presto_file_handle = metadata_files.get_metadata_file_handle('prestodelta')
         if presto_file_handle:
             with presto_file_handle:
-                package_info_generator = packages.package_list_generator(presto_file_handle,
+                package_model_generator = packages.package_list_generator(presto_file_handle,
                                                                          presto.PACKAGE_TAG,
                                                                          presto.process_package_element)
-                units_to_download = self._filtered_unit_generator(package_info_generator, drpms_to_download)
+                units_to_download = self._filtered_unit_generator(package_model_generator, drpms_to_download)
 
-                packages_downloader = packages.Packages(self.feed, units_to_download, self.tmp_dir, event_listener)
+                packages_downloader = packages.Packages(self.config.feed, units_to_download, self.tmp_dir, event_listener)
                 packages_downloader.download_packages()
 
         report = self.sync_conduit.build_success_report({}, {})
@@ -212,18 +211,32 @@ class RepoSync(object):
         :return:
         """
         # TODO: consider current units
-        size_in_bytes = 0
-        count = 0
         to_download = {}
+        sizes_in_bytes = {}
         for model in package_info_generator:
-            versions = to_download.setdefault(model.key_string_without_version, [])
-            # TODO: if only syncing newest version, do a comparison here and evict old versions
-            versions.append(model.complete_version)
-            size_in_bytes += model.metadata['size']
-            count += 1
+            versions = to_download.setdefault(model.key_string_without_version, set())
+            serialized_version = model.complete_version_serialized
+            if self.config.newest:
+                if not versions or serialized_version > max(versions):
+                    versions.clear()
+                    versions.add(serialized_version)
+                    sizes_in_bytes[model.key_string_without_version] = [model.metadata['size']]
+            else:
+                versions.add(serialized_version)
+                sizes_in_bytes.setdefault(model.key_string_without_version, []).append(model.metadata['size'])
+
+        count = 0
+        size_in_bytes = 0
+        for value in sizes_in_bytes.itervalues():
+            count += len(value)
+            size_in_bytes += sum(value)
         return to_download, count, size_in_bytes
 
-    def _filtered_unit_generator(self, units, to_download):
+    def _filtered_unit_generator(self, units, to_download=None):
         for unit in units:
             # TODO: decide if this unit should be downloaded
-            yield unit
+            if to_download is None:
+                yield unit
+            versions = to_download.get(unit.key_string_without_version, set())
+            if unit.complete_version_serialized in versions:
+                yield unit
