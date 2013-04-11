@@ -17,8 +17,8 @@
 # ---- Pulp (rpm) --------------------------------------------------------------
 
 Name: pulp-rpm
-Version: 2.1.0
-Release: 0
+Version: 2.1.1
+Release: 0.1.beta%{?dist}
 Summary: Support for RPM content in the Pulp platform
 Group: Development/Languages
 License: GPLv2
@@ -273,6 +273,20 @@ A collection of yum plugins supplementing Pulp consumer operations.
 
 
 %changelog
+* Thu Apr 11 2013 Jeff Ortel <jortel@redhat.com> 2.1.1-0.1.beta
+- 950740 - add support {?dist} in the Release: in .spec files.
+  (jortel@redhat.com)
+- 947927 - When looking for nested elements in a copy, only check the source
+  repository, not all of Pulp. By nested elements I mean RPMs in a package
+  group or groups in a package category. (jason.dobies@redhat.com)
+- 928509 - Added errata v. consumer centric applicability reports
+  (jason.dobies@redhat.com)
+- 949008 - Use a value of 2 for pycurl's SSL_VERIFYHOST setting instead of 1.
+  (rbarlow@redhat.com)
+- 949004 - Append trailing slashes to ISO feed URLs when they lack them.
+  (rbarlow@redhat.com)
+- 873313 - Very high memory usage during repo sync (jwmatthews@gmail.com)
+
 * Fri Apr 05 2013 Jay Dobies <jason.dobies@redhat.com> 2.1.0-0
 - 
 
