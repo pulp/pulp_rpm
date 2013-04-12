@@ -105,8 +105,8 @@ class RepoSync(object):
         self.download(metadata_files, rpms_to_download, drpms_to_download)
 
     def _decide_what_to_download(self, metadata_files):
-        rpms_to_download, rpms_count, rpms_total_size = self._decide_rpms_to_download(metadata_files)
-        drpms_to_download, drpms_count, drpms_total_size = self._decide_drpms_to_download(metadata_files)
+        rpm_wanted_versions = self._decide_rpms_to_download(metadata_files)
+        drpm_wanted_versions = self._decide_drpms_to_download(metadata_files)
 
         unit_counts = {
             'rpm': rpms_count,
@@ -124,7 +124,7 @@ class RepoSync(object):
             package_info_generator = packages.package_list_generator(primary_file_handle,
                                                                      primary.PACKAGE_TAG,
                                                                      primary.process_package_element)
-            return self._identify_wanted_packages(package_info_generator, self.current_units)
+            return self._identify_wanted_versions(package_info_generator, self.current_units)
 
     def _decide_drpms_to_download(self, metadata_files):
         presto_file_handle = metadata_files.get_metadata_file_handle('prestodelta')
@@ -133,7 +133,7 @@ class RepoSync(object):
                 package_info_generator = packages.package_list_generator(presto_file_handle,
                                                                          presto.PACKAGE_TAG,
                                                                          presto.process_package_element)
-                drpms_to_download, drpms_count, drpms_total_size = self._identify_wanted_packages(package_info_generator, self.current_units)
+                drpms_to_download, drpms_count, drpms_total_size = self._identify_wanted_versions(package_info_generator, self.current_units)
         else:
             drpms_to_download = []
             drpms_count = 0
@@ -199,7 +199,7 @@ class RepoSync(object):
                 unit = self.sync_conduit.init_unit(model.TYPE, model.unit_key, model.metadata, None)
                 self.sync_conduit.save_unit(unit)
 
-    def _identify_wanted_packages(self, package_info_generator, current_units):
+    def _identify_wanted_versions(self, package_info_generator, current_units):
         """
         Given an iterator of Package instances available for download, and a list
         of units currently in the repo, scan through the Packages to decide which
@@ -212,19 +212,20 @@ class RepoSync(object):
         """
         # TODO: consider current units
         to_download = {}
-        sizes_in_bytes = {}
+        #sizes_in_bytes = {}
         for model in package_info_generator:
-            versions = to_download.setdefault(model.key_string_without_version, set())
+            versions = to_download.setdefault(model.key_string_without_version, {})
             serialized_version = model.complete_version_serialized
             if self.config.newest:
-                if not versions or serialized_version > max(versions):
+                if not versions or serialized_version > max(versions.keys()):
                     versions.clear()
-                    versions.add(serialized_version)
-                    sizes_in_bytes[model.key_string_without_version] = [model.metadata['size']]
+                    versions[serialized_version] = model.unit_key_as_typed_tuple
+                    #sizes_in_bytes[model.key_string_without_version] = [model.metadata['size']]
             else:
-                versions.add(serialized_version)
-                sizes_in_bytes.setdefault(model.key_string_without_version, []).append(model.metadata['size'])
+                versions[serialized_version] = model.unit_key_as_typed_tuple
+                #sizes_in_bytes.setdefault(model.key_string_without_version, []).append(model.metadata['size'])
 
+    def _count_and_size(self, to_download):
         count = 0
         size_in_bytes = 0
         for value in sizes_in_bytes.itervalues():

@@ -33,6 +33,29 @@ class Package(object):
             key[name] = getattr(self, name)
         return key
 
+    @property
+    def unit_key_as_typed_tuple(self):
+        """
+        This is a memory-efficient way to represent a unit key. I tested three
+        representations:
+
+        1) instances of RPM with metadata as empty dict
+        2) RPM().unit_key
+        3) this attribute of RPM()
+
+        For each, I generated 100,000 records of random data, approximating each
+        field size with a reasonable estimate. In python 2.7, each list of 100,000
+        records consumed this much ram according to the increase in the "VmData"
+        field in /proc/<pid>/status:
+
+        1) 180MB
+        2) 144MB
+        3) 55MB
+
+        :return:
+        """
+        return tuple(getattr(self, name) for name in ['TYPE'] + list(self.UNIT_KEY_NAMES))
+
     @classmethod
     def from_package_info(cls, package_info):
         unit_key = {}
@@ -179,3 +202,25 @@ class PackageCategory(Package):
 
     def __init__(self, id, repo_id, metadata):
         Package.__init__(self, locals())
+
+
+TYPE_MAP = {
+    Distribution.TYPE: Distribution,
+    DRPM.TYPE: DRPM,
+    Errata.TYPE: Errata,
+    PackageCategory.TYPE: PackageCategory,
+    PackageGroup.TYPE: PackageGroup,
+    RPM.TYPE: RPM,
+}
+
+def from_typed_unit_key_tuple(typed_tuple):
+    """
+    This assumes that the __init__ method takes unit key arguments in order
+    followed by a dictionary for other metadata.
+
+    :param typed_tuple:
+    :return:
+    """
+    package_class = TYPE_MAP[typed_tuple[0]]
+    args = typed_tuple[1:]
+    return package_class.from_package_info(*args, metadata={})
