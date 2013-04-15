@@ -151,7 +151,15 @@ class ISOSyncRun(listener.DownloadEventListener):
         # Get the manifest and download the ISOs that we are missing
         self.progress_report.manifest_state = STATE_RUNNING
         self.progress_report.update_progress()
-        manifest = self._download_manifest()
+        try:
+            manifest = self._download_manifest()
+        except (IOError, ValueError):
+            # The IOError will happen if the file can't be retrieved at all, and the ValueError will happen if
+            # the PULP_MANIFEST file isn't in the expected format. In the future, when we complete the client
+            # and by doing so define the progress report API, we will give more specific error messages here.
+            # Until then, we just set the state to failed.
+            self.progress_report.manifest_state = STATE_FAILED
+            return self.progress_report.build_final_report()
         self.progress_report.manifest_state = STATE_COMPLETE
 
         # Go get them filez

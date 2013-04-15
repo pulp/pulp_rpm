@@ -16,7 +16,7 @@ import os
 import shutil
 import tempfile
 
-from pulp_rpm.common.constants import STATE_COMPLETE, STATE_FAILED, STATE_RUNNING
+from pulp_rpm.common.constants import STATE_COMPLETE, STATE_FAILED, STATE_NOT_STARTED, STATE_RUNNING
 from pulp_rpm.common.ids import TYPE_ID_ISO
 from pulp_rpm.common.progress import SyncProgressReport
 from pulp_rpm.plugins.importers.iso_importer.sync import ISOSyncRun
@@ -307,6 +307,37 @@ class TestISOSyncRun(PulpRPMTests):
         # There should be 0 calls to sync_conduit.remove_unit, since remove_missing_units is False by default
         self.assertEqual(self.sync_conduit.remove_unit.call_count, 0)
 
+    @patch('pulp.common.download.downloaders.curl.HTTPSCurlDownloader.download')
+    def test_perform_sync_malformed_pulp_manifest(self, download):
+        """
+        Assert the perform_sync correctly handles the situation when the PULP_MANIFEST file is not in the
+        expected format.
+        """
+        def fake_download(request_list):
+            for request in request_list:
+                request.destination.write('This is not what a PULP_MANIFEST should look like.')
+        download.side_effect = fake_download
+
+        self.iso_sync_run.perform_sync()
+
+        self.assertEquals(type(self.iso_sync_run.progress_report), SyncProgressReport)
+        self.assertEqual(self.iso_sync_run.progress_report.manifest_state, STATE_FAILED)
+        self.assertEqual(self.iso_sync_run.progress_report.isos_state, STATE_NOT_STARTED)
+
+    @patch('pulp.common.download.downloaders.curl.HTTPSCurlDownloader.download')
+    def test_perform_sync_manifest_io_error(self, download):
+        """
+        Assert the perform_sync correctly handles the situation when retrieving the PULP_MANIFEST file raises an
+        IOError.
+        """
+        download.side_effect = IOError()
+
+        self.iso_sync_run.perform_sync()
+
+        self.assertEquals(type(self.iso_sync_run.progress_report), SyncProgressReport)
+        self.assertEqual(self.iso_sync_run.progress_report.manifest_state, STATE_FAILED)
+        self.assertEqual(self.iso_sync_run.progress_report.isos_state, STATE_NOT_STARTED)
+
     @patch('pulp.common.download.downloaders.curl.pycurl.Curl', side_effect=importer_mocks.ISOCurl)
     @patch('pulp.common.download.downloaders.curl.pycurl.CurlMulti', side_effect=importer_mocks.CurlMulti)
     def test_perform_sync_remove_missing_units_set_false(self, curl_multi, curl):
@@ -458,6 +489,24 @@ class TestISOSyncRun(PulpRPMTests):
             self.fail('This should have raised an IOError, but it did not.')
         except IOError, e:
             self.assertEqual(str(e), 'Could not retrieve http://fake.com/iso_feed/PULP_MANIFEST')
+
+    @patch('pulp.common.download.downloaders.curl.HTTPSCurlDownloader.download')
+    def test__download_manifest_encounters_malformed_manifest(self, download):
+        """
+        Make sure that _download_manifest raises a ValueError if the PULP_MANIFEST isn't in the expected format.
+        """
+        def fake_download(request_list):
+            for request in request_list:
+                request.destination.write('This is not what a PULP_MANIFEST should look like.')
+        download.side_effect = fake_download
+
+        try:
+            # This should raise a ValueError
+            self.iso_sync_run._download_manifest()
+            self.fail('A ValueError should have been raised by the previous line, but was not!')
+        except ValueError, e:
+            # Excellent, a ValueError was raised.
+            pass
 
     def test__filter_missing_isos(self):
         """
