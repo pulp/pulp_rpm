@@ -17,8 +17,8 @@
 # ---- Pulp (rpm) --------------------------------------------------------------
 
 Name: pulp-rpm
-Version: 2.1.0
-Release: 0.19.alpha
+Version: 2.2.0
+Release: 0.1.alpha%{?dist}
 Summary: Support for RPM content in the Pulp platform
 Group: Development/Languages
 License: GPLv2
@@ -273,6 +273,37 @@ A collection of yum plugins supplementing Pulp consumer operations.
 
 
 %changelog
+* Fri Apr 12 2013 Jeff Ortel <jortel@redhat.com> 2.2.0-0.1.alpha
+- 950740 - add support {?dist} in the Release: in .spec files.
+  (jortel@redhat.com)
+- 947927 - When looking for nested elements in a copy, only check the source
+  repository, not all of Pulp. By nested elements I mean RPMs in a package
+  group or groups in a package category. (jason.dobies@redhat.com)
+- 928509 - Added errata v. consumer centric applicability reports
+  (jason.dobies@redhat.com)
+- 949008 - Use a value of 2 for pycurl's SSL_VERIFYHOST setting instead of 1.
+  (rbarlow@redhat.com)
+- 949004 - Append trailing slashes to ISO feed URLs when they lack them.
+  (rbarlow@redhat.com)
+- 873313 - Very high memory usage during repo sync (jwmatthews@gmail.com)
+- 923448 - made the changelog and filelist metadata migration more robust in
+  terms of handling non-utf8 text encoding (mhrivnak@redhat.com)
+- 923351 - updating errata profiler applicability function to add errata
+  details to the applicability report (skarmark@redhat.com)
+- 923794 - The error report coming out of the yum importer can't be serialized
+  to the database (jwmatthews@gmail.com)
+- 923792 - Errata queries during sync don't properly limit returned data
+  (jwmatthews@gmail.com)
+- 920322 - Use import_units() inside of _import_pkg_category_unit() to ensure
+  that we handle package groups correctly. (rbarlow@redhat.com)
+- 919519 - Adjust documentation to reflect new export publishing location.
+  (rbarlow@redhat.com)
+- 919519 - The export distributor now published to /pulp/exports instead of
+  /pulp/isos. (rbarlow@redhat.com)
+- 912836 - Fix disconnect between rpm repo extension and repolib with regard to
+  GPG.keys. (jortel@redhat.com)
+- 917083 - ghost pulp.repo so it's cleaned up on uninstall. (jortel@redhat.com)
+
 * Mon Mar 04 2013 Jeff Ortel <jortel@redhat.com> 2.1.0-0.19.alpha
 - 902514 - removed the <VirtualHost *:80> block in favor of using the
   platform's authoritative one. (mhrivnak@redhat.com)

@@ -61,7 +61,6 @@ class ISOProgressReport(object):
         :return: description of the current state of the sync
         :rtype:  dict
         """
-
         report = {
             'manifest': self._generate_manifest_section(),
             'isos': self._generate_isos_section(),
