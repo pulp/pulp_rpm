@@ -21,15 +21,25 @@ STEP = 1000
 
 
 def check_repo(wanted, sync_conduit):
+    """
+
+    :param wanted:
+    :type  wanted:          set
+    :param sync_conduit:
+    :return:
+    """
     # sort by type
     sorted_units = _sort_by_type(wanted)
     # UAQ for each type
     for unit_type, values in sorted_units.iteritems():
-        query = UnitAssociationCriteria([unit_type], )
+        unit_filters = [unit._asdict() for unit in values]
+        fields = values[0]._fields
+        criteria = UnitAssociationCriteria([unit_type], unit_filters=unit_filters, unit_fields=fields, association_fields=[])
+        results = sync_conduit.get_units(criteria)
+        # create set of namedtuple instances
     # search
     # results to named tuples
     # return wanted - results
-    pass
 
 def check_system(needed, sync_conduit):
     # sort by type
