@@ -211,19 +211,22 @@ class RepoSync(object):
         :return:
         """
         # TODO: consider current units
-        to_download = {}
-        #sizes_in_bytes = {}
+        wanted = {}
         for model in package_info_generator:
-            versions = to_download.setdefault(model.key_string_without_version, {})
+            versions = wanted.setdefault(model.key_string_without_version, {})
             serialized_version = model.complete_version_serialized
+            size = model.metadata['size']
             if self.config.newest:
                 if not versions or serialized_version > max(versions.keys()):
                     versions.clear()
-                    versions[serialized_version] = model.unit_key_as_typed_tuple
-                    #sizes_in_bytes[model.key_string_without_version] = [model.metadata['size']]
+                    versions[serialized_version] = (model.as_named_tuple, size)
             else:
-                versions[serialized_version] = model.unit_key_as_typed_tuple
-                #sizes_in_bytes.setdefault(model.key_string_without_version, []).append(model.metadata['size'])
+                versions[serialized_version] = (model.as_named_tuple, size)
+        ret = set()
+        for key, versions in wanted:
+            ret.update(versions.items())
+
+        return ret
 
     def _count_and_size(self, to_download):
         count = 0

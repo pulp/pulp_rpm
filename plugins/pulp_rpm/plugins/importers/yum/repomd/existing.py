@@ -13,11 +13,42 @@
 
 import logging
 
-from pulp.server.db.model.criteria import Criteria
+from pulp.server.db.model.criteria import Criteria, UnitAssociationCriteria
 
 _LOGGER = logging.getLogger(__name__)
 
 STEP = 1000
+
+
+def check_repo(wanted, sync_conduit):
+    # sort by type
+    sorted_units = _sort_by_type(wanted)
+    # UAQ for each type
+    for unit_type, values in sorted_units.iteritems():
+        query = UnitAssociationCriteria([unit_type], )
+    # search
+    # results to named tuples
+    # return wanted - results
+    pass
+
+def check_system(needed, sync_conduit):
+    # sort by type
+    # Criteria for each type
+    # search
+    # results to named tuples
+    # return needed - results, results
+    pass
+
+def _sort_by_type(wanted):
+    ret = {}
+    for size, unit in wanted:
+        unit_type = unit.__class__.__name__
+        ret.setdefault(unit_type, set()).add((size, unit))
+    return ret
+
+
+
+# ------------------------------------
 
 def sort_tuples_by_type(unit_keys_with_type):
     types = {}

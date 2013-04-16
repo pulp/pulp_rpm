@@ -10,6 +10,7 @@
 # NON-INFRINGEMENT, or FITNESS FOR A PARTICULAR PURPOSE. You should
 # have received a copy of GPLv2 along with this software; if not, see
 # http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt.
+from collections import namedtuple
 
 import os.path
 import logging
@@ -27,6 +28,17 @@ class Package(object):
         self.metadata = local_vars.get('metadata', {})
 
     @property
+    def NAMEDTUPLE(self):
+        """
+
+        :return:
+        :rtype collections.namedtuple
+        """
+        if not getattr(self, '__NAMEDTUPLE'):
+            self.__NAMEDTUPLE = namedtuple(self.TYPE, self.UNIT_KEY_NAMES)
+        return self.__NAMEDTUPLE
+
+    @property
     def unit_key(self):
         key = {}
         for name in self.UNIT_KEY_NAMES:
@@ -34,6 +46,16 @@ class Package(object):
         return key
 
     @property
+    def as_named_tuple(self):
+        """
+
+        :return:
+        :rtype collections.namedtuple
+        """
+        return self.NAMEDTUPLE(**self.unit_key)
+
+    @property
+    # TODO: delete this?
     def unit_key_as_typed_tuple(self):
         """
         This is a memory-efficient way to represent a unit key. I tested three
@@ -212,6 +234,7 @@ TYPE_MAP = {
     PackageGroup.TYPE: PackageGroup,
     RPM.TYPE: RPM,
 }
+
 
 def from_typed_unit_key_tuple(typed_tuple):
     """
