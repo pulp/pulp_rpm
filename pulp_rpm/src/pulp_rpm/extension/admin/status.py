@@ -169,11 +169,11 @@ class RpmStatusRenderer(StatusRenderer):
 
                     for i in range(0, num_errors):
                         error = data['error_details'][i]
-                        error_msg = error['error']
-                        traceback = '\n'.join(error['traceback'])
+                        error_msg = error.get('error', '')
+                        traceback = '\n'.join(error.get('traceback', []))
 
                         message_data = {
-                            'name'      : error['filename'],
+                            'name'      : error['url'],
                             'error'      : error_msg,
                             'traceback' : traceback
                         }

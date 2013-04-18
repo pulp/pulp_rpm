@@ -88,11 +88,10 @@ class Packages(object):
         :rtype: generator
         """
         for model in self.package_model_iterator:
-            url = urljoin(self.repo_url, model.relative_path)
+            url = urljoin(self.repo_url, model.download_path)
 
             file_name = model.relative_path.rsplit('/', 1)[-1]
             destination = os.path.join(self.dst_dir, file_name)
 
             request = DownloadRequest(url, destination, model)
             yield request
-

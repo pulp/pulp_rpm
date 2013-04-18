@@ -44,7 +44,7 @@ class DistroFileListener(AggregatingEventListener):
         :return:
         """
         self._decrement()
-        super(DistroFileListener, self).download_succeeded(report)
+        super(DistroFileListener, self).download_failed(report)
 
     def _decrement(self):
         self.progress_report['items_left'] -= 1
@@ -82,6 +82,7 @@ class ContentListener(DownloadEventListener):
         :return:
         """
         model = report.data
+        report.error_report['url'] = report.url
         self.progress_report['content'].failure(model, report.error_report)
         self.sync_conduit.set_progress(self.progress_report)
 

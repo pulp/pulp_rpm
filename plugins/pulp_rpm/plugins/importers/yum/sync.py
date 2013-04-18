@@ -19,7 +19,7 @@ import tempfile
 from pulp.plugins.model import SyncReport
 
 from pulp_rpm.common import constants
-from pulp_rpm.plugins.importers.yum.repomd import metadata, primary, packages, updateinfo, presto, group
+from pulp_rpm.plugins.importers.yum.repomd import metadata, primary, packages, updateinfo, presto, group, existing
 from pulp_rpm.plugins.importers.yum.listener import ContentListener
 from pulp_rpm.plugins.importers.yum.parse import treeinfo
 from pulp_rpm.plugins.importers.yum.report import ContentReport, DistributionReport
@@ -105,8 +105,8 @@ class RepoSync(object):
         self.download(metadata_files, rpms_to_download, drpms_to_download)
 
     def _decide_what_to_download(self, metadata_files):
-        rpm_wanted_versions = self._decide_rpms_to_download(metadata_files)
-        drpm_wanted_versions = self._decide_drpms_to_download(metadata_files)
+        rpms_to_download, rpms_count, rpms_total_size = self._decide_rpms_to_download(metadata_files)
+        drpms_to_download, drpms_count, drpms_total_size = self._decide_drpms_to_download(metadata_files)
 
         unit_counts = {
             'rpm': rpms_count,
@@ -124,7 +124,13 @@ class RepoSync(object):
             package_info_generator = packages.package_list_generator(primary_file_handle,
                                                                      primary.PACKAGE_TAG,
                                                                      primary.process_package_element)
-            return self._identify_wanted_versions(package_info_generator, self.current_units)
+            wanted = self._identify_wanted_versions(package_info_generator, self.current_units)
+            to_download = existing.check_repo(wanted.iterkeys(), self.sync_conduit)
+            count = len(to_download)
+            size = 0
+            for unit in to_download:
+                size += wanted[unit]
+            return to_download, count, size
 
     def _decide_drpms_to_download(self, metadata_files):
         presto_file_handle = metadata_files.get_metadata_file_handle('prestodelta')
@@ -133,12 +139,18 @@ class RepoSync(object):
                 package_info_generator = packages.package_list_generator(presto_file_handle,
                                                                          presto.PACKAGE_TAG,
                                                                          presto.process_package_element)
-                drpms_to_download, drpms_count, drpms_total_size = self._identify_wanted_versions(package_info_generator, self.current_units)
+                wanted = self._identify_wanted_versions(package_info_generator, self.current_units)
+                to_download = existing.check_repo(wanted.iterkeys(), self.sync_conduit)
+                count = len(to_download)
+                size = 0
+                for unit in to_download:
+                    size += wanted[unit]
         else:
-            drpms_to_download = []
-            drpms_count = 0
-            drpms_total_size = 0
-        return drpms_to_download, drpms_count, drpms_total_size
+            to_download = set()
+            to_associate = set()
+            count = 0
+            size = 0
+        return to_download, count, size
 
     def download(self, metadata_files, rpms_to_download, drpms_to_download):
         # TODO: probably should make this more generic
@@ -209,6 +221,7 @@ class RepoSync(object):
         :param package_info_generator:
         :param current_units:
         :return:
+        :rtype:     dict
         """
         # TODO: consider current units
         wanted = {}
@@ -222,19 +235,12 @@ class RepoSync(object):
                     versions[serialized_version] = (model.as_named_tuple, size)
             else:
                 versions[serialized_version] = (model.as_named_tuple, size)
-        ret = set()
-        for key, versions in wanted:
-            ret.update(versions.items())
+        ret = {}
+        for units in wanted.itervalues():
+            for unit, size in units.itervalues():
+                ret[unit] = size
 
         return ret
-
-    def _count_and_size(self, to_download):
-        count = 0
-        size_in_bytes = 0
-        for value in sizes_in_bytes.itervalues():
-            count += len(value)
-            size_in_bytes += sum(value)
-        return to_download, count, size_in_bytes
 
     def _filtered_unit_generator(self, units, to_download=None):
         for unit in units:
@@ -242,6 +248,5 @@ class RepoSync(object):
             if to_download is None:
                 # assume we want to download everything
                 yield unit
-            versions = to_download.get(unit.key_string_without_version, set())
-            if unit.complete_version_serialized in versions:
+            elif unit.as_named_tuple in to_download:
                 yield unit

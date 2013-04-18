@@ -34,7 +34,7 @@ class Package(object):
         :return:
         :rtype collections.namedtuple
         """
-        if not getattr(self, '__NAMEDTUPLE'):
+        if getattr(self, '__NAMEDTUPLE', None) is None:
             self.__NAMEDTUPLE = namedtuple(self.TYPE, self.UNIT_KEY_NAMES)
         return self.__NAMEDTUPLE
 
@@ -53,30 +53,6 @@ class Package(object):
         :rtype collections.namedtuple
         """
         return self.NAMEDTUPLE(**self.unit_key)
-
-    @property
-    # TODO: delete this?
-    def unit_key_as_typed_tuple(self):
-        """
-        This is a memory-efficient way to represent a unit key. I tested three
-        representations:
-
-        1) instances of RPM with metadata as empty dict
-        2) RPM().unit_key
-        3) this attribute of RPM()
-
-        For each, I generated 100,000 records of random data, approximating each
-        field size with a reasonable estimate. In python 2.7, each list of 100,000
-        records consumed this much ram according to the increase in the "VmData"
-        field in /proc/<pid>/status:
-
-        1) 180MB
-        2) 144MB
-        3) 55MB
-
-        :return:
-        """
-        return tuple(getattr(self, name) for name in ['TYPE'] + list(self.UNIT_KEY_NAMES))
 
     @classmethod
     def from_package_info(cls, package_info):
@@ -185,6 +161,10 @@ class DRPM(VersionedPackage):
     def relative_path(self):
         return self.filename
 
+    @property
+    def download_path(self):
+        return self.filename
+
 
 class RPM(VersionedPackage):
     UNIT_KEY_NAMES = ('name', 'epoch', 'version', 'release', 'arch', 'checksumtype', 'checksum')
@@ -200,6 +180,10 @@ class RPM(VersionedPackage):
             unit_key['name'], unit_key['version'], unit_key['release'],
             unit_key['arch'], unit_key['checksum'], self.metadata['relative_url_path']
         )
+
+    @property
+    def download_path(self):
+        return self.metadata['relative_url_path']
 
 
 class Errata(Package):

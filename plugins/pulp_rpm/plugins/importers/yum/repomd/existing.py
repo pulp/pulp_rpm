@@ -14,107 +14,84 @@
 import logging
 
 from pulp.server.db.model.criteria import Criteria, UnitAssociationCriteria
+from pulp_rpm.common import models
 
 _LOGGER = logging.getLogger(__name__)
 
 STEP = 1000
 
 
+# TODO: delete this?
+def main(wanted, sync_conduit):
+    """
+
+    :param wanted:          iterable of namedtuples representing unit keys
+    :type  wanted:          iterable
+    :type  sync_conduit:    pulp.plugins.conduits.repo_sync.RepoSyncConduit
+
+    :return:    two sets of namedtuples representing unit keys: the first should
+                be downloaded, the second should be associated with the repo
+    :rtype:     (set, set)
+    """
+    sorted_needs = check_repo(wanted, sync_conduit)
+    to_download, to_associate = check_system(sorted_needs, sync_conduit)
+    return to_download, to_associate
+
+
 def check_repo(wanted, sync_conduit):
     """
 
-    :param wanted:
-    :type  wanted:          set
+    :param wanted:          iterable of unit keys as namedtuples
+    :type  wanted:          iterable
     :param sync_conduit:
-    :return:
+    :type  sync_conduit:    pulp.plugins.conduits.repo_sync.RepoSyncConduit
+
+    :return:    set of unit keys as namedtuples
+    :rtype:     set
     """
     # sort by type
     sorted_units = _sort_by_type(wanted)
     # UAQ for each type
     for unit_type, values in sorted_units.iteritems():
-        unit_filters = [unit._asdict() for unit in values]
-        fields = values[0]._fields
+        model = models.TYPE_MAP[unit_type]
+        unit_filters = {'$or': [unit._asdict() for unit in values]}
+        fields = model.UNIT_KEY_NAMES
         criteria = UnitAssociationCriteria([unit_type], unit_filters=unit_filters, unit_fields=fields, association_fields=[])
         results = sync_conduit.get_units(criteria)
-        # create set of namedtuple instances
-    # search
-    # results to named tuples
-    # return wanted - results
+        for unit in results:
+            named_tuple = model(metadata=unit.metadata, **unit.unit_key).as_named_tuple
+            values.discard(named_tuple)
 
-def check_system(needed, sync_conduit):
-    # sort by type
+    ret = set()
+    ret.update(*sorted_units.values())
+    return ret
+
+
+# TODO: delete this? Might not want to do this at all
+def check_system(sorted_needs, sync_conduit):
+    to_associate = set()
     # Criteria for each type
-    # search
-    # results to named tuples
-    # return needed - results, results
-    pass
+    for unit_type, values in sorted_needs.iteritems():
+        if not values:
+            # can happen if all units of a type get eliminated by check_repo
+            continue
+        model = models.TYPE_MAP[unit_type]
+        fields = model.UNIT_KEY_NAMES
+        filters = {'$or': [unit._asdict() for unit in values]}
+        criteria = Criteria(filters =filters, fields=fields)
+        results = sync_conduit.search_all_units(unit_type, criteria)
+        for unit in results:
+            model_instance = model(metadata=unit.metadata, **unit.unit_key).as_named_tuple
+            values.discard(model_instance)
+            to_associate.add(unit)
+    to_download = set()
+    to_download.update(*sorted_needs.values())
+    return to_download, to_associate
+
 
 def _sort_by_type(wanted):
     ret = {}
-    for size, unit in wanted:
+    for unit in wanted:
         unit_type = unit.__class__.__name__
-        ret.setdefault(unit_type, set()).add((size, unit))
+        ret.setdefault(unit_type, set()).add(unit)
     return ret
-
-
-
-# ------------------------------------
-
-def sort_tuples_by_type(unit_keys_with_type):
-    types = {}
-    #expected_num_fields = len(unit_key_field_names) + 1
-    for unit_key_values in unit_keys_with_type:
-        #if len(unit_key_values) != expected_num_fields:
-            #raise ValueError('wrong number of values for unit key')
-
-        types.setdefault(unit_key_values[0], []).append(unit_keys_with_type)
-    return types
-
-
-def sort_dicts_by_type(unit_keys):
-    types = {}
-    for unit_key in unit_keys:
-        unit_key_copy = unit_key.copy()
-        type_id = unit_key_copy.pop('type_id')
-        types[type_id] = unit_key_copy
-    return types
-
-
-def determine_needed_packages(unit_keys_with_type, unit_key_names, sync_conduit):
-    ret = []
-    start = 0
-    type_id = unit_keys_with_type[0][0]
-    while True:
-        units = unit_keys_with_type[start:start+STEP]
-        if not units:
-            break
-        start += STEP
-
-        filters = {'$or': (_unit_key_tuple_to_dict(unit, unit_key_names) for unit in units)}
-        criteria = Criteria(fields=unit_key_names, filters=filters)
-        matches = sync_conduit.search_all_units(type_id, criteria)
-
-
-def _unit_key_tuple_to_dict(unit_key_with_type, unit_key_names):
-    ret = {}
-    for i, unit_key_value in enumerate(unit_key_with_type[1:]):
-        ret[unit_key_names[i]] = unit_key_value
-
-    return ret
-
-
-def _unit_key_dict_to_tuple(unit_key, type_id):
-    return
-
-
-def filter_associations_and_downloads(sync_conduit, unit_keys_with_type):
-    unit_keys_by_type = sort_dicts_by_type(unit_keys_with_type)
-    for type_id in unit_keys_by_type:
-        # search repo for these units
-        pass
-
-    # for units not in repo, search whole system
-
-    # return units to associate and units to download
-
-    return [], []
