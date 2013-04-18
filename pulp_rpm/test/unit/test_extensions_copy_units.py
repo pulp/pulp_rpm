@@ -78,6 +78,7 @@ class CopyErrataCommandTests(rpm_support_base.PulpClientTests):
         # Ensure the correct metadata
         self.assertEqual(self.command.name, 'errata')
         self.assertEqual(self.command.description, copy.DESC_ERRATA)
+        self.assertTrue(copy.COPY_CHILD_RPMS_OPTION in self.command.options)
 
     @mock.patch('pulp.bindings.repository.RepositoryUnitAPI.copy')
     def test_copy(self, mock_binding):
@@ -93,10 +94,37 @@ class CopyErrataCommandTests(rpm_support_base.PulpClientTests):
         copy._copy(self.context, ids.TYPE_ID_ERRATA, **data)
 
         # Verify
-        passed = dict([('type_ids', self.TYPE_IDS), 
-                 ('to-repo-id', self.TO_REPO_ID), 
-                 ('from-repo-id', self.FROM_REPO_ID),
-                 ('recursive', self.RECURSIVE)])
+        passed = {
+            'type_ids': self.TYPE_IDS,
+            'to-repo-id': self.TO_REPO_ID,
+            'from-repo-id': self.FROM_REPO_ID,
+            'recursive': self.RECURSIVE
+        }
+
+        mock_binding.assert_called_with(self.FROM_REPO_ID, self.TO_REPO_ID, **passed)
+
+    @mock.patch('pulp.bindings.repository.RepositoryUnitAPI.copy')
+    def test_copy_no_children(self, mock_binding):
+        # Setup
+
+        data = {
+            'from-repo-id' : self.FROM_REPO_ID,
+            'to-repo-id' : self.TO_REPO_ID,
+            'recursive' : self.RECURSIVE,
+            copy.COPY_CHILD_RPMS_OPTION.keyword: False,
+        }
+
+        # Test
+        copy._copy(self.context, ids.TYPE_ID_ERRATA, **data)
+
+        # Verify
+        passed = {
+            'type_ids': self.TYPE_IDS,
+            'to-repo-id': self.TO_REPO_ID,
+            'from-repo-id': self.FROM_REPO_ID,
+            'recursive': self.RECURSIVE,
+            'override_config': {'copy-children':False},
+        }
 
         mock_binding.assert_called_with(self.FROM_REPO_ID, self.TO_REPO_ID, **passed)
 
@@ -118,6 +146,7 @@ class CopyPackageGrpCommandTests(rpm_support_base.PulpClientTests):
         # Ensure the correct metadata
         self.assertEqual(self.command.name, 'group')
         self.assertEqual(self.command.description, copy.DESC_PKG_GROUP)
+        self.assertTrue(copy.COPY_CHILD_RPMS_OPTION in self.command.options)
 
     @mock.patch('pulp.bindings.repository.RepositoryUnitAPI.copy')
     def test_copy(self, mock_binding):
@@ -133,10 +162,37 @@ class CopyPackageGrpCommandTests(rpm_support_base.PulpClientTests):
         copy._copy(self.context, ids.TYPE_ID_PKG_GROUP, **data)
 
         # Verify
-        passed = dict([('type_ids', self.TYPE_IDS), 
-                 ('to-repo-id', self.TO_REPO_ID), 
-                 ('from-repo-id', self.FROM_REPO_ID),
-                 ('recursive', self.RECURSIVE)])
+        passed = {
+            'type_ids': self.TYPE_IDS,
+            'to-repo-id': self.TO_REPO_ID,
+            'from-repo-id': self.FROM_REPO_ID,
+            'recursive': self.RECURSIVE
+        }
+
+        mock_binding.assert_called_with(self.FROM_REPO_ID, self.TO_REPO_ID, **passed)
+
+    @mock.patch('pulp.bindings.repository.RepositoryUnitAPI.copy')
+    def test_copy_no_children(self, mock_binding):
+        # Setup
+
+        data = {
+            'from-repo-id' : self.FROM_REPO_ID,
+            'to-repo-id' : self.TO_REPO_ID,
+            'recursive' : self.RECURSIVE,
+            copy.COPY_CHILD_RPMS_OPTION.keyword: False,
+        }
+
+        # Test
+        copy._copy(self.context, ids.TYPE_ID_PKG_GROUP, **data)
+
+        # Verify
+        passed = {
+            'type_ids': self.TYPE_IDS,
+            'to-repo-id': self.TO_REPO_ID,
+            'from-repo-id': self.FROM_REPO_ID,
+            'recursive': self.RECURSIVE,
+            'override_config': {'copy-children':False},
+        }
 
         mock_binding.assert_called_with(self.FROM_REPO_ID, self.TO_REPO_ID, **passed)
 
@@ -158,6 +214,7 @@ class CopyPackageCategoryCommandTests(rpm_support_base.PulpClientTests):
         # Ensure the correct metadata
         self.assertEqual(self.command.name, 'category')
         self.assertEqual(self.command.description, copy.DESC_PKG_CATEGORY)
+        self.assertTrue(copy.COPY_CHILD_GROUPS_OPTION in self.command.options)
 
     @mock.patch('pulp.bindings.repository.RepositoryUnitAPI.copy')
     def test_copy(self, mock_binding):
@@ -173,13 +230,40 @@ class CopyPackageCategoryCommandTests(rpm_support_base.PulpClientTests):
         copy._copy(self.context, ids.TYPE_ID_PKG_CATEGORY, **data)
 
         # Verify
-        passed = dict([('type_ids', self.TYPE_IDS), 
-                 ('to-repo-id', self.TO_REPO_ID), 
-                 ('from-repo-id', self.FROM_REPO_ID),
-                 ('recursive', self.RECURSIVE)])
+        passed = {
+            'type_ids': self.TYPE_IDS,
+            'to-repo-id': self.TO_REPO_ID,
+            'from-repo-id': self.FROM_REPO_ID,
+            'recursive': self.RECURSIVE
+        }
 
         mock_binding.assert_called_with(self.FROM_REPO_ID, self.TO_REPO_ID, **passed)
-        
+
+    @mock.patch('pulp.bindings.repository.RepositoryUnitAPI.copy')
+    def test_copy_no_children(self, mock_binding):
+        # Setup
+
+        data = {
+            'from-repo-id' : self.FROM_REPO_ID,
+            'to-repo-id' : self.TO_REPO_ID,
+            'recursive' : self.RECURSIVE,
+            copy.COPY_CHILD_GROUPS_OPTION.keyword: False,
+        }
+
+        # Test
+        copy._copy(self.context, ids.TYPE_ID_PKG_CATEGORY, **data)
+
+        # Verify
+        passed = {
+            'type_ids': self.TYPE_IDS,
+            'to-repo-id': self.TO_REPO_ID,
+            'from-repo-id': self.FROM_REPO_ID,
+            'recursive': self.RECURSIVE,
+            'override_config': {'copy-children':False},
+        }
+
+        mock_binding.assert_called_with(self.FROM_REPO_ID, self.TO_REPO_ID, **passed)
+
 
 class CopyDistributionCommandTests(rpm_support_base.PulpClientTests):
 

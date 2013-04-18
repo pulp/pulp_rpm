@@ -13,7 +13,11 @@ from gettext import gettext as _
 import sys
 
 from pulp.bindings.exceptions import BadRequestException
+from pulp.client import parsers
 from pulp.client.commands.unit import UnitCopyCommand
+from pulp.client.extensions.extensions import PulpCliOption
+
+from pulp_rpm.common import ids
 from pulp_rpm.common.ids import TYPE_ID_RPM, TYPE_ID_SRPM, TYPE_ID_DRPM, TYPE_ID_ERRATA, TYPE_ID_DISTRO, TYPE_ID_PKG_GROUP, TYPE_ID_PKG_CATEGORY
 
 # -- constants ----------------------------------------------------------------
@@ -26,6 +30,13 @@ DESC_DISTRIBUTION = _('copy distributions from one repository to another')
 DESC_PKG_GROUP = _('copy package groups from one repository to another')
 DESC_PKG_CATEGORY = _('copy package categories from one repository to another')
 
+COPY_CHILD_RPMS_OPTION = PulpCliOption(
+    '--copy-children', _('copy child RPMs (default: True)'),
+    required=False, default='true', parse_func=parsers.parse_boolean)
+
+COPY_CHILD_GROUPS_OPTION = PulpCliOption(
+    '--copy-children', _('copy child groups (default: True)'),
+    required=False, default='true', parse_func=parsers.parse_boolean)
 
 # -- commands -----------------------------------------------------------------
 
@@ -34,6 +45,9 @@ class RpmCopyCommand(UnitCopyCommand):
     def __init__(self, context):
         self.context = context
         def rpm_copy(**kwargs):
+            # let's not load ALL of the metadata, as that could take a tremendous
+            # amount of RAM
+            kwargs['fields'] = ids.UNIT_KEY_RPM
             return _copy(self.context, TYPE_ID_RPM, **kwargs)
         super(RpmCopyCommand, self).__init__(rpm_copy, name='rpm', description=DESC_RPM)
 
@@ -63,6 +77,7 @@ class ErrataCopyCommand(UnitCopyCommand):
         def errata_copy(**kwargs):
             return _copy(self.context, TYPE_ID_ERRATA, **kwargs)
         super(ErrataCopyCommand, self).__init__(errata_copy, name='errata', description=DESC_ERRATA)
+        self.add_option(COPY_CHILD_RPMS_OPTION)
 
 
 class DistributionCopyCommand(UnitCopyCommand):
@@ -81,6 +96,7 @@ class PackageGroupCopyCommand(UnitCopyCommand):
         def package_group_copy(**kwargs):
             return _copy(self.context, TYPE_ID_PKG_GROUP, **kwargs)
         super(PackageGroupCopyCommand, self).__init__(package_group_copy, name='group', description=DESC_PKG_GROUP)
+        self.add_option(COPY_CHILD_RPMS_OPTION)
 
 
 class PackageCategoryCopyCommand(UnitCopyCommand):
@@ -90,6 +106,7 @@ class PackageCategoryCopyCommand(UnitCopyCommand):
         def package_category_copy(**kwargs):
             return _copy(self.context, TYPE_ID_PKG_CATEGORY, **kwargs)
         super(PackageCategoryCopyCommand, self).__init__(package_category_copy, name='category', description=DESC_PKG_CATEGORY)
+        self.add_option(COPY_CHILD_GROUPS_OPTION)
 
 
 def _copy(context, type_id, **kwargs):
@@ -108,6 +125,10 @@ def _copy(context, type_id, **kwargs):
     from_repo = kwargs['from-repo-id']
     to_repo = kwargs['to-repo-id']
     kwargs['type_ids'] = [type_id]
+    # pass a custom override_config if this option is present
+    if COPY_CHILD_RPMS_OPTION.keyword in kwargs:
+        kwargs['override_config'] = {COPY_CHILD_RPMS_OPTION.keyword: kwargs[COPY_CHILD_RPMS_OPTION.keyword]}
+        del kwargs[COPY_CHILD_RPMS_OPTION.keyword]
 
     # If rejected an exception will bubble up and be handled by middleware.
     # The only caveat is if the source repo ID is invalid, it will come back
