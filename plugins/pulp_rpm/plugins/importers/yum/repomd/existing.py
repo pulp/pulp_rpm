@@ -11,9 +11,11 @@
 # have received a copy of GPLv2 along with this software; if not, see
 # http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt.
 
+import itertools
 import logging
 
 from pulp.server.db.model.criteria import Criteria, UnitAssociationCriteria
+
 from pulp_rpm.common import models
 
 _LOGGER = logging.getLogger(__name__)
@@ -54,13 +56,15 @@ def check_repo(wanted, sync_conduit):
     # UAQ for each type
     for unit_type, values in sorted_units.iteritems():
         model = models.TYPE_MAP[unit_type]
-        unit_filters = {'$or': [unit._asdict() for unit in values]}
         fields = model.UNIT_KEY_NAMES
-        criteria = UnitAssociationCriteria([unit_type], unit_filters=unit_filters, unit_fields=fields, association_fields=[])
-        results = sync_conduit.get_units(criteria)
-        for unit in results:
-            named_tuple = model(metadata=unit.metadata, **unit.unit_key).as_named_tuple
-            values.discard(named_tuple)
+        # make sure the mongo query size doesn't get out of control
+        for segment in _paginate(values.copy(), STEP):
+            unit_filters = {'$or': [unit._asdict() for unit in segment]}
+            criteria = UnitAssociationCriteria([unit_type], unit_filters=unit_filters, unit_fields=fields, association_fields=[])
+            results = sync_conduit.get_units(criteria)
+            for unit in results:
+                named_tuple = model(metadata=unit.metadata, **unit.unit_key).as_named_tuple
+                values.discard(named_tuple)
 
     ret = set()
     ret.update(*sorted_units.values())
@@ -95,3 +99,15 @@ def _sort_by_type(wanted):
         unit_type = unit.__class__.__name__
         ret.setdefault(unit_type, set()).add(unit)
     return ret
+
+
+def _paginate(iterable, page_size):
+    i = 0
+    while True:
+        page = list(itertools.islice(iterable, i, i+page_size))
+        if not page:
+            return
+        i = i + page_size
+        yield page
+
+
