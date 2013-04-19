@@ -423,6 +423,14 @@ configuration values are optional.
  Number of times to retry before declaring an error during repository synchronization;
  defaults to ``2``.
 
+``copy_children``
+ Supported only as an override config option to a repository copy command, when
+ this option is False, the copy command will not attempt to locate and copy child
+ packages of errata, groups, or categories. For example, if it is already known
+ that all of a group's RPMs are available in the destination repository, it can
+ save substantial time to set this to False and thus not have the importer verify
+ the presence of each. default is True.
+
 Yum Distributor
 ===============
 

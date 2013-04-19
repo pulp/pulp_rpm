@@ -26,6 +26,7 @@ REPO_NOTE_ISO = 'iso-repo'
 PUBLISHED_DISTRIBUTION_FILES_KEY = 'published_distributions'
 
 # Importer configuration key names
+CONFIG_COPY_CHILDREN                = 'copy_children'
 CONFIG_FEED_URL                     = 'feed_url'
 CONFIG_MAX_SPEED                    = 'max_speed'
 CONFIG_NUM_THREADS                  = 'num_threads'
