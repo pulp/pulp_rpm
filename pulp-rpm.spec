@@ -18,7 +18,7 @@
 
 Name: pulp-rpm
 Version: 2.1.1
-Release: 0.4.beta%{?dist}
+Release: 0.5.beta%{?dist}
 Summary: Support for RPM content in the Pulp platform
 Group: Development/Languages
 License: GPLv2
@@ -273,6 +273,13 @@ A collection of yum plugins supplementing Pulp consumer operations.
 
 
 %changelog
+* Fri Apr 19 2013 Jeff Ortel <jortel@redhat.com> 2.1.1-0.5.beta
+- 953665 - added the ability for copy operations to not also copy child units,
+  such as a group copying its RPMs. Also restricted the fetching of existing
+  units to their unit key fields, which reduced RAM use tremendously. Copying a
+  RHEL6 repo went from using about 4.3GB of RAM to < 100MB.
+  (mhrivnak@redhat.com)
+
 * Fri Apr 12 2013 Jeff Ortel <jortel@redhat.com> 2.1.1-0.4.beta
 - 
 
