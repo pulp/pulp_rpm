@@ -23,7 +23,7 @@ import itertools
 
 sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)) + "/../../../plugins/importers/")
 import importer_mocks
-import constants
+import constants_test
 from yum_importer.importer import YumImporter
 from pulp_rpm.yum_plugin import util
 from pulp.plugins.model import Repository, Unit
@@ -60,12 +60,12 @@ class TestResolveDeps(rpm_support_base.PulpRPMTests):
                       'checksum': 'ee5afa0aaf8bd2130b7f4a9b35f4178336c72e95358dd33bda8acaa5f28ea6e9', 'type_id' : 'rpm'}
 
         unit_key_a_obj = Unit(RPM_TYPE_ID, unit_key_a, {}, '')
-        unit_key_a_obj.metadata = constants.PULP_SERVER_RPM_METADATA
+        unit_key_a_obj.metadata = constants_test.PULP_SERVER_RPM_METADATA
         unit_key_b = {'id' : '', 'name' :'pulp-rpm-server', 'version' :'0.0.309', 'release' :'1.fc17', 'epoch':'0','arch' : 'noarch', 'checksumtype' :'sha256',
                       'checksum': '1e6c3a3bae26423fe49d26930b986e5f5ee25523c13f875dfcd4bf80f770bf56', 'type_id' : 'rpm', }
 
         unit_key_b_obj = Unit(RPM_TYPE_ID, unit_key_b, {}, '')
-        unit_key_b_obj.metadata = constants.PULP_RPM_SERVER_RPM_METADATA
+        unit_key_b_obj.metadata = constants_test.PULP_RPM_SERVER_RPM_METADATA
         existing_units = []
         for unit in [unit_key_a_obj, unit_key_b_obj]:
             existing_units.append(unit)
