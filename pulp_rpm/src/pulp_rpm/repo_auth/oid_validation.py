@@ -178,6 +178,7 @@ class OidValidator:
             valid = cert.check_path(repo_dest)
         except AttributeError:
             # not an entitlement certificate, so no entitlements
+            log_func('The provided client certificate is not an entitlement certificate.\n')
             valid = False
         if not valid:
             log_func('Request denied to destination [%s]' % dest)

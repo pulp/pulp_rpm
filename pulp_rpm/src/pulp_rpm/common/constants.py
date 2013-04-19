@@ -45,8 +45,15 @@ CONFIG_VALIDATE_DOWNLOADS           = 'validate_downloads'
 CONFIG_VALIDATE_DOWNLOADS_DEFAULT   = True
 
 # Distributor configuration key names
-CONFIG_SERVE_HTTP      = 'serve_http'
-CONFIG_SERVE_HTTPS     = 'serve_https'
+CONFIG_SERVE_HTTP       = 'serve_http'
+CONFIG_SERVE_HTTPS      = 'serve_https'
+# This should be a valid entitlement client certificate that Pulp can hand out to consumers. This is not
+# currently used by the ISO Distributor
+CONFIG_SSL_AUTH_CERT    = 'ssl_auth_cert'
+# This is the CA that we should verify client entitlement certificates with. If it is set, and protected repos
+# are enabled serverwide, we will protect the repo with this cert over SSL. If it is unset, no repo protection
+# will be configured. This option is currently only used by the ISO distributor.
+CONFIG_SSL_AUTH_CA_CERT = 'ssl_auth_ca_cert'
 
 EXPORT_HTTP_DIR="/var/lib/pulp/published/http/exports"
 EXPORT_HTTPS_DIR="/var/lib/pulp/published/https/exports"
@@ -73,3 +80,6 @@ DISPLAY_UNITS_THRESHOLD = 100
 CONFIG_APPLICABILITY_REPORT_STYLE = 'report_style'
 APPLICABILITY_REPORT_STYLE_BY_UNITS = 'by_units'
 APPLICABILITY_REPORT_STYLE_BY_CONSUMERS = 'by_consumers'
+
+# The path to the repo_auth.conf file
+REPO_AUTH_CONFIG_FILE = '/etc/pulp/repo_auth.conf'
