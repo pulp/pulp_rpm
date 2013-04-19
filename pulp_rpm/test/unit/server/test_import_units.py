@@ -27,12 +27,13 @@ sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)) + "/../../../src/"
 sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)) + "/../../../plugins/importers/")
 
 from yum_importer import importer_rpm
-from yum_importer.importer import YumImporter, GET_CHILD_RPMS
+from yum_importer.importer import YumImporter
+from pulp_rpm.common import constants
 from pulp_rpm.common.ids import (TYPE_ID_RPM, UNIT_KEY_RPM, TYPE_ID_IMPORTER_YUM, TYPE_ID_ERRATA,
                                  TYPE_ID_DISTRO, TYPE_ID_PKG_CATEGORY, TYPE_ID_PKG_GROUP)
 from pulp_rpm.yum_plugin import util
 from rpm_support_base import PULP_UNITTEST_REPO_URL, PulpRPMTests
-import constants
+import constants_test
 import importer_mocks
 
 
@@ -549,7 +550,7 @@ class TestImportUnits(PulpRPMTests):
 
     def test_import_errata_unit_rpms_no_children(self):
         importer = YumImporter()
-        config = PluginCallConfiguration({}, {}, {GET_CHILD_RPMS: False})
+        config = PluginCallConfiguration({}, {}, {constants.CONFIG_COPY_CHILDREN: False})
         mock_unit = mock.MagicMock()
 
         importer._import_errata_unit_rpms(mock.MagicMock(), mock_unit, mock.MagicMock(),
@@ -561,7 +562,7 @@ class TestImportUnits(PulpRPMTests):
     @mock.patch.object(YumImporter, '_safe_copy_unit', new=lambda self, x: x)
     def test_import_pkg_category_unit_no_children(self):
         importer = YumImporter()
-        config = PluginCallConfiguration({}, {}, {GET_CHILD_RPMS: False})
+        config = PluginCallConfiguration({}, {}, {constants.CONFIG_COPY_CHILDREN: False})
         mock_unit = mock.MagicMock()
 
         importer._import_pkg_category_unit(mock.MagicMock(), mock.MagicMock(),
@@ -573,7 +574,7 @@ class TestImportUnits(PulpRPMTests):
     @mock.patch.object(YumImporter, '_safe_copy_unit', new=lambda self, x: x)
     def test_import_pkg_group_unit_no_children(self):
         importer = YumImporter()
-        config = PluginCallConfiguration({}, {}, {GET_CHILD_RPMS: False})
+        config = PluginCallConfiguration({}, {}, {constants.CONFIG_COPY_CHILDREN: False})
         mock_unit = mock.MagicMock()
 
         importer._import_pkg_group_unit(mock.MagicMock(), mock.MagicMock(),
@@ -640,11 +641,11 @@ class TestImportDependencies(PulpRPMTests):
 #            units.append(unit)
 
         unit = Unit(TYPE_ID_RPM, self.UNIT_KEY_A, {}, '')
-        unit.metadata = constants.PULP_SERVER_RPM_METADATA
+        unit.metadata = constants_test.PULP_SERVER_RPM_METADATA
         units.append(unit)
 
         unit = Unit(TYPE_ID_RPM, self.UNIT_KEY_B, {}, '')
-        unit.metadata = constants.PULP_RPM_SERVER_RPM_METADATA
+        unit.metadata = constants_test.PULP_RPM_SERVER_RPM_METADATA
         units.append(unit)
         return units
 

@@ -17,7 +17,7 @@ from pulp.client import parsers
 from pulp.client.commands.unit import UnitCopyCommand
 from pulp.client.extensions.extensions import PulpCliOption
 
-from pulp_rpm.common import ids
+from pulp_rpm.common import ids, constants
 from pulp_rpm.common.ids import TYPE_ID_RPM, TYPE_ID_SRPM, TYPE_ID_DRPM, TYPE_ID_ERRATA, TYPE_ID_DISTRO, TYPE_ID_PKG_GROUP, TYPE_ID_PKG_CATEGORY
 
 # -- constants ----------------------------------------------------------------
@@ -127,7 +127,7 @@ def _copy(context, type_id, **kwargs):
     kwargs['type_ids'] = [type_id]
     # pass a custom override_config if this option is present
     if COPY_CHILD_RPMS_OPTION.keyword in kwargs:
-        kwargs['override_config'] = {COPY_CHILD_RPMS_OPTION.keyword: kwargs[COPY_CHILD_RPMS_OPTION.keyword]}
+        kwargs['override_config'] = {constants.CONFIG_COPY_CHILDREN: kwargs[COPY_CHILD_RPMS_OPTION.keyword]}
         del kwargs[COPY_CHILD_RPMS_OPTION.keyword]
 
     # If rejected an exception will bubble up and be handled by middleware.

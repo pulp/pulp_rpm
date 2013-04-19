@@ -36,8 +36,6 @@ _ = gettext.gettext
 _LOG = util.getLogger(__name__)
 
 
-GET_CHILD_RPMS = 'copy-children'
-
 REQUIRED_CONFIG_KEYS = []
 OPTIONAL_CONFIG_KEYS = ['feed_url', 'ssl_verify', 'ssl_ca_cert', 'ssl_client_cert', 'ssl_client_key',
                         'proxy_url', 'proxy_port', 'proxy_pass', 'proxy_user',
@@ -288,7 +286,7 @@ class YumImporter(Importer):
         blacklist_units = self._query_blacklist_units(import_conduit, config)
         _LOG.info("Importing %s units from %s to %s" % (len(units), source_repo.id, dest_repo.id))
         # don't get this stuff if we aren't going to use it
-        if config.get('resolve_dependencies') or config.get(GET_CHILD_RPMS, True):
+        if config.get('resolve_dependencies') or config.get(constants.CONFIG_COPY_CHILDREN, True):
             criteria = UnitAssociationCriteria(type_ids=[TYPE_ID_RPM, TYPE_ID_SRPM], unit_fields=ids.UNIT_KEY_RPM)
             existing_rpm_units_dict = get_existing_units(import_conduit, criteria=criteria)
         else:
@@ -370,7 +368,7 @@ class YumImporter(Importer):
         @param existing_rpm_units: optional list of pre-filtered units to import
         @type  existing_rpm_units: list of L{pulp.plugins.data.Unit}
         """
-        if not config.get(GET_CHILD_RPMS, True):
+        if not config.get(constants.CONFIG_COPY_CHILDREN, True):
             return
 
         pkglist = erratum_unit.metadata['pkglist']
@@ -415,7 +413,7 @@ class YumImporter(Importer):
         pkg_category_unit.unit_key['repo_id'] = dest_repo.id
         import_conduit.save_unit(pkg_category_unit)
 
-        if not config.get(GET_CHILD_RPMS, True):
+        if not config.get(constants.CONFIG_COPY_CHILDREN, True):
             return
 
         pkg_group_unit_ids = pkg_category_unit.metadata['packagegroupids']
@@ -452,7 +450,7 @@ class YumImporter(Importer):
         pkg_group_unit.unit_key['repo_id'] = dest_repo.id
         import_conduit.save_unit(pkg_group_unit)
 
-        if not config.get(GET_CHILD_RPMS, True):
+        if not config.get(constants.CONFIG_COPY_CHILDREN, True):
             return
 
         mandatory_pkg_names = pkg_group_unit.metadata["mandatory_package_names"] or []

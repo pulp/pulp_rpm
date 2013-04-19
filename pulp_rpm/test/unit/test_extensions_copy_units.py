@@ -16,7 +16,7 @@ import sys
 from pulp.client.commands import options
 from pulp.client.commands.unit import UnitCopyCommand
 
-from pulp_rpm.common import ids
+from pulp_rpm.common import ids, constants
 from pulp_rpm.extension.admin import copy
 import rpm_support_base
 
@@ -123,7 +123,7 @@ class CopyErrataCommandTests(rpm_support_base.PulpClientTests):
             'to-repo-id': self.TO_REPO_ID,
             'from-repo-id': self.FROM_REPO_ID,
             'recursive': self.RECURSIVE,
-            'override_config': {'copy-children':False},
+            'override_config': {constants.CONFIG_COPY_CHILDREN:False},
         }
 
         mock_binding.assert_called_with(self.FROM_REPO_ID, self.TO_REPO_ID, **passed)
@@ -191,7 +191,7 @@ class CopyPackageGrpCommandTests(rpm_support_base.PulpClientTests):
             'to-repo-id': self.TO_REPO_ID,
             'from-repo-id': self.FROM_REPO_ID,
             'recursive': self.RECURSIVE,
-            'override_config': {'copy-children':False},
+            'override_config': {constants.CONFIG_COPY_CHILDREN:False},
         }
 
         mock_binding.assert_called_with(self.FROM_REPO_ID, self.TO_REPO_ID, **passed)
@@ -259,7 +259,7 @@ class CopyPackageCategoryCommandTests(rpm_support_base.PulpClientTests):
             'to-repo-id': self.TO_REPO_ID,
             'from-repo-id': self.FROM_REPO_ID,
             'recursive': self.RECURSIVE,
-            'override_config': {'copy-children':False},
+            'override_config': {constants.CONFIG_COPY_CHILDREN:False},
         }
 
         mock_binding.assert_called_with(self.FROM_REPO_ID, self.TO_REPO_ID, **passed)
