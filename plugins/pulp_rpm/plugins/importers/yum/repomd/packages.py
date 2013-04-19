@@ -15,8 +15,8 @@ import os
 from urlparse import urljoin
 from xml.etree.ElementTree import iterparse
 
-from pulp.common.download.downloaders.curl import HTTPSCurlDownloader
 from pulp.common.download.config import DownloaderConfig
+from pulp.common.download.downloaders.event import HTTPEventletDownloader
 from pulp.common.download.request import DownloadRequest
 
 
@@ -71,7 +71,7 @@ class Packages(object):
         self.dst_dir = dst_dir
 
         downloader_config = DownloaderConfig()
-        self.downloader = HTTPSCurlDownloader(downloader_config, event_listener)
+        self.downloader = HTTPEventletDownloader(downloader_config, event_listener)
 
     def download_packages(self):
         """
