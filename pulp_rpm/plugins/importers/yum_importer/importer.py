@@ -23,12 +23,12 @@ import copy
 from yum_importer.comps import ImporterComps
 from yum_importer.errata import ImporterErrata, link_errata_rpm_units
 from yum_importer.importer_rpm import ImporterRPM, get_existing_units, form_lookup_key
-from pulp.server.db.model.criteria import UnitAssociationCriteria, Criteria
+from pulp.server.db.model.criteria import UnitAssociationCriteria
 from pulp.plugins.importer import Importer
-from pulp.plugins.model import Unit, SyncReport
+from pulp.plugins.model import SyncReport
 from pulp_rpm.common.ids import TYPE_ID_IMPORTER_YUM, TYPE_ID_PKG_GROUP, TYPE_ID_PKG_CATEGORY, TYPE_ID_DISTRO,\
         TYPE_ID_DRPM, TYPE_ID_ERRATA, TYPE_ID_RPM, TYPE_ID_SRPM
-from pulp_rpm.common import constants
+from pulp_rpm.common import constants, ids
 from pulp_rpm.yum_plugin import util, depsolver, metadata
 from pulp_rpm.yum_plugin.metadata import get_package_xml
 
@@ -275,7 +275,7 @@ class YumImporter(Importer):
         @type  import_conduit: L{pulp.plugins.conduits.unit_import.ImportUnitConduit}
 
         @param config: plugin configuration
-        @type  config: L{pulp.plugins.plugins.config.PluginCallConfiguration}
+        @type  config: L{pulp.plugins.config.PluginCallConfiguration}
 
         @param units: optional list of pre-filtered units to import
         @type  units: list of L{pulp.plugins.data.Unit}
@@ -285,7 +285,12 @@ class YumImporter(Importer):
             units = import_conduit.get_source_units()
         blacklist_units = self._query_blacklist_units(import_conduit, config)
         _LOG.info("Importing %s units from %s to %s" % (len(units), source_repo.id, dest_repo.id))
-        existing_rpm_units_dict = get_existing_units(import_conduit, criteria=UnitAssociationCriteria(type_ids=[TYPE_ID_RPM, TYPE_ID_SRPM]))
+        # don't get this stuff if we aren't going to use it
+        if config.get('resolve_dependencies') or config.get(constants.CONFIG_COPY_CHILDREN, True):
+            criteria = UnitAssociationCriteria(type_ids=[TYPE_ID_RPM, TYPE_ID_SRPM], unit_fields=ids.UNIT_KEY_RPM)
+            existing_rpm_units_dict = get_existing_units(import_conduit, criteria=criteria)
+        else:
+            existing_rpm_units_dict = {}
         for u in units:
             if u.unit_key in blacklist_units:
                 continue
@@ -358,11 +363,14 @@ class YumImporter(Importer):
         @type  import_conduit: L{pulp.plugins.conduits.unit_import.ImportUnitConduit}
 
         @param config: plugin configuration
-        @type  config: L{pulp.plugins.plugins.config.PluginCallConfiguration}
+        @type  config: L{pulp.plugins.config.PluginCallConfiguration}
 
         @param existing_rpm_units: optional list of pre-filtered units to import
         @type  existing_rpm_units: list of L{pulp.plugins.data.Unit}
         """
+        if not config.get(constants.CONFIG_COPY_CHILDREN, True):
+            return
+
         pkglist = erratum_unit.metadata['pkglist']
         existing_rpm_units = existing_rpm_units or {}
         for pkg in pkglist:
@@ -405,6 +413,9 @@ class YumImporter(Importer):
         pkg_category_unit.unit_key['repo_id'] = dest_repo.id
         import_conduit.save_unit(pkg_category_unit)
 
+        if not config.get(constants.CONFIG_COPY_CHILDREN, True):
+            return
+
         pkg_group_unit_ids = pkg_category_unit.metadata['packagegroupids']
         for pgid in pkg_group_unit_ids:
             criteria = UnitAssociationCriteria(type_ids=[TYPE_ID_PKG_GROUP], unit_filters={'id' : pgid})
@@ -439,12 +450,15 @@ class YumImporter(Importer):
         pkg_group_unit.unit_key['repo_id'] = dest_repo.id
         import_conduit.save_unit(pkg_group_unit)
 
+        if not config.get(constants.CONFIG_COPY_CHILDREN, True):
+            return
+
         mandatory_pkg_names = pkg_group_unit.metadata["mandatory_package_names"] or []
         optional_pkg_names = pkg_group_unit.metadata["optional_package_names"] or []
         conditional_pkg_names = [cond_pkg[0] for cond_pkg in pkg_group_unit.metadata["conditional_package_names"]]
         default_pkg_names = pkg_group_unit.metadata['default_package_names'] or []
         for pname in mandatory_pkg_names + optional_pkg_names + conditional_pkg_names + default_pkg_names:
-            criteria = UnitAssociationCriteria(type_ids=[TYPE_ID_RPM], unit_filters={'name' : pname})
+            criteria = UnitAssociationCriteria(type_ids=[TYPE_ID_RPM], unit_filters={'name' : pname}, unit_fields=ids.UNIT_KEY_RPM)
             found_pkgs = import_conduit.get_source_units(criteria=criteria)
             if not len(found_pkgs):
                 continue
@@ -679,7 +693,7 @@ class YumImporter(Importer):
         solved, unsolved = dsolve.processResults(results)
         dep_pkgs_map = {}
         _LOG.debug(" results from depsolver %s" % results)
-        criteria = UnitAssociationCriteria(type_ids=[TYPE_ID_RPM])
+        criteria = UnitAssociationCriteria(type_ids=[TYPE_ID_RPM], unit_fields=ids.UNIT_KEY_RPM)
         existing_units = get_existing_units(dependency_conduit, criteria)
         for dep, pkgs in solved.items():
             dep_pkgs_map[dep] = []

@@ -7,6 +7,16 @@ Pulp 2.1.1
 
 Pulp 2.1.1 is a bugfix release that also comes with a few performance improvements.
 
+Changes
+-------
+
+A new config option may be passed when making a copy request between two
+repositories. If ``copy_children=False`` is passed as part of the override
+config when copying errata, groups, or categories, then the child packages of
+those units will not be copied. This saves time when copying an entire
+repository, because for example, you can tell the group copy operation not to
+worry about finding and retrieving the RPMs referenced by each group.
+
 Noteworthy Bugs Fixed
 ---------------------
 
@@ -20,6 +30,8 @@ PULP_MANIFEST correctly
 
 `949008 <https://bugzilla.redhat.com/show_bug.cgi?id=949008>`_ - The ISO importer set the SSL_VERIFY_HOST value
 to 1, when it should be 2
+
+`953665 <https://bugzilla.redhat.com/show_bug.cgi?id=953665>`_ - Copying large repo uses tons of RAM and takes too long
 
 Upgrade Instructions
 --------------------
