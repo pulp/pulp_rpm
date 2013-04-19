@@ -8,6 +8,8 @@ Pulp 2.2.0
 New Features
 ------------
 
+The ISO distributor now supports repository protection. See the API documentation for me details.
+
 CLI Changes
 -----------
 
