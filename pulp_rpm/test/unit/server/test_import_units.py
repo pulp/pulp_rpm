@@ -13,25 +13,21 @@
 # http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt.
 
 import glob
-import itertools
 import mock
 import os
 import random
 import shutil
 import sys
 import tempfile
-import time
-import unittest
 
-from grinder.BaseFetch import BaseFetch
+from pulp.plugins.config import PluginCallConfiguration
 from pulp.plugins.model import Repository, Unit
-import pycurl
 
 sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)) + "/../../../src/")
 sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)) + "/../../../plugins/importers/")
 
 from yum_importer import importer_rpm
-from yum_importer.importer import YumImporter
+from yum_importer.importer import YumImporter, GET_CHILD_RPMS
 from pulp_rpm.common.ids import (TYPE_ID_RPM, UNIT_KEY_RPM, TYPE_ID_IMPORTER_YUM, TYPE_ID_ERRATA,
                                  TYPE_ID_DISTRO, TYPE_ID_PKG_CATEGORY, TYPE_ID_PKG_GROUP)
 from pulp_rpm.yum_plugin import util
@@ -550,6 +546,41 @@ class TestImportUnits(PulpRPMTests):
         # verify that the version compare worked and skipped old versions
         for u in verify_old_version_skipped:
             self.assertFalse(u in associated_units)
+
+    def test_import_errata_unit_rpms_no_children(self):
+        importer = YumImporter()
+        config = PluginCallConfiguration({}, {}, {GET_CHILD_RPMS: False})
+        mock_unit = mock.MagicMock()
+
+        importer._import_errata_unit_rpms(mock.MagicMock(), mock_unit, mock.MagicMock(),
+                                          config)
+        # if this attribute doesn't exist, then the method quit before doing any
+        # work, which is what we want
+        self.assertTrue('metadata' not in dir(mock_unit))
+
+    @mock.patch.object(YumImporter, '_safe_copy_unit', new=lambda self, x: x)
+    def test_import_pkg_category_unit_no_children(self):
+        importer = YumImporter()
+        config = PluginCallConfiguration({}, {}, {GET_CHILD_RPMS: False})
+        mock_unit = mock.MagicMock()
+
+        importer._import_pkg_category_unit(mock.MagicMock(), mock.MagicMock(),
+                                           mock_unit, mock.MagicMock(), config)
+        # if this attribute doesn't exist, then the method quit before doing any
+        # work, which is what we want
+        self.assertTrue('metadata' not in dir(mock_unit))
+
+    @mock.patch.object(YumImporter, '_safe_copy_unit', new=lambda self, x: x)
+    def test_import_pkg_group_unit_no_children(self):
+        importer = YumImporter()
+        config = PluginCallConfiguration({}, {}, {GET_CHILD_RPMS: False})
+        mock_unit = mock.MagicMock()
+
+        importer._import_pkg_group_unit(mock.MagicMock(), mock.MagicMock(),
+                                           mock_unit, mock.MagicMock(), config)
+        # if this attribute doesn't exist, then the method quit before doing any
+        # work, which is what we want
+        self.assertTrue('metadata' not in dir(mock_unit))
 
 
 class TestImportDependencies(PulpRPMTests):

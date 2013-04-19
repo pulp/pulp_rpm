@@ -365,7 +365,7 @@ class YumImporter(Importer):
         @type  import_conduit: L{pulp.plugins.conduits.unit_import.ImportUnitConduit}
 
         @param config: plugin configuration
-        @type  config: L{pulp.plugins.plugins.config.PluginCallConfiguration}
+        @type  config: L{pulp.plugins.config.PluginCallConfiguration}
 
         @param existing_rpm_units: optional list of pre-filtered units to import
         @type  existing_rpm_units: list of L{pulp.plugins.data.Unit}
