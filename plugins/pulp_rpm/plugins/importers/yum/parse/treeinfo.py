@@ -37,7 +37,6 @@ def sync(sync_conduit, feed, working_dir, report, progress_callback):
     # if all downloads go well. If not, it will be deleted below, ensuring a
     # complete cleanup
     tmp_dir = tempfile.mkdtemp(dir=working_dir)
-    _LOGGER.info('tmp dir: ' + tmp_dir)
     try:
         treefile_path = get_treefile(feed, tmp_dir)
         if not treefile_path:
@@ -69,8 +68,8 @@ def sync(sync_conduit, feed, working_dir, report, progress_callback):
             sync_conduit.save_unit(unit)
         else:
             _LOGGER.error('some distro file downloads failed')
-            # TODO: log something more useful, and report errors
             report['state'] = constants.STATE_FAILED
+            report['error_details'] = [(fail.url, fail.error_report) for fail in listener.failed_reports]
             return
         report['state'] = constants.STATE_COMPLETE
     finally:
@@ -125,6 +124,9 @@ def parse_treefile(path):
     :rtype:         (pulp_rpm.common.models.Distribution, dict)
     """
     parser = ConfigParser.RawConfigParser()
+    # the default implementation of this method makes all option names lowercase,
+    # which we don't want. This is the suggested solution in the python.org docs.
+    parser.optionxform = str
     with open(path) as open_file:
         try:
             parser.readfp(open_file)

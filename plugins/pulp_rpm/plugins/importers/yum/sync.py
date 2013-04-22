@@ -182,8 +182,9 @@ class RepoSync(object):
     def get_errata(self, metadata_files):
         errata_file_handle = metadata_files.get_metadata_file_handle('updateinfo')
         if not errata_file_handle:
+            _LOGGER.info('updateinfo not found')
             return
-        return self.get_general(errata_file_handle, updateinfo.process_package_element, updateinfo.PACKAGE_TAG)
+        return self.get_general(errata_file_handle, updateinfo.PACKAGE_TAG, updateinfo.process_package_element)
 
     def get_groups(self, metadata_files):
         group_file_handle = metadata_files.get_group_file_handle()

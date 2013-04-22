@@ -18,7 +18,7 @@ import shutil
 from pulp.plugins.importer import Importer
 
 from pulp_rpm.common import ids, models
-from pulp_rpm.plugins.importers.yum import sync
+from pulp_rpm.plugins.importers.yum import sync, associate
 from pulp_rpm.plugins.importers.yum.config import Config
 
 
@@ -49,6 +49,9 @@ class YumImporter(Importer):
 
     def validate_config(self, repo, config, related_repos):
         return True, None
+
+    def import_units(self, source_repo, dest_repo, import_conduit, config, units=None):
+        return associate.associate(source_repo, dest_repo, import_conduit, config, units)
 
     def upload_unit(self, repo, type_id, unit_key, metadata, file_path, conduit, config):
         rpm = models.RPM(metadata=metadata, **unit_key)
