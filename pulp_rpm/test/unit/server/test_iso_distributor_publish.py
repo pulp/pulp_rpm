@@ -197,11 +197,14 @@ class TestPublish(PulpRPMTests):
         # delete_protected_repo should have been called since there's no CA cert provided
         delete_protected_repo.assert_called_once_with(repo.id)
 
-    @patch('pulp_rpm.plugins.distributors.iso_distributor.publish._protect_repository')
-    def test__copy_to_hosted_location_https_false_doesnt_protect_repo(self, _protect_repository):
+    @patch('pulp_rpm.repo_auth.protected_repo_utils.ProtectedRepoUtils.delete_protected_repo')
+    @patch('pulp_rpm.plugins.distributors.iso_distributor.publish._protect_repository',
+           side_effect=publish._protect_repository)
+    def test__copy_to_hosted_location_https_false_doesnt_protect_repo(self, _protect_repository,
+                                                                      delete_protected_repo):
         """
-        Test _copy_to_hosted_location() when CONFIG_SERVE_HTTPS is False. The repo protection code should not
-        get called in thise case.
+        Test _copy_to_hosted_location() when CONFIG_SERVE_HTTPS is False. The repo protection code should get
+        called in this case, and should cause the delete_protected_repo() to get used.
         """
         repo = MagicMock(spec=Repository)
         repo.id = 'lebowski'
@@ -220,8 +223,9 @@ class TestPublish(PulpRPMTests):
         # This should copy our dummy file to the monkey patched folders from our setUp() method.
         publish._copy_to_hosted_location(repo, config, progress_report)
 
-        # Because HTTPS publishing was False, we shouldn't call to protect the repository
-        self.assertEqual(_protect_repository.call_count, 0)
+        # Even though HTTPS publishing was False, we should still call to protect the repository
+        _protect_repository.assert_called_once_with(repo.id, repo, config)
+        delete_protected_repo.assert_called_once_with(repo.id)
 
     @patch('pulp_rpm.repo_auth.protected_repo_utils.ProtectedRepoUtils.delete_protected_repo')
     @patch('pulp_rpm.plugins.distributors.iso_distributor.publish._protect_repository',

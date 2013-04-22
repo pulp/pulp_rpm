@@ -47,9 +47,6 @@ CONFIG_VALIDATE_DOWNLOADS_DEFAULT   = True
 # Distributor configuration key names
 CONFIG_SERVE_HTTP       = 'serve_http'
 CONFIG_SERVE_HTTPS      = 'serve_https'
-# This should be a valid entitlement client certificate that Pulp can hand out to consumers. This is not
-# currently used by the ISO Distributor
-CONFIG_SSL_AUTH_CERT    = 'ssl_auth_cert'
 # This is the CA that we should verify client entitlement certificates with. If it is set, and protected repos
 # are enabled serverwide, we will protect the repo with this cert over SSL. If it is unset, no repo protection
 # will be configured. This option is currently only used by the ISO distributor.

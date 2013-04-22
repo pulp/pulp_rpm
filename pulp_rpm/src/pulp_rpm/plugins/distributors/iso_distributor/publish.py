@@ -109,45 +109,45 @@ def _copy_to_hosted_location(repo, config, progress_report):
     """
     build_dir = _get_or_create_build_dir(repo)
 
-    # Publish the HTTP portion, if applicable
-    if config.get_boolean(constants.CONFIG_SERVE_HTTP):
-        try:
-            progress_report.publish_http = constants.STATE_RUNNING
-            progress_report.update_progress()
+    try:
+        progress_report.publish_http = constants.STATE_RUNNING
+        progress_report.update_progress()
 
-            http_dest_dir = os.path.join(constants.ISO_HTTP_DIR, repo.id)
-            _rmtree_if_exists(http_dest_dir)
+        http_dest_dir = os.path.join(constants.ISO_HTTP_DIR, repo.id)
+        _rmtree_if_exists(http_dest_dir)
+        # Publish the HTTP portion, if applicable
+        if config.get_boolean(constants.CONFIG_SERVE_HTTP):
             shutil.copytree(build_dir, http_dest_dir, symlinks=True)
-            progress_report.publish_http = constants.STATE_COMPLETE
-        except Exception:
-            progress_report.publish_http = constants.STATE_FAILED
-            raise
-        finally:
-            progress_report.update_progress()
+        progress_report.publish_http = constants.STATE_COMPLETE
+    except Exception, e:
+        progress_report.publish_http = constants.STATE_FAILED
+        raise
+    finally:
+        progress_report.update_progress()
 
-    # Publish the HTTPs portion, if applicable
-    if config.get_boolean(constants.CONFIG_SERVE_HTTPS):
-        try:
-            progress_report.publish_https = constants.STATE_RUNNING
-            progress_report.update_progress()
+    try:
+        progress_report.publish_https = constants.STATE_RUNNING
+        progress_report.update_progress()
 
-            https_dest_dir = os.path.join(constants.ISO_HTTPS_DIR, repo.id)
-            _protect_repository(repo.id, repo, config)
-            _rmtree_if_exists(https_dest_dir)
+        https_dest_dir = os.path.join(constants.ISO_HTTPS_DIR, repo.id)
+        _protect_repository(repo.id, repo, config)
+        _rmtree_if_exists(https_dest_dir)
+        # Publish the HTTPs portion, if applicable
+        if config.get_boolean(constants.CONFIG_SERVE_HTTPS):
             shutil.copytree(build_dir, https_dest_dir, symlinks=True)
-            progress_report.publish_https = constants.STATE_COMPLETE
-        except Exception, e:
-            progress_report.publish_https = constants.STATE_FAILED
-            raise
-        finally:
-            progress_report.update_progress()
+        progress_report.publish_https = constants.STATE_COMPLETE
+    except Exception, e:
+        progress_report.publish_https = constants.STATE_FAILED
+        raise
+    finally:
+        progress_report.update_progress()
 
 
 def _protect_repository(relative_path, repo, config):
     """
     Configure this repository to be protected by registering it with the repo protection application. Repository
     protection will only be performed if if the CONFIG_SSL_AUTH_CA_CERT option is set to a certificate.
-    Otherwise, this method passes.
+    Otherwise, this method removed repository protection..
     """
     authorization_ca_cert = config.get(constants.CONFIG_SSL_AUTH_CA_CERT)
 
