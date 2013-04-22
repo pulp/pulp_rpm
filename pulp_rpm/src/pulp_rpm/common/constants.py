@@ -41,8 +41,9 @@ CONFIG_REMOVE_MISSING_UNITS_DEFAULT = False
 CONFIG_SSL_CA_CERT                  = 'ssl_ca_cert'
 CONFIG_SSL_CLIENT_CERT              = 'ssl_client_cert'
 CONFIG_SSL_CLIENT_KEY               = 'ssl_client_key'
-CONFIG_VALIDATE_DOWNLOADS           = 'validate_downloads'
-CONFIG_VALIDATE_DOWNLOADS_DEFAULT   = True
+# Whether Units (currently only ISOs use this) should be validated during syncs, or when uploaded
+CONFIG_VALIDATE_UNITS               = 'validate_units'
+CONFIG_VALIDATE_UNITS_DEFAULT       = True
 
 # Distributor configuration key names
 CONFIG_SERVE_HTTP      = 'serve_http'
