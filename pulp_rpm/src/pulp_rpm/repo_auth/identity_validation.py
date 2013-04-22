@@ -21,7 +21,7 @@ The is_valid method is the logic driver. It performs the following functions:
   - Ensures the CN of the certificate matches the identity string
 '''
 
-from pulp_rpm.repo_auth.rhsm import certificate
+from rhsm import certificate
 
 
 IDENTITY_CN = 'pulp-identity'
