@@ -28,7 +28,7 @@ The * represents the product ID and is not used as part of this calculation.
 from ConfigParser import SafeConfigParser
 import re
 
-from pulp_rpm.repo_auth.rhsm import certificate
+from rhsm import certificate
 from pulp_rpm.repo_auth.protected_repo_utils import ProtectedRepoUtils
 from pulp_rpm.repo_auth.repo_cert_utils import RepoCertUtils
 
