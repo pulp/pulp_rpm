@@ -18,7 +18,7 @@
 
 Name: pulp-rpm
 Version: 2.2.0
-Release: 0.1.alpha%{?dist}
+Release: 0.2.alpha%{?dist}
 Summary: Support for RPM content in the Pulp platform
 Group: Development/Languages
 License: GPLv2
@@ -273,6 +273,15 @@ A collection of yum plugins supplementing Pulp consumer operations.
 
 
 %changelog
+* Fri Apr 19 2013 Jeff Ortel <jortel@redhat.com> 2.2.0-0.2.alpha
+- 953665 - added the ability for copy operations to not also copy child units,
+  such as a group copying its RPMs. Also restricted the fetching of existing
+  units to their unit key fields, which reduced RAM use tremendously. Copying a
+  RHEL6 repo went from using about 4.3GB of RAM to < 100MB.
+  (mhrivnak@redhat.com)
+- 928084 - The ISOImporter now handles malformed PULP_MANIFEST files.
+  (rbarlow@redhat.com)
+
 * Fri Apr 12 2013 Jeff Ortel <jortel@redhat.com> 2.2.0-0.1.alpha
 - 950740 - add support {?dist} in the Release: in .spec files.
   (jortel@redhat.com)
