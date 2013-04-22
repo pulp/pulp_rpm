@@ -182,7 +182,7 @@ class RepoSync(object):
     def get_errata(self, metadata_files):
         errata_file_handle = metadata_files.get_metadata_file_handle('updateinfo')
         if not errata_file_handle:
-            _LOGGER.info('updateinfo not found')
+            _LOGGER.debug('updateinfo not found')
             return
         return self.get_general(errata_file_handle, updateinfo.PACKAGE_TAG, updateinfo.process_package_element)
 
@@ -205,12 +205,22 @@ class RepoSync(object):
 
     def get_general(self, file_handle, tag, process_func):
         with file_handle:
+            # iterate through file and determine what we want to have
+            package_info_generator = packages.package_list_generator(file_handle,
+                                                                     tag,
+                                                                     process_func)
+            wanted = (model.as_named_tuple for model in package_info_generator)
+            to_download = existing.check_repo(wanted, self.sync_conduit)
+
+            # rewind, iterate again through the file, and download what we need
+            file_handle.seek(0)
             package_info_generator = packages.package_list_generator(file_handle,
                                                                      tag,
                                                                      process_func)
             for model in package_info_generator:
-                unit = self.sync_conduit.init_unit(model.TYPE, model.unit_key, model.metadata, None)
-                self.sync_conduit.save_unit(unit)
+                if model.as_named_tuple in to_download:
+                    unit = self.sync_conduit.init_unit(model.TYPE, model.unit_key, model.metadata, None)
+                    self.sync_conduit.save_unit(unit)
 
     def _identify_wanted_versions(self, package_info_generator, current_units):
         """

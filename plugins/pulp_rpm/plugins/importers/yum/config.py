@@ -12,11 +12,12 @@
 # http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt.
 
 import logging
+from pulp_rpm.common import constants
 
 _LOGGER = logging.getLogger(__name__)
 
 
 class Config(object):
     def __init__(self, platform_config):
-        self.feed = platform_config.get('feed_url')
-        self.newest = platform_config.get_boolean('newest') or False
+        self.feed = platform_config.get(constants.CONFIG_FEED_URL)
+        self.newest = platform_config.get_boolean(constants.CONFIG_NEWEST) or False

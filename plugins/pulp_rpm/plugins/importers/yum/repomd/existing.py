@@ -14,7 +14,7 @@
 import itertools
 import logging
 
-from pulp.server.db.model.criteria import Criteria, UnitAssociationCriteria
+from pulp.server.db.model.criteria import UnitAssociationCriteria
 
 from pulp_rpm.common import models
 

@@ -29,6 +29,7 @@ PUBLISHED_DISTRIBUTION_FILES_KEY = 'published_distributions'
 CONFIG_COPY_CHILDREN                = 'copy_children'
 CONFIG_FEED_URL                     = 'feed_url'
 CONFIG_MAX_SPEED                    = 'max_speed'
+CONFIG_NEWEST                       = 'newest'
 CONFIG_NUM_THREADS                  = 'num_threads'
 # The default number of threads to be used with downloading ISOs. We should convert the RPM code to
 # use this same value.
