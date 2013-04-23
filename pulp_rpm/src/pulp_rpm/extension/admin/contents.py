@@ -12,8 +12,10 @@
 from gettext import gettext as _
 import logging
 
-from pulp.client.extensions.extensions import PulpCliOptionGroup, PulpCliOption
 from pulp.client.commands.criteria import DisplayUnitAssociationsCommand
+from pulp.client.extensions.extensions import PulpCliOptionGroup, PulpCliOption
+
+from pulp_rpm.extension import criteria_utils
 
 # -- constants ----------------------------------------------------------------
 
@@ -111,15 +113,58 @@ DESC_ERRATA = _('search errata in a repository')
 
 # -- commands -----------------------------------------------------------------
 
-class SearchRpmsCommand(DisplayUnitAssociationsCommand):
+class BaseSearchCommand(DisplayUnitAssociationsCommand):
+    """
+    Root of all search commands in this module. This currently only does modifications
+    """
 
-    def __init__(self, context):
-        super(SearchRpmsCommand, self).__init__(self.rpm, name='rpm',
-                                                description=DESC_RPMS)
+    def __init__(self, method, context, *args, **kwargs):
+        super(BaseSearchCommand, self).__init__(method, *args, **kwargs)
         self.context = context
 
-    def rpm(self, **kwargs):
-        def out_func(document_list, filter=FIELDS_RPM):
+    def run_search(self, type_ids, out_func=None, **kwargs):
+        """
+        This is a generic command that will perform a search for any type or
+        types of content.
+
+        :param type_ids:    list of type IDs that the command should operate on
+        :type  type_ids:    list, tuple
+
+        :param out_func:    optional callable to be used in place of
+                            prompt.render_document. must accept one dict
+        :type  out_func:    callable
+
+        :param kwargs:  CLI options as input by the user and passed in by okaara
+        :type  kwargs:  dict
+        """
+        out_func = out_func or self.context.prompt.render_document_list
+
+        repo_id = kwargs.pop('repo-id')
+        kwargs['type_ids'] = type_ids
+        units = self.context.server.repo_unit.search(repo_id, **kwargs).response_body
+
+        if not kwargs.get(DisplayUnitAssociationsCommand.ASSOCIATION_FLAG.keyword):
+            units = [u['metadata'] for u in units]
+
+        out_func(units)
+
+
+class PackageSearchCommand(BaseSearchCommand):
+
+    def __init__(self, type_id, context, *args, **kwargs):
+        super(PackageSearchCommand, self).__init__(self.package_search, context, *args, **kwargs)
+        self.type_id = type_id
+
+    @staticmethod
+    def _parse_key_value(args):
+        return criteria_utils.parse_key_value(args)
+
+    @classmethod
+    def _parse_sort(cls, sort_args):
+        return criteria_utils.parse_sort(DisplayUnitAssociationsCommand, sort_args)
+
+    def package_search(self, **kwargs):
+        def out_func(document_list, display_filter=FIELDS_RPM):
             """Inner function to filter rpm fields to display to the end user"""
 
             order = []
@@ -129,8 +174,8 @@ class SearchRpmsCommand(DisplayUnitAssociationsCommand):
             # only operates at the top level of the document.
             if kwargs.get(self.ASSOCIATION_FLAG.keyword):
                 # including most fields
-                filter = ['updated', 'repo_id', 'created', 'unit_id', 'metadata',
-                          'unit_type_id', 'owner_type', 'id', 'owner_id']
+                display_filter = ['updated', 'repo_id', 'created', 'unit_id', 'metadata',
+                                  'unit_type_id', 'owner_type', 'id', 'owner_id']
                 # display the unit info first
                 order = ['metadata']
 
@@ -141,67 +186,60 @@ class SearchRpmsCommand(DisplayUnitAssociationsCommand):
                             del doc['metadata'][key]
 
             self.context.prompt.render_document_list(
-                document_list, filters=filter, order=order)
+                document_list, filters=display_filter, order=order)
 
-        _content_command(self.context, [TYPE_RPM], out_func=out_func, **kwargs)
-
-
-class SearchSrpmsCommand(DisplayUnitAssociationsCommand):
-
-    def __init__(self, context):
-        super(SearchSrpmsCommand, self).__init__(self.srpm, name='srpm',
-                                                 description=DESC_SRPMS)
-        self.context = context
-
-    def srpm(self, **kwargs):
-        _content_command(self.context, [TYPE_SRPM], **kwargs)
+        self.run_search([self.type_id], out_func=out_func, **kwargs)
 
 
-class SearchDrpmsCommand(DisplayUnitAssociationsCommand):
+class SearchRpmsCommand(PackageSearchCommand):
 
     def __init__(self, context):
-        super(SearchDrpmsCommand, self).__init__(self.drpm, name='drpm',
-                                                 description=DESC_DRPMS)
-        self.context = context
+        super(SearchRpmsCommand, self).__init__(TYPE_RPM, context, name='rpm', description=DESC_RPMS)
+
+
+class SearchSrpmsCommand(PackageSearchCommand):
+
+    def __init__(self, context):
+        super(SearchSrpmsCommand, self).__init__(TYPE_SRPM, context, name='srpm', description=DESC_SRPMS)
+
+
+class SearchDrpmsCommand(BaseSearchCommand):
+
+    def __init__(self, context):
+        super(SearchDrpmsCommand, self).__init__(self.drpm, context, name='drpm', description=DESC_DRPMS)
 
     def drpm(self, **kwargs):
-        _content_command(self.context, [TYPE_DRPM], **kwargs)
+        self.run_search([TYPE_DRPM], **kwargs)
 
 
-class SearchPackageGroupsCommand(DisplayUnitAssociationsCommand):
+class SearchPackageGroupsCommand(BaseSearchCommand):
 
     def __init__(self, context):
-        super(SearchPackageGroupsCommand, self).__init__(self.package_group,
-                                                         name='group',
+        super(SearchPackageGroupsCommand, self).__init__(self.package_group, context, name='group',
                                                          description=DESC_GROUPS)
-        self.context = context
 
     def package_group(self, **kwargs):
-        _content_command(self.context, [TYPE_PACKAGE_GROUP], **kwargs)
+        self.run_search([TYPE_PACKAGE_GROUP], **kwargs)
 
 
-class SearchPackageCategoriesCommand(DisplayUnitAssociationsCommand):
+class SearchPackageCategoriesCommand(BaseSearchCommand):
 
     def __init__(self, context):
-        super(SearchPackageCategoriesCommand, self).__init__(self.package_category,
-                                                             name='category',
-                                                             description=DESC_CATEGORIES)
-        self.context = context
+        super(SearchPackageCategoriesCommand, self).__init__(self.package_category, context,
+                                                             name='category', description=DESC_CATEGORIES)
 
     def package_category(self, **kwargs):
-        _content_command(self.context, [TYPE_PACKAGE_CATEGORY], **kwargs)
+        self.run_search([TYPE_PACKAGE_CATEGORY], **kwargs)
 
 
-class SearchDistributionsCommand(DisplayUnitAssociationsCommand):
+class SearchDistributionsCommand(BaseSearchCommand):
 
     def __init__(self, context):
-        super(SearchDistributionsCommand, self).__init__(self.distribution,
-                                                         name='distribution',
+        super(SearchDistributionsCommand, self).__init__(self.distribution, context, name='distribution',
                                                          description=DESC_DISTRIBUTIONS)
-        self.context = context
 
     def distribution(self, **kwargs):
-        _content_command(self.context, [TYPE_DISTRIBUTION], self.write_distro, **kwargs)
+        self.run_search([TYPE_DISTRIBUTION], self.write_distro, **kwargs)
 
     def write_distro(self, distro_list):
         """
@@ -256,12 +294,11 @@ class SearchDistributionsCommand(DisplayUnitAssociationsCommand):
             self.context.prompt.render_spacer()
 
 
-class SearchErrataCommand(DisplayUnitAssociationsCommand):
+class SearchErrataCommand(BaseSearchCommand):
 
     def __init__(self, context):
-        super(SearchErrataCommand, self).__init__(self.errata, name='errata',
+        super(SearchErrataCommand, self).__init__(self.errata, context, name='errata',
                                                   description=DESC_ERRATA)
-        self.context = context
 
         erratum_group = PulpCliOptionGroup(_('Erratum'))
 
@@ -273,7 +310,7 @@ class SearchErrataCommand(DisplayUnitAssociationsCommand):
 
     def errata(self, **kwargs):
         if kwargs['erratum-id'] is None:
-            _content_command(self.context, [TYPE_ERRATUM], **kwargs)
+            self.run_search([TYPE_ERRATUM], **kwargs)
         else:
             # Collect data
             repo_id = kwargs.pop('repo-id')
@@ -282,7 +319,7 @@ class SearchErrataCommand(DisplayUnitAssociationsCommand):
                 'repo-id' : repo_id,
                 'filters' : {'id' : erratum_id}
             }
-            _content_command(self.context, [TYPE_ERRATUM], self.write_erratum_detail, **new_kwargs)
+            self.run_search([TYPE_ERRATUM], self.write_erratum_detail, **new_kwargs)
 
     def write_erratum_detail(self, erratum_list):
         """
@@ -349,31 +386,3 @@ class SearchErrataCommand(DisplayUnitAssociationsCommand):
 
         display = SINGLE_ERRATUM_TEMPLATE % template_data
         self.context.prompt.write(display, skip_wrap=True)
-
-# -- utility ------------------------------------------------------------------
-
-def _content_command(context, type_ids, out_func=None, **kwargs):
-    """
-    This is a generic command that will perform a search for any type or
-    types of content.
-
-    :param type_ids:    list of type IDs that the command should operate on
-    :type  type_ids:    list, tuple
-
-    :param out_func:    optional callable to be used in place of
-                        prompt.render_document. must accept one dict
-    :type  out_func:    callable
-
-    :param kwargs:  CLI options as input by the user and passed in by okaara
-    :type  kwargs:  dict
-    """
-    out_func = out_func or context.prompt.render_document_list
-
-    repo_id = kwargs.pop('repo-id')
-    kwargs['type_ids'] = type_ids
-    units = context.server.repo_unit.search(repo_id, **kwargs).response_body
-
-    if not kwargs.get(DisplayUnitAssociationsCommand.ASSOCIATION_FLAG.keyword):
-        units = [u['metadata'] for u in units]
-
-    out_func(units)
