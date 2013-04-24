@@ -28,7 +28,7 @@ class ISO(object):
     """
     This is a handy way to model an ISO unit, with some related utilities.
     """
-    def __init__(self, name, size, checksum):
+    def __init__(self, name, size, checksum, unit=None):
         """
         Initialize an ISO, with its name, size, and checksum.
 
@@ -43,38 +43,44 @@ class ISO(object):
         self.size = size
         self.checksum = checksum
 
-        self.unit_key = {'name': self.name, 'size': self.size, 'checksum': self.checksum}
-        self.metadata = {}
-        # This is the path on disk where the ISO is stored. This is set to None until the ISO is told otherwise.
-        self.storage_path = None
-        self.unit = None
+        # This is the Unit that the ISO represents. An ISO doesn't always have a Unit backing it, particularly
+        # during repository synchronization or ISO uploads when the ISOs are being initialized.
+        self._unit = unit
 
     @classmethod
     def from_unit(cls, unit):
         """
         Construct an ISO out of a Unit.
         """
-        return ISO(unit.unit_key['name'], unit.unit_key['size'], unit.unit_key['checksum'])
+        return ISO(unit.unit_key['name'], unit.unit_key['size'], unit.unit_key['checksum'], unit)
 
     def init_unit(self, conduit):
         """
-        Use the given conduit's init_unit() call to initialize a unit, and store the unit as self.unit.
+        Use the given conduit's init_unit() call to initialize a unit, and store the unit as self._unit.
 
         :param conduit: The conduit to call init_unit() to get a Unit.
         :type  conduit: pulp.plugins.conduits.mixins.AddUnitMixin
         """
         relative_path = os.path.join(self.name, self.checksum, str(self.size), self.name)
-        self.unit = conduit.init_unit(ids.TYPE_ID_ISO, self.unit_key, self.metadata, relative_path)
-        self.storage_path = self.unit.storage_path
+        unit_key = {'name': self.name, 'size': self.size, 'checksum': self.checksum}
+        metadata = {}
+        self._unit = conduit.init_unit(ids.TYPE_ID_ISO, unit_key, metadata, relative_path)
 
     def save_unit(self, conduit):
         """
-        Use the given conduit's save_unit() call to save self.unit.
+        Use the given conduit's save_unit() call to save self._unit.
 
         :param conduit: The conduit to call save_unit() with.
         :type  conduit: pulp.plugins.conduits.mixins.AddUnitMixin
         """
-        conduit.save_unit(self.unit)
+        conduit.save_unit(self._unit)
+
+    @property
+    def storage_path(self):
+        """
+        Return the storage path of the Unit that underlies this ISO.
+        """
+        return self._unit.storage_path
 
     def validate(self):
         """
@@ -122,23 +128,26 @@ class ISOManifest(object):
                               a url attribute for each ISO in the manifest.
         :type  repo_url:      str
         """
+        # Make sure we are reading from the beginning of the file
+        manifest_file.seek(0)
         # Now let's process the manifest and return a list of resources that we'd like to download
         manifest_csv = csv.reader(manifest_file)
         self._isos = []
         for unit in manifest_csv:
             name, checksum, size = unit
             iso = ISO(name, int(size), checksum)
+            # Take a URL onto the ISO so we know where we can get it
             iso.url = urljoin(repo_url, name)
             self._isos.append(iso)
-
-    def __len__(self):
-        """
-        Return the number of ISOs in the manifest.
-        """
-        return len(self._isos)
 
     def __iter__(self):
         """
         Return an iterator for the ISOs in the manifest.
         """
         return iter(self._isos)
+
+    def __len__(self):
+        """
+        Return the number of ISOs in the manifest.
+        """
+        return len(self._isos)

@@ -149,11 +149,11 @@ class TestISOSyncRun(PulpRPMTests):
                 'Descartes walks into a bar and sits down, the bartender walks up to him and says "You, my '
                 'man, look like you need a stiff drink." Descartes considers this, and shakes his head "No, '
                 'I don\'t think-" and ceases to exist.')
-        unit = 'fake_unit'
-        iso = models.ISO('test.txt', 217, 'a1552efee6f04012bc7e1f3e02c00c6177b08217cead958c47ec83cb8f97f835')
+        unit = MagicMock()
+        unit.storage_path = destination
+        iso = models.ISO('test.txt', 217, 'a1552efee6f04012bc7e1f3e02c00c6177b08217cead958c47ec83cb8f97f835',
+                         unit)
         iso.url = 'http://fake.com'
-        iso.unit = unit
-        iso.storage_path = destination
         report = DownloadReport(iso.url, destination)
 
         # Simulate having downloaded the whole file
@@ -188,10 +188,9 @@ class TestISOSyncRun(PulpRPMTests):
         with open(destination, 'w') as test_iso:
             test_iso.write('What happens when you combine a mosquito with a mountain climber? Nothing. You '
                            'can\'t cross a vector with a scalar.')
-        unit = 'fake_unit'
-        iso = models.ISO('test.txt', 114, 'wrong checksum')
-        iso.storage_path = destination
-        iso.unit = unit
+        unit = MagicMock()
+        unit.storage_path = destination
+        iso = models.ISO('test.txt', 114, 'wrong checksum', unit)
         iso.url = 'http://fake.com'
         report = DownloadReport(iso.url, destination)
 
@@ -226,10 +225,9 @@ class TestISOSyncRun(PulpRPMTests):
         destination = os.path.join(self.temp_dir, 'test.txt')
         with open(destination, 'w') as test_file:
             test_file.write('Boring test data.')
-        unit = 'fake_unit'
-        iso = models.ISO('test.txt', 114, 'wrong checksum')
-        iso.storage_path = destination
-        iso.unit = unit
+        unit = MagicMock()
+        unit.storage_path = destination
+        iso = models.ISO('test.txt', 114, 'wrong checksum', unit)
         iso.url = 'http://fake.com'
         report = DownloadReport(iso.url, destination)
 
@@ -259,10 +257,9 @@ class TestISOSyncRun(PulpRPMTests):
         destination = os.path.join(self.temp_dir, 'test.txt')
         with open(destination, 'w') as test_file:
             test_file.write('Boring test data.')
-        unit = 'fake_unit'
-        iso = models.ISO('test.txt', 114, 'wrong checksum')
-        iso.storage_path = destination
-        iso.unit = unit
+        unit = MagicMock()
+        unit.storage_path = destination
+        iso = models.ISO('test.txt', 114, 'wrong checksum', unit)
         iso.url = 'http://fake.com'
         report = DownloadReport(iso.url, destination)
 
