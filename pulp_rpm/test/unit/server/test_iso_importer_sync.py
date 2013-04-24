@@ -11,11 +11,11 @@
 # have received a copy of GPLv2 along with this software; if not, see
 # http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt.
 from cStringIO import StringIO
-import math
 import os
 import shutil
 import tempfile
 
+from pulp_rpm.common import models
 from pulp_rpm.common.constants import STATE_COMPLETE, STATE_FAILED, STATE_NOT_STARTED, STATE_RUNNING
 from pulp_rpm.common.ids import TYPE_ID_ISO
 from pulp_rpm.common.progress import SyncProgressReport
@@ -149,17 +149,18 @@ class TestISOSyncRun(PulpRPMTests):
                 'Descartes walks into a bar and sits down, the bartender walks up to him and says "You, my '
                 'man, look like you need a stiff drink." Descartes considers this, and shakes his head "No, '
                 'I don\'t think-" and ceases to exist.')
-        unit = 'fake_unit'
-        iso = {'name': 'test.txt', 'size': 217, 'destination': destination,
-               'checksum': 'a1552efee6f04012bc7e1f3e02c00c6177b08217cead958c47ec83cb8f97f835',
-               'unit': unit, 'url': 'http://fake.com'}
-        report = DownloadReport(iso['url'], destination)
+        unit = MagicMock()
+        unit.storage_path = destination
+        iso = models.ISO('test.txt', 217, 'a1552efee6f04012bc7e1f3e02c00c6177b08217cead958c47ec83cb8f97f835',
+                         unit)
+        iso.url = 'http://fake.com'
+        report = DownloadReport(iso.url, destination)
 
         # Simulate having downloaded the whole file
-        iso['bytes_downloaded'] = iso['size']
-        report.bytes_downloaded = iso['size']
+        iso.bytes_downloaded = iso.size
+        report.bytes_downloaded = iso.size
         # We need to put this on the url_iso_map so that the iso can be retrieved for validation
-        self.iso_sync_run._url_iso_map = {iso['url']: iso}
+        self.iso_sync_run._url_iso_map = {iso.url: iso}
         self.iso_sync_run.progress_report.isos_state = STATE_RUNNING
 
         self.iso_sync_run.download_succeeded(report)
@@ -172,31 +173,32 @@ class TestISOSyncRun(PulpRPMTests):
         self.assertEqual(download_failed.call_count, 0)
 
     @patch('pulp_rpm.plugins.importers.iso_importer.sync.ISOSyncRun.download_failed')
-    def test_download_succeeded_honors_validate_downloads_set_false(self, download_failed):
+    def test_download_succeeded_honors_validate_units_set_false(self, download_failed):
         """
         We have a setting that makes download validation optional. This test ensures that download_succeeded()
         honors that setting.
         """
-        # In this config, we will set validate_downloads to False, which should make our "wrong_checksum" OK
+        # In this config, we will set validate_units to False, which should make our "wrong_checksum" OK
         config = importer_mocks.get_basic_config(feed_url='http://fake.com/iso_feed/',
-                                                 validate_downloads=False)
+                                                 validate_units=False)
 
         iso_sync_run = ISOSyncRun(self.sync_conduit, config)
 
-        destination = StringIO()
-        destination.write('What happens when you combine a mosquito with a mountain climber? Nothing. You '
-                          'can\'t cross a vector with a scalar.')
-        unit = 'fake_unit'
-        iso = {'name': 'test.txt', 'size': 114, 'destination': destination,
-               'checksum': 'wrong checksum',
-               'unit': unit, 'url': 'http://fake.com'}
-        report = DownloadReport(iso['url'], destination)
+        destination = os.path.join(self.temp_dir, 'test.iso')
+        with open(destination, 'w') as test_iso:
+            test_iso.write('What happens when you combine a mosquito with a mountain climber? Nothing. You '
+                           'can\'t cross a vector with a scalar.')
+        unit = MagicMock()
+        unit.storage_path = destination
+        iso = models.ISO('test.txt', 114, 'wrong checksum', unit)
+        iso.url = 'http://fake.com'
+        report = DownloadReport(iso.url, destination)
 
         # Let's fake having downloaded the whole file
-        iso['bytes_downloaded'] = iso['size']
-        report.bytes_downloaded = iso['size']
+        iso.bytes_downloaded = iso.size
+        report.bytes_downloaded = iso.size
         # We need to put this on the url_iso_map so that the iso can be retrieved for validation
-        iso_sync_run._url_iso_map = {iso['url']: iso}
+        iso_sync_run._url_iso_map = {iso.url: iso}
         iso_sync_run.progress_report.isos_state = STATE_RUNNING
 
         iso_sync_run.download_succeeded(report)
@@ -209,31 +211,31 @@ class TestISOSyncRun(PulpRPMTests):
         self.assertEqual(download_failed.call_count, 0)
 
     @patch('pulp_rpm.plugins.importers.iso_importer.sync.ISOSyncRun.download_failed')
-    def test_download_succeeded_honors_validate_downloads_set_true(self, download_failed):
+    def test_download_succeeded_honors_validate_units_set_true(self, download_failed):
         """
         We have a setting that makes download validation optional. This test ensures that download_succeeded()
         honors that setting.
         """
-        # In this config, we will set validate_downloads to False, which should make our "wrong_checksum" OK
+        # In this config, we will set validate_units to False, which should make our "wrong_checksum" OK
         config = importer_mocks.get_basic_config(feed_url='http://fake.com/iso_feed/',
-                                                 validate_downloads=True)
+                                                 validate_units=True)
 
         iso_sync_run = ISOSyncRun(self.sync_conduit, config)
 
         destination = os.path.join(self.temp_dir, 'test.txt')
         with open(destination, 'w') as test_file:
             test_file.write('Boring test data.')
-        unit = 'fake_unit'
-        iso = {'name': 'test.txt', 'size': 114, 'destination': destination,
-               'checksum': 'wrong checksum',
-               'unit': unit, 'url': 'http://fake.com'}
-        report = DownloadReport(iso['url'], destination)
+        unit = MagicMock()
+        unit.storage_path = destination
+        iso = models.ISO('test.txt', 114, 'wrong checksum', unit)
+        iso.url = 'http://fake.com'
+        report = DownloadReport(iso.url, destination)
 
         # Let's fake having downloaded the whole file
-        iso['bytes_downloaded'] = iso['size']
-        report.bytes_downloaded = iso['size']
+        iso.bytes_downloaded = iso.size
+        report.bytes_downloaded = iso.size
         # We need to put this on the url_iso_map so that the iso can be retrieved for validation
-        iso_sync_run._url_iso_map = {iso['url']: iso}
+        iso_sync_run._url_iso_map = {iso.url: iso}
         iso_sync_run.progress_report.isos_state = STATE_RUNNING
 
         iso_sync_run.download_succeeded(report)
@@ -255,17 +257,17 @@ class TestISOSyncRun(PulpRPMTests):
         destination = os.path.join(self.temp_dir, 'test.txt')
         with open(destination, 'w') as test_file:
             test_file.write('Boring test data.')
-        unit = 'fake_unit'
-        iso = {'name': 'test.txt', 'size': 114, 'destination': destination,
-               'checksum': 'wrong checksum',
-               'unit': unit, 'url': 'http://fake.com'}
-        report = DownloadReport(iso['url'], destination)
+        unit = MagicMock()
+        unit.storage_path = destination
+        iso = models.ISO('test.txt', 114, 'wrong checksum', unit)
+        iso.url = 'http://fake.com'
+        report = DownloadReport(iso.url, destination)
 
         # Let's fake having downloaded the whole file
-        iso['bytes_downloaded'] = iso['size']
-        report.bytes_downloaded = iso['size']
+        iso.bytes_downloaded = iso.size
+        report.bytes_downloaded = iso.size
         # We need to put this on the url_iso_map so that the iso can be retrieved for validation
-        self.iso_sync_run._url_iso_map = {iso['url']: iso}
+        self.iso_sync_run._url_iso_map = {iso.url: iso}
         self.iso_sync_run.progress_report.isos_state = STATE_RUNNING
 
         self.iso_sync_run.download_succeeded(report)
@@ -424,16 +426,16 @@ class TestISOSyncRun(PulpRPMTests):
         # We need to mark the iso_downloader as being in the ISO downloading state
         self.iso_sync_run.progress_report.isos_state = STATE_RUNNING
         # Let's put three ISOs in the manifest
-        manifest = [
-            {'name': 'test.iso', 'size': 16, 'expected_test_data': 'This is a file.\n',
-             'checksum': 'f02d5a72cd2d57fa802840a76b44c6c6920a8b8e6b90b20e26c03876275069e0',
-             'url': 'https://fake.com/test.iso', 'destination': os.path.join(self.pkg_dir, 'test.iso')},
-            {'name': 'test2.iso', 'size': 22, 'expected_test_data': 'This is another file.\n',
-             'checksum': 'c7fbc0e821c0871805a99584c6a384533909f68a6bbe9a2a687d28d9f3b10c16',
-             'url': 'https://fake.com/test2.iso', 'destination': os.path.join(self.pkg_dir, 'test2.iso')},
-            {'name': 'test3.iso', 'size': 34, 'expected_test_data': 'Are you starting to get the idea?\n',
-             'checksum': '94f7fe923212286855dea858edac1b4a292301045af0ddb275544e5251a50b3c',
-             'url': 'https://fake.com/test3.iso', 'destination': os.path.join(self.pkg_dir, 'test3.iso')},]
+        manifest = StringIO()
+        manifest.write('test.iso,f02d5a72cd2d57fa802840a76b44c6c6920a8b8e6b90b20e26c03876275069e0,16\n')
+        manifest.write('test2.iso,c7fbc0e821c0871805a99584c6a384533909f68a6bbe9a2a687d28d9f3b10c16,22\n')
+        manifest.write('test3.iso,94f7fe923212286855dea858edac1b4a292301045af0ddb275544e5251a50b3c,34')
+        manifest.seek(0)
+        manifest = models.ISOManifest(manifest, 'https://fake.com/')
+        # Add expected test data to each ISO
+        manifest._isos[0].expected_test_data = 'This is a file.\n'
+        manifest._isos[1].expected_test_data = 'This is another file.\n'
+        manifest._isos[2].expected_test_data = 'Are you starting to get the idea?\n'
 
         self.iso_sync_run._download_isos(manifest)
 
@@ -443,28 +445,28 @@ class TestISOSyncRun(PulpRPMTests):
         self.assertEqual(self.sync_conduit.save_unit.call_count, 3)
 
         for index, iso in enumerate(manifest):
-            expected_relative_path = os.path.join(iso['name'], iso['checksum'],
-                                                  str(iso['size']), iso['name'])
+            expected_relative_path = os.path.join(iso.name, iso.checksum,
+                                                  str(iso.size), iso.name)
             self.sync_conduit.init_unit.assert_any_call(
                 TYPE_ID_ISO,
-                {'name': iso['name'], 'size': iso['size'], 'checksum': iso['checksum']},
+                {'name': iso.name, 'size': iso.size, 'checksum': iso.checksum},
                 {}, expected_relative_path)
             unit = self.sync_conduit.save_unit.call_args_list[index][0][0]
-            self.assertEqual(unit.unit_key['name'], iso['name'])
-            self.assertEqual(unit.unit_key['checksum'], iso['checksum'])
-            self.assertEqual(unit.unit_key['size'], iso['size'])
+            self.assertEqual(unit.unit_key['name'], iso.name)
+            self.assertEqual(unit.unit_key['checksum'], iso.checksum)
+            self.assertEqual(unit.unit_key['size'], iso.size)
 
             # The file should have been stored at the final destination
             expected_destination = os.path.join(self.pkg_dir, expected_relative_path)
             with open(expected_destination) as written_file:
-                self.assertEqual(written_file.read(), iso['expected_test_data'])
+                self.assertEqual(written_file.read(), iso.expected_test_data)
 
     @patch('pulp.common.download.downloaders.curl.pycurl.Curl', side_effect=importer_mocks.ISOCurl)
     @patch('pulp.common.download.downloaders.curl.pycurl.CurlMulti', side_effect=importer_mocks.CurlMulti)
     def test__download_manifest(self, curl_multi, curl):
         manifest = self.iso_sync_run._download_manifest()
 
-        expected_manifest = [
+        expected_manifest_isos = [
             {'url': 'http://fake.com/iso_feed/test.iso', 'name': 'test.iso', 'size': 16,
              'checksum': 'f02d5a72cd2d57fa802840a76b44c6c6920a8b8e6b90b20e26c03876275069e0'},
             {'url': 'http://fake.com/iso_feed/test2.iso', 'name': 'test2.iso', 'size': 22,
@@ -472,7 +474,11 @@ class TestISOSyncRun(PulpRPMTests):
             {'url': 'http://fake.com/iso_feed/test3.iso', 'name': 'test3.iso', 'size': 34,
              'checksum': '94f7fe923212286855dea858edac1b4a292301045af0ddb275544e5251a50b3c'}]
 
-        self.assertEqual(manifest, expected_manifest)
+        for index, iso in enumerate(manifest):
+            self.assertEqual(iso.name, expected_manifest_isos[index]['name'])
+            self.assertEqual(iso.url, expected_manifest_isos[index]['url'])
+            self.assertEqual(iso.size, expected_manifest_isos[index]['size'])
+            self.assertEqual(iso.checksum, expected_manifest_isos[index]['checksum'])
 
     @patch('pulp.common.download.downloaders.curl.pycurl.Curl', side_effect=importer_mocks.ISOCurl)
     @patch('pulp.common.download.downloaders.curl.pycurl.CurlMulti', side_effect=importer_mocks.CurlMulti)
@@ -515,60 +521,17 @@ class TestISOSyncRun(PulpRPMTests):
         doesn't suggest removing any ISOs.
         """
         # Let's put all three mammajammas in the manifest
-        manifest = [
-            {'name': iso.unit_key['name'], 'size': iso.unit_key['size'],
-             'checksum': iso.unit_key['checksum']} \
+        manifest = ['%s,%s,%s'%(iso.unit_key['name'], iso.unit_key['checksum'], iso.unit_key['size']) \
                     for iso in self.existing_units if iso.unit_key['name'] != 'test4.iso']
+        manifest = '\n'.join(manifest)
+        manifest = StringIO(manifest)
+        manifest = models.ISOManifest(manifest, 'http://test.com')
 
         local_missing_isos, remote_missing_isos = self.iso_sync_run._filter_missing_isos(manifest)
 
         # Only the third item from the manifest should be missing locally
-        self.assertEqual(local_missing_isos, [iso for iso in manifest if iso['name'] == 'test3.iso'])
+        self.assertEqual(local_missing_isos, [iso for iso in manifest if iso.name == 'test3.iso'])
         # The remote repo doesn't have test4.iso, and so this method should tell us
         self.assertEqual(len(remote_missing_isos), 1)
         remote_missing_iso = remote_missing_isos[0]
         self.assertEqual(remote_missing_iso.unit_key, {'name': 'test4.iso', 'size': 4, 'checksum': 'sum4'})
-
-    def test__validate_download_with_regular_file(self):
-        destination = os.path.join(self.temp_dir, 'test.txt')
-        with open(destination, 'w') as test_file:
-            test_file.write("I heard there was this band called 1023MB, they haven't got any gigs yet.")
-        iso = {'name': 'test.txt', 'size': 73, 'destination': destination,
-               'checksum': '36891c265290bf4610b488a8eb884d32a29fd17bb9886d899e75f4cf29d3f464'}
-
-        # This should validate, i.e., should not raise any Exception
-        self.iso_sync_run._validate_download(iso)
-
-    def test__validate_download_wrong_checksum(self):
-        destination = os.path.join(self.temp_dir, 'test.txt')
-        with open(destination, 'w') as test_file:
-            test_file.write('Two chemists walk into a bar, the first one says "I\'ll have some H2O." to '
-                            'which the other adds "I\'ll have some H2O, too." The second chemist died.')
-        iso = {'name': 'test.txt', 'size': 146, 'destination': destination,
-               'checksum': 'terrible_pun'}
-
-        # This should raise a ValueError with an appropriate error message
-        try:
-            self.iso_sync_run._validate_download(iso)
-            self.fail('A ValueError should have been raised, but it was not.')
-        except ValueError, e:
-            self.assertEqual(
-                str(e), 'Downloading <test.txt> failed checksum validation. The manifest specified the '
-                        'checksum to be terrible_pun, but it was '
-                        'dfec884065223f24c3ef333d4c7dcc0eb785a683cfada51ce071410b32a905e8.')
-
-    def test__validate_download_wrong_size(self):
-        destination = os.path.join(self.temp_dir, 'test.txt')
-        with open(destination, 'w') as test_file:
-            test_file.write("Hey girl, what's your sine? It must be math.pi/2 because you're the 1.")
-        iso = {'name': 'test.txt', 'size': math.pi, 'destination': destination,
-               'checksum': '2b046422425d6f01a920278c55d8842a8989bacaea05b29d1d2082fae91c6041'}
-
-        # This should raise a ValueError with an appropriate error message
-        try:
-            self.iso_sync_run._validate_download(iso)
-            self.fail('A ValueError should have been raised, but it was not.')
-        except ValueError, e:
-            self.assertEqual(
-                str(e), 'Downloading <test.txt> failed validation. The manifest specified that the '
-                        'file should be 3.14159265359 bytes, but the downloaded file is 70 bytes.')
