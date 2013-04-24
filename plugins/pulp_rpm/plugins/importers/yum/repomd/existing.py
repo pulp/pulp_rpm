@@ -40,19 +40,24 @@ def check_repo(wanted, sync_conduit):
     for unit_type, values in sorted_units.iteritems():
         model = models.TYPE_MAP[unit_type]
         fields = model.UNIT_KEY_NAMES
-        # make sure the mongo query size doesn't get out of control
-        for segment in _paginate(values.copy(), STEP):
-            unit_filters = {'$or': [unit._asdict() for unit in segment]}
-            criteria = UnitAssociationCriteria([unit_type], unit_filters=unit_filters,
-                                               unit_fields=fields, association_fields=[])
-            results = sync_conduit.get_units(criteria)
-            for unit in results:
-                named_tuple = model(metadata=unit.metadata, **unit.unit_key).as_named_tuple
-                values.discard(named_tuple)
+
+        unit_keys_generator = (unit._asdict() for unit in values.copy())
+        for unit in get_existing_units(unit_keys_generator, fields, unit_type, sync_conduit.get_units):
+            named_tuple = model(metadata=unit.metadata, **unit.unit_key).as_named_tuple
+            values.discard(named_tuple)
 
     ret = set()
     ret.update(*sorted_units.values())
     return ret
+
+
+def get_existing_units(search_dicts, unit_fields, unit_type, search_method):
+    for segment in _paginate(search_dicts, STEP):
+        unit_filters = {'$or': list(segment)}
+        criteria = UnitAssociationCriteria([unit_type], unit_filters=unit_filters,
+                                           unit_fields=unit_fields, association_fields=[])
+        for result in search_method(criteria):
+            yield result
 
 
 def _sort_by_type(wanted):

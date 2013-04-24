@@ -43,7 +43,6 @@ class RepoSync(object):
         self.set_progress = functools.partial(self.sync_conduit.set_progress, self.progress_status)
         self.set_progress()
         self.config = config
-        self.current_units = sync_conduit.get_units()
         self.repo = repo
 
     def run(self):
@@ -124,7 +123,7 @@ class RepoSync(object):
             package_info_generator = packages.package_list_generator(primary_file_handle,
                                                                      primary.PACKAGE_TAG,
                                                                      primary.process_package_element)
-            wanted = self._identify_wanted_versions(package_info_generator, self.current_units)
+            wanted = self._identify_wanted_versions(package_info_generator)
             to_download = existing.check_repo(wanted.iterkeys(), self.sync_conduit)
             count = len(to_download)
             size = 0
@@ -139,7 +138,7 @@ class RepoSync(object):
                 package_info_generator = packages.package_list_generator(presto_file_handle,
                                                                          presto.PACKAGE_TAG,
                                                                          presto.process_package_element)
-                wanted = self._identify_wanted_versions(package_info_generator, self.current_units)
+                wanted = self._identify_wanted_versions(package_info_generator)
                 to_download = existing.check_repo(wanted.iterkeys(), self.sync_conduit)
                 count = len(to_download)
                 size = 0
@@ -147,7 +146,6 @@ class RepoSync(object):
                     size += wanted[unit]
         else:
             to_download = set()
-            to_associate = set()
             count = 0
             size = 0
         return to_download, count, size
@@ -184,7 +182,11 @@ class RepoSync(object):
         if not errata_file_handle:
             _LOGGER.debug('updateinfo not found')
             return
-        return self.get_general(errata_file_handle, updateinfo.PACKAGE_TAG, updateinfo.process_package_element)
+        package_keys = []
+        for model in self.get_general(errata_file_handle, updateinfo.PACKAGE_TAG, updateinfo.process_package_element):
+            package_keys.extend(model.package_unit_keys)
+
+        # TODO: get packages from package_keys
 
     def get_groups(self, metadata_files):
         group_file_handle = metadata_files.get_group_file_handle()
@@ -192,7 +194,11 @@ class RepoSync(object):
         # TODO: log something?
             return
         process_func = functools.partial(group.process_group_element, self.repo.id)
-        return self.get_general(group_file_handle, group.GROUP_TAG, process_func)
+
+        names = set()
+        for model in self.get_general(group_file_handle, group.GROUP_TAG, process_func):
+            names.update(model.all_package_names)
+        # TODO: get named RPMS
 
     def get_categories(self, metadata_files):
         group_file_handle = metadata_files.get_group_file_handle()
@@ -200,8 +206,11 @@ class RepoSync(object):
         # TODO: log something?
             return
 
+        group_names = set()
         process_func = functools.partial(group.process_category_element, self.repo.id)
-        return self.get_general(group_file_handle, group.CATEGORY_TAG, process_func)
+        for model in self.get_general(group_file_handle, group.CATEGORY_TAG, process_func):
+            group_names.update(model.group_names)
+        # TODO: get groups
 
     def get_general(self, file_handle, tag, process_func):
         with file_handle:
@@ -221,8 +230,9 @@ class RepoSync(object):
                 if model.as_named_tuple in to_download:
                     unit = self.sync_conduit.init_unit(model.TYPE, model.unit_key, model.metadata, None)
                     self.sync_conduit.save_unit(unit)
+                    yield model
 
-    def _identify_wanted_versions(self, package_info_generator, current_units):
+    def _identify_wanted_versions(self, package_info_generator):
         """
         Given an iterator of Package instances available for download, and a list
         of units currently in the repo, scan through the Packages to decide which
@@ -230,7 +240,6 @@ class RepoSync(object):
         this will not consume much memory.
 
         :param package_info_generator:
-        :param current_units:
         :return:
         :rtype:     dict
         """

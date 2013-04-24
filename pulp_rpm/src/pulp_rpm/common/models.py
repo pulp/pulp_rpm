@@ -10,10 +10,11 @@
 # NON-INFRINGEMENT, or FITNESS FOR A PARTICULAR PURPOSE. You should
 # have received a copy of GPLv2 along with this software; if not, see
 # http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt.
-from collections import namedtuple
 
-import os.path
+from collections import namedtuple
 import logging
+import os.path
+
 from pulp_rpm.common import constants, version_utils
 
 _LOGGER = logging.getLogger(__name__)
@@ -22,21 +23,11 @@ _LOGGER = logging.getLogger(__name__)
 class Package(object):
     UNIT_KEY_NAMES = tuple()
     TYPE = None
+    NAMEDTUPLE = None
     def __init__(self, local_vars):
         for name in self.UNIT_KEY_NAMES:
             setattr(self, name, local_vars[name])
         self.metadata = local_vars.get('metadata', {})
-
-    @property
-    def NAMEDTUPLE(self):
-        """
-
-        :return:
-        :rtype collections.namedtuple
-        """
-        if getattr(self, '__NAMEDTUPLE', None) is None:
-            self.__NAMEDTUPLE = namedtuple(self.TYPE, self.UNIT_KEY_NAMES)
-        return self.__NAMEDTUPLE
 
     @property
     def unit_key(self):
@@ -193,6 +184,19 @@ class Errata(Package):
     def __init__(self, id, metadata):
         Package.__init__(self, locals())
 
+    @property
+    def package_unit_keys(self):
+        ret = []
+        for collection in self.metadata.get('pkglist', []):
+            for package in collection.get('packages', []):
+                rpm = RPM(name=package['name'], epoch=package['epoch'],
+                           version=package['version'], release=package['release'],
+                           arch=package['arch'], checksum=package['sum'][1],
+                           checksumtype=package['sum'][0], metadata={},
+                )
+                ret.append(rpm.unit_key)
+        return ret
+
 
 class PackageGroup(Package):
     UNIT_KEY_NAMES = ('id', 'repo_id')
@@ -201,6 +205,18 @@ class PackageGroup(Package):
     def __init__(self, id, repo_id, metadata):
         Package.__init__(self, locals())
 
+    @property
+    def all_package_names(self):
+        names = []
+        for list_name in [
+            'mandatory_package_names',
+            'default_package_names',
+            'optional_package_names',
+            # TODO: conditional package names
+        ]:
+            names.extend(self.metadata.get(list_name, []))
+        return names
+
 
 class PackageCategory(Package):
     UNIT_KEY_NAMES = ('id', 'repo_id')
@@ -208,6 +224,10 @@ class PackageCategory(Package):
 
     def __init__(self, id, repo_id, metadata):
         Package.__init__(self, locals())
+
+    @property
+    def group_names(self):
+        return self.metadata.get('packagegroupids', [])
 
 
 TYPE_MAP = {
@@ -218,6 +238,10 @@ TYPE_MAP = {
     PackageGroup.TYPE: PackageGroup,
     RPM.TYPE: RPM,
 }
+
+# put the NAMEDTUPLE attribute on each model class
+for model_class in TYPE_MAP.values():
+    model_class.NAMEDTUPLE = namedtuple(model_class.TYPE, model_class.UNIT_KEY_NAMES)
 
 
 def from_typed_unit_key_tuple(typed_tuple):

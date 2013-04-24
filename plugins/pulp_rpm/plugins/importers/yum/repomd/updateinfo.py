@@ -66,21 +66,18 @@ def _parse_collection(element):
 
 
 def _parse_package(element):
+    # looking at yum.update_md.UpdateNotice to see what attributes we can expect
     sum_element = element.find('sum')
     ret = {
         'arch': element.attrib['arch'],
         'name': element.attrib['name'],
+        'epoch': element.attrib['epoch'],
         'version': element.attrib['version'],
         'release': element.attrib['release'],
         'src': element.attrib['src'],
         'filename': element.find('filename').text,
+        'sum': (sum_element.attrib['type'], sum_element.text),
     }
-    for attr_name in ('epoch',):
-        if attr_name in element.attrib:
-            ret[attr_name] = element.attrib[attr_name]
-
-    if sum_element:
-        ret['sum'] = (sum_element.attrib['type'], sum_element.text),
 
     reboot_suggested = element.find('reboot_suggested')
     if reboot_suggested:
