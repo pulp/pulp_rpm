@@ -176,8 +176,7 @@ class ISOSyncRun(listener.DownloadEventListener):
         Makes the calls to retrieve the ISOs from the manifest, storing them on disk and recording them in the
         Pulp database.
 
-        :param manifest: The manifest containing a list of ISOs we want to download. It is a list of
-                         dictionaries with at least the following keys: name, checksum, size, and url.
+        :param manifest: The manifest containing a list of ISOs we want to download.
         :type  manifest: list
         """
         self.progress_report.isos_total_bytes = 0
@@ -199,12 +198,10 @@ class ISOSyncRun(listener.DownloadEventListener):
 
     def _download_manifest(self):
         """
-        Download the manifest file, and process it to return a list of the available Units. The available
-        units will be a list of dictionaries that describe the available ISOs, with these keys: name,
-        checksum, size, and url.
+        Download the manifest file, and process it to return an ISOManifest.
 
-        :return:     list of available ISOs
-        :rtype:      list
+        :return: manifest of available ISOs
+        :rtype:  pulp_rpm.common.models.ISOManifest
         """
         manifest_url = urljoin(self._repo_url, constants.ISO_MANIFEST_FILENAME)
         # I probably should have called this manifest destination, but I couldn't help myself
@@ -225,19 +222,17 @@ class ISOSyncRun(listener.DownloadEventListener):
         Use the sync_conduit and the manifest to determine which ISOs are at the feed_url
         that are not in our local store, as well as which ISOs are in our local store that are not available
         at the feed_url. Return a 2-tuple with this information. The first element of the tuple will be a
-        subset of the given manifest that represents the missing ISOs. The second element will be a list of
-        units that represent the ISOs we have in our local store that weren't found at the feed_url. The
-        manifest is a list of dictionaries that must contain at a minimum the following keys: name, checksum,
-        size.
+        list of ISO objects that represent the missing ISOs. The second element will be a list of
+        Units that represent the ISOs we have in our local store that weren't found at the feed_url.
 
-        :param manifest:     A list of dictionaries that describe the ISOs that are available at the
-                             feed_url that we are synchronizing with
-        :type  manifest:     list
-        :return:             A 2-tuple. The first element of the tuple is a list of ISOs that we should retrieve
-                             from the feed_url. The second element of the tuple is a list of units that
-                             represent the ISOs that we have in our local repo that were not found in the remote
-                             repo.
-        :rtype:              tuple
+        :param manifest: An ISOManifest describing the ISOs that are available at the
+                         feed_url that we are synchronizing with
+        :type  manifest: pulp_rpm.common.models.ISOManifest
+        :return:         A 2-tuple. The first element of the tuple is a list of ISOs that we should retrieve
+                         from the feed_url. The second element of the tuple is a list of Units that
+                         represent the ISOs that we have in our local repo that were not found in the remote
+                         repo.
+        :rtype:          tuple
         """
         def _unit_key_str(iso):
             """
