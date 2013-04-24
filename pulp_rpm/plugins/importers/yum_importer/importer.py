@@ -507,7 +507,9 @@ class YumImporter(Importer):
     def sync_repo(self, repo, sync_conduit, config):
         try:
             status, summary, details = self._sync_repo(repo, sync_conduit, config)
-            if status:
+            if self.canceled:
+                report = sync_conduit.build_cancel_report(summary, details)
+            elif status:
                 report = sync_conduit.build_success_report(summary, details)
             else:
                 report = sync_conduit.build_failure_report(summary, details)
