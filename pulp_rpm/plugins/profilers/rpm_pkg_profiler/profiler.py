@@ -124,7 +124,7 @@ class RPMPkgProfiler(Profiler):
 
     def find_applicable(self, unit_id, consumer_profile_and_repo_ids, conduit):
         """
-        Find whether a package with given unit_key in repo_ids is applicable
+        Find whether a package with given unit_id in repo_ids is applicable
         to the consumer.
 
         :param unit_id: A content unit id
