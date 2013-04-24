@@ -17,12 +17,17 @@ import os
 import rpm
 import sys
 
+from pulp.client.commands.options import OPTION_REPO_ID
 from pulp.client.commands.repo.upload import UploadCommand, MetadataException
+from pulp.client.extensions.extensions import PulpCliFlag
 from pulp_rpm.common.ids import TYPE_ID_RPM
 
 
 NAME = 'rpm'
 DESC = _('uploads one or more RPMs into a repository')
+
+DESC_SKIP_EXISTING = _('if specified, RPMs that already exist on the server will not be uploaded')
+FLAG_SKIP_EXISTING = PulpCliFlag('--skip-existing', DESC_SKIP_EXISTING)
 
 RPMTAG_NOSOURCE = 1051
 
@@ -35,17 +40,52 @@ class CreateRpmCommand(UploadCommand):
     def __init__(self, context, upload_manager, name=NAME, description=DESC):
         super(CreateRpmCommand, self).__init__(context, upload_manager, name=name, description=description)
 
+        self.add_flag(FLAG_SKIP_EXISTING)
+
     def determine_type_id(self, filename, **kwargs):
         return TYPE_ID_RPM
 
-    def matching_files_in_dir(self, dir):
-        all_files_in_dir = super(CreateRpmCommand, self).matching_files_in_dir(dir)
+    def matching_files_in_dir(self, directory):
+        all_files_in_dir = super(CreateRpmCommand, self).matching_files_in_dir(directory)
         rpms = [f for f in all_files_in_dir if f.endswith('.rpm')]
         return rpms
 
     def generate_unit_key_and_metadata(self, filename, **kwargs):
         unit_key, metadata = _generate_rpm_data(filename)
         return unit_key, metadata
+
+    def create_upload_list(self, file_bundles, **kwargs):
+
+        # Only check if the user requests it
+        if not kwargs.get(FLAG_SKIP_EXISTING.keyword, False):
+            return file_bundles
+
+        self.prompt.write(_('Checking for existing RPMs on the server...'))
+
+        repo_id = kwargs[OPTION_REPO_ID.keyword]
+
+        bundles_to_upload = []
+        for bundle in file_bundles:
+            filters = {
+                'name' : bundle.unit_key['name'],
+                'version' : bundle.unit_key['version'],
+                'release' : bundle.unit_key['release'],
+                'epoch' : bundle.unit_key['epoch'],
+                'arch' : bundle.unit_key['arch'],
+            }
+            criteria = {
+                'type_ids' : [TYPE_ID_RPM],
+                'filters' : filters,
+            }
+
+            existing = self.context.server.repo_unit.search(repo_id, **criteria).response_body
+            if len(existing) == 0:
+                bundles_to_upload.append(bundle)
+
+        self.prompt.write(_('... completed'))
+        self.prompt.render_spacer()
+
+        return bundles_to_upload
 
 
 def _generate_rpm_data(rpm_filename):
