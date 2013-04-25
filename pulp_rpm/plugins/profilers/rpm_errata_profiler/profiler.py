@@ -73,7 +73,7 @@ class RPMErrataProfiler(Profiler):
     # -- applicability ---------------------------------------------------------
 
 
-    def find_applicable_units(self, consumer_profile_and_repo_ids, unit_type_id, unit_keys, config, conduit):
+    def find_applicable_units(self, consumer_profile_and_repo_ids, unit_type_id, unit_ids, config, conduit):
         """
         Determine whether the content units are applicable to
         the specified consumers.  The definition of "applicable" is content
@@ -104,8 +104,8 @@ class RPMErrataProfiler(Profiler):
         :param unit_type_id: Common type id of all given unit keys
         :type unit_type_id: str
 
-        :param unit_keys: list of unit keys to identify units 
-        :type unit_keys: list of dict
+        :param unit_ids: list of unit ids to identify units 
+        :type unit_ids: list of str
 
         :param config: plugin configuration
         :type config: pulp.server.plugins.config.PluginCallConfiguration
@@ -119,7 +119,7 @@ class RPMErrataProfiler(Profiler):
         if unit_type_id != TYPE_ID_ERRATA:
             error_msg = _("find_applicable_units invoked with type_id [%s], expected [%s]") % (unit_type_id, TYPE_ID_ERRATA)
             _LOG.error(error_msg)
-            raise InvalidUnitsRequested(unit_keys, error_msg)
+            raise InvalidUnitsRequested(unit_ids, error_msg)
 
         # Set default report style
         report_style = constants.APPLICABILITY_REPORT_STYLE_BY_UNITS
@@ -135,8 +135,8 @@ class RPMErrataProfiler(Profiler):
             return reports
         
         # Collect applicability reports for each unit
-        for unit_key in unit_keys:
-            applicable_consumers, errata_details = self.find_applicable(unit_key, consumer_profile_and_repo_ids, conduit)
+        for unit_id in unit_ids:
+            applicable_consumers, errata_details = self.find_applicable(unit_id, consumer_profile_and_repo_ids, conduit)
             if applicable_consumers:
                 details = errata_details
                 summary = {'unit_key' : details["id"]}
@@ -232,13 +232,13 @@ class RPMErrataProfiler(Profiler):
             return ret_val, upgrade_details
 
 
-    def find_applicable(self, unit_key, consumer_profile_and_repo_ids, conduit):
+    def find_applicable(self, unit_id, consumer_profile_and_repo_ids, conduit):
         """
-        Find whether an errata with given unit_key is applicable
+        Find whether an errata with given unit_id is applicable
         to given consumers.
 
-        :param unit_key: A content unit key
-        :type unit_key: dict
+        :param unit_id: A content unit id
+        :type unit_id: str
 
         :param consumer_profile_and_repo_ids: A dictionary with consumer profile and repo ids
                         to be considered for applicability, keyed by consumer id.
@@ -255,10 +255,10 @@ class RPMErrataProfiler(Profiler):
         errata_details = None
 
         for consumer_id, consumer_details in consumer_profile_and_repo_ids.items():
-            errata = self.find_unit_associated_to_repos(TYPE_ID_ERRATA, unit_key, consumer_details['repo_ids'], conduit)
+            errata = self.find_unit_associated_to_repos(TYPE_ID_ERRATA, unit_id, consumer_details['repo_ids'], conduit)
             if not errata:
-                error_msg = _("Unable to find errata with unit_key [%s] in bound repos [%s] to consumer [%s]") % \
-                    (unit_key, consumer_details['repo_ids'], consumer_id)
+                error_msg = _("Unable to find errata with unit_id [%s] in bound repos [%s] to consumer [%s]") % \
+                    (unit_id, consumer_details['repo_ids'], consumer_id)
                 _LOG.debug(error_msg)
             else:
                 updated_rpms = self.get_rpms_from_errata(errata)
@@ -273,8 +273,8 @@ class RPMErrataProfiler(Profiler):
         return applicable_consumers, errata_details
 
 
-    def find_unit_associated_to_repos(self, unit_type, unit_key, repo_ids, conduit):
-        criteria = UnitAssociationCriteria(type_ids=[unit_type], unit_filters=unit_key)
+    def find_unit_associated_to_repos(self, unit_type, unit_id, repo_ids, conduit):
+        criteria = UnitAssociationCriteria(type_ids=[unit_type], association_filters={'unit_id':unit_id})
         return self.find_unit_associated_to_repos_by_criteria(criteria, repo_ids, conduit)
 
     def find_unit_associated_to_repos_by_criteria(self, criteria, repo_ids, conduit):
