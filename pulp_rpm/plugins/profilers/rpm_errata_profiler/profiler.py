@@ -255,7 +255,8 @@ class RPMErrataProfiler(Profiler):
         errata_details = None
 
         for consumer_id, consumer_details in consumer_profile_and_repo_ids.items():
-            errata = self.find_unit_associated_to_repos(TYPE_ID_ERRATA, unit_id, consumer_details['repo_ids'], conduit)
+            criteria = UnitAssociationCriteria(type_ids=[TYPE_ID_ERRATA], association_filters={'unit_id':unit_id})
+            errata = self.find_unit_associated_to_repos_by_criteria(criteria, repo_ids, conduit)
             if not errata:
                 error_msg = _("Unable to find errata with unit_id [%s] in bound repos [%s] to consumer [%s]") % \
                     (unit_id, consumer_details['repo_ids'], consumer_id)
@@ -272,9 +273,8 @@ class RPMErrataProfiler(Profiler):
 
         return applicable_consumers, errata_details
 
-
-    def find_unit_associated_to_repos(self, unit_type, unit_id, repo_ids, conduit):
-        criteria = UnitAssociationCriteria(type_ids=[unit_type], association_filters={'unit_id':unit_id})
+    def find_unit_associated_to_repos(self, unit_type, unit_key, repo_ids, conduit):
+        criteria = UnitAssociationCriteria(type_ids=[unit_type], unit_filters=unit_key)
         return self.find_unit_associated_to_repos_by_criteria(criteria, repo_ids, conduit)
 
     def find_unit_associated_to_repos_by_criteria(self, criteria, repo_ids, conduit):
