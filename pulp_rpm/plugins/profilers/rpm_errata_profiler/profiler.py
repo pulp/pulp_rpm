@@ -206,10 +206,11 @@ class RPMErrataProfiler(Profiler):
 
         :rtype ([{'unit_key':{'name':name.arch}, 'type_id':'rpm'}], {'name arch':{'available':{}, 'installed':{}}   })
         """
-        errata = self.find_unit_associated_to_repos(TYPE_ID_ERRATA, unit, repo_ids, conduit)
+        unit_key = unit['unit_key']
+        errata = self.find_unit_associated_to_repos(TYPE_ID_ERRATA, unit_key, repo_ids, conduit)
         if not errata:
             error_msg = _("Unable to find errata with unit_key [%s] in bound repos [%s] to consumer [%s]") % \
-                    (unit, repo_ids, consumer.id)
+                    (unit_key, repo_ids, consumer.id)
             _LOG.info(error_msg)
             return None, None
         else:
