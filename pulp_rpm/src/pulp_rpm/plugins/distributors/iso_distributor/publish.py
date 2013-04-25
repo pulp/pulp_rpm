@@ -147,7 +147,7 @@ def _protect_repository(relative_path, repo, config):
     """
     Configure this repository to be protected by registering it with the repo protection application. Repository
     protection will only be performed if if the CONFIG_SSL_AUTH_CA_CERT option is set to a certificate.
-    Otherwise, this method removed repository protection..
+    Otherwise, this method removes repository protection.
     """
     authorization_ca_cert = config.get(constants.CONFIG_SSL_AUTH_CA_CERT)
 
