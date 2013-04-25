@@ -15,30 +15,29 @@
 import glob
 import mock
 import os
-import pycurl
+import random
 import shutil
 import sys
 import tempfile
-import time
-import unittest
-import itertools
-import random
 
-from grinder.BaseFetch import BaseFetch
+from pulp.plugins.config import PluginCallConfiguration
+from pulp.plugins.model import Repository, Unit
 
 sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)) + "/../../../src/")
 sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)) + "/../../../plugins/importers/")
-import importer_mocks
-import constants
+
 from yum_importer import importer_rpm
 from yum_importer.importer import YumImporter
-from pulp_rpm.common.ids import TYPE_ID_RPM, UNIT_KEY_RPM, TYPE_ID_IMPORTER_YUM, TYPE_ID_ERRATA, TYPE_ID_DISTRO, TYPE_ID_PKG_CATEGORY, TYPE_ID_PKG_GROUP
+from pulp_rpm.common import constants
+from pulp_rpm.common.ids import (TYPE_ID_RPM, UNIT_KEY_RPM, TYPE_ID_IMPORTER_YUM, TYPE_ID_ERRATA,
+                                 TYPE_ID_DISTRO, TYPE_ID_PKG_CATEGORY, TYPE_ID_PKG_GROUP)
 from pulp_rpm.yum_plugin import util
+from rpm_support_base import PULP_UNITTEST_REPO_URL, PulpRPMTests
+import constants_test
+import importer_mocks
 
-from pulp.plugins.model import Repository, Unit
-import rpm_support_base
 
-class TestImportUnits(rpm_support_base.PulpRPMTests):
+class TestImportUnits(PulpRPMTests):
 
     def setUp(self):
         super(TestImportUnits, self).setUp()
@@ -71,8 +70,7 @@ class TestImportUnits(rpm_support_base.PulpRPMTests):
         source_repo.id = "repo_a"
         source_repo.working_dir = os.path.join(self.working_dir, source_repo.id)
         importer = YumImporter()
-        feed_url = "file://%s/pulp_unittest/" % (self.data_dir)
-        config = importer_mocks.get_basic_config(feed_url=feed_url)
+        config = importer_mocks.get_basic_config(feed_url=PULP_UNITTEST_REPO_URL)
         sync_conduit = importer_mocks.get_sync_conduit(existing_units=[], pkg_dir=self.pkg_dir)
         status, summary, details = importer._sync_repo(source_repo, sync_conduit, config)
         self.assertTrue(status)
@@ -295,13 +293,13 @@ class TestImportUnits(rpm_support_base.PulpRPMTests):
                       "checksum" : "8dc89e9883c098443f6616e60a8e489254bf239eeade6e4b4943b7c8c0c345a4",
                       "filename" : "fileB.txt",
                       "pkgpath" : "%s/ks-TestFamily-TestVariant-16-x86_64/images" % self.pkg_dir, 	"size" : 0 },
-                { 	"checksumtype" : "sha256", 	"relativepath" : "images/fileC.iso", 	"fileName" : "fileC.iso",
+                {"checksumtype" : "sha256", "relativepath" : "images/fileC.iso", "fileName" : "fileC.iso",
                       "downloadurl" : "http://repos.fedorapeople.org/repos/pulp/pulp/demo_repos/pulp_unittest//images/fileC.iso",
                       "item_type" : "tree_file",
                       "savepath" : "%s/testr1/images" % self.data_dir,
                       "checksum" : "099f2bafd533e97dcfee778bc24138c40f114323785ac1987a0db66e07086f74",
                       "filename" : "fileC.iso",
-                      "pkgpath" : "%s/ks-TestFamily-TestVariant-16-x86_64/images" % self.pkg_dir, 	"size" : 0 } ],}
+                      "pkgpath" : "%s/ks-TestFamily-TestVariant-16-x86_64/images" % self.pkg_dir, "size" : 0 } ],}
         distro_unit = [Unit(TYPE_ID_DISTRO, dunit_key, metadata, '')]
         distro_unit[0].storage_path = "%s/ks-TestFamily-TestVariant-16-x86_64" % self.pkg_dir
         existing_units += distro_unit
@@ -319,7 +317,6 @@ class TestImportUnits(rpm_support_base.PulpRPMTests):
         # Test
         result = importer.import_units(repoA, repoB, conduit, config, distro_unit)
         # Verify
-        print conduit.associate_unit.call_args_list
         associated_units = [mock_call[0][0] for mock_call in conduit.associate_unit.call_args_list]
         self.assertEqual(len(associated_units), len(distro_unit))
         for u in associated_units:
@@ -389,6 +386,45 @@ class TestImportUnits(rpm_support_base.PulpRPMTests):
         associated_units = [mock_call[0][0] for mock_call in conduit.associate_unit.call_args_list]
         for u in associated_units:
             self.assertTrue(u in [cat_a, grp_a])
+
+    def test__import_pkg_group_unit_munges_repo_id(self):
+        """
+        In a fix for https://bugzilla.redhat.com/show_bug.cgi?id=920322, we want to make
+        sure the package group import process changes the repo_id on any units being
+        imported.
+        """
+        # Create a source repository
+        source_repo = mock.Mock(spec=Repository)
+        source_repo.working_dir = self.data_dir
+        source_repo.id = 'source_repo'
+        # Create a destination repository
+        dest_repo = mock.Mock(spec=Repository)
+        dest_repo.working_dir = self.working_dir
+        dest_repo.id = 'dest_repo'
+        # Create a package group
+        pkg_group_unit = self.create_dummy_pkg_group_unit(source_repo.id,
+                                                          "package_group")
+        # Now make a config mock, an import_conduit mock, and an importer
+        config = importer_mocks.get_basic_config()
+        import_conduit = importer_mocks.get_import_conduit(source_units=[],
+            existing_units=[pkg_group_unit])
+        importer = YumImporter()
+
+        importer._import_pkg_group_unit(source_repo, dest_repo, pkg_group_unit,
+                               import_conduit, config)
+
+        # Let's inspect the calls made to the import_conduit.save() unit. There should
+        # be a call with a copied pkg_group_unit that has the repo_id changed to
+        # dest_repo. save_unit() should have been called once with a copy of our package
+        # group.
+        self.assertEqual(import_conduit.save_unit.call_count, 1)
+        package_group_copy = import_conduit.save_unit.mock_calls[0][1][0]
+        self.assertEqual(package_group_copy.unit_key['repo_id'], dest_repo.id)
+        self.assertEqual(package_group_copy.unit_key['id'],
+                         pkg_group_unit.unit_key['id'])
+        # Make sure the copy is actually a different object by asserting that it has a
+        # different id
+        self.assertNotEqual(id(package_group_copy), id(pkg_group_unit))
 
     def test_package_group_unit_import(self):
         # REPO A (source)
@@ -512,8 +548,43 @@ class TestImportUnits(rpm_support_base.PulpRPMTests):
         for u in verify_old_version_skipped:
             self.assertFalse(u in associated_units)
 
+    def test_import_errata_unit_rpms_no_children(self):
+        importer = YumImporter()
+        config = PluginCallConfiguration({}, {}, {constants.CONFIG_COPY_CHILDREN: False})
+        mock_unit = mock.MagicMock()
 
-class TestImportDependencies(rpm_support_base.PulpRPMTests):
+        importer._import_errata_unit_rpms(mock.MagicMock(), mock_unit, mock.MagicMock(),
+                                          config)
+        # if this attribute doesn't exist, then the method quit before doing any
+        # work, which is what we want
+        self.assertTrue('metadata' not in dir(mock_unit))
+
+    @mock.patch.object(YumImporter, '_safe_copy_unit', new=lambda self, x: x)
+    def test_import_pkg_category_unit_no_children(self):
+        importer = YumImporter()
+        config = PluginCallConfiguration({}, {}, {constants.CONFIG_COPY_CHILDREN: False})
+        mock_unit = mock.MagicMock()
+
+        importer._import_pkg_category_unit(mock.MagicMock(), mock.MagicMock(),
+                                           mock_unit, mock.MagicMock(), config)
+        # if this attribute doesn't exist, then the method quit before doing any
+        # work, which is what we want
+        self.assertTrue('metadata' not in dir(mock_unit))
+
+    @mock.patch.object(YumImporter, '_safe_copy_unit', new=lambda self, x: x)
+    def test_import_pkg_group_unit_no_children(self):
+        importer = YumImporter()
+        config = PluginCallConfiguration({}, {}, {constants.CONFIG_COPY_CHILDREN: False})
+        mock_unit = mock.MagicMock()
+
+        importer._import_pkg_group_unit(mock.MagicMock(), mock.MagicMock(),
+                                           mock_unit, mock.MagicMock(), config)
+        # if this attribute doesn't exist, then the method quit before doing any
+        # work, which is what we want
+        self.assertTrue('metadata' not in dir(mock_unit))
+
+
+class TestImportDependencies(PulpRPMTests):
 
     UNIT_KEY_A = {
         'id' : '',
@@ -570,11 +641,11 @@ class TestImportDependencies(rpm_support_base.PulpRPMTests):
 #            units.append(unit)
 
         unit = Unit(TYPE_ID_RPM, self.UNIT_KEY_A, {}, '')
-        unit.metadata = constants.PULP_SERVER_RPM_METADATA
+        unit.metadata = constants_test.PULP_SERVER_RPM_METADATA
         units.append(unit)
 
         unit = Unit(TYPE_ID_RPM, self.UNIT_KEY_B, {}, '')
-        unit.metadata = constants.PULP_RPM_SERVER_RPM_METADATA
+        unit.metadata = constants_test.PULP_RPM_SERVER_RPM_METADATA
         units.append(unit)
         return units
 

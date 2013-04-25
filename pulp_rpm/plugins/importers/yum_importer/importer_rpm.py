@@ -12,8 +12,10 @@
 # http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt.
 import gzip
 import os
+import threading
 import time
 import itertools
+import Queue
 
 from grinder.BaseFetch import BaseFetch
 from grinder.GrinderCallback import ProgressReport
@@ -22,6 +24,8 @@ from pulp.server.db.model.criteria import UnitAssociationCriteria
 from pulp_rpm.yum_plugin import util, metadata
 from yum_importer import distribution, drpm
 import pulp_rpm.common.constants as constants
+from pulp_rpm.common import version_utils
+from pulp_rpm.common.ids import TYPE_ID_DRPM, TYPE_ID_DISTRO
 
 _LOG = util.getLogger(__name__)
 
@@ -147,8 +151,12 @@ def form_rpm_unit_key(rpm):
 
 def form_rpm_metadata(rpm):
     metadata = {}
-    for key in ("filename", "vendor", "description", "buildhost", "license", "vendor", "requires", "provides", "relativepath", "changelog", "filelist", "files", "repodata"):
+    for key in ("filename", "relativepath"):
         metadata[key] = rpm[key]
+
+    metadata['version_sort_index'] = version_utils.encode(rpm['version'])
+    metadata['release_sort_index'] = version_utils.encode(rpm['release'])
+
     return metadata
 
 def form_lookup_key(rpm):
@@ -174,40 +182,6 @@ def form_report(report):
     ret_val["size_total"] = report.last_progress.size_total
     ret_val["size_left"] = report.last_progress.size_left
     return ret_val
-
-def verify_download(missing_rpms, new_rpms, new_units, verify_options={}):
-    """
-    Will verify that intended items have been downloaded.
-    Items not downloaded will be removed from passed in dicts
-
-    @param missing_rpms dict of rpms determined to be missing from repo prior to sync
-    @type missing_rpms {}
-
-    @param new_rpms dict of rpms determined to be new to repo prior to sync
-    @type new_rpms {}
-
-    @param new_units
-    @type new_units {key:pulp.server.content.plugins.model.Unit}
-
-    @return dict of rpms which have not been downloaded
-    @rtype {}
-    """
-    not_synced = {}
-    for key in new_rpms.keys():
-        rpm = new_rpms[key]
-        rpm_path = os.path.join(rpm["pkgpath"], rpm["filename"])
-        if not util.verify_exists(rpm_path, rpm['checksum'], rpm['checksumtype'], rpm['size'], verify_options):
-            not_synced[key] = rpm
-            del new_rpms[key]
-    for key in missing_rpms.keys():
-        rpm = missing_rpms[key]
-        rpm_path = os.path.join(rpm["pkgpath"], rpm["filename"])
-        if not util.verify_exists(rpm_path, rpm['checksum'], rpm['checksumtype'], rpm['size'], verify_options):
-            not_synced[key] = rpm
-            del missing_rpms[key]
-    for key in not_synced:
-        del new_units[key]
-    return not_synced
 
 def force_ascii(value):
     retval = value
@@ -265,7 +239,6 @@ def get_yumRepoGrinder(repo_id, repo_working_dir, config):
         remove_old=remove_old, numOldPackages=num_old_packages, skip=skip, max_speed=max_speed,\
         purge_orphaned=purge_orphaned, distro_location=constants.DISTRIBUTION_STORAGE_PATH, tmp_path=repo_working_dir)
     return yumRepoGrinder
-
 
 def _search_for_error(rpm_dict):
     errors = {}
@@ -372,10 +345,229 @@ def preserve_custom_metadata_on_scratchpad(repo, sync_conduit, config):
         existing_scratch_pad["repodata"].update({ftype : data})
     sync_conduit.set_repo_scratchpad(existing_scratch_pad)
 
+
+class SaveUnitThread(threading.Thread):
+    """
+    Will handle looking up yum repo metadata on RPMs and save the unit to the sync_conduit.
+    Does the work in parallel with downloading to increase performance.
+    Saves units of: rpm, srpm, drpm
+    Note:
+        distribution units will pass through this from the Grinder callbacks yet will not be saved.
+        a separate method in ImporterRPM will process distribution saves.
+    """
+    def __init__(self, sync_conduit):
+        threading.Thread.__init__(self)
+        self.sync_conduit = sync_conduit
+        self._stop = threading.Event()
+        self.queue_cond = threading.Condition()
+        self.download_q = Queue.Queue()
+        self.yum_pkg_details = None
+        self.error_units = []
+        self.saved_unit_keys = []
+        self.unit_lookup = {}
+        self.running = False
+        self.repo_label = ""
+
+    def init(self, repo_dir, repo_label, unit_lookup):
+        self.repo_dir = repo_dir
+        self.repo_label = repo_label
+        self.unit_lookup = {}
+        for key, u in unit_lookup.items():   
+            # Build lookup table based on 'relativepath'
+            #  store the 'key' and 'unit' we will require 'key' later to note errors
+            if u.metadata.has_key("relativepath"):
+                entry = {"key": key, "unit": u}
+                self.unit_lookup[u.metadata["relativepath"]] = entry
+            elif u.type_id not in (TYPE_ID_DISTRO):
+                _LOG.warning("Unable to find 'relativepath' for %s" % (u))
+
+    def __init_yum_package_details(self):
+        # This _must_ be init'd in the same thread that will perform the lookups.
+        self.yum_pkg_details = metadata.YumPackageDetails(self.repo_dir, self.repo_label)
+        if not self.yum_pkg_details.init():
+            _LOG.error("<%s> Unable to lookup yum package metadata attributes, failed to initialize YumPackageDetails" % (self.repo_label))
+            self.yum_pkg_details.close()
+            self.yum_pkg_details = None
+
+    def finish(self):
+        counter = 0
+        # We will poll a boolean to see when the run method has finished.
+        # Requirements/Assumptions:
+        #  1) finish() is only called _after_ the producer has finished producing events.
+        #       for grinder this means finish() is called after grinder has returned from processing all items.
+        #       grinder will only return after all items have been downloaded and all progress updates have been sent
+        #       there will be no more items being produced and sent to the Queue.
+        #  2) The consumer thread, run() may have finished processing all items on Queue prior to us being called
+        #       the consumer thread would be waiting on the Condition Variable at this point and will require a 'notify()'
+        #       to wake up. 
+        #  3) The consumer thread will always process all items on the Queue before waiting on the Condition Variable.
+        #       after processing all items, when Queue is empty it will then wait on the Condition Variable
+        #  4) The consumer & producer will always aqcuire the lock on the Condition Variable before using the Queue
+        #  5) If the consumer is woken up and the Queue is empty we assume no more items will be sent and we exit.
+        #  
+        while self.running:
+            self.queue_cond.acquire()
+            try:
+                self.queue_cond.notify()
+            finally:
+                self.queue_cond.release()
+            if counter % 150 == 0:
+                _LOG.info("<%s>Waiting for SaveThread to finish: roughly %s items on queue" % (self.repo_label, self.download_q.qsize()))
+            time.sleep(.01)
+            counter += 1
+        _LOG.info("<%s> SaveThread has finished" % (self.repo_label))
+
+    def get_errors(self):
+        return self.error_units
+
+    def get_saved(self):
+        return self.saved_unit_keys
+
+    def stop(self):
+        self._stop.set()
+
+    def run(self):
+        self.running = True
+        try:
+            self.__run()
+        finally:
+            self.running = False
+            _LOG.info("<%s> SaveThread: Stopped" % (self.repo_label))
+
+    def __run(self):
+        _LOG.info("<%s> SaveThread starting" % (self.repo_label))
+        # Note:
+        #  All of the interactions with self.yum_package_details must be from the same thread.
+        #  This is a sqlite requirement.  The below error is related:
+        #   "SQLite objects created in a thread can only be used in that same thread."
+        #
+        self.__init_yum_package_details()
+        while not self._stop.isSet():
+            try:
+                item = self.get_item()
+            except Queue.Empty:
+                # Note this will only happen if we intend to stop this thread 
+                # and 'finish()' signals the condition variable
+                _LOG.info("<%s> SaveThread: Queue empty will exit" % (self.repo_label))
+                break
+            self.process_item(item)
+        if self.yum_pkg_details:
+            self.yum_pkg_details.close()
+            del self.yum_pkg_details
+
+    def process_item(self, item):
+        """
+        @param item dictionary as defined by the 'put_item' method
+        @type {}
+        """
+        a = time.time()
+        relativepath = item["relativepath"]
+        item_type = item["type"]
+        entry = self.lookup_item(relativepath)
+        if not entry:
+            if item_type not in [BaseFetch.TREE_FILE]:
+                _LOG.info("<%s> SaveThread didn't find an entry for '%s' in the lookup table for new units." % (self.repo_label, relativepath))
+                _LOG.info("Will assume this item was a 'missing' item being re-fetched, therefore has already been saved in mongo.")
+            return 
+        key = entry["key"]
+        unit = entry["unit"]
+        if not item["success"]:
+            _LOG.warn("<%s> Error noted downloading: %s with relativepath: %s" % (self.repo_label, key, relativepath))
+            self.error_units.append(unit)
+            return # don't save this unit, continue processing
+        b = time.time()
+        if item_type in [BaseFetch.RPM]: #Covers rpm & srpm
+            unit = self.expand_metadata(relativepath, unit)
+        c = time.time()
+        if self.save_unit(unit):
+            self.saved_unit_keys.append(key)
+        else:
+            self.error_units.append(unit)
+        d = time.time()
+        _LOG.debug("<%s> SaveThread<%s on queue>: %s(s) in process_item, %s(s) in expand_metadata, %s(s) seconds in save_unit, saved(%s)" \
+            % (self.repo_label, self.download_q.qsize(), d-a, c-b, d-c, unit.unit_key))
+
+    def put_item(self, item):
+        """
+        @param item consists of keys: ["name", "type", "relativepath", "success"]
+                name = item's filename
+                type = rpm, drpm, distribution, etc
+                relativepath = 
+                success = true on successful download, false on error
+        @type item {}
+        """
+        self.queue_cond.acquire()
+        try:
+            self.download_q.put_nowait(item)
+            self.queue_cond.notify()
+        finally:
+            self.queue_cond.release()
+
+    def get_item(self):
+        item = None
+        self.queue_cond.acquire()
+        try:
+            if self.download_q.empty():
+                self.queue_cond.wait()
+            item = self.download_q.get_nowait()
+        finally:
+            self.queue_cond.release()
+        return item
+
+    def lookup_item(self, relativepath):
+        """
+        Not all items we are notified about will be saved.
+        Example:    YumImporter does not re-save a "missing" item.
+                    A missing item, would be a RPM that was downloaded/saved prior
+                    yet for some reason it now no longer exists.  
+                    Grinder will re-download the item, yet YumImporter will not re-save.
+                    This leave us open to a potential problem.  
+                      What if an item does not change, but the metadata for it does change?
+                      YumImporter would not account for this sort of difference.
+        @param relativepath used as a key to find the corresponding unit instance
+        @type str  
+        @return unit
+        @rtype L{pulp.server.content.plugins.model.Unit}
+        """
+        if self.unit_lookup.has_key(relativepath):
+            return self.unit_lookup[relativepath]
+        return None
+
+    def expand_metadata(self, relativepath, u):
+        """
+        @param relativepath of unit, used as lookup to match yum package metadata
+        @type relativepath str
+        @return an expanded unit that has yum package metadata filled out, if unit was a RPM
+        @rtype L{pulp.server.content.plugins.model.Unit}
+        """
+        if u.type_id in [RPM_TYPE_ID, SRPM_TYPE_ID] and self.yum_pkg_details:
+            u.metadata.update(self.yum_pkg_details.get_details(relativepath))
+        return u
+
+    def save_unit(self, u):
+        """
+        @param u a unit to be saved
+        @type u L{pulp.server.content.plugins.model.Unit}
+        """
+        try:
+            self.sync_conduit.save_unit(u)
+            if u.type_id in [RPM_TYPE_ID, SRPM_TYPE_ID] and self.yum_pkg_details:
+                # Remove "repodata" and "changelog" from each unit to save on memory
+                if u.metadata.has_key("repodata"):
+                    del u.metadata["repodata"]
+                if u.metadata.has_key("changelog"):
+                    del u.metadata["changelog"]
+            return True
+        except Exception, e:
+            _LOG.exception("<%s> Unable to save unit: %s" % (self.repo_label, u))
+            return False
+
+
 class ImporterRPM(object):
     def __init__(self):
         self.canceled = False
         self.yumRepoGrinder = None
+        self.save_thread = None
 
     def sync(self, repo, sync_conduit, config, importer_progress_callback=None):
         """
@@ -396,6 +588,7 @@ class ImporterRPM(object):
           @return a tuple of state, dict of sync summary and dict of sync details
           @rtype (bool, {}, {})
         """
+        self.save_thread = SaveUnitThread(sync_conduit) # save_thread needs to be accessible inside progress_callback()
 
         def set_progress(type_id, status):
             if importer_progress_callback:
@@ -413,6 +606,8 @@ class ImporterRPM(object):
             @type report: grinder.GrinderCallback.ProgressReport
             """
             status = {}
+            #_LOG.info("progress_callback: <%s>" % (report))
+
             if ProgressReport.DownloadItems in report.step:
                 status = {}
                 if report.status == "FINISHED":
@@ -449,7 +644,15 @@ class ImporterRPM(object):
                         status["details"][key]["size_total"] = 0
                         status["details"][key]["items_left"] = 0
                         status["details"][key]["items_total"] = 0
-
+                # When grinder completes downloading an item it will set item_complete to True
+                if hasattr(report, "item_complete") and report.item_complete:
+                    # An item has completed downloading, this would not show up for an incremental progress download
+                    saved_item = {
+                        "name": report.item_name, 
+                        "type": report.item_type, 
+                        "relativepath": report.item_relativepath, 
+                        "success": report.item_download_success}
+                    self.save_thread.put_item(saved_item)
                 set_progress("content", status)
 
         ####
@@ -509,6 +712,11 @@ class ImporterRPM(object):
 
         #----------- start the item download via grinder ---------------
         start_download = time.time()
+        # save_thread needs init() to be called after the yum metadata has been downloaded with yumRepoGrinder.setUp()
+        #   further it needs to build a look up table of the initialized units with 'new_units'
+        #   expecting yum package metadata to be at repo.working_dir/repo.id
+        self.save_thread.init(repo.working_dir, repo.id, new_units)
+        self.save_thread.start()
         report = self.yumRepoGrinder.download()
         if self.canceled:
             _LOG.info("Sync of %s has been canceled." % repo.id)
@@ -520,24 +728,65 @@ class ImporterRPM(object):
         # preserve the custom metadata on scratchpad to lookup downloaded data
         preserve_custom_metadata_on_scratchpad(repo, sync_conduit, config)
 
-        # -------------- process the download results to a report ---------------
-        errors = {}
-        not_synced = {}
-        removal_errors = []
-        summary = {}
-        if 'rpm' not in skip_content_types:
-            rpms_with_errors = search_for_errors(rpm_info['new_rpms'], rpm_info['missing_rpms'])
-            errors.update(rpms_with_errors)
-            # Verify we synced what we expected, update the passed in dicts to remove non-downloaded items
-            not_synced = verify_download(rpm_info['missing_rpms'], rpm_info['new_rpms'], new_units, verify_options)
-            # Save the new units and remove the orphaned units
-            saved_new_unit_keys = []
-            for key in new_units:
-                if key not in rpms_with_errors:
-                    u = new_units[key]
-                    sync_conduit.save_unit(u)
-                    saved_new_unit_keys.append(key)
+        self.save_thread.finish()  # Wait for all packages to be saved
+        not_synced = self.save_thread.get_errors()
+        saved_units = self.save_thread.get_saved()
+        _LOG.info("SaveThread saved %s units, and reported %s as not_synced" % (len(saved_units), len(not_synced)))
+     
+        self.process_distributions(sync_conduit, distro_info["new_distro_units"])
 
+        # -------------- removed orphaned items ---------------
+        removal_errors = self.process_orphan_items(repo, sync_conduit, skip_content_types, rpm_info, drpm_info, distro_info)
+
+        # -------------- process the download results to a report ---------------
+        summary = self.build_summary(skip_content_types, not_synced, removal_errors, 
+            rpm_info, drpm_info, distro_info, 
+            all_new_distro_files, all_missing_distro_files)
+        end = time.time()
+        summary["time_total_sec"] = end - start
+        details = {}
+        details["size_total"] = report.last_progress.size_total
+        details["time_metadata_sec"] = end_metadata - start_metadata
+        details["time_download_sec"] = end_download - start_download
+        details["not_synced"] = [x.unit_key for x in not_synced]
+        details["sync_report"] = form_report(report)
+
+        status = True
+        if removal_errors or details["sync_report"]["errors"]:
+            status = False
+        _LOG.info("STATUS: %s; SUMMARY: %s; DETAILS: %s" % (status, summary, details))
+        return status, summary, details
+
+    def process_distributions(self, sync_conduit, new_distro_units):
+        # Distributions need to be saved a little different
+        #  A DistributionUnit represents a collection.  A collection of distribution files
+        #  As we are downloading each file we receive a callback when they succeed...yet we have nothing to update in the database at that point in time.
+        #  Our model is at the level of the entire Distribution, not at individual files making up that collection.
+        #
+        #  This means that the SaveThread will not be updating anything or Distributions.  The individual files will still be transfered by Grinder
+        #  and written to the file system...the update of the DB is the missing piece we need to address here.
+        #
+        errors = {}
+        for key, unit in new_distro_units.items():
+            valid = True # If all the files are present we assume Distribution is good and we save it.
+            for ksfile in unit.metadata["files"]:
+                ks_file_path = os.path.join(unit.storage_path, ksfile["relativepath"])
+                if not os.path.exists(ks_file_path):
+                    _LOG.info("Unable to save Distribution<%s> because one of it's distribution files: '%s' is missing" % (unit, ks_file_path))
+                    valid = False
+                    break
+            if valid:
+                sync_conduit.save_unit(unit)
+            else:
+                errors[key] = unit
+        return errors
+ 
+    def process_orphan_items(self, repo, sync_conduit, skip_content_types, rpm_info, drpm_info, distro_info):
+        errors = {}
+        not_synced = []
+        removal_errors = []
+        # RPMS
+        if 'rpm' not in skip_content_types:
             for u in rpm_info['orphaned_rpm_units'].values():
                 try:
                     remove_unit(sync_conduit, u)
@@ -545,51 +794,10 @@ class ImporterRPM(object):
                     unit_info = str(u.unit_key)
                     _LOG.exception("Unable to remove: %s" % (unit_info))
                     removal_errors.append((unit_info, str(e)))
-            # filter out rpm specific data if any
-            new_rpms = filter(lambda u: u.type_id == 'rpm', rpm_info['new_rpm_units'].values())
-            missing_rpms = filter(lambda u: u.type_id == 'rpm', rpm_info['missing_rpm_units'].values())
-            orphaned_rpms = filter(lambda u: u.type_id == 'rpm', rpm_info['orphaned_rpm_units'].values())
-            not_synced_rpms = filter(lambda r: r["arch"] != 'srpm', not_synced.values())
-
-            summary["num_rpms"] = len(rpm_info['available_rpms'])
-            summary["num_synced_new_rpms"] = len(new_rpms)
-            summary["num_resynced_rpms"] = len(missing_rpms)
-            summary["num_not_synced_rpms"] = len(not_synced_rpms)
-            summary["num_orphaned_rpms"] = len(orphaned_rpms)
-            summary["rpm_removal_errors"] = removal_errors
-
-            # filter out srpm specific data if any
-            new_srpms = filter(lambda u: u.type_id == 'srpm', rpm_info['new_rpm_units'].values())
-            missing_srpms = filter(lambda u: u.type_id == 'srpm', rpm_info['missing_rpm_units'].values())
-            orphaned_srpms = filter(lambda u: u.type_id == 'srpm', rpm_info['orphaned_rpm_units'].values())
-            not_synced_srpms = filter(lambda r: r["arch"] == 'srpm', not_synced.values())
-
-            summary["num_synced_new_srpms"] = len(new_srpms)
-            summary["num_resynced_srpms"] = len(missing_srpms)
-            summary["num_not_synced_srpms"] = len(not_synced_srpms)
-            summary["num_orphaned_srpms"] = len(orphaned_srpms)
-        else:
-            _LOG.info("skipping rpm summary report")
-
-        if not_synced:
-            _LOG.warning("%s rpms were not downloaded" % (len(not_synced)))
-
+        # DRPMS
         if 'drpm' not in skip_content_types:
-            drpms_with_errors = search_for_errors(drpm_info['new_drpms'], drpm_info['missing_drpms'])
-            errors.update(drpms_with_errors)
-            # purge any orphaned drpms
             drpm.purge_orphaned_drpm_units(sync_conduit, repo, drpm_info['orphaned_drpm_units'].values())
-            # filter out drpm specific data if any
-            new_drpms = filter(lambda u: u.type_id == 'drpm', drpm_info['new_drpm_units'].values())
-            missing_drpms = filter(lambda u: u.type_id == 'drpm', drpm_info['missing_drpm_units'].values())
-            orphaned_drpms = filter(lambda u: u.type_id == 'drpm', drpm_info['orphaned_drpm_units'].values())
-
-            summary["num_synced_new_drpms"] = len(new_drpms)
-            summary["num_resynced_drpms"] = len(missing_drpms)
-            summary["num_orphaned_drpms"] = len(orphaned_drpms)
-        else:
-            _LOG.info("skipping drpm summary report")
-
+        # Distributions
         if 'distribution' not in skip_content_types:
             for u in distro_info['orphaned_distro_units'].values():
                 try:
@@ -598,30 +806,56 @@ class ImporterRPM(object):
                     unit_info = str(u.unit_key)
                     _LOG.exception("Unable to remove: %s" % (unit_info))
                     removal_errors.append((unit_info, str(e)))
-            orphaned_distros = filter(lambda u: u.type_id == 'distribution', distro_info['orphaned_distro_units'].values())
-            # filter out distribution specific data if any
+        return removal_errors    
+    
+    def build_summary(self, skip_content_types, not_synced, removal_errors, 
+            rpm_info, drpm_info, distro_info, 
+            all_new_distro_files, all_missing_distro_files):        
+        # We are removing the older approach of using filter to create a new list and then checking the length
+        # Instead we will use reduce and compute the length without requiring extra memory for an additional new list
+        _LOG.info("not_synced = %s" % (not_synced))
+        if not_synced:
+            _LOG.warning("%s items were not downloaded" % (len(not_synced)))
+        summary = {}
+        summary["removal_errors"] = removal_errors
+
+        if 'rpm' not in skip_content_types:            
+            def check_rpm(accum, u):
+                if u.type_id == 'rpm':
+                    return accum+1
+                return accum
+            summary["num_rpms"] = len(rpm_info['available_rpms'])
+            summary["num_synced_new_rpms"] =  reduce(check_rpm, rpm_info['new_rpm_units'].values(), 0)
+            summary["num_resynced_rpms"] = reduce(check_rpm, rpm_info['missing_rpm_units'].values(), 0)
+            summary["num_not_synced_rpms"] = reduce(check_rpm, not_synced, 0)
+            summary["num_orphaned_rpms"] = reduce(check_rpm, rpm_info['orphaned_rpm_units'].values(), 0)
+
+            def check_srpm(accum, u):
+                if u.type_id == 'srpm':
+                    return accum+1
+                return accum
+            summary["num_synced_new_srpms"] = reduce(check_srpm, rpm_info['new_rpm_units'].values(), 0)
+            summary["num_resynced_srpms"] = reduce(check_srpm, rpm_info['missing_rpm_units'].values(), 0)
+            summary["num_not_synced_srpms"] = reduce(check_srpm, not_synced, 0)
+            summary["num_orphaned_srpms"] = reduce(check_srpm, rpm_info['orphaned_rpm_units'].values(), 0)
+  
+        if 'drpm' not in skip_content_types:
+            def check_drpm(accum, u):
+                if u.type_id == 'drpm':
+                    return accum+1
+                return accum
+            summary["num_synced_new_drpms"] = len(drpm_info['new_drpm_units']) 
+            summary["num_resynced_drpms"] = len(drpm_info['missing_drpm_units'])
+            summary["num_orphaned_drpms"] = len(drpm_info['orphaned_drpm_units'])
+            summary["num_not_synced_drpms"] = reduce(check_drpm, not_synced, 0)
+
+        if 'distribution' not in skip_content_types:
             summary["num_synced_new_distributions"] = len(distro_info['new_distro_units'])
             summary["num_synced_new_distributions_files"] = len(all_new_distro_files)
             summary["num_resynced_distributions"] = len(distro_info['missing_distro_units'])
             summary["num_resynced_distribution_files"] = len(all_missing_distro_files)
-            summary["num_orphaned_distributions"] = len(orphaned_distros)
-        else:
-            _LOG.info("skipping distro summary report")
-        end = time.time()
-        summary["time_total_sec"] = end - start
-
-        details = {}
-        details["size_total"] = report.last_progress.size_total
-        details["time_metadata_sec"] = end_metadata - start_metadata
-        details["time_download_sec"] = end_download - start_download
-        details["not_synced"] = not_synced
-        details["sync_report"] = form_report(report)
-
-        status = True
-        if removal_errors or details["sync_report"]["errors"]:
-            status = False
-        _LOG.info("STATUS: %s; SUMMARY: %s; DETAILS: %s" % (status, summary, details))
-        return status, summary, details
+            summary["num_orphaned_distributions"] = len(distro_info['orphaned_distro_units'])
+        return summary
 
     def _setup_rpms(self, repo, sync_conduit, verify_options, skip_content_types):
         rpm_info = {'available_rpms' : {}, 'existing_rpm_units' : {}, 'orphaned_rpm_units' : {}, 'new_rpms' : {}, 'new_rpm_units' : {},'missing_rpms' : {}, 'missing_rpm_units' : {}}
@@ -705,4 +939,6 @@ class ImporterRPM(object):
         if self.yumRepoGrinder:
             _LOG.info("Telling grinder to stop syncing")
             self.yumRepoGrinder.stop()
+        if self.save_thread:
+            self.save_thread.finish()
 

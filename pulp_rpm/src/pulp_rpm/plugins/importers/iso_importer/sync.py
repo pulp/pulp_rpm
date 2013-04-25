@@ -22,8 +22,9 @@ from pulp_rpm.common import constants, ids
 from pulp_rpm.common.constants import STATE_COMPLETE, STATE_RUNNING, STATE_FAILED
 from pulp_rpm.common.progress import SyncProgressReport
 
-from pulp.common.download import factory, listener, request
+from pulp.common.download import listener, request
 from pulp.common.download.config import DownloaderConfig
+from pulp.common.download.downloaders.curl import HTTPSCurlDownloader
 from pulp.common.util import encode_unicode
 from pulp.plugins.conduits.mixins import UnitAssociationCriteria
 
@@ -41,9 +42,15 @@ class ISOSyncRun(listener.DownloadEventListener):
     """
     def __init__(self, sync_conduit, config):
         self.sync_conduit = sync_conduit
-        self._remove_missing_units = config.get(constants.CONFIG_REMOVE_MISSING_UNITS, default=False)
+        self._remove_missing_units = config.get(constants.CONFIG_REMOVE_MISSING_UNITS,
+                                                default=constants.CONFIG_REMOVE_MISSING_UNITS_DEFAULT)
+        self._validate_downloads = config.get(constants.CONFIG_VALIDATE_DOWNLOADS,
+                                              default=constants.CONFIG_VALIDATE_DOWNLOADS_DEFAULT)
         self._repo_url = encode_unicode(config.get(constants.CONFIG_FEED_URL))
-        self._validate_downloads = config.get(constants.CONFIG_VALIDATE_DOWNLOADS, default=True)
+        # The _repo_url must end in a trailing slash, because we will use urljoin to determine the path to
+        # PULP_MANIFEST later
+        if self._repo_url[-1] != '/':
+            self._repo_url = self._repo_url + '/'
 
         # Cast our config parameters to the correct types and use them to build a Downloader
         max_speed = config.get(constants.CONFIG_MAX_SPEED)
@@ -53,20 +60,22 @@ class ISOSyncRun(listener.DownloadEventListener):
         if num_threads is not None:
             num_threads = int(num_threads)
         else:
-            num_threads = constants.DEFAULT_NUM_THREADS
+            num_threads = constants.CONFIG_NUM_THREADS_DEFAULT
         downloader_config = {
-            'max_speed': max_speed, 'num_threads': num_threads,
+            'max_speed': max_speed,
+            'num_threads': num_threads,
             'ssl_client_cert': config.get(constants.CONFIG_SSL_CLIENT_CERT),
             'ssl_client_key': config.get(constants.CONFIG_SSL_CLIENT_KEY),
-            'ssl_ca_cert': config.get(constants.CONFIG_SSL_CA_CERT), 'ssl_verify_host': 1,
-            'ssl_verify_peer': 1, 'proxy_url': config.get(constants.CONFIG_PROXY_URL),
+            'ssl_ca_cert': config.get(constants.CONFIG_SSL_CA_CERT),
+            'ssl_verify_host': 2, 'ssl_verify_peer': 1,
+            'proxy_url': config.get(constants.CONFIG_PROXY_URL),
             'proxy_port': config.get(constants.CONFIG_PROXY_PORT),
-            'proxy_user': config.get(constants.CONFIG_PROXY_USER),
+            'proxy_username': config.get(constants.CONFIG_PROXY_USER),
             'proxy_password': config.get(constants.CONFIG_PROXY_PASSWORD)}
-        downloader_config = DownloaderConfig(protocol='https', **downloader_config)
+        downloader_config = DownloaderConfig(**downloader_config)
 
         # We will pass self as the event_listener, so that we can receive the callbacks in this class
-        self.downloader = factory.get_downloader(downloader_config, self)
+        self.downloader = HTTPSCurlDownloader(downloader_config, self)
         self.progress_report = SyncProgressReport(sync_conduit)
 
     def cancel_sync(self):
@@ -142,7 +151,15 @@ class ISOSyncRun(listener.DownloadEventListener):
         # Get the manifest and download the ISOs that we are missing
         self.progress_report.manifest_state = STATE_RUNNING
         self.progress_report.update_progress()
-        manifest = self._download_manifest()
+        try:
+            manifest = self._download_manifest()
+        except (IOError, ValueError):
+            # The IOError will happen if the file can't be retrieved at all, and the ValueError will happen if
+            # the PULP_MANIFEST file isn't in the expected format. In the future, when we complete the client
+            # and by doing so define the progress report API, we will give more specific error messages here.
+            # Until then, we just set the state to failed.
+            self.progress_report.manifest_state = STATE_FAILED
+            return self.progress_report.build_final_report()
         self.progress_report.manifest_state = STATE_COMPLETE
 
         # Go get them filez

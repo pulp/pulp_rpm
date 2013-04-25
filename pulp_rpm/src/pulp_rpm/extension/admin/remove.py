@@ -13,9 +13,12 @@ from gettext import gettext as _
 
 from pulp.client.commands.unit import UnitRemoveCommand
 
+from pulp_rpm.common.constants import DISPLAY_UNITS_THRESHOLD
 from pulp_rpm.common.ids import (TYPE_ID_RPM, TYPE_ID_SRPM, TYPE_ID_DRPM,
                                  TYPE_ID_ERRATA, TYPE_ID_PKG_GROUP,
                                  TYPE_ID_PKG_CATEGORY, TYPE_ID_DISTRO)
+from pulp_rpm.extension import criteria_utils
+from pulp_rpm.extension.admin import units_display
 
 # -- constants ----------------------------------------------------------------
 
@@ -29,49 +32,69 @@ DESC_DISTRIBUTION = _('remove distributions from a repository')
 
 # -- commands -----------------------------------------------------------------
 
-class RpmRemoveCommand(UnitRemoveCommand):
+class BaseRemoveCommand(UnitRemoveCommand):
+
+    def __init__(self, context, name, description, type_id, unit_threshold=DISPLAY_UNITS_THRESHOLD):
+        UnitRemoveCommand.__init__(self, context, name=name, description=description, type_id=type_id)
+        self.unit_threshold = unit_threshold
+
+    def succeeded(self, task):
+        removed_units = task.result  # entries are a dict containing unit_key and type_id
+        units_display.display_units(self.prompt, removed_units, self.unit_threshold)
+
+
+class PackageRemoveCommand(BaseRemoveCommand):
+    """
+    Used for only RPMs and SRPMs to intercept the criteria and use sort indexes when necessary.
+    """
+    @staticmethod
+    def _parse_key_value(args):
+        return criteria_utils.parse_key_value(args)
+
+    @classmethod
+    def _parse_sort(cls, sort_args):
+        return criteria_utils.parse_sort(BaseRemoveCommand, sort_args)
+
+
+class RpmRemoveCommand(PackageRemoveCommand):
 
     def __init__(self, context):
-        super(RpmRemoveCommand, self).__init__(
-                context, name='rpm', description=DESC_RPM, type_id=TYPE_ID_RPM)
+        super(RpmRemoveCommand, self).__init__(context, 'rpm', DESC_RPM, TYPE_ID_RPM)
 
 
-class SrpmRemoveCommand(UnitRemoveCommand):
-
-    def __init__(self, context):
-        super(SrpmRemoveCommand, self).__init__(
-                context, name='srpm', description=DESC_SRPM, type_id=TYPE_ID_SRPM)
-
-
-class DrpmRemoveCommand(UnitRemoveCommand):
+class SrpmRemoveCommand(PackageRemoveCommand):
 
     def __init__(self, context):
-        super(DrpmRemoveCommand, self).__init__(
-                context, name='drpm', description=DESC_DRPM, type_id=TYPE_ID_DRPM)
+        super(SrpmRemoveCommand, self).__init__(context, 'srpm', DESC_SRPM, TYPE_ID_SRPM)
 
 
-class ErrataRemoveCommand(UnitRemoveCommand):
-
-    def __init__(self, context):
-        super(ErrataRemoveCommand, self).__init__(
-                context, name='errata', description=DESC_ERRATA, type_id=TYPE_ID_ERRATA)
-
-
-class PackageGroupRemoveCommand(UnitRemoveCommand):
+class DrpmRemoveCommand(BaseRemoveCommand):
 
     def __init__(self, context):
-        super(PackageGroupRemoveCommand, self).__init__(
-                context, name='group', description=DESC_GROUP, type_id=TYPE_ID_PKG_GROUP)
+        super(DrpmRemoveCommand, self).__init__(context, 'drpm', DESC_DRPM, TYPE_ID_DRPM)
 
 
-class PackageCategoryRemoveCommand(UnitRemoveCommand):
-
-    def __init__(self, context):
-        super(PackageCategoryRemoveCommand, self).__init__(
-                context, name='category', description=DESC_CATEGORY, type_id=TYPE_ID_PKG_CATEGORY)
-
-class DistributionRemoveCommand(UnitRemoveCommand):
+class ErrataRemoveCommand(BaseRemoveCommand):
 
     def __init__(self, context):
-        super(DistributionRemoveCommand, self).__init__(
-                context, name='distribution', description=DESC_DISTRIBUTION, type_id=TYPE_ID_DISTRO)
+        super(ErrataRemoveCommand, self).__init__(context, 'errata', DESC_ERRATA, TYPE_ID_ERRATA)
+
+
+class PackageGroupRemoveCommand(BaseRemoveCommand):
+
+    def __init__(self, context):
+        super(PackageGroupRemoveCommand, self).__init__(context, 'group', DESC_GROUP, TYPE_ID_PKG_GROUP)
+
+
+class PackageCategoryRemoveCommand(BaseRemoveCommand):
+
+    def __init__(self, context):
+        super(PackageCategoryRemoveCommand, self).__init__(context, 'category', DESC_CATEGORY,
+                                                           TYPE_ID_PKG_CATEGORY)
+
+
+class DistributionRemoveCommand(BaseRemoveCommand):
+
+    def __init__(self, context):
+        super(DistributionRemoveCommand, self).__init__(context, 'distribution', DESC_DISTRIBUTION,
+                                                        TYPE_ID_DISTRO)

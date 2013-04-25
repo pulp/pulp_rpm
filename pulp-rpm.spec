@@ -17,8 +17,8 @@
 # ---- Pulp (rpm) --------------------------------------------------------------
 
 Name: pulp-rpm
-Version: 2.1.0
-Release: 0.19.alpha
+Version: 2.2.0
+Release: 0.2.alpha%{?dist}
 Summary: Support for RPM content in the Pulp platform
 Group: Development/Languages
 License: GPLv2
@@ -61,6 +61,7 @@ popd
 mkdir -p /srv
 mkdir -p %{buildroot}/%{_sysconfdir}/pulp
 mkdir -p %{buildroot}/%{_sysconfdir}/pki/pulp/content
+mkdir -p %{buildroot}/%{_sysconfdir}/yum.repos.d
 mkdir -p %{buildroot}/%{_usr}/lib
 mkdir -p %{buildroot}/%{_usr}/lib/pulp/plugins
 mkdir -p %{buildroot}/%{_usr}/lib/pulp/admin/extensions
@@ -94,6 +95,9 @@ cp -R pulp_rpm/plugins/* %{buildroot}/%{_usr}/lib/pulp/plugins
 
 # Yum (plugins)
 cp -R pulp_rpm/usr/lib/yum-plugins %{buildroot}/%{_usr}/lib
+
+# Ghost
+touch %{buildroot}/%{_sysconfdir}/yum.repos.d/pulp.repo
 
 %clean
 rm -rf %{buildroot}
@@ -133,6 +137,7 @@ A collection of modules shared among all RPM components.
 Summary: The RPM extension common library
 Group: Development/Languages
 Requires: python-pulp-rpm-common = %{pulp_version}
+Requires: rpm-python
 
 %description -n python-pulp-rpm-extension
 A collection of components shared among RPM extensions.
@@ -151,8 +156,8 @@ Group: Development/Languages
 Requires: python-pulp-rpm-common = %{pulp_version}
 Requires: pulp-server = %{pulp_version}
 Requires: createrepo >= 0.9.8-3
-Requires: python-rhsm >= 1.0.4-1
-Requires: grinder >= 0.1.14-1
+Requires: python-rhsm >= 1.8.0
+Requires: grinder >= 0.1.16
 Requires: pyliblzma
 %description plugins
 Provides a collection of platform plugins that extend the Pulp platform
@@ -241,6 +246,7 @@ management and Linux specific commands such as system reboot.
 %{_sysconfdir}/pulp/agent/conf.d/bind.conf
 %{_sysconfdir}/pulp/agent/conf.d/linux.conf
 %{_sysconfdir}/pulp/agent/conf.d/rpm.conf
+%ghost %{_sysconfdir}/yum.repos.d/pulp.repo
 %{_usr}/lib/pulp/agent/handlers/bind.py*
 %{_usr}/lib/pulp/agent/handlers/linux.py*
 %{_usr}/lib/pulp/agent/handlers/rpm.py*
@@ -267,6 +273,46 @@ A collection of yum plugins supplementing Pulp consumer operations.
 
 
 %changelog
+* Fri Apr 19 2013 Jeff Ortel <jortel@redhat.com> 2.2.0-0.2.alpha
+- 953665 - added the ability for copy operations to not also copy child units,
+  such as a group copying its RPMs. Also restricted the fetching of existing
+  units to their unit key fields, which reduced RAM use tremendously. Copying a
+  RHEL6 repo went from using about 4.3GB of RAM to < 100MB.
+  (mhrivnak@redhat.com)
+- 928084 - The ISOImporter now handles malformed PULP_MANIFEST files.
+  (rbarlow@redhat.com)
+
+* Fri Apr 12 2013 Jeff Ortel <jortel@redhat.com> 2.2.0-0.1.alpha
+- 950740 - add support {?dist} in the Release: in .spec files.
+  (jortel@redhat.com)
+- 947927 - When looking for nested elements in a copy, only check the source
+  repository, not all of Pulp. By nested elements I mean RPMs in a package
+  group or groups in a package category. (jason.dobies@redhat.com)
+- 928509 - Added errata v. consumer centric applicability reports
+  (jason.dobies@redhat.com)
+- 949008 - Use a value of 2 for pycurl's SSL_VERIFYHOST setting instead of 1.
+  (rbarlow@redhat.com)
+- 949004 - Append trailing slashes to ISO feed URLs when they lack them.
+  (rbarlow@redhat.com)
+- 873313 - Very high memory usage during repo sync (jwmatthews@gmail.com)
+- 923448 - made the changelog and filelist metadata migration more robust in
+  terms of handling non-utf8 text encoding (mhrivnak@redhat.com)
+- 923351 - updating errata profiler applicability function to add errata
+  details to the applicability report (skarmark@redhat.com)
+- 923794 - The error report coming out of the yum importer can't be serialized
+  to the database (jwmatthews@gmail.com)
+- 923792 - Errata queries during sync don't properly limit returned data
+  (jwmatthews@gmail.com)
+- 920322 - Use import_units() inside of _import_pkg_category_unit() to ensure
+  that we handle package groups correctly. (rbarlow@redhat.com)
+- 919519 - Adjust documentation to reflect new export publishing location.
+  (rbarlow@redhat.com)
+- 919519 - The export distributor now published to /pulp/exports instead of
+  /pulp/isos. (rbarlow@redhat.com)
+- 912836 - Fix disconnect between rpm repo extension and repolib with regard to
+  GPG.keys. (jortel@redhat.com)
+- 917083 - ghost pulp.repo so it's cleaned up on uninstall. (jortel@redhat.com)
+
 * Mon Mar 04 2013 Jeff Ortel <jortel@redhat.com> 2.1.0-0.19.alpha
 - 902514 - removed the <VirtualHost *:80> block in favor of using the
   platform's authoritative one. (mhrivnak@redhat.com)

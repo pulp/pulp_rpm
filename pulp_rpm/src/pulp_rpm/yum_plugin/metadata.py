@@ -17,8 +17,10 @@ import os
 import shlex
 import shutil
 import subprocess
+import sys
 import threading
 import signal
+import tempfile
 import time
 
 import rpmUtils
@@ -353,7 +355,6 @@ def convert_content_to_metadata_type(content_types_list):
             metadata_type_list.append(type)
     return metadata_type_list
 
-
 def get_package_xml(pkg_path):
     """
     Method to generate repo xmls - primary, filelists and other
@@ -395,11 +396,105 @@ def change_location_tag(primary_xml_snippet, relpath):
     start_index = primary_xml_snippet.find("<location ")
     end_index = primary_xml_snippet.find("/>", start_index) + 2 # adjust to end of closing tag
 
-    first_portion = util.encode_string_to_utf8(primary_xml_snippet[:start_index])
-    end_portion = util.encode_string_to_utf8(primary_xml_snippet[end_index:])
-    location = util.encode_string_to_utf8("""<location href="%s"/>""" % (basename))
+    first_portion = util.string_to_unicode(primary_xml_snippet[:start_index])
+    end_portion = util.string_to_unicode(primary_xml_snippet[end_index:])
+    location = util.string_to_unicode("""<location href="%s"/>""" % (basename))
     return first_portion + location + end_portion
 
+class YumPackageDetails(object):
+    """
+    Will open existing yum metadata and extract package information
+    """
+    def __init__(self, repo_dir, repo_label):
+        self.repo_dir = repo_dir
+        self.repo_label = repo_label
+        self.yum_repo = None
+        self.sack = None
+        self.packages = {}
+        self.tmp_dir = None
+        self.thread = None
+
+    def close(self):
+        if self.yum_repo:
+            self.yum_repo.close()
+            del self.yum_repo
+        if self.sack:
+            del self.sack
+        if self.packages:
+            del self.packages
+        if self.tmp_dir:
+            shutil.rmtree(self.tmp_dir)
+
+    def init(self):
+        """
+        @return true on success, false on failure
+        @rtype bool
+        """
+        try:
+            self.__init_temp_dir()
+        except Exception, e:
+            _LOG.exception("Failed to copy repodata from: '%s' to tmp dir" % \
+                (os.path.join(self.repo_dir, self.repo_label)))
+            return False
+        try:
+            self.__init_yum()
+        except Exception, e:
+            _LOG.exception("Failed to initialize YumRepository for %s" % (self.repo_label))
+            return False  
+        self.packages = {}
+        for yp in self.sack.returnPackages():
+            self.packages[yp.relativepath] = yp
+        return True
+
+    def __init_temp_dir(self):
+        #
+        # The newly downloaded yum metadata is under "repodata.new", yet yum wants all the metadata files under
+        # the repo_label dir.  We are working around this by copying the metadata to a temp dir
+        #
+        self.tmp_dir = tempfile.mkdtemp()
+        yum_temp_repodata_dir = os.path.join(self.tmp_dir, self.repo_label)
+        base_repodata_dir = os.path.join(self.repo_dir, self.repo_label)
+        repodata_dir = os.path.join(base_repodata_dir, "repodata.new")
+        if not os.path.exists(repodata_dir):
+            # Fallback to "repodata"
+            repodata_dir = os.path.join(base_repodata_dir, "repodata")
+        shutil.copytree(repodata_dir, yum_temp_repodata_dir)
+
+    def __init_yum(self):
+        self.yum_repo = yum.yumRepo.YumRepository(self.repo_label)
+        self.yum_repo.basecachedir = self.tmp_dir
+        self.yum_repo.base_persistdir = self.tmp_dir
+        self.yum_repo.cache = 0
+        self.yum_repo.metadata_expire = -1
+        self.yum_repo.baseurl = "http://CHANGEME"
+        self.sack = self.yum_repo.getPackageSack()
+        self.sack.populate(self.yum_repo, 'metadata', None, 0)
+
+    def get_details(self, relativepath):
+        """
+        @param relativepath key used to find a specific yum package
+                the relativepath is not the RPM's actual path, but the relativepath from perspective of repo
+        @type relativepath str
+        
+        @return dict containing yum metadata details and xml snippets
+        @rtype {}
+        """ 
+        if not self.packages.has_key(relativepath):
+            _LOG.warn("Unable to find an entry in yum package details with relativepath: '%s'" % (relativepath))
+            return {}
+        pkg = self.packages[relativepath]
+        info = {}
+        keys = ["vendor", "description", "buildhost", "license", 
+                "vendor", "requires", "provides", "changelog", "filelist", "files"]
+        for key in keys:
+            try:
+                info[key] = getattr(pkg, key)
+            except Exception, e:
+                _LOG.exception("Unable to find attribute '%s' on '%s'" % (key, pkg))
+        info["repodata"] = {"primary"  : change_location_tag(pkg.xml_dump_primary_metadata(), pkg.relativepath) ,
+                                "filelists": pkg.xml_dump_filelists_metadata(),
+                                "other" : pkg.xml_dump_other_metadata(),}
+        return info
 
 
 class YumMetadataGenerator(object):

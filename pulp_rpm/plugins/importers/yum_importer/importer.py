@@ -23,12 +23,12 @@ import copy
 from yum_importer.comps import ImporterComps
 from yum_importer.errata import ImporterErrata, link_errata_rpm_units
 from yum_importer.importer_rpm import ImporterRPM, get_existing_units, form_lookup_key
-from pulp.server.db.model.criteria import UnitAssociationCriteria, Criteria
+from pulp.server.db.model.criteria import UnitAssociationCriteria
 from pulp.plugins.importer import Importer
-from pulp.plugins.model import Unit, SyncReport
+from pulp.plugins.model import SyncReport
 from pulp_rpm.common.ids import TYPE_ID_IMPORTER_YUM, TYPE_ID_PKG_GROUP, TYPE_ID_PKG_CATEGORY, TYPE_ID_DISTRO,\
         TYPE_ID_DRPM, TYPE_ID_ERRATA, TYPE_ID_RPM, TYPE_ID_SRPM
-from pulp_rpm.common import constants
+from pulp_rpm.common import constants, ids, version_utils
 from pulp_rpm.yum_plugin import util, depsolver, metadata
 from pulp_rpm.yum_plugin.metadata import get_package_xml
 
@@ -275,17 +275,22 @@ class YumImporter(Importer):
         @type  import_conduit: L{pulp.plugins.conduits.unit_import.ImportUnitConduit}
 
         @param config: plugin configuration
-        @type  config: L{pulp.plugins.plugins.config.PluginCallConfiguration}
+        @type  config: L{pulp.plugins.config.PluginCallConfiguration}
 
         @param units: optional list of pre-filtered units to import
-        @type  units: list of L{pulp.plugins.data.Unit}
+        @type  units: list of pulp.plugins.data.Unit
         """
         if not units:
             # If no units are passed in, assume we will use all units from source repo
             units = import_conduit.get_source_units()
         blacklist_units = self._query_blacklist_units(import_conduit, config)
         _LOG.info("Importing %s units from %s to %s" % (len(units), source_repo.id, dest_repo.id))
-        existing_rpm_units_dict = get_existing_units(import_conduit, criteria=UnitAssociationCriteria(type_ids=[TYPE_ID_RPM, TYPE_ID_SRPM]))
+        # don't get this stuff if we aren't going to use it
+        if config.get('resolve_dependencies') or config.get(constants.CONFIG_COPY_CHILDREN, True):
+            criteria = UnitAssociationCriteria(type_ids=[TYPE_ID_RPM, TYPE_ID_SRPM], unit_fields=ids.UNIT_KEY_RPM)
+            existing_rpm_units_dict = get_existing_units(import_conduit, criteria=criteria)
+        else:
+            existing_rpm_units_dict = {}
         for u in units:
             if u.unit_key in blacklist_units:
                 continue
@@ -301,20 +306,16 @@ class YumImporter(Importer):
                 self._import_errata_unit_rpms(source_repo, u, import_conduit, config,
                     existing_rpm_units_dict, blacklist_units=blacklist_units)
             elif u.type_id == TYPE_ID_PKG_GROUP:
-                u = self._safe_copy_unit(u)
-                u.unit_key['repo_id'] = dest_repo.id
-                import_conduit.save_unit(u)
                 # pkg group unit associated, lookup child units underneath and import them as well
-                self._import_pkg_group_unit(source_repo, u, import_conduit, config)
+                self._import_pkg_group_unit(source_repo, dest_repo, u, import_conduit, config)
             elif u.type_id == TYPE_ID_PKG_CATEGORY:
-                u = self._safe_copy_unit(u)
-                u.unit_key['repo_id'] = dest_repo.id
-                import_conduit.save_unit(u)
                 # pkg category associated, lookup pkg groups underneath and import them as well
-                self._import_pkg_category_unit(source_repo, u, import_conduit, config)
+                self._import_pkg_category_unit(source_repo, dest_repo, u, import_conduit, config)
             elif u.type_id == TYPE_ID_DISTRO:
                 import_conduit.associate_unit(u)
         _LOG.debug("%s units from %s have been associated to %s" % (len(units), source_repo.id, dest_repo.id))
+
+        return units
 
     def _safe_copy_unit(self, unit):
         """
@@ -364,11 +365,14 @@ class YumImporter(Importer):
         @type  import_conduit: L{pulp.plugins.conduits.unit_import.ImportUnitConduit}
 
         @param config: plugin configuration
-        @type  config: L{pulp.plugins.plugins.config.PluginCallConfiguration}
+        @type  config: L{pulp.plugins.config.PluginCallConfiguration}
 
         @param existing_rpm_units: optional list of pre-filtered units to import
         @type  existing_rpm_units: list of L{pulp.plugins.data.Unit}
         """
+        if not config.get(constants.CONFIG_COPY_CHILDREN, True):
+            return
+
         pkglist = erratum_unit.metadata['pkglist']
         existing_rpm_units = existing_rpm_units or {}
         for pkg in pkglist:
@@ -390,61 +394,74 @@ class YumImporter(Importer):
                 else:
                     _LOG.debug("rpm unit %s not found; skipping" % pinfo)
 
-    def _import_pkg_category_unit(self, source_repo, pkg_category_unit, import_conduit, config):
+    def _import_pkg_category_unit(self, source_repo, dest_repo, pkg_category_unit, import_conduit, config):
         """
-        looks up the package category and associated groups within and imports the units
-        @param source_repo: metadata describing the repository containing the
-               units to import
-        @type  source_repo: L{pulp.plugins.data.Repository}
+        Imports the given package category unit to the repository, ensuring that its repo_id is set to the
+        destination repository's id. It then looks up the associated package groups, and imports them as
+        well.
 
-        @param pkg_category_unit: package category unit to lookup child units for to import
-               into
-        @type  pkg_category_unit: L{pulp.plugins.data.Unit}
-
-        @param import_conduit: provides access to relevant Pulp functionality
-        @type  import_conduit: L{pulp.plugins.conduits.unit_import.ImportUnitConduit}
-
-        @param config: plugin configuration
-        @type  config: L{pulp.plugins.plugins.config.PluginCallConfiguration}
-
+        :param source_repo:       metadata describing the repository containing the units to import
+        :type  source_repo:       pulp.plugins.model.Repository
+        :param dest_repo:         The repository that the package category needs to be copied to
+        :type  dest_repo:         pulp.plugins.model.Repository
+        :param pkg_category_unit: package category unit to lookup child units for to import into
+        :type  pkg_category_unit: pulp.plugins.data.Unit
+        :param import_conduit:    provides access to relevant Pulp functionality
+        :type  import_conduit:    pulp.plugins.conduits.unit_import.ImportUnitConduit
+        :param config:            plugin configuration
+        :type  config:            pulp.plugins.plugins.config.PluginCallConfiguration
         """
+        pkg_category_unit = self._safe_copy_unit(pkg_category_unit)
+        pkg_category_unit.unit_key['repo_id'] = dest_repo.id
+        import_conduit.save_unit(pkg_category_unit)
+
+        if not config.get(constants.CONFIG_COPY_CHILDREN, True):
+            return
+
         pkg_group_unit_ids = pkg_category_unit.metadata['packagegroupids']
         for pgid in pkg_group_unit_ids:
-            criteria = Criteria(filters={'id' : pgid})
-            found_pkggrp = import_conduit.search_all_units(type_id=TYPE_ID_PKG_GROUP, criteria=criteria)
+            criteria = UnitAssociationCriteria(type_ids=[TYPE_ID_PKG_GROUP], unit_filters={'id' : pgid})
+            found_pkggrp = import_conduit.get_source_units(criteria=criteria)
             if not len(found_pkggrp):
                 # couldnt find the pkggrp, continue to the next one
-                _LOG.debug(" Package group id %s not found" % found_pkggrp)
                 continue
-            import_conduit.associate_unit(found_pkggrp[0])
             # import any associated packages
-            self._import_pkg_group_unit(source_repo, found_pkggrp[0], import_conduit, config)
-            _LOG.debug("Associated Package group id %s" % found_pkggrp)
+            self._import_pkg_group_unit(source_repo, dest_repo, found_pkggrp[0], import_conduit, config)
 
-    def _import_pkg_group_unit(self, source_repo, pkg_group_unit, import_conduit, config):
+    def _import_pkg_group_unit(self, source_repo, dest_repo, pkg_group_unit, import_conduit, config):
         """
-        look up package groups and associated packages and import the units
-        @param source_repo: metadata describing the repository containing the
-               units to import
-        @type  source_repo: L{pulp.plugins.data.Repository}
+        Import a package group unit from source_repo into dest_repo. It will make a copy
+        of the unit, alter its repo_id to reflect the ID of the dest_repo, and it will
+        look up associated packages and import them.
 
-        @param pkg_group_unit: package group unit to lookup child units for to import
-               into
-        @type  pkg_group_unit: L{pulp.plugins.data.Unit}
-
-        @param import_conduit: provides access to relevant Pulp functionality
-        @type  import_conduit: L{pulp.plugins.conduits.unit_import.ImportUnitConduit}
-
-        @param config: plugin configuration
-        @type  config: L{pulp.plugins.plugins.config.PluginCallConfiguration}
+        :param source_repo:    metadata describing the repository containing the units
+                               to import
+        :type  source_repo:    pulp.plugins.model.Repository
+        :param dest_repo:      The repository that the package group needs to be copied
+                               to
+        :type  dest_repo:      pulp.plugins.model.Repository
+        :param pkg_group_unit: package group unit to lookup child units for to import
+                               into
+        :type  pkg_group_unit: pulp.plugins.model.Unit
+        :param import_conduit: provides access to relevant Pulp functionality
+        :type  import_conduit: pulp.plugins.conduits.unit_import.ImportUnitConduit
+        :param config:         plugin configuration
+        :type  config:         pulp.plugins.plugins.config.PluginCallConfiguration
         """
+        pkg_group_unit = self._safe_copy_unit(pkg_group_unit)
+        pkg_group_unit.unit_key['repo_id'] = dest_repo.id
+        import_conduit.save_unit(pkg_group_unit)
+
+        if not config.get(constants.CONFIG_COPY_CHILDREN, True):
+            return
+
         mandatory_pkg_names = pkg_group_unit.metadata["mandatory_package_names"] or []
         optional_pkg_names = pkg_group_unit.metadata["optional_package_names"] or []
         conditional_pkg_names = [cond_pkg[0] for cond_pkg in pkg_group_unit.metadata["conditional_package_names"]]
         default_pkg_names = pkg_group_unit.metadata['default_package_names'] or []
         for pname in mandatory_pkg_names + optional_pkg_names + conditional_pkg_names + default_pkg_names:
-            criteria = Criteria(filters={'name' : pname})
-            found_pkgs = import_conduit.search_all_units(type_id=TYPE_ID_RPM, criteria=criteria)
+            criteria = UnitAssociationCriteria(type_ids=[TYPE_ID_RPM], unit_filters={'name' : pname}, unit_fields=ids.UNIT_KEY_RPM)
+            found_pkgs = import_conduit.get_source_units(criteria=criteria)
             if not len(found_pkgs):
                 continue
             newest = self._find_newest_pkg(found_pkgs)
@@ -490,7 +507,9 @@ class YumImporter(Importer):
     def sync_repo(self, repo, sync_conduit, config):
         try:
             status, summary, details = self._sync_repo(repo, sync_conduit, config)
-            if status:
+            if self.canceled:
+                report = sync_conduit.build_cancel_report(summary, details)
+            elif status:
                 report = sync_conduit.build_success_report(summary, details)
             else:
                 report = sync_conduit.build_failure_report(summary, details)
@@ -592,7 +611,13 @@ class YumImporter(Importer):
             details['errors'].append(msg)
             return False, summary, details
         relative_path = "%s/%s/%s/%s/%s/%s" % (unit_key['name'], unit_key['version'],
-                                                        unit_key['release'], unit_key['arch'], unit_key['checksum'], metadata['filename'])
+                                               unit_key['release'], unit_key['arch'], unit_key['checksum'],
+                                               metadata['filename'])
+
+        # Calculate the sort indexes
+        metadata['version_sort_index'] = version_utils.encode(unit_key['version'])
+        metadata['release_sort_index'] = version_utils.encode(unit_key['release'])
+
         u = conduit.init_unit(TYPE_ID_RPM, unit_key, metadata, relative_path)
         new_path = u.storage_path
         try:
@@ -678,7 +703,7 @@ class YumImporter(Importer):
         solved, unsolved = dsolve.processResults(results)
         dep_pkgs_map = {}
         _LOG.debug(" results from depsolver %s" % results)
-        criteria = UnitAssociationCriteria(type_ids=[TYPE_ID_RPM])
+        criteria = UnitAssociationCriteria(type_ids=[TYPE_ID_RPM], unit_fields=ids.UNIT_KEY_RPM)
         existing_units = get_existing_units(dependency_conduit, criteria)
         for dep, pkgs in solved.items():
             dep_pkgs_map[dep] = []

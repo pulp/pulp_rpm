@@ -11,11 +11,10 @@ Contents:
 .. toctree::
    :maxdepth: 2
 
-   types
-   yum-importer
-   yum-distributor
-
-
+   yum-plugins
+   export-distributor
+   iso-plugins
+   sort-index
 
 Indices and tables
 ==================
@@ -23,4 +22,3 @@ Indices and tables
 * :ref:`genindex`
 * :ref:`modindex`
 * :ref:`search`
-

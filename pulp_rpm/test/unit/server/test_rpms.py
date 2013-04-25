@@ -12,8 +12,8 @@
 # have received a copy of GPLv2 along with this software; if not, see
 # http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt.
 
+from urlparse import urljoin
 import glob
-import mock
 import os
 import shutil
 import sys
@@ -23,12 +23,14 @@ import time
 import unittest
 
 from grinder.BaseFetch import BaseFetch
+import mock
 
 sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)) + "/../../../src/")
 sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)) + "/../../../plugins/importers/")
 
+from rpm_support_base import (PulpRPMTests, PULP_UNITTEST_REPO_PATH, PULP_UNITTEST_REPO_URL,
+                              REPO_MULTIPLE_VERSIONS_URL, TEST_SRPM_REPO_URL)
 import importer_mocks
-import rpm_support_base
 
 from yum_importer.importer import YumImporter
 from yum_importer import importer_rpm
@@ -38,7 +40,7 @@ from pulp_rpm.common.ids import TYPE_ID_RPM, UNIT_KEY_RPM, TYPE_ID_IMPORTER_YUM
 from pulp_rpm.yum_plugin import util
 
 
-class TestRPMs(rpm_support_base.PulpRPMTests):
+class TestRPMs(PulpRPMTests):
 
     def setUp(self):
         super(TestRPMs, self).setUp()
@@ -62,7 +64,7 @@ class TestRPMs(rpm_support_base.PulpRPMTests):
     def get_files_in_dir(self, pattern, path):
         files = []
         for d,_,_ in os.walk(path):
-            files.extend(glob.glob(os.path.join(d,pattern))) 
+            files.extend(glob.glob(os.path.join(d,pattern)))
         return files
 
     def get_expected_rpms_from_pulp_unittest(self, repo_label, pkg_dir=None, repo_working_dir=None):
@@ -82,29 +84,30 @@ class TestRPMs(rpm_support_base.PulpRPMTests):
             repo_working_dir = self.working_dir
         rpms = {
                 ('pulp-test-package', '0', '0.2.1', 'x86_64', 'pulp-test-package-0.2.1-1.fc11.x86_64.rpm', 'sha256', '4dbde07b4a8eab57e42ed0c9203083f1d61e0b13935d1a569193ed8efc9ecfd7'):{
-                    'size': 2216, 
-                    'vendor': '', 
-                    'checksumtype': 'sha256', 
-                    'license': 'MIT', 
-                    'checksum': '4dbde07b4a8eab57e42ed0c9203083f1d61e0b13935d1a569193ed8efc9ecfd7', 
-                    'description': 'Test package.  Nothing to see here.', 
-                    'pkgpath': '%s/.//pulp-test-package/0.2.1/1.fc11/x86_64/4dbde07b4a8eab57e42ed0c9203083f1d61e0b13935d1a569193ed8efc9ecfd7' % (pkg_dir), 
-                    'savepath': '%s/%s/' % (repo_working_dir, repo_label), 
-                    'filename': 'pulp-test-package-0.2.1-1.fc11.x86_64.rpm', 
-                    'downloadurl': 'http://repos.fedorapeople.org/repos/pulp/pulp/demo_repos/pulp_unittest/pulp-test-package-0.2.1-1.fc11.x86_64.rpm', 
-                    'item_type': 'rpm', 
-                    'epoch': '0', 
-                    'version': '0.2.1', 
-                    'arch': 'x86_64', 
+                    'size': 2216,
+                    'vendor': '',
+                    'checksumtype': 'sha256',
+                    'license': 'MIT',
+                    'checksum': '4dbde07b4a8eab57e42ed0c9203083f1d61e0b13935d1a569193ed8efc9ecfd7',
+                    'description': 'Test package.  Nothing to see here.',
+                    'pkgpath': '%s/.//pulp-test-package/0.2.1/1.fc11/x86_64/4dbde07b4a8eab57e42ed0c9203083f1d61e0b13935d1a569193ed8efc9ecfd7' % (pkg_dir),
+                    'savepath': '%s/%s/' % (repo_working_dir, repo_label),
+                    'filename': 'pulp-test-package-0.2.1-1.fc11.x86_64.rpm',
+                    'downloadurl': 'file://' + os.path.join(PULP_UNITTEST_REPO_PATH,
+                                                            'pulp-test-package-0.2.1-1.fc11.x86_64.rpm'),
+                    'item_type': 'rpm',
+                    'epoch': '0',
+                    'version': '0.2.1',
+                    'arch': 'x86_64',
                     'provides': [
-                            ('pulp-test-package(x86-64)', 'EQ', ('0', '0.2.1', '1.fc11')), 
-                            ('pulp-test-package', 'EQ', ('0', '0.2.1', '1.fc11')), 
+                            ('pulp-test-package(x86-64)', 'EQ', ('0', '0.2.1', '1.fc11')),
+                            ('pulp-test-package', 'EQ', ('0', '0.2.1', '1.fc11')),
                             ('config(pulp-test-package)', 'EQ', ('0', '0.2.1', '1.fc11'))
-                            ], 
-                    'relativepath': 'pulp-test-package-0.2.1-1.fc11.x86_64.rpm', 
-                    'release': '1.fc11', 
-                    'buildhost': 'gibson', 
-                    'requires': [], 
+                            ],
+                    'relativepath': 'pulp-test-package-0.2.1-1.fc11.x86_64.rpm',
+                    'release': '1.fc11',
+                    'buildhost': 'gibson',
+                    'requires': [],
                     'name': 'pulp-test-package',
                     'repodata' : {'primary' : 'test_primary_xml',
                                   'filelists' : 'test_filelists_xml',
@@ -114,29 +117,30 @@ class TestRPMs(rpm_support_base.PulpRPMTests):
                     'files' : {}
                 },
                 ('pulp-dot-2.0-test', '0', '0.1.2', 'x86_64', 'pulp-dot-2.0-test-0.1.2-1.fc11.x86_64.rpm', 'sha256', '435d92e6c09248b501b8d2ae786f92ccfad69fab8b1bc774e2b66ff6c0d83979'):{
-                    'size': 2359, 
-                    'vendor': '', 
-                    'checksumtype': 'sha256', 
-                    'license': 'MIT', 
-                    'checksum': '435d92e6c09248b501b8d2ae786f92ccfad69fab8b1bc774e2b66ff6c0d83979', 
-                    'description': 'Test package to see how we deal with packages with dots in the name', 
-                    'pkgpath': '%s/.//pulp-dot-2.0-test/0.1.2/1.fc11/x86_64/435d92e6c09248b501b8d2ae786f92ccfad69fab8b1bc774e2b66ff6c0d83979' % (pkg_dir), 
-                    'savepath': '%s/%s/' % (repo_working_dir, repo_label), 
-                    'filename': 'pulp-dot-2.0-test-0.1.2-1.fc11.x86_64.rpm', 
-                    'downloadurl': 'http://repos.fedorapeople.org/repos/pulp/pulp/demo_repos/pulp_unittest/pulp-dot-2.0-test-0.1.2-1.fc11.x86_64.rpm', 
-                    'item_type': 'rpm', 
-                    'epoch': '0', 
-                    'version': '0.1.2', 
-                    'arch': 'x86_64', 
+                    'size': 2359,
+                    'vendor': '',
+                    'checksumtype': 'sha256',
+                    'license': 'MIT',
+                    'checksum': '435d92e6c09248b501b8d2ae786f92ccfad69fab8b1bc774e2b66ff6c0d83979',
+                    'description': 'Test package to see how we deal with packages with dots in the name',
+                    'pkgpath': '%s/.//pulp-dot-2.0-test/0.1.2/1.fc11/x86_64/435d92e6c09248b501b8d2ae786f92ccfad69fab8b1bc774e2b66ff6c0d83979' % (pkg_dir),
+                    'savepath': '%s/%s/' % (repo_working_dir, repo_label),
+                    'filename': 'pulp-dot-2.0-test-0.1.2-1.fc11.x86_64.rpm',
+                    'downloadurl': 'file://' + os.path.join(PULP_UNITTEST_REPO_PATH,
+                                                            'pulp-dot-2.0-test-0.1.2-1.fc11.x86_64.rpm'),
+                    'item_type': 'rpm',
+                    'epoch': '0',
+                    'version': '0.1.2',
+                    'arch': 'x86_64',
                     'provides': [
-                        ('pulp-dot-2.0-test(x86-64)', 'EQ', ('0', '0.1.2', '1.fc11')), 
-                        ('pulp-dot-2.0-test', 'EQ', ('0', '0.1.2', '1.fc11')), 
+                        ('pulp-dot-2.0-test(x86-64)', 'EQ', ('0', '0.1.2', '1.fc11')),
+                        ('pulp-dot-2.0-test', 'EQ', ('0', '0.1.2', '1.fc11')),
                         ('config(pulp-dot-2.0-test)', 'EQ', ('0', '0.1.2', '1.fc11'))
-                        ], 
-                    'relativepath': 'pulp-dot-2.0-test-0.1.2-1.fc11.x86_64.rpm', 
-                    'release': '1.fc11', 
-                    'buildhost': 'gibson', 
-                    'requires': [], 
+                        ],
+                    'relativepath': 'pulp-dot-2.0-test-0.1.2-1.fc11.x86_64.rpm',
+                    'release': '1.fc11',
+                    'buildhost': 'gibson',
+                    'requires': [],
                     'name': 'pulp-dot-2.0-test',
                     'repodata' : {'primary' : 'test_primary_xml',
                                   'filelists' : 'test_filelists_xml',
@@ -144,31 +148,32 @@ class TestRPMs(rpm_support_base.PulpRPMTests):
                     'changelog' : [],
                     'filelist' : [],
                     'files' : {}
-                }, 
+                },
                 ('pulp-test-package', '0', '0.3.1', 'x86_64', 'pulp-test-package-0.3.1-1.fc11.x86_64.rpm', 'sha256', '6bce3f26e1fc0fc52ac996f39c0d0e14fc26fb8077081d5b4dbfb6431b08aa9f'): {
-                    'size': 2216, 
-                    'vendor': '', 
-                    'checksumtype': 'sha256', 
-                    'license': 'MIT', 
-                    'checksum': '6bce3f26e1fc0fc52ac996f39c0d0e14fc26fb8077081d5b4dbfb6431b08aa9f', 
-                    'description': 'Test package.  Nothing to see here.', 
-                    'pkgpath': '%s/.//pulp-test-package/0.3.1/1.fc11/x86_64/6bce3f26e1fc0fc52ac996f39c0d0e14fc26fb8077081d5b4dbfb6431b08aa9f' % (pkg_dir), 
-                    'savepath': '%s/%s/' % (repo_working_dir, repo_label), 
-                    'filename': 'pulp-test-package-0.3.1-1.fc11.x86_64.rpm', 
-                    'downloadurl': 'http://repos.fedorapeople.org/repos/pulp/pulp/demo_repos/pulp_unittest/pulp-test-package-0.3.1-1.fc11.x86_64.rpm', 
-                    'item_type': 'rpm', 
-                    'epoch': '0', 
-                    'version': '0.3.1', 
-                    'arch': 'x86_64', 
+                    'size': 2216,
+                    'vendor': '',
+                    'checksumtype': 'sha256',
+                    'license': 'MIT',
+                    'checksum': '6bce3f26e1fc0fc52ac996f39c0d0e14fc26fb8077081d5b4dbfb6431b08aa9f',
+                    'description': 'Test package.  Nothing to see here.',
+                    'pkgpath': '%s/.//pulp-test-package/0.3.1/1.fc11/x86_64/6bce3f26e1fc0fc52ac996f39c0d0e14fc26fb8077081d5b4dbfb6431b08aa9f' % (pkg_dir),
+                    'savepath': '%s/%s/' % (repo_working_dir, repo_label),
+                    'filename': 'pulp-test-package-0.3.1-1.fc11.x86_64.rpm',
+                    'downloadurl': 'file://' + os.path.join(PULP_UNITTEST_REPO_PATH,
+                                                            'pulp-test-package-0.3.1-1.fc11.x86_64.rpm'),
+                    'item_type': 'rpm',
+                    'epoch': '0',
+                    'version': '0.3.1',
+                    'arch': 'x86_64',
                     'provides': [
-                        ('pulp-test-package(x86-64)', 'EQ', ('0', '0.3.1', '1.fc11')), 
-                        ('pulp-test-package', 'EQ', ('0', '0.3.1', '1.fc11')), 
+                        ('pulp-test-package(x86-64)', 'EQ', ('0', '0.3.1', '1.fc11')),
+                        ('pulp-test-package', 'EQ', ('0', '0.3.1', '1.fc11')),
                         ('config(pulp-test-package)', 'EQ', ('0', '0.3.1', '1.fc11'))
-                    ], 
-                    'relativepath': 'pulp-test-package-0.3.1-1.fc11.x86_64.rpm', 
-                    'release': '1.fc11', 
-                    'buildhost': 'gibson', 
-                    'requires': [], 
+                    ],
+                    'relativepath': 'pulp-test-package-0.3.1-1.fc11.x86_64.rpm',
+                    'release': '1.fc11',
+                    'buildhost': 'gibson',
+                    'requires': [],
                     'name': 'pulp-test-package',
                     'repodata' : {'primary' : 'test_primary_xml',
                                   'filelists' : 'test_filelists_xml',
@@ -191,19 +196,18 @@ class TestRPMs(rpm_support_base.PulpRPMTests):
                 "vendor", "requires", "provides", "pkgpath", "relativepath", "changelog", "filelist", "files", "repodata"):
             rpm[k] = value
         return rpm
-    
+
     def test_metadata(self):
         metadata = YumImporter.metadata()
         self.assertEquals(metadata["id"], TYPE_ID_IMPORTER_YUM)
         self.assertTrue(TYPE_ID_RPM in metadata["types"])
 
     def test_basic_sync(self):
-        feed_url = "http://repos.fedorapeople.org/repos/pulp/pulp/demo_repos/pulp_unittest/"
         repo = mock.Mock(spec=Repository)
         repo.working_dir = self.working_dir
         repo.id = "test_basic_sync"
         sync_conduit = importer_mocks.get_sync_conduit(existing_units=[], pkg_dir=self.pkg_dir)
-        config = importer_mocks.get_basic_config(feed_url=feed_url)
+        config = importer_mocks.get_basic_config(feed_url=PULP_UNITTEST_REPO_URL)
         importerRPM = importer_rpm.ImporterRPM()
         status, summary, details = importerRPM.sync(repo, sync_conduit, config)
         self.assertTrue(summary is not None)
@@ -224,6 +228,9 @@ class TestRPMs(rpm_support_base.PulpRPMTests):
         self.assertEquals(len(pkgs), 3)
         for link in sym_links:
             self.assertTrue(os.path.islink(link))
+        # Test SaveThread is working and sync_conduit.save_unit was called 4 times
+        #  4 calls = 3 RPMs and 1 Distribution
+        self.assertEquals(sync_conduit.save_unit.call_count, 4)
 
     def test_cancel_sync(self):
         global updated_progress
@@ -284,14 +291,13 @@ class TestRPMs(rpm_support_base.PulpRPMTests):
             time.sleep(1)
         self.assertEquals(updated_progress["content"]["state"], "CANCELED")
         self.assertFalse(sync_thread.status)
-    
+
     def test_basic_local_sync(self):
-        feed_url = "file://%s/pulp_unittest/" % (self.data_dir)
         repo = mock.Mock(spec=Repository)
         repo.working_dir = self.working_dir
         repo.id = "test_basic_local_sync"
         sync_conduit = importer_mocks.get_sync_conduit(existing_units=[], pkg_dir=self.pkg_dir)
-        config = importer_mocks.get_basic_config(feed_url=feed_url)
+        config = importer_mocks.get_basic_config(feed_url=PULP_UNITTEST_REPO_URL)
         importerRPM = importer_rpm.ImporterRPM()
         status, summary, details = importerRPM.sync(repo, sync_conduit, config)
         self.assertTrue(summary is not None)
@@ -314,16 +320,15 @@ class TestRPMs(rpm_support_base.PulpRPMTests):
             self.assertTrue(os.path.islink(link))
 
     def test_validate_config(self):
-        feed_url = "http://repos.fedorapeople.org/repos/pulp/pulp/demo_repos/pulp_unittest/"
         importer = YumImporter()
-        config = importer_mocks.get_basic_config(feed_url=feed_url)
+        config = importer_mocks.get_basic_config(feed_url=PULP_UNITTEST_REPO_URL)
         repo = mock.Mock(spec=Repository)
         state, msg = importer.validate_config(repo, config, [])
         self.assertTrue(state)
 
-        # Test that an unknown argument in the config throws an error 
+        # Test that an unknown argument in the config throws an error
         # and the unknown arg is identified in the message
-        config = importer_mocks.get_basic_config(feed_url=feed_url, bad_unknown_arg="blah")
+        config = importer_mocks.get_basic_config(feed_url=PULP_UNITTEST_REPO_URL, bad_unknown_arg="blah")
         state, msg = importer.validate_config(repo, config, [])
         self.assertFalse(state)
         self.assertTrue("bad_unknown_arg" in msg)
@@ -337,9 +342,9 @@ class TestRPMs(rpm_support_base.PulpRPMTests):
             unit_key[k] = "test_value"
         metadata = {"filename" : "test_value"}
         existing_units = [Unit(TYPE_ID_RPM, unit_key, metadata, os.path.join(self.pkg_dir, "test_rel_path"))]
-        sync_conduit = importer_mocks.get_sync_conduit(type_id=TYPE_ID_RPM, existing_units=existing_units, pkg_dir=self.pkg_dir)
-        feed_url = "http://repos.fedorapeople.org/repos/pulp/pulp/demo_repos/pulp_unittest/"
-        config = importer_mocks.get_basic_config(feed_url=feed_url)
+        sync_conduit = importer_mocks.get_sync_conduit(type_id=TYPE_ID_RPM, existing_units=existing_units,
+                                                       pkg_dir=self.pkg_dir)
+        config = importer_mocks.get_basic_config(feed_url=PULP_UNITTEST_REPO_URL)
         importerRPM = importer_rpm.ImporterRPM()
         status, summary, details = importerRPM.sync(repo, sync_conduit, config)
         self.assertTrue(summary is not None)
@@ -364,7 +369,7 @@ class TestRPMs(rpm_support_base.PulpRPMTests):
         # Set skip packages
         # Verify no rpms are downloaded
         pass
-    
+
     def test_progress_sync(self):
         global updated_progress
         updated_progress = None
@@ -373,7 +378,6 @@ class TestRPMs(rpm_support_base.PulpRPMTests):
             global updated_progress
             updated_progress = progress
 
-        feed_url = "http://repos.fedorapeople.org/repos/pulp/pulp/demo_repos/pulp_unittest/"
         importer = YumImporter()
         repo = mock.Mock(spec=Repository)
         repo.working_dir = self.working_dir
@@ -381,7 +385,7 @@ class TestRPMs(rpm_support_base.PulpRPMTests):
         sync_conduit = importer_mocks.get_sync_conduit(pkg_dir=self.pkg_dir)
         sync_conduit.set_progress = mock.Mock()
         sync_conduit.set_progress.side_effect = set_progress
-        config = importer_mocks.get_basic_config(feed_url=feed_url)
+        config = importer_mocks.get_basic_config(feed_url=PULP_UNITTEST_REPO_URL)
         status, summary, details = importer._sync_repo(repo, sync_conduit, config)
         self.assertTrue(status)
         self.assertEquals(summary["packages"]["num_synced_new_rpms"], 3)
@@ -427,7 +431,7 @@ class TestRPMs(rpm_support_base.PulpRPMTests):
         unit_a = Unit(TYPE_ID_RPM, unit_key_a, "test_metadata", "test_rel_path")
         unit_b = Unit(TYPE_ID_RPM, unit_key_b, "test_metadata", "test_rel_path")
         existing_units = {
-                importer_rpm.form_lookup_key(unit_key_a):unit_a, 
+                importer_rpm.form_lookup_key(unit_key_a):unit_a,
                 importer_rpm.form_lookup_key(unit_key_b):unit_b
                 }
         available_rpms = {}
@@ -453,7 +457,7 @@ class TestRPMs(rpm_support_base.PulpRPMTests):
         existing_units = {}
         existing_units[rpm_lookup_key_a] = unit_a
         sync_conduit = importer_mocks.get_sync_conduit(pkg_dir=self.pkg_dir)
-        new_rpms, new_units = importer_rpm.get_new_rpms_and_units(available_rpms, 
+        new_rpms, new_units = importer_rpm.get_new_rpms_and_units(available_rpms,
                 existing_units, sync_conduit)
         self.assertEquals(len(new_rpms), 1)
         self.assertEquals(len(new_units), 1)
@@ -467,7 +471,7 @@ class TestRPMs(rpm_support_base.PulpRPMTests):
         existing_units = {}
         existing_units[rpm_lookup_key_a] = unit_a
         existing_units[rpm_lookup_key_b] = unit_b
-        new_rpms, new_units = importer_rpm.get_new_rpms_and_units(available_rpms, 
+        new_rpms, new_units = importer_rpm.get_new_rpms_and_units(available_rpms,
                 existing_units, sync_conduit)
         self.assertEquals(len(new_rpms), 0)
         self.assertEquals(len(new_units), 0)
@@ -475,7 +479,7 @@ class TestRPMs(rpm_support_base.PulpRPMTests):
         # Repeat test but now both rpms in available are new
         #
         existing_units = {}
-        new_rpms, new_units = importer_rpm.get_new_rpms_and_units(available_rpms, 
+        new_rpms, new_units = importer_rpm.get_new_rpms_and_units(available_rpms,
                 existing_units, sync_conduit)
         self.assertEquals(len(new_rpms), 2)
         self.assertEquals(len(new_units), 2)
@@ -515,12 +519,11 @@ class TestRPMs(rpm_support_base.PulpRPMTests):
         self.assertEquals(missing_rpms[rpm_lookup_key_b], rpm_b)
 
     def test_remove_packages(self):
-        feed_url = "http://repos.fedorapeople.org/repos/pulp/pulp/demo_repos/pulp_unittest/"
         repo = mock.Mock(spec=Repository)
         repo.working_dir = self.working_dir
         repo.id = "test_remove_packages"
         sync_conduit = importer_mocks.get_sync_conduit(existing_units=[], pkg_dir=self.pkg_dir)
-        config = importer_mocks.get_basic_config(feed_url=feed_url)
+        config = importer_mocks.get_basic_config(feed_url=PULP_UNITTEST_REPO_URL)
         importerRPM = importer_rpm.ImporterRPM()
         status, summary, details = importerRPM.sync(repo, sync_conduit, config)
         self.assertTrue(status)
@@ -538,8 +541,8 @@ class TestRPMs(rpm_support_base.PulpRPMTests):
             symlink_save_path = os.path.join(rpm["savepath"], rpm["filename"])
             self.assertTrue(os.path.lexists(symlink_save_path))
 
-            unit = Unit(TYPE_ID_RPM, 
-                    importer_rpm.form_rpm_unit_key(rpm), 
+            unit = Unit(TYPE_ID_RPM,
+                    importer_rpm.form_rpm_unit_key(rpm),
                     importer_rpm.form_rpm_metadata(rpm),
                     rpm_save_path)
             importer_rpm.remove_unit(sync_conduit, unit)
@@ -547,7 +550,6 @@ class TestRPMs(rpm_support_base.PulpRPMTests):
             self.assertTrue(os.path.exists(symlink_save_path))
 
     def test_remove_old_packages(self):
-        feed_url = "http://jmatthews.fedorapeople.org/repo_multiple_versions/"
         repo = mock.Mock(spec=Repository)
         repo.working_dir = self.working_dir
         repo.id = "test_remove_old_packages"
@@ -557,7 +559,8 @@ class TestRPMs(rpm_support_base.PulpRPMTests):
         # Additionallity verify that already existing packages which are NOT orphaned are also
         # removed with remove_old functionality
         ###
-        config = importer_mocks.get_basic_config(feed_url=feed_url, remove_old=False, num_old_packages=0)
+        config = importer_mocks.get_basic_config(feed_url=REPO_MULTIPLE_VERSIONS_URL, remove_old=False,
+                                                 num_old_packages=0)
         importerRPM = importer_rpm.ImporterRPM()
         status, summary, details = importerRPM.sync(repo, sync_conduit, config)
         self.assertTrue(status)
@@ -574,12 +577,13 @@ class TestRPMs(rpm_support_base.PulpRPMTests):
 
         existing_units = []
         for rpm in rpm_items:
-            u = Unit(TYPE_ID_RPM, 
-                    importer_rpm.form_rpm_unit_key(rpm), 
+            u = Unit(TYPE_ID_RPM,
+                    importer_rpm.form_rpm_unit_key(rpm),
                     importer_rpm.form_rpm_metadata(rpm),
                     os.path.join(self.pkg_dir, rpm["pkgpath"], rpm["filename"]))
             existing_units.append(u)
-        config = importer_mocks.get_basic_config(feed_url=feed_url, remove_old=True, num_old_packages=6)
+        config = importer_mocks.get_basic_config(feed_url=REPO_MULTIPLE_VERSIONS_URL, remove_old=True,
+                                                 num_old_packages=6)
         sync_conduit = importer_mocks.get_sync_conduit(type_id=TYPE_ID_RPM, existing_units=existing_units, pkg_dir=self.pkg_dir)
         importerRPM = importer_rpm.ImporterRPM()
         status, summary, details = importerRPM.sync(repo, sync_conduit, config)
@@ -589,7 +593,8 @@ class TestRPMs(rpm_support_base.PulpRPMTests):
         self.assertEquals(summary["num_synced_new_rpms"], 0)
         self.assertEquals(summary["num_not_synced_rpms"], 0)
 
-        config = importer_mocks.get_basic_config(feed_url=feed_url, remove_old=True, num_old_packages=0)
+        config = importer_mocks.get_basic_config(feed_url=REPO_MULTIPLE_VERSIONS_URL, remove_old=True,
+                                                 num_old_packages=0)
         importerRPM = importer_rpm.ImporterRPM()
         status, summary, details = importerRPM.sync(repo, sync_conduit, config)
         self.assertTrue(status)
@@ -599,12 +604,11 @@ class TestRPMs(rpm_support_base.PulpRPMTests):
         self.assertEquals(summary["num_not_synced_rpms"], 0)
 
     def test_srpm_sync(self):
-        feed_url = "http://pkilambi.fedorapeople.org/test_srpm_repo/"
         repo = mock.Mock(spec=Repository)
         repo.working_dir = self.working_dir
         repo.id = "test_srpm_sync"
         sync_conduit = importer_mocks.get_sync_conduit(existing_units=[], pkg_dir=self.pkg_dir)
-        config = importer_mocks.get_basic_config(feed_url=feed_url)
+        config = importer_mocks.get_basic_config(feed_url=TEST_SRPM_REPO_URL)
         importerRPM = importer_rpm.ImporterRPM()
         status, summary, details = importerRPM.sync(repo, sync_conduit, config)
         self.assertTrue(status)
@@ -635,7 +639,7 @@ class TestRPMs(rpm_support_base.PulpRPMTests):
 
         config = importer_mocks.get_basic_config(feed_url=feed_url, num_threads=num_threads, max_speed=max_speed,
                 proxy_url=proxy_url, proxy_port=proxy_port, proxy_user=proxy_user, proxy_pass=proxy_pass,
-                ssl_verify=ssl_verify, 
+                ssl_verify=ssl_verify,
                 ssl_ca_cert=ssl_ca_cert, ssl_client_cert=ssl_client_cert, ssl_client_key=ssl_client_key,
                 newest=newest, remove_old=remove_old, num_old_packages=num_old_packages)
         yumRepoGrinder = importer_rpm.get_yumRepoGrinder(repo_label, tmp_path, config)
@@ -652,64 +656,9 @@ class TestRPMs(rpm_support_base.PulpRPMTests):
         self.assertEquals(yumRepoGrinder.remove_old, remove_old)
         self.assertEquals(yumRepoGrinder.numOldPackages, num_old_packages)
         self.assertEquals(yumRepoGrinder.tmp_path, tmp_path)
-        # Verify that the pkgpath is set to "./", hardcoded in importer_rpm to 
+        # Verify that the pkgpath is set to "./", hardcoded in importer_rpm to
         # force the package dir to be a relative path with the checksum components in the path
         self.assertEquals(yumRepoGrinder.pkgpath, "./")
-
-    def test_bandwidth_limit(self):
-        # This test assumes an available bandwidth of more than 100KB for 2 threads
-        feed_url = 'http://repos.fedorapeople.org/repos/pulp/pulp/demo_repos/test_bandwidth_repo_smaller/'
-        expected_size_bytes = 209888 # 5 1MB RPMs are in this repo
-        expected_num_packages = 2
-        num_threads = 2
-        max_speed = 25 # KB/sec
-
-        repo = mock.Mock(spec=Repository)
-        repo.working_dir = self.working_dir
-        repo.id = "test_bandwidth_limit"
-        sync_conduit = importer_mocks.get_sync_conduit(existing_units=[], pkg_dir=self.pkg_dir)
-        config = importer_mocks.get_basic_config(feed_url=feed_url, num_threads=num_threads, max_speed=max_speed)
-
-        start = time.time()
-        importerRPM = importer_rpm.ImporterRPM()
-        status, summary, details = importerRPM.sync(repo, sync_conduit, config)
-        end = time.time()
-        self.assertTrue(status)
-        self.assertEquals(summary["num_synced_new_rpms"], expected_num_packages)
-        self.assertEquals(summary["num_resynced_rpms"], 0)
-        self.assertEquals(summary["num_not_synced_rpms"], 0)
-        self.assertEquals(summary["num_orphaned_rpms"], 0)
-        self.assertEquals(details["size_total"], expected_size_bytes)
-
-        expected = (float(expected_size_bytes)/(num_threads*max_speed*1000))
-        actual_A = end - start
-        self.assertTrue(actual_A > expected)
-        #
-        # Clean up and resync with no bandwidth limit
-        # Ensure result is quicker than above
-        #
-        max_speed = 0
-        self.clean()
-        self.init()
-        repo = mock.Mock(spec=Repository)
-        repo.working_dir = self.working_dir
-        repo.id = "test_bandwidth_limit"
-        sync_conduit = importer_mocks.get_sync_conduit(existing_units=[], pkg_dir=self.pkg_dir)
-        config = importer_mocks.get_basic_config(feed_url=feed_url, num_threads=num_threads, max_speed=max_speed)
-        start = time.time()
-        importerRPM = importer_rpm.ImporterRPM()
-        status, summary, details = importerRPM.sync(repo, sync_conduit, config)
-        end = time.time()
-        self.assertTrue(status)
-        self.assertEquals(summary["num_synced_new_rpms"], expected_num_packages)
-        self.assertEquals(summary["num_resynced_rpms"], 0)
-        self.assertEquals(summary["num_not_synced_rpms"], 0)
-        self.assertEquals(summary["num_orphaned_rpms"], 0)
-        self.assertEquals(details["size_total"], expected_size_bytes)
-        # This check is presenting a problem in rhel-6.
-        # Current thinking is that the packages in this repo are not large enough
-        # to test the bandwidth limit.  
-        # self.assertTrue(end-start < actual_A)
 
     def test_remote_sync_with_bad_url(self):
         feed_url = "http://repos.fedorapeople.org/INTENTIONAL_BAD_URL/demo_repos/pulp_unittest/"
@@ -799,9 +748,9 @@ class TestRPMs(rpm_support_base.PulpRPMTests):
         self.assertEquals(len(pkgs), 2)
 
         expected_details = {
-                'rpm': 
+                'rpm':
                     {
-                        'num_success': 2, 'total_count': 3, 'items_left': 0, 
+                        'num_success': 2, 'total_count': 3, 'items_left': 0,
                         'size_left': 0.0, 'total_size_bytes': 6791, 'num_error': 1
                     }
                 }
@@ -826,7 +775,7 @@ class TestRPMs(rpm_support_base.PulpRPMTests):
             self.assertEqual(updated_progress["content"]["details"][type_id]["size_left"], 0)
             self.assertEqual(updated_progress["content"]["details"][type_id]["items_total"], 0)
             self.assertEqual(updated_progress["content"]["details"][type_id]["items_left"], 0)
-        # 'rpm': {'num_success': 2, 'size_total': 6791, 'items_left': 0, 
+        # 'rpm': {'num_success': 2, 'size_total': 6791, 'items_left': 0,
         #    'items_total': 3, 'size_left': 0.0, 'num_error': 1}
         self.assertTrue(updated_progress["content"]["details"].has_key("rpm"))
         self.assertEqual(updated_progress["content"]["details"]["rpm"]["num_success"], 2)
@@ -842,10 +791,10 @@ class TestRPMs(rpm_support_base.PulpRPMTests):
         self.assertEqual(len(updated_progress["content"]["error_details"]), 1)
         error = updated_progress["content"]["error_details"][0]
         self.assertEqual(error["filename"], "pulp-test-package-0.3.1-1.fc11.x86_64.rpm")
-        self.assertEqual(error["value"], 
+        self.assertEqual(error["value"],
             '(37, "Couldn\'t open file %s")' % (test_rpm_with_error))
         self.assertTrue('pycurl.error' in error["error_type"])
-        self.assertTrue(isinstance(error["exception"], basestring)) 
+        self.assertTrue(isinstance(error["exception"], basestring))
         self.assertTrue(len(error["traceback"]) > 0)
 
     def test_local_sync_with_packages_in_subdir(self):
@@ -925,7 +874,7 @@ class TestRPMs(rpm_support_base.PulpRPMTests):
         proxy_port = 8539
         proxy_user = "unit_test_username"
         proxy_pass = "unit_test_password"
-        proxy_server = ProxyServerThread(proxy_port=proxy_port, proxy_user=proxy_user, 
+        proxy_server = ProxyServerThread(proxy_port=proxy_port, proxy_user=proxy_user,
                 proxy_pass=proxy_pass)
         try:
             proxy_server.start()
@@ -934,7 +883,7 @@ class TestRPMs(rpm_support_base.PulpRPMTests):
             repo.working_dir = self.working_dir
             repo.id = "test_proxy_sync"
             sync_conduit = importer_mocks.get_sync_conduit(existing_units=[], pkg_dir=self.pkg_dir)
-            config = importer_mocks.get_basic_config(feed_url=feed_url, 
+            config = importer_mocks.get_basic_config(feed_url=feed_url,
                     proxy_url=proxy_url, proxy_port=proxy_port,
                     proxy_user=proxy_user, proxy_pass=proxy_pass)
             importerRPM = importer_rpm.ImporterRPM()
@@ -953,14 +902,13 @@ class TestRPMs(rpm_support_base.PulpRPMTests):
         self.assertEquals(details["size_total"], 6868)
 
     def test_newest_pkg_sync(self):
-        feed_url = "http://jmatthews.fedorapeople.org/repo_multiple_versions/"
         repo = mock.Mock(spec=Repository)
         repo.working_dir = self.working_dir
         repo.id = "test_repo_newest"
         sync_conduit = importer_mocks.get_sync_conduit(type_id=TYPE_ID_RPM, pkg_dir=self.pkg_dir)
 
         # newest set to True test
-        config = importer_mocks.get_basic_config(feed_url=feed_url, newest=True)
+        config = importer_mocks.get_basic_config(feed_url=REPO_MULTIPLE_VERSIONS_URL, newest=True)
         importerRPM = importer_rpm.ImporterRPM()
         status, summary, details = importerRPM.sync(repo, sync_conduit, config)
         self.assertTrue(status)
@@ -969,7 +917,7 @@ class TestRPMs(rpm_support_base.PulpRPMTests):
         self.assertEquals(len(pkgs), 1)
 
         # newest set to False test
-        config = importer_mocks.get_basic_config(feed_url=feed_url, newest=False)
+        config = importer_mocks.get_basic_config(feed_url=REPO_MULTIPLE_VERSIONS_URL, newest=False)
         importerRPM = importer_rpm.ImporterRPM()
         status, summary, details = importerRPM.sync(repo, sync_conduit, config)
         self.assertTrue(status)

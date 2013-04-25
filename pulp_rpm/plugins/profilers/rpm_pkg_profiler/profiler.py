@@ -19,6 +19,7 @@ import gettext
 from pulp.plugins.model import ApplicabilityReport
 from pulp.plugins.profiler import Profiler, InvalidUnitsRequested
 from pulp.plugins.conduits.mixins import UnitAssociationCriteria
+from pulp_rpm.common import constants
 from pulp_rpm.common.ids import TYPE_ID_PROFILER_RPM_PKG, TYPE_ID_RPM
 from pulp_rpm.yum_plugin import util
 
@@ -39,17 +40,33 @@ class RPMPkgProfiler(Profiler):
 
     # -- applicability ---------------------------------------------------------
 
-
-    def units_applicable(self, consumer, repo_ids, unit_type_id, unit_keys, config, conduit):
+    def find_applicable_units(self, consumer_profile_and_repo_ids, unit_type_id, unit_keys, config, conduit):
         """
         Determine whether content units with given unit_keys and unit_type_id 
         are applicable to the specified consumer with given repo_ids.
+        Consumers and repo ids are specified as a dictionary:
 
-        :param consumer: A consumer.
-        :type consumer: pulp.server.plugins.model.Consumer
-        
-        :param repo_ids: Repo ids to restrict the applicability search to.
-        :type repo_ids: list of str
+        {
+            <consumer_id> : {'profiled_consumer' : <profiled_consumer>,
+                             'repo_ids' : <repo_ids>},
+            ...
+        }
+
+        If report_style in the config is 'by_consumer', it returns a dictionary 
+        with a list of applicability reports keyed by a consumer id -
+
+        {
+            <consumer_id1> : [<ApplicabilityReport>],
+            <consumer_id2> : [<ApplicabilityReport>]},
+        }
+
+        If report_style in the config is 'by_units', it returns a list of applicability
+        reports. Each applicability report contains consumer_ids in the
+        summary to indicate all the applicable consumers.
+
+        :param consumer_profile_and_repo_ids: A dictionary with consumer profile and repo ids
+                        to be considered for applicability, keyed by consumer id.
+        :type consumer_profile_and_repo_ids: dict
 
         :param unit_type_id: Common type id of all given unit keys
         :type unit_type_id: str
@@ -63,8 +80,8 @@ class RPMPkgProfiler(Profiler):
         :param conduit: provides access to relevant Pulp functionality
         :type conduit: pulp.plugins.conduits.profile.ProfilerConduit
 
-        :return: A list of applicability reports.
-        :rtype: List of pulp.plugins.model.ApplicabilityReport
+        :return: A list of applicability reports or a dict of applicability reports keyed by a consumer id
+        :rtype: List of pulp.plugins.model.ApplicabilityReport or dict
         """
         
         if unit_type_id != TYPE_ID_RPM:
@@ -72,63 +89,75 @@ class RPMPkgProfiler(Profiler):
             _LOG.error(error_msg)
             raise InvalidUnitsRequested(unit_keys, error_msg)
 
-        applicability_reports = []
+        # Set default report style
+        report_style = constants.APPLICABILITY_REPORT_STYLE_BY_UNITS
+        if config:
+            report_style = config.get(constants.CONFIG_APPLICABILITY_REPORT_STYLE)
+        if report_style == constants.APPLICABILITY_REPORT_STYLE_BY_UNITS:
+            reports = []
+        else:
+            reports = {}
 
-        # If repo_ids or units are empty lists, no need to check for applicability.
-        if not repo_ids or not unit_keys:
-            return applicability_reports
+        if not consumer_profile_and_repo_ids:
+            return reports
 
-        # For each unit 
+        # Collect applicability reports for each unit
         for unit_key in unit_keys:
-            applicable, upgrade_details = self.find_applicable(unit_key, consumer, repo_ids, conduit)
-            if applicable:
-                details = upgrade_details
-                summary = {}
-                applicability_reports.append(ApplicabilityReport(summary, details))
+            applicable_consumers, rpm = self.find_applicable(unit_key, consumer_profile_and_repo_ids, conduit)
+            if applicable_consumers:
+                details = {}
+                summary = {'unit_key' : rpm.unit_key}
+                if report_style == constants.APPLICABILITY_REPORT_STYLE_BY_UNITS:
+                    summary['applicable_consumers'] = applicable_consumers
+                    reports.append(ApplicabilityReport(summary, details))
+                else:
+                    for consumer_id in applicable_consumers:
+                        reports.setdefault(consumer_id, []).append(ApplicabilityReport(summary, details))
 
-        return applicability_reports
+        return reports
 
 
     # -- Below are helper methods not part of the Profiler interface ----
 
 
-    def find_applicable(self, unit_key, consumer, repo_ids, conduit):
+    def find_applicable(self, unit_key, consumer_profile_and_repo_ids, conduit):
         """
         Find whether a package with given unit_key in repo_ids is applicable
         to the consumer.
 
-        :param unit: A content unit key
-        :type unit: dict
+        :param unit_key: A content unit key
+        :type unit_key: dict
 
-        :param consumer: A consumer.
-        :type consumer: pulp.server.plugins.model.Consumer
-
-        :param repo_ids: Repo ids to restrict the applicability search to.
-        :type repo_ids: list
+        :param consumer_profile_and_repo_ids: A dictionary with consumer profile and repo ids
+                        to be considered for applicability, keyed by consumer id.
+        :type consumer_profile_and_repo_ids: dict of <consumer_id> : {'profiled_consumer' : <profiled_consumer>,
+                                                                      'repo_ids' : <repo_ids>}
 
         :param conduit: provides access to relevant Pulp functionality
         :type conduit: pulp.plugins.conduits.profile.ProfilerConduit
 
-        :return:    a tuple consisting of applicable flag and upgrade details
+        :return: a tuple consisting of applicable consumers and rpm details
 
-        :rtype: (applicable_flag, {'name arch':{'available':{}, 'installed':{}}})
+        :rtype: (list of str, dict)
         """
-        applicable = False
-        upgrade_details = {}
+        applicable_consumers = []
+        rpm_details = None
+        for consumer_id, consumer_details in consumer_profile_and_repo_ids.items():
+            # First check whether rpm exists in given repos 
+            rpm = self.find_rpm_in_repos(unit_key, consumer_details['repo_ids'], conduit)
+            if not rpm:
+                error_msg = _("Unable to find package with unit_key [%s] in repos [%s] to consumer [%s]") % \
+                        (unit_key, consumer_details['repo_ids'], consumer_id)
+                _LOG.debug(error_msg)
+            else:
+                # If rpm exists, find whether it upgrades a consumer profile unit.
+                applicable, upgrade_details = self.rpm_applicable_to_consumer(consumer_details['profiled_consumer'], rpm.unit_key)
+                if applicable:
+                    _LOG.debug("Rpm: <%s> was found to be applicable to consumer <%s>" % (rpm, consumer_id))
+                    rpm_details = rpm
+                    applicable_consumers.append(consumer_id)
 
-        # First check whether rpm exists in given repos 
-        rpm = self.find_rpm_in_repos(unit_key, repo_ids, conduit)
-        if not rpm:
-            error_msg = _("Unable to find package with unit_key [%s] in repos [%s] to consumer [%s]") % \
-                    (unit_key, repo_ids, consumer.id)
-            _LOG.debug(error_msg)
-        else:
-            # If rpm exists, find whether it upgrades a consumer profile unit.
-            applicable, upgrade_details = self.rpm_applicable_to_consumer(consumer, rpm.unit_key)
-            if applicable:
-                _LOG.debug("Rpm: <%s> was found to be applicable to consumer <%s>" % (rpm, consumer.id))
-
-        return applicable, upgrade_details
+        return applicable_consumers, rpm
 
 
     def find_rpm_in_repos(self, unit_key, repo_ids, conduit):

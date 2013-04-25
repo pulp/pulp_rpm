@@ -14,12 +14,12 @@ import gettext
 import re
 import shutil
 
+from pulp_rpm.common import constants
 from pulp_rpm.yum_plugin import util
+
 _LOG = util.getLogger(__name__)
 _ = gettext.gettext
 
-HTTP_PUBLISH_DIR="/var/lib/pulp/published/http/isos"
-HTTPS_PUBLISH_DIR="/var/lib/pulp/published/https/isos"
 ISO_NAME_REGEX = re.compile(r'^[_A-Za-z0-9-]+$')
 
 
@@ -40,7 +40,7 @@ def get_http_publish_iso_dir(config=None):
         if publish_dir:
             _LOG.info("Override HTTP publish directory from passed in config value to: %s" % (publish_dir))
             return publish_dir
-    return HTTP_PUBLISH_DIR
+    return constants.EXPORT_HTTP_DIR
 
 
 def get_https_publish_iso_dir(config=None):
@@ -53,7 +53,7 @@ def get_https_publish_iso_dir(config=None):
         if publish_dir:
             _LOG.info("Override HTTPS publish directory from passed in config value to: %s" % (publish_dir))
             return publish_dir
-    return HTTPS_PUBLISH_DIR
+    return constants.EXPORT_HTTPS_DIR
 
 
 def cleanup_working_dir(working_dir):

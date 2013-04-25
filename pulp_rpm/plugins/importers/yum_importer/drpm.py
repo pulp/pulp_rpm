@@ -20,11 +20,6 @@ from pulp_rpm.common.ids import TYPE_ID_DRPM, UNIT_KEY_DRPM, METADATA_DRPM
 from pulp_rpm.yum_plugin import util
 
 _LOG = util.getLogger(__name__)
-TYPE_ID_DRPM="drpm"
-UNIT_KEY_DRPM = ("epoch", "version", "release",  "filename", "checksum", "checksumtype")
-
-METADATA_DRPM = ("size", "sequence", "new_package")
-
 
 def get_available_drpms(drpm_items):
     """

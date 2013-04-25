@@ -1,0 +1,21 @@
+======================
+Pulp 2.2 Release Notes
+======================
+
+Pulp 2.2.0
+==========
+
+New Features
+------------
+
+The ISO distributor now supports repository protection. See the API documentation for more details.
+
+CLI Changes
+-----------
+
+Upgrade Instructions
+--------------------
+
+Please see the
+`Pulp Platform upgrade instructions <https://pulp-user-guide.readthedocs.org/en/pulp-2.2/release-notes.html>`_
+for information on how to complete the upgrade.
