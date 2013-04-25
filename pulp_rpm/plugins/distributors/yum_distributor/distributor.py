@@ -22,10 +22,11 @@ import traceback
 from pulp.plugins.distributor import Distributor
 from pulp.server.config import config as pulp_server_config
 from pulp.server.db.model.criteria import UnitAssociationCriteria
-from pulp_rpm.common.ids import TYPE_ID_DISTRO, TYPE_ID_DRPM, TYPE_ID_ERRATA, TYPE_ID_PKG_GROUP, TYPE_ID_PKG_CATEGORY,\
-        TYPE_ID_RPM, TYPE_ID_SRPM, TYPE_ID_DISTRIBUTOR_YUM
-from pulp_rpm.yum_plugin import comps_util, util, metadata, updateinfo
+
+from pulp_rpm.common.ids import (TYPE_ID_DISTRO, TYPE_ID_DRPM, TYPE_ID_ERRATA, TYPE_ID_PKG_GROUP,
+                                 TYPE_ID_PKG_CATEGORY, TYPE_ID_RPM, TYPE_ID_SRPM, TYPE_ID_DISTRIBUTOR_YUM)
 from pulp_rpm.repo_auth import protected_repo_utils, repo_cert_utils
+from pulp_rpm.yum_plugin import comps_util, util, metadata, updateinfo
 import pulp_rpm.common.constants as constants
 
 # -- constants ----------------------------------------------------------------
@@ -40,7 +41,6 @@ OPTIONAL_CONFIG_KEYS = ["protected", "auth_cert", "auth_ca", "https_ca", "gpgkey
 SUPPORTED_UNIT_TYPES = [TYPE_ID_RPM, TYPE_ID_SRPM, TYPE_ID_DRPM, TYPE_ID_DISTRO]
 HTTP_PUBLISH_DIR="/var/lib/pulp/published/http/repos"
 HTTPS_PUBLISH_DIR="/var/lib/pulp/published/https/repos"
-CONFIG_REPO_AUTH="/etc/pulp/repo_auth.conf"
 
 # This needs to be a config option in the distributor's .conf file. But for 2.0,
 # I don't have time to add that and realistically, people won't be reconfiguring
@@ -57,8 +57,8 @@ RELATIVE_URL = '/pulp/repos'
 # http                  - True/False:  Publish through http
 # https                 - True/False:  Publish through https
 # protected             - True/False: Protect this repo with repo authentication
-# auth_cert             - Certificate to use if repo authentication is required
-# auth_ca               - CA to use if repo authentication is required
+# auth_cert             - Certificate to use if repo authorization is required
+# auth_ca               - CA to use if repo authorization is required
 # https_ca              - CA to verify https communication
 # gpgkey                - GPG Key associated with the packages in this repo
 # use_createrepo        - This is  mostly a debug flag to override default snippet based metadata generation with createrepo
@@ -779,7 +779,7 @@ class YumDistributor(Distributor):
         return payload
 
 
-def load_config(config_file=CONFIG_REPO_AUTH):
+def load_config(config_file=constants.REPO_AUTH_CONFIG_FILE):
     config = SafeConfigParser()
     config.read(config_file)
     return config
