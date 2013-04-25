@@ -16,6 +16,7 @@ import functools
 import logging
 
 from pulp.server import managers
+from pulp.server.db.model.criteria import UnitAssociationCriteria
 
 from pulp_rpm.common import models
 from pulp_rpm.plugins.importers.yum.repomd import existing
@@ -31,12 +32,24 @@ def associate(source_repo, dest_repo, import_conduit, config, units=None):
     associated_units = [_associate_unit(dest_repo, import_conduit, unit) for unit in units]
     units = None
 
-    groups, rpm_names, rpm_unit_keys = decide_what_to_get(associated_units)
+    # TODO: return here if we shouldn't get child units
+
+    group_ids, rpm_names, rpm_unit_keys = decide_what_to_get(associated_units)
+
+    # ------ get group children of the categories ------
+    group_criteria = UnitAssociationCriteria([models.PackageGroup.TYPE],
+                                             unit_filters={'id': {'$in': list(group_ids)}})
+    group_units = list(import_conduit.get_source_units(group_criteria))
+    if group_units:
+        associate(source_repo, dest_repo, import_conduit, config, group_units)
+
+    # ------ get RPM children of errata ------
     rpms_to_copy = get_wanted_rpms_by_key(rpm_unit_keys, import_conduit)
     rpm_unit_keys = None
     copy_rpms(rpms_to_copy, import_conduit)
     rpms_to_copy = None
 
+    # ------ get RPM children of groups ------
     names_to_copy = get_wanted_rpms_by_name(rpm_names, import_conduit)
     copy_rpms_by_name(names_to_copy, import_conduit)
 
