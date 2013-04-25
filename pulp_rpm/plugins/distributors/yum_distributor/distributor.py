@@ -411,7 +411,7 @@ class YumDistributor(Distributor):
         self.repo_working_dir = repo.working_dir
 
         if self.canceled:
-            return publish_conduit.build_failure_report(summary, details)
+            return publish_conduit.build_cancel_report(summary, details)
         skip_list = config.get('skip') or []
         # Determine Content in this repo
         pkg_units = []
@@ -448,7 +448,7 @@ class YumDistributor(Distributor):
             updateinfo_xml_path = updateinfo.updateinfo(errata_units, repo.working_dir)
 
         if self.canceled:
-            return publish_conduit.build_failure_report(summary, details)
+            return publish_conduit.build_cancel_report(summary, details)
         groups_xml_path = None
         existing_cats = []
         existing_groups = []
