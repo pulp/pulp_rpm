@@ -13,11 +13,14 @@
 
 import copy
 import functools
+import logging
 
 from pulp.server import managers
 
 from pulp_rpm.common import models
 from pulp_rpm.plugins.importers.yum.repomd import existing
+
+_LOGGER = logging.getLogger(__name__)
 
 
 def associate(source_repo, dest_repo, import_conduit, config, units=None):
@@ -47,7 +50,12 @@ def get_wanted_rpms_by_key(rpm_unit_keys, import_conduit):
     :param import_conduit:
     :return: set of namedtuples needed by the dest repo
     """
-    named_tuples = set(models.RPM.NAMEDTUPLE(**key) for key in rpm_unit_keys)
+    named_tuples = set()
+    for key in rpm_unit_keys:
+        # ignore checksum from updateinfo.xml
+        key['checksum'] = None
+        key['checksumtype'] = None
+        named_tuples.add(models.RPM.NAMEDTUPLE(**key))
     assoc_query_manager = managers.factory.repo_unit_association_query_manager()
     query_func = functools.partial(assoc_query_manager.get_units,
                                    import_conduit.dest_repo_id)
@@ -57,6 +65,9 @@ def get_wanted_rpms_by_key(rpm_unit_keys, import_conduit):
         for key in unit.keys():
             if key not in models.RPM.UNIT_KEY_NAMES:
                 del unit[key]
+        # ignore checksum from updateinfo.xml
+        unit['checksum'] = None
+        unit['checksumtype'] = None
         named_tuples.discard(models.RPM.NAMEDTUPLE(**unit))
     return named_tuples
 
@@ -75,12 +86,20 @@ def get_wanted_rpms_by_name(rpm_names, import_conduit):
 
 
 def copy_rpms(unit_tuples, import_conduit):
-    available = existing.get_existing_units((unit._asdict() for unit in unit_tuples),
+    available = existing.get_existing_units((_no_checksum_unit_key(unit) for unit in unit_tuples),
                                             models.RPM.UNIT_KEY_NAMES, models.RPM.TYPE,
                                             import_conduit.get_source_units)
 
     for unit in available:
         import_conduit.associate_unit(unit)
+
+
+def _no_checksum_unit_key(unit_tuple):
+    ret = unit_tuple._asdict()
+    # ignore checksum from updateinfo.xml
+    del ret['checksum']
+    del ret['checksumtype']
+    return ret
 
 
 def copy_rpms_by_name(names, import_conduit):
@@ -116,6 +135,7 @@ def decide_what_to_get(units):
             rpm_names.update(model.all_package_names)
         elif model.TYPE == models.Errata.TYPE:
             rpm_unit_keys.extend(model.package_unit_keys)
+            _LOGGER.info(model.package_unit_keys)
     return groups, rpm_names, rpm_unit_keys
 
 
