@@ -241,14 +241,21 @@ class TestErrataProfiler(rpm_support_base.PulpRPMTests):
         self.assertTrue(report_list == [])
 
     def test_install_units(self):
+        repo_id = "test_repo_id"
         errata_obj = self.get_test_errata_object()
         errata_unit = Unit(TYPE_ID_ERRATA, {"id":errata_obj["id"]}, errata_obj, None)
         existing_units = [errata_unit]
-        test_repo = profiler_mocks.get_repo("test_repo_id")
+        test_repo = profiler_mocks.get_repo(repo_id)
         conduit = profiler_mocks.get_profiler_conduit(existing_units=existing_units, repo_bindings=[test_repo])
         example_errata = {"unit_key":errata_unit.unit_key, "type_id":TYPE_ID_ERRATA}
         prof = RPMErrataProfiler()
         translated_units  = prof.install_units(self.test_consumer, [example_errata], None, None, conduit)
+        # check repo_id passed to the conduit get_units()
+        self.assertEqual(conduit.get_units.call_args[0][0].id, repo_id)
+        # check unit association criteria passed to the conduit get_units()
+        self.assertEqual(conduit.get_units.call_args[0][1].type_ids, [TYPE_ID_ERRATA])
+        self.assertEqual(conduit.get_units.call_args[0][1].unit_filters, errata_unit.unit_key)
+        # validate translated units
         self.assertEqual(len(translated_units), 2)
         expected = []
         for r in self.test_consumer.profiles[TYPE_ID_RPM]:
@@ -257,8 +264,3 @@ class TestErrataProfiler(rpm_support_base.PulpRPMTests):
         for u in translated_units:
             rpm_name = u["unit_key"]["name"]
             self.assertTrue(rpm_name in expected)
-
-
-
-
-
