@@ -10,6 +10,8 @@
 # NON-INFRINGEMENT, or FITNESS FOR A PARTICULAR PURPOSE. You should
 # have received a copy of GPLv2 along with this software; if not, see
 # http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt.
+
+from ConfigParser import SafeConfigParser
 from gettext import gettext as _
 import csv
 import errno
@@ -19,6 +21,8 @@ import shutil
 
 from pulp_rpm.common import constants
 from pulp_rpm.common.progress import PublishProgressReport
+from pulp_rpm.repo_auth.protected_repo_utils import ProtectedRepoUtils
+from pulp_rpm.repo_auth.repo_cert_utils import RepoCertUtils
 
 
 logger = logging.getLogger(__name__)
@@ -111,10 +115,11 @@ def _copy_to_hosted_location(repo, config, progress_report):
 
         http_dest_dir = os.path.join(constants.ISO_HTTP_DIR, repo.id)
         _rmtree_if_exists(http_dest_dir)
+        # Publish the HTTP portion, if applicable
         if config.get_boolean(constants.CONFIG_SERVE_HTTP):
             shutil.copytree(build_dir, http_dest_dir, symlinks=True)
-            progress_report.publish_http = constants.STATE_COMPLETE
-    except Exception:
+        progress_report.publish_http = constants.STATE_COMPLETE
+    except Exception, e:
         progress_report.publish_http = constants.STATE_FAILED
         raise
     finally:
@@ -125,15 +130,47 @@ def _copy_to_hosted_location(repo, config, progress_report):
         progress_report.update_progress()
 
         https_dest_dir = os.path.join(constants.ISO_HTTPS_DIR, repo.id)
+        _protect_repository(repo.id, repo, config)
         _rmtree_if_exists(https_dest_dir)
+        # Publish the HTTPs portion, if applicable
         if config.get_boolean(constants.CONFIG_SERVE_HTTPS):
             shutil.copytree(build_dir, https_dest_dir, symlinks=True)
-            progress_report.publish_https = constants.STATE_COMPLETE
-    except Exception:
+        progress_report.publish_https = constants.STATE_COMPLETE
+    except Exception, e:
         progress_report.publish_https = constants.STATE_FAILED
         raise
     finally:
         progress_report.update_progress()
+
+
+def _protect_repository(relative_path, repo, config):
+    """
+    Configure this repository to be protected by registering it with the repo protection application. Repository
+    protection will only be performed if if the CONFIG_SSL_AUTH_CA_CERT option is set to a certificate.
+    Otherwise, this method removes repository protection.
+    """
+    authorization_ca_cert = config.get(constants.CONFIG_SSL_AUTH_CA_CERT)
+
+    # Instantiate our repository protection utilities with the config file
+    repo_auth_config = SafeConfigParser()
+    repo_auth_config.read(constants.REPO_AUTH_CONFIG_FILE)
+    repo_cert_utils = RepoCertUtils(repo_auth_config)
+    protected_repo_utils = ProtectedRepoUtils(repo_auth_config)
+
+    if authorization_ca_cert:
+        # If we want to include a valid entitlement certificate to hand to consumers, use the key "cert". For
+        # now, we only support the "ca" flag for validating the client certificates.
+        cert_bundle = {'ca': authorization_ca_cert}
+
+        # This will put the certificates on the filesystem so the repo protection application can use them to
+        # validate the consumers' entitlement certificates
+        repo_cert_utils.write_consumer_cert_bundle(repo.id, cert_bundle)
+        # Add this repository to the protected list. This will tell the repo protection application that it
+        # should enforce protection on this relative path
+        protected_repo_utils.add_protected_repo(relative_path, repo.id)
+    else:
+        # Ensure that we aren't protecting this path
+        protected_repo_utils.delete_protected_repo(relative_path)
 
 
 def _get_or_create_build_dir(repo):

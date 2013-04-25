@@ -23,7 +23,7 @@ from pulp_rpm.plugins.distributors.iso_distributor import distributor
 from rpm_support_base import PulpRPMTests
 import distributor_mocks
 
-from mock import MagicMock
+from mock import MagicMock, patch
 from pulp.plugins.model import Repository, Unit
 
 class TestEntryPoint(PulpRPMTests):
@@ -68,7 +68,8 @@ class TestISODistributor(PulpRPMTests):
         self.assertEqual(metadata['display_name'], 'ISO Distributor')
         self.assertEqual(metadata['types'], [ids.TYPE_ID_ISO])
 
-    def test_publish_repo(self):
+    @patch('pulp_rpm.repo_auth.protected_repo_utils.ProtectedRepoUtils.delete_protected_repo')
+    def test_publish_repo(self, delete_protected_repo):
         repo = MagicMock(spec=Repository)
         repo.id = 'lebowski'
         repo.working_dir = self.temp_dir
@@ -103,6 +104,10 @@ class TestISODistributor(PulpRPMTests):
                                       ['test3.iso', 'sum3', '3']]
             self.assertEqual(manifest_rows, expected_manifest_rows)
 
+        # We should have called to delete the protected repo
+        self.assertEqual(delete_protected_repo.call_count, 1)
+        self.assertEqual(delete_protected_repo.mock_calls[0][1][0], repo.id)
+
     def test_validate_config(self):
         # validate_config doesn't use the repo or related_repos args, so we'll just pass None for
         # ease
@@ -111,7 +116,7 @@ class TestISODistributor(PulpRPMTests):
         status, error_message = self.iso_distributor.validate_config(None, config, None)
         self.assertTrue(status)
         self.assertEqual(error_message, None)
-        
+
         # Try setting the HTTP one to a string, which should be OK as long as it's still True
         config = distributor_mocks.get_basic_config(**{constants.CONFIG_SERVE_HTTP: "True",
                                                        constants.CONFIG_SERVE_HTTPS: True})

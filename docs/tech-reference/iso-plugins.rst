@@ -128,3 +128,9 @@ configuration parameters are required.
 ``serve_https``
  This is a boolean value, or a string "True" or "False". If set to True, the distributor will publish the ISO
  repository over SSL protected HTTP, port 443. If False, it will not be published over HTTPS.
+
+``ssl_auth_ca_cert``
+ If the distributor is configured with an authorization CA certificate and the repository protection WSGI app is
+ enabled, the distributed repository will become a protected repository. The given CA certificate will be used
+ to verify the clients' entitlement certificates. If this certificate is not provided, the repository will be an
+ unprotected repository.
