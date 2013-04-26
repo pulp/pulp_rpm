@@ -18,7 +18,7 @@
 
 Name: pulp-rpm
 Version: 2.1.1
-Release: 0.7.beta%{?dist}
+Release: 0.8.beta%{?dist}
 Summary: Support for RPM content in the Pulp platform
 Group: Development/Languages
 License: GPLv2
@@ -273,6 +273,16 @@ A collection of yum plugins supplementing Pulp consumer operations.
 
 
 %changelog
+* Fri Apr 26 2013 Jeff Ortel <jortel@redhat.com> 2.1.1-0.8.beta
+- 956372 - fix errata installs. (jortel@redhat.com)
+- 954038 - minor changes to fix unit tests (skarmark@redhat.com)
+- 954038 - minor changes to fix unit tests (skarmark@redhat.com)
+- 954038 - minor renaming (skarmark@redhat.com)
+- 954038 - updating rpm package profiler applicability api to accept unit ids
+  instead of unit keys (skarmark@redhat.com)
+- 954038 - updating errata profiler applicability api for accept unit ids
+  instead of unit keys (skarmark@redhat.com)
+
 * Wed Apr 24 2013 Jeff Ortel <jortel@redhat.com> 2.1.1-0.7.beta
 - 955172 - Removing rhsm from our repo and now using the regular python-rhsm
   (mhrivnak@redhat.com)
