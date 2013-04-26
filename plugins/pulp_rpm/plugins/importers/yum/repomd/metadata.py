@@ -207,6 +207,7 @@ class MetadataFiles(object):
             return
 
         if file_path.endswith('.gz'):
+            # TODO: doesn't support with statement in 2.6
             file_handle = gzip.open(file_path, 'r')
         elif file_path.endswith('.xz'):
             file_handle = lzma.LZMAFile(file_path, 'r')
