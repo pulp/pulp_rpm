@@ -10,12 +10,16 @@
 # NON-INFRINGEMENT, or FITNESS FOR A PARTICULAR PURPOSE. You should
 # have received a copy of GPLv2 along with this software; if not, see
 # http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt.
+
+from gettext import gettext as _
 import logging
+import os
+import shutil
 
 from pulp.plugins.conduits.mixins import UnitAssociationCriteria
 from pulp.plugins.importer import Importer
 
-from pulp_rpm.common import ids
+from pulp_rpm.common import constants, ids, models
 from pulp_rpm.plugins.importers.iso_importer import configuration, sync
 
 logger = logging.getLogger(__name__)
@@ -91,7 +95,27 @@ class ISOImporter(Importer):
         return report
 
     def upload_unit(self, repo, type_id, unit_key, metadata, file_path, conduit, config):
-        raise NotImplementedError()
+        """
+        See super(self.__class__, self).upload_unit() for the docblock explaining this method. In short, it
+        handles ISO uploads.
+        """
+        iso = models.ISO(unit_key['name'], unit_key['size'], unit_key['checksum'])
+        iso.init_unit(conduit)
+
+        shutil.move(file_path, iso.storage_path)
+        validate = config.get_boolean(constants.CONFIG_VALIDATE_UNITS)
+        validate = validate if validate is not None else constants.CONFIG_VALIDATE_UNITS_DEFAULT
+        if validate:
+            try:
+                # Let's validate the checksum and size against the file. This will raise a ValueError if the
+                # checksum or size doesn't match the file
+                iso.validate()
+            except ValueError:
+                # If validation raises a ValueError, we should delete the unit and raise
+                os.remove(iso.storage_path)
+                raise
+
+        iso.save_unit(conduit)
 
     def validate_config(self, repo, config, related_repos):
         return configuration.validate(config)
