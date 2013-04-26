@@ -42,7 +42,7 @@ class RPMPkgProfiler(Profiler):
 
     def find_applicable_units(self, consumer_profile_and_repo_ids, unit_type_id, unit_keys, config, conduit):
         """
-        Determine whether content units with given unit_keys and unit_type_id 
+        Determine whether content units with given unit_ids and unit_type_id 
         are applicable to the specified consumer with given repo_ids.
         Consumers and repo ids are specified as a dictionary:
 
@@ -71,8 +71,8 @@ class RPMPkgProfiler(Profiler):
         :param unit_type_id: Common type id of all given unit keys
         :type unit_type_id: str
 
-        :param unit_keys: list of unit keys to identify units 
-        :type unit_keys: list of dict
+        :param unit_ids: list of unit ids to identify units 
+        :type unit_ids: list of str
 
         :param config: plugin configuration
         :type config: pulp.server.plugins.config.PluginCallConfiguration
@@ -87,7 +87,7 @@ class RPMPkgProfiler(Profiler):
         if unit_type_id != TYPE_ID_RPM:
             error_msg = _("units_applicable invoked with type_id [%s], expected [%s]") % (unit_type_id, TYPE_ID_RPM)
             _LOG.error(error_msg)
-            raise InvalidUnitsRequested(unit_keys, error_msg)
+            raise InvalidUnitsRequested(unit_ids, error_msg)
 
         # Set default report style
         report_style = constants.APPLICABILITY_REPORT_STYLE_BY_UNITS
@@ -102,8 +102,8 @@ class RPMPkgProfiler(Profiler):
             return reports
 
         # Collect applicability reports for each unit
-        for unit_key in unit_keys:
-            applicable_consumers, rpm = self.find_applicable(unit_key, consumer_profile_and_repo_ids, conduit)
+        for unit_id in unit_ids:
+            applicable_consumers, rpm = self.find_applicable(unit_id, consumer_profile_and_repo_ids, conduit)
             if applicable_consumers:
                 details = {}
                 summary = {'unit_key' : rpm.unit_key}
@@ -120,13 +120,13 @@ class RPMPkgProfiler(Profiler):
     # -- Below are helper methods not part of the Profiler interface ----
 
 
-    def find_applicable(self, unit_key, consumer_profile_and_repo_ids, conduit):
+    def find_applicable(self, unit_id, consumer_profile_and_repo_ids, conduit):
         """
-        Find whether a package with given unit_key in repo_ids is applicable
+        Find whether a package with given unit_id in repo_ids is applicable
         to the consumer.
 
-        :param unit_key: A content unit key
-        :type unit_key: dict
+        :param unit_id: A content unit id
+        :type unit_id: str
 
         :param consumer_profile_and_repo_ids: A dictionary with consumer profile and repo ids
                         to be considered for applicability, keyed by consumer id.
@@ -144,10 +144,10 @@ class RPMPkgProfiler(Profiler):
         rpm_details = None
         for consumer_id, consumer_details in consumer_profile_and_repo_ids.items():
             # First check whether rpm exists in given repos 
-            rpm = self.find_rpm_in_repos(unit_key, consumer_details['repo_ids'], conduit)
+            rpm = self.find_rpm_in_repos(unit_id, consumer_details['repo_ids'], conduit)
             if not rpm:
-                error_msg = _("Unable to find package with unit_key [%s] in repos [%s] to consumer [%s]") % \
-                        (unit_key, consumer_details['repo_ids'], consumer_id)
+                error_msg = _("Unable to find package with unit_id [%s] in repos [%s] to consumer [%s]") % \
+                        (unit_id, consumer_details['repo_ids'], consumer_id)
                 _LOG.debug(error_msg)
             else:
                 # If rpm exists, find whether it upgrades a consumer profile unit.
@@ -160,12 +160,12 @@ class RPMPkgProfiler(Profiler):
         return applicable_consumers, rpm
 
 
-    def find_rpm_in_repos(self, unit_key, repo_ids, conduit):
+    def find_rpm_in_repos(self, unit_id, repo_ids, conduit):
         """
         Return details of an rpm, if it exists in given repos. 
         Returns none if rpm doesn't exist.
         """
-        criteria = UnitAssociationCriteria(type_ids=[TYPE_ID_RPM], unit_filters=unit_key)
+        criteria = UnitAssociationCriteria(type_ids=[TYPE_ID_RPM], association_filters={'unit_id':unit_id})
         for repo_id in repo_ids:
             result = conduit.get_units(repo_id, criteria)
             _LOG.debug("Found %s items when searching in repo <%s> for <%s>" % (len(result), repo_id, criteria))
