@@ -67,7 +67,7 @@ class TestValidateFeedUrl(PulpRPMTests):
             {constants.CONFIG_SSL_CA_CERT: 'cert'},
             {constants.CONFIG_SSL_CLIENT_CERT: 'cert'},
             {constants.CONFIG_SSL_CLIENT_CERT: 'cert', constants.CONFIG_SSL_CLIENT_KEY: 'key'},
-            {constants.CONFIG_VALIDATE_DOWNLOADS: True}]:
+            {constants.CONFIG_VALIDATE_UNITS: True}]:
                 # Each of the above configurations should cause the validator to complain about the feed_url
                 # missing
                 config = importer_mocks.get_basic_config(**parameters)
@@ -78,7 +78,7 @@ class TestValidateFeedUrl(PulpRPMTests):
                     'The configuration parameter <feed_url> is required when any of the following other '
                     'parameters are defined: max_speed, num_threads, proxy_password, proxy_port, proxy_url, '
                     'proxy_user, remove_missing_units, ssl_ca_cert, ssl_client_cert, ssl_client_key, '
-                    'validate_downloads')
+                    'validate_units')
 
     def test_valid(self):
         config = importer_mocks.get_basic_config(**{constants.CONFIG_FEED_URL: "http://test.com/feed"})
@@ -370,22 +370,22 @@ class TestValidateSSLOptions(PulpRPMTests):
 
 class TestValidateValidateDownloads(PulpRPMTests):
     def test_invalid_config(self):
-        config = importer_mocks.get_basic_config(**{constants.CONFIG_VALIDATE_DOWNLOADS: 1,
+        config = importer_mocks.get_basic_config(**{constants.CONFIG_VALIDATE_UNITS: 1,
                                                     constants.CONFIG_FEED_URL: 'http://feed.com'})
         status, error_message = configuration.validate(config)
         self.assertTrue(status is False)
-        self.assertEqual(error_message, 'The configuration parameter <validate_downloads> must be set to a '
+        self.assertEqual(error_message, 'The configuration parameter <validate_units> must be set to a '
                                         'boolean value, but is currently set to <1>.')
 
     def test_string_true(self):
-        config = importer_mocks.get_basic_config(**{constants.CONFIG_VALIDATE_DOWNLOADS: 'true',
+        config = importer_mocks.get_basic_config(**{constants.CONFIG_VALIDATE_UNITS: 'true',
                                                     constants.CONFIG_FEED_URL: 'http://feed.com'})
         status, error_message = configuration.validate(config)
         self.assertTrue(status is True)
         self.assertEqual(error_message, None)
 
     def test_valid_config(self):
-        config = importer_mocks.get_basic_config(**{constants.CONFIG_VALIDATE_DOWNLOADS: True,
+        config = importer_mocks.get_basic_config(**{constants.CONFIG_VALIDATE_UNITS: True,
                                                     constants.CONFIG_FEED_URL: 'http://feed.com'})
         status, error_message = configuration.validate(config)
         self.assertTrue(status is True)

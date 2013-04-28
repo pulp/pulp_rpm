@@ -86,7 +86,7 @@ def _validate_feed_url(config):
         constants.CONFIG_MAX_SPEED, constants.CONFIG_NUM_THREADS, constants.CONFIG_PROXY_PASSWORD,
         constants.CONFIG_PROXY_PORT, constants.CONFIG_PROXY_URL, constants.CONFIG_PROXY_USER,
         constants.CONFIG_REMOVE_MISSING_UNITS, constants.CONFIG_SSL_CA_CERT, constants.CONFIG_SSL_CLIENT_CERT,
-        constants.CONFIG_SSL_CLIENT_KEY, constants.CONFIG_VALIDATE_DOWNLOADS]
+        constants.CONFIG_SSL_CLIENT_KEY, constants.CONFIG_VALIDATE_UNITS]
     if not feed_url and all([config.get(setting) is None for setting in dependencies]):
         return True, None
     elif not feed_url:
@@ -398,4 +398,4 @@ def _validate_validate_downloads(config):
     :return:       tuple of (is_valid, error_message)
     :rtype:        tuple
     """
-    return _validate_is_non_required_bool(config, constants.CONFIG_VALIDATE_DOWNLOADS)
+    return _validate_is_non_required_bool(config, constants.CONFIG_VALIDATE_UNITS)
