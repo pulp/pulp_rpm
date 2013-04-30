@@ -222,7 +222,7 @@ class RPMErrataProfiler(Profiler):
             # Return as list of name.arch values
             ret_val = []
             for ar in applicable_rpms:
-                pkg_name = "%s.%s" % (ar["name"], ar["arch"])
+                pkg_name = "%s-%s:%s-%s.%s" % (ar["name"], ar["epoch"], ar["version"], ar["release"], ar["arch"])
                 data = {"unit_key":{"name":pkg_name}, "type_id":TYPE_ID_RPM}
                 ret_val.append(data)
             _LOG.info("Translated errata <%s> to <%s>" % (errata, ret_val))
