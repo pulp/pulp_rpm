@@ -30,6 +30,7 @@ DESC_SKIP_EXISTING = _('if specified, RPMs that already exist on the server will
 FLAG_SKIP_EXISTING = PulpCliFlag('--skip-existing', DESC_SKIP_EXISTING)
 
 RPMTAG_NOSOURCE = 1051
+CHECKSUM_READ_BUFFER_SIZE = 65536
 
 
 class CreateRpmCommand(UploadCommand):
@@ -181,7 +182,7 @@ def _calculate_checksum(checksum_type, filename):
     m = hashlib.new(checksum_type)
     f = open(filename, 'r')
     while 1:
-        file_buffer = f.read(65536)
+        file_buffer = f.read(CHECKSUM_READ_BUFFER_SIZE)
         if not file_buffer:
             break
         m.update(file_buffer)
