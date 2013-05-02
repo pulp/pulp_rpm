@@ -117,7 +117,7 @@ class RPMErrataProfiler(Profiler):
         :rtype: List of pulp.plugins.model.ApplicabilityReport or dict
         """
         if unit_type_id != TYPE_ID_ERRATA:
-            error_msg = _("units_applicable invoked with type_id [%s], expected [%s]") % (unit_type_id, TYPE_ID_ERRATA)
+            error_msg = _("find_applicable_units invoked with type_id [%s], expected [%s]") % (unit_type_id, TYPE_ID_ERRATA)
             _LOG.error(error_msg)
             raise InvalidUnitsRequested(unit_ids, error_msg)
 

@@ -40,7 +40,8 @@ class RPMPkgProfiler(Profiler):
 
     # -- applicability ---------------------------------------------------------
 
-    def find_applicable_units(self, consumer_profile_and_repo_ids, unit_type_id, unit_keys, config, conduit):
+
+    def find_applicable_units(self, consumer_profile_and_repo_ids, unit_type_id, unit_ids, config, conduit):
         """
         Determine whether content units with given unit_ids and unit_type_id 
         are applicable to the specified consumer with given repo_ids.
@@ -85,7 +86,7 @@ class RPMPkgProfiler(Profiler):
         """
         
         if unit_type_id != TYPE_ID_RPM:
-            error_msg = _("units_applicable invoked with type_id [%s], expected [%s]") % (unit_type_id, TYPE_ID_RPM)
+            error_msg = _("find_applicable_units invoked with type_id [%s], expected [%s]") % (unit_type_id, TYPE_ID_RPM)
             _LOG.error(error_msg)
             raise InvalidUnitsRequested(unit_ids, error_msg)
 
@@ -93,6 +94,7 @@ class RPMPkgProfiler(Profiler):
         report_style = constants.APPLICABILITY_REPORT_STYLE_BY_UNITS
         if config:
             report_style = config.get(constants.CONFIG_APPLICABILITY_REPORT_STYLE)
+
         if report_style == constants.APPLICABILITY_REPORT_STYLE_BY_UNITS:
             reports = []
         else:
