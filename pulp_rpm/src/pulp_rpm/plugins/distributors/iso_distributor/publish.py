@@ -18,6 +18,7 @@ import errno
 import logging
 import os
 import shutil
+import traceback
 
 from pulp_rpm.common import constants
 from pulp_rpm.common.progress import PublishProgressReport
@@ -49,14 +50,19 @@ def publish(repo, publish_conduit, config):
 
     try:
         units = publish_conduit.get_units()
-        _symlink_units(repo, units, progress_report)
         _build_metadata(repo, units, progress_report)
+        _symlink_units(repo, units, progress_report)
         _copy_to_hosted_location(repo, config, progress_report)
         progress_report.update_progress()
         return progress_report.build_final_report()
-    except Exception:
-        progress_report.publish_http  = constants.STATE_FAILED
-        progress_report.publish_https = constants.STATE_FAILED
+    except Exception, e:
+        if progress_report.state not in [progress_report.STATE_MANIFEST_FAILED,
+                                         progress_report.STATE_ISOS_FAILED, progress_report.STATE_HTTP_FAILED,
+                                         progress_report.STATE_HTTPS_FAILED]:
+            # If the state is not already in an error state, let's set it to the general error state
+            progress_report.error_message = str(e)
+            progress_report.traceback = traceback.format_exc()
+            progress_report.state = progress_report.STATE_FAILED
         report = progress_report.build_final_report()
         return report
 
@@ -72,8 +78,7 @@ def _build_metadata(repo, units, progress_report):
     :param progress_report: The progress report that should be updated with progress
     :type  progress_report: pulp_rpm.common.publish_progress.PublishProgressReport
     """
-    progress_report.manifest_state = constants.STATE_RUNNING
-    progress_report.update_progress()
+    progress_report.state = progress_report.STATE_MANIFEST_IN_PROGRESS
 
     try:
         build_dir = _get_or_create_build_dir(repo)
@@ -83,16 +88,15 @@ def _build_metadata(repo, units, progress_report):
         for unit in units:
             metadata_csv.writerow([unit.unit_key['name'], unit.unit_key['checksum'],
                                    unit.unit_key['size']])
-        progress_report.manifest_state = constants.STATE_COMPLETE
     except Exception, e:
-        progress_report.manifest_state = constants.STATE_FAILED
-        progress_report.manifest_error_message = str(e)
+        progress_report.error_message = str(e)
+        progress_report.traceback = traceback.format_exc()
+        progress_report.state = progress_report.STATE_MANIFEST_FAILED
         raise
     finally:
         # Only try to close metadata if we were able to open it successfully
         if 'metadata' in dir():
             metadata.close()
-        progress_report.update_progress()
 
 
 def _copy_to_hosted_location(repo, config, progress_report):
@@ -110,24 +114,21 @@ def _copy_to_hosted_location(repo, config, progress_report):
     build_dir = _get_or_create_build_dir(repo)
 
     try:
-        progress_report.publish_http = constants.STATE_RUNNING
-        progress_report.update_progress()
+        progress_report.state = progress_report.STATE_HTTP_IN_PROGRESS
 
         http_dest_dir = os.path.join(constants.ISO_HTTP_DIR, repo.id)
         _rmtree_if_exists(http_dest_dir)
         # Publish the HTTP portion, if applicable
         if config.get_boolean(constants.CONFIG_SERVE_HTTP):
             shutil.copytree(build_dir, http_dest_dir, symlinks=True)
-        progress_report.publish_http = constants.STATE_COMPLETE
     except Exception, e:
-        progress_report.publish_http = constants.STATE_FAILED
+        progress_report.error_message = str(e)
+        progress_report.traceback = traceback.format_exc()
+        progress_report.state = progress_report.STATE_HTTP_FAILED
         raise
-    finally:
-        progress_report.update_progress()
 
     try:
-        progress_report.publish_https = constants.STATE_RUNNING
-        progress_report.update_progress()
+        progress_report.state = progress_report.STATE_HTTPS_IN_PROGRESS
 
         https_dest_dir = os.path.join(constants.ISO_HTTPS_DIR, repo.id)
         _protect_repository(repo.id, repo, config)
@@ -135,12 +136,14 @@ def _copy_to_hosted_location(repo, config, progress_report):
         # Publish the HTTPs portion, if applicable
         if config.get_boolean(constants.CONFIG_SERVE_HTTPS):
             shutil.copytree(build_dir, https_dest_dir, symlinks=True)
-        progress_report.publish_https = constants.STATE_COMPLETE
     except Exception, e:
-        progress_report.publish_https = constants.STATE_FAILED
+        progress_report.error_message = str(e)
+        progress_report.traceback = traceback.format_exc()
+        progress_report.state = progress_report.STATE_HTTPS_FAILED
         raise
-    finally:
-        progress_report.update_progress()
+
+    # Now the publish step is complete
+    progress_report.state = progress_report.STATE_COMPLETE
 
 
 def _protect_repository(relative_path, repo, config):
@@ -207,9 +210,8 @@ def _symlink_units(repo, units, progress_report):
     :param progress_report: The progress report that should be updated with progress
     :type  progress_report: pulp_rpm.common.publish_progress.PublishProgressReport
     """
-    progress_report.isos_state = constants.STATE_RUNNING
-    progress_report.isos_total_count = len(units)
-    progress_report.update_progress()
+    progress_report.num_isos = len(units)
+    progress_report.state = progress_report.STATE_ISOS_IN_PROGRESS
 
     try:
         build_dir = _get_or_create_build_dir(repo)
@@ -239,15 +241,13 @@ def _symlink_units(repo, units, progress_report):
             os.symlink(unit.storage_path, symlink_filename)
 
             # Update the progress report
-            progress_report.isos_finished_count += 1
+            progress_report.num_isos_finished += 1
             progress_report.update_progress()
-        progress_report.isos_state = constants.STATE_COMPLETE
     except Exception, e:
-        progress_report.isos_state = constants.STATE_FAILED
-        progress_report.isos_error_message = str(e)
+        progress_report.error_message = str(e)
+        progress_report.traceback = traceback.format_exc()
+        progress_report.state = progress_report.STATE_ISOS_FAILED
         raise
-    finally:
-        progress_report.update_progress()
 
 
 def _rmtree_if_exists(path):

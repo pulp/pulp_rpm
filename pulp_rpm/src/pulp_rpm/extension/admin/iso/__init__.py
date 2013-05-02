@@ -10,16 +10,3 @@
 # NON-INFRINGEMENT, or FITNESS FOR A PARTICULAR PURPOSE. You should
 # have received a copy of GPLv2 along with this software; if not, see
 # http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt.
-
-from pulp.client.extensions.decorator import priority
-
-from pulp_rpm.extension.admin.iso.structure import add_iso_section
-
-
-@priority()
-def initialize(context):
-    """
-    :param context: The client context that we can use to advertise our abilities
-    :type  context: pulp.client.extensions.core.ClientContext
-    """
-    add_iso_section(context)
