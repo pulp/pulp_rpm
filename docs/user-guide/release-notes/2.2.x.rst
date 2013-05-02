@@ -14,6 +14,9 @@ New Features
 CLI Changes
 -----------
 
+* The ``pulp-admin rpm repo uploads rpm`` command now supports a flag (``--skip-existing``) to skip
+  re-uploading packages that are already in the destination repository.
+
 Upgrade Instructions
 --------------------
 
