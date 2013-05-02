@@ -66,13 +66,18 @@ class CreateRpmCommand(UploadCommand):
 
         bundles_to_upload = []
         for bundle in file_bundles:
+            checksum = _calculate_checksum('sha256', bundle.filename)
+
             filters = {
                 'name' : bundle.unit_key['name'],
                 'version' : bundle.unit_key['version'],
                 'release' : bundle.unit_key['release'],
                 'epoch' : bundle.unit_key['epoch'],
                 'arch' : bundle.unit_key['arch'],
+                'checksumtype' : 'sha256',
+                'checksum' : checksum,
             }
+
             criteria = {
                 'type_ids' : [TYPE_ID_RPM],
                 'filters' : filters,
@@ -135,17 +140,7 @@ def _generate_rpm_data(rpm_filename):
 
     # Checksum
     unit_key['checksumtype'] = 'sha256' # hardcoded to this in v1 so leaving this way for now
-
-    m = hashlib.new(unit_key['checksumtype'])
-    f = open(rpm_filename, 'r')
-    while 1:
-        buffer = f.read(65536)
-        if not buffer:
-            break
-        m.update(buffer)
-    f.close()
-
-    unit_key['checksum'] = m.hexdigest()
+    unit_key['checksum'] = _calculate_checksum(unit_key['checksumtype'], rpm_filename)
 
     # Name, Version, Release, Epoch
     for k in ['name', 'version', 'release', 'epoch']:
@@ -180,3 +175,15 @@ def _generate_rpm_data(rpm_filename):
     metadata['description'] = headers['description']
 
     return unit_key, metadata
+
+
+def _calculate_checksum(checksum_type, filename):
+    m = hashlib.new(checksum_type)
+    f = open(filename, 'r')
+    while 1:
+        file_buffer = f.read(65536)
+        if not file_buffer:
+            break
+        m.update(file_buffer)
+    f.close()
+    return m.hexdigest()

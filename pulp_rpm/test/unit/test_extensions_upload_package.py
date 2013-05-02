@@ -39,6 +39,7 @@ class CreateRpmCommandTests(rpm_support_base.PulpClientTests):
         self.assertTrue(isinstance(self.command, UploadCommand))
         self.assertEqual(self.command.name, package.NAME)
         self.assertEqual(self.command.description, package.DESC)
+        self.assertTrue(FLAG_SKIP_EXISTING in self.command.options)
 
     def test_determine_type_id(self):
         type_id = self.command.determine_type_id(None)
@@ -65,7 +66,8 @@ class CreateRpmCommandTests(rpm_support_base.PulpClientTests):
         self.assertEqual(metadata['license'], 'MIT')
         self.assertEqual(metadata['relativepath'], RPM_FILENAME)
 
-    def test_create_upload_list(self):
+    @mock.patch('pulp_rpm.extension.admin.upload.package._calculate_checksum')
+    def test_create_upload_list(self, mock_calculate):
         # Setup
         orig_file_bundles = [
             FileBundle('a', unit_key={'name' : 'a', 'version' : 'a', 'release' : 'a',
@@ -93,6 +95,8 @@ class CreateRpmCommandTests(rpm_support_base.PulpClientTests):
         mock_search.side_effect = search_simulator
         self.bindings.repo_unit.search = mock_search
 
+        mock_calculate.return_value = 'abcdef'
+
         # Test
         upload_file_bundles = self.command.create_upload_list(orig_file_bundles, **user_args)
 
@@ -101,13 +105,19 @@ class CreateRpmCommandTests(rpm_support_base.PulpClientTests):
         self.assertEqual(upload_file_bundles[0], orig_file_bundles[1])
 
         self.assertEqual(2, mock_search.call_count)
+        self.assertEqual(2, mock_calculate.call_count)
 
         for file_bundle_index in range(0, 1):
             call_args = mock_search.call_args_list[file_bundle_index]
             self.assertEqual(call_args[0][0], 'repo-1')
+            expected_filters = {
+                'checksumtype' : 'sha256',
+                'checksum' : 'abcdef',
+            }
+            expected_filters.update(orig_file_bundles[file_bundle_index].unit_key)
             expected_criteria_args = {
                 'type_ids' : [TYPE_ID_RPM],
-                'filters' : orig_file_bundles[file_bundle_index].unit_key,
+                'filters' : expected_filters,
             }
             self.assertEqual(expected_criteria_args, call_args[1])
 
@@ -132,4 +142,3 @@ class CreateRpmCommandTests(rpm_support_base.PulpClientTests):
         # Verify
         self.assertEqual(orig_file_bundles, upload_file_bundles)
         self.assertEqual(0, self.bindings.repo_unit.search.call_count)
-
