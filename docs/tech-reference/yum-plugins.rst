@@ -446,23 +446,19 @@ Required Configuration Parameters
 
 ``http``
  Flag indicating if the repository will be served over a non-SSL connection.
- Valid values to this option are ``True`` and ``False``. This option is
- required.
+ Valid values to this option are ``True`` and ``False``.
 
 ``https``
  Flag indicating if the repository will be served over an SSL connection. If
  this is set to true, the ``https_ca`` option should also be specified to ensure
  consumers bound to this repository have the necessary certificate to validate
  the SSL connection. Valid values to this option are ``True`` and ``False``.
- This option is required.
+
+``relative_url``
+ Relative path at which the repository will be served.
 
 Optional Configuration Parameters
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-``relative_url``
- Relative path at which the repository will be served. If this is not specified,
- the relative path is derived from the ``feed_url`` option. For example:
- ``relative_url="rhel_6.2" may translate to publishing at http://localhost/pulp/repos/rhel_6.2``
 
 ``protected``
  Protect the published repository with repo authentication. Valid values to this

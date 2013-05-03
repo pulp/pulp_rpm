@@ -83,8 +83,8 @@ class TestErrataProfiler(rpm_support_base.PulpRPMTests):
         return errata_from_xml[0]
 
     def get_test_profile(self, arch="x86_64"):
-        foo = self.create_profile_entry("emoticons", 0, "0.0.1", "1", arch, "Test Vendor")
-        bar = self.create_profile_entry("patb", 0, "0.0.1", "1", arch, "Test Vendor")
+        foo = self.create_profile_entry("emoticons", 0, "0.1", "1", arch, "Test Vendor")
+        bar = self.create_profile_entry("patb", 0, "0.1", "1", arch, "Test Vendor")
         return {TYPE_ID_RPM:[foo, bar]}
 
     def get_test_profile_been_updated(self, arch="x86_64"):
@@ -143,7 +143,7 @@ class TestErrataProfiler(rpm_support_base.PulpRPMTests):
         self.assertEqual(len(applicable_rpms), 2)
         self.assertTrue(old_rpms.has_key("emoticons x86_64"))
         self.assertEqual("emoticons", old_rpms["emoticons x86_64"]["installed"]["name"])
-        self.assertEqual("0.0.1", old_rpms["emoticons x86_64"]["installed"]["version"])
+        self.assertEqual("0.1", old_rpms["emoticons x86_64"]["installed"]["version"])
 
     def test_translate(self):
         # Setup test data
@@ -258,8 +258,8 @@ class TestErrataProfiler(rpm_support_base.PulpRPMTests):
         # validate translated units
         self.assertEqual(len(translated_units), 2)
         expected = []
-        for r in self.test_consumer.profiles[TYPE_ID_RPM]:
-            expected_name = "%s.%s" % (r["name"], r["arch"])
+        for r in prof.get_rpms_from_errata(errata_unit):
+            expected_name = "%s-%s:%s-%s.%s" % (r["name"], r["epoch"], r["version"], r["release"], r["arch"])
             expected.append(expected_name)
         for u in translated_units:
             rpm_name = u["unit_key"]["name"]
