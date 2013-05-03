@@ -19,8 +19,6 @@ from gettext import gettext as _
 
 from pulp.common.dateutils import format_iso8601_datetime, parse_iso8601_datetime
 
-from pulp_rpm.common import reporting
-
 
 class ISOProgressReport(object):
     # The following states can be set using the state() property
@@ -40,7 +38,7 @@ class ISOProgressReport(object):
     STATE_FAILED =               'failed'
 
     # These states indicate that the action is no longer in progress
-    COMPLETE_STATES =            (STATE_COMPLETE, STATE_FAILED)
+    COMPLETE_STATES =            (STATE_COMPLETE, STATE_MANIFEST_FAILED, STATE_ISOS_FAILED, STATE_FAILED)
 
     # A mapping of current states to allowed next states
     ALLOWED_STATE_TRANSITIONS = {
