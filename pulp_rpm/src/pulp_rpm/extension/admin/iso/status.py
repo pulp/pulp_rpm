@@ -79,12 +79,12 @@ class ISOStatusRenderer(StatusRenderer):
                 self.prompt.write('\n')
                 if sync_report.state == sync_report.STATE_COMPLETE:
                     msg = _('Successfully downloaded %(num)s ISOs.') % {'num': sync_report.num_isos_finished}
-                    self.prompt.render_success_message(msg, tag='download-success')
+                    self.prompt.render_success_message(msg, tag='download_success')
                 else:
                     msg = _('Failed to retrieve %(num)s ISOs.')
                     msg = msg % {'num': sync_report.num_isos - sync_report.num_isos_finished}
-                    self.prompt.render_failure_message(msg, tag='download-failed')
-                    for name, error_message in sync_report.iso_error_messages:
+                    self.prompt.render_failure_message(msg, tag='download_failed')
+                    for name, error_message in sync_report.iso_error_messages.items():
                         self.prompt.render_failure_message(
                             '\t%(name)s: %(msg)s' % {'name': name, 'msg': error_message}, tag='iso_error_msg')
                 self._sync_state = sync_report.state
@@ -111,7 +111,7 @@ class ISOStatusRenderer(StatusRenderer):
             self._sync_state = sync_report.STATE_MANIFEST_IN_PROGRESS
 
             if sync_report.state == sync_report.STATE_MANIFEST_IN_PROGRESS:
-                self.prompt.write(_(u'Downloading the Pulp Manifest…'), tag='downloading-manifest')
+                self.prompt.write(_(u'Downloading the Pulp Manifest…'), tag='downloading_manifest')
 
         if (self._sync_state == sync_report.STATE_MANIFEST_IN_PROGRESS and
                 sync_report.state != sync_report.STATE_MANIFEST_IN_PROGRESS):
@@ -127,11 +127,13 @@ class ISOStatusRenderer(StatusRenderer):
             return
 
         if publish_report.state == publish_report.STATE_FAILED:
-            self.prompt.render_failure_message(_('Publishing failed.'))
+            self.prompt.render_failure_message(_('Publishing failed.'), tag='publish_failed')
+            self.prompt.write('\t%s'%publish_report.error_message, tag='error_message')
             return
 
         if publish_report.state == publish_report.STATE_COMPLETE:
-            self.prompt.render_success_message(_('Successfully published the repository.'))
+            self.prompt.render_success_message(_('Successfully published the repository.'),
+                                               tag='publish_success')
 
 
 def human_readable_bytes(num):
@@ -142,6 +144,9 @@ def human_readable_bytes(num):
     """
     for x in ['B','kB','MB','GB']:
         if num < 1024.0:
-            return "%3.1f %s" % (num, x)
+            if x == 'B':
+                return '%s %s' % (num, x)
+            else:
+                return "%3.1f %s" % (num, x)
         num /= 1024.0
     return "%3.1f %s" % (num, 'TB')

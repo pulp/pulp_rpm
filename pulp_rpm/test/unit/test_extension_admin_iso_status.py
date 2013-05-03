@@ -207,7 +207,7 @@ class TestISOStatusRenderer(unittest.TestCase):
         self.assertTrue('ISOs: 3/3' in kwargs['message'])
 
         # A completion message should have been printed for the user
-        self.assertEqual(renderer.prompt.render_success_message.mock_calls[0][2]['tag'], 'download-success')
+        self.assertEqual(renderer.prompt.render_success_message.mock_calls[0][2]['tag'], 'download_success')
 
     def test__display_iso_sync_report_during_isos_failed_state(self):
         """
@@ -218,10 +218,12 @@ class TestISOStatusRenderer(unittest.TestCase):
         conduit = mock.MagicMock()
         finished_bytes = 1204
         total_bytes = 908
+        iso_error_messages = {'bad.iso': 'Sorry, I will not tell you what happened.'}
         state_times = {progress.SyncProgressReport.STATE_MANIFEST_IN_PROGRESS: datetime.utcnow()}
         sync_report = progress.SyncProgressReport(
             conduit, num_isos=3, num_isos_finished=2, total_bytes=total_bytes, finished_bytes=finished_bytes,
-            state=progress.SyncProgressReport.STATE_ISOS_FAILED, state_times=state_times)
+            state=progress.SyncProgressReport.STATE_ISOS_FAILED, state_times=state_times,
+            iso_error_messages=iso_error_messages)
         renderer = status.ISOStatusRenderer(self.context)
         # Let's put the renderer in the manifest retrieval stage, simulating the SyncProgressReport having
         # just left that stage
@@ -246,9 +248,12 @@ class TestISOStatusRenderer(unittest.TestCase):
         self.assertTrue('ISOs: 2/3' in kwargs['message'])
 
         # A completion message should have been printed for the user
-        self.assertEqual(renderer.prompt.render_failure_message.mock_calls[0][2]['tag'], 'download-failed')
+        self.assertEqual(renderer.prompt.render_failure_message.mock_calls[0][2]['tag'], 'download_failed')
 
-        self.fail('Assert that individual ISO error messages are displayed.')
+        # The individual ISO that failed should have had its error message printed to screen
+        self.assertTrue(iso_error_messages['bad.iso'] in
+                        renderer.prompt.render_failure_message.mock_calls[1][1][0])
+        self.assertEqual(renderer.prompt.render_failure_message.mock_calls[1][2]['tag'], 'iso_error_msg')
 
     def test__display_iso_sync_report_during_iso_stage_no_isos(self):
         """
@@ -327,6 +332,26 @@ class TestISOStatusRenderer(unittest.TestCase):
         # Because we are in the manifest state, this method should not do anything with the prompt
         self.assertEqual(renderer.prompt.mock_calls, [])
 
+    def test__display_manifest_sync_report_manifest_complete(self):
+        """
+        Test behavior from _display_manifest_sync_report when the manifest is complete.
+        """
+        sync_report = progress.SyncProgressReport(None,
+            state=progress.SyncProgressReport.STATE_ISOS_IN_PROGRESS)
+        renderer = status.ISOStatusRenderer(self.context)
+        # Let's also put the renderer in the manifest retrieval stage
+        renderer._sync_state = progress.SyncProgressReport.STATE_NOT_STARTED
+        renderer.prompt.reset_mock()
+
+        renderer._display_manifest_sync_report(sync_report)
+
+        # There should be one message printed to the user that tells them the manifest is complete
+        self.assertEqual(len(renderer.prompt.mock_calls), 1)
+        self.assertEqual(renderer.prompt.mock_calls[0][2]['tag'], 'manifest_downloaded')
+        # The renderer state should have been advanced to STATE_MANIFEST_IN_PROGRESS, but not beyond, as
+        # _display_iso_sync_report will move it into the next state
+        self.assertEqual(renderer._sync_state, progress.SyncProgressReport.STATE_MANIFEST_IN_PROGRESS)
+
     def test__display_manifest_sync_report_manifest_failed(self):
         """
         Test behavior from _display_manifest_sync_report when the manifest failed to be retrieved.
@@ -351,6 +376,25 @@ class TestISOStatusRenderer(unittest.TestCase):
         # The specific error message passed from the sync_report should have been printed
         self.assertTrue(error_message in renderer.prompt.mock_calls[1][1][0])
 
+    def test__display_manifest_sync_report_manifest_in_progress(self):
+        """
+        Test behavior from _display_manifest_sync_report when the manifest is currently in progress.
+        """
+        sync_report = progress.SyncProgressReport(None,
+            state=progress.SyncProgressReport.STATE_MANIFEST_IN_PROGRESS)
+        renderer = status.ISOStatusRenderer(self.context)
+        # Let's also put the renderer in the manifest retrieval stage
+        renderer._sync_state = progress.SyncProgressReport.STATE_NOT_STARTED
+        renderer.prompt.reset_mock()
+
+        renderer._display_manifest_sync_report(sync_report)
+
+        # There should be one message printed to the user that tells them the manifest is being downloaded
+        self.assertEqual(len(renderer.prompt.mock_calls), 1)
+        self.assertEqual(renderer.prompt.mock_calls[0][2]['tag'], 'downloading_manifest')
+        # The renderer state should have been advanced to STATE_MANIFEST_IN_PROGRESS
+        self.assertEqual(renderer._sync_state, progress.SyncProgressReport.STATE_MANIFEST_IN_PROGRESS)
+
     def test__display_manifest_sync_report_not_started(self):
         """
         Before the download starts, the _display_manifest_sync_report() method should not do anything.
@@ -366,3 +410,87 @@ class TestISOStatusRenderer(unittest.TestCase):
         renderer._display_manifest_sync_report(sync_report)
 
         self.assertEqual(len(renderer.prompt.mock_calls), 0)
+
+    def test__display_publish_report_failed(self):
+        """
+        In the event of failure, the _display_publish_report() method print the message to the user.
+        """
+        conduit = mock.MagicMock()
+        error_message = 'You fail.'
+        sync_report = progress.PublishProgressReport(conduit, error_message=error_message,
+            state=progress.PublishProgressReport.STATE_FAILED)
+        renderer = status.ISOStatusRenderer(self.context)
+        renderer.prompt.reset_mock()
+
+        renderer._display_publish_report(sync_report)
+
+        # There should be two prints, one to tell the user it failed, and another to tell the user the message
+        self.assertEqual(len(renderer.prompt.mock_calls), 2)
+        self.assertEqual(renderer.prompt.render_failure_message.mock_calls[0][2]['tag'], 'publish_failed')
+        self.assertTrue(error_message in renderer.prompt.write.mock_calls[0][1][0])
+
+    def test__display_publish_report_not_started(self):
+        """
+        Before the download starts, the _display_publish_report() method should not do anything.
+        """
+        conduit = mock.MagicMock()
+        sync_report = progress.PublishProgressReport(conduit,
+            state=progress.PublishProgressReport.STATE_NOT_STARTED)
+        renderer = status.ISOStatusRenderer(self.context)
+        renderer.prompt.reset_mock()
+
+        renderer._display_publish_report(sync_report)
+
+        # Nothing should be printed
+        self.assertEqual(len(renderer.prompt.mock_calls), 0)
+
+    def test__display_publish_report_success(self):
+        """
+        The _display_publish_report() method should print a success message to the user.
+        """
+        conduit = mock.MagicMock()
+        sync_report = progress.PublishProgressReport(conduit,
+            state=progress.PublishProgressReport.STATE_COMPLETE)
+        renderer = status.ISOStatusRenderer(self.context)
+        renderer.prompt.reset_mock()
+
+        renderer._display_publish_report(sync_report)
+
+        # There should be two prints, one to tell the user it failed, and another to tell the user the message
+        self.assertEqual(len(renderer.prompt.mock_calls), 1)
+        self.assertEqual(renderer.prompt.render_success_message.mock_calls[0][2]['tag'], 'publish_success')
+
+
+class TestHumanReadableBytes(unittest.TestCase):
+    """
+    Test the status.human_readable_bytes() method.
+    """
+    def test_bytes(self):
+        """
+        Test correct behavior when bytes are passed in.
+        """
+        self.assertEqual(status.human_readable_bytes(42), '42 B')
+
+    def test_kilobytes(self):
+        """
+        Test correct behavior when kB are passed.
+        """
+        self.assertEqual(status.human_readable_bytes(4096), '4.0 kB')
+
+    def test_megabytes(self):
+        """
+        Test correct behavior when MB are passed.
+        """
+        self.assertEqual(status.human_readable_bytes(97464344), '92.9 MB')
+
+    def test_gigabytes(self):
+        """
+        Test correct behavior when GB are passed.
+        """
+        self.assertEqual(status.human_readable_bytes(17584619520), '16.4 GB')
+
+    def test_terrabytes(self):
+        """
+        Test correct behavior when TB are passed.
+        """
+        self.assertEqual(status.human_readable_bytes(40444624896000), '36.8 TB')
