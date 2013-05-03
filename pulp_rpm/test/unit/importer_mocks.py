@@ -18,7 +18,7 @@ from pulp.plugins.conduits.upload import UploadConduit
 from pulp.plugins.conduits.unit_import import ImportUnitConduit
 from pulp.plugins.conduits.dependency import DependencyResolutionConduit
 from pulp.plugins.config import PluginCallConfiguration
-from pulp.plugins.model import Unit
+from pulp.plugins.model import PublishReport, Unit
 import mock
 import pycurl
 
@@ -90,6 +90,12 @@ def CurlMulti():
     return curl_multi
 
 def get_sync_conduit(type_id=None, existing_units=None, pkg_dir=None):
+    def build_failure_report(summary, details):
+        return PublishReport(False, summary, details)
+
+    def build_success_report(summary, details):
+        return PublishReport(True, summary, details)
+
     def side_effect(type_id, key, metadata, rel_path):
         if rel_path and pkg_dir:
             rel_path = os.path.join(pkg_dir, rel_path)
@@ -123,6 +129,9 @@ def get_sync_conduit(type_id=None, existing_units=None, pkg_dir=None):
     sync_conduit.get_units.side_effect = get_units
     sync_conduit.save_unit = mock.Mock()
     sync_conduit.search_all_units.side_effect = search_all_units
+    sync_conduit.build_failure_report = mock.MagicMock(side_effect=build_failure_report)
+    sync_conduit.build_success_report = mock.MagicMock(side_effect=build_success_report)
+    sync_conduit.set_progress = mock.MagicMock()
 
     return sync_conduit
 

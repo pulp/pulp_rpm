@@ -49,7 +49,34 @@ class ISOProgressReport(object):
 
     def __init__(self, conduit, state=None, state_times=None, num_isos=None,
                  num_isos_finished=0, iso_error_messages=None, error_message=None,
-                 exception=None, traceback=None):
+                 traceback=None):
+        """
+        Initialize the ISOProgressReport. All parameters except conduit can be ignored if you are
+        instantiating the report for use from an importer or distributor. The other parameters are used when
+        instantiating the report from a serialized report in the client. 
+        
+        :param conduit:            A sync or publish conduit that should be used to report progress to the
+                                   client
+        :type  conduit:            pulp.plugins.conduits.repo_sync.RepoSyncConduit or
+                                   pulp.plugins.conduits.repo_publish.RepoPublishConduit
+        :param state:              The state the ISOProgressReport should be initialized to. See the STATE_*
+                                   class variables for valid states.
+        :type  state:              basestring
+        :param state_times:        A dictionary mapping state names to the time the report entered that state
+        :type  state_times:        dict
+        :param num_isos:           The number of ISOs that need to be downloaded or published
+        :type  num_isos:           int
+        :param num_isos_finished:  The number of ISOs that have finished downloading
+        :type  num_isos_finished:  int
+        :param iso_error_messages: A dictionary mapping ISO names to errors encountered while downloading them
+        :type  iso_error_messages: dict
+        :param error_message:      A general error message. This is used when the error encountered was not
+                                   specific to any particular ISO.
+        :type  error_message:      basestring
+        :param traceback:          If there was a traceback associated with an error_message, it should be
+                                   included here
+        :type  traceback:          basestring--delete--delete
+        """
         self.conduit = conduit
 
         if state is None:
@@ -74,14 +101,18 @@ class ISOProgressReport(object):
 
         # overall execution error
         self.error_message = error_message
-        self.exception = exception
         self.traceback = traceback
 
     def add_failed_iso(self, iso, error_report):
         """
         Updates the progress report that a iso failed to be imported.
+
+        :param iso:          The ISO object that failed to publish or download
+        :type  iso:          pulp_rpm.common.models.ISO
+        :param error_report: The error message that should be associated with the ISO
+        :type  error_report: basestring
         """
-        self.iso_error_messages[iso.name] = {'error_report': error_report,}
+        self.iso_error_messages[iso.name] = error_report
 
     def build_final_report(self):
         """
@@ -92,7 +123,7 @@ class ISOProgressReport(object):
         """
         # intentionally empty; not sure what to put in here
         summary = self.build_progress_report()
-        details = {}
+        details = None
 
         if self.state == self.STATE_COMPLETE:
             report = self.conduit.build_success_report(summary, details)
@@ -116,7 +147,6 @@ class ISOProgressReport(object):
             'num_isos_finished': self.num_isos_finished,
             'iso_error_messages': self.iso_error_messages,
             'error_message': self.error_message,
-            'exception': self.exception,
             'traceback': self.traceback,
         }
         # Let's convert the state transition times to a serializable format
@@ -146,6 +176,13 @@ class ISOProgressReport(object):
             report['state_times'][key] = parse_iso8601_datetime(value)
         r = cls(None, **report)
         return r
+
+    def update_progress(self):
+        """
+        Sends the current state of the progress report to Pulp.
+        """
+        report = self.build_progress_report()
+        self.conduit.set_progress(report)
 
     def _get_state(self):
         """
@@ -180,13 +217,6 @@ class ISOProgressReport(object):
         self.update_progress()
 
     state = property(_get_state, _set_state)
-
-    def update_progress(self):
-        """
-        Sends the current state of the progress report to Pulp.
-        """
-        report = self.build_progress_report()
-        self.conduit.set_progress(report)
 
 
 class PublishProgressReport(ISOProgressReport):
@@ -224,6 +254,15 @@ class SyncProgressReport(ISOProgressReport):
     sync.
     """
     def __init__(self, conduit, total_bytes=None, finished_bytes=0, **kwargs):
+        """
+        Initialize the SyncProgressReport, setting all of the given parameters to it. See the superclass
+        method of the same name for the use cases for the parameters.
+
+        :param total_bytes:    The total number of bytes we need to download
+        :type  total_bytes:    int
+        :param finished_bytes: The number of bytes we have already downloaded
+        :type  finished_bytes: int
+        """
         super(self.__class__, self).__init__(conduit, **kwargs)
 
         # Let's also track how many bytes we've got on the ISOs

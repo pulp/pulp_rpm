@@ -47,13 +47,13 @@ class TestISOStatusRenderer(unittest.TestCase):
         Test the ISOStatusRenderer.display_report() method.
         """
         progress_report = {
-            ids.TYPE_ID_IMPORTER_ISO: {u'exception': None, u'traceback': None, u'error_message': None,
+            ids.TYPE_ID_IMPORTER_ISO: {u'traceback': None, u'error_message': None,
                                        u'finished_bytes': 0, u'num_isos': None,
                                        u'state': u'manifest_in_progress', u'total_bytes': None,
                                        u'state_times': {u'not_started': u'2013-04-30T20:37:25',
                                                         u'manifest_in_progress': u'2013-04-30T20:37:25'},
                                        u'num_isos_finished': 0, u'iso_error_messages': {}},
-            ids.TYPE_ID_DISTRIBUTOR_ISO: {u'exception': None, u'traceback': None, u'error_message': None,
+            ids.TYPE_ID_DISTRIBUTOR_ISO: {u'traceback': None, u'error_message': None,
                                           u'num_isos': None, u'state': u'isos_in_progress',
                                           u'state_times': {
                                             u'not_started': u'2013-04-30T20:37:25',
@@ -114,7 +114,7 @@ class TestISOStatusRenderer(unittest.TestCase):
         When only the distributor is passed, only the publishing section should be called.
         """
         progress_report = {
-            ids.TYPE_ID_DISTRIBUTOR_ISO: {u'exception': None, u'traceback': None, u'error_message': None,
+            ids.TYPE_ID_DISTRIBUTOR_ISO: {u'traceback': None, u'error_message': None,
                                           u'num_isos': None, u'state': u'isos_in_progress',
                                           u'state_times': {
                                             u'not_started': u'2013-04-30T20:37:25',
@@ -147,7 +147,7 @@ class TestISOStatusRenderer(unittest.TestCase):
         When only the importer is passed, only the sync section should be called.
         """
         progress_report = {
-            ids.TYPE_ID_IMPORTER_ISO: {u'exception': None, u'traceback': None, u'error_message': None,
+            ids.TYPE_ID_IMPORTER_ISO: {u'traceback': None, u'error_message': None,
                                        u'finished_bytes': 0, u'num_isos': None,
                                        u'state': u'not_started', u'total_bytes': None,
                                        u'state_times': {u'not_started': u'2013-04-30T20:37:25'},
