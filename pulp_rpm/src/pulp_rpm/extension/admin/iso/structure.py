@@ -37,7 +37,7 @@ def add_iso_section(context):
     """
     root_section = context.cli.create_section(SECTION_ROOT, DESC_ROOT)
 
-    repo_section = add_repo_section(context, root_section)
+    add_repo_section(context, root_section)
 
 
 def add_repo_section(context, parent_section):
@@ -51,7 +51,7 @@ def add_repo_section(context, parent_section):
     """
     repo_section = parent_section.create_subsection(SECTION_REPO, DESC_REPO)
 
-    sync_section = add_sync_section(context, repo_section)
+    add_sync_section(context, repo_section)
 
     return repo_section
 
