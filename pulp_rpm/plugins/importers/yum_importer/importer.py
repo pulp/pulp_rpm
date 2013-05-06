@@ -287,8 +287,10 @@ class YumImporter(Importer):
         _LOG.info("Importing %s units from %s to %s" % (len(units), source_repo.id, dest_repo.id))
         # don't get this stuff if we aren't going to use it
         if config.get('resolve_dependencies') or config.get(constants.CONFIG_COPY_CHILDREN, True):
-            criteria = UnitAssociationCriteria(type_ids=[TYPE_ID_RPM, TYPE_ID_SRPM], unit_fields=ids.UNIT_KEY_RPM)
-            existing_rpm_units_dict = get_existing_units(import_conduit, criteria=criteria)
+            rpm_criteria = UnitAssociationCriteria(type_ids=[TYPE_ID_RPM], unit_fields=ids.UNIT_KEY_RPM)
+            srpm_criteria = UnitAssociationCriteria(type_ids=[TYPE_ID_SRPM], unit_fields=ids.UNIT_KEY_RPM)
+            existing_rpm_units_dict = get_existing_units(import_conduit, criteria=rpm_criteria)
+            existing_rpm_units_dict.update(get_existing_units(import_conduit, criteria=srpm_criteria))
         else:
             existing_rpm_units_dict = {}
         for u in units:
