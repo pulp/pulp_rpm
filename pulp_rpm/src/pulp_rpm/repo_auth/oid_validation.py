@@ -28,7 +28,7 @@ The * represents the product ID and is not used as part of this calculation.
 from ConfigParser import SafeConfigParser
 import re
 
-from pulp_rpm.repo_auth.rhsm import certificate
+from rhsm import certificate
 from pulp_rpm.repo_auth.protected_repo_utils import ProtectedRepoUtils
 from pulp_rpm.repo_auth.repo_cert_utils import RepoCertUtils
 
@@ -178,6 +178,7 @@ class OidValidator:
             valid = cert.check_path(repo_dest)
         except AttributeError:
             # not an entitlement certificate, so no entitlements
+            log_func('The provided client certificate is not an entitlement certificate.\n')
             valid = False
         if not valid:
             log_func('Request denied to destination [%s]' % dest)

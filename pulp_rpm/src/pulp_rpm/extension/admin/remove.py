@@ -17,6 +17,7 @@ from pulp_rpm.common.constants import DISPLAY_UNITS_THRESHOLD
 from pulp_rpm.common.ids import (TYPE_ID_RPM, TYPE_ID_SRPM, TYPE_ID_DRPM,
                                  TYPE_ID_ERRATA, TYPE_ID_PKG_GROUP,
                                  TYPE_ID_PKG_CATEGORY, TYPE_ID_DISTRO)
+from pulp_rpm.extension import criteria_utils
 from pulp_rpm.extension.admin import units_display
 
 # -- constants ----------------------------------------------------------------
@@ -41,13 +42,27 @@ class BaseRemoveCommand(UnitRemoveCommand):
         removed_units = task.result  # entries are a dict containing unit_key and type_id
         units_display.display_units(self.prompt, removed_units, self.unit_threshold)
 
-class RpmRemoveCommand(BaseRemoveCommand):
+
+class PackageRemoveCommand(BaseRemoveCommand):
+    """
+    Used for only RPMs and SRPMs to intercept the criteria and use sort indexes when necessary.
+    """
+    @staticmethod
+    def _parse_key_value(args):
+        return criteria_utils.parse_key_value(args)
+
+    @classmethod
+    def _parse_sort(cls, sort_args):
+        return criteria_utils.parse_sort(BaseRemoveCommand, sort_args)
+
+
+class RpmRemoveCommand(PackageRemoveCommand):
 
     def __init__(self, context):
         super(RpmRemoveCommand, self).__init__(context, 'rpm', DESC_RPM, TYPE_ID_RPM)
 
 
-class SrpmRemoveCommand(BaseRemoveCommand):
+class SrpmRemoveCommand(PackageRemoveCommand):
 
     def __init__(self, context):
         super(SrpmRemoveCommand, self).__init__(context, 'srpm', DESC_SRPM, TYPE_ID_SRPM)

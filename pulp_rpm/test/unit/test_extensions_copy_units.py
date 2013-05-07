@@ -8,6 +8,7 @@
 # NON-INFRINGEMENT, or FITNESS FOR A PARTICULAR PURPOSE. You should
 # have received a copy of GPLv2 along with this software; if not, see
 # http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt.
+import mock
 
 from pulp.client.commands.unit import UnitCopyCommand
 
@@ -62,6 +63,24 @@ class RecursiveCopyCommandTests(rpm_support_base.PulpClientTests):
         self.assertEqual(override_config, {})
 
 
+class PackageCopyCommandTests(rpm_support_base.PulpClientTests):
+    """
+    Simply verifies the criteria_utils is called from the overridden methods.
+    """
+
+    @mock.patch('pulp_rpm.extension.criteria_utils.parse_key_value')
+    def test_key_value(self, mock_parse):
+        command = copy_commands.PackageCopyCommand(self.context, 'copy', '', '')
+        command._parse_key_value('foo')
+        mock_parse.assert_called_once_with('foo')
+
+    @mock.patch('pulp_rpm.extension.criteria_utils.parse_sort')
+    def test_sort(self, mock_parse):
+        command = copy_commands.PackageCopyCommand(self.context, 'copy', '', '')
+        command._parse_sort('foo')
+        mock_parse.assert_called_once_with(copy_commands.RecursiveCopyCommand, 'foo')
+
+
 class OtherCopyCommandsTests(rpm_support_base.PulpClientTests):
     """
     Again, this test isn't concerned with testing the base command's functionality, but rather the
@@ -74,7 +93,7 @@ class OtherCopyCommandsTests(rpm_support_base.PulpClientTests):
         command = copy_commands.RpmCopyCommand(self.context)
 
         # Verify
-        self.assertTrue(isinstance(command, copy_commands.RecursiveCopyCommand))
+        self.assertTrue(isinstance(command, copy_commands.PackageCopyCommand))
         self.assertEqual(command.name, 'rpm')
         self.assertEqual(command.description, copy_commands.DESC_RPM)
         self.assertEqual(command.type_id, TYPE_ID_RPM)
@@ -84,7 +103,7 @@ class OtherCopyCommandsTests(rpm_support_base.PulpClientTests):
         command = copy_commands.SrpmCopyCommand(self.context)
 
         # Verify
-        self.assertTrue(isinstance(command, copy_commands.RecursiveCopyCommand))
+        self.assertTrue(isinstance(command, copy_commands.PackageCopyCommand))
         self.assertEqual(command.name, 'srpm')
         self.assertEqual(command.description, copy_commands.DESC_SRPM)
         self.assertEqual(command.type_id, TYPE_ID_SRPM)

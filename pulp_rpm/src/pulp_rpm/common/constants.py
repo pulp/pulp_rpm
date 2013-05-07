@@ -43,12 +43,17 @@ CONFIG_REMOVE_MISSING_UNITS_DEFAULT = False
 CONFIG_SSL_CA_CERT                  = 'ssl_ca_cert'
 CONFIG_SSL_CLIENT_CERT              = 'ssl_client_cert'
 CONFIG_SSL_CLIENT_KEY               = 'ssl_client_key'
-CONFIG_VALIDATE_DOWNLOADS           = 'validate_downloads'
-CONFIG_VALIDATE_DOWNLOADS_DEFAULT   = True
+# Whether Units (currently only ISOs use this) should be validated during syncs, or when uploaded
+CONFIG_VALIDATE_UNITS               = 'validate_units'
+CONFIG_VALIDATE_UNITS_DEFAULT       = True
 
 # Distributor configuration key names
-CONFIG_SERVE_HTTP      = 'serve_http'
-CONFIG_SERVE_HTTPS     = 'serve_https'
+CONFIG_SERVE_HTTP       = 'serve_http'
+CONFIG_SERVE_HTTPS      = 'serve_https'
+# This is the CA that we should verify client entitlement certificates with. If it is set, and protected repos
+# are enabled serverwide, we will protect the repo with this cert over SSL. If it is unset, no repo protection
+# will be configured. This option is currently only used by the ISO distributor.
+CONFIG_SSL_AUTH_CA_CERT = 'ssl_auth_ca_cert'
 
 EXPORT_HTTP_DIR="/var/lib/pulp/published/http/exports"
 EXPORT_HTTPS_DIR="/var/lib/pulp/published/https/exports"
@@ -75,3 +80,6 @@ DISPLAY_UNITS_THRESHOLD = 100
 CONFIG_APPLICABILITY_REPORT_STYLE = 'report_style'
 APPLICABILITY_REPORT_STYLE_BY_UNITS = 'by_units'
 APPLICABILITY_REPORT_STYLE_BY_CONSUMERS = 'by_consumers'
+
+# The path to the repo_auth.conf file
+REPO_AUTH_CONFIG_FILE = '/etc/pulp/repo_auth.conf'

@@ -8,8 +8,14 @@ Pulp 2.2.0
 New Features
 ------------
 
+* The ISO distributor now supports repository protection. See the API documentation for more details.
+* The ISO Importer now allows ISO uploads.
+
 CLI Changes
 -----------
+
+* The ``pulp-admin rpm repo uploads rpm`` command now supports a flag (``--skip-existing``) to skip
+  re-uploading packages that are already in the destination repository.
 
 Upgrade Instructions
 --------------------

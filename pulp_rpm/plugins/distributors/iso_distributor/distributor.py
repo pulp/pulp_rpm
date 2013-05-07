@@ -166,7 +166,7 @@ class ISODistributor(Distributor):
         self.repo_working_dir = repo_working_dir = repo.working_dir
 
         if self.cancelled:
-            return publish_conduit.build_failure_report(self.summary, self.details)
+            return publish_conduit.build_cancel_report(self.summary, self.details)
 
         skip_types = config.get("skip") or []
         repo_exporter = RepoExporter(repo_working_dir, skip=skip_types)
@@ -184,7 +184,7 @@ class ISODistributor(Distributor):
             rpm_units = repo_exporter.get_errata_rpms(errata_units, rpm_units)
             rpm_summary, rpm_errors = repo_exporter.export_rpms(rpm_units, progress_callback=progress_callback)
             if self.cancelled:
-                return publish_conduit.build_failure_report(self.summary, self.details)
+                return publish_conduit.build_cancel_report(self.summary, self.details)
             updateinfo_xml_path = updateinfo.updateinfo(errata_units, repo_working_dir)
             progress_status["errata"]["num_success"] = len(errata_units)
             progress_status["errata"]["state"] = "FINISHED"
@@ -215,7 +215,7 @@ class ISODistributor(Distributor):
                 _LOG.info("packagegroup unit type in skip list [%s]; skipping export" % skip_types)
 
             if self.cancelled:
-                return publish_conduit.build_failure_report(self.summary, self.details)
+                return publish_conduit.build_cancel_report(self.summary, self.details)
 
             # export errata
             updateinfo_xml_path = None

@@ -287,8 +287,10 @@ class YumImporter(Importer):
         _LOG.info("Importing %s units from %s to %s" % (len(units), source_repo.id, dest_repo.id))
         # don't get this stuff if we aren't going to use it
         if config.get('resolve_dependencies') or config.get(constants.CONFIG_COPY_CHILDREN, True):
-            criteria = UnitAssociationCriteria(type_ids=[TYPE_ID_RPM, TYPE_ID_SRPM], unit_fields=ids.UNIT_KEY_RPM)
-            existing_rpm_units_dict = get_existing_units(import_conduit, criteria=criteria)
+            rpm_criteria = UnitAssociationCriteria(type_ids=[TYPE_ID_RPM], unit_fields=ids.UNIT_KEY_RPM)
+            srpm_criteria = UnitAssociationCriteria(type_ids=[TYPE_ID_SRPM], unit_fields=ids.UNIT_KEY_RPM)
+            existing_rpm_units_dict = get_existing_units(import_conduit, criteria=rpm_criteria)
+            existing_rpm_units_dict.update(get_existing_units(import_conduit, criteria=srpm_criteria))
         else:
             existing_rpm_units_dict = {}
         for u in units:
@@ -507,7 +509,9 @@ class YumImporter(Importer):
     def sync_repo(self, repo, sync_conduit, config):
         try:
             status, summary, details = self._sync_repo(repo, sync_conduit, config)
-            if status:
+            if self.canceled:
+                report = sync_conduit.build_cancel_report(summary, details)
+            elif status:
                 report = sync_conduit.build_success_report(summary, details)
             else:
                 report = sync_conduit.build_failure_report(summary, details)

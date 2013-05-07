@@ -207,7 +207,7 @@ class GroupISODistributor(GroupDistributor):
                 rpm_units = repo_exporter.get_errata_rpms(errata_units, rpm_units)
                 rpm_status, rpm_errors = repo_exporter.export_rpms(rpm_units, progress_callback=progress_callback)
                 if self.canceled:
-                    return publish_conduit.build_failure_report(summary, details)
+                    return publish_conduit.build_cancel_report(summary, details)
                 # export errata and generate updateinfo xml
                 updateinfo_xml_path = updateinfo.updateinfo(errata_units, repo_working_dir)
                 progress_status["errata"]["num_success"] = len(errata_units)
@@ -244,7 +244,7 @@ class GroupISODistributor(GroupDistributor):
                     _LOG.info("packagegroup unit type in skip list [%s]; skipping export" % skip_types)
 
                 if self.canceled:
-                    return publish_conduit.build_failure_report(summary, details)
+                    return publish_conduit.build_cancel_report(summary, details)
 
                 # export errata units and associated rpms
                 progress_status["errata"]["state"] = "STARTED"

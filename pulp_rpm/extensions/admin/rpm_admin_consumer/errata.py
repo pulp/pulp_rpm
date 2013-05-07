@@ -90,7 +90,7 @@ class YumConsumerErrataInstallCommand(consumer_content.ConsumerContentInstallCom
 
         def _unit_dict(unit_id):
             return {'type_id': TYPE_ID_ERRATA,
-                    'unit_key': {'errata-id': unit_id}}
+                    'unit_key': {'id': unit_id}}
 
         units = map(_unit_dict, kwargs['errata-id'])
         return units
