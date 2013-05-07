@@ -30,7 +30,7 @@ YUM_DISTRIBUTOR_ID = 'yum_distributor'
 # Set when the distributor is added to the repo and later to refer to it specifically
 EXPORT_DISTRIBUTOR_ID = 'export_distributor'
 
-TYPE_ID_ISO = 'iso'
+TYPE_ID_ISO = models.ISO.TYPE
 TYPE_ID_RPM = models.RPM.TYPE
 TYPE_ID_SRPM = "srpm"
 UNIT_KEY_RPM = (

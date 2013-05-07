@@ -17,3 +17,5 @@ Include total repo size (bytes and units) in sync task report: https://bugzilla.
 
 If new importer doesn't make it into 2.2, put the copy command improvements from the below PR into 2.2:
 https://github.com/pulp/pulp_rpm/pull/181
+
+Remove units

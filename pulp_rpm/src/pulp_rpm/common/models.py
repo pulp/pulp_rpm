@@ -19,7 +19,7 @@ import logging
 import os
 from urlparse import urljoin
 
-from pulp_rpm.common import constants, ids, version_utils
+from pulp_rpm.common import constants, version_utils
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -271,6 +271,7 @@ class ISO(object):
     """
     This is a handy way to model an ISO unit, with some related utilities.
     """
+    TYPE = 'iso'
     def __init__(self, name, size, checksum, unit=None):
         """
         Initialize an ISO, with its name, size, and checksum.
@@ -307,7 +308,7 @@ class ISO(object):
         relative_path = os.path.join(self.name, self.checksum, str(self.size), self.name)
         unit_key = {'name': self.name, 'size': self.size, 'checksum': self.checksum}
         metadata = {}
-        self._unit = conduit.init_unit(ids.TYPE_ID_ISO, unit_key, metadata, relative_path)
+        self._unit = conduit.init_unit(self.TYPE, unit_key, metadata, relative_path)
 
     def save_unit(self, conduit):
         """
