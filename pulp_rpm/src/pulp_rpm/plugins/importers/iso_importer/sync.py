@@ -79,7 +79,7 @@ class ISOSyncRun(listener.DownloadEventListener):
         """
         # We used to support sync cancellation, but the current downloader implementation does not support it
         # and so for now we will just pass
-        pass
+        self.downloader.cancel()
 
     def download_failed(self, report):
         """
