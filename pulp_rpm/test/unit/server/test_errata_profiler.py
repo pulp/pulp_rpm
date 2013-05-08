@@ -143,7 +143,7 @@ class TestErrataProfiler(rpm_support_base.PulpRPMTests):
         self.assertEqual(len(applicable_rpms), 2)
         self.assertTrue(old_rpms.has_key("emoticons x86_64"))
         self.assertEqual("emoticons", old_rpms["emoticons x86_64"]["installed"]["name"])
-        self.assertEqual("0.0.1", old_rpms["emoticons x86_64"]["installed"]["version"])
+        self.assertEqual("0.1", old_rpms["emoticons x86_64"]["installed"]["version"])
 
     def test_translate(self):
         # Setup test data
