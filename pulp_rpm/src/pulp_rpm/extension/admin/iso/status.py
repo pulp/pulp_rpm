@@ -56,7 +56,7 @@ class ISOStatusRenderer(StatusRenderer):
         if (self._sync_state == sync_report.STATE_MANIFEST_IN_PROGRESS and
                 sync_report.state != sync_report.STATE_MANIFEST_IN_PROGRESS):
             if sync_report.num_isos:
-                self.prompt.write(_('Downloading %(num)s ISOs.') % {'num': sync_report.num_isos})
+                self.prompt.write(_('Downloading %(num)s ISOs...') % {'num': sync_report.num_isos}, tag='download_starting')
                 self._sync_state = sync_report.STATE_ISOS_IN_PROGRESS
             else:
                 self.prompt.render_success_message(_('There are no ISOs that need to be downloaded.'),

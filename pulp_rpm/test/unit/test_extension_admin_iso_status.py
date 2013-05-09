@@ -349,7 +349,10 @@ class TestISOStatusRenderer(unittest.TestCase):
 
         renderer._display_iso_sync_report(sync_report)
 
-        renderer.prompt.write.assert_called_once_with('Downloading 3 ISOs.')
+        # The user should be informed that downloading is starting for three ISOs
+        self.assertEqual(renderer.prompt.write.call_count, 1)
+        self.assertEqual(renderer.prompt.write.mock_calls[0][2]['tag'], 'download_starting')
+
         # The _sync_state should have been updated to reflect the ISO downloading stage being in progress
         self.assertEqual(renderer._sync_state, progress.SyncProgressReport.STATE_ISOS_IN_PROGRESS)
         # A progress bar should have been rendered
