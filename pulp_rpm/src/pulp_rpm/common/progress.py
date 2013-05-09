@@ -206,7 +206,7 @@ class ISOProgressReport(object):
         if new_state not in self.ALLOWED_STATE_TRANSITIONS[self._state]:
             err_msg = _('State transition not allowed: %(state)s --> %(new_state)s')
             err_msg = err_msg % {'state': self._state, 'new_state': new_state}
-            raise Exception(err_msg)
+            raise ValueError(err_msg)
 
         if new_state == self.STATE_COMPLETE and self.iso_error_messages:
             new_state = self.STATE_ISOS_FAILED

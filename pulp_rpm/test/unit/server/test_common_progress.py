@@ -248,7 +248,7 @@ class TestISOProgressReport(unittest.TestCase):
         try:
             report.state = progress.ISOProgressReport.STATE_COMPLETE
             self.fail('The line above this should have raised an Exception, but it did not.')
-        except Exception, e:
+        except ValueError, e:
             expected_error_substring = '%s --> %s' % (report.state, progress.ISOProgressReport.STATE_COMPLETE)
             self.assertTrue(expected_error_substring in str(e))
 
