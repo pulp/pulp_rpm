@@ -111,7 +111,7 @@ class ISOStatusRenderer(StatusRenderer):
             self._sync_state = sync_report.STATE_MANIFEST_IN_PROGRESS
 
             if sync_report.state == sync_report.STATE_MANIFEST_IN_PROGRESS:
-                self.prompt.write(_(u'Downloading the Pulp Manifest…'), tag='downloading_manifest')
+                self.prompt.write(_('Downloading the Pulp Manifest...'), tag='downloading_manifest')
 
         if (self._sync_state == sync_report.STATE_MANIFEST_IN_PROGRESS and
                 sync_report.state != sync_report.STATE_MANIFEST_IN_PROGRESS):
