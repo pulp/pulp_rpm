@@ -81,6 +81,7 @@ class TestISODistributor(PulpRPMTests):
         # here.
         report = self.iso_distributor.publish_repo(repo, publish_conduit, config)
 
+        self.assertTrue(report.success_flag)
         # Let's verify that the publish directory looks right
         publishing_paths = [os.path.join(directory, 'lebowski') \
                           for directory in [constants.ISO_HTTP_DIR, constants.ISO_HTTPS_DIR]]
@@ -123,7 +124,7 @@ class TestISODistributor(PulpRPMTests):
         status, error_message = self.iso_distributor.validate_config(None, config, None)
         self.assertTrue(status)
         self.assertEqual(error_message, None)
-        
+
         # Now try setting the HTTPS one to an invalid string
         config = distributor_mocks.get_basic_config(**{constants.CONFIG_SERVE_HTTP: True,
                                                        constants.CONFIG_SERVE_HTTPS: "Heyo!"})
