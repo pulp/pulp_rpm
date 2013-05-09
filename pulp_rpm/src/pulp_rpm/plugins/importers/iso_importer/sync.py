@@ -16,7 +16,6 @@ from urlparse import urljoin
 import logging
 
 from pulp_rpm.common import constants, ids, models
-from pulp_rpm.common.constants import STATE_COMPLETE, STATE_RUNNING, STATE_FAILED
 from pulp_rpm.common.progress import SyncProgressReport
 
 from pulp.common.download import listener, request
@@ -79,6 +78,7 @@ class ISOSyncRun(listener.DownloadEventListener):
         """
         # We used to support sync cancellation, but the current downloader implementation does not support it
         # and so for now we will just pass
+        self.progress_report.state = self.progress_report.STATE_CANCELLED
         self.downloader.cancel()
 
     def download_failed(self, report):
@@ -87,9 +87,9 @@ class ISOSyncRun(listener.DownloadEventListener):
         """
         # If we have a download failure during the manifest phase, we should set the report to failed for that
         # phase.
-        if self.progress_report.manifest_state == STATE_RUNNING:
-            self.progress_report.manifest_state = STATE_FAILED
-        elif self.progress_report.isos_state == STATE_RUNNING:
+        if self.progress_report.state == self.progress_report.STATE_MANIFEST_IN_PROGRESS:
+            self.progress_report.state = self.progress_report.STATE_MANIFEST_FAILED
+        elif self.progress_report.state == self.progress_report.STATE_ISOS_IN_PROGRESS:
             iso = self._url_iso_map[report.url]
             self.progress_report.add_failed_iso(iso, report.error_report)
             del self._url_iso_map[report.url]
@@ -103,10 +103,10 @@ class ISOSyncRun(listener.DownloadEventListener):
         :param report: The report of the file we are downloading
         :type  report: pulp.common.download.report.DownloadReport
         """
-        if self.progress_report.isos_state == STATE_RUNNING:
+        if self.progress_report.state == self.progress_report.STATE_ISOS_IN_PROGRESS:
             iso = self._url_iso_map[report.url]
             additional_bytes_downloaded = report.bytes_downloaded - iso.bytes_downloaded
-            self.progress_report.isos_finished_bytes += additional_bytes_downloaded
+            self.progress_report.finished_bytes += additional_bytes_downloaded
             iso.bytes_downloaded = report.bytes_downloaded
             self.progress_report.update_progress()
 
@@ -120,7 +120,7 @@ class ISOSyncRun(listener.DownloadEventListener):
         :type  report: pulp.common.download.report.DownloadReport
         """
         # If we are in the isos stage, then this must be one of our ISOs.
-        if self.progress_report.isos_state == STATE_RUNNING:
+        if self.progress_report.state == self.progress_report.STATE_ISOS_IN_PROGRESS:
             # This will update our bytes downloaded
             self.download_progress(report)
             iso = self._url_iso_map[report.url]
@@ -129,7 +129,7 @@ class ISOSyncRun(listener.DownloadEventListener):
                     iso.validate()
                 iso.save_unit(self.sync_conduit)
                 # We can drop this ISO from the url --> ISO map
-                self.progress_report.isos_finished_count += 1
+                self.progress_report.num_isos_finished += 1
                 self.progress_report.update_progress()
                 del self._url_iso_map[report.url]
             except ValueError:
@@ -144,8 +144,7 @@ class ISOSyncRun(listener.DownloadEventListener):
         :rtype:              pulp.plugins.model.SyncReport
         """
         # Get the manifest and download the ISOs that we are missing
-        self.progress_report.manifest_state = STATE_RUNNING
-        self.progress_report.update_progress()
+        self.progress_report.state = self.progress_report.STATE_MANIFEST_IN_PROGRESS
         try:
             manifest = self._download_manifest()
         except (IOError, ValueError):
@@ -153,21 +152,20 @@ class ISOSyncRun(listener.DownloadEventListener):
             # the PULP_MANIFEST file isn't in the expected format. In the future, when we complete the client
             # and by doing so define the progress report API, we will give more specific error messages here.
             # Until then, we just set the state to failed.
-            self.progress_report.manifest_state = STATE_FAILED
+            self.progress_report.state = self.progress_report.STATE_MANIFEST_FAILED
             return self.progress_report.build_final_report()
-        self.progress_report.manifest_state = STATE_COMPLETE
 
         # Go get them filez
-        self.progress_report.isos_state = STATE_RUNNING
-        self.progress_report.update_progress()
+        self.progress_report.state = self.progress_report.STATE_ISOS_IN_PROGRESS
         local_missing_isos, remote_missing_isos = self._filter_missing_isos(manifest)
         self._download_isos(local_missing_isos)
         if self._remove_missing_units:
             self._remove_units(remote_missing_isos)
 
-        # Report that we are finished
-        self.progress_report.isos_state = STATE_COMPLETE
-        self.progress_report.update_progress()
+        # Report that we are finished. Note that setting the state to STATE_ISOS_COMPLETE will automatically
+        # set the state to STATE_ISOS_FAILED if the progress report has collected any errors. See the
+        # progress_report's _set_state() method for the implementation of this logic.
+        self.progress_report.state = self.progress_report.STATE_COMPLETE
         report = self.progress_report.build_final_report()
         return report
 
@@ -179,15 +177,15 @@ class ISOSyncRun(listener.DownloadEventListener):
         :param manifest: The manifest containing a list of ISOs we want to download.
         :type  manifest: list
         """
-        self.progress_report.isos_total_bytes = 0
-        self.progress_report.isos_total_count = len(manifest)
+        self.progress_report.total_bytes = 0
+        self.progress_report.num_isos = len(manifest)
         # For each ISO in the manifest, we need to determine a relative path where we want it to be stored,
         # and initialize the Unit that will represent it
         for iso in manifest:
             iso.init_unit(self.sync_conduit)
             iso.bytes_downloaded = 0
             # Set the total bytes onto the report
-            self.progress_report.isos_total_bytes += iso.size
+            self.progress_report.total_bytes += iso.size
         self.progress_report.update_progress()
         # We need to build a list of DownloadRequests
         download_requests = [request.DownloadRequest(iso.url, iso.storage_path) for iso in manifest]
@@ -209,7 +207,7 @@ class ISOSyncRun(listener.DownloadEventListener):
         manifest_request = request.DownloadRequest(manifest_url, manifest_destiny)
         self.downloader.download([manifest_request])
         # We can inspect the report status to see if we had an error when retrieving the manifest.
-        if self.progress_report.manifest_state == STATE_FAILED:
+        if self.progress_report.state == self.progress_report.STATE_MANIFEST_FAILED:
             raise IOError(_("Could not retrieve %(url)s") % {'url': manifest_url})
 
         manifest_destiny.seek(0)
