@@ -118,8 +118,8 @@ class ISOProgressReport(object):
         """
         Assembles the final report to return to Pulp at the end of the run.
 
-        :return: report to return to Pulp at the end of the publish call
-        :rtype:  pulp.plugins.model.PublishReport
+        :return: report to return to Pulp at the end of the publish or sync call
+        :rtype:  pulp.plugins.model.PublishReport or pulp.plugins.model.SyncReport
         """
         # intentionally empty; not sure what to put in here
         summary = self.build_progress_report()
