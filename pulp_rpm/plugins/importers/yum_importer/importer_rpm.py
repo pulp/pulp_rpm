@@ -51,6 +51,17 @@ def get_existing_units(sync_conduit, criteria=None):
        existing_units[key] = u
    return existing_units
 
+def get_existing_source_units(import_unit_conduit, criteria=None):
+   """
+   @return a dictionary of existing units, key is the rpm lookup_key and the value is the unit
+   @rtype {():pulp.server.content.plugins.model.Unit}
+   """
+   existing_units = {}
+   for u in import_unit_conduit.get_source_units(criteria):
+       key = form_lookup_key(u.unit_key)
+       existing_units[key] = u
+   return existing_units
+
 def get_available_rpms(rpm_items):
     """
     @param rpm_items list of dictionaries containing info on each rpm, see grinder.YumInfo.__getRPMs() for more info
