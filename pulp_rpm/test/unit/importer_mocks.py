@@ -174,7 +174,7 @@ def get_import_conduit(source_units=None, existing_units=None):
 
     import_conduit = mock.Mock(spec=ImportUnitConduit)
     import_conduit.get_source_units.side_effect = get_source_units
-    import_conduit.get_units.side_effect = get_units
+    # import_conduit.get_units.side_effect = get_units
     import_conduit.search_all_units.side_effect = search_all_units
     import_conduit.save_unit = mock.Mock()
     import_conduit.save_unit.side_effect = save_unit
