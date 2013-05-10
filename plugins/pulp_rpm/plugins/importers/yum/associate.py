@@ -19,7 +19,8 @@ from pulp.server import managers
 from pulp.server.db.model.criteria import UnitAssociationCriteria
 
 from pulp_rpm.common import models
-from pulp_rpm.plugins.importers.yum.repomd import existing
+from pulp_rpm.plugins.importers.yum import depsolve
+from pulp_rpm.plugins.importers.yum import existing
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -27,14 +28,17 @@ _LOGGER = logging.getLogger(__name__)
 def associate(source_repo, dest_repo, import_conduit, config, units=None):
     if units is None:
         # this might use a lot of RAM since RPMs tend to have lots of metadata
+        # TODO: so we should probably do something about that
         units = import_conduit.get_source_units()
 
     associated_units = [_associate_unit(dest_repo, import_conduit, unit) for unit in units]
     units = None
 
+    copy_rpms((unit for unit in associated_units if unit.type_id == models.RPM.TYPE), import_conduit, True)
+
     # TODO: return here if we shouldn't get child units
 
-    group_ids, rpm_names, rpm_unit_keys = decide_what_to_get(associated_units)
+    group_ids, rpm_names, rpm_unit_keys = identify_children_to_copy(associated_units)
 
     # ------ get group children of the categories ------
     group_criteria = UnitAssociationCriteria([models.PackageGroup.TYPE],
@@ -44,8 +48,9 @@ def associate(source_repo, dest_repo, import_conduit, config, units=None):
         associate(source_repo, dest_repo, import_conduit, config, group_units)
 
     # ------ get RPM children of errata ------
-    rpms_to_copy = get_wanted_rpms_by_key(rpm_unit_keys, import_conduit)
+    wanted_rpms = get_wanted_rpms_by_key(rpm_unit_keys, import_conduit)
     rpm_unit_keys = None
+    rpms_to_copy = filter_available_rpms(wanted_rpms, import_conduit)
     copy_rpms(rpms_to_copy, import_conduit)
     rpms_to_copy = None
 
@@ -98,13 +103,33 @@ def get_wanted_rpms_by_name(rpm_names, import_conduit):
     return names
 
 
-def copy_rpms(unit_tuples, import_conduit):
-    available = existing.get_existing_units((_no_checksum_unit_key(unit) for unit in unit_tuples),
-                                            models.RPM.UNIT_KEY_NAMES, models.RPM.TYPE,
-                                            import_conduit.get_source_units)
+def filter_available_rpms(rpms, conduit):
+    return existing.get_existing_units((_no_checksum_unit_key(unit) for unit in rpms),
+                                        models.RPM.UNIT_KEY_NAMES, models.RPM.TYPE,
+                                        conduit.get_source_units)
 
-    for unit in available:
+
+def filter_existing_rpms(rpms, conduit):
+    return set(rpms) - set(existing.check_repo(rpms, conduit.get_destination_units))
+
+
+def copy_rpms(units, import_conduit, copy_deps=False):
+    if copy_deps:
+        units = set(units)
+
+    for unit in units:
         import_conduit.associate_unit(unit)
+
+    if copy_deps:
+        deps = depsolve.find_dependent_rpms(units, import_conduit.get_source_units)
+        # only consider deps that exist in the source repo
+        available_deps = set(filter_available_rpms(deps, import_conduit))
+        # remove rpms already in the destination repo
+        existing_units = set(existing.get_existing_units([dep.unit_key for dep in available_deps], models.RPM.UNIT_KEY_NAMES, models.RPM.TYPE, import_conduit.get_destination_units))
+        to_copy = available_deps - existing_units
+        _LOGGER.debug('Copying deps: %s' % str(sorted([x.unit_key['name'] for x in to_copy])))
+        if to_copy:
+            copy_rpms(to_copy, import_conduit, copy_deps)
 
 
 def _no_checksum_unit_key(unit_tuple):
@@ -130,11 +155,10 @@ def copy_rpms_by_name(names, import_conduit):
         else:
             to_copy[model.key_string_without_version] = max(((model.complete_version_serialized, unit), previous))
 
-    for version, unit in to_copy.values():
-        import_conduit.associate_unit(unit)
+    copy_rpms((unit for v, unit in to_copy.itervalues()), import_conduit)
 
 
-def decide_what_to_get(units):
+def identify_children_to_copy(units):
     groups = set()
     rpm_names = set()
     rpm_unit_keys = []
@@ -148,7 +172,6 @@ def decide_what_to_get(units):
             rpm_names.update(model.all_package_names)
         elif model.TYPE == models.Errata.TYPE:
             rpm_unit_keys.extend(model.package_unit_keys)
-            _LOGGER.info(model.package_unit_keys)
     return groups, rpm_names, rpm_unit_keys
 
 
@@ -158,6 +181,9 @@ def _associate_unit(dest_repo, import_conduit, unit):
         new_unit.unit_key['repo_id'] = dest_repo.id
         saved_unit = import_conduit.save_unit(new_unit)
         return saved_unit
+    elif unit.type_id == models.RPM.TYPE:
+        # copy will happen in one batch
+        return unit
     else:
         import_conduit.associate_unit(unit)
         return unit

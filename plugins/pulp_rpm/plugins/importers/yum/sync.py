@@ -19,7 +19,8 @@ import tempfile
 from pulp.plugins.model import SyncReport
 
 from pulp_rpm.common import constants
-from pulp_rpm.plugins.importers.yum.repomd import metadata, primary, packages, updateinfo, presto, group, existing
+from pulp_rpm.plugins.importers.yum import existing
+from pulp_rpm.plugins.importers.yum.repomd import metadata, primary, packages, updateinfo, presto, group
 from pulp_rpm.plugins.importers.yum.listener import ContentListener
 from pulp_rpm.plugins.importers.yum.parse import treeinfo
 from pulp_rpm.plugins.importers.yum.report import ContentReport, DistributionReport
@@ -124,7 +125,7 @@ class RepoSync(object):
                                                                      primary.PACKAGE_TAG,
                                                                      primary.process_package_element)
             wanted = self._identify_wanted_versions(package_info_generator)
-            to_download = existing.check_repo(wanted.iterkeys(), self.sync_conduit)
+            to_download = existing.check_repo(wanted.iterkeys(), self.sync_conduit.get_units)
             count = len(to_download)
             size = 0
             for unit in to_download:
@@ -139,7 +140,7 @@ class RepoSync(object):
                                                                          presto.PACKAGE_TAG,
                                                                          presto.process_package_element)
                 wanted = self._identify_wanted_versions(package_info_generator)
-                to_download = existing.check_repo(wanted.iterkeys(), self.sync_conduit)
+                to_download = existing.check_repo(wanted.iterkeys(), self.sync_conduit.get_units)
                 count = len(to_download)
                 size = 0
                 for unit in to_download:
@@ -219,7 +220,7 @@ class RepoSync(object):
                                                                      tag,
                                                                      process_func)
             wanted = (model.as_named_tuple for model in package_info_generator)
-            to_download = existing.check_repo(wanted, self.sync_conduit)
+            to_download = existing.check_repo(wanted, self.sync_conduit.get_units)
 
             # rewind, iterate again through the file, and download what we need
             file_handle.seek(0)
