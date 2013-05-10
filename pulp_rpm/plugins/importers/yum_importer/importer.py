@@ -79,7 +79,7 @@ class YumImporter(Importer):
     @classmethod
     def metadata(cls):
         return {
-            'id'           : TYPE_ID_IMPORTER_YUM,
+            'id'           : TYPE_ID_IMPORTER_YUM + '-old',
             'display_name' : 'Yum Importer',
             'types'        : [TYPE_ID_DISTRO, TYPE_ID_DRPM, TYPE_ID_ERRATA, TYPE_ID_PKG_GROUP, TYPE_ID_PKG_CATEGORY, TYPE_ID_RPM, TYPE_ID_SRPM]
         }

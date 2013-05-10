@@ -28,10 +28,11 @@ def process_group_element(repo_id, element):
     name, translated_name = _parse_translated(element.findall('name'))
     description, translated_description = _parse_translated(element.findall('description'))
     display_order = element.find('display_order')
+    group_default = _parse_bool(element.find('default').text) if element.find('default') else None
 
     return models.PackageGroup.from_package_info({
         'conditional_package_names': conditional,
-        'default': _parse_bool(element.find('default').text),
+        'default': group_default,
         'default_package_names': default,
         'description': description.text,
         # default of 1024 is from yum's own parsing of these objects
