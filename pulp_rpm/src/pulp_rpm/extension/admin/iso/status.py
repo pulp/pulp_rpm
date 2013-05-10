@@ -132,8 +132,8 @@ class ISOStatusRenderer(StatusRenderer):
             return
 
         if publish_report.state == publish_report.STATE_COMPLETE:
-            self.prompt.render_success_message(_('Successfully published the repository.'),
-                                               tag='publish_success')
+            msg = _('The repository was successfully published.')
+            self.prompt.render_success_message(msg, tag='publish_success')
 
 
 def human_readable_bytes(num):

@@ -109,11 +109,10 @@ class TestPublish(PulpRPMTests):
         publish_conduit = distributor_mocks.get_publish_conduit(existing_units=self.existing_units)
         config = distributor_mocks.get_basic_config(**{constants.CONFIG_SERVE_HTTP: True,
                                                        constants.CONFIG_SERVE_HTTPS: True})
-        # We haven't implemented reporting yet, so we don't yet assert anything about the report
-        # here.
         report = publish.publish(repo, publish_conduit, config)
 
         self.assertTrue(report.success_flag)
+        self.assertEqual(report.summary['state'], progress.ISOProgressReport.STATE_COMPLETE)
         # Let's verify that the publish directory looks right
         publishing_paths = [os.path.join(directory, 'lebowski') \
                             for directory in [constants.ISO_HTTP_DIR, constants.ISO_HTTPS_DIR]]
@@ -138,15 +137,50 @@ class TestPublish(PulpRPMTests):
             self.assertEqual(manifest_rows, expected_manifest_rows)
         delete_protected_repo.assert_called_once_with(repo.id)
 
+        # The publish_conduit should have had two set_progress calls. One to start the IN_PROGRESS state, and
+        # the second to mark it as complete
+        self.assertEqual(publish_conduit.set_progress.call_count, 2)
+        self.assertEqual(publish_conduit.set_progress.mock_calls[0][1][0]['state'],
+                         progress.PublishProgressReport.STATE_IN_PROGRESS)
+        self.assertEqual(publish_conduit.set_progress.mock_calls[1][1][0]['state'],
+                         progress.PublishProgressReport.STATE_COMPLETE)
+
+    @patch('pulp_rpm.repo_auth.protected_repo_utils.ProtectedRepoUtils.delete_protected_repo')
+    def test_publish_handles_errors(self, delete_protected_repo):
+        """
+        Make sure that publish() does the right thing with the report when there is an error.
+        """
+        delete_protected_repo.side_effect=Exception('Rawr!')
+        repo = MagicMock(spec=Repository)
+        repo.id = 'lebowski'
+        repo.working_dir = self.temp_dir
+        publish_conduit = distributor_mocks.get_publish_conduit(existing_units=self.existing_units)
+        config = distributor_mocks.get_basic_config(**{constants.CONFIG_SERVE_HTTP: True,
+                                                       constants.CONFIG_SERVE_HTTPS: True})
+
+        report = publish.publish(repo, publish_conduit, config)
+
+        self.assertFalse(report.success_flag)
+        self.assertEqual(report.summary['state'], progress.ISOProgressReport.STATE_FAILED)
+        self.assertEqual(report.summary['error_message'], 'Rawr!')
+        self.assertTrue('Rawr!' in report.summary['traceback'])
+
+        # The publish_conduit should have had two set_progress calls. One to start the IN_PROGRESS state, and
+        # the second to mark it as failed
+        self.assertEqual(publish_conduit.set_progress.call_count, 2)
+        self.assertEqual(publish_conduit.set_progress.mock_calls[0][1][0]['state'],
+                         progress.PublishProgressReport.STATE_IN_PROGRESS)
+        self.assertEqual(publish_conduit.set_progress.mock_calls[1][1][0]['state'],
+                         progress.PublishProgressReport.STATE_FAILED)
+
     def test__build_metadata(self):
         """
         The _build_metadata() method should put the metadata in the build directory.
         """
         repo = MagicMock(spec=Repository)
         repo.working_dir = self.temp_dir
-        progress_report = progress.PublishProgressReport(self.publish_conduit)
 
-        publish._build_metadata(repo, self.existing_units, progress_report)
+        publish._build_metadata(repo, self.existing_units)
 
         # Now let's have a look at the PULP_MANIFEST file to make sure it was generated correctly.
         manifest_filename = os.path.join(self.temp_dir, publish.BUILD_DIRNAME,
@@ -168,10 +202,6 @@ class TestPublish(PulpRPMTests):
         repo = MagicMock(spec=Repository)
         repo.id = 'lebowski'
         repo.working_dir = self.temp_dir
-        progress_report = progress.PublishProgressReport(self.publish_conduit)
-        # We need to simulate the progress_report being in the ISOS_IN_PROGRESS state so it will be allowed
-        # to transition
-        progress_report._state = progress_report.STATE_ISOS_IN_PROGRESS
         config = distributor_mocks.get_basic_config(**{constants.CONFIG_SERVE_HTTP: True,
                                                        constants.CONFIG_SERVE_HTTPS: True})
 
@@ -183,7 +213,7 @@ class TestPublish(PulpRPMTests):
         os.symlink('/symlink/path', os.path.join(build_dir, 'symlink'))
 
         # This should copy our dummy file to the monkey patched folders from our setUp() method.
-        publish._copy_to_hosted_location(repo, config, progress_report)
+        publish._copy_to_hosted_location(repo, config)
 
         # Make sure that the_dude.txt got copied to the right places
         expected_http_path = os.path.join(constants.ISO_HTTP_DIR, 'lebowski', 'the_dude.txt')
@@ -213,10 +243,6 @@ class TestPublish(PulpRPMTests):
         repo = MagicMock(spec=Repository)
         repo.id = 'lebowski'
         repo.working_dir = self.temp_dir
-        progress_report = progress.PublishProgressReport(self.publish_conduit)
-        # We need to simulate the progress_report being in the ISOS_IN_PROGRESS state so it will be allowed
-        # to transition
-        progress_report._state = progress_report.STATE_ISOS_IN_PROGRESS
         config = distributor_mocks.get_basic_config(**{constants.CONFIG_SERVE_HTTP: True,
                                                        constants.CONFIG_SERVE_HTTPS: False})
 
@@ -228,7 +254,7 @@ class TestPublish(PulpRPMTests):
         os.symlink('/symlink/path', os.path.join(build_dir, 'symlink'))
 
         # This should copy our dummy file to the monkey patched folders from our setUp() method.
-        publish._copy_to_hosted_location(repo, config, progress_report)
+        publish._copy_to_hosted_location(repo, config)
 
         # Even though HTTPS publishing was False, we should still call to protect the repository
         _protect_repository.assert_called_once_with(repo.id, repo, config)
@@ -246,10 +272,6 @@ class TestPublish(PulpRPMTests):
         repo = MagicMock(spec=Repository)
         repo.id = 'lebowski'
         repo.working_dir = self.temp_dir
-        progress_report = progress.PublishProgressReport(self.publish_conduit)
-        # We need to simulate the progress_report being in the ISOS_IN_PROGRESS state so it will be allowed
-        # to transition
-        progress_report._state = progress_report.STATE_ISOS_IN_PROGRESS
         config = distributor_mocks.get_basic_config(**{constants.CONFIG_SERVE_HTTP: True,
                                                        constants.CONFIG_SERVE_HTTPS: True})
 
@@ -261,7 +283,7 @@ class TestPublish(PulpRPMTests):
         os.symlink('/symlink/path', os.path.join(build_dir, 'symlink'))
 
         # This should copy our dummy file to the monkey patched folders from our setUp() method.
-        publish._copy_to_hosted_location(repo, config, progress_report)
+        publish._copy_to_hosted_location(repo, config)
 
         # Assert that _protect_repository was called with the correct parameters
         _protect_repository.assert_called_once_with(repo.id, repo, config)
@@ -336,10 +358,6 @@ class TestPublish(PulpRPMTests):
         """
         repo = MagicMock(spec=Repository)
         repo.working_dir = self.temp_dir
-        progress_report = progress.PublishProgressReport(self.publish_conduit)
-        # We need to simulate the progress_report being in the ISOS_IN_PROGRESS state so it will be allowed
-        # to transition
-        progress_report._state = progress_report.STATE_MANIFEST_IN_PROGRESS
 
         # There's some logic in _symlink_units to handle preexisting files and symlinks, so let's
         # create some fakes to see if it does the right thing
@@ -349,7 +367,7 @@ class TestPublish(PulpRPMTests):
         with open(os.path.join(build_dir, self.existing_units[1].unit_key['name']), 'w') as wrong:
             wrong.write("This is wrong.")
 
-        publish._symlink_units(repo, self.existing_units, progress_report)
+        publish._symlink_units(repo, self.existing_units)
 
         build_dir = publish._get_or_create_build_dir(repo)
         for unit in self.existing_units:
@@ -365,10 +383,6 @@ class TestPublish(PulpRPMTests):
         """
         repo = MagicMock(spec=Repository)
         repo.working_dir = self.temp_dir
-        progress_report = progress.PublishProgressReport(self.publish_conduit)
-        # We need to simulate the progress_report being in the ISOS_IN_PROGRESS state so it will be allowed
-        # to transition
-        progress_report._state = progress_report.STATE_MANIFEST_IN_PROGRESS
 
         # There's some logic in _symlink_units to handle preexisting files and symlinks, so let's
         # create some fakes to see if it does the right thing
@@ -380,7 +394,7 @@ class TestPublish(PulpRPMTests):
         # Now let's reset the Mock so that we can make sure it doesn't get called during _symlink
         symlink.reset_mock()
 
-        publish._symlink_units(repo, [unit], progress_report)
+        publish._symlink_units(repo, [unit])
 
         # The call count for symlink should be 0, because the _symlink_units call should have noticed that the
         # symlink was already correct and thus should have skipped it
@@ -402,10 +416,6 @@ class TestPublish(PulpRPMTests):
 
         repo = MagicMock(spec=Repository)
         repo.working_dir = self.temp_dir
-        progress_report = progress.PublishProgressReport(self.publish_conduit)
-        # We need to simulate the progress_report being in the ISOS_IN_PROGRESS state so it will be allowed
-        # to transition
-        progress_report._state = progress_report.STATE_MANIFEST_IN_PROGRESS
 
         # There's some logic in _symlink_units to handle preexisting files and symlinks, so let's
         # create some fakes to see if it does the right thing
@@ -416,7 +426,7 @@ class TestPublish(PulpRPMTests):
                    os.path.join(build_dir, unit.unit_key['name']))
 
         try:
-            publish._symlink_units(repo, [unit], progress_report)
+            publish._symlink_units(repo, [unit])
             self.fail('An OSError should have been raised, but was not!')
         except OSError, e:
             self.assertEqual(e.errno, errno.ENOSPC)
