@@ -19,3 +19,5 @@ If new importer doesn't make it into 2.2, put the copy command improvements from
 https://github.com/pulp/pulp_rpm/pull/181
 
 Remove units
+
+verify checksum and size
