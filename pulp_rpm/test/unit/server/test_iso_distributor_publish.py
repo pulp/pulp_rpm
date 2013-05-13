@@ -113,6 +113,7 @@ class TestPublish(PulpRPMTests):
         # here.
         report = publish.publish(repo, publish_conduit, config)
 
+        self.assertTrue(report.success_flag)
         # Let's verify that the publish directory looks right
         publishing_paths = [os.path.join(directory, 'lebowski') \
                             for directory in [constants.ISO_HTTP_DIR, constants.ISO_HTTPS_DIR]]
@@ -168,6 +169,9 @@ class TestPublish(PulpRPMTests):
         repo.id = 'lebowski'
         repo.working_dir = self.temp_dir
         progress_report = progress.PublishProgressReport(self.publish_conduit)
+        # We need to simulate the progress_report being in the ISOS_IN_PROGRESS state so it will be allowed
+        # to transition
+        progress_report._state = progress_report.STATE_ISOS_IN_PROGRESS
         config = distributor_mocks.get_basic_config(**{constants.CONFIG_SERVE_HTTP: True,
                                                        constants.CONFIG_SERVE_HTTPS: True})
 
@@ -210,6 +214,9 @@ class TestPublish(PulpRPMTests):
         repo.id = 'lebowski'
         repo.working_dir = self.temp_dir
         progress_report = progress.PublishProgressReport(self.publish_conduit)
+        # We need to simulate the progress_report being in the ISOS_IN_PROGRESS state so it will be allowed
+        # to transition
+        progress_report._state = progress_report.STATE_ISOS_IN_PROGRESS
         config = distributor_mocks.get_basic_config(**{constants.CONFIG_SERVE_HTTP: True,
                                                        constants.CONFIG_SERVE_HTTPS: False})
 
@@ -240,6 +247,9 @@ class TestPublish(PulpRPMTests):
         repo.id = 'lebowski'
         repo.working_dir = self.temp_dir
         progress_report = progress.PublishProgressReport(self.publish_conduit)
+        # We need to simulate the progress_report being in the ISOS_IN_PROGRESS state so it will be allowed
+        # to transition
+        progress_report._state = progress_report.STATE_ISOS_IN_PROGRESS
         config = distributor_mocks.get_basic_config(**{constants.CONFIG_SERVE_HTTP: True,
                                                        constants.CONFIG_SERVE_HTTPS: True})
 
@@ -327,6 +337,9 @@ class TestPublish(PulpRPMTests):
         repo = MagicMock(spec=Repository)
         repo.working_dir = self.temp_dir
         progress_report = progress.PublishProgressReport(self.publish_conduit)
+        # We need to simulate the progress_report being in the ISOS_IN_PROGRESS state so it will be allowed
+        # to transition
+        progress_report._state = progress_report.STATE_MANIFEST_IN_PROGRESS
 
         # There's some logic in _symlink_units to handle preexisting files and symlinks, so let's
         # create some fakes to see if it does the right thing
@@ -353,6 +366,9 @@ class TestPublish(PulpRPMTests):
         repo = MagicMock(spec=Repository)
         repo.working_dir = self.temp_dir
         progress_report = progress.PublishProgressReport(self.publish_conduit)
+        # We need to simulate the progress_report being in the ISOS_IN_PROGRESS state so it will be allowed
+        # to transition
+        progress_report._state = progress_report.STATE_MANIFEST_IN_PROGRESS
 
         # There's some logic in _symlink_units to handle preexisting files and symlinks, so let's
         # create some fakes to see if it does the right thing
@@ -387,6 +403,9 @@ class TestPublish(PulpRPMTests):
         repo = MagicMock(spec=Repository)
         repo.working_dir = self.temp_dir
         progress_report = progress.PublishProgressReport(self.publish_conduit)
+        # We need to simulate the progress_report being in the ISOS_IN_PROGRESS state so it will be allowed
+        # to transition
+        progress_report._state = progress_report.STATE_MANIFEST_IN_PROGRESS
 
         # There's some logic in _symlink_units to handle preexisting files and symlinks, so let's
         # create some fakes to see if it does the right thing

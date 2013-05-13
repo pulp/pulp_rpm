@@ -23,6 +23,7 @@ import copy
 from yum_importer.comps import ImporterComps
 from yum_importer.errata import ImporterErrata, link_errata_rpm_units
 from yum_importer.importer_rpm import ImporterRPM, get_existing_units, form_lookup_key
+from importer_rpm import get_existing_source_units
 from pulp.server.db.model.criteria import UnitAssociationCriteria
 from pulp.plugins.importer import Importer
 from pulp.plugins.model import SyncReport
@@ -289,8 +290,8 @@ class YumImporter(Importer):
         if config.get('resolve_dependencies') or config.get(constants.CONFIG_COPY_CHILDREN, True):
             rpm_criteria = UnitAssociationCriteria(type_ids=[TYPE_ID_RPM], unit_fields=ids.UNIT_KEY_RPM)
             srpm_criteria = UnitAssociationCriteria(type_ids=[TYPE_ID_SRPM], unit_fields=ids.UNIT_KEY_RPM)
-            existing_rpm_units_dict = get_existing_units(import_conduit, criteria=rpm_criteria)
-            existing_rpm_units_dict.update(get_existing_units(import_conduit, criteria=srpm_criteria))
+            existing_rpm_units_dict = get_existing_source_units(import_conduit, criteria=rpm_criteria)
+            existing_rpm_units_dict.update(get_existing_source_units(import_conduit, criteria=srpm_criteria))
         else:
             existing_rpm_units_dict = {}
         for u in units:

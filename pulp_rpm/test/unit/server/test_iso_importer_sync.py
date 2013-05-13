@@ -16,7 +16,6 @@ import shutil
 import tempfile
 
 from pulp_rpm.common import models
-from pulp_rpm.common.constants import STATE_COMPLETE, STATE_FAILED, STATE_NOT_STARTED, STATE_RUNNING
 from pulp_rpm.common.ids import TYPE_ID_ISO
 from pulp_rpm.common.progress import SyncProgressReport
 from pulp_rpm.plugins.importers.iso_importer.sync import ISOSyncRun
@@ -120,11 +119,11 @@ class TestISOSyncRun(PulpRPMTests):
         self.iso_sync_run.cancel_sync()
 
     def test_download_failed_during_iso_download(self):
-        self.iso_sync_run.progress_report.manifest_state = STATE_COMPLETE
-        self.iso_sync_run.progress_report.isos_state = STATE_RUNNING
+        self.iso_sync_run.progress_report._state = SyncProgressReport.STATE_ISOS_IN_PROGRESS
         url = 'http://www.theonion.com/articles/american-airlines-us-airways-merge-to-form-worlds,31302/'
         report = DownloadReport(url, '/fake/destination')
-        self.iso_sync_run._url_iso_map = {url: {'name': "fake.iso"}}
+        iso = models.ISO('test.txt', 217, 'a1552efee6f04012bc7e1f3e02c00c6177b08217cead958c47ec83cb8f97f835')
+        self.iso_sync_run._url_iso_map = {url: iso}
 
         self.iso_sync_run.download_failed(report)
 
@@ -132,14 +131,14 @@ class TestISOSyncRun(PulpRPMTests):
         self.assertEqual(self.iso_sync_run._url_iso_map, {})
 
     def test_download_failed_during_manifest(self):
-        self.iso_sync_run.progress_report.manifest_state = STATE_RUNNING
+        self.iso_sync_run.progress_report._state = SyncProgressReport.STATE_MANIFEST_IN_PROGRESS
         url = 'http://www.theonion.com/articles/american-airlines-us-airways-merge-to-form-worlds,31302/'
         report = DownloadReport(url, '/fake/destination')
 
         self.iso_sync_run.download_failed(report)
 
         # The manifest_state should be failed
-        self.assertEqual(self.iso_sync_run.progress_report.manifest_state, STATE_FAILED)
+        self.assertEqual(self.iso_sync_run.progress_report._state, SyncProgressReport.STATE_MANIFEST_FAILED)
 
     @patch('pulp_rpm.plugins.importers.iso_importer.sync.ISOSyncRun.download_failed')
     def test_download_succeeded(self, download_failed):
@@ -161,7 +160,7 @@ class TestISOSyncRun(PulpRPMTests):
         report.bytes_downloaded = iso.size
         # We need to put this on the url_iso_map so that the iso can be retrieved for validation
         self.iso_sync_run._url_iso_map = {iso.url: iso}
-        self.iso_sync_run.progress_report.isos_state = STATE_RUNNING
+        self.iso_sync_run.progress_report._state = SyncProgressReport.STATE_ISOS_IN_PROGRESS
 
         self.iso_sync_run.download_succeeded(report)
 
@@ -199,7 +198,7 @@ class TestISOSyncRun(PulpRPMTests):
         report.bytes_downloaded = iso.size
         # We need to put this on the url_iso_map so that the iso can be retrieved for validation
         iso_sync_run._url_iso_map = {iso.url: iso}
-        iso_sync_run.progress_report.isos_state = STATE_RUNNING
+        iso_sync_run.progress_report._state = SyncProgressReport.STATE_ISOS_IN_PROGRESS
 
         iso_sync_run.download_succeeded(report)
 
@@ -236,7 +235,7 @@ class TestISOSyncRun(PulpRPMTests):
         report.bytes_downloaded = iso.size
         # We need to put this on the url_iso_map so that the iso can be retrieved for validation
         iso_sync_run._url_iso_map = {iso.url: iso}
-        iso_sync_run.progress_report.isos_state = STATE_RUNNING
+        iso_sync_run.progress_report._state = SyncProgressReport.STATE_ISOS_IN_PROGRESS
 
         iso_sync_run.download_succeeded(report)
 
@@ -268,7 +267,7 @@ class TestISOSyncRun(PulpRPMTests):
         report.bytes_downloaded = iso.size
         # We need to put this on the url_iso_map so that the iso can be retrieved for validation
         self.iso_sync_run._url_iso_map = {iso.url: iso}
-        self.iso_sync_run.progress_report.isos_state = STATE_RUNNING
+        self.iso_sync_run.progress_report._state = SyncProgressReport.STATE_ISOS_IN_PROGRESS
 
         self.iso_sync_run.download_succeeded(report)
 
@@ -323,8 +322,7 @@ class TestISOSyncRun(PulpRPMTests):
         self.iso_sync_run.perform_sync()
 
         self.assertEquals(type(self.iso_sync_run.progress_report), SyncProgressReport)
-        self.assertEqual(self.iso_sync_run.progress_report.manifest_state, STATE_FAILED)
-        self.assertEqual(self.iso_sync_run.progress_report.isos_state, STATE_NOT_STARTED)
+        self.assertEqual(self.iso_sync_run.progress_report._state, SyncProgressReport.STATE_MANIFEST_FAILED)
 
     @patch('pulp.common.download.downloaders.curl.HTTPSCurlDownloader.download')
     def test_perform_sync_manifest_io_error(self, download):
@@ -337,8 +335,7 @@ class TestISOSyncRun(PulpRPMTests):
         self.iso_sync_run.perform_sync()
 
         self.assertEquals(type(self.iso_sync_run.progress_report), SyncProgressReport)
-        self.assertEqual(self.iso_sync_run.progress_report.manifest_state, STATE_FAILED)
-        self.assertEqual(self.iso_sync_run.progress_report.isos_state, STATE_NOT_STARTED)
+        self.assertEqual(self.iso_sync_run.progress_report._state, SyncProgressReport.STATE_MANIFEST_FAILED)
 
     @patch('pulp.common.download.downloaders.curl.pycurl.Curl', side_effect=importer_mocks.ISOCurl)
     @patch('pulp.common.download.downloaders.curl.pycurl.CurlMulti', side_effect=importer_mocks.CurlMulti)
@@ -382,7 +379,6 @@ class TestISOSyncRun(PulpRPMTests):
     @patch('pulp.common.download.downloaders.curl.pycurl.CurlMulti', side_effect=importer_mocks.CurlMulti)
     def test_perform_sync_remove_missing_units_set_true(self, curl_multi, curl):
         # Make sure the missing ISOs get removed when they are supposed to
-        # Make sure the missing ISOs don't get removed if they aren't supposed to
         config = importer_mocks.get_basic_config(
             feed_url='http://fake.com/iso_feed/', max_speed=500.0, num_threads=5,
             proxy_url='http://proxy.com', proxy_port=1234, proxy_user="the_dude",
@@ -424,7 +420,7 @@ class TestISOSyncRun(PulpRPMTests):
     @patch('pulp.common.download.downloaders.curl.pycurl.CurlMulti', side_effect=importer_mocks.CurlMulti)
     def test__download_isos(self, curl_multi, curl):
         # We need to mark the iso_downloader as being in the ISO downloading state
-        self.iso_sync_run.progress_report.isos_state = STATE_RUNNING
+        self.iso_sync_run.progress_report._state = SyncProgressReport.STATE_ISOS_IN_PROGRESS
         # Let's put three ISOs in the manifest
         manifest = StringIO()
         manifest.write('test.iso,f02d5a72cd2d57fa802840a76b44c6c6920a8b8e6b90b20e26c03876275069e0,16\n')
@@ -489,7 +485,7 @@ class TestISOSyncRun(PulpRPMTests):
         Make sure we handle the situation correctly when the manifest fails to download.
         """
         download_succeeded.side_effect = self.iso_sync_run.download_failed
-        self.iso_sync_run.progress_report.manifest_state = STATE_RUNNING
+        self.iso_sync_run.progress_report._state = SyncProgressReport.STATE_MANIFEST_IN_PROGRESS
         try:
             self.iso_sync_run._download_manifest()
             self.fail('This should have raised an IOError, but it did not.')

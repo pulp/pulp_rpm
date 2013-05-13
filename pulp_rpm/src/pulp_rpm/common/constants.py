@@ -10,7 +10,7 @@
 # http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt.
 
 # -- progress states ----------------------------------------------------------
-
+# These are used by the RPM reports, but not by the ISO reports (since those use their own state machines)
 STATE_NOT_STARTED = 'NOT_STARTED'
 STATE_RUNNING = 'IN_PROGRESS'
 STATE_COMPLETE = 'FINISHED'
