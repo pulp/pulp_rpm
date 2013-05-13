@@ -15,7 +15,6 @@ import os
 from urlparse import urljoin
 from xml.etree.ElementTree import iterparse
 
-from pulp.common.download.config import DownloaderConfig
 from pulp.common.download.downloaders.event import HTTPEventletDownloader
 from pulp.common.download.request import DownloadRequest
 
@@ -28,8 +27,8 @@ def package_list_generator(xml_handle, package_tag, processor):
     single package's information. It then yields a corresponding package
     information dictionary. Then repeats.
 
-    :param primary_xml_handle: open file handle pointing to the beginning of a primary.xml file
-    :type primary_xml_handle: file-like object
+    :param xml_handle: open file handle pointing to the beginning of a primary.xml file
+    :type  xml_handle: file-like object
     :return: generator of package information dictionaries
     :rtype: generator
     """
@@ -65,13 +64,12 @@ class Packages(object):
     :ivar downloader: pulp.common.download.backends.base.DownloadBackend instance
     """
 
-    def __init__(self, repo_url, package_model_iterator, dst_dir, event_listener=None):
+    def __init__(self, repo_url, nectar_config, package_model_iterator, dst_dir, event_listener=None):
         self.repo_url = repo_url
         self.package_model_iterator = package_model_iterator
         self.dst_dir = dst_dir
 
-        downloader_config = DownloaderConfig()
-        self.downloader = HTTPEventletDownloader(downloader_config, event_listener)
+        self.downloader = HTTPEventletDownloader(nectar_config, event_listener)
 
     def download_packages(self):
         """

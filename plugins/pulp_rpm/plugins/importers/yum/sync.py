@@ -16,7 +16,9 @@ import logging
 import shutil
 import tempfile
 
+from pulp.common.plugins import importer_constants
 from pulp.plugins.model import SyncReport
+from pulp.plugins.util import nectar as nectar_utils
 
 from pulp_rpm.common import constants
 from pulp_rpm.plugins.importers.yum import existing
@@ -25,11 +27,13 @@ from pulp_rpm.plugins.importers.yum.listener import ContentListener
 from pulp_rpm.plugins.importers.yum.parse import treeinfo
 from pulp_rpm.plugins.importers.yum.report import ContentReport, DistributionReport
 
+
 _LOGGER = logging.getLogger(__name__)
 
 
 class RepoSync(object):
-    def __init__(self, repo, sync_conduit, config):
+
+    def __init__(self, repo, sync_conduit, call_config):
         self.working_dir = repo.working_dir
         self.content_report = ContentReport()
         self.distribution_report = DistributionReport()
@@ -43,8 +47,16 @@ class RepoSync(object):
         self.sync_conduit = sync_conduit
         self.set_progress = functools.partial(self.sync_conduit.set_progress, self.progress_status)
         self.set_progress()
-        self.config = config
         self.repo = repo
+
+        self.call_config = call_config
+
+        flat_call_config = call_config.flatten()
+        self.nectar_config = nectar_utils.importer_config_to_nectar_config(flat_call_config)
+
+    @property
+    def sync_feed(self):
+        return self.call_config.get(importer_constants.KEY_FEED)
 
     def run(self):
         # using this tmp dir ensures that cleanup leaves nothing behind, since
@@ -65,7 +77,8 @@ class RepoSync(object):
 
             self.distribution_report['state'] = constants.STATE_RUNNING
             self.set_progress()
-            treeinfo.sync(self.sync_conduit, self.config.feed, self.tmp_dir, self.distribution_report, self.set_progress)
+            treeinfo.sync(self.sync_conduit, self.sync_feed,
+                          self.tmp_dir, self.distribution_report, self.set_progress)
             self.set_progress()
 
             self.progress_status['errata']['state'] = constants.STATE_RUNNING
@@ -92,7 +105,7 @@ class RepoSync(object):
         :return:
         :rtype:  pulp_rpm.plugins.importers.download.metadata.MetadataFiles
         """
-        metadata_files = metadata.MetadataFiles(self.config.feed, self.tmp_dir)
+        metadata_files = metadata.MetadataFiles(self.sync_feed, self.tmp_dir)
         metadata_files.download_repomd()
         metadata_files.parse_repomd()
         metadata_files.download_metadata_files()
@@ -161,7 +174,8 @@ class RepoSync(object):
                                                                      primary.process_package_element)
             units_to_download = self._filtered_unit_generator(package_model_generator, rpms_to_download)
 
-            packages_downloader = packages.Packages(self.config.feed, units_to_download, self.tmp_dir, event_listener)
+            packages_downloader = packages.Packages(self.sync_feed, self.nectar_config,
+                                                    units_to_download, self.tmp_dir, event_listener)
             packages_downloader.download_packages()
 
         presto_file_handle = metadata_files.get_metadata_file_handle('prestodelta')
@@ -172,7 +186,8 @@ class RepoSync(object):
                                                                          presto.process_package_element)
                 units_to_download = self._filtered_unit_generator(package_model_generator, drpms_to_download)
 
-                packages_downloader = packages.Packages(self.config.feed, units_to_download, self.tmp_dir, event_listener)
+                packages_downloader = packages.Packages(self.sync_feed, self.nectar_config,
+                                                        units_to_download, self.tmp_dir, event_listener)
                 packages_downloader.download_packages()
 
         report = self.sync_conduit.build_success_report({}, {})
@@ -250,7 +265,7 @@ class RepoSync(object):
             versions = wanted.setdefault(model.key_string_without_version, {})
             serialized_version = model.complete_version_serialized
             size = model.metadata['size']
-            if self.config.newest:
+            if self.call_config.get(importer_constants.KEY_UNITS_RETAIN_OLD_COUNT) == 0:
                 if not versions or serialized_version > max(versions.keys()):
                     versions.clear()
                     versions[serialized_version] = (model.as_named_tuple, size)
