@@ -12,10 +12,8 @@
 # http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt.
 
 import copy
-import functools
 import logging
 
-from pulp.server import managers
 from pulp.server.db.model.criteria import UnitAssociationCriteria
 
 from pulp_rpm.common import models
@@ -26,6 +24,25 @@ _LOGGER = logging.getLogger(__name__)
 
 
 def associate(source_repo, dest_repo, import_conduit, config, units=None):
+    """
+    This is the primary method to call when a copy operation is desired. This
+    gets called directly by the Importer
+
+    Certain variables are set to "None" as the method progresses so that they
+    may be garbage collected.
+
+    :param source_repo:     source repo
+    :type  source_repo:     pulp.plugins.model.Repository
+    :param dest_repo:       destination repo
+    :type  dest_repo:       pulp.plugins.model.Repository
+    :param import_conduit:  import conduit passed to the Importer
+    :type  import_conduit:  pulp.plugins.conduits.unit_import.ImportUnitConduit
+    :param config:          config object for the distributor
+    :type  config:          pulp.plugins.config.PluginCallConfiguration
+    :param units:           iterable of Unit objects to copy
+    :type  units:           iterable
+    :return:
+    """
     if units is None:
         # this might use a lot of RAM since RPMs tend to have lots of metadata
         # TODO: so we should probably do something about that
@@ -48,38 +65,45 @@ def associate(source_repo, dest_repo, import_conduit, config, units=None):
         associate(source_repo, dest_repo, import_conduit, config, group_units)
 
     # ------ get RPM children of errata ------
-    wanted_rpms = get_wanted_rpms_by_key(rpm_unit_keys, import_conduit)
+    wanted_rpms = get_rpms_to_copy_by_key(rpm_unit_keys, import_conduit)
     rpm_unit_keys = None
     rpms_to_copy = filter_available_rpms(wanted_rpms, import_conduit)
     copy_rpms(rpms_to_copy, import_conduit)
     rpms_to_copy = None
 
     # ------ get RPM children of groups ------
-    names_to_copy = get_wanted_rpms_by_name(rpm_names, import_conduit)
+    names_to_copy = get_rpms_to_copy_by_name(rpm_names, import_conduit)
     copy_rpms_by_name(names_to_copy, import_conduit)
 
     return associated_units
 
 
-def get_wanted_rpms_by_key(rpm_unit_keys, import_conduit):
+def get_rpms_to_copy_by_key(rpm_unit_keys, import_conduit):
     """
+    Errata specify NEVRA for the RPMs they reference. This method is useful for
+    taking those specifications and finding actual units available in the source
+    repository.
 
-    :param rpm_unit_keys:
-    :param import_conduit:
+    :param rpm_unit_keys:   iterable of dicts that include unit key parameters
+    :type  rpm_unit_keys:   iterable
+    :param import_conduit:  import conduit passed to the Importer
+    :type  import_conduit:  pulp.plugins.conduits.unit_import.ImportUnitConduit
     :return: set of namedtuples needed by the dest repo
     """
+    # identify which RPMs are desired and store as named tuples
     named_tuples = set()
     for key in rpm_unit_keys:
         # ignore checksum from updateinfo.xml
         key['checksum'] = None
         key['checksumtype'] = None
         named_tuples.add(models.RPM.NAMEDTUPLE(**key))
-    assoc_query_manager = managers.factory.repo_unit_association_query_manager()
-    query_func = functools.partial(assoc_query_manager.get_units,
-                                   import_conduit.dest_repo_id)
-    units = existing.get_existing_units(rpm_unit_keys, models.RPM.UNIT_KEY_NAMES,
-                                models.RPM.TYPE, query_func)
-    for unit in units:
+
+    # identify which of those RPMs already exist
+    existing_units = existing.get_existing_units(rpm_unit_keys, models.RPM.UNIT_KEY_NAMES,
+                                models.RPM.TYPE, import_conduit.get_destination_units)
+    # remove units that already exist in the destination from the set of units
+    # we want to copy
+    for unit in existing_units:
         for key in unit.keys():
             if key not in models.RPM.UNIT_KEY_NAMES:
                 del unit[key]
@@ -90,30 +114,60 @@ def get_wanted_rpms_by_key(rpm_unit_keys, import_conduit):
     return named_tuples
 
 
-def get_wanted_rpms_by_name(rpm_names, import_conduit):
-    assoc_query_manager = managers.factory.repo_unit_association_query_manager()
-    query_func = functools.partial(assoc_query_manager.get_units,
-                                   import_conduit.dest_repo_id)
+def get_rpms_to_copy_by_name(rpm_names, import_conduit):
+    """
+    Groups reference names of RPMs. This method is useful for taking those names
+    and removing ones that already exist in the destination repository.
+
+    :param rpm_names:       iterable of RPM names
+    :type  rpm_names:       iterable
+    :param import_conduit:  import conduit passed to the Importer
+    :type  import_conduit:  pulp.plugins.conduits.unit_import.ImportUnitConduit
+    :return: set of names that
+    """
     search_dicts = ({'name': name} for name in rpm_names)
     units = existing.get_existing_units(search_dicts, ['name'],
-                                        models.RPM.TYPE, query_func)
+                                        models.RPM.TYPE, import_conduit.get_destination_units)
     names = set(rpm_names)
     for unit in units:
         names.discard(unit['name'])
     return names
 
 
-def filter_available_rpms(rpms, conduit):
+def filter_available_rpms(rpms, import_conduit):
+    """
+    Given a series of RPM named tuples, return an iterable of those which are
+    available in the source repository
+
+    :param rpms:            iterable of RPMs that are desired to be copied
+    :type  rpms:            iterable of pulp_rpm.common.models.RPM.NAMEDTUPLE
+    :param import_conduit:  import conduit passed to the Importer
+    :type  import_conduit:  pulp.plugins.conduits.unit_import.ImportUnitConduit
+    :return:    iterable of Units that should be copied
+    :return:    iterable of pulp.plugins.models.Unit
+    """
     return existing.get_existing_units((_no_checksum_unit_key(unit) for unit in rpms),
                                         models.RPM.UNIT_KEY_NAMES, models.RPM.TYPE,
-                                        conduit.get_source_units)
-
-
-def filter_existing_rpms(rpms, conduit):
-    return set(rpms) - set(existing.check_repo(rpms, conduit.get_destination_units))
+                                        import_conduit.get_source_units)
 
 
 def copy_rpms(units, import_conduit, copy_deps=False):
+    """
+    Copy RPMs from the source repo to the destination repo, and optionally copy
+    dependencies as well. Dependencies are resolved recursively.
+
+    :param units:           iterable of Units
+    :type  units:           iterable of pulp.plugins.models.Unit
+    :param import_conduit:  import conduit passed to the Importer
+    :type  import_conduit:  pulp.plugins.conduits.unit_import.ImportUnitConduit
+    :param copy_deps:       if True, copies dependencies as specified in "Requires"
+                            lines in the RPM metadata. Matches against NEVRAs
+                            and Provides declarations that are found in the
+                            source repository. Silently skips any dependencies
+                            that cannot be resolved within the source repo.
+    """
+    # units can be a generator if this is False, but otherwise we need to iterate
+    # at least twice over it.
     if copy_deps:
         units = set(units)
 
@@ -125,7 +179,9 @@ def copy_rpms(units, import_conduit, copy_deps=False):
         # only consider deps that exist in the source repo
         available_deps = set(filter_available_rpms(deps, import_conduit))
         # remove rpms already in the destination repo
-        existing_units = set(existing.get_existing_units([dep.unit_key for dep in available_deps], models.RPM.UNIT_KEY_NAMES, models.RPM.TYPE, import_conduit.get_destination_units))
+        existing_units = set(existing.get_existing_units([dep.unit_key for dep in available_deps],
+                                                         models.RPM.UNIT_KEY_NAMES, models.RPM.TYPE,
+                                                         import_conduit.get_destination_units))
         to_copy = available_deps - existing_units
         _LOGGER.debug('Copying deps: %s' % str(sorted([x.unit_key['name'] for x in to_copy])))
         if to_copy:
@@ -133,6 +189,17 @@ def copy_rpms(units, import_conduit, copy_deps=False):
 
 
 def _no_checksum_unit_key(unit_tuple):
+    """
+    Return a unit key that does not include the checksum or checksumtype. This
+    is useful when resolving dependencies, because those unit specifications
+    (on "Requires" lines in spec files) do not specify particular checksum info.
+
+    :param unit_tuple:  unit to convert
+    :type  unit_tuple:  pulp_rpm.common.models.RPM.NAMEDTUPLE
+
+    :return:    unit key without checksum data
+    :rtype:     dict
+    """
     ret = unit_tuple._asdict()
     # ignore checksum from updateinfo.xml
     del ret['checksum']
@@ -140,7 +207,15 @@ def _no_checksum_unit_key(unit_tuple):
     return ret
 
 
-def copy_rpms_by_name(names, import_conduit):
+def copy_rpms_by_name(names, import_conduit, copy_deps=False):
+    """
+    Copy RPMs from source repo to destination repo by name
+
+    :param names:           iterable of RPM names
+    :type  names:           iterable of basestring
+    :param import_conduit:  import conduit passed to the Importer
+    :type  import_conduit:  pulp.plugins.conduits.unit_import.ImportUnitConduit
+    """
     to_copy = {}
 
     search_dicts = ({'name': name} for name in names)
@@ -155,10 +230,19 @@ def copy_rpms_by_name(names, import_conduit):
         else:
             to_copy[model.key_string_without_version] = max(((model.complete_version_serialized, unit), previous))
 
-    copy_rpms((unit for v, unit in to_copy.itervalues()), import_conduit)
+    copy_rpms((unit for v, unit in to_copy.itervalues()), import_conduit, copy_deps)
 
 
 def identify_children_to_copy(units):
+    """
+    Takes an iterable of Unit instances, and for each that is of a child-bearing
+    type (Group, Category, Errata), collects the child definitions.
+
+    :param units:   iterable of Units
+    :type  units:   iterable of pulp.plugins.models.Unit
+
+    :return:    set(group names), set(rpm names), list(rpm unit keys as dicts)
+    """
     groups = set()
     rpm_names = set()
     rpm_unit_keys = []
@@ -176,6 +260,26 @@ def identify_children_to_copy(units):
 
 
 def _associate_unit(dest_repo, import_conduit, unit):
+    """
+    Associate one particular unit with the destination repository. There are
+    behavioral exceptions based on type:
+
+    Group and Category units need to have their "repo_id" attribute set.
+
+    RPMs are convenient to do all as one block, for the purpose of dependency
+    resolution. So this method skips RPMs and lets them be done together by
+    other means
+
+    :param dest_repo:       destination repo
+    :type  dest_repo:       pulp.plugins.model.Repository
+    :param import_conduit:  import conduit passed to the Importer
+    :type  import_conduit:  pulp.plugins.conduits.unit_import.ImportUnitConduit
+    :param unit:            Unit to be copied
+    :type  unit:            pulp.plugins.model.Unit
+
+    :return:                copied unit
+    :rtype:                 pulp.plugins.model.Unit
+    """
     if unit.type_id in (models.PackageGroup.TYPE, models.PackageCategory.TYPE):
         new_unit = _safe_copy(unit)
         new_unit.unit_key['repo_id'] = dest_repo.id
@@ -190,6 +294,16 @@ def _associate_unit(dest_repo, import_conduit, unit):
 
 
 def _safe_copy(unit):
+    """
+    Makes a deep copy of the unit, removes its "id", and removes anything in
+    "metadata" whose key starts with a "_".
+
+    :param unit:    unit to be copied
+    :type  unit:    pulp.plugins.model.Unit
+
+    :return:        copy of the unit
+    :rtype unit:    pulp.plugins.model.Unit
+    """
     new_unit = copy.deepcopy(unit)
     new_unit.id = None
     for key in new_unit.metadata.keys():

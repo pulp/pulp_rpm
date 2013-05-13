@@ -96,10 +96,31 @@ class Require(object):
 
 def _build_provides_tree(source_packages):
     """
+    Creates a tree of "Provides" data so that for any given "Provides" name,
+    the newest version of each package that provides that capability can be
+    easily accessed.
+
+    In the example below, "provide_nameA" is the value of a "Provides" statement
+    such as "webserver". "package_name1" is the name of a package, such as "httpd".
+    "package1_as_named_tuple" is an instance of pulp_rpm.common.models.RPM.NAMEDTUPLE
+    for the newest version of that package which provides "provide_nameA".
+
+    {
+        'provide_nameA': {
+            'package_name1': package1_as_named_tuple,
+            'package_name2': package2_as_named_tuple,
+        },
+
+        'provide_nameB': {
+            'package_name3': package_as_named_tuple,
+        },
+    }
 
     :param source_packages: list of tuples (RPM namedtuple, "provides" list)
     :type  source_packages: list
-    :return:
+
+    :return:    dictionary as defined above
+    :rtype:     dict
     """
     tree = {}
     for package, provides in source_packages:
@@ -109,6 +130,7 @@ def _build_provides_tree(source_packages):
             package_dict = tree.setdefault(provide_name, {})
             newest_version = package_dict.get(package.name, tuple())
             if newest_version:
+                # turn it into an RPM instance to get the version comparison
                 newest_model = models.RPM.from_package_info(newest_version._asdict())
                 package_dict[package.name] = max(my_model, newest_model).as_named_tuple
             else:
@@ -117,6 +139,27 @@ def _build_provides_tree(source_packages):
 
 
 def _build_packages_tree(source_packages):
+    """
+    Creates a tree of package names, where values are lists of each version of
+    that package. This is useful for filling a dependency, where it is valuable
+    to consider each available version of a package name.
+
+    {
+        'package_name_1': [
+            package1v1_as_named_tuple,
+            package1v2_as_named_tuple,
+        ],
+        'package_name_2': [
+            package2v1_as_named_tuple,
+        ],
+    }
+
+    :param source_packages: list of tuples (RPM namedtuple, "provides" list)
+    :type  source_packages: list
+
+    :return:    dictionary as defined above
+    :rtype:     dict
+    """
     tree = {}
     for package, provides in source_packages:
         version_list = tree.setdefault(package.name, [])
@@ -127,11 +170,13 @@ def _build_packages_tree(source_packages):
 
 def _get_source_with_provides(search_method):
     """
+    Get a generator of all available packages with their "Provides" info.
 
     :param search_method:   method that takes a UnitAssociationCriteria and
                             performs a search within a repository. Usually this
-                            will be a method on a conduit such as "conduit.get_units"
+                            will be a method on a conduit such as "conduit.get_source_units"
     :type  search_method:   function
+
     :return:    generator of (pulp_rpm.common.models.RPM.NAMEDTUPLE, list of provides)
     """
     fields = list(models.RPM.UNIT_KEY_NAMES)
@@ -145,18 +190,22 @@ def _get_source_with_provides(search_method):
 
 def match(reqs, source):
     """
+    Given an iterable of Requires, return a set of those packages in the source
+    iterable that satisfy the requirements.
 
     :param reqs:    list of requirements
-    :type  reqs:    list
+    :type  reqs:    list of Require() instances
     :param source:  iterable of tuples (namedtuple, provides list)
     :type  source:  iterable
-    :return:
+    :return:        set of pulp_rpm.common.models.RPM.NAMEDTUPLE instances which
+                    satisfy the passed-in requirements
     :rtype:         set
     """
     # we may have gotten a generator
     source = list(source)
     provides_tree = _build_provides_tree(source)
     packages_tree = _build_packages_tree(source)
+    # allow garbage collection
     source = None
     deps = set()
 
@@ -180,9 +229,12 @@ def match(reqs, source):
 
 def get_requirements(units, search_method):
     """
+    For an iterable of RPMs, return a generator of Require() instances that
+    represent the requirements for those RPMs.
 
-    :param units:
-    :type  units:    RPM.NAMEDTUPLE
+    :param units:   iterable of RPMs for which a query should be performed to
+                    retrieve their Requires entries.
+    :type  units:   iterable of pulp_rpm.common.models.RPM.NAMEDTUPLE
     :param search_method:   method that takes a UnitAssociationCriteria and
                             performs a search within a repository. Usually this
                             will be a method on a conduit such as "conduit.get_units"
@@ -190,7 +242,6 @@ def get_requirements(units, search_method):
 
     :return:    generator of Require() instances
     """
-
     for segment in paginate(units):
         search_dicts = [unit.unit_key for unit in segment]
         filters = {'$or': search_dicts}
@@ -204,13 +255,21 @@ def get_requirements(units, search_method):
 
 def find_dependent_rpms(units, search_method):
     """
+    Calls from outside this module probably want to call this method.
+
+    Given an iterable of Units, return a set of RPMs as named tuples that satisfy
+    the dependencies of those units. Dependencies are resolved only within the
+    repository search by the "search_method".
 
     :param units:           iterable of pulp.plugins.model.Unit
     :param search_method:   method that takes a UnitAssociationCriteria and
                             performs a search within a repository. Usually this
                             will be a method on a conduit such as "conduit.get_units"
     :type  search_method:   function
-    :return:
+
+    :return:        set of pulp_rpm.common.models.RPM.NAMEDTUPLE instances which
+                    satisfy the passed-in requirements
+    :rtype:         set
     """
     reqs = get_requirements(units, search_method)
     source_with_provides = _get_source_with_provides(search_method)
