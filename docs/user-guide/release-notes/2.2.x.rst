@@ -8,8 +8,9 @@ Pulp 2.2.0
 New Features
 ------------
 
-* The ISO distributor now supports repository protection. See the API documentation for more details.
+* The ISO Distributor now supports repository protection. See the API documentation for more details.
 * The ISO Importer now allows ISO uploads.
+* The ISO Importer now allows synchronization cancellation.
 
 CLI Changes
 -----------
