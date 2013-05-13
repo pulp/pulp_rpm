@@ -55,6 +55,9 @@ CONFIG_SERVE_HTTPS      = 'serve_https'
 # will be configured. This option is currently only used by the ISO distributor.
 CONFIG_SSL_AUTH_CA_CERT = 'ssl_auth_ca_cert'
 
+# Copy operation config
+CONFIG_RECURSIVE = 'recursive'
+
 EXPORT_HTTP_DIR="/var/lib/pulp/published/http/exports"
 EXPORT_HTTPS_DIR="/var/lib/pulp/published/https/exports"
 ISO_HTTP_DIR = "/var/lib/pulp/published/http/isos"

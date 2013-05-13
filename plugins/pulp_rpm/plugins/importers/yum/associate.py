@@ -16,7 +16,7 @@ import logging
 
 from pulp.server.db.model.criteria import UnitAssociationCriteria
 
-from pulp_rpm.common import models
+from pulp_rpm.common import models, constants
 from pulp_rpm.plugins.importers.yum import depsolve
 from pulp_rpm.plugins.importers.yum import existing
 
@@ -48,12 +48,20 @@ def associate(source_repo, dest_repo, import_conduit, config, units=None):
         # TODO: so we should probably do something about that
         units = import_conduit.get_source_units()
 
+    # get config items that we care about
+    flat_config = config.flatten()
+    copy_children = flat_config.get(constants.CONFIG_COPY_CHILDREN, True)
+    recursive = flat_config.get(constants.CONFIG_RECURSIVE, False)
+
     associated_units = [_associate_unit(dest_repo, import_conduit, unit) for unit in units]
     units = None
 
-    copy_rpms((unit for unit in associated_units if unit.type_id == models.RPM.TYPE), import_conduit, True)
+    copy_rpms((unit for unit in associated_units if unit.type_id == models.RPM.TYPE),
+              import_conduit, recursive)
 
-    # TODO: return here if we shouldn't get child units
+    # return here if we shouldn't get child units
+    if not copy_children:
+        return associated_units
 
     group_ids, rpm_names, rpm_unit_keys = identify_children_to_copy(associated_units)
 
@@ -68,12 +76,12 @@ def associate(source_repo, dest_repo, import_conduit, config, units=None):
     wanted_rpms = get_rpms_to_copy_by_key(rpm_unit_keys, import_conduit)
     rpm_unit_keys = None
     rpms_to_copy = filter_available_rpms(wanted_rpms, import_conduit)
-    copy_rpms(rpms_to_copy, import_conduit)
+    copy_rpms(rpms_to_copy, import_conduit, recursive)
     rpms_to_copy = None
 
     # ------ get RPM children of groups ------
     names_to_copy = get_rpms_to_copy_by_name(rpm_names, import_conduit)
-    copy_rpms_by_name(names_to_copy, import_conduit)
+    copy_rpms_by_name(names_to_copy, import_conduit, recursive)
 
     return associated_units
 
