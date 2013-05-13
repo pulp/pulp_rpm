@@ -29,9 +29,14 @@ class Package(object):
     TYPE = None
     NAMEDTUPLE = None
     def __init__(self, local_vars):
+        self.metadata = local_vars.get('metadata', {})
         for name in self.UNIT_KEY_NAMES:
             setattr(self, name, local_vars[name])
-        self.metadata = local_vars.get('metadata', {})
+            # Add the serialized version and release if available
+            if name == 'version':
+                self.metadata['version_sort_index'] = version_utils.encode(local_vars[name])
+            elif name == 'release':
+                self.metadata['release_sort_index'] = version_utils.encode(local_vars[name])
 
     @property
     def unit_key(self):
@@ -173,7 +178,7 @@ class RPM(VersionedPackage):
         unit_key = self.unit_key
         return os.path.join(
             unit_key['name'], unit_key['version'], unit_key['release'],
-            unit_key['arch'], unit_key['checksum'], self.metadata['relative_url_path']
+            unit_key['arch'], unit_key['checksum'], self.metadata['relativepath']
         )
 
     @property

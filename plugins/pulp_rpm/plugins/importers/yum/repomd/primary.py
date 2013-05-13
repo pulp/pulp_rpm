@@ -153,7 +153,7 @@ def process_package_element(package_element):
 
     location_element = package_element.find(LOCATION_TAG)
     if location_element is not None:
-        package_info['relative_url_path'] = location_element.attrib['href']
+        package_info['relativepath'] = location_element.attrib['href']
 
     format_element = package_element.find(FORMAT_TAG)
     package_info.update(_process_format_element(format_element))
