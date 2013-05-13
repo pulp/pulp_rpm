@@ -4,9 +4,6 @@ Fix the database representation of DRPMs.
 
 Upload all types
 
-Copy all types
-Identify dependencies and match them to units we have
-
 Validate importer config
 
 Integrate with eventlet downloader and its config options (when it's done)
