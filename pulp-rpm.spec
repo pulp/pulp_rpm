@@ -18,7 +18,7 @@
 
 Name: pulp-rpm
 Version: 2.2.0
-Release: 0.2.alpha%{?dist}
+Release: 0.5.alpha%{?dist}
 Summary: Support for RPM content in the Pulp platform
 Group: Development/Languages
 License: GPLv2
@@ -204,6 +204,7 @@ client capabilites with RPM specific features.
 %defattr(-,root,root,-)
 %{_usr}/lib/pulp/admin/extensions/rpm_admin_consumer/
 %{_usr}/lib/pulp/admin/extensions/rpm_repo/
+%{_usr}/lib/pulp/admin/extensions/iso/
 %doc
 
 
@@ -273,6 +274,35 @@ A collection of yum plugins supplementing Pulp consumer operations.
 
 
 %changelog
+* Mon May 13 2013 Jeff Ortel <jortel@redhat.com> 2.2.0-0.5.alpha
+- 
+
+* Mon May 13 2013 Jeff Ortel <jortel@redhat.com> 2.2.0-0.3.alpha
+- 959823 - splitting up a query for existing units by type, allowing each query
+  to limit which fields are loaded, thus reducing the memory footprint.
+  (mhrivnak@redhat.com)
+- 957870 - translate errata into full NEVRA package names. (jortel@redhat.com)
+- 956372 - fix errata installs. (jortel@redhat.com)
+- 954038 - minor changes to fix unit tests (skarmark@redhat.com)
+- 954038 - minor changes to fix unit tests (skarmark@redhat.com)
+- 954038 - minor renaming (skarmark@redhat.com)
+- 954038 - updating rpm package profiler applicability api to accept unit ids
+  instead of unit keys (skarmark@redhat.com)
+- 954038 - updating errata profiler applicability api for accept unit ids
+  instead of unit keys (skarmark@redhat.com)
+- 887000 - leveraging new cancel report to keep cancelled state
+  (jason.connor@gmail.com)
+- 924778 - Provide option to skip re-uploading existing files
+  (jason.dobies@redhat.com)
+- 953575 - Corrected relative_url to being a required parameter
+  (jason.dobies@redhat.com)
+- 950695 - Mike's going to take the presto data out of the scratch pad
+  entirely, so even if this test wasn't horribly broken by making a live
+  connection, it wouldn't be valid in another month anyway.
+  (jason.dobies@redhat.com)
+- 955172 - Removing rhsm from our repo and now using the regular python-rhsm
+  (mhrivnak@redhat.com)
+
 * Fri Apr 19 2013 Jeff Ortel <jortel@redhat.com> 2.2.0-0.2.alpha
 - 953665 - added the ability for copy operations to not also copy child units,
   such as a group copying its RPMs. Also restricted the fetching of existing
