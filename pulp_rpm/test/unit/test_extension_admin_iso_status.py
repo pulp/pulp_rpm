@@ -54,12 +54,11 @@ class TestISOStatusRenderer(unittest.TestCase):
                                                         u'manifest_in_progress': u'2013-04-30T20:37:25'},
                                        u'num_isos_finished': 0, u'iso_error_messages': {}},
             ids.TYPE_ID_DISTRIBUTOR_ISO: {u'traceback': None, u'error_message': None,
-                                          u'num_isos': None, u'state': u'isos_in_progress',
+                                          u'state': u'complete',
                                           u'state_times': {
                                             u'not_started': u'2013-04-30T20:37:25',
                                             u'manifest_in_progress': u'2013-04-30T20:37:25',
-                                            u'isos_in_progress': u'2013-04-30T20:39:53'},
-                                          u'num_isos_finished': 0, u'iso_error_messages': {}}}
+                                            u'isos_in_progress': u'2013-04-30T20:39:53'}}}
         renderer = status.ISOStatusRenderer(self.context)
 
         renderer.display_report(progress_report)
@@ -78,7 +77,7 @@ class TestISOStatusRenderer(unittest.TestCase):
         self.assertEqual(_display_publish_report.call_count, 1)
         self.assertEqual(type(_display_publish_report.mock_calls[0][1][1]), progress.PublishProgressReport)
         self.assertEqual(_display_publish_report.mock_calls[0][1][1].state,
-                         progress.PublishProgressReport.STATE_ISOS_IN_PROGRESS)
+                         progress.PublishProgressReport.STATE_COMPLETE)
 
     @mock.patch('pulp_rpm.extension.admin.iso.status.ISOStatusRenderer._display_publish_report',
                 side_effect=status.ISOStatusRenderer._display_publish_report, autospec=True)
@@ -100,12 +99,11 @@ class TestISOStatusRenderer(unittest.TestCase):
                                                         u'manifest_in_progress': u'2013-04-30T20:37:25'},
                                        u'num_isos_finished': 0, u'iso_error_messages': {}},
             ids.TYPE_ID_DISTRIBUTOR_ISO: {u'traceback': None, u'error_message': None,
-                                          u'num_isos': None, u'state': u'isos_in_progress',
+                                          u'state': u'in_progress',
                                           u'state_times': {
                                             u'not_started': u'2013-04-30T20:37:25',
                                             u'manifest_in_progress': u'2013-04-30T20:37:25',
-                                            u'isos_in_progress': u'2013-04-30T20:39:53'},
-                                          u'num_isos_finished': 0, u'iso_error_messages': {}}}
+                                            u'isos_in_progress': u'2013-04-30T20:39:53'}}}
         renderer = status.ISOStatusRenderer(self.context)
 
         renderer.display_report(progress_report)
@@ -124,7 +122,7 @@ class TestISOStatusRenderer(unittest.TestCase):
         self.assertEqual(_display_publish_report.call_count, 1)
         self.assertEqual(type(_display_publish_report.mock_calls[0][1][1]), progress.PublishProgressReport)
         self.assertEqual(_display_publish_report.mock_calls[0][1][1].state,
-                         progress.PublishProgressReport.STATE_ISOS_IN_PROGRESS)
+                         progress.PublishProgressReport.STATE_IN_PROGRESS)
 
         # A message should have been rendered to the user about the cancellation
         self.assertEqual(renderer.prompt.render_failure_message.call_count, 1)
@@ -165,12 +163,11 @@ class TestISOStatusRenderer(unittest.TestCase):
         """
         progress_report = {
             ids.TYPE_ID_DISTRIBUTOR_ISO: {u'traceback': None, u'error_message': None,
-                                          u'num_isos': None, u'state': u'isos_in_progress',
+                                          u'state': u'in_progress',
                                           u'state_times': {
                                             u'not_started': u'2013-04-30T20:37:25',
                                             u'manifest_in_progress': u'2013-04-30T20:37:25',
-                                            u'isos_in_progress': u'2013-04-30T20:39:53'},
-                                          u'num_isos_finished': 0, u'iso_error_messages': {}}}
+                                            u'isos_in_progress': u'2013-04-30T20:39:53'}}}
         renderer = status.ISOStatusRenderer(self.context)
 
         renderer.display_report(progress_report)
@@ -183,7 +180,7 @@ class TestISOStatusRenderer(unittest.TestCase):
         self.assertEqual(_display_publish_report.call_count, 1)
         self.assertEqual(type(_display_publish_report.mock_calls[0][1][1]), progress.PublishProgressReport)
         self.assertEqual(_display_publish_report.mock_calls[0][1][1].state,
-                         progress.PublishProgressReport.STATE_ISOS_IN_PROGRESS)
+                         progress.PublishProgressReport.STATE_IN_PROGRESS)
 
     @mock.patch('pulp_rpm.extension.admin.iso.status.ISOStatusRenderer._display_publish_report',
                 side_effect=status.ISOStatusRenderer._display_publish_report, autospec=True)

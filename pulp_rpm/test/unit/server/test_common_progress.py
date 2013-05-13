@@ -36,10 +36,10 @@ class TestISOProgressReport(unittest.TestCase):
         """
         Test the __init__ method with all default parameters.
         """
-        report = progress.ISOProgressReport(self.conduit)
+        report = progress.ISOProgressReport()
 
         # Make sure all the appropriate attributes were set
-        self.assertEqual(report.conduit, self.conduit)
+        self.assertEqual(report.conduit, None)
         self.assertEqual(report._state, progress.ISOProgressReport.STATE_NOT_STARTED)
 
         # The state_times attribute should be a dictionary with only the time the not started state was
@@ -49,9 +49,6 @@ class TestISOProgressReport(unittest.TestCase):
         self.assertTrue(isinstance(report.state_times[progress.ISOProgressReport.STATE_NOT_STARTED],
                                    datetime))
 
-        self.assertEqual(report.num_isos, None)
-        self.assertEqual(report.num_isos_finished, 0)
-        self.assertEqual(report.iso_error_messages, {})
         self.assertEqual(report.error_message, None)
         self.assertEqual(report.traceback, None)
 
@@ -59,47 +56,27 @@ class TestISOProgressReport(unittest.TestCase):
         """
         Test the __init__ method when passing in parameters.
         """
-        state = progress.ISOProgressReport.STATE_ISOS_IN_PROGRESS
-        state_times = {progress.ISOProgressReport.STATE_ISOS_IN_PROGRESS: datetime.utcnow()}
-        num_isos = 5
-        num_isos_finished = 3
-        iso_error_messages = {'an.iso': "No!"}
+        state = progress.ISOProgressReport.STATE_FAILED
+        state_times = {progress.ISOProgressReport.STATE_FAILED: datetime.utcnow()}
         error_message = 'This is an error message.'
         traceback = 'This is a traceback.'
 
         report = progress.ISOProgressReport(
-            self.conduit, state=state, state_times=state_times, num_isos=num_isos,
-            num_isos_finished=num_isos_finished, iso_error_messages=iso_error_messages,
+            self.conduit, state=state, state_times=state_times,
             error_message=error_message, traceback=traceback)
 
         # Make sure all the appropriate attributes were set
         self.assertEqual(report.conduit, self.conduit)
         self.assertEqual(report._state, state)
         self.assertEqual(report.state_times, state_times)
-        self.assertEqual(report.num_isos, num_isos)
-        self.assertEqual(report.num_isos_finished, num_isos_finished)
-        self.assertEqual(report.iso_error_messages, iso_error_messages)
         self.assertEqual(report.error_message, error_message)
         self.assertEqual(report.traceback, traceback)
-
-    def test_add_failed_iso(self):
-        """
-        Test the add_failed_iso() method.
-        """
-        report = progress.ISOProgressReport(self.conduit)
-        iso = mock.MagicMock()
-        iso.name = 'error.iso'
-        error_message = 'error message'
-
-        report.add_failed_iso(iso, error_message)
-
-        self.assertEqual(report.iso_error_messages, {iso.name: error_message})
 
     def test_build_final_report_failure(self):
         """
         Test build_final_report() when there is a failure.
         """
-        report = progress.ISOProgressReport(self.conduit, state=progress.ISOProgressReport.STATE_ISOS_FAILED)
+        report = progress.ISOProgressReport(self.conduit, state=progress.ISOProgressReport.STATE_FAILED)
 
         conduit_report = report.build_final_report()
 
@@ -137,16 +114,12 @@ class TestISOProgressReport(unittest.TestCase):
         """
         Test the build_progress_report() method.
         """
-        state = progress.ISOProgressReport.STATE_ISOS_IN_PROGRESS
-        state_times = {progress.ISOProgressReport.STATE_ISOS_IN_PROGRESS: datetime.utcnow()}
-        num_isos = 5
-        num_isos_finished = 3
-        iso_error_messages = {'an.iso': "No!"}
+        state = progress.ISOProgressReport.STATE_FAILED
+        state_times = {progress.ISOProgressReport.STATE_FAILED: datetime.utcnow()}
         error_message = 'This is an error message.'
         traceback = 'This is a traceback.'
         report = progress.ISOProgressReport(
-            self.conduit, state=state, state_times=state_times, num_isos=num_isos,
-            num_isos_finished=num_isos_finished, iso_error_messages=iso_error_messages,
+            self.conduit, state=state, state_times=state_times,
             error_message=error_message, traceback=traceback)
 
         report = report.build_progress_report()
@@ -157,9 +130,6 @@ class TestISOProgressReport(unittest.TestCase):
         for key, value in state_times.items():
             expected_state_times[key] = format_iso8601_datetime(value)
         self.assertTrue(report['state_times'], expected_state_times)
-        self.assertEqual(report['num_isos'], num_isos)
-        self.assertEqual(report['num_isos_finished'], num_isos_finished)
-        self.assertEqual(report['iso_error_messages'], iso_error_messages)
         self.assertEqual(report['error_message'], error_message)
         self.assertEqual(report['traceback'], traceback)
 
@@ -168,16 +138,12 @@ class TestISOProgressReport(unittest.TestCase):
         Test that building an ISOProgressReport from the output of build_progress_report() makes an equivalent
         ISOProgressReport.
         """
-        state = progress.ISOProgressReport.STATE_ISOS_IN_PROGRESS
-        state_times = {progress.ISOProgressReport.STATE_ISOS_IN_PROGRESS: datetime(2013, 5, 3, 20, 11, 3)}
-        num_isos = 5
-        num_isos_finished = 3
-        iso_error_messages = {'an.iso': "No!"}
+        state = progress.ISOProgressReport.STATE_FAILED
+        state_times = {progress.ISOProgressReport.STATE_FAILED: datetime(2013, 5, 3, 20, 11, 3)}
         error_message = 'This is an error message.'
         traceback = 'This is a traceback.'
         original_report = progress.ISOProgressReport(
-            self.conduit, state=state, state_times=state_times, num_isos=num_isos,
-            num_isos_finished=num_isos_finished, iso_error_messages=iso_error_messages,
+            self.conduit, state=state, state_times=state_times,
             error_message=error_message, traceback=traceback)
         serial_report = original_report.build_progress_report()
 
@@ -188,9 +154,6 @@ class TestISOProgressReport(unittest.TestCase):
         self.assertEqual(report.conduit, None)
         self.assertEqual(report._state, original_report.state)
         self.assertEqual(report.state_times, original_report.state_times)
-        self.assertEqual(report.num_isos, original_report.num_isos)
-        self.assertEqual(report.num_isos_finished, original_report.num_isos_finished)
-        self.assertEqual(report.iso_error_messages, original_report.iso_error_messages)
         self.assertEqual(report.error_message, original_report.error_message)
         self.assertEqual(report.traceback, original_report.traceback)
 
@@ -198,16 +161,12 @@ class TestISOProgressReport(unittest.TestCase):
         """
         The update_progress() method should send the progress report to the conduit.
         """
-        state = progress.ISOProgressReport.STATE_ISOS_IN_PROGRESS
-        state_times = {progress.ISOProgressReport.STATE_ISOS_IN_PROGRESS: datetime.utcnow()}
-        num_isos = 5
-        num_isos_finished = 3
-        iso_error_messages = {'an.iso': "No!"}
+        state = progress.ISOProgressReport.STATE_FAILED
+        state_times = {progress.ISOProgressReport.STATE_FAILED: datetime.utcnow()}
         error_message = 'This is an error message.'
         traceback = 'This is a traceback.'
         report = progress.ISOProgressReport(
-            self.conduit, state=state, state_times=state_times, num_isos=num_isos,
-            num_isos_finished=num_isos_finished, iso_error_messages=iso_error_messages,
+            self.conduit, state=state, state_times=state_times,
             error_message=error_message, traceback=traceback)
 
         report.update_progress()
@@ -219,70 +178,64 @@ class TestISOProgressReport(unittest.TestCase):
         """
         Test our state property as a getter.
         """
-        report = progress.ISOProgressReport(None, state=progress.ISOProgressReport.STATE_MANIFEST_IN_PROGRESS)
+        report = progress.ISOProgressReport(None, state=progress.ISOProgressReport.STATE_COMPLETE)
 
-        self.assertEqual(report.state, progress.ISOProgressReport.STATE_MANIFEST_IN_PROGRESS)
+        self.assertEqual(report.state, progress.ISOProgressReport.STATE_COMPLETE)
 
+    # Normally, the ISOProgressReport doesn't have ALLOWED_STATE_TRANSITIONS, so let's give it one for this
+    # test
+    @mock.patch('pulp_rpm.common.progress.ISOProgressReport.ALLOWED_STATE_TRANSITIONS',
+                {'state_1': ['state_2']}, create=True)
     def test__set_state_allowed_transition(self):
         """
         Test the state property as a setter for an allowed state transition.
         """
-        report = progress.ISOProgressReport(self.conduit,
-                                            state=progress.ISOProgressReport.STATE_MANIFEST_IN_PROGRESS)
+        report = progress.ISOProgressReport(self.conduit, state='state_1')
 
         # This is an allowed transition, so it should not raise an error
-        report.state = progress.ISOProgressReport.STATE_ISOS_IN_PROGRESS
+        report.state = 'state_2'
 
-        self.assertEqual(report._state, progress.ISOProgressReport.STATE_ISOS_IN_PROGRESS)
+        self.assertEqual(report._state, 'state_2')
         self.assertTrue(report._state in report.state_times)
         self.assertTrue(isinstance(report.state_times[report._state], datetime))
         self.conduit.set_progress.assert_called_once_with(report.build_progress_report())
 
+    # Normally, the ISOProgressReport doesn't have ALLOWED_STATE_TRANSITIONS, so let's give it one for this
+    # test
+    @mock.patch('pulp_rpm.common.progress.ISOProgressReport.ALLOWED_STATE_TRANSITIONS',
+                {'state_1': ['state_2']}, create=True)
     def test__set_state_disallowed_transition(self):
         """
         Test the state property as a setter for a disallowed state transition.
         """
-        report = progress.ISOProgressReport(None, state=progress.ISOProgressReport.STATE_MANIFEST_IN_PROGRESS)
+        report = progress.ISOProgressReport(None, state='state_1')
 
-        # We can't go from STATE_MANIFEST_IN_PROGRESS to STATE_COMPLETE
+        # We can't go from state_1 to anything other than state_2
         try:
-            report.state = progress.ISOProgressReport.STATE_COMPLETE
+            report.state = 'state_3'
             self.fail('The line above this should have raised an Exception, but it did not.')
         except ValueError, e:
-            expected_error_substring = '%s --> %s' % (report.state, progress.ISOProgressReport.STATE_COMPLETE)
+            expected_error_substring = '%s --> %s' % (report.state, 'state_3')
             self.assertTrue(expected_error_substring in str(e))
 
         # The state should remain the same
-        self.assertEqual(report.state, progress.ISOProgressReport.STATE_MANIFEST_IN_PROGRESS)
-        self.assertTrue(progress.ISOProgressReport.STATE_COMPLETE not in report.state_times)
+        self.assertEqual(report.state, 'state_1')
+        self.assertTrue('state_3' not in report.state_times)
 
-    def test__set_state_iso_errors(self):
-        """
-        Test the state property as a setter for the situation when the state is marked as COMPLETE, but there
-        are ISO errors. It should automatically get set to ISOS_FAILED instead.
-        """
-        report = progress.ISOProgressReport(self.conduit, iso_error_messages={'iso': 'error'},
-                                            state=progress.ISOProgressReport.STATE_ISOS_IN_PROGRESS)
-
-        # This should trigger an automatic STATE_FAILED, since there are ISO errors
-        report.state = progress.ISOProgressReport.STATE_COMPLETE
-
-        self.assertEqual(report._state, progress.ISOProgressReport.STATE_ISOS_FAILED)
-        self.assertTrue(report._state in report.state_times)
-        self.assertTrue(isinstance(report.state_times[report._state], datetime))
-        self.assertTrue(progress.ISOProgressReport.STATE_COMPLETE not in report.state_times)
-        self.conduit.set_progress.assert_called_once_with(report.build_progress_report())
-
+    # Normally, the ISOProgressReport doesn't have ALLOWED_STATE_TRANSITIONS, so let's give it one for this
+    # test
+    @mock.patch('pulp_rpm.common.progress.ISOProgressReport.ALLOWED_STATE_TRANSITIONS',
+                {'state_1': ['state_2']}, create=True)
     def test__set_state_same_state(self):
         """
         Test setting a state to the same state. This is weird, but allowed.
         """
-        report = progress.ISOProgressReport(None, state=progress.ISOProgressReport.STATE_MANIFEST_IN_PROGRESS)
+        report = progress.ISOProgressReport(None, state='state_1')
 
         # This should not raise an Exception
-        report.state = progress.ISOProgressReport.STATE_MANIFEST_IN_PROGRESS
+        report.state = 'state_1'
 
-        self.assertEqual(report.state, progress.ISOProgressReport.STATE_MANIFEST_IN_PROGRESS)
+        self.assertEqual(report.state, 'state_1')
 
 
 class TestSyncProgressReport(unittest.TestCase):
@@ -292,12 +245,37 @@ class TestSyncProgressReport(unittest.TestCase):
     def setUp(self):
         self.conduit = importer_mocks.get_sync_conduit()
 
+    def test___init___with_defaults(self):
+        """
+        Test the __init__() method when passing no parameters.
+        """
+        report = progress.SyncProgressReport()
+
+        # Make sure all the appropriate attributes were set
+        self.assertEqual(report.conduit, None)
+        self.assertEqual(report._state, progress.SyncProgressReport.STATE_NOT_STARTED)
+
+        # The state_times attribute should be a dictionary with only the time the not started state was
+        # entered
+        self.assertTrue(isinstance(report.state_times, dict))
+        self.assertEqual(len(report.state_times), 1)
+        self.assertTrue(isinstance(report.state_times[progress.SyncProgressReport.STATE_NOT_STARTED],
+                                   datetime))
+
+        self.assertEqual(report.error_message, None)
+        self.assertEqual(report.traceback, None)
+        self.assertEqual(report.num_isos, None)
+        self.assertEqual(report.num_isos_finished, 0)
+        self.assertEqual(report.iso_error_messages, {})
+        self.assertEqual(report.total_bytes, None)
+        self.assertEqual(report.finished_bytes, 0)
+
     def test___init__with_non_defaults(self):
         """
         Test the __init__ method when passing in parameters.
         """
-        state = progress.ISOProgressReport.STATE_ISOS_IN_PROGRESS
-        state_times = {progress.ISOProgressReport.STATE_ISOS_IN_PROGRESS: datetime.utcnow()}
+        state = progress.SyncProgressReport.STATE_ISOS_IN_PROGRESS
+        state_times = {progress.SyncProgressReport.STATE_ISOS_IN_PROGRESS: datetime.utcnow()}
         num_isos = 5
         num_isos_finished = 3
         iso_error_messages = {'an.iso': "No!"}
@@ -324,12 +302,25 @@ class TestSyncProgressReport(unittest.TestCase):
         self.assertEqual(report.total_bytes, total_bytes)
         self.assertEqual(report.finished_bytes, finished_bytes)
 
+    def test_add_failed_iso(self):
+        """
+        Test the add_failed_iso() method.
+        """
+        report = progress.SyncProgressReport(self.conduit)
+        iso = mock.MagicMock()
+        iso.name = 'error.iso'
+        error_message = 'error message'
+
+        report.add_failed_iso(iso, error_message)
+
+        self.assertEqual(report.iso_error_messages, {iso.name: error_message})
+
     def test_build_progress_report(self):
         """
         Test the build_progress_report() method.
         """
-        state = progress.ISOProgressReport.STATE_ISOS_IN_PROGRESS
-        state_times = {progress.ISOProgressReport.STATE_ISOS_IN_PROGRESS: datetime.utcnow()}
+        state = progress.SyncProgressReport.STATE_ISOS_IN_PROGRESS
+        state_times = {progress.SyncProgressReport.STATE_ISOS_IN_PROGRESS: datetime.utcnow()}
         num_isos = 5
         num_isos_finished = 3
         iso_error_messages = {'an.iso': "No!"}
@@ -358,3 +349,20 @@ class TestSyncProgressReport(unittest.TestCase):
         self.assertEqual(report['traceback'], traceback)
         self.assertEqual(report['total_bytes'], total_bytes)
         self.assertEqual(report['finished_bytes'], finished_bytes)
+
+    def test__set_state_iso_errors(self):
+        """
+        Test the state property as a setter for the situation when the state is marked as COMPLETE, but there
+        are ISO errors. It should automatically get set to ISOS_FAILED instead.
+        """
+        report = progress.SyncProgressReport(self.conduit, iso_error_messages={'iso': 'error'},
+                                             state=progress.SyncProgressReport.STATE_ISOS_IN_PROGRESS)
+
+        # This should trigger an automatic STATE_FAILED, since there are ISO errors
+        report.state = progress.SyncProgressReport.STATE_COMPLETE
+
+        self.assertEqual(report._state, progress.SyncProgressReport.STATE_ISOS_FAILED)
+        self.assertTrue(report._state in report.state_times)
+        self.assertTrue(isinstance(report.state_times[report._state], datetime))
+        self.assertTrue(progress.SyncProgressReport.STATE_COMPLETE not in report.state_times)
+        self.conduit.set_progress.assert_called_once_with(report.build_progress_report())
