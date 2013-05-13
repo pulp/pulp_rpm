@@ -33,6 +33,8 @@ class ISOProgressReport(object):
     # If an error occurs outside of the manifest or isos in progress states, this general failed state can be
     # set
     STATE_FAILED =               'failed'
+    # When the user has cancelled a sync
+    STATE_CANCELLED =            'cancelled'
 
     def __init__(self, conduit=None, state=None, state_times=None, error_message=None,
                  traceback=None):
@@ -210,9 +212,10 @@ class SyncProgressReport(ISOProgressReport):
 
     # A mapping of current states to allowed next states
     ALLOWED_STATE_TRANSITIONS = {
-        ISOProgressReport.STATE_NOT_STARTED: (STATE_MANIFEST_IN_PROGRESS, ISOProgressReport.STATE_FAILED),
-        STATE_MANIFEST_IN_PROGRESS: (STATE_MANIFEST_FAILED, STATE_ISOS_IN_PROGRESS),
-        STATE_ISOS_IN_PROGRESS: (STATE_ISOS_FAILED, ISOProgressReport.STATE_COMPLETE)
+        ISOProgressReport.STATE_NOT_STARTED: (STATE_MANIFEST_IN_PROGRESS, ISOProgressReport.STATE_FAILED,
+                                              ISOProgressReport.STATE_CANCELLED),
+        STATE_MANIFEST_IN_PROGRESS: (STATE_MANIFEST_FAILED, STATE_ISOS_IN_PROGRESS, ISOProgressReport.STATE_CANCELLED),
+        STATE_ISOS_IN_PROGRESS: (STATE_ISOS_FAILED, ISOProgressReport.STATE_COMPLETE, ISOProgressReport.STATE_CANCELLED)
     }
 
     def __init__(self, conduit=None, total_bytes=None, finished_bytes=0,  num_isos=None,

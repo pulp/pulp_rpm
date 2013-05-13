@@ -15,16 +15,17 @@ import os
 import shutil
 import tempfile
 
+from mock import MagicMock, patch
+from pulp.common.download.downloaders.curl import HTTPSCurlDownloader
+from pulp.common.download.report import DownloadReport
+from pulp.plugins.model import Repository, Unit
+
 from pulp_rpm.common import models
 from pulp_rpm.common.ids import TYPE_ID_ISO
 from pulp_rpm.common.progress import SyncProgressReport
 from pulp_rpm.plugins.importers.iso_importer.sync import ISOSyncRun
 from rpm_support_base import PulpRPMTests
 import importer_mocks
-
-from mock import MagicMock, patch
-from pulp.common.download.report import DownloadReport
-from pulp.plugins.model import Repository, Unit
 
 
 class TestISOSyncRun(PulpRPMTests):
@@ -110,13 +111,20 @@ class TestISOSyncRun(PulpRPMTests):
         # Humorously enough, the _repo_url attribute named no_trailing_slash should now have a trailing slash
         self.assertEqual(iso_sync_run._repo_url, 'http://fake.com/no_trailing_slash/')
 
-    def test_cancel_sync(self):
+    @patch('pulp_rpm.plugins.importers.iso_importer.sync.HTTPSCurlDownloader.cancel',
+           side_effect=HTTPSCurlDownloader.cancel, autospec=HTTPSCurlDownloader.cancel)
+    def test_cancel_sync(self, cancel):
         """
         Test what happens if cancel_sync is called when there is no Bumper.
         """
         # This just passes since the downloader library does not support cancellation. This helps us get one
         # more line of coverage though!
         self.iso_sync_run.cancel_sync()
+
+        # Assert that the cancel Mock was called
+        cancel.assert_called_once_with(self.iso_sync_run.downloader)
+        # The progress report's state should now be cancelled
+        self.assertEqual(self.iso_sync_run.progress_report.state, SyncProgressReport.STATE_CANCELLED)
 
     def test_download_failed_during_iso_download(self):
         self.iso_sync_run.progress_report._state = SyncProgressReport.STATE_ISOS_IN_PROGRESS

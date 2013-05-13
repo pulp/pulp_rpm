@@ -78,9 +78,8 @@ class ISOSyncRun(listener.DownloadEventListener):
         """
         # We used to support sync cancellation, but the current downloader implementation does not support it
         # and so for now we will just pass
-        # When we reenable it, the progress_report state should be set to cancelled.
-        # self.progress_report.state = self.progress_report.STATE_CANCELLED
-        pass
+        self.progress_report.state = self.progress_report.STATE_CANCELLED
+        self.downloader.cancel()
 
     def download_failed(self, report):
         """
