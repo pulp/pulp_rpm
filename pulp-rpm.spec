@@ -204,6 +204,7 @@ client capabilites with RPM specific features.
 %defattr(-,root,root,-)
 %{_usr}/lib/pulp/admin/extensions/rpm_admin_consumer/
 %{_usr}/lib/pulp/admin/extensions/rpm_repo/
+%{_usr}/lib/pulp/admin/extensions/iso/
 %doc
 
 
