@@ -36,15 +36,18 @@ class ISOProgressReport(object):
     # If an error occurs outside of the manifest or isos in progress states, this general failed state can be
     # set
     STATE_FAILED =               'failed'
+    # When the user has cancelled a sync
+    STATE_CANCELLED =            'cancelled'
 
     # These states indicate that the action is no longer in progress
-    COMPLETE_STATES =            (STATE_COMPLETE, STATE_MANIFEST_FAILED, STATE_ISOS_FAILED, STATE_FAILED)
+    COMPLETE_STATES =            (STATE_COMPLETE, STATE_MANIFEST_FAILED, STATE_ISOS_FAILED, STATE_FAILED,
+                                  STATE_CANCELLED)
 
     # A mapping of current states to allowed next states
     ALLOWED_STATE_TRANSITIONS = {
-        STATE_NOT_STARTED: (STATE_MANIFEST_IN_PROGRESS, STATE_FAILED),
-        STATE_MANIFEST_IN_PROGRESS: (STATE_MANIFEST_FAILED, STATE_ISOS_IN_PROGRESS),
-        STATE_ISOS_IN_PROGRESS: (STATE_ISOS_FAILED, STATE_COMPLETE)
+        STATE_NOT_STARTED: (STATE_MANIFEST_IN_PROGRESS, STATE_FAILED, STATE_CANCELLED),
+        STATE_MANIFEST_IN_PROGRESS: (STATE_MANIFEST_FAILED, STATE_ISOS_IN_PROGRESS, STATE_CANCELLED),
+        STATE_ISOS_IN_PROGRESS: (STATE_ISOS_FAILED, STATE_COMPLETE, STATE_CANCELLED)
     }
 
     def __init__(self, conduit, state=None, state_times=None, num_isos=None,
