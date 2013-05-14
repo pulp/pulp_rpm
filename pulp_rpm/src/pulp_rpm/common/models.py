@@ -186,6 +186,10 @@ class RPM(VersionedPackage):
         return self.metadata['relative_url_path']
 
 
+class SRPM(RPM):
+    TYPE = 'srpm'
+
+
 class Errata(Package):
     UNIT_KEY_NAMES = ('id',)
     TYPE = 'erratum'
@@ -198,10 +202,19 @@ class Errata(Package):
         ret = []
         for collection in self.metadata.get('pkglist', []):
             for package in collection.get('packages', []):
+                if 'sum' in package:
+                    checksum = package['sum'][1]
+                    checksumtype = package['sum'][0]
+                else:
+                    # these are the field names we get from an erratum upload.
+                    # I have no idea why they are different.
+                    checksum = package['sums']
+                    checksumtype = package['type']
+
                 rpm = RPM(name=package['name'], epoch=package['epoch'],
                            version=package['version'], release=package['release'],
-                           arch=package['arch'], checksum=package['sum'][1],
-                           checksumtype=package['sum'][0], metadata={},
+                           arch=package['arch'], checksum=checksum,
+                           checksumtype=checksumtype, metadata={},
                 )
                 ret.append(rpm.unit_key)
         return ret

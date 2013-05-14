@@ -15,6 +15,7 @@ import logging
 import shutil
 
 from pulp.plugins.model import SyncReport
+from pulp.server.db.model.criteria import UnitAssociationCriteria
 
 from pulp_rpm.common import models
 
@@ -49,21 +50,52 @@ def upload(repo, type_id, unit_key, metadata, file_path, conduit, config):
     :return: report of the details of the sync
     :rtype:  pulp.plugins.model.SyncReport
     """
+    if type_id not in (models.RPM.TYPE, models.SRPM.TYPE, models.PackageGroup.TYPE,
+                        models.PackageCategory.TYPE, models.Errata.TYPE):
+        return _fail_report('%s is not a supported type for upload' % type_id)
 
     model_type = models.TYPE_MAP[type_id]
+
     # get metadata
-    model = model_type(metadata=metadata, **unit_key)
-    # init unit
-    unit = conduit.init_unit(model.TYPE, model.unit_key, model.metadata, model.relative_path)
-    # copy file to destination
     try:
-        # TODO: need to create the destination directory?
+        model = model_type(metadata=metadata, **unit_key)
+    except TypeError:
+        return _fail_report('invalid unit key or metadata')
+
+    # not all models have a relative path
+    relative_path = getattr(model, 'relative_path', '')
+    try:
+        # init unit
+        unit = conduit.init_unit(model.TYPE, model.unit_key, model.metadata, relative_path)
+        # copy file to destination
         shutil.copy(file_path, unit.storage_path)
     except IOError:
-        return SyncReport(False, 0, 0, 0, 'failed to copy file', {})
+        return _fail_report('failed to copy file to destination')
 
     # save unit
     conduit.save_unit(unit)
 
+    if type_id == models.Errata.TYPE:
+        link_errata_to_rpms(conduit, model, unit)
+
+    # TODO: add more info to this report?
     report = SyncReport(True, 1, 0, 0, '', {})
     return report
+
+
+def link_errata_to_rpms(conduit, errata_model, errata_unit):
+    fields = list(models.RPM.UNIT_KEY_NAMES)
+    fields.append('_storage_path')
+    filters = {'$or': errata_model.package_unit_keys}
+    for model_type in (models.RPM.TYPE, models.SRPM.TYPE):
+        criteria = UnitAssociationCriteria(type_ids=[model_type], unit_fields=fields,
+                                           unit_filters=filters)
+        for unit in conduit.get_units(criteria):
+            conduit.link_unit(errata_unit, unit, bidirectional=True)
+
+
+def _fail_report(message):
+    # this is the format returned by the original importer. I'm not sure if
+    # anything is actually parsing it
+    details = {'errors:' [message]}
+    return SyncReport(False, 0, 0, 0, '', details)
