@@ -16,8 +16,8 @@ import shutil
 import tempfile
 
 from mock import MagicMock, patch
-from pulp.common.download.downloaders.curl import HTTPSCurlDownloader
-from pulp.common.download.report import DownloadReport
+from nectar.downloaders.curl import HTTPSCurlDownloader
+from nectar.report import DownloadReport
 from pulp.plugins.model import Repository, Unit
 
 from pulp_rpm.common import models
