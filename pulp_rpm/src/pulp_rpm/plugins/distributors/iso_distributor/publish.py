@@ -49,25 +49,23 @@ def publish(repo, publish_conduit, config):
     logger.info(_('Beginning publish for repository <%(repo)s>') % {'repo': repo.id})
 
     try:
+        progress_report.state = progress_report.STATE_IN_PROGRESS
         units = publish_conduit.get_units()
-        _build_metadata(repo, units, progress_report)
-        _symlink_units(repo, units, progress_report)
-        _copy_to_hosted_location(repo, config, progress_report)
-        progress_report.update_progress()
+        _build_metadata(repo, units)
+        _symlink_units(repo, units)
+        _copy_to_hosted_location(repo, config)
+        progress_report.state = progress_report.STATE_COMPLETE
         return progress_report.build_final_report()
     except Exception, e:
-        if progress_report.state not in [progress_report.STATE_MANIFEST_FAILED,
-                                         progress_report.STATE_ISOS_FAILED, progress_report.STATE_HTTP_FAILED,
-                                         progress_report.STATE_HTTPS_FAILED]:
-            # If the state is not already in an error state, let's set it to the general error state
-            progress_report.error_message = str(e)
-            progress_report.traceback = traceback.format_exc()
-            progress_report.state = progress_report.STATE_FAILED
+        # Something failed. Let's put an error message on the report
+        progress_report.error_message = str(e)
+        progress_report.traceback = traceback.format_exc()
+        progress_report.state = progress_report.STATE_FAILED
         report = progress_report.build_final_report()
         return report
 
 
-def _build_metadata(repo, units, progress_report):
+def _build_metadata(repo, units):
     """
     Create the manifest file for the given units, and write it to the build directory.
 
@@ -75,31 +73,17 @@ def _build_metadata(repo, units, progress_report):
     :type  repo:  pulp.plugins.model.Repository
     :param units: The units to be included in the manifest
     :type  units: list
-    :param progress_report: The progress report that should be updated with progress
-    :type  progress_report: pulp_rpm.common.publish_progress.PublishProgressReport
     """
-    progress_report.state = progress_report.STATE_MANIFEST_IN_PROGRESS
-
-    try:
-        build_dir = _get_or_create_build_dir(repo)
-        metadata_filename = os.path.join(build_dir, constants.ISO_MANIFEST_FILENAME)
-        metadata = open(metadata_filename, 'w')
+    build_dir = _get_or_create_build_dir(repo)
+    metadata_filename = os.path.join(build_dir, constants.ISO_MANIFEST_FILENAME)
+    with open(metadata_filename, 'w') as metadata:
         metadata_csv = csv.writer(metadata)
         for unit in units:
             metadata_csv.writerow([unit.unit_key['name'], unit.unit_key['checksum'],
                                    unit.unit_key['size']])
-    except Exception, e:
-        progress_report.error_message = str(e)
-        progress_report.traceback = traceback.format_exc()
-        progress_report.state = progress_report.STATE_MANIFEST_FAILED
-        raise
-    finally:
-        # Only try to close metadata if we were able to open it successfully
-        if 'metadata' in dir():
-            metadata.close()
 
 
-def _copy_to_hosted_location(repo, config, progress_report):
+def _copy_to_hosted_location(repo, config):
     """
     Copy the contents of the build directory to the publishing directories. The config will be used
     to determine whether we are supposed to publish to HTTP and HTTPS.
@@ -108,42 +92,23 @@ def _copy_to_hosted_location(repo, config, progress_report):
     :type  repo:            pulp.plugins.model.Repository
     :param config:          plugin configuration
     :type  config:          pulp.plugins.config.PluginConfiguration
-    :param progress_report: The progress report that should be updated with progress
-    :type  progress_report: pulp_rpm.common.publish_progress.PublishProgressReport
     """
     build_dir = _get_or_create_build_dir(repo)
 
-    try:
-        progress_report.state = progress_report.STATE_HTTP_IN_PROGRESS
+    # Publish HTTP
+    http_dest_dir = os.path.join(constants.ISO_HTTP_DIR, repo.id)
+    _rmtree_if_exists(http_dest_dir)
+    # Publish the HTTP portion, if applicable
+    if config.get_boolean(constants.CONFIG_SERVE_HTTP):
+        shutil.copytree(build_dir, http_dest_dir, symlinks=True)
 
-        http_dest_dir = os.path.join(constants.ISO_HTTP_DIR, repo.id)
-        _rmtree_if_exists(http_dest_dir)
-        # Publish the HTTP portion, if applicable
-        if config.get_boolean(constants.CONFIG_SERVE_HTTP):
-            shutil.copytree(build_dir, http_dest_dir, symlinks=True)
-    except Exception, e:
-        progress_report.error_message = str(e)
-        progress_report.traceback = traceback.format_exc()
-        progress_report.state = progress_report.STATE_HTTP_FAILED
-        raise
-
-    try:
-        progress_report.state = progress_report.STATE_HTTPS_IN_PROGRESS
-
-        https_dest_dir = os.path.join(constants.ISO_HTTPS_DIR, repo.id)
-        _protect_repository(repo.id, repo, config)
-        _rmtree_if_exists(https_dest_dir)
-        # Publish the HTTPs portion, if applicable
-        if config.get_boolean(constants.CONFIG_SERVE_HTTPS):
-            shutil.copytree(build_dir, https_dest_dir, symlinks=True)
-    except Exception, e:
-        progress_report.error_message = str(e)
-        progress_report.traceback = traceback.format_exc()
-        progress_report.state = progress_report.STATE_HTTPS_FAILED
-        raise
-
-    # Now the publish step is complete
-    progress_report.state = progress_report.STATE_COMPLETE
+    # Publish HTTPS
+    https_dest_dir = os.path.join(constants.ISO_HTTPS_DIR, repo.id)
+    _protect_repository(repo.id, repo, config)
+    _rmtree_if_exists(https_dest_dir)
+    # Publish the HTTPs portion, if applicable
+    if config.get_boolean(constants.CONFIG_SERVE_HTTPS):
+        shutil.copytree(build_dir, https_dest_dir, symlinks=True)
 
 
 def _protect_repository(relative_path, repo, config):
@@ -199,7 +164,7 @@ def _get_or_create_build_dir(repo):
     return build_dir
 
 
-def _symlink_units(repo, units, progress_report):
+def _symlink_units(repo, units):
     """
     For each unit, put a symlink in the build dir that points to its canonical location on disk.
 
@@ -207,47 +172,32 @@ def _symlink_units(repo, units, progress_report):
     :type  repo:  pulp.plugins.model.Repository
     :param units: The units to be symlinked
     :type  units: list
-    :param progress_report: The progress report that should be updated with progress
-    :type  progress_report: pulp_rpm.common.publish_progress.PublishProgressReport
     """
-    progress_report.num_isos = len(units)
-    progress_report.state = progress_report.STATE_ISOS_IN_PROGRESS
-
-    try:
-        build_dir = _get_or_create_build_dir(repo)
-        for unit in units:
-            symlink_filename = os.path.join(build_dir, unit.unit_key['name'])
-            if os.path.exists(symlink_filename) or os.path.islink(symlink_filename):
-                # There's already something there with the desired symlink filename. Let's try and see
-                # if it points at the right thing. If it does, we don't need to do anything. If it does
-                # not, we should remove what's there and add the correct symlink.
-                try:
-                    existing_link_path = os.readlink(symlink_filename)
-                    if existing_link_path == unit.storage_path:
-                        # We don't need to do anything more for this unit, so move on to the next one
-                        continue
-                    # The existing symlink is incorrect, so let's remove it
-                    os.remove(symlink_filename)
-                except OSError, e:
-                    # This will happen if we attempt to call readlink() on a file that wasn't a symlink.
-                    # We should remove the file and add the symlink. There error code should be EINVAL.
-                    # If it isn't, something else is wrong and we should raise.
-                    if e.errno != errno.EINVAL:
-                        raise e
-                    # Remove the file that's at the symlink_filename path
-                    os.remove(symlink_filename)
-            # If we've gotten here, we've removed any existing file at the symlink_filename path, so now
-            # we should recreate it.
-            os.symlink(unit.storage_path, symlink_filename)
-
-            # Update the progress report
-            progress_report.num_isos_finished += 1
-            progress_report.update_progress()
-    except Exception, e:
-        progress_report.error_message = str(e)
-        progress_report.traceback = traceback.format_exc()
-        progress_report.state = progress_report.STATE_ISOS_FAILED
-        raise
+    build_dir = _get_or_create_build_dir(repo)
+    for unit in units:
+        symlink_filename = os.path.join(build_dir, unit.unit_key['name'])
+        if os.path.exists(symlink_filename) or os.path.islink(symlink_filename):
+            # There's already something there with the desired symlink filename. Let's try and see
+            # if it points at the right thing. If it does, we don't need to do anything. If it does
+            # not, we should remove what's there and add the correct symlink.
+            try:
+                existing_link_path = os.readlink(symlink_filename)
+                if existing_link_path == unit.storage_path:
+                    # We don't need to do anything more for this unit, so move on to the next one
+                    continue
+                # The existing symlink is incorrect, so let's remove it
+                os.remove(symlink_filename)
+            except OSError, e:
+                # This will happen if we attempt to call readlink() on a file that wasn't a symlink.
+                # We should remove the file and add the symlink. There error code should be EINVAL.
+                # If it isn't, something else is wrong and we should raise.
+                if e.errno != errno.EINVAL:
+                    raise e
+                # Remove the file that's at the symlink_filename path
+                os.remove(symlink_filename)
+        # If we've gotten here, we've removed any existing file at the symlink_filename path, so now
+        # we should recreate it.
+        os.symlink(unit.storage_path, symlink_filename)
 
 
 def _rmtree_if_exists(path):

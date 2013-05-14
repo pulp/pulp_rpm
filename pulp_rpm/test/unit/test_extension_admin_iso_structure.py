@@ -36,6 +36,24 @@ class TestAddIsoSection(rpm_support_base.PulpClientTests):
         self.assertEqual(repo_section.name, structure.SECTION_REPO)
 
 
+class TestAddPublishSection(rpm_support_base.PulpClientTests):
+    """
+    Test the add_publish_section() function.
+    """
+    def test_add_publish_section(self):
+        parent_section = self.cli.create_section('parent', 'Test parent section.')
+
+        publish_section = structure.add_publish_section(self.context, parent_section)
+
+        # Check the sync_section properties
+        self.assertEqual(publish_section.name, structure.SECTION_PUBLISH)
+        self.assertEqual(publish_section.description, structure.DESC_PUBLISH)
+
+        # The run command should have been added to the sync_section
+        run_command = publish_section.commands['run']
+        self.assertTrue(isinstance(run_command, sync_publish.RunPublishRepositoryCommand))
+
+
 class TestAddRepoSection(rpm_support_base.PulpClientTests):
     """
     Test the add_repo_section() function.
@@ -50,9 +68,11 @@ class TestAddRepoSection(rpm_support_base.PulpClientTests):
         self.assertEqual(repo_section.name, structure.SECTION_REPO)
         self.assertEqual(repo_section.description, structure.DESC_REPO)
 
-        # The sync section should have been added as well
+        # The sync and publish sections should have been added as well
         sync_section = repo_section.subsections[structure.SECTION_SYNC]
         self.assertTrue(sync_section is not None)
+        publish_section = repo_section.subsections[structure.SECTION_PUBLISH]
+        self.assertTrue(publish_section is not None)
 
 
 class TestAddSyncSection(rpm_support_base.PulpClientTests):
