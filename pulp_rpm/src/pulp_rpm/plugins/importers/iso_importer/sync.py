@@ -18,9 +18,9 @@ import logging
 from pulp_rpm.common import constants, ids, models
 from pulp_rpm.common.progress import SyncProgressReport
 
-from pulp.common.download import listener, request
-from pulp.common.download.config import DownloaderConfig
-from pulp.common.download.downloaders.curl import HTTPSCurlDownloader
+from nectar import listener, request
+from nectar.config import DownloaderConfig
+from nectar.downloaders.curl import HTTPSCurlDownloader
 from pulp.common.util import encode_unicode
 from pulp.plugins.conduits.mixins import UnitAssociationCriteria
 
@@ -101,7 +101,7 @@ class ISOSyncRun(listener.DownloadEventListener):
         report with this information so the client can see the progress.
 
         :param report: The report of the file we are downloading
-        :type  report: pulp.common.download.report.DownloadReport
+        :type  report: nectar.report.DownloadReport
         """
         if self.progress_report.state == self.progress_report.STATE_ISOS_IN_PROGRESS:
             iso = self._url_iso_map[report.url]
@@ -117,7 +117,7 @@ class ISOSyncRun(listener.DownloadEventListener):
         the new ISO to the database.
 
         :param report: The report of the file we downloaded
-        :type  report: pulp.common.download.report.DownloadReport
+        :type  report: nectar.report.DownloadReport
         """
         # If we are in the isos stage, then this must be one of our ISOs.
         if self.progress_report.state == self.progress_report.STATE_ISOS_IN_PROGRESS:
