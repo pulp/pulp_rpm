@@ -159,6 +159,7 @@ Requires: createrepo >= 0.9.8-3
 Requires: python-rhsm >= 1.8.0
 Requires: grinder >= 0.1.16
 Requires: pyliblzma
+Requires: python-nectar >= 0.90.0-1
 %description plugins
 Provides a collection of platform plugins that extend the Pulp platform
 to provide RPM specific support.
@@ -275,7 +276,7 @@ A collection of yum plugins supplementing Pulp consumer operations.
 
 %changelog
 * Mon May 13 2013 Jeff Ortel <jortel@redhat.com> 2.2.0-0.5.alpha
-- 
+-
 
 * Mon May 13 2013 Jeff Ortel <jortel@redhat.com> 2.2.0-0.3.alpha
 - 959823 - splitting up a query for existing units by type, allowing each query
@@ -353,45 +354,45 @@ A collection of yum plugins supplementing Pulp consumer operations.
   (jason.dobies@redhat.com)
 
 * Tue Feb 26 2013 Jeff Ortel <jortel@redhat.com> 2.1.0-0.18.alpha
-- 
+-
 
 * Tue Feb 26 2013 Jeff Ortel <jortel@redhat.com> 2.1.0-0.17.alpha
-- 
+-
 
 * Mon Feb 25 2013 Jeff Ortel <jortel@redhat.com> 2.1.0-0.16.alpha
-- 
+-
 
 * Fri Feb 22 2013 Jeff Ortel <jortel@redhat.com> 2.1.0-0.14.alpha
 - 905119 - Remove unused /ks alias from the pulp_rpm.conf file.
   (rbarlow@redhat.com)
 
 * Thu Feb 21 2013 Jeff Ortel <jortel@redhat.com> 2.1.0-0.13.alpha
-- 
+-
 
 * Tue Feb 19 2013 Jeff Ortel <jortel@redhat.com> 2.1.0-0.12.alpha
-- 
+-
 
 * Thu Feb 14 2013 Jeff Ortel <jortel@redhat.com> 2.1.0-0.10.alpha
-- 
+-
 
 * Thu Feb 14 2013 Jeff Ortel <jortel@redhat.com> 2.1.0-0.9.alpha
-- 
+-
 
 * Wed Feb 13 2013 Jeff Ortel <jortel@redhat.com> 2.1.0-0.8.alpha
-- 
+-
 
 * Wed Feb 13 2013 Jeff Ortel <jortel@redhat.com> 2.1.0-0.7.alpha
-- 
+-
 
 * Tue Feb 12 2013 Jeff Ortel <jortel@redhat.com> 2.1.0-0.5.alpha
-- 
+-
 
 * Tue Feb 12 2013 Jeff Ortel <jortel@redhat.com> 2.1.0-0.4.alpha
 - 700945 - Include changelog and filelist info as part of rpm metadata
   (pkilambi@redhat.com)
 
 * Tue Feb 05 2013 Jeff Ortel <jortel@redhat.com> 2.1.0-0.3.alpha
-- 
+-
 
 * Tue Feb 05 2013 Jeff Ortel <jortel@redhat.com> 2.1.0-0.2.alpha
 - 782490 - include the distributor config key as part of key list
@@ -490,10 +491,10 @@ A collection of yum plugins supplementing Pulp consumer operations.
   uses that as type id which yum expects (pkilambi@redhat.com)
 
 * Thu Dec 20 2012 Jeff Ortel <jortel@redhat.com> 2.0.6-0.19.rc
-- 
+-
 
 * Wed Dec 19 2012 Jeff Ortel <jortel@redhat.com> 2.0.6-0.19.beta
-- 
+-
 
 * Tue Dec 18 2012 Jeff Ortel <jortel@redhat.com> 2.0.6-0.18.beta
 - 887959 - Removing NameVirtualHost entries from plugin httpd conf files and
@@ -537,7 +538,7 @@ A collection of yum plugins supplementing Pulp consumer operations.
 - 885264 - require grinder 0.1.10 (jortel@redhat.com)
 
 * Fri Dec 07 2012 Jeff Ortel <jortel@redhat.com> 2.0.6-0.13.beta
-- 
+-
 
 * Thu Dec 06 2012 Jeff Ortel <jortel@redhat.com> 2.0.6-0.12.beta
 - 881355 - fixed errata install CLI result parsing. (jortel@redhat.com)
@@ -558,7 +559,7 @@ A collection of yum plugins supplementing Pulp consumer operations.
   (pkilambi@redhat.com)
 
 * Thu Nov 29 2012 Jeff Ortel <jortel@redhat.com> 2.0.6-0.11.beta
-- 
+-
 
 * Thu Nov 29 2012 Jeff Ortel <jortel@redhat.com> 2.0.6-0.10.beta
 - 877047 - if a file already exists, do not try to create a symlink
@@ -573,7 +574,7 @@ A collection of yum plugins supplementing Pulp consumer operations.
 - 862290 - Added support for non-RPM repo listing (jason.dobies@redhat.com)
 
 * Mon Nov 26 2012 Jay Dobies <jason.dobies@redhat.com> 2.0.6-0.9.beta
-- 
+-
 
 * Tue Nov 20 2012 Jeff Ortel <jortel@redhat.com> 2.0.6-0.3.beta
 - 878548 - Added empty conf files for the plugins in case we need to tell users
@@ -590,13 +591,13 @@ A collection of yum plugins supplementing Pulp consumer operations.
 - 876174 - Migrated over missing consumer commands (jason.dobies@redhat.com)
 
 * Mon Nov 12 2012 Jeff Ortel <jortel@redhat.com> 2.0.6-0.2.beta
-- 
+-
 
 * Mon Nov 12 2012 Jeff Ortel <jortel@redhat.com> 2.0.6-0.1.beta
-- 
+-
 
 * Mon Nov 12 2012 Jeff Ortel <jortel@redhat.com> 0.0.338-1
-- 
+-
 
 * Mon Nov 12 2012 Jeff Ortel <jortel@redhat.com> 0.0.337-1
 - moved consumer section, commands, and sub-section under rpm root section
@@ -713,7 +714,7 @@ A collection of yum plugins supplementing Pulp consumer operations.
   criteria features. (mhrivnak@redhat.com)
 
 * Fri Aug 03 2012 Jeff Ortel <jortel@redhat.com> 0.0.321-1
-- 
+-
 
 * Wed Aug 01 2012 Jeff Ortel <jortel@redhat.com> 0.0.320-1
 - 843882 - Add missing logger. (jortel@redhat.com)
@@ -805,7 +806,7 @@ A collection of yum plugins supplementing Pulp consumer operations.
   (jslagle@redhat.com)
 
 * Fri Jun 22 2012 Jay Dobies <jason.dobies@redhat.com> 0.0.307-1
-- 
+-
 
 * Fri Jun 22 2012 Jay Dobies <jason.dobies@redhat.com> 0.0.306-1
 - Changed setup.py to use find packages to try to fix the rpm common RPM's
@@ -825,7 +826,7 @@ A collection of yum plugins supplementing Pulp consumer operations.
 - Don't think we need this (jason.dobies@redhat.com)
 
 * Tue Jun 19 2012 Jay Dobies <jason.dobies@redhat.com> 0.0.302-1
-- 
+-
 
 * Tue Jun 19 2012 Jay Dobies <jason.dobies@redhat.com> 0.0.301-1
 - few more (jason.connor@gmail.com)
