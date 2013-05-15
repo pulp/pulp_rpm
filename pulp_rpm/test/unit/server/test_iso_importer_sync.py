@@ -285,8 +285,8 @@ class TestISOSyncRun(PulpRPMTests):
         self.assertEqual(download_failed.call_count, 1)
         download_failed.assert_called_once_with(report)
 
-    @patch('pulp.common.download.downloaders.curl.pycurl.Curl', side_effect=importer_mocks.ISOCurl)
-    @patch('pulp.common.download.downloaders.curl.pycurl.CurlMulti', side_effect=importer_mocks.CurlMulti)
+    @patch('nectar.downloaders.curl.pycurl.Curl', side_effect=importer_mocks.ISOCurl)
+    @patch('nectar.downloaders.curl.pycurl.CurlMulti', side_effect=importer_mocks.CurlMulti)
     def test_perform_sync(self, curl_multi, curl):
         """
         Assert that perform_sync() makes appropriate changes to the DB and filesystem.
@@ -316,7 +316,7 @@ class TestISOSyncRun(PulpRPMTests):
         # There should be 0 calls to sync_conduit.remove_unit, since remove_missing_units is False by default
         self.assertEqual(self.sync_conduit.remove_unit.call_count, 0)
 
-    @patch('pulp.common.download.downloaders.curl.HTTPSCurlDownloader.download')
+    @patch('nectar.downloaders.curl.HTTPSCurlDownloader.download')
     def test_perform_sync_malformed_pulp_manifest(self, download):
         """
         Assert the perform_sync correctly handles the situation when the PULP_MANIFEST file is not in the
@@ -332,7 +332,7 @@ class TestISOSyncRun(PulpRPMTests):
         self.assertEquals(type(self.iso_sync_run.progress_report), SyncProgressReport)
         self.assertEqual(self.iso_sync_run.progress_report._state, SyncProgressReport.STATE_MANIFEST_FAILED)
 
-    @patch('pulp.common.download.downloaders.curl.HTTPSCurlDownloader.download')
+    @patch('nectar.downloaders.curl.HTTPSCurlDownloader.download')
     def test_perform_sync_manifest_io_error(self, download):
         """
         Assert the perform_sync correctly handles the situation when retrieving the PULP_MANIFEST file raises an
@@ -345,8 +345,8 @@ class TestISOSyncRun(PulpRPMTests):
         self.assertEquals(type(self.iso_sync_run.progress_report), SyncProgressReport)
         self.assertEqual(self.iso_sync_run.progress_report._state, SyncProgressReport.STATE_MANIFEST_FAILED)
 
-    @patch('pulp.common.download.downloaders.curl.pycurl.Curl', side_effect=importer_mocks.ISOCurl)
-    @patch('pulp.common.download.downloaders.curl.pycurl.CurlMulti', side_effect=importer_mocks.CurlMulti)
+    @patch('nectar.downloaders.curl.pycurl.Curl', side_effect=importer_mocks.ISOCurl)
+    @patch('nectar.downloaders.curl.pycurl.CurlMulti', side_effect=importer_mocks.CurlMulti)
     def test_perform_sync_remove_missing_units_set_false(self, curl_multi, curl):
         # Make sure the missing ISOs don't get removed if they aren't supposed to
         config = importer_mocks.get_basic_config(
@@ -383,8 +383,8 @@ class TestISOSyncRun(PulpRPMTests):
         # There should be 0 calls to sync_conduit.remove_unit, since remove_missing_units is False by default
         self.assertEqual(self.sync_conduit.remove_unit.call_count, 0)
 
-    @patch('pulp.common.download.downloaders.curl.pycurl.Curl', side_effect=importer_mocks.ISOCurl)
-    @patch('pulp.common.download.downloaders.curl.pycurl.CurlMulti', side_effect=importer_mocks.CurlMulti)
+    @patch('nectar.downloaders.curl.pycurl.Curl', side_effect=importer_mocks.ISOCurl)
+    @patch('nectar.downloaders.curl.pycurl.CurlMulti', side_effect=importer_mocks.CurlMulti)
     def test_perform_sync_remove_missing_units_set_true(self, curl_multi, curl):
         # Make sure the missing ISOs get removed when they are supposed to
         config = importer_mocks.get_basic_config(
@@ -424,8 +424,8 @@ class TestISOSyncRun(PulpRPMTests):
         removed_unit = self.sync_conduit.remove_unit.mock_calls[0][1][0]
         self.assertEqual(removed_unit.unit_key, {'name': 'test4.iso', 'size': 4, 'checksum': 'sum4'})
 
-    @patch('pulp.common.download.downloaders.curl.pycurl.Curl', side_effect=importer_mocks.ISOCurl)
-    @patch('pulp.common.download.downloaders.curl.pycurl.CurlMulti', side_effect=importer_mocks.CurlMulti)
+    @patch('nectar.downloaders.curl.pycurl.Curl', side_effect=importer_mocks.ISOCurl)
+    @patch('nectar.downloaders.curl.pycurl.CurlMulti', side_effect=importer_mocks.CurlMulti)
     def test__download_isos(self, curl_multi, curl):
         # We need to mark the iso_downloader as being in the ISO downloading state
         self.iso_sync_run.progress_report._state = SyncProgressReport.STATE_ISOS_IN_PROGRESS
@@ -465,8 +465,8 @@ class TestISOSyncRun(PulpRPMTests):
             with open(expected_destination) as written_file:
                 self.assertEqual(written_file.read(), iso.expected_test_data)
 
-    @patch('pulp.common.download.downloaders.curl.pycurl.Curl', side_effect=importer_mocks.ISOCurl)
-    @patch('pulp.common.download.downloaders.curl.pycurl.CurlMulti', side_effect=importer_mocks.CurlMulti)
+    @patch('nectar.downloaders.curl.pycurl.Curl', side_effect=importer_mocks.ISOCurl)
+    @patch('nectar.downloaders.curl.pycurl.CurlMulti', side_effect=importer_mocks.CurlMulti)
     def test__download_manifest(self, curl_multi, curl):
         manifest = self.iso_sync_run._download_manifest()
 
@@ -484,8 +484,8 @@ class TestISOSyncRun(PulpRPMTests):
             self.assertEqual(iso.size, expected_manifest_isos[index]['size'])
             self.assertEqual(iso.checksum, expected_manifest_isos[index]['checksum'])
 
-    @patch('pulp.common.download.downloaders.curl.pycurl.Curl', side_effect=importer_mocks.ISOCurl)
-    @patch('pulp.common.download.downloaders.curl.pycurl.CurlMulti', side_effect=importer_mocks.CurlMulti)
+    @patch('nectar.downloaders.curl.pycurl.Curl', side_effect=importer_mocks.ISOCurl)
+    @patch('nectar.downloaders.curl.pycurl.CurlMulti', side_effect=importer_mocks.CurlMulti)
     @patch('pulp_rpm.plugins.importers.iso_importer.sync.ISOSyncRun.download_succeeded',
            side_effect=ISOSyncRun.download_failed)
     def test__download_manifest_failed(self, download_succeeded, curl_multi, curl):
@@ -500,7 +500,7 @@ class TestISOSyncRun(PulpRPMTests):
         except IOError, e:
             self.assertEqual(str(e), 'Could not retrieve http://fake.com/iso_feed/PULP_MANIFEST')
 
-    @patch('pulp.common.download.downloaders.curl.HTTPSCurlDownloader.download')
+    @patch('nectar.downloaders.curl.HTTPSCurlDownloader.download')
     def test__download_manifest_encounters_malformed_manifest(self, download):
         """
         Make sure that _download_manifest raises a ValueError if the PULP_MANIFEST isn't in the expected format.
