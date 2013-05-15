@@ -27,24 +27,16 @@ PUBLISHED_DISTRIBUTION_FILES_KEY = 'published_distributions'
 
 # Importer configuration key names
 CONFIG_COPY_CHILDREN                = 'copy_children'
-CONFIG_FEED_URL                     = 'feed_url'
-CONFIG_MAX_SPEED                    = 'max_speed'
-CONFIG_NUM_THREADS                  = 'num_threads'
+
 # The default number of threads to be used with downloading ISOs. We should convert the RPM code to
 # use this same value.
-CONFIG_NUM_THREADS_DEFAULT          = 5
-CONFIG_PROXY_PASSWORD               = 'proxy_password'
-CONFIG_PROXY_PORT                   = 'proxy_port'
-CONFIG_PROXY_URL                    = 'proxy_url'
-CONFIG_PROXY_USER                   = 'proxy_user'
-CONFIG_REMOVE_MISSING_UNITS         = 'remove_missing_units'
-CONFIG_REMOVE_MISSING_UNITS_DEFAULT = False
-CONFIG_SSL_CA_CERT                  = 'ssl_ca_cert'
-CONFIG_SSL_CLIENT_CERT              = 'ssl_client_cert'
-CONFIG_SSL_CLIENT_KEY               = 'ssl_client_key'
-# Whether Units (currently only ISOs use this) should be validated during syncs, or when uploaded
-CONFIG_VALIDATE_UNITS               = 'validate_units'
-CONFIG_VALIDATE_UNITS_DEFAULT       = True
+CONFIG_MAX_DOWNLOADS_DEFAULT        = 5
+# By default, we should use the CA certificate to validate the remote host
+CONFIG_SSL_VALIDATION_DEFAULT       = True
+# By default, do not remove units that are in the repo that are not in the feed
+CONFIG_UNITS_REMOVE_MISSING_DEFAULT = False
+# By default, lets validate units
+CONFIG_VALIDATE_DEFAULT             = True
 
 # Distributor configuration key names
 CONFIG_SERVE_HTTP       = 'serve_http'
