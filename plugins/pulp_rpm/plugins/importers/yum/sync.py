@@ -166,7 +166,7 @@ class RepoSync(object):
 
     def download(self, metadata_files, rpms_to_download, drpms_to_download):
         # TODO: probably should make this more generic
-        event_listener = ContentListener(self.sync_conduit, self.progress_status)
+        event_listener = ContentListener(self.sync_conduit, self.progress_status, self.call_config)
         primary_file_handle = metadata_files.get_metadata_file_handle('primary')
         with primary_file_handle:
             package_model_generator = packages.package_list_generator(primary_file_handle,
