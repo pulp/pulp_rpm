@@ -21,34 +21,22 @@ from pulp.common.dateutils import format_iso8601_datetime, parse_iso8601_datetim
 
 
 class ISOProgressReport(object):
+    """
+    This class is not meant to be instantiated directly, but has some common methods that are used by the Sync
+    and Progress report objects.
+    """
     # The following states can be set using the state() property
     # This is the starting state, before the sync or publish begins
     STATE_NOT_STARTED =          'not_started'
-    # These states correspond to the progress of the manifest stage
-    STATE_MANIFEST_IN_PROGRESS = 'manifest_in_progress'
-    STATE_MANIFEST_FAILED =      'manifest_failed'
-    # These states correspond to the progress of the ISOs stage. Note that there is no STATE_MANIFEST_COMPLETE,
-    # as the next transition is STATE_ISOS_IN_PROGRESS
-    STATE_ISOS_IN_PROGRESS =     'isos_in_progress'
-    STATE_ISOS_FAILED =          'isos_failed'
     # When everything is done
     STATE_COMPLETE =             'complete'
     # If an error occurs outside of the manifest or isos in progress states, this general failed state can be
     # set
     STATE_FAILED =               'failed'
+    # When the user has cancelled a sync
+    STATE_CANCELLED =            'cancelled'
 
-    # These states indicate that the action is no longer in progress
-    COMPLETE_STATES =            (STATE_COMPLETE, STATE_MANIFEST_FAILED, STATE_ISOS_FAILED, STATE_FAILED)
-
-    # A mapping of current states to allowed next states
-    ALLOWED_STATE_TRANSITIONS = {
-        STATE_NOT_STARTED: (STATE_MANIFEST_IN_PROGRESS, STATE_FAILED),
-        STATE_MANIFEST_IN_PROGRESS: (STATE_MANIFEST_FAILED, STATE_ISOS_IN_PROGRESS),
-        STATE_ISOS_IN_PROGRESS: (STATE_ISOS_FAILED, STATE_COMPLETE)
-    }
-
-    def __init__(self, conduit, state=None, state_times=None, num_isos=None,
-                 num_isos_finished=0, iso_error_messages=None, error_message=None,
+    def __init__(self, conduit=None, state=None, state_times=None, error_message=None,
                  traceback=None):
         """
         Initialize the ISOProgressReport. All parameters except conduit can be ignored if you are
@@ -56,7 +44,7 @@ class ISOProgressReport(object):
         instantiating the report from a serialized report in the client. 
         
         :param conduit:            A sync or publish conduit that should be used to report progress to the
-                                   client
+                                   client.
         :type  conduit:            pulp.plugins.conduits.repo_sync.RepoSyncConduit or
                                    pulp.plugins.conduits.repo_publish.RepoPublishConduit
         :param state:              The state the ISOProgressReport should be initialized to. See the STATE_*
@@ -64,12 +52,6 @@ class ISOProgressReport(object):
         :type  state:              basestring
         :param state_times:        A dictionary mapping state names to the time the report entered that state
         :type  state_times:        dict
-        :param num_isos:           The number of ISOs that need to be downloaded or published
-        :type  num_isos:           int
-        :param num_isos_finished:  The number of ISOs that have finished downloading
-        :type  num_isos_finished:  int
-        :param iso_error_messages: A dictionary mapping ISO names to errors encountered while downloading them
-        :type  iso_error_messages: dict
         :param error_message:      A general error message. This is used when the error encountered was not
                                    specific to any particular ISO.
         :type  error_message:      basestring
@@ -90,29 +72,9 @@ class ISOProgressReport(object):
         else:
             self.state_times = state_times
 
-        # These variables track the state of the ISO download stage
-        self.num_isos = num_isos
-        self.num_isos_finished = num_isos_finished
-        # mapping of isos to errors
-        if iso_error_messages is None:
-            self.iso_error_messages = {}
-        else:
-            self.iso_error_messages = iso_error_messages
-
         # overall execution error
         self.error_message = error_message
         self.traceback = traceback
-
-    def add_failed_iso(self, iso, error_report):
-        """
-        Updates the progress report that a iso failed to be imported.
-
-        :param iso:          The ISO object that failed to publish or download
-        :type  iso:          pulp_rpm.common.models.ISO
-        :param error_report: The error message that should be associated with the ISO
-        :type  error_report: basestring
-        """
-        self.iso_error_messages[iso.name] = error_report
 
     def build_final_report(self):
         """
@@ -143,9 +105,6 @@ class ISOProgressReport(object):
         report = {
             'state': self.state,
             'state_times': {},
-            'num_isos': self.num_isos,
-            'num_isos_finished': self.num_isos_finished,
-            'iso_error_messages': self.iso_error_messages,
             'error_message': self.error_message,
             'traceback': self.traceback,
         }
@@ -208,9 +167,6 @@ class ISOProgressReport(object):
             err_msg = err_msg % {'state': self._state, 'new_state': new_state}
             raise ValueError(err_msg)
 
-        if new_state == self.STATE_COMPLETE and self.iso_error_messages:
-            new_state = self.STATE_ISOS_FAILED
-
         # Set the state, and also note what time we reached that state
         self._state = new_state
         self.state_times[new_state] = datetime.utcnow()
@@ -228,20 +184,13 @@ class PublishProgressReport(ISOProgressReport):
     result of the operation.
     """
     # The following states can be set using the state() property
-    STATE_HTTP_IN_PROGRESS = 'http_in_progress'
-    STATE_HTTP_FAILED = 'http_failed'
-    STATE_HTTPS_IN_PROGRESS = 'https_in_progess'
-    STATE_HTTPS_FAILED = 'https_failed'
+    STATE_IN_PROGRESS = 'in_progress'
 
     # A mapping of current states to allowed next states
     ALLOWED_STATE_TRANSITIONS = {
-        ISOProgressReport.STATE_NOT_STARTED: (ISOProgressReport.STATE_MANIFEST_IN_PROGRESS,
+        ISOProgressReport.STATE_NOT_STARTED: (STATE_IN_PROGRESS,
                                               ISOProgressReport.STATE_FAILED),
-        ISOProgressReport.STATE_MANIFEST_IN_PROGRESS: (ISOProgressReport.STATE_MANIFEST_FAILED,
-                                                       ISOProgressReport.STATE_ISOS_IN_PROGRESS),
-        ISOProgressReport.STATE_ISOS_IN_PROGRESS: (ISOProgressReport.STATE_ISOS_FAILED, STATE_HTTP_IN_PROGRESS),
-        STATE_HTTP_IN_PROGRESS: (STATE_HTTP_FAILED, STATE_HTTPS_IN_PROGRESS),
-        STATE_HTTPS_IN_PROGRESS: (STATE_HTTPS_FAILED, ISOProgressReport.STATE_COMPLETE)
+        STATE_IN_PROGRESS: (ISOProgressReport.STATE_FAILED, ISOProgressReport.STATE_COMPLETE),
     }
 
 
@@ -253,7 +202,24 @@ class SyncProgressReport(ISOProgressReport):
     be used to produce the final report to return to Pulp to describe the
     sync.
     """
-    def __init__(self, conduit, total_bytes=None, finished_bytes=0, **kwargs):
+    # These states correspond to the progress of the manifest stage
+    STATE_MANIFEST_IN_PROGRESS = 'manifest_in_progress'
+    STATE_MANIFEST_FAILED =      'manifest_failed'
+    # These states correspond to the progress of the ISOs stage. Note that there is no STATE_MANIFEST_COMPLETE,
+    # as the next transition is STATE_ISOS_IN_PROGRESS
+    STATE_ISOS_IN_PROGRESS =     'isos_in_progress'
+    STATE_ISOS_FAILED =          'isos_failed'
+
+    # A mapping of current states to allowed next states
+    ALLOWED_STATE_TRANSITIONS = {
+        ISOProgressReport.STATE_NOT_STARTED: (STATE_MANIFEST_IN_PROGRESS, ISOProgressReport.STATE_FAILED,
+                                              ISOProgressReport.STATE_CANCELLED),
+        STATE_MANIFEST_IN_PROGRESS: (STATE_MANIFEST_FAILED, STATE_ISOS_IN_PROGRESS, ISOProgressReport.STATE_CANCELLED),
+        STATE_ISOS_IN_PROGRESS: (STATE_ISOS_FAILED, ISOProgressReport.STATE_COMPLETE, ISOProgressReport.STATE_CANCELLED)
+    }
+
+    def __init__(self, conduit=None, total_bytes=None, finished_bytes=0,  num_isos=None,
+                 num_isos_finished=0, iso_error_messages=None, **kwargs):
         """
         Initialize the SyncProgressReport, setting all of the given parameters to it. See the superclass
         method of the same name for the use cases for the parameters.
@@ -262,12 +228,38 @@ class SyncProgressReport(ISOProgressReport):
         :type  total_bytes:    int
         :param finished_bytes: The number of bytes we have already downloaded
         :type  finished_bytes: int
+        :param num_isos:           The number of ISOs that need to be downloaded or published
+        :type  num_isos:           int
+        :param num_isos_finished:  The number of ISOs that have finished downloading
+        :type  num_isos_finished:  int
+        :param iso_error_messages: A dictionary mapping ISO names to errors encountered while downloading them
+        :type  iso_error_messages: dict
         """
         super(self.__class__, self).__init__(conduit, **kwargs)
 
         # Let's also track how many bytes we've got on the ISOs
         self.total_bytes = total_bytes
         self.finished_bytes = finished_bytes
+
+        # These variables track the state of the ISO download stage
+        self.num_isos = num_isos
+        self.num_isos_finished = num_isos_finished
+        # mapping of isos to errors
+        if iso_error_messages is None:
+            self.iso_error_messages = {}
+        else:
+            self.iso_error_messages = iso_error_messages
+
+    def add_failed_iso(self, iso, error_report):
+        """
+        Updates the progress report that a iso failed to be imported.
+
+        :param iso:          The ISO object that failed to publish or download
+        :type  iso:          pulp_rpm.common.models.ISO
+        :param error_report: The error message that should be associated with the ISO
+        :type  error_report: basestring
+        """
+        self.iso_error_messages[iso.name] = error_report
 
     def build_progress_report(self):
         """
@@ -281,5 +273,23 @@ class SyncProgressReport(ISOProgressReport):
 
         report['total_bytes'] = self.total_bytes
         report['finished_bytes'] = self.finished_bytes
+        report['num_isos'] = self.num_isos
+        report['num_isos_finished'] = self.num_isos_finished
+        report['iso_error_messages'] = self.iso_error_messages
 
         return report
+
+    def _set_state(self, new_state):
+        """
+        This method allows users to set a new state to the ISOProgressReport. It enforces state transitions to
+        only happen in a certain fashion.
+
+        :param new_state: The new state that the caller wishes the ISOProgressReport to be set to
+        :type  new_state: basestring
+        """
+        if new_state == self.STATE_COMPLETE and self.iso_error_messages:
+            new_state = self.STATE_ISOS_FAILED
+
+        super(self.__class__, self)._set_state(new_state)
+
+    state = property(ISOProgressReport._get_state, _set_state)

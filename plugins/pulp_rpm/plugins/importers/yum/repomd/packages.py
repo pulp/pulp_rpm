@@ -15,8 +15,8 @@ import os
 from urlparse import urljoin
 from xml.etree.ElementTree import iterparse
 
-from pulp.common.download.downloaders.event import HTTPEventletDownloader
-from pulp.common.download.request import DownloadRequest
+from nectar.downloaders.revent import HTTPEventletRequestsDownloader
+from nectar.request import DownloadRequest
 
 
 def package_list_generator(xml_handle, package_tag, processor):
@@ -69,7 +69,7 @@ class Packages(object):
         self.package_model_iterator = package_model_iterator
         self.dst_dir = dst_dir
 
-        self.downloader = HTTPEventletDownloader(nectar_config, event_listener)
+        self.downloader = HTTPEventletRequestsDownloader(nectar_config, event_listener)
 
     def download_packages(self):
         """
