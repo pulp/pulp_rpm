@@ -18,6 +18,7 @@ from pulp.plugins.model import SyncReport
 from pulp.server.db.model.criteria import UnitAssociationCriteria
 
 from pulp_rpm.common import models
+from pulp_rpm.plugins.importers.yum.parse import rpm
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -62,8 +63,14 @@ def upload(repo, type_id, unit_key, metadata, file_path, conduit, config):
     except TypeError:
         return _fail_report('invalid unit key or metadata')
 
+    if type_id == models.RPM.TYPE:
+        # TODO: replace this call with something that doesn't use yum
+        model.metadata['repodata'] = rpm.get_package_xml(file_path)
+
     # not all models have a relative path
     relative_path = getattr(model, 'relative_path', '')
+
+    # both of the below operations perform IO
     try:
         # init unit
         unit = conduit.init_unit(model.TYPE, model.unit_key, model.metadata, relative_path)

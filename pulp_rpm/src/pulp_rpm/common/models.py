@@ -226,6 +226,10 @@ class PackageGroup(Package):
 
     def __init__(self, id, repo_id, metadata):
         Package.__init__(self, locals())
+        # these attributes should default to False based on yum.comps.Group.parse
+        for name in ('default', 'user_visible'):
+            if self.metadata.get(name) is None:
+                self.metadata[name] = False
 
     @property
     def all_package_names(self):
