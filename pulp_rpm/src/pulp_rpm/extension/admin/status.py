@@ -21,6 +21,11 @@ from pulp.client.commands.repo.sync_publish import StatusRenderer
 from pulp_rpm.common import constants
 from pulp_rpm.common.status_utils import render_general_spinner_step, render_itemized_in_progress_state
 
+
+class CancelException(Exception):
+    pass
+
+
 class RpmStatusRenderer(StatusRenderer):
 
     def __init__(self, context):
@@ -63,22 +68,29 @@ class RpmStatusRenderer(StatusRenderer):
         # begun running but the importer has yet to submit a progress report
         # (or it has yet to be saved into the task). This should be alleviated
         # by the if statements below.
+        try:
+            # Sync Steps
+            if 'yum_importer' in progress_report:
+                self.render_metadata_step(progress_report)
+                self.render_download_step(progress_report)
+                self.render_distribution_sync_step(progress_report)
+                self.render_errata_step(progress_report)
+                self.render_comps_step(progress_report)
 
-        # Sync Steps
-        if 'yum_importer' in progress_report:
-            self.render_metadata_step(progress_report)
-            self.render_download_step(progress_report)
-            self.render_distribution_sync_step(progress_report)
-            self.render_errata_step(progress_report)
-            self.render_comps_step(progress_report)
+            # Publish Steps
+            if 'yum_distributor' in progress_report:
+                self.render_packages_step(progress_report)
+                self.render_distribution_publish_step(progress_report)
+                self.render_generate_metadata_step(progress_report)
+                self.render_publish_https_step(progress_report)
+                self.render_publish_http_step(progress_report)
 
-        # Publish Steps
-        if 'yum_distributor' in progress_report:
-            self.render_packages_step(progress_report)
-            self.render_distribution_publish_step(progress_report)
-            self.render_generate_metadata_step(progress_report)
-            self.render_publish_https_step(progress_report)
-            self.render_publish_http_step(progress_report)
+        except CancelException:
+            self.prompt.render_failure_message(_('Operation cancelled.'))
+
+    def check_for_cancelled_state(self, state):
+        if state == constants.STATE_CANCELLED:
+            raise CancelException
 
     def render_metadata_step(self, progress_report):
 
@@ -88,6 +100,7 @@ class RpmStatusRenderer(StatusRenderer):
         # }
 
         current_state = progress_report['yum_importer']['metadata']['state']
+        self.check_for_cancelled_state(current_state)
         def update_func(new_state):
             self.metadata_last_state = new_state
         render_general_spinner_step(self.prompt, self.metadata_spinner, current_state, self.metadata_last_state, _('Downloading metadata...'), update_func)
@@ -98,6 +111,7 @@ class RpmStatusRenderer(StatusRenderer):
     def render_distribution_sync_step(self, progress_report):
         data = progress_report['yum_importer']['distribution']
         state = data['state']
+        self.check_for_cancelled_state(state)
         # Render nothing if we haven't begun yet or if this step is skipped
         if state in (constants.STATE_NOT_STARTED, constants.STATE_SKIPPED):
             return
@@ -118,6 +132,7 @@ class RpmStatusRenderer(StatusRenderer):
         """
         data = progress_report['yum_importer']['content']
         state = data['state']
+        self.check_for_cancelled_state(state)
 
         # Render nothing if we haven't begun yet or if this step is skipped
         if state in (constants.STATE_NOT_STARTED, constants.STATE_SKIPPED):
@@ -206,6 +221,7 @@ class RpmStatusRenderer(StatusRenderer):
         #    "num_errata": 0
         # }
         current_state = progress_report['yum_importer']['errata']['state']
+        self.check_for_cancelled_state(current_state)
         if current_state in (constants.STATE_NOT_STARTED, constants.STATE_SKIPPED):
             return
 
@@ -227,6 +243,7 @@ class RpmStatusRenderer(StatusRenderer):
 
         data = progress_report['yum_distributor']['packages']
         state = data['state']
+        self.check_for_cancelled_state(state)
 
         if state in (constants.STATE_NOT_STARTED, constants.STATE_SKIPPED):
             return

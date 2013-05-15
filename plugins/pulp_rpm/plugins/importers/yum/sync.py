@@ -31,9 +31,14 @@ from pulp_rpm.plugins.importers.yum.report import ContentReport, DistributionRep
 _LOGGER = logging.getLogger(__name__)
 
 
+class CancelException(Exception):
+    pass
+
+
 class RepoSync(object):
 
     def __init__(self, repo, sync_conduit, call_config):
+        self.cancelled = False
         self.working_dir = repo.working_dir
         self.content_report = ContentReport()
         self.distribution_report = DistributionReport()
@@ -45,7 +50,6 @@ class RepoSync(object):
             'comps': {'state': 'NOT_STARTED'},
         }
         self.sync_conduit = sync_conduit
-        self.set_progress = functools.partial(self.sync_conduit.set_progress, self.progress_status)
         self.set_progress()
         self.repo = repo
 
@@ -53,6 +57,11 @@ class RepoSync(object):
 
         flat_call_config = call_config.flatten()
         self.nectar_config = nectar_utils.importer_config_to_nectar_config(flat_call_config)
+
+    def set_progress(self):
+        self.sync_conduit.set_progress(self.progress_status)
+        if self.cancelled is True:
+            raise CancelException
 
     @property
     def sync_feed(self):
@@ -66,13 +75,15 @@ class RepoSync(object):
             self.progress_status['metadata']['state'] = constants.STATE_RUNNING
             self.set_progress()
             metadata_files = self.get_metadata()
-            self.progress_status['metadata']['state'] = constants.STATE_COMPLETE
+            if self.progress_status['metadata']['state'] == constants.STATE_RUNNING:
+                self.progress_status['metadata']['state'] = constants.STATE_COMPLETE
             self.set_progress()
 
             self.content_report['state'] = constants.STATE_RUNNING
             self.set_progress()
             self.get_content(metadata_files)
-            self.content_report['state'] = constants.STATE_COMPLETE
+            if self.content_report['state'] == constants.STATE_RUNNING:
+                self.content_report['state'] = constants.STATE_COMPLETE
             self.set_progress()
 
             self.distribution_report['state'] = constants.STATE_RUNNING
@@ -94,6 +105,11 @@ class RepoSync(object):
             self.progress_status['comps']['state'] = constants.STATE_COMPLETE
             self.set_progress()
 
+        except CancelException:
+            report = SyncReport(False, self.content_report['items_total'], 0, 0, self.progress_status, self.progress_status)
+            report.canceled_flag = True
+            return report
+
         finally:
             shutil.rmtree(self.tmp_dir, ignore_errors=True)
 
@@ -106,9 +122,12 @@ class RepoSync(object):
         :rtype:  pulp_rpm.plugins.importers.download.metadata.MetadataFiles
         """
         metadata_files = metadata.MetadataFiles(self.sync_feed, self.tmp_dir)
+        # allow the downloader to be accessed by the cancel method if necessary
+        self.downloader = metadata_files.downloader
         metadata_files.download_repomd()
         metadata_files.parse_repomd()
         metadata_files.download_metadata_files()
+        self.downloader = None
         # TODO: verify metadata
         #metadata_files.verify_metadata_files()
         return metadata_files
@@ -174,9 +193,12 @@ class RepoSync(object):
                                                                      primary.process_package_element)
             units_to_download = self._filtered_unit_generator(package_model_generator, rpms_to_download)
 
-            packages_downloader = packages.Packages(self.sync_feed, self.nectar_config,
+            download_wrapper = packages.Packages(self.sync_feed, self.nectar_config,
                                                     units_to_download, self.tmp_dir, event_listener)
-            packages_downloader.download_packages()
+            # allow the downloader to be accessed by the cancel method if necessary
+            self.downloader = download_wrapper.downloader
+            download_wrapper.download_packages()
+            self.downloader = None
 
         presto_file_handle = metadata_files.get_metadata_file_handle('prestodelta')
         if presto_file_handle:
@@ -186,12 +208,30 @@ class RepoSync(object):
                                                                          presto.process_package_element)
                 units_to_download = self._filtered_unit_generator(package_model_generator, drpms_to_download)
 
-                packages_downloader = packages.Packages(self.sync_feed, self.nectar_config,
+                download_wrapper = packages.Packages(self.sync_feed, self.nectar_config,
                                                         units_to_download, self.tmp_dir, event_listener)
-                packages_downloader.download_packages()
+                # allow the downloader to be accessed by the cancel method if necessary
+                self.downloader = download_wrapper.downloader
+                download_wrapper.download_packages()
+                self.downloader = None
 
         report = self.sync_conduit.build_success_report({}, {})
         return report
+
+    def cancel(self):
+        self.cancelled = True
+        for step, value in self.progress_status.iteritems():
+            if value.get('state') == constants.STATE_RUNNING:
+                value['state'] = constants.STATE_CANCELLED
+        try:
+            self.downloader.cancel()
+        except AttributeError:
+            # there might not be a downloader to cancel right now.
+            _LOGGER.debug('could not cancel downloader')
+        try:
+            self.set_progress()
+        except CancelException:
+            pass
 
     def get_errata(self, metadata_files):
         errata_file_handle = metadata_files.get_metadata_file_handle('updateinfo')

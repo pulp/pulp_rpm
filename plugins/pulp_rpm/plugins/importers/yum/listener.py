@@ -12,7 +12,6 @@
 # http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt.
 
 import logging
-import os
 import shutil
 
 from nectar.listener import DownloadEventListener, AggregatingEventListener

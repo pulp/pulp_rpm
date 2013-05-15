@@ -56,4 +56,8 @@ class YumImporter(Importer):
         return upload.upload(repo, type_id, unit_key, metadata, file_path, conduit, config)
 
     def sync_repo(self, repo, sync_conduit, call_config):
-        return sync.RepoSync(repo, sync_conduit, call_config).run()
+        self._current_sync = sync.RepoSync(repo, sync_conduit, call_config)
+        return self._current_sync.run()
+
+    def cancel_sync_repo(self, call_request, call_report):
+        self._current_sync.cancel()

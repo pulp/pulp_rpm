@@ -11,13 +11,15 @@
 # You should have received a copy of GPLv2 along with this software; if not,
 # see http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt
 
+import logging
 import os
 from urlparse import urljoin
-from xml.etree.ElementTree import iterparse
+from xml.etree.ElementTree import iterparse, ParseError
 
-from nectar.config import DownloaderConfig
 from nectar.downloaders.revent import HTTPEventletRequestsDownloader
 from nectar.request import DownloadRequest
+
+_LOGGER = logging.getLogger(__name__)
 
 
 def package_list_generator(xml_handle, package_tag, processor):
@@ -38,7 +40,11 @@ def package_list_generator(xml_handle, package_tag, processor):
 
     # get a hold of the root element so we can clear it
     # this prevents the entire parsed document from building up in memory
-    root_element = xml_iterator.next()[1]
+    try:
+        root_element = xml_iterator.next()[1]
+    except ParseError:
+        _LOGGER.error('failed to parse XML metadata file')
+        return
 
     for event, element in xml_iterator:
         # if we're not at a fully parsed package element, keep going
@@ -51,6 +57,7 @@ def package_list_generator(xml_handle, package_tag, processor):
         yield package_info
 
 
+# TODO: maybe this class shouldn't be a class
 class Packages(object):
     """
     Stateful downloader for a Yum repository's packages.

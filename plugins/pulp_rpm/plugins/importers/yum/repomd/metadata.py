@@ -154,6 +154,9 @@ class MetadataFiles(object):
         download_request_list = []
 
         for md in self.metadata.values():
+            # we don't care about the sqlite files
+            if md['relative_path'].find('sqlite') >= 0:
+                continue
             url = urljoin(self.repo_url, md['relative_path'])
             dst = os.path.join(self.dst_dir, md['relative_path'].rsplit('/', 1)[-1])
 
@@ -278,4 +281,3 @@ def process_repomd_data_element(data_element):
     data_element.clear()
 
     return file_info
-
