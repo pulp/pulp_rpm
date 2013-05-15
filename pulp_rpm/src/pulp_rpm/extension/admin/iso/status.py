@@ -41,6 +41,9 @@ class ISOStatusRenderer(StatusRenderer):
             self._display_manifest_sync_report(sync_report)
             self._display_iso_sync_report(sync_report)
 
+            if sync_report.state == sync_report.STATE_CANCELLED:
+                self.prompt.render_failure_message('The download was cancelled.', tag='cancelled')
+
         if ids.TYPE_ID_DISTRIBUTOR_ISO in progress_report:
             publish_report = progress.PublishProgressReport.from_progress_report(
                 progress_report[ids.TYPE_ID_DISTRIBUTOR_ISO])
@@ -53,7 +56,7 @@ class ISOStatusRenderer(StatusRenderer):
         if (self._sync_state == sync_report.STATE_MANIFEST_IN_PROGRESS and
                 sync_report.state != sync_report.STATE_MANIFEST_IN_PROGRESS):
             if sync_report.num_isos:
-                self.prompt.write(_('Downloading %(num)s ISOs.') % {'num': sync_report.num_isos})
+                self.prompt.write(_('Downloading %(num)s ISOs...') % {'num': sync_report.num_isos}, tag='download_starting')
                 self._sync_state = sync_report.STATE_ISOS_IN_PROGRESS
             else:
                 self.prompt.render_success_message(_('There are no ISOs that need to be downloaded.'),
@@ -132,8 +135,8 @@ class ISOStatusRenderer(StatusRenderer):
             return
 
         if publish_report.state == publish_report.STATE_COMPLETE:
-            self.prompt.render_success_message(_('Successfully published the repository.'),
-                                               tag='publish_success')
+            msg = _('The repository was successfully published.')
+            self.prompt.render_success_message(msg, tag='publish_success')
 
 
 def human_readable_bytes(num):

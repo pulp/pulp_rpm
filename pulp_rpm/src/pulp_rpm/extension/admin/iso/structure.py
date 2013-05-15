@@ -15,14 +15,18 @@ from gettext import gettext as _
 
 from pulp.client.commands.repo import sync_publish
 
+from pulp_rpm.common import ids
 from pulp_rpm.extension.admin.iso import status
 
 
-SECTION_ROOT = 'iso'
-DESC_ROOT = _('manage ISO-related content and features')
+SECTION_PUBLISH = 'publish'
+DESC_PUBLISH = 'run or view the status of publish tasks'
 
 SECTION_REPO = 'repo'
 DESC_REPO = _('repository lifecycle commands')
+
+SECTION_ROOT = 'iso'
+DESC_ROOT = _('manage ISO-related content and features')
 
 SECTION_SYNC = 'sync'
 DESC_SYNC = _('run, schedule, or view the status of sync tasks')
@@ -40,6 +44,26 @@ def add_iso_section(context):
     add_repo_section(context, root_section)
 
 
+def add_publish_section(context, repo_section):
+    """
+    Add the publish subsection and all of its children to the repo section.
+    
+    :param context: ClientContext containing the CLI instance being configured
+    :type  context: pulp.client.extensions.core.ClientContext
+    :param repo_section: The parent repo section that we wish to add the publish subsection to.
+    :type  repo_section: pulp.client.extensions.extensions.PulpCliSection
+    """
+    publish_section = repo_section.create_subsection(SECTION_PUBLISH, DESC_PUBLISH)
+
+    renderer = status.ISOStatusRenderer(context)
+
+    publish_section.add_command(
+        sync_publish.RunPublishRepositoryCommand(
+            context, renderer, distributor_id=ids.TYPE_ID_DISTRIBUTOR_ISO))
+
+    return publish_section
+
+
 def add_repo_section(context, parent_section):
     """
     Add the repo section and all of its children to the parent section.
@@ -51,6 +75,7 @@ def add_repo_section(context, parent_section):
     """
     repo_section = parent_section.create_subsection(SECTION_REPO, DESC_REPO)
 
+    add_publish_section(context, repo_section)
     add_sync_section(context, repo_section)
 
     return repo_section

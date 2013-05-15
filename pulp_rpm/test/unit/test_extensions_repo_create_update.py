@@ -63,8 +63,7 @@ class RpmRepoCreateCommandTests(rpm_support_base.PulpClientTests):
             options.OPTION_DESCRIPTION.keyword : 'Test Description',
             options.OPTION_NOTES.keyword : {'a' : 'a'},
             self.options_bundle.opt_feed.keyword : 'http://localhost',
-            self.options_bundle.opt_verify_size.keyword : True,
-            self.options_bundle.opt_verify_checksum.keyword : True,
+            self.options_bundle.opt_validate.keyword : True,
             self.options_bundle.opt_remove_missing.keyword : True,
             self.options_bundle.opt_retain_old_count.keyword : 2,
             self.options_bundle.opt_proxy_host.keyword : 'http://localhost',
@@ -111,8 +110,7 @@ class RpmRepoCreateCommandTests(rpm_support_base.PulpClientTests):
         self.assertTrue(importer_config[constants.KEY_SSL_CLIENT_CERT] is not None)
         self.assertTrue(importer_config[constants.KEY_SSL_CLIENT_KEY] is not None)
         self.assertEqual(importer_config[constants.KEY_SSL_VALIDATION], True)
-        self.assertEqual(importer_config[constants.KEY_VERIFY_SIZE], True)
-        self.assertEqual(importer_config[constants.KEY_VERIFY_CHECKSUM], True)
+        self.assertEqual(importer_config[constants.KEY_VALIDATE], True)
         self.assertEqual(importer_config[constants.KEY_PROXY_HOST], 'http://localhost')
         self.assertEqual(importer_config[constants.KEY_PROXY_PORT], 80)
         self.assertEqual(importer_config[constants.KEY_PROXY_USER], 'user')
@@ -168,7 +166,7 @@ class RpmRepoCreateCommandTests(rpm_support_base.PulpClientTests):
         # Test
         command = repo_create_update.RpmRepoUpdateCommand(self.context)
         self.cli.add_command(command)
-        self.cli.run("update --repo-id r --verify-size true".split())
+        self.cli.run("update --repo-id r --validate true".split())
 
         # Verify
         self.assertEqual(1, self.server_mock.request.call_count)
@@ -176,7 +174,7 @@ class RpmRepoCreateCommandTests(rpm_support_base.PulpClientTests):
         body = self.server_mock.request.call_args[0][2]
         body = json.loads(body)
 
-        self.assertEqual(body['importer_config']['verify_size'], True) # not the string "true"
+        self.assertEqual(body['importer_config'][constants.KEY_VALIDATE], True) # not the string "true"
 
 
 class RpmRepoUpdateCommandTests(rpm_support_base.PulpClientTests):
@@ -249,7 +247,7 @@ class RpmRepoUpdateCommandTests(rpm_support_base.PulpClientTests):
         # Test
         command = repo_create_update.RpmRepoCreateCommand(self.context)
         self.cli.add_command(command)
-        self.cli.run("create --repo-id r --verify-size true".split())
+        self.cli.run("create --repo-id r --validate true".split())
 
         # Verify
         self.assertEqual(1, self.server_mock.request.call_count)
@@ -258,4 +256,4 @@ class RpmRepoUpdateCommandTests(rpm_support_base.PulpClientTests):
         body = json.loads(body)
 
         self.assertEqual(body['id'], 'r')
-        self.assertEqual(body['importer_config'][constants.KEY_VERIFY_SIZE], True) # not the string "true"
+        self.assertEqual(body['importer_config'][constants.KEY_VALIDATE], True) # not the string "true"

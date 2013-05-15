@@ -10,6 +10,7 @@
 # http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt.
 
 # -- progress states ----------------------------------------------------------
+
 # These are used by the RPM reports, but not by the ISO reports (since those use their own state machines)
 STATE_NOT_STARTED = 'NOT_STARTED'
 STATE_RUNNING = 'IN_PROGRESS'
@@ -18,6 +19,12 @@ STATE_FAILED = 'FAILED'
 STATE_SKIPPED = 'SKIPPED'
 
 COMPLETE_STATES = (STATE_COMPLETE, STATE_FAILED, STATE_SKIPPED)
+
+# Codes included in the progress report for each unit to identify what went wrong
+ERROR_SIZE_VERIFICATION = 'size_mismatch'
+ERROR_CHECKSUM_VERIFICATION = 'checksum_mismatch'
+
+# -- configuration ------------------------------------------------------------
 
 # Used as a note on a repository to indicate it is a Puppet repository
 REPO_NOTE_RPM = 'rpm-repo'
