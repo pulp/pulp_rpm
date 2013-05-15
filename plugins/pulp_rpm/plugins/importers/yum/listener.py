@@ -117,7 +117,7 @@ class ContentListener(DownloadEventListener):
         :raises verification.VerificationException: if the size of the content is incorrect
         """
 
-        if not self.sync_call_config.get(importer_constants.KEY_VERIFY_SIZE):
+        if not self.sync_call_config.get(importer_constants.KEY_VALIDATE):
             return
 
         try:
@@ -147,7 +147,7 @@ class ContentListener(DownloadEventListener):
         :raises verification.VerificationException: if the checksum of the content is incorrect
         """
 
-        if not self.sync_call_config.get(importer_constants.KEY_VERIFY_CHECKSUM):
+        if not self.sync_call_config.get(importer_constants.KEY_VALIDATE):
             return
 
         try:
