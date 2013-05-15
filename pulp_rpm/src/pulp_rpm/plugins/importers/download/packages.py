@@ -14,9 +14,9 @@
 import os
 from urlparse import urljoin
 
-from pulp.common.download.downloaders.curl import HTTPSCurlDownloader
-from pulp.common.download.config import DownloaderConfig
-from pulp.common.download.request import DownloadRequest
+from nectar.downloaders.curl import HTTPSCurlDownloader
+from nectar.config import DownloaderConfig
+from nectar.request import DownloadRequest
 
 
 class Packages(object):
