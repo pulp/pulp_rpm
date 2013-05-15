@@ -87,8 +87,8 @@ class MetadataFiles(object):
 
     :ivar repo_url: Yum repository URL
     :ivar dst_dir: Directory to store downloaded metadata files in
-    :ivar event_listener: pulp.common.download.listener.DownloadEventListener instance
-    :ivar downloader: pulp.common.download.backends.base.DownloaderBackend instance
+    :ivar event_listener: nectar.listener.DownloadEventListener instance
+    :ivar downloader: nectar.downloaders.base.DownloaderBackend instance
     :ivar revision: revision number of the metadata, set during the `parse_repomd` call
     :ivar metadata: dictionary of the main metadata type keys to the corresponding file paths
     """

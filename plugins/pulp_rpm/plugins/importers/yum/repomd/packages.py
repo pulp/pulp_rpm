@@ -15,7 +15,7 @@ import os
 from urlparse import urljoin
 from xml.etree.ElementTree import iterparse
 
-from nectar.downloaders.revent import HTTPEventletRequestsDownloader
+from nectar.downloaders.curl import HTTPCurlDownloader
 from nectar.request import DownloadRequest
 
 
@@ -60,8 +60,8 @@ class Packages(object):
     :ivar repo_url: Yum repository's URL
     :ivar packages_information_iterator: iterator of package information dictionaries
     :ivar dst_dir: Directory to store downloaded packages in
-    :ivar event_listener: pulp.common.download.listener.DownloadEventListener instance
-    :ivar downloader: pulp.common.download.backends.base.DownloadBackend instance
+    :ivar event_listener: nectar.listener.DownloadEventListener instance
+    :ivar downloader: nectar.downloaders.base.DownloadBackend instance
     """
 
     def __init__(self, repo_url, nectar_config, package_model_iterator, dst_dir, event_listener=None):
@@ -69,7 +69,7 @@ class Packages(object):
         self.package_model_iterator = package_model_iterator
         self.dst_dir = dst_dir
 
-        self.downloader = HTTPEventletRequestsDownloader(nectar_config, event_listener)
+        self.downloader = HTTPCurlDownloader(nectar_config, event_listener)
 
     def download_packages(self):
         """
