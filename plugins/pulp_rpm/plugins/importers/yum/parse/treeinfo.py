@@ -17,10 +17,10 @@ import os
 import shutil
 import tempfile
 
-from pulp.common.download.config import DownloaderConfig
-from pulp.common.download.downloaders.curl import HTTPCurlDownloader
-from pulp.common.download.listener import AggregatingEventListener
-from pulp.common.download.request import DownloadRequest
+from nectar.config import DownloaderConfig
+from nectar.downloaders.curl import HTTPCurlDownloader
+from nectar.listener import AggregatingEventListener
+from nectar.request import DownloadRequest
 
 from pulp_rpm.common import constants, ids, models
 from pulp_rpm.plugins.importers.yum.listener import DistroFileListener

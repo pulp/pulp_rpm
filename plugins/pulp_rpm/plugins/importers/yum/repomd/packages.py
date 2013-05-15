@@ -15,7 +15,7 @@ import os
 from urlparse import urljoin
 from xml.etree.ElementTree import iterparse
 
-from nectar.downloaders.revent import HTTPEventletRequestsDownloader
+from nectar.downloaders.curl import HTTPCurlDownloader
 from nectar.request import DownloadRequest
 
 
@@ -69,7 +69,7 @@ class Packages(object):
         self.package_model_iterator = package_model_iterator
         self.dst_dir = dst_dir
 
-        self.downloader = HTTPEventletRequestsDownloader(nectar_config, event_listener)
+        self.downloader = HTTPCurlDownloader(nectar_config, event_listener)
 
     def download_packages(self):
         """
