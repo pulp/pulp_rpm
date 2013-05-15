@@ -34,7 +34,7 @@ class DistroFileListener(AggregatingEventListener):
         """
 
         :param report:
-        :type  report: pulp.common.download.report.DownloadReport
+        :type  report: nectar.report.DownloadReport
         :return:
         """
         self._decrement()
@@ -44,7 +44,7 @@ class DistroFileListener(AggregatingEventListener):
         """
 
         :param report:
-        :type  report: pulp.common.download.report.DownloadReport
+        :type  report: nectar.report.DownloadReport
         :return:
         """
         self._decrement()
@@ -68,7 +68,7 @@ class ContentListener(DownloadEventListener):
     def download_succeeded(self, report):
         """
         :param report:
-        :type  report: pulp.common.download.report.DownloadReport
+        :type  report: nectar.report.DownloadReport
         :return:
         """
         model = report.data
@@ -96,7 +96,7 @@ class ContentListener(DownloadEventListener):
         """
 
         :param report:
-        :type  report: pulp.common.download.report.DownloadReport
+        :type  report: nectar.report.DownloadReport
         :return:
         """
         model = report.data
@@ -112,7 +112,7 @@ class ContentListener(DownloadEventListener):
         :param model: domain model instance of the package that was downloaded
         :type  model: pulp_rpm.common.models.RPM
         :param report: report handed to this listener by the downloader
-        :type  report: pulp.common.download.report.DownloadReport
+        :type  report: nectar.report.DownloadReport
 
         :raises verification.VerificationException: if the size of the content is incorrect
         """
@@ -142,7 +142,7 @@ class ContentListener(DownloadEventListener):
         :param model: domain model instance of the package that was downloaded
         :type  model: pulp_rpm.common.models.RPM
         :param report: report handed to this listener by the downloader
-        :type  report: pulp.common.download.report.DownloadReport
+        :type  report: nectar.report.DownloadReport
 
         :raises verification.VerificationException: if the checksum of the content is incorrect
         """
