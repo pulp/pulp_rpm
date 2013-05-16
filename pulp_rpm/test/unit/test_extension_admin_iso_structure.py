@@ -75,8 +75,8 @@ class TestAddRepoSection(rpm_support_base.PulpClientTests):
         self.assertTrue(publish_section is not None)
 
         # The create command should have been added
-        self.assertEqual(repo_section.add_command.call_count, 1)
-        create_command = repo_section.add_command.mock_calls[0][1][0]
+        self.assertEqual(len(repo_section.commands), 1)
+        create_command = repo_section.commands['create']
         self.assertTrue(isinstance(create_command, create_update.ISORepoCreateCommand))
         self.assertEqual(create_command.context, self.context)
 
