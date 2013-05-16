@@ -16,11 +16,9 @@ import logging
 
 from pulp.common.plugins import importer_constants
 
+from pulp_rpm.plugins import configuration_utils
+
 logger = logging.getLogger(__name__)
-
-
-class ValidationError(ValueError):
-    pass
 
 
 def validate(config):
@@ -52,7 +50,7 @@ def validate(config):
     for v in validators:
         try:
             v(config)
-        except ValidationError, e:
+        except configuration_utils.ValidationError, e:
             return False, str(e)
 
     return True, None
@@ -99,36 +97,12 @@ def _validate_feed_url(config):
         msg = _('The configuration parameter <%(name)s> is required when any of the following other '
                 'parameters are defined: ' + ', '.join(dependencies) + '.')
         msg = msg % {'name': importer_constants.KEY_FEED}
-        raise ValidationError(msg)
+        raise configuration_utils.ValidationError(msg)
 
     if not isinstance(feed_url, basestring):
         msg = _('<%(feed_url)s> must be a string.')
         msg = msg % {'feed_url': importer_constants.KEY_FEED}
-        raise ValidationError(msg)
-
-
-def _validate_is_non_required_bool(config, setting_name):
-    """
-    Validate that the bool represented in the config by setting_name is either not set, or if it is set that
-    it is a boolean value.
-
-    :param config:       the config to be validated
-    :type  config:       pulp.plugins.config.PluginCallConfiguration
-    :param setting_name: The name of the setting we wish to validate in the config
-    :type  setting_name: basestring
-    """
-    original_setting = setting = config.get(setting_name)
-    if setting is None:
-        # We don't require any settings
-        return
-    if isinstance(setting, basestring):
-        setting = config.get_boolean(setting_name)
-    if isinstance(setting, bool):
-        return
-    msg = _('The configuration parameter <%(name)s> must be set to a boolean value, but is '
-            'currently set to <%(value)s>.')
-    msg = msg % {'name': setting_name, 'value': original_setting}
-    raise ValidationError(msg)
+        raise configuration_utils.ValidationError(msg)
 
 
 def _validate_max_speed(config):
@@ -150,7 +124,7 @@ def _validate_max_speed(config):
         msg = _('The configuration parameter <%(max_speed_name)s> must be set to a positive numerical value, '
                 'but is currently set to <%(max_speed_value)s>.')
         msg = msg % {'max_speed_name': importer_constants.KEY_MAX_SPEED, 'max_speed_value': max_speed}
-        raise ValidationError(msg)
+        raise configuration_utils.ValidationError(msg)
 
 
 def _validate_num_threads(config):
@@ -173,7 +147,7 @@ def _validate_num_threads(config):
         msg = _('The configuration parameter <%(num_threads_name)s> must be set to a positive integer, but '
                 'is currently set to <%(num_threads)s>.')
         msg = msg % {'num_threads_name': importer_constants.KEY_MAX_DOWNLOADS, 'num_threads': num_threads}
-        raise ValidationError(msg)
+        raise configuration_utils.ValidationError(msg)
 
 
 def _validate_proxy_password(config):
@@ -194,13 +168,13 @@ def _validate_proxy_password(config):
                 'to also be set.')
         msg = msg % {'password_name': importer_constants.KEY_PROXY_PASS,
                    'username_name': importer_constants.KEY_PROXY_USER}
-        raise ValidationError(msg)
+        raise configuration_utils.ValidationError(msg)
 
     if not isinstance(proxy_password, basestring):
         msg = _('The configuration parameter <%(proxy_password_name)s> should be a string, but it was '
                 '%(type)s.')
         msg = msg % {'proxy_password_name': importer_constants.KEY_PROXY_PASS, 'type': type(proxy_password)}
-        raise ValidationError(msg)
+        raise configuration_utils.ValidationError(msg)
 
 
 def _validate_proxy_port(config):
@@ -224,7 +198,7 @@ def _validate_proxy_port(config):
         msg = _('The configuration parameter <%(name)s> must be set to a positive integer, but is currently '
                 'set to <%(value)s>.')
         msg = msg % {'name': importer_constants.KEY_PROXY_PORT, 'value': proxy_port}
-        raise ValidationError(msg)
+        raise configuration_utils.ValidationError(msg)
 
 
 def _validate_proxy_url(config):
@@ -244,11 +218,11 @@ def _validate_proxy_url(config):
         msg = _('The configuration parameter <%(name)s> is required when any of the following other '
                 'parameters are defined: ' + ', '.join(dependencies) + '.')
         msg = msg % {'name': importer_constants.KEY_PROXY_HOST}
-        raise ValidationError(msg)
+        raise configuration_utils.ValidationError(msg)
     if not isinstance(proxy_url, basestring):
         msg = _('The configuration parameter <%(name)s> should be a string, but it was %(type)s.')
         msg = msg % {'name': importer_constants.KEY_PROXY_HOST, 'type': type(proxy_url)}
-        raise ValidationError(msg)
+        raise configuration_utils.ValidationError(msg)
 
 
 def _validate_proxy_username(config):
@@ -269,12 +243,12 @@ def _validate_proxy_username(config):
                 'to also be set.')
         msg = msg % {'password_name': importer_constants.KEY_PROXY_PASS,
                      'username_name': importer_constants.KEY_PROXY_USER}
-        raise ValidationError(msg)
+        raise configuration_utils.ValidationError(msg)
 
     if not isinstance(proxy_username, basestring):
         msg = _('The configuration parameter <%(name)s> should be a string, but it was %(type)s.')
         msg = msg % {'name': importer_constants.KEY_PROXY_USER, 'type': type(proxy_username)}
-        raise ValidationError(msg)
+        raise configuration_utils.ValidationError(msg)
 
 
 def _validate_remove_missing_units(config):
@@ -285,7 +259,7 @@ def _validate_remove_missing_units(config):
     :param config: the config to be validated
     :type  config: pulp.plugins.config.PluginCallConfiguration
     """
-    _validate_is_non_required_bool(config, importer_constants.KEY_UNITS_REMOVE_MISSING)
+    configuration_utils.validate_non_required_bool(config, importer_constants.KEY_UNITS_REMOVE_MISSING)
 
 
 def _validate_ssl_ca_cert(config):
@@ -302,7 +276,7 @@ def _validate_ssl_ca_cert(config):
     if not isinstance(ssl_ca_cert, basestring):
         msg = _('The configuration parameter <%(name)s> should be a string, but it was %(type)s.')
         msg = msg % {'name': importer_constants.KEY_SSL_CA_CERT, 'type': type(ssl_ca_cert)}
-        raise ValidationError(msg)
+        raise configuration_utils.ValidationError(msg)
 
 
 def _validate_ssl_client_cert(config):
@@ -321,12 +295,12 @@ def _validate_ssl_client_cert(config):
         msg = _('The configuration parameter <%(key_name)s> requires the <%(cert_name)s> parameter to also '
                 'be set.')
         msg = msg % {'key_name': importer_constants.KEY_SSL_CLIENT_KEY, 'cert_name': importer_constants.KEY_SSL_CLIENT_CERT}
-        raise ValidationError(msg)
+        raise configuration_utils.ValidationError(msg)
 
     if not isinstance(ssl_client_cert, basestring):
         msg = _('The configuration parameter <%(name)s> should be a string, but it was %(type)s.')
         msg = msg % {'name': importer_constants.KEY_SSL_CLIENT_CERT, 'type': type(ssl_client_cert)}
-        raise ValidationError(msg)
+        raise configuration_utils.ValidationError(msg)
 
 
 def _validate_ssl_client_key(config):
@@ -344,7 +318,7 @@ def _validate_ssl_client_key(config):
     if not isinstance(ssl_client_key, basestring):
         msg = _('The configuration parameter <%(name)s> should be a string, but it was %(type)s.')
         msg = msg % {'name': importer_constants.KEY_SSL_CLIENT_KEY, 'type': type(ssl_client_key)}
-        raise ValidationError(msg)
+        raise configuration_utils.ValidationError(msg)
 
 
 def _validate_validate_downloads(config):
@@ -355,4 +329,4 @@ def _validate_validate_downloads(config):
     :param config: the config to be validated
     :type  config: pulp.plugins.config.PluginCallConfiguration
     """
-    _validate_is_non_required_bool(config, importer_constants.KEY_VALIDATE)
+    configuration_utils.validate_non_required_bool(config, importer_constants.KEY_VALIDATE)

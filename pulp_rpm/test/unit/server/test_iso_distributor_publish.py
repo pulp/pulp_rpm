@@ -290,6 +290,75 @@ class TestPublish(PulpRPMTests):
         # Assert correct call to delete_protected_repo since there was no CA cert provided
         delete_protected_repo.assert_called_once_with(repo.id)
 
+    @patch('pulp_rpm.repo_auth.protected_repo_utils.ProtectedRepoUtils.delete_protected_repo')
+    def test__copy_to_hosted_location_serve_http_default(self, delete_protected_repo):
+        """
+        Assert that we don't publish over HTTP by default.
+        """
+        repo = MagicMock(spec=Repository)
+        repo.id = 'lebowski'
+        repo.working_dir = self.temp_dir
+        config = distributor_mocks.get_basic_config(**{constants.CONFIG_SERVE_HTTPS: False})
+
+        # Let's put a dummy file and a dummy symlink in the build_dir, so we can make sure they get
+        # copied to the right places.
+        build_dir = publish._get_or_create_build_dir(repo)
+        with open(os.path.join(build_dir, 'the_dude.txt'), 'w') as the_dude:
+            the_dude.write("Let's go bowling.")
+        os.symlink('/symlink/path', os.path.join(build_dir, 'symlink'))
+
+        # This should not copy our dummy file anywhere.
+        publish._copy_to_hosted_location(repo, config)
+
+        # Make sure that the_dude.txt didn't get copied
+        expected_http_path = os.path.join(constants.ISO_HTTP_DIR, 'lebowski', 'the_dude.txt')
+        expected_https_path = os.path.join(constants.ISO_HTTPS_DIR, 'lebowski', 'the_dude.txt')
+        self.assertFalse(os.path.exists(expected_http_path))
+        self.assertFalse(os.path.exists(expected_https_path))
+        # Now make sure our symlink isn't in place
+        expected_http_symlink_path = os.path.join(constants.ISO_HTTP_DIR, 'lebowski', 'symlink')
+        expected_https_symlink_path = os.path.join(constants.ISO_HTTPS_DIR, 'lebowski', 'symlink')
+        self.assertFalse(os.path.islink(expected_http_symlink_path))
+        self.assertFalse(os.path.islink(expected_https_symlink_path))
+
+        # delete_protected_repo should have been called since there's no CA cert provided
+        delete_protected_repo.assert_called_once_with(repo.id)
+
+    @patch('pulp_rpm.repo_auth.protected_repo_utils.ProtectedRepoUtils.delete_protected_repo')
+    def test__copy_to_hosted_location_serve_https_default(self, delete_protected_repo):
+        """
+        Assert that we do publish over HTTPS by default.
+        """
+        repo = MagicMock(spec=Repository)
+        repo.id = 'lebowski'
+        repo.working_dir = self.temp_dir
+        config = distributor_mocks.get_basic_config(**{constants.CONFIG_SERVE_HTTP: False})
+
+        # Let's put a dummy file and a dummy symlink in the build_dir, so we can make sure they get
+        # copied to the right places.
+        build_dir = publish._get_or_create_build_dir(repo)
+        with open(os.path.join(build_dir, 'the_dude.txt'), 'w') as the_dude:
+            the_dude.write("Let's go bowling.")
+        os.symlink('/symlink/path', os.path.join(build_dir, 'symlink'))
+
+        # This should copy our dummy file to the monkey patched folders from our setUp() method.
+        publish._copy_to_hosted_location(repo, config)
+
+        # Make sure that the_dude.txt got copied to the HTTPS places and not the HTTP places
+        expected_http_path = os.path.join(constants.ISO_HTTP_DIR, 'lebowski', 'the_dude.txt')
+        expected_https_path = os.path.join(constants.ISO_HTTPS_DIR, 'lebowski', 'the_dude.txt')
+        self.assertFalse(os.path.exists(expected_http_path))
+        self.assertTrue(os.path.exists(expected_https_path))
+        # Now make sure our symlink is also in place, and points to the correct location
+        expected_http_symlink_path = os.path.join(constants.ISO_HTTP_DIR, 'lebowski', 'symlink')
+        expected_https_symlink_path = os.path.join(constants.ISO_HTTPS_DIR, 'lebowski', 'symlink')
+        self.assertFalse(os.path.islink(expected_http_symlink_path))
+        self.assertTrue(os.path.islink(expected_https_symlink_path))
+        self.assertEqual(os.path.realpath(expected_https_symlink_path), '/symlink/path')
+
+        # delete_protected_repo should have been called since there's no CA cert provided
+        delete_protected_repo.assert_called_once_with(repo.id)
+
     def test__get_or_create_build_dir(self):
         """
         _get_or_create_build_dir() should create the directory the first time it is called, and

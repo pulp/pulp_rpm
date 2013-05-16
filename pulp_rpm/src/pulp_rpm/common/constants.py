@@ -39,8 +39,10 @@ CONFIG_UNITS_REMOVE_MISSING_DEFAULT = False
 CONFIG_VALIDATE_DEFAULT             = True
 
 # Distributor configuration key names
-CONFIG_SERVE_HTTP       = 'serve_http'
-CONFIG_SERVE_HTTPS      = 'serve_https'
+CONFIG_SERVE_HTTP          = 'serve_http'
+CONFIG_SERVE_HTTP_DEFAULT  = False
+CONFIG_SERVE_HTTPS         = 'serve_https'
+CONFIG_SERVE_HTTPS_DEFAULT = True
 # This is the CA that we should verify client entitlement certificates with. If it is set, and protected repos
 # are enabled serverwide, we will protect the repo with this cert over SSL. If it is unset, no repo protection
 # will be configured. This option is currently only used by the ISO distributor.

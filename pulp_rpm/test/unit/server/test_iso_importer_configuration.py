@@ -339,7 +339,7 @@ class TestValidateRemoveMissingUnits(PulpRPMTests):
                                                     importer_constants.KEY_FEED: 'http://feed.com'})
         status, error_message = configuration.validate(config)
         self.assertTrue(status is False)
-        expected_message = ('The configuration parameter <%(remove_missing)s> must be set to a '
+        expected_message = ('The configuration parameter <%(remove_missing)s> may only be set to a '
                             'boolean value, but is currently set to <trizue>.')
         expected_message = expected_message % {'remove_missing': importer_constants.KEY_UNITS_REMOVE_MISSING}
         self.assertEqual(error_message, expected_message)
@@ -411,7 +411,7 @@ class TestValidateValidateDownloads(PulpRPMTests):
                                                     importer_constants.KEY_FEED: 'http://feed.com'})
         status, error_message = configuration.validate(config)
         self.assertTrue(status is False)
-        expected_message = ('The configuration parameter <%(validate)s> must be set to a '
+        expected_message = ('The configuration parameter <%(validate)s> may only be set to a '
                             'boolean value, but is currently set to <1>.')
         expected_message = expected_message % {'validate': importer_constants.KEY_VALIDATE}
         self.assertEqual(error_message, expected_message)
