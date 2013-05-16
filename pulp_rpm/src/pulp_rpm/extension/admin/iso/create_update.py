@@ -60,7 +60,6 @@ class ISORepoCreateCommand(CreateRepositoryCommand, ImporterConfigMixin):
             self.prompt.render_failure_message(str(e))
             return os.EX_DATAERR
 
-        print importer_config
         distributors = [
             dict(distributor_type=ids.TYPE_ID_DISTRIBUTOR_YUM,
                  distributor_config=yum_distributor_config,
