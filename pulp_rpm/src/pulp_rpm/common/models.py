@@ -183,7 +183,7 @@ class RPM(VersionedPackage):
 
     @property
     def download_path(self):
-        return self.metadata['relative_url_path']
+        return self.metadata['relativepath']
 
 
 class SRPM(RPM):

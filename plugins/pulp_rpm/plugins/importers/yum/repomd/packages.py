@@ -15,7 +15,8 @@ import os
 from urlparse import urljoin
 from xml.etree.ElementTree import iterparse
 
-from nectar.downloaders.curl import HTTPCurlDownloader
+from nectar.config import DownloaderConfig
+from nectar.downloaders.revent import HTTPEventletRequestsDownloader
 from nectar.request import DownloadRequest
 
 
@@ -29,7 +30,7 @@ def package_list_generator(xml_handle, package_tag, processor):
 
     :param xml_handle: open file handle pointing to the beginning of a primary.xml file
     :type  xml_handle: file-like object
-    :return: generator of package information dictionaries
+    :return: generator of package information; the object type depends on the processor
     :rtype: generator
     """
     parser = iterparse(xml_handle, events=('start', 'end'))
@@ -69,7 +70,7 @@ class Packages(object):
         self.package_model_iterator = package_model_iterator
         self.dst_dir = dst_dir
 
-        self.downloader = HTTPCurlDownloader(nectar_config, event_listener)
+        self.downloader = HTTPEventletRequestsDownloader(nectar_config, event_listener)
 
     def download_packages(self):
         """
