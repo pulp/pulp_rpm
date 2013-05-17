@@ -35,13 +35,18 @@ class ISODistributorConfigMixin(object):
         d = _('if "true", the repository will be published over the HTTPS protocol')
         self.opt_https = PulpCliOption('--serve-https', d, required=False,
                                        parse_func=parsers.parse_boolean)
+        d = _('full path to the CA certificate that should be used to verify client authorization '
+              'certificates; setting this turns on client authorization for the repository')
+        self.opt_auth_ca = PulpCliOption('--auth-ca', d, required=False)
 
         self.publishing_group.add_option(self.opt_http)
         self.publishing_group.add_option(self.opt_https)
+        self.authorization_group.add_option(self.opt_auth_ca)
 
         self.add_option_group(self.publishing_group)
+        self.add_option_group(self.authorization_group)
 
-    def parse_distributor_config(self, user_input):
+    def _parse_distributor_config(self, user_input):
         """
         Generate an ISODistributor configuration based on the given parameters (user input).
 
@@ -51,11 +56,14 @@ class ISODistributorConfigMixin(object):
         key_tuples = (
             (constants.CONFIG_SERVE_HTTP, self.opt_http.keyword),
             (constants.CONFIG_SERVE_HTTPS, self.opt_https.keyword),
+            (constants.CONFIG_SSL_AUTH_CA_CERT, self.opt_auth_ca.keyword),
         )
 
         config = {}
         for config_key, input_key in key_tuples:
             safe_parse(user_input, config, input_key, config_key)
+
+        arg_utils.convert_file_contents((constants.CONFIG_SSL_AUTH_CA_CERT,), config)
 
         return config
 
@@ -95,7 +103,7 @@ class ISORepoCreateCommand(CreateRepositoryCommand, ImporterConfigMixin, ISODist
         # Build the importer and distributor configs
         try:
             importer_config = self.parse_user_input(kwargs)
-            distributor_config = self.parse_distributor_config(kwargs)
+            distributor_config = self._parse_distributor_config(kwargs)
         except arg_utils.InvalidConfig, e:
             self.prompt.render_failure_message(str(e))
             return os.EX_DATAERR
