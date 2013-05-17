@@ -301,14 +301,22 @@ class RepoSync(object):
         """
         # TODO: consider current units
         wanted = {}
+        number_old_versions_to_keep = self.call_config.get(importer_constants.KEY_UNITS_RETAIN_OLD_COUNT)
         for model in package_info_generator:
             versions = wanted.setdefault(model.key_string_without_version, {})
             serialized_version = model.complete_version_serialized
             size = model.metadata['size']
-            if self.call_config.get(importer_constants.KEY_UNITS_RETAIN_OLD_COUNT) == 0:
-                if not versions or serialized_version > max(versions.keys()):
-                    versions.clear()
+
+            # if we are limited on the number of old versions we can have,
+            if number_old_versions_to_keep is not None:
+                number_to_keep = number_old_versions_to_keep + 1
+                if len(versions) < number_to_keep:
                     versions[serialized_version] = (model.as_named_tuple, size)
+                else:
+                    smallest_version = sorted(versions.keys(), reverse=True)[:number_to_keep][-1]
+                    if serialized_version > smallest_version:
+                        del versions[smallest_version]
+                        versions[serialized_version] = (model.as_named_tuple, size)
             else:
                 versions[serialized_version] = (model.as_named_tuple, size)
         ret = {}

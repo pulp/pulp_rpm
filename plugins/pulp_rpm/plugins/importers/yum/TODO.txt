@@ -2,8 +2,6 @@ DRPM metadata migration to shuffle metadata from the repo scratchpad to the actu
 DRPM publish operation to generate prestodelta.xml
 Fix the database representation of DRPMs.
 
-Upload all types
-
 Validate importer config
 
 Integrate with eventlet downloader and its config options (when it's done)
