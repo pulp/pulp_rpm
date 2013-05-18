@@ -85,27 +85,35 @@ class ISORepoCreateCommand(CreateRepositoryCommand, ImporterConfigMixin, ISODist
 
         ISODistributorConfigMixin.__init__(self)
 
-    def run(self, **kwargs):
+    def populate_unit_policy(self):
+        """
+        Adds options to the unit policy group. This is only called if the include_unit_policy flag
+        is set to True in the constructor. We are overriding this from ImportConfigMixin because the
+        ISOImporter doesn't support the --retain-old-count option
+        """
+        self.unit_policy_group.add_option(self.options_bundle.opt_remove_missing)
+
+    def run(self, **user_input):
         """
         Run the repository creation.
         """
         # Turn missing options to None
-        arg_utils.convert_removed_options(kwargs)
+        arg_utils.convert_removed_options(user_input)
 
-        repo_id = kwargs.pop(std_options.OPTION_REPO_ID.keyword)
-        description = kwargs.pop(std_options.OPTION_DESCRIPTION.keyword, None)
-        display_name = kwargs.pop(std_options.OPTION_NAME.keyword, None)
-        notes = kwargs.pop(std_options.OPTION_NOTES.keyword, None) or {}
+        repo_id = user_input.pop(std_options.OPTION_REPO_ID.keyword)
+        description = user_input.pop(std_options.OPTION_DESCRIPTION.keyword, None)
+        display_name = user_input.pop(std_options.OPTION_NAME.keyword, None)
+        notes = user_input.pop(std_options.OPTION_NOTES.keyword, None) or {}
 
         # Mark this as an ISO repository
         notes[pulp_constants.REPO_NOTE_TYPE_KEY] = constants.REPO_NOTE_ISO
 
         # Build the importer and distributor configs
         try:
-            importer_config = self.parse_user_input(kwargs)
-            distributor_config = self._parse_distributor_config(kwargs)
+            importer_config = self.parse_user_input(user_input)
+            distributor_config = self._parse_distributor_config(user_input)
         except arg_utils.InvalidConfig, e:
-            self.prompt.render_failure_message(str(e))
+            self.prompt.render_failure_message(str(e), tag='create-failed')
             return os.EX_DATAERR
 
         distributors = [
@@ -115,4 +123,4 @@ class ISORepoCreateCommand(CreateRepositoryCommand, ImporterConfigMixin, ISODist
                                                       ids.TYPE_ID_IMPORTER_ISO, importer_config, distributors)
 
         msg = _('Successfully created repository [%(r)s]') % {'r': repo_id}
-        self.prompt.render_success_message(msg)
+        self.prompt.render_success_message(msg, tag='repo-created')
