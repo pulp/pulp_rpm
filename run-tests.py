@@ -32,6 +32,7 @@ PACKAGES = [
 ]
 
 TESTS = 'pulp_rpm/test/unit'
+NEW_YUM_IMPORTER_TESTS='plugins/test/unit'
 
 args = [
     'nosetests',
@@ -40,7 +41,8 @@ args = [
     '--cover-erase',
     '--cover-package',
     ','.join(PACKAGES),
-    TESTS
+    TESTS,
+    NEW_YUM_IMPORTER_TESTS,
 ]
 
 # don't run the server tests in RHEL5.

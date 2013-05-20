@@ -13,12 +13,11 @@
 
 from gettext import gettext as _
 import logging
-import shutil
 
 from pulp.plugins.importer import Importer
 
-from pulp_rpm.common import ids, models
-from pulp_rpm.plugins.importers.yum import sync, associate, upload
+from pulp_rpm.common import ids
+from pulp_rpm.plugins.importers.yum import sync, associate, upload, config_validate
 
 
 _LOGGER = logging.getLogger(__name__)
@@ -47,7 +46,7 @@ class YumImporter(Importer):
         }
 
     def validate_config(self, repo, config, related_repos):
-        return True, None
+        return config_validate.validate(config)
 
     def import_units(self, source_repo, dest_repo, import_conduit, config, units=None):
         return associate.associate(source_repo, dest_repo, import_conduit, config, units)
