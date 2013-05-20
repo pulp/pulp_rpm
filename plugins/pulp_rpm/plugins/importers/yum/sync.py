@@ -301,6 +301,10 @@ class RepoSync(object):
         return report
 
     def cancel(self):
+        """
+        Cancels the current sync. Looks for a "downloader" object and calls its
+        "cancel" method, and then triggers a progress report.
+        """
         self.cancelled = True
         for step, value in self.progress_status.iteritems():
             if value.get('state') == constants.STATE_RUNNING:
@@ -312,6 +316,8 @@ class RepoSync(object):
             _LOGGER.debug('could not cancel downloader')
         try:
             self.set_progress()
+        # this exception is only raised for the benefit of the run() method so
+        # that it can discontinue execution of its workflow.
         except CancelException:
             pass
 
