@@ -18,7 +18,7 @@
 
 Name: pulp-rpm
 Version: 2.2.0
-Release: 0.5.alpha%{?dist}
+Release: 0.10.alpha%{?dist}
 Summary: Support for RPM content in the Pulp platform
 Group: Development/Languages
 License: GPLv2
@@ -159,7 +159,7 @@ Requires: createrepo >= 0.9.8-3
 Requires: python-rhsm >= 1.8.0
 Requires: grinder >= 0.1.16
 Requires: pyliblzma
-Requires: python-nectar >= 0.90.0-1
+Requires: python-nectar >= 0.90.0
 %description plugins
 Provides a collection of platform plugins that extend the Pulp platform
 to provide RPM specific support.
@@ -275,6 +275,15 @@ A collection of yum plugins supplementing Pulp consumer operations.
 
 
 %changelog
+* Mon May 20 2013 Jeff Ortel <jortel@redhat.com> 2.2.0-0.10.alpha
+- 
+
+* Mon May 20 2013 Jeff Ortel <jortel@redhat.com> 2.2.0-0.9.alpha
+- 
+
+* Fri May 17 2013 Jeff Ortel <jortel@redhat.com> 2.2.0-0.8.alpha
+- 
+
 * Mon May 13 2013 Jeff Ortel <jortel@redhat.com> 2.2.0-0.5.alpha
 -
 
