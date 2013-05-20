@@ -55,6 +55,19 @@ class YumImporter(Importer):
         return upload.upload(repo, type_id, unit_key, metadata, file_path, conduit, config)
 
     def sync_repo(self, repo, sync_conduit, call_config):
+        """
+        :param repo: metadata describing the repository
+        :type  repo: pulp.plugins.model.Repository
+
+        :param sync_conduit: provides access to relevant Pulp functionality
+        :type  sync_conduit: pulp.plugins.conduits.repo_sync.RepoSyncConduit
+
+        :param config: plugin configuration
+        :type  config: pulp.plugins.config.PluginCallConfiguration
+
+        :return: report of the details of the sync
+        :rtype:  pulp.plugins.model.SyncReport
+        """
         self._current_sync = sync.RepoSync(repo, sync_conduit, call_config)
         return self._current_sync.run()
 

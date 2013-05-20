@@ -38,6 +38,16 @@ class CancelException(Exception):
 class RepoSync(object):
 
     def __init__(self, repo, sync_conduit, call_config):
+        """
+        :param repo: metadata describing the repository
+        :type  repo: pulp.plugins.model.Repository
+
+        :param sync_conduit: provides access to relevant Pulp functionality
+        :type  sync_conduit: pulp.plugins.conduits.repo_sync.RepoSyncConduit
+
+        :param config: plugin configuration
+        :type  config: pulp.plugins.config.PluginCallConfiguration
+        """
         self.cancelled = False
         self.working_dir = repo.working_dir
         self.content_report = ContentReport()
@@ -59,15 +69,30 @@ class RepoSync(object):
         self.nectar_config = nectar_utils.importer_config_to_nectar_config(flat_call_config)
 
     def set_progress(self):
+        """
+        A convenience method to perform this very repetitive task. This is also
+        a convenient time to check if we've been cancelled, and if so, raise
+        the proper exception.
+        """
         self.sync_conduit.set_progress(self.progress_status)
         if self.cancelled is True:
             raise CancelException
 
     @property
     def sync_feed(self):
+        """
+        :return:    the URL of the feed we should sync
+        :rtype:     str
+        """
         return self.call_config.get(importer_constants.KEY_FEED)
 
     def run(self):
+        """
+        Steps through the entire workflow of a repo sync.
+
+        :return:    A SyncReport detailing how the sync went
+        :rtype:     pulp.plugins.model.SyncReport
+        """
         # using this tmp dir ensures that cleanup leaves nothing behind, since
         # we delete below
         self.tmp_dir = tempfile.mkdtemp(dir=self.working_dir)
@@ -111,15 +136,16 @@ class RepoSync(object):
             return report
 
         finally:
+            # clean up whatever we may have left behind
             shutil.rmtree(self.tmp_dir, ignore_errors=True)
 
         return SyncReport(True, self.content_report['items_total'], 0, 0, {}, self.progress_status)
 
     def get_metadata(self):
         """
-
-        :return:
-        :rtype:  pulp_rpm.plugins.importers.download.metadata.MetadataFiles
+        :return:    instance of MetadataFiles where each relevant file has been
+                    identified and downloaded.
+        :rtype:     pulp_rpm.plugins.importers.yum.repomd.metadata.MetadataFiles
         """
         metadata_files = metadata.MetadataFiles(self.sync_feed, self.tmp_dir)
         # allow the downloader to be accessed by the cancel method if necessary
@@ -133,10 +159,27 @@ class RepoSync(object):
         return metadata_files
 
     def get_content(self, metadata_files):
+        """
+        Decides what to download and then downloads it
+
+        :param metadata_files:  instance of MetadataFiles
+        :type  metadata_files:  pulp_rpm.plugins.importers.yum.repomd.metadata.MetadataFiles
+        """
         rpms_to_download, drpms_to_download = self._decide_what_to_download(metadata_files)
         self.download(metadata_files, rpms_to_download, drpms_to_download)
 
     def _decide_what_to_download(self, metadata_files):
+        """
+        Given the metadata files, decides which RPMs and DRPMs should be
+        downloaded. Also sets initial values on the progress report for total
+        number of things to download and the total size in bytes.
+
+        :param metadata_files:  instance of MetadataFiles
+        :type  metadata_files:  pulp_rpm.plugins.importers.yum.repomd.metadata.MetadataFiles
+
+        :return:    tuple of (set(RPM.NAMEDTUPLEs), set(DRPM.NAMEDTUPLEs))
+        :rtype:     tuple
+        """
         rpms_to_download, rpms_count, rpms_total_size = self._decide_rpms_to_download(metadata_files)
         drpms_to_download, drpms_count, drpms_total_size = self._decide_drpms_to_download(metadata_files)
 
@@ -150,6 +193,16 @@ class RepoSync(object):
         return rpms_to_download, drpms_to_download
 
     def _decide_rpms_to_download(self, metadata_files):
+        """
+        Decide which RPMs should be downloaded based on the repo metadata and on
+        the importer config.
+
+        :param metadata_files:  instance of MetadataFiles
+        :type  metadata_files:  pulp_rpm.plugins.importers.yum.repomd.metadata.MetadataFiles
+
+        :return:    tuple of (set(RPM.NAMEDTUPLEs), number of RPMs, total size in bytes)
+        :rtype:     tuple
+        """
         primary_file_handle = metadata_files.get_metadata_file_handle('primary')
         with primary_file_handle:
             # scan through all the metadata to decide which packages to download
@@ -165,6 +218,16 @@ class RepoSync(object):
             return to_download, count, size
 
     def _decide_drpms_to_download(self, metadata_files):
+        """
+        Decide which DRPMs should be downloaded based on the repo metadata and on
+        the importer config.
+
+        :param metadata_files:  instance of MetadataFiles
+        :type  metadata_files:  pulp_rpm.plugins.importers.yum.repomd.metadata.MetadataFiles
+
+        :return:    tuple of (set(DRPM.NAMEDTUPLEs), number of DRPMs, total size in bytes)
+        :rtype:     tuple
+        """
         presto_file_handle = metadata_files.get_metadata_file_handle('prestodelta')
         if presto_file_handle:
             with presto_file_handle:
@@ -184,10 +247,24 @@ class RepoSync(object):
         return to_download, count, size
 
     def download(self, metadata_files, rpms_to_download, drpms_to_download):
+        """
+        Actually download the requested RPMs and DRPMs. This method iterates over
+        the appropriate metadata file and downloads those items which are present
+        in the corresponding set.
+
+        :param metadata_files:      populated instance of MetadataFiles
+        :type  metadata_files:      pulp_rpm.plugins.importers.yum.repomd.metadata.MetadataFiles
+        :param rpms_to_download:    set of RPM.NAMEDTUPLEs
+        :type  rpms_to_download:    set
+        :param drpms_to_download:   set of DRPM.NAMEDTUPLEs
+        :type  drpms_to_download:   set
+
+        :rtype: pulp.plugins.model.SyncReport
+        """
         # TODO: probably should make this more generic
         event_listener = ContentListener(self.sync_conduit, self.progress_status, self.call_config)
         primary_file_handle = metadata_files.get_metadata_file_handle('primary')
-        with primary_file_handle:
+        try:
             package_model_generator = packages.package_list_generator(primary_file_handle,
                                                                      primary.PACKAGE_TAG,
                                                                      primary.process_package_element)
@@ -199,10 +276,13 @@ class RepoSync(object):
             self.downloader = download_wrapper.downloader
             download_wrapper.download_packages()
             self.downloader = None
+        finally:
+            primary_file_handle.close()
 
+        # download DRPMs
         presto_file_handle = metadata_files.get_metadata_file_handle('prestodelta')
         if presto_file_handle:
-            with presto_file_handle:
+            try:
                 package_model_generator = packages.package_list_generator(presto_file_handle,
                                                                          presto.PACKAGE_TAG,
                                                                          presto.process_package_element)
@@ -214,11 +294,17 @@ class RepoSync(object):
                 self.downloader = download_wrapper.downloader
                 download_wrapper.download_packages()
                 self.downloader = None
+            finally:
+                presto_file_handle.close()
 
         report = self.sync_conduit.build_success_report({}, {})
         return report
 
     def cancel(self):
+        """
+        Cancels the current sync. Looks for a "downloader" object and calls its
+        "cancel" method, and then triggers a progress report.
+        """
         self.cancelled = True
         for step, value in self.progress_status.iteritems():
             if value.get('state') == constants.STATE_RUNNING:
@@ -230,77 +316,132 @@ class RepoSync(object):
             _LOGGER.debug('could not cancel downloader')
         try:
             self.set_progress()
+        # this exception is only raised for the benefit of the run() method so
+        # that it can discontinue execution of its workflow.
         except CancelException:
             pass
 
     def get_errata(self, metadata_files):
+        """
+        Given repo metadata files, decides which errata to get and gets them
+        based on importer config settings.
+
+        :param metadata_files:  instance of MetadataFiles
+        :type  metadata_files:  pulp_rpm.plugins.importers.yum.repomd.metadata.MetadataFiles
+        """
         errata_file_handle = metadata_files.get_metadata_file_handle('updateinfo')
         if not errata_file_handle:
             _LOGGER.debug('updateinfo not found')
             return
-        package_keys = []
-        for model in self.get_general(errata_file_handle, updateinfo.PACKAGE_TAG, updateinfo.process_package_element):
-            package_keys.extend(model.package_unit_keys)
+        try:
+            package_keys = []
+            for model in self.get_general(errata_file_handle, updateinfo.PACKAGE_TAG, updateinfo.process_package_element):
+                package_keys.extend(model.package_unit_keys)
 
-        # TODO: get packages from package_keys
+            # TODO: get packages from package_keys
+        finally:
+            errata_file_handle.close()
 
     def get_groups(self, metadata_files):
+        """
+        Given repo metadata files, decides which groups to get and gets them
+        based on importer config settings.
+
+        :param metadata_files:  instance of MetadataFiles
+        :type  metadata_files:  pulp_rpm.plugins.importers.yum.repomd.metadata.MetadataFiles
+        """
         group_file_handle = metadata_files.get_group_file_handle()
         if group_file_handle is None:
-        # TODO: log something?
+            _LOGGER.debug('comps metadata not found')
             return
-        process_func = functools.partial(group.process_group_element, self.repo.id)
 
-        names = set()
-        for model in self.get_general(group_file_handle, group.GROUP_TAG, process_func):
-            names.update(model.all_package_names)
-        # TODO: get named RPMS
+        try:
+            process_func = functools.partial(group.process_group_element, self.repo.id)
+
+            names = set()
+            for model in self.get_general(group_file_handle, group.GROUP_TAG, process_func):
+                names.update(model.all_package_names)
+            # TODO: get named RPMS
+        finally:
+            group_file_handle.close()
 
     def get_categories(self, metadata_files):
+        """
+        Given repo metadata files, decides which categories to get and gets them
+        based on importer config settings.
+
+        :param metadata_files:  instance of MetadataFiles
+        :type  metadata_files:  pulp_rpm.plugins.importers.yum.repomd.metadata.MetadataFiles
+        """
         group_file_handle = metadata_files.get_group_file_handle()
         if group_file_handle is None:
-        # TODO: log something?
+            _LOGGER.debug('comps metadata not found')
             return
 
-        group_names = set()
-        process_func = functools.partial(group.process_category_element, self.repo.id)
-        for model in self.get_general(group_file_handle, group.CATEGORY_TAG, process_func):
-            group_names.update(model.group_names)
-        # TODO: get groups
+        try:
+            group_names = set()
+            process_func = functools.partial(group.process_category_element, self.repo.id)
+            for model in self.get_general(group_file_handle, group.CATEGORY_TAG, process_func):
+                group_names.update(model.group_names)
+            # TODO: get groups
+        finally:
+            group_file_handle.close()
 
     def get_general(self, file_handle, tag, process_func):
-        with file_handle:
-            # iterate through file and determine what we want to have
-            package_info_generator = packages.package_list_generator(file_handle,
-                                                                     tag,
-                                                                     process_func)
-            wanted = (model.as_named_tuple for model in package_info_generator)
-            to_download = existing.check_repo(wanted, self.sync_conduit.get_units)
+        """
+        Generic method for retrieving units parsed from a repo metadata file.
 
-            # rewind, iterate again through the file, and download what we need
-            file_handle.seek(0)
-            package_info_generator = packages.package_list_generator(file_handle,
-                                                                     tag,
-                                                                     process_func)
-            for model in package_info_generator:
-                if model.as_named_tuple in to_download:
-                    unit = self.sync_conduit.init_unit(model.TYPE, model.unit_key, model.metadata, None)
-                    self.sync_conduit.save_unit(unit)
-                    yield model
+        :param file_handle:     open file-like object containing metadata
+        :type  file_handle:     file
+        :param tag:             XML tag that identifies each unit
+        :type  tag:             basestring
+        :param process_func:    function that processes each unit and returns
+                                a dict representing that unit's attribute names
+                                and values. The function must take one parameter,
+                                which is an ElementTree instance
+        :type process_func:     function
+
+        :return:    generator of pulp_rpm.common.models.Package instances that
+                    were saved
+        :rtype:     generator
+        """
+        # iterate through the file and determine what we want to have
+        package_info_generator = packages.package_list_generator(file_handle,
+                                                                 tag,
+                                                                 process_func)
+        wanted = (model.as_named_tuple for model in package_info_generator)
+        # given what we want, filter out what we already have
+        to_download = existing.check_repo(wanted, self.sync_conduit.get_units)
+
+        # rewind, iterate again through the file, and download what we need
+        file_handle.seek(0)
+        package_info_generator = packages.package_list_generator(file_handle,
+                                                                 tag,
+                                                                 process_func)
+        for model in package_info_generator:
+            if model.as_named_tuple in to_download:
+                unit = self.sync_conduit.init_unit(model.TYPE, model.unit_key, model.metadata, None)
+                self.sync_conduit.save_unit(unit)
+                yield model
 
     def _identify_wanted_versions(self, package_info_generator):
         """
-        Given an iterator of Package instances available for download, and a list
-        of units currently in the repo, scan through the Packages to decide which
-        should be downloaded. If package_info_generator is in fact a generator,
-        this will not consume much memory.
+        Given an iterator of Package instances available for download, scan
+        through the Packages to decide which should be downloaded. If
+        package_info_generator is in fact a generator, this will not consume
+        much memory.
 
-        :param package_info_generator:
-        :return:
+        :param package_info_generator:  iterator of pulp_rpm.common.models.Package
+                                        instances
+        :return:    dict where keys are Packages as named tuples, and values
+                    are the size of each package
         :rtype:     dict
         """
-        # TODO: consider current units
+        # keys are a model's key string minus any version info
+        # values are dicts where keys are serialized versions, and values are
+        # a tuple of (model as named tuple, size in bytes)
         wanted = {}
+
         number_old_versions_to_keep = self.call_config.get(importer_constants.KEY_UNITS_RETAIN_OLD_COUNT)
         for model in package_info_generator:
             versions = wanted.setdefault(model.key_string_without_version, {})
@@ -327,8 +468,23 @@ class RepoSync(object):
         return ret
 
     def _filtered_unit_generator(self, units, to_download=None):
+        """
+        Given an iterator of Package instances and a collection (preferably a
+        set for performance reasons) of Packages as named tuples, this returns
+        a generator of those Package instances with corresponding entries in the
+        "to_download" collection.
+
+        :param units:       iterator of pulp_rpm.common.models.Package instances
+        :type  units:       iterator
+        :param to_download: collection (preferably a set) of Packages as named
+                            tuples that we want to download
+        :type  to_download: set
+
+        :return:    generator of pulp_rpm.common.models.Package instances that
+                    should be downloaded
+        :rtype:     generator
+        """
         for unit in units:
-            # TODO: decide if this unit should be downloaded
             if to_download is None:
                 # assume we want to download everything
                 yield unit
