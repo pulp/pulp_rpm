@@ -47,9 +47,6 @@ class RepoSync(object):
 
         :param config: plugin configuration
         :type  config: pulp.plugins.config.PluginCallConfiguration
-
-        :return: report of the details of the sync
-        :rtype:  pulp.plugins.model.SyncReport
         """
         self.cancelled = False
         self.working_dir = repo.working_dir
