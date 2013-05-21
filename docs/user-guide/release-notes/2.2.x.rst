@@ -17,7 +17,8 @@ CLI Changes
 
 * The ``pulp-admin rpm repo uploads rpm`` command now supports a flag (``--skip-existing``) to skip
   re-uploading packages that are already in the destination repository.
-* There is a new ISO section in the pulp-admin client. It currently allows syncing and creating repositories.
+* There is a new ISO section in the pulp-admin client. It currently allows syncing, creating, and updating
+  repositories.
 
 API Changes
 -----------
