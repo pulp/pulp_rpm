@@ -16,6 +16,7 @@ from pulp_rpm.common import models
 
 _LOGGER = logging.getLogger(__name__)
 
+METADATA_FILE_NAME = 'updateinfo'
 PACKAGE_TAG = 'update'
 
 
@@ -68,15 +69,19 @@ def _parse_collection(element):
 def _parse_package(element):
     # looking at yum.update_md.UpdateNotice to see what attributes we can expect
     sum_element = element.find('sum')
+    if sum_element is not None:
+        sum_tuple = (sum_element.attrib['type'], sum_element.text)
+    else:
+        sum_tuple = None
     ret = {
         'arch': element.attrib['arch'],
         'name': element.attrib['name'],
-        'epoch': element.attrib['epoch'],
+        'epoch': element.attrib.get('epoch', None),
         'version': element.attrib['version'],
         'release': element.attrib['release'],
         'src': element.attrib['src'],
         'filename': element.find('filename').text,
-        'sum': (sum_element.attrib['type'], sum_element.text),
+        'sum': sum_tuple,
     }
 
     reboot_suggested = element.find('reboot_suggested')

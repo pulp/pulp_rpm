@@ -41,7 +41,8 @@ def check_repo(wanted, unit_search_method):
 
         unit_keys_generator = (unit._asdict() for unit in values.copy())
         for unit in get_existing_units(unit_keys_generator, fields, unit_type, unit_search_method):
-            values.discard(unit)
+            named_tuple = model(metadata=unit.metadata, **unit.unit_key).as_named_tuple
+            values.discard(named_tuple)
 
     ret = set()
     ret.update(*sorted_units.values())

@@ -19,6 +19,7 @@ _LOGGER = logging.getLogger(__name__)
 
 GROUP_TAG = 'group'
 CATEGORY_TAG = 'category'
+METADATA_FILE_NAME = 'comps'
 
 
 def process_group_element(repo_id, element):

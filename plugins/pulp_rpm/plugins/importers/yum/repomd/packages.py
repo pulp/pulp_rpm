@@ -14,7 +14,7 @@
 import logging
 import os
 from urlparse import urljoin
-from xml.etree.ElementTree import iterparse, ParseError
+from xml.etree.cElementTree import iterparse
 
 from nectar.downloaders.revent import HTTPEventletRequestsDownloader
 from nectar.request import DownloadRequest
@@ -42,7 +42,8 @@ def package_list_generator(xml_handle, package_tag, processor):
     # this prevents the entire parsed document from building up in memory
     try:
         root_element = xml_iterator.next()[1]
-    except ParseError:
+    # I know. This is a terrible misuse of SyntaxError. Don't blame the messenger.
+    except SyntaxError:
         _LOGGER.error('failed to parse XML metadata file')
         return
 

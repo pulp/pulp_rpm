@@ -21,8 +21,8 @@ from urlparse import urljoin
 from xml.etree.cElementTree import iterparse
 
 
-from nectar.downloaders.curl import HTTPSCurlDownloader
-from nectar.config import DownloaderConfig
+from nectar.downloaders.revent import HTTPEventletRequestsDownloader
+from nectar.listener import AggregatingEventListener
 from nectar.request import DownloadRequest
 
 
@@ -93,13 +93,13 @@ class MetadataFiles(object):
     :ivar metadata: dictionary of the main metadata type keys to the corresponding file paths
     """
 
-    def __init__(self, repo_url, dst_dir, event_listener=None):
+    def __init__(self, repo_url, dst_dir, nectar_config):
         super(MetadataFiles, self).__init__()
         self.repo_url = repo_url
         self.dst_dir = dst_dir
+        self.event_listener = AggregatingEventListener()
 
-        downloader_config = DownloaderConfig()
-        self.downloader = HTTPSCurlDownloader(downloader_config, event_listener)
+        self.downloader = HTTPEventletRequestsDownloader(nectar_config, self.event_listener)
 
         self.revision = None
         self.metadata = {}
@@ -112,6 +112,9 @@ class MetadataFiles(object):
         repomd_url = urljoin(self.repo_url, REPOMD_URL_RELATIVE_PATH)
         repomd_request = DownloadRequest(repomd_url, repomd_dst_path)
         self.downloader.download([repomd_request])
+        if self.event_listener.failed_reports:
+            message = str(self.event_listener.failed_reports[0].error_report)
+            raise IOError(message)
 
     # TODO (jconnonr 2013-03-07) add a method to validate/verify the repomd.xml file
 
@@ -129,7 +132,10 @@ class MetadataFiles(object):
 
         # get a hold of the root element so that we can clear it
         # this prevents the entire parsed document from building up in memory
-        root_element = xml_iterator.next()[1]
+        try:
+            root_element = xml_iterator.next()[1]
+        except SyntaxError:
+            raise ValueError('could not parse repo metadata')
 
         for event, element in xml_iterator:
             if event != 'end':

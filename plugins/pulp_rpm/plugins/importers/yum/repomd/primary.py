@@ -16,6 +16,8 @@ from copy import deepcopy
 # primary.xml element tags -----------------------------------------------------
 from pulp_rpm.common import models
 
+METADATA_FILE_NAME = 'primary'
+
 COMMON_SPEC_URL = 'http://linux.duke.edu/metadata/common'
 RPM_SPEC_URL = 'http://linux.duke.edu/metadata/rpm'
 

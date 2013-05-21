@@ -13,6 +13,8 @@
 
 from pulp_rpm.common import models
 
+METADATA_FILE_NAME = 'prestodelta'
+
 PACKAGE_TAG = 'newpackage'
 
 def process_package_element(element):

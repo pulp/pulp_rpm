@@ -12,3 +12,9 @@ https://github.com/pulp/pulp_rpm/pull/181
 handle failure scenarios
 
 improve reporting
+
+consider looking at Provides and Requires fields. they seem to be stored in 2.2
+as dicts but in 2.1 as nested lists.
+
+sync progress report shouldn't show 0/0 and 100% for so long while it reads the
+metadata

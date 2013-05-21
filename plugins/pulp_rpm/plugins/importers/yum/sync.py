@@ -21,7 +21,7 @@ from pulp.plugins.model import SyncReport
 from pulp.plugins.util import downloader_config as nectar_utils
 
 from pulp_rpm.common import constants
-from pulp_rpm.plugins.importers.yum import existing
+from pulp_rpm.plugins.importers.yum import existing, purge
 from pulp_rpm.plugins.importers.yum.repomd import metadata, primary, packages, updateinfo, presto, group
 from pulp_rpm.plugins.importers.yum.listener import ContentListener
 from pulp_rpm.plugins.importers.yum.parse import treeinfo
@@ -32,6 +32,10 @@ _LOGGER = logging.getLogger(__name__)
 
 
 class CancelException(Exception):
+    pass
+
+
+class FailedException(Exception):
     pass
 
 
@@ -135,6 +139,15 @@ class RepoSync(object):
             report.canceled_flag = True
             return report
 
+        except FailedException, e:
+            for step, value in self.progress_status.iteritems():
+                if value.get('state') == constants.STATE_RUNNING:
+                    value['state'] = constants.STATE_FAILED
+            self.set_progress()
+            # TODO: add text from exception to a report
+            report = SyncReport(False, self.content_report['items_total'], 0, 0, self.progress_status, self.progress_status)
+            return report
+
         finally:
             # clean up whatever we may have left behind
             shutil.rmtree(self.tmp_dir, ignore_errors=True)
@@ -147,11 +160,19 @@ class RepoSync(object):
                     identified and downloaded.
         :rtype:     pulp_rpm.plugins.importers.yum.repomd.metadata.MetadataFiles
         """
-        metadata_files = metadata.MetadataFiles(self.sync_feed, self.tmp_dir)
+        metadata_files = metadata.MetadataFiles(self.sync_feed, self.tmp_dir, self.nectar_config)
         # allow the downloader to be accessed by the cancel method if necessary
         self.downloader = metadata_files.downloader
-        metadata_files.download_repomd()
-        metadata_files.parse_repomd()
+        try:
+            metadata_files.download_repomd()
+        except IOError, e:
+            raise FailedException(str(e))
+
+        try:
+            metadata_files.parse_repomd()
+        except ValueError, e:
+            raise FailedException(str(e))
+
         metadata_files.download_metadata_files()
         self.downloader = None
         # TODO: verify metadata
@@ -167,6 +188,12 @@ class RepoSync(object):
         """
         rpms_to_download, drpms_to_download = self._decide_what_to_download(metadata_files)
         self.download(metadata_files, rpms_to_download, drpms_to_download)
+        if self.call_config.get_boolean(importer_constants.KEY_UNITS_REMOVE_MISSING) is True:
+            purge.remove_missing_rpms(metadata_files, self.sync_conduit)
+            purge.remove_missing_drpms(metadata_files, self.sync_conduit)
+            purge.remove_missing_errata(metadata_files, self.sync_conduit)
+            purge.remove_missing_groups(metadata_files, self.sync_conduit)
+            purge.remove_missing_categories(metadata_files, self.sync_conduit)
 
     def _decide_what_to_download(self, metadata_files):
         """
@@ -203,8 +230,8 @@ class RepoSync(object):
         :return:    tuple of (set(RPM.NAMEDTUPLEs), number of RPMs, total size in bytes)
         :rtype:     tuple
         """
-        primary_file_handle = metadata_files.get_metadata_file_handle('primary')
-        with primary_file_handle:
+        primary_file_handle = metadata_files.get_metadata_file_handle(primary.METADATA_FILE_NAME)
+        try:
             # scan through all the metadata to decide which packages to download
             package_info_generator = packages.package_list_generator(primary_file_handle,
                                                                      primary.PACKAGE_TAG,
@@ -216,6 +243,8 @@ class RepoSync(object):
             for unit in to_download:
                 size += wanted[unit]
             return to_download, count, size
+        finally:
+            primary_file_handle.close()
 
     def _decide_drpms_to_download(self, metadata_files):
         """
@@ -228,9 +257,9 @@ class RepoSync(object):
         :return:    tuple of (set(DRPM.NAMEDTUPLEs), number of DRPMs, total size in bytes)
         :rtype:     tuple
         """
-        presto_file_handle = metadata_files.get_metadata_file_handle('prestodelta')
+        presto_file_handle = metadata_files.get_metadata_file_handle(presto.METADATA_FILE_NAME)
         if presto_file_handle:
-            with presto_file_handle:
+            try:
                 package_info_generator = packages.package_list_generator(presto_file_handle,
                                                                          presto.PACKAGE_TAG,
                                                                          presto.process_package_element)
@@ -240,6 +269,8 @@ class RepoSync(object):
                 size = 0
                 for unit in to_download:
                     size += wanted[unit]
+            finally:
+                presto_file_handle.close()
         else:
             to_download = set()
             count = 0
@@ -263,7 +294,7 @@ class RepoSync(object):
         """
         # TODO: probably should make this more generic
         event_listener = ContentListener(self.sync_conduit, self.progress_status, self.call_config)
-        primary_file_handle = metadata_files.get_metadata_file_handle('primary')
+        primary_file_handle = metadata_files.get_metadata_file_handle(primary.METADATA_FILE_NAME)
         try:
             package_model_generator = packages.package_list_generator(primary_file_handle,
                                                                      primary.PACKAGE_TAG,
@@ -280,7 +311,7 @@ class RepoSync(object):
             primary_file_handle.close()
 
         # download DRPMs
-        presto_file_handle = metadata_files.get_metadata_file_handle('prestodelta')
+        presto_file_handle = metadata_files.get_metadata_file_handle(presto.METADATA_FILE_NAME)
         if presto_file_handle:
             try:
                 package_model_generator = packages.package_list_generator(presto_file_handle,
@@ -334,11 +365,10 @@ class RepoSync(object):
             _LOGGER.debug('updateinfo not found')
             return
         try:
-            package_keys = []
             for model in self.get_general(errata_file_handle, updateinfo.PACKAGE_TAG, updateinfo.process_package_element):
-                package_keys.extend(model.package_unit_keys)
+                # we don't need to do anything with these at the moment
+                pass
 
-            # TODO: get packages from package_keys
         finally:
             errata_file_handle.close()
 
@@ -358,10 +388,9 @@ class RepoSync(object):
         try:
             process_func = functools.partial(group.process_group_element, self.repo.id)
 
-            names = set()
             for model in self.get_general(group_file_handle, group.GROUP_TAG, process_func):
-                names.update(model.all_package_names)
-            # TODO: get named RPMS
+                # we don't need to do anything with these at the moment
+                pass
         finally:
             group_file_handle.close()
 
@@ -379,11 +408,10 @@ class RepoSync(object):
             return
 
         try:
-            group_names = set()
             process_func = functools.partial(group.process_category_element, self.repo.id)
             for model in self.get_general(group_file_handle, group.CATEGORY_TAG, process_func):
-                group_names.update(model.group_names)
-            # TODO: get groups
+                # we don't need to do anything with these at the moment
+                pass
         finally:
             group_file_handle.close()
 
