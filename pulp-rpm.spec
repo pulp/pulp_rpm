@@ -47,13 +47,26 @@ handlers that provide RPM support.
 %setup -q
 
 %build
+
+# Yum Distributor, ISO Plugins, Export Distributor
 pushd pulp_rpm/src
+%{__python} setup.py build
+popd
+
+# Yum Importer
+pushd plugins
 %{__python} setup.py build
 popd
 
 %install
 rm -rf %{buildroot}
+
+# Yum Distributor, ISO Plugins, Export Distributor
 pushd pulp_rpm/src
+%{__python} setup.py install -O1 --skip-build --root %{buildroot}
+popd
+
+pushd plugins
 %{__python} setup.py install -O1 --skip-build --root %{buildroot}
 popd
 
@@ -93,10 +106,10 @@ cp pulp_rpm/handlers/* %{buildroot}/%{_usr}/lib/pulp/agent/handlers
 # Plugins
 cp -R pulp_rpm/plugins/* %{buildroot}/%{_usr}/lib/pulp/plugins
 
-# Yum (plugins)
+# Yum Plugins
 cp -R pulp_rpm/usr/lib/yum-plugins %{buildroot}/%{_usr}/lib
 
-# Ghost
+# Ghost repository file for consumers
 touch %{buildroot}/%{_sysconfdir}/yum.repos.d/pulp.repo
 
 %clean
@@ -175,7 +188,6 @@ to provide RPM specific support.
 %config(noreplace) %{_sysconfdir}/httpd/conf.d/pulp_rpm.conf
 %{_usr}/lib/pulp/plugins/types/rpm_support.json
 %{_usr}/lib/pulp/plugins/types/iso_support.json
-%{_usr}/lib/pulp/plugins/importers/yum_importer/
 %{_usr}/lib/pulp/plugins/distributors/yum_distributor/
 %{_usr}/lib/pulp/plugins/distributors/iso_distributor/
 %{_usr}/lib/pulp/plugins/profilers/rpm_errata_profiler/
