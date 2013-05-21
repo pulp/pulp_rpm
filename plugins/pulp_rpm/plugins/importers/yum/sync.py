@@ -18,7 +18,7 @@ import tempfile
 
 from pulp.common.plugins import importer_constants
 from pulp.plugins.model import SyncReport
-from pulp.plugins.util import downloader_config as nectar_utils
+from pulp.plugins.util import nectar_config as nectar_utils
 
 from pulp_rpm.common import constants
 from pulp_rpm.plugins.importers.yum import existing, purge

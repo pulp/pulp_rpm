@@ -13,13 +13,21 @@
 
 from gettext import gettext as _
 import logging
-import shutil
+import os
 
 from pulp.plugins.importer import Importer
+from pulp.common.compat import json
 
-from pulp_rpm.common import ids, models
-from pulp_rpm.plugins.importers.yum import sync, associate, upload
+from pulp_rpm.common import ids
+from pulp_rpm.plugins.importers.yum import sync, associate, upload, config_validate
 
+
+# The platform currently doesn't support automatic loading of conf files when the plugin
+# uses entry points. The current thinking is that the conf files will be named the same as
+# the plugin and put in a conf.d type of location. For now, this implementation will assume
+# that's the final solution and the plugin will attempt to load the file itself in the
+# entry_point method.
+CONF_FILENAME = '/etc/pulp/server/plugins.conf.d/%s.json' % ids.TYPE_ID_IMPORTER_YUM
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -30,7 +38,14 @@ def entry_point():
     :return: importer class and its config
     :rtype:  Importer, {}
     """
-    return YumImporter, {}
+
+    plugin_config = {}
+    if os.path.exists(CONF_FILENAME):
+        # Let the exception bubble up so it ends up in pulp.log
+        with open(CONF_FILENAME, 'r') as f:
+            plugin_config = json.load(f)
+
+    return YumImporter, plugin_config
 
 
 class YumImporter(Importer):
@@ -47,7 +62,7 @@ class YumImporter(Importer):
         }
 
     def validate_config(self, repo, config, related_repos):
-        return True, None
+        return config_validate.validate(config)
 
     def import_units(self, source_repo, dest_repo, import_conduit, config, units=None):
         return associate.associate(source_repo, dest_repo, import_conduit, config, units)
@@ -63,8 +78,8 @@ class YumImporter(Importer):
         :param sync_conduit: provides access to relevant Pulp functionality
         :type  sync_conduit: pulp.plugins.conduits.repo_sync.RepoSyncConduit
 
-        :param config: plugin configuration
-        :type  config: pulp.plugins.config.PluginCallConfiguration
+        :param call_config: plugin configuration
+        :type  call_config: pulp.plugins.config.PluginCallConfiguration
 
         :return: report of the details of the sync
         :rtype:  pulp.plugins.model.SyncReport
