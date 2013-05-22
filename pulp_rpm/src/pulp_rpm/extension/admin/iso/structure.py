@@ -16,7 +16,7 @@ from gettext import gettext as _
 from pulp.client.commands.repo import sync_publish
 
 from pulp_rpm.common import ids
-from pulp_rpm.extension.admin.iso import status
+from pulp_rpm.extension.admin.iso import create_update, status
 
 
 SECTION_PUBLISH = 'publish'
@@ -77,6 +77,8 @@ def add_repo_section(context, parent_section):
 
     add_publish_section(context, repo_section)
     add_sync_section(context, repo_section)
+
+    repo_section.add_command(create_update.ISORepoCreateCommand(context))
 
     return repo_section
 

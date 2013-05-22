@@ -11,11 +11,11 @@
 # have received a copy of GPLv2 along with this software; if not, see
 # http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt.
 
-from gettext import gettext as _
 import logging
 import os
 import shutil
 
+from pulp.common.plugins import importer_constants
 from pulp.plugins.conduits.mixins import UnitAssociationCriteria
 from pulp.plugins.importer import Importer
 
@@ -103,8 +103,8 @@ class ISOImporter(Importer):
         iso.init_unit(conduit)
 
         shutil.move(file_path, iso.storage_path)
-        validate = config.get_boolean(constants.CONFIG_VALIDATE_UNITS)
-        validate = validate if validate is not None else constants.CONFIG_VALIDATE_UNITS_DEFAULT
+        validate = config.get_boolean(importer_constants.KEY_VALIDATE)
+        validate = validate if validate is not None else constants.CONFIG_VALIDATE_DEFAULT
         if validate:
             try:
                 # Let's validate the checksum and size against the file. This will raise a ValueError if the

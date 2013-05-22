@@ -99,7 +99,9 @@ def _copy_to_hosted_location(repo, config):
     http_dest_dir = os.path.join(constants.ISO_HTTP_DIR, repo.id)
     _rmtree_if_exists(http_dest_dir)
     # Publish the HTTP portion, if applicable
-    if config.get_boolean(constants.CONFIG_SERVE_HTTP):
+    serve_http = config.get_boolean(constants.CONFIG_SERVE_HTTP)
+    serve_http = serve_http if serve_http is not None else constants.CONFIG_SERVE_HTTP_DEFAULT 
+    if serve_http:
         shutil.copytree(build_dir, http_dest_dir, symlinks=True)
 
     # Publish HTTPS
@@ -107,7 +109,9 @@ def _copy_to_hosted_location(repo, config):
     _protect_repository(repo.id, repo, config)
     _rmtree_if_exists(https_dest_dir)
     # Publish the HTTPs portion, if applicable
-    if config.get_boolean(constants.CONFIG_SERVE_HTTPS):
+    serve_https = config.get_boolean(constants.CONFIG_SERVE_HTTPS)
+    serve_https = serve_https if serve_https is not None else constants.CONFIG_SERVE_HTTPS_DEFAULT 
+    if serve_https:
         shutil.copytree(build_dir, https_dest_dir, symlinks=True)
 
 

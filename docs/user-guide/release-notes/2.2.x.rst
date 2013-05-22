@@ -17,6 +17,34 @@ CLI Changes
 
 * The ``pulp-admin rpm repo uploads rpm`` command now supports a flag (``--skip-existing``) to skip
   re-uploading packages that are already in the destination repository.
+* There is a new ISO section in the pulp-admin client. It currently allows syncing and creating repositories.
+
+API Changes
+-----------
+
+Some of the configuration names for the ISOImporter have changed. See the table below for the mapping of old
+names to new names.
+
++----------------------+----------------+
+| Old name             | New Name       |
++======================+================+
+| feed_url             | feed           |
++----------------------+----------------+
+| num_threads          | max_downloads  |
++----------------------+----------------+
+| proxy_url            | proxy_host     |
++----------------------+----------------+
+| proxy_user           | proxy_username |
++----------------------+----------------+
+| remove_missing_units | remove_missing |
++----------------------+----------------+
+| validate_units       | validate       |
++----------------------+----------------+
+
+
+All existing ISOImporters will be migrated by pulp-manage-db, but any code that creates or updates ISOImporters
+with the API will need to be updated to use these new names.
+
 
 Upgrade Instructions
 --------------------

@@ -18,6 +18,7 @@ import tempfile
 from mock import MagicMock, patch
 from nectar.downloaders.curl import HTTPSCurlDownloader
 from nectar.report import DownloadReport
+from pulp.common.plugins import importer_constants
 from pulp.plugins.model import Repository, Unit
 
 from pulp_rpm.common import models
@@ -33,12 +34,15 @@ class TestISOSyncRun(PulpRPMTests):
     Test the ISOSyncRun object.
     """
     def setUp(self):
-        self.config = importer_mocks.get_basic_config(
-            feed_url='http://fake.com/iso_feed/', max_speed=500.0, num_threads=5,
-            ssl_client_cert="Trust me, I'm who I say I am.", ssl_client_key="Secret Key",
-            ssl_ca_cert="Uh, I guess that's the right server.",
-            proxy_url='http://proxy.com', proxy_port=1234, proxy_user="the_dude",
-            proxy_password='bowling')
+        config = {
+            importer_constants.KEY_FEED: 'http://fake.com/iso_feed/', importer_constants.KEY_MAX_SPEED: 500.0,
+            importer_constants.KEY_MAX_DOWNLOADS: 5, importer_constants.KEY_SSL_VALIDATION: False,
+            importer_constants.KEY_SSL_CLIENT_CERT: "Trust me, I'm who I say I am.",
+            importer_constants.KEY_SSL_CLIENT_KEY: "Secret Key",
+            importer_constants.KEY_SSL_CA_CERT: "Uh, I guess that's the right server.",
+            importer_constants.KEY_PROXY_HOST: 'proxy.com', importer_constants.KEY_PROXY_PORT: 1234,
+            importer_constants.KEY_PROXY_USER: "the_dude", importer_constants.KEY_PROXY_PASS: 'bowling'}
+        self.config = importer_mocks.get_basic_config(**config)
 
         self.temp_dir = tempfile.mkdtemp()
         self.pkg_dir = os.path.join(self.temp_dir, 'content')
@@ -88,14 +92,35 @@ class TestISOSyncRun(PulpRPMTests):
             'max_speed': 500.0, 'num_threads': 5,
             'ssl_client_cert': "Trust me, I'm who I say I am.",
             'ssl_client_key': 'Secret Key',
-            'ssl_ca_cert': "Uh, I guess that's the right server.", 'ssl_verify_host': 2,
-            'ssl_verify_peer': 1, 'proxy_url': 'http://proxy.com',
+            'ssl_ca_cert': "Uh, I guess that's the right server.", 'ssl_validation': False,
+            'proxy_url': 'proxy.com',
             'proxy_port': 1234,
             'proxy_username': 'the_dude',
             'proxy_password': 'bowling'}
         for key, value in expected_downloader_config.items():
             self.assertEquals(getattr(downloader.config, key), value)
         self.assertEquals(type(iso_sync_run.progress_report), SyncProgressReport)
+
+    def test__init___ssl_validation(self):
+        """
+        Make sure the SSL validation is on by default.
+        """
+        # It should default to True
+        config = importer_mocks.get_basic_config(**{importer_constants.KEY_FEED: 'http://fake.com/iso_feed/'})
+        iso_sync_run = ISOSyncRun(self.sync_conduit, config)
+        self.assertEqual(iso_sync_run.downloader.config.ssl_validation, True)
+
+        # It should be possible to explicitly set it to False
+        config = importer_mocks.get_basic_config(**{importer_constants.KEY_FEED: 'http://fake.com/iso_feed/',
+                                                    importer_constants.KEY_SSL_VALIDATION: False})
+        iso_sync_run = ISOSyncRun(self.sync_conduit, config)
+        self.assertEqual(iso_sync_run.downloader.config.ssl_validation, False)
+
+        # It should be possible to explicitly set it to True
+        config = importer_mocks.get_basic_config(**{importer_constants.KEY_FEED: 'http://fake.com/iso_feed/',
+                                                    importer_constants.KEY_SSL_VALIDATION: True})
+        iso_sync_run = ISOSyncRun(self.sync_conduit, config)
+        self.assertEqual(iso_sync_run.downloader.config.ssl_validation, True)
 
     def test__init___with_feed_lacking_trailing_slash(self):
         """
@@ -104,7 +129,8 @@ class TestISOSyncRun(PulpRPMTests):
         the path to PULP_MANIFEST. The solution is to have __init__() automatically append a trailing slash to
         URLs that lack it so that urljoin will determine the correct path to PULP_MANIFEST.
         """
-        config = importer_mocks.get_basic_config(feed_url='http://fake.com/no_trailing_slash')
+        config = importer_mocks.get_basic_config(
+            **{importer_constants.KEY_FEED: 'http://fake.com/no_trailing_slash'})
 
         iso_sync_run = ISOSyncRun(self.sync_conduit, config)
 
@@ -186,8 +212,8 @@ class TestISOSyncRun(PulpRPMTests):
         honors that setting.
         """
         # In this config, we will set validate_units to False, which should make our "wrong_checksum" OK
-        config = importer_mocks.get_basic_config(feed_url='http://fake.com/iso_feed/',
-                                                 validate_units=False)
+        config = importer_mocks.get_basic_config(**{importer_constants.KEY_FEED: 'http://fake.com/iso_feed/',
+                                                    importer_constants.KEY_VALIDATE: False})
 
         iso_sync_run = ISOSyncRun(self.sync_conduit, config)
 
@@ -224,8 +250,8 @@ class TestISOSyncRun(PulpRPMTests):
         honors that setting.
         """
         # In this config, we will set validate_units to False, which should make our "wrong_checksum" OK
-        config = importer_mocks.get_basic_config(feed_url='http://fake.com/iso_feed/',
-                                                 validate_units=True)
+        config = importer_mocks.get_basic_config(**{importer_constants.KEY_FEED: 'http://fake.com/iso_feed/',
+                                                    importer_constants.KEY_VALIDATE: True})
 
         iso_sync_run = ISOSyncRun(self.sync_conduit, config)
 
@@ -349,12 +375,14 @@ class TestISOSyncRun(PulpRPMTests):
     @patch('nectar.downloaders.curl.pycurl.CurlMulti', side_effect=importer_mocks.CurlMulti)
     def test_perform_sync_remove_missing_units_set_false(self, curl_multi, curl):
         # Make sure the missing ISOs don't get removed if they aren't supposed to
-        config = importer_mocks.get_basic_config(
-            feed_url='http://fake.com/iso_feed/', max_speed=500.0, num_threads=5,
-            proxy_url='http://proxy.com', proxy_port=1234, proxy_user="the_dude",
-            proxy_password='bowling', remove_missing_units=False,
-            ssl_client_cert="Trust me, I'm who I say I am.", ssl_client_key="Secret Key",
-            ssl_ca_cert="Uh, I guess that's the right server.")
+        config = importer_mocks.get_basic_config(**{
+            importer_constants.KEY_FEED: 'http://fake.com/iso_feed/', importer_constants.KEY_MAX_SPEED: 500.0,
+            importer_constants.KEY_MAX_DOWNLOADS: 5, importer_constants.KEY_PROXY_HOST: 'proxy.com',
+            importer_constants.KEY_PROXY_PORT: 1234, importer_constants.KEY_PROXY_USER: "the_dude",
+            importer_constants.KEY_PROXY_PASS: 'bowling', importer_constants.KEY_UNITS_REMOVE_MISSING: False,
+            importer_constants.KEY_SSL_CLIENT_CERT: "Trust me, I'm who I say I am.",
+            importer_constants.KEY_SSL_CLIENT_KEY: "Secret Key",
+            importer_constants.KEY_SSL_CA_CERT: "Uh, I guess that's the right server."})
 
         iso_sync_run = ISOSyncRun(self.sync_conduit, config)
 
@@ -387,12 +415,14 @@ class TestISOSyncRun(PulpRPMTests):
     @patch('nectar.downloaders.curl.pycurl.CurlMulti', side_effect=importer_mocks.CurlMulti)
     def test_perform_sync_remove_missing_units_set_true(self, curl_multi, curl):
         # Make sure the missing ISOs get removed when they are supposed to
-        config = importer_mocks.get_basic_config(
-            feed_url='http://fake.com/iso_feed/', max_speed=500.0, num_threads=5,
-            proxy_url='http://proxy.com', proxy_port=1234, proxy_user="the_dude",
-            proxy_password='bowling', remove_missing_units=True,
-            ssl_client_cert="Trust me, I'm who I say I am.", ssl_client_key="Secret Key",
-            ssl_ca_cert="Uh, I guess that's the right server.")
+        config = importer_mocks.get_basic_config(**{
+            importer_constants.KEY_FEED: 'http://fake.com/iso_feed/', importer_constants.KEY_MAX_SPEED: 500.0,
+            importer_constants.KEY_MAX_DOWNLOADS: 5, importer_constants.KEY_PROXY_HOST: 'proxy.com',
+            importer_constants.KEY_PROXY_PORT: 1234, importer_constants.KEY_PROXY_USER: "the_dude",
+            importer_constants.KEY_PROXY_PASS: 'bowling', importer_constants.KEY_UNITS_REMOVE_MISSING: True,
+            importer_constants.KEY_SSL_CLIENT_CERT: "Trust me, I'm who I say I am.",
+            importer_constants.KEY_SSL_CLIENT_KEY: "Secret Key",
+            importer_constants.KEY_SSL_CA_CERT: "Uh, I guess that's the right server."})
 
         iso_sync_run = ISOSyncRun(self.sync_conduit, config)
 
