@@ -41,7 +41,7 @@ class RPMPkgProfiler(Profiler):
     # -- applicability ---------------------------------------------------------
 
 
-    def find_applicable_units(self, consumer_profile_and_repo_ids, unit_type_id, unit_ids, config, conduit):
+    def find_applicable_units(self, consumer_profile_and_repo_ids, unit_type_id, criteria, config, conduit):
         """
         Determine whether content units with given unit_ids and unit_type_id 
         are applicable to the specified consumer with given repo_ids.
@@ -103,9 +103,12 @@ class RPMPkgProfiler(Profiler):
         if not consumer_profile_and_repo_ids:
             return reports
 
+        if criteria:
+            units = conduit.search_all_units(unit_type_id, criteria)
+
         # Collect applicability reports for each unit
-        for unit_id in unit_ids:
-            applicable_consumers, rpm = self.find_applicable(unit_id, consumer_profile_and_repo_ids, conduit)
+        for unit in units:
+            applicable_consumers, rpm = self.find_applicable(unit.id, consumer_profile_and_repo_ids, conduit)
             if applicable_consumers:
                 details = {}
                 summary = {'unit_key' : rpm.unit_key}
