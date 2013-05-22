@@ -188,12 +188,8 @@ class RepoSync(object):
         """
         rpms_to_download, drpms_to_download = self._decide_what_to_download(metadata_files)
         self.download(metadata_files, rpms_to_download, drpms_to_download)
-        if self.call_config.get_boolean(importer_constants.KEY_UNITS_REMOVE_MISSING) is True:
-            purge.remove_missing_rpms(metadata_files, self.sync_conduit)
-            purge.remove_missing_drpms(metadata_files, self.sync_conduit)
-            purge.remove_missing_errata(metadata_files, self.sync_conduit)
-            purge.remove_missing_groups(metadata_files, self.sync_conduit)
-            purge.remove_missing_categories(metadata_files, self.sync_conduit)
+        # removes unwanted units according to the config settings
+        purge.purge_unwanted_units(metadata_files, self.sync_conduit, self.call_config)
 
     def _decide_what_to_download(self, metadata_files):
         """

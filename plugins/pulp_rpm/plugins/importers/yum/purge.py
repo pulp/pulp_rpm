@@ -11,11 +11,68 @@
 # have received a copy of GPLv2 along with this software; if not, see
 # http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt.
 
+from pulp.common.plugins import importer_constants
 from pulp.server.db.model.criteria import UnitAssociationCriteria
 from pulp.server.managers.repo.unit_association import OWNER_TYPE_IMPORTER
 
 from pulp_rpm.common import models
 from pulp_rpm.plugins.importers.yum.repomd import packages, primary, presto, updateinfo, group
+
+
+def purge_unwanted_units(metadata_files, conduit, config):
+    """
+    START HERE - this is probably the method you want to call in this module
+
+    Remove units from the local repository based on:
+
+    - whether a "retain-old-count" has been set in the config
+    - whether "remove-missing" has been set in the config
+
+    :param metadata_files:  object containing metadata files from the repo
+    :type  metadata_files:  pulp_rpm.plugins.importers.yum.repomd.metadata.MetadataFiles
+    :param conduit:         a conduit from the platform containing the get_units
+                            and remove_unit methods.
+    :type  conduit:         pulp.plugins.conduits.repo_sync.RepoSyncConduit
+    :param config:
+    """
+    if config.get_boolean(importer_constants.KEY_UNITS_REMOVE_MISSING) is True:
+        remove_missing_rpms(metadata_files, conduit)
+        remove_missing_drpms(metadata_files, conduit)
+        remove_missing_errata(metadata_files, conduit)
+        remove_missing_groups(metadata_files, conduit)
+        remove_missing_categories(metadata_files, conduit)
+
+    retain_old_count = config.get(importer_constants.KEY_UNITS_RETAIN_OLD_COUNT)
+    if retain_old_count is not None:
+        num_to_keep = int(retain_old_count) + 1
+        remove_old_versions(num_to_keep, conduit)
+
+
+def remove_old_versions(num_to_keep, conduit):
+    """
+    For RPMs, and then separately DRPMs, this loads the unit key of each unit
+    in the repo and organizes them by the non-version unique identifiers. For
+    each, it removes old versions that
+
+    :param num_to_keep: For each package, how many versions should be kept
+    :type  num_to_keep: int
+    :param conduit:     a conduit from the platform containing the get_units
+                        and remove_unit methods.
+    :type  conduit:     pulp.plugins.conduits.repo_sync.RepoSyncConduit
+    """
+    for model in (models.RPM, models.DRPM):
+        units = {}
+        for unit in get_existing_units(model, conduit.get_units):
+            model_instance = model(metadata=unit.metadata, **unit.unit_key)
+            key = model_instance.key_string_without_version
+            serialized_version = model_instance.complete_version_serialized
+            versions = units.setdefault(key, {})
+            versions[serialized_version] = unit
+
+            # if we are over the limit, evict the oldest
+            if len(versions) > num_to_keep:
+                oldest_version = min(versions)
+                conduit.remove_unit(versions.pop(oldest_version))
 
 
 def remove_missing_rpms(metadata_files, conduit):
