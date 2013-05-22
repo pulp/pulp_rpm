@@ -73,7 +73,7 @@ importer.
 
 ``proxy_password``
  A string representing the password that should be used to authenticate with the proxy server specified in
- ``proxy_host``. This parameter is required if the ``proxy_usernamename`` is provided.
+ ``proxy_host``. This parameter is required if the ``proxy_username`` is provided.
 
 ``proxy_port``
  An integer, or a string that can be interpreted as an integer, representing the port that should be used when

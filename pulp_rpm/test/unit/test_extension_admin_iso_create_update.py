@@ -48,8 +48,8 @@ class TestISODistributorConfigMixin(unittest.TestCase):
     """
     Test the ISODistributorConfigMixin class.
     """
-    @mock.patch('pulp_rpm.extension.admin.iso.create_update.ISODistributorConfigMixin.add_option_group',
-                create=True)
+    @mock.patch('pulp_rpm.extension.admin.iso.create_update.ISODistributorConfigMixin.'
+                'add_option_group', create=True)
     def test___init__(self, add_option_group):
         """
         Ensure that the __init__() method sets all of the correct properties.
@@ -58,7 +58,6 @@ class TestISODistributorConfigMixin(unittest.TestCase):
 
         # There should be publishing and authorization groups added to the CLI
         self.assertTrue(isinstance(distributor_config_mixin.publishing_group, PulpCliOptionGroup))
-        self.assertTrue(isinstance(distributor_config_mixin.authorization_group, PulpCliOptionGroup))
 
         # Inspect the --serve-http option
         self.assertTrue(isinstance(distributor_config_mixin.opt_http, PulpCliOption))
@@ -85,18 +84,15 @@ class TestISODistributorConfigMixin(unittest.TestCase):
         # We didn't set a parser on auth_ca, since it's a path
         self.assertEqual(distributor_config_mixin.opt_auth_ca.parse_func, None)
 
-        # The HTTP and HTTPS options should be in the publishing group
+        # The HTTP, HTTPS, and CA options should be in the publishing group
         self.assertEqual(set(distributor_config_mixin.publishing_group.options),
-                         set([distributor_config_mixin.opt_http, distributor_config_mixin.opt_https]))
-        # The --auth-ca option should be in the auth group
-        self.assertEqual(distributor_config_mixin.authorization_group.options,
-                         [distributor_config_mixin.opt_auth_ca])
+                         set([distributor_config_mixin.opt_http, distributor_config_mixin.opt_https,
+                              distributor_config_mixin.opt_auth_ca]))
 
-        # Lastly, the add_option_group mock should have been called twice, once for each group
-        self.assertEqual(add_option_group.call_count, 2)
-        self.assertEqual(set([mock_call[1][0] for mock_call in add_option_group.mock_calls]),
-                         set([distributor_config_mixin.publishing_group,
-                              distributor_config_mixin.authorization_group]))
+        # Lastly, the add_option_group mock should have been called once
+        self.assertEqual(add_option_group.call_count, 1)
+        self.assertEqual(add_option_group.mock_calls[0][1][0],
+                         distributor_config_mixin.publishing_group)
 
     @mock.patch('pulp_rpm.extension.admin.iso.create_update.ISODistributorConfigMixin.add_option_group',
                 mock.MagicMock(), create=True)
