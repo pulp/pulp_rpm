@@ -22,8 +22,8 @@ def migrate(*args, **kwargs):
     config value. For simplicity, the value for verify_checksum is used as the new setting
     and verify_size is discarded.
 
-    The remove_old flag in the old config was redundant; the num_old_packages serves the
-    same purpose. The remove_old flag is discarded.
+    The newest flag in the old config was redundant; the num_old_packages serves the
+    same purpose. The newest flag is discarded.
 
     The purge_orphaned flag was a carry over from v1 and has no effect. It's documented in
     the old yum importer but I'm not sure it was actually used. This migration will attempt
@@ -45,10 +45,7 @@ def migrate(*args, **kwargs):
     }}
     repo_importers.update({'importer_type_id': 'yum_importer'}, rename_query, safe=True, multi=True)
 
-    remove_queries = [
-        {'$unset' : {'config.newest' : 1}},
-        {'$unset' : {'config.verify_size' : 1}},
-        {'$unset' : {'config.purge_orphaned' : 1}},
-    ]
-    for remove_query in remove_queries:
-        repo_importers.update({'importer_type_id': 'yum_importer'}, remove_query, safe=True, multi=True)
+    remove_query = {'$unset' : {'config.newest' : 1,
+                                'config.verify_size' : 1,
+                                'config.purge_orphaned' : 1}}
+    repo_importers.update({'importer_type_id': 'yum_importer'}, remove_query, safe=True, multi=True)
