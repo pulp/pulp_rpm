@@ -103,12 +103,11 @@ class RPMPkgProfiler(Profiler):
         if not consumer_profile_and_repo_ids:
             return reports
 
-        unit_criteria["fields"] = ['_id']
-        units = conduit.search_units(unit_type_id, unit_criteria)
+        unit_ids = conduit.search_unit_ids(unit_type_id, unit_criteria)
 
         # Collect applicability reports for each unit
-        for unit in units:
-            applicable_consumers, rpm = self.find_applicable(unit['_id'], consumer_profile_and_repo_ids, conduit)
+        for unit_id in unit_ids:
+            applicable_consumers, rpm = self.find_applicable(unit_id, consumer_profile_and_repo_ids, conduit)
             if applicable_consumers:
                 details = {}
                 summary = {'unit_key' : rpm.unit_key}

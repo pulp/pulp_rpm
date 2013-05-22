@@ -134,12 +134,11 @@ class RPMErrataProfiler(Profiler):
         if not consumer_profile_and_repo_ids:
             return reports
         
-        unit_criteria["fields"] = ['id']
-        units = conduit.search_units(unit_type_id, unit_criteria)
+        unit_ids = conduit.search_unit_ids(unit_type_id, unit_criteria)
 
         # Collect applicability reports for each unit
-        for unit in units:
-            applicable_consumers, errata_details = self.find_applicable(unit['id'], consumer_profile_and_repo_ids, conduit)
+        for unit_id in unit_ids:
+            applicable_consumers, errata_details = self.find_applicable(unit_id, consumer_profile_and_repo_ids, conduit)
             if applicable_consumers:
                 details = errata_details
                 summary = {'unit_key' : details["id"]}
@@ -335,12 +334,12 @@ class RPMErrataProfiler(Profiler):
             if lookup.has_key(key):
                 installed_rpm = lookup[key]
                 is_newer = util.is_rpm_newer(errata_rpm, installed_rpm)
-                _LOG.info("Found a match of rpm <%s> installed on consumer, is %s newer than %s, %s" % (key, errata_rpm, installed_rpm, is_newer))
+                _LOG.debug("Found a match of rpm <%s> installed on consumer, is %s newer than %s, %s" % (key, errata_rpm, installed_rpm, is_newer))
                 if is_newer:
                     applicable_rpms.append(errata_rpm)
                     older_rpms[key] = {"installed":installed_rpm, "available":errata_rpm}
             else:
-                _LOG.info("rpm %s was not found in consumer profile of %s" % (key, consumer.id))
+                _LOG.debug("rpm %s was not found in consumer profile of %s" % (key, consumer.id))
         return applicable_rpms, older_rpms
 
     def form_lookup_table(self, rpms):
