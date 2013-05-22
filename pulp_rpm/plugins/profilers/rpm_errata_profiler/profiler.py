@@ -135,7 +135,7 @@ class RPMErrataProfiler(Profiler):
             return reports
         
         unit_criteria["fields"] = ['id']
-        units = conduit.search_all_unit_ids(unit_type_id, unit_criteria)
+        units = conduit.search_units(unit_type_id, unit_criteria)
 
         # Collect applicability reports for each unit
         for unit in units:
@@ -284,7 +284,7 @@ class RPMErrataProfiler(Profiler):
     def find_unit_associated_to_repos_by_criteria(self, criteria, repo_ids, conduit):
         for repo_id in repo_ids:
             result = conduit.get_units(repo_id, criteria)
-            _LOG.info("Found %s items when searching in repo <%s> for <%s>" % (len(result), repo_id, criteria))
+            _LOG.debug("Found %s items when searching in repo <%s> for <%s>" % (len(result), repo_id, criteria))
             if result:
                 return result[0]
         return None

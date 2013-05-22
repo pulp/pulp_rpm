@@ -104,7 +104,7 @@ class RPMPkgProfiler(Profiler):
             return reports
 
         unit_criteria["fields"] = ['_id']
-        units = conduit.search_all_unit_ids(unit_type_id, unit_criteria)
+        units = conduit.search_units(unit_type_id, unit_criteria)
 
         # Collect applicability reports for each unit
         for unit in units:
