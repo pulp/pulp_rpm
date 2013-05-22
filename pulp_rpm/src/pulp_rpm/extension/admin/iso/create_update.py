@@ -27,7 +27,6 @@ from pulp_rpm.common import constants, ids
 class ISODistributorConfigMixin(object):
     def __init__(self):
         self.publishing_group = PulpCliOptionGroup(_('Publishing'))
-        self.authorization_group = PulpCliOptionGroup(_('Client Authorization'))
 
         d = _('if "true", the repository will be published over the HTTP protocol')
         self.opt_http = PulpCliOption('--serve-http', d, required=False,
@@ -41,10 +40,9 @@ class ISODistributorConfigMixin(object):
 
         self.publishing_group.add_option(self.opt_http)
         self.publishing_group.add_option(self.opt_https)
-        self.authorization_group.add_option(self.opt_auth_ca)
+        self.publishing_group.add_option(self.opt_auth_ca)
 
         self.add_option_group(self.publishing_group)
-        self.add_option_group(self.authorization_group)
 
     def _parse_distributor_config(self, user_input):
         """
