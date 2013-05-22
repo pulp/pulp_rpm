@@ -19,36 +19,102 @@ from pulp_rpm.plugins.importers.yum.repomd import packages, primary, presto, upd
 
 
 def remove_missing_rpms(metadata_files, conduit):
+    """
+    Remove RPMs from the local repository which do not exist in the remote
+    repository.
+
+    :param metadata_files:  object containing metadata files from the repo
+    :type  metadata_files:  pulp_rpm.plugins.importers.yum.repomd.metadata.MetadataFiles
+    :param conduit:         a conduit from the platform containing the get_units
+                            and remove_unit methods.
+    :type  conduit:         pulp.plugins.conduits.repo_sync.RepoSyncConduit
+    """
     remote_named_tuples = get_remote_units(metadata_files, primary.METADATA_FILE_NAME, models.RPM,
                                             primary.PACKAGE_TAG, primary.process_package_element)
     remove_missing_units(metadata_files, conduit, models.RPM, remote_named_tuples)
 
 
 def remove_missing_drpms(metadata_files, conduit):
+    """
+    Remove DRPMs from the local repository which do not exist in the remote
+    repository.
+
+    :param metadata_files:  object containing metadata files from the repo
+    :type  metadata_files:  pulp_rpm.plugins.importers.yum.repomd.metadata.MetadataFiles
+    :param conduit:         a conduit from the platform containing the get_units
+                            and remove_unit methods.
+    :type  conduit:         pulp.plugins.conduits.repo_sync.RepoSyncConduit
+    """
     remote_named_tuples = get_remote_units(metadata_files, presto.METADATA_FILE_NAME, models.DRPM,
                                             presto.PACKAGE_TAG, presto.process_package_element)
     remove_missing_units(metadata_files, conduit, models.DRPM, remote_named_tuples)
 
 
 def remove_missing_errata(metadata_files, conduit):
+    """
+    Remove Errata from the local repository which do not exist in the remote
+    repository.
+
+    :param metadata_files:  object containing metadata files from the repo
+    :type  metadata_files:  pulp_rpm.plugins.importers.yum.repomd.metadata.MetadataFiles
+    :param conduit:         a conduit from the platform containing the get_units
+                            and remove_unit methods.
+    :type  conduit:         pulp.plugins.conduits.repo_sync.RepoSyncConduit
+    """
     remote_named_tuples = get_remote_units(metadata_files, updateinfo.METADATA_FILE_NAME, models.Errata,
                                            updateinfo.PACKAGE_TAG, updateinfo.process_package_element)
     remove_missing_units(metadata_files, conduit, models.Errata, remote_named_tuples)
 
 
 def remove_missing_groups(metadata_files, conduit):
+    """
+    Remove Groups from the local repository which do not exist in the remote
+    repository.
+
+    :param metadata_files:  object containing metadata files from the repo
+    :type  metadata_files:  pulp_rpm.plugins.importers.yum.repomd.metadata.MetadataFiles
+    :param conduit:         a conduit from the platform containing the get_units
+                            and remove_unit methods.
+    :type  conduit:         pulp.plugins.conduits.repo_sync.RepoSyncConduit
+    """
     remote_named_tuples = get_remote_units(metadata_files, group.METADATA_FILE_NAME, models.PackageGroup,
                                            group.GROUP_TAG, group.process_group_element)
     remove_missing_units(metadata_files, conduit, models.PackageGroup, remote_named_tuples)
 
 
 def remove_missing_categories(metadata_files, conduit):
+    """
+    Remove Categories from the local repository which do not exist in the remote
+    repository.
+
+    :param metadata_files:  object containing metadata files from the repo
+    :type  metadata_files:  pulp_rpm.plugins.importers.yum.repomd.metadata.MetadataFiles
+    :param conduit:         a conduit from the platform containing the get_units
+                            and remove_unit methods.
+    :type  conduit:         pulp.plugins.conduits.repo_sync.RepoSyncConduit
+    """
     remote_named_tuples = get_remote_units(metadata_files, group.METADATA_FILE_NAME, models.PackageCategory,
                                            group.CATEGORY_TAG, group.process_category_element)
     remove_missing_units(metadata_files, conduit, models.PackageCategory, remote_named_tuples)
 
 
 def remove_missing_units(metadata_files, conduit, model, remote_named_tuples):
+    """
+    Generic method to remove units that are in the local repository but missing
+    from the upstream repository. This consults the metadata and compares it with
+    the contents of the local repo, removing units as appropriate.
+
+    :param metadata_files:  object containing metadata files from the repo
+    :type  metadata_files:  pulp_rpm.plugins.importers.yum.repomd.metadata.MetadataFiles
+    :param conduit:         a conduit from the platform containing the get_units
+                            and remove_unit methods.
+    :type  conduit:         pulp.plugins.conduits.repo_sync.RepoSyncConduit
+    :param model:           subclass of pulp_rpm.common.models.Package
+    :type  model:           pulp_rpm.common.models.Package
+    :param remote_named_tuples: set of named tuples representing units in the
+                                remote repository
+    :type  remote_named_tuples: set
+    """
     for unit in get_existing_units(model, conduit.get_units):
         named_tuple = model(metadata=unit.metadata, **unit.unit_key).as_named_tuple
         try:
@@ -58,15 +124,51 @@ def remove_missing_units(metadata_files, conduit, model, remote_named_tuples):
             conduit.remove_unit(unit)
 
 
-def get_existing_units(model, unit_search_method):
+def get_existing_units(model, unit_search_func):
+    """
+    Get an iterable of Units that are already in the local repository
+
+    :param model:               subclass of pulp_rpm.common.models.Package
+    :type  model:               pulp_rpm.common.models.Package
+    :param unit_search_func:    function that takes one parameter, a
+                                UnitAssociationCriteria, and searches for units
+                                in the relevant repository.
+    :type  unit_search_func;    function
+
+    :return:    iterable of Unit instances that appear in the repository
+    :rtype:     iterable of pulp.plugins.model.Unit
+    """
     assoc_filters = {'owner_type': OWNER_TYPE_IMPORTER}
     criteria = UnitAssociationCriteria([model.TYPE],
                                        unit_fields=model.UNIT_KEY_NAMES,
                                        association_filters=assoc_filters)
-    return unit_search_method(criteria)
+    return unit_search_func(criteria)
 
 
 def get_remote_units(metadata_files, file_name, model, tag, process_func):
+    """
+    return a set of units (as named tuples) that are in the remote repository
+
+    :param metadata_files:  object containing metadata files from the repo
+    :type  metadata_files:  pulp_rpm.plugins.importers.yum.repomd.metadata.MetadataFiles
+    :param file_name:       name of the metadata file to access. This is not a
+                            path on disk, but the name used in the main "repomd.xml"
+                            file such as "primary", "comps", etc.
+    :type  file_name:       basestring
+    :param model:           model class for the type being retrieved
+    :type  model:           pulp_rpm.common.models.Package
+    :param tag:             name of the XML tag that identifies each object
+                            in the XML file
+    :type  tag:             basestring
+    :param process_func:    function that takes one argument, of type
+                            xml.etree.ElementTree.Element, or the cElementTree
+                            equivalent, and returns a dictionary containing
+                            metadata about the unit
+    :type  process_func:    function
+
+    :return:    set of named tuples representing units
+    :rtype:     set
+    """
     remote_named_tuples = set()
     file_handle = metadata_files.get_metadata_file_handle(file_name)
     if file_handle is None:

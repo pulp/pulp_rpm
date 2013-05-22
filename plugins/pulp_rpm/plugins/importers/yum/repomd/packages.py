@@ -22,7 +22,7 @@ from nectar.request import DownloadRequest
 _LOGGER = logging.getLogger(__name__)
 
 
-def package_list_generator(xml_handle, package_tag, processor):
+def package_list_generator(xml_handle, package_tag, process_func):
     """
     Parser for primary.xml file that is implemented as a generator.
 
@@ -30,8 +30,14 @@ def package_list_generator(xml_handle, package_tag, processor):
     single package's information. It then yields a corresponding package
     information dictionary. Then repeats.
 
-    :param xml_handle: open file handle pointing to the beginning of a primary.xml file
-    :type  xml_handle: file-like object
+    :param xml_handle:      open file handle pointing to the beginning of a primary.xml file
+    :type  xml_handle:      file-like object
+    :param process_func:    function that takes one argument, of type
+                            xml.etree.ElementTree.Element, or the cElementTree
+                            equivalent, and returns a dictionary containing
+                            metadata about the unit
+    :type  process_func:    function
+
     :return: generator of package information; the object type depends on the processor
     :rtype: generator
     """
@@ -54,7 +60,7 @@ def package_list_generator(xml_handle, package_tag, processor):
 
         root_element.clear() # clear all previously parsed ancestors of the root
 
-        package_info = processor(element)
+        package_info = process_func(element)
         yield package_info
 
 
