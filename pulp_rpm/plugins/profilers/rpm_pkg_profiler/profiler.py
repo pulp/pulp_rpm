@@ -41,10 +41,10 @@ class RPMPkgProfiler(Profiler):
     # -- applicability ---------------------------------------------------------
 
 
-    def find_applicable_units(self, consumer_profile_and_repo_ids, unit_type_id, criteria, config, conduit):
+    def find_applicable_units(self, consumer_profile_and_repo_ids, unit_type_id, unit_criteria, config, conduit):
         """
-        Determine whether content units with given unit_ids and unit_type_id 
-        are applicable to the specified consumer with given repo_ids.
+        Determine whether content units satisfied by unit_criteria and unit_type_id 
+        are applicable to the specified consumers with given repo_ids.
         Consumers and repo ids are specified as a dictionary:
 
         {
@@ -72,8 +72,8 @@ class RPMPkgProfiler(Profiler):
         :param unit_type_id: Common type id of all given unit keys
         :type unit_type_id: str
 
-        :param unit_ids: list of unit ids to identify units 
-        :type unit_ids: list of str
+        :param unit_criteria: Criteria representing unit search
+        :type unit_criteria: pulp.plugins.conduits.mixins.Criteria
 
         :param config: plugin configuration
         :type config: pulp.server.plugins.config.PluginCallConfiguration
@@ -88,7 +88,7 @@ class RPMPkgProfiler(Profiler):
         if unit_type_id != TYPE_ID_RPM:
             error_msg = _("find_applicable_units invoked with type_id [%s], expected [%s]") % (unit_type_id, TYPE_ID_RPM)
             _LOG.error(error_msg)
-            raise InvalidUnitsRequested(unit_ids, error_msg)
+            raise InvalidUnitsRequested(unit_criteria, error_msg)
 
         # Set default report style
         report_style = constants.APPLICABILITY_REPORT_STYLE_BY_UNITS
@@ -103,7 +103,8 @@ class RPMPkgProfiler(Profiler):
         if not consumer_profile_and_repo_ids:
             return reports
 
-        units = conduit.search_all_unit_ids(unit_type_id, criteria)
+        unit_criteria["fields"] = ['_id']
+        units = conduit.search_all_unit_ids(unit_type_id, unit_criteria)
 
         # Collect applicability reports for each unit
         for unit in units:

@@ -73,7 +73,7 @@ class RPMErrataProfiler(Profiler):
     # -- applicability ---------------------------------------------------------
 
 
-    def find_applicable_units(self, consumer_profile_and_repo_ids, unit_type_id, unit_ids, config, conduit):
+    def find_applicable_units(self, consumer_profile_and_repo_ids, unit_type_id, unit_criteria, config, conduit):
         """
         Determine whether the content units are applicable to
         the specified consumers.  The definition of "applicable" is content
@@ -104,8 +104,8 @@ class RPMErrataProfiler(Profiler):
         :param unit_type_id: Common type id of all given unit keys
         :type unit_type_id: str
 
-        :param unit_ids: list of unit ids to identify units 
-        :type unit_ids: list of str
+        :param unit_criteria: Criteria representing unit search
+        :type unit_criteria: pulp.plugins.conduits.mixins.Criteria
 
         :param config: plugin configuration
         :type config: pulp.server.plugins.config.PluginCallConfiguration
@@ -119,7 +119,7 @@ class RPMErrataProfiler(Profiler):
         if unit_type_id != TYPE_ID_ERRATA:
             error_msg = _("find_applicable_units invoked with type_id [%s], expected [%s]") % (unit_type_id, TYPE_ID_ERRATA)
             _LOG.error(error_msg)
-            raise InvalidUnitsRequested(unit_ids, error_msg)
+            raise InvalidUnitsRequested(unit_criteria, error_msg)
 
         # Set default report style
         report_style = constants.APPLICABILITY_REPORT_STYLE_BY_UNITS
@@ -134,9 +134,12 @@ class RPMErrataProfiler(Profiler):
         if not consumer_profile_and_repo_ids:
             return reports
         
+        unit_criteria["fields"] = ['id']
+        units = conduit.search_all_unit_ids(unit_type_id, unit_criteria)
+
         # Collect applicability reports for each unit
-        for unit_id in unit_ids:
-            applicable_consumers, errata_details = self.find_applicable(unit_id, consumer_profile_and_repo_ids, conduit)
+        for unit in units:
+            applicable_consumers, errata_details = self.find_applicable(unit['id'], consumer_profile_and_repo_ids, conduit)
             if applicable_consumers:
                 details = errata_details
                 summary = {'unit_key' : details["id"]}
