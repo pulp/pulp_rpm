@@ -22,6 +22,7 @@ class ISOImporterConfigKeysMigrationTests(rpm_support_base.PulpRPMTests):
     Test migration #0008.
     """
     def setUp(self):
+        super(self.__class__, self).setUp()
         self.repo_importers = get_collection('repo_importers')
 
         importers = (
