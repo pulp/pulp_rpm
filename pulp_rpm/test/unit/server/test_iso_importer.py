@@ -14,10 +14,11 @@ import os
 import shutil
 import tempfile
 
+from pulp.common.plugins import importer_constants
 from pulp.plugins.model import Repository, Unit
 import mock
 
-from pulp_rpm.common import constants, ids, models
+from pulp_rpm.common import ids, models, progress
 from pulp_rpm.plugins.importers.iso_importer import importer, sync
 from rpm_support_base import PulpRPMTests
 import importer_mocks
@@ -127,12 +128,15 @@ class TestISOImporter(PulpRPMTests):
         os.mkdir(pkg_dir)
         repo.working_dir = working_dir
         sync_conduit = importer_mocks.get_sync_conduit(type_id=ids.TYPE_ID_ISO, pkg_dir=pkg_dir)
-        config = importer_mocks.get_basic_config(
-            feed_url='http://fake.com/iso_feed/', max_speed='500.0',
-            ssl_client_cert="Trust me, I'm who I say I am.", ssl_client_key="Secret Key",
-            ssl_ca_cert="Uh, I guess that's the right server.",
-            proxy_url='http://proxy.com', proxy_port='1234', proxy_user="the_dude",
-            proxy_password='bowling')
+        config = {
+            importer_constants.KEY_FEED: 'http://fake.com/iso_feed/',
+            importer_constants.KEY_MAX_SPEED: '500.0',
+            importer_constants.KEY_SSL_CLIENT_CERT: "Trust me, I'm who I say I am.",
+            importer_constants.KEY_SSL_CLIENT_KEY: "Secret Key",
+            importer_constants.KEY_SSL_CA_CERT: "Uh, I guess that's the right server.",
+            importer_constants.KEY_PROXY_HOST: 'http://proxy.com', importer_constants.KEY_PROXY_PORT: '1234',
+            importer_constants.KEY_PROXY_USER: "the_dude", importer_constants.KEY_PROXY_PASS: 'bowling'}
+        config = importer_mocks.get_basic_config(**config)
 
         # Now run the sync
         report = self.iso_importer.sync_repo(repo, sync_conduit, config)
@@ -162,8 +166,9 @@ class TestISOImporter(PulpRPMTests):
             with open(unit.storage_path) as data:
                 contents = data.read()
             self.assertEqual(contents, expected_unit['contents'])
+        self.assertEqual(report.summary['state'], progress.ISOProgressReport.STATE_COMPLETE)
 
-    @mock.patch('pulp_rpm.common.models.ISO.validate', side_effect=models.ISO.validate)
+    @mock.patch('pulp_rpm.common.models.ISO.validate', side_effect=models.ISO.validate, autospec=True)
     def test_upload_unit_validate_false(self, validate):
         """
         Assert correct behavior from upload_unit() when the validation setting is False.
@@ -184,7 +189,7 @@ class TestISOImporter(PulpRPMTests):
         with open(temp_file_location, 'w') as temp_file:
             temp_file.write(file_data)
         sync_conduit = importer_mocks.get_sync_conduit(type_id=ids.TYPE_ID_ISO, pkg_dir=pkg_dir)
-        config = importer_mocks.get_basic_config(validate_units='false')
+        config = importer_mocks.get_basic_config(**{importer_constants.KEY_VALIDATE: 'false'})
 
         # Run the upload. This should not cause a ValueError (which could happen if validation failed)
         self.iso_importer.upload_unit(repo, ids.TYPE_ID_ISO, unit_key, metadata, temp_file_location,
@@ -351,14 +356,14 @@ class TestISOImporter(PulpRPMTests):
         this!
         """
         config = importer_mocks.get_basic_config(
-            **{constants.CONFIG_FEED_URL: "http://test.com/feed", constants.CONFIG_MAX_SPEED: 128.8})
+            **{importer_constants.KEY_FEED: "http://test.com/feed", importer_constants.KEY_MAX_SPEED: 128.8})
         # We'll pass None for the parameters that don't get used by validate_config
         status, error_message = self.iso_importer.validate_config(None, config, None)
         self.assertTrue(status)
         self.assertEqual(error_message, None)
 
-        config = importer_mocks.get_basic_config(**{constants.CONFIG_FEED_URL: "http://test.com/feed",
-                                                    constants.CONFIG_MAX_SPEED: -42})
+        config = importer_mocks.get_basic_config(**{importer_constants.KEY_FEED: "http://test.com/feed",
+                                                    importer_constants.KEY_MAX_SPEED: -42})
         status, error_message = self.iso_importer.validate_config(None, config, None)
         self.assertFalse(status)
         self.assertEqual(error_message, 'The configuration parameter <max_speed> must be set to a positive '

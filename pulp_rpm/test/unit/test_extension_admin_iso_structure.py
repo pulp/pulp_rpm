@@ -13,7 +13,7 @@
 
 from pulp.client.commands.repo import sync_publish
 
-from pulp_rpm.extension.admin.iso import structure
+from pulp_rpm.extension.admin.iso import create_update, structure
 import rpm_support_base
 
 
@@ -73,6 +73,12 @@ class TestAddRepoSection(rpm_support_base.PulpClientTests):
         self.assertTrue(sync_section is not None)
         publish_section = repo_section.subsections[structure.SECTION_PUBLISH]
         self.assertTrue(publish_section is not None)
+
+        # The create command should have been added
+        self.assertEqual(len(repo_section.commands), 1)
+        create_command = repo_section.commands['create']
+        self.assertTrue(isinstance(create_command, create_update.ISORepoCreateCommand))
+        self.assertEqual(create_command.context, self.context)
 
 
 class TestAddSyncSection(rpm_support_base.PulpClientTests):
