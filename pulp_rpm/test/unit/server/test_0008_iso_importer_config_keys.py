@@ -17,7 +17,10 @@ from pulp.server.db.migrate.models import _import_all_the_way
 import rpm_support_base
 
 
-class VersionSortIndexMigrationTests(rpm_support_base.PulpRPMTests):
+class ISOImporterConfigKeysMigrationTests(rpm_support_base.PulpRPMTests):
+    """
+    Test migration #0008.
+    """
     def setUp(self):
         self.repo_importers = get_collection('repo_importers')
 
@@ -48,7 +51,7 @@ class VersionSortIndexMigrationTests(rpm_support_base.PulpRPMTests):
             self.repo_importers.save(importer, safe=True)
 
     def tearDown(self):
-        super(VersionSortIndexMigrationTests, self).tearDown()
+        super(self.__class__, self).tearDown()
 
         self.repo_importers.remove(safe=True)
 
