@@ -15,15 +15,15 @@ from gettext import gettext as _
 from urlparse import urljoin
 import logging
 
-from pulp_rpm.common import constants, ids, models
-from pulp_rpm.common.progress import SyncProgressReport
-
 from nectar import listener, request
 from nectar.config import DownloaderConfig
 from nectar.downloaders.curl import HTTPSCurlDownloader
+from pulp.common.plugins import importer_constants
 from pulp.common.util import encode_unicode
 from pulp.plugins.conduits.mixins import UnitAssociationCriteria
 
+from pulp_rpm.common import constants, ids, models
+from pulp_rpm.common.progress import SyncProgressReport
 
 logger = logging.getLogger(__name__)
 
@@ -36,36 +36,38 @@ class ISOSyncRun(listener.DownloadEventListener):
     """
     def __init__(self, sync_conduit, config):
         self.sync_conduit = sync_conduit
-        self._remove_missing_units = config.get(constants.CONFIG_REMOVE_MISSING_UNITS,
-                                                default=constants.CONFIG_REMOVE_MISSING_UNITS_DEFAULT)
-        self._validate_downloads = config.get(constants.CONFIG_VALIDATE_UNITS,
-                                              default=constants.CONFIG_VALIDATE_UNITS_DEFAULT)
-        self._repo_url = encode_unicode(config.get(constants.CONFIG_FEED_URL))
+        self._remove_missing_units = config.get(importer_constants.KEY_UNITS_REMOVE_MISSING,
+                                                default=constants.CONFIG_UNITS_REMOVE_MISSING_DEFAULT)
+        self._validate_downloads = config.get(importer_constants.KEY_VALIDATE,
+                                              default=constants.CONFIG_VALIDATE_DEFAULT)
+        self._repo_url = encode_unicode(config.get(importer_constants.KEY_FEED))
         # The _repo_url must end in a trailing slash, because we will use urljoin to determine the path to
         # PULP_MANIFEST later
         if self._repo_url[-1] != '/':
             self._repo_url = self._repo_url + '/'
 
         # Cast our config parameters to the correct types and use them to build a Downloader
-        max_speed = config.get(constants.CONFIG_MAX_SPEED)
+        max_speed = config.get(importer_constants.KEY_MAX_SPEED)
         if max_speed is not None:
             max_speed = float(max_speed)
-        num_threads = config.get(constants.CONFIG_NUM_THREADS)
+        num_threads = config.get(importer_constants.KEY_MAX_DOWNLOADS)
         if num_threads is not None:
             num_threads = int(num_threads)
         else:
-            num_threads = constants.CONFIG_NUM_THREADS_DEFAULT
+            num_threads = constants.CONFIG_MAX_DOWNLOADS_DEFAULT
+        ssl_validation = config.get_boolean(importer_constants.KEY_SSL_VALIDATION)
+        ssl_validation = ssl_validation if ssl_validation is not None else constants.CONFIG_VALIDATE_DEFAULT
         downloader_config = {
             'max_speed': max_speed,
             'num_threads': num_threads,
-            'ssl_client_cert': config.get(constants.CONFIG_SSL_CLIENT_CERT),
-            'ssl_client_key': config.get(constants.CONFIG_SSL_CLIENT_KEY),
-            'ssl_ca_cert': config.get(constants.CONFIG_SSL_CA_CERT),
-            'ssl_verify_host': 2, 'ssl_verify_peer': 1,
-            'proxy_url': config.get(constants.CONFIG_PROXY_URL),
-            'proxy_port': config.get(constants.CONFIG_PROXY_PORT),
-            'proxy_username': config.get(constants.CONFIG_PROXY_USER),
-            'proxy_password': config.get(constants.CONFIG_PROXY_PASSWORD)}
+            'ssl_client_cert': config.get(importer_constants.KEY_SSL_CLIENT_CERT),
+            'ssl_client_key': config.get(importer_constants.KEY_SSL_CLIENT_KEY),
+            'ssl_ca_cert': config.get(importer_constants.KEY_SSL_CA_CERT),
+            'ssl_validation': ssl_validation,
+            'proxy_url': config.get(importer_constants.KEY_PROXY_HOST),
+            'proxy_port': config.get(importer_constants.KEY_PROXY_PORT),
+            'proxy_username': config.get(importer_constants.KEY_PROXY_USER),
+            'proxy_password': config.get(importer_constants.KEY_PROXY_PASS)}
         downloader_config = DownloaderConfig(**downloader_config)
 
         # We will pass self as the event_listener, so that we can receive the callbacks in this class

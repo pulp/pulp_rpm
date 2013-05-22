@@ -17,6 +17,7 @@ import mock
 
 from distributor_mocks import get_basic_config
 from pulp_rpm.common import constants
+from pulp_rpm.plugins import configuration_utils
 from pulp_rpm.plugins.distributors.iso_distributor import configuration
 
 
@@ -26,8 +27,8 @@ class TestValidate(unittest.TestCase):
     """
     @mock.patch('pulp_rpm.plugins.distributors.iso_distributor.configuration._validate_ssl_cert',
                 side_effect=configuration._validate_ssl_cert)
-    @mock.patch('pulp_rpm.plugins.distributors.iso_distributor.configuration._validate_required_bool',
-                side_effect=configuration._validate_required_bool)
+    @mock.patch('pulp_rpm.plugins.configuration_utils.validate_non_required_bool',
+                side_effect=configuration_utils.validate_non_required_bool)
     def test_validate_calls_correct_helpers(self, _validate_required_bool, _validate_ssl_cert):
         """
         Test that validate() uses all the right helpers.
@@ -35,6 +36,10 @@ class TestValidate(unittest.TestCase):
         config = get_basic_config(**{constants.CONFIG_SERVE_HTTP: True, constants.CONFIG_SERVE_HTTPS: False})
 
         valid, msg = configuration.validate(config)
+
+        # Assert the return values
+        self.assertEqual(valid, True)
+        self.assertEqual(msg, None)
 
         # Assert that _validate_required_bool was called twice with the correct parameters
         self.assertEqual(_validate_required_bool.call_count, 2)
@@ -72,44 +77,6 @@ class TestValidate(unittest.TestCase):
         self.assertEqual(msg, None)
 
 
-class TestValidateRequiredBool(unittest.TestCase):
-    """
-    Assert correct behavior from the _validate_required_bool() function.
-    """
-    def test_bool_not_set(self):
-        """
-        If the bool is not set, it should return an error.
-        """
-        config = get_basic_config()
-
-        valid, msg = configuration._validate_required_bool(config, constants.CONFIG_SERVE_HTTP)
-
-        self.assertFalse(valid)
-        self.assertEqual(msg, 'The value for <serve_http> must be either "true" or "false"')
-
-    def test_bool_not_valid(self):
-        """
-        If the bool is not valid, it should return an error.
-        """
-        config = get_basic_config(**{constants.CONFIG_SERVE_HTTP: 'Not true or false.'})
-
-        valid, msg = configuration._validate_required_bool(config, constants.CONFIG_SERVE_HTTP)
-
-        self.assertFalse(valid)
-        self.assertEqual(msg, 'The value for <serve_http> must be either "true" or "false"')
-
-    def test_bool_valid(self):
-        """
-        If the bool is valid, it should return successfully.
-        """
-        config = get_basic_config(**{constants.CONFIG_SERVE_HTTP: 'false'})
-
-        valid, msg = configuration._validate_required_bool(config, constants.CONFIG_SERVE_HTTP)
-
-        self.assertTrue(valid)
-        self.assertEqual(msg, None)
-
-
 class TestValidateSSLCert(unittest.TestCase):
     """
     Test the _validate_ssl_cert() function.
@@ -120,11 +87,11 @@ class TestValidateSSLCert(unittest.TestCase):
         """
         config = get_basic_config(**{constants.CONFIG_SSL_AUTH_CA_CERT: 'You cannot be serious.'})
 
-        valid, msg = configuration._validate_ssl_cert(config, constants.CONFIG_SSL_AUTH_CA_CERT)
-
-        # We passed a valid config, so validate() should have indicated that everything was cool
-        self.assertFalse(valid)
-        self.assertEqual(msg, 'The SSL certificate <ssl_auth_ca_cert> is not a valid certificate.')
+        try:
+            configuration._validate_ssl_cert(config, constants.CONFIG_SSL_AUTH_CA_CERT)
+            self.fail('The validator should have raised an Exception, but it did not.')
+        except configuration_utils.ValidationError, e:
+            self.assertEqual(str(e), 'The SSL certificate <ssl_auth_ca_cert> is not a valid certificate.')
 
     @mock.patch('pulp_rpm.yum_plugin.util.validate_cert', return_value=True)
     def test_good_cert(self, validate_cert):
@@ -134,11 +101,8 @@ class TestValidateSSLCert(unittest.TestCase):
         cert = 'Good Cert (well, once mock is done with it!)'
         config = get_basic_config(**{constants.CONFIG_SSL_AUTH_CA_CERT: cert})
 
-        valid, msg = configuration._validate_ssl_cert(config, constants.CONFIG_SSL_AUTH_CA_CERT)
-
-        # We passed a valid config, so validate() should have indicated that everything was cool
-        self.assertTrue(valid)
-        self.assertEqual(msg, None)
+        # This should not raise an Exception
+        configuration._validate_ssl_cert(config, constants.CONFIG_SSL_AUTH_CA_CERT)
 
         # Make sure the mock was called
         validate_cert.assert_called_once_with(cert)
@@ -149,8 +113,5 @@ class TestValidateSSLCert(unittest.TestCase):
         """
         config = get_basic_config(**{})
 
-        valid, msg = configuration._validate_ssl_cert(config, constants.CONFIG_SSL_AUTH_CA_CERT)
-
-        # We passed a valid config, so validate() should have indicated that everything was cool
-        self.assertTrue(valid)
-        self.assertEqual(msg, None)
+        # This should not raise an Exception
+        configuration._validate_ssl_cert(config, constants.CONFIG_SSL_AUTH_CA_CERT)

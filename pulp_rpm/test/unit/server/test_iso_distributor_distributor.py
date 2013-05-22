@@ -130,5 +130,5 @@ class TestISODistributor(PulpRPMTests):
                                                        constants.CONFIG_SERVE_HTTPS: "Heyo!"})
         status, error_message = self.iso_distributor.validate_config(None, config, None)
         self.assertFalse(status)
-        self.assertEqual(error_message,
-                         'The value for <serve_https> must be either "true" or "false"')
+        self.assertEqual(error_message, 'The configuration parameter <serve_https> may only be set to a '
+                                        'boolean value, but is currently set to <Heyo!>.')
