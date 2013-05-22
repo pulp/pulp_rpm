@@ -74,12 +74,18 @@ class TestAddRepoSection(rpm_support_base.PulpClientTests):
         publish_section = repo_section.subsections[structure.SECTION_PUBLISH]
         self.assertTrue(publish_section is not None)
 
-        # The create command should have been added
-        self.assertEqual(len(repo_section.commands), 1)
-        create_command = repo_section.commands['create']
-        self.assertTrue(isinstance(create_command, create_update.ISORepoCreateCommand))
-        self.assertEqual(create_command.context, self.context)
+        # There should be two commands, create and update
+        self.assertEqual(len(repo_section.commands), 2)
 
+        # The create command should have been added
+        mixin = repo_section.commands['create']
+        self.assertTrue(isinstance(mixin, create_update.ISORepoCreateCommand))
+        self.assertEqual(mixin.context, self.context)
+
+        # The update command should also have been added
+        update_command = repo_section.commands['update']
+        self.assertTrue(isinstance(update_command, create_update.ISORepoUpdateCommand))
+        self.assertEqual(update_command.context, self.context)
 
 class TestAddSyncSection(rpm_support_base.PulpClientTests):
     """
