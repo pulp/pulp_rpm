@@ -18,7 +18,7 @@
 
 Name: pulp-rpm
 Version: 2.2.0
-Release: 0.11.alpha%{?dist}
+Release: 0.13.alpha%{?dist}
 Summary: Support for RPM content in the Pulp platform
 Group: Development/Languages
 License: GPLv2
@@ -287,6 +287,12 @@ A collection of yum plugins supplementing Pulp consumer operations.
 
 
 %changelog
+* Thu May 23 2013 Jeff Ortel <jortel@redhat.com> 2.2.0-0.13.alpha
+- 
+
+* Thu May 23 2013 Jeff Ortel <jortel@redhat.com> 2.2.0-0.12.alpha
+- 
+
 * Tue May 21 2013 Jeff Ortel <jortel@redhat.com> 2.2.0-0.11.alpha
 - 950690 - Removed copy commands that aren't supported in the plugin
   (jason.dobies@redhat.com)
