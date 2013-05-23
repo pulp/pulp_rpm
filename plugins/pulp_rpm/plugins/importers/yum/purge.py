@@ -52,7 +52,8 @@ def remove_old_versions(num_to_keep, conduit):
     """
     For RPMs, and then separately DRPMs, this loads the unit key of each unit
     in the repo and organizes them by the non-version unique identifiers. For
-    each, it removes old versions that
+    each, it removes old versions as necessary to stay within the number of
+    versions we want to keep.
 
     :param num_to_keep: For each package, how many versions should be kept
     :type  num_to_keep: int

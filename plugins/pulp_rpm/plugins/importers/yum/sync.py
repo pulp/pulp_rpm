@@ -356,12 +356,12 @@ class RepoSync(object):
         :param metadata_files:  instance of MetadataFiles
         :type  metadata_files:  pulp_rpm.plugins.importers.yum.repomd.metadata.MetadataFiles
         """
-        errata_file_handle = metadata_files.get_metadata_file_handle('updateinfo')
+        errata_file_handle = metadata_files.get_metadata_file_handle(updateinfo.METADATA_FILE_NAME)
         if not errata_file_handle:
             _LOGGER.debug('updateinfo not found')
             return
         try:
-            for model in self.get_general(errata_file_handle, updateinfo.PACKAGE_TAG, updateinfo.process_package_element):
+            for model in self.save_fileless_units(errata_file_handle, updateinfo.PACKAGE_TAG, updateinfo.process_package_element):
                 # we don't need to do anything with these at the moment
                 pass
 
@@ -384,7 +384,7 @@ class RepoSync(object):
         try:
             process_func = functools.partial(group.process_group_element, self.repo.id)
 
-            for model in self.get_general(group_file_handle, group.GROUP_TAG, process_func):
+            for model in self.save_fileless_units(group_file_handle, group.GROUP_TAG, process_func):
                 # we don't need to do anything with these at the moment
                 pass
         finally:
@@ -405,15 +405,16 @@ class RepoSync(object):
 
         try:
             process_func = functools.partial(group.process_category_element, self.repo.id)
-            for model in self.get_general(group_file_handle, group.CATEGORY_TAG, process_func):
+            for model in self.save_fileless_units(group_file_handle, group.CATEGORY_TAG, process_func):
                 # we don't need to do anything with these at the moment
                 pass
         finally:
             group_file_handle.close()
 
-    def get_general(self, file_handle, tag, process_func):
+    def save_fileless_units(self, file_handle, tag, process_func):
         """
-        Generic method for retrieving units parsed from a repo metadata file.
+        Generic method for saving units parsed from a repo metadata file where
+        the units do not have files to store on disk. For example, groups.
 
         :param file_handle:     open file-like object containing metadata
         :type  file_handle:     file
@@ -435,7 +436,7 @@ class RepoSync(object):
                                                                  process_func)
         wanted = (model.as_named_tuple for model in package_info_generator)
         # given what we want, filter out what we already have
-        to_download = existing.check_repo(wanted, self.sync_conduit.get_units)
+        to_save = existing.check_repo(wanted, self.sync_conduit.get_units)
 
         # rewind, iterate again through the file, and download what we need
         file_handle.seek(0)
@@ -443,7 +444,7 @@ class RepoSync(object):
                                                                  tag,
                                                                  process_func)
         for model in package_info_generator:
-            if model.as_named_tuple in to_download:
+            if model.as_named_tuple in to_save:
                 unit = self.sync_conduit.init_unit(model.TYPE, model.unit_key, model.metadata, None)
                 self.sync_conduit.save_unit(unit)
                 yield model
