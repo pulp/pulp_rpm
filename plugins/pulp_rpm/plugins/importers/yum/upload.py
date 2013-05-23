@@ -104,5 +104,5 @@ def link_errata_to_rpms(conduit, errata_model, errata_unit):
 def _fail_report(message):
     # this is the format returned by the original importer. I'm not sure if
     # anything is actually parsing it
-    details = {'errors:' [message]}
+    details = {'errors': [message]}
     return SyncReport(False, 0, 0, 0, '', details)
