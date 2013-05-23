@@ -18,7 +18,8 @@ from pulp.client import arg_utils
 from pulp.client.arg_utils import InvalidConfig
 from pulp.client.commands import options as std_options
 from pulp.client.commands.repo.cudl import CreateRepositoryCommand, UpdateRepositoryCommand
-from pulp.client.commands.repo.importer_config import ImporterConfigMixin, safe_parse
+from pulp.client.commands.repo.importer_config import (OptionsBundle, ImporterConfigMixin,
+                                                       safe_parse)
 from pulp.common import constants as pulp_constants
 from pulp.common.util import encode_unicode
 
@@ -49,6 +50,16 @@ EXPORT_DISTRIBUTOR_CONFIG_KEYS = [
 ]
 
 
+class RpmRepoOptionsBundle(OptionsBundle):
+    """
+    Contains small modifications to the default option descriptions.
+    """
+
+    def __init__(self):
+        super(RpmRepoOptionsBundle, self).__init__()
+        self.opt_remove_missing.description += _('; defaults to false')
+
+
 class RpmRepoCreateCommand(CreateRepositoryCommand, ImporterConfigMixin):
 
     def __init__(self, context):
@@ -58,6 +69,7 @@ class RpmRepoCreateCommand(CreateRepositoryCommand, ImporterConfigMixin):
 
         # Adds all downloader-related importer config options
         ImporterConfigMixin.__init__(self,
+                                     options_bundle=RpmRepoOptionsBundle(),
                                      include_sync=True,
                                      include_ssl=True,
                                      include_proxy=True,
@@ -203,6 +215,7 @@ class RpmRepoUpdateCommand(UpdateRepositoryCommand, ImporterConfigMixin):
 
         # Adds all downloader-related importer config options
         ImporterConfigMixin.__init__(self,
+                                     options_bundle=RpmRepoOptionsBundle(),
                                      include_sync=True,
                                      include_ssl=True,
                                      include_proxy=True,
