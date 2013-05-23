@@ -16,7 +16,7 @@ import os
 
 from pulp.client import arg_utils, parsers
 from pulp.client.commands import options as std_options
-from pulp.client.commands.repo.cudl import CreateRepositoryCommand
+from pulp.client.commands.repo.cudl import CreateRepositoryCommand, UpdateRepositoryCommand
 from pulp.client.commands.repo.importer_config import ImporterConfigMixin, safe_parse
 from pulp.client.extensions.extensions import PulpCliOption, PulpCliOptionGroup
 from pulp.common import constants as pulp_constants
@@ -66,17 +66,11 @@ class ISODistributorConfigMixin(object):
         return config
 
 
-class ISORepoCreateCommand(CreateRepositoryCommand, ImporterConfigMixin, ISODistributorConfigMixin):
-    """
-    This is the create command for ISO repositories.
-    """
-    def __init__(self, context):
+class ISORepoCreateUpdateMixin(ImporterConfigMixin, ISODistributorConfigMixin):
+    def __init__(self):
         """
         Call the __init__ methods for both of our superclasses.
         """
-        # Add standard create options
-        CreateRepositoryCommand.__init__(self, context)
-
         # Add sync-related options to the create command
         ImporterConfigMixin.__init__(self, include_sync=True, include_ssl=True, include_proxy=True,
                                      include_throttling=True, include_unit_policy=True)
@@ -117,8 +111,59 @@ class ISORepoCreateCommand(CreateRepositoryCommand, ImporterConfigMixin, ISODist
         distributors = [
             {'distributor_type': ids.TYPE_ID_DISTRIBUTOR_ISO, 'distributor_config': distributor_config,
              'auto_publish': True, 'distributor_id': ids.TYPE_ID_DISTRIBUTOR_ISO}]
+        self._perform_command(repo_id, display_name, description, notes, importer_config, distributors)
+
+
+class ISORepoCreateCommand(ISORepoCreateUpdateMixin, CreateRepositoryCommand):
+    """
+    This is the create command for ISO repositories.
+    """
+    def __init__(self, context):
+        """
+        Call the __init__ methods for both of our superclasses.
+        """
+        # Add standard create options
+        CreateRepositoryCommand.__init__(self, context)
+
+        ISORepoCreateUpdateMixin.__init__(self)
+
+    def _perform_command(self, repo_id, display_name, description, notes,
+                         importer_config, distributors):
         self.context.server.repo.create_and_configure(repo_id, display_name, description, notes,
                                                       ids.TYPE_ID_IMPORTER_ISO, importer_config, distributors)
 
         msg = _('Successfully created repository [%(r)s]') % {'r': repo_id}
         self.prompt.render_success_message(msg, tag='repo-created')
+
+
+class ISORepoUpdateCommand(ISORepoCreateUpdateMixin, UpdateRepositoryCommand):
+    """
+    This is the update command for ISO repositories.
+    """
+    def __init__(self, context):
+        """
+        Call the __init__ methods fo both superclasses.
+        """
+        UpdateRepositoryCommand.__init__(self, context)
+
+        ISORepoCreateUpdateMixin.__init__(self)
+
+    def _perform_command(self, repo_id, display_name, description, notes,
+                         importer_config, distributors):
+        distributor_configs = {}
+        for distributor in distributors:
+            distributor_configs[distributor['distributor_id']] = distributor['distributor_config']
+
+        response = self.context.server.repo.update_repo_and_plugins(
+            repo_id, display_name, description, notes,
+            importer_config, distributor_configs)
+
+        if not response.is_async():
+            msg = _('Repository [%(r)s] successfully updated')
+            self.prompt.render_success_message(msg % {'r' : repo_id}, tag='repo-updated')
+        else:
+            msg = _('Repository update postponed due to another operation. '
+                    'Progress on this task can be viewed using the commands '
+                    'under "repo tasks"')
+            self.prompt.render_paragraph(msg, tag='update-postponed')
+            self.prompt.render_reasons(response.response_body.reasons)

@@ -89,7 +89,7 @@ class TestISOSyncRun(PulpRPMTests):
         self.assertEqual(downloader.event_listener, iso_sync_run)
         # Inspect the downloader config
         expected_downloader_config = {
-            'max_speed': 500.0, 'num_threads': 5,
+            'max_speed': 500.0, 'max_concurrent': 5,
             'ssl_client_cert': "Trust me, I'm who I say I am.",
             'ssl_client_key': 'Secret Key',
             'ssl_ca_cert': "Uh, I guess that's the right server.", 'ssl_validation': False,

@@ -79,6 +79,7 @@ def add_repo_section(context, parent_section):
     add_sync_section(context, repo_section)
 
     repo_section.add_command(create_update.ISORepoCreateCommand(context))
+    repo_section.add_command(create_update.ISORepoUpdateCommand(context))
 
     return repo_section
 
