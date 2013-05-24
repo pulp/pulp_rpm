@@ -18,7 +18,7 @@
 
 Name: pulp-rpm
 Version: 2.2.0
-Release: 0.13.alpha%{?dist}
+Release: 0.14.alpha%{?dist}
 Summary: Support for RPM content in the Pulp platform
 Group: Development/Languages
 License: GPLv2
@@ -287,6 +287,9 @@ A collection of yum plugins supplementing Pulp consumer operations.
 
 
 %changelog
+* Fri May 24 2013 Jeff Ortel <jortel@redhat.com> 2.2.0-0.14.alpha
+- 966178 - Added default to remove-missing (jason.dobies@redhat.com)
+
 * Thu May 23 2013 Jeff Ortel <jortel@redhat.com> 2.2.0-0.13.alpha
 - 
 
