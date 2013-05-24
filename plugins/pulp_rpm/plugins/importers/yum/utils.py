@@ -18,10 +18,8 @@ import itertools
 DEFAULT_PAGE_SIZE = 1000
 
 def paginate(iterable, page_size=DEFAULT_PAGE_SIZE):
-    i = 0
     while True:
-        page = list(itertools.islice(iterable, i, i+page_size))
+        page = tuple(itertools.islice(iterable, 0, page_size))
         if not page:
             return
-        i = i + page_size
         yield page
