@@ -11,18 +11,22 @@
 # You should have received a copy of GPLv2 along with this software; if not,
 # see http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt
 
+from cStringIO import StringIO
 import logging
 import os
+import re
 from urlparse import urljoin
-from xml.etree.cElementTree import iterparse
+from xml.etree.cElementTree import ElementTree, iterparse
 
 from nectar.downloaders.revent import HTTPEventletRequestsDownloader
 from nectar.request import DownloadRequest
 
 _LOGGER = logging.getLogger(__name__)
 
+NS_STRIP_RE = re.compile('{.*?}')
 
-def package_list_generator(xml_handle, package_tag, process_func):
+
+def package_list_generator(xml_handle, package_tag, process_func=None):
     """
     Parser for primary.xml file that is implemented as a generator.
 
@@ -35,12 +39,15 @@ def package_list_generator(xml_handle, package_tag, process_func):
     :param process_func:    function that takes one argument, of type
                             xml.etree.ElementTree.Element, or the cElementTree
                             equivalent, and returns a dictionary containing
-                            metadata about the unit
+                            metadata about the unit. Default is to return the
+                            Element object.
     :type  process_func:    function
 
     :return: generator of package information; the object type depends on the processor
     :rtype: generator
     """
+    if process_func is None:
+        process_func = lambda x: x
     parser = iterparse(xml_handle, events=('start', 'end'))
     xml_iterator = iter(parser)
 
@@ -55,13 +62,30 @@ def package_list_generator(xml_handle, package_tag, process_func):
 
     for event, element in xml_iterator:
         # if we're not at a fully parsed package element, keep going
-        if event != 'end' or element.tag != package_tag:
+        if event != 'end':
+            continue
+        # make this work whether the file has namespace as part of the tag or not
+        if not (element.tag == package_tag or re.sub(NS_STRIP_RE, '', element.tag) == package_tag):
             continue
 
         root_element.clear() # clear all previously parsed ancestors of the root
 
         package_info = process_func(element)
         yield package_info
+
+
+def _strip_ns(element):
+    element.tag = re.sub(NS_STRIP_RE, '', element.tag)
+    for child in element.getchildren():
+        _strip_ns(child)
+
+
+def element_to_raw_xml(element):
+    _strip_ns(element)
+    tree = ElementTree(element)
+    io = StringIO()
+    tree.write(io, xml_declaration=False)
+    return io.getvalue()
 
 
 # TODO: maybe this class shouldn't be a class

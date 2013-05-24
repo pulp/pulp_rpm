@@ -17,6 +17,7 @@ import shutil
 from nectar.listener import DownloadEventListener, AggregatingEventListener
 from pulp.common.plugins import importer_constants
 from pulp.plugins.util import verification
+
 from pulp_rpm.common import constants
 
 
@@ -55,7 +56,7 @@ class DistroFileListener(AggregatingEventListener):
 
 
 class ContentListener(DownloadEventListener):
-    def __init__(self, sync_conduit, progress_report, sync_call_config):
+    def __init__(self, sync_conduit, progress_report, sync_call_config, metadata_files):
         """
         :type sync_call_config: pulp.plugins.config.PluginCallConfig
         """
@@ -63,6 +64,7 @@ class ContentListener(DownloadEventListener):
         self.sync_conduit = sync_conduit
         self.progress_report = progress_report
         self.sync_call_config = sync_call_config
+        self.metadata_files = metadata_files
 
     def download_succeeded(self, report):
         """
@@ -82,6 +84,7 @@ class ContentListener(DownloadEventListener):
             # handling below doesn't run.
             return
 
+        self.metadata_files.add_repodata(model)
         # init unit, which is idempotent
         unit = self.sync_conduit.init_unit(model.TYPE, model.unit_key, model.metadata, model.relative_path)
         # move to final location

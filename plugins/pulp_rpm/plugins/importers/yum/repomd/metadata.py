@@ -12,18 +12,22 @@
 # see http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt
 
 from copy import deepcopy
+import gdbm
 import gzip
 import hashlib
 import logging
 import lzma
 import os
 from urlparse import urljoin
+from xml.etree import ElementTree
 from xml.etree.cElementTree import iterparse
-
 
 from nectar.downloaders.revent import HTTPEventletRequestsDownloader
 from nectar.listener import AggregatingEventListener
 from nectar.request import DownloadRequest
+
+from pulp_rpm.plugins.importers.yum.repomd import filelists, other
+from pulp_rpm.plugins.importers.yum.repomd.packages import package_list_generator, element_to_raw_xml
 
 
 _LOGGER = logging.getLogger(__name__)
@@ -103,6 +107,7 @@ class MetadataFiles(object):
 
         self.revision = None
         self.metadata = {}
+        self.dbs = {}
 
     def download_repomd(self):
         """
@@ -216,7 +221,6 @@ class MetadataFiles(object):
             return
 
         if file_path.endswith('.gz'):
-            # TODO: doesn't support with statement in 2.6
             file_handle = gzip.open(file_path, 'r')
         elif file_path.endswith('.xz'):
             file_handle = lzma.LZMAFile(file_path, 'r')
@@ -230,6 +234,56 @@ class MetadataFiles(object):
             group_file_handle = self.get_metadata_file_handle('group')
         return group_file_handle
 
+    def generate_dbs(self):
+        for filename, tag, process_func in (
+            (filelists.METADATA_FILE_NAME, filelists.PACKAGE_TAG, filelists.process_package_element),
+            (other.METADATA_FILE_NAME, other.PACKAGE_TAG, other.process_package_element),
+        ):
+
+            xml_file_handle = self.get_metadata_file_handle(filename)
+            try:
+                generator = package_list_generator(xml_file_handle, tag)
+                db_filename = os.path.join(self.dst_dir, '%s.db' % filename)
+                db_file_handle = gdbm.open(db_filename, 'nf')
+                try:
+                    for element in generator:
+                        raw_xml = element_to_raw_xml(element)
+                        unit_key, _ = process_func(element)
+                        db_key = self.generate_db_key(unit_key)
+                        db_file_handle[db_key] = raw_xml
+                    db_file_handle.sync()
+                finally:
+                    db_file_handle.close()
+            finally:
+                xml_file_handle.close()
+            self.dbs[filename] = db_filename
+
+    @staticmethod
+    def generate_db_key(unit_key):
+        unit_key = unit_key.copy()
+        unit_key.pop('checksum', None)
+        unit_key.pop('checksumtype', None)
+        sorted_key_names = sorted(unit_key.keys())
+        return '::'.join('%s:%s' % (name, unit_key[name]) for name in sorted_key_names)
+
+    def add_repodata(self, model):
+        repodata = model.metadata.setdefault('repodata',{})
+        db_key = self.generate_db_key(model.unit_key)
+        for filename, metadata_key, process_func in (
+            (filelists.METADATA_FILE_NAME, 'files', filelists.process_package_element),
+            (other.METADATA_FILE_NAME, 'changelog', other.process_package_element)
+        ):
+            try:
+                db_file = gdbm.open(self.dbs[filename], 'r')
+                raw_xml = db_file[db_key]
+            finally:
+                db_file.close()
+            repodata[filename] = raw_xml
+            element = ElementTree.fromstring(raw_xml)
+            unit_key, items = process_func(element)
+            model.metadata[metadata_key] = items
+
+        repodata['primary'] = model.raw_xml
 
 # utilities --------------------------------------------------------------------
 

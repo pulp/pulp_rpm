@@ -175,6 +175,7 @@ class RepoSync(object):
 
         metadata_files.download_metadata_files()
         self.downloader = None
+        metadata_files.generate_dbs()
         # TODO: verify metadata
         #metadata_files.verify_metadata_files()
         return metadata_files
@@ -289,7 +290,7 @@ class RepoSync(object):
         :rtype: pulp.plugins.model.SyncReport
         """
         # TODO: probably should make this more generic
-        event_listener = ContentListener(self.sync_conduit, self.progress_status, self.call_config)
+        event_listener = ContentListener(self.sync_conduit, self.progress_status, self.call_config, metadata_files)
         primary_file_handle = metadata_files.get_metadata_file_handle(primary.METADATA_FILE_NAME)
         try:
             package_model_generator = packages.package_list_generator(primary_file_handle,

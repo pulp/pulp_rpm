@@ -15,6 +15,7 @@ from copy import deepcopy
 
 # primary.xml element tags -----------------------------------------------------
 from pulp_rpm.common import models
+from pulp_rpm.plugins.importers.yum.repomd import packages
 
 METADATA_FILE_NAME = 'primary'
 
@@ -160,7 +161,10 @@ def process_package_element(package_element):
     format_element = package_element.find(FORMAT_TAG)
     package_info.update(_process_format_element(format_element))
 
-    return models.RPM.from_package_info(package_info)
+    model = models.RPM.from_package_info(package_info)
+    # add the raw XML so it can be saved in the database later
+    model.raw_xml = packages.element_to_raw_xml(package_element)
+    return model
 
 
 def _process_format_element(format_element):

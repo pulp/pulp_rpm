@@ -172,6 +172,7 @@ class RPM(VersionedPackage):
 
     def __init__(self, name, epoch, version, release, arch, checksumtype, checksum, metadata):
         Package.__init__(self, locals())
+        self.raw_xml = ''
 
     @property
     def relative_path(self):
