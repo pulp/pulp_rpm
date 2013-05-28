@@ -34,8 +34,23 @@ def get_profiler_conduit(type_id=None, existing_units=None, repo_bindings=[]):
                 else:
                     ret_val.append(u)
         return ret_val
+
+    def search_unit_ids(type_id, criteria=None):
+        ret_val = []
+        if existing_units:
+            for u in existing_units:
+                ret_val.append(u.id)
+                if criteria and 'filters' in criteria:
+                    filters = criteria["filters"]
+                    if (u.type_id == type_id and filters['name'] == u.unit_key['name']):
+                        ret_val.append(u.id)
+                else:
+                    ret_val.append(u.id)
+        return ret_val
+
     sync_conduit = mock.Mock(spec=ProfilerConduit)
     sync_conduit.get_units.side_effect = get_units
+    sync_conduit.search_unit_ids.side_effect = search_unit_ids
     sync_conduit.get_bindings.side_effect = get_bindings
     return sync_conduit
 
