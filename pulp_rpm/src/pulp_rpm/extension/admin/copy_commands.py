@@ -29,6 +29,7 @@ DESC_ERRATA = _('copy errata from one repository to another')
 DESC_DISTRIBUTION = _('copy distributions from one repository to another')
 DESC_PKG_GROUP = _('copy package groups from one repository to another')
 DESC_PKG_CATEGORY = _('copy package categories from one repository to another')
+DESC_ALL = _('copy all content units from one repository to another')
 
 DESC_RECURSIVE = _('if specified, any dependencies of units being copied that are in the source repo '
                    'will be copied as well')
@@ -127,3 +128,10 @@ class PackageCategoryCopyCommand(RecursiveCopyCommand):
 
     def __init__(self, context):
         RecursiveCopyCommand.__init__(self, context, 'category', DESC_PKG_CATEGORY, TYPE_ID_PKG_CATEGORY)
+
+
+class AllCopyCommand(RecursiveCopyCommand):
+
+    def __init__(self, context):
+        RecursiveCopyCommand.__init__(self, context, 'all', DESC_ALL, None)
+

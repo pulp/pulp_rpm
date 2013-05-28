@@ -47,6 +47,7 @@ def initialize(context):
     copy_section.add_command(copy_commands.DistributionCopyCommand(context))
     copy_section.add_command(copy_commands.PackageGroupCopyCommand(context))
     copy_section.add_command(copy_commands.PackageCategoryCopyCommand(context))
+    copy_section.add_command(copy_commands.AllCopyCommand(context))
 
     # Disabled as per 950690. We'll likely be able to add these back once the new
     # yum importer is finished and DRPMs are properly handled.

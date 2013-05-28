@@ -148,7 +148,7 @@ class OtherCopyCommandsTests(rpm_support_base.PulpClientTests):
         self.assertEqual(command.description, copy_commands.DESC_PKG_GROUP)
         self.assertEqual(command.type_id, TYPE_ID_PKG_GROUP)
 
-    def test_rpm_copy_command(self):
+    def test_category_copy_command(self):
         # Test
         command = copy_commands.PackageCategoryCopyCommand(self.context)
 
@@ -158,3 +158,12 @@ class OtherCopyCommandsTests(rpm_support_base.PulpClientTests):
         self.assertEqual(command.description, copy_commands.DESC_PKG_CATEGORY)
         self.assertEqual(command.type_id, TYPE_ID_PKG_CATEGORY)
 
+    def test_all_copy_command(self):
+        # Test
+        command = copy_commands.AllCopyCommand(self.context)
+
+        # Verify
+        self.assertTrue(isinstance(command, copy_commands.RecursiveCopyCommand))
+        self.assertEqual(command.name, 'all')
+        self.assertEqual(command.description, copy_commands.DESC_ALL)
+        self.assertEqual(command.type_id, None)
