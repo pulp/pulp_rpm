@@ -21,8 +21,16 @@ from pulp_rpm.common import constants
 
 
 class ISORepoListCommand(ListRepositoriesCommand):
-
+    """
+    This command allows the user to list all of the ISO repositories.
+    """
     def __init__(self, context):
+        """
+        Configure the title text to say ISO Repositories, and initialize our repo cache.
+
+        :param context: The client context
+        :type  context: pulp.client.extensions.core.ClientContext
+        """
         repos_title = _('ISO Repositories')
         super(ISORepoListCommand, self).__init__(context, repos_title=repos_title)
 
@@ -32,6 +40,13 @@ class ISORepoListCommand(ListRepositoriesCommand):
         self.all_repos_cache = None
 
     def get_other_repositories(self, query_params, **kwargs):
+        """
+        Return a list of non-ISO repositories.
+
+        :param query_params: A dictionary of query parameters that we will use to determine
+                             the level of detail to show to the user.
+        :type  query_params: dict
+        """
         all_repos = self._all_repos(query_params)
 
         non_iso_repos = []
@@ -43,6 +58,14 @@ class ISORepoListCommand(ListRepositoriesCommand):
         return non_iso_repos
 
     def get_repositories(self, query_params, **kwargs):
+        """
+        Return a list of ISO repositories, stripping out all SSL certificates and keys that are
+        found in them.
+
+        :param query_params: A dictionary of query parameters that we will use to determine
+                             the level of detail to show to the user.
+        :type  query_params: dict
+        """
         all_repos = self._all_repos(query_params)
 
         # Due to a deficiency in the bindings to the API, we cannot used the server side repository
@@ -86,7 +109,14 @@ class ISORepoListCommand(ListRepositoriesCommand):
         return iso_repos
 
     def _all_repos(self, query_params):
+        """
+        Return a list of all the repos that exist on the server, regardless of their type. Cache
+        the results on self.all_repos_cache, so we can avoid multiple calls to the server.
 
+        :param query_params: A dictionary of query parameters that we will use to determine
+                             the level of detail to show to the user.
+        :type  query_params: dict
+        """
         # This is safe from any issues with concurrency due to how the CLI works
         if self.all_repos_cache is None:
             self.all_repos_cache = self.context.server.repo.repositories(query_params).response_body
