@@ -68,6 +68,10 @@ ORDER_BY_TYPE = {
     TYPE_PACKAGE_CATEGORY : ORDER_PACKAGE_CATEGORY,
     }
 
+# Order of keys to use when building up the single string describing an entry in the
+# requires or provides list; see _reformat_rpm_provides_requires for usage.
+PROVIDES_REQUIRES_ORDERED_KEYS = ['name', 'version', 'release', 'epoch']
+
 # Format to use when displaying the details of a single erratum
 SINGLE_ERRATUM_TEMPLATE = _('''Id:                %(id)s
 Title:             %(title)s
@@ -185,10 +189,36 @@ class PackageSearchCommand(BaseSearchCommand):
                         if key not in FIELDS_RPM:
                             del doc['metadata'][key]
 
+            # Create user-friendly translations for the requires and provides lists
+            map(self._reformat_rpm_provides_requires, document_list)
+
             self.context.prompt.render_document_list(
                 document_list, filters=display_filter, order=order)
 
         self.run_search([self.type_id], out_func=out_func, **kwargs)
+
+    @staticmethod
+    def _reformat_rpm_provides_requires(rpm):
+        """
+        Condenses the dict version of the provides and requires lists into single strings
+        for each entry. The specified RPM is updated.
+
+        :param rpm: single RPM from the result of the search
+        :type  rpm: dict
+        """
+
+        def process_one(related_rpm):
+            """
+            Returns the single string view of an entry in the requires or provides list.
+            Format: concatenated values (if present) separated by -
+            """
+            return '-'.join([related_rpm[key] for key in PROVIDES_REQUIRES_ORDERED_KEYS
+                             if related_rpm[key] is not None])
+
+        for reformat_me in ['requires', 'provides']:
+            related_rpm_list = rpm[reformat_me]
+            formatted_rpms = [process_one(r) for r in related_rpm_list]
+            rpm[reformat_me] = formatted_rpms
 
 
 class SearchRpmsCommand(PackageSearchCommand):
