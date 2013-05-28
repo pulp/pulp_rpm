@@ -68,9 +68,13 @@ ORDER_BY_TYPE = {
     TYPE_PACKAGE_CATEGORY : ORDER_PACKAGE_CATEGORY,
     }
 
-# Order of keys to use when building up the single string describing an entry in the
-# requires or provides list; see _reformat_rpm_provides_requires for usage.
-PROVIDES_REQUIRES_ORDERED_KEYS = ['name', 'version', 'release', 'epoch']
+REQUIRES_COMPARISON_TRANSLATIONS = {
+    'EQ' : '=',
+    'LT' : '<',
+    'LE' : '<=',
+    'GT' : '>',
+    'GE' : '>=',
+}
 
 # Format to use when displaying the details of a single erratum
 SINGLE_ERRATUM_TEMPLATE = _('''Id:                %(id)s
@@ -212,8 +216,25 @@ class PackageSearchCommand(BaseSearchCommand):
             Returns the single string view of an entry in the requires or provides list.
             Format: concatenated values (if present) separated by -
             """
-            return '-'.join([related_rpm[key] for key in PROVIDES_REQUIRES_ORDERED_KEYS
+            start = related_rpm['name']
+
+            tail = '-'.join([related_rpm[key] for key in ['version', 'release', 'epoch']
                              if related_rpm[key] is not None])
+
+
+            if related_rpm['flags'] is not None and \
+               related_rpm['flags'] in REQUIRES_COMPARISON_TRANSLATIONS:
+                # Bridge between name and version info with the comparison operator if present
+                middle = ' ' + REQUIRES_COMPARISON_TRANSLATIONS[related_rpm['flags']] + ' '
+            else:
+                # If there is a tail, connect it with the - connector, but make sure to
+                # not leave a trailing - if the version isn't present.
+                if len(tail) > 0:
+                    middle = '-'
+                else:
+                    middle = ''
+
+            return start + middle + tail
 
         for reformat_me in ['requires', 'provides']:
             related_rpm_list = rpm[reformat_me]

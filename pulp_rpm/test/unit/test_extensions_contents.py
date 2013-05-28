@@ -92,17 +92,20 @@ class PackageSearchCommandTests(PulpClientTests):
                         {'name' : 'name.1',
                          'version' : 'version.1',
                          'release' : 'release.1',
-                         'epoch' : 'epoch.1'},
+                         'epoch' : 'epoch.1',
+                         'flags' : None,},
                         {'name' : 'name.2',
                          'version' : None,
                          'release' : None,
-                         'epoch' : None},
+                         'epoch' : None,
+                         'flags' : None},
                     ],
                     'requires' : [
                         {'name' : 'name.1',
                          'version' : 'version.1',
                          'release' : 'release.1',
-                         'epoch' : 'epoch.1'},
+                         'epoch' : 'epoch.1',
+                         'flags' : 'GT'},
                     ]}
 
         # Test
@@ -116,7 +119,7 @@ class PackageSearchCommandTests(PulpClientTests):
 
         self.assertEqual(test_rpm['provides'][0], 'name.1-version.1-release.1-epoch.1')
         self.assertEqual(test_rpm['provides'][1], 'name.2')
-        self.assertEqual(test_rpm['requires'][0], 'name.1-version.1-release.1-epoch.1')
+        self.assertEqual(test_rpm['requires'][0], 'name.1 > version.1-release.1-epoch.1')
 
 
 class SearchRpmsCommand(PulpClientTests):
