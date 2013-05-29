@@ -180,7 +180,7 @@ def modify_repo(repodata_dir, new_file, remove=False):
     if remove:
         cmd = "modifyrepo --remove %s %s" % (new_file, repodata_dir)
     else:
-        cmd = "modifyrepo %s %s" % (new_file, repodata_dir)
+        cmd = "modifyrepo --no-compress %s %s" % (new_file, repodata_dir)
     status, out = commands.getstatusoutput(cmd)
     if status != 0:
         _LOG.error("modifyrepo on %s failed" % repodata_dir)
