@@ -50,16 +50,16 @@ class ISOSyncRun(listener.DownloadEventListener):
         max_speed = config.get(importer_constants.KEY_MAX_SPEED)
         if max_speed is not None:
             max_speed = float(max_speed)
-        num_threads = config.get(importer_constants.KEY_MAX_DOWNLOADS)
-        if num_threads is not None:
-            num_threads = int(num_threads)
+        max_downloads = config.get(importer_constants.KEY_MAX_DOWNLOADS)
+        if max_downloads is not None:
+            max_downloads = int(max_downloads)
         else:
-            num_threads = constants.CONFIG_MAX_DOWNLOADS_DEFAULT
+            max_downloads = constants.CONFIG_MAX_DOWNLOADS_DEFAULT
         ssl_validation = config.get_boolean(importer_constants.KEY_SSL_VALIDATION)
         ssl_validation = ssl_validation if ssl_validation is not None else constants.CONFIG_VALIDATE_DEFAULT
         downloader_config = {
             'max_speed': max_speed,
-            'num_threads': num_threads,
+            'max_concurrent': max_downloads,
             'ssl_client_cert': config.get(importer_constants.KEY_SSL_CLIENT_CERT),
             'ssl_client_key': config.get(importer_constants.KEY_SSL_CLIENT_KEY),
             'ssl_ca_cert': config.get(importer_constants.KEY_SSL_CA_CERT),

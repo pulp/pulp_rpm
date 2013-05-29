@@ -11,12 +11,19 @@
 # have received a copy of GPLv2 along with this software; if not, see
 # http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt.
 
+"""
+Test the pulp_rpm.extension.admin.iso.create_update module. The ISORepoCreateUpdateMixin
+is not directly tested due to mixin complications, but it does have 100% test coverage
+through the thorough testing of the ISORepoCreateCommand and the ISORepoUpdateCommand.
+"""
+
 import os
 import unittest
 
 from pulp.client import arg_utils, parsers
 from pulp.client.commands import options as std_options
-from pulp.client.commands.repo.cudl import CreateRepositoryCommand
+from pulp.client.commands.repo.cudl import (CreateRepositoryCommand,
+                                            UpdateRepositoryCommand)
 from pulp.client.commands.repo.importer_config import ImporterConfigMixin
 from pulp.client.extensions.extensions import PulpCliOption, PulpCliOptionGroup
 from pulp.common import constants as pulp_constants
@@ -150,16 +157,16 @@ class TestISORepoCreateCommand(rpm_support_base.PulpClientTests):
         Test the __init__() method, ensuring that it calls the __init__() methods for all
         its superclasses.
         """
-        create_command = create_update.ISORepoCreateCommand(self.context)
+        command = create_update.ISORepoCreateCommand(self.context)
 
-        create_repo_init.assert_called_once_with(create_command, self.context)
+        create_repo_init.assert_called_once_with(command, self.context)
         importer_config_init.assert_called_once_with(
-            create_command, include_sync=True, include_ssl=True, include_proxy=True,
+            command, include_sync=True, include_ssl=True, include_proxy=True,
             include_throttling=True, include_unit_policy=True)
-        distributor_config_init.assert_called_once_with(create_command)
+        distributor_config_init.assert_called_once_with(command)
 
         # Make sure we don't present the --retain-old-count option to the user
-        self.assertEqual(len(create_command.unit_policy_group.options), 1)
+        self.assertEqual(len(command.unit_policy_group.options), 1)
 
     @mock.patch('pulp_rpm.extension.admin.iso.create_update.ISORepoCreateCommand.'
                 'populate_unit_policy',
@@ -170,33 +177,33 @@ class TestISORepoCreateCommand(rpm_support_base.PulpClientTests):
         Make sure that we are only adding the --remove-missing option (and not the
         --remove-old-count option).
         """
-        create_command = create_update.ISORepoCreateCommand(self.context)
+        command = create_update.ISORepoCreateCommand(self.context)
 
-        populate_unit_policy.assert_called_once_with(create_command)
-        self.assertEqual(create_command.unit_policy_group.options,
-                         [create_command.options_bundle.opt_remove_missing])
+        populate_unit_policy.assert_called_once_with(command)
+        self.assertEqual(command.unit_policy_group.options,
+                         [command.options_bundle.opt_remove_missing])
 
     def test_run_bad_config(self):
         """
         Test the run() function with a bad config.
         """
-        create_command = create_update.ISORepoCreateCommand(self.context)
+        command = create_update.ISORepoCreateCommand(self.context)
         user_input = {
             std_options.OPTION_REPO_ID.keyword: 'repo_id',
-            create_command.options_bundle.opt_feed_cert.keyword: '/wrong/path'}
+            command.options_bundle.opt_feed_cert.keyword: '/wrong/path'}
         # Set up a mock on create_and_configure, so we can make sure it doesn't get called
         self.context.server.repo.create_and_configure = mock.MagicMock()
-        create_command.prompt = mock.MagicMock()
+        command.prompt = mock.MagicMock()
 
-        fail_code = create_command.run(**user_input)
+        fail_code = command.run(**user_input)
 
         # create_and_configure() shouldn't get called
         self.assertEqual(self.context.server.repo.create_and_configure.call_count, 0)
 
         # We should have told the user that there was FAIL
-        self.assertEqual(create_command.prompt.render_success_message.call_count, 0)
-        self.assertEqual(create_command.prompt.render_failure_message.call_count, 1)
-        self.assertEqual(create_command.prompt.render_failure_message.mock_calls[0][2]['tag'],
+        self.assertEqual(command.prompt.render_success_message.call_count, 0)
+        self.assertEqual(command.prompt.render_failure_message.call_count, 1)
+        self.assertEqual(command.prompt.render_failure_message.mock_calls[0][2]['tag'],
                          'create-failed')
         self.assertEqual(fail_code, os.EX_DATAERR)
 
@@ -206,33 +213,33 @@ class TestISORepoCreateCommand(rpm_support_base.PulpClientTests):
         """
         Test the run() function with a good config, with all options set.
         """
-        create_command = create_update.ISORepoCreateCommand(self.context)
+        command = create_update.ISORepoCreateCommand(self.context)
         user_input = {
             std_options.OPTION_REPO_ID.keyword: 'repo_id',
             std_options.OPTION_DESCRIPTION.keyword: 'description',
             std_options.OPTION_NAME.keyword: 'name',
             std_options.OPTION_NOTES.keyword: {'a_note': 'note'},
-            create_command.opt_http.keyword: 'true',
-            create_command.opt_https.keyword: 'false',
-            create_command.opt_auth_ca.keyword: '/path/to/file',
-            create_command.options_bundle.opt_feed.keyword: 'http://feed.com/isos',
-            create_command.options_bundle.opt_validate.keyword: 'true',
-            create_command.options_bundle.opt_proxy_host.keyword: 'proxy.host.com',
-            create_command.options_bundle.opt_proxy_port.keyword: '1234',
-            create_command.options_bundle.opt_proxy_user.keyword: 'proxy_user',
-            create_command.options_bundle.opt_proxy_pass.keyword: 'password',
-            create_command.options_bundle.opt_max_speed.keyword: '56.6',
-            create_command.options_bundle.opt_max_downloads.keyword: '4',
-            create_command.options_bundle.opt_feed_ca_cert.keyword: '/path/to/cert',
-            create_command.options_bundle.opt_verify_feed_ssl.keyword: 'true',
-            create_command.options_bundle.opt_feed_cert.keyword: '/path/to/other/cert',
-            create_command.options_bundle.opt_feed_key.keyword: '/path/to/key',
-            create_command.options_bundle.opt_remove_missing.keyword: 'true'}
+            command.opt_http.keyword: 'true',
+            command.opt_https.keyword: 'false',
+            command.opt_auth_ca.keyword: '/path/to/file',
+            command.options_bundle.opt_feed.keyword: 'http://feed.com/isos',
+            command.options_bundle.opt_validate.keyword: 'true',
+            command.options_bundle.opt_proxy_host.keyword: 'proxy.host.com',
+            command.options_bundle.opt_proxy_port.keyword: '1234',
+            command.options_bundle.opt_proxy_user.keyword: 'proxy_user',
+            command.options_bundle.opt_proxy_pass.keyword: 'password',
+            command.options_bundle.opt_max_speed.keyword: '56.6',
+            command.options_bundle.opt_max_downloads.keyword: '4',
+            command.options_bundle.opt_feed_ca_cert.keyword: '/path/to/cert',
+            command.options_bundle.opt_verify_feed_ssl.keyword: 'true',
+            command.options_bundle.opt_feed_cert.keyword: '/path/to/other/cert',
+            command.options_bundle.opt_feed_key.keyword: '/path/to/key',
+            command.options_bundle.opt_remove_missing.keyword: 'true'}
         # Set up a mock on create_and_configure, so we can intercept the call and inspect
         self.context.server.repo.create_and_configure = mock.MagicMock()
-        create_command.prompt = mock.MagicMock()
+        command.prompt = mock.MagicMock()
 
-        create_command.run(**user_input)
+        command.run(**user_input)
 
         # Assert that we passed all of the correct arguments to create_and_configure()
         self.assertEqual(self.context.server.repo.create_and_configure.call_count, 1)
@@ -276,8 +283,8 @@ class TestISORepoCreateCommand(rpm_support_base.PulpClientTests):
         self.assertEqual(args[6], [expected_distributor])
 
         # We should have told the user that the repo was created successfully
-        self.assertEqual(create_command.prompt.render_success_message.call_count, 1)
-        self.assertEqual(create_command.prompt.render_success_message.mock_calls[0][2]['tag'],
+        self.assertEqual(command.prompt.render_success_message.call_count, 1)
+        self.assertEqual(command.prompt.render_success_message.mock_calls[0][2]['tag'],
                          'repo-created')
 
     @mock.patch('pulp_rpm.extension.admin.iso.create_update.arg_utils.convert_file_contents',
@@ -287,17 +294,17 @@ class TestISORepoCreateCommand(rpm_support_base.PulpClientTests):
         Test the run() function with a good config, with only a subset of options set.
         This helps us to know that we only send the options that the user set.
         """
-        create_command = create_update.ISORepoCreateCommand(self.context)
+        command = create_update.ISORepoCreateCommand(self.context)
         user_input = {
             std_options.OPTION_REPO_ID.keyword: 'repo_id',
-            create_command.options_bundle.opt_feed.keyword: 'https://feed.com/isos',
-            create_command.options_bundle.opt_feed_cert.keyword: '/path/to/other/cert',
-            create_command.options_bundle.opt_feed_key.keyword: '/path/to/key'}
+            command.options_bundle.opt_feed.keyword: 'https://feed.com/isos',
+            command.options_bundle.opt_feed_cert.keyword: '/path/to/other/cert',
+            command.options_bundle.opt_feed_key.keyword: '/path/to/key'}
         # Set up a mock on create_and_configure, so we can intercept the call and inspect
         self.context.server.repo.create_and_configure = mock.MagicMock()
-        create_command.prompt = mock.MagicMock()
+        command.prompt = mock.MagicMock()
 
-        create_command.run(**user_input)
+        command.run(**user_input)
 
         # Assert that we passed all of the correct arguments to create_and_configure()
         self.assertEqual(self.context.server.repo.create_and_configure.call_count, 1)
@@ -328,6 +335,254 @@ class TestISORepoCreateCommand(rpm_support_base.PulpClientTests):
         self.assertEqual(args[6], [expected_distributor])
 
         # We should have told the user that the repo was created successfully
-        self.assertEqual(create_command.prompt.render_success_message.call_count, 1)
-        self.assertEqual(create_command.prompt.render_success_message.mock_calls[0][2]['tag'],
+        self.assertEqual(command.prompt.render_success_message.call_count, 1)
+        self.assertEqual(command.prompt.render_success_message.mock_calls[0][2]['tag'],
                          'repo-created')
+
+    def test__perform_command(self):
+        """
+        Test the _perform_command() method.
+        """
+        command = create_update.ISORepoCreateCommand(self.context)
+        repo_id = 'repo_id'
+        display_name = 'Display Name'
+        description = 'The repository.'
+        notes = {'a_note': 'This is a note.'}
+        importer_config = {
+            importer_constants.KEY_FEED: 'https://feed.com/isos',
+            importer_constants.KEY_SSL_CLIENT_CERT: 'This is a file.',
+            importer_constants.KEY_SSL_CLIENT_KEY: 'This is a file.'}
+        distributors = [{
+            'distributor_type': ids.TYPE_ID_DISTRIBUTOR_ISO,
+            'distributor_config': {'serve_http': True},
+            'auto_publish': True, 'distributor_id': ids.TYPE_ID_DISTRIBUTOR_ISO}]
+        # Set up a mock on create_and_configure, so we can intercept the call and inspect
+        self.context.server.repo.create_and_configure = mock.MagicMock()
+        command.prompt = mock.MagicMock()
+
+        command._perform_command(repo_id, display_name, description, notes,
+                                        importer_config, distributors)
+
+        # Make sure the correct call was made to create the repo
+        self.context.server.repo.create_and_configure.assert_called_once_with(
+            repo_id, display_name, description, notes, ids.TYPE_ID_IMPORTER_ISO,
+            importer_config, distributors)
+
+        # We should have told the user that the repo was created successfully
+        self.assertEqual(command.prompt.render_success_message.call_count, 1)
+        self.assertEqual(command.prompt.render_success_message.mock_calls[0][2]['tag'],
+                         'repo-created')
+
+
+class TestISORepoUpdateCommand(rpm_support_base.PulpClientTests):
+    """
+    Test the ISORepoUpdateCommand class.
+    """
+    @mock.patch('pulp_rpm.extension.admin.iso.create_update.ISODistributorConfigMixin.'
+                '__init__', side_effect=create_update.ISODistributorConfigMixin.__init__,
+                autospec=True)
+    @mock.patch('pulp.client.commands.repo.importer_config.ImporterConfigMixin.__init__',
+                side_effect=ImporterConfigMixin.__init__, autospec=True)
+    @mock.patch('pulp.client.commands.repo.cudl.UpdateRepositoryCommand.__init__',
+                side_effect=UpdateRepositoryCommand.__init__, autospec=True)
+    def test___init__(self, update_repo_init, importer_config_init,
+                      distributor_config_init):
+        """
+        Test the __init__() method, ensuring that it calls the __init__() methods for all
+        its superclasses.
+        """
+        command = create_update.ISORepoUpdateCommand(self.context)
+
+        update_repo_init.assert_called_once_with(command, self.context)
+        importer_config_init.assert_called_once_with(
+            command, include_sync=True, include_ssl=True, include_proxy=True,
+            include_throttling=True, include_unit_policy=True)
+        distributor_config_init.assert_called_once_with(command)
+
+        # Make sure we don't present the --retain-old-count option to the user
+        self.assertEqual(len(command.unit_policy_group.options), 1)
+
+    @mock.patch('pulp_rpm.extension.admin.iso.create_update.ISORepoUpdateCommand.'
+                'populate_unit_policy',
+                side_effect=create_update.ISORepoUpdateCommand.populate_unit_policy,
+                autospec=True)
+    def test_populate_unit_policy(self, populate_unit_policy):
+        """
+        Make sure that we are only adding the --remove-missing option (and not the
+        --remove-old-count option).
+        """
+        command = create_update.ISORepoUpdateCommand(self.context)
+
+        populate_unit_policy.assert_called_once_with(command)
+        self.assertEqual(command.unit_policy_group.options,
+                         [command.options_bundle.opt_remove_missing])
+
+    def test_run_bad_config(self):
+        """
+        Test the run() function with a bad config.
+        """
+        command = create_update.ISORepoUpdateCommand(self.context)
+        user_input = {
+            std_options.OPTION_REPO_ID.keyword: 'repo_id',
+            command.options_bundle.opt_feed_cert.keyword: '/wrong/path'}
+        # Set up a mock on create_and_configure, so we can make sure it doesn't get called
+        self.context.server.repo.create_and_configure = mock.MagicMock()
+        command.prompt = mock.MagicMock()
+
+        fail_code = command.run(**user_input)
+
+        # create_and_configure() shouldn't get called
+        self.assertEqual(self.context.server.repo.create_and_configure.call_count, 0)
+
+        # We should have told the user that there was FAIL
+        self.assertEqual(command.prompt.render_success_message.call_count, 0)
+        self.assertEqual(command.prompt.render_failure_message.call_count, 1)
+        self.assertEqual(command.prompt.render_failure_message.mock_calls[0][2]['tag'],
+                         'create-failed')
+        self.assertEqual(fail_code, os.EX_DATAERR)
+
+    @mock.patch('pulp_rpm.extension.admin.iso.create_update.arg_utils.convert_file_contents',
+                mock_convert_file_contents)
+    def test_run_good_config(self):
+        """
+        Test the run() function with a good config, with only a subset of options set.
+        This helps us to know that we only send the options that the user set.
+        """
+        command = create_update.ISORepoUpdateCommand(self.context)
+        user_input = {
+            std_options.OPTION_REPO_ID.keyword: 'repo_id',
+            command.options_bundle.opt_feed.keyword: 'https://feed.com/isos',
+            command.options_bundle.opt_feed_cert.keyword: '/path/to/other/cert',
+            command.options_bundle.opt_feed_key.keyword: '/path/to/key'}
+        # Set up a mock on update_repo_and_plugins, so we can intercept the call and inspect
+        self.context.server.repo.update_repo_and_plugins = mock.MagicMock()
+
+        class Response(object):
+            def is_async(self):
+                return False
+
+        self.context.server.repo.update_repo_and_plugins.return_value = Response()
+        command.prompt = mock.MagicMock()
+
+        command.run(**user_input)
+
+        # Assert that we passed all of the correct arguments to create_and_configure()
+        self.assertEqual(self.context.server.repo.update_repo_and_plugins.call_count, 1)
+        args = self.context.server.repo.update_repo_and_plugins.mock_calls[0][1]
+        self.assertEqual(args[0], 'repo_id')
+        self.assertEqual(args[1], None)
+        self.assertEqual(args[2], None)
+
+        # Inspect the repo notes
+        expected_notes = {pulp_constants.REPO_NOTE_TYPE_KEY: constants.REPO_NOTE_ISO}
+        # Our note was modified to include the repo type
+        self.assertEqual(args[3], expected_notes)
+
+        # Inspect the importer config
+        expected_importer_config = {
+            importer_constants.KEY_FEED: 'https://feed.com/isos',
+            importer_constants.KEY_SSL_CLIENT_CERT: 'This is a file.',
+            importer_constants.KEY_SSL_CLIENT_KEY: 'This is a file.'}
+        self.assertEqual(args[4], expected_importer_config)
+
+        # Inspect the distributors
+        expected_distributor = {ids.TYPE_ID_DISTRIBUTOR_ISO: {}}
+        self.assertEqual(args[5], expected_distributor)
+
+        # We should have told the user that the repo was updated successfully
+        self.assertEqual(command.prompt.render_success_message.call_count, 1)
+        self.assertEqual(command.prompt.render_success_message.mock_calls[0][2]['tag'],
+                         'repo-updated')
+
+    def test__perform_command_async(self):
+        """
+        Test the _perform_command() method with an asynchronous response.
+        """
+        command = create_update.ISORepoUpdateCommand(self.context)
+        repo_id = 'repo_id'
+        display_name = 'Display Name'
+        description = 'The repository.'
+        notes = {'a_note': 'This is a note.'}
+        importer_config = {
+            importer_constants.KEY_FEED: 'https://feed.com/isos',
+            importer_constants.KEY_SSL_CLIENT_CERT: 'This is a file.',
+            importer_constants.KEY_SSL_CLIENT_KEY: 'This is a file.'}
+        distributors = [{
+            'distributor_type': ids.TYPE_ID_DISTRIBUTOR_ISO,
+            'distributor_config': {'serve_http': True},
+            'auto_publish': True, 'distributor_id': ids.TYPE_ID_DISTRIBUTOR_ISO}]
+        # Set up a mock on create_and_configure, so we can intercept the call and inspect
+        self.context.server.repo.update_repo_and_plugins = mock.MagicMock()
+
+        class Response(object):
+            def is_async(self):
+                return True
+
+            @property
+            def response_body(self):
+                body = mock.MagicMock()
+                body.reasons = 'Is this a good reason?'
+                return body
+
+        self.context.server.repo.update_repo_and_plugins.return_value = Response()
+        command.prompt = mock.MagicMock()
+
+        command._perform_command(repo_id, display_name, description, notes,
+                                        importer_config, distributors)
+
+        # Make sure the correct call was made to create the repo
+        distributor_configs = {
+            distributors[0]['distributor_id']: distributors[0]['distributor_config']}
+        self.context.server.repo.update_repo_and_plugins.assert_called_once_with(
+            repo_id, display_name, description, notes,
+            importer_config, distributor_configs)
+
+        # We should have told the user that the repo was created successfully
+        self.assertEqual(command.prompt.render_paragraph.call_count, 1)
+        self.assertEqual(command.prompt.render_paragraph.mock_calls[0][2]['tag'],
+                         'update-postponed')
+        self.assertEqual(command.prompt.render_reasons.call_count, 1)
+        self.assertEqual(command.prompt.render_reasons.mock_calls[0][1][0],
+                         'Is this a good reason?')
+
+    def test__perform_command_sync(self):
+        """
+        Test the _perform_command() method with a synchronous response.
+        """
+        command = create_update.ISORepoUpdateCommand(self.context)
+        repo_id = 'repo_id'
+        display_name = 'Display Name'
+        description = 'The repository.'
+        notes = {'a_note': 'This is a note.'}
+        importer_config = {
+            importer_constants.KEY_FEED: 'https://feed.com/isos',
+            importer_constants.KEY_SSL_CLIENT_CERT: 'This is a file.',
+            importer_constants.KEY_SSL_CLIENT_KEY: 'This is a file.'}
+        distributors = [{
+            'distributor_type': ids.TYPE_ID_DISTRIBUTOR_ISO,
+            'distributor_config': {'serve_http': True},
+            'auto_publish': True, 'distributor_id': ids.TYPE_ID_DISTRIBUTOR_ISO}]
+        # Set up a mock on create_and_configure, so we can intercept the call and inspect
+        self.context.server.repo.update_repo_and_plugins = mock.MagicMock()
+
+        class Response(object):
+            def is_async(self):
+                return False
+
+        self.context.server.repo.update_repo_and_plugins.return_value = Response()
+        command.prompt = mock.MagicMock()
+
+        command._perform_command(repo_id, display_name, description, notes,
+                                        importer_config, distributors)
+
+        # Make sure the correct call was made to create the repo
+        distributor_configs = {
+            distributors[0]['distributor_id']: distributors[0]['distributor_config']}
+        self.context.server.repo.update_repo_and_plugins.assert_called_once_with(
+            repo_id, display_name, description, notes,
+            importer_config, distributor_configs)
+
+        # We should have told the user that the repo was created successfully
+        self.assertEqual(command.prompt.render_success_message.call_count, 1)
+        self.assertEqual(command.prompt.render_success_message.mock_calls[0][2]['tag'],
+                         'repo-updated')
