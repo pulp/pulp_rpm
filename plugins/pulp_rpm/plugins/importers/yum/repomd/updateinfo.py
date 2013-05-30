@@ -21,6 +21,16 @@ PACKAGE_TAG = 'update'
 
 
 def process_package_element(element):
+    """
+    Process one XML block from updateinfo.xml and return a dict describing
+    and errata
+
+    :param element: object representing one "errate" block from the XML file
+    :type  element: xml.etree.ElementTree.Element
+
+    :return:    dictionary describing an errata
+    :rtype:     dict
+    """
     ret = {
         'from': element.attrib['from'],
         'status': element.attrib['status'],

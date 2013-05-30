@@ -17,6 +17,7 @@ import itertools
 
 DEFAULT_PAGE_SIZE = 1000
 
+
 def paginate(iterable, page_size=DEFAULT_PAGE_SIZE):
     while True:
         page = tuple(itertools.islice(iterable, 0, page_size))

@@ -33,6 +33,21 @@ _LOGGER = logging.getLogger(__name__)
 
 
 def sync(sync_conduit, feed, working_dir, report, progress_callback):
+    """
+    Look for a distribution in the target repo and sync it if found
+
+    :param sync_conduit:        conduit provided by the platform
+    :type  sync_conduit:        pulp.plugins.conduits.repo_sync.RepoSyncConduit
+    :param feed:                URL of the yum repo being sync'd
+    :type  feed:                basestring
+    :param working_dir:         full path to the directory to which files
+                                should be downloaded
+    :type  working_dir:         basestring
+    :param report:              progress report object
+    :type  report:              pulp_rpm.plugins.importers.yum.report.DistributionReport
+    :param progress_callback:   function that takes no arguments but induces
+                                the current progress report to be sent.
+    """
     # this temporary dir will hopefully be moved to the unit's storage path
     # if all downloads go well. If not, it will be deleted below, ensuring a
     # complete cleanup
@@ -77,6 +92,22 @@ def sync(sync_conduit, feed, working_dir, report, progress_callback):
 
 
 def file_to_download_request(file_dict, feed, storage_path):
+    """
+    Takes information about a file described in a treeinfo file and turns that
+    into a download request suitable for use with nectar.
+
+    :param file_dict:       dict containing keys 'relativepath', 'checksum',
+                            and 'checksumtype'.
+    :type  file_dict:       dict
+    :param feed:            URL to the base of a repository
+    :type  feed:            basestring
+    :param storage_path:    full filesystem path to where the downloaded files
+                            should be saved.
+    :type  storage_path:    basestring
+
+    :return:    new download request
+    :rtype:     nectar.request.DownloadRequest
+    """
     savepath = os.path.join(storage_path, file_dict['relativepath'])
     # make directories such as "images"
     if not os.path.exists(os.path.dirname(savepath)):
@@ -104,7 +135,7 @@ def get_treefile(feed, tmp_dir):
         path = os.path.join(tmp_dir, filename)
         url = os.path.join(feed, filename)
         request = DownloadRequest(url, path)
-        # TODO: combine these three lines?
+        # TODO: use the config settings available from the sync workflow.
         config = DownloaderConfig()
         listener = AggregatingEventListener()
         downloader = HTTPCurlDownloader(config, listener)

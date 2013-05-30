@@ -98,6 +98,15 @@ class MetadataFiles(object):
     """
 
     def __init__(self, repo_url, dst_dir, nectar_config):
+        """
+        :param repo_url:        URL for the base of a yum repository
+        :type  repo_url:        basestring
+        :param dst_dir:         full path to a destination to which files
+                                should be downloaded
+        :type  dst_dir:         basestring
+        :param nectar_config:   download config for nectar
+        :type  nectar_config:   nectar.config.DownloaderConfig
+        """
         super(MetadataFiles, self).__init__()
         self.repo_url = repo_url
         self.dst_dir = dst_dir
@@ -182,6 +191,7 @@ class MetadataFiles(object):
         """
         Optionally verify the metadata files using both reported size and checksum.
         """
+        # TODO: vet this method and determine if it should be used
         for md in self.metadata.values():
             if 'local_path' not in md:
                 raise RuntimeError('%s has not been downloaded' % md['relative_path'].rsplit('/', 1)[-1])
@@ -213,7 +223,12 @@ class MetadataFiles(object):
         as a "data" element's "type", return an open file handle in read mode for
         that file.
 
-        :return: file
+        :param name:    name of a metadata file as would be found in the
+                        repomd.xml file as a "type" attribute of a "data" block.
+        :type  name:    basestring
+
+        :return: open file handle to a file containing XML
+        :rtype:  file
         """
         try:
             file_path = self.metadata[name]['local_path']
@@ -229,21 +244,32 @@ class MetadataFiles(object):
         return file_handle
 
     def get_group_file_handle(self):
+        """
+        return an open file handle from which the group XML can be read.
+
+        :return:    open file handle to the file containing group XML
+        :rtype:     file
+        """
         group_file_handle = self.get_metadata_file_handle('group_gz')
         if group_file_handle is None:
             group_file_handle = self.get_metadata_file_handle('group')
         return group_file_handle
 
     def generate_dbs(self):
+        """
+        For repo data files that contain data we need to access later for each
+        unit in the repo, generate a local db file that gives us quick read
+        access to each unit's data.
+        """
         for filename, tag, process_func in (
             (filelists.METADATA_FILE_NAME, filelists.PACKAGE_TAG, filelists.process_package_element),
             (other.METADATA_FILE_NAME, other.PACKAGE_TAG, other.process_package_element),
         ):
-
             xml_file_handle = self.get_metadata_file_handle(filename)
             try:
                 generator = package_list_generator(xml_file_handle, tag)
                 db_filename = os.path.join(self.dst_dir, '%s.db' % filename)
+                # always a New file, and open with Fast writing mode.
                 db_file_handle = gdbm.open(db_filename, 'nf')
                 try:
                     for element in generator:
@@ -260,13 +286,31 @@ class MetadataFiles(object):
 
     @staticmethod
     def generate_db_key(unit_key):
+        """
+        :param unit_key:    dictionary of key:value pairs that make a unique
+                            entry in the given database.
+        :type  unit_key:    dict
+
+        :return:    a string that is a suitable unit key for the database
+        :rtype:     basestring
+        """
         unit_key = unit_key.copy()
+        # clean out these entries if they exist, because they won't be in the
+        # XML files we're indexing.
         unit_key.pop('checksum', None)
         unit_key.pop('checksumtype', None)
         sorted_key_names = sorted(unit_key.keys())
         return '::'.join('%s:%s' % (name, unit_key[name]) for name in sorted_key_names)
 
     def add_repodata(self, model):
+        """
+        Given a model, add the "repodata" attribute to it (which includes raw
+        XML used for publishing), and add the "files" and "changelog" attributes
+        based on data obtained in the raw XML snippets.
+
+        :param model:   model instance to manipulate
+        :type  model:   pulp_rpm.common.models.RPM
+        """
         repodata = model.metadata.setdefault('repodata',{})
         db_key = self.generate_db_key(model.unit_key)
         for filename, metadata_key, process_func in (

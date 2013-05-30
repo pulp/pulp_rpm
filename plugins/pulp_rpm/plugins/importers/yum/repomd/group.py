@@ -23,6 +23,17 @@ METADATA_FILE_NAME = 'comps'
 
 
 def process_group_element(repo_id, element):
+    """
+    Process one XML block from comps.xml and return a models.PackageGroup instance
+
+    :param repo_id: unique ID for the destination repository
+    :type  repo_id  basestring
+    :param element: object representing one "group" block from the XML file
+    :type  element: xml.etree.ElementTree.Element
+
+    :return:    models.PackageGroup instance for the XML block
+    :rtype:     pulp_rpm.common.models.PackageGroup
+    """
     packagelist = element.find('packagelist')
     conditional, default, mandatory, optional = _parse_packagelist(packagelist.findall('packagereq'))
     langonly = element.find('langonly') or element.find('lang_only')
@@ -52,6 +63,17 @@ def process_group_element(repo_id, element):
 
 
 def process_category_element(repo_id, element):
+    """
+    Process one XML block from comps.xml and return a models.PackageCategory instance
+
+    :param repo_id: unique ID for the destination repository
+    :type  repo_id  basestring
+    :param element: object representing one "category" block from the XML file
+    :type  element: xml.etree.ElementTree.Element
+
+    :return:    models.PackageCategory instance for the XML block
+    :rtype:     pulp_rpm.common.models.PackageCategory
+    """
     description, translated_description = _parse_translated(element.findall('description'))
     name, translated_name = _parse_translated(element.findall('name'))
     display_order = element.find('display_order')
@@ -71,6 +93,18 @@ def process_category_element(repo_id, element):
 
 
 def _parse_packagelist(packages):
+    """
+    For each "packagereq" entry for a group, sort it into a genre and parse
+    its data into a package name and other possible values.
+
+    :param elements:    list of xml.etree.ElementTree.Element instances
+    :type  elements:    list
+
+    :return:    tuple containing lists of package names in the order listed below
+                in the "genres" dictionary. The "conditional" list contians tuples
+                with package name, and then a requirements object
+    :rtype:     tuple
+"""
     genres = {
         'conditional': [],
         'default': [],
@@ -90,10 +124,33 @@ def _parse_packagelist(packages):
 
 
 def _parse_bool(text):
+    """
+    returns boolean value True iff the text, when converted to lowercase, is
+    exactly "true". Otherwise returns False
+
+    :param text: text that represents a boolean value
+    :type  text: basestring
+
+    :return     True or False
+    :rtype:     bool
+    """
     return text.strip().lower() == 'true'
 
 
 def _parse_translated(items):
+    """
+    one value will not have a "type", and it is the canonical "untranslated"
+    value. Others are "translated" and have a specific type. This function sorts
+    them.
+
+    :param items:   iterable of elements representing a string value which is
+                    possibly a translation
+    :type  items:   iterable of xml.etree.ElementTree.Element
+
+    :return:    tuple of the untranslated string value, and a dict where keys
+                are "types" and values are translated versions of the original
+                value
+    """
     value = ''
     translated_value = {}
     for item in items:

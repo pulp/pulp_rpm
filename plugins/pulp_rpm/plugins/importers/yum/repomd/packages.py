@@ -75,12 +75,31 @@ def package_list_generator(xml_handle, package_tag, process_func=None):
 
 
 def _strip_ns(element):
+    """
+    Given an Element object, recursively strip the namespace info from its tag
+    and all of its children.
+
+    :type  element: xml.etree.ElementTree.Element
+
+    :return:    same element object that was passed in
+    :rtype:     xml.etree.ElementTree.Element
+    """
     element.tag = re.sub(NS_STRIP_RE, '', element.tag)
-    for child in element.getchildren():
+    for child in list(element):
         _strip_ns(child)
 
 
 def element_to_raw_xml(element):
+    """
+    Convert an Element to a raw XML block. This strips any namespace present in
+    the tag strings so that the resulting block doesn't try to declare its own
+    namespace.
+
+    :type  element: xml.etree.ElementTree.Element
+
+    :return:    XML as a string
+    :rtype:     str
+    """
     _strip_ns(element)
     tree = ElementTree(element)
     io = StringIO()

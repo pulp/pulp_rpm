@@ -91,6 +91,14 @@ def upload(repo, type_id, unit_key, metadata, file_path, conduit, config):
 
 
 def link_errata_to_rpms(conduit, errata_model, errata_unit):
+    """
+    :param conduit: provides access to relevant Pulp functionality
+    :type  conduit: pulp.plugins.conduits.unit_add.UnitAddConduit
+    :param errata_model:    model object representing an errata
+    :type  errata_model:    pulp_rpm.common.models.Errata
+    :param errata_unit:     unit object representing an errata
+    :type  errata_unit:     pulp.plugins.model.Unit
+    """
     fields = list(models.RPM.UNIT_KEY_NAMES)
     fields.append('_storage_path')
     filters = {'$or': errata_model.package_unit_keys}

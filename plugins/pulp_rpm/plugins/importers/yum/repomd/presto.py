@@ -17,7 +17,17 @@ METADATA_FILE_NAME = 'prestodelta'
 
 PACKAGE_TAG = 'newpackage'
 
+
 def process_package_element(element):
+    """
+    Process one XML block from prestodelta.xml and return a models.DRPM instance
+
+    :param element: object representing one "DRPM" block from the XML file
+    :type  element: xml.etree.ElementTree.Element
+
+    :return:    models.DRPM instance for the XML block
+    :rtype:     pulp_rpm.common.models.DRPM
+    """
     delta = element.find('delta')
     filename = delta.find('filename')
     sequence = delta.find('sequence')
