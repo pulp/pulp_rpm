@@ -13,7 +13,7 @@ case, we will mirror the `Foreman <http://theforeman.org/>`_ repository.
 
 ::
 
-  $ pulp-admin rpm repo create --repo-id=foreman --feed=http://yum.theforeman.org/rc/el6/i386/ --relative-url=foreman
+  $ pulp-admin rpm repo create --repo-id=foreman --feed=http://yum.theforeman.org/rc/el6/x86_64/ --relative-url=foreman
   Successfully created repository [foreman]
 
 * ``--repo-id`` is required and must be unique.
@@ -38,7 +38,7 @@ case, we will mirror the `Foreman <http://theforeman.org/>`_ repository.
 
   Downloading repository content...
   [==================================================] 100%
-  RPMs:       87/87 items
+  RPMs:       134/134 items
   Delta RPMs: 0/0 items
   Tree Files: 0/0 items
   Files:      0/0 items
@@ -54,7 +54,7 @@ case, we will mirror the `Foreman <http://theforeman.org/>`_ repository.
 
   Publishing packages...
   [==================================================] 100%
-  Packages: 87/87 items
+  Packages: 134/134 items
   ... completed
 
   Publishing distributions...
