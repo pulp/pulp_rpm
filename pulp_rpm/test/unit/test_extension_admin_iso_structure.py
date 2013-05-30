@@ -13,7 +13,7 @@
 
 from pulp.client.commands.repo import cudl, sync_publish
 
-from pulp_rpm.extension.admin.iso import create_update, structure
+from pulp_rpm.extension.admin.iso import create_update, repo_list, structure
 import rpm_support_base
 
 
@@ -75,7 +75,7 @@ class TestAddRepoSection(rpm_support_base.PulpClientTests):
         self.assertTrue(publish_section is not None)
 
         # There should be two commands, create and update
-        self.assertEqual(len(repo_section.commands), 3)
+        self.assertEqual(len(repo_section.commands), 4)
 
         # The create command should have been added
         mixin = repo_section.commands['create']
@@ -91,6 +91,11 @@ class TestAddRepoSection(rpm_support_base.PulpClientTests):
         delete_command = repo_section.commands['delete']
         self.assertTrue(isinstance(delete_command, cudl.DeleteRepositoryCommand))
         self.assertEqual(delete_command.context, self.context)
+
+        # ...and a list command...
+        list_command = repo_section.commands['list']
+        self.assertTrue(isinstance(list_command, repo_list.ISORepoListCommand))
+        self.assertEqual(list_command.context, self.context)
 
 
 class TestAddSyncSection(rpm_support_base.PulpClientTests):
