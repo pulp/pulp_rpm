@@ -23,10 +23,10 @@ from pulp_rpm.common.ids import TYPE_ID_IMPORTER_ISO
 # -- constants ----------------------------------------------------------------
 
 DESC_LIST = _('list scheduled sync operations')
-DESC_CREATE = _('adds a new scheduled sync operation')
-DESC_DELETE = _('delete a sync schedule')
-DESC_UPDATE = _('updates an existing schedule')
-DESC_NEXT_RUN = _('displays the next scheduled sync run for a repository')
+DESC_CREATE = _('add new scheduled sync operations')
+DESC_DELETE = _('delete sync schedules')
+DESC_UPDATE = _('update existing schedules')
+DESC_NEXT_RUN = _('display the next scheduled sync run for a repository')
 
 # -- commands -----------------------------------------------------------------
 
