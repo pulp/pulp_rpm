@@ -22,11 +22,10 @@ from urlparse import urljoin
 from xml.etree import ElementTree
 from xml.etree.cElementTree import iterparse
 
-from nectar.downloaders.revent import HTTPEventletRequestsDownloader
 from nectar.listener import AggregatingEventListener
 from nectar.request import DownloadRequest
 
-from pulp_rpm.plugins.importers.yum.repomd import filelists, other
+from pulp_rpm.plugins.importers.yum.repomd import filelists, nectar_factory, other
 from pulp_rpm.plugins.importers.yum.repomd.packages import package_list_generator, element_to_raw_xml
 
 
@@ -103,7 +102,8 @@ class MetadataFiles(object):
         self.dst_dir = dst_dir
         self.event_listener = AggregatingEventListener()
 
-        self.downloader = HTTPEventletRequestsDownloader(nectar_config, self.event_listener)
+        self.downloader = nectar_factory.create_downloader(repo_url, nectar_config,
+                                                           self.event_listener)
 
         self.revision = None
         self.metadata = {}

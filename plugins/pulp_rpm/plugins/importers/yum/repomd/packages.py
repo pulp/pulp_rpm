@@ -18,8 +18,10 @@ import re
 from urlparse import urljoin
 from xml.etree.cElementTree import ElementTree, iterparse
 
-from nectar.downloaders.revent import HTTPEventletRequestsDownloader
 from nectar.request import DownloadRequest
+
+from pulp_rpm.plugins.importers.yum.repomd import nectar_factory
+
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -103,12 +105,14 @@ class Packages(object):
     :ivar downloader: nectar.downloaders.base.DownloadBackend instance
     """
 
-    def __init__(self, repo_url, nectar_config, package_model_iterator, dst_dir, event_listener=None):
+    def __init__(self, repo_url, nectar_config, package_model_iterator, dst_dir,
+                 event_listener=None):
         self.repo_url = repo_url
         self.package_model_iterator = package_model_iterator
         self.dst_dir = dst_dir
 
-        self.downloader = HTTPEventletRequestsDownloader(nectar_config, event_listener)
+        self.downloader = nectar_factory.create_downloader(repo_url, nectar_config,
+                                                           event_listener)
 
     def download_packages(self):
         """
