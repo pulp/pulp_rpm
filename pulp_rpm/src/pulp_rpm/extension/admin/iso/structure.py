@@ -16,7 +16,7 @@ from gettext import gettext as _
 from pulp.client.commands.repo import cudl, sync_publish
 
 from pulp_rpm.common import ids
-from pulp_rpm.extension.admin.iso import create_update, status, sync_schedules
+from pulp_rpm.extension.admin.iso import create_update, repo_list, status, sync_schedules
 
 
 SECTION_PUBLISH = 'publish'
@@ -85,6 +85,7 @@ def add_repo_section(context, parent_section):
     repo_section.add_command(create_update.ISORepoCreateCommand(context))
     repo_section.add_command(create_update.ISORepoUpdateCommand(context))
     repo_section.add_command(cudl.DeleteRepositoryCommand(context))
+    repo_section.add_command(repo_list.ISORepoListCommand(context))
 
     return repo_section
 
