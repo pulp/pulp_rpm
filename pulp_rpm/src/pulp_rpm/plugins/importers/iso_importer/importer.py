@@ -50,27 +50,43 @@ class ISOImporter(Importer):
            into the repository that uses this importer
          * A user is attempting to add an orphaned unit into a repository.
 
+        This call has two options for handling the requested units:
+         * Associate the given units with the destination repository. This will
+           link the repository with the existing unit directly; changes to the
+           unit will be reflected in all repositories that reference it.
+         * Create a new unit and save it to the repository. This would act as
+           a deep copy of sorts, creating a unique unit in the database. Keep
+           in mind that the unit key must change in order for the unit to
+           be considered different than the supplied one.
+
+        The APIs for both approaches are similar to those in the sync conduit.
+        In the case of a simple association, the init_unit step can be skipped
+        and save_unit simply called on each specified unit.
+
         The units argument is optional. If None, all units in the source
         repository should be imported. The conduit is used to query for those
         units. If specified, only the units indicated should be imported (this
         is the case where the caller passed a filter to Pulp).
 
-        @param source_repo:    metadata describing the repository containing the
-                               units to import
-        @type  source_repo:    L{pulp.server.plugins.model.Repository}
+        :param source_repo: metadata describing the repository containing the
+               units to import
+        :type  source_repo: pulp.plugins.model.Repository
 
-        @param dest_repo:      metadata describing the repository to import units
-                               into
-        @type  dest_repo:      L{pulp.server.plugins.model.Repository}
+        :param dest_repo: metadata describing the repository to import units
+               into
+        :type  dest_repo: pulp.plugins.model.Repository
 
-        @param import_conduit: provides access to relevant Pulp functionality
-        @type  import_conduit: L{pulp.server.conduits.unit_import.ImportUnitConduit}
+        :param import_conduit: provides access to relevant Pulp functionality
+        :type  import_conduit: pulp.plugins.conduits.unit_import.ImportUnitConduit
 
-        @param config:         plugin configuration
-        @type  config:         L{pulp.server.plugins.config.PluginCallConfiguration}
+        :param config: plugin configuration
+        :type  config: pulp.plugins.config.PluginCallConfiguration
 
-        @param units:          optional list of pre-filtered units to import
-        @type  units:          list of L{pulp.server.plugins.model.Unit}
+        :param units: optional list of pre-filtered units to import
+        :type  units: list of pulp.plugins.model.Unit
+
+        :return: list of Unit instances that were saved to the destination repository
+        :rtype:  list
         """
         if units is None:
             criteria = UnitAssociationCriteria(type_ids=[ids.TYPE_ID_ISO])
@@ -78,6 +94,8 @@ class ISOImporter(Importer):
 
         for u in units:
             import_conduit.associate_unit(u)
+
+        return units
 
 
     @classmethod

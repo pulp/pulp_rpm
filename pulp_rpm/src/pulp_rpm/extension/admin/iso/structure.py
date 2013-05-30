@@ -13,6 +13,7 @@
 
 from gettext import gettext as _
 
+from pulp.client.commands import unit
 from pulp.client.commands.repo import cudl, sync_publish
 
 from pulp_rpm.common import ids
@@ -81,6 +82,7 @@ def add_repo_section(context, parent_section):
     repo_section.add_command(create_update.ISORepoCreateCommand(context))
     repo_section.add_command(create_update.ISORepoUpdateCommand(context))
     repo_section.add_command(cudl.DeleteRepositoryCommand(context))
+    repo_section.add_command(unit.UnitCopyCommand(context, type_id=ids.TYPE_ID_ISO))
 
     return repo_section
 
