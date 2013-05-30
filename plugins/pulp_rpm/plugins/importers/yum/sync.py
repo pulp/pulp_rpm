@@ -88,7 +88,10 @@ class RepoSync(object):
         :return:    the URL of the feed we should sync
         :rtype:     str
         """
-        return self.call_config.get(importer_constants.KEY_FEED)
+        repo_url = self.call_config.get(importer_constants.KEY_FEED)
+        if not repo_url.endswith('/'):
+            repo_url += '/'
+        return repo_url
 
     def run(self):
         """
