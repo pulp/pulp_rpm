@@ -49,8 +49,8 @@ class RepoSync(object):
         :param sync_conduit: provides access to relevant Pulp functionality
         :type  sync_conduit: pulp.plugins.conduits.repo_sync.RepoSyncConduit
 
-        :param config: plugin configuration
-        :type  config: pulp.plugins.config.PluginCallConfiguration
+        :param call_config: plugin configuration
+        :type  call_config: pulp.plugins.config.PluginCallConfiguration
         """
         self.cancelled = False
         self.working_dir = repo.working_dir
@@ -113,7 +113,7 @@ class RepoSync(object):
 
             self.content_report['state'] = constants.STATE_RUNNING
             self.set_progress()
-            self.get_content(metadata_files)
+            self.update_content(metadata_files)
             if self.content_report['state'] == constants.STATE_RUNNING:
                 self.content_report['state'] = constants.STATE_COMPLETE
             self.set_progress()
@@ -183,7 +183,7 @@ class RepoSync(object):
         #metadata_files.verify_metadata_files()
         return metadata_files
 
-    def get_content(self, metadata_files):
+    def update_content(self, metadata_files):
         """
         Decides what to download and then downloads it
 
@@ -365,9 +365,7 @@ class RepoSync(object):
             _LOGGER.debug('updateinfo not found')
             return
         try:
-            for model in self.save_fileless_units(errata_file_handle, updateinfo.PACKAGE_TAG, updateinfo.process_package_element):
-                # we don't need to do anything with these at the moment
-                pass
+            self.save_fileless_units(errata_file_handle, updateinfo.PACKAGE_TAG, updateinfo.process_package_element)
 
         finally:
             errata_file_handle.close()
@@ -388,9 +386,7 @@ class RepoSync(object):
         try:
             process_func = functools.partial(group.process_group_element, self.repo.id)
 
-            for model in self.save_fileless_units(group_file_handle, group.GROUP_TAG, process_func):
-                # we don't need to do anything with these at the moment
-                pass
+            self.save_fileless_units(group_file_handle, group.GROUP_TAG, process_func)
         finally:
             group_file_handle.close()
 
@@ -409,9 +405,7 @@ class RepoSync(object):
 
         try:
             process_func = functools.partial(group.process_category_element, self.repo.id)
-            for model in self.save_fileless_units(group_file_handle, group.CATEGORY_TAG, process_func):
-                # we don't need to do anything with these at the moment
-                pass
+            self.save_fileless_units(group_file_handle, group.CATEGORY_TAG, process_func)
         finally:
             group_file_handle.close()
 
@@ -429,10 +423,6 @@ class RepoSync(object):
                                 and values. The function must take one parameter,
                                 which is an ElementTree instance
         :type process_func:     function
-
-        :return:    generator of pulp_rpm.common.models.Package instances that
-                    were saved
-        :rtype:     generator
         """
         # iterate through the file and determine what we want to have
         package_info_generator = packages.package_list_generator(file_handle,
@@ -451,7 +441,6 @@ class RepoSync(object):
             if model.as_named_tuple in to_save:
                 unit = self.sync_conduit.init_unit(model.TYPE, model.unit_key, model.metadata, None)
                 self.sync_conduit.save_unit(unit)
-                yield model
 
     def _identify_wanted_versions(self, package_info_generator):
         """

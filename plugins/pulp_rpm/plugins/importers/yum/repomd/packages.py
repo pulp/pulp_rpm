@@ -121,7 +121,7 @@ class Packages(object):
     :ivar packages_information_iterator: iterator of package information dictionaries
     :ivar dst_dir: Directory to store downloaded packages in
     :ivar event_listener: nectar.listener.DownloadEventListener instance
-    :ivar downloader: nectar.downloaders.base.DownloadBackend instance
+    :ivar downloader: nectar.downloaders.base.Downloader instance
     """
 
     def __init__(self, repo_url, nectar_config, package_model_iterator, dst_dir,

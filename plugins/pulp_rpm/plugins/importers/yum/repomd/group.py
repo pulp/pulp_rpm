@@ -97,14 +97,14 @@ def _parse_packagelist(packages):
     For each "packagereq" entry for a group, sort it into a genre and parse
     its data into a package name and other possible values.
 
-    :param elements:    list of xml.etree.ElementTree.Element instances
-    :type  elements:    list
+    :param packages:    list of xml.etree.ElementTree.Element instances
+    :type  packages:    list
 
     :return:    tuple containing lists of package names in the order listed below
-                in the "genres" dictionary. The "conditional" list contians tuples
+                in the "genres" dictionary. The "conditional" list contains tuples
                 with package name, and then a requirements object
     :rtype:     tuple
-"""
+    """
     genres = {
         'conditional': [],
         'default': [],

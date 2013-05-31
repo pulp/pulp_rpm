@@ -61,7 +61,7 @@ def remove_old_versions(num_to_keep, conduit):
                         and remove_unit methods.
     :type  conduit:     pulp.plugins.conduits.repo_sync.RepoSyncConduit
     """
-    for model in (models.RPM, models.DRPM):
+    for model in (models.RPM, models.SRPM, models.DRPM):
         units = {}
         for unit in get_existing_units(model, conduit.get_units):
             model_instance = model(metadata=unit.metadata, **unit.unit_key)
@@ -87,7 +87,7 @@ def remove_missing_rpms(metadata_files, conduit):
                             and remove_unit methods.
     :type  conduit:         pulp.plugins.conduits.repo_sync.RepoSyncConduit
     """
-    remote_named_tuples = get_remote_units(metadata_files, primary.METADATA_FILE_NAME, models.RPM,
+    remote_named_tuples = get_remote_units(metadata_files, primary.METADATA_FILE_NAME,
                                             primary.PACKAGE_TAG, primary.process_package_element)
     remove_missing_units(metadata_files, conduit, models.RPM, remote_named_tuples)
 
@@ -103,7 +103,7 @@ def remove_missing_drpms(metadata_files, conduit):
                             and remove_unit methods.
     :type  conduit:         pulp.plugins.conduits.repo_sync.RepoSyncConduit
     """
-    remote_named_tuples = get_remote_units(metadata_files, presto.METADATA_FILE_NAME, models.DRPM,
+    remote_named_tuples = get_remote_units(metadata_files, presto.METADATA_FILE_NAME,
                                             presto.PACKAGE_TAG, presto.process_package_element)
     remove_missing_units(metadata_files, conduit, models.DRPM, remote_named_tuples)
 
@@ -119,7 +119,7 @@ def remove_missing_errata(metadata_files, conduit):
                             and remove_unit methods.
     :type  conduit:         pulp.plugins.conduits.repo_sync.RepoSyncConduit
     """
-    remote_named_tuples = get_remote_units(metadata_files, updateinfo.METADATA_FILE_NAME, models.Errata,
+    remote_named_tuples = get_remote_units(metadata_files, updateinfo.METADATA_FILE_NAME,
                                            updateinfo.PACKAGE_TAG, updateinfo.process_package_element)
     remove_missing_units(metadata_files, conduit, models.Errata, remote_named_tuples)
 
@@ -135,7 +135,7 @@ def remove_missing_groups(metadata_files, conduit):
                             and remove_unit methods.
     :type  conduit:         pulp.plugins.conduits.repo_sync.RepoSyncConduit
     """
-    remote_named_tuples = get_remote_units(metadata_files, group.METADATA_FILE_NAME, models.PackageGroup,
+    remote_named_tuples = get_remote_units(metadata_files, group.METADATA_FILE_NAME,
                                            group.GROUP_TAG, group.process_group_element)
     remove_missing_units(metadata_files, conduit, models.PackageGroup, remote_named_tuples)
 
@@ -151,7 +151,7 @@ def remove_missing_categories(metadata_files, conduit):
                             and remove_unit methods.
     :type  conduit:         pulp.plugins.conduits.repo_sync.RepoSyncConduit
     """
-    remote_named_tuples = get_remote_units(metadata_files, group.METADATA_FILE_NAME, models.PackageCategory,
+    remote_named_tuples = get_remote_units(metadata_files, group.METADATA_FILE_NAME,
                                            group.CATEGORY_TAG, group.process_category_element)
     remove_missing_units(metadata_files, conduit, models.PackageCategory, remote_named_tuples)
 
@@ -203,7 +203,7 @@ def get_existing_units(model, unit_search_func):
     return unit_search_func(criteria)
 
 
-def get_remote_units(metadata_files, file_name, model, tag, process_func):
+def get_remote_units(metadata_files, file_name, tag, process_func):
     """
     return a set of units (as named tuples) that are in the remote repository
 
@@ -213,8 +213,6 @@ def get_remote_units(metadata_files, file_name, model, tag, process_func):
                             path on disk, but the name used in the main "repomd.xml"
                             file such as "primary", "comps", etc.
     :type  file_name:       basestring
-    :param model:           model class for the type being retrieved
-    :type  model:           pulp_rpm.common.models.Package
     :param tag:             name of the XML tag that identifies each object
                             in the XML file
     :type  tag:             basestring

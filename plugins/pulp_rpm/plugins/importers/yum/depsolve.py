@@ -21,7 +21,7 @@ from pulp_rpm.plugins.importers.yum.utils import paginate
 _LOGGER = logging.getLogger(__name__)
 
 
-class Require(object):
+class Requirement(object):
     EQ = 'EQ'
     LT = 'LT'
     LE = 'LE'
@@ -92,6 +92,29 @@ class Require(object):
             return self < package
         if self.flags == self.GE:
             return self <= package
+
+
+def find_dependent_rpms(units, search_method):
+    """
+    Calls from outside this module probably want to call this method.
+
+    Given an iterable of Units, return a set of RPMs as named tuples that satisfy
+    the dependencies of those units. Dependencies are resolved only within the
+    repository search by the "search_method".
+
+    :param units:           iterable of pulp.plugins.model.Unit
+    :param search_method:   method that takes a UnitAssociationCriteria and
+                            performs a search within a repository. Usually this
+                            will be a method on a conduit such as "conduit.get_units"
+    :type  search_method:   function
+
+    :return:        set of pulp_rpm.common.models.RPM.NAMEDTUPLE instances which
+                    satisfy the passed-in requirements
+    :rtype:         set
+    """
+    reqs = get_requirements(units, search_method)
+    source_with_provides = _get_source_with_provides(search_method)
+    return match(reqs, source_with_provides)
 
 
 def _build_provides_tree(source_packages):
@@ -250,27 +273,6 @@ def get_requirements(units, search_method):
         criteria = UnitAssociationCriteria(type_ids=[models.RPM.TYPE], unit_filters=filters, unit_fields=fields)
         for result in search_method(criteria):
             for require in result.metadata.get('requires', []):
-                yield Require(**require)
+                yield Requirement(**require)
 
 
-def find_dependent_rpms(units, search_method):
-    """
-    Calls from outside this module probably want to call this method.
-
-    Given an iterable of Units, return a set of RPMs as named tuples that satisfy
-    the dependencies of those units. Dependencies are resolved only within the
-    repository search by the "search_method".
-
-    :param units:           iterable of pulp.plugins.model.Unit
-    :param search_method:   method that takes a UnitAssociationCriteria and
-                            performs a search within a repository. Usually this
-                            will be a method on a conduit such as "conduit.get_units"
-    :type  search_method:   function
-
-    :return:        set of pulp_rpm.common.models.RPM.NAMEDTUPLE instances which
-                    satisfy the passed-in requirements
-    :rtype:         set
-    """
-    reqs = get_requirements(units, search_method)
-    source_with_provides = _get_source_with_provides(search_method)
-    return match(reqs, source_with_provides)

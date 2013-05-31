@@ -31,7 +31,7 @@ def process_package_element(element):
     :return:    dictionary describing an errata
     :rtype:     dict
     """
-    ret = {
+    package_info = {
         'from': element.attrib['from'],
         'status': element.attrib['status'],
         'type': element.attrib['type'],
@@ -47,12 +47,12 @@ def process_package_element(element):
     for attr_name in ('rights', 'severity', 'summary', 'solution', 'release', 'pushcount'):
         child = element.find(attr_name)
         if child:
-            ret[attr_name] = child.text
+            package_info[attr_name] = child.text
     for attr_name in ('updated',):
         child = element.find(attr_name)
         if child:
-            ret[attr_name] = child.attrib[attr_name]
-    return models.Errata.from_package_info(ret)
+            package_info[attr_name] = child.attrib[attr_name]
+    return models.Errata.from_package_info(package_info)
 
 
 def _parse_reference(element):

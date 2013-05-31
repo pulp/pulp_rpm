@@ -49,11 +49,15 @@ def associate(source_repo, dest_repo, import_conduit, config, units=None):
         units = import_conduit.get_source_units()
 
     # get config items that we care about
-    flat_config = config.flatten()
-    copy_children = flat_config.get(constants.CONFIG_COPY_CHILDREN, True)
-    recursive = flat_config.get(constants.CONFIG_RECURSIVE, False)
+    copy_children = config.get_boolean(constants.CONFIG_COPY_CHILDREN)
+    if copy_children is None:
+        copy_children = True
+    recursive = config.get(constants.CONFIG_RECURSIVE)
+    if recursive is None:
+        recursive = False
 
     associated_units = [_associate_unit(dest_repo, import_conduit, unit) for unit in units]
+    # allow garbage collection
     units = None
 
     copy_rpms((unit for unit in associated_units if unit.type_id == models.RPM.TYPE),
@@ -159,7 +163,7 @@ def filter_available_rpms(rpms, import_conduit):
                                         import_conduit.get_source_units)
 
 
-def copy_rpms(units, import_conduit, copy_deps=False):
+def copy_rpms(units, import_conduit, copy_deps):
     """
     Copy RPMs from the source repo to the destination repo, and optionally copy
     dependencies as well. Dependencies are resolved recursively.
@@ -215,7 +219,7 @@ def _no_checksum_unit_key(unit_tuple):
     return ret
 
 
-def copy_rpms_by_name(names, import_conduit, copy_deps=False):
+def copy_rpms_by_name(names, import_conduit, copy_deps):
     """
     Copy RPMs from source repo to destination repo by name
 
@@ -289,7 +293,7 @@ def _associate_unit(dest_repo, import_conduit, unit):
     :rtype:                 pulp.plugins.model.Unit
     """
     if unit.type_id in (models.PackageGroup.TYPE, models.PackageCategory.TYPE):
-        new_unit = _safe_copy(unit)
+        new_unit = _safe_copy_unit_without_file(unit)
         new_unit.unit_key['repo_id'] = dest_repo.id
         saved_unit = import_conduit.save_unit(new_unit)
         return saved_unit
@@ -301,7 +305,7 @@ def _associate_unit(dest_repo, import_conduit, unit):
         return unit
 
 
-def _safe_copy(unit):
+def _safe_copy_unit_without_file(unit):
     """
     Makes a deep copy of the unit, removes its "id", and removes anything in
     "metadata" whose key starts with a "_".
