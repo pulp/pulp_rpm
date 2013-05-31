@@ -76,7 +76,7 @@ def package_list_generator(xml_handle, package_tag, process_func=None):
         yield package_info
 
 
-def _strip_ns(element):
+def strip_ns(element):
     """
     Given an Element object, recursively strip the namespace info from its tag
     and all of its children.
@@ -88,7 +88,7 @@ def _strip_ns(element):
     """
     element.tag = re.sub(NS_STRIP_RE, '', element.tag)
     for child in list(element):
-        _strip_ns(child)
+        strip_ns(child)
 
 
 def element_to_raw_xml(element):
@@ -102,7 +102,7 @@ def element_to_raw_xml(element):
     :return:    XML as a string
     :rtype:     str
     """
-    _strip_ns(element)
+    strip_ns(element)
     tree = ElementTree(element)
     io = StringIO()
     tree.write(io, xml_declaration=False)

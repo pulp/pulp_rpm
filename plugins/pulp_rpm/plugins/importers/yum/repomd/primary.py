@@ -14,6 +14,7 @@
 from copy import deepcopy
 
 # primary.xml element tags -----------------------------------------------------
+import os
 from pulp_rpm.common import models
 from pulp_rpm.plugins.importers.yum.repomd import packages
 
@@ -70,15 +71,17 @@ PACKAGE_INFO_SKEL = {'type': None,
                      'url': None,
                      'time': None,
                      'size': None,
+                     'filename': None,
                      'relative_url_path': None}
 
 PACKAGE_FORMAT_SKEL = {'vendor': None,
                        'license': None,
                        'group': None,
                        'header_range': {'start': None, 'end': None},
-                       'build_host': None,
+                       'buildhost': None,
                        'requires': [],
                        'provides': [],
+                       'sourcerpm': None,
                        'files': []}
 
 # RPM entry dictionary ---------------------------------------------------------
@@ -106,7 +109,7 @@ def process_package_element(package_element):
 
     :param package_element: parsed primary.xml package element
     :return: package information dictionary
-    :rtype: dict
+    :rtype: pulp_rpm.common.models.RPM
     """
     # NOTE the use of deepcopy relies on cpython's very sensible policy of never
     # duplicating string literals, this may not hold up in other implementations
@@ -156,7 +159,9 @@ def process_package_element(package_element):
 
     location_element = package_element.find(LOCATION_TAG)
     if location_element is not None:
-        package_info['relativepath'] = location_element.attrib['href']
+        href = location_element.attrib['href']
+        package_info['relativepath'] = href
+        package_info['filename'] = os.path.basename(href)
 
     format_element = package_element.find(FORMAT_TAG)
     package_info.update(_process_format_element(format_element))
@@ -203,7 +208,11 @@ def _process_format_element(format_element):
 
     build_host_element = format_element.find(RPM_BUILDHOST_TAG)
     if build_host_element is not None:
-        package_format['build_host'] = build_host_element.text
+        package_format['buildhost'] = build_host_element.text
+
+    sourcerpm_element = format_element.find(RPM_SOURCERPM_TAG)
+    if sourcerpm_element is not None:
+        package_format['sourcerpm'] = sourcerpm_element.text
 
     provides_element = format_element.find(RPM_PROVIDES_TAG)
     if provides_element is not None:
@@ -258,4 +267,3 @@ def _process_file_element(file_element):
     file_info['path'] = file_element.text
 
     return file_info
-
