@@ -57,6 +57,3 @@ class ParseSortTests(unittest.TestCase):
         self.assertEqual(parsed[1][1], 'ascending')
         self.assertEqual(parsed[2][0], version_utils.VERSION_INDEX)
         self.assertEqual(parsed[2][1], 'descending')
-
-
-

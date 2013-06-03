@@ -13,6 +13,7 @@ from gettext import gettext as _
 
 from pulp.client.commands.unit import UnitCopyCommand
 from pulp.client.extensions.extensions import PulpCliFlag
+from pulp_rpm.common import constants
 
 from pulp_rpm.common.constants import DISPLAY_UNITS_THRESHOLD
 from pulp_rpm.common.ids import (TYPE_ID_RPM, TYPE_ID_SRPM, TYPE_ID_DRPM, TYPE_ID_ERRATA, TYPE_ID_DISTRO,
@@ -57,7 +58,7 @@ class RecursiveCopyCommand(UnitCopyCommand):
         override_config = {}
 
         if kwargs[FLAG_RECURSIVE.keyword]:
-            override_config['recursive'] = True
+            override_config[constants.CONFIG_RECURSIVE] = True
 
         return override_config
 

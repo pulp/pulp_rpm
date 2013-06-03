@@ -68,6 +68,14 @@ ORDER_BY_TYPE = {
     TYPE_PACKAGE_CATEGORY : ORDER_PACKAGE_CATEGORY,
     }
 
+REQUIRES_COMPARISON_TRANSLATIONS = {
+    'EQ' : '=',
+    'LT' : '<',
+    'LE' : '<=',
+    'GT' : '>',
+    'GE' : '>=',
+}
+
 # Format to use when displaying the details of a single erratum
 SINGLE_ERRATUM_TEMPLATE = _('''Id:                %(id)s
 Title:             %(title)s
@@ -185,10 +193,53 @@ class PackageSearchCommand(BaseSearchCommand):
                         if key not in FIELDS_RPM:
                             del doc['metadata'][key]
 
+            # Create user-friendly translations for the requires and provides lists
+            map(self._reformat_rpm_provides_requires, document_list)
+
             self.context.prompt.render_document_list(
                 document_list, filters=display_filter, order=order)
 
         self.run_search([self.type_id], out_func=out_func, **kwargs)
+
+    @staticmethod
+    def _reformat_rpm_provides_requires(rpm):
+        """
+        Condenses the dict version of the provides and requires lists into single strings
+        for each entry. The specified RPM is updated.
+
+        :param rpm: single RPM from the result of the search
+        :type  rpm: dict
+        """
+
+        def process_one(related_rpm):
+            """
+            Returns the single string view of an entry in the requires or provides list.
+            Format: concatenated values (if present) separated by -
+            """
+            start = related_rpm['name']
+
+            tail = '-'.join([related_rpm[key] for key in ['version', 'release', 'epoch']
+                             if related_rpm[key] is not None])
+
+
+            if related_rpm['flags'] is not None and \
+               related_rpm['flags'] in REQUIRES_COMPARISON_TRANSLATIONS:
+                # Bridge between name and version info with the comparison operator if present
+                middle = ' ' + REQUIRES_COMPARISON_TRANSLATIONS[related_rpm['flags']] + ' '
+            else:
+                # If there is a tail, connect it with the - connector, but make sure to
+                # not leave a trailing - if the version isn't present.
+                if len(tail) > 0:
+                    middle = '-'
+                else:
+                    middle = ''
+
+            return start + middle + tail
+
+        for reformat_me in ['requires', 'provides']:
+            related_rpm_list = rpm[reformat_me]
+            formatted_rpms = [process_one(r) for r in related_rpm_list]
+            rpm[reformat_me] = formatted_rpms
 
 
 class SearchRpmsCommand(PackageSearchCommand):
