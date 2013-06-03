@@ -85,11 +85,19 @@ class TestMigrateNewImporter(unittest.TestCase):
         result = mock_collection.return_value.save.call_args[0][0]
 
         provides = result['provides']
+        found_pulp_agent = False
         self.assertTrue(len(provides) > 1)
         for entry in provides:
             self.assertTrue(isinstance(entry, dict))
             for name in ('name', 'flags', 'epoch', 'version', 'release'):
                 self.assertTrue(name in entry)
+            if entry['name'] == 'pulp-agent':
+                found_pulp_agent = True
+                self.assertEqual(entry['flags'], 'EQ')
+                self.assertEqual(entry['epoch'], '0')
+                self.assertEqual(entry['version'], '2.1.1')
+                self.assertEqual(entry['release'], '1.el6')
+        self.assertTrue(found_pulp_agent)
 
     @mock.patch('pulp.plugins.types.database.type_units_collection')
     def test_reformats_requires(self, mock_collection):
