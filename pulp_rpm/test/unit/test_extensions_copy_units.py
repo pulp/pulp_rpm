@@ -11,6 +11,7 @@
 import mock
 
 from pulp.client.commands.unit import UnitCopyCommand
+from pulp_rpm.common import constants
 
 from pulp_rpm.common.ids import (TYPE_ID_RPM, TYPE_ID_SRPM, TYPE_ID_DRPM, TYPE_ID_ERRATA, TYPE_ID_DISTRO,
                                  TYPE_ID_PKG_GROUP, TYPE_ID_PKG_CATEGORY)
@@ -52,7 +53,7 @@ class RecursiveCopyCommandTests(rpm_support_base.PulpClientTests):
         override_config = self.command.generate_override_config(**user_input)
 
         # Verify
-        self.assertEqual(override_config, {'recursive' : True})
+        self.assertEqual(override_config, {constants.CONFIG_RECURSIVE : True})
 
     def test_generate_override_config_no_recursive(self):
         # Test

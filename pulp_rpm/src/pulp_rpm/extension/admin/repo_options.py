@@ -52,92 +52,17 @@ def parse_skip_types(t):
 
 # -- group names --------------------------------------------------------------
 
-NAME_BASIC = _('Basic')
-NAME_THROTTLING = _('Throttling')
-NAME_FEED = _('Feed Authentication')
-NAME_PROXY = _('Feed Proxy')
-NAME_SYNC = _('Synchronization')
 NAME_PUBLISHING = _('Publishing')
-NAME_AUTH = _('Client Authentication')
+NAME_AUTH = _('Consumer Authentication')
 
-ALL_GROUP_NAMES = (NAME_BASIC, NAME_THROTTLING, NAME_FEED, NAME_PROXY, NAME_SYNC,
-                   NAME_PUBLISHING, NAME_AUTH)
-
-# -- metadata options ---------------------------------------------------------
-
-d = _('URL of the external source repository to sync')
-OPT_FEED = PulpCliOption('--feed', d, required=False)
+ALL_GROUP_NAMES = (NAME_PUBLISHING, NAME_AUTH)
 
 # -- synchronization options --------------------------------------------------
-
-d = _('if "true", only the newest version of a given package is downloaded; '
-      'defaults to false')
-OPT_NEWEST = PulpCliOption('--only-newest', d, required=False, parse_func=parsers.parse_boolean)
 
 d = _('comma-separated list of types to omit when synchronizing, if not '
       'specified all types will be synchronized; valid values are: %(t)s')
 d = d % {'t' : ', '.join(VALID_SKIP_TYPES)}
 OPT_SKIP = PulpCliOption('--skip', d, required=False, parse_func=parse_skip_types)
-
-d = _('if "true", the size of each synchronized file will be verified against '
-      'the repo metadata; defaults to false')
-OPT_VERIFY_SIZE = PulpCliOption('--verify-size', d, required=False, parse_func=parsers.parse_boolean)
-
-d = _('if "true", the checksum of each synchronized file will be verified '
-      'against the repo metadata; defaults to false')
-OPT_VERIFY_CHECKSUM = PulpCliOption('--verify-checksum', d, required=False, parse_func=parsers.parse_boolean)
-
-d = _('if "true", removes old packages from the repo; defaults to false')
-OPT_REMOVE_OLD = PulpCliOption('--remove-old', d, required=False, parse_func=parsers.parse_boolean)
-
-d = _('count indicating how many old rpm versions to retain; defaults to 0; '
-      'this count only takes effect when remove-old option is set to true.')
-OPT_RETAIN_OLD_COUNT = PulpCliOption('--retain-old-count', d, required=False,
-                                     parse_func=parsers.parse_positive_int)
-
-# -- proxy options ------------------------------------------------------------
-
-d = _('URL to the proxy server to use')
-OPT_PROXY_URL = PulpCliOption('--proxy-url', d, required=False)
-
-d = _('port on the proxy server to make requests')
-OPT_PROXY_PORT = PulpCliOption('--proxy-port', d, required=False,
-                               parse_func=parsers.parse_positive_int)
-
-d = _('username used to authenticate with the proxy server')
-OPT_PROXY_USER = PulpCliOption('--proxy-user', d, required=False)
-
-d = _('password used to authenticate with the proxy server')
-OPT_PROXY_PASS = PulpCliOption('--proxy-pass', d, required=False)
-
-# -- throttling options -------------------------------------------------------
-
-d = _('maximum bandwidth used per download thread, in KB/sec, when '
-      'synchronizing the repo')
-OPT_MAX_SPEED = PulpCliOption('--max-speed', d, required=False,
-                              parse_func=parsers.parse_positive_int)
-
-d = _('number of threads that will be used to synchronize the repo')
-OPT_NUM_THREADS = PulpCliOption('--num-threads', d, required=False,
-                                parse_func=parsers.parse_positive_int)
-
-# -- ssl options --------------------------------------------------------------
-
-d = _('full path to the CA certificate that should be used to verify the '
-      'external repo server\'s SSL certificate')
-OPT_FEED_CA_CERT = PulpCliOption('--feed-ca-cert', d, required=False)
-
-d = _('if "true", the feed\'s SSL certificate will be verified against the '
-      'feed_ca_cert; defaults to true')
-OPT_VERIFY_FEED_SSL = PulpCliOption('--verify-feed-ssl', d, required=False,
-                                    parse_func=parsers.parse_boolean)
-
-d = _('full path to the certificate to use for authentication when '
-      'accessing the external feed')
-OPT_FEED_CERT = PulpCliOption('--feed-cert', d, required=False)
-
-d = _('full path to the private key for feed_cert')
-OPT_FEED_KEY = PulpCliOption('--feed-key', d, required=False)
 
 # -- publish options ----------------------------------------------------------
 
@@ -180,66 +105,9 @@ OPT_AUTH_CERT = PulpCliOption('--auth-cert', d, required=False)
 
 # -- public methods -----------------------------------------------------------
 
-def add_to_command(command):
-    """
-    Adds the repository configuration related options to the given command,
-    organizing them into the appropriate groups.
-
-    :param command: command to add options to
-    :type  command: pulp.clients.extensions.extensions.PulpCliCommand
-    """
-
-    # Groups
-    basic_group = PulpCliOptionGroup(NAME_BASIC)
-    throttling_group = PulpCliOptionGroup(NAME_THROTTLING)
-    ssl_group = PulpCliOptionGroup(NAME_FEED)
-    proxy_group = PulpCliOptionGroup(NAME_PROXY)
-    sync_group = PulpCliOptionGroup(NAME_SYNC)
+def add_distributor_config_to_command(command):
     publish_group = PulpCliOptionGroup(NAME_PUBLISHING)
     repo_auth_group = PulpCliOptionGroup(NAME_AUTH)
-
-    # Order added indicates order in usage, so pay attention to this order when
-    # dorking with it to make sure it makes sense
-    command.add_option_group(basic_group)
-    command.add_option_group(sync_group)
-    command.add_option_group(publish_group)
-    command.add_option_group(ssl_group)
-    command.add_option_group(repo_auth_group)
-    command.add_option_group(proxy_group)
-    command.add_option_group(throttling_group)
-
-    # Metadata Options - Reorganized using standard commands
-    basic_group.add_option(std_options.OPTION_REPO_ID)
-    basic_group.add_option(std_options.OPTION_NAME)
-    basic_group.add_option(std_options.OPTION_DESCRIPTION)
-    basic_group.add_option(std_options.OPTION_NOTES)
-
-    # Synchronization Options
-    sync_group.add_option(OPT_FEED)
-    sync_group.add_option(OPT_NEWEST)
-    sync_group.add_option(OPT_SKIP)
-    sync_group.add_option(OPT_VERIFY_SIZE)
-    sync_group.add_option(OPT_VERIFY_CHECKSUM)
-    sync_group.add_option(OPT_REMOVE_OLD)
-    sync_group.add_option(OPT_RETAIN_OLD_COUNT)
-
-    # Proxy Options
-    proxy_group.add_option(OPT_PROXY_URL)
-    proxy_group.add_option(OPT_PROXY_PORT)
-    proxy_group.add_option(OPT_PROXY_USER)
-    proxy_group.add_option(OPT_PROXY_PASS)
-
-    # Throttling Options
-    throttling_group.add_option(OPT_MAX_SPEED)
-    throttling_group.add_option(OPT_NUM_THREADS)
-
-    # SSL Options
-    ssl_group.add_option(OPT_FEED_CA_CERT)
-    ssl_group.add_option(OPT_VERIFY_FEED_SSL)
-    ssl_group.add_option(OPT_FEED_CERT)
-    ssl_group.add_option(OPT_FEED_KEY)
-
-    # Publish Options
 
     # The server-side APIs don't allow this to be updated, so hide it as an
     # option entirely; RPM repos are always published automatically with our
@@ -251,6 +119,11 @@ def add_to_command(command):
     publish_group.add_option(OPT_SERVE_HTTPS)
     publish_group.add_option(OPT_CHECKSUM_TYPE)
     publish_group.add_option(OPT_GPG_KEY)
+
+    # Order added indicates order in usage, so pay attention to this order when
+    # dorking with it to make sure it makes sense
+    command.add_option_group(publish_group)
+    command.add_option_group(repo_auth_group)
 
     # Publish Security Options
     repo_auth_group.add_option(OPT_HOST_CA)

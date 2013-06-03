@@ -86,6 +86,41 @@ class PackageSearchCommandTests(PulpClientTests):
         mock_search.assert_called_once_with('repo-1', **expected)
         mock_out.assert_called_once_with(['m'])  # only the metadata due to no details
 
+    def test_reformat_rpm_provides_requires(self):
+        # Setup
+        test_rpm = {'provides' : [
+                        {'name' : 'name.1',
+                         'version' : 'version.1',
+                         'release' : 'release.1',
+                         'epoch' : 'epoch.1',
+                         'flags' : None,},
+                        {'name' : 'name.2',
+                         'version' : None,
+                         'release' : None,
+                         'epoch' : None,
+                         'flags' : None},
+                    ],
+                    'requires' : [
+                        {'name' : 'name.1',
+                         'version' : 'version.1',
+                         'release' : 'release.1',
+                         'epoch' : 'epoch.1',
+                         'flags' : 'GT'},
+                    ]}
+
+        # Test
+        command = contents.PackageSearchCommand(None, self.context)
+        command._reformat_rpm_provides_requires(test_rpm)
+
+        # Verify
+        self.assertTrue(isinstance(test_rpm['provides'][0], basestring))
+        self.assertTrue(isinstance(test_rpm['provides'][1], basestring))
+        self.assertTrue(isinstance(test_rpm['requires'][0], basestring))
+
+        self.assertEqual(test_rpm['provides'][0], 'name.1-version.1-release.1-epoch.1')
+        self.assertEqual(test_rpm['provides'][1], 'name.2')
+        self.assertEqual(test_rpm['requires'][0], 'name.1 > version.1-release.1-epoch.1')
+
 
 class SearchRpmsCommand(PulpClientTests):
 

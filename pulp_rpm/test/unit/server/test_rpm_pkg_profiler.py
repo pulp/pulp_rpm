@@ -19,7 +19,9 @@ import sys
 import tempfile
 import unittest
 import yum
+
 from pulp.plugins.model import Consumer, Repository, Unit
+from pulp.server.db.model.criteria import Criteria
 from pulp.server.managers import factory
 from pulp.server.managers.consumer.cud import ConsumerManager
 
@@ -110,14 +112,13 @@ class TestRpmPkgProfiler(rpm_support_base.PulpRPMTests):
         existing_units = [rpm_unit]
         test_repo = profiler_mocks.get_repo("test_repo_id")
         conduit = profiler_mocks.get_profiler_conduit(existing_units=existing_units, repo_bindings=[test_repo])
-        example_rpms = [rpm_unit.unit_key]
-
+        example_rpms_criteria = {"filters":{"name": "emoticons"}}
         prof = RPMPkgProfiler()
         consumer_profile_and_repo_ids = {self.consumer_id:
                                             {'profiled_consumer':self.test_consumer,
                                              'repo_ids':["test_repo_id"]}
                                         }
-        report_list = prof.find_applicable_units(consumer_profile_and_repo_ids, TYPE_ID_RPM, example_rpms, {}, conduit)
+        report_list = prof.find_applicable_units(consumer_profile_and_repo_ids, TYPE_ID_RPM, example_rpms_criteria, {}, conduit)
         self.assertFalse(report_list == [])
 
     def test_unit_applicable_same_name_diff_arch(self):
@@ -126,14 +127,13 @@ class TestRpmPkgProfiler(rpm_support_base.PulpRPMTests):
         existing_units = [rpm_unit]
         test_repo = profiler_mocks.get_repo("test_repo_id")
         conduit = profiler_mocks.get_profiler_conduit(existing_units=existing_units, repo_bindings=[test_repo])
-        example_rpms = [rpm_unit.unit_key]
-
+        example_rpms_criteria = {"filters":{"name": "emoticons"}}
         prof = RPMPkgProfiler()
         consumer_profile_and_repo_ids = {self.consumer_id_i386:
                                             {'profiled_consumer':self.test_consumer_i386,
                                              'repo_ids':["test_repo_id"]}
                                         }
-        report_dict = prof.find_applicable_units(consumer_profile_and_repo_ids, TYPE_ID_RPM, example_rpms, 
+        report_dict = prof.find_applicable_units(consumer_profile_and_repo_ids, TYPE_ID_RPM, example_rpms_criteria, 
                                                  self.override_config_consumer, conduit)
         self.assertTrue(report_dict == {})
 
@@ -143,14 +143,13 @@ class TestRpmPkgProfiler(rpm_support_base.PulpRPMTests):
         existing_units = [rpm_unit]
         test_repo = profiler_mocks.get_repo("test_repo_id")
         conduit = profiler_mocks.get_profiler_conduit(existing_units=existing_units, repo_bindings=[test_repo])
-        example_rpms = [rpm_unit.unit_key]
-
+        example_rpms_criteria = {"filters":{"name": "emoticons"}}
         prof = RPMPkgProfiler()
         consumer_profile_and_repo_ids = {self.consumer_id_been_updated:
                                             {'profiled_consumer':self.test_consumer_been_updated,
                                              'repo_ids':["test_repo_id"]}
                                         }
-        report_dict = prof.find_applicable_units(consumer_profile_and_repo_ids, TYPE_ID_RPM, example_rpms, 
+        report_dict = prof.find_applicable_units(consumer_profile_and_repo_ids, TYPE_ID_RPM, example_rpms_criteria, 
                                                  self.override_config_consumer, conduit)
         self.assertTrue(report_dict == {})
 
@@ -160,14 +159,13 @@ class TestRpmPkgProfiler(rpm_support_base.PulpRPMTests):
         existing_units = [rpm_unit]
         test_repo = profiler_mocks.get_repo("test_repo_id")
         conduit = profiler_mocks.get_profiler_conduit(existing_units=existing_units, repo_bindings=[test_repo])
-        example_rpms = [rpm_unit.unit_key]
-
+        example_rpms_criteria = {"filters":{"name": "bla-bla"}}
         prof = RPMPkgProfiler()
         consumer_profile_and_repo_ids = {self.consumer_id_i386:
                                             {'profiled_consumer':self.test_consumer_i386,
                                              'repo_ids':["test_repo_id"]}
                                         }
-        report_list = prof.find_applicable_units(consumer_profile_and_repo_ids, TYPE_ID_RPM, example_rpms, 
+        report_list = prof.find_applicable_units(consumer_profile_and_repo_ids, TYPE_ID_RPM, example_rpms_criteria, 
                                                  self.override_config_units, conduit)
         self.assertTrue(report_list == [])
 

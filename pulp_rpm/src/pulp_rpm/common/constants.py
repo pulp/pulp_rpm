@@ -10,14 +10,22 @@
 # http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt.
 
 # -- progress states ----------------------------------------------------------
+
 # These are used by the RPM reports, but not by the ISO reports (since those use their own state machines)
 STATE_NOT_STARTED = 'NOT_STARTED'
 STATE_RUNNING = 'IN_PROGRESS'
 STATE_COMPLETE = 'FINISHED'
 STATE_FAILED = 'FAILED'
 STATE_SKIPPED = 'SKIPPED'
+STATE_CANCELLED = 'CANCELLED'
 
 COMPLETE_STATES = (STATE_COMPLETE, STATE_FAILED, STATE_SKIPPED)
+
+# Codes included in the progress report for each unit to identify what went wrong
+ERROR_SIZE_VERIFICATION = 'size_mismatch'
+ERROR_CHECKSUM_VERIFICATION = 'checksum_mismatch'
+
+# -- configuration ------------------------------------------------------------
 
 # Used as a note on a repository to indicate it is a Puppet repository
 REPO_NOTE_RPM = 'rpm-repo'
@@ -48,6 +56,9 @@ CONFIG_SERVE_HTTPS_DEFAULT = True
 # will be configured. This option is currently only used by the ISO distributor.
 CONFIG_SSL_AUTH_CA_CERT = 'ssl_auth_ca_cert'
 
+# Copy operation config
+CONFIG_RECURSIVE = 'recursive'
+
 EXPORT_HTTP_DIR="/var/lib/pulp/published/http/exports"
 EXPORT_HTTPS_DIR="/var/lib/pulp/published/https/exports"
 ISO_HTTP_DIR = "/var/lib/pulp/published/http/isos"
@@ -55,7 +66,7 @@ ISO_HTTPS_DIR = "/var/lib/pulp/published/https/isos"
 ISO_MANIFEST_FILENAME = 'PULP_MANIFEST'
 
 # There is no clean way to get the distribution storage location outside of the unit;
-# we need this path when initializing grinder so the treeinfo file gets compied and
+# we need this path when initializing grinder so the treeinfo file gets copied and
 # symlinked to the right path. Once we have a nicer way of getting this path replace this
 DISTRIBUTION_STORAGE_PATH = '/var/lib/pulp/content/distribution/'
 
