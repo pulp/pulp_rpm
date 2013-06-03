@@ -1,0 +1,20 @@
+DRPM metadata migration to shuffle metadata from the repo scratchpad to the actual DRPM units.
+DRPM publish operation to generate prestodelta.xml
+Fix the database representation of DRPMs.
+
+jdob: Create a unified way in the platform for plugins to have user-editable config files
+
+Include total repo size (bytes and units) in sync task report: https://bugzilla.redhat.com/show_bug.cgi?id=861409
+
+If new importer doesn't make it into 2.2, put the copy command improvements from the below PR into 2.2:
+https://github.com/pulp/pulp_rpm/pull/181
+
+handle failure scenarios
+
+improve reporting
+
+consider looking at Provides and Requires fields. they seem to be stored in 2.2
+as dicts but in 2.1 as nested lists.
+
+sync progress report shouldn't show 0/0 and 100% for so long while it reads the
+metadata

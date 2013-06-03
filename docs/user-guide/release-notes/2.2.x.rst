@@ -23,8 +23,52 @@ CLI Changes
 API Changes
 -----------
 
-Some of the configuration names for the ISOImporter have changed. See the table below for the mapping of old
-names to new names.
+Yum Importer
+^^^^^^^^^^^^
+
+Some of the configuration names for the yum importer have changed. See the table below for the mapping
+of old names to new names.
+
++----------------------+------------------+
+| Old name             | New Name         |
++======================+==================+
+| feed_url             | feed             |
++----------------------+------------------+
+| ssl_verify           | ssl_validation   |
++-----------------------------------------+
+| num_threads          | max_downloads    |
++----------------------+------------------+
+| proxy_url            | proxy_host       |
++----------------------+------------------+
+| proxy_user           | proxy_username   |
++----------------------+------------------+
+| proxy_pass           | proxy_password   |
++----------------------+------------------+
+| verify_checksum      | validate         |
++----------------------+------------------+
+| remove_old           | remove_missing   |
++----------------------+------------------+
+| num_old_packages     | retain_old_count |
++----------------------+------------------+
+
+The following configuration values are no longer supported.
+
+``newest``
+  The idea of only downloading the newest RPM is handled by the ``retain_old_count`` value.
+
+``verify_size``
+  Verifying the size and checksum have been consolidated into a single parameter called ``validate``.
+  During migration, the value for ``validate`` will be set on existing repositories using the
+  ``verify_checksum`` value.
+
+All existing yum importers will be migrated by pulp-manage-db, but any non-Pulp code that creates
+or updates yum importers with the API will need to be updated to use these new names.
+
+ISO Importer
+^^^^^^^^^^^^
+
+Some of the configuration names for the ISO importer have changed. See the table below for the mapping
+of old names to new names.
 
 +----------------------+----------------+
 | Old name             | New Name       |
@@ -43,8 +87,8 @@ names to new names.
 +----------------------+----------------+
 
 
-All existing ISOImporters will be migrated by pulp-manage-db, but any code that creates or updates ISOImporters
-with the API will need to be updated to use these new names.
+All existing ISO importers will be migrated by pulp-manage-db, but any non-Pulp code that creates
+or updates ISO importers with the API will need to be updated to use these new names.
 
 
 Upgrade Instructions
