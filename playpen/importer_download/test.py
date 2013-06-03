@@ -67,7 +67,9 @@ def main(repo_url):
     else:
         primary_file_handle = open(primary_file_path, 'r')
 
-    package_info_generator = primary.primary_package_list_generator(primary_file_handle)
+    package_info_generator = packages.package_list_generator(primary_file_handle,
+                                                             primary.PACKAGE_TAG,
+                                                             primary.process_package_element)
     #package_info_list = [{'relative_url_path': p['relative_url_path']} for p in package_info_generator]
 
     #primary_parse_time = datetime.now()

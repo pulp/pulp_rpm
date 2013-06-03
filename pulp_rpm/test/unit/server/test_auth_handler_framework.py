@@ -1,5 +1,3 @@
-#!/usr/bin/python
-#
 # Copyright (c) 2011 Red Hat, Inc.
 #
 # This software is licensed to you under the GNU General Public
@@ -10,6 +8,7 @@
 # NON-INFRINGEMENT, or FITNESS FOR A PARTICULAR PURPOSE. You should
 # have received a copy of GPLv2 along with this software; if not, see
 # http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt.
+
 import os
 import sys
 import unittest
@@ -21,8 +20,10 @@ import pulp_rpm.repo_auth.auth_handler_framework as auth_framework
 def fail(request):
     return False
 
+
 def win(request):
     return True
+
 
 class MockFunctionsTests(unittest.TestCase):
 

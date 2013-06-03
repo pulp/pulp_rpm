@@ -19,8 +19,8 @@ from pulp.client.commands.repo.query import RepoSearchCommand
 from pulp.client.upload import manager as upload_lib
 
 from pulp_rpm.common import constants, ids
-from pulp_rpm.extension.admin import (contents, copy_commands, export, remove, repo,
-                                      status, structure, sync_schedules)
+from pulp_rpm.extension.admin import (contents, copy_commands, export, remove, repo_create_update,
+                                      repo_list, status, structure, sync_schedules)
 from pulp_rpm.extension.admin.upload import (category, errata, package)
 from pulp_rpm.extension.admin.upload import group as package_group
 
@@ -35,10 +35,10 @@ def initialize(context):
     upload_manager = _upload_manager(context)
 
     repo_section = structure.repo_section(context.cli)
-    repo_section.add_command(repo.RpmRepoCreateCommand(context))
-    repo_section.add_command(repo.RpmRepoUpdateCommand(context))
+    repo_section.add_command(repo_create_update.RpmRepoCreateCommand(context))
+    repo_section.add_command(repo_create_update.RpmRepoUpdateCommand(context))
     repo_section.add_command(cudl.DeleteRepositoryCommand(context))
-    repo_section.add_command(repo.RpmRepoListCommand(context))
+    repo_section.add_command(repo_list.RpmRepoListCommand(context))
     repo_section.add_command(RepoSearchCommand(context, constants.REPO_NOTE_RPM))
 
     copy_section = structure.repo_copy_section(context.cli)

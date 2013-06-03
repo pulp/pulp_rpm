@@ -156,24 +156,24 @@ def updateinfo(errata_units, save_location):
         un = UpdateNotice()
 
         _md = {
-            'from'             : e.metadata['from_str'],
+            'from'             : e.metadata['from'],
             'type'             : e.metadata['type'],
             'title'            : e.metadata['title'],
-            'release'          : e.metadata['release'],
+            'release'          : e.metadata.get('release', ''),
             'status'           : e.metadata['status'],
             'version'          : e.metadata['version'],
-            'pushcount'        : e.metadata['pushcount'],
+            'pushcount'        : e.metadata.get('pushcount', ''),
             'update_id'        : e.unit_key['id'],
             'issued'           : e.metadata['issued'],
-            'updated'          : e.metadata['updated'],
+            'updated'          : e.metadata.get('updated', ''),
             'description'      : e.metadata['description'],
             'references'       : e.metadata['references'],
             'pkglist'          : e.metadata['pkglist'],
-            'reboot_suggested' : e.metadata['reboot_suggested'],
-            'severity'         : e.metadata['severity'],
-            'rights'           : e.metadata['rights'],
-            'summary'          : e.metadata['summary'],
-            'solution'         : e.metadata['solution'],
+            'reboot_suggested' : e.metadata.get('reboot_suggested', False),
+            'severity'         : e.metadata.get('severity', ''),
+            'rights'           : e.metadata.get('rights', ''),
+            'summary'          : e.metadata.get('summary', ''),
+            'solution'         : e.metadata.get('solution', ''),
             }
         un._md = _md
         um.add_notice(un)
