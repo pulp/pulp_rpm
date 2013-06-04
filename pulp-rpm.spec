@@ -18,7 +18,7 @@
 
 Name: pulp-rpm
 Version: 2.2.0
-Release: 0.15.alpha%{?dist}
+Release: 0.16.alpha%{?dist}
 Summary: Support for RPM content in the Pulp platform
 Group: Development/Languages
 License: GPLv2
@@ -281,6 +281,18 @@ A collection of yum plugins supplementing Pulp consumer operations.
 
 
 %changelog
+* Tue Jun 04 2013 Jeff Ortel <jortel@redhat.com> 2.2.0-0.16.alpha
+- 968535 - leverage --no-compress; need to compensate for anaconda bug related
+  to compressed metadata. (jortel@redhat.com)
+- 968543 - remove conditional in pulp_version macro. (jortel@redhat.com)
+- 963774 - Added the *sort_index fields to the search indexes
+  (jason.dobies@redhat.com)
+- 965818 - Added translation from new format for provides/requires to a more
+  user-friendly output (jason.dobies@redhat.com)
+- 955702 - updating documentation for mirroring a repository with a valid url
+  and corresponding output (skarmark@redhat.com)
+- 966178 - Added default to remove-missing (jason.dobies@redhat.com)
+
 * Thu May 30 2013 Jeff Ortel <jortel@redhat.com> 2.2.0-0.15.alpha
 - 950690 - Removed copy commands that aren't supported in the plugin
   (jason.dobies@redhat.com)
