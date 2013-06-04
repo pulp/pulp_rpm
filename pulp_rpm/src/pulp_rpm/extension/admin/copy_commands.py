@@ -16,8 +16,8 @@ from pulp.client.extensions.extensions import PulpCliFlag
 
 from pulp_rpm.common.constants import DISPLAY_UNITS_THRESHOLD, CONFIG_RECURSIVE
 from pulp_rpm.common.ids import (TYPE_ID_RPM, TYPE_ID_SRPM, TYPE_ID_DRPM, TYPE_ID_ERRATA,
-                                 TYPE_ID_DISTRO, TYPE_ID_PKG_GROUP, TYPE_ID_PKG_CATEGORY,
-                                 UNIT_KEY_RPM)
+                                 TYPE_ID_DISTRO, TYPE_ID_PKG_GROUP, TYPE_ID_PKG_CATEGORY)
+from pulp_rpm.common.models import RPM
 from pulp_rpm.extension import criteria_utils
 from pulp_rpm.extension.admin import units_display
 
@@ -92,7 +92,7 @@ class PackageCopyCommand(RecursiveCopyCommand):
 
         # Work around to scope the fields loaded by the platform to limit the amount of
         # RAM used. This addition will find its way to the criteria parsing in the bindings.
-        user_input['fields'] = UNIT_KEY_RPM
+        user_input['fields'] = RPM.UNIT_KEY_NAMES
 
 
 class RpmCopyCommand(PackageCopyCommand):
