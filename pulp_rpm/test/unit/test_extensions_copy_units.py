@@ -8,13 +8,15 @@
 # NON-INFRINGEMENT, or FITNESS FOR A PARTICULAR PURPOSE. You should
 # have received a copy of GPLv2 along with this software; if not, see
 # http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt.
+
 import mock
 
 from pulp.client.commands.unit import UnitCopyCommand
-from pulp_rpm.common import constants
 
-from pulp_rpm.common.ids import (TYPE_ID_RPM, TYPE_ID_SRPM, TYPE_ID_DRPM, TYPE_ID_ERRATA, TYPE_ID_DISTRO,
-                                 TYPE_ID_PKG_GROUP, TYPE_ID_PKG_CATEGORY)
+from pulp_rpm.common.constants import CONFIG_RECURSIVE
+from pulp_rpm.common.ids import (TYPE_ID_RPM, TYPE_ID_SRPM, TYPE_ID_DRPM, TYPE_ID_ERRATA,
+                                 TYPE_ID_DISTRO, TYPE_ID_PKG_GROUP, TYPE_ID_PKG_CATEGORY,
+                                 UNIT_KEY_RPM)
 from pulp_rpm.extension.admin import copy_commands
 import rpm_support_base
 
@@ -53,7 +55,7 @@ class RecursiveCopyCommandTests(rpm_support_base.PulpClientTests):
         override_config = self.command.generate_override_config(**user_input)
 
         # Verify
-        self.assertEqual(override_config, {constants.CONFIG_RECURSIVE : True})
+        self.assertEqual(override_config, {CONFIG_RECURSIVE : True})
 
     def test_generate_override_config_no_recursive(self):
         # Test
@@ -80,6 +82,18 @@ class PackageCopyCommandTests(rpm_support_base.PulpClientTests):
         command = copy_commands.PackageCopyCommand(self.context, 'copy', '', '')
         command._parse_sort('foo')
         mock_parse.assert_called_once_with(copy_commands.RecursiveCopyCommand, 'foo')
+
+    @mock.patch('pulp.client.commands.unit.UnitCopyCommand.modify_user_input')
+    def test_modify_user_input(self, mock_super):
+        command = copy_commands.PackageCopyCommand(self.context, 'copy', '', '')
+        user_input = {'a' : 'a'}
+        command.modify_user_input(user_input)
+
+        # The super call is required.
+        self.assertEqual(1, mock_super.call_count)
+
+        # The user_input variable itself should be modified.
+        self.assertEqual(user_input, {'a' : 'a', 'fields' : UNIT_KEY_RPM})
 
 
 class OtherCopyCommandsTests(rpm_support_base.PulpClientTests):

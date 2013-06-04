@@ -13,11 +13,11 @@ from gettext import gettext as _
 
 from pulp.client.commands.unit import UnitCopyCommand
 from pulp.client.extensions.extensions import PulpCliFlag
-from pulp_rpm.common import constants
 
-from pulp_rpm.common.constants import DISPLAY_UNITS_THRESHOLD
-from pulp_rpm.common.ids import (TYPE_ID_RPM, TYPE_ID_SRPM, TYPE_ID_DRPM, TYPE_ID_ERRATA, TYPE_ID_DISTRO,
-                                 TYPE_ID_PKG_GROUP, TYPE_ID_PKG_CATEGORY)
+from pulp_rpm.common.constants import DISPLAY_UNITS_THRESHOLD, CONFIG_RECURSIVE
+from pulp_rpm.common.ids import (TYPE_ID_RPM, TYPE_ID_SRPM, TYPE_ID_DRPM, TYPE_ID_ERRATA,
+                                 TYPE_ID_DISTRO, TYPE_ID_PKG_GROUP, TYPE_ID_PKG_CATEGORY,
+                                 UNIT_KEY_RPM)
 from pulp_rpm.extension import criteria_utils
 from pulp_rpm.extension.admin import units_display
 
@@ -58,7 +58,7 @@ class RecursiveCopyCommand(UnitCopyCommand):
         override_config = {}
 
         if kwargs[FLAG_RECURSIVE.keyword]:
-            override_config[constants.CONFIG_RECURSIVE] = True
+            override_config[CONFIG_RECURSIVE] = True
 
         return override_config
 
@@ -86,6 +86,13 @@ class PackageCopyCommand(RecursiveCopyCommand):
     @classmethod
     def _parse_sort(cls, sort_args):
         return criteria_utils.parse_sort(RecursiveCopyCommand, sort_args)
+
+    def modify_user_input(self, user_input):
+        super(PackageCopyCommand, self).modify_user_input(user_input)
+
+        # Work around to scope the fields loaded by the platform to limit the amount of
+        # RAM used. This addition will find its way to the criteria parsing in the bindings.
+        user_input['fields'] = UNIT_KEY_RPM
 
 
 class RpmCopyCommand(PackageCopyCommand):
