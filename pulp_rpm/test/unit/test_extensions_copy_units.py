@@ -134,7 +134,7 @@ class OtherCopyCommandsTests(rpm_support_base.PulpClientTests):
         command = copy_commands.DistributionCopyCommand(self.context)
 
         # Verify
-        self.assertTrue(isinstance(command, copy_commands.RecursiveCopyCommand))
+        self.assertTrue(isinstance(command, copy_commands.NonRecursiveCopyCommand))
         self.assertEqual(command.name, 'distribution')
         self.assertEqual(command.description, copy_commands.DESC_DISTRIBUTION)
         self.assertEqual(command.type_id, TYPE_ID_DISTRO)
@@ -164,7 +164,7 @@ class OtherCopyCommandsTests(rpm_support_base.PulpClientTests):
         command = copy_commands.AllCopyCommand(self.context)
 
         # Verify
-        self.assertTrue(isinstance(command, copy_commands.RecursiveCopyCommand))
+        self.assertTrue(isinstance(command, copy_commands.NonRecursiveCopyCommand))
         self.assertEqual(command.name, 'all')
         self.assertEqual(command.description, copy_commands.DESC_ALL)
         self.assertEqual(command.type_id, None)

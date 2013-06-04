@@ -42,10 +42,6 @@ class RecursiveCopyCommand(UnitCopyCommand):
     """
     Base class for all copy commands in this module that should support specifying a recursive
     option to the plugin.
-
-    In 2.0, all of these copy commands supported the ability to indicate the copy should be
-    recursive. I'm not entirely sure the plugin supports it in all cases, but for now I'm going to
-    stick with the approach that it's supported for all of them.
     """
 
     def __init__(self, context, name, description, type_id, unit_threshold=DISPLAY_UNITS_THRESHOLD):
@@ -72,6 +68,22 @@ class RecursiveCopyCommand(UnitCopyCommand):
         this handling to be done here in the base class so that every subclass can display every type.
         """
 
+        copied_units = task.result  # entries are a dict containing unit_key and type_id
+        units_display.display_units(self.prompt, copied_units, self.unit_threshold)
+
+
+class NonRecursiveCopyCommand(UnitCopyCommand):
+    """
+    Base class for all copy commands in this module that need not support specifying a recursive
+    option to the plugin.
+    """
+
+    def __init__(self, context, name, description, type_id, unit_threshold=DISPLAY_UNITS_THRESHOLD):
+        UnitCopyCommand.__init__(self, context, name=name, description=description, type_id=type_id)
+
+        self.unit_threshold = unit_threshold
+
+    def succeeded(self, task):
         copied_units = task.result  # entries are a dict containing unit_key and type_id
         units_display.display_units(self.prompt, copied_units, self.unit_threshold)
 
@@ -113,10 +125,10 @@ class ErrataCopyCommand(RecursiveCopyCommand):
         RecursiveCopyCommand.__init__(self, context, 'errata', DESC_ERRATA, TYPE_ID_ERRATA)
 
 
-class DistributionCopyCommand(RecursiveCopyCommand):
+class DistributionCopyCommand(NonRecursiveCopyCommand):
 
     def __init__(self, context):
-        RecursiveCopyCommand.__init__(self, context, 'distribution', DESC_DISTRIBUTION, TYPE_ID_DISTRO)
+        NonRecursiveCopyCommand.__init__(self, context, 'distribution', DESC_DISTRIBUTION, TYPE_ID_DISTRO)
 
 
 class PackageGroupCopyCommand(RecursiveCopyCommand):
@@ -131,8 +143,8 @@ class PackageCategoryCopyCommand(RecursiveCopyCommand):
         RecursiveCopyCommand.__init__(self, context, 'category', DESC_PKG_CATEGORY, TYPE_ID_PKG_CATEGORY)
 
 
-class AllCopyCommand(RecursiveCopyCommand):
+class AllCopyCommand(NonRecursiveCopyCommand):
 
     def __init__(self, context):
-        RecursiveCopyCommand.__init__(self, context, 'all', DESC_ALL, None)
+        NonRecursiveCopyCommand.__init__(self, context, 'all', DESC_ALL, None)
 
