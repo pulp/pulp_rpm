@@ -54,7 +54,8 @@ def add_publish_section(context, repo_section):
     
     :param context: ClientContext containing the CLI instance being configured
     :type  context: pulp.client.extensions.core.ClientContext
-    :param repo_section: The parent repo section that we wish to add the publish subsection to.
+    :param repo_section: The parent repo section that we wish to add the publish subsection
+                         to.
     :type  repo_section: pulp.client.extensions.extensions.PulpCliSection
     """
     publish_section = repo_section.create_subsection(SECTION_PUBLISH, DESC_PUBLISH)
@@ -80,7 +81,6 @@ def add_repo_section(context, parent_section):
     repo_section = parent_section.create_subsection(SECTION_REPO, DESC_REPO)
 
     add_publish_section(context, repo_section)
-    add_schedules_section(context, repo_section)
     add_sync_section(context, repo_section)
 
     repo_section.add_command(create_update.ISORepoCreateCommand(context))
@@ -89,6 +89,7 @@ def add_repo_section(context, parent_section):
     repo_section.add_command(repo_list.ISORepoListCommand(context))
 
     repo_section.add_command(unit.UnitCopyCommand(context, type_id=ids.TYPE_ID_ISO))
+    repo_section.add_command(unit.UnitRemoveCommand(context, type_id=ids.TYPE_ID_ISO))
 
     return repo_section
 
@@ -99,7 +100,8 @@ def add_schedules_section(context, parent_section):
 
     :param context: ClientContext containing the CLI instance being configured
     :type  context: pulp.client.extensions.core.ClientContext
-    :param parent_section: The parent CLI section that we wish to add the schedules subsection to.
+    :param parent_section: The parent CLI section that we wish to add the schedules 
+                           subsection to.
     :type  parent_section: pulp.client.extensions.extensions.PulpCliSection
     """
     schedules_section = parent_section.create_subsection(SECTION_SCHEDULES, DESC_SCHEDULES)
@@ -127,5 +129,6 @@ def add_sync_section(context, repo_section):
     renderer = status.ISOStatusRenderer(context)
 
     sync_section.add_command(sync_publish.RunSyncRepositoryCommand(context, renderer))
+    add_schedules_section(context, sync_section)
 
     return sync_section
