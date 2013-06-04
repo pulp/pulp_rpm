@@ -105,7 +105,7 @@ def element_to_raw_xml(element):
     strip_ns(element)
     tree = ElementTree(element)
     io = StringIO()
-    tree.write(io, xml_declaration=False)
+    tree.write(io)
     return io.getvalue()
 
 
