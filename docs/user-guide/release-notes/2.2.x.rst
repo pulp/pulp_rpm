@@ -97,3 +97,11 @@ Upgrade Instructions
 Please see the
 `Pulp Platform upgrade instructions <https://pulp-user-guide.readthedocs.org/en/pulp-2.2/release-notes.html>`_
 for information on how to complete the upgrade.
+
+The location of the global configuration file for the yum importer has changed. Any
+custom changes to the pre-2.2.0 file
+(``/usr/lib/pulp/plugins/importers/yum_importer/yum_importer.conf``), such as those
+suggested when :ref:`configuring a proxy <configure-proxy>`, are removed during upgrade.
+The new location of this file is ``/etc/pulp/server/plugins.conf.d/yum_importer.json``.
+Keep in mind the configuration property name changes above when re-adding proxy
+information.
