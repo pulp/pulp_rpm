@@ -17,7 +17,7 @@ from pulp.client.commands import unit
 from pulp.client.commands.repo import cudl, sync_publish
 
 from pulp_rpm.common import ids
-from pulp_rpm.extension.admin.iso import create_update, repo_list, status, sync_schedules
+from pulp_rpm.extension.admin.iso import contents, create_update, repo_list, status, sync_schedules
 
 
 SECTION_PUBLISH = 'publish'
@@ -65,8 +65,6 @@ def add_publish_section(context, repo_section):
         sync_publish.RunPublishRepositoryCommand(
             context, renderer, distributor_id=ids.TYPE_ID_DISTRIBUTOR_ISO))
 
-    return publish_section
-
 
 def add_repo_section(context, parent_section):
     """
@@ -89,8 +87,7 @@ def add_repo_section(context, parent_section):
     repo_section.add_command(repo_list.ISORepoListCommand(context))
 
     repo_section.add_command(unit.UnitCopyCommand(context, type_id=ids.TYPE_ID_ISO))
-
-    return repo_section
+    repo_section.add_command(contents.ISOSearchCommand(context, name='content'))
 
 
 def add_schedules_section(context, parent_section):
@@ -110,8 +107,6 @@ def add_schedules_section(context, parent_section):
     schedules_section.add_command(sync_schedules.ISONextRunCommand(context))
     schedules_section.add_command(sync_schedules.ISOUpdateScheduleCommand(context))
 
-    return schedules_section
-
 
 def add_sync_section(context, repo_section):
     """
@@ -127,5 +122,3 @@ def add_sync_section(context, repo_section):
     renderer = status.ISOStatusRenderer(context)
 
     sync_section.add_command(sync_publish.RunSyncRepositoryCommand(context, renderer))
-
-    return sync_section
