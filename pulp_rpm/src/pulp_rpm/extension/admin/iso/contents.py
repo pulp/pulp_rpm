@@ -14,6 +14,7 @@
 from copy import deepcopy
 
 from pulp.client.commands.criteria import DisplayUnitAssociationsCommand
+from pulp.client.commands.options import OPTION_REPO_ID
 
 from pulp_rpm.common import ids
 
@@ -38,7 +39,7 @@ class ISOSearchCommand(DisplayUnitAssociationsCommand):
         """
         search_params = deepcopy(user_input)
 
-        repo_id = search_params.pop('repo-id')
+        repo_id = search_params.pop(OPTION_REPO_ID.keyword)
         search_params['type_ids'] = [ids.TYPE_ID_ISO]
 
         isos = self.context.server.repo_unit.search(repo_id, **search_params).response_body
