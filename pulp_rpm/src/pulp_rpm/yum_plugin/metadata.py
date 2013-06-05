@@ -17,7 +17,6 @@ import os
 import shlex
 import shutil
 import subprocess
-import sys
 import threading
 import signal
 import tempfile
@@ -31,7 +30,7 @@ from pulp_rpm.yum_plugin import util
 from pulp.common.util import encode_unicode, decode_unicode
 import yum
 from pulp.server.db.model.criteria import UnitAssociationCriteria
-from pulp_rpm.common.ids import TYPE_ID_RPM, TYPE_ID_SRPM, TYPE_ID_DISTRIBUTOR_YUM
+from pulp_rpm.common.ids import TYPE_ID_RPM, TYPE_ID_SRPM, TYPE_ID_YUM_REPO_METADATA_FILE
 
 _LOG = util.getLogger(__name__)
 __yum_lock = threading.Lock()
@@ -440,7 +439,7 @@ class YumPackageDetails(object):
             self.__init_yum()
         except Exception, e:
             _LOG.exception("Failed to initialize YumRepository for %s" % (self.repo_label))
-            return False  
+            return False
         self.packages = {}
         for yp in self.sack.returnPackages():
             self.packages[yp.relativepath] = yp
@@ -475,16 +474,16 @@ class YumPackageDetails(object):
         @param relativepath key used to find a specific yum package
                 the relativepath is not the RPM's actual path, but the relativepath from perspective of repo
         @type relativepath str
-        
+
         @return dict containing yum metadata details and xml snippets
         @rtype {}
-        """ 
+        """
         if not self.packages.has_key(relativepath):
             _LOG.warn("Unable to find an entry in yum package details with relativepath: '%s'" % (relativepath))
             return {}
         pkg = self.packages[relativepath]
         info = {}
-        keys = ["vendor", "description", "buildhost", "license", 
+        keys = ["vendor", "description", "buildhost", "license",
                 "vendor", "requires", "provides", "changelog", "filelist", "files"]
         for key in keys:
             try:
@@ -682,7 +681,7 @@ xmlns:rpm="http://linux.duke.edu/metadata/rpm" packages="%s"> \n""" % self.unit_
         each unit metadata is written to the xml files. These units here should be rpm
         units. If a unit doesnt have repodata info, log the message and skip that unit.
         Finally the gzipped xmls are closed when all the units are written.
-        
+
         @param units: List of rpm units from which repodata is taken and merged
         @type units: [AssociatedUnit]
         """
@@ -887,9 +886,12 @@ def generate_yum_metadata(repo_dir, publish_conduit, config, progress_callback=N
         # basically turned off now, and basically ignored.
         skip_metadata_types.append('pkgtags')
     checksum_type = repo_scratchpad.get('checksum_type', DEFAULT_CHECKSUM)
-    custom_metadata = {}
-    if repo_scratchpad.has_key("repodata"):
-        custom_metadata = repo_scratchpad["repodata"]
+    # (XXX remove me)
+    #custom_metadata = {}
+    #if repo_scratchpad.has_key("repodata"):
+    #    custom_metadata = repo_scratchpad["repodata"]
+    # custom metadata files are now first-class content units
+    custom_metadata = generate_custom_metadata_dict(publish_conduit)
     start = time.time()
     try:
         set_progress("metadata", metadata_progress_status, progress_callback)
@@ -945,4 +947,37 @@ def generate_yum_metadata(repo_dir, publish_conduit, config, progress_callback=N
     metadata_progress_status = {"state" : "FINISHED"}
     set_progress("metadata", metadata_progress_status, progress_callback)
     return True, []
+
+
+def generate_custom_metadata_dict(publish_conduit):
+    """
+    Generate the expected custom metadata dictionary from the yum repo metadata
+    content units.
+
+    :param publish_conduit: publish conduit
+    :type publish_conduit: pulp.plugins.conduits.repo_publish.RepoPublishConduit
+    :return: dictionary of data_type: file contents
+    :rtype: dict
+    """
+    criteria = UnitAssociationCriteria(type_ids=[TYPE_ID_YUM_REPO_METADATA_FILE])
+    units = publish_conduit.get_units(criteria)
+
+    if not units:
+        return {}
+
+    custom_metadata = {}
+
+    for u in units:
+
+        if u.storage_path.endswith('.gz'):
+            handle = gzip.open(u.storage_path, 'r')
+        else:
+            handle = open(u.storage_path, 'r')
+
+        contents = handle.read().decode('utf-8', 'replace')
+        handle.close()
+
+        custom_metadata[u.unit_key['data_type']] = contents
+
+    return custom_metadata
 
