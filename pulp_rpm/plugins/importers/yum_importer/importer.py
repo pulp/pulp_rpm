@@ -27,7 +27,7 @@ from pulp.server.db.model.criteria import UnitAssociationCriteria
 from pulp.plugins.importer import Importer
 from pulp.plugins.model import SyncReport
 from pulp_rpm.common.ids import TYPE_ID_IMPORTER_YUM, TYPE_ID_PKG_GROUP, TYPE_ID_PKG_CATEGORY, TYPE_ID_DISTRO,\
-        TYPE_ID_DRPM, TYPE_ID_ERRATA, TYPE_ID_RPM, TYPE_ID_SRPM
+        TYPE_ID_DRPM, TYPE_ID_ERRATA, TYPE_ID_RPM, TYPE_ID_SRPM, TYPE_ID_YUM_REPO_METADATA_FILE
 from pulp_rpm.common import constants, ids
 from pulp_rpm.yum_plugin import util, depsolver, metadata
 from pulp_rpm.yum_plugin.metadata import get_package_xml
@@ -81,7 +81,8 @@ class YumImporter(Importer):
         return {
             'id'           : TYPE_ID_IMPORTER_YUM,
             'display_name' : 'Yum Importer',
-            'types'        : [TYPE_ID_DISTRO, TYPE_ID_DRPM, TYPE_ID_ERRATA, TYPE_ID_PKG_GROUP, TYPE_ID_PKG_CATEGORY, TYPE_ID_RPM, TYPE_ID_SRPM]
+            'types'        : [TYPE_ID_DISTRO, TYPE_ID_DRPM, TYPE_ID_ERRATA, TYPE_ID_PKG_GROUP,
+                              TYPE_ID_PKG_CATEGORY, TYPE_ID_RPM, TYPE_ID_SRPM, TYPE_ID_YUM_REPO_METADATA_FILE]
         }
 
     def validate_config(self, repo, config, related_repos):
