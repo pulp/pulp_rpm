@@ -12,12 +12,15 @@
 # http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt.
 
 from gettext import gettext as _
+import os
 
 from pulp.client.commands import unit
 from pulp.client.commands.repo import cudl, sync_publish
+from pulp.client.commands.repo import upload as pulp_upload
+from pulp.client.upload import manager as upload_lib
 
 from pulp_rpm.common import ids
-from pulp_rpm.extension.admin.iso import create_update, repo_list, status, sync_schedules
+from pulp_rpm.extension.admin.iso import create_update, repo_list, status, sync_schedules, upload
 
 
 SECTION_PUBLISH = 'publish'
@@ -35,6 +38,9 @@ DESC_SCHEDULES = _('manage repository sync schedules')
 SECTION_SYNC = 'sync'
 DESC_SYNC = _('run, schedule, or view the status of sync tasks')
 
+SECTION_UPLOADS = 'uploads'
+DESC_UPLOADS = _('upload ISOs into a repository')
+
 
 def add_iso_section(context):
     """
@@ -51,7 +57,7 @@ def add_iso_section(context):
 def add_publish_section(context, repo_section):
     """
     Add the publish subsection and all of its children to the repo section.
-    
+
     :param context: ClientContext containing the CLI instance being configured
     :type  context: pulp.client.extensions.core.ClientContext
     :param repo_section: The parent repo section that we wish to add the publish subsection to.
@@ -71,7 +77,7 @@ def add_publish_section(context, repo_section):
 def add_repo_section(context, parent_section):
     """
     Add the repo section and all of its children to the parent section.
-    
+
     :param context: ClientContext containing the CLI instance being configured
     :type  context: pulp.client.extensions.core.ClientContext
     :param parent_section: The parent CLI section that we wish to add the repo subsection to.
@@ -82,12 +88,12 @@ def add_repo_section(context, parent_section):
     add_publish_section(context, repo_section)
     add_schedules_section(context, repo_section)
     add_sync_section(context, repo_section)
+    add_uploads_section(context, repo_section)
 
     repo_section.add_command(create_update.ISORepoCreateCommand(context))
     repo_section.add_command(create_update.ISORepoUpdateCommand(context))
     repo_section.add_command(cudl.DeleteRepositoryCommand(context))
     repo_section.add_command(repo_list.ISORepoListCommand(context))
-
     repo_section.add_command(unit.UnitCopyCommand(context, type_id=ids.TYPE_ID_ISO))
 
     return repo_section
@@ -116,7 +122,7 @@ def add_schedules_section(context, parent_section):
 def add_sync_section(context, repo_section):
     """
     Add the sync subsection and all of its children to the repo section.
-    
+
     :param context: ClientContext containing the CLI instance being configured
     :type  context: pulp.client.extensions.core.ClientContext
     :param repo_section: The parent repo section that we wish to add the sync subsection to.
@@ -129,3 +135,39 @@ def add_sync_section(context, repo_section):
     sync_section.add_command(sync_publish.RunSyncRepositoryCommand(context, renderer))
 
     return sync_section
+
+
+def add_uploads_section(context, repo_section):
+    """
+    Add the uploads subsection and all of its children to the repo section.
+
+    :param context:      ClientContext containing the CLI instance being configured
+    :type  context:      pulp.client.extensions.core.ClientContext
+    :param repo_section: The parent repo section that we wish to add the uploads subsection to.
+    :type  repo_section: pulp.client.extensions.extensions.PulpCliSection
+    """
+    uploads_section = repo_section.create_subsection(SECTION_UPLOADS, DESC_UPLOADS)
+
+    upload_manager = _get_upload_manager(context)
+
+    uploads_section.add_command(upload.UploadISOCommand(context, upload_manager))
+    uploads_section.add_command(pulp_upload.ResumeCommand(context, upload_manager))
+    uploads_section.add_command(pulp_upload.CancelCommand(context, upload_manager))
+    uploads_section.add_command(pulp_upload.ListCommand(context, upload_manager))
+
+
+def _get_upload_manager(context):
+    """
+    Return a new UploadManager.
+
+    :param context: ClientContext containing the CLI instance being configured
+    :type  context: pulp.client.extensions.core.ClientContext
+    :return:        An intialized UploadManager.
+    :rtype:         pulp.client.upload.manager.UploadManager
+    """
+    upload_working_dir = context.config['filesystem']['upload_working_dir']
+    upload_working_dir = os.path.expanduser(upload_working_dir)
+    chunk_size = int(context.config['server']['upload_chunk_size'])
+    upload_manager = upload_lib.UploadManager(upload_working_dir, context.server, chunk_size)
+    upload_manager.initialize()
+    return upload_manager
