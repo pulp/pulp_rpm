@@ -79,7 +79,7 @@ class TestAddRepoSection(rpm_support_base.PulpClientTests):
         self.assertTrue(publish_section is not None)
 
         # There should be five commands
-        self.assertEqual(len(repo_section.commands), 6)
+        self.assertEqual(len(repo_section.commands), 7)
 
         # The create command should have been added
         mixin = repo_section.commands['create']
@@ -96,16 +96,22 @@ class TestAddRepoSection(rpm_support_base.PulpClientTests):
         self.assertTrue(isinstance(delete_command, cudl.DeleteRepositoryCommand))
         self.assertEqual(delete_command.context, self.context)
 
+        # ...and a list command...
+        list_command = repo_section.commands['list']
+        self.assertTrue(isinstance(list_command, repo_list.ISORepoListCommand))
+        self.assertEqual(list_command.context, self.context)
+
         # And copy...
         copy_command = repo_section.commands['copy']
         self.assertTrue(isinstance(copy_command, unit.UnitCopyCommand))
         self.assertEqual(copy_command.context, self.context)
         self.assertEqual(copy_command.type_id, ids.TYPE_ID_ISO)
 
-        # ...and a list command...
-        list_command = repo_section.commands['list']
-        self.assertTrue(isinstance(list_command, repo_list.ISORepoListCommand))
-        self.assertEqual(list_command.context, self.context)
+        # Remove command
+        remove_command = repo_section.commands['remove']
+        self.assertTrue(isinstance(remove_command, unit.UnitRemoveCommand))
+        self.assertEqual(remove_command.context, self.context)
+        self.assertEqual(remove_command.type_id, ids.TYPE_ID_ISO)
 
         # Content command
         content_command = repo_section.commands['content']
