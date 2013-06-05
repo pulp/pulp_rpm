@@ -17,6 +17,7 @@ from pulp.client.extensions.core import PulpPrompt
 
 from pulp_rpm.common.ids import (TYPE_ID_RPM, TYPE_ID_SRPM, TYPE_ID_DRPM, TYPE_ID_ERRATA, TYPE_ID_DISTRO,
                                  TYPE_ID_PKG_GROUP, TYPE_ID_PKG_CATEGORY)
+from pulp_rpm.common import models
 from pulp_rpm.extension.admin import units_display
 
 
@@ -51,7 +52,7 @@ class UnitsDisplayTests(unittest.TestCase):
         units = self._generate_packages(1, TYPE_ID_RPM) + \
                 self._generate_packages(1, TYPE_ID_SRPM) + \
                 self._generate_errata(1) + \
-                self._generate_distribution(1) + \
+                self._generate_distributions(1) + \
                 self._generate_drpms(1) + \
                 self._generate_package_category(1) + \
                 self._generate_package_groups(1)
@@ -78,6 +79,16 @@ class UnitsDisplayTests(unittest.TestCase):
         # Verify they were written out in ascending order
         for i in range(1, 10):
             self.assertTrue(str(i) in self.recorder.lines[i + 1])
+
+    def test_display_distribution(self):
+        # Setup
+        units = self._generate_distributions(1)
+
+        # Test
+        units_display.display_units(self.prompt, units, 100)
+
+        # ensure that only the "id" of a distribution is being displayed
+        self.assertEqual(self.recorder.lines[1].strip(), units[0]['unit_key']['id'])
 
     # -- utilities ------------------------------------------------------------------------------------------
 
@@ -108,15 +119,17 @@ class UnitsDisplayTests(unittest.TestCase):
 
         return drpms
 
-    def _generate_distribution(self, count):
+    def _generate_distributions(self, count):
         distros = []
         for i in range(count, 0, -1):
-            unit_key = {
-                'id' : 'id-%s' % i,
+            unit_args = {
                 'version' : 'version-%s' % i,
                 'arch' : 'arch-%s' % i,
+                'variant' : 'variant-%s' % i,
+                'family' : 'family-%s' % i,
             }
-            distros.append({'type_id' : TYPE_ID_DISTRO, 'unit_key' : unit_key})
+            distro = models.Distribution(metadata={}, **unit_args)
+            distros.append({'type_id' : TYPE_ID_DISTRO, 'unit_key' : distro.unit_key})
 
         return distros
 
