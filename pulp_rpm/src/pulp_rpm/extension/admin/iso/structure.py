@@ -20,9 +20,6 @@ from pulp_rpm.common import ids
 from pulp_rpm.extension.admin.iso import contents, create_update, repo_list, status, sync_schedules
 
 
-SECTION_CONTENT = 'content'
-DESC_CONTENT = _('search the contents of a repository')
-
 SECTION_PUBLISH = 'publish'
 DESC_PUBLISH = 'run or view the status of publish tasks'
 
