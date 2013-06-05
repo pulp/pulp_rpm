@@ -267,7 +267,6 @@ management and Linux specific commands such as system reboot.
 Summary: Yum plugins supplementing in Pulp consumer operations
 Group: Development/Languages
 Requires: python-pulp-rpm-common = %{pulp_version}
-Requires: pulp-server = %{pulp_version}
 
 %description yumplugins
 A collection of yum plugins supplementing Pulp consumer operations.
