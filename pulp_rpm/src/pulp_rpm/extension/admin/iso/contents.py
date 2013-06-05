@@ -26,7 +26,7 @@ class ISOSearchCommand(DisplayUnitAssociationsCommand):
     ISO_FIELDS = ['name', 'size', 'checksum']
 
     def __init__(self, context, *args, **kwargs):
-        super(self.__class__, self).__init__(self.search_isos, *args, **kwargs)
+        super(ISOSearchCommand, self).__init__(self.search_isos, *args, **kwargs)
         self.context = context
 
     def search_isos(self, **user_input):
