@@ -166,7 +166,7 @@ Requires: createrepo >= 0.9.9-21
 Requires: python-rhsm >= 1.8.0
 Requires: grinder >= 0.1.16
 Requires: pyliblzma
-Requires: python-nectar >= 0.97.0
+Requires: python-nectar >= 0.99
 %description plugins
 Provides a collection of platform plugins that extend the Pulp platform
 to provide RPM specific support.
