@@ -84,6 +84,8 @@ a day.
   Schedule successfully created
 
 
+.. _configure-proxy:
+
 Use a Proxy
 ===========
 
@@ -92,7 +94,7 @@ creating the repository, as in this example:
 
 ::
 
-  $ pulp-admin rpm repo create --repo-id=foo --proxy-url=http://bar.net \
+  $ pulp-admin rpm repo create --repo-id=foo --proxy-host=http://bar.net \
   --proxy-port=1234 --proxy-user=me --proxy-pass=letmein \
   --feed=http://bar.net/repos/foo/
   Successfully created repository [foo]
@@ -103,15 +105,15 @@ creating the repository, as in this example:
 
 Alternatively, Pulp can be configured to use a specific proxy for all yum
 repositories by adding the following settings to
-``/usr/lib/pulp/plugins/importers/yum_importer/yum_importer.conf``
+``/etc/pulp/server/plugins.conf.d/yum_importer.json``
 
 ::
 
   {
-   "proxy_url" : "<url>",
+   "proxy_host" : "<url>",
    "proxy_port" : <port>,
-   "proxy_user" : "<username>",
-   "proxy_pass" : "<pass>"
+   "proxy_username" : "<username>",
+   "proxy_password" : "<password>"
   }
 
 .. note:: This is a JSON file, so care must be taken when editing it.
