@@ -110,7 +110,7 @@ def _details_errata(errata):
     return errata['id']
 
 def _details_distribution(distribution):
-    return '%s-%s-%s' % (distribution['id'], distribution['version'], distribution['arch'])
+    return distribution['id']
 
 def _details_package_group(group):
     return group['id']
