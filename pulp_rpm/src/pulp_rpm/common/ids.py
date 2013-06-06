@@ -65,7 +65,7 @@ METADATA_PKG_CATEGORY = (
 
 TYPE_ID_DISTRO = models.Distribution.TYPE
 UNIT_KEY_DISTRO = ("id", "family", "variant", "version", "arch")
-METADATA_DISTRO = ("files",) 
+METADATA_DISTRO = ("files",)
 
 TYPE_ID_DRPM = models.DRPM.TYPE
 UNIT_KEY_DRPM = (

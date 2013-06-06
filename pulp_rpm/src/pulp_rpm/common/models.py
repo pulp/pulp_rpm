@@ -286,8 +286,8 @@ def from_typed_unit_key_tuple(typed_tuple):
 
 # ------------ ISO Models --------------- #
 
-# How many bytes we want to read into RAM at a time when validating a download checksum
-VALIDATION_CHUNK_SIZE = 32 * 1024 * 1024
+# How many bytes we want to read into RAM at a time when calculating an ISO checksum
+CHECKSUM_CHUNK_SIZE = 32 * 1024 * 1024
 
 
 class ISO(object):
@@ -295,6 +295,7 @@ class ISO(object):
     This is a handy way to model an ISO unit, with some related utilities.
     """
     TYPE = 'iso'
+
     def __init__(self, name, size, checksum, unit=None):
         """
         Initialize an ISO, with its name, size, and checksum.
@@ -310,8 +311,9 @@ class ISO(object):
         self.size = size
         self.checksum = checksum
 
-        # This is the Unit that the ISO represents. An ISO doesn't always have a Unit backing it, particularly
-        # during repository synchronization or ISO uploads when the ISOs are being initialized.
+        # This is the Unit that the ISO represents. An ISO doesn't always have a Unit backing it,
+        # particularly during repository synchronization or ISO uploads when the ISOs are being
+        # initialized.
         self._unit = unit
 
     @classmethod
@@ -319,7 +321,7 @@ class ISO(object):
         """
         Construct an ISO out of a Unit.
         """
-        return ISO(unit.unit_key['name'], unit.unit_key['size'], unit.unit_key['checksum'], unit)
+        return cls(unit.unit_key['name'], unit.unit_key['size'], unit.unit_key['checksum'], unit)
 
     def init_unit(self, conduit):
         """
@@ -355,29 +357,53 @@ class ISO(object):
         will be raised if the validation fails.
         """
         with open(self.storage_path) as destination_file:
-            # Validate the size by seeking to the end to find the file size with tell()
-            destination_file.seek(0, 2)
-            size = destination_file.tell()
-            if size != self.size:
+            # Validate the size
+            if self.calculate_size(destination_file) != self.size:
                 raise ValueError(_('Downloading <%(name)s> failed validation. '
                     'The manifest specified that the file should be %(expected)s bytes, but '
                     'the downloaded file is %(found)s bytes.') % {'name': self.name,
                         'expected': self.size, 'found': size})
 
             # Validate the checksum
-            destination_file.seek(0)
-            hasher = hashlib.sha256()
-            bits = destination_file.read(VALIDATION_CHUNK_SIZE)
-            while bits:
-                hasher.update(bits)
-                bits = destination_file.read(VALIDATION_CHUNK_SIZE)
-            # Verify that, son!
-            if hasher.hexdigest() != self.checksum:
+            if self.calculate_checksum(destination_file) != self.checksum:
                 raise ValueError(
                     _('Downloading <%(name)s> failed checksum validation. The manifest '
                       'specified the checksum to be %(c)s, but it was %(f)s.') % {
                         'name': self.name, 'c': self.checksum,
                         'f': hasher.hexdigest()})
+
+    @staticmethod
+    def calculate_checksum(file_handle):
+        """
+        Return the sha256 checksum of the given file-like object.
+
+        :param file_handle: A handle to an open file-like object
+        :type  file_handle: file-like object
+        :return:            The file's checksum
+        :rtype:             string
+        """
+        file_handle.seek(0)
+        hasher = hashlib.sha256()
+        bits = file_handle.read(CHECKSUM_CHUNK_SIZE)
+        while bits:
+            hasher.update(bits)
+            bits = file_handle.read(CHECKSUM_CHUNK_SIZE)
+        return hasher.hexdigest()
+
+    @staticmethod
+    def calculate_size(file_handle):
+        """
+        Return the size of the given file-like object in Bytes.
+
+        :param file_handle: A handle to an open file-like object
+        :type  file_handle: file-like object
+        :return:            The file's size, in Bytes
+        :rtype:             int
+        """
+        # Calculate the size by seeking to the end to find the file size with tell()
+        file_handle.seek(0, 2)
+        size = file_handle.tell()
+        return size
 
 
 class ISOManifest(object):
@@ -388,11 +414,11 @@ class ISOManifest(object):
     def __init__(self, manifest_file, repo_url):
         """
         Instantiate a new ISOManifest from the open manifest_file.
-        
+
         :param manifest_file: An open file-like handle to a PULP_MANIFEST file
         :type  manifest_file: An open file-like object
-        :param repo_url:      The URL to the repository that this manifest came from. This is used to determine
-                              a url attribute for each ISO in the manifest.
+        :param repo_url:      The URL to the repository that this manifest came from. This is used
+                              to determine a url attribute for each ISO in the manifest.
         :type  repo_url:      str
         """
         # Make sure we are reading from the beginning of the file
