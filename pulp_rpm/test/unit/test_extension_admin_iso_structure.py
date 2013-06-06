@@ -13,6 +13,7 @@
 
 from pulp.client.commands import unit
 from pulp.client.commands.repo import cudl, sync_publish
+import mock
 
 from pulp_rpm.common import ids
 from pulp_rpm.extension.admin.iso import contents, create_update, repo_list, structure
@@ -23,7 +24,10 @@ class TestAddIsoSection(rpm_support_base.PulpClientTests):
     """
     Test the add_iso_section() function.
     """
-    def test_add_iso_section(self):
+    @mock.patch('pulp_rpm.extension.admin.iso.structure._get_upload_manager')
+    def test_add_iso_section(self, _get_upload_manager):
+        # We don't really need to test upload managers here, so let's just fake one for now
+        _get_upload_manager.return_value = 'fake_upload_manager'
         structure.add_iso_section(self.context)
 
         # A root section should have been added for ISOs
@@ -61,7 +65,10 @@ class TestAddRepoSection(rpm_support_base.PulpClientTests):
     """
     Test the add_repo_section() function.
     """
-    def test_add_repo_section(self):
+    @mock.patch('pulp_rpm.extension.admin.iso.structure._get_upload_manager')
+    def test_add_repo_section(self, _get_upload_manager):
+        # We don't really need to test upload managers here, so let's just fake one for now
+        _get_upload_manager.return_value = 'fake_upload_manager'
         parent_section = self.cli.create_section('parent', 'Test parent section.')
 
         structure.add_repo_section(self.context, parent_section)
