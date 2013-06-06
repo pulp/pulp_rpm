@@ -16,7 +16,7 @@ import os
 
 from pulp.client.commands.repo.upload import UploadCommand
 
-from pulp_rpm.common import ids, models
+from pulp_rpm.common import models
 
 
 NAME = 'upload'
@@ -33,17 +33,16 @@ class UploadISOCommand(UploadCommand):
 
     def determine_type_id(self, filename, **kwargs):
         """
-        Since there's no way to know if a file is an ISO or not, this method always returns
-        TYPE_ID_ISO.
+        This method always returns the ISO type.
 
         :param filename: unused
         :type  filename: basestring
         :param kwargs:   unused keyword args
         :type  kwargs:   dict
-        :return:         ids.TYPE_ID_ISO
+        :return:         models.ISO.TYPE_ID
         :rtype:          str
         """
-        return ids.TYPE_ID_ISO
+        return models.ISO.TYPE
 
     def generate_unit_key_and_metadata(self, filename, **kwargs):
         """
