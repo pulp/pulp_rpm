@@ -18,7 +18,7 @@ from nectar.listener import DownloadEventListener, AggregatingEventListener
 from pulp.common.plugins import importer_constants
 from pulp.plugins.util import verification
 
-from pulp_rpm.common import constants
+from pulp_rpm.common import constants, models
 
 
 _LOGGER = logging.getLogger(__name__)
@@ -84,7 +84,9 @@ class ContentListener(DownloadEventListener):
             # handling below doesn't run.
             return
 
-        self.metadata_files.add_repodata(model)
+        # these are the only types we store repo metadata snippets on in the DB
+        if isinstance(model, (models.RPM, models.SRPM)):
+            self.metadata_files.add_repodata(model)
         # init unit, which is idempotent
         unit = self.sync_conduit.init_unit(model.TYPE, model.unit_key, model.metadata, model.relative_path)
         # move to final location
