@@ -316,6 +316,8 @@ class YumImporter(Importer):
                 self._import_pkg_category_unit(source_repo, dest_repo, u, import_conduit, config)
             elif u.type_id == TYPE_ID_DISTRO:
                 import_conduit.associate_unit(u)
+            elif u.type_id == TYPE_ID_YUM_REPO_METADATA_FILE:
+                self._import_yum_metadata_file(dest_repo, u, import_conduit, config)
         _LOG.debug("%s units from %s have been associated to %s" % (len(units), source_repo.id, dest_repo.id))
 
     def _safe_copy_unit(self, unit):
@@ -502,6 +504,41 @@ class YumImporter(Importer):
         for dep in missing_deps:
             if dep.unit_key not in blacklist_units:
                 import_conduit.associate_unit(dep)
+
+    def _import_yum_metadata_file(self, dest_repo, unit, import_conduit, config):
+        """
+        Make a true copy of a custom metadata file and associate it with the
+        destination repository instead of pointing to the same content on disk.
+
+        :param dest_repo: destination repo
+        :param unit: unit representing the custom metadata in the source repo
+        :param import_conduit: Pulp's import API object
+        :type import_conduit: pulp.plugins.conduits.unit_import.ImportUnitConduit
+        :param config: destination repo's configuration
+        :type config: pulp.plugins.config.PluginCallConfiguration
+        """
+        data_type = unit.unit_key['data_type']
+        skip_list = metadata.convert_content_to_metadata_type(config.get('skip', []))
+
+        if data_type in skip_list:
+            return
+
+        new_unit_key = {'repo_id': dest_repo.id,
+                        'data_type': data_type}
+
+        copied_unit = self._safe_copy_unit(unit)
+
+        new_unit_filename = os.path.basename(unit.storage_path)
+        new_unit_relative_path = '%s/%s' % (dest_repo.id, new_unit_filename)
+
+        new_unit = import_conduit.init_unit(TYPE_ID_YUM_REPO_METADATA_FILE,
+                                            new_unit_key,
+                                            copied_unit.metadata,
+                                            new_unit_relative_path)
+
+        shutil.copyfile(unit.storage_path, new_unit.storage_path)
+
+        import_conduit.save_unit(new_unit)
 
     # -- actions --------------------------------------------------------------
 
