@@ -31,7 +31,8 @@ class UploadISOCommand(UploadCommand):
         super(UploadISOCommand, self).__init__(context, upload_manager, name=NAME,
                                                description=DESCRIPTION)
 
-    def determine_type_id(self, filename, **kwargs):
+    @staticmethod
+    def determine_type_id(filename, **kwargs):
         """
         This method always returns the ISO type.
 
@@ -44,20 +45,21 @@ class UploadISOCommand(UploadCommand):
         """
         return models.ISO.TYPE
 
-    def generate_unit_key_and_metadata(self, filename, **kwargs):
+    @staticmethod
+    def generate_unit_key_and_metadata(filepath, **kwargs):
         """
-        Analyze the ISO found at the path specified by filename, and return its unit_key and
+        Analyze the ISO found at the path specified by filepath, and return its unit_key and
         metadata as a 2-tuple. Since ISOs don't have metadata, this just amounts to the unit key and
         an empty metadata dict.
 
-        :param filename: The path of the file that we need the unit key and metadata for
-        :type  filename: basestring
+        :param filepath: The path of the file that we need the unit key and metadata for
+        :type  filepath: basestring
         :param kwargs:   Unused keyword arguments
         :type  kwargs:   dict
         :return:         A two tuple of (unit_key, metadata), both dicts
         :rtype:          tuple
         """
-        with open(filename) as iso:
+        with open(filepath) as iso:
             size = models.ISO.calculate_size(iso)
             checksum = models.ISO.calculate_checksum(iso)
-        return {'name': os.path.basename(filename), 'size': size, 'checksum': checksum}, {}
+        return {'name': os.path.basename(filepath), 'size': size, 'checksum': checksum}, {}
