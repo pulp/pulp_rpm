@@ -20,8 +20,25 @@ from gettext import gettext as _
 from pulp.bindings.exceptions import NotFoundException
 from pulp.client.commands.polling import PollingCommand
 from pulp.client.extensions.extensions import PulpCliSection
+from pulp.common import tags
 
 TYPE_ID = 'rpm'
+
+
+# --- utils ------------------------------------------------------------------
+
+
+def get_consumer_id(task):
+    for tag in task.tags:
+        if not tags.is_resource_tag(tag):
+            continue
+        resource_type, resource_id = tags.parse_resource_tag(tag)
+        if tags.RESOURCE_CONSUMER_TYPE == resource_type:
+            return resource_id
+
+
+# --- commands ---------------------------------------------------------------
+
 
 class ConsumerGroupPackageSection(PulpCliSection):
 
@@ -87,26 +104,26 @@ class ConsumerGroupInstall(PollingCommand):
         try:
             response = server.consumer_group_content.install(
                 consumer_group_id, units=units, options=options)
-            task = response.response_body
-            msg = _('Install task created with id [%s]') % task.task_id
-            prompt.render_success_message(msg)
-            response = server.tasks.get_task(task.task_id)
-            task = response.response_body
-            self.poll([task], kwargs)
+            tasks = response.response_body
+            for task in tasks:
+                msg = _('Install task created with id [%s]') % task.task_id
+                prompt.render_success_message(msg)
+            self.poll(tasks, kwargs)
         except NotFoundException:
             msg = _('Consumer Group [%(g)s] not found') % {'g' : consumer_group_id}
             prompt.write(msg, tag='not-found')
 
     def succeeded(self, task):
         prompt = self.context.prompt
+        consumer_id = get_consumer_id(task)
         # reported as failed
-        if not task.result['status']:
-            msg = _('Install failed')
+        if not task.result['succeeded']:
+            msg = _('Install on consumer [%(id)s] failed' % dict(id=consumer_id))
             details = task.result['details'][TYPE_ID]['details']
             prompt.render_failure_message(msg)
             prompt.render_failure_message(details['message'])
             return
-        msg = _('Install Succeeded')
+        msg = _('Install on consumer [%(id)s] succeeded' % dict(id=consumer_id))
         prompt.render_success_message(msg)
         # reported as succeeded
         details = task.result['details'][TYPE_ID]['details']
@@ -187,26 +204,26 @@ class ConsumerGroupUpdate(PollingCommand):
             return
         try:
             response = server.consumer_group_content.update(consumer_group_id, units=units, options=options)
-            task = response.response_body
-            msg = _('Update task created with id [%s]') % task.task_id
-            prompt.render_success_message(msg)
-            response = server.tasks.get_task(task.task_id)
-            task = response.response_body
-            self.poll([task], kwargs)
+            tasks = response.response_body
+            for task in tasks:
+                msg = _('Update task created with id [%s]') % task.task_id
+                prompt.render_success_message(msg)
+            self.poll(tasks, kwargs)
         except NotFoundException:
             msg = _('Consumer Group [%(g)s] not found') % {'g' : consumer_group_id}
             prompt.write(msg, tag='not-found')
 
     def succeeded(self, task):
         prompt = self.context.prompt
+        consumer_id = get_consumer_id(task)
         # reported as failed
-        if not task.result['status']:
-            msg = _('Update failed')
+        if not task.result['succeeded']:
+            msg = _('Update on consumer [%(id)s] failed' % dict(id=consumer_id))
             details = task.result['details'][TYPE_ID]['details']
             prompt.render_failure_message(msg)
             prompt.render_failure_message(details['message'])
             return
-        msg = _('Update Succeeded')
+        msg = _('Update on consumer [%(id)s] succeeded' % dict(id=consumer_id))
         prompt.render_success_message(msg)
         # reported as succeeded
         details = task.result['details'][TYPE_ID]['details']
@@ -265,26 +282,26 @@ class ConsumerGroupUninstall(PollingCommand):
         server = self.context.server
         try:
             response = server.consumer_group_content.uninstall(consumer_group_id, units=units, options=options)
-            task = response.response_body
-            msg = _('Uninstall task created with id [%s]') % task.task_id
-            prompt.render_success_message(msg)
-            response = server.tasks.get_task(task.task_id)
-            task = response.response_body
-            self.poll([task], kwargs)
+            tasks = response.response_body
+            for task in tasks:
+                msg = _('Uninstall task created with id [%s]') % task.task_id
+                prompt.render_success_message(msg)
+            self.poll(tasks, kwargs)
         except NotFoundException:
             msg = _('Consumer Group [%s] not found') % consumer_group_id
             prompt.write(msg, tag='not-found')
 
     def succeeded(self, task):
         prompt = self.context.prompt
+        consumer_id = get_consumer_id(task)
         # reported as failed
-        if not task.result['status']:
-            msg = _('Uninstall Failed')
+        if not task.result['succeeded']:
+            msg = _('Install on consumer [%(id)s] failed' % dict(id=consumer_id))
             details = task.result['details'][TYPE_ID]['details']
             prompt.render_failure_message(msg)
             prompt.render_failure_message(details['message'])
             return
-        msg = _('Uninstall Succeeded')
+        msg = _('Uninstall on consumer [%(id)s] succeeded' % dict(id=consumer_id))
         prompt.render_success_message(msg)
         # reported as succeeded
         details = task.result['details'][TYPE_ID]['details']
