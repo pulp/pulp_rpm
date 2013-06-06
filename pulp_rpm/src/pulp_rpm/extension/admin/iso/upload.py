@@ -28,8 +28,8 @@ class UploadISOCommand(UploadCommand):
         """
         Initialize the UploadISOCommand.
         """
-        super(self.__class__, self).__init__(context, upload_manager, name=NAME,
-                                             description=DESCRIPTION)
+        super(UploadISOCommand, self).__init__(context, upload_manager, name=NAME,
+                                               description=DESCRIPTION)
 
     def determine_type_id(self, filename, **kwargs):
         """
