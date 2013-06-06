@@ -13,7 +13,7 @@ from gettext import gettext as _
 
 from pulp.client.commands.consumer.content import (
     ConsumerContentCreateScheduleCommand, ConsumerContentScheduleStrategy,
-    OPTION_CONTENT_TYPE_ID)
+    OPTION_CONTENT_TYPE_ID, OPTION_CONTENT_UNIT)
 from pulp.client.commands.options import OPTION_CONSUMER_ID
 from pulp.client.extensions.extensions import PulpCliOption
 from pulp_rpm.common.ids import TYPE_ID_RPM, TYPE_ID_ERRATA, TYPE_ID_PKG_GROUP
@@ -29,6 +29,7 @@ class YumConsumerContentCreateScheduleCommand(ConsumerContentCreateScheduleComma
 
         # This will be substituted by the options below
         self.options.remove(OPTION_CONTENT_TYPE_ID)
+        self.options.remove(OPTION_CONTENT_UNIT)
 
         if content_type == TYPE_ID_RPM:
             self.add_option(PulpCliOption('--name', _('package name; may be repeated for multiple packages'),

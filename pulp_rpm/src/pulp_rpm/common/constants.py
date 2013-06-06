@@ -33,9 +33,6 @@ REPO_NOTE_ISO = 'iso-repo'
 
 PUBLISHED_DISTRIBUTION_FILES_KEY = 'published_distributions'
 
-# Importer configuration key names
-CONFIG_COPY_CHILDREN                = 'copy_children'
-
 # The default number of threads to be used with downloading ISOs. We should convert the RPM code to
 # use this same value.
 CONFIG_MAX_DOWNLOADS_DEFAULT        = 5
@@ -51,6 +48,10 @@ CONFIG_SERVE_HTTP          = 'serve_http'
 CONFIG_SERVE_HTTP_DEFAULT  = False
 CONFIG_SERVE_HTTPS         = 'serve_https'
 CONFIG_SERVE_HTTPS_DEFAULT = True
+
+# list of types to skip at sync time
+CONFIG_SKIP = 'type_skip_list'
+
 # This is the CA that we should verify client entitlement certificates with. If it is set, and protected repos
 # are enabled serverwide, we will protect the repo with this cert over SSL. If it is unset, no repo protection
 # will be configured. This option is currently only used by the ISO distributor.

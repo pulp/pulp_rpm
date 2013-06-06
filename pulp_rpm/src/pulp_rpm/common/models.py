@@ -103,11 +103,12 @@ class Distribution(Package):
     UNIT_KEY_NAMES = ('id', 'family', 'variant', 'version', 'arch')
     TYPE = 'distribution'
 
-    def __init__(self, family, variant, version, arch):
+    def __init__(self, family, variant, version, arch, metadata, id=None):
         kwargs = locals()
         # I don't know why this is the "id", but am following the pattern of the
         # original importer
-        kwargs['id'] = '-'.join(('ks', family, variant, version, arch))
+        if kwargs['id'] is None:
+            kwargs['id'] = '-'.join(('ks', family, variant, version, arch))
         super(Distribution, self).__init__(kwargs)
 
     @property
