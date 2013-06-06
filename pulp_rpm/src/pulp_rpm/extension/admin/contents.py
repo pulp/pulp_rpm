@@ -239,17 +239,16 @@ class PackageSearchCommand(BaseSearchCommand):
 
         for reformat_me in ['requires', 'provides']:
             # If the --details flag was used, all the rpm data except for the association data is
-            # placed inside a metadata dict by out_func. These try blocks attempt to retrieve the
-            # requires/provides from the metadata dict first. On failure, it checks the normal location.
-            try:
+            # placed inside a metadata dict by out_func. See if the key is in rpm and act accordingly.
+            if ASSOCIATION_METADATA_KEYWORD in rpm:
                 related_rpm_list = rpm[ASSOCIATION_METADATA_KEYWORD][reformat_me]
-            except KeyError:
+            else:
                 related_rpm_list = rpm[reformat_me]
 
             formatted_rpms = [process_one(r) for r in related_rpm_list]
-            try:
+            if ASSOCIATION_METADATA_KEYWORD in rpm:
                 rpm[ASSOCIATION_METADATA_KEYWORD][reformat_me] = formatted_rpms
-            except KeyError:
+            else:
                 rpm[reformat_me] = formatted_rpms
 
 
