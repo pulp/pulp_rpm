@@ -170,6 +170,7 @@ def parse_treefile(path):
             parser.get(SECTION_GENERAL, 'variant'),
             parser.get(SECTION_GENERAL, 'version'),
             parser.get(SECTION_GENERAL, 'arch'),
+            metadata={}
         )
     except (ConfigParser.NoSectionError, ConfigParser.NoOptionError):
         raise ValueError('invalid treefile: could not find unit key components')
