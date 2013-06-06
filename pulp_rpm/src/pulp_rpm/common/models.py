@@ -321,7 +321,7 @@ class ISO(object):
         """
         Construct an ISO out of a Unit.
         """
-        return ISO(unit.unit_key['name'], unit.unit_key['size'], unit.unit_key['checksum'], unit)
+        return cls(unit.unit_key['name'], unit.unit_key['size'], unit.unit_key['checksum'], unit)
 
     def init_unit(self, conduit):
         """
@@ -372,8 +372,8 @@ class ISO(object):
                         'name': self.name, 'c': self.checksum,
                         'f': hasher.hexdigest()})
 
-    @classmethod
-    def calculate_checksum(cls, file_handle):
+    @staticmethod
+    def calculate_checksum(file_handle):
         """
         Return the sha256 checksum of the given file-like object.
 
@@ -390,8 +390,8 @@ class ISO(object):
             bits = file_handle.read(CHECKSUM_CHUNK_SIZE)
         return hasher.hexdigest()
 
-    @classmethod
-    def calculate_size(cls, file_handle):
+    @staticmethod
+    def calculate_size(file_handle):
         """
         Return the size of the given file-like object in Bytes.
 
