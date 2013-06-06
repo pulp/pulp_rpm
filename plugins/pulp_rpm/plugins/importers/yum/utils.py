@@ -19,8 +19,10 @@ DEFAULT_PAGE_SIZE = 1000
 
 
 def paginate(iterable, page_size=DEFAULT_PAGE_SIZE):
+    # this won't work properly if we give islice something that isn't a generator
+    generator = (x for x in iterable)
     while True:
-        page = tuple(itertools.islice(iterable, 0, page_size))
+        page = tuple(itertools.islice(generator, 0, page_size))
         if not page:
             return
         yield page
