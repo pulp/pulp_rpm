@@ -1,6 +1,3 @@
-
-
-
 # Copyright (c) 2012 Red Hat, Inc.
 #
 # This software is licensed to you under the GNU General Public
@@ -14,6 +11,7 @@
 
 import mock
 
+from pulp.client.commands.consumer.content import OPTION_CONTENT_TYPE_ID, OPTION_CONTENT_UNIT
 from pulp.client.commands.options import OPTION_CONSUMER_ID
 from pulp.client.commands.schedule import CreateScheduleCommand
 
@@ -34,6 +32,8 @@ class StructureTests(rpm_support_base.PulpClientTests):
 
                 self.assertTrue(isinstance(command, CreateScheduleCommand))
                 self.assertTrue(OPTION_CONSUMER_ID in command.options)
+                self.assertTrue(OPTION_CONTENT_TYPE_ID not in command.options)
+                self.assertTrue(OPTION_CONTENT_UNIT not in command.options)
                 self.assertEqual(command.name, 'create')
                 self.assertTrue(action in command.description)
 

@@ -49,9 +49,6 @@ def associate(source_repo, dest_repo, import_conduit, config, units=None):
         units = import_conduit.get_source_units()
 
     # get config items that we care about
-    copy_children = config.get_boolean(constants.CONFIG_COPY_CHILDREN)
-    if copy_children is None:
-        copy_children = True
     recursive = config.get(constants.CONFIG_RECURSIVE)
     if recursive is None:
         recursive = False
@@ -64,7 +61,7 @@ def associate(source_repo, dest_repo, import_conduit, config, units=None):
               import_conduit, recursive)
 
     # return here if we shouldn't get child units
-    if not copy_children:
+    if not recursive:
         return associated_units
 
     group_ids, rpm_names, rpm_unit_keys = identify_children_to_copy(associated_units)

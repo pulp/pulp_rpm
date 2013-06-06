@@ -18,7 +18,7 @@
 
 Name: pulp-rpm
 Version: 2.2.0
-Release: 0.15.alpha%{?dist}
+Release: 0.2.beta%{?dist}
 Summary: Support for RPM content in the Pulp platform
 Group: Development/Languages
 License: GPLv2
@@ -166,7 +166,7 @@ Requires: createrepo >= 0.9.9-21
 Requires: python-rhsm >= 1.8.0
 Requires: grinder >= 0.1.16
 Requires: pyliblzma
-Requires: python-nectar >= 0.90.0
+Requires: python-nectar >= 0.99
 %description plugins
 Provides a collection of platform plugins that extend the Pulp platform
 to provide RPM specific support.
@@ -266,8 +266,9 @@ management and Linux specific commands such as system reboot.
 %package yumplugins
 Summary: Yum plugins supplementing in Pulp consumer operations
 Group: Development/Languages
-Requires: python-pulp-rpm-common = %{pulp_version}
-Requires: pulp-server = %{pulp_version}
+Requires: yum
+Requires: python-rhsm >= 1.8.0
+Requires: python-pulp-bindings = %{pulp_version}
 
 %description yumplugins
 A collection of yum plugins supplementing Pulp consumer operations.
@@ -281,6 +282,40 @@ A collection of yum plugins supplementing Pulp consumer operations.
 
 
 %changelog
+* Thu Jun 06 2013 Jeff Ortel <jortel@redhat.com> 2.2.0-0.2.beta
+- 969579 - Further corrections to the deps for yumplugins
+  (jason.dobies@redhat.com)
+- 969579 - The client-side yum plugins don't require the server
+  (jason.dobies@redhat.com)
+- 971138 - Include a missing module from my last commit. (rbarlow@redhat.com)
+- 971138 - Add a new contents command to the CLI for ISO repos.
+  (rbarlow@redhat.com)
+- 970741 - Updated nectar depedency for error_msg support
+  (jason.dobies@redhat.com)
+- 970787 - Add a unit removal command to the ISO client. (rbarlow@redhat.com)
+- 970746 - Updated recipes for new proxy_* config names
+  (jason.dobies@redhat.com)
+- 970636 - Scope the fields loaded for the copy to minimize RAM.
+  (jason.dobies@redhat.com)
+- 970269 - making the 'id' attribute of errata references optional, since
+  evidence suggests that they are not present in rhel6 repos.
+  (mhrivnak@redhat.com)
+- 970267 - removing the use of a parameter that didn't exist in python 2.6.
+  Thankfully I was passing the default value anyway, so the 2.6 behavior is
+  what I want even without the parameter. (mhrivnak@redhat.com)
+
+* Tue Jun 04 2013 Jeff Ortel <jortel@redhat.com> 2.2.0-0.1.beta
+- 968535 - leverage --no-compress; need to compensate for anaconda bug related
+  to compressed metadata. (jortel@redhat.com)
+- 968543 - remove conditional in pulp_version macro. (jortel@redhat.com)
+- 963774 - Added the *sort_index fields to the search indexes
+  (jason.dobies@redhat.com)
+- 965818 - Added translation from new format for provides/requires to a more
+  user-friendly output (jason.dobies@redhat.com)
+- 955702 - updating documentation for mirroring a repository with a valid url
+  and corresponding output (skarmark@redhat.com)
+- 966178 - Added default to remove-missing (jason.dobies@redhat.com)
+
 * Thu May 30 2013 Jeff Ortel <jortel@redhat.com> 2.2.0-0.15.alpha
 - 950690 - Removed copy commands that aren't supported in the plugin
   (jason.dobies@redhat.com)

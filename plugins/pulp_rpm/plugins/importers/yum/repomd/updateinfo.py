@@ -57,7 +57,9 @@ def process_package_element(element):
 
 def _parse_reference(element):
     return {
-        'id': element.attrib['id'],
+        # evidence shows that the "id" attribute is sometimes missing, such as
+        # in a rhel6 repo.
+        'id': element.attrib.get('id'),
         'href': element.attrib['href'],
         'type': element.attrib['type'],
         'title': element.text,

@@ -73,7 +73,7 @@ class RPMErrataProfiler(Profiler):
     # -- applicability ---------------------------------------------------------
 
 
-    def find_applicable_units(self, consumer_profile_and_repo_ids, unit_type_id, unit_ids, config, conduit):
+    def find_applicable_units(self, consumer_profile_and_repo_ids, unit_type_id, unit_criteria, config, conduit):
         """
         Determine whether the content units are applicable to
         the specified consumers.  The definition of "applicable" is content
@@ -104,8 +104,8 @@ class RPMErrataProfiler(Profiler):
         :param unit_type_id: Common type id of all given unit keys
         :type unit_type_id: str
 
-        :param unit_ids: list of unit ids to identify units 
-        :type unit_ids: list of str
+        :param unit_criteria: Criteria representing unit search
+        :type unit_criteria: pulp.plugins.conduits.mixins.Criteria
 
         :param config: plugin configuration
         :type config: pulp.server.plugins.config.PluginCallConfiguration
@@ -119,7 +119,7 @@ class RPMErrataProfiler(Profiler):
         if unit_type_id != TYPE_ID_ERRATA:
             error_msg = _("find_applicable_units invoked with type_id [%s], expected [%s]") % (unit_type_id, TYPE_ID_ERRATA)
             _LOG.error(error_msg)
-            raise InvalidUnitsRequested(unit_ids, error_msg)
+            raise InvalidUnitsRequested(unit_criteria, error_msg)
 
         # Set default report style
         report_style = constants.APPLICABILITY_REPORT_STYLE_BY_UNITS
@@ -134,6 +134,8 @@ class RPMErrataProfiler(Profiler):
         if not consumer_profile_and_repo_ids:
             return reports
         
+        unit_ids = conduit.search_unit_ids(unit_type_id, unit_criteria)
+
         # Collect applicability reports for each unit
         for unit_id in unit_ids:
             applicable_consumers, errata_details = self.find_applicable(unit_id, consumer_profile_and_repo_ids, conduit)
@@ -281,7 +283,7 @@ class RPMErrataProfiler(Profiler):
     def find_unit_associated_to_repos_by_criteria(self, criteria, repo_ids, conduit):
         for repo_id in repo_ids:
             result = conduit.get_units(repo_id, criteria)
-            _LOG.info("Found %s items when searching in repo <%s> for <%s>" % (len(result), repo_id, criteria))
+            _LOG.debug("Found %s items when searching in repo <%s> for <%s>" % (len(result), repo_id, criteria))
             if result:
                 return result[0]
         return None
@@ -332,12 +334,12 @@ class RPMErrataProfiler(Profiler):
             if lookup.has_key(key):
                 installed_rpm = lookup[key]
                 is_newer = util.is_rpm_newer(errata_rpm, installed_rpm)
-                _LOG.info("Found a match of rpm <%s> installed on consumer, is %s newer than %s, %s" % (key, errata_rpm, installed_rpm, is_newer))
+                _LOG.debug("Found a match of rpm <%s> installed on consumer, is %s newer than %s, %s" % (key, errata_rpm, installed_rpm, is_newer))
                 if is_newer:
                     applicable_rpms.append(errata_rpm)
                     older_rpms[key] = {"installed":installed_rpm, "available":errata_rpm}
             else:
-                _LOG.info("rpm %s was not found in consumer profile of %s" % (key, consumer.id))
+                _LOG.debug("rpm %s was not found in consumer profile of %s" % (key, consumer.id))
         return applicable_rpms, older_rpms
 
     def form_lookup_table(self, rpms):

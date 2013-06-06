@@ -20,7 +20,7 @@ from pulp.common.plugins import importer_constants
 from pulp.plugins.model import SyncReport
 from pulp.plugins.util import nectar_config as nectar_utils
 
-from pulp_rpm.common import constants
+from pulp_rpm.common import constants, models
 from pulp_rpm.plugins.importers.yum import existing, purge
 from pulp_rpm.plugins.importers.yum.repomd import metadata, primary, packages, updateinfo, presto, group
 from pulp_rpm.plugins.importers.yum.listener import ContentListener
@@ -118,16 +118,22 @@ class RepoSync(object):
                 self.content_report['state'] = constants.STATE_COMPLETE
             self.set_progress()
 
-            self.distribution_report['state'] = constants.STATE_RUNNING
-            self.set_progress()
-            treeinfo.sync(self.sync_conduit, self.sync_feed,
-                          self.tmp_dir, self.distribution_report, self.set_progress)
+            if models.Distribution.TYPE in self.call_config.get(constants.CONFIG_SKIP, []):
+                self.distribution_report['state'] = constants.STATE_SKIPPED
+            else:
+                self.distribution_report['state'] = constants.STATE_RUNNING
+                self.set_progress()
+                treeinfo.sync(self.sync_conduit, self.sync_feed,
+                              self.tmp_dir, self.distribution_report, self.set_progress)
             self.set_progress()
 
-            self.progress_status['errata']['state'] = constants.STATE_RUNNING
-            self.set_progress()
-            self.get_errata(metadata_files)
-            self.progress_status['errata']['state'] = constants.STATE_COMPLETE
+            if models.Errata.TYPE in self.call_config.get(constants.CONFIG_SKIP, []):
+                self.progress_status['errata']['state'] = constants.STATE_SKIPPED
+            else:
+                self.progress_status['errata']['state'] = constants.STATE_RUNNING
+                self.set_progress()
+                self.get_errata(metadata_files)
+                self.progress_status['errata']['state'] = constants.STATE_COMPLETE
             self.set_progress()
 
             self.progress_status['comps']['state'] = constants.STATE_RUNNING
@@ -245,6 +251,9 @@ class RepoSync(object):
         :return:    tuple of (set(RPM.NAMEDTUPLEs), number of RPMs, total size in bytes)
         :rtype:     tuple
         """
+        if models.RPM.TYPE in self.call_config.get(constants.CONFIG_SKIP, []):
+            _LOGGER.debug('skipping RPM sync')
+            return set(), 0, 0
         primary_file_handle = metadata_files.get_metadata_file_handle(primary.METADATA_FILE_NAME)
         try:
             # scan through all the metadata to decide which packages to download
@@ -272,6 +281,9 @@ class RepoSync(object):
         :return:    tuple of (set(DRPM.NAMEDTUPLEs), number of DRPMs, total size in bytes)
         :rtype:     tuple
         """
+        if models.DRPM.TYPE in self.call_config.get(constants.CONFIG_SKIP, []):
+            _LOGGER.debug('skipping DRPM sync')
+            return set(), 0, 0
         presto_file_handle = metadata_files.get_metadata_file_handle(presto.METADATA_FILE_NAME)
         if presto_file_handle:
             try:
