@@ -15,8 +15,7 @@ from gettext import gettext as _
 import os
 
 from pulp.client.commands import unit
-from pulp.client.commands.repo import cudl, sync_publish
-from pulp.client.commands.repo import upload as pulp_upload
+from pulp.client.commands.repo import cudl, sync_publish, upload as pulp_upload
 from pulp.client.upload import manager as upload_lib
 
 from pulp_rpm.common import ids
