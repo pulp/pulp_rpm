@@ -160,8 +160,13 @@ def process_package_element(package_element):
     location_element = package_element.find(LOCATION_TAG)
     if location_element is not None:
         href = location_element.attrib['href']
+        filename = os.path.basename(href)
         package_info['relativepath'] = href
-        package_info['filename'] = os.path.basename(href)
+        package_info['filename'] = filename
+        # we don't make any attempt to preserve the original directory structure
+        # this element will end up being converted back to XML and stuffed into
+        # the DB on the unit object, so this  is our chance to modify it.
+        location_element.attrib['href'] = filename
 
     format_element = package_element.find(FORMAT_TAG)
     package_info.update(_process_format_element(format_element))
