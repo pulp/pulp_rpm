@@ -119,6 +119,8 @@ DESC_CATEGORIES = _('search for package categories (groups of package groups) in
 DESC_DISTRIBUTIONS = _('list distributions in a repository')
 DESC_ERRATA = _('search errata in a repository')
 
+ASSOCIATION_METADATA_KEYWORD = 'metadata'
+
 # -- commands -----------------------------------------------------------------
 
 class BaseSearchCommand(DisplayUnitAssociationsCommand):
@@ -152,7 +154,7 @@ class BaseSearchCommand(DisplayUnitAssociationsCommand):
         units = self.context.server.repo_unit.search(repo_id, **kwargs).response_body
 
         if not kwargs.get(DisplayUnitAssociationsCommand.ASSOCIATION_FLAG.keyword):
-            units = [u['metadata'] for u in units]
+            units = [u[ASSOCIATION_METADATA_KEYWORD] for u in units]
 
         out_func(units)
 
@@ -185,13 +187,13 @@ class PackageSearchCommand(BaseSearchCommand):
                 display_filter = ['updated', 'repo_id', 'created', 'unit_id', 'metadata',
                                   'unit_type_id', 'owner_type', 'id', 'owner_id']
                 # display the unit info first
-                order = ['metadata']
+                order = [ASSOCIATION_METADATA_KEYWORD]
 
                 # apply the same filtering that would normally be done by okaara
                 for doc in document_list:
-                    for key in doc['metadata'].keys():
+                    for key in doc[ASSOCIATION_METADATA_KEYWORD].keys():
                         if key not in FIELDS_RPM:
-                            del doc['metadata'][key]
+                            del doc[ASSOCIATION_METADATA_KEYWORD][key]
 
             # Create user-friendly translations for the requires and provides lists
             map(self._reformat_rpm_provides_requires, document_list)
@@ -221,7 +223,6 @@ class PackageSearchCommand(BaseSearchCommand):
             tail = '-'.join([related_rpm[key] for key in ['version', 'release', 'epoch']
                              if related_rpm[key] is not None])
 
-
             if related_rpm['flags'] is not None and \
                related_rpm['flags'] in REQUIRES_COMPARISON_TRANSLATIONS:
                 # Bridge between name and version info with the comparison operator if present
@@ -237,9 +238,18 @@ class PackageSearchCommand(BaseSearchCommand):
             return start + middle + tail
 
         for reformat_me in ['requires', 'provides']:
-            related_rpm_list = rpm[reformat_me]
+            # If the --details flag was used, all the rpm data except for the association data is
+            # placed inside a metadata dict by out_func. See if the key is in rpm and act accordingly.
+            if ASSOCIATION_METADATA_KEYWORD in rpm:
+                related_rpm_list = rpm[ASSOCIATION_METADATA_KEYWORD][reformat_me]
+            else:
+                related_rpm_list = rpm[reformat_me]
+
             formatted_rpms = [process_one(r) for r in related_rpm_list]
-            rpm[reformat_me] = formatted_rpms
+            if ASSOCIATION_METADATA_KEYWORD in rpm:
+                rpm[ASSOCIATION_METADATA_KEYWORD][reformat_me] = formatted_rpms
+            else:
+                rpm[reformat_me] = formatted_rpms
 
 
 class SearchRpmsCommand(PackageSearchCommand):
