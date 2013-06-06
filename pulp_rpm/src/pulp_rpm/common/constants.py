@@ -33,9 +33,6 @@ REPO_NOTE_ISO = 'iso-repo'
 
 PUBLISHED_DISTRIBUTION_FILES_KEY = 'published_distributions'
 
-# Importer configuration key names
-CONFIG_COPY_CHILDREN                = 'copy_children'
-
 # The default number of threads to be used with downloading ISOs. We should convert the RPM code to
 # use this same value.
 CONFIG_MAX_DOWNLOADS_DEFAULT        = 5
