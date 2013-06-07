@@ -121,6 +121,55 @@ class PackageSearchCommandTests(PulpClientTests):
         self.assertEqual(test_rpm['provides'][1], 'name.2')
         self.assertEqual(test_rpm['requires'][0], 'name.1 > version.1-release.1-epoch.1')
 
+    def test_reformat_rpm_provides_requires_details(self):
+        """
+        When the details flag is set, package_search manually applies a filter for the unit data.
+        Everything except for the association information is placed in a dict called metadata. This
+        tests that the provides and requires sections are reformatted with this second structure.
+        """
+        # Setup
+        test_rpm = {contents.ASSOCIATION_METADATA_KEYWORD: {
+            'provides': [
+                {'name': 'name.1',
+                 'version': 'version.1',
+                 'release': 'release.1',
+                 'epoch': 'epoch.1',
+                 'flags': None},
+                {'name': 'name.2',
+                 'version': None,
+                 'release': None,
+                 'epoch': None,
+                 'flags': None},
+            ],
+            'requires': [
+                {'name': 'name.1',
+                 'version': 'version.1',
+                 'release': 'release.1',
+                 'epoch': 'epoch.1',
+                 'flags': 'GT'},
+            ]
+
+        }}
+
+        # Test
+        command = contents.PackageSearchCommand(None, self.context)
+        command._reformat_rpm_provides_requires(test_rpm)
+
+        # Verify
+        self.assertTrue(isinstance(test_rpm[contents.ASSOCIATION_METADATA_KEYWORD]['provides'][0],
+                                   basestring))
+        self.assertTrue(isinstance(test_rpm[contents.ASSOCIATION_METADATA_KEYWORD]['provides'][1],
+                                   basestring))
+        self.assertTrue(isinstance(test_rpm[contents.ASSOCIATION_METADATA_KEYWORD]['requires'][0],
+                                   basestring))
+
+        self.assertEqual(test_rpm[contents.ASSOCIATION_METADATA_KEYWORD]['provides'][0],
+                         'name.1-version.1-release.1-epoch.1')
+        self.assertEqual(test_rpm[contents.ASSOCIATION_METADATA_KEYWORD]['provides'][1],
+                         'name.2')
+        self.assertEqual(test_rpm[contents.ASSOCIATION_METADATA_KEYWORD]['requires'][0],
+                         'name.1 > version.1-release.1-epoch.1')
+
 
 class SearchRpmsCommand(PulpClientTests):
 
