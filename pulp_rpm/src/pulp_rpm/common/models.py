@@ -414,6 +414,9 @@ class ISOManifest(object):
     This class provides an API that is a handy way to interact with a PULP_MANIFEST file. It automatically
     instantiates ISOs out of the items found in the manifest.
     """
+    # This is the filename that the manifest is published to
+    FILENAME = 'PULP_MANIFEST'
+
     def __init__(self, manifest_file, repo_url):
         """
         Instantiate a new ISOManifest from the open manifest_file.
