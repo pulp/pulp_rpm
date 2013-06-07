@@ -359,19 +359,21 @@ class ISO(object):
         """
         with open(self.storage_path) as destination_file:
             # Validate the size
-            if self.calculate_size(destination_file) != self.size:
+            actual_size = self.calculate_size(destination_file)
+            if actual_size != self.size:
                 raise ValueError(_('Downloading <%(name)s> failed validation. '
                     'The manifest specified that the file should be %(expected)s bytes, but '
                     'the downloaded file is %(found)s bytes.') % {'name': self.name,
-                        'expected': self.size, 'found': size})
+                        'expected': self.size, 'found': actual_size})
 
             # Validate the checksum
-            if self.calculate_checksum(destination_file) != self.checksum:
+            actual_checksum = self.calculate_checksum(destination_file)
+            if actual_checksum != self.checksum:
                 raise ValueError(
                     _('Downloading <%(name)s> failed checksum validation. The manifest '
                       'specified the checksum to be %(c)s, but it was %(f)s.') % {
                         'name': self.name, 'c': self.checksum,
-                        'f': hasher.hexdigest()})
+                        'f': actual_checksum})
 
     @staticmethod
     def calculate_checksum(file_handle):
