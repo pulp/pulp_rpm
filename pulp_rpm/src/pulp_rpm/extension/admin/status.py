@@ -124,6 +124,50 @@ class RpmStatusRenderer(StatusRenderer):
                     self.distribution_sync_last_state not in constants.COMPLETE_STATES):
             render_itemized_in_progress_state(self.prompt, data, _('distributions'), self.distribution_sync_bar, state)
 
+        elif state in constants.STATE_FAILED and \
+             self.distribution_sync_last_state not in constants.COMPLETE_STATES:
+
+            self.prompt.render_spacer()
+            self.prompt.render_failure_message(_('Errors encountered during distribution sync:'))
+
+            # TODO: read this from config
+            # display_error_count = self.context.extension_config.getint('main', 'num_display_errors')
+            display_error_count = 5
+
+            num_errors = min(len(data['error_details']), display_error_count)
+
+            if num_errors > 0:
+
+                # Each error is a list of filename and dict of details
+                # Example:
+                #    "error_details": [
+                #      [
+                #        "file:///mnt/iso/f18/images/boot.iso",
+                #        {
+                #          "response_code": 0,
+                #          "error_message": "Couldn't open file /mnt/iso/f18/images/boot.iso",
+                #          "error_code": 37
+                #        }
+                #      ]
+                #    ],
+
+                for i in range(0, num_errors):
+                    error = data['error_details'][i]
+
+                    message_data = {
+                        'filename' : error[0],
+                        'message' : error[1]['error_message'],
+                        'code' : error[1]['error_code'],
+                    }
+
+                    template  = 'File: %(filename)s\n'
+                    template += 'Error Code:   %(code)s\n'
+                    template += 'Error Message: %(message)s'
+                    message = template % message_data
+
+                    self.prompt.render_failure_message(message)
+                self.prompt.render_spacer()
+
         self.distribution_sync_last_state = state
 
     def render_download_step(self, progress_report):
