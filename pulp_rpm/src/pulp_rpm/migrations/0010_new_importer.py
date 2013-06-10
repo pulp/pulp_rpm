@@ -20,7 +20,9 @@ from pulp_rpm.plugins.importers.yum.repomd import packages
 
 # this is required because some of the pre-migration XML tags use the "rpm"
 # namespace, which causes a parse error if that namespace isn't declared.
-FAKE_XML = "<faketag xmlns:rpm='http://pulpproject.org'>%s</faketag>"
+from pulp_rpm.yum_plugin import util
+
+FAKE_XML = '<?xml version="1.0" encoding="%(encoding)s"?><faketag xmlns:rpm="http://pulpproject.org">%(xml)s</faketag>'
 
 
 def migrate(*args, **kwargs):
@@ -32,8 +34,17 @@ def _migrate_collection(type_id):
     collection = types_db.type_units_collection(type_id)
     for package in collection.find():
         # grab the raw XML and parse it into the elements we'll need later
-        fake_xml = FAKE_XML % package['repodata']['primary']
-        fake_element = ET.fromstring(fake_xml)
+        try:
+            # make a guess at the encoding
+            codec = 'UTF-8'
+            text = package['repodata']['primary'].encode(codec)
+        except UnicodeEncodeError:
+            # best second guess we have, and it will never fail due to the nature
+            # of the encoding.
+            codec = 'ISO-8859-1'
+            text = package['repodata']['primary'].encode(codec)
+        fake_xml = FAKE_XML % {'encoding': codec, 'xml': package['repodata']['primary']}
+        fake_element = ET.fromstring(fake_xml.encode(codec))
         packages.strip_ns(fake_element)
         primary_element = fake_element.find('package')
         format_element = primary_element.find('format')
@@ -61,6 +72,8 @@ def _reformat_provide_or_require(old_representation):
     :param old_representation:
     :return:
     """
+    if isinstance(old_representation, dict):
+        return old_representation
     return {
         'name': old_representation[0],
         'flags': old_representation[1],
