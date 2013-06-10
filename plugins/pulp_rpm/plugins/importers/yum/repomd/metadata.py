@@ -127,8 +127,8 @@ class MetadataFiles(object):
         repomd_request = DownloadRequest(repomd_url, repomd_dst_path)
         self.downloader.download([repomd_request])
         if self.event_listener.failed_reports:
-            message = str(self.event_listener.failed_reports[0].error_report)
-            raise IOError(message)
+            error_report = self.event_listener.failed_reports[0]
+            raise IOError(error_report.error_msg)
 
     # TODO (jconnonr 2013-03-07) add a method to validate/verify the repomd.xml file
 
