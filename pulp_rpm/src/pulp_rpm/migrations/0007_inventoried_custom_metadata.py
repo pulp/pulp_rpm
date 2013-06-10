@@ -31,11 +31,15 @@ _TYPE_YUM_REPO_METADATA_FILE = 'yum_repo_metadata_file'
 _REPODATA = 'repodata'
 _REPOMD_FILE = 'repomd.xml'
 
+_BASE_FTYPE_LIST = ('primary', 'primary_db', 'filelists_db', 'filelists', 'other',
+                    'other_db', 'group', 'group_gz', 'updateinfo', 'updateinfo_db')
+
 # -- migration entry point -----------------------------------------------------
 
 def migrate(*args, **kwargs):
     inventory_custom_metadata()
 
+# -- custom metadata migration -------------------------------------------------
 
 def inventory_custom_metadata():
 
@@ -65,9 +69,7 @@ def inventory_custom_metadata():
             _LOG.debug('Yum repository %s has not %s, cannot inventory custom metadata' % (repo_id, _REPOMD_FILE))
             continue
 
-        base_ftype_list = ('primary', 'primary_db', 'filelists_db', 'filelists', 'other',
-                           'other_db', 'group', 'group_gz', 'updateinfo', 'updateinfo_db')
-        ftype_dict = parse_repomd_xml(repomd_file_path, base_ftype_list)
+        ftype_dict = parse_repomd_xml(repomd_file_path, _BASE_FTYPE_LIST)
 
         for ftype, ftype_data in ftype_dict.items():
 
