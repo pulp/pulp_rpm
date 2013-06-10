@@ -52,7 +52,7 @@ class TestISOStatusRenderer(unittest.TestCase):
                                        u'state': u'manifest_in_progress', u'total_bytes': None,
                                        u'state_times': {u'not_started': u'2013-04-30T20:37:25',
                                                         u'manifest_in_progress': u'2013-04-30T20:37:25'},
-                                       u'num_isos_finished': 0, u'iso_error_messages': {}},
+                                       u'num_isos_finished': 0, u'iso_error_messages': []},
             ids.TYPE_ID_DISTRIBUTOR_ISO: {u'traceback': None, u'error_message': None,
                                           u'state': u'complete',
                                           u'state_times': {
@@ -97,7 +97,7 @@ class TestISOStatusRenderer(unittest.TestCase):
                                        u'total_bytes': None,
                                        u'state_times': {u'not_started': u'2013-04-30T20:37:25',
                                                         u'manifest_in_progress': u'2013-04-30T20:37:25'},
-                                       u'num_isos_finished': 0, u'iso_error_messages': {}},
+                                       u'num_isos_finished': 0, u'iso_error_messages': []},
             ids.TYPE_ID_DISTRIBUTOR_ISO: {u'traceback': None, u'error_message': None,
                                           u'state': u'in_progress',
                                           u'state_times': {
@@ -198,7 +198,7 @@ class TestISOStatusRenderer(unittest.TestCase):
                                        u'finished_bytes': 0, u'num_isos': None,
                                        u'state': u'not_started', u'total_bytes': None,
                                        u'state_times': {u'not_started': u'2013-04-30T20:37:25'},
-                                       u'num_isos_finished': 0, u'iso_error_messages': {}}}
+                                       u'num_isos_finished': 0, u'iso_error_messages': []}}
         renderer = status.ISOStatusRenderer(self.context)
 
         renderer.display_report(progress_report)
@@ -258,29 +258,31 @@ class TestISOStatusRenderer(unittest.TestCase):
 
     def test__display_iso_sync_report_during_isos_failed_state(self):
         """
-        Test the ISOStatusRenderer._display_iso_sync_report method when the SyncProgressReport has entered
-        STATE_ISOS_FAILED (with two ISOs successfully downloaded). It should display an error message
-        to the user.
+        Test the ISOStatusRenderer._display_iso_sync_report method when the SyncProgressReport has
+        entered STATE_ISOS_FAILED (with two ISOs successfully downloaded). It should display an
+        error message to the user.
         """
         conduit = mock.MagicMock()
         finished_bytes = 1204
         total_bytes = 908
-        iso_error_messages = {'bad.iso': 'Sorry, I will not tell you what happened.'}
+        iso_error_messages = [
+            {'name': 'bad.iso', 'error': 'Sorry, I will not tell you what happened.'}]
         state_times = {progress.SyncProgressReport.STATE_MANIFEST_IN_PROGRESS: datetime.utcnow()}
         sync_report = progress.SyncProgressReport(
-            conduit, num_isos=3, num_isos_finished=2, total_bytes=total_bytes, finished_bytes=finished_bytes,
-            state=progress.SyncProgressReport.STATE_ISOS_FAILED, state_times=state_times,
-            iso_error_messages=iso_error_messages)
+            conduit, num_isos=3, num_isos_finished=2, total_bytes=total_bytes,
+            finished_bytes=finished_bytes, state=progress.SyncProgressReport.STATE_ISOS_FAILED,
+            state_times=state_times, iso_error_messages=iso_error_messages)
         renderer = status.ISOStatusRenderer(self.context)
-        # Let's put the renderer in the manifest retrieval stage, simulating the SyncProgressReport having
-        # just left that stage
+        # Let's put the renderer in the manifest retrieval stage, simulating the SyncProgressReport
+        # having just left that stage
         renderer._sync_state = progress.SyncProgressReport.STATE_MANIFEST_IN_PROGRESS
         renderer.prompt.reset_mock()
 
         renderer._display_iso_sync_report(sync_report)
 
         renderer.prompt.write.assert_has_call('Downloading 3 ISOs.')
-        # The _sync_state should have been updated to reflect the ISO downloading stage having failed
+        # The _sync_state should have been updated to reflect the ISO downloading stage having
+        # failed
         self.assertEqual(renderer._sync_state, progress.SyncProgressReport.STATE_ISOS_FAILED)
         # A progress bar should have been rendered
         self.assertEqual(renderer._sync_isos_bar.render.call_count, 1)
@@ -288,19 +290,21 @@ class TestISOStatusRenderer(unittest.TestCase):
         self.assertEqual(args[0], finished_bytes)
         self.assertEqual(args[1], total_bytes)
 
-        # There should be one kwarg - message. It is non-deterministic, so let's just assert that it has some
-        # of the right text in it
+        # There should be one kwarg - message. It is non-deterministic, so let's just assert that it
+        # has some of the right text in it
         kwargs = renderer._sync_isos_bar.render.mock_calls[0][2]
         self.assertEqual(len(kwargs), 1)
         self.assertTrue('ISOs: 2/3' in kwargs['message'])
 
         # A completion message should have been printed for the user
-        self.assertEqual(renderer.prompt.render_failure_message.mock_calls[0][2]['tag'], 'download_failed')
+        self.assertEqual(renderer.prompt.render_failure_message.mock_calls[0][2]['tag'],
+                         'download_failed')
 
         # The individual ISO that failed should have had its error message printed to screen
-        self.assertTrue(iso_error_messages['bad.iso'] in
+        self.assertTrue(iso_error_messages[0]['error'] in
                         renderer.prompt.render_failure_message.mock_calls[1][1][0])
-        self.assertEqual(renderer.prompt.render_failure_message.mock_calls[1][2]['tag'], 'iso_error_msg')
+        self.assertEqual(renderer.prompt.render_failure_message.mock_calls[1][2]['tag'],
+                         'iso_error_msg')
 
     def test__display_iso_sync_report_during_iso_stage_no_isos(self):
         """

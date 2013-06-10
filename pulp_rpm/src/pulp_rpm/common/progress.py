@@ -244,9 +244,9 @@ class SyncProgressReport(ISOProgressReport):
         # These variables track the state of the ISO download stage
         self.num_isos = num_isos
         self.num_isos_finished = num_isos_finished
-        # mapping of isos to errors
+        # iso_error_messages is a list of dictionaries with the keys 'name' and 'error'
         if iso_error_messages is None:
-            self.iso_error_messages = {}
+            self.iso_error_messages = []
         else:
             self.iso_error_messages = iso_error_messages
 
@@ -259,7 +259,8 @@ class SyncProgressReport(ISOProgressReport):
         :param error_report: The error message that should be associated with the ISO
         :type  error_report: basestring
         """
-        self.iso_error_messages[iso.name] = error_report
+        iso_error = {'name': iso.name, 'error': error_report}
+        self.iso_error_messages.append(iso_error)
 
     def build_progress_report(self):
         """
