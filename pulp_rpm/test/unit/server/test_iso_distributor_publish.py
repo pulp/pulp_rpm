@@ -16,7 +16,7 @@ import os
 import shutil
 import tempfile
 
-from pulp_rpm.common import constants, ids, progress
+from pulp_rpm.common import constants, ids, models, progress
 from pulp_rpm.plugins.distributors.iso_distributor import publish
 from rpm_support_base import PulpRPMTests
 import distributor_mocks
@@ -109,6 +109,7 @@ class TestPublish(PulpRPMTests):
         publish_conduit = distributor_mocks.get_publish_conduit(existing_units=self.existing_units)
         config = distributor_mocks.get_basic_config(**{constants.CONFIG_SERVE_HTTP: True,
                                                        constants.CONFIG_SERVE_HTTPS: True})
+
         report = publish.publish(repo, publish_conduit, config)
 
         self.assertTrue(report.success_flag)
@@ -126,7 +127,7 @@ class TestPublish(PulpRPMTests):
 
             # Now let's have a look at the PULP_MANIFEST file to make sure it was generated and
             # published correctly.
-            manifest_filename = os.path.join(publishing_path, constants.ISO_MANIFEST_FILENAME)
+            manifest_filename = os.path.join(publishing_path, models.ISOManifest.FILENAME)
             manifest_rows = []
             with open(manifest_filename) as manifest_file:
                 manifest = csv.reader(manifest_file)
@@ -137,8 +138,8 @@ class TestPublish(PulpRPMTests):
             self.assertEqual(manifest_rows, expected_manifest_rows)
         delete_protected_repo.assert_called_once_with(repo.id)
 
-        # The publish_conduit should have had two set_progress calls. One to start the IN_PROGRESS state, and
-        # the second to mark it as complete
+        # The publish_conduit should have had two set_progress calls. One to start the IN_PROGRESS
+        # state, and the second to mark it as complete
         self.assertEqual(publish_conduit.set_progress.call_count, 2)
         self.assertEqual(publish_conduit.set_progress.mock_calls[0][1][0]['state'],
                          progress.PublishProgressReport.STATE_IN_PROGRESS)
@@ -173,18 +174,88 @@ class TestPublish(PulpRPMTests):
         self.assertEqual(publish_conduit.set_progress.mock_calls[1][1][0]['state'],
                          progress.PublishProgressReport.STATE_FAILED)
 
+    @patch('pulp_rpm.repo_auth.protected_repo_utils.ProtectedRepoUtils.delete_protected_repo')
+    def test_republish_after_unit_removal(self, delete_protected_repo):
+        """
+        This test checks for an issue[0] we had where publishing an ISO repository, removing an ISO,
+        and then republishing would leave that removed ISO's symlink in the repository even though
+        it had been removed from the manifest. This test asserts that the republished repository no
+        longer contains the removed ISO.
+
+        [0] https://bugzilla.redhat.com/show_bug.cgi?id=970795
+
+        :param delete_protected_repo: The mocked version of delete_protected_repo
+        :type  delete_protected_repo: function
+        """
+        repo = MagicMock(spec=Repository)
+        repo.id = 'lebowski'
+        repo.working_dir = self.temp_dir
+        publish_conduit = distributor_mocks.get_publish_conduit(existing_units=self.existing_units)
+        config = distributor_mocks.get_basic_config(**{constants.CONFIG_SERVE_HTTP: True,
+                                                       constants.CONFIG_SERVE_HTTPS: True})
+        # Perform a publish with all of the units in the conduit
+        report = publish.publish(repo, publish_conduit, config)
+        # Now let's make another conduit that has test2.iso removed
+        existing_units = [
+            unit for unit in self.existing_units if unit.unit_key['name'] != 'test2.iso']
+        publish_conduit = distributor_mocks.get_publish_conduit(existing_units=existing_units)
+        # Let's reset the delete_protected_repo mock, so we can easily assert that it gets called
+        # once more
+        delete_protected_repo.reset_mock()
+
+        # Let's republish with our new conduit
+        report = publish.publish(repo, publish_conduit, config)
+
+        # Now let's inspect the results
+        self.assertTrue(report.success_flag)
+        self.assertEqual(report.summary['state'], progress.ISOProgressReport.STATE_COMPLETE)
+        # Let's verify that the publish directory looks right
+        publishing_paths = [os.path.join(directory, 'lebowski') \
+                            for directory in [constants.ISO_HTTP_DIR, constants.ISO_HTTPS_DIR]]
+        for publishing_path in publishing_paths:
+            for unit in existing_units:
+                expected_symlink_path = os.path.join(publishing_path, unit.unit_key['name'])
+                self.assertTrue(os.path.islink(expected_symlink_path))
+                expected_symlink_destination = os.path.join('/', 'path', unit.unit_key['name'])
+                self.assertEqual(os.path.realpath(expected_symlink_path),
+                                 expected_symlink_destination)
+            # Verify that test2.iso is not present
+            would_be_symlink_path = os.path.join(publishing_path, 'test2.iso')
+            self.assertFalse(os.path.islink(would_be_symlink_path))
+            self.assertFalse(os.path.exists(would_be_symlink_path))
+
+            # Now let's have a look at the PULP_MANIFEST file to make sure it was generated and
+            # published correctly.
+            manifest_filename = os.path.join(publishing_path, models.ISOManifest.FILENAME)
+            manifest_rows = []
+            with open(manifest_filename) as manifest_file:
+                manifest = csv.reader(manifest_file)
+                for row in manifest:
+                    manifest_rows.append(row)
+            # test2.iso should not be present in the manifest either
+            expected_manifest_rows = [['test.iso', 'sum1', '1'],
+                                      ['test3.iso', 'sum3', '3']]
+            self.assertEqual(manifest_rows, expected_manifest_rows)
+        delete_protected_repo.assert_called_once_with(repo.id)
+
+        # The publish_conduit should have had two set_progress calls. One to start the IN_PROGRESS
+        # state, and the second to mark it as complete
+        self.assertEqual(publish_conduit.set_progress.call_count, 2)
+        self.assertEqual(publish_conduit.set_progress.mock_calls[0][1][0]['state'],
+                         progress.PublishProgressReport.STATE_IN_PROGRESS)
+        self.assertEqual(publish_conduit.set_progress.mock_calls[1][1][0]['state'],
+                         progress.PublishProgressReport.STATE_COMPLETE)
+
     def test__build_metadata(self):
         """
         The _build_metadata() method should put the metadata in the build directory.
         """
-        repo = MagicMock(spec=Repository)
-        repo.working_dir = self.temp_dir
+        build_dir = self.temp_dir
 
-        publish._build_metadata(repo, self.existing_units)
+        publish._build_metadata(build_dir, self.existing_units)
 
         # Now let's have a look at the PULP_MANIFEST file to make sure it was generated correctly.
-        manifest_filename = os.path.join(self.temp_dir, publish.BUILD_DIRNAME,
-                                constants.ISO_MANIFEST_FILENAME)
+        manifest_filename = os.path.join(build_dir, models.ISOManifest.FILENAME)
         manifest_rows = []
         with open(manifest_filename) as manifest_file:
             manifest = csv.reader(manifest_file)
@@ -205,15 +276,16 @@ class TestPublish(PulpRPMTests):
         config = distributor_mocks.get_basic_config(**{constants.CONFIG_SERVE_HTTP: True,
                                                        constants.CONFIG_SERVE_HTTPS: True})
 
-        # Let's put a dummy file and a dummy symlink in the build_dir, so we can make sure they get
-        # copied to the right places.
-        build_dir = publish._get_or_create_build_dir(repo)
+        # Let's make the build_dir and put a dummy file and a dummy symlink in it, so we can make
+        # sure they get copied to the right places.
+        build_dir = os.path.join(repo.working_dir, publish.BUILD_DIRNAME)
+        os.makedirs(build_dir)
         with open(os.path.join(build_dir, 'the_dude.txt'), 'w') as the_dude:
             the_dude.write("Let's go bowling.")
         os.symlink('/symlink/path', os.path.join(build_dir, 'symlink'))
 
         # This should copy our dummy file to the monkey patched folders from our setUp() method.
-        publish._copy_to_hosted_location(repo, config)
+        publish._copy_to_hosted_location(repo, config, build_dir)
 
         # Make sure that the_dude.txt got copied to the right places
         expected_http_path = os.path.join(constants.ISO_HTTP_DIR, 'lebowski', 'the_dude.txt')
@@ -237,24 +309,21 @@ class TestPublish(PulpRPMTests):
     def test__copy_to_hosted_location_https_false_doesnt_protect_repo(self, _protect_repository,
                                                                       delete_protected_repo):
         """
-        Test _copy_to_hosted_location() when CONFIG_SERVE_HTTPS is False. The repo protection code should get
-        called in this case, and should cause the delete_protected_repo() to get used.
+        Test _copy_to_hosted_location() when CONFIG_SERVE_HTTPS is False. The repo protection code
+        should get called in this case, and should cause the delete_protected_repo() to get used.
         """
         repo = MagicMock(spec=Repository)
         repo.id = 'lebowski'
         repo.working_dir = self.temp_dir
         config = distributor_mocks.get_basic_config(**{constants.CONFIG_SERVE_HTTP: True,
                                                        constants.CONFIG_SERVE_HTTPS: False})
-
-        # Let's put a dummy file and a dummy symlink in the build_dir, so we can make sure they get
-        # copied to the right places.
-        build_dir = publish._get_or_create_build_dir(repo)
+        build_dir = os.path.join(repo.working_dir, publish.BUILD_DIRNAME)
+        os.makedirs(build_dir)
         with open(os.path.join(build_dir, 'the_dude.txt'), 'w') as the_dude:
             the_dude.write("Let's go bowling.")
         os.symlink('/symlink/path', os.path.join(build_dir, 'symlink'))
 
-        # This should copy our dummy file to the monkey patched folders from our setUp() method.
-        publish._copy_to_hosted_location(repo, config)
+        publish._copy_to_hosted_location(repo, config, build_dir)
 
         # Even though HTTPS publishing was False, we should still call to protect the repository
         _protect_repository.assert_called_once_with(repo.id, repo, config)
@@ -266,24 +335,21 @@ class TestPublish(PulpRPMTests):
     def test__copy_to_hosted_location_https_true_protects_repo(self, _protect_repository,
                                                                delete_protected_repo):
         """
-        Test _copy_to_hosted_location() when CONFIG_SERVE_HTTPS is True. The repo protection code should be
-        called.
+        Test _copy_to_hosted_location() when CONFIG_SERVE_HTTPS is True. The repo protection code
+        should be called.
         """
         repo = MagicMock(spec=Repository)
         repo.id = 'lebowski'
         repo.working_dir = self.temp_dir
         config = distributor_mocks.get_basic_config(**{constants.CONFIG_SERVE_HTTP: True,
                                                        constants.CONFIG_SERVE_HTTPS: True})
-
-        # Let's put a dummy file and a dummy symlink in the build_dir, so we can make sure they get
-        # copied to the right places.
-        build_dir = publish._get_or_create_build_dir(repo)
+        build_dir = os.path.join(repo.working_dir, publish.BUILD_DIRNAME)
+        os.makedirs(build_dir)
         with open(os.path.join(build_dir, 'the_dude.txt'), 'w') as the_dude:
             the_dude.write("Let's go bowling.")
         os.symlink('/symlink/path', os.path.join(build_dir, 'symlink'))
 
-        # This should copy our dummy file to the monkey patched folders from our setUp() method.
-        publish._copy_to_hosted_location(repo, config)
+        publish._copy_to_hosted_location(repo, config, build_dir)
 
         # Assert that _protect_repository was called with the correct parameters
         _protect_repository.assert_called_once_with(repo.id, repo, config)
@@ -302,13 +368,14 @@ class TestPublish(PulpRPMTests):
 
         # Let's put a dummy file and a dummy symlink in the build_dir, so we can make sure they get
         # copied to the right places.
-        build_dir = publish._get_or_create_build_dir(repo)
+        build_dir = os.path.join(repo.working_dir, publish.BUILD_DIRNAME)
+        os.makedirs(build_dir)
         with open(os.path.join(build_dir, 'the_dude.txt'), 'w') as the_dude:
             the_dude.write("Let's go bowling.")
         os.symlink('/symlink/path', os.path.join(build_dir, 'symlink'))
 
         # This should not copy our dummy file anywhere.
-        publish._copy_to_hosted_location(repo, config)
+        publish._copy_to_hosted_location(repo, config, build_dir)
 
         # Make sure that the_dude.txt didn't get copied
         expected_http_path = os.path.join(constants.ISO_HTTP_DIR, 'lebowski', 'the_dude.txt')
@@ -336,13 +403,14 @@ class TestPublish(PulpRPMTests):
 
         # Let's put a dummy file and a dummy symlink in the build_dir, so we can make sure they get
         # copied to the right places.
-        build_dir = publish._get_or_create_build_dir(repo)
+        build_dir = os.path.join(repo.working_dir, publish.BUILD_DIRNAME)
+        os.makedirs(build_dir)
         with open(os.path.join(build_dir, 'the_dude.txt'), 'w') as the_dude:
             the_dude.write("Let's go bowling.")
         os.symlink('/symlink/path', os.path.join(build_dir, 'symlink'))
 
         # This should copy our dummy file to the monkey patched folders from our setUp() method.
-        publish._copy_to_hosted_location(repo, config)
+        publish._copy_to_hosted_location(repo, config, build_dir)
 
         # Make sure that the_dude.txt got copied to the HTTPS places and not the HTTP places
         expected_http_path = os.path.join(constants.ISO_HTTP_DIR, 'lebowski', 'the_dude.txt')
@@ -359,86 +427,21 @@ class TestPublish(PulpRPMTests):
         # delete_protected_repo should have been called since there's no CA cert provided
         delete_protected_repo.assert_called_once_with(repo.id)
 
-    def test__get_or_create_build_dir(self):
-        """
-        _get_or_create_build_dir() should create the directory the first time it is called, and
-        should return the path to it both times it is called.
-        """
-        repo = MagicMock(spec=Repository)
-        repo.working_dir = self.temp_dir
-
-        # Assert that the build dir does not exist
-        expected_build_dir = os.path.join(self.temp_dir, publish.BUILD_DIRNAME)
-        self.assertFalse(os.path.exists(expected_build_dir))
-
-        build_dir = publish._get_or_create_build_dir(repo)
-
-        # Assert that the build dir is correct and has been created
-        self.assertEqual(build_dir, expected_build_dir)
-        self.assertTrue(os.path.exists(build_dir))
-
-        # It should not blow up if we call it again
-        build_dir = publish._get_or_create_build_dir(repo)
-        self.assertEqual(build_dir, expected_build_dir)
-
-    def test__get_or_create_build_dir_already_exists(self):
-        """
-        _get_or_create_build_dir() should correctly handle the situation when the build_dir already exists.
-        """
-        repo = MagicMock(spec=Repository)
-        repo.working_dir = self.temp_dir
-
-        # Assert that the build dir does not exist
-        expected_build_dir = os.path.join(self.temp_dir, publish.BUILD_DIRNAME)
-        os.makedirs(expected_build_dir)
-        self.assertTrue(os.path.exists(expected_build_dir))
-
-        build_dir = publish._get_or_create_build_dir(repo)
-
-        # Assert that the build dir is correct and has been created
-        self.assertEqual(build_dir, expected_build_dir)
-        self.assertTrue(os.path.exists(build_dir))
-
-    @patch("os.makedirs")
-    def test__get_or_create_build_dir_oserror(self, makedirs):
-        """
-        Let's raise the OSError that this method tries to catch to make sure we raise it appropriately.
-        """
-        os_error = OSError()
-        os_error.errno = errno.ENOSPC
-        makedirs.side_effect = os_error
-
-        repo = MagicMock(spec=Repository)
-        repo.working_dir = self.temp_dir
-
-        # Assert that the build dir does not exist
-        expected_build_dir = os.path.join(self.temp_dir, publish.BUILD_DIRNAME)
-        self.assertFalse(os.path.exists(expected_build_dir))
-
-        try:
-            publish._get_or_create_build_dir(repo)
-            self.fail("An OSError should have been raised but was not.")
-        except OSError, e:
-            self.assertEqual(e.errno, errno.ENOSPC)
-
     def test__symlink_units(self):
         """
         Make sure that the _symlink_units creates all the correct symlinks.
         """
-        repo = MagicMock(spec=Repository)
-        repo.working_dir = self.temp_dir
-
         # There's some logic in _symlink_units to handle preexisting files and symlinks, so let's
         # create some fakes to see if it does the right thing
-        build_dir = publish._get_or_create_build_dir(repo)
+        build_dir = os.path.join(self.temp_dir, publish.BUILD_DIRNAME)
+        os.makedirs(build_dir)
         os.symlink('/some/weird/path',
                    os.path.join(build_dir, self.existing_units[0].unit_key['name']))
         with open(os.path.join(build_dir, self.existing_units[1].unit_key['name']), 'w') as wrong:
             wrong.write("This is wrong.")
 
-        publish._symlink_units(repo, self.existing_units)
+        publish._symlink_units(build_dir, self.existing_units)
 
-        build_dir = publish._get_or_create_build_dir(repo)
         for unit in self.existing_units:
             expected_symlink_path = os.path.join(build_dir, unit.unit_key['name'])
             self.assertTrue(os.path.islink(expected_symlink_path))
@@ -450,12 +453,10 @@ class TestPublish(PulpRPMTests):
         """
         Make sure that the _symlink_units handles an existing correct link well.
         """
-        repo = MagicMock(spec=Repository)
-        repo.working_dir = self.temp_dir
-
         # There's some logic in _symlink_units to handle preexisting files and symlinks, so let's
         # create some fakes to see if it does the right thing
-        build_dir = publish._get_or_create_build_dir(repo)
+        build_dir = os.path.join(self.temp_dir, publish.BUILD_DIRNAME)
+        os.makedirs(build_dir)
         unit = self.existing_units[0]
         expected_symlink_destination = os.path.join('/', 'path', unit.unit_key['name'])
         os.symlink(expected_symlink_destination,
@@ -463,10 +464,10 @@ class TestPublish(PulpRPMTests):
         # Now let's reset the Mock so that we can make sure it doesn't get called during _symlink
         symlink.reset_mock()
 
-        publish._symlink_units(repo, [unit])
+        publish._symlink_units(build_dir, [unit])
 
-        # The call count for symlink should be 0, because the _symlink_units call should have noticed that the
-        # symlink was already correct and thus should have skipped it
+        # The call count for symlink should be 0, because the _symlink_units call should have
+        # noticed that the symlink was already correct and thus should have skipped it
         self.assertEqual(symlink.call_count, 0)
         expected_symlink_path = os.path.join(build_dir, unit.unit_key['name'])
         self.assertTrue(os.path.islink(expected_symlink_path))
@@ -475,27 +476,25 @@ class TestPublish(PulpRPMTests):
     @patch('os.readlink')
     def test__symlink_units_os_error(self, readlink):
         """
-        Make sure that the _symlink_units handles an OSError correctly, for the case where it doesn't raise
-        EINVAL. We already have a test that raises EINVAL (test__symlink_units places an ordinary file there.)
+        Make sure that the _symlink_units handles an OSError correctly, for the case where it
+        doesn't raise EINVAL. We already have a test that raises EINVAL (test__symlink_units places
+        an ordinary file there.)
         """
         os_error = OSError()
         # This would be an unexpected error for reading a symlink!
         os_error.errno = errno.ENOSPC
         readlink.side_effect = os_error
-
-        repo = MagicMock(spec=Repository)
-        repo.working_dir = self.temp_dir
-
         # There's some logic in _symlink_units to handle preexisting files and symlinks, so let's
         # create some fakes to see if it does the right thing
-        build_dir = publish._get_or_create_build_dir(repo)
+        build_dir = os.path.join(self.temp_dir, publish.BUILD_DIRNAME)
+        os.makedirs(build_dir)
         unit = self.existing_units[0]
         expected_symlink_destination = os.path.join('/', 'path', unit.unit_key['name'])
         os.symlink(expected_symlink_destination,
                    os.path.join(build_dir, unit.unit_key['name']))
 
         try:
-            publish._symlink_units(repo, [unit])
+            publish._symlink_units(build_dir, [unit])
             self.fail('An OSError should have been raised, but was not!')
         except OSError, e:
             self.assertEqual(e.errno, errno.ENOSPC)

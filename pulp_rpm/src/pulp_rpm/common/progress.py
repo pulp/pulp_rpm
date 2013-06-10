@@ -41,8 +41,8 @@ class ISOProgressReport(object):
         """
         Initialize the ISOProgressReport. All parameters except conduit can be ignored if you are
         instantiating the report for use from an importer or distributor. The other parameters are used when
-        instantiating the report from a serialized report in the client. 
-        
+        instantiating the report from a serialized report in the client.
+
         :param conduit:            A sync or publish conduit that should be used to report progress to the
                                    client.
         :type  conduit:            pulp.plugins.conduits.repo_sync.RepoSyncConduit or
