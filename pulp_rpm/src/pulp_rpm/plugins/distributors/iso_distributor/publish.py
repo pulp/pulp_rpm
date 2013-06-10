@@ -20,7 +20,7 @@ import os
 import shutil
 import traceback
 
-from pulp_rpm.common import constants
+from pulp_rpm.common import constants, models
 from pulp_rpm.common.progress import PublishProgressReport
 from pulp_rpm.repo_auth.protected_repo_utils import ProtectedRepoUtils
 from pulp_rpm.repo_auth.repo_cert_utils import RepoCertUtils
@@ -51,9 +51,21 @@ def publish(repo, publish_conduit, config):
     try:
         progress_report.state = progress_report.STATE_IN_PROGRESS
         units = publish_conduit.get_units()
-        _build_metadata(repo, units)
-        _symlink_units(repo, units)
-        _copy_to_hosted_location(repo, config)
+
+        # Set up an empty build_dir
+        build_dir = os.path.join(repo.working_dir, BUILD_DIRNAME)
+        # Let's erase the path at build_dir so we can be sure it's a clean directory
+        _rmtree_if_exists(build_dir)
+        os.makedirs(build_dir)
+
+        _build_metadata(build_dir, units)
+        _symlink_units(build_dir, units)
+        _copy_to_hosted_location(repo, config, build_dir)
+
+        # Clean up our build_dir
+        _rmtree_if_exists(build_dir)
+
+        # Report that we are done
         progress_report.state = progress_report.STATE_COMPLETE
         return progress_report.build_final_report()
     except Exception, e:
@@ -65,17 +77,17 @@ def publish(repo, publish_conduit, config):
         return report
 
 
-def _build_metadata(repo, units):
+def _build_metadata(build_dir, units):
     """
     Create the manifest file for the given units, and write it to the build directory.
 
-    :param repo:  The repo that we are creating the manifest for
-    :type  repo:  pulp.plugins.model.Repository
-    :param units: The units to be included in the manifest
-    :type  units: list
+    :param build_dir: A path on the local filesystem where the PULP_MANIFEST should be written. This
+                      path should already exist.
+    :type  build_dir: basestring
+    :param units:     The units to be included in the manifest
+    :type  units:     list
     """
-    build_dir = _get_or_create_build_dir(repo)
-    metadata_filename = os.path.join(build_dir, constants.ISO_MANIFEST_FILENAME)
+    metadata_filename = os.path.join(build_dir, models.ISOManifest.FILENAME)
     with open(metadata_filename, 'w') as metadata:
         metadata_csv = csv.writer(metadata)
         for unit in units:
@@ -83,24 +95,25 @@ def _build_metadata(repo, units):
                                    unit.unit_key['size']])
 
 
-def _copy_to_hosted_location(repo, config):
+def _copy_to_hosted_location(repo, config, build_dir):
     """
     Copy the contents of the build directory to the publishing directories. The config will be used
     to determine whether we are supposed to publish to HTTP and HTTPS.
 
-    :param repo:            The repo you want to publish.
-    :type  repo:            pulp.plugins.model.Repository
-    :param config:          plugin configuration
-    :type  config:          pulp.plugins.config.PluginConfiguration
+    :param repo:      The repo you want to publish.
+    :type  repo:      pulp.plugins.model.Repository
+    :param config:    plugin configuration
+    :type  config:    pulp.plugins.config.PluginConfiguration
+    :param build_dir: The path on the local filesystem that has the files we wish to copy to the
+                      hosted location
+    :type  build_dir: basestring
     """
-    build_dir = _get_or_create_build_dir(repo)
-
     # Publish HTTP
     http_dest_dir = os.path.join(constants.ISO_HTTP_DIR, repo.id)
     _rmtree_if_exists(http_dest_dir)
     # Publish the HTTP portion, if applicable
     serve_http = config.get_boolean(constants.CONFIG_SERVE_HTTP)
-    serve_http = serve_http if serve_http is not None else constants.CONFIG_SERVE_HTTP_DEFAULT 
+    serve_http = serve_http if serve_http is not None else constants.CONFIG_SERVE_HTTP_DEFAULT
     if serve_http:
         shutil.copytree(build_dir, http_dest_dir, symlinks=True)
 
@@ -110,7 +123,7 @@ def _copy_to_hosted_location(repo, config):
     _rmtree_if_exists(https_dest_dir)
     # Publish the HTTPs portion, if applicable
     serve_https = config.get_boolean(constants.CONFIG_SERVE_HTTPS)
-    serve_https = serve_https if serve_https is not None else constants.CONFIG_SERVE_HTTPS_DEFAULT 
+    serve_https = serve_https if serve_https is not None else constants.CONFIG_SERVE_HTTPS_DEFAULT
     if serve_https:
         shutil.copytree(build_dir, https_dest_dir, symlinks=True)
 
@@ -145,39 +158,16 @@ def _protect_repository(relative_path, repo, config):
         protected_repo_utils.delete_protected_repo(relative_path)
 
 
-def _get_or_create_build_dir(repo):
-    """
-    This will generate a path for a build directory for the given repository. If the path doesn't
-    exist, it will create it.
-
-    :param repo: The repository you need the build directory for
-    :type  repo: pulp.plugins.model.Repository
-    :return:     The build path
-    :rtype:      basestring
-    """
-    build_dir = os.path.join(repo.working_dir, BUILD_DIRNAME)
-    if not os.path.exists(build_dir):
-        try:
-            os.makedirs(build_dir)
-        except OSError, e:
-            # If the path already exists, it's because it was somehow created between us checking if
-            # it existed before and creating it. This is OK, so let's only raise if it was a
-            # different error.
-            if e.errno != errno.EEXIST:
-                raise
-    return build_dir
-
-
-def _symlink_units(repo, units):
+def _symlink_units(build_dir, units):
     """
     For each unit, put a symlink in the build dir that points to its canonical location on disk.
 
-    :param repo:  The repo that we are creating the symlinks for
-    :type  repo:  pulp.plugins.model.Repository
-    :param units: The units to be symlinked
-    :type  units: list
+    :param build_dir: The path on the local filesystem that we want to symlink the units into. This
+                      path should already exist.
+    :type  build_dir: basestring
+    :param units:     The units to be symlinked
+    :type  units:     list
     """
-    build_dir = _get_or_create_build_dir(repo)
     for unit in units:
         symlink_filename = os.path.join(build_dir, unit.unit_key['name'])
         if os.path.exists(symlink_filename) or os.path.islink(symlink_filename):
