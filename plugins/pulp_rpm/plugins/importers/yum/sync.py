@@ -144,24 +144,39 @@ class RepoSync(object):
             self.set_progress()
 
         except CancelException:
-            report = SyncReport(False, self.content_report['items_total'], 0, 0, self.progress_status, self.progress_status)
+            report = self.sync_conduit.build_cancel_report(self._progress_summary, self.progress_status)
             report.canceled_flag = True
             return report
 
-        except FailedException, e:
+        except Exception, e:
             for step, value in self.progress_status.iteritems():
                 if value.get('state') == constants.STATE_RUNNING:
                     value['state'] = constants.STATE_FAILED
+                    value['error'] = str(e)
             self.set_progress()
-            # TODO: add text from exception to a report
-            report = SyncReport(False, self.content_report['items_total'], 0, 0, self.progress_status, self.progress_status)
+            report = self.sync_conduit.build_failure_report(self._progress_summary, self.progress_status)
             return report
 
         finally:
             # clean up whatever we may have left behind
             shutil.rmtree(self.tmp_dir, ignore_errors=True)
 
-        return SyncReport(True, self.content_report['items_total'], 0, 0, {}, self.progress_status)
+        return self.sync_conduit.build_success_report(self._progress_summary, self.progress_status)
+
+    @property
+    def _progress_summary(self):
+        """
+        Create a summary report from the detailed progress report that only
+        includes the final state of each step.
+
+        :return:    exactly like the progress report, but each step's dictionary
+                    only includes the 'state' key with its final value.
+        :type:      dict
+        """
+        ret = {}
+        for step_name, progress_dict in self.progress_status.iteritems():
+            ret[step_name] = {'state': progress_dict['state']}
+        return ret
 
     def get_metadata(self):
         """
