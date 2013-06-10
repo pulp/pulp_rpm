@@ -17,6 +17,7 @@ from pulp_rpm.common.constants import DISPLAY_UNITS_THRESHOLD
 from pulp_rpm.common.ids import (TYPE_ID_RPM, TYPE_ID_SRPM, TYPE_ID_DRPM,
                                  TYPE_ID_ERRATA, TYPE_ID_PKG_GROUP,
                                  TYPE_ID_PKG_CATEGORY, TYPE_ID_DISTRO)
+from pulp_rpm.common.models import RPM
 from pulp_rpm.extension import criteria_utils
 from pulp_rpm.extension.admin import units_display
 
@@ -54,6 +55,13 @@ class PackageRemoveCommand(BaseRemoveCommand):
     @classmethod
     def _parse_sort(cls, sort_args):
         return criteria_utils.parse_sort(BaseRemoveCommand, sort_args)
+
+    def modify_user_input(self, user_input):
+        super(PackageRemoveCommand, self).modify_user_input(user_input)
+
+        # Work around to scope the fields loaded by the platform to limit the amount of
+        # RAM used. This addition will find its way to the criteria parsing in the bindings.
+        user_input['fields'] = RPM.UNIT_KEY_NAMES
 
 
 class RpmRemoveCommand(PackageRemoveCommand):

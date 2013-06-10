@@ -15,8 +15,9 @@ import mock
 
 from pulp.client.commands.unit import UnitRemoveCommand
 
-from pulp_rpm.common.ids import (TYPE_ID_RPM, TYPE_ID_SRPM, TYPE_ID_DRPM, TYPE_ID_ERRATA, TYPE_ID_DISTRO,
-                                 TYPE_ID_PKG_GROUP, TYPE_ID_PKG_CATEGORY)
+from pulp_rpm.common.ids import (TYPE_ID_RPM, TYPE_ID_SRPM, TYPE_ID_DRPM, TYPE_ID_ERRATA,
+                                 TYPE_ID_DISTRO, TYPE_ID_PKG_GROUP, TYPE_ID_PKG_CATEGORY)
+from pulp_rpm.common.models import RPM
 from pulp_rpm.extension.admin import remove as remove_commands
 from pulp_rpm.extension.admin.remove import BaseRemoveCommand, PackageRemoveCommand
 import rpm_support_base
@@ -63,6 +64,18 @@ class PackageRemoveCommandTests(rpm_support_base.PulpClientTests):
         command = remove_commands.PackageRemoveCommand(self.context, 'copy', '', '')
         command._parse_sort('foo')
         mock_parse.assert_called_once_with(remove_commands.BaseRemoveCommand, 'foo')
+
+    @mock.patch('pulp.client.commands.unit.UnitRemoveCommand.modify_user_input')
+    def test_modify_user_input(self, mock_super):
+        command = remove_commands.PackageRemoveCommand(self.context, 'remove', '', '')
+        user_input = {'a' : 'a'}
+        command.modify_user_input(user_input)
+
+        # The super call is required.
+        self.assertEqual(1, mock_super.call_count)
+
+        # The user_input variable itself should be modified.
+        self.assertEqual(user_input, {'a' : 'a', 'fields' : RPM.UNIT_KEY_NAMES})
 
 
 class RemoveCommandsTests(rpm_support_base.PulpClientTests):
