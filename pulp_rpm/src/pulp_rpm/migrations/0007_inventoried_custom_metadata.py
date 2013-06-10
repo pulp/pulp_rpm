@@ -62,7 +62,7 @@ def inventory_custom_metadata():
         repomd_file_path = os.path.join(repodata_dir, _REPOMD_FILE)
 
         if not os.path.exists(repomd_file_path):
-            _LOG.warn('Yum repository %s has not %s, cannot inventory custom metadata' % (repo_id, _REPOMD_FILE))
+            _LOG.debug('Yum repository %s has not %s, cannot inventory custom metadata' % (repo_id, _REPOMD_FILE))
             continue
 
         base_ftype_list = ('primary', 'primary_db', 'filelists_db', 'filelists', 'other',
@@ -73,7 +73,7 @@ def inventory_custom_metadata():
 
             if ftype not in ftype_contents_dict:
                 # problematic, the custom metadata exists, but we don't have the contents
-                _LOG.warn('Skipping custom metadata %s on yum repository %s, contents not found' % (ftype, repo_id))
+                _LOG.debug('Skipping custom metadata %s on yum repository %s, contents not found' % (ftype, repo_id))
                 continue
 
             ftype_data['repo_id'] = repo_id
@@ -82,11 +82,16 @@ def inventory_custom_metadata():
             source_path = os.path.join(repodata_dir, ftype_file_name)
             relative_path = '%s/%s' % (repo_id, ftype_file_name)
 
+            if not os.path.exists(source_path):
+                _LOG.debug('Skipping custom metadata %s on yum repository %s, source file not found' % (ftype, repo_id))
+                continue
+
             content_unit = create_content_unit(ftype_data, relative_path)
             shutil.copyfile(source_path, content_unit['_storage_path'])
             add_content_unit_to_repo(repo_id, content_unit)
-
             remove_repodata_from_scratchpad(repo_id)
+
+            _LOG.debug('Successfully added custom metadata %s to yum repository %s' % (ftype, repo_id))
 
 # -- pulp utilities ------------------------------------------------------------
 
