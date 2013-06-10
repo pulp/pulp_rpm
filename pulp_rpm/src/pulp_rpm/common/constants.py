@@ -64,7 +64,6 @@ EXPORT_HTTP_DIR="/var/lib/pulp/published/http/exports"
 EXPORT_HTTPS_DIR="/var/lib/pulp/published/https/exports"
 ISO_HTTP_DIR = "/var/lib/pulp/published/http/isos"
 ISO_HTTPS_DIR = "/var/lib/pulp/published/https/isos"
-ISO_MANIFEST_FILENAME = 'PULP_MANIFEST'
 
 # There is no clean way to get the distribution storage location outside of the unit;
 # we need this path when initializing grinder so the treeinfo file gets copied and

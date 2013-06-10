@@ -203,7 +203,7 @@ class ISOSyncRun(listener.DownloadEventListener):
         :return: manifest of available ISOs
         :rtype:  pulp_rpm.common.models.ISOManifest
         """
-        manifest_url = urljoin(self._repo_url, constants.ISO_MANIFEST_FILENAME)
+        manifest_url = urljoin(self._repo_url, models.ISOManifest.FILENAME)
         # I probably should have called this manifest destination, but I couldn't help myself
         manifest_destiny = StringIO()
         manifest_request = request.DownloadRequest(manifest_url, manifest_destiny)

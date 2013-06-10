@@ -18,7 +18,7 @@ import os
 import shutil
 import tempfile
 
-from pulp_rpm.common import constants, ids
+from pulp_rpm.common import constants, models, ids
 from pulp_rpm.plugins.distributors.iso_distributor import distributor
 from rpm_support_base import PulpRPMTests
 import distributor_mocks
@@ -95,7 +95,7 @@ class TestISODistributor(PulpRPMTests):
 
             # Now let's have a look at the PULP_MANIFEST file to make sure it was generated and
             # published correctly.
-            manifest_filename = os.path.join(publishing_path, constants.ISO_MANIFEST_FILENAME)
+            manifest_filename = os.path.join(publishing_path, models.ISOManifest.FILENAME)
             manifest_rows = []
             with open(manifest_filename) as manifest_file:
                 manifest = csv.reader(manifest_file)
