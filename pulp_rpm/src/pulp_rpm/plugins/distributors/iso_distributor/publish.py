@@ -81,7 +81,8 @@ def _build_metadata(build_dir, units):
     """
     Create the manifest file for the given units, and write it to the build directory.
 
-    :param build_dir: A path on the local filesystem where the PULP_MANIFEST should be written
+    :param build_dir: A path on the local filesystem where the PULP_MANIFEST should be written. This
+                      path should already exist.
     :type  build_dir: basestring
     :param units:     The units to be included in the manifest
     :type  units:     list
@@ -161,7 +162,8 @@ def _symlink_units(build_dir, units):
     """
     For each unit, put a symlink in the build dir that points to its canonical location on disk.
 
-    :param build_dir: The path on the local filesystem that we want to symlink the units into
+    :param build_dir: The path on the local filesystem that we want to symlink the units into. This
+                      path should already exist.
     :type  build_dir: basestring
     :param units:     The units to be symlinked
     :type  units:     list
