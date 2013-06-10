@@ -35,7 +35,6 @@ from iso_distributor.groupdistributor import (GroupISODistributor, TYPE_ID_DISTR
                                               TYPE_ID_DISTRO, TYPE_ID_PKG_CATEGORY, TYPE_ID_PKG_GROUP)
 from pulp_rpm.repo_auth.repo_cert_utils import M2CRYPTO_HAS_CRL_SUPPORT
 from rpm_support_base import PULP_UNITTEST_REPO_URL, PulpRPMTests
-from yum_importer import distribution, errata, importer_rpm
 import group_distributor_mocks as distributor_mocks
 import importer_mocks
 
@@ -182,73 +181,6 @@ class TestGroupISODistributor(PulpRPMTests):
             https_ca=auth_cert)
         state, msg = distributor.validate_config(repo, config, [])
         self.assertTrue(state)
-
-    def test_group_publish_isos(self):
-        repo_1 = mock.Mock(spec=Repository)
-        repo_1.id = "test_repo_for_export_1"
-        repo_1.working_dir = self.repo_working_dir
-        repo_1.checksumtype = 'sha'
-        repo_2 = mock.Mock(spec=Repository)
-        repo_2.id = "test_repo_for_export_2"
-        repo_2.working_dir = self.repo_working_dir
-        repo_2.checksumtype = 'sha'
-        sync_conduit = importer_mocks.get_sync_conduit(type_id=TYPE_ID_RPM, existing_units=[], pkg_dir=self.pkg_dir)
-        config = importer_mocks.get_basic_config(feed_url=PULP_UNITTEST_REPO_URL)
-        importerRPM = importer_rpm.ImporterRPM()
-        status, summary, details = importerRPM.sync(repo_1, sync_conduit, config)
-        status, summary, details = importerRPM.sync(repo_2, sync_conduit, config)
-        unit_key_a = {
-            'id' : '','name' :'pulp-dot-2.0-test', 'version' :'0.1.2', 'release' : '1.fc11', 'epoch':'0',
-            'arch' : 'x86_64', 'checksumtype' : 'sha256',
-            'checksum': '435d92e6c09248b501b8d2ae786f92ccfad69fab8b1bc774e2b66ff6c0d83979', 'type_id' : 'rpm'}
-        unit_a = Unit(TYPE_ID_RPM, unit_key_a, {'updated' : ''}, '')
-        unit_a.storage_path = "%s/pulp-dot-2.0-test/0.1.2/1.fc11/x86_64/435d92e6c09248b501b8d2ae786f92ccfad69fab8b1bc774e2b66ff6c0d83979/pulp-dot-2.0-test-0.1.2-1.fc11.x86_64.rpm" % self.pkg_dir
-        unit_key_b = {'id' : '', 'name' :'pulp-test-package', 'version' :'0.2.1', 'release' :'1.fc11', 'epoch':'0','arch' : 'x86_64', 'checksumtype' :'sha256',
-                      'checksum': '4dbde07b4a8eab57e42ed0c9203083f1d61e0b13935d1a569193ed8efc9ecfd7', 'type_id' : 'rpm', }
-        unit_b = Unit(TYPE_ID_RPM, unit_key_b, {'updated' : ''}, '')
-        unit_b.storage_path = "%s/pulp-test-package/0.2.1/1.fc11/x86_64/4dbde07b4a8eab57e42ed0c9203083f1d61e0b13935d1a569193ed8efc9ecfd7/pulp-test-package-0.2.1-1.fc11.x86_64.rpm" % self.pkg_dir
-        unit_key_c = {'id' : '', 'name' :'pulp-test-package', 'version' :'0.3.1', 'release' :'1.fc11', 'epoch':'0','arch' : 'x86_64', 'checksumtype' :'sha256',
-                      'checksum': '6bce3f26e1fc0fc52ac996f39c0d0e14fc26fb8077081d5b4dbfb6431b08aa9f', 'type_id' : 'rpm', }
-        unit_c = Unit(TYPE_ID_RPM, unit_key_c, {'updated' : ''}, '')
-        unit_c.storage_path =  "%s/pulp-test-package/0.3.1/1.fc11/x86_64/6bce3f26e1fc0fc52ac996f39c0d0e14fc26fb8077081d5b4dbfb6431b08aa9f/pulp-test-package-0.3.1-1.fc11.x86_64.rpm" % self.pkg_dir
-        existing_units = []
-        for unit in [unit_a, unit_b, unit_c]:
-            existing_units.append(unit)
-        sync_conduit = importer_mocks.get_sync_conduit(type_id=TYPE_ID_RPM, existing_units=existing_units, pkg_dir=self.pkg_dir)
-        importerErrata = errata.ImporterErrata()
-        importerErrata.sync(repo_1, sync_conduit, config)
-        importerErrata.sync(repo_2, sync_conduit, config)
-
-        repo_group = mock.Mock(spec=RepositoryGroup)
-        repo_group.id = "test_group"
-        repo_group.repo_ids = [repo_1.id, repo_2.id]
-        repo_group.working_dir = self.group_working_dir
-        global progress_status
-        progress_status = None
-        def set_progress(progress):
-            global progress_status
-            progress_status = progress
-        publish_conduit = distributor_mocks.get_publish_conduit(existing_units=existing_units, pkg_dir=self.pkg_dir)
-        config = distributor_mocks.get_basic_config(https_publish_dir=self.https_publish_dir, http_publish_dir=self.http_publish_dir,
-            generate_metadata=True, http=True, https=False, iso_prefix="test-isos")
-        distributor = GroupISODistributor()
-        def cleanup(repo_working_dir):
-            return
-        iso_util.cleanup_working_dir.cleanup = mock.Mock()
-        iso_util.cleanup_working_dir.side_effect = cleanup
-        publish_conduit.set_progress = mock.Mock()
-        publish_conduit.set_progress.side_effect = set_progress
-        distributor.publish_group(repo_group, publish_conduit, config)
-        self.assertTrue("isos" in progress_status)
-        self.assertTrue(progress_status["isos"].has_key("state"))
-        self.assertEqual(progress_status["isos"]["state"], "FINISHED")
-
-        self.assertTrue(os.path.exists("%s/%s" % (self.http_publish_dir, repo_group.id)))
-        self.assertEquals(len(os.listdir(self.https_publish_dir)), 0)
-        isos_list = os.listdir("%s/%s" % (self.http_publish_dir, repo_group.id))
-        self.assertEqual(len(isos_list), 1)
-        # make sure the iso name defaults to repoid
-        self.assertTrue( isos_list[0].startswith("test-isos"))
 
     def test_publish_progress(self):
         global progress_status
