@@ -266,7 +266,7 @@ class TestSyncProgressReport(unittest.TestCase):
         self.assertEqual(report.traceback, None)
         self.assertEqual(report.num_isos, None)
         self.assertEqual(report.num_isos_finished, 0)
-        self.assertEqual(report.iso_error_messages, {})
+        self.assertEqual(report.iso_error_messages, [])
         self.assertEqual(report.total_bytes, None)
         self.assertEqual(report.finished_bytes, 0)
 
@@ -313,7 +313,7 @@ class TestSyncProgressReport(unittest.TestCase):
 
         report.add_failed_iso(iso, error_message)
 
-        self.assertEqual(report.iso_error_messages, {iso.name: error_message})
+        self.assertEqual(report.iso_error_messages, [{'name': iso.name, 'error': error_message}])
 
     def test_build_progress_report(self):
         """

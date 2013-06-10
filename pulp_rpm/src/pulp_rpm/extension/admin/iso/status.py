@@ -56,11 +56,12 @@ class ISOStatusRenderer(StatusRenderer):
         if (self._sync_state == sync_report.STATE_MANIFEST_IN_PROGRESS and
                 sync_report.state != sync_report.STATE_MANIFEST_IN_PROGRESS):
             if sync_report.num_isos:
-                self.prompt.write(_('Downloading %(num)s ISOs...') % {'num': sync_report.num_isos}, tag='download_starting')
+                self.prompt.write(_('Downloading %(num)s ISOs...') % {'num': sync_report.num_isos},
+                                  tag='download_starting')
                 self._sync_state = sync_report.STATE_ISOS_IN_PROGRESS
             else:
-                self.prompt.render_success_message(_('There are no ISOs that need to be downloaded.'),
-                                                   tag='none_to_download')
+                self.prompt.render_success_message(
+                    _('There are no ISOs that need to be downloaded.'), tag='none_to_download')
                 self._sync_state = sync_report.STATE_COMPLETE
 
         if self._sync_state == sync_report.STATE_ISOS_IN_PROGRESS:
@@ -68,7 +69,8 @@ class ISOStatusRenderer(StatusRenderer):
                 runtime = (datetime.utcnow() -
                            sync_report.state_times[sync_report.STATE_MANIFEST_IN_PROGRESS])
                 runtime = (runtime.days * 3600 * 24) + runtime.seconds
-                average_speed = human_readable_bytes(sync_report.finished_bytes/runtime) if runtime else 0
+                average_speed = human_readable_bytes(sync_report.finished_bytes/runtime) \
+                    if runtime else 0
                 bar_message = _("ISOs: %(num_complete)s/%(num_total)s\tData: "
                                 "%(bytes_complete)s/%(bytes_total)s\tAvg: %(speed)s/s")
                 bar_message = bar_message % {
@@ -81,15 +83,18 @@ class ISOStatusRenderer(StatusRenderer):
             if sync_report.state != sync_report.STATE_ISOS_IN_PROGRESS:
                 self.prompt.write('\n')
                 if sync_report.state == sync_report.STATE_COMPLETE:
-                    msg = _('Successfully downloaded %(num)s ISOs.') % {'num': sync_report.num_isos_finished}
+                    msg = _('Successfully downloaded %(num)s ISOs.') % {
+                        'num': sync_report.num_isos_finished}
                     self.prompt.render_success_message(msg, tag='download_success')
                 else:
                     msg = _('Failed to retrieve %(num)s ISOs.')
                     msg = msg % {'num': sync_report.num_isos - sync_report.num_isos_finished}
                     self.prompt.render_failure_message(msg, tag='download_failed')
-                    for name, error_message in sync_report.iso_error_messages.items():
+                    for failed_iso in sync_report.iso_error_messages:
                         self.prompt.render_failure_message(
-                            '\t%(name)s: %(msg)s' % {'name': name, 'msg': error_message}, tag='iso_error_msg')
+                            '\t%(name)s: %(msg)s' % {
+                                'name': failed_iso['name'], 'msg': failed_iso['error']},
+                                tag='iso_error_msg')
                 self._sync_state = sync_report.state
 
     def _display_manifest_sync_report(self, sync_report):
