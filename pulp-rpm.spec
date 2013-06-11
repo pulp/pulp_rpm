@@ -18,7 +18,7 @@
 
 Name: pulp-rpm
 Version: 2.2.0
-Release: 0.2.beta%{?dist}
+Release: 0.3.beta%{?dist}
 Summary: Support for RPM content in the Pulp platform
 Group: Development/Languages
 License: GPLv2
@@ -282,6 +282,44 @@ A collection of yum plugins supplementing Pulp consumer operations.
 
 
 %changelog
+* Tue Jun 11 2013 Jeff Ortel <jortel@redhat.com> 2.2.0-0.3.beta
+- 972911 - migration 0010 now works. Had to account for cases where a
+  provide/require had already been converted, and cases where encoding was non-
+  ASCII. (mhrivnak@redhat.com)
+- 962941 - Don't use ISO names as keys in the progress report.
+  (rbarlow@redhat.com)
+- 971953 - Work around to limit RAM usage during RPM removal
+  (jason.dobies@redhat.com)
+- 970795 - Make sure the publishing build directory is empty before publishing
+  ISOs. (rbarlow@redhat.com)
+- 971161 - Added distribution failed state rendering that was removed since 2.1
+  (jason.dobies@redhat.com)
+- 955700 - Merge commit 'ba158afb1960799fb8f0dd458f5da21dfe936507' into pulp
+  (skarmark@redhat.com)
+- 971200 - Fixed pagination of iterables so that a non-generator doesn't cause
+  an infinite loop. (mhrivnak@redhat.com)
+- 969529 - Remove the content-unit option in addition to the type option
+  (jason.dobies@redhat.com)
+- 971154 - Add an uploads section with appropriate commands to the ISO CLI.
+  (rbarlow@redhat.com)
+- 971167 - during repo sync, before each RPM's XML snippet from primary.xml
+  gets saved to the database, the <location/> tag is modified so that the href
+  attribute contains only the file name, and no other leading path or URL
+  elements. This matches the expectation that files are published at the root
+  of the repository. (mhrivnak@redhat.com)
+- 971157 - the new yum importer can now at sync time skip the four types
+  mentioned in the --skip option of the pulp-admin rpm repo create command.
+  Those types are rpm, drpm, erratum, and distribution. (mhrivnak@redhat.com)
+- 971060 - fixing copy of distributions. Also had to fix the text output of a
+  successful command, which was incorrectly displaying the distribution
+  identity. (mhrivnak@redhat.com)
+- 970777 - the new importer no longer looks for the non-existant CLI option
+  --copy-children during a copy operation. (mhrivnak@redhat.com)
+- 923334 - fix processing of task.result and restructure command to work with a
+  list of tasks. (jortel@redhat.com)
+- 955700 - Added all command to pulp-admin rpm repo copy to copy all content
+  units and unit tests for the same (skarmark@redhat.com)
+
 * Thu Jun 06 2013 Jeff Ortel <jortel@redhat.com> 2.2.0-0.2.beta
 - 969579 - Further corrections to the deps for yumplugins
   (jason.dobies@redhat.com)
