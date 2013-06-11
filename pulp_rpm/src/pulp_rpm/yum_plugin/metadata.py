@@ -23,14 +23,15 @@ import tempfile
 import time
 
 import rpmUtils
+import yum
 from createrepo import MetaDataGenerator, MetaDataConfig
 from createrepo import yumbased, GzipFile
 
-from pulp_rpm.yum_plugin import util
 from pulp.common.util import encode_unicode, decode_unicode
-import yum
+from pulp.plugins.conduits.mixins import MultipleRepoUnitsMixin, SingleRepoUnitsMixin
 from pulp.server.db.model.criteria import UnitAssociationCriteria
 from pulp_rpm.common.ids import TYPE_ID_RPM, TYPE_ID_SRPM, TYPE_ID_YUM_REPO_METADATA_FILE
+from pulp_rpm.yum_plugin import util
 
 _LOG = util.getLogger(__name__)
 __yum_lock = threading.Lock()
@@ -843,7 +844,7 @@ xmlns:rpm="http://linux.duke.edu/metadata/rpm" packages="%s"> \n""" % self.unit_
         self.merge_custom_repodata()
 
 
-def generate_yum_metadata(repo_dir, publish_conduit, config, progress_callback=None,
+def generate_yum_metadata(repo_id, repo_dir, publish_conduit, config, progress_callback=None,
                           is_cancelled=False, group_xml_path=None, updateinfo_xml_path=None, repo_scratchpad=None, limit=500):
     """
       build all the necessary info and invoke createrepo to generate metadata
@@ -891,7 +892,7 @@ def generate_yum_metadata(repo_dir, publish_conduit, config, progress_callback=N
     #if repo_scratchpad.has_key("repodata"):
     #    custom_metadata = repo_scratchpad["repodata"]
     # custom metadata files are now first-class content units
-    custom_metadata = generate_custom_metadata_dict(publish_conduit)
+    custom_metadata = generate_custom_metadata_dict(repo_id, publish_conduit)
     start = time.time()
     try:
         set_progress("metadata", metadata_progress_status, progress_callback)
@@ -949,18 +950,28 @@ def generate_yum_metadata(repo_dir, publish_conduit, config, progress_callback=N
     return True, []
 
 
-def generate_custom_metadata_dict(publish_conduit):
+def generate_custom_metadata_dict(repo_id, publish_conduit):
     """
     Generate the expected custom metadata dictionary from the yum repo metadata
     content units.
 
+    :param repo_id: repository's unique identifier
+    :type repo_id: basestring
+
     :param publish_conduit: publish conduit
     :type publish_conduit: pulp.plugins.conduits.repo_publish.RepoPublishConduit
+
     :return: dictionary of data_type: file contents
     :rtype: dict
     """
     criteria = UnitAssociationCriteria(type_ids=[TYPE_ID_YUM_REPO_METADATA_FILE])
-    units = publish_conduit.get_units(criteria)
+
+    if isinstance(publish_conduit, MultipleRepoUnitsMixin):
+        units = publish_conduit.get_units(repo_id, criteria)
+    elif isinstance(publish_conduit, SingleRepoUnitsMixin):
+        units = publish_conduit.get_units(criteria)
+    else:
+        raise TypeError('Publish conduit not a subclass of a repo units mixin')
 
     if not units:
         return {}

@@ -467,7 +467,7 @@ class YumDistributor(Distributor):
             metadata_status, metadata_errors = metadata.generate_metadata(
                 repo.working_dir, publish_conduit, config, progress_callback, groups_xml_path)
         else:
-            metadata_status, metadata_errors = metadata.generate_yum_metadata(repo.working_dir, publish_conduit, config,
+            metadata_status, metadata_errors = metadata.generate_yum_metadata(repo.id, repo.working_dir, publish_conduit, config,
                 progress_callback, is_cancelled=self.canceled, group_xml_path=groups_xml_path, updateinfo_xml_path=updateinfo_xml_path,
                 repo_scratchpad=publish_conduit.get_repo_scratchpad())
 

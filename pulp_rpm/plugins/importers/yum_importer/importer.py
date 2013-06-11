@@ -752,7 +752,7 @@ class YumImporter(Importer):
     def _generate_metadata(self, repo, conduit, config):
         _LOG.info("Generating metadata for source repo %s" % repo.id)
         metadata_status, metadata_errors = metadata.generate_yum_metadata(
-            os.path.join(repo.working_dir, repo.id), conduit, config,
+            repo.id, os.path.join(repo.working_dir, repo.id), conduit, config,
             is_cancelled=self.canceled, repo_scratchpad=conduit.get_repo_scratchpad())
         _LOG.debug("metadata generation complete; metadata status : %s; errors : %s" %
                   (metadata_status, metadata_errors))
