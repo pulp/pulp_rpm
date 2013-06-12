@@ -19,8 +19,8 @@ from pulp.client.commands.repo import cudl, sync_publish, upload as pulp_upload
 from pulp.client.upload import manager as upload_lib
 
 from pulp_rpm.common import ids
-from pulp_rpm.extension.admin.iso import contents, create_update, repo_list, status, sync_schedules
-from pulp_rpm.extension.admin.iso import contents, create_update, repo_list, status, sync_schedules, upload
+from pulp_rpm.extension.admin.iso import (contents, create_update, repo_list, status,
+                                          sync_schedules, upload)
 
 
 SECTION_PUBLISH = 'publish'
@@ -103,7 +103,7 @@ def add_schedules_section(context, parent_section):
 
     :param context: ClientContext containing the CLI instance being configured
     :type  context: pulp.client.extensions.core.ClientContext
-    :param parent_section: The parent CLI section that we wish to add the schedules 
+    :param parent_section: The parent CLI section that we wish to add the schedules
                            subsection to.
     :type  parent_section: pulp.client.extensions.extensions.PulpCliSection
     """
