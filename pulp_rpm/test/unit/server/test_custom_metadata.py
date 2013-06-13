@@ -28,7 +28,6 @@ sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)) + "/../../../plugi
 sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)) + "/../../../plugins/importers/")
 
 from yum_distributor.distributor import YumDistributor
-from yum_importer.importer import YumImporter
 
 import data_dir
 import http_static_test_server
@@ -109,50 +108,4 @@ class CustomMetadataTests(rpm_support_base.PulpRPMTests):
         prestodelta_file = os.path.basename(get_repomd_filetype_path(os.path.join(repodata_path, 'repomd.xml'), 'prestodelta'))
         prestodelta_path = os.path.join(repodata_path, prestodelta_file)
         self.assertTrue(os.path.exists(prestodelta_path))
-
-    def test_custom_metadata_sync(self):
-        importer = YumImporter()
-
-        repo = self._mock_repo('test-presto-delta-metadata')
-        sync_conduit = mock_conduits.repo_sync_conduit(self.content_dir)
-        config = mock_conduits.plugin_call_config(feed_url=TEST_DRPM_REPO_FEED, num_threads=1)
-
-        importer._sync_repo(repo, sync_conduit, config)
-
-        # make sure the unie was synced
-        criteria = UnitAssociationCriteria(type_ids=[TYPE_ID_YUM_REPO_METADATA_FILE])
-        metadata_units = sync_conduit.get_units(criteria)
-
-        self.assertEqual(len(metadata_units), 1)
-
-        unit = metadata_units[0]
-
-        self.assertEqual(unit.type_id, TYPE_ID_YUM_REPO_METADATA_FILE)
-        self.assertEqual(unit.unit_key['data_type'], 'prestodelta')
-
-    def test_custom_metadata_import_units(self):
-        importer = YumImporter()
-
-        src_repo = self._mock_repo('test-presto-delta-metadata-source')
-        dst_repo = self._mock_repo('test-presto-delta-metadata-destination')
-        source_units = self._test_drpm_repo_units()
-        import_unit_conduit = mock_conduits.import_unit_conduit(dst_repo.working_dir, source_units=source_units)
-        config = mock_conduits.plugin_call_config(copy_children=False)
-
-        importer.import_units(src_repo, dst_repo, import_unit_conduit, config)
-
-        # make sure the metadata unit was imported
-        criteria = UnitAssociationCriteria(type_ids=[TYPE_ID_YUM_REPO_METADATA_FILE])
-        metadata_units = import_unit_conduit.get_units(criteria)
-
-        self.assertEqual(len(metadata_units), 1)
-
-        unit = metadata_units[0]
-
-        self.assertEqual(unit.type_id, TYPE_ID_YUM_REPO_METADATA_FILE)
-        self.assertEqual(unit.unit_key['data_type'], 'prestodelta')
-
-        # make sure the unit was uniquely copied
-        prestodelta_path = os.path.join(dst_repo.working_dir, dst_repo.id, 'prestodelta.xml.gz')
-        self.assertTrue(os.path.exists(prestodelta_path), prestodelta_path)
 
