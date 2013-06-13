@@ -384,7 +384,7 @@ def associate_custom_metadata_files(repo, sync_conduit, config):
             # already processed or configured to be skip
             continue
 
-        ftype_file_name = util.get_repomd_filetype_path(repomd_file_path, ftype)
+        ftype_file_name = os.path.basename(util.get_repomd_filetype_path(repomd_file_path, ftype))
         ftype_file_path = os.path.join(importer_repodata_dir, ftype_file_name)
 
         unit_key = {'repo_id': repo.id, 'data_type': ftype}
