@@ -14,11 +14,19 @@
 import logging
 import shutil
 
+from xml.etree import cElementTree as ET
+
 from pulp.plugins.model import SyncReport
 from pulp.server.db.model.criteria import UnitAssociationCriteria
 
 from pulp_rpm.common import models
 from pulp_rpm.plugins.importers.yum.parse import rpm
+from pulp_rpm.plugins.importers.yum.repomd import packages, primary
+
+
+# this is required because some of the pre-migration XML tags use the "rpm"
+# namespace, which causes a parse error if that namespace isn't declared.
+FAKE_XML = '<?xml version="1.0" encoding="%(encoding)s"?><faketag xmlns:rpm="http://pulpproject.org">%(xml)s</faketag>'
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -70,6 +78,9 @@ def upload(repo, type_id, unit_key, metadata, file_path, conduit, config):
     # not all models have a relative path
     relative_path = getattr(model, 'relative_path', '')
 
+    # The provides and requires are not provided by the client, so extract them now
+    _update_provides_requires(model)
+
     # both of the below operations perform IO
     try:
         # init unit
@@ -88,6 +99,34 @@ def upload(repo, type_id, unit_key, metadata, file_path, conduit, config):
     # TODO: add more info to this report?
     report = SyncReport(True, 1, 0, 0, '', {})
     return report
+
+
+def _update_provides_requires(model):
+    """
+    Determines the provides and requires fields based on the RPM's XML snippet and updates
+    the model instance.
+    """
+
+    try:
+        # make a guess at the encoding
+        codec = 'UTF-8'
+        model.metadata['repodata']['primary'].encode(codec)
+    except UnicodeEncodeError:
+        # best second guess we have, and it will never fail due to the nature
+        # of the encoding.
+        codec = 'ISO-8859-1'
+        model.metadata['repodata']['primary'].encode(codec)
+    fake_xml = FAKE_XML % {'encoding': codec, 'xml': model.metadata['repodata']['primary']}
+    fake_element = ET.fromstring(fake_xml.encode(codec))
+    packages.strip_ns(fake_element)
+    primary_element = fake_element.find('package')
+    format_element = primary_element.find('format')
+    provides_element = format_element.find('provides')
+    requires_element = format_element.find('requires')
+    model.metadata['provides'] = map(primary._process_rpm_entry_element,
+                                     provides_element.findall('entry')) if provides_element else []
+    model.metadata['requires'] = map(primary._process_rpm_entry_element,
+                                     requires_element.findall('entry')) if requires_element else []
 
 
 def link_errata_to_rpms(conduit, errata_model, errata_unit):

@@ -16,12 +16,10 @@ from pulp.plugins.types import database as types_db
 from pulp.server.db import connection
 
 from pulp_rpm.common.models import RPM, SRPM
-from pulp_rpm.plugins.importers.yum.repomd import packages
+from pulp_rpm.plugins.importers.yum.repomd import packages, primary
 
 # this is required because some of the pre-migration XML tags use the "rpm"
 # namespace, which causes a parse error if that namespace isn't declared.
-from pulp_rpm.yum_plugin import util
-
 FAKE_XML = '<?xml version="1.0" encoding="%(encoding)s"?><faketag xmlns:rpm="http://pulpproject.org">%(xml)s</faketag>'
 
 
@@ -48,6 +46,8 @@ def _migrate_collection(type_id):
         packages.strip_ns(fake_element)
         primary_element = fake_element.find('package')
         format_element = primary_element.find('format')
+        provides_element = format_element.find('provides')
+        requires_element = format_element.find('requires')
 
         # add these attributes, which we previously didn't track in the DB.
         package['size'] = int(primary_element.find('size').attrib['package'])
@@ -58,29 +58,12 @@ def _migrate_collection(type_id):
         # re-generate the raw XML without the pesky "rpm" namespace
         package['repodata']['primary'] = packages.element_to_raw_xml(primary_element)
 
-        # re-format provides
-        package['provides'] = map(_reformat_provide_or_require, package.get('provides', []))
-        package['requires'] = map(_reformat_provide_or_require, package.get('requires', []))
+        # re-parse provides and requires. The format changed from 2.1, and the
+        # 2.1 upload workflow was known to produce invalid data for these fields
+        package['provides'] = map(primary._process_rpm_entry_element, provides_element.findall('entry')) if provides_element else []
+        package['requires'] = map(primary._process_rpm_entry_element, requires_element.findall('entry')) if requires_element else []
 
         collection.save(package, safe=True)
-
-
-def _reformat_provide_or_require(old_representation):
-    """
-    2.1 provide statements have the form: [ "name", "flags", [ "epoch", "version", "release"]]
-
-    :param old_representation:
-    :return:
-    """
-    if isinstance(old_representation, dict):
-        return old_representation
-    return {
-        'name': old_representation[0],
-        'flags': old_representation[1],
-        'epoch': old_representation[2][0],
-        'version': old_representation[2][1],
-        'release': old_representation[2][2],
-    }
 
 
 if __name__ == '__main__':
