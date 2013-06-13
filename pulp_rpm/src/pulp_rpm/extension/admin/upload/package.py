@@ -167,8 +167,13 @@ def _generate_rpm_data(rpm_filename):
     metadata['relativepath'] = os.path.basename(rpm_filename)
     metadata['filename'] = os.path.basename(rpm_filename)
 
-    metadata['requires'] = [(r,) for r in headers['requires']]
-    metadata['provides'] = [(p,) for p in headers['provides']]
+    # This format is, and has always been, incorrect. As of the new yum importer, the
+    # plugin will generate these from the XML snippet because the API into RPM headers
+    # is atrocious. This is the end game for this functionality anyway, moving all of
+    # that metadata derivation into the plugin, so this is just a first step.
+    # I'm leaving these in and commented to show how not to do it.
+    # metadata['requires'] = [(r,) for r in headers['requires']]
+    # metadata['provides'] = [(p,) for p in headers['provides']]
 
     metadata['buildhost'] = headers['buildhost']
     metadata['license'] = headers['license']
