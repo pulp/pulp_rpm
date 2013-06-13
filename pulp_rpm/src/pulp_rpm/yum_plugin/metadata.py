@@ -971,7 +971,10 @@ def generate_custom_metadata_dict(repo_id, publish_conduit):
     elif isinstance(publish_conduit, SingleRepoUnitsMixin):
         units = publish_conduit.get_units(criteria)
     else:
-        raise TypeError('Publish conduit not a subclass of a repo units mixin')
+        # stupid and dangerous, but stems from a dynamic-typing abuse in the 
+        # ISO group distributor, where the publish_conduit passed into 
+        # generate_yum_metadata is not a conduit at all
+        units = []
 
     if not units:
         return {}
