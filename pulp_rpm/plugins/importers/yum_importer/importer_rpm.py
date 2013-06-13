@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright © 2012 Red Hat, Inc.
+# Copyright © 2012-2013 Red Hat, Inc.
 #
 # This software is licensed to you under the GNU General Public
 # License as published by the Free Software Foundation; either version
@@ -10,21 +10,24 @@
 # NON-INFRINGEMENT, or FITNESS FOR A PARTICULAR PURPOSE. You should
 # have received a copy of GPLv2 along with this software; if not, see
 # http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt.
+
 import gzip
+import itertools
 import os
+import Queue
+import shutil
 import threading
 import time
-import itertools
-import Queue
 
 from grinder.BaseFetch import BaseFetch
 from grinder.GrinderCallback import ProgressReport
 from grinder.RepoFetch import YumRepoGrinder
-from pulp.server.db.model.criteria import UnitAssociationCriteria
-from pulp_rpm.yum_plugin import util, metadata
 from yum_importer import distribution, drpm
+
 import pulp_rpm.common.constants as constants
-from pulp_rpm.common.ids import TYPE_ID_DRPM, TYPE_ID_DISTRO
+from pulp.server.db.model.criteria import UnitAssociationCriteria
+from pulp_rpm.common.ids import TYPE_ID_DISTRO, TYPE_ID_YUM_REPO_METADATA_FILE
+from pulp_rpm.yum_plugin import util, metadata
 
 _LOG = util.getLogger(__name__)
 
@@ -341,6 +344,64 @@ def preserve_custom_metadata_on_scratchpad(repo, sync_conduit, config):
     sync_conduit.set_repo_scratchpad(existing_scratch_pad)
 
 
+def associate_custom_metadata_files(repo, sync_conduit, config):
+    """
+    :param repo: metadata describing the repository
+    :type repo: pulp.server.content.plugins.data.Repository
+
+    :param sync_conduit: pulp sync api object
+    :type sync_conduit: pulp.plugins.conduits.repo_sync.RepoSyncConduit
+
+    :param config: plugin configuration
+    :type config: pulp.plugins.config.PluginCallConfiguration
+    """
+    _LOG.debug('Downloading custom metadata files for repo %s' % repo.id)
+
+    importer_repodata_dir = os.path.join(repo.working_dir, repo.id, 'repodata')
+    repomd_file_path = os.path.join(importer_repodata_dir, 'repomd.xml')
+
+    if not os.path.exists(repomd_file_path):
+        return
+
+    repomd_ftype_dict = util.get_repomd_filetype_dump(repomd_file_path)
+
+    if not repomd_ftype_dict:
+        # no ftypes defined or found
+        return
+
+    base_ftype_list = ('primary', 'primary_db', 'filelists_db', 'filelists',
+                       'other', 'other_db', 'group', 'group_gz', 'updateinfo',
+                       'updateinfo_db')
+
+    skip_ftype_list = metadata.convert_content_to_metadata_type(config.get('skip', []))
+
+    scratch_pad = sync_conduit.get_repo_scratchpad() or {}
+    repo_checksum_type = scratch_pad.get('checksum_type', 'sha256')
+
+    for ftype, ftype_data in repomd_ftype_dict.items():
+
+        if ftype in base_ftype_list or ftype in skip_ftype_list:
+            # already processed or configured to be skip
+            continue
+
+        ftype_file_name = os.path.basename(util.get_repomd_filetype_path(repomd_file_path, ftype))
+        ftype_file_path = os.path.join(importer_repodata_dir, ftype_file_name)
+
+        unit_key = {'repo_id': repo.id, 'data_type': ftype}
+        unit_metadata = {'checksum_type': repo_checksum_type,
+                         'checksum': ftype_data['checksum']}
+        relative_path = '%s/%s' % (repo.id, ftype_file_name)
+
+        unit = sync_conduit.init_unit(TYPE_ID_YUM_REPO_METADATA_FILE,
+                                      unit_key,
+                                      unit_metadata,
+                                      relative_path)
+
+        shutil.copyfile(ftype_file_path, unit.storage_path)
+
+        sync_conduit.save_unit(unit)
+
+
 class SaveUnitThread(threading.Thread):
     """
     Will handle looking up yum repo metadata on RPMs and save the unit to the sync_conduit.
@@ -367,7 +428,7 @@ class SaveUnitThread(threading.Thread):
         self.repo_dir = repo_dir
         self.repo_label = repo_label
         self.unit_lookup = {}
-        for key, u in unit_lookup.items():   
+        for key, u in unit_lookup.items():
             # Build lookup table based on 'relativepath'
             #  store the 'key' and 'unit' we will require 'key' later to note errors
             if u.metadata.has_key("relativepath"):
@@ -394,12 +455,12 @@ class SaveUnitThread(threading.Thread):
         #       there will be no more items being produced and sent to the Queue.
         #  2) The consumer thread, run() may have finished processing all items on Queue prior to us being called
         #       the consumer thread would be waiting on the Condition Variable at this point and will require a 'notify()'
-        #       to wake up. 
+        #       to wake up.
         #  3) The consumer thread will always process all items on the Queue before waiting on the Condition Variable.
         #       after processing all items, when Queue is empty it will then wait on the Condition Variable
         #  4) The consumer & producer will always aqcuire the lock on the Condition Variable before using the Queue
         #  5) If the consumer is woken up and the Queue is empty we assume no more items will be sent and we exit.
-        #  
+        #
         while self.running:
             self.queue_cond.acquire()
             try:
@@ -441,7 +502,7 @@ class SaveUnitThread(threading.Thread):
             try:
                 item = self.get_item()
             except Queue.Empty:
-                # Note this will only happen if we intend to stop this thread 
+                # Note this will only happen if we intend to stop this thread
                 # and 'finish()' signals the condition variable
                 _LOG.info("<%s> SaveThread: Queue empty will exit" % (self.repo_label))
                 break
@@ -463,7 +524,7 @@ class SaveUnitThread(threading.Thread):
             if item_type not in [BaseFetch.TREE_FILE]:
                 _LOG.info("<%s> SaveThread didn't find an entry for '%s' in the lookup table for new units." % (self.repo_label, relativepath))
                 _LOG.info("Will assume this item was a 'missing' item being re-fetched, therefore has already been saved in mongo.")
-            return 
+            return
         key = entry["key"]
         unit = entry["unit"]
         if not item["success"]:
@@ -487,7 +548,7 @@ class SaveUnitThread(threading.Thread):
         @param item consists of keys: ["name", "type", "relativepath", "success"]
                 name = item's filename
                 type = rpm, drpm, distribution, etc
-                relativepath = 
+                relativepath =
                 success = true on successful download, false on error
         @type item {}
         """
@@ -514,13 +575,13 @@ class SaveUnitThread(threading.Thread):
         Not all items we are notified about will be saved.
         Example:    YumImporter does not re-save a "missing" item.
                     A missing item, would be a RPM that was downloaded/saved prior
-                    yet for some reason it now no longer exists.  
+                    yet for some reason it now no longer exists.
                     Grinder will re-download the item, yet YumImporter will not re-save.
-                    This leave us open to a potential problem.  
+                    This leave us open to a potential problem.
                       What if an item does not change, but the metadata for it does change?
                       YumImporter would not account for this sort of difference.
         @param relativepath used as a key to find the corresponding unit instance
-        @type str  
+        @type str
         @return unit
         @rtype L{pulp.server.content.plugins.model.Unit}
         """
@@ -643,9 +704,9 @@ class ImporterRPM(object):
                 if hasattr(report, "item_complete") and report.item_complete:
                     # An item has completed downloading, this would not show up for an incremental progress download
                     saved_item = {
-                        "name": report.item_name, 
-                        "type": report.item_type, 
-                        "relativepath": report.item_relativepath, 
+                        "name": report.item_name,
+                        "type": report.item_type,
+                        "relativepath": report.item_relativepath,
                         "success": report.item_download_success}
                     self.save_thread.put_item(saved_item)
                 set_progress("content", status)
@@ -720,22 +781,21 @@ class ImporterRPM(object):
         _LOG.info("Finished download of %s in %s seconds.  %s" % (repo.id, end_download-start_download, report))
         # determine the checksum type from downloaded metadata
         set_repo_checksum_type(repo, sync_conduit, config)
-        # preserve the custom metadata on scratchpad to lookup downloaded data
-        preserve_custom_metadata_on_scratchpad(repo, sync_conduit, config)
+        associate_custom_metadata_files(repo, sync_conduit, config)
 
         self.save_thread.finish()  # Wait for all packages to be saved
         not_synced = self.save_thread.get_errors()
         saved_units = self.save_thread.get_saved()
         _LOG.info("SaveThread saved %s units, and reported %s as not_synced" % (len(saved_units), len(not_synced)))
-     
+
         self.process_distributions(sync_conduit, distro_info["new_distro_units"])
 
         # -------------- removed orphaned items ---------------
         removal_errors = self.process_orphan_items(repo, sync_conduit, skip_content_types, rpm_info, drpm_info, distro_info)
 
         # -------------- process the download results to a report ---------------
-        summary = self.build_summary(skip_content_types, not_synced, removal_errors, 
-            rpm_info, drpm_info, distro_info, 
+        summary = self.build_summary(skip_content_types, not_synced, removal_errors,
+            rpm_info, drpm_info, distro_info,
             all_new_distro_files, all_missing_distro_files)
         end = time.time()
         summary["time_total_sec"] = end - start
@@ -775,7 +835,7 @@ class ImporterRPM(object):
             else:
                 errors[key] = unit
         return errors
- 
+
     def process_orphan_items(self, repo, sync_conduit, skip_content_types, rpm_info, drpm_info, distro_info):
         errors = {}
         not_synced = []
@@ -801,11 +861,11 @@ class ImporterRPM(object):
                     unit_info = str(u.unit_key)
                     _LOG.exception("Unable to remove: %s" % (unit_info))
                     removal_errors.append((unit_info, str(e)))
-        return removal_errors    
-    
-    def build_summary(self, skip_content_types, not_synced, removal_errors, 
-            rpm_info, drpm_info, distro_info, 
-            all_new_distro_files, all_missing_distro_files):        
+        return removal_errors
+
+    def build_summary(self, skip_content_types, not_synced, removal_errors,
+            rpm_info, drpm_info, distro_info,
+            all_new_distro_files, all_missing_distro_files):
         # We are removing the older approach of using filter to create a new list and then checking the length
         # Instead we will use reduce and compute the length without requiring extra memory for an additional new list
         _LOG.info("not_synced = %s" % (not_synced))
@@ -814,7 +874,7 @@ class ImporterRPM(object):
         summary = {}
         summary["removal_errors"] = removal_errors
 
-        if 'rpm' not in skip_content_types:            
+        if 'rpm' not in skip_content_types:
             def check_rpm(accum, u):
                 if u.type_id == 'rpm':
                     return accum+1
@@ -833,13 +893,13 @@ class ImporterRPM(object):
             summary["num_resynced_srpms"] = reduce(check_srpm, rpm_info['missing_rpm_units'].values(), 0)
             summary["num_not_synced_srpms"] = reduce(check_srpm, not_synced, 0)
             summary["num_orphaned_srpms"] = reduce(check_srpm, rpm_info['orphaned_rpm_units'].values(), 0)
-  
+
         if 'drpm' not in skip_content_types:
             def check_drpm(accum, u):
                 if u.type_id == 'drpm':
                     return accum+1
                 return accum
-            summary["num_synced_new_drpms"] = len(drpm_info['new_drpm_units']) 
+            summary["num_synced_new_drpms"] = len(drpm_info['new_drpm_units'])
             summary["num_resynced_drpms"] = len(drpm_info['missing_drpm_units'])
             summary["num_orphaned_drpms"] = len(drpm_info['orphaned_drpm_units'])
             summary["num_not_synced_drpms"] = reduce(check_drpm, not_synced, 0)

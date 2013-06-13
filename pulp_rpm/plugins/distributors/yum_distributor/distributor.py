@@ -23,7 +23,7 @@ from pulp.plugins.distributor import Distributor
 from pulp.server.config import config as pulp_server_config
 from pulp.server.db.model.criteria import UnitAssociationCriteria
 from pulp_rpm.common.ids import TYPE_ID_DISTRO, TYPE_ID_DRPM, TYPE_ID_ERRATA, TYPE_ID_PKG_GROUP, TYPE_ID_PKG_CATEGORY,\
-        TYPE_ID_RPM, TYPE_ID_SRPM, TYPE_ID_DISTRIBUTOR_YUM
+        TYPE_ID_RPM, TYPE_ID_SRPM, TYPE_ID_DISTRIBUTOR_YUM, TYPE_ID_YUM_REPO_METADATA_FILE
 from pulp_rpm.yum_plugin import comps_util, util, metadata, updateinfo
 from pulp_rpm.repo_auth import protected_repo_utils, repo_cert_utils
 import pulp_rpm.common.constants as constants
@@ -91,7 +91,9 @@ class YumDistributor(Distributor):
         return {
             'id'           : TYPE_ID_DISTRIBUTOR_YUM,
             'display_name' : 'Yum Distributor',
-            'types'        : [TYPE_ID_RPM, TYPE_ID_SRPM, TYPE_ID_DRPM, TYPE_ID_ERRATA, TYPE_ID_DISTRO, TYPE_ID_PKG_CATEGORY, TYPE_ID_PKG_GROUP]
+            'types'        : [TYPE_ID_RPM, TYPE_ID_SRPM, TYPE_ID_DRPM, TYPE_ID_ERRATA,
+                              TYPE_ID_DISTRO, TYPE_ID_PKG_CATEGORY, TYPE_ID_PKG_GROUP,
+                              TYPE_ID_YUM_REPO_METADATA_FILE]
         }
 
     def validate_config(self, repo, config, related_repos):
@@ -465,7 +467,7 @@ class YumDistributor(Distributor):
             metadata_status, metadata_errors = metadata.generate_metadata(
                 repo.working_dir, publish_conduit, config, progress_callback, groups_xml_path)
         else:
-            metadata_status, metadata_errors = metadata.generate_yum_metadata(repo.working_dir, publish_conduit, config,
+            metadata_status, metadata_errors = metadata.generate_yum_metadata(repo.id, repo.working_dir, publish_conduit, config,
                 progress_callback, is_cancelled=self.canceled, group_xml_path=groups_xml_path, updateinfo_xml_path=updateinfo_xml_path,
                 repo_scratchpad=publish_conduit.get_repo_scratchpad())
 

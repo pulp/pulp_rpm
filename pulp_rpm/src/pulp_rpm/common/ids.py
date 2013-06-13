@@ -1,4 +1,4 @@
-# Copyright (c) 2012 Red Hat, Inc.
+# Copyright (c) 2012-2013 Red Hat, Inc.
 #
 # This software is licensed to you under the GNU General Public
 # License as published by the Free Software Foundation; either version
@@ -62,10 +62,13 @@ METADATA_PKG_CATEGORY = (
 
 TYPE_ID_DISTRO = "distribution"
 UNIT_KEY_DISTRO = ("id", "family", "variant", "version", "arch")
-METADATA_DISTRO = ("files",) 
+METADATA_DISTRO = ("files",)
 
 TYPE_ID_DRPM = "drpm"
 UNIT_KEY_DRPM = (
 "epoch", "version", "release", "filename", "checksum", "checksumtype")
 
 METADATA_DRPM = ("size", "sequence", "new_package", "relativepath")
+
+TYPE_ID_YUM_REPO_METADATA_FILE = 'yum_repo_metadata_file'
+
