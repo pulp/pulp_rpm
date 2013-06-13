@@ -14,6 +14,7 @@
 import copy
 import logging
 import os
+import pwd
 import shutil
 import uuid
 from xml.etree import ElementTree
@@ -24,6 +25,8 @@ from pulp.server.db.model.repository import Repo, RepoImporter, RepoContentUnit
 
 
 _LOG = logging.getLogger('pulp')
+
+_APACHE_USER = 'apache'
 
 _TYPE_YUM_IMPORTER = 'yum_importer'
 _TYPE_YUM_REPO_METADATA_FILE = 'yum_repo_metadata_file'
@@ -96,6 +99,7 @@ def migrate_repo(repo):
 
         content_unit = create_content_unit(ftype_data, relative_path)
         shutil.copyfile(source_path, content_unit['_storage_path'])
+        fix_owner(content_unit['_storage_path'])
         add_content_unit_to_repo(repo_id, content_unit)
 
         _LOG.info('Successfully added custom metadata %s to yum repository %s' % (ftype, repo_id))
@@ -136,7 +140,27 @@ def get_content_storage_path(relative_path):
     content_storage_dir = os.path.dirname(content_storage_path)
     if not os.path.exists(content_storage_dir):
         os.makedirs(content_storage_dir)
+        fix_owner(content_storage_path)
     return content_storage_path
+
+
+def fix_owner(start_path):
+    apache_user_info = pwd.getpwnam(_APACHE_USER)
+    apache_uid = apache_user_info.pw_uid
+    apache_gid = apache_user_info.pw_gid
+
+    if os.path.isfile(start_path):
+        os.chown(start_path, apache_uid, apache_gid)
+        return
+
+    # directory, so chown recursively
+    for root, dirs, files in os.walk(start_path):
+        for d in dirs:
+            path = os.path.join(root, d)
+            os.chown(path, apache_uid, apache_gid)
+        for f in files:
+            path = os.path.join(root, f)
+            os.chown(path, apache_uid, apache_gid)
 
 
 def add_content_unit_to_repo(repo_id, content_unit):
