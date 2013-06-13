@@ -140,7 +140,7 @@ def get_content_storage_path(relative_path):
     content_storage_dir = os.path.dirname(content_storage_path)
     if not os.path.exists(content_storage_dir):
         os.makedirs(content_storage_dir)
-        fix_owner(content_storage_path)
+        fix_owner(storage_dir)
     return content_storage_path
 
 
@@ -149,18 +149,16 @@ def fix_owner(start_path):
     apache_uid = apache_user_info.pw_uid
     apache_gid = apache_user_info.pw_gid
 
-    if os.path.isfile(start_path):
-        os.chown(start_path, apache_uid, apache_gid)
-        return
+    def _recursive_fix_owner(path):
 
-    # directory, so chown recursively
-    for root, dirs, files in os.walk(start_path):
-        for d in dirs:
-            path = os.path.join(root, d)
-            os.chown(path, apache_uid, apache_gid)
-        for f in files:
-            path = os.path.join(root, f)
-            os.chown(path, apache_uid, apache_gid)
+        os.chown(path, apache_uid, apache_gid)
+
+        if os.path.isdir(path):
+            contents = os.listdir(path)
+            for c in contents:
+                _recursive_fix_owner(os.path.join(path, c))
+
+    _recursive_fix_owner(start_path)
 
 
 def add_content_unit_to_repo(repo_id, content_unit):
