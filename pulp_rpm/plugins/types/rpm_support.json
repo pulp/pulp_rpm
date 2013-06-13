@@ -38,7 +38,7 @@
         "description" : "Yum Package group information",
         "unit_key" :
             ["id", "repo_id"],
-        "search_indexes" : 
+        "search_indexes" :
             ["id", "repo_id", "name", "mandatory_package_names", "conditional_package_names",
             "optional_package_names", "default_package_names"]
     },
@@ -49,7 +49,7 @@
         "description" : "Yum Package category information",
         "unit_key" :
             ["id", "repo_id"],
-        "search_indexes" : 
+        "search_indexes" :
             ["id", "repo_id", "name", "packagegroupids"]
     },
 
@@ -74,5 +74,15 @@
         "search_indexes" :
                 ["name", "epoch", "version", "release", "arch", "filename", "checksum",
                  "checksumtype", "version_sort_index", ["version_sort_index", "release_sort_index"]]
+    },
+
+    {
+        "id" : "yum_repo_metadata_file",
+        "display_name" : "YUM Repository Metadata File",
+        "description" : "YUM Repository Metadata File",
+        "unit_key" :
+            ["repo_id", "data_type"],
+        "search_indexes" :
+            ["data_type"]
     }
 ]}
