@@ -781,10 +781,6 @@ class ImporterRPM(object):
         _LOG.info("Finished download of %s in %s seconds.  %s" % (repo.id, end_download-start_download, report))
         # determine the checksum type from downloaded metadata
         set_repo_checksum_type(repo, sync_conduit, config)
-        # (XXX remove me) preserve the custom metadata on scratchpad to lookup downloaded data
-        #preserve_custom_metadata_on_scratchpad(repo, sync_conduit, config)
-        # custom metadata files are now associated with the repo as first-class
-        # content units
         associate_custom_metadata_files(repo, sync_conduit, config)
 
         self.save_thread.finish()  # Wait for all packages to be saved

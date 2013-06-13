@@ -887,11 +887,6 @@ def generate_yum_metadata(repo_id, repo_dir, publish_conduit, config, progress_c
         # basically turned off now, and basically ignored.
         skip_metadata_types.append('pkgtags')
     checksum_type = repo_scratchpad.get('checksum_type', DEFAULT_CHECKSUM)
-    # (XXX remove me)
-    #custom_metadata = {}
-    #if repo_scratchpad.has_key("repodata"):
-    #    custom_metadata = repo_scratchpad["repodata"]
-    # custom metadata files are now first-class content units
     custom_metadata = generate_custom_metadata_dict(repo_id, publish_conduit)
     start = time.time()
     try:
@@ -971,8 +966,8 @@ def generate_custom_metadata_dict(repo_id, publish_conduit):
     elif isinstance(publish_conduit, SingleRepoUnitsMixin):
         units = publish_conduit.get_units(criteria)
     else:
-        # stupid and dangerous, but stems from a dynamic-typing abuse in the 
-        # ISO group distributor, where the publish_conduit passed into 
+        # stupid and dangerous, but stems from a dynamic-typing abuse in the
+        # ISO group distributor, where the publish_conduit passed into
         # generate_yum_metadata is not a conduit at all
         units = []
 
