@@ -50,6 +50,7 @@ def inventory_custom_metadata():
 
     for repo in repo_list:
         migrate_repo(repo)
+        remove_repodata_from_scratchpad(repo['id'])
 
 
 def migrate_repo(repo):
@@ -96,7 +97,6 @@ def migrate_repo(repo):
         content_unit = create_content_unit(ftype_data, relative_path)
         shutil.copyfile(source_path, content_unit['_storage_path'])
         add_content_unit_to_repo(repo_id, content_unit)
-        remove_repodata_from_scratchpad(repo_id)
 
         _LOG.info('Successfully added custom metadata %s to yum repository %s' % (ftype, repo_id))
 
