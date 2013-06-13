@@ -67,11 +67,11 @@ def migrate_repo(repo):
     ftype_contents_dict = scratch_pad[_REPODATA]
 
     working_dir = importer_working_dir(_TYPE_YUM_IMPORTER, repo_id)
-    repodata_dir = os.path.join(working_dir, _REPODATA)
+    repodata_dir = os.path.join(working_dir, repo_id, _REPODATA)
     repomd_file_path = os.path.join(repodata_dir, _REPOMD_FILE)
 
     if not os.path.exists(repomd_file_path):
-        _LOG.info('Yum repository %s has not %s, cannot inventory custom metadata' % (repo_id, _REPOMD_FILE))
+        _LOG.info('Yum repository %s has no %s, cannot inventory custom metadata' % (repo_id, repomd_file_path))
         return
 
     ftype_dict = parse_repomd_xml(repomd_file_path, _BASE_FTYPE_LIST)
@@ -150,7 +150,7 @@ def remove_repodata_from_scratchpad(repo_id):
     repo_collection = Repo.get_collection()
     repo = repo_collection.find_one({'id': repo_id}, fields=['scratchpad'])
     repo['scratchpad'].pop('repodata', None)
-    repo_collection.update({'id': repo['id']}, {'$set': {'scratchpad': repo['scratchpad']}}, safe=True)
+    repo_collection.update({'id': repo_id}, {'$set': {'scratchpad': repo['scratchpad']}}, safe=True)
 
 # -- repodata.xml parsing ------------------------------------------------------
 
