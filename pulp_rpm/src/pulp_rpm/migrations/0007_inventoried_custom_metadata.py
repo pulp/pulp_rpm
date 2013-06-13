@@ -49,6 +49,11 @@ def inventory_custom_metadata():
         _LOG.debug('No yum repositories found to inventory custom metadata on')
 
     for repo in repo_list:
+        migrate_repo(repo)
+
+
+def migrate_repo(repo):
+
         repo_id = repo['id']
 
         _LOG.info('Inventorying custom metadata for yum repository %s' % repo_id)
@@ -57,7 +62,7 @@ def inventory_custom_metadata():
 
         if _REPODATA not in scratch_pad:
             _LOG.debug('Yum repository %s has no custom metadata' % repo_id)
-            continue
+            return
 
         ftype_contents_dict = scratch_pad[_REPODATA]
 
@@ -67,7 +72,7 @@ def inventory_custom_metadata():
 
         if not os.path.exists(repomd_file_path):
             _LOG.debug('Yum repository %s has not %s, cannot inventory custom metadata' % (repo_id, _REPOMD_FILE))
-            continue
+            return
 
         ftype_dict = parse_repomd_xml(repomd_file_path, _BASE_FTYPE_LIST)
 
@@ -158,7 +163,7 @@ _CHECKSUM_TAG = '{%s}checksum' % _SPEC_URL
 _DATA_SKEL = {'data_type': None,
               'relative_path': None,
               'checksum_type': None,
-              'checksm': None}
+              'checksum': None}
 
 
 def parse_repomd_xml(repomd_file_path, skip_data_types=None):
