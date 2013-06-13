@@ -46,7 +46,7 @@ def inventory_custom_metadata():
     repo_list = repositories_with_yum_importers()
 
     if not repo_list:
-        _LOG.debug('No yum repositories found to inventory custom metadata on')
+        _LOG.info('No yum repositories found to inventory custom metadata on')
 
     for repo in repo_list:
         migrate_repo(repo)
@@ -54,51 +54,51 @@ def inventory_custom_metadata():
 
 def migrate_repo(repo):
 
-        repo_id = repo['id']
+    repo_id = repo['id']
 
-        _LOG.info('Inventorying custom metadata for yum repository %s' % repo_id)
+    _LOG.info('Inventorying custom metadata for yum repository %s' % repo_id)
 
-        scratch_pad = repo['scratchpad']
+    scratch_pad = repo['scratchpad']
 
-        if _REPODATA not in scratch_pad:
-            _LOG.debug('Yum repository %s has no custom metadata' % repo_id)
-            return
+    if _REPODATA not in scratch_pad:
+        _LOG.info('Yum repository %s has no custom metadata' % repo_id)
+        return
 
-        ftype_contents_dict = scratch_pad[_REPODATA]
+    ftype_contents_dict = scratch_pad[_REPODATA]
 
-        working_dir = importer_working_dir(_TYPE_YUM_IMPORTER, repo_id)
-        repodata_dir = os.path.join(working_dir, _REPODATA)
-        repomd_file_path = os.path.join(repodata_dir, _REPOMD_FILE)
+    working_dir = importer_working_dir(_TYPE_YUM_IMPORTER, repo_id)
+    repodata_dir = os.path.join(working_dir, _REPODATA)
+    repomd_file_path = os.path.join(repodata_dir, _REPOMD_FILE)
 
-        if not os.path.exists(repomd_file_path):
-            _LOG.debug('Yum repository %s has not %s, cannot inventory custom metadata' % (repo_id, _REPOMD_FILE))
-            return
+    if not os.path.exists(repomd_file_path):
+        _LOG.info('Yum repository %s has not %s, cannot inventory custom metadata' % (repo_id, _REPOMD_FILE))
+        return
 
-        ftype_dict = parse_repomd_xml(repomd_file_path, _BASE_FTYPE_LIST)
+    ftype_dict = parse_repomd_xml(repomd_file_path, _BASE_FTYPE_LIST)
 
-        for ftype, ftype_data in ftype_dict.items():
+    for ftype, ftype_data in ftype_dict.items():
 
-            if ftype not in ftype_contents_dict:
-                # problematic, the custom metadata exists, but we don't have the contents
-                _LOG.debug('Skipping custom metadata %s on yum repository %s, contents not found' % (ftype, repo_id))
-                continue
+        if ftype not in ftype_contents_dict:
+            # problematic, the custom metadata exists, but we don't have the contents
+            _LOG.info('Skipping custom metadata %s on yum repository %s, contents not found' % (ftype, repo_id))
+            continue
 
-            ftype_data['repo_id'] = repo_id
+        ftype_data['repo_id'] = repo_id
 
-            ftype_file_name = os.path.basename(ftype_data.pop('relative_path'))
-            source_path = os.path.join(repodata_dir, ftype_file_name)
-            relative_path = '%s/%s' % (repo_id, ftype_file_name)
+        ftype_file_name = os.path.basename(ftype_data.pop('relative_path'))
+        source_path = os.path.join(repodata_dir, ftype_file_name)
+        relative_path = '%s/%s' % (repo_id, ftype_file_name)
 
-            if not os.path.exists(source_path):
-                _LOG.debug('Skipping custom metadata %s on yum repository %s, source file not found' % (ftype, repo_id))
-                continue
+        if not os.path.exists(source_path):
+            _LOG.info('Skipping custom metadata %s on yum repository %s, source file not found' % (ftype, repo_id))
+            continue
 
-            content_unit = create_content_unit(ftype_data, relative_path)
-            shutil.copyfile(source_path, content_unit['_storage_path'])
-            add_content_unit_to_repo(repo_id, content_unit)
-            remove_repodata_from_scratchpad(repo_id)
+        content_unit = create_content_unit(ftype_data, relative_path)
+        shutil.copyfile(source_path, content_unit['_storage_path'])
+        add_content_unit_to_repo(repo_id, content_unit)
+        remove_repodata_from_scratchpad(repo_id)
 
-            _LOG.debug('Successfully added custom metadata %s to yum repository %s' % (ftype, repo_id))
+        _LOG.info('Successfully added custom metadata %s to yum repository %s' % (ftype, repo_id))
 
 # -- pulp utilities ------------------------------------------------------------
 
