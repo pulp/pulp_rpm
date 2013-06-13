@@ -12,7 +12,7 @@
 # http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt.
 import os
 import mock
-from pulp.plugins.conduits.repo_publish import RepoPublishConduit
+from pulp.plugins.conduits.repo_publish import RepoGroupPublishConduit
 from pulp.plugins.config import PluginCallConfiguration
 from pulp.plugins.model import PublishReport, Unit
 
@@ -57,7 +57,7 @@ def get_publish_conduit(type_id=None, existing_units=None, pkg_dir=None, checksu
             scratchpad = {"checksum_type" : checksum_type, 'published_distributions' : {}}
         return scratchpad
 
-    publish_conduit = mock.Mock(spec=RepoPublishConduit)
+    publish_conduit = mock.Mock(spec=RepoGroupPublishConduit)
     publish_conduit.get_units = mock.Mock()
     publish_conduit.get_units.side_effect = get_units
     publish_conduit.build_failure_report = mock.Mock()

@@ -274,7 +274,7 @@ class GroupISODistributor(GroupDistributor):
             # generate metadata for the exported repo
             repo_scratchpad = publish_conduit.get_repo_scratchpad(repoid)
             metadata_status, metadata_errors = metadata.generate_yum_metadata(
-                repo_working_dir, rpm_units, config, progress_callback, is_cancelled=self.canceled,
+                repoid, repo_working_dir, rpm_units, config, progress_callback, is_cancelled=self.canceled,
                 group_xml_path=groups_xml_path, updateinfo_xml_path=updateinfo_xml_path, repo_scratchpad=repo_scratchpad)
             details["errors"] += metadata_errors
         # generate and publish isos

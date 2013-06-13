@@ -241,7 +241,7 @@ class ISODistributor(Distributor):
             self.summary = dict(self.summary.items() + rpm_summary.items() + distro_summary.items())
         # generate metadata
         metadata_status, metadata_errors = metadata.generate_yum_metadata(
-            repo_working_dir, publish_conduit, config, progress_callback, is_cancelled=self.cancelled,
+            repo.id, repo_working_dir, publish_conduit, config, progress_callback, is_cancelled=self.cancelled,
             group_xml_path=groups_xml_path, updateinfo_xml_path=updateinfo_xml_path, repo_scratchpad=publish_conduit.get_repo_scratchpad())
         _LOG.info("metadata generation complete at target location %s" % repo_working_dir)
         self.details["errors"] += metadata_errors
