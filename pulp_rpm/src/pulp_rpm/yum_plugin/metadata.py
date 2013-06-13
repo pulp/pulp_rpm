@@ -983,8 +983,10 @@ def generate_custom_metadata_dict(repo_id, publish_conduit):
         else:
             handle = open(u.storage_path, 'r')
 
-        contents = handle.read().decode('utf-8', 'replace')
-        handle.close()
+        try:
+            contents = handle.read().decode('utf-8', 'replace')
+        finally:
+            handle.close()
 
         custom_metadata[u.unit_key['data_type']] = contents
 
