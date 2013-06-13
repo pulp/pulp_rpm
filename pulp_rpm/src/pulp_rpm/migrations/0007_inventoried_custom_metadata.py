@@ -104,7 +104,7 @@ def migrate_repo(repo):
 
 def repositories_with_yum_importers():
     repo_importer_collection = RepoImporter.get_collection()
-    repo_yum_importers = repo_importer_collection.find({'importer_type_id': _TYPE_YUM_IMPORTER}, fields=['repod_id'])
+    repo_yum_importers = repo_importer_collection.find({'importer_type_id': _TYPE_YUM_IMPORTER}, fields=['repo_id'])
     yum_repo_ids = [i['repo_id'] for i in repo_yum_importers]
     repo_collection = Repo.get_collection()
     yum_repos = repo_collection.find({'id': {'$in': yum_repo_ids}}, fields=['id', 'scratchpad'])
