@@ -22,6 +22,7 @@ import mock
 from pulp.plugins.model import Repository
 from pulp.server.db.model.criteria import UnitAssociationCriteria
 from pulp_rpm.common.ids import TYPE_ID_YUM_REPO_METADATA_FILE
+from pulp_rpm.yum_plugin.util import get_repomd_filetype_path
 
 sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)) + "/../../../plugins/distributors/")
 sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)) + "/../../../plugins/importers/")
@@ -68,12 +69,9 @@ class CustomMetadataTests(rpm_support_base.PulpRPMTests):
     def _mock_repo(self, repo_id):
         repo = mock.Mock(spec=Repository)
         repo.id = repo_id
-        repo.working_dir = os.path.join(self.root_dir, 'working')
+        repo.working_dir = os.path.join(self.root_dir, 'working', repo_id)
         os.makedirs(repo.working_dir)
         return repo
-
-    def _plugin_config(self, feed_url):
-        return mock_conduits.plugin_call_config(feed_url=feed_url)
 
     def _test_drpm_repo_units(self):
         data_dir_path = data_dir.full_path_to_data_dir()
@@ -95,7 +93,21 @@ class CustomMetadataTests(rpm_support_base.PulpRPMTests):
 
         distributor.publish_repo(repo, publish_conduit, config)
 
-        prestodelta_path = os.path.join(self.content_dir, 'repodata', 'prestodelta.xml.gz')
+        # make sure the metadata unit was published
+        criteria = UnitAssociationCriteria(type_ids=[TYPE_ID_YUM_REPO_METADATA_FILE])
+        metadata_units = publish_conduit.get_units(criteria)
+
+        self.assertEqual(len(metadata_units), 1)
+
+        unit = metadata_units[0]
+
+        self.assertEqual(unit.type_id, TYPE_ID_YUM_REPO_METADATA_FILE)
+        self.assertEqual(unit.unit_key['data_type'], 'prestodelta')
+
+        # make sure the file was copied into place
+        repodata_path = os.path.join(self.content_dir, repo.id, 'repodata')
+        prestodelta_file = os.path.basename(get_repomd_filetype_path(os.path.join(repodata_path, 'repomd.xml'), 'prestodelta'))
+        prestodelta_path = os.path.join(repodata_path, prestodelta_file)
         self.assertTrue(os.path.exists(prestodelta_path))
 
     def test_custom_metadata_sync(self):
@@ -103,10 +115,11 @@ class CustomMetadataTests(rpm_support_base.PulpRPMTests):
 
         repo = self._mock_repo('test-presto-delta-metadata')
         sync_conduit = mock_conduits.repo_sync_conduit(self.content_dir)
-        config = self._plugin_config(TEST_DRPM_REPO_FEED)
+        config = mock_conduits.plugin_call_config(feed_url=TEST_DRPM_REPO_FEED, num_threads=1)
 
         importer._sync_repo(repo, sync_conduit, config)
 
+        # make sure the unie was synced
         criteria = UnitAssociationCriteria(type_ids=[TYPE_ID_YUM_REPO_METADATA_FILE])
         metadata_units = sync_conduit.get_units(criteria)
 
@@ -128,6 +141,18 @@ class CustomMetadataTests(rpm_support_base.PulpRPMTests):
 
         importer.import_units(src_repo, dst_repo, import_unit_conduit, config)
 
-        prestodelta_path = os.path.join(src_repo.working_dir, src_repo.id, 'prestodelta.xml.gz')
-        self.assertTrue(os.path.exists(prestodelta_path))
+        # make sure the metadata unit was imported
+        criteria = UnitAssociationCriteria(type_ids=[TYPE_ID_YUM_REPO_METADATA_FILE])
+        metadata_units = import_unit_conduit.get_units(criteria)
+
+        self.assertEqual(len(metadata_units), 1)
+
+        unit = metadata_units[0]
+
+        self.assertEqual(unit.type_id, TYPE_ID_YUM_REPO_METADATA_FILE)
+        self.assertEqual(unit.unit_key['data_type'], 'prestodelta')
+
+        # make sure the unit was uniquely copied
+        prestodelta_path = os.path.join(dst_repo.working_dir, dst_repo.id, 'prestodelta.xml.gz')
+        self.assertTrue(os.path.exists(prestodelta_path), prestodelta_path)
 
