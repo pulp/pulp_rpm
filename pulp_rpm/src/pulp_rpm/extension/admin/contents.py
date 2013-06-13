@@ -238,18 +238,21 @@ class PackageSearchCommand(BaseSearchCommand):
             return start + middle + tail
 
         for reformat_me in ['requires', 'provides']:
-            # If the --details flag was used, all the rpm data except for the association data is
-            # placed inside a metadata dict by out_func. See if the key is in rpm and act accordingly.
-            if ASSOCIATION_METADATA_KEYWORD in rpm:
-                related_rpm_list = rpm[ASSOCIATION_METADATA_KEYWORD][reformat_me]
-            else:
-                related_rpm_list = rpm[reformat_me]
+            # First, check to see if the field has been included in --fields.
+            if reformat_me in rpm or (ASSOCIATION_METADATA_KEYWORD in rpm and
+                                      reformat_me in rpm[ASSOCIATION_METADATA_KEYWORD]):
+                # If the --details flag was used, all the rpm data except for the association data is
+                # placed inside a metadata dict by out_func. See if the key is in rpm and act accordingly
+                if ASSOCIATION_METADATA_KEYWORD in rpm:
+                    related_rpm_list = rpm[ASSOCIATION_METADATA_KEYWORD][reformat_me]
+                else:
+                    related_rpm_list = rpm[reformat_me]
 
-            formatted_rpms = [process_one(r) for r in related_rpm_list]
-            if ASSOCIATION_METADATA_KEYWORD in rpm:
-                rpm[ASSOCIATION_METADATA_KEYWORD][reformat_me] = formatted_rpms
-            else:
-                rpm[reformat_me] = formatted_rpms
+                formatted_rpms = [process_one(r) for r in related_rpm_list]
+                if ASSOCIATION_METADATA_KEYWORD in rpm:
+                    rpm[ASSOCIATION_METADATA_KEYWORD][reformat_me] = formatted_rpms
+                else:
+                    rpm[reformat_me] = formatted_rpms
 
 
 class SearchRpmsCommand(PackageSearchCommand):
