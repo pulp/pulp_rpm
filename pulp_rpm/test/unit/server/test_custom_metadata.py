@@ -13,13 +13,18 @@
 
 import os
 import shutil
+import sys
 import tempfile
+from pprint import pprint
 
 import mock
 
 from pulp.plugins.model import Repository
 from pulp.server.db.model.criteria import UnitAssociationCriteria
 from pulp_rpm.common.ids import TYPE_ID_YUM_REPO_METADATA_FILE
+
+sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)) + "/../../../plugins/importers/")
+
 from yum_importer.importer import YumImporter
 
 import mock_conduits
@@ -57,13 +62,15 @@ class CustomMetadataTests(rpm_support_base.PulpRPMTests):
         feed_url = "http://repos.fedorapeople.org/repos/pulp/pulp/demo_repos/test_drpm_repo/"
         config = self._plugin_config(feed_url)
 
-        try:
-            importer._sync_repo(repo, sync_conduit, config)
-
-        except Exception, e:
-            self.fail(str(e))
+        importer._sync_repo(repo, sync_conduit, config)
 
         criteria = UnitAssociationCriteria(type_ids=[TYPE_ID_YUM_REPO_METADATA_FILE])
-        metadata_units = sync_conduit.get_unit(criteria)
+        metadata_units = sync_conduit.get_units(criteria)
 
-        self.assertTrue(len(metadata_units) > 1)
+        self.assertEqual(len(metadata_units), 1)
+
+        unit = metadata_units[0]
+
+        self.assertEqual(unit.type_id, TYPE_ID_YUM_REPO_METADATA_FILE)
+        self.assertEqual(unit.unit_key['data_type'], 'prestodelta')
+
