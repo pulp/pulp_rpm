@@ -283,7 +283,7 @@ class YumMetadataFile(Package):
         stored. Since we don't have the filename in the metadata, we can't
         derive the full path here.
         """
-        return os.path.join(self.repo_id)
+        return self.repo_id
 
 
 TYPE_MAP = {

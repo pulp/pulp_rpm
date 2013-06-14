@@ -83,7 +83,6 @@
         "unit_key" :
             ["repo_id", "data_type"],
         "search_indexes" :
-            ["repo_id", "data_type", "checksum", "checksum_type"]
+            ["data_type"]
     }
-
 ]}
