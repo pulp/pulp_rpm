@@ -199,8 +199,6 @@ class TestAddUploadsSection(rpm_support_base.PulpClientTests):
     @mock.patch('pulp_rpm.extension.admin.iso.structure._get_upload_manager')
     def test_add_uploads_section(self, _get_upload_manager):
         parent_section = self.cli.create_section('parent', 'Test parent section.')
-        fake_upload_manager = mock.MagicMock()
-        _get_upload_manager.return_value = fake_upload_manager
 
         structure.add_uploads_section(self.context, parent_section)
 
@@ -210,6 +208,7 @@ class TestAddUploadsSection(rpm_support_base.PulpClientTests):
 
         # Check out the upload commands
         self.assertEqual(len(uploads_section.commands), 4)
+        fake_upload_manager = _get_upload_manager.return_value
 
         upload_command = uploads_section.commands['upload']
         self.assertTrue(isinstance(upload_command, upload.UploadISOCommand))
