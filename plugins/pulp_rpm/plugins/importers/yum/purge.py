@@ -33,7 +33,8 @@ def purge_unwanted_units(metadata_files, conduit, config):
     :param conduit:         a conduit from the platform containing the get_units
                             and remove_unit methods.
     :type  conduit:         pulp.plugins.conduits.repo_sync.RepoSyncConduit
-    :param config:
+    :param config:          config object for this plugin
+    :type  config:          pulp.plugins.config.PluginCallConfiguration
     """
     if config.get_boolean(importer_constants.KEY_UNITS_REMOVE_MISSING) is True:
         remove_missing_rpms(metadata_files, conduit)
