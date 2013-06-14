@@ -13,6 +13,8 @@
 
 import copy
 import logging
+import os
+import shutil
 
 from pulp.server.db.model.criteria import UnitAssociationCriteria
 
@@ -273,7 +275,8 @@ def _associate_unit(dest_repo, import_conduit, unit):
     Associate one particular unit with the destination repository. There are
     behavioral exceptions based on type:
 
-    Group and Category units need to have their "repo_id" attribute set.
+    Group, Category and Yum Metadata File units need to have their "repo_id"
+    attribute set.
 
     RPMs are convenient to do all as one block, for the purpose of dependency
     resolution. So this method skips RPMs and lets them be done together by
@@ -297,6 +300,14 @@ def _associate_unit(dest_repo, import_conduit, unit):
     elif unit.type_id == models.RPM.TYPE:
         # copy will happen in one batch
         return unit
+    elif unit.type_id == models.YumMetadataFile.TYPE:
+        model = models.YumMetadataFile(unit.unit_key['data_type'], dest_repo.id, unit.metadata)
+        model.clean_metadata()
+        relative_path = os.path.join(model.relative_dir, os.path.basename(unit.storage_path))
+        new_unit = import_conduit.init_unit(model.TYPE, model.unit_key, model.metadata, relative_path)
+        shutil.copyfile(unit.storage_path, new_unit.storage_path)
+        import_conduit.save_unit(new_unit)
+        return new_unit
     else:
         import_conduit.associate_unit(unit)
         return unit

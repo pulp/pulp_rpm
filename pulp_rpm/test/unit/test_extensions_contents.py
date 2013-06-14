@@ -170,6 +170,162 @@ class PackageSearchCommandTests(PulpClientTests):
         self.assertEqual(test_rpm[contents.ASSOCIATION_METADATA_KEYWORD]['requires'][0],
                          'name.1 > version.1-release.1-epoch.1')
 
+    def test_reformat_rpm_no_provides(self):
+        """
+        When a user doesn't specify provides in the --fields option, reformat_rpm should not attempt to
+        reformat the field
+        """
+        # Setup a test rpm without a provides field
+        test_rpm = {
+            'requires': [
+                {'name': 'name.1',
+                 'version': 'version.1',
+                 'release': 'release.1',
+                 'epoch': 'epoch.1',
+                 'flags': 'GT'},
+            ]
+
+        }
+
+        # Test
+        command = contents.PackageSearchCommand(None, self.context)
+        command._reformat_rpm_provides_requires(test_rpm)
+
+        # Verify requires was reformatted into a single string
+        self.assertTrue(isinstance(test_rpm['requires'][0], basestring))
+        self.assertEqual(test_rpm['requires'][0], 'name.1 > version.1-release.1-epoch.1')
+        # Confirm there's no 'provides' field
+        self.assertFalse('provides' in test_rpm)
+
+    def test_reformat_rpm_no_requires(self):
+        """
+        When a user doesn't specify requires in the --fields option, reformat_rpm should not attempt to
+        reformat the field
+        """
+        # Set up an rpm without a requires field
+        test_rpm = {
+            'provides': [
+                {'name': 'name.1',
+                 'version': 'version.1',
+                 'release': 'release.1',
+                 'epoch': 'epoch.1',
+                 'flags': None},
+                {'name': 'name.2',
+                 'version': None,
+                 'release': None,
+                 'epoch': None,
+                 'flags': None},
+            ]
+        }
+
+        # Test
+        command = contents.PackageSearchCommand(None, self.context)
+        command._reformat_rpm_provides_requires(test_rpm)
+
+        # Verify
+        self.assertTrue(isinstance(test_rpm['provides'][0],
+                                   basestring))
+        self.assertTrue(isinstance(test_rpm['provides'][1],
+                                   basestring))
+
+        self.assertEqual(test_rpm['provides'][0],
+                         'name.1-version.1-release.1-epoch.1')
+        self.assertEqual(test_rpm['provides'][1],
+                         'name.2')
+        # Confirm there's no 'required' field
+        self.assertFalse('requires' in test_rpm)
+
+    def test_reformat_rpm_no_requires_provides(self):
+        """
+        When a user doesn't specify provides and requires in the --fields option, reformat_rpm should not
+        try and reformat those fields
+        """
+        test_rpm = {}
+
+        # Test
+        command = contents.PackageSearchCommand(None, self.context)
+        command._reformat_rpm_provides_requires(test_rpm)
+
+        # Verify no fields showed up uninvited
+        self.assertFalse('provides' in test_rpm)
+        self.assertFalse('requires' in test_rpm)
+
+    def test_reformat_rpm_no_requires_details(self):
+        """
+        Since details wraps the requires field in a metadata dict, test that when the requires field
+        isn't specified, reformat_rpm doesn't try and reformat the non-existent field.
+        """
+        test_rpm = {contents.ASSOCIATION_METADATA_KEYWORD: {
+            'provides': [
+                {'name': 'name.1',
+                 'version': 'version.1',
+                 'release': 'release.1',
+                 'epoch': 'epoch.1',
+                 'flags': None},
+                {'name': 'name.2',
+                 'version': None,
+                 'release': None,
+                 'epoch': None,
+                 'flags': None},
+            ]
+        }}
+
+        # Test
+        command = contents.PackageSearchCommand(None, self.context)
+        command._reformat_rpm_provides_requires(test_rpm)
+
+        # Verify
+        self.assertTrue(isinstance(test_rpm[contents.ASSOCIATION_METADATA_KEYWORD]['provides'][0],
+                                   basestring))
+        self.assertTrue(isinstance(test_rpm[contents.ASSOCIATION_METADATA_KEYWORD]['provides'][1],
+                                   basestring))
+        self.assertEqual(test_rpm[contents.ASSOCIATION_METADATA_KEYWORD]['provides'][0],
+                         'name.1-version.1-release.1-epoch.1')
+        self.assertEqual(test_rpm[contents.ASSOCIATION_METADATA_KEYWORD]['provides'][1],
+                         'name.2')
+        self.assertFalse('requires' in test_rpm[contents.ASSOCIATION_METADATA_KEYWORD])
+
+    def test_reformat_rpm_no_provides_details(self):
+        """
+        Since details wraps the provides field in a metadata dict, test that when the provides field
+        isn't specified, reformat_rpm doesn't try and reformat the non-existent field.
+        """
+        test_rpm = {contents.ASSOCIATION_METADATA_KEYWORD: {
+            'requires': [
+                {'name': 'name.1',
+                 'version': 'version.1',
+                 'release': 'release.1',
+                 'epoch': 'epoch.1',
+                 'flags': 'GT'},
+            ]
+        }}
+
+        # Test
+        command = contents.PackageSearchCommand(None, self.context)
+        command._reformat_rpm_provides_requires(test_rpm)
+
+        # Verify
+        self.assertTrue(isinstance(test_rpm[contents.ASSOCIATION_METADATA_KEYWORD]['requires'][0],
+                                   basestring))
+        self.assertEqual(test_rpm[contents.ASSOCIATION_METADATA_KEYWORD]['requires'][0],
+                         'name.1 > version.1-release.1-epoch.1')
+        self.assertFalse('provides' in test_rpm[contents.ASSOCIATION_METADATA_KEYWORD])
+
+    def test_reformat_rpm_no_requires_provides_details(self):
+        """
+        Test that reformat_rpm correctly handles no 'provides' or 'requires' fields inside the metadata
+        dict.
+        """
+        test_rpm = {contents.ASSOCIATION_METADATA_KEYWORD: {}}
+
+        # Test
+        command = contents.PackageSearchCommand(None, self.context)
+        command._reformat_rpm_provides_requires(test_rpm)
+
+        # Verify no fields showed up uninvited
+        self.assertFalse('provides' in test_rpm[contents.ASSOCIATION_METADATA_KEYWORD])
+        self.assertFalse('requires' in test_rpm[contents.ASSOCIATION_METADATA_KEYWORD])
+
 
 class SearchRpmsCommand(PulpClientTests):
 

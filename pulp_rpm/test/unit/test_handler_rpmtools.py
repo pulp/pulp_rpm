@@ -352,5 +352,5 @@ class TestProgressReport(unittest.TestCase):
             path = '/path/%s' % file
             cb.start(filename=path, basename=file, size=1024)
             self.assertEqual(pr.details['action'], 'Downloading')
-            self.assertEqual(pr.details['package'], '%s | 1.0 kB' % file)
+            self.assertEqual(pr.details['package'], '%s | 1.0 k' % file)
         self.assertEqual(len(pr.steps), 0)

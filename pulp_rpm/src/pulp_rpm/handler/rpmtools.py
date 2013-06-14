@@ -462,8 +462,9 @@ class DownloadCallback(DownloadBaseCallback):
         @param now: timestamp.
         @type now: float
         """
+        DownloadBaseCallback._do_start(self, now)
         action = 'Downloading'
-        package = ' | '.join((self._getName(), self.fsize))
+        package = ' | '.join((self._getName(), self.totSize))
         self.report.set_action(action, package)
 
 
