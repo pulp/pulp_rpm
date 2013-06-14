@@ -397,7 +397,10 @@ def associate_custom_metadata_files(repo, sync_conduit, config):
                                       unit_metadata,
                                       relative_path)
 
-        shutil.copyfile(ftype_file_path, unit.storage_path)
+        # The init_unit and save_unit calls are idempotent, but copying a file isn't.
+        # We still want to call them, just make sure this doesn't cause the copy to tank.
+        if not os.path.exists(unit.storage_path):
+            shutil.copyfile(ftype_file_path, unit.storage_path)
 
         sync_conduit.save_unit(unit)
 
