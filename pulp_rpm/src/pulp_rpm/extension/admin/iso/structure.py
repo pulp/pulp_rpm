@@ -15,12 +15,15 @@ from gettext import gettext as _
 import os
 
 from pulp.client.commands import unit
+from pulp.client.commands.options import OPTION_REPO_ID
 from pulp.client.commands.repo import cudl, sync_publish, upload as pulp_upload
+from pulp.client.commands.schedule import (
+    DeleteScheduleCommand, ListScheduleCommand, CreateScheduleCommand,
+    UpdateScheduleCommand, NextRunCommand, RepoScheduleStrategy)
 from pulp.client.upload import manager as upload_lib
 
 from pulp_rpm.common import ids
-from pulp_rpm.extension.admin.iso import contents, create_update, repo_list, status, sync_schedules
-from pulp_rpm.extension.admin.iso import contents, create_update, repo_list, status, sync_schedules, upload
+from pulp_rpm.extension.admin.iso import contents, create_update, repo_list, status, upload
 
 
 SECTION_PUBLISH = 'publish'
@@ -37,6 +40,12 @@ DESC_SCHEDULES = _('manage repository sync schedules')
 
 SECTION_SYNC = 'sync'
 DESC_SYNC = _('run, schedule, or view the status of sync tasks')
+
+DESC_SYNC_LIST = _('list scheduled sync operations')
+DESC_SYNC_CREATE = _('add new scheduled sync operations')
+DESC_SYNC_DELETE = _('delete sync schedules')
+DESC_SYNC_UPDATE = _('update existing schedules')
+DESC_SYNC_NEXT_RUN = _('display the next scheduled sync run for a repository')
 
 SECTION_UPLOADS = 'uploads'
 DESC_UPLOADS = _('upload ISOs into a repository')
@@ -103,17 +112,24 @@ def add_schedules_section(context, parent_section):
 
     :param context: ClientContext containing the CLI instance being configured
     :type  context: pulp.client.extensions.core.ClientContext
-    :param parent_section: The parent CLI section that we wish to add the schedules 
+    :param parent_section: The parent CLI section that we wish to add the schedules
                            subsection to.
     :type  parent_section: pulp.client.extensions.extensions.PulpCliSection
     """
     schedules_section = parent_section.create_subsection(SECTION_SCHEDULES, DESC_SCHEDULES)
 
-    schedules_section.add_command(sync_schedules.ISOCreateScheduleCommand(context))
-    schedules_section.add_command(sync_schedules.ISODeleteScheduleCommand(context))
-    schedules_section.add_command(sync_schedules.ISOListScheduleCommand(context))
-    schedules_section.add_command(sync_schedules.ISONextRunCommand(context))
-    schedules_section.add_command(sync_schedules.ISOUpdateScheduleCommand(context))
+    strategy = RepoScheduleStrategy(context.server.repo_sync_schedules, ids.TYPE_ID_IMPORTER_ISO)
+
+    list_command = ListScheduleCommand(context, strategy, description=DESC_SYNC_LIST)
+    create_command = CreateScheduleCommand(context, strategy, description=DESC_SYNC_CREATE)
+    delete_command = DeleteScheduleCommand(context, strategy, description=DESC_SYNC_DELETE)
+    update_command = UpdateScheduleCommand(context, strategy, description=DESC_SYNC_UPDATE)
+    next_command = NextRunCommand(context, strategy, description=DESC_SYNC_NEXT_RUN)
+
+    commands = (list_command, create_command, delete_command, update_command, next_command)
+    for command in commands:
+        command.add_option(OPTION_REPO_ID)
+        schedules_section.add_command(command)
 
 
 def add_sync_section(context, repo_section):
