@@ -196,7 +196,7 @@ class TestAddUploadsSection(rpm_support_base.PulpClientTests):
     """
     Test the add_uploads_section() function.
     """
-    @mock.patch('pulp_rpm.extension.admin.iso.structure._get_upload_manager')
+    @mock.patch('pulp_rpm.extension.admin.iso.structure._get_upload_manager', autospec=True)
     def test_add_uploads_section(self, _get_upload_manager):
         parent_section = self.cli.create_section('parent', 'Test parent section.')
 
