@@ -21,7 +21,7 @@ from pulp.client.upload.manager import UploadManager
 import mock
 
 from pulp_rpm.common import ids
-from pulp_rpm.extension.admin.iso import contents, create_update, repo_list, structure,upload
+from pulp_rpm.extension.admin.iso import contents, create_update, repo_list, structure, upload
 import rpm_support_base
 
 
