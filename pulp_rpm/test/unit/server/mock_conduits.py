@@ -116,7 +116,7 @@ def repo_group_publish_conduit(multiple_repo_scratchpads=None, group_distributor
 # -- sync conduits -------------------------------------------------------------
 
 def repo_sync_conduit(working_dir, repo_scratchpad=None, importer_scratchpad=None,
-                      existing_units=None, linked_units=None):
+                      existing_units=None, linked_units=None, repo_id=None):
 
     # closure variables
 
@@ -158,6 +158,7 @@ def repo_sync_conduit(working_dir, repo_scratchpad=None, importer_scratchpad=Non
     conduit.set_progress = mock.Mock(wraps=set_progress)
     conduit.search_all_units = mock.Mock(wraps=search_all_units)
     conduit.remove_unit = mock.Mock(wraps=remove_unit)
+    conduit.repo_id = repo_id
 
     return conduit
 

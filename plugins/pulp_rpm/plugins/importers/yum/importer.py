@@ -18,7 +18,7 @@ import os
 from pulp.plugins.importer import Importer
 from pulp.common.compat import json
 
-from pulp_rpm.common import ids
+from pulp_rpm.common import ids, models
 from pulp_rpm.plugins.importers.yum import sync, associate, upload, config_validate
 
 
@@ -57,7 +57,7 @@ class YumImporter(Importer):
             'types': [
                 ids.TYPE_ID_DISTRO, ids.TYPE_ID_DRPM, ids.TYPE_ID_ERRATA,
                 ids.TYPE_ID_PKG_GROUP, ids.TYPE_ID_PKG_CATEGORY, ids.TYPE_ID_RPM,
-                ids.TYPE_ID_SRPM,
+                ids.TYPE_ID_SRPM, models.YumMetadataFile.TYPE,
             ]
         }
 

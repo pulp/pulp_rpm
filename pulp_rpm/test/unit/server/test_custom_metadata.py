@@ -18,17 +18,17 @@ import sys
 import tempfile
 
 import mock
-
+from pulp.common.plugins import importer_constants
+from pulp_rpm.plugins.importers.yum.importer import YumImporter
 from pulp.plugins.model import Repository
 from pulp.server.db.model.criteria import UnitAssociationCriteria
+
 from pulp_rpm.common.ids import TYPE_ID_YUM_REPO_METADATA_FILE
 from pulp_rpm.yum_plugin.util import get_repomd_filetype_path
 
 sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)) + "/../../../plugins/distributors/")
-sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)) + "/../../../plugins/importers/")
 
 from yum_distributor.distributor import YumDistributor
-from yum_importer.importer import YumImporter
 
 import data_dir
 import http_static_test_server
@@ -38,8 +38,6 @@ import rpm_support_base
 
 TEST_DRPM_REPO_FEED = 'http://localhost:8088/%s/test_drpm_repo/published/test_drpm_repo/' % \
     data_dir.relative_path_to_data_dir()
-
-TEST_DRPM_REPO_REMOTE_FEED = 'http://repos.fedorapeople.org/repos/pulp/pulp/demo_repos/test_drpm_repo/'
 
 
 class CustomMetadataTests(rpm_support_base.PulpRPMTests):
@@ -114,12 +112,14 @@ class CustomMetadataTests(rpm_support_base.PulpRPMTests):
         importer = YumImporter()
 
         repo = self._mock_repo('test-presto-delta-metadata')
-        sync_conduit = mock_conduits.repo_sync_conduit(self.content_dir)
-        config = mock_conduits.plugin_call_config(feed_url=TEST_DRPM_REPO_FEED, num_threads=1)
+        sync_conduit = mock_conduits.repo_sync_conduit(self.content_dir, repo_id=repo.id)
+        config = mock_conduits.plugin_call_config(
+            **{importer_constants.KEY_FEED:TEST_DRPM_REPO_FEED,
+             importer_constants.KEY_MAX_DOWNLOADS:1})
 
-        importer._sync_repo(repo, sync_conduit, config)
+        importer.sync_repo(repo, sync_conduit, config)
 
-        # make sure the unie was synced
+        # make sure the unit was synced
         criteria = UnitAssociationCriteria(type_ids=[TYPE_ID_YUM_REPO_METADATA_FILE])
         metadata_units = sync_conduit.get_units(criteria)
 

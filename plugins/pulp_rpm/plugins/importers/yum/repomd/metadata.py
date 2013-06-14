@@ -96,6 +96,14 @@ class MetadataFiles(object):
     :ivar metadata: dictionary of the main metadata type keys to the corresponding file paths
     """
 
+    # these are metadata file types listed in "repomd" that we do not want to
+    # store as units
+    KNOWN_TYPES = set(['group', 'group_gz',
+                   'filelists', 'filelists_db',
+                   'other', 'other_db',
+                   'primary', 'primary_db',
+                   'updateinfo', 'updateinfo_db'])
+
     def __init__(self, repo_url, dst_dir, nectar_config):
         """
         :param repo_url:        URL for the base of a yum repository
