@@ -13,11 +13,11 @@
 
 import functools
 import logging
+import os
 import shutil
 import tempfile
 
 from pulp.common.plugins import importer_constants
-from pulp.plugins.model import SyncReport
 from pulp.plugins.util import nectar_config as nectar_utils
 
 from pulp_rpm.common import constants, models
@@ -200,9 +200,33 @@ class RepoSync(object):
         metadata_files.download_metadata_files()
         self.downloader = None
         metadata_files.generate_dbs()
+        self.import_unknown_metadata_files(metadata_files)
         # TODO: verify metadata
         #metadata_files.verify_metadata_files()
         return metadata_files
+
+    def import_unknown_metadata_files(self, metadata_files):
+        """
+        Import metadata files whose type is not known to us. These are any files
+        that we are not already parsing.
+
+        :param metadata_files:  object containing access to all metadata files
+        :type  metadata_files:  pulp_rpm.plugins.importers.yum.repomd.metadata.MetadataFiles
+        """
+        for metadata_type, file_info in metadata_files.metadata.iteritems():
+            if metadata_type not in metadata_files.KNOWN_TYPES:
+                unit_metadata = {
+                    'checksum': file_info['checksum']['hex_digest'],
+                    'checksum_type': file_info['checksum']['algorithm'],
+                }
+                model = models.YumMetadataFile(metadata_type,
+                                               self.sync_conduit.repo_id,
+                                               unit_metadata)
+                relative_path = os.path.join(model.relative_dir, os.path.basename(file_info['local_path']))
+                unit = self.sync_conduit.init_unit(models.YumMetadataFile.TYPE, model.unit_key,
+                                            model.metadata, relative_path)
+                shutil.copyfile(file_info['local_path'], unit.storage_path)
+                self.sync_conduit.save_unit(unit)
 
     def update_content(self, metadata_files):
         """

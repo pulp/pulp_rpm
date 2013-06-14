@@ -69,6 +69,17 @@ class Package(object):
 
         return cls(**unit_key)
 
+    def clean_metadata(self):
+        """
+        Iterate through each key in the "metadata" dict, and if it starts with
+        a "_", delete it. This is to clean out mongo-specific and platform-specific
+        data. In the future, this will likely go away if we more strongly define
+        which fields each model will hold.
+        """
+        for key in self.metadata.keys():
+            if key.startswith('_'):
+                del self.metadata[key]
+
     def __str__(self):
         return '%s: %s' % (self.TYPE, '-'.join(getattr(self, name) for name in self.UNIT_KEY_NAMES))
 
@@ -258,6 +269,23 @@ class PackageCategory(Package):
         return self.metadata.get('packagegroupids', [])
 
 
+class YumMetadataFile(Package):
+    UNIT_KEY_NAMES = ('data_type', 'repo_id')
+    TYPE = 'yum_repo_metadata_file'
+
+    def __init__(self, data_type, repo_id, metadata):
+        Package.__init__(self, locals())
+
+    @property
+    def relative_dir(self):
+        """
+        returns the relative path to the directory where the file should be
+        stored. Since we don't have the filename in the metadata, we can't
+        derive the full path here.
+        """
+        return self.repo_id
+
+
 TYPE_MAP = {
     Distribution.TYPE: Distribution,
     DRPM.TYPE: DRPM,
@@ -265,6 +293,7 @@ TYPE_MAP = {
     PackageCategory.TYPE: PackageCategory,
     PackageGroup.TYPE: PackageGroup,
     RPM.TYPE: RPM,
+    YumMetadataFile.TYPE: YumMetadataFile,
 }
 
 # put the NAMEDTUPLE attribute on each model class
