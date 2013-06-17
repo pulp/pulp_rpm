@@ -11,6 +11,7 @@
 # You should have received a copy of GPLv2 along with this software;
 # if not, see http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt
 
+import glob
 import os
 import pickle
 import shutil
@@ -24,7 +25,6 @@ from pulp.plugins.model import Repository
 from pulp.server.db.model.criteria import UnitAssociationCriteria
 
 from pulp_rpm.common.ids import TYPE_ID_YUM_REPO_METADATA_FILE
-from pulp_rpm.yum_plugin.util import get_repomd_filetype_path
 
 sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)) + "/../../../plugins/distributors/")
 
@@ -104,8 +104,10 @@ class CustomMetadataTests(rpm_support_base.PulpRPMTests):
 
         # make sure the file was copied into place
         repodata_path = os.path.join(self.content_dir, repo.id, 'repodata')
-        prestodelta_file = os.path.basename(get_repomd_filetype_path(os.path.join(repodata_path, 'repomd.xml'), 'prestodelta'))
-        prestodelta_path = os.path.join(repodata_path, prestodelta_file)
+        prestodelta_files = glob.glob(repodata_path + '/*prestodelta*')
+        self.assertEqual(len(prestodelta_files), 1)
+
+        prestodelta_path = os.path.join(repodata_path, prestodelta_files[0])
         self.assertTrue(os.path.exists(prestodelta_path))
 
     def test_custom_metadata_sync(self):
