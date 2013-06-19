@@ -13,6 +13,7 @@
 
 from cStringIO import StringIO
 from urlparse import urljoin
+import hashlib
 import math
 import os
 import shutil
@@ -44,6 +45,92 @@ class TestISO(unittest.TestCase):
         self.assertEqual(iso.size, 42)
         self.assertEqual(iso.checksum, 'checksum')
         self.assertEqual(iso._unit, None)
+
+    def test_calculate_checksum_empty_file(self):
+        """
+        Test the static calculate_checksum() method with an empty file.
+        """
+        fake_iso_data = ''
+        fake_iso_file = StringIO(fake_iso_data)
+
+        calculated_checksum = models.ISO.calculate_checksum(fake_iso_file)
+
+        # Let's calculate the expected checksum
+        hasher = hashlib.sha256()
+        hasher.update(fake_iso_data)
+        expected_checksum = hasher.hexdigest()
+
+        self.assertEqual(calculated_checksum, expected_checksum)
+
+    @mock.patch('pulp_rpm.common.models.CHECKSUM_CHUNK_SIZE', 8)
+    def test_calculate_checksum_large_file(self):
+        """
+        Test the static calculate_checksum() method with a file that's larger than CHECKSUM_CHUNK_SIZE. Instead
+        of testing with an actual large file, we've mocked CHECKSUM_CHUNK_SIZE to be 8 bytes, which is smaller
+        than our test file. This will ensure that we go through the while loop in calculate_checksum() more than
+        once.
+        """
+        fake_iso_data = 'I wish I were an ISO, but I am really a String. '
+        # Let's just make sure that the premise of the test is correct, that our test file is larger than the
+        # chunk size
+        self.assertTrue(len(fake_iso_data) > models.CHECKSUM_CHUNK_SIZE)
+        fake_iso_file = StringIO(fake_iso_data)
+        # Just for fun, to make sure the checksum calculator does seek to 0 as it should, let's seek to 42
+        fake_iso_file.seek(42)
+
+        calculated_checksum = models.ISO.calculate_checksum(fake_iso_file)
+
+        # Let's calculate the expected checksum
+        hasher = hashlib.sha256()
+        hasher.update(fake_iso_data)
+        expected_checksum = hasher.hexdigest()
+
+        self.assertEqual(calculated_checksum, expected_checksum)
+
+    def test_calculate_checksum_small_file(self):
+        """
+        Test the static calculate_checksum() method with a file that's smaller than CHECKSUM_CHUNK_SIZE.
+        """
+        fake_iso_data = 'I wish I were an ISO, but I am really a String.'
+        # Let's just make sure that the premise of the test is correct, that our small file is smaller than the
+        # chunk size
+        self.assertTrue(len(fake_iso_data) < models.CHECKSUM_CHUNK_SIZE)
+        fake_iso_file = StringIO(fake_iso_data)
+        # Just for fun, to make sure the checksum calculator does seek to 0, let's seek to 13
+        fake_iso_file.seek(13)
+
+        calculated_checksum = models.ISO.calculate_checksum(fake_iso_file)
+
+        # Let's calculate the expected checksum
+        hasher = hashlib.sha256()
+        hasher.update(fake_iso_data)
+        expected_checksum = hasher.hexdigest()
+
+        self.assertEqual(calculated_checksum, expected_checksum)
+
+    def test_calculate_size(self):
+        """
+        Test the static calculate_size() method.
+        """
+        fake_iso_data = 'I am a small ISO.'
+        fake_iso_file = StringIO(fake_iso_data)
+        # Just for fun, let's seek to 2
+        fake_iso_file.seek(2)
+
+        size = models.ISO.calculate_size(fake_iso_file)
+
+        self.assertEqual(size, len(fake_iso_data))
+
+    def test_calculate_size_empty_file(self):
+        """
+        Test the static calculate_size() method for an empty file.
+        """
+        fake_iso_data = ''
+        fake_iso_file = StringIO(fake_iso_data)
+
+        size = models.ISO.calculate_size(fake_iso_file)
+
+        self.assertEqual(size, 0)
 
     def test_from_unit(self):
         """
