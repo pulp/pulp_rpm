@@ -110,6 +110,29 @@ class TestISOProgressReport(unittest.TestCase):
         self.assertEqual(conduit_report.summary, report.build_progress_report())
         self.assertEqual(conduit_report.details, None)
 
+    def test_build_final_report_cancelled(self):
+        """
+        Test build_final_report() when the state is cancelled. Since the user asked for it to be
+        cancelled, we should report it as a success
+        """
+        report = progress.ISOProgressReport(self.conduit,
+                                            state=progress.ISOProgressReport.STATE_CANCELLED)
+
+        conduit_report = report.build_final_report()
+
+        # The failure report call should not have been made
+        self.assertEqual(self.conduit.build_failure_report.call_count, 0)
+        # We should have called the success report once with the serialized progress report as the
+        # summary
+        self.conduit.build_success_report.assert_called_once_with(report.build_progress_report(),
+                                                                  None)
+
+        # Inspect the conduit report
+        self.assertEqual(conduit_report.success_flag, True)
+        self.assertEqual(conduit_report.canceled_flag, False)
+        self.assertEqual(conduit_report.summary, report.build_progress_report())
+        self.assertEqual(conduit_report.details, None)
+
     def test_build_progress_report(self):
         """
         Test the build_progress_report() method.
@@ -352,11 +375,12 @@ class TestSyncProgressReport(unittest.TestCase):
 
     def test__set_state_iso_errors(self):
         """
-        Test the state property as a setter for the situation when the state is marked as COMPLETE, but there
-        are ISO errors. It should automatically get set to ISOS_FAILED instead.
+        Test the state property as a setter for the situation when the state is marked as COMPLETE,
+        but there are ISO errors. It should automatically get set to ISOS_FAILED instead.
         """
-        report = progress.SyncProgressReport(self.conduit, iso_error_messages={'iso': 'error'},
-                                             state=progress.SyncProgressReport.STATE_ISOS_IN_PROGRESS)
+        report = progress.SyncProgressReport(
+            self.conduit, iso_error_messages={'iso': 'error'},
+            state=progress.SyncProgressReport.STATE_ISOS_IN_PROGRESS)
 
         # This should trigger an automatic STATE_FAILED, since there are ISO errors
         report.state = progress.SyncProgressReport.STATE_COMPLETE
@@ -366,3 +390,23 @@ class TestSyncProgressReport(unittest.TestCase):
         self.assertTrue(isinstance(report.state_times[report._state], datetime))
         self.assertTrue(progress.SyncProgressReport.STATE_COMPLETE not in report.state_times)
         self.conduit.set_progress.assert_called_once_with(report.build_progress_report())
+
+    def test__set_state_uncancelled(self):
+        """
+        We had a bug[0] wherein a cancelled sync would get set to complete after the transition to
+        cancelled. Due to the nature of sync.py being able to set the state to cancelled
+        asynchonously, it was difficult to avoid race conditions in sync.py itself. It turns out
+        that it is much easier to ensure in the progress report that once STATE_CANCELLED is
+        entered, it cannot be left. This test ensures that that is true.
+
+        [0] https://bugzilla.redhat.com/show_bug.cgi?id=950772#c3
+        """
+        report = progress.SyncProgressReport(
+            self.conduit, iso_error_messages={'iso': 'error'},
+            state=progress.SyncProgressReport.STATE_CANCELLED)
+
+        # This should not change the state away from cancelled
+        report.state = progress.SyncProgressReport.STATE_COMPLETE
+
+        self.assertEqual(report._state, progress.SyncProgressReport.STATE_CANCELLED)
+        self.assertTrue(progress.SyncProgressReport.STATE_COMPLETE not in report.state_times)

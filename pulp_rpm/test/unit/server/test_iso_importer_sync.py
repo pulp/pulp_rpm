@@ -166,13 +166,17 @@ class TestISOSyncRun(PulpRPMTests):
 
     def test_download_failed_during_manifest(self):
         self.iso_sync_run.progress_report._state = SyncProgressReport.STATE_MANIFEST_IN_PROGRESS
-        url = 'http://www.theonion.com/articles/american-airlines-us-airways-merge-to-form-worlds,31302/'
+        url = 'http://www.theonion.com/articles/' +\
+            'american-airlines-us-airways-merge-to-form-worlds,31302/'
         report = DownloadReport(url, '/fake/destination')
+        report.error_report = {'why': 'because'}
 
         self.iso_sync_run.download_failed(report)
 
         # The manifest_state should be failed
-        self.assertEqual(self.iso_sync_run.progress_report._state, SyncProgressReport.STATE_MANIFEST_FAILED)
+        self.assertEqual(self.iso_sync_run.progress_report._state,
+                         SyncProgressReport.STATE_MANIFEST_FAILED)
+        self.assertEqual(self.iso_sync_run.progress_report.error_message, report.error_report)
 
     @patch('pulp_rpm.plugins.importers.iso_importer.sync.ISOSyncRun.download_failed')
     def test_download_succeeded(self, download_failed):
@@ -327,8 +331,9 @@ class TestISOSyncRun(PulpRPMTests):
         # There should now be three Units in the DB, but only test3.iso is the new one
         units = [tuple(call)[1][0] for call in self.sync_conduit.save_unit.mock_calls]
         self.assertEqual(len(units), 1)
-        expected_unit = {'checksum': '94f7fe923212286855dea858edac1b4a292301045af0ddb275544e5251a50b3c',
-                         'size': 34, 'contents': 'Are you starting to get the idea?\n', 'name': 'test3.iso'}
+        expected_unit = {
+            'checksum': '94f7fe923212286855dea858edac1b4a292301045af0ddb275544e5251a50b3c',
+            'size': 34, 'contents': 'Are you starting to get the idea?\n', 'name': 'test3.iso'}
         unit = units[0]
         self.assertEqual(unit.unit_key['checksum'], expected_unit['checksum'])
         self.assertEqual(unit.unit_key['size'], expected_unit['size'])
@@ -339,14 +344,18 @@ class TestISOSyncRun(PulpRPMTests):
         with open(unit.storage_path) as data:
             contents = data.read()
         self.assertEqual(contents, expected_unit['contents'])
-        # There should be 0 calls to sync_conduit.remove_unit, since remove_missing_units is False by default
+        # The state should now be COMPLETE
+        self.assertEqual(self.iso_sync_run.progress_report._state,
+                         SyncProgressReport.STATE_COMPLETE)
+        # There should be 0 calls to sync_conduit.remove_unit, since remove_missing_units is False
+        # by default
         self.assertEqual(self.sync_conduit.remove_unit.call_count, 0)
 
     @patch('nectar.downloaders.curl.HTTPSCurlDownloader.download')
     def test_perform_sync_malformed_pulp_manifest(self, download):
         """
-        Assert the perform_sync correctly handles the situation when the PULP_MANIFEST file is not in the
-        expected format.
+        Assert the perform_sync correctly handles the situation when the PULP_MANIFEST file is not
+        in the expected format.
         """
         def fake_download(request_list):
             for request in request_list:
@@ -356,20 +365,22 @@ class TestISOSyncRun(PulpRPMTests):
         self.iso_sync_run.perform_sync()
 
         self.assertEquals(type(self.iso_sync_run.progress_report), SyncProgressReport)
-        self.assertEqual(self.iso_sync_run.progress_report._state, SyncProgressReport.STATE_MANIFEST_FAILED)
+        self.assertEqual(self.iso_sync_run.progress_report._state,
+                         SyncProgressReport.STATE_MANIFEST_FAILED)
+        self.assertEqual(self.iso_sync_run.progress_report.error_message,
+                         'The PULP_MANIFEST file was not in the expected format.')
 
     @patch('nectar.downloaders.curl.HTTPSCurlDownloader.download')
     def test_perform_sync_manifest_io_error(self, download):
         """
-        Assert the perform_sync correctly handles the situation when retrieving the PULP_MANIFEST file raises an
-        IOError.
+        Assert the perform_sync correctly handles the situation when retrieving the PULP_MANIFEST
+        file raises an IOError.
         """
         download.side_effect = IOError()
 
         self.iso_sync_run.perform_sync()
 
         self.assertEquals(type(self.iso_sync_run.progress_report), SyncProgressReport)
-        self.assertEqual(self.iso_sync_run.progress_report._state, SyncProgressReport.STATE_MANIFEST_FAILED)
 
     @patch('nectar.downloaders.curl.pycurl.Curl', side_effect=importer_mocks.ISOCurl)
     @patch('nectar.downloaders.curl.pycurl.CurlMulti', side_effect=importer_mocks.CurlMulti)
@@ -533,12 +544,14 @@ class TestISOSyncRun(PulpRPMTests):
     @patch('nectar.downloaders.curl.HTTPSCurlDownloader.download')
     def test__download_manifest_encounters_malformed_manifest(self, download):
         """
-        Make sure that _download_manifest raises a ValueError if the PULP_MANIFEST isn't in the expected format.
+        Make sure that _download_manifest raises a ValueError if the PULP_MANIFEST isn't in the
+        expected format.
         """
         def fake_download(request_list):
             for request in request_list:
                 request.destination.write('This is not what a PULP_MANIFEST should look like.')
         download.side_effect = fake_download
+        self.iso_sync_run.progress_report.state = SyncProgressReport.STATE_MANIFEST_IN_PROGRESS
 
         try:
             # This should raise a ValueError
@@ -546,7 +559,10 @@ class TestISOSyncRun(PulpRPMTests):
             self.fail('A ValueError should have been raised by the previous line, but was not!')
         except ValueError, e:
             # Excellent, a ValueError was raised.
-            pass
+            self.assertEqual(self.iso_sync_run.progress_report._state,
+                             SyncProgressReport.STATE_MANIFEST_FAILED)
+            self.assertEqual(self.iso_sync_run.progress_report.error_message,
+                             'The PULP_MANIFEST file was not in the expected format.')
 
     def test__filter_missing_isos(self):
         """
