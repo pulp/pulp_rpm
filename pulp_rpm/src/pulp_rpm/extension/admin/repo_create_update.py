@@ -161,11 +161,11 @@ class RpmRepoCreateCommand(CreateRepositoryCommand, ImporterConfigMixin):
         we'll remove this entirely from the client. jdob, May 10, 2013
         """
         if 'relative_url' not in yum_distributor_config:
-            if 'feed_url' in importer_config:
-                if importer_config['feed_url'] is None:
+            if 'feed' in importer_config:
+                if importer_config['feed'] is None:
                     self.prompt.render_failure_message(_('Given repository feed URL is invalid.'))
                     return
-                url_parse = urlparse(encode_unicode(importer_config['feed_url']))
+                url_parse = urlparse(encode_unicode(importer_config['feed']))
 
                 if url_parse[2] in ('', '/'):
                     relative_path = '/' + repo_id

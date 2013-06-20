@@ -176,6 +176,48 @@ class RpmRepoCreateCommandTests(rpm_support_base.PulpClientTests):
 
         self.assertEqual(body['importer_config'][constants.KEY_VALIDATE], True) # not the string "true"
 
+    def test_process_relative_url_with_feed(self):
+        # Setup
+        repo_id = 'feed-repo'
+        importer_config = {'feed' : 'http://localhost/foo/bar/baz'}
+        distributor_config = {} # will be populated in this call
+        command = repo_create_update.RpmRepoCreateCommand(self.context)
+
+        # Test
+        command.process_relative_url(repo_id, importer_config, distributor_config)
+
+        # Verify
+        self.assertTrue('relative_url' in distributor_config)
+        self.assertEqual(distributor_config['relative_url'], '/foo/bar/baz')
+
+    def test_process_relative_url_no_feed(self):
+        # Setup
+        repo_id = 'no-feed-repo'
+        importer_config = {}
+        distributor_config = {} # will be populated in this call
+        command = repo_create_update.RpmRepoCreateCommand(self.context)
+
+        # Test
+        command.process_relative_url(repo_id, importer_config, distributor_config)
+
+        # Verify
+        self.assertTrue('relative_url' in distributor_config)
+        self.assertEqual(distributor_config['relative_url'], repo_id)
+
+    def test_process_relative_url_specified(self):
+        # Setup
+        repo_id = 'specified'
+        importer_config = {}
+        distributor_config = {'relative_url' : 'wombat'}
+        command = repo_create_update.RpmRepoCreateCommand(self.context)
+
+        # Test
+        command.process_relative_url(repo_id, importer_config, distributor_config)
+
+        # Verify
+        self.assertTrue('relative_url' in distributor_config)
+        self.assertEqual(distributor_config['relative_url'], 'wombat')
+
 
 class RpmRepoUpdateCommandTests(rpm_support_base.PulpClientTests):
 
