@@ -18,7 +18,7 @@
 
 Name: pulp-rpm
 Version: 2.2.0
-Release: 0.4.beta%{?dist}
+Release: 0.5.beta%{?dist}
 Summary: Support for RPM content in the Pulp platform
 Group: Development/Languages
 License: GPLv2
@@ -282,6 +282,12 @@ A collection of yum plugins supplementing Pulp consumer operations.
 
 
 %changelog
+* Thu Jun 20 2013 Jeff Ortel <jortel@redhat.com> 2.2.0-0.5.beta
+- 976333 - Fixed importer config look up to use constant
+  (jason.dobies@redhat.com)
+- 976333 - Updated the relative URL calculation to use the new key for feed
+  (jason.dobies@redhat.com)
+
 * Mon Jun 17 2013 Jeff Ortel <jortel@redhat.com> 2.2.0-0.4.beta
 - 974663 - the importer can now save repo metadata files of unknown types in
   the database as units (mhrivnak@redhat.com)
