@@ -22,7 +22,7 @@ NAME = 'erratum'
 DESC = _('creates a new erratum')
 
 d = _('id of the erratum to create')
-OPT_ERRATUM_ID = PulpCliOption('--erratum_id', d, aliases=['-i'], required=True)
+OPT_ERRATUM_ID = PulpCliOption('--erratum-id', d, aliases=['-i'], required=True)
 
 d = _('title of the erratum')
 OPT_TITLE = PulpCliOption('--title', d, aliases=['-n'], required=True)
