@@ -179,7 +179,7 @@ class RpmRepoCreateCommandTests(rpm_support_base.PulpClientTests):
     def test_process_relative_url_with_feed(self):
         # Setup
         repo_id = 'feed-repo'
-        importer_config = {'feed' : 'http://localhost/foo/bar/baz'}
+        importer_config = {constants.KEY_FEED : 'http://localhost/foo/bar/baz'}
         distributor_config = {} # will be populated in this call
         command = repo_create_update.RpmRepoCreateCommand(self.context)
 

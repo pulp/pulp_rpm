@@ -21,6 +21,7 @@ from pulp.client.commands.repo.cudl import CreateRepositoryCommand, UpdateReposi
 from pulp.client.commands.repo.importer_config import (OptionsBundle, ImporterConfigMixin,
                                                        safe_parse)
 from pulp.common import constants as pulp_constants
+from pulp.common.plugins import importer_constants
 from pulp.common.util import encode_unicode
 
 from pulp_rpm.extension.admin import repo_options
@@ -161,11 +162,11 @@ class RpmRepoCreateCommand(CreateRepositoryCommand, ImporterConfigMixin):
         we'll remove this entirely from the client. jdob, May 10, 2013
         """
         if 'relative_url' not in yum_distributor_config:
-            if 'feed' in importer_config:
-                if importer_config['feed'] is None:
+            if importer_constants.KEY_FEED in importer_config:
+                if importer_config[importer_constants.KEY_FEED] is None:
                     self.prompt.render_failure_message(_('Given repository feed URL is invalid.'))
                     return
-                url_parse = urlparse(encode_unicode(importer_config['feed']))
+                url_parse = urlparse(encode_unicode(importer_config[importer_constants.KEY_FEED]))
 
                 if url_parse[2] in ('', '/'):
                     relative_path = '/' + repo_id
