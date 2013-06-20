@@ -79,14 +79,25 @@ class TestISOSearchCommand(rpm_support_base.PulpClientTests):
         Test the search_isos command when the user passed the --details flag.
         """
         search_command = ISOSearchCommand(self.context)
-        user_input = {search_command.ASSOCIATION_FLAG.keyword: 'true', OPTION_REPO_ID.keyword: 'a_repo'}
+        self.cli.add_command(search_command)
 
-        search_command.search_isos(**user_input)
+        self.cli.run('search --details --repo-id a_repo'.split())
 
-        # There should be one call to the search binding
-        expected_search_params = deepcopy(user_input)
+        # There should be one call to the search binding. We'll need to build out the options that we will
+        # expect to be passed to the search binding. To do that, we'll find all possible options and set them to
+        # None
+        expected_search_params = dict()
+        for option in search_command.options:
+            expected_search_params[option.keyword] = None
+        for option in search_command.option_groups[0].options:
+            expected_search_params[option.keyword] = None
+
+        # Now let's fill out the --details flag as being set True, add the ISO type ID, and remove repo-id
+        expected_search_params[search_command.ASSOCIATION_FLAG.keyword] = True
         expected_search_params['type_ids'] = [ids.TYPE_ID_ISO]
-        expected_search_params.pop(OPTION_REPO_ID.keyword)
+        del expected_search_params['repo-id']
+
+        # Now we can assert the correct call
         self.context.server.repo_unit.search.assert_called_once_with('a_repo', **expected_search_params)
 
         # render_document_list should have been called once, with the details left in
