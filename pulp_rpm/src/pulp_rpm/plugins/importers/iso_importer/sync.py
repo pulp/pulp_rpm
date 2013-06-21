@@ -85,12 +85,14 @@ class ISOSyncRun(listener.DownloadEventListener):
 
     def download_failed(self, report):
         """
-        This is the callback that we will get from the downloader library when any individual download fails.
+        This is the callback that we will get from the downloader library when any individual
+        download fails.
         """
-        # If we have a download failure during the manifest phase, we should set the report to failed for that
-        # phase.
+        # If we have a download failure during the manifest phase, we should set the report to
+        # failed for that phase.
         if self.progress_report.state == self.progress_report.STATE_MANIFEST_IN_PROGRESS:
             self.progress_report.state = self.progress_report.STATE_MANIFEST_FAILED
+            self.progress_report.error_message = report.error_report
         elif self.progress_report.state == self.progress_report.STATE_ISOS_IN_PROGRESS:
             iso = self._url_iso_map[report.url]
             self.progress_report.add_failed_iso(iso, report.error_report)
@@ -150,11 +152,8 @@ class ISOSyncRun(listener.DownloadEventListener):
         try:
             manifest = self._download_manifest()
         except (IOError, ValueError):
-            # The IOError will happen if the file can't be retrieved at all, and the ValueError will happen if
-            # the PULP_MANIFEST file isn't in the expected format. In the future, when we complete the client
-            # and by doing so define the progress report API, we will give more specific error messages here.
-            # Until then, we just set the state to failed.
-            self.progress_report.state = self.progress_report.STATE_MANIFEST_FAILED
+            # The IOError will happen if the file can't be retrieved at all, and the ValueError will
+            # happen if the PULP_MANIFEST file isn't in the expected format.
             return self.progress_report.build_final_report()
 
         # Go get them filez
@@ -164,9 +163,10 @@ class ISOSyncRun(listener.DownloadEventListener):
         if self._remove_missing_units:
             self._remove_units(remote_missing_isos)
 
-        # Report that we are finished. Note that setting the state to STATE_ISOS_COMPLETE will automatically
-        # set the state to STATE_ISOS_FAILED if the progress report has collected any errors. See the
-        # progress_report's _set_state() method for the implementation of this logic.
+        # Report that we are finished. Note that setting the
+        # state to STATE_ISOS_COMPLETE will automatically set the state to STATE_ISOS_FAILED if the
+        # progress report has collected any errors. See the progress_report's _set_state() method
+        # for the implementation of this logic.
         self.progress_report.state = self.progress_report.STATE_COMPLETE
         report = self.progress_report.build_final_report()
         return report
@@ -213,7 +213,13 @@ class ISOSyncRun(listener.DownloadEventListener):
             raise IOError(_("Could not retrieve %(url)s") % {'url': manifest_url})
 
         manifest_destiny.seek(0)
-        manifest = models.ISOManifest(manifest_destiny, self._repo_url)
+        try:
+            manifest = models.ISOManifest(manifest_destiny, self._repo_url)
+        except ValueError, e:
+            self.progress_report.error_message = _('The PULP_MANIFEST file was not in the ' +\
+                                                   'expected format.')
+            self.progress_report.state = self.progress_report.STATE_MANIFEST_FAILED
+            raise ValueError(self.progress_report.error_message)
 
         return manifest
 
