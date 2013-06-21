@@ -47,7 +47,7 @@ DESC_CONTENTS = _('search the contents of a repository')
 
 DESC_SYNC = _('run, schedule, or view the status of sync tasks')
 DESC_SYNC_SCHEDULES = _('manage repository sync schedules')
-DESC_PUBLISH = _('run, schedule, or view the status of publish tasks')
+DESC_PUBLISH = _('run or view the status of publish tasks')
 
 DESC_EXPORT = _('run or view the status of ISO export of a repository')
 
