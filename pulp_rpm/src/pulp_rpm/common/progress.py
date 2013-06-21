@@ -87,7 +87,7 @@ class ISOProgressReport(object):
         summary = self.build_progress_report()
         details = None
 
-        if self.state == self.STATE_COMPLETE:
+        if self.state in (self.STATE_COMPLETE, self.STATE_CANCELLED):
             report = self.conduit.build_success_report(summary, details)
         else:
             report = self.conduit.build_failure_report(summary, details)
@@ -151,8 +151,8 @@ class ISOProgressReport(object):
 
     def _set_state(self, new_state):
         """
-        This method allows users to set a new state to the ISOProgressReport. It enforces state transitions to
-        only happen in a certain fashion.
+        This method allows users to set a new state to the ISOProgressReport. It enforces state
+        transitions to only happen in a certain fashion.
 
         :param new_state: The new state that the caller wishes the ISOProgressReport to be set to
         :type  new_state: basestring
@@ -290,6 +290,15 @@ class SyncProgressReport(ISOProgressReport):
         """
         if new_state == self.STATE_COMPLETE and self.iso_error_messages:
             new_state = self.STATE_ISOS_FAILED
+
+        if self._state == self.STATE_CANCELLED:
+            # Since STATE_CANCELLED can be entered asynchonously during a repo sync, it is easier to
+            # ignore other state transitions here than it is to find every place in our code where
+            # we might attempt a state transition and check to see if we are cancelled. In sync.py,
+            # all the download handlers (and the downloader itself) will do nothing if the state is
+            # cancelled, so this is here to ensure that once we are cancelled, nothing can set the
+            # state back to not cancelled.
+            return
 
         super(self.__class__, self)._set_state(new_state)
 
