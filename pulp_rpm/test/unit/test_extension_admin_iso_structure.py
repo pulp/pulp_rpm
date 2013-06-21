@@ -13,13 +13,15 @@
 
 from pulp.client.commands import unit
 from pulp.client.commands.repo import cudl, sync_publish, upload as pulp_upload
+from pulp.client.commands.schedule import (
+    DeleteScheduleCommand, ListScheduleCommand, CreateScheduleCommand,
+    UpdateScheduleCommand, NextRunCommand, RepoScheduleStrategy)
 from pulp.client.extensions.extensions import PulpCliSection
 from pulp.client.upload.manager import UploadManager
 import mock
 
 from pulp_rpm.common import ids
-from pulp_rpm.extension.admin.iso import (contents, create_update, repo_list, structure,
-                                          sync_schedules, upload)
+from pulp_rpm.extension.admin.iso import contents, create_update, repo_list, structure, upload
 import rpm_support_base
 
 
@@ -148,24 +150,40 @@ class TestAddSchedulesSection(rpm_support_base.PulpClientTests):
         self.assertEqual(len(schedules_section.commands), 5)
 
         create_command = schedules_section.commands['create']
-        self.assertTrue(isinstance(create_command, sync_schedules.ISOCreateScheduleCommand))
+        self.assertTrue(isinstance(create_command, CreateScheduleCommand))
         self.assertEqual(create_command.context, self.context)
+        self.assertEqual(create_command.description, structure.DESC_SYNC_CREATE)
+
+        # Inspect the strategy. We will inspect it once, and then assert that the other commands
+        # have the same strategy
+        strategy = create_command.strategy
+        self.assertTrue(isinstance(strategy, RepoScheduleStrategy))
+        self.assertEqual(strategy.type_id, ids.TYPE_ID_IMPORTER_ISO)
+        self.assertEqual(strategy.api, self.context.server.repo_sync_schedules)
 
         delete_command = schedules_section.commands['delete']
-        self.assertTrue(isinstance(delete_command, sync_schedules.ISODeleteScheduleCommand))
+        self.assertTrue(isinstance(delete_command, DeleteScheduleCommand))
         self.assertEqual(delete_command.context, self.context)
+        self.assertEqual(delete_command.description, structure.DESC_SYNC_DELETE)
+        self.assertEqual(delete_command.strategy, strategy)
 
         list_command = schedules_section.commands['list']
-        self.assertTrue(isinstance(list_command, sync_schedules.ISOListScheduleCommand))
+        self.assertTrue(isinstance(list_command, ListScheduleCommand))
         self.assertEqual(list_command.context, self.context)
+        self.assertEqual(list_command.description, structure.DESC_SYNC_LIST)
+        self.assertEqual(list_command.strategy, strategy)
 
         next_command = schedules_section.commands['next']
-        self.assertTrue(isinstance(next_command, sync_schedules.ISONextRunCommand))
+        self.assertTrue(isinstance(next_command, NextRunCommand))
         self.assertEqual(next_command.context, self.context)
+        self.assertEqual(next_command.description, structure.DESC_SYNC_NEXT_RUN)
+        self.assertEqual(next_command.strategy, strategy)
 
         update_command = schedules_section.commands['update']
-        self.assertTrue(isinstance(update_command, sync_schedules.ISOUpdateScheduleCommand))
+        self.assertTrue(isinstance(update_command, UpdateScheduleCommand))
         self.assertEqual(update_command.context, self.context)
+        self.assertEqual(update_command.description, structure.DESC_SYNC_UPDATE)
+        self.assertEqual(update_command.strategy, strategy)
 
 
 class TestAddSyncSection(rpm_support_base.PulpClientTests):
