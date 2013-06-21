@@ -216,8 +216,8 @@ class ISOSyncRun(listener.DownloadEventListener):
         try:
             manifest = models.ISOManifest(manifest_destiny, self._repo_url)
         except ValueError, e:
-            self.progress_report.error_message = 'The PULP_MANIFEST file was not in the ' +\
-                                                 'expected format.'
+            self.progress_report.error_message = _('The PULP_MANIFEST file was not in the ' +\
+                                                   'expected format.')
             self.progress_report.state = self.progress_report.STATE_MANIFEST_FAILED
             raise ValueError(self.progress_report.error_message)
 
