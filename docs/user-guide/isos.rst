@@ -48,7 +48,8 @@ instructed it to publish over HTTP.
     The ISO repository can only sync against feeds that publish a manifest file called
     PULP_MANIFEST. Most ISO collections on the Internet do not publish a PULP_MANIFEST file
     alongside their ISOs, and those collections cannot be consumed by the ISO Importer. The importer
-    will attempt a URL join with the given feed and the name ``PULP_MANIFEST`` to determine where it
+    will append a trailing slash to the ``--feed`` setting if it doesn't already have one, and then
+    will perform a URL join with the feed and the name ``PULP_MANIFEST`` to determine where it
     should look for the manifest. Please ensure that a PULP_MANIFEST is available at the URL you
     give to the ``--feed`` setting here.
 
