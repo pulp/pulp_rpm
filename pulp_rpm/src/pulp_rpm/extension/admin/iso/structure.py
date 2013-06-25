@@ -103,7 +103,7 @@ def add_repo_section(context, parent_section):
     repo_section.add_command(repo_list.ISORepoListCommand(context))
     repo_section.add_command(unit.UnitCopyCommand(context, type_id=ids.TYPE_ID_ISO))
     repo_section.add_command(unit.UnitRemoveCommand(context, type_id=ids.TYPE_ID_ISO))
-    repo_section.add_command(contents.ISOSearchCommand(context, name='content'))
+    repo_section.add_command(contents.ISOSearchCommand(context, name='isos'))
 
 
 def add_schedules_section(context, parent_section):
