@@ -125,10 +125,10 @@ class TestAddRepoSection(rpm_support_base.PulpClientTests):
         self.assertEqual(remove_command.context, self.context)
         self.assertEqual(remove_command.type_id, ids.TYPE_ID_ISO)
 
-        # Content command
-        content_command = repo_section.commands['content']
-        self.assertTrue(isinstance(content_command, contents.ISOSearchCommand))
-        self.assertEqual(content_command.context, self.context)
+        # isos command
+        isos_command = repo_section.commands['isos']
+        self.assertTrue(isinstance(isos_command, contents.ISOSearchCommand))
+        self.assertEqual(isos_command.context, self.context)
 
 
 class TestAddSchedulesSection(rpm_support_base.PulpClientTests):
