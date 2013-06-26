@@ -719,6 +719,9 @@ class YumDistributor(Distributor):
                     continue
                 distro_progress_status["items_left"] -= 1
             scratchpad.update({constants.PUBLISHED_DISTRIBUTION_FILES_KEY : {u.id : published_distro_files}})
+        # create the Packages symlink to the content dir, in the content dir
+        packages_symlink_path = os.path.join(symlink_dir, 'Packages')
+        util.create_symlink(symlink_dir, packages_symlink_path)
         publish_conduit.set_scratchpad(scratchpad)
         if errors:
             distro_progress_status["error_details"] = errors
