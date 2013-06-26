@@ -43,6 +43,8 @@ SUPPORTED_UNIT_TYPES = [TYPE_ID_RPM, TYPE_ID_SRPM, TYPE_ID_DRPM, TYPE_ID_DISTRO]
 HTTP_PUBLISH_DIR="/var/lib/pulp/published/http/repos"
 HTTPS_PUBLISH_DIR="/var/lib/pulp/published/https/repos"
 
+OLD_REL_PATH_KEYWORD = 'old_relative_path'
+
 # This needs to be a config option in the distributor's .conf file. But for 2.0,
 # I don't have time to add that and realistically, people won't be reconfiguring
 # it anyway. This is to replace having it in Pulp's server.conf, which definitely
@@ -476,11 +478,27 @@ class YumDistributor(Distributor):
         relpath = self.get_repo_relative_path(repo, config)
         if relpath.startswith("/"):
             relpath = relpath[1:]
-        #
-        # Handle publish link for HTTPS
-        #
+
+        # Build the https and http publishing paths
         https_publish_dir = self.get_https_publish_dir(config)
         https_repo_publish_dir = os.path.join(https_publish_dir, relpath).rstrip('/')
+        http_publish_dir = self.get_http_publish_dir(config)
+        http_repo_publish_dir = os.path.join(http_publish_dir, relpath).rstrip('/')
+
+        # Clean up the old publish directories, if they exist.
+        scratchpad = publish_conduit.get_repo_scratchpad()
+        if OLD_REL_PATH_KEYWORD in scratchpad:
+            old_https_publish_dir = os.path.join(https_publish_dir, scratchpad[OLD_REL_PATH_KEYWORD])
+            old_http_publish_dir = os.path.join(http_publish_dir, scratchpad[OLD_REL_PATH_KEYWORD])
+            util.remove_symlink(https_publish_dir, old_https_publish_dir)
+            util.remove_symlink(http_publish_dir, old_http_publish_dir)
+
+        # Now write the current publish relative path to the scratch pad. This way, if the relative path
+        # changes before the next publish, we can clean up the old path.
+        scratchpad[OLD_REL_PATH_KEYWORD] = relpath
+        publish_conduit.set_repo_scratchpad(scratchpad)
+
+        # Handle publish link for HTTPS
         if config.get("https"):
             # Publish for HTTPS
             self.set_progress("publish_https", {"state" : "IN_PROGRESS"}, progress_callback)
@@ -496,11 +514,8 @@ class YumDistributor(Distributor):
             if os.path.lexists(https_repo_publish_dir):
                 _LOG.debug("Removing link for %s since https is not set" % https_repo_publish_dir)
                 util.remove_symlink(https_publish_dir, https_repo_publish_dir)
-        #
+
         # Handle publish link for HTTP
-        #
-        http_publish_dir = self.get_http_publish_dir(config)
-        http_repo_publish_dir = os.path.join(http_publish_dir, relpath).rstrip('/')
         if config.get("http"):
             # Publish for HTTP
             self.set_progress("publish_http", {"state" : "IN_PROGRESS"}, progress_callback)
