@@ -60,6 +60,9 @@ def publish(repo, publish_conduit, config):
 
         _build_metadata(build_dir, units)
         _symlink_units(build_dir, units)
+
+        # Let's unpublish, and then republish
+        unpublish(repo)
         _copy_to_hosted_location(repo, config, build_dir)
 
         # Clean up our build_dir
@@ -75,6 +78,21 @@ def publish(repo, publish_conduit, config):
         progress_report.state = progress_report.STATE_FAILED
         report = progress_report.build_final_report()
         return report
+
+
+def unpublish(repo):
+    """
+    This method ensures that the hosting locations for the given repository over the HTTP and HTTPS
+    protocols are empty by removing anything found there, and it also removes repository protection
+    for the repo.
+
+    :param repo: The repository that we are unpublishing
+    :type  repo: pulp.plugins.model.Repository
+    """
+    http_dest_dir, https_dest_dir = _get_hosting_locations(repo)
+    _rmtree_if_exists(http_dest_dir)
+    _rmtree_if_exists(https_dest_dir)
+    _remove_repository_protection(repo)
 
 
 def _build_metadata(build_dir, units):
@@ -95,6 +113,33 @@ def _build_metadata(build_dir, units):
                                    unit.unit_key['size']])
 
 
+def _configure_repository_protection(repo, authorization_ca_cert):
+    """
+    Configure this repository to be protected by registering it with the repo protection
+    application. Repository protection will be performed if if the CONFIG_SSL_AUTH_CA_CERT option is
+    set to a certificate. Otherwise, this method removes repository protection.
+
+    :param repo:                  The repository that is being protected
+    :type  repo:                  pulp.plugins.model.Repository
+    :param authorization_ca_cert: The CA certificate that should be used to protect the repository
+                                  Client certificates must be signed by this certificate.
+    :type  authorization_ca_cert: basestring
+    """
+    repo_cert_utils, protected_repo_utils = _get_repository_protection_utils()
+    relative_path = _get_relative_path(repo)
+
+    # If we want to include a valid entitlement certificate to hand to consumers, use the key
+    # "cert". For now, we only support the "ca" flag for validating the client certificates.
+    cert_bundle = {'ca': authorization_ca_cert}
+
+    # This will put the certificates on the filesystem so the repo protection application can
+    # use them to validate the consumers' entitlement certificates
+    repo_cert_utils.write_consumer_cert_bundle(repo.id, cert_bundle)
+    # Add this repository to the protected list. This will tell the repo protection application
+    # that it should enforce protection on this relative path
+    protected_repo_utils.add_protected_repo(relative_path, repo.id)
+
+
 def _copy_to_hosted_location(repo, config, build_dir):
     """
     Copy the contents of the build directory to the publishing directories. The config will be used
@@ -108,54 +153,77 @@ def _copy_to_hosted_location(repo, config, build_dir):
                       hosted location
     :type  build_dir: basestring
     """
-    # Publish HTTP
-    http_dest_dir = os.path.join(constants.ISO_HTTP_DIR, repo.id)
-    _rmtree_if_exists(http_dest_dir)
+    http_dest_dir, https_dest_dir = _get_hosting_locations(repo)
+
     # Publish the HTTP portion, if applicable
     serve_http = config.get_boolean(constants.CONFIG_SERVE_HTTP)
     serve_http = serve_http if serve_http is not None else constants.CONFIG_SERVE_HTTP_DEFAULT
     if serve_http:
         shutil.copytree(build_dir, http_dest_dir, symlinks=True)
 
-    # Publish HTTPS
-    https_dest_dir = os.path.join(constants.ISO_HTTPS_DIR, repo.id)
-    _protect_repository(repo.id, repo, config)
-    _rmtree_if_exists(https_dest_dir)
     # Publish the HTTPs portion, if applicable
     serve_https = config.get_boolean(constants.CONFIG_SERVE_HTTPS)
     serve_https = serve_https if serve_https is not None else constants.CONFIG_SERVE_HTTPS_DEFAULT
     if serve_https:
+        authorization_ca_cert = config.get(constants.CONFIG_SSL_AUTH_CA_CERT)
+        if authorization_ca_cert:
+            _configure_repository_protection(repo, authorization_ca_cert)
         shutil.copytree(build_dir, https_dest_dir, symlinks=True)
 
 
-def _protect_repository(relative_path, repo, config):
+def _get_hosting_locations(repo):
     """
-    Configure this repository to be protected by registering it with the repo protection application. Repository
-    protection will only be performed if if the CONFIG_SSL_AUTH_CA_CERT option is set to a certificate.
-    Otherwise, this method removes repository protection.
-    """
-    authorization_ca_cert = config.get(constants.CONFIG_SSL_AUTH_CA_CERT)
+    This function generates hosting paths for HTTP and HTTPS, and then returns a 2-tuple containing
+    the two paths.
 
-    # Instantiate our repository protection utilities with the config file
+    :param repo: The repo we need hosting locations for
+    :type  repo: pulp.plugins.model.Repository
+    :return:     2-tuple of (http_dir, https_dir)
+    :rtype:      tuple
+    """
+    http_dest_dir = os.path.join(constants.ISO_HTTP_DIR, repo.id)
+    https_dest_dir = os.path.join(constants.ISO_HTTPS_DIR, repo.id)
+    return http_dest_dir, https_dest_dir
+
+
+def _get_relative_path(repo):
+    """
+    Return the relative path for a particular repository.
+
+    :param repo: The repo we need hosting locations for
+    :type  repo: pulp.plugins.model.Repository
+    :return:     relative path for the repo
+    :rtype:      basestring
+    """
+    return repo.id
+
+
+def _get_repository_protection_utils():
+    """
+    Instantiate our repository protection utilities with the config file.
+
+    :return: A 2-tuple of repo_cert_utils and protected_repo_utils
+    :rtype:  tuple
+    """
     repo_auth_config = SafeConfigParser()
     repo_auth_config.read(constants.REPO_AUTH_CONFIG_FILE)
     repo_cert_utils = RepoCertUtils(repo_auth_config)
     protected_repo_utils = ProtectedRepoUtils(repo_auth_config)
 
-    if authorization_ca_cert:
-        # If we want to include a valid entitlement certificate to hand to consumers, use the key "cert". For
-        # now, we only support the "ca" flag for validating the client certificates.
-        cert_bundle = {'ca': authorization_ca_cert}
+    return repo_cert_utils, protected_repo_utils
 
-        # This will put the certificates on the filesystem so the repo protection application can use them to
-        # validate the consumers' entitlement certificates
-        repo_cert_utils.write_consumer_cert_bundle(repo.id, cert_bundle)
-        # Add this repository to the protected list. This will tell the repo protection application that it
-        # should enforce protection on this relative path
-        protected_repo_utils.add_protected_repo(relative_path, repo.id)
-    else:
-        # Ensure that we aren't protecting this path
-        protected_repo_utils.delete_protected_repo(relative_path)
+
+def _remove_repository_protection(repo):
+    """
+    Remove repository protection from the given repository.
+
+    :param repo: The repository to remove protection from
+    :type  repo: pulp.plugins.model.Repository
+    """
+    protected_repo_utils = _get_repository_protection_utils()[1]
+    relative_path = _get_relative_path(repo)
+    # Ensure that we aren't protecting this path
+    protected_repo_utils.delete_protected_repo(relative_path)
 
 
 def _symlink_units(build_dir, units):
