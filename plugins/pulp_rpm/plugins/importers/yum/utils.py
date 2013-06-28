@@ -11,13 +11,22 @@
 # have received a copy of GPLv2 along with this software; if not, see
 # http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt.
 
+from cStringIO import StringIO
+from collections import namedtuple
 import itertools
+import re
+from xml.etree import cElementTree as ET
 
-# TODO: probably should move this to pulp.common
 
 DEFAULT_PAGE_SIZE = 1000
 
+# required for converting an element to raw XML
+STRIP_XMLNS_RE = re.compile('(<package )(?:xmlns.*? )+')
+STRIP_NS_RE = re.compile('{.*?}')
+Namespace = namedtuple('Namespace', ['name', 'uri'])
 
+
+# TODO: probably should move this to pulp.common
 def paginate(iterable, page_size=DEFAULT_PAGE_SIZE):
     """
     Takes any kind of iterable and chops it up into tuples of size "page_size".
@@ -41,3 +50,50 @@ def paginate(iterable, page_size=DEFAULT_PAGE_SIZE):
         if not page:
             return
         yield page
+
+
+def element_to_raw_xml(element, namespaces=None):
+    """
+    Convert an Element to a raw XML block. Namespaces are preserved on element
+    tags, but any namespace declaration on the root element will be removed.
+    This function is intended to be used in a case where multiple XML string
+    snippets will be concatenated into a valid XML document later. This function
+    will not necessarily return a valid XML document.
+
+    :param element:     XML element that should be output as an XML string
+    :type  element:     xml.etree.ElementTree.Element
+    :param namespaces:  collection of Namespace instances that should be registered
+                        while converting to a string.
+    :type  namespaces:  list or tuple
+
+    :return:    XML as a string
+    :rtype:     str
+    """
+    namespaces = namespaces or tuple()
+    for namespace in namespaces:
+        if not isinstance(namespace, Namespace):
+            raise TypeError('"namespaces" must be an iterable of Namespace instances')
+        ET.register_namespace(namespace.name, namespace.uri)
+
+    tree = ET.ElementTree(element)
+    io = StringIO()
+    tree.write(io)
+    # clean up, since this is global
+    for namespace in namespaces:
+        ET.register_namespace(namespace.name, '')
+    return re.sub(STRIP_XMLNS_RE, r'\1', io.getvalue())
+
+
+def strip_ns(element):
+    """
+    Given an Element object, recursively strip the namespace info from its tag
+    and all of its children.
+
+    :type  element: xml.etree.ElementTree.Element
+
+    :return:    same element object that was passed in
+    :rtype:     xml.etree.ElementTree.Element
+    """
+    element.tag = re.sub(STRIP_NS_RE, '', element.tag)
+    for child in list(element):
+        strip_ns(child)

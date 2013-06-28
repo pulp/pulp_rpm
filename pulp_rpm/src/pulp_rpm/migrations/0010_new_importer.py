@@ -16,7 +16,8 @@ from pulp.plugins.types import database as types_db
 from pulp.server.db import connection
 
 from pulp_rpm.common.models import RPM, SRPM
-from pulp_rpm.plugins.importers.yum.repomd import packages, primary
+from pulp_rpm.plugins.importers.yum import utils
+from pulp_rpm.plugins.importers.yum.repomd import primary
 
 # this is required because some of the pre-migration XML tags use the "rpm"
 # namespace, which causes a parse error if that namespace isn't declared.
@@ -43,7 +44,7 @@ def _migrate_collection(type_id):
             text = package['repodata']['primary'].encode(codec)
         fake_xml = FAKE_XML % {'encoding': codec, 'xml': package['repodata']['primary']}
         fake_element = ET.fromstring(fake_xml.encode(codec))
-        packages.strip_ns(fake_element)
+        utils.strip_ns(fake_element)
         primary_element = fake_element.find('package')
         format_element = primary_element.find('format')
         provides_element = format_element.find('provides')
@@ -54,9 +55,6 @@ def _migrate_collection(type_id):
         if type_id == RPM.TYPE:
             package['sourcerpm'] = format_element.find('sourcerpm').text
             package['summary'] = primary_element.find('summary').text
-
-        # re-generate the raw XML without the pesky "rpm" namespace
-        package['repodata']['primary'] = packages.element_to_raw_xml(primary_element)
 
         # re-parse provides and requires. The format changed from 2.1, and the
         # 2.1 upload workflow was known to produce invalid data for these fields
