@@ -62,6 +62,31 @@ class TestISODistributor(PulpRPMTests):
         constants.ISO_HTTPS_DIR = self._original_iso_https_dir
         shutil.rmtree(self.temp_dir)
 
+    @patch('pulp_rpm.repo_auth.protected_repo_utils.ProtectedRepoUtils.delete_protected_repo')
+    def test_distributor_removed(self, delete_protected_repo):
+        """
+        Make sure the distributor_removed() method cleans up the published files.
+        """
+        repo = MagicMock(spec=Repository)
+        repo.id = 'about_to_be_removed'
+        repo.working_dir = self.temp_dir
+        publish_conduit = distributor_mocks.get_publish_conduit(existing_units=self.existing_units)
+        config = distributor_mocks.get_basic_config(**{constants.CONFIG_SERVE_HTTP: True,
+                                                       constants.CONFIG_SERVE_HTTPS: True})
+        report = self.iso_distributor.publish_repo(repo, publish_conduit, config)
+        publishing_paths = [os.path.join(directory, repo.id) \
+                            for directory in [constants.ISO_HTTP_DIR, constants.ISO_HTTPS_DIR]]
+        # The publishing paths should exist
+        self.assertTrue(all([os.path.exists(directory) for directory in publishing_paths]))
+        delete_protected_repo.reset_mock()
+
+        self.iso_distributor.distributor_removed(repo, config)
+
+        # Neither publishing path should exist now
+        self.assertFalse(all([os.path.exists(directory) for directory in publishing_paths]))
+        # delete_protected_repo should have been called
+        delete_protected_repo.assert_called_once_with(repo.id)
+
     def test_metadata(self):
         metadata = distributor.ISODistributor.metadata()
         self.assertEqual(metadata['id'], ids.TYPE_ID_DISTRIBUTOR_ISO)
@@ -83,8 +108,8 @@ class TestISODistributor(PulpRPMTests):
 
         self.assertTrue(report.success_flag)
         # Let's verify that the publish directory looks right
-        publishing_paths = [os.path.join(directory, 'lebowski') \
-                          for directory in [constants.ISO_HTTP_DIR, constants.ISO_HTTPS_DIR]]
+        publishing_paths = [os.path.join(directory, repo.id) \
+                            for directory in [constants.ISO_HTTP_DIR, constants.ISO_HTTPS_DIR]]
         for publishing_path in publishing_paths:
             for unit in self.existing_units:
                 expected_symlink_path = os.path.join(publishing_path, unit.unit_key['name'])
