@@ -51,11 +51,11 @@ class ISODistributor(Distributor):
 
         Please also see the superclass method definition for more documentation on this method.
 
-        @param repo: metadata describing the repository
-        @type  repo: pulp.plugins.model.Repository
+        :param repo: metadata describing the repository
+        :type  repo: pulp.plugins.model.Repository
 
-        @param config: plugin configuration
-        @type  config: pulp.plugins.config.PluginCallConfiguration
+        :param config: plugin configuration
+        :type  config: pulp.plugins.config.PluginCallConfiguration
         """
         publish.unpublish(repo)
 

@@ -116,7 +116,7 @@ def _build_metadata(build_dir, units):
 def _configure_repository_protection(repo, authorization_ca_cert):
     """
     Configure this repository to be protected by registering it with the repo protection
-    application. Repository protection will be performed if if the CONFIG_SSL_AUTH_CA_CERT option is
+    application. Repository protection will be performed if the CONFIG_SSL_AUTH_CA_CERT option is
     set to a certificate. Otherwise, this method removes repository protection.
 
     :param repo:                  The repository that is being protected
