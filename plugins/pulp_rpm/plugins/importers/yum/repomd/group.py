@@ -41,7 +41,11 @@ def process_group_element(repo_id, element):
     description, translated_description = _parse_translated(element.findall('description'))
     display_order = element.find('display_order')
     # yum.comps.Group.parse suggests that this should default to False
-    group_default = _parse_bool(element.find('default').text) if element.find('default') else False
+    group_default = _parse_bool(element.find('default').text)\
+        if element.find('default') is not None else False
+    # yum.comps.Group.__init__ suggests that this should default to True
+    user_visible = _parse_bool(element.find('uservisible').text)\
+        if element.find('uservisible') is not None else True
 
     return models.PackageGroup.from_package_info({
         'conditional_package_names': conditional,
@@ -58,7 +62,7 @@ def process_group_element(repo_id, element):
         'repo_id': repo_id,
         'translated_description': translated_description,
         'translated_name': translated_name,
-        'user_visible': _parse_bool(element.find('uservisible').text),
+        'user_visible': user_visible,
     })
 
 
@@ -82,7 +86,7 @@ def process_category_element(repo_id, element):
     return models.PackageCategory.from_package_info({
         'description': description.text,
         # default of 1024 is from yum's own parsing of these objects
-        'display_order': int(display_order.text) if display_order else 1024,
+        'display_order': int(display_order.text) if display_order is not None else 1024,
         'packagegroupids': [group.text for group in groups],
         'id': element.find('id').text,
         'name': name.text,
@@ -159,5 +163,3 @@ def _parse_translated(items):
         else:
             value = item
     return value, translated_value
-
-
