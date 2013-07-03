@@ -15,7 +15,7 @@ from copy import deepcopy
 import os
 
 from pulp_rpm.common import models
-from pulp_rpm.plugins.importers.yum.repomd import packages
+from pulp_rpm.plugins.importers.yum import utils
 
 # primary.xml element tags -----------------------------------------------------
 METADATA_FILE_NAME = 'primary'
@@ -23,6 +23,8 @@ METADATA_FILE_NAME = 'primary'
 COMMON_SPEC_URL = 'http://linux.duke.edu/metadata/common'
 RPM_SPEC_URL = 'http://linux.duke.edu/metadata/rpm'
 
+
+# primary.xml element tags -----------------------------------------------------
 PACKAGE_TAG = '{%s}package' % COMMON_SPEC_URL
 
 NAME_TAG = '{%s}name' % COMMON_SPEC_URL
@@ -49,6 +51,7 @@ RPM_HEADER_RANGE_TAG = '{%s}header-range' % RPM_SPEC_URL
 RPM_PROVIDES_TAG = '{%s}provides' % RPM_SPEC_URL
 RPM_REQUIRES_TAG = '{%s}requires' % RPM_SPEC_URL
 RPM_ENTRY_TAG = '{%s}entry' % RPM_SPEC_URL
+
 
 # package information dictionary -----------------------------------------------
 
@@ -176,7 +179,8 @@ def process_package_element(package_element):
     else:
         model = models.RPM.from_package_info(package_info)
     # add the raw XML so it can be saved in the database later
-    model.raw_xml = packages.element_to_raw_xml(package_element)
+    namespaces = (utils.Namespace('', COMMON_SPEC_URL), utils.Namespace('rpm', RPM_SPEC_URL))
+    model.raw_xml = utils.element_to_raw_xml(package_element, namespaces)
     return model
 
 
