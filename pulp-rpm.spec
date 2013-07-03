@@ -18,7 +18,7 @@
 
 Name: pulp-rpm
 Version: 2.2.0
-Release: 0.5.beta%{?dist}
+Release: 0.17.beta%{?dist}
 Summary: Support for RPM content in the Pulp platform
 Group: Development/Languages
 License: GPLv2
@@ -282,6 +282,16 @@ A collection of yum plugins supplementing Pulp consumer operations.
 
 
 %changelog
+* Wed Jul 03 2013 Jeff Ortel <jortel@redhat.com> 2.2.0-0.17.beta
+- 976042 - source RPMs are now categorized correctly as type "srpm".
+  (mhrivnak@redhat.com)
+- 980572 - can now import groups from comps.xml files where some groups entries
+  don't include a "uservisible" value, such as in a Fedora 18 repo.
+  (mhrivnak@redhat.com)
+- 973402 - fixed a mishandling of XML namespaces in repo metadata that led to
+  problems when installing packages with dependencies from a published repo.
+  (mhrivnak@redhat.com)
+
 * Thu Jun 20 2013 Jeff Ortel <jortel@redhat.com> 2.2.0-0.5.beta
 - 976333 - Fixed importer config look up to use constant
   (jason.dobies@redhat.com)
