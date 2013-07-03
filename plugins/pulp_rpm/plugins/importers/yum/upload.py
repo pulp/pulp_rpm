@@ -20,8 +20,9 @@ from pulp.plugins.model import SyncReport
 from pulp.server.db.model.criteria import UnitAssociationCriteria
 
 from pulp_rpm.common import models
+from pulp_rpm.plugins.importers.yum import utils
 from pulp_rpm.plugins.importers.yum.parse import rpm
-from pulp_rpm.plugins.importers.yum.repomd import packages, primary
+from pulp_rpm.plugins.importers.yum.repomd import primary
 
 
 # this is required because some of the pre-migration XML tags use the "rpm"
@@ -118,7 +119,7 @@ def _update_provides_requires(model):
         model.metadata['repodata']['primary'].encode(codec)
     fake_xml = FAKE_XML % {'encoding': codec, 'xml': model.metadata['repodata']['primary']}
     fake_element = ET.fromstring(fake_xml.encode(codec))
-    packages.strip_ns(fake_element)
+    utils.strip_ns(fake_element)
     primary_element = fake_element.find('package')
     format_element = primary_element.find('format')
     provides_element = format_element.find('provides')
