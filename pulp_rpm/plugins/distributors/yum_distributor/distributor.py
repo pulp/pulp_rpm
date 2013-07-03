@@ -490,8 +490,8 @@ class YumDistributor(Distributor):
         if OLD_REL_PATH_KEYWORD in scratchpad:
             old_https_publish_dir = os.path.join(https_publish_dir, scratchpad[OLD_REL_PATH_KEYWORD])
             old_http_publish_dir = os.path.join(http_publish_dir, scratchpad[OLD_REL_PATH_KEYWORD])
-            util.remove_symlink(https_publish_dir, old_https_publish_dir)
-            util.remove_symlink(http_publish_dir, old_http_publish_dir)
+            util.remove_publish_dir(https_publish_dir, old_https_publish_dir)
+            util.remove_publish_dir(http_publish_dir, old_http_publish_dir)
 
         # Now write the current publish relative path to the scratch pad. This way, if the relative path
         # changes before the next publish, we can clean up the old path.
@@ -513,7 +513,7 @@ class YumDistributor(Distributor):
             self.set_progress("publish_https", {"state" : "SKIPPED"}, progress_callback)
             if os.path.lexists(https_repo_publish_dir):
                 _LOG.debug("Removing link for %s since https is not set" % https_repo_publish_dir)
-                util.remove_symlink(https_publish_dir, https_repo_publish_dir)
+                util.remove_publish_dir(https_publish_dir, https_repo_publish_dir)
 
         # Handle publish link for HTTP
         if config.get("http"):
@@ -530,7 +530,7 @@ class YumDistributor(Distributor):
             self.set_progress("publish_http", {"state" : "SKIPPED"}, progress_callback)
             if os.path.lexists(http_repo_publish_dir):
                 _LOG.debug("Removing link for %s since http is not set" % http_repo_publish_dir)
-                util.remove_symlink(http_publish_dir, http_repo_publish_dir)
+                util.remove_publish_dir(http_publish_dir, http_repo_publish_dir)
 
         summary["num_package_units_attempted"] = len(pkg_units)
         summary["num_package_units_published"] = len(pkg_units) - len(pkg_errors)
@@ -754,7 +754,7 @@ class YumDistributor(Distributor):
                 for orphaned_path in published_distro_units[distroid]:
                     if os.path.islink(orphaned_path):
                         _LOG.debug("cleaning up orphaned distribution path %s" % orphaned_path)
-                        util.remove_symlink(repo_working_dir, orphaned_path)
+                        util.remove_publish_dir(repo_working_dir, orphaned_path)
                     # remove the cleaned up distroid from scratchpad
                 del scratchpad[constants.PUBLISHED_DISTRIBUTION_FILES_KEY][distroid]
         return scratchpad

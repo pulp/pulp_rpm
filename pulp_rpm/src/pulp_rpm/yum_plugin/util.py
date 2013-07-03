@@ -316,35 +316,29 @@ def get_relpath_from_unit(unit):
     return relpath
 
 
-def remove_symlink(publish_dir, link_path):
+def remove_publish_dir(publish_dir, link_path):
     """
     This function cleans up the symbolic link, and any directories, created during a repository publish.
     Since repositories can share relative urls, this function starts with the symbolic link and works
     backwards towards the publishing directory until a non-empty directory is found, which indicates a
-    shared relative url.
+    shared relative url. If attempting to remove the link path results in an OSError, the offending
+    link_path is logged, but an exception is not raised.
 
     :param publish_dir: full http/https publish directory for all repos
                         (probably yum_distributor.distributor.HTTP(S)_PUBLISH_DIR)
     :type publish_dir: str
-
     :param link_path: full publish path for this specific repo. This is the publish directory combined
                         with the relative url
     :type link_path: str
-
-    :return: True if the path was successfully removed, False if something went wrong
-    :rtype: Boolean
     """
     # Try to remove the symlink from filesystem
     link_path = link_path.rstrip('/')
-    if not os.path.exists(link_path):
-        return False
-
     try:
         os.unlink(link_path)
-    except OSError, e:
+    except OSError:
         # If the path is not a symlink, log the error and stop
-        _LOG.error('Failed to remove publish symlink: %s' % link_path)
-        return False
+        _LOG.exception('Failed to remove publish symlink: %s' % link_path)
+        return
 
     # Retrieve the parent directory of the link_path, and determine the parts of the relative url
     link_path = os.path.dirname(link_path)
@@ -359,10 +353,10 @@ def remove_symlink(publish_dir, link_path):
         # Start at the deepest part of the path and work back up until a non-empty dir is found
         path_to_remove = os.path.join(publish_dir, *potential_to_remove[:index])
         if len(os.listdir(path_to_remove)):
-            # Directory is not empty so stop removal quit
+            # Directory is not empty so stop
             break
         os.rmdir(path_to_remove)
-    return True
+
 
 def is_rpm_newer(a, b):
     """

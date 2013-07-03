@@ -11,12 +11,13 @@
 # have received a copy of GPLv2 along with this software; if not, see
 # http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt.
 
-import mock
 import os
 import shutil
 import sys
 import tempfile
 import unittest
+
+import mock
 
 sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)) + "/../../src/")
 sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)) + "/../../plugins/importers/")
@@ -77,74 +78,57 @@ class TestStringToUnicode(unittest.TestCase):
         self.assertEqual(result, u'€')
 
 
-class TestRemoveSymlink(unittest.TestCase):
+class TestRemovePublishDir(unittest.TestCase):
     """
-    This class tests the pulp_rpm.yum_plugin.util.remove_symlink function
+    This class tests the pulp_rpm.yum_plugin.util.remove_publish_dir function
     """
 
     @mock.patch('os.unlink', autospec=True)
-    @mock.patch('os.path.exists', autospec=True)
-    def test_failed_unlink(self, mock_exists, mock_unlink):
+    @mock.patch('os.path.dirname', autospec=True)
+    def test_failed_unlink(self, mock_dirname, mock_unlink):
         """
-        This test checks that remove_symlink handles receiving a link that is not a symlink gracefully
+        This test checks that remove_publish_dir handles receiving a link that is
+        not a symlink gracefully
         """
         # Setup
         test_publish_dir = '/fake/publish/dir'
         test_link_path = '/fake/publish/dir/some/relative/url'
-        mock_exists.return_value = True
         mock_unlink.side_effect = OSError('I\'ve made a huge mistake')
 
-        # Test that the link was not removed
-        self.assertFalse(util.remove_symlink(test_publish_dir, test_link_path))
+        # Assert that we never make it to checking the parent directory of the link path
+        util.remove_publish_dir(test_publish_dir, test_link_path)
         self.assertEqual(test_link_path, mock_unlink.call_args[0][0])
-
-    @mock.patch('os.path.exists', autospec=True)
-    def test_path_does_not_exist(self, mock_exists):
-        """
-        This tests that when the path does not exist, remove_symlink changes nothing
-        """
-        # Setup
-        test_publish_dir = '/fake/publish/dir'
-        test_link_path = '/fake/publish/dir/some/relative/url'
-        mock_exists.return_value = False
-
-        # Test
-        self.assertFalse(util.remove_symlink(test_publish_dir, test_link_path))
-        self.assertEqual(test_link_path, mock_exists.call_args[0][0])
+        self.assertEqual(0, mock_dirname.call_count)
 
     @mock.patch('os.rmdir', autospec=True)
     @mock.patch('os.unlink', autospec=True)
-    @mock.patch('os.path.exists', autospec=True)
-    def test_remove_at_root(self, mock_exists, mock_unlink, mock_rmdir):
+    def test_remove_at_root(self, mock_unlink, mock_rmdir):
         """
         This tests removing a symlink at the root of the publishing directory.
         """
         # Setup
         test_publish_dir = '/fake/publish/dir'
         test_link_path = '/fake/publish/dir/repo'
-        mock_exists.return_value = True
 
         # Test that the link was removed and mock_rmdir never got called
-        self.assertTrue(util.remove_symlink(test_publish_dir, test_link_path))
+        util.remove_publish_dir(test_publish_dir, test_link_path)
         self.assertEqual(test_link_path, mock_unlink.call_args[0][0])
         self.assertEqual(0, mock_rmdir.call_count)
 
     @mock.patch('os.listdir', autospec=True)
     @mock.patch('os.rmdir', autospec=True)
     @mock.patch('os.unlink', autospec=True)
-    @mock.patch('os.path.exists', autospec=True)
-    def test_remove_with_dirs(self, mock_exists, mock_unlink, mock_rmdir, mock_listdir):
+    def test_remove_with_dirs(self, mock_unlink, mock_rmdir, mock_listdir):
         """
         This tests removing a symlink that is in some sub-directories of the publishing directory
         """
         # Setup
         test_publish_dir = '/fake/publish/dir'
         test_link_path = '/fake/publish/dir/some/sub/dir/repo'
-        mock_exists.return_value = True
         mock_listdir.return_value = []
 
         # Test that the link was removed and mock_rmdir gets called 3 times with the right dir names
-        self.assertTrue(util.remove_symlink(test_publish_dir, test_link_path))
+        util.remove_publish_dir(test_publish_dir, test_link_path)
         self.assertEqual(test_link_path, mock_unlink.call_args[0][0])
         self.assertEqual(3, mock_rmdir.call_count)
         self.assertEqual('/fake/publish/dir/some/sub/dir', mock_rmdir.call_args_list[0][0][0])
@@ -154,8 +138,7 @@ class TestRemoveSymlink(unittest.TestCase):
     @mock.patch('os.listdir', autospec=True)
     @mock.patch('os.rmdir', autospec=True)
     @mock.patch('os.unlink', autospec=True)
-    @mock.patch('os.path.exists', autospec=True)
-    def test_remove_with_shared_dirs(self, mock_exists, mock_unlink, mock_rmdir, mock_listdir):
+    def test_remove_with_shared_dirs(self, mock_unlink, mock_rmdir, mock_listdir):
         """
         This tests removing a repo link that shares part of a relative url: rhel6/x86_64/repo and
         rhel6/src/repo for example.
@@ -163,12 +146,11 @@ class TestRemoveSymlink(unittest.TestCase):
         # Setup
         test_publish_dir = '/fake/publish/dir'
         test_link_path = '/fake/publish/dir/some/dir/repo'
-        mock_exists.return_value = True
         # Fake returning a list that has items in it
         mock_listdir.return_value = ['second_repo']
 
         # Test that the symlink is removed and mock_rmdir doesn't get called because listdir returns
         # Something other than an empty list.
-        self.assertTrue(util.remove_symlink(test_publish_dir, test_link_path))
+        util.remove_publish_dir(test_publish_dir, test_link_path)
         self.assertEqual(test_link_path, mock_unlink.call_args[0][0])
         self.assertEqual(0, mock_rmdir.call_count)
