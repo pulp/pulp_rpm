@@ -68,14 +68,15 @@ class TestMigrateNewImporter(unittest.TestCase):
         self.assertEqual(result['summary'], 'The Pulp agent')
 
     @mock.patch('pulp.plugins.types.database.type_units_collection')
-    def test_removes_xml_namespace(self, mock_collection):
+    def test_preserve_xml(self, mock_collection):
         mock_collection.return_value.find.return_value = [self.rpm_unit]
 
         migration._migrate_collection(RPM.TYPE)
         result = mock_collection.return_value.save.call_args[0][0]
 
+        # ensure no changes to actual XML
         primary_xml = result['repodata']['primary']
-        self.assertEqual(primary_xml.find('<rpm:'), -1)
+        self.assertEqual(primary_xml, RPM_UNIT['repodata']['primary'])
 
     @mock.patch('pulp.plugins.types.database.type_units_collection')
     def test_reformats_provides(self, mock_collection):
