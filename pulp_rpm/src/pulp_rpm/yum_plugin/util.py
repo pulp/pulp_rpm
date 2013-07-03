@@ -315,22 +315,34 @@ def get_relpath_from_unit(unit):
         relpath = os.path.basename(unit.storage_path)
     return relpath
 
-def remove_symlink(publish_dir, link_path):
-    """
-    @param publish_dir: full http/https publish directory for all repos
-    @type publish_dir: str
 
-    @param link_path: full publish path for this specific repo
-    @type link_path: str
-
-    Intent is to remove all the specific link and all unique sub directories used to create it
+def remove_publish_dir(publish_dir, link_path):
     """
-    # Remove the symlink from filesystem
+    This function cleans up the symbolic link, and any directories, created during a repository publish.
+    Since repositories can share relative urls, this function starts with the symbolic link and works
+    backwards towards the publishing directory until a non-empty directory is found, which indicates a
+    shared relative url. If attempting to remove the link path results in an OSError, the offending
+    link_path is logged, but an exception is not raised.
+
+    :param publish_dir: full http/https publish directory for all repos
+                        (probably yum_distributor.distributor.HTTP(S)_PUBLISH_DIR)
+    :type publish_dir: str
+    :param link_path: full publish path for this specific repo. This is the publish directory combined
+                        with the relative url
+    :type link_path: str
+    """
+    # Try to remove the symlink from filesystem
     link_path = link_path.rstrip('/')
-    os.unlink(link_path)
-    # Adjust the link_path and removal the symlink from it
-    link_path = os.path.split(link_path)[0]
-    common_pieces = [x for x in publish_dir.split('/') if x] # remove empty pieces
+    try:
+        os.unlink(link_path)
+    except OSError:
+        # If the path is not a symlink, log the error and stop
+        _LOG.exception('Failed to remove publish symlink: %s' % link_path)
+        return
+
+    # Retrieve the parent directory of the link_path, and determine the parts of the relative url
+    link_path = os.path.dirname(link_path)
+    common_pieces = [x for x in publish_dir.split('/') if x]
     link_pieces = [x for x in link_path.split('/') if x]
     # Determine what are the non shared pieces from this link
     potential_to_remove = link_pieces[len(common_pieces):]
@@ -338,11 +350,13 @@ def remove_symlink(publish_dir, link_path):
     # Start removing the end pieces of the path and work our way back
     # If we encounter a non-empty directory stop removal and return
     for index in range(num_pieces, 0, -1):
-        path_to_remove = os.path.join(publish_dir, *potential_to_remove[:index])  #Start with all then work back
+        # Start at the deepest part of the path and work back up until a non-empty dir is found
+        path_to_remove = os.path.join(publish_dir, *potential_to_remove[:index])
         if len(os.listdir(path_to_remove)):
-            # Directory is not empty so stop removal quit
+            # Directory is not empty so stop
             break
         os.rmdir(path_to_remove)
+
 
 def is_rpm_newer(a, b):
     """
