@@ -149,6 +149,7 @@ class RepoSync(object):
             return report
 
         except Exception, e:
+            _LOGGER.exception('sync failed')
             for step, value in self.progress_status.iteritems():
                 if value.get('state') == constants.STATE_RUNNING:
                     value['state'] = constants.STATE_FAILED
