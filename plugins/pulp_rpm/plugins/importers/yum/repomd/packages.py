@@ -11,12 +11,11 @@
 # You should have received a copy of GPLv2 along with this software; if not,
 # see http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt
 
-from cStringIO import StringIO
 import logging
 import os
 import re
 from urlparse import urljoin
-from xml.etree.cElementTree import ElementTree, iterparse
+from xml.etree.cElementTree import iterparse
 
 from nectar.request import DownloadRequest
 
@@ -74,39 +73,6 @@ def package_list_generator(xml_handle, package_tag, process_func=None):
 
         package_info = process_func(element)
         yield package_info
-
-
-def strip_ns(element):
-    """
-    Given an Element object, recursively strip the namespace info from its tag
-    and all of its children.
-
-    :type  element: xml.etree.ElementTree.Element
-
-    :return:    same element object that was passed in
-    :rtype:     xml.etree.ElementTree.Element
-    """
-    element.tag = re.sub(NS_STRIP_RE, '', element.tag)
-    for child in list(element):
-        strip_ns(child)
-
-
-def element_to_raw_xml(element):
-    """
-    Convert an Element to a raw XML block. This strips any namespace present in
-    the tag strings so that the resulting block doesn't try to declare its own
-    namespace.
-
-    :type  element: xml.etree.ElementTree.Element
-
-    :return:    XML as a string
-    :rtype:     str
-    """
-    strip_ns(element)
-    tree = ElementTree(element)
-    io = StringIO()
-    tree.write(io)
-    return io.getvalue()
 
 
 # TODO: maybe this class shouldn't be a class

@@ -15,6 +15,7 @@ from pulp_rpm.common import constants, models
 
 type_done_map = {
     models.RPM.TYPE: 'rpm_done',
+    models.SRPM.TYPE: 'rpm_done',
     models.DRPM.TYPE: 'drpm_done',
 }
 

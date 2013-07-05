@@ -24,9 +24,10 @@ from xml.etree.cElementTree import iterparse
 
 from nectar.listener import AggregatingEventListener
 from nectar.request import DownloadRequest
+from pulp_rpm.plugins.importers.yum import utils
 
-from pulp_rpm.plugins.importers.yum.repomd import filelists, nectar_factory, other
-from pulp_rpm.plugins.importers.yum.repomd.packages import package_list_generator, element_to_raw_xml
+from pulp_rpm.plugins.importers.yum.repomd import filelists, nectar_factory, other, packages
+from pulp_rpm.plugins.importers.yum.repomd.packages import package_list_generator
 
 
 _LOGGER = logging.getLogger(__name__)
@@ -281,7 +282,8 @@ class MetadataFiles(object):
                 db_file_handle = gdbm.open(db_filename, 'nf')
                 try:
                     for element in generator:
-                        raw_xml = element_to_raw_xml(element)
+                        utils.strip_ns(element)
+                        raw_xml = utils.element_to_raw_xml(element)
                         unit_key, _ = process_func(element)
                         db_key = self.generate_db_key(unit_key)
                         db_file_handle[db_key] = raw_xml
