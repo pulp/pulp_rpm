@@ -80,12 +80,12 @@ class TestMigration(rpm_support_base.PulpRPMTests):
 
         # Consumer 1 and Consumer 2 should have the same hashes, even though the RPMs were recorded
         # in a different order
-        self.assertEqual(consumer_1_profile['hash'], consumer_2_profile['hash'])
+        self.assertEqual(consumer_1_profile['profile_hash'], consumer_2_profile['profile_hash'])
         # Consumer 3 should have a different hash, since it has an additional package
-        self.assertNotEqual(consumer_1_profile['hash'], consumer_3_rpm_profile['hash'])
+        self.assertNotEqual(consumer_1_profile['profile_hash'], consumer_3_rpm_profile['profile_hash'])
 
         # Consumer 3's non-RPM profile should not have a hash
-        self.assertTrue('hash' not in consumer_3_other_profile)
+        self.assertTrue('profile_hash' not in consumer_3_other_profile)
 
         # Now, let's make sure the hashes are actually correct. We only have to check 1 and 3, since
         # we already asserted that 1 is equal to 2
@@ -93,4 +93,4 @@ class TestMigration(rpm_support_base.PulpRPMTests):
         for profile in [consumer_1_profile, consumer_3_rpm_profile]:
             sorted_profile = profiler.update_profile(None, profile['profile'], None, None)
             expected_hash = hash(UnitProfile._convert_to_hashable(profile['profile']))
-            self.assertEqual(profile['hash'], expected_hash)
+            self.assertEqual(profile['profile_hash'], expected_hash)

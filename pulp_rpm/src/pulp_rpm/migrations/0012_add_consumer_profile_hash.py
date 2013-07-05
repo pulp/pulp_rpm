@@ -30,7 +30,7 @@ def migrate(*args, **kwargs):
     consumer_unit_profiles_collection = get_collection('consumer_unit_profiles')
     # For each RPM profile, let's add a profile hash
     for consumer_unit_profile in consumer_unit_profiles_collection.find({'content_type': 'rpm'}):
-        if 'hash' not in consumer_unit_profile:
+        if 'profile_hash' not in consumer_unit_profile:
             profile = consumer_unit_profile['profile']
             # The update_profile() method does not use the three arguments passed here as None. This
             # method will sort the profile so we can get a repeatable hash
@@ -38,5 +38,6 @@ def migrate(*args, **kwargs):
             profile_hash = hash(consumer.UnitProfile._convert_to_hashable(profile))
 
             # Now let's update the consumer_unit_profile with the hash
-            consumer_unit_profiles_collection.update({'_id': consumer_unit_profile['_id']},
-                                                     {'$set': {'hash': profile_hash}}, safe=True)
+            consumer_unit_profiles_collection.update(
+                {'_id': consumer_unit_profile['_id']},
+                {'$set': {'profile_hash': profile_hash}}, safe=True)
