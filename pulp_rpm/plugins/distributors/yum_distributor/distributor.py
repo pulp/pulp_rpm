@@ -43,6 +43,8 @@ SUPPORTED_UNIT_TYPES = [TYPE_ID_RPM, TYPE_ID_SRPM, TYPE_ID_DRPM, TYPE_ID_DISTRO]
 HTTP_PUBLISH_DIR="/var/lib/pulp/published/http/repos"
 HTTPS_PUBLISH_DIR="/var/lib/pulp/published/https/repos"
 
+OLD_REL_PATH_KEYWORD = 'old_relative_path'
+
 # This needs to be a config option in the distributor's .conf file. But for 2.0,
 # I don't have time to add that and realistically, people won't be reconfiguring
 # it anyway. This is to replace having it in Pulp's server.conf, which definitely
@@ -476,11 +478,27 @@ class YumDistributor(Distributor):
         relpath = self.get_repo_relative_path(repo, config)
         if relpath.startswith("/"):
             relpath = relpath[1:]
-        #
-        # Handle publish link for HTTPS
-        #
+
+        # Build the https and http publishing paths
         https_publish_dir = self.get_https_publish_dir(config)
         https_repo_publish_dir = os.path.join(https_publish_dir, relpath).rstrip('/')
+        http_publish_dir = self.get_http_publish_dir(config)
+        http_repo_publish_dir = os.path.join(http_publish_dir, relpath).rstrip('/')
+
+        # Clean up the old publish directories, if they exist.
+        scratchpad = publish_conduit.get_repo_scratchpad()
+        if OLD_REL_PATH_KEYWORD in scratchpad:
+            old_https_publish_dir = os.path.join(https_publish_dir, scratchpad[OLD_REL_PATH_KEYWORD])
+            old_http_publish_dir = os.path.join(http_publish_dir, scratchpad[OLD_REL_PATH_KEYWORD])
+            util.remove_publish_dir(https_publish_dir, old_https_publish_dir)
+            util.remove_publish_dir(http_publish_dir, old_http_publish_dir)
+
+        # Now write the current publish relative path to the scratch pad. This way, if the relative path
+        # changes before the next publish, we can clean up the old path.
+        scratchpad[OLD_REL_PATH_KEYWORD] = relpath
+        publish_conduit.set_repo_scratchpad(scratchpad)
+
+        # Handle publish link for HTTPS
         if config.get("https"):
             # Publish for HTTPS
             self.set_progress("publish_https", {"state" : "IN_PROGRESS"}, progress_callback)
@@ -495,12 +513,9 @@ class YumDistributor(Distributor):
             self.set_progress("publish_https", {"state" : "SKIPPED"}, progress_callback)
             if os.path.lexists(https_repo_publish_dir):
                 _LOG.debug("Removing link for %s since https is not set" % https_repo_publish_dir)
-                util.remove_symlink(https_publish_dir, https_repo_publish_dir)
-        #
+                util.remove_publish_dir(https_publish_dir, https_repo_publish_dir)
+
         # Handle publish link for HTTP
-        #
-        http_publish_dir = self.get_http_publish_dir(config)
-        http_repo_publish_dir = os.path.join(http_publish_dir, relpath).rstrip('/')
         if config.get("http"):
             # Publish for HTTP
             self.set_progress("publish_http", {"state" : "IN_PROGRESS"}, progress_callback)
@@ -515,7 +530,7 @@ class YumDistributor(Distributor):
             self.set_progress("publish_http", {"state" : "SKIPPED"}, progress_callback)
             if os.path.lexists(http_repo_publish_dir):
                 _LOG.debug("Removing link for %s since http is not set" % http_repo_publish_dir)
-                util.remove_symlink(http_publish_dir, http_repo_publish_dir)
+                util.remove_publish_dir(http_publish_dir, http_repo_publish_dir)
 
         summary["num_package_units_attempted"] = len(pkg_units)
         summary["num_package_units_published"] = len(pkg_units) - len(pkg_errors)
@@ -720,6 +735,12 @@ class YumDistributor(Distributor):
                     continue
                 distro_progress_status["items_left"] -= 1
             scratchpad.update({constants.PUBLISHED_DISTRIBUTION_FILES_KEY : {u.id : published_distro_files}})
+        # create the Packages symlink to the content dir, in the content dir
+        packages_symlink_path = os.path.join(symlink_dir, 'Packages')
+        if not util.create_symlink(symlink_dir, packages_symlink_path):
+            msg = 'Unable to create Packages symlink required for RHEL 5 distributions'
+            _LOG.error(msg)
+            errors.append((symlink_dir, packages_symlink_path, msg))
         publish_conduit.set_scratchpad(scratchpad)
         if errors:
             distro_progress_status["error_details"] = errors
@@ -739,7 +760,7 @@ class YumDistributor(Distributor):
                 for orphaned_path in published_distro_units[distroid]:
                     if os.path.islink(orphaned_path):
                         _LOG.debug("cleaning up orphaned distribution path %s" % orphaned_path)
-                        util.remove_symlink(repo_working_dir, orphaned_path)
+                        util.remove_publish_dir(repo_working_dir, orphaned_path)
                     # remove the cleaned up distroid from scratchpad
                 del scratchpad[constants.PUBLISHED_DISTRIBUTION_FILES_KEY][distroid]
         return scratchpad
