@@ -35,7 +35,7 @@ def migrate(*args, **kwargs):
             # The update_profile() method does not use the three arguments passed here as None. This
             # method will sort the profile so we can get a repeatable hash
             profile = profiler.update_profile(None, profile, None, None)
-            profile_hash = hash(consumer.UnitProfile._convert_to_hashable(profile))
+            profile_hash = consumer.UnitProfile.calculate_hash(profile)
 
             # Now let's update the consumer_unit_profile with the hash
             consumer_unit_profiles_collection.update(

@@ -92,5 +92,5 @@ class TestMigration(rpm_support_base.PulpRPMTests):
         profiler = rpm.RPMPkgProfiler()
         for profile in [consumer_1_profile, consumer_3_rpm_profile]:
             sorted_profile = profiler.update_profile(None, profile['profile'], None, None)
-            expected_hash = hash(UnitProfile._convert_to_hashable(profile['profile']))
+            expected_hash = UnitProfile.calculate_hash(profile['profile'])
             self.assertEqual(profile['profile_hash'], expected_hash)
