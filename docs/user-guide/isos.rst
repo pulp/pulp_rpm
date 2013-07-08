@@ -22,8 +22,7 @@ Features
 * Publish ISO repositories
 
 We will not endeavor to document all of these feature thoroughly here, as they are pretty well
-documented in the admin client extensions themselves. All ISO repo features are documented in the
-help text of the admin client's new ``iso repo`` section::
+documented in the help text of the admin client's new ``iso repo`` section::
 
     $ pulp-admin iso repo
 
