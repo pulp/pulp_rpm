@@ -11,6 +11,7 @@
 # have received a copy of GPLv2 along with this software; if not, see
 # http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt.
 
+from copy import deepcopy
 import mock
 import os
 import random
@@ -29,15 +30,17 @@ sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)) + "/../../../src/"
 sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)) + "/../../../plugins/profilers/")
 from pulp_rpm.common.ids import TYPE_ID_PROFILER_RPM_PKG, TYPE_ID_RPM, UNIT_KEY_RPM
 from pulp_rpm.yum_plugin import comps_util, util, updateinfo
-
+from rpm_pkg_profiler.profiler import RPMPkgProfiler
 import profiler_mocks
 import rpm_support_base
-from rpm_pkg_profiler.profiler import RPMPkgProfiler
 
-class TestRpmPkgProfiler(rpm_support_base.PulpRPMTests):
+class TestRPMPkgProfiler(rpm_support_base.PulpRPMTests):
+    """
+    Test the RPMPkgProfiler class.
+    """
 
     def setUp(self):
-        super(TestRpmPkgProfiler, self).setUp()
+        super(TestRPMPkgProfiler, self).setUp()
         self.data_dir = os.path.join(os.path.abspath(os.path.dirname(__file__)), "../data")
         self.temp_dir = tempfile.mkdtemp()
         self.working_dir = os.path.join(self.temp_dir, "working")
@@ -59,7 +62,7 @@ class TestRpmPkgProfiler(rpm_support_base.PulpRPMTests):
         self.override_config_units = {'report_style' : 'by_units'}
 
     def tearDown(self):
-        super(TestRpmPkgProfiler, self).tearDown()
+        super(TestRPMPkgProfiler, self).tearDown()
         shutil.rmtree(self.temp_dir)
 
     def create_rpm_dict(self, name, epoch, version, release, arch, checksum, checksumtype):
@@ -169,3 +172,68 @@ class TestRpmPkgProfiler(rpm_support_base.PulpRPMTests):
                                                  self.override_config_units, conduit)
         self.assertTrue(report_list == [])
 
+    def test_update_profile_presorted_profile(self):
+        """
+        Test the update_profile() method with a presorted profile. It should not alter it at all.
+        """
+        profile = [
+            {'name': 'Package A', 'epoch': 0, 'version': '1.0.1', 'release': '2.el6', 'arch': 'x86_64',
+             'vendor': 'Red Hat, Inc.'},
+            {'name': 'Package A', 'epoch': 0, 'version': '1.1.0', 'release': '1.el6', 'arch': 'x86_64',
+             'vendor': 'Red Hat, Inc.'},
+            {'name': 'Package B', 'epoch': 0, 'version': '2.3.9', 'release': '1.el6', 'arch': 'x86_64',
+             'vendor': 'Red Hat, Inc.'},
+            {'name': 'Package B', 'epoch': 1, 'version': '1.2.1', 'release': '8.el6', 'arch': 'x86_64',
+             'vendor': 'Red Hat, Inc.'},
+            {'name': 'Package C', 'epoch': 0, 'version': '1.0.0', 'release': '1.el6', 'arch': 'x86_64',
+             'vendor': 'Red Hat, Inc.'},
+            {'name': 'Package C', 'epoch': 0, 'version': '1.0.0', 'release': '2.el6', 'arch': 'x86_64',
+             'vendor': 'Red Hat, Inc.'},
+        ]
+        profiler = RPMPkgProfiler()
+
+        # The update_profile() method doesn't use any of the args except for profile, so we'll just pass in
+        # strings.
+        new_profile = profiler.update_profile('consumer', deepcopy(profile), 'config', 'conduit')
+
+        self.assertEqual(new_profile, profile)
+
+    def test_update_profile_sorts_profile(self):
+        """
+        Test that the update_profile() method sorts the profile.
+        """
+        profile = [
+            {'name': 'Package A', 'epoch': 0, 'version': '1.0.1', 'release': '2.el6', 'arch': 'x86_64',
+             'vendor': 'Red Hat, Inc.'},
+            {'name': 'Package C', 'epoch': 0, 'version': '1.0.0', 'release': '1.el6', 'arch': 'x86_64',
+             'vendor': 'Red Hat, Inc.'},
+            {'name': 'Package C', 'epoch': 0, 'version': '1.0.0', 'release': '2.el6', 'arch': 'x86_64',
+             'vendor': 'Red Hat, Inc.'},
+            {'name': 'Package A', 'epoch': 0, 'version': '1.1.0', 'release': '1.el6', 'arch': 'x86_64',
+             'vendor': 'Red Hat, Inc.'},
+            {'name': 'Package B', 'epoch': 1, 'version': '1.2.1', 'release': '8.el6', 'arch': 'x86_64',
+             'vendor': 'Red Hat, Inc.'},
+            {'name': 'Package B', 'epoch': 0, 'version': '2.3.9', 'release': '1.el6', 'arch': 'x86_64',
+             'vendor': 'Red Hat, Inc.'},
+        ]
+        profiler = RPMPkgProfiler()
+
+        # The update_profile() method doesn't use any of the args except for profile, so we'll just pass in
+        # strings.
+        new_profile = profiler.update_profile('consumer', deepcopy(profile), 'config', 'conduit')
+
+        expected_profile = [
+            {'name': 'Package A', 'epoch': 0, 'version': '1.0.1', 'release': '2.el6', 'arch': 'x86_64',
+             'vendor': 'Red Hat, Inc.'},
+            {'name': 'Package A', 'epoch': 0, 'version': '1.1.0', 'release': '1.el6', 'arch': 'x86_64',
+             'vendor': 'Red Hat, Inc.'},
+            {'name': 'Package B', 'epoch': 0, 'version': '2.3.9', 'release': '1.el6', 'arch': 'x86_64',
+             'vendor': 'Red Hat, Inc.'},
+            {'name': 'Package B', 'epoch': 1, 'version': '1.2.1', 'release': '8.el6', 'arch': 'x86_64',
+             'vendor': 'Red Hat, Inc.'},
+            {'name': 'Package C', 'epoch': 0, 'version': '1.0.0', 'release': '1.el6', 'arch': 'x86_64',
+             'vendor': 'Red Hat, Inc.'},
+            {'name': 'Package C', 'epoch': 0, 'version': '1.0.0', 'release': '2.el6', 'arch': 'x86_64',
+             'vendor': 'Red Hat, Inc.'},
+        ]
+        self.assertEqual(new_profile, expected_profile)
