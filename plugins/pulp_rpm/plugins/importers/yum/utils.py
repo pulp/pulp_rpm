@@ -15,7 +15,14 @@ from cStringIO import StringIO
 from collections import namedtuple
 import itertools
 import re
-from xml.etree import cElementTree as ET
+import sys
+
+from pulp.common.compat import check_builtin
+
+if sys.version_info < (2, 7):
+    from xml.etree import ElementTree as ET
+else:
+    from xml.etree import cElementTree as ET
 
 
 DEFAULT_PAGE_SIZE = 1000
@@ -73,15 +80,31 @@ def element_to_raw_xml(element, namespaces=None):
     for namespace in namespaces:
         if not isinstance(namespace, Namespace):
             raise TypeError('"namespaces" must be an iterable of Namespace instances')
-        ET.register_namespace(namespace.name, namespace.uri)
+        register_namespace(namespace.name, namespace.uri)
 
     tree = ET.ElementTree(element)
     io = StringIO()
     tree.write(io)
     # clean up, since this is global
     for namespace in namespaces:
-        ET.register_namespace(namespace.name, '')
+        register_namespace(namespace.name, '')
     return re.sub(STRIP_XMLNS_RE, r'\1', io.getvalue())
+
+
+@check_builtin(ET)
+def register_namespace(prefix, uri):
+    """
+    Adapted from xml.etree.ElementTree.register_namespace as implemented
+    in Python 2.7.
+
+    :param prefix:  namespace prefix
+    :param uri:     namespace URI. Tags and attributes in this namespace will be
+                    serialized with the given prefix, if at all possible.
+    """
+    for k, v in ET._namespace_map.items():
+        if v == prefix:
+            del ET._namespace_map[k]
+    ET._namespace_map[uri] = prefix
 
 
 def strip_ns(element):
