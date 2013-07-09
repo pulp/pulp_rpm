@@ -15,7 +15,7 @@ from cStringIO import StringIO
 from collections import namedtuple
 import itertools
 import re
-from xml.etree import cElementTree as ET
+from xml.etree import ElementTree as ET
 
 
 DEFAULT_PAGE_SIZE = 1000
@@ -69,18 +69,24 @@ def element_to_raw_xml(element, namespaces=None):
     :return:    XML as a string
     :rtype:     str
     """
+    try:
+        register_namespace = ET.register_namespace
+    except AttributeError:
+        def register_namespace(prefix, uri):
+            ET._namespace_map[uri] = prefix
+
     namespaces = namespaces or tuple()
     for namespace in namespaces:
         if not isinstance(namespace, Namespace):
             raise TypeError('"namespaces" must be an iterable of Namespace instances')
-        ET.register_namespace(namespace.name, namespace.uri)
+        register_namespace(namespace.name, namespace.uri)
 
     tree = ET.ElementTree(element)
     io = StringIO()
     tree.write(io)
     # clean up, since this is global
     for namespace in namespaces:
-        ET.register_namespace(namespace.name, '')
+        register_namespace(namespace.name, '')
     return re.sub(STRIP_XMLNS_RE, r'\1', io.getvalue())
 
 
