@@ -36,10 +36,10 @@ class TestElementToRawXML(unittest.TestCase):
         # make sure there are no stray closing elements, like </metadata>
         self.assertTrue(raw_xml.rstrip().endswith('</package>'))
         # make sure it preserved the "rpm" prefix
-        self.assertTrue(raw_xml.index('<rpm:license>') >= 0)
+        self.assertTrue(raw_xml.find('<rpm:license>') >= 0)
         # make sure it got the requires and provides entries
-        self.assertTrue(raw_xml.index('dolphin') >= 0)
-        self.assertTrue(raw_xml.index('penguin') >= 0)
+        self.assertTrue(raw_xml.find('dolphin') >= 0)
+        self.assertTrue(raw_xml.find('penguin') >= 0)
 
 
 class TestPaginate(unittest.TestCase):
