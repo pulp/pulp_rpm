@@ -23,13 +23,22 @@ _LOGGER = logging.getLogger(__name__)
 
 def check_repo(wanted, unit_search_method):
     """
+    Given an iterable of units as namedtuples, this function will search for them
+    using the given search method and return the set of tuples that were not
+    found.
+
+    This is useful in a case where you know what units you want to have in a repo,
+    but need to know which you need to actually download by eliminating the ones
+    you already have.
 
     :param wanted:          iterable of units as namedtuples
     :type  wanted:          iterable
     :param sync_conduit:
     :type  sync_conduit:    pulp.plugins.conduits.repo_sync.RepoSyncConduit
 
-    :return:    set of unit keys as namedtuples
+    :return:    set of unit keys as namedtuples, identifying which of the
+                named tuples received as input were not found by the
+                search method.
     :rtype:     set
     """
     # sort by type
