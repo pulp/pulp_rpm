@@ -76,6 +76,7 @@ def element_to_raw_xml(element, namespaces_to_register=None, default_namespace_u
     :param default_namespace_uri:   URI of the default namespace, if any. This
                                     will be stripped from the tag of the given
                                     element and any of its descendants.
+    :type  default_namespace_uri:   basestring
 
     :return:    XML as a string
     :rtype:     str
