@@ -179,8 +179,8 @@ def process_package_element(package_element):
     else:
         model = models.RPM.from_package_info(package_info)
     # add the raw XML so it can be saved in the database later
-    namespaces = (utils.Namespace('', COMMON_SPEC_URL), utils.Namespace('rpm', RPM_SPEC_URL))
-    model.raw_xml = utils.element_to_raw_xml(package_element, namespaces)
+    rpm_namespace = utils.Namespace('rpm', RPM_SPEC_URL)
+    model.raw_xml = utils.element_to_raw_xml(package_element, [rpm_namespace], COMMON_SPEC_URL)
     return model
 
 
