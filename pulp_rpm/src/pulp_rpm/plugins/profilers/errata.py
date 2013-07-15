@@ -17,6 +17,7 @@ Profiler plugin to support RPM Errata functionality
 
 import gettext
 
+from pulp.plugins.conduits.mixins import UnitAssociationCriteria
 from pulp.plugins.profiler import Profiler, InvalidUnitTypeForApplicability
 from pulp_rpm.common.ids import TYPE_ID_PROFILER_RPM_ERRATA, TYPE_ID_ERRATA, TYPE_ID_RPM
 from pulp_rpm.yum_plugin import util
@@ -166,10 +167,18 @@ class RPMErrataProfiler(Profiler):
         lookup = {}
         for r in rpms:
             # Since only one name.arch is allowed to be installed on a machine,
-            # we will use name.arch as a key in the lookup table
+            # we will use "name arch" as a key in the lookup table
             key = "%s %s" % (r['name'], r['arch'])
             lookup[key] = r
         return lookup
+
+
+    def form_lookup_key(self, item):
+        #
+        # This key needs to avoid usage of a ".", since it may be stored in mongo
+        # when the upgrade_details are returned.
+        #
+        return "%s %s" % (item['name'], item['arch'])
 
 
     def translate_units(self, units, consumer, conduit):
@@ -308,3 +317,15 @@ class RPMErrataProfiler(Profiler):
             else:
                 _LOG.debug("rpm %s was not found in consumer profile of %s" % (key, consumer.id))
         return applicable_rpms, older_rpms
+
+    def find_unit_associated_to_repos(self, unit_type, unit_key, repo_ids, conduit):
+        criteria = UnitAssociationCriteria(type_ids=[unit_type], unit_filters=unit_key)
+        return self.find_unit_associated_to_repos_by_criteria(criteria, repo_ids, conduit)
+
+    def find_unit_associated_to_repos_by_criteria(self, criteria, repo_ids, conduit):
+        for repo_id in repo_ids:
+            result = conduit.get_units(repo_id, criteria)
+            _LOG.debug("Found %s items when searching in repo <%s> for <%s>" % (len(result), repo_id, criteria))
+            if result:
+                return result[0]
+        return None
