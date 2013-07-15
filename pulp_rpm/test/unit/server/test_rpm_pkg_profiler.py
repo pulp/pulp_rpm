@@ -49,6 +49,8 @@ class TestRPMPkgProfiler(rpm_support_base.PulpRPMTests):
         self.consumer_id = "test_errata_profiler_consumer_id"
         self.profiles = self.get_test_profile()
         self.test_consumer = Consumer(self.consumer_id, self.profiles)
+        print self.profiles[TYPE_ID_RPM]
+        self.test_consumer_lookup = self.form_lookup_table(self.profiles[TYPE_ID_RPM])
         # i386 version of consumer to test arch issues
         self.consumer_id_i386 = "%s.i386" % (self.consumer_id)
         self.profiles_i386 = self.get_test_profile(arch="i386")
@@ -57,13 +59,19 @@ class TestRPMPkgProfiler(rpm_support_base.PulpRPMTests):
         self.consumer_id_been_updated = "%s.been_updated" % (self.consumer_id)
         self.profiles_been_updated = self.get_test_profile_been_updated()
         self.test_consumer_been_updated = Consumer(self.consumer_id_been_updated, self.profiles_been_updated)
-        # Set applicability report override_config
-        self.override_config_consumer = {'report_style' : 'by_consumers'}
-        self.override_config_units = {'report_style' : 'by_units'}
 
     def tearDown(self):
         super(TestRPMPkgProfiler, self).tearDown()
         shutil.rmtree(self.temp_dir)
+    
+    def form_lookup_table(self, rpms):
+        lookup = {}
+        for r in rpms:
+            # Since only one name.arch is allowed to be installed on a machine,
+            # we will use name.arch as a key in the lookup table
+            key = "%s %s" % (r['name'], r['arch'])
+            lookup[key] = r
+        return lookup
 
     def create_rpm_dict(self, name, epoch, version, release, arch, checksum, checksumtype):
         unit_key = {"name":name, "epoch":epoch, "version":version, "release":release, 
@@ -95,81 +103,66 @@ class TestRPMPkgProfiler(rpm_support_base.PulpRPMTests):
     def test_rpm_applicable_to_consumer(self):
         rpm = {}
         prof = RPMPkgProfiler()
-        applicable, old_rpm = prof.rpm_applicable_to_consumer(Consumer("test", {}), rpm)
+        applicable = prof.is_applicable(rpm, {})
         self.assertEqual(applicable, False)
-        self.assertEqual(old_rpm, {})
 
         # Test with newer RPM
         #  The consumer has already been configured with a profile containing 'emoticons'
         rpm = self.create_profile_entry("emoticons", 0, "0.1", "2", "x86_64", "Test Vendor")
-        applicable, old_rpm = prof.rpm_applicable_to_consumer(self.test_consumer, rpm)
+        applicable = prof.is_applicable(rpm, self.test_consumer_lookup)
         self.assertTrue(applicable)
-        self.assertTrue(old_rpm)
-        self.assertTrue(old_rpm.has_key("emoticons x86_64"))
-        self.assertEqual("emoticons", old_rpm["emoticons x86_64"]["installed"]["name"])
-        self.assertEqual("0.0.1", old_rpm["emoticons x86_64"]["installed"]["version"])
 
     def test_unit_applicable_true(self):
         rpm_unit_key = self.create_profile_entry("emoticons", 0, "0.1", "2", "x86_64", "Test Vendor")
         rpm_unit = Unit(TYPE_ID_RPM, rpm_unit_key, {}, None)
-        existing_units = [rpm_unit]
         test_repo = profiler_mocks.get_repo("test_repo_id")
-        conduit = profiler_mocks.get_profiler_conduit(existing_units=existing_units, repo_bindings=[test_repo])
-        example_rpms_criteria = {"filters":{"name": "emoticons"}}
+        conduit = profiler_mocks.get_profiler_conduit(repo_units=[rpm_unit], repo_bindings=[test_repo])
+
         prof = RPMPkgProfiler()
-        consumer_profile_and_repo_ids = {self.consumer_id:
-                                            {'profiled_consumer':self.test_consumer,
-                                             'repo_ids':["test_repo_id"]}
-                                        }
-        report_list = prof.find_applicable_units(consumer_profile_and_repo_ids, TYPE_ID_RPM, example_rpms_criteria, {}, conduit)
+        unit_type_id = TYPE_ID_RPM
+        unit_profile = self.test_consumer.profiles[TYPE_ID_RPM]
+        bound_repo_id = "test_repo_id"
+        report_list = prof.calculate_applicable_units(unit_type_id, unit_profile, bound_repo_id, None, conduit)
         self.assertFalse(report_list == [])
+        self.assertTrue(len(report_list) == 1)
 
     def test_unit_applicable_same_name_diff_arch(self):
         rpm_unit_key = self.create_profile_entry("emoticons", 0, "0.1", "2", "x86_64", "Test Vendor")
         rpm_unit = Unit(TYPE_ID_RPM, rpm_unit_key, {}, None)
-        existing_units = [rpm_unit]
         test_repo = profiler_mocks.get_repo("test_repo_id")
-        conduit = profiler_mocks.get_profiler_conduit(existing_units=existing_units, repo_bindings=[test_repo])
-        example_rpms_criteria = {"filters":{"name": "emoticons"}}
+        conduit = profiler_mocks.get_profiler_conduit(repo_units=[rpm_unit], repo_bindings=[test_repo])
+
         prof = RPMPkgProfiler()
-        consumer_profile_and_repo_ids = {self.consumer_id_i386:
-                                            {'profiled_consumer':self.test_consumer_i386,
-                                             'repo_ids':["test_repo_id"]}
-                                        }
-        report_dict = prof.find_applicable_units(consumer_profile_and_repo_ids, TYPE_ID_RPM, example_rpms_criteria, 
-                                                 self.override_config_consumer, conduit)
-        self.assertTrue(report_dict == {})
+        unit_type_id = TYPE_ID_RPM
+        unit_profile = self.test_consumer_i386.profiles[TYPE_ID_RPM]
+        bound_repo_id = "test_repo_id"
+        report_list = prof.calculate_applicable_units(unit_type_id, unit_profile, bound_repo_id, None, conduit)
+        self.assertTrue(report_list == [])
 
     def test_unit_applicable_updated_rpm_already_installed(self):
         rpm_unit_key = self.create_profile_entry("emoticons", 0, "0.1", "2", "x86_64", "Test Vendor")
         rpm_unit = Unit(TYPE_ID_RPM, rpm_unit_key, {}, None)
-        existing_units = [rpm_unit]
         test_repo = profiler_mocks.get_repo("test_repo_id")
-        conduit = profiler_mocks.get_profiler_conduit(existing_units=existing_units, repo_bindings=[test_repo])
-        example_rpms_criteria = {"filters":{"name": "emoticons"}}
+        conduit = profiler_mocks.get_profiler_conduit(repo_units=[rpm_unit], repo_bindings=[test_repo])
+
         prof = RPMPkgProfiler()
-        consumer_profile_and_repo_ids = {self.consumer_id_been_updated:
-                                            {'profiled_consumer':self.test_consumer_been_updated,
-                                             'repo_ids':["test_repo_id"]}
-                                        }
-        report_dict = prof.find_applicable_units(consumer_profile_and_repo_ids, TYPE_ID_RPM, example_rpms_criteria, 
-                                                 self.override_config_consumer, conduit)
-        self.assertTrue(report_dict == {})
+        unit_type_id = TYPE_ID_RPM
+        unit_profile = self.test_consumer_been_updated.profiles[TYPE_ID_RPM]
+        bound_repo_id = "test_repo_id"
+        report_list = prof.calculate_applicable_units(unit_type_id, unit_profile, bound_repo_id, None, conduit)
+        self.assertTrue(report_list == [])
 
     def test_unit_applicable_false(self):
         rpm_unit_key = self.create_profile_entry("bla-bla", 0, "0.1", "2", "x86_64", "Test Vendor")
         rpm_unit = Unit(TYPE_ID_RPM, rpm_unit_key, {}, None)
-        existing_units = [rpm_unit]
         test_repo = profiler_mocks.get_repo("test_repo_id")
-        conduit = profiler_mocks.get_profiler_conduit(existing_units=existing_units, repo_bindings=[test_repo])
-        example_rpms_criteria = {"filters":{"name": "bla-bla"}}
+        conduit = profiler_mocks.get_profiler_conduit(repo_units=[rpm_unit], repo_bindings=[test_repo])
+
         prof = RPMPkgProfiler()
-        consumer_profile_and_repo_ids = {self.consumer_id_i386:
-                                            {'profiled_consumer':self.test_consumer_i386,
-                                             'repo_ids':["test_repo_id"]}
-                                        }
-        report_list = prof.find_applicable_units(consumer_profile_and_repo_ids, TYPE_ID_RPM, example_rpms_criteria, 
-                                                 self.override_config_units, conduit)
+        unit_type_id = TYPE_ID_RPM
+        unit_profile = self.test_consumer.profiles[TYPE_ID_RPM]
+        bound_repo_id = "test_repo_id"
+        report_list = prof.calculate_applicable_units(unit_type_id, unit_profile, bound_repo_id, None, conduit)
         self.assertTrue(report_list == [])
 
     def test_update_profile_presorted_profile(self):
