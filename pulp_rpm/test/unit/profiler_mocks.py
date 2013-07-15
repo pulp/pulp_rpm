@@ -20,7 +20,7 @@ def get_repo(repo_id):
             self.id = repo_id
     return Repo(repo_id)
 
-def get_profiler_conduit(type_id=None, existing_units=None, repo_bindings=[]):
+def get_profiler_conduit(type_id=None, existing_units=None, repo_bindings=[], repo_units=[], errata_rpms=[]):
     def get_bindings(consumer_id=None):
         return repo_bindings
 
@@ -35,22 +35,22 @@ def get_profiler_conduit(type_id=None, existing_units=None, repo_bindings=[]):
                     ret_val.append(u)
         return ret_val
 
-    def search_unit_ids(type_id, criteria=None):
+    def get_repo_units(repo_id, content_type_id, additional_unit_fields=[]):
         ret_val = []
-        if existing_units:
-            for u in existing_units:
-                ret_val.append(u.id)
-                if criteria and 'filters' in criteria:
-                    filters = criteria["filters"]
-                    if (u.type_id == type_id and filters['name'] == u.unit_key['name']):
-                        ret_val.append(u.id)
+        for u in repo_units:
+            unit = {'unit_key':u.unit_key,
+                    'unit_id':u.id}
+            for f in additional_unit_fields:
+                if f == 'pkglist':
+                    unit[f] = [{'packages':errata_rpms}]
                 else:
-                    ret_val.append(u.id)
+                    unit[f] = 'test-additional-field'
+            ret_val.append(unit)
         return ret_val
 
     sync_conduit = mock.Mock(spec=ProfilerConduit)
     sync_conduit.get_units.side_effect = get_units
-    sync_conduit.search_unit_ids.side_effect = search_unit_ids
+    sync_conduit.get_repo_units.side_effect = get_repo_units
     sync_conduit.get_bindings.side_effect = get_bindings
     return sync_conduit
 
