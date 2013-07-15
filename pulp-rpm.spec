@@ -18,7 +18,7 @@
 
 Name: pulp-rpm
 Version: 2.2.0
-Release: 0.20.beta%{?dist}
+Release: 0.21.beta%{?dist}
 Summary: Support for RPM content in the Pulp platform
 Group: Development/Languages
 License: GPLv2
@@ -282,6 +282,12 @@ A collection of yum plugins supplementing Pulp consumer operations.
 
 
 %changelog
+* Mon Jul 15 2013 Jeff Ortel <jortel@redhat.com> 2.2.0-0.21.beta
+- 984104 - fixed a bug that caused multiple calls to group copy with the
+  --recursive option to fail (mhrivnak@redhat.com)
+- 983323 - fixed an XML parsing incompatibility with python 2.6 where the
+  default XML namespace was being mishandled. (mhrivnak@redhat.com)
+
 * Tue Jul 09 2013 Jeff Ortel <jortel@redhat.com> 2.2.0-0.20.beta
 - 982649 - fixing a python 2.6 incompatibility which caused writing of XML for
   individual packages to fail. (mhrivnak@redhat.com)
