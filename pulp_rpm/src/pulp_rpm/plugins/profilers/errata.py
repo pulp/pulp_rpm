@@ -75,9 +75,10 @@ class RPMErrataProfiler(Profiler):
     def calculate_applicable_units(self, unit_type_id, unit_profile, bound_repo_id, config, conduit):
         """
         Calculate and return a list of content unit ids applicable to consumers with given unit_profile.
-        Applicability is calculated against all content units belonging to the given bound repository.
+        Applicability is calculated against all content units of given type belonging to 
+        the given bound repository.
 
-        :param unit_type_id: Content unit type id
+        :param unit_type_id: content unit type id
         :type unit_type_id: str
 
         :param unit_profile: a consumer unit profile
@@ -93,8 +94,8 @@ class RPMErrataProfiler(Profiler):
         :param conduit: provides access to relevant Pulp functionality
         :type conduit: pulp.plugins.conduits.profile.ProfilerConduit
 
-        :return: A list of content unit ids
-        :rtype: List of str
+        :return: a list of content unit ids
+        :rtype: list of str
         """
         
         if unit_type_id != TYPE_ID_ERRATA:
