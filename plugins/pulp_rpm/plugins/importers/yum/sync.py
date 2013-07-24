@@ -123,8 +123,8 @@ class RepoSync(object):
             else:
                 self.distribution_report['state'] = constants.STATE_RUNNING
                 self.set_progress()
-                treeinfo.sync(self.sync_conduit, self.sync_feed,
-                              self.tmp_dir, self.distribution_report, self.set_progress)
+                treeinfo.sync(self.sync_conduit, self.sync_feed, self.tmp_dir,
+                              self.nectar_config, self.distribution_report, self.set_progress)
             self.set_progress()
 
             if models.Errata.TYPE in self.call_config.get(constants.CONFIG_SKIP, []):
