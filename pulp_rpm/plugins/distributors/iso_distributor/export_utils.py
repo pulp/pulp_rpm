@@ -263,7 +263,7 @@ def get_repo_relative_url(repo_id):
         # If the relative url was not retrieved because it didn't exist, use the repo_id
         relative_url = repo_id
 
-    return relative_url
+    return relative_url.lstrip('/')
 
 
 def is_rpm_repo(repo_id):
