@@ -13,6 +13,7 @@ Contents:
    quick-start
    recipes
    features
+   isos
    troubleshooting
 
 

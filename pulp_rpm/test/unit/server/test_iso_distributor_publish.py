@@ -10,70 +10,27 @@
 # NON-INFRINGEMENT, or FITNESS FOR A PARTICULAR PURPOSE. You should
 # have received a copy of GPLv2 along with this software; if not, see
 # http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt.
+
+from ConfigParser import SafeConfigParser
 import csv
 import errno
 import os
 import shutil
 import tempfile
-
-from pulp_rpm.common import constants, ids, models, progress
-from pulp_rpm.plugins.distributors.iso_distributor import publish
-from rpm_support_base import PulpRPMTests
-import distributor_mocks
+import unittest
 
 from mock import MagicMock, patch
 from pulp.plugins.model import Repository, Unit
 
-
-class TestProtectRepository(PulpRPMTests):
-    """
-    Test the _protect_repository() function.
-    """
-    @patch('pulp_rpm.repo_auth.protected_repo_utils.ProtectedRepoUtils.add_protected_repo')
-    @patch('pulp_rpm.repo_auth.protected_repo_utils.ProtectedRepoUtils.delete_protected_repo')
-    @patch('pulp_rpm.repo_auth.repo_cert_utils.RepoCertUtils.write_consumer_cert_bundle')
-    def test_with_auth_cert(self, write_consumer_cert_bundle, delete_protected_repo, add_protected_repo):
-        """
-        Test behavior when an auth cert is provided.
-        """
-        relative_path = 'relative/path'
-        repo = MagicMock()
-        repo.id = 7
-        cert = 'This is a real cert, trust me.'
-        config = distributor_mocks.get_basic_config(**{constants.CONFIG_SSL_AUTH_CA_CERT: cert})
-
-        publish._protect_repository(relative_path, repo, config)
-
-        # Assert that the appropriate repository protection calls were made
-        write_consumer_cert_bundle.assert_called_once_with(repo.id, {'ca': cert})
-        add_protected_repo.assert_called_once_with(relative_path, repo.id)
-        self.assertEqual(delete_protected_repo.call_count, 0)
-
-    @patch('pulp_rpm.repo_auth.protected_repo_utils.ProtectedRepoUtils.add_protected_repo')
-    @patch('pulp_rpm.repo_auth.protected_repo_utils.ProtectedRepoUtils.delete_protected_repo')
-    @patch('pulp_rpm.repo_auth.repo_cert_utils.RepoCertUtils.write_consumer_cert_bundle')
-    def test_without_auth_cert(self, write_consumer_cert_bundle, delete_protected_repo, add_protected_repo):
-        """
-        Test behavior when no auth cert is provided.
-        """
-        relative_path = 'relative/path'
-        repo = MagicMock()
-        repo.id = 7
-        config = distributor_mocks.get_basic_config()
-
-        publish._protect_repository(relative_path, repo, config)
-
-        # Assert that the repository protection removal call was made, and not the protection establishment
-        # calls
-        self.assertEqual(write_consumer_cert_bundle.call_count, 0)
-        self.assertEqual(add_protected_repo.call_count, 0)
-        delete_protected_repo.assert_called_once_with(relative_path)
+from pulp_rpm.common import constants, ids, models, progress
+from pulp_rpm.plugins.distributors.iso_distributor import publish
+from pulp_rpm.repo_auth.protected_repo_utils import ProtectedRepoUtils
+from pulp_rpm.repo_auth.repo_cert_utils import RepoCertUtils
+import distributor_mocks
 
 
-class TestPublish(PulpRPMTests):
-    """
-    Test the publish module.
-    """
+
+class PublishTests(unittest.TestCase):
     def setUp(self):
         self.existing_units = [
             Unit(ids.TYPE_ID_ISO, {'name': 'test.iso', 'size': 1, 'checksum': 'sum1'},
@@ -98,6 +55,11 @@ class TestPublish(PulpRPMTests):
         constants.ISO_HTTPS_DIR = self._original_iso_https_dir
         shutil.rmtree(self.temp_dir)
 
+
+class TestPublish(PublishTests):
+    """
+    Test the publish() function.
+    """
     @patch('pulp_rpm.repo_auth.protected_repo_utils.ProtectedRepoUtils.delete_protected_repo')
     def test_publish(self, delete_protected_repo):
         """
@@ -145,6 +107,57 @@ class TestPublish(PulpRPMTests):
                          progress.PublishProgressReport.STATE_IN_PROGRESS)
         self.assertEqual(publish_conduit.set_progress.mock_calls[1][1][0]['state'],
                          progress.PublishProgressReport.STATE_COMPLETE)
+
+    @patch('pulp_rpm.plugins.distributors.iso_distributor.publish.unpublish', autospec=True,
+           side_effect=publish.unpublish)
+    @patch('pulp_rpm.repo_auth.protected_repo_utils.ProtectedRepoUtils.delete_protected_repo')
+    def test_publish_calls_unpublish(self, delete_protected_repo, unpublish):
+        """
+        Make sure that the unpublish() function is called during the publish operation, to cleanup what might
+        have already been in the publishing location.
+        """
+        repo = MagicMock(spec=Repository)
+        repo.id = 'lebowski'
+        repo.working_dir = self.temp_dir
+        publish_conduit = distributor_mocks.get_publish_conduit(existing_units=self.existing_units)
+        config = distributor_mocks.get_basic_config(**{constants.CONFIG_SERVE_HTTP: True,
+                                                       constants.CONFIG_SERVE_HTTPS: True})
+        publishing_paths = [os.path.join(directory, 'lebowski') \
+                            for directory in [constants.ISO_HTTP_DIR, constants.ISO_HTTPS_DIR]]
+        # Let's put some junk files in the publishing paths, and make sure that the unpublish step removes them
+        delme_filename = 'delme'
+        for publishing_path in publishing_paths:
+            os.makedirs(publishing_path)
+            with open(os.path.join(publishing_path, delme_filename), 'w') as delme:
+                delme.write('Deleeeeete meeeeee!')
+
+        report = publish.publish(repo, publish_conduit, config)
+
+        self.assertTrue(report.success_flag)
+        self.assertEqual(report.summary['state'], progress.ISOProgressReport.STATE_COMPLETE)
+        # Let's verify that the publish directory looks right
+        for publishing_path in publishing_paths:
+            for unit in self.existing_units:
+                expected_symlink_path = os.path.join(publishing_path, unit.unit_key['name'])
+                self.assertTrue(os.path.islink(expected_symlink_path))
+                expected_symlink_destination = os.path.join('/', 'path', unit.unit_key['name'])
+                self.assertEqual(os.path.realpath(expected_symlink_path),
+                                 expected_symlink_destination)
+
+            # Now let's have a look at the PULP_MANIFEST file to make sure it was generated and
+            # published correctly.
+            manifest_filename = os.path.join(publishing_path, models.ISOManifest.FILENAME)
+            manifest_rows = []
+            with open(manifest_filename) as manifest_file:
+                manifest = csv.reader(manifest_file)
+                for row in manifest:
+                    manifest_rows.append(row)
+            expected_manifest_rows = [['test.iso', 'sum1', '1'], ['test2.iso', 'sum2', '2'],
+                                      ['test3.iso', 'sum3', '3']]
+            self.assertEqual(manifest_rows, expected_manifest_rows)
+            self.assertFalse(os.path.exists(os.path.join(publishing_path, delme_filename)))
+        delete_protected_repo.assert_called_once_with(repo.id)
+        unpublish.assert_called_once_with(repo)
 
     @patch('pulp_rpm.repo_auth.protected_repo_utils.ProtectedRepoUtils.delete_protected_repo')
     def test_publish_handles_errors(self, delete_protected_repo):
@@ -246,6 +259,35 @@ class TestPublish(PulpRPMTests):
         self.assertEqual(publish_conduit.set_progress.mock_calls[1][1][0]['state'],
                          progress.PublishProgressReport.STATE_COMPLETE)
 
+
+class TestUnpublish(PublishTests):
+    """
+    Test the unpublish() method.
+    """
+    @patch('pulp_rpm.repo_auth.protected_repo_utils.ProtectedRepoUtils.delete_protected_repo')
+    def test_unpublish(self, delete_protected_repo):
+        repo = MagicMock(spec=Repository)
+        repo.id = 'lebowski'
+        publishing_paths = publish._get_hosting_locations(repo)
+        # Let's put some junk files in the publishing paths, and make sure that the unpublish step removes them
+        delme_filename = 'delme'
+        for publishing_path in publishing_paths:
+            os.makedirs(publishing_path)
+            with open(os.path.join(publishing_path, delme_filename), 'w') as delme:
+                delme.write('Deleeeeete meeeeee!')
+
+        publish.unpublish(repo)
+
+        # Let's verify that the publish directories are gone
+        for path in publish._get_hosting_locations(repo):
+            self.assertFalse(os.path.exists(path))
+        delete_protected_repo.assert_called_once_with(publish._get_relative_path(repo))
+
+
+class TestBuildMetadata(PublishTests):
+    """
+    Test the _build_metadata() function.
+    """
     def test__build_metadata(self):
         """
         The _build_metadata() method should put the metadata in the build directory.
@@ -265,8 +307,30 @@ class TestPublish(PulpRPMTests):
                                   ['test3.iso', 'sum3', '3']]
         self.assertEqual(manifest_rows, expected_manifest_rows)
 
-    @patch('pulp_rpm.repo_auth.protected_repo_utils.ProtectedRepoUtils.delete_protected_repo')
-    def test__copy_to_hosted_location(self, delete_protected_repo):
+
+class TestConfigureRepositoryProtection(unittest.TestCase):
+    """
+    Test the _configure_repository_protection() function.
+    """
+    @patch('pulp_rpm.repo_auth.protected_repo_utils.ProtectedRepoUtils.add_protected_repo')
+    @patch('pulp_rpm.repo_auth.repo_cert_utils.RepoCertUtils.write_consumer_cert_bundle')
+    def test__configure_repository_protection(self, write_consumer_cert_bundle, add_protected_repo):
+        repo = MagicMock()
+        repo.id = 7
+        cert = 'This is a real cert, trust me.'
+
+        publish._configure_repository_protection(repo, cert)
+
+        # Assert that the appropriate repository protection calls were made
+        write_consumer_cert_bundle.assert_called_once_with(repo.id, {'ca': cert})
+        add_protected_repo.assert_called_once_with(publish._get_relative_path(repo), repo.id)
+
+
+class TestCopyToHostedLocation(PublishTests):
+    """
+    Test the _copy_to_hosted_location() function.
+    """
+    def test__copy_to_hosted_location(self):
         """
         Test the operation of _copy_to_hosted_location().
         """
@@ -300,17 +364,12 @@ class TestPublish(PulpRPMTests):
         self.assertEqual(os.path.realpath(expected_http_symlink_path), '/symlink/path')
         self.assertEqual(os.path.realpath(expected_https_symlink_path), '/symlink/path')
 
-        # delete_protected_repo should have been called since there's no CA cert provided
-        delete_protected_repo.assert_called_once_with(repo.id)
-
-    @patch('pulp_rpm.repo_auth.protected_repo_utils.ProtectedRepoUtils.delete_protected_repo')
-    @patch('pulp_rpm.plugins.distributors.iso_distributor.publish._protect_repository',
-           side_effect=publish._protect_repository)
-    def test__copy_to_hosted_location_https_false_doesnt_protect_repo(self, _protect_repository,
-                                                                      delete_protected_repo):
+    @patch('pulp_rpm.plugins.distributors.iso_distributor.publish._configure_repository_protection',
+           side_effect=publish._configure_repository_protection, autospec=True)
+    def test__copy_to_hosted_location_https_false_doesnt_protect_repo(self, _configure_repository_protection):
         """
         Test _copy_to_hosted_location() when CONFIG_SERVE_HTTPS is False. The repo protection code
-        should get called in this case, and should cause the delete_protected_repo() to get used.
+        should not get called in this case.
         """
         repo = MagicMock(spec=Repository)
         repo.id = 'lebowski'
@@ -325,24 +384,26 @@ class TestPublish(PulpRPMTests):
 
         publish._copy_to_hosted_location(repo, config, build_dir)
 
-        # Even though HTTPS publishing was False, we should still call to protect the repository
-        _protect_repository.assert_called_once_with(repo.id, repo, config)
-        delete_protected_repo.assert_called_once_with(repo.id)
+        # Since HTTPS publishing was False, we should not call to protect the repository
+        self.assertEqual(_configure_repository_protection.call_count, 0)
 
-    @patch('pulp_rpm.repo_auth.protected_repo_utils.ProtectedRepoUtils.delete_protected_repo')
-    @patch('pulp_rpm.plugins.distributors.iso_distributor.publish._protect_repository',
-           side_effect=publish._protect_repository)
-    def test__copy_to_hosted_location_https_true_protects_repo(self, _protect_repository,
-                                                               delete_protected_repo):
+    @patch('pulp_rpm.plugins.distributors.iso_distributor.publish._configure_repository_protection',
+           side_effect=publish._configure_repository_protection, autospec=True)
+    @patch('pulp_rpm.repo_auth.protected_repo_utils.ProtectedRepoUtils.add_protected_repo', autospec=True)
+    @patch('pulp_rpm.repo_auth.repo_cert_utils.RepoCertUtils.write_consumer_cert_bundle', autospec=True)
+    def test__copy_to_hosted_location_https_true_with_ca_protects_repo(
+            self, write_consumer_cert_bundle, add_protected_repo, _configure_repository_protection):
         """
-        Test _copy_to_hosted_location() when CONFIG_SERVE_HTTPS is True. The repo protection code
-        should be called.
+        Test _copy_to_hosted_location() when CONFIG_SERVE_HTTPS is True and a CA is provided. The repo
+        protection code should be called.
         """
         repo = MagicMock(spec=Repository)
         repo.id = 'lebowski'
         repo.working_dir = self.temp_dir
-        config = distributor_mocks.get_basic_config(**{constants.CONFIG_SERVE_HTTP: True,
-                                                       constants.CONFIG_SERVE_HTTPS: True})
+        cert = 'Only Allow Cool People'
+        config = distributor_mocks.get_basic_config(
+            **{constants.CONFIG_SERVE_HTTP: True, constants.CONFIG_SERVE_HTTPS: True,
+               constants.CONFIG_SSL_AUTH_CA_CERT: cert})
         build_dir = os.path.join(repo.working_dir, publish.BUILD_DIRNAME)
         os.makedirs(build_dir)
         with open(os.path.join(build_dir, 'the_dude.txt'), 'w') as the_dude:
@@ -352,12 +413,32 @@ class TestPublish(PulpRPMTests):
         publish._copy_to_hosted_location(repo, config, build_dir)
 
         # Assert that _protect_repository was called with the correct parameters
-        _protect_repository.assert_called_once_with(repo.id, repo, config)
-        # Assert correct call to delete_protected_repo since there was no CA cert provided
-        delete_protected_repo.assert_called_once_with(repo.id)
+        _configure_repository_protection.assert_called_once_with(repo, cert)
 
-    @patch('pulp_rpm.repo_auth.protected_repo_utils.ProtectedRepoUtils.delete_protected_repo')
-    def test__copy_to_hosted_location_serve_http_default(self, delete_protected_repo):
+    @patch('pulp_rpm.plugins.distributors.iso_distributor.publish._configure_repository_protection')
+    def test__copy_to_hosted_location_https_true_without_ca_doesnt_protect_repo(
+            self, _configure_repository_protection):
+        """
+        Test _copy_to_hosted_location() when CONFIG_SERVE_HTTPS is True, but no CA is provided. The repo
+        protection code should not be called.
+        """
+        repo = MagicMock(spec=Repository)
+        repo.id = 'lebowski'
+        repo.working_dir = self.temp_dir
+        config = distributor_mocks.get_basic_config(
+            **{constants.CONFIG_SERVE_HTTP: True, constants.CONFIG_SERVE_HTTPS: True})
+        build_dir = os.path.join(repo.working_dir, publish.BUILD_DIRNAME)
+        os.makedirs(build_dir)
+        with open(os.path.join(build_dir, 'the_dude.txt'), 'w') as the_dude:
+            the_dude.write("Let's go bowling.")
+        os.symlink('/symlink/path', os.path.join(build_dir, 'symlink'))
+
+        publish._copy_to_hosted_location(repo, config, build_dir)
+
+        # Assert that _protect_repository was not called
+        self.assertEqual(_configure_repository_protection.call_count, 0)
+
+    def test__copy_to_hosted_location_serve_http_default(self):
         """
         Assert that we don't publish over HTTP by default.
         """
@@ -388,11 +469,8 @@ class TestPublish(PulpRPMTests):
         self.assertFalse(os.path.islink(expected_http_symlink_path))
         self.assertFalse(os.path.islink(expected_https_symlink_path))
 
-        # delete_protected_repo should have been called since there's no CA cert provided
-        delete_protected_repo.assert_called_once_with(repo.id)
-
-    @patch('pulp_rpm.repo_auth.protected_repo_utils.ProtectedRepoUtils.delete_protected_repo')
-    def test__copy_to_hosted_location_serve_https_default(self, delete_protected_repo):
+    @patch('pulp_rpm.plugins.distributors.iso_distributor.publish._configure_repository_protection')
+    def test__copy_to_hosted_location_serve_https_default(self, _configure_repository_protection):
         """
         Assert that we do publish over HTTPS by default.
         """
@@ -424,9 +502,74 @@ class TestPublish(PulpRPMTests):
         self.assertTrue(os.path.islink(expected_https_symlink_path))
         self.assertEqual(os.path.realpath(expected_https_symlink_path), '/symlink/path')
 
-        # delete_protected_repo should have been called since there's no CA cert provided
-        delete_protected_repo.assert_called_once_with(repo.id)
+        # Since there's no CA cert, the repo should not be protected
+        self.assertEqual(_configure_repository_protection.call_count, 0)
 
+
+class TestGetHostingLocations(unittest.TestCase):
+    """
+    Test the _get_hosting_locations() function.
+    """
+    def test__get_hosting_locations(self):
+        repo = MagicMock()
+        repo.id = 'awesome_repo'
+
+        http_dir, https_dir = publish._get_hosting_locations(repo)
+
+        self.assertEqual(http_dir, os.path.join(constants.ISO_HTTP_DIR, repo.id))
+        self.assertEqual(https_dir, os.path.join(constants.ISO_HTTPS_DIR, repo.id))
+
+
+class TestGetRelativePath(unittest.TestCase):
+    """
+    Test the _get_relative_path() function.
+    """
+    def test__get_relative_path(self):
+        repo = MagicMock()
+        repo.id = 'awesome_repo'
+
+        relative_path = publish._get_relative_path(repo)
+
+        self.assertEqual(relative_path, repo.id)
+
+
+class TestGetRepositoryProtectionUtils(unittest.TestCase):
+    """
+    Test the _get_repository_protection_utils() function.
+    """
+    @patch('pulp_rpm.plugins.distributors.iso_distributor.publish.SafeConfigParser', autospec=True)
+    def test__get_repository_protection_utils(self, safe_config_parser_constructor):
+        safe_config_parser_constructor = MagicMock
+
+        repo_cert_utils, protected_repo_utils = publish._get_repository_protection_utils()
+
+        repo_auth_config = repo_cert_utils.config
+        self.assertTrue(isinstance(repo_auth_config, SafeConfigParser))
+        repo_auth_config.read.assert_called_once_with(constants.REPO_AUTH_CONFIG_FILE)
+
+        self.assertTrue(isinstance(repo_cert_utils, RepoCertUtils))
+        self.assertTrue(isinstance(protected_repo_utils, ProtectedRepoUtils))
+        self.assertEqual(protected_repo_utils.config, repo_auth_config)
+
+
+class TestRemoveRepositoryProtection(unittest.TestCase):
+    """
+    Test the _remove_repository_protection() function.
+    """
+    @patch('pulp_rpm.repo_auth.protected_repo_utils.ProtectedRepoUtils.delete_protected_repo')
+    def test__remove_repository_protection(self, delete_protected_repo):
+        repo = MagicMock()
+        repo.id = 'reporeporeporepo'
+
+        publish._remove_repository_protection(repo)
+
+        delete_protected_repo.assert_called_once_with(publish._get_relative_path(repo))
+
+
+class TestSymlinkUnits(PublishTests):
+    """
+    Test the _symlink_units() function.
+    """
     def test__symlink_units(self):
         """
         Make sure that the _symlink_units creates all the correct symlinks.
@@ -499,6 +642,11 @@ class TestPublish(PulpRPMTests):
         except OSError, e:
             self.assertEqual(e.errno, errno.ENOSPC)
 
+
+class TestRMTreeIfExists(PublishTests):
+    """
+    Test the _rmtree_if_exists() function.
+    """
     def test__rmtree_if_exists(self):
         """
         Let's just make sure this simple thing doesn't barf.

@@ -137,11 +137,11 @@ def get_rpms_to_copy_by_name(rpm_names, import_conduit):
     :return: set of names that
     """
     search_dicts = ({'name': name} for name in rpm_names)
-    units = existing.get_existing_units(search_dicts, ['name'],
+    units = existing.get_existing_units(search_dicts, models.RPM.UNIT_KEY_NAMES,
                                         models.RPM.TYPE, import_conduit.get_destination_units)
     names = set(rpm_names)
     for unit in units:
-        names.discard(unit['name'])
+        names.discard(unit.unit_key['name'])
     return names
 
 
