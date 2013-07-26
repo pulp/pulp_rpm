@@ -52,7 +52,7 @@ def upload(repo, type_id, unit_key, metadata, file_path, conduit, config):
     :type  file_path: str
 
     :param conduit: provides access to relevant Pulp functionality
-    :type  conduit: pulp.plugins.conduits.unit_add.UnitAddConduit
+    :type  conduit: pulp.plugins.conduits.upload.UploadConduit
 
     :param config: plugin configuration for the repository
     :type  config: pulp.plugins.config.PluginCallConfiguration
@@ -80,14 +80,16 @@ def upload(repo, type_id, unit_key, metadata, file_path, conduit, config):
     relative_path = getattr(model, 'relative_path', '')
 
     # The provides and requires are not provided by the client, so extract them now
-    _update_provides_requires(model)
+    if isinstance(model, models.RPM):
+        _update_provides_requires(model)
 
     # both of the below operations perform IO
     try:
         # init unit
         unit = conduit.init_unit(model.TYPE, model.unit_key, model.metadata, relative_path)
         # copy file to destination
-        shutil.copy(file_path, unit.storage_path)
+        if file_path and unit.storage_path:
+            shutil.copy(file_path, unit.storage_path)
     except IOError:
         return _fail_report('failed to copy file to destination')
 
@@ -106,6 +108,11 @@ def _update_provides_requires(model):
     """
     Determines the provides and requires fields based on the RPM's XML snippet and updates
     the model instance.
+
+    :param model:   an RPM model to which providesand requires fields should be
+                    added. The model's metadata must already include the
+                    'repodata' attribute.
+    :type  model:   pulp_rpm.common.models.RPM
     """
 
     try:
