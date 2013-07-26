@@ -80,10 +80,10 @@ class DatabaseSortTests(rpm_support_base.PulpRPMTests):
 
     def setUp(self):
         super(DatabaseSortTests, self).setUp()
-        self.db = connection._database.test_version_compare
+        self.db = connection._DATABASE.test_version_compare
 
     def tearDown(self):
-        connection._database.drop_collection('test_version_compare')
+        connection._DATABASE.drop_collection('test_version_compare')
 
     def test_numbers(self):
         # If both the elements are numbers, the larger number is considered newer. So 5 is newer than 4
