@@ -68,3 +68,5 @@ class TestDownloadMetadataFiles(unittest.TestCase):
         # make sure both files had download requests created and passed to the
         # downloader
         self.assertEqual(len(requests), 2)
+        self.assertTrue(requests[0].destination.endswith('primary'))
+        self.assertTrue(requests[1].destination.endswith('pkgtags.sqlite.gz'))
