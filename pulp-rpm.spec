@@ -18,7 +18,7 @@
 
 Name: pulp-rpm
 Version: 2.2.0
-Release: 0.21.beta%{?dist}
+Release: 0.22.beta%{?dist}
 Summary: Support for RPM content in the Pulp platform
 Group: Development/Languages
 License: GPLv2
@@ -282,6 +282,18 @@ A collection of yum plugins supplementing Pulp consumer operations.
 
 
 %changelog
+* Fri Jul 26 2013 Jeff Ortel <jortel@redhat.com> 2.2.0-0.22.beta
+- 988919 - non-standard repo metadata files that happen to be sqlite files can
+  now be downloaded successfully during a sync (mhrivnak@redhat.com)
+- 988005 - uploads of units that are not RPMs work again (mhrivnak@redhat.com)
+- 986026 - Added a migration to upgrade conditional_package_names from v1 to
+  v2. (rbarlow@redhat.com)
+- 987663 - syncing of a distribution now uses a nectar factory to get the most
+  appropriate downloader type for a given URL, defaulting to the requests
+  library for HTTP. It also now uses the nectar config options that are
+  specified in the importer config instead of always using a default config.
+  (mhrivnak@redhat.com)
+
 * Mon Jul 15 2013 Jeff Ortel <jortel@redhat.com> 2.2.0-0.21.beta
 - 984104 - fixed a bug that caused multiple calls to group copy with the
   --recursive option to fail (mhrivnak@redhat.com)
