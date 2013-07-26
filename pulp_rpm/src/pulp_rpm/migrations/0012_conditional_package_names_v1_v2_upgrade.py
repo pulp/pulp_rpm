@@ -39,6 +39,6 @@ def migrate(*args, **kwargs):
 
 
 # Allow this migration to be run outside of the migration system
-if __name__=="__main__":
+if __name__ == "__main__":
     initialize()
     migrate()
