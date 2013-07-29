@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright © 2011 Red Hat, Inc.
+# Copyright © 2011-2013 Red Hat, Inc.
 #
 # This software is licensed to you under the GNU General Public
 # License as published by the Free Software Foundation; either version
@@ -13,6 +13,7 @@
 
 from ConfigParser import SafeConfigParser
 import gettext
+import itertools
 import os
 import re
 import shutil
@@ -50,6 +51,11 @@ OLD_REL_PATH_KEYWORD = 'old_relative_path'
 # it anyway. This is to replace having it in Pulp's server.conf, which definitely
 # isn't the place for it.
 RELATIVE_URL = '/pulp/repos'
+
+
+LISTING_FILE_NAME = 'listing'
+PACKAGE_REGEX = re.compile(r'.*\.[sd]?rpm$')
+METADATA_REGEX = re.compile(r'.*\.xml(\.gz)?$')
 
 ###
 # Config Options Explained
@@ -479,6 +485,9 @@ class YumDistributor(Distributor):
         if relpath.startswith("/"):
             relpath = relpath[1:]
 
+        # Write out the listing files
+        create_listing_files(repo.working_dir)
+
         # Build the https and http publishing paths
         https_publish_dir = self.get_https_publish_dir(config)
         https_repo_publish_dir = os.path.join(https_publish_dir, relpath).rstrip('/')
@@ -801,6 +810,22 @@ class YumDistributor(Distributor):
                 payload['global_auth_key'] = open(global_auth_key).read()
                 payload['global_auth_ca'] = open(global_auth_ca).read()
         return payload
+
+# -- local utility functions ---------------------------------------------------
+
+def create_listing_files(repo_working_dir):
+    # Walk the directory tree and create listing files for all ancestor
+    # directories of repositories
+    for path, directories, files in os.walk(repo_working_dir):
+
+        # don't bother if there are no directories or we're in the metadata or packages directory
+        if not directories \
+            or any(itertools.imap(METADATA_REGEX.match, files)) \
+            or any(itertools.imap(PACKAGE_REGEX.match, files)):
+            continue
+
+        with open(os.path.join(path, LISTING_FILE_NAME), 'w') as listing_handle:
+            listing_handle.write('\n'.join(directories))
 
 
 def load_config(config_file=constants.REPO_AUTH_CONFIG_FILE):
