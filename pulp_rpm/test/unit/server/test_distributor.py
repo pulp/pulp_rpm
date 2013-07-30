@@ -331,9 +331,10 @@ class TestDistributor(rpm_support_base.PulpRPMTests):
         self.assertEqual(summary["num_package_units_published"], num_units)
         self.assertEqual(summary["num_package_units_errors"], 0)
         # Verify the listing files
-        self.assertTrue(os.path.exists(os.path.join(self.repo_working_dir, 'rel_a', 'listing')))
-        self.assertTrue(os.path.exists(os.path.join(self.repo_working_dir, 'rel_a/rel_b', 'listing')))
-        self.assertTrue(os.path.exists(os.path.join(self.repo_working_dir, 'rel_a/rel_b/rel_c', 'listing')))
+        self.assertTrue(os.path.exists(os.path.join(self.repo_working_dir, 'listing')))
+        self.assertTrue(os.path.exists(os.path.join(self.repo_working_dir, 'a', 'listing')))
+        self.assertTrue(os.path.exists(os.path.join(self.repo_working_dir, 'a/b', 'listing')))
+        self.assertTrue(os.path.exists(os.path.join(self.repo_working_dir, 'a/b/c', 'listing')))
         # Verify we did not attempt to publish to http
         expected_repo_http_publish_dir = os.path.join(self.http_publish_dir, relative_url)
         self.assertFalse(os.path.exists(expected_repo_http_publish_dir))
