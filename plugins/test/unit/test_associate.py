@@ -20,6 +20,7 @@ from pulp.server.db.model.criteria import UnitAssociationCriteria
 import pulp.server.managers.factory as manager_factory
 
 import model_factory
+from pulp_rpm.common import models
 from pulp_rpm.plugins.importers.yum import associate
 
 manager_factory.initialize()
@@ -78,9 +79,9 @@ class TestGetRPMSToCopyByName(unittest.TestCase):
         self.assertEqual(mock_get_existing.call_args[0][3], mock_conduit.get_destination_units)
 
     def test_some_existing(self):
-        postfix = rpm_model_factory()
+        postfix = model_factory.rpm_models(1)[0]
         postfix.name = 'postfix'
-        vim = rpm_model_factory()
+        vim = model_factory.rpm_models(1)[0]
         vim.name = 'vim-common'
         existing = [
             Unit(models.RPM.TYPE, postfix.unit_key, postfix.metadata, ''),
