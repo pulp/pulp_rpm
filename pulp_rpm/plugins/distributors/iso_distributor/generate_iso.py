@@ -10,6 +10,7 @@
 # NON-INFRINGEMENT, or FITNESS FOR A PARTICULAR PURPOSE. You should
 # have received a copy of GPLv2 along with this software; if not, see
 # http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt.
+
 import os
 import commands
 import datetime
@@ -38,7 +39,9 @@ def create_iso(target_dir, output_dir, prefix, image_size=DVD_ISO_SIZE, progress
     :type prefix: str
     :param image_size: The maximum size of the image in bytes. Defaults to a dvd sized image.
     :type image_size: int
-    :param progress_callback: callback to report progress info to publish_conduit
+    :param progress_callback: callback to report progress info to publish_conduit. This is expected to
+            take the following parameters: a string to use as the key in a dictionary, and the second
+            parameter is assigned to it.
     :type  progress_callback: function
     """
     # Validate the configuration
@@ -66,7 +69,7 @@ def create_iso(target_dir, output_dir, prefix, image_size=DVD_ISO_SIZE, progress
     set_progress("isos", iso_progress_status, progress_callback)
 
     for i in range(image_count):
-        name = "%s/%s-%s-%02d.iso" % (output_dir, prefix, start_time.strftime("%Y-%m-%dT%H.%M"), i + 1)
+        name = "%s-%s-%02d.iso" % (prefix, start_time.strftime("%Y-%m-%dT%H.%M"), i + 1)
         _make_iso(image_list[i], target_dir, output_dir, name)
 
         # Update the progress report
@@ -83,32 +86,36 @@ def create_iso(target_dir, output_dir, prefix, image_size=DVD_ISO_SIZE, progress
 
 def _make_iso(file_list, target_dir, output_dir, filename):
     """
-    Helper method to make an ISO image
+    Helper method to make an ISO image. This method could result in an OSError or IOError if something
+    went wrong when generating the pathspec_file.
 
-    :param file_list: List of files to add to the ISO image
+    :param file_list: List of files to add to the ISO image. These should be absolute paths to the files
     :type file_list: list
-    :param target_dir: The root directory tree to be wrapped in an ISO
+    :param target_dir: The full path to the root directory tree to be wrapped in an ISO
     :type target_dir: str
-    :param output_dir: The output directory for the ISO image
+    :param output_dir: The full path to the output directory for the ISO image
     :type output_dir: str
-    :param filename: The filename to use for the ISO image
+    :param filename: The filename to use for the ISO image. This should be relative to the output
+            directory.
     :type filename: str
     """
+    file_path = os.path.join(output_dir, filename)
+
     # If the output directory doesn't exist, make it
     if not os.path.isdir(output_dir):
         os.makedirs(output_dir)
 
-    # Create a pathspec file using the files in this image
+    # Create a pathspec file using the files in this image.
     pathspec_file = _get_pathspec_file(file_list, target_dir)
 
     # Call mkisofs to create the ISO, then clean up the temporary pathspec file
-    status, out = commands.getstatusoutput(MKISOFS_COMMAND_TEMPLATE % (pathspec_file, filename))
+    status, out = commands.getstatusoutput(MKISOFS_COMMAND_TEMPLATE % (pathspec_file, file_path))
     os.unlink(pathspec_file)
 
     if status != 0:
-        log.error("Error creating iso %s; status code: %d; output: %s" % (filename, status, out))
+        log.error("Error creating iso %s; status code: %d; output: %s" % (file_path, status, out))
     else:
-        log.info('Successfully created iso %s' % filename)
+        log.info('Successfully created iso %s' % file_path)
 
 
 def _parse_image_size(image_size):
@@ -130,7 +137,7 @@ def _parse_image_size(image_size):
     return image_size * 1024 * 1024
 
 
-def _compute_image_files(file_list, image_size):
+def _compute_image_files(file_list, max_image_size):
     """
     Compute file lists to be written to each media image by shoving files into an image until
     image_size is exceeded.
@@ -138,8 +145,8 @@ def _compute_image_files(file_list, image_size):
     :param file_list: A list of tuples, where each tuple is (file_path, file_size), usually the
             output of get_dir_file_list_and_size
     :type file_list: [(str, int)]
-    :param image_size: The size in bytes of the ISO image
-    :type image_size: int
+    :param max_image_size: The maximum size of image in bytes
+    :type max_image_size: int
     :return: list of images, which are themselves a list of file paths
     :rtype: list of list of str
     """
@@ -148,25 +155,22 @@ def _compute_image_files(file_list, image_size):
     # While we have files in the list, create images
     while len(file_list) > 0:
         image = []
-        size = 0
+        image_size = 0
         # Keep track of the last file written so we can trim the list
         last_file_written = None
 
         for file_path, file_size in file_list:
-            # An edge case, but if the file is too big to fit on a single ISO, skip it
-            if file_size > image_size:
-                log.info('The following file was skipped because it is larger than the ISO size: %s'
-                         % file_path)
-                last_file_written = (file_path, file_size)
-                continue
+            # An edge case, but if the file is too big to fit on a single ISO, we should stop
+            if file_size > max_image_size:
+                raise ValueError('The maximum ISO size is not large enough to contain %s' % file_path)
 
-            if size + file_size > image_size:
+            if image_size + file_size > max_image_size:
                 # If adding this file exceeds image size, break out of the for loop
                 break
 
             # Append the file path to the image and update the size of this image
             image.append(file_path)
-            size += file_size
+            image_size += file_size
             last_file_written = (file_path, file_size)
 
         # Trim the list to the last item written plus 1, then add the image and start again
@@ -191,7 +195,7 @@ def set_progress(type_id, progress_status, progress_callback):
         progress_callback(type_id, progress_status)
 
 
-def _get_grafts(img_files, target_dir):
+def _get_grafts(img_file_paths, target_dir):
     """
     Takes a list of files and creates a list of graft points. This is used to keep the directory
     structure within the target directory.
@@ -205,25 +209,28 @@ def _get_grafts(img_files, target_dir):
 
         foo/bar/new_name=../old.lis
 
-    will include ../old.list as /foo/bar/new_name on the ISO.
+    will include ../old.lis as /foo/bar/new_name on the ISO.
 
-    :param img_files: A list of files paths to graft. These should be somewhere in the target dir
-    :type img_files: list
-    :param target_dir: The path to the target directory
+    :param img_file_paths: A list of files paths to graft. These are expected to be the full path to
+            each file, and should be somewhere in the target directory
+    :type img_file_paths: list
+    :param target_dir: The full path to the target directory
     :type target_dir: str
     :return: A list of graft points, which are str in the format 'relative_path/=file_path'
     :rtype: list
     """
     grafts = []
-    for f in img_files:
-        relative_path = os.path.dirname(f[len(target_dir):])
-        grafts.append("%s/=%s" % (relative_path, f))
+    for path in img_file_paths:
+        relative_path = os.path.relpath(os.path.dirname(path), target_dir)
+        grafts.append("/%s/=%s" % (relative_path, path))
     return grafts
 
 
 def _get_pathspec_file(file_list, target_dir):
     """
-    This creates a pathspec file with all the grafts and returns the file descriptor and file name.
+    This creates a pathspec file with all the grafts and returns the full path to the file. If an error
+    occurs while writing to the temporary file, the temporary file is cleaned up and the exception is
+    re-raised. Otherwise, it is the responsibility of the caller to clean up the temporary file.
 
     A pathspec in mkisofs:
     pathspec is the path of the directory tree to be copied into the ISO9660 filesystem. Multiple
@@ -232,29 +239,38 @@ def _get_pathspec_file(file_list, target_dir):
 
     A pathspec file consists of a list of paths to be copied into the filesystem.
 
-    :param file_list: A list of files to be places in the pathspec file.
+    :param file_list: A list of full paths to the files to be placed in the pathspec file.
     :type file_list: list
-    :param target_dir: The path to the target directory
+    :param target_dir: The full path to the target directory
     :type target_dir: str
-    :return: The file name of the temporary pathspec file. This is the responsibility of the caller
-            to clean up
+    :return: The absolute path of the temporary pathspec file. This is the responsibility of the caller
+            to clean up.
     :rtype: str
     """
-    file_descriptor, file_name = tempfile.mkstemp(dir=target_dir, prefix='pulpiso-')
+    file_descriptor, file_path = tempfile.mkstemp(dir=target_dir, prefix='pulpiso-')
 
-    # Retrieve the grafts for the given file list and write them to the temporary file
-    grafts = _get_grafts(file_list, target_dir)
-    for graft in grafts:
-        os.write(file_descriptor, graft + '\n')
+    # Try to retrieve and write the grafts, but if we fail, clean up
+    try:
+        # Retrieve the grafts for the given file list and write them to the temporary file
+        grafts = _get_grafts(file_list, target_dir)
+        for graft in grafts:
+            os.write(file_descriptor, graft + '\n')
+    except (OSError, IOError):
+        # If something went wrong, clean up the temporary file and re-raise the exception
+        os.close(file_descriptor)
+        os.unlink(file_path)
+        raise
+
     os.close(file_descriptor)
-    return file_name
+
+    return file_path
 
 
 def _get_dir_file_list_and_size(target_dir):
     """
     Walks the given directory and makes a list of each file in the directory, as well as its size
 
-    :param target_dir: The directory to walk
+    :param target_dir: The full path to the directory to walk
     :type target_dir: str
     :return: A tuple in the form (list, int) where the list is a list of tuples of (file_path, file_size)
             and the int is the total size of the directory
@@ -265,7 +281,7 @@ def _get_dir_file_list_and_size(target_dir):
     file_list = []
     for root, dirs, files in os.walk(top_directory):
         for f in files:
-            file_path = "%s/%s" % (root, f)
+            file_path = os.path.join(root, f)
             size = os.stat(file_path)[ST_SIZE]
             file_list.append((file_path, size))
             total_size += size

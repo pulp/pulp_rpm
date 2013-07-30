@@ -10,17 +10,19 @@
 # NON-INFRINGEMENT, or FITNESS FOR A PARTICULAR PURPOSE. You should
 # have received a copy of GPLv2 along with this software; if not, see
 # http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt.
+
 import os
 import shutil
 
-from iso_distributor import export_utils
-from pulp_rpm.common import constants
 from pulp.plugins.distributor import Distributor
 from pulp.server.exceptions import PulpDataException
-from pulp_rpm.common import ids
+
+# Import export_utils from this directory, which is not in the python path
+import export_utils
+from pulp_rpm.common import constants, models, ids
 from pulp_rpm.yum_plugin import util, metadata
 
-_LOG = util.getLogger(__name__)
+_logger = util.getLogger(__name__)
 
 
 ###
@@ -46,14 +48,56 @@ class ISODistributor(Distributor):
 
     @classmethod
     def metadata(cls):
+        """
+        Used by Pulp to classify the capabilities of this distributor. The
+        following keys are present in the returned dictionary:
+
+        * id - Programmatic way to refer to this distributor. Must be unique
+               across all distributors. Only letters and underscores are valid.
+        * display_name - User-friendly identification of the distributor.
+        * types - List of all content type IDs that may be published using this
+               distributor.
+
+        This method call may be made multiple times during the course of a
+        running Pulp server and thus should not be used for initialization
+        purposes.
+
+        :return: description of the distributor's capabilities
+        :rtype:  dict
+        """
         return {
             'id': ids.TYPE_ID_DISTRIBUTOR_EXPORT,
             'display_name': 'Export Distributor',
-            'types': [ids.TYPE_ID_RPM, ids.TYPE_ID_SRPM, ids.TYPE_ID_DRPM, ids.TYPE_ID_ERRATA,
-                      ids.TYPE_ID_DISTRO, ids.TYPE_ID_PKG_CATEGORY, ids.TYPE_ID_PKG_GROUP]
+            'types': [models.RPM.TYPE, models.SRPM.TYPE, models.DRPM.TYPE, models.Errata.TYPE,
+                      models.Distribution.TYPE, models.PackageCategory.TYPE, models.PackageGroup.TYPE]
         }
 
     def validate_config(self, repo, config, related_repos):
+        """
+        Allows the distributor to check the contents of a potential configuration
+        for the given repository. This call is made both for the addition of
+        this distributor to a new repository as well as updating the configuration
+        for this distributor on a previously configured repository.
+
+        The return is a tuple of the result of the validation (True for success,
+        False for failure) and a message. The message may be None and is unused
+        in the success case. If the message is not None, i18n is taken into
+        consideration when generating the message.
+
+        The related_repos parameter contains a list of other repositories that
+        have a configured distributor of this type. The distributor configurations
+        is found in each repository in the "plugin_configs" field.
+
+        :param repo: metadata describing the repository to which the configuration applies
+        :type  repo: pulp.plugins.model.Repository
+        :param config: plugin configuration instance; the proposed repo configuration is found within
+        :type  config: pulp.plugins.config.PluginCallConfiguration
+        :param related_repos: list of other repositories using this distributor type; empty list if
+                there are none; entries are of type pulp.plugins.model.RelatedRepository
+        :type  related_repos: list
+        :return: tuple of (bool, str) to describe the result
+        :rtype:  tuple
+        """
         return export_utils.validate_export_config(config)
 
     def cancel_publish_repo(self, call_request, call_report):
@@ -83,14 +127,14 @@ class ISODistributor(Distributor):
         if not valid_config:
             raise PulpDataException(msg)
 
-        _LOG.info('Starting export of [%s]' % repo.id)
+        _logger.info('Starting export of [%s]' % repo.id)
 
         progress_status = {
-            ids.TYPE_ID_RPM: {'state': constants.STATE_NOT_STARTED},
-            ids.TYPE_ID_ERRATA: {'state': constants.STATE_NOT_STARTED},
-            ids.TYPE_ID_DISTRO: {'state': constants.STATE_NOT_STARTED},
-            ids.TYPE_ID_PKG_CATEGORY: {'state': constants.STATE_NOT_STARTED},
-            ids.TYPE_ID_PKG_GROUP: {'state': constants.STATE_NOT_STARTED},
+            models.RPM.TYPE: {'state': constants.STATE_NOT_STARTED},
+            models.Errata.TYPE: {'state': constants.STATE_NOT_STARTED},
+            models.Distribution.TYPE: {'state': constants.STATE_NOT_STARTED},
+            models.PackageCategory.TYPE: {'state': constants.STATE_NOT_STARTED},
+            models.PackageGroup.TYPE: {'state': constants.STATE_NOT_STARTED},
             'isos': {'state': constants.STATE_NOT_STARTED},
             'publish_http': {'state': constants.STATE_NOT_STARTED},
             'publish_https': {'state': constants.STATE_NOT_STARTED},
@@ -134,7 +178,8 @@ class ISODistributor(Distributor):
         :type repo: pulp.plugins.model.Repository
         :param config: plugin configuration instance; the proposed repo configuration is found within
         :type config: pulp.plugins.config.PluginCallConfiguration
-        :param progress_callback: callback to report progress info to publish_conduit
+        :param progress_callback: callback to report progress info to publish_conduit. This function is
+                expected to take the following arguments: type_id, a string, and status, which is a dict
         :type progress_callback: function
         """
         http_publish_dir = os.path.join(constants.EXPORT_HTTP_DIR, repo.id).rstrip('/')
@@ -151,6 +196,5 @@ class ISODistributor(Distributor):
         if not config.get(constants.PUBLISH_HTTPS_KEYWORD):
             https_publish_dir = None
 
-        export_utils.publish_isos(repo.working_dir, image_prefix, http_publish_dir,
-                                  https_publish_dir, config.get(constants.ISO_SIZE_KEYWORD),
-                                  progress_callback)
+        export_utils.publish_isos(repo.working_dir, image_prefix, http_publish_dir, https_publish_dir,
+                                  config.get(constants.ISO_SIZE_KEYWORD), progress_callback)

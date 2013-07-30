@@ -10,6 +10,7 @@
 # NON-INFRINGEMENT, or FITNESS FOR A PARTICULAR PURPOSE. You should
 # have received a copy of GPLv2 along with this software; if not, see
 # http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt.
+
 import os
 import stat
 import sys
@@ -18,9 +19,9 @@ import datetime
 
 import mock
 
+# pulp_rpm/pulp_rpm/plugins/distributors/iso_distributor isn't in the python path
 sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)) + "/../../../plugins/importers/")
 sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)) + "/../../../plugins/distributors/")
-
 from iso_distributor import generate_iso
 
 
@@ -68,11 +69,13 @@ class TestMakeIso(unittest.TestCase):
     def test_make_iso(self, mock_mkstemp, mock_cmd, mock_unlink, mock_close, mock_isdir):
         # Setup
         timestamp = datetime.datetime.now()
-        filename = '/output/dir/prefix-%s-01.iso' % timestamp.strftime("%Y-%m-%dT%H.%M")
-        expected_command = "mkisofs -r -D -graft-points -path-list spec_file -o %s" % filename
+        output_dir = '/output/dir'
+        filename = 'prefix-%s-01.iso' % timestamp.strftime("%Y-%m-%dT%H.%M")
+        file_path = os.path.join(output_dir, filename)
+        expected_command = "mkisofs -r -D -graft-points -path-list spec_file -o %s" % file_path
 
         # Test
-        generate_iso._make_iso([], '/target/dir', '/output/dir', filename)
+        generate_iso._make_iso([], '/target/dir', output_dir, filename)
         mock_cmd.assert_called_once_with(expected_command)
         mock_unlink.assert_called_once_with('spec_file')
         self.assertEqual(1, mock_mkstemp.call_count)
@@ -131,14 +134,11 @@ class TestComputeImageFiles(unittest.TestCase):
     """
     def test_file_larger_than_image(self):
         # Setup
-        image_size = 5
+        max_image_size = 5
         file_list = [('path1', 1), ('path2', 2), ('path3', 1000), ('path4', 1)]
-        expected_image = [file_list[0][0], file_list[1][0], file_list[3][0]]
 
-        # Test
-        images = generate_iso._compute_image_files(file_list, image_size)
-        self.assertEqual(1, len(images))
-        self.assertEqual(images[0], expected_image)
+        # Assert than a ValueError is raised when the maximum image size is smaller than a file size
+        self.assertRaises(ValueError, generate_iso._compute_image_files, file_list, max_image_size)
 
     def test_multi_iso_list(self):
         # Setup
@@ -161,7 +161,7 @@ class TestGetGraft(unittest.TestCase):
         # Setup
         files = ['/target/dir/path1', '/target/dir/relative/path2']
         target_dir = '/target/dir'
-        expected_grafts = ['//=/target/dir/path1', '/relative/=/target/dir/relative/path2']
+        expected_grafts = ['/./=/target/dir/path1', '/relative/=/target/dir/relative/path2']
 
         # Test
         grafts = generate_iso._get_grafts(files, target_dir)
@@ -179,7 +179,7 @@ class TestGetPathSpecFile(unittest.TestCase):
         # Setup
         file_list = ['/target/dir/path']
         target_dir = '/target/dir'
-        expected_graft = '//=/target/dir/path\n'
+        expected_graft = '/./=/target/dir/path\n'
 
         # Test
         result = generate_iso._get_pathspec_file(file_list, target_dir)

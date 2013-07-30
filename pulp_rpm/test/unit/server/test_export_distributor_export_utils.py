@@ -10,20 +10,21 @@
 # NON-INFRINGEMENT, or FITNESS FOR A PARTICULAR PURPOSE. You should
 # have received a copy of GPLv2 along with this software; if not, see
 # http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt.
+
 import os
 import shutil
 import sys
 import unittest
 
 import mock
-
-sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)) + "/../../../plugins/distributors/")
-
-from iso_distributor import export_utils, generate_iso
 from pulp.plugins.config import PluginCallConfiguration
 from pulp.plugins.conduits.repo_publish import RepoPublishConduit
 from pulp.server.exceptions import MissingResource
 from pulp.plugins.model import AssociatedUnit, Repository, RepositoryGroup
+
+# pulp_rpm/pulp_rpm/plugins/distributors/iso_distributor isn't in the python path
+sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)) + "/../../../plugins/distributors/")
+from iso_distributor import export_utils, generate_iso
 from pulp_rpm.common import constants, ids, models
 
 
@@ -667,7 +668,7 @@ class TestExportCompleteRepo(unittest.TestCase):
         self.export_groups = export_utils.export_package_groups_and_cats
         self.export_distro = export_utils.export_distribution
         self.export_errata = export_utils.export_errata
-        export_utils.export_rpm = mock.Mock()
+        export_utils.export_rpm = mock.Mock(return_value=({}, {}))
         export_utils.get_rpm_units = mock.Mock()
         export_utils.export_package_groups_and_cats = mock.Mock()
         export_utils.export_distribution = mock.Mock()
@@ -818,7 +819,6 @@ class TestExportRpmJson(unittest.TestCase):
         rpm2 = AssociatedUnit(ids.TYPE_ID_RPM, rpm2_key, metadata.copy(), None, None, None, None, None)
         rpm_units = [rpm1, rpm2]
         expected_paths = ['/working/dir/test1-1.0-1.noarch.json', '/working/dir/test2-1.0-1.noarch.json']
-        mock_open.return_value = mock.Mock(spec=file)
 
         # Test
         export_utils.export_rpm_json('/working/dir', rpm_units)

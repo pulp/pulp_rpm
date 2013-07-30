@@ -15,14 +15,16 @@ from gettext import gettext as _
 import os
 import shutil
 
-from iso_distributor import export_utils
 from pulp.plugins.conduits.repo_publish import RepoPublishConduit
 from pulp.plugins.distributor import GroupDistributor
 from pulp.server.exceptions import PulpDataException
-from pulp_rpm.common import ids, constants
+
+# Import export_utils from this directory, which is not in the python path
+import export_utils
+from pulp_rpm.common import constants, ids, models
 from pulp_rpm.yum_plugin import util
 
-_LOG = util.getLogger(__name__)
+_logger = util.getLogger(__name__)
 
 
 class GroupISODistributor(GroupDistributor):
@@ -35,14 +37,56 @@ class GroupISODistributor(GroupDistributor):
 
     @classmethod
     def metadata(cls):
+        """
+        Used by Pulp to classify the capabilities of this distributor. The
+        following keys must be present in the returned dictionary:
+
+        * id - Programmatic way to refer to this distributor. Must be unique
+               across all distributors. Only letters and underscores are valid.
+        * display_name - User-friendly identification of the distributor.
+        * types - List of all content type IDs that may be published using this
+               distributor.
+
+        This method call may be made multiple times during the course of a
+        running Pulp server and thus should not be used for initialization
+        purposes.
+
+        @return: description of the distributor's capabilities
+        @rtype:  dict
+        """
         return {
             'id': ids.TYPE_ID_DISTRIBUTOR_GROUP_EXPORT,
             'display_name': _('Group Export Distributor'),
-            'types': [ids.TYPE_ID_RPM, ids.TYPE_ID_SRPM, ids.TYPE_ID_DRPM, ids.TYPE_ID_ERRATA,
-                      ids.TYPE_ID_DISTRO, ids.TYPE_ID_PKG_CATEGORY, ids.TYPE_ID_PKG_GROUP]
+            'types': [models.RPM.TYPE, models.SRPM.TYPE, models.DRPM.TYPE, models.Errata.TYPE,
+                      models.Distribution.TYPE, models.PackageCategory.TYPE, models.PackageGroup.TYPE]
         }
 
     def validate_config(self, repo_group, config, related_repo_groups):
+        """
+        Allows the distributor to check the contents of a potential configuration
+        for the given repository. This call is made both for the addition of
+        this distributor to a new repository group, as well as updating the configuration
+        for this distributor on a previously configured repository.
+
+        The return is a tuple of the result of the validation (True for success,
+        False for failure) and a message. The message may be None and is unused
+        in the success case. If the message is not None, i18n is taken into
+        consideration when generating the message.
+
+        The related_repo_groups parameter contains a list of other repository groups that
+        have a configured distributor of this type. The distributor configurations
+        is found in each repository group in the "plugin_configs" field.
+
+        :param repo_group: metadata describing the repository to which the configuration applies
+        :type  repo_group: pulp.plugins.model.Repository
+        :param config: plugin configuration instance; the proposed repo configuration is found within
+        :type  config: pulp.plugins.config.PluginCallConfiguration
+        :param related_repo_groups: list of other repositories using this distributor type; empty list
+                if there are none; entries are of type pulp.plugins.model.RelatedRepositoryGroup
+        :type  related_repo_groups: list
+        :return: tuple of (bool, str) to describe the result
+        :rtype:  tuple
+        """
         return export_utils.validate_export_config(config)
 
     def publish_group(self, repo_group, publish_conduit, config):
@@ -64,11 +108,11 @@ class GroupISODistributor(GroupDistributor):
         if not valid_config:
             raise PulpDataException(msg)
 
-        _LOG.info('Beginning repository group export')
+        _logger.info('Beginning export of the following repository group: [%s]' % repo_group.id)
         progress_status = export_utils.init_progress_report(len(repo_group.repo_ids))
 
-        def progress_callback(type_id, status):
-            progress_status[type_id] = status
+        def progress_callback(progress_keyword, status):
+            progress_status[progress_keyword] = status
             publish_conduit.set_progress(progress_status)
 
         # Before starting, clean out the working directory. Done to remove last published ISOs
@@ -117,7 +161,8 @@ class GroupISODistributor(GroupDistributor):
         :type  repo_group: pulp.plugins.model.RepositoryGroup
         :param config: plugin configuration instance; the proposed repo configuration is found within
         :type config: pulp.plugins.config.PluginCallConfiguration
-        :param progress_callback: callback to report progress info to publish_conduit
+        :param progress_callback: callback to report progress info to publish_conduit. This function is
+                expected to take the following arguments: type_id, a string, and status, which is a dict
         :type progress_callback: function
         """
 

@@ -18,17 +18,19 @@ import os
 import re
 import shutil
 
-from iso_distributor import generate_iso
 from pulp.common import dateutils
 from pulp.server.db.model.criteria import UnitAssociationCriteria
 from pulp.server.exceptions import MissingResource
 from pulp.server.managers.repo.distributor import RepoDistributorManager
 from pulp.server.managers.repo.query import RepoQueryManager
+
+# import generate_iso from this directory, which is not in the python path
+import generate_iso
 from pulp_rpm.common import constants, ids, models
 from pulp_rpm.yum_plugin import comps_util, updateinfo, metadata
 from pulp_rpm.yum_plugin import util as yum_utils
 
-_LOG = yum_utils.getLogger(__name__)
+_logger = yum_utils.getLogger(__name__)
 
 ISO_NAME_REGEX = re.compile(r'^[_A-Za-z0-9-]+$')
 ASSOCIATED_UNIT_DATE_KEYWORD = 'created'
@@ -36,7 +38,7 @@ ASSOCIATED_UNIT_DATE_KEYWORD = 'created'
 
 def is_valid_prefix(file_prefix):
     """
-    Used to check if the given file prefix is valid. A valid prefix contains only letters, numbers,
+    Used to check if the given file prefix is valid. A valid prefix contains only letters, numbers, _,
     and -
 
     :param file_prefix: The string used to prefix the export file(s)
@@ -53,9 +55,9 @@ def cleanup_working_dir(working_dir):
     """
     try:
         shutil.rmtree(working_dir)
-        _LOG.debug('Cleaned up working directory %s' % working_dir)
+        _logger.debug('Cleaned up working directory %s' % working_dir)
     except (IOError, OSError), e:
-        _LOG.exception('unable to clean up working directory; Error: %s' % e)
+        _logger.exception('unable to clean up working directory; Error: %s' % e)
 
 
 def form_lookup_key(rpm):
@@ -69,7 +71,7 @@ def form_lookup_key(rpm):
 
     Yum appears to assume an epoch of 0 if the epoch does not exist, so that's what we'll do.
 
-    :param rpm: The rpm to form the lookup key for
+    :param rpm: The rpm unit key to form the lookup key for
     :type rpm: dict
     :return: A tuple of the rpm name, epoch, version, release, and arch
     :rtype: tuple
@@ -84,7 +86,7 @@ def form_unit_key_map(units):
 
     :param units: The list of rpm units to convert to a dict
     :type units: list of pulp.plugins.model.AssociatedUnit
-    :return: A dict of the units, where the key is is the uni
+    :return: A dict of the units, where the key is is the rpm unit key as a tuple
     :rtype: dict
     """
     existing_units = {}
@@ -102,7 +104,8 @@ def validate_export_config(config):
 
     :param config: The configuration to validate
     :type config: pulp.plugins.config.PluginCallConfiguration
-    :return: a tuple in the form (bool, str) where bool is True if the config is valid.
+    :return: a tuple in the form (bool, str) where bool is True if the config is valid. The str
+            describes the error if the configuration is invalid. i18n is taken into account.
     :rtype: tuple
     """
     # Check for the required configuration keys, as defined in constants
@@ -110,19 +113,19 @@ def validate_export_config(config):
         value = config.get(key)
         if value is None:
             msg = _("Missing required configuration key: %(key)s" % {"key": key})
-            _LOG.error(msg)
+            _logger.error(msg)
             return False, msg
         if key == constants.PUBLISH_HTTP_KEYWORD:
             config_http = config.get(key)
             if config_http is not None and not isinstance(config_http, bool):
                 msg = _("http should be a boolean; got %s instead" % config_http)
-                _LOG.error(msg)
+                _logger.error(msg)
                 return False, msg
         if key == constants.PUBLISH_HTTPS_KEYWORD:
             config_https = config.get(key)
             if config_https is not None and not isinstance(config_https, bool):
                 msg = _("https should be a boolean; got %s instead" % config_https)
-                _LOG.error(msg)
+                _logger.error(msg)
                 return False, msg
 
     # Check for optional and unsupported configuration keys.
@@ -130,25 +133,25 @@ def validate_export_config(config):
         if key not in constants.EXPORT_REQUIRED_CONFIG_KEYS and \
                 key not in constants.EXPORT_OPTIONAL_CONFIG_KEYS:
             msg = _("Configuration key '%(key)s' is not supported" % {"key": key})
-            _LOG.error(msg)
+            _logger.error(msg)
             return False, msg
         if key == constants.SKIP_KEYWORD:
             metadata_types = config.get(key)
             if metadata_types is not None and not isinstance(metadata_types, list):
                 msg = _("skip should be a list; got %s instead" % metadata_types)
-                _LOG.error(msg)
+                _logger.error(msg)
                 return False, msg
         if key == constants.ISO_PREFIX_KEYWORD:
             iso_prefix = config.get(key)
             if iso_prefix is not None and not is_valid_prefix(str(iso_prefix)):
                 msg = _("iso_prefix is not valid; valid characters include %s" % ISO_NAME_REGEX.pattern)
-                _LOG.error(msg)
+                _logger.error(msg)
                 return False, msg
         if key == constants.ISO_SIZE_KEYWORD:
             iso_size = config.get(key)
             if iso_size is not None and int(iso_size) < 1:
                 msg = _('iso_size is not a positive integer')
-                _LOG.error(msg)
+                _logger.error(msg)
                 return False, msg
         if key == constants.START_DATE_KEYWORD:
             start_date = config.get(key)
@@ -183,14 +186,16 @@ def validate_export_config(config):
 
 def retrieve_repo_config(repo, config):
     """
-    Retrieves the working directory, which includes the relative url, the skip list, and the date
-    filter for a given repository using the config.
+    Retrieves the working directory and date filter for a repository. The working directory is the
+    export directory if it exists. If it does not, repo.working_dir is used. The relative
+    url used during a yum publish for the repo is joined to this.
 
     :param repo: The repository to retrieve the configuration for
     :type repo: pulp.plugins.model.Repository
     :param config: the export distributor configuration to use
     :type config: pulp.plugins.config.PluginCallConfiguration
-    :return: A tuple, (str, dict), consisting of the working directory and a date filter for mongo
+    :return: A tuple, (str, dict), consisting of the full path to the working directory and a
+            date filter to use directly in a mongo query.
     :rtype: tuple
     """
     # Retrieve the yum distributor configuration for this repository and extract the relative url
@@ -210,14 +215,19 @@ def retrieve_repo_config(repo, config):
 
 def retrieve_group_export_config(repo_group, config):
     """
-    This processes the config for a repository group. It confirms each repository in the group is
-    an rpm repository, determines the correct working directory for that repo, and retrieves the
-    skip list and date filter.
+    This processes the config for a repository group. It removes any non-rpm repositories from the list
+    of repositories to export, determines the correct working directories for the remaining repositories,
+    and retrieves the date filter. The date filter is a dict, which can be used directly in a mongo query
 
-    :param repo_group:
-    :param config:
-    :return: tuple in the following format: (list of (repo_id, working_dir), skip_list, date_filter)
-    :rtype: (list of tuple, list, dict)
+    :param repo_group: The repository group to get repositories from
+    :type repo_group: pulp.plugins.model.RepositoryGroup
+    :param config: The configuration to use when creating the date filter and determining the working
+            directory for repositories
+    :type config: pulp.plugins.config.PluginCallConfiguration
+    :return: tuple in the following format: (list of (repo_id, working_dir), date_filter). The repo_id
+            and working_dir are of type str, and the date filter is of type dict. working_dir is the
+            full path to the repository's working directory
+    :rtype: (list of tuple, dict)
     """
     # The export directory, if it exists, is where the group will be exported.
     export_dir = config.get(constants.EXPORT_DIRECTORY_KEYWORD)
@@ -237,9 +247,8 @@ def retrieve_group_export_config(repo_group, config):
 
             rpm_repositories.append((repo_id, working_dir))
         else:
-            _LOG.info('Skipping repo [%s] in group [%s]; not an rpm repo' % (repo_id, repo_group.id))
+            _logger.debug('Skipping repo [%s] in group [%s]; not an rpm repo' % (repo_id, repo_group.id))
 
-    # Date filter to apply to errata export. If this is none, we export everything.
     date_filter = create_date_range_filter(config)
 
     return rpm_repositories, date_filter
@@ -319,12 +328,12 @@ def set_progress(type_id, progress_status, progress_callback):
 
 def create_date_range_filter(config):
     """
-    Create a date filter based on start and end issue dates specified in the
-    repo config.
+    Create a date filter based on start and end issue dates specified in the repo config. The returned
+    filter is a dictionary which can be used directly in a mongo query.
 
     :param config: plugin configuration instance; the proposed repo configuration is found within
     :type config: pulp.plugins.config.PluginCallConfiguration
-    :return: date filter dict with issued date ranges
+    :return: date filter dict with issued date ranges in mongo query format
     :rtype: {}
     """
     start_date = config.get(constants.START_DATE_KEYWORD)
@@ -343,7 +352,7 @@ def export_rpm(working_dir, rpm_units, progress_callback=None):
     """
      This method takes a list of rpm units and exports them to the given working directory
 
-    :param working_dir: The working directory to export the content units to
+    :param working_dir: The full path to the directory to export the content to
     :type working_dir: str
     :param rpm_units: the list of rpm units to export
     :type rpm_units: list of AssociatedUnit
@@ -353,7 +362,7 @@ def export_rpm(working_dir, rpm_units, progress_callback=None):
     :rtype: ({}, [str])
     """
     # get rpm units
-    progress_status = init_progress_report()
+    progress_status = init_progress_report(len(rpm_units))
 
     summary = {
         'num_package_units_attempted': 0,
@@ -362,18 +371,15 @@ def export_rpm(working_dir, rpm_units, progress_callback=None):
     }
     details = {'errors': {}}
 
-    progress_status["num_success"] = 0
-    progress_status["items_left"] = len(rpm_units)
-    progress_status["items_total"] = len(rpm_units)
     errors = []
-    for u in rpm_units:
+    for unit in rpm_units:
         set_progress(ids.TYPE_ID_RPM, progress_status, progress_callback)
-        source_path = u.storage_path
-        destination_path = os.path.join(working_dir, yum_utils.get_relpath_from_unit(u))
+        source_path = unit.storage_path
+        destination_path = os.path.join(working_dir, yum_utils.get_relpath_from_unit(unit))
 
         if not yum_utils.create_copy(source_path, destination_path):
             msg = "Unable to copy %s to %s" % (source_path, destination_path)
-            _LOG.error(msg)
+            _logger.error(msg)
             errors.append(msg)
             progress_status["num_error"] += 1
             progress_status["items_left"] -= 1
@@ -403,7 +409,7 @@ def export_errata(working_dir, errata_units, progress_callback=None):
     This call writes the given errata units to an updateinfo.xml file in the working directory.
     This does not export any packages associated with the errata.
 
-    :param working_dir: The working directory to export the content units to
+    :param working_dir: The full path to the directory to export the content to
     :type working_dir: str
     :param errata_units: the errata units to find the rpm units for
     :type errata_units: list of pulp.plugins.model.AssociatedUnit
@@ -418,7 +424,7 @@ def export_errata(working_dir, errata_units, progress_callback=None):
     if not errata_units:
         progress_status['state'] = constants.STATE_COMPLETE
         set_progress(ids.TYPE_ID_ERRATA, progress_status, progress_callback)
-        return None
+        return
 
     # Update the progress status
     progress_status['state'] = constants.STATE_RUNNING
@@ -429,7 +435,7 @@ def export_errata(working_dir, errata_units, progress_callback=None):
 
     # Set the progress status, summary, and details
     progress_status['state'] = constants.STATE_COMPLETE
-    progress_status["num_success"] = len(errata_units)
+    progress_status['num_success'] = len(errata_units)
     set_progress(ids.TYPE_ID_ERRATA, progress_status, progress_callback)
 
     return updateinfo_path
@@ -442,7 +448,7 @@ def export_distribution(working_dir, distribution_units, progress_callback=None)
     looks up each distribution unit and copies the files from the storage location
     to working directory.
 
-    :param working_dir: The working directory to export the content units to
+    :param working_dir: The full path to the directory to export the content to
     :type working_dir: str
     :param distribution_units: The distribution units to export. These should be retrieved from the
             publish conduit using a criteria.
@@ -456,19 +462,19 @@ def export_distribution(working_dir, distribution_units, progress_callback=None)
     set_progress(ids.TYPE_ID_DISTRO, progress_status, progress_callback)
     summary = {}
     details = {'errors': {}}
-    _LOG.debug('exporting distribution files to %s dir' % working_dir)
+    _logger.debug('exporting distribution files to %s dir' % working_dir)
 
     errors = []
     for unit in distribution_units:
         source_path_dir = unit.storage_path
         if 'files' not in unit.metadata:
             msg = "No distribution files found for unit %s" % unit
-            _LOG.error(msg)
+            _logger.error(msg)
             errors.append(msg)
             continue
 
         distro_files = unit.metadata['files']
-        _LOG.debug("Found %s distribution files to symlink" % len(distro_files))
+        _logger.debug("Found %s distribution files to symlink" % len(distro_files))
         progress_status['items_total'] = len(distro_files)
         progress_status['items_left'] = len(distro_files)
         for dfile in distro_files:
@@ -478,7 +484,7 @@ def export_distribution(working_dir, distribution_units, progress_callback=None)
 
             if not yum_utils.create_copy(source_path, destination_path):
                 msg = "Unable to copy %s to %s" % (source_path, destination_path)
-                _LOG.error(msg)
+                _logger.error(msg)
                 errors.append(msg)
                 progress_status['num_error'] += 1
                 progress_status["items_left"] -= 1
@@ -505,7 +511,7 @@ def export_package_groups_and_cats(working_dir, units, progress_callback=None):
     Because both package groups and categories are needed to write the groups xml file, they
     are both exported here.
 
-    :param working_dir: The working directory to export the content units to
+    :param working_dir: The full path to the directory to export the content to
     :type working_dir: str
     :param units: The package groups and package categories to export.
     :type units: list of AssociatedUnit
@@ -514,19 +520,19 @@ def export_package_groups_and_cats(working_dir, units, progress_callback=None):
     :return: a tuple consisting of the groups_xml_path and the summary, in that order
     :rtype: (str, dict)
     """
-    set_progress(ids.TYPE_ID_PKG_GROUP, {'state': constants.STATE_RUNNING}, progress_callback)
-    set_progress(ids.TYPE_ID_PKG_CATEGORY, {'state': constants.STATE_RUNNING}, progress_callback)
+    set_progress(models.PackageGroup.TYPE, {'state': constants.STATE_RUNNING}, progress_callback)
+    set_progress(models.PackageCategory.TYPE, {'state': constants.STATE_RUNNING}, progress_callback)
     summary = {}
 
     # Collect the existing groups and categories
-    existing_groups = filter(lambda u: u.type_id in [ids.TYPE_ID_PKG_GROUP], units)
-    existing_cats = filter(lambda u: u.type_id in [ids.TYPE_ID_PKG_CATEGORY], units)
+    existing_groups = filter(lambda u: u.type_id == models.PackageGroup.TYPE, units)
+    existing_cats = filter(lambda u: u.type_id == models.PackageCategory.TYPE, units)
     groups_xml_path = comps_util.write_comps_xml(working_dir, existing_groups, existing_cats)
     summary['num_package_groups_exported'] = len(existing_groups)
     summary['num_package_categories_exported'] = len(existing_cats)
 
-    set_progress(ids.TYPE_ID_PKG_GROUP, {'state': constants.STATE_COMPLETE}, progress_callback)
-    set_progress(ids.TYPE_ID_PKG_CATEGORY, {'state': constants.STATE_COMPLETE}, progress_callback)
+    set_progress(models.PackageGroup.TYPE, {'state': constants.STATE_COMPLETE}, progress_callback)
+    set_progress(models.PackageCategory.TYPE, {'state': constants.STATE_COMPLETE}, progress_callback)
 
     return groups_xml_path, summary
 
@@ -535,7 +541,7 @@ def export_complete_repo(repo_id, working_dir, publish_conduit, config, progress
     """
     Export all content types for a repository, unless the type is in the skip list.
 
-    :param working_dir: The directory to export the content to
+    :param working_dir: The full path to the directory to export the content to
     :type working_dir: str
     :param publish_conduit: The publish conduit for the repository
     :type publish_conduit: pulp.plugins.conduits.repo_publish.RepoPublishConduit
@@ -552,36 +558,38 @@ def export_complete_repo(repo_id, working_dir, publish_conduit, config, progress
     summary, details = {}, {'errors': {}}
 
     # Retrieve all the units associated with the repository using the conduit
-    errata_criteria = UnitAssociationCriteria(type_ids=[ids.TYPE_ID_ERRATA])
-    distro_criteria = UnitAssociationCriteria(type_ids=[ids.TYPE_ID_DISTRO])
-    group_criteria = UnitAssociationCriteria(type_ids=[ids.TYPE_ID_PKG_GROUP,
-                                                       ids.TYPE_ID_PKG_CATEGORY])
+    errata_criteria = UnitAssociationCriteria(type_ids=[models.Errata.TYPE])
+    distro_criteria = UnitAssociationCriteria(type_ids=[models.Distribution.TYPE])
+    group_criteria = UnitAssociationCriteria(type_ids=[models.PackageGroup.TYPE,
+                                                       models.PackageCategory.TYPE])
     rpm_units = get_rpm_units(publish_conduit)
     errata_units = publish_conduit.get_units(errata_criteria)
     distro_units = publish_conduit.get_units(distro_criteria)
     group_units = publish_conduit.get_units(group_criteria)
 
     # Export the rpm units
-    if ids.TYPE_ID_RPM not in skip_types:
+    if models.RPM.TYPE not in skip_types:
         rpm_summary, rpm_details = export_rpm(working_dir, rpm_units, progress_callback)
         summary = dict(summary.items() + rpm_summary.items())
         details = dict(details.items() + rpm_details.items())
 
     # Export the group units
-    if ids.TYPE_ID_PKG_GROUP not in skip_types:
+    if models.PackageGroup.TYPE not in skip_types:
         groups_xml, group_summary = export_package_groups_and_cats(
             working_dir, group_units, progress_callback)
         summary = dict(summary.items() + group_summary.items())
 
     # Export the distribution units
-    if ids.TYPE_ID_DISTRO not in skip_types:
+    if models.Distribution.TYPE not in skip_types:
         export_distribution(working_dir, distro_units, progress_callback)
 
     # Export the errata
-    if ids.TYPE_ID_ERRATA not in skip_types:
+    if models.Errata.TYPE not in skip_types:
         updateinfo_xml = export_errata(working_dir, errata_units, progress_callback)
 
-    # generate metadata with a painfully long call
+    # generate metadata with a painfully long call. Note that this method retrieves all the content
+    # again to generate the metadata. This could probably be optimized when the yum distributor is
+    # rewritten.
     metadata_status, metadata_errors = metadata.generate_yum_metadata(
         repo_id, working_dir, publish_conduit, config, progress_callback, False,
         groups_xml, updateinfo_xml, publish_conduit.get_repo_scratchpad())
@@ -599,7 +607,7 @@ def export_incremental_content(working_dir, publish_conduit, date_filter):
     containing metadata is also exported for each rpm unit. The errata units are also written as JSON
     documents.
 
-    :param working_dir: The directory to export the content to
+    :param working_dir: The full path to the directory to export the content to
     :type working_dir: str
     :param publish_conduit: The publish conduit for the repository
     :type publish_conduit: pulp.plugins.conduits.repo_publish.RepoPublishConduit
@@ -609,22 +617,23 @@ def export_incremental_content(working_dir, publish_conduit, date_filter):
     :rtype: tuple
     """
     rpm_units = []
-    for type_id in (ids.TYPE_ID_RPM, ids.TYPE_ID_SRPM, ids.TYPE_ID_DRPM):
-        criteria = UnitAssociationCriteria(type_ids=type_id, association_filters=date_filter)
+    for model in (models.RPM, models.SRPM, models.DRPM):
+        # Here, every field is fetched because we write the errata and rpm metadata to JSON
+        criteria = UnitAssociationCriteria(type_ids=[model.TYPE], association_filters=date_filter)
         rpm_units += publish_conduit.get_units(criteria=criteria)
 
-    errata_criteria = UnitAssociationCriteria(type_ids=ids.TYPE_ID_ERRATA,
+    errata_criteria = UnitAssociationCriteria(type_ids=[models.Errata.TYPE],
                                               association_filters=date_filter)
     errata_units = publish_conduit.get_units(criteria=errata_criteria)
 
     # Export the rpm units to the working directory
     rpm_summary, rpm_details = export_rpm(working_dir, rpm_units)
 
-    # Export the rpm metadata as json files to the working directory
+    # Export the rpm metadata as JSON files to the working directory
     rpm_json_path = os.path.join(working_dir, 'rpm_json')
     export_rpm_json(rpm_json_path, rpm_units)
 
-    # Export the errata as json files to the working directory
+    # Export the errata as JSON files to the working directory
     errata_json_path = os.path.join(working_dir, 'errata_json')
     export_errata_json(errata_json_path, errata_units)
 
@@ -636,7 +645,7 @@ def export_rpm_json(working_dir, rpm_units):
     Using the given list of rpm AssociatedUnits, this method writes the rpm metadata to a json file
     in the working directory. The file name is in the format name-version-release.arch.json
 
-    :param working_dir: The directory to write the json files to
+    :param working_dir: The full path to the directory to write the json files to
     :type working_dir: str
     :param rpm_units: A list of AssociatedUnits of type rpm, drpm, and srpm
     :type rpm_units: list of pulp.plugins.model.AssociatedUnit
@@ -657,9 +666,8 @@ def export_rpm_json(working_dir, rpm_units):
         if 'repodata' in unit.metadata:
             unit.metadata.pop('repodata')
 
-        f = open(path, 'w')
-        json.dump(unit.metadata, f, indent=4)
-        f.close()
+        with open(path, 'w') as f:
+            json.dump(unit.metadata, f, indent=4)
 
 
 def export_errata_json(working_dir, errata_units):
@@ -667,7 +675,7 @@ def export_errata_json(working_dir, errata_units):
     Using the given list of errata AssociatedUnits, this method writes the errata to a json file in
     the working directory.
 
-    :param working_dir: The directory to write the json files to
+    :param working_dir: The full path to the directory to write the json files to
     :type working_dir: str
     :param errata_units: A list of AssociatedUnits of type errata
     :type errata_units: list of pulp.plugins.model.AssociatedUnit
@@ -685,20 +693,19 @@ def export_errata_json(working_dir, errata_units):
         }
 
         json_file_path = os.path.join(working_dir, unit.unit_key['id'] + '.json')
-        f = open(json_file_path, 'w')
-        json.dump(errata_dict, f, indent=4)
-        f.close()
+        with open(json_file_path, 'w') as f:
+            json.dump(errata_dict, f, indent=4)
 
 
 def get_rpm_units(publish_conduit, skip_list=()):
     """
     Retrieve a list of rpm units using the publish conduit. By default, this method retrieves
-    TYPE_ID_SRPM, TYPE_ID_DRPM, and TYPE_ID_RPM from pulp_rpm.common.ids. Use the skip list to
+    RPM.TYPE, SRPM.TYPE, and DRPM.TYPE from pulp_rpm.common.models. Use the skip list to
     skip over one or more of these types.
 
     :param publish_conduit: The publish conduit to retrieve the units from
     :type publish_conduit: pulp.plugins.conduits.repo_publish.RepoPublishConduit
-    :param skip_list: A list of type ids to skip. These should be from pulp_rpm.common.ids
+    :param skip_list: A list of type ids to skip. These should be from pulp_rpm.common.models
     :type skip_list: tuple
     :return: A list of AssociatedUnits
     :rtype: list
@@ -706,6 +713,8 @@ def get_rpm_units(publish_conduit, skip_list=()):
     rpm_units = []
     for model in (models.RPM, models.SRPM, models.DRPM):
         if model.TYPE not in skip_list:
+            # All that is retrieved here is the unit key and its storage path. export_complete_repo
+            # relies on metadata.generate_yum_metadata to generate the necessary metadata.
             fields = ['_storage_path']
             fields.extend(model.UNIT_KEY_NAMES)
             criteria = UnitAssociationCriteria(type_ids=model.TYPE, unit_fields=fields)
@@ -720,19 +729,21 @@ def publish_isos(working_dir, image_prefix, http_dir=None, https_dir=None, image
     the given http and https directories. Not passing a http or https directory means the ISOs
     won't be published using that method.
 
-    :param working_dir: The directory to wrap in ISOs
+    :param working_dir: The full path to the directory to wrap in ISOs
     :type working_dir: str
     :param image_prefix: The prefix of the image filename
     :type image_prefix: str
-    :param http_dir: The http export directory. The default base path can be found in
+    :param http_dir: The full path to the http export directory. The default base path can be found in
         pulp_rpm.common.constants and should be suffixed by the group or repo id
     :type http_dir: str
-    :param https_dir: The https export directory. The default base path can be found in
+    :param https_dir: The full path to the https export directory. The default base path can be found in
         pulp_rpm.common.constants and should be suffixed by the group or repo id
     :type https_dir: str
     :param image_size: The size of the ISO image in megabytes (defaults to dvd sized iso)
     :type image_size: int
-    :param progress_callback: callback to report progress info to publish_conduit
+    :param progress_callback: callback to report progress info to publish_conduit. This is expected to
+            take the following parameters: a string to use as the key in a dictionary, and the second
+            parameter is assigned to it.
     :type progress_callback: function
     """
     # TODO: Move the ISO output directory
