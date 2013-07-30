@@ -334,7 +334,7 @@ class TestDistributor(rpm_support_base.PulpRPMTests):
         self.assertTrue(os.path.exists(os.path.join(self.repo_working_dir, 'listing')))
         self.assertTrue(os.path.exists(os.path.join(self.repo_working_dir, 'a', 'listing')))
         self.assertTrue(os.path.exists(os.path.join(self.repo_working_dir, 'a/b', 'listing')))
-        self.assertTrue(os.path.exists(os.path.join(self.repo_working_dir, 'a/b/c', 'listing')))
+        self.assertFalse(os.path.exists(os.path.join(self.repo_working_dir, 'a/b/c', 'listing')))
         # Verify we did not attempt to publish to http
         expected_repo_http_publish_dir = os.path.join(self.http_publish_dir, relative_url)
         self.assertFalse(os.path.exists(expected_repo_http_publish_dir))
