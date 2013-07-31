@@ -507,7 +507,11 @@ class YumDistributor(Distributor):
             try:
                 _LOG.info("HTTPS Publishing repo <%s> to <%s>" % (repo.id, https_repo_publish_dir))
                 util.create_symlink(repo.working_dir, https_repo_publish_dir)
-                create_listing_files(https_publish_dir, https_repo_publish_dir)
+                root_publish_dir = https_publish_dir
+                if root_publish_dir.startswith(HTTPS_PUBLISH_DIR):
+                    # make sure we update the listing files all the way up
+                    root_publish_dir = HTTPS_PUBLISH_DIR
+                create_listing_files(root_publish_dir, https_repo_publish_dir)
                 summary["https_publish_dir"] = https_repo_publish_dir
                 self.set_progress("publish_https", {"state" : "FINISHED"}, progress_callback)
             except:
@@ -525,7 +529,11 @@ class YumDistributor(Distributor):
             try:
                 _LOG.info("HTTP Publishing repo <%s> to <%s>" % (repo.id, http_repo_publish_dir))
                 util.create_symlink(repo.working_dir, http_repo_publish_dir)
-                create_listing_files(http_publish_dir, http_repo_publish_dir)
+                root_publish_dir = http_publish_dir
+                if root_publish_dir.startswith(HTTP_PUBLISH_DIR):
+                    # make sure we update the listing files all the way up
+                    root_publish_dir = HTTP_PUBLISH_DIR
+                create_listing_files(root_publish_dir, http_repo_publish_dir)
                 summary["http_publish_dir"] = http_repo_publish_dir
                 self.set_progress("publish_http", {"state" : "FINISHED"}, progress_callback)
             except:
