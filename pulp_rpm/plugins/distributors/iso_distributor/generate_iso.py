@@ -10,202 +10,286 @@
 # NON-INFRINGEMENT, or FITNESS FOR A PARTICULAR PURPOSE. You should
 # have received a copy of GPLv2 along with this software; if not, see
 # http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt.
+
 import os
-import math
-import string
 import commands
 import datetime
 import tempfile
 from stat import ST_SIZE
 
+from pulp_rpm.common import constants
 from pulp_rpm.yum_plugin.util import getLogger
 log = getLogger(__name__)
 
-VALID_IMAGE_TYPES = {
-    'cd' : 630 * 1024 * 1024,
-    'dvd': 4380 * 1024 * 1024,
-    #add 'bluray'
-}
+# Define the size (in megabytes) of a DVD sized ISO
+DVD_ISO_SIZE = 4380
 
-class GenerateIsos(object):
+MKISOFS_COMMAND_TEMPLATE = "mkisofs -r -D -graft-points -path-list %s -o %s"
+
+
+def create_iso(target_dir, output_dir, prefix, image_size=DVD_ISO_SIZE, progress_callback=None):
     """
-     Generate iso image files for the exported content.
+    Run the export process.
+
+    :param target_dir:          The directory to be written to ISO images
+    :type  target_dir:          str
+    :param output_dir:          destination directory where the ISO images are written
+    :type  output_dir:          str
+    :param prefix:              prefix for the ISO file names; usually includes a repo id
+    :type  prefix:              str
+    :param image_size:          The maximum size of the image in bytes. Defaults to a dvd sized image.
+    :type  image_size:          int
+    :param progress_callback:   callback to report progress info to publish_conduit. This is expected to
+                                    take the following parameters: a string to use as the key in a
+                                    dictionary, and the second parameter is assigned to it.
+    :type  progress_callback:   function
     """
-    def __init__(self, target_directory, output_directory, prefix="pulp-repos", progress=None, is_cancelled=None):
-        """
-        generate isos
-        @param target_directory: target content directory to be wrapped into isos
-        @type target_directory: str
-        @param output_directory: destination directory where isos are written
-        @type output_directory: str
-        @param prefix: prefix for the iso names; usually includes a repo id
-        @type prefix: str
-        @param progress: progress info object to report iso generation
-        @type progress: dict
-        """
-        self.target_dir = target_directory
-        self.output_dir = output_directory
-        self.progress = progress
-        self.prefix = prefix
-        self.is_cancelled = is_cancelled or False
+    # Validate the configuration
+    image_size = _parse_image_size(image_size)
 
-    def get_image_type_size(self, total_size):
-        if total_size < VALID_IMAGE_TYPES['cd']:
-            return VALID_IMAGE_TYPES['cd']
-        else:
-            return VALID_IMAGE_TYPES['dvd']
+    # record start time
+    start_time = datetime.datetime.now()
 
-    def set_progress(self, type_id, status, progress_callback=None):
-        if progress_callback:
-            progress_callback(type_id, status)
+    # get size and file list of the target directory
+    file_list, total_dir_size = _get_dir_file_list_and_size(target_dir)
 
-    def run(self, progress_callback=None):
-        """
-         generate iso images for the exported directory
+    # image_list is a list of the images to write. Each item in the list is a list of file paths.
+    image_list = _compute_image_files(file_list, image_size)
+    image_count = len(image_list)
 
-        @param progress_callback: callback to report progress info to publish_conduit
-        @type  progress_callback: function
+    # Update the progress report
+    iso_progress_status = {
+        'items_total': image_count,
+        'items_left': image_count,
+        'num_success': 0,
+        'size_total': total_dir_size,
+        'size_left': total_dir_size,
+        'state': constants.STATE_RUNNING
+    }
+    set_progress("isos", iso_progress_status, progress_callback)
 
-        @return tuple of status and list of error messages if any occurred
-        @rtype (bool, [str])
-        """
-        iso_progress_status = self.progress
-        iso_progress_status['state'] = "IN_PROGRESS"
-        self.set_progress("isos", iso_progress_status, progress_callback)
-        # get size and filelists of the target directory
-        filelist, total_dir_size = self.list_dir_with_size(self.target_dir)
-        log.debug("Total target directory size to create isos %s" % total_dir_size)
-        # media size
-        img_size = self.get_image_type_size(total_dir_size)
-        # compute no.of images it takes per media image size
-        imgcount = int(math.ceil(total_dir_size/float(img_size)))
-        # get the filelists per image by size
-        imgs = self.compute_image_files(filelist, imgcount, img_size)
-        iso_progress_status['items_total'] = imgcount
-        iso_progress_status['items_left'] = imgcount
-        iso_progress_status["size_total"] = total_dir_size
-        iso_progress_status["size_left"] = total_dir_size
-        iso_progress_status['written_files'] = []
-        iso_progress_status['current_file'] = None
-        for i in range(imgcount):
-            self.set_progress("isos", iso_progress_status, progress_callback)
-            msg = "Generating iso images for exported content (%s/%s)" % (i+1, imgcount)
-            log.info(msg)
-            grafts = self.get_grafts(imgs[i])
-            pathfiles_fd, pathfiles = self.get_pathspecs(grafts)
-            filename = self.get_iso_filename(self.output_dir, self.prefix, i+1)
-            iso_progress_status['current_file'] = os.path.basename(filename)
-            cmd = self.get_mkisofs_template() % (string.join([pathfiles]), filename)
-            self.set_progress("isos", iso_progress_status, progress_callback)
-            if self.is_cancelled:
-                iso_progress_status["size_left"] = 0
-                iso_progress_status['items_left'] = 0
-                iso_progress_status['current_file'] = None
-                iso_progress_status["state"] = "FAILED"
-                log.debug("iso generation cancelled on request")
-                return False, []
-            status, out = self.run_command(cmd)
-            if status != 0:
-                log.error("Error creating iso %s" % filename)
-            log.info("successfully created iso %s" % filename)
-            log.debug("status code: %s; output: %s" % (status, out))
-            os.unlink(pathfiles)
-            iso_progress_status['items_left'] -= 1
-            iso_progress_status['num_success'] += 1
-            if iso_progress_status["size_left"] > img_size:
-                iso_progress_status["size_left"] -= img_size
-            else:
-                iso_progress_status["size_left"] = 0
-            iso_progress_status['written_files'].append(os.path.basename(filename))
-            iso_progress_status['current_file'] = None
-        iso_progress_status["state"] = "FINISHED"
-        self.set_progress("isos", iso_progress_status, progress_callback)
-        return True, []
+    for i in range(image_count):
+        name = "%s-%s-%02d.iso" % (prefix, start_time.strftime("%Y-%m-%dT%H.%M"), i + 1)
+        _make_iso(image_list[i], target_dir, output_dir, name)
 
-    def compute_image_files(self, filelist, imgcount, imgsize):
-        """
-        compute file lists to be written to each media image
-        by comparing the cumulative size
-        @rtype: list
-        @return: list of files to be written to an iso image
-        """
-        imgs = []
-        for i in range(imgcount):
-            img = []
-            sz = 0
-            for filepath, size in filelist:
-                if sz + size > imgsize:
-                    # slice the list to process new
-                    filelist = filelist[filelist.index((filepath, size)):]
-                    break
-                if filepath not in img:
-                    img.append(filepath)
-                sz += size
-            imgs.append(img)
-        return imgs
+        # Update the progress report
+        iso_progress_status['items_left'] -= 1
+        iso_progress_status['num_success'] += 1
+        iso_progress_status['size_left'] -= image_size
+        if iso_progress_status['size_left'] < 0:
+            iso_progress_status['size_left'] = 0
+        set_progress("isos", iso_progress_status, progress_callback)
 
-    def get_mkisofs_template(self):
-        """
-         template mkisofs command to be filled and executed
-        """
-        return "mkisofs -r -D -graft-points -path-list %s -o %s"
+    iso_progress_status["state"] = constants.STATE_COMPLETE
+    set_progress("isos", iso_progress_status, progress_callback)
 
-    def get_grafts(self, img_files):
-        grafts = []
-        for f in img_files:
-            relpath = os.path.dirname(f[len(self.target_dir):])
-            grafts.append("%s/=%s" % (relpath, f))
-        return grafts
 
-    def get_pathspecs(self, grafts):
-        pathfiles_fd, pathfiles = tempfile.mkstemp(dir = '/tmp', prefix = 'pulpiso-')
+def _make_iso(file_list, target_dir, output_dir, filename):
+    """
+    Helper method to make an ISO image. This method could result in an OSError or IOError if something
+    went wrong when generating the pathspec_file.
+
+    :param file_list:   List of files to add to the ISO image. These should be absolute paths to the files
+    :type  file_list:   list
+    :param target_dir:  The full path to the root directory tree to be wrapped in an ISO
+    :type  target_dir:  str
+    :param output_dir:  The full path to the output directory for the ISO image
+    :type  output_dir:  str
+    :param filename:    The filename to use for the ISO image. This should be relative to the output
+                            directory.
+    :type  filename:    str
+    """
+    file_path = os.path.join(output_dir, filename)
+
+    # If the output directory doesn't exist, make it
+    if not os.path.isdir(output_dir):
+        os.makedirs(output_dir)
+
+    # Create a pathspec file using the files in this image.
+    pathspec_file = _get_pathspec_file(file_list, target_dir)
+
+    # Call mkisofs to create the ISO, then clean up the temporary pathspec file
+    status, out = commands.getstatusoutput(MKISOFS_COMMAND_TEMPLATE % (pathspec_file, file_path))
+    os.unlink(pathspec_file)
+
+    if status != 0:
+        log.error("Error creating iso %s; status code: %d; output: %s" % (file_path, status, out))
+    else:
+        log.info('Successfully created iso %s' % file_path)
+
+
+def _parse_image_size(image_size):
+    """
+    Parses the image_size value and raises the appropriate exception if necessary
+
+    :param image_size: The ISO image size in megabytes
+    :type  image_size: int or str
+
+    :return: The ISO image size in bytes
+    :rtype:  int
+
+    :raise: ValueError if image_size cast to an int is smaller than or equal to 0
+    """
+    if image_size is None:
+        image_size = DVD_ISO_SIZE
+
+    image_size = int(image_size)
+    if 0 >= image_size:
+        raise ValueError('Image size must be an integer greater than 0')
+    return image_size * 1024 * 1024
+
+
+def _compute_image_files(file_list, max_image_size):
+    """
+    Compute file lists to be written to each media image by shoving files into an image until
+    image_size is exceeded.
+
+    :param file_list:       A list of tuples, where each tuple is (file_path, file_size), usually the
+                                output of get_dir_file_list_and_size
+    :type  file_list:       [(str, int)]
+    :param max_image_size:  The maximum size of image in bytes
+    :type  max_image_size:  int
+
+    :return: list of images, which are themselves a list of file paths
+    :rtype: list of list of str
+    """
+    images = []
+
+    # While we have files in the list, create images
+    while len(file_list) > 0:
+        image = []
+        image_size = 0
+        # Keep track of the last file written so we can trim the list
+        last_file_written = None
+
+        for file_path, file_size in file_list:
+            # An edge case, but if the file is too big to fit on a single ISO, we should stop
+            if file_size > max_image_size:
+                raise ValueError('The maximum ISO size is not large enough to contain %s' % file_path)
+
+            if image_size + file_size > max_image_size:
+                # If adding this file exceeds image size, break out of the for loop
+                break
+
+            # Append the file path to the image and update the size of this image
+            image.append(file_path)
+            image_size += file_size
+            last_file_written = (file_path, file_size)
+
+        # Trim the list to the last item written plus 1, then add the image and start again
+        file_list = file_list[file_list.index(last_file_written) + 1:]
+        images.append(image)
+
+    return images
+
+
+def set_progress(type_id, progress_status, progress_callback):
+    """
+    This just checks that progress_callback is not None before calling it
+
+    :param type_id:             The type id to use with the progress callback
+    :type  type_id:             str
+    :param progress_status:     The progress status to use with the progress callback
+    :type  progress_status:     dict
+    :param progress_callback:   The progress callback function to use
+    :type  progress_callback:   function
+    """
+    if progress_callback:
+        progress_callback(type_id, progress_status)
+
+
+def _get_grafts(img_file_paths, target_dir):
+    """
+    Takes a list of files and creates a list of graft points. This is used to keep the directory
+    structure within the target directory.
+
+    Graft points in mkisofs:
+    Assume the local file ../old.lis exists, and we want to include it on the ISO.
+
+        foo/bar/=../old.lis
+
+    will include old.lis in the ISO as /foo/bar/old.lis, while
+
+        foo/bar/new_name=../old.lis
+
+    will include ../old.lis as /foo/bar/new_name on the ISO.
+
+    :param img_file_paths:  A list of files paths to graft. These are expected to be the full path to
+                                each file, and should be somewhere in the target directory
+    :type  img_file_paths:  list
+    :param target_dir:      The full path to the target directory
+    :type  target_dir:      str
+
+    :return: A list of graft points, which are str in the format 'relative_path/=file_path'
+    :rtype:  list
+    """
+    grafts = []
+    for path in img_file_paths:
+        relative_path = os.path.relpath(os.path.dirname(path), target_dir)
+        grafts.append("/%s/=%s" % (relative_path, path))
+    return grafts
+
+
+def _get_pathspec_file(file_list, target_dir):
+    """
+    This creates a pathspec file with all the grafts and returns the full path to the file. If an error
+    occurs while writing to the temporary file, the temporary file is cleaned up and the exception is
+    re-raised. Otherwise, it is the responsibility of the caller to clean up the temporary file.
+
+    A pathspec in mkisofs:
+    pathspec is the path of the directory tree to be copied into the ISO9660 filesystem. Multiple
+    paths can be specified, and mkisofs will merge the files found in all of the specified path
+    components to form the filesystem image.
+
+    A pathspec file consists of a list of paths to be copied into the filesystem.
+
+    :param file_list:  A list of full paths to the files to be placed in the pathspec file.
+    :type  file_list:  list
+    :param target_dir: The full path to the target directory
+    :type  target_dir: str
+
+    :return: The absolute path of the temporary pathspec file. This is the responsibility of the caller
+                to clean up.
+    :rtype:  str
+    """
+    # file_descriptor is of type int, not file, so use os.write and os.close
+    file_descriptor, file_path = tempfile.mkstemp(dir=target_dir, prefix='pulpiso-')
+
+    # Try to retrieve and write the grafts, but if we fail, clean up
+    try:
+        # Retrieve the grafts for the given file list and write them to the temporary file
+        grafts = _get_grafts(file_list, target_dir)
         for graft in grafts:
-            os.write(pathfiles_fd, graft)
-            os.write(pathfiles_fd, "\n")
-        os.close(pathfiles_fd)
-        return pathfiles_fd, pathfiles
+            os.write(file_descriptor, graft + '\n')
+    except (OSError, IOError):
+        # If something went wrong, clean up the temporary file and re-raise the exception
+        os.close(file_descriptor)
+        os.unlink(file_path)
+        raise
 
-    def get_iso_filename(self, output_dir, prefix, count):
-        if not os.path.isdir(output_dir):
-            os.makedirs(output_dir)
-        ctime = datetime.datetime.now()
-        return "%s/%s-%s-%02d.iso" % (output_dir, prefix, ctime.strftime("%Y%m%d"), count)
+    os.close(file_descriptor)
 
-    def run_command(self, cmd):
-        """
-        Run a command and log the output
-        """
-        log.info("executing command %s" % cmd)
-        status, out = commands.getstatusoutput(cmd)
-        return status, out
+    return file_path
 
-    def list_dir_with_size(self, top_directory):
-        """
-        Get the target directory filepaths and sizes
-        with cumulative dir size
-        """
-        total_size = 0
-        top_directory = os.path.abspath(os.path.normpath(top_directory))
-        if not os.access(top_directory, os.R_OK | os.X_OK):
-            raise Exception("Cannot read from directory %s" % top_directory)
-        if not os.path.isdir(top_directory):
-            raise Exception("%s not a directory" % top_directory)
-        filelist = []
-        for root, dirs, files in os.walk(top_directory):
-            for file in files:
-                fpath = "%s/%s" % (root, file)
-                size = os.stat(fpath)[ST_SIZE]
-                filelist.append((fpath, size))
-                total_size += size
-        return filelist, total_size
 
-if __name__== '__main__':
-    import sys
-    if not len(sys.argv) == 3:
-        print "USAGE: python make_iso.py <target_dir> <output_dir> "
-        sys.exit(0)
-    target_dir = sys.argv[1]
-    output_dir = sys.argv[2]
-    print target_dir, output_dir
-    isogen = GenerateIsos(target_dir, output_directory=output_dir)
-    isogen.run()
+def _get_dir_file_list_and_size(target_dir):
+    """
+    Walks the given directory and makes a list of each file in the directory, as well as its size
+
+    :param target_dir: The full path to the directory to walk
+    :type  target_dir: str
+
+    :return: A tuple in the form (list, int) where the list is a list of tuples of (file_path, file_size)
+                and the int is the total size of the directory
+    :rtype:  tuple
+    """
+    total_size = 0
+    top_directory = os.path.abspath(os.path.normpath(target_dir))
+    file_list = []
+    for root, dirs, files in os.walk(top_directory):
+        for f in files:
+            file_path = os.path.join(root, f)
+            size = os.stat(file_path)[ST_SIZE]
+            file_list.append((file_path, size))
+            total_size += size
+    return file_list, total_size
