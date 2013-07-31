@@ -684,8 +684,10 @@ def export_rpm_json(working_dir, rpm_units):
         if 'repodata' in unit.metadata:
             unit.metadata.pop('repodata')
 
+        dict_to_write = {'unit_key': unit.unit_key, 'unit_metadata': unit.metadata}
+
         with open(path, 'w') as f:
-            json.dump(unit.metadata, f, indent=4)
+            json.dump(dict_to_write, f)
 
 
 def export_errata_json(working_dir, errata_units):
@@ -712,7 +714,7 @@ def export_errata_json(working_dir, errata_units):
 
         json_file_path = os.path.join(working_dir, unit.unit_key['id'] + '.json')
         with open(json_file_path, 'w') as f:
-            json.dump(errata_dict, f, indent=4)
+            json.dump(errata_dict, f)
 
 
 def get_rpm_units(publish_conduit, skip_list=()):

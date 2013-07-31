@@ -252,6 +252,7 @@ def _get_pathspec_file(file_list, target_dir):
                 to clean up.
     :rtype:  str
     """
+    # file_descriptor is of type int, not file, so use os.write and os.close
     file_descriptor, file_path = tempfile.mkstemp(dir=target_dir, prefix='pulpiso-')
 
     # Try to retrieve and write the grafts, but if we fail, clean up
@@ -259,14 +260,14 @@ def _get_pathspec_file(file_list, target_dir):
         # Retrieve the grafts for the given file list and write them to the temporary file
         grafts = _get_grafts(file_list, target_dir)
         for graft in grafts:
-            file_descriptor.write(graft + '\n')
+            os.write(file_descriptor, graft + '\n')
     except (OSError, IOError):
         # If something went wrong, clean up the temporary file and re-raise the exception
-        file_descriptor.close()
+        os.close(file_descriptor)
         os.unlink(file_path)
         raise
 
-    file_descriptor.close()
+    os.close(file_descriptor)
 
     return file_path
 

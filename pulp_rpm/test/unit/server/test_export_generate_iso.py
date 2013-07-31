@@ -62,10 +62,11 @@ class TestMakeIso(unittest.TestCase):
     Test the _make_iso helper method in generate_iso
     """
     @mock.patch('os.path.isdir', autospec=True, return_value=True)
+    @mock.patch('os.close', autospec=True)
     @mock.patch('os.unlink', autospec=True)
     @mock.patch('commands.getstatusoutput', autospec=True, return_value=(0, 'out'))
-    @mock.patch('tempfile.mkstemp', autospec=True, return_value=(mock.MagicMock(spec=file), 'spec_file'))
-    def test_make_iso(self, mock_mkstemp, mock_cmd, mock_unlink, mock_isdir):
+    @mock.patch('tempfile.mkstemp', autospec=True, return_value=('file_descriptor', 'spec_file'))
+    def test_make_iso(self, mock_mkstemp, mock_cmd, mock_unlink, mock_close, mock_isdir):
         # Setup
         timestamp = datetime.datetime.now()
         output_dir = '/output/dir'
@@ -78,14 +79,17 @@ class TestMakeIso(unittest.TestCase):
         mock_cmd.assert_called_once_with(expected_command)
         mock_unlink.assert_called_once_with('spec_file')
         self.assertEqual(1, mock_mkstemp.call_count)
+        self.assertEqual(1, mock_close.call_count)
         self.assertEqual(1, mock_isdir.call_count)
 
     @mock.patch('os.makedirs', autospec=True)
     @mock.patch('os.path.isdir', autospec=True, return_value=False)
+    @mock.patch('os.close', autospec=True)
     @mock.patch('os.unlink', autospec=True)
     @mock.patch('commands.getstatusoutput', autospec=True, return_value=(0, 'out'))
-    @mock.patch('tempfile.mkstemp', autospec=True, return_value=(mock.MagicMock(spec=file), 'spec_file'))
-    def test_missing_output_dir(self, mock_mkstemp, mock_cmd, mock_unlink, mock_isdir, mock_makedirs):
+    @mock.patch('tempfile.mkstemp', autospec=True, return_value=('file_descriptor', 'spec_file'))
+    def test_missing_output_dir(self, mock_mkstemp, mock_cmd, mock_unlink, mock_close, mock_isdir,
+                                mock_makedirs):
         # Setup
         timestamp = datetime.datetime.now()
         filename = '/output/dir/prefix-%s-01.iso' % timestamp.strftime("%Y-%m-%dT%H.%M")
@@ -97,6 +101,7 @@ class TestMakeIso(unittest.TestCase):
         mock_cmd.assert_called_once_with(expected_command)
         mock_unlink.assert_called_once_with('spec_file')
         self.assertEqual(1, mock_mkstemp.call_count)
+        self.assertEqual(1, mock_close.call_count)
         self.assertEqual(1, mock_isdir.call_count)
 
 
@@ -167,23 +172,21 @@ class TestGetPathSpecFile(unittest.TestCase):
     """
     test the _get_pathspec_file helper method in generate_iso
     """
-    @mock.patch('tempfile.mkstemp', autospec=True)
-    def test_get_pathspec(self, mock_mkstemp):
+    @mock.patch('os.close', autospec=True)
+    @mock.patch('os.write', autospec=True)
+    @mock.patch('tempfile.mkstemp', autospec=True, return_value=('descriptor', 'filename'))
+    def test_get_pathspec(self, mock_mkstemp, mock_write, mock_close):
         # Setup
         file_list = ['/target/dir/path']
         target_dir = '/target/dir'
         expected_graft = '/./=/target/dir/path\n'
-        mock_descriptor = mock.MagicMock(spec=file)
-        mock_mkstemp.return_value = (mock_descriptor, 'filename')
 
         # Test
         result = generate_iso._get_pathspec_file(file_list, target_dir)
         self.assertEqual('filename', result)
         mock_mkstemp.assert_called_once_with(dir=target_dir, prefix='pulpiso-')
-        self.assertEqual(1, mock_descriptor.write.call_count)
-
-        mock_descriptor.write.assert_called_once_with(expected_graft)
-        mock_descriptor.close.assert_called_once_with()
+        mock_write.assert_called_once_with('descriptor', expected_graft)
+        mock_close.assert_called_once_with('descriptor')
 
 
 class TestGetDirFileListAndSize(unittest.TestCase):
