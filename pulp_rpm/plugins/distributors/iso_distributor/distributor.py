@@ -24,18 +24,10 @@ from pulp_rpm.yum_plugin import util, metadata
 
 _logger = util.getLogger(__name__)
 
-
-###
-# Config Options Explained
-###
-# http             - True/False:  Publish through http
-# https            - True/False:  Publish through https
-# start_date       - errata start date format eg: "2009-03-30T00:00:00"
-# end_date         - errata end date format eg: "2009-03-30T00:00:00"
-# skip             - List of what content types to skip during export. See pulp_rpm.common.ids
-# iso_prefix       - prefix to use in the generated iso naming, default: pulp-repos. The ISO is named
-#                    with this template: '<prefix>-<timestamp>-<disc_number>.iso'
-# -- plugins ------------------------------------------------------------------
+# Things left to do:
+#   Cancelling a publish operation is not currently supported
+#   Published ISOs are left in the working directory. See export_utils.publish_isos to fix this.
+#   This is not currently in the python path. When that gets fixed, the imports should be fixed.
 
 
 class ISODistributor(Distributor):
@@ -101,10 +93,29 @@ class ISODistributor(Distributor):
         return export_utils.validate_export_config(config)
 
     def cancel_publish_repo(self, call_request, call_report):
+        """
+        Call cancellation control hook. This is not currently supported for this distributor
+
+        :param call_request: call request for the call to cancel
+        :type  call_request: CallRequest
+        :param call_report:  call report for the call to cancel
+        :type  call_report:  CallReport
+        """
+        # TODO: Add cancel support
         self.cancelled = True
         return metadata.cancel_createrepo(self.working_dir)
 
     def set_progress(self, type_id, status, progress_callback=None):
+        """
+        Calls the progress_callback function after checking that it is not None
+
+        :param type_id:           The type id parameter for progress_callback
+        :type  type_id:           str
+        :param status:            The status parameter for progress_callback
+        :type  status:            dict
+        :param progress_callback: A function that takes type_id and status, in that order
+        :type  progress_callback: function
+        """
         if progress_callback:
             progress_callback(type_id, status)
 
@@ -112,14 +123,15 @@ class ISODistributor(Distributor):
         """
         Export a yum repository to a given directory, or to ISO
 
-        :param repo: metadata describing the repository
-        :type repo: pulp.plugins.model.Repository
+        :param repo:            metadata describing the repository
+        :type  repo:            pulp.plugins.model.Repository
         :param publish_conduit: provides access to relevant Pulp functionality
-        :type publish_conduit: pulp.plugins.conduits.repo_publish.RepoPublishConduit
-        :param config: plugin configuration
-        :type config: pulp.plugins.config.PluginConfiguration
+        :type  publish_conduit: pulp.plugins.conduits.repo_publish.RepoPublishConduit
+        :param config:          plugin configuration
+        :type  config:          pulp.plugins.config.PluginConfiguration
+
         :return: report describing the publish run
-        :rtype: pulp.plugins.model.PublishReport
+        :rtype:  pulp.plugins.model.PublishReport
         """
         # First, validate the configuration because there may be override config options, and currently,
         # validate_config is not called prior to publishing by the manager.
@@ -174,13 +186,14 @@ class ISODistributor(Distributor):
         """
         Extracts the necessary configuration information for the ISO creator and then calls it.
 
-        :param repo: metadata describing the repository
-        :type repo: pulp.plugins.model.Repository
-        :param config: plugin configuration instance; the proposed repo configuration is found within
-        :type config: pulp.plugins.config.PluginCallConfiguration
-        :param progress_callback: callback to report progress info to publish_conduit. This function is
-                expected to take the following arguments: type_id, a string, and status, which is a dict
-        :type progress_callback: function
+        :param repo:                metadata describing the repository
+        :type  repo:                pulp.plugins.model.Repository
+        :param config:              plugin configuration instance
+        :type  config:              pulp.plugins.config.PluginCallConfiguration
+        :param progress_callback:   callback to report progress info to publish_conduit. This function is
+                                        expected to take the following arguments: type_id, a string, and
+                                        status, which is a dict
+        :type  progress_callback:   function
         """
         http_publish_dir = os.path.join(constants.EXPORT_HTTP_DIR, repo.id).rstrip('/')
         https_publish_dir = os.path.join(constants.EXPORT_HTTPS_DIR, repo.id).rstrip('/')

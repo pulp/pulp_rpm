@@ -26,6 +26,12 @@ from pulp_rpm.yum_plugin import util
 
 _logger = util.getLogger(__name__)
 
+# Things left to do:
+#   Cancelling a publish operation is not currently supported.
+#   Published ISOs are left in the working directory. See export_utils.publish_isos to fix this.
+#   Progress reporting should probably be restructured.
+#   This is not currently in the python path. When that gets fixed, the imports should be fixed.
+
 
 class GroupISODistributor(GroupDistributor):
 
@@ -51,8 +57,8 @@ class GroupISODistributor(GroupDistributor):
         running Pulp server and thus should not be used for initialization
         purposes.
 
-        @return: description of the distributor's capabilities
-        @rtype:  dict
+        :return: description of the distributor's capabilities
+        :rtype:  dict
         """
         return {
             'id': ids.TYPE_ID_DISTRIBUTOR_GROUP_EXPORT,
@@ -77,13 +83,15 @@ class GroupISODistributor(GroupDistributor):
         have a configured distributor of this type. The distributor configurations
         is found in each repository group in the "plugin_configs" field.
 
-        :param repo_group: metadata describing the repository to which the configuration applies
-        :type  repo_group: pulp.plugins.model.Repository
-        :param config: plugin configuration instance; the proposed repo configuration is found within
-        :type  config: pulp.plugins.config.PluginCallConfiguration
+        :param repo_group:          metadata describing the repository to which the configuration applies
+        :type  repo_group:          pulp.plugins.model.Repository
+        :param config:              plugin configuration instance
+        :type  config:              pulp.plugins.config.PluginCallConfiguration
         :param related_repo_groups: list of other repositories using this distributor type; empty list
-                if there are none; entries are of type pulp.plugins.model.RelatedRepositoryGroup
+                                        if there are none; entries are of type
+                                        pulp.plugins.model.RelatedRepositoryGroup
         :type  related_repo_groups: list
+
         :return: tuple of (bool, str) to describe the result
         :rtype:  tuple
         """
@@ -93,14 +101,14 @@ class GroupISODistributor(GroupDistributor):
         """
         Publishes the given repository group.
 
-        :param repo_group: metadata describing the repository group
-        :type  repo_group: pulp.plugins.model.RepositoryGroup
+        :param repo_group:      metadata describing the repository group
+        :type  repo_group:      pulp.plugins.model.RepositoryGroup
         :param publish_conduit: provides access to relevant Pulp functionality
         :type  publish_conduit: pulp.plugins.conduits.repo_publish.RepoGroupPublishConduit
-        :param config: plugin configuration
-        :type  config: pulp.plugins.config.PluginConfiguration
-        :return: report describing the publish run
-        :rtype:  pulp.plugins.model.PublishReport
+        :param config:          plugin configuration
+        :type  config:          pulp.plugins.config.PluginConfiguration
+        :return:                report describing the publish run
+        :rtype:                 pulp.plugins.model.PublishReport
         """
         # First, validate the configuration because there may be override config options, and currently,
         # validate_config is not called prior to publishing by the manager.
@@ -156,14 +164,15 @@ class GroupISODistributor(GroupDistributor):
         This just decides what the http and https publishing directories should be, cleans them up,
         and then calls publish_isos method in export_utils
 
-        :param repo_group: metadata describing the repository group. Used to retrieve the working
-                directory and group id.
-        :type  repo_group: pulp.plugins.model.RepositoryGroup
-        :param config: plugin configuration instance; the proposed repo configuration is found within
-        :type config: pulp.plugins.config.PluginCallConfiguration
-        :param progress_callback: callback to report progress info to publish_conduit. This function is
-                expected to take the following arguments: type_id, a string, and status, which is a dict
-        :type progress_callback: function
+        :param repo_group:          metadata describing the repository group. Used to retrieve the
+                                        working directory and group id.
+        :type  repo_group:          pulp.plugins.model.RepositoryGroup
+        :param config:              plugin configuration instance
+        :type config:               pulp.plugins.config.PluginCallConfiguration
+        :param progress_callback:   callback to report progress info to publish_conduit. This function is
+                                        expected to take the following arguments: type_id, a string, and
+                                        status, which is a dict
+        :type progress_callback:    function
         """
 
         http_publish_dir = os.path.join(constants.GROUP_EXPORT_HTTP_DIR, repo_group.id).rstrip('/')

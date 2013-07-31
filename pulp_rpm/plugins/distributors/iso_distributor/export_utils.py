@@ -42,9 +42,10 @@ def is_valid_prefix(file_prefix):
     and -
 
     :param file_prefix: The string used to prefix the export file(s)
-    :type file_prefix: str
+    :type  file_prefix: str
+
     :return: True if the given file_prefix is a valid match; False otherwise
-    :rtype: bool
+    :rtype:  bool
     """
     return ISO_NAME_REGEX.match(file_prefix) is not None
 
@@ -71,10 +72,11 @@ def form_lookup_key(rpm):
 
     Yum appears to assume an epoch of 0 if the epoch does not exist, so that's what we'll do.
 
-    :param rpm: The rpm unit key to form the lookup key for
-    :type rpm: dict
+    :param rpm:  The rpm unit key to form the lookup key for
+    :type  rpm:  dict
+
     :return: A tuple of the rpm name, epoch, version, release, and arch
-    :rtype: tuple
+    :rtype:  tuple
     """
     rpm_key = (rpm['name'], rpm['epoch'] or '0', rpm['version'], rpm['release'], rpm['arch'])
     return rpm_key
@@ -84,10 +86,11 @@ def form_unit_key_map(units):
     """
     Takes a list of rpm units and creates a dict where the key is the result of form_lookup_key
 
-    :param units: The list of rpm units to convert to a dict
-    :type units: list of pulp.plugins.model.AssociatedUnit
-    :return: A dict of the units, where the key is is the rpm unit key as a tuple
-    :rtype: dict
+    :param units:   The list of rpm units to convert to a dict
+    :type  units:   list of pulp.plugins.model.AssociatedUnit
+
+    :return:        A dict of the units, where the key is is the rpm unit key as a tuple
+    :rtype:         dict
     """
     existing_units = {}
     for u in units:
@@ -102,11 +105,12 @@ def validate_export_config(config):
     configuration. If this changes, this should be removed, and each distributor should get its
     own custom validation function.
 
-    :param config: The configuration to validate
-    :type config: pulp.plugins.config.PluginCallConfiguration
+    :param config:  The configuration to validate
+    :type  config:  pulp.plugins.config.PluginCallConfiguration
+
     :return: a tuple in the form (bool, str) where bool is True if the config is valid. The str
-            describes the error if the configuration is invalid. i18n is taken into account.
-    :rtype: tuple
+                 describes the error if the configuration is invalid. i18n is taken into account.
+    :rtype:  tuple
     """
     # Check for the required configuration keys, as defined in constants
     for key in constants.EXPORT_REQUIRED_CONFIG_KEYS:
@@ -190,13 +194,14 @@ def retrieve_repo_config(repo, config):
     export directory if it exists. If it does not, repo.working_dir is used. The relative
     url used during a yum publish for the repo is joined to this.
 
-    :param repo: The repository to retrieve the configuration for
-    :type repo: pulp.plugins.model.Repository
-    :param config: the export distributor configuration to use
-    :type config: pulp.plugins.config.PluginCallConfiguration
+    :param repo:    The repository to retrieve the configuration for
+    :type  repo:    pulp.plugins.model.Repository
+    :param config:  the export distributor configuration to use
+    :type  config:  pulp.plugins.config.PluginCallConfiguration
+
     :return: A tuple, (str, dict), consisting of the full path to the working directory and a
-            date filter to use directly in a mongo query.
-    :rtype: tuple
+                date filter to use directly in a mongo query.
+    :rtype:  tuple
     """
     # Retrieve the yum distributor configuration for this repository and extract the relative url
     relative_url = get_repo_relative_url(repo.id)
@@ -219,15 +224,16 @@ def retrieve_group_export_config(repo_group, config):
     of repositories to export, determines the correct working directories for the remaining repositories,
     and retrieves the date filter. The date filter is a dict, which can be used directly in a mongo query
 
-    :param repo_group: The repository group to get repositories from
-    :type repo_group: pulp.plugins.model.RepositoryGroup
-    :param config: The configuration to use when creating the date filter and determining the working
-            directory for repositories
-    :type config: pulp.plugins.config.PluginCallConfiguration
-    :return: tuple in the following format: (list of (repo_id, working_dir), date_filter). The repo_id
-            and working_dir are of type str, and the date filter is of type dict. working_dir is the
-            full path to the repository's working directory
-    :rtype: (list of tuple, dict)
+    :param repo_group:  The repository group to get repositories from
+    :type  repo_group:  pulp.plugins.model.RepositoryGroup
+    :param config:      The configuration to use when creating the date filter and determining the
+                            working directory for repositories
+    :type  config:      pulp.plugins.config.PluginCallConfiguration
+
+    :return:            Tuple in the following format: (list of (repo_id, working_dir), date_filter).
+                            The repo_id and working_dir are of type str, and the date filter is of type
+                            dict. working_dir is the full path to the repository's working directory.
+    :rtype:             (list of tuple, dict)
     """
     # The export directory, if it exists, is where the group will be exported.
     export_dir = config.get(constants.EXPORT_DIRECTORY_KEYWORD)
@@ -259,9 +265,11 @@ def get_repo_relative_url(repo_id):
     Retrieve an rpm repository relative url from its distributor configuration.
 
     :param repo_id: The repo id to get the relative url for
-    :type repo_id: str
-    :return: The relative url, or if it could not be retrieved from the distributor config, the repo id
-    :rtype: str
+    :type  repo_id: str
+
+    :return: The relative url, or if it could not be retrieved from the distributor config,
+                        the repository id.
+    :rtype:  str
     """
     # Retrieve the yum distributor configuration for this repository and extract the relative url
     try:
@@ -280,9 +288,10 @@ def is_rpm_repo(repo_id):
     Checks if a given repository id is an rpm repository
 
     :param repo_id: The repository id to check
-    :type repo_id: str
+    :type  repo_id: str
+
     :return: True if its an rpm repo, false otherwise
-    :rtype: bool
+    :rtype:  bool
     """
     # Retrieve the the repository configuration from the manager
     try:
@@ -297,9 +306,10 @@ def init_progress_report(items_total=0):
     A helper method to create a new progress report dictionary
 
     :param items_total: Items total in the task. Defaults to 0
-    :type items_total: int
+    :type  items_total: int
+
     :return: A progress report
-    :rtype: dict
+    :rtype:  dict
     """
     return {
         "state": constants.STATE_RUNNING,
@@ -313,14 +323,15 @@ def init_progress_report(items_total=0):
 
 def set_progress(type_id, progress_status, progress_callback):
     """
-    This just checks that progress_callback is not None before calling it
+    This just checks that progress_callback is not None before calling it. The progress callback
+    function is called using type_id and progress_status, in that order.
 
-    :param type_id: The type id to use with the progress callback
-    :type type_id: str
-    :param progress_status: The progress status to use with the progress callback
-    :type progress_status: dict
-    :param progress_callback: The progress callback function to use
-    :type progress_callback: function
+    :param type_id:             The type id to use with the progress callback
+    :type  type_id:             str
+    :param progress_status:     The progress status to use with the progress callback
+    :type  progress_status:     dict
+    :param progress_callback:   The progress callback function to use
+    :type  progress_callback:   function
     """
     if progress_callback:
         progress_callback(type_id, progress_status)
@@ -332,9 +343,10 @@ def create_date_range_filter(config):
     filter is a dictionary which can be used directly in a mongo query.
 
     :param config: plugin configuration instance; the proposed repo configuration is found within
-    :type config: pulp.plugins.config.PluginCallConfiguration
+    :type  config: pulp.plugins.config.PluginCallConfiguration
+
     :return: date filter dict with issued date ranges in mongo query format
-    :rtype: {}
+    :rtype:  {}
     """
     start_date = config.get(constants.START_DATE_KEYWORD)
     end_date = config.get(constants.END_DATE_KEYWORD)
@@ -352,14 +364,15 @@ def export_rpm(working_dir, rpm_units, progress_callback=None):
     """
      This method takes a list of rpm units and exports them to the given working directory
 
-    :param working_dir: The full path to the directory to export the content to
-    :type working_dir: str
-    :param rpm_units: the list of rpm units to export
-    :type rpm_units: list of AssociatedUnit
-    :param progress_callback: callback to report progress info to publish_conduit
-    :type  progress_callback: function
+    :param working_dir:         The full path to the directory to export the content to
+    :type  working_dir:         str
+    :param rpm_units:           the list of rpm units to export
+    :type  rpm_units:           list of AssociatedUnit
+    :param progress_callback:   callback to report progress info to publish_conduit
+    :type  progress_callback:   function
+
     :return: tuple of status and list of error messages if any occurred
-    :rtype: ({}, [str])
+    :rtype:  ({}, [str])
     """
     # get rpm units
     progress_status = init_progress_report(len(rpm_units))
@@ -409,14 +422,15 @@ def export_errata(working_dir, errata_units, progress_callback=None):
     This call writes the given errata units to an updateinfo.xml file in the working directory.
     This does not export any packages associated with the errata.
 
-    :param working_dir: The full path to the directory to export the content to
-    :type working_dir: str
-    :param errata_units: the errata units to find the rpm units for
-    :type errata_units: list of pulp.plugins.model.AssociatedUnit
-    :param progress_callback: callback to report progress info to publish_conduit
-    :type progress_callback: function
+    :param working_dir:         The full path to the directory to export the content to
+    :type  working_dir:         str
+    :param errata_units:        the errata units to find the rpm units for
+    :type  errata_units:        list of pulp.plugins.model.AssociatedUnit
+    :param progress_callback:   callback to report progress info to publish_conduit
+    :type  progress_callback:   function
+
     :return: The updateinfo.xml file path
-    :rtype: str
+    :rtype:  str
     """
     progress_status = init_progress_report()
 
@@ -448,15 +462,16 @@ def export_distribution(working_dir, distribution_units, progress_callback=None)
     looks up each distribution unit and copies the files from the storage location
     to working directory.
 
-    :param working_dir: The full path to the directory to export the content to
-    :type working_dir: str
-    :param distribution_units: The distribution units to export. These should be retrieved from the
-            publish conduit using a criteria.
-    :type distribution_units: list of AssociatedUnit
-    :param progress_callback: callback to report progress info to publish_conduit
-    :type progress_callback: function
+    :param working_dir:         The full path to the directory to export the content to
+    :type  working_dir:         str
+    :param distribution_units:  The distribution units to export. These should be retrieved from the
+                                    publish conduit using a criteria.
+    :type  distribution_units:  list of AssociatedUnit
+    :param progress_callback:   callback to report progress info to publish_conduit
+    :type  progress_callback:   function
+
     :return: A tuple of the summary and the details, in that order
-    :rtype: (dict, dict)
+    :rtype:  (dict, dict)
     """
     progress_status = init_progress_report()
     set_progress(ids.TYPE_ID_DISTRO, progress_status, progress_callback)
@@ -511,14 +526,15 @@ def export_package_groups_and_cats(working_dir, units, progress_callback=None):
     Because both package groups and categories are needed to write the groups xml file, they
     are both exported here.
 
-    :param working_dir: The full path to the directory to export the content to
-    :type working_dir: str
-    :param units: The package groups and package categories to export.
-    :type units: list of AssociatedUnit
-    :param progress_callback: the progress callback function
-    :type progress_callback: function
+    :param working_dir:         The full path to the directory to export the content to
+    :type  working_dir:         str
+    :param units:               The package groups and package categories to export.
+    :type  units:               list of AssociatedUnit
+    :param progress_callback:   the progress callback function
+    :type  progress_callback:   function
+
     :return: a tuple consisting of the groups_xml_path and the summary, in that order
-    :rtype: (str, dict)
+    :rtype:  (str, dict)
     """
     set_progress(models.PackageGroup.TYPE, {'state': constants.STATE_RUNNING}, progress_callback)
     set_progress(models.PackageCategory.TYPE, {'state': constants.STATE_RUNNING}, progress_callback)
@@ -541,14 +557,15 @@ def export_complete_repo(repo_id, working_dir, publish_conduit, config, progress
     """
     Export all content types for a repository, unless the type is in the skip list.
 
-    :param working_dir: The full path to the directory to export the content to
-    :type working_dir: str
-    :param publish_conduit: The publish conduit for the repository
-    :type publish_conduit: pulp.plugins.conduits.repo_publish.RepoPublishConduit
-    :param config: The configuration to use while exporting
-    :type config: pulp.plugins.config.PluginConfiguration
-    :param progress_callback: The progress callback function to use
-    :type progress_callback: function
+    :param working_dir:         The full path to the directory to export the content to
+    :type  working_dir:         str
+    :param publish_conduit:     The publish conduit for the repository
+    :type  publish_conduit:     pulp.plugins.conduits.repo_publish.RepoPublishConduit
+    :param config:              The configuration to use while exporting
+    :type  config:              pulp.plugins.config.PluginConfiguration
+    :param progress_callback:   The progress callback function to use
+    :type  progress_callback:   function
+
     :return: A tuple containing the summary and the details dictionaries for the export
     :rtype: tuple
     """
@@ -607,12 +624,13 @@ def export_incremental_content(working_dir, publish_conduit, date_filter):
     containing metadata is also exported for each rpm unit. The errata units are also written as JSON
     documents.
 
-    :param working_dir: The full path to the directory to export the content to
-    :type working_dir: str
+    :param working_dir:     The full path to the directory to export the content to
+    :type  working_dir:     str
     :param publish_conduit: The publish conduit for the repository
-    :type publish_conduit: pulp.plugins.conduits.repo_publish.RepoPublishConduit
-    :param date_filter: A date filter dict, usually generated by create_date_range_filter
-    :type date_filter: dict
+    :type  publish_conduit: pulp.plugins.conduits.repo_publish.RepoPublishConduit
+    :param date_filter:     A date filter dict, usually generated by create_date_range_filter
+    :type  date_filter:     dict
+
     :return: A tuple containing the summary and the details dictionaries for the export
     :rtype: tuple
     """
@@ -646,9 +664,9 @@ def export_rpm_json(working_dir, rpm_units):
     in the working directory. The file name is in the format name-version-release.arch.json
 
     :param working_dir: The full path to the directory to write the json files to
-    :type working_dir: str
-    :param rpm_units: A list of AssociatedUnits of type rpm, drpm, and srpm
-    :type rpm_units: list of pulp.plugins.model.AssociatedUnit
+    :type  working_dir: str
+    :param rpm_units:   A list of AssociatedUnits of type rpm, drpm, and srpm
+    :type  rpm_units:   list of pulp.plugins.model.AssociatedUnit
     """
     if not os.path.isdir(working_dir):
         os.makedirs(working_dir)
@@ -675,10 +693,10 @@ def export_errata_json(working_dir, errata_units):
     Using the given list of errata AssociatedUnits, this method writes the errata to a json file in
     the working directory.
 
-    :param working_dir: The full path to the directory to write the json files to
-    :type working_dir: str
+    :param working_dir:  The full path to the directory to write the json files to
+    :type  working_dir:  str
     :param errata_units: A list of AssociatedUnits of type errata
-    :type errata_units: list of pulp.plugins.model.AssociatedUnit
+    :type  errata_units: list of pulp.plugins.model.AssociatedUnit
     """
     if not os.path.isdir(working_dir):
         os.makedirs(working_dir)
@@ -704,11 +722,12 @@ def get_rpm_units(publish_conduit, skip_list=()):
     skip over one or more of these types.
 
     :param publish_conduit: The publish conduit to retrieve the units from
-    :type publish_conduit: pulp.plugins.conduits.repo_publish.RepoPublishConduit
-    :param skip_list: A list of type ids to skip. These should be from pulp_rpm.common.models
-    :type skip_list: tuple
+    :type  publish_conduit: pulp.plugins.conduits.repo_publish.RepoPublishConduit
+    :param skip_list:       A list of type ids to skip. These should be from pulp_rpm.common.models
+    :type  skip_list:       tuple
+
     :return: A list of AssociatedUnits
-    :rtype: list
+    :rtype:  list
     """
     rpm_units = []
     for model in (models.RPM, models.SRPM, models.DRPM):
@@ -729,22 +748,24 @@ def publish_isos(working_dir, image_prefix, http_dir=None, https_dir=None, image
     the given http and https directories. Not passing a http or https directory means the ISOs
     won't be published using that method.
 
-    :param working_dir: The full path to the directory to wrap in ISOs
-    :type working_dir: str
-    :param image_prefix: The prefix of the image filename
-    :type image_prefix: str
-    :param http_dir: The full path to the http export directory. The default base path can be found in
-        pulp_rpm.common.constants and should be suffixed by the group or repo id
-    :type http_dir: str
-    :param https_dir: The full path to the https export directory. The default base path can be found in
-        pulp_rpm.common.constants and should be suffixed by the group or repo id
-    :type https_dir: str
-    :param image_size: The size of the ISO image in megabytes (defaults to dvd sized iso)
-    :type image_size: int
-    :param progress_callback: callback to report progress info to publish_conduit. This is expected to
-            take the following parameters: a string to use as the key in a dictionary, and the second
-            parameter is assigned to it.
-    :type progress_callback: function
+    :param working_dir:         The full path to the directory to wrap in ISOs
+    :type  working_dir:         str
+    :param image_prefix:        The prefix of the image filename
+    :type  image_prefix:        str
+    :param http_dir:            The full path to the http export directory. The default base path can be
+                                    found in pulp_rpm.common.constants and should be suffixed by the
+                                    group or repo id
+    :type  http_dir:            str
+    :param https_dir:           The full path to the https export directory. The default base path can
+                                    be found in pulp_rpm.common.constants and should be suffixed by the
+                                    group or repo id
+    :type  https_dir:           str
+    :param image_size:          The size of the ISO image in megabytes (defaults to dvd sized iso)
+    :type  image_size:          int
+    :param progress_callback:   callback to report progress info to publish_conduit. This is expected to
+                                    take the following parameters: a string to use as the key in a
+                                    dictionary, and the second parameter is assigned to it.
+    :type  progress_callback: function
     """
     # TODO: Move the ISO output directory
     # Right now the ISOs live in the working directory because there isn't a better place for them.
