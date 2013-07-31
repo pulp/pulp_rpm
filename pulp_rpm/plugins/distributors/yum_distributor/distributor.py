@@ -13,7 +13,6 @@
 
 from ConfigParser import SafeConfigParser
 import gettext
-import itertools
 import os
 import re
 import shutil
@@ -52,10 +51,7 @@ OLD_REL_PATH_KEYWORD = 'old_relative_path'
 # isn't the place for it.
 RELATIVE_URL = '/pulp/repos'
 
-
 LISTING_FILE_NAME = 'listing'
-PACKAGE_REGEX = re.compile(r'.*\.[sd]?rpm$')
-METADATA_REGEX = re.compile(r'.*\.xml(\.gz)?$')
 
 ###
 # Config Options Explained
@@ -485,9 +481,6 @@ class YumDistributor(Distributor):
         if relpath.startswith("/"):
             relpath = relpath[1:]
 
-        # Write out the listing files
-        create_listing_files(repo.working_dir)
-
         # Build the https and http publishing paths
         https_publish_dir = self.get_https_publish_dir(config)
         https_repo_publish_dir = os.path.join(https_publish_dir, relpath).rstrip('/')
@@ -514,6 +507,7 @@ class YumDistributor(Distributor):
             try:
                 _LOG.info("HTTPS Publishing repo <%s> to <%s>" % (repo.id, https_repo_publish_dir))
                 util.create_symlink(repo.working_dir, https_repo_publish_dir)
+                create_listing_files(https_publish_dir, https_repo_publish_dir)
                 summary["https_publish_dir"] = https_repo_publish_dir
                 self.set_progress("publish_https", {"state" : "FINISHED"}, progress_callback)
             except:
@@ -531,6 +525,7 @@ class YumDistributor(Distributor):
             try:
                 _LOG.info("HTTP Publishing repo <%s> to <%s>" % (repo.id, http_repo_publish_dir))
                 util.create_symlink(repo.working_dir, http_repo_publish_dir)
+                create_listing_files(http_publish_dir, http_repo_publish_dir)
                 summary["http_publish_dir"] = http_repo_publish_dir
                 self.set_progress("publish_http", {"state" : "FINISHED"}, progress_callback)
             except:
@@ -813,19 +808,27 @@ class YumDistributor(Distributor):
 
 # -- local utility functions ---------------------------------------------------
 
-def create_listing_files(repo_working_dir):
-    # Walk the directory tree and create listing files for all ancestor
-    # directories of repositories
-    for path, directories, files in os.walk(repo_working_dir):
+def create_listing_files(root_publish_dir, repo_publish_dir):
 
-        # don't bother if there are no directories or we're in the metadata or packages directory
-        if not directories \
-            or any(itertools.imap(METADATA_REGEX.match, files)) \
-            or any(itertools.imap(PACKAGE_REGEX.match, files)):
-            continue
+    # normalize the paths for use with os.path.dirname by removing any trailing '/'s
+    if root_publish_dir.endswith('/'):
+        root_publish_dir = root_publish_dir[:-1]
+    if repo_publish_dir.endswith('/'):
+        repo_publish_dir = repo_publish_dir[:-1]
 
-        with open(os.path.join(path, LISTING_FILE_NAME), 'w') as listing_handle:
+    # start at the longest path and work up the tree
+    working_dir = repo_publish_dir
+
+    while True:
+        directories = [d for d in os.listdir(working_dir) if os.path.isdir(os.path.join(working_dir, d))]
+
+        with open(os.path.join(working_dir, LISTING_FILE_NAME), 'w') as listing_handle:
             listing_handle.write('\n'.join(directories))
+
+        if working_dir == root_publish_dir:
+            break
+
+        working_dir = os.path.dirname(working_dir)
 
 
 def load_config(config_file=constants.REPO_AUTH_CONFIG_FILE):
