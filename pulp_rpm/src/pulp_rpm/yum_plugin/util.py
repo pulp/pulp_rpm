@@ -352,9 +352,15 @@ def remove_publish_dir(publish_dir, link_path):
     for index in range(num_pieces, 0, -1):
         # Start at the deepest part of the path and work back up until a non-empty dir is found
         path_to_remove = os.path.join(publish_dir, *potential_to_remove[:index])
-        if len(os.listdir(path_to_remove)):
+        files_in_path_to_remove = os.listdir(path_to_remove)
+        if len(files_in_path_to_remove) > 1:
             # Directory is not empty so stop
             break
+        if files_in_path_to_remove and 'listing' not in files_in_path_to_remove:
+            break
+        if files_in_path_to_remove:
+            # delete lone listing files
+            os.unlink(os.path.join(path_to_remove, 'listing'))
         os.rmdir(path_to_remove)
 
 
@@ -365,7 +371,7 @@ def is_rpm_newer(a, b):
 
     @var b: represents rpm metadata
     @type b: dict with keywords: name, arch, epoch, version, release
-    
+
     @return true if RPM is a newer, false if it's not
     @rtype: bool
     """
@@ -374,7 +380,7 @@ def is_rpm_newer(a, b):
     if a["arch"] != b["arch"]:
         return False
     value = rpmUtils.miscutils.compareEVR(
-            (a["epoch"], a["version"], a["release"]), 
+            (a["epoch"], a["version"], a["release"]),
             (b["epoch"], b["version"], b["release"]))
     if value > 0:
         return True
