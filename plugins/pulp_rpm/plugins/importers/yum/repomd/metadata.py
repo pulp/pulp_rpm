@@ -182,14 +182,14 @@ class MetadataFiles(object):
 
         download_request_list = []
 
-        for md in self.metadata.values():
+        for file_name, file_info in self.metadata.iteritems():
             # we don't care about the sqlite files
-            if md['relative_path'].find('sqlite') >= 0:
+            if file_name.endswith('_db') and file_name in self.KNOWN_TYPES:
                 continue
-            url = urljoin(self.repo_url, md['relative_path'])
-            dst = os.path.join(self.dst_dir, md['relative_path'].rsplit('/', 1)[-1])
+            url = urljoin(self.repo_url, file_info['relative_path'])
+            dst = os.path.join(self.dst_dir, file_info['relative_path'].rsplit('/', 1)[-1])
 
-            md['local_path'] = dst
+            file_info['local_path'] = dst
 
             request = DownloadRequest(url, dst)
             download_request_list.append(request)
