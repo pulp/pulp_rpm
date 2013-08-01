@@ -60,8 +60,6 @@ CONFIG_SSL_AUTH_CA_CERT = 'ssl_auth_ca_cert'
 # Copy operation config
 CONFIG_RECURSIVE = 'recursive'
 
-EXPORT_HTTP_DIR="/var/lib/pulp/published/http/exports"
-EXPORT_HTTPS_DIR="/var/lib/pulp/published/https/exports"
 ISO_HTTP_DIR = "/var/lib/pulp/published/http/isos"
 ISO_HTTPS_DIR = "/var/lib/pulp/published/https/isos"
 
@@ -73,6 +71,26 @@ DISTRIBUTION_STORAGE_PATH = '/var/lib/pulp/content/distribution/'
 # During publish we need to lookup and make sure the treeinfo exists; since the treeinfo
 # can be '.treeinfo' or 'treeinfo' (in cdn case) we need to check which one exists
 TREE_INFO_LIST = ['.treeinfo', 'treeinfo']
+
+# Configuration constants for export distributors
+PUBLISH_HTTP_KEYWORD = 'http'
+PUBLISH_HTTPS_KEYWORD = 'https'
+EXPORT_REQUIRED_CONFIG_KEYS = (PUBLISH_HTTP_KEYWORD, PUBLISH_HTTPS_KEYWORD)
+
+END_DATE_KEYWORD = 'end_date'
+EXPORT_DIRECTORY_KEYWORD = 'export_dir'
+ISO_PREFIX_KEYWORD = 'iso_prefix'
+ISO_SIZE_KEYWORD = 'iso_size'
+SKIP_KEYWORD = 'skip'
+START_DATE_KEYWORD = 'start_date'
+EXPORT_OPTIONAL_CONFIG_KEYS = (END_DATE_KEYWORD, ISO_PREFIX_KEYWORD, SKIP_KEYWORD,
+                               EXPORT_DIRECTORY_KEYWORD, START_DATE_KEYWORD, ISO_SIZE_KEYWORD)
+
+EXPORT_HTTP_DIR = '/var/lib/pulp/published/http/exports/repo'
+EXPORT_HTTPS_DIR = '/var/lib/pulp/published/https/exports/repo'
+
+GROUP_EXPORT_HTTP_DIR = '/var/lib/pulp/published/http/exports/repo_group'
+GROUP_EXPORT_HTTPS_DIR = '/var/lib/pulp/published/https/exports/repo_group'
 
 # -- extensions ---------------------------------------------------------------
 

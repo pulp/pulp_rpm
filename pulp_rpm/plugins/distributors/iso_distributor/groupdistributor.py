@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright © 2011 Red Hat, Inc.
+# Copyright (c) 2013 Red Hat, Inc.
 #
 # This software is licensed to you under the GNU General Public
 # License as published by the Free Software Foundation; either version
@@ -11,342 +11,184 @@
 # have received a copy of GPLv2 along with this software; if not, see
 # http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt.
 
+from gettext import gettext as _
 import os
-import gettext
 import shutil
-import time
 
-from pulp_rpm.yum_plugin import util, metadata, updateinfo
+from pulp.plugins.conduits.repo_publish import RepoPublishConduit
 from pulp.plugins.distributor import GroupDistributor
-from iso_distributor.generate_iso import GenerateIsos
-from iso_distributor.exporter import RepoExporter
-from iso_distributor import iso_util
-from pulp.server.db.model.criteria import UnitAssociationCriteria
-from pulp_rpm.common.ids import TYPE_ID_DISTRIBUTOR_EXPORT, TYPE_ID_DISTRO, TYPE_ID_DRPM, \
-    TYPE_ID_ERRATA, TYPE_ID_PKG_GROUP, TYPE_ID_PKG_CATEGORY, TYPE_ID_RPM, TYPE_ID_SRPM
-from pulp_rpm.yum_plugin import comps_util
+from pulp.server.exceptions import PulpDataException
 
-_LOG = util.getLogger(__name__)
-_ = gettext.gettext
+# Import export_utils from this directory, which is not in the python path
+import export_utils
+from pulp_rpm.common import constants, ids, models
+from pulp_rpm.yum_plugin import util
 
-REQUIRED_CONFIG_KEYS = ["http", "https"]
-OPTIONAL_CONFIG_KEYS = ["https_ca", "https_publish_dir","http_publish_dir", "start_date", "end_date", "iso_prefix", "skip"]
+_logger = util.getLogger(__name__)
 
+# Things left to do:
+#   Cancelling a publish operation is not currently supported.
+#   Published ISOs are left in the working directory. See export_utils.publish_isos to fix this.
+#   Progress reporting should probably be restructured.
+#   This is not currently in the python path. When that gets fixed, the imports should be fixed.
 
-###
-# Config Options Explained
-###
-# http                  - True/False:  Publish through http
-# https                 - True/False:  Publish through https
-# https_ca              - CA to verify https communication
-# start_date            - errata start date format eg: "2009-03-30 00:00:00"
-# end_date              - errata end date format eg: "2009-03-30 00:00:00"
-# http_publish_dir      - Optional parameter to override the HTTP_PUBLISH_DIR
-# https_publish_dir     - Optional parameter to override the HTTPS_PUBLISH_DIR
-# skip                  - List of what content types to skip during export, options:
-#                         ["rpm", "errata", "distribution"]
-# iso_prefix            - prefix to use in the generated iso naming, default: pulp-repos. The ISO is named with
-#                         this template: '<prefix>-<timestamp>-<disc_number>.iso'
-# -- plugins ------------------------------------------------------------------
 
 class GroupISODistributor(GroupDistributor):
 
     def __init__(self):
         super(GroupISODistributor, self).__init__()
-        self.canceled = False
-        self.group_summary = {}
-        self.group_details = {}
-        self.group_progress_status = {}
+        self.cancelled = False
+        self.summary = {}
+        self.details = {}
 
     @classmethod
     def metadata(cls):
+        """
+        Used by Pulp to classify the capabilities of this distributor. The
+        following keys must be present in the returned dictionary:
+
+        * id - Programmatic way to refer to this distributor. Must be unique
+               across all distributors. Only letters and underscores are valid.
+        * display_name - User-friendly identification of the distributor.
+        * types - List of all content type IDs that may be published using this
+               distributor.
+
+        This method call may be made multiple times during the course of a
+        running Pulp server and thus should not be used for initialization
+        purposes.
+
+        :return: description of the distributor's capabilities
+        :rtype:  dict
+        """
         return {
-            'id'           : TYPE_ID_DISTRIBUTOR_EXPORT,
-            'display_name' : _('Export Distributor'),
-            'types'        : [TYPE_ID_RPM, TYPE_ID_SRPM, TYPE_ID_DRPM, TYPE_ID_ERRATA,
-                              TYPE_ID_DISTRO, TYPE_ID_PKG_CATEGORY, TYPE_ID_PKG_GROUP]
+            'id': ids.TYPE_ID_DISTRIBUTOR_GROUP_EXPORT,
+            'display_name': _('Group Export Distributor'),
+            'types': [models.RPM.TYPE, models.SRPM.TYPE, models.DRPM.TYPE, models.Errata.TYPE,
+                      models.Distribution.TYPE, models.PackageCategory.TYPE, models.PackageGroup.TYPE]
         }
 
-    def init_progress(self):
-        return  {
-            "state": "IN_PROGRESS",
-            "num_success" : 0,
-            "num_error" : 0,
-            "items_left" : 0,
-            "items_total" : 0,
-            "error_details" : [],
-            }
+    def validate_config(self, repo_group, config, related_repo_groups):
+        """
+        Allows the distributor to check the contents of a potential configuration
+        for the given repository. This call is made both for the addition of
+        this distributor to a new repository group, as well as updating the configuration
+        for this distributor on a previously configured repository.
 
-    def validate_config(self, repo, config, related_repos):
-        """
-        see parent class for the doc string
-        """
-        _LOG.info("validate_config invoked, config values are: %s" % (config.repo_plugin_config))
-        for key in REQUIRED_CONFIG_KEYS:
-            value = config.get(key)
-            if value is None:
-                msg = _("Missing required configuration key: %(key)s" % {"key":key})
-                _LOG.error(msg)
-                return False, msg
-            if key == 'http':
-                config_http = config.get('http')
-                if config_http is not None and not isinstance(config_http, bool):
-                    msg = _("http should be a boolean; got %s instead" % config_http)
-                    _LOG.error(msg)
-                    return False, msg
-            if key == 'https':
-                config_https = config.get('https')
-                if config_https is not None and not isinstance(config_https, bool):
-                    msg = _("https should be a boolean; got %s instead" % config_https)
-                    _LOG.error(msg)
-                    return False, msg
-        for key in config.keys():
-            if key not in REQUIRED_CONFIG_KEYS and key not in OPTIONAL_CONFIG_KEYS:
-                msg = _("Configuration key '%(key)s' is not supported" % {"key":key})
-                _LOG.error(msg)
-                return False, msg
-            if key == 'skip':
-                metadata_types = config.get('skip')
-                if metadata_types is not None and not isinstance(metadata_types, list):
-                    msg = _("skip should be a list; got %s instead" % metadata_types)
-                    _LOG.error(msg)
-                    return False, msg
-            if key == 'https_ca':
-                https_ca = config.get('https_ca').encode('utf-8')
-                if https_ca is not None and not util.validate_cert(https_ca):
-                    msg = _("https_ca is not a valid certificate")
-                    _LOG.error(msg)
-                    return False, msg
-            if key == 'iso_prefix':
-                iso_prefix = config.get('iso_prefix')
-                if iso_prefix is not None and (not isinstance(iso_prefix, str) or not iso_util.is_valid_prefix(iso_prefix)):
-                    msg = _("iso_prefix is not a valid string; valid supported characters include %s" % iso_util.ISO_NAME_REGEX.pattern)
-                    _LOG.error(msg)
-                    return False, msg
-        publish_dir = config.get("https_publish_dir")
-        if publish_dir:
-            if not os.path.exists(publish_dir) or not os.path.isdir(publish_dir):
-                msg = _("Value for 'https_publish_dir' is not an existing directory: %(publish_dir)s" % {"publish_dir":publish_dir})
-                return False, msg
-            if not os.access(publish_dir, os.R_OK) or not os.access(publish_dir, os.W_OK):
-                msg = _("Unable to read & write to specified 'https_publish_dir': %(publish_dir)s" % {"publish_dir":publish_dir})
-                return False, msg
-        publish_dir = config.get("http_publish_dir")
-        if publish_dir:
-            if not os.path.exists(publish_dir) or not os.path.isdir(publish_dir):
-                msg = _("Value for 'http_publish_dir' is not an existing directory: %(publish_dir)s" % {"publish_dir":publish_dir})
-                return False, msg
-            if not os.access(publish_dir, os.R_OK) or not os.access(publish_dir, os.W_OK):
-                msg = _("Unable to read & write to specified 'http_publish_dir': %(publish_dir)s" % {"publish_dir":publish_dir})
-                return False, msg
-        return True, None
+        The return is a tuple of the result of the validation (True for success,
+        False for failure) and a message. The message may be None and is unused
+        in the success case. If the message is not None, i18n is taken into
+        consideration when generating the message.
 
-    def set_progress(self, type_id, status, progress_callback=None):
-        if progress_callback:
-            progress_callback(type_id, status)
+        The related_repo_groups parameter contains a list of other repository groups that
+        have a configured distributor of this type. The distributor configurations
+        is found in each repository group in the "plugin_configs" field.
 
+        :param repo_group:          metadata describing the repository to which the configuration applies
+        :type  repo_group:          pulp.plugins.model.Repository
+        :param config:              plugin configuration instance
+        :type  config:              pulp.plugins.config.PluginCallConfiguration
+        :param related_repo_groups: list of other repositories using this distributor type; empty list
+                                        if there are none; entries are of type
+                                        pulp.plugins.model.RelatedRepositoryGroup
+        :type  related_repo_groups: list
 
-    def cancel_publish_group(self, call_request, call_report):
+        :return: tuple of (bool, str) to describe the result
+        :rtype:  tuple
         """
-        see parent class for the doc string
-        """
-        self.canceled = True
-
-    def init_group_progress(self):
-        """
-        Initialize the group progress status
-        """
-        self.group_progress_status = {"isos":               {"state": "NOT_STARTED"},
-                                     "publish_http":       {"state": "NOT_STARTED"},
-                                     "publish_https":      {"state": "NOT_STARTED"},
-                                     "repositories":       {},}
+        return export_utils.validate_export_config(config)
 
     def publish_group(self, repo_group, publish_conduit, config):
         """
-        see parent class for doc string
+        Publishes the given repository group.
+
+        :param repo_group:      metadata describing the repository group
+        :type  repo_group:      pulp.plugins.model.RepositoryGroup
+        :param publish_conduit: provides access to relevant Pulp functionality
+        :type  publish_conduit: pulp.plugins.conduits.repo_publish.RepoGroupPublishConduit
+        :param config:          plugin configuration
+        :type  config:          pulp.plugins.config.PluginConfiguration
+        :return:                report describing the publish run
+        :rtype:                 pulp.plugins.model.PublishReport
         """
-        self.group_working_dir = group_working_dir = repo_group.working_dir
-        skip_types = config.get("skip") or []
-        self.init_group_progress()
-        self.group_progress_status["group-id"] = repo_group.id
+        # First, validate the configuration because there may be override config options, and currently,
+        # validate_config is not called prior to publishing by the manager.
+        valid_config, msg = export_utils.validate_export_config(config)
+        if not valid_config:
+            raise PulpDataException(msg)
 
-        # progress callback for group status
-        def group_progress_callback(type_id, status):
-            self.group_progress_status[type_id] = status
-            publish_conduit.set_progress(self.group_progress_status)
+        _logger.info('Beginning export of the following repository group: [%s]' % repo_group.id)
+        progress_status = export_utils.init_progress_report(len(repo_group.repo_ids))
 
-        # loop through each repo in the group and perform exports
-        for repoid in repo_group.repo_ids:
-            _LOG.info("Exporting repo %s " % repoid)
-            summary = {}
-            details = {}
-            progress_status = {
-                                    "rpms":               {"state": "NOT_STARTED"},
-                                    "errata":             {"state": "NOT_STARTED"},
-                                    "distribution":       {"state": "NOT_STARTED"},
-                                    "packagegroups":      {"state": "NOT_STARTED"},}
-            def progress_callback(type_id, status):
-                progress_status[type_id] = status
-                publish_conduit.set_progress(progress_status)
-            repo_working_dir = "%s/%s" % (group_working_dir, repoid)
-            repo_exporter = RepoExporter(repo_working_dir, skip=skip_types)
-            # check if any datefilter is set on the distributor
-            date_filter = repo_exporter.create_date_range_filter(config)
-            _LOG.debug("repo working dir %s" % repo_working_dir)
-            groups_xml_path = None
-            updateinfo_xml_path = None
-            if date_filter:
-                # If a date range is specified, we only export the errata within that range
-                # and associated rpm units. This might change once we have dates associated
-                # to other units.
-                criteria = UnitAssociationCriteria(type_ids=[TYPE_ID_ERRATA], unit_filters=date_filter)
-                errata_units = publish_conduit.get_units(repoid, criteria=criteria)
-                # we only include binary and source; drpms are not associated to errata
-                criteria = UnitAssociationCriteria(type_ids=[TYPE_ID_RPM, TYPE_ID_SRPM])
-                rpm_units = publish_conduit.get_units(repoid, criteria=criteria)
-                rpm_units = repo_exporter.get_errata_rpms(errata_units, rpm_units)
-                rpm_status, rpm_errors = repo_exporter.export_rpms(rpm_units, progress_callback=progress_callback)
-                if self.canceled:
-                    return publish_conduit.build_cancel_report(summary, details)
-                # export errata and generate updateinfo xml
-                updateinfo_xml_path = updateinfo.updateinfo(errata_units, repo_working_dir)
-                progress_status["errata"]["num_success"] = len(errata_units)
-                progress_status["errata"]["state"] = "FINISHED"
-                summary["num_package_units_attempted"] = len(rpm_units)
-                summary["num_package_units_exported"] = len(rpm_units) - len(rpm_errors)
-                summary["num_package_units_errors"] = len(rpm_errors)
-                summary["num_errata_units_exported"] = len(errata_units)
-                details["errors"] = rpm_errors
+        def progress_callback(progress_keyword, status):
+            progress_status[progress_keyword] = status
+            publish_conduit.set_progress(progress_status)
+
+        # Before starting, clean out the working directory. Done to remove last published ISOs
+        shutil.rmtree(repo_group.working_dir, ignore_errors=True)
+        os.makedirs(repo_group.working_dir)
+
+        # Retrieve the configuration for each repository, the skip types, and the date filter
+        packed_config = export_utils.retrieve_group_export_config(repo_group, config)
+        rpm_repositories, self.date_filter = packed_config
+
+        # For every repository, extract the requested types to the working directory
+        for repo_id, working_dir in rpm_repositories:
+            # Create a repo conduit, which makes sharing code with the export and yum distributors easier
+            repo_conduit = RepoPublishConduit(repo_id, ids.EXPORT_GROUP_DISTRIBUTOR_ID)
+
+            # If there is a date filter perform an incremental export, otherwise do everything
+            if self.date_filter:
+                result = export_utils.export_incremental_content(working_dir, repo_conduit,
+                                                                 self.date_filter)
             else:
+                result = export_utils.export_complete_repo(repo_id, working_dir, repo_conduit, config,
+                                                           progress_callback)
+            self.summary[repo_id] = result[0]
+            self.details[repo_id] = result[1]
 
-                # export rpm units(this includes binary, source and delta)
-                criteria = UnitAssociationCriteria(type_ids=[TYPE_ID_RPM, TYPE_ID_SRPM, TYPE_ID_DRPM])
-                rpm_units = publish_conduit.get_units(repoid, criteria)
-                rpm_status, rpm_errors = repo_exporter.export_rpms(rpm_units, progress_callback=progress_callback)
-                summary["num_package_units_attempted"] = len(rpm_units)
-                summary["num_package_units_exported"] = len(rpm_units) - len(rpm_errors)
-                summary["num_package_units_errors"] = len(rpm_errors)
+        # If there was no export directory, publish via ISOs
+        if not config.get(constants.EXPORT_DIRECTORY_KEYWORD):
+            self._publish_isos(repo_group, config, progress_callback)
 
-                # export package groups information and generate comps.xml
-                groups_xml_path = None
-                if "packagegroup" not in skip_types:
-                    progress_status["packagegroups"]["state"] = "STARTED"
-                    criteria = UnitAssociationCriteria(type_ids=[TYPE_ID_PKG_GROUP, TYPE_ID_PKG_CATEGORY])
-                    existing_units = publish_conduit.get_units(repoid, criteria)
-                    existing_groups = filter(lambda u : u.type_id in [TYPE_ID_PKG_GROUP], existing_units)
-                    existing_cats = filter(lambda u : u.type_id in [TYPE_ID_PKG_CATEGORY], existing_units)
-                    groups_xml_path = comps_util.write_comps_xml(repo_working_dir, existing_groups, existing_cats)
-                    summary["num_package_groups_exported"] = len(existing_groups)
-                    summary["num_package_categories_exported"] = len(existing_cats)
-                    progress_status["packagegroups"]["state"] = "FINISHED"
-                else:
-                    progress_status["packagegroups"]["state"] = "SKIPPED"
-                    _LOG.info("packagegroup unit type in skip list [%s]; skipping export" % skip_types)
+        for repo_id, repo_dir in rpm_repositories:
+            if repo_id in self.details and len(self.details[repo_id]['errors']) != 0:
+                return publish_conduit.build_failure_report(self.summary, self.details)
 
-                if self.canceled:
-                    return publish_conduit.build_cancel_report(summary, details)
+        self.summary['repositories_exported'] = len(rpm_repositories)
+        self.summary['repositories_skipped'] = len(repo_group.repo_ids) - len(rpm_repositories)
 
-                # export errata units and associated rpms
-                progress_status["errata"]["state"] = "STARTED"
-                criteria = UnitAssociationCriteria(type_ids=[TYPE_ID_ERRATA])
-                errata_units = publish_conduit.get_units(repoid, criteria=criteria)
-                progress_status["errata"]["state"] = "IN_PROGRESS"
-                updateinfo_xml_path = updateinfo.updateinfo(errata_units, repo_working_dir)
-                progress_status["errata"]["num_success"] = len(errata_units)
-                progress_status["errata"]["state"] = "FINISHED"
-                summary["num_errata_units_exported"] = len(errata_units)
-
-                # export distributions
-                criteria = UnitAssociationCriteria(type_ids=[TYPE_ID_DISTRO])
-                distro_units = publish_conduit.get_units(repoid, criteria)
-                distro_status, distro_errors = repo_exporter.export_distributions(distro_units, progress_callback=progress_callback)
-                summary["num_distribution_units_attempted"] = len(distro_units)
-                summary["num_distribution_units_exported"] = len(distro_units) - len(distro_errors)
-                summary["num_distribution_units_errors"] = len(distro_errors)
-
-                self.group_progress_status["repositories"][repoid] = progress_status
-                self.set_progress("repositories", self.group_progress_status["repositories"], group_progress_callback)
-
-                details["errors"] = rpm_errors + distro_errors
-                self.group_summary[repoid] = summary
-                self.group_details[repoid] = details
-
-            # generate metadata for the exported repo
-            repo_scratchpad = publish_conduit.get_repo_scratchpad(repoid)
-            metadata_status, metadata_errors = metadata.generate_yum_metadata(
-                repoid, repo_working_dir, rpm_units, config, progress_callback, is_cancelled=self.canceled,
-                group_xml_path=groups_xml_path, updateinfo_xml_path=updateinfo_xml_path, repo_scratchpad=repo_scratchpad)
-            details["errors"] += metadata_errors
-        # generate and publish isos
-        self._publish_isos(repo_group, config, progress_callback=group_progress_callback)
-        _LOG.info("Publish complete:  summary = <%s>, details = <%s>" % (self.group_summary, self.group_details))
-
-        # remove exported content from working dirctory
-        iso_util.cleanup_working_dir(self.group_working_dir)
-
-        # check for any errors
-        if not len([self.group_details[repoid]["errors"] for repoid in self.group_details.keys()]):
-            return publish_conduit.build_failure_report(self.group_summary, self.group_details)
-
-        return publish_conduit.build_success_report(self.group_summary, self.group_details)
+        return publish_conduit.build_success_report(self.summary, self.details)
 
     def _publish_isos(self, repo_group, config, progress_callback=None):
         """
-        Generate the iso images on the exported directory of repos and publish
-        them to the publish directory. Supports http/https publish. This does not
-        support repo_auth.
-        @param repo_group: metadata describing the repository group to which the
-                     configuration applies
-        @type  repo_group: pulp.plugins.model.RepositoryGroup
+        This just decides what the http and https publishing directories should be, cleans them up,
+        and then calls publish_isos method in export_utils
 
-        @param config: plugin configuration instance; the proposed repo
-                       configuration is found within
-        @type  config: pulp.plugins.config.PluginCallConfiguration
-
-        @param progress_callback: callback to report progress info to publish_conduit
-        @type  progress_callback: function
+        :param repo_group:          metadata describing the repository group. Used to retrieve the
+                                        working directory and group id.
+        :type  repo_group:          pulp.plugins.model.RepositoryGroup
+        :param config:              plugin configuration instance
+        :type config:               pulp.plugins.config.PluginCallConfiguration
+        :param progress_callback:   callback to report progress info to publish_conduit. This function is
+                                        expected to take the following arguments: type_id, a string, and
+                                        status, which is a dict
+        :type progress_callback:    function
         """
-        # build iso and publish via HTTPS
-        https_publish_dir = iso_util.get_https_publish_iso_dir(config)
-        https_repo_publish_dir = os.path.join(https_publish_dir, repo_group.id).rstrip('/')
-        prefix = config.get('iso_prefix') or repo_group.id
-        if config.get("https"):
-            # Publish for HTTPS
-            self.set_progress("publish_https", {"state" : "IN_PROGRESS"}, progress_callback)
-            try:
-                _LOG.info("HTTPS Publishing repo <%s> to <%s>" % (repo_group.id, https_repo_publish_dir))
-                # generate iso images and write them to the publish directory
-                isogen = GenerateIsos(self.group_working_dir, https_repo_publish_dir, prefix=prefix, progress=self.init_progress(), is_cancelled=self.canceled)
-                isogen.run(progress_callback=progress_callback)
-                self.group_summary["https_publish_dir"] = https_repo_publish_dir
-                self.set_progress("publish_https", {"state" : "FINISHED"}, progress_callback)
-            except Exception,e:
-                _LOG.debug(" publish operaation failed due to exception: %s" % e)
-                self.set_progress("publish_https", {"state" : "FAILED"}, progress_callback)
-        else:
-            self.set_progress("publish_https", {"state" : "SKIPPED"}, progress_callback)
-            if os.path.lexists(https_repo_publish_dir):
-                _LOG.debug("Removing link for %s since https is not set" % https_repo_publish_dir)
-                shutil.rmtree(https_repo_publish_dir)
 
-        # build iso and publish via HTTP
-        http_publish_dir = iso_util.get_http_publish_iso_dir(config)
-        http_repo_publish_dir = os.path.join(http_publish_dir, repo_group.id).rstrip('/')
-        if config.get("http"):
-            # Publish for HTTP
-            self.set_progress("publish_http", {"state" : "IN_PROGRESS"}, progress_callback)
-            try:
-                _LOG.info("HTTP Publishing repo <%s> to <%s>" % (repo_group.id, http_repo_publish_dir))
-                # generate iso images and write them to the publish directory
-                isogen = GenerateIsos(self.group_working_dir, http_repo_publish_dir, prefix=prefix, progress=self.init_progress(), is_cancelled=self.canceled)
-                isogen.run(progress_callback=progress_callback)
-                self.group_summary["http_publish_dir"] = http_repo_publish_dir
-                self.set_progress("publish_http", {"state" : "FINISHED"}, progress_callback)
-            except Exception,e:
-                _LOG.debug(" publish operaation failed due to exception: %s" % e)
-                self.set_progress("publish_http", {"state" : "FAILED"}, progress_callback)
-        else:
-            self.set_progress("publish_http", {"state" : "SKIPPED"}, progress_callback)
-            if os.path.lexists(http_repo_publish_dir):
-                _LOG.debug("Removing link for %s since http is not set" % http_repo_publish_dir)
-                shutil.rmtree(http_repo_publish_dir)
+        http_publish_dir = os.path.join(constants.GROUP_EXPORT_HTTP_DIR, repo_group.id).rstrip('/')
+        https_publish_dir = os.path.join(constants.GROUP_EXPORT_HTTPS_DIR, repo_group.id).rstrip('/')
+        image_prefix = config.get(constants.ISO_PREFIX_KEYWORD) or repo_group.id
+
+        # Clean up the old export publish directories.
+        shutil.rmtree(http_publish_dir, ignore_errors=True)
+        shutil.rmtree(https_publish_dir, ignore_errors=True)
+
+        # If publishing isn't enabled for http or https, set the path to None
+        if not config.get(constants.PUBLISH_HTTP_KEYWORD):
+            http_publish_dir = None
+        if not config.get(constants.PUBLISH_HTTPS_KEYWORD):
+            https_publish_dir = None
+
+        export_utils.publish_isos(repo_group.working_dir, image_prefix, http_publish_dir,
+                                  https_publish_dir, config.get(constants.ISO_SIZE_KEYWORD),
+                                  progress_callback)

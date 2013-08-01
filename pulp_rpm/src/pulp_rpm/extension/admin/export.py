@@ -24,7 +24,6 @@ from pulp_rpm.extension.admin.status import RpmExportStatusRenderer
 DESC_EXPORT_RUN = _('triggers an immediate export of a repository')
 DESC_GROUP_EXPORT_RUN = _('triggers an immediate export of a repository group')
 
-
 DESC_ISO_PREFIX = _('prefix to use in the generated ISO name, default: <repo-id>-<current_date>.iso')
 DESC_START_DATE = _('start date for an incremental export; only content associated with a repository'
                     ' on or after the given value will be included in the exported repository; dates '
