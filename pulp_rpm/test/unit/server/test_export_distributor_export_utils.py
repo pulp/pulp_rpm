@@ -830,11 +830,13 @@ class TestExportRpmJson(unittest.TestCase):
         self.assertEqual((expected_paths[0], 'w'), mock_open.call_args_list[0][0])
         self.assertEqual((expected_paths[1], 'w'), mock_open.call_args_list[1][0])
 
-        # Expected result is that repodata and anything with a leading _ is removed
+        # Expected result is that repodata and anything with a leading _ is removed from the metadata
         metadata.pop('_removed_key')
         metadata.pop('repodata')
-        self.assertEqual(metadata, mock_dump.call_args_list[0][0][0])
-        self.assertEqual(metadata, mock_dump.call_args_list[1][0][0])
+        expected_dict1 = {'unit_key': rpm1_key, 'unit_metadata': metadata}
+        expected_dict2 = {'unit_key': rpm2_key, 'unit_metadata': metadata}
+        self.assertEqual(expected_dict1, mock_dump.call_args_list[0][0][0])
+        self.assertEqual(expected_dict2, mock_dump.call_args_list[1][0][0])
 
 
 class TestExportErrataJson(unittest.TestCase):
