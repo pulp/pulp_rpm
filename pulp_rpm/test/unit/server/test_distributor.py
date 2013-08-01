@@ -621,9 +621,9 @@ class TestDistributor(rpm_support_base.PulpRPMTests):
         os.symlink(self.https_publish_dir, link_path)
         self.assertTrue(os.path.exists(link_path))
 
-        util.remove_publish_dir(pub_dir, link_path)
+        util.remove_repo_publish_dir(pub_dir, link_path)
         self.assertFalse(os.path.exists(link_path))
-        self.assertEqual(len(os.listdir(pub_dir)), 0)
+        self.assertEqual(len(os.listdir(pub_dir)), 1)
 
     def test_consumer_payload(self):
         PAYLOAD_FIELDS = [ 'server_name', 'relative_path',

@@ -96,7 +96,7 @@ class TestRemovePublishDir(unittest.TestCase):
         mock_unlink.side_effect = OSError('I\'ve made a huge mistake')
 
         # Assert that we never make it to checking the parent directory of the link path
-        util.remove_publish_dir(test_publish_dir, test_link_path)
+        util.remove_repo_publish_dir(test_publish_dir, test_link_path)
         self.assertEqual(test_link_path, mock_unlink.call_args[0][0])
         self.assertEqual(0, mock_dirname.call_count)
 
@@ -111,7 +111,7 @@ class TestRemovePublishDir(unittest.TestCase):
         test_link_path = '/fake/publish/dir/repo'
 
         # Test that the link was removed and mock_rmdir never got called
-        util.remove_publish_dir(test_publish_dir, test_link_path)
+        util.remove_repo_publish_dir(test_publish_dir, test_link_path)
         self.assertEqual(test_link_path, mock_unlink.call_args[0][0])
         self.assertEqual(0, mock_rmdir.call_count)
 
@@ -128,7 +128,7 @@ class TestRemovePublishDir(unittest.TestCase):
         mock_listdir.return_value = []
 
         # Test that the link was removed and mock_rmdir gets called 3 times with the right dir names
-        util.remove_publish_dir(test_publish_dir, test_link_path)
+        util.remove_repo_publish_dir(test_publish_dir, test_link_path)
         self.assertEqual(test_link_path, mock_unlink.call_args[0][0])
         self.assertEqual(3, mock_rmdir.call_count)
         self.assertEqual('/fake/publish/dir/some/sub/dir', mock_rmdir.call_args_list[0][0][0])
@@ -151,6 +151,6 @@ class TestRemovePublishDir(unittest.TestCase):
 
         # Test that the symlink is removed and mock_rmdir doesn't get called because listdir returns
         # Something other than an empty list.
-        util.remove_publish_dir(test_publish_dir, test_link_path)
+        util.remove_repo_publish_dir(test_publish_dir, test_link_path)
         self.assertEqual(test_link_path, mock_unlink.call_args[0][0])
         self.assertEqual(0, mock_rmdir.call_count)
