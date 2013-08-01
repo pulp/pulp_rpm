@@ -429,8 +429,8 @@ def generate_listing_files(root_publish_dir, repo_publish_dir):
     if not repo_publish_dir.startswith(root_publish_dir):
         raise ValueError('repository publish directory must be a descendant of the root publish directory')
 
-    # start at the longest path and work up the tree
-    working_dir = repo_publish_dir
+    # start at the parent of the publish dir and work up the tree
+    working_dir = os.path.dirname(repo_publish_dir)
 
     while True:
         listing_file_path = os.path.join(working_dir, LISTING_FILE_NAME)
