@@ -429,10 +429,20 @@ def generate_listing_files(root_publish_dir, repo_publish_dir):
     if not repo_publish_dir.startswith(root_publish_dir):
         raise ValueError('repository publish directory must be a descendant of the root publish directory')
 
-    # start at the longest path and work up the tree
-    working_dir = repo_publish_dir
+    # this is a weird case that handles a distinct difference between actual
+    # Pulp behavior and the way unit tests against publish have been written
+    if root_publish_dir == repo_publish_dir:
 
-    while working_dir != root_publish_dir:
+        listing_file_path = os.path.join(repo_publish_dir, LISTING_FILE_NAME)
+        if os.path.exists(listing_file_path):
+            os.unlink(listing_file_path)
+
+        return
+
+    # start at the parent of the repo publish dir and work up to the publish dir
+    working_dir = os.path.dirname(repo_publish_dir)
+
+    while True:
         listing_file_path = os.path.join(working_dir, LISTING_FILE_NAME)
 
         # remove any existing listing file before generating a new one
@@ -444,6 +454,9 @@ def generate_listing_files(root_publish_dir, repo_publish_dir):
         # write the new listing file
         with open(listing_file_path, 'w') as listing_handle:
             listing_handle.write('\n'.join(directories))
+
+        if working_dir == root_publish_dir:
+            break
 
         # work up the directory structure
         working_dir = os.path.dirname(working_dir)
