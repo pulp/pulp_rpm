@@ -432,7 +432,7 @@ def generate_listing_files(root_publish_dir, repo_publish_dir):
     # start at the longest path and work up the tree
     working_dir = repo_publish_dir
 
-    while True:
+    while working_dir != root_publish_dir:
         listing_file_path = os.path.join(working_dir, LISTING_FILE_NAME)
 
         # remove any existing listing file before generating a new one
@@ -444,9 +444,6 @@ def generate_listing_files(root_publish_dir, repo_publish_dir):
         # write the new listing file
         with open(listing_file_path, 'w') as listing_handle:
             listing_handle.write('\n'.join(directories))
-
-        if working_dir == root_publish_dir:
-            break
 
         # work up the directory structure
         working_dir = os.path.dirname(working_dir)
