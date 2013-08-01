@@ -11,32 +11,50 @@
 
 from gettext import gettext as _
 
+from pulp.client.commands import options
+from pulp.client.commands.repo.status import status
 from pulp.client.commands.repo.sync_publish import RunPublishRepositoryCommand
-from pulp.client.extensions.extensions import PulpCliOption
+from pulp.client.validators import positive_int_validator
+from pulp.client.extensions.extensions import PulpCliOption, PulpCliCommand, PulpCliFlag
 
-from pulp_rpm.common import ids
+from pulp_rpm.common import ids, constants
 from pulp_rpm.extension.admin.status import RpmIsoStatusRenderer
 
 # -- commands -----------------------------------------------------------------
 
 DESC_EXPORT_RUN = _('triggers an immediate ISO export of a repository')
 
-DESC_ISO_PREFIX = _('prefix to use in the generated iso naming, default: <repoid>-<current_date>.iso')
+DESC_ISO_PREFIX = _('prefix to use for each ISO, default: <repo-id>-<current_date>.iso')
 OPTION_ISO_PREFIX = PulpCliOption('--iso-prefix', DESC_ISO_PREFIX, required=False)
 
-DESC_START_DATE = _('start date for errata export; only errata whose issued date is on or after the given value will be included in the generated iso; format: "2009-03-30 00:00:00"')
+DESC_START_DATE = _('start date for errata export; only errata whose issued date is on or after the '
+                    'given value will be included in the generated iso; format: "2009-03-30T00:00:00"')
 OPTION_START_DATE = PulpCliOption('--start-date', DESC_START_DATE, required=False)
 
-DESC_END_DATE = _('end date for errata export; only errata whose issued date is on or before the given value will be included in the generated iso; format: "2011-03-30 00:00:00"')
+DESC_END_DATE = _('end date for errata export; only errata whose issued date is on or before the given'
+                  ' value will be included in the generated iso; format: "2011-03-30T00:00:00"')
 OPTION_END_DATE = PulpCliOption('--end-date', DESC_END_DATE, required=False)
+
+DESC_EXPORT_DIR = _('if specified, the repository group will be exported to the given directory and'
+                    ' will not be wrapped in ISOs')
+OPTION_EXPORT_DIR = PulpCliOption('--export-dir', DESC_EXPORT_DIR, required=False)
+
+DESC_ISO_SIZE = _('specify the size of the ISOs in megabytes. This defaults to a DVD sized ISO.')
+OPTION_ISO_SIZE = PulpCliOption('--iso-size', DESC_ISO_SIZE, required=False,
+                                validate_func=positive_int_validator)
+
+DESC_FLAG_BACKGROUND = _('if specified, the CLI process will end, but the process will continue on '
+                         'the server; the process can be checked on using the tasks command')
+FLAG_BACKGROUND = PulpCliFlag('--bg', DESC_FLAG_BACKGROUND)
+
 
 class RpmIsoExportCommand(RunPublishRepositoryCommand):
     def __init__(self, context):
-        override_config_options = [OPTION_ISO_PREFIX, OPTION_START_DATE, OPTION_END_DATE]
+        override_config_options = [OPTION_ISO_PREFIX, OPTION_START_DATE, OPTION_END_DATE,
+                                   OPTION_ISO_SIZE, OPTION_EXPORT_DIR]
 
         super(RpmIsoExportCommand, self).__init__(context=context, 
                                                   renderer=RpmIsoStatusRenderer(context),
                                                   distributor_id=ids.TYPE_ID_DISTRIBUTOR_EXPORT, 
                                                   description=DESC_EXPORT_RUN,
                                                   override_config_options=override_config_options)
-
