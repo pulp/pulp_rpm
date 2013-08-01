@@ -51,8 +51,6 @@ OLD_REL_PATH_KEYWORD = 'old_relative_path'
 # isn't the place for it.
 RELATIVE_URL = '/pulp/repos'
 
-LISTING_FILE_NAME = 'listing'
-
 ###
 # Config Options Explained
 ###

@@ -465,8 +465,9 @@ def generate_listing_files(root_publish_dir, repo_publish_dir):
     root publish dir.
 
     :param root_publish_dir: root directory
-    :param repo_publish_dir:
-    :return:
+    :type  root_publish_dir: str
+    :param repo_publish_dir: the repository's publish directory, as a descendant of the root directory
+    :type  repo_publish_dir: str
     """
     # normalize the paths for use with os.path.dirname by removing any trailing '/'s
     root_publish_dir = root_publish_dir.rstrip('/')
