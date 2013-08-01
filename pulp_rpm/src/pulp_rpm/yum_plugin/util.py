@@ -364,6 +364,49 @@ def remove_publish_dir(publish_dir, link_path):
         os.rmdir(path_to_remove)
 
 
+def remove_repo_publish_dir(publish_dir, relative_path):
+    """
+    Remove the published symbolic link and as much of the relative path that is
+    not shared with other published repositories.
+
+    :param publish_dir: root directory for published repositories
+    :type  publish_dir: str
+    :param relative_path: relative path from the root that the repository is published at
+    :type  relative_path: str
+    """
+
+    working_dir = os.path.join(publish_dir, relative_path)
+
+    if not os.path.exists(working_dir):
+        raise ValueError('publish directory plus relative path must exist')
+
+    # normalize for use with os.path.dirname
+    publish_dir = publish_dir.rstrip('/')
+    working_dir = working_dir.rstrip('/')
+
+    # the full path should point to a symbolic link
+    if not os.path.islink(working_dir):
+        raise ValueError('relative path must point to a symbolic link')
+
+    os.unlink(working_dir)
+
+    working_dir = os.path.dirname(working_dir)
+
+    while working_dir != publish_dir:
+
+        files = os.listdir(working_dir)
+
+        if files and files != [LISTING_FILE_NAME]:
+            break
+
+        # directory is empty or only contains a listing file, so remove it
+        shutil.rmtree(working_dir)
+        working_dir = os.path.dirname(working_dir)
+
+    # regenerate the listing file in the last directory
+    generate_listing_files(working_dir, working_dir)
+
+
 def is_rpm_newer(a, b):
     """
     @var a: represents rpm metadata
@@ -409,3 +452,46 @@ def string_to_unicode(data):
         except UnicodeError:
             # try others
             continue
+
+
+LISTING_FILE_NAME = 'listing'
+
+def generate_listing_files(root_publish_dir, repo_publish_dir):
+    """
+    (Re) Generate listing files along the path from the repo publish dir to the
+    root publish dir.
+
+    :param root_publish_dir: root directory
+    :param repo_publish_dir:
+    :return:
+    """
+    # normalize the paths for use with os.path.dirname by removing any trailing '/'s
+    root_publish_dir = root_publish_dir.rstrip('/')
+    repo_publish_dir = repo_publish_dir.rstrip('/')
+
+    # the repo_publish_dir *must* be a descendant of the root_publish_dir
+    if not repo_publish_dir.startswith(root_publish_dir):
+        raise ValueError('repository publish directory must be a descendant of the root publish directory')
+
+    # start at the longest path and work up the tree
+    working_dir = repo_publish_dir
+
+    while True:
+        listing_file_path = os.path.join(working_dir, LISTING_FILE_NAME)
+
+        # remove any existing listing file before generating a new one
+        if os.path.exists(listing_file_path):
+            os.unlink(listing_file_path)
+
+        directories = [d for d in os.listdir(working_dir) if os.path.isdir(os.path.join(working_dir, d))]
+
+        # write the new listing file
+        with open(listing_file_path, 'w') as listing_handle:
+            listing_handle.write('\n'.join(directories))
+
+        if working_dir == root_publish_dir:
+            break
+
+        # work up the directory structure
+        working_dir = os.path.dirname(working_dir)
+
