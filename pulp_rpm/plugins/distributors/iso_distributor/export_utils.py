@@ -312,12 +312,12 @@ def init_progress_report(items_total=0):
     :rtype:  dict
     """
     return {
-        "state": constants.STATE_RUNNING,
-        "num_success": 0,
-        "num_error": 0,
-        "items_left": items_total,
-        "items_total": items_total,
-        "error_details": [],
+        constants.PROGRESS_STATE_KEY: constants.STATE_RUNNING,
+        constants.PROGRESS_NUM_SUCCESS_KEY: 0,
+        constants.PROGRESS_NUM_ERROR_KEY: 0,
+        constants.PROGRESS_ITEMS_LEFT_KEY: items_total,
+        constants.PROGRESS_ITEMS_TOTAL_KEY: items_total,
+        constants.PROGRESS_ERROR_DETAILS_KEY: [],
     }
 
 
@@ -394,10 +394,10 @@ def export_rpm(working_dir, rpm_units, progress_callback=None):
             msg = "Unable to copy %s to %s" % (source_path, destination_path)
             _logger.error(msg)
             errors.append(msg)
-            progress_status["num_error"] += 1
+            progress_status[constants.PROGRESS_NUM_ERROR_KEY] += 1
             progress_status["items_left"] -= 1
             continue
-        progress_status["num_success"] += 1
+        progress_status[constants.PROGRESS_NUM_SUCCESS_KEY] += 1
         progress_status["items_left"] -= 1
 
     summary["num_package_units_attempted"] += len(rpm_units)
@@ -407,11 +407,12 @@ def export_rpm(working_dir, rpm_units, progress_callback=None):
     # If errors occurred, write them to details and set the state to failed.
     if errors:
         details['errors']['rpm_export'] = errors
-        progress_status['state'] = constants.STATE_FAILED
+        progress_status[constants.PROGRESS_STATE_KEY] = constants.STATE_FAILED
+        progress_status[constants.PROGRESS_ERROR_DETAILS_KEY] = errors
         set_progress(ids.TYPE_ID_RPM, progress_status, progress_callback)
         return summary, details
 
-    progress_status['state'] = constants.STATE_COMPLETE
+    progress_status[constants.PROGRESS_STATE_KEY] = constants.STATE_COMPLETE
     set_progress(ids.TYPE_ID_RPM, progress_status, progress_callback)
 
     return summary, details
@@ -432,24 +433,25 @@ def export_errata(working_dir, errata_units, progress_callback=None):
     :return: The updateinfo.xml file path
     :rtype:  str
     """
-    progress_status = init_progress_report()
+    progress_status = init_progress_report(len(errata_units))
 
     # If there are no errata units to export, quit.
     if not errata_units:
-        progress_status['state'] = constants.STATE_COMPLETE
+        progress_status[constants.PROGRESS_STATE_KEY] = constants.STATE_COMPLETE
         set_progress(ids.TYPE_ID_ERRATA, progress_status, progress_callback)
         return
 
     # Update the progress status
-    progress_status['state'] = constants.STATE_RUNNING
+    progress_status[constants.PROGRESS_STATE_KEY] = constants.STATE_RUNNING
     set_progress(ids.TYPE_ID_ERRATA, progress_status, progress_callback)
 
     # Write the updateinfo.xml file to the working directory
     updateinfo_path = updateinfo.updateinfo(errata_units, working_dir)
 
     # Set the progress status, summary, and details
-    progress_status['state'] = constants.STATE_COMPLETE
-    progress_status['num_success'] = len(errata_units)
+    progress_status[constants.PROGRESS_STATE_KEY] = constants.STATE_COMPLETE
+    progress_status[constants.PROGRESS_NUM_SUCCESS_KEY] = len(errata_units)
+    progress_status[constants.PROGRESS_ITEMS_LEFT_KEY] = 0
     set_progress(ids.TYPE_ID_ERRATA, progress_status, progress_callback)
 
     return updateinfo_path
@@ -490,8 +492,8 @@ def export_distribution(working_dir, distribution_units, progress_callback=None)
 
         distro_files = unit.metadata['files']
         _logger.debug("Found %s distribution files to symlink" % len(distro_files))
-        progress_status['items_total'] = len(distro_files)
-        progress_status['items_left'] = len(distro_files)
+        progress_status[constants.PROGRESS_ITEMS_TOTAL_KEY] = len(distro_files)
+        progress_status[constants.PROGRESS_ITEMS_LEFT_KEY] = len(distro_files)
         for dfile in distro_files:
             set_progress(ids.TYPE_ID_DISTRO, progress_status, progress_callback)
             source_path = os.path.join(source_path_dir, dfile['relativepath'])
@@ -501,17 +503,18 @@ def export_distribution(working_dir, distribution_units, progress_callback=None)
                 msg = "Unable to copy %s to %s" % (source_path, destination_path)
                 _logger.error(msg)
                 errors.append(msg)
-                progress_status['num_error'] += 1
-                progress_status["items_left"] -= 1
+                progress_status[constants.PROGRESS_NUM_ERROR_KEY] += 1
+                progress_status[constants.PROGRESS_ITEMS_LEFT_KEY] -= 1
                 continue
-            progress_status['num_success'] += 1
-            progress_status["items_left"] -= 1
+            progress_status[constants.PROGRESS_NUM_SUCCESS_KEY] += 1
+            progress_status[constants.PROGRESS_ITEMS_LEFT_KEY] -= 1
 
     if errors:
-        progress_status['state'] = constants.STATE_FAILED
+        progress_status[constants.PROGRESS_STATE_KEY] = constants.STATE_FAILED
+        progress_status[constants.PROGRESS_ERROR_DETAILS_KEY] = errors
         details['errors']['distribution_errors'] = errors
     else:
-        progress_status['state'] = constants.STATE_COMPLETE
+        progress_status[constants.PROGRESS_STATE_KEY] = constants.STATE_COMPLETE
     summary["num_distribution_units_attempted"] = len(distribution_units)
     summary["num_distribution_units_exported"] = len(distribution_units) - len(errors)
     summary["num_distribution_units_errors"] = len(errors)
@@ -536,8 +539,10 @@ def export_package_groups_and_cats(working_dir, units, progress_callback=None):
     :return: a tuple consisting of the groups_xml_path and the summary, in that order
     :rtype:  (str, dict)
     """
-    set_progress(models.PackageGroup.TYPE, {'state': constants.STATE_RUNNING}, progress_callback)
-    set_progress(models.PackageCategory.TYPE, {'state': constants.STATE_RUNNING}, progress_callback)
+    set_progress(models.PackageGroup.TYPE, {constants.PROGRESS_STATE_KEY: constants.STATE_RUNNING},
+                 progress_callback)
+    set_progress(models.PackageCategory.TYPE, {constants.PROGRESS_STATE_KEY: constants.STATE_RUNNING},
+                 progress_callback)
     summary = {}
 
     # Collect the existing groups and categories
@@ -547,8 +552,10 @@ def export_package_groups_and_cats(working_dir, units, progress_callback=None):
     summary['num_package_groups_exported'] = len(existing_groups)
     summary['num_package_categories_exported'] = len(existing_cats)
 
-    set_progress(models.PackageGroup.TYPE, {'state': constants.STATE_COMPLETE}, progress_callback)
-    set_progress(models.PackageCategory.TYPE, {'state': constants.STATE_COMPLETE}, progress_callback)
+    set_progress(models.PackageGroup.TYPE, {constants.PROGRESS_STATE_KEY: constants.STATE_COMPLETE},
+                 progress_callback)
+    set_progress(models.PackageCategory.TYPE, {constants.PROGRESS_STATE_KEY: constants.STATE_COMPLETE},
+                 progress_callback)
 
     return groups_xml_path, summary
 
@@ -634,6 +641,8 @@ def export_incremental_content(working_dir, publish_conduit, date_filter):
     :return: A tuple containing the summary and the details dictionaries for the export
     :rtype: tuple
     """
+    # TODO: Add progress reporting to rpm and errata exporting here
+
     rpm_units = []
     for model in (models.RPM, models.SRPM, models.DRPM):
         # Here, every field is fetched because we write the errata and rpm metadata to JSON
@@ -790,11 +799,15 @@ def publish_isos(working_dir, image_prefix, http_dir=None, https_dir=None, image
         for name in files:
             if https_dir:
                 os.symlink(os.path.join(root, name), os.path.join(https_dir, name))
-                set_progress('publish_https', {'state': constants.STATE_COMPLETE}, progress_callback)
+                set_progress('publish_https', {constants.PROGRESS_STATE_KEY: constants.STATE_COMPLETE},
+                             progress_callback)
             else:
-                set_progress('publish_https', {'state': constants.STATE_SKIPPED}, progress_callback)
+                set_progress('publish_https', {constants.PROGRESS_STATE_KEY: constants.STATE_SKIPPED},
+                             progress_callback)
             if http_dir:
                 os.symlink(os.path.join(root, name), os.path.join(http_dir, name))
-                set_progress('publish_http', {'state': constants.STATE_COMPLETE}, progress_callback)
+                set_progress('publish_http', {constants.PROGRESS_STATE_KEY: constants.STATE_COMPLETE},
+                             progress_callback)
             else:
-                set_progress('publish_http', {'state': constants.STATE_SKIPPED}, progress_callback)
+                set_progress('publish_http', {constants.PROGRESS_STATE_KEY: constants.STATE_SKIPPED},
+                             progress_callback)

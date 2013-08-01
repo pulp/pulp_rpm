@@ -25,6 +25,14 @@ COMPLETE_STATES = (STATE_COMPLETE, STATE_FAILED, STATE_SKIPPED)
 ERROR_SIZE_VERIFICATION = 'size_mismatch'
 ERROR_CHECKSUM_VERIFICATION = 'checksum_mismatch'
 
+# Standard keywords for progress reports to include
+PROGRESS_STATE_KEY = 'state'
+PROGRESS_NUM_SUCCESS_KEY = 'num_success'
+PROGRESS_NUM_ERROR_KEY = 'num_error'
+PROGRESS_ITEMS_LEFT_KEY = 'items_left'
+PROGRESS_ITEMS_TOTAL_KEY = 'items_total'
+PROGRESS_ERROR_DETAILS_KEY = 'error_details'
+
 # -- configuration ------------------------------------------------------------
 
 # Used as a note on a repository to indicate it is a Puppet repository

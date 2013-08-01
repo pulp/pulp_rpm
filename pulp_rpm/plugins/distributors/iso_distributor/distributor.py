@@ -147,6 +147,7 @@ class ISODistributor(Distributor):
             models.Distribution.TYPE: {'state': constants.STATE_NOT_STARTED},
             models.PackageCategory.TYPE: {'state': constants.STATE_NOT_STARTED},
             models.PackageGroup.TYPE: {'state': constants.STATE_NOT_STARTED},
+            'metadata': {'state': constants.STATE_NOT_STARTED},
             'isos': {'state': constants.STATE_NOT_STARTED},
             'publish_http': {'state': constants.STATE_NOT_STARTED},
             'publish_https': {'state': constants.STATE_NOT_STARTED},

@@ -430,7 +430,7 @@ class RpmExportStatusRenderer(StatusRenderer):
         self.errata_bar = self.prompt.create_progress_bar()
         self.distributions_bar = self.prompt.create_progress_bar()
         self.generate_metadata_spinner = self.prompt.create_spinner()
-        self.isos_spinner = self.prompt.create_spinner()
+        self.isos_bar = self.prompt.create_progress_bar()
         self.publish_http_spinner = self.prompt.create_spinner()
         self.publish_https_spinner = self.prompt.create_spinner()
 
@@ -469,7 +469,7 @@ class RpmExportStatusRenderer(StatusRenderer):
         """
 
         data = progress_report[ids.TYPE_ID_DISTRIBUTOR_EXPORT][models.RPM.TYPE]
-        state = data['state']
+        state = data[constants.PROGRESS_STATE_KEY]
 
         if state == constants.STATE_NOT_STARTED:
             return
@@ -510,7 +510,7 @@ class RpmExportStatusRenderer(StatusRenderer):
         :type progress_report: dict
         """
         data = progress_report[ids.TYPE_ID_DISTRIBUTOR_EXPORT][models.Errata.TYPE]
-        state = data['state']
+        state = data[constants.PROGRESS_STATE_KEY]
 
         if state == constants.STATE_NOT_STARTED:
             return
@@ -547,7 +547,7 @@ class RpmExportStatusRenderer(StatusRenderer):
         :type progress_report: dict
         """
         data = progress_report[ids.TYPE_ID_DISTRIBUTOR_EXPORT][models.Distribution.TYPE]
-        state = data['state']
+        state = data[constants.PROGRESS_STATE_KEY]
 
         if state == constants.STATE_NOT_STARTED:
             return
@@ -566,17 +566,25 @@ class RpmExportStatusRenderer(StatusRenderer):
                 self.distributions_last_state = constants.STATE_FAILED
 
     def render_isos_step(self, progress_report):
-        data = progress_report[ids.TYPE_ID_DISTRIBUTOR_EXPORT]['isos']
-        state = data['state']
+        """
+        Render the ISO image generation export progress. The expected progress_report format is:
 
-        def update_function(new_state):
-            """
-            A callback function to update the last state of the isos step
-            :param new_state: The latest last state. This is expected to come
-                                from pulp_rpm.common.constants
-            :type new_state: str
-            """
-            self.isos_last_state = new_state
+        pulp_rpm.common.ids.TYPE_ID_DISTRIBUTOR_EXPORT: {
+            'isos': {
+                'num_success': 0,
+                'items_left': 10,
+                'items_total': 10,
+                'state': "NOT_STARTED",
+                'error_details': [],
+                'num_error': 0
+            }
+        }
+
+        :param progress_report: A dictionary containing the progress report from the export distributor
+        :type progress_report: dict
+        """
+        data = progress_report[ids.TYPE_ID_DISTRIBUTOR_EXPORT]['isos']
+        state = data[constants.PROGRESS_STATE_KEY]
 
         if state == constants.STATE_NOT_STARTED:
             return
@@ -584,22 +592,35 @@ class RpmExportStatusRenderer(StatusRenderer):
         if self.isos_last_state not in constants.COMPLETE_STATES:
             if state in (constants.STATE_RUNNING, constants.STATE_COMPLETE):
                 self.distributions_last_state = state
-                render_general_spinner_step(self.prompt, self.isos_spinner, state, self.isos_last_state,
-                                            _('Creating ISOs...'), update_function)
+                render_itemized_in_progress_state(self.prompt, data, _('ISO images'), self.isos_bar,
+                                                  state)
             elif state == constants.STATE_FAILED:
                 self.prompt.write(_('... failed'))
                 self.isos_last_state = constants.STATE_FAILED
 
     def render_generate_metadata_step(self, progress_report):
+        """
+        Render the metadata generation progress. The expected progress_report format is:
 
-        # Example Data:
-        # "metadata": {
-        #    "state": "FINISHED"
-        # }
+        pulp_rpm.common.ids.TYPE_ID_DISTRIBUTOR_EXPORT: {
+            'metadata: {
+                'state': "NOT_STARTED",
+            }
+        }
 
+        :param progress_report: A dictionary containing the progress report from the export distributor
+        :type progress_report: dict
+        """
         current_state = progress_report[ids.TYPE_ID_DISTRIBUTOR_EXPORT]['metadata']['state']
+
         def update_func(new_state):
+            """
+            A callback function used to update the last state for metadata generation
+            :param new_state: The new last state. Expected to be from pulp_rpm.common.constants
+            :type new_state: str
+            """
             self.generate_metadata_last_state = new_state
+
         render_general_spinner_step(self.prompt, self.generate_metadata_spinner, current_state,
                                     self.generate_metadata_last_state, _('Generating metadata...'),
                                     update_func)

@@ -17,6 +17,7 @@ import datetime
 import tempfile
 from stat import ST_SIZE
 
+import export_utils
 from pulp_rpm.common import constants
 from pulp_rpm.yum_plugin.util import getLogger
 log = getLogger(__name__)
@@ -58,14 +59,7 @@ def create_iso(target_dir, output_dir, prefix, image_size=DVD_ISO_SIZE, progress
     image_count = len(image_list)
 
     # Update the progress report
-    iso_progress_status = {
-        'items_total': image_count,
-        'items_left': image_count,
-        'num_success': 0,
-        'size_total': total_dir_size,
-        'size_left': total_dir_size,
-        'state': constants.STATE_RUNNING
-    }
+    iso_progress_status = export_utils.init_progress_report(image_count)
     set_progress("isos", iso_progress_status, progress_callback)
 
     for i in range(image_count):
@@ -73,11 +67,8 @@ def create_iso(target_dir, output_dir, prefix, image_size=DVD_ISO_SIZE, progress
         _make_iso(image_list[i], target_dir, output_dir, name)
 
         # Update the progress report
-        iso_progress_status['items_left'] -= 1
-        iso_progress_status['num_success'] += 1
-        iso_progress_status['size_left'] -= image_size
-        if iso_progress_status['size_left'] < 0:
-            iso_progress_status['size_left'] = 0
+        iso_progress_status[constants.PROGRESS_ITEMS_LEFT_KEY] -= 1
+        iso_progress_status[constants.PROGRESS_NUM_SUCCESS_KEY] += 1
         set_progress("isos", iso_progress_status, progress_callback)
 
     iso_progress_status["state"] = constants.STATE_COMPLETE

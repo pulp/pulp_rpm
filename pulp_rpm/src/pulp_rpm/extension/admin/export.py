@@ -11,10 +11,13 @@
 
 from gettext import gettext as _
 
+from pulp.bindings import exceptions
 from pulp.client.commands import options
 from pulp.client.commands.repo.sync_publish import RunPublishRepositoryCommand
+from pulp.client.commands.repo.status import tasks
 from pulp.client import parsers, validators
 from pulp.client.extensions.extensions import PulpCliOption, PulpCliCommand
+from pulp.common import tags as tag_utils
 
 from pulp_rpm.common import ids, constants
 from pulp_rpm.extension.admin.status import RpmExportStatusRenderer
@@ -47,6 +50,7 @@ DESC_SERVE_HTTPS = _('if this flag is used, the ISO images will be served over H
 # Flag names, which are also the kwarg keywords
 SERVE_HTTP = 'serve-http'
 SERVE_HTTPS = 'serve-https'
+BACKGROUND = 'bg'
 
 # The iso prefix is restricted to the same character set as an id, so we use the id_validator
 OPTION_ISO_PREFIX = PulpCliOption('--iso-prefix', DESC_ISO_PREFIX, required=False,
@@ -91,8 +95,9 @@ class RpmGroupExportCommand(PulpCliCommand):
         self.add_option(OPTION_END_DATE)
         self.add_option(OPTION_EXPORT_DIR)
 
-        self.create_flag('--serve-http', DESC_SERVE_HTTP)
-        self.create_flag('--bg', DESC_BACKGROUND)
+        self.create_flag('--' + SERVE_HTTP, DESC_SERVE_HTTP)
+        self.create_flag('--' + SERVE_HTTPS, DESC_SERVE_HTTPS)
+        self.create_flag('--' + BACKGROUND, DESC_BACKGROUND)
 
     def run(self, **kwargs):
         # Grab all the configuration options
@@ -104,11 +109,13 @@ class RpmGroupExportCommand(PulpCliCommand):
         export_dir = kwargs[OPTION_EXPORT_DIR.keyword]
         serve_http = kwargs[SERVE_HTTP]
         serve_https = kwargs[SERVE_HTTPS]
+        background = kwargs[BACKGROUND]
 
         # Since the export distributor is not added to a repository group on creation, add it here
         # if it is not already associated with the group id
-        response = self.context.server.repo_group_distributor.distributor(group_id, self.distributor_id)
-        if response.response_code == 404:
+        try:
+            self.context.server.repo_group_distributor.distributor(group_id, self.distributor_id)
+        except exceptions.NotFoundException:
             distributor_config = {
                 constants.PUBLISH_HTTP_KEYWORD: serve_http,
                 constants.PUBLISH_HTTPS_KEYWORD: serve_https,
@@ -124,6 +131,31 @@ class RpmGroupExportCommand(PulpCliCommand):
             constants.ISO_SIZE_KEYWORD: iso_size,
             constants.START_DATE_KEYWORD: start_date,
             constants.END_DATE_KEYWORD: end_date,
-            constants.EXPORT_DIR_KEYWORD: export_dir,
+            constants.EXPORT_DIRECTORY_KEYWORD: export_dir,
         }
-        self.context.server.repo_group_actions.publish(group_id, self.distributor_id, publish_config)
+
+        self.prompt.render_title(_('Exporting Repository Group [%s]' % group_id))
+
+        # Retrieve all publish tasks for this repository group
+        tags = [tag_utils.resource_tag('repository_group', group_id),
+                tag_utils.action_tag(tag_utils.ACTION_PUBLISH_TYPE)]
+        existing_tasks = self.context.server.tasks.get_all_tasks(tags)
+        task_id = tasks.relevant_existing_task_id(existing_tasks.response_body)
+
+        if task_id is not None:
+            msg = _('A publish task is already in progress for this repository. ')
+            if not background:
+                msg += _('Its progress will be tracked below.')
+            self.context.prompt.render_paragraph(msg, tag='in-progress')
+        else:
+            # If there is no existing publish for this repo group, start one
+            response = self.context.server.repo_group_actions.publish(group_id, self.distributor_id,
+                                                                      publish_config)
+            task_id = response.response_body.task_id
+
+        if not background:
+            # TODO: Add progress tracking
+            self.context.prompt.render_paragraph(_('Publishing...'))
+        else:
+            msg = _('The status of this publish can be displayed using the status command.')
+            self.context.prompt.render_paragraph(msg, 'background')
