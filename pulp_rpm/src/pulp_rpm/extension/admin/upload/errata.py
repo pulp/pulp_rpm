@@ -164,7 +164,7 @@ class CreateErratumCommand(UploadCommand):
             'rights' : rights,
             'summary' : summary,
             'solution' : solution,
-            'from_str' : from_str,
+            'from' : from_str,
             'pushcount' : pushcount,
             'reboot_suggested' : reboot_suggested,
         }
