@@ -364,33 +364,36 @@ def remove_publish_dir(publish_dir, link_path):
         os.rmdir(path_to_remove)
 
 
-def remove_repo_publish_dir(publish_dir, relative_path):
+def remove_repo_publish_dir(publish_dir, repo_publish_dir):
     """
     Remove the published symbolic link and as much of the relative path that is
     not shared with other published repositories.
 
     :param publish_dir: root directory for published repositories
     :type  publish_dir: str
-    :param relative_path: relative path from the root that the repository is published at
-    :type  relative_path: str
+    :param repo_publish_dir: full path of the repository's published directory
+                             (must be a descendant of the publish directory)
+    :type  repo_publish_dir: str
     """
-
-    working_dir = os.path.join(publish_dir, relative_path)
-
-    if not os.path.exists(working_dir):
-        raise ValueError('publish directory plus relative path must exist')
 
     # normalize for use with os.path.dirname
     publish_dir = publish_dir.rstrip('/')
-    working_dir = working_dir.rstrip('/')
+    repo_publish_dir = repo_publish_dir.rstrip('/')
+
+    if not os.path.exists(repo_publish_dir):
+        raise ValueError('repository publish directory must exist')
+
+    # the repository publish dir must be a descendant of the publish dir
+    if not repo_publish_dir.startswith(publish_dir):
+        raise ValueError('repository publish directory must be a descendant of the publish directory')
 
     # the full path should point to a symbolic link
-    if not os.path.islink(working_dir):
-        raise ValueError('relative path must point to a symbolic link')
+    if not os.path.islink(repo_publish_dir):
+        raise ValueError('repository publish directory must be a symbolic link')
 
-    os.unlink(working_dir)
+    os.unlink(repo_publish_dir)
 
-    working_dir = os.path.dirname(working_dir)
+    working_dir = os.path.dirname(repo_publish_dir)
 
     while working_dir != publish_dir:
 
