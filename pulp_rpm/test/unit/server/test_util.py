@@ -83,9 +83,10 @@ class TestRemovePublishDir(unittest.TestCase):
     This class tests the pulp_rpm.yum_plugin.util.remove_publish_dir function
     """
 
+    @mock.patch('os.path.exists', return_value=True)
     @mock.patch('os.unlink', autospec=True)
     @mock.patch('os.path.dirname', autospec=True)
-    def test_failed_unlink(self, mock_dirname, mock_unlink):
+    def test_failed_unlink(self, mock_dirname, mock_unlink, mock_exists):
         """
         This test checks that remove_publish_dir handles receiving a link that is
         not a symlink gracefully
@@ -100,9 +101,10 @@ class TestRemovePublishDir(unittest.TestCase):
         self.assertEqual(test_link_path, mock_unlink.call_args[0][0])
         self.assertEqual(0, mock_dirname.call_count)
 
+    @mock.patch('os.path.exists', return_value=True)
     @mock.patch('os.rmdir', autospec=True)
     @mock.patch('os.unlink', autospec=True)
-    def test_remove_at_root(self, mock_unlink, mock_rmdir):
+    def test_remove_at_root(self, mock_unlink, mock_rmdir, mock_exists):
         """
         This tests removing a symlink at the root of the publishing directory.
         """
@@ -115,10 +117,11 @@ class TestRemovePublishDir(unittest.TestCase):
         self.assertEqual(test_link_path, mock_unlink.call_args[0][0])
         self.assertEqual(0, mock_rmdir.call_count)
 
+    @mock.patch('os.path.exists', return_value=True)
     @mock.patch('os.listdir', autospec=True)
     @mock.patch('os.rmdir', autospec=True)
     @mock.patch('os.unlink', autospec=True)
-    def test_remove_with_dirs(self, mock_unlink, mock_rmdir, mock_listdir):
+    def test_remove_with_dirs(self, mock_unlink, mock_rmdir, mock_listdir, mock_exists):
         """
         This tests removing a symlink that is in some sub-directories of the publishing directory
         """
@@ -135,10 +138,11 @@ class TestRemovePublishDir(unittest.TestCase):
         self.assertEqual('/fake/publish/dir/some/sub', mock_rmdir.call_args_list[1][0][0])
         self.assertEqual('/fake/publish/dir/some', mock_rmdir.call_args_list[2][0][0])
 
+    @mock.patch('os.path.exists', return_value=True)
     @mock.patch('os.listdir', autospec=True)
     @mock.patch('os.rmdir', autospec=True)
     @mock.patch('os.unlink', autospec=True)
-    def test_remove_with_shared_dirs(self, mock_unlink, mock_rmdir, mock_listdir):
+    def test_remove_with_shared_dirs(self, mock_unlink, mock_rmdir, mock_listdir, mock_exists):
         """
         This tests removing a repo link that shares part of a relative url: rhel6/x86_64/repo and
         rhel6/src/repo for example.
