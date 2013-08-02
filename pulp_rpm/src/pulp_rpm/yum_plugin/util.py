@@ -432,15 +432,10 @@ def generate_listing_files(root_publish_dir, repo_publish_dir):
     # this is a weird case that handles a distinct difference between actual
     # Pulp behavior and the way unit tests against publish have been written
     if root_publish_dir == repo_publish_dir:
-
-        listing_file_path = os.path.join(repo_publish_dir, LISTING_FILE_NAME)
-        if os.path.exists(listing_file_path):
-            os.unlink(listing_file_path)
-
-        return
-
-    # start at the parent of the repo publish dir and work up to the publish dir
-    working_dir = os.path.dirname(repo_publish_dir)
+        working_dir = repo_publish_dir
+    else:
+        # start at the parent of the repo publish dir and work up to the publish dir
+        working_dir = os.path.dirname(repo_publish_dir)
 
     while True:
         listing_file_path = os.path.join(working_dir, LISTING_FILE_NAME)
