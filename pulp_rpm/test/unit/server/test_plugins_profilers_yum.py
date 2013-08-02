@@ -140,17 +140,19 @@ class TestYumProfiler(rpm_support_base.PulpRPMTests):
         self.assertEqual(report_list, {TYPE_ID_RPM: [], TYPE_ID_ERRATA: []})
 
     def test_unit_applicable_updated_rpm_already_installed(self):
-        rpm_unit_key = self.create_profile_entry("emoticons", 0, "0.1", "2", "x86_64", "Test Vendor")
+        rpm_unit_key = self.create_profile_entry("emoticons", 0, "0.1", "2", "x86_64",
+                                                 "Test Vendor")
         rpm_unit = Unit(TYPE_ID_RPM, rpm_unit_key, {}, None)
         test_repo = profiler_mocks.get_repo("test_repo_id")
-        conduit = profiler_mocks.get_profiler_conduit(repo_units=[rpm_unit], repo_bindings=[test_repo])
+        conduit = profiler_mocks.get_profiler_conduit(repo_units=[rpm_unit],
+                                                      repo_bindings=[test_repo])
 
-        prof = RPMPkgProfiler()
+        prof = YumProfiler()
         unit_type_id = TYPE_ID_RPM
         unit_profile = self.test_consumer_been_updated.profiles[TYPE_ID_RPM]
         bound_repo_id = "test_repo_id"
         report_list = prof.calculate_applicable_units(unit_profile, bound_repo_id, None, conduit)
-        self.assertTrue(report_list == [])
+        self.assertEqual(report_list, {TYPE_ID_RPM: [], TYPE_ID_ERRATA: []})
 
     def test_unit_applicable_false(self):
         rpm_unit_key = self.create_profile_entry("bla-bla", 0, "0.1", "2", "x86_64", "Test Vendor")
@@ -171,24 +173,24 @@ class TestYumProfiler(rpm_support_base.PulpRPMTests):
         Test the update_profile() method with a presorted profile. It should not alter it at all.
         """
         profile = [
-            {'name': 'Package A', 'epoch': 0, 'version': '1.0.1', 'release': '2.el6', 'arch': 'x86_64',
-             'vendor': 'Red Hat, Inc.'},
-            {'name': 'Package A', 'epoch': 0, 'version': '1.1.0', 'release': '1.el6', 'arch': 'x86_64',
-             'vendor': 'Red Hat, Inc.'},
-            {'name': 'Package B', 'epoch': 0, 'version': '2.3.9', 'release': '1.el6', 'arch': 'x86_64',
-             'vendor': 'Red Hat, Inc.'},
-            {'name': 'Package B', 'epoch': 1, 'version': '1.2.1', 'release': '8.el6', 'arch': 'x86_64',
-             'vendor': 'Red Hat, Inc.'},
-            {'name': 'Package C', 'epoch': 0, 'version': '1.0.0', 'release': '1.el6', 'arch': 'x86_64',
-             'vendor': 'Red Hat, Inc.'},
-            {'name': 'Package C', 'epoch': 0, 'version': '1.0.0', 'release': '2.el6', 'arch': 'x86_64',
-             'vendor': 'Red Hat, Inc.'},
+            {'name': 'Package A', 'epoch': 0, 'version': '1.0.1', 'release': '2.el6',
+             'arch': 'x86_64', 'vendor': 'Red Hat, Inc.'},
+            {'name': 'Package A', 'epoch': 0, 'version': '1.1.0', 'release': '1.el6',
+             'arch': 'x86_64', 'vendor': 'Red Hat, Inc.'},
+            {'name': 'Package B', 'epoch': 0, 'version': '2.3.9', 'release': '1.el6',
+             'arch': 'x86_64', 'vendor': 'Red Hat, Inc.'},
+            {'name': 'Package B', 'epoch': 1, 'version': '1.2.1', 'release': '8.el6',
+             'arch': 'x86_64', 'vendor': 'Red Hat, Inc.'},
+            {'name': 'Package C', 'epoch': 0, 'version': '1.0.0', 'release': '1.el6',
+             'arch': 'x86_64', 'vendor': 'Red Hat, Inc.'},
+            {'name': 'Package C', 'epoch': 0, 'version': '1.0.0', 'release': '2.el6',
+             'arch': 'x86_64', 'vendor': 'Red Hat, Inc.'},
         ]
-        profiler = RPMPkgProfiler()
+        profiler = YumProfiler()
 
-        # The update_profile() method doesn't use any of the args except for profile, so we'll just pass in
-        # strings.
-        new_profile = profiler.update_profile('consumer', deepcopy(profile), 'config', 'conduit')
+        # The update_profile() method doesn't use any of the args except for profile and
+        # content_type, so we'll just pass in strings for the others
+        new_profile = profiler.update_profile('consumer', TYPE_ID_RPM, deepcopy(profile), 'config')
 
         self.assertEqual(new_profile, profile)
 
@@ -197,37 +199,37 @@ class TestYumProfiler(rpm_support_base.PulpRPMTests):
         Test that the update_profile() method sorts the profile.
         """
         profile = [
-            {'name': 'Package A', 'epoch': 0, 'version': '1.0.1', 'release': '2.el6', 'arch': 'x86_64',
-             'vendor': 'Red Hat, Inc.'},
-            {'name': 'Package C', 'epoch': 0, 'version': '1.0.0', 'release': '1.el6', 'arch': 'x86_64',
-             'vendor': 'Red Hat, Inc.'},
-            {'name': 'Package C', 'epoch': 0, 'version': '1.0.0', 'release': '2.el6', 'arch': 'x86_64',
-             'vendor': 'Red Hat, Inc.'},
-            {'name': 'Package A', 'epoch': 0, 'version': '1.1.0', 'release': '1.el6', 'arch': 'x86_64',
-             'vendor': 'Red Hat, Inc.'},
-            {'name': 'Package B', 'epoch': 1, 'version': '1.2.1', 'release': '8.el6', 'arch': 'x86_64',
-             'vendor': 'Red Hat, Inc.'},
-            {'name': 'Package B', 'epoch': 0, 'version': '2.3.9', 'release': '1.el6', 'arch': 'x86_64',
-             'vendor': 'Red Hat, Inc.'},
+            {'name': 'Package A', 'epoch': 0, 'version': '1.0.1', 'release': '2.el6',
+             'arch': 'x86_64', 'vendor': 'Red Hat, Inc.'},
+            {'name': 'Package C', 'epoch': 0, 'version': '1.0.0', 'release': '1.el6',
+             'arch': 'x86_64', 'vendor': 'Red Hat, Inc.'},
+            {'name': 'Package C', 'epoch': 0, 'version': '1.0.0', 'release': '2.el6',
+             'arch': 'x86_64', 'vendor': 'Red Hat, Inc.'},
+            {'name': 'Package A', 'epoch': 0, 'version': '1.1.0', 'release': '1.el6',
+             'arch': 'x86_64', 'vendor': 'Red Hat, Inc.'},
+            {'name': 'Package B', 'epoch': 1, 'version': '1.2.1', 'release': '8.el6',
+             'arch': 'x86_64', 'vendor': 'Red Hat, Inc.'},
+            {'name': 'Package B', 'epoch': 0, 'version': '2.3.9', 'release': '1.el6',
+             'arch': 'x86_64', 'vendor': 'Red Hat, Inc.'},
         ]
-        profiler = RPMPkgProfiler()
+        profiler = YumProfiler()
 
-        # The update_profile() method doesn't use any of the args except for profile, so we'll just pass in
-        # strings.
-        new_profile = profiler.update_profile('consumer', deepcopy(profile), 'config', 'conduit')
+        # The update_profile() method doesn't use any of the args except for profile and
+        # content_type, so we'll just pass in strings for the others
+        new_profile = profiler.update_profile('consumer', TYPE_ID_RPM, deepcopy(profile), 'config')
 
         expected_profile = [
-            {'name': 'Package A', 'epoch': 0, 'version': '1.0.1', 'release': '2.el6', 'arch': 'x86_64',
-             'vendor': 'Red Hat, Inc.'},
-            {'name': 'Package A', 'epoch': 0, 'version': '1.1.0', 'release': '1.el6', 'arch': 'x86_64',
-             'vendor': 'Red Hat, Inc.'},
-            {'name': 'Package B', 'epoch': 0, 'version': '2.3.9', 'release': '1.el6', 'arch': 'x86_64',
-             'vendor': 'Red Hat, Inc.'},
-            {'name': 'Package B', 'epoch': 1, 'version': '1.2.1', 'release': '8.el6', 'arch': 'x86_64',
-             'vendor': 'Red Hat, Inc.'},
-            {'name': 'Package C', 'epoch': 0, 'version': '1.0.0', 'release': '1.el6', 'arch': 'x86_64',
-             'vendor': 'Red Hat, Inc.'},
-            {'name': 'Package C', 'epoch': 0, 'version': '1.0.0', 'release': '2.el6', 'arch': 'x86_64',
-             'vendor': 'Red Hat, Inc.'},
+            {'name': 'Package A', 'epoch': 0, 'version': '1.0.1', 'release': '2.el6',
+             'arch': 'x86_64', 'vendor': 'Red Hat, Inc.'},
+            {'name': 'Package A', 'epoch': 0, 'version': '1.1.0', 'release': '1.el6',
+             'arch': 'x86_64', 'vendor': 'Red Hat, Inc.'},
+            {'name': 'Package B', 'epoch': 0, 'version': '2.3.9', 'release': '1.el6',
+             'arch': 'x86_64', 'vendor': 'Red Hat, Inc.'},
+            {'name': 'Package B', 'epoch': 1, 'version': '1.2.1', 'release': '8.el6',
+             'arch': 'x86_64', 'vendor': 'Red Hat, Inc.'},
+            {'name': 'Package C', 'epoch': 0, 'version': '1.0.0', 'release': '1.el6',
+             'arch': 'x86_64', 'vendor': 'Red Hat, Inc.'},
+            {'name': 'Package C', 'epoch': 0, 'version': '1.0.0', 'release': '2.el6',
+             'arch': 'x86_64', 'vendor': 'Red Hat, Inc.'},
         ]
         self.assertEqual(new_profile, expected_profile)
