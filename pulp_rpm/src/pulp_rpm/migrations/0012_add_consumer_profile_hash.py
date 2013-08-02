@@ -20,13 +20,13 @@ precalculates them for all existing consumer profiles.
 from pulp.server.db.connection import get_collection
 from pulp.server.db.model import consumer
 
-from pulp_rpm.plugins.profilers import rpm
+from pulp_rpm.plugins.profilers import yum
 
 def migrate(*args, **kwargs):
     """
     For each RPM consumer profile, calculate and add a 'hash' attribute.
     """
-    profiler = rpm.RPMPkgProfiler()
+    profiler = yum.YumProfiler()
     consumer_unit_profiles_collection = get_collection('consumer_unit_profiles')
     # For each RPM profile, let's add a profile hash
     for consumer_unit_profile in consumer_unit_profiles_collection.find({'content_type': 'rpm'}):
