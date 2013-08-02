@@ -316,46 +316,50 @@ def get_relpath_from_unit(unit):
     return relpath
 
 
-def remove_publish_dir(publish_dir, link_path):
+def remove_repo_publish_dir(publish_dir, repo_publish_dir):
     """
-    This function cleans up the symbolic link, and any directories, created during a repository publish.
-    Since repositories can share relative urls, this function starts with the symbolic link and works
-    backwards towards the publishing directory until a non-empty directory is found, which indicates a
-    shared relative url. If attempting to remove the link path results in an OSError, the offending
-    link_path is logged, but an exception is not raised.
+    Remove the published symbolic link and as much of the relative path that is
+    not shared with other published repositories.
 
-    :param publish_dir: full http/https publish directory for all repos
-                        (probably yum_distributor.distributor.HTTP(S)_PUBLISH_DIR)
-    :type publish_dir: str
-    :param link_path: full publish path for this specific repo. This is the publish directory combined
-                        with the relative url
-    :type link_path: str
+    :param publish_dir: root directory for published repositories
+    :type  publish_dir: str
+    :param repo_publish_dir: full path of the repository's published directory
+                             (must be a descendant of the publish directory)
+    :type  repo_publish_dir: str
     """
-    # Try to remove the symlink from filesystem
-    link_path = link_path.rstrip('/')
-    try:
-        os.unlink(link_path)
-    except OSError:
-        # If the path is not a symlink, log the error and stop
-        _LOG.exception('Failed to remove publish symlink: %s' % link_path)
-        return
 
-    # Retrieve the parent directory of the link_path, and determine the parts of the relative url
-    link_path = os.path.dirname(link_path)
-    common_pieces = [x for x in publish_dir.split('/') if x]
-    link_pieces = [x for x in link_path.split('/') if x]
-    # Determine what are the non shared pieces from this link
-    potential_to_remove = link_pieces[len(common_pieces):]
-    num_pieces = len(potential_to_remove)
-    # Start removing the end pieces of the path and work our way back
-    # If we encounter a non-empty directory stop removal and return
-    for index in range(num_pieces, 0, -1):
-        # Start at the deepest part of the path and work back up until a non-empty dir is found
-        path_to_remove = os.path.join(publish_dir, *potential_to_remove[:index])
-        if len(os.listdir(path_to_remove)):
-            # Directory is not empty so stop
+    # normalize for use with os.path.dirname
+    publish_dir = publish_dir.rstrip('/')
+    repo_publish_dir = repo_publish_dir.rstrip('/')
+
+    if not os.path.exists(repo_publish_dir):
+        raise ValueError('repository publish directory must exist')
+
+    # the repository publish dir must be a descendant of the publish dir
+    if not repo_publish_dir.startswith(publish_dir):
+        raise ValueError('repository publish directory must be a descendant of the publish directory')
+
+    # the full path should point to a symbolic link
+    if not os.path.islink(repo_publish_dir):
+        raise ValueError('repository publish directory must be a symbolic link')
+
+    os.unlink(repo_publish_dir)
+
+    working_dir = os.path.dirname(repo_publish_dir)
+
+    while working_dir != publish_dir:
+
+        files = os.listdir(working_dir)
+
+        if files and files != [LISTING_FILE_NAME]:
             break
-        os.rmdir(path_to_remove)
+
+        # directory is empty or only contains a listing file, so remove it
+        shutil.rmtree(working_dir)
+        working_dir = os.path.dirname(working_dir)
+
+    # regenerate the listing file in the last directory
+    generate_listing_files(working_dir, working_dir)
 
 
 def is_rpm_newer(a, b):
@@ -365,7 +369,7 @@ def is_rpm_newer(a, b):
 
     @var b: represents rpm metadata
     @type b: dict with keywords: name, arch, epoch, version, release
-    
+
     @return true if RPM is a newer, false if it's not
     @rtype: bool
     """
@@ -374,7 +378,7 @@ def is_rpm_newer(a, b):
     if a["arch"] != b["arch"]:
         return False
     value = rpmUtils.miscutils.compareEVR(
-            (a["epoch"], a["version"], a["release"]), 
+            (a["epoch"], a["version"], a["release"]),
             (b["epoch"], b["version"], b["release"]))
     if value > 0:
         return True
@@ -403,3 +407,52 @@ def string_to_unicode(data):
         except UnicodeError:
             # try others
             continue
+
+
+LISTING_FILE_NAME = 'listing'
+
+def generate_listing_files(root_publish_dir, repo_publish_dir):
+    """
+    (Re) Generate listing files along the path from the repo publish dir to the
+    root publish dir.
+
+    :param root_publish_dir: root directory
+    :type  root_publish_dir: str
+    :param repo_publish_dir: the repository's publish directory, as a descendant of the root directory
+    :type  repo_publish_dir: str
+    """
+    # normalize the paths for use with os.path.dirname by removing any trailing '/'s
+    root_publish_dir = root_publish_dir.rstrip('/')
+    repo_publish_dir = repo_publish_dir.rstrip('/')
+
+    # the repo_publish_dir *must* be a descendant of the root_publish_dir
+    if not repo_publish_dir.startswith(root_publish_dir):
+        raise ValueError('repository publish directory must be a descendant of the root publish directory')
+
+    # this is a weird case that handles a distinct difference between actual
+    # Pulp behavior and the way unit tests against publish have been written
+    if root_publish_dir == repo_publish_dir:
+        working_dir = repo_publish_dir
+    else:
+        # start at the parent of the repo publish dir and work up to the publish dir
+        working_dir = os.path.dirname(repo_publish_dir)
+
+    while True:
+        listing_file_path = os.path.join(working_dir, LISTING_FILE_NAME)
+
+        # remove any existing listing file before generating a new one
+        if os.path.exists(listing_file_path):
+            os.unlink(listing_file_path)
+
+        directories = [d for d in os.listdir(working_dir) if os.path.isdir(os.path.join(working_dir, d))]
+
+        # write the new listing file
+        with open(listing_file_path, 'w') as listing_handle:
+            listing_handle.write('\n'.join(directories))
+
+        if working_dir == root_publish_dir:
+            break
+
+        # work up the directory structure
+        working_dir = os.path.dirname(working_dir)
+
