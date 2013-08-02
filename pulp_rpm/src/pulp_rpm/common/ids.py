@@ -17,8 +17,6 @@ TYPE_ID_DISTRIBUTOR_ISO = "iso_distributor"
 TYPE_ID_DISTRIBUTOR_YUM = "yum_distributor"
 TYPE_ID_IMPORTER_ISO = "iso_importer"
 TYPE_ID_IMPORTER_YUM = "yum_importer"
-TYPE_ID_PROFILER_RPM_ERRATA = "rpm_errata_profiler"
-TYPE_ID_PROFILER_RPM_PKG = "rpm_pkg_profiler"
 
 # The server will use the type ID as the importer ID, but have it as a separate
 # constant in case that changes
@@ -74,4 +72,3 @@ UNIT_KEY_DRPM = (
 METADATA_DRPM = ("size", "sequence", "new_package", "relativepath")
 
 TYPE_ID_YUM_REPO_METADATA_FILE = 'yum_repo_metadata_file'
-

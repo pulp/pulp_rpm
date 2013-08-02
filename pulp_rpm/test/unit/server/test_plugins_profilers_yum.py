@@ -26,21 +26,19 @@ from pulp.server.db.model.criteria import Criteria
 from pulp.server.managers import factory
 from pulp.server.managers.consumer.cud import ConsumerManager
 
-sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)) + "/../../../src/")
-sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)) + "/../../../plugins/profilers/")
-from pulp_rpm.common.ids import TYPE_ID_PROFILER_RPM_PKG, TYPE_ID_RPM, UNIT_KEY_RPM
+from pulp_rpm.common.ids import TYPE_ID_ERRATA, TYPE_ID_RPM
+from pulp_rpm.plugins.profilers.yum import YumProfiler
 from pulp_rpm.yum_plugin import comps_util, util, updateinfo
-from rpm_pkg_profiler.profiler import RPMPkgProfiler
 import profiler_mocks
 import rpm_support_base
 
-class TestRPMPkgProfiler(rpm_support_base.PulpRPMTests):
+class TestYumProfiler(rpm_support_base.PulpRPMTests):
     """
-    Test the RPMPkgProfiler class.
+    Test the YumProfiler class.
     """
 
     def setUp(self):
-        super(TestRPMPkgProfiler, self).setUp()
+        super(TestYumProfiler, self).setUp()
         self.data_dir = os.path.join(os.path.abspath(os.path.dirname(__file__)), "../data")
         self.temp_dir = tempfile.mkdtemp()
         self.working_dir = os.path.join(self.temp_dir, "working")
@@ -49,8 +47,7 @@ class TestRPMPkgProfiler(rpm_support_base.PulpRPMTests):
         self.consumer_id = "test_errata_profiler_consumer_id"
         self.profiles = self.get_test_profile()
         self.test_consumer = Consumer(self.consumer_id, self.profiles)
-        print self.profiles[TYPE_ID_RPM]
-        self.test_consumer_lookup = self.form_lookup_table(self.profiles[TYPE_ID_RPM])
+        self.test_consumer_lookup = YumProfiler._form_lookup_table(self.profiles[TYPE_ID_RPM])
         # i386 version of consumer to test arch issues
         self.consumer_id_i386 = "%s.i386" % (self.consumer_id)
         self.profiles_i386 = self.get_test_profile(arch="i386")
@@ -58,20 +55,12 @@ class TestRPMPkgProfiler(rpm_support_base.PulpRPMTests):
         # consumer has been updated, and has the updated rpms installed
         self.consumer_id_been_updated = "%s.been_updated" % (self.consumer_id)
         self.profiles_been_updated = self.get_test_profile_been_updated()
-        self.test_consumer_been_updated = Consumer(self.consumer_id_been_updated, self.profiles_been_updated)
+        self.test_consumer_been_updated = Consumer(self.consumer_id_been_updated,
+                                                   self.profiles_been_updated)
 
     def tearDown(self):
-        super(TestRPMPkgProfiler, self).tearDown()
+        super(TestYumProfiler, self).tearDown()
         shutil.rmtree(self.temp_dir)
-    
-    def form_lookup_table(self, rpms):
-        lookup = {}
-        for r in rpms:
-            # Since only one name.arch is allowed to be installed on a machine,
-            # we will use name.arch as a key in the lookup table
-            key = "%s %s" % (r['name'], r['arch'])
-            lookup[key] = r
-        return lookup
 
     def create_rpm_dict(self, name, epoch, version, release, arch, checksum, checksumtype):
         unit_key = {"name":name, "epoch":epoch, "version":version, "release":release, 
@@ -93,51 +82,62 @@ class TestRPMPkgProfiler(rpm_support_base.PulpRPMTests):
         return {TYPE_ID_RPM:[foo, bar]}
 
     def test_metadata(self):
-        data = RPMPkgProfiler.metadata()
+        """
+        Test the metadata() method.
+        """
+        data = YumProfiler.metadata()
         self.assertTrue(data.has_key("id"))
-        self.assertEquals(data['id'], TYPE_ID_PROFILER_RPM_PKG)
+        self.assertEquals(data['id'], YumProfiler.TYPE_ID)
         self.assertTrue(data.has_key("display_name"))
+        # Make sure the advertised types are RPM and Errata
         self.assertTrue(data.has_key("types"))
+        self.assertEqual(len(data['types']), 2)
         self.assertTrue(TYPE_ID_RPM in data["types"])
+        self.assertTrue(TYPE_ID_ERRATA in data["types"])
 
     def test_rpm_applicable_to_consumer(self):
         rpm = {}
-        prof = RPMPkgProfiler()
-        applicable = prof.is_applicable(rpm, {})
+        prof = YumProfiler()
+        applicable = prof._is_rpm_applicable(rpm, {})
         self.assertEqual(applicable, False)
 
         # Test with newer RPM
-        #  The consumer has already been configured with a profile containing 'emoticons'
+        # The consumer has already been configured with a profile containing 'emoticons'
         rpm = self.create_profile_entry("emoticons", 0, "0.1", "2", "x86_64", "Test Vendor")
-        applicable = prof.is_applicable(rpm, self.test_consumer_lookup)
+        applicable = prof._is_rpm_applicable(rpm, self.test_consumer_lookup)
         self.assertTrue(applicable)
 
     def test_unit_applicable_true(self):
-        rpm_unit_key = self.create_profile_entry("emoticons", 0, "0.1", "2", "x86_64", "Test Vendor")
+        rpm_unit_key = self.create_profile_entry("emoticons", 0, "0.1", "2", "x86_64",
+                                                 "Test Vendor")
         rpm_unit = Unit(TYPE_ID_RPM, rpm_unit_key, {}, None)
+        # Let's give it an id, so we can assert for it later
+        rpm_unit.id = 'a_test_id'
         test_repo = profiler_mocks.get_repo("test_repo_id")
-        conduit = profiler_mocks.get_profiler_conduit(repo_units=[rpm_unit], repo_bindings=[test_repo])
+        conduit = profiler_mocks.get_profiler_conduit(repo_units=[rpm_unit],
+                                                      repo_bindings=[test_repo])
 
-        prof = RPMPkgProfiler()
+        prof = YumProfiler()
         unit_type_id = TYPE_ID_RPM
         unit_profile = self.test_consumer.profiles[TYPE_ID_RPM]
         bound_repo_id = "test_repo_id"
-        report_list = prof.calculate_applicable_units(unit_type_id, unit_profile, bound_repo_id, None, conduit)
-        self.assertFalse(report_list == [])
-        self.assertTrue(len(report_list) == 1)
+        report_list = prof.calculate_applicable_units(unit_profile, bound_repo_id, None, conduit)
+        self.assertEqual(report_list, {TYPE_ID_RPM: [rpm_unit.id], TYPE_ID_ERRATA: []})
 
     def test_unit_applicable_same_name_diff_arch(self):
-        rpm_unit_key = self.create_profile_entry("emoticons", 0, "0.1", "2", "x86_64", "Test Vendor")
+        rpm_unit_key = self.create_profile_entry("emoticons", 0, "0.1", "2", "x86_64",
+                                                 "Test Vendor")
         rpm_unit = Unit(TYPE_ID_RPM, rpm_unit_key, {}, None)
         test_repo = profiler_mocks.get_repo("test_repo_id")
-        conduit = profiler_mocks.get_profiler_conduit(repo_units=[rpm_unit], repo_bindings=[test_repo])
+        conduit = profiler_mocks.get_profiler_conduit(repo_units=[rpm_unit],
+                                                      repo_bindings=[test_repo])
 
-        prof = RPMPkgProfiler()
+        prof = YumProfiler()
         unit_type_id = TYPE_ID_RPM
         unit_profile = self.test_consumer_i386.profiles[TYPE_ID_RPM]
         bound_repo_id = "test_repo_id"
-        report_list = prof.calculate_applicable_units(unit_type_id, unit_profile, bound_repo_id, None, conduit)
-        self.assertTrue(report_list == [])
+        report_list = prof.calculate_applicable_units(unit_profile, bound_repo_id, None, conduit)
+        self.assertEqual(report_list, {TYPE_ID_RPM: [], TYPE_ID_ERRATA: []})
 
     def test_unit_applicable_updated_rpm_already_installed(self):
         rpm_unit_key = self.create_profile_entry("emoticons", 0, "0.1", "2", "x86_64", "Test Vendor")
@@ -149,21 +149,22 @@ class TestRPMPkgProfiler(rpm_support_base.PulpRPMTests):
         unit_type_id = TYPE_ID_RPM
         unit_profile = self.test_consumer_been_updated.profiles[TYPE_ID_RPM]
         bound_repo_id = "test_repo_id"
-        report_list = prof.calculate_applicable_units(unit_type_id, unit_profile, bound_repo_id, None, conduit)
+        report_list = prof.calculate_applicable_units(unit_profile, bound_repo_id, None, conduit)
         self.assertTrue(report_list == [])
 
     def test_unit_applicable_false(self):
         rpm_unit_key = self.create_profile_entry("bla-bla", 0, "0.1", "2", "x86_64", "Test Vendor")
         rpm_unit = Unit(TYPE_ID_RPM, rpm_unit_key, {}, None)
         test_repo = profiler_mocks.get_repo("test_repo_id")
-        conduit = profiler_mocks.get_profiler_conduit(repo_units=[rpm_unit], repo_bindings=[test_repo])
+        conduit = profiler_mocks.get_profiler_conduit(repo_units=[rpm_unit],
+                                                      repo_bindings=[test_repo])
 
-        prof = RPMPkgProfiler()
+        prof = YumProfiler()
         unit_type_id = TYPE_ID_RPM
         unit_profile = self.test_consumer.profiles[TYPE_ID_RPM]
         bound_repo_id = "test_repo_id"
-        report_list = prof.calculate_applicable_units(unit_type_id, unit_profile, bound_repo_id, None, conduit)
-        self.assertTrue(report_list == [])
+        report_list = prof.calculate_applicable_units(unit_profile, bound_repo_id, None, conduit)
+        self.assertEqual(report_list, {TYPE_ID_RPM: [], TYPE_ID_ERRATA: []})
 
     def test_update_profile_presorted_profile(self):
         """

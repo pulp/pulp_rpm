@@ -14,10 +14,10 @@
 from gettext import gettext as _
 
 from pulp.plugins.conduits.mixins import UnitAssociationCriteria
+from pulp.plugins.model import Unit
 from pulp.plugins.profiler import Profiler
 
-from pulp_rpm.common.ids import (TYPE_ID_ERRATA, TYPE_ID_PROFILER_RPM_ERRATA,
-                                 TYPE_ID_PROFILER_RPM_PKG, TYPE_ID_RPM)
+from pulp_rpm.common.ids import TYPE_ID_ERRATA, TYPE_ID_RPM
 from pulp_rpm.yum_plugin import util
 
 
@@ -38,10 +38,12 @@ class YumProfiler(Profiler):
     """
     Profiler plugin to support RPM and Errata functionality
     """
+    TYPE_ID = 'yum_profiler'
+
     @classmethod
     def metadata(cls):
         return {
-            'id': TYPE_ID_PROFILER_YUM,
+            'id': cls.TYPE_ID,
             'display_name': "Yum Profiler",
             'types': [TYPE_ID_RPM, TYPE_ID_ERRATA]}
 
@@ -172,7 +174,7 @@ class YumProfiler(Profiler):
         # Check applicability for each unit
         for unit in units:
             if content_type == TYPE_ID_RPM:
-                applicable = YumProfiler._is_rpm_applicable(unit, profile_lookup_table)
+                applicable = YumProfiler._is_rpm_applicable(unit['unit_key'], profile_lookup_table)
             elif content_type == TYPE_ID_ERRATA:
                 applicable = YumProfiler._is_errata_applicable(unit, profile_lookup_table)
 
@@ -190,7 +192,6 @@ class YumProfiler(Profiler):
     def _find_unit_associated_to_repos_by_criteria(criteria, repo_ids, conduit):
         for repo_id in repo_ids:
             result = conduit.get_units(repo_id, criteria)
-            logger.debug("Found %s items when searching in repo <%s> for <%s>" % (len(result), repo_id, criteria))
             if result:
                 return result[0]
         return None
@@ -223,11 +224,11 @@ class YumProfiler(Profiler):
         :rtype:      dict
         """
         lookup = {}
-        for r in rpms:
+        for rpm in rpms:
             # Since only one name.arch is allowed to be installed on a machine,
             # we will use name.arch as a key in the lookup table
             key = YumProfiler._form_lookup_key(rpm)
-            lookup[key] = r
+            lookup[key] = rpm
         return lookup
 
     @staticmethod
@@ -264,7 +265,13 @@ class YumProfiler(Profiler):
         :rtype: boolean
         """
         # Get rpms from errata
-        errata_rpms = YumProfiler._get_rpms_from_errata(errata)
+        # Due to https://bugzilla.redhat.com/show_bug.cgi?id=991500, the errata we get here is not a
+        # Unit, but is a dict. This dictionary has "flattened" the metadata out.
+        # _get_rpms_from_errata needs a Unit, so we'll need to reconstruct a unit out of our dict.
+        # In order to do that, we need to "unflatten" the metadata portion of the unit.
+        metadata = dict([(key, value) for key, value in errata.iteritems() if key != 'unit_key'])
+        errata_rpms = YumProfiler._get_rpms_from_errata(
+            Unit(TYPE_ID_ERRATA, errata['unit_key'], metadata, None))
 
         # Check if any rpm from errata is applicable to the consumer
         for errata_rpm in errata_rpms:
@@ -275,28 +282,26 @@ class YumProfiler(Profiler):
         return False
 
     @staticmethod
-    def _is_rpm_applicable(rpm, profile_lookup_table):
+    def _is_rpm_applicable(rpm_unit_key, profile_lookup_table):
         """
         Checks whether given rpm upgrades an rpm on the consumer.
 
-        :param rpm: Values of rpm's unit_key
-        :type rpm: dict
-
+        :param rpm_unit_key:         An rpm's unit_key
+        :type  rpm_unit_key:         dict
         :param profile_lookup_table: lookup table of consumer profile keyed by name.arch 
-        :type profile_lookup_table: dict
-
-        :return: true if applicable, false otherwise
-        :rtype: boolean
+        :type  profile_lookup_table: dict
+        :return:                     true if applicable, false otherwise
+        :rtype:                      boolean
         """
-        if not rpm or not profile_lookup_table:
+        if not rpm_unit_key or not profile_lookup_table:
             return False
 
-        key = YumProfiler._form_lookup_key(rpm)
+        key = YumProfiler._form_lookup_key(rpm_unit_key)
 
         if profile_lookup_table.has_key(key):
             installed_rpm = profile_lookup_table[key]
             # If an rpm is found, check if it is older than the available rpm
-            if util.is_rpm_newer(rpm, installed_rpm):
+            if util.is_rpm_newer(rpm_unit_key, installed_rpm):
                 return True
 
         return False
