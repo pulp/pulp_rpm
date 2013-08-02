@@ -101,7 +101,7 @@ class YumProfiler(Profiler):
             if unit['type_id'] == TYPE_ID_RPM:
                 translated_units.append(unit)
             elif unit['type_id'] == TYPE_ID_ERRATA:
-                values, upgrade_details = YumProfiler._translate_errata(
+                values, upgrade_details = YumProfiler._translate_erratum(
                     unit, conduit.get_bindings(consumer.id), consumer, conduit)
                 if values:
                     translated_units.extend(values)
