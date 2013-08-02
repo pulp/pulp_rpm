@@ -21,6 +21,7 @@ from pulp_rpm.common import models
 _rpm_counter = count()
 _srpm_counter = count()
 _drpm_counter = count()
+_group_counter = count()
 _yum_md_file_counter = count()
 
 
@@ -107,6 +108,27 @@ def drpm_models(num, same_filename_and_arch=False):
 @as_units
 def drpm_units(num, same_filename_and_arch=False):
     return drpm_models(num, same_filename_and_arch)
+
+
+def group_models(num, same_repo=True):
+    ret = []
+    count = _group_counter.next()
+    repo_id = 'repo-%d' % count
+    for i in range(num):
+        if not same_repo:
+            repo_id = 'repo-%d' % count
+        ret.append(models.PackageGroup(
+            'name-%d' % count,
+            repo_id,
+            {}
+        ))
+        count = _group_counter.next()
+    return ret
+
+
+@as_units
+def group_units(num, same_repo=True):
+    return group_models(num, same_repo)
 
 
 def yum_md_file():
