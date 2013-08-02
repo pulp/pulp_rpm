@@ -282,9 +282,6 @@ A collection of yum plugins supplementing Pulp consumer operations.
 
 
 %changelog
-<<<<<<< HEAD
-* Tue Jun 04 2013 Jeff Ortel <jortel@redhat.com> 2.2.0-0.16.alpha
-=======
 * Mon Jul 15 2013 Jeff Ortel <jortel@redhat.com> 2.2.0-0.21.beta
 - 984104 - fixed a bug that caused multiple calls to group copy with the
   --recursive option to fail (mhrivnak@redhat.com)
@@ -388,7 +385,6 @@ A collection of yum plugins supplementing Pulp consumer operations.
   what I want even without the parameter. (mhrivnak@redhat.com)
 
 * Tue Jun 04 2013 Jeff Ortel <jortel@redhat.com> 2.2.0-0.1.beta
->>>>>>> pulp-2.2.1
 - 968535 - leverage --no-compress; need to compensate for anaconda bug related
   to compressed metadata. (jortel@redhat.com)
 - 968543 - remove conditional in pulp_version macro. (jortel@redhat.com)
