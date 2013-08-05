@@ -72,12 +72,12 @@ def initialize(context):
     contents_section.add_command(contents.SearchDistributionsCommand(context))
     contents_section.add_command(contents.SearchErrataCommand(context))
 
-    # Add the group section, all its subsections and commands
-    group_section = structure.repo_group_section(context.cli)
+    # Add the group section, all its subsections, and commands
     group_export_section = structure.repo_group_export_section(context.cli)
-    group_export_renderer = status.RpmGroupExportStatusRenderer(context)
-    group_export_section.add_command(export.RpmGroupExportCommand(context, group_export_renderer,
+    renderer = status.RpmGroupExportStatusRenderer(context)
+    group_export_section.add_command(export.RpmGroupExportCommand(context, renderer,
                                                                   ids.EXPORT_GROUP_DISTRIBUTOR_ID))
+    group_export_section.add_command(export.ExportGroupStatusCommand(context, renderer))
 
     uploads_section = structure.repo_uploads_section(context.cli)
     uploads_section.add_command(package.CreateRpmCommand(context, upload_manager))

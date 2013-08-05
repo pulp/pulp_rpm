@@ -26,6 +26,7 @@ from pulp_rpm.extension.admin.status import RpmExportStatusRenderer
 
 DESC_EXPORT_RUN = _('triggers an immediate export of a repository')
 DESC_GROUP_EXPORT_RUN = _('triggers an immediate export of a repository group')
+DESC_GROUP_EXPORT_STATUS = _('displays the status of a repository group\'s export task')
 
 DESC_ISO_PREFIX = _('prefix to use in the generated ISO name, default: <repo-id>-<current_date>.iso')
 DESC_START_DATE = _('start date for an incremental export; only content associated with a repository'
@@ -162,3 +163,30 @@ class RpmGroupExportCommand(PulpCliCommand):
         else:
             msg = _('The status of this publish can be displayed using the status command.')
             self.context.prompt.render_paragraph(msg, 'background')
+
+
+class ExportGroupStatusCommand(PulpCliCommand):
+    def __init__(self, context, renderer, name='status', description=DESC_GROUP_EXPORT_STATUS):
+        super(ExportGroupStatusCommand, self).__init__(name, description, self.run)
+
+        self.context = context
+        self.prompt = context.prompt
+        self.renderer = renderer
+
+        self.add_option(options.OPTION_GROUP_ID)
+
+    def run(self, **kwargs):
+        group_id = kwargs[options.OPTION_GROUP_ID.keyword]
+        self.prompt.render_title(_('Repository Group [%s] Export Status' % group_id))
+
+        # Retrieve the task id, if it exists
+        tags = [tag_utils.resource_tag('repository_group', group_id),
+                tag_utils.action_tag(tag_utils.ACTION_PUBLISH_TYPE)]
+        response = self.context.server.tasks.get_all_tasks(tags)
+        task_id = tasks.relevant_existing_task_id(response.response_body)
+
+        if task_id is None:
+            msg = _('The repository group is not performing any operations')
+            self.prompt.render_paragraph(msg, tag='no-tasks')
+        else:
+            status.display_task_status(self.context, self.renderer, task_id)
