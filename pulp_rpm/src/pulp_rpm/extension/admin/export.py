@@ -14,7 +14,7 @@ from gettext import gettext as _
 from pulp.bindings import exceptions
 from pulp.client.commands import options
 from pulp.client.commands.repo.sync_publish import RunPublishRepositoryCommand
-from pulp.client.commands.repo.status import tasks
+from pulp.client.commands.repo.status import tasks, status
 from pulp.client import parsers, validators
 from pulp.client.extensions.extensions import PulpCliOption, PulpCliCommand
 from pulp.common import tags as tag_utils
@@ -38,7 +38,7 @@ DESC_EXPORT_DIR = _('the full path to a directory; if specified, the repository 
                     'to the given directory instead of being placed in ISOs and published via '
                     'HTTP or HTTPS')
 DESC_ISO_SIZE = _('the maximum size, in megabytes, of the exported ISOs; if this is not '
-                  'specified, DVD-sized ISOs are created')
+                  'specified, single layer DVD-sized ISOs are created')
 DESC_BACKGROUND = _('if specified, the CLI process will end but the process will continue on '
                     'the server; the progress can be later displayed using the status command')
 # These two flags exist because there is currently no place to configure group publishes
@@ -65,6 +65,9 @@ OPTION_ISO_SIZE = PulpCliOption('--iso-size', DESC_ISO_SIZE, required=False,
 
 
 class RpmExportCommand(RunPublishRepositoryCommand):
+    """
+    The 'pulp-admin rpm repo export run' command
+    """
     def __init__(self, context):
         override_config_options = [OPTION_EXPORT_DIR, OPTION_ISO_PREFIX, OPTION_ISO_SIZE,
                                    OPTION_START_DATE, OPTION_END_DATE]
@@ -78,7 +81,7 @@ class RpmExportCommand(RunPublishRepositoryCommand):
 
 class RpmGroupExportCommand(PulpCliCommand):
     """
-    The rpm group export command.
+    The 'pulp-admin rpm repo group export run' command.
     """
     def __init__(self, context, renderer, distributor_id, name='run', description=DESC_GROUP_EXPORT_RUN):
         super(RpmGroupExportCommand, self).__init__(name, description, self.run)
@@ -154,8 +157,8 @@ class RpmGroupExportCommand(PulpCliCommand):
             task_id = response.response_body.task_id
 
         if not background:
-            # TODO: Add progress tracking
-            self.context.prompt.render_paragraph(_('Publishing...'))
+            # Show the task status
+            status.display_task_status(self.context, self.renderer, task_id)
         else:
             msg = _('The status of this publish can be displayed using the status command.')
             self.context.prompt.render_paragraph(msg, 'background')

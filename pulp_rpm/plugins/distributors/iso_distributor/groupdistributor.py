@@ -29,7 +29,6 @@ _logger = util.getLogger(__name__)
 # Things left to do:
 #   Cancelling a publish operation is not currently supported.
 #   Published ISOs are left in the working directory. See export_utils.publish_isos to fix this.
-#   Progress reporting should probably be restructured.
 #   This is not currently in the python path. When that gets fixed, the imports should be fixed.
 
 
@@ -117,9 +116,24 @@ class GroupISODistributor(GroupDistributor):
             raise PulpDataException(msg)
 
         _logger.info('Beginning export of the following repository group: [%s]' % repo_group.id)
-        progress_status = export_utils.init_progress_report(len(repo_group.repo_ids))
+
+        # The progress report for a group publish
+        progress_status = {
+            constants.PROGRESS_REPOS_KEYWORD: {constants.PROGRESS_STATE_KEY: constants.STATE_NOT_STARTED},
+            constants.PROGRESS_ISOS_KEYWORD: {constants.PROGRESS_STATE_KEY: constants.STATE_NOT_STARTED},
+            constants.PROGRESS_PUBLISH_HTTP: {constants.PROGRESS_STATE_KEY: constants.STATE_NOT_STARTED},
+            constants.PROGRESS_PUBLISH_HTTPS: {constants.PROGRESS_STATE_KEY: constants.STATE_NOT_STARTED}
+        }
 
         def progress_callback(progress_keyword, status):
+            """
+            Progress callback used to update the progress report for the publish conduit
+
+            :param progress_keyword: The keyword to assign the status to in the progress report dict
+            :type progress_keyword: str
+            :param status: The status to assign to the keyword.
+            :type status: dict
+            """
             progress_status[progress_keyword] = status
             publish_conduit.set_progress(progress_status)
 
@@ -131,6 +145,10 @@ class GroupISODistributor(GroupDistributor):
         packed_config = export_utils.retrieve_group_export_config(repo_group, config)
         rpm_repositories, self.date_filter = packed_config
 
+        # Update the progress for the repositories section
+        repos_progress = export_utils.init_progress_report(len(rpm_repositories))
+        progress_callback(constants.PROGRESS_REPOS_KEYWORD, repos_progress)
+
         # For every repository, extract the requested types to the working directory
         for repo_id, working_dir in rpm_repositories:
             # Create a repo conduit, which makes sharing code with the export and yum distributors easier
@@ -141,10 +159,16 @@ class GroupISODistributor(GroupDistributor):
                 result = export_utils.export_incremental_content(working_dir, repo_conduit,
                                                                  self.date_filter)
             else:
-                result = export_utils.export_complete_repo(repo_id, working_dir, repo_conduit, config,
-                                                           progress_callback)
+                result = export_utils.export_complete_repo(repo_id, working_dir, repo_conduit, config)
             self.summary[repo_id] = result[0]
             self.details[repo_id] = result[1]
+
+            repos_progress[constants.PROGRESS_ITEMS_LEFT_KEY] -= 1
+            repos_progress[constants.PROGRESS_NUM_SUCCESS_KEY] += 1
+            progress_callback(constants.PROGRESS_REPOS_KEYWORD, repos_progress)
+
+        repos_progress[constants.PROGRESS_STATE_KEY] = constants.STATE_COMPLETE
+        progress_callback(constants.PROGRESS_REPOS_KEYWORD, repos_progress)
 
         # If there was no export directory, publish via ISOs
         if not config.get(constants.EXPORT_DIRECTORY_KEYWORD):

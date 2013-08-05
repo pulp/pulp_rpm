@@ -411,52 +411,53 @@ class RpmStatusRenderer(StatusRenderer):
 class RpmExportStatusRenderer(StatusRenderer):
     """
     Progress reporting for the rpm repo export command. The progress report is expected to have the
-    following dictionaries in it:
+    following format:
 
     pulp_rpm.common.ids.TYPE_ID_DISTRIBUTOR_EXPORT: {
       pulp_rpm.common.models.Errata.TYPE: {
-        "num_success": 0,
-        "items_left": 0,
-        "items_total": 0,
-        "state": "FINISHED",
-        "error_details": [],
-        "num_error": 0
+        constants.PROGRESS_NUM_SUCCESS_KEY: 12,
+        constants.PROGRESS_NUM_ERROR_KEY: 0,
+        constants.PROGRESS_ITEMS_LEFT_KEY: 0,
+        constants.PROGRESS_STATE_KEY: "FINISHED",
+        constants.PROGRESS_ITEMS_TOTAL_KEY: 12,
+        constants.PROGRESS_ERROR_DETAILS_KEY: []
       },
-      "publish_http": {
-        "state": "SKIPPED"
+      constants.PROGRESS_PUBLISH_HTTP: {
+        constants.PROGRESS_STATE_KEY: "FINISHED",
       },
-      "publish_https": {
-        "state": "FINISHED"
+      constants.PROGRESS_PUBLISH_HTTPS: {
+        constants.PROGRESS_STATE_KEY: "FINISHED",
       },
-      "isos": {
-        "num_success": 1,
-        "items_left": 0,
-        "items_total": 1,
-        "state": "FINISHED",
-        "error_details": [],
-        "num_error": 0
+      constants.PROGRESS_ISOS_KEYWORD: {
+        constants.PROGRESS_NUM_SUCCESS_KEY: 1,
+        constants.PROGRESS_NUM_ERROR_KEY: 0,
+        constants.PROGRESS_ITEMS_LEFT_KEY: 0,
+        constants.PROGRESS_STATE_KEY: "FINISHED",
+        constants.PROGRESS_ITEMS_TOTAL_KEY: 1,
+        constants.PROGRESS_ERROR_DETAILS_KEY: []
       },
       pulp_rpm.common.models.Distribution.TYPE: {
-        "num_success": 0,
-        "items_left": 0,
-        "items_total": 0,
-        "state": "FINISHED",
-        "error_details": [],
-        "num_error": 0
+        constants.PROGRESS_NUM_SUCCESS_KEY: 1,
+        constants.PROGRESS_NUM_ERROR_KEY: 0,
+        constants.PROGRESS_ITEMS_LEFT_KEY: 0,
+        constants.PROGRESS_STATE_KEY: "FINISHED",
+        constants.PROGRESS_ITEMS_TOTAL_KEY: 1,
+        constants.PROGRESS_ERROR_DETAILS_KEY: []
       },
       pulp_rpm.common.models.RPM.TYPE: {
-        "num_success": 43,
-        "items_left": 0,
-        "items_total": 43,
-        "state": "FINISHED",
-        "error_details": [],
-        "num_error": 0
+        constants.PROGRESS_NUM_SUCCESS_KEY: 43,
+        constants.PROGRESS_NUM_ERROR_KEY: 0,
+        constants.PROGRESS_ITEMS_LEFT_KEY: 0,
+        constants.PROGRESS_STATE_KEY: "FINISHED",
+        constants.PROGRESS_ITEMS_TOTAL_KEY: 43,
+        constants.PROGRESS_ERROR_DETAILS_KEY: []
       },
-      "metadata": {
-        "state": "FINISHED"
+      'metadata': {
+        constants.PROGRESS_STATE_KEY: "FINISHED",
       }
     }
 
+    All constants can be found in pulp_rpm.common.constants
     """
 
     def __init__(self, context):
@@ -497,18 +498,7 @@ class RpmExportStatusRenderer(StatusRenderer):
 
     def render_rpms_step(self, progress_report):
         """
-        Render the rpm export progress. The expected progress_report format is:
-
-        pulp_rpm.common.ids.TYPE_ID_DISTRIBUTOR_EXPORT: {
-            pulp_rpm.common.models.RPM.TYPE: {
-                "num_success": 0,
-                "items_left": 10,
-                "items_total": 10,
-                "state": "NOT_STARTED",
-                "error_details": [],
-                "num_error": 0
-            }
-        }
+        Render the rpm export progress.
 
         :param progress_report: A dictionary containing the progress report from the export distributor
         :type progress_report: dict
@@ -534,18 +524,7 @@ class RpmExportStatusRenderer(StatusRenderer):
 
     def render_errata_step(self, progress_report):
         """
-        Render the errata export progress. The expected progress_report format is:
-
-        pulp_rpm.common.ids.TYPE_ID_DISTRIBUTOR_EXPORT: {
-            pulp_rpm.common.models.Errata.TYPE: {
-                "num_success": 0,
-                "items_left": 10,
-                "items_total": 10,
-                "state": "NOT_STARTED",
-                "error_details": [],
-                "num_error": 0
-            }
-        }
+        Render the errata export progress.
 
         :param progress_report: A dictionary containing the progress report from the export distributor
         :type progress_report: dict
@@ -571,18 +550,7 @@ class RpmExportStatusRenderer(StatusRenderer):
 
     def render_distribution_publish_step(self, progress_report):
         """
-        Render the errata export progress. The expected progress_report format is:
-
-        pulp_rpm.common.ids.TYPE_ID_DISTRIBUTOR_EXPORT: {
-            pulp_rpm.common.models.Distribution.TYPE: {
-                "num_success": 0,
-                "items_left": 10,
-                "items_total": 10,
-                "state": "NOT_STARTED",
-                "error_details": [],
-                "num_error": 0
-            }
-        }
+        Render the errata export progress.
 
         :param progress_report: A dictionary containing the progress report from the export distributor
         :type progress_report: dict
@@ -608,18 +576,7 @@ class RpmExportStatusRenderer(StatusRenderer):
 
     def render_isos_step(self, progress_report):
         """
-        Render the ISO image generation export progress. The expected progress_report format is:
-
-        pulp_rpm.common.ids.TYPE_ID_DISTRIBUTOR_EXPORT: {
-            'isos': {
-                'num_success': 0,
-                'items_left': 10,
-                'items_total': 10,
-                'state': "NOT_STARTED",
-                'error_details': [],
-                'num_error': 0
-            }
-        }
+        Render the ISO image generation export progress.
 
         :param progress_report: A dictionary containing the progress report from the export distributor
         :type progress_report: dict
@@ -632,7 +589,7 @@ class RpmExportStatusRenderer(StatusRenderer):
 
         if self.isos_last_state not in constants.COMPLETE_STATES:
             if state in (constants.STATE_RUNNING, constants.STATE_COMPLETE):
-                self.distributions_last_state = state
+                self.isos_last_state = state
                 render_itemized_in_progress_state(self.prompt, data, _('ISO images'), self.isos_bar,
                                                   state)
             elif state == constants.STATE_FAILED:
@@ -641,13 +598,7 @@ class RpmExportStatusRenderer(StatusRenderer):
 
     def render_generate_metadata_step(self, progress_report):
         """
-        Render the metadata generation progress. The expected progress_report format is:
-
-        pulp_rpm.common.ids.TYPE_ID_DISTRIBUTOR_EXPORT: {
-            'metadata': {
-                'state': "NOT_STARTED",
-            }
-        }
+        Render the metadata generation progress.
 
         :param progress_report: A dictionary containing the progress report from the export distributor
         :type progress_report: dict
@@ -668,58 +619,201 @@ class RpmExportStatusRenderer(StatusRenderer):
 
     def render_publish_http_step(self, progress_report):
         """
-        Render the the publish over http step. If this is skipped, nothing is shown. The expected
-        progress report is:
+        This function handles the rendering of the constants.PROGRESS_HTTP_KEYWORD progress report
 
-        pulp_rpm.common.ids.TYPE_ID_DISTRIBUTOR_EXPORT: {
-            'publish_http': {
-                'state': "NOT_STARTED",
-            }
-        }
-
-        :param progress_report: A dictionary containing the progress report from the export distributor
-        :type progress_report: dict
+        :param progress_report: The progress report from the group export distributor
+        :type  progress_report: dict
         """
+        # Grab the http report out of the progress_report dictionary
+        report = progress_report[ids.TYPE_ID_DISTRIBUTOR_EXPORT][constants.PROGRESS_PUBLISH_HTTP]
 
-        current_state = progress_report[ids.TYPE_ID_DISTRIBUTOR_EXPORT]['publish_http']['state']
+        def update_func(new_state):
+            self.publish_http_last_state = new_state
 
-        if self.publish_http_last_state not in constants.COMPLETE_STATES:
-            if current_state == constants.STATE_COMPLETE:
-                self.publish_http_last_state = current_state
-                self.prompt.write(_('Successfully published ISOs over HTTP'))
-                self.prompt.render_spacer()
-            if current_state == constants.STATE_FAILED:
-                self.publish_http_last_state = current_state
-                self.prompt.write(_('Failed to publish ISOs over HTTP'))
-                self.prompt.render_spacer()
+        render_general_spinner_step(self.prompt, self.publish_http_spinner,
+                                    report[constants.PROGRESS_STATE_KEY], self.publish_http_last_state,
+                                    _('Publishing over HTTP...'), update_func)
 
     def render_publish_https_step(self, progress_report):
         """
-        Render the the publish over https step. If this is skipped, nothing is shown. The expected
-        progress report is:
+        This function handles the rendering of the constants.PROGRESS_PUBLISH_HTTPS_KEYWORD progress
+        report
 
-        pulp_rpm.common.ids.TYPE_ID_DISTRIBUTOR_EXPORT: {
-            'publish_https': {
-                'state': "NOT_STARTED",
-            }
-        }
-
-        :param progress_report: A dictionary containing the progress report from the export distributor
-        :type progress_report: dict
+        :param progress_report: The progress report from the group export distributor
+        :type  progress_report: dict
         """
+        # Grab the https report out of the progress_report dictionary
+        report = progress_report[ids.TYPE_ID_DISTRIBUTOR_EXPORT][constants.PROGRESS_PUBLISH_HTTPS]
 
-        current_state = progress_report[ids.TYPE_ID_DISTRIBUTOR_EXPORT]['publish_https']['state']
+        def update_func(new_state):
+            """
+            The update function used for the spinner renderer
 
-        if self.publish_https_last_state not in constants.COMPLETE_STATES:
-            if current_state == constants.STATE_COMPLETE:
-                self.publish_https_last_state = current_state
-                self.prompt.write(_('Successfully published ISOs over HTTPS'))
-                self.prompt.render_spacer()
-            if current_state == constants.STATE_FAILED:
-                self.publish_https_last_state = current_state
-                self.prompt.write(_('Failed to publish ISOs over HTTPS'))
-                self.prompt.render_spacer()
+            :param new_state: The state to update publish_https_last_state with. This should come from
+                                  pulp_rpm_common.constants
+            :type  new_state: str
+            """
+            self.publish_https_last_state = new_state
+
+        render_general_spinner_step(self.prompt, self.publish_https_spinner,
+                                    report[constants.PROGRESS_STATE_KEY], self.publish_https_last_state,
+                                    _('Publishing over HTTPS...'), update_func)
 
 
 class RpmGroupExportStatusRenderer(StatusRenderer):
-    pass
+    """
+    Progress reporting for the rpm repo group export command. The progress report is expected to have
+    the following dictionaries in it:
+
+    ids.TYPE_ID_DISTRIBUTOR_GROUP_EXPORT: {
+      constants.PROGRESS_PUBLISH_HTTP: {
+        constants.PROGRESS_STATE_KEY: "FINISHED",
+      },
+      constants.PROGRESS_ISOS_KEYWORD: {
+        constants.PROGRESS_NUM_SUCCESS_KEY: 2,
+        constants.PROGRESS_NUM_ERROR_KEY: 0,
+        constants.PROGRESS_ITEMS_LEFT_KEY: 0,
+        constants.PROGRESS_STATE_KEY: "FINISHED",
+        constants.PROGRESS_ITEMS_TOTAL_KEY: 2,
+        constants.PROGRESS_ERROR_DETAILS_KEY: []
+      },
+      constants.PROGRESS_REPOS_KEYWORD: {
+        constants.PROGRESS_NUM_SUCCESS_KEY: 5,
+        constants.PROGRESS_NUM_ERROR_KEY: 0,
+        constants.PROGRESS_ITEMS_LEFT_KEY: 0,
+        constants.PROGRESS_STATE_KEY: "FINISHED",
+        constants.PROGRESS_ITEMS_TOTAL_KEY: 5,
+        constants.PROGRESS_ERROR_DETAILS_KEY: []
+      },
+      constants.PROGRESS_PUBLISH_HTTPS: {
+        constants.PROGRESS_STATE_KEY: "FINISHED",
+      }
+    }
+
+    All constants and ids can found in pulp_rpm.common.constants and pulp_rpm.common.ids
+    """
+    def __init__(self, context):
+        """
+        Class constructor
+
+        :param context: The client context to use for this renderer.
+        :type  context: pulp.client.extensions.core.ClientContext
+        :return:
+        """
+        super(RpmGroupExportStatusRenderer, self).__init__(context)
+
+        # Publish Steps
+        self.repos_last_state = constants.STATE_NOT_STARTED
+        self.isos_last_state = constants.STATE_NOT_STARTED
+        self.publish_http_last_state = constants.STATE_NOT_STARTED
+        self.publish_https_last_state = constants.STATE_NOT_STARTED
+
+        # UI Widgets
+        self.repos_bar = self.prompt.create_progress_bar()
+        self.isos_bar = self.prompt.create_progress_bar()
+        self.publish_http_spinner = self.prompt.create_spinner()
+        self.publish_https_spinner = self.prompt.create_spinner()
+
+    def display_report(self, progress_report):
+        """
+        Displays the contents of the progress report to the user. This will
+        aggregate the calls to render individual sections of the report.
+
+        :param progress_report: The progress report from the group export distributor
+        :type progress_report: dict
+        """
+        # Publish Steps
+        if ids.TYPE_ID_DISTRIBUTOR_GROUP_EXPORT in progress_report:
+            self.render_repos_step(progress_report)
+            self.render_isos_step(progress_report)
+            self.render_publish_https_step(progress_report)
+            self.render_publish_http_step(progress_report)
+
+    def render_repos_step(self, progress_report):
+        """
+        This function handles the rendering of the constants.PROGRESS_REPOS_KEYWORD progress report
+
+        :param progress_report: The progress report from the group export distributor
+        :type progress_report: dict
+        """
+        # Grab the repositories progress report out of the progress_report dict
+        data = progress_report[ids.EXPORT_GROUP_DISTRIBUTOR_ID][constants.PROGRESS_REPOS_KEYWORD]
+        state = data[constants.PROGRESS_STATE_KEY]
+
+        if state == constants.STATE_NOT_STARTED:
+            return
+
+        if self.repos_last_state not in constants.COMPLETE_STATES:
+            if state in (constants.STATE_RUNNING, constants.STATE_COMPLETE):
+                self.repos_last_state = state
+                render_itemized_in_progress_state(self.prompt, data, _('Exporting repositories...'),
+                                                  self.repos_bar, state)
+            elif state == constants.STATE_FAILED:
+                self.prompt.write(_('... failed'))
+                self.repos_last_state = constants.STATE_FAILED
+
+    def render_isos_step(self, progress_report):
+        """
+        This function handles the rendering of the constants.PROGRESS_ISOS_KEYWORD progress report
+
+        :param progress_report: The progress report from the group export distributor
+        :type progress_report: dict
+        """
+        # Grab the iso progress report out of the progress_report dict
+        data = progress_report[ids.EXPORT_GROUP_DISTRIBUTOR_ID][constants.PROGRESS_ISOS_KEYWORD]
+        state = data[constants.PROGRESS_STATE_KEY]
+
+        if state == constants.STATE_NOT_STARTED:
+            return
+
+        if self.isos_last_state not in constants.COMPLETE_STATES:
+            if state in (constants.STATE_RUNNING, constants.STATE_COMPLETE):
+                self.isos_last_state = state
+                render_itemized_in_progress_state(self.prompt, data, _('Generating ISO images...'),
+                                                  self.isos_bar, state)
+            elif state == constants.STATE_FAILED:
+                self.prompt.write(_('... failed'))
+                self.isos_last_state = constants.STATE_FAILED
+
+    def render_publish_http_step(self, progress_report):
+        """
+        This function handles the rendering of the constants.PROGRESS_PUBLISH_HTTP_KEYWORD progress
+        report
+
+        :param progress_report: The progress report from the group export distributor
+        :type progress_report: dict
+        """
+        # Grab the http report out of the progress_report dictionary
+        report = progress_report[ids.TYPE_ID_DISTRIBUTOR_GROUP_EXPORT][constants.PROGRESS_PUBLISH_HTTP]
+
+        def update_func(new_state):
+            self.publish_http_last_state = new_state
+
+        render_general_spinner_step(self.prompt, self.publish_http_spinner,
+                                    report[constants.PROGRESS_STATE_KEY], self.publish_http_last_state,
+                                    _('Publishing over HTTP...'), update_func)
+
+    def render_publish_https_step(self, progress_report):
+        """
+        This function handles the rendering of the constants.PROGRESS_PUBLISH_HTTPS_KEYWORD progress
+        report
+
+        :param progress_report: The progress report from the group export distributor
+        :type progress_report: dict
+        """
+        # Grab the https report out of the progress_report dictionary
+        report = progress_report[ids.TYPE_ID_DISTRIBUTOR_GROUP_EXPORT][constants.PROGRESS_PUBLISH_HTTPS]
+
+        def update_func(new_state):
+            """
+            The update function used for the spinner renderer
+
+            :param new_state:   The state to update publish_https_last_state with. This should come from
+                                    pulp_rpm_common.constants
+            :type new_state:    str
+            """
+            self.publish_https_last_state = new_state
+
+        render_general_spinner_step(self.prompt, self.publish_https_spinner,
+                                    report[constants.PROGRESS_STATE_KEY], self.publish_https_last_state,
+                                    _('Publishing over HTTPS...'), update_func)

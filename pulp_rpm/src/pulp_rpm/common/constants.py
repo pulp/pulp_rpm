@@ -33,6 +33,12 @@ PROGRESS_ITEMS_LEFT_KEY = 'items_left'
 PROGRESS_ITEMS_TOTAL_KEY = 'items_total'
 PROGRESS_ERROR_DETAILS_KEY = 'error_details'
 
+# Progress report keywords used in the group export distributor progress report
+PROGRESS_REPOS_KEYWORD = 'repositories'
+PROGRESS_ISOS_KEYWORD = 'isos'
+PROGRESS_PUBLISH_HTTP = 'publish_http'
+PROGRESS_PUBLISH_HTTPS = 'publish_https'
+
 # -- configuration ------------------------------------------------------------
 
 # Used as a note on a repository to indicate it is a Puppet repository
