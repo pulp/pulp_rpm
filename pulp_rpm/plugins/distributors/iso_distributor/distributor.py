@@ -168,7 +168,7 @@ class ISODistributor(Distributor):
         # If a date filter is not present, do a complete export. If it is, do an incremental export.
         if self.date_filter:
             result = export_utils.export_incremental_content(self.working_dir, publish_conduit,
-                                                             self.date_filter)
+                                                             self.date_filter, progress_callback)
         else:
             result = export_utils.export_complete_repo(repo.id, self.working_dir, publish_conduit,
                                                        config, progress_callback)

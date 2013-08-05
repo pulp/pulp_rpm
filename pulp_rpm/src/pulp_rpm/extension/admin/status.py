@@ -410,7 +410,53 @@ class RpmStatusRenderer(StatusRenderer):
 
 class RpmExportStatusRenderer(StatusRenderer):
     """
-    Progress reporting for the rpm repo export command
+    Progress reporting for the rpm repo export command. The progress report is expected to have the
+    following dictionaries in it:
+
+    pulp_rpm.common.ids.TYPE_ID_DISTRIBUTOR_EXPORT: {
+      pulp_rpm.common.models.Errata.TYPE: {
+        "num_success": 0,
+        "items_left": 0,
+        "items_total": 0,
+        "state": "FINISHED",
+        "error_details": [],
+        "num_error": 0
+      },
+      "publish_http": {
+        "state": "SKIPPED"
+      },
+      "publish_https": {
+        "state": "FINISHED"
+      },
+      "isos": {
+        "num_success": 1,
+        "items_left": 0,
+        "items_total": 1,
+        "state": "FINISHED",
+        "error_details": [],
+        "num_error": 0
+      },
+      pulp_rpm.common.models.Distribution.TYPE: {
+        "num_success": 0,
+        "items_left": 0,
+        "items_total": 0,
+        "state": "FINISHED",
+        "error_details": [],
+        "num_error": 0
+      },
+      pulp_rpm.common.models.RPM.TYPE: {
+        "num_success": 43,
+        "items_left": 0,
+        "items_total": 43,
+        "state": "FINISHED",
+        "error_details": [],
+        "num_error": 0
+      },
+      "metadata": {
+        "state": "FINISHED"
+      }
+    }
+
     """
 
     def __init__(self, context):
@@ -467,7 +513,6 @@ class RpmExportStatusRenderer(StatusRenderer):
         :param progress_report: A dictionary containing the progress report from the export distributor
         :type progress_report: dict
         """
-
         data = progress_report[ids.TYPE_ID_DISTRIBUTOR_EXPORT][models.RPM.TYPE]
         state = data[constants.PROGRESS_STATE_KEY]
 
@@ -477,10 +522,6 @@ class RpmExportStatusRenderer(StatusRenderer):
         # Only render this on the first non-not-started state
         if self.rpms_last_state == constants.STATE_NOT_STARTED:
             self.prompt.write(_('Exporting packages...'))
-
-        # If it's running or finished, the output is still the same. This way,
-        # if the status is viewed after this step, the content download
-        # summary is still available.
 
         if self.rpms_last_state not in constants.COMPLETE_STATES:
             if state in (constants.STATE_RUNNING, constants.STATE_COMPLETE):
@@ -603,7 +644,7 @@ class RpmExportStatusRenderer(StatusRenderer):
         Render the metadata generation progress. The expected progress_report format is:
 
         pulp_rpm.common.ids.TYPE_ID_DISTRIBUTOR_EXPORT: {
-            'metadata: {
+            'metadata': {
                 'state': "NOT_STARTED",
             }
         }
@@ -626,11 +667,19 @@ class RpmExportStatusRenderer(StatusRenderer):
                                     update_func)
 
     def render_publish_http_step(self, progress_report):
+        """
+        Render the the publish over http step. If this is skipped, nothing is shown. The expected
+        progress report is:
 
-        # Example Data:
-        # "publish_http": {
-        #    "state": "SKIPPED"
-        # },
+        pulp_rpm.common.ids.TYPE_ID_DISTRIBUTOR_EXPORT: {
+            'publish_http': {
+                'state': "NOT_STARTED",
+            }
+        }
+
+        :param progress_report: A dictionary containing the progress report from the export distributor
+        :type progress_report: dict
+        """
 
         current_state = progress_report[ids.TYPE_ID_DISTRIBUTOR_EXPORT]['publish_http']['state']
 
@@ -645,11 +694,19 @@ class RpmExportStatusRenderer(StatusRenderer):
                 self.prompt.render_spacer()
 
     def render_publish_https_step(self, progress_report):
+        """
+        Render the the publish over https step. If this is skipped, nothing is shown. The expected
+        progress report is:
 
-        # Example Data:
-        # "publish_http": {
-        #    "state": "SKIPPED"
-        # },
+        pulp_rpm.common.ids.TYPE_ID_DISTRIBUTOR_EXPORT: {
+            'publish_https': {
+                'state': "NOT_STARTED",
+            }
+        }
+
+        :param progress_report: A dictionary containing the progress report from the export distributor
+        :type progress_report: dict
+        """
 
         current_state = progress_report[ids.TYPE_ID_DISTRIBUTOR_EXPORT]['publish_https']['state']
 

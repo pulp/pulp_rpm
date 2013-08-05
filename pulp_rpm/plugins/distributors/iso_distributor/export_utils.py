@@ -409,11 +409,11 @@ def export_rpm(working_dir, rpm_units, progress_callback=None):
         details['errors']['rpm_export'] = errors
         progress_status[constants.PROGRESS_STATE_KEY] = constants.STATE_FAILED
         progress_status[constants.PROGRESS_ERROR_DETAILS_KEY] = errors
-        set_progress(ids.TYPE_ID_RPM, progress_status, progress_callback)
+        set_progress(models.RPM.TYPE, progress_status, progress_callback)
         return summary, details
 
     progress_status[constants.PROGRESS_STATE_KEY] = constants.STATE_COMPLETE
-    set_progress(ids.TYPE_ID_RPM, progress_status, progress_callback)
+    set_progress(models.RPM.TYPE, progress_status, progress_callback)
 
     return summary, details
 
@@ -624,7 +624,7 @@ def export_complete_repo(repo_id, working_dir, publish_conduit, config, progress
     return summary, details
 
 
-def export_incremental_content(working_dir, publish_conduit, date_filter):
+def export_incremental_content(working_dir, publish_conduit, date_filter, progress_callback=None):
     """
     Exports incremental content for a repository. Any rpm or errata unit that was associated
     with the repository in the given date range is copied to the working directories. A JSON document
@@ -654,7 +654,7 @@ def export_incremental_content(working_dir, publish_conduit, date_filter):
     errata_units = publish_conduit.get_units(criteria=errata_criteria)
 
     # Export the rpm units to the working directory
-    rpm_summary, rpm_details = export_rpm(working_dir, rpm_units)
+    rpm_summary, rpm_details = export_rpm(working_dir, rpm_units, progress_callback)
 
     # Export the rpm metadata as JSON files to the working directory
     rpm_json_path = os.path.join(working_dir, 'rpm_json')
@@ -662,7 +662,7 @@ def export_incremental_content(working_dir, publish_conduit, date_filter):
 
     # Export the errata as JSON files to the working directory
     errata_json_path = os.path.join(working_dir, 'errata_json')
-    export_errata_json(errata_json_path, errata_units)
+    export_errata_json(errata_json_path, errata_units, progress_callback)
 
     return rpm_summary, rpm_details
 
@@ -699,16 +699,22 @@ def export_rpm_json(working_dir, rpm_units):
             json.dump(dict_to_write, f)
 
 
-def export_errata_json(working_dir, errata_units):
+def export_errata_json(working_dir, errata_units, progress_callback=None):
     """
     Using the given list of errata AssociatedUnits, this method writes the errata to a json file in
     the working directory.
 
-    :param working_dir:  The full path to the directory to write the json files to
-    :type  working_dir:  str
-    :param errata_units: A list of AssociatedUnits of type errata
-    :type  errata_units: list of pulp.plugins.model.AssociatedUnit
+    :param working_dir:         The full path to the directory to write the json files to
+    :type  working_dir:         str
+    :param errata_units:        A list of AssociatedUnits of type errata
+    :type  errata_units:        list of pulp.plugins.model.AssociatedUnit
+    :param progress_callback:   callback to report progress info to publish_conduit. This is expected to
+                                    take the following parameters: a string to use as the key in a
+                                    dictionary, and the second parameter is assigned to it.
+    :type  progress_callback:   function
     """
+    progress_report = init_progress_report(len(errata_units))
+
     if not os.path.isdir(working_dir):
         os.makedirs(working_dir)
 
@@ -724,6 +730,13 @@ def export_errata_json(working_dir, errata_units):
         json_file_path = os.path.join(working_dir, unit.unit_key['id'] + '.json')
         with open(json_file_path, 'w') as f:
             json.dump(errata_dict, f)
+
+        progress_report[constants.PROGRESS_NUM_SUCCESS_KEY] += 1
+        progress_report[constants.PROGRESS_ITEMS_LEFT_KEY] -= 1
+        set_progress(models.Errata.TYPE, progress_report, progress_callback)
+
+    progress_report[constants.PROGRESS_STATE_KEY] = constants.STATE_COMPLETE
+    set_progress(models.Errata.TYPE, progress_report, progress_callback)
 
 
 def get_rpm_units(publish_conduit, skip_list=()):

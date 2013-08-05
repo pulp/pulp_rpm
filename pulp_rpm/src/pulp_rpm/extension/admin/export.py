@@ -30,10 +30,10 @@ DESC_GROUP_EXPORT_RUN = _('triggers an immediate export of a repository group')
 DESC_ISO_PREFIX = _('prefix to use in the generated ISO name, default: <repo-id>-<current_date>.iso')
 DESC_START_DATE = _('start date for an incremental export; only content associated with a repository'
                     ' on or after the given value will be included in the exported repository; dates '
-                    'should be in standard ISO8609 format: "1970-01-01T00:00:00"')
+                    'should be in standard ISO8601 format: "1970-01-01T00:00:00"')
 DESC_END_DATE = _('end date for an incremental export; only content associated with a repository '
                   'on or before the given value will be included in the exported repository; dates '
-                  'should be in standard ISO8609 format: "1970-01-01T00:00:00"')
+                  'should be in standard ISO8601 format: "1970-01-01T00:00:00"')
 DESC_EXPORT_DIR = _('the full path to a directory; if specified, the repository will be exported '
                     'to the given directory instead of being placed in ISOs and published via '
                     'HTTP or HTTPS')
