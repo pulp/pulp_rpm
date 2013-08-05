@@ -183,7 +183,7 @@ Export Repositories and Repository Groups
 If you have a Pulp server that does not have access to the Internet, it is possible
 to use a second Pulp server, which does have Internet access, to retrieve repositories and
 repository updates for your disconnected server. The full list of options can be seen by
-running ``pulp-admin rpm repo export run``.
+running ``pulp-admin rpm repo export run --help``.
 
 The general workflow is as follows:
 
@@ -214,27 +214,27 @@ Which, if publishing over HTTP, could be found at
 
 5. On the disconnected Pulp server, create a new repository with the feed pointing at
    the directory containing the ISO contents:
-   ``pulp-admin rpm repo create --repo-id=demo-repo --feed=file:///path/to/extracted/content``
+   ``pulp-admin rpm repo create --repo-id=demo-repo --feed=file:///path/to/extracted/content/``
 6. Sync the repository using ``pulp-admin rpm repo sync run --repo-id=demo-repo``
 
 The workflow for exporting repository groups is quite similar. The command is
 ``pulp-admin rpm repo group export run``. Repository groups can contain any content type,
 but this command will only export the yum repositories.
 
-It is also possible to export all rpm and errata associated with a repository in a given
+It is also possible to export all rpms and errata associated with a repository in a given
 time frame using the ``--start-date`` and ``--end-date`` options. This is helpful if you have
 already exported the repository and would like to only export updates. Be aware that since this
 does not export package groups or categories, any updates to these will not be reflected on the
-disconnected Pulp server. There is currently no support to import these incremental updates back
-into Pulp using ``pulp-admin``.
+disconnected Pulp server. There is currently no support in the pulp-admin command-line utility
+for uploading these incremental updates back into Pulp; you must use the REST API for these uploads.
 
 .. warning::
-  it is very important keep track of the last time you performed an incremental export.
+  It is very important keep track of the last time you performed an incremental export.
   If you fail use the correct date range, some dependencies may be missing from the export.
   It is recommended that you overlap the date ranges to be safe.
 
-The default behaviour is to create a set of ISO images and publish them over
-HTTP or HTTPS to ``/pulp/exports/repo/<repo-id>/`` or, if publishing a repo 
+The default behavior is to create a set of ISO images and publish them over
+HTTP or HTTPS to ``/pulp/exports/repo/<repo-id>/``, or if publishing a repo
 group, ``/pulp/exports/repo_group/<group-id>/``. The default image size will
 fit on a DVD (4308MB). However, if you would prefer to use an external hard drive
 to transport the repositories, you can use the ``--export-dir`` option, which will

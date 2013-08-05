@@ -33,13 +33,13 @@ Optional Configuration Parameters
 ``start_date``
  Any content that was associated with the repository before this date will be excluded in the generated
  ISO. Furthermore, the incremental export process exports errata and rpm metadata as JSON documents, and
- no repo metadata is generated. The date should be in standard ISO8609 format. For example,
+ no repo metadata is generated. The date should be in standard ISO8601 format. For example,
  "2010-01-01T12:00:00".
 
 ``end_date``
  Any content that was associated with the repository after this date will be excluded in the generated
  ISO. Furthermore, the incremental export process exports errata and rpm metadata as JSON documents,
- and no repo metadata is generated. The date should be in standard ISO8609 format. For example,
+ and no repo metadata is generated. The date should be in standard ISO8601 format. For example,
  "2010-01-01T12:00:00".
 
 ``iso_prefix``
@@ -50,7 +50,7 @@ Optional Configuration Parameters
 ``skip``
  List of content types to skip during the creation of the ISO.
  If unspecified, all types will be published. Valid values are: ``rpm``, ``drpm``, ``srpm``,
- ``distribution``, ``package_group`` ,and ``erratum``.
+ ``distribution``, ``package_group``, and ``erratum``.
 
 ``iso_size``
  An integer, which is the maximum size of the generated ISO images in megabytes. This will default to
