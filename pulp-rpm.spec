@@ -17,8 +17,8 @@
 # ---- Pulp (rpm) --------------------------------------------------------------
 
 Name: pulp-rpm
-Version: 2.2.0
-Release: 0.21.beta%{?dist}
+Version: 2.3.0
+Release: 0.2.alpha%{?dist}
 Summary: Support for RPM content in the Pulp platform
 Group: Development/Languages
 License: GPLv2
@@ -166,7 +166,7 @@ Requires: createrepo >= 0.9.9-21
 Requires: python-rhsm >= 1.8.0
 Requires: grinder >= 0.1.16
 Requires: pyliblzma
-Requires: python-nectar >= 0.99
+Requires: python-nectar >= 1.0.0
 %description plugins
 Provides a collection of platform plugins that extend the Pulp platform
 to provide RPM specific support.
@@ -282,9 +282,28 @@ A collection of yum plugins supplementing Pulp consumer operations.
 
 
 %changelog
-<<<<<<< HEAD
-* Tue Jun 04 2013 Jeff Ortel <jortel@redhat.com> 2.2.0-0.16.alpha
-=======
+* Thu Aug 01 2013 Jeff Ortel <jortel@redhat.com> 2.3.0-0.2.alpha
+- 988919 - non-standard repo metadata files that happen to be sqlite files can
+  now be downloaded successfully during a sync (mhrivnak@redhat.com)
+- 988005 - uploads of units that are not RPMs work again (mhrivnak@redhat.com)
+- 986026 - Added a migration to upgrade conditional_package_names from v1 to
+  v2. (rbarlow@redhat.com)
+- 987663 - syncing of a distribution now uses a nectar factory to get the most
+  appropriate downloader type for a given URL, defaulting to the requests
+  library for HTTP. It also now uses the nectar config options that are
+  specified in the importer config instead of always using a default config.
+  (mhrivnak@redhat.com)
+- 952386 - Cleanup published files when ISODistributors are removed.
+  (rbarlow@redhat.com)
+- 976579 - adding creation of Packages symlink to contents
+  (jason.connor@gmail.com)
+- 975543 - Change the ISO "content" command name to "isos".
+  (rbarlow@redhat.com)
+- 974590 - Handle multiple calls to copy metadata files.
+  (jason.dobies@redhat.com)
+- 950772 - Don't attempt state transitions away from STATE_CANCELLED.
+  (rbarlow@redhat.com)
+
 * Mon Jul 15 2013 Jeff Ortel <jortel@redhat.com> 2.2.0-0.21.beta
 - 984104 - fixed a bug that caused multiple calls to group copy with the
   --recursive option to fail (mhrivnak@redhat.com)
@@ -388,7 +407,6 @@ A collection of yum plugins supplementing Pulp consumer operations.
   what I want even without the parameter. (mhrivnak@redhat.com)
 
 * Tue Jun 04 2013 Jeff Ortel <jortel@redhat.com> 2.2.0-0.1.beta
->>>>>>> pulp-2.2.1
 - 968535 - leverage --no-compress; need to compensate for anaconda bug related
   to compressed metadata. (jortel@redhat.com)
 - 968543 - remove conditional in pulp_version macro. (jortel@redhat.com)

@@ -235,36 +235,6 @@ class TestDistributor(rpm_support_base.PulpRPMTests):
         a = os.readlink(symlink_path)
         self.assertEqual(a, source_path)
 
-    @mock.patch('pulp_rpm.yum_plugin.util.remove_publish_dir', autospec=True)
-    def test_remove_publish_symlinks(self, mock_remove_publish_dir):
-        # Setup
-        repo = mock.Mock(spec=Repository)
-        repo.working_dir = self.repo_working_dir
-        repo.id = "test_empty_publish"
-        existing_units = []
-        publish_conduit = distributor_mocks.get_publish_conduit(existing_units=existing_units,
-                                                                pkg_dir=self.pkg_dir)
-        publish_conduit.get_repo_scratchpad = mock.Mock()
-        publish_conduit.get_repo_scratchpad.return_value = {OLD_REL_PATH_KEYWORD: 'relative/url'}
-        config = distributor_mocks.get_basic_config(https_publish_dir=self.https_publish_dir,
-                                                    http_publish_dir=self.http_publish_dir, http=True,
-                                                    https=True)
-        distributor = YumDistributor()
-
-        # Test
-        report = distributor.publish_repo(repo, publish_conduit, config)
-        self.assertTrue(report.success_flag)
-        self.assertEqual(2, mock_remove_publish_dir.call_count)
-        # Confirm the first call to remove_publish_dir used the correct arguments (https)
-        self.assertEqual(self.https_publish_dir, mock_remove_publish_dir.call_args_list[0][0][0])
-        self.assertEqual(os.path.join(self.https_publish_dir, 'relative/url'),
-                         mock_remove_publish_dir.call_args_list[0][0][1])
-        # Confirm the second call also used the correct arguments (http)
-        self.assertEqual(self.http_publish_dir, mock_remove_publish_dir.call_args_list[1][0][0])
-        self.assertEqual(os.path.join(self.http_publish_dir, 'relative/url'),
-                         mock_remove_publish_dir.call_args_list[1][0][1])
-
-
     def test_create_dirs(self):
         if os.geteuid() == 0:
             # skip if run as root
@@ -330,6 +300,9 @@ class TestDistributor(rpm_support_base.PulpRPMTests):
         self.assertEqual(summary["num_package_units_attempted"], num_units)
         self.assertEqual(summary["num_package_units_published"], num_units)
         self.assertEqual(summary["num_package_units_errors"], 0)
+        # Verify the listing files
+        self.assertTrue(os.path.exists(os.path.join(self.https_publish_dir, 'listing')))
+        self.assertFalse(os.path.exists(os.path.join(self.http_publish_dir, 'listing')))
         # Verify we did not attempt to publish to http
         expected_repo_http_publish_dir = os.path.join(self.http_publish_dir, relative_url)
         self.assertFalse(os.path.exists(expected_repo_http_publish_dir))
@@ -369,7 +342,8 @@ class TestDistributor(rpm_support_base.PulpRPMTests):
         self.assertFalse(os.path.exists(expected_repo_https_publish_dir))
 
         # Verify we cleaned up the misc dirs under the https dir
-        self.assertEquals(len(os.listdir(self.https_publish_dir)), 0)
+        # NOTE there will be an empty listing file remaining
+        self.assertEquals(len(os.listdir(self.https_publish_dir)), 1)
 
     def test_split_path(self):
         distributor = YumDistributor()
@@ -647,9 +621,9 @@ class TestDistributor(rpm_support_base.PulpRPMTests):
         os.symlink(self.https_publish_dir, link_path)
         self.assertTrue(os.path.exists(link_path))
 
-        util.remove_publish_dir(pub_dir, link_path)
+        util.remove_repo_publish_dir(pub_dir, link_path)
         self.assertFalse(os.path.exists(link_path))
-        self.assertEqual(len(os.listdir(pub_dir)), 0)
+        self.assertEqual(len(os.listdir(pub_dir)), 1)
 
     def test_consumer_payload(self):
         PAYLOAD_FIELDS = [ 'server_name', 'relative_path',
