@@ -72,16 +72,9 @@ def upload(repo, type_id, unit_key, metadata, file_path, conduit, config):
     except TypeError:
         return _fail_report('invalid unit key or metadata')
 
-    if type_id == models.RPM.TYPE:
-        # TODO: replace this call with something that doesn't use yum
-        model.metadata['repodata'] = rpm.get_package_xml(file_path)
-
     # not all models have a relative path
     relative_path = getattr(model, 'relative_path', '')
 
-    # The provides and requires are not provided by the client, so extract them now
-    if isinstance(model, models.RPM):
-        _update_provides_requires(model)
 
     # both of the below operations perform IO
     try:
@@ -92,6 +85,16 @@ def upload(repo, type_id, unit_key, metadata, file_path, conduit, config):
             shutil.copy(file_path, unit.storage_path)
     except IOError:
         return _fail_report('failed to copy file to destination')
+
+    # do this for RPMs and SRPMs
+    if isinstance(model, models.RPM):
+        # TODO: replace this call with something that doesn't use yum
+        model.metadata['repodata'] = rpm.get_package_xml(unit.storage_path)
+
+    # do this only for RPMs
+    if type_id == models.RPM.TYPE:
+        # The provides and requires are not provided by the client, so extract them now
+        _update_provides_requires(model)
 
     # save unit
     conduit.save_unit(unit)
