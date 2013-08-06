@@ -53,8 +53,9 @@ Optional Configuration Parameters
  ``distribution``, ``package_group``, and ``erratum``.
 
 ``iso_size``
- An integer, which is the maximum size of the generated ISO images in megabytes. This will default to
- a DVD sized image if it is not specified.
+ An integer, which is the maximum size of the generated ISO images in megabytes. In this case, 1
+ megabyte is 1 * 1024 * 1024 bytes. This will default to 4380 megabytes (4380 * 1024 * 1024 bytes,
+ to be exact) if it is not specified, which should fit on a single layer DVD.
 
 ``export_dir``
  A full path to an export directory. If this option is specified, the repositories are not placed in
