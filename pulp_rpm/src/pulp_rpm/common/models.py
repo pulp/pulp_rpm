@@ -293,6 +293,7 @@ TYPE_MAP = {
     PackageCategory.TYPE: PackageCategory,
     PackageGroup.TYPE: PackageGroup,
     RPM.TYPE: RPM,
+    SRPM.TYPE: SRPM,
     YumMetadataFile.TYPE: YumMetadataFile,
 }
 

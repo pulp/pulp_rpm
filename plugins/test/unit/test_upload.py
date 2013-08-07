@@ -21,7 +21,7 @@ from pulp.plugins.conduits.upload import UploadConduit
 from pulp.plugins.config import PluginCallConfiguration
 from pulp.plugins.model import Repository, SyncReport, Unit
 
-from pulp_rpm.common.models import RPM
+from pulp_rpm.common.models import RPM, SRPM
 from pulp_rpm.common import models
 from pulp_rpm.plugins.importers.yum import upload
 from pulp_rpm.plugins.importers.yum.parse import rpm
@@ -62,6 +62,41 @@ class TestUploadRPM(unittest.TestCase):
         primary = saved_unit.metadata['repodata']['primary']
         regex = r'<location href="%s"/>' % os.path.basename(self.file_path)
         self.assertTrue(re.search(regex, primary) is not None)
+
+
+class TestUploadSRPM(unittest.TestCase):
+    def setUp(self):
+        self.repo = Repository('repo1')
+        self.conduit = UploadConduit(self.repo.id, 'yum_importer', 'user', 'me')
+        self.metadata = json.load(
+            open(os.path.join(os.path.dirname(__file__), '../data/crash-trace-command-1.0-4.el6.src.json')))
+        self.model = SRPM.from_package_info(self.metadata)
+        self.file_path = os.path.join(os.path.dirname(__file__), '../data/crash-trace-command-1.0-4.el6.src.rpm')
+
+    def wrap_get_package_xml(self, storage_path):
+        return get_package_xml(self.file_path)
+
+    @mock.patch('pulp_rpm.plugins.importers.yum.parse.rpm.get_package_xml', autospec=True)
+    @mock.patch('shutil.copy', autospec=True)
+    def test_upload(self, mock_copy, mock_get_xml):
+        mock_get_xml.side_effect = self.wrap_get_package_xml
+        unit = Unit(self.model.TYPE, self.model.unit_key, self.model.metadata, self.model.relative_path)
+        self.conduit.init_unit = mock.MagicMock(spec_set=self.conduit.init_unit,
+                                                return_value=unit)
+        self.conduit.save_unit = mock.MagicMock(spec_set=self.conduit.save_unit)
+
+        report = upload.upload(self.repo, models.SRPM.TYPE, self.model.unit_key,
+                               self.model.metadata, self.file_path, self.conduit, {})
+
+        self.assertTrue(report.success_flag)
+        # now make sure the correct location tag exists
+        saved_unit = self.conduit.save_unit.call_args[0][0]
+        primary = saved_unit.metadata['repodata']['primary']
+        regex = r'<location href="%s"/>' % os.path.basename(self.file_path)
+        self.assertTrue(re.search(regex, primary) is not None)
+        # spot check that the requires were found and put in the right places
+        self.assertTrue(primary.find('zlib-devel') >= 0)
+        self.assertEqual(len(saved_unit.metadata['requires']), 2)
 
 
 class TestUploadGroup(unittest.TestCase):
@@ -133,4 +168,3 @@ WALRUS_JSON = """{
     "relativepath": "walrus-5.21-1.noarch.rpm",
     "release": "1"
 }"""
-

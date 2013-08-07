@@ -90,9 +90,6 @@ def upload(repo, type_id, unit_key, metadata, file_path, conduit, config):
     if isinstance(model, models.RPM):
         # TODO: replace this call with something that doesn't use yum
         model.metadata['repodata'] = rpm.get_package_xml(unit.storage_path)
-
-    # do this only for RPMs
-    if type_id == models.RPM.TYPE:
         # The provides and requires are not provided by the client, so extract them now
         _update_provides_requires(model)
 
