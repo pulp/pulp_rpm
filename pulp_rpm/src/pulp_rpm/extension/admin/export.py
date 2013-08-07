@@ -62,7 +62,7 @@ OPTION_END_DATE = PulpCliOption('--end-date', DESC_END_DATE, required=False,
                                 validate_func=validators.iso8601_datetime_validator)
 OPTION_EXPORT_DIR = PulpCliOption('--export-dir', DESC_EXPORT_DIR, required=False)
 OPTION_ISO_SIZE = PulpCliOption('--iso-size', DESC_ISO_SIZE, required=False,
-                                parse_func=parsers.parse_optional_non_negative_int)
+                                parse_func=parsers.parse_optional_positive_int)
 
 
 class RpmExportCommand(RunPublishRepositoryCommand):
