@@ -104,6 +104,10 @@ class RpmGroupExportCommand(PulpCliCommand):
         self.create_flag('--' + BACKGROUND, DESC_BACKGROUND)
 
     def run(self, **kwargs):
+        """
+        The run function for the export command. This is the self.method method which is defined in
+        the Command super class. This method does all the work for a group export run call.
+        """
         # Grab all the configuration options
         group_id = kwargs[options.OPTION_GROUP_ID.keyword]
         iso_prefix = kwargs[OPTION_ISO_PREFIX.keyword]
@@ -141,15 +145,12 @@ class RpmGroupExportCommand(PulpCliCommand):
         self.prompt.render_title(_('Exporting Repository Group [%s]' % group_id))
 
         # Retrieve all publish tasks for this repository group
-        tags = [tag_utils.resource_tag('repository_group', group_id),
-                tag_utils.action_tag(tag_utils.ACTION_PUBLISH_TYPE)]
-        existing_tasks = self.context.server.tasks.get_all_tasks(tags)
-        task_id = tasks.relevant_existing_task_id(existing_tasks.response_body)
+        task_id = _get_publish_task_id('repository_group', group_id, self.context)
 
         if task_id is not None:
-            msg = _('A publish task is already in progress for this repository. ')
+            msg = _('A publish task is already in progress for this repository.')
             if not background:
-                msg += _('Its progress will be tracked below.')
+                msg += _(' Its progress will be tracked below.')
             self.context.prompt.render_paragraph(msg, tag='in-progress')
         else:
             # If there is no existing publish for this repo group, start one
@@ -165,9 +166,12 @@ class RpmGroupExportCommand(PulpCliCommand):
             self.context.prompt.render_paragraph(msg, 'background')
 
 
-class ExportGroupStatusCommand(PulpCliCommand):
+class GroupExportStatusCommand(PulpCliCommand):
+    """
+    The rpm repo group export status command.
+    """
     def __init__(self, context, renderer, name='status', description=DESC_GROUP_EXPORT_STATUS):
-        super(ExportGroupStatusCommand, self).__init__(name, description, self.run)
+        super(GroupExportStatusCommand, self).__init__(name, description, self.run)
 
         self.context = context
         self.prompt = context.prompt
@@ -176,17 +180,38 @@ class ExportGroupStatusCommand(PulpCliCommand):
         self.add_option(options.OPTION_GROUP_ID)
 
     def run(self, **kwargs):
+        """
+        This is the self.method method which is defined in the Command super class. This method
+        does all the work for a group export status call.
+        """
         group_id = kwargs[options.OPTION_GROUP_ID.keyword]
         self.prompt.render_title(_('Repository Group [%s] Export Status' % group_id))
 
         # Retrieve the task id, if it exists
-        tags = [tag_utils.resource_tag('repository_group', group_id),
-                tag_utils.action_tag(tag_utils.ACTION_PUBLISH_TYPE)]
-        response = self.context.server.tasks.get_all_tasks(tags)
-        task_id = tasks.relevant_existing_task_id(response.response_body)
+        task_id = _get_publish_task_id('repository_group', group_id, self.context)
 
         if task_id is None:
             msg = _('The repository group is not performing any operations')
             self.prompt.render_paragraph(msg, tag='no-tasks')
         else:
             status.display_task_status(self.context, self.renderer, task_id)
+
+
+def _get_publish_task_id(resource_type, resource_id, context):
+    """
+    :param resource_type:   The resource type to get. See pulp.common.tags for examples. Note - the repo
+                                group is 'repository_group', but is not yet in pulp.common.tags
+    :type  resource_type:   str
+    :param resource_id:     The id of the resource to retrieve the task id for. This should be a repo or
+                            group id
+    :type resource_id:      str
+    :param context:         The client context is use when fetching existing task ids
+    :type  context:         pulp.client.extensions.core.ClientContext
+
+    :return: The task id, if it exists. If it does not, this will return None
+    :rtype:  str
+    """
+    tags = [tag_utils.resource_tag(resource_type, resource_id),
+            tag_utils.action_tag(tag_utils.ACTION_PUBLISH_TYPE)]
+    existing_tasks = context.server.tasks.get_all_tasks(tags)
+    return tasks.relevant_existing_task_id(existing_tasks.response_body)

@@ -77,7 +77,7 @@ def initialize(context):
     renderer = status.RpmGroupExportStatusRenderer(context)
     group_export_section.add_command(export.RpmGroupExportCommand(context, renderer,
                                                                   ids.EXPORT_GROUP_DISTRIBUTOR_ID))
-    group_export_section.add_command(export.ExportGroupStatusCommand(context, renderer))
+    group_export_section.add_command(export.GroupExportStatusCommand(context, renderer))
 
     uploads_section = structure.repo_uploads_section(context.cli)
     uploads_section.add_command(package.CreateRpmCommand(context, upload_manager))
