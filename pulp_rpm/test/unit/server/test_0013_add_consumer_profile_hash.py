@@ -64,7 +64,7 @@ class TestMigration(rpm_support_base.PulpRPMTests):
                           'arch': 'x86_64', 'vendor': 'Red Hat, Inc.'}]},
         ]
         self.collection.insert(consumer_unit_profiles)
-        migration_module = _import_all_the_way('pulp_rpm.migrations.0012_add_consumer_profile_hash')
+        migration_module = _import_all_the_way('pulp_rpm.migrations.0013_add_consumer_profile_hash')
 
         # Run the migration
         migration_module.migrate('arg_1', kwarg_1='kwarg_1')
@@ -82,7 +82,8 @@ class TestMigration(rpm_support_base.PulpRPMTests):
         # in a different order
         self.assertEqual(consumer_1_profile['profile_hash'], consumer_2_profile['profile_hash'])
         # Consumer 3 should have a different hash, since it has an additional package
-        self.assertNotEqual(consumer_1_profile['profile_hash'], consumer_3_rpm_profile['profile_hash'])
+        self.assertNotEqual(consumer_1_profile['profile_hash'],
+                            consumer_3_rpm_profile['profile_hash'])
 
         # Consumer 3's non-RPM profile should not have a hash
         self.assertTrue('profile_hash' not in consumer_3_other_profile)
