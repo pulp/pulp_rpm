@@ -54,12 +54,13 @@ For each Pulp-hosted repository that is protected, a consumer certificate can be
 supplied that will be distributed to consumers when they bind. That certificate
 will allow them to access the protected repository.
 
-ISO Export
-----------
+Export
+------
 
-In addition to being published as a normal yum repository, it is also possible
-to export a repository to ISOs. Large repositories will be spread across multiple
-images as necessary.
+In addition to publishing repositories as normal yum repositories over HTTP or
+HTTPS, it is also possible to export repositories to ISO images, which are published
+over HTTP or HTTPS, or to a directory on the Pulp server. Large repositories may be
+split into several ISOs.
 
 Proxy Settings
 --------------
