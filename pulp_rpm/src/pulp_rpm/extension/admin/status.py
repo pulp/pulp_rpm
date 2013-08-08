@@ -581,7 +581,7 @@ class RpmExportStatusRenderer(StatusRenderer):
         :param progress_report: A dictionary containing the progress report from the export distributor
         :type progress_report: dict
         """
-        data = progress_report[ids.TYPE_ID_DISTRIBUTOR_EXPORT]['isos']
+        data = progress_report[ids.TYPE_ID_DISTRIBUTOR_EXPORT][constants.PROGRESS_ISOS_KEYWORD]
         state = data[constants.PROGRESS_STATE_KEY]
 
         if state == constants.STATE_NOT_STARTED:
@@ -603,7 +603,8 @@ class RpmExportStatusRenderer(StatusRenderer):
         :param progress_report: A dictionary containing the progress report from the export distributor
         :type progress_report: dict
         """
-        current_state = progress_report[ids.TYPE_ID_DISTRIBUTOR_EXPORT]['metadata']['state']
+        data = progress_report[ids.TYPE_ID_DISTRIBUTOR_EXPORT][constants.PROGRESS_METADATA_KEYWORD]
+        current_state = data[constants.PROGRESS_STATE_KEY]
 
         def update_func(new_state):
             """
@@ -628,6 +629,13 @@ class RpmExportStatusRenderer(StatusRenderer):
         report = progress_report[ids.TYPE_ID_DISTRIBUTOR_EXPORT][constants.PROGRESS_PUBLISH_HTTP]
 
         def update_func(new_state):
+            """
+            The update function used for the spinner renderer
+
+            :param new_state:   The state to update publish_http_last_state with. This should come from
+                                    pulp_rpm_common.constants
+            :type new_state:    str
+            """
             self.publish_http_last_state = new_state
 
         render_general_spinner_step(self.prompt, self.publish_http_spinner,
@@ -787,6 +795,13 @@ class RpmGroupExportStatusRenderer(StatusRenderer):
         report = progress_report[ids.TYPE_ID_DISTRIBUTOR_GROUP_EXPORT][constants.PROGRESS_PUBLISH_HTTP]
 
         def update_func(new_state):
+            """
+            The update function used for the spinner renderer
+
+            :param new_state:   The state to update publish_http_last_state with. This should come from
+                                    pulp_rpm_common.constants
+            :type new_state:    str
+            """
             self.publish_http_last_state = new_state
 
         render_general_spinner_step(self.prompt, self.publish_http_spinner,

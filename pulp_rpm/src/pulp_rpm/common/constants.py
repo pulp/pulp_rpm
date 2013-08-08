@@ -39,6 +39,9 @@ PROGRESS_ISOS_KEYWORD = 'isos'
 PROGRESS_PUBLISH_HTTP = 'publish_http'
 PROGRESS_PUBLISH_HTTPS = 'publish_https'
 
+# Progress report keywords used by the export distributor progress report
+PROGRESS_METADATA_KEYWORD = 'metadata'
+
 # -- configuration ------------------------------------------------------------
 
 # Used as a note on a repository to indicate it is a Puppet repository
