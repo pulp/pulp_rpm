@@ -119,7 +119,10 @@ class Distribution(Package):
         # I don't know why this is the "id", but am following the pattern of the
         # original importer
         if kwargs['id'] is None:
-            kwargs['id'] = '-'.join(('ks', family, variant, version, arch))
+            # the original importer leaves out any elements that are None, so
+            # we will blindly trust that here.
+            id_pieces = filter(lambda x: x is not None, ('ks', family, variant, version, arch))
+            kwargs['id'] = '-'.join(id_pieces)
         super(Distribution, self).__init__(kwargs)
 
     @property
