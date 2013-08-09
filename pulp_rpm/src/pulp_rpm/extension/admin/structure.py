@@ -156,10 +156,28 @@ def repo_export_section(cli):
 
 
 def repo_group_section(cli):
+    """
+    Retrieves the group section from the CLI
+
+    :param cli: CLI instance to search within
+    :type  cli: pulp.client.extensions.core.PulpCli
+
+    :return: section instance that matches the path
+    :rtype:  pulp.client.extensions.core.PulpCliSection
+    """
     return _find_section(cli, SECTION_ROOT, SECTION_REPO, SECTION_GROUP)
 
 
 def repo_group_export_section(cli):
+    """
+    Retrieves the group export section from the CLI
+
+    :param cli: CLI instance to search within
+    :type  cli: pulp.client.extensions.core.PulpCli
+
+    :return: section instance that matches the path
+    :rtype:  pulp.client.extensions.core.PulpCliSection
+    """
     return _find_section(cli, SECTION_ROOT, SECTION_REPO, SECTION_GROUP, SECTION_EXPORT)
 
 

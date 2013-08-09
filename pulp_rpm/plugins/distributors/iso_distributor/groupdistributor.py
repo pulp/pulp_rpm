@@ -87,8 +87,8 @@ class GroupISODistributor(GroupDistributor):
         :param config:              plugin configuration instance
         :type  config:              pulp.plugins.config.PluginCallConfiguration
         :param related_repo_groups: list of other repositories using this distributor type; empty list
-                                        if there are none; entries are of type
-                                        pulp.plugins.model.RelatedRepositoryGroup
+                                    if there are none; entries are of type
+                                    pulp.plugins.model.RelatedRepositoryGroup
         :type  related_repo_groups: list
 
         :return: tuple of (bool, str) to describe the result
@@ -129,10 +129,10 @@ class GroupISODistributor(GroupDistributor):
             """
             Progress callback used to update the progress report for the publish conduit
 
-            :param progress_keyword: The keyword to assign the status to in the progress report dict
-            :type progress_keyword: str
-            :param status: The status to assign to the keyword.
-            :type status: dict
+            :param progress_keyword:    The keyword to assign the status to in the progress report dict
+            :type  progress_keyword:    str
+            :param status:              The status to assign to the keyword.
+            :type  status:              dict
             """
             progress_status[progress_keyword] = status
             publish_conduit.set_progress(progress_status)
@@ -189,13 +189,13 @@ class GroupISODistributor(GroupDistributor):
         and then calls publish_isos method in export_utils
 
         :param repo_group:          metadata describing the repository group. Used to retrieve the
-                                        working directory and group id.
+                                    working directory and group id.
         :type  repo_group:          pulp.plugins.model.RepositoryGroup
         :param config:              plugin configuration instance
         :type config:               pulp.plugins.config.PluginCallConfiguration
         :param progress_callback:   callback to report progress info to publish_conduit. This function is
-                                        expected to take the following arguments: type_id, a string, and
-                                        status, which is a dict
+                                    expected to take the following arguments: type_id, a string, and
+                                    status, which is a dict
         :type progress_callback:    function
         """
 

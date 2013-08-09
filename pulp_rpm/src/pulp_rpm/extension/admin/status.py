@@ -461,6 +461,12 @@ class RpmExportStatusRenderer(StatusRenderer):
     """
 
     def __init__(self, context):
+        """
+        Class constructor
+
+        :param context: The client context to use for this renderer.
+        :type  context: pulp.client.extensions.core.ClientContext
+        """
         super(RpmExportStatusRenderer, self).__init__(context)
 
         # Publish Steps
@@ -495,6 +501,14 @@ class RpmExportStatusRenderer(StatusRenderer):
             self.render_isos_step(progress_report)
             self.render_publish_https_step(progress_report)
             self.render_publish_http_step(progress_report)
+
+    def update_func(self, last_state, new_state):
+        """
+        A callback function used to update the last state for metadata generation
+        :param new_state: The new last state. Expected to be from pulp_rpm.common.constants
+        :type new_state: str
+        """
+        self.generate_metadata_last_state = new_state
 
     def render_rpms_step(self, progress_report):
         """
@@ -706,7 +720,6 @@ class RpmGroupExportStatusRenderer(StatusRenderer):
 
         :param context: The client context to use for this renderer.
         :type  context: pulp.client.extensions.core.ClientContext
-        :return:
         """
         super(RpmGroupExportStatusRenderer, self).__init__(context)
 

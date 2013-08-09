@@ -38,7 +38,7 @@ DESC_END_DATE = _('end date for an incremental export; only content associated w
 DESC_EXPORT_DIR = _('the full path to a directory; if specified, the repository will be exported '
                     'to the given directory instead of being placed in ISOs and published via '
                     'HTTP or HTTPS')
-DESC_ISO_SIZE = _('the maximum size, in megabytes, of the exported ISOs; if this is not '
+DESC_ISO_SIZE = _('the maximum size, in megabytes, of each exported ISO; if this is not '
                   'specified, single layer DVD-sized ISOs are created')
 DESC_BACKGROUND = _('if specified, the CLI process will end but the process will continue on '
                     'the server; the progress can be later displayed using the status command')
@@ -70,6 +70,12 @@ class RpmExportCommand(RunPublishRepositoryCommand):
     The 'pulp-admin rpm repo export run' command
     """
     def __init__(self, context):
+        """
+        The constructor for RpmExportCommand
+
+        :param context: The client context to use for this command
+        :type  context: pulp.client.extensions.core.ClientContext
+        """
         override_config_options = [OPTION_EXPORT_DIR, OPTION_ISO_PREFIX, OPTION_ISO_SIZE,
                                    OPTION_START_DATE, OPTION_END_DATE]
 
@@ -85,6 +91,20 @@ class RpmGroupExportCommand(PulpCliCommand):
     The 'pulp-admin rpm repo group export run' command.
     """
     def __init__(self, context, renderer, distributor_id, name='run', description=DESC_GROUP_EXPORT_RUN):
+        """
+        The constructor for RpmGroupExportCommand
+
+        :param context:         The client context to use for this command
+        :type  context:         pulp.client.extensions.core.ClientContext
+        :param renderer:        The progress renderer to use with this command
+        :type  renderer:        pulp.client.commands.repo.sync_publish.StatusRenderer
+        :param distributor_id:  The distributor id to use when publishing the repository group
+        :type  distributor_id:  str
+        :param name:            The name to use for the command. This should take i18n into account
+        :type  name:            str
+        :param description:     The description to use for the command. This should take i18n into account
+        :type description:      str
+        """
         super(RpmGroupExportCommand, self).__init__(name, description, self.run)
 
         self.context = context
@@ -171,6 +191,18 @@ class GroupExportStatusCommand(PulpCliCommand):
     The rpm repo group export status command.
     """
     def __init__(self, context, renderer, name='status', description=DESC_GROUP_EXPORT_STATUS):
+        """
+        The constructor for GroupExportStatusCommand
+
+        :param context:         The client context to use for this command
+        :type  context:         pulp.client.extensions.core.ClientContext
+        :param renderer:        The progress renderer to use with this command
+        :type  renderer:        pulp.client.commands.repo.sync_publish.StatusRenderer
+        :param name:            The name to use for the command. This should take i18n into account
+        :type  name:            str
+        :param description:     The description to use for the command. This should take i18n into account
+        :type description:      str
+        """
         super(GroupExportStatusCommand, self).__init__(name, description, self.run)
 
         self.context = context
@@ -200,12 +232,12 @@ class GroupExportStatusCommand(PulpCliCommand):
 def _get_publish_task_id(resource_type, resource_id, context):
     """
     :param resource_type:   The resource type to get. See pulp.common.tags for examples. Note - the repo
-                                group is 'repository_group', but is not yet in pulp.common.tags
+                            group is 'repository_group', but is not yet in pulp.common.tags
     :type  resource_type:   str
     :param resource_id:     The id of the resource to retrieve the task id for. This should be a repo or
                             group id
-    :type resource_id:      str
-    :param context:         The client context is use when fetching existing task ids
+    :type  resource_id:     str
+    :param context:         The client context is used when fetching existing task ids
     :type  context:         pulp.client.extensions.core.ClientContext
 
     :return: The task id, if it exists. If it does not, this will return None
