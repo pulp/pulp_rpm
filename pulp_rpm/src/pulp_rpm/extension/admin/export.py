@@ -38,7 +38,7 @@ DESC_END_DATE = _('end date for an incremental export; only content associated w
 DESC_EXPORT_DIR = _('the full path to a directory; if specified, the repository will be exported '
                     'to the given directory instead of being placed in ISOs and published via '
                     'HTTP or HTTPS')
-DESC_ISO_SIZE = _('the maximum size, in megabytes, of each exported ISO; if this is not '
+DESC_ISO_SIZE = _('the maximum size, in MiB (1024 kiB), of each exported ISO; if this is not '
                   'specified, single layer DVD-sized ISOs are created')
 DESC_BACKGROUND = _('if specified, the CLI process will end but the process will continue on '
                     'the server; the progress can be later displayed using the status command')
