@@ -148,7 +148,7 @@ def link_errata_to_rpms(conduit, errata_model, errata_unit):
     """
     fields = list(models.RPM.UNIT_KEY_NAMES)
     fields.append('_storage_path')
-    filters = {'$or': errata_model.package_unit_keys}
+    filters = {'$or': errata_model.rpm_search_dicts}
     for model_type in (models.RPM.TYPE, models.SRPM.TYPE):
         criteria = UnitAssociationCriteria(type_ids=[model_type], unit_fields=fields,
                                            unit_filters=filters)

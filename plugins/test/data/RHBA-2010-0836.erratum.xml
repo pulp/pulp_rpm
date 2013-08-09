@@ -1,0 +1,32 @@
+<updates>
+<update from="security@redhat.com" status="final" type="bugfix" version="4"><id>RHBA-2010:0836</id><title>NetworkManager bug fix an
+d enhancement update</title><issued date="2010-11-10 00:00:00"/><updated date="2010-11-10 00:00:00"/><rights>Copyright 2010 Red Hat Inc</rights><summary>Updated NetworkManager packages that fix a bug and add various enhancements are
+now available for Red Hat Enterprise Linux 6.
+</summary><description>NetworkManager is a system network service that manages network devices and
+connections, attempting to keep active network connectivity when available. It
+manages Ethernet, wireless, mobile broadband (WWAN), and PPPoE devices, and
+provides VPN integration with a variety of different VPN services.
+
+This update fixes the following bug:
+
+* Under certain circumstances, the "Enable Networking" and "Enable Wireless"
+menu items in the panel applet may have been insensitive. This error no longer
+occurs, and both options are now available as expected. (BZ#638598)
+
+Also, this update adds the following enhancements:
+
+* In enterprise wireless networks, the proactive key caching can now be used
+along with the PEAP-GTC authentication mechanism.
+
+* Punjabi translation of the network applet has been updated.
+
+Users are advised to upgrade to these updated packages, which resolve this
+issue, and add these enhancements.
+</description><solution>Before applying this update, make sure that all previously-released errata
+relevant to your system have been applied.
+
+This update is available via Red Hat Network. Details on how to use the Red
+Hat Network to apply this update are available at
+https://access.redhat.com/kb/docs/DOC-11259
+</solution><references><reference href="https://rhn.redhat.com/errata/RHBA-2010-0836.html" type="self" title="RHBA-2010:0836"/><reference href="https://bugzilla.redhat.com/bugzilla/show_bug.cgi?id=638598" id="638598" type="bugzilla" title="Enable Networking and Enable Wireless options are grayed out in NetworkManager Applet after update"/></references><pkglist><collection short="rhel-x86_64-server-6"><name>Red Hat Enterprise Linux Server (v. 6 for 64-bit x86_64)</name><package name="NetworkManager-glib" version="0.8.1" release="5.el6_0.1" epoch="1" arch="i686" src="NetworkManager-0.8.1-5.el6_0.1.src.rpm"><filename>NetworkManager-glib-0.8.1-5.el6_0.1.i686.rpm</filename><sum type="sha256">4f9a37a475a7ef0cdeea963d30c84298a99cb8640a5a7bb9ee22d39c0f870177</sum></package><package name="NetworkManager" version="0.8.1" release="5.el6_0.1" epoch="1" arch="x86_64" src="NetworkManager-0.8.1-5.el6_0.1.src.rpm"><filename>NetworkManager-0.8.1-5.el6_0.1.x86_64.rpm</filename><sum type="sha256">5cf5374cecd88b4ac3eabc20babfc0e25ee049f21dc8ead5e1aa128112f7c0c3</sum></package><package name="NetworkManager-glib" version="0.8.1" release="5.el6_0.1" epoch="1" arch="x86_64" src="NetworkManager-0.8.1-5.el6_0.1.src.rpm"><filename>NetworkManager-glib-0.8.1-5.el6_0.1.x86_64.rpm</filename><sum type="sha256">8a4d9e10521857662926f31bce305e4a3f452cd35f6c7cee2d4f38fe6e55f54b</sum></package><package name="NetworkManager-gnome" version="0.8.1" release="5.el6_0.1" epoch="1" arch="x86_64" src="NetworkManager-0.8.1-5.el6_0.1.src.rpm"><filename>NetworkManager-gnome-0.8.1-5.el6_0.1.x86_64.rpm</filename><sum type="sha256">444c6a4078ec0f6ef41f7890e87cdc21b752209738b72698c4a03120e7ad900a</sum></package></collection></pkglist></update>
+</updates>

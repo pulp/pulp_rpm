@@ -211,25 +211,31 @@ class Errata(Package):
         Package.__init__(self, locals())
 
     @property
-    def package_unit_keys(self):
+    def rpm_search_dicts(self):
         ret = []
         for collection in self.metadata.get('pkglist', []):
             for package in collection.get('packages', []):
-                if 'sum' in package:
+                if len(package.get('sum') or []) == 2:
                     checksum = package['sum'][1]
                     checksumtype = package['sum'][0]
-                else:
+                elif 'sums' in package and 'type' in package:
                     # these are the field names we get from an erratum upload.
                     # I have no idea why they are different.
                     checksum = package['sums']
                     checksumtype = package['type']
-
+                else:
+                    checksum = None
+                    checksumtype = None
                 rpm = RPM(name=package['name'], epoch=package['epoch'],
                            version=package['version'], release=package['release'],
                            arch=package['arch'], checksum=checksum,
                            checksumtype=checksumtype, metadata={},
                 )
-                ret.append(rpm.unit_key)
+                unit_key = rpm.unit_key
+                for key in ['checksum', 'checksumtype']:
+                    if unit_key[key] is None:
+                        del unit_key[key]
+                ret.append(unit_key)
         return ret
 
 
