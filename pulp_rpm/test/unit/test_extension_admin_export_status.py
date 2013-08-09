@@ -74,8 +74,8 @@ class TestRpmExportStatusRenderer(rpm_support_base.PulpClientTests):
             }
         }
 
-        status.render_general_spinner_step = mock.Mock(spec=status.render_general_spinner_step)
-        status.render_itemized_in_progress_state = mock.Mock(spec=status.render_itemized_in_progress_state)
+        status.render_general_spinner_step = mock.Mock(wraps=status.render_general_spinner_step)
+        status.render_itemized_in_progress_state = mock.Mock(wraps=status.render_itemized_in_progress_state)
 
     def test_display_report(self):
         # Setup
@@ -212,6 +212,13 @@ class TestRpmExportStatusRenderer(rpm_support_base.PulpClientTests):
         self.assertEqual(constants.STATE_NOT_STARTED,
                          status.render_general_spinner_step.call_args[0][2])
 
+        # Update the state and assert that the last_state is updated correctly
+        self.progress[ids.TYPE_ID_DISTRIBUTOR_EXPORT][constants.PROGRESS_METADATA_KEYWORD] = {
+            constants.PROGRESS_STATE_KEY: constants.STATE_RUNNING
+        }
+        self.renderer.render_generate_metadata_step(self.progress)
+        self.assertEqual(constants.STATE_RUNNING, self.renderer.generate_metadata_last_state)
+
     def test_render_publish_http_step(self):
         """
         This just checks that the render_general_spinner_step gets called for render_publish_http_step
@@ -223,6 +230,13 @@ class TestRpmExportStatusRenderer(rpm_support_base.PulpClientTests):
         self.assertEqual(constants.STATE_NOT_STARTED,
                          status.render_general_spinner_step.call_args[0][2])
 
+        # Update the state and assert that the last_state is updated correctly
+        self.progress[ids.TYPE_ID_DISTRIBUTOR_EXPORT][constants.PROGRESS_PUBLISH_HTTP] = {
+            constants.PROGRESS_STATE_KEY: constants.STATE_RUNNING
+        }
+        self.renderer.render_publish_http_step(self.progress)
+        self.assertEqual(constants.STATE_RUNNING, self.renderer.publish_http_last_state)
+
     def test_render_publish_https_step(self):
         """
         This just checks that the render_general_spinner_step gets called for render_publish_https_step
@@ -233,6 +247,13 @@ class TestRpmExportStatusRenderer(rpm_support_base.PulpClientTests):
                          status.render_general_spinner_step.call_args[0][1])
         self.assertEqual(constants.STATE_NOT_STARTED,
                          status.render_general_spinner_step.call_args[0][2])
+
+        # Update the state and assert that the last_state is updated correctly
+        self.progress[ids.TYPE_ID_DISTRIBUTOR_EXPORT][constants.PROGRESS_PUBLISH_HTTPS] = {
+            constants.PROGRESS_STATE_KEY: constants.STATE_RUNNING
+        }
+        self.renderer.render_publish_https_step(self.progress)
+        self.assertEqual(constants.STATE_RUNNING, self.renderer.publish_https_last_state)
 
 
 class TestGroupExportStatusRenderer(rpm_support_base.PulpClientTests):
@@ -267,8 +288,8 @@ class TestGroupExportStatusRenderer(rpm_support_base.PulpClientTests):
             }
         }
 
-        status.render_general_spinner_step = mock.Mock(spec=status.render_general_spinner_step)
-        status.render_itemized_in_progress_state = mock.Mock(spec=status.render_itemized_in_progress_state)
+        status.render_general_spinner_step = mock.Mock(wraps=status.render_general_spinner_step)
+        status.render_itemized_in_progress_state = mock.Mock(wraps=status.render_itemized_in_progress_state)
 
     def test_display_report(self):
         # Setup
@@ -347,6 +368,13 @@ class TestGroupExportStatusRenderer(rpm_support_base.PulpClientTests):
         self.assertEqual(constants.STATE_NOT_STARTED,
                          status.render_general_spinner_step.call_args[0][2])
 
+        # Update the state and assert that the last_state is updated correctly
+        self.progress[ids.TYPE_ID_DISTRIBUTOR_GROUP_EXPORT][constants.PROGRESS_PUBLISH_HTTP] = {
+            constants.PROGRESS_STATE_KEY: constants.STATE_RUNNING
+        }
+        self.renderer.render_publish_http_step(self.progress)
+        self.assertEqual(constants.STATE_RUNNING, self.renderer.publish_http_last_state)
+
     def test_render_publish_https_step(self):
         """
         This just checks that the render_general_spinner_step gets called for render_publish_https_step
@@ -357,3 +385,10 @@ class TestGroupExportStatusRenderer(rpm_support_base.PulpClientTests):
                          status.render_general_spinner_step.call_args[0][1])
         self.assertEqual(constants.STATE_NOT_STARTED,
                          status.render_general_spinner_step.call_args[0][2])
+
+        # Update the state and assert that the last_state is updated correctly
+        self.progress[ids.TYPE_ID_DISTRIBUTOR_GROUP_EXPORT][constants.PROGRESS_PUBLISH_HTTPS] = {
+            constants.PROGRESS_STATE_KEY: constants.STATE_RUNNING
+        }
+        self.renderer.render_publish_https_step(self.progress)
+        self.assertEqual(constants.STATE_RUNNING, self.renderer.publish_https_last_state)

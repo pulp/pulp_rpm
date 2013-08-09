@@ -15,6 +15,7 @@ plugins (both the sync and publish operations).
 """
 
 from gettext import gettext as _
+import functools
 
 from pulp.client.commands.repo.sync_publish import StatusRenderer
 
@@ -502,14 +503,6 @@ class RpmExportStatusRenderer(StatusRenderer):
             self.render_publish_https_step(progress_report)
             self.render_publish_http_step(progress_report)
 
-    def update_func(self, last_state, new_state):
-        """
-        A callback function used to update the last state for metadata generation
-        :param new_state: The new last state. Expected to be from pulp_rpm.common.constants
-        :type new_state: str
-        """
-        self.generate_metadata_last_state = new_state
-
     def render_rpms_step(self, progress_report):
         """
         Render the rpm export progress.
@@ -620,17 +613,9 @@ class RpmExportStatusRenderer(StatusRenderer):
         data = progress_report[ids.TYPE_ID_DISTRIBUTOR_EXPORT][constants.PROGRESS_METADATA_KEYWORD]
         current_state = data[constants.PROGRESS_STATE_KEY]
 
-        def update_func(new_state):
-            """
-            A callback function used to update the last state for metadata generation
-            :param new_state: The new last state. Expected to be from pulp_rpm.common.constants
-            :type new_state: str
-            """
-            self.generate_metadata_last_state = new_state
-
         render_general_spinner_step(self.prompt, self.generate_metadata_spinner, current_state,
                                     self.generate_metadata_last_state, _('Generating metadata...'),
-                                    update_func)
+                                    functools.partial(setattr, self, 'generate_metadata_last_state'))
 
     def render_publish_http_step(self, progress_report):
         """
@@ -642,19 +627,10 @@ class RpmExportStatusRenderer(StatusRenderer):
         # Grab the http report out of the progress_report dictionary
         report = progress_report[ids.TYPE_ID_DISTRIBUTOR_EXPORT][constants.PROGRESS_PUBLISH_HTTP]
 
-        def update_func(new_state):
-            """
-            The update function used for the spinner renderer
-
-            :param new_state:   The state to update publish_http_last_state with. This should come from
-                                    pulp_rpm_common.constants
-            :type new_state:    str
-            """
-            self.publish_http_last_state = new_state
-
         render_general_spinner_step(self.prompt, self.publish_http_spinner,
                                     report[constants.PROGRESS_STATE_KEY], self.publish_http_last_state,
-                                    _('Publishing over HTTP...'), update_func)
+                                    _('Publishing over HTTP...'),
+                                    functools.partial(setattr, self, 'publish_http_last_state'))
 
     def render_publish_https_step(self, progress_report):
         """
@@ -667,19 +643,10 @@ class RpmExportStatusRenderer(StatusRenderer):
         # Grab the https report out of the progress_report dictionary
         report = progress_report[ids.TYPE_ID_DISTRIBUTOR_EXPORT][constants.PROGRESS_PUBLISH_HTTPS]
 
-        def update_func(new_state):
-            """
-            The update function used for the spinner renderer
-
-            :param new_state: The state to update publish_https_last_state with. This should come from
-                                  pulp_rpm_common.constants
-            :type  new_state: str
-            """
-            self.publish_https_last_state = new_state
-
         render_general_spinner_step(self.prompt, self.publish_https_spinner,
                                     report[constants.PROGRESS_STATE_KEY], self.publish_https_last_state,
-                                    _('Publishing over HTTPS...'), update_func)
+                                    _('Publishing over HTTPS...'),
+                                    functools.partial(setattr, self, 'publish_https_last_state'))
 
 
 class RpmGroupExportStatusRenderer(StatusRenderer):
@@ -807,19 +774,10 @@ class RpmGroupExportStatusRenderer(StatusRenderer):
         # Grab the http report out of the progress_report dictionary
         report = progress_report[ids.TYPE_ID_DISTRIBUTOR_GROUP_EXPORT][constants.PROGRESS_PUBLISH_HTTP]
 
-        def update_func(new_state):
-            """
-            The update function used for the spinner renderer
-
-            :param new_state:   The state to update publish_http_last_state with. This should come from
-                                    pulp_rpm_common.constants
-            :type new_state:    str
-            """
-            self.publish_http_last_state = new_state
-
         render_general_spinner_step(self.prompt, self.publish_http_spinner,
                                     report[constants.PROGRESS_STATE_KEY], self.publish_http_last_state,
-                                    _('Publishing over HTTP...'), update_func)
+                                    _('Publishing over HTTP...'),
+                                    functools.partial(setattr, self, 'publish_http_last_state'))
 
     def render_publish_https_step(self, progress_report):
         """
@@ -832,16 +790,7 @@ class RpmGroupExportStatusRenderer(StatusRenderer):
         # Grab the https report out of the progress_report dictionary
         report = progress_report[ids.TYPE_ID_DISTRIBUTOR_GROUP_EXPORT][constants.PROGRESS_PUBLISH_HTTPS]
 
-        def update_func(new_state):
-            """
-            The update function used for the spinner renderer
-
-            :param new_state:   The state to update publish_https_last_state with. This should come from
-                                    pulp_rpm_common.constants
-            :type new_state:    str
-            """
-            self.publish_https_last_state = new_state
-
         render_general_spinner_step(self.prompt, self.publish_https_spinner,
                                     report[constants.PROGRESS_STATE_KEY], self.publish_https_last_state,
-                                    _('Publishing over HTTPS...'), update_func)
+                                    _('Publishing over HTTPS...'),
+                                    functools.partial(setattr, self, 'publish_https_last_state'))
