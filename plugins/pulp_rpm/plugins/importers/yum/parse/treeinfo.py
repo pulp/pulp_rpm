@@ -165,10 +165,19 @@ def parse_treefile(path):
         except ConfigParser.ParsingError:
             # wouldn't need this if ParsingError subclassed ValueError.
             raise ValueError('could not parse treeinfo file')
+
+    # apparently the 'variant' is optional. for example, it does not appear
+    # in the RHEL 5.9 treeinfo file. This is how the previous importer
+    # handled that.
+    try:
+        variant = parser.get(SECTION_GENERAL, 'variant')
+    except ConfigParser.NoOptionError:
+        variant = None
+
     try:
         model = models.Distribution(
             parser.get(SECTION_GENERAL, 'family'),
-            parser.get(SECTION_GENERAL, 'variant'),
+            variant,
             parser.get(SECTION_GENERAL, 'version'),
             parser.get(SECTION_GENERAL, 'arch'),
             metadata={}
