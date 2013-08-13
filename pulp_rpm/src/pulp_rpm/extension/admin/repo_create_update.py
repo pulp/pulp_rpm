@@ -226,6 +226,24 @@ class RpmRepoUpdateCommand(UpdateRepositoryCommand, ImporterConfigMixin):
         # Adds all distributor config options
         repo_options.add_distributor_config_to_command(self)
 
+    # -- importer config mixin overrides --------------------------------------
+
+    def populate_sync_group(self):
+        """
+        Overridden from ImporterConfigMixin to add in the skip option.
+        """
+        super(RpmRepoUpdateCommand, self).populate_sync_group()
+        self.sync_group.add_option(repo_options.OPT_SKIP)
+
+    def parse_sync_group(self, user_input):
+        """
+        Overridden from ImporterConfigMixin to add the skip option
+        """
+        config = super(RpmRepoUpdateCommand, self).parse_sync_group(user_input)
+        safe_parse(user_input, config, repo_options.OPT_SKIP.keyword, CONFIG_KEY_SKIP)
+        return config
+
+
     def run(self, **kwargs):
 
         # Remove any entries that weren't set by the user and translate those that are
