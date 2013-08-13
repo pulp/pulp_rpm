@@ -226,8 +226,6 @@ class RpmRepoUpdateCommand(UpdateRepositoryCommand, ImporterConfigMixin):
         # Adds all distributor config options
         repo_options.add_distributor_config_to_command(self)
 
-    # -- importer config mixin overrides --------------------------------------
-
     def populate_sync_group(self):
         """
         Overridden from ImporterConfigMixin to add in the skip option.
@@ -238,11 +236,16 @@ class RpmRepoUpdateCommand(UpdateRepositoryCommand, ImporterConfigMixin):
     def parse_sync_group(self, user_input):
         """
         Overridden from ImporterConfigMixin to add the skip option
+
+        :param user_input: keyword arguments from the CLI framework containing user input
+        :type  user_input: dict
+
+        :return: suitable representation of the config that can be stored on the repo
+        :rtype:  dict
         """
         config = super(RpmRepoUpdateCommand, self).parse_sync_group(user_input)
         safe_parse(user_input, config, repo_options.OPT_SKIP.keyword, CONFIG_KEY_SKIP)
         return config
-
 
     def run(self, **kwargs):
 
