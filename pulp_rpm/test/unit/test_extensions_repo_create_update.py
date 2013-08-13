@@ -252,6 +252,7 @@ class RpmRepoUpdateCommandTests(rpm_support_base.PulpClientTests):
             self.options_bundle.opt_feed.keyword : 'http://localhost',
             repo_options.OPT_SERVE_HTTP.keyword : True,
             repo_options.OPT_SERVE_HTTPS.keyword : True,
+            repo_options.OPT_SKIP.keyword : [ids.TYPE_ID_RPM],
         }
 
         self.server_mock.request.return_value = 200, {}
@@ -273,14 +274,17 @@ class RpmRepoUpdateCommandTests(rpm_support_base.PulpClientTests):
 
         yum_imp_config = body['importer_config']
         self.assertEqual(yum_imp_config[constants.KEY_FEED], 'http://localhost')
+        self.assertEqual(yum_imp_config[repo_create_update.CONFIG_KEY_SKIP], [ids.TYPE_ID_RPM])
 
         yum_dist_config = body['distributor_configs'][ids.YUM_DISTRIBUTOR_ID]
         self.assertEqual(yum_dist_config['http'], True)
         self.assertEqual(yum_dist_config['https'], True)
+        self.assertEqual(yum_dist_config['skip'],  [ids.TYPE_ID_RPM])
         
         iso_dist_config = body['distributor_configs'][ids.EXPORT_DISTRIBUTOR_ID]
         self.assertEqual(iso_dist_config['http'], True)
         self.assertEqual(iso_dist_config['https'], True)
+        self.assertEqual(iso_dist_config['skip'],  [ids.TYPE_ID_RPM])
 
     def test_run_through_cli(self):
         # Setup
