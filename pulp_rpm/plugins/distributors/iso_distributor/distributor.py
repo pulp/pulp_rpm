@@ -147,6 +147,7 @@ class ISODistributor(Distributor):
             models.Distribution.TYPE: {'state': constants.STATE_NOT_STARTED},
             models.PackageCategory.TYPE: {'state': constants.STATE_NOT_STARTED},
             models.PackageGroup.TYPE: {'state': constants.STATE_NOT_STARTED},
+            'metadata': {'state': constants.STATE_NOT_STARTED},
             'isos': {'state': constants.STATE_NOT_STARTED},
             'publish_http': {'state': constants.STATE_NOT_STARTED},
             'publish_https': {'state': constants.STATE_NOT_STARTED},
@@ -167,7 +168,7 @@ class ISODistributor(Distributor):
         # If a date filter is not present, do a complete export. If it is, do an incremental export.
         if self.date_filter:
             result = export_utils.export_incremental_content(self.working_dir, publish_conduit,
-                                                             self.date_filter)
+                                                             self.date_filter, progress_callback)
         else:
             result = export_utils.export_complete_repo(repo.id, self.working_dir, publish_conduit,
                                                        config, progress_callback)

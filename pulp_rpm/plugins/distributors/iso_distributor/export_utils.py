@@ -109,7 +109,7 @@ def validate_export_config(config):
     :type  config:  pulp.plugins.config.PluginCallConfiguration
 
     :return: a tuple in the form (bool, str) where bool is True if the config is valid. The str
-                 describes the error if the configuration is invalid. i18n is taken into account.
+            describes the error if the configuration is invalid. i18n is taken into account.
     :rtype:  tuple
     """
     # Check for the required configuration keys, as defined in constants
@@ -200,7 +200,7 @@ def retrieve_repo_config(repo, config):
     :type  config:  pulp.plugins.config.PluginCallConfiguration
 
     :return: A tuple, (str, dict), consisting of the full path to the working directory and a
-                date filter to use directly in a mongo query.
+            date filter to use directly in a mongo query.
     :rtype:  tuple
     """
     # Retrieve the yum distributor configuration for this repository and extract the relative url
@@ -227,12 +227,12 @@ def retrieve_group_export_config(repo_group, config):
     :param repo_group:  The repository group to get repositories from
     :type  repo_group:  pulp.plugins.model.RepositoryGroup
     :param config:      The configuration to use when creating the date filter and determining the
-                            working directory for repositories
+                        working directory for repositories
     :type  config:      pulp.plugins.config.PluginCallConfiguration
 
     :return:            Tuple in the following format: (list of (repo_id, working_dir), date_filter).
-                            The repo_id and working_dir are of type str, and the date filter is of type
-                            dict. working_dir is the full path to the repository's working directory.
+                        The repo_id and working_dir are of type str, and the date filter is of type
+                        dict. working_dir is the full path to the repository's working directory.
     :rtype:             (list of tuple, dict)
     """
     # The export directory, if it exists, is where the group will be exported.
@@ -267,8 +267,8 @@ def get_repo_relative_url(repo_id):
     :param repo_id: The repo id to get the relative url for
     :type  repo_id: str
 
-    :return: The relative url, or if it could not be retrieved from the distributor config,
-                        the repository id.
+    :return: The relative url, or if it could not be retrieved from the distributor config, the
+            repository id.
     :rtype:  str
     """
     # Retrieve the yum distributor configuration for this repository and extract the relative url
@@ -312,12 +312,12 @@ def init_progress_report(items_total=0):
     :rtype:  dict
     """
     return {
-        "state": constants.STATE_RUNNING,
-        "num_success": 0,
-        "num_error": 0,
-        "items_left": items_total,
-        "items_total": items_total,
-        "error_details": [],
+        constants.PROGRESS_STATE_KEY: constants.STATE_RUNNING,
+        constants.PROGRESS_NUM_SUCCESS_KEY: 0,
+        constants.PROGRESS_NUM_ERROR_KEY: 0,
+        constants.PROGRESS_ITEMS_LEFT_KEY: items_total,
+        constants.PROGRESS_ITEMS_TOTAL_KEY: items_total,
+        constants.PROGRESS_ERROR_DETAILS_KEY: [],
     }
 
 
@@ -394,11 +394,11 @@ def export_rpm(working_dir, rpm_units, progress_callback=None):
             msg = "Unable to copy %s to %s" % (source_path, destination_path)
             _logger.error(msg)
             errors.append(msg)
-            progress_status["num_error"] += 1
-            progress_status["items_left"] -= 1
+            progress_status[constants.PROGRESS_NUM_ERROR_KEY] += 1
+            progress_status[constants.PROGRESS_ITEMS_LEFT_KEY] -= 1
             continue
-        progress_status["num_success"] += 1
-        progress_status["items_left"] -= 1
+        progress_status[constants.PROGRESS_NUM_SUCCESS_KEY] += 1
+        progress_status[constants.PROGRESS_ITEMS_LEFT_KEY] -= 1
 
     summary["num_package_units_attempted"] += len(rpm_units)
     summary["num_package_units_exported"] += len(rpm_units) - len(errors)
@@ -407,12 +407,13 @@ def export_rpm(working_dir, rpm_units, progress_callback=None):
     # If errors occurred, write them to details and set the state to failed.
     if errors:
         details['errors']['rpm_export'] = errors
-        progress_status['state'] = constants.STATE_FAILED
-        set_progress(ids.TYPE_ID_RPM, progress_status, progress_callback)
+        progress_status[constants.PROGRESS_STATE_KEY] = constants.STATE_FAILED
+        progress_status[constants.PROGRESS_ERROR_DETAILS_KEY] = errors
+        set_progress(models.RPM.TYPE, progress_status, progress_callback)
         return summary, details
 
-    progress_status['state'] = constants.STATE_COMPLETE
-    set_progress(ids.TYPE_ID_RPM, progress_status, progress_callback)
+    progress_status[constants.PROGRESS_STATE_KEY] = constants.STATE_COMPLETE
+    set_progress(models.RPM.TYPE, progress_status, progress_callback)
 
     return summary, details
 
@@ -432,24 +433,25 @@ def export_errata(working_dir, errata_units, progress_callback=None):
     :return: The updateinfo.xml file path
     :rtype:  str
     """
-    progress_status = init_progress_report()
+    progress_status = init_progress_report(len(errata_units))
 
     # If there are no errata units to export, quit.
     if not errata_units:
-        progress_status['state'] = constants.STATE_COMPLETE
+        progress_status[constants.PROGRESS_STATE_KEY] = constants.STATE_COMPLETE
         set_progress(ids.TYPE_ID_ERRATA, progress_status, progress_callback)
         return
 
     # Update the progress status
-    progress_status['state'] = constants.STATE_RUNNING
+    progress_status[constants.PROGRESS_STATE_KEY] = constants.STATE_RUNNING
     set_progress(ids.TYPE_ID_ERRATA, progress_status, progress_callback)
 
     # Write the updateinfo.xml file to the working directory
     updateinfo_path = updateinfo.updateinfo(errata_units, working_dir)
 
     # Set the progress status, summary, and details
-    progress_status['state'] = constants.STATE_COMPLETE
-    progress_status['num_success'] = len(errata_units)
+    progress_status[constants.PROGRESS_STATE_KEY] = constants.STATE_COMPLETE
+    progress_status[constants.PROGRESS_NUM_SUCCESS_KEY] = len(errata_units)
+    progress_status[constants.PROGRESS_ITEMS_LEFT_KEY] = 0
     set_progress(ids.TYPE_ID_ERRATA, progress_status, progress_callback)
 
     return updateinfo_path
@@ -465,7 +467,7 @@ def export_distribution(working_dir, distribution_units, progress_callback=None)
     :param working_dir:         The full path to the directory to export the content to
     :type  working_dir:         str
     :param distribution_units:  The distribution units to export. These should be retrieved from the
-                                    publish conduit using a criteria.
+                                publish conduit using a criteria.
     :type  distribution_units:  list of AssociatedUnit
     :param progress_callback:   callback to report progress info to publish_conduit
     :type  progress_callback:   function
@@ -490,8 +492,8 @@ def export_distribution(working_dir, distribution_units, progress_callback=None)
 
         distro_files = unit.metadata['files']
         _logger.debug("Found %s distribution files to symlink" % len(distro_files))
-        progress_status['items_total'] = len(distro_files)
-        progress_status['items_left'] = len(distro_files)
+        progress_status[constants.PROGRESS_ITEMS_TOTAL_KEY] = len(distro_files)
+        progress_status[constants.PROGRESS_ITEMS_LEFT_KEY] = len(distro_files)
         for dfile in distro_files:
             set_progress(ids.TYPE_ID_DISTRO, progress_status, progress_callback)
             source_path = os.path.join(source_path_dir, dfile['relativepath'])
@@ -501,17 +503,18 @@ def export_distribution(working_dir, distribution_units, progress_callback=None)
                 msg = "Unable to copy %s to %s" % (source_path, destination_path)
                 _logger.error(msg)
                 errors.append(msg)
-                progress_status['num_error'] += 1
-                progress_status["items_left"] -= 1
+                progress_status[constants.PROGRESS_NUM_ERROR_KEY] += 1
+                progress_status[constants.PROGRESS_ITEMS_LEFT_KEY] -= 1
                 continue
-            progress_status['num_success'] += 1
-            progress_status["items_left"] -= 1
+            progress_status[constants.PROGRESS_NUM_SUCCESS_KEY] += 1
+            progress_status[constants.PROGRESS_ITEMS_LEFT_KEY] -= 1
 
     if errors:
-        progress_status['state'] = constants.STATE_FAILED
+        progress_status[constants.PROGRESS_STATE_KEY] = constants.STATE_FAILED
+        progress_status[constants.PROGRESS_ERROR_DETAILS_KEY] = errors
         details['errors']['distribution_errors'] = errors
     else:
-        progress_status['state'] = constants.STATE_COMPLETE
+        progress_status[constants.PROGRESS_STATE_KEY] = constants.STATE_COMPLETE
     summary["num_distribution_units_attempted"] = len(distribution_units)
     summary["num_distribution_units_exported"] = len(distribution_units) - len(errors)
     summary["num_distribution_units_errors"] = len(errors)
@@ -536,8 +539,10 @@ def export_package_groups_and_cats(working_dir, units, progress_callback=None):
     :return: a tuple consisting of the groups_xml_path and the summary, in that order
     :rtype:  (str, dict)
     """
-    set_progress(models.PackageGroup.TYPE, {'state': constants.STATE_RUNNING}, progress_callback)
-    set_progress(models.PackageCategory.TYPE, {'state': constants.STATE_RUNNING}, progress_callback)
+    set_progress(models.PackageGroup.TYPE, {constants.PROGRESS_STATE_KEY: constants.STATE_RUNNING},
+                 progress_callback)
+    set_progress(models.PackageCategory.TYPE, {constants.PROGRESS_STATE_KEY: constants.STATE_RUNNING},
+                 progress_callback)
     summary = {}
 
     # Collect the existing groups and categories
@@ -547,13 +552,15 @@ def export_package_groups_and_cats(working_dir, units, progress_callback=None):
     summary['num_package_groups_exported'] = len(existing_groups)
     summary['num_package_categories_exported'] = len(existing_cats)
 
-    set_progress(models.PackageGroup.TYPE, {'state': constants.STATE_COMPLETE}, progress_callback)
-    set_progress(models.PackageCategory.TYPE, {'state': constants.STATE_COMPLETE}, progress_callback)
+    set_progress(models.PackageGroup.TYPE, {constants.PROGRESS_STATE_KEY: constants.STATE_COMPLETE},
+                 progress_callback)
+    set_progress(models.PackageCategory.TYPE, {constants.PROGRESS_STATE_KEY: constants.STATE_COMPLETE},
+                 progress_callback)
 
     return groups_xml_path, summary
 
 
-def export_complete_repo(repo_id, working_dir, publish_conduit, config, progress_callback):
+def export_complete_repo(repo_id, working_dir, publish_conduit, config, progress_callback=None):
     """
     Export all content types for a repository, unless the type is in the skip list.
 
@@ -617,19 +624,23 @@ def export_complete_repo(repo_id, working_dir, publish_conduit, config, progress
     return summary, details
 
 
-def export_incremental_content(working_dir, publish_conduit, date_filter):
+def export_incremental_content(working_dir, publish_conduit, date_filter, progress_callback=None):
     """
     Exports incremental content for a repository. Any rpm or errata unit that was associated
     with the repository in the given date range is copied to the working directories. A JSON document
     containing metadata is also exported for each rpm unit. The errata units are also written as JSON
     documents.
 
-    :param working_dir:     The full path to the directory to export the content to
-    :type  working_dir:     str
-    :param publish_conduit: The publish conduit for the repository
-    :type  publish_conduit: pulp.plugins.conduits.repo_publish.RepoPublishConduit
-    :param date_filter:     A date filter dict, usually generated by create_date_range_filter
-    :type  date_filter:     dict
+    :param working_dir:         The full path to the directory to export the content to
+    :type  working_dir:         str
+    :param publish_conduit:     The publish conduit for the repository
+    :type  publish_conduit:     pulp.plugins.conduits.repo_publish.RepoPublishConduit
+    :param date_filter:         A date filter dict, usually generated by create_date_range_filter
+    :type  date_filter:         dict
+    :param progress_callback:   callback to report progress info to publish_conduit. This is expected to
+                                take the following parameters: a string to use as the key in a
+                                dictionary, and the second parameter is assigned to it.
+    :type  progress_callback:   function
 
     :return: A tuple containing the summary and the details dictionaries for the export
     :rtype: tuple
@@ -645,7 +656,7 @@ def export_incremental_content(working_dir, publish_conduit, date_filter):
     errata_units = publish_conduit.get_units(criteria=errata_criteria)
 
     # Export the rpm units to the working directory
-    rpm_summary, rpm_details = export_rpm(working_dir, rpm_units)
+    rpm_summary, rpm_details = export_rpm(working_dir, rpm_units, progress_callback)
 
     # Export the rpm metadata as JSON files to the working directory
     rpm_json_path = os.path.join(working_dir, 'rpm_json')
@@ -653,7 +664,7 @@ def export_incremental_content(working_dir, publish_conduit, date_filter):
 
     # Export the errata as JSON files to the working directory
     errata_json_path = os.path.join(working_dir, 'errata_json')
-    export_errata_json(errata_json_path, errata_units)
+    export_errata_json(errata_json_path, errata_units, progress_callback)
 
     return rpm_summary, rpm_details
 
@@ -690,16 +701,22 @@ def export_rpm_json(working_dir, rpm_units):
             json.dump(dict_to_write, f)
 
 
-def export_errata_json(working_dir, errata_units):
+def export_errata_json(working_dir, errata_units, progress_callback=None):
     """
     Using the given list of errata AssociatedUnits, this method writes the errata to a json file in
     the working directory.
 
-    :param working_dir:  The full path to the directory to write the json files to
-    :type  working_dir:  str
-    :param errata_units: A list of AssociatedUnits of type errata
-    :type  errata_units: list of pulp.plugins.model.AssociatedUnit
+    :param working_dir:         The full path to the directory to write the json files to
+    :type  working_dir:         str
+    :param errata_units:        A list of AssociatedUnits of type errata
+    :type  errata_units:        list of pulp.plugins.model.AssociatedUnit
+    :param progress_callback:   callback to report progress info to publish_conduit. This is expected to
+                                take the following parameters: a string to use as the key in a
+                                dictionary, and the second parameter is assigned to it.
+    :type  progress_callback:   function
     """
+    progress_report = init_progress_report(len(errata_units))
+
     if not os.path.isdir(working_dir):
         os.makedirs(working_dir)
 
@@ -715,6 +732,13 @@ def export_errata_json(working_dir, errata_units):
         json_file_path = os.path.join(working_dir, unit.unit_key['id'] + '.json')
         with open(json_file_path, 'w') as f:
             json.dump(errata_dict, f)
+
+        progress_report[constants.PROGRESS_NUM_SUCCESS_KEY] += 1
+        progress_report[constants.PROGRESS_ITEMS_LEFT_KEY] -= 1
+        set_progress(models.Errata.TYPE, progress_report, progress_callback)
+
+    progress_report[constants.PROGRESS_STATE_KEY] = constants.STATE_COMPLETE
+    set_progress(models.Errata.TYPE, progress_report, progress_callback)
 
 
 def get_rpm_units(publish_conduit, skip_list=()):
@@ -755,19 +779,19 @@ def publish_isos(working_dir, image_prefix, http_dir=None, https_dir=None, image
     :param image_prefix:        The prefix of the image filename
     :type  image_prefix:        str
     :param http_dir:            The full path to the http export directory. The default base path can be
-                                    found in pulp_rpm.common.constants and should be suffixed by the
-                                    group or repo id
+                                found in pulp_rpm.common.constants and should be suffixed by the
+                                group or repo id
     :type  http_dir:            str
     :param https_dir:           The full path to the https export directory. The default base path can
-                                    be found in pulp_rpm.common.constants and should be suffixed by the
-                                    group or repo id
+                                be found in pulp_rpm.common.constants and should be suffixed by the
+                                group or repo id
     :type  https_dir:           str
     :param image_size:          The size of the ISO image in megabytes (defaults to dvd sized iso)
     :type  image_size:          int
     :param progress_callback:   callback to report progress info to publish_conduit. This is expected to
-                                    take the following parameters: a string to use as the key in a
-                                    dictionary, and the second parameter is assigned to it.
-    :type  progress_callback: function
+                                take the following parameters: a string to use as the key in a
+                                dictionary, and the second parameter is assigned to it.
+    :type  progress_callback:   function
     """
     # TODO: Move the ISO output directory
     # Right now the ISOs live in the working directory because there isn't a better place for them.
@@ -790,11 +814,15 @@ def publish_isos(working_dir, image_prefix, http_dir=None, https_dir=None, image
         for name in files:
             if https_dir:
                 os.symlink(os.path.join(root, name), os.path.join(https_dir, name))
-                set_progress('publish_https', {'state': constants.STATE_COMPLETE}, progress_callback)
+                set_progress('publish_https', {constants.PROGRESS_STATE_KEY: constants.STATE_COMPLETE},
+                             progress_callback)
             else:
-                set_progress('publish_https', {'state': constants.STATE_SKIPPED}, progress_callback)
+                set_progress('publish_https', {constants.PROGRESS_STATE_KEY: constants.STATE_SKIPPED},
+                             progress_callback)
             if http_dir:
                 os.symlink(os.path.join(root, name), os.path.join(http_dir, name))
-                set_progress('publish_http', {'state': constants.STATE_COMPLETE}, progress_callback)
+                set_progress('publish_http', {constants.PROGRESS_STATE_KEY: constants.STATE_COMPLETE},
+                             progress_callback)
             else:
-                set_progress('publish_http', {'state': constants.STATE_SKIPPED}, progress_callback)
+                set_progress('publish_http', {constants.PROGRESS_STATE_KEY: constants.STATE_SKIPPED},
+                             progress_callback)

@@ -779,9 +779,10 @@ class TestExportIncrementalContent(unittest.TestCase):
         self.assertEqual([ids.TYPE_ID_ERRATA], call_list[3][1]['criteria'].type_ids)
 
         # Test that each helper method was called correctly
-        export_utils.export_rpm.assert_called_once_with('/working/dir', expected_units)
+        export_utils.export_rpm.assert_called_once_with('/working/dir', expected_units, None)
         export_utils.export_rpm_json.assert_called_once_with('/working/dir/rpm_json', expected_units)
-        export_utils.export_errata_json.assert_called_once_with('/working/dir/errata_json', ['unit'])
+        export_utils.export_errata_json.assert_called_once_with('/working/dir/errata_json', ['unit'],
+                                                                None)
 
 
 class TestExportRpmJson(unittest.TestCase):

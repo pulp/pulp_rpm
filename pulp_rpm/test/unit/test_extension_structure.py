@@ -13,9 +13,10 @@ import rpm_support_base
 
 from pulp_rpm.extension.admin import structure
 
+
 class StructureTests(rpm_support_base.PulpClientTests):
 
-    def test_ensure_puppet_root(self):
+    def test_ensure_rpm_root(self):
         # Test
         returned_root_section = structure.ensure_root(self.cli)
 
@@ -26,7 +27,7 @@ class StructureTests(rpm_support_base.PulpClientTests):
         self.assertTrue(root_section is not None)
         self.assertEqual(root_section.name, structure.SECTION_ROOT)
 
-    def test_ensure_puppet_root_idempotency(self):
+    def test_ensure_rpm_root_idempotency(self):
         # Test
         structure.ensure_root(self.cli)
         returned_root_section = structure.ensure_root(self.cli)
@@ -90,4 +91,12 @@ class SectionRetrievalTests(rpm_support_base.PulpClientTests):
 
     def test_repo_export_section(self):
         section = structure.repo_export_section(self.cli)
+        self.assertEqual(section.name, structure.SECTION_EXPORT)
+
+    def test_repo_group_section(self):
+        section = structure.repo_group_section(self.cli)
+        self.assertEqual(section.name, structure.SECTION_GROUP)
+
+    def test_repo_group_export_section(self):
+        section = structure.repo_group_export_section(self.cli)
         self.assertEqual(section.name, structure.SECTION_EXPORT)
