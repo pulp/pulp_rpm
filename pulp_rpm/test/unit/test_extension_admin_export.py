@@ -199,6 +199,25 @@ class TestRepoGroupExportRunCommand(rpm_support_base.PulpClientTests):
         # Assert that display_task_status was called with the correct arguments
         mock_display_task_status.assert_called_once_with(self.context, mock_renderer, 'fake-id')
 
+    @mock.patch('pulp.client.commands.repo.status.status.display_task_status', autospec=True)
+    @mock.patch('pulp.client.extensions.core.PulpPrompt.render_paragraph', autospec=True)
+    @mock.patch('pulp.bindings.repo_groups.RepoGroupDistributorAPI.distributor', autospec=True)
+    def test_rpm_group_export_bg_msg(self, mock_distributor, mock_render_paragraph, mock_status):
+        # Setup
+        expected_str = 'A publish task is already in progress for this repository.' \
+                       ' Its progress will be tracked below.'
+        mock_distributor.return_value = (200, mock.Mock(spec=Response))
+        export._get_publish_task_id.return_value = 'Not None'
+        self.kwargs[export.BACKGROUND] = False
+        mock_renderer = mock.MagicMock()
+
+        # Test
+        command = export.RpmGroupExportCommand(self.context, mock_renderer,
+                                               ids.EXPORT_GROUP_DISTRIBUTOR_ID)
+        command.run(**self.kwargs)
+        mock_render_paragraph.assert_called_once_with(self.context.prompt, expected_str, tag='in-progress')
+        mock_status.assert_called_once_with(self.context, mock_renderer, 'Not None')
+
 
 class TestRepoGroupExportStatusCommand(rpm_support_base.PulpClientTests):
     """
