@@ -72,6 +72,13 @@ def initialize(context):
     contents_section.add_command(contents.SearchDistributionsCommand(context))
     contents_section.add_command(contents.SearchErrataCommand(context))
 
+    # Add the group section, all its subsections, and commands
+    group_export_section = structure.repo_group_export_section(context.cli)
+    renderer = status.RpmGroupExportStatusRenderer(context)
+    group_export_section.add_command(export.RpmGroupExportCommand(context, renderer,
+                                                                  ids.EXPORT_GROUP_DISTRIBUTOR_ID))
+    group_export_section.add_command(export.GroupExportStatusCommand(context, renderer))
+
     uploads_section = structure.repo_uploads_section(context.cli)
     uploads_section.add_command(package.CreateRpmCommand(context, upload_manager))
     uploads_section.add_command(errata.CreateErratumCommand(context, upload_manager))
@@ -92,10 +99,11 @@ def initialize(context):
     publish_section.add_command(sync_publish.RunPublishRepositoryCommand(context, renderer, distributor_id))
     publish_section.add_command(sync_publish.PublishStatusCommand(context, renderer))
 
-    export_section = structure.repo_export_section(context.cli)
-    renderer = status.RpmIsoStatusRenderer(context)
-    export_section.add_command(export.RpmIsoExportCommand(context))
-    export_section.add_command(sync_publish.PublishStatusCommand(context, renderer, description=DESC_EXPORT_STATUS))
+    repo_export_section = structure.repo_export_section(context.cli)
+    renderer = status.RpmExportStatusRenderer(context)
+    repo_export_section.add_command(export.RpmExportCommand(context))
+    repo_export_section.add_command(sync_publish.PublishStatusCommand(context, renderer,
+                                                                      description=DESC_EXPORT_STATUS))
 
     sync_schedules_section = structure.repo_sync_schedules_section(context.cli)
     sync_schedules_section.add_command(sync_schedules.RpmCreateScheduleCommand(context))

@@ -17,6 +17,7 @@ import datetime
 import tempfile
 from stat import ST_SIZE
 
+import export_utils
 from pulp_rpm.common import constants
 from pulp_rpm.yum_plugin.util import getLogger
 log = getLogger(__name__)
@@ -40,8 +41,8 @@ def create_iso(target_dir, output_dir, prefix, image_size=DVD_ISO_SIZE, progress
     :param image_size:          The maximum size of the image in bytes. Defaults to a dvd sized image.
     :type  image_size:          int
     :param progress_callback:   callback to report progress info to publish_conduit. This is expected to
-                                    take the following parameters: a string to use as the key in a
-                                    dictionary, and the second parameter is assigned to it.
+                                take the following parameters: a string to use as the key in a
+                                dictionary, and the second parameter is assigned to it.
     :type  progress_callback:   function
     """
     # Validate the configuration
@@ -58,14 +59,7 @@ def create_iso(target_dir, output_dir, prefix, image_size=DVD_ISO_SIZE, progress
     image_count = len(image_list)
 
     # Update the progress report
-    iso_progress_status = {
-        'items_total': image_count,
-        'items_left': image_count,
-        'num_success': 0,
-        'size_total': total_dir_size,
-        'size_left': total_dir_size,
-        'state': constants.STATE_RUNNING
-    }
+    iso_progress_status = export_utils.init_progress_report(image_count)
     set_progress("isos", iso_progress_status, progress_callback)
 
     for i in range(image_count):
@@ -73,11 +67,8 @@ def create_iso(target_dir, output_dir, prefix, image_size=DVD_ISO_SIZE, progress
         _make_iso(image_list[i], target_dir, output_dir, name)
 
         # Update the progress report
-        iso_progress_status['items_left'] -= 1
-        iso_progress_status['num_success'] += 1
-        iso_progress_status['size_left'] -= image_size
-        if iso_progress_status['size_left'] < 0:
-            iso_progress_status['size_left'] = 0
+        iso_progress_status[constants.PROGRESS_ITEMS_LEFT_KEY] -= 1
+        iso_progress_status[constants.PROGRESS_NUM_SUCCESS_KEY] += 1
         set_progress("isos", iso_progress_status, progress_callback)
 
     iso_progress_status["state"] = constants.STATE_COMPLETE
@@ -96,7 +87,7 @@ def _make_iso(file_list, target_dir, output_dir, filename):
     :param output_dir:  The full path to the output directory for the ISO image
     :type  output_dir:  str
     :param filename:    The filename to use for the ISO image. This should be relative to the output
-                            directory.
+                        directory.
     :type  filename:    str
     """
     file_path = os.path.join(output_dir, filename)
@@ -145,7 +136,7 @@ def _compute_image_files(file_list, max_image_size):
     image_size is exceeded.
 
     :param file_list:       A list of tuples, where each tuple is (file_path, file_size), usually the
-                                output of get_dir_file_list_and_size
+                            output of get_dir_file_list_and_size
     :type  file_list:       [(str, int)]
     :param max_image_size:  The maximum size of image in bytes
     :type  max_image_size:  int
@@ -215,7 +206,7 @@ def _get_grafts(img_file_paths, target_dir):
     will include ../old.lis as /foo/bar/new_name on the ISO.
 
     :param img_file_paths:  A list of files paths to graft. These are expected to be the full path to
-                                each file, and should be somewhere in the target directory
+                            each file, and should be somewhere in the target directory
     :type  img_file_paths:  list
     :param target_dir:      The full path to the target directory
     :type  target_dir:      str
@@ -249,7 +240,7 @@ def _get_pathspec_file(file_list, target_dir):
     :type  target_dir: str
 
     :return: The absolute path of the temporary pathspec file. This is the responsibility of the caller
-                to clean up.
+            to clean up.
     :rtype:  str
     """
     # file_descriptor is of type int, not file, so use os.write and os.close
@@ -280,7 +271,7 @@ def _get_dir_file_list_and_size(target_dir):
     :type  target_dir: str
 
     :return: A tuple in the form (list, int) where the list is a list of tuples of (file_path, file_size)
-                and the int is the total size of the directory
+            and the int is the total size of the directory
     :rtype:  tuple
     """
     total_size = 0
