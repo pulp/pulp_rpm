@@ -653,6 +653,7 @@ class TestGetGroups(BaseSyncTest):
         self.assertEqual(mock_save.call_count, 1)
         self.assertEqual(mock_save.call_args[0][1], mock_get.return_value)
         self.assertEqual(mock_save.call_args[0][2], group.GROUP_TAG)
+        self.assertTrue(mock_save.call_args[0][3])
 
         # verify that the process func delegates properly with the correct repo id
         process_func = mock_save.call_args[0][3]
@@ -708,6 +709,7 @@ class TestGetCategories(BaseSyncTest):
         self.assertEqual(mock_save.call_count, 1)
         self.assertEqual(mock_save.call_args[0][1], mock_get.return_value)
         self.assertEqual(mock_save.call_args[0][2], group.CATEGORY_TAG)
+        self.assertTrue(mock_save.call_args[0][3])
 
         # verify that the process func delegates properly with the correct repo id
         process_func = mock_save.call_args[0][3]
@@ -719,35 +721,62 @@ class TestGetCategories(BaseSyncTest):
 class TestSaveFilelessUnits(BaseSyncTest):
     @mock.patch('pulp_rpm.plugins.importers.yum.existing.check_repo', autospec=True)
     @mock.patch('pulp_rpm.plugins.importers.yum.repomd.packages.package_list_generator', autospec=True)
-    def test_save_groups_none_existing(self, mock_generator, mock_check_repo):
+    def test_save_erratas_none_existing(self, mock_generator, mock_check_repo):
         """
-        test where no group already exist, so all should be saved
+        test where no errata already exist, so all should be saved
         """
-        groups = tuple(model_factory.group_models(3))
-        mock_generator.return_value = groups
-        mock_check_repo.return_value = [g.as_named_tuple for g in groups]
+        errata = tuple(model_factory.errata_models(3))
+        mock_generator.return_value = errata
+        mock_check_repo.return_value = [g.as_named_tuple for g in errata]
         self.conduit.init_unit = mock.MagicMock(spec_set=self.conduit.init_unit)
         self.conduit.save_unit = mock.MagicMock(spec_set=self.conduit.save_unit)
         file_handle = StringIO()
 
-        self.reposync.save_fileless_units(file_handle, group.GROUP_TAG, group.process_group_element)
+        self.reposync.save_fileless_units(file_handle, updateinfo.PACKAGE_TAG, updateinfo.process_package_element)
 
-        mock_generator.assert_any_call(file_handle, group.GROUP_TAG, group.process_group_element)
+        mock_generator.assert_any_call(file_handle, updateinfo.PACKAGE_TAG, updateinfo.process_package_element)
         self.assertEqual(mock_generator.call_count, 2)
         self.assertEqual(mock_check_repo.call_count, 1)
-        self.assertEqual(list(mock_check_repo.call_args[0][0]), [g.as_named_tuple for g in groups])
+        self.assertEqual(list(mock_check_repo.call_args[0][0]), [g.as_named_tuple for g in errata])
         self.assertEqual(mock_check_repo.call_args[0][1], self.conduit.get_units)
 
-        for model in groups:
+        for model in errata:
             self.conduit.init_unit.assert_any_call(model.TYPE, model.unit_key, model.metadata, None)
         self.conduit.save_unit.assert_any_call(self.conduit.init_unit.return_value)
         self.assertEqual(self.conduit.save_unit.call_count, 3)
 
     @mock.patch('pulp_rpm.plugins.importers.yum.existing.check_repo', autospec=True)
     @mock.patch('pulp_rpm.plugins.importers.yum.repomd.packages.package_list_generator', autospec=True)
+    def test_save_erratas_some_existing(self, mock_generator, mock_check_repo):
+        """
+        test where some errata already exist, so only some should be saved
+        """
+        errata = tuple(model_factory.errata_models(3))
+        mock_generator.return_value = errata
+        mock_check_repo.return_value = [g.as_named_tuple for g in errata[:2]]
+        self.conduit.init_unit = mock.MagicMock(spec_set=self.conduit.init_unit)
+        self.conduit.save_unit = mock.MagicMock(spec_set=self.conduit.save_unit)
+        file_handle = StringIO()
+
+        self.reposync.save_fileless_units(file_handle, updateinfo.PACKAGE_TAG, updateinfo.process_package_element)
+
+        mock_generator.assert_any_call(file_handle, updateinfo.PACKAGE_TAG, updateinfo.process_package_element)
+        self.assertEqual(mock_generator.call_count, 2)
+        self.assertEqual(mock_check_repo.call_count, 1)
+        self.assertEqual(list(mock_check_repo.call_args[0][0]), [g.as_named_tuple for g in errata])
+        self.assertEqual(mock_check_repo.call_args[0][1], self.conduit.get_units)
+
+        for model in errata[:2]:
+            self.conduit.init_unit.assert_any_call(model.TYPE, model.unit_key, model.metadata, None)
+        self.conduit.save_unit.assert_any_call(self.conduit.init_unit.return_value)
+        self.assertEqual(self.conduit.save_unit.call_count, 2)
+
+    @mock.patch('pulp_rpm.plugins.importers.yum.existing.check_repo', autospec=True)
+    @mock.patch('pulp_rpm.plugins.importers.yum.repomd.packages.package_list_generator', autospec=True)
     def test_save_groups_some_existing(self, mock_generator, mock_check_repo):
         """
-        test where some groups already exist, so only some should be saved
+        test where some groups already exist, and make sure all of them are
+        saved regardless
         """
         groups = tuple(model_factory.group_models(3))
         mock_generator.return_value = groups
@@ -756,38 +785,38 @@ class TestSaveFilelessUnits(BaseSyncTest):
         self.conduit.save_unit = mock.MagicMock(spec_set=self.conduit.save_unit)
         file_handle = StringIO()
 
-        self.reposync.save_fileless_units(file_handle, group.GROUP_TAG, group.process_group_element)
+        self.reposync.save_fileless_units(file_handle, group.GROUP_TAG,
+                                          group.process_group_element, mutable_type=True)
 
         mock_generator.assert_any_call(file_handle, group.GROUP_TAG, group.process_group_element)
-        self.assertEqual(mock_generator.call_count, 2)
-        self.assertEqual(mock_check_repo.call_count, 1)
-        self.assertEqual(list(mock_check_repo.call_args[0][0]), [g.as_named_tuple for g in groups])
-        self.assertEqual(mock_check_repo.call_args[0][1], self.conduit.get_units)
+        # skip the check for existing units since groups are mutable
+        self.assertEqual(mock_generator.call_count, 1)
+        self.assertEqual(mock_check_repo.call_count, 0)
 
-        for model in groups[:2]:
+        for model in groups:
             self.conduit.init_unit.assert_any_call(model.TYPE, model.unit_key, model.metadata, None)
         self.conduit.save_unit.assert_any_call(self.conduit.init_unit.return_value)
-        self.assertEqual(self.conduit.save_unit.call_count, 2)
+        self.assertEqual(self.conduit.save_unit.call_count, 3)
 
     @mock.patch('pulp_rpm.plugins.importers.yum.existing.check_repo', autospec=True)
     @mock.patch('pulp_rpm.plugins.importers.yum.repomd.packages.package_list_generator', autospec=True)
-    def test_save_groups_all_existing(self, mock_generator, mock_check_repo):
+    def test_save_erratas_all_existing(self, mock_generator, mock_check_repo):
         """
-        test where all groups already exist, so none should be saved
+        test where all errata already exist, so none should be saved
         """
-        groups = tuple(model_factory.group_models(3))
-        mock_generator.return_value = groups
+        errata = tuple(model_factory.errata_models(3))
+        mock_generator.return_value = errata
         mock_check_repo.return_value = []
         self.conduit.init_unit = mock.MagicMock(spec_set=self.conduit.init_unit)
         self.conduit.save_unit = mock.MagicMock(spec_set=self.conduit.save_unit)
         file_handle = StringIO()
 
-        self.reposync.save_fileless_units(file_handle, group.GROUP_TAG, group.process_group_element)
+        self.reposync.save_fileless_units(file_handle, updateinfo.PACKAGE_TAG, updateinfo.process_package_element)
 
-        mock_generator.assert_any_call(file_handle, group.GROUP_TAG, group.process_group_element)
+        mock_generator.assert_any_call(file_handle, updateinfo.PACKAGE_TAG, updateinfo.process_package_element)
         self.assertEqual(mock_generator.call_count, 2)
         self.assertEqual(mock_check_repo.call_count, 1)
-        self.assertEqual(list(mock_check_repo.call_args[0][0]), [g.as_named_tuple for g in groups])
+        self.assertEqual(list(mock_check_repo.call_args[0][0]), [g.as_named_tuple for g in errata])
         self.assertEqual(mock_check_repo.call_args[0][1], self.conduit.get_units)
 
         self.assertEqual(self.conduit.save_unit.call_count, 0)

@@ -23,6 +23,7 @@ _srpm_counter = count()
 _drpm_counter = count()
 _group_counter = count()
 _yum_md_file_counter = count()
+_errata_counter = count()
 
 
 def as_units(f):
@@ -134,3 +135,15 @@ def group_units(num, same_repo=True):
 def yum_md_file():
     return models.YumMetadataFile(models.YumMetadataFile.TYPE,
                                   'repo-%d' % _yum_md_file_counter.next(), {})
+
+
+def errata_models(num):
+    ret = []
+    count = _errata_counter.next()
+    for i in range(num):
+        ret.append(models.Errata(
+            'name-%d' % count,
+            {}
+        ))
+        count = _errata_counter.next()
+    return ret
