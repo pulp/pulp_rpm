@@ -495,8 +495,8 @@ class RepoSync(object):
             # rewind, iterate again through the file, and save what we need
             file_handle.seek(0)
             all_packages = packages.package_list_generator(file_handle,
-                                                                     tag,
-                                                                     process_func)
+                                                           tag,
+                                                           process_func)
             package_info_generator = (model for model in all_packages if model.as_named_tuple in to_save)
 
         for model in package_info_generator:
