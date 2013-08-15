@@ -18,7 +18,7 @@
 
 Name: pulp-rpm
 Version: 2.2.0
-Release: 0.25.beta%{?dist}
+Release: 0.26.beta%{?dist}
 Summary: Support for RPM content in the Pulp platform
 Group: Development/Languages
 License: GPLv2
@@ -282,6 +282,10 @@ A collection of yum plugins supplementing Pulp consumer operations.
 
 
 %changelog
+* Thu Aug 15 2013 Jeff Ortel <jortel@redhat.com> 2.2.0-0.26.beta
+- 996625 - sync now always saves groups and categories, in case their metadata
+  has changed. (mhrivnak@redhat.com)
+
 * Mon Aug 12 2013 Jeff Ortel <jortel@redhat.com> 2.2.0-0.25.beta
 - 995572 - fixed a treeinfo file parsing error when dealing with treeinfo files
   that do not include a "variant" value. (mhrivnak@redhat.com)
