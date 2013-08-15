@@ -15,15 +15,205 @@ import unittest
 
 import mock
 from pulp.plugins.conduits.unit_import import ImportUnitConduit
+from pulp.plugins.config import PluginCallConfiguration
 from pulp.plugins.model import Unit, Repository
 from pulp.server.db.model.criteria import UnitAssociationCriteria
 import pulp.server.managers.factory as manager_factory
 
 import model_factory
-from pulp_rpm.common import models
+from pulp_rpm.common import models, constants
 from pulp_rpm.plugins.importers.yum import associate
 
 manager_factory.initialize()
+
+
+class TestAssociate(unittest.TestCase):
+    def setUp(self):
+        self.source_repo = Repository('repo-source')
+        self.dest_repo = Repository('repo-dest')
+        self.rpm_units = model_factory.rpm_units(2)
+        self.category_units = model_factory.category_units(2)
+        self.group_units = model_factory.group_units(2)
+        self.group1_names = self.group_units[0].metadata['default_package_names']
+        self.group2_names = self.group_units[1].metadata['default_package_names']
+        self.conduit = mock.MagicMock()
+        self.config = PluginCallConfiguration({}, {}, {})
+
+    @mock.patch.object(associate, '_associate_unit', autospec=True)
+    def test_no_units_provided(self, mock_associate):
+        self.conduit.get_source_units.return_value = self.group_units
+
+        associate.associate(self.source_repo, self.dest_repo, self.conduit, self.config)
+
+        self.assertEqual(mock_associate.call_count, 2)
+        # confirms that it used the conduit's get_source_units() method
+        mock_associate.assert_any_call(self.dest_repo, self.conduit, self.group_units[0])
+        mock_associate.assert_any_call(self.dest_repo, self.conduit, self.group_units[1])
+
+    @mock.patch.object(associate, 'copy_rpms', autospec=True)
+    def test_calls_copy_rpms(self, mock_copy_rpms):
+        ret = associate.associate(self.source_repo, self.dest_repo, self.conduit,
+                            self.config, self.rpm_units)
+
+        self.assertEqual(ret, self.rpm_units)
+
+        self.assertEqual(mock_copy_rpms.call_count, 1)
+        self.assertEqual(list(mock_copy_rpms.call_args[0][0]), self.rpm_units)
+        self.assertEqual(mock_copy_rpms.call_args[0][1], self.conduit)
+        self.assertFalse(mock_copy_rpms.call_args[0][2])
+
+    @mock.patch.object(associate, 'copy_rpms_by_name', autospec=True)
+    @mock.patch('pulp_rpm.plugins.importers.yum.existing.get_existing_units', autospec=True)
+    @mock.patch.object(associate, '_associate_unit', wraps=lambda x, y, z: z)
+    def test_copy_group_recursive(self, mock_associate, mock_get_existing, mock_copy):
+        self.config.override_config = {constants.CONFIG_RECURSIVE: True}
+        self.conduit.get_source_units.return_value = []
+        # make it look like half of the RPMs names by the groups being copied
+        # already exist in the destination
+        existing_rpms = model_factory.rpm_units(2)
+        existing_rpms[0].unit_key['name'] = self.group1_names[1]
+        existing_rpms[1].unit_key['name'] = self.group2_names[1]
+        mock_get_existing.return_value = existing_rpms
+
+        ret = associate.associate(self.source_repo, self.dest_repo, self.conduit,
+                                  self.config, self.group_units)
+
+        # this only happens if we successfully did a recursive call to associate()
+        # and used the "existing" module to eliminate half the RPM names from those
+        # that needed to be copied.
+        mock_copy.assert_called_once_with(set([self.group1_names[0], self.group2_names[0]]),
+                                          self.conduit, True)
+
+        self.assertEqual(ret, self.group_units)
+
+    @mock.patch.object(associate, 'filter_available_rpms', autospec=True, return_value=[])
+    @mock.patch.object(associate, 'copy_rpms', autospec=True)
+    @mock.patch.object(associate, '_associate_unit', wraps=lambda x, y, z: z)
+    def test_copy_categories(self, mock_associate_unit, mock_copy_rpms, mock_filter):
+        self.config.override_config = {constants.CONFIG_RECURSIVE: True}
+        groups_to_copy = model_factory.group_units(2)
+        for group in groups_to_copy:
+            group.metadata['default_package_names'] = []
+        self.conduit.get_source_units.side_effect = [groups_to_copy, []]
+
+        ret = associate.associate(self.source_repo, self.dest_repo, self.conduit,
+                                  self.config, self.category_units)
+
+        self.assertEqual(ret, self.category_units)
+        self.assertEqual(mock_associate_unit.call_count, 4)
+        mock_associate_unit.assert_any_call(self.dest_repo, self.conduit, self.category_units[0])
+        mock_associate_unit.assert_any_call(self.dest_repo, self.conduit, self.category_units[1])
+        mock_associate_unit.assert_any_call(self.dest_repo, self.conduit, groups_to_copy[0])
+        mock_associate_unit.assert_any_call(self.dest_repo, self.conduit, groups_to_copy[1])
+
+
+class TestCopyRPMs(unittest.TestCase):
+    def test_without_deps(self):
+        conduit = mock.MagicMock()
+        rpms = model_factory.rpm_units(3)
+
+        associate.copy_rpms(rpms, conduit, False)
+
+        self.assertEqual(conduit.associate_unit.call_count, 3)
+        for rpm in rpms:
+            conduit.associate_unit.assert_any_call(rpm)
+
+    @mock.patch('pulp_rpm.plugins.importers.yum.existing.get_existing_units', autospec=True)
+    @mock.patch('pulp_rpm.plugins.importers.yum.depsolve.find_dependent_rpms', autospec=True)
+    def test_with_existing_deps(self, mock_find, mock_get_existing):
+        conduit = mock.MagicMock()
+        rpms = model_factory.rpm_units(1)
+        deps = model_factory.rpm_models(2)
+        dep_units = [Unit(model.TYPE, model.unit_key, model.metadata, '') for model in deps]
+        mock_find.return_value = [r.as_named_tuple for r in deps]
+        mock_get_existing.return_value = dep_units
+
+        associate.copy_rpms(rpms, conduit, True)
+
+        self.assertEqual(conduit.associate_unit.call_count, 1)
+        self.assertEqual(mock_find.call_count, 1)
+        self.assertEqual(mock_find.call_args[0][0], set(rpms))
+        # called once directly, and once from filter_available_rpms
+        self.assertEqual(mock_get_existing.call_count, 2)
+
+
+class TestNoChecksumUnitKey(unittest.TestCase):
+    def test_all(self):
+        rpm = model_factory.rpm_models(1)[0]
+
+        ret = associate._no_checksum_unit_key(rpm.as_named_tuple)
+
+        self.assertTrue(isinstance(ret, dict))
+        self.assertTrue('checksum' not in ret)
+        self.assertTrue('checksumtype' not in ret)
+        for key in ['name', 'epoch', 'version', 'release', 'arch']:
+            self.assertEqual(ret[key], rpm.unit_key[key])
+
+
+class TestCopyRPMsByName(unittest.TestCase):
+    @mock.patch.object(associate, 'copy_rpms', autospec=True)
+    def test_all_in_source(self, mock_copy):
+        rpms = model_factory.rpm_units(2)
+        names = [r.unit_key['name'] for r in rpms]
+        conduit = mock.MagicMock()
+        conduit.get_source_units.return_value = rpms
+
+        associate.copy_rpms_by_name(names, conduit, False)
+
+        self.assertEqual(conduit.get_source_units.call_count, 1)
+        to_copy = list(mock_copy.call_args[0][0])
+        self.assertEqual(len(to_copy), 2)
+        for unit in to_copy:
+            self.assertTrue(isinstance(unit, Unit))
+            self.assertTrue(unit.unit_key['name'] in names)
+        self.assertFalse(mock_copy.call_args[0][2])
+
+    @mock.patch.object(associate, 'copy_rpms', autospec=True)
+    def test_multiple_versions(self, mock_copy):
+        rpms = model_factory.rpm_units(2, True)
+        names = list(set([r.unit_key['name'] for r in rpms]))
+        conduit = mock.MagicMock()
+        conduit.get_source_units.return_value = rpms
+
+        associate.copy_rpms_by_name(names, conduit, False)
+
+        self.assertEqual(conduit.get_source_units.call_count, 1)
+        to_copy = list(mock_copy.call_args[0][0])
+        self.assertEqual(len(to_copy), 1)
+        unit = to_copy[0]
+        self.assertTrue(isinstance(unit, Unit))
+        self.assertTrue(unit.unit_key['name'] in names)
+        self.assertEqual(unit.unit_key['version'], rpms[1].unit_key['version'])
+        self.assertFalse(mock_copy.call_args[0][2])
+
+
+class TestIdentifyChildrenToCopy(unittest.TestCase):
+    def test_group(self):
+        units = model_factory.group_units(1)
+
+        groups, rpm_names, rpm_search_dicts = associate.identify_children_to_copy(units)
+
+        self.assertEqual(len(groups), 0)
+        self.assertEqual(len(rpm_search_dicts), 0)
+        self.assertEqual(rpm_names, set(units[0].metadata['default_package_names']))
+
+    def test_category(self):
+        units = model_factory.category_units(1)
+
+        groups, rpm_names, rpm_search_dicts = associate.identify_children_to_copy(units)
+
+        self.assertEqual(len(rpm_names), 0)
+        self.assertEqual(len(rpm_search_dicts), 0)
+        self.assertEqual(groups, set(units[0].metadata['packagegroupids']))
+
+    def test_erratum(self):
+        units = model_factory.errata_units(1)
+
+        groups, rpm_names, rpm_search_dicts = associate.identify_children_to_copy(units)
+
+        self.assertEqual(len(rpm_names), 0)
+        self.assertEqual(len(groups), 0)
+        self.assertEqual(rpm_search_dicts, units[0].metadata['pkglist'][0]['packages'])
 
 
 class TestAssociateUnit(unittest.TestCase):
@@ -58,6 +248,58 @@ class TestAssociateUnit(unittest.TestCase):
 
         mock_copyfile.assert_called_once_with(unit.storage_path,
                                               mock_conduit.init_unit.return_value.storage_path)
+
+    def test_group(self):
+        unit = model_factory.group_units(1)[0]
+        mock_conduit = mock.MagicMock()
+
+        ret = associate._associate_unit(self.repo, mock_conduit, unit)
+
+        saved_unit = mock_conduit.save_unit.call_args[0][0]
+
+        self.assertTrue(ret is mock_conduit.save_unit.return_value)
+        self.assertEqual(saved_unit.unit_key['repo_id'], self.repo.id)
+        self.assertEqual(saved_unit.unit_key['id'], unit.unit_key['id'])
+
+
+class TestGetRPMSToCopyByKey(unittest.TestCase):
+    def setUp(self):
+        self.units = model_factory.rpm_units(2)
+        self.search_dicts = [unit.unit_key for unit in self.units]
+        self.conduit = mock.MagicMock()
+
+    @mock.patch('pulp_rpm.plugins.importers.yum.existing.get_existing_units',
+                autospec=True, return_value=tuple())
+    def test_none_existing(self, mock_get_existing):
+        ret = associate.get_rpms_to_copy_by_key(self.search_dicts, self.conduit)
+
+        self.assertTrue(isinstance(ret, set))
+        self.assertEqual(len(ret), 2)
+        expected1 = self.search_dicts[0]
+        expected1['checksum'] = None
+        expected1['checksumtype'] = None
+        expected2 = self.search_dicts[0]
+        expected2['checksum'] = None
+        expected2['checksumtype'] = None
+        self.assertTrue(models.RPM.NAMEDTUPLE(**expected1) in ret)
+        self.assertTrue(models.RPM.NAMEDTUPLE(**expected2) in ret)
+
+    @mock.patch('pulp_rpm.plugins.importers.yum.existing.get_existing_units',
+                autospec=True)
+    def test_some_existing(self, mock_get_existing):
+        mock_get_existing.return_value = [self.units[0]]
+
+        ret = associate.get_rpms_to_copy_by_key(self.search_dicts, self.conduit)
+
+        self.assertTrue(isinstance(ret, set))
+        self.assertEqual(len(ret), 1)
+        expected = self.search_dicts[1]
+        expected['checksum'] = None
+        expected['checksumtype'] = None
+        self.assertTrue(models.RPM.NAMEDTUPLE(**expected) in ret)
+
+        mock_get_existing.assert_called_once_with(self.search_dicts, models.RPM.UNIT_KEY_NAMES,
+                                                  models.RPM.TYPE, self.conduit.get_destination_units)
 
 
 class TestGetRPMSToCopyByName(unittest.TestCase):
