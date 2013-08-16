@@ -38,6 +38,8 @@ def get_profiler_conduit(type_id=None, existing_units=None, repo_bindings=[], re
     def get_repo_units(repo_id, content_type_id, additional_unit_fields=[]):
         ret_val = []
         for u in repo_units:
+            if u.type_id != content_type_id:
+                continue
             unit = {'unit_key':u.unit_key,
                     'unit_id':u.id}
             for f in additional_unit_fields:
