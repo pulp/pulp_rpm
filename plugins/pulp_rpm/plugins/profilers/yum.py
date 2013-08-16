@@ -145,8 +145,8 @@ class YumProfiler(Profiler):
     @staticmethod
     def _calculate_applicable_units(content_type, unit_profile, bound_repo_id, config, conduit):
         """
-        Calculate and return a list of errata unit ids applicable to consumers with given
-        unit_profile. Applicability is calculated against all errata belonging to the given bound
+        Calculate and return a list of unit ids of given conten_type applicable to consumers with given
+        unit_profile. Applicability is calculated against all units belonging to the given bound
         repository.
 
         :param content_type:  The content type id that the profile represents
@@ -177,6 +177,8 @@ class YumProfiler(Profiler):
                 applicable = YumProfiler._is_rpm_applicable(unit['unit_key'], profile_lookup_table)
             elif content_type == TYPE_ID_ERRATA:
                 applicable = YumProfiler._is_errata_applicable(unit, profile_lookup_table)
+            else:
+                applicable = False
 
             if applicable:
                 applicable_unit_ids.append(unit['unit_id'])
