@@ -66,10 +66,13 @@ class YumProfiler(Profiler):
         :return:              a dictionary mapping content_type_ids to lists of content unit ids
         :rtype:               dict
         """
+        # Form a lookup table for consumer unit profile so that package lookups are constant time
+        profile_lookup_table = YumProfiler._form_lookup_table(unit_profile)
+
         return {
-            TYPE_ID_RPM: YumProfiler._calculate_applicable_units(TYPE_ID_RPM, unit_profile,
+            TYPE_ID_RPM: YumProfiler._calculate_applicable_units(TYPE_ID_RPM, profile_lookup_table,
                                                                  bound_repo_id, config, conduit),
-            TYPE_ID_ERRATA: YumProfiler._calculate_applicable_units(TYPE_ID_ERRATA, unit_profile,
+            TYPE_ID_ERRATA: YumProfiler._calculate_applicable_units(TYPE_ID_ERRATA, profile_lookup_table,
                                                                     bound_repo_id, config, conduit)}
 
     @staticmethod
@@ -143,16 +146,16 @@ class YumProfiler(Profiler):
             return profile
 
     @staticmethod
-    def _calculate_applicable_units(content_type, unit_profile, bound_repo_id, config, conduit):
+    def _calculate_applicable_units(content_type, profile_lookup_table, bound_repo_id, config, conduit):
         """
-        Calculate and return a list of unit ids of given conten_type applicable to consumers with given
-        unit_profile. Applicability is calculated against all units belonging to the given bound
-        repository.
+        Calculate and return a list of unit ids of given content_type applicable to a unit profile
+        represented by given profile_lookup_table. Applicability is calculated against all units
+        belonging to the given bound repository.
 
         :param content_type:  The content type id that the profile represents
         :type  content_type:  basestring
-        :param unit_profile:  a consumer unit profile
-        :type  unit_profile:  list of dicts
+        :param profile_lookup_table: lookup table of a unit profile keyed by "name arch" 
+        :type profile_lookup_table: dict
         :param bound_repo_id: repo id of a repository to be used to calculate applicability
                               against the given consumer profile
         :type  bound_repo_id: str
@@ -166,9 +169,6 @@ class YumProfiler(Profiler):
         # Get all units associated with given repository of content_type
         additional_unit_fields = ['pkglist'] if content_type == TYPE_ID_ERRATA else []
         units = conduit.get_repo_units(bound_repo_id, content_type, additional_unit_fields)
-
-        # Form a lookup table for consumer unit profile so that package lookups are constant time
-        profile_lookup_table = YumProfiler._form_lookup_table(unit_profile)
 
         applicable_unit_ids = []
         # Check applicability for each unit
@@ -260,7 +260,7 @@ class YumProfiler(Profiler):
         :param errata: Errata for which the applicability is being checked
         :type errata: dict
 
-        :param profile_lookup_table: lookup table of consumer profile keyed by name.arch 
+        :param profile_lookup_table: lookup table of a unit profile keyed by "name arch" 
         :type profile_lookup_table: dict
 
         :return: true if applicable, false otherwise
@@ -290,7 +290,7 @@ class YumProfiler(Profiler):
 
         :param rpm_unit_key:         An rpm's unit_key
         :type  rpm_unit_key:         dict
-        :param profile_lookup_table: lookup table of consumer profile keyed by name.arch 
+        :param profile_lookup_table: lookup table of consumer profile keyed by "name arch" 
         :type  profile_lookup_table: dict
         :return:                     true if applicable, false otherwise
         :rtype:                      boolean
