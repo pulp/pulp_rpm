@@ -18,7 +18,7 @@
 
 Name: pulp-rpm
 Version: 2.2.0
-Release: 0.26.beta%{?dist}
+Release: 0.27.beta%{?dist}
 Summary: Support for RPM content in the Pulp platform
 Group: Development/Languages
 License: GPLv2
@@ -282,6 +282,12 @@ A collection of yum plugins supplementing Pulp consumer operations.
 
 
 %changelog
+* Fri Aug 16 2013 Jeff Ortel <jortel@redhat.com> 2.2.0-0.27.beta
+- 976579 - adding creation of Packages symlink to contents
+  (jason.connor@gmail.com)
+- 974590 - Handle multiple calls to copy metadata files.
+  (jason.dobies@redhat.com)
+
 * Thu Aug 15 2013 Jeff Ortel <jortel@redhat.com> 2.2.0-0.26.beta
 - 996625 - sync now always saves groups and categories, in case their metadata
   has changed. (mhrivnak@redhat.com)
