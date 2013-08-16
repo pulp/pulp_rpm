@@ -226,7 +226,7 @@ class YumProfiler(Profiler):
         lookup = {}
         for rpm in rpms:
             # Since only one name.arch is allowed to be installed on a machine,
-            # we will use name.arch as a key in the lookup table
+            # we will use "name arch" as a key in the lookup table
             key = YumProfiler._form_lookup_key(rpm)
             lookup[key] = rpm
         return lookup
@@ -379,21 +379,21 @@ class YumProfiler(Profiler):
                     (unit_key, repo_ids, consumer.id)
             logger.info(error_msg)
             return None, None
-        else:
-            updated_rpms = YumProfiler._get_rpms_from_errata(errata)
-            logger.info("Errata <%s> refers to %s updated rpms of: %s" % (errata.unit_key['id'], len(updated_rpms), updated_rpms))
-            applicable_rpms, upgrade_details = YumProfiler._rpms_applicable_to_consumer(consumer, updated_rpms)
-            if applicable_rpms:
-                logger.info("Rpms: <%s> were found to be related to errata <%s> and applicable to consumer <%s>" % (applicable_rpms, errata, consumer.id))
-            # Return as list of name.arch values
-            ret_val = []
-            for ar in applicable_rpms:
-                pkg_name = "%s-%s:%s-%s.%s" % (ar["name"], ar["epoch"], ar["version"], ar["release"], ar["arch"])
-                data = {"unit_key":{"name":pkg_name}, "type_id":TYPE_ID_RPM}
-                ret_val.append(data)
-            logger.info("Translated errata <%s> to <%s>" % (errata, ret_val))
-            # Add applicable errata details to the applicability report
-            errata_details = errata.metadata
-            errata_details['id'] = errata.unit_key['id']
-            upgrade_details['errata_details'] = errata_details
-            return ret_val, upgrade_details
+
+        updated_rpms = YumProfiler._get_rpms_from_errata(errata)
+        logger.info("Errata <%s> refers to %s updated rpms of: %s" % (errata.unit_key['id'], len(updated_rpms), updated_rpms))
+        applicable_rpms, upgrade_details = YumProfiler._rpms_applicable_to_consumer(consumer, updated_rpms)
+        if applicable_rpms:
+            logger.info("Rpms: <%s> were found to be related to errata <%s> and applicable to consumer <%s>" % (applicable_rpms, errata, consumer.id))
+        # Return as list of name.arch values
+        ret_val = []
+        for ar in applicable_rpms:
+            pkg_name = "%s-%s:%s-%s.%s" % (ar["name"], ar["epoch"], ar["version"], ar["release"], ar["arch"])
+            data = {"unit_key":{"name":pkg_name}, "type_id":TYPE_ID_RPM}
+            ret_val.append(data)
+        logger.info("Translated errata <%s> to <%s>" % (errata, ret_val))
+        # Add applicable errata details to the applicability report
+        errata_details = errata.metadata
+        errata_details['id'] = errata.unit_key['id']
+        upgrade_details['errata_details'] = errata_details
+        return ret_val, upgrade_details
