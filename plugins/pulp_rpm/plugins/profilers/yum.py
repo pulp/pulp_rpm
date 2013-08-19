@@ -174,14 +174,14 @@ class YumProfiler(Profiler):
         # Check applicability for each unit
         for unit in units:
             if content_type == TYPE_ID_RPM:
-                applicable = YumProfiler._is_rpm_applicable(unit['unit_key'], profile_lookup_table)
+                applicable = YumProfiler._is_rpm_applicable(unit.unit_key, profile_lookup_table)
             elif content_type == TYPE_ID_ERRATA:
                 applicable = YumProfiler._is_errata_applicable(unit, profile_lookup_table)
             else:
                 applicable = False
 
             if applicable:
-                applicable_unit_ids.append(unit['unit_id'])
+                applicable_unit_ids.append(unit.metadata['unit_id'])
 
         return applicable_unit_ids
 
@@ -257,8 +257,8 @@ class YumProfiler(Profiler):
         """
         Checks whether given errata is applicable to the consumer.
 
-        :param errata: Errata for which the applicability is being checked
-        :type errata: dict
+        :param errata: Errata unit for which the applicability is being checked
+        :type errata: pulp.plugins.model.Unit
 
         :param profile_lookup_table: lookup table of a unit profile keyed by "name arch" 
         :type profile_lookup_table: dict
@@ -267,13 +267,7 @@ class YumProfiler(Profiler):
         :rtype: boolean
         """
         # Get rpms from errata
-        # Due to https://bugzilla.redhat.com/show_bug.cgi?id=991500, the errata we get here is not a
-        # Unit, but is a dict. This dictionary has "flattened" the metadata out.
-        # _get_rpms_from_errata needs a Unit, so we'll need to reconstruct a unit out of our dict.
-        # In order to do that, we need to "unflatten" the metadata portion of the unit.
-        metadata = dict([(key, value) for key, value in errata.iteritems() if key != 'unit_key'])
-        errata_rpms = YumProfiler._get_rpms_from_errata(
-            Unit(TYPE_ID_ERRATA, errata['unit_key'], metadata, None))
+        errata_rpms = YumProfiler._get_rpms_from_errata(errata)
 
         # Check if any rpm from errata is applicable to the consumer
         for errata_rpm in errata_rpms:
