@@ -26,10 +26,52 @@ from pulp.server.managers import factory
 from pulp.server.managers.consumer.cud import ConsumerManager
 
 from pulp_rpm.common.ids import TYPE_ID_ERRATA, TYPE_ID_RPM
-from pulp_rpm.plugins.profilers.yum import YumProfiler
+from pulp_rpm.plugins.profilers.yum import entry_point, YumProfiler
 from pulp_rpm.yum_plugin import comps_util, util, updateinfo
 import profiler_mocks
 import rpm_support_base
+
+
+class TestYumProfiler(rpm_support_base.PulpRPMTests):
+    """
+    The YumProfiler used to be two different profilers - one for RPMs and one for Errata. It was
+    combined, and this test suite ensures that the methods that only apply to one of the two types
+    are not applied to both.
+    """
+    def test_entry_point(self):
+        plugin, config = entry_point()
+
+        self.assertEqual(plugin, YumProfiler)
+        self.assertEqual(config, {})
+
+    def test_install_units_with_rpms(self):
+        """
+        Make sure install_units() can handle being given RPMs.
+        """
+        rpms = [{'name': 'rpm_1', 'type_id': TYPE_ID_RPM},
+                {'name': 'rpm_2', 'type_id': TYPE_ID_RPM}]
+        profiler = YumProfiler()
+
+        translated_units  = profiler.install_units('consumer', deepcopy(rpms), None, None,
+                                                    'conduit')
+
+        # The RPMs should be unaltered
+        self.assertEqual(translated_units, rpms)
+
+    def test_update_profile_with_errata(self):
+        """
+        Test the update_profile() method with a presorted profile. It should not alter it at all.
+        """
+        profile = ['one_errata', 'two_errata', 'three_errata', 'four_errata']
+        profiler = YumProfiler()
+
+        # The update_profile() method doesn't use any of the args except for profile and
+        # content_type, so we'll just pass in strings for the others
+        # This test just asserts that the profile is returned unaltered
+        new_profile = profiler.update_profile('consumer', TYPE_ID_ERRATA, deepcopy(profile),
+                                              'config')
+
+        self.assertEqual(new_profile, profile)
 
 
 class TestYumProfilerErrata(rpm_support_base.PulpRPMTests):
