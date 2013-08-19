@@ -24,9 +24,10 @@ from xml.etree.cElementTree import iterparse
 
 from nectar.listener import AggregatingEventListener
 from nectar.request import DownloadRequest
+from pulp_rpm.plugins.importers.yum import utils
 
-from pulp_rpm.plugins.importers.yum.repomd import filelists, nectar_factory, other
-from pulp_rpm.plugins.importers.yum.repomd.packages import package_list_generator, element_to_raw_xml
+from pulp_rpm.plugins.importers.yum.repomd import filelists, nectar_factory, other, packages
+from pulp_rpm.plugins.importers.yum.repomd.packages import package_list_generator
 
 
 _LOGGER = logging.getLogger(__name__)
@@ -181,14 +182,14 @@ class MetadataFiles(object):
 
         download_request_list = []
 
-        for md in self.metadata.values():
+        for file_name, file_info in self.metadata.iteritems():
             # we don't care about the sqlite files
-            if md['relative_path'].find('sqlite') >= 0:
+            if file_name.endswith('_db') and file_name in self.KNOWN_TYPES:
                 continue
-            url = urljoin(self.repo_url, md['relative_path'])
-            dst = os.path.join(self.dst_dir, md['relative_path'].rsplit('/', 1)[-1])
+            url = urljoin(self.repo_url, file_info['relative_path'])
+            dst = os.path.join(self.dst_dir, file_info['relative_path'].rsplit('/', 1)[-1])
 
-            md['local_path'] = dst
+            file_info['local_path'] = dst
 
             request = DownloadRequest(url, dst)
             download_request_list.append(request)
@@ -281,7 +282,8 @@ class MetadataFiles(object):
                 db_file_handle = gdbm.open(db_filename, 'nf')
                 try:
                     for element in generator:
-                        raw_xml = element_to_raw_xml(element)
+                        utils.strip_ns(element)
+                        raw_xml = utils.element_to_raw_xml(element)
                         unit_key, _ = process_func(element)
                         db_key = self.generate_db_key(unit_key)
                         db_file_handle[db_key] = raw_xml

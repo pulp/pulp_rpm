@@ -22,7 +22,7 @@ NAME = 'erratum'
 DESC = _('creates a new erratum')
 
 d = _('id of the erratum to create')
-OPT_ERRATUM_ID = PulpCliOption('--erratum_id', d, aliases=['-i'], required=True)
+OPT_ERRATUM_ID = PulpCliOption('--erratum-id', d, aliases=['-i'], required=True)
 
 d = _('title of the erratum')
 OPT_TITLE = PulpCliOption('--title', d, aliases=['-n'], required=True)
@@ -164,7 +164,7 @@ class CreateErratumCommand(UploadCommand):
             'rights' : rights,
             'summary' : summary,
             'solution' : solution,
-            'from_str' : from_str,
+            'from' : from_str,
             'pushcount' : pushcount,
             'reboot_suggested' : reboot_suggested,
         }

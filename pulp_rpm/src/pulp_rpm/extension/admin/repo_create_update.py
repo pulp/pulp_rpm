@@ -21,6 +21,7 @@ from pulp.client.commands.repo.cudl import CreateRepositoryCommand, UpdateReposi
 from pulp.client.commands.repo.importer_config import (OptionsBundle, ImporterConfigMixin,
                                                        safe_parse)
 from pulp.common import constants as pulp_constants
+from pulp.common.plugins import importer_constants
 from pulp.common.util import encode_unicode
 
 from pulp_rpm.extension.admin import repo_options
@@ -161,11 +162,11 @@ class RpmRepoCreateCommand(CreateRepositoryCommand, ImporterConfigMixin):
         we'll remove this entirely from the client. jdob, May 10, 2013
         """
         if 'relative_url' not in yum_distributor_config:
-            if 'feed_url' in importer_config:
-                if importer_config['feed_url'] is None:
+            if importer_constants.KEY_FEED in importer_config:
+                if importer_config[importer_constants.KEY_FEED] is None:
                     self.prompt.render_failure_message(_('Given repository feed URL is invalid.'))
                     return
-                url_parse = urlparse(encode_unicode(importer_config['feed_url']))
+                url_parse = urlparse(encode_unicode(importer_config[importer_constants.KEY_FEED]))
 
                 if url_parse[2] in ('', '/'):
                     relative_path = '/' + repo_id
@@ -224,6 +225,27 @@ class RpmRepoUpdateCommand(UpdateRepositoryCommand, ImporterConfigMixin):
 
         # Adds all distributor config options
         repo_options.add_distributor_config_to_command(self)
+
+    def populate_sync_group(self):
+        """
+        Overridden from ImporterConfigMixin to add in the skip option.
+        """
+        super(RpmRepoUpdateCommand, self).populate_sync_group()
+        self.sync_group.add_option(repo_options.OPT_SKIP)
+
+    def parse_sync_group(self, user_input):
+        """
+        Overridden from ImporterConfigMixin to add the skip option
+
+        :param user_input: keyword arguments from the CLI framework containing user input
+        :type  user_input: dict
+
+        :return: suitable representation of the config that can be stored on the repo
+        :rtype:  dict
+        """
+        config = super(RpmRepoUpdateCommand, self).parse_sync_group(user_input)
+        safe_parse(user_input, config, repo_options.OPT_SKIP.keyword, CONFIG_KEY_SKIP)
+        return config
 
     def run(self, **kwargs):
 

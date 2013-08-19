@@ -123,8 +123,8 @@ class RepoSync(object):
             else:
                 self.distribution_report['state'] = constants.STATE_RUNNING
                 self.set_progress()
-                treeinfo.sync(self.sync_conduit, self.sync_feed,
-                              self.tmp_dir, self.distribution_report, self.set_progress)
+                treeinfo.sync(self.sync_conduit, self.sync_feed, self.tmp_dir,
+                              self.nectar_config, self.distribution_report, self.set_progress)
             self.set_progress()
 
             if models.Errata.TYPE in self.call_config.get(constants.CONFIG_SKIP, []):
@@ -149,6 +149,7 @@ class RepoSync(object):
             return report
 
         except Exception, e:
+            _LOGGER.exception('sync failed')
             for step, value in self.progress_status.iteritems():
                 if value.get('state') == constants.STATE_RUNNING:
                     value['state'] = constants.STATE_FAILED
@@ -437,7 +438,7 @@ class RepoSync(object):
         try:
             process_func = functools.partial(group.process_group_element, self.repo.id)
 
-            self.save_fileless_units(group_file_handle, group.GROUP_TAG, process_func)
+            self.save_fileless_units(group_file_handle, group.GROUP_TAG, process_func, mutable_type=True)
         finally:
             group_file_handle.close()
 
@@ -456,11 +457,11 @@ class RepoSync(object):
 
         try:
             process_func = functools.partial(group.process_category_element, self.repo.id)
-            self.save_fileless_units(group_file_handle, group.CATEGORY_TAG, process_func)
+            self.save_fileless_units(group_file_handle, group.CATEGORY_TAG, process_func, mutable_type=True)
         finally:
             group_file_handle.close()
 
-    def save_fileless_units(self, file_handle, tag, process_func):
+    def save_fileless_units(self, file_handle, tag, process_func, mutable_type=False):
         """
         Generic method for saving units parsed from a repo metadata file where
         the units do not have files to store on disk. For example, groups.
@@ -473,25 +474,34 @@ class RepoSync(object):
                                 a dict representing that unit's attribute names
                                 and values. The function must take one parameter,
                                 which is an ElementTree instance
-        :type process_func:     function
+        :type  process_func:    function
+        :param mutable_type:    iff True, each unit will be saved regardless of
+                                whether it already exists in the repo. this is
+                                useful for units like group and category which
+                                don't have a version, but could change
+        :type  mutable_type:    bool
         """
         # iterate through the file and determine what we want to have
         package_info_generator = packages.package_list_generator(file_handle,
                                                                  tag,
                                                                  process_func)
-        wanted = (model.as_named_tuple for model in package_info_generator)
-        # given what we want, filter out what we already have
-        to_save = existing.check_repo(wanted, self.sync_conduit.get_units)
+        # if units aren't mutable, we don't need to attempt saving units that
+        # we already have
+        if not mutable_type:
+            wanted = (model.as_named_tuple for model in package_info_generator)
+            # given what we want, filter out what we already have
+            to_save = existing.check_repo(wanted, self.sync_conduit.get_units)
 
-        # rewind, iterate again through the file, and download what we need
-        file_handle.seek(0)
-        package_info_generator = packages.package_list_generator(file_handle,
-                                                                 tag,
-                                                                 process_func)
+            # rewind, iterate again through the file, and save what we need
+            file_handle.seek(0)
+            all_packages = packages.package_list_generator(file_handle,
+                                                           tag,
+                                                           process_func)
+            package_info_generator = (model for model in all_packages if model.as_named_tuple in to_save)
+
         for model in package_info_generator:
-            if model.as_named_tuple in to_save:
-                unit = self.sync_conduit.init_unit(model.TYPE, model.unit_key, model.metadata, None)
-                self.sync_conduit.save_unit(unit)
+            unit = self.sync_conduit.init_unit(model.TYPE, model.unit_key, model.metadata, None)
+            self.sync_conduit.save_unit(unit)
 
     def _identify_wanted_versions(self, package_info_generator):
         """

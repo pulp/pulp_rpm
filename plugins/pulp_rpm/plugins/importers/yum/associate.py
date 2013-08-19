@@ -66,7 +66,7 @@ def associate(source_repo, dest_repo, import_conduit, config, units=None):
     if not recursive:
         return associated_units
 
-    group_ids, rpm_names, rpm_unit_keys = identify_children_to_copy(associated_units)
+    group_ids, rpm_names, rpm_search_dicts = identify_children_to_copy(associated_units)
 
     # ------ get group children of the categories ------
     group_criteria = UnitAssociationCriteria([models.PackageGroup.TYPE],
@@ -76,8 +76,8 @@ def associate(source_repo, dest_repo, import_conduit, config, units=None):
         associate(source_repo, dest_repo, import_conduit, config, group_units)
 
     # ------ get RPM children of errata ------
-    wanted_rpms = get_rpms_to_copy_by_key(rpm_unit_keys, import_conduit)
-    rpm_unit_keys = None
+    wanted_rpms = get_rpms_to_copy_by_key(rpm_search_dicts, import_conduit)
+    rpm_search_dicts = None
     rpms_to_copy = filter_available_rpms(wanted_rpms, import_conduit)
     copy_rpms(rpms_to_copy, import_conduit, recursive)
     rpms_to_copy = None
@@ -89,28 +89,30 @@ def associate(source_repo, dest_repo, import_conduit, config, units=None):
     return associated_units
 
 
-def get_rpms_to_copy_by_key(rpm_unit_keys, import_conduit):
+def get_rpms_to_copy_by_key(rpm_search_dicts, import_conduit):
     """
     Errata specify NEVRA for the RPMs they reference. This method is useful for
     taking those specifications and finding actual units available in the source
     repository.
 
-    :param rpm_unit_keys:   iterable of dicts that include unit key parameters
-    :type  rpm_unit_keys:   iterable
-    :param import_conduit:  import conduit passed to the Importer
-    :type  import_conduit:  pulp.plugins.conduits.unit_import.ImportUnitConduit
+    :param rpm_search_dicts:    iterable of dicts that include a subset of rpm
+                                unit key parameters
+    :type  rpm_search_dicts:    iterable
+    :param import_conduit:      import conduit passed to the Importer
+    :type  import_conduit:      pulp.plugins.conduits.unit_import.ImportUnitConduit
+
     :return: set of namedtuples needed by the dest repo
     """
     # identify which RPMs are desired and store as named tuples
     named_tuples = set()
-    for key in rpm_unit_keys:
+    for key in rpm_search_dicts:
         # ignore checksum from updateinfo.xml
         key['checksum'] = None
         key['checksumtype'] = None
         named_tuples.add(models.RPM.NAMEDTUPLE(**key))
 
     # identify which of those RPMs already exist
-    existing_units = existing.get_existing_units(rpm_unit_keys, models.RPM.UNIT_KEY_NAMES,
+    existing_units = existing.get_existing_units(rpm_search_dicts, models.RPM.UNIT_KEY_NAMES,
                                 models.RPM.TYPE, import_conduit.get_destination_units)
     # remove units that already exist in the destination from the set of units
     # we want to copy
@@ -137,11 +139,11 @@ def get_rpms_to_copy_by_name(rpm_names, import_conduit):
     :return: set of names that
     """
     search_dicts = ({'name': name} for name in rpm_names)
-    units = existing.get_existing_units(search_dicts, ['name'],
+    units = existing.get_existing_units(search_dicts, models.RPM.UNIT_KEY_NAMES,
                                         models.RPM.TYPE, import_conduit.get_destination_units)
     names = set(rpm_names)
     for unit in units:
-        names.discard(unit['name'])
+        names.discard(unit.unit_key['name'])
     return names
 
 
@@ -252,11 +254,11 @@ def identify_children_to_copy(units):
     :param units:   iterable of Units
     :type  units:   iterable of pulp.plugins.models.Unit
 
-    :return:    set(group names), set(rpm names), list(rpm unit keys as dicts)
+    :return:    set(group names), set(rpm names), list(rpm search dicts)
     """
     groups = set()
     rpm_names = set()
-    rpm_unit_keys = []
+    rpm_search_dicts = []
     for unit in units:
         # TODO: won't work for distribution, but we probably don't care.
         # we should handle that somehow though
@@ -266,8 +268,8 @@ def identify_children_to_copy(units):
         elif model.TYPE == models.PackageGroup.TYPE:
             rpm_names.update(model.all_package_names)
         elif model.TYPE == models.Errata.TYPE:
-            rpm_unit_keys.extend(model.package_unit_keys)
-    return groups, rpm_names, rpm_unit_keys
+            rpm_search_dicts.extend(model.rpm_search_dicts)
+    return groups, rpm_names, rpm_search_dicts
 
 
 def _associate_unit(dest_repo, import_conduit, unit):

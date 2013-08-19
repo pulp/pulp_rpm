@@ -13,7 +13,7 @@ from gettext import gettext as _
 
 from pulp.client.commands.schedule import (
     DeleteScheduleCommand, ListScheduleCommand, CreateScheduleCommand,
-    UpdateScheduleCommand, NextRunCommand, ScheduleStrategy)
+    UpdateScheduleCommand, NextRunCommand, RepoScheduleStrategy)
 from pulp.client.commands.options import OPTION_REPO_ID
 
 from pulp_rpm.common.ids import YUM_IMPORTER_ID
@@ -30,7 +30,7 @@ DESC_NEXT_RUN = _('displays the next scheduled sync run for a repository')
 
 class RpmListScheduleCommand(ListScheduleCommand):
     def __init__(self, context):
-        strategy = RepoSyncScheduleStrategy(context)
+        strategy = RepoScheduleStrategy(context.server.repo_sync_schedules, YUM_IMPORTER_ID)
         super(RpmListScheduleCommand, self).__init__(context, strategy,
                                                      description=DESC_LIST)
         self.add_option(OPTION_REPO_ID)
@@ -38,7 +38,7 @@ class RpmListScheduleCommand(ListScheduleCommand):
 
 class RpmCreateScheduleCommand(CreateScheduleCommand):
     def __init__(self, context):
-        strategy = RepoSyncScheduleStrategy(context)
+        strategy = RepoScheduleStrategy(context.server.repo_sync_schedules, YUM_IMPORTER_ID)
         super(RpmCreateScheduleCommand, self).__init__(context, strategy,
                                                        description=DESC_CREATE)
         self.add_option(OPTION_REPO_ID)
@@ -46,7 +46,7 @@ class RpmCreateScheduleCommand(CreateScheduleCommand):
 
 class RpmDeleteScheduleCommand(DeleteScheduleCommand):
     def __init__(self, context):
-        strategy = RepoSyncScheduleStrategy(context)
+        strategy = RepoScheduleStrategy(context.server.repo_sync_schedules, YUM_IMPORTER_ID)
         super(RpmDeleteScheduleCommand, self).__init__(context, strategy,
                                                        description=DESC_DELETE)
         self.add_option(OPTION_REPO_ID)
@@ -54,7 +54,7 @@ class RpmDeleteScheduleCommand(DeleteScheduleCommand):
 
 class RpmUpdateScheduleCommand(UpdateScheduleCommand):
     def __init__(self, context):
-        strategy = RepoSyncScheduleStrategy(context)
+        strategy = RepoScheduleStrategy(context.server.repo_sync_schedules, YUM_IMPORTER_ID)
         super(RpmUpdateScheduleCommand, self).__init__(context, strategy,
                                                        description=DESC_UPDATE)
         self.add_option(OPTION_REPO_ID)
@@ -62,39 +62,7 @@ class RpmUpdateScheduleCommand(UpdateScheduleCommand):
 
 class RpmNextRunCommand(NextRunCommand):
     def __init__(self, context):
-        strategy = RepoSyncScheduleStrategy(context)
+        strategy = RepoScheduleStrategy(context.server.repo_sync_schedules, YUM_IMPORTER_ID)
         super(RpmNextRunCommand, self).__init__(context, strategy,
                                                 description=DESC_NEXT_RUN)
         self.add_option(OPTION_REPO_ID)
-
-# -- framework classes --------------------------------------------------------
-
-class RepoSyncScheduleStrategy(ScheduleStrategy):
-
-    # See super class for method documentation
-
-    def __init__(self, context):
-        super(RepoSyncScheduleStrategy, self).__init__()
-        self.context = context
-        self.api = context.server.repo_sync_schedules
-
-    def create_schedule(self, schedule, failure_threshold, enabled, kwargs):
-        repo_id = kwargs[OPTION_REPO_ID.keyword]
-
-        # Eventually we'll support passing in sync arguments to the scheduled
-        # call. When we do, override_config will be created here from kwargs.
-        override_config = {}
-
-        return self.api.add_schedule(repo_id, YUM_IMPORTER_ID, schedule, override_config, failure_threshold, enabled)
-
-    def delete_schedule(self, schedule_id, kwargs):
-        repo_id = kwargs[OPTION_REPO_ID.keyword]
-        return self.api.delete_schedule(repo_id, YUM_IMPORTER_ID, schedule_id)
-
-    def retrieve_schedules(self, kwargs):
-        repo_id = kwargs[OPTION_REPO_ID.keyword]
-        return self.api.list_schedules(repo_id, YUM_IMPORTER_ID)
-
-    def update_schedule(self, schedule_id, **kwargs):
-        repo_id = kwargs.pop(OPTION_REPO_ID.keyword)
-        return self.api.update_schedule(repo_id, YUM_IMPORTER_ID, schedule_id, **kwargs)

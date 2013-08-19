@@ -99,7 +99,7 @@ class CreateRpmCommandTests(rpm_support_base.PulpClientTests):
             'rights' : 'test-rights',
             'summary' : 'test-summary',
             'solution' : 'test-solution',
-            'from_str' : 'test-from',
+            'from' : 'test-from',
             'pushcount' : 1,
             'reboot_suggested' : 'test-reboot',
             'pkglist' : expected_package_list,

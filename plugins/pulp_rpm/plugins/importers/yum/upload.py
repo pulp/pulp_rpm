@@ -20,8 +20,9 @@ from pulp.plugins.model import SyncReport
 from pulp.server.db.model.criteria import UnitAssociationCriteria
 
 from pulp_rpm.common import models
+from pulp_rpm.plugins.importers.yum import utils
 from pulp_rpm.plugins.importers.yum.parse import rpm
-from pulp_rpm.plugins.importers.yum.repomd import packages, primary
+from pulp_rpm.plugins.importers.yum.repomd import primary
 
 
 # this is required because some of the pre-migration XML tags use the "rpm"
@@ -51,7 +52,7 @@ def upload(repo, type_id, unit_key, metadata, file_path, conduit, config):
     :type  file_path: str
 
     :param conduit: provides access to relevant Pulp functionality
-    :type  conduit: pulp.plugins.conduits.unit_add.UnitAddConduit
+    :type  conduit: pulp.plugins.conduits.upload.UploadConduit
 
     :param config: plugin configuration for the repository
     :type  config: pulp.plugins.config.PluginCallConfiguration
@@ -71,24 +72,26 @@ def upload(repo, type_id, unit_key, metadata, file_path, conduit, config):
     except TypeError:
         return _fail_report('invalid unit key or metadata')
 
-    if type_id == models.RPM.TYPE:
-        # TODO: replace this call with something that doesn't use yum
-        model.metadata['repodata'] = rpm.get_package_xml(file_path)
-
     # not all models have a relative path
     relative_path = getattr(model, 'relative_path', '')
 
-    # The provides and requires are not provided by the client, so extract them now
-    _update_provides_requires(model)
 
     # both of the below operations perform IO
     try:
         # init unit
         unit = conduit.init_unit(model.TYPE, model.unit_key, model.metadata, relative_path)
         # copy file to destination
-        shutil.copy(file_path, unit.storage_path)
+        if file_path and unit.storage_path:
+            shutil.copy(file_path, unit.storage_path)
     except IOError:
         return _fail_report('failed to copy file to destination')
+
+    # do this for RPMs and SRPMs
+    if isinstance(model, models.RPM):
+        # TODO: replace this call with something that doesn't use yum
+        model.metadata['repodata'] = rpm.get_package_xml(unit.storage_path)
+        # The provides and requires are not provided by the client, so extract them now
+        _update_provides_requires(model)
 
     # save unit
     conduit.save_unit(unit)
@@ -105,6 +108,11 @@ def _update_provides_requires(model):
     """
     Determines the provides and requires fields based on the RPM's XML snippet and updates
     the model instance.
+
+    :param model:   an RPM model to which providesand requires fields should be
+                    added. The model's metadata must already include the
+                    'repodata' attribute.
+    :type  model:   pulp_rpm.common.models.RPM
     """
 
     try:
@@ -118,7 +126,7 @@ def _update_provides_requires(model):
         model.metadata['repodata']['primary'].encode(codec)
     fake_xml = FAKE_XML % {'encoding': codec, 'xml': model.metadata['repodata']['primary']}
     fake_element = ET.fromstring(fake_xml.encode(codec))
-    packages.strip_ns(fake_element)
+    utils.strip_ns(fake_element)
     primary_element = fake_element.find('package')
     format_element = primary_element.find('format')
     provides_element = format_element.find('provides')
@@ -140,7 +148,7 @@ def link_errata_to_rpms(conduit, errata_model, errata_unit):
     """
     fields = list(models.RPM.UNIT_KEY_NAMES)
     fields.append('_storage_path')
-    filters = {'$or': errata_model.package_unit_keys}
+    filters = {'$or': errata_model.rpm_search_dicts}
     for model_type in (models.RPM.TYPE, models.SRPM.TYPE):
         criteria = UnitAssociationCriteria(type_ids=[model_type], unit_fields=fields,
                                            unit_filters=filters)

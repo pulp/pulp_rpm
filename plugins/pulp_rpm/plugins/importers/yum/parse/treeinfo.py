@@ -17,13 +17,12 @@ import os
 import shutil
 import tempfile
 
-from nectar.config import DownloaderConfig
-from nectar.downloaders.curl import HTTPCurlDownloader
 from nectar.listener import AggregatingEventListener
 from nectar.request import DownloadRequest
 
 from pulp_rpm.common import constants, ids, models
 from pulp_rpm.plugins.importers.yum.listener import DistroFileListener
+from pulp_rpm.plugins.importers.yum.repomd import nectar_factory
 
 SECTION_GENERAL = 'general'
 SECTION_STAGE2 = 'stage2'
@@ -32,7 +31,7 @@ SECTION_CHECKSUMS = 'checksums'
 _LOGGER = logging.getLogger(__name__)
 
 
-def sync(sync_conduit, feed, working_dir, report, progress_callback):
+def sync(sync_conduit, feed, working_dir, nectar_config, report, progress_callback):
     """
     Look for a distribution in the target repo and sync it if found
 
@@ -43,6 +42,8 @@ def sync(sync_conduit, feed, working_dir, report, progress_callback):
     :param working_dir:         full path to the directory to which files
                                 should be downloaded
     :type  working_dir:         basestring
+    :param nectar_config:       download config to be used by nectar
+    :type  nectar_config:       nectar.config.DownloaderConfig
     :param report:              progress report object
     :type  report:              pulp_rpm.plugins.importers.yum.report.DistributionReport
     :param progress_callback:   function that takes no arguments but induces
@@ -53,7 +54,7 @@ def sync(sync_conduit, feed, working_dir, report, progress_callback):
     # complete cleanup
     tmp_dir = tempfile.mkdtemp(dir=working_dir)
     try:
-        treefile_path = get_treefile(feed, tmp_dir)
+        treefile_path = get_treefile(feed, tmp_dir, nectar_config)
         if not treefile_path:
             _LOGGER.debug('no treefile found')
             report['state'] = constants.STATE_COMPLETE
@@ -67,9 +68,8 @@ def sync(sync_conduit, feed, working_dir, report, progress_callback):
             return
 
         report.set_initial_values(len(files))
-        config = DownloaderConfig()
         listener = DistroFileListener(report, progress_callback)
-        downloader = HTTPCurlDownloader(config, listener)
+        downloader = nectar_factory.create_downloader(feed, nectar_config, listener)
         _LOGGER.debug('downloading distribution files')
         downloader.download(file_to_download_request(f, feed, tmp_dir) for f in files)
         if len(listener.failed_reports) == 0:
@@ -120,14 +120,17 @@ def file_to_download_request(file_dict, feed, storage_path):
     )
 
 
-def get_treefile(feed, tmp_dir):
+def get_treefile(feed, tmp_dir, nectar_config):
     """
     Download the treefile and return its full path on disk, or None if not found
 
-    :param feed:    URL to the repository
-    :type  feed:    str
-    :param tmp_dir: full path to the temporary directory being used
-    :type  tmp_dir: str
+    :param feed:            URL to the repository
+    :type  feed:            str
+    :param tmp_dir:         full path to the temporary directory being used
+    :type  tmp_dir:         str
+    :param nectar_config:   download config to be used by nectar
+    :type  nectar_config:   nectar.config.DownloaderConfig
+
     :return:        full path to treefile on disk, or None if not found
     :rtype:         str or NoneType
     """
@@ -135,10 +138,8 @@ def get_treefile(feed, tmp_dir):
         path = os.path.join(tmp_dir, filename)
         url = os.path.join(feed, filename)
         request = DownloadRequest(url, path)
-        # TODO: use the config settings available from the sync workflow.
-        config = DownloaderConfig()
         listener = AggregatingEventListener()
-        downloader = HTTPCurlDownloader(config, listener)
+        downloader = nectar_factory.create_downloader(feed, nectar_config, listener)
         downloader.download([request])
         if len(listener.succeeded_reports) == 1:
             return path
@@ -164,10 +165,19 @@ def parse_treefile(path):
         except ConfigParser.ParsingError:
             # wouldn't need this if ParsingError subclassed ValueError.
             raise ValueError('could not parse treeinfo file')
+
+    # apparently the 'variant' is optional. for example, it does not appear
+    # in the RHEL 5.9 treeinfo file. This is how the previous importer
+    # handled that.
+    try:
+        variant = parser.get(SECTION_GENERAL, 'variant')
+    except ConfigParser.NoOptionError:
+        variant = None
+
     try:
         model = models.Distribution(
             parser.get(SECTION_GENERAL, 'family'),
-            parser.get(SECTION_GENERAL, 'variant'),
+            variant,
             parser.get(SECTION_GENERAL, 'version'),
             parser.get(SECTION_GENERAL, 'arch'),
             metadata={}

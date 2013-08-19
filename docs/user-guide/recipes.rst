@@ -177,31 +177,71 @@ the "Download" link from the "Entitlement Certificate" column to retrieve the
 certificate and key, bundled into a single file. You can pass that same file as
 the ``--feed-cert`` and ``--feed-key`` options when you create the repo.
 
-Publish ISOs
-============
+Export Repositories and Repository Groups
+=========================================
 
-Given a repository "foo" that contains packages, it is possible to publish all
-of its packages as ISO images. There are extra command line options that can
-limit which packages are selected; it's left as an exercise for the reader to
-consult the help text of the ``export run`` command.
+If you have a Pulp server that does not have access to the Internet, it is possible
+to use a second Pulp server, which does have Internet access, to retrieve repositories and
+repository updates for your disconnected server. The full list of options can be seen by
+running ``pulp-admin rpm repo export run --help``.
 
-If the total size is less than 630MB, Pulp will create one CD-sized ISO image.
-If it is greater, Pulp will create as many DVD-sized ISO images (4308MB) as
-required to fit the selected packages.
+The general workflow is as follows:
+
+1. Use the connected Pulp server to sync one or more repositories.
+2. Export these repositories to ISOs: ``pulp-admin rpm repo export run --repo-id=demo-repo``
 
 ::
 
-  $ pulp-admin rpm repo export run --repo-id=foo
+  $ pulp-admin rpm repo export run --repo-id=demo-repo
   +----------------------------------------------------------------------+
-                        Publishing Repository [foo]
+                        Publishing Repository [demo-repo]
   +----------------------------------------------------------------------+
 
   This command may be exited by pressing ctrl+c without affecting the actual
   operation on the server.
 
-The resulting ISOs are made available at ``/pulp/exports/<repo-id>/``. For example,
-`http://localhost/pulp/exports/foo/ <http://localhost/pulp/exports/foo/>`_
+Which, if publishing over HTTP, could be found at
+`http://localhost/pulp/exports/repo/demo-repo/ <http://localhost/pulp/exports/repo/demo-repo/>`_
 (adjust hostname and repo-id as necessary.)
+
+3. Transport the ISOs to the disconnected Pulp server
+4. Mount each ISO and copy its contents to a directory on the disconnected Pulp server
+
+::
+
+  $ cp -r /path/to/mounted/iso1/ /path/to/extracted/content
+  $ cp -r /path/to/mounted/iso2/ /path/to/extracted/content
+
+5. On the disconnected Pulp server, create a new repository with the feed pointing at
+   the directory containing the ISO contents:
+   ``pulp-admin rpm repo create --repo-id=demo-repo --feed=file:///path/to/extracted/content/``
+6. Sync the repository using ``pulp-admin rpm repo sync run --repo-id=demo-repo``
+
+The workflow for exporting repository groups is quite similar. The command is
+``pulp-admin rpm repo group export run``. Repository groups can contain any content type,
+but this command will only export the yum repositories.
+
+It is also possible to export all rpms and errata associated with a repository in a given
+time frame using the ``--start-date`` and ``--end-date`` options. This is helpful if you have
+already exported the repository and would like to only export updates. Be aware that since this
+does not export package groups or categories, any updates to these will not be reflected on the
+disconnected Pulp server. There is currently no support in the pulp-admin command-line utility
+for uploading these incremental updates back into Pulp; you must use the REST API for these uploads.
+
+.. warning::
+  It is very important keep track of the last time you performed an incremental export.
+  If you fail use the correct date range, some dependencies may be missing from the export.
+  It is recommended that you overlap the date ranges to be safe.
+
+The default behavior is to create a set of ISO images and publish them over
+HTTP or HTTPS to ``/pulp/exports/repo/<repo-id>/``, or if publishing a repo
+group, ``/pulp/exports/repo_group/<group-id>/``. The default image size will
+fit on a DVD (4308MB). However, if you would prefer to use an external hard drive
+to transport the repositories, you can use the ``--export-dir`` option, which will
+export the repository to a directory on the Pulp server rather than creating a set
+of ISOs and publishing them over HTTP or HTTPS. If you choose this option, simply
+skip step 4.
+
 
 Errata
 ======

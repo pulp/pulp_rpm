@@ -25,6 +25,23 @@ COMPLETE_STATES = (STATE_COMPLETE, STATE_FAILED, STATE_SKIPPED)
 ERROR_SIZE_VERIFICATION = 'size_mismatch'
 ERROR_CHECKSUM_VERIFICATION = 'checksum_mismatch'
 
+# Standard keywords for progress reports to include
+PROGRESS_STATE_KEY = 'state'
+PROGRESS_NUM_SUCCESS_KEY = 'num_success'
+PROGRESS_NUM_ERROR_KEY = 'num_error'
+PROGRESS_ITEMS_LEFT_KEY = 'items_left'
+PROGRESS_ITEMS_TOTAL_KEY = 'items_total'
+PROGRESS_ERROR_DETAILS_KEY = 'error_details'
+
+# Progress report keywords used in the group export distributor progress report
+PROGRESS_REPOS_KEYWORD = 'repositories'
+PROGRESS_ISOS_KEYWORD = 'isos'
+PROGRESS_PUBLISH_HTTP = 'publish_http'
+PROGRESS_PUBLISH_HTTPS = 'publish_https'
+
+# Progress report keywords used by the export distributor progress report
+PROGRESS_METADATA_KEYWORD = 'metadata'
+
 # -- configuration ------------------------------------------------------------
 
 # Used as a note on a repository to indicate it is a Puppet repository
@@ -60,8 +77,6 @@ CONFIG_SSL_AUTH_CA_CERT = 'ssl_auth_ca_cert'
 # Copy operation config
 CONFIG_RECURSIVE = 'recursive'
 
-EXPORT_HTTP_DIR="/var/lib/pulp/published/http/exports"
-EXPORT_HTTPS_DIR="/var/lib/pulp/published/https/exports"
 ISO_HTTP_DIR = "/var/lib/pulp/published/http/isos"
 ISO_HTTPS_DIR = "/var/lib/pulp/published/https/isos"
 
@@ -73,6 +88,26 @@ DISTRIBUTION_STORAGE_PATH = '/var/lib/pulp/content/distribution/'
 # During publish we need to lookup and make sure the treeinfo exists; since the treeinfo
 # can be '.treeinfo' or 'treeinfo' (in cdn case) we need to check which one exists
 TREE_INFO_LIST = ['.treeinfo', 'treeinfo']
+
+# Configuration constants for export distributors
+PUBLISH_HTTP_KEYWORD = 'http'
+PUBLISH_HTTPS_KEYWORD = 'https'
+EXPORT_REQUIRED_CONFIG_KEYS = (PUBLISH_HTTP_KEYWORD, PUBLISH_HTTPS_KEYWORD)
+
+END_DATE_KEYWORD = 'end_date'
+EXPORT_DIRECTORY_KEYWORD = 'export_dir'
+ISO_PREFIX_KEYWORD = 'iso_prefix'
+ISO_SIZE_KEYWORD = 'iso_size'
+SKIP_KEYWORD = 'skip'
+START_DATE_KEYWORD = 'start_date'
+EXPORT_OPTIONAL_CONFIG_KEYS = (END_DATE_KEYWORD, ISO_PREFIX_KEYWORD, SKIP_KEYWORD,
+                               EXPORT_DIRECTORY_KEYWORD, START_DATE_KEYWORD, ISO_SIZE_KEYWORD)
+
+EXPORT_HTTP_DIR = '/var/lib/pulp/published/http/exports/repo'
+EXPORT_HTTPS_DIR = '/var/lib/pulp/published/https/exports/repo'
+
+GROUP_EXPORT_HTTP_DIR = '/var/lib/pulp/published/http/exports/repo_group'
+GROUP_EXPORT_HTTPS_DIR = '/var/lib/pulp/published/https/exports/repo_group'
 
 # -- extensions ---------------------------------------------------------------
 

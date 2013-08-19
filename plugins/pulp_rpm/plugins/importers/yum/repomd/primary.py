@@ -12,17 +12,19 @@
 # see http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt
 
 from copy import deepcopy
+import os
+
+from pulp_rpm.common import models
+from pulp_rpm.plugins.importers.yum import utils
 
 # primary.xml element tags -----------------------------------------------------
-import os
-from pulp_rpm.common import models
-from pulp_rpm.plugins.importers.yum.repomd import packages
-
 METADATA_FILE_NAME = 'primary'
 
 COMMON_SPEC_URL = 'http://linux.duke.edu/metadata/common'
 RPM_SPEC_URL = 'http://linux.duke.edu/metadata/rpm'
 
+
+# primary.xml element tags -----------------------------------------------------
 PACKAGE_TAG = '{%s}package' % COMMON_SPEC_URL
 
 NAME_TAG = '{%s}name' % COMMON_SPEC_URL
@@ -49,6 +51,7 @@ RPM_HEADER_RANGE_TAG = '{%s}header-range' % RPM_SPEC_URL
 RPM_PROVIDES_TAG = '{%s}provides' % RPM_SPEC_URL
 RPM_REQUIRES_TAG = '{%s}requires' % RPM_SPEC_URL
 RPM_ENTRY_TAG = '{%s}entry' % RPM_SPEC_URL
+
 
 # package information dictionary -----------------------------------------------
 
@@ -171,9 +174,13 @@ def process_package_element(package_element):
     format_element = package_element.find(FORMAT_TAG)
     package_info.update(_process_format_element(format_element))
 
-    model = models.RPM.from_package_info(package_info)
+    if package_info['arch'].lower() == 'src':
+        model = models.SRPM.from_package_info(package_info)
+    else:
+        model = models.RPM.from_package_info(package_info)
     # add the raw XML so it can be saved in the database later
-    model.raw_xml = packages.element_to_raw_xml(package_element)
+    rpm_namespace = utils.Namespace('rpm', RPM_SPEC_URL)
+    model.raw_xml = utils.element_to_raw_xml(package_element, [rpm_namespace], COMMON_SPEC_URL)
     return model
 
 

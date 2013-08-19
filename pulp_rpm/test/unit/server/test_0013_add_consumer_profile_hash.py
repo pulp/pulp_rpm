@@ -64,7 +64,7 @@ class TestMigration(rpm_support_base.PulpRPMTests):
                           'arch': 'x86_64', 'vendor': 'Red Hat, Inc.'}]},
         ]
         self.collection.insert(consumer_unit_profiles)
-        migration_module = _import_all_the_way('pulp_rpm.migrations.0012_add_consumer_profile_hash')
+        migration_module = _import_all_the_way('pulp_rpm.migrations.0013_add_consumer_profile_hash')
 
         # Run the migration
         migration_module.migrate('arg_1', kwarg_1='kwarg_1')
