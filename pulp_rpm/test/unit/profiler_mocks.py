@@ -12,6 +12,7 @@
 # http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt.
 
 import mock
+from pulp.plugins.model import Unit
 from pulp.plugins.conduits.profiler import ProfilerConduit
 
 def get_repo(repo_id):
@@ -40,14 +41,14 @@ def get_profiler_conduit(type_id=None, existing_units=None, repo_bindings=[], re
         for u in repo_units:
             if u.type_id != content_type_id:
                 continue
-            unit = {'unit_key':u.unit_key,
-                    'unit_id':u.id}
+            metadata = {}
+            metadata['unit_id'] = u.id
             for f in additional_unit_fields:
                 if f == 'pkglist':
-                    unit[f] = [{'packages':errata_rpms}]
+                    metadata[f] = [{'packages':errata_rpms}]
                 else:
-                    unit[f] = 'test-additional-field'
-            ret_val.append(unit)
+                    metadata[f] = 'test-additional-field'
+            ret_val.append(Unit(content_type_id, u.unit_key, metadata, None))
         return ret_val
 
     sync_conduit = mock.Mock(spec=ProfilerConduit)
