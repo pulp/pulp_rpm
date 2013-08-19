@@ -11,6 +11,7 @@
 # NON-INFRINGEMENT, or FITNESS FOR A PARTICULAR PURPOSE. You should
 # have received a copy of GPLv2 along with this software; if not, see
 # http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt.
+import argparse
 import os
 import subprocess
 import sys
@@ -32,7 +33,7 @@ PACKAGES = [
 ]
 
 TESTS = 'pulp_rpm/test/unit'
-NEW_YUM_IMPORTER_TESTS='plugins/test/unit'
+NEW_YUM_IMPORTER_TESTS = 'plugins/test/unit'
 
 args = [
     'nosetests',
@@ -48,5 +49,16 @@ args = [
 # don't run the server tests in RHEL5.
 if sys.version_info < (2, 6):
     args.extend(['-e', 'server'])
+
+#add ability to specify nosetest options
+parser = argparse.ArgumentParser()
+parser.add_argument('--xunit-file')
+parser.add_argument('--with-xunit', action='store_true')
+arguments = parser.parse_args()
+
+if arguments.with_xunit:
+    args.extend(['--with-xunit', '--process-timeout=360'])
+if arguments.xunit_file:
+    args.extend(['--xunit-file', '../test/' + arguments.xunit_file])
 
 subprocess.call(args)
