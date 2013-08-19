@@ -21,7 +21,7 @@ from pulp_rpm.common.ids import TYPE_ID_ERRATA, TYPE_ID_RPM
 from pulp_rpm.yum_plugin import util
 
 
-logger = util.getLogger(__name__)
+_logger = util.getLogger(__name__)
 
 
 def entry_point():
@@ -245,7 +245,7 @@ class YumProfiler(Profiler):
         """
         rpms = []
         if not errata.metadata.has_key("pkglist"):
-            logger.warning("metadata for errata <%s> lacks a 'pkglist'" % (errata.unit_key['id']))
+            _logger.warning("metadata for errata <%s> lacks a 'pkglist'" % (errata.unit_key['id']))
             return rpms
         for pkgs in errata.metadata['pkglist']:
             for rpm in pkgs["packages"]:
@@ -323,7 +323,7 @@ class YumProfiler(Profiler):
         applicable_rpms = []
         older_rpms = {}
         if not consumer.profiles.has_key(TYPE_ID_RPM):
-            logger.warn("Consumer [%s] is missing profile information for [%s], found profiles are: %s" % \
+            _logger.warn("Consumer [%s] is missing profile information for [%s], found profiles are: %s" % \
                     (consumer.id, TYPE_ID_RPM, consumer.profiles.keys()))
             return applicable_rpms, older_rpms
         lookup = YumProfiler._form_lookup_table(consumer.profiles[TYPE_ID_RPM])
@@ -332,12 +332,12 @@ class YumProfiler(Profiler):
             if lookup.has_key(key):
                 installed_rpm = lookup[key]
                 is_newer = util.is_rpm_newer(errata_rpm, installed_rpm)
-                logger.debug("Found a match of rpm <%s> installed on consumer, is %s newer than %s, %s" % (key, errata_rpm, installed_rpm, is_newer))
+                _logger.debug("Found a match of rpm <%s> installed on consumer, is %s newer than %s, %s" % (key, errata_rpm, installed_rpm, is_newer))
                 if is_newer:
                     applicable_rpms.append(errata_rpm)
                     older_rpms[key] = {"installed":installed_rpm, "available":errata_rpm}
             else:
-                logger.debug("rpm %s was not found in consumer profile of %s" % (key, consumer.id))
+                _logger.debug("rpm %s was not found in consumer profile of %s" % (key, consumer.id))
         return applicable_rpms, older_rpms
 
     @staticmethod
@@ -373,21 +373,21 @@ class YumProfiler(Profiler):
         if not errata:
             error_msg = _("Unable to find errata with unit_key [%s] in bound repos [%s] to consumer [%s]") % \
                     (unit_key, repo_ids, consumer.id)
-            logger.info(error_msg)
+            _logger.info(error_msg)
             return None, None
 
         updated_rpms = YumProfiler._get_rpms_from_errata(errata)
-        logger.info("Errata <%s> refers to %s updated rpms of: %s" % (errata.unit_key['id'], len(updated_rpms), updated_rpms))
+        _logger.info("Errata <%s> refers to %s updated rpms of: %s" % (errata.unit_key['id'], len(updated_rpms), updated_rpms))
         applicable_rpms, upgrade_details = YumProfiler._rpms_applicable_to_consumer(consumer, updated_rpms)
         if applicable_rpms:
-            logger.info("Rpms: <%s> were found to be related to errata <%s> and applicable to consumer <%s>" % (applicable_rpms, errata, consumer.id))
+            _logger.info("Rpms: <%s> were found to be related to errata <%s> and applicable to consumer <%s>" % (applicable_rpms, errata, consumer.id))
         # Return as list of name.arch values
         ret_val = []
         for ar in applicable_rpms:
             pkg_name = "%s-%s:%s-%s.%s" % (ar["name"], ar["epoch"], ar["version"], ar["release"], ar["arch"])
             data = {"unit_key":{"name":pkg_name}, "type_id":TYPE_ID_RPM}
             ret_val.append(data)
-        logger.info("Translated errata <%s> to <%s>" % (errata, ret_val))
+        _logger.info("Translated errata <%s> to <%s>" % (errata, ret_val))
         # Add applicable errata details to the applicability report
         errata_details = errata.metadata
         errata_details['id'] = errata.unit_key['id']
