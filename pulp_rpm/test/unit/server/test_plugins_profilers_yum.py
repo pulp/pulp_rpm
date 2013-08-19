@@ -32,6 +32,28 @@ import profiler_mocks
 import rpm_support_base
 
 
+class TestYumProfilerCombined(rpm_support_base.PulpRPMTests):
+    """
+    The YumProfiler used to be two different profilers - one for RPMs and one for Errata. It was
+    combined, and this test suite ensures that the methods that only apply to one of the two types
+    are not applied to both.
+    """
+    def test_update_profile_with_errata(self):
+        """
+        Test the update_profile() method with a presorted profile. It should not alter it at all.
+        """
+        profile = ['one_errata', 'two_errata', 'three_errata', 'four_errata']
+        profiler = YumProfiler()
+
+        # The update_profile() method doesn't use any of the args except for profile and
+        # content_type, so we'll just pass in strings for the others
+        # This test just asserts that the profile is returned unaltered
+        new_profile = profiler.update_profile('consumer', TYPE_ID_ERRATA, deepcopy(profile),
+                                              'config')
+
+        self.assertEqual(new_profile, profile)
+
+
 class TestYumProfilerErrata(rpm_support_base.PulpRPMTests):
     """
     Test the YumProfiler with errata content.
