@@ -25,5 +25,7 @@ setup(
         'pulp.importers': [
             'importer = pulp_rpm.plugins.importers.yum.importer:entry_point',
             ],
+        'pulp.profilers': [
+            'profiler = pulp_rpm.plugins.profilers.yum:entry_point',]
     }
 )

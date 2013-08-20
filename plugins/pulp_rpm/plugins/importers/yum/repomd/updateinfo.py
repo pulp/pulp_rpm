@@ -25,33 +25,50 @@ def process_package_element(element):
     Process one XML block from updateinfo.xml and return a dict describing
     and errata
 
-    :param element: object representing one "errate" block from the XML file
+    :param element: object representing one "errata" block from the XML file
     :type  element: xml.etree.ElementTree.Element
 
     :return:    dictionary describing an errata
     :rtype:     dict
     """
     package_info = {
-        'from': element.attrib['from'],
-        'status': element.attrib['status'],
-        'type': element.attrib['type'],
-        'version': element.attrib['version'],
-        'id': element.find('id').text,
-        'title': element.find('title').text,
         'description': element.find('description').text,
+        'from': element.attrib['from'],
+        'id': element.find('id').text,
         'issued': element.find('issued').attrib['date'],
+        'pushcount': '',
+        # yum defaults this to False, and sets it to True if any package in
+        # any collection has an element present with tag 'reboot_suggested'.
+        # Note that yum, as of 3.4.3, does not check the contents of that element.
+        'reboot_suggested': False,
         'references': map(_parse_reference, element.find('references') or []),
+        'release': '',
+        'rights': '',
         'pkglist': map(_parse_collection, element.find('pkglist') or []),
+        'severity': '',
+        'solution': '',
+        'status': element.attrib['status'],
+        'summary': '',
+        'title': element.find('title').text,
+        'type': element.attrib['type'],
+        'updated': '',
+        'version': element.attrib['version'],
     }
+
+    # see comment above about 'reboot_suggested' to explain this behavior
+    for collection in package_info['pkglist']:
+        for package in collection['packages']:
+            if package.get('reboot_suggested') is not None:
+                package_info['reboot_suggested'] = True
+                break
 
     for attr_name in ('rights', 'severity', 'summary', 'solution', 'release', 'pushcount'):
         child = element.find(attr_name)
-        if child:
+        if child is not None:
             package_info[attr_name] = child.text
-    for attr_name in ('updated',):
-        child = element.find(attr_name)
-        if child:
-            package_info[attr_name] = child.attrib[attr_name]
+    updated_element = element.find('updated')
+    if updated_element is not None:
+        package_info['updated'] = updated_element.attrib['date']
     return models.Errata.from_package_info(package_info)
 
 
@@ -97,7 +114,7 @@ def _parse_package(element):
     }
 
     reboot_suggested = element.find('reboot_suggested')
-    if reboot_suggested:
+    if reboot_suggested is not None:
         ret['reboot_suggested'] = reboot_suggested.text
 
     return ret

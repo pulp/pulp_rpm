@@ -64,8 +64,6 @@ LINKS = (
     ('pulp_rpm/plugins/types/iso_support.json', DIR_PLUGINS + '/types/iso_support.json'),
     ('pulp_rpm/plugins/distributors/yum_distributor', DIR_PLUGINS + '/distributors/yum_distributor'),
     ('pulp_rpm/plugins/distributors/iso_distributor', DIR_PLUGINS + '/distributors/iso_distributor'),
-    ('pulp_rpm/plugins/profilers/rpm_errata_profiler', DIR_PLUGINS + '/profilers/rpm_errata_profiler'),
-    ('pulp_rpm/plugins/profilers/rpm_pkg_profiler', DIR_PLUGINS + '/profilers/rpm_pkg_profiler'),
 
     # RPM Support Web Configuration
     ('pulp_rpm/usr/lib/yum-plugins/pulp-profile-update.py', '/usr/lib/yum-plugins/pulp-profile-update.py'),

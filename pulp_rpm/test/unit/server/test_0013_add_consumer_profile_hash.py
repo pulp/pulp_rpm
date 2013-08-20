@@ -15,7 +15,7 @@ from pulp.server.db.connection import get_collection
 from pulp.server.db.migrate.models import _import_all_the_way
 from pulp.server.db.model.consumer import UnitProfile
 
-from pulp_rpm.plugins.profilers import rpm
+from pulp_rpm.plugins.profilers import yum
 import rpm_support_base
 
 
@@ -90,7 +90,7 @@ class TestMigration(rpm_support_base.PulpRPMTests):
 
         # Now, let's make sure the hashes are actually correct. We only have to check 1 and 3, since
         # we already asserted that 1 is equal to 2
-        profiler = rpm.RPMPkgProfiler()
+        profiler = yum.YumProfiler()
         for profile in [consumer_1_profile, consumer_3_rpm_profile]:
             sorted_profile = profiler.update_profile(None, profile['profile'], None, None)
             expected_hash = UnitProfile.calculate_hash(profile['profile'])
