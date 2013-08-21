@@ -33,7 +33,7 @@ PACKAGES = [
 ]
 
 TESTS = 'pulp_rpm/test/unit'
-PLUGIN_TESTS='plugins/test/unit'
+PLUGIN_TESTS = 'plugins/test/unit'
 
 args = [
     'nosetests',
@@ -43,11 +43,12 @@ args = [
     '--cover-package',
     ','.join(PACKAGES),
     TESTS,
-    PLUGIN_TESTS,
+
 ]
 
 # don't run the server tests in RHEL5.
 if sys.version_info < (2, 6):
+    args.extend([PLUGIN_TESTS,])
     args.extend(['-e', 'server'])
 
 #add ability to specify nosetest options
