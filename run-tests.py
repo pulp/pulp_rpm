@@ -43,13 +43,16 @@ args = [
     '--cover-package',
     ','.join(PACKAGES),
     TESTS,
-    PLUGIN_TESTS
 ]
 
 # don't run the server tests in RHEL5.
-if sys.version_info < (2, 6):
-    args.extend(['-e', PLUGIN_TESTS])
+if sys.version_info >= (2, 6):
+    #run the plugin tests on servers other than RHEL 5
+    args.append(PLUGIN_TESTS)
+else:
+    #block tests in the server package on RHEL 5
     args.extend(['-e', 'server'])
+
 
 #add ability to specify nosetest options
 parser = argparse.ArgumentParser()
