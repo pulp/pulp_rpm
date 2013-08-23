@@ -131,6 +131,15 @@ class YumConsumerErrataInstallCommand(consumer_content.ConsumerContentInstallCom
 
     def failed(self, task):
         msg = _('Install Failed')
-        details = task.result['details'][TYPE_ID_RPM]['details']
         self.context.prompt.render_failure_message(msg)
-        self.context.prompt.render_failure_message(details['message'])
+        if task and task.result and 'error_message' in task.result:
+                self.context.prompt.render_failure_message(task.result['error_message'])
+        try:
+            message = task.result['details'][TYPE_ID_RPM]['details']['message']
+            self.context.prompt.render_failure_message(message)
+        except (KeyError, AttributeError, TypeError):
+            #do nothing as this parameter is not always included in a failure
+            pass
+
+
+
