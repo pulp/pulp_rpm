@@ -16,15 +16,15 @@ Contains logic surrounding which nectar downloader implementation to use.
 
 import urlparse
 
-from nectar.downloaders.revent import HTTPEventletRequestsDownloader
 from nectar.downloaders.curl import HTTPCurlDownloader
+from nectar.downloaders.threaded import HTTPThreadedDownloader
 
 
 # Mapping from scheme string to downloader class to instantiate
 SCHEME_DOWNLOADERS = {
     'file'  : HTTPCurlDownloader,
-    'http'  : HTTPEventletRequestsDownloader,
-    'https' : HTTPEventletRequestsDownloader,
+    'http'  : HTTPThreadedDownloader,
+    'https' : HTTPThreadedDownloader,
 }
 
 
