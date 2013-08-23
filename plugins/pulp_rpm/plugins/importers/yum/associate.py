@@ -117,13 +117,11 @@ def get_rpms_to_copy_by_key(rpm_search_dicts, import_conduit):
     # remove units that already exist in the destination from the set of units
     # we want to copy
     for unit in existing_units:
-        for key in unit.keys():
-            if key not in models.RPM.UNIT_KEY_NAMES:
-                del unit[key]
+        unit_key = unit.unit_key.copy()
         # ignore checksum from updateinfo.xml
-        unit['checksum'] = None
-        unit['checksumtype'] = None
-        named_tuples.discard(models.RPM.NAMEDTUPLE(**unit))
+        unit_key['checksum'] = None
+        unit_key['checksumtype'] = None
+        named_tuples.discard(models.RPM.NAMEDTUPLE(**unit_key))
     return named_tuples
 
 
@@ -136,7 +134,9 @@ def get_rpms_to_copy_by_name(rpm_names, import_conduit):
     :type  rpm_names:       iterable
     :param import_conduit:  import conduit passed to the Importer
     :type  import_conduit:  pulp.plugins.conduits.unit_import.ImportUnitConduit
-    :return: set of names that
+
+    :return:    set of names that don't already exist in the destination repo
+    :rtype:     set
     """
     search_dicts = ({'name': name} for name in rpm_names)
     units = existing.get_existing_units(search_dicts, models.RPM.UNIT_KEY_NAMES,
