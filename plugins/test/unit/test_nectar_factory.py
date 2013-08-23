@@ -14,7 +14,7 @@ import mock
 import unittest
 
 from nectar.downloaders.curl import HTTPCurlDownloader
-from nectar.downloaders.revent import HTTPEventletRequestsDownloader
+from nectar.downloaders.threaded import HTTPThreadedDownloader
 
 from pulp_rpm.plugins.importers.yum.repomd import nectar_factory
 
@@ -34,12 +34,12 @@ class NectarFactoryTests(unittest.TestCase):
     def test_http_url(self):
         downloader = nectar_factory.create_downloader('http://foo', self.mock_config,
                                                       self.mock_event_listener)
-        self.assertTrue(isinstance(downloader, HTTPEventletRequestsDownloader))
+        self.assertTrue(isinstance(downloader, HTTPThreadedDownloader))
 
     def test_https_url(self):
         downloader = nectar_factory.create_downloader('https://foo', self.mock_config,
                                                       self.mock_event_listener)
-        self.assertTrue(isinstance(downloader, HTTPEventletRequestsDownloader))
+        self.assertTrue(isinstance(downloader, HTTPThreadedDownloader))
 
     def test_unknown_scheme(self):
         self.assertRaises(ValueError, nectar_factory.create_downloader, 'foo://bar',
