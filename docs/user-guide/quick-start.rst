@@ -28,22 +28,26 @@ repository and stores them in our new repository.
 
   $ pulp-admin rpm repo sync run --repo-id=pulp
   +----------------------------------------------------------------------+
-                      Synchronizing Repository [pulp]
+                    Synchronizing Repository [pulp]
   +----------------------------------------------------------------------+
 
   This command may be exited by pressing ctrl+c without affecting the actual
   operation on the server.
 
   Downloading metadata...
-  [/]
+  [\]
   ... completed
 
   Downloading repository content...
   [==================================================] 100%
-  RPMs:       36/36 items
+  RPMs:       43/43 items
   Delta RPMs: 0/0 items
-  Tree Files: 0/0 items
-  Files:      0/0 items
+
+  ... completed
+
+  Downloading distribution files...
+  [==================================================] 100%
+  Distributions: 0/0 items
   ... completed
 
   Importing errata...
@@ -56,7 +60,7 @@ repository and stores them in our new repository.
 
   Publishing packages...
   [==================================================] 100%
-  Packages: 36/36 items
+  Packages: 43/43 items
   ... completed
 
   Publishing distributions...
@@ -65,12 +69,13 @@ repository and stores them in our new repository.
   ... completed
 
   Generating metadata
-  [/]
+  [\]
   ... completed
 
   Publishing repository over HTTPS
   [-]
   ... completed
+
 
 Your repository is now available to browse at
 `https://localhost/pulp/repos/pulp_beta/ <https://localhost/pulp/repos/pulp_beta/>`_.
