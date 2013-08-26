@@ -22,13 +22,37 @@ _LOGGER = logging.getLogger(__name__)
 
 
 class Requirement(object):
-    EQ = 'EQ'
-    LT = 'LT'
-    LE = 'LE'
-    GT = 'GT'
-    GE = 'GE'
+    """
+    This class represents a dependency requirement for a package. A dependency requirement must have
+    a name of a package that is depended upon, and can optionally include epoch, version, release,
+    and flags. The flags indicate which type of comparison should be performed, such as equality or
+    greater than.
+    """
+    # These are the values that can be passed to the flags parameter
+    EQ = 'EQ' # Equal
+    LT = 'LT' # Less Than
+    LE = 'LE' # Less than or Equal
+    GT = 'GT' # Greater Than
+    GE = 'GE' # Greater than or Equal
 
     def __init__(self, name, epoch=None, version=None, release=None, flags=None):
+        """
+        Initialize the Requirement with the given parameters. If flags is not provided, it will be
+        set to EQ by default.
+
+        :param name:    The name of the package required by the Requirement
+        :type  name:    basestring
+        :param epoch:   The epoch that the requirement uses in comparison, if any
+        :type  epoch:   basestring or int
+        :param version: The version the requirement uses in comparison, if any
+        :type  version: basestring
+        :param release: The release the requirement uses in comparison, if any
+        :type  release: basestring
+        :param flags:   The type of comparison that should be performed by the Requirement. Valid
+                        values for flags are represented by the classlevel attributes EQ, LT, LE,
+                        GT, and GE. By default, EQ is used.
+        :type  flags:   basestring
+        """
         self.name = name
         self.epoch = epoch
         self.version = version
@@ -37,6 +61,29 @@ class Requirement(object):
         self.flags = flags or self.EQ
 
     def __cmp__(self, other):
+        """
+        Compare a Requirement to any other object that has at least these attributes: name, epoch,
+        version, and release. This method will return a negative value if self is "less than" other,
+        0 if they are equal, and a positive value if self is "greater than" other. For example,
+        a Requirement that references Firefox-23.0 compared to a Unit that references Firefox-23.1
+        would return a negative value.
+        
+        The other object must have the same name as the Requirement, as it
+        doesn't make sense to ask whether an object is greater or less than a Requirement when it
+        has a different name. For example, a Requirement might reference Firefox-23.0, and other
+        might be the package openssh-server-6.2. If this Requirement is asked to compare itself with
+        openssh-server, it will raise ValueError.
+
+        :param other: Any object that has the following attributes: name, epoch, version, and
+                      release. An RPM Unit is an example of such an object.
+        :type  other: object
+        :return:      A negative value if self is less than other, 0 if self is equal to other, and
+                      a positive value if self is greater than other.
+        :rtype:       int
+        """
+        if self.name != other.name:
+            raise ValueError('Comparison of objects with different names is not supported.')
+
         mine = [self.epoch, self.version, self.release]
         theirs = [other.epoch, other.version, other.release]
         # the encode function is rather picky about the type and length of its
@@ -51,10 +98,32 @@ class Requirement(object):
         return cmp(mine, theirs)
 
     def __eq__(self, other):
-        return (self.name, self.epoch, self.version, self.release) == \
-               (other.name, other.epoch, other.version, other.release)
+        """
+        Return True if self effectively "equals" other, False otherwise. For the sake of comparison,
+        equality means that self and other have the same name, and that the __cmp__() method (see
+        above) returns 0 when comparing the two.
+
+        :param other: Any object that has the following attributes: name, epoch, version, and
+                      release. An RPM Unit is an example of such an object.
+        :type  other: object
+        :return:      True if self and other are equal, False otherwise
+        :rtype:       bool
+        """
+        if self.name != other.name:
+            return False
+        return self.__cmp__(other) == 0
 
     def __ne__(self, other):
+        """
+        Return True if self and other are unequal, False otherwise. This is the inverse of the
+        __eq__() method, so please see the docblock for that method for further information.
+
+        :param other: Any object that has the following attributes: name, epoch, version, and
+                      release. An RPM Unit is an example of such an object.
+        :type  other: object
+        :return:      True if self and other are unequal, False otherwise
+        :rtype:       bool
+        """
         return not self == other
 
     def __repr__(self):
@@ -64,24 +133,38 @@ class Requirement(object):
 
     @property
     def is_versioned(self):
+        """
+        Return True if the Requirement has a version attribute that is not None or empty string,
+        False otherwise.
+
+        :return: Whether the Requrement has a version
+        :rtype:  bool
+        """
         # don't need to check epoch or release, because if either of those are
         # present, "version" must be present also
         return self.version not in (None, '')
 
     def fills_requirement(self, package):
         """
-        Determines if the given package will meet the requirement.
+        Returns True if the given package will meet the requirement, False otherwise.
 
         :param package: any object with attributes 'name', 'epoch', 'version',
                         and 'release'
         :type  package: object
+        :return:        True if the package satisfies the Requirement, False otherwise
+        :rtype:         bool
         """
+        if self.name != package.name:
+            return False
 
         if self.flags == self.EQ:
             if self.is_versioned:
                 return self == package
             else:
-                return self.name == package.name
+                # If self doesn't have a version attribute, we can say that the package meets the
+                # requirement since the package name is equal to the Requirement's name (we already
+                # checked for that above).
+                return True
         # yes, the operators might look backwards to you, but it's because
         # we have to put "self" on the left to get our own __cmp__ method.
         if self.flags == self.LT:
@@ -135,7 +218,7 @@ def _build_provides_tree(source_packages):
         },
 
         'provide_nameB': {
-            'package_name3': package_as_named_tuple,
+            'package_name3': package3_as_named_tuple,
         },
     }
 
