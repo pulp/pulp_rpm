@@ -216,7 +216,7 @@ Metadata
 ``solution``
  Detailed Solution information for this erratum
 
-``from_str``
+``from``
  Typically an email address of the erratum issuer
 
 ``pushcount``
@@ -339,11 +339,11 @@ Configuration Parameters
 The following options are available to the yum importer configuration. All
 configuration values are optional.
 
-``feed_url``
+``feed``
  URL where the repository's content will be synchronized from. This can be either
  an HTTP URL or a location on disk represented as a file URL.
 
-``ssl_verify``
+``ssl_validation``
  Indicates if the server's SSL certificate is verified against the CA certificate
  uploaded. The certificate should be verified against the CA for each client request.
  Has no effect for non-SSL feeds. Valid values to this option are ``True`` and ``False``;
@@ -364,46 +364,36 @@ configuration values are optional.
  Private key to the certificate specified in ``ssl_client_cert``, assuming it is not
  included in the certificate file itself.
 
-``proxy_url``
+``proxy_host``
  Indicates the URL to use as a proxy server when synchronizing this repository.
 
 ``proxy_port``
  Port to connect to on the proxy server.
 
-``proxy_user``
+``proxy_username``
  Username to pass to the proxy server if it requires authentication.
 
-``proxy_pass``
+``proxy_password``
  Password to use for proxy server authentication.
 
 ``max_speed``
  Limit the Max speed in KB/sec per thread during package downloads; defaults to None
 
-``verify_checksum``
+``validate``
  If True, as the repository is synchronized the checksum of each file will be
  verified against the metadata's expectation. Valid values to this option are
  ``True`` and ``False``; defaults to ``True``.
 
-``verify_size``
- If true, as the repository is synchronized the size of each file will be verified
- against the metadata's expectation. Valid values to this option are ``True``
- and ``False``; defaults to ``True``.
-
-``num_threads``
+``max_downloads``
  Number of threads used when synchronizing the repository. This count controls
  the download threads themselves and has no bearing on the number of operations
  the Pulp server can execute at a given time; defaults to ``1``.
 
-``newest``
- Option indicating if only the newest version of each package should be downloaded
- during synchronization. Valid values to this option are ``True`` and ``False``;
- defaults to ``True``.
-
-``remove_old``
+``remove_missing``
  If true, as the repository is synchronized, old rpms will be removed. Valid values
  to this option are ``True`` and ``False``; defaults to ``False``
 
-``num_old_packages``
+``retain_old_count``
  Count indicating how many old rpm versions to retain; defaults to 0. This count
  only takes effect when ``remove_old`` option is set to ``True``.
 
