@@ -16,8 +16,192 @@ Test the pulp_rpm.plugins.importers.yum.depsolve module.
 
 import unittest
 
+from pulp.plugins.model import Unit
+
 from pulp_rpm.common import models
 from pulp_rpm.plugins.importers.yum import depsolve
+
+
+class DepsolveTestCase(unittest.TestCase):
+    """
+    The test case superclass for this module. It makes some RPMs that are useful for depsolve tests.
+    """
+    def _make_units(self, rpms):
+        """
+        Turn each of the rpms in the list into self.unit_# (where # is the index of the RPM plus
+        one), and also save the generated units as self.units.
+        """
+        self.units = []
+        for i, rpm in enumerate(rpms):
+            unit = Unit(rpm.TYPE, rpm.unit_key, rpm.metadata, '')
+            setattr(self, 'unit_%s'%i, unit)
+            self.units.append(unit)
+
+    def setUp(self):
+        """
+        Build some test RPMs with some dependencies.
+        """
+        self.rpm_0 = models.RPM(
+            'firefox', '0', '23.0.0', '1', 'x86_64', 'sha256', 'some_sum',
+            {'requires': [{'name': 'xulrunner', 'version': '23.0', 'release': '1',
+                           'flags': depsolve.Requirement.GE}],
+             'provides': [{'name': 'webbrowser'}]})
+        self.rpm_1 = models.RPM(
+            'firefox', '0', '23.0.2', '1', 'x86_64', 'sha256', 'some_sum',
+            {'requires': [{'name': 'xulrunner', 'version': '23.0', 'release': '1',
+                           'flags': depsolve.Requirement.GE}],
+             'provides': [{'name': 'webbrowser'}]})
+        self.rpm_2 = models.RPM(
+            'xulrunner', '0', '23.0.1', '1', 'x86_64', 'sha256', 'some_sum',
+            {'requires': [{'name': 'sqlite', 'version': '3.7.17',
+                           'flags': depsolve.Requirement.GE}]})
+        self.rpm_3 = models.RPM(
+            'sqlite', '0', '3.7.17', '1', 'x86_64', 'sha256', 'some_sum',
+            {'requires': []})
+        # Nothing depends on this one, so it shouldn't be returned by anything
+        self.rpm_4 = models.RPM(
+            'gnome-calculator', '0', '3.8.2', '1', 'x86_64', 'sha256', 'some_sum',
+            {'requires': [{'name': 'glib2'}],
+             'provides': [{'name': 'calculator'}]})
+        self.rpm_5 = models.RPM(
+            'glib2', '0', '2.36.3', '3', 'x86_64', 'sha256', 'some_sum',
+            {'requires': []})
+        self.rpm_6 = models.RPM(
+            'gcalctool', '0', '5.28.2', '3', 'x86_64', 'sha256', 'some_sum',
+            {'requires': [],
+             'provides': [{'name': 'calculator'}]})
+        self.rpms = [getattr(self, 'rpm_%s'%i) for i in range(7)]
+
+        self._make_units(self.rpms)
+
+
+class TestBuildProvidesTree(DepsolveTestCase):
+    """
+    Test the _build_provides_tree() function.
+    """
+    def test_empty_provides(self):
+        """
+        Make sure the function can handle RPMs without provides data.
+        """
+        source_packages = [(rpm.as_named_tuple, []) for rpm in self.rpms]
+
+        tree = depsolve._build_provides_tree(source_packages)
+
+        self.assertEqual(tree, {})
+
+    def test_no_source_packages(self):
+        """
+        Test when source_packages is the empty list.
+        """
+        tree = depsolve._build_provides_tree([])
+
+        self.assertEqual(tree, {})
+
+    def test_with_provides(self):
+        source_packages = [(rpm.as_named_tuple, rpm.metadata['provides']) for rpm in self.rpms \
+                           if 'provides' in rpm.metadata]
+
+        tree = depsolve._build_provides_tree(source_packages)
+
+        expected_tree = {
+            'webbrowser': {
+                'firefox': self.rpm_1.as_named_tuple},
+            'calculator': {
+                'gnome-calculator': self.rpm_4.as_named_tuple,
+                'gcalctool': self.rpm_6.as_named_tuple}
+        }
+        self.assertEqual(tree, expected_tree)
+
+
+class TestFindDependentRPMs(DepsolveTestCase):
+    """
+    Test the find_dependent_rpms() function.
+    """
+    def _get_units(self, criteria):
+        """
+        Fake the conduit get_units() call. If there are unit_filters, assume they have an $or clause
+        and filter self.units for the units that have the same unit keys as the or clause.
+        Otherwise, return self.units.
+        """
+        if criteria.unit_filters:
+            return [unit for unit in self.units if unit.unit_key in criteria.unit_filters['$or']]
+        return self.units
+
+    def test_one_unit_with_dependencies(self):
+        """
+        Call find_dependent_rpms with the Firefox unit. It should return a dependency on xulrunner.
+        """
+        units = [self.unit_1]
+
+        dependent_rpms = depsolve.find_dependent_rpms(units, self._get_units)
+
+        # Firefox only depends directly on xulrunner
+        expected_rpms = set([self.rpm_2.as_named_tuple])
+        self.assertEqual(dependent_rpms, expected_rpms)
+
+    def test_two_units_with_dependencies(self):
+        """
+        Call find_dependent_rpms() with firefox and gnome-calcualtor. It should return xulrunner and
+        glib2.
+        """
+        units = [self.unit_1, self.unit_4]
+
+        dependent_rpms = depsolve.find_dependent_rpms(units, self._get_units)
+
+        # Firefox only depends directly on xulrunner, and gnome-calculator needs glib2
+        expected_rpms = set([self.rpm_2.as_named_tuple, self.rpm_5.as_named_tuple])
+        self.assertEqual(dependent_rpms, expected_rpms)
+
+    def test_with_no_dependencies(self):
+        """
+        Call with glib2, which doesn't list any dependencies.
+        """
+        units = [self.unit_5]
+
+        dependent_rpms = depsolve.find_dependent_rpms(units, self._get_units)
+
+        # The glib2 unit doesn't list any dependencies
+        expected_rpms = set([])
+        self.assertEqual(dependent_rpms, expected_rpms)
+
+    def test_with_no_units(self):
+        """
+        Call with no units, which shouldn't return any dependencies.
+        """
+        units = []
+
+        dependent_rpms = depsolve.find_dependent_rpms(units, self._get_units)
+
+        expected_rpms = set([])
+        self.assertEqual(dependent_rpms, expected_rpms)
+
+
+class TestMatch(DepsolveTestCase):
+    """
+    Test the match() function.
+    """
+    def test_provides_matches_requires(self):
+        """
+        Assert that match correctly handles provides that match requires.
+        """
+        r_1 = depsolve.Requirement('webbrowser')
+        r_2 = depsolve.Requirement('calculator')
+        reqs = [r_1, r_2]
+        source_packages = []
+        for rpm in self.rpms:
+            if 'provides' in rpm.metadata:
+                source_package = (rpm.as_named_tuple, rpm.metadata['provides'])
+            else:
+                source_package = (rpm.as_named_tuple, [])
+            source_packages.append(source_package)
+
+        satisfactions = depsolve.match(reqs, source_packages)
+
+        # The newer version of firefox, gnome-calculator, and gcalctool should be the members of
+        # this set
+        expected_satisfactions = set(
+            [self.rpm_1.as_named_tuple, self.rpm_4.as_named_tuple, self.rpm_6.as_named_tuple])
+        self.assertEqual(satisfactions, expected_satisfactions)
 
 
 class TestRequirement(unittest.TestCase):

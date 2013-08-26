@@ -218,7 +218,7 @@ def _build_provides_tree(source_packages):
         },
 
         'provide_nameB': {
-            'package_name3': package_as_named_tuple,
+            'package_name3': package3_as_named_tuple,
         },
     }
 
