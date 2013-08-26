@@ -83,7 +83,6 @@ def encode(field):
     :return: encoded value that should be used for comparison searches and sorting
     """
     if not isinstance(field, basestring):
-        print field
         raise TypeError('field must be a non-empty string')
 
     if len(field) == 0:
