@@ -14,7 +14,6 @@ Contents:
    recipes
    features
    isos
-   troubleshooting
 
 
 Indices and tables
