@@ -130,7 +130,17 @@ class YumConsumerErrataInstallCommand(consumer_content.ConsumerContentInstallCom
                 prompt.render_document_list(deps, order=fields, filters=fields)
 
     def failed(self, task):
+        """
+        Called when an errata install  task has completed with a status indicating that it failed.
+
+        :param task: full task report for the task being displayed
+        :type  task: pulp.bindings.responses.Task
+        """
         msg = _('Install Failed')
-        details = task.result['details'][TYPE_ID_RPM]['details']
         self.context.prompt.render_failure_message(msg)
-        self.context.prompt.render_failure_message(details['message'])
+        try:
+            message = task.result['details'][TYPE_ID_RPM]['details']['message']
+            self.context.prompt.render_failure_message(message)
+        except (KeyError, AttributeError, TypeError):
+            #do nothing as this parameter is not always included in a failure
+            pass
