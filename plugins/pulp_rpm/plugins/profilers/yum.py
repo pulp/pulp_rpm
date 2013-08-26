@@ -97,6 +97,8 @@ class YumProfiler(Profiler):
                          each dictionary contains 'type_id' and 'unit_key' keys. All type_ids will
                          be of the RPM type.
         :rtype:          list
+        :raises InvalidUnitsRequested: if an erratum was specified and no repository was found that contains
+                                       the specified errata
         """
         translated_units = []
         for unit in units:
