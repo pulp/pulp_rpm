@@ -22,6 +22,7 @@ _rpm_counter = count()
 _srpm_counter = count()
 _drpm_counter = count()
 _group_counter = count()
+_category_counter = count()
 _yum_md_file_counter = count()
 _errata_counter = count()
 
@@ -121,7 +122,7 @@ def group_models(num, same_repo=True):
         ret.append(models.PackageGroup(
             'name-%d' % count,
             repo_id,
-            {}
+            {'default_package_names':['abc%d' % count, 'xyz%d' % count]}
         ))
         count = _group_counter.next()
     return ret
@@ -130,6 +131,27 @@ def group_models(num, same_repo=True):
 @as_units
 def group_units(num, same_repo=True):
     return group_models(num, same_repo)
+
+
+def category_models(num, same_repo=True):
+    ret = []
+    count = _category_counter.next()
+    repo_id = 'repo-%d' % count
+    for i in range(num):
+        if not same_repo:
+            repo_id = 'repo-%d' % count
+        ret.append(models.PackageCategory(
+            'name-%d' % count,
+            repo_id,
+            {'packagegroupids':['abc%d' % count, 'xyz%d' % count]}
+        ))
+        count = _category_counter.next()
+    return ret
+
+
+@as_units
+def category_units(num, same_repo=True):
+    return category_models(num, same_repo)
 
 
 def yum_md_file():
@@ -141,9 +163,18 @@ def errata_models(num):
     ret = []
     count = _errata_counter.next()
     for i in range(num):
+        rpms = [r.unit_key for r in rpm_models(2)]
+        for r in rpms:
+            del r['checksum']
+            del r['checksumtype']
         ret.append(models.Errata(
             'name-%d' % count,
-            {}
+            {'pkglist': [{'packages': rpms}]}
         ))
         count = _errata_counter.next()
     return ret
+
+
+@as_units
+def errata_units(num):
+    return errata_models(num)
