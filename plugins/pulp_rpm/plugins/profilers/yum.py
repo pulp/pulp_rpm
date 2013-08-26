@@ -14,8 +14,7 @@
 from gettext import gettext as _
 
 from pulp.plugins.conduits.mixins import UnitAssociationCriteria
-from pulp.plugins.model import Unit
-from pulp.plugins.profiler import Profiler
+from pulp.plugins.profiler import Profiler, InvalidUnitsRequested
 
 from pulp_rpm.common.ids import TYPE_ID_ERRATA, TYPE_ID_RPM
 from pulp_rpm.yum_plugin import util
@@ -98,6 +97,8 @@ class YumProfiler(Profiler):
                          each dictionary contains 'type_id' and 'unit_key' keys. All type_ids will
                          be of the RPM type.
         :rtype:          list
+        :raises InvalidUnitsRequested: if an erratum was specified and no repository was found that contains
+                                       the specified errata
         """
         translated_units = []
         for unit in units:
@@ -366,26 +367,30 @@ class YumProfiler(Profiler):
 
                         dictionary containing information on what existing rpms will be upgraded
 
-        :rtype ([{'unit_key':{'name':name.arch}, 'type_id':'rpm'}], {'name arch':{'available':{}, 'installed':{}}   })
+        :rtype ([{'unit_key':{'name':name.arch}, 'type_id':'rpm'}], {'name arch':{'available':{},
+            'installed':{}}   })
+
+        :raises InvalidUnitsRequested if no repository was found that contains the specified errata
         """
         unit_key = unit['unit_key']
         errata = YumProfiler._find_unit_associated_to_repos(TYPE_ID_ERRATA, unit_key, repo_ids, conduit)
         if not errata:
             error_msg = _("Unable to find errata with unit_key [%s] in bound repos [%s] to consumer [%s]") % \
-                    (unit_key, repo_ids, consumer.id)
-            _logger.info(error_msg)
-            return None, None
+                (unit_key, repo_ids, consumer.id)
+            raise InvalidUnitsRequested(message=error_msg, units=unit_key)
 
         updated_rpms = YumProfiler._get_rpms_from_errata(errata)
-        _logger.info("Errata <%s> refers to %s updated rpms of: %s" % (errata.unit_key['id'], len(updated_rpms), updated_rpms))
+        _logger.info("Errata <%s> refers to %s updated rpms of: %s" % (errata.unit_key['id'],
+                                                                       len(updated_rpms), updated_rpms))
         applicable_rpms, upgrade_details = YumProfiler._rpms_applicable_to_consumer(consumer, updated_rpms)
         if applicable_rpms:
-            _logger.info("Rpms: <%s> were found to be related to errata <%s> and applicable to consumer <%s>" % (applicable_rpms, errata, consumer.id))
+            _logger.info("Rpms: <%s> were found to be related to errata <%s> and applicable to consumer <%s>"
+                         % (applicable_rpms, errata, consumer.id))
         # Return as list of name.arch values
         ret_val = []
         for ar in applicable_rpms:
             pkg_name = "%s-%s:%s-%s.%s" % (ar["name"], ar["epoch"], ar["version"], ar["release"], ar["arch"])
-            data = {"unit_key":{"name":pkg_name}, "type_id":TYPE_ID_RPM}
+            data = {"unit_key": {"name": pkg_name}, "type_id": TYPE_ID_RPM}
             ret_val.append(data)
         _logger.info("Translated errata <%s> to <%s>" % (errata, ret_val))
         # Add applicable errata details to the applicability report
