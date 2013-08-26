@@ -13,7 +13,7 @@ case, we will mirror the `Foreman <http://theforeman.org/>`_ repository.
 
 ::
 
-  $ pulp-admin rpm repo create --repo-id=foreman --feed=http://yum.theforeman.org/rc/el6/x86_64/ --relative-url=foreman
+  $ pulp-admin rpm repo create --repo-id=foreman --feed=http://yum.theforeman.org/releases/1.1/el6/x86_64/ --relative-url=foreman
   Successfully created repository [foreman]
 
 * ``--repo-id`` is required and must be unique.
@@ -26,26 +26,30 @@ case, we will mirror the `Foreman <http://theforeman.org/>`_ repository.
 
   $ pulp-admin rpm repo sync run --repo-id=foreman
   +----------------------------------------------------------------------+
-                     Synchronizing Repository [foreman]
+                   Synchronizing Repository [foreman]
   +----------------------------------------------------------------------+
 
   This command may be exited by pressing ctrl+c without affecting the actual
   operation on the server.
 
   Downloading metadata...
-  [|]
+  [/]
   ... completed
 
   Downloading repository content...
   [==================================================] 100%
-  RPMs:       134/134 items
+  RPMs:       98/98 items
   Delta RPMs: 0/0 items
-  Tree Files: 0/0 items
-  Files:      0/0 items
+
+  ... completed
+
+  Downloading distribution files...
+  [==================================================] 100%
+  Distributions: 0/0 items
   ... completed
 
   Importing errata...
-  [\]
+  [-]
   ... completed
 
   Importing package groups/categories...
@@ -54,7 +58,7 @@ case, we will mirror the `Foreman <http://theforeman.org/>`_ repository.
 
   Publishing packages...
   [==================================================] 100%
-  Packages: 134/134 items
+  Packages: 98/98 items
   ... completed
 
   Publishing distributions...
@@ -63,11 +67,11 @@ case, we will mirror the `Foreman <http://theforeman.org/>`_ repository.
   ... completed
 
   Generating metadata
-  [/]
+  [\]
   ... completed
 
   Publishing repository over HTTPS
-  [-]
+  [\]
   ... completed
 
 A local copy of the repository is now available at
@@ -156,8 +160,6 @@ have permission to read the certificates and key.
   [                                                  ] 1%
   RPMs:       91/8769 items
   Delta RPMs: 0/0 items
-  Tree Files: 0/7 items
-  Files:      0/0 items
 
 If you would prefer not to use the entitlement certificates from an existing
 RHEL installation, you can also acquire the entitlement certificate, key, and
@@ -317,53 +319,56 @@ copy::
 
     $ pulp-admin rpm repo sync run --repo-id=repo_1
     +----------------------------------------------------------------------+
-                       Synchronizing Repository [repo_1]
-                       +----------------------------------------------------------------------+
+    Synchronizing Repository [repo_1]
+    +----------------------------------------------------------------------+
 
-                       This command may be exited by pressing ctrl+c without affecting the actual
-                       operation on the server.
+    This command may be exited by pressing ctrl+c without affecting the actual
+    operation on the server.
 
-                       Downloading metadata...
-                       [|]
-                       ... completed
+    Downloading metadata...
+    [|]
+    ... completed
 
-                       Downloading repository content...
-                       [==================================================] 100%
-                       RPMs:       3/3 items
-                       Delta RPMs: 0/0 items
-                       Tree Files: 3/3 items
-                       Files:      0/0 items
-                       ... completed
+    Downloading repository content...
+    [==================================================] 100%
+    RPMs:       3/3 items
+    Delta RPMs: 0/0 items
+    ... completed
 
-                       Importing errata...
-                       [|]
-                       ... completed
+    Downloading distribution files...
+    [==================================================] 100%
+    Distributions: 0/0 items
+    ... completed
 
-                       Importing package groups/categories...
-                       [-]
-                       ... completed
+    Importing errata...
+    [-]
+    ... completed
 
-                       Publishing packages...
-                       [==================================================] 100%
-                       Packages: 3/3 items
-                       ... completed
+    Importing package groups/categories...
+    [-]
+    ... completed
 
-                       Publishing distributions...
-                       [==================================================] 100%
-                       Distributions: 3/3 items
-                       ... completed
+    Publishing packages...
+    [==================================================] 100%
+    Packages: 3/3 items
+    ... completed
 
-                       Generating metadata
-                       [/]
-                       ... completed
+    Publishing distributions...
+    [==================================================] 100%
+    Distributions: 3/3 items
+    ... completed
 
-                       Publishing repository over HTTPS
-                       [-]
-                       ... completed
+    Generating metadata
+    [/]
+    ... completed
 
-                       Publishing repository over HTTP
-                       [-]
-                       ... skipped
+    Publishing repository over HTTPS
+    [-]
+    ... completed
+
+    Publishing repository over HTTP
+    [-]
+    ... skipped
 
 Now ``repo_1`` has errata and other units, and ``repo_2`` has no units at all.
 Suppose that we would like to pull all of the security updates from ``repo_1``
