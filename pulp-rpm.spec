@@ -18,7 +18,7 @@
 
 Name: pulp-rpm
 Version: 2.3.0
-Release: 0.2.alpha%{?dist}
+Release: 0.3.alpha%{?dist}
 Summary: Support for RPM content in the Pulp platform
 Group: Development/Languages
 License: GPLv2
@@ -280,6 +280,31 @@ A collection of yum plugins supplementing Pulp consumer operations.
 
 
 %changelog
+* Tue Aug 27 2013 Jeff Ortel <jortel@redhat.com> 2.3.0-0.3.alpha
+- 956711 - Raise an error to the client if an attempt is made to install an
+  errata that does not exist in a repository bound to the consumer
+  (bcourt@redhat.com)
+- 999516 - Block plugin tests from running on RHEL 5 (bcourt@redhat.com)
+- 999516 - Block plugin tests from running on RHEL 5 (bcourt@redhat.com)
+- 999516 - Block plugin tests from running on RHEL 5 (bcourt@redhat.com)
+- 999516 - Block plugin tests from running on RHEL 5 (bcourt@redhat.com)
+- 991500 - changes with respect to updated get_repo_units conduit call to
+  return plugin units instead of dictionary (skarmark@redhat.com)
+- 996625 - sync now always saves groups and categories, in case their metadata
+  has changed. (mhrivnak@redhat.com)
+- 981782 - Add the ability to change the skip options on the rpm repo update
+  command (bcourt@redhat.com)
+- 995572 - fixed a treeinfo file parsing error when dealing with treeinfo files
+  that do not include a "variant" value. (mhrivnak@redhat.com)
+- 995096 - fixed multiple bugs in errata parsing and added a test
+  (mhrivnak@redhat.com)
+- 995146 - Rename one of two migrations that were sharing version 0012.
+  (rbarlow@redhat.com)
+- 993452 - when uploading an RPM, the "location" tag in its generated repodata
+  XML is now correct. (mhrivnak@redhat.com)
+- 980181 - added listing file generation on publish and unpublish
+  (jason.connor@gmail.com)
+
 * Thu Aug 01 2013 Jeff Ortel <jortel@redhat.com> 2.3.0-0.2.alpha
 - 988919 - non-standard repo metadata files that happen to be sqlite files can
   now be downloaded successfully during a sync (mhrivnak@redhat.com)
