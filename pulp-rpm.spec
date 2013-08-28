@@ -18,7 +18,7 @@
 
 Name: pulp-rpm
 Version: 2.2.0
-Release: 0.28.beta%{?dist}
+Release: 0.29.beta%{?dist}
 Summary: Support for RPM content in the Pulp platform
 Group: Development/Languages
 License: GPLv2
@@ -282,6 +282,9 @@ A collection of yum plugins supplementing Pulp consumer operations.
 
 
 %changelog
+* Tue Aug 27 2013 Jeff Ortel <jortel@redhat.com> 2.2.0-0.29.beta
+- Pulp rebuild
+
 * Mon Aug 26 2013 Jeff Ortel <jortel@redhat.com> 2.2.0-0.28.beta
 - 999516 - Block plugin tests from running on RHEL 5 (bcourt@redhat.com)
 - 999516 - Block plugin tests from running on RHEL 5 (bcourt@redhat.com)
