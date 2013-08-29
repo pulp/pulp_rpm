@@ -135,5 +135,5 @@ class ISOImporter(Importer):
 
         iso.save_unit(conduit)
 
-    def validate_config(self, repo, config, related_repos):
+    def validate_config(self, repo, config):
         return configuration.validate(config)
