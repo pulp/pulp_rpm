@@ -69,10 +69,12 @@ class ISODistributor(Distributor):
         :type  publish_conduit: pulp.plugins.conduits.repo_publish.RepoPublishConduit
         :param config:          plugin configuration
         :type  config:          pulp.plugins.config.PluginConfiguration
+        :param config_conduit: Configuration Conduit;
+        :type config_conduit: pulp.plugins.conduits.repo_validate.RepoConfigConduit
         :return:                report describing the publish operation
         :rtype:                 pulp.plugins.model.PublishReport
         """
         return publish.publish(repo, publish_conduit, config)
 
-    def validate_config(self, repo, config, related_repos):
+    def validate_config(self, repo, config, config_conduit):
         return configuration.validate(config)

@@ -66,7 +66,7 @@ class GroupISODistributor(GroupDistributor):
                       models.Distribution.TYPE, models.PackageCategory.TYPE, models.PackageGroup.TYPE]
         }
 
-    def validate_config(self, repo_group, config, related_repo_groups):
+    def validate_config(self, repo_group, config, config_conduit):
         """
         Allows the distributor to check the contents of a potential configuration
         for the given repository. This call is made both for the addition of
@@ -86,10 +86,8 @@ class GroupISODistributor(GroupDistributor):
         :type  repo_group:          pulp.plugins.model.Repository
         :param config:              plugin configuration instance
         :type  config:              pulp.plugins.config.PluginCallConfiguration
-        :param related_repo_groups: list of other repositories using this distributor type; empty list
-                                    if there are none; entries are of type
-                                    pulp.plugins.model.RelatedRepositoryGroup
-        :type  related_repo_groups: list
+        :param config_conduit:      Configuration Conduit;
+        :type config_conduit:       pulp.plugins.conduits.repo_validate.RepoConfigConduit
 
         :return: tuple of (bool, str) to describe the result
         :rtype:  tuple

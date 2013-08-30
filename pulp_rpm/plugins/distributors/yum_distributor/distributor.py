@@ -99,7 +99,7 @@ class YumDistributor(Distributor):
                               TYPE_ID_YUM_REPO_METADATA_FILE]
         }
 
-    def validate_config(self, repo, config, related_repos):
+    def validate_config(self, repo, config, config_conduit):
         """
         Validate the distributor config. A tuple of status, msg will be returned. Status indicates success or failure
         with True/False values, and in the event of failure, msg will contain an error message.
@@ -108,8 +108,8 @@ class YumDistributor(Distributor):
         :type  repo:          pulp.server.db.model.repository.Repo
         :param config:        The configuration to be validated
         :type  config:        pulp.server.content.plugins.config.PluginCallConfiguration
-        :param related_repos: Repositories that are related to repo
-        :type  related_repos: list
+        :param config_conduit: Configuration Conduit;
+        :type  config_conduit: pulp.plugins.conduits.repo_validate.RepoConfigConduit
         :return:              tuple of status, message
         :rtype:               tuple
         """
@@ -208,10 +208,13 @@ class YumDistributor(Distributor):
             if not os.access(publish_dir, os.R_OK) or not os.access(publish_dir, os.W_OK):
                 msg = _("Unable to read & write to specified 'http_publish_dir': %(publish_dir)s" % {"publish_dir":publish_dir})
                 return False, msg
-        rel_url =  config.get("relative_url")
+        rel_url = config.get("relative_url")
         if rel_url:
-            conflict_status, conflict_msg = self.does_rel_url_conflict(rel_url, related_repos)
-            if conflict_status:
+            conflict_items = config_conduit.get_repo_distributors_by_relative_url(rel_url)
+            if len(conflict_items) > 0:
+                item = conflict_items[0]
+                conflict_msg = _("Relative url '%(rel_url)s' conflicts with existing relative_url of '%(conflict_rel_url)s' from repo '%(conflict_repo_id)s'" \
+                    % {"rel_url": rel_url, "conflict_rel_url": item['config']["relative_url"], "conflict_repo_id": item["repo_id"]})
                 _LOG.info(conflict_msg)
                 return False, conflict_msg
         return True, None
@@ -253,114 +256,6 @@ class YumDistributor(Distributor):
         else:
             # remove stale info, if any
             protected_repo_utils_obj.delete_protected_repo(repo_relative_path)
-
-    def does_rel_url_conflict(self, rel_url, related_repos):
-        """
-        @param rel_url
-        @type rel_url: str
-
-        @param related_repos
-        @type related_repos: L{pulp.server.content.plugins.model.RelatedRepository}
-
-        @return True, msg - conflict found,  False, None - no conflict found
-        @rtype bool, msg
-        """
-        existing_rel_urls = self.form_rel_url_lookup_table(related_repos)
-        current_url_pieces = self.split_path(rel_url)
-        temp_lookup = existing_rel_urls
-        for piece in current_url_pieces:
-            if not temp_lookup.has_key(piece):
-                break
-            temp_lookup = temp_lookup[piece]
-        if temp_lookup.has_key("repo_id"):
-            msg = _("Relative url '%(rel_url)s' conflicts with existing relative_url of '%(conflict_rel_url)s' from repo '%(conflict_repo_id)s'" \
-                    % {"rel_url":rel_url, "conflict_rel_url":temp_lookup["url"], "conflict_repo_id":temp_lookup["repo_id"]})
-            return True, msg
-        return False, None
-
-    def split_path(self, path):
-        pieces = []
-        temp_pieces = path.split("/")
-        for p in temp_pieces:
-            if p:
-                pieces.append(p)
-        return pieces
-
-    def form_rel_url_lookup_table(self, repos):
-        """
-        @param repos:
-        @type L{pulp.server.content.plugins.model.RelatedRepository}
-
-        @return a dictionary to serve as a lookup table
-        @rtype: dict
-
-        Format:
-         {"path_component_1": {"path_component_2": {"repo_id":"id"}}}
-        Example:
-            /pub/rhel/el5/i386
-            /pub/rhel/el5/x86_64
-            /pub/rhel/el6/i386
-            /pub/rhel/el6/x86_64
-
-         {"pub": {
-            "rhel": {"el5": {
-                            "i386": {"repo_id":"rhel_el5_i386", "url":"/pub/rhel/el5/i386" }
-                            "x86_64": {"repod_id":"rhel_el5_x86_64", "url":"/pub/rhel/el5/x86_64"})
-                    "el6":{
-                            "i386": { "repo_id":"rhel_el6_i386", "url":"/pub/rhel/el6/i386"}
-                            "x86_64": { "repo_id":"rhel_el6_x86_64", "url":"/pub/rhel/el6/x86_64"}}
-                }}}
-
-        """
-        # We will construct a tree like data object referenced by the lookup dict
-        # Each piece of a url will be used to create a new dict
-        # When we get to the end of the url pieces we will store
-        # a single key/value pair of 'repo_id':"id"
-        # The existance of this key/value pair signifies a conflict
-        #  Desire is to support similar subdirs
-        #  ...yet avoid the chance of a new repo conflicting with an already established repo's subdir
-        lookup = {}
-        if not repos:
-            return lookup
-        for r in repos:
-            if not r.plugin_configs:
-                continue
-            # It's possible that multiple instances of a Distributor could be associated
-            # to a RelatedRepository.  At this point we don't intend to support that so we will
-            # assume that we only use the first instance of the config
-            # Note: ...Pulp will be sure to only pass us plugin_configs which relate to our distributor type
-            related_config = r.plugin_configs[0]
-            rel_url = self.get_repo_relative_path(r, related_config)
-            if not rel_url:
-                continue
-            url_pieces = self.split_path(rel_url)
-            if not url_pieces:
-                # Skip this repo since we didn't find any url pieces to process
-                continue
-            temp_lookup = lookup
-            for piece in url_pieces:
-                if not temp_lookup.has_key(piece):
-                    temp_lookup[piece] = {}
-                temp_lookup = temp_lookup[piece]
-            if len(temp_lookup.keys()) != 0:
-                # We expect these exceptions should never occur, since validate_config is called before accepting any repo
-                # ...yet in the case something goes wrong we enforce these checks and thrown an exception
-                msg = _("Relative URL lookup table encountered a conflict with repo <%(repo_id)s> with relative_url <%(rel_url)s> broken into %(pieces)s.\n") % \
-                        {"repo_id":r.id, "rel_url":rel_url, "pieces":url_pieces}
-                if temp_lookup.has_key("repo_id"):
-                    msg += _("This repo <%(repo_id)s> conflicts with repo <%(conflict_repo_id)s>") % {"repo_id":r.id, "conflict_repo_id":temp_lookup["repo_id"]}
-                    _LOG.error(msg)
-                    raise Exception(msg)
-                # Unexpected occurence, raise an exception
-                msg += _("This repo <%(repo_id)s> conflicts with an existing repos sub directories, specific sub dirs of conflict are %(sub_dirs)s") \
-                        % {"repo_id":r.id, "sub_dirs":temp_lookup}
-                _LOG.error(msg)
-                raise Exception(msg)
-            # Note:  We are storing both repo_id and rel_url at the root of each path to make it easier to repo
-            # the repo/relative_url occupying this space when a conflict is detected.
-            temp_lookup["repo_id"] = r.id
-            temp_lookup["url"] = rel_url
-        return lookup
 
     def get_http_publish_dir(self, config=None):
         """

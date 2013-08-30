@@ -61,7 +61,7 @@ class YumImporter(Importer):
             ]
         }
 
-    def validate_config(self, repo, config, related_repos):
+    def validate_config(self, repo, config):
         return config_validate.validate(config)
 
     def import_units(self, source_repo, dest_repo, import_conduit, config, units=None):
