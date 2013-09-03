@@ -33,7 +33,7 @@ class VersionSortIndexMigrationTests(rpm_support_base.PulpRPMTests):
             self.add_sample_data(type_id)
 
         # Test
-        migration = _import_all_the_way('pulp_rpm.migrations.0007_version_sort_index')
+        migration = _import_all_the_way('pulp_rpm.migrations.0008_version_sort_index')
         migration.migrate()
 
         # Verify
