@@ -19,7 +19,7 @@ import rpm_support_base
 
 class ISOImporterConfigKeysMigrationTests(rpm_support_base.PulpRPMTests):
     """
-    Test migration #0008.
+    Test migration #0009.
     """
     def setUp(self):
         super(self.__class__, self).setUp()
@@ -57,7 +57,7 @@ class ISOImporterConfigKeysMigrationTests(rpm_support_base.PulpRPMTests):
         self.repo_importers.remove(safe=True)
 
     def test_migrate(self):
-        migration = _import_all_the_way('pulp_rpm.migrations.0008_iso_importer_config_keys')
+        migration = _import_all_the_way('pulp_rpm.migrations.0009_iso_importer_config_keys')
 
         # Run the migration
         migration.migrate()
