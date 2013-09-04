@@ -383,8 +383,6 @@ class TestDistributor(rpm_support_base.PulpRPMTests):
         expected_msg = "Relative url '%s' conflicts with existing relative_url of '%s' from repo '%s'" % \
                        (relative_url, url_a, repo_a.id)
         self.assertEqual(expected_msg, msg)
-        # TODO:  Test, repo_1 has no rel url, so repo_1_id is used
-
 
         # Ensure this test can handle a large number of repos
         """
