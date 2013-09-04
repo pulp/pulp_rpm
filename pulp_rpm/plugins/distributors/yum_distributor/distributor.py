@@ -214,8 +214,8 @@ class YumDistributor(Distributor):
 
         conflict_items = config_conduit.get_repo_distributors_by_relative_url(rel_url)
 
-        if len(conflict_items) > 0:
-            item = conflict_items[0]
+        if conflict_items.count() > 0:
+            item = next(conflict_items)
             conflicting_url = item["repo_id"]
             if item['config']["relative_url"] is not None:
                 conflicting_url = item['config']["relative_url"]

@@ -20,6 +20,7 @@ import threading
 import time
 import unittest
 from uuid import uuid4
+from pymongo import cursor
 
 sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)) + "/../../../plugins/importers/")
 sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)) + "/../../../plugins/distributors/")
@@ -32,8 +33,11 @@ from pulp.plugins.config import PluginCallConfiguration
 from pulp.plugins.conduits.repo_config import RepoConfigConduit
 from pulp_rpm.common.ids import TYPE_ID_RPM
 
+from pulp.devel.mock_cursor import MockCursor
+
 import distributor_mocks
 import rpm_support_base
+
 
 class TestDistributor(rpm_support_base.PulpRPMTests):
 
@@ -296,7 +300,8 @@ class TestDistributor(rpm_support_base.PulpRPMTests):
         distributor = YumDistributor()
         distributor.process_repo_auth_certificate_bundle = mock.Mock()
         config_conduit = mock.Mock(spec=RepoConfigConduit)
-        config_conduit.get_repo_distributors_by_relative_url.return_value = []
+        config_conduit.get_repo_distributors_by_relative_url.return_value = MockCursor([])
+
 
         status, msg = distributor.validate_config(repo, config, config_conduit)
         self.assertTrue(status)
@@ -365,7 +370,9 @@ class TestDistributor(rpm_support_base.PulpRPMTests):
         repo_a = RelatedRepository("repo_a_id", [config_a])
 
         config_conduit = mock.Mock(spec=RepoConfigConduit)
-        config_conduit.get_repo_distributors_by_relative_url.return_value = [{'repo_id': 'repo_a_id', 'config': {'relative_url': "rel_a/rel_b/rel_a/"}}]
+        conduit_return_cursor = MockCursor([{'repo_id': 'repo_a_id', 'config': {'relative_url': "rel_a/rel_b/rel_a/"}}])
+
+        config_conduit.get_repo_distributors_by_relative_url.return_value = conduit_return_cursor
 
         # Simple check of direct conflict of a duplicate - varieties of duplicates are tested via the conduit tests
         related_repos = [repo_a]
