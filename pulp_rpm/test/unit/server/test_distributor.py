@@ -20,6 +20,7 @@ import threading
 import time
 import unittest
 from uuid import uuid4
+from pymongo import cursor
 
 sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)) + "/../../../plugins/importers/")
 sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)) + "/../../../plugins/distributors/")
@@ -29,9 +30,14 @@ from pulp_rpm.common.ids import TYPE_ID_DISTRIBUTOR_YUM, TYPE_ID_RPM, TYPE_ID_SR
 from pulp_rpm.yum_plugin import util
 from pulp.plugins.model import RelatedRepository, Repository, Unit
 from pulp.plugins.config import PluginCallConfiguration
+from pulp.plugins.conduits.repo_config import RepoConfigConduit
+from pulp_rpm.common.ids import TYPE_ID_RPM
+
+from pulp.devel.mock_cursor import MockCursor
 
 import distributor_mocks
 import rpm_support_base
+
 
 class TestDistributor(rpm_support_base.PulpRPMTests):
 
@@ -58,6 +64,7 @@ class TestDistributor(rpm_support_base.PulpRPMTests):
         self.repo_working_dir = os.path.join(self.temp_dir, "repo_working_dir")
         os.makedirs(self.repo_working_dir)
         self.data_dir = os.path.abspath(os.path.join(os.path.abspath(os.path.dirname(__file__)), "../data"))
+        self.config_conduit = RepoConfigConduit(TYPE_ID_RPM)
 
     def clean(self):
         shutil.rmtree(self.temp_dir)
@@ -99,7 +106,7 @@ class TestDistributor(rpm_support_base.PulpRPMTests):
         req_kwargs['https'] = False
         req_kwargs['relative_url'] = "sample_value"
         config = distributor_mocks.get_basic_config(**req_kwargs)
-        state, msg = distributor.validate_config(repo, config, [])
+        state, msg = distributor.validate_config(repo, config, self.config_conduit)
         self.assertTrue(state)
         # Confirm required and optional are successful
         optional_kwargs = dict(req_kwargs)
@@ -110,47 +117,47 @@ class TestDistributor(rpm_support_base.PulpRPMTests):
         optional_kwargs['skip'] = []
         optional_kwargs['auth_cert'] = open(os.path.join(self.data_dir, "cert.crt")).read()
         config = distributor_mocks.get_basic_config(**optional_kwargs)
-        state, msg = distributor.validate_config(repo, config, [])
+        state, msg = distributor.validate_config(repo, config, self.config_conduit)
         self.assertTrue(state)
         # Test that config fails when a bad value for non_existing_dir is used
         optional_kwargs["http_publish_dir"] = "non_existing_dir"
         config = distributor_mocks.get_basic_config(**optional_kwargs)
-        state, msg = distributor.validate_config(repo, config, [])
+        state, msg = distributor.validate_config(repo, config, self.config_conduit)
         self.assertFalse(state)
         # Test config succeeds with a good value of https_publish_dir
         optional_kwargs["http_publish_dir"] = self.temp_dir
         config = distributor_mocks.get_basic_config(**optional_kwargs)
-        state, msg = distributor.validate_config(repo, config, [])
+        state, msg = distributor.validate_config(repo, config, self.config_conduit)
         self.assertTrue(state)
         del optional_kwargs["http_publish_dir"]
         # Test that config fails when a bad value for non_existing_dir is used
         optional_kwargs["https_publish_dir"] = "non_existing_dir"
         config = distributor_mocks.get_basic_config(**optional_kwargs)
-        state, msg = distributor.validate_config(repo, config, [])
+        state, msg = distributor.validate_config(repo, config, self.config_conduit)
         self.assertFalse(state)
         # Test config succeeds with a good value of https_publish_dir
         optional_kwargs["https_publish_dir"] = self.temp_dir
         config = distributor_mocks.get_basic_config(**optional_kwargs)
-        state, msg = distributor.validate_config(repo, config, [])
+        state, msg = distributor.validate_config(repo, config, self.config_conduit)
         self.assertTrue(state)
         del optional_kwargs["https_publish_dir"]
 
         # Confirm an extra key fails
         optional_kwargs["extra_arg_not_used"] = "sample_value"
         config = distributor_mocks.get_basic_config(**optional_kwargs)
-        state, msg = distributor.validate_config(repo, config, [])
+        state, msg = distributor.validate_config(repo, config, self.config_conduit)
         self.assertFalse(state)
         self.assertTrue("extra_arg_not_used" in msg)
 
         # Confirm missing a required fails
         del optional_kwargs["extra_arg_not_used"]
         config = distributor_mocks.get_basic_config(**optional_kwargs)
-        state, msg = distributor.validate_config(repo, config, [])
+        state, msg = distributor.validate_config(repo, config, self.config_conduit)
         self.assertTrue(state)
 
         del optional_kwargs["relative_url"]
         config = distributor_mocks.get_basic_config(**optional_kwargs)
-        state, msg = distributor.validate_config(repo, config, [])
+        state, msg = distributor.validate_config(repo, config, self.config_conduit)
         self.assertFalse(state)
         self.assertTrue("relative_url" in msg)
 
@@ -292,7 +299,11 @@ class TestDistributor(rpm_support_base.PulpRPMTests):
                 http=False, https=True)
         distributor = YumDistributor()
         distributor.process_repo_auth_certificate_bundle = mock.Mock()
-        status, msg = distributor.validate_config(repo, config, None)
+        config_conduit = mock.Mock(spec=RepoConfigConduit)
+        config_conduit.get_repo_distributors_by_relative_url.return_value = MockCursor([])
+
+
+        status, msg = distributor.validate_config(repo, config, config_conduit)
         self.assertTrue(status)
         report = distributor.publish_repo(repo, publish_conduit, config)
         self.assertTrue(report.success_flag)
@@ -345,48 +356,6 @@ class TestDistributor(rpm_support_base.PulpRPMTests):
         # NOTE there will be an empty listing file remaining
         self.assertEquals(len(os.listdir(self.https_publish_dir)), 1)
 
-    def test_split_path(self):
-        distributor = YumDistributor()
-        test_path = "/a"
-        pieces = distributor.split_path(test_path)
-        self.assertEqual(len(pieces), 1)
-        self.assertTrue(pieces[0], test_path)
-
-        test_path = "/a/"
-        pieces = distributor.split_path(test_path)
-        self.assertEqual(len(pieces), 1)
-        self.assertTrue(pieces[0], test_path)
-
-        test_path = "/a"
-        pieces = distributor.split_path(test_path)
-        self.assertEqual(len(pieces), 1)
-        self.assertTrue(pieces[0], test_path)
-
-        test_path = "a/"
-        pieces = distributor.split_path(test_path)
-        self.assertEqual(len(pieces), 1)
-        self.assertTrue(pieces[0], test_path)
-
-        test_path = "/a/bcde/f/ghi/j"
-        pieces = distributor.split_path(test_path)
-        self.assertEqual(len(pieces), 5)
-        self.assertTrue(os.path.join(*pieces), test_path)
-
-        test_path = "a/bcde/f/ghi/j"
-        pieces = distributor.split_path(test_path)
-        self.assertEqual(len(pieces), 5)
-        self.assertTrue(os.path.join(*pieces), test_path)
-
-        test_path = "a/bcde/f/ghi/j/"
-        pieces = distributor.split_path(test_path)
-        self.assertEqual(len(pieces), 5)
-        self.assertTrue(os.path.join(*pieces), test_path)
-
-        test_path = "/a/bcde/f/ghi/j/"
-        pieces = distributor.split_path(test_path)
-        self.assertEqual(len(pieces), 5)
-        self.assertTrue(os.path.join(*pieces), test_path)
-
     def test_basic_repo_publish_rel_path_conflict(self):
         repo = mock.Mock(spec=Repository)
         repo.working_dir = self.repo_working_dir
@@ -400,70 +369,23 @@ class TestDistributor(rpm_support_base.PulpRPMTests):
         config_a = PluginCallConfiguration({"relative_url":url_a}, {})
         repo_a = RelatedRepository("repo_a_id", [config_a])
 
-        # Simple check of direct conflict of a duplicate
+        config_conduit = mock.Mock(spec=RepoConfigConduit)
+        conduit_return_cursor = MockCursor([{'repo_id': 'repo_a_id', 'config': {'relative_url': "rel_a/rel_b/rel_a/"}}])
+
+        config_conduit.get_repo_distributors_by_relative_url.return_value = conduit_return_cursor
+
+        # Simple check of direct conflict of a duplicate - varieties of duplicates are tested via the conduit tests
         related_repos = [repo_a]
         distributor = YumDistributor()
         distributor.process_repo_auth_certificate_bundle = mock.Mock()
-        status, msg = distributor.validate_config(repo, config, related_repos)
+        status, msg = distributor.validate_config(repo, config, config_conduit)
         self.assertFalse(status)
-        expected_msg = "Relative url '%s' conflicts with existing relative_url of '%s' from repo '%s'" % (relative_url, url_a, repo_a.id)
+        expected_msg = "Relative url '%s' conflicts with existing relative_url of '%s' from repo '%s'" % \
+                       (relative_url, url_a, repo_a.id)
         self.assertEqual(expected_msg, msg)
-
-        # Check conflict with a subdir
-        url_b = "rel_a/rel_b/"
-        config_b = PluginCallConfiguration({"relative_url":url_b}, {})
-        repo_b = RelatedRepository("repo_b_id", [config_b])
-        related_repos = [repo_b]
-        distributor = YumDistributor()
-        distributor.process_repo_auth_certificate_bundle = mock.Mock()
-        status, msg = distributor.validate_config(repo, config, related_repos)
-        self.assertFalse(status)
-        expected_msg = "Relative url '%s' conflicts with existing relative_url of '%s' from repo '%s'" % (relative_url, url_b, repo_b.id)
-        self.assertEqual(expected_msg, msg)
-
-        # Check no conflict with a pieces of a common subdir
-        url_c = "rel_a/rel_b/rel_c"
-        config_c = PluginCallConfiguration({"relative_url":url_c}, {})
-        repo_c = RelatedRepository("repo_c_id", [config_c])
-
-        url_d = "rel_a/rel_b/rel_d"
-        config_d = PluginCallConfiguration({"relative_url":url_d}, {})
-        repo_d = RelatedRepository("repo_d_id", [config_d])
-
-        url_e = "rel_a/rel_b/rel_e/rel_e"
-        config_e = PluginCallConfiguration({"relative_url":url_e}, {})
-        repo_e = RelatedRepository("repo_e_id", [config_e])
-
-        # Add a repo with no relative_url
-        config_f = PluginCallConfiguration({"relative_url":None}, {})
-        repo_f = RelatedRepository("repo_f_id", [config_f])
-
-        related_repos = [repo_c, repo_d, repo_e, repo_f]
-        distributor = YumDistributor()
-        distributor.process_repo_auth_certificate_bundle = mock.Mock()
-
-        status, msg = distributor.validate_config(repo, config, related_repos)
-        self.assertTrue(status)
-        self.assertEqual(msg, None)
-
-        # Test with 2 repos and no relative_url
-        config_h = PluginCallConfiguration({}, {})
-        repo_h = RelatedRepository("repo_h_id", [config_h])
-
-        config_i = PluginCallConfiguration({}, {})
-        repo_i = RelatedRepository("repo_i_id", [config_i])
-
-        status, msg = distributor.validate_config(repo_i, config, [repo_h])
-        self.assertTrue(status)
-        self.assertEqual(msg, None)
-
-        # TODO:  Test, repo_1 has no rel url, so repo_1_id is used
-        # Then 2nd repo is configured with rel_url of repo_1_id
-        #  should result in a conflict
-
-
 
         # Ensure this test can handle a large number of repos
+        """
         test_repos = []
         for index in range(0,10000):
             test_url = "rel_a/rel_b/rel_e/repo_%s" % (index)
@@ -473,9 +395,10 @@ class TestDistributor(rpm_support_base.PulpRPMTests):
         related_repos = test_repos
         distributor = YumDistributor()
         distributor.process_repo_auth_certificate_bundle = mock.Mock()
-        status, msg = distributor.validate_config(repo, config, related_repos)
+        status, msg = distributor.validate_config(repo, config, self.config_conduit)
         self.assertTrue(status)
         self.assertEqual(msg, None)
+        """
 
     def test_publish_progress(self):
         global progress_status
