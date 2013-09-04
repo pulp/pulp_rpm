@@ -26,7 +26,7 @@ class TestMigrateErrataFromStr(rpm_support_base.PulpRPMTests):
     def setUp(self):
         super(TestMigrateErrataFromStr, self).setUp()
 
-        self.collection = get_collection('units_errata')
+        self.collection = get_collection('units_erratum')
 
         errata = [
             json.loads(ERRATA_OLD),
