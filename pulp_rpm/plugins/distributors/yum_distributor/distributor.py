@@ -209,14 +209,22 @@ class YumDistributor(Distributor):
                 msg = _("Unable to read & write to specified 'http_publish_dir': %(publish_dir)s" % {"publish_dir":publish_dir})
                 return False, msg
         rel_url = config.get("relative_url")
-        if rel_url:
-            conflict_items = config_conduit.get_repo_distributors_by_relative_url(rel_url)
-            if len(conflict_items) > 0:
-                item = conflict_items[0]
-                conflict_msg = _("Relative url '%(rel_url)s' conflicts with existing relative_url of '%(conflict_rel_url)s' from repo '%(conflict_repo_id)s'" \
-                    % {"rel_url": rel_url, "conflict_rel_url": item['config']["relative_url"], "conflict_repo_id": item["repo_id"]})
-                _LOG.info(conflict_msg)
-                return False, conflict_msg
+        if not rel_url:
+            rel_url = repo.id
+
+        conflict_items = config_conduit.get_repo_distributors_by_relative_url(rel_url)
+
+        if conflict_items.count() > 0:
+            item = next(conflict_items)
+            conflicting_url = item["repo_id"]
+            if item['config']["relative_url"] is not None:
+                conflicting_url = item['config']["relative_url"]
+
+            conflict_msg = _("Relative url '%(rel_url)s' conflicts with existing relative_url of '%(conflict_rel_url)s' from repo '%(conflict_repo_id)s'" \
+            % {"rel_url": rel_url, "conflict_rel_url": conflicting_url, "conflict_repo_id": item["repo_id"]})
+            _LOG.info(conflict_msg)
+            return False, conflict_msg
+
         return True, None
 
     def init_progress(self):

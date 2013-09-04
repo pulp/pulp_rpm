@@ -17,6 +17,8 @@ sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)) + "/../../../plugi
 from yum_distributor.distributor import YumDistributor
 from pulp.plugins.model import Repository
 from pulp_rpm.repo_auth.repo_cert_utils import M2CRYPTO_HAS_CRL_SUPPORT
+from pulp.plugins.conduits.repo_config import RepoConfigConduit
+from pulp_rpm.common.ids import TYPE_ID_RPM
 
 import distributor_mocks
 import mock
@@ -31,6 +33,7 @@ class TestValidateConfig(rpm_support_base.PulpRPMTests):
         self.repo.id = "testrepo"
         self.distributor = YumDistributor()
         self.distributor.process_repo_auth_certificate_bundle = mock.Mock()
+        self.config_conduit = RepoConfigConduit(TYPE_ID_RPM)
         self.init()
 
     def tearDown(self):
@@ -44,31 +47,31 @@ class TestValidateConfig(rpm_support_base.PulpRPMTests):
         https = False
         relative_url = 123
         config = distributor_mocks.get_basic_config(relative_url=relative_url, http=http, https=https)
-        state, msg = self.distributor.validate_config(self.repo, config, [])
+        state, msg = self.distributor.validate_config(self.repo, config, self.config_conduit)
         self.assertFalse(state)
 
         relative_url = "test_path"
         config = distributor_mocks.get_basic_config(relative_url=relative_url, http=http, https=https)
-        state, msg = self.distributor.validate_config(self.repo, config, [])
+        state, msg = self.distributor.validate_config(self.repo, config, self.config_conduit)
         self.assertTrue(state)
 
         # For https://bugzilla.redhat.com/show_bug.cgi?id=874241 we will assert that crazy characters don't validate
         relative_url = '@#%^&*()'
         config = distributor_mocks.get_basic_config(relative_url=relative_url, http=http, https=https)
-        state, msg = self.distributor.validate_config(self.repo, config, [])
+        state, msg = self.distributor.validate_config(self.repo, config, self.config_conduit)
         self.assertFalse(state)
         self.assertEqual(msg, 'relative_url must contain only alphanumerics, underscores, and dashes.')
 
         # relative_url should be allowed to be empty string
         relative_url = ""
         config = distributor_mocks.get_basic_config(relative_url=relative_url, http=http, https=https)
-        state, msg = self.distributor.validate_config(self.repo, config, [])
+        state, msg = self.distributor.validate_config(self.repo, config, self.config_conduit)
         self.assertTrue(state)
 
         # relative_url should be allowed to have a forward slash character
         relative_url = "/jdob/repos/awesome-repo"
         config = distributor_mocks.get_basic_config(relative_url=relative_url, http=http, https=https)
-        state, msg = self.distributor.validate_config(self.repo, config, [])
+        state, msg = self.distributor.validate_config(self.repo, config, self.config_conduit)
         self.assertTrue(state)
 
     def test_config_http(self):
@@ -77,12 +80,12 @@ class TestValidateConfig(rpm_support_base.PulpRPMTests):
         https = False
         relative_url = "test_path"
         config = distributor_mocks.get_basic_config(relative_url=relative_url, http=http, https=https)
-        state, msg = self.distributor.validate_config(self.repo, config, [])
+        state, msg = self.distributor.validate_config(self.repo, config, self.config_conduit)
         self.assertFalse(state)
 
         http = True
         config = distributor_mocks.get_basic_config(relative_url=relative_url, http=http, https=https)
-        state, msg = self.distributor.validate_config(self.repo, config, [])
+        state, msg = self.distributor.validate_config(self.repo, config, self.config_conduit)
         self.assertTrue(state)
 
     def test_config_https(self):
@@ -91,12 +94,12 @@ class TestValidateConfig(rpm_support_base.PulpRPMTests):
         https = "False"
         relative_url = "test_path"
         config = distributor_mocks.get_basic_config(relative_url=relative_url, http=http, https=https)
-        state, msg = self.distributor.validate_config(self.repo, config, [])
+        state, msg = self.distributor.validate_config(self.repo, config, self.config_conduit)
         self.assertFalse(state)
 
         https = True
         config = distributor_mocks.get_basic_config(relative_url=relative_url, http=http, https=https)
-        state, msg = self.distributor.validate_config(self.repo, config, [])
+        state, msg = self.distributor.validate_config(self.repo, config, self.config_conduit)
         self.assertTrue(state)
 
     def test_config_protected(self):
@@ -105,12 +108,12 @@ class TestValidateConfig(rpm_support_base.PulpRPMTests):
         relative_url = "test_path"
         protected = "false"
         config = distributor_mocks.get_basic_config(relative_url=relative_url, http=http, https=https, protected=protected)
-        state, msg = self.distributor.validate_config(self.repo, config, [])
+        state, msg = self.distributor.validate_config(self.repo, config, self.config_conduit)
         self.assertFalse(state)
 
         protected = True
         config = distributor_mocks.get_basic_config(relative_url=relative_url, http=http, https=https, protected=protected)
-        state, msg = self.distributor.validate_config(self.repo, config, [])
+        state, msg = self.distributor.validate_config(self.repo, config, self.config_conduit)
         self.assertTrue(state)
 
     def test_config_checksum_type(self):
@@ -120,13 +123,13 @@ class TestValidateConfig(rpm_support_base.PulpRPMTests):
         checksum_type = "fake"
         config = distributor_mocks.get_basic_config(relative_url=relative_url, http=http, https=https,
             checksum_type=checksum_type)
-        state, msg = self.distributor.validate_config(self.repo, config, [])
+        state, msg = self.distributor.validate_config(self.repo, config, self.config_conduit)
         self.assertFalse(state)
 
         checksum_type = "sha"
         config = distributor_mocks.get_basic_config(relative_url=relative_url, http=http, https=https,
             checksum_type=checksum_type)
-        state, msg = self.distributor.validate_config(self.repo, config, [])
+        state, msg = self.distributor.validate_config(self.repo, config, self.config_conduit)
         self.assertTrue(state)
 
     def test_config_skip_content_types(self):
@@ -136,13 +139,13 @@ class TestValidateConfig(rpm_support_base.PulpRPMTests):
         skip_content_types = "fake"
         config = distributor_mocks.get_basic_config(relative_url=relative_url, http=http, https=https,
             skip=skip_content_types)
-        state, msg = self.distributor.validate_config(self.repo, config, [])
+        state, msg = self.distributor.validate_config(self.repo, config, self.config_conduit)
         self.assertFalse(state)
 
         skip_content_types = []
         config = distributor_mocks.get_basic_config(relative_url=relative_url, http=http, https=https,
             skip=skip_content_types)
-        state, msg = self.distributor.validate_config(self.repo, config, [])
+        state, msg = self.distributor.validate_config(self.repo, config, self.config_conduit)
         self.assertTrue(state)
 
     def test_config_auth_pem(self):
@@ -154,13 +157,13 @@ class TestValidateConfig(rpm_support_base.PulpRPMTests):
         auth_cert = "fake"
         config = distributor_mocks.get_basic_config(relative_url=relative_url, http=http, https=https,
             auth_cert=auth_cert)
-        state, msg = self.distributor.validate_config(self.repo, config, [])
+        state, msg = self.distributor.validate_config(self.repo, config, self.config_conduit)
         self.assertFalse(state)
 
         auth_cert = open(os.path.join(self.data_dir, "cert.crt")).read()
         config = distributor_mocks.get_basic_config(relative_url=relative_url, http=http, https=https,
             auth_cert=auth_cert)
-        state, msg = self.distributor.validate_config(self.repo, config, [])
+        state, msg = self.distributor.validate_config(self.repo, config, self.config_conduit)
         self.assertTrue(state)
 
     def test_config_auth_ca(self):
@@ -172,13 +175,13 @@ class TestValidateConfig(rpm_support_base.PulpRPMTests):
         auth_ca = "fake"
         config = distributor_mocks.get_basic_config(relative_url=relative_url, http=http, https=https,
             auth_ca=auth_ca)
-        state, msg = self.distributor.validate_config(self.repo, config, [])
+        state, msg = self.distributor.validate_config(self.repo, config, self.config_conduit)
         self.assertFalse(state)
 
         auth_ca = open(os.path.join(self.data_dir, "valid_ca.crt")).read()
         config = distributor_mocks.get_basic_config(relative_url=relative_url, http=http, https=https,
             auth_ca=auth_ca)
-        state, msg = self.distributor.validate_config(self.repo, config, [])
+        state, msg = self.distributor.validate_config(self.repo, config, self.config_conduit)
         self.assertTrue(state)
 
 

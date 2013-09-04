@@ -387,13 +387,13 @@ class TestISOImporter(PulpRPMTests):
         config = importer_mocks.get_basic_config(
             **{importer_constants.KEY_FEED: "http://test.com/feed", importer_constants.KEY_MAX_SPEED: 128.8})
         # We'll pass None for the parameters that don't get used by validate_config
-        status, error_message = self.iso_importer.validate_config(None, config, None)
+        status, error_message = self.iso_importer.validate_config(None, config)
         self.assertTrue(status)
         self.assertEqual(error_message, None)
 
         config = importer_mocks.get_basic_config(**{importer_constants.KEY_FEED: "http://test.com/feed",
                                                     importer_constants.KEY_MAX_SPEED: -42})
-        status, error_message = self.iso_importer.validate_config(None, config, None)
+        status, error_message = self.iso_importer.validate_config(None, config)
         self.assertFalse(status)
         self.assertEqual(error_message, 'The configuration parameter <max_speed> must be set to a positive '
                                         'numerical value, but is currently set to <-42.0>.')
