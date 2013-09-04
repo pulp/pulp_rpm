@@ -18,7 +18,7 @@
 
 Name: pulp-rpm
 Version: 2.2.0
-Release: 0.29.beta%{?dist}
+Release: 0.30.beta%{?dist}
 Summary: Support for RPM content in the Pulp platform
 Group: Development/Languages
 License: GPLv2
@@ -282,6 +282,12 @@ A collection of yum plugins supplementing Pulp consumer operations.
 
 
 %changelog
+* Wed Sep 04 2013 Barnaby Court <bcourt@redhat.com> 2.2.0-0.30.beta
+- 1004086 - Rename migration #11 to #7, and increment migration version #7 to
+  #10 by one. (rbarlow@redhat.com)
+- 1004049 - added a migration for errata that have the old "from_str" key
+  (mhrivnak@redhat.com)
+
 * Tue Aug 27 2013 Jeff Ortel <jortel@redhat.com> 2.2.0-0.29.beta
 - Pulp rebuild
 
