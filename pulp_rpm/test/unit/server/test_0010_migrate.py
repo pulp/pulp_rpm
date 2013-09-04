@@ -86,7 +86,7 @@ class YumImporterConfigMigrationTests(rpm_support_base.PulpRPMTests):
 
     def test_migrate(self):
         # Test
-        migration = _import_all_the_way('pulp_rpm.migrations.0009_yum_importer_config_keys')
+        migration = _import_all_the_way('pulp_rpm.migrations.0010_yum_importer_config_keys')
         migration.migrate()
 
         # Verify
