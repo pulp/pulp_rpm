@@ -466,6 +466,16 @@ class YumDistributor(Distributor):
         repo_cert_utils_obj.delete_for_repo(repo.id)
         protected_repo_utils_obj.delete_protected_repo(repo_relative_path)
 
+        # Clean up https and http publishing paths, if they exist
+        https_publish_dir = self.get_https_publish_dir(config)
+        https_repo_publish_dir = os.path.join(https_publish_dir, repo_relative_path).rstrip('/')
+        http_publish_dir = self.get_http_publish_dir(config)
+        http_repo_publish_dir = os.path.join(http_publish_dir, repo_relative_path).rstrip('/')
+        if os.path.exists(https_repo_publish_dir):
+            util.remove_repo_publish_dir(https_publish_dir, https_repo_publish_dir)
+        if os.path.exists(http_repo_publish_dir):
+            util.remove_repo_publish_dir(http_publish_dir, http_repo_publish_dir)
+
     def set_progress(self, type_id, status, progress_callback=None):
         if progress_callback:
             progress_callback(type_id, status)
