@@ -31,7 +31,6 @@ from pulp_rpm.yum_plugin import util
 from pulp.plugins.model import RelatedRepository, Repository, Unit
 from pulp.plugins.config import PluginCallConfiguration
 from pulp.plugins.conduits.repo_config import RepoConfigConduit
-from pulp_rpm.common.ids import TYPE_ID_RPM
 
 from pulp.devel.mock_cursor import MockCursor
 
@@ -477,3 +476,34 @@ class TestDistributor(rpm_support_base.PulpRPMTests):
 
         self.assertTrue('http' in payload['protocols'])
         self.assertTrue('https' in payload['protocols'])
+
+    @mock.patch('pulp_rpm.repo_auth.protected_repo_utils.ProtectedRepoUtils.delete_protected_repo')
+    def test_distributor_removed(self, delete_protected_repo):
+        """
+        Make sure the distributor_removed() method cleans up the published files.
+        """
+        # Create and publish repo to both http and https directories
+        repo = mock.Mock(spec=Repository)
+        repo.id = 'about_to_be_removed'
+        repo.working_dir = self.repo_working_dir
+        existing_units = self.get_units(count=5)
+        publish_conduit = distributor_mocks.get_publish_conduit(type_id="rpm",
+                                                                existing_units=existing_units,
+                                                                pkg_dir=self.pkg_dir)
+        config = distributor_mocks.get_basic_config(http_publish_dir=self.http_publish_dir,
+                                                    https_publish_dir=self.https_publish_dir,
+                                                    http=True,
+                                                    https=True)
+        distributor = YumDistributor()
+        report = distributor.publish_repo(repo, publish_conduit, config)
+
+        publishing_paths = [os.path.join(directory, repo.id) \
+                            for directory in [self.http_publish_dir, self.https_publish_dir]]
+        # The publishing paths should exist
+        self.assertTrue(all([os.path.exists(directory) for directory in publishing_paths]))
+        delete_protected_repo.reset_mock()
+        distributor.distributor_removed(repo, config)
+        # Neither publishing path should exist now
+        self.assertFalse(all([os.path.exists(directory) for directory in publishing_paths]))
+        # delete_protected_repo should have been called
+        delete_protected_repo.assert_called_once_with(repo.id)
