@@ -208,20 +208,14 @@ class YumDistributor(Distributor):
             if not os.access(publish_dir, os.R_OK) or not os.access(publish_dir, os.W_OK):
                 msg = _("Unable to read & write to specified 'http_publish_dir': %(publish_dir)s" % {"publish_dir":publish_dir})
                 return False, msg
-        rel_url = config.get("relative_url")
-        if not rel_url:
-            rel_url = repo.id
-
-        conflict_items = config_conduit.get_repo_distributors_by_relative_url(rel_url)
-
+        conflict_items = config_conduit.get_repo_distributors_by_relative_url(repo_relative_path, repo.id)
         if conflict_items.count() > 0:
             item = next(conflict_items)
             conflicting_url = item["repo_id"]
             if item['config']["relative_url"] is not None:
                 conflicting_url = item['config']["relative_url"]
-
             conflict_msg = _("Relative url '%(rel_url)s' conflicts with existing relative_url of '%(conflict_rel_url)s' from repo '%(conflict_repo_id)s'" \
-            % {"rel_url": rel_url, "conflict_rel_url": conflicting_url, "conflict_repo_id": item["repo_id"]})
+            % {"rel_url": repo_relative_path, "conflict_rel_url": conflicting_url, "conflict_repo_id": item["repo_id"]})
             _LOG.info(conflict_msg)
             return False, conflict_msg
 
