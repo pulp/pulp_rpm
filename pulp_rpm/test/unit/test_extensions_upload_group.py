@@ -82,6 +82,27 @@ class CreatePackageGroupCommand(rpm_support_base.PulpClientTests):
         self.assertEqual(metadata['translated_description'], {})
         self.assertEqual(metadata['translated_name'], '')
 
+    def test_generate_metadata_invalid_conditional_names(self):
+        args = {
+            group.OPT_NAME.keyword : 'test-name',
+            group.OPT_DESCRIPTION.keyword : 'test-description',
+            group.OPT_MANDATORY_NAME.keyword : 'test-mandatory',
+            group.OPT_OPTIONAL_NAME.keyword : 'test-optional',
+            group.OPT_DEFAULT_NAME.keyword : 'test-default',
+            group.OPT_DISPLAY_ORDER.keyword : 'test-order',
+            group.OPT_DEFAULT.keyword : 'test-default',
+            group.OPT_LANGONLY.keyword : 'test-lang',
+            group.OPT_USER_VISIBLE.keyword : 'test-user-visible',
+            group.OPT_CONDITIONAL_NAME.keyword : 'invalid_conditional' # invalid format of conditional
+        }
+
+        try:
+            # Verify that generate_metadata returns an error when conditional names are invalid
+            self.command.generate_metadata(None, **args)
+            self.assertTrue(False)
+        except:
+            pass
+
     def test_user_visible_option(self):
         # Setup
         self.cli.add_command(self.command)
