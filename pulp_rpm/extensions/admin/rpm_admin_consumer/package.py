@@ -194,9 +194,8 @@ class YumConsumerPackageUpdateCommand(consumer_content.ConsumerContentUpdateComm
 
     def add_content_options(self):
         self.create_option('--name',
-                           _('package name; may repeat for multiple packages. ' +
-                             'if unspecified, all packages are updated'),
-                           required=False,
+                           _('package name; may repeat for multiple packages'),
+                           required=True,
                            allow_multiple=True,
                            aliases=['-n'])
 
@@ -204,6 +203,7 @@ class YumConsumerPackageUpdateCommand(consumer_content.ConsumerContentUpdateComm
         self.add_flag(FLAG_NO_COMMIT)
         self.add_flag(FLAG_REBOOT)
         self.add_flag(FLAG_IMPORT_KEYS)
+        self.add_flag(FLAG_ALL_CONTENT)
 
     def get_update_options(self, kwargs):
         commit = not kwargs[FLAG_NO_COMMIT.keyword]
@@ -215,14 +215,15 @@ class YumConsumerPackageUpdateCommand(consumer_content.ConsumerContentUpdateComm
                 'importkeys': import_keys}
 
     def get_content_units(self, kwargs):
+
+        if kwargs[FLAG_ALL_CONTENT.keyword]:
+            return [{'type_id': TYPE_ID_RPM, 'unit_key': None}]
+
         def _unit_dict(unit_name):
             return {'type_id': TYPE_ID_RPM,
                     'unit_key': {'name': unit_name}}
 
-        if kwargs['name'] is not None:
-            return map(_unit_dict, kwargs['name'])
-        else:
-            return [{'type_id': TYPE_ID_RPM, 'unit_key':None}]
+        return map(_unit_dict, kwargs['name'])
 
     def succeeded(self, task):
         # succeeded and failed are task-based, which is not indicative of
