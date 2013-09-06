@@ -27,7 +27,7 @@ from pulp_rpm.extension.admin.iso import contents, create_update, repo_list, sta
 
 
 SECTION_PUBLISH = 'publish'
-DESC_PUBLISH = 'run or view the status of publish tasks'
+DESC_PUBLISH = 'run publish tasks'
 
 SECTION_REPO = 'repo'
 DESC_REPO = _('repository lifecycle commands')
@@ -39,7 +39,7 @@ SECTION_SCHEDULES = 'schedules'
 DESC_SCHEDULES = _('manage repository sync schedules')
 
 SECTION_SYNC = 'sync'
-DESC_SYNC = _('run, schedule, or view the status of sync tasks')
+DESC_SYNC = _('run or schedule sync tasks')
 
 DESC_SYNC_LIST = _('list scheduled sync operations')
 DESC_SYNC_CREATE = _('add new scheduled sync operations')
