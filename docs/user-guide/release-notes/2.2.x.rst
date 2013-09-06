@@ -8,6 +8,8 @@ Pulp 2.2.0
 New Features
 ------------
 
+* The yum importer is all-new. It performs sync operations in less time, and it
+  uses much less RAM than in the past.
 * The ISO Distributor now supports repository protection. See the API documentation for more details.
 * The ISO Importer now allows ISO uploads.
 * The ISO Importer now allows synchronization cancellation.
@@ -17,6 +19,9 @@ CLI Changes
 
 * The ``pulp-admin rpm repo uploads rpm`` command now supports a flag (``--skip-existing``) to skip
   re-uploading packages that are already in the destination repository.
+* The ``pulp-admin rpm repo copy`` command now has a ``--all`` flag.
+* Many commands that used to display a task ID will now automatically poll the
+  server and display progress until the task is complete.
 * There is a new ISO section in the pulp-admin client. It currently allows syncing, creating, and updating
   repositories.
 
@@ -35,7 +40,7 @@ of old names to new names.
 | feed_url             | feed             |
 +----------------------+------------------+
 | ssl_verify           | ssl_validation   |
-+-----------------------------------------+
++----------------------+------------------+
 | num_threads          | max_downloads    |
 +----------------------+------------------+
 | proxy_url            | proxy_host       |
