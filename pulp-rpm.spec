@@ -18,7 +18,7 @@
 
 Name: pulp-rpm
 Version: 2.3.0
-Release: 0.7.alpha%{?dist}
+Release: 0.8.alpha%{?dist}
 Summary: Support for RPM content in the Pulp platform
 Group: Development/Languages
 License: GPLv2
@@ -280,6 +280,21 @@ A collection of yum plugins supplementing Pulp consumer operations.
 
 
 %changelog
+* Fri Sep 06 2013 Barnaby Court <bcourt@redhat.com> 2.3.0-0.8.alpha
+- 1004897 - Fix bug where distributor validate_config is finding relative path
+  conflicts with the repository that is being updated (bcourt@redhat.com)
+- 979587 - updating consumer update command to default to all packages instead
+  of accepting -a flag. (skarmark@redhat.com)
+- 979587 - updating consumer update command to default to all packages instead
+  of accepting -a flag (skarmark@redhat.com)
+- 1004086 - Rename migration #11 to #7, and increment migration version #7 to
+  #10 by one. (rbarlow@redhat.com)
+- 1004049 - added a migration for errata that have the old "from_str" key
+  (mhrivnak@redhat.com)
+- 915330 - Fix performance degradation of importer and distributor
+  configuration validation as the number of repositories increased
+  (bcourt@redhat.com)
+
 * Fri Aug 30 2013 Barnaby Court <bcourt@redhat.com> 2.3.0-0.7.alpha
 - Pulp rebuild
 
