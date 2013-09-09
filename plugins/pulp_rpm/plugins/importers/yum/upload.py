@@ -80,11 +80,11 @@ def upload(repo, type_id, unit_key, metadata, file_path, conduit, config):
     try:
         # init unit
         unit = conduit.init_unit(model.TYPE, model.unit_key, model.metadata, relative_path)
-        # copy file to destination
+        # move file to destination
         if file_path and unit.storage_path:
-            shutil.copy(file_path, unit.storage_path)
+            shutil.move(file_path, unit.storage_path)
     except IOError:
-        return _fail_report('failed to copy file to destination')
+        return _fail_report('failed to move file to destination')
 
     # do this for RPMs and SRPMs
     if isinstance(model, models.RPM):
