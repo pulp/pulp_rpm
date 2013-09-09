@@ -44,7 +44,7 @@ class TestUploadRPM(unittest.TestCase):
         return get_package_xml(self.file_path)
 
     @mock.patch('pulp_rpm.plugins.importers.yum.parse.rpm.get_package_xml', autospec=True)
-    @mock.patch('shutil.copy', autospec=True)
+    @mock.patch('shutil.move', autospec=True)
     def test_location_in_repodata(self, mock_copy, mock_get_xml):
         """This is in response to BZ 993452"""
         mock_get_xml.side_effect = self.wrap_get_package_xml
@@ -77,7 +77,7 @@ class TestUploadSRPM(unittest.TestCase):
         return get_package_xml(self.file_path)
 
     @mock.patch('pulp_rpm.plugins.importers.yum.parse.rpm.get_package_xml', autospec=True)
-    @mock.patch('shutil.copy', autospec=True)
+    @mock.patch('shutil.move', autospec=True)
     def test_upload(self, mock_copy, mock_get_xml):
         mock_get_xml.side_effect = self.wrap_get_package_xml
         unit = Unit(self.model.TYPE, self.model.unit_key, self.model.metadata, self.model.relative_path)
