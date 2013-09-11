@@ -55,16 +55,16 @@ def associate(source_repo, dest_repo, import_conduit, config, units=None):
     if recursive is None:
         recursive = False
 
-    associated_units = [_associate_unit(dest_repo, import_conduit, unit) for unit in units]
+    associated_units = set([_associate_unit(dest_repo, import_conduit, unit) for unit in units])
     # allow garbage collection
     units = None
 
-    copy_rpms((unit for unit in associated_units if unit.type_id == models.RPM.TYPE),
+    associated_units |= copy_rpms((unit for unit in associated_units if unit.type_id == models.RPM.TYPE),
               import_conduit, recursive)
 
     # return here if we shouldn't get child units
     if not recursive:
-        return associated_units
+        return list(associated_units)
 
     group_ids, rpm_names, rpm_search_dicts = identify_children_to_copy(associated_units)
 
@@ -73,20 +73,20 @@ def associate(source_repo, dest_repo, import_conduit, config, units=None):
                                              unit_filters={'id': {'$in': list(group_ids)}})
     group_units = list(import_conduit.get_source_units(group_criteria))
     if group_units:
-        associate(source_repo, dest_repo, import_conduit, config, group_units)
+        associated_units |= set(associate(source_repo, dest_repo, import_conduit, config, group_units))
 
     # ------ get RPM children of errata ------
     wanted_rpms = get_rpms_to_copy_by_key(rpm_search_dicts, import_conduit)
     rpm_search_dicts = None
     rpms_to_copy = filter_available_rpms(wanted_rpms, import_conduit)
-    copy_rpms(rpms_to_copy, import_conduit, recursive)
+    associated_units |= copy_rpms(rpms_to_copy, import_conduit, recursive)
     rpms_to_copy = None
 
     # ------ get RPM children of groups ------
     names_to_copy = get_rpms_to_copy_by_name(rpm_names, import_conduit)
-    copy_rpms_by_name(names_to_copy, import_conduit, recursive)
+    associated_units |= copy_rpms_by_name(names_to_copy, import_conduit, recursive)
 
-    return associated_units
+    return list(associated_units)
 
 
 def get_rpms_to_copy_by_key(rpm_search_dicts, import_conduit):
@@ -159,7 +159,7 @@ def filter_available_rpms(rpms, import_conduit):
     :return:    iterable of Units that should be copied
     :return:    iterable of pulp.plugins.models.Unit
     """
-    return existing.get_existing_units((_no_checksum_unit_key(unit) for unit in rpms),
+    return existing.get_existing_units((_no_checksum_clean_unit_key(unit) for unit in rpms),
                                         models.RPM.UNIT_KEY_NAMES, models.RPM.TYPE,
                                         import_conduit.get_source_units)
 
@@ -178,17 +178,18 @@ def copy_rpms(units, import_conduit, copy_deps):
                             and Provides declarations that are found in the
                             source repository. Silently skips any dependencies
                             that cannot be resolved within the source repo.
+
+    :return:    set of pulp.plugins.models.Unit that were copied
+    :rtype:     set
     """
-    # units can be a generator if this is False, but otherwise we need to iterate
-    # at least twice over it.
-    if copy_deps:
-        units = set(units)
+    unit_set = set()
 
     for unit in units:
         import_conduit.associate_unit(unit)
+        unit_set.add(unit)
 
-    if copy_deps:
-        deps = depsolve.find_dependent_rpms(units, import_conduit.get_source_units)
+    if copy_deps and unit_set:
+        deps = depsolve.find_dependent_rpms(unit_set, import_conduit.get_source_units)
         # only consider deps that exist in the source repo
         available_deps = set(filter_available_rpms(deps, import_conduit))
         # remove rpms already in the destination repo
@@ -198,14 +199,19 @@ def copy_rpms(units, import_conduit, copy_deps):
         to_copy = available_deps - existing_units
         _LOGGER.debug('Copying deps: %s' % str(sorted([x.unit_key['name'] for x in to_copy])))
         if to_copy:
-            copy_rpms(to_copy, import_conduit, copy_deps)
+            unit_set |= copy_rpms(to_copy, import_conduit, copy_deps)
+
+    return unit_set
 
 
-def _no_checksum_unit_key(unit_tuple):
+def _no_checksum_clean_unit_key(unit_tuple):
     """
     Return a unit key that does not include the checksum or checksumtype. This
     is useful when resolving dependencies, because those unit specifications
     (on "Requires" lines in spec files) do not specify particular checksum info.
+
+    This also removes any key-value pairs where the value is None, which is
+    particularly useful for repos where the errata to not specify epochs
 
     :param unit_tuple:  unit to convert
     :type  unit_tuple:  pulp_rpm.common.models.RPM.NAMEDTUPLE
@@ -217,6 +223,9 @@ def _no_checksum_unit_key(unit_tuple):
     # ignore checksum from updateinfo.xml
     del ret['checksum']
     del ret['checksumtype']
+    for key, value in ret.items():
+        if value is None:
+            del ret[key]
     return ret
 
 
@@ -228,6 +237,9 @@ def copy_rpms_by_name(names, import_conduit, copy_deps):
     :type  names:           iterable of basestring
     :param import_conduit:  import conduit passed to the Importer
     :type  import_conduit:  pulp.plugins.conduits.unit_import.ImportUnitConduit
+
+    :return:    set of pulp.plugins.model.Unit that were copied
+    :rtype:     set
     """
     to_copy = {}
 
@@ -243,7 +255,7 @@ def copy_rpms_by_name(names, import_conduit, copy_deps):
         else:
             to_copy[model.key_string_without_version] = max(((model.complete_version_serialized, unit), previous))
 
-    copy_rpms((unit for v, unit in to_copy.itervalues()), import_conduit, copy_deps)
+    return copy_rpms((unit for v, unit in to_copy.itervalues()), import_conduit, copy_deps)
 
 
 def identify_children_to_copy(units):
