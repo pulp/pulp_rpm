@@ -391,28 +391,41 @@ class ISO(object):
         """
         return self._unit.storage_path
 
-    def validate(self):
+    def validate(self, full_validation=True):
         """
-        Validate that the file found at self.storage_path matches the size and checksum of self. A ValueError
-        will be raised if the validation fails.
-        """
-        with open(self.storage_path) as destination_file:
-            # Validate the size
-            actual_size = self.calculate_size(destination_file)
-            if actual_size != self.size:
-                raise ValueError(_('Downloading <%(name)s> failed validation. '
-                    'The manifest specified that the file should be %(expected)s bytes, but '
-                    'the downloaded file is %(found)s bytes.') % {'name': self.name,
-                        'expected': self.size, 'found': actual_size})
+        Validate that the name of the ISO is not the same as the manifest's name. Also, if
+        full_validation is True, validate that the file found at self.storage_path matches the size
+        and checksum of self. A ValueError will be raised if the validation fails.
 
-            # Validate the checksum
-            actual_checksum = self.calculate_checksum(destination_file)
-            if actual_checksum != self.checksum:
-                raise ValueError(
-                    _('Downloading <%(name)s> failed checksum validation. The manifest '
-                      'specified the checksum to be %(c)s, but it was %(f)s.') % {
-                        'name': self.name, 'c': self.checksum,
-                        'f': actual_checksum})
+        :param full_validation: Whether or not to perform validation on the size and checksum of the
+                                ISO. Name validation is always performed.
+        :type  full_validation: bool
+        """
+        # Don't allow PULP_MANIFEST to be the name
+        if self.name == ISOManifest.FILENAME:
+            msg = _('An ISO may not be named %(name)s, as it conflicts with the name of the '
+                    'manifest during publishing.')
+            msg = msg % {'name': ISOManifest.FILENAME}
+            raise ValueError(msg)
+
+        if full_validation:
+            with open(self.storage_path) as destination_file:
+                # Validate the size
+                actual_size = self.calculate_size(destination_file)
+                if actual_size != self.size:
+                    raise ValueError(_('Downloading <%(name)s> failed validation. '
+                        'The manifest specified that the file should be %(expected)s bytes, but '
+                        'the downloaded file is %(found)s bytes.') % {'name': self.name,
+                            'expected': self.size, 'found': actual_size})
+
+                # Validate the checksum
+                actual_checksum = self.calculate_checksum(destination_file)
+                if actual_checksum != self.checksum:
+                    raise ValueError(
+                        _('Downloading <%(name)s> failed checksum validation. The manifest '
+                          'specified the checksum to be %(c)s, but it was %(f)s.') % {
+                            'name': self.name, 'c': self.checksum,
+                            'f': actual_checksum})
 
     @staticmethod
     def calculate_checksum(file_handle):
