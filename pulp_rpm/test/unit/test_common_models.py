@@ -198,9 +198,78 @@ class TestISO(unittest.TestCase):
         # This should validate, i.e., should not raise any Exception
         iso.validate()
 
-    def test_validate_wrong_checksum(self):
+    def test_validate_invalid_name_full_validation_false(self):
         """
-        Assert that validate() raises a ValueError when the checksum is not correct.
+        Due to a bug[0], we don't want to allow an ISO named PULP_MANIFEST. This test checks that
+        the name is validated when full_validation is set to False.
+
+        [0] https://bugzilla.redhat.com/show_bug.cgi?id=973678
+        """
+        name = 'PULP_MANIFEST'
+        destination = os.path.join(self.temp_dir, name)
+        with open(destination, 'w') as test_file:
+            test_file.write("I heard there was this band called 1023MB, they haven't got any gigs yet.")
+        unit = mock.MagicMock()
+        unit.storage_path = destination
+        iso = models.ISO(name, 73, '36891c265290bf4610b488a8eb884d32a29fd17bb9886d899e75f4cf29d3f464',
+                         unit)
+
+        # This should raise a ValueError with an appropriate error message
+        try:
+            # We'll set full_validation to False to test that the name is validated even then
+            iso.validate(full_validation=False)
+            self.fail('A ValueError should have been raised, but it was not.')
+        except ValueError, e:
+            self.assertEqual(
+                str(e), 'An ISO may not be named PULP_MANIFEST, as it conflicts with the name of '
+                'the manifest during publishing.')
+
+    def test_validate_invalid_name_full_validation_true(self):
+        """
+        Due to a bug[0], we don't want to allow an ISO named PULP_MANIFEST. This test asserts that
+        the name is validated when full_validation is set to True.
+
+        [0] https://bugzilla.redhat.com/show_bug.cgi?id=973678
+        """
+        name = 'PULP_MANIFEST'
+        destination = os.path.join(self.temp_dir, name)
+        with open(destination, 'w') as test_file:
+            test_file.write("I heard there was this band called 1023MB, they haven't got any gigs yet.")
+        unit = mock.MagicMock()
+        unit.storage_path = destination
+        iso = models.ISO(name, 73, '36891c265290bf4610b488a8eb884d32a29fd17bb9886d899e75f4cf29d3f464',
+                         unit)
+
+        # This should raise a ValueError with an appropriate error message
+        try:
+            # We'll set full_validation to True for this test
+            iso.validate(full_validation=True)
+            self.fail('A ValueError should have been raised, but it was not.')
+        except ValueError, e:
+            self.assertEqual(
+                str(e), 'An ISO may not be named PULP_MANIFEST, as it conflicts with the name of '
+                'the manifest during publishing.')
+
+    def test_validate_wrong_checksum_full_validation_false(self):
+        """
+        Assert that validate() does not raise a ValueError when the checksum is not correct and
+        full_validation is False.
+        """
+        destination = os.path.join(self.temp_dir, 'test.txt')
+        with open(destination, 'w') as test_file:
+            test_file.write('Two chemists walk into a bar, the first one says "I\'ll have some H2O." to '
+                            'which the other adds "I\'ll have some H2O, too." The second chemist died.')
+        unit = mock.MagicMock()
+        unit.storage_path = destination
+        iso = models.ISO('test.txt', 146, 'terrible_pun', unit)
+
+        # This should not raise a ValueError since full_validation is False
+        iso.validate(full_validation=False)
+
+    def test_validate_wrong_checksum_full_validation_true(self):
+        """
+        Assert that validate() raises a ValueError when the checksum is not correct and
+        full_validation is True (default).
         """
         destination = os.path.join(self.temp_dir, 'test.txt')
         with open(destination, 'w') as test_file:
@@ -220,9 +289,26 @@ class TestISO(unittest.TestCase):
                         'checksum to be terrible_pun, but it was '
                         'dfec884065223f24c3ef333d4c7dcc0eb785a683cfada51ce071410b32a905e8.')
 
-    def test_validate_wrong_size(self):
+    def test_validate_wrong_size_full_validation_false(self):
         """
-        Assert that validate() raises a ValueError when given an incorrect size.
+        Assert that validate() does not raise a ValueError when given an incorrect size and
+        full_validation is False.
+        """
+        destination = os.path.join(self.temp_dir, 'test.txt')
+        with open(destination, 'w') as test_file:
+            test_file.write("Hey girl, what's your sine? It must be math.pi/2 because you're the 1.")
+        unit = mock.MagicMock()
+        unit.storage_path = destination
+        iso = models.ISO('test.txt', math.pi,
+                         '2b046422425d6f01a920278c55d8842a8989bacaea05b29d1d2082fae91c6041', unit)
+
+        # This should not raise an Exception because full_validation is set to False
+        iso.validate(full_validation=False)
+
+    def test_validate_wrong_size_full_validation_true(self):
+        """
+        Assert that validate() raises a ValueError when given an incorrect size and full_validation
+        is True (default).
         """
         destination = os.path.join(self.temp_dir, 'test.txt')
         with open(destination, 'w') as test_file:

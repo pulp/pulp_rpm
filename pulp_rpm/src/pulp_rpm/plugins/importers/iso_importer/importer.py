@@ -114,8 +114,8 @@ class ISOImporter(Importer):
 
     def upload_unit(self, repo, type_id, unit_key, metadata, file_path, conduit, config):
         """
-        See super(self.__class__, self).upload_unit() for the docblock explaining this method. In short, it
-        handles ISO uploads.
+        See super(self.__class__, self).upload_unit() for the docblock explaining this method. In
+        short, it handles ISO uploads.
         """
         iso = models.ISO(unit_key['name'], unit_key['size'], unit_key['checksum'])
         iso.init_unit(conduit)
@@ -123,15 +123,14 @@ class ISOImporter(Importer):
         shutil.move(file_path, iso.storage_path)
         validate = config.get_boolean(importer_constants.KEY_VALIDATE)
         validate = validate if validate is not None else constants.CONFIG_VALIDATE_DEFAULT
-        if validate:
-            try:
-                # Let's validate the checksum and size against the file. This will raise a ValueError if the
-                # checksum or size doesn't match the file
-                iso.validate()
-            except ValueError:
-                # If validation raises a ValueError, we should delete the unit and raise
-                os.remove(iso.storage_path)
-                raise
+        try:
+            # Let's validate the ISO. This will raise a
+            # ValueError if the ISO does not validate correctly.
+            iso.validate(full_validation=validate)
+        except ValueError:
+            # If validation raises a ValueError, we should delete the unit and raise
+            os.remove(iso.storage_path)
+            raise
 
         iso.save_unit(conduit)
 
