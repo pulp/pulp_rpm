@@ -128,7 +128,7 @@ class ISOImporter(Importer):
             # ValueError if the ISO does not validate correctly.
             iso.validate(full_validation=validate)
         except ValueError:
-            # If validation raises a ValueError, we should delete the unit and raise
+            # If validation raises a ValueError, we should delete the file and raise
             os.remove(iso.storage_path)
             raise
 

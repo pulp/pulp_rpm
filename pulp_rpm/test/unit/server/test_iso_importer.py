@@ -233,9 +233,10 @@ class TestISOImporter(PulpRPMTests):
                              'conflicts with the name of the manifest during publishing.')
 
         # init_unit() should have been called
-        expected_rel_path = os.path.join(unit_key['name'], unit_key['checksum'], str(unit_key['size']),
-                                         unit_key['name'])
-        sync_conduit.init_unit.assert_called_once_with(ids.TYPE_ID_ISO, unit_key, metadata, expected_rel_path)
+        expected_rel_path = os.path.join(unit_key['name'], unit_key['checksum'],
+                                         str(unit_key['size']), unit_key['name'])
+        sync_conduit.init_unit.assert_called_once_with(ids.TYPE_ID_ISO, unit_key, metadata,
+                                                       expected_rel_path)
 
         # The file should have been deleted
         self.assertFalse(os.path.exists(temp_file_location))
