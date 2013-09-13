@@ -886,7 +886,13 @@ def generate_yum_metadata(repo_id, repo_dir, publish_conduit, config, progress_c
         # to add random tags to any package... but AFAIK it's
         # basically turned off now, and basically ignored.
         skip_metadata_types.append('pkgtags')
-    checksum_type = repo_scratchpad.get('checksum_type', DEFAULT_CHECKSUM)
+    checksum_type = config.get('checksum_type', None)
+    if checksum_type is None:
+        if repo_scratchpad:
+            checksum_type = repo_scratchpad.get('checksum_type', DEFAULT_CHECKSUM)
+        else:
+            checksum_type = DEFAULT_CHECKSUM
+
     custom_metadata = generate_custom_metadata_dict(repo_id, publish_conduit)
     start = time.time()
     try:
