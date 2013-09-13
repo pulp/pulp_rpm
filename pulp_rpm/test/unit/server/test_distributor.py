@@ -27,7 +27,7 @@ sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)) + "/../../../plugi
 
 from yum_distributor.distributor import YumDistributor, OLD_REL_PATH_KEYWORD
 from pulp_rpm.common.ids import TYPE_ID_DISTRIBUTOR_YUM, TYPE_ID_RPM, TYPE_ID_SRPM
-from pulp_rpm.yum_plugin import util
+from pulp_rpm.yum_plugin import util, metadata
 from pulp.plugins.model import RelatedRepository, Repository, Unit
 from pulp.plugins.config import PluginCallConfiguration
 from pulp.plugins.conduits.repo_config import RepoConfigConduit
@@ -36,6 +36,7 @@ from pulp.devel.mock_cursor import MockCursor
 
 import distributor_mocks
 import rpm_support_base
+from mock import patch, ANY
 
 
 class TestDistributor(rpm_support_base.PulpRPMTests):
@@ -222,7 +223,6 @@ class TestDistributor(rpm_support_base.PulpRPMTests):
         rel_path = util.get_relpath_from_unit(test_unit)
         self.assertEqual(rel_path, "test_3")
 
-
     def test_create_symlink(self):
         target_dir = os.path.join(self.temp_dir, "a", "b", "c", "d", "e")
         distributor = YumDistributor()
@@ -284,7 +284,6 @@ class TestDistributor(rpm_support_base.PulpRPMTests):
         self.assertEqual(summary["http_publish_dir"], expected_repo_http_publish_dir)
         details = report.details
         self.assertEqual(len(details["errors"]), 0)
-
 
     def test_publish(self):
         repo = mock.Mock(spec=Repository)
@@ -354,6 +353,79 @@ class TestDistributor(rpm_support_base.PulpRPMTests):
         # Verify we cleaned up the misc dirs under the https dir
         # NOTE there will be an empty listing file remaining
         self.assertEquals(len(os.listdir(self.https_publish_dir)), 1)
+
+
+    @patch('pulp_rpm.yum_plugin.metadata.YumMetadataGenerator')
+    def test_yum_plugin_generate_yum_metadata_checksum_from_config(self, mock_YumMetadataGenerator):
+        repo = mock.Mock(spec=Repository)
+        repo.working_dir = self.repo_working_dir
+        repo.id = "test_publish"
+        num_units = 10
+        relative_url = "rel_a/rel_b/rel_c/"
+        existing_units = self.get_units(count=num_units)
+        publish_conduit = distributor_mocks.get_publish_conduit(type_id="rpm", existing_units=existing_units, pkg_dir=self.pkg_dir)
+        config = distributor_mocks.get_basic_config(https_publish_dir=self.https_publish_dir, relative_url=relative_url,
+                http=False, https=True, checksum_type='SHA')
+        distributor = YumDistributor()
+        distributor.process_repo_auth_certificate_bundle = mock.Mock()
+        config_conduit = mock.Mock(spec=RepoConfigConduit)
+        config_conduit.get_repo_distributors_by_relative_url.return_value = MockCursor([])
+
+        metadata.generate_yum_metadata(repo.id, repo.working_dir,publish_conduit, config)
+        mock_YumMetadataGenerator.assert_called_with(ANY, checksum_type='SHA',
+                                                     skip_metadata_types=ANY, is_cancelled=ANY,
+                                                     group_xml_path=ANY,
+                                                     updateinfo_xml_path=ANY,
+                                                     custom_metadata_dict=ANY)
+
+    @patch('pulp_rpm.yum_plugin.metadata.YumMetadataGenerator')
+    def test_yum_plugin_generate_yum_metadata_checksum_from_conduit(self,
+                                                                    mock_YumMetadataGenerator):
+        repo = mock.Mock(spec=Repository)
+        repo.working_dir = self.repo_working_dir
+        repo.id = "test_publish"
+        num_units = 10
+        relative_url = "rel_a/rel_b/rel_c/"
+        existing_units = self.get_units(count=num_units)
+        publish_conduit = distributor_mocks.get_publish_conduit(type_id="rpm", existing_units=existing_units, pkg_dir=self.pkg_dir)
+        config = distributor_mocks.get_basic_config(https_publish_dir=self.https_publish_dir, relative_url=relative_url,
+                http=False, https=True)
+        distributor = YumDistributor()
+        distributor.process_repo_auth_certificate_bundle = mock.Mock()
+        config_conduit = mock.Mock(spec=RepoConfigConduit)
+        config_conduit.get_repo_distributors_by_relative_url.return_value = MockCursor([])
+        metadata.generate_yum_metadata(repo.id, repo.working_dir, publish_conduit, config,
+                                        repo_scratchpad={'checksum_type':'SHA'})
+        mock_YumMetadataGenerator.assert_called_with(ANY, checksum_type='SHA',
+                                                     skip_metadata_types=ANY, is_cancelled=ANY,
+                                                     group_xml_path=ANY,
+                                                     updateinfo_xml_path=ANY,
+                                                     custom_metadata_dict=ANY)
+
+    @patch('pulp_rpm.yum_plugin.metadata.YumMetadataGenerator')
+    def test_yum_plugin_generate_yum_metadata_checksum_default(self, mock_YumMetadataGenerator):
+        repo = mock.Mock(spec=Repository)
+        repo.working_dir = self.repo_working_dir
+        repo.id = "test_publish"
+        num_units = 10
+        relative_url = "rel_a/rel_b/rel_c/"
+        existing_units = self.get_units(count=num_units)
+        publish_conduit = distributor_mocks.get_publish_conduit(type_id="rpm",
+                                                                existing_units=existing_units,
+                                                                pkg_dir=self.pkg_dir)
+        config = distributor_mocks.get_basic_config(https_publish_dir=self.https_publish_dir,
+                                                    relative_url=relative_url,
+                                                    http=False, https=True)
+        distributor = YumDistributor()
+        distributor.process_repo_auth_certificate_bundle = mock.Mock()
+        config_conduit = mock.Mock(spec=RepoConfigConduit)
+        config_conduit.get_repo_distributors_by_relative_url.return_value = MockCursor([])
+        metadata.generate_yum_metadata(repo.id, repo.working_dir, publish_conduit, config)
+        mock_YumMetadataGenerator.assert_called_with(ANY, checksum_type=metadata.DEFAULT_CHECKSUM,
+                                                     skip_metadata_types=ANY, is_cancelled=ANY,
+                                                     group_xml_path=ANY,
+                                                     updateinfo_xml_path=ANY,
+                                                     custom_metadata_dict=ANY)
 
     def test_basic_repo_publish_rel_path_conflict(self):
         repo = mock.Mock(spec=Repository)
