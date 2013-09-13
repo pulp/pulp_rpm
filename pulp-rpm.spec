@@ -164,7 +164,6 @@ Requires: python-pulp-rpm-common = %{pulp_version}
 Requires: pulp-server = %{pulp_version}
 Requires: createrepo >= 0.9.9-21
 Requires: python-rhsm >= 1.8.0
-Requires: grinder >= 0.1.16
 Requires: pyliblzma
 Requires: python-nectar >= 1.1.0
 %description plugins
