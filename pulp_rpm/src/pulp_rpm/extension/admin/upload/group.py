@@ -11,6 +11,9 @@
 
 from gettext import gettext as _
 
+import os
+import sys
+
 from pulp.client import parsers
 from pulp.client.commands.options import OPTION_REPO_ID
 from pulp.client.commands.repo.upload import UploadCommand
@@ -108,7 +111,12 @@ class CreatePackageGroupCommand(UploadCommand) :
         cond_names_raw = kwargs[OPT_CONDITIONAL_NAME.keyword]
         if cond_names_raw:
             for entry in cond_names_raw:
-                key, value = entry.split(':')
+                try:
+                    key, value = entry.split(':')
+                except ValueError:
+                    self.prompt.render_failure_message(_("Invalid value for argument : %(cond)s\n"
+                                                         % {'cond' : OPT_CONDITIONAL_NAME.keyword}))
+                    sys.exit(os.EX_DATAERR)
                 cond_names.append((key.strip(), value.strip()))
 
         metadata = {
