@@ -382,8 +382,8 @@ def get_package_xml(pkg_path):
 
 def change_location_tag(primary_xml_snippet, relpath):
     """
-    Reuse grinder hack Method to transform the <location> tag to strip out leading directories so it matches
-    grinder's behavior of putting all rpms in same director as 'repodata'
+    Transform the <location> tag to strip out leading directories so it
+    puts all rpms in the same directory as 'repodata'
 
     @param primary_xml_snippet: snippet of primary xml text for a single package
     @type primary_xml_snippet: str
