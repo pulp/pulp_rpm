@@ -96,12 +96,7 @@ class CreatePackageGroupCommand(rpm_support_base.PulpClientTests):
             group.OPT_CONDITIONAL_NAME.keyword : 'invalid_conditional' # invalid format of conditional
         }
 
-        try:
-            # Verify that generate_metadata returns an error when conditional names are invalid
-            self.command.generate_metadata(None, **args)
-            self.assertTrue(False)
-        except:
-            pass
+        self.assertRaises(SystemExit, self.command.generate_metadata, None, **args)
 
     def test_user_visible_option(self):
         # Setup
