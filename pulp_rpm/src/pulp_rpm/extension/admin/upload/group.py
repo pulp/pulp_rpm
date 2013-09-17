@@ -114,8 +114,8 @@ class CreatePackageGroupCommand(UploadCommand) :
                 try:
                     key, value = entry.split(':')
                 except ValueError:
-                    self.prompt.render_failure_message(_("Invalid value for argument : %s\n"
-                                                         % OPT_CONDITIONAL_NAME.keyword))
+                    self.prompt.render_failure_message(_("Invalid value for argument : %(cond)s\n"
+                                                         % {'cond' : OPT_CONDITIONAL_NAME.keyword}))
                     sys.exit(os.EX_DATAERR)
                 cond_names.append((key.strip(), value.strip()))
 
