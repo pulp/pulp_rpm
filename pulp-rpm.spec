@@ -18,7 +18,7 @@
 
 Name: pulp-rpm
 Version: 2.3.0
-Release: 0.12.alpha%{?dist}
+Release: 0.13.alpha%{?dist}
 Summary: Support for RPM content in the Pulp platform
 Group: Development/Languages
 License: GPLv2
@@ -279,6 +279,17 @@ A collection of yum plugins supplementing Pulp consumer operations.
 
 
 %changelog
+* Wed Sep 18 2013 Jeff Ortel <jortel@redhat.com> 2.3.0-0.13.alpha
+- 1004790 - Remove legacy dependency on Grinder that is no longer required.
+  (bcourt@redhat.com)
+- 953248 - Custom checksum on repository config was not honored.
+  (bcourt@redhat.com)
+- 973744 - when doing recursive copies, all copied units are now displayed, not
+  just the ones that were explicitly matched by the request.
+  (mhrivnak@redhat.com)
+- 972913 - adding cli validation for conditional packages when upload a package
+  group (skarmark@redhat.com)
+
 * Fri Sep 13 2013 Jeff Ortel <jortel@redhat.com> 2.3.0-0.12.alpha
 - Pulp rebuild
 
