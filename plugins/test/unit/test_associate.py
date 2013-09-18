@@ -52,13 +52,15 @@ class TestAssociate(unittest.TestCase):
 
     @mock.patch.object(associate, 'copy_rpms', autospec=True)
     def test_calls_copy_rpms(self, mock_copy_rpms):
+        mock_copy_rpms.return_value = set(self.rpm_units)
+
         ret = associate.associate(self.source_repo, self.dest_repo, self.conduit,
                             self.config, self.rpm_units)
 
-        self.assertEqual(ret, self.rpm_units)
+        self.assertEqual(set(ret), set(self.rpm_units))
 
         self.assertEqual(mock_copy_rpms.call_count, 1)
-        self.assertEqual(list(mock_copy_rpms.call_args[0][0]), self.rpm_units)
+        self.assertEqual(set(mock_copy_rpms.call_args[0][0]), set(self.rpm_units))
         self.assertEqual(mock_copy_rpms.call_args[0][1], self.conduit)
         self.assertFalse(mock_copy_rpms.call_args[0][2])
 
@@ -68,12 +70,15 @@ class TestAssociate(unittest.TestCase):
     def test_copy_group_recursive(self, mock_associate, mock_get_existing, mock_copy):
         self.config.override_config = {constants.CONFIG_RECURSIVE: True}
         self.conduit.get_source_units.return_value = []
-        # make it look like half of the RPMs names by the groups being copied
+        # make it look like half of the RPMs named by the groups being copied
         # already exist in the destination
         existing_rpms = model_factory.rpm_units(2)
         existing_rpms[0].unit_key['name'] = self.group1_names[1]
         existing_rpms[1].unit_key['name'] = self.group2_names[1]
-        mock_get_existing.return_value = existing_rpms
+        existing_rpm_names = [self.group1_names[1], self.group2_names[1]]
+        mock_get_existing.side_effect = iter([[], [], existing_rpms])
+        mock_copy.return_value = set(u for u in self.rpm_units
+                                     if u.unit_key['name'] not in existing_rpm_names)
 
         ret = associate.associate(self.source_repo, self.dest_repo, self.conduit,
                                   self.config, self.group_units)
@@ -81,15 +86,17 @@ class TestAssociate(unittest.TestCase):
         # this only happens if we successfully did a recursive call to associate()
         # and used the "existing" module to eliminate half the RPM names from those
         # that needed to be copied.
-        mock_copy.assert_called_once_with(set([self.group1_names[0], self.group2_names[0]]),
-                                          self.conduit, True)
+        mock_copy.assert_called_once_with(
+            set([self.group1_names[0], self.group2_names[0]]),
+            self.conduit, True)
 
-        self.assertEqual(ret, self.group_units)
+        self.assertEqual(set(ret), set(self.group_units) | set(self.rpm_units))
 
     @mock.patch.object(associate, 'filter_available_rpms', autospec=True, return_value=[])
     @mock.patch.object(associate, 'copy_rpms', autospec=True)
     @mock.patch.object(associate, '_associate_unit', wraps=lambda x, y, z: z)
     def test_copy_categories(self, mock_associate_unit, mock_copy_rpms, mock_filter):
+        mock_copy_rpms.return_value = set()
         self.config.override_config = {constants.CONFIG_RECURSIVE: True}
         groups_to_copy = model_factory.group_units(2)
         for group in groups_to_copy:
@@ -99,7 +106,7 @@ class TestAssociate(unittest.TestCase):
         ret = associate.associate(self.source_repo, self.dest_repo, self.conduit,
                                   self.config, self.category_units)
 
-        self.assertEqual(ret, self.category_units)
+        self.assertEqual(set(ret), set(self.category_units) | set(groups_to_copy))
         self.assertEqual(mock_associate_unit.call_count, 4)
         mock_associate_unit.assert_any_call(self.dest_repo, self.conduit, self.category_units[0])
         mock_associate_unit.assert_any_call(self.dest_repo, self.conduit, self.category_units[1])
@@ -137,17 +144,27 @@ class TestCopyRPMs(unittest.TestCase):
         self.assertEqual(mock_get_existing.call_count, 2)
 
 
-class TestNoChecksumUnitKey(unittest.TestCase):
+class TestNoChecksumCleanUnitKey(unittest.TestCase):
     def test_all(self):
         rpm = model_factory.rpm_models(1)[0]
 
-        ret = associate._no_checksum_unit_key(rpm.as_named_tuple)
+        ret = associate._no_checksum_clean_unit_key(rpm.as_named_tuple)
 
         self.assertTrue(isinstance(ret, dict))
         self.assertTrue('checksum' not in ret)
         self.assertTrue('checksumtype' not in ret)
         for key in ['name', 'epoch', 'version', 'release', 'arch']:
             self.assertEqual(ret[key], rpm.unit_key[key])
+
+    def test_no_epoch(self):
+        rpm = model_factory.rpm_models(1)[0]
+        # simulates repos that don't have epochs in their errata
+        rpm.epoch = None
+
+        ret = associate._no_checksum_clean_unit_key(rpm.as_named_tuple)
+
+        self.assertTrue(isinstance(ret, dict))
+        self.assertTrue('epoch' not in ret)
 
 
 class TestCopyRPMsByName(unittest.TestCase):
