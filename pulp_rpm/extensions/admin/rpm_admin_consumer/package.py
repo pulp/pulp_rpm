@@ -209,10 +209,13 @@ class YumConsumerPackageUpdateCommand(consumer_content.ConsumerContentUpdateComm
         commit = not kwargs[FLAG_NO_COMMIT.keyword]
         reboot = kwargs[FLAG_REBOOT.keyword]
         import_keys = kwargs[FLAG_IMPORT_KEYS.keyword]
+        options = {'apply': commit,
+                   'reboot': reboot,
+                   'importkeys': import_keys}
 
-        return {'apply': commit,
-                'reboot': reboot,
-                'importkeys': import_keys}
+        if kwargs['name'] is None:
+            options['all'] = True
+        return options
 
     def get_content_units(self, kwargs):
         def _unit_dict(unit_name):
