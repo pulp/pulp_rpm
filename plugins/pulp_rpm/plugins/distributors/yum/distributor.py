@@ -15,41 +15,50 @@ from pulp.plugins.distributor import Distributor
 from pulp.server import config as pulp_config
 from pulp.server.db.model.criteria import UnitAssociationCriteria
 
-from pulp_rpm.common import constants, ids
+from pulp_rpm.common import constants
+from pulp_rpm.common.ids import (
+    TYPE_ID_DISTRIBUTOR_YUM, TYPE_ID_DISTRO, TYPE_ID_DRPM, TYPE_ID_ERRATA,
+    TYPE_ID_PKG_CATEGORY, TYPE_ID_PKG_GROUP, TYPE_ID_RPM, TYPE_ID_SRPM,
+    TYPE_ID_YUM_REPO_METADATA_FILE)
 from pulp_rpm.repo_auth import protected_repo_utils, repo_cert_utils
 from pulp_rpm.yum_plugin import comps_util, util, metadata, updateinfo
+
+from . import config, publish
 
 # -- global constants ----------------------------------------------------------
 
 _LOG = util.getLogger(__name__)
 
+DISTRIBUTOR_DISPLAY_NAME = 'Yum Distributor'
 
 # -- distributor ---------------------------------------------------------------
 
-class YumDistributor(Distributor):
+class YumHTTPDistributor(Distributor):
 
     def __init__(self):
-        super(YumDistributor, self).__init__()
+        super(YumHTTPDistributor, self).__init__()
         self.canceled = False
 
     @classmethod
     def metadata(cls):
-        return {'id': ids.TYPE_ID_DISTRIBUTOR_YUM,
-                'display_name': 'Yum Distributor',
-                'types': [ids.TYPE_ID_RPM, ids.TYPE_ID_SRPM, ids.TYPE_ID_DRPM, ids.TYPE_ID_ERRATA,
-                          ids.TYPE_ID_DISTRO, ids.TYPE_ID_PKG_CATEGORY, ids.TYPE_ID_PKG_GROUP,
-                          ids.TYPE_ID_YUM_REPO_METADATA_FILE]}
+        return {'id': TYPE_ID_DISTRIBUTOR_YUM,
+                'display_name': DISTRIBUTOR_DISPLAY_NAME,
+                'types': [TYPE_ID_RPM, TYPE_ID_SRPM, TYPE_ID_DRPM, TYPE_ID_ERRATA,
+                          TYPE_ID_PKG_GROUP, TYPE_ID_PKG_CATEGORY, TYPE_ID_DISTRO,
+                          TYPE_ID_YUM_REPO_METADATA_FILE]}
 
     # -- repo lifecycle methods ------------------------------------------------
 
     def validate_config(self, repo, config, config_conduit):
-        raise NotImplementedError()
+        return config.validate_config(repo, config, config_conduit)
 
     def distributor_added(self, repo, config):
         pass
 
     def distributor_removed(self, repo, config):
         pass
+
+    # -- repo lifecycle helper methods -----------------------------------------
 
     # -- actions ---------------------------------------------------------------
 
@@ -61,4 +70,6 @@ class YumDistributor(Distributor):
 
     def create_consumer_payload(self, repo, config, binding_config):
         return {}
+
+    # -- action helper methods -------------------------------------------------
 
