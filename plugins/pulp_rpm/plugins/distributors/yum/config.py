@@ -25,7 +25,7 @@ _LOG = util.getLogger(__name__)
 
 REQUIRED_CONFIG_KEYS = ('relative_url', 'http', 'https')
 
-# XXX is skip_pkg_tags used?
+# XXX is skip_pkg_tags used? and if so, why no validation?
 OPTIONAL_CONFIG_KEYS = ('auth_ca', 'auth_cert', 'checksum_type',
                         'http_publish_dir', 'https_publish_dir', 'protected',
                         'skip', 'skip_pkg_tags', 'use_createrepo')
@@ -35,8 +35,6 @@ ALPHA_NUMERIC_PATH_REGEX = re.compile(r'[^a-zA-Z0-9/_-]+')
 ROOT_PUBLISH_DIR = '/var/lib/pulp/published/yum'
 HTTP_PUBLISH_DIR = os.path.join(ROOT_PUBLISH_DIR, 'http/repos')
 HTTPS_PUBLISH_DIR = os.path.join(ROOT_PUBLISH_DIR, 'https/repos')
-
-RELATIVE_URL_PREFIX = '/pulp/repos'
 
 # -- public api ----------------------------------------------------------------
 
@@ -55,16 +53,20 @@ def validate_config(repo, config, config_conduit):
     required_keys = set(REQUIRED_CONFIG_KEYS)
     supported_keys = set(REQUIRED_CONFIG_KEYS + OPTIONAL_CONFIG_KEYS)
 
+    # check for any required options that are missing
     missing_keys = required_keys - configured_keys
     msg = _('Configuration key [%(k)s] is required, but was not provided')
     for key in missing_keys:
         error_messages.append(msg % {'k': key})
 
+    # check for unsupported configuration options
     extraneous_keys = configured_keys - supported_keys
     msg = _('Configuration key [%(k)s] is not supported')
     for key in extraneous_keys:
         error_messages.append(msg % {'k': key})
 
+    # when adding validation methods, make sure to register them here
+    # yes, the individual sections are in alphabetical oder
     configured_key_validation_methods = {
         # required options
         'http': _validate_http,
@@ -81,6 +83,7 @@ def validate_config(repo, config, config_conduit):
         'use_createrepo': _validate_use_createrepo,
     }
 
+    # iterate through the options that have validation methods and validate them
     for key, validation_method in configured_key_validation_methods.items():
 
         if key not in configured_keys:
@@ -88,8 +91,10 @@ def validate_config(repo, config, config_conduit):
 
         validation_method(config[key], error_messages)
 
+    # check that the relative path does not conflict with any existing repos
     _check_for_relative_path_conflicts(repo, config, config_conduit, error_messages)
 
+    # if we have errors, log them, and return False with a concatenated error message
     if error_messages:
 
         for msg in error_messages:
@@ -97,6 +102,7 @@ def validate_config(repo, config, config_conduit):
 
         return False, '\n'.join(error_messages)
 
+    # no errors, yay!
     return True, None
 
 
@@ -129,7 +135,7 @@ def get_https_publish_dir(config=None):
 def get_repo_relative_path(repo, config=None):
 
     config = config or {}
-
+    # XXX normalize relative url by removing/ensuring a leading '/'?
     return config.get('relative_url', repo.id)
 
 # -- required config validation ------------------------------------------------
@@ -193,8 +199,7 @@ def _validate_skip(skip, error_messages):
 def _validate_use_createrepo(use_createrepo, error_messages):
     _validate_boolean('use_createrepo', use_createrepo, error_messages, False)
 
-
-# -- validation helper methods -------------------------------------------------
+# -- generalized validation methods --------------------------------------------
 
 def _validate_boolean(key, value, error_messages, none_ok=True):
 
@@ -253,6 +258,8 @@ def _check_for_relative_path_conflicts(repo, config, config_conduit, error_messa
 
     conflicting_distributors = config_conduit.get_repo_distributors_by_relative_url(relative_path, repo.id)
 
+    # in all honesty, this loop should execute at most 1 time
+    # but it may be interesting/useful for erroneous situations
     for distributor in conflicting_distributors:
         conflicting_repo_id = distributor['repo_id']
         conflicting_relative_url = distributor['config']['relative_url'] or conflicting_repo_id
