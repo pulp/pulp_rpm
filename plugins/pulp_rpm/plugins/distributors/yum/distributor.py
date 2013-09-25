@@ -23,7 +23,7 @@ from pulp_rpm.common.ids import (
 from pulp_rpm.repo_auth import protected_repo_utils, repo_cert_utils
 from pulp_rpm.yum_plugin import comps_util, util, metadata, updateinfo
 
-from . import config, publish
+from . import configuration, publish
 
 # -- global constants ----------------------------------------------------------
 
@@ -37,7 +37,9 @@ class YumHTTPDistributor(Distributor):
 
     def __init__(self):
         super(YumHTTPDistributor, self).__init__()
+
         self.canceled = False
+        self._publisher = None
 
     @classmethod
     def metadata(cls):
@@ -50,7 +52,7 @@ class YumHTTPDistributor(Distributor):
     # -- repo lifecycle methods ------------------------------------------------
 
     def validate_config(self, repo, config, config_conduit):
-        return config.validate_config(repo, config, config_conduit)
+        return configuration.validate_config(repo, config, config_conduit)
 
     def distributor_added(self, repo, config):
         pass
@@ -58,15 +60,16 @@ class YumHTTPDistributor(Distributor):
     def distributor_removed(self, repo, config):
         pass
 
-    # -- repo lifecycle helper methods -----------------------------------------
-
     # -- actions ---------------------------------------------------------------
 
     def publish_repo(self, repo, publish_conduit, config):
-        raise NotImplementedError()
+        self._publisher = publish.Publisher(repo, publish_conduit, config)
+        self._publisher.publish()
 
     def cancel_publish_repo(self, call_request, call_report):
-        raise NotImplementedError()
+        self.canceled = True
+        if self._publisher is not None:
+            self._publisher.cancel()
 
     def create_consumer_payload(self, repo, config, binding_config):
         return {}
