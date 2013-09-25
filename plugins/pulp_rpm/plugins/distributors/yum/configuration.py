@@ -13,7 +13,6 @@
 
 import os
 import re
-import types
 from ConfigParser import SafeConfigParser
 from gettext import gettext as _
 
@@ -135,8 +134,12 @@ def get_https_publish_dir(config=None):
 def get_repo_relative_path(repo, config=None):
 
     config = config or {}
-    # XXX normalize relative url by removing/ensuring a leading '/'?
-    return config.get('relative_url', repo.id)
+    relative_path = config.get('relative_url', repo.id)
+
+    if relative_path.startswith('/'):
+        relative_path = relative_path[1:]
+
+    return relative_path
 
 # -- required config validation ------------------------------------------------
 
@@ -153,7 +156,7 @@ def _validate_relative_url(relative_url, error_messages):
     if relative_url is None:
         return
 
-    if not isinstance(relative_url, (basestring, types.NoneType)):
+    if not isinstance(relative_url, basestring):
         msg = _('Configuration value for [relative_url] must be a string, but is a %(t)s')
         error_messages.append(msg % {'t': str(type(relative_url))})
 
@@ -203,28 +206,20 @@ def _validate_use_createrepo(use_createrepo, error_messages):
 
 def _validate_boolean(key, value, error_messages, none_ok=True):
 
-    if _is_boolean(value, none_ok):
+    if isinstance(value, bool) or (none_ok and value is None):
         return
 
     msg = _('Configuration value for [%(k)s] should a boolean, but is a %(t)s')
     error_messages.append(msg % {'k': key, 't': str(type(value))})
 
 
-def _is_boolean(value, none_ok=True):
-    return isinstance(value, bool) or (none_ok and value is None)
-
-
 def _validate_dictionary(key, value, error_messages, none_ok=True):
 
-    if _is_dictionary(value, none_ok):
+    if isinstance(value, dict) or (none_ok and value is None):
         return
 
     msg = _('Configuration value for [%(k)s] should be a dictionary, but is a %(t)s')
     error_messages.append(msg % {'k': key, 't': str(type(value))})
-
-
-def _is_dictionary(value, none_ok=True):
-    return isinstance(value, dict) or (none_ok and value is None)
 
 
 def _validate_certificate(key, cert, error_messages):
@@ -253,12 +248,9 @@ def _validate_usable_directory(key, path, error_messages):
 def _check_for_relative_path_conflicts(repo, config, config_conduit, error_messages):
 
     relative_path = get_repo_relative_path(repo, config)
-    if relative_path.startwith('/'):
-        relative_path = relative_path[1:]
-
     conflicting_distributors = config_conduit.get_repo_distributors_by_relative_url(relative_path, repo.id)
 
-    # in all honesty, this loop should execute at most 1 time
+    # in all honesty, this loop should execute at most once
     # but it may be interesting/useful for erroneous situations
     for distributor in conflicting_distributors:
         conflicting_repo_id = distributor['repo_id']
