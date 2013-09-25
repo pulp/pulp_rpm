@@ -12,14 +12,20 @@
 # if not, see http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt
 
 import copy
+import os
+from gettext import gettext as _
 
 from pulp.server.db.model.criteria import UnitAssociationCriteria
 
 from pulp_rpm.common.ids import (
     TYPE_ID_RPM, TYPE_ID_SRPM, TYPE_ID_DRPM, TYPE_ID_ERRATA, TYPE_ID_PKG_GROUP,
     TYPE_ID_PKG_CATEGORY, TYPE_ID_DISTRO, TYPE_ID_YUM_REPO_METADATA_FILE)
+from pulp_rpm.yum_plugin import util
 
 from . import configuration
+
+
+_LOG = util.getLogger(__name__)
 
 # -- publishing steps ----------------------------------------------------------
 
@@ -106,12 +112,19 @@ class Publisher(object):
 
     def cancel(self):
 
+        if self.canceled:
+            return
+
         self.canceled = True
 
         # put the reporting logic here so I don't have to put it everywhere
-        for step, sub_report in self.progress_report.items():
+        for sub_report in self.progress_report.values():
+
             if sub_report[STATE] is PUBLISH_IN_PROGRESS_STATE:
-                self.progress_report[step][STATE] = PUBLISH_CANCELED_STATE
+                sub_report[STATE] = PUBLISH_CANCELED_STATE
+
+            elif sub_report[STATE is PUBLISH_NOT_STARTED_STATE]:
+                sub_report[STATE] = PUBLISH_SKIPPED_STATE
 
     # -- publish helper methods ------------------------------------------------
 
@@ -126,12 +139,38 @@ class Publisher(object):
 
         self._init_step_progress_report(PUBLISH_RPMS_STEP)
 
-        # XXX memory concerns here, this should return something akin to a db
-        # cursor or a generator, but it probably returns a list
         criteria = UnitAssociationCriteria(type_ids=[TYPE_ID_RPM, TYPE_ID_SRPM],
                                            unit_fields=PACKAGE_FIELDS)
 
-        units = self.conduit.get_units(criteria=criteria)
+        # XXX memory concerns here, this should return something akin to a db
+        # cursor or a generator, but it probably returns a list
+        unit_list = self.conduit.get_units(criteria=criteria)
+
+        self._report_progress(PUBLISH_RPMS_STEP, total=len(unit_list))
+
+        # TODO open primary.xml and write in the root tag
+
+        for unit in unit_list:
+
+            if self.canceled:
+                return
+
+            self.progress_report[PUBLISH_RPMS_STEP][PROCESSED] += 1
+
+            try:
+                self._symlink_content(unit, self.repo.working_dir)
+
+            except Exception, e:
+                self.progress_report[PUBLISH_RPMS_STEP][FAILURES] += 1
+                # XXX turn this into a formatted traceback instead of just the message
+                self.progress_report[PUBLISH_RPMS_STEP][ERROR_DETAILS].append(e.message)
+                self._report_progress(PUBLISH_RPMS_STEP)
+                continue
+
+            # TODO write the unit's metadata into primary.xml
+            # TODO record the unit's success
+
+        # TODO write the root tag's close and close primary.xml
 
     def _publish_drpms(self):
 
@@ -171,11 +210,19 @@ class Publisher(object):
         if self.canceled:
             return
 
+        if TYPE_ID_PKG_CATEGORY in self.skip_list:
+            self._report_progress(PUBLISH_PACKAGE_CATEGORIES_STEP, state=PUBLISH_SKIPPED_STATE)
+            return
+
         self._init_step_progress_report(PUBLISH_PACKAGE_CATEGORIES_STEP)
 
     def _publish_distribution(self):
 
         if self.canceled:
+            return
+
+        if TYPE_ID_DISTRO in self.skip_list:
+            self._report_progress(PUBLISH_DISTRIBUTION_STEP, state=PUBLISH_SKIPPED_STATE)
             return
 
         self._init_step_progress_report(PUBLISH_DISTRIBUTION_STEP)
@@ -185,6 +232,10 @@ class Publisher(object):
         if self.canceled:
             return
 
+        if TYPE_ID_YUM_REPO_METADATA_FILE in self.skip_list:
+            self._report_progress(PUBLISH_METADATA_STEP, state=PUBLISH_SKIPPED_STATE)
+            return
+
         self._init_step_progress_report(PUBLISH_METADATA_STEP)
 
     def _publish_over_http(self):
@@ -192,11 +243,19 @@ class Publisher(object):
         if self.canceled:
             return
 
+        if not self.config['http']:
+            self._report_progress(PUBLISH_OVER_HTTP_STEP, state=PUBLISH_SKIPPED_STATE)
+            return
+
         self._init_step_progress_report(PUBLISH_OVER_HTTP_STEP)
 
     def _publish_over_https(self):
 
         if self.canceled:
+            return
+
+        if not self.config['https']:
+            self._report_progress(PUBLISH_OVER_HTTPS_STEP, state=PUBLISH_SKIPPED_STATE)
             return
 
         self._init_step_progress_report(PUBLISH_OVER_HTTPS_STEP)
@@ -214,4 +273,55 @@ class Publisher(object):
 
         self.progress_report[step].update(report_details)
         self.conduit.set_progress(self.progress_report)
+
+    # -- linking methods -------------------------------------------------------
+
+    def _symlink_content(self, unit, working_sub_dir):
+
+        source_path = unit.storage_path
+        relative_path = util.get_relpath_from_unit(unit)
+        destination_path = os.path.join(working_sub_dir, relative_path)
+
+        self._create_symlink(source_path, destination_path)
+
+    @staticmethod
+    def _create_symlink(source_path, link_path):
+
+        if not os.path.exists(source_path):
+            msg = _('Cannot create a symlink to a non-existent source [%(s)s]')
+            raise RuntimeError(msg % {'s': source_path})
+
+        if link_path.endswith('/'):
+            link_path = link_path[:-1]
+
+        link_parent_dir = os.path.dirname(link_path)
+
+        if not os.path.exists(link_parent_dir):
+            os.makedirs(link_parent_dir, mode=0770)
+
+        elif not os.access(link_parent_dir, os.R_OK | os.W_OK | os.X_OK):
+            msg = _('Insufficient permissions to create symlink in directory [%(d)s]')
+            raise RuntimeError(msg % {'d': link_parent_dir})
+
+        elif os.path.lexists(link_path):
+
+            if os.path.islink(link_path):
+
+                link_target = os.readlink(link_path)
+
+                if link_target == source_path:
+                    return
+
+                msg = _('Removing old link [%(l)s] that was pointing to [%(t)s]')
+                _LOG.warn(msg % {'l': link_path, 't': link_target})
+                os.unlink(link_path)
+
+            else:
+                msg = _('Link path [%(l)s] exists, but is not a symbolic link')
+                raise RuntimeError(msg % {'l': link_path})
+
+        msg = _('Creating symbolic link [%(l)s] pointing to [%(s)s]')
+        _LOG.debug(msg % {'l': link_path, 's': source_path})
+
+        os.symlink(source_path, link_path)
 
