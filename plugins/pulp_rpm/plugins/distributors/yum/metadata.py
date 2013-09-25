@@ -69,6 +69,7 @@ class MetadataFileContext(object):
     def _close_metadata_file_handle(self):
         assert self.metadata_file_handle is not None
 
+        self.metadata_file_handle.flush()
         self.metadata_file_handle.close()
 
     def _write_opening_tag(self):

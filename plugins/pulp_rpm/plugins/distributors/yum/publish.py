@@ -22,7 +22,7 @@ from pulp_rpm.common.ids import (
     TYPE_ID_PKG_CATEGORY, TYPE_ID_DISTRO, TYPE_ID_YUM_REPO_METADATA_FILE)
 from pulp_rpm.yum_plugin import util
 
-from . import configuration
+from . import configuration, metadata
 
 
 _LOG = util.getLogger(__name__)
@@ -49,12 +49,12 @@ PUBLISH_STEPS = (PUBLISH_RPMS_STEP, PUBLISH_DELTA_RPMS_STEP, PUBLISH_ERRATA_STEP
 PUBLISH_NOT_STARTED_STATE = 'NOT_STARTED'
 PUBLISH_IN_PROGRESS_STATE = 'IN_PROGRESS'
 PUBLISH_SKIPPED_STATE = 'SKIPPED'
-PUBLISH_FINISHED_STATED = 'FINISHED'
+PUBLISH_FINISHED_STATE = 'FINISHED'
 PUBLISH_FAILED_STATE = 'FAILED'
 PUBLISH_CANCELED_STATE = 'CANCELED'
 
 PUBLISH_STATES = (PUBLISH_NOT_STARTED_STATE, PUBLISH_IN_PROGRESS_STATE, PUBLISH_SKIPPED_STATE,
-                  PUBLISH_FINISHED_STATED, PUBLISH_FAILED_STATE, PUBLISH_CANCELED_STATE)
+                  PUBLISH_FINISHED_STATE, PUBLISH_FAILED_STATE, PUBLISH_CANCELED_STATE)
 
 # -- publishing reporting ------------------------------------------------------
 
@@ -146,31 +146,46 @@ class Publisher(object):
         # cursor or a generator, but it probably returns a list
         unit_list = self.conduit.get_units(criteria=criteria)
 
-        self._report_progress(PUBLISH_RPMS_STEP, total=len(unit_list))
+        self.progress_report[PUBLISH_RPMS_STEP][TOTAL] = len(unit_list)
 
-        # TODO open primary.xml and write in the root tag
+        with metadata.PrimaryXMLFileContext(self.repo.working_dir) as primary_xml_file_context:
 
-        for unit in unit_list:
+            for unit in unit_list:
 
-            if self.canceled:
-                return
+                if self.canceled:
+                    return
 
-            self.progress_report[PUBLISH_RPMS_STEP][PROCESSED] += 1
-
-            try:
-                self._symlink_content(unit, self.repo.working_dir)
-
-            except Exception, e:
-                self.progress_report[PUBLISH_RPMS_STEP][FAILURES] += 1
-                # XXX turn this into a formatted traceback instead of just the message
-                self.progress_report[PUBLISH_RPMS_STEP][ERROR_DETAILS].append(e.message)
                 self._report_progress(PUBLISH_RPMS_STEP)
-                continue
+                self.progress_report[PUBLISH_RPMS_STEP][PROCESSED] += 1
 
-            # TODO write the unit's metadata into primary.xml
-            # TODO record the unit's success
+                try:
+                    self._symlink_content(unit, self.repo.working_dir)
 
-        # TODO write the root tag's close and close primary.xml
+                except Exception, e:
+                    self.progress_report[PUBLISH_RPMS_STEP][FAILURES] += 1
+                    # XXX turn this into a formatted traceback instead of just the message
+                    self.progress_report[PUBLISH_RPMS_STEP][ERROR_DETAILS].append(e.message)
+                    self._report_progress(PUBLISH_RPMS_STEP)
+                    continue
+
+                try:
+                    primary_xml_file_context.add_unit_metadata(unit)
+
+                except Exception, e:
+                    self.progress_report[PUBLISH_RPMS_STEP][FAILURES] += 1
+                    # XXX turn this into a formatted traceback instead of just the message
+                    self.progress_report[PUBLISH_RPMS_STEP][ERROR_DETAILS].append(e.message)
+                    self._report_progress(PUBLISH_RPMS_STEP)
+                    continue
+
+                # success
+                self.progress_report[PUBLISH_RPMS_STEP][SUCCESSES] += 1
+
+        if self.progress_report[PUBLISH_RPMS_STEP][FAILURES]:
+            self._report_progress(PUBLISH_RPMS_STEP, state=PUBLISH_FAILED_STATE)
+
+        else:
+            self._report_progress(PUBLISH_RPMS_STEP, state=PUBLISH_FINISHED_STATE)
 
     def _publish_drpms(self):
 
