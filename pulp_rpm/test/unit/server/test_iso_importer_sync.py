@@ -106,7 +106,7 @@ class TestISOSyncRun(PulpRPMTests):
         # Now let's assert that all the right things happened during initialization
         self.assertEqual(iso_sync_run.sync_conduit, self.sync_conduit)
         self.assertEqual(iso_sync_run._repo_url, 'http://fake.com/iso_feed/')
-        # Validation of downloads should be enabled by default
+        # Validation of downloads should be disabled by default
         self.assertEqual(iso_sync_run._validate_downloads, False)
         # Deleting missing ISOs should be enabled by default
         self.assertEqual(iso_sync_run._remove_missing_units, False)
