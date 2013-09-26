@@ -13,6 +13,8 @@
 
 import copy
 import os
+import sys
+import traceback
 from gettext import gettext as _
 
 from pulp.server.db.model.criteria import UnitAssociationCriteria
@@ -162,20 +164,14 @@ class Publisher(object):
                     self._symlink_content(unit, self.repo.working_dir)
 
                 except Exception, e:
-                    self.progress_report[PUBLISH_RPMS_STEP][FAILURES] += 1
-                    # XXX turn this into a formatted traceback instead of just the message
-                    self.progress_report[PUBLISH_RPMS_STEP][ERROR_DETAILS].append(e.message)
-                    self._report_progress(PUBLISH_RPMS_STEP)
+                    self._record_failure(PUBLISH_RPMS_STEP, e)
                     continue
 
                 try:
                     primary_xml_file_context.add_unit_metadata(unit)
 
                 except Exception, e:
-                    self.progress_report[PUBLISH_RPMS_STEP][FAILURES] += 1
-                    # XXX turn this into a formatted traceback instead of just the message
-                    self.progress_report[PUBLISH_RPMS_STEP][ERROR_DETAILS].append(e.message)
-                    self._report_progress(PUBLISH_RPMS_STEP)
+                    self._record_failure(PUBLISH_RPMS_STEP, e)
                     continue
 
                 # success
@@ -288,6 +284,17 @@ class Publisher(object):
 
         self.progress_report[step].update(report_details)
         self.conduit.set_progress(self.progress_report)
+
+    def _record_failure(self, step, e=None, tb=None):
+        assert step in PUBLISH_STEPS
+
+        self.progress_report[step][FAILURES] += 1
+
+        if tb is not None:
+            self.progress_report[step][ERROR_DETAILS].append('\n'.join(traceback.format_tb(tb)))
+
+        elif e is not None:
+            self.progress_report[step][ERROR_DETAILS].append(e.message)
 
     # -- linking methods -------------------------------------------------------
 
