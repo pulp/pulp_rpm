@@ -16,7 +16,7 @@ import logging
 import os
 
 from pulp.plugins.importer import Importer
-from pulp.common.compat import json
+from pulp.common.config import read_json_config
 
 from pulp_rpm.common import ids, models
 from pulp_rpm.plugins.importers.yum import sync, associate, upload, config_validate
@@ -27,7 +27,7 @@ from pulp_rpm.plugins.importers.yum import sync, associate, upload, config_valid
 # the plugin and put in a conf.d type of location. For now, this implementation will assume
 # that's the final solution and the plugin will attempt to load the file itself in the
 # entry_point method.
-CONF_FILENAME = '/etc/pulp/server/plugins.conf.d/%s.json' % ids.TYPE_ID_IMPORTER_YUM
+CONF_FILENAME = 'server/plugins.conf.d/%s.json' % ids.TYPE_ID_IMPORTER_YUM
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -38,13 +38,7 @@ def entry_point():
     :return: importer class and its config
     :rtype:  Importer, {}
     """
-
-    plugin_config = {}
-    if os.path.exists(CONF_FILENAME):
-        # Let the exception bubble up so it ends up in pulp.log
-        with open(CONF_FILENAME, 'r') as f:
-            plugin_config = json.load(f)
-
+    plugin_config = read_json_config(CONF_FILENAME)
     return YumImporter, plugin_config
 
 
