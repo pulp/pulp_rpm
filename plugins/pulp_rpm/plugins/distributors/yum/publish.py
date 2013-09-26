@@ -13,7 +13,7 @@
 
 import copy
 import os
-import sys
+import shutil
 import traceback
 from gettext import gettext as _
 
@@ -110,7 +110,16 @@ class Publisher(object):
     # -- publish api methods ---------------------------------------------------
 
     def publish(self):
-        pass
+
+        if not os.path.exists(self.repo.working_dir):
+            os.makedirs(self.repo.working_dir, mode=0770)
+
+        self._publish_rpms()
+
+        self._publish_over_http()
+        self._publish_over_http()
+
+        self._clear_directory(self.repo.working_dir)
 
     def cancel(self):
 
@@ -259,6 +268,33 @@ class Publisher(object):
             return
 
         self._init_step_progress_report(PUBLISH_OVER_HTTP_STEP)
+        self._report_progress(PUBLISH_OVER_HTTP_STEP, total=1)
+
+        root_http_publish_dir = configuration.get_http_publish_dir(self.config)
+        repo_relative_dir = configuration.get_repo_relative_path(self.repo, self.config)
+        repo_http_publish_dir = os.path.join(root_http_publish_dir, repo_relative_dir)
+
+        parent_dir = os.path.dirname(repo_http_publish_dir)
+
+        try:
+            if not os.path.exists(parent_dir):
+                os.makedirs(parent_dir, mode=0770)
+
+            shutil.copytree(self.repo.working_dir, repo_http_publish_dir, symlinks=True)
+
+        except Exception, e:
+            self._record_failure(PUBLISH_OVER_HTTP_STEP, e)
+
+        else:
+            self.progress_report[PUBLISH_OVER_HTTP_STEP][SUCCESSES] = 1
+
+        self.progress_report[PUBLISH_OVER_HTTP_STEP][PROCESSED] = 1
+
+        if self.progress_report[PUBLISH_OVER_HTTP_STEP][SUCCESSES]:
+            self._report_progress(PUBLISH_OVER_HTTP_STEP, state=PUBLISH_FINISHED_STATE)
+
+        else:
+            self._report_progress(PUBLISH_OVER_HTTP_STEP, state=PUBLISH_FAILED_STATE)
 
     def _publish_over_https(self):
 
@@ -270,6 +306,35 @@ class Publisher(object):
             return
 
         self._init_step_progress_report(PUBLISH_OVER_HTTPS_STEP)
+        self._report_progress(PUBLISH_OVER_HTTPS_STEP, total=1)
+
+        root_https_publish_dir = configuration.get_https_publish_dir(self.config)
+        repo_relative_path = configuration.get_repo_relative_path(self.repo, self.config)
+        repo_https_publish_dir = os.path.join(root_https_publish_dir, repo_relative_path)
+
+        parent_dir = os.path.dirname(repo_https_publish_dir)
+
+        try:
+            if not os.path.exists(parent_dir):
+                os.makedirs(parent_dir, mode=0770)
+
+            shutil.copytree(self.repo.working_dir, repo_https_publish_dir, symlinks=True)
+
+        except Exception, e:
+            self._record_failure(PUBLISH_OVER_HTTPS_STEP, e)
+
+        else:
+            self.progress_report[PUBLISH_OVER_HTTPS_STEP][SUCCESSES] = 1
+
+        self.progress_report[PUBLISH_OVER_HTTPS_STEP][PROCESSED] = 1
+
+        if self.progress_report[PUBLISH_OVER_HTTPS_STEP][SUCCESSES]:
+            self._report_progress(PUBLISH_OVER_HTTPS_STEP, state=PUBLISH_FINISHED_STATE)
+
+        else:
+            self._report_progress(PUBLISH_OVER_HTTPS_STEP, state=PUBLISH_FAILED_STATE)
+
+        # XXX I believe the process_repo_auth_cert_bundle needs to go around here somewhere
 
     # -- progress methods ------------------------------------------------------
 
@@ -346,4 +411,22 @@ class Publisher(object):
         _LOG.debug(msg % {'l': link_path, 's': source_path})
 
         os.symlink(source_path, link_path)
+
+    # -- cleanup ---------------------------------------------------------------
+
+    @staticmethod
+    def _clear_directory(path):
+
+        if not os.path.exists(path):
+            return
+
+        for entry in os.listdir(path):
+
+            entry_path = os.path.join(path, entry)
+
+            if os.path.isdir(entry_path):
+                shutil.rmtree(entry_path, ignore_errors=True)
+
+            elif os.path.isfile(entry_path) or os.path.islink(entry_path):
+                os.unlink(entry_path)
 
