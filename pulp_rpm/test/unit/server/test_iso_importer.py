@@ -197,6 +197,16 @@ class TestISOImporter(PulpRPMTests):
             self.assertEqual(contents, expected_unit['contents'])
         self.assertEqual(report.summary['state'], progress.ISOProgressReport.STATE_COMPLETE)
 
+    def test_sync_no_feed(self):
+        repo = mock.MagicMock(spec=Repository)
+        pkg_dir = os.path.join(self.temp_dir, 'content')
+        sync_conduit = importer_mocks.get_sync_conduit(type_id=ids.TYPE_ID_ISO, pkg_dir=pkg_dir)
+        config = {importer_constants.KEY_FEED: None}
+        config = importer_mocks.get_basic_config(**config)
+
+        # Now run the sync
+        self.assertRaises(ValueError, self.iso_importer.sync_repo, repo, sync_conduit, config)
+
     @mock.patch('os.remove', side_effect=os.remove)
     def test_upload_unit_named_PULP_MANIFEST(self, remove):
         """

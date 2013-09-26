@@ -141,7 +141,7 @@ class ISOSyncRun(listener.DownloadEventListener):
 
     def perform_sync(self):
         """
-        Perform the sync operation accoring to the config, and return a report.
+        Perform the sync operation according to the config, and return a report.
         The sync progress will be reported through the sync_conduit.
 
         :return:             The sync report
