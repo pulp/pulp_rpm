@@ -51,9 +51,9 @@ class CreateRpmCommand(UploadCommand):
         rpms = [f for f in all_files_in_dir if f.endswith('.rpm')]
         return rpms
 
-    def generate_unit_key_and_metadata(self, filename, **kwargs):
-        unit_key, metadata = _generate_rpm_data(filename)
-        return unit_key, metadata
+    def generate_unit_key(self, filename, **kwargs):
+        unit_key = _generate_unit_key(filename)
+        return unit_key
 
     def create_upload_list(self, file_bundles, **kwargs):
 
@@ -67,16 +67,14 @@ class CreateRpmCommand(UploadCommand):
 
         bundles_to_upload = []
         for bundle in file_bundles:
-            checksum = _calculate_checksum('sha256', bundle.filename)
-
             filters = {
                 'name' : bundle.unit_key['name'],
                 'version' : bundle.unit_key['version'],
                 'release' : bundle.unit_key['release'],
                 'epoch' : bundle.unit_key['epoch'],
                 'arch' : bundle.unit_key['arch'],
-                'checksumtype' : 'sha256',
-                'checksum' : checksum,
+                'checksumtype' : bundle.unit_key['checksumtype'],
+                'checksum' : bundle.unit_key['checksum'],
             }
 
             criteria = {
@@ -94,35 +92,22 @@ class CreateRpmCommand(UploadCommand):
         return bundles_to_upload
 
 
-def _generate_rpm_data(rpm_filename):
+def _generate_unit_key(rpm_filename):
     """
     For the given RPM, analyzes its metadata to generate the appropriate unit
-    key and metadata fields, returning both to the caller.
+    key.
 
-    This is performed client side instead of in the importer to get around
-    differences in RPMs between RHEL 5 and later versions of Fedora. We can't
-    guarantee the server will be able to properly read the RPM so it is
-    read client-side and the metadata passed in.
+    :param rpm_filename: full path to the RPM to analyze
+    :type  rpm_filename: str
 
-    The obvious caveat is that the format of the returned values must match
-    what the importer would produce had this RPM been synchronized from an
-    external source.
-
-    @param rpm_filename: full path to the RPM to analyze
-    @type  rpm_filename: str
-
-    @return: tuple of unit key and unit metadata for the RPM
-    @rtype:  tuple
+    :return: unit key for the RPM being uploaded
+    :rtype:  dict
     """
 
-    # Expected metadata fields:
-    # "vendor", "description", "buildhost", "license", "vendor", "requires", "provides", "relativepath", "filename"
-    #
     # Expected unit key fields:
     # "name", "epoch", "version", "release", "arch", "checksumtype", "checksum"
 
     unit_key = dict()
-    metadata = dict()
 
     # Read the RPM header attributes for use later
     ts = rpm.TransactionSet()
@@ -162,25 +147,7 @@ def _generate_rpm_data(rpm_filename):
     else:
         unit_key['arch'] = headers['arch']
 
-    # -- Unit Metadata ------------------
-
-    metadata['relativepath'] = os.path.basename(rpm_filename)
-    metadata['filename'] = os.path.basename(rpm_filename)
-
-    # This format is, and has always been, incorrect. As of the new yum importer, the
-    # plugin will generate these from the XML snippet because the API into RPM headers
-    # is atrocious. This is the end game for this functionality anyway, moving all of
-    # that metadata derivation into the plugin, so this is just a first step.
-    # I'm leaving these in and commented to show how not to do it.
-    # metadata['requires'] = [(r,) for r in headers['requires']]
-    # metadata['provides'] = [(p,) for p in headers['provides']]
-
-    metadata['buildhost'] = headers['buildhost']
-    metadata['license'] = headers['license']
-    metadata['vendor'] = headers['vendor']
-    metadata['description'] = headers['description']
-
-    return unit_key, metadata
+    return unit_key
 
 
 def _calculate_checksum(checksum_type, filename):
