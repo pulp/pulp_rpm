@@ -88,7 +88,7 @@ PROGRESS_SUB_REPORT = {STATE: PUBLISH_IN_PROGRESS_STATE,
 # -- package fields ------------------------------------------------------------
 
 PACKAGE_FIELDS = ['id', 'name', 'version', 'release', 'arch', 'epoch',
-                  '_storage_path', 'checksum', 'checksum_type'] # XXX actually 'checksumtype', so change it!
+                  '_storage_path', 'checksum', 'checksumtype', 'repodata']
 
 # -- publisher class -----------------------------------------------------------
 
@@ -157,9 +157,10 @@ class Publisher(object):
         # cursor or a generator, but it probably returns a list
         unit_list = self.conduit.get_units(criteria=criteria)
 
-        self.progress_report[PUBLISH_RPMS_STEP][TOTAL] = len(unit_list)
+        total = len(unit_list)
+        self.progress_report[PUBLISH_RPMS_STEP][TOTAL] = total
 
-        with metadata.PrimaryXMLFileContext(self.repo.working_dir) as primary_xml_file_context:
+        with metadata.PrimaryXMLFileContext(self.repo.working_dir, total) as primary_xml_file_context:
 
             for unit in unit_list:
 
