@@ -107,6 +107,8 @@ class ISOImporter(Importer):
         }
 
     def sync_repo(self, repo, sync_conduit, config):
+        if config.get(importer_constants.KEY_FEED) is None:
+            raise ValueError('Repository without feed cannot be synchronized')
         self.iso_sync = sync.ISOSyncRun(sync_conduit, config)
         report = self.iso_sync.perform_sync()
         self.iso_sync = None
