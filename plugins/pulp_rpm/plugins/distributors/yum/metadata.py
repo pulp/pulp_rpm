@@ -11,8 +11,11 @@
 # You should have received a copy of GPLv2 along with this software;
 # if not, see http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt
 
+import gzip
 import os
+import traceback
 from gettext import gettext as _
+from xml.etree import ElementTree
 
 from pulp_rpm.yum_plugin import util
 
@@ -20,23 +23,52 @@ from pulp_rpm.yum_plugin import util
 _LOG = util.getLogger(__name__)
 
 REPODATA_DIR_NAME = 'repodata'
-PRIMARY_XML_FILE_NAME = 'primary.xml'
+PRIMARY_XML_FILE_NAME = 'primary.xml.gz'
+
+COMMON_NAMESPACE = 'http://linux.duke.edu/metadata/common'
+RPM_NAMESPACE = 'http://linux.duke.edu/metadata/rpm'
 
 # -- base metadata file context class ------------------------------------------
 
 class MetadataFileContext(object):
 
     def __init__(self, metadata_file_path):
+
         self.metadata_file_path = metadata_file_path
         self.metadata_file_handle = None
 
+    # -- for use with 'with' ---------------------------------------------------
+
     def __enter__(self):
-        self._open_metadata_file_handle()
-        self._write_opening_tag()
+
+        self.initialize()
 
     def __exit__(self, exc_type, exc_val, exc_tb):
+
+        if None not in (exc_type, exc_val, exc_tb):
+
+            err_msg = '\n'.join(traceback.format_exception(exc_type, exc_val, exc_tb))
+            log_msg = _('Exception occurred while writing [%(m)s]\n%(e)s')
+            # XXX should I make this 'debug'?
+            # any errors here should have already been caught and logged
+            _LOG.error(log_msg % {'m': self.metadata_file_path, 'e': err_msg})
+
+        self.finalize()
+
+    # -- context lifecycle -----------------------------------------------------
+
+    def initialize(self):
+
+        self._open_metadata_file_handle()
+        self._write_xml_header()
+        self._write_opening_tag()
+
+    def finalize(self):
+
         self._write_closing_tag()
         self._close_metadata_file_handle()
+
+    # -- metadata file lifecycle -----------------------------------------------
 
     def _open_metadata_file_handle(self):
         assert self.metadata_file_handle is None
@@ -64,7 +96,23 @@ class MetadataFileContext(object):
         msg = _('Opening metadata file handle for [%(p)s]')
         _LOG.debug(msg % {'p': self.metadata_file_path})
 
-        self.metadata_file_handle = open(self.metadata_file_path, 'w')
+        if self.metadata_file_path.endswith('.gz'):
+            self.metadata_file_handle = gzip.open(self.metadata_file_path, 'w')
+
+        else:
+            self.metadata_file_handle = open(self.metadata_file_path, 'w')
+
+    def _write_xml_header(self):
+        assert self.metadata_file_handle is not None
+        # XXX hackish and ugly, I'm sure there's a library routine to do this
+        xml_header = u'<?xml version="1.0" encoding="UTF-8"?>\n'.encode('utf-8')
+        self.metadata_file_handle.write(xml_header)
+
+    def _write_opening_tag(self):
+        raise NotImplementedError()
+
+    def _write_closing_tag(self):
+        raise NotImplementedError()
 
     def _close_metadata_file_handle(self):
         assert self.metadata_file_handle is not None
@@ -72,26 +120,57 @@ class MetadataFileContext(object):
         self.metadata_file_handle.flush()
         self.metadata_file_handle.close()
 
-    def _write_opening_tag(self):
-        raise NotImplementedError()
+# -- pre-generated metadata context --------------------------------------------
 
-    def _write_closing_tag(self):
-        raise NotImplementedError()
+class PreGeneratedMetadataContext(MetadataFileContext):
+
+    def _add_unit_pre_generated_metadata(self, metadata_category, unit):
+
+        metadata = unit.repodata.get(metadata_category, None)
+
+        if not isinstance(metadata, unicode):
+
+            msg = _('%(c)s metadata for [%(u)s] must be unicode, but is a %(t)s')
+            _LOG.error(msg % {'c': metadata_category.title(), 'u': unit.id, 't': str(type(metadata))})
+
+            return
+
+        self.metadata_file_handle.write(metadata.encode('utf-8'))
 
 # -- primary.xml file context class --------------------------------------------
 
-class PrimaryXMLFileContext(MetadataFileContext):
+class PrimaryXMLFileContext(PreGeneratedMetadataContext):
 
-    def __init__(self, working_dir):
+    def __init__(self, working_dir, num_packages):
+
         metadata_file_path = os.path.join(working_dir, REPODATA_DIR_NAME, PRIMARY_XML_FILE_NAME)
         super(PrimaryXMLFileContext, self).__init__(metadata_file_path)
 
-    def _write_opening_tag(self):
-        pass
+        self.num_packages = num_packages
 
-    def _write_closing_tag(self):
-        pass
+    def _write_opening_tag(self):
+
+        attributes = {'xmlns': COMMON_NAMESPACE,
+                      'xmlns:rpm': RPM_NAMESPACE,
+                      'packages': self.num_packages}
+
+        metadata_element = ElementTree.Element('metadata', attributes)
+        # add a bogus sub-element to make splitting the opening and closing tags possible
+        bogus_element = ElementTree.SubElement(metadata_element, '')
+
+        metadata_tags_string = ElementTree.tostring(metadata_element, 'utf-8')
+        bogus_tag_string = ElementTree.tostring(bogus_element, 'utf-8')
+        opening_tag, closing_tag = metadata_tags_string.split(bogus_tag_string, 1)
+
+        self.metadata_file_handle.write(opening_tag + '\n')
+
+        # create the closing tag method on the fly
+        def _write_closing_tag_closure(*args):
+            self.metadata_file_handle.write(closing_tag + '\n')
+
+        self._write_closing_tag = _write_closing_tag_closure
 
     def add_unit_metadata(self, unit):
-        pass
+
+        self._add_unit_pre_generated_metadata('primary', unit)
 
