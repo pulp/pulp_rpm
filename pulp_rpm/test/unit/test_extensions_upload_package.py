@@ -50,30 +50,27 @@ class CreateRpmCommandTests(rpm_support_base.PulpClientTests):
         self.assertEqual(1, len(rpms))
         self.assertEqual(os.path.basename(rpms[0]), RPM_FILENAME)
 
-    def test_generate_unit_key_and_metadata(self):
+    def test_generate_unit_key(self):
         filename = os.path.join(RPM_DIR, RPM_FILENAME)
-        unit_key, metadata = self.command.generate_unit_key_and_metadata(filename)
+        unit_key = self.command.generate_unit_key(filename)
 
         self.assertEqual(unit_key['name'], 'pulp-test-package')
         self.assertEqual(unit_key['version'], '0.3.1')
         self.assertEqual(unit_key['release'], '1.fc11')
         self.assertEqual(unit_key['epoch'], '0')
         self.assertEqual(unit_key['arch'], 'x86_64')
+        self.assertEqual(unit_key['checksumtype'], 'sha256')
+        self.assertEqual(unit_key['checksum'], '6bce3f26e1fc0fc52ac996f39c0d0e14fc26fb8077081d5b4dbfb6431b08aa9f')
 
-        self.assertEqual(metadata['buildhost'], 'gibson')
-        self.assertTrue(metadata['description'].startswith('Test package'))
-        self.assertEqual(metadata['filename'], RPM_FILENAME)
-        self.assertEqual(metadata['license'], 'MIT')
-        self.assertEqual(metadata['relativepath'], RPM_FILENAME)
-
-    @mock.patch('pulp_rpm.extension.admin.upload.package._calculate_checksum')
-    def test_create_upload_list(self, mock_calculate):
+    def test_create_upload_list(self):
         # Setup
         orig_file_bundles = [
             FileBundle('a', unit_key={'name' : 'a', 'version' : 'a', 'release' : 'a',
-                                      'epoch' : 'a', 'arch' : 'a'}),
+                                      'epoch' : 'a', 'arch' : 'a',
+                                      'checksumtype' : 'sha256', 'checksum' : 'abcdef'}),
             FileBundle('b', unit_key={'name' : 'b', 'version' : 'b', 'release' : 'b',
-                                      'epoch' : 'b', 'arch' : 'b'}),
+                                      'epoch' : 'b', 'arch' : 'b',
+                                      'checksumtype' : 'sha256', 'checksum' : 'abcdef'}),
         ]
         user_args = {
             FLAG_SKIP_EXISTING.keyword : True,
@@ -95,8 +92,6 @@ class CreateRpmCommandTests(rpm_support_base.PulpClientTests):
         mock_search.side_effect = search_simulator
         self.bindings.repo_unit.search = mock_search
 
-        mock_calculate.return_value = 'abcdef'
-
         # Test
         upload_file_bundles = self.command.create_upload_list(orig_file_bundles, **user_args)
 
@@ -105,7 +100,6 @@ class CreateRpmCommandTests(rpm_support_base.PulpClientTests):
         self.assertEqual(upload_file_bundles[0], orig_file_bundles[1])
 
         self.assertEqual(2, mock_search.call_count)
-        self.assertEqual(2, mock_calculate.call_count)
 
         for file_bundle_index in range(0, 1):
             call_args = mock_search.call_args_list[file_bundle_index]
