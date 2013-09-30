@@ -147,7 +147,7 @@ class Publisher(object):
         self._publish_rpms()
 
         self._publish_over_http()
-        self._publish_over_http()
+        self._publish_over_https()
 
         self._clear_directory(self.repo.working_dir)
 
@@ -410,23 +410,29 @@ class Publisher(object):
 
         for step in PUBLISH_STEPS:
 
+            # using .get() because the sub-sections won't be there if the step was skipped
+            total = self.progress_report[step].get(TOTAL, 0)
+            failures = self.progress_report[step].get(FAILURES, 0)
+            successes = self.progress_report[step].get(SUCCESSES, 0)
+
             # XXX include errata?
             if step in (PUBLISH_RPMS_STEP, PUBLISH_DELTA_RPMS_STEP):
-                summary[NUMBER_PACKAGE_UNITS_ATTEMPTED] += self.progress_report[step][TOTAL]
-                summary[NUMBER_PACKAGE_UNITS_ERRORS] += self.progress_report[step][FAILURES]
-                summary[NUMBER_PACKAGE_UNITS_PUBLISHED] += self.progress_report[step][SUCCESSES]
+                summary[NUMBER_PACKAGE_UNITS_ATTEMPTED] += total
+                summary[NUMBER_PACKAGE_UNITS_ERRORS] += failures
+                summary[NUMBER_PACKAGE_UNITS_PUBLISHED] += successes
 
             elif step is PUBLISH_DISTRIBUTION_STEP:
-                summary[NUMBER_DISTRIBUTION_UNITS_ATTEMPTED] = self.progress_report[step][TOTAL]
-                summary[NUMBER_DISTRIBUTION_UNITS_ERROR] = self.progress_report[step][FAILURES]
-                summary[NUMBER_DISTRIBUTION_UNITS_PUBLISHED] = self.progress_report[step][SUCCESSES]
+                summary[NUMBER_DISTRIBUTION_UNITS_ATTEMPTED] = total
+                summary[NUMBER_DISTRIBUTION_UNITS_ERROR] = failures
+                summary[NUMBER_DISTRIBUTION_UNITS_PUBLISHED] = successes
 
-            # expand these two to include attempted and error?
+            # XXX expand this to include attempted and error?
             elif step is PUBLISH_PACKAGE_CATEGORIES_STEP:
-                summary[NUMBER_PACKAGE_CATEGORIES_PUBLISHED] = self.progress_report[step][SUCCESSES]
+                summary[NUMBER_PACKAGE_CATEGORIES_PUBLISHED] = successes
 
+            # XXX expand this to include attempted and error?
             elif step is PUBLISH_PACKAGE_GROUPS_STEP:
-                summary[NUMBER_PACKAGE_GROUPS_PUBLISHED] = self.progress_report[step][SUCCESSES]
+                summary[NUMBER_PACKAGE_GROUPS_PUBLISHED] = successes
 
             details[ERRORS_LIST].extend(self.progress_report[step].get(ERROR_DETAILS, []))
 
