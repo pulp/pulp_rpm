@@ -85,6 +85,36 @@ PROGRESS_SUB_REPORT = {STATE: PUBLISH_IN_PROGRESS_STATE,
                        FAILURES: 0,
                        ERROR_DETAILS: []}
 
+# -- final reporting -----------------------------------------------------------
+
+NUMBER_DISTRIBUTION_UNITS_ATTEMPTED = 'num_distribution_units_attempted'
+NUMBER_DISTRIBUTION_UNITS_ERROR = 'num_distribution_units_error'
+NUMBER_DISTRIBUTION_UNITS_PUBLISHED = 'num_distribution_units_published'
+NUMBER_PACKAGE_CATEGORIES_PUBLISHED = 'num_package_categories_published'
+NUMBER_PACKAGE_GROUPS_PUBLISHED = 'num_package_groups_published'
+NUMBER_PACKAGE_UNITS_ATTEMPTED = 'num_package_units_attempted'
+NUMBER_PACKAGE_UNITS_ERRORS = 'num_package_units_error'
+NUMBER_PACKAGE_UNITS_PUBLISHED = 'num_package_units_published'
+RELATIVE_PATH = 'relative_path'
+SKIP_METADATA_UPDATE = 'skip_metadata_update'
+
+SUMMARY_REPORT = {NUMBER_DISTRIBUTION_UNITS_ATTEMPTED: 0,
+                  NUMBER_DISTRIBUTION_UNITS_ERROR: 0,
+                  NUMBER_DISTRIBUTION_UNITS_PUBLISHED: 0,
+                  NUMBER_PACKAGE_CATEGORIES_PUBLISHED: 0,
+                  NUMBER_PACKAGE_GROUPS_PUBLISHED: 0,
+                  NUMBER_PACKAGE_UNITS_ATTEMPTED: 0,
+                  NUMBER_PACKAGE_UNITS_ERRORS: 0,
+                  NUMBER_PACKAGE_UNITS_PUBLISHED: 0,
+                  RELATIVE_PATH: None,
+                  SKIP_METADATA_UPDATE: False}
+
+ERRORS_LIST = 'errors'
+METADATA_GENERATION_TIME = 'time_metadata_sec'
+
+DETAILS_REPORT = {ERRORS_LIST: [],
+                  METADATA_GENERATION_TIME: 0}
+
 # -- package fields ------------------------------------------------------------
 
 PACKAGE_FIELDS = ['id', 'name', 'version', 'release', 'arch', 'epoch',
@@ -121,6 +151,8 @@ class Publisher(object):
 
         self._clear_directory(self.repo.working_dir)
 
+        return self._build_final_report()
+
     def cancel(self):
 
         if self.canceled:
@@ -134,7 +166,7 @@ class Publisher(object):
             if sub_report[STATE] is PUBLISH_IN_PROGRESS_STATE:
                 sub_report[STATE] = PUBLISH_CANCELED_STATE
 
-            elif sub_report[STATE is PUBLISH_NOT_STARTED_STATE]:
+            elif sub_report[STATE] is PUBLISH_NOT_STARTED_STATE:
                 sub_report[STATE] = PUBLISH_SKIPPED_STATE
 
     # -- publish helper methods ------------------------------------------------
@@ -361,6 +393,42 @@ class Publisher(object):
 
         elif e is not None:
             self.progress_report[step][ERROR_DETAILS].append(e.message)
+
+    def _build_final_report(self):
+        summary = copy.deepcopy(SUMMARY_REPORT)
+        details = copy.deepcopy(DETAILS_REPORT)
+
+        summary[RELATIVE_PATH] = configuration.get_repo_relative_path(self.repo, self.config)
+
+        if self.progress_report[PUBLISH_METADATA_STEP][STATE] is PUBLISH_SKIPPED_STATE:
+            summary[SKIP_METADATA_UPDATE] = True
+
+        for step in PUBLISH_STEPS:
+
+            # XXX include errata?
+            if step in (PUBLISH_RPMS_STEP, PUBLISH_DELTA_RPMS_STEP):
+                summary[NUMBER_PACKAGE_UNITS_ATTEMPTED] += self.progress_report[step][TOTAL]
+                summary[NUMBER_PACKAGE_UNITS_ERRORS] += self.progress_report[step][FAILURES]
+                summary[NUMBER_PACKAGE_UNITS_PUBLISHED] += self.progress_report[step][SUCCESSES]
+
+            elif step is PUBLISH_DISTRIBUTION_STEP:
+                summary[NUMBER_DISTRIBUTION_UNITS_ATTEMPTED] = self.progress_report[step][TOTAL]
+                summary[NUMBER_DISTRIBUTION_UNITS_ERROR] = self.progress_report[step][FAILURES]
+                summary[NUMBER_DISTRIBUTION_UNITS_PUBLISHED] = self.progress_report[step][SUCCESSES]
+
+            # expand these two to include attempted and error?
+            elif step is PUBLISH_PACKAGE_CATEGORIES_STEP:
+                summary[NUMBER_PACKAGE_CATEGORIES_PUBLISHED] = self.progress_report[step][SUCCESSES]
+
+            elif step is PUBLISH_PACKAGE_GROUPS_STEP:
+                summary[NUMBER_PACKAGE_GROUPS_PUBLISHED] = self.progress_report[step][SUCCESSES]
+
+            details[ERRORS_LIST].extend(self.progress_report[step].get(ERROR_DETAILS, []))
+
+        if details[ERRORS_LIST]:
+            return self.conduit.build_failure_report(summary, details)
+
+        return self.conduit.build_success_report(summary, details)
 
     # -- linking methods -------------------------------------------------------
 
