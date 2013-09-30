@@ -22,10 +22,8 @@ setup(
     author='Pulp Team',
     author_email='pulp-list@redhat.com',
     entry_points = {
-        'pulp.importers': [
-            'importer = pulp_rpm.plugins.importers.yum.importer:entry_point',
-            ],
-        'pulp.profilers': [
-            'profiler = pulp_rpm.plugins.profilers.yum:entry_point',]
+        'pulp.importers': ['importer = pulp_rpm.plugins.importers.yum.importer:entry_point',],
+        'pulp.profilers': ['profiler = pulp_rpm.plugins.profilers.yum:entry_point',],
+        'pulp.distributors': ['distributor = pulp_rpm.plugins.distributors.yum:entry_point',],
     }
 )
