@@ -50,28 +50,20 @@ class CreateRpmCommandTests(rpm_support_base.PulpClientTests):
         self.assertEqual(1, len(rpms))
         self.assertEqual(os.path.basename(rpms[0]), RPM_FILENAME)
 
-    def test_generate_unit_key(self):
+    def test_generate_unit_key_and_metadata(self):
         filename = os.path.join(RPM_DIR, RPM_FILENAME)
-        unit_key = self.command.generate_unit_key(filename)
+        unit_key, metadata = self.command.generate_unit_key_and_metadata(filename)
 
-        self.assertEqual(unit_key['name'], 'pulp-test-package')
-        self.assertEqual(unit_key['version'], '0.3.1')
-        self.assertEqual(unit_key['release'], '1.fc11')
-        self.assertEqual(unit_key['epoch'], '0')
-        self.assertEqual(unit_key['arch'], 'x86_64')
-        self.assertEqual(unit_key['checksumtype'], 'sha256')
-        self.assertEqual(unit_key['checksum'], '6bce3f26e1fc0fc52ac996f39c0d0e14fc26fb8077081d5b4dbfb6431b08aa9f')
+        self.assertEqual(unit_key, {})
+        self.assertEqual(metadata, {})
 
-    def test_create_upload_list(self):
+    def test_create_upload_list_skip_existing(self):
         # Setup
-        orig_file_bundles = [
-            FileBundle('a', unit_key={'name' : 'a', 'version' : 'a', 'release' : 'a',
-                                      'epoch' : 'a', 'arch' : 'a',
-                                      'checksumtype' : 'sha256', 'checksum' : 'abcdef'}),
-            FileBundle('b', unit_key={'name' : 'b', 'version' : 'b', 'release' : 'b',
-                                      'epoch' : 'b', 'arch' : 'b',
-                                      'checksumtype' : 'sha256', 'checksum' : 'abcdef'}),
-        ]
+
+        # The bundle needs to point to a real file since the unit key is derived from it
+        # when the existing check needs to occur.
+        filename = os.path.join(RPM_DIR, RPM_FILENAME)
+        orig_file_bundles = [FileBundle(filename)]
         user_args = {
             FLAG_SKIP_EXISTING.keyword : True,
             OPTION_REPO_ID.keyword : 'repo-1'
@@ -96,17 +88,20 @@ class CreateRpmCommandTests(rpm_support_base.PulpClientTests):
         upload_file_bundles = self.command.create_upload_list(orig_file_bundles, **user_args)
 
         # Verify
-        self.assertEqual(1, len(upload_file_bundles))
-        self.assertEqual(upload_file_bundles[0], orig_file_bundles[1])
-
-        self.assertEqual(2, mock_search.call_count)
+        self.assertEqual(0, len(upload_file_bundles))
+        self.assertEqual(1, mock_search.call_count)
 
         for file_bundle_index in range(0, 1):
             call_args = mock_search.call_args_list[file_bundle_index]
             self.assertEqual(call_args[0][0], 'repo-1')
             expected_filters = {
+                'name' : 'pulp-test-package',
+                'epoch' : '0',
+                'version' : '0.3.1',
+                'release' : '1.fc11',
+                'arch' : 'x86_64',
                 'checksumtype' : 'sha256',
-                'checksum' : 'abcdef',
+                'checksum' : '6bce3f26e1fc0fc52ac996f39c0d0e14fc26fb8077081d5b4dbfb6431b08aa9f',
             }
             expected_filters.update(orig_file_bundles[file_bundle_index].unit_key)
             expected_criteria_args = {
@@ -117,12 +112,10 @@ class CreateRpmCommandTests(rpm_support_base.PulpClientTests):
 
     def test_create_upload_list_no_skip_existing(self):
         # Setup
-        orig_file_bundles = [
-            FileBundle('a', unit_key={'name' : 'a', 'version' : 'a', 'release' : 'a',
-                                      'epoch' : 'a', 'arch' : 'a'}),
-            FileBundle('b', unit_key={'name' : 'b', 'version' : 'b', 'release' : 'b',
-                                      'epoch' : 'b', 'arch' : 'b'}),
-        ]
+
+        # Filename in the bundle doesn't matter since the file itself isn't checked
+        # for any data.
+        orig_file_bundles = [FileBundle('a'), FileBundle('b')]
         user_args = {
             FLAG_SKIP_EXISTING.keyword : False,
             OPTION_REPO_ID.keyword : 'repo-1'

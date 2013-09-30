@@ -51,13 +51,20 @@ class CreateRpmCommand(UploadCommand):
         rpms = [f for f in all_files_in_dir if f.endswith('.rpm')]
         return rpms
 
-    def generate_unit_key(self, filename, **kwargs):
-        unit_key = _generate_unit_key(filename)
-        return unit_key
+    def generate_unit_key_and_metadata(self, filename, **kwargs):
+        # These are extracted server-side, so nothing to do here.
+        return {}, {}
 
     def create_upload_list(self, file_bundles, **kwargs):
 
-        # Only check if the user requests it
+        # In most cases, this will simply return the list of file bundles to be uploaded.
+        # The entries in that list will have None for both key and metadata as it is
+        # extracted server-side.
+        # However, if the user elects to skip existing, we need to extract the unit keys
+        # for the query to the server. After that initial check, the remainder of this
+        # method handles that.
+
+        # Return what the framework generated if we don't need to analyze existing RPMs.
         if not kwargs.get(FLAG_SKIP_EXISTING.keyword, False):
             return file_bundles
 
@@ -67,14 +74,19 @@ class CreateRpmCommand(UploadCommand):
 
         bundles_to_upload = []
         for bundle in file_bundles:
+
+            # The key is no longer in the bundle by default (it's extracted server-side),
+            # but it's needed for this check, so generate it here.
+            unit_key = _generate_unit_key(bundle.filename)
+
             filters = {
-                'name' : bundle.unit_key['name'],
-                'version' : bundle.unit_key['version'],
-                'release' : bundle.unit_key['release'],
-                'epoch' : bundle.unit_key['epoch'],
-                'arch' : bundle.unit_key['arch'],
-                'checksumtype' : bundle.unit_key['checksumtype'],
-                'checksum' : bundle.unit_key['checksum'],
+                'name' : unit_key['name'],
+                'version' : unit_key['version'],
+                'release' : unit_key['release'],
+                'epoch' : unit_key['epoch'],
+                'arch' : unit_key['arch'],
+                'checksumtype' : unit_key['checksumtype'],
+                'checksum' : unit_key['checksum'],
             }
 
             criteria = {
@@ -84,6 +96,9 @@ class CreateRpmCommand(UploadCommand):
 
             existing = self.context.server.repo_unit.search(repo_id, **criteria).response_body
             if len(existing) == 0:
+                # The original bundle (without the key or metadata) is still used, that way
+                # we ensure the server-side plugin does the extraction and RPMs that were
+                # uploaded with this check are not treated differently.
                 bundles_to_upload.append(bundle)
 
         self.prompt.write(_('... completed'))

@@ -11,6 +11,7 @@
 # have received a copy of GPLv2 along with this software; if not, see
 # http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt.
 
+import hashlib
 import logging
 import os
 import shutil
@@ -45,11 +46,13 @@ def upload(repo, type_id, unit_key, metadata, file_path, conduit, config):
     :param type_id: type of unit being uploaded
     :type  type_id: str
 
-    :param unit_key: identifier for the unit, specified by the user
-    :type  unit_key: dict
+    :param unit_key: identifier for the unit, specified by the user; will likely be None
+                     for RPM uploads as the data is extracted server-side
+    :type  unit_key: dict or None
 
-    :param metadata: any user-specified metadata for the unit
-    :type  metadata: dict
+    :param metadata: any user-specified metadata for the unit; will likely be None
+                     for RPM uploads as the data is extracted server-side
+    :type  metadata: dict or None
 
     :param file_path: path on the Pulp server's filesystem to the temporary
            location of the uploaded file; may be None in the event that a
@@ -72,23 +75,25 @@ def upload(repo, type_id, unit_key, metadata, file_path, conduit, config):
     model_type = models.TYPE_MAP[type_id]
 
     if type_id in (models.RPM.TYPE, models.SRPM.TYPE):
-        # Extract the RPM metadata
+        # Extract the RPM key and metadata
         try:
-            unit_metadata = _generate_rpm_data(file_path)
+            new_unit_key, new_unit_metadata = _generate_rpm_data(file_path)
         except:
             _LOGGER.exception('Error extracting RPM metadata for [%s]' % file_path)
             return _fail_report('RPM metadata could not be extracted')
 
-        # Update the RPM-extracted metadata with anything additional the user specified.
+        # Update the RPM-extracted data with anything additional the user specified.
         # Allow the user-specified values to override the extracted ones.
-        unit_metadata.update(metadata or {})
+        new_unit_key.update(unit_key or {})
+        new_unit_metadata.update(metadata or {})
     else:
-        # If not an RPM, just use the user-specified metadata as is
-        unit_metadata = metadata
+        # If not an RPM, just use the user-specified key and metadata as is
+        new_unit_key = unit_key
+        new_unit_metadata = metadata
 
     # get metadata
     try:
-        model = model_type(metadata=unit_metadata, **unit_key)
+        model = model_type(metadata=new_unit_metadata, **new_unit_key)
     except TypeError:
         return _fail_report('invalid unit key or metadata')
 
@@ -183,18 +188,23 @@ def _fail_report(message):
 
 def _generate_rpm_data(rpm_filename):
     """
-    For the given RPM, analyzes its metadata to generate the appropriate metadata fields.
+    For the given RPM, analyzes its metadata to generate the appropriate unit
+    key and metadata fields, returning both to the caller.
 
     :param rpm_filename: full path to the RPM to analyze
     :type  rpm_filename: str
 
-    :return: metadata to store for the RPM
-    :rtype:  dict
+    :return: tuple of unit key and unit metadata for the RPM
+    :rtype:  tuple
     """
 
     # Expected metadata fields:
     # "vendor", "description", "buildhost", "license", "vendor", "requires", "provides", "relativepath", "filename"
+    #
+    # Expected unit key fields:
+    # "name", "epoch", "version", "release", "arch", "checksumtype", "checksum"
 
+    unit_key = dict()
     metadata = dict()
 
     # Read the RPM header attributes for use later
@@ -208,6 +218,33 @@ def _generate_rpm_data(rpm_filename):
         # Raised if the headers cannot be read
         os.close(fd)
         raise
+
+    # -- Unit Key -----------------------
+
+    # Checksum
+    unit_key['checksumtype'] = 'sha256' # hardcoded to this in v1 so leaving this way for now
+    unit_key['checksum'] = _calculate_checksum(unit_key['checksumtype'], rpm_filename)
+
+    # Name, Version, Release, Epoch
+    for k in ['name', 'version', 'release', 'epoch']:
+        unit_key[k] = headers[k]
+
+    #   Epoch munging
+    if unit_key['epoch'] is None:
+        unit_key['epoch'] = str(0)
+    else:
+        unit_key['epoch'] = str(unit_key['epoch'])
+
+    # Arch
+    if headers['sourcepackage']:
+        if RPMTAG_NOSOURCE in headers.keys():
+            unit_key['arch'] = 'nosrc'
+        else:
+            unit_key['arch'] = 'src'
+    else:
+        unit_key['arch'] = headers['arch']
+
+    # -- Unit Metadata ------------------
 
     metadata['relativepath'] = os.path.basename(rpm_filename)
     metadata['filename'] = os.path.basename(rpm_filename)
@@ -225,4 +262,16 @@ def _generate_rpm_data(rpm_filename):
     metadata['vendor'] = headers['vendor']
     metadata['description'] = headers['description']
 
-    return metadata
+    return unit_key, metadata
+
+
+def _calculate_checksum(checksum_type, filename):
+    m = hashlib.new(checksum_type)
+    f = open(filename, 'r')
+    while 1:
+        file_buffer = f.read(CHECKSUM_READ_BUFFER_SIZE)
+        if not file_buffer:
+            break
+        m.update(file_buffer)
+    f.close()
+    return m.hexdigest()
