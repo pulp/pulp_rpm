@@ -388,11 +388,16 @@ class Publisher(object):
 
         self.progress_report[step][FAILURES] += 1
 
-        if tb is not None:
-            self.progress_report[step][ERROR_DETAILS].append('\n'.join(traceback.format_tb(tb)))
+        error_details = []
 
-        elif e is not None:
-            self.progress_report[step][ERROR_DETAILS].append(e.message)
+        if tb is not None:
+            error_details.extend(traceback.format_tb(tb))
+
+        if e is not None:
+            error_details.append(e.message)
+
+        if error_details:
+            self.progress_report[step][ERROR_DETAILS].append('\n'.join(error_details))
 
     def _build_final_report(self):
         summary = copy.deepcopy(SUMMARY_REPORT)
