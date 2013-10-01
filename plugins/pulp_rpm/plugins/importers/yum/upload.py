@@ -20,6 +20,7 @@ import rpm
 from xml.etree import cElementTree as ET
 
 from pulp.plugins.model import SyncReport
+from pulp.plugins.util import verification
 from pulp.server.db.model.criteria import UnitAssociationCriteria
 
 from pulp_rpm.common import models
@@ -222,7 +223,7 @@ def _generate_rpm_data(rpm_filename):
     # -- Unit Key -----------------------
 
     # Checksum
-    unit_key['checksumtype'] = 'sha256' # hardcoded to this in v1 so leaving this way for now
+    unit_key['checksumtype'] = verification.TYPE_SHA256
     unit_key['checksum'] = _calculate_checksum(unit_key['checksumtype'], rpm_filename)
 
     # Name, Version, Release, Epoch
