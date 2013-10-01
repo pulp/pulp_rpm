@@ -53,8 +53,8 @@ class TestUploadRPM(unittest.TestCase):
                                                 return_value=unit)
         self.conduit.save_unit = mock.MagicMock(spec_set=self.conduit.save_unit)
 
-        report = upload.upload(self.repo, models.RPM.TYPE, self.model.unit_key,
-                               self.model.metadata, self.file_path, self.conduit, {})
+        report = upload.upload(self.repo, models.RPM.TYPE, None,
+                               None, self.file_path, self.conduit, None)
 
         self.assertTrue(report.success_flag)
         # now make sure the correct location tag exists
