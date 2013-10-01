@@ -150,7 +150,8 @@ class TestISOImporter(PulpRPMTests):
     def test_sync_calls_sync(self, mock_sync_run):
         repo = Repository('repo1')
         sync_conduit = importer_mocks.get_sync_conduit(type_id=ids.TYPE_ID_ISO, pkg_dir='/a/b/c')
-        config = importer_mocks.get_basic_config()
+        config = importer_mocks.get_basic_config(**{
+                    importer_constants.KEY_FEED: 'http://fake.com/iso_feed/'})
 
         self.iso_importer.sync_repo(repo, sync_conduit, config)
 
