@@ -17,7 +17,8 @@ import logging
 
 from nectar import listener, request
 from nectar.config import DownloaderConfig
-from nectar.downloaders.curl import HTTPSCurlDownloader
+from nectar.downloaders.threaded import HTTPThreadedDownloader
+from nectar.downloaders.local import LocalFileDownloader
 from pulp.common.plugins import importer_constants
 from pulp.common.util import encode_unicode
 from pulp.plugins.conduits.mixins import UnitAssociationCriteria
@@ -71,7 +72,10 @@ class ISOSyncRun(listener.DownloadEventListener):
         downloader_config = DownloaderConfig(**downloader_config)
 
         # We will pass self as the event_listener, so that we can receive the callbacks in this class
-        self.downloader = HTTPSCurlDownloader(downloader_config, self)
+        if self._repo_url.lower().startswith('file'):
+            self.downloader = LocalFileDownloader(downloader_config, self)
+        else:
+            self.downloader = HTTPThreadedDownloader(downloader_config, self)
         self.progress_report = SyncProgressReport(sync_conduit)
 
     def cancel_sync(self):
@@ -94,9 +98,8 @@ class ISOSyncRun(listener.DownloadEventListener):
             self.progress_report.state = self.progress_report.STATE_MANIFEST_FAILED
             self.progress_report.error_message = report.error_report
         elif self.progress_report.state == self.progress_report.STATE_ISOS_IN_PROGRESS:
-            iso = self._url_iso_map[report.url]
+            iso = report.data
             self.progress_report.add_failed_iso(iso, report.error_report)
-            del self._url_iso_map[report.url]
         self.progress_report.update_progress()
 
     def download_progress(self, report):
@@ -108,7 +111,7 @@ class ISOSyncRun(listener.DownloadEventListener):
         :type  report: nectar.report.DownloadReport
         """
         if self.progress_report.state == self.progress_report.STATE_ISOS_IN_PROGRESS:
-            iso = self._url_iso_map[report.url]
+            iso = report.data
             additional_bytes_downloaded = report.bytes_downloaded - iso.bytes_downloaded
             self.progress_report.finished_bytes += additional_bytes_downloaded
             iso.bytes_downloaded = report.bytes_downloaded
@@ -127,7 +130,7 @@ class ISOSyncRun(listener.DownloadEventListener):
         if self.progress_report.state == self.progress_report.STATE_ISOS_IN_PROGRESS:
             # This will update our bytes downloaded
             self.download_progress(report)
-            iso = self._url_iso_map[report.url]
+            iso = report.data
             try:
                 if self._validate_downloads:
                     iso.validate()
@@ -135,13 +138,12 @@ class ISOSyncRun(listener.DownloadEventListener):
                 # We can drop this ISO from the url --> ISO map
                 self.progress_report.num_isos_finished += 1
                 self.progress_report.update_progress()
-                del self._url_iso_map[report.url]
             except ValueError:
                 self.download_failed(report)
 
     def perform_sync(self):
         """
-        Perform the sync operation accoring to the config, and return a report.
+        Perform the sync operation according to the config, and return a report.
         The sync progress will be reported through the sync_conduit.
 
         :return:             The sync report
@@ -190,10 +192,7 @@ class ISOSyncRun(listener.DownloadEventListener):
             self.progress_report.total_bytes += iso.size
         self.progress_report.update_progress()
         # We need to build a list of DownloadRequests
-        download_requests = [request.DownloadRequest(iso.url, iso.storage_path) for iso in manifest]
-        # Let's build an index from URL to the ISO, so that we can access data like the
-        # name, checksum, and size as we process completed downloads
-        self._url_iso_map = dict([(iso.url, iso) for iso in manifest])
+        download_requests = [request.DownloadRequest(iso.url, iso.storage_path, iso) for iso in manifest]
         self.downloader.download(download_requests)
 
     def _download_manifest(self):

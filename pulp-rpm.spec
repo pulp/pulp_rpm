@@ -18,7 +18,7 @@
 
 Name: pulp-rpm
 Version: 2.3.0
-Release: 0.14.alpha%{?dist}
+Release: 0.17.beta%{?dist}
 Summary: Support for RPM content in the Pulp platform
 Group: Development/Languages
 License: GPLv2
@@ -279,6 +279,22 @@ A collection of yum plugins supplementing Pulp consumer operations.
 
 
 %changelog
+* Wed Oct 02 2013 Jeff Ortel <jortel@redhat.com> 2.3.0-0.17.beta
+- 1011267 - Display checksum validation errors via the RPM command line client
+  (bcourt@redhat.com)
+- 962928 - adding repo feed validation in iso_importer to raise a more graceful
+  error message than random traceback (skarmark@redhat.com)
+
+* Thu Sep 26 2013 Jeff Ortel <jortel@redhat.com> 2.3.0-0.16.alpha
+- 965751 - the iso importer now uses the threaded requests downloader instead
+  of the curl downloader (mhrivnak@redhat.com)
+- 976435 - load puppet importer config from a file using a common method.
+  (bcourt@redhat.com)
+
+* Thu Sep 26 2013 Jeff Ortel <jortel@redhat.com> 2.3.0-0.15.alpha
+- 979589 - fixing consumer update for all packages failing with  KeyError:
+  'resolved' (skarmark@redhat.com)
+
 * Wed Sep 18 2013 Jeff Ortel <jortel@redhat.com> 2.3.0-0.14.alpha
 - Pulp rebuild
 

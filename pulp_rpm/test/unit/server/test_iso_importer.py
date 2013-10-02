@@ -36,7 +36,6 @@ class TestISOImporter(PulpRPMTests):
     Test the ISOImporter object.
     """
     def setUp(self):
-        importer_mocks.ISOCurl._curls = []
         self.temp_dir = tempfile.mkdtemp()
         self.iso_importer = importer.ISOImporter()
 
@@ -147,55 +146,28 @@ class TestISOImporter(PulpRPMTests):
         self.assertEqual(metadata, {'id': ids.TYPE_ID_IMPORTER_ISO, 'display_name': 'ISO Importer',
                                     'types': [ids.TYPE_ID_ISO]})
 
-    @mock.patch('nectar.downloaders.curl.pycurl.Curl', side_effect=importer_mocks.ISOCurl)
-    @mock.patch('nectar.downloaders.curl.pycurl.CurlMulti', side_effect=importer_mocks.CurlMulti)
-    def test_sync_repo(self, curl_multi, curl):
+    @mock.patch('pulp_rpm.plugins.importers.iso_importer.sync.ISOSyncRun')
+    def test_sync_calls_sync(self, mock_sync_run):
+        repo = Repository('repo1')
+        sync_conduit = importer_mocks.get_sync_conduit(type_id=ids.TYPE_ID_ISO, pkg_dir='/a/b/c')
+        config = importer_mocks.get_basic_config(**{
+                    importer_constants.KEY_FEED: 'http://fake.com/iso_feed/'})
+
+        self.iso_importer.sync_repo(repo, sync_conduit, config)
+
+        # make sure the sync workflow is called with the right stuff
+        mock_sync_run.assert_called_once_with(sync_conduit, config)
+        mock_sync_run.return_value.perform_sync.assert_called_once_with()
+
+    def test_sync_no_feed(self):
         repo = mock.MagicMock(spec=Repository)
-        working_dir = os.path.join(self.temp_dir, "working")
-        os.mkdir(working_dir)
         pkg_dir = os.path.join(self.temp_dir, 'content')
-        os.mkdir(pkg_dir)
-        repo.working_dir = working_dir
         sync_conduit = importer_mocks.get_sync_conduit(type_id=ids.TYPE_ID_ISO, pkg_dir=pkg_dir)
-        config = {
-            importer_constants.KEY_FEED: 'http://fake.com/iso_feed/',
-            importer_constants.KEY_MAX_SPEED: '500.0',
-            importer_constants.KEY_SSL_CLIENT_CERT: "Trust me, I'm who I say I am.",
-            importer_constants.KEY_SSL_CLIENT_KEY: "Secret Key",
-            importer_constants.KEY_SSL_CA_CERT: "Uh, I guess that's the right server.",
-            importer_constants.KEY_PROXY_HOST: 'http://proxy.com', importer_constants.KEY_PROXY_PORT: '1234',
-            importer_constants.KEY_PROXY_USER: "the_dude", importer_constants.KEY_PROXY_PASS: 'bowling'}
+        config = {importer_constants.KEY_FEED: None}
         config = importer_mocks.get_basic_config(**config)
 
         # Now run the sync
-        report = self.iso_importer.sync_repo(repo, sync_conduit, config)
-
-        # There should now be three Units in the DB, one for each of the three ISOs that our mocks
-        # got us.
-        units = [tuple(call)[1][0] for call in sync_conduit.save_unit.mock_calls]
-        self.assertEqual(len(units), 3)
-        expected_units = {
-            'test.iso': {
-                'checksum': 'f02d5a72cd2d57fa802840a76b44c6c6920a8b8e6b90b20e26c03876275069e0',
-                'size': 16, 'contents': 'This is a file.\n'},
-            'test2.iso': {
-                'checksum': 'c7fbc0e821c0871805a99584c6a384533909f68a6bbe9a2a687d28d9f3b10c16',
-                'size': 22, 'contents': 'This is another file.\n'},
-            'test3.iso': {
-                'checksum': '94f7fe923212286855dea858edac1b4a292301045af0ddb275544e5251a50b3c',
-                'size': 34, 'contents': 'Are you starting to get the idea?\n'}}
-        for unit in units:
-            expected_unit = expected_units[unit.unit_key['name']]
-            self.assertEqual(unit.unit_key['checksum'], expected_unit['checksum'])
-            self.assertEqual(unit.unit_key['size'], expected_unit['size'])
-            expected_storage_path = os.path.join(
-                pkg_dir, unit.unit_key['name'], unit.unit_key['checksum'],
-                str(unit.unit_key['size']), unit.unit_key['name'])
-            self.assertEqual(unit.storage_path, expected_storage_path)
-            with open(unit.storage_path) as data:
-                contents = data.read()
-            self.assertEqual(contents, expected_unit['contents'])
-        self.assertEqual(report.summary['state'], progress.ISOProgressReport.STATE_COMPLETE)
+        self.assertRaises(ValueError, self.iso_importer.sync_repo, repo, sync_conduit, config)
 
     @mock.patch('os.remove', side_effect=os.remove)
     def test_upload_unit_named_PULP_MANIFEST(self, remove):

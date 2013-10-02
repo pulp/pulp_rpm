@@ -83,6 +83,8 @@ class ContentListener(DownloadEventListener):
             # the temp directory after it finishes. Simply punch out so the good unit
             # handling below doesn't run.
             return
+        except verification.InvalidChecksumType:
+            return
 
         # these are the only types we store repo metadata snippets on in the DB
         if isinstance(model, (models.RPM, models.SRPM)):
@@ -130,10 +132,10 @@ class ContentListener(DownloadEventListener):
 
         except verification.VerificationException, e:
             error_report = {
-                'unit_key' : model.unit_key,
-                'error_code' : constants.ERROR_SIZE_VERIFICATION,
-                'expected_size' : model.metadata['size'],
-                'actual_size' : e[0]
+                constants.UNIT_KEY: model.unit_key,
+                constants.ERROR_CODE: constants.ERROR_SIZE_VERIFICATION,
+                constants.ERROR_KEY_EXPECTED_SIZE: model.metadata['size'],
+                constants.ERROR_KEY_ACTUAL_SIZE: e[0]
             }
             self.progress_report['content'].failure(model, error_report)
             raise
@@ -161,10 +163,20 @@ class ContentListener(DownloadEventListener):
 
         except verification.VerificationException, e:
             error_report = {
-                'error_code' : constants.ERROR_CHECKSUM_VERIFICATION,
-                'checksum_type' : model.unit_key['checksumtype'],
-                'expected_checksum' : model.unit_key['checksum'],
-                'actual_checksum' : e[0]
+                constants.NAME: model.unit_key['name'],
+                constants.ERROR_CODE: constants.ERROR_CHECKSUM_VERIFICATION,
+                constants.CHECKSUM_TYPE: model.unit_key['checksumtype'],
+                constants.ERROR_KEY_CHECKSUM_EXPECTED: model.unit_key['checksum'],
+                constants.ERROR_KEY_CHECKSUM_ACTUAL: e[0]
+            }
+            self.progress_report['content'].failure(model, error_report)
+            raise
+        except verification.InvalidChecksumType, e:
+            error_report = {
+                constants.NAME: model.unit_key['name'],
+                constants.ERROR_CODE: constants.ERROR_CHECKSUM_TYPE_UNKNOWN,
+                constants.CHECKSUM_TYPE: model.unit_key['checksumtype'],
+                constants.ACCEPTED_CHECKSUM_TYPES: verification.CHECKSUM_FUNCTIONS.keys()
             }
             self.progress_report['content'].failure(model, error_report)
             raise

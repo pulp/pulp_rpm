@@ -229,20 +229,43 @@ class RpmStatusRenderer(StatusRenderer):
 
                     for i in range(0, num_errors):
                         error = data['error_details'][i]
-                        error_msg = error.get('error', '')
-                        traceback = '\n'.join(error.get('traceback', []))
+                        if error[constants.ERROR_CODE] == constants.ERROR_CHECKSUM_TYPE_UNKNOWN:
+                            message_data = {
+                                'name': error[constants.NAME],
+                                'checksum_type': error[constants.CHECKSUM_TYPE],
+                                'accepted': ','.join(error.get(constants.ACCEPTED_CHECKSUM_TYPES, []))
+                            }
+                            template = _('Package: %(name)s\nError: An invalid checksum type '
+                                         '(%(checksum_type)s) was detected.\n'
+                                         'Accepted checksum types: %(accepted)s')
+                        elif error[constants.ERROR_CODE] == constants.ERROR_CHECKSUM_VERIFICATION:
+                            message_data = {
+                                'name': error[constants.NAME],
+                            }
+                            template = _('Package: %(name)s\nError: An invalid checksum was '
+                                         'detected.')
 
-                        message_data = {
-                            'name'      : error['url'],
-                            'error'      : error_msg,
-                            'traceback' : traceback
-                        }
+                        elif error[constants.ERROR_CODE] == constants.ERROR_SIZE_VERIFICATION:
+                            message_data = {
+                                'name': error[constants.NAME],
+                            }
+                            template = _('Package: %(name)s\nError: The size did not match the '
+                                         'value specified in the repository metadata.')
+                        else:
+                            error_msg = error.get('error', '')
+                            traceback = '\n'.join(error.get('traceback', []))
 
-                        template  = 'Package: %(name)s\n'
-                        template += 'Error:   %(error)s\n'
-                        if message_data["traceback"]:
-                            template += 'Traceback:\n'
-                            template += '%(traceback)s'
+                            message_data = {
+                                'name': error['url'],
+                                'error': error_msg,
+                                'traceback': traceback
+                            }
+
+                            template = 'Package: %(name)s\n'
+                            template += 'Error:   %(error)s\n'
+                            if message_data["traceback"]:
+                                template += 'Traceback:\n'
+                                template += '%(traceback)s'
 
                         message = template % message_data
 
