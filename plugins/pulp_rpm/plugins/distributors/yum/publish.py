@@ -26,6 +26,7 @@ from pulp_rpm.yum_plugin import util
 
 from . import configuration, metadata
 
+# -- constants -----------------------------------------------------------------
 
 _LOG = util.getLogger(__name__)
 
@@ -123,8 +124,21 @@ PACKAGE_FIELDS = ['id', 'name', 'version', 'release', 'arch', 'epoch',
 # -- publisher class -----------------------------------------------------------
 
 class Publisher(object):
+    """
+    Yum HTTP/HTTPS publisher class that is responsible for the actual publishing
+    of a yum repository over HTTP and/or HTTPS.
+    """
 
     def __init__(self, repo, publish_conduit, config):
+        """
+        :param repo: Pulp managed Yum repository
+        :type  repo: pulp.plugins..model.Repository
+        :param publish_conduit: Conduit providing access to relative Pulp functionality
+        :type  publish_conduit: pulp.plugins.conduits.repo_publish.RepoPublishConduit
+        :param config: Pulp configuration for the distributor
+        :type  config: pulp.plugins.config.PluginCallConfiguration
+        :return:
+        """
 
         self.repo = repo
         self.conduit = publish_conduit
@@ -140,6 +154,12 @@ class Publisher(object):
     # -- publish api methods ---------------------------------------------------
 
     def publish(self):
+        """
+        Publish the contents of the repository and their metadata via HTTP/HTTPS.
+
+        :return: report describing the publication
+        :rtype:  pulp.plugins.model.PublishReport
+        """
 
         if not os.path.exists(self.repo.working_dir):
             os.makedirs(self.repo.working_dir, mode=0770)
@@ -154,6 +174,9 @@ class Publisher(object):
         return self._build_final_report()
 
     def cancel(self):
+        """
+        Cancel an in-progress publication.
+        """
 
         if self.canceled:
             return
@@ -372,11 +395,26 @@ class Publisher(object):
     # -- progress methods ------------------------------------------------------
 
     def _init_step_progress_report(self, step):
+        """
+        Initialize a progress sub-report for the given step.
+
+        :param step: step to initialize a progress sub-report for
+        :type  step: str
+        """
         assert step in PUBLISH_STEPS
 
         self.progress_report[step] = copy.deepcopy(PROGRESS_SUB_REPORT)
 
     def _report_progress(self, step, **report_details):
+        """
+        Report the current progress back to the conduit, make any updates to the
+        current step as necessary.
+
+        :param step: current step of publication process
+        :type  step: str
+        :param report_details: keyword argument updates to the current step's
+                               progress sub-report (if any)
+        """
         assert step in PUBLISH_STEPS
         assert set(report_details).issubset(set(PUBLISH_REPORT_KEYWORDS))
 
@@ -384,6 +422,16 @@ class Publisher(object):
         self.conduit.set_progress(self.progress_report)
 
     def _record_failure(self, step, e=None, tb=None):
+        """
+        Record a failure in a step's progress sub-report.
+
+        :param step: current step that encountered a failure
+        :type  step: str
+        :param e: exception instance (if any)
+        :type  e: Exception or None
+        :param tb: traceback instance (if any)
+        :type  tb: Traceback or None
+        """
         assert step in PUBLISH_STEPS
 
         self.progress_report[step][FAILURES] += 1
@@ -400,6 +448,10 @@ class Publisher(object):
             self.progress_report[step][ERROR_DETAILS].append('\n'.join(error_details))
 
     def _build_final_report(self):
+        """
+        :return: report describing the publish run
+        :rtype:  pulp.plugins.model.PublishReport
+        """
         summary = copy.deepcopy(SUMMARY_REPORT)
         details = copy.deepcopy(DETAILS_REPORT)
 
@@ -444,6 +496,14 @@ class Publisher(object):
     # -- linking methods -------------------------------------------------------
 
     def _symlink_content(self, unit, working_sub_dir):
+        """
+        Create a symlink to a unit's storage path in the given working subdirectory.
+
+        :param unit: unit to create symlink to
+        :type  unit: pulp.plugins.model.Unit
+        :param working_sub_dir: working subdirectory to create symlink in
+        :type  working_sub_dir: str
+        """
 
         source_path = unit.storage_path
         relative_path = util.get_relpath_from_unit(unit)
@@ -453,6 +513,14 @@ class Publisher(object):
 
     @staticmethod
     def _create_symlink(source_path, link_path):
+        """
+        Create a symlink from the link path to the source path.
+
+        :param source_path: path of the source to link to
+        :type  source_path: str
+        :param link_path: path of the link
+        :type  link_path: str
+        """
 
         if not os.path.exists(source_path):
             msg = _('Cannot create a symlink to a non-existent source [%(s)s]')
@@ -496,6 +564,12 @@ class Publisher(object):
 
     @staticmethod
     def _clear_directory(path):
+        """
+        Clear out the contents of the given directory.
+
+        :param path: path of the directory to clear out
+        :type  path: str
+        """
 
         if not os.path.exists(path):
             return

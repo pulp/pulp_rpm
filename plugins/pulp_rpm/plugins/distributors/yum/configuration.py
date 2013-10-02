@@ -38,6 +38,14 @@ HTTPS_PUBLISH_DIR = os.path.join(ROOT_PUBLISH_DIR, 'https/repos')
 # -- public api ----------------------------------------------------------------
 
 def load_config(config_file_path):
+    """
+    Load and return a config parser for the given configuration file path.
+
+    :param config_file_path: full path to the configuration file
+    :type  config_file_path: str
+    :return: Parser representing the parsed configuration file
+    :rtype:  SafeConfigParser
+    """
 
     config = SafeConfigParser()
     config.read(config_file_path)
@@ -45,6 +53,18 @@ def load_config(config_file_path):
 
 
 def validate_config(repo, config, config_conduit):
+    """
+    Validate the prospective configuration instance for the the give repository.
+
+    :param repo: repository to validate the config for
+    :type  repo: pulp.plugins.model.Repository
+    :param config: configuration instance to validate
+    :type  config: pulp.plugins.config.PluginCallConfiguration
+    :param config_conduit: conduit providing access to relevant Pulp functionality
+    :type  config_conduit: pulp.plugins.conduits.repo_config.RepoConfigConduit
+    :return: tuple of (bool, str) stating that the configuration is valid or not and why
+    :rtype:  tuple of (bool, str or None)
+    """
 
     error_messages = []
 
@@ -106,6 +126,15 @@ def validate_config(repo, config, config_conduit):
 
 
 def get_http_publish_dir(config=None):
+    """
+    Get the configured HTTP publication directory.
+    Returns the global default if not configured.
+
+    :param config: configuration instance
+    :type  config: pulp.plugins.config.PluginCallConfiguration or None
+    :return: the HTTP publication directory
+    :rtype:  str
+    """
 
     config = config or {}
 
@@ -119,6 +148,15 @@ def get_http_publish_dir(config=None):
 
 
 def get_https_publish_dir(config=None):
+    """
+    Get the configured HTTPS publication directory.
+    Returns the global default if not configured.
+
+    :param config: configuration instance
+    :type  config: pulp.plugins.config.PluginCallConfiguration or None
+    :return: the HTTPS publication directory
+    :rtype:  str
+    """
 
     config = config or {}
 
@@ -132,6 +170,15 @@ def get_https_publish_dir(config=None):
 
 
 def get_repo_relative_path(repo, config=None):
+    """
+    Get the configured relative path for the given repository.
+    :param repo: repository to get relative path for
+    :type  repo: pulp.plugins.model.Repository
+    :param config: configuration instance for the repository
+    :type  config: pulp.plugins.config.PluginCallConfiguration or None
+    :return: relative path for the repository
+    :rtype:  str
+    """
 
     config = config or {}
     relative_path = config.get('relative_url', repo.id)

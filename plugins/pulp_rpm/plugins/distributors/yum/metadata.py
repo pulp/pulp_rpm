@@ -31,8 +31,15 @@ RPM_NAMESPACE = 'http://linux.duke.edu/metadata/rpm'
 # -- base metadata file context class ------------------------------------------
 
 class MetadataFileContext(object):
+    """
+    Context manager class for metadata file generation.
+    """
 
     def __init__(self, metadata_file_path):
+        """
+        :param metadata_file_path: full path to metadata file to be generated
+        :type  metadata_file_path: str
+        """
 
         self.metadata_file_path = metadata_file_path
         self.metadata_file_handle = None
@@ -49,21 +56,27 @@ class MetadataFileContext(object):
 
             err_msg = '\n'.join(traceback.format_exception(exc_type, exc_val, exc_tb))
             log_msg = _('Exception occurred while writing [%(m)s]\n%(e)s')
-            # XXX should I make this 'debug'?
             # any errors here should have already been caught and logged
-            _LOG.error(log_msg % {'m': self.metadata_file_path, 'e': err_msg})
+            _LOG.debug(log_msg % {'m': self.metadata_file_path, 'e': err_msg})
 
         self.finalize()
 
     # -- context lifecycle -----------------------------------------------------
 
     def initialize(self):
+        """
+        Create the new metadata file and write the XML header and opening root
+        level tag into it.
+        """
 
         self._open_metadata_file_handle()
         self._write_xml_header()
         self._write_opening_tag()
 
     def finalize(self):
+        """
+        Write the closing root level tag into the metadata file and close it.
+        """
 
         self._write_closing_tag()
         self._close_metadata_file_handle()
@@ -123,10 +136,23 @@ class MetadataFileContext(object):
 # -- pre-generated metadata context --------------------------------------------
 
 class PreGeneratedMetadataContext(MetadataFileContext):
+    """
+    Intermediate context manager for metadata files that have had their content
+    pre-generated and stored on the unit model.
+    """
 
     def _add_unit_pre_generated_metadata(self, metadata_category, unit):
+        """
+        Write a unit's pre-generated metadata, from the given metadata category,
+        into the metadata file.
 
-        metadata = unit.repodata.get(metadata_category, None)
+        :param metadata_category: metadata category to get pre-generated metadata for
+        :type  metadata_category: str
+        :param unit: unit whose metadata is being written
+        :type  unit: pulp.plugins.model.AssociatedUnit
+        """
+
+        metadata = unit.metadata.get(metadata_category, None)
 
         if not isinstance(metadata, unicode):
 
@@ -140,13 +166,23 @@ class PreGeneratedMetadataContext(MetadataFileContext):
 # -- primary.xml file context class --------------------------------------------
 
 class PrimaryXMLFileContext(PreGeneratedMetadataContext):
+    """
+    Context manager for generating the primary.xml.gz metadata file.
+    """
 
-    def __init__(self, working_dir, num_packages):
+    def __init__(self, working_dir, num_units):
+        """
+        :param working_dir: working directory to create the primary.xml.gz in
+        :type  working_dir: str
+        :param num_units: total number of units whose metadata will be written
+                          into the primary.xml.gz metadata file
+        :type  num_units: int
+        """
 
         metadata_file_path = os.path.join(working_dir, REPODATA_DIR_NAME, PRIMARY_XML_FILE_NAME)
         super(PrimaryXMLFileContext, self).__init__(metadata_file_path)
 
-        self.num_packages = num_packages
+        self.num_packages = num_units
 
     def _write_opening_tag(self):
 
@@ -171,6 +207,12 @@ class PrimaryXMLFileContext(PreGeneratedMetadataContext):
         self._write_closing_tag = _write_closing_tag_closure
 
     def add_unit_metadata(self, unit):
+        """
+        Add the metadata to primary.xml.gz for the given unit.
+
+        :param unit: unit whose metadata is to be written
+        :type  unit: pulp.plugins.model.AssociatedUnit
+        """
 
         self._add_unit_pre_generated_metadata('primary', unit)
 
