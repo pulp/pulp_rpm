@@ -18,16 +18,6 @@ import mock
 from pulp_rpm.plugins.importers.yum import listener
 from pulp.plugins.util import verification
 
-"""
-import pulp.server.managers.factory as manager_factory
-manager_factory.initialize()
-
-:param sync_conduit: provides access to relevant Pulp functionality
-        :type  sync_conduit: pulp.plugins.conduits.repo_sync.RepoSyncConduit
-
-        :param call_config: plugin configuration
-        :type  call_config: pulp.plugins.config.PluginCallConfiguration
-"""
 
 class TestContentListener(unittest.TestCase):
 
@@ -48,7 +38,6 @@ class TestContentListener(unittest.TestCase):
         self.progress_report['content'].success.assert_called_once()
 
 
-#from pulp.plugins.util import verification
     @mock.patch('__builtin__.open', autospec=True)
     @mock.patch('pulp.plugins.util.verification.verify_checksum')
     @mock.patch('pulp.plugins.util.verification.verify_size')
