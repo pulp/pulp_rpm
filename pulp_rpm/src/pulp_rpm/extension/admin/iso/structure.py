@@ -50,6 +50,7 @@ DESC_SYNC_NEXT_RUN = _('display the next scheduled sync run for a repository')
 SECTION_UPLOADS = 'uploads'
 DESC_UPLOADS = _('upload ISOs into a repository')
 
+ISO_UPLOAD_SUBDIR = 'iso'
 
 def add_iso_section(context):
     """
@@ -177,7 +178,10 @@ def _get_upload_manager(context):
     :return:        An intialized UploadManager.
     :rtype:         pulp.client.upload.manager.UploadManager
     """
-    upload_working_dir = context.config['filesystem']['upload_working_dir']
+    # Each upload_manager needs to be associated with a unique upload working directory. 
+    # Create a subdirectory for iso uploads under the main upload_working_dir 
+    # to avoid interference with other types of uploads eg. rpm uploads.
+    upload_working_dir = os.path.join(context.config['filesystem']['upload_working_dir'], ISO_UPLOAD_SUBDIR)
     upload_working_dir = os.path.expanduser(upload_working_dir)
     chunk_size = int(context.config['server']['upload_chunk_size'])
     upload_manager = upload_lib.UploadManager(upload_working_dir, context.server, chunk_size)
