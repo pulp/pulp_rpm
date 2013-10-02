@@ -11,6 +11,8 @@
 # have received a copy of GPLv2 along with this software; if not, see
 # http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt.
 
+import os
+
 from pulp.client.commands import unit
 from pulp.client.commands.repo import cudl, sync_publish, upload as pulp_upload
 from pulp.client.commands.schedule import (
@@ -262,6 +264,7 @@ class TestGetUploadManager(rpm_support_base.PulpClientTests):
 
         initialize.assert_called_once_with(upload_manager)
         self.assertTrue(isinstance(upload_manager, UploadManager))
-        self.assertEqual(upload_manager.upload_working_dir, '/path/to/nowhere')
+        iso_upload_dir = os.path.join('/path/to/nowhere', structure.ISO_UPLOAD_SUBDIR)
+        self.assertEqual(upload_manager.upload_working_dir, iso_upload_dir)
         self.assertEqual(upload_manager.bindings, self.context.server)
         self.assertEqual(upload_manager.chunk_size, 42)
