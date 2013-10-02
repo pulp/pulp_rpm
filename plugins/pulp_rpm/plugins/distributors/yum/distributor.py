@@ -11,6 +11,7 @@
 # You should have received a copy of GPLv2 along with this software;
 # if not, see http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt
 
+from pulp.common.config import read_json_config
 from pulp.plugins.distributor import Distributor
 
 from pulp_rpm.common.ids import (
@@ -25,7 +26,15 @@ from . import configuration, publish
 
 _LOG = util.getLogger(__name__)
 
+CONF_FILE_PATH = 'server/plugins.conf.d/%s.json' % TYPE_ID_DISTRIBUTOR_YUM
+
 DISTRIBUTOR_DISPLAY_NAME = 'Yum Distributor'
+
+# -- entry point ---------------------------------------------------------------
+
+def entry_point():
+    config = read_json_config(CONF_FILE_PATH)
+    return YumHTTPDistributor, config
 
 # -- distributor ---------------------------------------------------------------
 
