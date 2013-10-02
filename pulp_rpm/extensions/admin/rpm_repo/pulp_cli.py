@@ -27,6 +27,7 @@ from pulp_rpm.extension.admin.upload import group as package_group
 # -- constants -----------------------------------------------------------------
 
 DESC_EXPORT_STATUS = _('displays the status of a running ISO export of a repository')
+RPM_UPLOAD_SUBDIR = 'rpm'
 
 # ------------------------------------------------------------------------------
 
@@ -122,7 +123,10 @@ def _upload_manager(context):
     :return: initialized and ready to run upload manager instance
     :rtype: UploadManager
     """
-    upload_working_dir = context.config['filesystem']['upload_working_dir']
+    # Each upload_manager needs to be associated with a unique upload working directory. 
+    # Create a subdirectory for rpm uploads under the main upload_working_dir 
+    # to avoid interference with other types of uploads eg. iso uploads.
+    upload_working_dir = os.path.join(context.config['filesystem']['upload_working_dir'], RPM_UPLOAD_SUBDIR)
     upload_working_dir = os.path.expanduser(upload_working_dir)
     chunk_size = int(context.config['server']['upload_chunk_size'])
     upload_manager = upload_lib.UploadManager(upload_working_dir, context.server, chunk_size)
