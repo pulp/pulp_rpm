@@ -33,10 +33,26 @@ from pulp_rpm.plugins.importers.yum.repomd import primary
 # namespace, which causes a parse error if that namespace isn't declared.
 FAKE_XML = '<?xml version="1.0" encoding="%(encoding)s"?><faketag xmlns:rpm="http://pulpproject.org">%(xml)s</faketag>'
 
+# Used when extracting metadata from an RPM
 RPMTAG_NOSOURCE = 1051
 CHECKSUM_READ_BUFFER_SIZE = 65536
 
+# Configuration option specified to not take the steps of linking a newly
+# uploaded erratum with RPMs in the destination repository.
+CONFIG_SKIP_LINK_ERRATUM = 'skip_erratum_link'
+
 _LOGGER = logging.getLogger(__name__)
+
+
+# -- exceptions ---------------------------------------------------------------
+
+# These are used by the _handle_* methods for each type so that the main driver
+# method can consistently format/word the failure report. These should not be
+# raised outside of this module.
+
+class ModelInstantiationError(Exception): pass
+class StoreFileError(Exception): pass
+class PackageMetadataError(Exception) : pass
 
 
 def upload(repo, type_id, unit_key, metadata, file_path, conduit, config):
@@ -69,64 +85,170 @@ def upload(repo, type_id, unit_key, metadata, file_path, conduit, config):
     :return: report of the details of the sync
     :rtype:  pulp.plugins.model.SyncReport
     """
-    if type_id not in (models.RPM.TYPE, models.SRPM.TYPE, models.PackageGroup.TYPE,
-                        models.PackageCategory.TYPE, models.Errata.TYPE):
+
+    # Dispatch to process the upload by type
+    handlers = {
+        models.RPM.TYPE : _handle_package,
+        models.SRPM.TYPE : _handle_package,
+        models.PackageGroup.TYPE : _handle_group_category,
+        models.PackageCategory.TYPE : _handle_group_category,
+        models.Errata.TYPE : _handle_erratum,
+    }
+
+    if type_id not in handlers:
         return _fail_report('%s is not a supported type for upload' % type_id)
 
-    model_type = models.TYPE_MAP[type_id]
-
-    if type_id in (models.RPM.TYPE, models.SRPM.TYPE):
-        # Extract the RPM key and metadata
-        try:
-            new_unit_key, new_unit_metadata = _generate_rpm_data(file_path)
-        except:
-            _LOGGER.exception('Error extracting RPM metadata for [%s]' % file_path)
-            return _fail_report('RPM metadata could not be extracted')
-
-        # Update the RPM-extracted data with anything additional the user specified.
-        # Allow the user-specified values to override the extracted ones.
-        new_unit_key.update(unit_key or {})
-        new_unit_metadata.update(metadata or {})
-    else:
-        # If not an RPM, just use the user-specified key and metadata as is
-        new_unit_key = unit_key
-        new_unit_metadata = metadata
-
-    # get metadata
     try:
-        model = model_type(metadata=new_unit_metadata, **new_unit_key)
-    except TypeError:
-        return _fail_report('invalid unit key or metadata')
-
-    # not all models have a relative path
-    relative_path = getattr(model, 'relative_path', '')
-
-    # both of the below operations perform IO
-    try:
-        # init unit
-        unit = conduit.init_unit(model.TYPE, model.unit_key, model.metadata, relative_path)
-        # move file to destination
-        if file_path and unit.storage_path:
-            shutil.move(file_path, unit.storage_path)
-    except IOError:
-        return _fail_report('failed to move file to destination')
-
-    # do this for RPMs and SRPMs
-    if isinstance(model, models.RPM):
-        # TODO: replace this call with something that doesn't use yum
-        unit.metadata['repodata'] = rpm_parse.get_package_xml(unit.storage_path)
-        # The provides and requires are not provided by the client, so extract them now
-        _update_provides_requires(unit)
-
-    # save unit
-    conduit.save_unit(unit)
-
-    if type_id == models.Errata.TYPE:
-        link_errata_to_rpms(conduit, model, unit)
+        handlers[type_id](type_id, unit_key, metadata, file_path, conduit, config)
+    except ModelInstantiationError:
+        msg = 'metadata for the uploaded file was invalid'
+        _LOGGER.exception(msg)
+        return _fail_report(msg)
+    except StoreFileError:
+        msg = 'file could not be deployed into Pulp\'s storage'
+        _LOGGER.exception(msg)
+        return _fail_report(msg)
+    except PackageMetadataError:
+        msg = 'metadata for the given package could not be extracted'
+        _LOGGER.exception(msg)
+        return _fail_report(msg)
+    except:
+        msg = 'unexpected error occurred importing uploaded file'
+        _LOGGER.exception(msg)
+        return _fail_report(msg)
 
     # TODO: add more info to this report?
     report = SyncReport(True, 1, 0, 0, '', {})
     return report
+
+# -- erratum upload -----------------------------------------------------------
+
+def _handle_erratum(type_id, unit_key, metadata, file_path, conduit, config):
+    """
+    Handles the upload for an erratum. There is no file uploaded so the only
+    steps are to save the metadata and optionally link the erratum to RPMs
+    in the repository.
+    """
+
+    # Validate the user specified data by instantiating the model
+    try:
+        model_class = models.TYPE_MAP[type_id]
+        model = model_class(metadata=metadata, **unit_key)
+    except TypeError:
+        raise ModelInstantiationError()
+
+    unit = conduit.init_unit(model.TYPE, model.unit_key, model.metadata, None)
+
+    if not config.get_boolean(CONFIG_SKIP_LINK_ERRATUM):
+        _link_errata_to_rpms(conduit, model, unit)
+
+    conduit.save_unit(unit)
+
+
+def _link_errata_to_rpms(conduit, errata_model, errata_unit):
+    """
+    :param conduit: provides access to relevant Pulp functionality
+    :type  conduit: pulp.plugins.conduits.unit_add.UnitAddConduit
+    :param errata_model:    model object representing an errata
+    :type  errata_model:    pulp_rpm.common.models.Errata
+    :param errata_unit:     unit object representing an errata
+    :type  errata_unit:     pulp.plugins.model.Unit
+    """
+    fields = list(models.RPM.UNIT_KEY_NAMES)
+    fields.append('_storage_path')
+    filters = {'$or': errata_model.rpm_search_dicts}
+    for model_type in (models.RPM.TYPE, models.SRPM.TYPE):
+        criteria = UnitAssociationCriteria(type_ids=[model_type], unit_fields=fields,
+                                           unit_filters=filters)
+        for unit in conduit.get_units(criteria):
+            conduit.link_unit(errata_unit, unit, bidirectional=True)
+
+# -- yum metadata file upload -------------------------------------------------
+
+def _handle_yum_metadata_file(type_id, unit_key, metadata, file_path, conduit, config):
+    """
+    Handles the upload for a yum repository metadata file.
+    """
+
+    # Validate the user specified data by instantiating the model
+    try:
+        model_class = models.TYPE_MAP[type_id]
+        model = model_class(metadata=metadata, **unit_key)
+    except TypeError:
+        raise ModelInstantiationError()
+
+    # TODO: Determine unique location for the file
+    relative_path = None
+
+    # Move the file to its final storage location in Pulp
+    try:
+        unit = conduit.init_unit(model.TYPE, model.unit_key, model.metadata, relative_path)
+        shutil.move(file_path, unit.storage_path)
+        conduit.save_unit(unit)
+    except IOError:
+        raise StoreFileError()
+
+# -- package group/category upload --------------------------------------------
+
+def _handle_group_category(type_id, unit_key, metadata, file_path, conduit, config):
+    """
+    Handles the creation of a package group or category. There is no file uploaded,
+    so the process is simply to create the unit in Pulp.
+    """
+
+    # Validate the user specified data by instantiating the model
+    try:
+        model_class = models.TYPE_MAP[type_id]
+        model = model_class(metadata=metadata, **unit_key)
+    except TypeError:
+        raise ModelInstantiationError()
+
+    unit = conduit.init_unit(model.TYPE, model.unit_key, model.metadata, None)
+    conduit.save_unit(unit)
+
+# -- package upload -----------------------------------------------------------
+
+def _handle_package(type_id, unit_key, metadata, file_path, conduit, config):
+    """
+    Handles the upload for an RPM or SRPM. For these types, the unit_key
+    and metadata will only contain additions the user wishes to add. The
+    typical use case is that the file is uploaded and all of the necessary
+    data, both unit key and metadata, are extracted in this method.
+    """
+
+    # Extract the RPM key and metadata
+    try:
+        new_unit_key, new_unit_metadata = _generate_rpm_data(file_path)
+    except:
+        _LOGGER.exception('Error extracting RPM metadata for [%s]' % file_path)
+        raise PackageMetadataError()
+
+    # Update the RPM-extracted data with anything additional the user specified.
+    # Allow the user-specified values to override the extracted ones.
+    new_unit_key.update(unit_key or {})
+    new_unit_metadata.update(metadata or {})
+
+    # Validate the user specified data by instantiating the model
+    try:
+        model_class = models.TYPE_MAP[type_id]
+        model = model_class(metadata=new_unit_metadata, **new_unit_key)
+    except TypeError:
+        raise ModelInstantiationError()
+
+    # Move the file to its final storage location in Pulp
+    try:
+        unit = conduit.init_unit(model.TYPE, model.unit_key,
+                                 model.metadata, model.relative_path)
+        shutil.move(file_path, unit.storage_path)
+    except IOError:
+        raise StoreFileError()
+
+    # Extract the repodata snippets
+    unit.metadata['repodata'] = rpm_parse.get_package_xml(unit.storage_path)
+    _update_provides_requires(unit)
+
+    # Save the unit in Pulp
+    conduit.save_unit(unit)
 
 
 def _update_provides_requires(unit):
@@ -159,32 +281,6 @@ def _update_provides_requires(unit):
                                      provides_element.findall('entry')) if provides_element else []
     unit.metadata['requires'] = map(primary._process_rpm_entry_element,
                                      requires_element.findall('entry')) if requires_element else []
-
-
-def link_errata_to_rpms(conduit, errata_model, errata_unit):
-    """
-    :param conduit: provides access to relevant Pulp functionality
-    :type  conduit: pulp.plugins.conduits.unit_add.UnitAddConduit
-    :param errata_model:    model object representing an errata
-    :type  errata_model:    pulp_rpm.common.models.Errata
-    :param errata_unit:     unit object representing an errata
-    :type  errata_unit:     pulp.plugins.model.Unit
-    """
-    fields = list(models.RPM.UNIT_KEY_NAMES)
-    fields.append('_storage_path')
-    filters = {'$or': errata_model.rpm_search_dicts}
-    for model_type in (models.RPM.TYPE, models.SRPM.TYPE):
-        criteria = UnitAssociationCriteria(type_ids=[model_type], unit_fields=fields,
-                                           unit_filters=filters)
-        for unit in conduit.get_units(criteria):
-            conduit.link_unit(errata_unit, unit, bidirectional=True)
-
-
-def _fail_report(message):
-    # this is the format returned by the original importer. I'm not sure if
-    # anything is actually parsing it
-    details = {'errors': [message]}
-    return SyncReport(False, 0, 0, 0, '', details)
 
 
 def _generate_rpm_data(rpm_filename):
@@ -276,3 +372,11 @@ def _calculate_checksum(checksum_type, filename):
         m.update(file_buffer)
     f.close()
     return m.hexdigest()
+
+# -- generic utilities ---------------------------------------------------------
+
+def _fail_report(message):
+    # this is the format returned by the original importer. I'm not sure if
+    # anything is actually parsing it
+    details = {'errors': [message]}
+    return SyncReport(False, 0, 0, 0, '', details)
