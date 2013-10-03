@@ -93,6 +93,7 @@ def upload(repo, type_id, unit_key, metadata, file_path, conduit, config):
         models.PackageGroup.TYPE : _handle_group_category,
         models.PackageCategory.TYPE : _handle_group_category,
         models.Errata.TYPE : _handle_erratum,
+        models.YumMetadataFile.TYPE : _handle_yum_metadata_file,
     }
 
     if type_id not in handlers:
@@ -172,13 +173,15 @@ def _handle_yum_metadata_file(type_id, unit_key, metadata, file_path, conduit, c
 
     # Validate the user specified data by instantiating the model
     try:
-        model_class = models.TYPE_MAP[type_id]
-        model = model_class(metadata=metadata, **unit_key)
+        model = models.YumMetadataFile(metadata=metadata, **unit_key)
     except TypeError:
         raise ModelInstantiationError()
 
-    # TODO: Determine unique location for the file
-    relative_path = None
+    # Replicates the logic in yum/sync.py.import_unknown_metadata_files.
+    # The local_path variable is removed since it's not included in the metadata when
+    # synchronized.
+    file_relative_path = model.metadata.pop('local_path')
+    relative_path = os.path.join(model.relative_dir, file_relative_path)
 
     # Move the file to its final storage location in Pulp
     try:

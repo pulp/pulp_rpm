@@ -114,6 +114,21 @@ class UploadDispatchTests(unittest.TestCase):
         self.assertTrue(isinstance(report, SyncReport))
         self.assertTrue(report.success_flag)
 
+    @mock.patch('pulp_rpm.plugins.importers.yum.upload._handle_yum_metadata_file')
+    def test_yum_metadata_file(self, mock_handle):
+        # Test
+        report = upload.upload(None, models.YumMetadataFile.TYPE, self.unit_key, self.metadata,
+                               self.file_path, self.conduit, self.config)
+
+        # Verify
+        mock_handle.assert_called_once_with(models.YumMetadataFile.TYPE, self.unit_key,
+                                            self.metadata, self.file_path, self.conduit,
+                                            self.config)
+
+        self.assertTrue(report is not None)
+        self.assertTrue(isinstance(report, SyncReport))
+        self.assertTrue(report.success_flag)
+
     def test_unsupported(self):
         # Test
         report = upload.upload(None, 'foo', self.unit_key, self.metadata,
@@ -279,7 +294,8 @@ class UploadYumRepoMetadataFileTests(unittest.TestCase):
     def test_handle_yum_metadata_file(self):
         # Setup
         unit_key = {'data_type' : 'product-id', 'repo_id' : 'test-repo'}
-        metadata = {}
+        metadata = {'local_path' : 'repodata/productid', 'checksum' : 'abcdef',
+                    'checksumtype' : 'sha256'}
         config = PluginCallConfiguration({}, {})
 
         mock_conduit = mock.MagicMock()
@@ -298,8 +314,9 @@ class UploadYumRepoMetadataFileTests(unittest.TestCase):
         self.assertTrue(os.path.exists(self.upload_dest_filename))
 
         #   Conduit calls
+        expected_relative_path = 'test-repo/repodata/productid'
         mock_conduit.init_unit.assert_called_once_with(models.YumMetadataFile.TYPE, unit_key,
-                                                       metadata, None)
+                                                       metadata, expected_relative_path)
         mock_conduit.save_unit.assert_called_once()
         saved_unit = mock_conduit.save_unit.call_args[0][0]
         self.assertEqual(inited_unit, saved_unit)
@@ -315,7 +332,7 @@ class UploadYumRepoMetadataFileTests(unittest.TestCase):
     def test_handle_yum_metadata_file_storage_error(self):
         # Setup
         unit_key = {'data_type' : 'product-id', 'repo_id' : 'test-repo'}
-        metadata = {}
+        metadata = {'local_path' : 'repodata/productid'}
         config = PluginCallConfiguration({}, {})
 
         mock_conduit = mock.MagicMock()
