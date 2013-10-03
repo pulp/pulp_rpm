@@ -21,7 +21,6 @@ from pulp.plugins.config import PluginCallConfiguration
 from pulp.plugins.model import SyncReport, Unit
 
 from pulp_rpm.common import models
-from pulp_rpm.plugins.importers.yum.parse import rpm
 from pulp_rpm.plugins.importers.yum.repomd import packages, updateinfo
 from pulp_rpm.plugins.importers.yum import upload
 
