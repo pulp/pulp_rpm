@@ -24,7 +24,6 @@ _LOG = util.getLogger(__name__)
 
 REQUIRED_CONFIG_KEYS = ('relative_url', 'http', 'https')
 
-# XXX is skip_pkg_tags used? and if so, why no validation?
 OPTIONAL_CONFIG_KEYS = ('auth_ca', 'auth_cert', 'checksum_type',
                         'http_publish_dir', 'https_publish_dir', 'protected',
                         'skip', 'skip_pkg_tags', 'use_createrepo')
@@ -99,6 +98,7 @@ def validate_config(repo, config, config_conduit):
         'https_publish_dir': _validate_https_publish_dir,
         'protected': _validate_protected,
         'skip': _validate_skip,
+        'skip_pkg_tags': _validate_skip_pkg_tags,
         'use_createrepo': _validate_use_createrepo,
     }
 
@@ -244,6 +244,10 @@ def _validate_protected(protected, error_messages):
 
 def _validate_skip(skip, error_messages):
     _validate_dictionary('skip', skip, error_messages, False)
+
+
+def _validate_skip_pkg_tags(skip_pkg_tags, error_messages):
+    _validate_boolean('skip_pkg_tags', skip_pkg_tags, error_messages)
 
 
 def _validate_use_createrepo(use_createrepo, error_messages):
