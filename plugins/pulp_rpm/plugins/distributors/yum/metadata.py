@@ -50,6 +50,8 @@ class MetadataFileContext(object):
 
         self.initialize()
 
+        return self
+
     def __exit__(self, exc_type, exc_val, exc_tb):
 
         if None not in (exc_type, exc_val, exc_tb):
@@ -60,6 +62,8 @@ class MetadataFileContext(object):
             _LOG.debug(log_msg % {'m': self.metadata_file_path, 'e': err_msg})
 
         self.finalize()
+
+        return True
 
     # -- context lifecycle -----------------------------------------------------
 
@@ -149,18 +153,28 @@ class PreGeneratedMetadataContext(MetadataFileContext):
         :param metadata_category: metadata category to get pre-generated metadata for
         :type  metadata_category: str
         :param unit: unit whose metadata is being written
-        :type  unit: pulp.plugins.model.AssociatedUnit
+        :type  unit: pulp.plugins.model.Unit
         """
 
-        metadata = unit.metadata.get(metadata_category, None)
+        if 'repodata' not in unit.metadata or metadata_category not in unit.metadata['repodata']:
 
-        if not isinstance(metadata, unicode):
+            msg = _('No pre-generated metadata found for unit [%(u)s], [%(c)s]')
+            _LOG.error(msg % {'u': str(unit.unit_key), 'c': metadata_category})
 
-            msg = _('%(c)s metadata for [%(u)s] must be unicode, but is a %(t)s')
+            return
+
+        metadata = unit.metadata['repodata'][metadata_category]
+
+        if not isinstance(metadata, basestring):
+
+            msg = _('%(c)s metadata for [%(u)s] must be a string, but is a %(t)s')
             _LOG.error(msg % {'c': metadata_category.title(), 'u': unit.id, 't': str(type(metadata))})
 
             return
 
+        # this should already be unicode if it came from the db
+        # but, you know, testing...
+        metadata = unicode(metadata)
         self.metadata_file_handle.write(metadata.encode('utf-8'))
 
 # -- primary.xml file context class --------------------------------------------
@@ -188,7 +202,7 @@ class PrimaryXMLFileContext(PreGeneratedMetadataContext):
 
         attributes = {'xmlns': COMMON_NAMESPACE,
                       'xmlns:rpm': RPM_NAMESPACE,
-                      'packages': self.num_packages}
+                      'packages': str(self.num_packages)}
 
         metadata_element = ElementTree.Element('metadata', attributes)
         # add a bogus sub-element to make splitting the opening and closing tags possible
@@ -211,7 +225,7 @@ class PrimaryXMLFileContext(PreGeneratedMetadataContext):
         Add the metadata to primary.xml.gz for the given unit.
 
         :param unit: unit whose metadata is to be written
-        :type  unit: pulp.plugins.model.AssociatedUnit
+        :type  unit: pulp.plugins.model.Unit
         """
 
         self._add_unit_pre_generated_metadata('primary', unit)
