@@ -182,7 +182,7 @@ def get_repo_relative_path(repo, config=None):
     """
 
     config = config or {}
-    relative_path = config.get('relative_url', repo.id)
+    relative_path = config.get('relative_url', repo.id) or repo.id
 
     if relative_path.startswith('/'):
         relative_path = relative_path[1:]
