@@ -72,6 +72,7 @@ PUBLISH_REPORT_KEYWORDS = (STATE, TOTAL, PROCESSED, SUCCESSES, FAILURES, ERROR_D
 
 PROGRESS_REPORT = {PUBLISH_RPMS_STEP: {STATE: PUBLISH_NOT_STARTED_STATE},
                    PUBLISH_DELTA_RPMS_STEP: {STATE: PUBLISH_NOT_STARTED_STATE},
+                   PUBLISH_ERRATA_STEP: {STATE: PUBLISH_NOT_STARTED_STATE},
                    PUBLISH_PACKAGE_GROUPS_STEP: {STATE: PUBLISH_NOT_STARTED_STATE},
                    PUBLISH_PACKAGE_CATEGORIES_STEP: {STATE: PUBLISH_NOT_STARTED_STATE},
                    PUBLISH_DISTRIBUTION_STEP: {STATE: PUBLISH_NOT_STARTED_STATE},
@@ -132,7 +133,7 @@ class Publisher(object):
     def __init__(self, repo, publish_conduit, config):
         """
         :param repo: Pulp managed Yum repository
-        :type  repo: pulp.plugins..model.Repository
+        :type  repo: pulp.plugins.model.Repository
         :param publish_conduit: Conduit providing access to relative Pulp functionality
         :type  publish_conduit: pulp.plugins.conduits.repo_publish.RepoPublishConduit
         :param config: Pulp configuration for the distributor
@@ -149,7 +150,8 @@ class Publisher(object):
 
     @property
     def skip_list(self):
-        return self.config.get('skip', [])
+        skip = self.config.get('skip', {})
+        return [k for k,v in skip.items() if v]
 
     # -- publish api methods ---------------------------------------------------
 
@@ -319,7 +321,7 @@ class Publisher(object):
         if self.canceled:
             return
 
-        if not self.config['http']:
+        if not self.config.get('http'):
             self._report_progress(PUBLISH_OVER_HTTP_STEP, state=PUBLISH_SKIPPED_STATE)
             return
 
@@ -357,7 +359,7 @@ class Publisher(object):
         if self.canceled:
             return
 
-        if not self.config['https']:
+        if not self.config.get('https'):
             self._report_progress(PUBLISH_OVER_HTTPS_STEP, state=PUBLISH_SKIPPED_STATE)
             return
 
@@ -488,6 +490,7 @@ class Publisher(object):
 
             details[ERRORS_LIST].extend(self.progress_report[step].get(ERROR_DETAILS, []))
 
+        # XXX not sure this is the best criteria, maybe 1 or more failure states?
         if details[ERRORS_LIST]:
             return self.conduit.build_failure_report(summary, details)
 
