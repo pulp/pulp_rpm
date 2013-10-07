@@ -213,7 +213,7 @@ class YumDistributorConfigurationTests(unittest.TestCase):
 
     def test_relative_url_bad_characters(self):
         error_messages = []
-        url = '(**$)*@+='
+        url = 'nope(**$)*@+='
 
         configuration._validate_relative_url(url, error_messages)
 
