@@ -466,7 +466,7 @@ class Publisher(object):
             error_details.extend(traceback.format_tb(tb))
 
         if e is not None:
-            error_details.append(e.message)
+            error_details.append(e.message or str(e))
 
         if error_details:
             self.progress_report[step][ERROR_DETAILS].append('\n'.join(error_details))
