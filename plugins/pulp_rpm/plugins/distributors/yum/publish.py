@@ -349,7 +349,6 @@ class Publisher(object):
         repo_relative_dir = configuration.get_repo_relative_path(self.repo, self.config)
         repo_http_publish_dir = os.path.join(root_http_publish_dir, repo_relative_dir)
 
-
         try:
             if os.path.exists(repo_http_publish_dir):
                 _LOG.debug('Removing old HTTP published directory: %s' % repo_http_publish_dir)
