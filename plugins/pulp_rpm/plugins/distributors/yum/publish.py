@@ -350,8 +350,10 @@ class Publisher(object):
 
         try:
             if not os.path.exists(parent_dir):
+                _LOG.debug('Creating directory: %s' % parent_dir)
                 os.makedirs(parent_dir, mode=0770)
 
+            _LOG.debug('Copying tree from %s to %s' % (self.repo.working_dir, repo_http_publish_dir))
             shutil.copytree(self.repo.working_dir, repo_http_publish_dir, symlinks=True)
 
         except Exception, e:
@@ -377,7 +379,7 @@ class Publisher(object):
             self._report_progress(PUBLISH_OVER_HTTPS_STEP, state=PUBLISH_SKIPPED_STATE)
             return
 
-        _LOG.debug('Creating HTTP published directory for repository: %s' % self.repo.id)
+        _LOG.debug('Creating HTTPS published directory for repository: %s' % self.repo.id)
 
         self._init_step_progress_report(PUBLISH_OVER_HTTPS_STEP)
         self._report_progress(PUBLISH_OVER_HTTPS_STEP, total=1)
@@ -390,8 +392,10 @@ class Publisher(object):
 
         try:
             if not os.path.exists(parent_dir):
+                _LOG.debug('Creating directory: %s' % parent_dir)
                 os.makedirs(parent_dir, mode=0770)
 
+            _LOG.debug('Copying tree from %s to %s' % (self.repo.working_dir, repo_https_publish_dir))
             shutil.copytree(self.repo.working_dir, repo_https_publish_dir, symlinks=True)
 
         except Exception, e:
@@ -590,6 +594,7 @@ class Publisher(object):
         :param path: path of the directory to clear out
         :type  path: str
         """
+        _LOG.debug('Clearing out directory: %s' % path)
 
         if not os.path.exists(path):
             return
