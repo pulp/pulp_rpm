@@ -240,7 +240,7 @@ class YumDistributorMetadataTests(unittest.TestCase):
         context = metadata.PrimaryXMLFileContext(self.metadata_file_dir, 0)
 
         context._open_metadata_file_handle()
-        context._write_opening_tag()
+        context._write_root_tag_open()
         context._close_metadata_file_handle()
 
         self.assertNotEqual(os.path.getsize(path), 0)
@@ -251,12 +251,12 @@ class YumDistributorMetadataTests(unittest.TestCase):
 
         context._open_metadata_file_handle()
 
-        self.assertRaises(NotImplementedError, context._write_closing_tag)
+        self.assertRaises(NotImplementedError, context._write_root_tag_close)
 
-        context._write_opening_tag()
+        context._write_root_tag_open()
 
         try:
-            context._write_closing_tag()
+            context._write_root_tag_close()
 
         except Exception, e:
             self.fail(e.message)

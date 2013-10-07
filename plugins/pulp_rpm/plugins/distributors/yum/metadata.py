@@ -78,7 +78,7 @@ class MetadataFileContext(object):
 
         self._open_metadata_file_handle()
         self._write_xml_header()
-        self._write_opening_tag()
+        self._write_root_tag_open()
 
     def finalize(self):
         """
@@ -88,7 +88,7 @@ class MetadataFileContext(object):
             # finalize has already been run or initialize has not been run
             return
 
-        self._write_closing_tag()
+        self._write_root_tag_close()
         self._close_metadata_file_handle()
 
     # -- metadata file lifecycle -----------------------------------------------
@@ -134,10 +134,10 @@ class MetadataFileContext(object):
         xml_header = u'<?xml version="1.0" encoding="UTF-8"?>\n'.encode('utf-8')
         self.metadata_file_handle.write(xml_header)
 
-    def _write_opening_tag(self):
+    def _write_root_tag_open(self):
         raise NotImplementedError()
 
-    def _write_closing_tag(self):
+    def _write_root_tag_close(self):
         raise NotImplementedError()
 
     def _close_metadata_file_handle(self):
@@ -209,7 +209,7 @@ class PrimaryXMLFileContext(PreGeneratedMetadataContext):
 
         self.num_packages = num_units
 
-    def _write_opening_tag(self):
+    def _write_root_tag_open(self):
 
         attributes = {'xmlns': COMMON_NAMESPACE,
                       'xmlns:rpm': RPM_NAMESPACE,
@@ -226,10 +226,10 @@ class PrimaryXMLFileContext(PreGeneratedMetadataContext):
         self.metadata_file_handle.write(opening_tag + '\n')
 
         # create the closing tag method on the fly
-        def _write_closing_tag_closure(*args):
+        def _write_root_tag_close_closure(*args):
             self.metadata_file_handle.write(closing_tag + '\n')
 
-        self._write_closing_tag = _write_closing_tag_closure
+        self._write_root_tag_close = _write_root_tag_close_closure
 
     def add_unit_metadata(self, unit):
         """
