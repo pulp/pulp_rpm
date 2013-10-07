@@ -175,7 +175,7 @@ class Publisher(object):
 
         self._clear_directory(self.repo.working_dir)
 
-        _LOG.debug('Publish completed with progress: %s' % pformat(self.progress_report))
+        _LOG.debug('Publish completed with progress:\n%s' % pformat(self.progress_report))
         return self._build_final_report()
 
     def cancel(self):
@@ -358,7 +358,8 @@ class Publisher(object):
             shutil.copytree(self.repo.working_dir, repo_http_publish_dir, symlinks=True)
 
         except Exception, e:
-            self._record_failure(PUBLISH_OVER_HTTP_STEP, e)
+            tb = sys.exc_info()[2]
+            self._record_failure(PUBLISH_OVER_HTTP_STEP, e, tb)
 
         else:
             self.progress_report[PUBLISH_OVER_HTTP_STEP][SUCCESSES] = 1
@@ -398,7 +399,8 @@ class Publisher(object):
             shutil.copytree(self.repo.working_dir, repo_https_publish_dir, symlinks=True)
 
         except Exception, e:
-            self._record_failure(PUBLISH_OVER_HTTPS_STEP, e)
+            tb = sys.exc_info()[2]
+            self._record_failure(PUBLISH_OVER_HTTPS_STEP, e, tb)
 
         else:
             self.progress_report[PUBLISH_OVER_HTTPS_STEP][SUCCESSES] = 1
