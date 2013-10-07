@@ -14,6 +14,7 @@
 import copy
 import os
 import shutil
+import sys
 import traceback
 from gettext import gettext as _
 from pprint import pformat
