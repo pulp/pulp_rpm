@@ -13,10 +13,11 @@
 
 import os
 import unittest
+
 import mock
+from pulp.plugins.util import verification
 
 from pulp_rpm.plugins.importers.yum import listener
-from pulp.plugins.util import verification
 
 
 class TestContentListener(unittest.TestCase):
@@ -35,8 +36,7 @@ class TestContentListener(unittest.TestCase):
         content_listener = listener.ContentListener(self.sync_conduit, self.progress_report,
                                                     self.sync_call_config, self.metadata_files)
         content_listener.download_succeeded(self.report)
-        self.progress_report['content'].success.assert_called_once()
-
+        self.progress_report['content'].success.assert_called_once_with(self.report.data)
 
     @mock.patch('__builtin__.open', autospec=True)
     @mock.patch('pulp.plugins.util.verification.verify_checksum')
@@ -49,7 +49,7 @@ class TestContentListener(unittest.TestCase):
                                                     self.sync_call_config, self.metadata_files)
         content_listener.download_succeeded(self.report)
 
-        self.progress_report['content'].success.assert_called_once()
+        self.progress_report['content'].success.assert_called_once_with(self.report.data)
         mock_verify_size.assert_called_once()
         mock_verify_checksum.assert_called_once()
 
@@ -68,7 +68,7 @@ class TestContentListener(unittest.TestCase):
         content_listener.download_succeeded(self.report)
 
         mock_verify_size.assert_called_once()
-        self.assertEquals(0, self.progress_report['content'].success.called)
+        self.assertFalse(self.progress_report['content'].success.called)
 
     @mock.patch('__builtin__.open', autospec=True)
     @mock.patch('pulp.plugins.util.verification.verify_checksum')
@@ -85,7 +85,7 @@ class TestContentListener(unittest.TestCase):
         content_listener.download_succeeded(self.report)
 
         mock_verify_checksum.assert_called_once()
-        self.assertEquals(0, self.progress_report['content'].success.called)
+        self.assertFalse(self.progress_report['content'].success.called)
 
     @mock.patch('__builtin__.open', autospec=True)
     @mock.patch('pulp.plugins.util.verification.verify_checksum')
@@ -102,4 +102,4 @@ class TestContentListener(unittest.TestCase):
         content_listener.download_succeeded(self.report)
 
         mock_verify_checksum.assert_called_once()
-        self.assertEquals(0, self.progress_report['content'].success.called)
+        self.assertFalse(self.progress_report['content'].success.called)
