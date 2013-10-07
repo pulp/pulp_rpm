@@ -348,12 +348,11 @@ class Publisher(object):
         repo_relative_dir = configuration.get_repo_relative_path(self.repo, self.config)
         repo_http_publish_dir = os.path.join(root_http_publish_dir, repo_relative_dir)
 
-        parent_dir = os.path.dirname(repo_http_publish_dir)
 
         try:
-            if not os.path.exists(parent_dir):
-                _LOG.debug('Creating directory: %s' % parent_dir)
-                os.makedirs(parent_dir, mode=0770)
+            if not os.path.exists(repo_http_publish_dir):
+                _LOG.debug('Removing old HTTP published directory: %s' % repo_http_publish_dir)
+                shutil.rmtree(repo_http_publish_dir)
 
             _LOG.debug('Copying tree from %s to %s' % (self.repo.working_dir, repo_http_publish_dir))
             shutil.copytree(self.repo.working_dir, repo_http_publish_dir, symlinks=True)
@@ -390,12 +389,10 @@ class Publisher(object):
         repo_relative_path = configuration.get_repo_relative_path(self.repo, self.config)
         repo_https_publish_dir = os.path.join(root_https_publish_dir, repo_relative_path)
 
-        parent_dir = os.path.dirname(repo_https_publish_dir)
-
         try:
-            if not os.path.exists(parent_dir):
-                _LOG.debug('Creating directory: %s' % parent_dir)
-                os.makedirs(parent_dir, mode=0770)
+            if not os.path.exists(repo_https_publish_dir):
+                _LOG.debug('Removing old HTTPS published directory: %s' % repo_http_publish_dir)
+                shutil.rmtree(repo_https_publish_dir)
 
             _LOG.debug('Copying tree from %s to %s' % (self.repo.working_dir, repo_https_publish_dir))
             shutil.copytree(self.repo.working_dir, repo_https_publish_dir, symlinks=True)
