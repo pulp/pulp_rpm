@@ -16,6 +16,7 @@ import os
 import shutil
 import traceback
 from gettext import gettext as _
+from pprint import pformat
 
 from pulp.server.db.model.criteria import UnitAssociationCriteria
 
@@ -174,6 +175,7 @@ class Publisher(object):
 
         self._clear_directory(self.repo.working_dir)
 
+        _LOG.debug('Publish completed with progress: %s' % pformat(self.progress_report))
         return self._build_final_report()
 
     def cancel(self):
