@@ -351,7 +351,7 @@ class Publisher(object):
 
 
         try:
-            if not os.path.exists(repo_http_publish_dir):
+            if os.path.exists(repo_http_publish_dir):
                 _LOG.debug('Removing old HTTP published directory: %s' % repo_http_publish_dir)
                 shutil.rmtree(repo_http_publish_dir)
 
@@ -392,7 +392,7 @@ class Publisher(object):
         repo_https_publish_dir = os.path.join(root_https_publish_dir, repo_relative_path)
 
         try:
-            if not os.path.exists(repo_https_publish_dir):
+            if os.path.exists(repo_https_publish_dir):
                 _LOG.debug('Removing old HTTPS published directory: %s' % repo_http_publish_dir)
                 shutil.rmtree(repo_https_publish_dir)
 
