@@ -72,6 +72,9 @@ class MetadataFileContext(object):
         Create the new metadata file and write the XML header and opening root
         level tag into it.
         """
+        if self.metadata_file_handle is not None:
+            # initialize has already, at least partially, been run
+            return
 
         self._open_metadata_file_handle()
         self._write_xml_header()
@@ -81,6 +84,9 @@ class MetadataFileContext(object):
         """
         Write the closing root level tag into the metadata file and close it.
         """
+        if self.metadata_file_handle is None:
+            # finalize has already been run or initialize has not been run
+            return
 
         self._write_closing_tag()
         self._close_metadata_file_handle()
