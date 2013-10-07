@@ -393,7 +393,7 @@ class Publisher(object):
 
         try:
             if os.path.exists(repo_https_publish_dir):
-                _LOG.debug('Removing old HTTPS published directory: %s' % repo_http_publish_dir)
+                _LOG.debug('Removing old HTTPS published directory: %s' % repo_https_publish_dir)
                 shutil.rmtree(repo_https_publish_dir)
 
             _LOG.debug('Copying tree from %s to %s' % (self.repo.working_dir, repo_https_publish_dir))
