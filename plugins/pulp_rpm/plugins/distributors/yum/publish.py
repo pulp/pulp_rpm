@@ -162,6 +162,7 @@ class Publisher(object):
         :return: report describing the publication
         :rtype:  pulp.plugins.model.PublishReport
         """
+        _LOG.debug('Starting Yum HTTP/HTTPS publish for repository: %s' % self.repo.id)
 
         if not os.path.exists(self.repo.working_dir):
             os.makedirs(self.repo.working_dir, mode=0770)
@@ -179,6 +180,7 @@ class Publisher(object):
         """
         Cancel an in-progress publication.
         """
+        _LOG.debug('Canceling publish for repository: %s' % self.repo.id)
 
         if self.canceled:
             return
@@ -204,6 +206,8 @@ class Publisher(object):
         if TYPE_ID_RPM in self.skip_list:
             self._report_progress(PUBLISH_RPMS_STEP, state=PUBLISH_SKIPPED_STATE)
             return
+
+        _LOG.debug('Publishing RPMs/SRPMs for repository: %s' % self.repo.id)
 
         self._init_step_progress_report(PUBLISH_RPMS_STEP)
 
@@ -259,6 +263,8 @@ class Publisher(object):
             self._report_progress(PUBLISH_DELTA_RPMS_STEP, state=PUBLISH_SKIPPED_STATE)
             return
 
+        _LOG.debug('Publishing DRPMs for repository: %s' % self.repo.id)
+
         self._init_step_progress_report(PUBLISH_DELTA_RPMS_STEP)
 
     def _publish_errata(self):
@@ -280,6 +286,8 @@ class Publisher(object):
         if TYPE_ID_PKG_GROUP in self.skip_list:
             self._report_progress(PUBLISH_PACKAGE_GROUPS_STEP, state=PUBLISH_SKIPPED_STATE)
             return
+
+        _LOG.debug('Publishing Package Groups for repository: %s' % self.repo.id)
 
         self._init_step_progress_report(PUBLISH_PACKAGE_GROUPS_STEP)
 
@@ -303,6 +311,8 @@ class Publisher(object):
             self._report_progress(PUBLISH_DISTRIBUTION_STEP, state=PUBLISH_SKIPPED_STATE)
             return
 
+        _LOG.debug('Publishing Distribution for repository: %s' % self.repo.id)
+
         self._init_step_progress_report(PUBLISH_DISTRIBUTION_STEP)
 
     def _publish_metadata(self):
@@ -314,6 +324,8 @@ class Publisher(object):
             self._report_progress(PUBLISH_METADATA_STEP, state=PUBLISH_SKIPPED_STATE)
             return
 
+        _LOG.debug('Publishing Yum Repository Metadata for repository: %s' % self.repo.id)
+
         self._init_step_progress_report(PUBLISH_METADATA_STEP)
 
     def _publish_over_http(self):
@@ -324,6 +336,8 @@ class Publisher(object):
         if not self.config.get('http'):
             self._report_progress(PUBLISH_OVER_HTTP_STEP, state=PUBLISH_SKIPPED_STATE)
             return
+
+        _LOG.debug('Creating HTTP published directory for repository: %s' % self.repo.id)
 
         self._init_step_progress_report(PUBLISH_OVER_HTTP_STEP)
         self._report_progress(PUBLISH_OVER_HTTP_STEP, total=1)
@@ -362,6 +376,8 @@ class Publisher(object):
         if not self.config.get('https'):
             self._report_progress(PUBLISH_OVER_HTTPS_STEP, state=PUBLISH_SKIPPED_STATE)
             return
+
+        _LOG.debug('Creating HTTP published directory for repository: %s' % self.repo.id)
 
         self._init_step_progress_report(PUBLISH_OVER_HTTPS_STEP)
         self._report_progress(PUBLISH_OVER_HTTPS_STEP, total=1)
@@ -507,6 +523,7 @@ class Publisher(object):
         :param working_sub_dir: working subdirectory to create symlink in
         :type  working_sub_dir: str
         """
+        _LOG.debug('Creating symbolic link to content: %s' % unit.unit_key.get('name', 'unknown'))
 
         source_path = unit.storage_path
         relative_path = util.get_relpath_from_unit(unit)

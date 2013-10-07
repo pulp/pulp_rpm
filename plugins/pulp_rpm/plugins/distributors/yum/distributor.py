@@ -86,6 +86,8 @@ class YumHTTPDistributor(Distributor):
         :return: tuple of (bool, str) to describe the result
         :rtype:  tuple
         """
+        _LOG.debug('Validating yum repository configuration: %s' % repo.id)
+
         return configuration.validate_config(repo, config, config_conduit)
 
     def distributor_added(self, repo, config):
@@ -131,6 +133,8 @@ class YumHTTPDistributor(Distributor):
         :return: report describing the publish run
         :rtype:  pulp.plugins.model.PublishReport
         """
+        _LOG.debug('Publishing yum repository: %s' % repo.id)
+
         self._publisher = publish.Publisher(repo, publish_conduit, config)
         self._publisher.publish()
 
@@ -143,6 +147,8 @@ class YumHTTPDistributor(Distributor):
         :param call_report: call report for the call to cancel
         :type call_report: pulp.server.dispatch.call.CallReport
         """
+        _LOG.debug('Canceling yum repository publish')
+
         self.canceled = True
         if self._publisher is not None:
             self._publisher.cancel()

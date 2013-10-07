@@ -89,6 +89,7 @@ class MetadataFileContext(object):
 
     def _open_metadata_file_handle(self):
         assert self.metadata_file_handle is None
+        _LOG.debug('Opening metadata file: %s' % self.metadata_file_path)
 
         if not os.path.exists(self.metadata_file_path):
 
@@ -121,6 +122,8 @@ class MetadataFileContext(object):
 
     def _write_xml_header(self):
         assert self.metadata_file_handle is not None
+        _LOG.debug('Writing XML header into metadata file: %s' % self.metadata_file_path)
+
         # XXX hackish and ugly, I'm sure there's a library routine to do this
         xml_header = u'<?xml version="1.0" encoding="UTF-8"?>\n'.encode('utf-8')
         self.metadata_file_handle.write(xml_header)
@@ -133,6 +136,7 @@ class MetadataFileContext(object):
 
     def _close_metadata_file_handle(self):
         assert self.metadata_file_handle is not None
+        _LOG.debug('Closing metadata file: %s' % self.metadata_file_path)
 
         self.metadata_file_handle.flush()
         self.metadata_file_handle.close()
@@ -155,6 +159,7 @@ class PreGeneratedMetadataContext(MetadataFileContext):
         :param unit: unit whose metadata is being written
         :type  unit: pulp.plugins.model.Unit
         """
+        _LOG.debug('Writing pre-generated metadata for unit: %s' % unit.unit_key.get('name', 'unknown'))
 
         if 'repodata' not in unit.metadata or metadata_category not in unit.metadata['repodata']:
 

@@ -45,6 +45,7 @@ def load_config(config_file_path):
     :return: Parser representing the parsed configuration file
     :rtype:  SafeConfigParser
     """
+    _LOG.debug('Loading configuration file: %s' % config_file_path)
 
     config = SafeConfigParser()
     config.read(config_file_path)
