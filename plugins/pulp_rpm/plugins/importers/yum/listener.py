@@ -128,7 +128,7 @@ class ContentListener(DownloadEventListener):
 
         try:
             with open(report.destination) as dest_file:
-              verification.verify_size(dest_file, model.metadata['size'])
+                verification.verify_size(dest_file, model.metadata['size'])
 
         except verification.VerificationException, e:
             error_report = {
