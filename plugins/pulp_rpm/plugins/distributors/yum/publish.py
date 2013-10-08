@@ -573,7 +573,7 @@ class Publisher(object):
                     return
 
                 msg = _('Removing old link [%(l)s] that was pointing to [%(t)s]')
-                _LOG.warn(msg % {'l': link_path, 't': link_target})
+                _LOG.debug(msg % {'l': link_path, 't': link_target})
                 os.unlink(link_path)
 
             else:
