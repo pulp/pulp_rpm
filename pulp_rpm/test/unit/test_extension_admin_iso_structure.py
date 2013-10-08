@@ -67,6 +67,9 @@ class TestAddPublishSection(rpm_support_base.PulpClientTests):
         run_command = publish_section.commands['run']
         self.assertTrue(isinstance(run_command, sync_publish.RunPublishRepositoryCommand))
 
+        # The status command should have been added to the sync_section
+        status_command = publish_section.commands['status']
+        self.assertTrue(isinstance(status_command, sync_publish.PublishStatusCommand))
 
 class TestAddRepoSection(rpm_support_base.PulpClientTests):
     """
