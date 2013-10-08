@@ -24,7 +24,7 @@ TYPE_ID_IMPORTER_YUM = "yum_importer"
 YUM_IMPORTER_ID = TYPE_ID_IMPORTER_YUM
 
 # Set when the distributor is added to the repo and later to refer to it specifically
-YUM_DISTRIBUTOR_ID = 'yum_distributor'
+YUM_DISTRIBUTOR_ID = TYPE_ID_DISTRIBUTOR_YUM
 
 # Set when the distributor is added to the repo and later to refer to it specifically
 EXPORT_DISTRIBUTOR_ID = 'export_distributor'
@@ -32,7 +32,7 @@ EXPORT_GROUP_DISTRIBUTOR_ID = 'group_export_distributor'
 
 TYPE_ID_ISO = models.ISO.TYPE
 TYPE_ID_RPM = models.RPM.TYPE
-TYPE_ID_SRPM = "srpm"
+TYPE_ID_SRPM = models.SRPM.TYPE
 UNIT_KEY_RPM = (
     "name", "epoch", "version", "release", "arch", "checksum", "checksumtype")
 
