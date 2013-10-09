@@ -81,6 +81,8 @@ def add_publish_section(context, repo_section):
     publish_section.add_command(
         sync_publish.RunPublishRepositoryCommand(
             context, renderer, distributor_id=ids.TYPE_ID_DISTRIBUTOR_ISO))
+    publish_section.add_command(
+        sync_publish.PublishStatusCommand(context, renderer))
 
 
 def add_repo_section(context, parent_section):
