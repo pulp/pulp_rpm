@@ -22,10 +22,15 @@ from pulp_rpm.yum_plugin import util
 
 _LOG = util.getLogger(__name__)
 
-REPODATA_DIR_NAME = 'repodata'
+REPO_DATA_DIR_NAME = 'repodata'
+
+FILE_LISTS_XML_FILE_NAME = 'filelists.xml.gz'
+OTHER_XML_FILE_NAME = 'other.xml.gz'
 PRIMARY_XML_FILE_NAME = 'primary.xml.gz'
 
 COMMON_NAMESPACE = 'http://linux.duke.edu/metadata/common'
+FILE_LISTS_NAMESPACE = 'http://linux.duke.edu/metadata/filelists'
+OTHER_NAMESPACE = 'http://linux.duke.edu/metadata/other'
 RPM_NAMESPACE = 'http://linux.duke.edu/metadata/rpm'
 
 # -- base metadata file context class ------------------------------------------
@@ -165,7 +170,8 @@ class PreGeneratedMetadataContext(MetadataFileContext):
         :param unit: unit whose metadata is being written
         :type  unit: pulp.plugins.model.Unit
         """
-        _LOG.debug('Writing pre-generated metadata for unit: %s' % unit.unit_key.get('name', 'unknown'))
+        _LOG.debug('Writing pre-generated %s metadata for unit: %s' %
+                   (metadata_category, unit.unit_key.get('name', 'unknown')))
 
         if 'repodata' not in unit.metadata or metadata_category not in unit.metadata['repodata']:
 
@@ -188,6 +194,95 @@ class PreGeneratedMetadataContext(MetadataFileContext):
         metadata = unicode(metadata)
         self.metadata_file_handle.write(metadata.encode('utf-8'))
 
+# -- filelists.xml file context class ------------------------------------------
+
+class FilelistsXMLFileContext(PreGeneratedMetadataContext):
+    """
+    Context manager for generating the filelists.xml.gz file.
+    """
+
+    def __init__(self, working_dir, num_units):
+        """
+        :param working_dir: working directory to create the filelists.xml.gz in
+        :type  working_dir: str
+        :param num_units: total number of units whose metadata will be written
+                          into the filelists.xml.gz metadata file
+        :type  num_units: int
+        """
+
+        metadata_file_path = os.path.join(working_dir, REPO_DATA_DIR_NAME, FILE_LISTS_XML_FILE_NAME)
+        super(FilelistsXMLFileContext, self).__init__(metadata_file_path)
+
+        self.num_packages = num_units
+
+    def _write_root_tag_open(self):
+
+        attributes = {'xmlns': FILE_LISTS_NAMESPACE,
+                      'packages': str(self.num_packages)}
+
+        metadata_element = ElementTree.Element('filelists', attributes)
+        bogus_element = ElementTree.SubElement(metadata_element, '')
+
+        metadata_tags_string = ElementTree.tostring(metadata_element, 'utf-8')
+        bogus_tag_string = ElementTree.tostring(bogus_element, 'utf-8')
+        opening_tag, closing_tag = metadata_tags_string.split(bogus_tag_string, 1)
+
+        self.metadata_file_handle.write(opening_tag + '\n')
+
+        def _write_root_tag_close_closure(*args):
+            self.metadata_file_handle.write(closing_tag + '\n')
+
+        self._write_root_tag_close = _write_root_tag_close_closure
+
+    def add_unit_metadata(self, unit):
+
+        self._add_unit_pre_generated_metadata('filelists', unit)
+
+# -- other.xml file context class ----------------------------------------------
+
+class OtherXMLFileContext(PreGeneratedMetadataContext):
+    """
+    Context manager for generating the other.xml.gz file.
+    """
+
+    def __init__(self, working_dir, num_units):
+        """
+        :param working_dir: working directory to create the other.xml.gz in
+        :type  working_dir: str
+        :param num_units: total number of units whose metadata will be written
+                          into the other.xml.gz metadata file
+        :type  num_units: int
+        """
+
+        metadata_file_path = os.path.join(working_dir, REPO_DATA_DIR_NAME, OTHER_XML_FILE_NAME)
+        super(OtherXMLFileContext, self).__init__(metadata_file_path)
+
+        self.num_packages = num_units
+
+    def _write_root_tag_open(self):
+
+        attributes = {'xmlns': OTHER_NAMESPACE,
+                      'packages': str(self.num_packages)}
+
+        metadata_element = ElementTree.Element('otherdata', attributes)
+        bogus_element = ElementTree.SubElement(metadata_element, '')
+
+        metadata_tags_string = ElementTree.tostring(metadata_element, 'utf-8')
+        bogus_tag_string = ElementTree.tostring(bogus_element, 'utf-8')
+        opening_tag, closing_tag = metadata_tags_string.split(bogus_tag_string, 1)
+
+        self.metadata_file_handle.write(opening_tag + '\n')
+
+        def _write_root_tag_close_closure(*args):
+            self.metadata_file_handle.write(closing_tag + '\n')
+
+        self._write_root_tag_close = _write_root_tag_close_closure
+
+    def add_unit_metadata(self, unit):
+
+        # XXX do all units have other metadata?
+        self._add_unit_pre_generated_metadata('other', unit)
+
 # -- primary.xml file context class --------------------------------------------
 
 class PrimaryXMLFileContext(PreGeneratedMetadataContext):
@@ -204,7 +299,7 @@ class PrimaryXMLFileContext(PreGeneratedMetadataContext):
         :type  num_units: int
         """
 
-        metadata_file_path = os.path.join(working_dir, REPODATA_DIR_NAME, PRIMARY_XML_FILE_NAME)
+        metadata_file_path = os.path.join(working_dir, REPO_DATA_DIR_NAME, PRIMARY_XML_FILE_NAME)
         super(PrimaryXMLFileContext, self).__init__(metadata_file_path)
 
         self.num_packages = num_units
