@@ -338,6 +338,8 @@ class YumDistributorPublishTests(unittest.TestCase):
             self.assertTrue(os.path.exists(path))
             self.assertTrue(os.path.islink(path))
 
+        self.assertTrue(os.path.exists(os.path.join(self.working_dir, 'repodata/filelists.xml.gz')))
+        self.assertTrue(os.path.exists(os.path.join(self.working_dir, 'repodata/other.xml.gz')))
         self.assertTrue(os.path.exists(os.path.join(self.working_dir, 'repodata/primary.xml.gz')))
 
         self.assertEqual(self.publisher.progress_report[publish.PUBLISH_RPMS_STEP][publish.STATE], publish.PUBLISH_FINISHED_STATE)
