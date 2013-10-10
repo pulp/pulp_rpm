@@ -124,6 +124,9 @@ DETAILS_REPORT = {ERRORS_LIST: [],
 PACKAGE_FIELDS = ['id', 'name', 'version', 'release', 'arch', 'epoch',
                   '_storage_path', 'checksum', 'checksumtype', 'repodata']
 
+PACKAGE_FIELDS_NO_METADATA = ['id', 'name', 'version', 'release', 'arch', 'epoch',
+                              '_storage_path', 'checksum', 'checksumtype']
+
 # -- publisher class -----------------------------------------------------------
 
 class Publisher(object):
@@ -170,6 +173,7 @@ class Publisher(object):
             os.makedirs(self.repo.working_dir, mode=0770)
 
         self._publish_rpms()
+        self._publish_errata()
 
         self._publish_over_http()
         self._publish_over_https()
@@ -279,7 +283,50 @@ class Publisher(object):
             self._report_progress(PUBLISH_ERRATA_STEP, state=PUBLISH_SKIPPED_STATE)
             return
 
+        _LOG.debug('Publishing errata for repository: %s' % self.repo.id)
+
         self._init_step_progress_report(PUBLISH_ERRATA_STEP)
+
+        criteria = UnitAssociationCriteria(type_ids=[TYPE_ID_ERRATA])
+
+        erratum_unit_list = self.conduit.get_units(criteria)
+
+        if not erratum_unit_list:
+            self._report_progress(PUBLISH_ERRATA_STEP, state=PUBLISH_FINISHED_STATE, total=0)
+            return
+
+        self.progress_report[PUBLISH_ERRATA_STEP][TOTAL] = len(erratum_unit_list)
+
+        with metadata.UpdateinfoXMLFileContext(self.repo.working_dir) as updateinfo_context:
+
+            self._report_progress(PUBLISH_ERRATA_STEP)
+
+            for erratum_unit in erratum_unit_list:
+
+                # XXX no idea if this is correct
+                filters = {'_id': {'$in': erratum_unit.metadata['rpm']}}
+                criteria = UnitAssociationCriteria(type_ids=[TYPE_ID_RPM], unit_filters=filters,
+                                                   unit_fields=PACKAGE_FIELDS_NO_METADATA)
+
+                rpm_unit_list = self.conduit.get_units(criteria)
+
+                try:
+                    updateinfo_context.add_unit_metadata(erratum_unit, rpm_unit_list)
+
+                except Exception, e:
+                    self._record_failure(PUBLISH_ERRATA_STEP, e)
+
+                else:
+                    self.progress_report[PUBLISH_ERRATA_STEP][SUCCESSES] += 1
+
+                self.progress_report[PUBLISH_ERRATA_STEP][PROCESSED] += 1
+
+        if self.progress_report[PUBLISH_ERRATA_STEP][FAILURES]:
+            self._report_progress(PUBLISH_ERRATA_STEP, state=PUBLISH_FAILED_STATE)
+
+        else:
+            self._report_progress(PUBLISH_ERRATA_STEP, state=PUBLISH_FINISHED_STATE)
+
 
     def _publish_package_groups(self):
 

@@ -24,6 +24,7 @@ _LOG = util.getLogger(__name__)
 
 REPODATA_DIR_NAME = 'repodata'
 PRIMARY_XML_FILE_NAME = 'primary.xml.gz'
+UPDATE_INFO_XML_FILE_NAME = 'updateinfo.xml.gz'
 
 COMMON_NAMESPACE = 'http://linux.duke.edu/metadata/common'
 RPM_NAMESPACE = 'http://linux.duke.edu/metadata/rpm'
@@ -240,4 +241,97 @@ class PrimaryXMLFileContext(PreGeneratedMetadataContext):
         """
 
         self._add_unit_pre_generated_metadata('primary', unit)
+
+# -- updateinfo.xml file context -----------------------------------------------
+
+class UpdateinfoXMLFileContext(MetadataFileContext):
+
+    def __init__(self, working_dir):
+
+        metadata_file_path = os.path.join(working_dir, REPODATA_DIR_NAME, UPDATE_INFO_XML_FILE_NAME)
+        super(UpdateinfoXMLFileContext, self).__init__(metadata_file_path)
+
+    def _write_root_tag_open(self):
+
+        self.metadata_file_handle.write('<updates>\n')
+
+    def _write_root_tag_close(self):
+
+        self.metadata_file_handle.write('</updates>\n')
+
+    def add_unit_metadata(self, erratum_unit, rpm_unit_list):
+
+        update_attributes = {'status': erratum_unit.metdata['status'],
+                             'type': erratum_unit.metdata['type'],
+                             'version': erratum_unit.metdata['version'],
+                             # XXX this field doesn't currently exist in our erratum schema
+                             'from': erratum_unit.metdata.get('from', '')}
+        update_element = ElementTree.ElementTree('update', update_attributes)
+
+        id_element = ElementTree.SubElement(update_element, 'id')
+        id_element.text = erratum_unit.unit_key['id']
+
+        title_element = ElementTree.SubElement(update_element, 'title')
+        title_element.text = erratum_unit.metdata['title']
+
+        release_element = ElementTree.SubElement(update_element, 'release')
+        release_element.text = erratum_unit.metdata['release']
+
+        issued_attributes = {'date': erratum_unit.metdata['issued']}
+        issued_element = ElementTree.SubElement(update_element, 'issued', issued_attributes)
+
+        # XXX this element doesn't currently exist in our erratum schema
+        rights_element = ElementTree.SubElement(update_element, 'rights')
+        rights_element.text = ''
+
+        # XXX this element doesn't currently exist in our erratum schema
+        description_element = ElementTree.SubElement(update_element, 'description')
+        description_element.text = ''
+
+        # XXX this element doesn't currently exist in our erratum schema
+        solution_element = ElementTree.SubElement(update_element, 'solution')
+        solution_element.text = ''
+
+        references_element = ElementTree.SubElement(update_element, 'references')
+
+        for reference in erratum_unit.metdata.get('references', []) or []:
+
+            # XXX no idea if any of this is right
+            # need to check the parsing on the importer side
+            reference_attributes = {'href': reference['href'],
+                                    'type': reference['type'],
+                                    'title': erratum_unit.unit_key['id']}
+            reference_element = ElementTree.SubElement(references_element, 'reference', reference_attributes)
+
+        pkglist_element = ElementTree.SubElement(update_element, 'pkglist')
+
+        collection_attributes = {'short': ''} # XXX this field doesn't currently exist in our erratum schema
+        collection_element = ElementTree.SubElement(pkglist_element, 'collection', collection_attributes)
+
+        # XXX this element doesn't currently exist in our erratum schema
+        name_element = ElementTree.SubElement(collection_element, 'name')
+        name_element.text = ''
+
+        for rpm_unit in rpm_unit_list:
+
+            package_attributes = {'name': rpm_unit.unit_key['name'],
+                                  'version': rpm_unit.unit_key['version'],
+                                  'release': rpm_unit.unit_key['release'],
+                                  'epoch': rpm_unit.unit_key['epoch'] or '0',
+                                  'arch': rpm_unit.unit_key['arch']}
+            package_element = ElementTree.SubElement(collection_element, 'package', package_attributes)
+
+            filename_element = ElementTree.SubElement(package_element, 'filename')
+            # XXX don't think this is correct, probably need to pass in the working directory
+            filename_element.text = os.path.basename(rpm_unit.storage_path)
+
+            sum_attributes = {'type': rpm_unit.unit_key['checksumtype']}
+            sum_element = ElementTree.SubElement(package_element, 'sum', sum_attributes)
+            sum_element.text = rpm_unit.unit_key['checksum']
+
+        update_element_string = ElementTree.tostring(update_element, 'utf-8')
+
+        _LOG.debug('Writing updateinfo unit metadata:\n' + update_element_string)
+
+        self.metadata_file_handle.write(update_element_string + '\n')
 
