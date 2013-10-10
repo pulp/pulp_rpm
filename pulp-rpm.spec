@@ -18,7 +18,7 @@
 
 Name: pulp-rpm
 Version: 2.3.0
-Release: 0.17.beta%{?dist}
+Release: 0.18.beta%{?dist}
 Summary: Support for RPM content in the Pulp platform
 Group: Development/Languages
 License: GPLv2
@@ -279,6 +279,11 @@ A collection of yum plugins supplementing Pulp consumer operations.
 
 
 %changelog
+* Thu Oct 10 2013 Jeff Ortel <jortel@redhat.com> 2.3.0-0.18.beta
+- 975503 - Add pulp-admin iso repo publish status command (bcourt@redhat.com)
+- 999129 - create and use unique subdirectories for rpm and iso uploads
+  (skarmark@redhat.com)
+
 * Wed Oct 02 2013 Jeff Ortel <jortel@redhat.com> 2.3.0-0.17.beta
 - 1011267 - Display checksum validation errors via the RPM command line client
   (bcourt@redhat.com)
