@@ -18,8 +18,10 @@ import shutil
 from pulp.common.plugins import importer_constants
 from pulp.plugins.conduits.mixins import UnitAssociationCriteria
 from pulp.plugins.importer import Importer
+from pulp.plugins.model import SyncReport
 
 from pulp_rpm.common import constants, ids, models
+from pulp_rpm.common.progress import SyncProgressReport
 from pulp_rpm.plugins.importers.iso_importer import configuration, sync
 
 logger = logging.getLogger(__name__)
@@ -129,12 +131,13 @@ class ISOImporter(Importer):
             # Let's validate the ISO. This will raise a
             # ValueError if the ISO does not validate correctly.
             iso.validate(full_validation=validate)
-        except ValueError:
+        except ValueError, e:
             # If validation raises a ValueError, we should delete the file and raise
             os.remove(iso.storage_path)
-            raise
+            return {'success_flag': False, 'summary': e.message, 'details': None}
 
         iso.save_unit(conduit)
+        return {'success_flag': True, 'summary': None, 'details': None}
 
     def validate_config(self, repo, config):
         return configuration.validate(config)
