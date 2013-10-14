@@ -137,7 +137,9 @@ class TestISODistributor(unittest.TestCase):
     @patch('pulp_rpm.plugins.distributors.iso_distributor.distributor.publish.remove_repository_protection', autospec=True)
     def test_distributor_remove_calls_remove_repository_protection(self, mock_publish):
         repo = self._get_default_repo()
-        self.iso_distributor.distributor_removed(repo, {})
+        self.iso_distributor.get_hosting_locations = MagicMock()
+        self.iso_distributor.get_hosting_locations.return_value = []
+        self.iso_distributor.unpublish_repo(repo, {})
         mock_publish.assert_called_once_with(repo)
 
     @patch('pulp_rpm.plugins.distributors.iso_distributor.distributor.publish.configure_repository_protection', autospec=True)

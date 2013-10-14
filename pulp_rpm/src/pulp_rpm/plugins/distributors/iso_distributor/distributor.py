@@ -51,8 +51,19 @@ class ISODistributor(FileDistributor):
     def validate_config(self, repo, config, config_conduit):
         return configuration.validate(config)
 
-    def distributor_removed(self, repo, config):
-        super(FileDistributor, self).distributor_removed(repo, config)
+    def unpublish_repo(self, repo, config):
+        """
+        Perform actions necessary when upublishing a repo
+
+        Please also see the superclass method definition for more documentation on this method.
+
+        :param repo: metadata describing the repository
+        :type  repo: pulp.plugins.model.Repository
+
+        :param config: plugin configuration
+        :type  config: pulp.plugins.config.PluginCallConfiguration
+        """
+        super(ISODistributor, self).unpublish_repo(repo, config)
         publish.remove_repository_protection(repo)
 
     def get_hosting_locations(self, repo, config):
