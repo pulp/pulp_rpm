@@ -19,10 +19,9 @@ import tempfile
 import unittest
 
 from mock import MagicMock, patch
-from pulp.plugins.model import Unit
 from pulp.devel.mock_distributor import get_basic_config
-from pulp_rpm.common import constants, ids
 
+from pulp_rpm.common import constants, ids
 from pulp_rpm.plugins.distributors.iso_distributor import distributor
 
 
@@ -99,7 +98,8 @@ class TestISODistributor(unittest.TestCase):
         config = get_basic_config(**{constants.CONFIG_SERVE_HTTP: True,
                                      constants.CONFIG_SERVE_HTTPS: False})
         locations = self.iso_distributor.get_hosting_locations(repo, config)
-        self.assertListEqual([os.path.join(constants.ISO_HTTP_DIR, repo.id)], locations)
+        self.assertEquals(1, len(locations))
+        self.assertEquals(os.path.join(constants.ISO_HTTP_DIR, repo.id), locations[0])
 
     def test_get_hosting_locations_https_only(self):
         """
@@ -109,7 +109,8 @@ class TestISODistributor(unittest.TestCase):
         config = get_basic_config(**{constants.CONFIG_SERVE_HTTPS: True})
 
         locations = self.iso_distributor.get_hosting_locations(repo, config)
-        self.assertListEqual([os.path.join(constants.ISO_HTTPS_DIR, repo.id)], locations)
+        self.assertEquals(1, len(locations))
+        self.assertEquals(os.path.join(constants.ISO_HTTPS_DIR, repo.id), locations[0])
 
     def test_get_hosting_locations_https_only_default(self):
         """
@@ -118,7 +119,8 @@ class TestISODistributor(unittest.TestCase):
         repo = self._get_default_repo()
         config = get_basic_config()
         locations = self.iso_distributor.get_hosting_locations(repo, config)
-        self.assertListEqual([os.path.join(constants.ISO_HTTPS_DIR, repo.id)], locations)
+        self.assertEquals(1, len(locations))
+        self.assertEquals(os.path.join(constants.ISO_HTTPS_DIR, repo.id), locations[0])
 
     def test_get_hosting_locations_http_and_https(self):
         """
@@ -128,8 +130,9 @@ class TestISODistributor(unittest.TestCase):
         config = get_basic_config(**{constants.CONFIG_SERVE_HTTP: True,
                                      constants.CONFIG_SERVE_HTTPS: True})
         locations = self.iso_distributor.get_hosting_locations(repo, config)
-        self.assertListEqual([os.path.join(constants.ISO_HTTP_DIR, repo.id),
-                              os.path.join(constants.ISO_HTTPS_DIR, repo.id)], locations)
+        self.assertEquals(2, len(locations))
+        self.assertEquals(os.path.join(constants.ISO_HTTP_DIR, repo.id), locations[0])
+        self.assertEquals(os.path.join(constants.ISO_HTTPS_DIR, repo.id), locations[1])
 
     @patch('pulp_rpm.plugins.distributors.iso_distributor.distributor.publish.remove_repository_protection', autospec=True)
     def test_distributor_remove_calls_remove_repository_protection(self, mock_publish):

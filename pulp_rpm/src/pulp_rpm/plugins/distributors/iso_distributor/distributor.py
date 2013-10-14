@@ -52,7 +52,7 @@ class ISODistributor(FileDistributor):
         return configuration.validate(config)
 
     def distributor_removed(self, repo, config):
-        super(FileDistributor)
+        super(FileDistributor, self).distributor_removed(repo, config)
         publish.remove_repository_protection(repo)
 
     def get_hosting_locations(self, repo, config):
@@ -63,6 +63,8 @@ class ISODistributor(FileDistributor):
         :type repo: pulp.plugins.model.Repository
         :param config:    plugin configuration
         :type  config:    pulp.plugins.config.PluginConfiguration
+        :return : list of paths on the filesystem where the build directory should be copied
+        :rtype list of str
         """
 
         hosting_locations = []
