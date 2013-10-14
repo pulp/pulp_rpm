@@ -48,7 +48,8 @@ class TestUploadRPM(unittest.TestCase):
     def test_location_in_repodata(self, mock_copy, mock_get_xml):
         """This is in response to BZ 993452"""
         mock_get_xml.side_effect = self.wrap_get_package_xml
-        unit = Unit(self.model.TYPE, self.model.unit_key, self.model.metadata, self.model.relative_path)
+        unit = Unit(self.model.TYPE, self.model.unit_key, self.model.metadata,
+                    self.model.relative_path)
         self.conduit.init_unit = mock.MagicMock(spec_set=self.conduit.init_unit,
                                                 return_value=unit)
         self.conduit.save_unit = mock.MagicMock(spec_set=self.conduit.save_unit)
@@ -56,7 +57,7 @@ class TestUploadRPM(unittest.TestCase):
         report = upload.upload(self.repo, models.RPM.TYPE, self.model.unit_key,
                                self.model.metadata, self.file_path, self.conduit, {})
 
-        self.assertTrue(report.success_flag)
+        self.assertEqual(report['success_flag'], True)
         # now make sure the correct location tag exists
         saved_unit = self.conduit.save_unit.call_args[0][0]
         primary = saved_unit.metadata['repodata']['primary']
@@ -80,7 +81,8 @@ class TestUploadSRPM(unittest.TestCase):
     @mock.patch('shutil.move', autospec=True)
     def test_upload(self, mock_copy, mock_get_xml):
         mock_get_xml.side_effect = self.wrap_get_package_xml
-        unit = Unit(self.model.TYPE, self.model.unit_key, self.model.metadata, self.model.relative_path)
+        unit = Unit(self.model.TYPE, self.model.unit_key, self.model.metadata,
+                    self.model.relative_path)
         self.conduit.init_unit = mock.MagicMock(spec_set=self.conduit.init_unit,
                                                 return_value=unit)
         self.conduit.save_unit = mock.MagicMock(spec_set=self.conduit.save_unit)
@@ -88,7 +90,7 @@ class TestUploadSRPM(unittest.TestCase):
         report = upload.upload(self.repo, models.SRPM.TYPE, self.model.unit_key,
                                self.model.metadata, self.file_path, self.conduit, {})
 
-        self.assertTrue(report.success_flag)
+        self.assertEqual(report['success_flag'], True)
         # now make sure the correct location tag exists
         saved_unit = self.conduit.save_unit.call_args[0][0]
         primary = saved_unit.metadata['repodata']['primary']
@@ -130,8 +132,8 @@ class TestUploadGroup(unittest.TestCase):
         self.conduit.init_unit.assert_called_once_with(models.PackageGroup.TYPE,
                                                        unit_key, self.metadata, '')
         self.conduit.save_unit.assert_called_once_with(self.conduit.init_unit.return_value)
-        self.assertTrue(isinstance(report, SyncReport))
-        self.assertTrue(report.success_flag)
+        self.assertTrue(isinstance(report, dict))
+        self.assertEqual(report['success_flag'], True)
 
 
 WALRUS_JSON = """{
