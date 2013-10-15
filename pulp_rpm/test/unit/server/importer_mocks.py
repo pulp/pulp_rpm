@@ -18,16 +18,18 @@ from pulp.plugins.conduits.upload import UploadConduit
 from pulp.plugins.conduits.unit_import import ImportUnitConduit
 from pulp.plugins.conduits.dependency import DependencyResolutionConduit
 from pulp.plugins.config import PluginCallConfiguration
-from pulp.plugins.model import PublishReport, Unit
+from pulp.plugins.model import SyncReport, Unit
 import mock
 
 
 def get_sync_conduit(type_id=None, existing_units=None, pkg_dir=None):
     def build_failure_report(summary, details):
-        return PublishReport(False, summary, details)
+        return SyncReport(False, sync_conduit._added_count, sync_conduit._updated_count,
+                          sync_conduit._removed_count, summary, details)
 
     def build_success_report(summary, details):
-        return PublishReport(True, summary, details)
+        return SyncReport(True, sync_conduit._added_count, sync_conduit._updated_count,
+                          sync_conduit._removed_count, summary, details)
 
     def side_effect(type_id, key, metadata, rel_path):
         if rel_path and pkg_dir:
@@ -58,6 +60,7 @@ def get_sync_conduit(type_id=None, existing_units=None, pkg_dir=None):
         return ret_val
 
     sync_conduit = mock.Mock(spec=RepoSyncConduit)
+    sync_conduit._added_count = sync_conduit._updated_count = sync_conduit._removed_count = 0
     sync_conduit.init_unit.side_effect = side_effect
     sync_conduit.get_units.side_effect = get_units
     sync_conduit.save_unit = mock.Mock()
