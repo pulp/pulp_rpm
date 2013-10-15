@@ -303,15 +303,8 @@ class Publisher(object):
 
             for erratum_unit in erratum_unit_list:
 
-                # XXX no idea if this is correct
-                filters = {'_id': {'$in': erratum_unit.metadata['rpm']}}
-                criteria = UnitAssociationCriteria(type_ids=[TYPE_ID_RPM], unit_filters=filters,
-                                                   unit_fields=PACKAGE_FIELDS_NO_METADATA)
-
-                rpm_unit_list = self.conduit.get_units(criteria)
-
                 try:
-                    updateinfo_context.add_unit_metadata(erratum_unit, rpm_unit_list)
+                    updateinfo_context.add_unit_metadata(erratum_unit)
 
                 except Exception, e:
                     self._record_failure(PUBLISH_ERRATA_STEP, e)

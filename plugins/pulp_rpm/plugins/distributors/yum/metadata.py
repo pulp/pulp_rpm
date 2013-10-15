@@ -259,7 +259,7 @@ class UpdateinfoXMLFileContext(MetadataFileContext):
 
         self.metadata_file_handle.write('</updates>\n')
 
-    def add_unit_metadata(self, erratum_unit, rpm_unit_list):
+    def add_unit_metadata(self, erratum_unit):
 
         update_attributes = {'status': erratum_unit.metdata['status'],
                              'type': erratum_unit.metdata['type'],
@@ -296,11 +296,10 @@ class UpdateinfoXMLFileContext(MetadataFileContext):
 
         for reference in erratum_unit.metdata.get('references', []) or []:
 
-            # XXX no idea if any of this is right
-            # need to check the parsing on the importer side
-            reference_attributes = {'href': reference['href'],
+            reference_attributes = {'id': reference['id'],
+                                    'title': reference['title'],
                                     'type': reference['type'],
-                                    'title': erratum_unit.unit_key['id']}
+                                    'href': reference['href']}
             reference_element = ElementTree.SubElement(references_element, 'reference', reference_attributes)
 
         pkglist_element = ElementTree.SubElement(update_element, 'pkglist')
@@ -312,22 +311,28 @@ class UpdateinfoXMLFileContext(MetadataFileContext):
         name_element = ElementTree.SubElement(collection_element, 'name')
         name_element.text = ''
 
-        for rpm_unit in rpm_unit_list:
+        for package in erratum_unit.get('pkglist', {'packages': []}).get('packages', []):
 
-            package_attributes = {'name': rpm_unit.unit_key['name'],
-                                  'version': rpm_unit.unit_key['version'],
-                                  'release': rpm_unit.unit_key['release'],
-                                  'epoch': rpm_unit.unit_key['epoch'] or '0',
-                                  'arch': rpm_unit.unit_key['arch']}
+            package_attributes = {'name': package['name'],
+                                  'version': package['version'],
+                                  'release': package['release'],
+                                  'epoch': package['epoch'] or '0',
+                                  'arch': package['arch'],
+                                  'src': package.get('src', '')}
             package_element = ElementTree.SubElement(collection_element, 'package', package_attributes)
 
             filename_element = ElementTree.SubElement(package_element, 'filename')
             # XXX don't think this is correct, probably need to pass in the working directory
-            filename_element.text = os.path.basename(rpm_unit.storage_path)
+            filename_element.text = package['filename']
 
-            sum_attributes = {'type': rpm_unit.unit_key['checksumtype']}
+            sum_attributes = {'type': package['checksumtype']}
             sum_element = ElementTree.SubElement(package_element, 'sum', sum_attributes)
-            sum_element.text = rpm_unit.unit_key['checksum']
+            sum_element.text = package['checksum']
+
+            reboot_element = ElementTree.SubElement(package_element, 'reboot_suggested')
+            reboot_element.text = str(package.get('reboot_suggested', False))
+
+        # write the top-level XML element out to the file
 
         update_element_string = ElementTree.tostring(update_element, 'utf-8')
 
