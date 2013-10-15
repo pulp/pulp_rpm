@@ -233,7 +233,7 @@ class UploadErratumTests(unittest.TestCase):
         unit_key = {'id' : 'test-erratum'}
         metadata = {'a' : 'a'}
         config = PluginCallConfiguration({}, {},
-            override_config={upload.CONFIG_SKIP_LINK_ERRATUM : True})
+            override_config={upload.CONFIG_SKIP_ERRATUM_LINK : True})
         mock_conduit = mock.MagicMock()
 
         # Test

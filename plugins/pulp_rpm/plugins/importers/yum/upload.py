@@ -39,12 +39,10 @@ CHECKSUM_READ_BUFFER_SIZE = 65536
 
 # Configuration option specified to not take the steps of linking a newly
 # uploaded erratum with RPMs in the destination repository.
-CONFIG_SKIP_LINK_ERRATUM = 'skip_erratum_link'
+CONFIG_SKIP_ERRATUM_LINK = 'skip_erratum_link'
 
 _LOGGER = logging.getLogger(__name__)
 
-
-# -- exceptions ---------------------------------------------------------------
 
 # These are used by the _handle_* methods for each type so that the main driver
 # method can consistently format/word the failure report. These should not be
@@ -118,17 +116,22 @@ def upload(repo, type_id, unit_key, metadata, file_path, conduit, config):
         _LOGGER.exception(msg)
         return _fail_report(msg)
 
-    # TODO: add more info to this report?
     report = SyncReport(True, 1, 0, 0, '', {})
     return report
 
-# -- erratum upload -----------------------------------------------------------
 
 def _handle_erratum(type_id, unit_key, metadata, file_path, conduit, config):
     """
     Handles the upload for an erratum. There is no file uploaded so the only
     steps are to save the metadata and optionally link the erratum to RPMs
     in the repository.
+
+    :type  type_id: str
+    :type  unit_key: dict
+    :type  metadata: dict or None
+    :type  file_path: str
+    :type  conduit: pulp.plugins.conduits.upload.UploadConduit
+    :type  config: pulp.plugins.config.PluginCallConfiguration
     """
 
     # Validate the user specified data by instantiating the model
@@ -140,7 +143,7 @@ def _handle_erratum(type_id, unit_key, metadata, file_path, conduit, config):
 
     unit = conduit.init_unit(model.TYPE, model.unit_key, model.metadata, None)
 
-    if not config.get_boolean(CONFIG_SKIP_LINK_ERRATUM):
+    if not config.get_boolean(CONFIG_SKIP_ERRATUM_LINK):
         _link_errata_to_rpms(conduit, model, unit)
 
     conduit.save_unit(unit)
@@ -148,6 +151,8 @@ def _handle_erratum(type_id, unit_key, metadata, file_path, conduit, config):
 
 def _link_errata_to_rpms(conduit, errata_model, errata_unit):
     """
+    Creates links in the Pulp data model between an erratum and its RPMs.
+
     :param conduit: provides access to relevant Pulp functionality
     :type  conduit: pulp.plugins.conduits.unit_add.UnitAddConduit
     :param errata_model:    model object representing an errata
@@ -164,11 +169,17 @@ def _link_errata_to_rpms(conduit, errata_model, errata_unit):
         for unit in conduit.get_units(criteria):
             conduit.link_unit(errata_unit, unit, bidirectional=True)
 
-# -- yum metadata file upload -------------------------------------------------
 
 def _handle_yum_metadata_file(type_id, unit_key, metadata, file_path, conduit, config):
     """
     Handles the upload for a yum repository metadata file.
+
+    :type  type_id: str
+    :type  unit_key: dict
+    :type  metadata: dict or None
+    :type  file_path: str
+    :type  conduit: pulp.plugins.conduits.upload.UploadConduit
+    :type  config: pulp.plugins.config.PluginCallConfiguration
     """
 
     # Validate the user specified data by instantiating the model
@@ -191,12 +202,18 @@ def _handle_yum_metadata_file(type_id, unit_key, metadata, file_path, conduit, c
     except IOError:
         raise StoreFileError()
 
-# -- package group/category upload --------------------------------------------
 
 def _handle_group_category(type_id, unit_key, metadata, file_path, conduit, config):
     """
     Handles the creation of a package group or category. There is no file uploaded,
     so the process is simply to create the unit in Pulp.
+
+    :type  type_id: str
+    :type  unit_key: dict
+    :type  metadata: dict or None
+    :type  file_path: str
+    :type  conduit: pulp.plugins.conduits.upload.UploadConduit
+    :type  config: pulp.plugins.config.PluginCallConfiguration
     """
 
     # Validate the user specified data by instantiating the model
@@ -209,7 +226,6 @@ def _handle_group_category(type_id, unit_key, metadata, file_path, conduit, conf
     unit = conduit.init_unit(model.TYPE, model.unit_key, model.metadata, None)
     conduit.save_unit(unit)
 
-# -- package upload -----------------------------------------------------------
 
 def _handle_package(type_id, unit_key, metadata, file_path, conduit, config):
     """
@@ -217,6 +233,13 @@ def _handle_package(type_id, unit_key, metadata, file_path, conduit, config):
     and metadata will only contain additions the user wishes to add. The
     typical use case is that the file is uploaded and all of the necessary
     data, both unit key and metadata, are extracted in this method.
+
+    :type  type_id: str
+    :type  unit_key: dict
+    :type  metadata: dict or None
+    :type  file_path: str
+    :type  conduit: pulp.plugins.conduits.upload.UploadConduit
+    :type  config: pulp.plugins.config.PluginCallConfiguration
     """
 
     # Extract the RPM key and metadata
@@ -376,7 +399,6 @@ def _calculate_checksum(checksum_type, filename):
     f.close()
     return m.hexdigest()
 
-# -- generic utilities ---------------------------------------------------------
 
 def _fail_report(message):
     # this is the format returned by the original importer. I'm not sure if
