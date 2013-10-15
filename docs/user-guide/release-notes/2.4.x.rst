@@ -18,6 +18,9 @@ Yum Importer
 When uploading RPMs, the unit key and metadata no longer need to be extracted client-side
 and passed to the server. The server will inspect the RPM and extract the necessary information.
 
+Yum metadata files can now be uploaded to a repository. Information on valid metadata
+attributes can be found in the technical reference.
+
 Upgrade Instructions
 --------------------
 
