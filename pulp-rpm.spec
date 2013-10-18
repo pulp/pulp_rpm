@@ -18,7 +18,7 @@
 
 Name: pulp-rpm
 Version: 2.3.0
-Release: 0.22.beta%{?dist}
+Release: 0.23.beta%{?dist}
 Summary: Support for RPM content in the Pulp platform
 Group: Development/Languages
 License: GPLv2
@@ -279,6 +279,11 @@ A collection of yum plugins supplementing Pulp consumer operations.
 
 
 %changelog
+* Fri Oct 18 2013 Jeff Ortel <jortel@redhat.com> 2.3.0-0.23.beta
+- 1020415 - added a workaround for a bug in yum where it neglects to encode
+  epochs to strings, which in rare circumstances could cause a failure to
+  generate updateinfo.xml (mhrivnak@redhat.com)
+
 * Wed Oct 16 2013 Jeff Ortel <jortel@redhat.com> 2.3.0-0.22.beta
 - Pulp rebuild
 
