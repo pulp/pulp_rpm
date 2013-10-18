@@ -78,6 +78,23 @@ class TestElementToRawXML(unittest.TestCase):
         reparsed = ET.fromstring(raw_xml)
 
 
+class TestRegisterNamespace(unittest.TestCase):
+    DUMMY_XML = """<?xml version="1.0" encoding="UTF-8"?>
+<dummyroot xmlns:foo="http://pulpproject.org/foo">
+<foo:dummyelement>hi</foo:dummyelement>
+</dummyroot>
+"""
+
+    def test_register(self):
+        utils.register_namespace('foo', 'http://pulpproject.org/foo')
+        root = ET.fromstring(self.DUMMY_XML)
+
+        # if the registration didn't work, the namespace "foo" will instead
+        # show up as "ns0"
+        self.assertTrue(ET.tostring(root).find('<foo:dummyelement') >= 0)
+        self.assertEqual(ET.tostring(root).find('ns0'), -1)
+
+
 class TestStripNS(unittest.TestCase):
     def setUp(self):
         self.element = ET.fromstring(PRIMARY_XML)[0]
