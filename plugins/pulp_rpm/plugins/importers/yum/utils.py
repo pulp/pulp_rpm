@@ -96,8 +96,6 @@ def element_to_raw_xml(element, namespaces_to_register=None, default_namespace_u
     ret = io.getvalue()
 
     for namespace in namespaces_to_register:
-        # clean up, since this is global
-        register_namespace(namespace.name, '')
         # in python 2.7, these show up only on the root element. in 2.6, these
         # show up on each element that uses the prefix.
         ret = re.sub(' *xmlns:%s="%s" *' % (namespace.name, namespace.uri), ' ', ret)
@@ -110,13 +108,16 @@ def register_namespace(prefix, uri):
     Adapted from xml.etree.ElementTree.register_namespace as implemented
     in Python 2.7.
 
+    This implementation makes no attempt to remove other namespaces. It appears
+    that there is a race condition in the python 2.7 stdlib pure python
+    implementation. For our purposes, we don't need to be concerned about
+    unregistering a namespace or URI, so we can let them remain unless
+    overwritten.
+
     :param prefix:  namespace prefix
     :param uri:     namespace URI. Tags and attributes in this namespace will be
                     serialized with the given prefix, if at all possible.
     """
-    for k, v in ET._namespace_map.items():
-        if v == prefix:
-            del ET._namespace_map[k]
     ET._namespace_map[uri] = prefix
 
 
