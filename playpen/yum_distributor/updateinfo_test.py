@@ -14,11 +14,10 @@
 import os
 import sys
 import traceback
-
-from yum import update_md
+from pprint import pprint
 
 from pulp_rpm.plugins.distributors.yum import metadata
-
+from pulp_rpm.plugins.importers.yum.repomd import packages, updateinfo
 
 def main():
     try:
@@ -29,14 +28,15 @@ def main():
         print 'Usage: %s <update info file path> <output directory>'
         return os.EX_NOINPUT
 
-    update_metadata = update_md.UpdateMetadata()
-    update_metadata.add(update_info_file_path)
+    update_info_file_handle = open(update_info_file_path, 'r')
+    package_list_generator = packages.package_list_generator(update_info_file_handle, 'update', updateinfo.process_package_element)
 
     with metadata.UpdateinfoXMLFileContext(output_directory) as update_info_file_context:
 
         try:
-            for notice in update_metadata.get_notices():
-                update_info_file_context.add_unit_metadata(notice._md)
+            for erratum_unit in package_list_generator:
+                #pprint(erratum_unit.metadata)
+                update_info_file_context.add_unit_metadata(erratum_unit)
 
         except:
             traceback.print_exc(file=sys.stderr)

@@ -261,76 +261,81 @@ class UpdateinfoXMLFileContext(MetadataFileContext):
 
     def add_unit_metadata(self, erratum_unit):
 
-        update_attributes = {'status': erratum_unit.metdata['status'],
-                             'type': erratum_unit.metdata['type'],
-                             'version': erratum_unit.metdata['version'],
-                             # XXX this field doesn't currently exist in our erratum schema
-                             'from': erratum_unit.metdata.get('from', '')}
-        update_element = ElementTree.ElementTree('update', update_attributes)
+        update_attributes = {'status': erratum_unit.metadata['status'],
+                             'type': erratum_unit.metadata['type'],
+                             'version': erratum_unit.metadata['version'],
+                             'from': erratum_unit.metadata.get('from', '')}
+        update_element = ElementTree.Element('update', update_attributes)
 
         id_element = ElementTree.SubElement(update_element, 'id')
         id_element.text = erratum_unit.unit_key['id']
 
-        title_element = ElementTree.SubElement(update_element, 'title')
-        title_element.text = erratum_unit.metdata['title']
-
-        release_element = ElementTree.SubElement(update_element, 'release')
-        release_element.text = erratum_unit.metdata['release']
-
-        issued_attributes = {'date': erratum_unit.metdata['issued']}
+        issued_attributes = {'date': erratum_unit.metadata['issued']}
         issued_element = ElementTree.SubElement(update_element, 'issued', issued_attributes)
 
-        # XXX this element doesn't currently exist in our erratum schema
-        rights_element = ElementTree.SubElement(update_element, 'rights')
-        rights_element.text = ''
+        reboot_element = ElementTree.SubElement(update_element, 'reboot_suggested')
+        reboot_element.text = str(erratum_unit.metadata['reboot_suggested'])
 
-        # XXX this element doesn't currently exist in our erratum schema
-        description_element = ElementTree.SubElement(update_element, 'description')
-        description_element.text = ''
+        for key in ('title', 'release', 'rights', 'description', 'solution',
+                    'severity', 'summary', 'pushcount'):
 
-        # XXX this element doesn't currently exist in our erratum schema
-        solution_element = ElementTree.SubElement(update_element, 'solution')
-        solution_element.text = ''
+            value = erratum_unit.metadata.get(key)
+
+            if not value:
+                continue
+
+            sub_element = ElementTree.SubElement(update_element, key)
+            sub_element.text = value
+
+        updated = erratum_unit.metadata.get('updated')
+
+        if updated:
+            updated_attributes = {'date': updated}
+            updated_element = ElementTree.SubElement(update_element, 'updated', updated_attributes)
 
         references_element = ElementTree.SubElement(update_element, 'references')
 
-        for reference in erratum_unit.metdata.get('references', []) or []:
+        for reference in erratum_unit.metadata.get('references'):
 
-            reference_attributes = {'id': reference['id'],
-                                    'title': reference['title'],
+            reference_attributes = {'id': reference['id'] or '',
+                                    'title': reference['title'] or '',
                                     'type': reference['type'],
                                     'href': reference['href']}
             reference_element = ElementTree.SubElement(references_element, 'reference', reference_attributes)
 
-        pkglist_element = ElementTree.SubElement(update_element, 'pkglist')
+        for pkglist in erratum_unit.metadata.get('pkglist', []):
 
-        collection_attributes = {'short': ''} # XXX this field doesn't currently exist in our erratum schema
-        collection_element = ElementTree.SubElement(pkglist_element, 'collection', collection_attributes)
+            pkglist_element = ElementTree.SubElement(update_element, 'pkglist')
 
-        # XXX this element doesn't currently exist in our erratum schema
-        name_element = ElementTree.SubElement(collection_element, 'name')
-        name_element.text = ''
+            collection_attributes = {}
+            short = pkglist.get('short')
+            if short is not None:
+                collection_attributes['short'] = short
+            collection_element = ElementTree.SubElement(pkglist_element, 'collection', collection_attributes)
 
-        for package in erratum_unit.get('pkglist', {'packages': []}).get('packages', []):
+            name_element = ElementTree.SubElement(collection_element, 'name')
+            name_element.text = pkglist['name']
 
-            package_attributes = {'name': package['name'],
-                                  'version': package['version'],
-                                  'release': package['release'],
-                                  'epoch': package['epoch'] or '0',
-                                  'arch': package['arch'],
-                                  'src': package.get('src', '')}
-            package_element = ElementTree.SubElement(collection_element, 'package', package_attributes)
+            for package in pkglist['packages']:
 
-            filename_element = ElementTree.SubElement(package_element, 'filename')
-            # XXX don't think this is correct, probably need to pass in the working directory
-            filename_element.text = package['filename']
+                package_attributes = {'name': package['name'],
+                                      'version': package['version'],
+                                      'release': package['release'],
+                                      'epoch': package['epoch'] or '0',
+                                      'arch': package['arch'],
+                                      'src': package.get('src', '')}
+                package_element = ElementTree.SubElement(collection_element, 'package', package_attributes)
 
-            sum_attributes = {'type': package['checksumtype']}
-            sum_element = ElementTree.SubElement(package_element, 'sum', sum_attributes)
-            sum_element.text = package['checksum']
+                filename_element = ElementTree.SubElement(package_element, 'filename')
+                filename_element.text = package['filename']
 
-            reboot_element = ElementTree.SubElement(package_element, 'reboot_suggested')
-            reboot_element.text = str(package.get('reboot_suggested', False))
+                checksum_type, checksum_value = package['sum']
+                sum_attributes = {'type': checksum_type}
+                sum_element = ElementTree.SubElement(package_element, 'sum', sum_attributes)
+                sum_element.text = checksum_value
+
+                reboot_element = ElementTree.SubElement(package_element, 'reboot_suggested')
+                reboot_element.text = str(package.get('reboot_suggested', False))
 
         # write the top-level XML element out to the file
 
