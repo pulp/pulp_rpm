@@ -11,9 +11,11 @@
 # http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt.
 
 import yum
+from yum.misc import to_xml
 from yum.update_md import UpdateMetadata, UpdateNotice
 
 import util
+
 log = util.getLogger(__name__)
 #
 # yum 3.2.22 compat:  UpdateMetadata.add_notice() not
@@ -153,6 +155,7 @@ class Errata(dict):
 def updateinfo(errata_units, save_location):
     um = UpdateMetadata()
     for e in errata_units:
+        encode_epoch(e)
         un = UpdateNotice()
 
         _md = {
@@ -193,3 +196,30 @@ def updateinfo(errata_units, save_location):
     except Exception, e:
         log.error("Error writing updateinfo.xml to path %s: %s" % (updateinfo_path, e))
     return updateinfo_path
+
+
+def encode_epoch(erratum):
+    """
+    This is a workaround for https://bugzilla.redhat.com/show_bug.cgi?id=1020415
+
+    Yum forgot to call it's "to_xml" function on the "epoch" field only. Also,
+    that function does not convert anything to XML. It only prepares the input
+    for inclusion in an XML document, mostly by decoding it from unicode to a
+    string. This is known to affect yum 3.4.3-111 and newer. Note that earlier
+    builds of 3.4.3 did not have this problem; they did in fact change the
+    code without bumping the version, which can cause confusion.
+
+    The yum bug is being tracked here:
+    https://bugzilla.redhat.com/show_bug.cgi?id=1020540
+
+    :param erratum: an erratum whose package epochs should be converted to a
+                    yum-friendly state.
+    :type  erratum: pulp.plugins.model.Unit
+    """
+    for packages_dict in erratum.metadata['pkglist']:
+        for package in packages_dict['packages']:
+            if 'epoch' in package:
+                # yum calls this on every other field except this one, which can
+                # cause problems if there are non-ascii characters in published
+                # XML file.
+                package['epoch'] = to_xml(package['epoch'])
