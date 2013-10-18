@@ -24,6 +24,7 @@ sys.path.insert(0, PACKAGE_PATH)
 
 from pulp_rpm.common.ids import TYPE_ID_RPM
 from pulp_rpm.plugins.distributors.yum import metadata
+from pulp_rpm.plugins.importers.yum.repomd import packages, updateinfo
 
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), '../data/')
@@ -307,3 +308,69 @@ class YumDistributorMetadataTests(unittest.TestCase):
 
             except Exception, e:
                 self.fail(e.message)
+
+    # -- updateinfo.xml testing ------------------------------------------------
+
+    def test_updateinfo_file_creation(self):
+
+        path = os.path.join(self.metadata_file_dir,
+                            metadata.REPODATA_DIR_NAME,
+                            metadata.UPDATE_INFO_XML_FILE_NAME)
+
+        context = metadata.UpdateinfoXMLFileContext(self.metadata_file_dir)
+
+        context._open_metadata_file_handle()
+        context._close_metadata_file_handle()
+
+        self.assertTrue(os.path.exists(path))
+
+    def test_updateinfo_opening_tag(self):
+
+        path = os.path.join(self.metadata_file_dir,
+                            metadata.REPODATA_DIR_NAME,
+                            metadata.UPDATE_INFO_XML_FILE_NAME)
+
+        context = metadata.UpdateinfoXMLFileContext(self.metadata_file_dir)
+
+        context._open_metadata_file_handle()
+        context._write_root_tag_open()
+        context._close_metadata_file_handle()
+
+        self.assertNotEqual(os.path.getsize(path), 0)
+
+    def test_updateinfo_closing_tag(self):
+
+        path = os.path.join(self.metadata_file_dir,
+                            metadata.REPODATA_DIR_NAME,
+                            metadata.UPDATE_INFO_XML_FILE_NAME)
+
+        context = metadata.UpdateinfoXMLFileContext(self.metadata_file_dir)
+
+        context._open_metadata_file_handle()
+        context._write_root_tag_close()
+        context._close_metadata_file_handle()
+
+        self.assertNotEqual(os.path.getsize(path), 0)
+
+    def test_updateinfo_unit_metadata(self):
+
+        path = os.path.join(self.metadata_file_dir,
+                            metadata.REPODATA_DIR_NAME,
+                            metadata.UPDATE_INFO_XML_FILE_NAME)
+
+        handle = open(os.path.join(DATA_DIR, 'updateinfo.xml'), 'r')
+        generator = packages.package_list_generator(handle, 'update', updateinfo.process_package_element)
+
+        erratum_unit = next(generator)
+
+        # just checking
+        self.assertEqual(erratum_unit.unit_key['id'], 'RHEA-2010:9999')
+
+        context = metadata.UpdateinfoXMLFileContext(self.metadata_file_dir)
+        context._open_metadata_file_handle()
+        context.add_unit_metadata(erratum_unit)
+        context._close_metadata_file_handle()
+
+        self.assertNotEqual(os.path.getsize(path), 0)
+
+
