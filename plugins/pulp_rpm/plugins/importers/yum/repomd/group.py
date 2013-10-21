@@ -20,6 +20,8 @@ _LOGGER = logging.getLogger(__name__)
 GROUP_TAG = 'group'
 CATEGORY_TAG = 'category'
 METADATA_FILE_NAME = 'comps'
+# this according to yum.comps.lang_attr
+LANGUAGE_TAG = '{http://www.w3.org/XML/1998/namespace}lang'
 
 
 def process_group_element(repo_id, element):
@@ -51,13 +53,13 @@ def process_group_element(repo_id, element):
         'conditional_package_names': conditional,
         'default': group_default,
         'default_package_names': default,
-        'description': description.text,
+        'description': description,
         # default of 1024 is from yum's own parsing of these objects
         'display_order': int(display_order.text) if display_order else 1024,
         'id': element.find('id').text,
         'langonly': langonly.text if langonly else None,
         'mandatory_package_names': mandatory,
-        'name': name.text,
+        'name': name,
         'optional_package_names': optional,
         'repo_id': repo_id,
         'translated_description': translated_description,
@@ -84,12 +86,12 @@ def process_category_element(repo_id, element):
     groups = element.find('grouplist').findall('groupid')
 
     return models.PackageCategory.from_package_info({
-        'description': description.text,
+        'description': description,
         # default of 1024 is from yum's own parsing of these objects
         'display_order': int(display_order.text) if display_order is not None else 1024,
         'packagegroupids': [group.text for group in groups],
         'id': element.find('id').text,
-        'name': name.text,
+        'name': name,
         'repo_id': repo_id,
         'translated_description': translated_description,
         'translated_name': translated_name,
@@ -158,8 +160,8 @@ def _parse_translated(items):
     value = ''
     translated_value = {}
     for item in items:
-        if 'type' in item.attrib:
-            translated_value[item.attrib['type']] = item
+        if LANGUAGE_TAG in item.attrib:
+            translated_value[item.attrib[LANGUAGE_TAG]] = item.text
         else:
-            value = item
+            value = item.text
     return value, translated_value
