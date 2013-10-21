@@ -19,9 +19,6 @@ import unittest
 
 from pulp.plugins.model import Unit
 
-PACKAGE_PATH = os.path.join(os.path.dirname(__file__), '../../')
-sys.path.insert(0, PACKAGE_PATH)
-
 from pulp_rpm.common.ids import TYPE_ID_RPM
 from pulp_rpm.plugins.distributors.yum import metadata
 

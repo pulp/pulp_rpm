@@ -22,9 +22,6 @@ from pulp.plugins.conduits.repo_publish import RepoPublishConduit
 from pulp.plugins.config import PluginCallConfiguration
 from pulp.plugins.model import Repository, Unit
 
-PACKAGE_PATH = os.path.join(os.path.dirname(__file__), '../../')
-sys.path.insert(0, PACKAGE_PATH)
-
 from pulp_rpm.common.ids import TYPE_ID_RPM, YUM_DISTRIBUTOR_ID
 from pulp_rpm.plugins.distributors.yum import publish
 
@@ -361,13 +358,15 @@ class YumDistributorPublishTests(unittest.TestCase):
     @mock.patch('pulp_rpm.plugins.distributors.yum.publish.Publisher._publish_over_https')
     @mock.patch('pulp_rpm.plugins.distributors.yum.publish.Publisher._publish_over_http')
     @mock.patch('pulp_rpm.plugins.distributors.yum.publish.Publisher._publish_rpms')
-    def test_publish(self, mock_publish_rpms, mock_publish_over_http,
+    @mock.patch('pulp_rpm.plugins.distributors.yum.publish.Publisher._publish_distribution')
+    def test_publish(self, mock_publish_distribution, mock_publish_rpms, mock_publish_over_http,
                      mock_publish_over_https, mock_build_final_report):
         self._init_publisher()
 
         self.publisher.publish()
 
         mock_publish_rpms.assert_called_once()
+        mock_publish_distribution.assert_called_once()
         mock_publish_over_http.assert_called_once()
         mock_publish_over_https.assert_called_once()
         mock_build_final_report.assert_called_once()
@@ -388,3 +387,4 @@ class YumDistributorPublishTests(unittest.TestCase):
         for s in publish.PUBLISH_STEPS[1:]:
             self.assertEqual(self.publisher.progress_report[s][publish.STATE], publish.PUBLISH_SKIPPED_STATE)
 
+    # -- distribution publishing testing ------------------------------------------------

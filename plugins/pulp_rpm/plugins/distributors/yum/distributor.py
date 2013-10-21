@@ -136,7 +136,7 @@ class YumHTTPDistributor(Distributor):
         _LOG.debug('Publishing yum repository: %s' % repo.id)
 
         self._publisher = publish.Publisher(repo, publish_conduit, config)
-        self._publisher.publish()
+        return self._publisher.publish()
 
     def cancel_publish_repo(self, call_request, call_report):
         """
