@@ -329,23 +329,30 @@ class Publisher(object):
 
         total = len(unit_list)
 
-        #There should only ever be 0 or 1 distribution associated with a repo
-        if total == 0:
-            #No distribution was found so skip this step
-            self._report_progress(PUBLISH_DISTRIBUTION_STEP, state=PUBLISH_SKIPPED_STATE)
-        elif total == 1:
-            distribution = unit_list[0]
+        try:
+            #There should only ever be 0 or 1 distribution associated with a repo
+            if total == 0:
+                #No distribution was found so skip this step
+                _LOG.debug('No Distribution found for repository: %s' % self.repo.id)
+                self._report_progress(PUBLISH_DISTRIBUTION_STEP, state=PUBLISH_SKIPPED_STATE)
+            elif total == 1:
+                distribution = unit_list[0]
 
-            self._publish_distribution_treeinfo(distribution)
-            # Link any files referenced by the unit
-            self._publish_distribution_files(distribution)
-            # create the Packages directory required for RHEL 5
-            self._publish_distribution_packages_link()
+                self._publish_distribution_treeinfo(distribution)
+                # Link any files referenced by the unit
+                self._publish_distribution_files(distribution)
+                # create the Packages directory required for RHEL 5
+                self._publish_distribution_packages_link()
 
-            self._report_progress(PUBLISH_DISTRIBUTION_STEP, state=PUBLISH_FINISHED_STATE)
-        elif total > 1:
-            #TODO report error and return since there should a max of one distribution for a repo
-            self._report_progress(PUBLISH_DISTRIBUTION_STEP, state=PUBLISH_FAILED_STATE)
+                self._report_progress(PUBLISH_DISTRIBUTION_STEP, state=PUBLISH_FINISHED_STATE)
+            elif total > 1:
+                msg = _('Error publishing repository %(repo)s.  More than one distribution found.') % \
+                    {'repo': self.repo.id}
+                _LOG.debug(msg)
+                raise Exception(msg)
+        except Exception, e:
+                self._record_failure(PUBLISH_DISTRIBUTION_STEP, e)
+                self._report_progress(PUBLISH_DISTRIBUTION_STEP, state=PUBLISH_FAILED_STATE)
 
     def _publish_distribution_treeinfo(self, distribution_unit):
         """
@@ -370,12 +377,9 @@ class Publisher(object):
             symlink_treeinfo_path = os.path.join(self.repo.working_dir, treeinfo)
             _LOG.debug("creating treeinfo symlink from %s to %s" % (src_treeinfo_path,
                                                                     symlink_treeinfo_path))
-            try:
-                self._create_symlink(src_treeinfo_path, symlink_treeinfo_path)
-                self.progress_report[PUBLISH_DISTRIBUTION_STEP][SUCCESSES] += 1
-            except Exception, e:
-                self._record_failure(PUBLISH_DISTRIBUTION_STEP, e)
-        self.progress_report[PUBLISH_DISTRIBUTION_STEP][PROCESSED] += 1
+            self._create_symlink(src_treeinfo_path, symlink_treeinfo_path)
+            self.progress_report[PUBLISH_DISTRIBUTION_STEP][SUCCESSES] += 1
+            self.progress_report[PUBLISH_DISTRIBUTION_STEP][PROCESSED] += 1
 
     def _publish_distribution_files(self, distribution_unit):
         """
@@ -386,9 +390,11 @@ class Publisher(object):
                                   of files to be published should be pulled from.
         :type distribution_unit: AssociatedUnit
         """
-        if not distribution_unit.metadata.has_key('files'):
-                msg = "No distribution files found for unit %s" % distribution_unit
-                _LOG.error(msg)
+        if 'files' not in distribution_unit.metadata:
+            msg = "No distribution files found for unit %s" % distribution_unit
+            _LOG.warning(msg)
+            return
+        
         distro_files = distribution_unit.metadata['files']
         total_files = len(distro_files)
         self.progress_report[PUBLISH_DISTRIBUTION_STEP][TOTAL] += total_files
@@ -399,13 +405,9 @@ class Publisher(object):
         for dfile in distro_files:
             source_path = os.path.join(source_path_dir, dfile['relativepath'])
             symlink_path = os.path.join(symlink_dir, dfile['relativepath'])
-            try:
-                self._create_symlink(source_path, symlink_path)
-                self.progress_report[PUBLISH_DISTRIBUTION_STEP][SUCCESSES] += 1
-            except Exception, e:
-                self._record_failure(PUBLISH_DISTRIBUTION_STEP, e)
-            finally:
-                self.progress_report[PUBLISH_DISTRIBUTION_STEP][PROCESSED] += 1
+            self._create_symlink(source_path, symlink_path)
+            self.progress_report[PUBLISH_DISTRIBUTION_STEP][SUCCESSES] += 1
+            self.progress_report[PUBLISH_DISTRIBUTION_STEP][PROCESSED] += 1
 
     def _publish_distribution_packages_link(self):
         """
@@ -415,10 +417,7 @@ class Publisher(object):
         symlink_dir = self.repo.working_dir
         # create the Packages symlink to the content dir, in the content dir
         packages_symlink_path = os.path.join(symlink_dir, 'Packages')
-        try:
-            self._create_symlink("./", packages_symlink_path)
-        except Exception, e:
-            self._record_failure(PUBLISH_DISTRIBUTION_STEP, e)
+        self._create_symlink("./", packages_symlink_path)
 
     def _publish_metadata(self):
 
