@@ -27,6 +27,7 @@ from pulp_rpm.plugins.importers.yum.repomd import nectar_factory
 SECTION_GENERAL = 'general'
 SECTION_STAGE2 = 'stage2'
 SECTION_CHECKSUMS = 'checksums'
+KEY_PACKAGEDIR = 'packagedir'
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -173,6 +174,10 @@ def parse_treefile(path):
         variant = parser.get(SECTION_GENERAL, 'variant')
     except ConfigParser.NoOptionError:
         variant = None
+    try:
+        packagedir = parser.get(SECTION_GENERAL, KEY_PACKAGEDIR)
+    except ConfigParser.NoOptionError:
+        packagedir = None
 
     try:
         model = models.Distribution(
@@ -180,7 +185,7 @@ def parse_treefile(path):
             variant,
             parser.get(SECTION_GENERAL, 'version'),
             parser.get(SECTION_GENERAL, 'arch'),
-            metadata={}
+            metadata={KEY_PACKAGEDIR: packagedir}
         )
     except (ConfigParser.NoSectionError, ConfigParser.NoOptionError):
         raise ValueError('invalid treefile: could not find unit key components')
