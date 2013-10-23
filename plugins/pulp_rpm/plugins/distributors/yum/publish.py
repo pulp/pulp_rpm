@@ -340,7 +340,7 @@ class Publisher(object):
             if total == 0:
                 #No distribution was found so skip this step
                 _LOG.debug('No Distribution found for repository: %s' % self.repo.id)
-                self._report_progress(PUBLISH_DISTRIBUTION_STEP, state=PUBLISH_SKIPPED_STATE)
+                self._report_progress(PUBLISH_DISTRIBUTION_STEP, state=PUBLISH_FINISHED_STATE)
             elif total == 1:
                 distribution = unit_list[0]
 

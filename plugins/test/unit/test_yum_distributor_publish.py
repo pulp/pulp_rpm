@@ -511,7 +511,7 @@ class YumDistributorPublishTests(unittest.TestCase):
         self.assertFalse(mock_files.called)
         self.assertFalse(mock_treeinfo.called)
         self.assertFalse(mock_packages.called)
-        self.assertEqual(self.publisher.progress_report[publish.PUBLISH_DISTRIBUTION_STEP][publish.STATE], publish.PUBLISH_SKIPPED_STATE)
+        self.assertEqual(self.publisher.progress_report[publish.PUBLISH_DISTRIBUTION_STEP][publish.STATE], publish.PUBLISH_FINISHED_STATE)
 
     @mock.patch('pulp_rpm.plugins.distributors.yum.publish.Publisher.skip_list')
     @mock.patch('pulp_rpm.plugins.distributors.yum.publish.Publisher._publish_distribution_packages_link')
