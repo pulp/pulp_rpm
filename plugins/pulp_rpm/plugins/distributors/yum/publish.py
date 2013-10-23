@@ -153,7 +153,13 @@ class Publisher(object):
 
     @property
     def skip_list(self):
-        skip = self.config.get('skip', {})
+        skip = self.config.get('skip', [])
+        # there is a chance that the skip list is actually a dictionary with a
+        # boolean to indicate whether or not each item should be skipped
+        # if that is the case iterate over it to build a list of the items
+        # that should be skipped instead
+        if type(skip) is dict:
+            return [k for k, v in skip.items() if v]
         return skip
 
     # -- publish api methods ---------------------------------------------------

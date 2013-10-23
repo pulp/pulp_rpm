@@ -354,6 +354,36 @@ class YumDistributorPublishTests(unittest.TestCase):
 
     # -- publish api testing ---------------------------------------------------
 
+    def test_skip_list_with_list(self):
+        self._init_publisher()
+        mock_config = mock.Mock()
+        mock_config.get.return_value = ['foo', 'bar']
+        self.publisher.config = mock_config
+        skip_list = self.publisher.skip_list
+        self.assertEquals(2, len(skip_list))
+        self.assertEquals(skip_list[0], 'foo')
+        self.assertEquals(skip_list[1], 'bar')
+
+    def test_skip_list_with_dict(self):
+        self._init_publisher()
+        mock_config = mock.Mock()
+        mock_config.get.return_value = {'rpm': True, 'distro': False, 'errata': True}
+        self.publisher.config = mock_config
+        skip_list = self.publisher.skip_list
+        self.assertEquals(2, len(skip_list))
+        self.assertEquals(skip_list[0], 'rpm')
+        self.assertEquals(skip_list[1], 'errata')
+
+    def test_skip_list_with_dict(self):
+        self._init_publisher()
+        mock_config = mock.Mock()
+        mock_config.get.return_value = {'rpm': True, 'distro': False, 'errata': True}
+        self.publisher.config = mock_config
+        skip_list = self.publisher.skip_list
+        self.assertEquals(2, len(skip_list))
+        self.assertEquals(skip_list[0], 'rpm')
+        self.assertEquals(skip_list[1], 'errata')
+
     @mock.patch('pulp_rpm.plugins.distributors.yum.publish.Publisher._build_final_report')
     @mock.patch('pulp_rpm.plugins.distributors.yum.publish.Publisher._publish_over_https')
     @mock.patch('pulp_rpm.plugins.distributors.yum.publish.Publisher._publish_over_http')
