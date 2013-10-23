@@ -21,6 +21,7 @@ from pprint import pformat
 
 from pulp.server.db.model.criteria import UnitAssociationCriteria
 
+from pulp_rpm.common import constants
 from pulp_rpm.common.ids import (
     TYPE_ID_RPM, TYPE_ID_SRPM, TYPE_ID_DRPM, TYPE_ID_ERRATA, TYPE_ID_PKG_GROUP,
     TYPE_ID_PKG_CATEGORY, TYPE_ID_DISTRO, TYPE_ID_YUM_REPO_METADATA_FILE)
@@ -152,8 +153,14 @@ class Publisher(object):
 
     @property
     def skip_list(self):
-        skip = self.config.get('skip', {})
-        return [k for k,v in skip.items() if v]
+        skip = self.config.get('skip', [])
+        # there is a chance that the skip list is actually a dictionary with a
+        # boolean to indicate whether or not each item should be skipped
+        # if that is the case iterate over it to build a list of the items
+        # that should be skipped instead
+        if type(skip) is dict:
+            return [k for k, v in skip.items() if v]
+        return skip
 
     # -- publish api methods ---------------------------------------------------
 
@@ -170,6 +177,7 @@ class Publisher(object):
             os.makedirs(self.repo.working_dir, mode=0770)
 
         self._publish_rpms()
+        self._publish_distribution()
 
         self._publish_over_http()
         self._publish_over_https()
@@ -306,6 +314,10 @@ class Publisher(object):
         self._init_step_progress_report(PUBLISH_PACKAGE_CATEGORIES_STEP)
 
     def _publish_distribution(self):
+        """
+        Publish all information about any distribution that is associated with a yum repo
+        into the repository working directory
+        """
 
         if self.canceled:
             return
@@ -317,6 +329,101 @@ class Publisher(object):
         _LOG.debug('Publishing Distribution for repository: %s' % self.repo.id)
 
         self._init_step_progress_report(PUBLISH_DISTRIBUTION_STEP)
+
+        criteria = UnitAssociationCriteria(type_ids=TYPE_ID_DISTRO)
+        unit_list = self.conduit.get_units(criteria=criteria)
+
+        total = len(unit_list)
+
+        try:
+            #There should only ever be 0 or 1 distribution associated with a repo
+            if total == 0:
+                #No distribution was found so skip this step
+                _LOG.debug('No Distribution found for repository: %s' % self.repo.id)
+                self._report_progress(PUBLISH_DISTRIBUTION_STEP, state=PUBLISH_FINISHED_STATE)
+            elif total == 1:
+                distribution = unit_list[0]
+
+                self._publish_distribution_treeinfo(distribution)
+                # Link any files referenced by the unit
+                self._publish_distribution_files(distribution)
+                # create the Packages directory required for RHEL 5
+                self._publish_distribution_packages_link()
+
+                self._report_progress(PUBLISH_DISTRIBUTION_STEP, state=PUBLISH_FINISHED_STATE)
+            elif total > 1:
+                msg = _('Error publishing repository %(repo)s.  More than one distribution found.') % \
+                    {'repo': self.repo.id}
+                _LOG.debug(msg)
+                raise Exception(msg)
+        except Exception, e:
+                self._record_failure(PUBLISH_DISTRIBUTION_STEP, e)
+                self._report_progress(PUBLISH_DISTRIBUTION_STEP, state=PUBLISH_FAILED_STATE)
+
+    def _publish_distribution_treeinfo(self, distribution_unit):
+        """
+        For a given AssociatedUnit for a distribution.  Create the links for the treeinfo file
+        back to the treeinfo in the content.
+
+        :param distribution_unit: The unit for the distribution from which the list
+                                  of files to be published should be pulled from.
+        :type distribution_unit: AssociatedUnit
+        """
+        distribution_unit_storage_path = distribution_unit.storage_path
+        src_treeinfo_path = None
+        for treeinfo in constants.TREE_INFO_LIST:
+            test_treeinfo_path = os.path.join(distribution_unit_storage_path, treeinfo)
+            if os.path.exists(test_treeinfo_path):
+                # we found the treeinfo file
+                src_treeinfo_path = test_treeinfo_path
+                break
+        if src_treeinfo_path is not None:
+            # create a symlink from content location to repo location.
+            self.progress_report[PUBLISH_DISTRIBUTION_STEP][TOTAL] += 1
+            symlink_treeinfo_path = os.path.join(self.repo.working_dir, treeinfo)
+            _LOG.debug("creating treeinfo symlink from %s to %s" % (src_treeinfo_path,
+                                                                    symlink_treeinfo_path))
+            self._create_symlink(src_treeinfo_path, symlink_treeinfo_path)
+            self.progress_report[PUBLISH_DISTRIBUTION_STEP][SUCCESSES] += 1
+            self.progress_report[PUBLISH_DISTRIBUTION_STEP][PROCESSED] += 1
+
+    def _publish_distribution_files(self, distribution_unit):
+        """
+        For a given AssociatedUnit for a distribution.  Create all the links back to the
+        content units that are referenced within the 'files' metadata section of the unit.
+
+        :param distribution_unit: The unit for the distribution from which the list
+                                  of files to be published should be pulled from.
+        :type distribution_unit: AssociatedUnit
+        """
+        if 'files' not in distribution_unit.metadata:
+            msg = "No distribution files found for unit %s" % distribution_unit
+            _LOG.warning(msg)
+            return
+        
+        distro_files = distribution_unit.metadata['files']
+        total_files = len(distro_files)
+        self.progress_report[PUBLISH_DISTRIBUTION_STEP][TOTAL] += total_files
+        _LOG.debug("Found %s distribution files to symlink" % total_files)
+
+        source_path_dir = distribution_unit.storage_path
+        symlink_dir = self.repo.working_dir
+        for dfile in distro_files:
+            source_path = os.path.join(source_path_dir, dfile['relativepath'])
+            symlink_path = os.path.join(symlink_dir, dfile['relativepath'])
+            self._create_symlink(source_path, symlink_path)
+            self.progress_report[PUBLISH_DISTRIBUTION_STEP][SUCCESSES] += 1
+            self.progress_report[PUBLISH_DISTRIBUTION_STEP][PROCESSED] += 1
+
+    def _publish_distribution_packages_link(self):
+        """
+        Create a Packages directory in the repo that is a sym link back to the root directory
+        of the repository.  This is required for compatibility with RHEL 5.
+        """
+        symlink_dir = self.repo.working_dir
+        # create the Packages symlink to the content dir, in the content dir
+        packages_symlink_path = os.path.join(symlink_dir, 'Packages')
+        self._create_symlink("./", packages_symlink_path)
 
     def _publish_metadata(self):
 
