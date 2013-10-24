@@ -523,13 +523,14 @@ class YumDistributor(Distributor):
                     packages_progress_status["items_left"] -= 1
                     continue
 
-                if self.package_dir is not None and not util.create_symlink(source_path, os.path.join(symlink_path, self.package_dir)):
-                    msg = "Unable to create symlink for: %s pointing to %s" % (symlink_path, source_path)
-                    _LOG.error(msg)
-                    errors.append((source_path, symlink_path, msg))
-                    packages_progress_status["num_error"] += 1
-                    packages_progress_status["items_left"] -= 1
-                    continue
+                if self.package_dir is not None:
+                    symlink_path = os.path.join(symlink_dir, self.package_dir, relpath)
+                    if not util.create_symlink(source_path, symlink_path):
+                        msg = "Unable to create symlink for: %s pointing to %s" % (symlink_path, source_path)
+                        _LOG.error(msg)
+                        errors.append((source_path, symlink_path, msg))
+                        packages_progress_status["num_error"] += 1
+                        packages_progress_status["items_left"] -= 1
                 packages_progress_status["num_success"] += 1
             except Exception, e:
                 tb_info = traceback.format_exc()
@@ -603,14 +604,19 @@ class YumDistributor(Distributor):
         errors = []
         for u in units:
             source_path_dir = u.storage_path
-            if u.metadata[KEY_PACKAGEDIR] is not None:
+            if KEY_PACKAGEDIR in u.metadata and u.metadata[KEY_PACKAGEDIR] is not None:
                 self.package_dir = u.metadata[KEY_PACKAGEDIR]
                 package_path = os.path.join(symlink_dir, self.package_dir)
-                os.makedirs(package_path)
-            if not u.metadata.has_key('files'):
+                if os.path.islink(package_path):
+                    # a package path exists as a symlink we are going to remove it since this
+                    # will create a real directory
+                    os.unlink(package_path)
+                if not os.path.exists(package_path):
+                    os.makedirs(package_path)
+            if 'files' in u.metadata:
                 msg = "No distribution files found for unit %s" % u
                 _LOG.error(msg)
-            distro_files =  u.metadata['files']
+            distro_files = u.metadata['files']
             _LOG.debug("Found %s distribution files to symlink" % len(distro_files))
             distro_progress_status['items_total'] = len(distro_files)
             distro_progress_status['items_left'] = len(distro_files)
@@ -664,7 +670,7 @@ class YumDistributor(Distributor):
             scratchpad.update({constants.PUBLISHED_DISTRIBUTION_FILES_KEY : {u.id : published_distro_files}})
         # create the Packages symlink to the content dir, in the content dir
         packages_symlink_path = os.path.join(symlink_dir, 'Packages')
-        if not util.create_symlink(symlink_dir, packages_symlink_path):
+        if not os.path.exists(packages_symlink_path) and not util.create_symlink(symlink_dir, packages_symlink_path):
             msg = 'Unable to create Packages symlink required for RHEL 5 distributions'
             _LOG.error(msg)
             errors.append((symlink_dir, packages_symlink_path, msg))
