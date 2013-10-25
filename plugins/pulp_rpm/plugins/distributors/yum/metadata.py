@@ -103,6 +103,11 @@ class MetadataFileContext(object):
     # -- metadata file lifecycle -----------------------------------------------
 
     def _open_metadata_file_handle(self):
+        """
+        Open the metadata file handle, creating any missing parent directories.
+
+        If the file already exists, this will overwrite it.
+        """
         assert self.metadata_file_handle is None
         _LOG.debug('Opening metadata file: %s' % self.metadata_file_path)
 
@@ -136,6 +141,9 @@ class MetadataFileContext(object):
             self.metadata_file_handle = open(self.metadata_file_path, 'w')
 
     def _write_xml_header(self):
+        """
+        Write the initial <?xml?> header tag into the file handle.
+        """
         assert self.metadata_file_handle is not None
         _LOG.debug('Writing XML header into metadata file: %s' % self.metadata_file_path)
 
@@ -144,12 +152,21 @@ class MetadataFileContext(object):
         self.metadata_file_handle.write(xml_header)
 
     def _write_root_tag_open(self):
+        """
+        Write the opening tag for the root element of a given metadata XML file.
+        """
         raise NotImplementedError()
 
     def _write_root_tag_close(self):
+        """
+        Write the closing tag for the root element of a give metadata XML file.
+        """
         raise NotImplementedError()
 
     def _close_metadata_file_handle(self):
+        """
+        Flush any cached writes to the metadata file handle and close it.
+        """
         assert self.metadata_file_handle is not None
         _LOG.debug('Closing metadata file: %s' % self.metadata_file_path)
 
@@ -197,6 +214,15 @@ class PreGeneratedMetadataContext(MetadataFileContext):
         # but, you know, testing...
         metadata = unicode(metadata)
         self.metadata_file_handle.write(metadata.encode('utf-8'))
+
+    def add_unit_metadata(self, unit):
+        """
+        Write the metadata for a given unit to the file handle.
+
+        :param unit: unit whose metadata is being written
+        :type  unit: pulp.plugins.model.Unit
+        """
+        raise NotImplementedError()
 
 # -- filelists.xml file context class ------------------------------------------
 
@@ -272,6 +298,7 @@ class OtherXMLFileContext(PreGeneratedMetadataContext):
         bogus_element = ElementTree.SubElement(metadata_element, '')
 
         metadata_tags_string = ElementTree.tostring(metadata_element, 'utf-8')
+        # use a bogus sub-element to programmaticly split the opening and closing tags
         bogus_tag_string = ElementTree.tostring(bogus_element, 'utf-8')
         opening_tag, closing_tag = metadata_tags_string.split(bogus_tag_string, 1)
 
@@ -284,7 +311,6 @@ class OtherXMLFileContext(PreGeneratedMetadataContext):
 
     def add_unit_metadata(self, unit):
 
-        # XXX do all units have other metadata?
         self._add_unit_pre_generated_metadata('other', unit)
 
 # -- primary.xml file context class --------------------------------------------
@@ -315,7 +341,7 @@ class PrimaryXMLFileContext(PreGeneratedMetadataContext):
                       'packages': str(self.num_packages)}
 
         metadata_element = ElementTree.Element('metadata', attributes)
-        # add a bogus sub-element to make splitting the opening and closing tags possible
+        # use a bogus sub-element to programmaticly split the opening and closing tags
         bogus_element = ElementTree.SubElement(metadata_element, '')
 
         metadata_tags_string = ElementTree.tostring(metadata_element, 'utf-8')
