@@ -516,7 +516,9 @@ class YumDistributor(Distributor):
             _LOG.debug("Unit exists at: %s we need to symlink to: %s" % (source_path, symlink_path))
             try:
                 if not util.create_symlink(source_path, symlink_path):
-                    msg = "Unable to create symlink for: %s pointing to %s" % (symlink_path, source_path)
+                    msg = _("Unable to create symlink for: %(symlink_path)s"
+                            " pointing to %(source_path)s" % {'symlink_path': symlink_path,
+                                                              'source_path': source_path})
                     _LOG.error(msg)
                     errors.append((source_path, symlink_path, msg))
                     packages_progress_status["num_error"] += 1
@@ -526,7 +528,9 @@ class YumDistributor(Distributor):
                 if self.package_dir is not None:
                     symlink_path = os.path.join(symlink_dir, self.package_dir, relpath)
                     if not util.create_symlink(source_path, symlink_path):
-                        msg = "Unable to create symlink for: %s pointing to %s" % (symlink_path, source_path)
+                        msg = _("Unable to create symlink for: %(symlink_path)s"
+                                " pointing to %(source_path)s" % {'symlink_path': symlink_path,
+                                                                  'source_path': source_path})
                         _LOG.error(msg)
                         errors.append((source_path, symlink_path, msg))
                         packages_progress_status["num_error"] += 1
@@ -613,8 +617,8 @@ class YumDistributor(Distributor):
                     os.unlink(package_path)
                 if not os.path.exists(package_path):
                     os.makedirs(package_path)
-            if 'files' in u.metadata:
-                msg = "No distribution files found for unit %s" % u
+            if not 'files' in u.metadata:
+                msg = _("No distribution files found for unit %s" % u)
                 _LOG.error(msg)
             distro_files = u.metadata['files']
             _LOG.debug("Found %s distribution files to symlink" % len(distro_files))
