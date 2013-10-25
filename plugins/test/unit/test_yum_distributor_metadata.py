@@ -14,7 +14,6 @@
 import gzip
 import os
 import shutil
-import sys
 import unittest
 
 from pulp.plugins.model import Unit
@@ -242,6 +241,15 @@ class YumDistributorMetadataTests(unittest.TestCase):
 
         self.assertNotEqual(os.path.getsize(path), 0)
 
+        with gzip.open(path, 'r') as primary_handle:
+
+            content = primary_handle.read()
+
+            self.assertTrue(content.startswith('<metadata'))
+            self.assertEqual(content.count('xmlns="%s"' % metadata.COMMON_NAMESPACE), 1)
+            self.assertEqual(content.count('xmlns:rpm="%s"' % metadata.RPM_NAMESPACE), 1)
+            self.assertEqual(content.count('packages="0"'), 1)
+
     def test_primary_closing_tag(self):
 
         context = metadata.PrimaryXMLFileContext(self.metadata_file_dir, 0)
@@ -292,6 +300,14 @@ class YumDistributorMetadataTests(unittest.TestCase):
         # the xml header, opening, and closing tags should have been written
         self.assertNotEqual(os.path.getsize(path), 0)
 
+        with gzip.open(path, 'r') as primary_handle:
+
+            content_lines = primary_handle.readlines()
+
+            self.assertEqual(len(content_lines), 3)
+            self.assertEqual(content_lines[0], '<?xml version="1.0" encoding="UTF-8"?>\n')
+            self.assertEqual(content_lines[2], '</metadata>\n')
+
     def test_primary_with_keyword_and_add_unit(self):
 
         unit = self._generate_rpm('with-context')
@@ -332,6 +348,14 @@ class YumDistributorMetadataTests(unittest.TestCase):
         context._close_metadata_file_handle()
 
         self.assertNotEqual(os.path.getsize(path), 0)
+
+        with gzip.open(path, 'r') as other_handle:
+
+            context = other_handle.read()
+
+            self.assertTrue(context.startswith('<otherdata'))
+            self.assertEqual(context.count('xmlns="%s"' % metadata.OTHER_NAMESPACE), 1)
+            self.assertEqual(context.count('packages="0"'), 1)
 
     def test_other_closing_tag(self):
 
@@ -401,6 +425,14 @@ class YumDistributorMetadataTests(unittest.TestCase):
         context._close_metadata_file_handle()
 
         self.assertNotEqual(os.path.getsize(path), 0)
+
+        with gzip.open(path, 'r') as filelists_handle:
+
+            content = filelists_handle.read()
+
+            self.assertTrue(content.startswith('<filelists'))
+            self.assertEqual(content.count('xmlns="%s"' % metadata.FILE_LISTS_NAMESPACE), 1)
+            self.assertEqual(content.count('packages="0"'), 1)
 
     def test_filelists_closing_tag(self):
 
