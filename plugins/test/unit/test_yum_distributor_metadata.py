@@ -20,6 +20,7 @@ from pulp.plugins.model import Unit
 
 from pulp_rpm.common.ids import TYPE_ID_RPM
 from pulp_rpm.plugins.distributors.yum import metadata
+from pulp_rpm.plugins.importers.yum.repomd import packages, updateinfo
 
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), '../data/')
@@ -470,4 +471,84 @@ class YumDistributorMetadataTests(unittest.TestCase):
         handle.close()
 
         self.assertEqual(content, 'FILELISTS')
+
+    # -- updateinfo.xml testing ------------------------------------------------
+
+    def test_updateinfo_file_creation(self):
+
+        path = os.path.join(self.metadata_file_dir,
+                            metadata.REPO_DATA_DIR_NAME,
+                            metadata.UPDATE_INFO_XML_FILE_NAME)
+
+        context = metadata.UpdateinfoXMLFileContext(self.metadata_file_dir)
+
+        context._open_metadata_file_handle()
+        context._close_metadata_file_handle()
+
+        self.assertTrue(os.path.exists(path))
+
+    def test_updateinfo_opening_closing_tags(self):
+
+        path = os.path.join(self.metadata_file_dir,
+                            metadata.REPO_DATA_DIR_NAME,
+                            metadata.UPDATE_INFO_XML_FILE_NAME)
+
+        context = metadata.UpdateinfoXMLFileContext(self.metadata_file_dir)
+
+        context._open_metadata_file_handle()
+
+        self.assertRaises(NotImplementedError, context._write_root_tag_close)
+
+        context._write_root_tag_open()
+
+        try:
+            context._write_root_tag_close()
+
+        except Exception, e:
+            self.fail(e.message)
+
+        context._close_metadata_file_handle()
+
+        self.assertNotEqual(os.path.getsize(path), 0)
+
+        with gzip.open(path, 'r') as updateinfo_handle:
+
+            content = updateinfo_handle.read()
+
+            self.assertEqual(content, '<updates>\n</updates>\n')
+
+    def test_updateinfo_unit_metadata(self):
+
+        path = os.path.join(self.metadata_file_dir,
+                            metadata.REPO_DATA_DIR_NAME,
+                            metadata.UPDATE_INFO_XML_FILE_NAME)
+
+        handle = open(os.path.join(DATA_DIR, 'updateinfo.xml'), 'r')
+        generator = packages.package_list_generator(handle, 'update',
+                                                    updateinfo.process_package_element)
+
+        erratum_unit = next(generator)
+
+        # just checking
+        self.assertEqual(erratum_unit.unit_key['id'], 'RHEA-2010:9999')
+
+        context = metadata.UpdateinfoXMLFileContext(self.metadata_file_dir)
+        context._open_metadata_file_handle()
+        context.add_unit_metadata(erratum_unit)
+        context._close_metadata_file_handle()
+
+        self.assertNotEqual(os.path.getsize(path), 0)
+
+        with gzip.open(path, 'r') as updateinfo_handle:
+
+            content = updateinfo_handle.read()
+
+            self.assertEqual(content.count('from="enhancements@redhat.com"'), 1)
+            self.assertEqual(content.count('status="final"'), 1)
+            self.assertEqual(content.count('type="enhancements"'), 1)
+            self.assertEqual(content.count('version="1"'), 1)
+            self.assertEqual(content.count('<id>RHEA-2010:9999</id>'), 1)
+            self.assertEqual(content.count('<collection short="F13PTP">'), 1)
+            self.assertEqual(content.count('<package'), 2)
+            self.assertEqual(content.count('<sum type="md5">f3c197a29d9b66c5b65c5d62b25db5b4</sum>'), 1)
 

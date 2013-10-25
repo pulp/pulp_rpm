@@ -177,6 +177,7 @@ class Publisher(object):
             os.makedirs(self.repo.working_dir, mode=0770)
 
         self._publish_rpms()
+        self._publish_errata()
         self._publish_distribution()
 
         self._publish_over_http()
@@ -298,7 +299,43 @@ class Publisher(object):
             self._report_progress(PUBLISH_ERRATA_STEP, state=PUBLISH_SKIPPED_STATE)
             return
 
+        _LOG.debug('Publishing errata for repository: %s' % self.repo.id)
+
         self._init_step_progress_report(PUBLISH_ERRATA_STEP)
+
+        criteria = UnitAssociationCriteria(type_ids=[TYPE_ID_ERRATA])
+
+        erratum_unit_list = self.conduit.get_units(criteria)
+
+        if not erratum_unit_list:
+            self._report_progress(PUBLISH_ERRATA_STEP, state=PUBLISH_FINISHED_STATE, total=0)
+            return
+
+        self.progress_report[PUBLISH_ERRATA_STEP][TOTAL] = len(erratum_unit_list)
+
+        with metadata.UpdateinfoXMLFileContext(self.repo.working_dir) as updateinfo_context:
+
+            self._report_progress(PUBLISH_ERRATA_STEP)
+
+            for erratum_unit in erratum_unit_list:
+
+                try:
+                    updateinfo_context.add_unit_metadata(erratum_unit)
+
+                except Exception, e:
+                    self._record_failure(PUBLISH_ERRATA_STEP, e)
+
+                else:
+                    self.progress_report[PUBLISH_ERRATA_STEP][SUCCESSES] += 1
+
+                self.progress_report[PUBLISH_ERRATA_STEP][PROCESSED] += 1
+
+        if self.progress_report[PUBLISH_ERRATA_STEP][FAILURES]:
+            self._report_progress(PUBLISH_ERRATA_STEP, state=PUBLISH_FAILED_STATE)
+
+        else:
+            self._report_progress(PUBLISH_ERRATA_STEP, state=PUBLISH_FINISHED_STATE)
+
 
     def _publish_package_groups(self):
 
