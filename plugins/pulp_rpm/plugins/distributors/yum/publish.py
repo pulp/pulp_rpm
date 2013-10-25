@@ -226,9 +226,7 @@ class Publisher(object):
         criteria = UnitAssociationCriteria(type_ids=[TYPE_ID_RPM, TYPE_ID_SRPM],
                                            unit_fields=PACKAGE_FIELDS)
 
-        # XXX memory concerns here, this should return something akin to a db
-        # cursor or a generator, but it probably returns a list
-        unit_list = self.conduit.get_units(criteria=criteria)
+        unit_list = self.conduit.get_units(criteria=criteria, as_generator=True)
 
         total = len(unit_list)
         self.progress_report[PUBLISH_RPMS_STEP][TOTAL] = total
@@ -305,7 +303,7 @@ class Publisher(object):
 
         criteria = UnitAssociationCriteria(type_ids=[TYPE_ID_ERRATA])
 
-        erratum_unit_list = self.conduit.get_units(criteria)
+        erratum_unit_list = self.conduit.get_units(criteria, as_generator=True)
 
         if not erratum_unit_list:
             self._report_progress(PUBLISH_ERRATA_STEP, state=PUBLISH_FINISHED_STATE, total=0)
@@ -448,7 +446,7 @@ class Publisher(object):
             msg = "No distribution files found for unit %s" % distribution_unit
             _LOG.warning(msg)
             return
-        
+
         distro_files = distribution_unit.metadata['files']
         total_files = len(distro_files)
         self.progress_report[PUBLISH_DISTRIBUTION_STEP][TOTAL] += total_files
