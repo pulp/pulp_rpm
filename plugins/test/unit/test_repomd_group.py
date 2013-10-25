@@ -38,6 +38,12 @@ class TestProcessGroupElement(unittest.TestCase):
         self.assertTrue(groups[1].metadata['user_visible'])
         self.assertFalse(groups[1].metadata['default'])
 
+        # tests for fix to https://bugzilla.redhat.com/show_bug.cgi?id=1008010
+        self.assertTrue(model.metadata['name'] in ['base-x', 'LibreOffice'],
+                        'actual name: %s' % model.metadata['name'])
+        self.assertTrue(len(groups[0].metadata['translated_description']) > 0)
+        self.assertTrue(len(groups[0].metadata['translated_name']) > 0)
+
     def test_centos6_real_data(self):
         groups = packages.package_list_generator(StringIO(CENTOS6_COMPS_XML),
                                                  group.GROUP_TAG,
@@ -48,6 +54,11 @@ class TestProcessGroupElement(unittest.TestCase):
         for model in groups:
             self.assertTrue(isinstance(model, models.PackageGroup))
             self.assertEqual(model.repo_id, 'repo1')
+
+            # tests for fix to https://bugzilla.redhat.com/show_bug.cgi?id=1008010
+            self.assertTrue(model.metadata['name'] in ['Afrikaans Support', 'Albanian Support'],
+                            'actual name: %s' % model.metadata['name'])
+            self.assertTrue(len(model.metadata['translated_name']) > 0)
 
 
 class TestProcessCategoryElement(unittest.TestCase):
@@ -66,6 +77,13 @@ class TestProcessCategoryElement(unittest.TestCase):
         self.assertEqual(categories[0].id, 'gnome-desktop-environment')
         self.assertEqual(categories[0].repo_id, 'repo1')
 
+        # tests for fix to https://bugzilla.redhat.com/show_bug.cgi?id=1008010
+        self.assertEqual(categories[0].metadata['name'], 'GNOME Desktop')
+        self.assertEqual(categories[0].metadata['description'],
+                         '\nGNOME is a highly intuitive and user friendly desktop environment.\n')
+        self.assertEqual(len(categories[0].metadata['translated_description']), 8)
+        self.assertEqual(len(categories[0].metadata['translated_name']), 8)
+
     def test_centos6_real_data(self):
         categories = packages.package_list_generator(StringIO(CENTOS6_COMPS_XML), group.CATEGORY_TAG,
                                                  self.process_category)
@@ -76,6 +94,13 @@ class TestProcessCategoryElement(unittest.TestCase):
         self.assertEqual(categories[0].repo_id, 'repo1')
         self.assertEqual(len(categories[0].metadata['packagegroupids']), 26)
         self.assertTrue('network-tools' in categories[0].metadata['packagegroupids'])
+
+        # tests for fix to https://bugzilla.redhat.com/show_bug.cgi?id=1008010
+        self.assertEqual(categories[0].metadata['description'], 'Core system components.')
+        self.assertEqual(categories[0].metadata['name'], 'Base System')
+        self.assertEqual(len(categories[0].metadata['translated_description']), 25)
+        self.assertEqual(len(categories[0].metadata['translated_name']), 58)
+        self.assertEqual(categories[0].metadata['translated_name']['de'], 'Basissystem')
 
 
 # highly abridged version that grabs one group with a uservisible value

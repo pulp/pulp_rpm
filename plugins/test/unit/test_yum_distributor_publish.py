@@ -22,10 +22,7 @@ from pulp.plugins.conduits.repo_publish import RepoPublishConduit
 from pulp.plugins.config import PluginCallConfiguration
 from pulp.plugins.model import Repository, Unit
 
-PACKAGE_PATH = os.path.join(os.path.dirname(__file__), '../../')
-sys.path.insert(0, PACKAGE_PATH)
-
-from pulp_rpm.common.ids import TYPE_ID_RPM, YUM_DISTRIBUTOR_ID
+from pulp_rpm.common.ids import TYPE_ID_RPM, YUM_DISTRIBUTOR_ID, TYPE_ID_DISTRO
 from pulp_rpm.plugins.distributors.yum import publish
 
 
@@ -338,6 +335,8 @@ class YumDistributorPublishTests(unittest.TestCase):
             self.assertTrue(os.path.exists(path))
             self.assertTrue(os.path.islink(path))
 
+        self.assertTrue(os.path.exists(os.path.join(self.working_dir, 'repodata/filelists.xml.gz')))
+        self.assertTrue(os.path.exists(os.path.join(self.working_dir, 'repodata/other.xml.gz')))
         self.assertTrue(os.path.exists(os.path.join(self.working_dir, 'repodata/primary.xml.gz')))
 
         self.assertEqual(self.publisher.progress_report[publish.PUBLISH_RPMS_STEP][publish.STATE], publish.PUBLISH_FINISHED_STATE)
@@ -357,17 +356,49 @@ class YumDistributorPublishTests(unittest.TestCase):
 
     # -- publish api testing ---------------------------------------------------
 
+    def test_skip_list_with_list(self):
+        self._init_publisher()
+        mock_config = mock.Mock()
+        mock_config.get.return_value = ['foo', 'bar']
+        self.publisher.config = mock_config
+        skip_list = self.publisher.skip_list
+        self.assertEquals(2, len(skip_list))
+        self.assertEquals(skip_list[0], 'foo')
+        self.assertEquals(skip_list[1], 'bar')
+
+    def test_skip_list_with_dict(self):
+        self._init_publisher()
+        mock_config = mock.Mock()
+        mock_config.get.return_value = {'rpm': True, 'distro': False, 'errata': True}
+        self.publisher.config = mock_config
+        skip_list = self.publisher.skip_list
+        self.assertEquals(2, len(skip_list))
+        self.assertEquals(skip_list[0], 'rpm')
+        self.assertEquals(skip_list[1], 'errata')
+
+    def test_skip_list_with_dict(self):
+        self._init_publisher()
+        mock_config = mock.Mock()
+        mock_config.get.return_value = {'rpm': True, 'distro': False, 'errata': True}
+        self.publisher.config = mock_config
+        skip_list = self.publisher.skip_list
+        self.assertEquals(2, len(skip_list))
+        self.assertEquals(skip_list[0], 'rpm')
+        self.assertEquals(skip_list[1], 'errata')
+
     @mock.patch('pulp_rpm.plugins.distributors.yum.publish.Publisher._build_final_report')
     @mock.patch('pulp_rpm.plugins.distributors.yum.publish.Publisher._publish_over_https')
     @mock.patch('pulp_rpm.plugins.distributors.yum.publish.Publisher._publish_over_http')
     @mock.patch('pulp_rpm.plugins.distributors.yum.publish.Publisher._publish_rpms')
-    def test_publish(self, mock_publish_rpms, mock_publish_over_http,
+    @mock.patch('pulp_rpm.plugins.distributors.yum.publish.Publisher._publish_distribution')
+    def test_publish(self, mock_publish_distribution, mock_publish_rpms, mock_publish_over_http,
                      mock_publish_over_https, mock_build_final_report):
         self._init_publisher()
 
         self.publisher.publish()
 
         mock_publish_rpms.assert_called_once()
+        mock_publish_distribution.assert_called_once()
         mock_publish_over_http.assert_called_once()
         mock_publish_over_https.assert_called_once()
         mock_build_final_report.assert_called_once()
@@ -388,3 +419,225 @@ class YumDistributorPublishTests(unittest.TestCase):
         for s in publish.PUBLISH_STEPS[1:]:
             self.assertEqual(self.publisher.progress_report[s][publish.STATE], publish.PUBLISH_SKIPPED_STATE)
 
+    # -- distribution publishing testing ------------------------------------------------
+
+    def _generate_distribution_unit(self, name):
+        storage_path = os.path.join(self.working_dir, 'content', name)
+        if not os.path.exists(storage_path):
+            os.makedirs(storage_path)
+
+        unit_key = {"id": name}
+        unit_metadata = {"files": [
+            {
+              "downloadurl": "http://download-01.eng.brq.redhat.com/pub/rhel/released/RHEL-6/6.4/Server/x86_64/os/images/boot.iso",
+              "item_type": "distribution",
+              "savepath": "/var/lib/pulp/working/repos/distro/importers/yum_importer/tmpGn5a2b/tmpE7TPuQ/images/boot.iso",
+              "checksumtype": "sha256",
+              "relativepath": "images/boot.iso",
+              "checksum": "929669e1203117f2b6a0d94f963af11db2eafe84f05c42c7e582d285430dc7a4",
+              "pkgpath": "/var/lib/pulp/content/distribution/ks-Red Hat Enterprise Linux-Server-6.4-x86_64/images",
+              "filename": "boot.iso"
+            }
+        ]}
+        self._touch(os.path.join(storage_path, 'images', 'boot.iso'))
+
+        return Unit(TYPE_ID_DISTRO, unit_key, unit_metadata, storage_path)
+
+    @mock.patch('pulp_rpm.plugins.distributors.yum.publish.Publisher._publish_distribution_packages_link')
+    @mock.patch('pulp_rpm.plugins.distributors.yum.publish.Publisher._publish_distribution_treeinfo')
+    @mock.patch('pulp_rpm.plugins.distributors.yum.publish.Publisher._publish_distribution_files')
+    @mock.patch('pulp.plugins.conduits.repo_publish.RepoPublishConduit.get_units')
+    def test_publish_distribution(self, mock_get_units, mock_treeinfo, mock_files, mock_packages):
+        self._init_publisher()
+        units = [self._generate_distribution_unit(u) for u in ('one', )]
+        mock_get_units.return_value = units
+
+        self.publisher._publish_distribution()
+
+        mock_files.assert_called_once_with(units[0])
+        mock_treeinfo.assert_called_once_with(units[0])
+        mock_packages.assert_called_once_with()
+        self.assertEqual(self.publisher.progress_report[publish.PUBLISH_DISTRIBUTION_STEP][publish.STATE], publish.PUBLISH_FINISHED_STATE)
+
+    @mock.patch('pulp_rpm.plugins.distributors.yum.publish.Publisher._init_step_progress_report')
+    def test_publish_distribution_canceled(self, mock_progress_report):
+        self._init_publisher()
+
+        self.publisher.canceled = True
+        self.publisher._publish_distribution()
+        self.assertFalse(mock_progress_report.called)
+
+
+    @mock.patch('pulp_rpm.plugins.distributors.yum.publish.Publisher._record_failure')
+    @mock.patch('pulp_rpm.plugins.distributors.yum.publish.Publisher._publish_distribution_treeinfo')
+    @mock.patch('pulp.plugins.conduits.repo_publish.RepoPublishConduit.get_units')
+    def test_publish_distribution_error(self, mock_get_units, mock_treeinfo, mock_record_failure):
+        self._init_publisher()
+        units = [self._generate_distribution_unit(u) for u in ('one', )]
+        mock_get_units.return_value = units
+        error = Exception('Test Error')
+        mock_treeinfo.side_effect = error
+
+        self.publisher._publish_distribution()
+
+        mock_record_failure.assert_called_once_with(publish.PUBLISH_DISTRIBUTION_STEP, error)
+        self.assertEqual(self.publisher.progress_report[publish.PUBLISH_DISTRIBUTION_STEP][publish.STATE], publish.PUBLISH_FAILED_STATE)
+
+    @mock.patch('pulp_rpm.plugins.distributors.yum.publish.Publisher._publish_distribution_packages_link')
+    @mock.patch('pulp_rpm.plugins.distributors.yum.publish.Publisher._publish_distribution_treeinfo')
+    @mock.patch('pulp_rpm.plugins.distributors.yum.publish.Publisher._publish_distribution_files')
+    @mock.patch('pulp.plugins.conduits.repo_publish.RepoPublishConduit.get_units')
+    def test_publish_distribution_multiple_distribution(self, mock_get_units,
+                                                        mock_treeinfo, mock_files, mock_packages):
+        self._init_publisher()
+        units = [self._generate_distribution_unit(u) for u in ('one', 'two')]
+        mock_get_units.return_value = units
+
+        self.publisher._publish_distribution()
+        self.assertFalse(mock_files.called)
+        self.assertFalse(mock_treeinfo.called)
+        self.assertFalse(mock_packages.called)
+        self.assertEqual(self.publisher.progress_report[publish.PUBLISH_DISTRIBUTION_STEP][publish.STATE], publish.PUBLISH_FAILED_STATE)
+
+    @mock.patch('pulp_rpm.plugins.distributors.yum.publish.Publisher._publish_distribution_packages_link')
+    @mock.patch('pulp_rpm.plugins.distributors.yum.publish.Publisher._publish_distribution_treeinfo')
+    @mock.patch('pulp_rpm.plugins.distributors.yum.publish.Publisher._publish_distribution_files')
+    @mock.patch('pulp.plugins.conduits.repo_publish.RepoPublishConduit.get_units')
+    def test_publish_distribution_no_distribution(self, mock_get_units,
+                                                  mock_treeinfo, mock_files,
+                                                  mock_packages):
+        self._init_publisher()
+        mock_get_units.return_value = []
+
+        self.publisher._publish_distribution()
+        self.assertFalse(mock_files.called)
+        self.assertFalse(mock_treeinfo.called)
+        self.assertFalse(mock_packages.called)
+        self.assertEqual(self.publisher.progress_report[publish.PUBLISH_DISTRIBUTION_STEP][publish.STATE], publish.PUBLISH_FINISHED_STATE)
+
+    @mock.patch('pulp_rpm.plugins.distributors.yum.publish.Publisher.skip_list')
+    @mock.patch('pulp_rpm.plugins.distributors.yum.publish.Publisher._publish_distribution_packages_link')
+    @mock.patch('pulp_rpm.plugins.distributors.yum.publish.Publisher._publish_distribution_treeinfo')
+    @mock.patch('pulp_rpm.plugins.distributors.yum.publish.Publisher._publish_distribution_files')
+    @mock.patch('pulp.plugins.conduits.repo_publish.RepoPublishConduit.get_units')
+    def test_publish_distribution_skipped(self, mock_get_units,
+                                          mock_treeinfo, mock_files,
+                                          mock_packages, mock_skip_list):
+        self._init_publisher()
+        units = [self._generate_distribution_unit(u) for u in ('one', 'two')]
+        mock_get_units.return_value = units
+
+        mock_skip_list.__get__ = mock.Mock(return_value=[TYPE_ID_DISTRO])
+
+        self.publisher._publish_distribution()
+        self.assertFalse(mock_files.called)
+        self.assertFalse(mock_treeinfo.called)
+        self.assertFalse(mock_packages.called)
+        self.assertEqual(self.publisher.progress_report[publish.PUBLISH_DISTRIBUTION_STEP][publish.STATE], publish.PUBLISH_SKIPPED_STATE)
+
+    def test_publish_distribution_treeinfo_does_nothing_if_no_treeinfo_file(self):
+        self._init_publisher()
+        unit = self._generate_distribution_unit('one')
+        self.publisher._init_step_progress_report(publish.PUBLISH_DISTRIBUTION_STEP)
+
+        self.publisher._publish_distribution_treeinfo(unit)
+        self.assertEquals(
+            self.publisher.progress_report[publish.PUBLISH_DISTRIBUTION_STEP][publish.PROCESSED], 0)
+
+    @mock.patch('pulp_rpm.plugins.distributors.yum.publish.Publisher._create_symlink')
+    def _perform_treeinfo_success_test(self, treeinfo_name, mock_symlink):
+        self._init_publisher()
+        unit = self._generate_distribution_unit('one')
+        self.publisher._init_step_progress_report(publish.PUBLISH_DISTRIBUTION_STEP)
+        file_name = os.path.join(unit.storage_path, treeinfo_name)
+        open(file_name, 'a').close()
+        target_directory = os.path.join(self.publisher.repo.working_dir, treeinfo_name)
+
+        self.publisher._publish_distribution_treeinfo(unit)
+
+        mock_symlink.assert_called_once_with(file_name, target_directory)
+        self.assertEquals(
+            self.publisher.progress_report[publish.PUBLISH_DISTRIBUTION_STEP][publish.PROCESSED], 1)
+        self.assertEquals(
+            self.publisher.progress_report[publish.PUBLISH_DISTRIBUTION_STEP][publish.SUCCESSES], 1)
+
+    def test_publish_distribution_treeinfo_finds_treeinfo(self):
+        self._perform_treeinfo_success_test('treeinfo')
+
+    def test_publish_distribution_treeinfo_finds_dot_treeinfo(self):
+        self._perform_treeinfo_success_test('.treeinfo')
+
+    @mock.patch('pulp_rpm.plugins.distributors.yum.publish.Publisher._create_symlink')
+    def test_publish_distribution_treeinfo_error(self, mock_symlink):
+        self._init_publisher()
+        unit = self._generate_distribution_unit('one')
+        self.publisher._init_step_progress_report(publish.PUBLISH_DISTRIBUTION_STEP)
+        file_name = os.path.join(unit.storage_path, 'treeinfo')
+        open(file_name, 'a').close()
+        target_directory = os.path.join(self.publisher.repo.working_dir, 'treeinfo')
+        mock_symlink.side_effect = Exception("Test Error")
+
+        self.assertRaises(Exception, self.publisher._publish_distribution_treeinfo, unit)
+
+        mock_symlink.assert_called_once_with(file_name, target_directory)
+        self.assertEquals(
+            self.publisher.progress_report[publish.PUBLISH_DISTRIBUTION_STEP][publish.PROCESSED], 0)
+        self.assertEquals(
+            self.publisher.progress_report[publish.PUBLISH_DISTRIBUTION_STEP][publish.SUCCESSES], 0)
+
+    def test_publish_distribution_files(self):
+        self._init_publisher()
+        unit = self._generate_distribution_unit('one')
+        self.publisher._init_step_progress_report(publish.PUBLISH_DISTRIBUTION_STEP)
+        self.publisher._publish_distribution_files(unit)
+
+        self.assertEquals(
+            self.publisher.progress_report[publish.PUBLISH_DISTRIBUTION_STEP][publish.TOTAL], 1)
+        self.assertEquals(
+            self.publisher.progress_report[publish.PUBLISH_DISTRIBUTION_STEP][publish.SUCCESSES], 1)
+        self.assertEquals(
+            self.publisher.progress_report[publish.PUBLISH_DISTRIBUTION_STEP][publish.PROCESSED], 1)
+
+        content_file = os.path.join(unit.storage_path, 'images', 'boot.iso')
+        created_link = os.path.join(self.publisher.repo.working_dir, "images", 'boot.iso')
+        self.assertTrue(os.path.islink(created_link))
+        self.assertEquals(os.path.realpath(created_link), os.path.realpath(content_file))
+
+    @mock.patch('pulp_rpm.plugins.distributors.yum.publish.Publisher._create_symlink')
+    def test_publish_distribution_files_error(self, mock_symlink):
+        self._init_publisher()
+        unit = self._generate_distribution_unit('one')
+        self.publisher._init_step_progress_report(publish.PUBLISH_DISTRIBUTION_STEP)
+        mock_symlink.side_effect = Exception('Test Error')
+        self.assertRaises(Exception, self.publisher._publish_distribution_files, unit)
+        self.assertEquals(
+            self.publisher.progress_report[publish.PUBLISH_DISTRIBUTION_STEP][publish.TOTAL], 1)
+        self.assertEquals(
+            self.publisher.progress_report[publish.PUBLISH_DISTRIBUTION_STEP][publish.SUCCESSES], 0)
+        self.assertEquals(
+            self.publisher.progress_report[publish.PUBLISH_DISTRIBUTION_STEP][publish.PROCESSED], 0)
+
+    @mock.patch('pulp_rpm.plugins.distributors.yum.publish.Publisher._create_symlink')
+    def test_publish_distribution_files_no_files(self, mock_symlink):
+        self._init_publisher()
+        unit = self._generate_distribution_unit('one')
+        unit.metadata.pop('files', None)
+        self.publisher._publish_distribution_files(unit)
+        #This would throw an exception if it didn't work properly
+
+    def test_publish_distribution_packages_link(self):
+        self._init_publisher()
+        self.publisher._init_step_progress_report(publish.PUBLISH_DISTRIBUTION_STEP)
+        self.publisher._publish_distribution_packages_link()
+
+        created_link = os.path.join(self.publisher.repo.working_dir, 'Packages')
+        self.assertTrue(os.path.islink(created_link))
+        self.assertEquals(os.path.realpath(created_link),
+                          os.path.realpath(self.publisher.repo.working_dir))
+
+    @mock.patch('pulp_rpm.plugins.distributors.yum.publish.Publisher._create_symlink')
+    def test_publish_distribution_packages_link_error(self, mock_symlink):
+        self._init_publisher()
+        self.publisher._init_step_progress_report(publish.PUBLISH_DISTRIBUTION_STEP)
+        mock_symlink.side_effect = Exception("Test Error")
+        self.assertRaises(Exception, self.publisher._publish_distribution_packages_link)

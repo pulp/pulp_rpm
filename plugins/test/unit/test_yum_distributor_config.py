@@ -24,10 +24,6 @@ from pulp.plugins.conduits.repo_config import RepoConfigConduit
 from pulp.plugins.config import PluginCallConfiguration
 from pulp.plugins.model import Repository
 
-# XXX fugly hack, figure out how *not* to do this
-PACKAGE_PATH = os.path.join(os.path.dirname(__file__), '../../')
-sys.path.insert(0, PACKAGE_PATH)
-
 from pulp_rpm.common.ids import TYPE_ID_DISTRIBUTOR_YUM
 from pulp_rpm.plugins.distributors.yum import configuration
 
