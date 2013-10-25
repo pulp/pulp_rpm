@@ -373,7 +373,7 @@ class UpdateinfoXMLFileContext(MetadataFileContext):
 
     def __init__(self, working_dir):
 
-        metadata_file_path = os.path.join(working_dir, REPODATA_DIR_NAME, UPDATE_INFO_XML_FILE_NAME)
+        metadata_file_path = os.path.join(working_dir, REPO_DATA_DIR_NAME, UPDATE_INFO_XML_FILE_NAME)
         super(UpdateinfoXMLFileContext, self).__init__(metadata_file_path)
 
     def _write_root_tag_open(self):
