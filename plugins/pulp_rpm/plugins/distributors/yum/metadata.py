@@ -378,11 +378,19 @@ class UpdateinfoXMLFileContext(MetadataFileContext):
 
     def _write_root_tag_open(self):
 
-        self.metadata_file_handle.write('<updates>\n')
+        updates_element = ElementTree.Element('updates')
+        bogus_element = ElementTree.SubElement(updates_element, '')
 
-    def _write_root_tag_close(self):
+        updates_tags_string = ElementTree.tostring(updates_element, 'utf-8')
+        bogus_tag_string = ElementTree.tostring(bogus_element, 'utf-8')
+        opening_tag, closing_tag = updates_tags_string.split(bogus_tag_string, 1)
 
-        self.metadata_file_handle.write('</updates>\n')
+        self.metadata_file_handle.write(opening_tag + '\n')
+
+        def _write_root_tag_close_closure(*args):
+            self.metadata_file_handle.write(closing_tag + '\n')
+
+        self._write_root_tag_close = _write_root_tag_close_closure
 
     def add_unit_metadata(self, erratum_unit):
 
