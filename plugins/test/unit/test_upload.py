@@ -52,8 +52,7 @@ class UploadDispatchTests(unittest.TestCase):
                                             self.file_path, self.conduit, self.config)
 
         self.assertTrue(report is not None)
-        self.assertTrue(isinstance(report, SyncReport))
-        self.assertTrue(report.success_flag)
+        self.assertTrue(report['success_flag'])
 
     @mock.patch('pulp_rpm.plugins.importers.yum.upload._handle_package')
     def test_srpm(self, mock_handle):
@@ -66,8 +65,7 @@ class UploadDispatchTests(unittest.TestCase):
                                             self.file_path, self.conduit, self.config)
 
         self.assertTrue(report is not None)
-        self.assertTrue(isinstance(report, SyncReport))
-        self.assertTrue(report.success_flag)
+        self.assertTrue(report['success_flag'])
 
     @mock.patch('pulp_rpm.plugins.importers.yum.upload._handle_group_category')
     def test_group(self, mock_handle):
@@ -81,8 +79,7 @@ class UploadDispatchTests(unittest.TestCase):
                                             self.config)
 
         self.assertTrue(report is not None)
-        self.assertTrue(isinstance(report, SyncReport))
-        self.assertTrue(report.success_flag)
+        self.assertTrue(report['success_flag'])
 
     @mock.patch('pulp_rpm.plugins.importers.yum.upload._handle_group_category')
     def test_category(self, mock_handle):
@@ -96,8 +93,7 @@ class UploadDispatchTests(unittest.TestCase):
                                             self.config)
 
         self.assertTrue(report is not None)
-        self.assertTrue(isinstance(report, SyncReport))
-        self.assertTrue(report.success_flag)
+        self.assertTrue(report['success_flag'])
 
     @mock.patch('pulp_rpm.plugins.importers.yum.upload._handle_erratum')
     def test_erratum(self, mock_handle):
@@ -111,8 +107,7 @@ class UploadDispatchTests(unittest.TestCase):
                                             self.config)
 
         self.assertTrue(report is not None)
-        self.assertTrue(isinstance(report, SyncReport))
-        self.assertTrue(report.success_flag)
+        self.assertTrue(report['success_flag'])
 
     @mock.patch('pulp_rpm.plugins.importers.yum.upload._handle_yum_metadata_file')
     def test_yum_metadata_file(self, mock_handle):
@@ -126,8 +121,7 @@ class UploadDispatchTests(unittest.TestCase):
                                             self.config)
 
         self.assertTrue(report is not None)
-        self.assertTrue(isinstance(report, SyncReport))
-        self.assertTrue(report.success_flag)
+        self.assertTrue(report['success_flag'])
 
     def test_unsupported(self):
         # Test
@@ -136,10 +130,9 @@ class UploadDispatchTests(unittest.TestCase):
 
         # Verify
         self.assertTrue(report is not None)
-        self.assertTrue(isinstance(report, SyncReport))
-        self.assertTrue(not report.success_flag)
-        self.assertTrue('errors' in report.details)
-        self.assertTrue('foo' in report.details['errors'][0])
+        self.assertFalse(report['success_flag'])
+        self.assertTrue('errors' in report['details'])
+        self.assertTrue('foo' in report['details']['errors'][0])
 
     @mock.patch('pulp_rpm.plugins.importers.yum.upload._handle_package')
     def test_model_instantiation_error(self, mock_handle):
@@ -151,9 +144,9 @@ class UploadDispatchTests(unittest.TestCase):
                                self.file_path, self.conduit, self.config)
 
         # Verify
-        self.assertTrue(not report.success_flag)
-        self.assertTrue('errors' in report.details)
-        self.assertTrue('invalid' in report.details['errors'][0])
+        self.assertTrue(not report['success_flag'])
+        self.assertTrue('errors' in report['details'])
+        self.assertTrue('invalid' in report['details']['errors'][0])
 
     @mock.patch('pulp_rpm.plugins.importers.yum.upload._handle_package')
     def test_store_file_error(self, mock_handle):
@@ -165,9 +158,9 @@ class UploadDispatchTests(unittest.TestCase):
                                self.file_path, self.conduit, self.config)
 
         # Verify
-        self.assertTrue(not report.success_flag)
-        self.assertTrue('errors' in report.details)
-        self.assertTrue('storage' in report.details['errors'][0])
+        self.assertFalse(report['success_flag'])
+        self.assertTrue('errors' in report['details'])
+        self.assertTrue('storage' in report['details']['errors'][0])
 
     @mock.patch('pulp_rpm.plugins.importers.yum.upload._handle_package')
     def test_package_metadata_error(self, mock_handle):
@@ -179,9 +172,9 @@ class UploadDispatchTests(unittest.TestCase):
                                self.file_path, self.conduit, self.config)
 
         # Verify
-        self.assertTrue(not report.success_flag)
-        self.assertTrue('errors' in report.details)
-        self.assertTrue('extracted' in report.details['errors'][0])
+        self.assertFalse(report['success_flag'])
+        self.assertTrue('errors' in report['details'])
+        self.assertTrue('extracted' in report['details']['errors'][0])
 
     @mock.patch('pulp_rpm.plugins.importers.yum.upload._handle_package')
     def test_unexpected(self, mock_handle):
@@ -193,9 +186,9 @@ class UploadDispatchTests(unittest.TestCase):
                                self.file_path, self.conduit, self.config)
 
         # Verify
-        self.assertTrue(not report.success_flag)
-        self.assertTrue('errors' in report.details)
-        self.assertTrue('unexpected' in report.details['errors'][0])
+        self.assertFalse(report['success_flag'])
+        self.assertTrue('errors' in report['details'])
+        self.assertTrue('unexpected' in report['details']['errors'][0])
 
 
 class UploadErratumTests(unittest.TestCase):
