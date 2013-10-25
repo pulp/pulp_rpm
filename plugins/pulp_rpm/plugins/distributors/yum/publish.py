@@ -232,8 +232,14 @@ class Publisher(object):
         total = len(unit_list)
         self.progress_report[PUBLISH_RPMS_STEP][TOTAL] = total
 
-        with metadata.PrimaryXMLFileContext(self.repo.working_dir, total) as primary_xml_file_context:
+        file_lists_context = metadata.FilelistsXMLFileContext(self.repo.working_dir, total)
+        other_context = metadata.OtherXMLFileContext(self.repo.working_dir, total)
+        primary_context = metadata.PrimaryXMLFileContext(self.repo.working_dir, total)
 
+        for context in (file_lists_context, other_context, primary_context):
+            context.initialize()
+
+        try:
             for unit in unit_list:
 
                 if self.canceled:
@@ -250,7 +256,8 @@ class Publisher(object):
                     continue
 
                 try:
-                    primary_xml_file_context.add_unit_metadata(unit)
+                    for context in (file_lists_context, other_context, primary_context):
+                        context.add_unit_metadata(unit)
 
                 except Exception, e:
                     self._record_failure(PUBLISH_RPMS_STEP, e)
@@ -258,6 +265,10 @@ class Publisher(object):
 
                 # success
                 self.progress_report[PUBLISH_RPMS_STEP][SUCCESSES] += 1
+
+        finally:
+            for context in (file_lists_context, other_context, primary_context):
+                context.finalize()
 
         if self.progress_report[PUBLISH_RPMS_STEP][FAILURES]:
             self._report_progress(PUBLISH_RPMS_STEP, state=PUBLISH_FAILED_STATE)

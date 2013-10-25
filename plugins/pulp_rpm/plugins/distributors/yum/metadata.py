@@ -22,10 +22,15 @@ from pulp_rpm.yum_plugin import util
 
 _LOG = util.getLogger(__name__)
 
-REPODATA_DIR_NAME = 'repodata'
+REPO_DATA_DIR_NAME = 'repodata'
+
+FILE_LISTS_XML_FILE_NAME = 'filelists.xml.gz'
+OTHER_XML_FILE_NAME = 'other.xml.gz'
 PRIMARY_XML_FILE_NAME = 'primary.xml.gz'
 
 COMMON_NAMESPACE = 'http://linux.duke.edu/metadata/common'
+FILE_LISTS_NAMESPACE = 'http://linux.duke.edu/metadata/filelists'
+OTHER_NAMESPACE = 'http://linux.duke.edu/metadata/other'
 RPM_NAMESPACE = 'http://linux.duke.edu/metadata/rpm'
 
 # -- base metadata file context class ------------------------------------------
@@ -43,6 +48,10 @@ class MetadataFileContext(object):
 
         self.metadata_file_path = metadata_file_path
         self.metadata_file_handle = None
+
+    def __del__(self):
+        # try to finalize in cause something bad happened
+        self.finalize()
 
     # -- for use with 'with' ---------------------------------------------------
 
@@ -94,6 +103,11 @@ class MetadataFileContext(object):
     # -- metadata file lifecycle -----------------------------------------------
 
     def _open_metadata_file_handle(self):
+        """
+        Open the metadata file handle, creating any missing parent directories.
+
+        If the file already exists, this will overwrite it.
+        """
         assert self.metadata_file_handle is None
         _LOG.debug('Opening metadata file: %s' % self.metadata_file_path)
 
@@ -127,6 +141,9 @@ class MetadataFileContext(object):
             self.metadata_file_handle = open(self.metadata_file_path, 'w')
 
     def _write_xml_header(self):
+        """
+        Write the initial <?xml?> header tag into the file handle.
+        """
         assert self.metadata_file_handle is not None
         _LOG.debug('Writing XML header into metadata file: %s' % self.metadata_file_path)
 
@@ -135,12 +152,21 @@ class MetadataFileContext(object):
         self.metadata_file_handle.write(xml_header)
 
     def _write_root_tag_open(self):
+        """
+        Write the opening tag for the root element of a given metadata XML file.
+        """
         raise NotImplementedError()
 
     def _write_root_tag_close(self):
+        """
+        Write the closing tag for the root element of a give metadata XML file.
+        """
         raise NotImplementedError()
 
     def _close_metadata_file_handle(self):
+        """
+        Flush any cached writes to the metadata file handle and close it.
+        """
         assert self.metadata_file_handle is not None
         _LOG.debug('Closing metadata file: %s' % self.metadata_file_path)
 
@@ -165,7 +191,8 @@ class PreGeneratedMetadataContext(MetadataFileContext):
         :param unit: unit whose metadata is being written
         :type  unit: pulp.plugins.model.Unit
         """
-        _LOG.debug('Writing pre-generated metadata for unit: %s' % unit.unit_key.get('name', 'unknown'))
+        _LOG.debug('Writing pre-generated %s metadata for unit: %s' %
+                   (metadata_category, unit.unit_key.get('name', 'unknown')))
 
         if 'repodata' not in unit.metadata or metadata_category not in unit.metadata['repodata']:
 
@@ -188,6 +215,104 @@ class PreGeneratedMetadataContext(MetadataFileContext):
         metadata = unicode(metadata)
         self.metadata_file_handle.write(metadata.encode('utf-8'))
 
+    def add_unit_metadata(self, unit):
+        """
+        Write the metadata for a given unit to the file handle.
+
+        :param unit: unit whose metadata is being written
+        :type  unit: pulp.plugins.model.Unit
+        """
+        raise NotImplementedError()
+
+# -- filelists.xml file context class ------------------------------------------
+
+class FilelistsXMLFileContext(PreGeneratedMetadataContext):
+    """
+    Context manager for generating the filelists.xml.gz file.
+    """
+
+    def __init__(self, working_dir, num_units):
+        """
+        :param working_dir: working directory to create the filelists.xml.gz in
+        :type  working_dir: str
+        :param num_units: total number of units whose metadata will be written
+                          into the filelists.xml.gz metadata file
+        :type  num_units: int
+        """
+
+        metadata_file_path = os.path.join(working_dir, REPO_DATA_DIR_NAME, FILE_LISTS_XML_FILE_NAME)
+        super(FilelistsXMLFileContext, self).__init__(metadata_file_path)
+
+        self.num_packages = num_units
+
+    def _write_root_tag_open(self):
+
+        attributes = {'xmlns': FILE_LISTS_NAMESPACE,
+                      'packages': str(self.num_packages)}
+
+        metadata_element = ElementTree.Element('filelists', attributes)
+        bogus_element = ElementTree.SubElement(metadata_element, '')
+
+        metadata_tags_string = ElementTree.tostring(metadata_element, 'utf-8')
+        bogus_tag_string = ElementTree.tostring(bogus_element, 'utf-8')
+        opening_tag, closing_tag = metadata_tags_string.split(bogus_tag_string, 1)
+
+        self.metadata_file_handle.write(opening_tag + '\n')
+
+        def _write_root_tag_close_closure(*args):
+            self.metadata_file_handle.write(closing_tag + '\n')
+
+        self._write_root_tag_close = _write_root_tag_close_closure
+
+    def add_unit_metadata(self, unit):
+
+        self._add_unit_pre_generated_metadata('filelists', unit)
+
+# -- other.xml file context class ----------------------------------------------
+
+class OtherXMLFileContext(PreGeneratedMetadataContext):
+    """
+    Context manager for generating the other.xml.gz file.
+    """
+
+    def __init__(self, working_dir, num_units):
+        """
+        :param working_dir: working directory to create the other.xml.gz in
+        :type  working_dir: str
+        :param num_units: total number of units whose metadata will be written
+                          into the other.xml.gz metadata file
+        :type  num_units: int
+        """
+
+        metadata_file_path = os.path.join(working_dir, REPO_DATA_DIR_NAME, OTHER_XML_FILE_NAME)
+        super(OtherXMLFileContext, self).__init__(metadata_file_path)
+
+        self.num_packages = num_units
+
+    def _write_root_tag_open(self):
+
+        attributes = {'xmlns': OTHER_NAMESPACE,
+                      'packages': str(self.num_packages)}
+
+        metadata_element = ElementTree.Element('otherdata', attributes)
+        bogus_element = ElementTree.SubElement(metadata_element, '')
+
+        metadata_tags_string = ElementTree.tostring(metadata_element, 'utf-8')
+        # use a bogus sub-element to programmaticly split the opening and closing tags
+        bogus_tag_string = ElementTree.tostring(bogus_element, 'utf-8')
+        opening_tag, closing_tag = metadata_tags_string.split(bogus_tag_string, 1)
+
+        self.metadata_file_handle.write(opening_tag + '\n')
+
+        def _write_root_tag_close_closure(*args):
+            self.metadata_file_handle.write(closing_tag + '\n')
+
+        self._write_root_tag_close = _write_root_tag_close_closure
+
+    def add_unit_metadata(self, unit):
+
+        self._add_unit_pre_generated_metadata('other', unit)
+
 # -- primary.xml file context class --------------------------------------------
 
 class PrimaryXMLFileContext(PreGeneratedMetadataContext):
@@ -204,7 +329,7 @@ class PrimaryXMLFileContext(PreGeneratedMetadataContext):
         :type  num_units: int
         """
 
-        metadata_file_path = os.path.join(working_dir, REPODATA_DIR_NAME, PRIMARY_XML_FILE_NAME)
+        metadata_file_path = os.path.join(working_dir, REPO_DATA_DIR_NAME, PRIMARY_XML_FILE_NAME)
         super(PrimaryXMLFileContext, self).__init__(metadata_file_path)
 
         self.num_packages = num_units
@@ -216,7 +341,7 @@ class PrimaryXMLFileContext(PreGeneratedMetadataContext):
                       'packages': str(self.num_packages)}
 
         metadata_element = ElementTree.Element('metadata', attributes)
-        # add a bogus sub-element to make splitting the opening and closing tags possible
+        # use a bogus sub-element to programmaticly split the opening and closing tags
         bogus_element = ElementTree.SubElement(metadata_element, '')
 
         metadata_tags_string = ElementTree.tostring(metadata_element, 'utf-8')
