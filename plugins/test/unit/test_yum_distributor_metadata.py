@@ -487,7 +487,7 @@ class YumDistributorMetadataTests(unittest.TestCase):
 
         self.assertTrue(os.path.exists(path))
 
-    def test_updateinfo_opening_tag(self):
+    def test_updateinfo_opening_closing_tags(self):
 
         path = os.path.join(self.metadata_file_dir,
                             metadata.REPO_DATA_DIR_NAME,
@@ -496,24 +496,26 @@ class YumDistributorMetadataTests(unittest.TestCase):
         context = metadata.UpdateinfoXMLFileContext(self.metadata_file_dir)
 
         context._open_metadata_file_handle()
+
+        self.assertRaises(NotImplementedError, context._write_root_tag_close)
+
         context._write_root_tag_open()
+
+        try:
+            context._write_root_tag_close()
+
+        except Exception, e:
+            self.fail(e.message)
+
         context._close_metadata_file_handle()
 
         self.assertNotEqual(os.path.getsize(path), 0)
 
-    def test_updateinfo_closing_tag(self):
+        with gzip.open(path, 'r') as updateinfo_handle:
 
-        path = os.path.join(self.metadata_file_dir,
-                            metadata.REPO_DATA_DIR_NAME,
-                            metadata.UPDATE_INFO_XML_FILE_NAME)
+            content = updateinfo_handle.read()
 
-        context = metadata.UpdateinfoXMLFileContext(self.metadata_file_dir)
-
-        context._open_metadata_file_handle()
-        context._write_root_tag_close()
-        context._close_metadata_file_handle()
-
-        self.assertNotEqual(os.path.getsize(path), 0)
+            self.assertEqual(content, '<updates>\n</updates>\n')
 
     def test_updateinfo_unit_metadata(self):
 
@@ -537,4 +539,16 @@ class YumDistributorMetadataTests(unittest.TestCase):
 
         self.assertNotEqual(os.path.getsize(path), 0)
 
+        with gzip.open(path, 'r') as updateinfo_handle:
+
+            content = updateinfo_handle.read()
+
+            self.assertEqual(content.count('from="enhancements@redhat.com"'), 1)
+            self.assertEqual(content.count('status="final"'), 1)
+            self.assertEqual(content.count('type="enhancements"'), 1)
+            self.assertEqual(content.count('version="1"'), 1)
+            self.assertEqual(content.count('<id>RHEA-2010:9999</id>'), 1)
+            self.assertEqual(content.count('<collection short="F13PTP">'), 1)
+            self.assertEqual(content.count('<package'), 2)
+            self.assertEqual(content.count('<sum type="md5">f3c197a29d9b66c5b65c5d62b25db5b4</sum>'), 1)
 
