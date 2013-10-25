@@ -36,8 +36,11 @@ def parse_skip_types(t):
 
     :param t: user entered value or None
     """
-    if t is None:
-        return
+    if t in (None, ''):
+        # Returning t itself is important. If it's None, it's an unspecified parameter
+        # and should be ignored. If it's an empty string, it's the unset convention,
+        # which is translated into a removal later in the parsing.
+        return t
 
     parsed = t.split(',')
     parsed = [p.strip() for p in parsed]

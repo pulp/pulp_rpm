@@ -19,6 +19,7 @@ from pulp.common.compat import json
 from pulp.common.plugins import importer_constants as constants
 
 from pulp_rpm.common import ids
+from pulp_rpm.common import constants as rpm_constants
 from pulp_rpm.extension.admin import repo_create_update, repo_options
 import rpm_support_base
 
@@ -155,18 +156,13 @@ class RpmRepoCreateCommandTests(rpm_support_base.PulpClientTests):
         self.assertEqual([TAG_SUCCESS], self.prompt.get_write_tags())
 
     def test_run_through_cli(self):
-        """
-        See the note in test_run_through_cli under the create tests for
-        more info.
-        """
-
         # Setup
         self.server_mock.request.return_value = 201, {}
 
         # Test
-        command = repo_create_update.RpmRepoUpdateCommand(self.context)
+        command = repo_create_update.RpmRepoCreateCommand(self.context)
         self.cli.add_command(command)
-        self.cli.run("update --repo-id r --validate true".split())
+        self.cli.run("create --repo-id r --validate true".split())
 
         # Verify
         self.assertEqual(1, self.server_mock.request.call_count)
@@ -174,6 +170,7 @@ class RpmRepoCreateCommandTests(rpm_support_base.PulpClientTests):
         body = self.server_mock.request.call_args[0][2]
         body = json.loads(body)
 
+        self.assertEqual(body['id'], 'r')
         self.assertEqual(body['importer_config'][constants.KEY_VALIDATE], True) # not the string "true"
 
     def test_process_relative_url_with_feed(self):
@@ -287,13 +284,18 @@ class RpmRepoUpdateCommandTests(rpm_support_base.PulpClientTests):
         self.assertEqual(iso_dist_config['skip'],  [ids.TYPE_ID_RPM])
 
     def test_run_through_cli(self):
+        """
+        See the note in test_run_through_cli under the create tests for
+        more info.
+        """
+
         # Setup
         self.server_mock.request.return_value = 201, {}
 
         # Test
-        command = repo_create_update.RpmRepoCreateCommand(self.context)
+        command = repo_create_update.RpmRepoUpdateCommand(self.context)
         self.cli.add_command(command)
-        self.cli.run("create --repo-id r --validate true".split())
+        self.cli.run("update --repo-id r --validate true".split())
 
         # Verify
         self.assertEqual(1, self.server_mock.request.call_count)
@@ -301,5 +303,24 @@ class RpmRepoUpdateCommandTests(rpm_support_base.PulpClientTests):
         body = self.server_mock.request.call_args[0][2]
         body = json.loads(body)
 
-        self.assertEqual(body['id'], 'r')
         self.assertEqual(body['importer_config'][constants.KEY_VALIDATE], True) # not the string "true"
+
+    def test_remove_skip_types(self):
+        # Setup
+        self.server_mock.request.return_value = 201, {}
+
+        # Test
+        command = repo_create_update.RpmRepoUpdateCommand(self.context)
+        self.cli.add_command(command)
+        self.cli.run("update --repo-id r --skip".split() + [''])
+
+        # Verify
+        self.assertEqual(1, self.server_mock.request.call_count)
+
+        body = self.server_mock.request.call_args[0][2]
+        body = json.loads(body)
+
+        self.assertEqual(body['importer_config']['type_skip_list'], None)
+        self.assertEqual(body['distributor_configs']['yum_distributor']['skip'], None)
+        self.assertEqual(body['distributor_configs']['export_distributor']['skip'], None)
+
