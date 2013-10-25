@@ -28,6 +28,7 @@ from pulp_rpm.common.ids import (TYPE_ID_DISTRO, TYPE_ID_DRPM, TYPE_ID_ERRATA, T
                                  TYPE_ID_YUM_REPO_METADATA_FILE)
 from pulp_rpm.repo_auth import protected_repo_utils, repo_cert_utils
 from pulp_rpm.yum_plugin import comps_util, util, metadata, updateinfo
+from pulp_rpm.plugins.importers.yum.parse.treeinfo import KEY_PACKAGEDIR
 import pulp_rpm.common.constants as constants
 
 # -- constants ----------------------------------------------------------------
@@ -88,6 +89,7 @@ class YumDistributor(Distributor):
         super(YumDistributor, self).__init__()
         self.canceled = False
         self.use_createrepo = False
+        self.package_dir = None
 
     @classmethod
     def metadata(cls):
@@ -316,6 +318,17 @@ class YumDistributor(Distributor):
             return publish_conduit.build_cancel_report(summary, details)
         skip_list = config.get('skip') or []
         # Determine Content in this repo
+
+        distro_errors = []
+        distro_units =  []
+        if 'distribution' not in skip_list:
+            criteria = UnitAssociationCriteria(type_ids=TYPE_ID_DISTRO)
+            distro_units = publish_conduit.get_units(criteria=criteria)
+            # symlink distribution files if any under repo.working_dir
+            distro_status, distro_errors = self.symlink_distribution_unit_files(distro_units, repo.working_dir, publish_conduit, progress_callback)
+            if not distro_status:
+                _LOG.error("Unable to publish distribution tree %s items" % (len(distro_errors)))
+
         pkg_units = []
         pkg_errors = []
         if 'rpm' not in skip_list:
@@ -332,16 +345,6 @@ class YumDistributor(Distributor):
             pkg_status, pkg_errors = self.handle_symlinks(pkg_units, repo.working_dir, progress_callback)
             if not pkg_status:
                 _LOG.error("Unable to publish %s items" % (len(pkg_errors)))
-
-        distro_errors = []
-        distro_units =  []
-        if 'distribution' not in skip_list:
-            criteria = UnitAssociationCriteria(type_ids=TYPE_ID_DISTRO)
-            distro_units = publish_conduit.get_units(criteria=criteria)
-            # symlink distribution files if any under repo.working_dir
-            distro_status, distro_errors = self.symlink_distribution_unit_files(distro_units, repo.working_dir, publish_conduit, progress_callback)
-            if not distro_status:
-                _LOG.error("Unable to publish distribution tree %s items" % (len(distro_errors)))
 
         updateinfo_xml_path = None
         if 'erratum' not in skip_list:
@@ -519,6 +522,14 @@ class YumDistributor(Distributor):
                     packages_progress_status["num_error"] += 1
                     packages_progress_status["items_left"] -= 1
                     continue
+
+                if self.package_dir is not None and not util.create_symlink(source_path, os.path.join(symlink_path, self.package_dir)):
+                    msg = "Unable to create symlink for: %s pointing to %s" % (symlink_path, source_path)
+                    _LOG.error(msg)
+                    errors.append((source_path, symlink_path, msg))
+                    packages_progress_status["num_error"] += 1
+                    packages_progress_status["items_left"] -= 1
+                    continue
                 packages_progress_status["num_success"] += 1
             except Exception, e:
                 tb_info = traceback.format_exc()
@@ -591,7 +602,11 @@ class YumDistributor(Distributor):
         scratchpad = self._handle_orphaned_distributions(units, symlink_dir, existing_scratchpad)
         errors = []
         for u in units:
-            source_path_dir  = u.storage_path
+            source_path_dir = u.storage_path
+            if u.metadata[KEY_PACKAGEDIR] is not None:
+                self.package_dir = u.metadata[KEY_PACKAGEDIR]
+                package_path = os.path.join(symlink_dir, self.package_dir)
+                os.makedirs(package_path)
             if not u.metadata.has_key('files'):
                 msg = "No distribution files found for unit %s" % u
                 _LOG.error(msg)

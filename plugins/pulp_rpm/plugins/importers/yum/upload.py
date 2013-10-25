@@ -19,7 +19,6 @@ import shutil
 import rpm
 from xml.etree import cElementTree as ET
 
-from pulp.plugins.model import SyncReport
 from pulp.plugins.util import verification
 from pulp.server.db.model.criteria import UnitAssociationCriteria
 
@@ -81,7 +80,7 @@ def upload(repo, type_id, unit_key, metadata, file_path, conduit, config):
     :type  config: pulp.plugins.config.PluginCallConfiguration
 
     :return: report of the details of the sync
-    :rtype:  pulp.plugins.model.SyncReport
+    :rtype:  dict
     """
 
     # Dispatch to process the upload by type
@@ -116,7 +115,7 @@ def upload(repo, type_id, unit_key, metadata, file_path, conduit, config):
         _LOGGER.exception(msg)
         return _fail_report(msg)
 
-    report = SyncReport(True, 1, 0, 0, '', {})
+    report = {'success_flag': True, 'summary': '', 'details': {}}
     return report
 
 
@@ -404,4 +403,4 @@ def _fail_report(message):
     # this is the format returned by the original importer. I'm not sure if
     # anything is actually parsing it
     details = {'errors': [message]}
-    return SyncReport(False, 0, 0, 0, '', details)
+    return {'success_flag': False, 'summary': '', 'details': details}

@@ -150,7 +150,8 @@ class TestISOImporter(PulpRPMTests):
     def test_sync_calls_sync(self, mock_sync_run):
         repo = Repository('repo1')
         sync_conduit = importer_mocks.get_sync_conduit(type_id=ids.TYPE_ID_ISO, pkg_dir='/a/b/c')
-        config = importer_mocks.get_basic_config()
+        config = importer_mocks.get_basic_config(**{
+                    importer_constants.KEY_FEED: 'http://fake.com/iso_feed/'})
 
         self.iso_importer.sync_repo(repo, sync_conduit, config)
 
@@ -194,14 +195,12 @@ class TestISOImporter(PulpRPMTests):
         # Just so we don't have to care about the checksum
         config = importer_mocks.get_basic_config(**{importer_constants.KEY_VALIDATE: 'false'})
 
-        # Run the upload. This should raise a ValueError
-        try:
-            self.iso_importer.upload_unit(repo, ids.TYPE_ID_ISO, unit_key, metadata,
-                                          temp_file_location, sync_conduit, config)
-            self.fail('A ValueError should have been raised by the line above, but was not.')
-        except ValueError, e:
-            self.assertEqual(str(e), 'An ISO may not be named PULP_MANIFEST, as it '
-                             'conflicts with the name of the manifest during publishing.')
+        report = self.iso_importer.upload_unit(repo, ids.TYPE_ID_ISO, unit_key, metadata,
+                                               temp_file_location, sync_conduit, config)
+
+        self.assertEqual(report['success_flag'], False)
+        self.assertEqual(report['summary'], 'An ISO may not be named PULP_MANIFEST, as it '
+                         'conflicts with the name of the manifest during publishing.')
 
         # init_unit() should have been called
         expected_rel_path = os.path.join(unit_key['name'], unit_key['checksum'],
@@ -219,7 +218,8 @@ class TestISOImporter(PulpRPMTests):
         # The conduit's save_unit method should not have been called
         self.assertEqual(sync_conduit.save_unit.call_count, 0)
 
-    @mock.patch('pulp_rpm.common.models.ISO.validate', side_effect=models.ISO.validate, autospec=True)
+    @mock.patch('pulp_rpm.common.models.ISO.validate', side_effect=models.ISO.validate,
+                autospec=True)
     def test_upload_unit_validate_false(self, validate):
         """
         Assert correct behavior from upload_unit() when the validation setting is False.
@@ -232,8 +232,8 @@ class TestISOImporter(PulpRPMTests):
         os.mkdir(pkg_dir)
         repo = mock.MagicMock(spec=Repository)
         repo.working_dir = working_dir
-        # Set the checksum incorrect. The upload should be successful no matter what since validation will be
-        # set to False
+        # Set the checksum incorrect. The upload should be successful no matter what since
+        # validation will be set to False
         unit_key = {'name': 'test.iso', 'size': 16, 'checksum': 'Wrong'}
         metadata = {}
         temp_file_location = os.path.join(self.temp_dir, 'test.iso')
@@ -242,14 +242,19 @@ class TestISOImporter(PulpRPMTests):
         sync_conduit = importer_mocks.get_sync_conduit(type_id=ids.TYPE_ID_ISO, pkg_dir=pkg_dir)
         config = importer_mocks.get_basic_config(**{importer_constants.KEY_VALIDATE: 'false'})
 
-        # Run the upload. This should not cause a ValueError (which could happen if validation failed)
-        self.iso_importer.upload_unit(repo, ids.TYPE_ID_ISO, unit_key, metadata, temp_file_location,
-                                      sync_conduit, config)
+        # Run the upload. This should be successful, since we have set validation off.
+        report = self.iso_importer.upload_unit(repo, ids.TYPE_ID_ISO, unit_key, metadata,
+                                               temp_file_location, sync_conduit, config)
+
+        # The import should have been successful
+        self.assertEqual(report['success_flag'], True)
+        self.assertEqual(report['summary'], None)
 
         # The conduit's init_unit method should have been called
-        expected_rel_path = os.path.join(unit_key['name'], unit_key['checksum'], str(unit_key['size']),
-                                         unit_key['name'])
-        sync_conduit.init_unit.assert_called_once_with(ids.TYPE_ID_ISO, unit_key, metadata, expected_rel_path)
+        expected_rel_path = os.path.join(unit_key['name'], unit_key['checksum'],
+                                         str(unit_key['size']), unit_key['name'])
+        sync_conduit.init_unit.assert_called_once_with(ids.TYPE_ID_ISO, unit_key, metadata,
+                                                       expected_rel_path)
 
         # The file should have been moved to its final destination
         self.assertFalse(os.path.exists(temp_file_location))
@@ -269,7 +274,7 @@ class TestISOImporter(PulpRPMTests):
         saved_unit = sync_conduit.save_unit.mock_calls[0][1][0]
         self.assertEqual(saved_unit.unit_key, unit_key)
 
-    @mock.patch('pulp_rpm.common.models.ISO.validate', side_effect=ValueError)
+    @mock.patch('pulp_rpm.common.models.ISO.validate')
     @mock.patch('os.remove', side_effect=os.remove)
     def test_upload_unit_validate_true_bad_checksum(self, remove, validate):
         """
@@ -277,6 +282,8 @@ class TestISOImporter(PulpRPMTests):
         """
         # Set up the test
         file_data = 'This is a file.\n'
+        error_message = 'uh oh'
+        validate.side_effect = ValueError(error_message)
         working_dir = os.path.join(self.temp_dir, "working")
         os.mkdir(working_dir)
         pkg_dir = os.path.join(self.temp_dir, 'content')
@@ -292,14 +299,17 @@ class TestISOImporter(PulpRPMTests):
         sync_conduit = importer_mocks.get_sync_conduit(type_id=ids.TYPE_ID_ISO, pkg_dir=pkg_dir)
         config = importer_mocks.get_basic_config(**{importer_constants.KEY_VALIDATE: 'true'})
 
-        # Run the upload. This should raise a ValueError
-        self.assertRaises(ValueError, self.iso_importer.upload_unit, repo, ids.TYPE_ID_ISO, unit_key, metadata,
-                          temp_file_location, sync_conduit, config)
+        # Run the upload. This should fail due to the bad checksum
+        report = self.iso_importer.upload_unit(repo, ids.TYPE_ID_ISO, unit_key, metadata,
+                                               temp_file_location, sync_conduit, config)
 
+        self.assertEqual(report['success_flag'], False)
+        self.assertEqual(report['summary'], error_message)
         # The conduit's init_unit method should have been called
-        expected_rel_path = os.path.join(unit_key['name'], unit_key['checksum'], str(unit_key['size']),
-                                         unit_key['name'])
-        sync_conduit.init_unit.assert_called_once_with(ids.TYPE_ID_ISO, unit_key, metadata, expected_rel_path)
+        expected_rel_path = os.path.join(unit_key['name'], unit_key['checksum'],
+                                         str(unit_key['size']), unit_key['name'])
+        sync_conduit.init_unit.assert_called_once_with(ids.TYPE_ID_ISO, unit_key, metadata,
+                                                       expected_rel_path)
 
         # The file should have been deleted
         self.assertFalse(os.path.exists(temp_file_location))
@@ -335,14 +345,17 @@ class TestISOImporter(PulpRPMTests):
         sync_conduit = importer_mocks.get_sync_conduit(type_id=ids.TYPE_ID_ISO, pkg_dir=pkg_dir)
         config = importer_mocks.get_basic_config(**{importer_constants.KEY_VALIDATE: 'true'})
 
-        # Run the upload. This should not cause a ValueError (which could happen if validation failed)
-        self.iso_importer.upload_unit(repo, ids.TYPE_ID_ISO, unit_key, metadata, temp_file_location,
-                                      sync_conduit, config)
+        # Run the upload. This should be successful
+        report = self.iso_importer.upload_unit(repo, ids.TYPE_ID_ISO, unit_key, metadata,
+                                               temp_file_location, sync_conduit, config)
 
+        self.assertEqual(report['success_flag'], True)
+        self.assertEqual(report['summary'], None)
         # The conduit's init_unit method should have been called
-        expected_rel_path = os.path.join(unit_key['name'], unit_key['checksum'], str(unit_key['size']),
-                                         unit_key['name'])
-        sync_conduit.init_unit.assert_called_once_with(ids.TYPE_ID_ISO, unit_key, metadata, expected_rel_path)
+        expected_rel_path = os.path.join(unit_key['name'], unit_key['checksum'],
+                                         str(unit_key['size']), unit_key['name'])
+        sync_conduit.init_unit.assert_called_once_with(ids.TYPE_ID_ISO, unit_key, metadata,
+                                                       expected_rel_path)
 
         # The file should have been moved to its final destination
         self.assertFalse(os.path.exists(temp_file_location))
@@ -356,12 +369,13 @@ class TestISOImporter(PulpRPMTests):
         saved_unit = sync_conduit.save_unit.mock_calls[0][1][0]
         self.assertEqual(saved_unit.unit_key, unit_key)
 
-    @mock.patch('pulp_rpm.common.models.ISO.validate', side_effect=ValueError)
+    @mock.patch('pulp_rpm.common.models.ISO.validate', side_effect=models.ISO.validate,
+                autospec=True)
     @mock.patch('os.remove', side_effect=os.remove)
     def test_upload_unit_validate_unset(self, remove, validate):
         """
-        Assert correct behavior from upload_unit() when the validation setting is not set. This should default
-        to validation.
+        Assert correct behavior from upload_unit() when the validation setting is not set. This
+        should default to validating the upload.
         """
         # Set up the test
         file_data = 'This is a file.\n'
@@ -371,8 +385,8 @@ class TestISOImporter(PulpRPMTests):
         os.mkdir(pkg_dir)
         repo = mock.MagicMock(spec=Repository)
         repo.working_dir = working_dir
-        # Set the checksum incorrect. The upload should be successful no matter what since validation will be
-        # set to False
+        # Set the checksum incorrect. The upload should be unsuccessful since the default is to
+        # validate
         unit_key = {'name': 'test.iso', 'size': 16, 'checksum': 'Wrong'}
         metadata = {}
         temp_file_location = os.path.join(self.temp_dir, 'test.iso')
@@ -382,14 +396,22 @@ class TestISOImporter(PulpRPMTests):
         # validate isn't set, so default should happen
         config = importer_mocks.get_basic_config()
 
-        # Run the upload. This should raise a ValueError
-        self.assertRaises(ValueError, self.iso_importer.upload_unit, repo, ids.TYPE_ID_ISO, unit_key, metadata,
-                          temp_file_location, sync_conduit, config)
+        # Run the upload. This should report a failure 
+        report = self.iso_importer.upload_unit(repo, ids.TYPE_ID_ISO, unit_key, metadata,
+                                               temp_file_location, sync_conduit, config)
+
+        self.assertEqual(report['success_flag'], False)
+        self.assertEqual(
+            report['summary'],
+            ('Downloading <test.iso> failed checksum validation. The manifest specified the '
+             'checksum to be Wrong, but it was '
+             'f02d5a72cd2d57fa802840a76b44c6c6920a8b8e6b90b20e26c03876275069e0.'))
 
         # The conduit's init_unit method should have been called
-        expected_rel_path = os.path.join(unit_key['name'], unit_key['checksum'], str(unit_key['size']),
-                                         unit_key['name'])
-        sync_conduit.init_unit.assert_called_once_with(ids.TYPE_ID_ISO, unit_key, metadata, expected_rel_path)
+        expected_rel_path = os.path.join(unit_key['name'], unit_key['checksum'],
+                                         str(unit_key['size']), unit_key['name'])
+        sync_conduit.init_unit.assert_called_once_with(ids.TYPE_ID_ISO, unit_key, metadata,
+                                                       expected_rel_path)
 
         # The file should have been moved to its final destination
         self.assertFalse(os.path.exists(temp_file_location))
@@ -399,7 +421,8 @@ class TestISOImporter(PulpRPMTests):
         remove.assert_called_once_with(would_be_destination)
 
         # validate() should have been called with the full_validation=True flag
-        validate.assert_called_once_with(full_validation=True)
+        iso = validate.mock_calls[0][1][0]
+        validate.assert_called_once_with(iso, full_validation=True)
 
         # The conduit's save_unit method should have been called
         self.assertEqual(sync_conduit.save_unit.call_count, 0)

@@ -24,6 +24,7 @@ COMPLETE_STATES = (STATE_COMPLETE, STATE_FAILED, STATE_SKIPPED)
 # Codes included in the progress report for each unit to identify what went wrong
 ERROR_SIZE_VERIFICATION = 'size_mismatch'
 ERROR_CHECKSUM_VERIFICATION = 'checksum_mismatch'
+ERROR_CHECKSUM_TYPE_UNKNOWN = 'checksum_type_unknown'
 
 # Standard keywords for progress reports to include
 PROGRESS_STATE_KEY = 'state'
@@ -107,6 +108,17 @@ EXPORT_HTTPS_DIR = '/var/lib/pulp/published/https/exports/repo'
 
 GROUP_EXPORT_HTTP_DIR = '/var/lib/pulp/published/http/exports/repo_group'
 GROUP_EXPORT_HTTPS_DIR = '/var/lib/pulp/published/https/exports/repo_group'
+
+# Keys used for reading & writing messages from server to clinet
+UNIT_KEY = 'unit_key'
+ERROR_CODE = 'error_code'
+NAME = 'name'
+CHECKSUM_TYPE = 'checksum_type'
+ACCEPTED_CHECKSUM_TYPES = 'accepted_checksum_types'
+ERROR_KEY_CHECKSUM_EXPECTED = 'expected_checksum'
+ERROR_KEY_CHECKSUM_ACTUAL = 'actual_checksum'
+ERROR_KEY_EXPECTED_SIZE = 'expected_size'
+ERROR_KEY_ACTUAL_SIZE = 'actual_size'
 
 # -- extensions ---------------------------------------------------------------
 
