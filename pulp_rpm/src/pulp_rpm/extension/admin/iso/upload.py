@@ -16,7 +16,7 @@ import os
 
 from pulp.client.commands.repo.upload import UploadCommand
 
-from pulp_rpm.common import models
+from pulp_rpm.common import ids, file_utils
 
 
 NAME = 'upload'
@@ -40,10 +40,10 @@ class UploadISOCommand(UploadCommand):
         :type  filename: basestring
         :param kwargs:   unused keyword args
         :type  kwargs:   dict
-        :return:         models.ISO.TYPE_ID
+        :return:         ids.TYPE_ID
         :rtype:          str
         """
-        return models.ISO.TYPE
+        return ids.TYPE_ID_ISO
 
     @staticmethod
     def generate_unit_key_and_metadata(filepath, **kwargs):
@@ -59,7 +59,10 @@ class UploadISOCommand(UploadCommand):
         :return:         A two tuple of (unit_key, metadata), both dicts
         :rtype:          tuple
         """
-        with open(filepath) as iso:
-            size = models.ISO.calculate_size(iso)
-            checksum = models.ISO.calculate_checksum(iso)
+        try:
+            iso = open(filepath)
+            size = file_utils.calculate_size(iso)
+            checksum = file_utils.calculate_checksum(iso)
+        finally:
+            iso.close()
         return {'name': os.path.basename(filepath), 'size': size, 'checksum': checksum}, {}
