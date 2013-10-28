@@ -83,7 +83,7 @@ The full URL to a published repository is derived from the following information
    default, this is set to ``/pulp/repos``.
  * The relative URL of the repository being published. This can be explicitly set
    when the repository is created in Pulp. If it is not explicitly set, Pulp will
-   derive this value using the realtive URL of the repository's feed. For feedless
+   derive this value using the relative URL of the repository's feed. For feedless
    repositories, the repository ID is used.
 
 Applying these rules to the above example repository, the published repository
