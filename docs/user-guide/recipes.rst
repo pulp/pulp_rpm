@@ -4,7 +4,6 @@
 Recipes
 *******
 
-
 Mirror a Remote Repository
 ==========================
 
@@ -74,9 +73,26 @@ case, we will mirror the `Foreman <http://theforeman.org/>`_ repository.
   [\]
   ... completed
 
-A local copy of the repository is now available at
+The full URL to a published repository is derived from the following information:
+ * The server name of the Pulp server. This should be the same hostname used in the
+   CN of the server's SSL certificate, otherwise SSL verification on the client
+   will likely fail. The configuration of that certificate is handled by Apache,
+   typically in the ``ssl.conf`` configuration file.
+ * The Apache alias at which Pulp RPM repositories are hosted. This value is set
+   in the ``pulp_rpm.conf`` file located in Apache's ``conf.d`` directory. By
+   default, this is set to ``/pulp/repos``.
+ * The relative URL of the repository being published. This can be explicitly set
+   when the repository is created in Pulp. If it is not explicitly set, Pulp will
+   derive this value using the relative URL of the repository's feed. For feedless
+   repositories, the repository ID is used.
+
+Applying these rules to the above example repository, the published repository
+can be found (adjusting the hostname as necessary) at:
 `https://localhost/pulp/repos/foreman/ <https://localhost/pulp/repos/foreman/>`_.
-(adjust the hostname as necessary)
+
+Had the relative URL not been explicitly set in the repository, the hosted URL
+would be:
+``https://localhost/pulp/repos/releases/1.1/el6/x86_64/``.
 
 To keep the repository current, it might be desirable to synchronize it on a
 regular schedule. The following command sets a schedule of synchronizing once
