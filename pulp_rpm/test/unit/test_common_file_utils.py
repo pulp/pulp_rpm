@@ -20,6 +20,7 @@ from pulp_rpm.common import file_utils
 
 DATA_DIR = os.path.abspath(os.path.dirname(__file__)) + '/data'
 
+
 class TestFileUtils(unittest.TestCase):
 
     def setUp(self):

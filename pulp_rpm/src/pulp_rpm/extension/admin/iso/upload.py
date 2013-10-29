@@ -53,14 +53,14 @@ class UploadISOCommand(UploadCommand):
         an empty metadata dict.
 
         :param filepath: The path of the file that we need the unit key and metadata for
-        :type  filepath: basestring
+        :type  filepath: str
         :param kwargs:   Unused keyword arguments
         :type  kwargs:   dict
         :return:         A two tuple of (unit_key, metadata), both dicts
         :rtype:          tuple
         """
+        iso = open(filepath)
         try:
-            iso = open(filepath)
             size = file_utils.calculate_size(iso)
             checksum = file_utils.calculate_checksum(iso)
         finally:

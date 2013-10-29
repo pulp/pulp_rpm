@@ -36,7 +36,8 @@ class ISOProgressReport(object):
     # When the user has cancelled a sync
     STATE_CANCELLED =            'cancelled'
 
-    def __init__(self, conduit=None, state=None, state_times=None, error_message=None, traceback=None):
+    def __init__(self, conduit=None, state=None, state_times=None, error_message=None,
+                 traceback=None):
         """
         Initialize the ISOProgressReport. All parameters except conduit can be ignored if you are
         instantiating the report for use from an importer or distributor. The other parameters are used when
