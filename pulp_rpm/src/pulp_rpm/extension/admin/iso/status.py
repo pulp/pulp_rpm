@@ -69,8 +69,10 @@ class ISOStatusRenderer(StatusRenderer):
                 runtime = (datetime.utcnow() -
                            sync_report.state_times[sync_report.STATE_MANIFEST_IN_PROGRESS])
                 runtime = (runtime.days * 3600 * 24) + runtime.seconds
-                average_speed = human_readable_bytes(sync_report.finished_bytes/runtime) \
-                    if runtime else 0
+                if runtime: 
+                    average_speed = human_readable_bytes(sync_report.finished_bytes/runtime)
+                else:
+                    average_speed = 0
                 bar_message = _("ISOs: %(num_complete)s/%(num_total)s\tData: "
                                 "%(bytes_complete)s/%(bytes_total)s\tAvg: %(speed)s/s")
                 bar_message = bar_message % {

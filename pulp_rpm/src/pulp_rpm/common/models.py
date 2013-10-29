@@ -19,7 +19,7 @@ import logging
 import os
 from urlparse import urljoin
 
-from pulp_rpm.common import constants, version_utils
+from pulp_rpm.common import constants, version_utils, ids, file_utils
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -112,7 +112,7 @@ class VersionedPackage(Package):
 
 class Distribution(Package):
     UNIT_KEY_NAMES = ('id', 'family', 'variant', 'version', 'arch')
-    TYPE = 'distribution'
+    TYPE = ids.TYPE_ID_DISTRO
 
     def __init__(self, family, variant, version, arch, metadata, id=None):
         kwargs = locals()
@@ -166,8 +166,8 @@ class Distribution(Package):
 
 
 class DRPM(VersionedPackage):
-    UNIT_KEY_NAMES = ('epoch',  'version', 'release', 'filename', 'checksumtype', 'checksum')
-    TYPE = 'drpm'
+    UNIT_KEY_NAMES = ('epoch', 'version', 'release', 'filename', 'checksumtype', 'checksum')
+    TYPE = ids.TYPE_ID_DRPM
 
     def __init__(self, epoch, version, release, filename, checksumtype, checksum, metadata):
         Package.__init__(self, locals())
@@ -183,7 +183,7 @@ class DRPM(VersionedPackage):
 
 class RPM(VersionedPackage):
     UNIT_KEY_NAMES = ('name', 'epoch', 'version', 'release', 'arch', 'checksumtype', 'checksum')
-    TYPE = 'rpm'
+    TYPE = ids.TYPE_ID_RPM
 
     def __init__(self, name, epoch, version, release, arch, checksumtype, checksum, metadata):
         Package.__init__(self, locals())
@@ -208,7 +208,7 @@ class SRPM(RPM):
 
 class Errata(Package):
     UNIT_KEY_NAMES = ('id',)
-    TYPE = 'erratum'
+    TYPE = ids.TYPE_ID_ERRATA
 
     def __init__(self, id, metadata):
         Package.__init__(self, locals())
@@ -244,7 +244,7 @@ class Errata(Package):
 
 class PackageGroup(Package):
     UNIT_KEY_NAMES = ('id', 'repo_id')
-    TYPE = 'package_group'
+    TYPE = ids.TYPE_ID_PKG_GROUP
 
     def __init__(self, id, repo_id, metadata):
         Package.__init__(self, locals())
@@ -268,7 +268,7 @@ class PackageGroup(Package):
 
 class PackageCategory(Package):
     UNIT_KEY_NAMES = ('id', 'repo_id')
-    TYPE = 'package_category'
+    TYPE = ids.TYPE_ID_PKG_CATEGORY
 
     def __init__(self, id, repo_id, metadata):
         Package.__init__(self, locals())
@@ -321,7 +321,8 @@ def from_typed_unit_key_tuple(typed_tuple):
     """
     package_class = TYPE_MAP[typed_tuple[0]]
     args = typed_tuple[1:]
-    return package_class.from_package_info(*args, metadata={})
+    foo = {'metadata': {}}
+    return package_class.from_package_info(*args, **foo)
 
 
 # ------------ ISO Models --------------- #
@@ -334,7 +335,7 @@ class ISO(object):
     """
     This is a handy way to model an ISO unit, with some related utilities.
     """
-    TYPE = 'iso'
+    TYPE = ids.TYPE_ID_ISO
 
     def __init__(self, name, size, checksum, unit=None):
         """
@@ -396,7 +397,8 @@ class ISO(object):
         Validate that the file found at self.storage_path matches the size and checksum of self. A ValueError
         will be raised if the validation fails.
         """
-        with open(self.storage_path) as destination_file:
+        try: 
+            destination_file = open(self.storage_path)
             # Validate the size
             actual_size = self.calculate_size(destination_file)
             if actual_size != self.size:
@@ -413,6 +415,8 @@ class ISO(object):
                       'specified the checksum to be %(c)s, but it was %(f)s.') % {
                         'name': self.name, 'c': self.checksum,
                         'f': actual_checksum})
+        finally:
+            destination_file.close()
 
     @staticmethod
     def calculate_checksum(file_handle):
@@ -424,13 +428,7 @@ class ISO(object):
         :return:            The file's checksum
         :rtype:             string
         """
-        file_handle.seek(0)
-        hasher = hashlib.sha256()
-        bits = file_handle.read(CHECKSUM_CHUNK_SIZE)
-        while bits:
-            hasher.update(bits)
-            bits = file_handle.read(CHECKSUM_CHUNK_SIZE)
-        return hasher.hexdigest()
+        return file_utils.calculate_checksum(file_handle)
 
     @staticmethod
     def calculate_size(file_handle):
@@ -443,9 +441,7 @@ class ISO(object):
         :rtype:             int
         """
         # Calculate the size by seeking to the end to find the file size with tell()
-        file_handle.seek(0, 2)
-        size = file_handle.tell()
-        return size
+        return file_utils.calculate_size(file_handle)
 
 
 class ISOManifest(object):

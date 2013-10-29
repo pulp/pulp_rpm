@@ -188,8 +188,11 @@ class TestISO(unittest.TestCase):
         Assert that validate() raises no Exception when passed correct data.
         """
         destination = os.path.join(self.temp_dir, 'test.txt')
-        with open(destination, 'w') as test_file:
+        try:
+            test_file = open(destination, 'w')
             test_file.write("I heard there was this band called 1023MB, they haven't got any gigs yet.")
+        finally:
+            test_file.close()
         unit = mock.MagicMock()
         unit.storage_path = destination
         iso = models.ISO('test.txt', 73, '36891c265290bf4610b488a8eb884d32a29fd17bb9886d899e75f4cf29d3f464',
@@ -203,9 +206,12 @@ class TestISO(unittest.TestCase):
         Assert that validate() raises a ValueError when the checksum is not correct.
         """
         destination = os.path.join(self.temp_dir, 'test.txt')
-        with open(destination, 'w') as test_file:
+        try:
+            test_file = open(destination, 'w')
             test_file.write('Two chemists walk into a bar, the first one says "I\'ll have some H2O." to '
                             'which the other adds "I\'ll have some H2O, too." The second chemist died.')
+        finally:
+            test_file.close()
         unit = mock.MagicMock()
         unit.storage_path = destination
         iso = models.ISO('test.txt', 146, 'terrible_pun', unit)
@@ -225,8 +231,11 @@ class TestISO(unittest.TestCase):
         Assert that validate() raises a ValueError when given an incorrect size.
         """
         destination = os.path.join(self.temp_dir, 'test.txt')
-        with open(destination, 'w') as test_file:
+        try:
+            test_file = open(destination, 'w')
             test_file.write("Hey girl, what's your sine? It must be math.pi/2 because you're the 1.")
+        finally:
+            test_file.close()
         unit = mock.MagicMock()
         unit.storage_path = destination
         iso = models.ISO('test.txt', math.pi,
