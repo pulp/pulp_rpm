@@ -17,7 +17,6 @@ from pulp.client.extensions.core import PulpPrompt
 
 from pulp_rpm.common.ids import (TYPE_ID_RPM, TYPE_ID_SRPM, TYPE_ID_DRPM, TYPE_ID_ERRATA, TYPE_ID_DISTRO,
                                  TYPE_ID_PKG_GROUP, TYPE_ID_PKG_CATEGORY)
-from pulp_rpm.common import models
 from pulp_rpm.extension.admin import units_display
 
 
@@ -127,9 +126,9 @@ class UnitsDisplayTests(unittest.TestCase):
                 'arch' : 'arch-%s' % i,
                 'variant' : 'variant-%s' % i,
                 'family' : 'family-%s' % i,
+                'id' : '%s' % i
             }
-            distro = models.Distribution(metadata={}, **unit_args)
-            distros.append({'type_id' : TYPE_ID_DISTRO, 'unit_key' : distro.unit_key})
+            distros.append({'type_id' : TYPE_ID_DISTRO, 'unit_key' : unit_args})
 
         return distros
 
