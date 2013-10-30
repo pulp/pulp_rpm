@@ -107,6 +107,7 @@ class CreatePackageGroupCommand(rpm_support_base.PulpClientTests):
         # Test
         cmd = 'group --repo-id repo-a --group-id group-a --name name-a ' \
               '--description desc-a --user-visible true'
+        self.server_mock.request.return_value = [200, '']
         exit_code = self.cli.run(cmd.split())
 
         # Verify
