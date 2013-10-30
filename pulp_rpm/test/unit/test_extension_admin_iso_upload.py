@@ -15,7 +15,7 @@ from cStringIO import StringIO
 import hashlib
 import mock
 
-from pulp_rpm.common import models
+from pulp_rpm.common import ids
 from pulp_rpm.extension.admin.iso import upload
 import rpm_support_base
 
@@ -41,31 +41,23 @@ class TestUploadISOCommand(rpm_support_base.PulpClientTests):
         """
         Assert that the determine_type_id() method always returns the ISO type.
         """
-        self.assertEqual(upload.UploadISOCommand.determine_type_id('/path/doesnt/matter/'), models.ISO.TYPE)
-        self.assertEqual(upload.UploadISOCommand.determine_type_id('/another/path/that/doesnt/matter/'),
-                                                                   models.ISO.TYPE)
+        self.assertEqual(upload.UploadISOCommand.determine_type_id('/path/doesnt/matter/'), ids.TYPE_ID_ISO)
+        self.assertEqual(upload.UploadISOCommand.
+                         determine_type_id('/another/path/that/doesnt/matter/'),
+                         ids.TYPE_ID_ISO)
 
+    @mock.patch('pulp_rpm.common.file_utils.calculate_size', autospec=True)
+    @mock.patch('pulp_rpm.common.file_utils.calculate_checksum', autospec=True)
     @mock.patch('__builtin__.open', autospec=True)
-    def test_generate_unit_key_and_metadata(self, mock_open):
+    def test_generate_unit_key_and_metadata(self, mock_open, mock_checksum, mock_size):
         """
         Assert that generate_unit_key_and_metadata gathers the correct metadata from a file.
         """
-        open_context_manager = mock_open.return_value.__enter__.return_value
-        fake_data = 'Here lies a fake ISO file. Rest in peace.'
-        fake_file = StringIO(fake_data)
-        # Let's set the context manager's read, tell, and seek functions to pass through to the underlying
-        # StringIO.
-        open_context_manager.read = fake_file.read
-        open_context_manager.tell = fake_file.tell
-        open_context_manager.seek = fake_file.seek
-
+        mock_checksum.return_value = 'abc'
+        mock_size.return_value = 6
         unit_key, metadata = upload.UploadISOCommand.generate_unit_key_and_metadata('/fake/path')
 
-        # Let's calculate the expected checksum
-        hasher = hashlib.sha256()
-        hasher.update(fake_data)
-        expected_checksum = hasher.hexdigest()
+        self.assertEqual(unit_key, {'checksum': 'abc', 'name': 'path', 'size': 6})
 
-        self.assertEqual(unit_key, {'checksum': expected_checksum, 'name': 'path', 'size': len(fake_data)})
         # ISOs don't have metadata
         self.assertEqual(metadata, {})

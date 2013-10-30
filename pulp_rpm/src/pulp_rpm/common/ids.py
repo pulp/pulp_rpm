@@ -1,4 +1,6 @@
-# Copyright (c) 2012-2013 Red Hat, Inc.
+# -*- coding: utf-8 -*-
+#
+# Copyright © 2013 Red Hat, Inc.
 #
 # This software is licensed to you under the GNU General Public
 # License as published by the Free Software Foundation; either version
@@ -8,8 +10,6 @@
 # NON-INFRINGEMENT, or FITNESS FOR A PARTICULAR PURPOSE. You should
 # have received a copy of GPLv2 along with this software; if not, see
 # http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt.
-
-from pulp_rpm.common import models
 
 
 TYPE_ID_DISTRIBUTOR_EXPORT = "export_distributor"
@@ -30,13 +30,14 @@ YUM_DISTRIBUTOR_ID = 'yum_distributor'
 EXPORT_DISTRIBUTOR_ID = 'export_distributor'
 EXPORT_GROUP_DISTRIBUTOR_ID = 'group_export_distributor'
 
-TYPE_ID_ISO = models.ISO.TYPE
-TYPE_ID_RPM = models.RPM.TYPE
+TYPE_ID_ISO = 'iso'
+TYPE_ID_RPM = 'rpm'
 TYPE_ID_SRPM = "srpm"
 UNIT_KEY_RPM = (
     "name", "epoch", "version", "release", "arch", "checksum", "checksumtype")
 
-TYPE_ID_ERRATA = models.Errata.TYPE
+
+TYPE_ID_ERRATA = 'erratum'
 UNIT_KEY_ERRATA = ("id",)
 
 METADATA_ERRATA = (
@@ -44,8 +45,8 @@ METADATA_ERRATA = (
     "issued", "severity", "references", "pkglist", "rights", "summary",
     "solution", "from_str", "pushcount", "reboot_suggested" )
 
-TYPE_ID_PKG_GROUP = models.PackageGroup.TYPE
-TYPE_ID_PKG_CATEGORY = models.PackageCategory.TYPE
+TYPE_ID_PKG_GROUP = 'package_group'
+TYPE_ID_PKG_CATEGORY = 'package_category'
 
 # We are adding the 'repo_id' to unit_key for each group/category
 # to ensure that each group/category is defined only for that given repo_id
@@ -63,11 +64,11 @@ METADATA_PKG_CATEGORY = (
     "translated_description",
     "packagegroupids")
 
-TYPE_ID_DISTRO = models.Distribution.TYPE
+TYPE_ID_DISTRO = 'distribution'
 UNIT_KEY_DISTRO = ("id", "family", "variant", "version", "arch")
 METADATA_DISTRO = ("files",)
 
-TYPE_ID_DRPM = models.DRPM.TYPE
+TYPE_ID_DRPM = 'drpm'
 UNIT_KEY_DRPM = (
 "epoch", "version", "release", "filename", "checksum", "checksumtype")
 
