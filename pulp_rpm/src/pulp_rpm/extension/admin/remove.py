@@ -1,4 +1,6 @@
-# Copyright (c) 2012 Red Hat, Inc.
+# -*- coding: utf-8 -*-
+#
+# Copyright © 2013 Red Hat, Inc.
 #
 # This software is licensed to you under the GNU General Public
 # License as published by the Free Software Foundation; either version
@@ -16,8 +18,7 @@ from pulp.client.commands.unit import UnitRemoveCommand
 from pulp_rpm.common.constants import DISPLAY_UNITS_THRESHOLD
 from pulp_rpm.common.ids import (TYPE_ID_RPM, TYPE_ID_SRPM, TYPE_ID_DRPM,
                                  TYPE_ID_ERRATA, TYPE_ID_PKG_GROUP,
-                                 TYPE_ID_PKG_CATEGORY, TYPE_ID_DISTRO)
-from pulp_rpm.common.models import RPM
+                                 TYPE_ID_PKG_CATEGORY, TYPE_ID_DISTRO, UNIT_KEY_RPM)
 from pulp_rpm.extension import criteria_utils
 from pulp_rpm.extension.admin import units_display
 
@@ -61,7 +62,7 @@ class PackageRemoveCommand(BaseRemoveCommand):
 
         # Work around to scope the fields loaded by the platform to limit the amount of
         # RAM used. This addition will find its way to the criteria parsing in the bindings.
-        user_input['fields'] = RPM.UNIT_KEY_NAMES
+        user_input['fields'] = UNIT_KEY_RPM
 
 
 class RpmRemoveCommand(PackageRemoveCommand):
