@@ -20,12 +20,14 @@ from gettext import gettext as _
 from pprint import pformat
 
 from pulp.server.db.model.criteria import UnitAssociationCriteria
+from pulp.server.exceptions import InvalidValue
 
 from pulp_rpm.common import constants
 from pulp_rpm.common.ids import (
     TYPE_ID_RPM, TYPE_ID_SRPM, TYPE_ID_DRPM, TYPE_ID_ERRATA, TYPE_ID_PKG_GROUP,
     TYPE_ID_PKG_CATEGORY, TYPE_ID_DISTRO, TYPE_ID_YUM_REPO_METADATA_FILE)
 from pulp_rpm.yum_plugin import util
+from pulp_rpm.plugins.importers.yum.parse.treeinfo import KEY_PACKAGEDIR
 
 from . import configuration, metadata
 
@@ -150,6 +152,7 @@ class Publisher(object):
 
         self.progress_report = copy.deepcopy(PROGRESS_REPORT)
         self.canceled = False
+        self.package_dir = None
 
     @property
     def skip_list(self):
@@ -176,9 +179,11 @@ class Publisher(object):
         if not os.path.exists(self.repo.working_dir):
             os.makedirs(self.repo.working_dir, mode=0770)
 
+        # The distribution must be published first in case it specifies a packagesdir
+        # that is used by the other publish items
+        self._publish_distribution()
         self._publish_rpms()
         self._publish_errata()
-        self._publish_distribution()
 
         self._publish_over_http()
         self._publish_over_https()
@@ -251,6 +256,8 @@ class Publisher(object):
 
                 try:
                     self._symlink_content(unit, self.repo.working_dir)
+                    if self.package_dir:
+                        self._symlink_content(unit, self.package_dir)
 
                 except Exception, e:
                     self._record_failure(PUBLISH_RPMS_STEP, e)
@@ -393,10 +400,14 @@ class Publisher(object):
                 distribution = unit_list[0]
 
                 self._publish_distribution_treeinfo(distribution)
-                # Link any files referenced by the unit
-                self._publish_distribution_files(distribution)
                 # create the Packages directory required for RHEL 5
-                self._publish_distribution_packages_link()
+                self._publish_distribution_packages_link(distribution)
+
+                # Link any files referenced by the unit - This must happen after
+                # creating the packages directory in case the packages directory
+                # has to replace a symlink with a hard directory
+                self._publish_distribution_files(distribution)
+
 
                 self._report_progress(PUBLISH_DISTRIBUTION_STEP, state=PUBLISH_FINISHED_STATE)
             elif total > 1:
@@ -463,15 +474,46 @@ class Publisher(object):
             self.progress_report[PUBLISH_DISTRIBUTION_STEP][SUCCESSES] += 1
             self.progress_report[PUBLISH_DISTRIBUTION_STEP][PROCESSED] += 1
 
-    def _publish_distribution_packages_link(self):
+    def _publish_distribution_packages_link(self, distribution_unit):
         """
         Create a Packages directory in the repo that is a sym link back to the root directory
         of the repository.  This is required for compatibility with RHEL 5.
+
+        Also create the directory that is specified by packagesdir section in the config file
+
+        :param distribution_unit: The unit for the distribution from which the list
+                                  of files to be published should be pulled from.
+        :type distribution_unit: AssociatedUnit
         """
         symlink_dir = self.repo.working_dir
-        # create the Packages symlink to the content dir, in the content dir
-        packages_symlink_path = os.path.join(symlink_dir, 'Packages')
-        self._create_symlink("./", packages_symlink_path)
+
+        if KEY_PACKAGEDIR in distribution_unit.metadata and \
+           distribution_unit.metadata[KEY_PACKAGEDIR] is not None:
+            # The packages_dir is a relative directory that exists underneath the repo directory
+            # Verify that this directory is valid.
+            package_path = os.path.join(symlink_dir, distribution_unit.metadata[KEY_PACKAGEDIR])
+            real_symlink_dir = os.path.realpath(symlink_dir)
+            real_package_path = os.path.realpath(package_path)
+            common_prefix = os.path.commonprefix([real_symlink_dir, real_package_path])
+            if not common_prefix.startswith(real_symlink_dir):
+                # the specified package path is not contained within the directory
+                # raise a validation exception
+                msg = _('Error publishing repository: %(repo)s.  The treeinfo file specified a '
+                        'packagedir \"%(packagedir)s\" that is not contained within the repository'
+                        % {'repo': self.repo.id, 'packagedir': self.package_dir})
+                _LOG.info(msg)
+                raise InvalidValue(KEY_PACKAGEDIR)
+
+            self.package_dir = distribution_unit.metadata[KEY_PACKAGEDIR]
+            if os.path.islink(package_path):
+                # a package path exists as a symlink we are going to remove it since
+                # the _create_symlink will create a real directory
+                os.unlink(package_path)
+
+        if self.package_dir is not 'Packages':
+            # create the Packages symlink to the content dir, in the content dir
+            packages_symlink_path = os.path.join(symlink_dir, 'Packages')
+            self._create_symlink("./", packages_symlink_path)
 
     def _publish_metadata(self):
 
