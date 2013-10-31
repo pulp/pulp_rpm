@@ -324,6 +324,7 @@ class YumDistributorPublishTests(unittest.TestCase):
     @mock.patch('pulp.plugins.conduits.repo_publish.RepoPublishConduit.get_units')
     def test_publish_rpms(self, mock_get_units):
         self._init_publisher()
+        self.publisher.repo.content_unit_counts = {TYPE_ID_RPM: 3}
 
         units = [self._generate_rpm(u) for u in ('one', 'two', 'tree')]
         mock_get_units.return_value = units
@@ -450,8 +451,9 @@ class YumDistributorPublishTests(unittest.TestCase):
     @mock.patch('pulp_rpm.plugins.distributors.yum.publish.Publisher._publish_distribution_treeinfo')
     @mock.patch('pulp_rpm.plugins.distributors.yum.publish.Publisher._publish_distribution_files')
     @mock.patch('pulp.plugins.conduits.repo_publish.RepoPublishConduit.get_units')
-    def test_publish_distribution(self, mock_get_units, mock_treeinfo, mock_files, mock_packages):
+    def test_publish_distribution(self, mock_get_units, mock_files, mock_treeinfo, mock_packages):
         self._init_publisher()
+        self.publisher.repo.content_unit_counts = {TYPE_ID_DISTRO: 1}
         units = [self._generate_distribution_unit(u) for u in ('one', )]
         mock_get_units.return_value = units
 
@@ -476,6 +478,7 @@ class YumDistributorPublishTests(unittest.TestCase):
     @mock.patch('pulp.plugins.conduits.repo_publish.RepoPublishConduit.get_units')
     def test_publish_distribution_error(self, mock_get_units, mock_treeinfo, mock_record_failure):
         self._init_publisher()
+        self.publisher.repo.content_unit_counts = {TYPE_ID_DISTRO: 1}
         units = [self._generate_distribution_unit(u) for u in ('one', )]
         mock_get_units.return_value = units
         error = Exception('Test Error')
@@ -493,6 +496,7 @@ class YumDistributorPublishTests(unittest.TestCase):
     def test_publish_distribution_multiple_distribution(self, mock_get_units,
                                                         mock_treeinfo, mock_files, mock_packages):
         self._init_publisher()
+        self.publisher.repo.content_unit_counts = {TYPE_ID_DISTRO: 2}
         units = [self._generate_distribution_unit(u) for u in ('one', 'two')]
         mock_get_units.return_value = units
 

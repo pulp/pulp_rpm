@@ -228,15 +228,13 @@ class Publisher(object):
 
         self._init_step_progress_report(PUBLISH_RPMS_STEP)
 
+        total = self.repo.content_unit_counts.get(TYPE_ID_RPM, 0) + \
+                self.repo.content_unit_counts.get(TYPE_ID_SRPM, 0)
+        self.progress_report[PUBLISH_RPMS_STEP][TOTAL] = total
+
         criteria = UnitAssociationCriteria(type_ids=[TYPE_ID_RPM, TYPE_ID_SRPM],
                                            unit_fields=PACKAGE_FIELDS)
-
-        # XXX memory concerns here, this should return something akin to a db
-        # cursor or a generator, but it probably returns a list
-        unit_list = self.conduit.get_units(criteria=criteria)
-
-        total = len(unit_list)
-        self.progress_report[PUBLISH_RPMS_STEP][TOTAL] = total
+        unit_gen = self.conduit.get_units(criteria=criteria, as_generator=True)
 
         file_lists_context = metadata.FilelistsXMLFileContext(self.repo.working_dir, total)
         other_context = metadata.OtherXMLFileContext(self.repo.working_dir, total)
@@ -246,7 +244,7 @@ class Publisher(object):
             context.initialize()
 
         try:
-            for unit in unit_list:
+            for unit in unit_gen:
 
                 if self.canceled:
                     return
@@ -310,21 +308,23 @@ class Publisher(object):
 
         self._init_step_progress_report(PUBLISH_ERRATA_STEP)
 
-        criteria = UnitAssociationCriteria(type_ids=[TYPE_ID_ERRATA])
+        total = self.repo.content_unit_counts.get(TYPE_ID_ERRATA, 0)
 
-        erratum_unit_list = self.conduit.get_units(criteria)
-
-        if not erratum_unit_list:
+        if total == 0:
             self._report_progress(PUBLISH_ERRATA_STEP, state=PUBLISH_FINISHED_STATE, total=0)
             return
 
-        self.progress_report[PUBLISH_ERRATA_STEP][TOTAL] = len(erratum_unit_list)
+        self.progress_report[PUBLISH_ERRATA_STEP][TOTAL] = total
+
+        criteria = UnitAssociationCriteria(type_ids=[TYPE_ID_ERRATA])
+
+        erratum_unit_gen = self.conduit.get_units(criteria, as_generator=True)
 
         with metadata.UpdateinfoXMLFileContext(self.repo.working_dir) as updateinfo_context:
 
             self._report_progress(PUBLISH_ERRATA_STEP)
 
-            for erratum_unit in erratum_unit_list:
+            for erratum_unit in erratum_unit_gen:
 
                 try:
                     updateinfo_context.add_unit_metadata(erratum_unit)
@@ -385,10 +385,10 @@ class Publisher(object):
 
         self._init_step_progress_report(PUBLISH_DISTRIBUTION_STEP)
 
+        total = self.repo.content_unit_counts.get(TYPE_ID_DISTRO, 0)
+
         criteria = UnitAssociationCriteria(type_ids=TYPE_ID_DISTRO)
         unit_list = self.conduit.get_units(criteria=criteria)
-
-        total = len(unit_list)
 
         try:
             #There should only ever be 0 or 1 distribution associated with a repo
@@ -459,7 +459,7 @@ class Publisher(object):
             msg = "No distribution files found for unit %s" % distribution_unit
             _LOG.warning(msg)
             return
-        
+
         distro_files = distribution_unit.metadata['files']
         total_files = len(distro_files)
         self.progress_report[PUBLISH_DISTRIBUTION_STEP][TOTAL] += total_files
