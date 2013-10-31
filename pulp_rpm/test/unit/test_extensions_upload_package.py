@@ -18,7 +18,7 @@ from pulp.bindings.responses import Response
 from pulp.client.commands.options import OPTION_REPO_ID
 from pulp.client.commands.repo.upload import UploadCommand, FileBundle
 
-from pulp_rpm.common.ids import TYPE_ID_RPM
+from pulp_rpm.common.ids import TYPE_ID_RPM, TYPE_ID_SRPM
 from pulp_rpm.extension.admin.upload import package
 from pulp_rpm.extension.admin.upload.package import FLAG_SKIP_EXISTING
 import rpm_support_base
@@ -28,18 +28,22 @@ RPM_DIR = os.path.abspath(os.path.dirname(__file__)) + '/data/simple_repo_no_com
 RPM_FILENAME = 'pulp-test-package-0.3.1-1.fc11.x86_64.rpm'
 
 
-class CreateRpmCommandTests(rpm_support_base.PulpClientTests):
+class CreatePackageCommandTests(rpm_support_base.PulpClientTests):
 
     def setUp(self):
-        super(CreateRpmCommandTests, self).setUp()
+        super(CreatePackageCommandTests, self).setUp()
         self.upload_manager = mock.MagicMock()
-        self.command = package.CreateRpmCommand(self.context, self.upload_manager)
+        self.command = package._CreatePackageCommand(self.context, self.upload_manager,
+                                                     TYPE_ID_RPM, package.SUFFIX_RPM,
+                                                     package.NAME_RPM, package.DESC_RPM)
 
     def test_structure(self):
         self.assertTrue(isinstance(self.command, UploadCommand))
-        self.assertEqual(self.command.name, package.NAME)
-        self.assertEqual(self.command.description, package.DESC)
+        self.assertEqual(self.command.name, package.NAME_RPM)
+        self.assertEqual(self.command.description, package.DESC_RPM)
         self.assertTrue(FLAG_SKIP_EXISTING in self.command.options)
+        self.assertEqual(self.command.suffix, package.SUFFIX_RPM)
+        self.assertEqual(self.command.type_id, TYPE_ID_RPM)
 
     def test_determine_type_id(self):
         type_id = self.command.determine_type_id(None)
@@ -129,3 +133,33 @@ class CreateRpmCommandTests(rpm_support_base.PulpClientTests):
         # Verify
         self.assertEqual(orig_file_bundles, upload_file_bundles)
         self.assertEqual(0, self.bindings.repo_unit.search.call_count)
+
+
+class CreateRpmCommandTests(rpm_support_base.PulpClientTests):
+
+    def setUp(self):
+        super(CreateRpmCommandTests, self).setUp()
+        self.upload_manager = mock.MagicMock()
+        self.command = package.CreateRpmCommand(self.context, self.upload_manager)
+
+    def test_structure(self):
+        self.assertTrue(isinstance(self.command, package._CreatePackageCommand))
+        self.assertEqual(self.command.name, package.NAME_RPM)
+        self.assertEqual(self.command.description, package.DESC_RPM)
+        self.assertEqual(self.command.suffix, package.SUFFIX_RPM)
+        self.assertEqual(self.command.type_id, TYPE_ID_RPM)
+
+
+class CreateSrpmCommandTests(rpm_support_base.PulpClientTests):
+
+    def setUp(self):
+        super(CreateSrpmCommandTests, self).setUp()
+        self.upload_manager = mock.MagicMock()
+        self.command = package.CreateSrpmCommand(self.context, self.upload_manager)
+
+    def test_structure(self):
+        self.assertTrue(isinstance(self.command, package._CreatePackageCommand))
+        self.assertEqual(self.command.name, package.NAME_SRPM)
+        self.assertEqual(self.command.description, package.DESC_SRPM)
+        self.assertEqual(self.command.suffix, package.SUFFIX_SRPM)
+        self.assertEqual(self.command.type_id, TYPE_ID_SRPM)

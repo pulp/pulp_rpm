@@ -20,11 +20,16 @@ import sys
 from pulp.client.commands.options import OPTION_REPO_ID
 from pulp.client.commands.repo.upload import UploadCommand, MetadataException
 from pulp.client.extensions.extensions import PulpCliFlag
-from pulp_rpm.common.ids import TYPE_ID_RPM
+from pulp_rpm.common.ids import TYPE_ID_RPM, TYPE_ID_SRPM
 
 
-NAME = 'rpm'
-DESC = _('uploads one or more RPMs into a repository')
+NAME_RPM = 'rpm'
+DESC_RPM = _('uploads one or more RPMs into a repository')
+SUFFIX_RPM = '.rpm'
+
+NAME_SRPM = 'srpm'
+DESC_SRPM = _('uploads one or more SRPMs into a repository')
+SUFFIX_SRPM = '.src.rpm'
 
 DESC_SKIP_EXISTING = _('if specified, RPMs that already exist on the server will not be uploaded')
 FLAG_SKIP_EXISTING = PulpCliFlag('--skip-existing', DESC_SKIP_EXISTING)
@@ -33,22 +38,27 @@ RPMTAG_NOSOURCE = 1051
 CHECKSUM_READ_BUFFER_SIZE = 65536
 
 
-class CreateRpmCommand(UploadCommand):
+class _CreatePackageCommand(UploadCommand):
     """
-    Handles initializing and uploading one or more RPMs.
+    Base command for uploading RPMs and SRPMs. This shouldn't be instantiated directly
+    outside of this module in favor of one of the type-specific subclasses.
     """
 
-    def __init__(self, context, upload_manager, name=NAME, description=DESC):
-        super(CreateRpmCommand, self).__init__(context, upload_manager, name=name, description=description)
+    def __init__(self, context, upload_manager, type_id, suffix, name, description):
+        super(_CreatePackageCommand, self).__init__(context, upload_manager, name=name,
+                                                    description=description)
+
+        self.type_id = type_id
+        self.suffix = suffix
 
         self.add_flag(FLAG_SKIP_EXISTING)
 
     def determine_type_id(self, filename, **kwargs):
-        return TYPE_ID_RPM
+        return self.type_id
 
     def matching_files_in_dir(self, directory):
-        all_files_in_dir = super(CreateRpmCommand, self).matching_files_in_dir(directory)
-        rpms = [f for f in all_files_in_dir if f.endswith('.rpm')]
+        all_files_in_dir = super(_CreatePackageCommand, self).matching_files_in_dir(directory)
+        rpms = [f for f in all_files_in_dir if f.endswith(self.suffix)]
         return rpms
 
     def generate_unit_key_and_metadata(self, filename, **kwargs):
@@ -105,6 +115,20 @@ class CreateRpmCommand(UploadCommand):
         self.prompt.render_spacer()
 
         return bundles_to_upload
+
+
+class CreateRpmCommand(_CreatePackageCommand):
+
+    def __init__(self, context, upload_manager, name=NAME_RPM, description=DESC_RPM):
+        super(CreateRpmCommand, self).__init__(context, upload_manager, TYPE_ID_RPM,
+                                               SUFFIX_RPM, name, description)
+
+
+class CreateSrpmCommand(_CreatePackageCommand):
+
+    def __init__(self, context, upload_manager, name=NAME_SRPM, description=DESC_SRPM):
+        super(CreateSrpmCommand, self).__init__(context, upload_manager, TYPE_ID_SRPM,
+                                                SUFFIX_SRPM, name, description)
 
 
 def _generate_unit_key(rpm_filename):
