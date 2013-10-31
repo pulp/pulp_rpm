@@ -20,6 +20,7 @@ from gettext import gettext as _
 from pprint import pformat
 
 from pulp.server.db.model.criteria import UnitAssociationCriteria
+from pulp.server.exceptions import InvalidValue
 
 from pulp_rpm.common import constants
 from pulp_rpm.common.ids import (
@@ -488,14 +489,26 @@ class Publisher(object):
 
         if KEY_PACKAGEDIR in distribution_unit.metadata and \
            distribution_unit.metadata[KEY_PACKAGEDIR] is not None:
+            # The packages_dir is a relative directory that exists underneath the repo directory
+            # Verify that this directory is valid.
+            package_path = os.path.join(symlink_dir, distribution_unit.metadata[KEY_PACKAGEDIR])
+            real_symlink_dir = os.path.realpath(symlink_dir)
+            real_package_path = os.path.realpath(package_path)
+            common_prefix = os.path.commonprefix([real_symlink_dir, real_package_path])
+            if not common_prefix.startswith(real_symlink_dir):
+                # the specified package path is not contained within the directory
+                # raise a validation exception
+                msg = _('Error publishing repository: %(repo)s.  The treeinfo file specified a '
+                        'packagedir \"%(packagedir)s\" that is not contained within the repository'
+                        % {'repo': self.repo.id, 'packagedir': self.package_dir})
+                _LOG.info(msg)
+                raise InvalidValue(KEY_PACKAGEDIR)
+
             self.package_dir = distribution_unit.metadata[KEY_PACKAGEDIR]
-            package_path = os.path.join(symlink_dir, self.package_dir)
             if os.path.islink(package_path):
-                # a package path exists as a symlink we are going to remove it since this
-                # will create a real directory
+                # a package path exists as a symlink we are going to remove it since
+                # the _create_symlink will create a real directory
                 os.unlink(package_path)
-            if not os.path.exists(package_path):
-                os.makedirs(package_path)
 
         if self.package_dir is not 'Packages':
             # create the Packages symlink to the content dir, in the content dir

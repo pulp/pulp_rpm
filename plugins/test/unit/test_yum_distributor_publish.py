@@ -13,7 +13,6 @@
 
 import os
 import shutil
-import sys
 import unittest
 
 import mock
@@ -21,6 +20,7 @@ import mock
 from pulp.plugins.conduits.repo_publish import RepoPublishConduit
 from pulp.plugins.config import PluginCallConfiguration
 from pulp.plugins.model import Repository, Unit
+from pulp.server.exceptions import InvalidValue
 
 from pulp_rpm.common.ids import TYPE_ID_RPM, YUM_DISTRIBUTOR_ID, TYPE_ID_DISTRO
 from pulp_rpm.plugins.distributors.yum import publish
@@ -644,8 +644,13 @@ class YumDistributorPublishTests(unittest.TestCase):
         self.publisher._init_step_progress_report(publish.PUBLISH_DISTRIBUTION_STEP)
         unit = self._generate_distribution_unit('one', {'packagedir': 'Server'})
         self.publisher._publish_distribution_packages_link(unit)
-        server_dir = os.path.join(self.publisher.repo.working_dir, 'Server')
-        self.assertTrue(os.path.isdir(server_dir))
+        self.assertEquals('Server', self.publisher.package_dir)
+
+    def test_publish_distribution_packages_link_with_invalid_packagedir(self):
+        self._init_publisher()
+        self.publisher._init_step_progress_report(publish.PUBLISH_DISTRIBUTION_STEP)
+        unit = self._generate_distribution_unit('one', {'packagedir': 'Server/../../foo'})
+        self.assertRaises(InvalidValue, self.publisher._publish_distribution_packages_link, unit)
 
     def test_publish_distribution_packages_link_with_packagedir_equals_Packages(self):
         self._init_publisher()
@@ -653,10 +658,10 @@ class YumDistributorPublishTests(unittest.TestCase):
         unit = self._generate_distribution_unit('one', {'packagedir': 'Packages'})
         self.publisher._publish_distribution_packages_link(unit)
         packages_dir = os.path.join(self.publisher.repo.working_dir, 'Packages')
-        self.assertTrue(os.path.isdir(packages_dir))
-        self.assertFalse(os.path.islink(packages_dir))
+        self.assertEquals('Packages', self.publisher.package_dir)
+        self.assertFalse(os.path.isdir(packages_dir))
 
-    def test_publish_distribution_packages_link_with_packagedir_replace_existing_Packages(self):
+    def test_publish_distribution_packages_link_with_packagedir_delete_existing_Packages(self):
         self._init_publisher()
         self.publisher._init_step_progress_report(publish.PUBLISH_DISTRIBUTION_STEP)
         packages_dir = os.path.join(self.publisher.repo.working_dir, 'Packages')
@@ -664,8 +669,7 @@ class YumDistributorPublishTests(unittest.TestCase):
         unit = self._generate_distribution_unit('one', {'packagedir': 'Packages'})
         self.publisher._publish_distribution_packages_link(unit)
         packages_dir = os.path.join(self.publisher.repo.working_dir, 'Packages')
-        self.assertTrue(os.path.isdir(packages_dir))
-        self.assertFalse(os.path.islink(packages_dir))
+        self.assertFalse(os.path.isdir(packages_dir))
 
     @mock.patch('pulp_rpm.plugins.distributors.yum.publish.Publisher._create_symlink')
     def test_publish_distribution_packages_link_error(self, mock_symlink):
