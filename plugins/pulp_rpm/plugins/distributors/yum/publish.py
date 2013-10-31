@@ -229,7 +229,7 @@ class Publisher(object):
 
         criteria = UnitAssociationCriteria(type_ids=[TYPE_ID_RPM, TYPE_ID_SRPM],
                                            unit_fields=PACKAGE_FIELDS)
-        unit_list = self.conduit.get_units(criteria=criteria, as_generator=True)
+        unit_gen = self.conduit.get_units(criteria=criteria, as_generator=True)
 
         file_lists_context = metadata.FilelistsXMLFileContext(self.repo.working_dir, total)
         other_context = metadata.OtherXMLFileContext(self.repo.working_dir, total)
@@ -239,7 +239,7 @@ class Publisher(object):
             context.initialize()
 
         try:
-            for unit in unit_list:
+            for unit in unit_gen:
 
                 if self.canceled:
                     return
@@ -311,13 +311,13 @@ class Publisher(object):
 
         criteria = UnitAssociationCriteria(type_ids=[TYPE_ID_ERRATA])
 
-        erratum_unit_list = self.conduit.get_units(criteria, as_generator=True)
+        erratum_unit_gen = self.conduit.get_units(criteria, as_generator=True)
 
         with metadata.UpdateinfoXMLFileContext(self.repo.working_dir) as updateinfo_context:
 
             self._report_progress(PUBLISH_ERRATA_STEP)
 
-            for erratum_unit in erratum_unit_list:
+            for erratum_unit in erratum_unit_gen:
 
                 try:
                     updateinfo_context.add_unit_metadata(erratum_unit)
