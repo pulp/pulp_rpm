@@ -33,7 +33,7 @@ PACKAGES = [
     'yum_importer'
 ]
 
-TESTS = 'pulp_rpm/test/unit'
-PLUGIN_TESTS = 'plugins/test/unit'
+TESTS = ['pulp_rpm/test/unit', ]
+PLUGIN_TESTS = ['plugins/test/unit', ]
 
 run_tests(PACKAGES, TESTS, PLUGIN_TESTS)
