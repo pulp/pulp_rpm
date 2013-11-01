@@ -133,7 +133,13 @@ class ISOProgressReport(object):
         # Restore the state transition times to datetime objects
         for key, value in report['state_times'].items():
             report['state_times'][key] = parse_iso8601_datetime(value)
-        r = cls(None, **report)
+
+        #python 2.4 does not support unicode keys so convert to string
+        new_report = {}
+        for key in report:
+            new_report[str(key)] = report[key]
+
+        r = cls(None, **new_report)
         return r
 
     def update_progress(self):
