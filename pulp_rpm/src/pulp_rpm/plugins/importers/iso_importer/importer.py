@@ -15,7 +15,7 @@ import logging
 import os
 import shutil
 
-from pulp.common.config import read_json_config
+from pulp.common import config as config_utils
 from pulp.common.plugins import importer_constants
 from pulp.plugins.conduits.mixins import UnitAssociationCriteria
 from pulp.plugins.importer import Importer
@@ -39,7 +39,7 @@ def entry_point():
     :return: importer class as its config
     :rtype:  tuple
     """
-    return ISOImporter, read_json_config(CONF_FILENAME)
+    return ISOImporter, config_utils.read_json_config(CONF_FILENAME)
 
 
 class ISOImporter(Importer):
