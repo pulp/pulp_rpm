@@ -15,6 +15,7 @@ import logging
 import os
 import shutil
 
+from pulp.common.config import read_json_config
 from pulp.common.plugins import importer_constants
 from pulp.plugins.conduits.mixins import UnitAssociationCriteria
 from pulp.plugins.importer import Importer
@@ -27,6 +28,10 @@ from pulp_rpm.plugins.importers.iso_importer import configuration, sync
 logger = logging.getLogger(__name__)
 
 
+# The leading '/etc/pulp/' will be added by the read_json_config method.
+CONF_FILENAME = 'server/plugins.conf.d/%s.json' % ids.TYPE_ID_IMPORTER_ISO
+
+
 def entry_point():
     """
     This method allows us to announce this importer to the Pulp Platform.
@@ -34,7 +39,7 @@ def entry_point():
     :return: importer class as its config
     :rtype:  tuple
     """
-    return ISOImporter, {}
+    return ISOImporter, read_json_config(CONF_FILENAME)
 
 
 class ISOImporter(Importer):
