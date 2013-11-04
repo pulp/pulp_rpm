@@ -25,10 +25,17 @@ import importer_mocks
 
 
 class TestEntryPoint(PulpRPMTests):
-    def test_entry_point(self):
+
+    @mock.patch('pulp.common.config.read_json_config')
+    def test_entry_point(self, mock_read_config):
+        mock_read_config.return_value = {}
+
         iso_importer, config = importer.entry_point()
+
         self.assertEqual(iso_importer, importer.ISOImporter)
         self.assertEqual(config, {})
+
+        mock_read_config.assert_called_once_with('server/plugins.conf.d/iso_importer.json')
 
 
 class TestISOImporter(PulpRPMTests):
@@ -396,7 +403,7 @@ class TestISOImporter(PulpRPMTests):
         # validate isn't set, so default should happen
         config = importer_mocks.get_basic_config()
 
-        # Run the upload. This should report a failure 
+        # Run the upload. This should report a failure
         report = self.iso_importer.upload_unit(repo, ids.TYPE_ID_ISO, unit_key, metadata,
                                                temp_file_location, sync_conduit, config)
 
