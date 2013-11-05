@@ -32,7 +32,8 @@ class TestConduit(Conduit):
         cfg = Config(self.cfg)
         return cfg
 
-class Deployer:
+
+class Deployer(object):
 
     def __init__(self):
         self.root = None
@@ -181,10 +182,10 @@ class TestPackages(HandlerTest):
     def test_install_notfound(self):
         # Setup
         units = [
-            {'type_id':self.TYPE_ID, 'unit_key':{'name':'zsh'}},
-            {'type_id':self.TYPE_ID, 'unit_key':{'name':'ksh'}},
-            {'type_id':self.TYPE_ID, 'unit_key':{'name':'gofer'}},
-            {'type_id':self.TYPE_ID, 'unit_key':{'name':YumBase.UNKNOWN_PKG}},
+            {'type_id': self.TYPE_ID, 'unit_key': {'name': 'zsh'}},
+            {'type_id': self.TYPE_ID, 'unit_key': {'name': 'ksh'}},
+            {'type_id': self.TYPE_ID, 'unit_key': {'name': 'gofer'}},
+            {'type_id': self.TYPE_ID, 'unit_key': {'name': YumBase.UNKNOWN_PKG}},
         ]
         # Test
         conduit = Conduit()
@@ -194,6 +195,20 @@ class TestPackages(HandlerTest):
         self.assertFalse(report.reboot['scheduled'])
         self.assertFalse(os.system.called)
         self.assertFalse(YumBase.processTransaction.called)
+
+    @patch('mock_yum.YumBase.install')
+    def test_install_all_fields(self, mock_yum_install):
+        # Setup
+        units = [{'type_id': self.TYPE_ID, 'unit_key': {'name': 'zsh',
+                                                        'epoch': '3',
+                                                        'version': '2.2',
+                                                        'release': '3.3',
+                                                        'arch': 'x86_64'
+                                                        }}]
+        # Test
+        conduit = Conduit()
+        self.dispatcher.install(conduit, units, {})
+        mock_yum_install.assert_called_once_with(pattern="3:zsh-2.2-3.3.x86_64")
 
     def test_install_with_reboot(self):
         # Setup
