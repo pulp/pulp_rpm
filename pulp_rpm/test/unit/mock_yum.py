@@ -136,8 +136,8 @@ class YumBase:
         self.tsInfo.append(t)
 
     def __validpkg(self, pattern):
-        if pattern == self.UNKNOWN_PKG:
-            raise Exception, 'package not found'
+        if self.UNKNOWN_PKG in pattern:
+            raise Exception('package not found')
 
     def selectGroup(self, name):
         state = 'i'

@@ -95,7 +95,29 @@ class PackageHandler(ContentHandler):
         """
         report = PackageReport()
         pkg = self.__impl(conduit, options)
-        names = [key['name'] for key in units]
+        names = []
+        for unit_key in units:
+
+            unit_dict = {
+                'name': unit_key['name'],
+                 'epoch': '*',
+                 'version': '*',
+                 'release': '*',
+                 'arch': '*'
+            }
+
+            if 'epoch' in unit_key:
+                unit_dict['epoch'] = unit_key['epoch']
+            if 'version' in unit_key:
+                unit_dict['version'] = unit_key['version']
+            if 'release' in unit_key:
+                unit_dict['release'] = unit_key['release']
+            if 'arch' in unit_key:
+                unit_dict['arch'] = unit_key['arch']
+
+            unit_name = '%(epoch)s:%(name)s-%(version)s-%(release)s.%(arch)s' % unit_dict
+            names.append(unit_name)
+
         details = pkg.install(names)
         report.set_succeeded(details)
         return report
