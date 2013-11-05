@@ -19,7 +19,7 @@ import logging
 import os
 from urlparse import urljoin
 
-from pulp_rpm.common import constants, version_utils, ids, file_utils
+from pulp_rpm.common import constants, version_utils, file_utils
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -112,7 +112,7 @@ class VersionedPackage(Package):
 
 class Distribution(Package):
     UNIT_KEY_NAMES = ('id', 'family', 'variant', 'version', 'arch')
-    TYPE = ids.TYPE_ID_DISTRO
+    TYPE = 'distribution'
 
     def __init__(self, family, variant, version, arch, metadata, id=None):
         kwargs = locals()
@@ -167,7 +167,7 @@ class Distribution(Package):
 
 class DRPM(VersionedPackage):
     UNIT_KEY_NAMES = ('epoch', 'version', 'release', 'filename', 'checksumtype', 'checksum')
-    TYPE = ids.TYPE_ID_DRPM
+    TYPE = 'drpm'
 
     def __init__(self, epoch, version, release, filename, checksumtype, checksum, metadata):
         Package.__init__(self, locals())
@@ -183,7 +183,7 @@ class DRPM(VersionedPackage):
 
 class RPM(VersionedPackage):
     UNIT_KEY_NAMES = ('name', 'epoch', 'version', 'release', 'arch', 'checksumtype', 'checksum')
-    TYPE = ids.TYPE_ID_RPM
+    TYPE = 'rpm'
 
     def __init__(self, name, epoch, version, release, arch, checksumtype, checksum, metadata):
         Package.__init__(self, locals())
@@ -208,7 +208,7 @@ class SRPM(RPM):
 
 class Errata(Package):
     UNIT_KEY_NAMES = ('id',)
-    TYPE = ids.TYPE_ID_ERRATA
+    TYPE = 'erratum'
 
     def __init__(self, id, metadata):
         Package.__init__(self, locals())
@@ -244,7 +244,7 @@ class Errata(Package):
 
 class PackageGroup(Package):
     UNIT_KEY_NAMES = ('id', 'repo_id')
-    TYPE = ids.TYPE_ID_PKG_GROUP
+    TYPE = 'package_group'
 
     def __init__(self, id, repo_id, metadata):
         Package.__init__(self, locals())
@@ -268,7 +268,7 @@ class PackageGroup(Package):
 
 class PackageCategory(Package):
     UNIT_KEY_NAMES = ('id', 'repo_id')
-    TYPE = ids.TYPE_ID_PKG_CATEGORY
+    TYPE = 'package_category'
 
     def __init__(self, id, repo_id, metadata):
         Package.__init__(self, locals())
@@ -335,7 +335,7 @@ class ISO(object):
     """
     This is a handy way to model an ISO unit, with some related utilities.
     """
-    TYPE = ids.TYPE_ID_ISO
+    TYPE = 'iso'
 
     def __init__(self, name, size, checksum, unit=None):
         """
