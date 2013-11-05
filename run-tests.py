@@ -36,4 +36,7 @@ PACKAGES = [
 TESTS = ['pulp_rpm/test/unit', ]
 PLUGIN_TESTS = ['plugins/test/unit', ]
 
-run_tests(PACKAGES, TESTS, PLUGIN_TESTS)
+dir_safe_all_platforms = [os.path.join(os.path.dirname(__file__), x) for x in TESTS]
+dir_safe_non_rhel5 = [os.path.join(os.path.dirname(__file__), x) for x in PLUGIN_TESTS]
+
+run_tests(PACKAGES, dir_safe_all_platforms, dir_safe_non_rhel5)
