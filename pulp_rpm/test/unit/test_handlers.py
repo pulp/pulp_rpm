@@ -196,7 +196,8 @@ class TestPackages(HandlerTest):
         self.assertFalse(os.system.called)
         self.assertFalse(YumBase.processTransaction.called)
 
-    def test_install_all_fields(self):
+    @patch('mock_yum.YumBase.install')
+    def test_install_all_fields(self, mock_yum_install):
         # Setup
         units = [{'type_id': self.TYPE_ID, 'unit_key': {'name': 'zsh',
                                                         'epoch': '3',
@@ -206,13 +207,8 @@ class TestPackages(HandlerTest):
                                                         }}]
         # Test
         conduit = Conduit()
-        foo = YumBase.install
-        try:
-            YumBase.install = Mock()
-            self.dispatcher.install(conduit, units, {})
-            YumBase.install.assert_called_once_with(pattern="3:zsh-2.2-3.3.x86_64")
-        finally:
-            YumBase.install = foo
+        self.dispatcher.install(conduit, units, {})
+        mock_yum_install.assert_called_once_with(pattern="3:zsh-2.2-3.3.x86_64")
 
     def test_install_with_reboot(self):
         # Setup
