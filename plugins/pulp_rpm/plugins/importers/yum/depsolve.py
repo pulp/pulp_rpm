@@ -18,6 +18,7 @@ from pulp.server.db.model.criteria import UnitAssociationCriteria
 from pulp_rpm.common import version_utils, models
 from pulp_rpm.plugins.importers.yum.utils import paginate
 
+
 _LOGGER = logging.getLogger(__name__)
 
 
@@ -99,9 +100,9 @@ class Requirement(object):
 
     def __eq__(self, other):
         """
-        Return True if self effectively "equals" other, False otherwise. For the sake of comparison,
-        equality means that self and other have the same name, and that the __cmp__() method (see
-        above) returns 0 when comparing the two.
+        Return True if self effectively "equals" other, False otherwise. This equality
+        check will take into account name, epoch, version, and release, allowing the
+        release to be omitted from either object.
 
         :param other: Any object that has the following attributes: name, epoch, version, and
                       release. An RPM Unit is an example of such an object.
@@ -109,9 +110,22 @@ class Requirement(object):
         :return:      True if self and other are equal, False otherwise
         :rtype:       bool
         """
+
+        # Simple case, they are entirely different
         if self.name != other.name:
             return False
-        return self.__cmp__(other) == 0
+
+        # Attempt to compare the version information
+        mine = [self.epoch, self.version, self.release]
+        theirs = [other.epoch, other.version, other.release]
+
+        # Release is optional, so if it's omitted in either case, remove it entirely
+        # from the check.
+        if mine[2] is None or theirs[2] is None:
+            mine = mine[:2]
+            theirs = theirs[:2]
+
+        return mine == theirs
 
     def __ne__(self, other):
         """

@@ -318,16 +318,26 @@ class TestRequirement(unittest.TestCase):
         """
         Test the __eq__ method with equal Requirements.
         """
-        r_1 = depsolve.Requirement('test', 0, '1.0.01')
+        r_1 = depsolve.Requirement('test', 0, '1.0.1')
         r_2 = depsolve.Requirement('test', 0, '1.0.1')
 
         self.assertTrue(r_1 == r_2)
+
+    def test__eq__no_release(self):
+        """
+        Test the __eq__ method with one object missing a release.
+        """
+        r_1 = depsolve.Requirement('test', epoch=1, version=1, release=1)
+        r_2 = depsolve.Requirement('test', epoch=1, version=1)
+
+        self.assertTrue(r_1 == r_2)
+        self.assertTrue(r_2 == r_1)
 
     def test___ne___false(self):
         """
         Test the __ne__ method with equal Requirements.
         """
-        r_1 = depsolve.Requirement('test', 0, '1.0.01')
+        r_1 = depsolve.Requirement('test', 0, '1.0.1')
         r_2 = depsolve.Requirement('test', 0, '1.0.1')
 
         self.assertFalse(r_1 != r_2)
