@@ -116,8 +116,13 @@ class Requirement(object):
             return False
 
         # Attempt to compare the version information
-        mine = [self.epoch, self.version, self.release]
-        theirs = [other.epoch, other.version, other.release]
+        mine_version = version_utils.encode(self.version)
+        mine_release = version_utils.encode(self.release) if self.release else None
+        mine = [self.epoch, mine_version, mine_release]
+
+        theirs_version = version_utils.encode(other.version)
+        theirs_release = version_utils.encode(other.release) if other.release else None
+        theirs = [other.epoch, theirs_version, theirs_release]
 
         # Release is optional, so if it's omitted in either case, remove it entirely
         # from the check.

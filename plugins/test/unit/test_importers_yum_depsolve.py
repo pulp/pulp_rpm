@@ -323,12 +323,24 @@ class TestRequirement(unittest.TestCase):
 
         self.assertTrue(r_1 == r_2)
 
+    def test__eq__leading_version_zeroes(self):
+        r_1 = depsolve.Requirement('test', epoch='0', version='1', release='0')
+        r_2 = depsolve.Requirement('test', epoch='0', version='01', release='0')
+
+        self.assertTrue(r_1 == r_2)
+
+    def test__eq__leading_release_zeroes(self):
+        r_1 = depsolve.Requirement('test', epoch='0', version='0', release='1')
+        r_2 = depsolve.Requirement('test', epoch='0', version='0', release='01')
+
+        self.assertTrue(r_1 == r_2)
+
     def test__eq__no_release(self):
         """
         Test the __eq__ method with one object missing a release.
         """
-        r_1 = depsolve.Requirement('test', epoch=1, version=1, release=1)
-        r_2 = depsolve.Requirement('test', epoch=1, version=1)
+        r_1 = depsolve.Requirement('test', epoch='1', version='1', release='1')
+        r_2 = depsolve.Requirement('test', epoch='1', version='1')
 
         self.assertTrue(r_1 == r_2)
         self.assertTrue(r_2 == r_1)
