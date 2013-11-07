@@ -11,7 +11,6 @@
 # You should have received a copy of GPLv2 along with this software;
 # if not, see http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt
 
-import copy
 import os
 import shutil
 import sys
@@ -29,98 +28,24 @@ from pulp_rpm.common.ids import (
 from pulp_rpm.yum_plugin import util
 from pulp_rpm.plugins.importers.yum.parse.treeinfo import KEY_PACKAGEDIR
 
-from . import configuration, metadata
+from . import configuration
+from .metadata.filelists import FilelistsXMLFileContext
+from .metadata.other import OtherXMLFileContext
+from .metadata.primary import PrimaryXMLFileContext
+from .metadata.updateinfo import UpdateinfoXMLFileContext
+from .reporting import (
+    PUBLISH_RPMS_STEP, PUBLISH_DELTA_RPMS_STEP, PUBLISH_ERRATA_STEP,
+    PUBLISH_PACKAGE_GROUPS_STEP, PUBLISH_PACKAGE_CATEGORIES_STEP,
+    PUBLISH_DISTRIBUTION_STEP, PUBLISH_METADATA_STEP, PUBLISH_OVER_HTTP_STEP,
+    PUBLISH_OVER_HTTPS_STEP, PUBLISH_STEPS, PUBLISH_NOT_STARTED_STATE,
+    PUBLISH_IN_PROGRESS_STATE, PUBLISH_SKIPPED_STATE, PUBLISH_FINISHED_STATE,
+    PUBLISH_FAILED_STATE, PUBLISH_CANCELED_STATE, STATE, TOTAL, PROCESSED,
+    SUCCESSES, FAILURES, ERROR_DETAILS, PUBLISH_REPORT_KEYWORDS,
+    new_progress_report, initialize_progress_sub_report, build_final_report)
 
 # -- constants -----------------------------------------------------------------
 
 _LOG = util.getLogger(__name__)
-
-# -- publishing steps ----------------------------------------------------------
-
-PUBLISH_RPMS_STEP = 'rpms'
-PUBLISH_DELTA_RPMS_STEP = 'drpms'
-PUBLISH_ERRATA_STEP = 'errata'
-PUBLISH_PACKAGE_GROUPS_STEP = 'package_groups'
-PUBLISH_PACKAGE_CATEGORIES_STEP = 'package_categories'
-PUBLISH_DISTRIBUTION_STEP = 'distribution'
-PUBLISH_METADATA_STEP = 'metadata'
-PUBLISH_OVER_HTTP_STEP = 'publish_over_http'
-PUBLISH_OVER_HTTPS_STEP = 'publish_over_https'
-
-PUBLISH_STEPS = (PUBLISH_RPMS_STEP, PUBLISH_DELTA_RPMS_STEP, PUBLISH_ERRATA_STEP,
-                 PUBLISH_PACKAGE_GROUPS_STEP, PUBLISH_PACKAGE_CATEGORIES_STEP,
-                 PUBLISH_DISTRIBUTION_STEP, PUBLISH_METADATA_STEP,
-                 PUBLISH_OVER_HTTP_STEP, PUBLISH_OVER_HTTPS_STEP)
-
-# -- publishing step states ----------------------------------------------------
-
-PUBLISH_NOT_STARTED_STATE = 'NOT_STARTED'
-PUBLISH_IN_PROGRESS_STATE = 'IN_PROGRESS'
-PUBLISH_SKIPPED_STATE = 'SKIPPED'
-PUBLISH_FINISHED_STATE = 'FINISHED'
-PUBLISH_FAILED_STATE = 'FAILED'
-PUBLISH_CANCELED_STATE = 'CANCELED'
-
-PUBLISH_STATES = (PUBLISH_NOT_STARTED_STATE, PUBLISH_IN_PROGRESS_STATE, PUBLISH_SKIPPED_STATE,
-                  PUBLISH_FINISHED_STATE, PUBLISH_FAILED_STATE, PUBLISH_CANCELED_STATE)
-
-# -- publishing reporting ------------------------------------------------------
-
-STATE = 'state'
-TOTAL = 'total'
-PROCESSED = 'processed'
-SUCCESSES = 'successes'
-FAILURES = 'failures'
-ERROR_DETAILS = 'error_details'
-
-PUBLISH_REPORT_KEYWORDS = (STATE, TOTAL, PROCESSED, SUCCESSES, FAILURES, ERROR_DETAILS)
-
-PROGRESS_REPORT = {PUBLISH_RPMS_STEP: {STATE: PUBLISH_NOT_STARTED_STATE},
-                   PUBLISH_DELTA_RPMS_STEP: {STATE: PUBLISH_NOT_STARTED_STATE},
-                   PUBLISH_ERRATA_STEP: {STATE: PUBLISH_NOT_STARTED_STATE},
-                   PUBLISH_PACKAGE_GROUPS_STEP: {STATE: PUBLISH_NOT_STARTED_STATE},
-                   PUBLISH_PACKAGE_CATEGORIES_STEP: {STATE: PUBLISH_NOT_STARTED_STATE},
-                   PUBLISH_DISTRIBUTION_STEP: {STATE: PUBLISH_NOT_STARTED_STATE},
-                   PUBLISH_METADATA_STEP: {STATE: PUBLISH_NOT_STARTED_STATE},
-                   PUBLISH_OVER_HTTP_STEP: {STATE: PUBLISH_NOT_STARTED_STATE},
-                   PUBLISH_OVER_HTTPS_STEP: {STATE: PUBLISH_NOT_STARTED_STATE}}
-
-PROGRESS_SUB_REPORT = {STATE: PUBLISH_IN_PROGRESS_STATE,
-                       TOTAL: 0,
-                       PROCESSED: 0,
-                       SUCCESSES: 0,
-                       FAILURES: 0,
-                       ERROR_DETAILS: []}
-
-# -- final reporting -----------------------------------------------------------
-
-NUMBER_DISTRIBUTION_UNITS_ATTEMPTED = 'num_distribution_units_attempted'
-NUMBER_DISTRIBUTION_UNITS_ERROR = 'num_distribution_units_error'
-NUMBER_DISTRIBUTION_UNITS_PUBLISHED = 'num_distribution_units_published'
-NUMBER_PACKAGE_CATEGORIES_PUBLISHED = 'num_package_categories_published'
-NUMBER_PACKAGE_GROUPS_PUBLISHED = 'num_package_groups_published'
-NUMBER_PACKAGE_UNITS_ATTEMPTED = 'num_package_units_attempted'
-NUMBER_PACKAGE_UNITS_ERRORS = 'num_package_units_error'
-NUMBER_PACKAGE_UNITS_PUBLISHED = 'num_package_units_published'
-RELATIVE_PATH = 'relative_path'
-SKIP_METADATA_UPDATE = 'skip_metadata_update'
-
-SUMMARY_REPORT = {NUMBER_DISTRIBUTION_UNITS_ATTEMPTED: 0,
-                  NUMBER_DISTRIBUTION_UNITS_ERROR: 0,
-                  NUMBER_DISTRIBUTION_UNITS_PUBLISHED: 0,
-                  NUMBER_PACKAGE_CATEGORIES_PUBLISHED: 0,
-                  NUMBER_PACKAGE_GROUPS_PUBLISHED: 0,
-                  NUMBER_PACKAGE_UNITS_ATTEMPTED: 0,
-                  NUMBER_PACKAGE_UNITS_ERRORS: 0,
-                  NUMBER_PACKAGE_UNITS_PUBLISHED: 0,
-                  RELATIVE_PATH: None,
-                  SKIP_METADATA_UPDATE: False}
-
-ERRORS_LIST = 'errors'
-METADATA_GENERATION_TIME = 'time_metadata_sec'
-
-DETAILS_REPORT = {ERRORS_LIST: [],
-                  METADATA_GENERATION_TIME: 0}
 
 # -- package fields ------------------------------------------------------------
 
@@ -150,7 +75,7 @@ class Publisher(object):
         self.conduit = publish_conduit
         self.config = config
 
-        self.progress_report = copy.deepcopy(PROGRESS_REPORT)
+        self.progress_report = new_progress_report()
         self.canceled = False
         self.package_dir = None
 
@@ -236,9 +161,9 @@ class Publisher(object):
                                            unit_fields=PACKAGE_FIELDS)
         unit_gen = self.conduit.get_units(criteria=criteria, as_generator=True)
 
-        file_lists_context = metadata.FilelistsXMLFileContext(self.repo.working_dir, total)
-        other_context = metadata.OtherXMLFileContext(self.repo.working_dir, total)
-        primary_context = metadata.PrimaryXMLFileContext(self.repo.working_dir, total)
+        file_lists_context = FilelistsXMLFileContext(self.repo.working_dir, total)
+        other_context = OtherXMLFileContext(self.repo.working_dir, total)
+        primary_context = PrimaryXMLFileContext(self.repo.working_dir, total)
 
         for context in (file_lists_context, other_context, primary_context):
             context.initialize()
@@ -320,7 +245,7 @@ class Publisher(object):
 
         erratum_unit_gen = self.conduit.get_units(criteria, as_generator=True)
 
-        with metadata.UpdateinfoXMLFileContext(self.repo.working_dir) as updateinfo_context:
+        with UpdateinfoXMLFileContext(self.repo.working_dir) as updateinfo_context:
 
             self._report_progress(PUBLISH_ERRATA_STEP)
 
@@ -623,7 +548,7 @@ class Publisher(object):
         """
         assert step in PUBLISH_STEPS
 
-        self.progress_report[step] = copy.deepcopy(PROGRESS_SUB_REPORT)
+        initialize_progress_sub_report(self.progress_report[step])
 
     def _report_progress(self, step, **report_details):
         """
@@ -672,47 +597,10 @@ class Publisher(object):
         :return: report describing the publish run
         :rtype:  pulp.plugins.model.PublishReport
         """
-        summary = copy.deepcopy(SUMMARY_REPORT)
-        details = copy.deepcopy(DETAILS_REPORT)
 
-        summary[RELATIVE_PATH] = configuration.get_repo_relative_path(self.repo, self.config)
+        relative_path = configuration.get_repo_relative_path(self.repo, self.config)
 
-        if self.progress_report[PUBLISH_METADATA_STEP][STATE] is PUBLISH_SKIPPED_STATE:
-            summary[SKIP_METADATA_UPDATE] = True
-
-        for step in PUBLISH_STEPS:
-
-            # using .get() because the sub-sections won't be there if the step was skipped
-            total = self.progress_report[step].get(TOTAL, 0)
-            failures = self.progress_report[step].get(FAILURES, 0)
-            successes = self.progress_report[step].get(SUCCESSES, 0)
-
-            # XXX include errata?
-            if step in (PUBLISH_RPMS_STEP, PUBLISH_DELTA_RPMS_STEP):
-                summary[NUMBER_PACKAGE_UNITS_ATTEMPTED] += total
-                summary[NUMBER_PACKAGE_UNITS_ERRORS] += failures
-                summary[NUMBER_PACKAGE_UNITS_PUBLISHED] += successes
-
-            elif step is PUBLISH_DISTRIBUTION_STEP:
-                summary[NUMBER_DISTRIBUTION_UNITS_ATTEMPTED] = total
-                summary[NUMBER_DISTRIBUTION_UNITS_ERROR] = failures
-                summary[NUMBER_DISTRIBUTION_UNITS_PUBLISHED] = successes
-
-            # XXX expand this to include attempted and error?
-            elif step is PUBLISH_PACKAGE_CATEGORIES_STEP:
-                summary[NUMBER_PACKAGE_CATEGORIES_PUBLISHED] = successes
-
-            # XXX expand this to include attempted and error?
-            elif step is PUBLISH_PACKAGE_GROUPS_STEP:
-                summary[NUMBER_PACKAGE_GROUPS_PUBLISHED] = successes
-
-            details[ERRORS_LIST].extend(self.progress_report[step].get(ERROR_DETAILS, []))
-
-        # XXX not sure this is the best criteria, maybe 1 or more failure states?
-        if details[ERRORS_LIST]:
-            return self.conduit.build_failure_report(summary, details)
-
-        return self.conduit.build_success_report(summary, details)
+        return build_final_report(self.conduit, relative_path, self.progress_report)
 
     # -- linking methods -------------------------------------------------------
 

@@ -19,7 +19,16 @@ import unittest
 from pulp.plugins.model import Unit
 
 from pulp_rpm.common.ids import TYPE_ID_RPM
-from pulp_rpm.plugins.distributors.yum import metadata
+from pulp_rpm.plugins.distributors.yum.metadata.filelists import (
+    FilelistsXMLFileContext, FILE_LISTS_NAMESPACE, FILE_LISTS_XML_FILE_NAME)
+from pulp_rpm.plugins.distributors.yum.metadata.metadata import (
+    MetadataFileContext, PreGeneratedMetadataContext, REPO_DATA_DIR_NAME)
+from pulp_rpm.plugins.distributors.yum.metadata.other import (
+    OtherXMLFileContext, OTHER_NAMESPACE, OTHER_XML_FILE_NAME)
+from pulp_rpm.plugins.distributors.yum.metadata.primary import (
+    PrimaryXMLFileContext, COMMON_NAMESPACE, RPM_NAMESPACE, PRIMARY_XML_FILE_NAME)
+from pulp_rpm.plugins.distributors.yum.metadata.updateinfo import (
+    UpdateinfoXMLFileContext, UPDATE_INFO_XML_FILE_NAME)
 from pulp_rpm.plugins.importers.yum.repomd import packages, updateinfo
 
 
@@ -62,7 +71,7 @@ class YumDistributorMetadataTests(unittest.TestCase):
     def test_metadata_instantiation(self):
 
         try:
-            metadata.MetadataFileContext('fu.xml')
+            MetadataFileContext('fu.xml')
 
         except Exception, e:
             self.fail(e.message)
@@ -70,7 +79,7 @@ class YumDistributorMetadataTests(unittest.TestCase):
     def test_open_handle(self):
 
         path = os.path.join(self.metadata_file_dir, 'open_handle.xml')
-        context = metadata.MetadataFileContext(path)
+        context = MetadataFileContext(path)
 
         context._open_metadata_file_handle()
 
@@ -82,7 +91,7 @@ class YumDistributorMetadataTests(unittest.TestCase):
     def test_open_handle_bad_parent_permissions(self):
 
         path = os.path.join(self.metadata_file_dir, 'nope.xml')
-        context = metadata.MetadataFileContext(path)
+        context = MetadataFileContext(path)
 
         os.makedirs(self.metadata_file_dir, mode=0000)
 
@@ -93,7 +102,7 @@ class YumDistributorMetadataTests(unittest.TestCase):
     def test_open_handle_file_exists(self):
 
         path = os.path.join(self.metadata_file_dir, 'overwriteme.xml')
-        context = metadata.MetadataFileContext(path)
+        context = MetadataFileContext(path)
 
         os.makedirs(self.metadata_file_dir)
         with open(path, 'w') as h:
@@ -111,7 +120,7 @@ class YumDistributorMetadataTests(unittest.TestCase):
     def test_open_handle_bad_file_permissions(self):
 
         path = os.path.join(self.metadata_file_dir, 'nope_again.xml')
-        context = metadata.MetadataFileContext(path)
+        context = MetadataFileContext(path)
 
         os.makedirs(self.metadata_file_dir)
         with open(path, 'w') as h:
@@ -125,7 +134,7 @@ class YumDistributorMetadataTests(unittest.TestCase):
     def test_open_handle_gzip(self):
 
         path = os.path.join(self.metadata_file_dir, 'test.xml.gz')
-        context = metadata.MetadataFileContext(path)
+        context = MetadataFileContext(path)
 
         context._open_metadata_file_handle()
 
@@ -145,7 +154,7 @@ class YumDistributorMetadataTests(unittest.TestCase):
     def test_write_xml_header(self):
 
         path = os.path.join(self.metadata_file_dir, 'header.xml')
-        context = metadata.MetadataFileContext(path)
+        context = MetadataFileContext(path)
 
         context._open_metadata_file_handle()
         context._write_xml_header()
@@ -164,7 +173,7 @@ class YumDistributorMetadataTests(unittest.TestCase):
     def test_pre_generated_metadata(self):
 
         path = os.path.join(self.metadata_file_dir, 'pre-gen.xml')
-        context = metadata.PreGeneratedMetadataContext(path)
+        context = PreGeneratedMetadataContext(path)
         unit = self._generate_rpm('test_rpm')
 
         context._open_metadata_file_handle()
@@ -176,7 +185,7 @@ class YumDistributorMetadataTests(unittest.TestCase):
     def test_pre_generated_metadata_no_repodata(self):
 
         path = os.path.join(self.metadata_file_dir, 'no-repodata.xml')
-        context = metadata.PreGeneratedMetadataContext(path)
+        context = PreGeneratedMetadataContext(path)
         unit = self._generate_rpm('no_repodata')
 
         unit.metadata.pop('repodata')
@@ -190,7 +199,7 @@ class YumDistributorMetadataTests(unittest.TestCase):
     def test_pre_generated_metadata_wrong_category(self):
 
         path = os.path.join(self.metadata_file_dir, 'wrong-category.xml')
-        context = metadata.PreGeneratedMetadataContext(path)
+        context = PreGeneratedMetadataContext(path)
         unit = self._generate_rpm('wrong_category')
 
         context._open_metadata_file_handle()
@@ -202,7 +211,7 @@ class YumDistributorMetadataTests(unittest.TestCase):
     def test_pre_generated_metadata_not_string(self):
 
         path = os.path.join(self.metadata_file_dir, 'not-string.xml')
-        context = metadata.PreGeneratedMetadataContext(path)
+        context = PreGeneratedMetadataContext(path)
         unit = self._generate_rpm('not_string')
 
         unit.metadata['repodata']['whatisthis'] = 1
@@ -218,10 +227,10 @@ class YumDistributorMetadataTests(unittest.TestCase):
     def test_primary_file_creation(self):
 
         path = os.path.join(self.metadata_file_dir,
-                            metadata.REPO_DATA_DIR_NAME,
-                            metadata.PRIMARY_XML_FILE_NAME)
+                            REPO_DATA_DIR_NAME,
+                            PRIMARY_XML_FILE_NAME)
 
-        context = metadata.PrimaryXMLFileContext(self.metadata_file_dir, 0)
+        context = PrimaryXMLFileContext(self.metadata_file_dir, 0)
 
         context._open_metadata_file_handle()
         context._close_metadata_file_handle()
@@ -231,10 +240,10 @@ class YumDistributorMetadataTests(unittest.TestCase):
     def test_primary_opening_tag(self):
 
         path = os.path.join(self.metadata_file_dir,
-                            metadata.REPO_DATA_DIR_NAME,
-                            metadata.PRIMARY_XML_FILE_NAME)
+                            REPO_DATA_DIR_NAME,
+                            PRIMARY_XML_FILE_NAME)
 
-        context = metadata.PrimaryXMLFileContext(self.metadata_file_dir, 0)
+        context = PrimaryXMLFileContext(self.metadata_file_dir, 0)
 
         context._open_metadata_file_handle()
         context._write_root_tag_open()
@@ -247,13 +256,13 @@ class YumDistributorMetadataTests(unittest.TestCase):
             content = primary_handle.read()
 
             self.assertTrue(content.startswith('<metadata'))
-            self.assertEqual(content.count('xmlns="%s"' % metadata.COMMON_NAMESPACE), 1)
-            self.assertEqual(content.count('xmlns:rpm="%s"' % metadata.RPM_NAMESPACE), 1)
+            self.assertEqual(content.count('xmlns="%s"' % COMMON_NAMESPACE), 1)
+            self.assertEqual(content.count('xmlns:rpm="%s"' % RPM_NAMESPACE), 1)
             self.assertEqual(content.count('packages="0"'), 1)
 
     def test_primary_closing_tag(self):
 
-        context = metadata.PrimaryXMLFileContext(self.metadata_file_dir, 0)
+        context = PrimaryXMLFileContext(self.metadata_file_dir, 0)
         context._open_metadata_file_handle()
 
         self.assertRaises(NotImplementedError, context._write_root_tag_close)
@@ -271,12 +280,12 @@ class YumDistributorMetadataTests(unittest.TestCase):
     def test_primary_unit_metadata(self):
 
         path = os.path.join(self.metadata_file_dir,
-                            metadata.REPO_DATA_DIR_NAME,
-                            metadata.PRIMARY_XML_FILE_NAME)
+                            REPO_DATA_DIR_NAME,
+                            PRIMARY_XML_FILE_NAME)
 
         unit = self._generate_rpm('seems-legit')
 
-        context = metadata.PrimaryXMLFileContext(self.metadata_file_dir, 1)
+        context = PrimaryXMLFileContext(self.metadata_file_dir, 1)
 
         context._open_metadata_file_handle()
         context.add_unit_metadata(unit)
@@ -290,12 +299,12 @@ class YumDistributorMetadataTests(unittest.TestCase):
 
     def test_primary_with_keyword(self):
 
-        with metadata.PrimaryXMLFileContext(self.metadata_file_dir, 0):
+        with PrimaryXMLFileContext(self.metadata_file_dir, 0):
             pass
 
         path = os.path.join(self.metadata_file_dir,
-                            metadata.REPO_DATA_DIR_NAME,
-                            metadata.PRIMARY_XML_FILE_NAME)
+                            REPO_DATA_DIR_NAME,
+                            PRIMARY_XML_FILE_NAME)
 
         self.assertTrue(os.path.exists(path))
         # the xml header, opening, and closing tags should have been written
@@ -313,7 +322,7 @@ class YumDistributorMetadataTests(unittest.TestCase):
 
         unit = self._generate_rpm('with-context')
 
-        with metadata.PrimaryXMLFileContext(self.metadata_file_dir, 1) as context:
+        with PrimaryXMLFileContext(self.metadata_file_dir, 1) as context:
 
             try:
                 context.add_unit_metadata(unit)
@@ -326,10 +335,10 @@ class YumDistributorMetadataTests(unittest.TestCase):
     def test_other_file_creation(self):
 
         path = os.path.join(self.metadata_file_dir,
-                            metadata.REPO_DATA_DIR_NAME,
-                            metadata.OTHER_XML_FILE_NAME)
+                            REPO_DATA_DIR_NAME,
+                            OTHER_XML_FILE_NAME)
 
-        context = metadata.OtherXMLFileContext(self.metadata_file_dir, 0)
+        context = OtherXMLFileContext(self.metadata_file_dir, 0)
 
         context._open_metadata_file_handle()
         context._close_metadata_file_handle()
@@ -339,10 +348,10 @@ class YumDistributorMetadataTests(unittest.TestCase):
     def test_other_opening_tag(self):
 
         path = os.path.join(self.metadata_file_dir,
-                            metadata.REPO_DATA_DIR_NAME,
-                            metadata.OTHER_XML_FILE_NAME)
+                            REPO_DATA_DIR_NAME,
+                            OTHER_XML_FILE_NAME)
 
-        context = metadata.OtherXMLFileContext(self.metadata_file_dir, 0)
+        context = OtherXMLFileContext(self.metadata_file_dir, 0)
 
         context._open_metadata_file_handle()
         context._write_root_tag_open()
@@ -355,12 +364,12 @@ class YumDistributorMetadataTests(unittest.TestCase):
             context = other_handle.read()
 
             self.assertTrue(context.startswith('<otherdata'))
-            self.assertEqual(context.count('xmlns="%s"' % metadata.OTHER_NAMESPACE), 1)
+            self.assertEqual(context.count('xmlns="%s"' % OTHER_NAMESPACE), 1)
             self.assertEqual(context.count('packages="0"'), 1)
 
     def test_other_closing_tag(self):
 
-        context = metadata.OtherXMLFileContext(self.metadata_file_dir, 0)
+        context = OtherXMLFileContext(self.metadata_file_dir, 0)
         context._open_metadata_file_handle()
 
         self.assertRaises(NotImplementedError, context._write_root_tag_close)
@@ -378,12 +387,12 @@ class YumDistributorMetadataTests(unittest.TestCase):
     def test_other_unit_metadata(self):
 
         path = os.path.join(self.metadata_file_dir,
-                            metadata.REPO_DATA_DIR_NAME,
-                            metadata.OTHER_XML_FILE_NAME)
+                            REPO_DATA_DIR_NAME,
+                            OTHER_XML_FILE_NAME)
 
         unit = self._generate_rpm('uh-huh')
 
-        context = metadata.OtherXMLFileContext(self.metadata_file_dir, 1)
+        context = OtherXMLFileContext(self.metadata_file_dir, 1)
 
         context._open_metadata_file_handle()
         context.add_unit_metadata(unit)
@@ -402,10 +411,10 @@ class YumDistributorMetadataTests(unittest.TestCase):
     def test_filelists_file_creation(self):
 
         path = os.path.join(self.metadata_file_dir,
-                            metadata.REPO_DATA_DIR_NAME,
-                            metadata.FILE_LISTS_XML_FILE_NAME)
+                            REPO_DATA_DIR_NAME,
+                            FILE_LISTS_XML_FILE_NAME)
 
-        context = metadata.FilelistsXMLFileContext(self.metadata_file_dir, 0)
+        context = FilelistsXMLFileContext(self.metadata_file_dir, 0)
 
         context._open_metadata_file_handle()
         context._close_metadata_file_handle()
@@ -416,10 +425,10 @@ class YumDistributorMetadataTests(unittest.TestCase):
     def test_filelists_opening_tag(self):
 
         path = os.path.join(self.metadata_file_dir,
-                            metadata.REPO_DATA_DIR_NAME,
-                            metadata.FILE_LISTS_XML_FILE_NAME)
+                            REPO_DATA_DIR_NAME,
+                            FILE_LISTS_XML_FILE_NAME)
 
-        context = metadata.FilelistsXMLFileContext(self.metadata_file_dir, 0)
+        context = FilelistsXMLFileContext(self.metadata_file_dir, 0)
 
         context._open_metadata_file_handle()
         context._write_root_tag_open()
@@ -432,12 +441,12 @@ class YumDistributorMetadataTests(unittest.TestCase):
             content = filelists_handle.read()
 
             self.assertTrue(content.startswith('<filelists'))
-            self.assertEqual(content.count('xmlns="%s"' % metadata.FILE_LISTS_NAMESPACE), 1)
+            self.assertEqual(content.count('xmlns="%s"' % FILE_LISTS_NAMESPACE), 1)
             self.assertEqual(content.count('packages="0"'), 1)
 
     def test_filelists_closing_tag(self):
 
-        context = metadata.FilelistsXMLFileContext(self.metadata_file_dir, 0)
+        context = FilelistsXMLFileContext(self.metadata_file_dir, 0)
         context._open_metadata_file_handle()
 
         self.assertRaises(NotImplementedError, context._write_root_tag_close)
@@ -455,12 +464,12 @@ class YumDistributorMetadataTests(unittest.TestCase):
     def test_filelists_unit_metadata(self):
 
         path = os.path.join(self.metadata_file_dir,
-                            metadata.REPO_DATA_DIR_NAME,
-                            metadata.FILE_LISTS_XML_FILE_NAME)
+                            REPO_DATA_DIR_NAME,
+                            FILE_LISTS_XML_FILE_NAME)
 
         unit = self._generate_rpm('ive-got-files')
 
-        context = metadata.FilelistsXMLFileContext(self.metadata_file_dir, 1)
+        context = FilelistsXMLFileContext(self.metadata_file_dir, 1)
 
         context._open_metadata_file_handle()
         context.add_unit_metadata(unit)
@@ -477,10 +486,10 @@ class YumDistributorMetadataTests(unittest.TestCase):
     def test_updateinfo_file_creation(self):
 
         path = os.path.join(self.metadata_file_dir,
-                            metadata.REPO_DATA_DIR_NAME,
-                            metadata.UPDATE_INFO_XML_FILE_NAME)
+                            REPO_DATA_DIR_NAME,
+                            UPDATE_INFO_XML_FILE_NAME)
 
-        context = metadata.UpdateinfoXMLFileContext(self.metadata_file_dir)
+        context = UpdateinfoXMLFileContext(self.metadata_file_dir)
 
         context._open_metadata_file_handle()
         context._close_metadata_file_handle()
@@ -490,10 +499,10 @@ class YumDistributorMetadataTests(unittest.TestCase):
     def test_updateinfo_opening_closing_tags(self):
 
         path = os.path.join(self.metadata_file_dir,
-                            metadata.REPO_DATA_DIR_NAME,
-                            metadata.UPDATE_INFO_XML_FILE_NAME)
+                            REPO_DATA_DIR_NAME,
+                            UPDATE_INFO_XML_FILE_NAME)
 
-        context = metadata.UpdateinfoXMLFileContext(self.metadata_file_dir)
+        context = UpdateinfoXMLFileContext(self.metadata_file_dir)
 
         context._open_metadata_file_handle()
 
@@ -520,8 +529,8 @@ class YumDistributorMetadataTests(unittest.TestCase):
     def test_updateinfo_unit_metadata(self):
 
         path = os.path.join(self.metadata_file_dir,
-                            metadata.REPO_DATA_DIR_NAME,
-                            metadata.UPDATE_INFO_XML_FILE_NAME)
+                            REPO_DATA_DIR_NAME,
+                            UPDATE_INFO_XML_FILE_NAME)
 
         handle = open(os.path.join(DATA_DIR, 'updateinfo.xml'), 'r')
         generator = packages.package_list_generator(handle, 'update',
@@ -532,7 +541,7 @@ class YumDistributorMetadataTests(unittest.TestCase):
         # just checking
         self.assertEqual(erratum_unit.unit_key['id'], 'RHEA-2010:9999')
 
-        context = metadata.UpdateinfoXMLFileContext(self.metadata_file_dir)
+        context = UpdateinfoXMLFileContext(self.metadata_file_dir)
         context._open_metadata_file_handle()
         context.add_unit_metadata(erratum_unit)
         context._close_metadata_file_handle()
