@@ -98,7 +98,7 @@ def initialize_progress_sub_report(report):
     :type  report: dict
     """
 
-    report.update(PROGRESS_SUB_REPORT)
+    report.update(copy.deepcopy(PROGRESS_SUB_REPORT))
 
 
 def new_progress_report():
@@ -107,7 +107,7 @@ def new_progress_report():
     :rtype:  dict
     """
 
-    return dict((step, new_progress_report()) for step in PUBLISH_STEPS)
+    return dict((step, new_progress_sub_report()) for step in PUBLISH_STEPS)
 
 
 def build_final_report(conduit, relative_path, progress_report):
