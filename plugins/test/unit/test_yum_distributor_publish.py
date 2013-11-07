@@ -23,7 +23,7 @@ from pulp.plugins.model import Repository, Unit
 from pulp.server.exceptions import InvalidValue
 
 from pulp_rpm.common.ids import TYPE_ID_RPM, YUM_DISTRIBUTOR_ID, TYPE_ID_DISTRO
-from pulp_rpm.plugins.distributors.yum import publish
+from pulp_rpm.plugins.distributors.yum import publish, reporting
 
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), '../data/')
@@ -196,11 +196,11 @@ class YumDistributorPublishTests(unittest.TestCase):
     def test_init_step_progress(self):
         self._init_publisher()
 
-        step = publish.PUBLISH_STEPS[0]
+        step = reporting.PUBLISH_STEPS[0]
 
         self.publisher._init_step_progress_report(step)
 
-        self.assertEqual(self.publisher.progress_report[step], publish.PROGRESS_SUB_REPORT)
+        self.assertEqual(self.publisher.progress_report[step], reporting.PROGRESS_SUB_REPORT)
 
     def test_init_step_progress_not_a_step(self):
         self._init_publisher()
@@ -213,12 +213,12 @@ class YumDistributorPublishTests(unittest.TestCase):
     def test_report_progress(self, mock_set_progress):
         self._init_publisher()
 
-        step = publish.PUBLISH_STEPS[1]
+        step = reporting.PUBLISH_STEPS[1]
 
-        updates = {publish.STATE: publish.PUBLISH_FINISHED_STATE,
-                   publish.TOTAL: 1,
-                   publish.PROCESSED: 1,
-                   publish.SUCCESSES: 1}
+        updates = {reporting.STATE: reporting.PUBLISH_FINISHED_STATE,
+                   reporting.TOTAL: 1,
+                   reporting.PROCESSED: 1,
+                   reporting.SUCCESSES: 1}
 
         self.publisher._report_progress(step, **updates)
 
@@ -228,7 +228,7 @@ class YumDistributorPublishTests(unittest.TestCase):
 
     def test_record_failure(self):
         self._init_publisher()
-        step = publish.PUBLISH_STEPS[2]
+        step = reporting.PUBLISH_STEPS[2]
         self.publisher._init_step_progress_report(step)
 
         error_msg = 'Too bad, so sad'
@@ -239,15 +239,15 @@ class YumDistributorPublishTests(unittest.TestCase):
         except Exception, e:
             self.publisher._record_failure(step, e)
 
-        self.assertEqual(self.publisher.progress_report[step][publish.FAILURES], 1)
-        self.assertEqual(self.publisher.progress_report[step][publish.ERROR_DETAILS][0], error_msg)
+        self.assertEqual(self.publisher.progress_report[step][reporting.FAILURES], 1)
+        self.assertEqual(self.publisher.progress_report[step][reporting.ERROR_DETAILS][0], error_msg)
 
     def test_build_final_report_success(self):
         self._init_publisher()
 
-        for step in publish.PUBLISH_STEPS:
+        for step in reporting.PUBLISH_STEPS:
             self.publisher._init_step_progress_report(step)
-            self.publisher.progress_report[step][publish.STATE] = publish.PUBLISH_FINISHED_STATE
+            self.publisher.progress_report[step][reporting.STATE] = reporting.PUBLISH_FINISHED_STATE
 
         report = self.publisher._build_final_report()
 
@@ -256,10 +256,10 @@ class YumDistributorPublishTests(unittest.TestCase):
     def test_build_final_report_failure(self):
         self._init_publisher()
 
-        for step in publish.PUBLISH_STEPS:
+        for step in reporting.PUBLISH_STEPS:
             self.publisher._init_step_progress_report(step)
-            self.publisher.progress_report[step][publish.STATE] = publish.PUBLISH_FAILED_STATE
-            self.publisher.progress_report[step][publish.ERROR_DETAILS].append('boo hoo')
+            self.publisher.progress_report[step][reporting.STATE] = reporting.PUBLISH_FAILED_STATE
+            self.publisher.progress_report[step][reporting.ERROR_DETAILS].append('boo hoo')
 
         report = self.publisher._build_final_report()
 
@@ -272,17 +272,17 @@ class YumDistributorPublishTests(unittest.TestCase):
 
         units = [self._generate_rpm(u) for u in ('one', 'two', 'three')]
 
-        self.publisher._init_step_progress_report(publish.PUBLISH_OVER_HTTP_STEP)
+        self.publisher._init_step_progress_report(reporting.PUBLISH_OVER_HTTP_STEP)
         self.publisher._publish_over_http()
 
         for u in units:
             path = os.path.join(self.published_dir, 'http', self.publisher.repo.id, 'content', u.unit_key['name'])
             self.assertTrue(os.path.exists(path))
 
-        self.assertEqual(self.publisher.progress_report[publish.PUBLISH_OVER_HTTP_STEP][publish.PROCESSED], 1)
-        self.assertEqual(self.publisher.progress_report[publish.PUBLISH_OVER_HTTP_STEP][publish.FAILURES], 0)
-        self.assertEqual(self.publisher.progress_report[publish.PUBLISH_OVER_HTTP_STEP][publish.SUCCESSES], 1)
-        self.assertEqual(self.publisher.progress_report[publish.PUBLISH_OVER_HTTP_STEP][publish.STATE], publish.PUBLISH_FINISHED_STATE)
+        self.assertEqual(self.publisher.progress_report[reporting.PUBLISH_OVER_HTTP_STEP][reporting.PROCESSED], 1)
+        self.assertEqual(self.publisher.progress_report[reporting.PUBLISH_OVER_HTTP_STEP][reporting.FAILURES], 0)
+        self.assertEqual(self.publisher.progress_report[reporting.PUBLISH_OVER_HTTP_STEP][reporting.SUCCESSES], 1)
+        self.assertEqual(self.publisher.progress_report[reporting.PUBLISH_OVER_HTTP_STEP][reporting.STATE], reporting.PUBLISH_FINISHED_STATE)
 
     def test_publish_http_skipped(self):
         self._init_publisher()
@@ -291,24 +291,24 @@ class YumDistributorPublishTests(unittest.TestCase):
 
         self.publisher._publish_over_http()
 
-        self.assertEqual(self.publisher.progress_report[publish.PUBLISH_OVER_HTTP_STEP][publish.STATE], publish.PUBLISH_SKIPPED_STATE)
+        self.assertEqual(self.publisher.progress_report[reporting.PUBLISH_OVER_HTTP_STEP][reporting.STATE], reporting.PUBLISH_SKIPPED_STATE)
 
     def test_publish_https(self):
         self._init_publisher()
 
         units = [self._generate_rpm(u) for u in ('one', 'two', 'three')]
 
-        self.publisher._init_step_progress_report(publish.PUBLISH_OVER_HTTPS_STEP)
+        self.publisher._init_step_progress_report(reporting.PUBLISH_OVER_HTTPS_STEP)
         self.publisher._publish_over_https()
 
         for u in units:
             path = os.path.join(self.published_dir, 'https', self.publisher.repo.id, 'content', u.unit_key['name'])
             self.assertTrue(os.path.exists(path))
 
-        self.assertEqual(self.publisher.progress_report[publish.PUBLISH_OVER_HTTPS_STEP][publish.PROCESSED], 1)
-        self.assertEqual(self.publisher.progress_report[publish.PUBLISH_OVER_HTTPS_STEP][publish.FAILURES], 0)
-        self.assertEqual(self.publisher.progress_report[publish.PUBLISH_OVER_HTTPS_STEP][publish.SUCCESSES], 1)
-        self.assertEqual(self.publisher.progress_report[publish.PUBLISH_OVER_HTTPS_STEP][publish.STATE], publish.PUBLISH_FINISHED_STATE)
+        self.assertEqual(self.publisher.progress_report[reporting.PUBLISH_OVER_HTTPS_STEP][reporting.PROCESSED], 1)
+        self.assertEqual(self.publisher.progress_report[reporting.PUBLISH_OVER_HTTPS_STEP][reporting.FAILURES], 0)
+        self.assertEqual(self.publisher.progress_report[reporting.PUBLISH_OVER_HTTPS_STEP][reporting.SUCCESSES], 1)
+        self.assertEqual(self.publisher.progress_report[reporting.PUBLISH_OVER_HTTPS_STEP][reporting.STATE], reporting.PUBLISH_FINISHED_STATE)
 
     def test_publish_https_skipped(self):
         self._init_publisher()
@@ -317,7 +317,7 @@ class YumDistributorPublishTests(unittest.TestCase):
 
         self.publisher._publish_over_https()
 
-        self.assertEqual(self.publisher.progress_report[publish.PUBLISH_OVER_HTTPS_STEP][publish.STATE], publish.PUBLISH_SKIPPED_STATE)
+        self.assertEqual(self.publisher.progress_report[reporting.PUBLISH_OVER_HTTPS_STEP][reporting.STATE], reporting.PUBLISH_SKIPPED_STATE)
 
     # -- rpm publishing testing ------------------------------------------------
 
@@ -340,11 +340,11 @@ class YumDistributorPublishTests(unittest.TestCase):
         self.assertTrue(os.path.exists(os.path.join(self.working_dir, 'repodata/other.xml.gz')))
         self.assertTrue(os.path.exists(os.path.join(self.working_dir, 'repodata/primary.xml.gz')))
 
-        self.assertEqual(self.publisher.progress_report[publish.PUBLISH_RPMS_STEP][publish.STATE], publish.PUBLISH_FINISHED_STATE)
-        self.assertEqual(self.publisher.progress_report[publish.PUBLISH_RPMS_STEP][publish.TOTAL], 3)
-        self.assertEqual(self.publisher.progress_report[publish.PUBLISH_RPMS_STEP][publish.PROCESSED], 3)
-        self.assertEqual(self.publisher.progress_report[publish.PUBLISH_RPMS_STEP][publish.FAILURES], 0)
-        self.assertEqual(self.publisher.progress_report[publish.PUBLISH_RPMS_STEP][publish.SUCCESSES], 3)
+        self.assertEqual(self.publisher.progress_report[reporting.PUBLISH_RPMS_STEP][reporting.STATE], reporting.PUBLISH_FINISHED_STATE)
+        self.assertEqual(self.publisher.progress_report[reporting.PUBLISH_RPMS_STEP][reporting.TOTAL], 3)
+        self.assertEqual(self.publisher.progress_report[reporting.PUBLISH_RPMS_STEP][reporting.PROCESSED], 3)
+        self.assertEqual(self.publisher.progress_report[reporting.PUBLISH_RPMS_STEP][reporting.FAILURES], 0)
+        self.assertEqual(self.publisher.progress_report[reporting.PUBLISH_RPMS_STEP][reporting.SUCCESSES], 3)
 
     def test_publish_rpms_skipped(self):
         self._init_publisher()
@@ -353,7 +353,7 @@ class YumDistributorPublishTests(unittest.TestCase):
 
         self.publisher._publish_rpms()
 
-        self.assertEqual(self.publisher.progress_report[publish.PUBLISH_RPMS_STEP][publish.STATE], publish.PUBLISH_SKIPPED_STATE)
+        self.assertEqual(self.publisher.progress_report[reporting.PUBLISH_RPMS_STEP][reporting.STATE], reporting.PUBLISH_SKIPPED_STATE)
 
     # -- publish api testing ---------------------------------------------------
 
@@ -366,16 +366,6 @@ class YumDistributorPublishTests(unittest.TestCase):
         self.assertEquals(2, len(skip_list))
         self.assertEquals(skip_list[0], 'foo')
         self.assertEquals(skip_list[1], 'bar')
-
-    def test_skip_list_with_dict(self):
-        self._init_publisher()
-        mock_config = mock.Mock()
-        mock_config.get.return_value = {'rpm': True, 'distro': False, 'errata': True}
-        self.publisher.config = mock_config
-        skip_list = self.publisher.skip_list
-        self.assertEquals(2, len(skip_list))
-        self.assertEquals(skip_list[0], 'rpm')
-        self.assertEquals(skip_list[1], 'errata')
 
     def test_skip_list_with_dict(self):
         self._init_publisher()
@@ -410,17 +400,17 @@ class YumDistributorPublishTests(unittest.TestCase):
 
     def test_cancel(self):
         self._init_publisher()
-        step = publish.PUBLISH_STEPS[0]
+        step = reporting.PUBLISH_STEPS[0]
 
         self.publisher._init_step_progress_report(step)
 
         self.publisher.cancel()
 
         self.assertTrue(self.publisher.canceled)
-        self.assertEqual(self.publisher.progress_report[step][publish.STATE], publish.PUBLISH_CANCELED_STATE)
+        self.assertEqual(self.publisher.progress_report[step][reporting.STATE], reporting.PUBLISH_CANCELED_STATE)
 
-        for s in publish.PUBLISH_STEPS[1:]:
-            self.assertEqual(self.publisher.progress_report[s][publish.STATE], publish.PUBLISH_SKIPPED_STATE)
+        for s in reporting.PUBLISH_STEPS[1:]:
+            self.assertEqual(self.publisher.progress_report[s][reporting.STATE], reporting.PUBLISH_SKIPPED_STATE)
 
     # -- distribution publishing testing ------------------------------------------------
 
@@ -462,7 +452,7 @@ class YumDistributorPublishTests(unittest.TestCase):
         mock_files.assert_called_once_with(units[0])
         mock_treeinfo.assert_called_once_with(units[0])
         mock_packages.assert_called_once_with(units[0])
-        self.assertEqual(self.publisher.progress_report[publish.PUBLISH_DISTRIBUTION_STEP][publish.STATE], publish.PUBLISH_FINISHED_STATE)
+        self.assertEqual(self.publisher.progress_report[reporting.PUBLISH_DISTRIBUTION_STEP][reporting.STATE], reporting.PUBLISH_FINISHED_STATE)
 
     @mock.patch('pulp_rpm.plugins.distributors.yum.publish.Publisher._init_step_progress_report')
     def test_publish_distribution_canceled(self, mock_progress_report):
@@ -486,8 +476,8 @@ class YumDistributorPublishTests(unittest.TestCase):
 
         self.publisher._publish_distribution()
 
-        mock_record_failure.assert_called_once_with(publish.PUBLISH_DISTRIBUTION_STEP, error)
-        self.assertEqual(self.publisher.progress_report[publish.PUBLISH_DISTRIBUTION_STEP][publish.STATE], publish.PUBLISH_FAILED_STATE)
+        mock_record_failure.assert_called_once_with(reporting.PUBLISH_DISTRIBUTION_STEP, error)
+        self.assertEqual(self.publisher.progress_report[reporting.PUBLISH_DISTRIBUTION_STEP][reporting.STATE], reporting.PUBLISH_FAILED_STATE)
 
     @mock.patch('pulp_rpm.plugins.distributors.yum.publish.Publisher._publish_distribution_packages_link')
     @mock.patch('pulp_rpm.plugins.distributors.yum.publish.Publisher._publish_distribution_treeinfo')
@@ -504,7 +494,7 @@ class YumDistributorPublishTests(unittest.TestCase):
         self.assertFalse(mock_files.called)
         self.assertFalse(mock_treeinfo.called)
         self.assertFalse(mock_packages.called)
-        self.assertEqual(self.publisher.progress_report[publish.PUBLISH_DISTRIBUTION_STEP][publish.STATE], publish.PUBLISH_FAILED_STATE)
+        self.assertEqual(self.publisher.progress_report[reporting.PUBLISH_DISTRIBUTION_STEP][reporting.STATE], reporting.PUBLISH_FAILED_STATE)
 
     @mock.patch('pulp_rpm.plugins.distributors.yum.publish.Publisher._publish_distribution_packages_link')
     @mock.patch('pulp_rpm.plugins.distributors.yum.publish.Publisher._publish_distribution_treeinfo')
@@ -520,7 +510,7 @@ class YumDistributorPublishTests(unittest.TestCase):
         self.assertFalse(mock_files.called)
         self.assertFalse(mock_treeinfo.called)
         self.assertFalse(mock_packages.called)
-        self.assertEqual(self.publisher.progress_report[publish.PUBLISH_DISTRIBUTION_STEP][publish.STATE], publish.PUBLISH_FINISHED_STATE)
+        self.assertEqual(self.publisher.progress_report[reporting.PUBLISH_DISTRIBUTION_STEP][reporting.STATE], reporting.PUBLISH_FINISHED_STATE)
 
     @mock.patch('pulp_rpm.plugins.distributors.yum.publish.Publisher.skip_list')
     @mock.patch('pulp_rpm.plugins.distributors.yum.publish.Publisher._publish_distribution_packages_link')
@@ -540,22 +530,22 @@ class YumDistributorPublishTests(unittest.TestCase):
         self.assertFalse(mock_files.called)
         self.assertFalse(mock_treeinfo.called)
         self.assertFalse(mock_packages.called)
-        self.assertEqual(self.publisher.progress_report[publish.PUBLISH_DISTRIBUTION_STEP][publish.STATE], publish.PUBLISH_SKIPPED_STATE)
+        self.assertEqual(self.publisher.progress_report[reporting.PUBLISH_DISTRIBUTION_STEP][reporting.STATE], reporting.PUBLISH_SKIPPED_STATE)
 
     def test_publish_distribution_treeinfo_does_nothing_if_no_treeinfo_file(self):
         self._init_publisher()
         unit = self._generate_distribution_unit('one')
-        self.publisher._init_step_progress_report(publish.PUBLISH_DISTRIBUTION_STEP)
+        self.publisher._init_step_progress_report(reporting.PUBLISH_DISTRIBUTION_STEP)
 
         self.publisher._publish_distribution_treeinfo(unit)
         self.assertEquals(
-            self.publisher.progress_report[publish.PUBLISH_DISTRIBUTION_STEP][publish.PROCESSED], 0)
+            self.publisher.progress_report[reporting.PUBLISH_DISTRIBUTION_STEP][reporting.PROCESSED], 0)
 
     @mock.patch('pulp_rpm.plugins.distributors.yum.publish.Publisher._create_symlink')
     def _perform_treeinfo_success_test(self, treeinfo_name, mock_symlink):
         self._init_publisher()
         unit = self._generate_distribution_unit('one')
-        self.publisher._init_step_progress_report(publish.PUBLISH_DISTRIBUTION_STEP)
+        self.publisher._init_step_progress_report(reporting.PUBLISH_DISTRIBUTION_STEP)
         file_name = os.path.join(unit.storage_path, treeinfo_name)
         open(file_name, 'a').close()
         target_directory = os.path.join(self.publisher.repo.working_dir, treeinfo_name)
@@ -564,9 +554,9 @@ class YumDistributorPublishTests(unittest.TestCase):
 
         mock_symlink.assert_called_once_with(file_name, target_directory)
         self.assertEquals(
-            self.publisher.progress_report[publish.PUBLISH_DISTRIBUTION_STEP][publish.PROCESSED], 1)
+            self.publisher.progress_report[reporting.PUBLISH_DISTRIBUTION_STEP][reporting.PROCESSED], 1)
         self.assertEquals(
-            self.publisher.progress_report[publish.PUBLISH_DISTRIBUTION_STEP][publish.SUCCESSES], 1)
+            self.publisher.progress_report[reporting.PUBLISH_DISTRIBUTION_STEP][reporting.SUCCESSES], 1)
 
     def test_publish_distribution_treeinfo_finds_treeinfo(self):
         self._perform_treeinfo_success_test('treeinfo')
@@ -578,7 +568,7 @@ class YumDistributorPublishTests(unittest.TestCase):
     def test_publish_distribution_treeinfo_error(self, mock_symlink):
         self._init_publisher()
         unit = self._generate_distribution_unit('one')
-        self.publisher._init_step_progress_report(publish.PUBLISH_DISTRIBUTION_STEP)
+        self.publisher._init_step_progress_report(reporting.PUBLISH_DISTRIBUTION_STEP)
         file_name = os.path.join(unit.storage_path, 'treeinfo')
         open(file_name, 'a').close()
         target_directory = os.path.join(self.publisher.repo.working_dir, 'treeinfo')
@@ -588,22 +578,22 @@ class YumDistributorPublishTests(unittest.TestCase):
 
         mock_symlink.assert_called_once_with(file_name, target_directory)
         self.assertEquals(
-            self.publisher.progress_report[publish.PUBLISH_DISTRIBUTION_STEP][publish.PROCESSED], 0)
+            self.publisher.progress_report[reporting.PUBLISH_DISTRIBUTION_STEP][reporting.PROCESSED], 0)
         self.assertEquals(
-            self.publisher.progress_report[publish.PUBLISH_DISTRIBUTION_STEP][publish.SUCCESSES], 0)
+            self.publisher.progress_report[reporting.PUBLISH_DISTRIBUTION_STEP][reporting.SUCCESSES], 0)
 
     def test_publish_distribution_files(self):
         self._init_publisher()
         unit = self._generate_distribution_unit('one')
-        self.publisher._init_step_progress_report(publish.PUBLISH_DISTRIBUTION_STEP)
+        self.publisher._init_step_progress_report(reporting.PUBLISH_DISTRIBUTION_STEP)
         self.publisher._publish_distribution_files(unit)
 
         self.assertEquals(
-            self.publisher.progress_report[publish.PUBLISH_DISTRIBUTION_STEP][publish.TOTAL], 1)
+            self.publisher.progress_report[reporting.PUBLISH_DISTRIBUTION_STEP][reporting.TOTAL], 1)
         self.assertEquals(
-            self.publisher.progress_report[publish.PUBLISH_DISTRIBUTION_STEP][publish.SUCCESSES], 1)
+            self.publisher.progress_report[reporting.PUBLISH_DISTRIBUTION_STEP][reporting.SUCCESSES], 1)
         self.assertEquals(
-            self.publisher.progress_report[publish.PUBLISH_DISTRIBUTION_STEP][publish.PROCESSED], 1)
+            self.publisher.progress_report[reporting.PUBLISH_DISTRIBUTION_STEP][reporting.PROCESSED], 1)
 
         content_file = os.path.join(unit.storage_path, 'images', 'boot.iso')
         created_link = os.path.join(self.publisher.repo.working_dir, "images", 'boot.iso')
@@ -614,15 +604,15 @@ class YumDistributorPublishTests(unittest.TestCase):
     def test_publish_distribution_files_error(self, mock_symlink):
         self._init_publisher()
         unit = self._generate_distribution_unit('one')
-        self.publisher._init_step_progress_report(publish.PUBLISH_DISTRIBUTION_STEP)
+        self.publisher._init_step_progress_report(reporting.PUBLISH_DISTRIBUTION_STEP)
         mock_symlink.side_effect = Exception('Test Error')
         self.assertRaises(Exception, self.publisher._publish_distribution_files, unit)
         self.assertEquals(
-            self.publisher.progress_report[publish.PUBLISH_DISTRIBUTION_STEP][publish.TOTAL], 1)
+            self.publisher.progress_report[reporting.PUBLISH_DISTRIBUTION_STEP][reporting.TOTAL], 1)
         self.assertEquals(
-            self.publisher.progress_report[publish.PUBLISH_DISTRIBUTION_STEP][publish.SUCCESSES], 0)
+            self.publisher.progress_report[reporting.PUBLISH_DISTRIBUTION_STEP][reporting.SUCCESSES], 0)
         self.assertEquals(
-            self.publisher.progress_report[publish.PUBLISH_DISTRIBUTION_STEP][publish.PROCESSED], 0)
+            self.publisher.progress_report[reporting.PUBLISH_DISTRIBUTION_STEP][reporting.PROCESSED], 0)
 
     @mock.patch('pulp_rpm.plugins.distributors.yum.publish.Publisher._create_symlink')
     def test_publish_distribution_files_no_files(self, mock_symlink):
@@ -634,7 +624,7 @@ class YumDistributorPublishTests(unittest.TestCase):
 
     def test_publish_distribution_packages_link(self):
         self._init_publisher()
-        self.publisher._init_step_progress_report(publish.PUBLISH_DISTRIBUTION_STEP)
+        self.publisher._init_step_progress_report(reporting.PUBLISH_DISTRIBUTION_STEP)
         unit = self._generate_distribution_unit('one')
         self.publisher._publish_distribution_packages_link(unit)
 
@@ -645,20 +635,20 @@ class YumDistributorPublishTests(unittest.TestCase):
 
     def test_publish_distribution_packages_link_with_packagedir(self):
         self._init_publisher()
-        self.publisher._init_step_progress_report(publish.PUBLISH_DISTRIBUTION_STEP)
+        self.publisher._init_step_progress_report(reporting.PUBLISH_DISTRIBUTION_STEP)
         unit = self._generate_distribution_unit('one', {'packagedir': 'Server'})
         self.publisher._publish_distribution_packages_link(unit)
         self.assertEquals('Server', self.publisher.package_dir)
 
     def test_publish_distribution_packages_link_with_invalid_packagedir(self):
         self._init_publisher()
-        self.publisher._init_step_progress_report(publish.PUBLISH_DISTRIBUTION_STEP)
+        self.publisher._init_step_progress_report(reporting.PUBLISH_DISTRIBUTION_STEP)
         unit = self._generate_distribution_unit('one', {'packagedir': 'Server/../../foo'})
         self.assertRaises(InvalidValue, self.publisher._publish_distribution_packages_link, unit)
 
     def test_publish_distribution_packages_link_with_packagedir_equals_Packages(self):
         self._init_publisher()
-        self.publisher._init_step_progress_report(publish.PUBLISH_DISTRIBUTION_STEP)
+        self.publisher._init_step_progress_report(reporting.PUBLISH_DISTRIBUTION_STEP)
         unit = self._generate_distribution_unit('one', {'packagedir': 'Packages'})
         self.publisher._publish_distribution_packages_link(unit)
         packages_dir = os.path.join(self.publisher.repo.working_dir, 'Packages')
@@ -667,7 +657,7 @@ class YumDistributorPublishTests(unittest.TestCase):
 
     def test_publish_distribution_packages_link_with_packagedir_delete_existing_Packages(self):
         self._init_publisher()
-        self.publisher._init_step_progress_report(publish.PUBLISH_DISTRIBUTION_STEP)
+        self.publisher._init_step_progress_report(reporting.PUBLISH_DISTRIBUTION_STEP)
         packages_dir = os.path.join(self.publisher.repo.working_dir, 'Packages')
         self.publisher._create_symlink("./", packages_dir)
         unit = self._generate_distribution_unit('one', {'packagedir': 'Packages'})
@@ -678,6 +668,6 @@ class YumDistributorPublishTests(unittest.TestCase):
     @mock.patch('pulp_rpm.plugins.distributors.yum.publish.Publisher._create_symlink')
     def test_publish_distribution_packages_link_error(self, mock_symlink):
         self._init_publisher()
-        self.publisher._init_step_progress_report(publish.PUBLISH_DISTRIBUTION_STEP)
+        self.publisher._init_step_progress_report(reporting.PUBLISH_DISTRIBUTION_STEP)
         mock_symlink.side_effect = Exception("Test Error")
         self.assertRaises(Exception, self.publisher._publish_distribution_packages_link)
