@@ -1,0 +1,148 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<prestodelta>
+  <newpackage name="yum" epoch="0" version="3.4.3" release="16.fc16" arch="noarch">
+     <delta oldepoch="0" oldversion="3.4.3" oldrelease="11.fc16">
+      <filename>drpms/yum-3.4.3-11.fc16_3.4.3-16.fc16.noarch.drpm</filename>
+      <sequence>yum-3.4.3-11.fc16-fa4535420dc8db63b7349d4262e3920b211141321242121222421212124242121272421212121212a1212121286272121212309f210ee210be2108e210fc210de110ae110fd110cd1108c110db110ab110fa110ca1109a110b9110a8110f710c710e6108610d510a510f4109410d310a310f2109210e11</sequence>
+      <size>183029</size>
+      <checksum type="sha256">77fad55681f652e06e8ba8fd6f11e505c4d85041ee30a37bbf8f573c4fb8f570</checksum>
+    </delta>
+    </newpackage>
+   <newpackage name="yum" epoch="0" version="3.4.3" release="19.fc16" arch="noarch">
+     <delta oldepoch="0" oldversion="3.4.3" oldrelease="18.fc16">
+      <filename>drpms/yum-3.4.3-18.fc16_3.4.3-19.fc16.noarch.drpm</filename>
+      <sequence>yum-3.4.3-18.fc16-a784c801daf29ec27728fd73b416b30221114132124212122242121212424212121272421212121212a12121212862424212121230ff210cf2109f210ee2108e210ad2108f110de110ae110fd110bc1108c110db110ab110fa110ca110e9110d8110a8110f710c710e6108610d510a510f4109410d310a310f2109210e11</sequence>
+      <size>96409</size>
+      <checksum type="sha256">b37b6efe09ddfb360b754f259fe3a6b8183d48a4815fcf8983a8f39d50f62a3c</checksum>
+    </delta>
+    </newpackage>
+   <newpackage name="yum" epoch="0" version="3.4.3" release="9.fc16" arch="noarch">
+     <delta oldepoch="0" oldversion="3.4.3" oldrelease="8.fc16">
+      <filename>drpms/yum-3.4.3-8.fc16_3.4.3-9.fc16.noarch.drpm</filename>
+      <sequence>yum-3.4.3-8.fc16-ce3660a696c0f9f5c58d4c9d6c9b7a59211141321242121222421212124242121272421212121212a1212121286272121212309f210ee210be2108e210fc210de110ae110fd110cd1108c110db110ab110fa110ca1109a110b9110a8110f710c710e6108610d510a510f4109410d310a310f2109210e11</sequence>
+      <size>109305</size>
+      <checksum type="sha256">568e79a83679079a9e44d24cd6c98975b3657c24457e1b924050f8491ac8f113</checksum>
+    </delta>
+    </newpackage>
+   <newpackage name="yum-cron" epoch="0" version="3.4.3" release="19.fc16" arch="noarch">
+     <delta oldepoch="0" oldversion="3.4.3" oldrelease="18.fc16">
+      <filename>drpms/yum-cron-3.4.3-18.fc16_3.4.3-19.fc16.noarch.drpm</filename>
+      <sequence>yum-cron-3.4.3-18.fc16-4b0a8c6fbbf8f4101d8591497adc46e2021160</sequence>
+      <size>30333</size>
+      <checksum type="sha256">529e5843d406b5b2553157516349ccd3db90c52f09b44fbabe06bcdf2e8a2036</checksum>
+    </delta>
+    </newpackage>
+   <newpackage name="yum-cron" epoch="0" version="3.4.3" release="22.fc16" arch="noarch">
+     <delta oldepoch="0" oldversion="3.4.3" oldrelease="20.fc16">
+      <filename>drpms/yum-cron-3.4.3-20.fc16_3.4.3-22.fc16.noarch.drpm</filename>
+      <sequence>yum-cron-3.4.3-20.fc16-4b0a8c6fbbf8f4101d8591497adc46e2021160</sequence>
+      <size>31013</size>
+      <checksum type="sha256">b4086b8f2eeac1b344376a7f2be8e023ce920aa33468c537b16daae1c0086b9e</checksum>
+    </delta>
+    </newpackage>
+   <newpackage name="yum" epoch="0" version="3.4.3" release="22.fc16" arch="noarch">
+     <delta oldepoch="0" oldversion="3.4.3" oldrelease="20.fc16">
+      <filename>drpms/yum-3.4.3-20.fc16_3.4.3-22.fc16.noarch.drpm</filename>
+      <sequence>yum-3.4.3-20.fc16-7413d83087d895fd6549ce90c092324e21114132124212122242121212424212121272421212121212a12121212862424212121230ff210cf2109f210ee2108e210ad2108f110de110ae110fd110bc1108c110db110ab110fa110ca110e9110d8110a8110f710c710e6108610d510a510f4109410d310a310f2109210e11</sequence>
+      <size>145717</size>
+      <checksum type="sha256">705d6dd9ab7431995dce501ac311b55a328c6939888de97c8d82d5f3f5f1f7cd</checksum>
+    </delta>
+    </newpackage>
+   <newpackage name="yum-cron" epoch="0" version="3.4.3" release="10.fc16" arch="noarch">
+     <delta oldepoch="0" oldversion="3.4.3" oldrelease="9.fc16">
+      <filename>drpms/yum-cron-3.4.3-9.fc16_3.4.3-10.fc16.noarch.drpm</filename>
+      <sequence>yum-cron-3.4.3-9.fc16-1fbc6aa6e0b34983652b07d64d004331021160</sequence>
+      <size>29685</size>
+      <checksum type="sha256">95172da135032edcc14352e0e95c2298f45801c5ac4ff2906ae7ae3cea665c85</checksum>
+    </delta>
+    </newpackage>
+   <newpackage name="yum-cron" epoch="0" version="3.4.3" release="16.fc16" arch="noarch">
+     <delta oldepoch="0" oldversion="3.4.3" oldrelease="11.fc16">
+      <filename>drpms/yum-cron-3.4.3-11.fc16_3.4.3-16.fc16.noarch.drpm</filename>
+      <sequence>yum-cron-3.4.3-11.fc16-4b0a8c6fbbf8f4101d8591497adc46e2021160</sequence>
+      <size>29709</size>
+      <checksum type="sha256">ee53584b0b26e9071699f7c7e3633c53f0c0f5bf6563f53791756181a67f9c2a</checksum>
+    </delta>
+    </newpackage>
+   <newpackage name="yum" epoch="0" version="3.4.3" release="10.fc16" arch="noarch">
+     <delta oldepoch="0" oldversion="3.4.3" oldrelease="9.fc16">
+      <filename>drpms/yum-3.4.3-9.fc16_3.4.3-10.fc16.noarch.drpm</filename>
+      <sequence>yum-3.4.3-9.fc16-d68b5c751adc6228f0ed663c6cc28821211141321242121222421212124242121272421212121212a1212121286272121212309f210ee210be2108e210fc210de110ae110fd110cd1108c110db110ab110fa110ca1109a110b9110a8110f710c710e6108610d510a510f4109410d310a310f2109210e11</sequence>
+      <size>63689</size>
+      <checksum type="sha256">3a1e8dead7fcf1a9ac75a986db683b57cc3c28038ee8d587db2476ae0e2436dd</checksum>
+    </delta>
+    </newpackage>
+   <newpackage name="yum-cron" epoch="0" version="3.4.3" release="8.fc16" arch="noarch">
+     <delta oldepoch="0" oldversion="3.2.29" oldrelease="20.fc16_from_el6">
+      <filename>drpms/yum-cron-3.2.29-20.fc16_from_el6_3.4.3-8.fc16.noarch.drpm</filename>
+      <sequence>yum-cron-3.2.29-20.fc16_from_el6-7e36f3da94de79e2ed23c0b42a4446e02320</sequence>
+      <size>30293</size>
+      <checksum type="sha256">2399e09fd877b4dc8df0a5909756a688d91efb349ddf1f8f04aa5a89c2c745c8</checksum>
+    </delta>
+    </newpackage>
+   <newpackage name="yum-cron" epoch="0" version="3.4.3" release="9.fc16" arch="noarch">
+     <delta oldepoch="0" oldversion="3.4.3" oldrelease="8.fc16">
+      <filename>drpms/yum-cron-3.4.3-8.fc16_3.4.3-9.fc16.noarch.drpm</filename>
+      <sequence>yum-cron-3.4.3-8.fc16-1fbc6aa6e0b34983652b07d64d004331021160</sequence>
+      <size>28289</size>
+      <checksum type="sha256">45ef41a474de15f4ec5ab1fd92778e15917c06b71b809876921112ba45d94780</checksum>
+    </delta>
+    </newpackage>
+   <newpackage name="yum" epoch="0" version="3.4.3" release="20.fc16" arch="noarch">
+     <delta oldepoch="0" oldversion="3.4.3" oldrelease="19.fc16">
+      <filename>drpms/yum-3.4.3-19.fc16_3.4.3-20.fc16.noarch.drpm</filename>
+      <sequence>yum-3.4.3-19.fc16-ec87115db217f38547f6019cf7ace77f21114132124212122242121212424212121272421212121212a12121212862424212121230ff210cf2109f210ee2108e210ad2108f110de110ae110fd110bc1108c110db110ab110fa110ca110e9110d8110a8110f710c710e6108610d510a510f4109410d310a310f2109210e11</sequence>
+      <size>66325</size>
+      <checksum type="sha256">7770bb4d1eaa7ab5c9fe3bd8653e040ff015c5eab4fbd828d91bf91d862dc786</checksum>
+    </delta>
+    </newpackage>
+   <newpackage name="yum-cron" epoch="0" version="3.4.3" release="11.fc16" arch="noarch">
+     <delta oldepoch="0" oldversion="3.4.3" oldrelease="10.fc16">
+      <filename>drpms/yum-cron-3.4.3-10.fc16_3.4.3-11.fc16.noarch.drpm</filename>
+      <sequence>yum-cron-3.4.3-10.fc16-4b0a8c6fbbf8f4101d8591497adc46e2021160</sequence>
+      <size>28945</size>
+      <checksum type="sha256">bd5b534f469e1a0ccafa3090411046237a642b6c542f76876e061878f8bfaa0d</checksum>
+    </delta>
+    </newpackage>
+   <newpackage name="yum" epoch="0" version="3.4.3" release="8.fc16" arch="noarch">
+     <delta oldepoch="0" oldversion="3.2.29" oldrelease="20.fc16_from_el6">
+      <filename>drpms/yum-3.2.29-20.fc16_from_el6_3.4.3-8.fc16.noarch.drpm</filename>
+      <sequence>yum-3.2.29-20.fc16_from_el6-4d1beb61671e5cd33b731e1807e6bc782111413212421212224212121242421212724212121212124242121212b427212121230cd2109d210ec210bc210ab210de110ae110fd110cd110ec1108c110db110ab110fa110ca1109a110b9110a8110f710c710e6108610d510a510f4109410d310a310f2109210e11</sequence>
+      <size>353265</size>
+      <checksum type="sha256">a498a1d973f6e8550cf2fb863a2640b92dc4ba3ed5fcb26e3b123ce04bd39723</checksum>
+    </delta>
+    </newpackage>
+   <newpackage name="yum" epoch="0" version="3.4.3" release="11.fc16" arch="noarch">
+     <delta oldepoch="0" oldversion="3.4.3" oldrelease="10.fc16">
+      <filename>drpms/yum-3.4.3-10.fc16_3.4.3-11.fc16.noarch.drpm</filename>
+      <sequence>yum-3.4.3-10.fc16-7036d252de253db92316d108308831d5211141321242121222421212124242121272421212121212a1212121286272121212309f210ee210be2108e210fc210de110ae110fd110cd1108c110db110ab110fa110ca1109a110b9110a8110f710c710e6108610d510a510f4109410d310a310f2109210e11</sequence>
+      <size>78465</size>
+      <checksum type="sha256">e348519427b367a13f1898f3fc02235acb756cfdb834b3ca391416216b423a9e</checksum>
+    </delta>
+    </newpackage>
+   <newpackage name="yum-cron" epoch="0" version="3.4.3" release="18.fc16" arch="noarch">
+     <delta oldepoch="0" oldversion="3.4.3" oldrelease="16.fc16">
+      <filename>drpms/yum-cron-3.4.3-16.fc16_3.4.3-18.fc16.noarch.drpm</filename>
+      <sequence>yum-cron-3.4.3-16.fc16-4b0a8c6fbbf8f4101d8591497adc46e2021160</sequence>
+      <size>30025</size>
+      <checksum type="sha256">301c1173c4372462d31b06b19f1ffd54fbec988fa96c78ed662b7bc127fbbb53</checksum>
+    </delta>
+    </newpackage>
+   <newpackage name="yum" epoch="0" version="3.4.3" release="18.fc16" arch="noarch">
+     <delta oldepoch="0" oldversion="3.4.3" oldrelease="16.fc16">
+      <filename>drpms/yum-3.4.3-16.fc16_3.4.3-18.fc16.noarch.drpm</filename>
+      <sequence>yum-3.4.3-16.fc16-6ce7d896959b67f8224bee79e3a54804211141321242121222421212124242121272421212121212a1212121286272121212309f210ee210be2108e210fc210de110ae110fd110cd1108c110db110ab110fa110ca1109a110b9110a8110f710c710e6108610d510a510f4109410d310a310f2109210e11</sequence>
+      <size>100621</size>
+      <checksum type="sha256">8d389d034d15a546085f39e7bcb62ee2c1b9faf994322a8ef8058fe2c7fc3558</checksum>
+    </delta>
+    </newpackage>
+   <newpackage name="yum-cron" epoch="0" version="3.4.3" release="20.fc16" arch="noarch">
+     <delta oldepoch="0" oldversion="3.4.3" oldrelease="19.fc16">
+      <filename>drpms/yum-cron-3.4.3-19.fc16_3.4.3-20.fc16.noarch.drpm</filename>
+      <sequence>yum-cron-3.4.3-19.fc16-4b0a8c6fbbf8f4101d8591497adc46e2021160</sequence>
+      <size>30593</size>
+      <checksum type="sha256">9b68fa4f3e93e5dd1f0a1f6f9a2b0f7a80408cb91b1cf8eb2bd2c4f39ce56170</checksum>
+    </delta>
+    </newpackage>
+
+</prestodelta>
