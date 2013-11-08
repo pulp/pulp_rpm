@@ -109,6 +109,7 @@ class Publisher(object):
         # that is used by the other publish items
         self._publish_distribution()
         self._publish_rpms()
+        self._publish_drpms()
         self._publish_errata()
 
         self._publish_over_http()
