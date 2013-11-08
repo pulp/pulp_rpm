@@ -26,9 +26,7 @@ from pulp.server.db.model.criteria import UnitAssociationCriteria
 
 from pulp_rpm.common.ids import TYPE_ID_YUM_REPO_METADATA_FILE
 
-sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)) + "/../../../plugins/distributors/")
-
-from yum_distributor.distributor import YumDistributor
+from pulp_rpm.plugins.distributors.yum_distributor.distributor import YumDistributor
 
 import data_dir
 import http_static_test_server
