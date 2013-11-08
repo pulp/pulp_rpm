@@ -14,6 +14,7 @@ Contents:
    recipes
    features
    isos
+   faq
 
 
 Indices and tables
