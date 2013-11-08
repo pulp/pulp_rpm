@@ -598,6 +598,8 @@ class YumDistributorMetadataTests(unittest.TestCase):
         except Exception, e:
             self.fail(e.message)
 
+        context._close_metadata_file_handle()
+
         self.assertNotEqual(os.path.getsize(path), 0)
 
         with gzip.open(path, 'r') as prestodelta_handle:
@@ -613,14 +615,14 @@ class YumDistributorMetadataTests(unittest.TestCase):
                             PRESTO_DELTA_FILE_NAME)
 
         handle = open(os.path.join(DATA_DIR, 'prestodelta.xml'), 'r')
-        generator = packages.package_list_generator(handle, 'prestodelta',
+        generator = packages.package_list_generator(handle, 'newpackage',
                                                     presto.process_package_element)
 
         prestodelta_unit = next(generator)
 
         # double check we've grabbed the right one
-        self.assertEqual(prestodelta_unit['new_package'], 'yum')
-        self.assertEqual(prestodelta_unit['release'], '16.fc16')
+        self.assertEqual(prestodelta_unit.metadata['new_package'], 'yum')
+        self.assertEqual(prestodelta_unit.unit_key['release'], '16.fc16')
 
         context = PrestodeltaXMLFileContext(self.metadata_file_dir)
         context._open_metadata_file_handle()
@@ -632,8 +634,8 @@ class YumDistributorMetadataTests(unittest.TestCase):
             content = prestodelta_handle.read()
 
             self.assertEqual(content.count('name="yum"'), 1)
-            self.assertEqual(content.count('epoch="0"'), 1)
-            self.assertEqual(content.count('version="3.4.3"'), 1)
+            self.assertEqual(content.count('epoch="0"'), 2) # also matches oldepoch
+            self.assertEqual(content.count('version="3.4.3"'), 2) # also matches oldversion
             self.assertEqual(content.count('release="16.fc16"'), 1)
             self.assertEqual(content.count('arch="noarch"'), 1)
             self.assertEqual(content.count('oldepoch="0"'), 1)

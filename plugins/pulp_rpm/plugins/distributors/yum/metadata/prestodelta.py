@@ -57,7 +57,7 @@ class PrestodeltaXMLFileContext(MetadataFileContext):
                                   'release': delta_unit.unit_key['release'],
                                   'arch': delta_unit.metadata['arch']}
 
-        new_package_element = ElementTree.ElementTree('newpackage', new_package_attributes)
+        new_package_element = ElementTree.Element('newpackage', new_package_attributes)
 
         delta_attributes = {'oldepoch': delta_unit.metadata['oldepoch'],
                             'oldversion': delta_unit.metadata['oldversion'],
@@ -72,7 +72,7 @@ class PrestodeltaXMLFileContext(MetadataFileContext):
         sequence_element.text = delta_unit.metadata['sequence']
 
         size_element = ElementTree.SubElement(delta_element, 'size')
-        size_element.text = delta_unit.metadata['size']
+        size_element.text = str(delta_unit.metadata['size'])
 
         checksum_attributes = {'type': delta_unit.unit_key['checksumtype']}
 
