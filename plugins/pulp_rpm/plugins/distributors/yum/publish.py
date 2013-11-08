@@ -226,6 +226,8 @@ class Publisher(object):
             self._report_progress(PUBLISH_DELTA_RPMS_STEP, state=PUBLISH_FINISHED_STATE)
             return
 
+        self.progress_report[PUBLISH_DELTA_RPMS_STEP][TOTAL] = total
+
         criteria = UnitAssociationCriteria(type_ids=[TYPE_ID_DRPM])
 
         unit_gen = self.conduit.get_units(criteria=criteria, as_generator=True)
@@ -236,6 +238,9 @@ class Publisher(object):
 
                 if self.canceled:
                     return
+
+                self._report_progress(PUBLISH_DELTA_RPMS_STEP)
+                self.progress_report[PUBLISH_DELTA_RPMS_STEP][PROCESSED] += 1
 
                 try:
                     self._symlink_content(unit, os.path.join(self.repo.working_dir, 'drpms'))

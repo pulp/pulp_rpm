@@ -89,18 +89,18 @@ class YumDistributorPublishTests(unittest.TestCase):
 
     def _generate_drpm(self, name):
 
-        unit_key = {'epoch': 0,
-                    'version': 1,
-                    'release': 1,
+        unit_key = {'epoch': '0',
+                    'version': '1',
+                    'release': '1',
                     'filename': name,
                     'checksumtype': 'sha256',
                     'checksum': '1234567890'}
 
         unit_metadata = {'new_package': name,
                          'arch': 'noarch',
-                         'oldepoch': 0,
-                         'oldversion': 1,
-                         'oldrelease': 0,
+                         'oldepoch': '0',
+                         'oldversion': '1',
+                         'oldrelease': '0',
                          'sequence': '0987654321',
                          'size': 5}
 
@@ -433,7 +433,7 @@ class YumDistributorPublishTests(unittest.TestCase):
         self.assertEqual(self.publisher.progress_report[step][reporting.STATE], reporting.PUBLISH_CANCELED_STATE)
 
         for s in reporting.PUBLISH_STEPS[1:]:
-            self.assertEqual(self.publisher.progress_report[s][reporting.STATE], reporting.PUBLISH_SKIPPED_STATE)
+            self.assertEqual(self.publisher.progress_report[s][reporting.STATE], reporting.PUBLISH_NOT_STARTED_STATE)
 
     # -- distribution publishing testing ------------------------------------------------
 
@@ -708,14 +708,16 @@ class YumDistributorPublishTests(unittest.TestCase):
         self.publisher._publish_drpms()
 
         for u in units:
-            path = os.path.join(self.working_dir, u.unit_key['filename'])
+            path = os.path.join(self.working_dir, 'drpms', u.unit_key['filename'])
             self.assertTrue(os.path.exists(path))
             self.assertTrue(os.path.islink(path))
 
 
         self.assertTrue(os.path.exists(os.path.join(self.working_dir, 'repodata/prestodelta.xml.gz')))
 
-        self.assertEqual(self.publisher.progress_report[reporting.PUBLISH_DELTA_RPMS_STEP][reporting.STATE], reporting.PUBLISH_FINISHED_STATE)
+        self.assertEqual(self.publisher.progress_report[reporting.PUBLISH_DELTA_RPMS_STEP][reporting.STATE],
+                         reporting.PUBLISH_FINISHED_STATE,
+                         self.publisher.progress_report[reporting.PUBLISH_DELTA_RPMS_STEP][reporting.ERROR_DETAILS])
         self.assertEqual(self.publisher.progress_report[reporting.PUBLISH_DELTA_RPMS_STEP][reporting.TOTAL], 2)
         self.assertEqual(self.publisher.progress_report[reporting.PUBLISH_DELTA_RPMS_STEP][reporting.PROCESSED], 2)
         self.assertEqual(self.publisher.progress_report[reporting.PUBLISH_DELTA_RPMS_STEP][reporting.FAILURES], 0)
