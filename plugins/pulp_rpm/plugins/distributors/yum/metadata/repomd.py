@@ -11,9 +11,11 @@
 # You should have received a copy of GPLv2 along with this software;
 # if not, see http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt
 
+import bz2
 import gzip
 import hashlib
 import os
+import time
 from xml.etree import ElementTree
 
 from pulp_rpm.plugins.distributors.yum.metadata.metadata import (
@@ -50,7 +52,7 @@ class RepomdXMLFileContext(MetadataFileContext):
         repomd_element = ElementTree.Element('repomd', repomd_attributes)
 
         revision_element = ElementTree.SubElement(repomd_element, 'revision')
-        revision_element.text = '' # XXX where does this come from?
+        revision_element.text = str(int(time.time()))
 
         bogus_element = ElementTree.SubElement(repomd_element, '')
 
@@ -78,7 +80,7 @@ class RepomdXMLFileContext(MetadataFileContext):
         location_element.text = os.path.join(REPO_DATA_DIR_NAME, os.path.basename(file_path))
 
         timestamp_element = ElementTree.SubElement(data_element, 'timestamp')
-        timestamp_element.text = str(os.path.getmtime(file_path)) # XXX double check this
+        timestamp_element.text = str(os.path.getmtime(file_path))
 
         size_element = ElementTree.SubElement(data_element, 'size')
         size_element.text = str(os.path.getsize(file_path))
