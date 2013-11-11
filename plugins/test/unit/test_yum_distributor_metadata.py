@@ -29,6 +29,8 @@ from pulp_rpm.plugins.distributors.yum.metadata.prestodelta import (
     PrestodeltaXMLFileContext, PRESTO_DELTA_FILE_NAME)
 from pulp_rpm.plugins.distributors.yum.metadata.primary import (
     PrimaryXMLFileContext, COMMON_NAMESPACE, RPM_NAMESPACE, PRIMARY_XML_FILE_NAME)
+from pulp_rpm.plugins.distributors.yum.metadata.repomd import (
+    RepomdXMLFileContext, REPO_XML_NAME_SPACE, RPM_XML_NAME_SPACE, REPOMD_FILE_NAME)
 from pulp_rpm.plugins.distributors.yum.metadata.updateinfo import (
     UpdateinfoXMLFileContext, UPDATE_INFO_XML_FILE_NAME)
 from pulp_rpm.plugins.importers.yum.repomd import packages, presto, updateinfo
@@ -645,4 +647,84 @@ class YumDistributorMetadataTests(unittest.TestCase):
             self.assertEqual(content.count('<sequence>yum-3.4.3-11.fc16-fa4535420dc8db63b7349d4262e3920b211141321242121222421212124242121272421212121212a1212121286272121212309f210ee210be2108e210fc210de110ae110fd110cd1108c110db110ab110fa110ca1109a110b9110a8110f710c710e6108610d510a510f4109410d310a310f2109210e11</sequence>'), 1)
             self.assertEqual(content.count('<size>183029</size>'), 1)
             self.assertEqual(content.count('<checksum type="sha256">77fad55681f652e06e8ba8fd6f11e505c4d85041ee30a37bbf8f573c4fb8f570</checksum>'), 1)
+
+    # -- repomd.xml testing ----------------------------------------------------
+
+    def test_repomd_file_creation(self):
+
+        path = os.path.join(self.metadata_file_dir,
+                            REPO_DATA_DIR_NAME,
+                            REPOMD_FILE_NAME)
+
+        context = RepomdXMLFileContext(self.metadata_file_dir)
+        context._open_metadata_file_handle()
+        context._close_metadata_file_handle()
+
+        self.assertTrue(os.path.exists(path))
+
+    def test_repomd_opening_closing_tags(self):
+
+        path = os.path.join(self.metadata_file_dir,
+                            REPO_DATA_DIR_NAME,
+                            REPOMD_FILE_NAME)
+
+        context = RepomdXMLFileContext(self.metadata_file_dir)
+        context._open_metadata_file_handle()
+
+        self.assertRaises(NotImplementedError, context._write_root_tag_close)
+
+        try:
+            context._write_root_tag_open()
+
+        except Exception, e:
+            self.fail(e.message)
+
+        try:
+            context._write_root_tag_close()
+
+        except Exception, e:
+            self.fail(e.message)
+
+        context._close_metadata_file_handle()
+
+        with open(path, 'r') as repomd_file_handle:
+
+            content = repomd_file_handle.read()
+
+            self.assertEqual(content.count('<repomd'), 1)
+            self.assertEqual(content.count('xmlns="%s"' % REPO_XML_NAME_SPACE), 1)
+            self.assertEqual(content.count('xmlns:rpm="%s"' % RPM_XML_NAME_SPACE), 1)
+            self.assertEqual(content.count('<revision>'), 1)
+
+    def test_repomd_metadata_file_metadata(self):
+
+        path = os.path.join(self.metadata_file_dir,
+                            REPO_DATA_DIR_NAME,
+                            REPOMD_FILE_NAME)
+
+        test_metadata_file_name = 'metadata.gz'
+        test_metadata_file_path = os.path.join(self.metadata_file_dir,
+                                               REPO_DATA_DIR_NAME,
+                                               test_metadata_file_name)
+        test_metadata_content = 'The quick brown fox jumps over the lazy dog'
+
+        with gzip.open(test_metadata_file_path, 'w') as test_metadata_file_handle:
+            test_metadata_file_handle.write(test_metadata_content)
+
+        context = RepomdXMLFileContext(self.metadata_file_dir)
+        context._open_metadata_file_handle()
+        context.add_metadata_file_metadata('metadata', test_metadata_file_path)
+        context._close_metadata_file_handle()
+
+        with gzip.open(path, 'r') as repomd_handle:
+
+            content = repomd_handle.read()
+
+            self.assertEqual(content.count('<data type="metadata"'), 1)
+            self.assertEqual(content.count('<location>%s/%s</location>' % (REPO_DATA_DIR_NAME, test_metadata_file_name)), 1)
+            self.assertEqual(content.count('<timestamp>'), 1)
+            self.assertEqual(content.count('<size>'), 1)
+            self.assertEqual(content.count('<checksum type="sha256">'), 1)
+            self.assertEqual(content.count('<open-size>%s</open-size>' % len(test_metadata_content)), 1)
+            self.assertEqual(content.count('<open-checksum type="sha256">'), 1)
 
