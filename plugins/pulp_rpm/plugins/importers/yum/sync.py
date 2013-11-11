@@ -107,6 +107,9 @@ class RepoSync(object):
             self.progress_status['metadata']['state'] = constants.STATE_RUNNING
             self.set_progress()
             metadata_files = self.get_metadata()
+            # Save the default checksum from the metadata
+            self.save_default_metadata_checksum_on_repo(metadata_files)
+
             if self.progress_status['metadata']['state'] == constants.STATE_RUNNING:
                 self.progress_status['metadata']['state'] = constants.STATE_COMPLETE
             self.set_progress()
@@ -205,6 +208,23 @@ class RepoSync(object):
         # TODO: verify metadata
         #metadata_files.verify_metadata_files()
         return metadata_files
+
+    def save_default_metadata_checksum_on_repo(self, metadata_files):
+        """
+        Determine the default checksum that should be used for metadata files and save it in
+        the repo scratchpad.
+
+        :param metadata_files:  object containing access to all metadata files
+        :type  metadata_files:  pulp_rpm.plugins.importers.yum.repomd.metadata.MetadataFiles
+        """
+        hash_list = set()
+        for value in metadata_files.metadata.iteritems():
+            if 'checksum' in value[1]:
+                hash_list.add(value[1]['checksum']['algorithm'])
+        if len(hash_list) > 0:
+            scratchpad = self.sync_conduit.get_repo_scratchpad()
+            scratchpad[constants.SCRATCHPAD_DEFAULT_METADATA_CHECKSUM] = hash_list.pop()
+            self.sync_conduit.set_repo_scratchpad(scratchpad)
 
     def import_unknown_metadata_files(self, metadata_files):
         """

@@ -12,6 +12,7 @@
 # http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt.
 
 from cStringIO import StringIO
+from copy import deepcopy
 import os
 import unittest
 
@@ -238,6 +239,30 @@ class TestGetMetadata(BaseSyncTest):
         mock_metadata_instane.download_metadata_files.assert_called_once_with()
         mock_metadata_instane.generate_dbs.assert_called_once_with()
         self.reposync.import_unknown_metadata_files.assert_called_once_with(mock_metadata_instane)
+
+
+class TestSaveMetadataChecksum(BaseSyncTest):
+    def setUp(self):
+        super(TestSaveMetadataChecksum, self).setUp()
+        self.reposync.tmp_dir = '/tmp'
+
+    def test_process_successful(self):
+        self.conduit.get_repo_scratchpad = mock.Mock()
+        self.conduit.get_repo_scratchpad.return_value = {}
+        self.conduit.set_repo_scratchpad = mock.Mock()
+
+        file_info = deepcopy(metadata.FILE_INFO_SKEL)
+        file_info['checksum']['algorithm'] = 'sha1'
+        self.metadata_files.metadata['foo'] = file_info
+
+        self.reposync.save_default_metadata_checksum_on_repo(self.metadata_files)
+        self.conduit.set_repo_scratchpad.assert_called_once_with(
+            {constants.SCRATCHPAD_DEFAULT_METADATA_CHECKSUM: 'sha1'})
+
+    def test_process_no_hash(self):
+        self.conduit = mock.Mock()
+        self.reposync.save_default_metadata_checksum_on_repo(self.metadata_files)
+        self.assertFalse(self.conduit.set_repo_scratchpad.called)
 
 
 class ImportUnknownMetadataFiles(BaseSyncTest):
@@ -553,6 +578,7 @@ class TestCancel(BaseSyncTest):
         # in a "cancel" call
         self.reposync.get_metadata = mock.MagicMock(side_effect=self.reposync.cancel,
                                                     spec_set=self.reposync.get_metadata)
+        self.reposync.save_default_metadata_checksum_on_repo = mock.MagicMock()
 
         report = self.reposync.run()
 
