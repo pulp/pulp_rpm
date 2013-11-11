@@ -247,8 +247,7 @@ class TestSaveMetadataChecksum(BaseSyncTest):
         self.reposync.tmp_dir = '/tmp'
 
     def test_process_successful(self):
-        self.conduit.get_repo_scratchpad = mock.Mock()
-        self.conduit.get_repo_scratchpad.return_value = {}
+        self.conduit.get_repo_scratchpad = mock.Mock(return_value={})
         self.conduit.set_repo_scratchpad = mock.Mock()
 
         file_info = deepcopy(metadata.FILE_INFO_SKEL)

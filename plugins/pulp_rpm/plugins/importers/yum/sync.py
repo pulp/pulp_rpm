@@ -217,13 +217,13 @@ class RepoSync(object):
         :param metadata_files:  object containing access to all metadata files
         :type  metadata_files:  pulp_rpm.plugins.importers.yum.repomd.metadata.MetadataFiles
         """
-        hash_list = set()
-        for value in metadata_files.metadata.iteritems():
-            if 'checksum' in value[1]:
-                hash_list.add(value[1]['checksum']['algorithm'])
-        if len(hash_list) > 0:
+        checksum_type = None
+        for metadata_item in metadata_files.metadata.iteritems():
+            if 'checksum' in metadata_item[1]:
+                checksum_type = metadata_item[1]['checksum']['algorithm']
+        if checksum_type:
             scratchpad = self.sync_conduit.get_repo_scratchpad()
-            scratchpad[constants.SCRATCHPAD_DEFAULT_METADATA_CHECKSUM] = hash_list.pop()
+            scratchpad[constants.SCRATCHPAD_DEFAULT_METADATA_CHECKSUM] = checksum_type
             self.sync_conduit.set_repo_scratchpad(scratchpad)
 
     def import_unknown_metadata_files(self, metadata_files):
