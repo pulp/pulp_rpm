@@ -82,6 +82,7 @@ def initialize(context):
 
     uploads_section = structure.repo_uploads_section(context.cli)
     uploads_section.add_command(package.CreateRpmCommand(context, upload_manager))
+    uploads_section.add_command(package.CreateSrpmCommand(context, upload_manager))
     uploads_section.add_command(errata.CreateErratumCommand(context, upload_manager))
     uploads_section.add_command(package_group.CreatePackageGroupCommand(context, upload_manager))
     uploads_section.add_command(category.CreatePackageCategoryCommand(context, upload_manager))

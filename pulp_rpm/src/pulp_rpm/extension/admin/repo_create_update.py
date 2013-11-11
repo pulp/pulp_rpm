@@ -366,9 +366,7 @@ def _prep_config(kwargs, plugin_config_keys):
 
     # Simple name translations
     for plugin_key, cli_key in plugin_config_keys:
-        plugin_config[plugin_key] = plugin_config.pop(cli_key, None)
-
-    # Apply option removal conventions
-    arg_utils.convert_removed_options(plugin_config)
+        if cli_key in plugin_config:
+            plugin_config[plugin_key] = plugin_config.pop(cli_key, None)
 
     return plugin_config
