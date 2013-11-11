@@ -78,7 +78,7 @@ class RepomdXMLFileContext(MetadataFileContext):
         location_element.text = os.path.join(REPO_DATA_DIR_NAME, os.path.basename(file_path))
 
         timestamp_element = ElementTree.SubElement(data_element, 'timestamp')
-        timestamp_element.text = str(os.path.getatime(file_path)) # XXX double check this
+        timestamp_element.text = str(os.path.getmtime(file_path)) # XXX double check this
 
         size_element = ElementTree.SubElement(data_element, 'size')
         size_element.text = str(os.path.getsize(file_path))
