@@ -31,6 +31,7 @@ from pulp_rpm.plugins.importers.yum.parse.treeinfo import KEY_PACKAGEDIR
 from . import configuration
 from .metadata.filelists import FilelistsXMLFileContext
 from .metadata.other import OtherXMLFileContext
+from .metadata.prestodelta import PrestodeltaXMLFileContext
 from .metadata.primary import PrimaryXMLFileContext
 from .metadata.updateinfo import UpdateinfoXMLFileContext
 from .reporting import (
@@ -108,6 +109,7 @@ class Publisher(object):
         # that is used by the other publish items
         self._publish_distribution()
         self._publish_rpms()
+        self._publish_drpms()
         self._publish_errata()
 
         self._publish_over_http()
@@ -134,9 +136,6 @@ class Publisher(object):
 
             if sub_report[STATE] is PUBLISH_IN_PROGRESS_STATE:
                 sub_report[STATE] = PUBLISH_CANCELED_STATE
-
-            elif sub_report[STATE] is PUBLISH_NOT_STARTED_STATE:
-                sub_report[STATE] = PUBLISH_SKIPPED_STATE
 
     # -- publish helper methods ------------------------------------------------
 
@@ -179,6 +178,7 @@ class Publisher(object):
 
                 try:
                     self._symlink_content(unit, self.repo.working_dir)
+
                     if self.package_dir:
                         self._symlink_content(unit, self.package_dir)
 
@@ -219,6 +219,53 @@ class Publisher(object):
         _LOG.debug('Publishing DRPMs for repository: %s' % self.repo.id)
 
         self._init_step_progress_report(PUBLISH_DELTA_RPMS_STEP)
+
+        total = self.repo.content_unit_counts.get(TYPE_ID_DRPM, 0)
+
+        if total == 0:
+            self._report_progress(PUBLISH_DELTA_RPMS_STEP, state=PUBLISH_FINISHED_STATE)
+            return
+
+        self.progress_report[PUBLISH_DELTA_RPMS_STEP][TOTAL] = total
+
+        criteria = UnitAssociationCriteria(type_ids=[TYPE_ID_DRPM])
+
+        unit_gen = self.conduit.get_units(criteria=criteria, as_generator=True)
+
+        with PrestodeltaXMLFileContext(self.repo.working_dir) as presto_delta_context:
+
+            for unit in unit_gen:
+
+                if self.canceled:
+                    return
+
+                self._report_progress(PUBLISH_DELTA_RPMS_STEP)
+                self.progress_report[PUBLISH_DELTA_RPMS_STEP][PROCESSED] += 1
+
+                try:
+                    self._symlink_content(unit, os.path.join(self.repo.working_dir, 'drpms'))
+
+                    if self.package_dir:
+                        self._symlink_content(unit, os.path.join(self.package_dir, 'drpms'))
+
+                except Exception, e:
+                    self._record_failure(PUBLISH_DELTA_RPMS_STEP, e)
+                    continue
+
+                try:
+                    presto_delta_context.add_unit_metadata(unit)
+
+                except Exception, e:
+                    self._record_failure(PUBLISH_DELTA_RPMS_STEP, e)
+                    continue
+
+                self.progress_report[PUBLISH_DELTA_RPMS_STEP][SUCCESSES] += 1
+
+        if self.progress_report[PUBLISH_DELTA_RPMS_STEP][FAILURES]:
+            self._report_progress(PUBLISH_DELTA_RPMS_STEP, state=PUBLISH_FAILED_STATE)
+
+        else:
+            self._report_progress(PUBLISH_DELTA_RPMS_STEP, state=PUBLISH_FINISHED_STATE)
 
     def _publish_errata(self):
 

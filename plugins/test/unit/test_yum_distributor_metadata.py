@@ -25,11 +25,13 @@ from pulp_rpm.plugins.distributors.yum.metadata.metadata import (
     MetadataFileContext, PreGeneratedMetadataContext, REPO_DATA_DIR_NAME)
 from pulp_rpm.plugins.distributors.yum.metadata.other import (
     OtherXMLFileContext, OTHER_NAMESPACE, OTHER_XML_FILE_NAME)
+from pulp_rpm.plugins.distributors.yum.metadata.prestodelta import (
+    PrestodeltaXMLFileContext, PRESTO_DELTA_FILE_NAME)
 from pulp_rpm.plugins.distributors.yum.metadata.primary import (
     PrimaryXMLFileContext, COMMON_NAMESPACE, RPM_NAMESPACE, PRIMARY_XML_FILE_NAME)
 from pulp_rpm.plugins.distributors.yum.metadata.updateinfo import (
     UpdateinfoXMLFileContext, UPDATE_INFO_XML_FILE_NAME)
-from pulp_rpm.plugins.importers.yum.repomd import packages, updateinfo
+from pulp_rpm.plugins.importers.yum.repomd import packages, presto, updateinfo
 
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), '../data/')
@@ -560,4 +562,87 @@ class YumDistributorMetadataTests(unittest.TestCase):
             self.assertEqual(content.count('<collection short="F13PTP">'), 1)
             self.assertEqual(content.count('<package'), 2)
             self.assertEqual(content.count('<sum type="md5">f3c197a29d9b66c5b65c5d62b25db5b4</sum>'), 1)
+
+    # -- prestodelta.xml testing -----------------------------------------------
+
+    def test_prestodelta_file_creation(self):
+
+        path = os.path.join(self.metadata_file_dir,
+                            REPO_DATA_DIR_NAME,
+                            PRESTO_DELTA_FILE_NAME)
+
+        context = PrestodeltaXMLFileContext(self.metadata_file_dir)
+
+        context._open_metadata_file_handle()
+        context._close_metadata_file_handle()
+
+        self.assertTrue(os.path.exists(path))
+
+    def test_prestodelta_opening_closing_tags(self):
+
+        path = os.path.join(self.metadata_file_dir,
+                            REPO_DATA_DIR_NAME,
+                            PRESTO_DELTA_FILE_NAME)
+
+        context = PrestodeltaXMLFileContext(self.metadata_file_dir)
+
+        context._open_metadata_file_handle()
+
+        self.assertRaises(NotImplementedError, context._write_root_tag_close)
+
+        context._write_root_tag_open()
+
+        try:
+            context._write_root_tag_close()
+
+        except Exception, e:
+            self.fail(e.message)
+
+        context._close_metadata_file_handle()
+
+        self.assertNotEqual(os.path.getsize(path), 0)
+
+        with gzip.open(path, 'r') as prestodelta_handle:
+
+            content = prestodelta_handle.read()
+
+            self.assertEqual(content, '<prestodelta>\n</prestodelta>\n')
+
+    def test_prestodelta_unit_metadata(self):
+
+        path = os.path.join(self.metadata_file_dir,
+                            REPO_DATA_DIR_NAME,
+                            PRESTO_DELTA_FILE_NAME)
+
+        handle = open(os.path.join(DATA_DIR, 'prestodelta.xml'), 'r')
+        generator = packages.package_list_generator(handle, 'newpackage',
+                                                    presto.process_package_element)
+
+        prestodelta_unit = next(generator)
+
+        # double check we've grabbed the right one
+        self.assertEqual(prestodelta_unit.metadata['new_package'], 'yum')
+        self.assertEqual(prestodelta_unit.unit_key['release'], '16.fc16')
+
+        context = PrestodeltaXMLFileContext(self.metadata_file_dir)
+        context._open_metadata_file_handle()
+        context.add_unit_metadata(prestodelta_unit)
+        context._close_metadata_file_handle()
+
+        with gzip.open(path, 'r') as prestodelta_handle:
+
+            content = prestodelta_handle.read()
+
+            self.assertEqual(content.count('name="yum"'), 1)
+            self.assertEqual(content.count('epoch="0"'), 2) # also matches oldepoch
+            self.assertEqual(content.count('version="3.4.3"'), 2) # also matches oldversion
+            self.assertEqual(content.count('release="16.fc16"'), 1)
+            self.assertEqual(content.count('arch="noarch"'), 1)
+            self.assertEqual(content.count('oldepoch="0"'), 1)
+            self.assertEqual(content.count('oldversion="3.4.3"'), 1)
+            self.assertEqual(content.count('oldrelease="11.fc16"'), 1)
+            self.assertEqual(content.count('<filename>drpms/yum-3.4.3-11.fc16_3.4.3-16.fc16.noarch.drpm</filename>'), 1)
+            self.assertEqual(content.count('<sequence>yum-3.4.3-11.fc16-fa4535420dc8db63b7349d4262e3920b211141321242121222421212124242121272421212121212a1212121286272121212309f210ee210be2108e210fc210de110ae110fd110cd1108c110db110ab110fa110ca1109a110b9110a8110f710c710e6108610d510a510f4109410d310a310f2109210e11</sequence>'), 1)
+            self.assertEqual(content.count('<size>183029</size>'), 1)
+            self.assertEqual(content.count('<checksum type="sha256">77fad55681f652e06e8ba8fd6f11e505c4d85041ee30a37bbf8f573c4fb8f570</checksum>'), 1)
 

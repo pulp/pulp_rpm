@@ -22,7 +22,8 @@ from pulp.plugins.config import PluginCallConfiguration
 from pulp.plugins.model import Repository, Unit
 from pulp.server.exceptions import InvalidValue
 
-from pulp_rpm.common.ids import TYPE_ID_RPM, YUM_DISTRIBUTOR_ID, TYPE_ID_DISTRO
+from pulp_rpm.common.ids import (
+    TYPE_ID_DISTRO, TYPE_ID_DRPM, TYPE_ID_RPM, YUM_DISTRIBUTOR_ID)
 from pulp_rpm.plugins.distributors.yum import publish, reporting
 
 
@@ -85,6 +86,28 @@ class YumDistributorPublishTests(unittest.TestCase):
         self._touch(storage_path)
 
         return Unit(TYPE_ID_RPM, unit_key, unit_metadata, storage_path)
+
+    def _generate_drpm(self, name):
+
+        unit_key = {'epoch': '0',
+                    'version': '1',
+                    'release': '1',
+                    'filename': name,
+                    'checksumtype': 'sha256',
+                    'checksum': '1234567890'}
+
+        unit_metadata = {'new_package': name,
+                         'arch': 'noarch',
+                         'oldepoch': '0',
+                         'oldversion': '1',
+                         'oldrelease': '0',
+                         'sequence': '0987654321',
+                         'size': 5}
+
+        storage_path = os.path.join(self.working_dir, 'content', name)
+        self._touch(storage_path)
+
+        return Unit(TYPE_ID_DRPM, unit_key, unit_metadata, storage_path)
 
     @staticmethod
     def _touch(path):
@@ -410,7 +433,7 @@ class YumDistributorPublishTests(unittest.TestCase):
         self.assertEqual(self.publisher.progress_report[step][reporting.STATE], reporting.PUBLISH_CANCELED_STATE)
 
         for s in reporting.PUBLISH_STEPS[1:]:
-            self.assertEqual(self.publisher.progress_report[s][reporting.STATE], reporting.PUBLISH_SKIPPED_STATE)
+            self.assertEqual(self.publisher.progress_report[s][reporting.STATE], reporting.PUBLISH_NOT_STARTED_STATE)
 
     # -- distribution publishing testing ------------------------------------------------
 
@@ -671,3 +694,41 @@ class YumDistributorPublishTests(unittest.TestCase):
         self.publisher._init_step_progress_report(reporting.PUBLISH_DISTRIBUTION_STEP)
         mock_symlink.side_effect = Exception("Test Error")
         self.assertRaises(Exception, self.publisher._publish_distribution_packages_link)
+
+    # -- publish drpms testing -------------------------------------------------
+
+    @mock.patch('pulp.plugins.conduits.repo_publish.RepoPublishConduit.get_units')
+    def test_publish_drpms(self, mock_get_units):
+        self._init_publisher()
+        self.publisher.repo.content_unit_counts = {TYPE_ID_DRPM: 2}
+
+        units = [self._generate_drpm(u) for u in ('A', 'B')]
+        mock_get_units.return_value = units
+
+        self.publisher._publish_drpms()
+
+        for u in units:
+            path = os.path.join(self.working_dir, 'drpms', u.unit_key['filename'])
+            self.assertTrue(os.path.exists(path))
+            self.assertTrue(os.path.islink(path))
+
+
+        self.assertTrue(os.path.exists(os.path.join(self.working_dir, 'repodata/prestodelta.xml.gz')))
+
+        self.assertEqual(self.publisher.progress_report[reporting.PUBLISH_DELTA_RPMS_STEP][reporting.STATE],
+                         reporting.PUBLISH_FINISHED_STATE,
+                         self.publisher.progress_report[reporting.PUBLISH_DELTA_RPMS_STEP][reporting.ERROR_DETAILS])
+        self.assertEqual(self.publisher.progress_report[reporting.PUBLISH_DELTA_RPMS_STEP][reporting.TOTAL], 2)
+        self.assertEqual(self.publisher.progress_report[reporting.PUBLISH_DELTA_RPMS_STEP][reporting.PROCESSED], 2)
+        self.assertEqual(self.publisher.progress_report[reporting.PUBLISH_DELTA_RPMS_STEP][reporting.FAILURES], 0)
+        self.assertEqual(self.publisher.progress_report[reporting.PUBLISH_DELTA_RPMS_STEP][reporting.SUCCESSES], 2)
+
+    def test_publish_drpms_skipped(self):
+        self._init_publisher()
+
+        self.publisher.config.default_config['skip'] = [TYPE_ID_DRPM]
+
+        self.publisher._publish_drpms()
+
+        self.assertEqual(self.publisher.progress_report[reporting.PUBLISH_DELTA_RPMS_STEP][reporting.STATE], reporting.PUBLISH_SKIPPED_STATE)
+
