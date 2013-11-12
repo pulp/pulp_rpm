@@ -66,6 +66,7 @@ def process_package_element(element):
         child = element.find(attr_name)
         if child is not None:
             package_info[attr_name] = child.text
+
     updated_element = element.find('updated')
     if updated_element is not None:
         package_info['updated'] = updated_element.attrib['date']
@@ -108,7 +109,7 @@ def _parse_package(element):
         'epoch': element.attrib.get('epoch', None),
         'version': element.attrib['version'],
         'release': element.attrib['release'],
-        'src': element.attrib['src'],
+        'src': element.attrib.get('src', ''), # apparently this isn't required
         'filename': element.find('filename').text,
         'sum': sum_tuple,
     }
