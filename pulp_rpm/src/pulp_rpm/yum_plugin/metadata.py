@@ -31,6 +31,7 @@ from pulp.common.util import encode_unicode, decode_unicode
 from pulp.plugins.conduits.mixins import MultipleRepoUnitsMixin, SingleRepoUnitsMixin
 from pulp.server.db.model.criteria import UnitAssociationCriteria
 from pulp_rpm.common.ids import TYPE_ID_RPM, TYPE_ID_SRPM, TYPE_ID_YUM_REPO_METADATA_FILE
+from pulp_rpm.common.constants import SCRATCHPAD_DEFAULT_METADATA_CHECKSUM
 from pulp_rpm.yum_plugin import util
 
 _LOG = util.getLogger(__name__)
@@ -140,7 +141,7 @@ def get_repo_checksum_type(publish_conduit, config):
         scratchpad_data = publish_conduit.get_repo_scratchpad()
         if not scratchpad_data:
             return DEFAULT_CHECKSUM
-        checksum_type = scratchpad_data['checksum_type']
+        checksum_type = scratchpad_data[SCRATCHPAD_DEFAULT_METADATA_CHECKSUM]
     except AttributeError:
         _LOG.debug("get_repo_scratchpad not found on publish conduit")
         checksum_type = DEFAULT_CHECKSUM
@@ -889,7 +890,8 @@ def generate_yum_metadata(repo_id, repo_dir, publish_conduit, config, progress_c
     checksum_type = config.get('checksum_type', None)
     if checksum_type is None:
         if repo_scratchpad:
-            checksum_type = repo_scratchpad.get('checksum_type', DEFAULT_CHECKSUM)
+            checksum_type = repo_scratchpad.get(SCRATCHPAD_DEFAULT_METADATA_CHECKSUM,
+                                                DEFAULT_CHECKSUM)
         else:
             checksum_type = DEFAULT_CHECKSUM
 
