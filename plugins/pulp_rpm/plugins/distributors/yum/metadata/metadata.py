@@ -40,10 +40,6 @@ class MetadataFileContext(object):
         self.metadata_file_path = metadata_file_path
         self.metadata_file_handle = None
 
-    def __del__(self):
-        # try to finalize in cause something bad happened
-        self.finalize()
-
     # -- for use with 'with' ---------------------------------------------------
 
     def __enter__(self):
