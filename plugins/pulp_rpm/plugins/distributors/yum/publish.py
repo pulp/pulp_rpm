@@ -107,7 +107,7 @@ class Publisher(object):
         if not os.path.exists(self.repo.working_dir):
             os.makedirs(self.repo.working_dir, mode=0770)
 
-        checksum_type = self.config.get('checksumtype', DEFAULT_CHECKSUM_TYPE)
+        checksum_type = self.config.get('checksum_type', DEFAULT_CHECKSUM_TYPE)
 
         with RepomdXMLFileContext(self.repo.working_dir, checksum_type) as self.repomd_file_context:
 
