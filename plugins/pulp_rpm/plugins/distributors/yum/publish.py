@@ -33,7 +33,7 @@ from .metadata.filelists import FilelistsXMLFileContext
 from .metadata.other import OtherXMLFileContext
 from .metadata.prestodelta import PrestodeltaXMLFileContext
 from .metadata.primary import PrimaryXMLFileContext
-from .metadata.repomd import RepomdXMLFileContext
+from .metadata.repomd import RepomdXMLFileContext, DEFAULT_CHECKSUM_TYPE
 from .metadata.updateinfo import UpdateinfoXMLFileContext
 from .reporting import (
     PUBLISH_RPMS_STEP, PUBLISH_DELTA_RPMS_STEP, PUBLISH_ERRATA_STEP,
@@ -107,8 +107,9 @@ class Publisher(object):
         if not os.path.exists(self.repo.working_dir):
             os.makedirs(self.repo.working_dir, mode=0770)
 
-        # XXX pass in the ckecksum type, if configured
-        with RepomdXMLFileContext(self.repo.working_dir) as self.repomd_file_context:
+        checksum_type = self.config.get('checksumtype', DEFAULT_CHECKSUM_TYPE)
+
+        with RepomdXMLFileContext(self.repo.working_dir, checksum_type) as self.repomd_file_context:
 
             # The distribution must be published first in case it specifies a packagesdir
             # that is used by the other publish items
