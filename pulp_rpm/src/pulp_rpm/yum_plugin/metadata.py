@@ -128,6 +128,9 @@ def get_repo_checksum_type(publish_conduit, config):
       Lookup checksum type on the repo to use for metadata generation;
       importer sets this value if available on the repo scratchpad.
 
+      This method overrides the 'sha' encoding with 'sha1' in order to support
+      the modifyrepo command line that is used for merging metadata into the repomd.xml file
+
       @param config: plugin configuration
       @type  config: L{pulp.server.content.plugins.config.PluginCallConfiguration}
 
@@ -142,6 +145,8 @@ def get_repo_checksum_type(publish_conduit, config):
         if not scratchpad_data:
             return DEFAULT_CHECKSUM
         checksum_type = scratchpad_data[SCRATCHPAD_DEFAULT_METADATA_CHECKSUM]
+        if checksum_type == 'sha':
+            checksum_type = 'sha1'
     except AttributeError:
         _LOG.debug("get_repo_scratchpad not found on publish conduit")
         checksum_type = DEFAULT_CHECKSUM
@@ -887,13 +892,8 @@ def generate_yum_metadata(repo_id, repo_dir, publish_conduit, config, progress_c
         # to add random tags to any package... but AFAIK it's
         # basically turned off now, and basically ignored.
         skip_metadata_types.append('pkgtags')
-    checksum_type = config.get('checksum_type', None)
-    if checksum_type is None:
-        if repo_scratchpad:
-            checksum_type = repo_scratchpad.get(SCRATCHPAD_DEFAULT_METADATA_CHECKSUM,
-                                                DEFAULT_CHECKSUM)
-        else:
-            checksum_type = DEFAULT_CHECKSUM
+
+    checksum_type = get_repo_checksum_type(publish_conduit, config)
 
     custom_metadata = generate_custom_metadata_dict(repo_id, publish_conduit)
     start = time.time()
