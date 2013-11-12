@@ -302,6 +302,11 @@ class YumDistributorPublishTests(unittest.TestCase):
             path = os.path.join(self.published_dir, 'http', self.publisher.repo.id, 'content', u.unit_key['name'])
             self.assertTrue(os.path.exists(path))
 
+        listing_paths= [os.path.join(self.published_dir, 'listing'),
+                        os.path.join(self.published_dir, 'http', 'listing')]
+        for p in listing_paths:
+            self.assertTrue(os.path.exists(p))
+
         self.assertEqual(self.publisher.progress_report[reporting.PUBLISH_OVER_HTTP_STEP][reporting.PROCESSED], 1)
         self.assertEqual(self.publisher.progress_report[reporting.PUBLISH_OVER_HTTP_STEP][reporting.FAILURES], 0)
         self.assertEqual(self.publisher.progress_report[reporting.PUBLISH_OVER_HTTP_STEP][reporting.SUCCESSES], 1)
@@ -327,6 +332,11 @@ class YumDistributorPublishTests(unittest.TestCase):
         for u in units:
             path = os.path.join(self.published_dir, 'https', self.publisher.repo.id, 'content', u.unit_key['name'])
             self.assertTrue(os.path.exists(path))
+
+        listing_paths= [os.path.join(self.published_dir, 'listing'),
+                        os.path.join(self.published_dir, 'https', 'listing')]
+        for p in listing_paths:
+            self.assertTrue(os.path.exists(p))
 
         self.assertEqual(self.publisher.progress_report[reporting.PUBLISH_OVER_HTTPS_STEP][reporting.PROCESSED], 1)
         self.assertEqual(self.publisher.progress_report[reporting.PUBLISH_OVER_HTTPS_STEP][reporting.FAILURES], 0)
