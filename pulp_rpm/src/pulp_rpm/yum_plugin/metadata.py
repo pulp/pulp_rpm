@@ -128,6 +128,9 @@ def get_repo_checksum_type(publish_conduit, config):
       Lookup checksum type on the repo to use for metadata generation;
       importer sets this value if available on the repo scratchpad.
 
+      This method overrides the 'sha' encoding with 'sha1' in order to support
+      the modifyrepo command line that is used for merging metadata into the repomd.xml file
+
       @param config: plugin configuration
       @type  config: L{pulp.server.content.plugins.config.PluginCallConfiguration}
 
