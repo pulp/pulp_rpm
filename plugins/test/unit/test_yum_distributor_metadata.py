@@ -708,6 +708,7 @@ class YumDistributorMetadataTests(unittest.TestCase):
                                                test_metadata_file_name)
         test_metadata_content = 'The quick brown fox jumps over the lazy dog'
 
+        os.makedirs(os.path.dirname(test_metadata_file_path))
         with gzip.open(test_metadata_file_path, 'w') as test_metadata_file_handle:
             test_metadata_file_handle.write(test_metadata_content)
 
@@ -716,7 +717,7 @@ class YumDistributorMetadataTests(unittest.TestCase):
         context.add_metadata_file_metadata('metadata', test_metadata_file_path)
         context._close_metadata_file_handle()
 
-        with gzip.open(path, 'r') as repomd_handle:
+        with open(path, 'r') as repomd_handle:
 
             content = repomd_handle.read()
 
