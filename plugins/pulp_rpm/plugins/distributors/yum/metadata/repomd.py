@@ -73,11 +73,18 @@ class RepomdXMLFileContext(MetadataFileContext):
 
     def add_metadata_file_metadata(self, data_type, file_path):
 
+        file_name = os.path.basename(file_path)
+
+        # If the file is a symbolic link, make sure we generate the the metadata
+        # based on the actual file, not the link itself.
+        if os.path.islink(file_path):
+            file_path = os.readlink(file_path)
+
         data_attributes = {'type': data_type}
         data_element = ElementTree.Element('data', data_attributes)
 
         location_element = ElementTree.SubElement(data_element, 'location')
-        location_element.text = os.path.join(REPO_DATA_DIR_NAME, os.path.basename(file_path))
+        location_element.text = os.path.join(REPO_DATA_DIR_NAME, file_name)
 
         timestamp_element = ElementTree.SubElement(data_element, 'timestamp')
         timestamp_element.text = str(os.path.getmtime(file_path))
