@@ -33,6 +33,7 @@ from .metadata.filelists import FilelistsXMLFileContext
 from .metadata.other import OtherXMLFileContext
 from .metadata.prestodelta import PrestodeltaXMLFileContext
 from .metadata.primary import PrimaryXMLFileContext
+from .metadata.repomd import RepomdXMLFileContext, DEFAULT_CHECKSUM_TYPE
 from .metadata.updateinfo import UpdateinfoXMLFileContext
 from .reporting import (
     PUBLISH_RPMS_STEP, PUBLISH_DELTA_RPMS_STEP, PUBLISH_ERRATA_STEP,
@@ -69,7 +70,6 @@ class Publisher(object):
         :type  publish_conduit: pulp.plugins.conduits.repo_publish.RepoPublishConduit
         :param config: Pulp configuration for the distributor
         :type  config: pulp.plugins.config.PluginCallConfiguration
-        :return:
         """
 
         self.repo = repo
@@ -78,7 +78,9 @@ class Publisher(object):
 
         self.progress_report = new_progress_report()
         self.canceled = False
+
         self.package_dir = None
+        self.repomd_file_context = None
 
     @property
     def skip_list(self):
@@ -105,12 +107,16 @@ class Publisher(object):
         if not os.path.exists(self.repo.working_dir):
             os.makedirs(self.repo.working_dir, mode=0770)
 
-        # The distribution must be published first in case it specifies a packagesdir
-        # that is used by the other publish items
-        self._publish_distribution()
-        self._publish_rpms()
-        self._publish_drpms()
-        self._publish_errata()
+        checksum_type = self.config.get('checksum_type', DEFAULT_CHECKSUM_TYPE)
+
+        with RepomdXMLFileContext(self.repo.working_dir, checksum_type) as self.repomd_file_context:
+
+            # The distribution must be published first in case it specifies a packagesdir
+            # that is used by the other publish items
+            self._publish_distribution()
+            self._publish_rpms()
+            self._publish_drpms()
+            self._publish_errata()
 
         self._publish_over_http()
         self._publish_over_https()
@@ -201,6 +207,10 @@ class Publisher(object):
             for context in (file_lists_context, other_context, primary_context):
                 context.finalize()
 
+        self.repomd_file_context.add_metadata_file_metadata('filelists', file_lists_context.metadata_file_path)
+        self.repomd_file_context.add_metadata_file_metadata('other', other_context.metadata_file_path)
+        self.repomd_file_context.add_metadata_file_metadata('primary', primary_context.metadata_file_path)
+
         if self.progress_report[PUBLISH_RPMS_STEP][FAILURES]:
             self._report_progress(PUBLISH_RPMS_STEP, state=PUBLISH_FAILED_STATE)
 
@@ -261,6 +271,8 @@ class Publisher(object):
 
                 self.progress_report[PUBLISH_DELTA_RPMS_STEP][SUCCESSES] += 1
 
+            self.repomd_file_context.add_metadata_file_metadata('prestodelta', presto_delta_context.metadata_file_path)
+
         if self.progress_report[PUBLISH_DELTA_RPMS_STEP][FAILURES]:
             self._report_progress(PUBLISH_DELTA_RPMS_STEP, state=PUBLISH_FAILED_STATE)
 
@@ -308,6 +320,8 @@ class Publisher(object):
                     self.progress_report[PUBLISH_ERRATA_STEP][SUCCESSES] += 1
 
                 self.progress_report[PUBLISH_ERRATA_STEP][PROCESSED] += 1
+
+            self.repomd_file_context.add_metadata_file_metadata('updateinfo', updateinfo_context.metadata_file_path)
 
         if self.progress_report[PUBLISH_ERRATA_STEP][FAILURES]:
             self._report_progress(PUBLISH_ERRATA_STEP, state=PUBLISH_FAILED_STATE)

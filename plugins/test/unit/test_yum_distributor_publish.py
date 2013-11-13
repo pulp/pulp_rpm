@@ -67,6 +67,10 @@ class YumDistributorPublishTests(unittest.TestCase):
 
         self.publisher = publish.Publisher(repo, conduit, config)
 
+        # mock out the repomd_file_context, so _publish_<step> can be called 
+        # outside of the publish() method
+        self.publisher.repomd_file_context = mock.MagicMock()
+
 
     def _generate_rpm(self, name):
 
@@ -413,25 +417,32 @@ class YumDistributorPublishTests(unittest.TestCase):
         self.assertEquals(skip_list[1], 'errata')
 
     @mock.patch('pulp_rpm.plugins.distributors.yum.publish.Publisher._build_final_report')
+    @mock.patch('pulp_rpm.plugins.distributors.yum.publish.Publisher._clear_directory')
     @mock.patch('pulp_rpm.plugins.distributors.yum.publish.Publisher._publish_over_https')
     @mock.patch('pulp_rpm.plugins.distributors.yum.publish.Publisher._publish_over_http')
-    @mock.patch('pulp_rpm.plugins.distributors.yum.publish.Publisher._publish_rpms')
     @mock.patch('pulp_rpm.plugins.distributors.yum.publish.Publisher._publish_errata')
+    @mock.patch('pulp_rpm.plugins.distributors.yum.publish.Publisher._publish_drpms')
+    @mock.patch('pulp_rpm.plugins.distributors.yum.publish.Publisher._publish_rpms')
     @mock.patch('pulp_rpm.plugins.distributors.yum.publish.Publisher._publish_distribution')
-    def test_publish(self, mock_publish_distribution, mock_publish_errata, mock_publish_rpms, mock_publish_over_http,
-                     mock_publish_over_https, mock_build_final_report):
-        self._init_publisher()
+    def test_publish(self, mock_publish_distribution, mock_publish_rpms, mock_publish_drpms,
+                     mock_publish_errata, mock_publish_over_http, mock_publish_over_https,
+                     mock_clear_directory, mock_build_final_report):
 
+        self._init_publisher()
         self.publisher.publish()
 
-        mock_publish_rpms.assert_called_once()
         mock_publish_distribution.assert_called_once()
+        mock_publish_rpms.assert_called_once()
+        mock_publish_drpms.assert_called_once()
         mock_publish_errata.assert_called_once()
         mock_publish_over_http.assert_called_once()
         mock_publish_over_https.assert_called_once()
+        mock_clear_directory.assert_called_once_with(self.publisher.repo.working_dir)
         mock_build_final_report.assert_called_once()
 
         self.assertTrue(os.path.exists(self.publisher.repo.working_dir))
+        # repomd.xml should have been automatically created
+        self.assertTrue(os.path.exists(os.path.join(self.publisher.repo.working_dir, 'repodata', 'repomd.xml')))
 
     def test_cancel(self):
         self._init_publisher()
