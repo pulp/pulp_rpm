@@ -540,6 +540,8 @@ class Publisher(object):
             _LOG.debug('Copying tree from %s to %s' % (self.repo.working_dir, repo_http_publish_dir))
             shutil.copytree(self.repo.working_dir, repo_http_publish_dir, symlinks=True)
 
+            util.generate_listing_files(root_http_publish_dir, repo_http_publish_dir)
+
         except Exception, e:
             tb = sys.exc_info()[2]
             self._record_failure(PUBLISH_OVER_HTTP_STEP, e, tb)
@@ -580,6 +582,8 @@ class Publisher(object):
 
             _LOG.debug('Copying tree from %s to %s' % (self.repo.working_dir, repo_https_publish_dir))
             shutil.copytree(self.repo.working_dir, repo_https_publish_dir, symlinks=True)
+
+            util.generate_listing_files(root_https_publish_dir, repo_https_publish_dir)
 
         except Exception, e:
             tb = sys.exc_info()[2]

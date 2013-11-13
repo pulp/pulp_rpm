@@ -120,6 +120,9 @@ ERROR_KEY_CHECKSUM_ACTUAL = 'actual_checksum'
 ERROR_KEY_EXPECTED_SIZE = 'expected_size'
 ERROR_KEY_ACTUAL_SIZE = 'actual_size'
 
+# Keys used for the scratchpad
+SCRATCHPAD_DEFAULT_METADATA_CHECKSUM = 'checksum_type'
+
 # -- extensions ---------------------------------------------------------------
 
 # Number of units to display by name for operations that return a list of
