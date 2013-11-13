@@ -11,7 +11,6 @@
 # You should have received a copy of GPLv2 along with this software;
 # if not, see http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt
 
-import bz2
 import gzip
 import hashlib
 import os
@@ -43,6 +42,16 @@ class RepomdXMLFileContext(MetadataFileContext):
 
         self.checksum_type = checksum_type
         self.checksum_constructor = getattr(hashlib, checksum_type)
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+
+        super(RepomdXMLFileContext, self).__exit__(exc_type, exc_val, exc_tb)
+
+        # If we've exited under an error condition, delete the partially written
+        # metadata file to avoid publishing a partially functioning repository,
+        # which is worse than publishing a completely broken one.
+        if any((exc_type, exc_val, exc_tb)):
+            os.unlink(self.metadata_file_path)
 
     def _write_root_tag_open(self):
 
