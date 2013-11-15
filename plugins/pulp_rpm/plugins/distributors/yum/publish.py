@@ -118,13 +118,7 @@ class Publisher(object):
             self._publish_rpms()
             self._publish_drpms()
             self._publish_errata()
-
-        #package groups and categories use the same metadata file
-        with PackageXMLFileContext(self.repo.working_dir) as package_context:
-            self._publish_packages_step(TYPE_ID_PKG_GROUP, PUBLISH_PACKAGE_GROUPS_STEP,
-                                        package_context.add_package_group_unit_metadata)
-            self._publish_packages_step(TYPE_ID_PKG_CATEGORY, PUBLISH_PACKAGE_CATEGORIES_STEP,
-                                        package_context.add_package_category_unit_metadata)
+            self._publish_comps()
 
         self._publish_over_http()
         self._publish_over_https()
@@ -336,6 +330,20 @@ class Publisher(object):
 
         else:
             self._report_progress(PUBLISH_ERRATA_STEP, state=PUBLISH_FINISHED_STATE)
+
+    def _publish_comps(self):
+        """
+        Publish package groups and categories and update the repomd.xml file.
+        """
+        groups_file = None
+        with PackageXMLFileContext(self.repo.working_dir) as package_context:
+            self._publish_packages_step(TYPE_ID_PKG_GROUP, PUBLISH_PACKAGE_GROUPS_STEP,
+                                        package_context.add_package_group_unit_metadata)
+            self._publish_packages_step(TYPE_ID_PKG_CATEGORY, PUBLISH_PACKAGE_CATEGORIES_STEP,
+                                        package_context.add_package_category_unit_metadata)
+            groups_file = package_context.metadata_file_path
+        #Addd the groups to the repomd file.
+        self.repomd_file_context.add_metadata_file_metadata('group', groups_file)
 
     def _publish_packages_step(self, type_id, step_id, process_unit_method):
         """
