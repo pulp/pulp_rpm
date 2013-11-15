@@ -198,11 +198,11 @@ def get_repo_checksum_type(publish_conduit, config):
     Lookup checksum type on the repo to use for metadata generation;
     importer sets this value if available on the repo scratchpad.
 
-    @param config: plugin configuration
-    @type  config: L{pulp.plugins.config.PluginCallConfiguration}
+    :param config: plugin configuration
+    :type  config: L{pulp.plugins.config.PluginCallConfiguration}
 
-    @return the type of checksum to use for the repository
-    @rtype str
+    :return the type of checksum to use for the repository
+    :rtype str
     """
     checksum_type = config.get(CONFIG_KEY_CHECKSUM_TYPE)
     if not checksum_type:
