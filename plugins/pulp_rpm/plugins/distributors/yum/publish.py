@@ -36,6 +36,7 @@ from .metadata.prestodelta import PrestodeltaXMLFileContext
 from .metadata.primary import PrimaryXMLFileContext
 from .metadata.repomd import RepomdXMLFileContext, DEFAULT_CHECKSUM_TYPE
 from .metadata.updateinfo import UpdateinfoXMLFileContext
+from .metadata.package import PackageXMLFileContext
 from .reporting import (
     PUBLISH_RPMS_STEP, PUBLISH_DELTA_RPMS_STEP, PUBLISH_ERRATA_STEP,
     PUBLISH_PACKAGE_GROUPS_STEP, PUBLISH_PACKAGE_CATEGORIES_STEP,
@@ -118,6 +119,13 @@ class Publisher(object):
             self._publish_rpms()
             self._publish_drpms()
             self._publish_errata()
+
+        #package groups and categories use the same metadata file
+        with PackageXMLFileContext(self.repo.working_dir) as package_context:
+            self._publish_packages_step(TYPE_ID_PKG_GROUP, PUBLISH_PACKAGE_GROUPS_STEP,
+                                        package_context.add_package_group_unit_metadata)
+            self._publish_packages_step(TYPE_ID_PKG_CATEGORY, PUBLISH_PACKAGE_CATEGORIES_STEP,
+                                        package_context.add_package_category_unit_metadata)
 
         self._publish_over_http()
         self._publish_over_https()
@@ -330,29 +338,53 @@ class Publisher(object):
         else:
             self._report_progress(PUBLISH_ERRATA_STEP, state=PUBLISH_FINISHED_STATE)
 
-    def _publish_package_groups(self):
+    def _publish_packages_step(self, type_id, step_id, process_unit_method):
+        """
+        Publish the metadata for package groups and package categories
 
+        :param type_id: The type_id if the unit that is being published
+        :type type_id: str
+        :param step_id: The step_id of the step that is being processed
+        :type step_id: str
+        :param process_unit_method: The method that is used for publishing a unit
+        :type process_unit_method: LambdaType
+        """
         if self.canceled:
             return
 
-        if TYPE_ID_PKG_GROUP in self.skip_list:
-            self._report_progress(PUBLISH_PACKAGE_GROUPS_STEP, state=PUBLISH_SKIPPED_STATE)
+        if type_id in self.skip_list:
+            self._report_progress(step_id, state=PUBLISH_SKIPPED_STATE)
             return
 
-        _LOG.debug('Publishing Package Groups for repository: %s' % self.repo.id)
+        _LOG.debug('Publishing Packages of type %(type)s for repository: %(repo)s' %
+                   {'type': type_id, 'repo': self.repo.id})
 
-        self._init_step_progress_report(PUBLISH_PACKAGE_GROUPS_STEP)
+        self._init_step_progress_report(step_id)
 
-    def _publish_package_categories(self):
+        total = self.repo.content_unit_counts.get(type_id, 0)
 
-        if self.canceled:
+        if total == 0:
+            self._report_progress(step_id, state=PUBLISH_FINISHED_STATE, total=0)
             return
 
-        if TYPE_ID_PKG_CATEGORY in self.skip_list:
-            self._report_progress(PUBLISH_PACKAGE_CATEGORIES_STEP, state=PUBLISH_SKIPPED_STATE)
-            return
+        self.progress_report[step_id][TOTAL] = total
+        criteria = UnitAssociationCriteria(type_ids=[type_id])
+        package_unit_generator = self.conduit.get_units(criteria, as_generator=True)
+        self._report_progress(step_id)
 
-        self._init_step_progress_report(PUBLISH_PACKAGE_CATEGORIES_STEP)
+        for package_unit in package_unit_generator:
+            try:
+                process_unit_method(package_unit)
+            except Exception, e:
+                self._record_failure(step_id, e)
+            else:
+                self.progress_report[step_id][SUCCESSES] += 1
+            self.progress_report[step_id][PROCESSED] += 1
+
+        if self.progress_report[step_id][FAILURES]:
+            self._report_progress(step_id, state=PUBLISH_FAILED_STATE)
+        else:
+            self._report_progress(step_id, state=PUBLISH_FINISHED_STATE)
 
     def _publish_distribution(self):
         """

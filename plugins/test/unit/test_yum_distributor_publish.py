@@ -23,8 +23,8 @@ from pulp.plugins.model import Repository, Unit
 from pulp.server.exceptions import InvalidValue
 
 from pulp_rpm.common.ids import (
-    TYPE_ID_DISTRO, TYPE_ID_DRPM, TYPE_ID_RPM, TYPE_ID_YUM_REPO_METADATA_FILE,
-    YUM_DISTRIBUTOR_ID)
+    TYPE_ID_PKG_GROUP, TYPE_ID_PKG_CATEGORY, TYPE_ID_DISTRO, TYPE_ID_DRPM, TYPE_ID_RPM,
+    TYPE_ID_YUM_REPO_METADATA_FILE, YUM_DISTRIBUTOR_ID)
 from pulp_rpm.plugins.distributors.yum import publish, reporting
 
 
@@ -428,6 +428,7 @@ class YumDistributorPublishTests(unittest.TestCase):
         self.assertEquals(skip_list[0], 'rpm')
         self.assertEquals(skip_list[1], 'errata')
 
+    @mock.patch('pulp_rpm.plugins.distributors.yum.publish.Publisher._publish_packages_step')
     @mock.patch('pulp_rpm.plugins.distributors.yum.publish.Publisher._build_final_report')
     @mock.patch('pulp_rpm.plugins.distributors.yum.publish.Publisher._clear_directory')
     @mock.patch('pulp_rpm.plugins.distributors.yum.publish.Publisher._publish_over_https')
@@ -438,9 +439,10 @@ class YumDistributorPublishTests(unittest.TestCase):
     @mock.patch('pulp_rpm.plugins.distributors.yum.publish.Publisher._publish_distribution')
     def test_publish(self, mock_publish_distribution, mock_publish_rpms, mock_publish_drpms,
                      mock_publish_errata, mock_publish_over_http, mock_publish_over_https,
-                     mock_clear_directory, mock_build_final_report):
+                     mock_clear_directory, mock_build_final_report, mock_packages_step):
 
         self._init_publisher()
+        self.publisher.repo.content_unit_counts = {}
         self.publisher.publish()
 
         mock_publish_distribution.assert_called_once()
@@ -451,6 +453,13 @@ class YumDistributorPublishTests(unittest.TestCase):
         mock_publish_over_https.assert_called_once()
         mock_clear_directory.assert_called_once_with(self.publisher.repo.working_dir)
         mock_build_final_report.assert_called_once()
+
+        self.assertEquals(TYPE_ID_PKG_GROUP, mock_packages_step.call_args_list[0][0][0])
+        self.assertEquals(reporting.PUBLISH_PACKAGE_GROUPS_STEP,
+                          mock_packages_step.call_args_list[0][0][1])
+        self.assertEquals(TYPE_ID_PKG_CATEGORY, mock_packages_step.call_args_list[1][0][0])
+        self.assertEquals(reporting.PUBLISH_PACKAGE_CATEGORIES_STEP,
+                          mock_packages_step.call_args_list[1][0][1])
 
         self.assertTrue(os.path.exists(self.publisher.repo.working_dir))
         # repomd.xml should have been automatically created
@@ -563,6 +572,8 @@ class YumDistributorPublishTests(unittest.TestCase):
                                                   mock_packages):
         self._init_publisher()
         mock_get_units.return_value = []
+        self.publisher.repo.content_unit_counts = {TYPE_ID_DISTRO: 0}
+
 
         self.publisher._publish_distribution()
         self.assertFalse(mock_files.called)
@@ -853,3 +864,72 @@ class YumDistributorPublishTests(unittest.TestCase):
         mock_report_progress.assert_called_once_with(publish.PUBLISH_METADATA_STEP,
                                                      state=publish.PUBLISH_FINISHED_STATE,
                                                      total=0)
+    # -- _publish_packages_step testing ---------------------------------------
+
+    def test_publish_packages_step_skip_units(self):
+        self._init_publisher()
+        mock_method = mock.Mock()
+        self.publisher.config = PluginCallConfiguration(None, {'skip': [TYPE_ID_PKG_GROUP]})
+        self.publisher._publish_packages_step(TYPE_ID_PKG_GROUP,
+                                              reporting.PUBLISH_PACKAGE_GROUPS_STEP,
+                                              mock_method)
+        self.assertEqual(self.publisher.progress_report[reporting.PUBLISH_PACKAGE_GROUPS_STEP]
+                         [reporting.STATE],
+                         reporting.PUBLISH_SKIPPED_STATE)
+
+    def test_publish_packages_step_no_units(self):
+        self._init_publisher()
+        self.publisher.repo.content_unit_counts = {TYPE_ID_PKG_GROUP: 0}
+        mock_method = mock.Mock()
+        self.publisher._publish_packages_step(TYPE_ID_PKG_GROUP,
+                                              reporting.PUBLISH_PACKAGE_GROUPS_STEP,
+                                              mock_method)
+        self.assertEqual(self.publisher.progress_report[reporting.PUBLISH_PACKAGE_GROUPS_STEP]
+                         [reporting.STATE],
+                         reporting.PUBLISH_FINISHED_STATE)
+        self.assertFalse(mock_method.called)
+
+    @mock.patch('pulp.plugins.conduits.repo_publish.RepoPublishConduit.get_units')
+    def test_publish_packages_step_single_unit(self, mock_get_units):
+        self._init_publisher()
+        self.publisher.repo.content_unit_counts = {TYPE_ID_PKG_GROUP: 1}
+        mock_method = mock.Mock()
+        mock_get_units.return_value = ['mock_unit']
+        self.publisher._publish_packages_step(TYPE_ID_PKG_GROUP,
+                                              reporting.PUBLISH_PACKAGE_GROUPS_STEP,
+                                              mock_method)
+        self.assertEqual(self.publisher.progress_report[reporting.PUBLISH_PACKAGE_GROUPS_STEP]
+                         [reporting.STATE],
+                         reporting.PUBLISH_FINISHED_STATE)
+        mock_method.assert_called_once_with('mock_unit')
+        self.assertEqual(self.publisher.progress_report[reporting.PUBLISH_PACKAGE_GROUPS_STEP][
+                         reporting.TOTAL], 1)
+        self.assertEqual(self.publisher.progress_report[reporting.PUBLISH_PACKAGE_GROUPS_STEP][
+                         reporting.PROCESSED], 1)
+        self.assertEqual(self.publisher.progress_report[reporting.PUBLISH_PACKAGE_GROUPS_STEP][
+                         reporting.FAILURES], 0)
+        self.assertEqual(self.publisher.progress_report[reporting.PUBLISH_PACKAGE_GROUPS_STEP][
+                         reporting.SUCCESSES], 1)
+
+    @mock.patch('pulp.plugins.conduits.repo_publish.RepoPublishConduit.get_units')
+    def test_publish_packages_step_single_unit_exception(self, mock_get_units):
+        self._init_publisher()
+        self.publisher.repo.content_unit_counts = {TYPE_ID_PKG_GROUP: 1}
+        mock_method = mock.Mock()
+        mock_method.side_effect = Exception()
+        mock_get_units.return_value = ['mock_unit']
+        self.publisher._publish_packages_step(TYPE_ID_PKG_GROUP,
+                                              reporting.PUBLISH_PACKAGE_GROUPS_STEP,
+                                              mock_method)
+        self.assertEqual(self.publisher.progress_report[reporting.PUBLISH_PACKAGE_GROUPS_STEP]
+                         [reporting.STATE],
+                         reporting.PUBLISH_FAILED_STATE)
+        mock_method.assert_called_once_with('mock_unit')
+        self.assertEqual(self.publisher.progress_report[reporting.PUBLISH_PACKAGE_GROUPS_STEP][
+                         reporting.TOTAL], 1)
+        self.assertEqual(self.publisher.progress_report[reporting.PUBLISH_PACKAGE_GROUPS_STEP][
+                         reporting.PROCESSED], 1)
+        self.assertEqual(self.publisher.progress_report[reporting.PUBLISH_PACKAGE_GROUPS_STEP][
+                         reporting.FAILURES], 1)
+        self.assertEqual(self.publisher.progress_report[reporting.PUBLISH_PACKAGE_GROUPS_STEP][
+                         reporting.SUCCESSES], 0)
