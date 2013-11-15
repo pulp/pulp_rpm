@@ -16,6 +16,8 @@ import re
 from ConfigParser import SafeConfigParser
 from gettext import gettext as _
 
+from pulp_rpm.common.constants import SCRATCHPAD_DEFAULT_METADATA_CHECKSUM, \
+    CONFIG_DEFAULT_CHECKSUM, CONFIG_KEY_CHECKSUM_TYPE
 from pulp_rpm.yum_plugin import util
 
 # -- constants -----------------------------------------------------------------
@@ -189,6 +191,35 @@ def get_repo_relative_path(repo, config=None):
         relative_path = relative_path[1:]
 
     return relative_path
+
+
+def get_repo_checksum_type(publish_conduit, config):
+    """
+    Lookup checksum type on the repo to use for metadata generation;
+    importer sets this value if available on the repo scratchpad.
+
+    :param config: plugin configuration
+    :type  config: L{pulp.plugins.config.PluginCallConfiguration}
+
+    :return the type of checksum to use for the repository
+    :rtype str
+    """
+    checksum_type = config.get(CONFIG_KEY_CHECKSUM_TYPE)
+    if not checksum_type:
+        try:
+            scratchpad_data = publish_conduit.get_repo_scratchpad()
+            if not scratchpad_data or SCRATCHPAD_DEFAULT_METADATA_CHECKSUM not in scratchpad_data:
+                checksum_type = CONFIG_DEFAULT_CHECKSUM
+            else:
+                checksum_type = scratchpad_data[SCRATCHPAD_DEFAULT_METADATA_CHECKSUM]
+        except AttributeError:
+            _LOG.debug("get_repo_scratchpad not found on publish conduit")
+            checksum_type = CONFIG_DEFAULT_CHECKSUM
+
+    if checksum_type == 'sha':
+        checksum_type = 'sha1'
+    return checksum_type
+
 
 # -- required config validation ------------------------------------------------
 
