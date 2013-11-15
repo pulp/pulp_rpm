@@ -57,6 +57,7 @@ class YumDistributorPublishTests(unittest.TestCase):
         repo = Repository('yum-distributor-publish-tests', working_dir=self.working_dir)
 
         conduit = RepoPublishConduit(repo.id, YUM_DISTRIBUTOR_ID)
+        conduit.get_repo_scratchpad = mock.Mock(return_value={})
 
         config_defaults = {'http': True,
                            'https': True,

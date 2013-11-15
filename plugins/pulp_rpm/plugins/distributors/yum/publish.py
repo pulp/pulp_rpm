@@ -108,7 +108,7 @@ class Publisher(object):
         if not os.path.exists(self.repo.working_dir):
             os.makedirs(self.repo.working_dir, mode=0770)
 
-        checksum_type = self.config.get('checksum_type', DEFAULT_CHECKSUM_TYPE)
+        checksum_type = configuration.get_repo_checksum_type(self.conduit, self.config)
 
         with RepomdXMLFileContext(self.repo.working_dir, checksum_type) as self.repomd_file_context:
 
@@ -343,7 +343,8 @@ class Publisher(object):
                                         package_context.add_package_category_unit_metadata)
             groups_file = package_context.metadata_file_path
         #Addd the groups to the repomd file.
-        self.repomd_file_context.add_metadata_file_metadata('group', groups_file)
+        if groups_file:
+            self.repomd_file_context.add_metadata_file_metadata('group', groups_file)
 
     def _publish_packages_step(self, type_id, step_id, process_unit_method):
         """
