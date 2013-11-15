@@ -25,7 +25,8 @@ from pymongo import cursor
 sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)) + "/../../../plugins/importers/")
 sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)) + "/../../../plugins/distributors/")
 
-from yum_distributor.distributor import YumDistributor, OLD_REL_PATH_KEYWORD
+from pulp_rpm.plugins.distributors.yum_distributor.distributor import YumDistributor, OLD_REL_PATH_KEYWORD
+
 from pulp_rpm.common.ids import TYPE_ID_DISTRIBUTOR_YUM, TYPE_ID_RPM, TYPE_ID_SRPM
 from pulp_rpm.yum_plugin import util, metadata
 from pulp.plugins.model import RelatedRepository, Repository, Unit

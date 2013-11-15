@@ -12,9 +12,8 @@
 # http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt.
 import os
 import sys
-sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)) + "/../../../plugins/distributors/")
 
-from yum_distributor.distributor import YumDistributor
+from pulp_rpm.plugins.distributors.yum_distributor.distributor import YumDistributor
 from pulp.plugins.model import Repository
 from pulp_rpm.repo_auth.repo_cert_utils import M2CRYPTO_HAS_CRL_SUPPORT
 from pulp.plugins.conduits.repo_config import RepoConfigConduit
