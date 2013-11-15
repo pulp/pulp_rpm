@@ -24,7 +24,7 @@ from pulp.server.exceptions import InvalidValue
 
 from pulp_rpm.common.ids import (
     TYPE_ID_PKG_GROUP, TYPE_ID_PKG_CATEGORY, TYPE_ID_DISTRO, TYPE_ID_DRPM, TYPE_ID_RPM,
-    YUM_DISTRIBUTOR_ID)
+    TYPE_ID_YUM_REPO_METADATA_FILE, YUM_DISTRIBUTOR_ID)
 from pulp_rpm.plugins.distributors.yum import publish, reporting
 
 
@@ -73,7 +73,6 @@ class YumDistributorPublishTests(unittest.TestCase):
         # outside of the publish() method
         self.publisher.repomd_file_context = mock.MagicMock()
 
-
     def _generate_rpm(self, name):
 
         unit_key = {'name': name,
@@ -114,6 +113,18 @@ class YumDistributorPublishTests(unittest.TestCase):
         self._touch(storage_path)
 
         return Unit(TYPE_ID_DRPM, unit_key, unit_metadata, storage_path)
+
+    def _generate_metadata_file_unit(self, data_type, repo_id):
+
+        unit_key = {'data_type' : data_type,
+                    'repo_id' : repo_id}
+
+        unit_metadata = {}
+
+        storage_path = os.path.join(self.working_dir, 'content', 'metadata_files', data_type)
+        self._touch(storage_path)
+
+        return Unit(TYPE_ID_YUM_REPO_METADATA_FILE, unit_key, unit_metadata, storage_path)
 
     @staticmethod
     def _touch(path):
@@ -748,7 +759,6 @@ class YumDistributorPublishTests(unittest.TestCase):
             self.assertTrue(os.path.exists(path))
             self.assertTrue(os.path.islink(path))
 
-
         self.assertTrue(os.path.exists(os.path.join(self.working_dir, 'repodata/prestodelta.xml.gz')))
 
         self.assertEqual(self.publisher.progress_report[reporting.PUBLISH_DELTA_RPMS_STEP][reporting.STATE],
@@ -768,6 +778,93 @@ class YumDistributorPublishTests(unittest.TestCase):
 
         self.assertEqual(self.publisher.progress_report[reporting.PUBLISH_DELTA_RPMS_STEP][reporting.STATE], reporting.PUBLISH_SKIPPED_STATE)
 
+    # -- publish metadata files testing ---------------------------------------
+
+    @mock.patch('pulp.plugins.conduits.repo_publish.RepoPublishConduit.get_units')
+    def test_publish_metadata(self, mock_get_units):
+        # Setup
+        units = [self._generate_metadata_file_unit(dt, 'test-repo') for dt in ('A', 'B')]
+        mock_get_units.return_value = units
+        self._init_publisher()
+        self.publisher.repo.content_unit_counts = {TYPE_ID_YUM_REPO_METADATA_FILE : len(units)}
+
+        # Test
+        self.publisher._publish_metadata()
+
+        # Verify
+        self.assertEqual(self.publisher.progress_report[reporting.PUBLISH_METADATA_STEP][reporting.STATE], reporting.PUBLISH_FINISHED_STATE)
+        self.assertEqual(self.publisher.progress_report[reporting.PUBLISH_METADATA_STEP][reporting.TOTAL], len(units))
+        self.assertEqual(self.publisher.progress_report[reporting.PUBLISH_METADATA_STEP][reporting.FAILURES], 0)
+        self.assertEqual(self.publisher.progress_report[reporting.PUBLISH_METADATA_STEP][reporting.SUCCESSES], len(units))
+
+        for u in units:
+            data_type = u.unit_key['data_type']
+            path = os.path.join(self.working_dir, publish.REPO_DATA_DIR_NAME, data_type)
+            self.assertTrue(os.path.exists(path))
+            self.assertTrue(os.path.islink(path))
+            self.assertTrue(os.path.exists(os.path.join(self.working_dir, 'repodata/%s' % data_type)))
+
+    @mock.patch('pulp.plugins.conduits.repo_publish.RepoPublishConduit.get_units')
+    def test_publish_metadata_failed(self, mock_get_units):
+        # Setup
+        units = [self._generate_metadata_file_unit(dt, 'test-repo') for dt in ('A', 'B')]
+        mock_get_units.return_value = units
+        self._init_publisher()
+        self.publisher.repo.content_unit_counts = {TYPE_ID_YUM_REPO_METADATA_FILE : len(units)}
+
+        mock_error_raiser = mock.MagicMock()
+        mock_error_raiser.side_effect = Exception('foo')
+        self.publisher.repomd_file_context.add_metadata_file_metadata = mock_error_raiser
+
+        # Test
+        self.publisher._publish_metadata()
+
+        # Verify
+        self.assertEqual(self.publisher.progress_report[reporting.PUBLISH_METADATA_STEP][reporting.STATE], reporting.PUBLISH_FAILED_STATE)
+        self.assertEqual(self.publisher.progress_report[reporting.PUBLISH_METADATA_STEP][reporting.TOTAL], len(units))
+        self.assertEqual(self.publisher.progress_report[reporting.PUBLISH_METADATA_STEP][reporting.FAILURES], len(units))
+        self.assertEqual(self.publisher.progress_report[reporting.PUBLISH_METADATA_STEP][reporting.SUCCESSES], 0)
+
+    def test_publish_metadata_canceled(self):
+        # Setup
+        self._init_publisher()
+        self.publisher.canceled = True
+        mock_report_progress = mock.MagicMock()
+        self.publisher._report_progress = mock_report_progress
+
+        # Test
+        self.publisher._publish_metadata()
+
+        # Verify
+        self.assertEqual(0, mock_report_progress.call_count)
+
+    def test_publish_metadata_skipped(self):
+        # Setup
+        self._init_publisher()
+        self.publisher.config.repo_plugin_config['skip'] = [TYPE_ID_YUM_REPO_METADATA_FILE]
+        mock_report_progress = mock.MagicMock()
+        self.publisher._report_progress = mock_report_progress
+
+        # Test
+        self.publisher._publish_metadata()
+
+        # Verify
+        mock_report_progress.assert_called_once_with(publish.PUBLISH_METADATA_STEP,
+                                                     state=publish.PUBLISH_SKIPPED_STATE)
+
+    def test_publish_metadata_zero_count(self):
+        # Setup
+        self._init_publisher()
+        mock_report_progress = mock.MagicMock()
+        self.publisher._report_progress = mock_report_progress
+
+        # Test
+        self.publisher._publish_metadata()
+
+        # Verify
+        mock_report_progress.assert_called_once_with(publish.PUBLISH_METADATA_STEP,
+                                                     state=publish.PUBLISH_FINISHED_STATE,
+                                                     total=0)
     # -- _publish_packages_step testing ---------------------------------------
 
     def test_publish_packages_step_skip_units(self):
@@ -837,4 +934,3 @@ class YumDistributorPublishTests(unittest.TestCase):
                          reporting.FAILURES], 1)
         self.assertEqual(self.publisher.progress_report[reporting.PUBLISH_PACKAGE_GROUPS_STEP][
                          reporting.SUCCESSES], 0)
-

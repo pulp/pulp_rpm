@@ -30,6 +30,7 @@ from pulp_rpm.plugins.importers.yum.parse.treeinfo import KEY_PACKAGEDIR
 
 from . import configuration
 from .metadata.filelists import FilelistsXMLFileContext
+from .metadata.metadata import REPO_DATA_DIR_NAME
 from .metadata.other import OtherXMLFileContext
 from .metadata.prestodelta import PrestodeltaXMLFileContext
 from .metadata.primary import PrimaryXMLFileContext
@@ -434,7 +435,6 @@ class Publisher(object):
                 # has to replace a symlink with a hard directory
                 self._publish_distribution_files(distribution)
 
-
                 self._report_progress(PUBLISH_DISTRIBUTION_STEP, state=PUBLISH_FINISHED_STATE)
             elif total > 1:
                 msg = _('Error publishing repository %(repo)s.  More than one distribution found.') % \
@@ -546,6 +546,7 @@ class Publisher(object):
         if self.canceled:
             return
 
+        # Preprocessing stuff: determine if anything needs to happen & progress reporting
         if TYPE_ID_YUM_REPO_METADATA_FILE in self.skip_list:
             self._report_progress(PUBLISH_METADATA_STEP, state=PUBLISH_SKIPPED_STATE)
             return
@@ -553,6 +554,46 @@ class Publisher(object):
         _LOG.debug('Publishing Yum Repository Metadata for repository: %s' % self.repo.id)
 
         self._init_step_progress_report(PUBLISH_METADATA_STEP)
+
+        total = self.repo.content_unit_counts.get(TYPE_ID_YUM_REPO_METADATA_FILE, 0)
+        if total == 0:
+            self._report_progress(PUBLISH_METADATA_STEP, state=PUBLISH_FINISHED_STATE, total=0)
+            return
+        else:
+            self.progress_report[PUBLISH_METADATA_STEP][TOTAL] = total
+
+        # Publish logic for each metadata file
+        criteria = UnitAssociationCriteria(type_ids=[TYPE_ID_YUM_REPO_METADATA_FILE])
+        metadata_unit_gen = self.conduit.get_units(criteria, as_generator=True)
+        for metadata_unit in metadata_unit_gen:
+
+            try:
+                # Copy the file to the location on disk where the published repo is built
+                publish_location_relative_path = os.path.join(self.repo.working_dir,
+                                                              REPO_DATA_DIR_NAME)
+
+                metadata_file_name = os.path.basename(metadata_unit.storage_path)
+                link_path = os.path.join(publish_location_relative_path, metadata_file_name)
+                self._create_symlink(metadata_unit.storage_path, link_path)
+
+                # Add the proper relative reference to the metadata file to repomd
+                repomd_relative_filename = os.path.join(REPO_DATA_DIR_NAME, metadata_file_name)
+                self.repomd_file_context.add_metadata_file_metadata(
+                    metadata_unit.unit_key['data_type'], repomd_relative_filename)
+
+                # Everything was successful, update the progress report
+                self.progress_report[PUBLISH_METADATA_STEP][SUCCESSES] += 1
+
+            except Exception, e:
+                # Failure count is incremented in record_failure, so no explicit line for it
+                # like we did above for the success
+                self._record_failure(PUBLISH_METADATA_STEP, e)
+
+        # Fire off the appropriate progress report notification
+        if self.progress_report[PUBLISH_METADATA_STEP][FAILURES]:
+            self._report_progress(PUBLISH_METADATA_STEP, state=PUBLISH_FAILED_STATE)
+        else:
+            self._report_progress(PUBLISH_METADATA_STEP, state=PUBLISH_FINISHED_STATE)
 
     def _publish_over_http(self):
 
