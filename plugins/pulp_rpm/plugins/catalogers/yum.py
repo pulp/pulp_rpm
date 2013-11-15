@@ -48,7 +48,7 @@ class YumCataloger(Cataloger):
         }
 
     @staticmethod
-    def _add_packages(base_url, md_files):
+    def _add_packages(source_id, conduit, base_url, md_files):
         with md_files.get_metadata_file_handle(primary.METADATA_FILE_NAME) as fp:
             _packages = packages.package_list_generator(
                 fp, primary.PACKAGE_TAG, primary.process_package_element)
@@ -67,26 +67,6 @@ class YumCataloger(Cataloger):
             md_files.download_repomd()
             md_files.parse_repomd()
             md_files.download_metadata_files()
-            self._add_packages(url, md_files)
+            self._add_packages(source_id, conduit, url, md_files)
         finally:
             shutil.rmtree(dst_dir)
-
-
-class Conduit(object):
-    def add_entry(self, *args):
-        pass
-    def purge(self, *args):
-        pass
-
-
-if __name__ == '__main__':
-    from logging import basicConfig
-    from pulp.plugins.conduits.cataloger import CatalogerConduit
-    basicConfig()
-    config = {
-        URL: 'http://repos.fedorapeople.org/repos/pulp/pulp/beta/2.3/5Server/x86_64/'
-    }
-    source_id = 'test'
-    conduit = Conduit()
-    cataloger = YumCataloger()
-    cataloger.refresh(source_id, conduit, config)
