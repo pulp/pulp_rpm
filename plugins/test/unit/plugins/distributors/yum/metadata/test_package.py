@@ -62,8 +62,8 @@ class TestPackageXMLFileContext(unittest.TestCase):
     def test_write_root_tag_open(self):
         self.context._write_root_tag_open()
         self.context.metadata_file_handle.write.assert_called_once_with(
-                          '<comps>\n<!DOCTYPE comps PUBLIC "-//Red Hat, Inc.//DTD Comps info//EN" '
-                          '"comps.dtd">\n')
+                          '<!DOCTYPE comps PUBLIC "-//Red Hat, Inc.//DTD Comps info//EN" '
+                          '"comps.dtd">\n<comps>')
 
     def test_add_package_group_unit_metadata_minimal(self):
         group_unit = self._generate_group_unit('foo')

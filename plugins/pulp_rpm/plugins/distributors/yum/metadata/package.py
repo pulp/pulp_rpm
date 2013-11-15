@@ -56,10 +56,8 @@ class PackageXMLFileContext(MetadataFileContext):
         bogus_tag_string = ElementTree.tostring(bogus_element, 'utf-8')
         opening_tag, closing_tag = updates_tags_string.split(bogus_tag_string, 1)
 
-        doctype = u'<!DOCTYPE comps PUBLIC "-//Red Hat, Inc.//DTD Comps info//EN" "comps.dtd">\n'
-        self.metadata_file_handle.write(unicode(opening_tag + '\n' + doctype))
-
-        #self.metadata_file_handle.write(doctype)
+        doctype = u'<!DOCTYPE comps PUBLIC "-//Red Hat, Inc.//DTD Comps info//EN" "comps.dtd">'
+        self.metadata_file_handle.write(unicode(doctype + '\n' + opening_tag))
 
         def _write_root_tag_close_closure(*args):
             self.metadata_file_handle.write(unicode(closing_tag + '\n'))
