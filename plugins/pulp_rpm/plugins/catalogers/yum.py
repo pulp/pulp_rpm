@@ -23,7 +23,6 @@ from pulp_rpm.plugins.importers.yum.repomd import primary
 from pulp_rpm.plugins.importers.yum.repomd import packages
 
 
-
 TYPE_ID = 'yum'
 URL = 'url'
 
