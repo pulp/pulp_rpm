@@ -17,7 +17,8 @@ from ConfigParser import SafeConfigParser
 from gettext import gettext as _
 
 from pulp_rpm.common.constants import SCRATCHPAD_DEFAULT_METADATA_CHECKSUM, \
-    CONFIG_DEFAULT_CHECKSUM, CONFIG_KEY_CHECKSUM_TYPE
+    CONFIG_DEFAULT_CHECKSUM, CONFIG_KEY_CHECKSUM_TYPE, REPO_AUTH_CONFIG_FILE
+from pulp_rpm.repo_auth import protected_repo_utils, repo_cert_utils
 from pulp_rpm.yum_plugin import util
 
 # -- constants -----------------------------------------------------------------
@@ -50,7 +51,10 @@ def load_config(config_file_path):
     _LOG.debug('Loading configuration file: %s' % config_file_path)
 
     config = SafeConfigParser()
-    config.read(config_file_path)
+
+    if os.access(config_file_path, os.F_OK | os.R_OK):
+        config.read(config_file_path)
+
     return config
 
 
@@ -125,8 +129,37 @@ def validate_config(repo, config, config_conduit):
 
         return False, '\n'.join(error_messages)
 
-    # no errors, yay!
+    process_cert_based_auth(repo, config)
     return True, None
+
+
+def process_cert_based_auth(repo, config):
+    """
+    Write the CA and Cert files in the PKI, if present. Remove them, if not.
+
+    :param repo: repository to validate the config for
+    :type  repo: pulp.plugins.model.Repository
+    :param config: configuration instance to validate
+    :type  config: pulp.plugins.config.PluginCallConfiguration or dict
+    """
+
+    auth_ca = config.get('auth_ca', None)
+    auth_cert = config.get('auth_cert', None)
+
+    relative_path = get_repo_relative_path(repo, config)
+    auth_config = load_config(REPO_AUTH_CONFIG_FILE)
+
+    protected_repo_utils_instance = protected_repo_utils.ProtectedRepoUtils(auth_config)
+
+    if None in (auth_ca, auth_cert):
+        protected_repo_utils_instance.delete_protected_repo(relative_path)
+
+    else:
+        repo_cert_utils_instance = repo_cert_utils.RepoCertUtils(auth_config)
+        bundle = {'ca': auth_ca, 'cert': auth_cert}
+
+        repo_cert_utils_instance.write_consumer_cert_bundle(repo.id, bundle)
+        protected_repo_utils_instance.add_protected_repo(relative_path, repo.id)
 
 
 def get_http_publish_dir(config=None):
@@ -179,7 +212,7 @@ def get_repo_relative_path(repo, config=None):
     :param repo: repository to get relative path for
     :type  repo: pulp.plugins.model.Repository
     :param config: configuration instance for the repository
-    :type  config: pulp.plugins.config.PluginCallConfiguration or None
+    :type  config: pulp.plugins.config.PluginCallConfiguration or dict or None
     :return: relative path for the repository
     :rtype:  str
     """
