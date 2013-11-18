@@ -84,8 +84,17 @@ class MetadataFileContext(object):
             # finalize has already been run or initialize has not been run
             return
 
-        self._write_root_tag_close()
-        self._close_metadata_file_handle()
+        try:
+            self._write_root_tag_close()
+
+        except Exception, e:
+            _LOG.exception(e)
+
+        try:
+            self._close_metadata_file_handle()
+
+        except Exception, e:
+            _LOG.exception(e)
 
     # -- metadata file lifecycle -----------------------------------------------
 
