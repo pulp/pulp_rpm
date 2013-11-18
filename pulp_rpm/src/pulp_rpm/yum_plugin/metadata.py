@@ -128,6 +128,9 @@ def get_repo_checksum_type(publish_conduit, config):
       Lookup checksum type on the repo to use for metadata generation;
       importer sets this value if available on the repo scratchpad.
 
+      This method overrides the 'sha' encoding with 'sha1' in order to support
+      the modifyrepo command line that is used for merging metadata into the repomd.xml file
+
       @param config: plugin configuration
       @type  config: L{pulp.server.content.plugins.config.PluginCallConfiguration}
 
@@ -141,7 +144,10 @@ def get_repo_checksum_type(publish_conduit, config):
         scratchpad_data = publish_conduit.get_repo_scratchpad()
         if not scratchpad_data:
             return DEFAULT_CHECKSUM
-        checksum_type = scratchpad_data[SCRATCHPAD_DEFAULT_METADATA_CHECKSUM]
+        if SCRATCHPAD_DEFAULT_METADATA_CHECKSUM in scratchpad_data:
+            checksum_type = scratchpad_data[SCRATCHPAD_DEFAULT_METADATA_CHECKSUM]
+            if checksum_type == 'sha':
+                checksum_type = 'sha1'
     except AttributeError:
         _LOG.debug("get_repo_scratchpad not found on publish conduit")
         checksum_type = DEFAULT_CHECKSUM
@@ -168,7 +174,7 @@ def __get_groups_xml_info(repo_dir):
     return groups_xml_path
 
 
-def modify_repo(repodata_dir, new_file, remove=False):
+def modify_repo(repodata_dir, new_file, remove=False, checksum_type=DEFAULT_CHECKSUM):
     """
      run modifyrepo to add a new file to repodata directory
 
@@ -177,11 +183,18 @@ def modify_repo(repodata_dir, new_file, remove=False):
 
      @param new_file: new file type to add or remove
      @type new_file: string
+
+     @param remove: remove the metadata from the repodata
+     @type remove: bool
+
+     @param checksum_type: the checksum type for new data file
+     @type checksum_type: str
     """
     if remove:
         cmd = "modifyrepo --remove %s %s" % (new_file, repodata_dir)
     else:
-        cmd = "modifyrepo --no-compress %s %s" % (new_file, repodata_dir)
+        cmd = "modifyrepo --no-compress %s %s --checksum %s" % \
+              (new_file, repodata_dir, checksum_type)
     status, out = commands.getstatusoutput(cmd)
     if status != 0:
         _LOG.error("modifyrepo on %s failed" % repodata_dir)
@@ -190,7 +203,7 @@ def modify_repo(repodata_dir, new_file, remove=False):
     return status, out
 
 
-def _create_repo(dir, groups=None, checksum_type="sha256"):
+def _create_repo(dir, groups=None, checksum_type=DEFAULT_CHECKSUM):
     if not groups:
         cmd = "createrepo --database --checksum %s --update %s " % (checksum_type, dir)
     else:
@@ -211,7 +224,7 @@ def _create_repo(dir, groups=None, checksum_type="sha256"):
     return handle
 
 
-def create_repo(dir, groups=None, checksum_type="sha256", skip_metadata_types=[]):
+def create_repo(dir, groups=None, checksum_type=DEFAULT_CHECKSUM, skip_metadata_types=[]):
     handle = None
     # Lock the lookup and launch of a new createrepo process
     # Lock is released once createrepo is launched
@@ -290,7 +303,7 @@ def create_repo(dir, groups=None, checksum_type="sha256", skip_metadata_types=[]
                 open(renamed_filetype_path, 'w').write(data.encode("UTF-8"))
             if os.path.isfile(renamed_filetype_path):
                 _LOG.info("Modifying repo for %s metadata" % ftype)
-                modify_repo(current_repo_dir, renamed_filetype_path)
+                modify_repo(current_repo_dir, renamed_filetype_path, checksum_type=checksum_type)
     finally:
         if backup_repo_dir:
             shutil.rmtree(backup_repo_dir)
@@ -502,7 +515,7 @@ class YumMetadataGenerator(object):
     """
     Yum metadata generator using per package snippet approach
     """
-    def __init__(self, repodir, checksum_type="sha256",
+    def __init__(self, repodir, checksum_type=DEFAULT_CHECKSUM,
                  skip_metadata_types=None, is_cancelled=False, group_xml_path=None, updateinfo_xml_path=None, custom_metadata_dict=None):
         """
         @param repodir: repository dir where the repodata directory is created/exists
@@ -742,7 +755,7 @@ xmlns:rpm="http://linux.duke.edu/metadata/rpm" packages="%s"> \n""" % self.unit_
             # merge the xml we just wrote with repodata
             if os.path.isfile(ftype_xml_path):
                 _LOG.info("Modifying repo for %s metadata" % ftype)
-                modify_repo(current_repo_dir, ftype_xml_path)
+                modify_repo(current_repo_dir, ftype_xml_path, checksum_type=self.checksum_type)
         return True
 
     def merge_comps_xml(self):
@@ -755,7 +768,7 @@ xmlns:rpm="http://linux.duke.edu/metadata/rpm" packages="%s"> \n""" % self.unit_
             return
         repodata_working_dir = os.path.join(self.repodir, "repodata")
         _LOG.info("Modifying repo for %s metadata" % "comps")
-        modify_repo(repodata_working_dir, self.group_xml_path)
+        modify_repo(repodata_working_dir, self.group_xml_path, checksum_type=self.checksum_type)
 
     def merge_updateinfo_xml(self):
         """
@@ -767,7 +780,8 @@ xmlns:rpm="http://linux.duke.edu/metadata/rpm" packages="%s"> \n""" % self.unit_
             return
         repodata_working_dir = os.path.join(self.repodir, "repodata")
         _LOG.info("Modifying repo for %s metadata" % "updateinfo")
-        modify_repo(repodata_working_dir, self.updateinfo_xml_path)
+        modify_repo(repodata_working_dir, self.updateinfo_xml_path,
+                    checksum_type=self.checksum_type)
 
     def merge_other_filetypes_from_backup(self):
         """
@@ -808,7 +822,8 @@ xmlns:rpm="http://linux.duke.edu/metadata/rpm" packages="%s"> \n""" % self.unit_
                     open(renamed_filetype_path, 'w').write(data.encode("UTF-8"))
                 if os.path.isfile(renamed_filetype_path):
                     _LOG.info("Modifying repo for %s metadata" % ftype)
-                    modify_repo(current_repo_dir, renamed_filetype_path)
+                    modify_repo(current_repo_dir, renamed_filetype_path,
+                                checksum_type=self.checksum_type)
         finally:
             if self.backup_repodata_dir:
                 shutil.rmtree(self.backup_repodata_dir)
@@ -887,13 +902,8 @@ def generate_yum_metadata(repo_id, repo_dir, publish_conduit, config, progress_c
         # to add random tags to any package... but AFAIK it's
         # basically turned off now, and basically ignored.
         skip_metadata_types.append('pkgtags')
-    checksum_type = config.get('checksum_type', None)
-    if checksum_type is None:
-        if repo_scratchpad:
-            checksum_type = repo_scratchpad.get(SCRATCHPAD_DEFAULT_METADATA_CHECKSUM,
-                                                DEFAULT_CHECKSUM)
-        else:
-            checksum_type = DEFAULT_CHECKSUM
+
+    checksum_type = get_repo_checksum_type(publish_conduit, config)
 
     custom_metadata = generate_custom_metadata_dict(repo_id, publish_conduit)
     start = time.time()
