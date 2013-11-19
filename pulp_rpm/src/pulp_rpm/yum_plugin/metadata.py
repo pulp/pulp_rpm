@@ -30,6 +30,7 @@ from createrepo import yumbased, GzipFile
 from pulp.common.util import encode_unicode, decode_unicode
 from pulp.plugins.conduits.mixins import MultipleRepoUnitsMixin, SingleRepoUnitsMixin
 from pulp.server.db.model.criteria import UnitAssociationCriteria
+from pulp.server.managers import factory
 from pulp_rpm.common.ids import TYPE_ID_RPM, TYPE_ID_SRPM, TYPE_ID_YUM_REPO_METADATA_FILE
 from pulp_rpm.common.constants import SCRATCHPAD_DEFAULT_METADATA_CHECKSUM
 from pulp_rpm.yum_plugin import util
@@ -125,17 +126,23 @@ def generate_metadata(repo_working_dir, publish_conduit, config, progress_callba
 
 def get_repo_checksum_type(publish_conduit, config):
     """
-      Lookup checksum type on the repo to use for metadata generation;
-      importer sets this value if available on the repo scratchpad.
+    Lookup checksum type on the repo to use for metadata generation;
+    importer sets this value if available on the repo scratchpad.
 
-      This method overrides the 'sha' encoding with 'sha1' in order to support
-      the modifyrepo command line that is used for merging metadata into the repomd.xml file
+    This method overrides the 'sha' encoding with 'sha1' in order to support
+    the modifyrepo command line that is used for merging metadata into the repomd.xml file
 
-      @param config: plugin configuration
-      @type  config: L{pulp.server.content.plugins.config.PluginCallConfiguration}
+    WARNING: This method has a side effect of saving the checksum type on the distributor
+     config if a checksum has not already been set on the distributor config.
 
-      @return checksum_type value
-      @rtype str
+    :param config: publish conduit
+    :type  config: L{pulp.plugins.conduits.repo_publish.RepoPublishConduit}
+
+    :param config: plugin configuration
+    :type  config: L{pulp.server.content.plugins.config.PluginCallConfiguration}
+
+    :return checksum_type value
+    :rtype str
     """
     checksum_type = config.get('checksum_type')
     if checksum_type:
@@ -148,6 +155,15 @@ def get_repo_checksum_type(publish_conduit, config):
             checksum_type = scratchpad_data[SCRATCHPAD_DEFAULT_METADATA_CHECKSUM]
             if checksum_type == 'sha':
                 checksum_type = 'sha1'
+            # Save the checksum back on the distributor config if it isn't there already
+            # This is so that it can be synchronized to nodes and used for uploaded RPMS
+            distributor_config = config.repo_plugin_config
+            if 'checksum_type' not in distributor_config:
+                distributor_manager = factory.repo_distributor_manager()
+                distributor_manager.update_distributor_config(publish_conduit.repo_id,
+                                                              publish_conduit.distributor_id,
+                                                              {'checksum_type': checksum_type})
+
     except AttributeError:
         _LOG.debug("get_repo_scratchpad not found on publish conduit")
         checksum_type = DEFAULT_CHECKSUM
