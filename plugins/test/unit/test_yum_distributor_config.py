@@ -371,6 +371,7 @@ class YumDistributorConfigurationTests(unittest.TestCase):
     @mock.patch('pulp_rpm.plugins.distributors.yum.configuration._validate_skip_pkg_tags')
     @mock.patch('pulp_rpm.plugins.distributors.yum.configuration._validate_use_createrepo')
     @mock.patch('pulp_rpm.plugins.distributors.yum.configuration._check_for_relative_path_conflicts')
+    @mock.patch('pulp_rpm.plugins.distributors.yum.configuration.process_cert_based_auth')
     def test_validate_config(self, *mock_methods):
         config_kwargs = {'http': True,
                          'https': True,
@@ -474,7 +475,7 @@ class YumDistributorConfigurationTests(unittest.TestCase):
         repo = Repository('test')
         config = {'auth_ca': 'looks legit',
                   'auth_cert': '1234567890'}
-        bundle = {'ca': config['auth_cert'], 'cert': config['auth_cert']}
+        bundle = {'ca': config['auth_ca'], 'cert': config['auth_cert']}
 
         configuration.process_cert_based_auth(repo, config)
 
