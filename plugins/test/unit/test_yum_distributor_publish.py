@@ -429,6 +429,7 @@ class YumDistributorPublishTests(unittest.TestCase):
         self.assertEquals(skip_list[0], 'rpm')
         self.assertEquals(skip_list[1], 'errata')
 
+    @mock.patch('pulp.server.managers.factory.repo_distributor_manager')
     @mock.patch('pulp_rpm.plugins.distributors.yum.publish.Publisher._publish_comps')
     @mock.patch('pulp_rpm.plugins.distributors.yum.publish.Publisher._build_final_report')
     @mock.patch('pulp_rpm.plugins.distributors.yum.publish.Publisher._clear_directory')
@@ -440,7 +441,8 @@ class YumDistributorPublishTests(unittest.TestCase):
     @mock.patch('pulp_rpm.plugins.distributors.yum.publish.Publisher._publish_distribution')
     def test_publish(self, mock_publish_distribution, mock_publish_rpms, mock_publish_drpms,
                      mock_publish_errata, mock_publish_over_http, mock_publish_over_https,
-                     mock_clear_directory, mock_build_final_report, mock_publish_comps):
+                     mock_clear_directory, mock_build_final_report, mock_publish_comps,
+                     mock_distributor_manager):
 
         self._init_publisher()
         self.publisher.repo.content_unit_counts = {}
