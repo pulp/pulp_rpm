@@ -14,6 +14,7 @@
 import os
 import shutil
 import unittest
+import tempfile
 
 import mock
 
@@ -35,20 +36,24 @@ class YumDistributorPublishTests(unittest.TestCase):
 
     def setUp(self):
         super(YumDistributorPublishTests, self).setUp()
-
-        self.published_dir = '/tmp/published_dir/'
-        self.working_dir = '/tmp/working_dir/'
+        self.published_dir = tempfile.mkdtemp()
+        self.working_dir = tempfile.mkdtemp()
 
         self.publisher = None
 
     def tearDown(self):
         super(YumDistributorPublishTests, self).tearDown()
+        try:
+            if os.path.exists(self.published_dir):
+                shutil.rmtree(self.published_dir)
+        except Exception:
+            pass
 
-        if os.path.exists(self.published_dir):
-            shutil.rmtree(self.published_dir)
-
-        if os.path.exists(self.working_dir):
-            shutil.rmtree(self.working_dir)
+        try:
+            if os.path.exists(self.working_dir):
+                shutil.rmtree(self.working_dir)
+        except Exception:
+            pass
 
         self.publisher = None
 
@@ -62,8 +67,8 @@ class YumDistributorPublishTests(unittest.TestCase):
         config_defaults = {'http': True,
                            'https': True,
                            'relative_url': None,
-                           'http_publish_dir': self.published_dir + 'http/',
-                           'https_publish_dir': self.published_dir + 'https/'}
+                           'http_publish_dir': os.path.join(self.published_dir, 'http'),
+                           'https_publish_dir': os.path.join(self.published_dir, 'https')}
         config = PluginCallConfiguration(None, None)
         config.default_config.update(config_defaults)
 
@@ -159,7 +164,7 @@ class YumDistributorPublishTests(unittest.TestCase):
         self._touch(source_path)
         self.assertFalse(os.path.exists(link_path))
 
-        publish.Publisher._create_symlink(source_path, link_path)
+        publish.PublishStep._create_symlink(source_path, link_path)
 
         self.assertTrue(os.path.exists(link_path))
         self.assertTrue(os.path.islink(link_path))
@@ -169,7 +174,7 @@ class YumDistributorPublishTests(unittest.TestCase):
         source_path = os.path.join(self.working_dir, 'source')
         link_path = os.path.join(self.published_dir, 'link')
 
-        self.assertRaises(RuntimeError, publish.Publisher._create_symlink, source_path, link_path)
+        self.assertRaises(RuntimeError, publish.PublishStep._create_symlink, source_path, link_path)
 
     def test_create_symlink_no_link_parent(self):
         source_path = os.path.join(self.working_dir, 'source')
@@ -178,7 +183,7 @@ class YumDistributorPublishTests(unittest.TestCase):
         self._touch(source_path)
         self.assertFalse(os.path.exists(os.path.dirname(link_path)))
 
-        publish.Publisher._create_symlink(source_path, link_path)
+        publish.PublishStep._create_symlink(source_path, link_path)
 
         self.assertTrue(os.path.exists(link_path))
 
@@ -190,7 +195,7 @@ class YumDistributorPublishTests(unittest.TestCase):
         os.makedirs(os.path.dirname(link_path))
         os.chmod(os.path.dirname(link_path), 0000)
 
-        self.assertRaises(RuntimeError, publish.Publisher._create_symlink, source_path, link_path)
+        self.assertRaises(RuntimeError, publish.PublishStep._create_symlink, source_path, link_path)
 
         os.chmod(os.path.dirname(link_path), 0777)
 
@@ -202,12 +207,11 @@ class YumDistributorPublishTests(unittest.TestCase):
         self._touch(old_source_path)
         self._touch(new_source_path)
 
-        os.makedirs(self.published_dir)
         os.symlink(old_source_path, link_path)
 
         self.assertEqual(os.readlink(link_path), old_source_path)
 
-        publish.Publisher._create_symlink(new_source_path, link_path)
+        publish.PublishStep._create_symlink(new_source_path, link_path)
 
         self.assertEqual(os.readlink(link_path), new_source_path)
 
@@ -218,14 +222,15 @@ class YumDistributorPublishTests(unittest.TestCase):
         self._touch(source_path)
         self._touch(link_path)
 
-        self.assertRaises(RuntimeError, publish.Publisher._create_symlink, source_path, link_path)
+        self.assertRaises(RuntimeError, publish.PublishStep._create_symlink, source_path, link_path)
 
     def test_symlink_content(self):
         self._init_publisher()
         unit_name = 'test.rpm'
         unit = self._generate_rpm(unit_name)
+        step = publish.PublishStep(self.publisher, "foo", "bar")
 
-        self.publisher._symlink_content(unit, self.published_dir)
+        step._symlink_content(unit, self.published_dir)
 
         self.assertTrue(os.path.exists(os.path.join(self.published_dir, unit_name)),
                         str(os.listdir(self.published_dir)))
@@ -537,8 +542,7 @@ class YumDistributorPublishTests(unittest.TestCase):
         mock_get_units.return_value = units
         error = Exception('Test Error')
         mock_treeinfo.side_effect = error
-
-        self.publisher._publish_distribution()
+        self.assertRaises(Exception, self.publisher._publish_distribution)
 
         mock_record_failure.assert_called_once_with(reporting.PUBLISH_DISTRIBUTION_STEP, error)
 
@@ -557,7 +561,7 @@ class YumDistributorPublishTests(unittest.TestCase):
         self.assertEquals(
             self.publisher.progress_report[reporting.PUBLISH_DISTRIBUTION_STEP][reporting.PROCESSED], 0)
 
-    @mock.patch('pulp_rpm.plugins.distributors.yum.publish.Publisher._create_symlink')
+    @mock.patch('pulp_rpm.plugins.distributors.yum.publish.PublishStep._create_symlink')
     def _perform_treeinfo_success_test(self, treeinfo_name, mock_symlink):
         self._init_publisher()
         unit = self._generate_distribution_unit('one')
@@ -580,7 +584,7 @@ class YumDistributorPublishTests(unittest.TestCase):
     def test_publish_distribution_treeinfo_finds_dot_treeinfo(self):
         self._perform_treeinfo_success_test('.treeinfo')
 
-    @mock.patch('pulp_rpm.plugins.distributors.yum.publish.Publisher._create_symlink')
+    @mock.patch('pulp_rpm.plugins.distributors.yum.publish.PublishStep._create_symlink')
     def test_publish_distribution_treeinfo_error(self, mock_symlink):
         self._init_publisher()
         unit = self._generate_distribution_unit('one')
@@ -618,7 +622,7 @@ class YumDistributorPublishTests(unittest.TestCase):
         self.assertTrue(os.path.islink(created_link))
         self.assertEquals(os.path.realpath(created_link), os.path.realpath(content_file))
 
-    @mock.patch('pulp_rpm.plugins.distributors.yum.publish.Publisher._create_symlink')
+    @mock.patch('pulp_rpm.plugins.distributors.yum.publish.PublishStep._create_symlink')
     def test_publish_distribution_files_error(self, mock_symlink):
         self._init_publisher()
         unit = self._generate_distribution_unit('one')
@@ -634,7 +638,7 @@ class YumDistributorPublishTests(unittest.TestCase):
         self.assertEquals(
             self.publisher.progress_report[reporting.PUBLISH_DISTRIBUTION_STEP][reporting.PROCESSED], 0)
 
-    @mock.patch('pulp_rpm.plugins.distributors.yum.publish.Publisher._create_symlink')
+    @mock.patch('pulp_rpm.plugins.distributors.yum.publish.PublishStep._create_symlink')
     def test_publish_distribution_files_no_files(self, mock_symlink):
         self._init_publisher()
         unit = self._generate_distribution_unit('one')
@@ -682,14 +686,14 @@ class YumDistributorPublishTests(unittest.TestCase):
         self._init_publisher()
         self.publisher._init_step_progress_report(reporting.PUBLISH_DISTRIBUTION_STEP)
         packages_dir = os.path.join(self.publisher.repo.working_dir, 'Packages')
-        self.publisher._create_symlink("./", packages_dir)
+        publish.PublishStep._create_symlink("./", packages_dir)
         unit = self._generate_distribution_unit('one', {'packagedir': 'Packages'})
         step = publish.PublishDistributionStep(self.publisher)
         step._publish_distribution_packages_link(unit)
         packages_dir = os.path.join(self.publisher.repo.working_dir, 'Packages')
         self.assertFalse(os.path.isdir(packages_dir))
 
-    @mock.patch('pulp_rpm.plugins.distributors.yum.publish.Publisher._create_symlink')
+    @mock.patch('pulp_rpm.plugins.distributors.yum.publish.PublishStep._create_symlink')
     def test_publish_distribution_packages_link_error(self, mock_symlink):
         self._init_publisher()
         self.publisher._init_step_progress_report(reporting.PUBLISH_DISTRIBUTION_STEP)
@@ -771,8 +775,11 @@ class YumDistributorPublishTests(unittest.TestCase):
         mock_error_raiser.side_effect = Exception('foo')
         self.publisher.repomd_file_context.add_metadata_file_metadata = mock_error_raiser
 
+        step = publish.PublishMetadataStep(self.publisher)
+        step._get_total = mock.Mock(return_value=2)
+
         # Test
-        self.publisher._publish_metadata()
+        self.assertRaises(Exception, step.process)
 
         # Verify
         self.assertEqual(self.publisher.progress_report[reporting.PUBLISH_METADATA_STEP][reporting.STATE], reporting.PUBLISH_FAILED_STATE)
@@ -884,7 +891,9 @@ class YumDistributorPublishTests(unittest.TestCase):
         step = publish.PublishStep(self.publisher, reporting.PUBLISH_PACKAGE_GROUPS_STEP,
                                    TYPE_ID_PKG_GROUP)
         step.process_unit = mock_method
-        step.process()
+
+        self.assertRaises(Exception, step.process)
+
         self.assertEqual(self.publisher.progress_report[reporting.PUBLISH_PACKAGE_GROUPS_STEP]
                          [reporting.STATE],
                          reporting.PUBLISH_FAILED_STATE)
