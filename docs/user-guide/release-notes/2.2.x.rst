@@ -110,3 +110,19 @@ suggested when :ref:`configuring a proxy <configure-proxy>`, are removed during 
 The new location of this file is ``/etc/pulp/server/plugins.conf.d/yum_importer.json``.
 Keep in mind the configuration property name changes above when re-adding proxy
 information.
+
+Pulp 2.2.1
+==========
+
+Multiple proxy-related issues related to authentication and HTTPS to the proxy
+were fixed in
+`1022662 <https://bugzilla.redhat.com/show_bug.cgi?id=1022662>`_ and
+`1014368 <https://bugzilla.redhat.com/show_bug.cgi?id=1014368>`_.
+
+A `version comparison bug <https://bugzilla.redhat.com/show_bug.cgi?id=1026907>`_
+that caused recursive copies to not copy all dependencies was fixed.
+
+A race condition with XML namespace parsing `was fixed <https://bugzilla.redhat.com/show_bug.cgi?id=1019865>`_.
+
+Several ISO-related bugs were fixed. They can be seen in the list of
+`all fixed bugs <https://bugzilla.redhat.com/buglist.cgi?bug_status=VERIFIED&classification=Community&product=Pulp&query_format=advanced&target_release=2.2.1>`_
