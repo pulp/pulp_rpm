@@ -136,10 +136,10 @@ def get_repo_checksum_type(publish_conduit, config):
      config if a checksum has not already been set on the distributor config.
 
     :param config: publish conduit
-    :type  config: L{pulp.plugins.conduits.repo_publish.RepoPublishConduit}
+    :type  config: pulp.plugins.conduits.repo_publish.RepoPublishConduit
 
     :param config: plugin configuration
-    :type  config: L{pulp.server.content.plugins.config.PluginCallConfiguration}
+    :type  config: pulp.server.content.plugins.config.PluginCallConfiguration
 
     :return checksum_type value
     :rtype str
