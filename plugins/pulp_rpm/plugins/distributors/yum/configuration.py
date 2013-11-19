@@ -55,6 +55,9 @@ def load_config(config_file_path):
     if os.access(config_file_path, os.F_OK | os.R_OK):
         config.read(config_file_path)
 
+    else:
+        _LOG.warning(_('Could not load config file: %(f)s') % {'f': config_file_path})
+
     return config
 
 
