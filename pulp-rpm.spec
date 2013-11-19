@@ -18,7 +18,7 @@
 
 Name: pulp-rpm
 Version: 2.3.0
-Release: 0.36.beta%{?dist}
+Release: 0.37.beta%{?dist}
 Summary: Support for RPM content in the Pulp platform
 Group: Development/Languages
 License: GPLv2
@@ -279,6 +279,10 @@ A collection of yum plugins supplementing Pulp consumer operations.
 
 
 %changelog
+* Tue Nov 19 2013 Barnaby Court <bcourt@redhat.com> 2.3.0-0.37.beta
+- 1029057 - Save the rpm repo checksum type from the repo scratchpad to the
+  distributor config during a publish. (bcourt@redhat.com)
+
 * Fri Nov 15 2013 Jeff Ortel <jortel@redhat.com> 2.3.0-0.36.beta
 - Pulp rebuild
 
