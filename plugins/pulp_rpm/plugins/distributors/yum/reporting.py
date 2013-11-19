@@ -18,6 +18,7 @@ import copy
 PUBLISH_RPMS_STEP = 'rpms'
 PUBLISH_DELTA_RPMS_STEP = 'drpms'
 PUBLISH_ERRATA_STEP = 'errata'
+PUBLISH_COMPS_STEP = 'comps'
 PUBLISH_PACKAGE_GROUPS_STEP = 'package_groups'
 PUBLISH_PACKAGE_CATEGORIES_STEP = 'package_categories'
 PUBLISH_DISTRIBUTION_STEP = 'distribution'

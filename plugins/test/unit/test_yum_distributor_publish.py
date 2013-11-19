@@ -17,6 +17,7 @@ import unittest
 import tempfile
 
 import mock
+from mock import ANY
 
 from pulp.plugins.conduits.repo_publish import RepoPublishConduit
 from pulp.plugins.config import PluginCallConfiguration
@@ -906,3 +907,14 @@ class YumDistributorPublishTests(unittest.TestCase):
                          reporting.FAILURES], 1)
         self.assertEqual(self.publisher.progress_report[reporting.PUBLISH_PACKAGE_GROUPS_STEP][
                          reporting.SUCCESSES], 0)
+
+    @mock.patch('pulp_rpm.plugins.distributors.yum.publish.PublishPackageGroupsStep')
+    @mock.patch('pulp_rpm.plugins.distributors.yum.publish.PublishPackageCategoriesStep')
+    def test_publish_comps(self, mock_category_step, mock_group_step):
+        self._init_publisher()
+        mock_group_step.return_value._get_total.return_value = 2
+        self.publisher._publish_comps()
+        self.assertTrue(mock_group_step.return_value.process.called)
+        self.assertTrue(mock_category_step.return_value.process.called)
+        self.publisher.repomd_file_context.add_metadata_file_metadata.\
+            assert_called_once_with('group', ANY)
