@@ -13,7 +13,6 @@
 
 import os
 import shutil
-import sys
 import tempfile
 import unittest
 from ConfigParser import SafeConfigParser
@@ -466,4 +465,36 @@ class YumDistributorConfigurationTests(unittest.TestCase):
         configuration._check_for_relative_path_conflicts(repo, config, conduit, error_messages)
 
         self.assertEqual(len(error_messages), 1)
+
+    # -- cert based auth tests -------------------------------------------------
+
+    @mock.patch('pulp_rpm.repo_auth.protected_repo_utils.ProtectedRepoUtils.add_protected_repo')
+    @mock.patch('pulp_rpm.repo_auth.repo_cert_utils.RepoCertUtils.write_consumer_cert_bundle')
+    def test_cert_based_auth_ca_and_cert(self, mock_write_consumer_cert_bundle, mock_add_protected_repo):
+        repo = Repository('test')
+        config = {'auth_ca': 'looks legit',
+                  'auth_cert': '1234567890'}
+        bundle = {'ca': config['auth_cert'], 'cert': config['auth_cert']}
+
+        configuration.process_cert_based_auth(repo, config)
+
+        mock_write_consumer_cert_bundle.assert_called_once_with(repo.id, bundle)
+        mock_add_protected_repo.assert_called_once_with(repo.id, repo.id)
+
+    @mock.patch('pulp_rpm.repo_auth.protected_repo_utils.ProtectedRepoUtils.delete_protected_repo')
+    def test_cert_based_auth_ca_no_cert(self, mock_delete_protected_repo):
+        repo = Repository('test')
+        config = {'auth_ca': 'looks not so legit'}
+
+        configuration.process_cert_based_auth(repo, config)
+
+        mock_delete_protected_repo.assert_called_once_with(repo.id)
+
+    @mock.patch('pulp_rpm.repo_auth.protected_repo_utils.ProtectedRepoUtils.delete_protected_repo')
+    def test_cert_based_auth_no_ca_no_cert(self, mock_delete_protected_repo):
+        repo = Repository('test')
+
+        configuration.process_cert_based_auth(repo, {})
+
+        mock_delete_protected_repo.assert_called_once_with(repo.id)
 
