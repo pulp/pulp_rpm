@@ -24,7 +24,6 @@ from pulp_rpm.plugins.importers.yum.repomd import packages
 
 
 TYPE_ID = 'yum'
-URL = 'url'
 
 
 def entry_point():
@@ -47,18 +46,16 @@ class YumCataloger(Cataloger):
         }
 
     @staticmethod
-    def _add_packages(source_id, conduit, base_url, md_files):
+    def _add_packages(conduit, base_url, md_files):
         with md_files.get_metadata_file_handle(primary.METADATA_FILE_NAME) as fp:
             _packages = packages.package_list_generator(
                 fp, primary.PACKAGE_TAG, primary.process_package_element)
             for model in _packages:
                 unit_key = model.unit_key
                 url = urljoin(base_url, model.download_path)
-                conduit.add_entry(source_id, models.RPM.TYPE, unit_key, url)
+                conduit.add_entry(models.RPM.TYPE, unit_key, url)
 
-    def refresh(self, source_id, conduit, config):
-        conduit.purge(source_id)
-        url = config[URL]
+    def refresh(self, conduit, config, url):
         dst_dir = mkdtemp()
         try:
             nectar_config = importer_config_to_nectar_config(config)
@@ -66,6 +63,6 @@ class YumCataloger(Cataloger):
             md_files.download_repomd()
             md_files.parse_repomd()
             md_files.download_metadata_files()
-            self._add_packages(source_id, conduit, url, md_files)
+            self._add_packages(conduit, url, md_files)
         finally:
             shutil.rmtree(dst_dir)

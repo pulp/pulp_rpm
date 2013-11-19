@@ -32,6 +32,8 @@ from pulp_rpm.plugins.catalogers.yum import YumCataloger, entry_point
 TAR_PATH = os.path.join(os.path.dirname(__file__), '../data/cataloger-test-repo.tar')
 JSON_PATH = os.path.join(os.path.dirname(__file__), '../data/cataloger-test-repo.json')
 
+SOURCE_ID = 'test'
+
 
 class TestCataloger(TestCase):
 
@@ -55,13 +57,12 @@ class TestCataloger(TestCase):
         self.assertEqual(config, {})
 
     def test_packages(self):
-        source_id = 'test'
-        config = {'url': 'file://%s/' % self.tmp_dir}
-        conduit = CatalogerConduit()
+        url = 'file://%s/' % self.tmp_dir
+        conduit = CatalogerConduit(SOURCE_ID)
         cataloger = YumCataloger()
-        cataloger.refresh(source_id, conduit, config)
+        cataloger.refresh(conduit, {}, url)
         collection = ContentCatalog.get_collection()
-        cataloged = list(collection.find())
+        cataloged = list(collection.find(sort=[('locator', 1)]))
         with open(JSON_PATH) as fp:
             expected = json.load(fp)
         self.assertEqual(len(cataloged), len(expected))
