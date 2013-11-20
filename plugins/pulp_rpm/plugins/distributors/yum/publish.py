@@ -198,147 +198,18 @@ class Publisher(object):
         PublishMetadataStep(self).process()
 
     def _publish_over_http(self):
-
-        if self.canceled:
-            return
-
-        if not self.config.get('http'):
-            self._report_progress(PUBLISH_OVER_HTTP_STEP, state=PUBLISH_SKIPPED_STATE)
-            return
-
-        _LOG.debug('Creating HTTP published directory for repository: %s' % self.repo.id)
-
-        self._init_step_progress_report(PUBLISH_OVER_HTTP_STEP)
-        self._report_progress(PUBLISH_OVER_HTTP_STEP, total=1)
-
-        root_http_publish_dir = configuration.get_http_publish_dir(self.config)
-        repo_relative_dir = configuration.get_repo_relative_path(self.repo, self.config)
-        repo_http_publish_dir = os.path.join(root_http_publish_dir, repo_relative_dir)
-
-        try:
-            if os.path.exists(repo_http_publish_dir):
-                _LOG.debug('Removing old HTTP published directory: %s' % repo_http_publish_dir)
-                shutil.rmtree(repo_http_publish_dir)
-
-            _LOG.debug('Copying tree from %s to %s' % (self.repo.working_dir, repo_http_publish_dir))
-            shutil.copytree(self.repo.working_dir, repo_http_publish_dir, symlinks=True)
-
-            util.generate_listing_files(root_http_publish_dir, repo_http_publish_dir)
-
-        except Exception, e:
-            tb = sys.exc_info()[2]
-            self._record_failure(PUBLISH_OVER_HTTP_STEP, e, tb)
-
-        else:
-            self.progress_report[PUBLISH_OVER_HTTP_STEP][SUCCESSES] = 1
-
-        self.progress_report[PUBLISH_OVER_HTTP_STEP][PROCESSED] = 1
-
-        if self.progress_report[PUBLISH_OVER_HTTP_STEP][SUCCESSES]:
-            self._report_progress(PUBLISH_OVER_HTTP_STEP, state=PUBLISH_FINISHED_STATE)
-
-        else:
-            self._report_progress(PUBLISH_OVER_HTTP_STEP, state=PUBLISH_FAILED_STATE)
+        """
+        Wrapper for writing out the repo to the HTTP Publish Directory
+        """
+        PublishOverHttpStep(self).process()
 
     def _publish_over_https(self):
-
-        if self.canceled:
-            return
-
-        if not self.config.get('https'):
-            self._report_progress(PUBLISH_OVER_HTTPS_STEP, state=PUBLISH_SKIPPED_STATE)
-            return
-
-        _LOG.debug('Creating HTTPS published directory for repository: %s' % self.repo.id)
-
-        self._init_step_progress_report(PUBLISH_OVER_HTTPS_STEP)
-        self._report_progress(PUBLISH_OVER_HTTPS_STEP, total=1)
-
-        root_https_publish_dir = configuration.get_https_publish_dir(self.config)
-        repo_relative_path = configuration.get_repo_relative_path(self.repo, self.config)
-        repo_https_publish_dir = os.path.join(root_https_publish_dir, repo_relative_path)
-
-        try:
-            if os.path.exists(repo_https_publish_dir):
-                _LOG.debug('Removing old HTTPS published directory: %s' % repo_https_publish_dir)
-                shutil.rmtree(repo_https_publish_dir)
-
-            _LOG.debug('Copying tree from %s to %s' % (self.repo.working_dir, repo_https_publish_dir))
-            shutil.copytree(self.repo.working_dir, repo_https_publish_dir, symlinks=True)
-
-            util.generate_listing_files(root_https_publish_dir, repo_https_publish_dir)
-
-        except Exception, e:
-            tb = sys.exc_info()[2]
-            self._record_failure(PUBLISH_OVER_HTTPS_STEP, e, tb)
-
-        else:
-            self.progress_report[PUBLISH_OVER_HTTPS_STEP][SUCCESSES] = 1
-
-        self.progress_report[PUBLISH_OVER_HTTPS_STEP][PROCESSED] = 1
-
-        if self.progress_report[PUBLISH_OVER_HTTPS_STEP][SUCCESSES]:
-            self._report_progress(PUBLISH_OVER_HTTPS_STEP, state=PUBLISH_FINISHED_STATE)
-
-        else:
-            self._report_progress(PUBLISH_OVER_HTTPS_STEP, state=PUBLISH_FAILED_STATE)
-
-        # XXX I believe the process_repo_auth_cert_bundle needs to go around here somewhere
+        """
+        Wrapper for writing out the repo to the HTTPS directory & configuring the certificates
+        """
+        PublishOverHttpsStep(self).process()
 
     # -- progress methods ------------------------------------------------------
-
-    def _init_step_progress_report(self, step):
-        """
-        Initialize a progress sub-report for the given step.
-
-        :param step: step to initialize a progress sub-report for
-        :type  step: str
-        """
-        assert step in PUBLISH_STEPS
-
-        initialize_progress_sub_report(self.progress_report[step])
-
-    def _report_progress(self, step, **report_details):
-        """
-        Report the current progress back to the conduit, make any updates to the
-        current step as necessary.
-
-        :param step: current step of publication process
-        :type  step: str
-        :param report_details: keyword argument updates to the current step's
-                               progress sub-report (if any)
-        """
-        assert step in PUBLISH_STEPS
-        assert set(report_details).issubset(set(PUBLISH_REPORT_KEYWORDS))
-
-        self.progress_report[step].update(report_details)
-        self.conduit.set_progress(self.progress_report)
-
-    def _record_failure(self, step, e=None, tb=None):
-        """
-        Record a failure in a step's progress sub-report.
-
-        :param step: current step that encountered a failure
-        :type  step: str
-        :param e: exception instance (if any)
-        :type  e: Exception or None
-        :param tb: traceback instance (if any)
-        :type  tb: Traceback or None
-        """
-        assert step in PUBLISH_STEPS
-
-        self.progress_report[step][FAILURES] += 1
-
-        error_details = []
-
-        if tb is not None:
-            error_details.extend(traceback.format_tb(tb))
-
-        if e is not None:
-            error_details.append(e.message or str(e))
-
-        if error_details:
-            self.progress_report[step][ERROR_DETAILS].append('\n'.join(error_details))
 
     def _build_final_report(self):
         """
@@ -376,7 +247,7 @@ class Publisher(object):
 
 class PublishStep(object):
 
-    def __init__(self, parent, step_id, unit_type):
+    def __init__(self, parent, step_id, unit_type=None):
         self.parent = parent
         self.step_id = step_id
         self.unit_type = unit_type
@@ -431,24 +302,24 @@ class PublishStep(object):
             return
 
         if self.is_skipped():
-            self.parent._report_progress(self.step_id, state=PUBLISH_SKIPPED_STATE)
+            self._report_progress(self.step_id, state=PUBLISH_SKIPPED_STATE)
             return
 
         _LOG.debug('Publishing Packages of type %(type)s for repository: %(repo)s' %
                    {'type': self.unit_type, 'repo': self.parent.repo.id})
 
-        self.parent._init_step_progress_report(self.step_id)
+        self._init_step_progress_report(self.step_id)
 
         total = self._get_total(self.unit_type)
         if total == 0:
-            self.parent._report_progress(self.step_id, state=PUBLISH_FINISHED_STATE, total=0)
+            self._report_progress(self.step_id, state=PUBLISH_FINISHED_STATE, total=0)
             return
 
         try:
             self.initialize_metadata()
             self.parent.progress_report[self.step_id][TOTAL] = total
             package_unit_generator = self.get_unit_generator()
-            self.parent._report_progress(self.step_id)
+            self._report_progress(self.step_id)
 
             for package_unit in package_unit_generator:
                 if self.parent.canceled:
@@ -457,12 +328,21 @@ class PublishStep(object):
                 self.process_unit(package_unit)
                 self.parent.progress_report[self.step_id][SUCCESSES] += 1
         except Exception, e:
-            self.parent._record_failure(self.step_id, e)
-            self.parent._report_progress(self.step_id, state=PUBLISH_FAILED_STATE)
+            self._record_failure(self.step_id, e)
+            self._report_progress(self.step_id, state=PUBLISH_FAILED_STATE)
             raise e
         finally:
-            self.finalize_metadata()
-        self.parent._report_progress(self.step_id, state=PUBLISH_FINISHED_STATE)
+            try:
+                self.finalize_metadata()
+            except Exception, e:
+                # on the off chance that one of the finalize steps throws an exception we need to
+                # record it as a failure.  If a finalize does fail that error should take precedence
+                # over a previous error
+                self._record_failure(self.step_id, e)
+                self._report_progress(self.step_id, state=PUBLISH_FAILED_STATE)
+                raise e
+
+        self._report_progress(self.step_id, state=PUBLISH_FINISHED_STATE)
 
     def _get_total(self, id_list=None):
         if id_list is None:
@@ -536,6 +416,59 @@ class PublishStep(object):
         _LOG.debug(msg % {'l': link_path, 's': source_path})
 
         os.symlink(source_path, link_path)
+
+    def _init_step_progress_report(self, step):
+        """
+        Initialize a progress sub-report for the given step.
+
+        :param step: step to initialize a progress sub-report for
+        :type  step: str
+        """
+        assert step in PUBLISH_STEPS
+
+        initialize_progress_sub_report(self.parent.progress_report[step])
+
+    def _report_progress(self, step, **report_details):
+        """
+        Report the current progress back to the conduit, make any updates to the
+        current step as necessary.
+
+        :param step: current step of publication process
+        :type  step: str
+        :param report_details: keyword argument updates to the current step's
+                               progress sub-report (if any)
+        """
+        assert step in PUBLISH_STEPS
+        assert set(report_details).issubset(set(PUBLISH_REPORT_KEYWORDS))
+
+        self.parent.progress_report[step].update(report_details)
+        self.parent.conduit.set_progress(self.parent.progress_report)
+
+    def _record_failure(self, step, e=None, tb=None):
+        """
+        Record a failure in a step's progress sub-report.
+
+        :param step: current step that encountered a failure
+        :type  step: str
+        :param e: exception instance (if any)
+        :type  e: Exception or None
+        :param tb: traceback instance (if any)
+        :type  tb: Traceback or None
+        """
+        assert step in PUBLISH_STEPS
+
+        self.parent.progress_report[step][FAILURES] += 1
+
+        error_details = []
+
+        if tb is not None:
+            error_details.extend(traceback.format_tb(tb))
+
+        if e is not None:
+            error_details.append(e.message or str(e))
+
+        if error_details:
+            self.parent.progress_report[step][ERROR_DETAILS].append('\n'.join(error_details))
 
 
 class PublishRpmStep(PublishStep):
@@ -841,3 +774,74 @@ class PublishDistributionStep(PublishStep):
             # create the Packages symlink to the content dir, in the content dir
             packages_symlink_path = os.path.join(symlink_dir, 'Packages')
             self._create_symlink("./", packages_symlink_path)
+
+
+class PublishOverHttpStep(PublishStep):
+    """
+    Publish http repo directory if configured
+    """
+    def __init__(self, parent, step=PUBLISH_OVER_HTTP_STEP):
+        super(PublishOverHttpStep, self).__init__(parent, step, None)
+
+    def is_skipped(self):
+        """
+        Check whether publishing over http is enabled
+        """
+        return not self.parent.config.get('http')
+
+    def _get_total(self, id_list=None):
+        """
+        Get total will always be 1 since this isn't truly iterating over a unit
+        """
+        return 1
+
+    def get_unit_generator(self):
+        """
+        Return a fake unit so that the process_unit method will be called
+        """
+        return ['http']
+
+    def process_unit(self, unit):
+        root_http_publish_dir = configuration.get_http_publish_dir(self.parent.config)
+        self._publish_repo_dir(root_http_publish_dir)
+
+    def _publish_repo_dir(self, publish_dir):
+        """
+        Publish a directory from the repo to a target directory.  This is split out to more easily
+        support subclassing for HTTPS support
+        """
+        repo_relative_dir = configuration.get_repo_relative_path(self.parent.repo,
+                                                                 self.parent.config)
+        repo_http_publish_dir = os.path.join(publish_dir, repo_relative_dir)
+
+        if os.path.exists(repo_http_publish_dir):
+            _LOG.debug('Removing old published directory: %s' % repo_http_publish_dir)
+            shutil.rmtree(repo_http_publish_dir)
+
+        _LOG.debug('Copying tree from %s to %s' % (self.parent.repo.working_dir,
+                                                   repo_http_publish_dir))
+        shutil.copytree(self.parent.repo.working_dir, repo_http_publish_dir, symlinks=True)
+
+        util.generate_listing_files(publish_dir, repo_http_publish_dir)
+
+
+class PublishOverHttpsStep(PublishOverHttpStep):
+    """
+    Publish https repo directory if configured
+    """
+    def __init__(self, parent):
+        super(PublishOverHttpsStep, self).__init__(parent, PUBLISH_OVER_HTTPS_STEP)
+
+    def is_skipped(self):
+        """
+        Check whether publishing over HTTPS is enabled
+        """
+        return not self.parent.config.get('https')
+
+    def process_unit(self, unit):
+        """
+        Publish the files to the https directory & secure the directory
+        """
+        publish_dir = configuration.get_https_publish_dir(self.parent.config)
+        self._publish_repo_dir(publish_dir)
+        # TODO Configure certificate auth
