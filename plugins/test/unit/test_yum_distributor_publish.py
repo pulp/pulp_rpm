@@ -33,17 +33,17 @@ from pulp_rpm.plugins.distributors.yum import publish, reporting
 DATA_DIR = os.path.join(os.path.dirname(__file__), '../data/')
 
 
-class YumDistributorPublishTests(unittest.TestCase):
+class BaseYumDistributorPublishTests(unittest.TestCase):
 
     def setUp(self):
-        super(YumDistributorPublishTests, self).setUp()
+        super(BaseYumDistributorPublishTests, self).setUp()
         self.published_dir = tempfile.mkdtemp()
         self.working_dir = tempfile.mkdtemp()
 
         self.publisher = None
 
     def tearDown(self):
-        super(YumDistributorPublishTests, self).tearDown()
+        super(BaseYumDistributorPublishTests, self).tearDown()
         try:
             if os.path.exists(self.published_dir):
                 shutil.rmtree(self.published_dir)
@@ -75,9 +75,12 @@ class YumDistributorPublishTests(unittest.TestCase):
 
         self.publisher = publish.Publisher(repo, conduit, config)
 
-        # mock out the repomd_file_context, so _publish_<step> can be called 
+        # mock out the repomd_file_context, so _publish_<step> can be called
         # outside of the publish() method
         self.publisher.repomd_file_context = mock.MagicMock()
+
+
+class YumDistributorPublishTests(BaseYumDistributorPublishTests):
 
     def _generate_rpm(self, name):
 
@@ -815,28 +818,30 @@ class YumDistributorPublishTests(unittest.TestCase):
 
     # -- publish_step testing ---------------------------------------
 
+class PublishStepTests(BaseYumDistributorPublishTests):
+
     def test_publish_step_skip_units(self):
         self._init_publisher()
         mock_method = mock.Mock()
-        self.publisher.config = PluginCallConfiguration(None, {'skip': [TYPE_ID_PKG_GROUP]})
-        step = publish.PublishStep(self.publisher, reporting.PUBLISH_PACKAGE_GROUPS_STEP,
-                                   TYPE_ID_PKG_GROUP)
+        self.publisher.config = PluginCallConfiguration(None, {'skip': [TYPE_ID_RPM]})
+        step = publish.PublishStep(self.publisher, reporting.PUBLISH_RPMS_STEP,
+                                   TYPE_ID_RPM)
         step.process()
 
-        self.assertEqual(self.publisher.progress_report[reporting.PUBLISH_PACKAGE_GROUPS_STEP]
+        self.assertEqual(self.publisher.progress_report[reporting.PUBLISH_RPMS_STEP]
                          [reporting.STATE],
                          reporting.PUBLISH_SKIPPED_STATE)
 
     def test_publish_step_no_units(self):
         self._init_publisher()
-        self.publisher.repo.content_unit_counts = {TYPE_ID_PKG_GROUP: 0}
+        self.publisher.repo.content_unit_counts = {TYPE_ID_RPM: 0}
         mock_method = mock.Mock()
-        step = publish.PublishStep(self.publisher, reporting.PUBLISH_PACKAGE_CATEGORIES_STEP,
-                                   TYPE_ID_PKG_GROUP)
+        step = publish.PublishStep(self.publisher, reporting.PUBLISH_RPMS_STEP,
+                                   TYPE_ID_RPM)
         step.process_unit = mock_method
         step.process()
 
-        self.assertEqual(self.publisher.progress_report[reporting.PUBLISH_PACKAGE_CATEGORIES_STEP]
+        self.assertEqual(self.publisher.progress_report[reporting.PUBLISH_RPMS_STEP]
                          [reporting.STATE],
                          reporting.PUBLISH_FINISHED_STATE)
         self.assertFalse(mock_method.called)
@@ -844,60 +849,90 @@ class YumDistributorPublishTests(unittest.TestCase):
     @mock.patch('pulp.plugins.conduits.repo_publish.RepoPublishConduit.get_units')
     def test_publish_step_single_unit(self, mock_get_units):
         self._init_publisher()
-        self.publisher.repo.content_unit_counts = {TYPE_ID_PKG_GROUP: 1}
+        self.publisher.repo.content_unit_counts = {TYPE_ID_RPM: 1}
         mock_method = mock.Mock()
         mock_get_units.return_value = ['mock_unit']
-        step = publish.PublishStep(self.publisher, reporting.PUBLISH_PACKAGE_GROUPS_STEP,
-                                   TYPE_ID_PKG_GROUP)
+        step = publish.PublishStep(self.publisher, reporting.PUBLISH_RPMS_STEP,
+                                   TYPE_ID_RPM)
         step.process_unit = mock_method
         step.process()
 
-        self.assertEqual(self.publisher.progress_report[reporting.PUBLISH_PACKAGE_GROUPS_STEP]
+        self.assertEqual(self.publisher.progress_report[reporting.PUBLISH_RPMS_STEP]
                          [reporting.STATE],
                          reporting.PUBLISH_FINISHED_STATE)
         mock_method.assert_called_once_with('mock_unit')
-        self.assertEqual(self.publisher.progress_report[reporting.PUBLISH_PACKAGE_GROUPS_STEP][
+        self.assertEqual(self.publisher.progress_report[reporting.PUBLISH_RPMS_STEP][
                          reporting.TOTAL], 1)
-        self.assertEqual(self.publisher.progress_report[reporting.PUBLISH_PACKAGE_GROUPS_STEP][
+        self.assertEqual(self.publisher.progress_report[reporting.PUBLISH_RPMS_STEP][
                          reporting.PROCESSED], 1)
-        self.assertEqual(self.publisher.progress_report[reporting.PUBLISH_PACKAGE_GROUPS_STEP][
+        self.assertEqual(self.publisher.progress_report[reporting.PUBLISH_RPMS_STEP][
                          reporting.FAILURES], 0)
-        self.assertEqual(self.publisher.progress_report[reporting.PUBLISH_PACKAGE_GROUPS_STEP][
+        self.assertEqual(self.publisher.progress_report[reporting.PUBLISH_RPMS_STEP][
                          reporting.SUCCESSES], 1)
 
     @mock.patch('pulp.plugins.conduits.repo_publish.RepoPublishConduit.get_units')
     def test_publish_step_single_unit_exception(self, mock_get_units):
         self._init_publisher()
-        self.publisher.repo.content_unit_counts = {TYPE_ID_PKG_GROUP: 1}
-        mock_method = mock.Mock()
-        mock_method.side_effect = Exception()
+        self.publisher.repo.content_unit_counts = {TYPE_ID_RPM: 1}
+        mock_method = mock.Mock(side_effect=Exception())
         mock_get_units.return_value = ['mock_unit']
-        step = publish.PublishStep(self.publisher, reporting.PUBLISH_PACKAGE_GROUPS_STEP,
-                                   TYPE_ID_PKG_GROUP)
+        step = publish.PublishStep(self.publisher, reporting.PUBLISH_RPMS_STEP,
+                                   TYPE_ID_RPM)
         step.process_unit = mock_method
 
         self.assertRaises(Exception, step.process)
 
-        self.assertEqual(self.publisher.progress_report[reporting.PUBLISH_PACKAGE_GROUPS_STEP]
+        self.assertEqual(self.publisher.progress_report[reporting.PUBLISH_RPMS_STEP]
                          [reporting.STATE],
                          reporting.PUBLISH_FAILED_STATE)
         mock_method.assert_called_once_with('mock_unit')
-        self.assertEqual(self.publisher.progress_report[reporting.PUBLISH_PACKAGE_GROUPS_STEP][
+        self.assertEqual(self.publisher.progress_report[reporting.PUBLISH_RPMS_STEP][
                          reporting.TOTAL], 1)
-        self.assertEqual(self.publisher.progress_report[reporting.PUBLISH_PACKAGE_GROUPS_STEP][
+        self.assertEqual(self.publisher.progress_report[reporting.PUBLISH_RPMS_STEP][
                          reporting.PROCESSED], 1)
-        self.assertEqual(self.publisher.progress_report[reporting.PUBLISH_PACKAGE_GROUPS_STEP][
+        self.assertEqual(self.publisher.progress_report[reporting.PUBLISH_RPMS_STEP][
                          reporting.FAILURES], 1)
-        self.assertEqual(self.publisher.progress_report[reporting.PUBLISH_PACKAGE_GROUPS_STEP][
+        self.assertEqual(self.publisher.progress_report[reporting.PUBLISH_RPMS_STEP][
                          reporting.SUCCESSES], 0)
 
-    @mock.patch('pulp_rpm.plugins.distributors.yum.publish.PublishPackageGroupsStep')
-    @mock.patch('pulp_rpm.plugins.distributors.yum.publish.PublishPackageCategoriesStep')
-    def test_publish_comps(self, mock_category_step, mock_group_step):
+    @mock.patch('pulp.plugins.conduits.repo_publish.RepoPublishConduit.get_units')
+    def test_publish_step_failure_reported_on_metadata_finalized(self, mock_get_units):
         self._init_publisher()
-        mock_group_step.return_value._get_total.return_value = 2
-        self.publisher._publish_comps()
-        self.assertTrue(mock_group_step.return_value.process.called)
-        self.assertTrue(mock_category_step.return_value.process.called)
-        self.publisher.repomd_file_context.add_metadata_file_metadata.\
-            assert_called_once_with('group', ANY)
+        self.publisher.repo.content_unit_counts = {TYPE_ID_RPM: 1}
+        mock_get_units.return_value = ['mock_unit']
+        step = publish.PublishStep(self.publisher, reporting.PUBLISH_RPMS_STEP,
+                                   TYPE_ID_RPM)
+        step.finalize_metadata = mock.Mock(side_effect=Exception())
+        self.assertRaises(Exception, step.process)
+
+        self.assertEqual(self.publisher.progress_report[reporting.PUBLISH_RPMS_STEP]
+                         [reporting.STATE],
+                         reporting.PUBLISH_FAILED_STATE)
+        self.assertEqual(self.publisher.progress_report[reporting.PUBLISH_RPMS_STEP][
+                         reporting.TOTAL], 1)
+        self.assertEqual(self.publisher.progress_report[reporting.PUBLISH_RPMS_STEP][
+                         reporting.PROCESSED], 1)
+        self.assertEqual(self.publisher.progress_report[reporting.PUBLISH_RPMS_STEP][
+                         reporting.FAILURES], 1)
+        self.assertEqual(self.publisher.progress_report[reporting.PUBLISH_RPMS_STEP][
+                         reporting.SUCCESSES], 1)
+
+
+class PublishCompsStepTests(BaseYumDistributorPublishTests):
+
+    def test_units_total(self):
+        self._init_publisher()
+        step = publish.PublishCompsStep(self.publisher)
+        self.publisher.repo.content_unit_counts = {TYPE_ID_PKG_CATEGORY: 3, TYPE_ID_PKG_GROUP: 5}
+
+        self.assertEquals(8, step._get_total())
+
+    def test_units_generator(self):
+        self._init_publisher()
+        step = publish.PublishCompsStep(self.publisher)
+        step.comps_context = mock.Mock()
+        self.publisher.conduit.get_units = mock.Mock(side_effect=[['foo', 'bar'], ['baz', 'qux']])
+
+        unit_list = [x.unit for x in step.get_unit_generator()]
+        self.assertEquals(unit_list, ['foo', 'bar', 'baz', 'qux'])
+

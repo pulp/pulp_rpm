@@ -17,6 +17,7 @@ import sys
 import traceback
 from gettext import gettext as _
 from pprint import pformat
+from collections import namedtuple
 
 from pulp.server.db.model.criteria import UnitAssociationCriteria
 from pulp.server.exceptions import InvalidValue
@@ -39,7 +40,7 @@ from .metadata.updateinfo import UpdateinfoXMLFileContext
 from .metadata.package import PackageXMLFileContext
 from .reporting import (
     PUBLISH_RPMS_STEP, PUBLISH_DELTA_RPMS_STEP, PUBLISH_ERRATA_STEP,
-    PUBLISH_PACKAGE_GROUPS_STEP, PUBLISH_PACKAGE_CATEGORIES_STEP,
+    PUBLISH_PACKAGE_GROUPS_STEP, PUBLISH_PACKAGE_CATEGORIES_STEP, PUBLISH_COMPS_STEP,
     PUBLISH_DISTRIBUTION_STEP, PUBLISH_METADATA_STEP, PUBLISH_OVER_HTTP_STEP,
     PUBLISH_OVER_HTTPS_STEP, PUBLISH_STEPS, PUBLISH_NOT_STARTED_STATE,
     PUBLISH_IN_PROGRESS_STATE, PUBLISH_SKIPPED_STATE, PUBLISH_FINISHED_STATE,
@@ -112,6 +113,7 @@ class Publisher(object):
             os.makedirs(self.repo.working_dir, mode=0770)
 
         checksum_type = configuration.get_repo_checksum_type(self.conduit, self.config)
+
         try:
             with RepomdXMLFileContext(self.repo.working_dir, checksum_type) as self.repomd_file_context:
                 # The distribution must be published first in case it specifies a packagesdir
@@ -128,7 +130,7 @@ class Publisher(object):
             self._clear_directory(self.repo.working_dir)
         except Exception, e:
             # do nothing with the exception as the returned report has the details.
-            pass
+            _LOG.error(e)
 
         _LOG.debug('Publish completed with progress:\n%s' % pformat(self.progress_report))
         return self._build_final_report()
@@ -174,15 +176,7 @@ class Publisher(object):
         """
         Publish package groups and categories and update the repomd.xml file.
         """
-        groups_step = PublishPackageGroupsStep(self)
-        categories_step = PublishPackageCategoriesStep(self)
-        if (groups_step._get_total() + categories_step._get_total()) > 0:
-            groups_file = None
-            with PackageXMLFileContext(self.repo.working_dir) as self.package_context:
-                PublishPackageGroupsStep(self).process()
-                PublishPackageCategoriesStep(self).process()
-                groups_file = self.package_context.metadata_file_path
-            self.repomd_file_context.add_metadata_file_metadata('group', groups_file)
+        PublishCompsStep(self).process()
 
     def _publish_distribution(self):
         """
@@ -610,36 +604,53 @@ class PublishErrataStep(PublishStep):
                                                                    self.context.metadata_file_path)
 
 
-class PublishPackageGroupsStep(PublishStep):
-    """
-    Publish all package groups to the comps metadata file
-    """
+class PublishCompsStep(PublishStep):
     def __init__(self, parent):
-        super(PublishPackageGroupsStep, self).__init__(parent, PUBLISH_PACKAGE_GROUPS_STEP,
-                                                       TYPE_ID_PKG_GROUP)
+        super(PublishCompsStep, self).__init__(parent, PUBLISH_COMPS_STEP,
+                                               [TYPE_ID_PKG_GROUP, TYPE_ID_PKG_CATEGORY])
+        self.comps_context = None
+
+    def get_unit_generator(self):
+        """
+        Returns a generator of Named Tuples containing the original unit and the
+        processing method that will be used to process that particular unit.
+        """
+
+        # set the process unit method to categories
+        criteria = UnitAssociationCriteria(type_ids=[TYPE_ID_PKG_CATEGORY])
+        category_generator = self.parent.conduit.get_units(criteria, as_generator=True)
+
+        UnitProcessor = namedtuple('UnitProcessor', 'unit process')
+        for category in category_generator:
+            yield UnitProcessor(category, self.comps_context.add_package_category_unit_metadata)
+
+        # set the process unit method to groups
+        criteria = UnitAssociationCriteria(type_ids=[TYPE_ID_PKG_GROUP])
+        groups_generator = self.parent.conduit.get_units(criteria, as_generator=True)
+        for group in groups_generator:
+            yield UnitProcessor(group, self.comps_context.add_package_group_unit_metadata)
+
+    def process_unit(self, unit):
+        """
+        Process each unit created by the generator using the associated
+        process command
+        """
+        unit.process(unit.unit)
 
     def initialize_metadata(self):
         """
-        Use the built in method for processing the metadata.  This is added here
-        since the step is initialized before the context exists
+        Initialize all metadata associated with the comps file
         """
-        self.process_unit = self.parent.package_context.add_package_group_unit_metadata
+        self.comps_context = PackageXMLFileContext(self.parent.repo.working_dir)
+        self.comps_context.initialize()
 
-
-class PublishPackageCategoriesStep(PublishStep):
-    """
-    Publish all package categories to the comps metadata file
-    """
-    def __init__(self, parent):
-        super(PublishPackageCategoriesStep, self).__init__(parent, PUBLISH_PACKAGE_CATEGORIES_STEP,
-                                                           TYPE_ID_PKG_CATEGORY)
-
-    def initialize_metadata(self):
+    def finalize_metadata(self):
         """
-        Use the built in method for processing the metadata.  This is added here
-        since the step is initialized before the context exists
+        Finalize all metadata associated with the comps file
         """
-        self.process_unit = self.parent.package_context.add_package_category_unit_metadata
+        self.comps_context.finalize()
+        self.parent.repomd_file_context.add_metadata_file_metadata('group',
+                                                                   self.comps_context.metadata_file_path)
 
 
 class PublishDistributionStep(PublishStep):
