@@ -33,6 +33,7 @@ TAR_PATH = os.path.join(os.path.dirname(__file__), '../data/cataloger-test-repo.
 JSON_PATH = os.path.join(os.path.dirname(__file__), '../data/cataloger-test-repo.json')
 
 SOURCE_ID = 'test'
+EXPIRES = 90
 
 
 class TestCataloger(TestCase):
@@ -58,7 +59,7 @@ class TestCataloger(TestCase):
 
     def test_packages(self):
         url = 'file://%s/' % self.tmp_dir
-        conduit = CatalogerConduit(SOURCE_ID)
+        conduit = CatalogerConduit(SOURCE_ID, EXPIRES)
         cataloger = YumCataloger()
         cataloger.refresh(conduit, {}, url)
         collection = ContentCatalog.get_collection()
