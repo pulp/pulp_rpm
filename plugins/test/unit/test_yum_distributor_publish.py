@@ -175,7 +175,7 @@ class PublisherTests(BaseYumDistributorPublishTests):
         os.makedirs(os.path.dirname(link_path))
         os.chmod(os.path.dirname(link_path), 0000)
 
-        self.assertRaises(RuntimeError, publish.PublishStep._create_symlink, source_path, link_path)
+        self.assertRaises(OSError, publish.PublishStep._create_symlink, source_path, link_path)
 
         os.chmod(os.path.dirname(link_path), 0777)
 

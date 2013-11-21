@@ -13,7 +13,6 @@
 
 import os
 import shutil
-import sys
 import traceback
 from gettext import gettext as _
 from pprint import pformat
@@ -130,7 +129,7 @@ class Publisher(object):
 
             self._clear_directory(self.repo.working_dir)
         except Exception, e:
-            # do nothing with the exception as the returned report has the details.
+            # do bug log the details as the returned report has the details.
             _LOG.error(e)
 
         _LOG.debug('Publish completed with progress:\n%s' % pformat(self.progress_report))
@@ -334,10 +333,12 @@ class PublishStep(object):
         """
         Create a symlink from the link path to the source path.
 
-        ensures that parent directory structure is in place
-        if we are overriding a current symlink with a new target - warn the user
-        create symlink of doesn't exist
+        If the link_path points to a directory that does not exist the directory
+        will be created first.
 
+        If we are overriding a current symlink with a new target - a debug message will be logged
+
+        If a file already exists at the location specified by link_path an exception will be raised
 
         :param source_path: path of the source to link to
         :type  source_path: str
@@ -356,15 +357,12 @@ class PublishStep(object):
 
         if not os.path.exists(link_parent_dir):
             os.makedirs(link_parent_dir, mode=0770)
-        elif not os.access(link_parent_dir, os.R_OK | os.W_OK | os.X_OK):
-            msg = _('Insufficient permissions to create symlink in directory [%(d)s]')
-            raise RuntimeError(msg % {'d': link_parent_dir})
         elif os.path.lexists(link_path):
             if os.path.islink(link_path):
                 link_target = os.readlink(link_path)
                 if link_target == source_path:
+                    # a pre existing link already points to the correct location
                     return
-
                 msg = _('Removing old link [%(l)s] that was pointing to [%(t)s]')
                 _LOG.debug(msg % {'l': link_path, 't': link_target})
                 os.unlink(link_path)
@@ -374,7 +372,6 @@ class PublishStep(object):
 
         msg = _('Creating symbolic link [%(l)s] pointing to [%(s)s]')
         _LOG.debug(msg % {'l': link_path, 's': source_path})
-
         os.symlink(source_path, link_path)
 
     def _init_step_progress_report(self, step):
