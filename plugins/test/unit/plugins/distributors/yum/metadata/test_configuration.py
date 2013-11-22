@@ -74,6 +74,7 @@ class TestGetRepoChecksumType(unittest.TestCase):
         self.assertEquals(CONFIG_DEFAULT_CHECKSUM,
                           configuration.get_repo_checksum_type(self.mock_conduit, self.config))
 
+
 class TestConfigurationValidationHelpers(unittest.TestCase):
 
     def test_validate_list_success(self):

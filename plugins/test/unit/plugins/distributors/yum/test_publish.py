@@ -30,7 +30,7 @@ from pulp_rpm.common.ids import (
 from pulp_rpm.plugins.distributors.yum import publish, reporting
 
 
-DATA_DIR = os.path.join(os.path.dirname(__file__), '../data/')
+DATA_DIR = os.path.join(os.path.dirname(__file__), '../../../../data/')
 
 
 class BaseYumDistributorPublishTests(unittest.TestCase):
