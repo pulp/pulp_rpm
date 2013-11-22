@@ -73,3 +73,27 @@ class TestGetRepoChecksumType(unittest.TestCase):
         self.mock_conduit.get_repo_scratchpad.return_value = None
         self.assertEquals(CONFIG_DEFAULT_CHECKSUM,
                           configuration.get_repo_checksum_type(self.mock_conduit, self.config))
+
+
+class TestConfigurationValidationHelpers(unittest.TestCase):
+
+    def test_validate_list_success(self):
+        error_messages = []
+        configuration._validate_list('foo', ['bar'], error_messages)
+        self.assertEquals(0, len(error_messages))
+
+    def test_validate_list_error(self):
+        error_messages = []
+        configuration._validate_list('foo', 'bar', error_messages)
+        self.assertEquals(1, len(error_messages))
+
+    def test_validate_list_none_ok(self):
+        error_messages = []
+        configuration._validate_list('foo', None, error_messages, none_ok=True)
+        self.assertEquals(0, len(error_messages))
+
+    def test_validate_list_none_ok_false(self):
+        error_messages = []
+        configuration._validate_list('foo', None, error_messages, none_ok=False)
+        self.assertEquals(1, len(error_messages))
+

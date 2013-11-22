@@ -277,14 +277,14 @@ class YumDistributorConfigurationTests(unittest.TestCase):
 
         mock_validate_boolean.assert_called_once_with('protected', True, error_messages, False)
 
-    @mock.patch('pulp_rpm.plugins.distributors.yum.configuration._validate_dictionary')
-    def test_skip(self, mock_validate_dictionary):
+    @mock.patch('pulp_rpm.plugins.distributors.yum.configuration._validate_list')
+    def test_skip(self, mock_validate_list):
         error_messages = []
         skip = {}
 
         configuration._validate_skip(skip, error_messages)
 
-        mock_validate_dictionary.assert_called_once_with('skip', skip, error_messages, False)
+        mock_validate_list.assert_called_once_with('skip', skip, error_messages, False)
 
     @mock.patch('pulp_rpm.plugins.distributors.yum.configuration._validate_boolean')
     def test_skip_pkg_tags(self, mock_validate_boolean):

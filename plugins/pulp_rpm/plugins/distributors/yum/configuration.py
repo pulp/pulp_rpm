@@ -323,7 +323,7 @@ def _validate_protected(protected, error_messages):
 
 
 def _validate_skip(skip, error_messages):
-    _validate_dictionary('skip', skip, error_messages, False)
+    _validate_list('skip', skip, error_messages, False)
 
 
 def _validate_skip_pkg_tags(skip_pkg_tags, error_messages):
@@ -341,6 +341,13 @@ def _validate_boolean(key, value, error_messages, none_ok=True):
         return
 
     msg = _('Configuration value for [%(k)s] should a boolean, but is a %(t)s')
+    error_messages.append(msg % {'k': key, 't': str(type(value))})
+
+
+def _validate_list(key, value, error_messages, none_ok=True):
+    if isinstance(value, list) or (none_ok and value is None):
+        return
+    msg = _('Configuration value for [%(k)s] should be a list, but is a %(t)s')
     error_messages.append(msg % {'k': key, 't': str(type(value))})
 
 
