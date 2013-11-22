@@ -214,15 +214,11 @@ def get_repo_checksum_type(publish_conduit, config):
     """
     checksum_type = config.get(CONFIG_KEY_CHECKSUM_TYPE)
     if not checksum_type:
-        try:
-            scratchpad_data = publish_conduit.get_repo_scratchpad()
-            if not scratchpad_data or SCRATCHPAD_DEFAULT_METADATA_CHECKSUM not in scratchpad_data:
-                checksum_type = CONFIG_DEFAULT_CHECKSUM
-            else:
-                checksum_type = scratchpad_data[SCRATCHPAD_DEFAULT_METADATA_CHECKSUM]
-        except AttributeError:
-            _LOG.debug("get_repo_scratchpad not found on publish conduit")
+        scratchpad_data = publish_conduit.get_repo_scratchpad()
+        if not scratchpad_data or SCRATCHPAD_DEFAULT_METADATA_CHECKSUM not in scratchpad_data:
             checksum_type = CONFIG_DEFAULT_CHECKSUM
+        else:
+            checksum_type = scratchpad_data[SCRATCHPAD_DEFAULT_METADATA_CHECKSUM]
 
     if checksum_type == 'sha':
         checksum_type = 'sha1'

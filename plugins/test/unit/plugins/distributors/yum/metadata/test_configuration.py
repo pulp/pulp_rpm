@@ -62,6 +62,6 @@ class TestGetRepoChecksumType(unittest.TestCase):
 
     @patch('pulp.server.managers.factory.repo_distributor_manager')
     def test_get_repo_checksum_conduit_with_no_scratchpad(self, mock_distributor_manager):
-        self.mock_conduit.get_repo_scratchpad.side_effect = AttributeError()
+        self.mock_conduit.get_repo_scratchpad.return_value = None
         self.assertEquals(CONFIG_DEFAULT_CHECKSUM,
                           configuration.get_repo_checksum_type(self.mock_conduit, self.config))
