@@ -263,7 +263,8 @@ class TestDistributor(rpm_support_base.PulpRPMTests):
         finally:
             os.chmod(target_dir, orig_stat.st_mode)
 
-    def test_empty_publish(self):
+    @mock.patch('pulp.server.managers.factory.repo_distributor_manager')
+    def test_empty_publish(self, mock_factory):
         repo = mock.Mock(spec=Repository)
         repo.working_dir = self.repo_working_dir
         repo.id = "test_empty_publish"
@@ -272,6 +273,8 @@ class TestDistributor(rpm_support_base.PulpRPMTests):
         config = distributor_mocks.get_basic_config(https_publish_dir=self.https_publish_dir, http_publish_dir=self.http_publish_dir,
                 http=True, https=True)
         distributor = YumDistributor()
+        publish_conduit.repo_id = repo.id
+        publish_conduit.distributor_id = 'foo'
         report = distributor.publish_repo(repo, publish_conduit, config)
         self.assertTrue(report.success_flag)
         summary = report.summary
@@ -285,7 +288,8 @@ class TestDistributor(rpm_support_base.PulpRPMTests):
         details = report.details
         self.assertEqual(len(details["errors"]), 0)
 
-    def test_publish(self):
+    @mock.patch('pulp.server.managers.factory.repo_distributor_manager')
+    def test_publish(self, mock_manager):
         repo = mock.Mock(spec=Repository)
         repo.working_dir = self.repo_working_dir
         repo.id = "test_publish"
@@ -296,6 +300,8 @@ class TestDistributor(rpm_support_base.PulpRPMTests):
         config = distributor_mocks.get_basic_config(https_publish_dir=self.https_publish_dir, relative_url=relative_url,
                 http=False, https=True)
         distributor = YumDistributor()
+        publish_conduit.repo_id = repo.id
+        publish_conduit.distributor_id = 'foo'
         distributor.process_repo_auth_certificate_bundle = mock.Mock()
         config_conduit = mock.Mock(spec=RepoConfigConduit)
         config_conduit.get_repo_distributors_by_relative_url.return_value = MockCursor([])
@@ -469,6 +475,15 @@ class TestDistributor(rpm_support_base.PulpRPMTests):
                                                      custom_metadata_dict=ANY)
         self.assertFalse(mock_distributor_manager.called)
 
+    def test_metadata_get_repo_checksum_type(self):
+        publish_conduit = mock.MagicMock()
+        config = mock.MagicMock()
+        config.get.return_value = None
+
+        self.assertEquals(metadata.DEFAULT_CHECKSUM,
+                          metadata.get_repo_checksum_type(publish_conduit, config))
+
+
     def test_basic_repo_publish_rel_path_conflict(self):
         repo = mock.Mock(spec=Repository)
         repo.working_dir = self.repo_working_dir
@@ -513,7 +528,8 @@ class TestDistributor(rpm_support_base.PulpRPMTests):
         self.assertEqual(msg, None)
         """
 
-    def test_publish_progress(self):
+    @mock.patch('pulp.server.managers.factory.repo_distributor_manager')
+    def test_publish_progress(self, mock_manager):
         global progress_status
         progress_status = None
 
@@ -529,6 +545,8 @@ class TestDistributor(rpm_support_base.PulpRPMTests):
         repo = mock.Mock(spec=Repository)
         repo.working_dir = self.repo_working_dir
         repo.id = "test_progress_sync"
+        publish_conduit.repo_id = repo.id
+        publish_conduit.distributor_id = 'foo'
         publish_conduit.set_progress = mock.Mock()
         publish_conduit.set_progress.side_effect = set_progress
         distributor.publish_repo(repo, publish_conduit, config)
@@ -591,8 +609,9 @@ class TestDistributor(rpm_support_base.PulpRPMTests):
         self.assertTrue('http' in payload['protocols'])
         self.assertTrue('https' in payload['protocols'])
 
+    @mock.patch('pulp.server.managers.factory.repo_distributor_manager')
     @mock.patch('pulp_rpm.repo_auth.protected_repo_utils.ProtectedRepoUtils.delete_protected_repo')
-    def test_distributor_removed(self, delete_protected_repo):
+    def test_distributor_removed(self, delete_protected_repo, mock_factory):
         """
         Make sure the distributor_removed() method cleans up the published files.
         """
@@ -609,6 +628,8 @@ class TestDistributor(rpm_support_base.PulpRPMTests):
                                                     http=True,
                                                     https=True)
         distributor = YumDistributor()
+        publish_conduit.repo_id = repo.id
+        publish_conduit.distributor_id = 'foo'
         report = distributor.publish_repo(repo, publish_conduit, config)
 
         publishing_paths = [os.path.join(directory, repo.id) \

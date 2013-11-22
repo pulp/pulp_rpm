@@ -147,26 +147,20 @@ def get_repo_checksum_type(publish_conduit, config):
     checksum_type = config.get('checksum_type')
     if checksum_type:
         return checksum_type
-    try:
-        scratchpad_data = publish_conduit.get_repo_scratchpad()
-        if not scratchpad_data:
-            return DEFAULT_CHECKSUM
-        if SCRATCHPAD_DEFAULT_METADATA_CHECKSUM in scratchpad_data:
-            checksum_type = scratchpad_data[SCRATCHPAD_DEFAULT_METADATA_CHECKSUM]
-            if checksum_type == 'sha':
-                checksum_type = 'sha1'
-            # Save the checksum back on the distributor config if it isn't there already
-            # This is so that it can be synchronized to nodes and used for uploaded RPMS
-            distributor_config = config.repo_plugin_config
-            if 'checksum_type' not in distributor_config:
-                distributor_manager = factory.repo_distributor_manager()
-                distributor_manager.update_distributor_config(publish_conduit.repo_id,
-                                                              publish_conduit.distributor_id,
-                                                              {'checksum_type': checksum_type})
-
-    except AttributeError:
-        _LOG.debug("get_repo_scratchpad not found on publish conduit")
-        checksum_type = DEFAULT_CHECKSUM
+    scratchpad_data = publish_conduit.get_repo_scratchpad()
+    checksum_type = DEFAULT_CHECKSUM
+    if scratchpad_data and SCRATCHPAD_DEFAULT_METADATA_CHECKSUM in scratchpad_data:
+        checksum_type = scratchpad_data[SCRATCHPAD_DEFAULT_METADATA_CHECKSUM]
+        if checksum_type == 'sha':
+            checksum_type = 'sha1'
+        # Save the checksum back on the distributor config if it isn't there already
+        # This is so that it can be synchronized to nodes and used for uploaded RPMS
+        distributor_config = config.repo_plugin_config
+        if 'checksum_type' not in distributor_config:
+            distributor_manager = factory.repo_distributor_manager()
+            distributor_manager.update_distributor_config(publish_conduit.repo_id,
+                                                          publish_conduit.distributor_id,
+                                                          {'checksum_type': checksum_type})
     return checksum_type
 
 
