@@ -41,6 +41,14 @@ class TestGetRepoChecksumType(unittest.TestCase):
                           configuration.get_repo_checksum_type(self.mock_conduit, self.config))
 
     @patch('pulp.server.managers.factory.repo_distributor_manager')
+    def test_get_repo_checksum_not_in_scratchpad(self, mock_distributor_manager):
+        #Test with other data in the scratchpad
+        self.mock_conduit.get_repo_scratchpad.return_value = \
+            {'foo': 'bar'}
+        self.assertEquals(CONFIG_DEFAULT_CHECKSUM,
+                          configuration.get_repo_checksum_type(self.mock_conduit, self.config))
+
+    @patch('pulp.server.managers.factory.repo_distributor_manager')
     def test_get_repo_checksum_update_distributor_config(self, mock_distributor_manager):
         self.mock_conduit.get_repo_scratchpad.return_value = \
             {SCRATCHPAD_DEFAULT_METADATA_CHECKSUM: 'sha1'}
