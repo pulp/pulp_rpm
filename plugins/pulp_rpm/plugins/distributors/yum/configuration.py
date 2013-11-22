@@ -16,6 +16,8 @@ import re
 from ConfigParser import SafeConfigParser
 from gettext import gettext as _
 
+from pulp.server.managers import factory
+
 from pulp_rpm.common.constants import SCRATCHPAD_DEFAULT_METADATA_CHECKSUM, \
     CONFIG_DEFAULT_CHECKSUM, CONFIG_KEY_CHECKSUM_TYPE, REPO_AUTH_CONFIG_FILE
 from pulp_rpm.repo_auth import protected_repo_utils, repo_cert_utils
@@ -234,26 +236,35 @@ def get_repo_checksum_type(publish_conduit, config):
     Lookup checksum type on the repo to use for metadata generation;
     importer sets this value if available on the repo scratchpad.
 
+    WARNING: This method has a side effect of saving the checksum type on the distributor
+    config if a checksum has not already been set on the distributor config.
+
+    :param config: publish conduit
+    :type  config: pulp.plugins.conduits.repo_publish.RepoPublishConduit
+
     :param config: plugin configuration
-    :type  config: L{pulp.plugins.config.PluginCallConfiguration}
+    :type  config: pulp.plugins.config.PluginCallConfiguration
 
     :return the type of checksum to use for the repository
     :rtype str
     """
     checksum_type = config.get(CONFIG_KEY_CHECKSUM_TYPE)
     if not checksum_type:
-        try:
-            scratchpad_data = publish_conduit.get_repo_scratchpad()
-            if not scratchpad_data or SCRATCHPAD_DEFAULT_METADATA_CHECKSUM not in scratchpad_data:
-                checksum_type = CONFIG_DEFAULT_CHECKSUM
-            else:
-                checksum_type = scratchpad_data[SCRATCHPAD_DEFAULT_METADATA_CHECKSUM]
-        except AttributeError:
-            _LOG.debug("get_repo_scratchpad not found on publish conduit")
+        scratchpad_data = publish_conduit.get_repo_scratchpad()
+        if not scratchpad_data or SCRATCHPAD_DEFAULT_METADATA_CHECKSUM not in scratchpad_data:
             checksum_type = CONFIG_DEFAULT_CHECKSUM
+        else:
+            checksum_type = scratchpad_data[SCRATCHPAD_DEFAULT_METADATA_CHECKSUM]
 
     if checksum_type == 'sha':
         checksum_type = 'sha1'
+
+    distributor_config = config.repo_plugin_config
+    if 'checksum_type' not in distributor_config:
+        distributor_manager = factory.repo_distributor_manager()
+        distributor_manager.update_distributor_config(publish_conduit.repo_id,
+                                                      publish_conduit.distributor_id,
+                                                      {'checksum_type': checksum_type})
     return checksum_type
 
 
