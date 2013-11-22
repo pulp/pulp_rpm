@@ -18,7 +18,7 @@
 
 Name: pulp-rpm
 Version: 2.3.1
-Release: 0.1.beta%{?dist}
+Release: 0.2.beta%{?dist}
 Summary: Support for RPM content in the Pulp platform
 Group: Development/Languages
 License: GPLv2
@@ -279,6 +279,10 @@ A collection of yum plugins supplementing Pulp consumer operations.
 
 
 %changelog
+* Fri Nov 22 2013 Jeff Ortel <jortel@redhat.com> 2.3.1-0.2.beta
+- 1033776 - If scratchpad contains fields other than checksum_type then
+  checksum may be calculated incorrectly. (bcourt@redhat.com)
+
 * Fri Nov 22 2013 Jeff Ortel <jortel@redhat.com> 2.3.1-0.1.beta
 - Pulp rebuild
 
