@@ -379,16 +379,22 @@ class TestDistributor(rpm_support_base.PulpRPMTests):
                                                      updateinfo_xml_path=ANY,
                                                      custom_metadata_dict=ANY)
 
+    @patch('pulp.server.managers.factory.repo_distributor_manager')
     @patch('pulp_rpm.yum_plugin.metadata.YumMetadataGenerator')
     def test_yum_plugin_generate_yum_metadata_checksum_from_conduit(self,
-                                                                    mock_YumMetadataGenerator):
+                                                                    mock_YumMetadataGenerator,
+                                                                    mock_distributor_manager):
         repo = mock.Mock(spec=Repository)
         repo.working_dir = self.repo_working_dir
         repo.id = "test_publish"
         num_units = 10
         relative_url = "rel_a/rel_b/rel_c/"
         existing_units = self.get_units(count=num_units)
-        publish_conduit = distributor_mocks.get_publish_conduit(type_id="rpm", existing_units=existing_units, pkg_dir=self.pkg_dir)
+        publish_conduit = distributor_mocks.get_publish_conduit(type_id="rpm",
+                                                                existing_units=existing_units,
+                                                                pkg_dir=self.pkg_dir)
+        publish_conduit.repo_id = 'foo'
+        publish_conduit.distributor_id = 'bar'
         config = distributor_mocks.get_basic_config(https_publish_dir=self.https_publish_dir, relative_url=relative_url,
                 http=False, https=True)
         distributor = YumDistributor()
@@ -403,9 +409,11 @@ class TestDistributor(rpm_support_base.PulpRPMTests):
                                                      updateinfo_xml_path=ANY,
                                                      custom_metadata_dict=ANY)
 
+    @patch('pulp.server.managers.factory.repo_distributor_manager')
     @patch('pulp_rpm.yum_plugin.metadata.YumMetadataGenerator')
     def test_yum_plugin_generate_yum_metadata_checksum_from_conduit_sha1_conversion(self,
-                                                                    mock_YumMetadataGenerator):
+                                                                    mock_YumMetadataGenerator,
+                                                                    mock_distributor_manager):
         repo = mock.Mock(spec=Repository)
         repo.working_dir = self.repo_working_dir
         repo.id = "test_publish"
@@ -413,6 +421,8 @@ class TestDistributor(rpm_support_base.PulpRPMTests):
         relative_url = "rel_a/rel_b/rel_c/"
         existing_units = self.get_units(count=num_units)
         publish_conduit = distributor_mocks.get_publish_conduit(type_id="rpm", existing_units=existing_units, pkg_dir=self.pkg_dir)
+        publish_conduit.repo_id = 'foo'
+        publish_conduit.distributor_id = 'bar'
         config = distributor_mocks.get_basic_config(https_publish_dir=self.https_publish_dir, relative_url=relative_url,
                 http=False, https=True)
         distributor = YumDistributor()
@@ -426,9 +436,15 @@ class TestDistributor(rpm_support_base.PulpRPMTests):
                                                      group_xml_path=ANY,
                                                      updateinfo_xml_path=ANY,
                                                      custom_metadata_dict=ANY)
+        mock_distributor_manager.return_value.update_distributor_config.\
+            assert_called_with(ANY, ANY, {'checksum_type': 'sha1'})
 
+
+
+    @patch('pulp.server.managers.factory.repo_distributor_manager')
     @patch('pulp_rpm.yum_plugin.metadata.YumMetadataGenerator')
-    def test_yum_plugin_generate_yum_metadata_checksum_default(self, mock_YumMetadataGenerator):
+    def test_yum_plugin_generate_yum_metadata_checksum_default(self, mock_YumMetadataGenerator,
+                                                               mock_distributor_manager):
         repo = mock.Mock(spec=Repository)
         repo.working_dir = self.repo_working_dir
         repo.id = "test_publish"
@@ -452,6 +468,7 @@ class TestDistributor(rpm_support_base.PulpRPMTests):
                                                      group_xml_path=ANY,
                                                      updateinfo_xml_path=ANY,
                                                      custom_metadata_dict=ANY)
+        self.assertFalse(mock_distributor_manager.called)
 
     def test_basic_repo_publish_rel_path_conflict(self):
         repo = mock.Mock(spec=Repository)

@@ -375,8 +375,9 @@ class YumProfiler(Profiler):
         unit_key = unit['unit_key']
         errata = YumProfiler._find_unit_associated_to_repos(TYPE_ID_ERRATA, unit_key, repo_ids, conduit)
         if not errata:
-            error_msg = _("Unable to find errata with unit_key [%s] in bound repos [%s] to consumer [%s]") % \
-                (unit_key, repo_ids, consumer.id)
+            error_msg = _("Unable to find errata with unit_key [%(key)s] in bound "
+                          "repos [%(repos)s] to consumer [%(consumer)s]") % \
+                        {'key': unit_key, 'repos': repo_ids, 'consumer': consumer.id}
             raise InvalidUnitsRequested(message=error_msg, units=unit_key)
 
         updated_rpms = YumProfiler._get_rpms_from_errata(errata)
