@@ -46,3 +46,11 @@ All Bugs
 
 You can see the complete list of over 100 bugs that were
 `fixed in Pulp 2.3.0 <https://bugzilla.redhat.com/buglist.cgi?bug_status=VERIFIED&classification=Community&list_id=1927252&product=Pulp&query_format=advanced&target_release=2.3.0>`_.
+
+
+Known Issues
+------------
+
+Fedora 19 repositories have a new data type called an "environment group" that
+Pulp does not yet support. As such, you cannot use Anaconda to install Fedora 19
+from a repository published by Pulp.
