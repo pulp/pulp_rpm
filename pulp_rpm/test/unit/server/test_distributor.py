@@ -427,7 +427,7 @@ class TestDistributor(rpm_support_base.PulpRPMTests):
         existing_units = self.get_units(count=num_units)
         publish_conduit = distributor_mocks.get_publish_conduit(type_id="rpm", existing_units=existing_units, pkg_dir=self.pkg_dir)
         publish_conduit.repo_id = 'foo'
-        publish_conduit.distributor_id = 'bar'
+        publish_conduit.distributor_id = TYPE_ID_DISTRIBUTOR_YUM
         config = distributor_mocks.get_basic_config(https_publish_dir=self.https_publish_dir, relative_url=relative_url,
                 http=False, https=True)
         distributor = YumDistributor()
@@ -445,6 +445,34 @@ class TestDistributor(rpm_support_base.PulpRPMTests):
             assert_called_with(ANY, ANY, {'checksum_type': 'sha1'})
 
 
+    @patch('pulp.server.managers.factory.repo_distributor_manager')
+    @patch('pulp_rpm.yum_plugin.metadata.YumMetadataGenerator')
+    def test_yum_plugin_generate_yum_metadata_checksum_from_conduit_sha1_conversion_non_yum_distributor(self,
+                                                                    mock_YumMetadataGenerator,
+                                                                    mock_distributor_manager):
+        repo = mock.Mock(spec=Repository)
+        repo.working_dir = self.repo_working_dir
+        repo.id = "test_publish"
+        num_units = 10
+        relative_url = "rel_a/rel_b/rel_c/"
+        existing_units = self.get_units(count=num_units)
+        publish_conduit = distributor_mocks.get_publish_conduit(type_id="rpm", existing_units=existing_units, pkg_dir=self.pkg_dir)
+        publish_conduit.repo_id = 'foo'
+        publish_conduit.distributor_id = 'foo'
+        config = distributor_mocks.get_basic_config(https_publish_dir=self.https_publish_dir, relative_url=relative_url,
+                http=False, https=True)
+        distributor = YumDistributor()
+        distributor.process_repo_auth_certificate_bundle = mock.Mock()
+        config_conduit = mock.Mock(spec=RepoConfigConduit)
+        config_conduit.get_repo_distributors_by_relative_url.return_value = MockCursor([])
+        metadata.generate_yum_metadata(repo.id, repo.working_dir, publish_conduit, config,
+                                        repo_scratchpad={'checksum_type': 'sha'})
+        mock_YumMetadataGenerator.assert_called_with(ANY, checksum_type='sha1',
+                                                     skip_metadata_types=ANY, is_cancelled=ANY,
+                                                     group_xml_path=ANY,
+                                                     updateinfo_xml_path=ANY,
+                                                     custom_metadata_dict=ANY)
+        self.assertFalse(mock_distributor_manager.return_value.update_distributor_config.called)
 
     @patch('pulp.server.managers.factory.repo_distributor_manager')
     @patch('pulp_rpm.yum_plugin.metadata.YumMetadataGenerator')
