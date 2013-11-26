@@ -14,8 +14,9 @@ import shutil
 from tempfile import mkdtemp
 from urlparse import urljoin
 
+from nectar.config import DownloaderConfig
+
 from pulp.plugins.cataloger import Cataloger
-from pulp.plugins.util.nectar_config import importer_config_to_nectar_config
 
 from pulp_rpm.common import models
 from pulp_rpm.plugins.importers.yum.repomd.metadata import MetadataFiles
@@ -28,7 +29,7 @@ TYPE_ID = 'yum'
 
 def entry_point():
     """
-    The Pulp platform uses this method to load the profiler.
+    The Pulp platform uses this method to load the cataloger.
     :return: YumCataloger class and an (empty) config
     :rtype:  tuple
     """
@@ -47,6 +48,15 @@ class YumCataloger(Cataloger):
 
     @staticmethod
     def _add_packages(conduit, base_url, md_files):
+        """
+        Add package (rpm) entries to the catalog.
+        :param conduit: Access to pulp platform API.
+        :type conduit: pulp.server.plugins.conduits.cataloger.CatalogerConduit
+        :param base_url: The base download URL.
+        :type base_url: str
+        :param md_files: The metadata files object.
+        :type md_files: pulp_rpm.plugins.importers.yum.repomd.metadata.MetadataFiles
+        """
         with md_files.get_metadata_file_handle(primary.METADATA_FILE_NAME) as fp:
             _packages = packages.package_list_generator(
                 fp, primary.PACKAGE_TAG, primary.process_package_element)
@@ -56,9 +66,18 @@ class YumCataloger(Cataloger):
                 conduit.add_entry(models.RPM.TYPE, unit_key, url)
 
     def refresh(self, conduit, config, url):
+        """
+        Refresh the content catalog.
+        :param conduit: Access to pulp platform API.
+        :type conduit: pulp.server.plugins.conduits.cataloger.CatalogerConduit
+        :param config: The content source configuration.
+        :type config: dict
+        :param url: The URL for the content source.
+        :type url: str
+        """
         dst_dir = mkdtemp()
+        nectar_config = DownloaderConfig(**config)
         try:
-            nectar_config = importer_config_to_nectar_config(config)
             md_files = MetadataFiles(url, dst_dir, nectar_config)
             md_files.download_repomd()
             md_files.parse_repomd()
