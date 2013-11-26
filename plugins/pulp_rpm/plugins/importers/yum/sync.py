@@ -527,6 +527,12 @@ class RepoSync(object):
             unit = self.sync_conduit.init_unit(model.TYPE, model.unit_key, model.metadata, None)
             self.sync_conduit.save_unit(unit)
 
+    def finalize(self):
+        """
+        Perform any necessary cleanup.
+        """
+        self.nectar_config.finalize()
+
     def _identify_wanted_versions(self, package_info_generator):
         """
         Given an iterator of Package instances available for download, scan
