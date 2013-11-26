@@ -243,7 +243,7 @@ def _handle_package(type_id, unit_key, metadata, file_path, conduit, config):
 
     # Extract the RPM key and metadata
     try:
-        new_unit_key, new_unit_metadata = _generate_rpm_data(file_path)
+        new_unit_key, new_unit_metadata = _generate_rpm_data(file_path, metadata)
     except:
         _LOGGER.exception('Error extracting RPM metadata for [%s]' % file_path)
         raise PackageMetadataError()
@@ -269,7 +269,8 @@ def _handle_package(type_id, unit_key, metadata, file_path, conduit, config):
         raise StoreFileError()
 
     # Extract the repodata snippets
-    unit.metadata['repodata'] = rpm_parse.get_package_xml(unit.storage_path)
+    unit.metadata['repodata'] = rpm_parse.get_package_xml(unit.storage_path,
+                                                          summtype=new_unit_key['checksumtype'])
     _update_provides_requires(unit)
 
     # Save the unit in Pulp
@@ -308,13 +309,15 @@ def _update_provides_requires(unit):
                                      requires_element.findall('entry')) if requires_element else []
 
 
-def _generate_rpm_data(rpm_filename):
+def _generate_rpm_data(rpm_filename, user_metadata):
     """
     For the given RPM, analyzes its metadata to generate the appropriate unit
     key and metadata fields, returning both to the caller.
 
     :param rpm_filename: full path to the RPM to analyze
     :type  rpm_filename: str
+    :param user_metadata: user supplied metadata about the unit
+    :type  user_metadata: dict
 
     :return: tuple of unit key and unit metadata for the RPM
     :rtype:  tuple
@@ -342,9 +345,11 @@ def _generate_rpm_data(rpm_filename):
         raise
 
     # -- Unit Key -----------------------
-
     # Checksum
-    unit_key['checksumtype'] = verification.TYPE_SHA256
+    if 'checksum-type' in user_metadata:
+        unit_key['checksumtype'] = user_metadata['checksum-type']
+    else:
+        unit_key['checksumtype'] = verification.TYPE_SHA256
     unit_key['checksum'] = _calculate_checksum(unit_key['checksumtype'], rpm_filename)
 
     # Name, Version, Release, Epoch
