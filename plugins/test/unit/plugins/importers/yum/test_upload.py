@@ -24,8 +24,8 @@ from pulp_rpm.common import models
 from pulp_rpm.plugins.importers.yum.repomd import packages, updateinfo
 from pulp_rpm.plugins.importers.yum import upload
 
-
 DATA_DIR = os.path.join(os.path.dirname(__file__), '../../../../data')
+
 
 class UploadDispatchTests(unittest.TestCase):
     """
