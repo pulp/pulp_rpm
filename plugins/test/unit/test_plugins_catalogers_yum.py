@@ -17,12 +17,11 @@ import json
 import shutil
 
 from unittest import TestCase
+from mock import patch
 from tarfile import TarFile
 from tempfile import mkdtemp
 from urlparse import urlsplit, urlunsplit
 
-from pulp.server.db import connection as db
-from pulp.server.db.model.content import ContentCatalog
 from pulp.server.managers import factory as managers
 from pulp.plugins.conduits.cataloger import CatalogerConduit
 
@@ -38,18 +37,23 @@ EXPIRES = 90
 
 class TestCataloger(TestCase):
 
+    @staticmethod
+    def _normalized(url):
+        parts = list(urlsplit(url))
+        path = list(os.path.split(parts[2]))
+        path[0] = 'pulp'  # replace tmp_dir with constant
+        parts[2] = os.path.join(*path)
+        return urlunsplit(parts)
+
     def setUp(self):
         TestCase.setUp(self)
-        db.initialize('pulp_unittest')
         managers.initialize()
         self.tmp_dir = mkdtemp()
         with TarFile(TAR_PATH) as tar:
             tar.extractall(self.tmp_dir)
-        ContentCatalog.get_collection().remove()
 
     def tearDown(self):
         TestCase.tearDown(self)
-        ContentCatalog.get_collection().remove()
         shutil.rmtree(self.tmp_dir, ignore_errors=True)
 
     def test_entry_point(self):
@@ -57,30 +61,21 @@ class TestCataloger(TestCase):
         self.assertEqual(plugin, YumCataloger)
         self.assertEqual(config, {})
 
-    def test_packages(self):
+    @patch('pulp.server.managers.content.catalog.ContentCatalogManager.add_entry')
+    def test_packages(self, mock_add):
         url = 'file://%s/' % self.tmp_dir
         conduit = CatalogerConduit(SOURCE_ID, EXPIRES)
         cataloger = YumCataloger()
         cataloger.refresh(conduit, {}, url)
-        collection = ContentCatalog.get_collection()
-        cataloged = list(collection.find(sort=[('locator', 1)]))
         with open(JSON_PATH) as fp:
             expected = json.load(fp)
-        self.assertEqual(len(cataloged), len(expected))
-        for i in range(0, len(expected)):
-            for key in ('type_id', 'unit_key', 'locator'):
-                self.assertEqual(cataloged[i][key], expected[i][key])
-            self.assertUrlEqual(cataloged[i]['url'], expected[i]['url'])
+        self.assertEqual(mock_add.call_count, len(expected))
+        for entry in expected:
+            self.assertTrue(
+                mock_add.called_with(
+                    SOURCE_ID,
+                    EXPIRES,
+                    entry['type_id'],
+                    entry['unit_key'],
+                    self._normalized(entry['url'])))
 
-    def assertUrlEqual(self, *urls):
-        _urls = list(urls)
-        for i in range(0, len(urls)):
-            url = urls[i]
-            parts = list(urlsplit(url))
-            path = list(os.path.split(parts[2]))
-            path[0] = 'pulp'  # replace tmp_dir with constant
-            parts[2] = os.path.join(*path)
-            _urls[i] = urlunsplit(parts)
-        for url in _urls:
-            for u in _urls:
-                self.assertEqual(url, u)
