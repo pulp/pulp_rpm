@@ -79,7 +79,10 @@ class YumImporter(Importer):
         :rtype:  pulp.plugins.model.SyncReport
         """
         self._current_sync = sync.RepoSync(repo, sync_conduit, call_config)
-        return self._current_sync.run()
+        report = self._current_sync.run()
+        self._current_sync.finalize()
+        return report
 
     def cancel_sync_repo(self, call_request, call_report):
         self._current_sync.cancel()
+        self._current_sync.finalize()

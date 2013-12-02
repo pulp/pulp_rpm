@@ -172,6 +172,7 @@ class ISODistributor(Distributor):
         else:
             result = export_utils.export_complete_repo(repo.id, self.working_dir, publish_conduit,
                                                        config, progress_callback)
+        util.generate_listing_files(repo.working_dir, self.working_dir)
         self.summary = result[0]
         self.details = result[1]
 
