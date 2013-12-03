@@ -24,6 +24,8 @@ from pulp_rpm.common import models
 from pulp_rpm.plugins.importers.yum.repomd import packages, updateinfo
 from pulp_rpm.plugins.importers.yum import upload
 
+DATA_DIR = os.path.join(os.path.dirname(__file__), '../../../../data')
+
 
 class UploadDispatchTests(unittest.TestCase):
     """
@@ -249,8 +251,7 @@ class UploadErratumTests(unittest.TestCase):
         mock_conduit = mock.MagicMock()
         mock_conduit.get_units.return_value = ['a', 'b']
 
-        sample_errata_file = os.path.join(os.path.dirname(__file__),
-                                          '..', 'data', 'RHBA-2010-0836.erratum.xml')
+        sample_errata_file = os.path.join(DATA_DIR, 'RHBA-2010-0836.erratum.xml')
         with open(sample_errata_file) as f:
             errata = packages.package_list_generator(f,
                                                      updateinfo.PACKAGE_TAG,
@@ -400,8 +401,7 @@ class UploadPackageTests(unittest.TestCase):
     def setUp(self):
         super(UploadPackageTests, self).setUp()
 
-        sample_rpm_filename = os.path.join(os.path.dirname(__file__), '..', 'data',
-                                           'walrus-5.21-1.noarch.rpm')
+        sample_rpm_filename = os.path.join(DATA_DIR, 'walrus-5.21-1.noarch.rpm')
 
         self.tmp_dir = tempfile.mkdtemp(prefix='pulp-rpm-upload-tests')
 
@@ -432,7 +432,7 @@ class UploadPackageTests(unittest.TestCase):
             'checksum' : 'e837a635cc99f967a70f34b268baa52e0f412c1502e08e924ff5b09f1f9573f2',
         }
         metadata = {
-            'relativepath' : ''
+            'relativepath': ''
         }
         mock_generate.return_value = unit_key, metadata
 
@@ -455,7 +455,7 @@ class UploadPackageTests(unittest.TestCase):
         self.assertTrue(not os.path.exists(self.upload_src_filename))
 
         #   Mock calls
-        mock_generate.assert_called_once_with(self.upload_src_filename)
+        mock_generate.assert_called_once_with(self.upload_src_filename, user_metadata)
 
         full_unit_key = dict(unit_key)
         full_metadata = dict(metadata)
@@ -515,7 +515,7 @@ class UploadPackageTests(unittest.TestCase):
 
     def test_generate_rpm_data(self):
         # Test
-        unit_key, metadata = upload._generate_rpm_data(self.upload_src_filename)
+        unit_key, metadata = upload._generate_rpm_data(self.upload_src_filename, {})
 
         # Verify
         self.assertEqual(unit_key['name'], 'walrus')
@@ -525,6 +525,27 @@ class UploadPackageTests(unittest.TestCase):
         self.assertEqual(unit_key['arch'], 'noarch')
         self.assertEqual(unit_key['checksum'], 'e837a635cc99f967a70f34b268baa52e0f412c1502e08e924ff5b09f1f9573f2')
         self.assertEqual(unit_key['checksumtype'], 'sha256')
+
+        self.assertEqual(metadata['buildhost'], 'smqe-ws15')
+        self.assertEqual(metadata['description'], 'A dummy package of walrus')
+        self.assertEqual(metadata['filename'], 'walrus-5.21-1.noarch.rpm')
+        self.assertEqual(metadata['license'], 'GPLv2')
+        self.assertEqual(metadata['relativepath'], 'walrus-5.21-1.noarch.rpm')
+        self.assertEqual(metadata['vendor'], None)
+
+    def test_generate_rpm_data_user_checksum(self):
+        # Test
+        unit_key, metadata = upload._generate_rpm_data(self.upload_src_filename,
+                                                       {'checksum-type': 'sha1'})
+
+        # Verify
+        self.assertEqual(unit_key['name'], 'walrus')
+        self.assertEqual(unit_key['epoch'], '0')
+        self.assertEqual(unit_key['version'], '5.21')
+        self.assertEqual(unit_key['release'], '1')
+        self.assertEqual(unit_key['arch'], 'noarch')
+        self.assertEqual(unit_key['checksum'], '8dea2b64fc52062d79d5f96ba6415bffae4d2153')
+        self.assertEqual(unit_key['checksumtype'], 'sha1')
 
         self.assertEqual(metadata['buildhost'], 'smqe-ws15')
         self.assertEqual(metadata['description'], 'A dummy package of walrus')

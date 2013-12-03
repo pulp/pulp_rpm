@@ -16,6 +16,7 @@ import os
 
 from createrepo import yumbased
 import rpmUtils
+from pulp.plugins.util import verification
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -23,7 +24,7 @@ _LOGGER = logging.getLogger(__name__)
 # uses createrepo and yum to generate some of the repo metadata
 
 
-def get_package_xml(pkg_path):
+def get_package_xml(pkg_path, sumtype=verification.TYPE_SHA256):
     """
     Method to generate repo xmls - primary, filelists and other
     for a given rpm.
@@ -31,12 +32,15 @@ def get_package_xml(pkg_path):
     :param pkg_path: rpm package path on the filesystem
     :type  pkg_path: str
 
+    :param sumtype: The type of checksum to use for creating the package xml
+    :type  sumtype: str
+
     :return:    rpm metadata dictionary or empty if rpm path doesnt exist
     :rtype:     dict
     """
     ts = rpmUtils.transaction.initReadOnlyTransaction()
     try:
-        po = yumbased.CreateRepoPackage(ts, pkg_path)
+        po = yumbased.CreateRepoPackage(ts, pkg_path, sumtype=sumtype)
     except Exception, e:
         # I hate this, but yum doesn't use reasonable exceptions like IOError
         # and ValueError.
@@ -76,6 +80,7 @@ def change_location_tag(primary_xml_snippet, relpath):
 
 
 ENCODING_LIST = ('utf8', 'iso-8859-1')
+
 
 def string_to_unicode(data):
     """
