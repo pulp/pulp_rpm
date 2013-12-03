@@ -270,7 +270,7 @@ def _handle_package(type_id, unit_key, metadata, file_path, conduit, config):
 
     # Extract the repodata snippets
     unit.metadata['repodata'] = rpm_parse.get_package_xml(unit.storage_path,
-                                                          summtype=new_unit_key['checksumtype'])
+                                                          sumtype=new_unit_key['checksumtype'])
     _update_provides_requires(unit)
 
     # Save the unit in Pulp
