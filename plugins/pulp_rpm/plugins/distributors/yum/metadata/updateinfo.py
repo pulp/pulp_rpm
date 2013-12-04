@@ -119,10 +119,13 @@ class UpdateinfoXMLFileContext(MetadataFileContext):
                 filename_element = ElementTree.SubElement(package_element, 'filename')
                 filename_element.text = package['filename']
 
-                checksum_type, checksum_value = package['sum']
-                sum_attributes = {'type': checksum_type}
-                sum_element = ElementTree.SubElement(package_element, 'sum', sum_attributes)
-                sum_element.text = checksum_value
+                checksum_tuple = package.get('sum', None)
+
+                if checksum_tuple is not None:
+                    checksum_type, checksum_value = checksum_tuple
+                    sum_attributes = {'type': checksum_type}
+                    sum_element = ElementTree.SubElement(package_element, 'sum', sum_attributes)
+                    sum_element.text = checksum_value
 
                 reboot_element = ElementTree.SubElement(package_element, 'reboot_suggested')
                 reboot_element.text = str(package.get('reboot_suggested', False))
