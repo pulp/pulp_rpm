@@ -28,6 +28,7 @@ class Package(object):
     UNIT_KEY_NAMES = tuple()
     TYPE = None
     NAMEDTUPLE = None
+
     def __init__(self, local_vars):
         self.metadata = local_vars.get('metadata', {})
         for name in self.UNIT_KEY_NAMES:
@@ -283,7 +284,7 @@ class PackageEnvironment(Package):
     TYPE = 'package_environment'
 
     def __init__(self, id, repo_id, metadata):
-        super(PackageEnvironment, self).__init__(self, locals())
+        Package.__init__(self, locals())
 
     @property
     def environment_groups(self):
