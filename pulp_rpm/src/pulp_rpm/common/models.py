@@ -278,6 +278,26 @@ class PackageCategory(Package):
         return self.metadata.get('packagegroupids', [])
 
 
+class PackageEnvironment(Package):
+    UNIT_KEY_NAMES = ('id', 'repo_id')
+    TYPE = 'package_environment'
+
+    def __init__(self, id, repo_id, metadata):
+        super(PackageEnvironment, self).__init__(self, locals())
+
+    @property
+    def environment_groups(self):
+        return self.metadata.get('group_ids', [])
+
+    @property
+    def environment_default_options(self):
+        return self.metadata.get('default_option_ids', [])
+
+    @property
+    def environment_options(self):
+        return self.metadata.get('option_ids', [])
+
+
 class YumMetadataFile(Package):
     UNIT_KEY_NAMES = ('data_type', 'repo_id')
     TYPE = 'yum_repo_metadata_file'
