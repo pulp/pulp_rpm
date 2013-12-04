@@ -510,7 +510,7 @@ class PublishMetadataStep(PublishStep):
         # Add the proper relative reference to the metadata file to repomd
         repomd_relative_filename = os.path.join(REPO_DATA_DIR_NAME, metadata_file_name)
         self.parent.repomd_file_context.add_metadata_file_metadata(
-            unit.unit_key['data_type'], repomd_relative_filename)
+            unit.unit_key['data_type'], link_path)
 
 
 class PublishDrpmStep(PublishStep):

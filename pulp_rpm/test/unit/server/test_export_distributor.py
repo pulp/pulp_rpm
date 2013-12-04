@@ -27,6 +27,7 @@ sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)) + "/../../../plugi
 
 from iso_distributor import export_utils
 from iso_distributor.distributor import ISODistributor
+from pulp_rpm.yum_plugin import util
 from pulp_rpm.common.ids import (TYPE_ID_DISTRO, TYPE_ID_PKG_GROUP, TYPE_ID_ERRATA, TYPE_ID_DRPM,
                                  TYPE_ID_SRPM, TYPE_ID_RPM, TYPE_ID_PKG_CATEGORY,
                                  TYPE_ID_DISTRIBUTOR_EXPORT)
@@ -127,6 +128,7 @@ class TestPublishRepo(unittest.TestCase):
         self.export_complete_repo = export_utils.export_complete_repo
         self.export_incremental = export_utils.export_incremental_content
         self.retrieve_repo_config = export_utils.retrieve_repo_config
+        self.generate_listing_files = util.generate_listing_files
         self.rmtree = shutil.rmtree
         self.makdirs = os.makedirs
 
@@ -134,7 +136,8 @@ class TestPublishRepo(unittest.TestCase):
         export_utils.validate_export_config = mock.Mock(return_value=(True, None))
         export_utils.export_complete_repo = mock.Mock(return_value=({}, {'errors': []}))
         export_utils.export_incremental_content = mock.Mock(return_value=({}, {'errors': ()}))
-        export_utils.retrieve_repo_config = mock.Mock(return_value=('/working/dir', None))
+        export_utils.retrieve_repo_config = mock.Mock(return_value=('/working/dir/repo', None))
+        util.generate_listing_files = mock.Mock()
         shutil.rmtree = mock.Mock(spec=shutil.rmtree)
         os.makedirs = mock.Mock(spec=os.makedirs)
 
@@ -144,6 +147,7 @@ class TestPublishRepo(unittest.TestCase):
         export_utils.export_complete_repo = self.export_complete_repo
         export_utils.export_incremental_content = self.export_incremental
         export_utils.retrieve_repo_config = self.retrieve_repo_config
+        util.generate_listing_files = self.generate_listing_files
         shutil.rmtree = self.rmtree
         os.makedirs = self.makdirs
 
@@ -198,8 +202,15 @@ class TestPublishRepo(unittest.TestCase):
         self.distributor.publish_repo(self.repo, self.mock_conduit, self.config)
         self.assertEqual(1, export_utils.export_complete_repo.call_count)
         self.assertEqual('repo-id', export_utils.export_complete_repo.call_args[0][0])
-        self.assertEqual('/working/dir', export_utils.export_complete_repo.call_args[0][1])
+        self.assertEqual('/working/dir/repo', export_utils.export_complete_repo.call_args[0][1])
         self.assertEqual(self.config, export_utils.export_complete_repo.call_args[0][3])
+
+    def test_export_listings_file(self):
+        """
+        Test that the listings file is created
+        """
+        self.distributor.publish_repo(self.repo, self.mock_conduit, self.config)
+        util.generate_listing_files.assert_called_once_with('/working/dir', '/working/dir/repo')
 
     def test_export_incremental(self):
         """

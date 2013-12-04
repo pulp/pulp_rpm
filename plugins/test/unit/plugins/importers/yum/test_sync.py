@@ -170,6 +170,14 @@ class TestRun(BaseSyncTest):
         self.assertEqual(report.details['distribution']['state'],
                          constants.STATE_SKIPPED)
 
+    @mock.patch('shutil.rmtree', autospec=True)
+    @mock.patch('tempfile.mkdtemp', autospec=True)
+    @mock.patch('nectar.config.DownloaderConfig.finalize')
+    def test_finalize(self, mock_finalize, mock_mkdtemp, mock_rmtree):
+
+        self.reposync.run()
+
+        mock_finalize.assert_called_once()
 
     @mock.patch('shutil.rmtree', autospec=True)
     @mock.patch('tempfile.mkdtemp', autospec=True)

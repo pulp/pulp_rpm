@@ -17,8 +17,8 @@
 # ---- Pulp (rpm) --------------------------------------------------------------
 
 Name: pulp-rpm
-Version: 2.3.0
-Release: 0.29.beta%{?dist}
+Version: 2.3.1
+Release: 0.3.beta%{?dist}
 Summary: Support for RPM content in the Pulp platform
 Group: Development/Languages
 License: GPLv2
@@ -278,6 +278,45 @@ A collection of yum plugins supplementing Pulp consumer operations.
 
 
 %changelog
+* Mon Nov 25 2013 Barnaby Court <bcourt@redhat.com> 2.3.1-0.3.beta
+- 1034366 - Failure to export RPM repositories to ISO where the repository does
+  not have a checksum manually set. (bcourt@redhat.com)
+
+* Fri Nov 22 2013 Jeff Ortel <jortel@redhat.com> 2.3.1-0.2.beta
+- 1033776 - If scratchpad contains fields other than checksum_type then
+  checksum may be calculated incorrectly. (bcourt@redhat.com)
+
+* Fri Nov 22 2013 Jeff Ortel <jortel@redhat.com> 2.3.1-0.1.beta
+- Pulp rebuild
+
+* Tue Nov 19 2013 Barnaby Court <bcourt@redhat.com> 2.3.0-0.37.beta
+- 1029057 - Save the rpm repo checksum type from the repo scratchpad to the
+  distributor config during a publish. (bcourt@redhat.com)
+
+* Fri Nov 15 2013 Jeff Ortel <jortel@redhat.com> 2.3.0-0.36.beta
+- Pulp rebuild
+
+* Thu Nov 14 2013 Jeff Ortel <jortel@redhat.com> 2.3.0-0.35.beta
+- Pulp rebuild
+
+* Thu Nov 14 2013 Barnaby Court <bcourt@redhat.com> 2.3.0-0.34.beta
+- Pulp rebuild
+
+* Tue Nov 12 2013 Barnaby Court <bcourt@redhat.com> 2.3.0-0.33.beta
+- 1029057 - override sha with sha1 in order to support yum modifyrepo command.
+  (bcourt@redhat.com)
+
+* Mon Nov 11 2013 Barnaby Court <bcourt@redhat.com> 2.3.0-0.32.beta
+- 1029057 - Set checksum for metadata from upstream repository on synced
+  repositories. (bcourt@redhat.com)
+
+* Thu Nov 07 2013 Jeff Ortel <jortel@redhat.com> 2.3.0-0.31.beta
+- Pulp rebuild
+
+* Thu Nov 07 2013 Jeff Ortel <jortel@redhat.com> 2.3.0-0.30.beta
+- 1026907 - Fix dep equality comparison when a release is omitted.
+  (jason.dobies@redhat.com)
+
 * Wed Nov 06 2013 Jeff Ortel <jortel@redhat.com> 2.3.0-0.29.beta
 - Pulp rebuild
 
