@@ -1,0 +1,56 @@
+======================
+Pulp 2.3 Release Notes
+======================
+
+Pulp 2.3.0
+==========
+
+New Features
+------------
+
+-  Users can now :ref:`export repositories <export-repos>` to a series of ISOs or
+   to a location on disk that is convenient for transfer to another system.
+
+-  The consumer applicability API is vastly different and performs much faster.
+   Please see the platform developer guide for details on the new API.
+
+-  The yum distributor now creates "listing" files in the parent directories of
+   published yum repositories, all the way up the tree to the base publish path.
+   These "listing" files are used by tools like Katello and Red Hat's
+   subscription-manager to discover available repositories within a particular
+   path.
+
+
+Client Changes
+--------------
+
+-  The command ``pulp-admin iso repo content`` was renamed to ``pulp-admin iso repo isos``
+
+
+Notable Bug Fixes
+-----------------
+
+-  In some cases, `repo groups were displayed with a translated name only
+   <https://bugzilla.redhat.com/show_bug.cgi?id=1021656>`_. This is fixed in 2.3,
+   but a re-sync is required of any affected repository.
+
+-  Consumers are `now notified <https://bugzilla.redhat.com/show_bug.cgi?id=975980>`_
+   when the relative path of a bound repository is changed.
+
+-  It is now `far more intuitive <https://bugzilla.redhat.com/show_bug.cgi?id=979587>`_
+   to update all packages on a consumer from ``pulp-admin``.
+
+
+All Bugs
+--------
+
+You can see the complete list of over 100 bugs that were
+`fixed in Pulp 2.3.0 <https://bugzilla.redhat.com/buglist.cgi?bug_status=VERIFIED&classification=Community&list_id=1927252&product=Pulp&query_format=advanced&target_release=2.3.0>`_.
+
+
+Known Issues
+------------
+
+Fedora 19 repositories have a new data type called an "environment group" that
+Pulp does not yet support. As such, you cannot use Anaconda to install Fedora 19
+from a repository published by Pulp.
