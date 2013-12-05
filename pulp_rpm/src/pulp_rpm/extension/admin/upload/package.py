@@ -21,6 +21,7 @@ from pulp.client.commands.options import OPTION_REPO_ID
 from pulp.client.commands.repo.upload import UploadCommand, MetadataException
 from pulp.client.extensions.extensions import PulpCliFlag
 from pulp_rpm.common.ids import TYPE_ID_RPM, TYPE_ID_SRPM
+from pulp_rpm.extension.admin.repo_options import OPT_CHECKSUM_TYPE
 
 
 NAME_RPM = 'rpm'
@@ -63,7 +64,10 @@ class _CreatePackageCommand(UploadCommand):
 
     def generate_unit_key_and_metadata(self, filename, **kwargs):
         # These are extracted server-side, so nothing to do here.
-        return {}, {}
+        metadata = {}
+        if 'checksum-type' in kwargs:
+            metadata['checksum-type'] = kwargs['checksum-type']
+        return {}, metadata
 
     def create_upload_list(self, file_bundles, **kwargs):
 
@@ -122,6 +126,7 @@ class CreateRpmCommand(_CreatePackageCommand):
     def __init__(self, context, upload_manager, name=NAME_RPM, description=DESC_RPM):
         super(CreateRpmCommand, self).__init__(context, upload_manager, TYPE_ID_RPM,
                                                SUFFIX_RPM, name, description)
+        self.add_option(OPT_CHECKSUM_TYPE)
 
 
 class CreateSrpmCommand(_CreatePackageCommand):
@@ -129,6 +134,7 @@ class CreateSrpmCommand(_CreatePackageCommand):
     def __init__(self, context, upload_manager, name=NAME_SRPM, description=DESC_SRPM):
         super(CreateSrpmCommand, self).__init__(context, upload_manager, TYPE_ID_SRPM,
                                                 SUFFIX_SRPM, name, description)
+        self.add_option(OPT_CHECKSUM_TYPE)
 
 
 def _generate_unit_key(rpm_filename):
