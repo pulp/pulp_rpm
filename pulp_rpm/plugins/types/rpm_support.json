@@ -54,6 +54,16 @@
     },
 
     {
+        "id" : "package_environment",
+        "display_name" : "Package Environment",
+        "description" : "Yum Package environment information",
+        "unit_key" :
+            ["id", "repo_id"],
+        "search_indexes" :
+            ["id", "repo_id", "name", "group_ids"]
+    },
+
+    {
         "id" : "rpm",
         "display_name" : "RPM",
         "description" : "RPM",

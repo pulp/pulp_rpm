@@ -130,8 +130,8 @@ class TestProcessEnvironmentElement(unittest.TestCase):
         self.assertEquals(group_model.metadata['display_order'], 5)
         self.assertEquals(group_model.metadata['name'], 'foo-name')
         self.assertEquals(group_model.metadata['description'], 'foo-desc')
-        self.assertEquals(len(group_model.environment_groups), 1)
-        self.assertEquals(group_model.environment_groups[0], 'group1')
+        self.assertEquals(len(group_model.group_ids), 1)
+        self.assertEquals(group_model.group_ids[0], 'group1')
 
     def test_translated_description(self):
         ElementTree.SubElement(self.element, 'description', {group.LANGUAGE_TAG: 'fr'}).text = 'desc2'
@@ -162,10 +162,10 @@ class TestProcessEnvironmentElement(unittest.TestCase):
 
         group_model = self.process_environment(self.element)
 
-        self.assertEquals(len(group_model.environment_groups), 3)
-        self.assertTrue('group1' in group_model.environment_groups)
-        self.assertTrue('group2' in group_model.environment_groups)
-        self.assertTrue('group3' in group_model.environment_groups)
+        self.assertEquals(len(group_model.group_ids), 3)
+        self.assertTrue('group1' in group_model.group_ids)
+        self.assertTrue('group2' in group_model.group_ids)
+        self.assertTrue('group3' in group_model.group_ids)
 
     def test_option_list(self):
         group_element = self.element.find('optionlist')
@@ -174,21 +174,24 @@ class TestProcessEnvironmentElement(unittest.TestCase):
 
         group_model = self.process_environment(self.element)
 
-        self.assertEquals(len(group_model.environment_options), 2)
-        self.assertTrue('group1' in group_model.environment_options)
-        self.assertTrue('group2' in group_model.environment_options)
+        options = group_model.options
+        self.assertEquals(len(options), 2)
+        self.assertTrue(any(d.get('group', None) == 'group1' for d in options))
+        self.assertTrue(any(d.get('group', None) == 'group2' for d in options))
 
     def test_option_list_with_default(self):
         group_element = self.element.find('optionlist')
         ElementTree.SubElement(group_element, 'groupid', {'default': True}).text = 'group1'
-        ElementTree.SubElement(group_element, 'groupid', {'default': True}).text = 'group2'
+        ElementTree.SubElement(group_element, 'groupid', {'default': False}).text = 'group2'
 
         group_model = self.process_environment(self.element)
 
-        self.assertEquals(len(group_model.environment_default_options), 2)
-        self.assertTrue('group1' in group_model.environment_default_options)
-        self.assertTrue('group2' in group_model.environment_default_options)
-
+        options = group_model.options
+        self.assertEquals(len(options), 2)
+        self.assertTrue(any(d.get('group', None) == 'group1' and d.get('default', None) is True
+                            for d in options))
+        self.assertTrue(any(d.get('group', None) == 'group2' and d.get('default', None) is False
+                            for d in options))
 
 # highly abridged version that grabs one group with a uservisible value
 # and another without to make sure the default works.

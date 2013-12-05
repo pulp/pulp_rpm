@@ -287,16 +287,12 @@ class PackageEnvironment(Package):
         Package.__init__(self, locals())
 
     @property
-    def environment_groups(self):
+    def group_ids(self):
         return self.metadata.get('group_ids', [])
 
     @property
-    def environment_default_options(self):
-        return self.metadata.get('default_option_ids', [])
-
-    @property
-    def environment_options(self):
-        return self.metadata.get('option_ids', [])
+    def options(self):
+        return self.metadata.get('options', [])
 
 
 class YumMetadataFile(Package):

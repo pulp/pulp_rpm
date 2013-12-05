@@ -117,13 +117,9 @@ def process_environment_element(repo_id, element):
     groups = element.find('grouplist').findall('groupid')
 
     options = []
-    default_options = []
     for group in element.find('optionlist').findall('groupid'):
         default = group.attrib.get('default', False)
-        if default:
-            default_options.append(group.text)
-        else:
-            options.append(group.text)
+        options.append({'group': group.text, 'default': default})
 
     return models.PackageEnvironment.from_package_info({
         'description': description,
@@ -135,8 +131,7 @@ def process_environment_element(repo_id, element):
         'repo_id': repo_id,
         'translated_description': translated_description,
         'translated_name': translated_name,
-        'default_option_ids': default_options,
-        'option_ids': options
+        'options': options
     })
 
 
