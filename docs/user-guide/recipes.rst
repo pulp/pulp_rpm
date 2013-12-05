@@ -195,6 +195,8 @@ the "Download" link from the "Entitlement Certificate" column to retrieve the
 certificate and key, bundled into a single file. You can pass that same file as
 the ``--feed-cert`` and ``--feed-key`` options when you create the repo.
 
+.. _export-repos:
+
 Export Repositories and Repository Groups
 =========================================
 
