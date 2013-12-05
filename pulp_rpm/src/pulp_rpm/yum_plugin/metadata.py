@@ -158,12 +158,14 @@ def get_repo_checksum_type(publish_conduit, config):
         # Save the checksum back on the distributor config if it isn't there already
         # This is so that it can be synchronized to nodes and used for uploaded RPMS
         distributor_config = config.repo_plugin_config
-        if 'checksum_type' not in distributor_config and \
-                publish_conduit.distributor_id is YUM_DISTRIBUTOR_ID:
+        if 'checksum_type' not in distributor_config:
             distributor_manager = factory.repo_distributor_manager()
-            distributor_manager.update_distributor_config(publish_conduit.repo_id,
-                                                          publish_conduit.distributor_id,
-                                                          {'checksum_type': checksum_type})
+            distributor = distributor_manager.get_distributor(publish_conduit.repo_id,
+                                                              publish_conduit.distributor_id)
+            if distributor['distributor_type_id'] == YUM_DISTRIBUTOR_ID:
+                distributor_manager.update_distributor_config(publish_conduit.repo_id,
+                                                              publish_conduit.distributor_id,
+                                                              {'checksum_type': checksum_type})
     return checksum_type
 
 
