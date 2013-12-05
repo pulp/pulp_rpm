@@ -136,7 +136,7 @@ def build_final_report(conduit, relative_path, progress_report):
             publish_succeeded = False
 
         if progress_report[step][STATE] is PUBLISH_CANCELED_STATE:
-            publish_succeeded = True
+            publish_cancelled = True
 
         total = progress_report[step].get(TOTAL, 0)
         processed = progress_report[step].get(PROCESSED, 0)
