@@ -36,8 +36,8 @@ OPTIONAL_CONFIG_KEYS = ('auth_ca', 'auth_cert', 'checksum_type',
 ALPHA_NUMERIC_PATH_REGEX = re.compile(r'^[a-zA-Z0-9/_-]+$')
 
 ROOT_PUBLISH_DIR = '/var/lib/pulp/published/yum'
-HTTP_PUBLISH_DIR = os.path.join(ROOT_PUBLISH_DIR, 'http')
-HTTPS_PUBLISH_DIR = os.path.join(ROOT_PUBLISH_DIR, 'https')
+HTTP_PUBLISH_DIR = os.path.join(ROOT_PUBLISH_DIR, 'http', 'repos')
+HTTPS_PUBLISH_DIR = os.path.join(ROOT_PUBLISH_DIR, 'https', 'repos')
 
 # -- public api ----------------------------------------------------------------
 

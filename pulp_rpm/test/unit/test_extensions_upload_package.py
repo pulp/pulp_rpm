@@ -21,6 +21,7 @@ from pulp.client.commands.repo.upload import UploadCommand, FileBundle
 from pulp_rpm.common.ids import TYPE_ID_RPM, TYPE_ID_SRPM
 from pulp_rpm.extension.admin.upload import package
 from pulp_rpm.extension.admin.upload.package import FLAG_SKIP_EXISTING
+from pulp_rpm.extension.admin.repo_options import OPT_CHECKSUM_TYPE
 import rpm_support_base
 
 
@@ -60,6 +61,14 @@ class CreatePackageCommandTests(rpm_support_base.PulpClientTests):
 
         self.assertEqual(unit_key, {})
         self.assertEqual(metadata, {})
+
+    def test_generate_unit_key_and_metadata_with_checksum(self):
+        filename = os.path.join(RPM_DIR, RPM_FILENAME)
+        command_kwargs = {'checksum-type': 'sha1'}
+        unit_key, metadata = self.command.generate_unit_key_and_metadata(filename, **command_kwargs)
+
+        self.assertEqual(unit_key, {})
+        self.assertEqual(metadata, {'checksum-type': 'sha1'})
 
     def test_create_upload_list_skip_existing(self):
         # Setup
@@ -148,6 +157,7 @@ class CreateRpmCommandTests(rpm_support_base.PulpClientTests):
         self.assertEqual(self.command.description, package.DESC_RPM)
         self.assertEqual(self.command.suffix, package.SUFFIX_RPM)
         self.assertEqual(self.command.type_id, TYPE_ID_RPM)
+        self.assertTrue(OPT_CHECKSUM_TYPE in self.command.options)
 
 
 class CreateSrpmCommandTests(rpm_support_base.PulpClientTests):
@@ -163,3 +173,4 @@ class CreateSrpmCommandTests(rpm_support_base.PulpClientTests):
         self.assertEqual(self.command.description, package.DESC_SRPM)
         self.assertEqual(self.command.suffix, package.SUFFIX_SRPM)
         self.assertEqual(self.command.type_id, TYPE_ID_SRPM)
+        self.assertTrue(OPT_CHECKSUM_TYPE in self.command.options)
