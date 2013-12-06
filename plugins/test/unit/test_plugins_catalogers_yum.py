@@ -21,6 +21,7 @@ from mock import patch
 from tarfile import TarFile
 from tempfile import mkdtemp
 from urlparse import urlsplit, urlunsplit
+from contextlib import closing
 
 from pulp.server.managers import factory as managers
 from pulp.plugins.conduits.cataloger import CatalogerConduit
@@ -49,7 +50,7 @@ class TestCataloger(TestCase):
         TestCase.setUp(self)
         managers.initialize()
         self.tmp_dir = mkdtemp()
-        with TarFile(TAR_PATH) as tar:
+        with closing(TarFile(TAR_PATH)) as tar:
             tar.extractall(self.tmp_dir)
 
     def tearDown(self):
@@ -67,7 +68,7 @@ class TestCataloger(TestCase):
         conduit = CatalogerConduit(SOURCE_ID, EXPIRES)
         cataloger = YumCataloger()
         cataloger.refresh(conduit, {}, url)
-        with open(JSON_PATH) as fp:
+        with closing(open(JSON_PATH)) as fp:
             expected = json.load(fp)
         self.assertEqual(mock_add.call_count, len(expected))
         for entry in expected:
