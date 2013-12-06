@@ -68,7 +68,7 @@ class TestCataloger(TestCase):
         conduit = CatalogerConduit(SOURCE_ID, EXPIRES)
         cataloger = YumCataloger()
         cataloger.refresh(conduit, {}, url)
-        with closing(open(JSON_PATH)) as fp:
+        with open(JSON_PATH) as fp:
             expected = json.load(fp)
         self.assertEqual(mock_add.call_count, len(expected))
         for entry in expected:
