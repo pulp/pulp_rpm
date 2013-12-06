@@ -12,12 +12,17 @@
 # see http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt
 
 from cStringIO import StringIO
+import os
 import functools
 import unittest
 from xml.etree import ElementTree
 
 from pulp_rpm.common import models
 from pulp_rpm.plugins.importers.yum.repomd import group, packages
+
+DATA_DIR = os.path.join(os.path.dirname(__file__), '../../../../../data/')
+
+FEDORA_19_COMPS_XML = os.path.join(DATA_DIR, "Fedora-19-comps.xml")
 
 
 class TestProcessGroupElement(unittest.TestCase):
@@ -134,8 +139,10 @@ class TestProcessEnvironmentElement(unittest.TestCase):
         self.assertEquals(group_model.group_ids[0], 'group1')
 
     def test_translated_description(self):
-        ElementTree.SubElement(self.element, 'description', {group.LANGUAGE_TAG: 'fr'}).text = 'desc2'
-        ElementTree.SubElement(self.element, 'description', {group.LANGUAGE_TAG: 'es'}).text = 'desc3'
+        ElementTree.SubElement(self.element, 'description', {group.LANGUAGE_TAG: 'fr'}).text \
+            = 'desc2'
+        ElementTree.SubElement(self.element, 'description', {group.LANGUAGE_TAG: 'es'}).text \
+            = 'desc3'
 
         group_model = self.process_environment(self.element)
 
@@ -192,6 +199,20 @@ class TestProcessEnvironmentElement(unittest.TestCase):
                             for d in options))
         self.assertTrue(any(d.get('group', None) == 'group2' and d.get('default', None) is False
                             for d in options))
+
+    def test_real_data_fedora_19(self):
+        with open(FEDORA_19_COMPS_XML) as xml_file_handle:
+            environments = packages.package_list_generator(xml_file_handle,
+                                                           group.ENVIRONMENT_TAG,
+                                                           self.process_environment)
+            env_count = 0
+            # Loop over all to ensure parsing did not throw an error
+            for model in environments:
+                self.assertTrue(isinstance(model, models.PackageEnvironment))
+                self.assertEqual(model.repo_id, 'repo1')
+                env_count += 1
+
+            self.assertEquals(12, env_count)
 
 # highly abridged version that grabs one group with a uservisible value
 # and another without to make sure the default works.
