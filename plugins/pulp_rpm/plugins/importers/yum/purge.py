@@ -11,6 +11,8 @@
 # have received a copy of GPLv2 along with this software; if not, see
 # http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt.
 
+import functools
+
 from pulp.common.plugins import importer_constants
 from pulp.server.db.model.criteria import UnitAssociationCriteria
 from pulp.server.managers.repo.unit_association import OWNER_TYPE_IMPORTER
@@ -42,6 +44,7 @@ def purge_unwanted_units(metadata_files, conduit, config):
         remove_missing_errata(metadata_files, conduit)
         remove_missing_groups(metadata_files, conduit)
         remove_missing_categories(metadata_files, conduit)
+        remove_missing_environments(metadata_files, conduit)
 
     retain_old_count = config.get(importer_constants.KEY_UNITS_RETAIN_OLD_COUNT)
     if retain_old_count is not None:
@@ -88,9 +91,11 @@ def remove_missing_rpms(metadata_files, conduit):
                             and remove_unit methods.
     :type  conduit:         pulp.plugins.conduits.repo_sync.RepoSyncConduit
     """
-    remote_named_tuples = get_remote_units(metadata_files, primary.METADATA_FILE_NAME,
-                                            primary.PACKAGE_TAG, primary.process_package_element)
-    remove_missing_units(metadata_files, conduit, models.RPM, remote_named_tuples)
+    file_function = functools.partial(metadata_files.get_metadata_file_handle,
+                                      primary.METADATA_FILE_NAME)
+    remote_named_tuples = get_remote_units(file_function, primary.PACKAGE_TAG,
+                                           primary.process_package_element)
+    remove_missing_units(conduit, models.RPM, remote_named_tuples)
 
 
 def remove_missing_drpms(metadata_files, conduit):
@@ -104,9 +109,11 @@ def remove_missing_drpms(metadata_files, conduit):
                             and remove_unit methods.
     :type  conduit:         pulp.plugins.conduits.repo_sync.RepoSyncConduit
     """
-    remote_named_tuples = get_remote_units(metadata_files, presto.METADATA_FILE_NAME,
-                                            presto.PACKAGE_TAG, presto.process_package_element)
-    remove_missing_units(metadata_files, conduit, models.DRPM, remote_named_tuples)
+    file_function = functools.partial(metadata_files.get_metadata_file_handle,
+                                      presto.METADATA_FILE_NAME)
+    remote_named_tuples = get_remote_units(file_function, presto.PACKAGE_TAG,
+                                           presto.process_package_element)
+    remove_missing_units(conduit, models.DRPM, remote_named_tuples)
 
 
 def remove_missing_errata(metadata_files, conduit):
@@ -120,9 +127,11 @@ def remove_missing_errata(metadata_files, conduit):
                             and remove_unit methods.
     :type  conduit:         pulp.plugins.conduits.repo_sync.RepoSyncConduit
     """
-    remote_named_tuples = get_remote_units(metadata_files, updateinfo.METADATA_FILE_NAME,
-                                           updateinfo.PACKAGE_TAG, updateinfo.process_package_element)
-    remove_missing_units(metadata_files, conduit, models.Errata, remote_named_tuples)
+    file_function = functools.partial(metadata_files.get_metadata_file_handle,
+                                      updateinfo.METADATA_FILE_NAME)
+    remote_named_tuples = get_remote_units(file_function, updateinfo.PACKAGE_TAG,
+                                           updateinfo.process_package_element)
+    remove_missing_units(conduit, models.Errata, remote_named_tuples)
 
 
 def remove_missing_groups(metadata_files, conduit):
@@ -136,9 +145,10 @@ def remove_missing_groups(metadata_files, conduit):
                             and remove_unit methods.
     :type  conduit:         pulp.plugins.conduits.repo_sync.RepoSyncConduit
     """
-    remote_named_tuples = get_remote_units(metadata_files, group.METADATA_FILE_NAME,
-                                           group.GROUP_TAG, group.process_group_element)
-    remove_missing_units(metadata_files, conduit, models.PackageGroup, remote_named_tuples)
+    file_function = metadata_files.get_group_file_handle
+    process_func = functools.partial(group.process_group_element, conduit.repo_id)
+    remote_named_tuples = get_remote_units(file_function, group.GROUP_TAG, process_func)
+    remove_missing_units(conduit, models.PackageGroup, remote_named_tuples)
 
 
 def remove_missing_categories(metadata_files, conduit):
@@ -152,19 +162,35 @@ def remove_missing_categories(metadata_files, conduit):
                             and remove_unit methods.
     :type  conduit:         pulp.plugins.conduits.repo_sync.RepoSyncConduit
     """
-    remote_named_tuples = get_remote_units(metadata_files, group.METADATA_FILE_NAME,
-                                           group.CATEGORY_TAG, group.process_category_element)
-    remove_missing_units(metadata_files, conduit, models.PackageCategory, remote_named_tuples)
+    file_function = metadata_files.get_group_file_handle
+    process_func = functools.partial(group.process_category_element, conduit.repo_id)
+    remote_named_tuples = get_remote_units(file_function, group.CATEGORY_TAG, process_func)
+    remove_missing_units(conduit, models.PackageCategory, remote_named_tuples)
 
 
-def remove_missing_units(metadata_files, conduit, model, remote_named_tuples):
+def remove_missing_environments(metadata_files, conduit):
+    """
+    Remove Categories from the local repository which do not exist in the remote
+    repository.
+
+    :param metadata_files:  object containing metadata files from the repo
+    :type  metadata_files:  pulp_rpm.plugins.importers.yum.repomd.metadata.MetadataFiles
+    :param conduit:         a conduit from the platform containing the get_units
+                            and remove_unit methods.
+    :type  conduit:         pulp.plugins.conduits.repo_sync.RepoSyncConduit
+    """
+    file_function = metadata_files.get_group_file_handle
+    process_func = functools.partial(group.process_environment_element, conduit.repo_id)
+    remote_named_tuples = get_remote_units(file_function, group.ENVIRONMENT_TAG, process_func)
+    remove_missing_units(conduit, models.PackageEnvironment, remote_named_tuples)
+
+
+def remove_missing_units(conduit, model, remote_named_tuples):
     """
     Generic method to remove units that are in the local repository but missing
     from the upstream repository. This consults the metadata and compares it with
     the contents of the local repo, removing units as appropriate.
 
-    :param metadata_files:  object containing metadata files from the repo
-    :type  metadata_files:  pulp_rpm.plugins.importers.yum.repomd.metadata.MetadataFiles
     :param conduit:         a conduit from the platform containing the get_units
                             and remove_unit methods.
     :type  conduit:         pulp.plugins.conduits.repo_sync.RepoSyncConduit
@@ -204,16 +230,12 @@ def get_existing_units(model, unit_search_func):
     return unit_search_func(criteria)
 
 
-def get_remote_units(metadata_files, file_name, tag, process_func):
+def get_remote_units(file_function, tag, process_func):
     """
     return a set of units (as named tuples) that are in the remote repository
 
-    :param metadata_files:  object containing metadata files from the repo
-    :type  metadata_files:  pulp_rpm.plugins.importers.yum.repomd.metadata.MetadataFiles
-    :param file_name:       name of the metadata file to access. This is not a
-                            path on disk, but the name used in the main "repomd.xml"
-                            file such as "primary", "comps", etc.
-    :type  file_name:       basestring
+    :param file_function:   Method that returns a file handle for the units file on disk.
+    :type  file_function:   function
     :param tag:             name of the XML tag that identifies each object
                             in the XML file
     :type  tag:             basestring
@@ -227,7 +249,8 @@ def get_remote_units(metadata_files, file_name, tag, process_func):
     :rtype:     set
     """
     remote_named_tuples = set()
-    file_handle = metadata_files.get_metadata_file_handle(file_name)
+    file_handle = file_function()
+
     if file_handle is None:
         return set()
     try:

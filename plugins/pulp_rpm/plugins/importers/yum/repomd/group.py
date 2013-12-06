@@ -20,7 +20,6 @@ _LOGGER = logging.getLogger(__name__)
 GROUP_TAG = 'group'
 CATEGORY_TAG = 'category'
 ENVIRONMENT_TAG = 'environment'
-METADATA_FILE_NAME = 'comps'
 # this according to yum.comps.lang_attr
 LANGUAGE_TAG = '{http://www.w3.org/XML/1998/namespace}lang'
 

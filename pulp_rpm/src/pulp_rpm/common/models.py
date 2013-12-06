@@ -318,6 +318,7 @@ TYPE_MAP = {
     Errata.TYPE: Errata,
     PackageCategory.TYPE: PackageCategory,
     PackageGroup.TYPE: PackageGroup,
+    PackageEnvironment.TYPE: PackageEnvironment,
     RPM.TYPE: RPM,
     SRPM.TYPE: SRPM,
     YumMetadataFile.TYPE: YumMetadataFile,

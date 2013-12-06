@@ -13,8 +13,10 @@
 
 from cStringIO import StringIO
 import unittest
+import functools
 
 import mock
+from mock import ANY
 from nectar.config import DownloaderConfig
 from pulp.common.plugins import importer_constants
 from pulp.plugins.conduits.repo_sync import RepoSyncConduit
@@ -53,8 +55,7 @@ class TestRemoveMissing(TestPurgeBase):
         common_named_tuple = models.RPM.NAMEDTUPLE(**common_unit.unit_key)
         remote_named_tuples.add(common_named_tuple)
 
-        purge.remove_missing_units(self.metadata_files, self.conduit, models.RPM,
-                                   remote_named_tuples)
+        purge.remove_missing_units(self.conduit, models.RPM,remote_named_tuples)
 
         mock_get_existing.assert_called_once_with(models.RPM, self.conduit.get_units)
         self.conduit.remove_unit.assert_called_once_with(mock_get_existing.return_value[0])
@@ -64,11 +65,10 @@ class TestRemoveMissing(TestPurgeBase):
     def test_remove_missing_rpms(self, mock_remove, mock_get_remote_units):
         purge.remove_missing_rpms(self.metadata_files, self.conduit)
 
-        mock_get_remote_units.assert_called_once_with(self.metadata_files,
-                                                      primary.METADATA_FILE_NAME,
+        mock_get_remote_units.assert_called_once_with(ANY,
                                                       primary.PACKAGE_TAG,
                                                       primary.process_package_element)
-        mock_remove.assert_called_once_with(self.metadata_files, self.conduit,
+        mock_remove.assert_called_once_with(self.conduit,
                                             models.RPM, mock_get_remote_units.return_value)
 
     @mock.patch.object(purge, 'get_remote_units', autospec=True)
@@ -76,11 +76,10 @@ class TestRemoveMissing(TestPurgeBase):
     def test_remove_missing_drpms(self, mock_remove, mock_get_remote_units):
         purge.remove_missing_drpms(self.metadata_files, self.conduit)
 
-        mock_get_remote_units.assert_called_once_with(self.metadata_files,
-                                                      presto.METADATA_FILE_NAME,
+        mock_get_remote_units.assert_called_once_with(ANY,
                                                       presto.PACKAGE_TAG,
                                                       presto.process_package_element)
-        mock_remove.assert_called_once_with(self.metadata_files, self.conduit,
+        mock_remove.assert_called_once_with(self.conduit,
                                             models.DRPM, mock_get_remote_units.return_value)
 
     @mock.patch.object(purge, 'get_remote_units', autospec=True)
@@ -88,11 +87,10 @@ class TestRemoveMissing(TestPurgeBase):
     def test_remove_missing_errata(self, mock_remove, mock_get_remote_units):
         purge.remove_missing_errata(self.metadata_files, self.conduit)
 
-        mock_get_remote_units.assert_called_once_with(self.metadata_files,
-                                                      updateinfo.METADATA_FILE_NAME,
+        mock_get_remote_units.assert_called_once_with(ANY,
                                                       updateinfo.PACKAGE_TAG,
                                                       updateinfo.process_package_element)
-        mock_remove.assert_called_once_with(self.metadata_files, self.conduit,
+        mock_remove.assert_called_once_with(self.conduit,
                                             models.Errata, mock_get_remote_units.return_value)
 
     @mock.patch.object(purge, 'get_remote_units', autospec=True)
@@ -100,11 +98,8 @@ class TestRemoveMissing(TestPurgeBase):
     def test_remove_missing_groups(self, mock_remove, mock_get_remote_units):
         purge.remove_missing_groups(self.metadata_files, self.conduit)
 
-        mock_get_remote_units.assert_called_once_with(self.metadata_files,
-                                                      group.METADATA_FILE_NAME,
-                                                      group.GROUP_TAG,
-                                                      group.process_group_element)
-        mock_remove.assert_called_once_with(self.metadata_files, self.conduit,
+        mock_get_remote_units.assert_called_once_with(ANY, group.GROUP_TAG, ANY)
+        mock_remove.assert_called_once_with(self.conduit,
                                             models.PackageGroup, mock_get_remote_units.return_value)
 
     @mock.patch.object(purge, 'get_remote_units', autospec=True)
@@ -112,12 +107,19 @@ class TestRemoveMissing(TestPurgeBase):
     def test_remove_missing_categories(self, mock_remove, mock_get_remote_units):
         purge.remove_missing_categories(self.metadata_files, self.conduit)
 
-        mock_get_remote_units.assert_called_once_with(self.metadata_files,
-                                                      group.METADATA_FILE_NAME,
-                                                      group.CATEGORY_TAG,
-                                                      group.process_category_element)
-        mock_remove.assert_called_once_with(self.metadata_files, self.conduit,
+        mock_get_remote_units.assert_called_once_with(ANY, group.CATEGORY_TAG, ANY)
+        mock_remove.assert_called_once_with(self.conduit,
                                             models.PackageCategory, mock_get_remote_units.return_value)
+
+    @mock.patch.object(purge, 'get_remote_units', autospec=True)
+    @mock.patch.object(purge, 'remove_missing_units', autospec=True)
+    def test_remove_missing_environments(self, mock_remove, mock_get_remote_units):
+        purge.remove_missing_environments(self.metadata_files, self.conduit)
+
+        mock_get_remote_units.assert_called_once_with(ANY, group.ENVIRONMENT_TAG, ANY)
+        mock_remove.assert_called_once_with(self.conduit,
+                                            models.PackageEnvironment,
+                                            mock_get_remote_units.return_value)
 
 
 class TestGetExistingUnits(TestPurgeBase):
@@ -146,7 +148,8 @@ class TestGetRemoteUnits(TestPurgeBase):
         self.metadata_files.metadata[self.FAKE_TYPE] = {'local_path': '/a/b/c'}
 
     def test_no_units(self):
-        ret = purge.get_remote_units(self.metadata_files, 'foo', 'bar', lambda x: x)
+        file_function = mock.Mock(return_value=None)
+        ret = purge.get_remote_units(file_function, 'bar', lambda x: x)
 
         self.assertEqual(ret, set())
 
@@ -158,8 +161,9 @@ class TestGetRemoteUnits(TestPurgeBase):
         fake_file = StringIO()
         mock_open.return_value = fake_file
         process_func = lambda x: x
-
-        ret = purge.get_remote_units(self.metadata_files, self.FAKE_TYPE, 'bar', process_func)
+        file_function = functools.partial(self.metadata_files.get_metadata_file_handle,
+                                          self.FAKE_TYPE)
+        ret = purge.get_remote_units(file_function, 'bar', process_func)
 
         mock_open.assert_called_once_with('/a/b/c', 'r')
         self.assertTrue(fake_file.closed)
@@ -257,13 +261,15 @@ class TestPurgeUnwantedUnits(TestPurgeBase):
         # nobody looked for missing units.
         self.assertEqual(mock_get_remote.call_count, 0)
 
+    @mock.patch.object(purge, 'remove_missing_environments', autospec=True)
     @mock.patch.object(purge, 'remove_missing_rpms', autospec=True)
     @mock.patch.object(purge, 'remove_missing_drpms', autospec=True)
     @mock.patch.object(purge, 'remove_missing_errata', autospec=True)
     @mock.patch.object(purge, 'remove_missing_groups', autospec=True)
     @mock.patch.object(purge, 'remove_missing_categories', autospec=True)
     def test_remove_missing_true(self, mock_remove_categories, mock_remove_groups,
-                                  mock_remove_errata, mock_remove_drpms, mock_remove_rpms):
+                                  mock_remove_errata, mock_remove_drpms, mock_remove_rpms,
+                                  mock_remove_environments):
         self.config.plugin_config[importer_constants.KEY_UNITS_REMOVE_MISSING] = True
 
         purge.purge_unwanted_units(self.metadata_files, self.conduit, self.config)
@@ -273,6 +279,7 @@ class TestPurgeUnwantedUnits(TestPurgeBase):
         mock_remove_errata.assert_called_once_with(self.metadata_files, self.conduit)
         mock_remove_groups.assert_called_once_with(self.metadata_files, self.conduit)
         mock_remove_categories.assert_called_once_with(self.metadata_files, self.conduit)
+        mock_remove_environments.assert_called_once_with(self.metadata_files, self.conduit)
 
     @mock.patch.object(purge, 'remove_old_versions', autospec=True)
     def test_retain_old_none(self, mock_remove_old_versions):
