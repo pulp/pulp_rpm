@@ -110,7 +110,7 @@ class RepoSync(object):
 
             # Verify that we have a feed url.  if there is no feed url then we have nothing to sync
             if self.sync_feed is None:
-                raise Exception(_('Unable to sync a repository that has no feed'))
+                raise FailedException(_('Unable to sync a repository that has no feed'))
 
             metadata_files = self.get_metadata()
             # Save the default checksum from the metadata
