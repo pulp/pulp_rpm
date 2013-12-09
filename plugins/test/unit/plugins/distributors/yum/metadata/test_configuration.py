@@ -19,6 +19,7 @@ from pulp.plugins.config import PluginCallConfiguration
 
 from pulp_rpm.common.constants import CONFIG_DEFAULT_CHECKSUM, \
     SCRATCHPAD_DEFAULT_METADATA_CHECKSUM, CONFIG_KEY_CHECKSUM_TYPE
+from pulp_rpm.common.ids import TYPE_ID_DISTRIBUTOR_YUM
 from pulp_rpm.plugins.distributors.yum import configuration
 
 
@@ -52,10 +53,25 @@ class TestGetRepoChecksumType(unittest.TestCase):
     def test_get_repo_checksum_update_distributor_config(self, mock_distributor_manager):
         self.mock_conduit.get_repo_scratchpad.return_value = \
             {SCRATCHPAD_DEFAULT_METADATA_CHECKSUM: 'sha1'}
+
+        mock_distributor_manager.return_value.get_distributor.return_value = \
+            {'distributor_type_id': TYPE_ID_DISTRIBUTOR_YUM}
+
         self.assertEquals('sha1',
                           configuration.get_repo_checksum_type(self.mock_conduit, self.config))
         mock_distributor_manager.return_value.update_distributor_config.\
             assert_called_with(ANY, ANY, {'checksum_type': 'sha1'})
+
+    @patch('pulp.server.managers.factory.repo_distributor_manager')
+    def test_get_repo_checksum_update_distributor_config_non_yum(self, mock_distributor_manager):
+        """
+        If this isn't a yum distributor the config should not be updated in the database
+        """
+        self.mock_conduit.get_repo_scratchpad.return_value = \
+            {SCRATCHPAD_DEFAULT_METADATA_CHECKSUM: 'sha1'}
+        self.assertEquals('sha1',
+                          configuration.get_repo_checksum_type(self.mock_conduit, self.config))
+        self.assertFalse(mock_distributor_manager.return_value.update_distributor_config.called)
 
     @patch('pulp.server.managers.factory.repo_distributor_manager')
     def test_get_repo_checksum_from_default(self, mock_distributor_manager):
@@ -73,6 +89,8 @@ class TestGetRepoChecksumType(unittest.TestCase):
         self.mock_conduit.get_repo_scratchpad.return_value = None
         self.assertEquals(CONFIG_DEFAULT_CHECKSUM,
                           configuration.get_repo_checksum_type(self.mock_conduit, self.config))
+
+    #def test_get_repo_checksum_distributor_id_not_yum_plugin(self,):
 
 
 class TestConfigurationValidationHelpers(unittest.TestCase):
