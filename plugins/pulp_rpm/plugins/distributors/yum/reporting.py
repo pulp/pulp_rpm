@@ -13,53 +13,20 @@
 
 import copy
 
-# -- publishing steps ----------------------------------------------------------
-
-PUBLISH_RPMS_STEP = 'rpms'
-PUBLISH_DELTA_RPMS_STEP = 'drpms'
-PUBLISH_ERRATA_STEP = 'errata'
-PUBLISH_COMPS_STEP = 'comps'
-PUBLISH_PACKAGE_GROUPS_STEP = 'package_groups'
-PUBLISH_PACKAGE_CATEGORIES_STEP = 'package_categories'
-PUBLISH_DISTRIBUTION_STEP = 'distribution'
-PUBLISH_METADATA_STEP = 'metadata'
-PUBLISH_OVER_HTTP_STEP = 'publish_over_http'
-PUBLISH_OVER_HTTPS_STEP = 'publish_over_https'
-
-PUBLISH_STEPS = (PUBLISH_RPMS_STEP, PUBLISH_DELTA_RPMS_STEP, PUBLISH_ERRATA_STEP,
-                 PUBLISH_COMPS_STEP,
-                 PUBLISH_DISTRIBUTION_STEP, PUBLISH_METADATA_STEP,
-                 PUBLISH_OVER_HTTP_STEP, PUBLISH_OVER_HTTPS_STEP)
-
-# -- publishing step states ----------------------------------------------------
-
-PUBLISH_NOT_STARTED_STATE = 'NOT_STARTED'
-PUBLISH_IN_PROGRESS_STATE = 'IN_PROGRESS'
-PUBLISH_SKIPPED_STATE = 'SKIPPED'
-PUBLISH_FINISHED_STATE = 'FINISHED'
-PUBLISH_FAILED_STATE = 'FAILED'
-PUBLISH_CANCELED_STATE = 'CANCELED'
-
-PUBLISH_STATES = (PUBLISH_NOT_STARTED_STATE, PUBLISH_IN_PROGRESS_STATE, PUBLISH_SKIPPED_STATE,
-                  PUBLISH_FINISHED_STATE, PUBLISH_FAILED_STATE, PUBLISH_CANCELED_STATE)
+from pulp_rpm.common.constants import (
+    STATE_NOT_STARTED, STATE_RUNNING, STATE_SKIPPED, STATE_FAILED, STATE_CANCELLED,
+    PUBLISH_STEPS, PUBLISH_METADATA_STEP, PROGRESS_STATE_KEY, PROGRESS_TOTAL_KEY,
+    PROGRESS_PROCESSED_KEY, PROGRESS_SUCCESSES_KEY, PROGRESS_FAILURES_KEY,
+    PROGRESS_ERROR_DETAILS_KEY)
 
 # -- publishing reporting ------------------------------------------------------
 
-STATE = 'state'
-TOTAL = 'total'
-PROCESSED = 'processed'
-SUCCESSES = 'successes'
-FAILURES = 'failures'
-ERROR_DETAILS = 'error_details'
-
-PUBLISH_REPORT_KEYWORDS = (STATE, TOTAL, PROCESSED, SUCCESSES, FAILURES, ERROR_DETAILS)
-
-PROGRESS_SUB_REPORT = {STATE: PUBLISH_IN_PROGRESS_STATE,
-                       TOTAL: 0,
-                       PROCESSED: 0,
-                       SUCCESSES: 0,
-                       FAILURES: 0,
-                       ERROR_DETAILS: []}
+PROGRESS_SUB_REPORT = {PROGRESS_STATE_KEY: STATE_RUNNING,
+                       PROGRESS_TOTAL_KEY: 0,
+                       PROGRESS_PROCESSED_KEY: 0,
+                       PROGRESS_SUCCESSES_KEY: 0,
+                       PROGRESS_FAILURES_KEY: 0,
+                       PROGRESS_ERROR_DETAILS_KEY: []}
 
 # -- final reporting -----------------------------------------------------------
 
@@ -88,7 +55,7 @@ def new_progress_sub_report():
     :rtype:  dict
     """
 
-    return {STATE: PUBLISH_NOT_STARTED_STATE}
+    return {PROGRESS_STATE_KEY: STATE_NOT_STARTED}
 
 
 def initialize_progress_sub_report(report):
@@ -127,28 +94,28 @@ def build_final_report(conduit, relative_path, progress_report):
 
     summary[RELATIVE_PATH] = relative_path
 
-    if progress_report[PUBLISH_METADATA_STEP][STATE] is PUBLISH_SKIPPED_STATE:
+    if progress_report[PUBLISH_METADATA_STEP][PROGRESS_STATE_KEY] is STATE_SKIPPED:
         summary[SKIP_METADATA_UPDATE] = True
 
     for step in PUBLISH_STEPS:
 
-        if progress_report[step][STATE] is PUBLISH_FAILED_STATE:
+        if progress_report[step][PROGRESS_STATE_KEY] is STATE_FAILED:
             publish_succeeded = False
 
-        if progress_report[step][STATE] is PUBLISH_CANCELED_STATE:
+        if progress_report[step][PROGRESS_STATE_KEY] is STATE_CANCELLED:
             publish_cancelled = True
 
-        total = progress_report[step].get(TOTAL, 0)
-        processed = progress_report[step].get(PROCESSED, 0)
-        succeeded = progress_report[step].get(SUCCESSES, 0)
-        failed = progress_report[step].get(FAILURES, 0)
+        total = progress_report[step].get(PROGRESS_TOTAL_KEY, 0)
+        processed = progress_report[step].get(PROGRESS_PROCESSED_KEY, 0)
+        succeeded = progress_report[step].get(PROGRESS_SUCCESSES_KEY, 0)
+        failed = progress_report[step].get(PROGRESS_FAILURES_KEY, 0)
 
         summary[NUMBER_UNITS_TOTAL % step] = total
         summary[NUMBER_UNITS_PROCESSED % step] = processed
         summary[NUMBER_UNITS_SUCCEEDED % step] = succeeded
         summary[NUMBER_UNITS_FAILED % step] = failed
 
-        details[ERRORS_LIST].extend(progress_report[step].get(ERROR_DETAILS, []))
+        details[ERRORS_LIST].extend(progress_report[step].get(PROGRESS_ERROR_DETAILS_KEY, []))
 
     if publish_succeeded:
         final_report = conduit.build_success_report(summary, details)

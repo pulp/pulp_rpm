@@ -34,17 +34,10 @@ from .metadata.metadata import REPO_DATA_DIR_NAME
 from .metadata.other import OtherXMLFileContext
 from .metadata.prestodelta import PrestodeltaXMLFileContext
 from .metadata.primary import PrimaryXMLFileContext
-from .metadata.repomd import RepomdXMLFileContext, DEFAULT_CHECKSUM_TYPE
+from .metadata.repomd import RepomdXMLFileContext
 from .metadata.updateinfo import UpdateinfoXMLFileContext
 from .metadata.package import PackageXMLFileContext
 from .reporting import (
-    PUBLISH_RPMS_STEP, PUBLISH_DELTA_RPMS_STEP, PUBLISH_ERRATA_STEP,
-    PUBLISH_PACKAGE_GROUPS_STEP, PUBLISH_PACKAGE_CATEGORIES_STEP, PUBLISH_COMPS_STEP,
-    PUBLISH_DISTRIBUTION_STEP, PUBLISH_METADATA_STEP, PUBLISH_OVER_HTTP_STEP,
-    PUBLISH_OVER_HTTPS_STEP, PUBLISH_STEPS, PUBLISH_NOT_STARTED_STATE,
-    PUBLISH_IN_PROGRESS_STATE, PUBLISH_SKIPPED_STATE, PUBLISH_FINISHED_STATE,
-    PUBLISH_FAILED_STATE, PUBLISH_CANCELED_STATE, STATE, TOTAL, PROCESSED,
-    SUCCESSES, FAILURES, ERROR_DETAILS, PUBLISH_REPORT_KEYWORDS,
     new_progress_report, initialize_progress_sub_report, build_final_report)
 
 # -- constants -----------------------------------------------------------------
@@ -149,8 +142,8 @@ class Publisher(object):
         # put the reporting logic here so I don't have to put it everywhere
         for sub_report in self.progress_report.values():
 
-            if sub_report[STATE] is PUBLISH_IN_PROGRESS_STATE:
-                sub_report[STATE] = PUBLISH_CANCELED_STATE
+            if sub_report[constants.PROGRESS_STATE_KEY] is constants.STATE_RUNNING:
+                sub_report[constants.PROGRESS_STATE_KEY] = constants.STATE_CANCELLED
 
     # -- progress methods ------------------------------------------------------
 
@@ -256,7 +249,7 @@ class PublishStep(object):
             return
 
         if self.is_skipped():
-            self._report_progress(self.step_id, state=PUBLISH_SKIPPED_STATE)
+            self._report_progress(self.step_id, state=constants.STATE_SKIPPED)
             return
 
         _LOG.debug('Processing publish step of type %(type)s for repository: %(repo)s' %
@@ -266,24 +259,24 @@ class PublishStep(object):
 
         total = self._get_total(self.unit_type)
         if total == 0:
-            self._report_progress(self.step_id, state=PUBLISH_FINISHED_STATE, total=0)
+            self._report_progress(self.step_id, state=constants.STATE_COMPLETE, total=0)
             return
 
         try:
             self.initialize_metadata()
-            self.parent.progress_report[self.step_id][TOTAL] = total
+            self.parent.progress_report[self.step_id][constants.PROGRESS_TOTAL_KEY] = total
             package_unit_generator = self.get_unit_generator()
             self._report_progress(self.step_id)
 
             for package_unit in package_unit_generator:
                 if self.parent.canceled:
                     return
-                self.parent.progress_report[self.step_id][PROCESSED] += 1
+                self.parent.progress_report[self.step_id][constants.PROGRESS_PROCESSED_KEY] += 1
                 self.process_unit(package_unit)
-                self.parent.progress_report[self.step_id][SUCCESSES] += 1
+                self.parent.progress_report[self.step_id][constants.PROGRESS_SUCCESSES_KEY] += 1
         except Exception, e:
             self._record_failure(self.step_id, e)
-            self._report_progress(self.step_id, state=PUBLISH_FAILED_STATE)
+            self._report_progress(self.step_id, state=constants.STATE_FAILED)
             raise
         finally:
             try:
@@ -293,10 +286,10 @@ class PublishStep(object):
                 # record it as a failure.  If a finalize does fail that error should take precedence
                 # over a previous error
                 self._record_failure(self.step_id, e)
-                self._report_progress(self.step_id, state=PUBLISH_FAILED_STATE)
+                self._report_progress(self.step_id, state=constants.STATE_FAILED)
                 raise
 
-        self._report_progress(self.step_id, state=PUBLISH_FINISHED_STATE)
+        self._report_progress(self.step_id, state=constants.STATE_COMPLETE)
 
     def _get_total(self, id_list=None):
         if id_list is None:
@@ -381,7 +374,7 @@ class PublishStep(object):
         :param step: step to initialize a progress sub-report for
         :type  step: str
         """
-        assert step in PUBLISH_STEPS
+        assert step in constants.PUBLISH_STEPS
 
         initialize_progress_sub_report(self.parent.progress_report[step])
 
@@ -395,8 +388,8 @@ class PublishStep(object):
         :param report_details: keyword argument updates to the current step's
                                progress sub-report (if any)
         """
-        assert step in PUBLISH_STEPS
-        assert set(report_details).issubset(set(PUBLISH_REPORT_KEYWORDS))
+        assert step in constants.PUBLISH_STEPS
+        assert set(report_details).issubset(set(constants.PUBLISH_REPORT_KEYS))
 
         self.parent.progress_report[step].update(report_details)
         self.parent.conduit.set_progress(self.parent.progress_report)
@@ -412,9 +405,9 @@ class PublishStep(object):
         :param tb: traceback instance (if any)
         :type  tb: Traceback or None
         """
-        assert step in PUBLISH_STEPS
+        assert step in constants.PUBLISH_STEPS
 
-        self.parent.progress_report[step][FAILURES] += 1
+        self.parent.progress_report[step][constants.PROGRESS_FAILURES_KEY] += 1
 
         error_details = []
 
@@ -425,7 +418,7 @@ class PublishStep(object):
             error_details.append(e.message or str(e))
 
         if error_details:
-            self.parent.progress_report[step][ERROR_DETAILS].append('\n'.join(error_details))
+            self.parent.progress_report[step][constants.PROGRESS_ERROR_DETAILS_KEY].append('\n'.join(error_details))
 
 
 class PublishRpmStep(PublishStep):
@@ -434,7 +427,7 @@ class PublishRpmStep(PublishStep):
     """
 
     def __init__(self, parent):
-        super(PublishRpmStep, self).__init__(parent, PUBLISH_RPMS_STEP, TYPE_ID_RPM)
+        super(PublishRpmStep, self).__init__(parent, constants.PUBLISH_RPMS_STEP, TYPE_ID_RPM)
 
     def get_unit_generator(self):
         """
@@ -489,7 +482,7 @@ class PublishMetadataStep(PublishStep):
     """
 
     def __init__(self, parent):
-        super(PublishMetadataStep, self).__init__(parent, PUBLISH_METADATA_STEP,
+        super(PublishMetadataStep, self).__init__(parent, constants.PUBLISH_METADATA_STEP,
                                                   TYPE_ID_YUM_REPO_METADATA_FILE)
 
     def process_unit(self, unit):
@@ -519,7 +512,7 @@ class PublishDrpmStep(PublishStep):
     """
 
     def __init__(self, parent):
-        super(PublishDrpmStep, self).__init__(parent, PUBLISH_DELTA_RPMS_STEP, TYPE_ID_DRPM)
+        super(PublishDrpmStep, self).__init__(parent, constants.PUBLISH_DELTA_RPMS_STEP, TYPE_ID_DRPM)
 
     def initialize_metadata(self):
         """
@@ -554,7 +547,7 @@ class PublishErrataStep(PublishStep):
     Publish all errata
     """
     def __init__(self, parent):
-        super(PublishErrataStep, self).__init__(parent, PUBLISH_ERRATA_STEP, TYPE_ID_ERRATA)
+        super(PublishErrataStep, self).__init__(parent, constants.PUBLISH_ERRATA_STEP, TYPE_ID_ERRATA)
 
     def initialize_metadata(self):
         """
@@ -578,7 +571,7 @@ class PublishErrataStep(PublishStep):
 
 class PublishCompsStep(PublishStep):
     def __init__(self, parent):
-        super(PublishCompsStep, self).__init__(parent, PUBLISH_COMPS_STEP,
+        super(PublishCompsStep, self).__init__(parent, constants.PUBLISH_COMPS_STEP,
                                                [TYPE_ID_PKG_GROUP, TYPE_ID_PKG_CATEGORY])
         self.comps_context = None
 
@@ -631,7 +624,7 @@ class PublishDistributionStep(PublishStep):
     """
 
     def __init__(self, parent):
-        super(PublishDistributionStep, self).__init__(parent, PUBLISH_DISTRIBUTION_STEP, TYPE_ID_DISTRO)
+        super(PublishDistributionStep, self).__init__(parent, constants.PUBLISH_DISTRIBUTION_STEP, TYPE_ID_DISTRO)
 
     def initialize_metadata(self):
         """
@@ -681,13 +674,13 @@ class PublishDistributionStep(PublishStep):
                 break
         if src_treeinfo_path is not None:
             # create a symlink from content location to repo location.
-            self.parent.progress_report[PUBLISH_DISTRIBUTION_STEP][TOTAL] += 1
+            self.parent.progress_report[constants.PUBLISH_DISTRIBUTION_STEP][constants.PROGRESS_TOTAL_KEY] += 1
             symlink_treeinfo_path = os.path.join(self.parent.repo.working_dir, treeinfo_file_name)
             _LOG.debug("creating treeinfo symlink from %s to %s" % (src_treeinfo_path,
                                                                     symlink_treeinfo_path))
             self._create_symlink(src_treeinfo_path, symlink_treeinfo_path)
-            self.parent.progress_report[PUBLISH_DISTRIBUTION_STEP][SUCCESSES] += 1
-            self.parent.progress_report[PUBLISH_DISTRIBUTION_STEP][PROCESSED] += 1
+            self.parent.progress_report[constants.PUBLISH_DISTRIBUTION_STEP][constants.PROGRESS_SUCCESSES_KEY] += 1
+            self.parent.progress_report[constants.PUBLISH_DISTRIBUTION_STEP][constants.PROGRESS_PROCESSED_KEY] += 1
 
     def _publish_distribution_files(self, distribution_unit):
         """
@@ -705,7 +698,7 @@ class PublishDistributionStep(PublishStep):
 
         distro_files = distribution_unit.metadata['files']
         total_files = len(distro_files)
-        self.parent.progress_report[PUBLISH_DISTRIBUTION_STEP][TOTAL] += total_files
+        self.parent.progress_report[constants.PUBLISH_DISTRIBUTION_STEP][constants.PROGRESS_TOTAL_KEY] += total_files
         _LOG.debug("Found %s distribution files to symlink" % total_files)
 
         source_path_dir = distribution_unit.storage_path
@@ -714,8 +707,8 @@ class PublishDistributionStep(PublishStep):
             source_path = os.path.join(source_path_dir, dfile['relativepath'])
             symlink_path = os.path.join(symlink_dir, dfile['relativepath'])
             self._create_symlink(source_path, symlink_path)
-            self.parent.progress_report[PUBLISH_DISTRIBUTION_STEP][SUCCESSES] += 1
-            self.parent.progress_report[PUBLISH_DISTRIBUTION_STEP][PROCESSED] += 1
+            self.parent.progress_report[constants.PUBLISH_DISTRIBUTION_STEP][constants.PROGRESS_SUCCESSES_KEY] += 1
+            self.parent.progress_report[constants.PUBLISH_DISTRIBUTION_STEP][constants.PROGRESS_PROCESSED_KEY] += 1
 
     def _publish_distribution_packages_link(self, distribution_unit):
         """
@@ -763,7 +756,7 @@ class PublishOverHttpStep(PublishStep):
     """
     Publish http repo directory if configured
     """
-    def __init__(self, parent, step=PUBLISH_OVER_HTTP_STEP):
+    def __init__(self, parent, step=constants.PUBLISH_OVER_HTTP_STEP):
         super(PublishOverHttpStep, self).__init__(parent, step, None)
 
     def is_skipped(self):
@@ -813,7 +806,7 @@ class PublishOverHttpsStep(PublishOverHttpStep):
     Publish https repo directory if configured
     """
     def __init__(self, parent):
-        super(PublishOverHttpsStep, self).__init__(parent, PUBLISH_OVER_HTTPS_STEP)
+        super(PublishOverHttpsStep, self).__init__(parent, constants.PUBLISH_OVER_HTTPS_STEP)
 
     def is_skipped(self):
         """
