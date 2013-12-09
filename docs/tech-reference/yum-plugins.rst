@@ -327,6 +327,40 @@ Metadata
 ``packagegroupids``
  Package group IDs associated with the package category
 
+
+Package Group Environment
+----------------------
+
+The Package Group Category's ID is ``package_environment``.
+
+Unit Key
+^^^^^^^^
+``id``
+ Package group category ID
+
+``repo_id``
+ Repository ID to which the package group category ID is associated
+
+
+Metadata
+^^^^^^^^
+``name``
+ Name of the package group environment
+
+``description``
+ Description of the package group environment
+
+``display_order``
+ Display order of the package group environment
+
+``group_ids``
+ Package group IDs associated with the package environment
+
+``options``
+ Package group IDs and whether they are default options.  The default flag must be set to either
+ `True` or `False`.
+ Example format: ``{"group" : <group_id>, "default" : True}``
+
 Yum Importer
 ============
 

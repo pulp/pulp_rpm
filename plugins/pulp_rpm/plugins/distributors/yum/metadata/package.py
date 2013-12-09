@@ -162,3 +162,52 @@ class PackageXMLFileContext(MetadataFileContext):
         category_element_string = ElementTree.tostring(category_element, encoding='utf-8')
         _LOG.debug('Writing package_group unit metadata:\n' + category_element_string)
         self.metadata_file_handle.write(category_element_string)
+
+    def add_package_environment_unit_metadata(self, unit):
+        """
+        Write out the XML representation of a environment group unit
+
+        :param unit: AssociatedUnit of the environment group to publish
+        :type unit: AssociatedUnit
+        """
+        environment_element = ElementTree.Element('environment')
+
+        environment_id = unit.unit_key["id"]
+        if environment_id is None:
+            environment_id = unit.metadata['id']
+        ElementTree.SubElement(environment_element, 'id').text = environment_id
+        ElementTree.SubElement(environment_element, 'display_order').text = \
+            str(unit.metadata['display_order'])
+        ElementTree.SubElement(environment_element, 'name').text = \
+            unit.metadata['name']
+        if 'translated_name' in unit.metadata and unit.metadata['translated_name']:
+            it = iter(sorted(unit.metadata['translated_name'].iteritems()))
+            for pair in it:
+                ElementTree.SubElement(environment_element, 'name', {'xml:lang': pair[0]}).text = \
+                    pair[1]
+        ElementTree.SubElement(environment_element, 'description').text = \
+            unit.metadata['description']
+        if 'translated_description' in unit.metadata and unit.metadata['translated_description']:
+            it = iter(sorted(unit.metadata['translated_description'].iteritems()))
+            for pair in it:
+                ElementTree.SubElement(environment_element, 'description',
+                                       {'xml:lang': pair[0]}).text = pair[1]
+
+        group_list_element = ElementTree.SubElement(environment_element, 'grouplist')
+        if 'group_ids' in unit.metadata and unit.metadata['group_ids']:
+            for groupid in sorted(unit.metadata['group_ids']):
+                ElementTree.SubElement(group_list_element, 'groupid').text = groupid
+
+        option_list_element = ElementTree.SubElement(environment_element, 'optionlist')
+        if 'options' in unit.metadata and unit.metadata['options']:
+            for option in sorted(unit.metadata['options']):
+                if option['default']:
+                    ElementTree.SubElement(option_list_element, 'groupid',
+                                           {'default': 'true'}).text = option['group']
+                else:
+                    ElementTree.SubElement(option_list_element, 'groupid').text = option['group']
+
+        #Write out the category xml to the file
+        environment_element_string = ElementTree.tostring(environment_element, encoding='utf-8')
+        _LOG.debug('Writing package_environment unit metadata:\n' + environment_element_string)
+        self.metadata_file_handle.write(environment_element_string)
