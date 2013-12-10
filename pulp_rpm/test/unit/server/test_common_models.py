@@ -397,3 +397,22 @@ class TestISOManifest(unittest.TestCase):
         manifest = models.ISOManifest(manifest_file, repo_url)
 
         self.assertEqual(len(manifest), 3)
+
+
+class TestPackageEnvironment(unittest.TestCase):
+
+    def test_get_group_ids(self):
+        group_id_list = ['id1', 'id2']
+        model = models.PackageEnvironment('foo_id', 'foo_repo', {'group_ids': group_id_list})
+        self.assertEquals(group_id_list, model.group_ids)
+
+    def test_get_options(self):
+        option_list = [{'default': True, 'group': 'id1'}, {'default': False, 'group': 'id2'}]
+        model = models.PackageEnvironment('foo_id', 'foo_repo', {'options': option_list})
+        self.assertEquals(option_list, model.options)
+
+    def test_get_optional_group_ids(self):
+        option_list = [{'default': True, 'group': 'id1'}, {'default': False, 'group': 'id2'}]
+        model = models.PackageEnvironment('foo_id', 'foo_repo', {'options': option_list})
+        self.assertEquals(['id1', 'id2'], model.optional_group_ids)
+

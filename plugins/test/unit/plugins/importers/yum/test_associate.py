@@ -144,6 +144,34 @@ class TestCopyRPMs(unittest.TestCase):
         self.assertEqual(mock_get_existing.call_count, 2)
 
 
+    @mock.patch('pulp_rpm.plugins.importers.yum.associate.filter_available_rpms', autospec=True)
+    @mock.patch('pulp_rpm.plugins.importers.yum.existing.get_existing_units', autospec=True)
+    @mock.patch('pulp_rpm.plugins.importers.yum.depsolve.find_dependent_rpms', autospec=True)
+    def test_with_recursive_deps(self, mock_find, mock_get_existing, mock_filter):
+        """
+        Test getting dependencies that do not exist in the repository already
+        """
+        conduit = mock.MagicMock()
+        # Create the primary RPMS that we want to copy
+        rpms = model_factory.rpm_units(1)
+
+        # Create the recursive dependencies that we want to copy
+        deps = model_factory.rpm_models(2)
+        dep_units = [Unit(model.TYPE, model.unit_key, model.metadata, '') for model in deps]
+
+        # the first call to filter gets all the dependencies for the parent repository
+        # The second time it is called during the recursion and all the units have already
+        # been copied.
+        mock_filter.side_effect = iter([dep_units, []])
+        # The get existing units always assumes there are no units in the target repository
+        mock_get_existing.return_value = []
+        unit_set = associate.copy_rpms(rpms, conduit, True)
+
+        merged_set = set(dep_units)
+        merged_set.update(rpms)
+        self.assertEquals(unit_set, merged_set)
+
+
 class TestNoChecksumCleanUnitKey(unittest.TestCase):
     def test_all(self):
         rpm = model_factory.rpm_models(1)[0]
@@ -222,6 +250,18 @@ class TestIdentifyChildrenToCopy(unittest.TestCase):
         self.assertEqual(len(rpm_names), 0)
         self.assertEqual(len(rpm_search_dicts), 0)
         self.assertEqual(groups, set(units[0].metadata['packagegroupids']))
+
+    def test_environment(self):
+        units = model_factory.environment_units(1)
+
+        groups, rpm_names, rpm_search_dicts = associate.identify_children_to_copy(units)
+
+        target_groups = set(units[0].metadata['group_ids'])
+        target_groups.update([d.get('group') for d in units[0].metadata['options']])
+
+        self.assertEqual(len(rpm_names), 0)
+        self.assertEqual(len(rpm_search_dicts), 0)
+        self.assertEqual(groups, target_groups)
 
     def test_erratum(self):
         units = model_factory.errata_units(1)
@@ -357,3 +397,13 @@ class TestGetRPMSToCopyByName(unittest.TestCase):
         self.assertTrue(isinstance(conduit.get_destination_units.call_args[0][0], UnitAssociationCriteria))
         self.assertEqual(conduit.get_destination_units.call_args[0][0].type_ids, [models.RPM.TYPE])
         self.assertEqual(conduit.get_destination_units.call_args[0][0].unit_fields, models.RPM.UNIT_KEY_NAMES)
+
+
+class TestSafeCopyWithoutFile(unittest.TestCase):
+
+    def test_metadata_clear_keys_prefixed_with_underscore(self):
+        unit = model_factory.group_units(1)[0]
+        unit.metadata['_foo'] = 'value'
+        copied_unit = associate._safe_copy_unit_without_file(unit)
+        self.assertEquals(None, copied_unit.metadata.get('_foo'))
+
