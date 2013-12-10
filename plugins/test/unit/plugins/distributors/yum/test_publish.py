@@ -269,7 +269,7 @@ class PublisherTests(BaseYumDistributorPublishTests):
             publish_step._record_failure(step, e)
 
         self.assertEqual(self.publisher.progress_report[step][constants.PROGRESS_FAILURES_KEY], 1)
-        self.assertEqual(self.publisher.progress_report[step][constants.PROGRESS_ERROR_DETAILS_KEY][0], error_msg)
+        self.assertEqual(self.publisher.progress_report[step][constants.PROGRESS_ERROR_DETAILS_KEY][0]['error'], error_msg)
 
     def test_build_final_report_success(self):
         self._init_publisher()

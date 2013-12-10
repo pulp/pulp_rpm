@@ -418,7 +418,7 @@ class PublishStep(object):
         if e is not None:
             error_details['error'] = e.message or str(e)
 
-        if None not in error_details.values():
+        if error_details.values() != (None, None):
             self.parent.progress_report[step][constants.PROGRESS_ERROR_DETAILS_KEY].append(error_details)
 
 
