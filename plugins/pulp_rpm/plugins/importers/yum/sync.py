@@ -16,6 +16,7 @@ import logging
 import os
 import shutil
 import tempfile
+from gettext import gettext as _
 
 from pulp.common.plugins import importer_constants
 from pulp.plugins.util import nectar_config as nectar_utils
@@ -89,7 +90,7 @@ class RepoSync(object):
         :rtype:     str
         """
         repo_url = self.call_config.get(importer_constants.KEY_FEED)
-        if not repo_url.endswith('/'):
+        if repo_url is not None and not repo_url.endswith('/'):
             repo_url += '/'
         return repo_url
 
@@ -106,6 +107,11 @@ class RepoSync(object):
         try:
             self.progress_status['metadata']['state'] = constants.STATE_RUNNING
             self.set_progress()
+
+            # Verify that we have a feed url.  if there is no feed url then we have nothing to sync
+            if self.sync_feed is None:
+                raise FailedException(_('Unable to sync a repository that has no feed'))
+
             metadata_files = self.get_metadata()
             # Save the default checksum from the metadata
             self.save_default_metadata_checksum_on_repo(metadata_files)
@@ -141,8 +147,11 @@ class RepoSync(object):
 
             self.progress_status['comps']['state'] = constants.STATE_RUNNING
             self.set_progress()
-            self.get_groups(metadata_files)
-            self.get_categories(metadata_files)
+            self.get_comps_file_units(metadata_files, group.process_group_element, group.GROUP_TAG)
+            self.get_comps_file_units(metadata_files, group.process_category_element,
+                                      group.CATEGORY_TAG)
+            self.get_comps_file_units(metadata_files, group.process_environment_element,
+                                      group.ENVIRONMENT_TAG)
             self.progress_status['comps']['state'] = constants.STATE_COMPLETE
             self.set_progress()
 
@@ -446,13 +455,19 @@ class RepoSync(object):
         finally:
             errata_file_handle.close()
 
-    def get_groups(self, metadata_files):
+    def get_comps_file_units(self, metadata_files, processing_function, tag):
         """
         Given repo metadata files, decides which groups to get and gets them
         based on importer config settings.
 
         :param metadata_files:  instance of MetadataFiles
         :type  metadata_files:  pulp_rpm.plugins.importers.yum.repomd.metadata.MetadataFiles
+
+        :param processing_function:  method to use for generating the units
+        :type  processing_function:  function
+
+        :param tag:  the name of the xml tag containing each unit
+        :type  tag:  str
         """
         group_file_handle = metadata_files.get_group_file_handle()
         if group_file_handle is None:
@@ -460,28 +475,9 @@ class RepoSync(object):
             return
 
         try:
-            process_func = functools.partial(group.process_group_element, self.repo.id)
+            process_func = functools.partial(processing_function, self.repo.id)
 
-            self.save_fileless_units(group_file_handle, group.GROUP_TAG, process_func, mutable_type=True)
-        finally:
-            group_file_handle.close()
-
-    def get_categories(self, metadata_files):
-        """
-        Given repo metadata files, decides which categories to get and gets them
-        based on importer config settings.
-
-        :param metadata_files:  instance of MetadataFiles
-        :type  metadata_files:  pulp_rpm.plugins.importers.yum.repomd.metadata.MetadataFiles
-        """
-        group_file_handle = metadata_files.get_group_file_handle()
-        if group_file_handle is None:
-            _LOGGER.debug('comps metadata not found')
-            return
-
-        try:
-            process_func = functools.partial(group.process_category_element, self.repo.id)
-            self.save_fileless_units(group_file_handle, group.CATEGORY_TAG, process_func, mutable_type=True)
+            self.save_fileless_units(group_file_handle, tag, process_func, mutable_type=True)
         finally:
             group_file_handle.close()
 

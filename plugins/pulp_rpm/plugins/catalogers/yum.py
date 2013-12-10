@@ -57,13 +57,16 @@ class YumCataloger(Cataloger):
         :param md_files: The metadata files object.
         :type md_files: pulp_rpm.plugins.importers.yum.repomd.metadata.MetadataFiles
         """
-        with md_files.get_metadata_file_handle(primary.METADATA_FILE_NAME) as fp:
+        fp = md_files.get_metadata_file_handle(primary.METADATA_FILE_NAME)
+        try:
             _packages = packages.package_list_generator(
                 fp, primary.PACKAGE_TAG, primary.process_package_element)
             for model in _packages:
                 unit_key = model.unit_key
                 url = urljoin(base_url, model.download_path)
                 conduit.add_entry(models.RPM.TYPE, unit_key, url)
+        finally:
+            fp.close()
 
     def refresh(self, conduit, config, url):
         """

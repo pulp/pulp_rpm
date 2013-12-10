@@ -28,6 +28,7 @@ class Package(object):
     UNIT_KEY_NAMES = tuple()
     TYPE = None
     NAMEDTUPLE = None
+
     def __init__(self, local_vars):
         self.metadata = local_vars.get('metadata', {})
         for name in self.UNIT_KEY_NAMES:
@@ -278,6 +279,22 @@ class PackageCategory(Package):
         return self.metadata.get('packagegroupids', [])
 
 
+class PackageEnvironment(Package):
+    UNIT_KEY_NAMES = ('id', 'repo_id')
+    TYPE = 'package_environment'
+
+    def __init__(self, id, repo_id, metadata):
+        Package.__init__(self, locals())
+
+    @property
+    def group_ids(self):
+        return self.metadata.get('group_ids', [])
+
+    @property
+    def options(self):
+        return self.metadata.get('options', [])
+
+
 class YumMetadataFile(Package):
     UNIT_KEY_NAMES = ('data_type', 'repo_id')
     TYPE = 'yum_repo_metadata_file'
@@ -301,6 +318,7 @@ TYPE_MAP = {
     Errata.TYPE: Errata,
     PackageCategory.TYPE: PackageCategory,
     PackageGroup.TYPE: PackageGroup,
+    PackageEnvironment.TYPE: PackageEnvironment,
     RPM.TYPE: RPM,
     SRPM.TYPE: SRPM,
     YumMetadataFile.TYPE: YumMetadataFile,

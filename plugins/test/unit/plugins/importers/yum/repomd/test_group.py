@@ -12,11 +12,17 @@
 # see http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt
 
 from cStringIO import StringIO
+import os
 import functools
 import unittest
+from xml.etree import ElementTree
 
 from pulp_rpm.common import models
 from pulp_rpm.plugins.importers.yum.repomd import group, packages
+
+DATA_DIR = os.path.join(os.path.dirname(__file__), '../../../../../data/')
+
+FEDORA_19_COMPS_XML = os.path.join(DATA_DIR, "Fedora-19-comps.xml")
 
 
 class TestProcessGroupElement(unittest.TestCase):
@@ -102,6 +108,111 @@ class TestProcessCategoryElement(unittest.TestCase):
         self.assertEqual(len(categories[0].metadata['translated_name']), 58)
         self.assertEqual(categories[0].metadata['translated_name']['de'], 'Basissystem')
 
+
+class TestProcessEnvironmentElement(unittest.TestCase):
+
+    def setUp(self):
+        self.process_environment = functools.partial(group.process_environment_element, 'repo1')
+
+        self._build_base_group()
+
+    def _build_base_group(self):
+        env_element = ElementTree.Element('environment')
+        ElementTree.SubElement(env_element, 'id').text = 'test-id'
+        ElementTree.SubElement(env_element, 'display_order').text = '5'
+        ElementTree.SubElement(env_element, 'name').text = 'foo-name'
+        ElementTree.SubElement(env_element, 'description').text = 'foo-desc'
+        group_list = ElementTree.SubElement(env_element, 'grouplist')
+        ElementTree.SubElement(group_list, 'groupid').text = 'group1'
+        ElementTree.SubElement(env_element, 'optionlist')
+
+        self.element = env_element
+
+    def test_minimal_set(self):
+        group_model = self.process_environment(self.element)
+        self.assertEquals(group_model.id, 'test-id')
+        self.assertEquals(group_model.repo_id, 'repo1')
+        self.assertEquals(group_model.metadata['display_order'], 5)
+        self.assertEquals(group_model.metadata['name'], 'foo-name')
+        self.assertEquals(group_model.metadata['description'], 'foo-desc')
+        self.assertEquals(len(group_model.group_ids), 1)
+        self.assertEquals(group_model.group_ids[0], 'group1')
+
+    def test_translated_description(self):
+        ElementTree.SubElement(self.element, 'description', {group.LANGUAGE_TAG: 'fr'}).text \
+            = 'desc2'
+        ElementTree.SubElement(self.element, 'description', {group.LANGUAGE_TAG: 'es'}).text \
+            = 'desc3'
+
+        group_model = self.process_environment(self.element)
+
+        self.assertTrue('fr' in group_model.metadata['translated_description'])
+        self.assertEquals(group_model.metadata['translated_description']['fr'], 'desc2')
+        self.assertTrue('es' in group_model.metadata['translated_description'])
+        self.assertEquals(group_model.metadata['translated_description']['es'], 'desc3')
+
+    def test_translated_name(self):
+        ElementTree.SubElement(self.element, 'name', {group.LANGUAGE_TAG: 'fr'}).text = 'name2'
+        ElementTree.SubElement(self.element, 'name', {group.LANGUAGE_TAG: 'es'}).text = 'name3'
+
+        group_model = self.process_environment(self.element)
+
+        self.assertTrue('fr' in group_model.metadata['translated_name'])
+        self.assertEquals(group_model.metadata['translated_name']['fr'], 'name2')
+        self.assertTrue('es' in group_model.metadata['translated_name'])
+        self.assertEquals(group_model.metadata['translated_name']['es'], 'name3')
+
+    def test_group_list(self):
+        group_element = self.element.find('grouplist')
+        ElementTree.SubElement(group_element, 'groupid').text = 'group2'
+        ElementTree.SubElement(group_element, 'groupid').text = 'group3'
+
+        group_model = self.process_environment(self.element)
+
+        self.assertEquals(len(group_model.group_ids), 3)
+        self.assertTrue('group1' in group_model.group_ids)
+        self.assertTrue('group2' in group_model.group_ids)
+        self.assertTrue('group3' in group_model.group_ids)
+
+    def test_option_list(self):
+        group_element = self.element.find('optionlist')
+        ElementTree.SubElement(group_element, 'groupid').text = 'group1'
+        ElementTree.SubElement(group_element, 'groupid').text = 'group2'
+
+        group_model = self.process_environment(self.element)
+
+        options = group_model.options
+        self.assertEquals(len(options), 2)
+        self.assertTrue(any(d.get('group', None) == 'group1' for d in options))
+        self.assertTrue(any(d.get('group', None) == 'group2' for d in options))
+
+    def test_option_list_with_default(self):
+        group_element = self.element.find('optionlist')
+        ElementTree.SubElement(group_element, 'groupid', {'default': True}).text = 'group1'
+        ElementTree.SubElement(group_element, 'groupid', {'default': False}).text = 'group2'
+
+        group_model = self.process_environment(self.element)
+
+        options = group_model.options
+        self.assertEquals(len(options), 2)
+        self.assertTrue(any(d.get('group', None) == 'group1' and d.get('default', None) is True
+                            for d in options))
+        self.assertTrue(any(d.get('group', None) == 'group2' and d.get('default', None) is False
+                            for d in options))
+
+    def test_real_data_fedora_19(self):
+        with open(FEDORA_19_COMPS_XML) as xml_file_handle:
+            environments = packages.package_list_generator(xml_file_handle,
+                                                           group.ENVIRONMENT_TAG,
+                                                           self.process_environment)
+            env_count = 0
+            # Loop over all to ensure parsing did not throw an error
+            for model in environments:
+                self.assertTrue(isinstance(model, models.PackageEnvironment))
+                self.assertEqual(model.repo_id, 'repo1')
+                env_count += 1
+
+            self.assertEquals(12, env_count)
 
 # highly abridged version that grabs one group with a uservisible value
 # and another without to make sure the default works.

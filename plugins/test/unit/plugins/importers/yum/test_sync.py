@@ -101,8 +101,7 @@ class TestRun(BaseSyncTest):
                                                     return_value=self.metadata_files)
         self.reposync.update_content = mock.MagicMock(spec_set=self.reposync.update_content)
         self.reposync.get_errata = mock.MagicMock(spec_set=self.reposync.get_errata)
-        self.reposync.get_groups = mock.MagicMock(spec_set=self.reposync.get_groups)
-        self.reposync.get_categories = mock.MagicMock(spec_set=self.reposync.get_categories)
+        self.reposync.get_comps_file_units = mock.MagicMock(spec_set=self.reposync.get_comps_file_units)
 
         self.reposync.set_progress = mock.MagicMock(spec_set=self.reposync.set_progress)
 
@@ -127,8 +126,12 @@ class TestRun(BaseSyncTest):
         self.reposync.get_metadata.assert_called_once_with()
         self.reposync.update_content.assert_called_once_with(self.metadata_files)
         self.reposync.get_errata.assert_called_once_with(self.metadata_files)
-        self.reposync.get_groups.assert_called_once_with(self.metadata_files)
-        self.reposync.get_categories.assert_called_once_with(self.metadata_files)
+        calls = [mock.call(self.metadata_files, group.process_group_element, group.GROUP_TAG),
+                 mock.call(self.metadata_files, group.process_environment_element,
+                           group.ENVIRONMENT_TAG),
+                 mock.call(self.metadata_files, group.process_category_element, group.CATEGORY_TAG)]
+        self.reposync.get_comps_file_units.assert_has_calls(calls, any_order=True)
+
         mock_treeinfo_sync.assert_called_once_with(self.conduit, self.url, mock_mkdtemp.return_value,
                                                    self.reposync.nectar_config,
                                                    self.reposync.distribution_report,
@@ -199,6 +202,14 @@ class TestRun(BaseSyncTest):
         self.assertFalse(report.canceled_flag)
         self.assertEqual(self.reposync.set_progress.call_count, 2)
 
+    def test_fail_on_missing_feed(self):
+        self.config = PluginCallConfiguration({}, {})
+        reposync = RepoSync(self.repo, self.conduit, self.config)
+        reposync.call_config.get(importer_constants.KEY_FEED)
+        report = reposync.run()
+        self.assertEquals(report.details['metadata']['error'],
+                          'Unable to sync a repository that has no feed')
+
 
 class TestProgressSummary(BaseSyncTest):
     def test_content(self):
@@ -227,8 +238,16 @@ class TestGetMetadata(BaseSyncTest):
         self.assertRaises(FailedException, self.reposync.get_metadata)
 
     @mock.patch.object(metadata, 'MetadataFiles', autospec=True)
-    def test_failed_parsing(self, mock_metadata_files):
+    def test_failed_download_repomd(self, mock_metadata_files):
         mock_metadata_files.return_value = self.metadata_files
+        self.metadata_files.parse_repomd = mock.MagicMock(side_effect=ValueError, autospec=True)
+
+        self.assertRaises(FailedException, self.reposync.get_metadata)
+
+    @mock.patch.object(metadata, 'MetadataFiles', autospec=True)
+    def test_failed_parse_repomd(self, mock_metadata_files):
+        mock_metadata_files.return_value = self.metadata_files
+        self.metadata_files.download_repomd = mock.MagicMock(autospec=True)
         self.metadata_files.parse_repomd = mock.MagicMock(side_effect=ValueError, autospec=True)
 
         self.assertRaises(FailedException, self.reposync.get_metadata)
@@ -642,10 +661,11 @@ class TestGetErrata(BaseSyncTest):
                                           updateinfo.process_package_element)
 
 
-class TestGetGroups(BaseSyncTest):
+class TestGetCompsFileUnits(BaseSyncTest):
+
     @mock.patch.object(RepoSync, 'save_fileless_units', autospec=True)
     def test_no_metadata(self, mock_save):
-        self.reposync.get_groups(self.metadata_files)
+        self.reposync.get_comps_file_units(self.metadata_files, mock.Mock(), "foo")
 
         self.assertEqual(mock_save.call_count, 0)
 
@@ -658,7 +678,7 @@ class TestGetGroups(BaseSyncTest):
         """
         self.assertFalse(mock_get.return_value.closed)
 
-        self.reposync.get_groups(self.metadata_files)
+        self.reposync.get_comps_file_units(self.metadata_files, mock.Mock(), "foo")
 
         self.assertTrue(mock_get.return_value.closed)
 
@@ -672,83 +692,28 @@ class TestGetGroups(BaseSyncTest):
         """
         self.assertFalse(mock_get.return_value.closed)
 
-        self.assertRaises(AttributeError, self.reposync.get_groups, self.metadata_files)
+        self.assertRaises(AttributeError, self.reposync.get_comps_file_units,
+                          self.metadata_files, mock.Mock(), "foo")
 
         self.assertTrue(mock_get.return_value.closed)
 
-    @mock.patch.object(group, 'process_group_element', autospec=True)
     @mock.patch.object(RepoSync, 'save_fileless_units', autospec=True)
     @mock.patch.object(metadata.MetadataFiles, 'get_group_file_handle',
                        autospec=True, return_value=StringIO())
-    def test_with_metadata(self, mock_get, mock_save, mock_process):
-        self.reposync.get_groups(self.metadata_files)
+    def test_with_metadata(self, mock_get, mock_save):
+        mock_process_element = mock.Mock()
+        self.reposync.get_comps_file_units(self.metadata_files, mock_process_element, "foo")
 
         self.assertEqual(mock_save.call_count, 1)
         self.assertEqual(mock_save.call_args[0][1], mock_get.return_value)
-        self.assertEqual(mock_save.call_args[0][2], group.GROUP_TAG)
+        self.assertEqual(mock_save.call_args[0][2], "foo")
         self.assertTrue(mock_save.call_args[0][3])
 
         # verify that the process func delegates properly with the correct repo id
         process_func = mock_save.call_args[0][3]
         fake_element = mock.MagicMock()
         process_func(fake_element)
-        mock_process.assert_called_once_with(self.repo.id, fake_element)
-
-
-class TestGetCategories(BaseSyncTest):
-    @mock.patch.object(RepoSync, 'save_fileless_units', autospec=True)
-    def test_no_metadata(self, mock_save):
-        """
-        gracefully move on if there is no repo metadata for this
-        """
-        self.reposync.get_categories(self.metadata_files)
-
-        self.assertEqual(mock_save.call_count, 0)
-
-    @mock.patch.object(RepoSync, 'save_fileless_units', autospec=True)
-    @mock.patch.object(metadata.MetadataFiles, 'get_group_file_handle',
-                       autospec=True, return_value=StringIO())
-    def test_closes_file(self, mock_get, mock_save):
-        """
-        make sure this closes its file handle
-        """
-        self.assertFalse(mock_get.return_value.closed)
-
-        self.reposync.get_categories(self.metadata_files)
-
-        self.assertTrue(mock_get.return_value.closed)
-
-    @mock.patch.object(RepoSync, 'save_fileless_units', autospec=True,
-                       side_effect=AttributeError)
-    @mock.patch.object(metadata.MetadataFiles, 'get_group_file_handle',
-                       autospec=True, return_value=StringIO())
-    def test_closes_file_on_exception(self, mock_get, mock_save):
-        """
-        make sure this closes its file handle even if an exception is raised
-        """
-        self.assertFalse(mock_get.return_value.closed)
-
-        self.assertRaises(AttributeError, self.reposync.get_categories, self.metadata_files)
-
-        self.assertTrue(mock_get.return_value.closed)
-
-    @mock.patch.object(group, 'process_category_element', autospec=True)
-    @mock.patch.object(RepoSync, 'save_fileless_units', autospec=True)
-    @mock.patch.object(metadata.MetadataFiles, 'get_group_file_handle',
-                       autospec=True, return_value=StringIO())
-    def test_with_metadata(self, mock_get, mock_save, mock_process):
-        self.reposync.get_categories(self.metadata_files)
-
-        self.assertEqual(mock_save.call_count, 1)
-        self.assertEqual(mock_save.call_args[0][1], mock_get.return_value)
-        self.assertEqual(mock_save.call_args[0][2], group.CATEGORY_TAG)
-        self.assertTrue(mock_save.call_args[0][3])
-
-        # verify that the process func delegates properly with the correct repo id
-        process_func = mock_save.call_args[0][3]
-        fake_element = mock.MagicMock()
-        process_func(fake_element)
-        mock_process.assert_called_once_with(self.repo.id, fake_element)
+        mock_process_element.assert_called_once_with(self.repo.id, fake_element)
 
 
 class TestSaveFilelessUnits(BaseSyncTest):

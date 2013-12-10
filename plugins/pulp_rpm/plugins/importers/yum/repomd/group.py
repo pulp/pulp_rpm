@@ -19,7 +19,7 @@ _LOGGER = logging.getLogger(__name__)
 
 GROUP_TAG = 'group'
 CATEGORY_TAG = 'category'
-METADATA_FILE_NAME = 'comps'
+ENVIRONMENT_TAG = 'environment'
 # this according to yum.comps.lang_attr
 LANGUAGE_TAG = '{http://www.w3.org/XML/1998/namespace}lang'
 
@@ -95,6 +95,42 @@ def process_category_element(repo_id, element):
         'repo_id': repo_id,
         'translated_description': translated_description,
         'translated_name': translated_name,
+    })
+
+
+def process_environment_element(repo_id, element):
+    """
+    Process one XML block from comps.xml and return a models.PackageEnvironment instance
+
+    :param repo_id: unique ID for the destination repository
+    :type  repo_id  basestring
+    :param element: object representing one "environment" block from the XML file
+    :type  element: xml.etree.ElementTree.Element
+
+    :return:    models.PackageEnvironment instance for the XML block
+    :rtype:     pulp_rpm.common.models.PackageEnvironment
+    """
+    description, translated_description = _parse_translated(element.findall('description'))
+    name, translated_name = _parse_translated(element.findall('name'))
+    display_order = element.find('display_order')
+    groups = element.find('grouplist').findall('groupid')
+
+    options = []
+    for group in element.find('optionlist').findall('groupid'):
+        default = group.attrib.get('default', False)
+        options.append({'group': group.text, 'default': default})
+
+    return models.PackageEnvironment.from_package_info({
+        'description': description,
+        # default of 1024 is from yum's own parsing of these objects
+        'display_order': int(display_order.text) if display_order is not None else 1024,
+        'group_ids': [group.text for group in groups],
+        'id': element.find('id').text,
+        'name': name,
+        'repo_id': repo_id,
+        'translated_description': translated_description,
+        'translated_name': translated_name,
+        'options': options
     })
 
 
