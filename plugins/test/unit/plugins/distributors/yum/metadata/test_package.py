@@ -108,10 +108,12 @@ class TestPackageXMLFileContext(unittest.TestCase):
         self.context.add_package_group_unit_metadata(group_unit)
         source_str = '<group><id>foo</id><uservisible>true</uservisible><display_order>0' \
                       '</display_order><langonly>bar</langonly>'\
-                      '<name>foo</name><name xml:lang="ze">ze_name</name>'\
-                      '<name xml:lang="af">af_name</name><description>foodescription'\
-                      '</description><description xml:lang="ze">ze_desc</description>'\
+                      '<name>foo</name>'\
+                      '<name xml:lang="af">af_name</name>'\
+                      '<name xml:lang="ze">ze_name</name>'\
+                      '<description>foodescription</description>'\
                       '<description xml:lang="af">af_desc</description>'\
+                      '<description xml:lang="ze">ze_desc</description>'\
                       '<packagelist><packagereq type="mandatory">package1</packagereq>'\
                       '<packagereq type="mandatory">package2</packagereq>'\
                       '<packagereq type="mandatory">package3</packagereq>'\
