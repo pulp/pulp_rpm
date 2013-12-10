@@ -81,14 +81,14 @@ def render_itemized_in_progress_state(prompt, data, type_name, progress_bar, sta
                     being ints
     :type  data:    dict
     """
-    
+
     # For the progress bar to work, we can't write anything after it until
     # we're completely finished with it. Assemble the download summary into
     # a string and let the progress bar render it.
 
     items_done = data['items_total'] - data['items_left']
     items_total = data['items_total']
-    
+
     message_data = {
         'name'        : type_name.title(),
         'items_done'  : items_done,
@@ -140,3 +140,71 @@ def render_itemized_in_progress_state(prompt, data, type_name, progress_bar, sta
             prompt.render_failure_message(message)
 
         prompt.render_spacer()
+
+
+
+def render_publish_step_in_progress_state(prompt, data, type_name, progress_bar, state):
+    """
+    This is a pretty ugly way of reusing similar code between the publish
+    steps for packages and distributions. There might be a cleaner way
+    but I was having trouble updating the correct state variable and frankly
+    I'm out of time. Feel free to fix this if you are inspired.
+
+    :param data:    dict with keys "items_total" and "items_left", values
+                    being ints
+    :type  data:    dict
+    """
+
+    # For the progress bar to work, we can't write anything after it until
+    # we're completely finished with it. Assemble the download summary into
+    # a string and let the progress bar render it.
+
+    items_total = data[constants.PROGRESS_TOTAL_KEY]
+    items_done = data[constants.PROGRESS_PROCESSED_KEY]
+
+    message_data = {
+        'name'        : type_name.title(),
+        'items_done'  : items_done,
+        'items_total' : items_total,
+        }
+
+    template = _('%(name)s: %(items_done)s/%(items_total)s items')
+    bar_message = template % message_data
+
+    # If there's nothing to download in this step, flag the bar as complete
+    if items_total is 0:
+        items_total = items_done = 1
+
+    progress_bar.render(items_done, items_total, message=bar_message)
+
+    if state == constants.STATE_COMPLETE:
+        prompt.write(_('... completed'))
+        prompt.render_spacer()
+
+    # If there are any errors, write them out here
+    num_errors = min(len(data[constants.PROGRESS_ERROR_DETAILS_KEY]), 5)
+
+    if num_errors > 0:
+        prompt.render_failure_message(_('Individual errors encountered during publishing:'))
+
+        for i in range(0, num_errors):
+            error = data[constants.PROGRESS_ERROR_DETAILS_KEY][i]
+            error_msg = error['error']
+            traceback = '\n'.join(error['traceback'])
+
+            message_data = {
+                'error'      : error_msg,
+                'traceback' : traceback
+            }
+
+            template = _('Error:   %(error)s\n')
+            if message_data["traceback"]:
+                template += _('Traceback:\n')
+                template += _('%(traceback)s')
+
+            message = template % message_data
+
+            prompt.render_failure_message(message)
+
+        prompt.render_spacer()
+

@@ -409,16 +409,17 @@ class PublishStep(object):
 
         self.parent.progress_report[step][constants.PROGRESS_FAILURES_KEY] += 1
 
-        error_details = []
+        error_details = {'error': None,
+                         'traceback': None}
 
         if tb is not None:
-            error_details.extend(traceback.format_tb(tb))
+            error_details['traceback'] = '\n'.join(traceback.format_tb(tb))
 
         if e is not None:
-            error_details.append(e.message or str(e))
+            error_details['error'] = e.message or str(e)
 
-        if error_details:
-            self.parent.progress_report[step][constants.PROGRESS_ERROR_DETAILS_KEY].append('\n'.join(error_details))
+        if None not in error_details.values():
+            self.parent.progress_report[step][constants.PROGRESS_ERROR_DETAILS_KEY].append(error_details)
 
 
 class PublishRpmStep(PublishStep):
