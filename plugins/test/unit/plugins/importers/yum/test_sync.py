@@ -202,6 +202,14 @@ class TestRun(BaseSyncTest):
         self.assertFalse(report.canceled_flag)
         self.assertEqual(self.reposync.set_progress.call_count, 2)
 
+    def test_fail_on_missing_feed(self):
+        self.config = PluginCallConfiguration({}, {})
+        reposync = RepoSync(self.repo, self.conduit, self.config)
+        reposync.call_config.get(importer_constants.KEY_FEED)
+        report = reposync.run()
+        self.assertEquals(report.details['metadata']['error'],
+                          'Unable to sync a repository that has no feed')
+
 
 class TestProgressSummary(BaseSyncTest):
     def test_content(self):

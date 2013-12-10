@@ -16,6 +16,7 @@ import logging
 import os
 import shutil
 import tempfile
+from gettext import gettext as _
 
 from pulp.common.plugins import importer_constants
 from pulp.plugins.util import nectar_config as nectar_utils
@@ -89,7 +90,7 @@ class RepoSync(object):
         :rtype:     str
         """
         repo_url = self.call_config.get(importer_constants.KEY_FEED)
-        if not repo_url.endswith('/'):
+        if repo_url is not None and not repo_url.endswith('/'):
             repo_url += '/'
         return repo_url
 
@@ -106,6 +107,11 @@ class RepoSync(object):
         try:
             self.progress_status['metadata']['state'] = constants.STATE_RUNNING
             self.set_progress()
+
+            # Verify that we have a feed url.  if there is no feed url then we have nothing to sync
+            if self.sync_feed is None:
+                raise FailedException(_('Unable to sync a repository that has no feed'))
+
             metadata_files = self.get_metadata()
             # Save the default checksum from the metadata
             self.save_default_metadata_checksum_on_repo(metadata_files)
