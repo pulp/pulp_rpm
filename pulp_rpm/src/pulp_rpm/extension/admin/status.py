@@ -320,7 +320,7 @@ class RpmStatusRenderer(StatusRenderer):
 
         data = progress_report['yum_distributor'][step]
         state = data[constants.PROGRESS_STATE_KEY]
-        total = data[constants.PROGRESS_TOTAL_KEY]
+        total = data.get(constants.PROGRESS_TOTAL_KEY, 0)
 
         self.check_for_cancelled_state(state)
 
