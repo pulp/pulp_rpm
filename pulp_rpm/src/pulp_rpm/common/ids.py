@@ -48,6 +48,7 @@ METADATA_ERRATA = (
 
 TYPE_ID_PKG_GROUP = models.PackageGroup.TYPE
 TYPE_ID_PKG_CATEGORY = models.PackageCategory.TYPE
+TYPE_ID_PKG_ENVIRONMENT = models.PackageEnvironment.TYPE
 
 # We are adding the 'repo_id' to unit_key for each group/category
 # to ensure that each group/category is defined only for that given repo_id

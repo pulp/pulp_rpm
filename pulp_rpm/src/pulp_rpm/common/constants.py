@@ -43,6 +43,34 @@ PROGRESS_PUBLISH_HTTPS = 'publish_https'
 # Progress report keywords used by the export distributor progress report
 PROGRESS_METADATA_KEYWORD = 'metadata'
 
+# -- yum distributor publish progress -----------------------------------------
+
+PUBLISH_STATES = (STATE_NOT_STARTED, STATE_RUNNING, STATE_SKIPPED,
+                  STATE_COMPLETE, STATE_FAILED, STATE_CANCELLED)
+
+PUBLISH_RPMS_STEP = 'rpms'
+PUBLISH_DELTA_RPMS_STEP = 'drpms'
+PUBLISH_ERRATA_STEP = 'errata'
+PUBLISH_COMPS_STEP = 'comps'
+PUBLISH_PACKAGE_GROUPS_STEP = 'package_groups'
+PUBLISH_PACKAGE_CATEGORIES_STEP = 'package_categories'
+PUBLISH_DISTRIBUTION_STEP = 'distribution'
+PUBLISH_METADATA_STEP = 'metadata'
+PUBLISH_OVER_HTTP_STEP = 'publish_over_http'
+PUBLISH_OVER_HTTPS_STEP = 'publish_over_https'
+
+PUBLISH_STEPS = (PUBLISH_RPMS_STEP, PUBLISH_DELTA_RPMS_STEP, PUBLISH_ERRATA_STEP,
+                 PUBLISH_COMPS_STEP, PUBLISH_DISTRIBUTION_STEP, PUBLISH_METADATA_STEP,
+                 PUBLISH_OVER_HTTP_STEP, PUBLISH_OVER_HTTPS_STEP)
+
+PROGRESS_TOTAL_KEY = 'total'
+PROGRESS_PROCESSED_KEY = 'processed'
+PROGRESS_SUCCESSES_KEY = 'successes'
+PROGRESS_FAILURES_KEY = 'failures'
+
+PUBLISH_REPORT_KEYS = (PROGRESS_STATE_KEY, PROGRESS_TOTAL_KEY, PROGRESS_PROCESSED_KEY,
+                       PROGRESS_SUCCESSES_KEY, PROGRESS_FAILURES_KEY, PROGRESS_ERROR_DETAILS_KEY)
+
 # -- configuration ------------------------------------------------------------
 
 # Used as a note on a repository to indicate it is a Puppet repository

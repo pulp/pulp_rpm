@@ -20,7 +20,9 @@ import functools
 from pulp.client.commands.repo.sync_publish import StatusRenderer
 
 from pulp_rpm.common import constants, ids, models
-from pulp_rpm.common.status_utils import render_general_spinner_step, render_itemized_in_progress_state
+from pulp_rpm.common.status_utils import (
+    render_general_spinner_step, render_itemized_in_progress_state,
+    render_publish_step_in_progress_state)
 
 
 class CancelException(Exception):
@@ -40,7 +42,9 @@ class RpmStatusRenderer(StatusRenderer):
         self.comps_last_state = constants.STATE_NOT_STARTED
 
         # Publish Steps
-        self.packages_last_state = constants.STATE_NOT_STARTED
+        self.publish_steps_last_state = dict.fromkeys(constants.PUBLISH_STEPS,
+                                                      constants.STATE_NOT_STARTED)
+
         self.distribution_publish_last_state = constants.STATE_NOT_STARTED
         self.generate_metadata_last_state = constants.STATE_NOT_STARTED
         self.publish_http_last_state = constants.STATE_NOT_STARTED
@@ -79,10 +83,13 @@ class RpmStatusRenderer(StatusRenderer):
                 self.render_comps_step(progress_report)
 
             # Publish Steps
-            if 'yum_distributor' in progress_report:
-                self.render_packages_step(progress_report)
-                self.render_distribution_publish_step(progress_report)
-                self.render_generate_metadata_step(progress_report)
+            if ids.YUM_DISTRIBUTOR_ID in progress_report:
+                self.render_packages_step(progress_report, constants.PUBLISH_DISTRIBUTION_STEP)
+                self.render_packages_step(progress_report, constants.PUBLISH_RPMS_STEP)
+                self.render_packages_step(progress_report, constants.PUBLISH_DELTA_RPMS_STEP)
+                self.render_packages_step(progress_report, constants.PUBLISH_ERRATA_STEP)
+                self.render_packages_step(progress_report, constants.PUBLISH_COMPS_STEP)
+                self.render_packages_step(progress_report, constants.PUBLISH_METADATA_STEP)
                 self.render_publish_https_step(progress_report)
                 self.render_publish_http_step(progress_report)
 
@@ -92,6 +99,8 @@ class RpmStatusRenderer(StatusRenderer):
     def check_for_cancelled_state(self, state):
         if state == constants.STATE_CANCELLED:
             raise CancelException
+
+    # -- render sync steps -----------------------------------------------------
 
     def render_metadata_step(self, progress_report):
 
@@ -297,46 +306,50 @@ class RpmStatusRenderer(StatusRenderer):
             self.errata_last_state = new_state
         render_general_spinner_step(self.prompt, self.errata_spinner, current_state, self.errata_last_state, _('Importing errata...'), update_func)
 
-    def render_packages_step(self, progress_report):
+    def render_packages_step(self, progress_report, step):
 
         # Example Data:
-        # "packages": {
-        #    "num_success": 21,
-        #    "items_left": 0,
-        #    "items_total": 21,
+        # "rpms": {
         #    "state": "FINISHED",
+        #    "total": 21,
+        #    "processed": 21,
+        #    "successes": 21,
+        #    "failures": 0
         #    "error_details": [],
-        #    "num_error": 0
         # },
 
-        data = progress_report['yum_distributor']['packages']
-        state = data['state']
+        data = progress_report['yum_distributor'][step]
+        state = data[constants.PROGRESS_STATE_KEY]
+        total = data.get(constants.PROGRESS_TOTAL_KEY, 0)
+
         self.check_for_cancelled_state(state)
 
-        if state in (constants.STATE_NOT_STARTED, constants.STATE_SKIPPED):
+        if state in (constants.STATE_NOT_STARTED, constants.STATE_SKIPPED) or total == 0:
             return
 
+        last_state = self.publish_steps_last_state[step]
+
         # Only render this on the first non-not-started state
-        if self.packages_last_state == constants.STATE_NOT_STARTED:
-            self.prompt.write(_('Publishing packages...'))
+        if last_state == constants.STATE_NOT_STARTED:
+            self.prompt.write(_('Publishing %(step)s...') % {'step': step})
 
         # If it's running or finished, the output is still the same. This way,
         # if the status is viewed after this step, the content download
         # summary is still available.
 
-        if state in (constants.STATE_RUNNING, constants.STATE_COMPLETE) and self.packages_last_state not in constants.COMPLETE_STATES:
+        if state in (constants.STATE_RUNNING, constants.STATE_COMPLETE) and last_state not in constants.COMPLETE_STATES:
 
-            self.packages_last_state = state
-            render_itemized_in_progress_state(self.prompt, data, _('packages'), self.packages_bar, state)
+            self.publish_steps_last_state[step] = state
+            render_publish_step_in_progress_state(self.prompt, data, step, self.packages_bar, state)
 
-        elif state == constants.STATE_FAILED and self.packages_last_state not in constants.COMPLETE_STATES:
+        elif state == constants.STATE_FAILED and last_state not in constants.COMPLETE_STATES:
 
             # This state means something went horribly wrong. There won't be
             # individual package error details which is why they are only
             # displayed above and not in this case.
 
             self.prompt.write(_('... failed'))
-            self.packages_last_state = constants.STATE_FAILED
+            self.publish_steps_last_state[step] = constants.STATE_FAILED
 
     def render_distribution_publish_step(self, progress_report):
 
@@ -410,26 +423,30 @@ class RpmStatusRenderer(StatusRenderer):
     def render_publish_http_step(self, progress_report):
 
         # Example Data:
-        # "publish_http": {
+        # "publish_over_http": {
         #    "state": "SKIPPED"
         # },
 
-        current_state = progress_report['yum_distributor']['publish_http']['state']
+        current_state = progress_report[ids.YUM_DISTRIBUTOR_ID][constants.PUBLISH_OVER_HTTP_STEP][constants.PROGRESS_STATE_KEY]
         def update_func(new_state):
-            self.publish_http_last_state = new_state
-        render_general_spinner_step(self.prompt, self.publish_http_spinner, current_state, self.publish_http_last_state, _('Publishing repository over HTTP'), update_func)
+            self.publish_steps_last_state[constants.PUBLISH_OVER_HTTP_STEP] = new_state
+        render_general_spinner_step(self.prompt, self.publish_http_spinner, current_state,
+                                    self.publish_steps_last_state[constants.PUBLISH_OVER_HTTP_STEP],
+                                    _('Publishing repository over HTTP'), update_func)
 
     def render_publish_https_step(self, progress_report):
 
         # Example Data:
-        # "publish_http": {
+        # "publish_over_http": {
         #    "state": "SKIPPED"
         # },
 
-        current_state = progress_report['yum_distributor']['publish_https']['state']
+        current_state = progress_report[ids.YUM_DISTRIBUTOR_ID][constants.PUBLISH_OVER_HTTPS_STEP][constants.PROGRESS_STATE_KEY]
         def update_func(new_state):
-            self.publish_https_last_state = new_state
-        render_general_spinner_step(self.prompt, self.publish_https_spinner, current_state, self.publish_https_last_state, _('Publishing repository over HTTPS'), update_func)
+            self.publish_steps_last_state[constants.PUBLISH_OVER_HTTPS_STEP] = new_state
+        render_general_spinner_step(self.prompt, self.publish_https_spinner, current_state,
+                                    self.publish_steps_last_state[constants.PUBLISH_OVER_HTTPS_STEP],
+                                    _('Publishing repository over HTTPS'), update_func)
 
 
 class RpmExportStatusRenderer(StatusRenderer):
@@ -817,3 +834,4 @@ class RpmGroupExportStatusRenderer(StatusRenderer):
                                     report[constants.PROGRESS_STATE_KEY], self.publish_https_last_state,
                                     _('Publishing over HTTPS...'),
                                     functools.partial(setattr, self, 'publish_https_last_state'))
+

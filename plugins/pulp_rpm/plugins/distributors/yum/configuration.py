@@ -20,6 +20,7 @@ from pulp.server.managers import factory
 
 from pulp_rpm.common.constants import SCRATCHPAD_DEFAULT_METADATA_CHECKSUM, \
     CONFIG_DEFAULT_CHECKSUM, CONFIG_KEY_CHECKSUM_TYPE, REPO_AUTH_CONFIG_FILE
+from pulp_rpm.common.ids import TYPE_ID_DISTRIBUTOR_YUM
 from pulp_rpm.repo_auth import protected_repo_utils, repo_cert_utils
 from pulp_rpm.yum_plugin import util
 
@@ -276,7 +277,10 @@ def get_repo_checksum_type(publish_conduit, config):
     distributor_config = config.repo_plugin_config
     if 'checksum_type' not in distributor_config:
         distributor_manager = factory.repo_distributor_manager()
-        distributor_manager.update_distributor_config(publish_conduit.repo_id,
+        distributor = distributor_manager.get_distributor(publish_conduit.repo_id,
+                                                              publish_conduit.distributor_id)
+        if distributor['distributor_type_id'] == TYPE_ID_DISTRIBUTOR_YUM:
+            distributor_manager.update_distributor_config(publish_conduit.repo_id,
                                                       publish_conduit.distributor_id,
                                                       {'checksum_type': checksum_type})
     return checksum_type
