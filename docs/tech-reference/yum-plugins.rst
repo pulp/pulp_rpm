@@ -327,6 +327,51 @@ Metadata
 ``packagegroupids``
  Package group IDs associated with the package category
 
+
+Package Group Environment
+----------------------
+
+The Package Group Environment's ID is ``package_environment``.
+
+Unit Key
+^^^^^^^^
+``id``
+ Package group Environment ID
+
+``repo_id``
+ Repository ID to which the package group category ID is associated
+
+
+Metadata
+^^^^^^^^
+``name``
+ Name of the package group environment
+
+``translated_name``
+ Translated names of the package group environment.  These are saved as a dictionary of locale
+ codes to translated names.
+ Example format: ``{"zh_TW" : 'KDE Plasma 工作空間'}``
+
+``description``
+ Description of the package group environment
+
+``translated_description``
+ Translated descriptions of the package group environment.  These are saved as a dictionary of locale
+ codes to translated descriptions.
+ Example format: ``{"ru" : 'KDE Plasma Workspaces - легко настраиваемый графический интерфейс пользователя, который содержит панель, рабочий стол, системные значки и виджеты рабочего стола, а также множество мощных приложений KDE.'}``
+
+``display_order``
+ Display order of the package group environment
+
+``group_ids``
+ List of Package group IDs associated with the package environment
+ Example format: ``['<group_id_1>','<group_id_2>']``
+
+``options``
+ Package group IDs and whether they are default options.  The default flag must be set to either
+ `True` or `False`.
+ Example format: ``{"group" : <group_id>, "default" : True}``
+
 Yum Importer
 ============
 

@@ -24,7 +24,7 @@ from pulp.server.exceptions import InvalidValue
 from pulp_rpm.common import constants
 from pulp_rpm.common.ids import (
     TYPE_ID_RPM, TYPE_ID_SRPM, TYPE_ID_DRPM, TYPE_ID_ERRATA, TYPE_ID_PKG_GROUP,
-    TYPE_ID_PKG_CATEGORY, TYPE_ID_DISTRO, TYPE_ID_YUM_REPO_METADATA_FILE)
+    TYPE_ID_PKG_CATEGORY, TYPE_ID_PKG_ENVIRONMENT, TYPE_ID_DISTRO, TYPE_ID_YUM_REPO_METADATA_FILE)
 from pulp_rpm.yum_plugin import util
 from pulp_rpm.plugins.importers.yum.parse.treeinfo import KEY_PACKAGEDIR
 
@@ -105,7 +105,6 @@ class Publisher(object):
             os.makedirs(self.repo.working_dir, mode=0770)
 
         checksum_type = configuration.get_repo_checksum_type(self.conduit, self.config)
-
         try:
             with RepomdXMLFileContext(self.repo.working_dir, checksum_type) as self.repomd_file_context:
                 # The distribution must be published first in case it specifies a packagesdir
@@ -122,8 +121,8 @@ class Publisher(object):
 
             self._clear_directory(self.repo.working_dir)
         except Exception, e:
-            # do bug log the details as the returned report has the details.
-            _LOG.error(e)
+            # log the details so items can be traced on the server.
+            _LOG.debug(e, exec_info=True)
 
         _LOG.debug('Publish completed with progress:\n%s' % pformat(self.progress_report))
         return self._build_final_report()
@@ -596,6 +595,12 @@ class PublishCompsStep(PublishStep):
         for group in groups_generator:
             yield UnitProcessor(group, self.comps_context.add_package_group_unit_metadata)
 
+        # set the process unit method to environments
+        criteria = UnitAssociationCriteria(type_ids=[TYPE_ID_PKG_ENVIRONMENT])
+        groups_generator = self.parent.conduit.get_units(criteria, as_generator=True)
+        for group in groups_generator:
+            yield UnitProcessor(group, self.comps_context.add_package_environment_unit_metadata)
+
     def process_unit(self, unit):
         """
         Process each unit created by the generator using the associated
@@ -706,6 +711,8 @@ class PublishDistributionStep(PublishStep):
         symlink_dir = self.parent.repo.working_dir
         for dfile in distro_files:
             source_path = os.path.join(source_path_dir, dfile['relativepath'])
+            if source_path.endswith('repomd.xml'):
+                continue
             symlink_path = os.path.join(symlink_dir, dfile['relativepath'])
             self._create_symlink(source_path, symlink_path)
             self.parent.progress_report[constants.PUBLISH_DISTRIBUTION_STEP][constants.PROGRESS_SUCCESSES_KEY] += 1

@@ -15,6 +15,8 @@ import os
 import shutil
 import unittest
 import tempfile
+import sys
+import traceback
 
 import mock
 
@@ -461,6 +463,147 @@ class PublishStepTests(BaseYumDistributorPublishStepTests):
         self.assertEqual(self.publisher.progress_report[constants.PUBLISH_RPMS_STEP][
                          constants.PROGRESS_SUCCESSES_KEY], 1)
 
+    # -- progress testing ------------------------------------------------------
+
+    def test_init_step_progress(self):
+        self._init_publisher()
+
+        step = reporting.PUBLISH_STEPS[0]
+        publish_step = publish.PublishStep(self.publisher, step)
+        publish_step._init_step_progress_report(step)
+
+        self.assertEqual(self.publisher.progress_report[step], reporting.PROGRESS_SUB_REPORT)
+
+    def test_init_step_progress_not_a_step(self):
+        self._init_publisher()
+
+        step = 'not_a_step'
+        publish_step = publish.PublishStep(self.publisher, step)
+
+        self.assertRaises(AssertionError, publish_step._init_step_progress_report, step)
+
+    @mock.patch('pulp.plugins.conduits.repo_publish.RepoPublishConduit.set_progress')
+    def test_report_progress(self, mock_set_progress):
+        self._init_publisher()
+
+        step = reporting.PUBLISH_STEPS[1]
+        publish_step = publish.PublishStep(self.publisher, step)
+
+        updates = {reporting.STATE: reporting.PUBLISH_FINISHED_STATE,
+                   reporting.TOTAL: 1,
+                   reporting.PROCESSED: 1,
+                   reporting.SUCCESSES: 1}
+
+        publish_step._report_progress(step, **updates)
+
+        self.assertEqual(self.publisher.progress_report[step], updates)
+
+        mock_set_progress.assert_called_once_with(self.publisher.progress_report)
+
+    def test_record_failure(self):
+        self._init_publisher()
+        step = reporting.PUBLISH_STEPS[2]
+        publish_step = publish.PublishStep(self.publisher, step)
+
+        publish_step._init_step_progress_report(step)
+
+        error_msg = 'Too bad, so sad'
+
+        try:
+            raise Exception(error_msg)
+
+        except Exception, e:
+            tb = exc_traceback = sys.exc_info()[2]
+            publish_step._record_failure(step, e, tb)
+
+        self.assertEqual(self.publisher.progress_report[step][reporting.FAILURES], 1)
+        # The Tracebck and error message should be separated into separate fields.
+        details = traceback.format_tb(tb)
+        details.extend([e.message])
+        details = '\n'.join(details)
+        self.assertEqual(self.publisher.progress_report[step][reporting.ERROR_DETAILS][0], details)
+
+    # -- linking testing -------------------------------------------------------
+
+    def test_create_symlink(self):
+        source_path = os.path.join(self.working_dir, 'source')
+        link_path = os.path.join(self.published_dir, 'link')
+
+        self._touch(source_path)
+        self.assertFalse(os.path.exists(link_path))
+
+        publish.PublishStep._create_symlink(source_path, link_path)
+
+        self.assertTrue(os.path.exists(link_path))
+        self.assertTrue(os.path.islink(link_path))
+        self.assertEqual(os.readlink(link_path), source_path)
+
+    def test_create_symlink_no_source(self):
+        source_path = os.path.join(self.working_dir, 'source')
+        link_path = os.path.join(self.published_dir, 'link')
+
+        self.assertRaises(RuntimeError, publish.PublishStep._create_symlink, source_path, link_path)
+
+    def test_create_symlink_no_link_parent(self):
+        source_path = os.path.join(self.working_dir, 'source')
+        link_path = os.path.join(self.published_dir, 'foo/bar/baz/link')
+
+        self._touch(source_path)
+        self.assertFalse(os.path.exists(os.path.dirname(link_path)))
+
+        publish.PublishStep._create_symlink(source_path, link_path)
+
+        self.assertTrue(os.path.exists(link_path))
+
+    def test_create_symlink_link_parent_bad_permissions(self):
+        source_path = os.path.join(self.working_dir, 'source')
+        link_path = os.path.join(self.published_dir, 'foo/bar/baz/link')
+
+        self._touch(source_path)
+        os.makedirs(os.path.dirname(link_path))
+        os.chmod(os.path.dirname(link_path), 0000)
+
+        self.assertRaises(OSError, publish.PublishStep._create_symlink, source_path, link_path)
+
+        os.chmod(os.path.dirname(link_path), 0777)
+
+    def test_create_symlink_link_exists(self):
+        old_source_path = os.path.join(self.working_dir, 'old_source')
+        new_source_path = os.path.join(self.working_dir, 'new_source')
+        link_path = os.path.join(self.published_dir, 'link')
+
+        self._touch(old_source_path)
+        self._touch(new_source_path)
+
+        os.symlink(old_source_path, link_path)
+
+        self.assertEqual(os.readlink(link_path), old_source_path)
+
+        publish.PublishStep._create_symlink(new_source_path, link_path)
+
+        self.assertEqual(os.readlink(link_path), new_source_path)
+
+    def test_create_symlink_link_exists_not_link(self):
+        source_path = os.path.join(self.working_dir, 'source')
+        link_path = os.path.join(self.published_dir, 'link')
+
+        self._touch(source_path)
+        self._touch(link_path)
+
+        self.assertRaises(RuntimeError, publish.PublishStep._create_symlink, source_path, link_path)
+
+    def test_symlink_content(self):
+        self._init_publisher()
+        unit_name = 'test.rpm'
+        unit = self._generate_rpm(unit_name)
+        step = publish.PublishStep(self.publisher, "foo", "bar")
+
+        step._symlink_content(unit, self.published_dir)
+
+        self.assertTrue(os.path.exists(os.path.join(self.published_dir, unit_name)),
+                        str(os.listdir(self.published_dir)))
+        self.assertTrue(os.path.islink(os.path.join(self.published_dir, unit_name)))
+
 
 class PublishCompsStepTests(BaseYumDistributorPublishStepTests):
 
@@ -468,17 +611,42 @@ class PublishCompsStepTests(BaseYumDistributorPublishStepTests):
         self._init_publisher()
         step = publish.PublishCompsStep(self.publisher)
         self.publisher.repo.content_unit_counts = {TYPE_ID_PKG_CATEGORY: 3, TYPE_ID_PKG_GROUP: 5}
-
         self.assertEquals(8, step._get_total())
 
     def test_units_generator(self):
         self._init_publisher()
         step = publish.PublishCompsStep(self.publisher)
         step.comps_context = mock.Mock()
-        self.publisher.conduit.get_units = mock.Mock(side_effect=[['foo', 'bar'], ['baz', 'qux']])
+        self.publisher.conduit.get_units = mock.Mock(side_effect=[['foo', 'bar'],
+                                                                  ['baz', 'qux'],
+                                                                  ['quux', 'waldo']])
 
         unit_list = [x.unit for x in step.get_unit_generator()]
-        self.assertEquals(unit_list, ['foo', 'bar', 'baz', 'qux'])
+        self.assertEquals(unit_list, ['foo', 'bar', 'baz', 'qux', 'quux', 'waldo'])
+
+    def test_process_unit(self):
+        # verify that the process unit calls the unit process method
+        self._init_publisher()
+        step = publish.PublishCompsStep(self.publisher)
+        mock_unit = mock.Mock()
+        step.process_unit(mock_unit)
+        mock_unit.process.assert_called_once_with(mock_unit.unit)
+
+    @mock.patch('pulp_rpm.plugins.distributors.yum.publish.PackageXMLFileContext')
+    def test_initialize_metadata(self, mock_context):
+        self._init_publisher()
+        step = publish.PublishCompsStep(self.publisher)
+        step.initialize_metadata()
+        mock_context.return_value.initialize.assert_called_once_with()
+
+    def test_finalize_metadata(self):
+        self._init_publisher()
+        step = publish.PublishCompsStep(self.publisher)
+        step.comps_context = mock.Mock()
+        step.finalize_metadata()
+        step.comps_context.finalize.assert_called_once_with()
+        self.publisher.repomd_file_context.\
+            add_metadata_file_metadata.assert_called_once_with('group', mock.ANY)
 
 
 class PublishDrpmStepTests(BaseYumDistributorPublishStepTests):
@@ -671,6 +839,16 @@ class PublishDistributionStepTests(BaseYumDistributorPublishStepTests):
         self.assertTrue(os.path.islink(created_link))
         self.assertEquals(os.path.realpath(created_link), os.path.realpath(content_file))
 
+    def test_publish_distribution_files_skips_repomd(self):
+        unit = self._generate_distribution_unit('one')
+        unit.metadata['files'][0]['relativepath'] = 'repodata/repomd.xml'
+        step = publish.PublishDistributionStep(self.publisher)
+        step._init_step_progress_report(reporting.PUBLISH_DISTRIBUTION_STEP)
+        step._publish_distribution_files(unit)
+
+        created_link = os.path.join(self.publisher.repo.working_dir, "repodata", 'repomd.xml')
+        self.assertFalse(os.path.exists(created_link))
+
     @mock.patch('pulp_rpm.plugins.distributors.yum.publish.PublishStep._create_symlink')
     def test_publish_distribution_files_error(self, mock_symlink):
         unit = self._generate_distribution_unit('one')
@@ -753,12 +931,35 @@ class PublishRpmStepTests(BaseYumDistributorPublishStepTests):
         self.assertTrue(os.path.exists(os.path.join(self.working_dir, 'repodata/other.xml.gz')))
         self.assertTrue(os.path.exists(os.path.join(self.working_dir, 'repodata/primary.xml.gz')))
 
+    def test_process_unit_links_package_dir(self):
+        unit = self._generate_rpm('one')
+        package_dir = os.path.join(self.working_dir, 'packages')
+        self.publisher.package_dir = package_dir
+        step = publish.PublishRpmStep(self.publisher)
+        step.initialize_metadata()
+        step.process_unit(unit)
+
+        unit_path = os.path.join(self.publisher.package_dir, unit.unit_key['name'])
+        self.assertTrue(os.path.exists(unit_path))
 
 class PublishErrataStepTests(BaseYumDistributorPublishStepTests):
-    """
-    WARNING, THERE ARE NO ERRATA SPECIFIC TESTS
-    """
-    pass
+
+    @mock.patch('pulp_rpm.plugins.distributors.yum.publish.UpdateinfoXMLFileContext')
+    def test_initialize_metadata(self, mock_context):
+        self._init_publisher()
+        step = publish.PublishErrataStep(self.publisher)
+        step.initialize_metadata()
+        mock_context.return_value.initialize.assert_called_once_with()
+        self.assertEquals(step.process_unit, step.context.add_unit_metadata)
+
+    def test_finalize_metadata(self):
+        self._init_publisher()
+        step = publish.PublishErrataStep(self.publisher)
+        step.context = mock.Mock()
+        step.finalize_metadata()
+        step.context.finalize.assert_called_once_with()
+        self.publisher.repomd_file_context.\
+            add_metadata_file_metadata.assert_called_once_with('updateinfo', mock.ANY)
 
 
 class PublishMetadataStepTests(BaseYumDistributorPublishStepTests):
@@ -872,6 +1073,29 @@ class PublishOverHttpTests(BaseYumDistributorPublishStepTests):
 
         listing_content = open(listing_path, 'r').read()
         self.assertEqual(listing_content, self.publisher.repo.id)
+
+    def test_publish_http_remove_existing_dir(self):
+        units = [self._generate_rpm(u) for u in ('one', 'two', 'three')]
+
+        # Make the existing directory and put something in it
+        repo_directory = os.path.join(self.published_dir, 'http', self.publisher.repo.id)
+        os.makedirs(repo_directory)
+        file_path = os.path.join(repo_directory, 'foo')
+        open(file_path, 'a').close()
+
+        publish.PublishOverHttpStep(self.publisher).process()
+        for u in units:
+            path = os.path.join(self.published_dir, 'http', self.publisher.repo.id, 'content', u.unit_key['name'])
+            self.assertTrue(os.path.exists(path))
+
+        listing_path = os.path.join(self.published_dir, 'http', 'listing')
+        self.assertTrue(os.path.exists(listing_path))
+
+        listing_content = open(listing_path, 'r').read()
+        self.assertEqual(listing_content, self.publisher.repo.id)
+
+        # test that the original file has been removed
+        self.assertFalse(os.path.exists(file_path))
 
 
 class PublishOverHttpsStepTests(BaseYumDistributorPublishStepTests):
