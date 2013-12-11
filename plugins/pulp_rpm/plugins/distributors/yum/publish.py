@@ -42,9 +42,6 @@ from .metadata.package import PackageXMLFileContext
 from .reporting import (
     new_progress_report, initialize_progress_sub_report, build_final_report)
 
-# FIXME: remove after merging of CLI refactorization
-from .reporting import new_progress_sub_report
-
 # -- constants -----------------------------------------------------------------
 
 _LOG = util.getLogger(__name__)
@@ -78,8 +75,6 @@ class Publisher(object):
         self.config = config
 
         self.progress_report = new_progress_report()
-        # FIXME: remove after merging of CLI refactorization
-        self.progress_report['publish_to_master'] = new_progress_sub_report()
         self.canceled = False
 
         self.package_dir = None
@@ -785,8 +780,7 @@ class PublishDistributionStep(PublishStep):
 
 class PublishToMasterRepository(PublishStep):
 
-    def __init__(self, parent, step='publish_to_master'):
-        # FIXME: move 'step' to the constants after merging of the CLI refactorization
+    def __init__(self, parent, step=constants.PUBLISH_TO_MASTER_STEP):
         super(PublishToMasterRepository, self).__init__(parent, step, None)
 
     def is_skipped(self):
