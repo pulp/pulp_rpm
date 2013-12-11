@@ -31,6 +31,7 @@ RPM_UPLOAD_SUBDIR = 'rpm'
 
 # ------------------------------------------------------------------------------
 
+
 def initialize(context):
     structure.ensure_repo_structure(context.cli)
     upload_manager = _upload_manager(context)
@@ -63,6 +64,7 @@ def initialize(context):
     remove_section.add_command(remove.ErrataRemoveCommand(context))
     remove_section.add_command(remove.PackageGroupRemoveCommand(context))
     remove_section.add_command(remove.PackageCategoryRemoveCommand(context))
+    remove_section.add_command(remove.PackageEnvironmentRemoveCommand(context))
     remove_section.add_command(remove.DistributionRemoveCommand(context))
 
     contents_section = structure.repo_contents_section(context.cli)
@@ -71,6 +73,7 @@ def initialize(context):
     contents_section.add_command(contents.SearchSrpmsCommand(context))
     contents_section.add_command(contents.SearchPackageGroupsCommand(context))
     contents_section.add_command(contents.SearchPackageCategoriesCommand(context))
+    contents_section.add_command(contents.SearchPackageEnvironmentsCommand(context))
     contents_section.add_command(contents.SearchDistributionsCommand(context))
     contents_section.add_command(contents.SearchErrataCommand(context))
 
@@ -99,14 +102,15 @@ def initialize(context):
     publish_section = structure.repo_publish_section(context.cli)
     renderer = status.RpmStatusRenderer(context)
     distributor_id = ids.TYPE_ID_DISTRIBUTOR_YUM
-    publish_section.add_command(sync_publish.RunPublishRepositoryCommand(context, renderer, distributor_id))
+    publish_section.add_command(sync_publish.RunPublishRepositoryCommand(context, renderer,
+                                                                         distributor_id))
     publish_section.add_command(sync_publish.PublishStatusCommand(context, renderer))
 
     repo_export_section = structure.repo_export_section(context.cli)
     renderer = status.RpmExportStatusRenderer(context)
     repo_export_section.add_command(export.RpmExportCommand(context))
-    repo_export_section.add_command(sync_publish.PublishStatusCommand(context, renderer,
-                                                                      description=DESC_EXPORT_STATUS))
+    repo_export_section.add_command(
+        sync_publish.PublishStatusCommand(context, renderer, description=DESC_EXPORT_STATUS))
 
     sync_schedules_section = structure.repo_sync_schedules_section(context.cli)
     sync_schedules_section.add_command(sync_schedules.RpmCreateScheduleCommand(context))
@@ -125,10 +129,11 @@ def _upload_manager(context):
     :return: initialized and ready to run upload manager instance
     :rtype: UploadManager
     """
-    # Each upload_manager needs to be associated with a unique upload working directory. 
-    # Create a subdirectory for rpm uploads under the main upload_working_dir 
+    # Each upload_manager needs to be associated with a unique upload working directory.
+    # Create a subdirectory for rpm uploads under the main upload_working_dir
     # to avoid interference with other types of uploads eg. iso uploads.
-    upload_working_dir = os.path.join(context.config['filesystem']['upload_working_dir'], RPM_UPLOAD_SUBDIR)
+    upload_working_dir = os.path.join(context.config['filesystem']['upload_working_dir'],
+                                      RPM_UPLOAD_SUBDIR)
     upload_working_dir = os.path.expanduser(upload_working_dir)
     chunk_size = int(context.config['server']['upload_chunk_size'])
     upload_manager = upload_lib.UploadManager(upload_working_dir, context.server, chunk_size)

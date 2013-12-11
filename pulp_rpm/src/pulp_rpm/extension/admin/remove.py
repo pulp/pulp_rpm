@@ -17,7 +17,7 @@ from pulp.client.commands.unit import UnitRemoveCommand
 
 from pulp_rpm.common.constants import DISPLAY_UNITS_THRESHOLD
 from pulp_rpm.common.ids import (TYPE_ID_RPM, TYPE_ID_SRPM, TYPE_ID_DRPM,
-                                 TYPE_ID_ERRATA, TYPE_ID_PKG_GROUP,
+                                 TYPE_ID_ERRATA, TYPE_ID_PKG_GROUP, TYPE_ID_PKG_ENVIRONMENT,
                                  TYPE_ID_PKG_CATEGORY, TYPE_ID_DISTRO, UNIT_KEY_RPM)
 from pulp_rpm.extension import criteria_utils
 from pulp_rpm.extension.admin import units_display
@@ -30,14 +30,17 @@ DESC_DRPM = _('remove DRPMs from a repository')
 DESC_ERRATA = _('remove errata from a repository')
 DESC_GROUP = _('remove package groups from a repository')
 DESC_CATEGORY = _('remove package categories from a repository')
+DESC_ENVIRONMENT = _('remove package environments from a repository')
 DESC_DISTRIBUTION = _('remove distributions from a repository')
 
 # -- commands -----------------------------------------------------------------
 
+
 class BaseRemoveCommand(UnitRemoveCommand):
 
     def __init__(self, context, name, description, type_id, unit_threshold=DISPLAY_UNITS_THRESHOLD):
-        UnitRemoveCommand.__init__(self, context, name=name, description=description, type_id=type_id)
+        UnitRemoveCommand.__init__(self, context, name=name, description=description,
+                                   type_id=type_id)
         self.unit_threshold = unit_threshold
 
     def succeeded(self, task):
@@ -92,7 +95,8 @@ class ErrataRemoveCommand(BaseRemoveCommand):
 class PackageGroupRemoveCommand(BaseRemoveCommand):
 
     def __init__(self, context):
-        super(PackageGroupRemoveCommand, self).__init__(context, 'group', DESC_GROUP, TYPE_ID_PKG_GROUP)
+        super(PackageGroupRemoveCommand, self).__init__(context, 'group', DESC_GROUP,
+                                                        TYPE_ID_PKG_GROUP)
 
 
 class PackageCategoryRemoveCommand(BaseRemoveCommand):
@@ -100,6 +104,14 @@ class PackageCategoryRemoveCommand(BaseRemoveCommand):
     def __init__(self, context):
         super(PackageCategoryRemoveCommand, self).__init__(context, 'category', DESC_CATEGORY,
                                                            TYPE_ID_PKG_CATEGORY)
+
+
+class PackageEnvironmentRemoveCommand(BaseRemoveCommand):
+
+    def __init__(self, context):
+        super(PackageEnvironmentRemoveCommand, self).__init__(context, 'environment',
+                                                              DESC_ENVIRONMENT,
+                                                              TYPE_ID_PKG_ENVIRONMENT)
 
 
 class DistributionRemoveCommand(BaseRemoveCommand):
