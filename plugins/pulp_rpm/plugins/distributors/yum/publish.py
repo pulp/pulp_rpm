@@ -14,6 +14,7 @@
 import os
 import shutil
 import time
+import sys
 import traceback
 from gettext import gettext as _
 from pprint import pformat
@@ -301,9 +302,11 @@ class PublishStep(object):
                 self.parent.progress_report[self.step_id][PROCESSED] += 1
                 self.process_unit(package_unit)
                 self.parent.progress_report[self.step_id][SUCCESSES] += 1
-        except Exception, e:
-            self._record_failure(self.step_id, e)
+        except Exception:
+            e_type, e_value, tb = sys.exc_info()
+            self._record_failure(self.step_id, e_value, tb)
             self._report_progress(self.step_id, state=PUBLISH_FAILED_STATE)
+            _LOG.exception(e_value)
             raise
         finally:
             try:
@@ -843,12 +846,13 @@ class PublishOverHttpStep(PublishStep):
         master_publish_dir = os.path.join(configuration.get_master_publish_dir(self.parent.repo),
                                           self.parent.timestamp)
 
-        # Find the location of the published repository tree structure
+        # Find the location of the published repository tree structure,
+        # without the trailing '/'
         repo_relative_dir = configuration.get_repo_relative_path(self.parent.repo, self.parent.config)
-        repo_publish_dir = os.path.join(root_publish_dir, repo_relative_dir)
+        repo_publish_dir = os.path.join(root_publish_dir, repo_relative_dir)[:-1]
 
         # Create the parent directory of the published repository tree, if needed
-        repo_publish_dir_parent = os.path.dirname(repo_publish_dir)
+        repo_publish_dir_parent = repo_publish_dir.rsplit('/', 1)[0]
         if not os.path.exists(repo_publish_dir_parent):
             os.makedirs(repo_publish_dir_parent, 0750)
 
