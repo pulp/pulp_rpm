@@ -185,26 +185,6 @@ def render_publish_step_in_progress_state(prompt, data, type_name, progress_bar,
     num_errors = min(len(data[constants.PROGRESS_ERROR_DETAILS_KEY]), 5)
 
     if num_errors > 0:
-        prompt.render_failure_message(_('Individual errors encountered during publishing:'))
-
-        for i in range(0, num_errors):
-            error = data[constants.PROGRESS_ERROR_DETAILS_KEY][i]
-            error_msg = error['error']
-            traceback = '\n'.join(error['traceback'])
-
-            message_data = {
-                'error'      : error_msg,
-                'traceback' : traceback
-            }
-
-            template = _('Error:   %(error)s\n')
-            if message_data["traceback"]:
-                template += _('Traceback:\n')
-                template += _('%(traceback)s')
-
-            message = template % message_data
-
-            prompt.render_failure_message(message)
-
+        prompt.render_failure_message(_('Errors encountered during publishing: see server log for details'))
         prompt.render_spacer()
 
