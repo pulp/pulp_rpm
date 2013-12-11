@@ -798,8 +798,14 @@ class PublishToMasterRepository(PublishStep):
         return [configuration.get_master_publish_dir(self.parent.repo)]
 
     def process_unit(self, master_publish_dir):
+
+        # Use the timestamp as the name of the current master repository
+        # directory. This allows us to identify when these were created as well
+        # as having more than one side-by-side during the publishing process.
         master_repo_directory = os.path.join(master_publish_dir, self.parent.timestamp)
+
         _LOG.debug('Copying tree from %s to %s' % (self.parent.repo.working_dir, master_repo_directory))
+
         shutil.copytree(self.parent.repo.working_dir, master_repo_directory, symlinks=True)
 
 
