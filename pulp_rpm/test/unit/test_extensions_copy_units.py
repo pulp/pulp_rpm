@@ -18,7 +18,7 @@ from pulp.client.commands.unit import UnitCopyCommand
 from pulp_rpm.common.constants import CONFIG_RECURSIVE
 from pulp_rpm.common.ids import (TYPE_ID_RPM, TYPE_ID_SRPM, TYPE_ID_DRPM, TYPE_ID_ERRATA,
                                  TYPE_ID_DISTRO, TYPE_ID_PKG_GROUP, TYPE_ID_PKG_CATEGORY,
-                                 UNIT_KEY_RPM)
+                                 TYPE_ID_PKG_ENVIRONMENT, UNIT_KEY_RPM)
 from pulp_rpm.extension.admin import copy_commands
 import rpm_support_base
 
@@ -174,6 +174,16 @@ class OtherCopyCommandsTests(rpm_support_base.PulpClientTests):
         self.assertEqual(command.name, 'category')
         self.assertEqual(command.description, copy_commands.DESC_PKG_CATEGORY)
         self.assertEqual(command.type_id, TYPE_ID_PKG_CATEGORY)
+
+    def test_environment_copy_command(self):
+        # Test
+        command = copy_commands.PackageEnvironmentCopyCommand(self.context)
+
+        # Verify
+        self.assertTrue(isinstance(command, copy_commands.RecursiveCopyCommand))
+        self.assertEqual(command.name, 'environment')
+        self.assertEqual(command.description, copy_commands.DESC_PKG_ENVIRONMENT)
+        self.assertEqual(command.type_id, TYPE_ID_PKG_ENVIRONMENT)
 
     def test_all_copy_command(self):
         # Test

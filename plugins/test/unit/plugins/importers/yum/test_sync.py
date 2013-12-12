@@ -25,11 +25,11 @@ from pulp.plugins.config import PluginCallConfiguration
 from pulp.plugins.model import Repository, SyncReport
 import pulp.server.managers.factory as manager_factory
 
-import model_factory
 from pulp_rpm.common import models, constants
 from pulp_rpm.plugins.importers.yum.repomd import metadata, group, updateinfo, packages, presto, primary
 from pulp_rpm.plugins.importers.yum.report import ContentReport
 from pulp_rpm.plugins.importers.yum.sync import RepoSync, FailedException, CancelException
+import model_factory
 
 manager_factory.initialize()
 

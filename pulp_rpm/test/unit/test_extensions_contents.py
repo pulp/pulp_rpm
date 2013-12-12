@@ -42,12 +42,12 @@ class PackageSearchCommandTests(PulpClientTests):
     def test_run_search(self, mock_search):
         # Setup
         mock_out = mock.MagicMock()
-        units = [{'a' : 'a', 'metadata' : 'm'}]
+        units = [{'a': 'a', 'metadata': 'm'}]
         mock_search.return_value = Response(200, units)
 
         user_input = {
-            'repo-id' : 'repo-1',
-            DisplayUnitAssociationsCommand.ASSOCIATION_FLAG.keyword : True,
+            'repo-id': 'repo-1',
+            DisplayUnitAssociationsCommand.ASSOCIATION_FLAG.keyword: True,
         }
 
         # Test
@@ -56,8 +56,8 @@ class PackageSearchCommandTests(PulpClientTests):
 
         # Verify
         expected = {
-            'type_ids' : ['fake-type'],
-             DisplayUnitAssociationsCommand.ASSOCIATION_FLAG.keyword : True,
+            'type_ids': ['fake-type'],
+            DisplayUnitAssociationsCommand.ASSOCIATION_FLAG.keyword: True,
         }
         mock_search.assert_called_once_with('repo-1', **expected)
         mock_out.assert_called_once_with(units)
@@ -66,12 +66,12 @@ class PackageSearchCommandTests(PulpClientTests):
     def test_run_search_no_details(self, mock_search):
         # Setup
         mock_out = mock.MagicMock()
-        units = [{'a' : 'a', 'metadata' : 'm'}]
+        units = [{'a': 'a', 'metadata': 'm'}]
         mock_search.return_value = Response(200, units)
 
         user_input = {
-            'repo-id' : 'repo-1',
-            DisplayUnitAssociationsCommand.ASSOCIATION_FLAG.keyword : False,
+            'repo-id': 'repo-1',
+            DisplayUnitAssociationsCommand.ASSOCIATION_FLAG.keyword: False,
             }
 
         # Test
@@ -80,33 +80,57 @@ class PackageSearchCommandTests(PulpClientTests):
 
         # Verify
         expected = {
-            'type_ids' : ['fake-type'],
-            DisplayUnitAssociationsCommand.ASSOCIATION_FLAG.keyword : False,
-            }
+            'type_ids': ['fake-type'],
+            DisplayUnitAssociationsCommand.ASSOCIATION_FLAG.keyword: False,
+        }
         mock_search.assert_called_once_with('repo-1', **expected)
         mock_out.assert_called_once_with(['m'])  # only the metadata due to no details
 
+    @mock.patch('pulp.bindings.repository.RepositoryUnitAPI.search')
+    def test_run_search_with_field_filters(self, mock_search):
+        # Setup
+        mock_out = mock.MagicMock()
+        units = [{'a': 'a', 'metadata': 'm'}]
+        mock_search.return_value = Response(200, units)
+
+        user_input = {
+            'repo-id': 'repo-1',
+            DisplayUnitAssociationsCommand.ASSOCIATION_FLAG.keyword: False,
+        }
+
+        # Test
+        command = contents.BaseSearchCommand(None, self.context)
+        command.run_search([contents.TYPE_RPM], out_func=mock_out, **user_input)
+
+        # Verify
+        expected = {
+            'type_ids': [contents.TYPE_RPM],
+            DisplayUnitAssociationsCommand.ASSOCIATION_FLAG.keyword: False,
+        }
+        mock_search.assert_called_once_with('repo-1', **expected)
+        mock_out.assert_called_once_with(['m'], contents.FIELDS_BY_TYPE[contents.TYPE_RPM])
+
     def test_reformat_rpm_provides_requires(self):
         # Setup
-        test_rpm = {'provides' : [
-                        {'name' : 'name.1',
-                         'version' : 'version.1',
-                         'release' : 'release.1',
-                         'epoch' : 'epoch.1',
-                         'flags' : None,},
-                        {'name' : 'name.2',
-                         'version' : None,
-                         'release' : None,
-                         'epoch' : None,
-                         'flags' : None},
-                    ],
-                    'requires' : [
-                        {'name' : 'name.1',
-                         'version' : 'version.1',
-                         'release' : 'release.1',
-                         'epoch' : 'epoch.1',
-                         'flags' : 'GT'},
-                    ]}
+        test_rpm = {'provides': [
+            {'name': 'name.1',
+             'version': 'version.1',
+             'release': 'release.1',
+             'epoch': 'epoch.1',
+             'flags': None},
+            {'name': 'name.2',
+             'version': None,
+             'release': None,
+             'epoch': None,
+             'flags': None},
+            ],
+            'requires': [
+                {'name': 'name.1',
+                 'version': 'version.1',
+                 'release': 'release.1',
+                 'epoch': 'epoch.1',
+                 'flags': 'GT'},
+            ]}
 
         # Test
         command = contents.PackageSearchCommand(None, self.context)
@@ -172,8 +196,8 @@ class PackageSearchCommandTests(PulpClientTests):
 
     def test_reformat_rpm_no_provides(self):
         """
-        When a user doesn't specify provides in the --fields option, reformat_rpm should not attempt to
-        reformat the field
+        When a user doesn't specify provides in the --fields option, reformat_rpm should not
+        attempt to reformat the field
         """
         # Setup a test rpm without a provides field
         test_rpm = {
@@ -199,8 +223,8 @@ class PackageSearchCommandTests(PulpClientTests):
 
     def test_reformat_rpm_no_requires(self):
         """
-        When a user doesn't specify requires in the --fields option, reformat_rpm should not attempt to
-        reformat the field
+        When a user doesn't specify requires in the --fields option, reformat_rpm should not
+        attempt to reformat the field
         """
         # Set up an rpm without a requires field
         test_rpm = {
@@ -237,8 +261,8 @@ class PackageSearchCommandTests(PulpClientTests):
 
     def test_reformat_rpm_no_requires_provides(self):
         """
-        When a user doesn't specify provides and requires in the --fields option, reformat_rpm should not
-        try and reformat those fields
+        When a user doesn't specify provides and requires in the --fields option, reformat_rpm
+        should not try and reformat those fields
         """
         test_rpm = {}
 
@@ -313,8 +337,8 @@ class PackageSearchCommandTests(PulpClientTests):
 
     def test_reformat_rpm_no_requires_provides_details(self):
         """
-        Test that reformat_rpm correctly handles no 'provides' or 'requires' fields inside the metadata
-        dict.
+        Test that reformat_rpm correctly handles no 'provides' or 'requires' fields inside the
+        metadata dict.
         """
         test_rpm = {contents.ASSOCIATION_METADATA_KEYWORD: {}}
 
@@ -375,6 +399,16 @@ class SearchPackageCategoriesCommand(PulpClientTests):
         self.assertEqual(command.context, self.context)
         self.assertEqual(command.name, 'category')
         self.assertEqual(command.description, contents.DESC_CATEGORIES)
+
+
+class SearchPackageEnvironmentsCommand(PulpClientTests):
+
+    def test_structure(self):
+        command = contents.SearchPackageEnvironmentsCommand(self.context)
+        self.assertTrue(isinstance(command, contents.BaseSearchCommand))
+        self.assertEqual(command.context, self.context)
+        self.assertEqual(command.name, 'environment')
+        self.assertEqual(command.description, contents.DESC_ENVIRONMENTS)
 
 
 class SearchDistributionsCommand(PulpClientTests):

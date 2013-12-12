@@ -18,7 +18,7 @@ from pulp.client.commands.unit import UnitRemoveCommand
 
 from pulp_rpm.common.ids import (TYPE_ID_RPM, TYPE_ID_SRPM, TYPE_ID_DRPM, TYPE_ID_ERRATA,
                                  TYPE_ID_DISTRO, TYPE_ID_PKG_GROUP, TYPE_ID_PKG_CATEGORY,
-                                 UNIT_KEY_RPM)
+                                 UNIT_KEY_RPM, TYPE_ID_PKG_ENVIRONMENT)
 from pulp_rpm.extension.admin import remove as remove_commands
 from pulp_rpm.extension.admin.remove import BaseRemoveCommand, PackageRemoveCommand
 import rpm_support_base
@@ -33,7 +33,6 @@ class BaseRemoveCommandTests(rpm_support_base.PulpClientTests):
 
     def test_structure(self):
         self.assertTrue(isinstance(self.command, UnitRemoveCommand))
-
 
     @mock.patch('pulp_rpm.extension.admin.units_display.display_units')
     def test_succeeded(self, mock_display):
@@ -69,7 +68,7 @@ class PackageRemoveCommandTests(rpm_support_base.PulpClientTests):
     @mock.patch('pulp.client.commands.unit.UnitRemoveCommand.modify_user_input')
     def test_modify_user_input(self, mock_super):
         command = remove_commands.PackageRemoveCommand(self.context, 'remove', '', '')
-        user_input = {'a' : 'a'}
+        user_input = {'a': 'a'}
         command.modify_user_input(user_input)
 
         # The super call is required.
@@ -116,16 +115,6 @@ class RemoveCommandsTests(rpm_support_base.PulpClientTests):
         self.assertEqual(command.description, remove_commands.DESC_DRPM)
         self.assertEqual(command.type_id, TYPE_ID_DRPM)
 
-    def test_srpm_remove_command(self):
-        # Test
-        command = remove_commands.SrpmRemoveCommand(self.context)
-
-        # Verify
-        self.assertTrue(isinstance(command, BaseRemoveCommand))
-        self.assertEqual(command.name, 'srpm')
-        self.assertEqual(command.description, remove_commands.DESC_SRPM)
-        self.assertEqual(command.type_id, TYPE_ID_SRPM)
-
     def test_errata_remove_command(self):
         # Test
         command = remove_commands.ErrataRemoveCommand(self.context)
@@ -155,6 +144,16 @@ class RemoveCommandsTests(rpm_support_base.PulpClientTests):
         self.assertEqual(command.name, 'category')
         self.assertEqual(command.description, remove_commands.DESC_CATEGORY)
         self.assertEqual(command.type_id, TYPE_ID_PKG_CATEGORY)
+
+    def test_package_environment_remove_command(self):
+        # Test
+        command = remove_commands.PackageEnvironmentRemoveCommand(self.context)
+
+        # Verify
+        self.assertTrue(isinstance(command, BaseRemoveCommand))
+        self.assertEqual(command.name, 'environment')
+        self.assertEqual(command.description, remove_commands.DESC_ENVIRONMENT)
+        self.assertEqual(command.type_id, TYPE_ID_PKG_ENVIRONMENT)
 
     def test_distribution_remove_command(self):
         # Test
