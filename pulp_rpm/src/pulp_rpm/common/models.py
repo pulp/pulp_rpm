@@ -294,6 +294,10 @@ class PackageEnvironment(Package):
     def options(self):
         return self.metadata.get('options', [])
 
+    @property
+    def optional_group_ids(self):
+        return [d.get('group') for d in self.options]
+
 
 class YumMetadataFile(Package):
     UNIT_KEY_NAMES = ('data_type', 'repo_id')

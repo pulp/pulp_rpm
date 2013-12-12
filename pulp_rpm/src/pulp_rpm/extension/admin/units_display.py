@@ -13,7 +13,8 @@
 from gettext import gettext as _
 
 from pulp_rpm.common.ids import (TYPE_ID_RPM, TYPE_ID_SRPM, TYPE_ID_DRPM, TYPE_ID_ERRATA,
-                                 TYPE_ID_DISTRO, TYPE_ID_PKG_GROUP, TYPE_ID_PKG_CATEGORY)
+                                 TYPE_ID_DISTRO, TYPE_ID_PKG_GROUP, TYPE_ID_PKG_CATEGORY,
+                                 TYPE_ID_PKG_ENVIRONMENT)
 
 
 def display_units(prompt, units, unit_threshold):
@@ -71,10 +72,11 @@ def _details(prompt, units):
         TYPE_ID_RPM : _details_package,
         TYPE_ID_SRPM : _details_package,
         TYPE_ID_DRPM : _details_drpm,
-        TYPE_ID_ERRATA : _details_errata,
-        TYPE_ID_DISTRO : _details_distribution,
-        TYPE_ID_PKG_GROUP : _details_package_group,
-        TYPE_ID_PKG_CATEGORY : _details_package_category,
+        TYPE_ID_ERRATA : _details_id_only,
+        TYPE_ID_DISTRO : _details_id_only,
+        TYPE_ID_PKG_GROUP : _details_id_only,
+        TYPE_ID_PKG_CATEGORY : _details_id_only,
+        TYPE_ID_PKG_ENVIRONMENT : _details_id_only
     }
 
     # Restructure into a list of unit keys by type
@@ -100,20 +102,16 @@ def _details(prompt, units):
         for u in formatted_units:
             prompt.write('  %s' % u, tag='unit-entry-%s' % type_id)
 
+
 def _details_package(package):
     return '%s-%s-%s-%s' % (package['name'], package['version'], package['release'], package['arch'])
+
 
 def _details_drpm(drpm):
     return drpm['filename']
 
-def _details_errata(errata):
-    return errata['id']
 
-def _details_distribution(distribution):
-    return distribution['id']
+def _details_id_only(unit):
+    return unit['id']
 
-def _details_package_group(group):
-    return group['id']
 
-def _details_package_category(category):
-    return category['id']

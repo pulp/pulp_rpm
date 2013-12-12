@@ -51,7 +51,7 @@ class YumImporter(Importer):
             'types': [
                 ids.TYPE_ID_DISTRO, ids.TYPE_ID_DRPM, ids.TYPE_ID_ERRATA,
                 ids.TYPE_ID_PKG_GROUP, ids.TYPE_ID_PKG_CATEGORY, ids.TYPE_ID_RPM,
-                ids.TYPE_ID_SRPM, models.YumMetadataFile.TYPE,
+                ids.TYPE_ID_SRPM, models.YumMetadataFile.TYPE, ids.TYPE_ID_PKG_ENVIRONMENT
             ]
         }
 

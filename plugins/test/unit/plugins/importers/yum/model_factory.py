@@ -23,6 +23,7 @@ _srpm_counter = count()
 _drpm_counter = count()
 _group_counter = count()
 _category_counter = count()
+_environment_counter = count()
 _yum_md_file_counter = count()
 _errata_counter = count()
 
@@ -152,6 +153,30 @@ def category_models(num, same_repo=True):
 @as_units
 def category_units(num, same_repo=True):
     return category_models(num, same_repo)
+
+
+def environment_models(num, same_repo=True):
+    ret = []
+    count = _environment_counter.next()
+    repo_id = 'repo-%d' % count
+    for i in range(num):
+        if not same_repo:
+            repo_id = 'repo-%d' % count
+        ret.append(models.PackageEnvironment(
+            'name-%d' % count,
+            repo_id,
+            {'group_ids': ['abc%d' % count, 'xyz%d' % count],
+             'options': [{'default': False, 'group': 'op%d' % count},
+                         {'default': True, 'group': 'bz%d' % count}]
+            }
+        ))
+        count = _environment_counter.next()
+    return ret
+
+
+@as_units
+def environment_units(num, same_repo=True):
+    return environment_models(num, same_repo)
 
 
 def yum_md_file():

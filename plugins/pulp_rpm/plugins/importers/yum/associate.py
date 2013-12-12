@@ -279,6 +279,9 @@ def identify_children_to_copy(units):
             groups.update(model.group_names)
         elif model.TYPE == models.PackageGroup.TYPE:
             rpm_names.update(model.all_package_names)
+        elif model.TYPE == models.PackageEnvironment.TYPE:
+            groups.update(model.group_ids)
+            groups.update(model.optional_group_ids)
         elif model.TYPE == models.Errata.TYPE:
             rpm_search_dicts.extend(model.rpm_search_dicts)
     return groups, rpm_names, rpm_search_dicts
@@ -289,7 +292,7 @@ def _associate_unit(dest_repo, import_conduit, unit):
     Associate one particular unit with the destination repository. There are
     behavioral exceptions based on type:
 
-    Group, Category and Yum Metadata File units need to have their "repo_id"
+    Group, Category, Environment and Yum Metadata File units need to have their "repo_id"
     attribute set.
 
     RPMs are convenient to do all as one block, for the purpose of dependency
@@ -306,7 +309,9 @@ def _associate_unit(dest_repo, import_conduit, unit):
     :return:                copied unit
     :rtype:                 pulp.plugins.model.Unit
     """
-    if unit.type_id in (models.PackageGroup.TYPE, models.PackageCategory.TYPE):
+    if unit.type_id in (models.PackageGroup.TYPE,
+                        models.PackageCategory.TYPE,
+                        models.PackageEnvironment.TYPE):
         new_unit = _safe_copy_unit_without_file(unit)
         new_unit.unit_key['repo_id'] = dest_repo.id
         saved_unit = import_conduit.save_unit(new_unit)
