@@ -25,8 +25,8 @@ from pulp.server.managers.repo.distributor import RepoDistributorManager
 from pulp.server.managers.repo.query import RepoQueryManager
 
 # import generate_iso from this directory, which is not in the python path
-import generate_iso
 from pulp_rpm.common import constants, ids, models
+from pulp_rpm.plugins.distributors.export_distributor import generate_iso
 from pulp_rpm.yum_plugin import comps_util, updateinfo, metadata
 from pulp_rpm.yum_plugin import util as yum_utils
 

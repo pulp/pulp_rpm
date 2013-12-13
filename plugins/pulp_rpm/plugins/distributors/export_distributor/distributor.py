@@ -14,20 +14,27 @@
 import os
 import shutil
 
+from pulp.common.config import read_json_config
 from pulp.plugins.distributor import Distributor
 from pulp.server.exceptions import PulpDataException
 
 # Import export_utils from this directory, which is not in the python path
-import export_utils
+from pulp_rpm.plugins.distributors.export_distributor import export_utils
 from pulp_rpm.common import constants, models, ids
 from pulp_rpm.yum_plugin import util, metadata
 
 _logger = util.getLogger(__name__)
+CONF_FILE_PATH = 'server/plugins.conf.d/%s.json' % ids.TYPE_ID_DISTRIBUTOR_EXPORT
 
 # Things left to do:
 #   Cancelling a publish operation is not currently supported
 #   Published ISOs are left in the working directory. See export_utils.publish_isos to fix this.
 #   This is not currently in the python path. When that gets fixed, the imports should be fixed.
+
+
+def entry_point():
+    config = read_json_config(CONF_FILE_PATH)
+    return ISODistributor, config
 
 
 class ISODistributor(Distributor):
