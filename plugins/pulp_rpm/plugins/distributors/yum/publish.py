@@ -130,7 +130,7 @@ class Publisher(object):
 
         except Exception, e:
             # log the details so items can be traced on the server.
-            _LOG.debug(e, exec_info=True)
+            _LOG.exception(e)
 
         finally:
             # Always cleanup the working directory
@@ -293,12 +293,13 @@ class PublishStep(object):
                 self.parent.progress_report[self.step_id][constants.PROGRESS_PROCESSED_KEY] += 1
                 self.process_unit(package_unit)
                 self.parent.progress_report[self.step_id][constants.PROGRESS_SUCCESSES_KEY] += 1
+
         except Exception:
             e_type, e_value, tb = sys.exc_info()
             self._record_failure(self.step_id, e_value, tb)
             self._report_progress(self.step_id, state=constants.STATE_FAILED)
-            _LOG.exception(e_value)
             raise
+
         finally:
             try:
                 self.finalize_metadata()
