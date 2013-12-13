@@ -117,10 +117,21 @@ class RepomdXMLFileContext(MetadataFileContext):
             open_checksum_attributes = {'type': self.checksum_type}
             open_checksum_element = ElementTree.SubElement(data_element, 'open-checksum', open_checksum_attributes)
 
-            with gzip.open(file_path, 'r') as file_handle:
-                content = file_handle.read()
-                open_size_element.text = str(len(content))
-                open_checksum_element.text = self.checksum_constructor(content).hexdigest()
+            try:
+                file_handle = gzip.open(file_path, 'r')
+
+            except:
+                # cannot have an else clause to the try without an except clause
+                raise
+
+            else:
+                try:
+                    content = file_handle.read()
+                    open_size_element.text = str(len(content))
+                    open_checksum_element.text = self.checksum_constructor(content).hexdigest()
+
+                finally:
+                    file_handle.close()
 
         # Write the metadata out as a utf-8 string
 
