@@ -13,6 +13,8 @@
 
 import os
 import shutil
+import time
+import sys
 import traceback
 from gettext import gettext as _
 from pprint import pformat
@@ -79,6 +81,8 @@ class Publisher(object):
         self.repomd_file_context = None
         self.package_context = None
 
+        self.timestamp = str(time.time())
+
     @property
     def skip_list(self):
         skip = self.config.get('skip', [])
@@ -105,6 +109,7 @@ class Publisher(object):
             os.makedirs(self.repo.working_dir, mode=0770)
 
         checksum_type = configuration.get_repo_checksum_type(self.conduit, self.config)
+
         try:
             with RepomdXMLFileContext(self.repo.working_dir, checksum_type) as self.repomd_file_context:
                 # The distribution must be published first in case it specifies a packagesdir
@@ -116,13 +121,20 @@ class Publisher(object):
                 PublishCompsStep(self).process()
                 PublishMetadataStep(self).process()
 
+            PublishToMasterStep(self).process()
             PublishOverHttpStep(self).process()
             PublishOverHttpsStep(self).process()
 
-            self._clear_directory(self.repo.working_dir)
+            self._clear_directory(configuration.get_master_publish_dir(self.repo),
+                                  skip_list=[self.timestamp])
+
         except Exception, e:
             # log the details so items can be traced on the server.
-            _LOG.debug(e, exec_info=True)
+            _LOG.exception(e)
+
+        finally:
+            # Always cleanup the working directory
+            self._clear_directory(self.repo.working_dir)
 
         _LOG.debug('Publish completed with progress:\n%s' % pformat(self.progress_report))
         return self._build_final_report()
@@ -160,12 +172,14 @@ class Publisher(object):
     # -- cleanup ---------------------------------------------------------------
 
     @staticmethod
-    def _clear_directory(path):
+    def _clear_directory(path, skip_list=()):
         """
         Clear out the contents of the given directory.
 
         :param path: path of the directory to clear out
         :type  path: str
+        :param skip_list: list of files or directories to not remove
+        :type  skip_list: list or tuple
         """
         _LOG.debug('Clearing out directory: %s' % path)
 
@@ -173,9 +187,15 @@ class Publisher(object):
             return
 
         for entry in os.listdir(path):
+
+            if entry in skip_list:
+                continue
+
             entry_path = os.path.join(path, entry)
+
             if os.path.isdir(entry_path):
                 shutil.rmtree(entry_path, ignore_errors=True)
+
             elif os.path.isfile(entry_path):
                 os.unlink(entry_path)
 
@@ -184,7 +204,7 @@ class PublishStep(object):
 
     def __init__(self, parent, step_id, unit_type=None):
         """
-        Set the default parent, step_id and unit_type for the the publsh step
+        Set the default parent, step_id and unit_type for the the publish step
         the unit_type defaults to none since some steps are not used for processing units.
 
         :param parent: The parent publisher that contains teh conduit, repo & cancel status
@@ -273,10 +293,13 @@ class PublishStep(object):
                 self.parent.progress_report[self.step_id][constants.PROGRESS_PROCESSED_KEY] += 1
                 self.process_unit(package_unit)
                 self.parent.progress_report[self.step_id][constants.PROGRESS_SUCCESSES_KEY] += 1
-        except Exception, e:
-            self._record_failure(self.step_id, e)
+
+        except Exception:
+            e_type, e_value, tb = sys.exc_info()
+            self._record_failure(self.step_id, e_value, tb)
             self._report_progress(self.step_id, state=constants.STATE_FAILED)
             raise
+
         finally:
             try:
                 self.finalize_metadata()
@@ -760,6 +783,32 @@ class PublishDistributionStep(PublishStep):
             self._create_symlink("./", packages_symlink_path)
 
 
+class PublishToMasterStep(PublishStep):
+
+    def __init__(self, parent, step=constants.PUBLISH_TO_MASTER_STEP):
+        super(PublishToMasterStep, self).__init__(parent, step, None)
+
+    def is_skipped(self):
+        return False
+
+    def _get_total(self, id_list=None):
+        return 1
+
+    def get_unit_generator(self):
+        return [configuration.get_master_publish_dir(self.parent.repo)]
+
+    def process_unit(self, master_publish_dir):
+
+        # Use the timestamp as the name of the current master repository
+        # directory. This allows us to identify when these were created as well
+        # as having more than one side-by-side during the publishing process.
+        master_repo_directory = os.path.join(master_publish_dir, self.parent.timestamp)
+
+        _LOG.debug('Copying tree from %s to %s' % (self.parent.repo.working_dir, master_repo_directory))
+
+        shutil.copytree(self.parent.repo.working_dir, master_repo_directory, symlinks=True)
+
+
 class PublishOverHttpStep(PublishStep):
     """
     Publish http repo directory if configured
@@ -783,30 +832,42 @@ class PublishOverHttpStep(PublishStep):
         """
         Return a fake unit so that the process_unit method will be called
         """
-        return ['http']
+        return [configuration.get_http_publish_dir(self.parent.config)]
 
-    def process_unit(self, unit):
-        root_http_publish_dir = configuration.get_http_publish_dir(self.parent.config)
-        self._publish_repo_dir(root_http_publish_dir)
-
-    def _publish_repo_dir(self, publish_dir):
+    def process_unit(self, root_publish_dir):
         """
-        Publish a directory from the repo to a target directory.  This is split out to more easily
-        support subclassing for HTTPS support
+        Publish a directory from the repo to a target directory.
         """
-        repo_relative_dir = configuration.get_repo_relative_path(self.parent.repo,
-                                                                 self.parent.config)
-        repo_http_publish_dir = os.path.join(publish_dir, repo_relative_dir)
 
-        if os.path.exists(repo_http_publish_dir):
-            _LOG.debug('Removing old published directory: %s' % repo_http_publish_dir)
-            shutil.rmtree(repo_http_publish_dir)
+        # Find the location of the master repository tree structure
+        master_publish_dir = os.path.join(configuration.get_master_publish_dir(self.parent.repo),
+                                          self.parent.timestamp)
 
-        _LOG.debug('Copying tree from %s to %s' % (self.parent.repo.working_dir,
-                                                   repo_http_publish_dir))
-        shutil.copytree(self.parent.repo.working_dir, repo_http_publish_dir, symlinks=True)
+        # Find the location of the published repository tree structure
+        repo_relative_dir = configuration.get_repo_relative_path(self.parent.repo, self.parent.config)
+        repo_publish_dir = os.path.join(root_publish_dir, repo_relative_dir)
+        # Without the trailing '/'
+        if repo_publish_dir.endswith('/'):
+            repo_publish_dir = repo_publish_dir[:-1]
 
-        util.generate_listing_files(publish_dir, repo_http_publish_dir)
+        # Create the parent directory of the published repository tree, if needed
+        repo_publish_dir_parent = repo_publish_dir.rsplit('/', 1)[0]
+        if not os.path.exists(repo_publish_dir_parent):
+            os.makedirs(repo_publish_dir_parent, 0750)
+
+        # Create a temporary symlink in the parent of the published directory tree
+        tmp_link_name = os.path.join(repo_publish_dir_parent, self.parent.timestamp)
+        os.symlink(master_publish_dir, tmp_link_name)
+
+        # Rename the symlink to the official published repository directory name.
+        # This has two desirable effects:
+        # 1. it will overwrite an existing link, if it's there
+        # 2. the operation is atomic, instantly changing the published directory
+        # NOTE: it's not easy (possible?) to directly edit the target of a symlink
+        os.rename(tmp_link_name, repo_publish_dir)
+
+        # (Re)generate the listing files
+        util.generate_listing_files(root_publish_dir, repo_publish_dir)
 
 
 class PublishOverHttpsStep(PublishOverHttpStep):
@@ -822,10 +883,5 @@ class PublishOverHttpsStep(PublishOverHttpStep):
         """
         return not self.parent.config.get('https')
 
-    def process_unit(self, unit):
-        """
-        Publish the files to the https directory & secure the directory
-        """
-        publish_dir = configuration.get_https_publish_dir(self.parent.config)
-        self._publish_repo_dir(publish_dir)
-        # TODO Configure certificate auth
+    def get_unit_generator(self):
+        return [configuration.get_https_publish_dir(self.parent.config)]

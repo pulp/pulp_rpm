@@ -17,8 +17,8 @@
 # ---- Pulp (rpm) --------------------------------------------------------------
 
 Name: pulp-rpm
-Version: 2.3.0
-Release: 0.29.beta%{?dist}
+Version: 2.4.0
+Release: 0.1.alpha%{?dist}
 Summary: Support for RPM content in the Pulp platform
 Group: Development/Languages
 License: GPLv2
@@ -278,6 +278,21 @@ A collection of yum plugins supplementing Pulp consumer operations.
 
 
 %changelog
+* Thu Dec 12 2013 Jeff Ortel <jortel@redhat.com> 2.4.0-0.1.alpha
+- 1003965 - Error out of a sync if there is no feed url (bcourt@redhat.com)
+- 995076 - make sure to call finalize on the nectar config object
+  (jason.connor@gmail.com)
+- 1004580 - Add the ability to specify the checksum type when uploading rpm &
+  srpm units (bcourt@redhat.com)
+- 1023188 - Create listing files in ISO export distributor (bcourt@redhat.com)
+- 1032189 - fixed use of gettext with multiple substitutions
+  (mhrivnak@redhat.com)
+- 1004981 - RPM agent should support filtering packages by epoch, version,
+  release, and architecture when installing (bcourt@redhat.com)
+- 924788 - Added upload SRPM command (jason.dobies@redhat.com)
+- 1020460 - Fixed removing skip list from an existing repository
+  (jason.dobies@redhat.com)
+
 * Mon Nov 25 2013 Barnaby Court <bcourt@redhat.com> 2.3.1-0.3.beta
 - 1034366 - Failure to export RPM repositories to ISO where the repository does
   not have a checksum manually set. (bcourt@redhat.com)
