@@ -37,6 +37,7 @@ OPTIONAL_CONFIG_KEYS = ('auth_ca', 'auth_cert', 'checksum_type',
 ALPHA_NUMERIC_PATH_REGEX = re.compile(r'^[a-zA-Z0-9/_-]+$')
 
 ROOT_PUBLISH_DIR = '/var/lib/pulp/published/yum'
+MASTER_PUBLISH_DIR = os.path.join(ROOT_PUBLISH_DIR, 'master')
 HTTP_PUBLISH_DIR = os.path.join(ROOT_PUBLISH_DIR, 'http', 'repos')
 HTTPS_PUBLISH_DIR = os.path.join(ROOT_PUBLISH_DIR, 'https', 'repos')
 
@@ -166,6 +167,19 @@ def process_cert_based_auth(repo, config):
 
         repo_cert_utils_instance.write_consumer_cert_bundle(repo.id, bundle)
         protected_repo_utils_instance.add_protected_repo(relative_path, repo.id)
+
+
+def get_master_publish_dir(repo):
+    """
+    Get the master publishing directory for the given repository.
+
+    :param repo: repository to get the master publishing directory for
+    :type  repo: pulp.plugins.model.Repository
+    :return: master publishing directory for the given repository
+    :rtype:  str
+    """
+
+    return os.path.join(MASTER_PUBLISH_DIR, repo.id)
 
 
 def get_http_publish_dir(config=None):
