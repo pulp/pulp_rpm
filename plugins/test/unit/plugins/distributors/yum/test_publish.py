@@ -1110,6 +1110,17 @@ class PublishOverHttpTests(BaseYumDistributorPublishStepTests):
         listing_content = open(listing_path, 'r').read()
         self.assertEqual(listing_content, self.repo_id)
 
+    def test_publish_http_with_trailing_slash(self):
+        self.publisher.config.override_config['relative_url'] = self.repo_id + '/'
+
+        [self._generate_rpm(u) for u in ('one', 'two', 'three')]
+        self._copy_to_master()
+
+        publish.PublishOverHttpStep(self.publisher).process()
+
+        repo_publish_dir = os.path.join(self.published_dir, 'http', self.repo_id)
+        self.assertTrue(os.path.lexists(repo_publish_dir), repo_publish_dir)
+
 class PublishOverHttpsStepTests(BaseYumDistributorPublishStepTests):
 
     def test_publish_https(self):
@@ -1120,7 +1131,7 @@ class PublishOverHttpsStepTests(BaseYumDistributorPublishStepTests):
 
         path = os.path.join(self.published_dir, 'https', self.repo_id)
         link_path = os.readlink(path)
-        self.assertEqual(link_path, os.path.join(self.master_dir, self.repo_id, 
+        self.assertEqual(link_path, os.path.join(self.master_dir, self.repo_id,
                                                  self.publisher.timestamp))
 
         listing_path = os.path.join(self.published_dir, 'https', 'listing')
