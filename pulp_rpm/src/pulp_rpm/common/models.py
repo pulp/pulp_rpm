@@ -11,15 +11,15 @@
 # have received a copy of GPLv2 along with this software; if not, see
 # http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt.
 
-from collections import namedtuple
 import csv
-from gettext import gettext as _
-import hashlib
 import logging
 import os
+from collections import namedtuple
+from gettext import gettext as _
 from urlparse import urljoin
 
-from pulp_rpm.common import constants, version_utils, file_utils
+from pulp_rpm.common import constants, file_utils, ids, version_utils
+
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -113,7 +113,7 @@ class VersionedPackage(Package):
 
 class Distribution(Package):
     UNIT_KEY_NAMES = ('id', 'family', 'variant', 'version', 'arch')
-    TYPE = 'distribution'
+    TYPE = ids.TYPE_ID_DISTRO
 
     def __init__(self, family, variant, version, arch, metadata, id=None):
         kwargs = locals()
@@ -168,7 +168,7 @@ class Distribution(Package):
 
 class DRPM(VersionedPackage):
     UNIT_KEY_NAMES = ('epoch', 'version', 'release', 'filename', 'checksumtype', 'checksum')
-    TYPE = 'drpm'
+    TYPE = ids.TYPE_ID_DRPM
 
     def __init__(self, epoch, version, release, filename, checksumtype, checksum, metadata):
         Package.__init__(self, locals())
@@ -184,7 +184,7 @@ class DRPM(VersionedPackage):
 
 class RPM(VersionedPackage):
     UNIT_KEY_NAMES = ('name', 'epoch', 'version', 'release', 'arch', 'checksumtype', 'checksum')
-    TYPE = 'rpm'
+    TYPE = ids.TYPE_ID_RPM
 
     def __init__(self, name, epoch, version, release, arch, checksumtype, checksum, metadata):
         Package.__init__(self, locals())
@@ -204,12 +204,12 @@ class RPM(VersionedPackage):
 
 
 class SRPM(RPM):
-    TYPE = 'srpm'
+    TYPE = ids.TYPE_ID_SRPM
 
 
 class Errata(Package):
     UNIT_KEY_NAMES = ('id',)
-    TYPE = 'erratum'
+    TYPE = ids.TYPE_ID_ERRATA
 
     def __init__(self, id, metadata):
         Package.__init__(self, locals())
@@ -245,7 +245,7 @@ class Errata(Package):
 
 class PackageGroup(Package):
     UNIT_KEY_NAMES = ('id', 'repo_id')
-    TYPE = 'package_group'
+    TYPE = ids.TYPE_ID_PKG_GROUP
 
     def __init__(self, id, repo_id, metadata):
         Package.__init__(self, locals())
@@ -269,7 +269,7 @@ class PackageGroup(Package):
 
 class PackageCategory(Package):
     UNIT_KEY_NAMES = ('id', 'repo_id')
-    TYPE = 'package_category'
+    TYPE = ids.TYPE_ID_PKG_CATEGORY
 
     def __init__(self, id, repo_id, metadata):
         Package.__init__(self, locals())
@@ -281,7 +281,7 @@ class PackageCategory(Package):
 
 class PackageEnvironment(Package):
     UNIT_KEY_NAMES = ('id', 'repo_id')
-    TYPE = 'package_environment'
+    TYPE = ids.TYPE_ID_PKG_ENVIRONMENT
 
     def __init__(self, id, repo_id, metadata):
         Package.__init__(self, locals())
@@ -301,7 +301,7 @@ class PackageEnvironment(Package):
 
 class YumMetadataFile(Package):
     UNIT_KEY_NAMES = ('data_type', 'repo_id')
-    TYPE = 'yum_repo_metadata_file'
+    TYPE = ids.TYPE_ID_YUM_REPO_METADATA_FILE
 
     def __init__(self, data_type, repo_id, metadata):
         Package.__init__(self, locals())
@@ -357,7 +357,7 @@ class ISO(object):
     """
     This is a handy way to model an ISO unit, with some related utilities.
     """
-    TYPE = 'iso'
+    TYPE = ids.TYPE_ID_ISO
 
     def __init__(self, name, size, checksum, unit=None):
         """
@@ -432,23 +432,35 @@ class ISO(object):
             raise ValueError(msg)
 
         if full_validation:
-            with open(self.storage_path) as destination_file:
-                # Validate the size
-                actual_size = self.calculate_size(destination_file)
-                if actual_size != self.size:
-                    raise ValueError(_('Downloading <%(name)s> failed validation. '
-                        'The manifest specified that the file should be %(expected)s bytes, but '
-                        'the downloaded file is %(found)s bytes.') % {'name': self.name,
-                            'expected': self.size, 'found': actual_size})
 
-                # Validate the checksum
-                actual_checksum = self.calculate_checksum(destination_file)
-                if actual_checksum != self.checksum:
-                    raise ValueError(
-                        _('Downloading <%(name)s> failed checksum validation. The manifest '
-                          'specified the checksum to be %(c)s, but it was %(f)s.') % {
-                            'name': self.name, 'c': self.checksum,
-                            'f': actual_checksum})
+            try:
+                destination_file = open(self.storage_path)
+
+            except:
+                # Cannot have an else clause to the try without the except.
+                raise
+
+            else:
+                try:
+                    # Validate the size
+                    actual_size = self.calculate_size(destination_file)
+                    if actual_size != self.size:
+                        raise ValueError(_('Downloading <%(name)s> failed validation. '
+                            'The manifest specified that the file should be %(expected)s bytes, but '
+                            'the downloaded file is %(found)s bytes.') % {'name': self.name,
+                                'expected': self.size, 'found': actual_size})
+
+                    # Validate the checksum
+                    actual_checksum = self.calculate_checksum(destination_file)
+                    if actual_checksum != self.checksum:
+                        raise ValueError(
+                            _('Downloading <%(name)s> failed checksum validation. The manifest '
+                              'specified the checksum to be %(c)s, but it was %(f)s.') % {
+                                'name': self.name, 'c': self.checksum,
+                                'f': actual_checksum})
+
+                finally:
+                    destination_file.close()
 
     @staticmethod
     def calculate_checksum(file_handle):
