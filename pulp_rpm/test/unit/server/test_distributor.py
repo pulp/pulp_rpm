@@ -428,13 +428,15 @@ class TestDistributor(rpm_support_base.PulpRPMTests):
         existing_units = self.get_units(count=num_units)
         publish_conduit = distributor_mocks.get_publish_conduit(type_id="rpm", existing_units=existing_units, pkg_dir=self.pkg_dir)
         publish_conduit.repo_id = 'foo'
-        publish_conduit.distributor_id = TYPE_ID_DISTRIBUTOR_YUM
+        publish_conduit.distributor_id = 'foo_distributor_id'
         config = distributor_mocks.get_basic_config(https_publish_dir=self.https_publish_dir, relative_url=relative_url,
                 http=False, https=True)
         distributor = YumDistributor()
         distributor.process_repo_auth_certificate_bundle = mock.Mock()
         config_conduit = mock.Mock(spec=RepoConfigConduit)
         config_conduit.get_repo_distributors_by_relative_url.return_value = MockCursor([])
+        mock_distributor_manager.return_value.get_distributor.return_value = \
+            {'distributor_type_id': TYPE_ID_DISTRIBUTOR_YUM}
         metadata.generate_yum_metadata(repo.id, repo.working_dir, publish_conduit, config,
                                         repo_scratchpad={'checksum_type': 'sha'})
         mock_YumMetadataGenerator.assert_called_with(ANY, checksum_type='sha1',
