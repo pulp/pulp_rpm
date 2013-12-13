@@ -10,13 +10,14 @@
 # NON-INFRINGEMENT, or FITNESS FOR A PARTICULAR PURPOSE. You should
 # have received a copy of GPLv2 along with this software; if not, see
 # http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt.
-import os
 import mock
 from pulp.plugins.conduits.repo_publish import RepoPublishConduit
 from pulp.plugins.config import PluginCallConfiguration
 from pulp.plugins.model import PublishReport, Unit
 
-def get_publish_conduit(type_id=None, existing_units=None, pkg_dir=None, checksum_type="sha", repodata=None):
+
+def get_publish_conduit(type_id=None, existing_units=None, pkg_dir=None, checksum_type="sha",
+                        repodata=None):
     def build_success_report(summary, details):
         return PublishReport(True, summary, details)
 
@@ -37,7 +38,7 @@ def get_publish_conduit(type_id=None, existing_units=None, pkg_dir=None, checksu
                         else:
                             if u.type_id == 'erratum':
                                 start_date = criteria.unit_filters['issued']['$gte']
-                                end_date   = criteria.unit_filters['issued']['$lte']
+                                end_date = criteria.unit_filters['issued']['$lte']
                                 if start_date <= u.metadata['issued'] <= end_date:
                                     ret_val.append(u)
                 else:
@@ -47,14 +48,14 @@ def get_publish_conduit(type_id=None, existing_units=None, pkg_dir=None, checksu
     def get_repo_scratchpad(repoid=None):
         scratchpad = None
         if checksum_type:
-            scratchpad = {"checksum_type" : checksum_type}
+            scratchpad = {"checksum_type": checksum_type}
 
         return scratchpad
 
     def get_scratchpad():
         scratchpad = None
         if checksum_type:
-            scratchpad = {"checksum_type" : checksum_type, 'published_distributions' : {}}
+            scratchpad = {"checksum_type": checksum_type, 'published_distributions': {}}
         return scratchpad
 
     publish_conduit = mock.Mock(spec=RepoPublishConduit)
@@ -72,5 +73,5 @@ def get_basic_config(*arg, **kwargs):
     for key in kwargs:
         repo_plugin_config[key] = kwargs[key]
     config = PluginCallConfiguration(plugin_config,
-            repo_plugin_config=repo_plugin_config)
+                                     repo_plugin_config=repo_plugin_config)
     return config

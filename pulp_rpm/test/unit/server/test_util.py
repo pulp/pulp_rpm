@@ -22,7 +22,7 @@ import mock
 sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)) + "/../../src/")
 sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)) + "/../../plugins/importers/")
 
-import rpm_support_base
+from pulp_rpm.devel import rpm_support_base
 from pulp_rpm.yum_plugin import util
 
 

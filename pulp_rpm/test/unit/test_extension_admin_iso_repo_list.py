@@ -14,12 +14,12 @@
 from copy import deepcopy
 from gettext import gettext as _
 import mock
+from pulp_rpm.devel import rpm_support_base
 
 from pulp.common.plugins import importer_constants
 
 from pulp_rpm.common import constants
 from pulp_rpm.extension.admin.iso import repo_list
-import rpm_support_base
 
 
 # These are some test repos that are returned by the repo_mock() repo object. They were copied from

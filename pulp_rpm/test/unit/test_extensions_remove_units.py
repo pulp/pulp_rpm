@@ -12,7 +12,7 @@
 # http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt.
 
 import mock
-
+from pulp_rpm.devel import rpm_support_base
 
 from pulp.client.commands.unit import UnitRemoveCommand
 
@@ -21,7 +21,6 @@ from pulp_rpm.common.ids import (TYPE_ID_RPM, TYPE_ID_SRPM, TYPE_ID_DRPM, TYPE_I
                                  UNIT_KEY_RPM, TYPE_ID_PKG_ENVIRONMENT)
 from pulp_rpm.extension.admin import remove as remove_commands
 from pulp_rpm.extension.admin.remove import BaseRemoveCommand, PackageRemoveCommand
-import rpm_support_base
 
 
 class BaseRemoveCommandTests(rpm_support_base.PulpClientTests):

@@ -16,7 +16,7 @@ from pulp.server.db.migrate.models import _import_all_the_way
 from pulp.server.db.model.consumer import UnitProfile
 
 from pulp_rpm.plugins.profilers import yum
-import rpm_support_base
+from pulp_rpm.devel import rpm_support_base
 
 
 class TestMigration(rpm_support_base.PulpRPMTests):

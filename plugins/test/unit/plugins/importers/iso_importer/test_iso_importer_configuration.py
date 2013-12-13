@@ -15,11 +15,12 @@ import math
 from pulp.common.plugins import importer_constants
 
 from pulp_rpm.plugins.importers.iso_importer import configuration
-from rpm_support_base import PulpRPMTests
-import importer_mocks
+from pulp_rpm.devel.rpm_support_base import PulpRPMTests
+from pulp_rpm.devel import importer_mocks
 
 CONFIG_SSL_CLIENT_CERT = 'ssl_client_cert'
-CONFIG_SSL_CLIENT_KEY  = 'ssl_client_key'
+CONFIG_SSL_CLIENT_KEY = 'ssl_client_key'
+
 
 class TestValidate(PulpRPMTests):
     """

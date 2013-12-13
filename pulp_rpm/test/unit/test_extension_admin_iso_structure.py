@@ -13,6 +13,9 @@
 
 import os
 
+import mock
+
+from pulp_rpm.devel import rpm_support_base
 from pulp.client.commands import unit
 from pulp.client.commands.repo import cudl, sync_publish, upload as pulp_upload
 from pulp.client.commands.schedule import (
@@ -20,11 +23,8 @@ from pulp.client.commands.schedule import (
     UpdateScheduleCommand, NextRunCommand, RepoScheduleStrategy)
 from pulp.client.extensions.extensions import PulpCliSection
 from pulp.client.upload.manager import UploadManager
-import mock
-
 from pulp_rpm.common import ids
 from pulp_rpm.extension.admin.iso import contents, create_update, repo_list, structure, upload
-import rpm_support_base
 
 
 class TestAddIsoSection(rpm_support_base.PulpClientTests):

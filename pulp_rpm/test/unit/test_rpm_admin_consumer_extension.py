@@ -15,14 +15,12 @@ import os
 import sys
 
 from mock import Mock
+from pulp_rpm.devel import rpm_support_base
 
 sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)) + '/../../extensions/admin')
 
-import rpm_support_base
-
 from pulp.bindings.responses import STATE_FINISHED
 from pulp.bindings.tasks import Task
-from pulp.client.extensions.core import TAG_SUCCESS
 from pulp.devel.unit.task_simulator import TaskSimulator
 from pulp_rpm.common.ids import TYPE_ID_RPM, TYPE_ID_PKG_GROUP
 

@@ -10,6 +10,7 @@
 # http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt.
 
 import os
+from pulp_rpm.devel import rpm_support_base
 
 from pulp.client.commands import options
 from pulp.client.commands.repo import cudl, importer_config
@@ -19,9 +20,7 @@ from pulp.common.compat import json
 from pulp.common.plugins import importer_constants as constants
 
 from pulp_rpm.common import ids
-from pulp_rpm.common import constants as rpm_constants
 from pulp_rpm.extension.admin import repo_create_update, repo_options
-import rpm_support_base
 
 
 DATA_DIR = os.path.abspath(os.path.dirname(__file__)) + '/data/'

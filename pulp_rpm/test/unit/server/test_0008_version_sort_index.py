@@ -15,7 +15,7 @@ from pulp.server.db.migrate.models import _import_all_the_way
 
 from pulp_rpm.common.ids import (TYPE_ID_RPM, TYPE_ID_SRPM, TYPE_ID_DRPM)
 from pulp_rpm.common import version_utils
-import rpm_support_base
+from pulp_rpm.devel import rpm_support_base
 
 
 class VersionSortIndexMigrationTests(rpm_support_base.PulpRPMTests):

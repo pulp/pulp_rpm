@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
-#
-# Copyright © 2012 Red Hat, Inc.
+# Copyright (c) 2013 Red Hat, Inc.
 #
 # This software is licensed to you under the GNU General Public
 # License as published by the Free Software Foundation; either version
@@ -11,5 +10,13 @@
 # have received a copy of GPLv2 along with this software; if not, see
 # http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt.
 
-from pkgutil import extend_path
-__path__ = extend_path(__path__, __name__)
+from setuptools import setup, find_packages
+
+setup(
+    name='pulp-rpm-devel',
+    version='2.3.0',
+    license='GPLv2+',
+    packages=find_packages(exclude=['test', 'test.*']),
+    author='Pulp Team',
+    author_email='pulp-list@redhat.com'
+)

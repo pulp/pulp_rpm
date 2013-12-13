@@ -19,7 +19,7 @@ from pulp.common import tags as tag_utils
 
 from pulp_rpm.common import constants, ids
 from pulp_rpm.extension.admin import export, status
-import rpm_support_base
+from pulp_rpm.devel import rpm_support_base
 
 
 class TestRepoExportRunCommand(rpm_support_base.PulpClientTests):

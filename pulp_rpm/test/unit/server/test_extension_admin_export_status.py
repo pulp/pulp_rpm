@@ -16,7 +16,7 @@ from pulp.client.extensions.core import PulpPrompt
 
 from pulp_rpm.common import constants, ids, models
 from pulp_rpm.extension.admin import status
-import rpm_support_base
+from pulp_rpm.devel import rpm_support_base
 
 
 class TestRpmExportStatusRenderer(rpm_support_base.PulpClientTests):

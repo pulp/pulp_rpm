@@ -9,12 +9,12 @@
 # NON-INFRINGEMENT, or FITNESS FOR A PARTICULAR PURPOSE. You should
 # have received a copy of GPLv2 along with this software; if not, see
 # http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt.
+from pulp_rpm.devel import rpm_support_base
 
 from pulp.common import constants as pulp_constants
 
 from pulp_rpm.common import constants, ids
 from pulp_rpm.extension.admin import repo_list
-import rpm_support_base
 
 
 class RpmRepoListCommandTests(rpm_support_base.PulpClientTests):

@@ -16,7 +16,7 @@ import json
 from pulp.server.db.connection import get_collection
 from pulp.server.db.migrate.models import _import_all_the_way
 
-import rpm_support_base
+from pulp_rpm.devel import rpm_support_base
 
 
 class TestMigrateErrataFromStr(rpm_support_base.PulpRPMTests):

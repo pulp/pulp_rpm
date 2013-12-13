@@ -22,7 +22,7 @@ from pulp.common.dateutils import format_iso8601_datetime
 import mock
 
 from pulp_rpm.common import progress
-import importer_mocks
+from pulp_rpm.devel import importer_mocks
 
 
 class TestISOProgressReport(unittest.TestCase):

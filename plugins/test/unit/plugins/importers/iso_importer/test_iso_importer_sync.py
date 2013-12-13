@@ -25,8 +25,8 @@ from pulp_rpm.common import models
 from pulp_rpm.common.ids import TYPE_ID_ISO
 from pulp_rpm.common.progress import SyncProgressReport, ISOProgressReport
 from pulp_rpm.plugins.importers.iso_importer.sync import ISOSyncRun
-from rpm_support_base import PulpRPMTests
-import importer_mocks
+from pulp_rpm.devel.rpm_support_base import PulpRPMTests
+from pulp_rpm.devel import importer_mocks
 
 
 class TestISOSyncRun(PulpRPMTests):

@@ -13,7 +13,7 @@
 
 import unittest
 
-from distributor_mocks import get_basic_config
+from .distributors.iso_distributor.distributor_mocks import get_basic_config
 from pulp_rpm.plugins import configuration_utils
 
 
