@@ -125,13 +125,16 @@ class Publisher(object):
             PublishOverHttpStep(self).process()
             PublishOverHttpsStep(self).process()
 
-            self._clear_directory(self.repo.working_dir)
             self._clear_directory(configuration.get_master_publish_dir(self.repo),
                                   skip_list=[self.timestamp])
 
         except Exception, e:
             # log the details so items can be traced on the server.
             _LOG.debug(e, exec_info=True)
+
+        finally:
+            # Always cleanup the working directory
+            self._clear_directory(self.repo.working_dir)
 
         _LOG.debug('Publish completed with progress:\n%s' % pformat(self.progress_report))
         return self._build_final_report()
