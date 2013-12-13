@@ -121,7 +121,7 @@ class Publisher(object):
                 PublishCompsStep(self).process()
                 PublishMetadataStep(self).process()
 
-            PublishToMasterRepository(self).process()
+            PublishToMasterStep(self).process()
             PublishOverHttpStep(self).process()
             PublishOverHttpsStep(self).process()
 
@@ -295,6 +295,7 @@ class PublishStep(object):
             self._record_failure(self.step_id, e_value, tb)
             self._report_progress(self.step_id, state=constants.STATE_FAILED)
             _LOG.exception(e_value)
+            raise
         finally:
             try:
                 self.finalize_metadata()
@@ -778,10 +779,10 @@ class PublishDistributionStep(PublishStep):
             self._create_symlink("./", packages_symlink_path)
 
 
-class PublishToMasterRepository(PublishStep):
+class PublishToMasterStep(PublishStep):
 
     def __init__(self, parent, step=constants.PUBLISH_TO_MASTER_STEP):
-        super(PublishToMasterRepository, self).__init__(parent, step, None)
+        super(PublishToMasterStep, self).__init__(parent, step, None)
 
     def is_skipped(self):
         return False
@@ -838,10 +839,12 @@ class PublishOverHttpStep(PublishStep):
         master_publish_dir = os.path.join(configuration.get_master_publish_dir(self.parent.repo),
                                           self.parent.timestamp)
 
-        # Find the location of the published repository tree structure,
-        # without the trailing '/'
+        # Find the location of the published repository tree structure
         repo_relative_dir = configuration.get_repo_relative_path(self.parent.repo, self.parent.config)
-        repo_publish_dir = os.path.join(root_publish_dir, repo_relative_dir)[:-1]
+        repo_publish_dir = os.path.join(root_publish_dir, repo_relative_dir)
+        # Without the trailing '/'
+        if repo_publish_dir.endswith('/'):
+            repo_publish_dir = repo_publish_dir[:-1]
 
         # Create the parent directory of the published repository tree, if needed
         repo_publish_dir_parent = repo_publish_dir.rsplit('/', 1)[0]
