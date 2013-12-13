@@ -24,6 +24,8 @@ from pulp_rpm.yum_plugin import util
 
 _LOG = util.getLogger(__name__)
 
+HASHLIB_ALGORITHMS = ('md5', 'sha1', 'sha224', 'sha256', 'sha384', 'sha512')
+
 REPOMD_FILE_NAME = 'repomd.xml'
 
 DEFAULT_CHECKSUM_TYPE = 'sha256'
@@ -35,7 +37,7 @@ RPM_XML_NAME_SPACE = 'http://linux.duke.edu/metadata/rpm'
 class RepomdXMLFileContext(MetadataFileContext):
 
     def __init__(self, working_dir, checksum_type=DEFAULT_CHECKSUM_TYPE):
-        assert checksum_type in hashlib.algorithms
+        assert checksum_type in HASHLIB_ALGORITHMS
 
         metadata_file_path = os.path.join(working_dir, REPO_DATA_DIR_NAME, REPOMD_FILE_NAME)
         super(RepomdXMLFileContext, self).__init__(metadata_file_path)
@@ -115,10 +117,21 @@ class RepomdXMLFileContext(MetadataFileContext):
             open_checksum_attributes = {'type': self.checksum_type}
             open_checksum_element = ElementTree.SubElement(data_element, 'open-checksum', open_checksum_attributes)
 
-            with gzip.open(file_path, 'r') as file_handle:
-                content = file_handle.read()
-                open_size_element.text = str(len(content))
-                open_checksum_element.text = self.checksum_constructor(content).hexdigest()
+            try:
+                file_handle = gzip.open(file_path, 'r')
+
+            except:
+                # cannot have an else clause to the try without an except clause
+                raise
+
+            else:
+                try:
+                    content = file_handle.read()
+                    open_size_element.text = str(len(content))
+                    open_checksum_element.text = self.checksum_constructor(content).hexdigest()
+
+                finally:
+                    file_handle.close()
 
         # Write the metadata out as a utf-8 string
 

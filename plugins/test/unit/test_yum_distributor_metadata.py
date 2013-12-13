@@ -255,14 +255,14 @@ class YumDistributorMetadataTests(unittest.TestCase):
 
         self.assertNotEqual(os.path.getsize(path), 0)
 
-        with gzip.open(path, 'r') as primary_handle:
+        primary_handle = gzip.open(path, 'r')
+        content = primary_handle.read()
+        primary_handle.close()
 
-            content = primary_handle.read()
-
-            self.assertTrue(content.startswith('<metadata'))
-            self.assertEqual(content.count('xmlns="%s"' % COMMON_NAMESPACE), 1)
-            self.assertEqual(content.count('xmlns:rpm="%s"' % RPM_NAMESPACE), 1)
-            self.assertEqual(content.count('packages="0"'), 1)
+        self.assertTrue(content.startswith('<metadata'))
+        self.assertEqual(content.count('xmlns="%s"' % COMMON_NAMESPACE), 1)
+        self.assertEqual(content.count('xmlns:rpm="%s"' % RPM_NAMESPACE), 1)
+        self.assertEqual(content.count('packages="0"'), 1)
 
     def test_primary_closing_tag(self):
 
@@ -314,13 +314,13 @@ class YumDistributorMetadataTests(unittest.TestCase):
         # the xml header, opening, and closing tags should have been written
         self.assertNotEqual(os.path.getsize(path), 0)
 
-        with gzip.open(path, 'r') as primary_handle:
+        primary_handle = gzip.open(path, 'r')
+        content_lines = primary_handle.readlines()
+        primary_handle.close()
 
-            content_lines = primary_handle.readlines()
-
-            self.assertEqual(len(content_lines), 3)
-            self.assertEqual(content_lines[0], '<?xml version="1.0" encoding="UTF-8"?>\n')
-            self.assertEqual(content_lines[2], '</metadata>\n')
+        self.assertEqual(len(content_lines), 3)
+        self.assertEqual(content_lines[0], '<?xml version="1.0" encoding="UTF-8"?>\n')
+        self.assertEqual(content_lines[2], '</metadata>\n')
 
     def test_primary_with_keyword_and_add_unit(self):
 
@@ -363,13 +363,13 @@ class YumDistributorMetadataTests(unittest.TestCase):
 
         self.assertNotEqual(os.path.getsize(path), 0)
 
-        with gzip.open(path, 'r') as other_handle:
+        other_handle = gzip.open(path, 'r')
+        context = other_handle.read()
+        other_handle.close()
 
-            context = other_handle.read()
-
-            self.assertTrue(context.startswith('<otherdata'))
-            self.assertEqual(context.count('xmlns="%s"' % OTHER_NAMESPACE), 1)
-            self.assertEqual(context.count('packages="0"'), 1)
+        self.assertTrue(context.startswith('<otherdata'))
+        self.assertEqual(context.count('xmlns="%s"' % OTHER_NAMESPACE), 1)
+        self.assertEqual(context.count('packages="0"'), 1)
 
     def test_other_closing_tag(self):
 
@@ -440,13 +440,13 @@ class YumDistributorMetadataTests(unittest.TestCase):
 
         self.assertNotEqual(os.path.getsize(path), 0)
 
-        with gzip.open(path, 'r') as filelists_handle:
+        filelists_handle = gzip.open(path, 'r')
+        content = filelists_handle.read()
+        filelists_handle.close()
 
-            content = filelists_handle.read()
-
-            self.assertTrue(content.startswith('<filelists'))
-            self.assertEqual(content.count('xmlns="%s"' % FILE_LISTS_NAMESPACE), 1)
-            self.assertEqual(content.count('packages="0"'), 1)
+        self.assertTrue(content.startswith('<filelists'))
+        self.assertEqual(content.count('xmlns="%s"' % FILE_LISTS_NAMESPACE), 1)
+        self.assertEqual(content.count('packages="0"'), 1)
 
     def test_filelists_closing_tag(self):
 
@@ -524,11 +524,11 @@ class YumDistributorMetadataTests(unittest.TestCase):
 
         self.assertNotEqual(os.path.getsize(path), 0)
 
-        with gzip.open(path, 'r') as updateinfo_handle:
+        updateinfo_handle = gzip.open(path, 'r')
+        content = updateinfo_handle.read()
+        updateinfo_handle.close()
 
-            content = updateinfo_handle.read()
-
-            self.assertEqual(content, '<updates>\n</updates>\n')
+        self.assertEqual(content, '<updates>\n</updates>\n')
 
     def test_updateinfo_unit_metadata(self):
 
@@ -552,18 +552,18 @@ class YumDistributorMetadataTests(unittest.TestCase):
 
         self.assertNotEqual(os.path.getsize(path), 0)
 
-        with gzip.open(path, 'r') as updateinfo_handle:
+        updateinfo_handle = gzip.open(path, 'r')
+        content = updateinfo_handle.read()
+        updateinfo_handle.close()
 
-            content = updateinfo_handle.read()
-
-            self.assertEqual(content.count('from="enhancements@redhat.com"'), 1)
-            self.assertEqual(content.count('status="final"'), 1)
-            self.assertEqual(content.count('type="enhancements"'), 1)
-            self.assertEqual(content.count('version="1"'), 1)
-            self.assertEqual(content.count('<id>RHEA-2010:9999</id>'), 1)
-            self.assertEqual(content.count('<collection short="F13PTP">'), 1)
-            self.assertEqual(content.count('<package'), 2)
-            self.assertEqual(content.count('<sum type="md5">f3c197a29d9b66c5b65c5d62b25db5b4</sum>'), 1)
+        self.assertEqual(content.count('from="enhancements@redhat.com"'), 1)
+        self.assertEqual(content.count('status="final"'), 1)
+        self.assertEqual(content.count('type="enhancements"'), 1)
+        self.assertEqual(content.count('version="1"'), 1)
+        self.assertEqual(content.count('<id>RHEA-2010:9999</id>'), 1)
+        self.assertEqual(content.count('<collection short="F13PTP">'), 1)
+        self.assertEqual(content.count('<package'), 2)
+        self.assertEqual(content.count('<sum type="md5">f3c197a29d9b66c5b65c5d62b25db5b4</sum>'), 1)
 
     # -- prestodelta.xml testing -----------------------------------------------
 
@@ -604,11 +604,11 @@ class YumDistributorMetadataTests(unittest.TestCase):
 
         self.assertNotEqual(os.path.getsize(path), 0)
 
-        with gzip.open(path, 'r') as prestodelta_handle:
+        prestodelta_handle = gzip.open(path, 'r')
+        content = prestodelta_handle.read()
+        prestodelta_handle.close()
 
-            content = prestodelta_handle.read()
-
-            self.assertEqual(content, '<prestodelta>\n</prestodelta>\n')
+        self.assertEqual(content, '<prestodelta>\n</prestodelta>\n')
 
     def test_prestodelta_unit_metadata(self):
 
@@ -631,22 +631,22 @@ class YumDistributorMetadataTests(unittest.TestCase):
         context.add_unit_metadata(prestodelta_unit)
         context._close_metadata_file_handle()
 
-        with gzip.open(path, 'r') as prestodelta_handle:
+        prestodelta_handle = gzip.open(path, 'r')
+        content = prestodelta_handle.read()
+        prestodelta_handle.close()
 
-            content = prestodelta_handle.read()
-
-            self.assertEqual(content.count('name="yum"'), 1)
-            self.assertEqual(content.count('epoch="0"'), 2) # also matches oldepoch
-            self.assertEqual(content.count('version="3.4.3"'), 2) # also matches oldversion
-            self.assertEqual(content.count('release="16.fc16"'), 1)
-            self.assertEqual(content.count('arch="noarch"'), 1)
-            self.assertEqual(content.count('oldepoch="0"'), 1)
-            self.assertEqual(content.count('oldversion="3.4.3"'), 1)
-            self.assertEqual(content.count('oldrelease="11.fc16"'), 1)
-            self.assertEqual(content.count('<filename>drpms/yum-3.4.3-11.fc16_3.4.3-16.fc16.noarch.drpm</filename>'), 1)
-            self.assertEqual(content.count('<sequence>yum-3.4.3-11.fc16-fa4535420dc8db63b7349d4262e3920b211141321242121222421212124242121272421212121212a1212121286272121212309f210ee210be2108e210fc210de110ae110fd110cd1108c110db110ab110fa110ca1109a110b9110a8110f710c710e6108610d510a510f4109410d310a310f2109210e11</sequence>'), 1)
-            self.assertEqual(content.count('<size>183029</size>'), 1)
-            self.assertEqual(content.count('<checksum type="sha256">77fad55681f652e06e8ba8fd6f11e505c4d85041ee30a37bbf8f573c4fb8f570</checksum>'), 1)
+        self.assertEqual(content.count('name="yum"'), 1)
+        self.assertEqual(content.count('epoch="0"'), 2) # also matches oldepoch
+        self.assertEqual(content.count('version="3.4.3"'), 2) # also matches oldversion
+        self.assertEqual(content.count('release="16.fc16"'), 1)
+        self.assertEqual(content.count('arch="noarch"'), 1)
+        self.assertEqual(content.count('oldepoch="0"'), 1)
+        self.assertEqual(content.count('oldversion="3.4.3"'), 1)
+        self.assertEqual(content.count('oldrelease="11.fc16"'), 1)
+        self.assertEqual(content.count('<filename>drpms/yum-3.4.3-11.fc16_3.4.3-16.fc16.noarch.drpm</filename>'), 1)
+        self.assertEqual(content.count('<sequence>yum-3.4.3-11.fc16-fa4535420dc8db63b7349d4262e3920b211141321242121222421212124242121272421212121212a1212121286272121212309f210ee210be2108e210fc210de110ae110fd110cd1108c110db110ab110fa110ca1109a110b9110a8110f710c710e6108610d510a510f4109410d310a310f2109210e11</sequence>'), 1)
+        self.assertEqual(content.count('<size>183029</size>'), 1)
+        self.assertEqual(content.count('<checksum type="sha256">77fad55681f652e06e8ba8fd6f11e505c4d85041ee30a37bbf8f573c4fb8f570</checksum>'), 1)
 
     # -- repomd.xml testing ----------------------------------------------------
 
@@ -709,8 +709,9 @@ class YumDistributorMetadataTests(unittest.TestCase):
         test_metadata_content = 'The quick brown fox jumps over the lazy dog'
 
         os.makedirs(os.path.dirname(test_metadata_file_path))
-        with gzip.open(test_metadata_file_path, 'w') as test_metadata_file_handle:
-            test_metadata_file_handle.write(test_metadata_content)
+        test_metadata_file_handle = gzip.open(test_metadata_file_path, 'w')
+        test_metadata_file_handle.write(test_metadata_content)
+        test_metadata_file_handle.close()
 
         context = RepomdXMLFileContext(self.metadata_file_dir)
         context._open_metadata_file_handle()
