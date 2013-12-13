@@ -26,8 +26,6 @@ from pulp.server.db.model.criteria import UnitAssociationCriteria
 
 from pulp_rpm.common.ids import TYPE_ID_YUM_REPO_METADATA_FILE
 
-from pulp_rpm.plugins.distributors.yum_distributor.distributor import YumDistributor
-
 import data_dir
 import http_static_test_server
 import mock_conduits
@@ -78,57 +76,6 @@ class CustomMetadataTests(rpm_support_base.PulpRPMTests):
         return units
 
     # -- custom metadata tests -------------------------------------------------
-
-    def test_custom_metadata_publish(self):
-        distributor = YumDistributor()
-
-        repo = self._mock_repo('test-presto-delta-metadata')
-        repo_units = self._test_drpm_repo_units()
-        publish_conduit = mock_conduits.repo_publish_conduit(existing_units=repo_units)
-        config = mock_conduits.plugin_call_config(http_publish_dir=self.content_dir, relative_url='', http=True, https=False)
-
-        distributor.publish_repo(repo, publish_conduit, config)
-
-        # make sure the metadata unit was published
-        criteria = UnitAssociationCriteria(type_ids=[TYPE_ID_YUM_REPO_METADATA_FILE])
-        metadata_units = publish_conduit.get_units(criteria)
-
-        self.assertEqual(len(metadata_units), 1)
-
-        unit = metadata_units[0]
-
-        self.assertEqual(unit.type_id, TYPE_ID_YUM_REPO_METADATA_FILE)
-        self.assertEqual(unit.unit_key['data_type'], 'prestodelta')
-
-        # make sure the file was copied into place
-        repodata_path = os.path.join(self.content_dir, repo.id, 'repodata')
-        prestodelta_files = glob.glob(repodata_path + '/*prestodelta*')
-        self.assertEqual(len(prestodelta_files), 1)
-
-        prestodelta_path = os.path.join(repodata_path, prestodelta_files[0])
-        self.assertTrue(os.path.exists(prestodelta_path))
-
-    def test_custom_metadata_sync(self):
-        importer = YumImporter()
-
-        repo = self._mock_repo('test-presto-delta-metadata')
-        sync_conduit = mock_conduits.repo_sync_conduit(self.content_dir, repo_id=repo.id)
-        config = mock_conduits.plugin_call_config(
-            **{importer_constants.KEY_FEED:TEST_DRPM_REPO_FEED,
-             importer_constants.KEY_MAX_DOWNLOADS:1})
-
-        importer.sync_repo(repo, sync_conduit, config)
-
-        # make sure the unit was synced
-        criteria = UnitAssociationCriteria(type_ids=[TYPE_ID_YUM_REPO_METADATA_FILE])
-        metadata_units = sync_conduit.get_units(criteria)
-
-        self.assertEqual(len(metadata_units), 1)
-
-        unit = metadata_units[0]
-
-        self.assertEqual(unit.type_id, TYPE_ID_YUM_REPO_METADATA_FILE)
-        self.assertEqual(unit.unit_key['data_type'], 'prestodelta')
 
     def test_custom_metadata_import_units(self):
         importer = YumImporter()
