@@ -22,11 +22,11 @@ from pulp.plugins.model import Repository
 from pulp.plugins.config import PluginCallConfiguration
 from pulp.plugins.conduits.repo_publish import RepoPublishConduit
 
-sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)) + "/../../../plugins/importers/")
-sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)) + "/../../../plugins/distributors/")
+# sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)) + "/../../../plugins/importers/")
+# sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)) + "/../../../plugins/distributors/")
 
-from iso_distributor import export_utils
-from iso_distributor.distributor import ISODistributor
+from pulp_rpm.plugins.distributors.export_distributor import export_utils
+from pulp_rpm.plugins.distributors.export_distributor.distributor import ISODistributor
 from pulp_rpm.yum_plugin import util
 from pulp_rpm.common.ids import (TYPE_ID_DISTRO, TYPE_ID_PKG_GROUP, TYPE_ID_ERRATA, TYPE_ID_DRPM,
                                  TYPE_ID_SRPM, TYPE_ID_RPM, TYPE_ID_PKG_CATEGORY,

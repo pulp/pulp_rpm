@@ -21,7 +21,7 @@ setup(
     packages=find_packages(),
     author='Pulp Team',
     author_email='pulp-list@redhat.com',
-    entry_points = {
+    entry_points={
         'pulp.importers': [
             'importer = pulp_rpm.plugins.importers.yum.importer:entry_point',
         ],
@@ -33,6 +33,7 @@ setup(
         ],
         'pulp.distributors': [
             'distributor = pulp_rpm.plugins.distributors.yum.distributor:entry_point',
+            'ExportDistributor = pulp_rpm.plugins.distributors.export_distributor.distributor:entry_point',
         ]
     }
 )

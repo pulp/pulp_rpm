@@ -23,8 +23,8 @@ from pulp.server.exceptions import MissingResource
 from pulp.plugins.model import AssociatedUnit, Repository, RepositoryGroup
 
 # pulp_rpm/pulp_rpm/plugins/distributors/iso_distributor isn't in the python path
-sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)) + "/../../../plugins/distributors/")
-from iso_distributor import export_utils, generate_iso
+# sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)) + "/../../../plugins/distributors/")
+from pulp_rpm.plugins.distributors.export_distributor import export_utils, generate_iso
 from pulp_rpm.common import constants, ids, models
 
 
