@@ -12,6 +12,7 @@
 # http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt.
 
 import mock
+from pulp_rpm.devel import rpm_support_base
 
 from pulp.client.commands.unit import UnitCopyCommand
 
@@ -20,7 +21,6 @@ from pulp_rpm.common.ids import (TYPE_ID_RPM, TYPE_ID_SRPM, TYPE_ID_DRPM, TYPE_I
                                  TYPE_ID_DISTRO, TYPE_ID_PKG_GROUP, TYPE_ID_PKG_CATEGORY,
                                  TYPE_ID_PKG_ENVIRONMENT, UNIT_KEY_RPM)
 from pulp_rpm.extension.admin import copy_commands
-import rpm_support_base
 
 
 class RecursiveCopyCommandTests(rpm_support_base.PulpClientTests):

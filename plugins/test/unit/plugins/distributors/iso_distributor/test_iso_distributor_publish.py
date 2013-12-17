@@ -12,22 +12,19 @@
 # http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt.
 
 from ConfigParser import SafeConfigParser
-import csv
-import errno
 import os
 import shutil
 import tempfile
 import unittest
 
 from mock import MagicMock, patch
-from pulp.plugins.model import Repository, Unit
+from pulp.plugins.model import Unit
 
-from pulp_rpm.common import constants, ids, models, progress
+from pulp_rpm.common import constants, ids
 from pulp_rpm.plugins.distributors.iso_distributor import publish
 from pulp_rpm.repo_auth.protected_repo_utils import ProtectedRepoUtils
 from pulp_rpm.repo_auth.repo_cert_utils import RepoCertUtils
-from pulp.devel.mock_distributor import get_basic_config, get_publish_conduit
-
+from pulp.devel.mock_distributor import get_publish_conduit
 
 
 class PublishTests(unittest.TestCase):
@@ -118,4 +115,3 @@ class TestRemoveRepositoryProtection(unittest.TestCase):
         publish.remove_repository_protection(repo)
 
         delete_protected_repo.assert_called_once_with(publish._get_relative_path(repo))
-

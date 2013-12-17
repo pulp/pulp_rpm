@@ -13,12 +13,12 @@
 
 from copy import deepcopy
 
-from pulp.client.commands.options import OPTION_REPO_ID
 import mock
 
+from pulp_rpm.devel import rpm_support_base
+from pulp.client.commands.options import OPTION_REPO_ID
 from pulp_rpm.common import ids
 from pulp_rpm.extension.admin.iso.contents import ISOSearchCommand
-import rpm_support_base
 
 
 class TestISOSearchCommand(rpm_support_base.PulpClientTests):

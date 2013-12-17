@@ -13,8 +13,8 @@
 from pulp.common import constants as pulp_constants
 
 from pulp_rpm.common import constants, ids
+from pulp_rpm.devel import rpm_support_base
 from pulp_rpm.extension.admin import repo_list
-import rpm_support_base
 
 
 class RpmRepoListCommandTests(rpm_support_base.PulpClientTests):

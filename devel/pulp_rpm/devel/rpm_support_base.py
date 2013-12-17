@@ -37,7 +37,7 @@ SerialNumber.PATH = '/tmp/sn.dat'
 TEMP_DISTRO_STORAGE_DIR = '/tmp/pulp/var/lib/pulp/content/distribution/'
 
 
-TEST_DATA_DIR = os.path.join(os.path.dirname(__file__), 'data')
+TEST_DATA_DIR = os.path.join(os.path.dirname(__file__), '../../../pulp_rpm/test/unit/data')
 DEMO_REPOS_PATH = os.path.join(TEST_DATA_DIR, 'repos.fedorapeople.org', 'repos', 'pulp',
                                'pulp', 'demo_repos')
 
@@ -62,7 +62,8 @@ class PulpRPMTests(unittest.TestCase):
         if not os.path.exists('/tmp/pulp'):
             os.makedirs('/tmp/pulp')
         stop_logging()
-        config_filename = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'data', 'test-override-pulp.conf')
+        config_filename = os.path.join(os.path.abspath(os.path.dirname(__file__)),
+                                       '../../../pulp_rpm/test/unit/data', 'test-override-pulp.conf')
         config.config.read(config_filename)
         start_logging()
         name = config.config.get('database', 'name')
@@ -86,6 +87,7 @@ class PulpRPMTests(unittest.TestCase):
             shutil.rmtree(dst)
         shutil.copytree(src, dst)
 
+
 class PulpClientTests(unittest.TestCase):
     """
     Base unit test class for all extension unit tests.
@@ -95,7 +97,8 @@ class PulpClientTests(unittest.TestCase):
         super(PulpClientTests, self).setUp()
 
         self.config = SafeConfigParser()
-        config_filename = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'data', 'test-override-client.conf')
+        config_filename = os.path.join(os.path.abspath(os.path.dirname(__file__)),
+                                       '../../../pulp_rpm/test/unit/data', 'test-override-client.conf')
         self.config = Config(config_filename)
 
         self.server_mock = mock.Mock()

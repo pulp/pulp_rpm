@@ -12,24 +12,18 @@
 # http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt.
 
 from copy import deepcopy
-import mock
 import os
-import random
 import shutil
-import sys
 import tempfile
-import unittest
 
 from pulp.plugins.model import Consumer, Repository, Unit
-from pulp.server.db.model.criteria import Criteria
-from pulp.server.managers import factory
-from pulp.server.managers.consumer.cud import ConsumerManager
+
 
 from pulp_rpm.common.ids import TYPE_ID_ERRATA, TYPE_ID_RPM
 from pulp_rpm.plugins.profilers.yum import entry_point, YumProfiler
 from pulp_rpm.yum_plugin import comps_util, util, updateinfo
 import profiler_mocks
-import rpm_support_base
+from pulp_rpm.devel import rpm_support_base
 
 
 class TestYumProfiler(rpm_support_base.PulpRPMTests):

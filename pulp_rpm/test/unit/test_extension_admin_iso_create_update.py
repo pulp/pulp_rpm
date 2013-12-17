@@ -20,6 +20,9 @@ through the thorough testing of the ISORepoCreateCommand and the ISORepoUpdateCo
 import os
 import unittest
 
+import mock
+
+from pulp_rpm.devel import rpm_support_base
 from pulp.client import arg_utils, parsers
 from pulp.client.commands import options as std_options
 from pulp.client.commands.repo.cudl import (CreateRepositoryCommand,
@@ -28,11 +31,8 @@ from pulp.client.commands.repo.importer_config import ImporterConfigMixin
 from pulp.client.extensions.extensions import PulpCliOption, PulpCliOptionGroup
 from pulp.common import constants as pulp_constants
 from pulp.common.plugins import importer_constants
-import mock
-
 from pulp_rpm.common import constants, ids
 from pulp_rpm.extension.admin.iso import create_update
-import rpm_support_base
 
 
 def mock_convert_file_contents(file_keys, args):

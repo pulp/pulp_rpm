@@ -29,7 +29,7 @@ from pulp_rpm.common.ids import TYPE_ID_YUM_REPO_METADATA_FILE
 import data_dir
 import http_static_test_server
 import mock_conduits
-import rpm_support_base
+from pulp_rpm.devel import rpm_support_base
 
 
 TEST_DRPM_REPO_FEED = 'http://localhost:8088/%s/test_drpm_repo/published/test_drpm_repo/' % \

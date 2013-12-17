@@ -13,16 +13,15 @@ import copy
 import os
 
 import mock
-
 from pulp.bindings.responses import Response
 from pulp.client.commands.options import OPTION_REPO_ID
 from pulp.client.commands.repo.upload import UploadCommand, FileBundle
 
 from pulp_rpm.common.ids import TYPE_ID_RPM, TYPE_ID_SRPM
+from pulp_rpm.devel import rpm_support_base
 from pulp_rpm.extension.admin.upload import package
 from pulp_rpm.extension.admin.upload.package import FLAG_SKIP_EXISTING
 from pulp_rpm.extension.admin.repo_options import OPT_CHECKSUM_TYPE
-import rpm_support_base
 
 
 RPM_DIR = os.path.abspath(os.path.dirname(__file__)) + '/data/simple_repo_no_comps'

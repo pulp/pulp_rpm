@@ -17,7 +17,7 @@ from pulp.server.db.migrate.models import _import_all_the_way
 from pulp.server.managers import factory
 
 from pulp_rpm.common import ids
-import rpm_support_base
+from pulp_rpm.devel import rpm_support_base
 
 
 # Trimmed down versions of the type defs

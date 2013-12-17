@@ -11,13 +11,11 @@
 # have received a copy of GPLv2 along with this software; if not, see
 # http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt.
 
-from cStringIO import StringIO
-import hashlib
 import mock
+from pulp_rpm.devel import rpm_support_base
 
 from pulp_rpm.common import ids
 from pulp_rpm.extension.admin.iso import upload
-import rpm_support_base
 
 
 class TestUploadISOCommand(rpm_support_base.PulpClientTests):

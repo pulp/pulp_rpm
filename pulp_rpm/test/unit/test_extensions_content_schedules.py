@@ -10,12 +10,12 @@
 # http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt.
 
 import mock
+from pulp_rpm.devel import rpm_support_base
 
 from pulp.client.commands.consumer.content import OPTION_CONTENT_TYPE_ID, OPTION_CONTENT_UNIT
 from pulp.client.commands.options import OPTION_CONSUMER_ID
 from pulp.client.commands.schedule import CreateScheduleCommand
 
-import rpm_support_base
 from pulp_rpm.extension.admin.content_schedules import (
     YumConsumerContentCreateScheduleCommand, YumConsumerContentScheduleStrategy)
 from pulp_rpm.common.ids import TYPE_ID_RPM, TYPE_ID_PKG_GROUP, TYPE_ID_ERRATA

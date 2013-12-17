@@ -15,8 +15,8 @@ from pulp.client.commands.repo.upload import UploadCommand, FLAG_VERBOSE
 from pulp.client.commands.options import OPTION_REPO_ID
 
 from pulp_rpm.common.ids import TYPE_ID_PKG_CATEGORY
+from pulp_rpm.devel import rpm_support_base
 from pulp_rpm.extension.admin.upload import category
-import rpm_support_base
 
 
 class CreatePackageCategoryCommand(rpm_support_base.PulpClientTests):

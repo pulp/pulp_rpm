@@ -15,7 +15,7 @@ import unittest
 import pymongo
 from pulp.server.db import connection
 
-import rpm_support_base
+from pulp_rpm.devel import rpm_support_base
 from pulp_rpm.common import version_utils
 from pulp_rpm.common.version_utils import encode
 
