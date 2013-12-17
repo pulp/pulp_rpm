@@ -17,8 +17,8 @@
 # ---- Pulp (rpm) --------------------------------------------------------------
 
 Name: pulp-rpm
-Version: 2.3.0
-Release: 1%{?dist}
+Version: pulp-2.3.1
+Release: 0.5.beta%{?dist}
 Summary: Support for RPM content in the Pulp platform
 Group: Development/Languages
 License: GPLv2
@@ -279,6 +279,10 @@ A collection of yum plugins supplementing Pulp consumer operations.
 
 
 %changelog
+* Tue Dec 17 2013 Unknown name pulp-2.3.1-0.5.beta
+- 1038309 - Fix bug where distributor type was being checked against the
+  distributor id instead of the type id (bcourt@redhat.com)
+
 * Thu Dec 05 2013 Barnaby Court <bcourt@redhat.com> 2.3.0-1
 - Pulp rebuild
 
