@@ -29,7 +29,7 @@ from pulp.server.managers.repo.publish import RepoPublishManager
 
 YUM_DISTRIBUTOR_ID = 'yum_distributor'
 
-REPO_WORKING_DIRECTORY = '/var/lib/pulp/working/%s/distributors/' + YUM_DISTRIBUTOR_ID
+REPO_WORKING_DIR = '/var/lib/pulp/working/%s/distributors/' + YUM_DISTRIBUTOR_ID
 
 OLD_ROOT_PUBLISH_DIR = '/var/lib/pulp/published'
 OLD_HTTP_PUBLISH_DIR = os.path.join(OLD_ROOT_PUBLISH_DIR, 'http', 'repos')
@@ -66,7 +66,7 @@ def _clear_working_dir(repo):
     Clear out the repository's distributor's working directory
     """
 
-    working_dir = REPO_WORKING_DIRECTORY % repo['id']
+    working_dir = REPO_WORKING_DIR % repo['id']
 
     if os.path.exists(working_dir):
 
