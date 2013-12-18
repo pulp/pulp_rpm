@@ -29,10 +29,10 @@ import rpm_support_base
 MIGRATION_MODULE = 'pulp_rpm.migrations.0015_new_yum_distributor'
 
 
-class NewYumDistributorMigrationTests(rpm_support_base.PulpRPMTests):
+class BaseMigrationTests(rpm_support_base.PulpRPMTests):
 
     def setUp(self):
-        super(NewYumDistributorMigrationTests, self).setUp()
+        super(BaseMigrationTests, self).setUp()
 
         self.repos_collection = Repo.get_collection()
         self.distributors_collection = RepoDistributor.get_collection()
@@ -44,7 +44,7 @@ class NewYumDistributorMigrationTests(rpm_support_base.PulpRPMTests):
         self.migration_module = _import_all_the_way(MIGRATION_MODULE)
 
     def tearDown(self):
-        super(NewYumDistributorMigrationTests, self).tearDown()
+        super(BaseMigrationTests, self).tearDown()
 
         self.repos_collection.drop()
         self.distributors_collection.drop()
@@ -75,7 +75,8 @@ class NewYumDistributorMigrationTests(rpm_support_base.PulpRPMTests):
         except:
             pass
 
-    # -- test helper methods ---------------------------------------------------
+
+class HelperMethodTests(BaseMigrationTests): 
 
     def test_clear_working_dir(self):
 
@@ -100,6 +101,7 @@ class NewYumDistributorMigrationTests(rpm_support_base.PulpRPMTests):
 
     def test_clear_old_publish_dirs_http(self):
 
+        orig_clear_orphaned_dirs = self.migration_module._clear_orphaned_publish_dirs
         self.migration_module._clear_orphaned_publish_dirs = mock.MagicMock()
 
         repo_id = 'test_repo'
@@ -111,7 +113,8 @@ class NewYumDistributorMigrationTests(rpm_support_base.PulpRPMTests):
         self.assertTrue(os.path.exists(publish_path))
         self.assertTrue(os.path.exists(os.path.join(publish_path, 'repodata')))
 
-        config = {'http_publish_dir': self.http_publish_dir}
+        config = {'http_publish_dir': self.http_publish_dir,
+                  'relative_url': 'foo/' + repo_id}
 
         self.migration_module._clear_old_publish_dirs(repo, config)
 
@@ -121,8 +124,11 @@ class NewYumDistributorMigrationTests(rpm_support_base.PulpRPMTests):
         self.migration_module._clear_orphaned_publish_dirs.assert_called_once_with(
             self.http_publish_dir, os.path.join(self.http_publish_dir, 'foo'))
 
+        self.migration_module._clear_orphaned_publish_dirs = orig_clear_orphaned_dirs
+
     def test_clear_old_publish_dirs_https(self):
 
+        orig_clear_orphaned_dirs = self.migration_module._clear_orphaned_publish_dirs
         self.migration_module._clear_orphaned_publish_dirs = mock.MagicMock()
 
         repo_id = 'test_repo'
@@ -134,7 +140,8 @@ class NewYumDistributorMigrationTests(rpm_support_base.PulpRPMTests):
         self.assertTrue(os.path.exists(publish_path))
         self.assertTrue(os.path.exists(os.path.join(publish_path, 'repodata')))
 
-        config = {'https_publish_dir': self.https_publish_dir}
+        config = {'https_publish_dir': self.https_publish_dir,
+                  'relative_url': 'foo/' + repo_id}
 
         self.migration_module._clear_old_publish_dirs(repo, config)
 
@@ -143,6 +150,8 @@ class NewYumDistributorMigrationTests(rpm_support_base.PulpRPMTests):
 
         self.migration_module._clear_orphaned_publish_dirs.assert_called_once_with(
             self.https_publish_dir, os.path.join(self.https_publish_dir, 'foo'))
+
+        self.migration_module._clear_orphaned_publish_dirs = orig_clear_orphaned_dirs
 
     def test_clear_orphaned_publish_dirs(self):
 
@@ -178,23 +187,39 @@ class NewYumDistributorMigrationTests(rpm_support_base.PulpRPMTests):
 
         mock_publish.assert_called_once_with(repo_id, dist['id'])
 
-    # -- migrate tests ---------------------------------------------------------
 
-    def test_migrate(self):
+class MigrationTests(BaseMigrationTests):
+
+    def setUp(self):
+        super(MigrationTests, self).setUp()
+
+        self.orig_clear_working_dir = self.migration_module._clear_working_dir
+        self.orig_clear_old_publish_dirs = self.migration_module._clear_old_publish_dirs
+        self.orig_re_publish_repository = self.migration_module._re_publish_repository
 
         self.migration_module._clear_working_dir = mock.MagicMock()
         self.migration_module._clear_old_publish_dirs = mock.MagicMock()
         self.migration_module._re_publish_repository = mock.MagicMock()
 
+    def tearDown(self):
+        super(MigrationTests, self).tearDown()
+
+        self.migration_module._clear_working_dir = self.orig_clear_working_dir
+        self.migration_module._clear_old_publish_dirs = self.orig_clear_old_publish_dirs
+        self.migration_module._re_publish_repository = self.orig_re_publish_repository
+        
+
+    def test_migrate(self):
+
         repo_id = 'test_repo'
         config = {'relative_url': '/this/way/to/the/test_repo'}
 
-        repo = self._generate_repo(repo_id)
-        dist = self._generate_distributor(repo_id, config)
+        self._generate_repo(repo_id)
+        self._generate_distributor(repo_id, config)
 
         self.migration_module.migrate()
 
-        self.migration_module._clear_working_dir.assert_called_once_with(repo)
-        self.migration_module._clear_old_publish_dirs.assert_called_once_with(repo, config)
-        self.migration_module._re_publish_repository.assert_called_once_with(repo, dist)
+        self.migration_module._clear_working_dir.assert_called_once()
+        self.migration_module._clear_old_publish_dirs.assert_called_once()
+        self.migration_module._re_publish_repository.assert_called_once()
 
