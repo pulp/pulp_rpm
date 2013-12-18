@@ -61,12 +61,12 @@ def migrate(*args, **kwargs):
         _re_publish_repository(repo, d)
 
 
-def _clear_working_dir(repo):
+def _clear_working_dir(repo, working_dir=None):
     """
     Clear out the repository's distributor's working directory
     """
 
-    working_dir = REPO_WORKING_DIR % repo['id']
+    working_dir = working_dir or REPO_WORKING_DIR % repo['id']
 
     if os.path.exists(working_dir):
 
@@ -89,7 +89,7 @@ def _clear_old_publish_dirs(repo, config):
     including any parent directories that may fall empty as a result.
     """
 
-    relative_publish_dir = config.get('relative_url', repo.id) or repo.id
+    relative_publish_dir = config.get('relative_url', repo['id']) or repo['id']
 
     if relative_publish_dir.startswith('/'):
         relative_publish_dir = relative_publish_dir[1:]
