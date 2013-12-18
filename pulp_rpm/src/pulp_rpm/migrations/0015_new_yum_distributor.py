@@ -23,6 +23,7 @@ corresponding repositories.
 import os
 import shutil
 
+from pulp.common.config import read_json_config
 from pulp.plugins.conduits.repo_publish import RepoPublishConduit
 from pulp.plugins.config import PluginCallConfiguration
 from pulp.server.db.connection import get_collection
@@ -37,6 +38,9 @@ REPO_WORKING_DIR = '/var/lib/pulp/working/%s/distributors/' + YUM_DISTRIBUTOR_ID
 OLD_ROOT_PUBLISH_DIR = '/var/lib/pulp/published'
 OLD_HTTP_PUBLISH_DIR = os.path.join(OLD_ROOT_PUBLISH_DIR, 'http', 'repos')
 OLD_HTTPS_PUBLISH_DIR = os.path.join(OLD_ROOT_PUBLISH_DIR, 'https', 'repos')
+
+NEW_DISTRIBUTOR_CONF_FILE_PATH = 'server/plugins.conf.d/%s.json' % YUM_DISTRIBUTOR_ID
+NEW_DISTRIBUTOR_CONF = read_json_config(NEW_DISTRIBUTOR_CONF_FILE_PATH)
 
 
 def migrate(*args, **kwargs):
@@ -157,7 +161,7 @@ def _re_publish_repository(repo, distributor):
     repo = common_utils.to_transfer_repo(repo)
     repo.working_dir = common_utils.distributor_working_dir(distributor['distributor_type_id'], repo.id)
     conduit = RepoPublishConduit(repo.id, distributor['id'])
-    config = PluginCallConfiguration(None, distributor['config'])
+    config = PluginCallConfiguration(NEW_DISTRIBUTOR_CONF, distributor['config'])
 
     publisher = Publisher(repo, conduit, config)
     publisher.publish()
