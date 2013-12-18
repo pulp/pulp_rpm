@@ -23,8 +23,11 @@ corresponding repositories.
 import os
 import shutil
 
+from pulp.plugins.conduits.repo_publish import RepoPublishConduit
+from pulp.plugins.config import PluginCallConfiguration
 from pulp.server.db.connection import get_collection
-from pulp.server.managers.repo.publish import RepoPublishManager
+from pulp.server.managers.repo import _common as common_utils
+from pulp_rpm.plugins.distributors.yum.publish import Publisher
 
 
 YUM_DISTRIBUTOR_ID = 'yum_distributor'
@@ -151,7 +154,11 @@ def _re_publish_repository(repo, distributor):
     NOTE: this may be a bit time-consuming.
     """
 
-    manager = RepoPublishManager()
-    manager.publish(repo['id'], distributor['id'])
+    repo = common_utils.to_transfer_repo(repo)
+    repo.working_dir = common_utils.distributor_working_dir(distributor['distributor_type_id'], repo.id)
+    conduit = RepoPublishConduit(repo.id, distributor['id'])
+    config = PluginCallConfiguration(None, distributor['config'])
 
+    publisher = Publisher(repo, conduit, config)
+    publisher.publish()
 

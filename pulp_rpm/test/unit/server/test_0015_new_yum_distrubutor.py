@@ -76,7 +76,7 @@ class BaseMigrationTests(rpm_support_base.PulpRPMTests):
             pass
 
 
-class HelperMethodTests(BaseMigrationTests): 
+class HelperMethodTests(BaseMigrationTests):
 
     def test_clear_working_dir(self):
 
@@ -176,7 +176,7 @@ class HelperMethodTests(BaseMigrationTests):
             self.assertFalse(os.path.exists(path))
             self.assertFalse(os.path.exists(os.path.join(path, 'listing')))
 
-    @mock.patch('pulp.server.managers.repo.publish.RepoPublishManager.publish')
+    @mock.patch('pulp_rpm.plugins.distributors.yum.publish.Publisher.publish')
     def test_re_publish_repository(self, mock_publish):
 
         repo_id = 'test_repo'
@@ -185,7 +185,7 @@ class HelperMethodTests(BaseMigrationTests):
 
         self.migration_module._re_publish_repository(repo, dist)
 
-        mock_publish.assert_called_once_with(repo_id, dist['id'])
+        mock_publish.assert_called_once()
 
 
 class MigrationTests(BaseMigrationTests):
@@ -207,7 +207,7 @@ class MigrationTests(BaseMigrationTests):
         self.migration_module._clear_working_dir = self.orig_clear_working_dir
         self.migration_module._clear_old_publish_dirs = self.orig_clear_old_publish_dirs
         self.migration_module._re_publish_repository = self.orig_re_publish_repository
-        
+
 
     def test_migrate(self):
 
