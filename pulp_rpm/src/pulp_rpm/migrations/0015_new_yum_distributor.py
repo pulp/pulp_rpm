@@ -23,7 +23,7 @@ corresponding repositories.
 import os
 import shutil
 
-from pulp.server.db.model.repository import Repo, RepoDistributor
+from pulp.server.db.connection import get_collection
 from pulp.server.managers.repo.publish import RepoPublishManager
 
 
@@ -42,10 +42,10 @@ def migrate(*args, **kwargs):
     mess and re-publish the repository with the new distributor.
     """
 
-    distributor_collection = RepoDistributor.get_collection()
+    distributor_collection = get_collection('repo_distributors')
     yum_distributors = list(distributor_collection.find({'distributor_type_id': YUM_DISTRIBUTOR_ID}))
 
-    repo_collection = Repo.get_collection()
+    repo_collection = get_collection('repos')
     repo_ids = list(set(d['repo_id'] for d in yum_distributors))
     repos = dict((r['id'], r) for r in repo_collection.find({'id': {'$in': repo_ids}}))
 
