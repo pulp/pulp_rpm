@@ -51,10 +51,10 @@ def initialize(context):
     copy_section.add_command(copy_commands.PackageCategoryCopyCommand(context))
     copy_section.add_command(copy_commands.PackageEnvironmentCopyCommand(context))
     copy_section.add_command(copy_commands.AllCopyCommand(context))
+    copy_section.add_command(copy_commands.SrpmCopyCommand(context))
 
     # Disabled as per 950690. We'll likely be able to add these back once the new
     # yum importer is finished and DRPMs are properly handled.
-    # copy_section.add_command(copy_commands.SrpmCopyCommand(context))
     # copy_section.add_command(copy_commands.DrpmCopyCommand(context))
 
     remove_section = structure.repo_remove_section(context.cli)
