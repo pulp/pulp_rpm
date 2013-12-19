@@ -87,10 +87,11 @@ class ISODistributor(Distributor):
         have a configured distributor of this type. The distributor configurations
         is found in each repository in the "plugin_configs" field.
 
-        :param repo: metadata describing the repository to which the configuration applies
-        :type  repo: pulp.plugins.model.Repository
-        :param config: plugin configuration instance; the proposed repo configuration is found within
-        :type  config: pulp.plugins.config.PluginCallConfiguration
+        :param repo:           metadata describing the repository to which the configuration applies
+        :type  repo:           pulp.plugins.model.Repository
+        :param config:         plugin configuration instance; the proposed repo configuration is
+                               found within
+        :type  config:         pulp.plugins.config.PluginCallConfiguration
         :param config_conduit: Configuration Conduit;
         :type  config_conduit: pulp.plugins.conduits.repo_validate.RepoConfigConduit
 
@@ -99,14 +100,9 @@ class ISODistributor(Distributor):
         """
         return export_utils.validate_export_config(config)
 
-    def cancel_publish_repo(self, call_request, call_report):
+    def cancel_publish_repo(self):
         """
         Call cancellation control hook. This is not currently supported for this distributor
-
-        :param call_request: call request for the call to cancel
-        :type  call_request: CallRequest
-        :param call_report:  call report for the call to cancel
-        :type  call_report:  CallReport
         """
         # TODO: Add cancel support
         self.cancelled = True
@@ -140,8 +136,8 @@ class ISODistributor(Distributor):
         :return: report describing the publish run
         :rtype:  pulp.plugins.model.PublishReport
         """
-        # First, validate the configuration because there may be override config options, and currently,
-        # validate_config is not called prior to publishing by the manager.
+        # First, validate the configuration because there may be override config options, and
+        # currently, validate_config is not called prior to publishing by the manager.
         valid_config, msg = export_utils.validate_export_config(config)
         if not valid_config:
             raise PulpDataException(msg)

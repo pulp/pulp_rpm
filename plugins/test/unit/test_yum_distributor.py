@@ -12,7 +12,6 @@
 # if not, see http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt
 
 import os
-import sys
 import unittest
 
 import mock
@@ -38,8 +37,6 @@ class YumDistributorTests(unittest.TestCase):
 
         self.distributor = None
 
-    # -- metadata test ---------------------------------------------------------
-
     def test_metadata(self):
 
         metadata = distributor.YumHTTPDistributor.metadata()
@@ -50,8 +47,6 @@ class YumDistributorTests(unittest.TestCase):
         self.assertEqual(metadata['id'], TYPE_ID_DISTRIBUTOR_YUM)
         self.assertEqual(metadata['display_name'], distributor.DISTRIBUTOR_DISPLAY_NAME)
 
-    # -- configuration test ----------------------------------------------------
-
     @mock.patch('pulp_rpm.plugins.distributors.yum.configuration.validate_config')
     def test_validate_config(self, mock_validate_config):
         repo = Repository('test')
@@ -61,8 +56,6 @@ class YumDistributorTests(unittest.TestCase):
         self.distributor.validate_config(repo, config, conduit)
 
         mock_validate_config.assert_called_once_with(repo, config, conduit)
-
-    # -- publish tests ---------------------------------------------------------
 
     @mock.patch('pulp_rpm.plugins.distributors.yum.publish.Publisher.publish')
     def test_publish_repo(self, mock_publish):
@@ -78,7 +71,7 @@ class YumDistributorTests(unittest.TestCase):
 
         self.distributor._publisher = mock.MagicMock()
 
-        self.distributor.cancel_publish_repo(None, None)
+        self.distributor.cancel_publish_repo()
 
         self.assertTrue(self.distributor.canceled)
         self.distributor._publisher.cancel.assert_called_once()

@@ -22,21 +22,18 @@ from pulp_rpm.yum_plugin import util
 
 from . import configuration, publish
 
-# -- global constants ----------------------------------------------------------
 
-_LOG = util.getLogger(__name__)
+logger = util.getLogger(__name__)
 
 CONF_FILE_PATH = 'server/plugins.conf.d/%s.json' % TYPE_ID_DISTRIBUTOR_YUM
 
 DISTRIBUTOR_DISPLAY_NAME = 'Yum Distributor'
 
-# -- entry point ---------------------------------------------------------------
 
 def entry_point():
     config = read_json_config(CONF_FILE_PATH)
     return YumHTTPDistributor, config
 
-# -- distributor ---------------------------------------------------------------
 
 class YumHTTPDistributor(Distributor):
     """
@@ -63,8 +60,6 @@ class YumHTTPDistributor(Distributor):
                           TYPE_ID_PKG_GROUP, TYPE_ID_PKG_CATEGORY, TYPE_ID_DISTRO,
                           TYPE_ID_YUM_REPO_METADATA_FILE]}
 
-    # -- repo lifecycle methods ------------------------------------------------
-
     def validate_config(self, repo, config, config_conduit):
         """
         Allows the distributor to check the contents of a potential configuration
@@ -86,7 +81,7 @@ class YumHTTPDistributor(Distributor):
         :return: tuple of (bool, str) to describe the result
         :rtype:  tuple
         """
-        _LOG.debug('Validating yum repository configuration: %s' % repo.id)
+        logger.debug('Validating yum repository configuration: %s' % repo.id)
 
         return configuration.validate_config(repo, config, config_conduit)
 
@@ -115,8 +110,6 @@ class YumHTTPDistributor(Distributor):
         """
         pass
 
-    # -- actions ---------------------------------------------------------------
-
     def publish_repo(self, repo, publish_conduit, config):
         """
         Publishes the given repository.
@@ -133,21 +126,16 @@ class YumHTTPDistributor(Distributor):
         :return: report describing the publish run
         :rtype:  pulp.plugins.model.PublishReport
         """
-        _LOG.debug('Publishing yum repository: %s' % repo.id)
+        logger.debug('Publishing yum repository: %s' % repo.id)
 
         self._publisher = publish.Publisher(repo, publish_conduit, config)
         return self._publisher.publish()
 
-    def cancel_publish_repo(self, call_request, call_report):
+    def cancel_publish_repo(self):
         """
         Call cancellation control hook.
-
-        :param call_request: call request for the call to cancel
-        :type call_request: pulp.server.dispatch.call.CallRequest
-        :param call_report: call report for the call to cancel
-        :type call_report: pulp.server.dispatch.call.CallReport
         """
-        _LOG.debug('Canceling yum repository publish')
+        logger.debug('Canceling yum repository publish')
 
         self.canceled = True
         if self._publisher is not None:
@@ -174,5 +162,3 @@ class YumHTTPDistributor(Distributor):
         :rtype:  dict
         """
         return {}
-
-
