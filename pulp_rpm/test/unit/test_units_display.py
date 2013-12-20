@@ -12,9 +12,7 @@
 
 import unittest
 
-from mock import Mock, patch
-import okaara.prompt
-from pulp.client.extensions.core import PulpPrompt
+from mock import patch
 
 from pulp_rpm.common.ids import (TYPE_ID_RPM, TYPE_ID_SRPM, TYPE_ID_DRPM, TYPE_ID_ERRATA,
                                  TYPE_ID_DISTRO, TYPE_ID_PKG_GROUP, TYPE_ID_PKG_CATEGORY)
@@ -22,13 +20,6 @@ from pulp_rpm.extension.admin import units_display
 
 
 class UnitsDisplayTests(unittest.TestCase):
-
-    def setUp(self):
-        super(UnitsDisplayTests, self).setUp()
-
-        # Disabling color makes it easier to grep results since the character codes aren't there
-        self.recorder = okaara.prompt.Recorder()
-        self.prompt = PulpPrompt(enable_color=False, output=self.recorder, record_tags=True)
 
     def test_details_package(self):
         unit = {'name': 'foo',
