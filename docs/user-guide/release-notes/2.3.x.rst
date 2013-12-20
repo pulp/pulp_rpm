@@ -54,3 +54,18 @@ Known Issues
 Fedora 19 repositories have a new data type called an "environment group" that
 Pulp does not yet support. As such, you cannot use Anaconda to install Fedora 19
 from a repository published by Pulp.
+
+
+Pulp 2.3.1
+==========
+
+Bugs Fixed
+----------
+
+- `SRPM copy <https://bugzilla.redhat.com/show_bug.cgi?id=1045100>`_ is now supported
+  by ``pulp-admin``.
+
+- REST API clients could `see incorrect behavior <https://bugzilla.redhat.com/show_bug.cgi?id=1038309>`_
+  if using a ``distributor_id`` value different from the ``distributor_type_id``
+  when adding a distributor to a repository. This issue did not affect users who
+  only use ``pulp-admin`` to interact with the REST API.
