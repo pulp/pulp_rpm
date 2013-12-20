@@ -67,6 +67,8 @@ def migrate(*args, **kwargs):
         _clear_old_publish_dirs(repo, config)
         _re_publish_repository(repo, d)
 
+    _remove_legacy_publish_dirs()
+
 
 def _clear_working_dir(repo, working_dir=None):
     """
@@ -146,7 +148,12 @@ def _clear_orphaned_publish_dirs(root_dir, publish_dir):
             try: os.unlink(listing_path)
             except: pass
 
-        os.rmdir(publish_dir)
+        if os.path.islink(publish_dir):
+            try: os.unlink(publish_dir)
+            except: pass
+
+        else:
+            os.rmdir(publish_dir)
 
     _clear_orphaned_publish_dirs(root_dir, os.path.dirname(publish_dir))
 
@@ -166,3 +173,8 @@ def _re_publish_repository(repo, distributor):
     publisher = Publisher(repo, conduit, config)
     publisher.publish()
 
+
+def _remove_legacy_publish_dirs():
+
+    _clear_orphaned_publish_dirs(OLD_ROOT_PUBLISH_DIR, OLD_HTTP_PUBLISH_DIR)
+    _clear_orphaned_publish_dirs(OLD_ROOT_PUBLISH_DIR, OLD_HTTPS_PUBLISH_DIR)

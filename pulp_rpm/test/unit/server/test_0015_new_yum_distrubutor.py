@@ -196,9 +196,11 @@ class MigrationTests(BaseMigrationTests):
         self.orig_clear_working_dir = self.migration_module._clear_working_dir
         self.orig_clear_old_publish_dirs = self.migration_module._clear_old_publish_dirs
         self.orig_re_publish_repository = self.migration_module._re_publish_repository
+        self.orig_remove_legacy_publish_dirs = self.migration_module._remove_legacy_publish_dirs
 
         self.migration_module._clear_working_dir = mock.MagicMock()
         self.migration_module._clear_old_publish_dirs = mock.MagicMock()
+        self.migration_module._remove_legacy_publish_dirs = mock.MagicMock()
         self.migration_module._re_publish_repository = mock.MagicMock()
 
     def tearDown(self):
@@ -207,6 +209,7 @@ class MigrationTests(BaseMigrationTests):
         self.migration_module._clear_working_dir = self.orig_clear_working_dir
         self.migration_module._clear_old_publish_dirs = self.orig_clear_old_publish_dirs
         self.migration_module._re_publish_repository = self.orig_re_publish_repository
+        self.migration_module._remove_legacy_publish_dirs = self.orig_remove_legacy_publish_dirs
 
 
     def test_migrate(self):
@@ -222,4 +225,5 @@ class MigrationTests(BaseMigrationTests):
         self.migration_module._clear_working_dir.assert_called_once()
         self.migration_module._clear_old_publish_dirs.assert_called_once()
         self.migration_module._re_publish_repository.assert_called_once()
+        self.migration_module._remove_legacy_publish_dirs.assert_called_once()
 
