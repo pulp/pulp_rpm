@@ -23,7 +23,8 @@ from pulp.client.commands.schedule import (
 from pulp.client.upload import manager as upload_lib
 
 from pulp_rpm.common import ids
-from pulp_rpm.extension.admin.iso import contents, create_update, repo_list, status, upload
+from pulp_rpm.extension.admin.iso import contents, create_update, repo_list, status, upload, \
+    association
 
 
 SECTION_PUBLISH = 'publish'
@@ -104,8 +105,8 @@ def add_repo_section(context, parent_section):
     repo_section.add_command(create_update.ISORepoUpdateCommand(context))
     repo_section.add_command(cudl.DeleteRepositoryCommand(context))
     repo_section.add_command(repo_list.ISORepoListCommand(context))
-    repo_section.add_command(unit.UnitCopyCommand(context, type_id=ids.TYPE_ID_ISO))
-    repo_section.add_command(unit.UnitRemoveCommand(context, type_id=ids.TYPE_ID_ISO))
+    repo_section.add_command(association.IsoCopyCommand(context))
+    repo_section.add_command(association.IsoRemoveCommand(context))
     repo_section.add_command(contents.ISOSearchCommand(context, name='isos'))
 
 

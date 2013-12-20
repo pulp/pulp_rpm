@@ -37,15 +37,14 @@ DESC_DISTRIBUTION = _('remove distributions from a repository')
 
 
 class BaseRemoveCommand(UnitRemoveCommand):
-
-    def __init__(self, context, name, description, type_id, unit_threshold=DISPLAY_UNITS_THRESHOLD):
+    def __init__(self, context, name, description, type_id,
+                  unit_threshold=DISPLAY_UNITS_THRESHOLD):
         UnitRemoveCommand.__init__(self, context, name=name, description=description,
                                    type_id=type_id)
         self.unit_threshold = unit_threshold
 
-    def succeeded(self, task):
-        removed_units = task.result  # entries are a dict containing unit_key and type_id
-        units_display.display_units(self.prompt, removed_units, self.unit_threshold)
+    def get_formatter_for_type(self, type_id):
+        return units_display.get_formatter_for_type(type_id)
 
 
 class PackageRemoveCommand(BaseRemoveCommand):
