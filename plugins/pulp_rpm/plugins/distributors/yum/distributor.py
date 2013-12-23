@@ -23,7 +23,7 @@ from pulp_rpm.yum_plugin import util
 from . import configuration, publish
 
 
-logger = util.getLogger(__name__)
+_logger = util.getLogger(__name__)
 
 CONF_FILE_PATH = 'server/plugins.conf.d/%s.json' % TYPE_ID_DISTRIBUTOR_YUM
 
@@ -81,7 +81,7 @@ class YumHTTPDistributor(Distributor):
         :return: tuple of (bool, str) to describe the result
         :rtype:  tuple
         """
-        logger.debug('Validating yum repository configuration: %s' % repo.id)
+        _logger.debug('Validating yum repository configuration: %s' % repo.id)
 
         return configuration.validate_config(repo, config, config_conduit)
 
@@ -126,7 +126,7 @@ class YumHTTPDistributor(Distributor):
         :return: report describing the publish run
         :rtype:  pulp.plugins.model.PublishReport
         """
-        logger.debug('Publishing yum repository: %s' % repo.id)
+        _logger.debug('Publishing yum repository: %s' % repo.id)
 
         self._publisher = publish.Publisher(repo, publish_conduit, config)
         return self._publisher.publish()
@@ -135,7 +135,7 @@ class YumHTTPDistributor(Distributor):
         """
         Call cancellation control hook.
         """
-        logger.debug('Canceling yum repository publish')
+        _logger.debug('Canceling yum repository publish')
 
         self.canceled = True
         if self._publisher is not None:
