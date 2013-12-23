@@ -185,6 +185,7 @@ to provide RPM specific support.
 %{_var}/www/pub
 %{_var}/lib/pulp/published/
 %{_sysconfdir}/pki/pulp/content/
+%defattr(-,root,root,-)
 /srv/pulp/repo_auth.wsgi
 %doc
 
