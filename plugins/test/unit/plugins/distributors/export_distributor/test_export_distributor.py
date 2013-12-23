@@ -14,7 +14,6 @@
 import shutil
 import unittest
 import os
-import sys
 
 import mock
 from pulp.server.exceptions import PulpDataException
@@ -22,17 +21,14 @@ from pulp.plugins.model import Repository
 from pulp.plugins.config import PluginCallConfiguration
 from pulp.plugins.conduits.repo_publish import RepoPublishConduit
 
-# sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)) + "/../../../plugins/importers/")
-# sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)) + "/../../../plugins/distributors/")
-
 from pulp_rpm.plugins.distributors.export_distributor import export_utils
 from pulp_rpm.plugins.distributors.export_distributor.distributor import ISODistributor
 from pulp_rpm.yum_plugin import util
 from pulp_rpm.common.ids import (TYPE_ID_DISTRO, TYPE_ID_PKG_GROUP, TYPE_ID_ERRATA, TYPE_ID_DRPM,
                                  TYPE_ID_SRPM, TYPE_ID_RPM, TYPE_ID_PKG_CATEGORY,
                                  TYPE_ID_DISTRIBUTOR_EXPORT)
-from pulp_rpm.common.constants import (PUBLISH_HTTPS_KEYWORD, PUBLISH_HTTP_KEYWORD, EXPORT_HTTPS_DIR,
-                                       EXPORT_DIRECTORY_KEYWORD, EXPORT_HTTP_DIR)
+from pulp_rpm.common.constants import (PUBLISH_HTTPS_KEYWORD, PUBLISH_HTTP_KEYWORD,
+                                       EXPORT_HTTPS_DIR, EXPORT_DIRECTORY_KEYWORD, EXPORT_HTTP_DIR)
 
 
 class TestISODistributor(unittest.TestCase):
@@ -49,15 +45,16 @@ class TestISODistributor(unittest.TestCase):
 
     def test_validate_config(self):
         """
-        Test the validate_config method in ISODistributor, which just hands the config off to a helper
-        method in export_utils
+        Test the validate_config method in ISODistributor, which just hands the config off to a
+        helper method in export_utils
         """
         # Setup
         validate_config = export_utils.validate_export_config
         export_utils.validate_export_config = mock.MagicMock()
         distributor = ISODistributor()
 
-        # Test. All validate_config should do is hand the config argument to the export_utils validator
+        # Test. All validate_config should do is hand the config argument to the export_utils
+        # validator
         distributor.validate_config(None, 'config', None)
         export_utils.validate_export_config.assert_called_once_with('config')
 
@@ -69,12 +66,11 @@ class TestISODistributor(unittest.TestCase):
         """
         Test cancel_publish_repo, which is not currently fully supported
         """
-        # Setup
         distributor = ISODistributor()
         distributor.working_dir = '/working/dir'
 
-        # Test
-        distributor.cancel_publish_repo('call_request', 'call_report')
+        distributor.cancel_publish_repo()
+
         mock_cancel_createrepo.assert_called_once_with(distributor.working_dir)
 
     def test_set_progress(self):

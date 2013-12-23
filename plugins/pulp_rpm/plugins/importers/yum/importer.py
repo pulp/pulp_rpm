@@ -29,8 +29,6 @@ from pulp_rpm.plugins.importers.yum import sync, associate, upload, config_valid
 # entry_point method.
 CONF_FILENAME = 'server/plugins.conf.d/%s.json' % ids.TYPE_ID_IMPORTER_YUM
 
-_LOGGER = logging.getLogger(__name__)
-
 
 def entry_point():
     """
@@ -83,6 +81,9 @@ class YumImporter(Importer):
         self._current_sync.finalize()
         return report
 
-    def cancel_sync_repo(self, call_request, call_report):
+    def cancel_sync_repo(self):
+        """
+        Cancel a currently running repository synchronization operation.
+        """
         self._current_sync.cancel()
         self._current_sync.finalize()
