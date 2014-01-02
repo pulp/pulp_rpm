@@ -23,7 +23,7 @@ from pulp.common import dateutils
 from pulp.server.db.migrate.models import _import_all_the_way
 from pulp.server.db.model.repository import Repo, RepoDistributor
 
-import rpm_support_base
+from pulp_rpm.devel import rpm_support_base
 
 
 MIGRATION_MODULE = 'pulp_rpm.migrations.0015_new_yum_distributor'
