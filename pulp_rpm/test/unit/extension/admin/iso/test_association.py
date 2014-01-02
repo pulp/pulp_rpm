@@ -16,7 +16,6 @@ import unittest
 from mock import MagicMock, patch
 
 from pulp_rpm.common.ids import (TYPE_ID_ISO)
-
 from pulp_rpm.extension.admin.iso import association
 
 
@@ -58,4 +57,3 @@ class TestIsoCopyCommand(unittest.TestCase):
         command = association.IsoCopyCommand(mock_context)
         command.get_formatter_for_type(TYPE_ID_ISO)
         mock_formatter.assert_called_once_with(TYPE_ID_ISO)
-
