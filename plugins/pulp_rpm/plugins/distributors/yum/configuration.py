@@ -12,7 +12,6 @@
 # if not, see http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt
 
 import os
-import re
 from ConfigParser import SafeConfigParser
 from gettext import gettext as _
 
@@ -33,8 +32,6 @@ REQUIRED_CONFIG_KEYS = ('relative_url', 'http', 'https')
 OPTIONAL_CONFIG_KEYS = ('auth_ca', 'auth_cert', 'checksum_type',
                         'http_publish_dir', 'https_publish_dir', 'protected',
                         'skip', 'skip_pkg_tags', 'use_createrepo')
-
-ALPHA_NUMERIC_PATH_REGEX = re.compile(r'^[a-zA-Z0-9/_-]+$')
 
 ROOT_PUBLISH_DIR = '/var/lib/pulp/published/yum'
 MASTER_PUBLISH_DIR = os.path.join(ROOT_PUBLISH_DIR, 'master')
@@ -304,10 +301,6 @@ def _validate_relative_url(relative_url, error_messages):
     if not isinstance(relative_url, basestring):
         msg = _('Configuration value for [relative_url] must be a string, but is a %(t)s')
         error_messages.append(msg % {'t': str(type(relative_url))})
-
-    elif not ALPHA_NUMERIC_PATH_REGEX.match(relative_url):
-        msg = _('Configuration value for [relative_url] may only contain alphanumerics, underscores, dashes, and slashes')
-        error_messages.append(msg)
 
 # -- optional config validation ------------------------------------------------
 

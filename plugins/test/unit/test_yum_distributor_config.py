@@ -184,7 +184,7 @@ class YumDistributorConfigurationTests(unittest.TestCase):
 
     def test_relative_url(self):
         error_messages = []
-        url = 'foo/bar/baz'
+        url = 'foo/bar/baz/6.4/x86_64/os'
 
         configuration._validate_relative_url(url, error_messages)
 
@@ -201,14 +201,6 @@ class YumDistributorConfigurationTests(unittest.TestCase):
     def test_relative_url_not_string(self):
         error_messages = []
         url = 42
-
-        configuration._validate_relative_url(url, error_messages)
-
-        self.assertEqual(len(error_messages), 1)
-
-    def test_relative_url_bad_characters(self):
-        error_messages = []
-        url = 'nope(**$)*@+='
 
         configuration._validate_relative_url(url, error_messages)
 
