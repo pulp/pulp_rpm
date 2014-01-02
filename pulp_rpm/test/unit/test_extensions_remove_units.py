@@ -33,18 +33,18 @@ class BaseRemoveCommandTests(rpm_support_base.PulpClientTests):
     def test_structure(self):
         self.assertTrue(isinstance(self.command, UnitRemoveCommand))
 
-    @mock.patch('pulp_rpm.extension.admin.units_display.display_units')
-    def test_succeeded(self, mock_display):
+    @mock.patch('pulp_rpm.extension.admin.units_display.get_formatter_for_type')
+    def test_get_formatter_for_type(self, mock_display):
         # Setup
         fake_units = 'u'
         fake_task = mock.MagicMock()
         fake_task.result = fake_units
 
         # Test
-        self.command.succeeded(fake_task)
+        self.command.get_formatter_for_type('foo-type')
 
         # Verify
-        mock_display.assert_called_once_with(self.prompt, fake_units, self.command.unit_threshold)
+        mock_display.assert_called_once_with('foo-type')
 
 
 class PackageRemoveCommandTests(rpm_support_base.PulpClientTests):
