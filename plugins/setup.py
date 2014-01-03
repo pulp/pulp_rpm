@@ -34,6 +34,7 @@ setup(
         ],
         'pulp.distributors': [
             'distributor = pulp_rpm.plugins.distributors.yum.distributor:entry_point',
+            'RHCDNDistributor = pulp_rpm.plugins.distributors.rh_cdn.distributor:entry_point',
             'ExportDistributor = pulp_rpm.plugins.distributors.export_distributor.distributor:entry_point',
             'IsoDistributor = pulp_rpm.plugins.distributors.iso_distributor.distributor:entry_point'
         ]
