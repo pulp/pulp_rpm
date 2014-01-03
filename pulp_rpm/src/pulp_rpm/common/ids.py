@@ -16,6 +16,7 @@ TYPE_ID_DISTRIBUTOR_EXPORT = "export_distributor"
 TYPE_ID_DISTRIBUTOR_GROUP_EXPORT = 'group_export_distributor'
 TYPE_ID_DISTRIBUTOR_ISO = "iso_distributor"
 TYPE_ID_DISTRIBUTOR_YUM = "yum_distributor"
+TYPE_ID_DISTRIBUTOR_RH_CDN = "cdn_distributor"
 TYPE_ID_IMPORTER_ISO = "iso_importer"
 TYPE_ID_IMPORTER_YUM = "yum_importer"
 
