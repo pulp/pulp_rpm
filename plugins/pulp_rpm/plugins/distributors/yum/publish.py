@@ -259,13 +259,11 @@ class PublishStep(object):
                    {'type': self.step_id, 'repo': self.parent.repo.id})
 
         self._init_step_progress_report(self.step_id)
-
-        total = self._get_total(self.unit_type)
-        if total == 0:
-            self.report_progress(self.step_id, state=constants.STATE_COMPLETE, total=0)
-            return
-
         try:
+            total = self._get_total(self.unit_type)
+            if total == 0:
+                self.report_progress(self.step_id, state=constants.STATE_COMPLETE, total=0)
+                return
             self.initialize_metadata()
             self.parent.progress_report[self.step_id][constants.PROGRESS_TOTAL_KEY] = total
             package_unit_generator = self.get_unit_generator()
@@ -596,7 +594,6 @@ class PublishMetadataStep(PublishStep):
         self._create_symlink(unit.storage_path, link_path)
 
         # Add the proper relative reference to the metadata file to repomd
-        repomd_relative_filename = os.path.join(REPO_DATA_DIR_NAME, metadata_file_name)
         self.get_step(constants.PUBLISH_REPOMD_STEP).repomd_file_context.\
             add_metadata_file_metadata(unit.unit_key['data_type'], link_path)
 
@@ -736,8 +733,8 @@ class PublishDistributionStep(PublishStep):
         When initializing the metadata verify that only one distribution exists
         """
         if self._get_total() > 1:
-            msg = _('Error publishing repository %(repo)s.  More than one distribution found.') % \
-                    {'repo': self.parent.repo.id}
+            msg = _('Error publishing repository %(repo)s.  '
+                    'More than one distribution found.') % {'repo': self.parent.repo.id}
             _LOG.debug(msg)
             raise Exception(msg)
 
@@ -779,13 +776,10 @@ class PublishDistributionStep(PublishStep):
                 break
         if src_treeinfo_path is not None:
             # create a symlink from content location to repo location.
-            self.parent.progress_report[constants.PUBLISH_DISTRIBUTION_STEP][constants.PROGRESS_TOTAL_KEY] += 1
             symlink_treeinfo_path = os.path.join(self.get_working_dir(), treeinfo_file_name)
             _LOG.debug("creating treeinfo symlink from %s to %s" % (src_treeinfo_path,
                                                                     symlink_treeinfo_path))
             self._create_symlink(src_treeinfo_path, symlink_treeinfo_path)
-            self.parent.progress_report[constants.PUBLISH_DISTRIBUTION_STEP][constants.PROGRESS_SUCCESSES_KEY] += 1
-            self.parent.progress_report[constants.PUBLISH_DISTRIBUTION_STEP][constants.PROGRESS_PROCESSED_KEY] += 1
 
     def _publish_distribution_files(self, distribution_unit):
         """
@@ -803,7 +797,6 @@ class PublishDistributionStep(PublishStep):
 
         distro_files = distribution_unit.metadata['files']
         total_files = len(distro_files)
-        self.parent.progress_report[constants.PUBLISH_DISTRIBUTION_STEP][constants.PROGRESS_TOTAL_KEY] += total_files
         _LOG.debug("Found %s distribution files to symlink" % total_files)
 
         source_path_dir = distribution_unit.storage_path
@@ -814,8 +807,6 @@ class PublishDistributionStep(PublishStep):
                 continue
             symlink_path = os.path.join(symlink_dir, dfile['relativepath'])
             self._create_symlink(source_path, symlink_path)
-            self.parent.progress_report[constants.PUBLISH_DISTRIBUTION_STEP][constants.PROGRESS_SUCCESSES_KEY] += 1
-            self.parent.progress_report[constants.PUBLISH_DISTRIBUTION_STEP][constants.PROGRESS_PROCESSED_KEY] += 1
 
     def _publish_distribution_packages_link(self, distribution_unit):
         """
@@ -939,7 +930,8 @@ class PublishOverHttpStep(PublishStep):
                                           self.parent.timestamp)
 
         # Find the location of the published repository tree structure
-        repo_relative_dir = configuration.get_repo_relative_path(self.parent.repo, self.parent.config)
+        repo_relative_dir = configuration.get_repo_relative_path(self.parent.repo,
+                                                                 self.parent.config)
         repo_publish_dir = os.path.join(root_publish_dir, repo_relative_dir)
         # Without the trailing '/'
         if repo_publish_dir.endswith('/'):

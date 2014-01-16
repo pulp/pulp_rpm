@@ -910,10 +910,6 @@ class PublishDistributionStepTests(BaseYumDistributorPublishStepTests):
         step._publish_distribution_treeinfo(unit)
 
         mock_symlink.assert_called_once_with(file_name, target_directory)
-        self.assertEquals(
-            self.publisher.progress_report[constants.PUBLISH_DISTRIBUTION_STEP][constants.PROGRESS_PROCESSED_KEY], 1)
-        self.assertEquals(
-            self.publisher.progress_report[constants.PUBLISH_DISTRIBUTION_STEP][constants.PROGRESS_SUCCESSES_KEY], 1)
 
     def test_publish_distribution_treeinfo_finds_treeinfo(self):
         self._perform_treeinfo_success_test('treeinfo')
