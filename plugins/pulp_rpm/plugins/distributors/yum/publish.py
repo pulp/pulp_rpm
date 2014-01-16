@@ -55,6 +55,17 @@ PACKAGE_FIELDS = ['id', 'name', 'version', 'release', 'arch', 'epoch',
 
 
 class BasePublisher(object):
+    """
+    The BasePublisher can be used as the foundation for any step based processor
+
+    Publishers follow the following phases
+    1) Initialize metadata - Perform any global metadata initialization
+    2) Process Steps - Process units that are part of the repository
+    3) Finalize Metadata - Perform any metadata processing needed before final publish
+    4) Post Metadata processing - Perform any final actions needed for the publish.  Usually
+       this will include moving the data from the working directory to it's final location
+       on the filesystem and making it available publicly
+    """
 
     def __init__(self,
                  repo, publish_conduit, config,
@@ -62,6 +73,25 @@ class BasePublisher(object):
                  process_steps=None,
                  finalize_metadata_steps=None,
                  post_metadata_process_steps=None):
+        """
+        :param repo: The repo to be published
+        :type repo: Repository
+        :param publish_conduit: The publish conduit for the repo to be published
+        :type publish_conduit: RepoPublishConduit
+        :param config: The publish configuration
+        :type config: PluginCallConfiguration
+        :param initialize_metadata_steps: A list of steps that will have metadata initialized
+        :type initialize_metadata_steps: list of PublishStep
+        :param process_steps: A list of steps that are part of the primary publish action
+        :type process_steps: list of PublishStep
+        :param finalize_metadata_steps: A list of steps that are run as part of the metadata
+                                        finalization phase
+        :type finalize_metadata_steps: list of PublishStep
+        :param post_metadata_process_steps: A list of steps that are run after metadata has
+                                            been processed
+        :type post_metadata_process_steps: list of PublishStep
+
+        """
 
         self.timestamp = str(time.time())
 
@@ -84,6 +114,14 @@ class BasePublisher(object):
         self._add_steps(post_metadata_process_steps, self.post_metadata_process_steps)
 
     def _add_steps(self, step_list, target_list):
+        """
+        Add a step to step specified list and to the map of all known steps
+
+        :param step_list: The list of steps to be added to the publisher
+        :type step_list: list of PublishStep
+        :param target_list: the list that the steps should be added to
+        :type step_list: list of PublishStep
+        """
         if step_list:
             for step in step_list:
                 if step.step_id in self.all_steps:
@@ -96,9 +134,20 @@ class BasePublisher(object):
             target_list.extend(step_list)
 
     def get_step(self, step_id):
+        """
+        Get a step using the unique ID
+
+        :param step_id: a unique identifier for the step to be returned
+        :type step_id: str
+        :returns: The step matching the step_id
+        :rtype: PublishStep
+        """
         return self.all_steps[step_id]
 
     def publish(self):
+        """
+        Perform the publish action the repo & information specified in the constructor
+        """
         _LOG.debug('Starting publish for repository: %s' % self.repo.id)
 
         if not os.path.exists(self.working_dir):
@@ -133,6 +182,9 @@ class BasePublisher(object):
 
     @property
     def skip_list(self):
+        """
+        Calculate the list of resource types that should be skipped during processing
+        """
         skip = self.config.get('skip', [])
         # there is a chance that the skip list is actually a dictionary with a
         # boolean to indicate whether or not each item should be skipped
@@ -296,6 +348,11 @@ class PublishStep(object):
         self.report_progress(self.step_id, state=constants.STATE_COMPLETE)
 
     def _get_total(self, id_list=None):
+        """
+        Return the total number of units that are processed by this step.
+        This is used generally for progress reporting.  The value returned should not change
+        during the processing of the step.
+        """
         if id_list is None:
             id_list = self.unit_type
         total = 0
@@ -305,8 +362,6 @@ class PublishStep(object):
         else:
             total = self.parent.repo.content_unit_counts.get(id_list, 0)
         return total
-
-    # -- linking methods -------------------------------------------------------
 
     def _symlink_content(self, unit, working_sub_dir):
         """
