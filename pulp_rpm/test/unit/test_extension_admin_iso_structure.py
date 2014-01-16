@@ -15,7 +15,6 @@ import os
 
 import mock
 
-from pulp_rpm.devel import rpm_support_base
 from pulp.client.commands import unit
 from pulp.client.commands.repo import cudl, sync_publish, upload as pulp_upload
 from pulp.client.commands.schedule import (

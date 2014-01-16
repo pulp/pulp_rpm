@@ -12,7 +12,6 @@
 # http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt.
 
 import mock
-from pulp_rpm.devel import rpm_support_base
 
 from pulp.client.commands.unit import UnitCopyCommand
 

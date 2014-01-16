@@ -10,7 +10,6 @@
 # http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt.
 
 import mock
-from pulp_rpm.devel import rpm_support_base
 
 from pulp.client.commands.consumer.content import OPTION_CONTENT_TYPE_ID, OPTION_CONTENT_UNIT
 from pulp.client.commands.options import OPTION_CONSUMER_ID

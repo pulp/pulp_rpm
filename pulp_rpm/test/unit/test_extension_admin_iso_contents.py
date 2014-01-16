@@ -15,7 +15,6 @@ from copy import deepcopy
 
 import mock
 
-from pulp_rpm.devel import rpm_support_base
 from pulp.client.commands.options import OPTION_REPO_ID
 from pulp_rpm.common import ids
 from pulp_rpm.devel.client_base import PulpClientTests

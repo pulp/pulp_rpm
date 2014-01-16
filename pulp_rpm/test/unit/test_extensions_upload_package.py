@@ -18,7 +18,6 @@ from pulp.client.commands.options import OPTION_REPO_ID
 from pulp.client.commands.repo.upload import UploadCommand, FileBundle
 
 from pulp_rpm.common.ids import TYPE_ID_RPM, TYPE_ID_SRPM
-from pulp_rpm.devel import rpm_support_base
 from pulp_rpm.devel.client_base import PulpClientTests
 from pulp_rpm.extension.admin.upload import package
 from pulp_rpm.extension.admin.upload.package import FLAG_SKIP_EXISTING

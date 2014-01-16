@@ -19,7 +19,6 @@ from pulp.common.compat import json
 from pulp.common.plugins import importer_constants as constants
 
 from pulp_rpm.common import ids
-from pulp_rpm.devel import rpm_support_base
 from pulp_rpm.devel.client_base import PulpClientTests
 from pulp_rpm.extension.admin import repo_create_update, repo_options
 

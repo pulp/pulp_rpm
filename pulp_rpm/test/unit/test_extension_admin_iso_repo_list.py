@@ -14,7 +14,6 @@
 from copy import deepcopy
 from gettext import gettext as _
 import mock
-from pulp_rpm.devel import rpm_support_base
 
 from pulp.common.plugins import importer_constants
 

@@ -22,7 +22,6 @@ import unittest
 
 import mock
 
-from pulp_rpm.devel import rpm_support_base
 from pulp.client import arg_utils, parsers
 from pulp.client.commands import options as std_options
 from pulp.client.commands.repo.cudl import (CreateRepositoryCommand,

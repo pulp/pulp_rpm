@@ -24,7 +24,6 @@ from pulp.bindings.tasks import Task
 from pulp.devel.unit.task_simulator import TaskSimulator
 
 from pulp_rpm.common.ids import TYPE_ID_RPM, TYPE_ID_PKG_GROUP
-from pulp_rpm.devel import rpm_support_base
 from rpm_admin_consumer import package, package_group, errata
 
 TASK = {
