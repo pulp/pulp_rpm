@@ -19,6 +19,7 @@ from pulp_rpm.devel import rpm_support_base
 from pulp.common.plugins import importer_constants
 
 from pulp_rpm.common import constants
+from pulp_rpm.devel.client_base import PulpClientTests
 from pulp_rpm.extension.admin.iso import repo_list
 
 
@@ -99,7 +100,7 @@ def repo_mock():
     return repo
 
 
-class TestISORepoListCommand(rpm_support_base.PulpClientTests):
+class TestISORepoListCommand(PulpClientTests):
     """
     Test the ISORepoListCommand class.
     """

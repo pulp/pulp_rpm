@@ -15,10 +15,11 @@ import mock
 from pulp_rpm.devel import rpm_support_base
 
 from pulp_rpm.common import ids
+from pulp_rpm.devel.client_base import PulpClientTests
 from pulp_rpm.extension.admin.iso import upload
 
 
-class TestUploadISOCommand(rpm_support_base.PulpClientTests):
+class TestUploadISOCommand(PulpClientTests):
     """
     Test the UploadISOCommand class.
     """

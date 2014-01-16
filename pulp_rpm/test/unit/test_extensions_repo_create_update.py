@@ -20,13 +20,14 @@ from pulp.common.plugins import importer_constants as constants
 
 from pulp_rpm.common import ids
 from pulp_rpm.devel import rpm_support_base
+from pulp_rpm.devel.client_base import PulpClientTests
 from pulp_rpm.extension.admin import repo_create_update, repo_options
 
 
 DATA_DIR = os.path.abspath(os.path.dirname(__file__)) + '/data/'
 
 
-class RpmRepoCreateCommandTests(rpm_support_base.PulpClientTests):
+class RpmRepoCreateCommandTests(PulpClientTests):
 
     def setUp(self):
         super(RpmRepoCreateCommandTests, self).setUp()
@@ -215,7 +216,7 @@ class RpmRepoCreateCommandTests(rpm_support_base.PulpClientTests):
         self.assertEqual(distributor_config['relative_url'], 'wombat')
 
 
-class RpmRepoUpdateCommandTests(rpm_support_base.PulpClientTests):
+class RpmRepoUpdateCommandTests(PulpClientTests):
 
     def setUp(self):
         super(RpmRepoUpdateCommandTests, self).setUp()
