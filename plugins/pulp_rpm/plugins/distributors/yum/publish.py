@@ -668,7 +668,8 @@ class PublishErrataStep(PublishStep):
 class PublishCompsStep(PublishStep):
     def __init__(self):
         super(PublishCompsStep, self).__init__(constants.PUBLISH_COMPS_STEP,
-                                               [TYPE_ID_PKG_GROUP, TYPE_ID_PKG_CATEGORY])
+                                               [TYPE_ID_PKG_GROUP, TYPE_ID_PKG_CATEGORY,
+                                                TYPE_ID_PKG_ENVIRONMENT])
         self.comps_context = None
 
     def get_unit_generator(self):
