@@ -2,6 +2,7 @@ from ConfigParser import SafeConfigParser
 import logging
 import os
 import unittest
+
 import mock
 import okaara
 from pulp.bindings.bindings import Bindings
@@ -21,7 +22,8 @@ class PulpClientTests(unittest.TestCase):
 
         self.config = SafeConfigParser()
         config_filename = os.path.join(os.path.abspath(os.path.dirname(__file__)),
-                                       '../../../pulp_rpm/test/unit/data', 'test-override-client.conf')
+                                       '../../../pulp_rpm/test/unit/data',
+                                       'test-override-client.conf')
         self.config = Config(config_filename)
 
         self.server_mock = mock.Mock()
@@ -35,7 +37,8 @@ class PulpClientTests(unittest.TestCase):
         self.logger = logging.getLogger('pulp')
         self.exception_handler = ExceptionHandler(self.prompt, self.config)
 
-        self.context = ClientContext(self.bindings, self.config, self.logger, self.prompt, self.exception_handler)
+        self.context = ClientContext(self.bindings, self.config, self.logger, self.prompt,
+                                     self.exception_handler)
 
         self.cli = PulpCli(self.context)
         self.context.cli = self.cli
