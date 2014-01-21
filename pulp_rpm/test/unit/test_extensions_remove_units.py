@@ -18,12 +18,12 @@ from pulp.client.commands.unit import UnitRemoveCommand
 from pulp_rpm.common.ids import (TYPE_ID_RPM, TYPE_ID_SRPM, TYPE_ID_DRPM, TYPE_ID_ERRATA,
                                  TYPE_ID_DISTRO, TYPE_ID_PKG_GROUP, TYPE_ID_PKG_CATEGORY,
                                  UNIT_KEY_RPM, TYPE_ID_PKG_ENVIRONMENT)
-from pulp_rpm.devel import rpm_support_base
+from pulp_rpm.devel.client_base import PulpClientTests
 from pulp_rpm.extension.admin import remove as remove_commands
 from pulp_rpm.extension.admin.remove import BaseRemoveCommand, PackageRemoveCommand
 
 
-class BaseRemoveCommandTests(rpm_support_base.PulpClientTests):
+class BaseRemoveCommandTests(PulpClientTests):
 
     def setUp(self):
         super(BaseRemoveCommandTests, self).setUp()
@@ -47,7 +47,7 @@ class BaseRemoveCommandTests(rpm_support_base.PulpClientTests):
         mock_display.assert_called_once_with('foo-type')
 
 
-class PackageRemoveCommandTests(rpm_support_base.PulpClientTests):
+class PackageRemoveCommandTests(PulpClientTests):
     """
     Simply verifies the criteria_utils is called from the overridden methods.
     """
@@ -77,7 +77,7 @@ class PackageRemoveCommandTests(rpm_support_base.PulpClientTests):
         self.assertEqual(user_input, {'a': 'a', 'fields': UNIT_KEY_RPM})
 
 
-class RemoveCommandsTests(rpm_support_base.PulpClientTests):
+class RemoveCommandsTests(PulpClientTests):
     """
     The command implementations are simply configuration to the base commands, so rather than
     re-testing the functionality of the base commands, they simply assert that the configuration

@@ -14,9 +14,9 @@
 import mock
 from pulp.bindings.responses import Response
 from pulp.client.commands.criteria import DisplayUnitAssociationsCommand
+from pulp_rpm.devel.client_base import PulpClientTests
 
 from pulp_rpm.extension.admin import contents
-from pulp_rpm.devel.rpm_support_base import PulpClientTests
 
 
 class PackageSearchCommandTests(PulpClientTests):

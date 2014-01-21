@@ -15,11 +15,12 @@ import mock
 from pulp.client.extensions.core import PulpPrompt
 
 from pulp_rpm.common import constants, ids, models
+from pulp_rpm.devel.client_base import PulpClientTests
 from pulp_rpm.extension.admin import status
 from pulp_rpm.devel import rpm_support_base
 
 
-class TestRpmExportStatusRenderer(rpm_support_base.PulpClientTests):
+class TestRpmExportStatusRenderer(PulpClientTests):
     """
     A set of tests for the rpm export distributor status renderer
     """
@@ -256,7 +257,7 @@ class TestRpmExportStatusRenderer(rpm_support_base.PulpClientTests):
         self.assertEqual(constants.STATE_RUNNING, self.renderer.publish_https_last_state)
 
 
-class TestGroupExportStatusRenderer(rpm_support_base.PulpClientTests):
+class TestGroupExportStatusRenderer(PulpClientTests):
     def setUp(self):
         super(TestGroupExportStatusRenderer, self).setUp()
 

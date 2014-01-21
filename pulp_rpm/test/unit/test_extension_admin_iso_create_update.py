@@ -22,7 +22,6 @@ import unittest
 
 import mock
 
-from pulp_rpm.devel import rpm_support_base
 from pulp.client import arg_utils, parsers
 from pulp.client.commands import options as std_options
 from pulp.client.commands.repo.cudl import (CreateRepositoryCommand,
@@ -32,6 +31,7 @@ from pulp.client.extensions.extensions import PulpCliOption, PulpCliOptionGroup
 from pulp.common import constants as pulp_constants
 from pulp.common.plugins import importer_constants
 from pulp_rpm.common import constants, ids
+from pulp_rpm.devel.client_base import PulpClientTests
 from pulp_rpm.extension.admin.iso import create_update
 
 
@@ -140,7 +140,7 @@ class TestISODistributorConfigMixin(unittest.TestCase):
         self.assertEqual(config[constants.CONFIG_SERVE_HTTP], 'false')
 
 
-class TestISORepoCreateCommand(rpm_support_base.PulpClientTests):
+class TestISORepoCreateCommand(PulpClientTests):
     """
     Test the ISORepoCreateCommand class.
     """
@@ -374,7 +374,7 @@ class TestISORepoCreateCommand(rpm_support_base.PulpClientTests):
                          'repo-created')
 
 
-class TestISORepoUpdateCommand(rpm_support_base.PulpClientTests):
+class TestISORepoUpdateCommand(PulpClientTests):
     """
     Test the ISORepoUpdateCommand class.
     """
