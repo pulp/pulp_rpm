@@ -55,8 +55,7 @@ class TestISOImporter(PulpRPMTests):
         """
         self.iso_importer.iso_sync = mock.MagicMock(spec=sync.ISOSyncRun)
 
-        # We can pass None for both arguments, because cancel_sync_repo doesn't use its args
-        self.iso_importer.cancel_sync_repo(None, None)
+        self.iso_importer.cancel_sync_repo()
 
         # Assert that the mock cancel has been called once, with no args
         self.iso_importer.iso_sync.cancel_sync.assert_called_once_with()

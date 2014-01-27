@@ -46,7 +46,10 @@ class ISOImporter(Importer):
     """
     All methods that are missing docstrings are documented in the Importer superclass.
     """
-    def cancel_sync_repo(self, call_request, call_report):
+    def cancel_sync_repo(self):
+        """
+        Cancel a running repository synchronization operation.
+        """
         self.iso_sync.cancel_sync()
 
     def import_units(self, source_repo, dest_repo, import_conduit, config, units=None):
