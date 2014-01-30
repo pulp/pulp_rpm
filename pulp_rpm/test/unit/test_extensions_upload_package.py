@@ -18,7 +18,7 @@ from pulp.client.commands.options import OPTION_REPO_ID
 from pulp.client.commands.repo.upload import UploadCommand, FileBundle
 
 from pulp_rpm.common.ids import TYPE_ID_RPM, TYPE_ID_SRPM
-from pulp_rpm.devel import rpm_support_base
+from pulp_rpm.devel.client_base import PulpClientTests
 from pulp_rpm.extension.admin.upload import package
 from pulp_rpm.extension.admin.upload.package import FLAG_SKIP_EXISTING
 from pulp_rpm.extension.admin.repo_options import OPT_CHECKSUM_TYPE
@@ -28,7 +28,7 @@ RPM_DIR = os.path.abspath(os.path.dirname(__file__)) + '/data/simple_repo_no_com
 RPM_FILENAME = 'pulp-test-package-0.3.1-1.fc11.x86_64.rpm'
 
 
-class CreatePackageCommandTests(rpm_support_base.PulpClientTests):
+class CreatePackageCommandTests(PulpClientTests):
 
     def setUp(self):
         super(CreatePackageCommandTests, self).setUp()
@@ -143,7 +143,7 @@ class CreatePackageCommandTests(rpm_support_base.PulpClientTests):
         self.assertEqual(0, self.bindings.repo_unit.search.call_count)
 
 
-class CreateRpmCommandTests(rpm_support_base.PulpClientTests):
+class CreateRpmCommandTests(PulpClientTests):
 
     def setUp(self):
         super(CreateRpmCommandTests, self).setUp()
@@ -159,7 +159,7 @@ class CreateRpmCommandTests(rpm_support_base.PulpClientTests):
         self.assertTrue(OPT_CHECKSUM_TYPE in self.command.options)
 
 
-class CreateSrpmCommandTests(rpm_support_base.PulpClientTests):
+class CreateSrpmCommandTests(PulpClientTests):
 
     def setUp(self):
         super(CreateSrpmCommandTests, self).setUp()

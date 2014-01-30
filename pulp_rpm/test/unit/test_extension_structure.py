@@ -9,12 +9,12 @@
 # have received a copy of GPLv2 along with this software; if not, see
 # http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt.
 
-from pulp_rpm.devel import rpm_support_base
+from pulp_rpm.devel.client_base import PulpClientTests
 
 from pulp_rpm.extension.admin import structure
 
 
-class StructureTests(rpm_support_base.PulpClientTests):
+class StructureTests(PulpClientTests):
 
     def test_ensure_rpm_root(self):
         # Test
@@ -59,7 +59,7 @@ class StructureTests(rpm_support_base.PulpClientTests):
         self.assertEqual(repo_section.name, structure.SECTION_REPO)
 
 
-class SectionRetrievalTests(rpm_support_base.PulpClientTests):
+class SectionRetrievalTests(PulpClientTests):
 
     def setUp(self):
         super(SectionRetrievalTests, self).setUp()

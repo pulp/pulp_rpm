@@ -18,11 +18,12 @@ from pulp.client.commands import options
 from pulp.common import tags as tag_utils
 
 from pulp_rpm.common import constants, ids
+from pulp_rpm.devel.client_base import PulpClientTests
 from pulp_rpm.extension.admin import export, status
 from pulp_rpm.devel import rpm_support_base
 
 
-class TestRepoExportRunCommand(rpm_support_base.PulpClientTests):
+class TestRepoExportRunCommand(PulpClientTests):
     """
     Tests the rpm repo export run command. This makes use of the platform RunPublishRepositoryCommand,
     so all that's tested here is that the constructor is called correctly.
@@ -49,7 +50,7 @@ class TestRepoExportRunCommand(rpm_support_base.PulpClientTests):
         self.assertTrue(isinstance(actual_kwargs['renderer'], status.RpmExportStatusRenderer))
 
 
-class TestRepoGroupExportRunCommand(rpm_support_base.PulpClientTests):
+class TestRepoGroupExportRunCommand(PulpClientTests):
     """
     This tests the rpm repo group export run command.
     """
@@ -219,7 +220,7 @@ class TestRepoGroupExportRunCommand(rpm_support_base.PulpClientTests):
         mock_status.assert_called_once_with(self.context, mock_renderer, 'Not None')
 
 
-class TestRepoGroupExportStatusCommand(rpm_support_base.PulpClientTests):
+class TestRepoGroupExportStatusCommand(PulpClientTests):
     """
     Tests for the GroupExportStatusCommand class
     """
@@ -271,7 +272,7 @@ class TestRepoGroupExportStatusCommand(rpm_support_base.PulpClientTests):
         self.assertEqual(0, mock_task_status.call_count)
 
 
-class TestGetPublishTaskId(rpm_support_base.PulpClientTests):
+class TestGetPublishTaskId(PulpClientTests):
     """
     Tests for the _get_publish_task_id helper method
     """

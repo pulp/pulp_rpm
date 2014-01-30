@@ -15,7 +15,6 @@ import os
 
 import mock
 
-from pulp_rpm.devel import rpm_support_base
 from pulp.client.commands import unit
 from pulp.client.commands.repo import cudl, sync_publish, upload as pulp_upload
 from pulp.client.commands.schedule import (
@@ -24,10 +23,11 @@ from pulp.client.commands.schedule import (
 from pulp.client.extensions.extensions import PulpCliSection
 from pulp.client.upload.manager import UploadManager
 from pulp_rpm.common import ids
+from pulp_rpm.devel.client_base import PulpClientTests
 from pulp_rpm.extension.admin.iso import contents, create_update, repo_list, structure, upload
 
 
-class TestAddIsoSection(rpm_support_base.PulpClientTests):
+class TestAddIsoSection(PulpClientTests):
     """
     Test the add_iso_section() function.
     """
@@ -49,7 +49,7 @@ class TestAddIsoSection(rpm_support_base.PulpClientTests):
         self.assertEqual(repo_section.name, structure.SECTION_REPO)
 
 
-class TestAddPublishSection(rpm_support_base.PulpClientTests):
+class TestAddPublishSection(PulpClientTests):
     """
     Test the add_publish_section() function.
     """
@@ -71,7 +71,7 @@ class TestAddPublishSection(rpm_support_base.PulpClientTests):
         status_command = publish_section.commands['status']
         self.assertTrue(isinstance(status_command, sync_publish.PublishStatusCommand))
 
-class TestAddRepoSection(rpm_support_base.PulpClientTests):
+class TestAddRepoSection(PulpClientTests):
     """
     Test the add_repo_section() function.
     """
@@ -138,7 +138,7 @@ class TestAddRepoSection(rpm_support_base.PulpClientTests):
         self.assertEqual(isos_command.context, self.context)
 
 
-class TestAddSchedulesSection(rpm_support_base.PulpClientTests):
+class TestAddSchedulesSection(PulpClientTests):
     """
     Test the add_schedules_section() function.
     """
@@ -191,7 +191,7 @@ class TestAddSchedulesSection(rpm_support_base.PulpClientTests):
         self.assertEqual(update_command.strategy, strategy)
 
 
-class TestAddSyncSection(rpm_support_base.PulpClientTests):
+class TestAddSyncSection(PulpClientTests):
     """
     Test the add_sync_section() function.
     """
@@ -215,7 +215,7 @@ class TestAddSyncSection(rpm_support_base.PulpClientTests):
         add_schedules_section.assert_called_once_with(self.context, sync_section)
 
 
-class TestAddUploadsSection(rpm_support_base.PulpClientTests):
+class TestAddUploadsSection(PulpClientTests):
     """
     Test the add_uploads_section() function.
     """
@@ -254,7 +254,7 @@ class TestAddUploadsSection(rpm_support_base.PulpClientTests):
         self.assertEqual(list_command.upload_manager, fake_upload_manager)
 
 
-class TestGetUploadManager(rpm_support_base.PulpClientTests):
+class TestGetUploadManager(PulpClientTests):
     """
     Test the _get_upload_manager() function.
     """

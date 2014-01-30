@@ -12,7 +12,6 @@
 # http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt.
 
 import mock
-from pulp_rpm.devel import rpm_support_base
 
 from pulp.client.commands.unit import UnitCopyCommand
 
@@ -20,10 +19,11 @@ from pulp_rpm.common.constants import CONFIG_RECURSIVE
 from pulp_rpm.common.ids import (TYPE_ID_RPM, TYPE_ID_SRPM, TYPE_ID_DRPM, TYPE_ID_ERRATA,
                                  TYPE_ID_DISTRO, TYPE_ID_PKG_GROUP, TYPE_ID_PKG_CATEGORY,
                                  TYPE_ID_PKG_ENVIRONMENT, UNIT_KEY_RPM)
+from pulp_rpm.devel.client_base import PulpClientTests
 from pulp_rpm.extension.admin import copy_commands
 
 
-class RecursiveCopyCommandTests(rpm_support_base.PulpClientTests):
+class RecursiveCopyCommandTests(PulpClientTests):
     """
     This test case isn't interested in testing the functionality of the base UnitCopyCommand
     class. It exists to test the customizations made on top of it, so don't expect there to be
@@ -68,7 +68,7 @@ class RecursiveCopyCommandTests(rpm_support_base.PulpClientTests):
         self.assertEqual(override_config, {})
 
 
-class PackageCopyCommandTests(rpm_support_base.PulpClientTests):
+class PackageCopyCommandTests(PulpClientTests):
     """
     Simply verifies the criteria_utils is called from the overridden methods.
     """
@@ -98,7 +98,7 @@ class PackageCopyCommandTests(rpm_support_base.PulpClientTests):
         self.assertEqual(user_input, {'a': 'a', 'fields' : UNIT_KEY_RPM})
 
 
-class OtherCopyCommandsTests(rpm_support_base.PulpClientTests):
+class OtherCopyCommandsTests(PulpClientTests):
     """
     Again, this test isn't concerned with testing the base command's functionality, but rather the
     correct usage of it. Given the size of the command code, rather than make a class per command, I

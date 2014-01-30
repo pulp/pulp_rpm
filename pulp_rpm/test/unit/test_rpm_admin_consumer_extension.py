@@ -15,6 +15,7 @@ import os
 import sys
 
 from mock import Mock
+from pulp_rpm.devel.client_base import PulpClientTests
 
 sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)) + '/../../extensions/admin')
 
@@ -23,7 +24,6 @@ from pulp.bindings.tasks import Task
 from pulp.devel.unit.task_simulator import TaskSimulator
 
 from pulp_rpm.common.ids import TYPE_ID_RPM, TYPE_ID_PKG_GROUP
-from pulp_rpm.devel import rpm_support_base
 from rpm_admin_consumer import package, package_group, errata
 
 TASK = {
@@ -81,7 +81,7 @@ class Request:
         raise Exception('Unexpected URL: %s', url)
 
 
-class TestPackages(rpm_support_base.PulpClientTests):
+class TestPackages(PulpClientTests):
 
     CONSUMER_ID = 'test-consumer'
 
@@ -165,7 +165,7 @@ class TestPackages(rpm_support_base.PulpClientTests):
         self.assertEqual('POST', passed[0])
 
 
-class TestGroups(rpm_support_base.PulpClientTests):
+class TestGroups(PulpClientTests):
 
     CONSUMER_ID = 'test-consumer'
 
@@ -222,7 +222,7 @@ class TestGroups(rpm_support_base.PulpClientTests):
         self.assertEqual('POST', passed[0])
 
 
-class TestErrata(rpm_support_base.PulpClientTests):
+class TestErrata(PulpClientTests):
 
     def test_install(self):
         # Setup

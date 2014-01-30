@@ -14,11 +14,11 @@ from pulp.client.commands.schedule import (
     DeleteScheduleCommand, ListScheduleCommand, CreateScheduleCommand,
     UpdateScheduleCommand, NextRunCommand)
 
-from pulp_rpm.devel import rpm_support_base
+from pulp_rpm.devel.client_base import PulpClientTests
 from pulp_rpm.extension.admin import sync_schedules
 
 
-class StructureTests(rpm_support_base.PulpClientTests):
+class StructureTests(PulpClientTests):
 
     def test_rpm_list_schedule_command(self):
         command = sync_schedules.RpmListScheduleCommand(self.context)

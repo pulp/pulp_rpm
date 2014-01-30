@@ -10,11 +10,11 @@
 # http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt.
 
 import mock
-from pulp_rpm.devel import rpm_support_base
 
 from pulp.client.commands.consumer.content import OPTION_CONTENT_TYPE_ID, OPTION_CONTENT_UNIT
 from pulp.client.commands.options import OPTION_CONSUMER_ID
 from pulp.client.commands.schedule import CreateScheduleCommand
+from pulp_rpm.devel.client_base import PulpClientTests
 
 from pulp_rpm.extension.admin.content_schedules import (
     YumConsumerContentCreateScheduleCommand, YumConsumerContentScheduleStrategy)
@@ -22,7 +22,7 @@ from pulp_rpm.common.ids import TYPE_ID_RPM, TYPE_ID_PKG_GROUP, TYPE_ID_ERRATA
 
 SCHEDULE_INSTALL_ACTIONS = ('install', 'uninstall', 'update')
 
-class StructureTests(rpm_support_base.PulpClientTests):
+class StructureTests(PulpClientTests):
 
     def test_rpm_create_schedule_command(self):
         for content_type in (TYPE_ID_RPM, TYPE_ID_PKG_GROUP, TYPE_ID_ERRATA):
@@ -38,7 +38,7 @@ class StructureTests(rpm_support_base.PulpClientTests):
                 self.assertTrue(action in command.description)
 
 
-class ConsumerContentInstallScheduleStrategyTests(rpm_support_base.PulpClientTests):
+class ConsumerContentInstallScheduleStrategyTests(PulpClientTests):
 
     def setUp(self):
         super(ConsumerContentInstallScheduleStrategyTests, self).setUp()
@@ -115,7 +115,7 @@ class ConsumerContentInstallScheduleStrategyTests(rpm_support_base.PulpClientTes
         self.assertEqual({'a' : 'a'}, call_kwargs)
 
 
-class ConsumerContentUninstallScheduleStrategyTests(rpm_support_base.PulpClientTests):
+class ConsumerContentUninstallScheduleStrategyTests(PulpClientTests):
 
     def setUp(self):
         super(ConsumerContentUninstallScheduleStrategyTests, self).setUp()
@@ -192,7 +192,7 @@ class ConsumerContentUninstallScheduleStrategyTests(rpm_support_base.PulpClientT
         self.assertEqual({'a' : 'a'}, call_kwargs)
 
 
-class ConsumerContentUpdateScheduleStrategyTests(rpm_support_base.PulpClientTests):
+class ConsumerContentUpdateScheduleStrategyTests(PulpClientTests):
 
     def setUp(self):
         super(ConsumerContentUpdateScheduleStrategyTests, self).setUp()
