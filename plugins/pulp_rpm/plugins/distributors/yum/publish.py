@@ -151,24 +151,24 @@ class BasePublisher(object):
         _LOG.debug('Starting publish for repository: %s' % self.repo.id)
 
         if not os.path.exists(self.working_dir):
-            os.makedirs(self.working_dir, mode=0770)
+            os.makedirs(self.working_dir)
         try:
-            #attempt processing of all the steps
+            # attempt processing of all the steps
             try:
                 for step in self.initialize_metadata_steps:
                     step.initialize_metadata()
                 for step in self.process_steps:
                     step.process()
             finally:
-                #metadata steps may have open file handles so attempt finalization
+                # metadata steps may have open file handles so attempt finalization
                 for step in self.finalize_metadata_steps:
                     step.finalize_metadata()
-                    #Since this step doesn't go through the normal processing we must update it
+                    # Since this step doesn't go through the normal processing we must update it
                     step.report_progress(step.step_id, state=constants.STATE_COMPLETE)
             for step in self.post_metadata_process_steps:
                 step.process()
         except Exception, e:
-            #Log an exception if something went wrong
+            # Log an exception if something went wrong
             # log the details so items can be traced on the server.
             _LOG.exception(e)
 
@@ -779,6 +779,10 @@ class PublishDistributionStep(PublishStep):
     """
 
     def __init__(self):
+        """
+        initialize and set the package_dir to None as it is referenced by other
+        plugins even if it is not specified
+        """
         super(PublishDistributionStep, self).__init__(constants.PUBLISH_DISTRIBUTION_STEP,
                                                       TYPE_ID_DISTRO)
         self.package_dir = None
@@ -908,6 +912,9 @@ class PublishDistributionStep(PublishStep):
 class PublishToMasterStep(PublishStep):
 
     def __init__(self, step=constants.PUBLISH_TO_MASTER_STEP):
+        """
+        Initialize and set the ID of the step
+        """
         super(PublishToMasterStep, self).__init__(step)
 
     def is_skipped(self):
@@ -934,6 +941,9 @@ class PublishToMasterStep(PublishStep):
 class ClearOldMastersStep(PublishStep):
 
     def __init__(self, step=constants.PUBLISH_CLEAR_OLD_MASTERS):
+        """
+        Initialize and set the ID of the step
+        """
         super(ClearOldMastersStep, self).__init__(step)
 
     def is_skipped(self):
@@ -946,8 +956,7 @@ class ClearOldMastersStep(PublishStep):
         return [configuration.get_master_publish_dir(self.parent.repo)]
 
     def process_unit(self, master_publish_dir):
-        self._clear_directory(configuration.get_master_publish_dir(self.parent.repo),
-                              skip_list=[self.parent.timestamp])
+        self._clear_directory(master_publish_dir, skip_list=[self.parent.timestamp])
 
 
 class PublishOverHttpStep(PublishStep):
@@ -955,6 +964,9 @@ class PublishOverHttpStep(PublishStep):
     Publish http repo directory if configured
     """
     def __init__(self, step=constants.PUBLISH_OVER_HTTP_STEP):
+        """
+        Initialize and set the ID of the step
+        """
         super(PublishOverHttpStep, self).__init__(step)
 
     def is_skipped(self):
@@ -1026,4 +1038,7 @@ class PublishOverHttpsStep(PublishOverHttpStep):
         return not self.parent.config.get('https')
 
     def get_unit_generator(self):
+        """
+        For the units return the https publish directory
+        """
         return [configuration.get_https_publish_dir(self.parent.config)]
