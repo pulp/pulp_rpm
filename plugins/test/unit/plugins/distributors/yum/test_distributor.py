@@ -82,7 +82,7 @@ class YumDistributorTests(unittest.TestCase):
 
         self.distributor._publisher = mock.MagicMock()
 
-        self.distributor.cancel_publish_repo(None, None)
+        self.distributor.cancel_publish_repo()
 
         self.assertTrue(self.distributor.canceled)
         self.distributor._publisher.cancel.assert_called_once()

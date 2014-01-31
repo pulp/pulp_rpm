@@ -405,8 +405,9 @@ class PublishStepTests(BaseYumDistributorPublishStepTests):
         if unit is 'cancel':
             self.publisher.cancel()
 
+    @mock.patch('pulp.server.async.task_status_manager.TaskStatusManager.update_task_status')
     @mock.patch('pulp.plugins.conduits.repo_publish.RepoPublishConduit.get_units')
-    def test_process_step_cancelled_mid_unit_processing(self, mock_get_units):
+    def test_process_step_cancelled_mid_unit_processing(self, mock_get_units, mock_update):
         self.publisher.repo.content_unit_counts = {TYPE_ID_RPM: 2}
         mock_get_units.return_value = ['cancel', 'bar_unit']
         step = publish.PublishStep(constants.PUBLISH_RPMS_STEP,
