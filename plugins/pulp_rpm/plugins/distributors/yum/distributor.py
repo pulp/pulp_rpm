@@ -16,6 +16,8 @@ import os
 from pulp.common.config import read_json_config
 from pulp.plugins.distributor import Distributor
 from pulp.server.config import config as pulp_server_config
+from pulp.server.exceptions import PulpCodedException
+from pulp.common import error_codes
 
 import pulp_rpm.common.constants as constants
 from pulp_rpm.common.ids import (
@@ -189,11 +191,11 @@ class YumHTTPDistributor(Distributor):
         payload['repo_name'] = repo.display_name
         payload['server_name'] = pulp_server_config.get('server', 'server_name')
         ssl_ca_path = pulp_server_config.get('security', 'ssl_ca_certificate')
-        if os.path.exists(ssl_ca_path):
-            payload['ca_cert'] = open(pulp_server_config.get('security',
-                                                             'ssl_ca_certificate')).read()
-        else:
+        try:
+            payload['ca_cert'] = open(ssl_ca_path).read()
+        except Exception:
             payload['ca_cert'] = config.get('https_ca')
+
         payload['relative_path'] = \
             '/'.join([RELATIVE_URL, configuration.get_repo_relative_path(repo, config)])
         payload['protocols'] = []
@@ -214,8 +216,11 @@ class YumHTTPDistributor(Distributor):
             global_auth_cert = os.path.join(global_cert_dir, 'pulp-global-repo.cert')
             global_auth_key = os.path.join(global_cert_dir, 'pulp-global-repo.key')
             global_auth_ca = os.path.join(global_cert_dir, 'pulp-global-repo.ca')
-            if os.path.exists(global_auth_ca) and os.path.exists(global_auth_cert):
+            if os.path.exists(global_auth_ca) and \
+                    os.path.exists(global_auth_cert) and \
+                    os.path.exists(global_auth_key):
                 payload['global_auth_cert'] = open(global_auth_cert).read()
                 payload['global_auth_key'] = open(global_auth_key).read()
                 payload['global_auth_ca'] = open(global_auth_ca).read()
+
         return payload
