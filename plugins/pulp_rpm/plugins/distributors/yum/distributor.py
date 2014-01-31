@@ -16,8 +16,6 @@ import os
 from pulp.common.config import read_json_config
 from pulp.plugins.distributor import Distributor
 from pulp.server.config import config as pulp_server_config
-from pulp.server.exceptions import PulpCodedException
-from pulp.common import error_codes
 
 import pulp_rpm.common.constants as constants
 from pulp_rpm.common.ids import (
