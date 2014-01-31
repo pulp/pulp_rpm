@@ -11,9 +11,13 @@
 # You should have received a copy of GPLv2 along with this software;
 # if not, see http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt
 
+import os
+
 from pulp.common.config import read_json_config
 from pulp.plugins.distributor import Distributor
+from pulp.server.config import config as pulp_server_config
 
+import pulp_rpm.common.constants as constants
 from pulp_rpm.common.ids import (
     TYPE_ID_DISTRIBUTOR_YUM, TYPE_ID_DISTRO, TYPE_ID_DRPM, TYPE_ID_ERRATA,
     TYPE_ID_PKG_CATEGORY, TYPE_ID_PKG_GROUP, TYPE_ID_RPM, TYPE_ID_SRPM,
@@ -30,13 +34,21 @@ CONF_FILE_PATH = 'server/plugins.conf.d/%s.json' % TYPE_ID_DISTRIBUTOR_YUM
 
 DISTRIBUTOR_DISPLAY_NAME = 'Yum Distributor'
 
+# This needs to be a config option in the distributor's .conf file that is merged
+# with a root directory specified in the configuration for the pulp server.  However,
+# for now the pulp server does not have this ability so we are going to stick with
+# a hard coded constant.
+RELATIVE_URL = '/pulp/repos'
+
 # -- entry point ---------------------------------------------------------------
+
 
 def entry_point():
     config = read_json_config(CONF_FILE_PATH)
     return YumHTTPDistributor, config
 
 # -- distributor ---------------------------------------------------------------
+
 
 class YumHTTPDistributor(Distributor):
     """
@@ -173,6 +185,40 @@ class YumHTTPDistributor(Distributor):
         :return: dictionary of relevant data
         :rtype:  dict
         """
-        return {}
+        payload = {}
+        payload['repo_name'] = repo.display_name
+        payload['server_name'] = pulp_server_config.get('server', 'server_name')
+        ssl_ca_path = pulp_server_config.get('security', 'ssl_ca_certificate')
+        try:
+            payload['ca_cert'] = open(ssl_ca_path).read()
+        except Exception:
+            payload['ca_cert'] = config.get('https_ca')
 
+        payload['relative_path'] = \
+            '/'.join([RELATIVE_URL, configuration.get_repo_relative_path(repo, config)])
+        payload['protocols'] = []
+        if config.get('http'):
+            payload['protocols'].append('http')
+        if config.get('https'):
+            payload['protocols'].append('https')
+        payload['gpg_keys'] = []
+        if config.get('gpgkey') is not None:
+            payload['gpg_keys'] = {'pulp.key': config.get('gpgkey')}
+        payload['client_cert'] = None
+        if config.get('auth_cert') and config.get('auth_ca'):
+            payload['client_cert'] = config.get('auth_cert')
+        else:
+            # load the global auth if enabled
+            repo_auth_config = configuration.load_config(constants.REPO_AUTH_CONFIG_FILE)
+            global_cert_dir = repo_auth_config.get('repos', 'global_cert_location')
+            global_auth_cert = os.path.join(global_cert_dir, 'pulp-global-repo.cert')
+            global_auth_key = os.path.join(global_cert_dir, 'pulp-global-repo.key')
+            global_auth_ca = os.path.join(global_cert_dir, 'pulp-global-repo.ca')
+            if os.path.exists(global_auth_ca) and \
+                    os.path.exists(global_auth_cert) and \
+                    os.path.exists(global_auth_key):
+                payload['global_auth_cert'] = open(global_auth_cert).read()
+                payload['global_auth_key'] = open(global_auth_key).read()
+                payload['global_auth_ca'] = open(global_auth_ca).read()
 
+        return payload
