@@ -18,7 +18,7 @@
 
 Name: pulp-rpm
 Version: 2.4.0
-Release: 0.1.alpha%{?dist}
+Release: 0.2.alpha%{?dist}
 Summary: Support for RPM content in the Pulp platform
 Group: Development/Languages
 License: GPLv2
@@ -277,6 +277,18 @@ A collection of yum plugins supplementing Pulp consumer operations.
 
 
 %changelog
+* Tue Jan 28 2014 Jeff Ortel <jortel@redhat.com> 2.4.0-0.2.alpha
+- 921743 - Adjust ownership and permissions for a variety of the RPM paths.
+  (rbarlow@redhat.com)
+- 1034978 - Move to standard formatter for unit copy & remove extension
+  (bcourt@redhat.com)
+- 1038309 - Fix bug where distributor type was being checked against the
+  distributor id instead of the type id (bcourt@redhat.com)
+- 1029057 - Save the rpm repo checksum type from the repo scratchpad to the
+  distributor config during a publish. (bcourt@redhat.com)
+- 1029057 - Save the rpm repo checksum type from the repo scratchpad to the
+  distributor config during a publish. (bcourt@redhat.com)
+
 * Thu Dec 12 2013 Jeff Ortel <jortel@redhat.com> 2.4.0-0.1.alpha
 - 1003965 - Error out of a sync if there is no feed url (bcourt@redhat.com)
 - 995076 - make sure to call finalize on the nectar config object
