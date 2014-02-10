@@ -865,9 +865,14 @@ class PublishCompsStepTests(BaseYumDistributorPublishStepTests):
             add_metadata_file_metadata.assert_called_once_with('group', mock.ANY)
 
     def test_finalize_no_initialization(self):
+        """
+        Test to ensure that calling finalize before initialize_metadata() doesn't
+        raise an exception
+        """
         step = publish.PublishCompsStep()
         step.parent = self.publisher
         step.finalize_metadata()
+
 
 class PublishDrpmStepTests(BaseYumDistributorPublishStepTests):
 
@@ -946,6 +951,10 @@ class PublishDrpmStepTests(BaseYumDistributorPublishStepTests):
             os.path.join(self.working_dir, 'repodata/prestodelta.xml.gz')))
 
     def test_finalize_no_initialization(self):
+        """
+        Test to ensure that calling finalize before initialize_metadata() doesn't
+        raise an exception
+        """
         step = publish.PublishDrpmStep()
         step.parent = self.publisher
         step.finalize_metadata()
@@ -1016,7 +1025,8 @@ class PublishDistributionStepTests(BaseYumDistributorPublishStepTests):
     @mock.patch('pulp_rpm.plugins.distributors.yum.publish.PublishDistributionStep.'
                 '_publish_distribution_treeinfo')
     @mock.patch('pulp.plugins.conduits.repo_publish.RepoPublishConduit.get_units')
-    def test_publish_distribution_error(self, mock_get_units, mock_treeinfo, mock_record_failure, mock_update):
+    def test_publish_distribution_error(self, mock_get_units, mock_treeinfo, mock_record_failure,
+                                        mock_update):
         self.publisher.repo.content_unit_counts = {TYPE_ID_DISTRO: 1}
         units = [self._generate_distribution_unit(u) for u in ('one', )]
         mock_get_units.return_value = units
@@ -1248,6 +1258,10 @@ class PublishRpmStepTests(BaseYumDistributorPublishStepTests):
         self.assertTrue(os.path.exists(unit_path))
 
     def test_finalize_no_initialization(self):
+        """
+        Test to ensure that calling finalize before initialize_metadata() doesn't
+        raise an exception
+        """
         step = publish.PublishRpmStep()
         step.parent = self.publisher
         step.finalize_metadata()
@@ -1277,6 +1291,10 @@ class PublishErrataStepTests(BaseYumDistributorPublishStepTests):
             add_metadata_file_metadata.assert_called_once_with('updateinfo', mock.ANY)
 
     def test_finalize_no_initialization(self):
+        """
+        Test to ensure that calling finalize before initialize_metadata() doesn't
+        raise an exception
+        """
         step = publish.PublishErrataStep()
         step.parent = self.publisher
         step.finalize_metadata()
