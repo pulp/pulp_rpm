@@ -864,6 +864,10 @@ class PublishCompsStepTests(BaseYumDistributorPublishStepTests):
         mock_get_step.return_value.repomd_file_context.\
             add_metadata_file_metadata.assert_called_once_with('group', mock.ANY)
 
+    def test_finalize_no_initialization(self):
+        step = publish.PublishCompsStep()
+        step.parent = self.publisher
+        step.finalize_metadata()
 
 class PublishDrpmStepTests(BaseYumDistributorPublishStepTests):
 
@@ -940,6 +944,11 @@ class PublishDrpmStepTests(BaseYumDistributorPublishStepTests):
 
         self.assertTrue(os.path.exists(
             os.path.join(self.working_dir, 'repodata/prestodelta.xml.gz')))
+
+    def test_finalize_no_initialization(self):
+        step = publish.PublishDrpmStep()
+        step.parent = self.publisher
+        step.finalize_metadata()
 
 
 class PublishDistributionStepTests(BaseYumDistributorPublishStepTests):
@@ -1238,6 +1247,11 @@ class PublishRpmStepTests(BaseYumDistributorPublishStepTests):
         unit_path = os.path.join(package_dir, unit.unit_key['name'])
         self.assertTrue(os.path.exists(unit_path))
 
+    def test_finalize_no_initialization(self):
+        step = publish.PublishRpmStep()
+        step.parent = self.publisher
+        step.finalize_metadata()
+
 
 class PublishErrataStepTests(BaseYumDistributorPublishStepTests):
 
@@ -1261,6 +1275,11 @@ class PublishErrataStepTests(BaseYumDistributorPublishStepTests):
         step.context.finalize.assert_called_once_with()
         step.get_step.return_value.repomd_file_context.\
             add_metadata_file_metadata.assert_called_once_with('updateinfo', mock.ANY)
+
+    def test_finalize_no_initialization(self):
+        step = publish.PublishErrataStep()
+        step.parent = self.publisher
+        step.finalize_metadata()
 
 
 class PublishMetadataStepTests(BaseYumDistributorPublishStepTests):
