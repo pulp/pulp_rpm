@@ -90,7 +90,7 @@ class YumDistributorTests(unittest.TestCase):
         self.distributor._publisher = None
 
     def test_create_consumer_payload(self):
-        distrubutor = YumHTTPDistributor()
+        local_distributor = YumHTTPDistributor()
         repo = Mock()
         repo.display_name = 'foo'
         repo.id = 'bar'
@@ -102,13 +102,17 @@ class YumDistributorTests(unittest.TestCase):
                   'https': True}
         binding_config = {}
         pulp_server_config.set('server', 'server_name', 'apple')
-        pulp_server_config.set('security', 'ssl_ca_certificate', 'orange')
+        cert_file = os.path.join(self.working_dir, "orange_file")
+        with open(cert_file, 'w') as filewriter:
+            filewriter.write("orange")
 
-        result = distrubutor.create_consumer_payload(repo, config, binding_config)
+        pulp_server_config.set('security', 'ssl_ca_certificate', cert_file)
+
+        result = local_distributor.create_consumer_payload(repo, config, binding_config)
 
         target = {
             'server_name': 'apple',
-            'ca_cert': 'pear',
+            'ca_cert': 'orange',
             'relative_path': '/pulp/repos/bar',
             'gpg_keys': {'pulp.key': 'kiwi'},
             'client_cert': 'durian',
@@ -119,7 +123,7 @@ class YumDistributorTests(unittest.TestCase):
 
     @patch('pulp_rpm.plugins.distributors.yum.distributor.configuration.load_config')
     def test_create_consumer_payload_global_auth(self, mock_load_config):
-        distrubutor = YumHTTPDistributor()
+        test_distributor = YumHTTPDistributor()
         repo = Mock()
         repo.display_name = 'foo'
         repo.id = 'bar'
@@ -136,14 +140,14 @@ class YumDistributorTests(unittest.TestCase):
         repo_auth_config.set('repos', 'global_cert_location', self.working_dir)
         mock_load_config.return_value = repo_auth_config
 
-        with open(os.path.join(self.working_dir, 'pulp-global-repo.cert'), 'w+') as file:
-            file.write('cert')
-        with open(os.path.join(self.working_dir, 'pulp-global-repo.key'), 'w+') as file:
-            file.write('key')
-        with open(os.path.join(self.working_dir, 'pulp-global-repo.ca'), 'w+') as file:
-            file.write('ca')
+        with open(os.path.join(self.working_dir, 'pulp-global-repo.cert'), 'w+') as cert_file:
+            cert_file.write('cert')
+        with open(os.path.join(self.working_dir, 'pulp-global-repo.key'), 'w+') as cert_file:
+            cert_file.write('key')
+        with open(os.path.join(self.working_dir, 'pulp-global-repo.ca'), 'w+') as cert_file:
+            cert_file.write('ca')
 
-        result = distrubutor.create_consumer_payload(repo, config, binding_config)
+        result = test_distributor.create_consumer_payload(repo, config, binding_config)
 
         target = {
             'server_name': 'apple',
@@ -158,3 +162,37 @@ class YumDistributorTests(unittest.TestCase):
             'global_auth_ca': 'ca'
         }
         compare_dict(result, target)
+
+    @patch('pulp_rpm.plugins.distributors.yum.distributor.configuration.remove_cert_based_auth')
+    @patch('pulp_rpm.plugins.distributors.yum.distributor.configuration.get_master_publish_dir')
+    @patch('pulp_rpm.plugins.distributors.yum.distributor.configuration.get_http_publish_dir')
+    @patch('pulp_rpm.plugins.distributors.yum.distributor.configuration.get_https_publish_dir')
+    def test_distributor_removed(self, mock_http, mock_https, mock_master, remove_cert):
+        mock_http.return_value = os.path.join(self.working_dir, 'http')
+        mock_https.return_value = os.path.join(self.working_dir, 'https')
+        mock_master.return_value = os.path.join(self.working_dir, 'master')
+        os.makedirs(mock_http.return_value)
+        os.makedirs(mock_https.return_value)
+        os.makedirs(mock_master.return_value)
+        os.makedirs(os.path.join(self.working_dir, 'working'))
+        test_distributor = YumHTTPDistributor()
+        repo = Mock()
+        repo.id = 'bar'
+        repo.working_dir = os.path.join(self.working_dir, 'working')
+        config = {}
+        test_distributor.distributor_removed(repo, config)
+
+        self.assertEquals(0, len(os.listdir(self.working_dir)))
+
+        remove_cert.assert_called_with(repo, config)
+
+
+class TestEntryPoint(unittest.TestCase):
+    """
+    Test the entry_point method. This is really just to get good coverage numbers, but hey.
+    """
+    @patch('pulp_rpm.plugins.distributors.yum.distributor.read_json_config')
+    def test_entry_point(self, mock_read_json):
+        yum_distributor, config = distributor.entry_point()
+        self.assertEqual(yum_distributor, distributor.YumHTTPDistributor)
+        self.assertEqual(config, mock_read_json.return_value)
