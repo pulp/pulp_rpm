@@ -12,6 +12,7 @@
 # if not, see http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt
 
 import os
+import shutil
 
 from pulp.common.config import read_json_config
 from pulp.plugins.distributor import Distributor
@@ -102,19 +103,6 @@ class YumHTTPDistributor(Distributor):
 
         return configuration.validate_config(repo, config, config_conduit)
 
-    def distributor_added(self, repo, config):
-        """
-        Called upon the successful addition of a distributor of this type to a
-        repository.
-
-        :param repo: metadata describing the repository
-        :type  repo: pulp.plugins.model.Repository
-
-        :param config: plugin configuration
-        :type  config: pulp.plugins.config.PluginCallConfiguration
-        """
-        pass
-
     def distributor_removed(self, repo, config):
         """
         Called when a distributor of this type is removed from a repository.
@@ -125,7 +113,18 @@ class YumHTTPDistributor(Distributor):
         :param config: plugin configuration
         :type  config: pulp.plugins.config.PluginCallConfiguration
         """
-        pass
+        # remove the directories that might have been created for this repo/distributor
+        dir_list = [repo.working_dir,
+                    configuration.get_master_publish_dir(repo),
+                    configuration.get_http_publish_dir(config),
+                    configuration.get_https_publish_dir(config)]
+
+        for repo_dir in dir_list:
+            if os.path.exists(repo_dir):
+                shutil.rmtree(repo_dir, ignore_errors=True)
+
+        # remove certificates for certificate based auth
+        configuration.remove_cert_based_auth(repo, config)
 
     # -- actions ---------------------------------------------------------------
 
@@ -185,13 +184,13 @@ class YumHTTPDistributor(Distributor):
         :return: dictionary of relevant data
         :rtype:  dict
         """
-        payload = {}
+        payload = dict()
         payload['repo_name'] = repo.display_name
         payload['server_name'] = pulp_server_config.get('server', 'server_name')
         ssl_ca_path = pulp_server_config.get('security', 'ssl_ca_certificate')
-        try:
+        if ssl_ca_path and os.path.exists(ssl_ca_path):
             payload['ca_cert'] = open(ssl_ca_path).read()
-        except Exception:
+        else:
             payload['ca_cert'] = config.get('https_ca')
 
         payload['relative_path'] = \

@@ -40,6 +40,7 @@ HTTPS_PUBLISH_DIR = os.path.join(ROOT_PUBLISH_DIR, 'https', 'repos')
 
 # -- public api ----------------------------------------------------------------
 
+
 def load_config(config_file_path):
     """
     Load and return a config parser for the given configuration file path.
@@ -55,7 +56,6 @@ def load_config(config_file_path):
 
     if os.access(config_file_path, os.F_OK | os.R_OK):
         config.read(config_file_path)
-
     else:
         _LOG.warning(_('Could not load config file: %(f)s') % {'f': config_file_path})
 
@@ -76,7 +76,7 @@ def validate_config(repo, config, config_conduit):
     :rtype:  tuple of (bool, str or None)
     """
 
-    config = config.flatten() # squish it into a dictionary so we can manipulate it
+    config = config.flatten()  # squish it into a dictionary so we can manipulate it
     error_messages = []
 
     configured_keys = set(config)
@@ -164,6 +164,21 @@ def process_cert_based_auth(repo, config):
 
         repo_cert_utils_instance.write_consumer_cert_bundle(repo.id, bundle)
         protected_repo_utils_instance.add_protected_repo(relative_path, repo.id)
+
+
+def remove_cert_based_auth(repo, config):
+    """
+    Remove the CA and Cert files in the PKI
+
+    :param repo: repository to validate the config for
+    :type  repo: pulp.plugins.model.Repository
+    :param config: configuration instance to validate
+    :type  config: pulp.plugins.config.PluginCallConfiguration or dict
+    """
+    relative_path = get_repo_relative_path(repo, config)
+    auth_config = load_config(REPO_AUTH_CONFIG_FILE)
+    protected_repo_utils_instance = protected_repo_utils.ProtectedRepoUtils(auth_config)
+    protected_repo_utils_instance.delete_protected_repo(relative_path)
 
 
 def get_master_publish_dir(repo):
@@ -275,11 +290,11 @@ def get_repo_checksum_type(publish_conduit, config):
     if 'checksum_type' not in distributor_config:
         distributor_manager = factory.repo_distributor_manager()
         distributor = distributor_manager.get_distributor(publish_conduit.repo_id,
-                                                              publish_conduit.distributor_id)
+                                                          publish_conduit.distributor_id)
         if distributor['distributor_type_id'] == TYPE_ID_DISTRIBUTOR_YUM:
             distributor_manager.update_distributor_config(publish_conduit.repo_id,
-                                                      publish_conduit.distributor_id,
-                                                      {'checksum_type': checksum_type})
+                                                          publish_conduit.distributor_id,
+                                                          {'checksum_type': checksum_type})
     return checksum_type
 
 
@@ -303,6 +318,7 @@ def _validate_relative_url(relative_url, error_messages):
         error_messages.append(msg % {'t': str(type(relative_url))})
 
 # -- optional config validation ------------------------------------------------
+
 
 def _validate_auth_ca(auth_ca, error_messages):
     _validate_certificate('auth_ca', auth_ca, error_messages)
@@ -345,6 +361,7 @@ def _validate_use_createrepo(use_createrepo, error_messages):
     _validate_boolean('use_createrepo', use_createrepo, error_messages, False)
 
 # -- generalized validation methods --------------------------------------------
+
 
 def _validate_boolean(key, value, error_messages, none_ok=True):
 
@@ -394,16 +411,19 @@ def _validate_usable_directory(key, path, error_messages):
 
 # -- check for conflicting relative paths --------------------------------------
 
+
 def _check_for_relative_path_conflicts(repo, config, config_conduit, error_messages):
 
     relative_path = get_repo_relative_path(repo, config)
-    conflicting_distributors = config_conduit.get_repo_distributors_by_relative_url(relative_path, repo.id)
+    conflicting_distributors = config_conduit.get_repo_distributors_by_relative_url(relative_path,
+                                                                                    repo.id)
 
     # in all honesty, this loop should execute at most once
     # but it may be interesting/useful for erroneous situations
     for distributor in conflicting_distributors:
         conflicting_repo_id = distributor['repo_id']
         conflicting_relative_url = distributor['config']['relative_url'] or conflicting_repo_id
-        msg = _('Relative URL [%(p)s] for repository [%(r)s] conflicts with existing relative URL [%(u)s] for repository [%(c)s]')
-        error_messages.append(msg % {'p': relative_path, 'r': repo.id, 'u': conflicting_relative_url, 'c': conflicting_repo_id})
-
+        msg = _('Relative URL [%(p)s] for repository [%(r)s] conflicts with existing '
+                'relative URL [%(u)s] for repository [%(c)s]')
+        error_messages.append(msg % {'p': relative_path, 'r': repo.id,
+                                     'u': conflicting_relative_url, 'c': conflicting_repo_id})
