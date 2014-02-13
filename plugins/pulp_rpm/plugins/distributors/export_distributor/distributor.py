@@ -175,13 +175,17 @@ class ISODistributor(Distributor):
         else:
             result = export_utils.export_complete_repo(repo.id, self.working_dir, publish_conduit,
                                                        config, progress_callback)
-        util.generate_listing_files(repo.working_dir, self.working_dir)
+
         self.summary = result[0]
         self.details = result[1]
 
         if not config.get(constants.EXPORT_DIRECTORY_KEYWORD):
+            util.generate_listing_files(repo.working_dir, self.working_dir)
             # build iso and publish via HTTPS
             self._publish_isos(repo, config, progress_callback)
+        else:
+            export_dir = config.get(constants.EXPORT_DIRECTORY_KEYWORD)
+            util.generate_listing_files(export_dir, self.working_dir)
 
         if len(self.details['errors']) != 0:
             return publish_conduit.build_failure_report(self.summary, self.details)

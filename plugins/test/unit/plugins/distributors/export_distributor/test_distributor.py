@@ -22,13 +22,20 @@ from pulp.plugins.config import PluginCallConfiguration
 from pulp.plugins.conduits.repo_publish import RepoPublishConduit
 
 from pulp_rpm.plugins.distributors.export_distributor import export_utils
-from pulp_rpm.plugins.distributors.export_distributor.distributor import ISODistributor
+from pulp_rpm.plugins.distributors.export_distributor.distributor import ISODistributor, entry_point
 from pulp_rpm.yum_plugin import util
 from pulp_rpm.common.ids import (TYPE_ID_DISTRO, TYPE_ID_PKG_GROUP, TYPE_ID_ERRATA, TYPE_ID_DRPM,
                                  TYPE_ID_SRPM, TYPE_ID_RPM, TYPE_ID_PKG_CATEGORY,
                                  TYPE_ID_DISTRIBUTOR_EXPORT)
 from pulp_rpm.common.constants import (PUBLISH_HTTPS_KEYWORD, PUBLISH_HTTP_KEYWORD,
                                        EXPORT_HTTPS_DIR, EXPORT_DIRECTORY_KEYWORD, EXPORT_HTTP_DIR)
+
+
+class TestEntryPoint(unittest.TestCase):
+
+    def test_entry_point(self):
+        distributor, config = entry_point()
+        self.assertEquals(distributor, ISODistributor)
 
 
 class TestISODistributor(unittest.TestCase):

@@ -15,7 +15,6 @@
 import shutil
 import unittest
 import os
-import sys
 
 import mock
 from pulp.server.exceptions import PulpDataException
@@ -23,17 +22,22 @@ from pulp.plugins.model import RepositoryGroup
 from pulp.plugins.config import PluginCallConfiguration
 from pulp.plugins.conduits.repo_publish import RepoGroupPublishConduit
 
-# pulp_rpm/pulp_rpm/plugins/distributors/iso_distributor isn't in the python path
-# sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)) + "/../../../plugins/importers/")
-# sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)) + "/../../../plugins/distributors/")
 from pulp_rpm.plugins.distributors.export_distributor import export_utils
-from pulp_rpm.plugins.distributors.export_distributor.groupdistributor import GroupISODistributor
+from pulp_rpm.plugins.distributors.export_distributor.groupdistributor import GroupISODistributor, \
+    entry_point
 from pulp_rpm.common.ids import (TYPE_ID_DISTRO, TYPE_ID_PKG_GROUP, TYPE_ID_ERRATA, TYPE_ID_DRPM,
                                  TYPE_ID_SRPM, TYPE_ID_RPM, TYPE_ID_PKG_CATEGORY,
                                  TYPE_ID_DISTRIBUTOR_GROUP_EXPORT)
 from pulp_rpm.common.constants import (PUBLISH_HTTPS_KEYWORD, PUBLISH_HTTP_KEYWORD,
                                        EXPORT_DIRECTORY_KEYWORD, GROUP_EXPORT_HTTP_DIR,
                                        GROUP_EXPORT_HTTPS_DIR)
+
+
+class TestEntryPoint(unittest.TestCase):
+
+    def test_entry_point(self):
+        distributor, config = entry_point()
+        self.assertEquals(distributor, GroupISODistributor)
 
 
 class TestGroupISODistributor(unittest.TestCase):
@@ -84,32 +88,30 @@ class TestPublishGroup(unittest.TestCase):
         # We aren't testing _publish_isos here, so let's not call it
         self.group_distributor._publish_isos = mock.MagicMock(spec=GroupISODistributor._publish_isos)
 
-        # Since the path is all messed up, patching stuff out with mock is difficult, so this mocks
-        # out all the export utilities used.
-        self.cleanup_working_dir = export_utils.cleanup_working_dir
-        self.validate_export_config = export_utils.validate_export_config
-        self.export_complete_repo = export_utils.export_complete_repo
-        self.export_incremental = export_utils.export_incremental_content
-        self.group_config = export_utils.retrieve_group_export_config
-        self.rmtree = shutil.rmtree
-        self.makedirs = os.makedirs
+        self.patches = []
+        patcher = mock.patch('pulp_rpm.plugins.distributors.export_distributor.groupdistributor.util.generate_listing_files')
+        self.patches.append(patcher)
+        patcher = mock.patch('pulp_rpm.plugins.distributors.export_distributor.groupdistributor.export_utils.cleanup_working_dir')
+        self.patches.append(patcher)
+        patcher = mock.patch('pulp_rpm.plugins.distributors.export_distributor.groupdistributor.export_utils.validate_export_config', return_value=(True, None))
+        self.patches.append(patcher)
+        patcher = mock.patch('pulp_rpm.plugins.distributors.export_distributor.groupdistributor.export_utils.export_complete_repo', return_value=({}, {'errors': []}))
+        self.patches.append(patcher)
+        patcher = mock.patch('pulp_rpm.plugins.distributors.export_distributor.groupdistributor.export_utils.export_incremental_content', return_value=({}, {'errors': {}}))
+        self.patches.append(patcher)
+        patcher = mock.patch('pulp_rpm.plugins.distributors.export_distributor.groupdistributor.export_utils.retrieve_group_export_config', return_value=([('repo_id', '/dir')], None))
+        self.patches.append(patcher)
+        patcher = mock.patch('pulp_rpm.plugins.distributors.export_distributor.groupdistributor.shutil.rmtree')
+        self.patches.append(patcher)
+        patcher = mock.patch('pulp_rpm.plugins.distributors.export_distributor.groupdistributor.os.makedirs')
+        self.patches.append(patcher)
 
-        export_utils.cleanup_working_dir = mock.Mock(spec=export_utils.cleanup_working_dir)
-        export_utils.validate_export_config = mock.Mock(return_value=(True, None))
-        export_utils.export_complete_repo = mock.Mock(return_value=({}, {'errors': []}))
-        export_utils.export_incremental_content = mock.Mock(return_value=({}, {'errors': {}}))
-        export_utils.retrieve_group_export_config = mock.Mock(return_value=([('repo_id', '/dir')], None))
-        shutil.rmtree = mock.Mock(spec=shutil.rmtree)
-        os.makedirs = mock.Mock(spec=os.makedirs)
+        for patch_handler in self.patches:
+            patch_handler.start()
 
     def tearDown(self):
-        export_utils.cleanup_working_dir = self.cleanup_working_dir
-        export_utils.validate_export_config = self.validate_export_config
-        export_utils.export_complete_repo = self.export_complete_repo
-        export_utils.export_incremental_content = self.export_incremental
-        export_utils.retrieve_group_export_config = self.group_config
-        shutil.rmtree = self.rmtree
-        os.makedirs = self.makedirs
+        for patch_handler in self.patches:
+            patch_handler.stop()
 
     def test_failed_override_config(self):
         """

@@ -30,6 +30,7 @@ from createrepo import yumbased, GzipFile
 from pulp.common.util import encode_unicode, decode_unicode
 from pulp.plugins.conduits.mixins import MultipleRepoUnitsMixin, SingleRepoUnitsMixin
 from pulp.server.db.model.criteria import UnitAssociationCriteria
+from pulp.server.exceptions import MissingResource
 from pulp.server.managers import factory
 from pulp_rpm.common.ids import TYPE_ID_RPM, TYPE_ID_SRPM, TYPE_ID_YUM_REPO_METADATA_FILE, \
     YUM_DISTRIBUTOR_ID
@@ -160,12 +161,17 @@ def get_repo_checksum_type(publish_conduit, config):
         distributor_config = config.repo_plugin_config
         if 'checksum_type' not in distributor_config:
             distributor_manager = factory.repo_distributor_manager()
-            distributor = distributor_manager.get_distributor(publish_conduit.repo_id,
-                                                              publish_conduit.distributor_id)
-            if distributor['distributor_type_id'] == YUM_DISTRIBUTOR_ID:
-                distributor_manager.update_distributor_config(publish_conduit.repo_id,
-                                                              publish_conduit.distributor_id,
-                                                              {'checksum_type': checksum_type})
+            try:
+                distributor = distributor_manager.get_distributor(publish_conduit.repo_id,
+                                                                  publish_conduit.distributor_id)
+                if distributor['distributor_type_id'] == YUM_DISTRIBUTOR_ID:
+                    distributor_manager.update_distributor_config(publish_conduit.repo_id,
+                                                                  publish_conduit.distributor_id,
+                                                                  {'checksum_type': checksum_type})
+            except MissingResource:
+                # If we can't find the distributor it's ok as it is a repo group distributor
+                # and we don't need to set the checksum in that case
+                pass
 
     return checksum_type
 

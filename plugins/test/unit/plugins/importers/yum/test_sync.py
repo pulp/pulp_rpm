@@ -38,6 +38,7 @@ class BaseSyncTest(unittest.TestCase):
     def setUp(self):
         self.url = 'http://pulpproject.org/'
         self.metadata_files = metadata.MetadataFiles(self.url, '/foo/bar', DownloaderConfig())
+        self.metadata_files.download_repomd = mock.MagicMock()
         self.repo = Repository('repo1')
         self.conduit = RepoSyncConduit(self.repo.id, 'yum_importer', 'user', 'me')
         self.conduit.set_progress = mock.MagicMock(spec_set=self.conduit.set_progress)
@@ -170,10 +171,11 @@ class TestRun(BaseSyncTest):
         self.assertEqual(report.details['distribution']['state'],
                          constants.STATE_SKIPPED)
 
+    @mock.patch('pulp_rpm.plugins.importers.yum.sync.treeinfo')
     @mock.patch('shutil.rmtree', autospec=True)
     @mock.patch('tempfile.mkdtemp', autospec=True)
     @mock.patch('nectar.config.DownloaderConfig.finalize')
-    def test_finalize(self, mock_finalize, mock_mkdtemp, mock_rmtree):
+    def test_finalize(self, mock_finalize, mock_mkdtemp, mock_rmtree, mock_treeinfo):
 
         self.reposync.run()
 
