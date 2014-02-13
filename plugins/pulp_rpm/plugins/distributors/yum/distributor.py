@@ -120,8 +120,7 @@ class YumHTTPDistributor(Distributor):
                     configuration.get_https_publish_dir(config)]
 
         for repo_dir in dir_list:
-            if os.path.exists(repo_dir):
-                shutil.rmtree(repo_dir, ignore_errors=True)
+            shutil.rmtree(repo_dir, ignore_errors=True)
 
         # remove certificates for certificate based auth
         configuration.remove_cert_based_auth(repo, config)
@@ -188,9 +187,9 @@ class YumHTTPDistributor(Distributor):
         payload['repo_name'] = repo.display_name
         payload['server_name'] = pulp_server_config.get('server', 'server_name')
         ssl_ca_path = pulp_server_config.get('security', 'ssl_ca_certificate')
-        if ssl_ca_path and os.path.exists(ssl_ca_path):
+        try:
             payload['ca_cert'] = open(ssl_ca_path).read()
-        else:
+        except (OSError, IOError):
             payload['ca_cert'] = config.get('https_ca')
 
         payload['relative_path'] = \
