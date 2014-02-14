@@ -57,7 +57,7 @@ class TestGroupISODistributor(unittest.TestCase):
         export_utils.validate_export_config = mock.MagicMock()
         distributor = GroupISODistributor()
 
-        # Test. All validate_config should do is hand the config argument to the export_utils validator
+        # All validate_config should do is hand the config argument to the export_utils validator
         distributor.validate_config(None, 'config', None)
         export_utils.validate_export_config.assert_called_once_with('config')
 
@@ -86,24 +86,35 @@ class TestPublishGroup(unittest.TestCase):
         self.repo_group = RepositoryGroup('test-group', '', '', {}, ['repo_id'], '/dir')
 
         # We aren't testing _publish_isos here, so let's not call it
-        self.group_distributor._publish_isos = mock.MagicMock(spec=GroupISODistributor._publish_isos)
+        self.group_distributor._publish_isos = mock.MagicMock(
+            spec=GroupISODistributor._publish_isos)
 
         self.patches = []
-        patcher = mock.patch('pulp_rpm.plugins.distributors.export_distributor.groupdistributor.util.generate_listing_files')
+        patcher = mock.patch('pulp_rpm.plugins.distributors.export_distributor.groupdistributor.'
+                             'util.generate_listing_files')
         self.patches.append(patcher)
-        patcher = mock.patch('pulp_rpm.plugins.distributors.export_distributor.groupdistributor.export_utils.cleanup_working_dir')
+        patcher = mock.patch('pulp_rpm.plugins.distributors.export_distributor.groupdistributor.'
+                             'export_utils.cleanup_working_dir')
         self.patches.append(patcher)
-        patcher = mock.patch('pulp_rpm.plugins.distributors.export_distributor.groupdistributor.export_utils.validate_export_config', return_value=(True, None))
+        patcher = mock.patch('pulp_rpm.plugins.distributors.export_distributor.groupdistributor.'
+                             'export_utils.validate_export_config', return_value=(True, None))
         self.patches.append(patcher)
-        patcher = mock.patch('pulp_rpm.plugins.distributors.export_distributor.groupdistributor.export_utils.export_complete_repo', return_value=({}, {'errors': []}))
+        patcher = mock.patch('pulp_rpm.plugins.distributors.export_distributor.groupdistributor.'
+                             'export_utils.export_complete_repo', return_value=({}, {'errors': []}))
         self.patches.append(patcher)
-        patcher = mock.patch('pulp_rpm.plugins.distributors.export_distributor.groupdistributor.export_utils.export_incremental_content', return_value=({}, {'errors': {}}))
+        patcher = mock.patch('pulp_rpm.plugins.distributors.export_distributor.groupdistributor.'
+                             'export_utils.export_incremental_content',
+                             return_value=({}, {'errors': {}}))
         self.patches.append(patcher)
-        patcher = mock.patch('pulp_rpm.plugins.distributors.export_distributor.groupdistributor.export_utils.retrieve_group_export_config', return_value=([('repo_id', '/dir')], None))
+        patcher = mock.patch('pulp_rpm.plugins.distributors.export_distributor.groupdistributor.'
+                             'export_utils.retrieve_group_export_config',
+                             return_value=([('repo_id', '/dir')], None))
         self.patches.append(patcher)
-        patcher = mock.patch('pulp_rpm.plugins.distributors.export_distributor.groupdistributor.shutil.rmtree')
+        patcher = mock.patch('pulp_rpm.plugins.distributors.export_distributor.groupdistributor.'
+                             'shutil.rmtree')
         self.patches.append(patcher)
-        patcher = mock.patch('pulp_rpm.plugins.distributors.export_distributor.groupdistributor.os.makedirs')
+        patcher = mock.patch('pulp_rpm.plugins.distributors.export_distributor.groupdistributor.'
+                             'os.makedirs')
         self.patches.append(patcher)
 
         for patch_handler in self.patches:

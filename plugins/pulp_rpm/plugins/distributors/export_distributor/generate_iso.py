@@ -139,12 +139,6 @@ def _compute_image_files(file_list, max_image_size):
                             output of get_dir_file_list_and_size
     :type  file_list:       [(str, int)]class TestEntryPoint(unittest.TestCase):
 
-    def test_entry_point(self):
-        distributor, config = entry_point()
-        self.assertEquals(distributor, GroupISODistributor)
-
-
-
     :param max_image_size:  The maximum size of image in bytes
     :type  max_image_size:  int
 
