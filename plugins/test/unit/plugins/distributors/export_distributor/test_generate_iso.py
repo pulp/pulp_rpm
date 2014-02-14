@@ -13,15 +13,11 @@
 
 import os
 import stat
-import sys
 import unittest
 import datetime
 
 import mock
 
-# pulp_rpm/pulp_rpm/plugins/distributors/iso_distributor isn't in the python path
-# sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)) + "/../../../plugins/importers/")
-# sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)) + "/../../../plugins/distributors/")
 from pulp_rpm.plugins.distributors.export_distributor import generate_iso
 
 

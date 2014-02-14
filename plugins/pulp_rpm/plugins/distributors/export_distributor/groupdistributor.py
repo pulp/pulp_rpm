@@ -15,6 +15,7 @@ from gettext import gettext as _
 import os
 import shutil
 
+from pulp.common.config import read_json_config
 from pulp.plugins.conduits.repo_publish import RepoPublishConduit
 from pulp.plugins.distributor import GroupDistributor
 from pulp.server.exceptions import PulpDataException
@@ -25,11 +26,17 @@ from pulp_rpm.common import constants, ids, models
 from pulp_rpm.yum_plugin import util
 
 _logger = util.getLogger(__name__)
+CONF_FILE_PATH = 'server/plugins.conf.d/%s.json' % ids.TYPE_ID_DISTRIBUTOR_GROUP_EXPORT
 
 # Things left to do:
 #   Cancelling a publish operation is not currently supported.
 #   Published ISOs are left in the working directory. See export_utils.publish_isos to fix this.
 #   This is not currently in the python path. When that gets fixed, the imports should be fixed.
+
+
+def entry_point():
+    config = read_json_config(CONF_FILE_PATH)
+    return GroupISODistributor, config
 
 
 class GroupISODistributor(GroupDistributor):
@@ -158,6 +165,12 @@ class GroupISODistributor(GroupDistributor):
                                                                  self.date_filter)
             else:
                 result = export_utils.export_complete_repo(repo_id, working_dir, repo_conduit, config)
+            if not config.get(constants.EXPORT_DIRECTORY_KEYWORD):
+                util.generate_listing_files(repo_group.working_dir, working_dir)
+            else:
+                export_dir = config.get(constants.EXPORT_DIRECTORY_KEYWORD)
+                util.generate_listing_files(export_dir, working_dir)
+
             self.summary[repo_id] = result[0]
             self.details[repo_id] = result[1]
 

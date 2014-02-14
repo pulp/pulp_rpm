@@ -812,6 +812,10 @@ def publish_isos(working_dir, image_prefix, http_dir=None, https_dir=None, image
 
         # Now link the files to the https and http directories, if they exist
         for name in files:
+            # don't copy the listings file
+            if name == 'listing':
+                continue
+
             if https_dir:
                 os.symlink(os.path.join(root, name), os.path.join(https_dir, name))
                 set_progress('publish_https', {constants.PROGRESS_STATE_KEY: constants.STATE_COMPLETE},

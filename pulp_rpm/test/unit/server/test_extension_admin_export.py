@@ -13,7 +13,7 @@
 
 import mock
 from pulp.bindings.exceptions import NotFoundException
-from pulp.bindings.responses import Response
+from pulp.bindings.responses import Response, Task
 from pulp.client.commands import options
 from pulp.common import tags as tag_utils
 
@@ -170,7 +170,9 @@ class TestRepoGroupExportRunCommand(PulpClientTests):
         """
         # Setup
         response = Response(200, mock.Mock())
-        response.response_body.task_id = 'fake-id'
+        spawned_task = mock.Mock()
+        spawned_task.task_id = "fake-id"
+        response.response_body.spawned_tasks = [spawned_task]
         mock_publish.return_value = response
         mock_distributor.return_value = (200, mock.Mock(spec=Response))
         export._get_publish_task_id.return_value = None

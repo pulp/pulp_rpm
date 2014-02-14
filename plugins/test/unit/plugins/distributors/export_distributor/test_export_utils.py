@@ -1002,7 +1002,8 @@ class TestPublishIsos(unittest.TestCase):
         publishing directory
         """
         # Setup
-        os.walk.return_value = [('/root', [], ['file1', 'file2'])]
+        # listing is included to ensure that it is not linked
+        os.walk.return_value = [('/root', [], ['file1', 'listing', 'file2'])]
         expected_call1 = ('/root/file1', '/http/dir/file1')
         expected_call2 = ('/root/file2', '/http/dir/file2')
 
