@@ -68,7 +68,7 @@ class Requirement(object):
         0 if they are equal, and a positive value if self is "greater than" other. For example,
         a Requirement that references Firefox-23.0 compared to a Unit that references Firefox-23.1
         would return a negative value.
-        
+
         The other object must have the same name as the Requirement, as it
         doesn't make sense to ask whether an object is greater or less than a Requirement when it
         has a different name. For example, a Requirement might reference Firefox-23.0, and other
@@ -163,218 +163,258 @@ class Requirement(object):
         # present, "version" must be present also
         return self.version not in (None, '')
 
-    def fills_requirement(self, package):
+    def fills_requirement(self, unit):
         """
         Returns True if the given package will meet the requirement, False otherwise.
 
-        :param package: any object with attributes 'name', 'epoch', 'version',
-                        and 'release'
-        :type  package: object
-        :return:        True if the package satisfies the Requirement, False otherwise
+        :param unit:    a Unit object that will be examined to determine if it
+                        fills this requirement
+        :type unit:     pulp.plugins.model.Unit
+        :return:        True if the unit satisfies the Requirement, False otherwise
         :rtype:         bool
         """
-        if self.name != package.name:
+        unit_key = unit.unit_key
+        if self.name != unit_key['name']:
             return False
+
+        # this is easier to use in the comparison than a full Unit object
+        unit_as_namedtuple = models.RPM.NAMEDTUPLE(**unit_key)
 
         if self.flags == self.EQ:
             if self.is_versioned:
-                return self == package
+                return self == unit_as_namedtuple
             else:
                 # If self doesn't have a version attribute, we can say that the package meets the
                 # requirement since the package name is equal to the Requirement's name (we already
                 # checked for that above).
                 return True
+
         # yes, the operators might look backwards to you, but it's because
         # we have to put "self" on the left to get our own __cmp__ method.
         if self.flags == self.LT:
-            return self > package
+            return self > unit_as_namedtuple
         if self.flags == self.LE:
-            return self >= package
+            return self >= unit_as_namedtuple
         if self.flags == self.GT:
-            return self < package
+            return self < unit_as_namedtuple
         if self.flags == self.GE:
-            return self <= package
+            return self <= unit_as_namedtuple
 
 
-def find_dependent_rpms(units, search_method):
+class Solver(object):
     """
-    Calls from outside this module probably want to call this method.
-
-    Given an iterable of Units, return a set of RPMs as named tuples that satisfy
-    the dependencies of those units. Dependencies are resolved only within the
-    repository search by the "search_method".
-
-    :param units:           iterable of pulp.plugins.model.Unit
-    :param search_method:   method that takes a UnitAssociationCriteria and
-                            performs a search within a repository. Usually this
-                            will be a method on a conduit such as "conduit.get_units"
-    :type  search_method:   function
-
-    :return:        set of pulp_rpm.common.models.RPM.NAMEDTUPLE instances which
-                    satisfy the passed-in requirements
-    :rtype:         set
+    Resolves RPM dependencies within a pulp repository
     """
-    reqs = get_requirements(units, search_method)
-    source_with_provides = _get_source_with_provides(search_method)
-    return match(reqs, source_with_provides)
 
+    def __init__(self, search_method):
+        """
+        :param search_method:   method that takes a UnitAssociationCriteria and
+                                performs a search within a repository. Usually this
+                                will be a method on a conduit such as "conduit.get_units"
+        :type  search_method:   function
+        """
+        super(Solver, self).__init__()
+        self.search_method = search_method
+        self._cached_source_with_provides = None
+        self._cached_provides_tree = None
+        self._cached_packages_tree = None
 
-def _build_provides_tree(source_packages):
-    """
-    Creates a tree of "Provides" data so that for any given "Provides" name,
-    the newest version of each package that provides that capability can be
-    easily accessed.
+    def find_dependent_rpms(self, units):
+        """
+        Calls from outside this module probably want to call this method.
 
-    In the example below, "provide_nameA" is the value of a "Provides" statement
-    such as "webserver". "package_name1" is the name of a package, such as "httpd".
-    "package1_as_named_tuple" is an instance of pulp_rpm.common.models.RPM.NAMEDTUPLE
-    for the newest version of that package which provides "provide_nameA".
+        Given an iterable of Units, return a set of units that satisfy
+        the dependencies of those units. Dependencies are resolved only within the
+        repository search by "self.search_method".
 
-    {
-        'provide_nameA': {
-            'package_name1': package1_as_named_tuple,
-            'package_name2': package2_as_named_tuple,
-        },
+        :param units:   iterable of pulp.plugins.model.Unit
+        :type  units:   iterable
 
-        'provide_nameB': {
-            'package_name3': package3_as_named_tuple,
-        },
-    }
+        :return:        set of pulp.plugins.model.Unit instances which
+                        satisfy the passed-in requirements
+        :rtype:         set
+        """
+        reqs = self.get_requirements(units)
+        return self.match(reqs)
 
-    :param source_packages: list of tuples (RPM namedtuple, "provides" list)
-    :type  source_packages: list
+    @property
+    def _source_with_provides(self):
+        """
+        Returns a list of available packages with Provides info, and caches
+        the result so it won't have to be re-generated.
 
-    :return:    dictionary as defined above
-    :rtype:     dict
-    """
-    tree = {}
-    for package, provides in source_packages:
-        my_model = models.RPM.from_package_info(package._asdict())
-        for provide in provides:
-            provide_name = provide['name']
-            package_dict = tree.setdefault(provide_name, {})
-            newest_version = package_dict.get(package.name, tuple())
-            if newest_version:
-                # turn it into an RPM instance to get the version comparison
-                newest_model = models.RPM.from_package_info(newest_version._asdict())
-                package_dict[package.name] = max(my_model, newest_model).as_named_tuple
-            else:
-                package_dict[package.name] = package
-    return tree
+        :return:    list of tuples (RPM namedtuple, "provides" list)
+        :rtype      list
+        """
+        if self._cached_source_with_provides is None:
+            self._cached_source_with_provides = self._build_source_with_provides()
+        return self._cached_source_with_provides
 
+    def _build_source_with_provides(self):
+        """
+        Get a list of all available packages with their "Provides" info.
 
-def _build_packages_tree(source_packages):
-    """
-    Creates a tree of package names, where values are lists of each version of
-    that package. This is useful for filling a dependency, where it is valuable
-    to consider each available version of a package name.
-
-    {
-        'package_name_1': [
-            package1v1_as_named_tuple,
-            package1v2_as_named_tuple,
-        ],
-        'package_name_2': [
-            package2v1_as_named_tuple,
-        ],
-    }
-
-    :param source_packages: list of tuples (RPM namedtuple, "provides" list)
-    :type  source_packages: list
-
-    :return:    dictionary as defined above
-    :rtype:     dict
-    """
-    tree = {}
-    for package, provides in source_packages:
-        version_list = tree.setdefault(package.name, [])
-        version_list.append(package)
-
-    return tree
-
-
-def _get_source_with_provides(search_method):
-    """
-    Get a generator of all available packages with their "Provides" info.
-
-    :param search_method:   method that takes a UnitAssociationCriteria and
-                            performs a search within a repository. Usually this
-                            will be a method on a conduit such as "conduit.get_source_units"
-    :type  search_method:   function
-
-    :return:    generator of (pulp_rpm.common.models.RPM.NAMEDTUPLE, list of provides)
-    """
-    fields = list(models.RPM.UNIT_KEY_NAMES)
-    fields.extend(['provides', 'id'])
-    criteria = UnitAssociationCriteria(type_ids=[models.RPM.TYPE], unit_fields=fields)
-    for unit in search_method(criteria):
-        rpm = models.RPM.from_package_info(unit.unit_key)
-        namedtuple = rpm.as_named_tuple
-        yield (namedtuple, unit.metadata.get('provides', []))
-
-
-def match(reqs, source):
-    """
-    Given an iterable of Requires, return a set of those packages in the source
-    iterable that satisfy the requirements.
-
-    :param reqs:    list of requirements
-    :type  reqs:    list of Require() instances
-    :param source:  iterable of tuples (namedtuple, provides list)
-    :type  source:  iterable
-    :return:        set of pulp_rpm.common.models.RPM.NAMEDTUPLE instances which
-                    satisfy the passed-in requirements
-    :rtype:         set
-    """
-    # we may have gotten a generator
-    source = list(source)
-    provides_tree = _build_provides_tree(source)
-    packages_tree = _build_packages_tree(source)
-    # allow garbage collection
-    source = None
-    deps = set()
-
-    for req in reqs:
-        # in order for a Requires: line to match a Provides, the requirement must
-        # not specify a version
-        if not req.is_versioned:
-            providing_packages = provides_tree.get(req.name, {})
-            for name, package in providing_packages.iteritems():
-                deps.add(package)
-
-        # find in package names
-        package_list = packages_tree.get(req.name, [])
-        applicable_packages = filter(req.fills_requirement, package_list)
-        rpms = [models.RPM.from_package_info(package._asdict()) for package in applicable_packages]
-        if rpms:
-            deps.add(max(rpms).as_named_tuple)
-
-    return deps
-
-
-def get_requirements(units, search_method):
-    """
-    For an iterable of RPMs, return a generator of Require() instances that
-    represent the requirements for those RPMs.
-
-    :param units:   iterable of RPMs for which a query should be performed to
-                    retrieve their Requires entries.
-    :type  units:   iterable of pulp_rpm.common.models.RPM.NAMEDTUPLE
-    :param search_method:   method that takes a UnitAssociationCriteria and
-                            performs a search within a repository. Usually this
-                            will be a method on a conduit such as "conduit.get_units"
-    :type  search_method:   function
-
-    :return:    generator of Require() instances
-    """
-    for segment in paginate(units):
-        search_dicts = [unit.unit_key for unit in segment]
-        filters = {'$or': search_dicts}
+        :return:    list of (pulp.plugins.model.Unit, list of provides)
+        """
         fields = list(models.RPM.UNIT_KEY_NAMES)
-        fields.extend(['requires', 'id'])
-        criteria = UnitAssociationCriteria(type_ids=[models.RPM.TYPE], unit_filters=filters, unit_fields=fields)
-        for result in search_method(criteria):
-            for require in result.metadata.get('requires', []):
-                yield Requirement(**require)
+        fields.extend(['provides', 'id'])
+        criteria = UnitAssociationCriteria(type_ids=[models.RPM.TYPE], unit_fields=fields)
+        return list(self.search_method(criteria))
 
+    @property
+    def _provides_tree(self):
+        """
+        Returns a tree of "Provides" data and handles caching of that data once
+        it's been created. See below for details on the data structure.
 
+        :return:    dictionary as defined below in _build_provides_tree
+        :rtype:     dict
+        """
+        if self._cached_provides_tree is None:
+            self._cached_provides_tree = self._build_provides_tree()
+            # if both trees have been created, remove the cached source list
+            if self._cached_packages_tree is not None:
+                self._cached_source_with_provides = None
+        return self._cached_provides_tree
+
+    def _build_provides_tree(self):
+        """
+        Creates a tree of "Provides" data so that for any given "Provides" name,
+        the newest version of each package that provides that capability can be
+        easily accessed.
+
+        In the example below, "provide_nameA" is the value of a "Provides" statement
+        such as "webserver". "package_name1" is the name of a package, such as "httpd".
+        "package1_as_unit" is an instance of pulp.plugins.model.Unit
+        for the newest version of that package which provides "provide_nameA".
+
+        {
+            'provide_nameA': {
+                'package_name1': package1_as_unit,
+                'package_name2': package2_as_unit,
+            },
+
+            'provide_nameB': {
+                'package_name3': package3_as_unit,
+            },
+        }
+
+        :return:    dictionary as defined above
+        :rtype:     dict
+        """
+        source_units = self._source_with_provides
+        tree = {}
+        for unit in source_units:
+            for provide in unit.metadata.get('provides', []):
+                unit_dict = tree.setdefault(provide['name'], {})
+                newest_version = unit_dict.get(unit.unit_key['name'], tuple())
+                if newest_version:
+                    # turn it into an RPM instance to get the version comparison
+                    newest_model = models.RPM.from_package_info(newest_version.unit_key)
+                    my_model = models.RPM.from_package_info(unit.unit_key)
+                    if my_model > newest_model:
+                        unit_dict[unit.unit_key['name']] = unit
+                else:
+                    unit_dict[unit.unit_key['name']] = unit
+        return tree
+
+    @property
+    def _packages_tree(self):
+        """
+        Returns a tree of package data and handles caching of that data once
+        it's been created. See below for details on the data structure.
+
+        :return:    dictionary as defined below in _build_packages_tree
+        :rtype:     dict
+        """
+        if self._cached_packages_tree is None:
+            self._cached_packages_tree = self._build_packages_tree()
+            # if both trees have been created, remove the cached source list
+            if self._cached_provides_tree is not None:
+                self._cached_source_with_provides = None
+        return self._cached_packages_tree
+
+    def _build_packages_tree(self):
+        """
+        Creates a tree of package names, where values are lists of each version of
+        that package. This is useful for filling a dependency, where it is valuable
+        to consider each available version of a package name.
+
+        {
+            'package_name_1': [
+                package1v1_as_unit,
+                package1v2_as_unit,
+            ],
+            'package_name_2': [
+                package2v1_as_unit,
+            ],
+        }
+
+        :return:    dictionary as defined above
+        :rtype:     dict
+        """
+        tree = {}
+        for unit in self._source_with_provides:
+            version_list = tree.setdefault(unit.unit_key['name'], [])
+            version_list.append(unit)
+
+        return tree
+
+    def match(self, reqs):
+        """
+        Given an iterable of Requires, return a set of those units in the source
+        iterable that satisfy the requirements.
+
+        :param reqs:    list of requirements
+        :type  reqs:    list of Require() instances
+        :param source:  iterable of tuples (namedtuple, provides list)
+        :type  source:  iterable
+        :return:        set of pulp.plugins.model.Unit instances which
+                        satisfy the passed-in requirements
+        :rtype:         set
+        """
+        provides_tree = self._provides_tree
+        packages_tree = self._packages_tree
+        deps = set()
+
+        for req in reqs:
+            # in order for a Requires: line to match a Provides, the requirement must
+            # not specify a version
+            if not req.is_versioned:
+                providing_units = provides_tree.get(req.name, {})
+                for unit in providing_units.itervalues():
+                    deps.add(unit)
+
+            # find in package names
+            unit_list = packages_tree.get(req.name, [])
+            applicable_units = filter(req.fills_requirement, unit_list)
+            rpms_with_units = [
+                (models.RPM.from_package_info(unit.unit_key), unit) for unit in applicable_units
+            ]
+            if rpms_with_units:
+                newest_rpm, newest_unit = max(rpms_with_units)
+                deps.add(newest_unit)
+
+        return deps
+
+    def get_requirements(self, units):
+        """
+        For an iterable of RPM Units, return a generator of Require() instances that
+        represent the requirements for those RPMs.
+
+        :param units:   iterable of RPMs for which a query should be performed to
+                        retrieve their Requires entries.
+        :type  units:   iterable of pulp.plugins.model.Unit
+
+        :return:    generator of Require() instances
+        :rtype:     generator
+        """
+        for segment in paginate(units):
+            search_dicts = [unit.unit_key for unit in segment]
+            filters = {'$or': search_dicts}
+            fields = list(models.RPM.UNIT_KEY_NAMES)
+            fields.extend(['requires', 'id'])
+            criteria = UnitAssociationCriteria(type_ids=[models.RPM.TYPE], unit_filters=filters, unit_fields=fields)
+            for result in self.search_method(criteria):
+                for require in result.metadata.get('requires', []):
+                    yield Requirement(**require)
