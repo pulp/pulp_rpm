@@ -176,7 +176,9 @@ class RpmGroupExportCommand(PulpCliCommand):
             # If there is no existing publish for this repo group, start one
             response = self.context.server.repo_group_actions.publish(group_id, self.distributor_id,
                                                                       publish_config)
-            task_id = response.response_body.task_id
+            # This will return a TaskResult with a single spawned task that we need to track
+            # Longer term this command should use PollingCommand as a base
+            task_id = response.response_body.spawned_tasks[0].task_id
 
         if not background:
             # Show the task status
