@@ -79,10 +79,9 @@ mkdir -p %{buildroot}/%{_usr}/lib/pulp/plugins
 mkdir -p %{buildroot}/%{_usr}/lib/pulp/admin/extensions
 mkdir -p %{buildroot}/%{_usr}/lib/pulp/consumer/extensions
 mkdir -p %{buildroot}/%{_usr}/lib/pulp/agent/handlers
-mkdir -p %{buildroot}/%{_var}/lib/pulp/published/http
-mkdir -p %{buildroot}/%{_var}/lib/pulp/published/https
+mkdir -p %{buildroot}/%{_var}/lib/pulp/published/yum/http
+mkdir -p %{buildroot}/%{_var}/lib/pulp/published/yum/https
 mkdir -p %{buildroot}/%{_usr}/lib/yum-plugins/
-mkdir -p %{buildroot}/%{_var}/www
 
 # Configuration
 cp -R pulp_rpm/etc/httpd %{buildroot}/%{_sysconfdir}
@@ -91,9 +90,6 @@ cp -R pulp_rpm/etc/yum %{buildroot}/%{_sysconfdir}
 
 # WSGI
 cp -R pulp_rpm/srv %{buildroot}
-
-# WWW
-ln -s %{_var}/lib/pulp/published %{buildroot}/%{_var}/www/pub
 
 # Extensions
 cp -R pulp_rpm/extensions/admin/* %{buildroot}/%{_usr}/lib/pulp/admin/extensions
@@ -182,8 +178,7 @@ to provide RPM specific support.
 %{_usr}/lib/pulp/plugins/types/iso_support.json
 %{_sysconfdir}/pulp/vhosts80/rpm.conf
 %defattr(-,apache,apache,-)
-%{_var}/www/pub
-%{_var}/lib/pulp/published/
+%{_var}/lib/pulp/published/yum/
 %{_sysconfdir}/pki/pulp/content/
 %defattr(-,root,root,-)
 /srv/pulp/repo_auth.wsgi
