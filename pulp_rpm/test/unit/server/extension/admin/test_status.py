@@ -308,7 +308,7 @@ class TestGroupExportStatusRenderer(PulpClientTests):
 
     def test_render_repos_step(self):
         # Setup
-        data = self.progress[ids.EXPORT_GROUP_DISTRIBUTOR_ID][constants.PROGRESS_REPOS_KEYWORD]
+        data = self.progress[ids.TYPE_ID_DISTRIBUTOR_GROUP_EXPORT][constants.PROGRESS_REPOS_KEYWORD]
         self.renderer.prompt.write = mock.Mock(spec=PulpPrompt)
 
         # Test that when the section has a state that isn't in progress, nothing is done
@@ -317,7 +317,7 @@ class TestGroupExportStatusRenderer(PulpClientTests):
 
         # Change the state to running and call render_repos_step again
         data[constants.PROGRESS_STATE_KEY] = constants.STATE_RUNNING
-        self.progress[ids.EXPORT_GROUP_DISTRIBUTOR_ID][constants.PROGRESS_REPOS_KEYWORD] = data
+        self.progress[ids.TYPE_ID_DISTRIBUTOR_GROUP_EXPORT][constants.PROGRESS_REPOS_KEYWORD] = data
         self.renderer.render_repos_step(self.progress)
         self.assertEqual(1, status.render_itemized_in_progress_state.call_count)
         self.assertEqual(data, status.render_itemized_in_progress_state.call_args[0][1])
@@ -327,14 +327,14 @@ class TestGroupExportStatusRenderer(PulpClientTests):
 
         # Change the state to failed and call render_repos_step again
         data[constants.PROGRESS_STATE_KEY] = constants.STATE_FAILED
-        self.progress[ids.EXPORT_GROUP_DISTRIBUTOR_ID][constants.PROGRESS_REPOS_KEYWORD] = data
+        self.progress[ids.TYPE_ID_DISTRIBUTOR_GROUP_EXPORT][constants.PROGRESS_REPOS_KEYWORD] = data
         self.renderer.render_repos_step(self.progress)
         self.assertEqual(1, status.render_itemized_in_progress_state.call_count)
         self.assertEqual(constants.STATE_FAILED, self.renderer.repos_last_state)
 
     def test_render_isos_step(self):
         # Setup
-        data = self.progress[ids.EXPORT_GROUP_DISTRIBUTOR_ID][constants.PROGRESS_ISOS_KEYWORD]
+        data = self.progress[ids.TYPE_ID_DISTRIBUTOR_GROUP_EXPORT][constants.PROGRESS_ISOS_KEYWORD]
         self.renderer.prompt.write = mock.Mock(spec=PulpPrompt)
 
         # Test that when the section has a state that isn't in progress, nothing is done
@@ -343,7 +343,7 @@ class TestGroupExportStatusRenderer(PulpClientTests):
 
         # Change the state to running and call render_isos_step again
         data[constants.PROGRESS_STATE_KEY] = constants.STATE_RUNNING
-        self.progress[ids.EXPORT_GROUP_DISTRIBUTOR_ID][constants.PROGRESS_ISOS_KEYWORD] = data
+        self.progress[ids.TYPE_ID_DISTRIBUTOR_GROUP_EXPORT][constants.PROGRESS_ISOS_KEYWORD] = data
         self.renderer.render_isos_step(self.progress)
         self.assertEqual(1, status.render_itemized_in_progress_state.call_count)
         self.assertEqual(data, status.render_itemized_in_progress_state.call_args[0][1])
@@ -353,7 +353,7 @@ class TestGroupExportStatusRenderer(PulpClientTests):
 
         # Change the state to failed and call render_isos_step again
         data[constants.PROGRESS_STATE_KEY] = constants.STATE_FAILED
-        self.progress[ids.EXPORT_GROUP_DISTRIBUTOR_ID][constants.PROGRESS_REPOS_KEYWORD] = data
+        self.progress[ids.TYPE_ID_DISTRIBUTOR_GROUP_EXPORT][constants.PROGRESS_REPOS_KEYWORD] = data
         self.renderer.render_isos_step(self.progress)
         self.assertEqual(1, status.render_itemized_in_progress_state.call_count)
         self.assertEqual(constants.STATE_FAILED, self.renderer.isos_last_state)

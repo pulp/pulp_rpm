@@ -765,7 +765,7 @@ class RpmGroupExportStatusRenderer(StatusRenderer):
         :type progress_report: dict
         """
         # Grab the repositories progress report out of the progress_report dict
-        data = progress_report[ids.EXPORT_GROUP_DISTRIBUTOR_ID][constants.PROGRESS_REPOS_KEYWORD]
+        data = progress_report[ids.TYPE_ID_DISTRIBUTOR_GROUP_EXPORT][constants.PROGRESS_REPOS_KEYWORD]
         state = data[constants.PROGRESS_STATE_KEY]
 
         if state == constants.STATE_NOT_STARTED:
@@ -788,7 +788,7 @@ class RpmGroupExportStatusRenderer(StatusRenderer):
         :type progress_report: dict
         """
         # Grab the iso progress report out of the progress_report dict
-        data = progress_report[ids.EXPORT_GROUP_DISTRIBUTOR_ID][constants.PROGRESS_ISOS_KEYWORD]
+        data = progress_report[ids.TYPE_ID_DISTRIBUTOR_GROUP_EXPORT][constants.PROGRESS_ISOS_KEYWORD]
         state = data[constants.PROGRESS_STATE_KEY]
 
         if state == constants.STATE_NOT_STARTED:
