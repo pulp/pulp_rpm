@@ -680,8 +680,7 @@ class BasePublisherTests(BaseYumDistributorPublishTests):
                                              process_steps=[mock_process_step],
                                              finalize_metadata_steps=[mock_metadata_step],
                                              post_metadata_process_steps=[mock_post_process_step])
-
-        base_publish.publish()
+        self.assertRaises(Exception, base_publish.publish)
         mock_metadata_step.initialize_metadata.assert_called_once_with()
 
         self.assertTrue(mock_metadata_step.finalize_metadata.called)
@@ -1155,7 +1154,7 @@ class PublishDistributionStepTests(BaseYumDistributorPublishStepTests):
         step = publish.PublishDistributionStep()
         step.parent = self.publisher
         step._publish_distribution_packages_link(unit)
-        self.assertEquals('Server', step.package_dir)
+        self.assertEquals(os.path.join(self.working_dir, 'Server'), step.package_dir)
 
     def test_publish_distribution_packages_link_with_invalid_packagedir(self):
         self._init_publisher()
@@ -1170,18 +1169,19 @@ class PublishDistributionStepTests(BaseYumDistributorPublishStepTests):
         step.parent = self.publisher
         step._publish_distribution_packages_link(unit)
         packages_dir = os.path.join(self.publisher.repo.working_dir, 'Packages')
-        self.assertEquals('Packages', step.package_dir)
-        self.assertFalse(os.path.isdir(packages_dir))
+        self.assertEquals(packages_dir, step.package_dir)
 
     def test_publish_distribution_packages_link_with_packagedir_delete_existing_Packages(self):
-        packages_dir = os.path.join(self.publisher.repo.working_dir, 'Packages')
-        publish.PublishStep._create_symlink("./", packages_dir)
+        packages_dir = os.path.join(self.working_dir, 'Packages')
+        old_directory = os.path.join(self.working_dir, "foo")
+        os.mkdir(old_directory)
+        publish.PublishStep._create_symlink(old_directory, packages_dir)
+        self.assertEquals(os.path.realpath(packages_dir), old_directory)
         unit = self._generate_distribution_unit('one', {'packagedir': 'Packages'})
         step = publish.PublishDistributionStep()
         step.parent = self.publisher
         step._publish_distribution_packages_link(unit)
-        packages_dir = os.path.join(self.publisher.repo.working_dir, 'Packages')
-        self.assertFalse(os.path.isdir(packages_dir))
+        self.assertEquals(os.path.realpath(packages_dir), self.working_dir)
 
     @mock.patch('pulp_rpm.plugins.distributors.yum.publish.PublishStep._create_symlink')
     def test_publish_distribution_packages_link_error(self, mock_symlink):

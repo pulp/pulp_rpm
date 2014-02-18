@@ -91,7 +91,6 @@ class YumDistributorConfigurationTests(unittest.TestCase):
 
             self.assertEqual(len(error_messages), 0)
 
-
     def test_certificate_invalid(self):
         error_messages = []
         cert = 'nope'
@@ -250,7 +249,8 @@ class YumDistributorConfigurationTests(unittest.TestCase):
 
         configuration._validate_http_publish_dir(http_publish_dir, error_messages)
 
-        mock_validate_usable_directory.assert_called_once_with('http_publish_dir', http_publish_dir, error_messages)
+        mock_validate_usable_directory.assert_called_once_with('http_publish_dir',
+                                                               http_publish_dir, error_messages)
 
     @mock.patch('pulp_rpm.plugins.distributors.yum.configuration._validate_usable_directory')
     def test_https_publish_dir(self, mock_validate_usable_directory):
@@ -259,7 +259,8 @@ class YumDistributorConfigurationTests(unittest.TestCase):
 
         configuration._validate_https_publish_dir(https_publish_dir, error_messages)
 
-        mock_validate_usable_directory.assert_called_once_with('https_publish_dir', https_publish_dir, error_messages)
+        mock_validate_usable_directory.assert_called_once_with('https_publish_dir',
+                                                               https_publish_dir, error_messages)
 
     @mock.patch('pulp_rpm.plugins.distributors.yum.configuration._validate_boolean')
     def test_protected(self, mock_validate_boolean):
@@ -292,7 +293,8 @@ class YumDistributorConfigurationTests(unittest.TestCase):
 
         configuration._validate_use_createrepo(False, error_messages)
 
-        mock_validate_boolean.assert_called_once_with('use_createrepo', False, error_messages, False)
+        mock_validate_boolean.assert_called_once_with('use_createrepo', False, error_messages,
+                                                      False)
 
     # -- public api ------------------------------------------------------------
 
@@ -362,7 +364,8 @@ class YumDistributorConfigurationTests(unittest.TestCase):
     @mock.patch('pulp_rpm.plugins.distributors.yum.configuration._validate_skip')
     @mock.patch('pulp_rpm.plugins.distributors.yum.configuration._validate_skip_pkg_tags')
     @mock.patch('pulp_rpm.plugins.distributors.yum.configuration._validate_use_createrepo')
-    @mock.patch('pulp_rpm.plugins.distributors.yum.configuration._check_for_relative_path_conflicts')
+    @mock.patch('pulp_rpm.plugins.distributors.yum.configuration.'
+                '_check_for_relative_path_conflicts')
     @mock.patch('pulp_rpm.plugins.distributors.yum.configuration.process_cert_based_auth')
     def test_validate_config(self, *mock_methods):
         config_kwargs = {'http': True,
@@ -390,7 +393,8 @@ class YumDistributorConfigurationTests(unittest.TestCase):
         self.assertTrue(valid)
         self.assertEqual(reasons, None)
 
-    @mock.patch('pulp_rpm.plugins.distributors.yum.configuration._check_for_relative_path_conflicts')
+    @mock.patch('pulp_rpm.plugins.distributors.yum.configuration.'
+                '_check_for_relative_path_conflicts')
     def test_validate_config_missing_required(self, mock_check):
         repo = Repository('test')
         config = self._generate_call_config(http=True, https=False)
@@ -405,7 +409,8 @@ class YumDistributorConfigurationTests(unittest.TestCase):
 
         mock_check.assert_called_once_with(repo, config.flatten(), conduit, [expected_reason])
 
-    @mock.patch('pulp_rpm.plugins.distributors.yum.configuration._check_for_relative_path_conflicts')
+    @mock.patch('pulp_rpm.plugins.distributors.yum.configuration.'
+                '_check_for_relative_path_conflicts')
     def test_validate_config_unsupported_keys(self, mock_check):
         repo = Repository('test')
         config = self._generate_call_config(http=True, https=False, relative_url=None, foo='bar')
@@ -432,6 +437,12 @@ class YumDistributorConfigurationTests(unittest.TestCase):
         finally:
             os.unlink(config_path)
 
+    @mock.patch('pulp_rpm.plugins.distributors.yum.configuration._LOG')
+    def test_load_config_fails(self, mock_log):
+        #Test to ensure that we log a warning if the config can't be loaded
+        configuration.load_config("/bad/config/path")
+        self.assertTrue(mock_log.warning.called)
+
     # -- conflicting relative paths --------------------------------------------
 
     def test_relative_path_conflicts_none(self):
@@ -452,7 +463,8 @@ class YumDistributorConfigurationTests(unittest.TestCase):
         conflicting_distributor = {'repo_id': 'i_suck',
                                    'config': {'relative_url': 'test'}}
         conduit = mock.MagicMock()
-        conduit.get_repo_distributors_by_relative_url = mock.MagicMock(return_value=[conflicting_distributor])
+        conduit.get_repo_distributors_by_relative_url = mock.MagicMock(
+            return_value=[conflicting_distributor])
         error_messages = []
 
         configuration._check_for_relative_path_conflicts(repo, config, conduit, error_messages)
@@ -463,7 +475,8 @@ class YumDistributorConfigurationTests(unittest.TestCase):
 
     @mock.patch('pulp_rpm.repo_auth.protected_repo_utils.ProtectedRepoUtils.add_protected_repo')
     @mock.patch('pulp_rpm.repo_auth.repo_cert_utils.RepoCertUtils.write_consumer_cert_bundle')
-    def test_cert_based_auth_ca_and_cert(self, mock_write_consumer_cert_bundle, mock_add_protected_repo):
+    def test_cert_based_auth_ca_and_cert(self, mock_write_consumer_cert_bundle,
+                                         mock_add_protected_repo):
         repo = Repository('test')
         config = {'auth_ca': 'looks legit',
                   'auth_cert': '1234567890'}
@@ -491,3 +504,11 @@ class YumDistributorConfigurationTests(unittest.TestCase):
 
         mock_delete_protected_repo.assert_called_once_with(repo.id)
 
+    @mock.patch('pulp_rpm.repo_auth.protected_repo_utils.ProtectedRepoUtils.delete_protected_repo')
+    def test_remove_cert_based_auth(self, mock_delete_protected_repo):
+        repo = Repository('test')
+        config = {}
+
+        configuration.remove_cert_based_auth(repo, config)
+
+        mock_delete_protected_repo.assert_called_once_with(repo.id)

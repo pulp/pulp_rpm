@@ -553,3 +553,24 @@ class UploadPackageTests(unittest.TestCase):
         self.assertEqual(metadata['license'], 'GPLv2')
         self.assertEqual(metadata['relativepath'], 'walrus-5.21-1.noarch.rpm')
         self.assertEqual(metadata['vendor'], None)
+
+    def test_generate_rpm_data_user_checksum_null(self):
+        # Test
+        unit_key, metadata = upload._generate_rpm_data(self.upload_src_filename,
+                                                       {'checksum-type': None})
+
+        # Verify
+        self.assertEqual(unit_key['name'], 'walrus')
+        self.assertEqual(unit_key['epoch'], '0')
+        self.assertEqual(unit_key['version'], '5.21')
+        self.assertEqual(unit_key['release'], '1')
+        self.assertEqual(unit_key['arch'], 'noarch')
+        self.assertEqual(unit_key['checksum'], 'e837a635cc99f967a70f34b268baa52e0f412c1502e08e924ff5b09f1f9573f2')
+        self.assertEqual(unit_key['checksumtype'], 'sha256')
+
+        self.assertEqual(metadata['buildhost'], 'smqe-ws15')
+        self.assertEqual(metadata['description'], 'A dummy package of walrus')
+        self.assertEqual(metadata['filename'], 'walrus-5.21-1.noarch.rpm')
+        self.assertEqual(metadata['license'], 'GPLv2')
+        self.assertEqual(metadata['relativepath'], 'walrus-5.21-1.noarch.rpm')
+        self.assertEqual(metadata['vendor'], None)
