@@ -167,11 +167,6 @@ class BasePublisher(object):
                     step.report_progress(step.step_id, state=constants.STATE_COMPLETE)
             for step in self.post_metadata_process_steps:
                 step.process()
-        except Exception, e:
-            # Log an exception if something went wrong
-            # log the details so items can be traced on the server.
-            _LOG.exception(e)
-
         finally:
             # Always cleanup the working directory
             shutil.rmtree(self.working_dir, ignore_errors=True)
@@ -311,6 +306,7 @@ class PublishStep(object):
                    {'type': self.step_id, 'repo': self.parent.repo.id})
 
         self._init_step_progress_report(self.step_id)
+        total = 0
         try:
             total = self._get_total(self.unit_type)
             if total == 0:
@@ -336,7 +332,9 @@ class PublishStep(object):
 
         finally:
             try:
-                self.finalize_metadata()
+                # Only finalize the metadata if we would have made it to initialization
+                if total != 0:
+                    self.finalize_metadata()
             except Exception, e:
                 # on the off chance that one of the finalize steps raise an exception we need to
                 # record it as a failure.  If a finalize does fail that error should take precedence
@@ -576,6 +574,9 @@ class PublishRpmStep(PublishStep):
 
     def __init__(self):
         super(PublishRpmStep, self).__init__(constants.PUBLISH_RPMS_STEP, TYPE_ID_RPM)
+        self.file_lists_context = None
+        self.other_context = None
+        self.primary_context = None
 
     def get_unit_generator(self):
         """
@@ -600,13 +601,19 @@ class PublishRpmStep(PublishStep):
         """
         Close each context and write it to the repomd file
         """
-        for context in (self.file_lists_context, self.other_context, self.primary_context):
-            context.finalize()
-
         repomd = self.get_step(constants.PUBLISH_REPOMD_STEP).repomd_file_context
-        repomd.add_metadata_file_metadata('filelists', self.file_lists_context.metadata_file_path)
-        repomd.add_metadata_file_metadata('other', self.other_context.metadata_file_path)
-        repomd.add_metadata_file_metadata('primary', self.primary_context.metadata_file_path)
+
+        if self.file_lists_context:
+            self.file_lists_context.finalize()
+            repomd.add_metadata_file_metadata('filelists',
+                                              self.file_lists_context.metadata_file_path)
+        if self.other_context:
+            self.other_context.finalize()
+            repomd.add_metadata_file_metadata('other', self.other_context.metadata_file_path)
+
+        if self.primary_context:
+            self.primary_context.finalize()
+            repomd.add_metadata_file_metadata('primary', self.primary_context.metadata_file_path)
 
     def process_unit(self, unit):
         """
@@ -660,6 +667,7 @@ class PublishDrpmStep(PublishStep):
 
     def __init__(self):
         super(PublishDrpmStep, self).__init__(constants.PUBLISH_DELTA_RPMS_STEP, TYPE_ID_DRPM)
+        self.context = None
 
     def initialize_metadata(self):
         """
@@ -685,9 +693,10 @@ class PublishDrpmStep(PublishStep):
         """
         Close & finalize each of the metadata files
         """
-        self.context.finalize()
-        self.get_step(constants.PUBLISH_REPOMD_STEP).repomd_file_context.\
-            add_metadata_file_metadata('prestodelta', self.context.metadata_file_path)
+        if self.context:
+            self.context.finalize()
+            self.get_step(constants.PUBLISH_REPOMD_STEP).repomd_file_context.\
+                add_metadata_file_metadata('prestodelta', self.context.metadata_file_path)
 
 
 class PublishErrataStep(PublishStep):
@@ -696,6 +705,7 @@ class PublishErrataStep(PublishStep):
     """
     def __init__(self):
         super(PublishErrataStep, self).__init__(constants.PUBLISH_ERRATA_STEP, TYPE_ID_ERRATA)
+        self.context = None
 
     def initialize_metadata(self):
         """
@@ -712,9 +722,10 @@ class PublishErrataStep(PublishStep):
         """
         Finalize and write to disk the metadata and add the updateinfo file to the repomd
         """
-        self.context.finalize()
-        self.get_step(constants.PUBLISH_REPOMD_STEP).repomd_file_context.\
-            add_metadata_file_metadata('updateinfo', self.context.metadata_file_path)
+        if self.context:
+            self.context.finalize()
+            self.get_step(constants.PUBLISH_REPOMD_STEP).repomd_file_context.\
+                add_metadata_file_metadata('updateinfo', self.context.metadata_file_path)
 
 
 class PublishCompsStep(PublishStep):
@@ -768,9 +779,10 @@ class PublishCompsStep(PublishStep):
         """
         Finalize all metadata associated with the comps file
         """
-        self.comps_context.finalize()
-        self.get_step(constants.PUBLISH_REPOMD_STEP).repomd_file_context.\
-            add_metadata_file_metadata('group', self.comps_context.metadata_file_path)
+        if self.comps_context:
+            self.comps_context.finalize()
+            self.get_step(constants.PUBLISH_REPOMD_STEP).repomd_file_context.\
+                add_metadata_file_metadata('group', self.comps_context.metadata_file_path)
 
 
 class PublishDistributionStep(PublishStep):
@@ -879,6 +891,7 @@ class PublishDistributionStep(PublishStep):
         :type distribution_unit: AssociatedUnit
         """
         symlink_dir = self.get_working_dir()
+        package_path = None
 
         if KEY_PACKAGEDIR in distribution_unit.metadata and \
            distribution_unit.metadata[KEY_PACKAGEDIR] is not None:
@@ -897,13 +910,13 @@ class PublishDistributionStep(PublishStep):
                 _LOG.info(msg)
                 raise InvalidValue(KEY_PACKAGEDIR)
 
-            self.package_dir = distribution_unit.metadata[KEY_PACKAGEDIR]
+            self.package_dir = real_package_path
             if os.path.islink(package_path):
                 # a package path exists as a symlink we are going to remove it since
                 # the _create_symlink will create a real directory
                 os.unlink(package_path)
 
-        if self.package_dir is not 'Packages':
+        if package_path is not os.path.join(symlink_dir, 'Packages'):
             # create the Packages symlink to the content dir, in the content dir
             packages_symlink_path = os.path.join(symlink_dir, 'Packages')
             self._create_symlink("./", packages_symlink_path)
