@@ -15,23 +15,21 @@ import unittest
 
 import mock
 
-from pulp.bindings.exceptions import NotFoundException
 from pulp.bindings.responses import Response, Task, COMPLETED_STATES
 from pulp.client.commands import options
 from pulp.client.commands.polling import FLAG_BACKGROUND
-from pulp.common import tags as tag_utils
 from pulp.devel.unit.util import compare_dict
 
 from pulp_rpm.common import constants, ids
 from pulp_rpm.devel.client_base import PulpClientTests
 from pulp_rpm.extension.admin import export, status
-from pulp_rpm.devel import rpm_support_base
 
 
 class TestRepoExportRunCommand(PulpClientTests):
     """
-    Tests the rpm repo export run command. This makes use of the platform RunPublishRepositoryCommand,
-    so all that's tested here is that the constructor is called correctly.
+    Tests the rpm repo export run command. This makes use of the platform
+    RunPublishRepositoryCommand, so all that's tested here is that the constructor is called
+    correctly.
     """
 
     @mock.patch('pulp.client.commands.repo.sync_publish.RunPublishRepositoryCommand.__init__',
@@ -42,8 +40,11 @@ class TestRepoExportRunCommand(PulpClientTests):
         override arguments
         """
         # Setup
-        expected_options = [export.OPTION_EXPORT_DIR, export.OPTION_END_DATE, export.OPTION_START_DATE,
-                            export.OPTION_ISO_PREFIX, export.OPTION_ISO_SIZE]
+        expected_options = [export.OPTION_EXPORT_DIR,
+                            export.OPTION_END_DATE,
+                            export.OPTION_START_DATE,
+                            export.OPTION_ISO_PREFIX,
+                            export.OPTION_ISO_SIZE]
 
         # Test
         export.RpmExportCommand(self.context)
@@ -149,8 +150,8 @@ class TestRepoGroupExportRunCommand(PulpClientTests):
     @mock.patch('pulp.bindings.repo_groups.RepoGroupDistributorAPI.distributor', autospec=True)
     def test_rpm_group_export_existing_task(self, mock_distributor, mock_publish, mock_poll):
         """
-        Make sure that when there is already a publish operation in progress for the repository, a second
-        one is not started
+        Make sure that when there is already a publish operation in progress for the repository,
+        a second one is not started
         """
         # Setup
         mock_distributor.return_value = (200, mock.Mock(spec=Response))
@@ -171,13 +172,10 @@ class TestRepoGroupExportRunCommand(PulpClientTests):
         Test to make sure the publish binding is called correctly with an existing distributor.
         """
         # Setup
-        mock_distributors.return_value = Response(200, [])
+        mock_distributor = {'distributor_type_id': ids.TYPE_ID_DISTRIBUTOR_GROUP_EXPORT,
+                            'id': 'foo-distributor'}
+        mock_distributors.return_value = Response(200, [mock_distributor])
         mock_publish.return_value = Response(200, [])
-
-        expected_distributor_config = {
-            constants.PUBLISH_HTTP_KEYWORD: True,
-            constants.PUBLISH_HTTPS_KEYWORD: True,
-        }
 
         expected_publish_config = {
             constants.PUBLISH_HTTP_KEYWORD: True,
@@ -198,15 +196,22 @@ class TestRepoGroupExportRunCommand(PulpClientTests):
         self.assertEqual(1, mock_distributors.call_count)
         self.assertEqual('test-group', mock_distributors.call_args[0][1])
 
-        # Assert that when the NonFoundException is raised, a call to create a distributor is made
-        self.assertEqual(1, mock_create.call_count)
-        self.assertEqual('test-group', mock_create.call_args[0][1])
-        self.assertEqual(ids.EXPORT_GROUP_DISTRIBUTOR_ID, mock_create.call_args[0][2])
-        self.assertEqual(expected_distributor_config, mock_create.call_args[0][3])
-        mock_publish.assert_called_once_with(mock.ANY, 'test-group', mock.ANY, expected_publish_config)
+        mock_publish.assert_called_once_with(mock.ANY, 'test-group', mock.ANY,
+                                             expected_publish_config)
+
+    def test_progress(self):
+        mock_renderer = mock.MagicMock()
+        command = export.RpmGroupExportCommand(self.context, mock_renderer,
+                                               ids.EXPORT_GROUP_DISTRIBUTOR_ID)
+        test_task = Task({"progress_report": 'foo'})
+        command.progress(test_task, None)
+        mock_renderer.display_report.assert_called_once_with('foo')
 
 
 class TestRepoGroupExportStatusCommand(PulpClientTests):
+    """
+    Tests for the GroupExportStatusCommand class
+    """
 
     def setUp(self):
         super(TestRepoGroupExportStatusCommand, self).setUp()
@@ -219,9 +224,7 @@ class TestRepoGroupExportStatusCommand(PulpClientTests):
     def tearDown(self):
         self.patcher.stop()
 
-    """
-    Tests for the GroupExportStatusCommand class
-    """
+
     @mock.patch('okaara.cli.Command.add_option', autospec=True)
     def test_repo_group_export_status_structure(self, mock_add_option):
         """
@@ -270,12 +273,20 @@ class TestRepoGroupExportStatusCommand(PulpClientTests):
         command.run(**{options.OPTION_GROUP_ID.keyword: 'test-group'})
         self.assertEqual(0, mock_task_status.call_count)
 
+    def test_progress(self):
+        mock_renderer = mock.MagicMock()
+        command = export.GroupExportStatusCommand(self.context, mock_renderer,
+                                                  ids.EXPORT_GROUP_DISTRIBUTOR_ID)
+        test_task = Task({"progress_report": 'foo'})
+        command.progress(test_task, None)
+        mock_renderer.display_report.assert_called_once_with('foo')
+
 
 class TestGetPublishTasks(unittest.TestCase):
     def test_get_publish_tasks(self):
         context = mock.Mock()
         resource_id = "foo"
-        result = export._get_publish_tasks(resource_id, context)
+        export._get_publish_tasks(resource_id, context)
         tags = ['pulp:repository_group:foo', 'pulp:action:publish']
         criteria = {'filters': {'state': {'$nin': COMPLETED_STATES}, 'tags': {'$all': tags}}}
         self.assertTrue(context.server.tasks_search.search.called)

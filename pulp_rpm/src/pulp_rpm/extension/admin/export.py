@@ -28,10 +28,11 @@ DESC_EXPORT_RUN = _('triggers an immediate export of a repository')
 DESC_GROUP_EXPORT_RUN = _('triggers an immediate export of a repository group')
 DESC_GROUP_EXPORT_STATUS = _('displays the status of a repository group\'s export task')
 
-DESC_ISO_PREFIX = _('prefix to use in the generated ISO name, default: <repo-id>-<current_date>.iso')
-DESC_START_DATE = _('start date for an incremental export; only content associated with a repository'
-                    ' on or after the given value will be included in the exported repository; dates '
-                    'should be in standard ISO8601 format: "1970-01-01T00:00:00"')
+DESC_ISO_PREFIX = _('prefix to use in the generated ISO name, default: <repo-id>-<current_date>'
+                    '.iso')
+DESC_START_DATE = _('start date for an incremental export; only content associated with a '
+                    'repository on or after the given value will be included in the exported '
+                    'repository; dates should be in standard ISO8601 format: "1970-01-01T00:00:00"')
 DESC_END_DATE = _('end date for an incremental export; only content associated with a repository '
                   'on or before the given value will be included in the exported repository; dates '
                   'should be in standard ISO8601 format: "1970-01-01T00:00:00"')
@@ -99,7 +100,8 @@ class RpmGroupExportCommand(PollingCommand):
         :type  renderer:        pulp.client.commands.repo.sync_publish.StatusRenderer
         :param name:            The name to use for the command. This should take i18n into account
         :type  name:            str
-        :param description:     The description to use for the command. This should take i18n into account
+        :param description:     The description to use for the command. This should take i18n into
+                                account
         :type description:      str
         """
         super(RpmGroupExportCommand, self).__init__(name, description, self.run, context)
@@ -156,10 +158,6 @@ class RpmGroupExportCommand(PollingCommand):
                 distributor_config)
             distributors = [response.response_body]
 
-        # Ensure that the distributors is iterable
-        if not isinstance(distributors, list):
-            distributors = [distributors]
-
         publish_config = {
             constants.PUBLISH_HTTP_KEYWORD: serve_http,
             constants.PUBLISH_HTTPS_KEYWORD: serve_https,
@@ -214,7 +212,8 @@ class GroupExportStatusCommand(PollingCommand):
         :type  renderer:        pulp.client.commands.repo.sync_publish.StatusRenderer
         :param name:            The name to use for the command. This should take i18n into account
         :type  name:            str
-        :param description:     The description to use for the command. This should take i18n into account
+        :param description:     The description to use for the command. This should take i18n into
+                                account
         :type description:      str
         """
         super(GroupExportStatusCommand, self).__init__(name, description, self.run, context)
@@ -266,7 +265,7 @@ def _get_publish_tasks(resource_id, context):
     :type  context:         pulp.client.extensions.core.ClientContext
 
     :return: The Task, if it exists. If it does not, this will return None
-    :rtype:  pulp.bindings.responses.Task
+    :rtype:  list of pulp.bindings.responses.Task
     """
     tags = [tag_utils.resource_tag(tag_utils.RESOURCE_REPOSITORY_GROUP_TYPE, resource_id),
             tag_utils.action_tag(tag_utils.ACTION_PUBLISH_TYPE)]
