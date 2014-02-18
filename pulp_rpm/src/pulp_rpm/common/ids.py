@@ -28,7 +28,6 @@ YUM_DISTRIBUTOR_ID = TYPE_ID_DISTRIBUTOR_YUM
 
 # Set when the distributor is added to the repo and later to refer to it specifically
 EXPORT_DISTRIBUTOR_ID = 'export_distributor'
-EXPORT_GROUP_DISTRIBUTOR_ID = 'group_export_distributor'
 
 TYPE_ID_ISO = 'iso'
 TYPE_ID_RPM = 'rpm'

@@ -97,7 +97,7 @@ class TestRepoGroupExportRunCommand(PulpClientTests):
                             export.OPTION_ISO_SIZE]
 
         # Test
-        export.RpmGroupExportCommand(self.context, mock_renderer, ids.EXPORT_GROUP_DISTRIBUTOR_ID)
+        export.RpmGroupExportCommand(self.context, mock_renderer, ids.TYPE_ID_DISTRIBUTOR_GROUP_EXPORT)
 
         # Check that all the flags were added
         self.assertEqual(2, mock_create_flag.call_count)
@@ -132,7 +132,7 @@ class TestRepoGroupExportRunCommand(PulpClientTests):
 
         # Test
         command = export.RpmGroupExportCommand(self.context, mock.MagicMock(),
-                                               ids.EXPORT_GROUP_DISTRIBUTOR_ID)
+                                               ids.TYPE_ID_DISTRIBUTOR_GROUP_EXPORT)
         command.run(**self.kwargs)
 
         # Assert that the call get get the distributor was made correctly
@@ -142,7 +142,7 @@ class TestRepoGroupExportRunCommand(PulpClientTests):
         # Assert that when the NonFoundException is raised, a call to create a distributor is made
         self.assertEqual(1, mock_create.call_count)
         self.assertEqual('test-group', mock_create.call_args[0][1])
-        self.assertEqual(ids.EXPORT_GROUP_DISTRIBUTOR_ID, mock_create.call_args[0][2])
+        self.assertEqual(ids.TYPE_ID_DISTRIBUTOR_GROUP_EXPORT, mock_create.call_args[0][2])
         self.assertEqual(expected_distributor_config, mock_create.call_args[0][3])
 
     @mock.patch('pulp_rpm.extension.admin.export.RpmGroupExportCommand.poll')
@@ -159,7 +159,7 @@ class TestRepoGroupExportRunCommand(PulpClientTests):
 
         # Test
         command = export.RpmGroupExportCommand(mock.MagicMock(), mock.MagicMock(),
-                                               ids.EXPORT_GROUP_DISTRIBUTOR_ID)
+                                               ids.TYPE_ID_DISTRIBUTOR_GROUP_EXPORT)
         command.run(**self.kwargs)
         self.assertEqual(0, mock_publish.call_count)
         mock_poll.assert_called_once_with('Not None', mock.ANY)
@@ -189,7 +189,7 @@ class TestRepoGroupExportRunCommand(PulpClientTests):
 
         # Test
         command = export.RpmGroupExportCommand(self.context, mock.MagicMock(),
-                                               ids.EXPORT_GROUP_DISTRIBUTOR_ID)
+                                               ids.TYPE_ID_DISTRIBUTOR_GROUP_EXPORT)
         command.run(**self.kwargs)
 
         # Assert that the call get get the distributor was made correctly
@@ -202,7 +202,7 @@ class TestRepoGroupExportRunCommand(PulpClientTests):
     def test_progress(self):
         mock_renderer = mock.MagicMock()
         command = export.RpmGroupExportCommand(self.context, mock_renderer,
-                                               ids.EXPORT_GROUP_DISTRIBUTOR_ID)
+                                               ids.TYPE_ID_DISTRIBUTOR_GROUP_EXPORT)
         test_task = Task({"progress_report": 'foo'})
         command.progress(test_task, None)
         mock_renderer.display_report.assert_called_once_with('foo')
@@ -276,7 +276,7 @@ class TestRepoGroupExportStatusCommand(PulpClientTests):
     def test_progress(self):
         mock_renderer = mock.MagicMock()
         command = export.GroupExportStatusCommand(self.context, mock_renderer,
-                                                  ids.EXPORT_GROUP_DISTRIBUTOR_ID)
+                                                  ids.TYPE_ID_DISTRIBUTOR_GROUP_EXPORT)
         test_task = Task({"progress_report": 'foo'})
         command.progress(test_task, None)
         mock_renderer.display_report.assert_called_once_with('foo')
