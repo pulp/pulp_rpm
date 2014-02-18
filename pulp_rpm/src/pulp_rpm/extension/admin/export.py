@@ -235,7 +235,7 @@ class GroupExportStatusCommand(PollingCommand):
         # Retrieve the task id, if it exists
         tasks_to_poll = _get_publish_tasks(group_id, self.context)
 
-        if len(tasks_to_poll) is 0:
+        if not tasks_to_poll:
             msg = _('The repository group is not performing any operations')
             self.prompt.render_paragraph(msg, tag='no-tasks')
         else:
