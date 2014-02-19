@@ -83,6 +83,7 @@ class TestPublishGroup(unittest.TestCase):
         }
         self.config = PluginCallConfiguration({}, self.config_dict)
         self.mock_conduit = mock.MagicMock(spec=RepoGroupPublishConduit)
+        self.mock_conduit.distributor_id = 'mock_distributor_idq'
         self.repo_group = RepositoryGroup('test-group', '', '', {}, ['repo_id'], '/dir')
 
         # We aren't testing _publish_isos here, so let's not call it

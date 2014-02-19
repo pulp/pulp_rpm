@@ -157,7 +157,7 @@ class GroupISODistributor(GroupDistributor):
         # For every repository, extract the requested types to the working directory
         for repo_id, working_dir in rpm_repositories:
             # Create a repo conduit, which makes sharing code with the export and yum distributors easier
-            repo_conduit = RepoPublishConduit(repo_id, ids.EXPORT_GROUP_DISTRIBUTOR_ID)
+            repo_conduit = RepoPublishConduit(repo_id, publish_conduit.distributor_id)
 
             # If there is a date filter perform an incremental export, otherwise do everything
             if self.date_filter:

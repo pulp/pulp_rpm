@@ -11,12 +11,12 @@
 
 from gettext import gettext as _
 
-from pulp.bindings import exceptions
+from pulp.bindings import responses
 from pulp.client.commands import options
 from pulp.client.commands.repo.sync_publish import RunPublishRepositoryCommand
-from pulp.client.commands.repo.status import tasks, status
 from pulp.client import parsers, validators
-from pulp.client.extensions.extensions import PulpCliOption, PulpCliCommand
+from pulp.client.commands.polling import PollingCommand
+from pulp.client.extensions.extensions import PulpCliOption
 from pulp.common import tags as tag_utils
 
 from pulp_rpm.common import ids, constants
@@ -28,10 +28,11 @@ DESC_EXPORT_RUN = _('triggers an immediate export of a repository')
 DESC_GROUP_EXPORT_RUN = _('triggers an immediate export of a repository group')
 DESC_GROUP_EXPORT_STATUS = _('displays the status of a repository group\'s export task')
 
-DESC_ISO_PREFIX = _('prefix to use in the generated ISO name, default: <repo-id>-<current_date>.iso')
-DESC_START_DATE = _('start date for an incremental export; only content associated with a repository'
-                    ' on or after the given value will be included in the exported repository; dates '
-                    'should be in standard ISO8601 format: "1970-01-01T00:00:00"')
+DESC_ISO_PREFIX = _('prefix to use in the generated ISO name, default: <repo-id>-<current_date>'
+                    '.iso')
+DESC_START_DATE = _('start date for an incremental export; only content associated with a '
+                    'repository on or after the given value will be included in the exported '
+                    'repository; dates should be in standard ISO8601 format: "1970-01-01T00:00:00"')
 DESC_END_DATE = _('end date for an incremental export; only content associated with a repository '
                   'on or before the given value will be included in the exported repository; dates '
                   'should be in standard ISO8601 format: "1970-01-01T00:00:00"')
@@ -51,7 +52,6 @@ DESC_SERVE_HTTPS = _('if this flag is used, the ISO images will be served over H
 # Flag names, which are also the kwarg keywords
 SERVE_HTTP = 'serve-http'
 SERVE_HTTPS = 'serve-https'
-BACKGROUND = 'bg'
 
 # The iso prefix is restricted to the same character set as an id, so we use the id_validator
 OPTION_ISO_PREFIX = PulpCliOption('--iso-prefix', DESC_ISO_PREFIX, required=False,
@@ -86,11 +86,11 @@ class RpmExportCommand(RunPublishRepositoryCommand):
                                                override_config_options=override_config_options)
 
 
-class RpmGroupExportCommand(PulpCliCommand):
+class RpmGroupExportCommand(PollingCommand):
     """
     The 'pulp-admin rpm repo group export run' command.
     """
-    def __init__(self, context, renderer, distributor_id, name='run', description=DESC_GROUP_EXPORT_RUN):
+    def __init__(self, context, renderer, name='run', description=DESC_GROUP_EXPORT_RUN):
         """
         The constructor for RpmGroupExportCommand
 
@@ -98,19 +98,17 @@ class RpmGroupExportCommand(PulpCliCommand):
         :type  context:         pulp.client.extensions.core.ClientContext
         :param renderer:        The progress renderer to use with this command
         :type  renderer:        pulp.client.commands.repo.sync_publish.StatusRenderer
-        :param distributor_id:  The distributor id to use when publishing the repository group
-        :type  distributor_id:  str
         :param name:            The name to use for the command. This should take i18n into account
         :type  name:            str
-        :param description:     The description to use for the command. This should take i18n into account
+        :param description:     The description to use for the command. This should take i18n into
+                                account
         :type description:      str
         """
-        super(RpmGroupExportCommand, self).__init__(name, description, self.run)
+        super(RpmGroupExportCommand, self).__init__(name, description, self.run, context)
 
         self.context = context
         self.prompt = context.prompt
         self.renderer = renderer
-        self.distributor_id = distributor_id
 
         self.add_option(options.OPTION_GROUP_ID)
         self.add_option(OPTION_ISO_PREFIX)
@@ -121,7 +119,6 @@ class RpmGroupExportCommand(PulpCliCommand):
 
         self.create_flag('--' + SERVE_HTTP, DESC_SERVE_HTTP)
         self.create_flag('--' + SERVE_HTTPS, DESC_SERVE_HTTPS)
-        self.create_flag('--' + BACKGROUND, DESC_BACKGROUND)
 
     def run(self, **kwargs):
         """
@@ -137,20 +134,29 @@ class RpmGroupExportCommand(PulpCliCommand):
         export_dir = kwargs[OPTION_EXPORT_DIR.keyword]
         serve_http = kwargs[SERVE_HTTP]
         serve_https = kwargs[SERVE_HTTPS]
-        background = kwargs[BACKGROUND]
 
         # Since the export distributor is not added to a repository group on creation, add it here
         # if it is not already associated with the group id
-        try:
-            self.context.server.repo_group_distributor.distributor(group_id, self.distributor_id)
-        except exceptions.NotFoundException:
+
+        # Find the export distributors for this repo group
+        response = self.context.server.repo_group_distributor.distributors(group_id)
+        all_distributors = response.response_body
+        distributors = []
+        # Iterate through and do comparision since the API doesn't support full search
+        for distributor in all_distributors:
+            if distributor.get('distributor_type_id') == ids.TYPE_ID_DISTRIBUTOR_GROUP_EXPORT:
+                distributors.append(distributor)
+
+        if len(distributors) == 0:
             distributor_config = {
                 constants.PUBLISH_HTTP_KEYWORD: serve_http,
                 constants.PUBLISH_HTTPS_KEYWORD: serve_https,
             }
-            self.context.server.repo_group_distributor.create(group_id,
-                                                              ids.TYPE_ID_DISTRIBUTOR_GROUP_EXPORT,
-                                                              distributor_config, self.distributor_id)
+            response = self.context.server.repo_group_distributor.create(
+                group_id,
+                ids.TYPE_ID_DISTRIBUTOR_GROUP_EXPORT,
+                distributor_config)
+            distributors = [response.response_body]
 
         publish_config = {
             constants.PUBLISH_HTTP_KEYWORD: serve_http,
@@ -165,30 +171,34 @@ class RpmGroupExportCommand(PulpCliCommand):
         self.prompt.render_title(_('Exporting Repository Group [%s]' % group_id))
 
         # Retrieve all publish tasks for this repository group
-        task_id = _get_publish_task_id('repository_group', group_id, self.context)
+        tasks_to_poll = _get_publish_tasks(group_id, self.context)
 
-        if task_id is not None:
-            msg = _('A publish task is already in progress for this repository.')
-            if not background:
-                msg += _(' Its progress will be tracked below.')
+        if len(tasks_to_poll) > 0:
+            msg = _('A publish task is already in progress for this repository group.')
             self.context.prompt.render_paragraph(msg, tag='in-progress')
+            self.poll(tasks_to_poll, kwargs)
         else:
             # If there is no existing publish for this repo group, start one
-            response = self.context.server.repo_group_actions.publish(group_id, self.distributor_id,
-                                                                      publish_config)
-            # This will return a TaskResult with a single spawned task that we need to track
-            # Longer term this command should use PollingCommand as a base
-            task_id = response.response_body.spawned_tasks[0].task_id
+            for distributor in distributors:
+                response = self.context.server.repo_group_actions.publish(group_id,
+                                                                          distributor.get('id'),
+                                                                          publish_config)
+                self.poll(response.response_body, kwargs)
 
-        if not background:
-            # Show the task status
-            status.display_task_status(self.context, self.renderer, task_id)
-        else:
-            msg = _('The status of this publish can be displayed using the status command.')
-            self.context.prompt.render_paragraph(msg, 'background')
+    def progress(self, task, spinner):
+        """
+        Render the progress report, if it is available on the given task.
+
+        :param task:    The Task that we wish to render progress about
+        :type  task:    pulp.bindings.responses.Task
+        :param spinner: Not used by this method, but the superclass will give it to us
+        :type  spinner: okaara.progress.Spinner
+        """
+        if task.progress_report is not None:
+            self.renderer.display_report(task.progress_report)
 
 
-class GroupExportStatusCommand(PulpCliCommand):
+class GroupExportStatusCommand(PollingCommand):
     """
     The rpm repo group export status command.
     """
@@ -202,10 +212,11 @@ class GroupExportStatusCommand(PulpCliCommand):
         :type  renderer:        pulp.client.commands.repo.sync_publish.StatusRenderer
         :param name:            The name to use for the command. This should take i18n into account
         :type  name:            str
-        :param description:     The description to use for the command. This should take i18n into account
+        :param description:     The description to use for the command. This should take i18n into
+                                account
         :type description:      str
         """
-        super(GroupExportStatusCommand, self).__init__(name, description, self.run)
+        super(GroupExportStatusCommand, self).__init__(name, description, self.run, context)
 
         self.context = context
         self.prompt = context.prompt
@@ -222,30 +233,41 @@ class GroupExportStatusCommand(PulpCliCommand):
         self.prompt.render_title(_('Repository Group [%s] Export Status' % group_id))
 
         # Retrieve the task id, if it exists
-        task_id = _get_publish_task_id('repository_group', group_id, self.context)
+        tasks_to_poll = _get_publish_tasks(group_id, self.context)
 
-        if task_id is None:
+        if not tasks_to_poll:
             msg = _('The repository group is not performing any operations')
             self.prompt.render_paragraph(msg, tag='no-tasks')
         else:
-            status.display_task_status(self.context, self.renderer, task_id)
+            self.poll(tasks_to_poll, kwargs)
+
+    def progress(self, task, spinner):
+        """
+        Render the progress report, if it is available on the given task.
+
+        :param task:    The Task that we wish to render progress about
+        :type  task:    pulp.bindings.responses.Task
+        :param spinner: Not used by this method, but the superclass will give it to us
+        :type  spinner: okaara.progress.Spinner
+        """
+        if task.progress_report is not None:
+            self.renderer.display_report(task.progress_report)
 
 
-def _get_publish_task_id(resource_type, resource_id, context):
+def _get_publish_tasks(resource_id, context):
     """
-    :param resource_type:   The resource type to get. See pulp.common.tags for examples. Note - the repo
-                            group is 'repository_group', but is not yet in pulp.common.tags
-    :type  resource_type:   str
-    :param resource_id:     The id of the resource to retrieve the task id for. This should be a repo or
-                            group id
+    Get the list of currently running publish tasks for the given repo_group id.
+
+    :param resource_id:     The id of the resource to retrieve the task id for. This should be a
+                            repo or group id
     :type  resource_id:     str
     :param context:         The client context is used when fetching existing task ids
     :type  context:         pulp.client.extensions.core.ClientContext
 
-    :return: The task id, if it exists. If it does not, this will return None
-    :rtype:  str
+    :return: The Task, if it exists. If it does not, this will return None
+    :rtype:  list of pulp.bindings.responses.Task
     """
-    tags = [tag_utils.resource_tag(resource_type, resource_id),
+    tags = [tag_utils.resource_tag(tag_utils.RESOURCE_REPOSITORY_GROUP_TYPE, resource_id),
             tag_utils.action_tag(tag_utils.ACTION_PUBLISH_TYPE)]
-    existing_tasks = context.server.tasks.get_all_tasks(tags)
-    return tasks.relevant_existing_task_id(existing_tasks.response_body)
+    criteria = {'filters': {'state': {'$nin': responses.COMPLETED_STATES}, 'tags': {'$all': tags}}}
+    return context.server.tasks_search.search(**criteria)
