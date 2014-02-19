@@ -243,35 +243,29 @@ class TestRepoGroupExportStatusCommand(PulpClientTests):
         self.assertEqual(command.run, command.method)
 
     @mock.patch('pulp_rpm.extension.admin.export.GroupExportStatusCommand.poll')
-    @mock.patch('pulp.client.commands.repo.status.status.display_task_status', autospec=True)
-    def test_repo_group_export_status_run(self, mock_task_status, mock_poll):
+    def test_repo_group_export_status_run(self, mock_poll):
         """
         Test the case of an existing task that should be tracked
         """
-        # Setup
         self.mock_get_publish_tasks.return_value = 'task_id'
         mock_renderer = mock.Mock()
 
-        # Test
         command = export.GroupExportStatusCommand(self.context, mock_renderer)
         command.run(**{options.OPTION_GROUP_ID.keyword: 'test-group'})
 
         self.mock_get_publish_tasks.assert_called_once_with('test-group', self.context)
-
         self.assertTrue(mock_poll.called)
 
-    @mock.patch('pulp.client.commands.repo.status.status.display_task_status', autospec=True)
-    def test_repo_group_export_status_no_task(self, mock_task_status):
+    @mock.patch('pulp_rpm.extension.admin.export.GroupExportStatusCommand.poll')
+    def test_repo_group_export_status_no_task(self, mock_poll):
         """
-        Test that when no task id is found, display_task_status is not called
+        Test that when no task id is found, poll is not called.
         """
-        # Setup
         mock_renderer = mock.Mock()
 
-        # Test
         command = export.GroupExportStatusCommand(self.context, mock_renderer)
         command.run(**{options.OPTION_GROUP_ID.keyword: 'test-group'})
-        self.assertEqual(0, mock_task_status.call_count)
+        self.assertEqual(0, mock_poll.call_count)
 
     def test_progress(self):
         mock_renderer = mock.MagicMock()
