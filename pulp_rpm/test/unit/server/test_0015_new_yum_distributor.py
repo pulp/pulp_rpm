@@ -212,7 +212,8 @@ class MigrationTests(BaseMigrationTests):
         self.migration_module._remove_legacy_publish_dirs = self.orig_remove_legacy_publish_dirs
 
 
-    def test_migrate(self):
+    @mock.patch('pulp.plugins.loader.api._is_initialized', return_value=True)
+    def test_migrate(self, mock_is_init):
 
         repo_id = 'test_repo'
         config = {'relative_url': '/this/way/to/the/test_repo'}
@@ -227,3 +228,24 @@ class MigrationTests(BaseMigrationTests):
         self.migration_module._re_publish_repository.assert_called_once()
         self.migration_module._remove_legacy_publish_dirs.assert_called_once()
 
+    @mock.patch('pulp.plugins.loader.api._is_initialized', return_value=True)
+    @mock.patch('pulp.plugins.loader.api.initialize')
+    def test_migrate_already_initialized(self, mock_init, mock_is_init):
+        with mock.patch.object(self.migration_module, 'get_collection') as mock_get_collection:
+            mock_get_collection.return_value.find.return_value = []
+
+            self.migration_module.migrate()
+
+            mock_is_init.assert_called_once_with()
+            self.assertEqual(mock_init.call_count, 0)
+
+    @mock.patch('pulp.plugins.loader.api._is_initialized', return_value=False)
+    @mock.patch('pulp.plugins.loader.api.initialize')
+    def test_migrate_not_initialized(self, mock_init, mock_is_init):
+        with mock.patch.object(self.migration_module, 'get_collection') as mock_get_collection:
+            mock_get_collection.return_value.find.return_value = []
+
+            self.migration_module.migrate()
+
+            mock_is_init.assert_called_once_with()
+            mock_init.assert_called_once_with()

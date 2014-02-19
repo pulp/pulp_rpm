@@ -346,8 +346,9 @@ def _generate_rpm_data(rpm_filename, user_metadata):
 
     # -- Unit Key -----------------------
     # Checksum
-    if 'checksum-type' in user_metadata:
-        unit_key['checksumtype'] = user_metadata['checksum-type']
+    user_checksum = user_metadata.get('checksum-type')
+    if user_checksum:
+        unit_key['checksumtype'] = user_checksum
     else:
         unit_key['checksumtype'] = verification.TYPE_SHA256
     unit_key['checksum'] = _calculate_checksum(unit_key['checksumtype'], rpm_filename)

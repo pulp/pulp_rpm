@@ -167,11 +167,6 @@ class BasePublisher(object):
                     step.report_progress(step.step_id, state=constants.STATE_COMPLETE)
             for step in self.post_metadata_process_steps:
                 step.process()
-        except Exception, e:
-            # Log an exception if something went wrong
-            # log the details so items can be traced on the server.
-            _LOG.exception(e)
-
         finally:
             # Always cleanup the working directory
             shutil.rmtree(self.working_dir, ignore_errors=True)
@@ -896,6 +891,7 @@ class PublishDistributionStep(PublishStep):
         :type distribution_unit: AssociatedUnit
         """
         symlink_dir = self.get_working_dir()
+        package_path = None
 
         if KEY_PACKAGEDIR in distribution_unit.metadata and \
            distribution_unit.metadata[KEY_PACKAGEDIR] is not None:
@@ -914,13 +910,13 @@ class PublishDistributionStep(PublishStep):
                 _LOG.info(msg)
                 raise InvalidValue(KEY_PACKAGEDIR)
 
-            self.package_dir = distribution_unit.metadata[KEY_PACKAGEDIR]
+            self.package_dir = real_package_path
             if os.path.islink(package_path):
                 # a package path exists as a symlink we are going to remove it since
                 # the _create_symlink will create a real directory
                 os.unlink(package_path)
 
-        if self.package_dir is not 'Packages':
+        if package_path is not os.path.join(symlink_dir, 'Packages'):
             # create the Packages symlink to the content dir, in the content dir
             packages_symlink_path = os.path.join(symlink_dir, 'Packages')
             self._create_symlink("./", packages_symlink_path)
