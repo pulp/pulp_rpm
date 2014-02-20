@@ -41,39 +41,6 @@ FLAG_RECURSIVE = PulpCliFlag('--recursive', DESC_RECURSIVE)
 
 # -- commands -----------------------------------------------------------------
 
-class RecursiveCopyCommand(UnitCopyCommand):
-    """
-    Base class for all copy commands in this module that should support specifying a recursive
-    option to the plugin.
-    """
-
-    def __init__(self, context, name, description, type_id, unit_threshold=DISPLAY_UNITS_THRESHOLD):
-        UnitCopyCommand.__init__(self, context, name=name, description=description, type_id=type_id)
-
-        self.add_flag(FLAG_RECURSIVE)
-
-        self.unit_threshold = unit_threshold
-
-    def generate_override_config(self, **kwargs):
-        override_config = {}
-
-        if kwargs[FLAG_RECURSIVE.keyword]:
-            override_config[CONFIG_RECURSIVE] = True
-
-        return override_config
-
-    def succeeded(self, task):
-        """
-        It would seem to make sense that each subclass would define its own version of succeeded to
-        properly format the list of units for its specific type. However, it's possible multiple types
-        were copied at the same time, despite the fact that the commands are scoped to a type
-        (ex: recursively copying a package group). The simplest approach is for
-        this handling to be done here in the base class so that every subclass can display every type.
-        """
-
-        copied_units = task.result  # entries are a dict containing unit_key and type_id
-        units_display.display_units(self.prompt, copied_units, self.unit_threshold)
-
 
 class NonRecursiveCopyCommand(UnitCopyCommand):
     """
@@ -82,13 +49,38 @@ class NonRecursiveCopyCommand(UnitCopyCommand):
     """
 
     def __init__(self, context, name, description, type_id, unit_threshold=DISPLAY_UNITS_THRESHOLD):
-        UnitCopyCommand.__init__(self, context, name=name, description=description, type_id=type_id)
+        super(NonRecursiveCopyCommand, self).__init__(context, name=name, description=description, type_id=type_id)
 
         self.unit_threshold = unit_threshold
 
-    def succeeded(self, task):
-        copied_units = task.result  # entries are a dict containing unit_key and type_id
-        units_display.display_units(self.prompt, copied_units, self.unit_threshold)
+    def get_formatter_for_type(self, type_id):
+        """
+        Hook to get a the formatter for a given type
+
+        :param type_id: the type id for which we need to get the formatter
+        :type type_id: str
+        """
+        return units_display.get_formatter_for_type(type_id)
+
+
+class RecursiveCopyCommand(NonRecursiveCopyCommand):
+    """
+    Base class for all copy commands in this module that should support specifying a recursive
+    option to the plugin.
+    """
+
+    def __init__(self, context, name, description, type_id, unit_threshold=DISPLAY_UNITS_THRESHOLD):
+        super(RecursiveCopyCommand, self).__init__(context, name=name, description=description, type_id=type_id)
+
+        self.add_flag(FLAG_RECURSIVE)
+
+    def generate_override_config(self, **kwargs):
+        override_config = {}
+
+        if kwargs[FLAG_RECURSIVE.keyword]:
+            override_config[CONFIG_RECURSIVE] = True
+
+        return override_config
 
 
 class PackageCopyCommand(RecursiveCopyCommand):
