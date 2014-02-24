@@ -18,7 +18,7 @@
 
 Name: pulp-rpm
 Version: 2.4.0
-Release: 0.2.alpha%{?dist}
+Release: 0.3.alpha%{?dist}
 Summary: Support for RPM content in the Pulp platform
 Group: Development/Languages
 License: GPLv2
@@ -272,6 +272,19 @@ A collection of yum plugins supplementing Pulp consumer operations.
 
 
 %changelog
+* Mon Feb 24 2014 Jeff Ortel <jortel@redhat.com> 2.4.0-0.3.alpha
+- 1067169 - Fixed the copy command so it outputs the result without crashing
+  (mhrivnak@redhat.com)
+- 1064594 - initializing plugin loader for migration 0015 (mhrivnak@redhat.com)
+- 1042932 - Fix listings files in export distributor for both individual repos
+  and repo groups. (bcourt@redhat.com)
+- 1046160 - giving up ownership of /var/lib/pulp/published
+  (mhrivnak@redhat.com)
+- 1053674 - implement distributor_removed on yum distributor
+  (bcourt@redhat.com)
+- 1056243 - Implement yum distributor create_consumer_payload (fix consumer
+  binding) (bcourt@redhat.com)
+
 * Tue Jan 28 2014 Jeff Ortel <jortel@redhat.com> 2.4.0-0.2.alpha
 - 921743 - Adjust ownership and permissions for a variety of the RPM paths.
   (rbarlow@redhat.com)
