@@ -10,12 +10,9 @@
 # NON-INFRINGEMENT, or FITNESS FOR A PARTICULAR PURPOSE. You should
 # have received a copy of GPLv2 along with this software; if not, see
 # http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt.
-import inspect
-
 import mock
 
 from pulp.client.commands.unit import UnitCopyCommand
-from pulp_rpm.common import models
 
 from pulp_rpm.common.constants import CONFIG_RECURSIVE
 from pulp_rpm.common.ids import (TYPE_ID_RPM, TYPE_ID_SRPM, TYPE_ID_DRPM, TYPE_ID_ERRATA,
@@ -103,7 +100,7 @@ class PackageCopyCommandTests(PulpClientTests):
         command = copy_commands.PackageCopyCommand(self.context, 'copy', '', '')
 
         # get a formatter and make sure it can be used
-        formatter = command.get_formatter_for_type(models.RPM.TYPE)
+        formatter = command.get_formatter_for_type(TYPE_ID_RPM)
         unit_string = formatter({'name': 'package1', 'version': '1.2.3', 'release': '1', 'arch': 'x86_64'})
 
         # make sure the name appears in the formatted string somewhere, which
