@@ -34,6 +34,7 @@ if yum.__version__ < (3,2,28):
                                           filedata['release'])] = un
                 no = self._no_cache.setdefault(filedata['name'], set())
                 no.add(un)
+        return True
     UpdateMetadata.add_notice = add_notice
 
 
