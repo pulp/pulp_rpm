@@ -17,7 +17,6 @@ Test the pulp_rpm.plugins.importers.yum.depsolve module.
 import unittest
 
 from pulp.plugins.model import Unit
-
 from pulp_rpm.common import models
 from pulp_rpm.plugins.importers.yum import depsolve
 

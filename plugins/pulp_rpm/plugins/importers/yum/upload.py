@@ -15,17 +15,18 @@ import hashlib
 import logging
 import os
 import shutil
+from xml.etree import cElementTree as ET
 
 import rpm
-from xml.etree import cElementTree as ET
 
 from pulp.plugins.util import verification
 from pulp.server.db.model.criteria import UnitAssociationCriteria
-
 from pulp_rpm.common import models
 from pulp_rpm.plugins.importers.yum import utils
 from pulp_rpm.plugins.importers.yum.parse import rpm as rpm_parse
 from pulp_rpm.plugins.importers.yum.repomd import primary
+
+
 
 
 # this is required because some of the pre-migration XML tags use the "rpm"

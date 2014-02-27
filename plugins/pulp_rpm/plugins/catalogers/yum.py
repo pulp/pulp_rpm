@@ -10,14 +10,11 @@
 # http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt.
 
 import shutil
-
 from tempfile import mkdtemp
 from urlparse import urljoin
 
 from nectar.config import DownloaderConfig
-
 from pulp.plugins.cataloger import Cataloger
-
 from pulp_rpm.common import models
 from pulp_rpm.plugins.importers.yum.repomd.metadata import MetadataFiles
 from pulp_rpm.plugins.importers.yum.repomd import primary

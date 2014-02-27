@@ -14,9 +14,9 @@
 import logging
 
 from pulp.server.db.model.criteria import UnitAssociationCriteria
-
 from pulp_rpm.common import models
 from pulp_rpm.plugins.importers.yum.utils import paginate
+
 
 _LOGGER = logging.getLogger(__name__)
 

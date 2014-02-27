@@ -14,6 +14,7 @@ import logging
 
 from pulp_rpm.common import models
 
+
 _LOGGER = logging.getLogger(__name__)
 
 METADATA_FILE_NAME = 'updateinfo'

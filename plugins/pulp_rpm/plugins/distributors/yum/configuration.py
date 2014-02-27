@@ -16,12 +16,12 @@ from ConfigParser import SafeConfigParser
 from gettext import gettext as _
 
 from pulp.server.managers import factory
-
 from pulp_rpm.common.constants import SCRATCHPAD_DEFAULT_METADATA_CHECKSUM, \
     CONFIG_DEFAULT_CHECKSUM, CONFIG_KEY_CHECKSUM_TYPE, REPO_AUTH_CONFIG_FILE
 from pulp_rpm.common.ids import TYPE_ID_DISTRIBUTOR_YUM
 from pulp_rpm.repo_auth import protected_repo_utils, repo_cert_utils
 from pulp_rpm.yum_plugin import util
+
 
 # -- constants -----------------------------------------------------------------
 

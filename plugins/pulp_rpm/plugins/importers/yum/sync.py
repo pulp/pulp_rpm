@@ -20,7 +20,6 @@ from gettext import gettext as _
 
 from pulp.common.plugins import importer_constants
 from pulp.plugins.util import nectar_config as nectar_utils
-
 from pulp_rpm.common import constants, models
 from pulp_rpm.plugins.importers.yum import existing, purge
 from pulp_rpm.plugins.importers.yum.repomd import metadata, primary, packages, updateinfo, presto, group

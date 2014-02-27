@@ -12,16 +12,9 @@
 # http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt.
 
 from ConfigParser import SafeConfigParser
-from gettext import gettext as _
-import csv
-import errno
 import logging
-import os
-import shutil
-import traceback
 
-from pulp_rpm.common import constants, models
-from pulp_rpm.common.progress import PublishProgressReport
+from pulp_rpm.common import constants
 from pulp_rpm.repo_auth.protected_repo_utils import ProtectedRepoUtils
 from pulp_rpm.repo_auth.repo_cert_utils import RepoCertUtils
 

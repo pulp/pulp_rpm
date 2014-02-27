@@ -17,10 +17,10 @@ import os
 import shutil
 
 from pulp.server.db.model.criteria import UnitAssociationCriteria
-
 from pulp_rpm.common import models, constants
 from pulp_rpm.plugins.importers.yum import depsolve
 from pulp_rpm.plugins.importers.yum import existing
+
 
 _LOGGER = logging.getLogger(__name__)
 

@@ -16,7 +16,6 @@ import functools
 from pulp.common.plugins import importer_constants
 from pulp.server.db.model.criteria import UnitAssociationCriteria
 from pulp.server.managers.repo.unit_association import OWNER_TYPE_IMPORTER
-
 from pulp_rpm.common import models
 from pulp_rpm.plugins.importers.yum.repomd import packages, primary, presto, updateinfo, group
 

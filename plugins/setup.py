@@ -39,6 +39,9 @@ setup(
         ],
         'pulp.group_distributors': [
             'rpm_export = pulp_rpm.plugins.distributors.export_distributor.groupdistributor:entry_point',
+        ],
+        'pulp.server.db.migrations': [
+            'pulp_rpm = pulp_rpm.plugins.migrations'
         ]
     }
 )

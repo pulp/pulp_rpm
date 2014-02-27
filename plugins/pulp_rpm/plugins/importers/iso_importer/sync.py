@@ -22,9 +22,9 @@ from nectar.downloaders.local import LocalFileDownloader
 from pulp.common.plugins import importer_constants
 from pulp.common.util import encode_unicode
 from pulp.plugins.conduits.mixins import UnitAssociationCriteria
-
 from pulp_rpm.common import constants, ids, models
 from pulp_rpm.common.progress import SyncProgressReport
+
 
 logger = logging.getLogger(__name__)
 

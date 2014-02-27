@@ -17,7 +17,6 @@ import shutil
 from nectar.listener import DownloadEventListener, AggregatingEventListener
 from pulp.common.plugins import importer_constants
 from pulp.plugins.util import verification
-
 from pulp_rpm.common import constants, models
 
 

@@ -17,14 +17,12 @@ import shutil
 from pulp.common.config import read_json_config
 from pulp.plugins.distributor import Distributor
 from pulp.server.config import config as pulp_server_config
-
 import pulp_rpm.common.constants as constants
 from pulp_rpm.common.ids import (
     TYPE_ID_DISTRIBUTOR_YUM, TYPE_ID_DISTRO, TYPE_ID_DRPM, TYPE_ID_ERRATA,
     TYPE_ID_PKG_CATEGORY, TYPE_ID_PKG_GROUP, TYPE_ID_RPM, TYPE_ID_SRPM,
     TYPE_ID_YUM_REPO_METADATA_FILE)
 from pulp_rpm.yum_plugin import util
-
 from . import configuration, publish
 
 

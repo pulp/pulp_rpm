@@ -17,6 +17,8 @@ import os
 from pulp_rpm.common import models
 from pulp_rpm.plugins.importers.yum import utils
 
+
+
 # primary.xml element tags -----------------------------------------------------
 METADATA_FILE_NAME = 'primary'
 

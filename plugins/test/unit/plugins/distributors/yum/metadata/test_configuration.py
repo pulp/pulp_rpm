@@ -16,7 +16,6 @@ import unittest
 from mock import MagicMock, patch, ANY
 
 from pulp.plugins.config import PluginCallConfiguration
-
 from pulp_rpm.common.constants import CONFIG_DEFAULT_CHECKSUM, \
     SCRATCHPAD_DEFAULT_METADATA_CHECKSUM, CONFIG_KEY_CHECKSUM_TYPE
 from pulp_rpm.common.ids import TYPE_ID_DISTRIBUTOR_YUM

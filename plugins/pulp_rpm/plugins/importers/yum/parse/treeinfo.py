@@ -19,10 +19,10 @@ import tempfile
 
 from nectar.listener import AggregatingEventListener
 from nectar.request import DownloadRequest
-
 from pulp_rpm.common import constants, ids, models
 from pulp_rpm.plugins.importers.yum.listener import DistroFileListener
 from pulp_rpm.plugins.importers.yum.repomd import nectar_factory
+
 
 SECTION_GENERAL = 'general'
 SECTION_STAGE2 = 'stage2'

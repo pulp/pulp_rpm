@@ -12,14 +12,12 @@
 # http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt.
 
 from gettext import gettext as _
-import logging
-import os
 
 from pulp.plugins.importer import Importer
 from pulp.common.config import read_json_config
-
 from pulp_rpm.common import ids, models
 from pulp_rpm.plugins.importers.yum import sync, associate, upload, config_validate
+
 
 
 # The platform currently doesn't support automatic loading of conf files when the plugin

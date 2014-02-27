@@ -14,11 +14,11 @@ import os
 import shutil
 import tempfile
 
-from pulp.common.plugins import importer_constants
-from pulp.plugins.model import Repository, Unit
 import mock
 
-from pulp_rpm.common import ids, models, progress
+from pulp.common.plugins import importer_constants
+from pulp.plugins.model import Repository, Unit
+from pulp_rpm.common import ids, models
 from pulp_rpm.plugins.importers.iso_importer import importer, sync
 from pulp_rpm.devel.rpm_support_base import PulpRPMTests
 from pulp_rpm.devel import importer_mocks

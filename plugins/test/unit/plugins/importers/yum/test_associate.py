@@ -14,15 +14,16 @@
 import unittest
 
 import mock
+
 from pulp.plugins.conduits.unit_import import ImportUnitConduit
 from pulp.plugins.config import PluginCallConfiguration
 from pulp.plugins.model import Unit, Repository
 from pulp.server.db.model.criteria import UnitAssociationCriteria
 import pulp.server.managers.factory as manager_factory
-
 import model_factory
 from pulp_rpm.common import models, constants
 from pulp_rpm.plugins.importers.yum import associate
+
 
 manager_factory.initialize()
 

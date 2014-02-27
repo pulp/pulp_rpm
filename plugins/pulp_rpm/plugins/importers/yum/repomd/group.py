@@ -15,6 +15,7 @@ import logging
 
 from pulp_rpm.common import models
 
+
 _LOGGER = logging.getLogger(__name__)
 
 GROUP_TAG = 'group'

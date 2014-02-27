@@ -14,7 +14,6 @@
 import logging
 
 from pulp.server.db.model.criteria import UnitAssociationCriteria
-
 from pulp_rpm.common import version_utils, models
 from pulp_rpm.plugins.importers.yum.utils import paginate
 
