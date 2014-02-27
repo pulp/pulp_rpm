@@ -12,14 +12,14 @@
 from gettext import gettext as _
 import logging
 
-from pulp_rpm.extensions import criteria_utils
 from pulp.client.commands.criteria import DisplayUnitAssociationsCommand
 from pulp.client.extensions.extensions import PulpCliOptionGroup, PulpCliOption
 
-
+from pulp_rpm.extensions.admin import criteria_utils
 # -- constants ----------------------------------------------------------------
 
 # Must correspond to the IDs in the type definitions
+
 TYPE_RPM = 'rpm'
 TYPE_SRPM = 'srpm'
 TYPE_DRPM = 'drpm'

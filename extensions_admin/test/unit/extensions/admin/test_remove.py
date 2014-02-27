@@ -51,13 +51,13 @@ class PackageRemoveCommandTests(PulpClientTests):
     Simply verifies the criteria_utils is called from the overridden methods.
     """
 
-    @mock.patch('pulp_rpm.extensions.criteria_utils.parse_key_value')
+    @mock.patch('pulp_rpm.extensions.admin.criteria_utils.parse_key_value')
     def test_key_value(self, mock_parse):
         command = remove_commands.PackageRemoveCommand(self.context, 'copy', '', '')
         command._parse_key_value('foo')
         mock_parse.assert_called_once_with('foo')
 
-    @mock.patch('pulp_rpm.extensions.criteria_utils.parse_sort')
+    @mock.patch('pulp_rpm.extensions.admin.criteria_utils.parse_sort')
     def test_sort(self, mock_parse):
         command = remove_commands.PackageRemoveCommand(self.context, 'copy', '', '')
         command._parse_sort('foo')

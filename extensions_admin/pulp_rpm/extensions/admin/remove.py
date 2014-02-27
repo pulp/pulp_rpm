@@ -13,8 +13,7 @@
 
 from gettext import gettext as _
 
-from pulp_rpm.extensions import criteria_utils
-from pulp_rpm.extensions.admin import units_display
+from pulp_rpm.extensions.admin import units_display, criteria_utils
 from pulp.client.commands.unit import UnitRemoveCommand
 from pulp_rpm.common.constants import DISPLAY_UNITS_THRESHOLD
 from pulp_rpm.common.ids import (TYPE_ID_RPM, TYPE_ID_SRPM, TYPE_ID_DRPM,

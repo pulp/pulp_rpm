@@ -13,8 +13,7 @@
 
 from gettext import gettext as _
 
-from pulp_rpm.extensions import criteria_utils
-from pulp_rpm.extensions.admin import units_display
+from pulp_rpm.extensions.admin import units_display, criteria_utils
 from pulp.client.commands.unit import UnitCopyCommand
 from pulp.client.extensions.extensions import PulpCliFlag
 from pulp_rpm.common.constants import DISPLAY_UNITS_THRESHOLD, CONFIG_RECURSIVE

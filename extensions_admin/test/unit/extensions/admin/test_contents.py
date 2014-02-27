@@ -26,13 +26,13 @@ class PackageSearchCommandTests(PulpClientTests):
         self.assertTrue(isinstance(command, DisplayUnitAssociationsCommand))
         self.assertEqual(command.context, self.context)
 
-    @mock.patch('pulp_rpm.extensions.criteria_utils.parse_key_value')
+    @mock.patch('pulp_rpm.extensions.admin.criteria_utils.parse_key_value')
     def test_parse_key_value_override(self, mock_parse):
         command = contents.PackageSearchCommand(None, self.context)
         command._parse_key_value('test-data')
         mock_parse.assert_called_once_with('test-data')
 
-    @mock.patch('pulp_rpm.extensions.criteria_utils.parse_sort')
+    @mock.patch('pulp_rpm.extensions.admin.criteria_utils.parse_sort')
     def test_parse_sort(self, mock_parse):
         command = contents.PackageSearchCommand(None, self.context)
         command._parse_sort('test-data')
