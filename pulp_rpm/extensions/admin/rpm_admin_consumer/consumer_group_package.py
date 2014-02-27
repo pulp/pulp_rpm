@@ -41,14 +41,13 @@ def get_consumer_id(task):
 
 
 class ConsumerGroupPackageSection(PulpCliSection):
-
     def __init__(self, context):
         PulpCliSection.__init__(
             self,
             'package',
             _('consumer group package installation management'))
         for Command in (ConsumerGroupInstall, ConsumerGroupUpdate,
-            ConsumerGroupUninstall):
+                        ConsumerGroupUninstall):
             command = Command(context)
             command.create_option(
                 '--consumer-group-id',
@@ -64,7 +63,6 @@ class ConsumerGroupPackageSection(PulpCliSection):
 
 
 class ConsumerGroupInstall(PollingCommand):
-
     def __init__(self, context):
         PollingCommand.__init__(
             self,
@@ -91,7 +89,7 @@ class ConsumerGroupInstall(PollingCommand):
         options = dict(
             apply=apply,
             importkeys=importkeys,
-            reboot=reboot,)
+            reboot=reboot, )
         for name in kwargs['name']:
             unit_key = dict(name=name)
             unit = dict(type_id=TYPE_ID, unit_key=unit_key)
@@ -105,12 +103,9 @@ class ConsumerGroupInstall(PollingCommand):
             response = server.consumer_group_content.install(
                 consumer_group_id, units=units, options=options)
             tasks = response.response_body
-            for task in tasks:
-                msg = _('Install task created with id [%s]') % task.task_id
-                prompt.render_success_message(msg)
             self.poll(tasks, kwargs)
         except NotFoundException:
-            msg = _('Consumer Group [%(g)s] not found') % {'g' : consumer_group_id}
+            msg = _('Consumer Group [%(g)s] not found') % {'g': consumer_group_id}
             prompt.write(msg, tag='not-found')
 
     def succeeded(self, task):
@@ -148,7 +143,6 @@ class ConsumerGroupInstall(PollingCommand):
 
 
 class ConsumerGroupUpdate(PollingCommand):
-
     def __init__(self, context):
         PollingCommand.__init__(
             self,
@@ -182,10 +176,10 @@ class ConsumerGroupUpdate(PollingCommand):
             all=all,
             apply=apply,
             importkeys=importkeys,
-            reboot=reboot,)
-        if all: # ALL
+            reboot=reboot, )
+        if all:  # ALL
             unit = dict(type_id=TYPE_ID, unit_key=None)
-            self.update(id, [unit], options, kwargs)
+            self.update(consumer_group_id, [unit], options, kwargs)
             return
         if names is None:
             names = []
@@ -203,14 +197,12 @@ class ConsumerGroupUpdate(PollingCommand):
             prompt.render_failure_message(msg)
             return
         try:
-            response = server.consumer_group_content.update(consumer_group_id, units=units, options=options)
+            response = server.consumer_group_content.update(consumer_group_id, units=units,
+                                                            options=options)
             tasks = response.response_body
-            for task in tasks:
-                msg = _('Update task created with id [%s]') % task.task_id
-                prompt.render_success_message(msg)
             self.poll(tasks, kwargs)
         except NotFoundException:
-            msg = _('Consumer Group [%(g)s] not found') % {'g' : consumer_group_id}
+            msg = _('Consumer Group [%(g)s] not found') % {'g': consumer_group_id}
             prompt.write(msg, tag='not-found')
 
     def succeeded(self, task):
@@ -248,7 +240,6 @@ class ConsumerGroupUpdate(PollingCommand):
 
 
 class ConsumerGroupUninstall(PollingCommand):
-
     def __init__(self, context):
         PollingCommand.__init__(
             self,
@@ -270,7 +261,7 @@ class ConsumerGroupUninstall(PollingCommand):
         units = []
         options = dict(
             apply=apply,
-            reboot=reboot,)
+            reboot=reboot, )
         for name in kwargs['name']:
             unit_key = dict(name=name)
             unit = dict(type_id=TYPE_ID, unit_key=unit_key)
@@ -281,11 +272,9 @@ class ConsumerGroupUninstall(PollingCommand):
         prompt = self.context.prompt
         server = self.context.server
         try:
-            response = server.consumer_group_content.uninstall(consumer_group_id, units=units, options=options)
+            response = server.consumer_group_content.uninstall(consumer_group_id, units=units,
+                                                               options=options)
             tasks = response.response_body
-            for task in tasks:
-                msg = _('Uninstall task created with id [%s]') % task.task_id
-                prompt.render_success_message(msg)
             self.poll(tasks, kwargs)
         except NotFoundException:
             msg = _('Consumer Group [%s] not found') % consumer_group_id
