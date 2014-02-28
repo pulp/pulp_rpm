@@ -18,8 +18,8 @@ import tempfile
 import unittest
 
 from mock import MagicMock, patch
-from pulp.plugins.model import Unit
 
+from pulp.plugins.model import Unit
 from pulp_rpm.common import constants, ids
 from pulp_rpm.plugins.distributors.iso_distributor import publish
 from pulp_rpm.repo_auth.protected_repo_utils import ProtectedRepoUtils

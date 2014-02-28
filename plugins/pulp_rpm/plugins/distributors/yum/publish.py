@@ -22,14 +22,12 @@ from collections import namedtuple
 
 from pulp.server.db.model.criteria import UnitAssociationCriteria
 from pulp.server.exceptions import InvalidValue
-
 from pulp_rpm.common import constants
 from pulp_rpm.common.ids import (
     TYPE_ID_RPM, TYPE_ID_SRPM, TYPE_ID_DRPM, TYPE_ID_ERRATA, TYPE_ID_PKG_GROUP,
     TYPE_ID_PKG_CATEGORY, TYPE_ID_PKG_ENVIRONMENT, TYPE_ID_DISTRO, TYPE_ID_YUM_REPO_METADATA_FILE)
 from pulp_rpm.yum_plugin import util
 from pulp_rpm.plugins.importers.yum.parse.treeinfo import KEY_PACKAGEDIR
-
 from . import configuration
 from .metadata.filelists import FilelistsXMLFileContext
 from .metadata.metadata import REPO_DATA_DIR_NAME
@@ -41,6 +39,8 @@ from .metadata.updateinfo import UpdateinfoXMLFileContext
 from .metadata.package import PackageXMLFileContext
 from .reporting import (
     new_progress_report, initialize_progress_sub_report, build_final_report)
+
+
 
 # -- constants -----------------------------------------------------------------
 

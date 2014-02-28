@@ -28,7 +28,7 @@ SerialNumber.PATH = '/tmp/sn.dat'
 TEMP_DISTRO_STORAGE_DIR = '/tmp/pulp/var/lib/pulp/content/distribution/'
 
 
-TEST_DATA_DIR = os.path.join(os.path.dirname(__file__), '../../../pulp_rpm/test/unit/data')
+TEST_DATA_DIR = os.path.join(os.path.dirname(__file__),  '../../../plugins/test/data',)
 DEMO_REPOS_PATH = os.path.join(TEST_DATA_DIR, 'repos.fedorapeople.org', 'repos', 'pulp',
                                'pulp', 'demo_repos')
 
@@ -53,8 +53,7 @@ class PulpRPMTests(unittest.TestCase):
         if not os.path.exists('/tmp/pulp'):
             os.makedirs('/tmp/pulp')
         stop_logging()
-        config_filename = os.path.join(os.path.abspath(os.path.dirname(__file__)),
-                                       '../../../pulp_rpm/test/unit/data', 'test-override-pulp.conf')
+        config_filename = os.path.join(TEST_DATA_DIR, 'test-override-pulp.conf')
         config.config.read(config_filename)
         start_logging()
         name = config.config.get('database', 'name')

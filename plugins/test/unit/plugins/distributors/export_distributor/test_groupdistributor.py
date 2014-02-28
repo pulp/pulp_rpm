@@ -17,11 +17,11 @@ import unittest
 import os
 
 import mock
+
 from pulp.server.exceptions import PulpDataException
 from pulp.plugins.model import RepositoryGroup
 from pulp.plugins.config import PluginCallConfiguration
 from pulp.plugins.conduits.repo_publish import RepoGroupPublishConduit
-
 from pulp_rpm.plugins.distributors.export_distributor import export_utils
 from pulp_rpm.plugins.distributors.export_distributor.groupdistributor import GroupISODistributor, \
     entry_point

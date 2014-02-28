@@ -24,7 +24,6 @@ from pulp.plugins.conduits.repo_publish import RepoPublishConduit
 from pulp.plugins.config import PluginCallConfiguration
 from pulp.plugins.model import Repository, Unit
 from pulp.server.exceptions import InvalidValue
-
 from pulp_rpm.common import constants
 from pulp_rpm.common.ids import (
     TYPE_ID_PKG_GROUP, TYPE_ID_PKG_CATEGORY, TYPE_ID_DISTRO, TYPE_ID_DRPM, TYPE_ID_RPM,

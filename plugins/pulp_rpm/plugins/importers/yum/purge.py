@@ -16,8 +16,7 @@ import functools
 from pulp.common.plugins import importer_constants
 from pulp.server.db.model.criteria import UnitAssociationCriteria
 from pulp.server.managers.repo.unit_association import OWNER_TYPE_IMPORTER
-
-from pulp_rpm.common import models
+from pulp_rpm.plugins.db import models
 from pulp_rpm.plugins.importers.yum.repomd import packages, primary, presto, updateinfo, group
 
 
@@ -194,8 +193,8 @@ def remove_missing_units(conduit, model, remote_named_tuples):
     :param conduit:         a conduit from the platform containing the get_units
                             and remove_unit methods.
     :type  conduit:         pulp.plugins.conduits.repo_sync.RepoSyncConduit
-    :param model:           subclass of pulp_rpm.common.models.Package
-    :type  model:           pulp_rpm.common.models.Package
+    :param model:           subclass of pulp_rpm.plugins.db.models.Package
+    :type  model:           pulp_rpm.plugins.db.models.Package
     :param remote_named_tuples: set of named tuples representing units in the
                                 remote repository
     :type  remote_named_tuples: set
@@ -213,8 +212,8 @@ def get_existing_units(model, unit_search_func):
     """
     Get an iterable of Units that are already in the local repository
 
-    :param model:               subclass of pulp_rpm.common.models.Package
-    :type  model:               pulp_rpm.common.models.Package
+    :param model:               subclass of pulp_rpm.plugins.db.models.Package
+    :type  model:               pulp_rpm.plugins.db.models.Package
     :param unit_search_func:    function that takes one parameter, a
                                 UnitAssociationCriteria, and searches for units
                                 in the relevant repository.

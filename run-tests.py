@@ -23,7 +23,6 @@ subprocess.call(['find', PROJECT_DIR, '-name', '*.pyc', '-delete'])
 
 PACKAGES = [
     'pulp_rpm',
-    'rpm_admin_consumer',
     'rpm_repo',
     'rpm_sync',
     'rpm_units_copy',
@@ -33,8 +32,16 @@ PACKAGES = [
     'yum_importer'
 ]
 
-TESTS = ['pulp_rpm/test/unit', ]
-PLUGIN_TESTS = ['plugins/test/unit', ]
+TESTS = [
+    'common/test/unit',
+    'handlers/test/unit',
+    'extensions_consumer/test/unit/',
+]
+PLUGIN_TESTS = [
+    'plugins/test/unit',
+    'extensions_admin/test/unit/',
+    'devel/test/unit'
+]
 
 dir_safe_all_platforms = [os.path.join(os.path.dirname(__file__), x) for x in TESTS]
 dir_safe_non_rhel5 = [os.path.join(os.path.dirname(__file__), x) for x in PLUGIN_TESTS]

@@ -1,14 +1,14 @@
 #!/usr/bin/env python
 import random
 import sys
-
 from optparse import OptionParser
+
 from pulp.server.auth.cert_generator import SerialNumber
 from pulp.server.db import connection
-from pulp.server.db.model.consumer import UnitProfile
 from pulp.server.exceptions import DuplicateResource, MissingResource
 from pulp.server.managers import factory
 from pulp_rpm.common.ids import TYPE_ID_RPM, TYPE_ID_DISTRIBUTOR_YUM
+
 
 SerialNumber.PATH = '/tmp/sn.dat'
 connection.initialize()

@@ -16,7 +16,6 @@ import os
 from pulp_rpm.common import ids
 from pulp_rpm.common import constants
 from pulp.plugins.file.distributor import FileDistributor
-
 from pulp_rpm.plugins.distributors.iso_distributor import configuration, publish
 
 

@@ -18,9 +18,9 @@ import unittest
 from xml.etree import ElementTree
 
 import mock
+
 from pulp.plugins.model import Unit
 from pulp.devel.unit import util
-
 from pulp_rpm.common.ids import TYPE_ID_PKG_GROUP, TYPE_ID_PKG_CATEGORY, TYPE_ID_PKG_ENVIRONMENT
 from pulp_rpm.plugins.distributors.yum.metadata.package import PackageXMLFileContext
 

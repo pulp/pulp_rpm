@@ -12,7 +12,8 @@
 # see http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt
 import logging
 
-from pulp_rpm.common import models
+from pulp_rpm.plugins.db import models
+
 
 _LOGGER = logging.getLogger(__name__)
 

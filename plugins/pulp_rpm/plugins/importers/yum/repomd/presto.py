@@ -11,7 +11,7 @@
 # You should have received a copy of GPLv2 along with this software; if not,
 # see http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt
 
-from pulp_rpm.common import models
+from pulp_rpm.plugins.db import models
 
 METADATA_FILE_NAME = 'prestodelta'
 
@@ -26,7 +26,7 @@ def process_package_element(element):
     :type  element: xml.etree.ElementTree.Element
 
     :return:    models.DRPM instance for the XML block
-    :rtype:     pulp_rpm.common.models.DRPM
+    :rtype:     pulp_rpm.plugins.db.models.DRPM
     """
     delta = element.find('delta')
     filename = delta.find('filename')

@@ -17,7 +17,6 @@ import shutil
 import unittest
 
 from pulp.plugins.model import Unit
-
 from pulp_rpm.common.ids import TYPE_ID_RPM
 from pulp_rpm.plugins.distributors.yum.metadata.filelists import (
     FilelistsXMLFileContext, FILE_LISTS_NAMESPACE, FILE_LISTS_XML_FILE_NAME)

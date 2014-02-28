@@ -319,7 +319,7 @@ class MetadataFiles(object):
         based on data obtained in the raw XML snippets.
 
         :param model:   model instance to manipulate
-        :type  model:   pulp_rpm.common.models.RPM
+        :type  model:   pulp_rpm.plugins.db.models.RPM
         """
         repodata = model.metadata.setdefault('repodata',{})
         db_key = self.generate_db_key(model.unit_key)

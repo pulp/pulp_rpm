@@ -12,11 +12,12 @@
 # http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt.
 
 from gettext import gettext as _
-import isodate
 import json
 import os
 import re
 import shutil
+
+import isodate
 
 from pulp.common import dateutils
 from pulp.server.db.model.criteria import UnitAssociationCriteria
@@ -24,8 +25,8 @@ from pulp.server.exceptions import MissingResource
 from pulp.server.managers.repo.distributor import RepoDistributorManager
 from pulp.server.managers.repo.query import RepoQueryManager
 
-# import generate_iso from this directory, which is not in the python path
-from pulp_rpm.common import constants, ids, models
+from pulp_rpm.common import constants, ids
+from pulp_rpm.plugins.db import models
 from pulp_rpm.plugins.distributors.export_distributor import generate_iso
 from pulp_rpm.yum_plugin import comps_util, updateinfo, metadata
 from pulp_rpm.yum_plugin import util as yum_utils
@@ -744,12 +745,13 @@ def export_errata_json(working_dir, errata_units, progress_callback=None):
 def get_rpm_units(publish_conduit, skip_list=()):
     """
     Retrieve a list of rpm units using the publish conduit. By default, this method retrieves
-    RPM.TYPE, SRPM.TYPE, and DRPM.TYPE from pulp_rpm.common.models. Use the skip list to
+    RPM.TYPE, SRPM.TYPE, and DRPM.TYPE from pulp_rpm.plugins.db.models. Use the skip list to
     skip over one or more of these types.
 
     :param publish_conduit: The publish conduit to retrieve the units from
     :type  publish_conduit: pulp.plugins.conduits.repo_publish.RepoPublishConduit
-    :param skip_list:       A list of type ids to skip. These should be from pulp_rpm.common.models
+    :param skip_list:       A list of type ids to skip. These should be from pulp_rpm.plugins.
+                            db.models
     :type  skip_list:       tuple
 
     :return: A list of AssociatedUnits

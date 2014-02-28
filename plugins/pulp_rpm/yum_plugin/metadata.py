@@ -1,0 +1,1035 @@
+# -*- coding: utf-8 -*-
+#
+# Copyright © 2012 Red Hat, Inc.
+#
+# This software is licensed to you under the GNU General Public
+# License as published by the Free Software Foundation; either version
+# 2 of the License (GPLv2) or (at your option) any later version.
+# There is NO WARRANTY for this software, express or implied,
+# including the implied warranties of MERCHANTABILITY,
+# NON-INFRINGEMENT, or FITNESS FOR A PARTICULAR PURPOSE. You should
+# have received a copy of GPLv2 along with this software; if not, see
+# http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt.
+
+import commands
+import gzip
+import os
+import shlex
+import shutil
+import subprocess
+import threading
+import signal
+import tempfile
+import time
+
+import rpmUtils
+import yum
+from createrepo import MetaDataGenerator, MetaDataConfig
+from createrepo import yumbased, GzipFile
+
+from pulp.common.util import encode_unicode, decode_unicode
+from pulp.plugins.conduits.mixins import MultipleRepoUnitsMixin, SingleRepoUnitsMixin
+from pulp.server.db.model.criteria import UnitAssociationCriteria
+from pulp.server.exceptions import MissingResource
+from pulp.server.managers import factory
+from pulp_rpm.common.ids import TYPE_ID_RPM, TYPE_ID_SRPM, TYPE_ID_YUM_REPO_METADATA_FILE, \
+    YUM_DISTRIBUTOR_ID
+from pulp_rpm.common.constants import SCRATCHPAD_DEFAULT_METADATA_CHECKSUM
+from pulp_rpm.yum_plugin import util
+
+
+_LOG = util.getLogger(__name__)
+__yum_lock = threading.Lock()
+
+# In memory lookup table for createrepo processes
+# Responsible for 2 tasks.  1) Restrict only one createrepo per repo_dir, 2) Allow an async cancel of running createrepo
+CREATE_REPO_PROCESS_LOOKUP = {}
+CREATE_REPO_PROCESS_LOOKUP_LOCK = threading.Lock()
+DEFAULT_CHECKSUM = "sha256"
+
+class CreateRepoError(Exception):
+    pass
+
+
+class CreateRepoAlreadyRunningError(Exception):
+    pass
+
+
+class ModifyRepoError(CreateRepoError):
+    pass
+
+
+class CancelException(Exception):
+    pass
+
+class GenerateYumMetadataException(Exception):
+    pass
+
+def set_progress(type_id, status, progress_callback):
+    if progress_callback:
+        progress_callback(type_id, status)
+
+
+def generate_metadata(repo_working_dir, publish_conduit, config, progress_callback=None, groups_xml_path=None):
+    """
+      NOTE: This method will be deprecated in future; use metadata.generate_yum_metadata call instead
+
+      build all the necessary info and invoke createrepo to generate metadata
+
+      @param repo_working_dir: rpository working directory where metadata is written
+      @type  repo_working_dir: str
+
+      @param config: plugin configuration
+      @type  config: L{pulp.server.content.plugins.config.PluginCallConfiguration}
+
+      @param progress_callback: callback to report progress info to publish_conduit
+      @type  progress_callback: function
+
+      @param groups_xml_path: path to the package groups/package category comps info
+      @type groups_xml_path: str
+
+      @return True on success, False on error
+      @rtype bool
+    """
+    errors = []
+    metadata_progress_status = {"state" : "IN_PROGRESS"}
+    repo_dir = repo_working_dir
+    checksum_type = get_repo_checksum_type(publish_conduit, config)
+    skip_metadata_types = config.get('skip') or []
+    skip_metadata_types = convert_content_to_metadata_type(skip_metadata_types)
+    if 'group' in skip_metadata_types:
+        _LOG.debug("Skipping 'group' info")
+        groups_xml_path = None
+    else:
+        # If groups_xml_path is specified than used passed in value
+        # If no value for groups_xml_path, fallback to whatever is in repomd.xml
+        if groups_xml_path is None:
+            groups_xml_path = __get_groups_xml_info(repo_dir)
+    _LOG.info("Running createrepo with groups file <%s>, this may take a few minutes to complete." % (groups_xml_path))
+    start = time.time()
+    try:
+        set_progress("metadata", metadata_progress_status, progress_callback)
+        create_repo(repo_dir, groups=groups_xml_path, checksum_type=checksum_type, skip_metadata_types=skip_metadata_types)
+    except CreateRepoError, cre:
+        metadata_progress_status = {"state" : "FAILED"}
+        set_progress("metadata", metadata_progress_status, progress_callback)
+        errors.append(cre)
+        return False, errors
+    except CancelException, ce:
+        metadata_progress_status = {"state" : "CANCELED"}
+        set_progress("metadata", metadata_progress_status, progress_callback)
+        errors.append(ce)
+        return False, errors
+    end = time.time()
+    _LOG.info("Createrepo finished in %s seconds" % (end - start))
+    metadata_progress_status = {"state" : "FINISHED"}
+    set_progress("metadata", metadata_progress_status, progress_callback)
+    return True, []
+
+
+def get_repo_checksum_type(publish_conduit, config):
+    """
+    Lookup checksum type on the repo to use for metadata generation;
+    importer sets this value if available on the repo scratchpad.
+
+    This method overrides the 'sha' encoding with 'sha1' in order to support
+    the modifyrepo command line that is used for merging metadata into the repomd.xml file
+
+    WARNING: If this method is called on yum_distributor it has the side effect of
+     saving the checksum type on the distributor config if a checksum has not already
+     been set on the distributor config.
+
+    :param config: publish conduit
+    :type  config: pulp.plugins.conduits.repo_publish.RepoPublishConduit
+
+    :param config: plugin configuration
+    :type  config: pulp.server.content.plugins.config.PluginCallConfiguration
+
+    :return checksum_type value
+    :rtype str
+    """
+    checksum_type = config.get('checksum_type')
+    if checksum_type:
+        return checksum_type
+    scratchpad_data = publish_conduit.get_repo_scratchpad()
+    checksum_type = DEFAULT_CHECKSUM
+    if scratchpad_data and SCRATCHPAD_DEFAULT_METADATA_CHECKSUM in scratchpad_data:
+        checksum_type = scratchpad_data[SCRATCHPAD_DEFAULT_METADATA_CHECKSUM]
+        if checksum_type == 'sha':
+            checksum_type = 'sha1'
+        # Save the checksum back on the distributor config if it isn't there already
+        # This is so that it can be synchronized to nodes and used for uploaded RPMS
+        distributor_config = config.repo_plugin_config
+        if 'checksum_type' not in distributor_config:
+            distributor_manager = factory.repo_distributor_manager()
+            try:
+                distributor = distributor_manager.get_distributor(publish_conduit.repo_id,
+                                                                  publish_conduit.distributor_id)
+                if distributor['distributor_type_id'] == YUM_DISTRIBUTOR_ID:
+                    distributor_manager.update_distributor_config(publish_conduit.repo_id,
+                                                                  publish_conduit.distributor_id,
+                                                                  {'checksum_type': checksum_type})
+            except MissingResource:
+                # If we can't find the distributor it's ok as it is a repo group distributor
+                # and we don't need to set the checksum in that case
+                pass
+
+    return checksum_type
+
+
+def __get_groups_xml_info(repo_dir):
+    groups_xml_path = None
+    repodata_file = os.path.join(repo_dir, "repodata", "repomd.xml")
+    repodata_file = encode_unicode(repodata_file)
+    if os.path.isfile(repodata_file):
+        ftypes = util.get_repomd_filetypes(repodata_file)
+        _LOG.debug("repodata has filetypes of %s" % (ftypes))
+        if "group" in ftypes:
+            comps_ftype = util.get_repomd_filetype_path(
+                    repodata_file, "group")
+            filetype_path = os.path.join(repo_dir, comps_ftype)
+            # createrepo uses filename as mdtype, rename to type.<ext>
+            # to avoid filename too long errors
+            renamed_filetype_path = os.path.join(os.path.dirname(comps_ftype),
+                                     "comps" + '.' + '.'.join(os.path.basename(comps_ftype).split('.')[1:]))
+            groups_xml_path = os.path.join(repo_dir, renamed_filetype_path)
+            os.rename(filetype_path, groups_xml_path)
+    return groups_xml_path
+
+
+def modify_repo(repodata_dir, new_file, remove=False, checksum_type=DEFAULT_CHECKSUM):
+    """
+     run modifyrepo to add a new file to repodata directory
+
+     @param repodata_dir: repodata directory path
+     @type repodata_dir: string
+
+     @param new_file: new file type to add or remove
+     @type new_file: string
+
+     @param remove: remove the metadata from the repodata
+     @type remove: bool
+
+     @param checksum_type: the checksum type for new data file
+     @type checksum_type: str
+    """
+    if remove:
+        cmd = "modifyrepo --remove %s %s" % (new_file, repodata_dir)
+    else:
+        cmd = "modifyrepo --no-compress %s %s --checksum %s" % \
+              (new_file, repodata_dir, checksum_type)
+    status, out = commands.getstatusoutput(cmd)
+    if status != 0:
+        _LOG.error("modifyrepo on %s failed" % repodata_dir)
+        raise ModifyRepoError(out)
+    _LOG.info("modifyrepo with %s on %s finished" % (new_file, repodata_dir))
+    return status, out
+
+
+def _create_repo(dir, groups=None, checksum_type=DEFAULT_CHECKSUM):
+    if not groups:
+        cmd = "createrepo --database --checksum %s --update %s " % (checksum_type, dir)
+    else:
+        try:
+            cmd = "createrepo --database --checksum %s -g %s --update %s " % (checksum_type, groups, dir)
+        except UnicodeDecodeError:
+            groups = decode_unicode(groups)
+            cmd = "createrepo --database --checksum %s -g %s --update %s " % (checksum_type, groups, dir)
+    # shlex now can handle unicode strings as well
+    cmd = encode_unicode(cmd)
+    try:
+        cmd = shlex.split(cmd.encode('ascii', 'ignore'))
+    except:
+        cmd = shlex.split(cmd)
+
+    _LOG.info("started repo metadata update: %s" % (cmd))
+    handle = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    return handle
+
+
+def create_repo(dir, groups=None, checksum_type=DEFAULT_CHECKSUM, skip_metadata_types=[]):
+    handle = None
+    # Lock the lookup and launch of a new createrepo process
+    # Lock is released once createrepo is launched
+    if not os.path.exists(dir):
+        _LOG.warning("create_repo invoked on a directory which doesn't exist:  %s" % dir)
+    CREATE_REPO_PROCESS_LOOKUP_LOCK.acquire()
+    try:
+        if CREATE_REPO_PROCESS_LOOKUP.has_key(dir):
+            raise CreateRepoAlreadyRunningError()
+        current_repo_dir = os.path.join(dir, "repodata")
+        # Note: backup_repo_dir is used to store presto metadata and possibly other custom metadata types
+        # they will be copied back into new 'repodata' if needed.
+        backup_repo_dir = None
+        current_repo_dir = encode_unicode(current_repo_dir)
+        if os.path.exists(current_repo_dir):
+            _LOG.info("metadata found; taking backup.")
+            backup_repo_dir = os.path.join(dir, "repodata.old")
+            if os.path.exists(backup_repo_dir):
+                _LOG.debug("clean up any stale dirs")
+                shutil.rmtree(backup_repo_dir)
+            shutil.copytree(current_repo_dir, backup_repo_dir)
+            os.system("chmod -R u+wX %s" % (backup_repo_dir))
+        handle = _create_repo(dir, groups=groups, checksum_type=checksum_type)
+        if not handle:
+            raise CreateRepoError("Unable to execute createrepo on %s" % (dir))
+        os.system("chmod -R ug+wX %s" % (dir))
+        _LOG.info("Createrepo process with pid %s running on directory %s" % (handle.pid, dir))
+        CREATE_REPO_PROCESS_LOOKUP[dir] = handle
+    finally:
+        CREATE_REPO_PROCESS_LOOKUP_LOCK.release()
+    # Ensure we clean up CREATE_REPO_PROCESS_LOOKUP, surround all ops with try/finally
+    try:
+        # Block on process till complete (Note it may be async terminated)
+        out_msg, err_msg = handle.communicate(None)
+        if handle.returncode != 0:
+            try:
+                # Cleanup createrepo's temporary working directory
+                cleanup_dir = os.path.join(dir, ".repodata")
+                if os.path.exists(cleanup_dir):
+                    shutil.rmtree(cleanup_dir)
+            except Exception, e:
+                _LOG.exception(e)
+                _LOG.warn("Unable to remove temporary createrepo dir: %s" % (cleanup_dir))
+            if handle.returncode == -9:
+                _LOG.warn("createrepo on %s was killed" % (dir))
+                raise CancelException()
+            else:
+                _LOG.error("createrepo on %s failed with returncode <%s>" % (dir, handle.returncode))
+                _LOG.error("createrepo stdout:\n%s" % (out_msg))
+                _LOG.error("createrepo stderr:\n%s" % (err_msg))
+                raise CreateRepoError(err_msg)
+        _LOG.info("createrepo on %s finished" % (dir))
+        if not backup_repo_dir:
+            _LOG.info("Nothing further to check; we got our fresh metadata")
+            return
+        #check if presto metadata exist in the backup
+        repodata_file = os.path.join(backup_repo_dir, "repomd.xml")
+        ftypes = util.get_repomd_filetypes(repodata_file)
+        base_ftypes = ['primary', 'primary_db', 'filelists_db', 'filelists', 'other', 'other_db', 'group', 'group_gz']
+        for ftype in ftypes:
+            if ftype in base_ftypes:
+                # no need to process these again
+                continue
+            if ftype in skip_metadata_types and not skip_metadata_types[ftype]:
+                _LOG.info("mdtype %s part of skip metadata; skipping" % ftype)
+                continue
+            filetype_path = os.path.join(backup_repo_dir, os.path.basename(util.get_repomd_filetype_path(repodata_file, ftype)))
+            # modifyrepo uses filename as mdtype, rename to type.<ext>
+            renamed_filetype_path = os.path.join(os.path.dirname(filetype_path), \
+                                         ftype + '.' + '.'.join(os.path.basename(filetype_path).split('.')[1:]))
+            os.rename(filetype_path,  renamed_filetype_path)
+            if renamed_filetype_path.endswith('.gz'):
+                # if file is gzipped, decompress before passing to modifyrepo
+                data = gzip.open(renamed_filetype_path).read().decode("utf-8", "replace")
+                renamed_filetype_path = '.'.join(renamed_filetype_path.split('.')[:-1])
+                open(renamed_filetype_path, 'w').write(data.encode("UTF-8"))
+            if os.path.isfile(renamed_filetype_path):
+                _LOG.info("Modifying repo for %s metadata" % ftype)
+                modify_repo(current_repo_dir, renamed_filetype_path, checksum_type=checksum_type)
+    finally:
+        if backup_repo_dir:
+            shutil.rmtree(backup_repo_dir)
+        CREATE_REPO_PROCESS_LOOKUP_LOCK.acquire()
+        try:
+            del CREATE_REPO_PROCESS_LOOKUP[dir]
+        finally:
+            CREATE_REPO_PROCESS_LOOKUP_LOCK.release()
+
+
+def cancel_createrepo(repo_dir):
+    """
+    Method will lookup a createrepo process associated to 'repo_dir'
+    If a createrepo process is running we will send a SIGKILL to it and return True
+    Else we return False to denote no process was found
+    """
+    CREATE_REPO_PROCESS_LOOKUP_LOCK.acquire()
+    try:
+        if CREATE_REPO_PROCESS_LOOKUP.has_key(repo_dir):
+            handle = CREATE_REPO_PROCESS_LOOKUP[repo_dir]
+            try:
+                os.kill(handle.pid, signal.SIGKILL)
+            except Exception, e:
+                _LOG.exception(e)
+                return False
+            return True
+        else:
+            _LOG.info("No createrepo process found for <%s>" % repo_dir)
+            return False
+    finally:
+        CREATE_REPO_PROCESS_LOOKUP_LOCK.release()
+
+
+def get_createrepo_pid(repo_dir):
+    CREATE_REPO_PROCESS_LOOKUP_LOCK.acquire()
+    try:
+        if CREATE_REPO_PROCESS_LOOKUP.has_key(repo_dir):
+            handle = CREATE_REPO_PROCESS_LOOKUP[repo_dir]
+            return handle.pid
+        else:
+            _LOG.info("No createrepo process found for <%s>" % repo_dir)
+            return None
+    finally:
+        CREATE_REPO_PROCESS_LOOKUP_LOCK.release()
+
+
+def convert_content_to_metadata_type(content_types_list):
+    """
+    Convert the unit types to rpm metadata file types
+    """
+    content_metadata_map = {
+        "drpm"         : "prestodelta",
+        "errata"       : "updateinfo",
+        "packagegroup" : "group",
+    }
+    if not content_types_list:
+        return []
+    metadata_type_list = []
+    for type in content_types_list:
+        if type in content_metadata_map:
+            metadata_type_list.append(content_metadata_map[type])
+        else:
+            metadata_type_list.append(type)
+    return metadata_type_list
+
+def get_package_xml(pkg_path):
+    """
+    Method to generate repo xmls - primary, filelists and other
+    for a given rpm.
+
+    @param pkg_path: rpm package path on the filesystem
+    @type pkg_path: str
+
+    @return rpm metadata dictionary or empty if rpm path doesnt exist
+    @rtype {}
+    """
+    if not os.path.exists(pkg_path):
+        _LOG.info("Package path %s does not exist" % pkg_path)
+        return {}
+    ts = rpmUtils.transaction.initReadOnlyTransaction()
+    po = yumbased.CreateRepoPackage(ts, pkg_path)
+    # RHEL6 createrepo throws a ValueError if _cachedir is not set
+    po._cachedir = None
+    primary_xml_snippet = change_location_tag(po.xml_dump_primary_metadata(), pkg_path)
+    metadata = {'primary' : primary_xml_snippet,
+                'filelists': po.xml_dump_filelists_metadata(),
+                'other'   : po.xml_dump_other_metadata(),
+               }
+    return metadata
+
+def change_location_tag(primary_xml_snippet, relpath):
+    """
+    Transform the <location> tag to strip out leading directories so it
+    puts all rpms in the same directory as 'repodata'
+
+    @param primary_xml_snippet: snippet of primary xml text for a single package
+    @type primary_xml_snippet: str
+
+    @param relpath: Package's 'relativepath'
+    @type relpath: str
+    """
+
+    basename = os.path.basename(relpath)
+    start_index = primary_xml_snippet.find("<location ")
+    end_index = primary_xml_snippet.find("/>", start_index) + 2 # adjust to end of closing tag
+
+    first_portion = util.string_to_unicode(primary_xml_snippet[:start_index])
+    end_portion = util.string_to_unicode(primary_xml_snippet[end_index:])
+    location = util.string_to_unicode("""<location href="%s"/>""" % (basename))
+    return first_portion + location + end_portion
+
+class YumPackageDetails(object):
+    """
+    Will open existing yum metadata and extract package information
+    """
+    def __init__(self, repo_dir, repo_label):
+        self.repo_dir = repo_dir
+        self.repo_label = repo_label
+        self.yum_repo = None
+        self.sack = None
+        self.packages = {}
+        self.tmp_dir = None
+        self.thread = None
+
+    def close(self):
+        if self.yum_repo:
+            self.yum_repo.close()
+            del self.yum_repo
+        if self.sack:
+            del self.sack
+        if self.packages:
+            del self.packages
+        if self.tmp_dir:
+            shutil.rmtree(self.tmp_dir)
+
+    def init(self):
+        """
+        @return true on success, false on failure
+        @rtype bool
+        """
+        try:
+            self.__init_temp_dir()
+        except Exception, e:
+            _LOG.exception("Failed to copy repodata from: '%s' to tmp dir" % \
+                (os.path.join(self.repo_dir, self.repo_label)))
+            return False
+        try:
+            self.__init_yum()
+        except Exception, e:
+            _LOG.exception("Failed to initialize YumRepository for %s" % (self.repo_label))
+            return False
+        self.packages = {}
+        for yp in self.sack.returnPackages():
+            self.packages[yp.relativepath] = yp
+        return True
+
+    def __init_temp_dir(self):
+        #
+        # The newly downloaded yum metadata is under "repodata.new", yet yum wants all the metadata files under
+        # the repo_label dir.  We are working around this by copying the metadata to a temp dir
+        #
+        self.tmp_dir = tempfile.mkdtemp()
+        yum_temp_repodata_dir = os.path.join(self.tmp_dir, self.repo_label)
+        base_repodata_dir = os.path.join(self.repo_dir, self.repo_label)
+        repodata_dir = os.path.join(base_repodata_dir, "repodata.new")
+        if not os.path.exists(repodata_dir):
+            # Fallback to "repodata"
+            repodata_dir = os.path.join(base_repodata_dir, "repodata")
+        shutil.copytree(repodata_dir, yum_temp_repodata_dir)
+
+    def __init_yum(self):
+        self.yum_repo = yum.yumRepo.YumRepository(self.repo_label)
+        self.yum_repo.basecachedir = self.tmp_dir
+        self.yum_repo.base_persistdir = self.tmp_dir
+        self.yum_repo.cache = 0
+        self.yum_repo.metadata_expire = -1
+        self.yum_repo.baseurl = "http://CHANGEME"
+        self.sack = self.yum_repo.getPackageSack()
+        self.sack.populate(self.yum_repo, 'metadata', None, 0)
+
+    def get_details(self, relativepath):
+        """
+        @param relativepath key used to find a specific yum package
+                the relativepath is not the RPM's actual path, but the relativepath from perspective of repo
+        @type relativepath str
+
+        @return dict containing yum metadata details and xml snippets
+        @rtype {}
+        """
+        if not self.packages.has_key(relativepath):
+            _LOG.warn("Unable to find an entry in yum package details with relativepath: '%s'" % (relativepath))
+            return {}
+        pkg = self.packages[relativepath]
+        info = {}
+        keys = ["vendor", "description", "buildhost", "license",
+                "vendor", "requires", "provides", "changelog", "filelist", "files"]
+        for key in keys:
+            try:
+                info[key] = getattr(pkg, key)
+            except Exception, e:
+                _LOG.exception("Unable to find attribute '%s' on '%s'" % (key, pkg))
+        info["repodata"] = {"primary"  : change_location_tag(pkg.xml_dump_primary_metadata(), pkg.relativepath) ,
+                                "filelists": pkg.xml_dump_filelists_metadata(),
+                                "other" : pkg.xml_dump_other_metadata(),}
+        return info
+
+
+class YumMetadataGenerator(object):
+    """
+    Yum metadata generator using per package snippet approach
+    """
+    def __init__(self, repodir, checksum_type=DEFAULT_CHECKSUM,
+                 skip_metadata_types=None, is_cancelled=False, group_xml_path=None, updateinfo_xml_path=None, custom_metadata_dict=None):
+        """
+        @param repodir: repository dir where the repodata directory is created/exists
+        @type  repodir: str
+
+        @param checksum_type: checksum type to use when generating repodata; default is sha256
+        @type  checksum_type: str
+
+        @param skip_metadata_types: list of metadata ftypes to skip from the repodata
+        @type  skip_metadata_types: []
+
+        @param group_xml_path: path to comps xml to be merged with repodata
+        @type group_xml_path: str
+
+        @param updateinfo_xml_path: path to updateinfo xml to be merged with repodata
+        @type updateinfo_xml_path: str
+
+        @param custom_metadata_dict: custom metadata from scratchpad
+        @param custom_metadata_dict: {}
+        """
+        self.repodir = repodir
+        self.unit_count = 0
+
+        self.checksum_type = checksum_type
+        self.skip = skip_metadata_types or []
+
+
+        self.backup_repodata_dir = None
+        self.is_cancelled=is_cancelled
+        self.group_xml_path= group_xml_path
+        self.updateinfo_xml_path = updateinfo_xml_path
+        self.custom_metadata = custom_metadata_dict or {}
+        self.setup_temp_working_dir()
+        self.metadata_conf = self.setup_metadata_conf()
+
+        self.primary_xml = None
+        self.filelists_xml = None
+        self.other_xml = None
+
+        self.temp_primary_xml_path = os.path.join(self.temp_working_dir, "temp_primary.xml.gz")
+        self.temp_filelists_xml_path = os.path.join(self.temp_working_dir, "temp_filelists.xml.gz")
+        self.temp_other_xml_path =  os.path.join(self.temp_working_dir, "temp_other.xml.gz")
+
+        self.primary_xml_path = os.path.join(self.temp_working_dir, "primary.xml.gz")
+        self.filelists_xml_path = os.path.join(self.temp_working_dir, "filelists.xml.gz")
+        self.other_xml_path =  os.path.join(self.temp_working_dir, "other.xml.gz")
+
+
+    def setup_temp_working_dir(self):
+        """
+        setup a temporary location where we can do all the work and
+        finally merge to final location.
+        """
+        self.temp_working_dir = os.path.join(self.repodir, ".repodata")
+        if not os.path.isdir(self.temp_working_dir):
+            os.makedirs(self.temp_working_dir, mode=0755)
+
+
+
+    def _backup_existing_repodata(self):
+        """
+        Takes a backup of any existing repodata files. This is used in the final
+        step where other file types in repomd.xml such as presto, updateinfo, comps
+        are copied back to the repodata.
+        """
+        current_repo_dir = os.path.join(self.repodir, "repodata")
+        # Note: backup_repo_dir is used to store presto metadata and possibly other custom metadata types
+        # they will be copied back into new 'repodata' if needed.
+        current_repo_dir = encode_unicode(current_repo_dir)
+        if os.path.exists(current_repo_dir):
+            _LOG.info("existing metadata found; taking backup.")
+            self.backup_repodata_dir = os.path.join(self.repodir, "repodata.old")
+            if os.path.exists(self.backup_repodata_dir):
+                _LOG.debug("clean up any stale dirs")
+                shutil.rmtree(self.backup_repodata_dir)
+            shutil.copytree(current_repo_dir, self.backup_repodata_dir)
+            os.system("chmod -R u+wX %s" % self.backup_repodata_dir)
+
+    def setup_metadata_conf(self):
+        """
+        Sets up the yum metadata config to perform the sqlitedb and repomd.xml generation.
+        """
+        conf = MetaDataConfig()
+        conf.directory = self.repodir
+        conf.database = 1
+        conf.verbose = 1
+        conf.skip_stat = 1
+        conf.sumtype = self.checksum_type
+        return conf
+
+    def init_xml(self):
+        self.primary_xml= GzipFile(self.temp_primary_xml_path, 'w', compresslevel=9)
+        self.filelists_xml= GzipFile(self.temp_filelists_xml_path, 'w', compresslevel=9)
+        self.other_xml= GzipFile(self.temp_other_xml_path, 'w', compresslevel=9)
+
+    def prepend_text(self, input_path, output_path, text, gzip=True):
+        """
+        @param input_path: path to input file we want to prepend 'text' to
+        @type input_path: str
+
+        @param output_path: output path that will be 'text' plus contents of file referred to with 'input_path'
+        @type output_path: str
+
+        @param text: text blob to prepend to file
+        @type text: str
+
+        @param gzip: True will gzip file contents
+        @type gzip: bool
+        @return:
+        """
+        if gzip:
+            in_f = GzipFile(input_path, 'r', compresslevel=9)
+            out_f = GzipFile(output_path, 'w', compresslevel=9)
+        else:
+            in_f = open(input_path, 'w')
+            out_f = open(output_path, 'w')
+
+        try:
+            out_f.write(text)
+            while True:
+                data = in_f.read(size=1024*1024)
+                if not data:
+                    break
+                out_f.write(data)
+        finally:
+            in_f.close()
+            out_f.close()
+
+    def _close_primary_xml(self):
+        """
+        All the data should be written at this point; invoke this to
+        close the primary xml gzipped file
+        """
+        self.primary_xml.write("""\n </metadata>""")
+        self.primary_xml.close()
+
+        blob = """<?xml version="1.0" encoding="UTF-8"?>\n <metadata xmlns="http://linux.duke.edu/metadata/common"
+xmlns:rpm="http://linux.duke.edu/metadata/rpm" packages="%s"> \n""" % self.unit_count
+        self.prepend_text(self.temp_primary_xml_path, self.primary_xml_path, blob)
+
+
+    def _close_filelists_xml(self):
+        """
+        All the data should be written at this point; invoke this to
+        close the filelists xml gzipped file
+        """
+        self.filelists_xml.write("""\n </filelists>""")
+        self.filelists_xml.close()
+
+        blob = """<?xml version="1.0" encoding="UTF-8"?>
+<filelists xmlns="http://linux.duke.edu/metadata/filelists" packages="%s"> \n""" % self.unit_count
+        self.prepend_text(self.temp_filelists_xml_path, self.filelists_xml_path, blob)
+
+    def _close_other_xml(self):
+        """
+        All the data should be written at this point; invoke this to
+        close the other xml gzipped file
+        """
+        self.other_xml.write("""\n </otherdata>""")
+        self.other_xml.close()
+
+        blob = """<?xml version="1.0" encoding="UTF-8"?>
+<otherdata xmlns="http://linux.duke.edu/metadata/other" packages="%s"> \n""" % self.unit_count
+        self.prepend_text(self.temp_other_xml_path, self.other_xml_path, blob)
+
+    def close_xml(self):
+        """
+        Closes all open xml file handles
+        @return:
+        """
+        self._close_primary_xml()
+        self._close_filelists_xml()
+        self._close_other_xml()
+
+    def merge_unit_metadata(self, units):
+        """
+        This performs the actual merge of the snippets. The xml files are initialized and
+        each unit metadata is written to the xml files. These units here should be rpm
+        units. If a unit doesnt have repodata info, log the message and skip that unit.
+        Finally the gzipped xmls are closed when all the units are written.
+
+        @param units: List of rpm units from which repodata is taken and merged
+        @type units: [AssociatedUnit]
+        """
+        _LOG.info("Performing per unit metadata merge on %s units" % len(units))
+        if self.is_cancelled:
+            _LOG.warn("cancelling merge unit metadata")
+            raise CancelException()
+        start = time.time()
+        try:
+            for unit in units:
+                if self.is_cancelled:
+                    _LOG.warn("cancelling merge unit metadata")
+                    raise CancelException()
+                if unit.metadata.has_key('repodata'):
+                    try:
+                        self.primary_xml.write(unit.metadata['repodata']['primary'].encode('utf-8'))
+                        self.filelists_xml.write(unit.metadata['repodata']['filelists'].encode('utf-8'))
+                        self.other_xml.write(unit.metadata['repodata']['other'].encode('utf-8'))
+                    except Exception, e:
+                        _LOG.error("Error occurred writing metadata to file; Exception: %s" % e)
+                        continue
+                else:
+                    _LOG.debug("No repodata found for the unit; continue")
+                    continue
+        finally:
+            self.unit_count += len(units)
+            end = time.time()
+        _LOG.info("per unit metadata merge completed in %s seconds" % (end - start))
+
+    def merge_custom_repodata(self):
+        """
+        merge any repodata preserved on the repo scratchpad
+        """
+        _LOG.info("check scratchpad for any repodata")
+        if not self.custom_metadata:
+            # nothing found on scratchpad
+            return False
+        current_repo_dir = os.path.join(self.repodir, "repodata")
+
+        for ftype, fxml in self.custom_metadata.items():
+            if ftype in self.skip:
+                continue
+            if not fxml:
+                continue
+            ftype_xml_path = os.path.join(self.repodir, "%s.xml" % ftype)
+            f = open(ftype_xml_path, "w")
+            try:
+                try:
+                    data = fxml.encode('utf-8')
+                    f.write(data)
+                except Exception, e:
+                    _LOG.exception("Unable to write file type %s" % ftype)
+                    continue
+            finally:
+                f.close()
+            # merge the xml we just wrote with repodata
+            if os.path.isfile(ftype_xml_path):
+                _LOG.info("Modifying repo for %s metadata" % ftype)
+                modify_repo(current_repo_dir, ftype_xml_path, checksum_type=self.checksum_type)
+        return True
+
+    def merge_comps_xml(self):
+        """
+        merge comps xml file to repodata
+        """
+        if self.group_xml_path is None or not os.path.isfile(self.group_xml_path):
+            # no group xml formed nothing to do
+            _LOG.info("comps xml path does not exist; skipping merge")
+            return
+        repodata_working_dir = os.path.join(self.repodir, "repodata")
+        _LOG.info("Modifying repo for %s metadata" % "comps")
+        modify_repo(repodata_working_dir, self.group_xml_path, checksum_type=self.checksum_type)
+
+    def merge_updateinfo_xml(self):
+        """
+        merge updateinfo xml file to repodata
+        """
+        if self.updateinfo_xml_path is None or not os.path.isfile(self.updateinfo_xml_path):
+            # no updateinfo xml formed, nothing to do
+            _LOG.info("updateinfo xml path does not exist; skipping merge")
+            return
+        repodata_working_dir = os.path.join(self.repodir, "repodata")
+        _LOG.info("Modifying repo for %s metadata" % "updateinfo")
+        modify_repo(repodata_working_dir, self.updateinfo_xml_path,
+                    checksum_type=self.checksum_type)
+
+    def merge_other_filetypes_from_backup(self):
+        """
+        Merges any other filetypes in the backed up repodata that needs to be included
+        back into the repodata. This is where the presto, updateinfo and comps xmls are
+        looked up in old repomd.xml and merged back to the new using modifyrepo.
+        primary, filelists and other xmls are excluded from the process.
+        """
+        _LOG.info("Performing merge on other file types")
+        try:
+            if not self.backup_repodata_dir:
+                _LOG.info("Nothing further to check; we got our fresh metadata")
+                return
+            current_repo_dir = os.path.join(self.repodir, "repodata")
+            #check if presto metadata exist in the backup
+            repodata_file = os.path.join(self.backup_repodata_dir, "repomd.xml")
+            ftypes = util.get_repomd_filetypes(repodata_file)
+            base_ftypes = ['primary', 'primary_db', 'filelists_db', 'filelists', 'other', 'other_db']
+            for ftype in ftypes:
+                if self.is_cancelled:
+                    _LOG.warn("cancel merge other filetype metadata")
+                    raise CancelException()
+                if ftype in base_ftypes:
+                    # no need to process these again
+                    continue
+                if ftype in self.skip and not self.skip[ftype]:
+                    _LOG.info("mdtype %s part of skip metadata; skipping" % ftype)
+                    continue
+                filetype_path = os.path.join(self.backup_repodata_dir, os.path.basename(util.get_repomd_filetype_path(repodata_file, ftype)))
+                # modifyrepo uses filename as mdtype, rename to type.<ext>
+                renamed_filetype_path = os.path.join(os.path.dirname(filetype_path),\
+                    ftype + '.' + '.'.join(os.path.basename(filetype_path).split('.')[1:]))
+                os.rename(filetype_path,  renamed_filetype_path)
+                if renamed_filetype_path.endswith('.gz'):
+                    # if file is gzipped, decompress before passing to modifyrepo
+                    data = gzip.open(renamed_filetype_path).read().decode("utf-8", "replace")
+                    renamed_filetype_path = '.'.join(renamed_filetype_path.split('.')[:-1])
+                    open(renamed_filetype_path, 'w').write(data.encode("UTF-8"))
+                if os.path.isfile(renamed_filetype_path):
+                    _LOG.info("Modifying repo for %s metadata" % ftype)
+                    modify_repo(current_repo_dir, renamed_filetype_path,
+                                checksum_type=self.checksum_type)
+        finally:
+            if self.backup_repodata_dir:
+                shutil.rmtree(self.backup_repodata_dir)
+
+    def final_repodata_move(self):
+        # setup the yum config to do the final steps of generating sqlite db files
+        try:
+            mdgen = MetaDataGenerator(self.metadata_conf)
+            mdgen.doRepoMetadata()
+            # do the final move to the repodata location from .repodata
+            mdgen.doFinalMove()
+        except:
+            # might have missing metadata count not perform final move
+            _LOG.error("Error performing final move, could be missing pkg metadata files")
+
+    def run(self, units):
+        """
+        Invokes the metadata generation by taking a backup of existing repodata;
+        looking up units and merging the per unit snippets; generate sqlite db,
+        repomd files using createrepo apis and finally merge back any other
+        """
+        # backup existing repodata dir
+        self._backup_existing_repodata()
+        # extract the per rpm unit metadata and merge to create package xml data
+        self.init_xml()
+        self.merge_unit_metadata(units)
+        self.close_xml()
+
+        self.final_repodata_move()
+        # lookup and merge updateinfo, comps and other metadata
+        self.merge_comps_xml()
+        self.merge_updateinfo_xml()
+        # merge any custom metadata stored on the scratchpad, this includes prestodelta
+        self.merge_custom_repodata()
+
+
+def generate_yum_metadata(repo_id, repo_dir, publish_conduit, config, progress_callback=None,
+                          is_cancelled=False, group_xml_path=None, updateinfo_xml_path=None, repo_scratchpad=None, limit=500):
+    """
+      build all the necessary info and invoke createrepo to generate metadata
+
+      @param repo_dir: repository dir where the repodata directory is created/exists
+      @type  repo_dir: str
+
+      @param publish_conduit: publish conduit
+      @type publish_conduit: pulp.plugins.conduits.repo_publish.RepoPublishConduit
+
+      @param config: plugin configuration
+      @type  config: L{pulp.server.content.plugins.config.PluginCallConfiguration}
+
+      @param progress_callback: callback to report progress info to publish_conduit
+      @type  progress_callback: function
+
+      @param group_xml_path: path to the package groups/package category comps info
+      @type group_xml_path: str
+
+      @param updateinfo_xml_path: path to updateinfo xml to be merged with repodata
+      @type updateinfo_xml_path: str
+
+      @param repo_scratchpad: repository scratchpad to lookup custom metadata or checksum type info if any
+      @param repo_scratchpad: {}
+
+      @return True on success, False on error and list of errors
+      @rtype bool, []
+    """
+    errors = []
+    metadata_progress_status = {"state" : "IN_PROGRESS"}
+    skip_metadata_types = config.get('skip') or []
+    skip_metadata_types = convert_content_to_metadata_type(skip_metadata_types)
+    skip_pkg_tags = config.get('skip_pkg_tags', True)
+    if skip_pkg_tags:
+        # ignore pkgtags, these are not actively used today
+        # comments from yum maintainer:
+        # It was thought of and implemented in Fedora,
+        # with the idea being that users could use the website
+        # to add random tags to any package... but AFAIK it's
+        # basically turned off now, and basically ignored.
+        skip_metadata_types.append('pkgtags')
+
+    checksum_type = get_repo_checksum_type(publish_conduit, config)
+
+    custom_metadata = generate_custom_metadata_dict(repo_id, publish_conduit)
+    start = time.time()
+    try:
+        set_progress("metadata", metadata_progress_status, progress_callback)
+
+        create_yum_metadata = YumMetadataGenerator(repo_dir, checksum_type=checksum_type,
+            skip_metadata_types=skip_metadata_types, is_cancelled=is_cancelled, group_xml_path=group_xml_path,
+            updateinfo_xml_path=updateinfo_xml_path, custom_metadata_dict=custom_metadata)
+        create_yum_metadata._backup_existing_repodata()
+
+        if is_cancelled:
+            _LOG.warn("cancel metadata generation")
+            raise CancelException()
+
+        create_yum_metadata.init_xml()
+        unit_count = 0
+        for type_id in [TYPE_ID_RPM, TYPE_ID_SRPM]:
+            skip = 0
+            # RPMs & SRPMs processed independently so we can use criteria to limit fields for returned results
+            while True:
+                criteria = UnitAssociationCriteria(type_ids=type_id,
+                    unit_fields=['id', 'name', 'version', 'release', 'arch', 'epoch',
+                                 '_storage_path', "checksum", "checksumtype" , "repodata"], limit=limit, skip=skip)
+                units = publish_conduit.get_units(criteria)
+                if not units:
+                    break
+                _LOG.info("generate_yum_metadata processing %s units of type %s, %s total units have already been processed" % \
+                          (len(units), type_id, unit_count))
+                skip += len(units)
+                unit_count += len(units)
+                create_yum_metadata.merge_unit_metadata(units)
+        _LOG.info("generate_yum_metadata finished processing %s units" % (unit_count))
+        create_yum_metadata.close_xml()
+
+        create_yum_metadata.final_repodata_move()
+        # lookup and merge updateinfo, comps and other metadata
+        create_yum_metadata.merge_comps_xml()
+        create_yum_metadata.merge_updateinfo_xml()
+        # merge any custom metadata stored on the scratchpad, this includes prestodelta
+        create_yum_metadata.merge_custom_repodata()
+
+    except CancelException, ce:
+        metadata_progress_status = {"state" : "CANCELED"}
+        set_progress("metadata", metadata_progress_status, progress_callback)
+        errors.append(ce)
+        return False, errors
+    except Exception, e:
+        metadata_progress_status = {"state" : "FAILED"}
+        set_progress("metadata", metadata_progress_status, progress_callback)
+        errors.append(e)
+        return False, errors
+    end = time.time()
+    _LOG.info("Metadata generation finished in %s seconds" % (end - start))
+    metadata_progress_status = {"state" : "FINISHED"}
+    set_progress("metadata", metadata_progress_status, progress_callback)
+    return True, []
+
+
+def generate_custom_metadata_dict(repo_id, publish_conduit):
+    """
+    Generate the expected custom metadata dictionary from the yum repo metadata
+    content units.
+
+    :param repo_id: repository's unique identifier
+    :type repo_id: basestring
+
+    :param publish_conduit: publish conduit
+    :type publish_conduit: pulp.plugins.conduits.repo_publish.RepoPublishConduit
+
+    :return: dictionary of data_type: file contents
+    :rtype: dict
+    """
+    criteria = UnitAssociationCriteria(type_ids=[TYPE_ID_YUM_REPO_METADATA_FILE])
+
+    if isinstance(publish_conduit, MultipleRepoUnitsMixin):
+        units = publish_conduit.get_units(repo_id, criteria)
+    elif isinstance(publish_conduit, SingleRepoUnitsMixin):
+        units = publish_conduit.get_units(criteria)
+    else:
+        # stupid and dangerous, but stems from a dynamic-typing abuse in the
+        # ISO group distributor, where the publish_conduit passed into
+        # generate_yum_metadata is not a conduit at all
+        units = []
+
+    if not units:
+        return {}
+
+    custom_metadata = {}
+
+    for u in units:
+
+        if u.storage_path.endswith('.gz'):
+            handle = gzip.open(u.storage_path, 'r')
+        else:
+            handle = open(u.storage_path, 'r')
+
+        try:
+            contents = handle.read().decode('utf-8', 'replace')
+        finally:
+            handle.close()
+
+        custom_metadata[u.unit_key['data_type']] = contents
+
+    return custom_metadata
+

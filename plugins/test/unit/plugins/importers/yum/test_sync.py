@@ -17,6 +17,7 @@ import os
 import unittest
 
 import mock
+
 from nectar.config import DownloaderConfig
 from nectar.downloaders.base import Downloader
 from pulp.common.plugins import importer_constants
@@ -24,12 +25,12 @@ from pulp.plugins.conduits.repo_sync import RepoSyncConduit
 from pulp.plugins.config import PluginCallConfiguration
 from pulp.plugins.model import Repository, SyncReport
 import pulp.server.managers.factory as manager_factory
-
-from pulp_rpm.common import models, constants
+from pulp_rpm.common import constants
+from pulp_rpm.plugins.db import models
 from pulp_rpm.plugins.importers.yum.repomd import metadata, group, updateinfo, packages, presto, primary
-from pulp_rpm.plugins.importers.yum.report import ContentReport
 from pulp_rpm.plugins.importers.yum.sync import RepoSync, FailedException, CancelException
 import model_factory
+
 
 manager_factory.initialize()
 

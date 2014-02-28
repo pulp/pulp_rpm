@@ -20,9 +20,14 @@ from pulp.plugins.conduits.repo_publish import RepoPublishConduit
 from pulp.plugins.distributor import GroupDistributor
 from pulp.server.exceptions import PulpDataException
 
+
+
+
+
 # Import export_utils from this directory, which is not in the python path
 import export_utils
-from pulp_rpm.common import constants, ids, models
+from pulp_rpm.common import constants, ids
+from pulp_rpm.plugins.db import models
 from pulp_rpm.yum_plugin import util
 
 _logger = util.getLogger(__name__)

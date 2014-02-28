@@ -19,10 +19,11 @@ import tempfile
 
 from nectar.listener import AggregatingEventListener
 from nectar.request import DownloadRequest
-
-from pulp_rpm.common import constants, ids, models
+from pulp_rpm.common import constants, ids
+from pulp_rpm.plugins.db import models
 from pulp_rpm.plugins.importers.yum.listener import DistroFileListener
 from pulp_rpm.plugins.importers.yum.repomd import nectar_factory
+
 
 SECTION_GENERAL = 'general'
 SECTION_STAGE2 = 'stage2'
@@ -154,7 +155,7 @@ def parse_treefile(path):
     :param path:    full path to the treefile
     :return:        instance of Distribution model, and a list of dicts
                     describing the distribution's files
-    :rtype:         (pulp_rpm.common.models.Distribution, dict)
+    :rtype:         (pulp_rpm.plugins.db.models.Distribution, dict)
     """
     parser = ConfigParser.RawConfigParser()
     # the default implementation of this method makes all option names lowercase,

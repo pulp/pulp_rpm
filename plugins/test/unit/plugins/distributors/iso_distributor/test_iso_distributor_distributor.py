@@ -19,8 +19,8 @@ import tempfile
 import unittest
 
 from mock import MagicMock, patch
-from pulp.devel.mock_distributor import get_basic_config
 
+from pulp.devel.mock_distributor import get_basic_config
 from pulp_rpm.common import constants, ids
 from pulp_rpm.plugins.distributors.iso_distributor import distributor
 

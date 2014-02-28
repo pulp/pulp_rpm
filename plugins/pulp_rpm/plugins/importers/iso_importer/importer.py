@@ -19,11 +19,10 @@ from pulp.common import config as config_utils
 from pulp.common.plugins import importer_constants
 from pulp.plugins.conduits.mixins import UnitAssociationCriteria
 from pulp.plugins.importer import Importer
-from pulp.plugins.model import SyncReport
-
-from pulp_rpm.common import constants, ids, models
-from pulp_rpm.common.progress import SyncProgressReport
+from pulp_rpm.common import constants, ids
+from pulp_rpm.plugins.db import models
 from pulp_rpm.plugins.importers.iso_importer import configuration, sync
+
 
 logger = logging.getLogger(__name__)
 

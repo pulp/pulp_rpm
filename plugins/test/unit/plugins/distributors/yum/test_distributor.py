@@ -25,7 +25,6 @@ from pulp.plugins.conduits.repo_config import RepoConfigConduit
 from pulp.plugins.conduits.repo_publish import RepoPublishConduit
 from pulp.plugins.config import PluginCallConfiguration
 from pulp.plugins.model import Repository
-
 from pulp_rpm.common.ids import TYPE_ID_DISTRIBUTOR_YUM
 from pulp_rpm.plugins.distributors.yum import distributor
 from pulp_rpm.plugins.distributors.yum.distributor import YumHTTPDistributor, pulp_server_config
