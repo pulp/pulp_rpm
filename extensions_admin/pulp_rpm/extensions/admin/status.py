@@ -18,7 +18,7 @@ from gettext import gettext as _
 import functools
 
 from pulp.client.commands.repo.sync_publish import StatusRenderer
-from pulp_rpm.common import constants, ids, models
+from pulp_rpm.common import constants, ids
 from pulp_rpm.common.status_utils import (
     render_general_spinner_step, render_itemized_in_progress_state,
     render_publish_step_in_progress_state)
@@ -459,7 +459,7 @@ class RpmExportStatusRenderer(StatusRenderer):
     following format:
 
     pulp_rpm.common.ids.TYPE_ID_DISTRIBUTOR_EXPORT: {
-      pulp_rpm.common.models.Errata.TYPE: {
+      pulp_rpm.plugins.db.models.Errata.TYPE: {
         constants.PROGRESS_NUM_SUCCESS_KEY: 12,
         constants.PROGRESS_NUM_ERROR_KEY: 0,
         constants.PROGRESS_ITEMS_LEFT_KEY: 0,
@@ -481,7 +481,7 @@ class RpmExportStatusRenderer(StatusRenderer):
         constants.PROGRESS_ITEMS_TOTAL_KEY: 1,
         constants.PROGRESS_ERROR_DETAILS_KEY: []
       },
-      pulp_rpm.common.models.Distribution.TYPE: {
+      pulp_rpm.plugins.db.models.Distribution.TYPE: {
         constants.PROGRESS_NUM_SUCCESS_KEY: 1,
         constants.PROGRESS_NUM_ERROR_KEY: 0,
         constants.PROGRESS_ITEMS_LEFT_KEY: 0,
@@ -489,7 +489,7 @@ class RpmExportStatusRenderer(StatusRenderer):
         constants.PROGRESS_ITEMS_TOTAL_KEY: 1,
         constants.PROGRESS_ERROR_DETAILS_KEY: []
       },
-      pulp_rpm.common.models.RPM.TYPE: {
+      pulp_rpm.plugins.db.models.RPM.TYPE: {
         constants.PROGRESS_NUM_SUCCESS_KEY: 43,
         constants.PROGRESS_NUM_ERROR_KEY: 0,
         constants.PROGRESS_ITEMS_LEFT_KEY: 0,
@@ -554,7 +554,7 @@ class RpmExportStatusRenderer(StatusRenderer):
         :param progress_report: A dictionary containing the progress report from the export distributor
         :type progress_report: dict
         """
-        data = progress_report[ids.TYPE_ID_DISTRIBUTOR_EXPORT][models.RPM.TYPE]
+        data = progress_report[ids.TYPE_ID_DISTRIBUTOR_EXPORT][ids.TYPE_ID_RPM]
         state = data[constants.PROGRESS_STATE_KEY]
 
         if state == constants.STATE_NOT_STARTED:
@@ -580,7 +580,7 @@ class RpmExportStatusRenderer(StatusRenderer):
         :param progress_report: A dictionary containing the progress report from the export distributor
         :type progress_report: dict
         """
-        data = progress_report[ids.TYPE_ID_DISTRIBUTOR_EXPORT][models.Errata.TYPE]
+        data = progress_report[ids.TYPE_ID_DISTRIBUTOR_EXPORT][ids.TYPE_ID_ERRATA]
         state = data[constants.PROGRESS_STATE_KEY]
 
         if state == constants.STATE_NOT_STARTED:
@@ -606,7 +606,7 @@ class RpmExportStatusRenderer(StatusRenderer):
         :param progress_report: A dictionary containing the progress report from the export distributor
         :type progress_report: dict
         """
-        data = progress_report[ids.TYPE_ID_DISTRIBUTOR_EXPORT][models.Distribution.TYPE]
+        data = progress_report[ids.TYPE_ID_DISTRIBUTOR_EXPORT][ids.TYPE_ID_DISTRO]
         state = data[constants.PROGRESS_STATE_KEY]
 
         if state == constants.STATE_NOT_STARTED:

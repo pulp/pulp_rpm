@@ -21,7 +21,7 @@ from nectar.downloaders.threaded import HTTPThreadedDownloader
 from nectar.report import DownloadReport
 from pulp.common.plugins import importer_constants
 from pulp.plugins.model import Repository, Unit
-from pulp_rpm.common import models
+from pulp_rpm.plugins.db import models
 from pulp_rpm.common.ids import TYPE_ID_ISO
 from pulp_rpm.common.progress import SyncProgressReport, ISOProgressReport
 from pulp_rpm.plugins.importers.iso_importer.sync import ISOSyncRun

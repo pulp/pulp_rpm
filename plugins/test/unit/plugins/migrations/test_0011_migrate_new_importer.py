@@ -17,7 +17,7 @@ import unittest
 import mock
 
 from pulp.server.db.migrate.models import _import_all_the_way
-from pulp_rpm.common.models import RPM, SRPM
+from pulp_rpm.plugins.db.models import RPM, SRPM
 
 
 migration = _import_all_the_way('pulp_rpm.plugins.migrations.0011_new_importer')

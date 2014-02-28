@@ -15,7 +15,8 @@ from gettext import gettext as _
 
 from pulp.plugins.importer import Importer
 from pulp.common.config import read_json_config
-from pulp_rpm.common import ids, models
+from pulp_rpm.common import ids
+from pulp_rpm.plugins.db import models
 from pulp_rpm.plugins.importers.yum import sync, associate, upload, config_validate
 
 

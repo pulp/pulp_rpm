@@ -21,7 +21,7 @@ import rpm
 
 from pulp.plugins.util import verification
 from pulp.server.db.model.criteria import UnitAssociationCriteria
-from pulp_rpm.common import models
+from pulp_rpm.plugins.db import models
 from pulp_rpm.plugins.importers.yum import utils
 from pulp_rpm.plugins.importers.yum.parse import rpm as rpm_parse
 from pulp_rpm.plugins.importers.yum.repomd import primary
@@ -156,7 +156,7 @@ def _link_errata_to_rpms(conduit, errata_model, errata_unit):
     :param conduit: provides access to relevant Pulp functionality
     :type  conduit: pulp.plugins.conduits.unit_add.UnitAddConduit
     :param errata_model:    model object representing an errata
-    :type  errata_model:    pulp_rpm.common.models.Errata
+    :type  errata_model:    pulp_rpm.plugins.db.models.Errata
     :param errata_unit:     unit object representing an errata
     :type  errata_unit:     pulp.plugins.model.Unit
     """

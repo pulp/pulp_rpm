@@ -17,7 +17,8 @@ import os
 import shutil
 
 from pulp.server.db.model.criteria import UnitAssociationCriteria
-from pulp_rpm.common import models, constants
+from pulp_rpm.common import constants
+from pulp_rpm.plugins.db import models
 from pulp_rpm.plugins.importers.yum import depsolve
 from pulp_rpm.plugins.importers.yum import existing
 
@@ -153,7 +154,7 @@ def filter_available_rpms(rpms, import_conduit):
     available in the source repository
 
     :param rpms:            iterable of RPMs that are desired to be copied
-    :type  rpms:            iterable of pulp_rpm.common.models.RPM.NAMEDTUPLE
+    :type  rpms:            iterable of pulp_rpm.plugins.db.models.RPM.NAMEDTUPLE
     :param import_conduit:  import conduit passed to the Importer
     :type  import_conduit:  pulp.plugins.conduits.unit_import.ImportUnitConduit
     :return:    iterable of Units that should be copied
@@ -214,7 +215,7 @@ def _no_checksum_clean_unit_key(unit_tuple):
     particularly useful for repos where the errata to not specify epochs
 
     :param unit_tuple:  unit to convert
-    :type  unit_tuple:  pulp_rpm.common.models.RPM.NAMEDTUPLE
+    :type  unit_tuple:  pulp_rpm.plugins.db.models.RPM.NAMEDTUPLE
 
     :return:    unit key without checksum data
     :rtype:     dict

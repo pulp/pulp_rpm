@@ -14,7 +14,7 @@ from xml.etree import cElementTree as ET
 
 from pulp.plugins.types import database as types_db
 from pulp.server.db import connection
-from pulp_rpm.common.models import RPM, SRPM
+from pulp_rpm.plugins.db.models import RPM, SRPM
 from pulp_rpm.plugins.importers.yum import utils
 from pulp_rpm.plugins.importers.yum.repomd import primary
 

@@ -20,7 +20,8 @@ import mock
 
 from pulp.plugins.config import PluginCallConfiguration
 from pulp.plugins.model import Unit
-from pulp_rpm.common import models
+
+from pulp_rpm.plugins.db import models
 from pulp_rpm.plugins.importers.yum.repomd import packages, updateinfo
 from pulp_rpm.plugins.importers.yum import upload
 

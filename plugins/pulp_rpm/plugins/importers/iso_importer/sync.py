@@ -22,8 +22,9 @@ from nectar.downloaders.local import LocalFileDownloader
 from pulp.common.plugins import importer_constants
 from pulp.common.util import encode_unicode
 from pulp.plugins.conduits.mixins import UnitAssociationCriteria
-from pulp_rpm.common import constants, ids, models
+from pulp_rpm.common import constants, ids
 from pulp_rpm.common.progress import SyncProgressReport
+from pulp_rpm.plugins.db import models
 
 
 logger = logging.getLogger(__name__)
@@ -200,7 +201,7 @@ class ISOSyncRun(listener.DownloadEventListener):
         Download the manifest file, and process it to return an ISOManifest.
 
         :return: manifest of available ISOs
-        :rtype:  pulp_rpm.common.models.ISOManifest
+        :rtype:  pulp_rpm.plugins.db.models.ISOManifest
         """
         manifest_url = urljoin(self._repo_url, models.ISOManifest.FILENAME)
         # I probably should have called this manifest destination, but I couldn't help myself
@@ -232,7 +233,7 @@ class ISOSyncRun(listener.DownloadEventListener):
 
         :param manifest: An ISOManifest describing the ISOs that are available at the
                          feed_url that we are synchronizing with
-        :type  manifest: pulp_rpm.common.models.ISOManifest
+        :type  manifest: pulp_rpm.plugins.db.models.ISOManifest
         :return:         A 2-tuple. The first element of the tuple is a list of ISOs that we should retrieve
                          from the feed_url. The second element of the tuple is a list of Units that
                          represent the ISOs that we have in our local repo that were not found in the remote
@@ -244,7 +245,7 @@ class ISOSyncRun(listener.DownloadEventListener):
             Return a simple string representation of the unit key of the ISO.
 
             :param iso: The ISO for which we want a unit key string representation
-            :type  iso: pulp_rpm.common.models.ISO
+            :type  iso: pulp_rpm.plugins.db.models.ISO
             """
             return '%s-%s-%s' % (iso.name, iso.checksum, iso.size)
 

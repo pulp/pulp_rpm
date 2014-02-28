@@ -14,7 +14,8 @@
 import logging
 
 from pulp.server.db.model.criteria import UnitAssociationCriteria
-from pulp_rpm.common import version_utils, models
+from pulp_rpm.common import version_utils
+from pulp_rpm.plugins.db import models
 from pulp_rpm.plugins.importers.yum.utils import paginate
 
 
@@ -209,7 +210,7 @@ def find_dependent_rpms(units, search_method):
                             will be a method on a conduit such as "conduit.get_units"
     :type  search_method:   function
 
-    :return:        set of pulp_rpm.common.models.RPM.NAMEDTUPLE instances which
+    :return:        set of pulp_rpm.plugins.db.models.RPM.NAMEDTUPLE instances which
                     satisfy the passed-in requirements
     :rtype:         set
     """
@@ -226,7 +227,7 @@ def _build_provides_tree(source_packages):
 
     In the example below, "provide_nameA" is the value of a "Provides" statement
     such as "webserver". "package_name1" is the name of a package, such as "httpd".
-    "package1_as_named_tuple" is an instance of pulp_rpm.common.models.RPM.NAMEDTUPLE
+    "package1_as_named_tuple" is an instance of pulp_rpm.plugins.db.models.RPM.NAMEDTUPLE
     for the newest version of that package which provides "provide_nameA".
 
     {
@@ -301,7 +302,7 @@ def _get_source_with_provides(search_method):
                             will be a method on a conduit such as "conduit.get_source_units"
     :type  search_method:   function
 
-    :return:    generator of (pulp_rpm.common.models.RPM.NAMEDTUPLE, list of provides)
+    :return:    generator of (pulp_rpm.plugins.db.models.RPM.NAMEDTUPLE, list of provides)
     """
     fields = list(models.RPM.UNIT_KEY_NAMES)
     fields.extend(['provides', 'id'])
@@ -321,7 +322,7 @@ def match(reqs, source):
     :type  reqs:    list of Require() instances
     :param source:  iterable of tuples (namedtuple, provides list)
     :type  source:  iterable
-    :return:        set of pulp_rpm.common.models.RPM.NAMEDTUPLE instances which
+    :return:        set of pulp_rpm.plugins.db.models.RPM.NAMEDTUPLE instances which
                     satisfy the passed-in requirements
     :rtype:         set
     """
@@ -358,7 +359,7 @@ def get_requirements(units, search_method):
 
     :param units:   iterable of RPMs for which a query should be performed to
                     retrieve their Requires entries.
-    :type  units:   iterable of pulp_rpm.common.models.RPM.NAMEDTUPLE
+    :type  units:   iterable of pulp_rpm.plugins.db.models.RPM.NAMEDTUPLE
     :param search_method:   method that takes a UnitAssociationCriteria and
                             performs a search within a repository. Usually this
                             will be a method on a conduit such as "conduit.get_units"

@@ -21,7 +21,8 @@ from pulp.plugins.model import Unit, Repository
 from pulp.server.db.model.criteria import UnitAssociationCriteria
 import pulp.server.managers.factory as manager_factory
 import model_factory
-from pulp_rpm.common import models, constants
+from pulp_rpm.common import constants
+from pulp_rpm.plugins.db import models
 from pulp_rpm.plugins.importers.yum import associate
 
 

@@ -26,7 +26,7 @@ from pulp.plugins.model import Repository
 from pulp.server.db.model.criteria import UnitAssociationCriteria
 from pulp.server.managers import factory as manager_factory
 from pulp.server.managers.repo.unit_association import OWNER_TYPE_IMPORTER
-from pulp_rpm.common import models
+from pulp_rpm.plugins.db import models
 from pulp_rpm.plugins.importers.yum import purge
 from pulp_rpm.plugins.importers.yum.repomd import metadata, primary, presto, updateinfo, group
 import model_factory

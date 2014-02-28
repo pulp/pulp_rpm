@@ -22,7 +22,8 @@ import unittest
 
 import mock
 
-from pulp_rpm.common import ids, models
+from pulp_rpm.common import ids
+from pulp_rpm.plugins.db import models
 
 
 class TestISO(unittest.TestCase):
@@ -62,7 +63,7 @@ class TestISO(unittest.TestCase):
 
         self.assertEqual(calculated_checksum, expected_checksum)
 
-    @mock.patch('pulp_rpm.common.models.CHECKSUM_CHUNK_SIZE', 8)
+    @mock.patch('pulp_rpm.plugins.db.models.CHECKSUM_CHUNK_SIZE', 8)
     def test_calculate_checksum_large_file(self):
         """
         Test the static calculate_checksum() method with a file that's larger than CHECKSUM_CHUNK_SIZE. Instead

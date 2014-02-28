@@ -14,7 +14,7 @@
 import mock
 
 from pulp.client.extensions.core import PulpPrompt
-from pulp_rpm.common import constants, ids, models
+from pulp_rpm.common import constants, ids
 from pulp_rpm.devel.client_base import PulpClientTests
 from pulp_rpm.extensions.admin import status
 
@@ -30,7 +30,7 @@ class TestRpmExportStatusRenderer(PulpClientTests):
         # A sample progress report dictionary
         self.progress = {
             ids.TYPE_ID_DISTRIBUTOR_EXPORT: {
-                models.Errata.TYPE: {
+                ids.TYPE_ID_ERRATA: {
                     constants.PROGRESS_NUM_SUCCESS_KEY: 0,
                     constants.PROGRESS_NUM_ERROR_KEY: 0,
                     constants.PROGRESS_ITEMS_LEFT_KEY: 10,
@@ -52,7 +52,7 @@ class TestRpmExportStatusRenderer(PulpClientTests):
                     constants.PROGRESS_ITEMS_TOTAL_KEY: 1,
                     constants.PROGRESS_ERROR_DETAILS_KEY: []
                 },
-                models.Distribution.TYPE: {
+                ids.TYPE_ID_DISTRO: {
                     constants.PROGRESS_NUM_SUCCESS_KEY: 0,
                     constants.PROGRESS_NUM_ERROR_KEY: 0,
                     constants.PROGRESS_ITEMS_LEFT_KEY: 1,
@@ -60,7 +60,7 @@ class TestRpmExportStatusRenderer(PulpClientTests):
                     constants.PROGRESS_ITEMS_TOTAL_KEY: 1,
                     constants.PROGRESS_ERROR_DETAILS_KEY: []
                 },
-                models.RPM.TYPE: {
+                ids.TYPE_ID_RPM: {
                     constants.PROGRESS_NUM_SUCCESS_KEY: 0,
                     constants.PROGRESS_NUM_ERROR_KEY: 0,
                     constants.PROGRESS_ITEMS_LEFT_KEY: 43,
@@ -99,7 +99,7 @@ class TestRpmExportStatusRenderer(PulpClientTests):
 
     def test_render_rpms_step(self):
         # Setup
-        data = self.progress[ids.EXPORT_DISTRIBUTOR_ID][models.RPM.TYPE]
+        data = self.progress[ids.EXPORT_DISTRIBUTOR_ID][ids.TYPE_ID_RPM]
         self.renderer.prompt.write = mock.Mock(spec=PulpPrompt)
 
         # Test that when the section has a state that isn't in progress, nothing is done
@@ -108,7 +108,7 @@ class TestRpmExportStatusRenderer(PulpClientTests):
 
         # Change the state to running and call render_rpms_step again
         data[constants.PROGRESS_STATE_KEY] = constants.STATE_RUNNING
-        self.progress[ids.EXPORT_DISTRIBUTOR_ID][models.RPM.TYPE] = data
+        self.progress[ids.EXPORT_DISTRIBUTOR_ID][ids.TYPE_ID_RPM] = data
         self.renderer.render_rpms_step(self.progress)
         self.assertEqual(1, status.render_itemized_in_progress_state.call_count)
         self.assertEqual(data, status.render_itemized_in_progress_state.call_args[0][1])
@@ -118,14 +118,14 @@ class TestRpmExportStatusRenderer(PulpClientTests):
 
         # Change the state to failed and call render_rpms_step again
         data[constants.PROGRESS_STATE_KEY] = constants.STATE_FAILED
-        self.progress[ids.EXPORT_DISTRIBUTOR_ID][models.RPM.TYPE] = data
+        self.progress[ids.EXPORT_DISTRIBUTOR_ID][ids.TYPE_ID_RPM] = data
         self.renderer.render_rpms_step(self.progress)
         self.assertEqual(1, status.render_itemized_in_progress_state.call_count)
         self.assertEqual(constants.STATE_FAILED, self.renderer.rpms_last_state)
 
     def test_render_errata_step(self):
         # Setup
-        data = self.progress[ids.EXPORT_DISTRIBUTOR_ID][models.Errata.TYPE]
+        data = self.progress[ids.EXPORT_DISTRIBUTOR_ID][ids.TYPE_ID_ERRATA]
         self.renderer.prompt.write = mock.Mock(spec=PulpPrompt)
 
         # Test that when the section has a state that isn't in progress, nothing is done
@@ -134,7 +134,7 @@ class TestRpmExportStatusRenderer(PulpClientTests):
 
         # Change the state to running and call render_errata_step again
         data[constants.PROGRESS_STATE_KEY] = constants.STATE_RUNNING
-        self.progress[ids.EXPORT_DISTRIBUTOR_ID][models.Errata.TYPE] = data
+        self.progress[ids.EXPORT_DISTRIBUTOR_ID][ids.TYPE_ID_ERRATA] = data
         self.renderer.render_errata_step(self.progress)
         self.assertEqual(1, status.render_itemized_in_progress_state.call_count)
         self.assertEqual(data, status.render_itemized_in_progress_state.call_args[0][1])
@@ -144,14 +144,14 @@ class TestRpmExportStatusRenderer(PulpClientTests):
 
         # Change the state to failed and call render_errata_step again
         data[constants.PROGRESS_STATE_KEY] = constants.STATE_FAILED
-        self.progress[ids.EXPORT_DISTRIBUTOR_ID][models.Errata.TYPE] = data
+        self.progress[ids.EXPORT_DISTRIBUTOR_ID][ids.TYPE_ID_ERRATA] = data
         self.renderer.render_errata_step(self.progress)
         self.assertEqual(1, status.render_itemized_in_progress_state.call_count)
         self.assertEqual(constants.STATE_FAILED, self.renderer.errata_last_state)
 
     def test_render_distribution_step(self):
         # Setup
-        data = self.progress[ids.EXPORT_DISTRIBUTOR_ID][models.Distribution.TYPE]
+        data = self.progress[ids.EXPORT_DISTRIBUTOR_ID][ids.TYPE_ID_DISTRO]
         self.renderer.prompt.write = mock.Mock(spec=PulpPrompt)
 
         # Test that when the section has a state that isn't in progress, nothing is done
@@ -160,7 +160,7 @@ class TestRpmExportStatusRenderer(PulpClientTests):
 
         # Change the state to running and call render_distribution_publish_step again
         data[constants.PROGRESS_STATE_KEY] = constants.STATE_RUNNING
-        self.progress[ids.EXPORT_DISTRIBUTOR_ID][models.Distribution.TYPE] = data
+        self.progress[ids.EXPORT_DISTRIBUTOR_ID][ids.TYPE_ID_DISTRO] = data
         self.renderer.render_distribution_publish_step(self.progress)
         self.assertEqual(1, status.render_itemized_in_progress_state.call_count)
         self.assertEqual(data, status.render_itemized_in_progress_state.call_args[0][1])
@@ -170,7 +170,7 @@ class TestRpmExportStatusRenderer(PulpClientTests):
 
         # Change the state to failed and call render_distribution_publish_step again
         data[constants.PROGRESS_STATE_KEY] = constants.STATE_FAILED
-        self.progress[ids.EXPORT_DISTRIBUTOR_ID][models.Distribution.TYPE] = data
+        self.progress[ids.EXPORT_DISTRIBUTOR_ID][ids.TYPE_ID_DISTRO] = data
         self.renderer.render_distribution_publish_step(self.progress)
         self.assertEqual(1, status.render_itemized_in_progress_state.call_count)
         self.assertEqual(constants.STATE_FAILED, self.renderer.distributions_last_state)

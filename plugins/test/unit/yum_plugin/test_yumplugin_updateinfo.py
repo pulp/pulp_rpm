@@ -6,7 +6,7 @@ import unittest
 import mock
 
 from pulp.plugins.model import Unit
-from pulp_rpm.common import models
+from pulp_rpm.plugins.db import models
 from pulp_rpm.yum_plugin import updateinfo
 from pulp_rpm.yum_plugin.updateinfo import encode_epoch
 

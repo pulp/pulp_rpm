@@ -15,7 +15,7 @@ import functools
 from itertools import count
 
 from pulp.plugins.model import Unit
-from pulp_rpm.common import models
+from pulp_rpm.plugins.db import models
 
 
 _rpm_counter = count()

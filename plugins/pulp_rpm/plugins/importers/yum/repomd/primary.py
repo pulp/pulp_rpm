@@ -14,7 +14,7 @@
 from copy import deepcopy
 import os
 
-from pulp_rpm.common import models
+from pulp_rpm.plugins.db import models
 from pulp_rpm.plugins.importers.yum import utils
 
 
@@ -114,7 +114,7 @@ def process_package_element(package_element):
 
     :param package_element: parsed primary.xml package element
     :return: package information dictionary
-    :rtype: pulp_rpm.common.models.RPM
+    :rtype: pulp_rpm.plugins.db.models.RPM
     """
     # NOTE the use of deepcopy relies on cpython's very sensible policy of never
     # duplicating string literals, this may not hold up in other implementations

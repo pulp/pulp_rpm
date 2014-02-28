@@ -14,14 +14,15 @@ import tempfile
 import shutil
 import unittest
 
-from . import mock_yum
 from mock import Mock, patch
-from mock_yum import YumBase
+
 from pulp.agent.lib.container import Container, SYSTEM, CONTENT, BIND
 from pulp.agent.lib.dispatcher import Dispatcher
 from pulp.agent.lib.conduit import Conduit
 from pulp.common.config import Config
 
+import mock_yum
+from mock_yum import YumBase
 
 class TestConduit(Conduit):
 

@@ -17,7 +17,7 @@ import functools
 import unittest
 from xml.etree import ElementTree
 
-from pulp_rpm.common import models
+from pulp_rpm.plugins.db import models
 from pulp_rpm.plugins.importers.yum.repomd import group, packages
 
 

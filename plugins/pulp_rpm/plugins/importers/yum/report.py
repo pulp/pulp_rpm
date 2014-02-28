@@ -11,7 +11,8 @@
 # You should have received a copy of GPLv2 along with this software; if not,
 # see http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt
 
-from pulp_rpm.common import constants, models
+from pulp_rpm.common import constants
+from pulp_rpm.plugins.db import models
 
 type_done_map = {
     models.RPM.TYPE: 'rpm_done',

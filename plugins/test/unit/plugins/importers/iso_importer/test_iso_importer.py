@@ -18,7 +18,8 @@ import mock
 
 from pulp.common.plugins import importer_constants
 from pulp.plugins.model import Repository, Unit
-from pulp_rpm.common import ids, models
+from pulp_rpm.common import ids
+from pulp_rpm.plugins.db import models
 from pulp_rpm.plugins.importers.iso_importer import importer, sync
 from pulp_rpm.devel.rpm_support_base import PulpRPMTests
 from pulp_rpm.devel import importer_mocks
@@ -224,7 +225,7 @@ class TestISOImporter(PulpRPMTests):
         # The conduit's save_unit method should not have been called
         self.assertEqual(sync_conduit.save_unit.call_count, 0)
 
-    @mock.patch('pulp_rpm.common.models.ISO.validate', side_effect=models.ISO.validate,
+    @mock.patch('pulp_rpm.plugins.db.models.ISO.validate', side_effect=models.ISO.validate,
                 autospec=True)
     def test_upload_unit_validate_false(self, validate):
         """
@@ -280,7 +281,7 @@ class TestISOImporter(PulpRPMTests):
         saved_unit = sync_conduit.save_unit.mock_calls[0][1][0]
         self.assertEqual(saved_unit.unit_key, unit_key)
 
-    @mock.patch('pulp_rpm.common.models.ISO.validate')
+    @mock.patch('pulp_rpm.plugins.db.models.ISO.validate')
     @mock.patch('os.remove', side_effect=os.remove)
     def test_upload_unit_validate_true_bad_checksum(self, remove, validate):
         """
@@ -375,7 +376,7 @@ class TestISOImporter(PulpRPMTests):
         saved_unit = sync_conduit.save_unit.mock_calls[0][1][0]
         self.assertEqual(saved_unit.unit_key, unit_key)
 
-    @mock.patch('pulp_rpm.common.models.ISO.validate', side_effect=models.ISO.validate,
+    @mock.patch('pulp_rpm.plugins.db.models.ISO.validate', side_effect=models.ISO.validate,
                 autospec=True)
     @mock.patch('os.remove', side_effect=os.remove)
     def test_upload_unit_validate_unset(self, remove, validate):

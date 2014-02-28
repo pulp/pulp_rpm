@@ -13,7 +13,7 @@
 
 import logging
 
-from pulp_rpm.common import models
+from pulp_rpm.plugins.db import models
 
 
 _LOGGER = logging.getLogger(__name__)
@@ -35,7 +35,7 @@ def process_group_element(repo_id, element):
     :type  element: xml.etree.ElementTree.Element
 
     :return:    models.PackageGroup instance for the XML block
-    :rtype:     pulp_rpm.common.models.PackageGroup
+    :rtype:     pulp_rpm.plugins.db.models.PackageGroup
     """
     packagelist = element.find('packagelist')
     conditional, default, mandatory, optional = _parse_packagelist(packagelist.findall('packagereq'))
@@ -79,7 +79,7 @@ def process_category_element(repo_id, element):
     :type  element: xml.etree.ElementTree.Element
 
     :return:    models.PackageCategory instance for the XML block
-    :rtype:     pulp_rpm.common.models.PackageCategory
+    :rtype:     pulp_rpm.plugins.db.models.PackageCategory
     """
     description, translated_description = _parse_translated(element.findall('description'))
     name, translated_name = _parse_translated(element.findall('name'))
@@ -109,7 +109,7 @@ def process_environment_element(repo_id, element):
     :type  element: xml.etree.ElementTree.Element
 
     :return:    models.PackageEnvironment instance for the XML block
-    :rtype:     pulp_rpm.common.models.PackageEnvironment
+    :rtype:     pulp_rpm.plugins.db.models.PackageEnvironment
     """
     description, translated_description = _parse_translated(element.findall('description'))
     name, translated_name = _parse_translated(element.findall('name'))

@@ -261,7 +261,7 @@ class SyncProgressReport(ISOProgressReport):
         Updates the progress report that a iso failed to be imported.
 
         :param iso:          The ISO object that failed to publish or download
-        :type  iso:          pulp_rpm.common.models.ISO
+        :type  iso:          pulp_rpm.plugins.db.models.ISO
         :param error_report: The error message that should be associated with the ISO
         :type  error_report: basestring
         """
