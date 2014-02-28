@@ -15,6 +15,7 @@ Test the pulp_rpm.plugins.importers.yum.depsolve module.
 """
 
 import unittest
+import mock
 
 from pulp.plugins.model import Unit
 
@@ -74,6 +75,9 @@ class DepsolveTestCase(unittest.TestCase):
 
         self._make_units(self.rpms)
 
+        self.mock_search = mock.MagicMock()
+        self.solver = depsolve.Solver(self.mock_search)
+
 
 class TestBuildProvidesTree(DepsolveTestCase):
     """
@@ -83,9 +87,11 @@ class TestBuildProvidesTree(DepsolveTestCase):
         """
         Make sure the function can handle RPMs without provides data.
         """
-        source_packages = [(rpm.as_named_tuple, []) for rpm in self.rpms]
+        for u in self.units:
+            u.metadata['provides'] = []
+        self.mock_search.return_value = self.units
 
-        tree = depsolve._build_provides_tree(source_packages)
+        tree = self.solver._build_provides_tree()
 
         self.assertEqual(tree, {})
 
@@ -93,30 +99,96 @@ class TestBuildProvidesTree(DepsolveTestCase):
         """
         Test when source_packages is the empty list.
         """
-        tree = depsolve._build_provides_tree([])
+        self.mock_search.return_value = []
+
+        tree = self.solver._build_provides_tree()
 
         self.assertEqual(tree, {})
 
     def test_with_provides(self):
-        source_packages = [(rpm.as_named_tuple, rpm.metadata['provides']) for rpm in self.rpms \
-                           if 'provides' in rpm.metadata]
+        self.mock_search.return_value = self.units
 
-        tree = depsolve._build_provides_tree(source_packages)
+        tree = self.solver._build_provides_tree()
 
         expected_tree = {
             'webbrowser': {
-                'firefox': self.rpm_1.as_named_tuple},
+                'firefox': self.unit_1,
+            },
             'calculator': {
-                'gnome-calculator': self.rpm_4.as_named_tuple,
-                'gcalctool': self.rpm_6.as_named_tuple}
+                'gnome-calculator': self.unit_4,
+                'gcalctool': self.unit_6
+            }
         }
+
         self.assertEqual(tree, expected_tree)
+
+
+class TestProvidesTree(DepsolveTestCase):
+    @mock.patch('pulp_rpm.plugins.importers.yum.depsolve.Solver._build_provides_tree')
+    def test_returns_tree(self, mock_build):
+        ret = self.solver._provides_tree
+
+        mock_build.assert_called_once_with()
+        self.assertEqual(ret, mock_build.return_value)
+
+    @mock.patch('pulp_rpm.plugins.importers.yum.depsolve.Solver._build_provides_tree')
+    def test_cache(self, mock_build):
+        rets = [self.solver._provides_tree for x in range(5)]
+
+        mock_build.assert_called_once_with()
+        # make sure they are all the same
+        self.assertTrue(reduce(lambda x, y: x if x is y else False, rets))
+
+    def test_clear_source_cache(self):
+        self.solver._packages_tree
+
+        # the source list should be cached
+        self.assertTrue(self.solver._cached_source_with_provides is not None)
+
+        self.solver._provides_tree
+
+        # the source list should have been cleared
+        self.assertTrue(self.solver._cached_source_with_provides is None)
+
+
+class TestPackagesTree(DepsolveTestCase):
+    @mock.patch('pulp_rpm.plugins.importers.yum.depsolve.Solver._build_packages_tree')
+    def test_returns_tree(self, mock_build):
+        ret = self.solver._packages_tree
+
+        mock_build.assert_called_once_with()
+        self.assertEqual(ret, mock_build.return_value)
+
+    @mock.patch('pulp_rpm.plugins.importers.yum.depsolve.Solver._build_packages_tree')
+    def test_cache(self, mock_build):
+        rets = [self.solver._packages_tree for x in range(5)]
+
+        mock_build.assert_called_once_with()
+        # make sure they are all the same
+        self.assertTrue(reduce(lambda x, y: x if x is y else False, rets))
+
+    def test_clear_source_cache(self):
+        self.solver._provides_tree
+
+        # the source list should be cached
+        self.assertTrue(self.solver._cached_source_with_provides is not None)
+
+        self.solver._packages_tree
+
+        # the source list should have been cleared
+        self.assertTrue(self.solver._cached_source_with_provides is None)
+
 
 
 class TestFindDependentRPMs(DepsolveTestCase):
     """
     Test the find_dependent_rpms() function.
     """
+
+    def setUp(self):
+        super(TestFindDependentRPMs, self).setUp()
+        self.mock_search.side_effect = self._get_units
+
     def _get_units(self, criteria):
         """
         Fake the conduit get_units() call. If there are unit_filters, assume they have an $or clause
@@ -133,10 +205,10 @@ class TestFindDependentRPMs(DepsolveTestCase):
         """
         units = [self.unit_1]
 
-        dependent_rpms = depsolve.find_dependent_rpms(units, self._get_units)
+        dependent_rpms = self.solver.find_dependent_rpms(units)
 
         # Firefox only depends directly on xulrunner
-        expected_rpms = set([self.rpm_2.as_named_tuple])
+        expected_rpms = set([self.unit_2])
         self.assertEqual(dependent_rpms, expected_rpms)
 
     def test_two_units_with_dependencies(self):
@@ -146,10 +218,10 @@ class TestFindDependentRPMs(DepsolveTestCase):
         """
         units = [self.unit_1, self.unit_4]
 
-        dependent_rpms = depsolve.find_dependent_rpms(units, self._get_units)
+        dependent_rpms = self.solver.find_dependent_rpms(units)
 
         # Firefox only depends directly on xulrunner, and gnome-calculator needs glib2
-        expected_rpms = set([self.rpm_2.as_named_tuple, self.rpm_5.as_named_tuple])
+        expected_rpms = set([self.unit_2, self.unit_5])
         self.assertEqual(dependent_rpms, expected_rpms)
 
     def test_with_no_dependencies(self):
@@ -158,7 +230,7 @@ class TestFindDependentRPMs(DepsolveTestCase):
         """
         units = [self.unit_5]
 
-        dependent_rpms = depsolve.find_dependent_rpms(units, self._get_units)
+        dependent_rpms = self.solver.find_dependent_rpms(units)
 
         # The glib2 unit doesn't list any dependencies
         expected_rpms = set([])
@@ -170,7 +242,7 @@ class TestFindDependentRPMs(DepsolveTestCase):
         """
         units = []
 
-        dependent_rpms = depsolve.find_dependent_rpms(units, self._get_units)
+        dependent_rpms = self.solver.find_dependent_rpms(units)
 
         expected_rpms = set([])
         self.assertEqual(dependent_rpms, expected_rpms)
@@ -187,20 +259,13 @@ class TestMatch(DepsolveTestCase):
         r_1 = depsolve.Requirement('webbrowser')
         r_2 = depsolve.Requirement('calculator')
         reqs = [r_1, r_2]
-        source_packages = []
-        for rpm in self.rpms:
-            if 'provides' in rpm.metadata:
-                source_package = (rpm.as_named_tuple, rpm.metadata['provides'])
-            else:
-                source_package = (rpm.as_named_tuple, [])
-            source_packages.append(source_package)
+        self.mock_search.return_value = self.units
 
-        satisfactions = depsolve.match(reqs, source_packages)
+        satisfactions = self.solver.match(reqs)
 
         # The newer version of firefox, gnome-calculator, and gcalctool should be the members of
         # this set
-        expected_satisfactions = set(
-            [self.rpm_1.as_named_tuple, self.rpm_4.as_named_tuple, self.rpm_6.as_named_tuple])
+        expected_satisfactions = set([self.unit_1, self.unit_4, self.unit_6])
         self.assertEqual(satisfactions, expected_satisfactions)
 
 
