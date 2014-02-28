@@ -273,6 +273,7 @@ class Solver(object):
         if self._cached_provides_tree is None:
             self._cached_provides_tree = self._build_provides_tree()
             # if both trees have been created, remove the cached source list
+            # so it can be garbage-collected
             if self._cached_packages_tree is not None:
                 self._cached_source_with_provides = None
         return self._cached_provides_tree
@@ -330,6 +331,7 @@ class Solver(object):
         if self._cached_packages_tree is None:
             self._cached_packages_tree = self._build_packages_tree()
             # if both trees have been created, remove the cached source list
+            # so it can be garbage-collected
             if self._cached_provides_tree is not None:
                 self._cached_source_with_provides = None
         return self._cached_packages_tree
@@ -367,8 +369,6 @@ class Solver(object):
 
         :param reqs:    list of requirements
         :type  reqs:    list of Require() instances
-        :param source:  iterable of tuples (namedtuple, provides list)
-        :type  source:  iterable
         :return:        set of pulp.plugins.model.Unit instances which
                         satisfy the passed-in requirements
         :rtype:         set

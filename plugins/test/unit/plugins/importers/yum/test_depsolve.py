@@ -123,6 +123,63 @@ class TestBuildProvidesTree(DepsolveTestCase):
         self.assertEqual(tree, expected_tree)
 
 
+class TestProvidesTree(DepsolveTestCase):
+    @mock.patch('pulp_rpm.plugins.importers.yum.depsolve.Solver._build_provides_tree')
+    def test_returns_tree(self, mock_build):
+        ret = self.solver._provides_tree
+
+        mock_build.assert_called_once_with()
+        self.assertEqual(ret, mock_build.return_value)
+
+    @mock.patch('pulp_rpm.plugins.importers.yum.depsolve.Solver._build_provides_tree')
+    def test_cache(self, mock_build):
+        rets = [self.solver._provides_tree for x in range(5)]
+
+        mock_build.assert_called_once_with()
+        # make sure they are all the same
+        self.assertTrue(reduce(lambda x, y: x if x is y else False, rets))
+
+    def test_clear_source_cache(self):
+        self.solver._packages_tree
+
+        # the source list should be cached
+        self.assertTrue(self.solver._cached_source_with_provides is not None)
+
+        self.solver._provides_tree
+
+        # the source list should have been cleared
+        self.assertTrue(self.solver._cached_source_with_provides is None)
+
+
+class TestPackagesTree(DepsolveTestCase):
+    @mock.patch('pulp_rpm.plugins.importers.yum.depsolve.Solver._build_packages_tree')
+    def test_returns_tree(self, mock_build):
+        ret = self.solver._packages_tree
+
+        mock_build.assert_called_once_with()
+        self.assertEqual(ret, mock_build.return_value)
+
+    @mock.patch('pulp_rpm.plugins.importers.yum.depsolve.Solver._build_packages_tree')
+    def test_cache(self, mock_build):
+        rets = [self.solver._packages_tree for x in range(5)]
+
+        mock_build.assert_called_once_with()
+        # make sure they are all the same
+        self.assertTrue(reduce(lambda x, y: x if x is y else False, rets))
+
+    def test_clear_source_cache(self):
+        self.solver._provides_tree
+
+        # the source list should be cached
+        self.assertTrue(self.solver._cached_source_with_provides is not None)
+
+        self.solver._packages_tree
+
+        # the source list should have been cleared
+        self.assertTrue(self.solver._cached_source_with_provides is None)
+
+
+
 class TestFindDependentRPMs(DepsolveTestCase):
     """
     Test the find_dependent_rpms() function.
