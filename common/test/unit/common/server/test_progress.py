@@ -13,6 +13,8 @@
 
 """
 The tests in this module test the pulp_rpm.common.progress module.
+It is in the server package because the importer_mocks do not work
+on python 2.4
 """
 
 from datetime import datetime
