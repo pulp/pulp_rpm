@@ -97,7 +97,7 @@ mkdir -p %{buildroot}/%{_var}/lib/pulp/published/yum/https
 # Configuration
 cp -R plugins/etc/httpd %{buildroot}/%{_sysconfdir}
 cp -R plugins/etc/pulp %{buildroot}/%{_sysconfdir}
-cp -R plugins/etc/yum %{buildroot}/%{_sysconfdir}
+cp -R handlers/etc/yum %{buildroot}/%{_sysconfdir}
 cp -R handlers/etc/pulp %{buildroot}/%{_sysconfdir}
 
 # WSGI
