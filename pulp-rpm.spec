@@ -111,6 +111,9 @@ cp -R plugins/srv %{buildroot}
 # Yum Plugins
 cp -R handlers/usr/lib/yum-plugins %{buildroot}/%{_usr}/lib
 
+# Type files
+cp -R plugins/types %{buildroot}/%{_usr}/lib/pulp/plugins
+
 # Ghost repository file for consumers
 touch %{buildroot}/%{_sysconfdir}/yum.repos.d/pulp.repo
 
