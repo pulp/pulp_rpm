@@ -47,24 +47,36 @@ handlers that provide RPM support.
 
 %build
 
-# Yum Distributor, ISO Plugins, Export Distributor
-pushd pulp_rpm/src
+pushd common
 %{__python} setup.py build
 popd
-
-# Yum Importer
+pushd extensions_admin
+%{__python} setup.py build
+popd
+pushd extensions_consumer
+%{__python} setup.py build
+popd
+pushd handlers
+%{__python} setup.py build
+popd
 pushd plugins
 %{__python} setup.py build
 popd
 
 %install
 rm -rf %{buildroot}
-
-# Yum Distributor, ISO Plugins, Export Distributor
-pushd pulp_rpm/src
+pushd common
 %{__python} setup.py install -O1 --skip-build --root %{buildroot}
 popd
-
+pushd extensions_admin
+%{__python} setup.py install -O1 --skip-build --root %{buildroot}
+popd
+pushd extensions_consumer
+%{__python} setup.py install -O1 --skip-build --root %{buildroot}
+popd
+pushd handlers
+%{__python} setup.py install -O1 --skip-build --root %{buildroot}
+popd
 pushd plugins
 %{__python} setup.py install -O1 --skip-build --root %{buildroot}
 popd
@@ -81,28 +93,23 @@ mkdir -p %{buildroot}/%{_usr}/lib/pulp/consumer/extensions
 mkdir -p %{buildroot}/%{_usr}/lib/pulp/agent/handlers
 mkdir -p %{buildroot}/%{_var}/lib/pulp/published/yum/http
 mkdir -p %{buildroot}/%{_var}/lib/pulp/published/yum/https
-mkdir -p %{buildroot}/%{_usr}/lib/yum-plugins/
 
 # Configuration
-cp -R pulp_rpm/etc/httpd %{buildroot}/%{_sysconfdir}
-cp -R pulp_rpm/etc/pulp %{buildroot}/%{_sysconfdir}
-cp -R pulp_rpm/etc/yum %{buildroot}/%{_sysconfdir}
+cp -R plugins/etc/httpd %{buildroot}/%{_sysconfdir}
+cp -R plugins/etc/pulp %{buildroot}/%{_sysconfdir}
+cp -R plugins/etc/yum %{buildroot}/%{_sysconfdir}
 
 # WSGI
-cp -R pulp_rpm/srv %{buildroot}
-
-# Extensions
-cp -R pulp_rpm/extensions/admin/* %{buildroot}/%{_usr}/lib/pulp/admin/extensions
-cp -R pulp_rpm/extensions/consumer/* %{buildroot}/%{_usr}/lib/pulp/consumer/extensions
+cp -R plugins/srv %{buildroot}
 
 # Agent Handlers
-cp pulp_rpm/handlers/* %{buildroot}/%{_usr}/lib/pulp/agent/handlers
+# cp pulp_rpm/handlers/* %{buildroot}/%{_usr}/lib/pulp/agent/handlers
 
 # Plugins
-cp -R pulp_rpm/plugins/* %{buildroot}/%{_usr}/lib/pulp/plugins
+# cp -R pulp_rpm/plugins/* %{buildroot}/%{_usr}/lib/pulp/plugins
 
 # Yum Plugins
-cp -R pulp_rpm/usr/lib/yum-plugins %{buildroot}/%{_usr}/lib
+cp -R handlers/usr/lib/yum-plugins %{buildroot}/%{_usr}/lib
 
 # Ghost repository file for consumers
 touch %{buildroot}/%{_sysconfdir}/yum.repos.d/pulp.repo
@@ -130,26 +137,9 @@ A collection of modules shared among all RPM components.
 
 %files -n python-pulp-rpm-common
 %defattr(-,root,root,-)
-%dir %{python_sitelib}/pulp_rpm
-%{python_sitelib}/pulp_rpm/__init__.py*
+%dir %{python_sitelib}/pulp-rpm-common
+%{python_sitelib}/pulp-rpm-common*.egg-info
 %{python_sitelib}/pulp_rpm/common/
-%doc
-
-
-# ---- RPM Extension Common ----------------------------------------------------
-
-%package -n python-pulp-rpm-extension
-Summary: The RPM extension common library
-Group: Development/Languages
-Requires: python-pulp-rpm-common = %{pulp_version}
-Requires: rpm-python
-
-%description -n python-pulp-rpm-extension
-A collection of components shared among RPM extensions.
-
-%files -n python-pulp-rpm-extension
-%defattr(-,root,root,-)
-%{python_sitelib}/pulp_rpm/extension/
 %doc
 
 
@@ -170,11 +160,10 @@ to provide RPM specific support.
 
 %files plugins
 %defattr(-,root,root,-)
-%{python_sitelib}/pulp_rpm/migrations/
+%{python_sitelib}/pulp_rpm/plugins/
 %{python_sitelib}/pulp_rpm/repo_auth/
 %{python_sitelib}/pulp_rpm/yum_plugin/
-%{python_sitelib}/pulp_rpm/plugins/
-%{python_sitelib}/*.egg-info
+%{python_sitelib}/pulp-rpm-plugins*.egg-info
 %config(noreplace) %{_sysconfdir}/pulp/repo_auth.conf
 %config(noreplace) %{_sysconfdir}/httpd/conf.d/pulp_rpm.conf
 %{_usr}/lib/pulp/plugins/types/rpm_support.json
@@ -202,9 +191,8 @@ client capabilites with RPM specific features.
 
 %files admin-extensions
 %defattr(-,root,root,-)
-%{_usr}/lib/pulp/admin/extensions/rpm_admin_consumer/
-%{_usr}/lib/pulp/admin/extensions/rpm_repo/
-%{_usr}/lib/pulp/admin/extensions/iso/
+%{python_sitelib}/pulp-rpm-admin-extensions*.egg-info
+%{python_sitelib}/pulp_rpm/extensions/admin/
 %doc
 
 
@@ -222,7 +210,8 @@ client capabilites with RPM specific features.
 
 %files consumer-extensions
 %defattr(-,root,root,-)
-%{_usr}/lib/pulp/consumer/extensions/rpm_consumer/
+%{python_sitelib}/pulp-rpm-consumer-extensions*.egg-info
+%{python_sitelib}/pulp_rpm/extensions/admin/
 %doc
 
 
