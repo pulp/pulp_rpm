@@ -104,7 +104,7 @@ cp -R handlers/etc/pulp %{buildroot}/%{_sysconfdir}
 cp -R plugins/srv %{buildroot}
 
 # Agent Handlers
-cp -R handlers/pulp_rpm/handlers/* %{buildroot}/%{_usr}/lib/pulp/agent/handlers
+# cp -R handlers/pulp_rpm/handlers/* %{buildroot}/%{_usr}/lib/pulp/agent/handlers
 
 # Plugins
 # cp -R pulp_rpm/plugins/* %{buildroot}/%{_usr}/lib/pulp/plugins
@@ -238,14 +238,11 @@ management and Linux specific commands such as system reboot.
 
 %files handlers
 %defattr(-,root,root,-)
+%{python_sitelib}/pulp_rpmhandlers*.egg-info
 %{python_sitelib}/pulp_rpm/handlers/
 %{_sysconfdir}/pulp/agent/conf.d/bind.conf
 %{_sysconfdir}/pulp/agent/conf.d/linux.conf
 %{_sysconfdir}/pulp/agent/conf.d/rpm.conf
-%ghost %{_sysconfdir}/yum.repos.d/pulp.repo
-%{_usr}/lib/pulp/agent/handlers/bind.py*
-%{_usr}/lib/pulp/agent/handlers/linux.py*
-%{_usr}/lib/pulp/agent/handlers/rpm.py*
 %doc
 
 
