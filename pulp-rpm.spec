@@ -98,12 +98,13 @@ mkdir -p %{buildroot}/%{_var}/lib/pulp/published/yum/https
 cp -R plugins/etc/httpd %{buildroot}/%{_sysconfdir}
 cp -R plugins/etc/pulp %{buildroot}/%{_sysconfdir}
 cp -R plugins/etc/yum %{buildroot}/%{_sysconfdir}
+cp -R handlers/etc/pulp %{buildroot}/%{_sysconfdir}
 
 # WSGI
 cp -R plugins/srv %{buildroot}
 
 # Agent Handlers
-# cp pulp_rpm/handlers/* %{buildroot}/%{_usr}/lib/pulp/agent/handlers
+cp -R %{python_sitelib}/pulp_rpm/handlers/* %{buildroot}/%{_usr}/lib/pulp/agent/handlers
 
 # Plugins
 # cp -R pulp_rpm/plugins/* %{buildroot}/%{_usr}/lib/pulp/plugins
@@ -237,7 +238,7 @@ management and Linux specific commands such as system reboot.
 
 %files handlers
 %defattr(-,root,root,-)
-%{python_sitelib}/pulp_rpm/handler/
+%{python_sitelib}/pulp_rpm/handlers/
 %{_sysconfdir}/pulp/agent/conf.d/bind.conf
 %{_sysconfdir}/pulp/agent/conf.d/linux.conf
 %{_sysconfdir}/pulp/agent/conf.d/rpm.conf
