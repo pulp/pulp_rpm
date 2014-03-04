@@ -196,7 +196,7 @@ client capabilites with RPM specific features.
 
 %files admin-extensions
 %defattr(-,root,root,-)
-%{python_sitelib}/pulp_rpm_admin_extensions*.egg-info
+%{python_sitelib}/pulp_rpm_extensions_admin*.egg-info
 %{python_sitelib}/pulp_rpm/extensions/admin/
 %doc
 
@@ -215,8 +215,8 @@ client capabilites with RPM specific features.
 
 %files consumer-extensions
 %defattr(-,root,root,-)
-%{python_sitelib}/pulp_rpm_consumer_extensions*.egg-info
-%{python_sitelib}/pulp_rpm/extensions/admin/
+%{python_sitelib}/pulp_rpm_extensions_consumer*.egg-info
+%{python_sitelib}/pulp_rpm/extensions/consumer/
 %doc
 
 
