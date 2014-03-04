@@ -48,7 +48,7 @@ LINKS = (
     ('plugins/types/iso_support.json', DIR_PLUGINS + '/types/iso_support.json'),
 
     # RPM Support Web Configuration
-    ('pulp_rpm/usr/lib/yum-plugins/pulp-profile-update.py', '/usr/lib/yum-plugins/pulp-profile-update.py'),
+    ('handlers/usr/lib/yum-plugins/pulp-profile-update.py', '/usr/lib/yum-plugins/pulp-profile-update.py'),
     ('pulp_rpm/srv/pulp/repo_auth.wsgi', '/srv/pulp/repo_auth.wsgi'),
 )
 

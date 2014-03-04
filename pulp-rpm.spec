@@ -243,6 +243,7 @@ management and Linux specific commands such as system reboot.
 %{_sysconfdir}/pulp/agent/conf.d/bind.conf
 %{_sysconfdir}/pulp/agent/conf.d/linux.conf
 %{_sysconfdir}/pulp/agent/conf.d/rpm.conf
+%ghost %{_sysconfdir}/yum.repos.d/pulp.repo
 %doc
 
 
