@@ -138,7 +138,8 @@ A collection of modules shared among all RPM components.
 %files -n python-pulp-rpm-common
 %defattr(-,root,root,-)
 %dir %{python_sitelib}/pulp-rpm-common
-%{python_sitelib}/pulp-rpm-common*.egg-info
+%{python_sitelib}/pulp_rpm_common*.egg-info
+%{python_sitelib}/pulp_rpm/__init__.py*
 %{python_sitelib}/pulp_rpm/common/
 %doc
 
