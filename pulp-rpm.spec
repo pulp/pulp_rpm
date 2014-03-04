@@ -238,7 +238,7 @@ management and Linux specific commands such as system reboot.
 
 %files handlers
 %defattr(-,root,root,-)
-%{python_sitelib}/pulp_rpmhandlers*.egg-info
+%{python_sitelib}/pulp_rpm_handlers*.egg-info
 %{python_sitelib}/pulp_rpm/handlers/
 %{_sysconfdir}/pulp/agent/conf.d/bind.conf
 %{_sysconfdir}/pulp/agent/conf.d/linux.conf
