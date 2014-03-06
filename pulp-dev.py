@@ -49,7 +49,7 @@ LINKS = (
 
     # RPM Support Web Configuration
     ('handlers/usr/lib/yum-plugins/pulp-profile-update.py', '/usr/lib/yum-plugins/pulp-profile-update.py'),
-    ('pulp_rpm/srv/pulp/repo_auth.wsgi', '/srv/pulp/repo_auth.wsgi'),
+    ('plugins/srv/pulp/repo_auth.wsgi', '/srv/pulp/repo_auth.wsgi'),
 )
 
 
