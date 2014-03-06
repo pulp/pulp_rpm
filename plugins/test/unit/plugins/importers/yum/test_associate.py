@@ -128,28 +128,25 @@ class TestCopyRPMs(unittest.TestCase):
             conduit.associate_unit.assert_any_call(rpm)
 
     @mock.patch('pulp_rpm.plugins.importers.yum.existing.get_existing_units', autospec=True)
-    @mock.patch('pulp_rpm.plugins.importers.yum.depsolve.find_dependent_rpms', autospec=True)
+    @mock.patch('pulp_rpm.plugins.importers.yum.depsolve.Solver.find_dependent_rpms', autospec=True)
     def test_with_existing_deps(self, mock_find, mock_get_existing):
         conduit = mock.MagicMock()
         rpms = model_factory.rpm_units(1)
-        deps = model_factory.rpm_models(2)
-        dep_units = [Unit(model.TYPE, model.unit_key, model.metadata, '') for model in deps]
-        mock_find.return_value = [r.as_named_tuple for r in deps]
-        mock_get_existing.return_value = dep_units
+        deps = model_factory.rpm_units(2)
+        mock_find.return_value = set(deps)
+        mock_get_existing.return_value = deps
 
         associate.copy_rpms(rpms, conduit, True)
 
         self.assertEqual(conduit.associate_unit.call_count, 1)
         self.assertEqual(mock_find.call_count, 1)
-        self.assertEqual(mock_find.call_args[0][0], set(rpms))
-        # called once directly, and once from filter_available_rpms
-        self.assertEqual(mock_get_existing.call_count, 2)
+        self.assertEqual(mock_find.call_args[0][1], set(rpms))
+        self.assertEqual(mock_get_existing.call_count, 1)
 
 
-    @mock.patch('pulp_rpm.plugins.importers.yum.associate.filter_available_rpms', autospec=True)
     @mock.patch('pulp_rpm.plugins.importers.yum.existing.get_existing_units', autospec=True)
-    @mock.patch('pulp_rpm.plugins.importers.yum.depsolve.find_dependent_rpms', autospec=True)
-    def test_with_recursive_deps(self, mock_find, mock_get_existing, mock_filter):
+    @mock.patch('pulp_rpm.plugins.importers.yum.depsolve.Solver.find_dependent_rpms', autospec=True)
+    def test_with_recursive_deps(self, mock_find, mock_get_existing):
         """
         Test getting dependencies that do not exist in the repository already
         """
@@ -158,18 +155,14 @@ class TestCopyRPMs(unittest.TestCase):
         rpms = model_factory.rpm_units(1)
 
         # Create the recursive dependencies that we want to copy
-        deps = model_factory.rpm_models(2)
-        dep_units = [Unit(model.TYPE, model.unit_key, model.metadata, '') for model in deps]
+        deps = model_factory.rpm_units(2)
+        mock_find.side_effect = iter([set(deps), set()])
 
-        # the first call to filter gets all the dependencies for the parent repository
-        # The second time it is called during the recursion and all the units have already
-        # been copied.
-        mock_filter.side_effect = iter([dep_units, []])
         # The get existing units always assumes there are no units in the target repository
         mock_get_existing.return_value = []
         unit_set = associate.copy_rpms(rpms, conduit, True)
 
-        merged_set = set(dep_units)
+        merged_set = set(deps)
         merged_set.update(rpms)
         self.assertEquals(unit_set, merged_set)
 
@@ -289,6 +282,15 @@ class TestAssociateUnit(unittest.TestCase):
 
         self.assertTrue(ret is unit)
         self.assertEqual(mock_copyfile.call_count, 0)
+
+    def test_distribution(self):
+        unit = model_factory.drpm_units(1)[0]
+        mock_conduit = mock.MagicMock(spec_set=ImportUnitConduit)
+
+        ret = associate._associate_unit('repo2', mock_conduit, unit)
+
+        self.assertTrue(ret is unit)
+        mock_conduit.associate_unit.assert_called_once_with(unit)
 
     @mock.patch('shutil.copyfile')
     def test_yum_md_file(self, mock_copyfile):

@@ -158,14 +158,14 @@ def filter_available_rpms(rpms, import_conduit):
     :param import_conduit:  import conduit passed to the Importer
     :type  import_conduit:  pulp.plugins.conduits.unit_import.ImportUnitConduit
     :return:    iterable of Units that should be copied
-    :return:    iterable of pulp.plugins.models.Unit
+    :return:    iterable of pulp.plugins.model.Unit
     """
     return existing.get_existing_units((_no_checksum_clean_unit_key(unit) for unit in rpms),
                                         models.RPM.UNIT_KEY_NAMES, models.RPM.TYPE,
                                         import_conduit.get_source_units)
 
 
-def copy_rpms(units, import_conduit, copy_deps):
+def copy_rpms(units, import_conduit, copy_deps, solver=None):
     """
     Copy RPMs from the source repo to the destination repo, and optionally copy
     dependencies as well. Dependencies are resolved recursively.
@@ -179,6 +179,11 @@ def copy_rpms(units, import_conduit, copy_deps):
                             and Provides declarations that are found in the
                             source repository. Silently skips any dependencies
                             that cannot be resolved within the source repo.
+    :param solver:          an object that can be used for dependency solving.
+                            this is useful so that data can be cached in the
+                            depsolving object and re-used by each iteration of
+                            this method.
+    :type  solver:          pulp_rpm.plugins.importers.yum.depsolve.Solver
 
     :return:    set of pulp.plugins.models.Unit that were copied
     :rtype:     set
@@ -190,17 +195,17 @@ def copy_rpms(units, import_conduit, copy_deps):
         unit_set.add(unit)
 
     if copy_deps and unit_set:
-        deps = depsolve.find_dependent_rpms(unit_set, import_conduit.get_source_units)
-        # only consider deps that exist in the source repo
-        available_deps = set(filter_available_rpms(deps, import_conduit))
+        if solver is None:
+            solver = depsolve.Solver(import_conduit.get_source_units)
+        deps = solver.find_dependent_rpms(unit_set)
         # remove rpms already in the destination repo
-        existing_units = set(existing.get_existing_units([dep.unit_key for dep in available_deps],
+        existing_units = set(existing.get_existing_units([dep.unit_key for dep in deps],
                                                          models.RPM.UNIT_KEY_NAMES, models.RPM.TYPE,
                                                          import_conduit.get_destination_units))
-        to_copy = available_deps - existing_units
+        to_copy = deps - existing_units
         _LOGGER.debug('Copying deps: %s' % str(sorted([x.unit_key['name'] for x in to_copy])))
         if to_copy:
-            unit_set |= copy_rpms(to_copy, import_conduit, copy_deps)
+            unit_set |= copy_rpms(to_copy, import_conduit, copy_deps, solver)
 
     return unit_set
 
