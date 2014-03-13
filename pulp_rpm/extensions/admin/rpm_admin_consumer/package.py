@@ -140,6 +140,10 @@ class YumConsumerPackageInstallCommand(consumer_content.ConsumerContentInstallCo
 
         return map(_unit_dict, kwargs['name'])
 
+    def accepted(self, task, spinner):
+        msg = _('Accepted by the agent but waiting to begin...')
+        spinner.next(message=msg)
+
     def succeeded(self, task):
         # succeeded and failed are task-based, which is not indicative of
         # whether or not the operation succeeded or failed; that is in the
