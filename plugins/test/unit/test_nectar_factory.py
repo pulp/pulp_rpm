@@ -13,7 +13,7 @@
 import mock
 import unittest
 
-from nectar.downloaders.curl import HTTPCurlDownloader
+from nectar.downloaders.local import LocalFileDownloader
 from nectar.downloaders.threaded import HTTPThreadedDownloader
 
 from pulp_rpm.plugins.importers.yum.repomd import nectar_factory
@@ -29,7 +29,7 @@ class NectarFactoryTests(unittest.TestCase):
     def test_file_url(self):
         downloader = nectar_factory.create_downloader('file:///foo', self.mock_config,
                                                       self.mock_event_listener)
-        self.assertTrue(isinstance(downloader, HTTPCurlDownloader))
+        self.assertTrue(isinstance(downloader, LocalFileDownloader))
 
     def test_http_url(self):
         downloader = nectar_factory.create_downloader('http://foo', self.mock_config,
