@@ -2,6 +2,7 @@
 
 import unittest
 
+import mock
 from nectar.downloaders.local import LocalFileDownloader
 from nectar.downloaders.threaded import HTTPThreadedDownloader
 
