@@ -18,7 +18,7 @@
 
 Name: pulp-rpm
 Version: 2.4.0
-Release: 0.3.alpha%{?dist}
+Release: 0.6.alpha%{?dist}
 Summary: Support for RPM content in the Pulp platform
 Group: Development/Languages
 License: GPLv2
@@ -265,6 +265,19 @@ A collection of yum plugins supplementing Pulp consumer operations.
 
 
 %changelog
+* Thu Mar 13 2014 Jeff Ortel <jortel@redhat.com> 2.4.0-0.6.alpha
+- Pulp rebuild
+
+* Thu Mar 13 2014 Jeff Ortel <jortel@redhat.com> 2.4.0-0.5.alpha
+- Pulp rebuild
+
+* Wed Mar 12 2014 Barnaby Court <bcourt@redhat.com> 2.4.0-0.4.alpha
+- 973784 - refactored dependency solving workflow for performance
+  (mhrivnak@redhat.com)
+- 1070336 - Fix passing of the consumer group id when the --all option is used
+  for the "pulp-admin rpm consumer group package update ..." command
+  (bcourt@redhat.com)
+
 * Mon Feb 24 2014 Jeff Ortel <jortel@redhat.com> 2.4.0-0.3.alpha
 - 1067169 - Fixed the copy command so it outputs the result without crashing
   (mhrivnak@redhat.com)
