@@ -1,16 +1,3 @@
-# -*- coding: utf-8 -*-
-#
-# Copyright © 2013 Red Hat, Inc.
-#
-# This software is licensed to you under the GNU General Public
-# License as published by the Free Software Foundation; either version
-# 2 of the License (GPLv2) or (at your option) any later version.
-# There is NO WARRANTY for this software, express or implied,
-# including the implied warranties of MERCHANTABILITY,
-# NON-INFRINGEMENT, or FITNESS FOR A PARTICULAR PURPOSE. You should
-# have received a copy of GPLv2 along with this software; if not, see
-# http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt.
-
 """
 Test the pulp_rpm.extensions.admin.iso.create_update module. The ISORepoCreateUpdateMixin
 is not directly tested due to mixin complications, but it does have 100% test coverage
@@ -21,7 +8,6 @@ import os
 import unittest
 
 import mock
-
 from pulp.client import arg_utils, parsers
 from pulp.client.commands import options as std_options
 from pulp.client.commands.repo.cudl import (CreateRepositoryCommand,
@@ -30,6 +16,7 @@ from pulp.client.commands.repo.importer_config import ImporterConfigMixin
 from pulp.client.extensions.extensions import PulpCliOption, PulpCliOptionGroup
 from pulp.common import constants as pulp_constants
 from pulp.common.plugins import importer_constants
+
 from pulp_rpm.common import constants, ids
 from pulp_rpm.devel.client_base import PulpClientTests
 from pulp_rpm.extensions.admin.iso import create_update

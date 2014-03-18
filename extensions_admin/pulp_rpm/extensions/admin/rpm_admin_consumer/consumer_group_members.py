@@ -1,15 +1,3 @@
-# -*- coding: utf-8 -*-
-# Copyright (c) 2012 Red Hat, Inc.
-#
-# This software is licensed to you under the GNU General Public
-# License as published by the Free Software Foundation; either version
-# 2 of the License (GPLv2) or (at your option) any later version.
-# There is NO WARRANTY for this software, express or implied,
-# including the implied warranties of MERCHANTABILITY,
-# NON-INFRINGEMENT, or FITNESS FOR A PARTICULAR PURPOSE. You should
-# have received a copy of GPLv2 along with this software; if not, see
-# http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt.
-
 """
 Post 2.0, commands in this module will be refactored to remove any reference to
 RPM consumers and moved into the pulp.client.commands package in the platform
@@ -29,7 +17,7 @@ import copy
 from gettext import gettext as _
 
 from pulp.client.commands.criteria import CriteriaCommand
-from pulp.client.commands.options import  (OPTION_GROUP_ID, FLAG_ALL, OPTION_CONSUMER_ID)
+from pulp.client.commands.options import (OPTION_GROUP_ID, FLAG_ALL, OPTION_CONSUMER_ID)
 from pulp.client.extensions.extensions import PulpCliCommand
 from pulp.common import compat
 

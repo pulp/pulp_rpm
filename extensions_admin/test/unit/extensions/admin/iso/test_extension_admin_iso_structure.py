@@ -1,20 +1,6 @@
-# -*- coding: utf-8 -*-
-#
-# Copyright © 2013 Red Hat, Inc.
-#
-# This software is licensed to you under the GNU General Public
-# License as published by the Free Software Foundation; either version
-# 2 of the License (GPLv2) or (at your option) any later version.
-# There is NO WARRANTY for this software, express or implied,
-# including the implied warranties of MERCHANTABILITY,
-# NON-INFRINGEMENT, or FITNESS FOR A PARTICULAR PURPOSE. You should
-# have received a copy of GPLv2 along with this software; if not, see
-# http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt.
-
 import os
 
 import mock
-
 from pulp.client.commands import unit
 from pulp.client.commands.repo import cudl, sync_publish, upload as pulp_upload
 from pulp.client.commands.schedule import (
@@ -22,6 +8,7 @@ from pulp.client.commands.schedule import (
     UpdateScheduleCommand, NextRunCommand, RepoScheduleStrategy)
 from pulp.client.extensions.extensions import PulpCliSection
 from pulp.client.upload.manager import UploadManager
+
 from pulp_rpm.common import ids
 from pulp_rpm.devel.client_base import PulpClientTests
 from pulp_rpm.extensions.admin.iso import create_update, repo_list, structure, upload

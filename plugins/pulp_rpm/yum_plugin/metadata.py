@@ -1,15 +1,3 @@
-# -*- coding: utf-8 -*-
-#
-# Copyright © 2012 Red Hat, Inc.
-#
-# This software is licensed to you under the GNU General Public
-# License as published by the Free Software Foundation; either version
-# 2 of the License (GPLv2) or (at your option) any later version.
-# There is NO WARRANTY for this software, express or implied,
-# including the implied warranties of MERCHANTABILITY,
-# NON-INFRINGEMENT, or FITNESS FOR A PARTICULAR PURPOSE. You should
-# have received a copy of GPLv2 along with this software; if not, see
-# http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt.
 
 import commands
 import gzip
@@ -26,12 +14,12 @@ import rpmUtils
 import yum
 from createrepo import MetaDataGenerator, MetaDataConfig
 from createrepo import yumbased, GzipFile
-
 from pulp.common.util import encode_unicode, decode_unicode
 from pulp.plugins.conduits.mixins import MultipleRepoUnitsMixin, SingleRepoUnitsMixin
 from pulp.server.db.model.criteria import UnitAssociationCriteria
 from pulp.server.exceptions import MissingResource
 from pulp.server.managers import factory
+
 from pulp_rpm.common.ids import TYPE_ID_RPM, TYPE_ID_SRPM, TYPE_ID_YUM_REPO_METADATA_FILE, \
     YUM_DISTRIBUTOR_ID
 from pulp_rpm.common.constants import SCRATCHPAD_DEFAULT_METADATA_CHECKSUM

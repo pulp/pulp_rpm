@@ -1,14 +1,3 @@
-# Copyright (c) 2012 Red Hat, Inc.
-#
-# This software is licensed to you under the GNU General Public
-# License as published by the Free Software Foundation; either version
-# 2 of the License (GPLv2) or (at your option) any later version.
-# There is NO WARRANTY for this software, express or implied,
-# including the implied warranties of MERCHANTABILITY,
-# NON-INFRINGEMENT, or FITNESS FOR A PARTICULAR PURPOSE. You should
-# have received a copy of GPLv2 along with this software; if not, see
-# http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt.
-
 import os
 
 from pulp.client.commands import options
@@ -17,6 +6,7 @@ from pulp.client.commands.repo.importer_config import ImporterConfigMixin
 from pulp.client.extensions.core import TAG_SUCCESS
 from pulp.common.compat import json
 from pulp.common.plugins import importer_constants as constants
+
 from pulp_rpm.common import ids
 from pulp_rpm.devel.client_base import PulpClientTests
 from pulp_rpm.extensions.admin import repo_options

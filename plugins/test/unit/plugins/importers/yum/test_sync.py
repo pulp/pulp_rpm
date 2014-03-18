@@ -1,23 +1,9 @@
-# -*- coding: utf-8 -*-
-#
-# Copyright © 2013 Red Hat, Inc.
-#
-# This software is licensed to you under the GNU General Public
-# License as published by the Free Software Foundation; either version
-# 2 of the License (GPLv2) or (at your option) any later version.
-# There is NO WARRANTY for this software, express or implied,
-# including the implied warranties of MERCHANTABILITY,
-# NON-INFRINGEMENT, or FITNESS FOR A PARTICULAR PURPOSE. You should
-# have received a copy of GPLv2 along with this software; if not, see
-# http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt.
-
 from cStringIO import StringIO
 from copy import deepcopy
 import os
 import unittest
 
 import mock
-
 from nectar.config import DownloaderConfig
 from nectar.downloaders.base import Downloader
 from pulp.common.plugins import importer_constants
@@ -25,6 +11,7 @@ from pulp.plugins.conduits.repo_sync import RepoSyncConduit
 from pulp.plugins.config import PluginCallConfiguration
 from pulp.plugins.model import Repository, SyncReport
 import pulp.server.managers.factory as manager_factory
+
 from pulp_rpm.common import constants
 from pulp_rpm.plugins.db import models
 from pulp_rpm.plugins.importers.yum.repomd import metadata, group, updateinfo, packages, presto, primary

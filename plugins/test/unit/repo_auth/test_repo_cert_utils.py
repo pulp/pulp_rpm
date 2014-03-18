@@ -1,26 +1,13 @@
-#!/usr/bin/python
-#
-# Copyright (c) 2011 Red Hat, Inc.
-#
-#
-# This software is licensed to you under the GNU General Public
-# License as published by the Free Software Foundation; either version
-# 2 of the License (GPLv2) or (at your option) any later version.
-# There is NO WARRANTY for this software, express or implied,
-# including the implied warranties of MERCHANTABILITY,
-# NON-INFRINGEMENT, or FITNESS FOR A PARTICULAR PURPOSE. You should
-# have received a copy of GPLv2 along with this software; if not, see
-# http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt.
-
-# Python
 from ConfigParser import SafeConfigParser
-from M2Crypto import X509
 import shutil
 import os
 import unittest
 
+from M2Crypto import X509
+
 from pulp_rpm.repo_auth import repo_cert_utils
 from pulp_rpm.repo_auth.repo_cert_utils import M2CRYPTO_HAS_CRL_SUPPORT
+
 
 # -- constants -----------------------------------------------------------------------
 

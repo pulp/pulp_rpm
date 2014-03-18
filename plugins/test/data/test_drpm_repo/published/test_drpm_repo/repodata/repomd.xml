@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<repomd xmlns="http://linux.duke.edu/metadata/repo" xmlns:rpm="http://linux.duke.edu/metadata/rpm">
+<repomd xmlns="http://linux.duke.edu/metadata/repo">
   <revision>1337856822</revision>
   <data type="other">
     <checksum type="sha256">f88d6b54227559a66a6e1221f7f10e7c3964381b9d6056394c63c43820debd63</checksum>

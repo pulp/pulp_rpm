@@ -11,6 +11,7 @@ from pulp.client.extensions.core import PulpPrompt, ClientContext, PulpCli
 from pulp.client.extensions.exceptions import ExceptionHandler
 from pulp.common.config import Config
 
+
 DATA_DIR = os.path.join(os.path.abspath(os.path.dirname(__file__)), '../../test/unit/data')
 
 

@@ -1,14 +1,3 @@
-# Copyright (c) 2012 Red Hat, Inc.
-#
-# This software is licensed to you under the GNU General Public
-# License as published by the Free Software Foundation; either version
-# 2 of the License (GPLv2) or (at your option) any later version.
-# There is NO WARRANTY for this software, express or implied,
-# including the implied warranties of MERCHANTABILITY,
-# NON-INFRINGEMENT, or FITNESS FOR A PARTICULAR PURPOSE. You should
-# have received a copy of GPLv2 along with this software; if not, see
-# http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt.
-
 """
 Contains functionality related to rendering the progress report for a the RPM
 plugins (both the sync and publish operations).
@@ -18,6 +7,7 @@ from gettext import gettext as _
 import functools
 
 from pulp.client.commands.repo.sync_publish import StatusRenderer
+
 from pulp_rpm.common import constants, ids
 from pulp_rpm.common.status_utils import (
     render_general_spinner_step, render_itemized_in_progress_state,
@@ -201,8 +191,8 @@ class RpmStatusRenderer(StatusRenderer):
         # if the status is viewed after this step, the content download
         # summary is still available.
 
-        if state in (
-        constants.STATE_RUNNING, constants.STATE_COMPLETE) and self.download_last_state not in constants.COMPLETE_STATES:
+        if state in (constants.STATE_RUNNING, constants.STATE_COMPLETE) and \
+                        self.download_last_state not in constants.COMPLETE_STATES:
 
             self.download_last_state = state
 

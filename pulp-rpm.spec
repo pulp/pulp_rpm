@@ -103,9 +103,6 @@ cp -R handlers/etc/pulp %{buildroot}/%{_sysconfdir}
 # WSGI
 cp -R plugins/srv %{buildroot}
 
-# Agent Handlers
-# cp -R handlers/pulp_rpm/handlers/* %{buildroot}/%{_usr}/lib/pulp/agent/handlers
-
 # Plugins
 # cp -R pulp_rpm/plugins/* %{buildroot}/%{_usr}/lib/pulp/plugins
 

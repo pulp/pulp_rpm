@@ -1,6 +1,4 @@
-
 import pymongo
-
 from pulp.server.db import connection
 
 from pulp_rpm.common.version_utils import encode

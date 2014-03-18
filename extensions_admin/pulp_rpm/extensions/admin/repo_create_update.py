@@ -1,20 +1,9 @@
 # -*- coding: utf-8 -*-
-# Copyright (c) 2013 Red Hat, Inc.
-#
-# This software is licensed to you under the GNU General Public
-# License as published by the Free Software Foundation; either version
-# 2 of the License (GPLv2) or (at your option) any later version.
-# There is NO WARRANTY for this software, express or implied,
-# including the implied warranties of MERCHANTABILITY,
-# NON-INFRINGEMENT, or FITNESS FOR A PARTICULAR PURPOSE. You should
-# have received a copy of GPLv2 along with this software; if not, see
-# http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt.
 
 from gettext import gettext as _
 import os
 from urlparse import urlparse
 
-from pulp_rpm.extensions.admin import repo_options
 from pulp.client import arg_utils
 from pulp.client.arg_utils import InvalidConfig
 from pulp.client.commands import options as std_options
@@ -24,6 +13,8 @@ from pulp.client.commands.repo.importer_config import (OptionsBundle, ImporterCo
 from pulp.common import constants as pulp_constants
 from pulp.common.plugins import importer_constants
 from pulp.common.util import encode_unicode
+
+from pulp_rpm.extensions.admin import repo_options
 from pulp_rpm.common import constants, ids
 
 
