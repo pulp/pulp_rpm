@@ -1,15 +1,4 @@
 # -*- coding: utf-8 -*-
-#
-# Copyright © 2013 Red Hat, Inc.
-#
-# This software is licensed to you under the GNU General Public License as
-# published by the Free Software Foundation; either version 2 of the License
-# (GPLv2) or (at your option) any later version.
-# There is NO WARRANTY for this software, express or implied, including the
-# implied warranties of MERCHANTABILITY, NON-INFRINGEMENT, or FITNESS FOR A
-# PARTICULAR PURPOSE.
-# You should have received a copy of GPLv2 along with this software; if not,
-# see http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt
 
 from copy import deepcopy
 import gdbm
@@ -24,9 +13,9 @@ from xml.etree.cElementTree import iterparse
 
 from nectar.listener import AggregatingEventListener
 from nectar.request import DownloadRequest
-from pulp_rpm.plugins.importers.yum import utils
 
-from pulp_rpm.plugins.importers.yum.repomd import filelists, nectar_factory, other, packages
+from pulp_rpm.plugins.importers.yum import utils
+from pulp_rpm.plugins.importers.yum.repomd import filelists, nectar_factory, other
 from pulp_rpm.plugins.importers.yum.repomd.packages import package_list_generator
 
 
@@ -319,7 +308,7 @@ class MetadataFiles(object):
         based on data obtained in the raw XML snippets.
 
         :param model:   model instance to manipulate
-        :type  model:   pulp_rpm.common.models.RPM
+        :type  model:   pulp_rpm.plugins.db.models.RPM
         """
         repodata = model.metadata.setdefault('repodata',{})
         db_key = self.generate_db_key(model.unit_key)

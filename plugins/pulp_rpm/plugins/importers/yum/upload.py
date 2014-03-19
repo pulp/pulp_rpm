@@ -1,32 +1,17 @@
-# -*- coding: utf-8 -*-
-#
-# Copyright © 2013 Red Hat, Inc.
-#
-# This software is licensed to you under the GNU General Public
-# License as published by the Free Software Foundation; either version
-# 2 of the License (GPLv2) or (at your option) any later version.
-# There is NO WARRANTY for this software, express or implied,
-# including the implied warranties of MERCHANTABILITY,
-# NON-INFRINGEMENT, or FITNESS FOR A PARTICULAR PURPOSE. You should
-# have received a copy of GPLv2 along with this software; if not, see
-# http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt.
-
 import hashlib
 import logging
 import os
 import shutil
-
-import rpm
 from xml.etree import cElementTree as ET
 
+import rpm
 from pulp.plugins.util import verification
 from pulp.server.db.model.criteria import UnitAssociationCriteria
 
-from pulp_rpm.common import models
+from pulp_rpm.plugins.db import models
 from pulp_rpm.plugins.importers.yum import utils
 from pulp_rpm.plugins.importers.yum.parse import rpm as rpm_parse
 from pulp_rpm.plugins.importers.yum.repomd import primary
-
 
 # this is required because some of the pre-migration XML tags use the "rpm"
 # namespace, which causes a parse error if that namespace isn't declared.
@@ -155,7 +140,7 @@ def _link_errata_to_rpms(conduit, errata_model, errata_unit):
     :param conduit: provides access to relevant Pulp functionality
     :type  conduit: pulp.plugins.conduits.unit_add.UnitAddConduit
     :param errata_model:    model object representing an errata
-    :type  errata_model:    pulp_rpm.common.models.Errata
+    :type  errata_model:    pulp_rpm.plugins.db.models.Errata
     :param errata_unit:     unit object representing an errata
     :type  errata_unit:     pulp.plugins.model.Unit
     """

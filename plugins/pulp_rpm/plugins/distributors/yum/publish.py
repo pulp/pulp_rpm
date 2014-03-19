@@ -1,16 +1,3 @@
-# -*- coding: utf-8 -*-
-#
-# Copyright © 2013 Red Hat, Inc.
-#
-# This software is licensed to you under the GNU General Public License as
-# published by the Free Software Foundation; either version 2 of the License
-# (GPLv2) or (at your option) any later version.
-# There is NO WARRANTY for this software, express or implied, including the
-# implied warranties of MERCHANTABILITY, NON-INFRINGEMENT, or FITNESS FOR A
-# PARTICULAR PURPOSE.
-# You should have received a copy of GPLv2 along with this software;
-# if not, see http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt
-
 import os
 import shutil
 import time
@@ -29,7 +16,6 @@ from pulp_rpm.common.ids import (
     TYPE_ID_PKG_CATEGORY, TYPE_ID_PKG_ENVIRONMENT, TYPE_ID_DISTRO, TYPE_ID_YUM_REPO_METADATA_FILE)
 from pulp_rpm.yum_plugin import util
 from pulp_rpm.plugins.importers.yum.parse.treeinfo import KEY_PACKAGEDIR
-
 from . import configuration
 from .metadata.filelists import FilelistsXMLFileContext
 from .metadata.metadata import REPO_DATA_DIR_NAME
@@ -41,6 +27,9 @@ from .metadata.updateinfo import UpdateinfoXMLFileContext
 from .metadata.package import PackageXMLFileContext
 from .reporting import (
     new_progress_report, initialize_progress_sub_report, build_final_report)
+
+
+
 
 # -- constants -----------------------------------------------------------------
 

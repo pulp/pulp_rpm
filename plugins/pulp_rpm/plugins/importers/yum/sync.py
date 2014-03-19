@@ -1,16 +1,3 @@
-# -*- coding: utf-8 -*-
-#
-# Copyright © 2013 Red Hat, Inc.
-#
-# This software is licensed to you under the GNU General Public
-# License as published by the Free Software Foundation; either version
-# 2 of the License (GPLv2) or (at your option) any later version.
-# There is NO WARRANTY for this software, express or implied,
-# including the implied warranties of MERCHANTABILITY,
-# NON-INFRINGEMENT, or FITNESS FOR A PARTICULAR PURPOSE. You should
-# have received a copy of GPLv2 along with this software; if not, see
-# http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt.
-
 import functools
 import logging
 import os
@@ -21,7 +8,8 @@ from gettext import gettext as _
 from pulp.common.plugins import importer_constants
 from pulp.plugins.util import nectar_config as nectar_utils
 
-from pulp_rpm.common import constants, models
+from pulp_rpm.common import constants
+from pulp_rpm.plugins.db import models
 from pulp_rpm.plugins.importers.yum import existing, purge
 from pulp_rpm.plugins.importers.yum.repomd import metadata, primary, packages, updateinfo, presto, group
 from pulp_rpm.plugins.importers.yum.listener import ContentListener
@@ -536,7 +524,7 @@ class RepoSync(object):
         package_info_generator is in fact a generator, this will not consume
         much memory.
 
-        :param package_info_generator:  iterator of pulp_rpm.common.models.Package
+        :param package_info_generator:  iterator of pulp_rpm.plugins.db.models.Package
                                         instances
         :return:    dict where keys are Packages as named tuples, and values
                     are the size of each package
@@ -579,13 +567,13 @@ class RepoSync(object):
         a generator of those Package instances with corresponding entries in the
         "to_download" collection.
 
-        :param units:       iterator of pulp_rpm.common.models.Package instances
+        :param units:       iterator of pulp_rpm.plugins.db.models.Package instances
         :type  units:       iterator
         :param to_download: collection (preferably a set) of Packages as named
                             tuples that we want to download
         :type  to_download: set
 
-        :return:    generator of pulp_rpm.common.models.Package instances that
+        :return:    generator of pulp_rpm.plugins.db.models.Package instances that
                     should be downloaded
         :rtype:     generator
         """

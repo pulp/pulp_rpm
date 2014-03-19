@@ -1,16 +1,3 @@
-# -*- coding: utf-8 -*-
-#
-# Copyright © 2013 Red Hat, Inc.
-#
-# This software is licensed to you under the GNU General Public
-# License as published by the Free Software Foundation; either version
-# 2 of the License (GPLv2) or (at your option) any later version.
-# There is NO WARRANTY for this software, express or implied,
-# including the implied warranties of MERCHANTABILITY,
-# NON-INFRINGEMENT, or FITNESS FOR A PARTICULAR PURPOSE. You should
-# have received a copy of GPLv2 along with this software; if not, see
-# http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt.
-
 import os
 import shutil
 
@@ -20,7 +7,7 @@ from pulp.server.exceptions import PulpDataException
 
 # Import export_utils from this directory, which is not in the python path
 from pulp_rpm.plugins.distributors.export_distributor import export_utils
-from pulp_rpm.common import constants, models, ids
+from pulp_rpm.common import constants, ids
 from pulp_rpm.yum_plugin import util, metadata
 
 _logger = util.getLogger(__name__)
@@ -67,8 +54,8 @@ class ISODistributor(Distributor):
         return {
             'id': ids.TYPE_ID_DISTRIBUTOR_EXPORT,
             'display_name': 'Export Distributor',
-            'types': [models.RPM.TYPE, models.SRPM.TYPE, models.DRPM.TYPE, models.Errata.TYPE,
-                      models.Distribution.TYPE, models.PackageCategory.TYPE, models.PackageGroup.TYPE]
+            'types': [ids.TYPE_ID_RPM, ids.TYPE_ID_SRPM, ids.TYPE_ID_DRPM, ids.TYPE_ID_ERRATA,
+                      ids.TYPE_ID_DISTRO, ids.TYPE_ID_PKG_CATEGORY, ids.TYPE_ID_PKG_GROUP]
         }
 
     def validate_config(self, repo, config, config_conduit):
@@ -145,11 +132,11 @@ class ISODistributor(Distributor):
         _logger.info('Starting export of [%s]' % repo.id)
 
         progress_status = {
-            models.RPM.TYPE: {'state': constants.STATE_NOT_STARTED},
-            models.Errata.TYPE: {'state': constants.STATE_NOT_STARTED},
-            models.Distribution.TYPE: {'state': constants.STATE_NOT_STARTED},
-            models.PackageCategory.TYPE: {'state': constants.STATE_NOT_STARTED},
-            models.PackageGroup.TYPE: {'state': constants.STATE_NOT_STARTED},
+            ids.TYPE_ID_RPM: {'state': constants.STATE_NOT_STARTED},
+            ids.TYPE_ID_ERRATA: {'state': constants.STATE_NOT_STARTED},
+            ids.TYPE_ID_DISTRO: {'state': constants.STATE_NOT_STARTED},
+            ids.TYPE_ID_PKG_CATEGORY: {'state': constants.STATE_NOT_STARTED},
+            ids.TYPE_ID_PKG_GROUP: {'state': constants.STATE_NOT_STARTED},
             'metadata': {'state': constants.STATE_NOT_STARTED},
             'isos': {'state': constants.STATE_NOT_STARTED},
             'publish_http': {'state': constants.STATE_NOT_STARTED},

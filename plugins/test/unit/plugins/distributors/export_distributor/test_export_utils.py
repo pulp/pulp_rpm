@@ -1,19 +1,5 @@
-# -*- coding: utf-8 -*-
-#
-# Copyright (c) 2013 Red Hat, Inc.
-#
-# This software is licensed to you under the GNU General Public
-# License as published by the Free Software Foundation; either version
-# 2 of the License (GPLv2) or (at your option) any later version.
-# There is NO WARRANTY for this software, express or implied,
-# including the implied warranties of MERCHANTABILITY,
-# NON-INFRINGEMENT, or FITNESS FOR A PARTICULAR PURPOSE. You should
-# have received a copy of GPLv2 along with this software; if not, see
-# http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt.
-
 import os
 import shutil
-import sys
 import unittest
 
 import mock
@@ -22,10 +8,9 @@ from pulp.plugins.conduits.repo_publish import RepoPublishConduit
 from pulp.server.exceptions import MissingResource
 from pulp.plugins.model import AssociatedUnit, Repository, RepositoryGroup
 
-# pulp_rpm/pulp_rpm/plugins/distributors/iso_distributor isn't in the python path
-# sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)) + "/../../../plugins/distributors/")
 from pulp_rpm.plugins.distributors.export_distributor import export_utils, generate_iso
-from pulp_rpm.common import constants, ids, models
+from pulp_rpm.common import constants, ids
+from pulp_rpm.plugins.db import models
 
 
 class TestIsValidPrefix(unittest.TestCase):

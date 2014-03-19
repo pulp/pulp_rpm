@@ -1,19 +1,7 @@
 #!/usr/bin/env python
-#
-# Copyright (C) 2012 Red Hat, Inc.
-#
-# This software is licensed to you under the GNU General Public
-# License as published by the Free Software Foundation; either version
-# 2 of the License (GPLv2) or (at your option) any later version.
-# There is NO WARRANTY for this software, express or implied,
-# including the implied warranties of MERCHANTABILITY,
-# NON-INFRINGEMENT, or FITNESS FOR A PARTICULAR PURPOSE. You should
-# have received a copy of GPLv2 along with this software; if not, see
-# http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt.
 
 import optparse
 import os
-import shutil
 import sys
 
 WARNING_COLOR = '\033[31m'
@@ -26,8 +14,6 @@ WARNING_RESET = '\033[0m'
 # Please keep alphabetized and by subproject
 
 # Standard directories
-DIR_ADMIN_EXTENSIONS = '/usr/lib/pulp/admin/extensions/'
-DIR_CONSUMER_EXTENSIONS = '/usr/lib/pulp/consumer/extensions/'
 DIR_PLUGINS = '/usr/lib/pulp/plugins'
 
 DIRS = (
@@ -37,34 +23,21 @@ DIRS = (
 
 LINKS = (
     # RPM Support Configuration
-    ('pulp_rpm/etc/httpd/conf.d/pulp_rpm.conf', '/etc/httpd/conf.d/pulp_rpm.conf'),
-    ('pulp_rpm/etc/pulp/repo_auth.conf', '/etc/pulp/repo_auth.conf'),
-    ('pulp_rpm/etc/pulp/agent/conf.d/rpm.conf', '/etc/pulp/agent/conf.d/rpm.conf'),
-    ('pulp_rpm/etc/pulp/agent/conf.d/bind.conf', '/etc/pulp/agent/conf.d/bind.conf'),
-    ('pulp_rpm/etc/pulp/agent/conf.d/linux.conf', '/etc/pulp/agent/conf.d/linux.conf'),
-    ('pulp_rpm/etc/pulp/vhosts80/rpm.conf', '/etc/pulp/vhosts80/rpm.conf'),
-    ('pulp_rpm/etc/yum/pluginconf.d/pulp-profile-update.conf', '/etc/yum/pluginconf.d/pulp-profile-update.conf'),
-
-    # RPM and ISO Support Admin Extensions
-    ('pulp_rpm/extensions/admin/iso', DIR_ADMIN_EXTENSIONS + 'iso'),
-    ('pulp_rpm/extensions/admin/rpm_admin_consumer', DIR_ADMIN_EXTENSIONS + 'rpm_admin_consumer'),
-    ('pulp_rpm/extensions/admin/rpm_repo', DIR_ADMIN_EXTENSIONS + 'rpm_repo'),
-
-    # RPM Support Consumer Extensions
-    ('pulp_rpm/extensions/consumer/rpm_consumer', DIR_CONSUMER_EXTENSIONS + 'rpm_consumer'),
-
-    # RPM Support Agent Handlers
-    ('pulp_rpm/handlers/rpm.py', '/usr/lib/pulp/agent/handlers/rpm.py'),
-    ('pulp_rpm/handlers/bind.py', '/usr/lib/pulp/agent/handlers/bind.py'),
-    ('pulp_rpm/handlers/linux.py', '/usr/lib/pulp/agent/handlers/linux.py'),
+    ('plugins/etc/httpd/conf.d/pulp_rpm.conf', '/etc/httpd/conf.d/pulp_rpm.conf'),
+    ('plugins/etc/pulp/repo_auth.conf', '/etc/pulp/repo_auth.conf'),
+    ('plugins/etc/pulp/agent/conf.d/rpm.conf', '/etc/pulp/agent/conf.d/rpm.conf'),
+    ('plugins/etc/pulp/agent/conf.d/bind.conf', '/etc/pulp/agent/conf.d/bind.conf'),
+    ('plugins/etc/pulp/agent/conf.d/linux.conf', '/etc/pulp/agent/conf.d/linux.conf'),
+    ('plugins/etc/pulp/vhosts80/rpm.conf', '/etc/pulp/vhosts80/rpm.conf'),
+    ('plugins/etc/yum/pluginconf.d/pulp-profile-update.conf', '/etc/yum/pluginconf.d/pulp-profile-update.conf'),
 
     # RPM Support Plugins
-    ('pulp_rpm/plugins/types/rpm_support.json', DIR_PLUGINS + '/types/rpm_support.json'),
-    ('pulp_rpm/plugins/types/iso_support.json', DIR_PLUGINS + '/types/iso_support.json'),
+    ('plugins/types/rpm_support.json', DIR_PLUGINS + '/types/rpm_support.json'),
+    ('plugins/types/iso_support.json', DIR_PLUGINS + '/types/iso_support.json'),
 
     # RPM Support Web Configuration
-    ('pulp_rpm/usr/lib/yum-plugins/pulp-profile-update.py', '/usr/lib/yum-plugins/pulp-profile-update.py'),
-    ('pulp_rpm/srv/pulp/repo_auth.wsgi', '/srv/pulp/repo_auth.wsgi'),
+    ('handlers/usr/lib/yum-plugins/pulp-profile-update.py', '/usr/lib/yum-plugins/pulp-profile-update.py'),
+    ('plugins/srv/pulp/repo_auth.wsgi', '/srv/pulp/repo_auth.wsgi'),
 )
 
 

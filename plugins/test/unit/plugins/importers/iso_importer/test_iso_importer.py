@@ -1,24 +1,15 @@
 # -*- coding: utf-8 -*-
-#
-# Copyright © 2013 Red Hat, Inc.
-#
-# This software is licensed to you under the GNU General Public
-# License as published by the Free Software Foundation; either version
-# 2 of the License (GPLv2) or (at your option) any later version.
-# There is NO WARRANTY for this software, express or implied,
-# including the implied warranties of MERCHANTABILITY,
-# NON-INFRINGEMENT, or FITNESS FOR A PARTICULAR PURPOSE. You should
-# have received a copy of GPLv2 along with this software; if not, see
-# http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt.
+
 import os
 import shutil
 import tempfile
 
+import mock
 from pulp.common.plugins import importer_constants
 from pulp.plugins.model import Repository, Unit
-import mock
 
-from pulp_rpm.common import ids, models, progress
+from pulp_rpm.common import ids
+from pulp_rpm.plugins.db import models
 from pulp_rpm.plugins.importers.iso_importer import importer, sync
 from pulp_rpm.devel.rpm_support_base import PulpRPMTests
 from pulp_rpm.devel import importer_mocks
@@ -224,7 +215,7 @@ class TestISOImporter(PulpRPMTests):
         # The conduit's save_unit method should not have been called
         self.assertEqual(sync_conduit.save_unit.call_count, 0)
 
-    @mock.patch('pulp_rpm.common.models.ISO.validate', side_effect=models.ISO.validate,
+    @mock.patch('pulp_rpm.plugins.db.models.ISO.validate', side_effect=models.ISO.validate,
                 autospec=True)
     def test_upload_unit_validate_false(self, validate):
         """
@@ -280,7 +271,7 @@ class TestISOImporter(PulpRPMTests):
         saved_unit = sync_conduit.save_unit.mock_calls[0][1][0]
         self.assertEqual(saved_unit.unit_key, unit_key)
 
-    @mock.patch('pulp_rpm.common.models.ISO.validate')
+    @mock.patch('pulp_rpm.plugins.db.models.ISO.validate')
     @mock.patch('os.remove', side_effect=os.remove)
     def test_upload_unit_validate_true_bad_checksum(self, remove, validate):
         """
@@ -375,7 +366,7 @@ class TestISOImporter(PulpRPMTests):
         saved_unit = sync_conduit.save_unit.mock_calls[0][1][0]
         self.assertEqual(saved_unit.unit_key, unit_key)
 
-    @mock.patch('pulp_rpm.common.models.ISO.validate', side_effect=models.ISO.validate,
+    @mock.patch('pulp_rpm.plugins.db.models.ISO.validate', side_effect=models.ISO.validate,
                 autospec=True)
     @mock.patch('os.remove', side_effect=os.remove)
     def test_upload_unit_validate_unset(self, remove, validate):
