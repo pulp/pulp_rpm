@@ -12,6 +12,9 @@ from pulp.client.extensions.exceptions import ExceptionHandler
 from pulp.common.config import Config
 
 
+DATA_DIR = os.path.join(os.path.abspath(os.path.dirname(__file__)), '../../test/unit/data')
+
+
 class PulpClientTests(unittest.TestCase):
     """
     Base unit test class for all extension unit tests.
@@ -21,9 +24,7 @@ class PulpClientTests(unittest.TestCase):
         super(PulpClientTests, self).setUp()
 
         self.config = SafeConfigParser()
-        config_filename = os.path.join(os.path.abspath(os.path.dirname(__file__)),
-                                       '../../../pulp_rpm/test/unit/data',
-                                       'test-override-client.conf')
+        config_filename = os.path.join(DATA_DIR, 'test-override-client.conf')
         self.config = Config(config_filename)
 
         self.server_mock = mock.Mock()

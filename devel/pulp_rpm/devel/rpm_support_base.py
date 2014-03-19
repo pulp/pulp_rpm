@@ -1,15 +1,3 @@
-# -*- coding: utf-8 -*-
-#
-# Copyright © 2012 Red Hat, Inc.
-#
-# This software is licensed to you under the GNU General Public
-# License as published by the Free Software Foundation; either version
-# 2 of the License (GPLv2) or (at your option) any later version.
-# There is NO WARRANTY for this software, express or implied,
-# including the implied warranties of MERCHANTABILITY,
-# NON-INFRINGEMENT, or FITNESS FOR A PARTICULAR PURPOSE. You should
-# have received a copy of GPLv2 along with this software; if not, see
-# http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt.
 
 from urlparse import urljoin
 import os
@@ -21,6 +9,7 @@ from pulp.server.managers.auth.cert.cert_generator import SerialNumber
 from pulp.server.db import connection
 from pulp.server.logs import start_logging, stop_logging
 from pulp.server.managers import factory as manager_factory
+
 import pulp_rpm.common.constants as constants
 
 
@@ -28,7 +17,7 @@ SerialNumber.PATH = '/tmp/sn.dat'
 TEMP_DISTRO_STORAGE_DIR = '/tmp/pulp/var/lib/pulp/content/distribution/'
 
 
-TEST_DATA_DIR = os.path.join(os.path.dirname(__file__), '../../../pulp_rpm/test/unit/data')
+TEST_DATA_DIR = os.path.join(os.path.dirname(__file__),  '../../../plugins/test/data',)
 DEMO_REPOS_PATH = os.path.join(TEST_DATA_DIR, 'repos.fedorapeople.org', 'repos', 'pulp',
                                'pulp', 'demo_repos')
 
@@ -53,8 +42,7 @@ class PulpRPMTests(unittest.TestCase):
         if not os.path.exists('/tmp/pulp'):
             os.makedirs('/tmp/pulp')
         stop_logging()
-        config_filename = os.path.join(os.path.abspath(os.path.dirname(__file__)),
-                                       '../../../pulp_rpm/test/unit/data', 'test-override-pulp.conf')
+        config_filename = os.path.join(TEST_DATA_DIR, 'test-override-pulp.conf')
         config.config.read(config_filename)
         start_logging()
         name = config.config.get('database', 'name')

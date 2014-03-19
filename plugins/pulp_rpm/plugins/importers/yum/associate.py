@@ -1,16 +1,3 @@
-# -*- coding: utf-8 -*-
-#
-# Copyright © 2013 Red Hat, Inc.
-#
-# This software is licensed to you under the GNU General Public
-# License as published by the Free Software Foundation; either version
-# 2 of the License (GPLv2) or (at your option) any later version.
-# There is NO WARRANTY for this software, express or implied,
-# including the implied warranties of MERCHANTABILITY,
-# NON-INFRINGEMENT, or FITNESS FOR A PARTICULAR PURPOSE. You should
-# have received a copy of GPLv2 along with this software; if not, see
-# http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt.
-
 import copy
 import logging
 import os
@@ -18,9 +5,11 @@ import shutil
 
 from pulp.server.db.model.criteria import UnitAssociationCriteria
 
-from pulp_rpm.common import models, constants
+from pulp_rpm.common import constants
+from pulp_rpm.plugins.db import models
 from pulp_rpm.plugins.importers.yum import depsolve
 from pulp_rpm.plugins.importers.yum import existing
+
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -153,7 +142,7 @@ def filter_available_rpms(rpms, import_conduit):
     available in the source repository
 
     :param rpms:            iterable of RPMs that are desired to be copied
-    :type  rpms:            iterable of pulp_rpm.common.models.RPM.NAMEDTUPLE
+    :type  rpms:            iterable of pulp_rpm.plugins.db.models.RPM.NAMEDTUPLE
     :param import_conduit:  import conduit passed to the Importer
     :type  import_conduit:  pulp.plugins.conduits.unit_import.ImportUnitConduit
     :return:    iterable of Units that should be copied
@@ -219,7 +208,7 @@ def _no_checksum_clean_unit_key(unit_tuple):
     particularly useful for repos where the errata to not specify epochs
 
     :param unit_tuple:  unit to convert
-    :type  unit_tuple:  pulp_rpm.common.models.RPM.NAMEDTUPLE
+    :type  unit_tuple:  pulp_rpm.plugins.db.models.RPM.NAMEDTUPLE
 
     :return:    unit key without checksum data
     :rtype:     dict

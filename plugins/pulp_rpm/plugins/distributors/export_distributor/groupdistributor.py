@@ -1,16 +1,3 @@
-# -*- coding: utf-8 -*-
-#
-# Copyright (c) 2013 Red Hat, Inc.
-#
-# This software is licensed to you under the GNU General Public
-# License as published by the Free Software Foundation; either version
-# 2 of the License (GPLv2) or (at your option) any later version.
-# There is NO WARRANTY for this software, express or implied,
-# including the implied warranties of MERCHANTABILITY,
-# NON-INFRINGEMENT, or FITNESS FOR A PARTICULAR PURPOSE. You should
-# have received a copy of GPLv2 along with this software; if not, see
-# http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt.
-
 from gettext import gettext as _
 import os
 import shutil
@@ -20,9 +7,15 @@ from pulp.plugins.conduits.repo_publish import RepoPublishConduit
 from pulp.plugins.distributor import GroupDistributor
 from pulp.server.exceptions import PulpDataException
 
+
+
+
+
+
 # Import export_utils from this directory, which is not in the python path
 import export_utils
-from pulp_rpm.common import constants, ids, models
+from pulp_rpm.common import constants, ids
+from pulp_rpm.plugins.db import models
 from pulp_rpm.yum_plugin import util
 
 _logger = util.getLogger(__name__)

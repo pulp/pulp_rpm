@@ -1,15 +1,4 @@
 # -*- coding: utf-8 -*-
-#
-# Copyright © 2011 Red Hat, Inc.
-#
-# This software is licensed to you under the GNU General Public
-# License as published by the Free Software Foundation; either version
-# 2 of the License (GPLv2) or (at your option) any later version.
-# There is NO WARRANTY for this software, express or implied,
-# including the implied warranties of MERCHANTABILITY,
-# NON-INFRINGEMENT, or FITNESS FOR A PARTICULAR PURPOSE. You should
-# have received a copy of GPLv2 along with this software; if not, see
-# http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt.
 
 import os
 import commands
@@ -20,6 +9,8 @@ from stat import ST_SIZE
 import export_utils
 from pulp_rpm.common import constants
 from pulp_rpm.yum_plugin.util import getLogger
+
+
 log = getLogger(__name__)
 
 # Define the size (in megabytes) of a DVD sized ISO
