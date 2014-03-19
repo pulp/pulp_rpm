@@ -2,12 +2,8 @@
 
 import os
 import shutil
-import sys
 import tempfile
 import unittest
-
-sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)) + "/../../src/")
-sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)) + "/../../plugins/importers/")
 
 from pulp_rpm.devel import rpm_support_base
 from pulp_rpm.yum_plugin import util

@@ -327,9 +327,8 @@ class RpmStatusRenderer(StatusRenderer):
         # if the status is viewed after this step, the content download
         # summary is still available.
 
-        if state in (
-        constants.STATE_RUNNING, constants.STATE_COMPLETE) and last_state not in constants.COMPLETE_STATES:
-
+        if state in (constants.STATE_RUNNING,
+                     constants.STATE_COMPLETE) and last_state not in constants.COMPLETE_STATES:
             self.publish_steps_last_state[step] = state
             render_publish_step_in_progress_state(self.prompt, data, step, self.packages_bar, state)
 
@@ -369,12 +368,16 @@ class RpmStatusRenderer(StatusRenderer):
         # summary is still available.
 
         if state in (
-        constants.STATE_RUNNING, constants.STATE_COMPLETE) and self.distribution_publish_last_state not in constants.COMPLETE_STATES:
+                constants.STATE_RUNNING,
+                constants.STATE_COMPLETE) and self.distribution_publish_last_state not in \
+                constants.COMPLETE_STATES:
 
             self.distribution_publish_last_state = state
-            render_itemized_in_progress_state(self.prompt, data, _('distributions'), self.distribution_publish_bar, state)
+            render_itemized_in_progress_state(self.prompt, data, _('distributions'),
+                                              self.distribution_publish_bar, state)
 
-        elif state == constants.STATE_FAILED and self.distribution_publish_last_state not in constants.COMPLETE_STATES:
+        elif state == constants.STATE_FAILED and self.distribution_publish_last_state not in \
+                constants.COMPLETE_STATES:
 
             # This state means something went horribly wrong. There won't be
             # individual package error details which is why they are only
