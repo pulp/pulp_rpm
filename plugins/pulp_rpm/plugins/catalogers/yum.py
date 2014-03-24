@@ -7,7 +7,7 @@ from pulp.plugins.cataloger import Cataloger
 
 from pulp_rpm.plugins.db import models
 from pulp_rpm.plugins.importers.yum.repomd.metadata import MetadataFiles
-from pulp_rpm.plugins.importers.yum.repomd import primary
+from pulp_rpm.plugins.importers.yum.repomd import primary, nectar_factory
 from pulp_rpm.plugins.importers.yum.repomd import packages
 
 
@@ -54,6 +54,20 @@ class YumCataloger(Cataloger):
                 conduit.add_entry(models.RPM.TYPE, unit_key, url)
         finally:
             fp.close()
+
+    def downloader(self, conduit, config, url):
+        """
+        Get object suitable for downloading content published
+        in the content catalog by a content source.
+        :param conduit: Access to pulp platform API.
+        :type conduit: pulp.server.plugins.conduits.cataloger.CatalogerConduit
+        :param config: The content source configuration.
+        :type config: dict
+        :param url: The URL for the content source.
+        :type url: str
+        """
+        nectar_config = DownloaderConfig(**config)
+        return nectar_factory.create_downloader(url, nectar_config)
 
     def refresh(self, conduit, config, url):
         """

@@ -17,7 +17,8 @@ setup(
             'profiler = pulp_rpm.plugins.profilers.yum:entry_point',
         ],
         'pulp.catalogers': [
-            'profiler = pulp_rpm.plugins.catalogers.yum:entry_point',
+            'cataloger = pulp_rpm.plugins.catalogers.yum:entry_point',
+            'cataloger = pulp_rpm.plugins.catalogers.rhui:entry_point',
         ],
         'pulp.distributors': [
             'distributor = pulp_rpm.plugins.distributors.yum.distributor:entry_point',
