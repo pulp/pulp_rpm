@@ -1,8 +1,7 @@
-import urllib2
 
-from urllib2 import ProxyHandler
-from base64 import urlsafe_b64encode
 from logging import getLogger
+from urllib2 import urlopen, URLError
+from base64 import urlsafe_b64encode
 
 from pulp_rpm.plugins.db import models
 from pulp_rpm.plugins.catalogers.yum import YumCataloger
@@ -13,10 +12,10 @@ log = getLogger(__name__)
 
 TYPE_ID = 'rhui'
 
-ID_DOC_HEADER = "X-RHUI-ID"
-ID_SIG_HEADER = "X-RHUI-SIGNATURE"
-ID_DOC_URL = "http://169.254.169.254/latest/dynamic/instance-identity/document"
-ID_SIG_URL = "http://169.254.169.254/latest/dynamic/instance-identity/signature"
+ID_DOC_HEADER = 'X-RHUI-ID'
+ID_SIG_HEADER = 'X-RHUI-SIGNATURE'
+ID_DOC_URL = 'http://169.254.169.254/latest/dynamic/instance-identity/document'
+ID_SIG_URL = 'http://169.254.169.254/latest/dynamic/instance-identity/signature'
 
 
 def entry_point():
@@ -31,35 +30,35 @@ def entry_point():
 class RHUICataloger(YumCataloger):
 
     @staticmethod
-    def _load_id():
+    def load_id():
         """
         Loads and returns the Amazon metadata for identifying the instance.
         :return the AMI ID.
         :rtype str
         """
         try:
-            opener = urllib2.build_opener(ProxyHandler({}))
-            fp = opener.open(ID_DOC_URL)
-            document = fp.read()
-            fp.close()
-            return document
-        except urllib2.URLError, e:
+            fp = urlopen(ID_DOC_URL)
+            try:
+                return fp.read()
+            finally:
+                fp.close()
+        except URLError, e:
             log.error('Load amazon ID document failed: %s', str(e))
 
     @staticmethod
-    def _load_signature():
+    def load_signature():
         """
         Loads and returns the Amazon signature of hte Amazon identification metadata.
         :return the signature.
         :rtype str
         """
         try:
-            opener = urllib2.build_opener(ProxyHandler({}))
-            fp = opener.open(ID_SIG_URL)
-            signature = fp.read()
-            fp.close()
-            return signature
-        except urllib2.URLError, e:
+            fp = urlopen(ID_SIG_URL)
+            try:
+                return fp.read()
+            finally:
+                fp.close()
+        except URLError, e:
             log.error('Load amazon signature failed: %s', str(e))
 
     @classmethod
@@ -70,20 +69,20 @@ class RHUICataloger(YumCataloger):
             'types': [models.RPM.TYPE]
         }
 
-    def downloader(self, conduit, config, url):
+    def nectar_config(self, config):
         """
-        Get object suitable for downloading content published
-        in the content catalog by a content source.
-        :param conduit: Access to pulp platform API.
-        :type conduit: pulp.server.plugins.conduits.cataloger.CatalogerConduit
+        Get a nectar configuration using the specified content
+        content source configuration.
         :param config: The content source configuration.
         :type config: dict
-        :param url: The URL for the content source.
-        :type url: str
+        :return: A nectar downloader configuration
+        :rtype: nectar.config.DownloaderConfig
         """
-        document = RHUICataloger._load_id()
-        signature = RHUICataloger._load_signature()
-        downloader = super(RHUICataloger, self).downloader(conduit, conduit, url)
-        downloader.config[ID_DOC_HEADER] = urlsafe_b64encode(document)
-        downloader.config[ID_SIG_HEADER] = urlsafe_b64encode(signature)
-        return downloader
+        amazon_id = RHUICataloger.load_id()
+        amazon_signature = RHUICataloger.load_signature()
+        nectar_config = super(RHUICataloger, self).nectar_config(config)
+        headers = nectar_config.headers or {}
+        headers[ID_DOC_HEADER] = urlsafe_b64encode(amazon_id)
+        headers[ID_SIG_HEADER] = urlsafe_b64encode(amazon_signature)
+        nectar_config.headers = headers
+        return nectar_config

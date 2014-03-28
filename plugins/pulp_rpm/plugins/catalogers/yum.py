@@ -2,8 +2,8 @@ import shutil
 from tempfile import mkdtemp
 from urlparse import urljoin
 
-from nectar.config import DownloaderConfig
 from pulp.plugins.cataloger import Cataloger
+from pulp.server.content.sources import descriptor
 
 from pulp_rpm.plugins.db import models
 from pulp_rpm.plugins.importers.yum.repomd.metadata import MetadataFiles
@@ -66,8 +66,7 @@ class YumCataloger(Cataloger):
         :param url: The URL for the content source.
         :type url: str
         """
-        nectar_config = DownloaderConfig(**config)
-        return nectar_factory.create_downloader(url, nectar_config)
+        return nectar_factory.create_downloader(url, self.nectar_config(config))
 
     def refresh(self, conduit, config, url):
         """
@@ -80,12 +79,22 @@ class YumCataloger(Cataloger):
         :type url: str
         """
         dst_dir = mkdtemp()
-        nectar_config = DownloaderConfig(**config)
         try:
-            md_files = MetadataFiles(url, dst_dir, nectar_config)
+            md_files = MetadataFiles(url, dst_dir, self.nectar_config(config))
             md_files.download_repomd()
             md_files.parse_repomd()
             md_files.download_metadata_files()
             self._add_packages(conduit, url, md_files)
         finally:
             shutil.rmtree(dst_dir)
+
+    def nectar_config(self, config):
+        """
+        Get a nectar configuration using the specified content
+        content source configuration.
+        :param config: The content source configuration.
+        :type config: dict
+        :return: A nectar downloader configuration
+        :rtype: nectar.config.DownloaderConfig
+        """
+        return descriptor.nectar_config(config)
