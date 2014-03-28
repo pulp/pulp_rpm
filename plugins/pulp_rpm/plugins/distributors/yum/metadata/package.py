@@ -5,7 +5,7 @@ import os
 from xml.etree import ElementTree
 
 from pulp_rpm.plugins.distributors.yum.metadata.metadata import (
-    MetadataFileContext, REPO_DATA_DIR_NAME, DEFAULT_CHECKSUM_TYPE)
+    MetadataFileContext, REPO_DATA_DIR_NAME)
 from pulp_rpm.yum_plugin import util
 
 
@@ -20,7 +20,7 @@ class PackageXMLFileContext(MetadataFileContext):
     for storing information about package categories and package groups
     """
 
-    def __init__(self, working_dir, checksum_type=DEFAULT_CHECKSUM_TYPE):
+    def __init__(self, working_dir, checksum_type=None):
         """
         Initialize and set the file where the metadata is being saved.
 

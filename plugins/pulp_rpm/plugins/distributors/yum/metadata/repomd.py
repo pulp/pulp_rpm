@@ -4,15 +4,14 @@ import os
 import time
 from xml.etree import ElementTree
 
+from pulp_rpm.common.constants import CONFIG_DEFAULT_CHECKSUM
 from pulp_rpm.plugins.distributors.yum.metadata.metadata import (
-    MetadataFileContext, DEFAULT_CHECKSUM_TYPE, REPO_DATA_DIR_NAME, REPOMD_FILE_NAME)
+    MetadataFileContext, REPO_DATA_DIR_NAME, REPOMD_FILE_NAME)
 
 from pulp_rpm.yum_plugin import util
 
 
 _LOG = util.getLogger(__name__)
-
-HASHLIB_ALGORITHMS = ('md5', 'sha1', 'sha224', 'sha256', 'sha384', 'sha512')
 
 REPO_XML_NAME_SPACE = 'http://linux.duke.edu/metadata/repo'
 RPM_XML_NAME_SPACE = 'http://linux.duke.edu/metadata/rpm'
@@ -20,8 +19,7 @@ RPM_XML_NAME_SPACE = 'http://linux.duke.edu/metadata/rpm'
 
 class RepomdXMLFileContext(MetadataFileContext):
 
-    def __init__(self, working_dir, checksum_type=DEFAULT_CHECKSUM_TYPE):
-        assert checksum_type in HASHLIB_ALGORITHMS
+    def __init__(self, working_dir, checksum_type=CONFIG_DEFAULT_CHECKSUM):
 
         metadata_file_path = os.path.join(working_dir, REPO_DATA_DIR_NAME, REPOMD_FILE_NAME)
         super(RepomdXMLFileContext, self).__init__(metadata_file_path, checksum_type)

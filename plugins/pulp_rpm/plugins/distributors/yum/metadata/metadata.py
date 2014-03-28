@@ -6,10 +6,9 @@ from gettext import gettext as _
 
 from pulp_rpm.yum_plugin import util
 
-
 _LOG = util.getLogger(__name__)
 
-DEFAULT_CHECKSUM_TYPE = 'sha256'
+HASHLIB_ALGORITHMS = ('md5', 'sha1', 'sha224', 'sha256', 'sha384', 'sha512')
 REPO_DATA_DIR_NAME = 'repodata'
 REPOMD_FILE_NAME = 'repomd.xml'
 
@@ -20,7 +19,7 @@ class MetadataFileContext(object):
     Context manager class for metadata file generation.
     """
 
-    def __init__(self, metadata_file_path, checksum_type=DEFAULT_CHECKSUM_TYPE):
+    def __init__(self, metadata_file_path, checksum_type=None):
         """
         :param metadata_file_path: full path to metadata file to be generated
         :type  metadata_file_path: str
@@ -29,7 +28,9 @@ class MetadataFileContext(object):
         self.metadata_file_path = metadata_file_path
         self.metadata_file_handle = None
         self.checksum_type = checksum_type
-        self.checksum_constructor = getattr(hashlib, checksum_type)
+        if self.checksum_type is not None:
+            assert checksum_type in HASHLIB_ALGORITHMS
+            self.checksum_constructor = getattr(hashlib, checksum_type)
 
     # -- for use with 'with' ---------------------------------------------------
 
@@ -83,7 +84,7 @@ class MetadataFileContext(object):
 
         # Add calculated checksum to the repodata filename except for repomd file.
         file_name = os.path.basename(self.metadata_file_path)
-        if file_name != REPOMD_FILE_NAME:
+        if self.checksum_type is not None and file_name != REPOMD_FILE_NAME:
             with open(self.metadata_file_path, 'rb') as file_handle:
                 content = file_handle.read()
                 checksum = self.checksum_constructor(content).hexdigest()
