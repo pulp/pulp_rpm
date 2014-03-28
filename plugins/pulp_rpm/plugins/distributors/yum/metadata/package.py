@@ -5,8 +5,7 @@ import os
 from xml.etree import ElementTree
 
 from pulp_rpm.plugins.distributors.yum.metadata.metadata import (
-    MetadataFileContext, REPO_DATA_DIR_NAME)
-from pulp_rpm.plugins.distributors.yum.metadata.repomd import DEFAULT_CHECKSUM_TYPE
+    MetadataFileContext, REPO_DATA_DIR_NAME, DEFAULT_CHECKSUM_TYPE)
 from pulp_rpm.yum_plugin import util
 
 
