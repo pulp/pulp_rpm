@@ -5,17 +5,14 @@ import time
 from xml.etree import ElementTree
 
 from pulp_rpm.plugins.distributors.yum.metadata.metadata import (
-    MetadataFileContext, REPO_DATA_DIR_NAME)
+    MetadataFileContext, DEFAULT_CHECKSUM_TYPE, REPO_DATA_DIR_NAME, REPOMD_FILE_NAME)
+
 from pulp_rpm.yum_plugin import util
 
 
 _LOG = util.getLogger(__name__)
 
 HASHLIB_ALGORITHMS = ('md5', 'sha1', 'sha224', 'sha256', 'sha384', 'sha512')
-
-REPOMD_FILE_NAME = 'repomd.xml'
-
-DEFAULT_CHECKSUM_TYPE = 'sha256'
 
 REPO_XML_NAME_SPACE = 'http://linux.duke.edu/metadata/repo'
 RPM_XML_NAME_SPACE = 'http://linux.duke.edu/metadata/rpm'
@@ -27,10 +24,7 @@ class RepomdXMLFileContext(MetadataFileContext):
         assert checksum_type in HASHLIB_ALGORITHMS
 
         metadata_file_path = os.path.join(working_dir, REPO_DATA_DIR_NAME, REPOMD_FILE_NAME)
-        super(RepomdXMLFileContext, self).__init__(metadata_file_path)
-
-        self.checksum_type = checksum_type
-        self.checksum_constructor = getattr(hashlib, checksum_type)
+        super(RepomdXMLFileContext, self).__init__(metadata_file_path, checksum_type)
 
     def __exit__(self, exc_type, exc_val, exc_tb):
 
@@ -81,6 +75,9 @@ class RepomdXMLFileContext(MetadataFileContext):
         data_attributes = {'type': data_type}
         data_element = ElementTree.Element('data', data_attributes)
 
+        location_element = ElementTree.SubElement(data_element, 'location')
+        location_element.text = os.path.join(REPO_DATA_DIR_NAME, file_name)
+
         timestamp_element = ElementTree.SubElement(data_element, 'timestamp')
         timestamp_element.text = str(os.path.getmtime(file_path))
 
@@ -116,15 +113,6 @@ class RepomdXMLFileContext(MetadataFileContext):
 
                 finally:
                     file_handle.close()
-
-        # Add calculated checksum to the repodata filename
-        file_name_with_checksum = checksum_element.text + '-' + file_name
-        new_file_path = os.path.join(os.path.dirname(file_path), file_name_with_checksum)
-        os.rename(file_path, new_file_path)
-
-        # Add new filename with checksum to the location element in repomd.xml
-        location_element = ElementTree.SubElement(data_element, 'location')
-        location_element.text = os.path.join(REPO_DATA_DIR_NAME, file_name_with_checksum)
 
         # Write the metadata out as a utf-8 string
 

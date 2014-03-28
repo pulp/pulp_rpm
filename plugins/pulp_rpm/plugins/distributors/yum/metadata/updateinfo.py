@@ -3,6 +3,7 @@ from xml.etree import ElementTree
 
 from pulp_rpm.plugins.distributors.yum.metadata.metadata import (
     MetadataFileContext, REPO_DATA_DIR_NAME)
+from pulp_rpm.plugins.distributors.yum.metadata.repomd import DEFAULT_CHECKSUM_TYPE
 from pulp_rpm.yum_plugin import util
 
 
@@ -13,10 +14,10 @@ UPDATE_INFO_XML_FILE_NAME = 'updateinfo.xml.gz'
 
 class UpdateinfoXMLFileContext(MetadataFileContext):
 
-    def __init__(self, working_dir):
+    def __init__(self, working_dir, checksum_type=DEFAULT_CHECKSUM_TYPE):
 
         metadata_file_path = os.path.join(working_dir, REPO_DATA_DIR_NAME, UPDATE_INFO_XML_FILE_NAME)
-        super(UpdateinfoXMLFileContext, self).__init__(metadata_file_path)
+        super(UpdateinfoXMLFileContext, self).__init__(metadata_file_path, checksum_type)
 
     def _write_root_tag_open(self):
 

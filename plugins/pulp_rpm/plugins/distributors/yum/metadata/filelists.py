@@ -3,6 +3,7 @@ from xml.etree import ElementTree
 
 from pulp_rpm.plugins.distributors.yum.metadata.metadata import (
     PreGeneratedMetadataContext, REPO_DATA_DIR_NAME)
+from pulp_rpm.plugins.distributors.yum.metadata.repomd import DEFAULT_CHECKSUM_TYPE
 from pulp_rpm.yum_plugin import util
 
 
@@ -17,7 +18,7 @@ class FilelistsXMLFileContext(PreGeneratedMetadataContext):
     Context manager for generating the filelists.xml.gz file.
     """
 
-    def __init__(self, working_dir, num_units):
+    def __init__(self, working_dir, num_units, checksum_type=DEFAULT_CHECKSUM_TYPE):
         """
         :param working_dir: working directory to create the filelists.xml.gz in
         :type  working_dir: str
@@ -27,7 +28,7 @@ class FilelistsXMLFileContext(PreGeneratedMetadataContext):
         """
 
         metadata_file_path = os.path.join(working_dir, REPO_DATA_DIR_NAME, FILE_LISTS_XML_FILE_NAME)
-        super(FilelistsXMLFileContext, self).__init__(metadata_file_path)
+        super(FilelistsXMLFileContext, self).__init__(metadata_file_path, checksum_type)
 
         self.num_packages = num_units
 

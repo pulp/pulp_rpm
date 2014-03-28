@@ -580,9 +580,11 @@ class PublishRpmStep(PublishStep):
         Create each of the three metadata contexts required for publishing RPM & SRPM
         """
         total = self._get_total([TYPE_ID_RPM, TYPE_ID_SRPM])
-        self.file_lists_context = FilelistsXMLFileContext(self.get_working_dir(), total)
-        self.other_context = OtherXMLFileContext(self.get_working_dir(), total)
-        self.primary_context = PrimaryXMLFileContext(self.get_working_dir(), total)
+        checksum_type = configuration.get_repo_checksum_type(self.parent.conduit,
+                                                             self.parent.config)
+        self.file_lists_context = FilelistsXMLFileContext(self.get_working_dir(), total, checksum_type)
+        self.other_context = OtherXMLFileContext(self.get_working_dir(), total, checksum_type)
+        self.primary_context = PrimaryXMLFileContext(self.get_working_dir(), total, checksum_type)
         for context in (self.file_lists_context, self.other_context, self.primary_context):
             context.initialize()
 
@@ -662,7 +664,9 @@ class PublishDrpmStep(PublishStep):
         """
         Initialize the PrestoDelta metadata file
         """
-        self.context = PrestodeltaXMLFileContext(self.get_working_dir())
+        checksum_type = configuration.get_repo_checksum_type(self.parent.conduit,
+                                                             self.parent.config)
+        self.context = PrestodeltaXMLFileContext(self.get_working_dir(), checksum_type)
         self.context.initialize()
 
     def process_unit(self, unit):
@@ -701,7 +705,9 @@ class PublishErrataStep(PublishStep):
         Initialize the UpdateInfo file and set the method used to process the unit to the
         one that is built into the UpdateinfoXMLFileContext
         """
-        self.context = UpdateinfoXMLFileContext(self.get_working_dir())
+        checksum_type = configuration.get_repo_checksum_type(self.parent.conduit,
+                                                             self.parent.config)
+        self.context = UpdateinfoXMLFileContext(self.get_working_dir(), checksum_type)
         self.context.initialize()
         # set the self.process_unit method to the corresponding method on the
         # UpdateInfoXMLFileContext as there is no other processing to be done for each unit.
@@ -761,7 +767,9 @@ class PublishCompsStep(PublishStep):
         """
         Initialize all metadata associated with the comps file
         """
-        self.comps_context = PackageXMLFileContext(self.get_working_dir())
+        checksum_type = configuration.get_repo_checksum_type(self.parent.conduit,
+                                                             self.parent.config)
+        self.comps_context = PackageXMLFileContext(self.get_working_dir(), checksum_type)
         self.comps_context.initialize()
 
     def finalize_metadata(self):

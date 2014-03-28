@@ -1,3 +1,4 @@
+import hashlib
 import gzip
 import os
 import traceback
@@ -8,8 +9,9 @@ from pulp_rpm.yum_plugin import util
 
 _LOG = util.getLogger(__name__)
 
+DEFAULT_CHECKSUM_TYPE = 'sha256'
 REPO_DATA_DIR_NAME = 'repodata'
-
+REPOMD_FILE_NAME = 'repomd.xml'
 
 # -- base metadata file context class ------------------------------------------
 
@@ -18,7 +20,7 @@ class MetadataFileContext(object):
     Context manager class for metadata file generation.
     """
 
-    def __init__(self, metadata_file_path):
+    def __init__(self, metadata_file_path, checksum_type=DEFAULT_CHECKSUM_TYPE):
         """
         :param metadata_file_path: full path to metadata file to be generated
         :type  metadata_file_path: str
@@ -26,6 +28,8 @@ class MetadataFileContext(object):
 
         self.metadata_file_path = metadata_file_path
         self.metadata_file_handle = None
+        self.checksum_type = checksum_type
+        self.checksum_constructor = getattr(hashlib, checksum_type)
 
     # -- for use with 'with' ---------------------------------------------------
 
@@ -76,6 +80,18 @@ class MetadataFileContext(object):
 
         except Exception, e:
             _LOG.exception(e)
+
+        # Add calculated checksum to the repodata filename except for repomd file.
+        file_name = os.path.basename(self.metadata_file_path)
+        if file_name != REPOMD_FILE_NAME:
+            with open(self.metadata_file_path, 'rb') as file_handle:
+                content = file_handle.read()
+                checksum = self.checksum_constructor(content).hexdigest()
+
+            file_name_with_checksum = checksum + '-' + file_name
+            new_file_path = os.path.join(os.path.dirname(self.metadata_file_path), file_name_with_checksum)
+            os.rename(self.metadata_file_path, new_file_path)
+            self.metadata_file_path = new_file_path
 
         try:
             self._close_metadata_file_handle()

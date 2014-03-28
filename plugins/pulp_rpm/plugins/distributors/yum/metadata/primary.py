@@ -3,6 +3,7 @@ from xml.etree import ElementTree
 
 from pulp_rpm.plugins.distributors.yum.metadata.metadata import (
     PreGeneratedMetadataContext, REPO_DATA_DIR_NAME)
+from pulp_rpm.plugins.distributors.yum.metadata.repomd import DEFAULT_CHECKSUM_TYPE
 from pulp_rpm.yum_plugin import util
 
 
@@ -18,7 +19,7 @@ class PrimaryXMLFileContext(PreGeneratedMetadataContext):
     Context manager for generating the primary.xml.gz metadata file.
     """
 
-    def __init__(self, working_dir, num_units):
+    def __init__(self, working_dir, num_units, checksum_type=DEFAULT_CHECKSUM_TYPE):
         """
         :param working_dir: working directory to create the primary.xml.gz in
         :type  working_dir: str
@@ -28,7 +29,7 @@ class PrimaryXMLFileContext(PreGeneratedMetadataContext):
         """
 
         metadata_file_path = os.path.join(working_dir, REPO_DATA_DIR_NAME, PRIMARY_XML_FILE_NAME)
-        super(PrimaryXMLFileContext, self).__init__(metadata_file_path)
+        super(PrimaryXMLFileContext, self).__init__(metadata_file_path, checksum_type)
 
         self.num_packages = num_units
 
