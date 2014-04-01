@@ -7,15 +7,17 @@ from tempfile import mkdtemp
 from urlparse import urlsplit, urlunsplit
 from contextlib import closing
 
-from mock import patch
+from mock import patch, Mock
+
 from pulp.server.managers import factory as managers
 from pulp.plugins.conduits.cataloger import CatalogerConduit
 
-from pulp_rpm.plugins.catalogers.yum import YumCataloger, entry_point
+from pulp_rpm.plugins.db import models
+from pulp_rpm.plugins.catalogers.yum import TYPE_ID, YumCataloger, entry_point
 
 
-TAR_PATH = os.path.join(os.path.dirname(__file__), '../data/cataloger-test-repo.tar')
-JSON_PATH = os.path.join(os.path.dirname(__file__), '../data/cataloger-test-repo.json')
+TAR_PATH = os.path.join(os.path.dirname(__file__), '../../../data/cataloger-test-repo.tar')
+JSON_PATH = os.path.join(os.path.dirname(__file__), '../../../data/cataloger-test-repo.json')
 
 SOURCE_ID = 'test'
 EXPIRES = 90
@@ -47,8 +49,32 @@ class TestCataloger(TestCase):
         self.assertEqual(plugin, YumCataloger)
         self.assertEqual(config, {})
 
+    def test_metadata(self):
+        md = YumCataloger.metadata()
+        expected = {
+            'id': TYPE_ID,
+            'display_name': "Yum Cataloger",
+            'types': [models.RPM.TYPE]
+        }
+        self.assertEqual(md, expected)
+
+    @patch('pulp_rpm.plugins.catalogers.yum.nectar_factory')
+    def test_get_downloader(self, fake_factory):
+        url = 'my-url'
+        conduit = Mock()
+        config = Mock()
+        fake_downloader = Mock()
+        fake_factory.create_downloader.return_value = fake_downloader
+
+        cataloger = YumCataloger()
+        cataloger.nectar_config = Mock()
+        downloader = cataloger.get_downloader(conduit, config, url)
+
+        fake_factory.create_downloader.assert_called_with(url,  cataloger.nectar_config())
+        self.assertEqual(downloader, fake_downloader)
+
     @patch('pulp.server.managers.content.catalog.ContentCatalogManager.add_entry')
-    def test_packages(self, mock_add):
+    def test_refresh(self, mock_add):
         url = 'file://%s/' % self.tmp_dir
         conduit = CatalogerConduit(SOURCE_ID, EXPIRES)
         cataloger = YumCataloger()
@@ -65,3 +91,14 @@ class TestCataloger(TestCase):
                     entry['unit_key'],
                     self._normalized(entry['url'])))
 
+    @patch('pulp_rpm.plugins.catalogers.yum.descriptor')
+    def test_nectar_config(self, fake_descriptor):
+        config = Mock()
+        fake_config = Mock()
+        fake_descriptor.nectar_config.return_value = fake_config
+
+        cataloger = YumCataloger()
+        nectar_config = cataloger.nectar_config(config)
+
+        fake_descriptor.nectar_config.assert_called_with(config)
+        self.assertEqual(nectar_config, fake_config)

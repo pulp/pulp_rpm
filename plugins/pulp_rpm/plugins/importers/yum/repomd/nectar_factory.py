@@ -18,7 +18,7 @@ SCHEME_DOWNLOADERS = {
 }
 
 
-def create_downloader(repo_url, nectar_config, event_listener):
+def create_downloader(repo_url, nectar_config, event_listener=None):
     """
     Returns an appropriate downloader instance for the given repository location.
 
