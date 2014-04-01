@@ -55,7 +55,7 @@ class YumCataloger(Cataloger):
         finally:
             fp.close()
 
-    def downloader(self, conduit, config, url):
+    def get_downloader(self, conduit, config, url):
         """
         Get object suitable for downloading content published
         in the content catalog by a content source.
@@ -65,6 +65,8 @@ class YumCataloger(Cataloger):
         :type config: dict
         :param url: The URL for the content source.
         :type url: str
+        :return: A configured downloader.
+        :rtype: nectar.downloaders.base.Downloader
         """
         return nectar_factory.create_downloader(url, self.nectar_config(config))
 
@@ -90,8 +92,7 @@ class YumCataloger(Cataloger):
 
     def nectar_config(self, config):
         """
-        Get a nectar configuration using the specified content
-        content source configuration.
+        Get a nectar configuration using the specified content source configuration.
         :param config: The content source configuration.
         :type config: dict
         :return: A nectar downloader configuration

@@ -48,7 +48,7 @@ class RHUICataloger(YumCataloger):
     @staticmethod
     def load_signature():
         """
-        Loads and returns the Amazon signature of hte Amazon identification metadata.
+        Loads and returns the Amazon signature of the Amazon identification metadata.
         :return the signature.
         :rtype str
         """
@@ -71,8 +71,7 @@ class RHUICataloger(YumCataloger):
 
     def nectar_config(self, config):
         """
-        Get a nectar configuration using the specified content
-        content source configuration.
+        Get a nectar configuration using the specified content source configuration.
         :param config: The content source configuration.
         :type config: dict
         :return: A nectar downloader configuration

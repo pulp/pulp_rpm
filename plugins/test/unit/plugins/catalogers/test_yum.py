@@ -59,7 +59,7 @@ class TestCataloger(TestCase):
         self.assertEqual(md, expected)
 
     @patch('pulp_rpm.plugins.catalogers.yum.nectar_factory')
-    def test_downloader(self, fake_factory):
+    def test_get_downloader(self, fake_factory):
         url = 'my-url'
         conduit = Mock()
         config = Mock()
@@ -68,7 +68,7 @@ class TestCataloger(TestCase):
 
         cataloger = YumCataloger()
         cataloger.nectar_config = Mock()
-        downloader = cataloger.downloader(conduit, config, url)
+        downloader = cataloger.get_downloader(conduit, config, url)
 
         fake_factory.create_downloader.assert_called_with(url,  cataloger.nectar_config())
         self.assertEqual(downloader, fake_downloader)
