@@ -30,78 +30,74 @@ class TestCataloger(TestCase):
         }
         self.assertEqual(md, expected)
 
-    @patch('pulp_rpm.plugins.catalogers.rhui.urlopen')
-    def test_load_id(self, fake_open):
-        fake_fp = Mock()
-        fake_fp.read.return_value = 1234
-        fake_open.return_value = fake_fp
-
-        # test
-        _id = RHUICataloger.load_id()
-
-        # validation
-        fake_open.assert_called_with(ID_DOC_URL)
-        fake_fp.read.assert_called_witch()
-        fake_fp.close.assert_called_with()
-        self.assertEqual(_id, fake_fp.read.return_value)
-
-    @patch('pulp_rpm.plugins.catalogers.rhui.urlopen')
-    def test_load_id_invalid_url(self, fake_open):
-        fake_fp = Mock()
-        fake_open.side_effect = URLError('just failed')
-
-        # test
-        _id = RHUICataloger.load_id()
-
-        # validation
-        fake_open.assert_called_with(ID_DOC_URL)
-        self.assertFalse(fake_fp.read.called)
-        self.assertFalse(fake_fp.close.called)
-        self.assertEqual(_id, None)
-
-    @patch('pulp_rpm.plugins.catalogers.rhui.urlopen')
-    def test_load_signature(self, fake_open):
-        fake_fp = Mock()
-        fake_fp.read.return_value = 1234
-        fake_open.return_value = fake_fp
-
-        # test
-        signature = RHUICataloger.load_signature()
-
-        # validation
-        fake_open.assert_called_with(ID_SIG_URL)
-        fake_fp.read.assert_called_witch()
-        fake_fp.close.assert_called_with()
-        self.assertEqual(signature, fake_fp.read.return_value)
-
-    @patch('pulp_rpm.plugins.catalogers.rhui.urlopen')
-    def test_load_signature_invalid_url(self, fake_open):
-        fake_fp = Mock()
-        fake_open.side_effect = URLError('just failed')
-
-        # test
-        signature = RHUICataloger.load_signature()
-
-        # validation
-        fake_open.assert_called_with(ID_SIG_URL)
-        self.assertFalse(fake_fp.read.called)
-        self.assertFalse(fake_fp.close.called)
-        self.assertEqual(signature, None)
-
     @patch('__builtin__.super')
-    @patch('pulp_rpm.plugins.catalogers.rhui.RHUICataloger.load_id')
-    @patch('pulp_rpm.plugins.catalogers.rhui.RHUICataloger.load_signature')
-    def test_nectar_config(self, fake_load_signature, fake_load_id, fake_super):
+    @patch('pulp_rpm.plugins.catalogers.rhui.urlopen')
+    def test_nectar_config(self, fake_urlopen, fake_super):
         config = Mock()
-        fake_load_signature.return_value = SIGNATURE
-        fake_load_id.return_value = ID
+        fake_fp = Mock()
+        fake_fp.read.side_effect = [ID, SIGNATURE]
+        fake_urlopen.return_value = fake_fp
         fake_super().nectar_config.return_value = DownloaderConfig()
 
         cataloger = RHUICataloger()
         nectar_config = cataloger.nectar_config(config)
 
         fake_super().nectar_config.assert_called_with(config)
+        fake_urlopen.assert_any_with(ID_DOC_URL)
+        fake_urlopen.assert_any_with(ID_SIG_URL)
+
+        self.assertEqual(fake_urlopen.call_count, 2)
+        self.assertEqual(fake_fp.read.call_count, fake_urlopen.call_count)
+        self.assertEqual(fake_fp.close.call_count, fake_urlopen.call_count)
 
         self.assertEqual(
             nectar_config.headers,
             {ID_DOC_HEADER: urlsafe_b64encode(ID), ID_SIG_HEADER: urlsafe_b64encode(SIGNATURE)})
+
+    @patch('__builtin__.super')
+    @patch('pulp_rpm.plugins.catalogers.rhui.urlopen')
+    def test_nectar_config_raised_getting_id(self, fake_urlopen, fake_super):
+        config = Mock()
+        fake_urlopen.side_effect = FakeOpener()
+        fake_super().nectar_config.return_value = DownloaderConfig()
+
+        cataloger = RHUICataloger()
+        self.assertRaises(URLError, cataloger.nectar_config, config)
+
+        fake_super().nectar_config.assert_called_with(config)
+        fake_urlopen.assert_called_with(ID_DOC_URL)
+
+        self.assertEqual(fake_urlopen.call_count, 1)
+
+    @patch('__builtin__.super')
+    @patch('pulp_rpm.plugins.catalogers.rhui.urlopen')
+    def test_nectar_config_raised_getting_signature(self, fake_urlopen, fake_super):
+        config = Mock()
+        fake_fp = Mock()
+        fake_fp.read.side_effect = [ID, SIGNATURE]
+        fake_urlopen.side_effect = FakeOpener(2)
+        fake_super().nectar_config.return_value = DownloaderConfig()
+
+        cataloger = RHUICataloger()
+        self.assertRaises(URLError, cataloger.nectar_config, config)
+
+        fake_super().nectar_config.assert_called_with(config)
+        fake_urlopen.assert_any_with(ID_DOC_URL)
+        fake_urlopen.assert_any_with(ID_SIG_URL)
+
+        self.assertEqual(fake_urlopen.call_count, 2)
+
+
+class FakeOpener(object):
+
+    def __init__(self, on_call=1):
+        self.on_call = on_call
+        self.calls = 0
+
+    def __call__(self, *unused):
+        self.calls += 1
+        if self.calls == self.on_call:
+            raise URLError('go fish')
+        fp = Mock()
+        fp.read.side_effect = [ID, SIGNATURE]
+        return fp

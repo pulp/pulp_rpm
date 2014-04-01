@@ -30,32 +30,6 @@ def entry_point():
 
 class RHUICataloger(YumCataloger):
 
-    @staticmethod
-    def load_id():
-        """
-        Loads and returns the Amazon metadata for identifying the instance.
-        :return the AMI ID.
-        :rtype str
-        """
-        try:
-            with closing(urlopen(ID_DOC_URL)) as fp:
-                return fp.read()
-        except URLError, e:
-            log.error('Load amazon ID document failed: %s', str(e))
-
-    @staticmethod
-    def load_signature():
-        """
-        Loads and returns the Amazon signature of the Amazon identification metadata.
-        :return the signature.
-        :rtype str
-        """
-        try:
-            with closing(urlopen(ID_SIG_URL)) as fp:
-                return fp.read()
-        except URLError, e:
-            log.error('Load amazon signature failed: %s', str(e))
-
     @classmethod
     def metadata(cls):
         return {
@@ -72,9 +46,11 @@ class RHUICataloger(YumCataloger):
         :return: A nectar downloader configuration
         :rtype: nectar.config.DownloaderConfig
         """
-        amazon_id = RHUICataloger.load_id()
-        amazon_signature = RHUICataloger.load_signature()
         nectar_config = super(RHUICataloger, self).nectar_config(config)
+        with closing(urlopen(ID_DOC_URL)) as fp:
+            amazon_id = fp.read()
+        with closing(urlopen(ID_SIG_URL)) as fp:
+            amazon_signature = fp.read()
         headers = nectar_config.headers or {}
         headers[ID_DOC_HEADER] = urlsafe_b64encode(amazon_id)
         headers[ID_SIG_HEADER] = urlsafe_b64encode(amazon_signature)
