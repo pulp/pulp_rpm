@@ -2,6 +2,7 @@
 from logging import getLogger
 from urllib2 import urlopen, URLError
 from base64 import urlsafe_b64encode
+from contextlib import closing
 
 from pulp_rpm.plugins.db import models
 from pulp_rpm.plugins.catalogers.yum import YumCataloger
@@ -37,11 +38,8 @@ class RHUICataloger(YumCataloger):
         :rtype str
         """
         try:
-            fp = urlopen(ID_DOC_URL)
-            try:
+            with closing(urlopen(ID_DOC_URL)) as fp:
                 return fp.read()
-            finally:
-                fp.close()
         except URLError, e:
             log.error('Load amazon ID document failed: %s', str(e))
 
@@ -53,11 +51,8 @@ class RHUICataloger(YumCataloger):
         :rtype str
         """
         try:
-            fp = urlopen(ID_SIG_URL)
-            try:
+            with closing(urlopen(ID_SIG_URL)) as fp:
                 return fp.read()
-            finally:
-                fp.close()
         except URLError, e:
             log.error('Load amazon signature failed: %s', str(e))
 
