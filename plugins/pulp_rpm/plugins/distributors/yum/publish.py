@@ -538,14 +538,15 @@ class PublishRepoMetaDataStep(PublishStep):
     def __init__(self):
         super(PublishRepoMetaDataStep, self).__init__(constants.PUBLISH_REPOMD_STEP, TYPE_ID_RPM)
         self.repomd_file_context = None
+        self.checksum_type = None
 
     def initialize_metadata(self):
         """
         open the metadata context
         """
-        checksum_type = configuration.get_repo_checksum_type(self.parent.conduit,
-                                                             self.parent.config)
-        self.repomd_file_context = RepomdXMLFileContext(self.get_working_dir(), checksum_type)
+        self.checksum_type = configuration.get_repo_checksum_type(self.parent.conduit,
+                                                                  self.parent.config)
+        self.repomd_file_context = RepomdXMLFileContext(self.get_working_dir(), self.checksum_type)
         self.repomd_file_context.initialize()
 
     def finalize_metadata(self):
@@ -580,8 +581,7 @@ class PublishRpmStep(PublishStep):
         Create each of the three metadata contexts required for publishing RPM & SRPM
         """
         total = self._get_total([TYPE_ID_RPM, TYPE_ID_SRPM])
-        checksum_type = configuration.get_repo_checksum_type(self.parent.conduit,
-                                                             self.parent.config)
+        checksum_type = self.get_step(constants.PUBLISH_REPOMD_STEP).checksum_type
         self.file_lists_context = FilelistsXMLFileContext(self.get_working_dir(), total, checksum_type)
         self.other_context = OtherXMLFileContext(self.get_working_dir(), total, checksum_type)
         self.primary_context = PrimaryXMLFileContext(self.get_working_dir(), total, checksum_type)
@@ -664,8 +664,7 @@ class PublishDrpmStep(PublishStep):
         """
         Initialize the PrestoDelta metadata file
         """
-        checksum_type = configuration.get_repo_checksum_type(self.parent.conduit,
-                                                             self.parent.config)
+        checksum_type = self.get_step(constants.PUBLISH_REPOMD_STEP).checksum_type
         self.context = PrestodeltaXMLFileContext(self.get_working_dir(), checksum_type)
         self.context.initialize()
 
@@ -705,8 +704,7 @@ class PublishErrataStep(PublishStep):
         Initialize the UpdateInfo file and set the method used to process the unit to the
         one that is built into the UpdateinfoXMLFileContext
         """
-        checksum_type = configuration.get_repo_checksum_type(self.parent.conduit,
-                                                             self.parent.config)
+        checksum_type = self.get_step(constants.PUBLISH_REPOMD_STEP).checksum_type
         self.context = UpdateinfoXMLFileContext(self.get_working_dir(), checksum_type)
         self.context.initialize()
         # set the self.process_unit method to the corresponding method on the
@@ -767,8 +765,7 @@ class PublishCompsStep(PublishStep):
         """
         Initialize all metadata associated with the comps file
         """
-        checksum_type = configuration.get_repo_checksum_type(self.parent.conduit,
-                                                             self.parent.config)
+        checksum_type = self.get_step(constants.PUBLISH_REPOMD_STEP).checksum_type
         self.comps_context = PackageXMLFileContext(self.get_working_dir(), checksum_type)
         self.comps_context.initialize()
 
