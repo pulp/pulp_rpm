@@ -924,6 +924,7 @@ class PublishDrpmStepTests(BaseYumDistributorPublishStepTests):
 
         step.get_step = mock.Mock()
         step.get_step.return_value.package_dir = None
+        step.get_step.return_value.checksum_type = None
 
         step.process()
 
@@ -1217,6 +1218,7 @@ class PublishRpmStepTests(BaseYumDistributorPublishStepTests):
         step.parent = self.publisher
         step.get_step = mock.Mock()
         step.get_step.return_value.package_dir = None
+        step.get_step.return_value.checksum_type = None
 
         step.process()
 
@@ -1237,6 +1239,7 @@ class PublishRpmStepTests(BaseYumDistributorPublishStepTests):
         step.parent = self.publisher
         step.get_step = mock.Mock()
         step.get_step.return_value.package_dir = package_dir
+        step.get_step.return_value.checksum_type = None
         step.initialize_metadata()
         step.process_unit(unit)
 
