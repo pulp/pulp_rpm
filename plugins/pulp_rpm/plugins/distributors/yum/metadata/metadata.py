@@ -23,11 +23,16 @@ class MetadataFileContext(object):
         """
         :param metadata_file_path: full path to metadata file to be generated
         :type  metadata_file_path: str
+        :param checksum_type: checksum type to be used to generate and prepend checksum
+                              to the file names of repodata files. If checksum_type is None,
+                              no checksum is added to the filename
+        :type checksum_type: str or None
         """
 
         self.metadata_file_path = metadata_file_path
         self.metadata_file_handle = None
         self.checksum_type = checksum_type
+        self.checksum = None
         if self.checksum_type is not None:
             assert checksum_type in HASHLIB_ALGORITHMS
             self.checksum_constructor = getattr(hashlib, checksum_type)
@@ -82,6 +87,12 @@ class MetadataFileContext(object):
         except Exception, e:
             _LOG.exception(e)
 
+        try:
+            self._close_metadata_file_handle()
+
+        except Exception, e:
+            _LOG.exception(e)
+
         # Add calculated checksum to the repodata filename except for repomd file.
         file_name = os.path.basename(self.metadata_file_path)
         if self.checksum_type is not None and file_name != REPOMD_FILE_NAME:
@@ -89,16 +100,11 @@ class MetadataFileContext(object):
                 content = file_handle.read()
                 checksum = self.checksum_constructor(content).hexdigest()
 
+            self.checksum = checksum
             file_name_with_checksum = checksum + '-' + file_name
             new_file_path = os.path.join(os.path.dirname(self.metadata_file_path), file_name_with_checksum)
             os.rename(self.metadata_file_path, new_file_path)
             self.metadata_file_path = new_file_path
-
-        try:
-            self._close_metadata_file_handle()
-
-        except Exception, e:
-            _LOG.exception(e)
 
     # -- metadata file lifecycle -----------------------------------------------
 

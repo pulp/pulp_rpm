@@ -597,14 +597,17 @@ class PublishRpmStep(PublishStep):
         if self.file_lists_context:
             self.file_lists_context.finalize()
             repomd.add_metadata_file_metadata('filelists',
-                                              self.file_lists_context.metadata_file_path)
+                                              self.file_lists_context.metadata_file_path,
+                                              self.file_lists_context.checksum)
         if self.other_context:
             self.other_context.finalize()
-            repomd.add_metadata_file_metadata('other', self.other_context.metadata_file_path)
+            repomd.add_metadata_file_metadata('other', self.other_context.metadata_file_path,
+                                              self.other_context.checksum)
 
         if self.primary_context:
             self.primary_context.finalize()
-            repomd.add_metadata_file_metadata('primary', self.primary_context.metadata_file_path)
+            repomd.add_metadata_file_metadata('primary', self.primary_context.metadata_file_path,
+                                              self.primary_context.checksum)
 
     def process_unit(self, unit):
         """
@@ -688,7 +691,8 @@ class PublishDrpmStep(PublishStep):
         if self.context:
             self.context.finalize()
             self.get_step(constants.PUBLISH_REPOMD_STEP).repomd_file_context.\
-                add_metadata_file_metadata('prestodelta', self.context.metadata_file_path)
+                add_metadata_file_metadata('prestodelta', self.context.metadata_file_path,
+                                           self.context.checksum)
 
 
 class PublishErrataStep(PublishStep):
@@ -718,7 +722,8 @@ class PublishErrataStep(PublishStep):
         if self.context:
             self.context.finalize()
             self.get_step(constants.PUBLISH_REPOMD_STEP).repomd_file_context.\
-                add_metadata_file_metadata('updateinfo', self.context.metadata_file_path)
+                add_metadata_file_metadata('updateinfo', self.context.metadata_file_path,
+                                           self.context.checksum)
 
 
 class PublishCompsStep(PublishStep):
@@ -776,7 +781,8 @@ class PublishCompsStep(PublishStep):
         if self.comps_context:
             self.comps_context.finalize()
             self.get_step(constants.PUBLISH_REPOMD_STEP).repomd_file_context.\
-                add_metadata_file_metadata('group', self.comps_context.metadata_file_path)
+                add_metadata_file_metadata('group', self.comps_context.metadata_file_path,
+                                           self.comps_context.checksum)
 
 
 class PublishDistributionStep(PublishStep):

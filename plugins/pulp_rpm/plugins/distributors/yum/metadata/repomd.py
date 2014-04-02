@@ -61,7 +61,7 @@ class RepomdXMLFileContext(MetadataFileContext):
 
         self._write_root_tag_close = _write_root_tag_close_closure
 
-    def add_metadata_file_metadata(self, data_type, file_path):
+    def add_metadata_file_metadata(self, data_type, file_path, precalculated_checksum=None):
 
         file_name = os.path.basename(file_path)
 
@@ -85,9 +85,12 @@ class RepomdXMLFileContext(MetadataFileContext):
         checksum_attributes = {'type': self.checksum_type}
         checksum_element = ElementTree.SubElement(data_element, 'checksum', checksum_attributes)
 
-        with open(file_path, 'rb') as file_handle:
-            content = file_handle.read()
-            checksum_element.text = self.checksum_constructor(content).hexdigest()
+        if precalculated_checksum is None:
+            with open(file_path, 'rb') as file_handle:
+                content = file_handle.read()
+                checksum_element.text = self.checksum_constructor(content).hexdigest()
+        else:
+            checksum_element.text = precalculated_checksum
 
         if file_path.endswith('.gz'):
 
