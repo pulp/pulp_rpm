@@ -752,7 +752,6 @@ class YumDistributorMetadataTests(unittest.TestCase):
         test_metadata_file_handle.close()
 
         context = RepomdXMLFileContext(self.metadata_file_dir)
-
         context._open_metadata_file_handle()
         context.add_metadata_file_metadata('metadata', test_metadata_file_path)
         context._close_metadata_file_handle()
@@ -762,11 +761,10 @@ class YumDistributorMetadataTests(unittest.TestCase):
             content = repomd_handle.read()
 
             self.assertEqual(content.count('<data type="metadata"'), 1)
+            self.assertEqual(content.count('<location>%s/%s</location>' %
+                                (REPO_DATA_DIR_NAME, test_metadata_file_name)), 1)
             self.assertEqual(content.count('<timestamp>'), 1)
             self.assertEqual(content.count('<size>'), 1)
             self.assertEqual(content.count('<checksum type="sha256">'), 1)
             self.assertEqual(content.count('<open-size>%s</open-size>' % len(test_metadata_content)), 1)
             self.assertEqual(content.count('<open-checksum type="sha256">'), 1)
-            self.assertEqual(content.count('<location>%s/%s</location>' %
-                                (REPO_DATA_DIR_NAME, test_metadata_file_path)), 1)
-
