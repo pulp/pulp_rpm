@@ -85,6 +85,8 @@ class RepomdXMLFileContext(MetadataFileContext):
         checksum_attributes = {'type': self.checksum_type}
         checksum_element = ElementTree.SubElement(data_element, 'checksum', checksum_attributes)
 
+        # if checksum is calculated in the individual repodata file's context, use it instead of
+        # calculating it again.
         if precalculated_checksum is None:
             with open(file_path, 'rb') as file_handle:
                 content = file_handle.read()
