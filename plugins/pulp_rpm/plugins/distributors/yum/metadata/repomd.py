@@ -81,6 +81,9 @@ class RepomdXMLFileContext(MetadataFileContext):
         data_attributes = {'type': data_type}
         data_element = ElementTree.Element('data', data_attributes)
 
+        location_element = ElementTree.SubElement(data_element, 'location')
+        location_element.text = os.path.join(REPO_DATA_DIR_NAME, file_name)
+
         timestamp_element = ElementTree.SubElement(data_element, 'timestamp')
         timestamp_element.text = str(os.path.getmtime(file_path))
 
@@ -116,15 +119,6 @@ class RepomdXMLFileContext(MetadataFileContext):
 
                 finally:
                     file_handle.close()
-
-        # Add calculated checksum to the repodata filename
-        file_name_with_checksum = checksum_element.text + '-' + file_name
-        new_file_path = os.path.join(os.path.dirname(file_path), file_name_with_checksum)
-        os.rename(file_path, new_file_path)
-
-        # Add new filename with checksum to the location element in repomd.xml
-        location_element = ElementTree.SubElement(data_element, 'location')
-        location_element.text = os.path.join(REPO_DATA_DIR_NAME, file_name_with_checksum)
 
         # Write the metadata out as a utf-8 string
 
