@@ -73,8 +73,8 @@ class RepomdXMLFileContext(MetadataFileContext):
         data_attributes = {'type': data_type}
         data_element = ElementTree.Element('data', data_attributes)
 
-        location_element = ElementTree.SubElement(data_element, 'location')
-        location_element.text = os.path.join(REPO_DATA_DIR_NAME, file_name)
+        location_attributes = {'href': os.path.join(REPO_DATA_DIR_NAME, file_name)}
+        ElementTree.SubElement(data_element, 'location', location_attributes)
 
         timestamp_element = ElementTree.SubElement(data_element, 'timestamp')
         timestamp_element.text = str(os.path.getmtime(file_path))

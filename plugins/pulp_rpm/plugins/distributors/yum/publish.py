@@ -636,7 +636,7 @@ class PublishMetadataStep(PublishStep):
 
     def process_unit(self, unit):
         """
-        Copy the metadata file into place and add it to the repomd file.
+        Copy the metadata file into place and add it tot he repomd file.
 
         :param unit: The unit to process
         :type unit: Unit

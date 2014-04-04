@@ -18,7 +18,7 @@
 
 Name: pulp-rpm
 Version: 2.4.0
-Release: 0.6.alpha%{?dist}
+Release: 0.7.beta%{?dist}
 Summary: Support for RPM content in the Pulp platform
 Group: Development/Languages
 License: GPLv2
@@ -184,7 +184,6 @@ to provide RPM specific support.
 %package admin-extensions
 Summary: The RPM admin client extensions
 Group: Development/Languages
-Requires: python-pulp-rpm-extension = %{pulp_version}
 Requires: pulp-admin-client = %{pulp_version}
 
 %description admin-extensions
@@ -203,7 +202,6 @@ client capabilites with RPM specific features.
 %package consumer-extensions
 Summary: The RPM consumer client extensions
 Group: Development/Languages
-Requires: python-pulp-rpm-extension = %{pulp_version}
 Requires: pulp-consumer-client = %{pulp_version}
 
 %description consumer-extensions
@@ -264,6 +262,12 @@ A collection of yum plugins supplementing Pulp consumer operations.
 
 
 %changelog
+* Wed Apr 02 2014 Jeff Ortel <jortel@redhat.com> 2.4.0-0.7.beta
+- Pulp rebuild
+
+* Wed Apr 02 2014 Jeff Ortel <jortel@redhat.com> 2.4.0-0.7.alpha
+- 1083098 - Fix rpm handler loading. (jortel@redhat.com)
+
 * Thu Mar 13 2014 Jeff Ortel <jortel@redhat.com> 2.4.0-0.6.alpha
 - Pulp rebuild
 

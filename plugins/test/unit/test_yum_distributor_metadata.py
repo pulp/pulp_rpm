@@ -761,8 +761,8 @@ class YumDistributorMetadataTests(unittest.TestCase):
             content = repomd_handle.read()
 
             self.assertEqual(content.count('<data type="metadata"'), 1)
-            self.assertEqual(content.count('<location>%s/%s</location>' %
-                                (REPO_DATA_DIR_NAME, test_metadata_file_name)), 1)
+            self.assertEqual(content.count('<location href="%s/%s"' %
+                                           (REPO_DATA_DIR_NAME, test_metadata_file_name)), 1)
             self.assertEqual(content.count('<timestamp>'), 1)
             self.assertEqual(content.count('<size>'), 1)
             self.assertEqual(content.count('<checksum type="sha256">'), 1)
