@@ -1,4 +1,5 @@
 import gzip
+import hashlib
 import os
 import shutil
 import unittest
@@ -60,12 +61,24 @@ class YumDistributorMetadataTests(unittest.TestCase):
     # -- metadata file context base class tests --------------------------------
 
     def test_metadata_instantiation(self):
-
         try:
-            MetadataFileContext('fu.xml')
-
+            metadata_file_context = MetadataFileContext('fu.xml')
         except Exception, e:
             self.fail(e.message)
+
+        self.assertEqual(metadata_file_context.checksum_type, None)
+
+    def test_metadata_instantiation_with_checksum_type(self):
+        test_checksum_type = 'sha1'
+
+        try:
+            metadata_file_context = MetadataFileContext('fu.xml', checksum_type=test_checksum_type)
+        except Exception, e:
+            self.fail(e.message)
+
+        self.assertEqual(metadata_file_context.checksum_type, 'sha1')
+        self.assertEqual(metadata_file_context.checksum_constructor,
+                         getattr(hashlib, test_checksum_type))
 
     def test_open_handle(self):
 
@@ -77,7 +90,6 @@ class YumDistributorMetadataTests(unittest.TestCase):
         self.assertTrue(os.path.exists(path))
 
         context._close_metadata_file_handle()
-
 
     def test_open_handle_bad_parent_permissions(self):
 
@@ -106,7 +118,6 @@ class YumDistributorMetadataTests(unittest.TestCase):
             self.fail(e.message)
 
         context._close_metadata_file_handle()
-
 
     def test_open_handle_bad_file_permissions(self):
 
@@ -158,6 +169,46 @@ class YumDistributorMetadataTests(unittest.TestCase):
 
         expected_content = '<?xml version="1.0" encoding="UTF-8"?>\n'
         self.assertEqual(content, expected_content)
+
+    def test_finalize_checksum_type_none(self):
+
+        path = os.path.join(self.metadata_file_dir, 'test.xml')
+        context = MetadataFileContext(path)
+
+        context._open_metadata_file_handle()
+        context._write_xml_header()
+        context._close_metadata_file_handle()
+        context.finalize()
+
+        self.assertEqual(context.metadata_file_path, path)
+
+    def test_finalize_with_valid_checksum_type(self):
+
+        path = os.path.join(self.metadata_file_dir, 'test.xml')
+        checksum_type = 'sha1'
+        context = MetadataFileContext(path, checksum_type)
+
+        context._open_metadata_file_handle()
+        context._write_xml_header()
+        context._close_metadata_file_handle()
+        context.finalize()
+
+        expected_metadata_file_name = context.checksum + '-' + 'test.xml'
+        expected_metadata_file_path = os.path.join(self.metadata_file_dir, expected_metadata_file_name)
+        self.assertEqual(expected_metadata_file_path, context.metadata_file_path)
+
+    def test_finalize_for_repomd_file_with_valid_checksum_type(self):
+
+        path = os.path.join(self.metadata_file_dir, 'repomd.xml')
+        checksum_type = 'sha1'
+        context = MetadataFileContext(path, checksum_type)
+
+        context._open_metadata_file_handle()
+        context._write_xml_header()
+        context._close_metadata_file_handle()
+        context.finalize()
+
+        self.assertEqual(context.metadata_file_path, path)
 
     # -- pre-generated metadata context tests ----------------------------------
 
@@ -717,4 +768,3 @@ class YumDistributorMetadataTests(unittest.TestCase):
             self.assertEqual(content.count('<checksum type="sha256">'), 1)
             self.assertEqual(content.count('<open-size>%s</open-size>' % len(test_metadata_content)), 1)
             self.assertEqual(content.count('<open-checksum type="sha256">'), 1)
-

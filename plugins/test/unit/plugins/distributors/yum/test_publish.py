@@ -847,7 +847,7 @@ class PublishCompsStepTests(BaseYumDistributorPublishStepTests):
         step.finalize_metadata()
         step.comps_context.finalize.assert_called_once_with()
         mock_get_step.return_value.repomd_file_context.\
-            add_metadata_file_metadata.assert_called_once_with('group', mock.ANY)
+            add_metadata_file_metadata.assert_called_once_with('group', mock.ANY, mock.ANY)
 
     def test_finalize_no_initialization(self):
         """
@@ -924,6 +924,7 @@ class PublishDrpmStepTests(BaseYumDistributorPublishStepTests):
 
         step.get_step = mock.Mock()
         step.get_step.return_value.package_dir = None
+        step.get_step.return_value.checksum_type = None
 
         step.process()
 
@@ -1217,6 +1218,7 @@ class PublishRpmStepTests(BaseYumDistributorPublishStepTests):
         step.parent = self.publisher
         step.get_step = mock.Mock()
         step.get_step.return_value.package_dir = None
+        step.get_step.return_value.checksum_type = None
 
         step.process()
 
@@ -1237,6 +1239,7 @@ class PublishRpmStepTests(BaseYumDistributorPublishStepTests):
         step.parent = self.publisher
         step.get_step = mock.Mock()
         step.get_step.return_value.package_dir = package_dir
+        step.get_step.return_value.checksum_type = None
         step.initialize_metadata()
         step.process_unit(unit)
 
@@ -1274,7 +1277,7 @@ class PublishErrataStepTests(BaseYumDistributorPublishStepTests):
         step.finalize_metadata()
         step.context.finalize.assert_called_once_with()
         step.get_step.return_value.repomd_file_context.\
-            add_metadata_file_metadata.assert_called_once_with('updateinfo', mock.ANY)
+            add_metadata_file_metadata.assert_called_once_with('updateinfo', mock.ANY, mock.ANY)
 
     def test_finalize_no_initialization(self):
         """

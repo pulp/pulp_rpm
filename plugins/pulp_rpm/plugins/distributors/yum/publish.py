@@ -538,14 +538,15 @@ class PublishRepoMetaDataStep(PublishStep):
     def __init__(self):
         super(PublishRepoMetaDataStep, self).__init__(constants.PUBLISH_REPOMD_STEP, TYPE_ID_RPM)
         self.repomd_file_context = None
+        self.checksum_type = None
 
     def initialize_metadata(self):
         """
         open the metadata context
         """
-        checksum_type = configuration.get_repo_checksum_type(self.parent.conduit,
-                                                             self.parent.config)
-        self.repomd_file_context = RepomdXMLFileContext(self.get_working_dir(), checksum_type)
+        self.checksum_type = configuration.get_repo_checksum_type(self.parent.conduit,
+                                                                  self.parent.config)
+        self.repomd_file_context = RepomdXMLFileContext(self.get_working_dir(), self.checksum_type)
         self.repomd_file_context.initialize()
 
     def finalize_metadata(self):
@@ -580,9 +581,10 @@ class PublishRpmStep(PublishStep):
         Create each of the three metadata contexts required for publishing RPM & SRPM
         """
         total = self._get_total([TYPE_ID_RPM, TYPE_ID_SRPM])
-        self.file_lists_context = FilelistsXMLFileContext(self.get_working_dir(), total)
-        self.other_context = OtherXMLFileContext(self.get_working_dir(), total)
-        self.primary_context = PrimaryXMLFileContext(self.get_working_dir(), total)
+        checksum_type = self.get_step(constants.PUBLISH_REPOMD_STEP).checksum_type
+        self.file_lists_context = FilelistsXMLFileContext(self.get_working_dir(), total, checksum_type)
+        self.other_context = OtherXMLFileContext(self.get_working_dir(), total, checksum_type)
+        self.primary_context = PrimaryXMLFileContext(self.get_working_dir(), total, checksum_type)
         for context in (self.file_lists_context, self.other_context, self.primary_context):
             context.initialize()
 
@@ -595,14 +597,17 @@ class PublishRpmStep(PublishStep):
         if self.file_lists_context:
             self.file_lists_context.finalize()
             repomd.add_metadata_file_metadata('filelists',
-                                              self.file_lists_context.metadata_file_path)
+                                              self.file_lists_context.metadata_file_path,
+                                              self.file_lists_context.checksum)
         if self.other_context:
             self.other_context.finalize()
-            repomd.add_metadata_file_metadata('other', self.other_context.metadata_file_path)
+            repomd.add_metadata_file_metadata('other', self.other_context.metadata_file_path,
+                                              self.other_context.checksum)
 
         if self.primary_context:
             self.primary_context.finalize()
-            repomd.add_metadata_file_metadata('primary', self.primary_context.metadata_file_path)
+            repomd.add_metadata_file_metadata('primary', self.primary_context.metadata_file_path,
+                                              self.primary_context.checksum)
 
     def process_unit(self, unit):
         """
@@ -662,7 +667,8 @@ class PublishDrpmStep(PublishStep):
         """
         Initialize the PrestoDelta metadata file
         """
-        self.context = PrestodeltaXMLFileContext(self.get_working_dir())
+        checksum_type = self.get_step(constants.PUBLISH_REPOMD_STEP).checksum_type
+        self.context = PrestodeltaXMLFileContext(self.get_working_dir(), checksum_type)
         self.context.initialize()
 
     def process_unit(self, unit):
@@ -685,7 +691,8 @@ class PublishDrpmStep(PublishStep):
         if self.context:
             self.context.finalize()
             self.get_step(constants.PUBLISH_REPOMD_STEP).repomd_file_context.\
-                add_metadata_file_metadata('prestodelta', self.context.metadata_file_path)
+                add_metadata_file_metadata('prestodelta', self.context.metadata_file_path,
+                                           self.context.checksum)
 
 
 class PublishErrataStep(PublishStep):
@@ -701,7 +708,8 @@ class PublishErrataStep(PublishStep):
         Initialize the UpdateInfo file and set the method used to process the unit to the
         one that is built into the UpdateinfoXMLFileContext
         """
-        self.context = UpdateinfoXMLFileContext(self.get_working_dir())
+        checksum_type = self.get_step(constants.PUBLISH_REPOMD_STEP).checksum_type
+        self.context = UpdateinfoXMLFileContext(self.get_working_dir(), checksum_type)
         self.context.initialize()
         # set the self.process_unit method to the corresponding method on the
         # UpdateInfoXMLFileContext as there is no other processing to be done for each unit.
@@ -714,7 +722,8 @@ class PublishErrataStep(PublishStep):
         if self.context:
             self.context.finalize()
             self.get_step(constants.PUBLISH_REPOMD_STEP).repomd_file_context.\
-                add_metadata_file_metadata('updateinfo', self.context.metadata_file_path)
+                add_metadata_file_metadata('updateinfo', self.context.metadata_file_path,
+                                           self.context.checksum)
 
 
 class PublishCompsStep(PublishStep):
@@ -761,7 +770,8 @@ class PublishCompsStep(PublishStep):
         """
         Initialize all metadata associated with the comps file
         """
-        self.comps_context = PackageXMLFileContext(self.get_working_dir())
+        checksum_type = self.get_step(constants.PUBLISH_REPOMD_STEP).checksum_type
+        self.comps_context = PackageXMLFileContext(self.get_working_dir(), checksum_type)
         self.comps_context.initialize()
 
     def finalize_metadata(self):
@@ -771,7 +781,8 @@ class PublishCompsStep(PublishStep):
         if self.comps_context:
             self.comps_context.finalize()
             self.get_step(constants.PUBLISH_REPOMD_STEP).repomd_file_context.\
-                add_metadata_file_metadata('group', self.comps_context.metadata_file_path)
+                add_metadata_file_metadata('group', self.comps_context.metadata_file_path,
+                                           self.comps_context.checksum)
 
 
 class PublishDistributionStep(PublishStep):
