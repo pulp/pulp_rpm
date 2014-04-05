@@ -11,7 +11,7 @@ setup(
     entry_points={
         'pulp.importers': [
             'importer = pulp_rpm.plugins.importers.yum.importer:entry_point',
-            'isoImporter = pulp_rpm.plugins.importers.iso_importer.importer:entry_point'
+            'isoImporter = pulp_rpm.plugins.importers.iso.importer:entry_point'
         ],
         'pulp.profilers': [
             'profiler = pulp_rpm.plugins.profilers.yum:entry_point',
