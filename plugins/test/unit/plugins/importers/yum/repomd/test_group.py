@@ -128,6 +128,28 @@ class TestProcessEnvironmentElement(unittest.TestCase):
         self.assertEquals(len(group_model.group_ids), 1)
         self.assertEquals(group_model.group_ids[0], 'group1')
 
+    def test_optionlist_missing(self):
+        """
+        In debugging #1065016[0], we learned that optionlist might not always be present for each
+        environment. This test ensures that the package environment returned by this method has an
+        empty list when the optionlist isn't present.
+        
+        [0] https://bugzilla.redhat.com/show_bug.cgi?id=1065016
+        """
+        env_element = ElementTree.Element('environment')
+        ElementTree.SubElement(env_element, 'id').text = 'test-id'
+        ElementTree.SubElement(env_element, 'display_order').text = '5'
+        ElementTree.SubElement(env_element, 'name').text = 'foo-name'
+        ElementTree.SubElement(env_element, 'description').text = 'foo-desc'
+        group_list = ElementTree.SubElement(env_element, 'grouplist')
+        ElementTree.SubElement(group_list, 'groupid').text = 'group1'
+
+        # This should not blow up
+        group_model = self.process_environment(env_element)
+
+        # The options should be an empty list
+        self.assertEqual(group_model.options, [])
+
     def test_translated_description(self):
         ElementTree.SubElement(self.element, 'description', {group.LANGUAGE_TAG: 'fr'}).text \
             = 'desc2'
