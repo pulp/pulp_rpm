@@ -13,10 +13,10 @@ PRESTO_DELTA_FILE_NAME = 'prestodelta.xml.gz'
 
 class PrestodeltaXMLFileContext(MetadataFileContext):
 
-    def __init__(self, working_dir):
+    def __init__(self, working_dir, checksum_type=None):
 
         metadata_file_path = os.path.join(working_dir, REPO_DATA_DIR_NAME, PRESTO_DELTA_FILE_NAME)
-        super(PrestodeltaXMLFileContext, self).__init__(metadata_file_path)
+        super(PrestodeltaXMLFileContext, self).__init__(metadata_file_path, checksum_type)
 
     def _write_root_tag_open(self):
 

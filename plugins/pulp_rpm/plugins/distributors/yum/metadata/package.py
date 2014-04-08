@@ -20,7 +20,7 @@ class PackageXMLFileContext(MetadataFileContext):
     for storing information about package categories and package groups
     """
 
-    def __init__(self, working_dir):
+    def __init__(self, working_dir, checksum_type=None):
         """
         Initialize and set the file where the metadata is being saved.
 
@@ -29,7 +29,7 @@ class PackageXMLFileContext(MetadataFileContext):
         """
 
         metadata_file_path = os.path.join(working_dir, REPO_DATA_DIR_NAME, PACKAGE_XML_FILE_NAME)
-        super(PackageXMLFileContext, self).__init__(metadata_file_path)
+        super(PackageXMLFileContext, self).__init__(metadata_file_path, checksum_type)
 
     def _write_root_tag_open(self):
         """

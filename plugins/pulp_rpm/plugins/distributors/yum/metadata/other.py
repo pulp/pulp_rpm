@@ -17,7 +17,7 @@ class OtherXMLFileContext(PreGeneratedMetadataContext):
     Context manager for generating the other.xml.gz file.
     """
 
-    def __init__(self, working_dir, num_units):
+    def __init__(self, working_dir, num_units, checksum_type=None):
         """
         :param working_dir: working directory to create the other.xml.gz in
         :type  working_dir: str
@@ -27,7 +27,7 @@ class OtherXMLFileContext(PreGeneratedMetadataContext):
         """
 
         metadata_file_path = os.path.join(working_dir, REPO_DATA_DIR_NAME, OTHER_XML_FILE_NAME)
-        super(OtherXMLFileContext, self).__init__(metadata_file_path)
+        super(OtherXMLFileContext, self).__init__(metadata_file_path, checksum_type)
 
         self.num_packages = num_units
 
