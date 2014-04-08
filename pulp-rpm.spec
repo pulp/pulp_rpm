@@ -143,7 +143,7 @@ A collection of modules shared among all RPM components.
 %{python_sitelib}/pulp_rpm/__init__.py*
 %{python_sitelib}/pulp_rpm/extensions/__init__.py*
 %{python_sitelib}/pulp_rpm/common/
-%doc LICENSE
+%doc LICENSE COPYRIGHT
 
 # ---- Plugins -----------------------------------------------------------------
 
@@ -176,7 +176,7 @@ to provide RPM specific support.
 %{_sysconfdir}/pki/pulp/content/
 %defattr(-,root,root,-)
 /srv/pulp/repo_auth.wsgi
-%doc LICENSE
+%doc LICENSE COPYRIGHT
 
 
 # ---- Admin Extensions --------------------------------------------------------
@@ -194,7 +194,7 @@ client capabilites with RPM specific features.
 %defattr(-,root,root,-)
 %{python_sitelib}/pulp_rpm_extensions_admin*.egg-info
 %{python_sitelib}/pulp_rpm/extensions/admin/
-%doc LICENSE
+%doc LICENSE COPYRIGHT
 
 
 # ---- Consumer Extensions -----------------------------------------------------
@@ -212,7 +212,7 @@ client capabilites with RPM specific features.
 %defattr(-,root,root,-)
 %{python_sitelib}/pulp_rpm_extensions_consumer*.egg-info
 %{python_sitelib}/pulp_rpm/extensions/consumer/
-%doc LICENSE
+%doc LICENSE COPYRIGHT
 
 
 # ---- Agent Handlers ----------------------------------------------------------
@@ -238,7 +238,7 @@ management and Linux specific commands such as system reboot.
 %{_sysconfdir}/pulp/agent/conf.d/linux.conf
 %{_sysconfdir}/pulp/agent/conf.d/rpm.conf
 %ghost %{_sysconfdir}/yum.repos.d/pulp.repo
-%doc LICENSE
+%doc LICENSE COPYRIGHT
 
 
 # ---- YUM Plugins -------------------------------------------------------------
@@ -257,7 +257,7 @@ A collection of yum plugins supplementing Pulp consumer operations.
 %defattr(-,root,root,-)
 %{_sysconfdir}/yum/pluginconf.d/pulp-profile-update.conf
 %{_usr}/lib/yum-plugins/pulp-profile-update.py*
-%doc LICENSE
+%doc LICENSE COPYRIGHT
 
 
 
