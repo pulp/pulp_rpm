@@ -3,7 +3,7 @@ import shutil
 from gettext import gettext as _
 from collections import namedtuple
 
-from pulp.plugins.util.publish_step import BasePublisher, PublishStep
+from pulp.plugins.util.publish_step import BasePublisher, PublishStep, UnitPublishStep
 from pulp.server.db.model.criteria import UnitAssociationCriteria
 from pulp.server.exceptions import InvalidValue
 
@@ -69,7 +69,7 @@ class Publisher(BasePublisher):
                                                                      ClearOldMastersStep()])
 
 
-class PublishRepoMetaDataStep(PublishStep):
+class PublishRepoMetaDataStep(UnitPublishStep):
     """
     Step for managing overall repo metadata
     """
@@ -96,7 +96,7 @@ class PublishRepoMetaDataStep(PublishStep):
             self.repomd_file_context.finalize()
 
 
-class PublishRpmStep(PublishStep):
+class PublishRpmStep(UnitPublishStep):
     """
     Step for publishing RPM & SRPM units
     """
@@ -121,7 +121,8 @@ class PublishRpmStep(PublishStep):
         """
         total = self._get_total([TYPE_ID_RPM, TYPE_ID_SRPM])
         checksum_type = self.get_step(constants.PUBLISH_REPOMD_STEP).checksum_type
-        self.file_lists_context = FilelistsXMLFileContext(self.get_working_dir(), total, checksum_type)
+        self.file_lists_context = FilelistsXMLFileContext(self.get_working_dir(), total,
+                                                          checksum_type)
         self.other_context = OtherXMLFileContext(self.get_working_dir(), total, checksum_type)
         self.primary_context = PrimaryXMLFileContext(self.get_working_dir(), total, checksum_type)
         for context in (self.file_lists_context, self.other_context, self.primary_context):
@@ -168,7 +169,7 @@ class PublishRpmStep(PublishStep):
             context.add_unit_metadata(unit)
 
 
-class PublishMetadataStep(PublishStep):
+class PublishMetadataStep(UnitPublishStep):
     """
     Publish extra metadata files that are copied from another repo and not generated
     """
@@ -197,7 +198,7 @@ class PublishMetadataStep(PublishStep):
             add_metadata_file_metadata(unit.unit_key['data_type'], link_path)
 
 
-class PublishDrpmStep(PublishStep):
+class PublishDrpmStep(UnitPublishStep):
     """
     Publish Delta RPMS
     """
@@ -242,7 +243,7 @@ class PublishDrpmStep(PublishStep):
                                            self.context.checksum)
 
 
-class PublishErrataStep(PublishStep):
+class PublishErrataStep(UnitPublishStep):
     """
     Publish all errata
     """
@@ -273,7 +274,7 @@ class PublishErrataStep(PublishStep):
                                            self.context.checksum)
 
 
-class PublishCompsStep(PublishStep):
+class PublishCompsStep(UnitPublishStep):
     def __init__(self):
         super(PublishCompsStep, self).__init__(constants.PUBLISH_COMPS_STEP,
                                                [TYPE_ID_PKG_GROUP, TYPE_ID_PKG_CATEGORY,
@@ -332,7 +333,7 @@ class PublishCompsStep(PublishStep):
                                            self.comps_context.checksum)
 
 
-class PublishDistributionStep(PublishStep):
+class PublishDistributionStep(UnitPublishStep):
     """
     Publish distribution files associated with the anaconda installer
     """
@@ -477,16 +478,11 @@ class PublishToMasterStep(PublishStep):
         """
         super(PublishToMasterStep, self).__init__(step)
 
-    def is_skipped(self):
-        return False
-
-    def _get_total(self, id_list=None):
-        return 1
-
-    def get_unit_generator(self):
-        return [configuration.get_master_publish_dir(self.parent.repo)]
-
-    def process_unit(self, master_publish_dir):
+    def process_main(self):
+        """
+        Create & populate the master publish directory
+        """
+        master_publish_dir = configuration.get_master_publish_dir(self.parent.repo)
 
         # Use the timestamp as the name of the current master repository
         # directory. This allows us to identify when these were created as well
@@ -506,16 +502,11 @@ class ClearOldMastersStep(PublishStep):
         """
         super(ClearOldMastersStep, self).__init__(step)
 
-    def is_skipped(self):
-        return False
-
-    def _get_total(self, id_list=None):
-        return 1
-
-    def get_unit_generator(self):
-        return [configuration.get_master_publish_dir(self.parent.repo)]
-
-    def process_unit(self, master_publish_dir):
+    def process_main(self):
+        """
+        Clear out the old master directories
+        """
+        master_publish_dir = configuration.get_master_publish_dir(self.parent.repo)
         self._clear_directory(master_publish_dir, skip_list=[self.parent.timestamp])
 
 
@@ -535,22 +526,17 @@ class PublishOverHttpStep(PublishStep):
         """
         return not self.parent.config.get('http')
 
-    def _get_total(self, id_list=None):
+    def _get_publish_dir(self):
         """
-        Get total will always be 1 since this isn't truly iterating over a unit
+        Get the directory to publish to.  This is so that https can use the same base class
         """
-        return 1
+        return configuration.get_http_publish_dir(self.parent.config)
 
-    def get_unit_generator(self):
-        """
-        Return a fake unit so that the process_unit method will be called
-        """
-        return [configuration.get_http_publish_dir(self.parent.config)]
-
-    def process_unit(self, root_publish_dir):
+    def process_main(self):
         """
         Publish a directory from the repo to a target directory.
         """
+        root_publish_dir = self._get_publish_dir()
 
         # Find the location of the master repository tree structure
         master_publish_dir = os.path.join(configuration.get_master_publish_dir(self.parent.repo),
@@ -597,8 +583,8 @@ class PublishOverHttpsStep(PublishOverHttpStep):
         """
         return not self.parent.config.get('https')
 
-    def get_unit_generator(self):
+    def _get_publish_dir(self):
         """
         For the units return the https publish directory
         """
-        return [configuration.get_https_publish_dir(self.parent.config)]
+        return configuration.get_https_publish_dir(self.parent.config)

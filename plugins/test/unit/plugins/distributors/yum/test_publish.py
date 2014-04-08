@@ -713,17 +713,12 @@ class ClearOldMastersStepTests(BaseYumDistributorPublishStepTests):
         self.assertEquals(step._get_total(), 1)
 
     @mock.patch('pulp_rpm.plugins.distributors.yum.publish.configuration')
-    def test_get_unit_generator(self, mock_configuration):
-        step = publish.ClearOldMastersStep()
-        step.parent = mock.Mock()
-        mock_configuration.get_master_publish_dir.return_value = 'foo'
-        self.assertEquals(step.get_unit_generator(), ['foo', ])
-
     @mock.patch.object(publish.ClearOldMastersStep, '_clear_directory')
-    def test_process_unit(self, mock_clear_directory):
+    def test_process_unit(self, mock_clear_directory, mock_configuration):
+        mock_configuration.get_master_publish_dir.return_value = 'foo_dir'
         step = publish.ClearOldMastersStep()
         step.parent = mock.Mock()
-        step.process_unit('foo_dir')
+        step.process_main()
         mock_clear_directory.assert_called_with('foo_dir', skip_list=[step.parent.timestamp])
 
 
