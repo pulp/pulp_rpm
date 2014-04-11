@@ -60,10 +60,10 @@ class Publisher(BasePublisher):
                  PublishMetadataStep()]
 
         super(Publisher, self).__init__(repo, publish_conduit, config,
-                                        initialize_metadata_steps=[repomd_step],
+                                        initialize_steps=[repomd_step],
                                         process_steps=steps,
-                                        finalize_metadata_steps=[repomd_step],
-                                        post_metadata_process_steps=[PublishToMasterStep(),
+                                        finalize_steps=[repomd_step],
+                                        post_process_steps=[PublishToMasterStep(),
                                                                      PublishOverHttpStep(),
                                                                      PublishOverHttpsStep(),
                                                                      ClearOldMastersStep()])
@@ -79,7 +79,7 @@ class PublishRepoMetaDataStep(UnitPublishStep):
         self.repomd_file_context = None
         self.checksum_type = None
 
-    def initialize_metadata(self):
+    def initialize(self):
         """
         open the metadata context
         """
@@ -88,7 +88,7 @@ class PublishRepoMetaDataStep(UnitPublishStep):
         self.repomd_file_context = RepomdXMLFileContext(self.get_working_dir(), self.checksum_type)
         self.repomd_file_context.initialize()
 
-    def finalize_metadata(self):
+    def finalize(self):
         """
         Close the metadata context
         """
@@ -103,6 +103,7 @@ class PublishRpmStep(UnitPublishStep):
 
     def __init__(self):
         super(PublishRpmStep, self).__init__(constants.PUBLISH_RPMS_STEP, TYPE_ID_RPM)
+        self.description = _('Publishing RPMs')
         self.file_lists_context = None
         self.other_context = None
         self.primary_context = None
@@ -115,7 +116,7 @@ class PublishRpmStep(UnitPublishStep):
                                            unit_fields=PACKAGE_FIELDS)
         return self.parent.conduit.get_units(criteria, as_generator=True)
 
-    def initialize_metadata(self):
+    def initialize(self):
         """
         Create each of the three metadata contexts required for publishing RPM & SRPM
         """
@@ -128,7 +129,7 @@ class PublishRpmStep(UnitPublishStep):
         for context in (self.file_lists_context, self.other_context, self.primary_context):
             context.initialize()
 
-    def finalize_metadata(self):
+    def finalize(self):
         """
         Close each context and write it to the repomd file
         """
@@ -177,6 +178,7 @@ class PublishMetadataStep(UnitPublishStep):
     def __init__(self):
         super(PublishMetadataStep, self).__init__(constants.PUBLISH_METADATA_STEP,
                                                   TYPE_ID_YUM_REPO_METADATA_FILE)
+        self.description = _('Publishing Metadata.')
 
     def process_unit(self, unit):
         """
@@ -205,9 +207,10 @@ class PublishDrpmStep(UnitPublishStep):
 
     def __init__(self):
         super(PublishDrpmStep, self).__init__(constants.PUBLISH_DELTA_RPMS_STEP, TYPE_ID_DRPM)
+        self.description = _('Publishing Delta RPMs')
         self.context = None
 
-    def initialize_metadata(self):
+    def initialize(self):
         """
         Initialize the PrestoDelta metadata file
         """
@@ -232,7 +235,7 @@ class PublishDrpmStep(UnitPublishStep):
             self._create_symlink(source_path, destination_path)
         self.context.add_unit_metadata(unit)
 
-    def finalize_metadata(self):
+    def finalize(self):
         """
         Close & finalize each of the metadata files
         """
@@ -250,8 +253,9 @@ class PublishErrataStep(UnitPublishStep):
     def __init__(self):
         super(PublishErrataStep, self).__init__(constants.PUBLISH_ERRATA_STEP, TYPE_ID_ERRATA)
         self.context = None
+        self.description = _('Publishing Errata')
 
-    def initialize_metadata(self):
+    def initialize(self):
         """
         Initialize the UpdateInfo file and set the method used to process the unit to the
         one that is built into the UpdateinfoXMLFileContext
@@ -263,7 +267,7 @@ class PublishErrataStep(UnitPublishStep):
         # UpdateInfoXMLFileContext as there is no other processing to be done for each unit.
         self.process_unit = self.context.add_unit_metadata
 
-    def finalize_metadata(self):
+    def finalize(self):
         """
         Finalize and write to disk the metadata and add the updateinfo file to the repomd
         """
@@ -280,6 +284,7 @@ class PublishCompsStep(UnitPublishStep):
                                                [TYPE_ID_PKG_GROUP, TYPE_ID_PKG_CATEGORY,
                                                 TYPE_ID_PKG_ENVIRONMENT])
         self.comps_context = None
+        self.description = _('Publishing Comps file')
 
     def get_unit_generator(self):
         """
@@ -314,7 +319,7 @@ class PublishCompsStep(UnitPublishStep):
         """
         unit.process(unit.unit)
 
-    def initialize_metadata(self):
+    def initialize(self):
         """
         Initialize all metadata associated with the comps file
         """
@@ -322,7 +327,7 @@ class PublishCompsStep(UnitPublishStep):
         self.comps_context = PackageXMLFileContext(self.get_working_dir(), checksum_type)
         self.comps_context.initialize()
 
-    def finalize_metadata(self):
+    def finalize(self):
         """
         Finalize all metadata associated with the comps file
         """
@@ -346,8 +351,9 @@ class PublishDistributionStep(UnitPublishStep):
         super(PublishDistributionStep, self).__init__(constants.PUBLISH_DISTRIBUTION_STEP,
                                                       TYPE_ID_DISTRO)
         self.package_dir = None
+        self.description = _('Publishing Distribution files')
 
-    def initialize_metadata(self):
+    def initialize(self):
         """
         When initializing the metadata verify that only one distribution exists
         """
@@ -477,6 +483,7 @@ class PublishToMasterStep(PublishStep):
         Initialize and set the ID of the step
         """
         super(PublishToMasterStep, self).__init__(step)
+        self.description = _("Copying files to master directory")
 
     def process_main(self):
         """
@@ -519,6 +526,7 @@ class PublishOverHttpStep(PublishStep):
         Initialize and set the ID of the step
         """
         super(PublishOverHttpStep, self).__init__(step)
+        self.description = _('Publishing via http')
 
     def is_skipped(self):
         """
@@ -576,6 +584,7 @@ class PublishOverHttpsStep(PublishOverHttpStep):
     """
     def __init__(self):
         super(PublishOverHttpsStep, self).__init__(constants.PUBLISH_OVER_HTTPS_STEP)
+        self.description = _('Publishing via https')
 
     def is_skipped(self):
         """

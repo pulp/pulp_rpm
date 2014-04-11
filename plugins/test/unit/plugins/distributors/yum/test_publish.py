@@ -189,7 +189,7 @@ class PublishCompsStepTests(BaseYumDistributorPublishStepTests):
         self._init_publisher()
         step = publish.PublishCompsStep()
         step.parent = self.publisher
-        step.initialize_metadata()
+        step.initialize()
         mock_context.return_value.initialize.assert_called_once_with()
 
     def test_finalize_metadata(self):
@@ -198,7 +198,7 @@ class PublishCompsStepTests(BaseYumDistributorPublishStepTests):
         mock_get_step = mock.Mock()
         step.get_step = mock_get_step
         step.comps_context = mock.Mock()
-        step.finalize_metadata()
+        step.finalize()
         step.comps_context.finalize.assert_called_once_with()
         mock_get_step.return_value.repomd_file_context.\
             add_metadata_file_metadata.assert_called_once_with('group', mock.ANY, mock.ANY)
@@ -210,7 +210,7 @@ class PublishCompsStepTests(BaseYumDistributorPublishStepTests):
         """
         step = publish.PublishCompsStep()
         step.parent = self.publisher
-        step.finalize_metadata()
+        step.finalize()
 
 
 class PublishDrpmStepTests(BaseYumDistributorPublishStepTests):
@@ -298,7 +298,7 @@ class PublishDrpmStepTests(BaseYumDistributorPublishStepTests):
         """
         step = publish.PublishDrpmStep()
         step.parent = self.publisher
-        step.finalize_metadata()
+        step.finalize()
 
 
 class PublishDistributionStepTests(BaseYumDistributorPublishStepTests):
@@ -371,7 +371,7 @@ class PublishDistributionStepTests(BaseYumDistributorPublishStepTests):
         step = publish.PublishDistributionStep()
         step.parent = self.publisher
         step._get_total = mock.Mock(return_value=2)
-        self.assertRaises(Exception, step.initialize_metadata)
+        self.assertRaises(Exception, step.initialize)
 
     def test_publish_distribution_treeinfo_does_nothing_if_no_treeinfo_file(self):
         unit = self._generate_distribution_unit('one')
@@ -515,7 +515,7 @@ class PublishRepoMetaDataStep(BaseYumDistributorPublishTests):
         step.parent = mock.Mock()
         mock_configuration.get_repo_checksum_type.return_value = 'foo'
 
-        step.initialize_metadata()
+        step.initialize()
 
         mock_context.assert_called_with(step.get_working_dir(), 'foo')
         self.assertTrue(mock_context.return_value.initialize.called)
@@ -523,12 +523,12 @@ class PublishRepoMetaDataStep(BaseYumDistributorPublishTests):
     def test_finalize_metadata(self):
         step = publish.PublishRepoMetaDataStep()
         step.repomd_file_context = mock.Mock()
-        step.finalize_metadata()
+        step.finalize()
         self.assertTrue(step.repomd_file_context.finalize.called)
 
     def test_finalize_metadata_no_context(self):
         step = publish.PublishRepoMetaDataStep()
-        step.finalize_metadata()
+        step.finalize()
 
 
 class PublishRpmStepTests(BaseYumDistributorPublishStepTests):
@@ -567,7 +567,7 @@ class PublishRpmStepTests(BaseYumDistributorPublishStepTests):
         step.get_step = mock.Mock()
         step.get_step.return_value.package_dir = package_dir
         step.get_step.return_value.checksum_type = None
-        step.initialize_metadata()
+        step.initialize()
         step.process_unit(unit)
 
         unit_path = os.path.join(package_dir, unit.unit_key['name'])
@@ -580,7 +580,7 @@ class PublishRpmStepTests(BaseYumDistributorPublishStepTests):
         """
         step = publish.PublishRpmStep()
         step.parent = self.publisher
-        step.finalize_metadata()
+        step.finalize()
 
 
 class PublishErrataStepTests(BaseYumDistributorPublishStepTests):
@@ -591,7 +591,7 @@ class PublishErrataStepTests(BaseYumDistributorPublishStepTests):
         step = publish.PublishErrataStep()
         step.parent = self.publisher
 
-        step.initialize_metadata()
+        step.initialize()
         mock_context.return_value.initialize.assert_called_once_with()
         self.assertEquals(step.process_unit, step.context.add_unit_metadata)
 
@@ -601,7 +601,7 @@ class PublishErrataStepTests(BaseYumDistributorPublishStepTests):
         step.parent = self.publisher
         step.get_step = mock.Mock()
         step.context = mock.Mock()
-        step.finalize_metadata()
+        step.finalize()
         step.context.finalize.assert_called_once_with()
         step.get_step.return_value.repomd_file_context.\
             add_metadata_file_metadata.assert_called_once_with('updateinfo', mock.ANY, mock.ANY)
@@ -613,7 +613,7 @@ class PublishErrataStepTests(BaseYumDistributorPublishStepTests):
         """
         step = publish.PublishErrataStep()
         step.parent = self.publisher
-        step.finalize_metadata()
+        step.finalize()
 
 
 class PublishMetadataStepTests(BaseYumDistributorPublishStepTests):
