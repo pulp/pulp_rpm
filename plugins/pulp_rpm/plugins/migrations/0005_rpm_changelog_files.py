@@ -69,7 +69,7 @@ def migrate(*args, **kwargs):
     ts = rpmUtils.transaction.initReadOnlyTransaction()
     for rpm_unit in collection.find():
         _migrate_unit(rpm_unit, ts, collection)
-        _LOGGER.info("Migrated rpms to include rpm changelog and filelist metadata")
+    _LOGGER.info("Migrated rpms to include rpm changelog and filelist metadata")
 
 
 if __name__ == '__main__':
