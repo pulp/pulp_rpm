@@ -14,7 +14,7 @@ from pulp.plugins.model import Repository, Unit
 from pulp_rpm.plugins.db import models
 from pulp_rpm.common.ids import TYPE_ID_ISO
 from pulp_rpm.common.progress import SyncProgressReport, ISOProgressReport
-from pulp_rpm.plugins.importers.iso_importer.sync import ISOSyncRun
+from pulp_rpm.plugins.importers.iso.sync import ISOSyncRun
 from pulp_rpm.devel.rpm_support_base import PulpRPMTests
 from pulp_rpm.devel import importer_mocks
 
@@ -155,7 +155,7 @@ class TestISOSyncRun(PulpRPMTests):
         # Humorously enough, the _repo_url attribute named no_trailing_slash should now have a trailing slash
         self.assertEqual(iso_sync_run._repo_url, 'http://fake.com/no_trailing_slash/')
 
-    @patch('pulp_rpm.plugins.importers.iso_importer.sync.HTTPThreadedDownloader.cancel',
+    @patch('pulp_rpm.plugins.importers.iso.sync.HTTPThreadedDownloader.cancel',
            side_effect=HTTPThreadedDownloader.cancel, autospec=HTTPThreadedDownloader.cancel)
     def test_cancel_sync(self, cancel):
         """
@@ -170,20 +170,28 @@ class TestISOSyncRun(PulpRPMTests):
         # The progress report's state should now be cancelled
         self.assertEqual(self.iso_sync_run.progress_report.state, SyncProgressReport.STATE_CANCELLED)
 
-    def test_download_failed_during_iso_download(self):
+    @patch('pulp_rpm.plugins.importers.iso.sync.logger')
+    def test_download_failed_during_iso_download(self, logger):
         self.iso_sync_run.progress_report._state = SyncProgressReport.STATE_ISOS_IN_PROGRESS
         url = 'http://www.theonion.com/articles/american-airlines-us-airways-merge-to-form-worlds,31302/'
         iso = models.ISO('test.txt', 217, 'a1552efee6f04012bc7e1f3e02c00c6177b08217cead958c47ec83cb8f97f835')
         report = DownloadReport(url, '/fake/destination', iso)
+        report.error_msg = 'uh oh'
 
         self.iso_sync_run.download_failed(report)
 
-    def test_download_failed_during_manifest(self):
+        self.assertEqual(logger.error.call_count, 1)
+        log_msg = logger.error.mock_calls[0][1][0]
+        self.assertTrue('uh oh' in log_msg)
+
+    @patch('pulp_rpm.plugins.importers.iso.sync.logger')
+    def test_download_failed_during_manifest(self, logger):
         self.iso_sync_run.progress_report._state = SyncProgressReport.STATE_MANIFEST_IN_PROGRESS
         url = 'http://www.theonion.com/articles/' +\
             'american-airlines-us-airways-merge-to-form-worlds,31302/'
         report = DownloadReport(url, '/fake/destination')
         report.error_report = {'why': 'because'}
+        report.error_msg = 'uh oh'
 
         self.iso_sync_run.download_failed(report)
 
@@ -191,8 +199,11 @@ class TestISOSyncRun(PulpRPMTests):
         self.assertEqual(self.iso_sync_run.progress_report._state,
                          SyncProgressReport.STATE_MANIFEST_FAILED)
         self.assertEqual(self.iso_sync_run.progress_report.error_message, report.error_report)
+        self.assertEqual(logger.error.call_count, 1)
+        log_msg = logger.error.mock_calls[0][1][0]
+        self.assertTrue('uh oh' in log_msg)
 
-    @patch('pulp_rpm.plugins.importers.iso_importer.sync.ISOSyncRun.download_failed')
+    @patch('pulp_rpm.plugins.importers.iso.sync.ISOSyncRun.download_failed')
     def test_download_succeeded(self, download_failed):
         destination = os.path.join(self.temp_dir, 'test.txt')
         with open(destination, 'w') as test_file:
@@ -219,7 +230,7 @@ class TestISOSyncRun(PulpRPMTests):
         # The download should not fail
         self.assertEqual(download_failed.call_count, 0)
 
-    @patch('pulp_rpm.plugins.importers.iso_importer.sync.ISOSyncRun.download_failed')
+    @patch('pulp_rpm.plugins.importers.iso.sync.ISOSyncRun.download_failed')
     def test_download_succeeded_honors_validate_units_set_false(self, download_failed):
         """
         We have a setting that makes download validation optional. This test ensures that download_succeeded()
@@ -253,7 +264,7 @@ class TestISOSyncRun(PulpRPMTests):
         # The download should not fail
         self.assertEqual(download_failed.call_count, 0)
 
-    @patch('pulp_rpm.plugins.importers.iso_importer.sync.ISOSyncRun.download_failed')
+    @patch('pulp_rpm.plugins.importers.iso.sync.ISOSyncRun.download_failed')
     def test_download_succeeded_honors_validate_units_set_true(self, download_failed):
         """
         We have a setting that makes download validation optional. This test ensures that download_succeeded()
@@ -287,7 +298,7 @@ class TestISOSyncRun(PulpRPMTests):
         self.assertEqual(download_failed.call_count, 1)
         download_failed.assert_called_once_with(report)
 
-    @patch('pulp_rpm.plugins.importers.iso_importer.sync.ISOSyncRun.download_failed')
+    @patch('pulp_rpm.plugins.importers.iso.sync.ISOSyncRun.download_failed')
     def test_download_succeeded_fails_checksum(self, download_failed):
         """
         This test verifies that download_succeeded does the right thing if the checksum fails. Note
@@ -560,7 +571,7 @@ class TestISOSyncRun(PulpRPMTests):
             self.assertEqual(iso.checksum, expected_manifest_isos[index]['checksum'])
 
     @patch('nectar.downloaders.threaded.HTTPThreadedDownloader.download')
-    @patch('pulp_rpm.plugins.importers.iso_importer.sync.ISOSyncRun.download_succeeded',
+    @patch('pulp_rpm.plugins.importers.iso.sync.ISOSyncRun.download_succeeded',
            side_effect=ISOSyncRun.download_failed)
     def test__download_manifest_failed(self, download_succeeded, mock_download):
         """

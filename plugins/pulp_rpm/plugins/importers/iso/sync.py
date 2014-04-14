@@ -84,6 +84,9 @@ class ISOSyncRun(listener.DownloadEventListener):
         """
         # If we have a download failure during the manifest phase, we should set the report to
         # failed for that phase.
+        msg = _('Failed to download %(url)s: %(error_msg)s.')
+        msg = msg % {'url': report.url, 'error_msg': report.error_msg}
+        logger.error(msg)
         if self.progress_report.state == self.progress_report.STATE_MANIFEST_IN_PROGRESS:
             self.progress_report.state = self.progress_report.STATE_MANIFEST_FAILED
             self.progress_report.error_message = report.error_report

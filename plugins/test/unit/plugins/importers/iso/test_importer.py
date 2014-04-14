@@ -10,7 +10,7 @@ from pulp.plugins.model import Repository, Unit
 
 from pulp_rpm.common import ids
 from pulp_rpm.plugins.db import models
-from pulp_rpm.plugins.importers.iso_importer import importer, sync
+from pulp_rpm.plugins.importers.iso import importer, sync
 from pulp_rpm.devel.rpm_support_base import PulpRPMTests
 from pulp_rpm.devel import importer_mocks
 
@@ -143,7 +143,7 @@ class TestISOImporter(PulpRPMTests):
         self.assertEqual(metadata, {'id': ids.TYPE_ID_IMPORTER_ISO, 'display_name': 'ISO Importer',
                                     'types': [ids.TYPE_ID_ISO]})
 
-    @mock.patch('pulp_rpm.plugins.importers.iso_importer.sync.ISOSyncRun')
+    @mock.patch('pulp_rpm.plugins.importers.iso.sync.ISOSyncRun')
     def test_sync_calls_sync(self, mock_sync_run):
         repo = Repository('repo1')
         sync_conduit = importer_mocks.get_sync_conduit(type_id=ids.TYPE_ID_ISO, pkg_dir='/a/b/c')

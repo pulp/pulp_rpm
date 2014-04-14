@@ -4,7 +4,7 @@ import math
 
 from pulp.common.plugins import importer_constants
 
-from pulp_rpm.plugins.importers.iso_importer import configuration
+from pulp_rpm.plugins.importers.iso import configuration
 from pulp_rpm.devel.rpm_support_base import PulpRPMTests
 from pulp_rpm.devel import importer_mocks
 
