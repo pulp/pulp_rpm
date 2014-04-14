@@ -18,7 +18,7 @@
 
 Name: pulp-rpm
 Version: 2.4.0
-Release: 0.8.beta%{?dist}
+Release: 0.9.beta%{?dist}
 Summary: Support for RPM content in the Pulp platform
 Group: Development/Languages
 License: GPLv2
@@ -262,6 +262,9 @@ A collection of yum plugins supplementing Pulp consumer operations.
 
 
 %changelog
+* Mon Apr 14 2014 Randy Barlow <rbarlow@redhat.com> 2.4.0-0.9.beta
+- Pulp rebuild
+
 * Mon Apr 07 2014 Barnaby Court <bcourt@redhat.com> 2.4.0-0.8.beta
 - 1084077 - removing python-pulp-rpm-extension from admin and consumer
   extension deps as we no longer produce this rpm (skarmark@redhat.com)
