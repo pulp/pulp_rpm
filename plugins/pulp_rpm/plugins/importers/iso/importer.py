@@ -10,7 +10,7 @@ from pulp.plugins.importer import Importer
 
 from pulp_rpm.common import constants, ids
 from pulp_rpm.plugins.db import models
-from pulp_rpm.plugins.importers.iso_importer import configuration, sync
+from pulp_rpm.plugins.importers.iso import configuration, sync
 
 
 logger = logging.getLogger(__name__)

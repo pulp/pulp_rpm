@@ -106,9 +106,12 @@ def process_environment_element(repo_id, element):
     groups = element.find('grouplist').findall('groupid')
 
     options = []
-    for group in element.find('optionlist').findall('groupid'):
-        default = group.attrib.get('default', False)
-        options.append({'group': group.text, 'default': default})
+    # The optionlist tag is not always present
+    option_list = element.find('optionlist')
+    if option_list is not None:
+        for group in option_list.findall('groupid'):
+            default = group.attrib.get('default', False)
+            options.append({'group': group.text, 'default': default})
 
     return models.PackageEnvironment.from_package_info({
         'description': description,
