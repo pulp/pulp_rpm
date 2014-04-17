@@ -1,6 +1,8 @@
 
 import mock
 
+from yum.Errors import InstallError
+
 
 def install():
     import yum
@@ -97,13 +99,16 @@ class YumBase:
         self.repos = mock.Mock()
 
     def install(self, pattern):
-        state = 'i'
-        version = '1.0'
-        repoid = self.REPOID
-        self.__validpkg(pattern)
-        pkg = Pkg(pattern, version)
-        t = TxMember(state, repoid, pkg)
-        self.tsInfo.append(t)
+        if pattern != YumBase.UNKNOWN_PKG:
+            state = 'i'
+            version = '1.0'
+            repoid = self.REPOID
+            self.__validpkg(pattern)
+            pkg = Pkg(pattern, version)
+            t = TxMember(state, repoid, pkg)
+            self.tsInfo.append(t)
+        else:
+            raise InstallError('package not found')
 
     def update(self, pattern):
         state = 'u'
