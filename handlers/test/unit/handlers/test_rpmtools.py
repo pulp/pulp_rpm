@@ -4,6 +4,7 @@ from mock import Mock
 
 import mock_yum
 from mock_yum import YumBase
+from yum.Errors import InstallError
 
 
 class ToolTest(unittest.TestCase):
@@ -80,7 +81,7 @@ class TestPackages(ToolTest):
         self.verify(report, installed=packages)
         self.assertTrue(YumBase.processTransaction.called)
 
-    def test_install_notfound(self):
+    def test_install_not_found(self):
         # Setup
         packages = [
             'zsh',
@@ -91,7 +92,7 @@ class TestPackages(ToolTest):
         ]
         # Test & verify
         package = self.Package()
-        self.assertRaises(Exception, package.install, [packages])
+        self.assertRaises(InstallError, package.install, packages)
         self.assertFalse(YumBase.processTransaction.called)
 
     def test_update(self):

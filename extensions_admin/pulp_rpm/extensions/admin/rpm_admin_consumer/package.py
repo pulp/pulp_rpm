@@ -160,14 +160,6 @@ class YumConsumerPackageInstallCommand(consumer_content.ConsumerContentInstallCo
             prompt.render_title(_('Installed for Dependencies'))
             prompt.render_document_list(deps, order=fields, filters=fields)
 
-        errors = details.get('errors', None)
-
-        if errors:
-            prompt.render_failure_message(_('Failed to install following packages:'))
-
-            for key, value in errors.items():
-                prompt.write(_('%(pkg)s : %(msg)s\n') % {'pkg': key, 'msg': value})
-
     def failed(self, task):
         msg = _('Install Failed')
         details = task.result['details'][TYPE_ID_RPM]['details']

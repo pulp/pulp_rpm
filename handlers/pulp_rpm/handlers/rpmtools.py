@@ -105,17 +105,17 @@ class Package:
         @param names: A list of package names.
         @type names: [str,]
         @return: Packages installed.
-            {resolved=[Package,],deps=[Package,],errors={}}
+            {resolved=[Package,],deps=[Package,]}
         @rtype: dict
         """
         yb = Yum(self.importkeys, self.progress)
-        errors = {}
         try:
             for info in names:
                 try:
                     yb.install(pattern=info)
-                except InstallError, e:
-                    errors[info] = str(e)
+                except InstallError, caught:
+                    caught.value = '%s: %s' % (info, str(caught))
+                    raise caught
             yb.resolveDeps()
             resolved, deps = self.installed(yb.tsInfo)
             if self.apply and resolved:
@@ -124,7 +124,7 @@ class Package:
                 yb.progress.set_status(True)
         finally:
             yb.close()
-        return dict(resolved=resolved, deps=deps, errors=errors)
+        return dict(resolved=resolved, deps=deps)
 
     def uninstall(self, names):
         """
