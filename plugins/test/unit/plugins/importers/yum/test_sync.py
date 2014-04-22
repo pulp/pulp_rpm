@@ -14,6 +14,7 @@ import pulp.server.managers.factory as manager_factory
 
 from pulp_rpm.common import constants
 from pulp_rpm.plugins.db import models
+from pulp_rpm.plugins.importers.yum.existing import associate_already_downloaded_units
 from pulp_rpm.plugins.importers.yum.repomd import metadata, group, updateinfo, packages, presto, primary
 from pulp_rpm.plugins.importers.yum.sync import RepoSync, FailedException, CancelException
 import model_factory
@@ -875,3 +876,27 @@ class TestFilteredUnitGenerator(BaseSyncTest):
 
         # make sure we only got the ones we want
         self.assertEqual(result, units[:2])
+
+
+class TestAlreadyDownloadedUnits(BaseSyncTest):
+
+    @mock.patch('pulp.plugins.conduits.repo_sync.RepoSyncConduit.search_all_units', autospec=True)
+    @mock.patch('pulp.plugins.conduits.repo_sync.RepoSyncConduit.save_unit', autospec=True)
+    def test_associate_already_downloaded_units_positive(self, mock_save, mock_search_all_units):
+        mock_search_all_units.return_value = ['mock_unit']
+        units = model_factory.rpm_models(3)
+        for unit in units:
+            unit.metadata['relativepath'] = 'test-relative-path'
+        result = associate_already_downloaded_units(models.RPM.TYPE, units, self.conduit)
+        self.assertEqual(len(list(result)), 0)
+
+    @mock.patch('pulp.plugins.conduits.repo_sync.RepoSyncConduit.search_all_units', autospec=True)
+    @mock.patch('pulp.plugins.conduits.repo_sync.RepoSyncConduit.save_unit', autospec=True)
+    def test_associate_already_downloaded_units_negative(self, mock_save, mock_search_all_units):
+        mock_search_all_units.return_value = []
+        units = model_factory.rpm_models(3)
+        for unit in units:
+            unit.metadata['relativepath'] = 'test-relative-path'
+        result = associate_already_downloaded_units(models.RPM.TYPE, units, self.conduit)
+        self.assertEqual(len(list(result)), 3)
+
