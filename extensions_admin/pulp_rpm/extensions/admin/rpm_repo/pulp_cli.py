@@ -3,25 +3,20 @@ from gettext import gettext as _
 
 from pulp.client.commands.repo import cudl, sync_publish, upload
 from pulp.client.commands.repo.query import RepoSearchCommand
+from pulp.client.commands.repo.status import PublishStepStatusRenderer
 from pulp.client.upload import manager as upload_lib
 
 from pulp_rpm.common import constants, ids
 from pulp_rpm.extensions.admin import structure
 from pulp_rpm.extensions.admin.upload import package
 from pulp_rpm.extensions.admin import (contents, copy_commands, export, remove, repo_create_update,
-                                      repo_list, status, sync_schedules)
+                                       repo_list, status, sync_schedules)
 from pulp_rpm.extensions.admin.upload import (category, errata)
 from pulp_rpm.extensions.admin.upload import group as package_group
 
 
-
-
-# -- constants -----------------------------------------------------------------
-
 DESC_EXPORT_STATUS = _('displays the status of a running ISO export of a repository')
 RPM_UPLOAD_SUBDIR = 'rpm'
-
-# ------------------------------------------------------------------------------
 
 
 def initialize(context):
@@ -91,7 +86,7 @@ def initialize(context):
     sync_section.add_command(sync_publish.SyncStatusCommand(context, renderer))
 
     publish_section = structure.repo_publish_section(context.cli)
-    renderer = status.RpmStatusRenderer(context)
+    renderer = PublishStepStatusRenderer(context)
     distributor_id = ids.TYPE_ID_DISTRIBUTOR_YUM
     publish_section.add_command(sync_publish.RunPublishRepositoryCommand(context, renderer,
                                                                          distributor_id))
