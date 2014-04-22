@@ -295,12 +295,8 @@ class PublishStep(object):
                    {'type': self.step_id, 'repo': self.parent.repo.id})
 
         self._init_step_progress_report(self.step_id)
-        total = 0
         try:
             total = self._get_total(self.unit_type)
-            if total == 0:
-                self.report_progress(self.step_id, state=constants.STATE_COMPLETE, total=0)
-                return
             self.initialize_metadata()
             self.parent.progress_report[self.step_id][constants.PROGRESS_TOTAL_KEY] = total
             package_unit_generator = self.get_unit_generator()
@@ -321,9 +317,7 @@ class PublishStep(object):
 
         finally:
             try:
-                # Only finalize the metadata if we would have made it to initialization
-                if total != 0:
-                    self.finalize_metadata()
+                self.finalize_metadata()
             except Exception, e:
                 # on the off chance that one of the finalize steps raise an exception we need to
                 # record it as a failure.  If a finalize does fail that error should take precedence

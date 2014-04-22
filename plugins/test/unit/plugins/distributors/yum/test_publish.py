@@ -299,9 +299,11 @@ class PublishStepTests(BaseYumDistributorPublishStepTests):
                          constants.STATE_SKIPPED)
 
     @mock.patch('pulp.server.async.task_status_manager.TaskStatusManager.update_task_status')
-    def test_process_step_no_units(self, mock_update):
+    @mock.patch('pulp.plugins.conduits.repo_publish.RepoPublishConduit.get_units')
+    def test_process_step_no_units(self, mock_get_units, mock_update):
         self.publisher.repo.content_unit_counts = {TYPE_ID_RPM: 0}
         mock_method = mock.Mock()
+        mock_get_units.return_value = []
         step = publish.PublishStep(constants.PUBLISH_RPMS_STEP,
                                    TYPE_ID_RPM)
         step.parent = self.publisher
@@ -312,6 +314,14 @@ class PublishStepTests(BaseYumDistributorPublishStepTests):
                          [constants.PROGRESS_STATE_KEY],
                          constants.STATE_COMPLETE)
         self.assertFalse(mock_method.called)
+        self.assertEqual(self.publisher.progress_report[constants.PUBLISH_RPMS_STEP][
+                         constants.PROGRESS_TOTAL_KEY], 0)
+        self.assertEqual(self.publisher.progress_report[constants.PUBLISH_RPMS_STEP][
+                         constants.PROGRESS_PROCESSED_KEY], 0)
+        self.assertEqual(self.publisher.progress_report[constants.PUBLISH_RPMS_STEP][
+                         constants.PROGRESS_FAILURES_KEY], 0)
+        self.assertEqual(self.publisher.progress_report[constants.PUBLISH_RPMS_STEP][
+                         constants.PROGRESS_SUCCESSES_KEY], 0)
 
     @mock.patch('pulp.server.async.task_status_manager.TaskStatusManager.update_task_status')
     @mock.patch('pulp.plugins.conduits.repo_publish.RepoPublishConduit.get_units')
@@ -1362,17 +1372,28 @@ class PublishMetadataStepTests(BaseYumDistributorPublishStepTests):
         mock_report_progress.assert_called_once_with(constants.PUBLISH_METADATA_STEP,
                                                      state=constants.STATE_SKIPPED)
 
-    @mock.patch('pulp_rpm.plugins.distributors.yum.publish.PublishStep.report_progress')
-    def test_publish_metadata_zero_count(self, mock_report_progress):
+    @mock.patch('pulp.server.async.task_status_manager.TaskStatusManager.update_task_status')
+    @mock.patch('pulp.plugins.conduits.repo_publish.RepoPublishConduit.get_units')
+    def test_publish_metadata_zero_count(self, mock_get_units, mock_update):
+        # Setup
+        units = []
+        mock_get_units.return_value = units
+        self.publisher.repo.content_unit_counts = {TYPE_ID_YUM_REPO_METADATA_FILE: len(units)}
+
         # Test
         step = publish.PublishMetadataStep()
         step.parent = self.publisher
         step.process()
 
         # Verify
-        mock_report_progress.assert_called_once_with(constants.PUBLISH_METADATA_STEP,
-                                                     state=constants.STATE_COMPLETE,
-                                                     total=0)
+        self.assertEqual(self.publisher.progress_report[constants.PUBLISH_METADATA_STEP]
+                         [constants.PROGRESS_STATE_KEY], constants.STATE_COMPLETE)
+        self.assertEqual(self.publisher.progress_report[constants.PUBLISH_METADATA_STEP]
+                         [constants.PROGRESS_TOTAL_KEY], len(units))
+        self.assertEqual(self.publisher.progress_report[constants.PUBLISH_METADATA_STEP]
+                         [constants.PROGRESS_FAILURES_KEY], 0)
+        self.assertEqual(self.publisher.progress_report[constants.PUBLISH_METADATA_STEP]
+                         [constants.PROGRESS_SUCCESSES_KEY], len(units))
 
 
 class PublishToMasterStepTests(BaseYumDistributorPublishStepTests):
