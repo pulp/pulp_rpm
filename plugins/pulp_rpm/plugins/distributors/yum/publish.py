@@ -64,9 +64,9 @@ class Publisher(BasePublisher):
                                         process_steps=steps,
                                         finalize_steps=[repomd_step],
                                         post_process_steps=[PublishToMasterStep(),
-                                                                     PublishOverHttpStep(),
-                                                                     PublishOverHttpsStep(),
-                                                                     ClearOldMastersStep()])
+                                                            PublishOverHttpStep(),
+                                                            PublishOverHttpsStep(),
+                                                            ClearOldMastersStep()])
 
 
 class PublishRepoMetaDataStep(UnitPublishStep):
