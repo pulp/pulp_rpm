@@ -7,6 +7,7 @@ from gettext import gettext as _
 import functools
 
 from pulp.client.commands.repo.sync_publish import StatusRenderer
+from pulp.client.commands.repo.status import PublishStepStatusRenderer
 
 from pulp_rpm.common import constants, ids
 from pulp_rpm.common.status_utils import (
@@ -22,6 +23,8 @@ class RpmStatusRenderer(StatusRenderer):
 
     def __init__(self, context):
         super(RpmStatusRenderer, self).__init__(context)
+
+        self.publish_steps_renderer = PublishStepStatusRenderer(context)
 
         # Sync Steps
         self.metadata_last_state = constants.STATE_NOT_STARTED
@@ -73,14 +76,8 @@ class RpmStatusRenderer(StatusRenderer):
 
             # Publish Steps
             if ids.YUM_DISTRIBUTOR_ID in progress_report:
-                self.render_packages_step(progress_report, constants.PUBLISH_DISTRIBUTION_STEP)
-                self.render_packages_step(progress_report, constants.PUBLISH_RPMS_STEP)
-                self.render_packages_step(progress_report, constants.PUBLISH_DELTA_RPMS_STEP)
-                self.render_packages_step(progress_report, constants.PUBLISH_ERRATA_STEP)
-                self.render_packages_step(progress_report, constants.PUBLISH_COMPS_STEP)
-                self.render_packages_step(progress_report, constants.PUBLISH_METADATA_STEP)
-                self.render_publish_https_step(progress_report)
-                self.render_publish_http_step(progress_report)
+                # Proxy to the standard renderer
+                self.publish_steps_renderer.display_report(progress_report)
 
         except CancelException:
             self.prompt.render_failure_message(_('Operation cancelled.'))
@@ -296,96 +293,6 @@ class RpmStatusRenderer(StatusRenderer):
             self.errata_last_state = new_state
         render_general_spinner_step(self.prompt, self.errata_spinner, current_state, self.errata_last_state, _('Importing errata...'), update_func)
 
-    def render_packages_step(self, progress_report, step):
-
-        # Example Data:
-        # "rpms": {
-        #    "state": "FINISHED",
-        #    "total": 21,
-        #    "processed": 21,
-        #    "successes": 21,
-        #    "failures": 0
-        #    "error_details": [],
-        # },
-
-        data = progress_report['yum_distributor'][step]
-        state = data[constants.PROGRESS_STATE_KEY]
-        total = data.get(constants.PROGRESS_TOTAL_KEY, 0)
-
-        self.check_for_cancelled_state(state)
-
-        if state in (constants.STATE_NOT_STARTED, constants.STATE_SKIPPED) or total == 0:
-            return
-
-        last_state = self.publish_steps_last_state[step]
-
-        # Only render this on the first non-not-started state
-        if last_state == constants.STATE_NOT_STARTED:
-            self.prompt.write(_('Publishing %(step)s...') % {'step': step})
-
-        # If it's running or finished, the output is still the same. This way,
-        # if the status is viewed after this step, the content download
-        # summary is still available.
-
-        if state in (constants.STATE_RUNNING,
-                     constants.STATE_COMPLETE) and last_state not in constants.COMPLETE_STATES:
-            self.publish_steps_last_state[step] = state
-            render_publish_step_in_progress_state(self.prompt, data, step, self.packages_bar, state)
-
-        elif state == constants.STATE_FAILED and last_state not in constants.COMPLETE_STATES:
-
-            # This state means something went horribly wrong. There won't be
-            # individual package error details which is why they are only
-            # displayed above and not in this case.
-
-            self.prompt.write(_('... failed'))
-            self.publish_steps_last_state[step] = constants.STATE_FAILED
-
-    def render_distribution_publish_step(self, progress_report):
-
-        # Example Data:
-        # "distribution": {
-        #    "num_success": 0,
-        #    "items_left": 0,
-        #    "items_total": 0,
-        #    "state": "FINISHED",
-        #    "error_details": [],
-        #    "num_error": 0
-        # },
-
-        data = progress_report['yum_distributor']['distribution']
-        state = data['state']
-
-        if state in (constants.STATE_NOT_STARTED, constants.STATE_SKIPPED):
-            return
-
-        # Only render this on the first non-not-started state
-        if self.distribution_publish_last_state  == constants.STATE_NOT_STARTED:
-            self.prompt.write(_('Publishing distributions...'))
-
-        # If it's running or finished, the output is still the same. This way,
-        # if the status is viewed after this step, the content download
-        # summary is still available.
-
-        if state in (
-                constants.STATE_RUNNING,
-                constants.STATE_COMPLETE) and self.distribution_publish_last_state not in \
-                constants.COMPLETE_STATES:
-
-            self.distribution_publish_last_state = state
-            render_itemized_in_progress_state(self.prompt, data, _('distributions'),
-                                              self.distribution_publish_bar, state)
-
-        elif state == constants.STATE_FAILED and self.distribution_publish_last_state not in \
-                constants.COMPLETE_STATES:
-
-            # This state means something went horribly wrong. There won't be
-            # individual package error details which is why they are only
-            # displayed above and not in this case.
-
-            self.prompt.write(_('... failed'))
-            self.distribution_publish_last_state = constants.STATE_FAILED
-
     def render_comps_step(self, progress_report):
         # Example Data:
         # "comps": {
@@ -402,48 +309,6 @@ class RpmStatusRenderer(StatusRenderer):
         def update_func(new_state):
             self.comps_last_state = new_state
         render_general_spinner_step(self.prompt, self.comps_spinner, current_state, self.comps_last_state, _('Importing package groups/categories...'), update_func)
-
-    def render_generate_metadata_step(self, progress_report):
-
-        # Example Data:
-        # "metadata": {
-        #    "state": "FINISHED"
-        # }
-
-        current_state = progress_report['yum_distributor']['metadata']['state']
-        def update_func(new_state):
-            self.generate_metadata_last_state = new_state
-        render_general_spinner_step(self.prompt, self.generate_metadata_spinner, current_state, self.generate_metadata_last_state, _('Generating metadata'), update_func)
-
-    def render_publish_http_step(self, progress_report):
-
-        # Example Data:
-        # "publish_over_http": {
-        #    "state": "SKIPPED"
-        # },
-
-        current_state = progress_report[ids.YUM_DISTRIBUTOR_ID][constants.PUBLISH_OVER_HTTP_STEP][
-            constants.PROGRESS_STATE_KEY]
-        def update_func(new_state):
-            self.publish_steps_last_state[constants.PUBLISH_OVER_HTTP_STEP] = new_state
-        render_general_spinner_step(self.prompt, self.publish_http_spinner, current_state,
-                                    self.publish_steps_last_state[constants.PUBLISH_OVER_HTTP_STEP],
-                                    _('Publishing repository over HTTP'), update_func)
-
-    def render_publish_https_step(self, progress_report):
-
-        # Example Data:
-        # "publish_over_http": {
-        #    "state": "SKIPPED"
-        # },
-
-        current_state = progress_report[ids.YUM_DISTRIBUTOR_ID][constants.PUBLISH_OVER_HTTPS_STEP][
-            constants.PROGRESS_STATE_KEY]
-        def update_func(new_state):
-            self.publish_steps_last_state[constants.PUBLISH_OVER_HTTPS_STEP] = new_state
-        render_general_spinner_step(self.prompt, self.publish_https_spinner, current_state,
-                                    self.publish_steps_last_state[constants.PUBLISH_OVER_HTTPS_STEP],
-                                    _('Publishing repository over HTTPS'), update_func)
 
 
 class RpmExportStatusRenderer(StatusRenderer):
