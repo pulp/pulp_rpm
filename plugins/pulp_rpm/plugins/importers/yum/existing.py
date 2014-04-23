@@ -13,7 +13,7 @@ def associate_already_downloaded_units(unit_type, units_to_download, sync_condui
     """
     Given a generator of Package instances, this method checks if a package with given
     type and unit key already exists in Pulp. This means that the package is already
-    already downloaded and just needs to be associated with the given repository.
+    downloaded and just needs to be associated with the given repository.
     After importing already downloaded units to the repository, it returns a generator
     of the remaining Package instances which need to be downloaded.
 
@@ -32,18 +32,22 @@ def associate_already_downloaded_units(unit_type, units_to_download, sync_condui
     model = models.TYPE_MAP[unit_type]
     unit_fields = model.UNIT_KEY_NAMES
 
-    for unit_to_download in units_to_download:
-        unit_filters = unit_to_download.unit_key
+    # Instead of separate query for each unit, we are using paginate to query
+    # for a lot of units at once.
+    for units_page in paginate(units_to_download):
+        unit_filters = {'$or': [unit.unit_key for unit in units_page]}
         criteria = Criteria(filters=unit_filters, fields=unit_fields)
         result = sync_conduit.search_all_units(unit_type, criteria)
-        if result:
-            # Since unit is already downloaded, call respective sync_conduit calls to import
-            # the unit in given repository.
-            unit = sync_conduit.init_unit(unit_type, unit_to_download.unit_key,
-                                          unit_to_download.metadata, unit_to_download.relative_path)
-            sync_conduit.save_unit(unit)
-        else:
-            yield unit_to_download
+        result_unit_keys = [unit.unit_key for unit in result]
+        for unit in units_page:
+            if unit.unit_key in result_unit_keys:
+                # Since unit is already downloaded, call respective sync_conduit calls to import
+                # the unit in given repository.
+                downloaded_unit = sync_conduit.init_unit(unit_type, unit.unit_key,
+                                                         unit.metadata, unit.relative_path)
+                sync_conduit.save_unit(downloaded_unit)
+            else:
+                yield unit
 
 
 def check_repo(wanted, unit_search_method):

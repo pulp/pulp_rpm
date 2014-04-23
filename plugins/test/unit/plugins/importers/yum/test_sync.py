@@ -883,8 +883,8 @@ class TestAlreadyDownloadedUnits(BaseSyncTest):
     @mock.patch('pulp.plugins.conduits.repo_sync.RepoSyncConduit.search_all_units', autospec=True)
     @mock.patch('pulp.plugins.conduits.repo_sync.RepoSyncConduit.save_unit', autospec=True)
     def test_associate_already_downloaded_units_positive(self, mock_save, mock_search_all_units):
-        mock_search_all_units.return_value = ['mock_unit']
         units = model_factory.rpm_models(3)
+        mock_search_all_units.return_value = units
         for unit in units:
             unit.metadata['relativepath'] = 'test-relative-path'
         result = associate_already_downloaded_units(models.RPM.TYPE, units, self.conduit)
