@@ -17,8 +17,8 @@ def associate_already_downloaded_units(unit_type, units_to_download, sync_condui
     After importing already downloaded units to the repository, it returns a generator
     of the remaining Package instances which need to be downloaded.
 
-    :param unit_type:         basestring
-    :type  unit_type:         unit type
+    :param unit_type:         unit type
+    :type  unit_type:         basestring
     :param units_to_download: generator of pulp_rpm.plugins.db.models.Package instances that
                               should be considered for download
     :type  units_to_download: generator
