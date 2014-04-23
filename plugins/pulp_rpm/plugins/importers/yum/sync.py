@@ -354,7 +354,9 @@ class RepoSync(object):
         """
         Actually download the requested RPMs and DRPMs. This method iterates over
         the appropriate metadata file and downloads those items which are present
-        in the corresponding set.
+        in the corresponding set. It also checks for the RPMs and DRPMs which exist
+        in other repositories before downloading them. If they are already downloaded,
+        we skip the download and just associate them to the given repository.
 
         :param metadata_files:      populated instance of MetadataFiles
         :type  metadata_files:      pulp_rpm.plugins.importers.yum.repomd.metadata.MetadataFiles
@@ -370,12 +372,15 @@ class RepoSync(object):
         primary_file_handle = metadata_files.get_metadata_file_handle(primary.METADATA_FILE_NAME)
         try:
             package_model_generator = packages.package_list_generator(primary_file_handle,
-                                                                     primary.PACKAGE_TAG,
-                                                                     primary.process_package_element)
+                                                                      primary.PACKAGE_TAG,
+                                                                      primary.process_package_element)
             units_to_download = self._filtered_unit_generator(package_model_generator, rpms_to_download)
+            new_units_to_download = existing.associate_already_downloaded_units(models.RPM.TYPE,
+                                                                                units_to_download,
+                                                                                self.sync_conduit)
 
             download_wrapper = packages.Packages(self.sync_feed, self.nectar_config,
-                                                    units_to_download, self.tmp_dir, event_listener)
+                                                 new_units_to_download, self.tmp_dir, event_listener)
             # allow the downloader to be accessed by the cancel method if necessary
             self.downloader = download_wrapper.downloader
             download_wrapper.download_packages()
@@ -388,12 +393,15 @@ class RepoSync(object):
         if presto_file_handle:
             try:
                 package_model_generator = packages.package_list_generator(presto_file_handle,
-                                                                         presto.PACKAGE_TAG,
-                                                                         presto.process_package_element)
+                                                                          presto.PACKAGE_TAG,
+                                                                          presto.process_package_element)
                 units_to_download = self._filtered_unit_generator(package_model_generator, drpms_to_download)
+                new_units_to_download = existing.associate_already_downloaded_units(models.DRPM.TYPE,
+                                                                                    units_to_download,
+                                                                                    self.sync_conduit)
 
                 download_wrapper = packages.Packages(self.sync_feed, self.nectar_config,
-                                                        units_to_download, self.tmp_dir, event_listener)
+                                                     new_units_to_download, self.tmp_dir, event_listener)
                 # allow the downloader to be accessed by the cancel method if necessary
                 self.downloader = download_wrapper.downloader
                 download_wrapper.download_packages()
