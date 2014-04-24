@@ -18,7 +18,7 @@
 
 Name: pulp-rpm
 Version: 2.4.0
-Release: 0.9.beta%{?dist}
+Release: 0.10.beta%{?dist}
 Summary: Support for RPM content in the Pulp platform
 Group: Development/Languages
 License: GPLv2
@@ -262,6 +262,16 @@ A collection of yum plugins supplementing Pulp consumer operations.
 
 
 %changelog
+* Thu Apr 24 2014 Randy Barlow <rbarlow@redhat.com> 2.4.0-0.10.beta
+- 1085087 - fixing yum importer so that packages are not re-downloaded for
+  every repository (skarmark@redhat.com)
+- 1062725 - package install fails when requested package not available.
+  (jortel@redhat.com)
+- 1085853 - Moved logger statement out of the for loop so that it doesn't get
+  printed for every rpm migrated (skarmark@redhat.com)
+- 1065016 - Don't require optionlist to be present. (rbarlow@redhat.com)
+- 1025465 - Log all ISO download failures. (rbarlow@redhat.com)
+
 * Mon Apr 14 2014 Randy Barlow <rbarlow@redhat.com> 2.4.0-0.9.beta
 - Pulp rebuild
 
