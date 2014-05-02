@@ -7,8 +7,8 @@ import unittest
 from xml.etree import ElementTree
 
 import mock
+from pulp.devel.unit.server.util import compare_element
 from pulp.plugins.model import Unit
-from pulp.devel.unit import util
 
 from pulp_rpm.common.ids import TYPE_ID_PKG_GROUP, TYPE_ID_PKG_CATEGORY, TYPE_ID_PKG_ENVIRONMENT
 from pulp_rpm.plugins.distributors.yum.metadata.package import PackageXMLFileContext
@@ -83,7 +83,7 @@ class TestPackageXMLFileContext(unittest.TestCase):
         source_element = ElementTree.fromstring(source_str)
         xml_str = self.context.metadata_file_handle.write.call_args[0][0]
         target_element = ElementTree.fromstring(xml_str)
-        util.compare_element(source_element, target_element)
+        compare_element(source_element, target_element)
 
     def test_add_package_group_unit_metadata_complex(self):
         group_unit = self._generate_group_unit('foo')
@@ -118,7 +118,7 @@ class TestPackageXMLFileContext(unittest.TestCase):
         source_element = ElementTree.fromstring(source_str)
         xml_str = self.context.metadata_file_handle.write.call_args[0][0]
         target_element = ElementTree.fromstring(xml_str)
-        util.compare_element(source_element, target_element)
+        compare_element(source_element, target_element)
 
     def test_add_package_category_unit_metadata_minimal(self):
         category_unit = self._generate_category_unit('category_name')
@@ -130,7 +130,7 @@ class TestPackageXMLFileContext(unittest.TestCase):
         source_element = ElementTree.fromstring(source_str)
         xml_str = self.context.metadata_file_handle.write.call_args[0][0]
         target_element = ElementTree.fromstring(xml_str)
-        util.compare_element(source_element, target_element)
+        compare_element(source_element, target_element)
 
     def test_add_package_category_unit_metadata_complex(self):
         unit = self._generate_category_unit('category_name')
@@ -154,7 +154,7 @@ class TestPackageXMLFileContext(unittest.TestCase):
         source_element = ElementTree.fromstring(source_str)
         xml_str = self.context.metadata_file_handle.write.call_args[0][0]
         target_element = ElementTree.fromstring(xml_str)
-        util.compare_element(source_element, target_element)
+        compare_element(source_element, target_element)
 
     def test_add_package_environment_unit_metadata_simple(self):
         unit = self._generate_environment_unit('environment_name')
@@ -167,7 +167,7 @@ class TestPackageXMLFileContext(unittest.TestCase):
         source_element = ElementTree.fromstring(source_str)
         xml_str = self.context.metadata_file_handle.write.call_args[0][0]
         target_element = ElementTree.fromstring(xml_str)
-        util.compare_element(source_element, target_element)
+        compare_element(source_element, target_element)
 
     def test_add_package_environment_unit_metadata_complex(self):
         unit = self._generate_environment_unit('environment_name')
@@ -194,7 +194,7 @@ class TestPackageXMLFileContext(unittest.TestCase):
         source_element = ElementTree.fromstring(source_str)
         xml_str = self.context.metadata_file_handle.write.call_args[0][0]
         target_element = ElementTree.fromstring(xml_str)
-        util.compare_element(source_element, target_element)
+        compare_element(source_element, target_element)
 
 
 
