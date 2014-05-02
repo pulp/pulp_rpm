@@ -3,6 +3,7 @@ import os
 import mock
 from pulp.client.commands.repo.upload import UploadCommand, FLAG_VERBOSE
 from pulp.client.commands.options import OPTION_REPO_ID
+from pulp.client.commands.polling import FLAG_BACKGROUND
 
 from pulp_rpm.common.ids import TYPE_ID_ERRATA
 from pulp_rpm.devel.client_base import PulpClientTests
@@ -30,7 +31,7 @@ class CreateRpmCommandTests(PulpClientTests):
                             errata.OPT_REFERENCE, errata.OPT_PKG_LIST, errata.OPT_FROM,
                             errata.OPT_PUSHCOUNT, errata.OPT_REBOOT, errata.OPT_SEVERITY,
                             errata.OPT_RIGHTS, errata.OPT_SUMMARY, errata.OPT_SOLUTION,
-                            FLAG_VERBOSE, OPTION_REPO_ID])
+                            FLAG_VERBOSE, OPTION_REPO_ID, FLAG_BACKGROUND])
         found_options = set(self.command.options)
 
         self.assertEqual(expected_options, found_options)

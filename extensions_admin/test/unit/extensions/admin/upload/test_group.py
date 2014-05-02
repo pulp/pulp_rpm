@@ -1,6 +1,7 @@
 import mock
 from pulp.client.commands.repo.upload import UploadCommand, FLAG_VERBOSE
 from pulp.client.commands.options import OPTION_REPO_ID
+from pulp.client.commands.polling import FLAG_BACKGROUND
 
 from pulp_rpm.extensions.admin.upload import group
 from pulp_rpm.common.ids import TYPE_ID_PKG_GROUP
@@ -24,7 +25,7 @@ class CreatePackageGroupCommand(PulpClientTests):
                                 group.OPT_OPTIONAL_NAME, group.OPT_DEFAULT_NAME,
                                 group.OPT_DISPLAY_ORDER, group.OPT_LANGONLY,
                                 group.OPT_DEFAULT, group.OPT_USER_VISIBLE,
-                                FLAG_VERBOSE, OPTION_REPO_ID
+                                FLAG_VERBOSE, OPTION_REPO_ID, FLAG_BACKGROUND
                                 ])
         found_options = set(self.command.options)
 
