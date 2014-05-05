@@ -93,11 +93,17 @@ class YumConsumerPackageGroupInstallCommand(consumer_content.ConsumerContentInst
         return map(_unit_dict, kwargs['name'])
 
     def succeeded(self, task):
+
         # succeeded and failed are task-based, which is not indicative of
         # whether or not the operation succeeded or failed; that is in the
         # report stored as the task's result
+
         if not task.result['succeeded']:
-            return self.failed(task)
+            msg = _('Install Failed')
+            details = task.result['details'][TYPE_ID_PKG_GROUP]['details']
+            self.context.prompt.render_failure_message(_(msg))
+            self.context.prompt.render_failure_message(details['message'])
+            return
 
         prompt = self.context.prompt
         msg = _('Install Succeeded')
@@ -120,12 +126,6 @@ class YumConsumerPackageGroupInstallCommand(consumer_content.ConsumerContentInst
         if deps:
             prompt.render_title(_('Installed for Dependencies'))
             prompt.render_document_list(deps, order=fields, filters=fields)
-
-    def failed(self, task):
-        msg = _('Install Failed')
-        details = task.result['details'][TYPE_ID_PKG_GROUP]['details']
-        self.context.prompt.render_failure_message(_(msg))
-        self.context.prompt.render_failure_message(details['message'])
 
 
 class YumConsumerPackageGroupUninstallCommand(consumer_content.ConsumerContentUninstallCommand):
@@ -161,11 +161,17 @@ class YumConsumerPackageGroupUninstallCommand(consumer_content.ConsumerContentUn
         return map(_unit_dict, kwargs['name'])
 
     def succeeded(self, task):
+
         # succeeded and failed are task-based, which is not indicative of
         # whether or not the operation succeeded or failed; that is in the
         # report stored as the task's result
+
         if not task.result['succeeded']:
-            return self.failed(task)
+            msg = _('Uninstall Failed')
+            details = task.result['details'][TYPE_ID_PKG_GROUP]['details']
+            self.context.prompt.render_failure_message(msg)
+            self.context.prompt.render_failure_message(details['message'])
+            return
 
         prompt = self.context.prompt
         msg = _('Uninstall Succeeded')
@@ -189,8 +195,3 @@ class YumConsumerPackageGroupUninstallCommand(consumer_content.ConsumerContentUn
             prompt.render_title(_('Uninstalled for Dependencies'))
             prompt.render_document_list(deps, order=fields, filters=fields)
 
-    def failed(self, task):
-        msg = _('Uninstall Failed')
-        details = task.result['details'][TYPE_ID_PKG_GROUP]['details']
-        self.context.prompt.render_failure_message(msg)
-        self.context.prompt.render_failure_message(details['message'])
