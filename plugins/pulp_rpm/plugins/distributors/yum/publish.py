@@ -24,16 +24,10 @@ from .metadata.updateinfo import UpdateinfoXMLFileContext
 from .metadata.package import PackageXMLFileContext
 
 
-# -- constants -----------------------------------------------------------------
-
-_LOG = util.getLogger(__name__)
-
-# -- package fields ------------------------------------------------------------
+logger = util.getLogger(__name__)
 
 PACKAGE_FIELDS = ['id', 'name', 'version', 'release', 'arch', 'epoch',
                   '_storage_path', 'checksum', 'checksumtype', 'repodata']
-
-# -- publisher class -----------------------------------------------------------
 
 
 class Publisher(BasePublisher):
@@ -360,7 +354,7 @@ class PublishDistributionStep(UnitPublishStep):
         if self._get_total() > 1:
             msg = _('Error publishing repository %(repo)s.  '
                     'More than one distribution found.') % {'repo': self.parent.repo.id}
-            _LOG.debug(msg)
+            logger.debug(msg)
             raise Exception(msg)
 
     def process_unit(self, unit):
@@ -402,7 +396,7 @@ class PublishDistributionStep(UnitPublishStep):
         if src_treeinfo_path is not None:
             # create a symlink from content location to repo location.
             symlink_treeinfo_path = os.path.join(self.get_working_dir(), treeinfo_file_name)
-            _LOG.debug("creating treeinfo symlink from %s to %s" % (src_treeinfo_path,
+            logger.debug("creating treeinfo symlink from %s to %s" % (src_treeinfo_path,
                                                                     symlink_treeinfo_path))
             self._create_symlink(src_treeinfo_path, symlink_treeinfo_path)
 
@@ -417,19 +411,17 @@ class PublishDistributionStep(UnitPublishStep):
         """
         if 'files' not in distribution_unit.metadata:
             msg = "No distribution files found for unit %s" % distribution_unit
-            _LOG.warning(msg)
+            logger.warning(msg)
             return
 
         distro_files = distribution_unit.metadata['files']
         total_files = len(distro_files)
-        _LOG.debug("Found %s distribution files to symlink" % total_files)
+        logger.debug("Found %s distribution files to symlink" % total_files)
 
         source_path_dir = distribution_unit.storage_path
         symlink_dir = self.get_working_dir()
         for dfile in distro_files:
             source_path = os.path.join(source_path_dir, dfile['relativepath'])
-            if source_path.endswith('repomd.xml'):
-                continue
             symlink_path = os.path.join(symlink_dir, dfile['relativepath'])
             self._create_symlink(source_path, symlink_path)
 
@@ -461,7 +453,7 @@ class PublishDistributionStep(UnitPublishStep):
                 msg = _('Error publishing repository: %(repo)s.  The treeinfo file specified a '
                         'packagedir \"%(packagedir)s\" that is not contained within the repository'
                         % {'repo': self.parent.repo.id, 'packagedir': self.package_dir})
-                _LOG.info(msg)
+                logger.info(msg)
                 raise InvalidValue(KEY_PACKAGEDIR)
 
             self.package_dir = real_package_path
@@ -496,7 +488,7 @@ class PublishToMasterStep(PublishStep):
         # as having more than one side-by-side during the publishing process.
         master_repo_directory = os.path.join(master_publish_dir, self.parent.timestamp)
 
-        _LOG.debug('Copying tree from %s to %s' % (self.get_working_dir(), master_repo_directory))
+        logger.debug('Copying tree from %s to %s' % (self.get_working_dir(), master_repo_directory))
 
         shutil.copytree(self.get_working_dir(), master_repo_directory, symlinks=True)
 
