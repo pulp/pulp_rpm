@@ -424,15 +424,27 @@ class PublishDistributionStepTests(BaseYumDistributorPublishStepTests):
         self.assertTrue(os.path.islink(created_link))
         self.assertEquals(os.path.realpath(created_link), os.path.realpath(content_file))
 
-    def test_publish_distribution_files_skips_repomd(self):
+    def test_publish_distribution_files_does_not_skip_repomd(self):
+        """
+        Assert that _publish_distribution_files() includes repomd.xml, in response to #1090534.
+
+        https://bugzilla.redhat.com/show_bug.cgi?id=1090534
+        """
         unit = self._generate_distribution_unit('one')
         unit.metadata['files'][0]['relativepath'] = 'repodata/repomd.xml'
         step = publish.PublishDistributionStep()
         step.parent = self.publisher
+        # Let's put the file that should get linked to in the expected location
+        repomd_path = os.path.join(self.working_dir, 'content', 'one', 'repodata', 'repomd.xml')
+        self._touch(repomd_path)
+
         step._publish_distribution_files(unit)
 
         created_link = os.path.join(self.publisher.repo.working_dir, "repodata", 'repomd.xml')
-        self.assertFalse(os.path.exists(created_link))
+        self.assertTrue(os.path.exists(created_link))
+        # Make sure the symlink points to the correct path
+        self.assertTrue(os.path.islink(created_link))
+        self.assertEqual(os.readlink(created_link), repomd_path)
 
     @mock.patch('pulp_rpm.plugins.distributors.yum.publish.PublishStep._create_symlink')
     def test_publish_distribution_files_error(self, mock_symlink):
