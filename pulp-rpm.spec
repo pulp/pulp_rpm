@@ -18,7 +18,7 @@
 
 Name: pulp-rpm
 Version: 2.4.0
-Release: 0.10.beta%{?dist}
+Release: 0.11.beta%{?dist}
 Summary: Support for RPM content in the Pulp platform
 Group: Development/Languages
 License: GPLv2
@@ -262,6 +262,9 @@ A collection of yum plugins supplementing Pulp consumer operations.
 
 
 %changelog
+* Fri May 02 2014 Barnaby Court <bcourt@redhat.com> 2.4.0-0.11.beta
+- 1091078 - rhui cataloger requires nectar >= 1.2.0. (jortel@redhat.com)
+
 * Thu Apr 24 2014 Randy Barlow <rbarlow@redhat.com> 2.4.0-0.10.beta
 - 1085087 - fixing yum importer so that packages are not re-downloaded for
   every repository (skarmark@redhat.com)

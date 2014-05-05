@@ -1,6 +1,7 @@
 import mock
 from pulp.client.commands.repo.upload import UploadCommand, FLAG_VERBOSE
 from pulp.client.commands.options import OPTION_REPO_ID
+from pulp.client.commands.polling import FLAG_BACKGROUND
 
 from pulp_rpm.common.ids import TYPE_ID_PKG_CATEGORY
 from pulp_rpm.devel.client_base import PulpClientTests
@@ -21,7 +22,7 @@ class CreatePackageCategoryCommand(PulpClientTests):
 
         expected_options = set([category.OPT_CATEGORY_ID, category.OPT_NAME,
                                 category.OPT_DESCRIPTION, category.OPT_ORDER,
-                                category.OPT_GROUP, FLAG_VERBOSE, OPTION_REPO_ID
+                                category.OPT_GROUP, FLAG_VERBOSE, OPTION_REPO_ID, FLAG_BACKGROUND
                                 ])
         found_options = set(self.command.options)
 
