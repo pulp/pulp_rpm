@@ -27,11 +27,9 @@ DISTRIBUTOR_DISPLAY_NAME = 'Yum Distributor'
 RELATIVE_URL = '/pulp/repos'
 
 
-
 def entry_point():
     config = read_json_config(CONF_FILE_PATH)
     return YumHTTPDistributor, config
-
 
 
 class YumHTTPDistributor(Distributor):
