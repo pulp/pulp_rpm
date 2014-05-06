@@ -154,23 +154,26 @@ class YumDistributorTests(unittest.TestCase):
     @patch('pulp_rpm.plugins.distributors.yum.distributor.configuration.get_http_publish_dir')
     @patch('pulp_rpm.plugins.distributors.yum.distributor.configuration.get_https_publish_dir')
     def test_distributor_removed(self, mock_http, mock_https, mock_master, remove_cert):
+        repo_id = 'bar'
         mock_http.return_value = os.path.join(self.working_dir, 'http')
         mock_https.return_value = os.path.join(self.working_dir, 'https')
         mock_master.return_value = os.path.join(self.working_dir, 'master')
-        os.makedirs(mock_http.return_value)
-        os.makedirs(mock_https.return_value)
+        os.makedirs(os.path.join(mock_http.return_value, repo_id))
+        os.makedirs(os.path.join(mock_https.return_value, repo_id))
         os.makedirs(mock_master.return_value)
         os.makedirs(os.path.join(self.working_dir, 'working'))
         test_distributor = YumHTTPDistributor()
         repo = Mock()
-        repo.id = 'bar'
+        repo.id = repo_id
         repo.working_dir = os.path.join(self.working_dir, 'working')
         config = {}
         test_distributor.distributor_removed(repo, config)
 
-        self.assertEquals(0, len(os.listdir(self.working_dir)))
+        self.assertEqual(set(['http', 'https']), set(os.listdir(self.working_dir)))
 
         remove_cert.assert_called_with(repo, config)
+        shutil.rmtree(mock_http.return_value, ignore_errors=True)
+        shutil.rmtree(mock_https.return_value, ignore_errors=True)
 
 
 class TestEntryPoint(unittest.TestCase):
