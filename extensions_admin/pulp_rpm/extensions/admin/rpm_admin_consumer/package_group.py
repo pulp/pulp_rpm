@@ -101,7 +101,7 @@ class YumConsumerPackageGroupInstallCommand(consumer_content.ConsumerContentInst
         if not task.result['succeeded']:
             msg = _('Install Failed')
             details = task.result['details'][TYPE_ID_PKG_GROUP]['details']
-            self.context.prompt.render_failure_message(_(msg))
+            self.context.prompt.render_failure_message(msg)
             self.context.prompt.render_failure_message(details['message'])
             return
 
