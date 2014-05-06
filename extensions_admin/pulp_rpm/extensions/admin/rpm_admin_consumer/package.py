@@ -132,11 +132,17 @@ class YumConsumerPackageInstallCommand(consumer_content.ConsumerContentInstallCo
         spinner.next(message=msg)
 
     def succeeded(self, task):
+
         # succeeded and failed are task-based, which is not indicative of
         # whether or not the operation succeeded or failed; that is in the
         # report stored as the task's result
+
         if not task.result['succeeded']:
-            return self.failed(task)
+            msg = _('Install Failed')
+            details = task.result['details'][TYPE_ID_RPM]['details']
+            self.context.prompt.render_failure_message(msg)
+            self.context.prompt.render_failure_message(details['message'])
+            return
 
         prompt = self.context.prompt
         msg = _('Install Succeeded')
@@ -159,12 +165,6 @@ class YumConsumerPackageInstallCommand(consumer_content.ConsumerContentInstallCo
         if deps:
             prompt.render_title(_('Installed for Dependencies'))
             prompt.render_document_list(deps, order=fields, filters=fields)
-
-    def failed(self, task):
-        msg = _('Install Failed')
-        details = task.result['details'][TYPE_ID_RPM]['details']
-        self.context.prompt.render_failure_message(msg)
-        self.context.prompt.render_failure_message(details['message'])
 
 
 class YumConsumerPackageUpdateCommand(consumer_content.ConsumerContentUpdateCommand):
@@ -211,11 +211,17 @@ class YumConsumerPackageUpdateCommand(consumer_content.ConsumerContentUpdateComm
             return [{'type_id': TYPE_ID_RPM, 'unit_key':None}]
 
     def succeeded(self, task):
+
         # succeeded and failed are task-based, which is not indicative of
         # whether or not the operation succeeded or failed; that is in the
         # report stored as the task's result
+
         if not task.result['succeeded']:
-            return self.failed(task)
+            msg = _('Update Failed')
+            details = task.result['details'][TYPE_ID_RPM]['details']
+            self.context.prompt.render_failure_message(msg)
+            self.context.prompt.render_failure_message(details['message'])
+            return
 
         prompt = self.context.prompt
         msg = _('Update Succeeded')
@@ -238,12 +244,6 @@ class YumConsumerPackageUpdateCommand(consumer_content.ConsumerContentUpdateComm
         if deps:
             prompt.render_title(_('Installed for Dependencies'))
             prompt.render_document_list(deps, order=fields, filters=fields)
-
-    def failed(self, task):
-        msg = _('Update Failed')
-        details = task.result['details'][TYPE_ID_RPM]['details']
-        self.context.prompt.render_failure_message(msg)
-        self.context.prompt.render_failure_message(details['message'])
 
 
 class YumConsumerPackageUninstallCommand(consumer_content.ConsumerContentUninstallCommand):
@@ -281,11 +281,17 @@ class YumConsumerPackageUninstallCommand(consumer_content.ConsumerContentUninsta
         return map(_unit_dict, kwargs['name'])
 
     def succeeded(self, task):
+
         # succeeded and failed are task-based, which is not indicative of
         # whether or not the operation succeeded or failed; that is in the
         # report stored as the task's result
+
         if not task.result['succeeded']:
-            return self.failed(task)
+            msg = _('Uninstall Failed')
+            details = task.result['details'][TYPE_ID_RPM]['details']
+            self.context.prompt.render_failure_message(msg)
+            self.context.prompt.render_failure_message(details['message'])
+            return
 
         prompt = self.context.prompt
         msg = _('Uninstall Completed')
@@ -308,9 +314,3 @@ class YumConsumerPackageUninstallCommand(consumer_content.ConsumerContentUninsta
         if deps:
             prompt.render_title(_('Uninstalled for Dependencies'))
             prompt.render_document_list(deps, order=fields, filters=fields)
-
-    def failed(self, task):
-        msg = _('Uninstall Failed')
-        details = task.result['details'][TYPE_ID_RPM]['details']
-        self.context.prompt.render_failure_message(msg)
-        self.context.prompt.render_failure_message(details['message'])
