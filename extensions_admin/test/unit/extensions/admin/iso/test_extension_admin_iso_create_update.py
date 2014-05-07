@@ -264,7 +264,7 @@ class TestISORepoCreateCommand(PulpClientTests):
             constants.CONFIG_SERVE_HTTP: 'true', constants.CONFIG_SERVE_HTTPS: 'false',
             constants.CONFIG_SSL_AUTH_CA_CERT: 'This is a file.'}
         expected_distributor = {
-            'distributor_type': ids.TYPE_ID_DISTRIBUTOR_ISO,
+            'distributor_type_id': ids.TYPE_ID_DISTRIBUTOR_ISO,
             'distributor_config': expected_distributor_config,
             'auto_publish': True, 'distributor_id': ids.TYPE_ID_DISTRIBUTOR_ISO}
         self.assertEqual(args[6], [expected_distributor])
@@ -316,7 +316,7 @@ class TestISORepoCreateCommand(PulpClientTests):
         # Inspect the distributors
         expected_distributor_config = {}
         expected_distributor = {
-            'distributor_type': ids.TYPE_ID_DISTRIBUTOR_ISO,
+            'distributor_type_id': ids.TYPE_ID_DISTRIBUTOR_ISO,
             'distributor_config': expected_distributor_config,
             'auto_publish': True, 'distributor_id': ids.TYPE_ID_DISTRIBUTOR_ISO}
         self.assertEqual(args[6], [expected_distributor])
