@@ -18,7 +18,7 @@
 
 Name: pulp-rpm
 Version: 2.4.0
-Release: 0.11.beta%{?dist}
+Release: 0.13.beta%{?dist}
 Summary: Support for RPM content in the Pulp platform
 Group: Development/Languages
 License: GPLv2
@@ -262,6 +262,13 @@ A collection of yum plugins supplementing Pulp consumer operations.
 
 
 %changelog
+* Thu May 08 2014 Jeff Ortel <jortel@redhat.com> 2.4.0-0.13.beta
+- 1094404 - Fix to not delete all repo contents accidentally.
+  (bmbouter@gmail.com)
+- 1090534 - Publish the repomd.xml file. (rbarlow@redhat.com)
+- 1082245 - Fix failed task reporting in content install commands.
+  (jortel@redhat.com)
+
 * Fri May 02 2014 Barnaby Court <bcourt@redhat.com> 2.4.0-0.11.beta
 - 1091078 - rhui cataloger requires nectar >= 1.2.0. (jortel@redhat.com)
 
