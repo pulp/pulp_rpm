@@ -493,7 +493,7 @@ class TestDownload(BaseSyncTest):
             side_effect=StringIO,
         )
         mock_package_list_generator.side_effect = iter([model_factory.rpm_models(3),
-                                                    model_factory.drpm_models(3)])
+                                                       model_factory.drpm_models(3)])
 
         report = self.reposync.download(self.metadata_files, set(), set())
 
@@ -511,7 +511,7 @@ class TestDownload(BaseSyncTest):
         file_handle = StringIO()
         self.metadata_files.get_metadata_file_handle = mock.MagicMock(
             spec_set=self.metadata_files.get_metadata_file_handle,
-            side_effect=[file_handle, None], # None means it will skip DRPMs
+            side_effect=[file_handle, None],  # None means it will skip DRPMs
         )
         rpms = model_factory.rpm_models(3)
         for rpm in rpms:
@@ -903,4 +903,3 @@ class TestAlreadyDownloadedUnits(BaseSyncTest):
             unit.metadata['relativepath'] = 'test-relative-path'
         result = associate_already_downloaded_units(models.RPM.TYPE, units, self.conduit)
         self.assertEqual(len(list(result)), 3)
-

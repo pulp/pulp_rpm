@@ -186,8 +186,8 @@ class UploadErratumTests(unittest.TestCase):
     @mock.patch('pulp_rpm.plugins.importers.yum.upload._link_errata_to_rpms')
     def test_handle_erratum_with_link(self, mock_link):
         # Setup
-        unit_key = {'id' : 'test-erratum'}
-        metadata = {'a' : 'a'}
+        unit_key = {'id': 'test-erratum'}
+        metadata = {'a': 'a'}
         config = PluginCallConfiguration({}, {})
 
         mock_conduit = mock.MagicMock()
@@ -213,10 +213,10 @@ class UploadErratumTests(unittest.TestCase):
     @mock.patch('pulp_rpm.plugins.importers.yum.upload._link_errata_to_rpms')
     def test_handle_erratum_no_link(self, mock_link):
         # Setup
-        unit_key = {'id' : 'test-erratum'}
-        metadata = {'a' : 'a'}
+        unit_key = {'id': 'test-erratum'}
+        metadata = {'a': 'a'}
         config = PluginCallConfiguration({}, {},
-            override_config={upload.CONFIG_SKIP_ERRATUM_LINK : True})
+                                         override_config={upload.CONFIG_SKIP_ERRATUM_LINK: True})
         mock_conduit = mock.MagicMock()
 
         # Test
@@ -228,7 +228,7 @@ class UploadErratumTests(unittest.TestCase):
 
     def test_handle_erratum_model_error(self):
         # Setup
-        unit_key = {'foo' : 'bar'}
+        unit_key = {'foo': 'bar'}
 
         # Test
         self.assertRaises(upload.ModelInstantiationError, upload._handle_erratum,
@@ -252,8 +252,8 @@ class UploadErratumTests(unittest.TestCase):
         upload._link_errata_to_rpms(mock_conduit, errata, errata_unit)
 
         # Verify
-        self.assertEqual(2, mock_conduit.get_units.call_count) # once each for RPM and SRPM
-        self.assertEqual(4, mock_conduit.link_unit.call_count) # twice each for RPM and SRPM
+        self.assertEqual(2, mock_conduit.get_units.call_count)  # once each for RPM and SRPM
+        self.assertEqual(4, mock_conduit.link_unit.call_count)  # twice each for RPM and SRPM
 
 
 class UploadYumRepoMetadataFileTests(unittest.TestCase):
@@ -275,9 +275,9 @@ class UploadYumRepoMetadataFileTests(unittest.TestCase):
 
     def test_handle_yum_metadata_file(self):
         # Setup
-        unit_key = {'data_type' : 'product-id', 'repo_id' : 'test-repo'}
-        metadata = {'local_path' : 'repodata/productid', 'checksum' : 'abcdef',
-                    'checksumtype' : 'sha256'}
+        unit_key = {'data_type': 'product-id', 'repo_id': 'test-repo'}
+        metadata = {'local_path': 'repodata/productid', 'checksum': 'abcdef',
+                    'checksumtype': 'sha256'}
         config = PluginCallConfiguration({}, {})
 
         mock_conduit = mock.MagicMock()
@@ -305,7 +305,7 @@ class UploadYumRepoMetadataFileTests(unittest.TestCase):
 
     def test_handle_yum_metadata_file_model_error(self):
         # Setup
-        unit_key = {'foo' : 'bar'}
+        unit_key = {'foo': 'bar'}
 
         # Test
         self.assertRaises(upload.ModelInstantiationError, upload._handle_yum_metadata_file,
@@ -313,8 +313,8 @@ class UploadYumRepoMetadataFileTests(unittest.TestCase):
 
     def test_handle_yum_metadata_file_storage_error(self):
         # Setup
-        unit_key = {'data_type' : 'product-id', 'repo_id' : 'test-repo'}
-        metadata = {'local_path' : 'repodata/productid'}
+        unit_key = {'data_type': 'product-id', 'repo_id': 'test-repo'}
+        metadata = {'local_path': 'repodata/productid'}
         config = PluginCallConfiguration({}, {})
 
         mock_conduit = mock.MagicMock()
@@ -335,7 +335,7 @@ class GroupCategoryTests(unittest.TestCase):
 
     def test_handle_for_group(self):
         # Setup
-        unit_key = {'id' : 'test-group', 'repo_id' : 'test-repo'}
+        unit_key = {'id': 'test-group', 'repo_id': 'test-repo'}
         metadata = {}
         config = PluginCallConfiguration({}, {})
 
@@ -356,7 +356,7 @@ class GroupCategoryTests(unittest.TestCase):
 
     def test_handle_for_category(self):
         # Setup
-        unit_key = {'id' : 'test-category', 'repo_id' : 'test-repo'}
+        unit_key = {'id': 'test-category', 'repo_id': 'test-repo'}
         metadata = {}
         config = PluginCallConfiguration({}, {})
 
@@ -377,7 +377,7 @@ class GroupCategoryTests(unittest.TestCase):
 
     def test_model_error(self):
         # Setup
-        unit_key = {'foo' : 'bar'}
+        unit_key = {'foo': 'bar'}
 
         # Test
         self.assertRaises(upload.ModelInstantiationError, upload._handle_group_category,
@@ -411,21 +411,21 @@ class UploadPackageTests(unittest.TestCase):
     def test_handle_package(self, mock_generate):
         # Setup
         unit_key = {
-            'name' : 'walrus',
-            'epoch' : '1',
-            'version' : '5.21',
-            'release' : '1',
-            'arch' : 'noarch',
-            'checksumtype' : 'sha256',
-            'checksum' : 'e837a635cc99f967a70f34b268baa52e0f412c1502e08e924ff5b09f1f9573f2',
+            'name': 'walrus',
+            'epoch': '1',
+            'version': '5.21',
+            'release': '1',
+            'arch': 'noarch',
+            'checksumtype': 'sha256',
+            'checksum': 'e837a635cc99f967a70f34b268baa52e0f412c1502e08e924ff5b09f1f9573f2',
         }
         metadata = {
             'filename': ''
         }
         mock_generate.return_value = unit_key, metadata
 
-        user_unit_key = {'version' : '100'}
-        user_metadata = {'extra-meta' : 'e'}
+        user_unit_key = {'version': '100'}
+        user_metadata = {'extra-meta': 'e'}
         config = PluginCallConfiguration({}, {})
 
         mock_conduit = mock.MagicMock()
@@ -480,16 +480,16 @@ class UploadPackageTests(unittest.TestCase):
     def test_handle_storage_error(self, mock_generate):
         # Setup
         unit_key = {
-            'name' : 'walrus',
-            'epoch' : '1',
-            'version' : '5.21',
-            'release' : '1',
-            'arch' : 'noarch',
-            'checksumtype' : 'sha256',
-            'checksum' : 'e837a635cc99f967a70f34b268baa52e0f412c1502e08e924ff5b09f1f9573f2',
+            'name': 'walrus',
+            'epoch': '1',
+            'version': '5.21',
+            'release': '1',
+            'arch': 'noarch',
+            'checksumtype': 'sha256',
+            'checksum': 'e837a635cc99f967a70f34b268baa52e0f412c1502e08e924ff5b09f1f9573f2',
         }
         metadata = {
-            'filename' : ''
+            'filename': ''
         }
         mock_generate.return_value = unit_key, metadata
         config = PluginCallConfiguration({}, {})
