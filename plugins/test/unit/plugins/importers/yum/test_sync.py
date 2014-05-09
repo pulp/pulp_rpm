@@ -516,6 +516,9 @@ class TestDownload(BaseSyncTest):
         rpms = model_factory.rpm_models(3)
         for rpm in rpms:
             rpm.metadata['relativepath'] = self.RELATIVEPATH
+            # for this mock data, relativepath is already the same as
+            # os.path.basename(relativepath)
+            rpm.metadata['filename'] = self.RELATIVEPATH
         mock_package_list_generator.return_value = rpms
         self.downloader.download = mock.MagicMock(spec_set=self.downloader.download)
         mock_create_downloader.return_value = self.downloader
@@ -887,6 +890,7 @@ class TestAlreadyDownloadedUnits(BaseSyncTest):
         mock_search_all_units.return_value = units
         for unit in units:
             unit.metadata['relativepath'] = 'test-relative-path'
+            unit.metadata['filename'] = 'test-filename'
         result = associate_already_downloaded_units(models.RPM.TYPE, units, self.conduit)
         self.assertEqual(len(list(result)), 0)
 

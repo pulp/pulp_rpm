@@ -183,7 +183,7 @@ class RPM(VersionedPackage):
         unit_key = self.unit_key
         return os.path.join(
             unit_key['name'], unit_key['version'], unit_key['release'],
-            unit_key['arch'], unit_key['checksum'], self.metadata['relativepath']
+            unit_key['arch'], unit_key['checksum'], self.metadata['filename']
         )
 
     @property

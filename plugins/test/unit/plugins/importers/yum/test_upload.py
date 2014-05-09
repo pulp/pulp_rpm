@@ -420,7 +420,7 @@ class UploadPackageTests(unittest.TestCase):
             'checksum' : 'e837a635cc99f967a70f34b268baa52e0f412c1502e08e924ff5b09f1f9573f2',
         }
         metadata = {
-            'relativepath': ''
+            'filename': ''
         }
         mock_generate.return_value = unit_key, metadata
 
@@ -489,7 +489,7 @@ class UploadPackageTests(unittest.TestCase):
             'checksum' : 'e837a635cc99f967a70f34b268baa52e0f412c1502e08e924ff5b09f1f9573f2',
         }
         metadata = {
-            'relativepath' : ''
+            'filename' : ''
         }
         mock_generate.return_value = unit_key, metadata
         config = PluginCallConfiguration({}, {})
