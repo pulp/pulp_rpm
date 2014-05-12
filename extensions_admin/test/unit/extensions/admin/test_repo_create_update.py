@@ -116,7 +116,7 @@ class RpmRepoCreateCommandTests(PulpClientTests):
         # instead of index.
 
         yum_distributor = body['distributors'][0]
-        self.assertEqual(ids.TYPE_ID_DISTRIBUTOR_YUM, yum_distributor['distributor_type'])
+        self.assertEqual(ids.TYPE_ID_DISTRIBUTOR_YUM, yum_distributor['distributor_type_id'])
         self.assertEqual(True, yum_distributor['auto_publish'])
         self.assertEqual(ids.YUM_DISTRIBUTOR_ID, yum_distributor['distributor_id'])
 
