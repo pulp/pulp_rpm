@@ -17,6 +17,7 @@ from pulp_rpm.plugins.db import models
 from pulp_rpm.plugins.importers.yum.existing import associate_already_downloaded_units
 from pulp_rpm.plugins.importers.yum.repomd import metadata, group, updateinfo, packages, presto, primary
 from pulp_rpm.plugins.importers.yum.sync import RepoSync, FailedException, CancelException
+from pulp_rpm.plugins.importers.yum.parse import treeinfo
 import model_factory
 
 
@@ -903,3 +904,74 @@ class TestAlreadyDownloadedUnits(BaseSyncTest):
             unit.metadata['relativepath'] = 'test-relative-path'
         result = associate_already_downloaded_units(models.RPM.TYPE, units, self.conduit)
         self.assertEqual(len(list(result)), 3)
+
+
+class TestTreeinfoAlterations(BaseSyncTest):
+
+    TREEINFO_NO_REPOMD = """
+[general]
+name = Some-treeinfo
+family = mockdata
+
+[stage2]
+mainimage = LiveOS/squashfs.img
+
+[images-x86_64]
+kernel = images/pxeboot/vmlinuz
+initrd = images/pxeboot/initrd.img
+
+[checksums]
+images/efiboot.img = sha256:12345
+"""
+    TREEINFO_WITH_REPOMD = """
+[general]
+name = Some-treeinfo
+family = mockdata
+
+[stage2]
+mainimage = LiveOS/squashfs.img
+
+[images-x86_64]
+kernel = images/pxeboot/vmlinuz
+initrd = images/pxeboot/initrd.img
+
+[checksums]
+images/efiboot.img = sha256:12345
+repodata/repomd.xml = sha256:9876
+"""
+
+    @mock.patch('__builtin__.open', autospec=True)
+    def test_treeinfo_unaltered(self, mock_open):
+        mock_file = mock.MagicMock(spec=file)
+        mock_file.readlines.return_value = StringIO(self.TREEINFO_NO_REPOMD).readlines()
+        mock_context = mock.MagicMock()
+        mock_context.__enter__.return_value = mock_file
+        mock_open.return_value = mock_context
+        treeinfo.strip_treeinfo_repomd("/mock/treeinfo/path")
+
+        mock_file.writelines.assert_called_once_with(['\n', '[general]\n', 'name = Some-treeinfo\n',
+                                                      'family = mockdata\n', '\n', '[stage2]\n',
+                                                      'mainimage = LiveOS/squashfs.img\n', '\n',
+                                                      '[images-x86_64]\n',
+                                                      'kernel = images/pxeboot/vmlinuz\n',
+                                                      'initrd = images/pxeboot/initrd.img\n',
+                                                      '\n', '[checksums]\n',
+                                                      'images/efiboot.img = sha256:12345\n'])
+
+    @mock.patch('__builtin__.open', autospec=True)
+    def test_treeinfo_altered(self, mock_open):
+        mock_file = mock.MagicMock(spec=file)
+        mock_file.readlines.return_value = StringIO(self.TREEINFO_WITH_REPOMD).readlines()
+        mock_context = mock.MagicMock()
+        mock_context.__enter__.return_value = mock_file
+        mock_open.return_value = mock_context
+        treeinfo.strip_treeinfo_repomd("/mock/treeinfo/path")
+
+        mock_file.writelines.assert_called_once_with(['\n', '[general]\n', 'name = Some-treeinfo\n',
+                                                      'family = mockdata\n', '\n', '[stage2]\n',
+                                                      'mainimage = LiveOS/squashfs.img\n', '\n',
+                                                      '[images-x86_64]\n',
+                                                      'kernel = images/pxeboot/vmlinuz\n',
+                                                      'initrd = images/pxeboot/initrd.img\n',
+                                                      '\n', '[checksums]\n',
+                                                      'images/efiboot.img = sha256:12345\n'])
