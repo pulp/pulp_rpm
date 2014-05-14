@@ -201,6 +201,7 @@ class ExportRepoGroupPublisher(PublishStep):
             master_dir = configuration.get_master_publish_dir(repo_group, distributor_type)
             self.add_child(AtomicDirectoryPublishStep(output_dir, publish_location, master_dir))
 
+
 class Publisher(BaseYumRepoPublisher):
     """
     Yum HTTP/HTTPS publisher class that is responsible for the actual publishing
@@ -466,6 +467,7 @@ class PublishErrataStep(UnitPublishStep):
                                                 **kwargs)
         self.context = None
         self.description = _('Publishing Errata')
+        self.process_unit = None
 
     def initialize(self):
         """
