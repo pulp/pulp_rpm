@@ -4,12 +4,13 @@ import shutil
 import tempfile
 
 from pulp.plugins.model import Consumer, Unit
+import mock
 
 from pulp_rpm.common.ids import TYPE_ID_ERRATA, TYPE_ID_RPM
+from pulp_rpm.devel import rpm_support_base
 from pulp_rpm.plugins.profilers.yum import entry_point, YumProfiler
 from pulp_rpm.yum_plugin import updateinfo
 import profiler_mocks
-from pulp_rpm.devel import rpm_support_base
 
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), '../../../data/')
@@ -21,6 +22,30 @@ class TestYumProfiler(rpm_support_base.PulpRPMTests):
     combined, and this test suite ensures that the methods that only apply to one of the two types
     are not applied to both.
     """
+    @mock.patch('pulp_rpm.plugins.profilers.yum.YumProfiler._rpms_applicable_to_consumer')
+    def test__translate_erratum_returns_unit_keys(self, _rpms_applicable_to_consumer):
+        """
+        The agent handler is expecting to be given a unit key, and we had a bug[0] wherein it was
+        being given only 'name' in the unit key, with all of the other "EVRA" fields being written
+        into it. This test asserts that the first element of the return value of the
+        _translate_erratum() method has full unit keys.
+
+        [0] https://bugzilla.redhat.com/show_bug.cgi?id=1097434
+        """
+        unit = mock.MagicMock()
+        repo_ids = ['repo_1', 'repo_2']
+        consumer = mock.MagicMock()
+        conduit = mock.MagicMock()
+        # Mock there being an applicable RPM
+        applicable_unit_key = {'name': 'a_name', 'epoch': '0', 'version': '2.0.1', 'release': '2',
+                               'arch': 'x86_64'}
+        _rpms_applicable_to_consumer.return_value = ([applicable_unit_key], mock.MagicMock())
+
+        rpms, details = YumProfiler._translate_erratum(unit, repo_ids, consumer, conduit)
+
+        expected_rpms = [{'unit_key': applicable_unit_key, 'type_id': TYPE_ID_RPM}]
+        self.assertEqual(rpms, expected_rpms)
+
     def test_entry_point(self):
         plugin, config = entry_point()
 
@@ -258,14 +283,10 @@ class TestYumProfilerErrata(rpm_support_base.PulpRPMTests):
         self.assertEqual(conduit.get_units.call_args[0][1].unit_filters, errata_unit.unit_key)
         # validate translated units
         self.assertEqual(len(translated_units), 2)
-        expected = []
-        for r in prof._get_rpms_from_errata(errata_unit):
-            expected_name = "%s-%s:%s-%s.%s" % (r["name"], r["epoch"], r["version"], r["release"],
-                                                r["arch"])
-            expected.append(expected_name)
+        expected = prof._get_rpms_from_errata(errata_unit)
         for u in translated_units:
-            rpm_name = u["unit_key"]["name"]
-            self.assertTrue(rpm_name in expected)
+            rpm_unit_key = u["unit_key"]
+            self.assertTrue(rpm_unit_key in expected)
 
 
 class TestYumProfilerRPM(rpm_support_base.PulpRPMTests):
