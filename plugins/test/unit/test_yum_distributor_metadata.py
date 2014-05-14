@@ -190,7 +190,6 @@ class YumDistributorMetadataTests(unittest.TestCase):
 
         context._open_metadata_file_handle()
         context._write_xml_header()
-        context._close_metadata_file_handle()
         context.finalize()
 
         expected_metadata_file_name = context.checksum + '-' + 'test.xml'

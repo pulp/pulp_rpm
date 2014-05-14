@@ -3,28 +3,19 @@ import os
 import shutil
 
 from pulp.common.config import read_json_config
-from pulp.plugins.conduits.repo_publish import RepoPublishConduit
 from pulp.plugins.distributor import GroupDistributor
 from pulp.server.exceptions import PulpDataException
 
-
-
-
-
-
-# Import export_utils from this directory, which is not in the python path
-import export_utils
-from pulp_rpm.common import constants, ids
+from pulp_rpm.common import  ids
 from pulp_rpm.plugins.db import models
+from pulp_rpm.plugins.distributors.export_distributor import export_utils
+from pulp_rpm.plugins.distributors.yum import configuration
 from pulp_rpm.yum_plugin import util
+
+from pulp_rpm.plugins.distributors.yum.publish import ExportRepoGroupPublisher
 
 _logger = util.getLogger(__name__)
 CONF_FILE_PATH = 'server/plugins.conf.d/%s.json' % ids.TYPE_ID_DISTRIBUTOR_GROUP_EXPORT
-
-# Things left to do:
-#   Cancelling a publish operation is not currently supported.
-#   Published ISOs are left in the working directory. See export_utils.publish_isos to fix this.
-#   This is not currently in the python path. When that gets fixed, the imports should be fixed.
 
 
 def entry_point():
@@ -39,6 +30,7 @@ class GroupISODistributor(GroupDistributor):
         self.cancelled = False
         self.summary = {}
         self.details = {}
+        self._publisher = None
 
     @classmethod
     def metadata(cls):
@@ -114,109 +106,33 @@ class GroupISODistributor(GroupDistributor):
             raise PulpDataException(msg)
 
         _logger.info('Beginning export of the following repository group: [%s]' % repo_group.id)
+        self._publisher = ExportRepoGroupPublisher(repo_group, publish_conduit, config,
+                                                   ids.TYPE_ID_DISTRIBUTOR_GROUP_EXPORT)
+        return self._publisher.publish()
 
-        # The progress report for a group publish
-        progress_status = {
-            constants.PROGRESS_REPOS_KEYWORD: {constants.PROGRESS_STATE_KEY: constants.STATE_NOT_STARTED},
-            constants.PROGRESS_ISOS_KEYWORD: {constants.PROGRESS_STATE_KEY: constants.STATE_NOT_STARTED},
-            constants.PROGRESS_PUBLISH_HTTP: {constants.PROGRESS_STATE_KEY: constants.STATE_NOT_STARTED},
-            constants.PROGRESS_PUBLISH_HTTPS: {constants.PROGRESS_STATE_KEY: constants.STATE_NOT_STARTED}
-        }
-
-        def progress_callback(progress_keyword, status):
-            """
-            Progress callback used to update the progress report for the publish conduit
-
-            :param progress_keyword:    The keyword to assign the status to in the progress report dict
-            :type  progress_keyword:    str
-            :param status:              The status to assign to the keyword.
-            :type  status:              dict
-            """
-            progress_status[progress_keyword] = status
-            publish_conduit.set_progress(progress_status)
-
-        # Before starting, clean out the working directory. Done to remove last published ISOs
-        shutil.rmtree(repo_group.working_dir, ignore_errors=True)
-        os.makedirs(repo_group.working_dir)
-
-        # Retrieve the configuration for each repository, the skip types, and the date filter
-        packed_config = export_utils.retrieve_group_export_config(repo_group, config)
-        rpm_repositories, self.date_filter = packed_config
-
-        # Update the progress for the repositories section
-        repos_progress = export_utils.init_progress_report(len(rpm_repositories))
-        progress_callback(constants.PROGRESS_REPOS_KEYWORD, repos_progress)
-
-        # For every repository, extract the requested types to the working directory
-        for repo_id, working_dir in rpm_repositories:
-            # Create a repo conduit, which makes sharing code with the export and yum distributors easier
-            repo_conduit = RepoPublishConduit(repo_id, publish_conduit.distributor_id)
-
-            # If there is a date filter perform an incremental export, otherwise do everything
-            if self.date_filter:
-                result = export_utils.export_incremental_content(working_dir, repo_conduit,
-                                                                 self.date_filter)
-            else:
-                result = export_utils.export_complete_repo(repo_id, working_dir, repo_conduit, config)
-            if not config.get(constants.EXPORT_DIRECTORY_KEYWORD):
-                util.generate_listing_files(repo_group.working_dir, working_dir)
-            else:
-                export_dir = config.get(constants.EXPORT_DIRECTORY_KEYWORD)
-                util.generate_listing_files(export_dir, working_dir)
-
-            self.summary[repo_id] = result[0]
-            self.details[repo_id] = result[1]
-
-            repos_progress[constants.PROGRESS_ITEMS_LEFT_KEY] -= 1
-            repos_progress[constants.PROGRESS_NUM_SUCCESS_KEY] += 1
-            progress_callback(constants.PROGRESS_REPOS_KEYWORD, repos_progress)
-
-        repos_progress[constants.PROGRESS_STATE_KEY] = constants.STATE_COMPLETE
-        progress_callback(constants.PROGRESS_REPOS_KEYWORD, repos_progress)
-
-        # If there was no export directory, publish via ISOs
-        if not config.get(constants.EXPORT_DIRECTORY_KEYWORD):
-            self._publish_isos(repo_group, config, progress_callback)
-
-        for repo_id, repo_dir in rpm_repositories:
-            if repo_id in self.details and len(self.details[repo_id]['errors']) != 0:
-                return publish_conduit.build_failure_report(self.summary, self.details)
-
-        self.summary['repositories_exported'] = len(rpm_repositories)
-        self.summary['repositories_skipped'] = len(repo_group.repo_ids) - len(rpm_repositories)
-
-        return publish_conduit.build_success_report(self.summary, self.details)
-
-    def _publish_isos(self, repo_group, config, progress_callback=None):
+    def cancel_publish_repo(self):
         """
-        This just decides what the http and https publishing directories should be, cleans them up,
-        and then calls publish_isos method in export_utils
-
-        :param repo_group:          metadata describing the repository group. Used to retrieve the
-                                    working directory and group id.
-        :type  repo_group:          pulp.plugins.model.RepositoryGroup
-        :param config:              plugin configuration instance
-        :type config:               pulp.plugins.config.PluginCallConfiguration
-        :param progress_callback:   callback to report progress info to publish_conduit. This function is
-                                    expected to take the following arguments: type_id, a string, and
-                                    status, which is a dict
-        :type progress_callback:    function
+        Call cancellation control hook.
         """
+        if self._publisher is not None:
+            self._publisher.cancel()
 
-        http_publish_dir = os.path.join(constants.GROUP_EXPORT_HTTP_DIR, repo_group.id).rstrip('/')
-        https_publish_dir = os.path.join(constants.GROUP_EXPORT_HTTPS_DIR, repo_group.id).rstrip('/')
-        image_prefix = config.get(constants.ISO_PREFIX_KEYWORD) or repo_group.id
+    def distributor_removed(self, repo, config):
+        """
+        Called when a distributor of this type is removed from a repository.
 
-        # Clean up the old export publish directories.
-        shutil.rmtree(http_publish_dir, ignore_errors=True)
-        shutil.rmtree(https_publish_dir, ignore_errors=True)
+        :param repo: metadata describing the repository
+        :type  repo: pulp.plugins.model.RepositoryGroup
 
-        # If publishing isn't enabled for http or https, set the path to None
-        if not config.get(constants.PUBLISH_HTTP_KEYWORD):
-            http_publish_dir = None
-        if not config.get(constants.PUBLISH_HTTPS_KEYWORD):
-            https_publish_dir = None
+        :param config: plugin configuration
+        :type  config: pulp.plugins.config.PluginCallConfiguration
+        """
+        # remove the directories that might have been created for this repo/distributor
+        dir_list = [repo.working_dir,
+                    configuration.get_master_publish_dir(repo,
+                                                         ids.TYPE_ID_DISTRIBUTOR_GROUP_EXPORT),
+                    os.path.join(configuration.HTTP_EXPORT_GROUP_DIR, repo.id),
+                    os.path.join(configuration.HTTPS_EXPORT_GROUP_DIR, repo.id)]
 
-        export_utils.publish_isos(repo_group.working_dir, image_prefix, http_publish_dir,
-                                  https_publish_dir, config.get(constants.ISO_SIZE_KEYWORD),
-                                  progress_callback)
+        for repo_dir in dir_list:
+            shutil.rmtree(repo_dir, ignore_errors=True)

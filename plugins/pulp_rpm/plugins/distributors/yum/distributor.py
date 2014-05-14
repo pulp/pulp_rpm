@@ -27,11 +27,9 @@ DISTRIBUTOR_DISPLAY_NAME = 'Yum Distributor'
 RELATIVE_URL = '/pulp/repos'
 
 
-
 def entry_point():
     config = read_json_config(CONF_FILE_PATH)
     return YumHTTPDistributor, config
-
 
 
 class YumHTTPDistributor(Distributor):
@@ -96,9 +94,11 @@ class YumHTTPDistributor(Distributor):
         """
         # remove the directories that might have been created for this repo/distributor
         dir_list = [repo.working_dir,
-                    configuration.get_master_publish_dir(repo),
-                    configuration.get_http_publish_dir(config),
-                    configuration.get_https_publish_dir(config)]
+                    configuration.get_master_publish_dir(repo, TYPE_ID_DISTRIBUTOR_YUM),
+                    os.path.join(configuration.get_http_publish_dir(config),
+                                 configuration.get_repo_relative_path(repo, config)),
+                    os.path.join(configuration.get_https_publish_dir(config),
+                                 configuration.get_repo_relative_path(repo, config))]
 
         for repo_dir in dir_list:
             shutil.rmtree(repo_dir, ignore_errors=True)
@@ -124,7 +124,7 @@ class YumHTTPDistributor(Distributor):
         """
         _logger.debug('Publishing yum repository: %s' % repo.id)
 
-        self._publisher = publish.Publisher(repo, publish_conduit, config)
+        self._publisher = publish.Publisher(repo, publish_conduit, config, TYPE_ID_DISTRIBUTOR_YUM)
         return self._publisher.publish()
 
     def cancel_publish_repo(self):

@@ -5,10 +5,11 @@ from pulp.common.config import read_json_config
 from pulp.plugins.distributor import Distributor
 from pulp.server.exceptions import PulpDataException
 
-# Import export_utils from this directory, which is not in the python path
 from pulp_rpm.plugins.distributors.export_distributor import export_utils
-from pulp_rpm.common import constants, ids
-from pulp_rpm.yum_plugin import util, metadata
+from pulp_rpm.plugins.distributors.yum.publish import ExportRepoPublisher
+from pulp_rpm.plugins.distributors.yum import configuration
+from pulp_rpm.common import ids
+from pulp_rpm.yum_plugin import util
 
 _logger = util.getLogger(__name__)
 CONF_FILE_PATH = 'server/plugins.conf.d/%s.json' % ids.TYPE_ID_DISTRIBUTOR_EXPORT
@@ -28,7 +29,8 @@ class ISODistributor(Distributor):
 
     def __init__(self):
         super(ISODistributor, self).__init__()
-        self.cancelled = False
+        self._publisher = None
+
         self.summary = {}
         self.details = {'errors': {}}
 
@@ -89,11 +91,10 @@ class ISODistributor(Distributor):
 
     def cancel_publish_repo(self):
         """
-        Call cancellation control hook. This is not currently supported for this distributor
+        Call cancellation control hook.
         """
-        # TODO: Add cancel support
-        self.cancelled = True
-        return metadata.cancel_createrepo(self.working_dir)
+        if self._publisher is not None:
+            self._publisher.cancel()
 
     def set_progress(self, type_id, status, progress_callback=None):
         """
@@ -130,80 +131,25 @@ class ISODistributor(Distributor):
             raise PulpDataException(msg)
 
         _logger.info('Starting export of [%s]' % repo.id)
+        self._publisher = ExportRepoPublisher(repo, publish_conduit, config,
+                                              ids.TYPE_ID_DISTRIBUTOR_EXPORT)
+        return self._publisher.publish()
 
-        progress_status = {
-            ids.TYPE_ID_RPM: {'state': constants.STATE_NOT_STARTED},
-            ids.TYPE_ID_ERRATA: {'state': constants.STATE_NOT_STARTED},
-            ids.TYPE_ID_DISTRO: {'state': constants.STATE_NOT_STARTED},
-            ids.TYPE_ID_PKG_CATEGORY: {'state': constants.STATE_NOT_STARTED},
-            ids.TYPE_ID_PKG_GROUP: {'state': constants.STATE_NOT_STARTED},
-            'metadata': {'state': constants.STATE_NOT_STARTED},
-            'isos': {'state': constants.STATE_NOT_STARTED},
-            'publish_http': {'state': constants.STATE_NOT_STARTED},
-            'publish_https': {'state': constants.STATE_NOT_STARTED},
-        }
-
-        def progress_callback(type_id, status):
-            progress_status[type_id] = status
-            publish_conduit.set_progress(progress_status)
-
-        # Retrieve a config tuple and unpack it for use
-        config_settings = export_utils.retrieve_repo_config(repo, config)
-        self.working_dir, self.date_filter = config_settings
-
-        # Before starting, clean out the working directory. Done to remove last published ISOs
-        shutil.rmtree(repo.working_dir, ignore_errors=True)
-        os.makedirs(repo.working_dir)
-
-        # If a date filter is not present, do a complete export. If it is, do an incremental export.
-        if self.date_filter:
-            result = export_utils.export_incremental_content(self.working_dir, publish_conduit,
-                                                             self.date_filter, progress_callback)
-        else:
-            result = export_utils.export_complete_repo(repo.id, self.working_dir, publish_conduit,
-                                                       config, progress_callback)
-
-        self.summary = result[0]
-        self.details = result[1]
-
-        if not config.get(constants.EXPORT_DIRECTORY_KEYWORD):
-            util.generate_listing_files(repo.working_dir, self.working_dir)
-            # build iso and publish via HTTPS
-            self._publish_isos(repo, config, progress_callback)
-        else:
-            export_dir = config.get(constants.EXPORT_DIRECTORY_KEYWORD)
-            util.generate_listing_files(export_dir, self.working_dir)
-
-        if len(self.details['errors']) != 0:
-            return publish_conduit.build_failure_report(self.summary, self.details)
-        return publish_conduit.build_success_report(self.summary, self.details)
-
-    def _publish_isos(self, repo, config, progress_callback=None):
+    def distributor_removed(self, repo, config):
         """
-        Extracts the necessary configuration information for the ISO creator and then calls it.
+        Called when a distributor of this type is removed from a repository.
 
-        :param repo:                metadata describing the repository
-        :type  repo:                pulp.plugins.model.Repository
-        :param config:              plugin configuration instance
-        :type  config:              pulp.plugins.config.PluginCallConfiguration
-        :param progress_callback:   callback to report progress info to publish_conduit. This function is
-                                        expected to take the following arguments: type_id, a string, and
-                                        status, which is a dict
-        :type  progress_callback:   function
+        :param repo: metadata describing the repository
+        :type  repo: pulp.plugins.model.Repository
+
+        :param config: plugin configuration
+        :type  config: pulp.plugins.config.PluginCallConfiguration
         """
-        http_publish_dir = os.path.join(constants.EXPORT_HTTP_DIR, repo.id).rstrip('/')
-        https_publish_dir = os.path.join(constants.EXPORT_HTTPS_DIR, repo.id).rstrip('/')
-        image_prefix = config.get(constants.ISO_PREFIX_KEYWORD) or repo.id
+        # remove the directories that might have been created for this repo/distributor
+        dir_list = [repo.working_dir,
+                    configuration.get_master_publish_dir(repo, ids.TYPE_ID_DISTRIBUTOR_EXPORT),
+                    os.path.join(configuration.HTTP_EXPORT_DIR, repo.id),
+                    os.path.join(configuration.HTTPS_EXPORT_DIR, repo.id)]
 
-        # Clean up the old export publish directories.
-        shutil.rmtree(http_publish_dir, ignore_errors=True)
-        shutil.rmtree(https_publish_dir, ignore_errors=True)
-
-        # If publishing isn't enabled for http or https, set the path to None
-        if not config.get(constants.PUBLISH_HTTP_KEYWORD):
-            http_publish_dir = None
-        if not config.get(constants.PUBLISH_HTTPS_KEYWORD):
-            https_publish_dir = None
-
-        export_utils.publish_isos(repo.working_dir, image_prefix, http_publish_dir, https_publish_dir,
-                                  config.get(constants.ISO_SIZE_KEYWORD), progress_callback)
+        for repo_dir in dir_list:
+            shutil.rmtree(repo_dir, ignore_errors=True)

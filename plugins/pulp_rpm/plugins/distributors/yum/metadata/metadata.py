@@ -77,7 +77,7 @@ class MetadataFileContext(object):
         """
         Write the closing root level tag into the metadata file and close it.
         """
-        if self.metadata_file_handle is None:
+        if self.metadata_file_handle is None or self.metadata_file_handle.closed:
             # finalize has already been run or initialize has not been run
             return
 
@@ -173,11 +173,10 @@ class MetadataFileContext(object):
         """
         Flush any cached writes to the metadata file handle and close it.
         """
-        assert self.metadata_file_handle is not None
-        _LOG.debug('Closing metadata file: %s' % self.metadata_file_path)
-
-        self.metadata_file_handle.flush()
-        self.metadata_file_handle.close()
+        if self.metadata_file_handle is not None and not self.metadata_file_handle.closed:
+            _LOG.debug('Closing metadata file: %s' % self.metadata_file_path)
+            self.metadata_file_handle.flush()
+            self.metadata_file_handle.close()
 
 
 # -- pre-generated metadata context --------------------------------------------

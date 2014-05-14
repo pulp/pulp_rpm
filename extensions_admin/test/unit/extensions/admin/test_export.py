@@ -34,13 +34,12 @@ class TestRepoExportRunCommand(PulpClientTests):
                             export.OPTION_ISO_SIZE]
 
         # Test
-        export.RpmExportCommand(self.context)
+        export.RpmExportCommand(self.context, mock.Mock())
         actual_kwargs = mock_superclass_init.call_args_list[0][1]
         self.assertEqual(actual_kwargs['context'], self.context)
         self.assertEqual(actual_kwargs['description'], export.DESC_EXPORT_RUN)
         self.assertEqual(actual_kwargs['distributor_id'], ids.TYPE_ID_DISTRIBUTOR_EXPORT)
         self.assertEqual(set(actual_kwargs['override_config_options']), set(expected_options))
-        self.assertTrue(isinstance(actual_kwargs['renderer'], status.RpmExportStatusRenderer))
 
 
 class TestRepoGroupExportRunCommand(PulpClientTests):

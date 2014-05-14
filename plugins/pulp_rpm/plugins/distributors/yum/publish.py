@@ -1,10 +1,16 @@
-import os
-import shutil
-from gettext import gettext as _
 from collections import namedtuple
+import copy
+from gettext import gettext as _
+import os
 
-from pulp.plugins.util.publish_step import BasePublisher, PublishStep, UnitPublishStep
+from pulp.common.compat import json
+from pulp.plugins.config import PluginCallConfiguration
+from pulp.plugins.conduits.repo_publish import RepoPublishConduit
+from pulp.plugins.util.publish_step import PublishStep, UnitPublishStep, CopyDirectoryStep
+from pulp.plugins.util.publish_step import AtomicDirectoryPublishStep
 from pulp.server.db.model.criteria import UnitAssociationCriteria
+from pulp.server.managers.repo.query import RepoQueryManager
+import pulp.server.managers.repo._common as common_utils
 from pulp.server.exceptions import InvalidValue
 
 from pulp_rpm.common import constants
@@ -12,6 +18,8 @@ from pulp_rpm.common.ids import (
     TYPE_ID_RPM, TYPE_ID_SRPM, TYPE_ID_DRPM, TYPE_ID_ERRATA, TYPE_ID_PKG_GROUP,
     TYPE_ID_PKG_CATEGORY, TYPE_ID_PKG_ENVIRONMENT, TYPE_ID_DISTRO, TYPE_ID_YUM_REPO_METADATA_FILE)
 from pulp_rpm.yum_plugin import util
+from pulp_rpm.plugins.distributors.export_distributor import export_utils
+from pulp_rpm.plugins.distributors.export_distributor import generate_iso
 from pulp_rpm.plugins.importers.yum.parse.treeinfo import KEY_PACKAGEDIR
 from . import configuration
 from .metadata.filelists import FilelistsXMLFileContext
@@ -24,25 +32,19 @@ from .metadata.updateinfo import UpdateinfoXMLFileContext
 from .metadata.package import PackageXMLFileContext
 
 
-# -- constants -----------------------------------------------------------------
-
 _LOG = util.getLogger(__name__)
-
-# -- package fields ------------------------------------------------------------
 
 PACKAGE_FIELDS = ['id', 'name', 'version', 'release', 'arch', 'epoch',
                   '_storage_path', 'checksum', 'checksumtype', 'repodata']
 
-# -- publisher class -----------------------------------------------------------
 
-
-class Publisher(BasePublisher):
+class BaseYumRepoPublisher(PublishStep):
     """
     Yum HTTP/HTTPS publisher class that is responsible for the actual publishing
     of a yum repository over HTTP and/or HTTPS.
     """
 
-    def __init__(self, repo, publish_conduit, config):
+    def __init__(self, repo, publish_conduit, config, distributor_type):
         """
         :param repo: Pulp managed Yum repository
         :type  repo: pulp.plugins.model.Repository
@@ -50,23 +52,238 @@ class Publisher(BasePublisher):
         :type  publish_conduit: pulp.plugins.conduits.repo_publish.RepoPublishConduit
         :param config: Pulp configuration for the distributor
         :type  config: pulp.plugins.config.PluginCallConfiguration
-        """
-        repomd_step = PublishRepoMetaDataStep()
-        steps = [PublishDistributionStep(),
-                 PublishRpmStep(),
-                 PublishDrpmStep(),
-                 PublishErrataStep(),
-                 PublishCompsStep(),
-                 PublishMetadataStep()]
+        :param distributor_type: The type of the distributor that is being published
+        :type distributor_type: str
 
-        super(Publisher, self).__init__(repo, publish_conduit, config,
-                                        initialize_steps=[repomd_step],
-                                        process_steps=steps,
-                                        finalize_steps=[repomd_step],
-                                        post_process_steps=[PublishToMasterStep(),
-                                                            PublishOverHttpStep(),
-                                                            PublishOverHttpsStep(),
-                                                            ClearOldMastersStep()])
+        """
+        super(BaseYumRepoPublisher, self).__init__(constants.PUBLISH_REPO_STEP, repo,
+                                                   publish_conduit, config,
+                                                   distributor_type=distributor_type)
+
+        self.repomd_file_context = None
+        self.checksum_type = None
+
+        self.add_child(InitRepoMetadataStep())
+        dist_step = PublishDistributionStep()
+        self.add_child(dist_step)
+        self.add_child(PublishRpmStep(dist_step))
+        self.add_child(PublishDrpmStep(dist_step))
+        self.add_child(PublishErrataStep())
+        self.add_child(PublishCompsStep())
+        self.add_child(PublishMetadataStep())
+        self.add_child(CloseRepoMetadataStep())
+
+    def get_checksum_type(self):
+        if not self.checksum_type:
+            self.checksum_type = configuration.get_repo_checksum_type(self.get_conduit(),
+                                                                      self.get_config())
+        return self.checksum_type
+
+    def on_error(self):
+        if self.repomd_file_context:
+            self.repomd_file_context.finalize()
+
+
+class ExportRepoPublisher(BaseYumRepoPublisher):
+    """
+    Yum HTTP/HTTPS publisher class that is responsible for the actual publishing
+    of a yum repository over HTTP and/or HTTPS.
+    """
+
+    def __init__(self, repo, publish_conduit, config, distributor_type):
+        """
+        :param repo: Pulp managed Yum repository
+        :type  repo: pulp.plugins.model.Repository
+        :param publish_conduit: Conduit providing access to relative Pulp functionality
+        :type  publish_conduit: pulp.plugins.conduits.repo_publish.RepoPublishConduit
+        :param config: Pulp configuration for the distributor
+        :type  config: pulp.plugins.config.PluginCallConfiguration
+        :param distributor_type: The type of the distributor that is being published
+        :type distributor_type: str
+        """
+        super(ExportRepoPublisher, self).__init__(repo, publish_conduit, config, distributor_type)
+
+        date_filter = export_utils.create_date_range_filter(config)
+        if date_filter:
+            # Since this is a partial export we don't generate metadata
+            # we have to clear out the previously added steps
+            # we only need special version s of the rpm, drpm, and errata steps
+            self.clear_children()
+            self.add_child(PublishRpmAndDrpmStepIncremental(association_filters=date_filter))
+            self.add_child(PublishErrataStepIncremental(association_filters=date_filter))
+
+        working_directory = self.get_working_dir()
+        export_dir = config.get(constants.EXPORT_DIRECTORY_KEYWORD)
+        if export_dir:
+            target_dir = os.path.join(export_dir,
+                                      configuration.get_repo_relative_path(repo, config))
+            self.add_child(CopyDirectoryStep(working_directory, target_dir))
+            self.add_child(GenerateListingFileStep(export_dir, target_dir))
+        else:
+            # Reset the steps to use an internal scratch directory other than the base working dir
+            content_dir = os.path.join(working_directory, 'scratch')
+            for step in self.children:
+                step.working_dir = content_dir
+
+            # Set up step to copy all the files to a realized directory with no symlinks
+            # This could be optimized with a pathspec so that we don't create all the files
+            # separately
+            realized_dir = os.path.join(working_directory, 'realized')
+            copy_target = os.path.join(realized_dir,
+                                       configuration.get_repo_relative_path(repo, config))
+            self.add_child(CopyDirectoryStep(content_dir, copy_target))
+            self.add_child(GenerateListingFileStep(realized_dir, copy_target))
+
+            # Create the steps to generate the ISO and publish them to their final location
+            output_dir = os.path.join(working_directory, 'output')
+            self.add_child(CreateIsoStep(realized_dir, output_dir))
+            publish_location = [('/', location)
+                                for location in configuration.get_export_repo_publish_dirs(repo,
+                                                                                           config)]
+
+            master_dir = configuration.get_master_publish_dir(repo, self.get_distributor_type())
+            self.add_child(AtomicDirectoryPublishStep(output_dir, publish_location, master_dir))
+
+
+class ExportRepoGroupPublisher(PublishStep):
+
+    def __init__(self, repo_group, publish_conduit, config, distributor_type):
+        """
+        :param repo_group: Pulp managed Yum repository
+        :type  repo_group: pulp.plugins.model.RepositoryGroup
+        :param publish_conduit: Conduit providing access to relative Pulp functionality
+        :type  publish_conduit: pulp.plugins.conduits.repo_publish.RepoGroupPublishConduit
+        :param config: Pulp configuration for the distributor
+        :type  config: pulp.plugins.config.PluginCallConfiguration
+        :param distributor_type: The type of the distributor that is being published
+        :type distributor_type: str
+        """
+        super(ExportRepoGroupPublisher, self).__init__(constants.PUBLISH_STEP_EXPORT_REPO_GROUP,
+                                                       repo_group, publish_conduit, config,
+                                                       working_dir=repo_group.working_dir,
+                                                       distributor_type=distributor_type)
+
+        working_dir = self.get_working_dir()
+        scratch_dir = os.path.join(working_dir, 'scratch')
+        realized_dir = os.path.join(working_dir, 'realized')
+
+        flat_config = config.flatten()
+        export_dir = config.get(constants.EXPORT_DIRECTORY_KEYWORD)
+        if export_dir:
+            repo_config = config
+        else:
+            repo_config = PluginCallConfiguration(flat_config, {constants.EXPORT_DIRECTORY_KEYWORD:
+                                                                realized_dir})
+        query_manager = RepoQueryManager()
+
+        repos = query_manager.find_by_id_list(repo_group.repo_ids)
+        for repo in repos:
+            repo = common_utils.to_transfer_repo(repo)
+            # Make sure we only publish rpm repo's
+            if repo.notes['_repo-type'] != 'rpm-repo':
+                continue
+
+            repo_config_copy = copy.deepcopy(repo_config)
+            repo.working_dir = os.path.join(scratch_dir, repo.id)
+            repo_conduit = RepoPublishConduit(repo.id, distributor_type)
+            publisher = ExportRepoPublisher(repo, repo_conduit, repo_config_copy,
+                                            distributor_type)
+            publisher.description = _("Exporting Repo: %s") % repo.id
+            self.add_child(publisher)
+
+        # If we aren't exporting to a directory add the ISO create & publish steps
+        if not export_dir:
+            # Create the steps to generate the ISO and publish them to their final location
+            output_dir = os.path.join(working_dir, 'output')
+            self.add_child(CreateIsoStep(realized_dir, output_dir))
+            export_dirs = configuration.get_export_repo_group_publish_dirs(repo_group, config)
+            publish_location = [('/', location) for location in export_dirs]
+
+            master_dir = configuration.get_master_publish_dir(repo_group, distributor_type)
+            self.add_child(AtomicDirectoryPublishStep(output_dir, publish_location, master_dir))
+
+
+class Publisher(BaseYumRepoPublisher):
+    """
+    Yum HTTP/HTTPS publisher class that is responsible for the actual publishing
+    of a yum repository over HTTP and/or HTTPS.
+    """
+
+    def __init__(self, repo, publish_conduit, config, distributor_type):
+        """
+        :param repo: Pulp managed Yum repository
+        :type  repo: pulp.plugins.model.Repository
+        :param publish_conduit: Conduit providing access to relative Pulp functionality
+        :type  publish_conduit: pulp.plugins.conduits.repo_publish.RepoPublishConduit
+        :param config: Pulp configuration for the distributor
+        :type  config: pulp.plugins.config.PluginCallConfiguration
+        :param distributor_type: The type of the distributor that is being published
+        :type distributor_type: str
+        """
+        super(Publisher, self).__init__(repo, publish_conduit, config, distributor_type)
+
+        # Add the web specific directory publishing processing steps
+        target_directories = []
+        repo_relative_path = configuration.get_repo_relative_path(repo, config)
+
+        if config.get(constants.PUBLISH_HTTPS_KEYWORD):
+            target_directories.append(['/',
+                                       os.path.join(configuration.get_https_publish_dir(config),
+                                                    repo_relative_path)])
+        if config.get(constants.PUBLISH_HTTP_KEYWORD):
+            target_directories.append(['/',
+                                       os.path.join(configuration.get_http_publish_dir(config),
+                                                    repo_relative_path)])
+        master_publish_dir = configuration.get_master_publish_dir(repo, distributor_type)
+        atomic_publish_step = AtomicDirectoryPublishStep(self.get_working_dir(),
+                                                         target_directories,
+                                                         master_publish_dir)
+        atomic_publish_step.description = _("Publishing files to web")
+
+        self.add_child(atomic_publish_step)
+
+
+class GenerateListingFileStep(PublishStep):
+    def __init__(self, root_dir, target_dir, step=constants.PUBLISH_GENERATE_LISTING_FILE_STEP):
+        """
+        Initialize and set the ID of the step
+        """
+        super(GenerateListingFileStep, self).__init__(step)
+        self.description = _("Writing Listings File")
+        self.root_dir = root_dir
+        self.target_dir = target_dir
+
+    def process_main(self):
+        util.generate_listing_files(self.root_dir, self.target_dir)
+
+
+class InitRepoMetadataStep(PublishStep):
+
+    def __init__(self, step=constants.PUBLISH_INIT_REPOMD_STEP):
+        """
+        Initialize and set the ID of the step
+        """
+        super(InitRepoMetadataStep, self).__init__(step)
+        self.description = _("Initializing repo metadata")
+
+    def initialize(self):
+        self.parent.repomd_file_context = RepomdXMLFileContext(self.get_working_dir(),
+                                                               self.parent.get_checksum_type())
+        self.parent.repomd_file_context.initialize()
+
+
+class CloseRepoMetadataStep(PublishStep):
+
+    def __init__(self, step=constants.PUBLISH_CLOSE_REPOMD_STEP):
+        """
+        Initialize and set the ID of the step
+        """
+        super(CloseRepoMetadataStep, self).__init__(step)
+        self.description = _("Closing repo metadata")
+
+    def finalize(self):
+        if self.parent.repomd_file_context:
+            self.parent.repomd_file_context.finalize()
 
 
 class PublishRepoMetaDataStep(UnitPublishStep):
@@ -83,9 +300,8 @@ class PublishRepoMetaDataStep(UnitPublishStep):
         """
         open the metadata context
         """
-        self.checksum_type = configuration.get_repo_checksum_type(self.parent.conduit,
-                                                                  self.parent.config)
-        self.repomd_file_context = RepomdXMLFileContext(self.get_working_dir(), self.checksum_type)
+        self.repomd_file_context = RepomdXMLFileContext(self.get_working_dir(),
+                                                        self.parent.get_checksum_type())
         self.repomd_file_context.initialize()
 
     def finalize(self):
@@ -101,27 +317,22 @@ class PublishRpmStep(UnitPublishStep):
     Step for publishing RPM & SRPM units
     """
 
-    def __init__(self):
-        super(PublishRpmStep, self).__init__(constants.PUBLISH_RPMS_STEP, TYPE_ID_RPM)
+    def __init__(self, dist_step, **kwargs):
+        super(PublishRpmStep, self).__init__(constants.PUBLISH_RPMS_STEP,
+                                             [TYPE_ID_RPM, TYPE_ID_SRPM], **kwargs)
         self.description = _('Publishing RPMs')
         self.file_lists_context = None
         self.other_context = None
         self.primary_context = None
-
-    def get_unit_generator(self):
-        """
-        Create a generator that returns both SRPM and RPM units
-        """
-        criteria = UnitAssociationCriteria(type_ids=[TYPE_ID_RPM, TYPE_ID_SRPM],
-                                           unit_fields=PACKAGE_FIELDS)
-        return self.parent.conduit.get_units(criteria, as_generator=True)
+        self.dist_step = dist_step
 
     def initialize(self):
         """
         Create each of the three metadata contexts required for publishing RPM & SRPM
         """
         total = self._get_total([TYPE_ID_RPM, TYPE_ID_SRPM])
-        checksum_type = self.get_step(constants.PUBLISH_REPOMD_STEP).checksum_type
+
+        checksum_type = self.parent.get_checksum_type()
         self.file_lists_context = FilelistsXMLFileContext(self.get_working_dir(), total,
                                                           checksum_type)
         self.other_context = OtherXMLFileContext(self.get_working_dir(), total, checksum_type)
@@ -133,7 +344,7 @@ class PublishRpmStep(UnitPublishStep):
         """
         Close each context and write it to the repomd file
         """
-        repomd = self.get_step(constants.PUBLISH_REPOMD_STEP).repomd_file_context
+        repomd = self.parent.repomd_file_context
 
         if self.file_lists_context:
             self.file_lists_context.finalize()
@@ -161,7 +372,7 @@ class PublishRpmStep(UnitPublishStep):
         relative_path = util.get_relpath_from_unit(unit)
         destination_path = os.path.join(self.get_working_dir(), relative_path)
         self._create_symlink(source_path, destination_path)
-        package_dir = self.get_step(constants.PUBLISH_DISTRIBUTION_STEP).package_dir
+        package_dir = self.dist_step.package_dir
         if package_dir:
             destination_path = os.path.join(package_dir, relative_path)
             self._create_symlink(source_path, destination_path)
@@ -196,7 +407,7 @@ class PublishMetadataStep(UnitPublishStep):
         self._create_symlink(unit.storage_path, link_path)
 
         # Add the proper relative reference to the metadata file to repomd
-        self.get_step(constants.PUBLISH_REPOMD_STEP).repomd_file_context.\
+        self.parent.repomd_file_context.\
             add_metadata_file_metadata(unit.unit_key['data_type'], link_path)
 
 
@@ -205,16 +416,18 @@ class PublishDrpmStep(UnitPublishStep):
     Publish Delta RPMS
     """
 
-    def __init__(self):
-        super(PublishDrpmStep, self).__init__(constants.PUBLISH_DELTA_RPMS_STEP, TYPE_ID_DRPM)
+    def __init__(self, dist_step, **kwargs):
+        super(PublishDrpmStep, self).__init__(constants.PUBLISH_DELTA_RPMS_STEP, TYPE_ID_DRPM,
+                                              **kwargs)
         self.description = _('Publishing Delta RPMs')
         self.context = None
+        self.dist_step = dist_step
 
     def initialize(self):
         """
         Initialize the PrestoDelta metadata file
         """
-        checksum_type = self.get_step(constants.PUBLISH_REPOMD_STEP).checksum_type
+        checksum_type = self.parent.get_checksum_type()
         self.context = PrestodeltaXMLFileContext(self.get_working_dir(), checksum_type)
         self.context.initialize()
 
@@ -229,7 +442,7 @@ class PublishDrpmStep(UnitPublishStep):
         relative_path = os.path.join('drpms', util.get_relpath_from_unit(unit))
         destination_path = os.path.join(self.get_working_dir(), relative_path)
         self._create_symlink(source_path, destination_path)
-        package_dir = self.get_step(constants.PUBLISH_DISTRIBUTION_STEP).package_dir
+        package_dir = self.dist_step.package_dir
         if package_dir:
             destination_path = os.path.join(package_dir, relative_path)
             self._create_symlink(source_path, destination_path)
@@ -241,7 +454,7 @@ class PublishDrpmStep(UnitPublishStep):
         """
         if self.context:
             self.context.finalize()
-            self.get_step(constants.PUBLISH_REPOMD_STEP).repomd_file_context.\
+            self.parent.repomd_file_context.\
                 add_metadata_file_metadata('prestodelta', self.context.metadata_file_path,
                                            self.context.checksum)
 
@@ -250,8 +463,9 @@ class PublishErrataStep(UnitPublishStep):
     """
     Publish all errata
     """
-    def __init__(self):
-        super(PublishErrataStep, self).__init__(constants.PUBLISH_ERRATA_STEP, TYPE_ID_ERRATA)
+    def __init__(self, **kwargs):
+        super(PublishErrataStep, self).__init__(constants.PUBLISH_ERRATA_STEP, TYPE_ID_ERRATA,
+                                                **kwargs)
         self.context = None
         self.description = _('Publishing Errata')
 
@@ -260,7 +474,7 @@ class PublishErrataStep(UnitPublishStep):
         Initialize the UpdateInfo file and set the method used to process the unit to the
         one that is built into the UpdateinfoXMLFileContext
         """
-        checksum_type = self.get_step(constants.PUBLISH_REPOMD_STEP).checksum_type
+        checksum_type = self.parent.get_checksum_type()
         self.context = UpdateinfoXMLFileContext(self.get_working_dir(), checksum_type)
         self.context.initialize()
         # set the self.process_unit method to the corresponding method on the
@@ -273,9 +487,72 @@ class PublishErrataStep(UnitPublishStep):
         """
         if self.context:
             self.context.finalize()
-            self.get_step(constants.PUBLISH_REPOMD_STEP).repomd_file_context.\
+            self.parent.repomd_file_context.\
                 add_metadata_file_metadata('updateinfo', self.context.metadata_file_path,
                                            self.context.checksum)
+
+
+class PublishRpmAndDrpmStepIncremental(UnitPublishStep):
+    """
+    Publish all incremental errata
+    """
+    def __init__(self, **kwargs):
+        super(PublishRpmAndDrpmStepIncremental, self).__init__(constants.PUBLISH_RPMS_STEP,
+                                                               [TYPE_ID_RPM, TYPE_ID_SRPM,
+                                                                TYPE_ID_DRPM],
+                                                               unit_fields=PACKAGE_FIELDS, **kwargs)
+        self.description = _('Publishing RPM, SRPM, and DRPM')
+
+    def process_unit(self, unit):
+        """
+        Link the unit to the content directory and the package_dir
+
+        :param unit: The unit to process
+        :type unit: pulp.plugins.model.Unit
+        """
+        source_path = unit.storage_path
+        relative_path = util.get_relpath_from_unit(unit)
+        destination_path = os.path.join(self.get_working_dir(), relative_path)
+        self._create_symlink(source_path, destination_path)
+
+        filename = unit.unit_key['name'] + '-' + unit.unit_key['version'] + '-' + \
+            unit.unit_key['release'] + '.' + unit.unit_key['arch'] + '.json'
+        path = os.path.join(self.get_working_dir(), filename)
+
+        # Remove all keys that start with an underscore, like _id and _ns
+        for key_to_remove in filter(lambda key: key[0] == '_', unit.metadata.keys()):
+            unit.metadata.pop(key_to_remove)
+        # repodata will be regenerated on import, so remove it as well
+        if 'repodata' in unit.metadata:
+            unit.metadata.pop('repodata')
+
+        dict_to_write = {'unit_key': unit.unit_key, 'unit_metadata': unit.metadata}
+
+        with open(path, 'w') as f:
+            json.dump(dict_to_write, f)
+
+
+class PublishErrataStepIncremental(UnitPublishStep):
+    """
+    Publish all incremental errata
+    """
+    def __init__(self, **kwargs):
+        super(PublishErrataStepIncremental, self).__init__(constants.PUBLISH_ERRATA_STEP,
+                                                           TYPE_ID_ERRATA, **kwargs)
+        self.description = _('Publishing Errata')
+
+    def process_unit(self, unit):
+        # Remove unnecessary keys, like _id
+        for key_to_remove in filter(lambda key: key[0] == '_', unit.metadata.keys()):
+            unit.metadata.pop(key_to_remove)
+        errata_dict = {
+            'unit_key': unit.unit_key,
+            'unit_metadata': unit.metadata
+        }
+
+        json_file_path = os.path.join(self.get_working_dir(), unit.unit_key['id'] + '.json')
+        with open(json_file_path, 'w') as f:
+            json.dump(errata_dict, f)
 
 
 class PublishCompsStep(UnitPublishStep):
@@ -294,7 +571,7 @@ class PublishCompsStep(UnitPublishStep):
 
         # set the process unit method to categories
         criteria = UnitAssociationCriteria(type_ids=[TYPE_ID_PKG_CATEGORY])
-        category_generator = self.parent.conduit.get_units(criteria, as_generator=True)
+        category_generator = self.get_conduit().get_units(criteria, as_generator=True)
 
         UnitProcessor = namedtuple('UnitProcessor', 'unit process')
         for category in category_generator:
@@ -302,13 +579,13 @@ class PublishCompsStep(UnitPublishStep):
 
         # set the process unit method to groups
         criteria = UnitAssociationCriteria(type_ids=[TYPE_ID_PKG_GROUP])
-        groups_generator = self.parent.conduit.get_units(criteria, as_generator=True)
+        groups_generator = self.get_conduit().get_units(criteria, as_generator=True)
         for group in groups_generator:
             yield UnitProcessor(group, self.comps_context.add_package_group_unit_metadata)
 
         # set the process unit method to environments
         criteria = UnitAssociationCriteria(type_ids=[TYPE_ID_PKG_ENVIRONMENT])
-        groups_generator = self.parent.conduit.get_units(criteria, as_generator=True)
+        groups_generator = self.get_conduit().get_units(criteria, as_generator=True)
         for group in groups_generator:
             yield UnitProcessor(group, self.comps_context.add_package_environment_unit_metadata)
 
@@ -323,7 +600,7 @@ class PublishCompsStep(UnitPublishStep):
         """
         Initialize all metadata associated with the comps file
         """
-        checksum_type = self.get_step(constants.PUBLISH_REPOMD_STEP).checksum_type
+        checksum_type = self.parent.get_checksum_type()
         self.comps_context = PackageXMLFileContext(self.get_working_dir(), checksum_type)
         self.comps_context.initialize()
 
@@ -333,9 +610,10 @@ class PublishCompsStep(UnitPublishStep):
         """
         if self.comps_context:
             self.comps_context.finalize()
-            self.get_step(constants.PUBLISH_REPOMD_STEP).repomd_file_context.\
-                add_metadata_file_metadata('group', self.comps_context.metadata_file_path,
-                                           self.comps_context.checksum)
+            if self.parent.repomd_file_context:
+                self.parent.repomd_file_context.\
+                    add_metadata_file_metadata('group', self.comps_context.metadata_file_path,
+                                               self.comps_context.checksum)
 
 
 class PublishDistributionStep(UnitPublishStep):
@@ -476,124 +754,21 @@ class PublishDistributionStep(UnitPublishStep):
             self._create_symlink("./", packages_symlink_path)
 
 
-class PublishToMasterStep(PublishStep):
+class CreateIsoStep(PublishStep):
+    """
+    Export a directory to an ISO or a collection of ISO files
 
-    def __init__(self, step=constants.PUBLISH_TO_MASTER_STEP):
-        """
-        Initialize and set the ID of the step
-        """
-        super(PublishToMasterStep, self).__init__(step)
-        self.description = _("Copying files to master directory")
+    """
+    def __init__(self, content_dir, output_dir):
+        super(CreateIsoStep, self).__init__(constants.PUBLISH_STEP_ISO)
+        self.description = _('Exporting ISO')
+        self.content_dir = content_dir
+        self.output_dir = output_dir
 
     def process_main(self):
         """
-        Create & populate the master publish directory
+        Publish a directory from to a tar file
         """
-        master_publish_dir = configuration.get_master_publish_dir(self.parent.repo)
-
-        # Use the timestamp as the name of the current master repository
-        # directory. This allows us to identify when these were created as well
-        # as having more than one side-by-side during the publishing process.
-        master_repo_directory = os.path.join(master_publish_dir, self.parent.timestamp)
-
-        _LOG.debug('Copying tree from %s to %s' % (self.get_working_dir(), master_repo_directory))
-
-        shutil.copytree(self.get_working_dir(), master_repo_directory, symlinks=True)
-
-
-class ClearOldMastersStep(PublishStep):
-
-    def __init__(self, step=constants.PUBLISH_CLEAR_OLD_MASTERS):
-        """
-        Initialize and set the ID of the step
-        """
-        super(ClearOldMastersStep, self).__init__(step)
-
-    def process_main(self):
-        """
-        Clear out the old master directories
-        """
-        master_publish_dir = configuration.get_master_publish_dir(self.parent.repo)
-        self._clear_directory(master_publish_dir, skip_list=[self.parent.timestamp])
-
-
-class PublishOverHttpStep(PublishStep):
-    """
-    Publish http repo directory if configured
-    """
-    def __init__(self, step=constants.PUBLISH_OVER_HTTP_STEP):
-        """
-        Initialize and set the ID of the step
-        """
-        super(PublishOverHttpStep, self).__init__(step)
-        self.description = _('Publishing via http')
-
-    def is_skipped(self):
-        """
-        Check whether publishing over http is enabled
-        """
-        return not self.parent.config.get('http')
-
-    def _get_publish_dir(self):
-        """
-        Get the directory to publish to.  This is so that https can use the same base class
-        """
-        return configuration.get_http_publish_dir(self.parent.config)
-
-    def process_main(self):
-        """
-        Publish a directory from the repo to a target directory.
-        """
-        root_publish_dir = self._get_publish_dir()
-
-        # Find the location of the master repository tree structure
-        master_publish_dir = os.path.join(configuration.get_master_publish_dir(self.parent.repo),
-                                          self.parent.timestamp)
-
-        # Find the location of the published repository tree structure
-        repo_relative_dir = configuration.get_repo_relative_path(self.parent.repo,
-                                                                 self.parent.config)
-        repo_publish_dir = os.path.join(root_publish_dir, repo_relative_dir)
-        # Without the trailing '/'
-        if repo_publish_dir.endswith('/'):
-            repo_publish_dir = repo_publish_dir[:-1]
-
-        # Create the parent directory of the published repository tree, if needed
-        repo_publish_dir_parent = repo_publish_dir.rsplit('/', 1)[0]
-        if not os.path.exists(repo_publish_dir_parent):
-            os.makedirs(repo_publish_dir_parent, 0750)
-
-        # Create a temporary symlink in the parent of the published directory tree
-        tmp_link_name = os.path.join(repo_publish_dir_parent, self.parent.timestamp)
-        os.symlink(master_publish_dir, tmp_link_name)
-
-        # Rename the symlink to the official published repository directory name.
-        # This has two desirable effects:
-        # 1. it will overwrite an existing link, if it's there
-        # 2. the operation is atomic, instantly changing the published directory
-        # NOTE: it's not easy (possible?) to directly edit the target of a symlink
-        os.rename(tmp_link_name, repo_publish_dir)
-
-        # (Re)generate the listing files
-        util.generate_listing_files(root_publish_dir, repo_publish_dir)
-
-
-class PublishOverHttpsStep(PublishOverHttpStep):
-    """
-    Publish https repo directory if configured
-    """
-    def __init__(self):
-        super(PublishOverHttpsStep, self).__init__(constants.PUBLISH_OVER_HTTPS_STEP)
-        self.description = _('Publishing via https')
-
-    def is_skipped(self):
-        """
-        Check whether publishing over HTTPS is enabled
-        """
-        return not self.parent.config.get('https')
-
-    def _get_publish_dir(self):
-        """
-        For the units return the https publish directory
-        """
-        return configuration.get_https_publish_dir(self.parent.config)
+        image_size = self.get_config().get(constants.ISO_SIZE_KEYWORD)
+        image_prefix = self.get_config().get(constants.ISO_PREFIX_KEYWORD) or self.get_repo().id
+        generate_iso.create_iso(self.content_dir, self.output_dir, image_prefix, image_size)
