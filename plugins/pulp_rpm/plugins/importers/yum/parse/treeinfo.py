@@ -110,6 +110,29 @@ def file_to_download_request(file_dict, feed, storage_path):
     )
 
 
+def strip_treeinfo_repomd(treeinfo_path):
+    """
+    strip repomd checksums from the treeinfo. These cause two issues:
+      * pulp thinks repomd.xml is content and not metadata if it's listed here
+      * pulp regenerates the repomd.xml file anyway, which would cause the
+        listed checksum to be wrong
+
+    :param treeinfo_path:            path to the on-disk treeinfo file
+    :type  treeinfo_path:            str
+    """
+    # read entire treeinfo, strip entry we don't want, and replace with our new treeinfo
+    with open(treeinfo_path, 'r+') as f:
+        original_treeinfo_data = f.readlines()
+        new_treeinfo_data = []
+        for line in original_treeinfo_data:
+            if not line.startswith('repodata/repomd.xml = '):
+                new_treeinfo_data.append(line)
+        f.seek(0)
+        f.writelines(new_treeinfo_data)
+        # truncate file to current position before closing
+        f.truncate()
+
+
 def get_treefile(feed, tmp_dir, nectar_config):
     """
     Download the treefile and return its full path on disk, or None if not found
@@ -132,6 +155,8 @@ def get_treefile(feed, tmp_dir, nectar_config):
         downloader = nectar_factory.create_downloader(feed, nectar_config, listener)
         downloader.download([request])
         if len(listener.succeeded_reports) == 1:
+            # bz 1095829
+            strip_treeinfo_repomd(path)
             return path
 
 
