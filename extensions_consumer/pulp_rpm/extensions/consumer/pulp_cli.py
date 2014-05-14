@@ -58,7 +58,7 @@ class BindCommand(PulpCliCommand):
             response = self.context.server.bind.bind(consumer_id, repo_id, YUM_DISTRIBUTOR_TYPE_ID)
             msg = _('Bind tasks successfully created:')
             self.context.prompt.render_success_message(msg)
-            tasks = [dict(task_id=str(t.task_id)) for t in response.response_body]
+            tasks = [dict(task_id=str(t.task_id)) for t in response.response_body.spawned_tasks]
             self.context.prompt.render_document_list(tasks)
         except NotFoundException, e:
             resources = e.extra_data['resources']
@@ -69,7 +69,8 @@ class BindCommand(PulpCliCommand):
                 r_type = _('Repository')
                 r_id = repo_id
             msg = _('%(t)s [%(id)s] does not exist on the server')
-            self.context.prompt.write(msg % {'t':r_type, 'id':r_id}, tag='not-found')
+            self.context.prompt.write(msg % {'t': r_type, 'id': r_id}, tag='not-found')
+
 
 class UnbindCommand(PulpCliCommand):
 
@@ -94,13 +95,13 @@ class UnbindCommand(PulpCliCommand):
             response = self.context.server.bind.unbind(consumer_id, repo_id, YUM_DISTRIBUTOR_TYPE_ID, force)
             msg = _('Unbind tasks successfully created:')
             self.context.prompt.render_success_message(msg)
-            tasks = [dict(task_id=str(t.task_id)) for t in response.response_body]
+            tasks = [dict(task_id=str(t.task_id)) for t in response.response_body.spawned_tasks]
             self.context.prompt.render_document_list(tasks)
         except NotFoundException, e:
             bind_id = e.extra_data['resources']['bind_id']
             m = _('Binding [consumer: %(c)s, repository: %(r)s] does not exist on the server')
             d = {
-                'c' : bind_id['consumer_id'],
-                'r' : bind_id['repo_id'],
+                'c': bind_id['consumer_id'],
+                'r': bind_id['repo_id'],
             }
             self.context.prompt.write(m % d, tag='not-found')

@@ -116,7 +116,7 @@ class RpmRepoCreateCommandTests(PulpClientTests):
         # instead of index.
 
         yum_distributor = body['distributors'][0]
-        self.assertEqual(ids.TYPE_ID_DISTRIBUTOR_YUM, yum_distributor['distributor_type'])
+        self.assertEqual(ids.TYPE_ID_DISTRIBUTOR_YUM, yum_distributor['distributor_type_id'])
         self.assertEqual(True, yum_distributor['auto_publish'])
         self.assertEqual(ids.YUM_DISTRIBUTOR_ID, yum_distributor['distributor_id'])
 
@@ -227,6 +227,28 @@ class RpmRepoUpdateCommandTests(PulpClientTests):
         # Ensure the correct metadata
         self.assertEqual(command.name, 'update')
         self.assertEqual(command.description, cudl.DESC_UPDATE)
+
+    def test_run_202(self):
+        # Setup
+        data = {
+            options.OPTION_REPO_ID.keyword : 'test-repo',
+            options.OPTION_NAME.keyword : 'Test Name',
+            options.OPTION_DESCRIPTION.keyword : 'Test Description',
+            options.OPTION_NOTES.keyword : {'b' : 'b'},
+            self.options_bundle.opt_feed.keyword : 'http://localhost',
+            repo_options.OPT_SERVE_HTTP.keyword : True,
+            repo_options.OPT_SERVE_HTTPS.keyword : True,
+            repo_options.OPT_SKIP.keyword : [ids.TYPE_ID_RPM],
+            }
+
+        self.server_mock.request.return_value = 202, {}
+
+        # Test
+        command = repo_create_update.RpmRepoUpdateCommand(self.context)
+        command.run(**data)
+
+        # Verify that things at least didn't blow up, which they were for BZ 1096931
+        self.assertEqual(1, self.server_mock.request.call_count)
 
     def test_run(self):
         # Setup

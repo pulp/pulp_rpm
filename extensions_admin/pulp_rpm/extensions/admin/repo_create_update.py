@@ -132,10 +132,10 @@ class RpmRepoCreateCommand(CreateRepositoryCommand, ImporterConfigMixin):
         :rtype:  tuple
         """
         distributors = [
-            dict(distributor_type=ids.TYPE_ID_DISTRIBUTOR_YUM,
+            dict(distributor_type_id=ids.TYPE_ID_DISTRIBUTOR_YUM,
                  distributor_config=yum_distributor_config,
                  auto_publish=True, distributor_id=ids.YUM_DISTRIBUTOR_ID),
-            dict(distributor_type=ids.TYPE_ID_DISTRIBUTOR_EXPORT,
+            dict(distributor_type_id=ids.TYPE_ID_DISTRIBUTOR_EXPORT,
                  distributor_config=export_distributor_config,
                  auto_publish=False, distributor_id=ids.EXPORT_DISTRIBUTOR_ID)
         ]
@@ -273,7 +273,6 @@ class RpmRepoUpdateCommand(UpdateRepositoryCommand, ImporterConfigMixin):
                     'Progress on this task can be viewed using the commands '
                     'under "repo tasks"')
             self.prompt.render_paragraph(msg)
-            self.prompt.render_reasons(response.response_body.reasons)
 
 
 # -- utilities ----------------------------------------------------------------

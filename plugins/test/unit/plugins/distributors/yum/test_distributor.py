@@ -169,7 +169,6 @@ class YumDistributorTests(unittest.TestCase):
         os.makedirs(os.path.join(self.working_dir, 'working'))
         test_distributor = YumHTTPDistributor()
         repo = Mock()
-        repo.id = 'bar'
         repo.working_dir = os.path.join(self.working_dir, 'working')
         config = {}
         test_distributor.distributor_removed(repo, config)

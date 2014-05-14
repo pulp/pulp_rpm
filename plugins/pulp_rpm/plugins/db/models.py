@@ -183,7 +183,7 @@ class RPM(VersionedPackage):
         unit_key = self.unit_key
         return os.path.join(
             unit_key['name'], unit_key['version'], unit_key['release'],
-            unit_key['arch'], unit_key['checksum'], self.metadata['relativepath']
+            unit_key['arch'], unit_key['checksum'], self.metadata['filename']
         )
 
     @property
@@ -219,10 +219,9 @@ class Errata(Package):
                     checksum = None
                     checksumtype = None
                 rpm = RPM(name=package['name'], epoch=package['epoch'],
-                           version=package['version'], release=package['release'],
-                           arch=package['arch'], checksum=checksum,
-                           checksumtype=checksumtype, metadata={},
-                )
+                          version=package['version'], release=package['release'],
+                          arch=package['arch'], checksum=checksum,
+                          checksumtype=checksumtype, metadata={})
                 unit_key = rpm.unit_key
                 for key in ['checksum', 'checksumtype']:
                     if unit_key[key] is None:
@@ -434,9 +433,10 @@ class ISO(object):
                     actual_size = self.calculate_size(destination_file)
                     if actual_size != self.size:
                         raise ValueError(_('Downloading <%(name)s> failed validation. '
-                            'The manifest specified that the file should be %(expected)s bytes, but '
-                            'the downloaded file is %(found)s bytes.') % {'name': self.name,
-                                'expected': self.size, 'found': actual_size})
+                                           'The manifest specified that the file should be %(expected)s bytes, but '
+                                           'the downloaded file is %(found)s bytes.') % {'name': self.name,
+                                                                                         'expected': self.size,
+                                                                                         'found': actual_size})
 
                     # Validate the checksum
                     actual_checksum = self.calculate_checksum(destination_file)

@@ -17,6 +17,7 @@ from pulp_rpm.plugins.db import models
 from pulp_rpm.plugins.importers.yum.existing import associate_already_downloaded_units
 from pulp_rpm.plugins.importers.yum.repomd import metadata, group, updateinfo, packages, presto, primary
 from pulp_rpm.plugins.importers.yum.sync import RepoSync, FailedException, CancelException
+from pulp_rpm.plugins.importers.yum.parse import treeinfo
 import model_factory
 
 
@@ -493,7 +494,7 @@ class TestDownload(BaseSyncTest):
             side_effect=StringIO,
         )
         mock_package_list_generator.side_effect = iter([model_factory.rpm_models(3),
-                                                    model_factory.drpm_models(3)])
+                                                       model_factory.drpm_models(3)])
 
         report = self.reposync.download(self.metadata_files, set(), set())
 
@@ -511,11 +512,14 @@ class TestDownload(BaseSyncTest):
         file_handle = StringIO()
         self.metadata_files.get_metadata_file_handle = mock.MagicMock(
             spec_set=self.metadata_files.get_metadata_file_handle,
-            side_effect=[file_handle, None], # None means it will skip DRPMs
+            side_effect=[file_handle, None],  # None means it will skip DRPMs
         )
         rpms = model_factory.rpm_models(3)
         for rpm in rpms:
             rpm.metadata['relativepath'] = self.RELATIVEPATH
+            # for this mock data, relativepath is already the same as
+            # os.path.basename(relativepath)
+            rpm.metadata['filename'] = self.RELATIVEPATH
         mock_package_list_generator.return_value = rpms
         self.downloader.download = mock.MagicMock(spec_set=self.downloader.download)
         mock_create_downloader.return_value = self.downloader
@@ -887,6 +891,7 @@ class TestAlreadyDownloadedUnits(BaseSyncTest):
         mock_search_all_units.return_value = units
         for unit in units:
             unit.metadata['relativepath'] = 'test-relative-path'
+            unit.metadata['filename'] = 'test-filename'
         result = associate_already_downloaded_units(models.RPM.TYPE, units, self.conduit)
         self.assertEqual(len(list(result)), 0)
 
@@ -900,3 +905,73 @@ class TestAlreadyDownloadedUnits(BaseSyncTest):
         result = associate_already_downloaded_units(models.RPM.TYPE, units, self.conduit)
         self.assertEqual(len(list(result)), 3)
 
+
+class TestTreeinfoAlterations(BaseSyncTest):
+
+    TREEINFO_NO_REPOMD = """
+[general]
+name = Some-treeinfo
+family = mockdata
+
+[stage2]
+mainimage = LiveOS/squashfs.img
+
+[images-x86_64]
+kernel = images/pxeboot/vmlinuz
+initrd = images/pxeboot/initrd.img
+
+[checksums]
+images/efiboot.img = sha256:12345
+"""
+    TREEINFO_WITH_REPOMD = """
+[general]
+name = Some-treeinfo
+family = mockdata
+
+[stage2]
+mainimage = LiveOS/squashfs.img
+
+[images-x86_64]
+kernel = images/pxeboot/vmlinuz
+initrd = images/pxeboot/initrd.img
+
+[checksums]
+images/efiboot.img = sha256:12345
+repodata/repomd.xml = sha256:9876
+"""
+
+    @mock.patch('__builtin__.open', autospec=True)
+    def test_treeinfo_unaltered(self, mock_open):
+        mock_file = mock.MagicMock(spec=file)
+        mock_file.readlines.return_value = StringIO(self.TREEINFO_NO_REPOMD).readlines()
+        mock_context = mock.MagicMock()
+        mock_context.__enter__.return_value = mock_file
+        mock_open.return_value = mock_context
+        treeinfo.strip_treeinfo_repomd("/mock/treeinfo/path")
+
+        mock_file.writelines.assert_called_once_with(['\n', '[general]\n', 'name = Some-treeinfo\n',
+                                                      'family = mockdata\n', '\n', '[stage2]\n',
+                                                      'mainimage = LiveOS/squashfs.img\n', '\n',
+                                                      '[images-x86_64]\n',
+                                                      'kernel = images/pxeboot/vmlinuz\n',
+                                                      'initrd = images/pxeboot/initrd.img\n',
+                                                      '\n', '[checksums]\n',
+                                                      'images/efiboot.img = sha256:12345\n'])
+
+    @mock.patch('__builtin__.open', autospec=True)
+    def test_treeinfo_altered(self, mock_open):
+        mock_file = mock.MagicMock(spec=file)
+        mock_file.readlines.return_value = StringIO(self.TREEINFO_WITH_REPOMD).readlines()
+        mock_context = mock.MagicMock()
+        mock_context.__enter__.return_value = mock_file
+        mock_open.return_value = mock_context
+        treeinfo.strip_treeinfo_repomd("/mock/treeinfo/path")
+
+        mock_file.writelines.assert_called_once_with(['\n', '[general]\n', 'name = Some-treeinfo\n',
+                                                      'family = mockdata\n', '\n', '[stage2]\n',
+                                                      'mainimage = LiveOS/squashfs.img\n', '\n',
+                                                      '[images-x86_64]\n',
+                                                      'kernel = images/pxeboot/vmlinuz\n',
+                                                      'initrd = images/pxeboot/initrd.img\n',
+                                                      '\n', '[checksums]\n',
+                                                      'images/efiboot.img = sha256:12345\n'])

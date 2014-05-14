@@ -96,7 +96,7 @@ class ISORepoCreateUpdateMixin(ImporterConfigMixin, ISODistributorConfigMixin):
             return os.EX_DATAERR
 
         distributors = [
-            {'distributor_type': ids.TYPE_ID_DISTRIBUTOR_ISO, 'distributor_config': distributor_config,
+            {'distributor_type_id': ids.TYPE_ID_DISTRIBUTOR_ISO, 'distributor_config': distributor_config,
              'auto_publish': True, 'distributor_id': ids.TYPE_ID_DISTRIBUTOR_ISO}]
         self._perform_command(repo_id, display_name, description, notes, importer_config, distributors)
 
