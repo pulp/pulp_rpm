@@ -273,7 +273,6 @@ class RpmRepoUpdateCommand(UpdateRepositoryCommand, ImporterConfigMixin):
                     'Progress on this task can be viewed using the commands '
                     'under "repo tasks"')
             self.prompt.render_paragraph(msg)
-            self.prompt.render_reasons(response.response_body.reasons)
 
 
 # -- utilities ----------------------------------------------------------------
