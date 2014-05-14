@@ -127,10 +127,12 @@ def _handle_erratum(type_id, unit_key, metadata, file_path, conduit, config):
 
     unit = conduit.init_unit(model.TYPE, model.unit_key, model.metadata, None)
 
-    if not config.get_boolean(CONFIG_SKIP_ERRATUM_LINK):
-        _link_errata_to_rpms(conduit, model, unit)
+    # this save must happen before the link is created, because the link logic
+    # requires the unit to have an "id".
+    saved_unit = conduit.save_unit(unit)
 
-    conduit.save_unit(unit)
+    if not config.get_boolean(CONFIG_SKIP_ERRATUM_LINK):
+        _link_errata_to_rpms(conduit, model, saved_unit)
 
 
 def _link_errata_to_rpms(conduit, errata_model, errata_unit):

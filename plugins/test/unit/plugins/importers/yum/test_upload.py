@@ -192,7 +192,10 @@ class UploadErratumTests(unittest.TestCase):
 
         mock_conduit = mock.MagicMock()
         inited_unit = Unit(models.Errata.TYPE, unit_key, metadata, None)
+        saved_unit = Unit(models.Errata.TYPE, unit_key, metadata, None)
+        saved_unit.id = 'ihaveanidnow'
         mock_conduit.init_unit.return_value = inited_unit
+        mock_conduit.save_unit.return_value = saved_unit
 
         # Test
         upload._handle_erratum(models.Errata.TYPE, unit_key, metadata, None,
@@ -201,14 +204,14 @@ class UploadErratumTests(unittest.TestCase):
         # Verify
         mock_conduit.init_unit.assert_called_once_with(models.Errata.TYPE, unit_key,
                                                        metadata, None)
-        mock_conduit.save_unit.assert_called_once()
-        saved_unit = mock_conduit.save_unit.call_args[0][0]
-        self.assertEqual(inited_unit, saved_unit)
+        mock_conduit.save_unit.assert_called_once_with(inited_unit)
 
         mock_link.assert_called_once()
         self.assertEqual(mock_link.call_args[0][0], mock_conduit)
         self.assertTrue(isinstance(mock_link.call_args[0][1], models.Errata))
-        self.assertEqual(mock_link.call_args[0][2], saved_unit)
+        # it is very important that this is the saved_unit, and not the inited_unit,
+        # because the underlying link logic requires it to have an "id".
+        self.assertTrue(mock_link.call_args[0][2] is saved_unit)
 
     @mock.patch('pulp_rpm.plugins.importers.yum.upload._link_errata_to_rpms')
     def test_handle_erratum_no_link(self, mock_link):
