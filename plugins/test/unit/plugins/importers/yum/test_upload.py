@@ -527,7 +527,7 @@ class UploadPackageTests(unittest.TestCase):
     def test_generate_rpm_data_user_checksum(self):
         # Test
         unit_key, metadata = upload._generate_rpm_data(self.upload_src_filename,
-                                                       {'checksum-type': 'sha1'})
+                                                       {'checksum_type': 'sha1'})
 
         # Verify
         self.assertEqual(unit_key['name'], 'walrus')
@@ -548,7 +548,7 @@ class UploadPackageTests(unittest.TestCase):
     def test_generate_rpm_data_user_checksum_null(self):
         # Test
         unit_key, metadata = upload._generate_rpm_data(self.upload_src_filename,
-                                                       {'checksum-type': None})
+                                                       {'checksum_type': None})
 
         # Verify
         self.assertEqual(unit_key['name'], 'walrus')

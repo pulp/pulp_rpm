@@ -333,7 +333,7 @@ def _generate_rpm_data(rpm_filename, user_metadata):
 
     # -- Unit Key -----------------------
     # Checksum
-    user_checksum = user_metadata.get('checksum-type')
+    user_checksum = user_metadata.get('checksum_type')
     if user_checksum:
         unit_key['checksumtype'] = user_checksum
     else:

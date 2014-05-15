@@ -53,8 +53,8 @@ class _CreatePackageCommand(UploadCommand):
     def generate_unit_key_and_metadata(self, filename, **kwargs):
         # These are extracted server-side, so nothing to do here.
         metadata = {}
-        if 'checksum-type' in kwargs:
-            metadata['checksum-type'] = kwargs['checksum-type']
+        if OPT_CHECKSUM_TYPE.keyword in kwargs:
+            metadata['checksum_type'] = kwargs[OPT_CHECKSUM_TYPE.keyword]
         return {}, metadata
 
     def create_upload_list(self, file_bundles, **kwargs):
