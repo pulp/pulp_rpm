@@ -18,7 +18,7 @@
 
 Name: pulp-rpm
 Version: 2.4.0
-Release: 0.13.beta%{?dist}
+Release: 0.14.beta%{?dist}
 Summary: Support for RPM content in the Pulp platform
 Group: Development/Languages
 License: GPLv2
@@ -262,6 +262,20 @@ A collection of yum plugins supplementing Pulp consumer operations.
 
 
 %changelog
+* Thu May 15 2014 Randy Barlow <rbarlow@redhat.com> 2.4.0-0.14.beta
+- 1097434 - The profile translates erratum to rpm unit keys.
+  (rbarlow@redhat.com)
+- 1097813 - post-upload linking of errata to rpms now works
+  (mhrivnak@redhat.com)
+- 1095829 - strip repomd.xml from treeinfo when appropriate
+  (cduryee@redhat.com)
+- 1096931 - removed CLI's attempt to display data that no longer exists
+  (mhrivnak@redhat.com)
+- 1093429 - Changing parameter name for repo create due to API change
+  (mhrivnak@redhat.com)
+- 1080455 - fixing rendering error in pulp-consumer bind and unbind commands
+  (skarmark@redhat.com)
+
 * Thu May 08 2014 Jeff Ortel <jortel@redhat.com> 2.4.0-0.13.beta
 - 1094404 - Fix to not delete all repo contents accidentally.
   (bmbouter@gmail.com)
