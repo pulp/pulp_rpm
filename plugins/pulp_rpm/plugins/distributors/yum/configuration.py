@@ -18,7 +18,7 @@ _LOG = util.getLogger(__name__)
 
 REQUIRED_CONFIG_KEYS = ('relative_url', 'http', 'https')
 
-OPTIONAL_CONFIG_KEYS = ('auth_ca', 'auth_cert', 'checksum_type',
+OPTIONAL_CONFIG_KEYS = ('gpgkey', 'auth_ca', 'auth_cert', 'checksum_type',
                         'http_publish_dir', 'https_publish_dir', 'protected',
                         'skip', 'skip_pkg_tags', 'use_createrepo')
 
