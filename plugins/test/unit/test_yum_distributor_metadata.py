@@ -170,6 +170,19 @@ class YumDistributorMetadataTests(unittest.TestCase):
         expected_content = '<?xml version="1.0" encoding="UTF-8"?>\n'
         self.assertEqual(content, expected_content)
 
+    def test_finalize_closed_gzip_file(self):
+        # this test makes sure that we can properly detect the closed state of
+        # a gzip file, because on python 2.6 we have to take special measures
+        # to do so.
+        path = os.path.join(os.path.dirname(__file__), '../data/foo.tar.gz')
+
+        context = MetadataFileContext('/a/b/c')
+        context.metadata_file_handle = gzip.open(path)
+        context.metadata_file_handle.close()
+
+        # just make sure this doesn't complain.
+        context.finalize()
+
     def test_finalize_checksum_type_none(self):
 
         path = os.path.join(self.metadata_file_dir, 'test.xml')
