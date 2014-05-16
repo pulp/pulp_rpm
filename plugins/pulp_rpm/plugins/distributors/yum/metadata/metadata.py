@@ -77,21 +77,7 @@ class MetadataFileContext(object):
         """
         Write the closing root level tag into the metadata file and close it.
         """
-        if self.metadata_file_handle is None:
-            # finalize has already been run or initialize has not been run
-            return
-
-        try:
-            is_closed = self.metadata_file_handle.closed
-        except AttributeError:
-            # python 2.6 doesn't have a "closed" attribute on a GzipFile,
-            # so we must look deeper.
-            if isinstance(self.metadata_file_handle, gzip.GzipFile):
-                is_closed = self.metadata_file_handle.myfileobj is None or self.metadata_file_handle.myfileobj.closed
-            else:
-                raise
-
-        if is_closed:
+        if self._is_closed(self.metadata_file_handle):
             # finalize has already been run or initialize has not been run
             return
 
@@ -187,10 +173,35 @@ class MetadataFileContext(object):
         """
         Flush any cached writes to the metadata file handle and close it.
         """
-        if self.metadata_file_handle is not None and not self.metadata_file_handle.closed:
+        if not self._is_closed(self.metadata_file_handle):
             _LOG.debug('Closing metadata file: %s' % self.metadata_file_path)
             self.metadata_file_handle.flush()
             self.metadata_file_handle.close()
+
+    @staticmethod
+    def _is_closed(file_object):
+        """
+        Determine if the file object has been closed. If it is None, it is assumed to be closed.
+
+        :param file_object: a file object
+        :type  file_object: file
+
+        :return:    True if the file object is closed or is None, otherwise False
+        :rtype:     bool
+        """
+        if file_object is None:
+            # finalize has already been run or initialize has not been run
+            return True
+
+        try:
+            return file_object.closed
+        except AttributeError:
+            # python 2.6 doesn't have a "closed" attribute on a GzipFile,
+            # so we must look deeper.
+            if isinstance(file_object, gzip.GzipFile):
+                return file_object.myfileobj is None or file_object.myfileobj.closed
+            else:
+                raise
 
 
 # -- pre-generated metadata context --------------------------------------------
