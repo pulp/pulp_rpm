@@ -84,6 +84,8 @@ class MetadataFileContext(object):
         try:
             is_closed = self.metadata_file_handle.closed
         except AttributeError:
+            # python 2.6 doesn't have a "closed" attribute on a GzipFile,
+            # so we must look deeper.
             if isinstance(self.metadata_file_handle, gzip.GzipFile):
                 is_closed = self.metadata_file_handle.myfileobj.closed
             else:
