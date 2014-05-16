@@ -18,7 +18,7 @@
 
 Name: pulp-rpm
 Version: 2.4.0
-Release: 0.14.beta%{?dist}
+Release: 0.15.beta%{?dist}
 Summary: Support for RPM content in the Pulp platform
 Group: Development/Languages
 License: GPLv2
@@ -262,6 +262,11 @@ A collection of yum plugins supplementing Pulp consumer operations.
 
 
 %changelog
+* Fri May 16 2014 Randy Barlow <rbarlow@redhat.com> 2.4.0-0.15.beta
+- 1095437 - convert checksum-type keyword to checksum_type (bcourt@redhat.com)
+- 1042932 - Update to use the step processor for exporting repos and repo
+  groups (bcourt@redhat.com)
+
 * Thu May 15 2014 Randy Barlow <rbarlow@redhat.com> 2.4.0-0.14.beta
 - 1097434 - The profile translates erratum to rpm unit keys.
   (rbarlow@redhat.com)
