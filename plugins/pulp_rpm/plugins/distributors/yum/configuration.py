@@ -2,17 +2,16 @@ import os
 from ConfigParser import SafeConfigParser
 from gettext import gettext as _
 
+from pulp.server.exceptions import MissingResource
 from pulp.server.managers import factory
 
 from pulp_rpm.common.constants import SCRATCHPAD_DEFAULT_METADATA_CHECKSUM, \
-    CONFIG_DEFAULT_CHECKSUM, CONFIG_KEY_CHECKSUM_TYPE, REPO_AUTH_CONFIG_FILE
+    CONFIG_DEFAULT_CHECKSUM, CONFIG_KEY_CHECKSUM_TYPE, REPO_AUTH_CONFIG_FILE, \
+    PUBLISH_HTTP_KEYWORD, PUBLISH_HTTPS_KEYWORD
 from pulp_rpm.common.ids import TYPE_ID_DISTRIBUTOR_YUM
 from pulp_rpm.repo_auth import protected_repo_utils, repo_cert_utils
 from pulp_rpm.yum_plugin import util
 
-
-
-# -- constants -----------------------------------------------------------------
 
 _LOG = util.getLogger(__name__)
 
@@ -26,8 +25,10 @@ ROOT_PUBLISH_DIR = '/var/lib/pulp/published/yum'
 MASTER_PUBLISH_DIR = os.path.join(ROOT_PUBLISH_DIR, 'master')
 HTTP_PUBLISH_DIR = os.path.join(ROOT_PUBLISH_DIR, 'http', 'repos')
 HTTPS_PUBLISH_DIR = os.path.join(ROOT_PUBLISH_DIR, 'https', 'repos')
-
-# -- public api ----------------------------------------------------------------
+HTTP_EXPORT_DIR = os.path.join(ROOT_PUBLISH_DIR, 'http', 'exports', 'repos')
+HTTPS_EXPORT_DIR = os.path.join(ROOT_PUBLISH_DIR, 'https', 'exports', 'repos')
+HTTP_EXPORT_GROUP_DIR = os.path.join(ROOT_PUBLISH_DIR, 'http', 'exports', 'repo_group')
+HTTPS_EXPORT_GROUP_DIR = os.path.join(ROOT_PUBLISH_DIR, 'https', 'exports', 'repo_group')
 
 
 def load_config(config_file_path):
@@ -170,17 +171,59 @@ def remove_cert_based_auth(repo, config):
     protected_repo_utils_instance.delete_protected_repo(relative_path)
 
 
-def get_master_publish_dir(repo):
+def get_master_publish_dir(repo, distributor_type):
     """
     Get the master publishing directory for the given repository.
 
     :param repo: repository to get the master publishing directory for
     :type  repo: pulp.plugins.model.Repository
+    :param distributor_type: The type id of distributor that is being published
+    :type distributor_type: str
     :return: master publishing directory for the given repository
     :rtype:  str
     """
 
-    return os.path.join(MASTER_PUBLISH_DIR, repo.id)
+    return os.path.join(MASTER_PUBLISH_DIR, distributor_type, repo.id)
+
+
+def get_export_repo_publish_dirs(repo, config):
+    """
+    Get the web publishing directories for a repo export
+
+    :param repo: repository to get the master publishing directory for
+    :type  repo: pulp.plugins.model.Repository
+    :param config: configuration instance
+    :type  config: pulp.plugins.config.PluginCallConfiguration
+    :return: list of publishing locations on disk
+    :rtype:  list of str
+    """
+    publish_dirs = []
+    if config.get(PUBLISH_HTTP_KEYWORD):
+        publish_dirs.append(os.path.join(HTTP_EXPORT_DIR, repo.id))
+    if config.get(PUBLISH_HTTPS_KEYWORD):
+        publish_dirs.append(os.path.join(HTTPS_EXPORT_DIR, repo.id))
+
+    return publish_dirs
+
+
+def get_export_repo_group_publish_dirs(repo, config):
+    """
+    Get the web publishing directories for exporting a repo group
+
+    :param repo: repository group
+    :type  repo: pulp.plugins.model.RepositoryGroup
+    :param config: configuration instance
+    :type  config: pulp.plugins.config.PluginCallConfiguration
+    :return: list of publishing locations on disk
+    :rtype:  list of str
+    """
+    publish_dirs = []
+    if config.get(PUBLISH_HTTP_KEYWORD):
+        publish_dirs.append(os.path.join(HTTP_EXPORT_GROUP_DIR, repo.id))
+    if config.get(PUBLISH_HTTPS_KEYWORD):
+        publish_dirs.append(os.path.join(HTTPS_EXPORT_GROUP_DIR, repo.id))
+
+    return publish_dirs
 
 
 def get_http_publish_dir(config=None):
@@ -278,12 +321,17 @@ def get_repo_checksum_type(publish_conduit, config):
     distributor_config = config.repo_plugin_config
     if 'checksum_type' not in distributor_config:
         distributor_manager = factory.repo_distributor_manager()
-        distributor = distributor_manager.get_distributor(publish_conduit.repo_id,
-                                                          publish_conduit.distributor_id)
-        if distributor['distributor_type_id'] == TYPE_ID_DISTRIBUTOR_YUM:
-            distributor_manager.update_distributor_config(publish_conduit.repo_id,
-                                                          publish_conduit.distributor_id,
-                                                          {'checksum_type': checksum_type})
+        try:
+            distributor = distributor_manager.get_distributor(publish_conduit.repo_id,
+                                                              publish_conduit.distributor_id)
+            if distributor['distributor_type_id'] == TYPE_ID_DISTRIBUTOR_YUM:
+                distributor_manager.update_distributor_config(publish_conduit.repo_id,
+                                                              publish_conduit.distributor_id,
+                                                              {'checksum_type': checksum_type})
+        except MissingResource:
+            # If the distributor doesn't exist on the repo (such as with a group distributor
+            # this is ok
+            pass
     return checksum_type
 
 

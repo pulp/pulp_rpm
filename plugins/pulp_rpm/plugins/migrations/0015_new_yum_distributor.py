@@ -161,7 +161,7 @@ def _re_publish_repository(repo, distributor):
     conduit = RepoPublishConduit(repo.id, distributor['id'])
     config = PluginCallConfiguration(NEW_DISTRIBUTOR_CONF, distributor['config'])
 
-    publisher = Publisher(repo, conduit, config)
+    publisher = Publisher(repo, conduit, config, YUM_DISTRIBUTOR_ID)
     publisher.publish()
 
 

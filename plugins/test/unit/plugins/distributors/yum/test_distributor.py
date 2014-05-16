@@ -149,31 +149,34 @@ class YumDistributorTests(unittest.TestCase):
         }
         compare_dict(result, target)
 
+    @patch('pulp_rpm.plugins.distributors.yum.distributor.configuration.get_repo_relative_path')
     @patch('pulp_rpm.plugins.distributors.yum.distributor.configuration.remove_cert_based_auth')
     @patch('pulp_rpm.plugins.distributors.yum.distributor.configuration.get_master_publish_dir')
     @patch('pulp_rpm.plugins.distributors.yum.distributor.configuration.get_http_publish_dir')
     @patch('pulp_rpm.plugins.distributors.yum.distributor.configuration.get_https_publish_dir')
-    def test_distributor_removed(self, mock_http, mock_https, mock_master, remove_cert):
-        repo_id = 'bar'
+    def test_distributor_removed(self, mock_http, mock_https, mock_master, remove_cert,
+                                 mock_rel_path):
         mock_http.return_value = os.path.join(self.working_dir, 'http')
         mock_https.return_value = os.path.join(self.working_dir, 'https')
         mock_master.return_value = os.path.join(self.working_dir, 'master')
-        os.makedirs(os.path.join(mock_http.return_value, repo_id))
-        os.makedirs(os.path.join(mock_https.return_value, repo_id))
-        os.makedirs(mock_master.return_value)
+        mock_rel_path.return_value = os.path.join('test_repo')
+        http_dir = os.path.join(mock_http.return_value, mock_rel_path.return_value)
+        https_dir = os.path.join(mock_https.return_value, mock_rel_path.return_value)
+        master_dir = os.path.join(mock_master.return_value, mock_rel_path.return_value)
+        os.makedirs(http_dir)
+        os.makedirs(https_dir)
+        os.makedirs(master_dir)
         os.makedirs(os.path.join(self.working_dir, 'working'))
         test_distributor = YumHTTPDistributor()
         repo = Mock()
-        repo.id = repo_id
         repo.working_dir = os.path.join(self.working_dir, 'working')
         config = {}
         test_distributor.distributor_removed(repo, config)
-
-        self.assertEqual(set(['http', 'https']), set(os.listdir(self.working_dir)))
+        self.assertFalse(os.path.exists(http_dir))
+        self.assertFalse(os.path.exists(https_dir))
+        self.assertFalse(os.path.exists(master_dir))
 
         remove_cert.assert_called_with(repo, config)
-        shutil.rmtree(mock_http.return_value, ignore_errors=True)
-        shutil.rmtree(mock_https.return_value, ignore_errors=True)
 
 
 class TestEntryPoint(unittest.TestCase):

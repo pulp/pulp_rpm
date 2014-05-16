@@ -66,7 +66,7 @@ def initialize(context):
 
     # Add the group section, all its subsections, and commands
     group_export_section = structure.repo_group_export_section(context.cli)
-    renderer = status.RpmGroupExportStatusRenderer(context)
+    renderer = PublishStepStatusRenderer(context)
     group_export_section.add_command(export.RpmGroupExportCommand(context, renderer))
     group_export_section.add_command(export.GroupExportStatusCommand(context, renderer))
 
@@ -93,8 +93,8 @@ def initialize(context):
     publish_section.add_command(sync_publish.PublishStatusCommand(context, renderer))
 
     repo_export_section = structure.repo_export_section(context.cli)
-    renderer = status.RpmExportStatusRenderer(context)
-    repo_export_section.add_command(export.RpmExportCommand(context))
+    renderer = PublishStepStatusRenderer(context)
+    repo_export_section.add_command(export.RpmExportCommand(context, renderer))
     repo_export_section.add_command(
         sync_publish.PublishStatusCommand(context, renderer, description=DESC_EXPORT_STATUS))
 

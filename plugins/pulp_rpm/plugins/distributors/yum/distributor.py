@@ -98,7 +98,7 @@ class YumHTTPDistributor(Distributor):
                                          configuration.get_repo_relative_path(repo, config))
         # remove the directories that might have been created for this repo/distributor
         dir_list = [repo.working_dir,
-                    configuration.get_master_publish_dir(repo),
+                    configuration.get_master_publish_dir(repo, TYPE_ID_DISTRIBUTOR_YUM),
                     http_publish_dir,
                     https_publish_dir]
 
@@ -126,7 +126,7 @@ class YumHTTPDistributor(Distributor):
         """
         _logger.debug('Publishing yum repository: %s' % repo.id)
 
-        self._publisher = publish.Publisher(repo, publish_conduit, config)
+        self._publisher = publish.Publisher(repo, publish_conduit, config, TYPE_ID_DISTRIBUTOR_YUM)
         return self._publisher.publish()
 
     def cancel_publish_repo(self):

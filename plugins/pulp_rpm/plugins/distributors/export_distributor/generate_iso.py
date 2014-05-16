@@ -49,21 +49,9 @@ def create_iso(target_dir, output_dir, prefix, image_size=DVD_ISO_SIZE, progress
     image_list = _compute_image_files(file_list, image_size)
     image_count = len(image_list)
 
-    # Update the progress report
-    iso_progress_status = export_utils.init_progress_report(image_count)
-    set_progress("isos", iso_progress_status, progress_callback)
-
     for i in range(image_count):
         name = "%s-%s-%02d.iso" % (prefix, start_time.strftime("%Y-%m-%dT%H.%M"), i + 1)
         _make_iso(image_list[i], target_dir, output_dir, name)
-
-        # Update the progress report
-        iso_progress_status[constants.PROGRESS_ITEMS_LEFT_KEY] -= 1
-        iso_progress_status[constants.PROGRESS_NUM_SUCCESS_KEY] += 1
-        set_progress("isos", iso_progress_status, progress_callback)
-
-    iso_progress_status["state"] = constants.STATE_COMPLETE
-    set_progress("isos", iso_progress_status, progress_callback)
 
 
 def _make_iso(file_list, target_dir, output_dir, filename):
@@ -164,21 +152,6 @@ def _compute_image_files(file_list, max_image_size):
         images.append(image)
 
     return images
-
-
-def set_progress(type_id, progress_status, progress_callback):
-    """
-    This just checks that progress_callback is not None before calling it
-
-    :param type_id:             The type id to use with the progress callback
-    :type  type_id:             str
-    :param progress_status:     The progress status to use with the progress callback
-    :type  progress_status:     dict
-    :param progress_callback:   The progress callback function to use
-    :type  progress_callback:   function
-    """
-    if progress_callback:
-        progress_callback(type_id, progress_status)
 
 
 def _get_grafts(img_file_paths, target_dir):
