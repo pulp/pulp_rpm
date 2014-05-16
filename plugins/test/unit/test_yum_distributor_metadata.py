@@ -3,7 +3,6 @@ import hashlib
 import os
 import shutil
 import unittest
-import mock
 
 from pulp.plugins.model import Unit
 
