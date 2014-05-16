@@ -77,7 +77,21 @@ class MetadataFileContext(object):
         """
         Write the closing root level tag into the metadata file and close it.
         """
-        if self.metadata_file_handle is None or self.metadata_file_handle.closed:
+        if self.metadata_file_handle is None:
+            # finalize has already been run or initialize has not been run
+            return
+
+        try:
+            is_closed = self.metadata_file_handle.closed
+        except AttributeError:
+            # python 2.6 doesn't have a "closed" attribute on a GzipFile,
+            # so we must look deeper.
+            if isinstance(self.metadata_file_handle, gzip.GzipFile):
+                is_closed = self.metadata_file_handle.myfileobj.closed
+            else:
+                raise
+
+        if is_closed:
             # finalize has already been run or initialize has not been run
             return
 
