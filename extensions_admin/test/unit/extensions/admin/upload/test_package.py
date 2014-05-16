@@ -2,7 +2,7 @@ import copy
 import os
 
 import mock
-from pulp.bindings.responses import Response
+from pulp.bindings.responses import Response, Task
 from pulp.client.commands.options import OPTION_REPO_ID
 from pulp.client.commands.repo.upload import UploadCommand, FileBundle
 
@@ -19,7 +19,6 @@ RPM_FILENAME = 'pulp-test-package-0.3.1-1.fc11.x86_64.rpm'
 
 
 class CreatePackageCommandTests(PulpClientTests):
-
     def setUp(self):
         super(CreatePackageCommandTests, self).setUp()
         self.upload_manager = mock.MagicMock()
@@ -67,8 +66,8 @@ class CreatePackageCommandTests(PulpClientTests):
         filename = os.path.join(RPM_DIR, RPM_FILENAME)
         orig_file_bundles = [FileBundle(filename)]
         user_args = {
-            FLAG_SKIP_EXISTING.keyword : True,
-            OPTION_REPO_ID.keyword : 'repo-1'
+            FLAG_SKIP_EXISTING.keyword: True,
+            OPTION_REPO_ID.keyword: 'repo-1'
         }
 
         # The format doesn't matter, it's just that the server doesn't return None.
@@ -76,6 +75,7 @@ class CreatePackageCommandTests(PulpClientTests):
         # will be returned indicating the second doesn't exist and should be present
         # in the returned upload list.
         search_results = [{}]
+
         def search_simulator(repo_id, **criteria):
             response = Response(200, copy.copy(search_results))
             if len(search_results):
@@ -97,18 +97,18 @@ class CreatePackageCommandTests(PulpClientTests):
             call_args = mock_search.call_args_list[file_bundle_index]
             self.assertEqual(call_args[0][0], 'repo-1')
             expected_filters = {
-                'name' : 'pulp-test-package',
-                'epoch' : '0',
-                'version' : '0.3.1',
-                'release' : '1.fc11',
-                'arch' : 'x86_64',
-                'checksumtype' : 'sha256',
-                'checksum' : '6bce3f26e1fc0fc52ac996f39c0d0e14fc26fb8077081d5b4dbfb6431b08aa9f',
+                'name': 'pulp-test-package',
+                'epoch': '0',
+                'version': '0.3.1',
+                'release': '1.fc11',
+                'arch': 'x86_64',
+                'checksumtype': 'sha256',
+                'checksum': '6bce3f26e1fc0fc52ac996f39c0d0e14fc26fb8077081d5b4dbfb6431b08aa9f',
             }
             expected_filters.update(orig_file_bundles[file_bundle_index].unit_key)
             expected_criteria_args = {
-                'type_ids' : [TYPE_ID_RPM],
-                'filters' : expected_filters,
+                'type_ids': [TYPE_ID_RPM],
+                'filters': expected_filters,
             }
             self.assertEqual(expected_criteria_args, call_args[1])
 
@@ -119,8 +119,8 @@ class CreatePackageCommandTests(PulpClientTests):
         # for any data.
         orig_file_bundles = [FileBundle('a'), FileBundle('b')]
         user_args = {
-            FLAG_SKIP_EXISTING.keyword : False,
-            OPTION_REPO_ID.keyword : 'repo-1'
+            FLAG_SKIP_EXISTING.keyword: False,
+            OPTION_REPO_ID.keyword: 'repo-1'
         }
 
         self.bindings.repo_unit.search = mock.MagicMock()
@@ -132,9 +132,20 @@ class CreatePackageCommandTests(PulpClientTests):
         self.assertEqual(orig_file_bundles, upload_file_bundles)
         self.assertEqual(0, self.bindings.repo_unit.search.call_count)
 
+    def test_succeeded(self):
+        self.command.prompt = mock.Mock()
+        task = Task({})
+        self.command.succeeded(task)
+        self.assertTrue(self.command.prompt.render_success_message.called)
+
+    def test_succeeded_error_in_result(self):
+        self.command.prompt = mock.Mock()
+        task = Task({'result': {'details': {'errors': ['foo']}}})
+        self.command.succeeded(task)
+        self.assertTrue(self.command.prompt.render_failure_message.called)
+
 
 class CreateRpmCommandTests(PulpClientTests):
-
     def setUp(self):
         super(CreateRpmCommandTests, self).setUp()
         self.upload_manager = mock.MagicMock()
@@ -150,7 +161,6 @@ class CreateRpmCommandTests(PulpClientTests):
 
 
 class CreateSrpmCommandTests(PulpClientTests):
-
     def setUp(self):
         super(CreateSrpmCommandTests, self).setUp()
         self.upload_manager = mock.MagicMock()
