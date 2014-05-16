@@ -170,6 +170,47 @@ class YumDistributorMetadataTests(unittest.TestCase):
         expected_content = '<?xml version="1.0" encoding="UTF-8"?>\n'
         self.assertEqual(content, expected_content)
 
+    def test_is_closed_gzip_file(self):
+        path = os.path.join(os.path.dirname(__file__), '../data/foo.tar.gz')
+
+        file_object = gzip.open(path)
+        file_object.close()
+
+        self.assertTrue(MetadataFileContext._is_closed(file_object))
+
+    def test_is_open_gzip_file(self):
+        path = os.path.join(os.path.dirname(__file__), '../data/foo.tar.gz')
+
+        file_object = gzip.open(path)
+
+        self.assertFalse(MetadataFileContext._is_closed(file_object))
+
+        file_object.close()
+
+    def test_is_closed_file(self):
+        path = os.path.join(os.path.dirname(__file__), '../data/foo.tar.gz')
+
+        # opening as a regular file, not with gzip
+        file_object = open(path)
+        file_object.close()
+
+        self.assertTrue(MetadataFileContext._is_closed(file_object))
+
+    def test_is_open_file(self):
+        path = os.path.join(os.path.dirname(__file__), '../data/foo.tar.gz')
+
+        # opening as a regular file, not with gzip
+        file_object = open(path)
+
+        self.assertFalse(MetadataFileContext._is_closed(file_object))
+
+        file_object.close()
+
+    def test_is_closed_file_attribute_error(self):
+        # passing in a list gives it an object that does not have a closed attribute, thus triggering
+        # an Attribute error that cannot be solved with the python 2.6 compatibility code
+        self.assertRaises(AttributeError, MetadataFileContext._is_closed, [])
+
     def test_finalize_closed_gzip_file(self):
         # this test makes sure that we can properly detect the closed state of
         # a gzip file, because on python 2.6 we have to take special measures
