@@ -329,7 +329,7 @@ class PublishRpmStep(UnitPublishStep):
         """
         Create each of the three metadata contexts required for publishing RPM & SRPM
         """
-        total = self._get_total([TYPE_ID_RPM, TYPE_ID_SRPM])
+        total = self._get_total()
 
         checksum_type = self.parent.get_checksum_type()
         self.file_lists_context = FilelistsXMLFileContext(self.get_working_dir(), total,
