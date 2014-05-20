@@ -61,6 +61,9 @@ popd
 
 %install
 rm -rf %{buildroot}
+
+mkdir -p %{buildroot}/%{_sysconfdir}/pulp
+
 pushd common
 %{__python} setup.py install -O1 --skip-build --root %{buildroot}
 popd
@@ -102,7 +105,6 @@ cp -R plugins/types %{buildroot}/%{_usr}/lib/pulp/plugins
 %endif # End pulp_server if block
 
 # Directories
-mkdir -p %{buildroot}/%{_sysconfdir}/pulp
 mkdir -p %{buildroot}/%{_sysconfdir}/pki/pulp/content
 mkdir -p %{buildroot}/%{_sysconfdir}/yum.repos.d
 mkdir -p %{buildroot}/%{_usr}/lib/pulp/consumer/extensions
