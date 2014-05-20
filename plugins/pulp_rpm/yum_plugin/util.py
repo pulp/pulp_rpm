@@ -81,14 +81,11 @@ def get_relpath_from_unit(unit):
     @return relative path
     @rtype str
     """
-    filename = ""
-    if unit.metadata.has_key("relativepath"):
-        relpath = unit.metadata["relativepath"]
-    elif unit.metadata.has_key("filename"):
+    if "filename" in unit.metadata:
         relpath = unit.metadata["filename"]
-    elif unit.unit_key.has_key("fileName"):
+    elif "fileName" in unit.unit_key:
         relpath = unit.unit_key["fileName"]
-    elif unit.unit_key.has_key("filename"):
+    elif "filename" in unit.unit_key:
         relpath = unit.unit_key["filename"]
     else:
         relpath = os.path.basename(unit.storage_path)
