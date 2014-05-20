@@ -2,7 +2,7 @@ import os
 import shutil
 import unittest
 
-from pulp.client.lock import Lock
+from pulp.common.lock import Lock
 
 from pulp_rpm.handlers import repolib
 from pulp_rpm.handlers.repo_file import MirrorListFile, RepoFile, Repo

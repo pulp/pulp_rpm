@@ -11,7 +11,7 @@ import os
 
 # Pulp
 from logging import getLogger
-from pulp.client.lock import Lock
+from pulp.common.lock import Lock
 from pulp.common.util import decode_unicode
 from pulp_rpm.handlers.repo_file import Repo, RepoFile, MirrorListFile, RepoKeyFiles, CertFiles
 
