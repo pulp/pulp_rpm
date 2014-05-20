@@ -132,6 +132,7 @@ rm -rf %{buildroot}
 Summary: Pulp RPM support common library
 Group: Development/Languages
 Requires: python-pulp-common = %{pulp_version}
+Obsoletes: python-pulp-rpm-extension <= 2.4.0
 
 %description -n python-pulp-rpm-common
 A collection of modules shared among all RPM components.
