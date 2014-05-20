@@ -1,17 +1,13 @@
-# Copyright (c) 2010 Red Hat, Inc.
-#
-# This software is licensed to you under the GNU General Public
-# License as published by the Free Software Foundation; either version
-# 2 of the License (GPLv2) or (at your option) any later version.
-# There is NO WARRANTY for this software, express or implied,
-# including the implied warranties of MERCHANTABILITY,
-# NON-INFRINGEMENT, or FITNESS FOR A PARTICULAR PURPOSE. You should
-# have received a copy of GPLv2 along with this software; if not, see
-# http://www.gnu.org/licenses/old-licenses/gpl-2.0
-
-
 %{!?python_sitelib: %global python_sitelib %(%{__python} -c "from distutils.sysconfig import get_python_lib; print(get_python_lib())")}
 %{!?python_sitearch: %global python_sitearch %(%{__python} -c "from distutils.sysconfig import get_python_lib; print(get_python_lib(1))")}
+
+%if 0%{?rhel} == 5
+%define pulp_admin 0
+%define pulp_server 0
+%else
+%define pulp_admin 1
+%define pulp_server 1
+%endif
 
 
 # ---- Pulp (rpm) --------------------------------------------------------------
@@ -30,14 +26,6 @@ BuildRequires:  python2-devel
 BuildRequires:  python-setuptools
 BuildRequires:  rpm-python
 
-%if 0%{?rhel} == 5
-# RHEL-5
-Requires: mkisofs
-%else
-# RHEL-6 & Fedora
-Requires: genisoimage
-%endif
-
 %description
 Provides a collection of platform plugins, client extensions and agent
 handlers that provide RPM support.
@@ -50,67 +38,82 @@ handlers that provide RPM support.
 pushd common
 %{__python} setup.py build
 popd
+
+%if %{pulp_admin}
 pushd extensions_admin
 %{__python} setup.py build
 popd
+%endif # End pulp_admin if block
+
 pushd extensions_consumer
 %{__python} setup.py build
 popd
+
 pushd handlers
 %{__python} setup.py build
 popd
+
+%if %{pulp_server}
 pushd plugins
 %{__python} setup.py build
 popd
+%endif # End pulp_server if block
 
 %install
 rm -rf %{buildroot}
 pushd common
 %{__python} setup.py install -O1 --skip-build --root %{buildroot}
 popd
+
+%if %{pulp_admin}
 pushd extensions_admin
 %{__python} setup.py install -O1 --skip-build --root %{buildroot}
 popd
+
+mkdir -p %{buildroot}/%{_usr}/lib/pulp/admin/extensions
+%endif # End pulp_admin if block
+
 pushd extensions_consumer
 %{__python} setup.py install -O1 --skip-build --root %{buildroot}
 popd
+
 pushd handlers
 %{__python} setup.py install -O1 --skip-build --root %{buildroot}
 popd
+
+%if %{pulp_server}
 pushd plugins
 %{__python} setup.py install -O1 --skip-build --root %{buildroot}
 popd
 
-# Directories
 mkdir -p /srv
-mkdir -p %{buildroot}/%{_sysconfdir}/pulp
-mkdir -p %{buildroot}/%{_sysconfdir}/pki/pulp/content
-mkdir -p %{buildroot}/%{_sysconfdir}/yum.repos.d
-mkdir -p %{buildroot}/%{_usr}/lib
 mkdir -p %{buildroot}/%{_usr}/lib/pulp/plugins
-mkdir -p %{buildroot}/%{_usr}/lib/pulp/admin/extensions
-mkdir -p %{buildroot}/%{_usr}/lib/pulp/consumer/extensions
-mkdir -p %{buildroot}/%{_usr}/lib/pulp/agent/handlers
 mkdir -p %{buildroot}/%{_var}/lib/pulp/published/yum/http
 mkdir -p %{buildroot}/%{_var}/lib/pulp/published/yum/https
 
-# Configuration
 cp -R plugins/etc/httpd %{buildroot}/%{_sysconfdir}
 cp -R plugins/etc/pulp %{buildroot}/%{_sysconfdir}
-cp -R handlers/etc/yum %{buildroot}/%{_sysconfdir}
-cp -R handlers/etc/pulp %{buildroot}/%{_sysconfdir}
 
 # WSGI
 cp -R plugins/srv %{buildroot}
 
-# Plugins
-# cp -R pulp_rpm/plugins/* %{buildroot}/%{_usr}/lib/pulp/plugins
+# Type files
+cp -R plugins/types %{buildroot}/%{_usr}/lib/pulp/plugins
+%endif # End pulp_server if block
+
+# Directories
+mkdir -p %{buildroot}/%{_sysconfdir}/pulp
+mkdir -p %{buildroot}/%{_sysconfdir}/pki/pulp/content
+mkdir -p %{buildroot}/%{_sysconfdir}/yum.repos.d
+mkdir -p %{buildroot}/%{_usr}/lib/pulp/consumer/extensions
+mkdir -p %{buildroot}/%{_usr}/lib/pulp/agent/handlers
+
+# Configuration
+cp -R handlers/etc/yum %{buildroot}/%{_sysconfdir}
+cp -R handlers/etc/pulp %{buildroot}/%{_sysconfdir}
 
 # Yum Plugins
 cp -R handlers/usr/lib/yum-plugins %{buildroot}/%{_usr}/lib
-
-# Type files
-cp -R plugins/types %{buildroot}/%{_usr}/lib/pulp/plugins
 
 # Ghost repository file for consumers
 touch %{buildroot}/%{_sysconfdir}/yum.repos.d/pulp.repo
@@ -147,7 +150,7 @@ A collection of modules shared among all RPM components.
 %doc LICENSE COPYRIGHT
 
 # ---- Plugins -----------------------------------------------------------------
-
+%if %{pulp_server}
 %package plugins
 Summary: Pulp RPM plugins
 Group: Development/Languages
@@ -157,6 +160,8 @@ Requires: createrepo >= 0.9.9-21
 Requires: python-rhsm >= 1.8.0
 Requires: pyliblzma
 Requires: python-nectar >= 1.2.1
+Requires: genisoimage
+
 %description plugins
 Provides a collection of platform plugins that extend the Pulp platform
 to provide RPM specific support.
@@ -178,10 +183,11 @@ to provide RPM specific support.
 %defattr(-,root,root,-)
 /srv/pulp/repo_auth.wsgi
 %doc LICENSE COPYRIGHT
+%endif # End pulp_server if block
 
 
 # ---- Admin Extensions --------------------------------------------------------
-
+%if %{pulp_admin}
 %package admin-extensions
 Summary: The RPM admin client extensions
 Group: Development/Languages
@@ -196,6 +202,7 @@ client capabilites with RPM specific features.
 %{python_sitelib}/pulp_rpm_extensions_admin*.egg-info
 %{python_sitelib}/pulp_rpm/extensions/admin/
 %doc LICENSE COPYRIGHT
+%endif # End pulp_admin if block
 
 
 # ---- Consumer Extensions -----------------------------------------------------
