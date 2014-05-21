@@ -14,7 +14,7 @@
 
 Name: pulp-rpm
 Version: 2.4.0
-Release: 0.17.beta%{?dist}
+Release: 0.18.beta%{?dist}
 Summary: Support for RPM content in the Pulp platform
 Group: Development/Languages
 License: GPLv2
@@ -272,6 +272,12 @@ A collection of yum plugins supplementing Pulp consumer operations.
 
 
 %changelog
+* Wed May 21 2014 Randy Barlow <rbarlow@redhat.com> 2.4.0-0.18.beta
+- 1096931 - improving repo update command to better detect spawned tasks
+  (mhrivnak@redhat.com)
+- 1051700 - Don't build plugins or admin extensions on RHEL 5.
+  (rbarlow@redhat.com)
+
 * Tue May 20 2014 Jeff Ortel <jortel@redhat.com> 2.4.0-0.17.beta
 - 1099236 - add Obsoletes for python-pulp-rpm-extension (cduryee@redhat.com)
 - 1098844 - updating yum distributor to publish rpms at the same level as
