@@ -257,8 +257,12 @@ class RpmRepoUpdateCommand(UpdateRepositoryCommand, ImporterConfigMixin):
             self.prompt.render_failure_message(str(e))
             return
 
-        distributor_configs = {ids.TYPE_ID_DISTRIBUTOR_YUM : yum_distributor_config,
-                               ids.TYPE_ID_DISTRIBUTOR_EXPORT : export_distributor_config}
+        # only add distributors if they actually have changes
+        distributor_configs = {}
+        if yum_distributor_config:
+            distributor_configs[ids.TYPE_ID_DISTRIBUTOR_YUM] = yum_distributor_config
+        if export_distributor_config:
+            distributor_configs[ids.TYPE_ID_DISTRIBUTOR_EXPORT] = export_distributor_config
 
         response = self.context.server.repo.update_repo_and_plugins(
             repo_id, display_name, description, notes,
@@ -269,10 +273,7 @@ class RpmRepoUpdateCommand(UpdateRepositoryCommand, ImporterConfigMixin):
             msg = _('Repository [%(r)s] successfully updated')
             self.prompt.render_success_message(msg % {'r' : repo_id})
         else:
-            msg = _('Repository update postponed due to another operation. '
-                    'Progress on this task can be viewed using the commands '
-                    'under "repo tasks"')
-            self.prompt.render_paragraph(msg)
+            self.poll([response.response_body], kwargs)
 
 
 # -- utilities ----------------------------------------------------------------
