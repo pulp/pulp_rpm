@@ -73,7 +73,7 @@ class TestRepoGroupExportRunCommand(PulpClientTests):
         """
         Test to make sure the export run command is set up correctly
         """
-        mock_renderer = mock.Mock(spec=status.RpmGroupExportStatusRenderer)
+        mock_renderer = mock.Mock(spec=status.StatusRenderer)
         expected_options = [FLAG_BACKGROUND,
                             options.OPTION_GROUP_ID,
                             export.OPTION_EXPORT_DIR,
@@ -217,7 +217,7 @@ class TestRepoGroupExportStatusCommand(PulpClientTests):
         Test to make sure the correct options are added
         """
         # Setup
-        mock_renderer = mock.Mock(spec=status.RpmGroupExportStatusRenderer)
+        mock_renderer = mock.Mock(spec=status.StatusRenderer)
 
         # Test
         command = export.GroupExportStatusCommand(self.context, mock_renderer)
