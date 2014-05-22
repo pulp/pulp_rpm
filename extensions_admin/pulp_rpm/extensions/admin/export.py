@@ -9,8 +9,6 @@ from pulp.client.extensions.extensions import PulpCliOption
 from pulp.common import tags as tag_utils
 
 from pulp_rpm.common import ids, constants
-from pulp_rpm.extensions.admin.status import RpmExportStatusRenderer
-
 
 
 # -- commands -----------------------------------------------------------------
