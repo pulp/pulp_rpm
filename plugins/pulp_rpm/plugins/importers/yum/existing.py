@@ -111,9 +111,11 @@ def check_all_and_associate(wanted, sync_conduit):
             # the unit in given repository.
             if rpm_or_srpm:
                 unit_key = unit.unit_key
-                relative_path = os.path.join(unit_key['name'], unit_key['version'],
-                                             unit_key['release'], unit_key['arch'],
-                                             unit_key['checksum'], unit.metadata['filename'])
+                rpm_or_srpm_unit = model(unit_key['name'], unit_key['epoch'], unit_key['version'],
+                                         unit_key['release'], unit_key['arch'],
+                                         unit_key['checksumtype'], unit_key['checksum'],
+                                         unit.metadata)
+                relative_path = rpm_or_srpm_unit.relative_path
             else:
                 relative_path = get_relpath_from_unit(unit)
             downloaded_unit = sync_conduit.init_unit(unit_type, unit.unit_key,
