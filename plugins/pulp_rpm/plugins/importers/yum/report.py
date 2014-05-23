@@ -1,7 +1,14 @@
 # -*- coding: utf-8 -*-
 
+from gettext import gettext as _
+import logging
+
 from pulp_rpm.common import constants
 from pulp_rpm.plugins.db import models
+
+
+_logger = logging.getLogger(__name__)
+
 
 type_done_map = {
     models.RPM.TYPE: 'rpm_done',
@@ -52,6 +59,8 @@ class ContentReport(dict):
 
     def success(self, model):
         self['items_left'] -= 1
+        if self['items_left'] % 100 == 0:
+            _logger.debug(_('%(n)s items left to download.') % {'n': self['items_left']})
         self['size_left'] -= model.metadata['size']
         done_attribute = type_done_map[model.TYPE]
         self['details'][done_attribute] += 1
