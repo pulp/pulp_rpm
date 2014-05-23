@@ -135,10 +135,16 @@ def get_all_existing_units(search_dicts, unit_fields, unit_type, search_method):
     given search_method.
 
     :param search_dicts:  unit keys generator
+    :type search_dicts:   iterator of unit keys
     :param unit_fields:   unit fields to be requested to the search_method
+    :type unit_fields:    list or tuple
     :param unit_type:     unit type
+    :type unit_type:      basestring
     :param search_method: search method to be used to search for non-repo-specific units
+    :type search_method:  a search method accepting a unit type and
+                          pulp.server.db.criteria.Criteria as parameters
     :return:              generator of Units found using the search_method
+    :rtype:               iterator of pulp.plugins.model.Unit
     """
     # Instead of separate query for each unit, we are using paginate to query
     # for a lot of units at once.
