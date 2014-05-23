@@ -307,7 +307,13 @@ class RepoSync(object):
                                                                      primary.PACKAGE_TAG,
                                                                      primary.process_package_element)
             wanted = self._identify_wanted_versions(package_info_generator)
-            to_download = existing.check_repo(wanted.iterkeys(), self.sync_conduit.get_units)
+            # check for the units that are already in the repo
+            not_found_in_the_repo = existing.check_repo(wanted.iterkeys(),
+                                                        self.sync_conduit.get_units)
+            # check for the units that are not in the repo, but exist on the server
+            # and associate them to the repo
+            to_download = existing.check_all_and_associate(not_found_in_the_repo,
+                                                           self.sync_conduit)
             count = len(to_download)
             size = 0
             for unit in to_download:
@@ -337,7 +343,13 @@ class RepoSync(object):
                                                                          presto.PACKAGE_TAG,
                                                                          presto.process_package_element)
                 wanted = self._identify_wanted_versions(package_info_generator)
-                to_download = existing.check_repo(wanted.iterkeys(), self.sync_conduit.get_units)
+                # check for the units that are already in the repo
+                not_found_in_the_repo = existing.check_repo(wanted.iterkeys(),
+                                                            self.sync_conduit.get_units)
+                # check for the units that are not in the repo, but exist on the server
+                # and associate them to the repo
+                to_download = existing.check_all_and_associate(not_found_in_the_repo,
+                                                               self.sync_conduit)
                 count = len(to_download)
                 size = 0
                 for unit in to_download:
@@ -375,12 +387,9 @@ class RepoSync(object):
                                                                       primary.PACKAGE_TAG,
                                                                       primary.process_package_element)
             units_to_download = self._filtered_unit_generator(package_model_generator, rpms_to_download)
-            new_units_to_download = existing.associate_already_downloaded_units(models.RPM.TYPE,
-                                                                                units_to_download,
-                                                                                self.sync_conduit)
 
             download_wrapper = packages.Packages(self.sync_feed, self.nectar_config,
-                                                 new_units_to_download, self.tmp_dir, event_listener)
+                                                 units_to_download, self.tmp_dir, event_listener)
             # allow the downloader to be accessed by the cancel method if necessary
             self.downloader = download_wrapper.downloader
             download_wrapper.download_packages()
@@ -396,12 +405,9 @@ class RepoSync(object):
                                                                           presto.PACKAGE_TAG,
                                                                           presto.process_package_element)
                 units_to_download = self._filtered_unit_generator(package_model_generator, drpms_to_download)
-                new_units_to_download = existing.associate_already_downloaded_units(models.DRPM.TYPE,
-                                                                                    units_to_download,
-                                                                                    self.sync_conduit)
 
                 download_wrapper = packages.Packages(self.sync_feed, self.nectar_config,
-                                                     new_units_to_download, self.tmp_dir, event_listener)
+                                                     units_to_download, self.tmp_dir, event_listener)
                 # allow the downloader to be accessed by the cancel method if necessary
                 self.downloader = download_wrapper.downloader
                 download_wrapper.download_packages()

@@ -14,7 +14,7 @@ import pulp.server.managers.factory as manager_factory
 
 from pulp_rpm.common import constants
 from pulp_rpm.plugins.db import models
-from pulp_rpm.plugins.importers.yum.existing import associate_already_downloaded_units
+from pulp_rpm.plugins.importers.yum.existing import check_all_and_associate
 from pulp_rpm.plugins.importers.yum.repomd import metadata, group, updateinfo, packages, presto, primary
 from pulp_rpm.plugins.importers.yum.sync import RepoSync, FailedException, CancelException
 from pulp_rpm.plugins.importers.yum.parse import treeinfo
@@ -886,23 +886,77 @@ class TestAlreadyDownloadedUnits(BaseSyncTest):
 
     @mock.patch('pulp.plugins.conduits.repo_sync.RepoSyncConduit.search_all_units', autospec=True)
     @mock.patch('pulp.plugins.conduits.repo_sync.RepoSyncConduit.save_unit', autospec=True)
-    def test_associate_already_downloaded_units_positive(self, mock_save, mock_search_all_units):
+    @mock.patch('os.path.isfile', autospec=True)
+    def test_rpms_check_all_and_associate_positive(self, mock_isfile, mock_save, mock_search_all_units):
         units = model_factory.rpm_models(3)
         mock_search_all_units.return_value = units
+        mock_isfile.return_value = True
+        input_units = set([unit.as_named_tuple for unit in units])
         for unit in units:
-            unit.metadata['relativepath'] = 'test-relative-path'
             unit.metadata['filename'] = 'test-filename'
-        result = associate_already_downloaded_units(models.RPM.TYPE, units, self.conduit)
+            unit.storage_path = "existing_storage_path"
+        result = check_all_and_associate(input_units, self.conduit)
         self.assertEqual(len(list(result)), 0)
 
     @mock.patch('pulp.plugins.conduits.repo_sync.RepoSyncConduit.search_all_units', autospec=True)
     @mock.patch('pulp.plugins.conduits.repo_sync.RepoSyncConduit.save_unit', autospec=True)
-    def test_associate_already_downloaded_units_negative(self, mock_save, mock_search_all_units):
+    @mock.patch('os.path.isfile', autospec=True)
+    def test_rpms_check_all_and_associate_negative(self, mock_isfile, mock_save, mock_search_all_units):
         mock_search_all_units.return_value = []
+        mock_isfile.return_value = True
         units = model_factory.rpm_models(3)
+        input_units = set([unit.as_named_tuple for unit in units])
+        result = check_all_and_associate(input_units, self.conduit)
+        self.assertEqual(len(list(result)), 3)
+
+    @mock.patch('pulp.plugins.conduits.repo_sync.RepoSyncConduit.search_all_units', autospec=True)
+    @mock.patch('pulp.plugins.conduits.repo_sync.RepoSyncConduit.save_unit', autospec=True)
+    @mock.patch('os.path.isfile', autospec=True)
+    def test_srpms_check_all_and_associate_positive(self, mock_isfile, mock_save, mock_search_all_units):
+        units = model_factory.srpm_models(3)
+        mock_search_all_units.return_value = units
+        mock_isfile.return_value = True
+        input_units = set([unit.as_named_tuple for unit in units])
         for unit in units:
-            unit.metadata['relativepath'] = 'test-relative-path'
-        result = associate_already_downloaded_units(models.RPM.TYPE, units, self.conduit)
+            unit.metadata['filename'] = 'test-filename'
+            unit.storage_path = "existing_storage_path"
+        result = check_all_and_associate(input_units, self.conduit)
+        self.assertEqual(len(list(result)), 0)
+
+    @mock.patch('pulp.plugins.conduits.repo_sync.RepoSyncConduit.search_all_units', autospec=True)
+    @mock.patch('pulp.plugins.conduits.repo_sync.RepoSyncConduit.save_unit', autospec=True)
+    @mock.patch('os.path.isfile', autospec=True)
+    def test_srpms_check_all_and_associate_negative(self, mock_isfile, mock_save, mock_search_all_units):
+        mock_search_all_units.return_value = []
+        mock_isfile.return_value = True
+        units = model_factory.srpm_models(3)
+        input_units = set([unit.as_named_tuple for unit in units])
+        result = check_all_and_associate(input_units, self.conduit)
+        self.assertEqual(len(list(result)), 3)
+
+    @mock.patch('pulp.plugins.conduits.repo_sync.RepoSyncConduit.search_all_units', autospec=True)
+    @mock.patch('pulp.plugins.conduits.repo_sync.RepoSyncConduit.save_unit', autospec=True)
+    @mock.patch('os.path.isfile', autospec=True)
+    def test_drpms_check_all_and_associate_positive(self, mock_isfile, mock_save, mock_search_all_units):
+        units = model_factory.drpm_models(3)
+        mock_search_all_units.return_value = units
+        mock_isfile.return_value = True
+        input_units = set([unit.as_named_tuple for unit in units])
+        for unit in units:
+            unit.metadata['filename'] = 'test-filename'
+            unit.storage_path = "existing_storage_path"
+        result = check_all_and_associate(input_units, self.conduit)
+        self.assertEqual(len(list(result)), 0)
+
+    @mock.patch('pulp.plugins.conduits.repo_sync.RepoSyncConduit.search_all_units', autospec=True)
+    @mock.patch('pulp.plugins.conduits.repo_sync.RepoSyncConduit.save_unit', autospec=True)
+    @mock.patch('os.path.isfile', autospec=True)
+    def test_drpms_check_all_and_associate_negative(self, mock_isfile, mock_save, mock_search_all_units):
+        mock_search_all_units.return_value = []
+        mock_isfile.return_value = True
+        units = model_factory.drpm_models(3)
+        input_units = set([unit.as_named_tuple for unit in units])
+        result = check_all_and_associate(input_units, self.conduit)
         self.assertEqual(len(list(result)), 3)
 
 
