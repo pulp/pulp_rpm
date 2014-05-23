@@ -1,4 +1,6 @@
+from gettext import gettext as _
 import functools
+import logging
 
 from pulp.common.plugins import importer_constants
 from pulp.server.db.model.criteria import UnitAssociationCriteria
@@ -6,6 +8,9 @@ from pulp.server.managers.repo.unit_association import OWNER_TYPE_IMPORTER
 
 from pulp_rpm.plugins.db import models
 from pulp_rpm.plugins.importers.yum.repomd import packages, primary, presto, updateinfo, group
+
+
+_logger = logging.getLogger(__name__)
 
 
 def purge_unwanted_units(metadata_files, conduit, config):
