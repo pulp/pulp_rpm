@@ -1,4 +1,6 @@
+from gettext import gettext as _
 import functools
+import logging
 
 from pulp.common.plugins import importer_constants
 from pulp.server.db.model.criteria import UnitAssociationCriteria
@@ -6,6 +8,9 @@ from pulp.server.managers.repo.unit_association import OWNER_TYPE_IMPORTER
 
 from pulp_rpm.plugins.db import models
 from pulp_rpm.plugins.importers.yum.repomd import packages, primary, presto, updateinfo, group
+
+
+_logger = logging.getLogger(__name__)
 
 
 def purge_unwanted_units(metadata_files, conduit, config):
@@ -26,6 +31,7 @@ def purge_unwanted_units(metadata_files, conduit, config):
     :type  config:          pulp.plugins.config.PluginCallConfiguration
     """
     if config.get_boolean(importer_constants.KEY_UNITS_REMOVE_MISSING) is True:
+        _logger.info(_('Removing missing units.'))
         remove_missing_rpms(metadata_files, conduit)
         remove_missing_drpms(metadata_files, conduit)
         remove_missing_errata(metadata_files, conduit)
@@ -35,6 +41,7 @@ def purge_unwanted_units(metadata_files, conduit, config):
 
     retain_old_count = config.get(importer_constants.KEY_UNITS_RETAIN_OLD_COUNT)
     if retain_old_count is not None:
+        _logger.info(_('Removing old units.'))
         num_to_keep = int(retain_old_count) + 1
         remove_old_versions(num_to_keep, conduit)
 

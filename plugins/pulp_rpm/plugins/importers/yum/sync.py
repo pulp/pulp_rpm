@@ -17,7 +17,7 @@ from pulp_rpm.plugins.importers.yum.parse import treeinfo
 from pulp_rpm.plugins.importers.yum.report import ContentReport, DistributionReport
 
 
-_LOGGER = logging.getLogger(__name__)
+_logger = logging.getLogger(__name__)
 
 
 class CancelException(Exception):
@@ -115,6 +115,7 @@ class RepoSync(object):
                 self.content_report['state'] = constants.STATE_COMPLETE
             self.set_progress()
 
+            _logger.info(_('Downloading additional units.'))
             if models.Distribution.TYPE in self.call_config.get(constants.CONFIG_SKIP, []):
                 self.distribution_report['state'] = constants.STATE_SKIPPED
             else:
@@ -149,7 +150,7 @@ class RepoSync(object):
             return report
 
         except Exception, e:
-            _LOGGER.exception('sync failed')
+            _logger.exception('sync failed')
             for step, value in self.progress_status.iteritems():
                 if value.get('state') == constants.STATE_RUNNING:
                     value['state'] = constants.STATE_FAILED
@@ -162,6 +163,7 @@ class RepoSync(object):
             # clean up whatever we may have left behind
             shutil.rmtree(self.tmp_dir, ignore_errors=True)
 
+        _logger.info(_('Sync complete.'))
         return self.sync_conduit.build_success_report(self._progress_summary, self.progress_status)
 
     @property
@@ -185,6 +187,7 @@ class RepoSync(object):
                     identified and downloaded.
         :rtype:     pulp_rpm.plugins.importers.yum.repomd.metadata.MetadataFiles
         """
+        _logger.info(_('Downloading metadata from %(feed)s.') % {'feed': self.sync_feed})
         metadata_files = metadata.MetadataFiles(self.sync_feed, self.tmp_dir, self.nectar_config)
         # allow the downloader to be accessed by the cancel method if necessary
         self.downloader = metadata_files.downloader
@@ -200,6 +203,7 @@ class RepoSync(object):
 
         metadata_files.download_metadata_files()
         self.downloader = None
+        _logger.info(_('Generating metadata databases.'))
         metadata_files.generate_dbs()
         self.import_unknown_metadata_files(metadata_files)
         # TODO: verify metadata
@@ -274,6 +278,7 @@ class RepoSync(object):
         :return:    tuple of (set(RPM.NAMEDTUPLEs), set(DRPM.NAMEDTUPLEs))
         :rtype:     tuple
         """
+        _logger.info(_('Determining which units need to be downloaded.'))
         rpms_to_download, rpms_count, rpms_total_size = self._decide_rpms_to_download(metadata_files)
         drpms_to_download, drpms_count, drpms_total_size = self._decide_drpms_to_download(metadata_files)
 
@@ -298,7 +303,7 @@ class RepoSync(object):
         :rtype:     tuple
         """
         if models.RPM.TYPE in self.call_config.get(constants.CONFIG_SKIP, []):
-            _LOGGER.debug('skipping RPM sync')
+            _logger.debug('skipping RPM sync')
             return set(), 0, 0
         primary_file_handle = metadata_files.get_metadata_file_handle(primary.METADATA_FILE_NAME)
         try:
@@ -334,7 +339,7 @@ class RepoSync(object):
         :rtype:     tuple
         """
         if models.DRPM.TYPE in self.call_config.get(constants.CONFIG_SKIP, []):
-            _LOGGER.debug('skipping DRPM sync')
+            _logger.debug('skipping DRPM sync')
             return set(), 0, 0
         presto_file_handle = metadata_files.get_metadata_file_handle(presto.METADATA_FILE_NAME)
         if presto_file_handle:
@@ -392,6 +397,7 @@ class RepoSync(object):
                                                  units_to_download, self.tmp_dir, event_listener)
             # allow the downloader to be accessed by the cancel method if necessary
             self.downloader = download_wrapper.downloader
+            _logger.info(_('Downloading %(num)s RPMs.') % {'num': len(rpms_to_download)})
             download_wrapper.download_packages()
             self.downloader = None
         finally:
@@ -410,6 +416,7 @@ class RepoSync(object):
                                                      units_to_download, self.tmp_dir, event_listener)
                 # allow the downloader to be accessed by the cancel method if necessary
                 self.downloader = download_wrapper.downloader
+                _logger.info(_('Downloading %(num)s DRPMs.') % {'num': len(drpms_to_download)})
                 download_wrapper.download_packages()
                 self.downloader = None
             finally:
@@ -431,7 +438,7 @@ class RepoSync(object):
             self.downloader.cancel()
         except AttributeError:
             # there might not be a downloader to cancel right now.
-            _LOGGER.debug('could not cancel downloader')
+            _logger.debug('could not cancel downloader')
         try:
             self.set_progress()
         # this exception is only raised for the benefit of the run() method so
@@ -449,7 +456,7 @@ class RepoSync(object):
         """
         errata_file_handle = metadata_files.get_metadata_file_handle(updateinfo.METADATA_FILE_NAME)
         if not errata_file_handle:
-            _LOGGER.debug('updateinfo not found')
+            _logger.debug('updateinfo not found')
             return
         try:
             self.save_fileless_units(errata_file_handle, updateinfo.PACKAGE_TAG, updateinfo.process_package_element)
@@ -473,7 +480,7 @@ class RepoSync(object):
         """
         group_file_handle = metadata_files.get_group_file_handle()
         if group_file_handle is None:
-            _LOGGER.debug('comps metadata not found')
+            _logger.debug('comps metadata not found')
             return
 
         try:

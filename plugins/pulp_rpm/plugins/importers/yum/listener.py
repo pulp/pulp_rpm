@@ -9,7 +9,7 @@ from pulp_rpm.common import constants
 from pulp_rpm.plugins.db import models
 
 
-_LOGGER = logging.getLogger(__name__)
+_logger = logging.getLogger(__name__)
 
 
 class DistroFileListener(AggregatingEventListener):
