@@ -6,7 +6,7 @@ from pulp_rpm.plugins.distributors.yum.metadata.metadata import (
 from pulp_rpm.yum_plugin import util
 
 
-_LOG = util.getLogger(__name__)
+_logger = util.getLogger(__name__)
 
 UPDATE_INFO_XML_FILE_NAME = 'updateinfo.xml.gz'
 
@@ -35,9 +35,13 @@ class UpdateinfoXMLFileContext(MetadataFileContext):
         self._write_root_tag_close = _write_root_tag_close_closure
 
     def add_unit_metadata(self, erratum_unit):
+        """
+        Write the XML representation of erratum_unit to self.metadata_file_handle
+        (updateinfo.xml.gx).
 
-        # XXX refactor me
-
+        :param erratum_unit: The erratum unit that should be written to updateinfo.xml.
+        :type  erratum_unit: pulp.plugins.model.AssociatedUnit
+        """
         update_attributes = {'status': erratum_unit.metadata['status'],
                              'type': erratum_unit.metadata['type'],
                              'version': erratum_unit.metadata['version'],
@@ -62,7 +66,7 @@ class UpdateinfoXMLFileContext(MetadataFileContext):
                 continue
 
             sub_element = ElementTree.SubElement(update_element, key)
-            sub_element.text = value
+            sub_element.text = unicode(value)
 
         updated = erratum_unit.metadata.get('updated')
 
@@ -118,10 +122,9 @@ class UpdateinfoXMLFileContext(MetadataFileContext):
                 reboot_element.text = str(package.get('reboot_suggested', False))
 
         # write the top-level XML element out to the file
-
         update_element_string = ElementTree.tostring(update_element, 'utf-8')
 
-        _LOG.debug('Writing updateinfo unit metadata:\n' + update_element_string)
+        _logger.debug('Writing updateinfo unit metadata:\n' + update_element_string)
 
         self.metadata_file_handle.write(update_element_string + '\n')
 
