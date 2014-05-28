@@ -361,8 +361,19 @@ def _generate_rpm_data(rpm_filename, user_metadata):
 
     # -- Unit Metadata ------------------
 
-    metadata['relativepath'] = os.path.basename(rpm_filename)
-    metadata['filename'] = os.path.basename(rpm_filename)
+    # construct filename from metadata (BZ #1101168)
+    if headers[rpm.RPMTAG_SOURCEPACKAGE]:
+        rpm_basefilename = "%s-%s-%s.src.rpm" % (headers['name'],
+                                                 headers['version'],
+                                                 headers['release'])
+    else:
+        rpm_basefilename = "%s-%s-%s.%s.rpm" % (headers['name'],
+                                                headers['version'],
+                                                headers['release'],
+                                                headers['arch'])
+
+    metadata['relativepath'] = rpm_basefilename
+    metadata['filename'] = rpm_basefilename
 
     # This format is, and has always been, incorrect. As of the new yum importer, the
     # plugin will generate these from the XML snippet because the API into RPM headers
