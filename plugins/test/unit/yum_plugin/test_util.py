@@ -86,3 +86,34 @@ class TestRelativePath(unittest.TestCase):
                     storage_path="/test/storage/path")
         self.assertEqual(util.get_relpath_from_unit(unit), "path")
 
+
+class TestGenerateListingFiles(unittest.TestCase):
+    def test_repo_dir_not_descendant(self):
+        self.assertRaises(ValueError, util.generate_listing_files, '/a/b/c', '/d/e/f')
+
+    def test_all(self):
+        tmp_dir = tempfile.mkdtemp()
+        try:
+            # setup a directory structure and define the expected listing file values
+            publish_dir = os.path.join(tmp_dir, 'a/b/c')
+            os.makedirs(publish_dir)
+            os.makedirs(os.path.join(tmp_dir, 'a/d'))
+            os.makedirs(os.path.join(tmp_dir, 'a/b/e'))
+            expected = ['a', 'b\nd', 'c\ne']
+
+            # run it
+            util.generate_listing_files(tmp_dir, publish_dir)
+
+            # ensure that each listing file exists and has the correct contents
+            current_path = tmp_dir
+            for next_dir, expected_listing in zip(['a', 'b', 'c'], expected):
+                file_path = os.path.join(current_path, 'listing')
+                with open(file_path) as open_file:
+                    self.assertEqual(open_file.read(), expected_listing)
+                current_path = os.path.join(current_path, next_dir)
+
+            # make sure there is not a listing file inside the repo's publish dir
+            self.assertFalse(os.path.exists(os.path.join(publish_dir, 'listing')))
+
+        finally:
+            shutil.rmtree(tmp_dir, ignore_errors=True)

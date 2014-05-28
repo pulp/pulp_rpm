@@ -3,6 +3,7 @@ import shutil
 import traceback
 import urlparse
 import time
+import uuid
 import os
 import logging
 import gettext
@@ -170,20 +171,20 @@ def generate_listing_files(root_publish_dir, repo_publish_dir):
 
     while True:
         listing_file_path = os.path.join(working_dir, LISTING_FILE_NAME)
-
-        # remove any existing listing file before generating a new one
-        if os.path.exists(listing_file_path):
-            os.unlink(listing_file_path)
+        tmp_file_path = os.path.join(working_dir, '.%s' % uuid.uuid4())
 
         directories = [d for d in os.listdir(working_dir) if os.path.isdir(os.path.join(working_dir, d))]
+        directories.sort()
 
         # write the new listing file
-        with open(listing_file_path, 'w') as listing_handle:
+        with open(tmp_file_path, 'w') as listing_handle:
             listing_handle.write('\n'.join(directories))
+
+        # move it into place, over-writing any pre-existing listing file
+        shutil.move(tmp_file_path, listing_file_path)
 
         if working_dir == root_publish_dir:
             break
 
         # work up the directory structure
         working_dir = os.path.dirname(working_dir)
-
