@@ -225,14 +225,21 @@ class Publisher(BaseYumRepoPublisher):
         target_directories = []
         repo_relative_path = configuration.get_repo_relative_path(repo, config)
 
+        # it's convenient to create these now, but we won't add them until later,
+        # because we want them to run last
+        listing_steps = []
+
         if config.get(constants.PUBLISH_HTTPS_KEYWORD):
-            target_directories.append(['/',
-                                       os.path.join(configuration.get_https_publish_dir(config),
-                                                    repo_relative_path)])
+            root_publish_dir = configuration.get_https_publish_dir(config)
+            repo_publish_dir = os.path.join(root_publish_dir, repo_relative_path)
+            target_directories.append(['/', repo_publish_dir])
+            listing_steps.append(GenerateListingFileStep(root_publish_dir, repo_publish_dir))
         if config.get(constants.PUBLISH_HTTP_KEYWORD):
-            target_directories.append(['/',
-                                       os.path.join(configuration.get_http_publish_dir(config),
-                                                    repo_relative_path)])
+            root_publish_dir = configuration.get_http_publish_dir(config)
+            repo_publish_dir = os.path.join(root_publish_dir, repo_relative_path)
+            target_directories.append(['/', repo_publish_dir])
+            listing_steps.append(GenerateListingFileStep(root_publish_dir, repo_publish_dir))
+
         master_publish_dir = configuration.get_master_publish_dir(repo, distributor_type)
         atomic_publish_step = AtomicDirectoryPublishStep(self.get_working_dir(),
                                                          target_directories,
@@ -240,6 +247,10 @@ class Publisher(BaseYumRepoPublisher):
         atomic_publish_step.description = _("Publishing files to web")
 
         self.add_child(atomic_publish_step)
+
+        # add the listing file generation step(s)
+        for step in listing_steps:
+            self.add_child(step)
 
 
 class GenerateListingFileStep(PublishStep):

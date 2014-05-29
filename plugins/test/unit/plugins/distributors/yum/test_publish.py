@@ -266,8 +266,10 @@ class PublisherTests(BaseYumDistributorPublishStepTests):
         step = publish.Publisher(self.publisher.get_repo(),
                                  self.publisher.get_conduit(),
                                  config, YUM_DISTRIBUTOR_ID)
-        self.assertTrue(isinstance(step.children[-1], publish.AtomicDirectoryPublishStep))
-        atomic_publish = step.children[-1]
+        self.assertTrue(isinstance(step.children[-1], publish.GenerateListingFileStep))
+        self.assertTrue(isinstance(step.children[-2], publish.GenerateListingFileStep))
+        self.assertTrue(isinstance(step.children[-3], publish.AtomicDirectoryPublishStep))
+        atomic_publish = step.children[-3]
         repo = self.publisher.get_repo()
         target_publish_locations = [
             ['/', os.path.join(configuration.get_https_publish_dir(config),
@@ -276,6 +278,14 @@ class PublisherTests(BaseYumDistributorPublishStepTests):
                                configuration.get_repo_relative_path(repo, config))]
         ]
         self.assertEquals(atomic_publish.publish_locations, target_publish_locations)
+
+        # verify that listing file steps got the correct arguments
+        http_step = step.children[-1]
+        https_step = step.children[-2]
+        self.assertEqual(http_step.target_dir, target_publish_locations[1][1])
+        self.assertEqual(http_step.root_dir, configuration.get_http_publish_dir(config))
+        self.assertEqual(https_step.target_dir, target_publish_locations[0][1])
+        self.assertEqual(https_step.root_dir, configuration.get_https_publish_dir(config))
 
 
 class PublishRpmAndDrpmStepIncrementalTests(BaseYumDistributorPublishStepTests):
