@@ -14,7 +14,7 @@
 
 Name: pulp-rpm
 Version: 2.4.0
-Release: 0.18.beta%{?dist}
+Release: 0.19.beta%{?dist}
 Summary: Support for RPM content in the Pulp platform
 Group: Development/Languages
 License: GPLv2
@@ -272,6 +272,19 @@ A collection of yum plugins supplementing Pulp consumer operations.
 
 
 %changelog
+* Thu May 29 2014 Randy Barlow <rbarlow@redhat.com> 2.4.0-0.19.beta
+- 1102377 - generating listing files during repo publish (mhrivnak@redhat.com)
+- 1100027 - eliminating race condition during listing file generation
+  (mhrivnak@redhat.com)
+- 1101168 - use metadata when computing RPM filename (cduryee@redhat.com)
+- 1100848 - Only hand strings to ElementTree. (rbarlow@redhat.com)
+- 1082386 - Added better logging detail to yum syncs. (rbarlow@redhat.com)
+- 1095332 - updated the position of checking for existing units and associating
+  them with repo, so that the progress calculations are not affected
+  (skarmark@redhat.com)
+- 1094498 - Added logic to re-download rpms, drpms and srpms that don't exist
+  on disk during synchronization (skarmark@redhat.com)
+
 * Wed May 21 2014 Randy Barlow <rbarlow@redhat.com> 2.4.0-0.18.beta
 - 1096931 - improving repo update command to better detect spawned tasks
   (mhrivnak@redhat.com)
