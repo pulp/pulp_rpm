@@ -1,6 +1,7 @@
 import os
 
 import mock
+from pulp.bindings.responses import Task
 from pulp.client.commands.repo.upload import UploadCommand, FLAG_VERBOSE
 from pulp.client.commands.options import OPTION_REPO_ID
 from pulp.client.commands.polling import FLAG_BACKGROUND
@@ -97,3 +98,15 @@ class CreateRpmCommandTests(PulpClientTests):
         }
         self.assertEqual(expected, metadata)
 
+    def test_succeeded(self):
+        self.command.prompt = mock.Mock()
+        task = Task({})
+        self.command.succeeded(task)
+        self.assertTrue(self.command.prompt.render_success_message.called)
+
+    # testing for #1097790
+    def test_succeeded_error_in_result(self):
+        self.command.prompt = mock.Mock()
+        task = Task({'result': {'details': {'errors': ['foo']}}})
+        self.command.succeeded(task)
+        self.assertTrue(self.command.prompt.render_failure_message.called)
