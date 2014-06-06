@@ -198,6 +198,23 @@ class CreateErratumCommand(UploadCommand):
             references.append(refdict)
         return references
 
+    def succeeded(self, task):
+        """
+        Called when a task has completed with a status indicating success.
+
+        :param task: full task report for the task being displayed
+        :type  task: pulp.bindings.responses.Task
+        """
+        # Check for any errors in the details block of the task
+        if task.result and task.result.get('details') and task.result.get('details').get('errors'):
+
+            self.prompt.render_failure_message(_('Task Failed'))
+            for error in task.result.get('details').get('errors'):
+                self.prompt.render_failure_message(error)
+        else:
+            super(CreateErratumCommand, self).succeeded(task)
+
+
 # -- utilities ----------------------------------------------------------------
 
 class ParseException(Exception):
