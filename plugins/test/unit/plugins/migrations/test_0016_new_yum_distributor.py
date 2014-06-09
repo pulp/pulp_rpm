@@ -12,7 +12,7 @@ from pulp.server.db.model.repository import Repo, RepoDistributor
 from pulp_rpm.devel import rpm_support_base
 
 
-MIGRATION_MODULE = 'pulp_rpm.plugins.migrations.0015_new_yum_distributor'
+MIGRATION_MODULE = 'pulp_rpm.plugins.migrations.0016_new_yum_distributor'
 
 
 class BaseMigrationTests(rpm_support_base.PulpRPMTests):
@@ -23,7 +23,7 @@ class BaseMigrationTests(rpm_support_base.PulpRPMTests):
         self.repos_collection = Repo.get_collection()
         self.distributors_collection = RepoDistributor.get_collection()
 
-        self.root_test_dir = tempfile.mkdtemp(prefix='test_0015_migration_')
+        self.root_test_dir = tempfile.mkdtemp(prefix='test_0016_migration_')
         self.http_publish_dir = os.path.join(self.root_test_dir, 'http', 'repos')
         self.https_publish_dir = os.path.join(self.root_test_dir, 'https', 'repos')
 
