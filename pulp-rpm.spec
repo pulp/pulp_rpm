@@ -14,7 +14,7 @@
 
 Name: pulp-rpm
 Version: 2.4.0
-Release: 0.19.beta%{?dist}
+Release: 0.20.beta%{?dist}
 Summary: Support for RPM content in the Pulp platform
 Group: Development/Languages
 License: GPLv2
@@ -272,6 +272,11 @@ A collection of yum plugins supplementing Pulp consumer operations.
 
 
 %changelog
+* Tue Jun 10 2014 Jeff Ortel <jortel@redhat.com> 2.4.0-0.20.beta
+- 1099600 - fix treeinfo files during upgrades (cduryee@redhat.com)
+- 1097790 - check task details of erratum upload to determine if task succeeded
+  (cduryee@redhat.com)
+
 * Thu May 29 2014 Randy Barlow <rbarlow@redhat.com> 2.4.0-0.19.beta
 - 1102377 - generating listing files during repo publish (mhrivnak@redhat.com)
 - 1100027 - eliminating race condition during listing file generation
