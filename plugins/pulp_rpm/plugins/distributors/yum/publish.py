@@ -449,7 +449,7 @@ class PublishDrpmStep(UnitPublishStep):
         :rtype:  bool
         """
         # skip if there are no DRPMs.
-        if self._get_total([TYPE_ID_DRPM]) == 0:
+        if self._get_total() == 0:
             return True
 
         return super(PublishDrpmStep, self).is_skipped()
