@@ -15,7 +15,7 @@ class RpmRepoListCommandTests(PulpClientTests):
             {'id' : 'matching',
              'notes' : {pulp_constants.REPO_NOTE_TYPE_KEY : constants.REPO_NOTE_RPM,},
              'importers' : [
-                 {'config' : {}}
+                 {'config': {}, 'id': ids.YUM_IMPORTER_ID}
              ],
              'distributors' : [
                  {'id' : ids.YUM_DISTRIBUTOR_ID},
@@ -26,6 +26,7 @@ class RpmRepoListCommandTests(PulpClientTests):
              'notes' : {}}
         ]
         self.server_mock.request.return_value = 200, repos
+        distributor_list = [ids.YUM_DISTRIBUTOR_ID, ids.EXPORT_DISTRIBUTOR_ID]
 
         # Test
         command = repo_list.RpmRepoListCommand(self.context)
@@ -35,9 +36,14 @@ class RpmRepoListCommandTests(PulpClientTests):
         self.assertEqual(1, len(repos))
         self.assertEqual(repos[0]['id'], 'matching')
 
-        #   Make sure the export distributor was removed
-        self.assertEqual(len(repos[0]['distributors']), 1)
-        self.assertEqual(repos[0]['distributors'][0]['id'], ids.YUM_DISTRIBUTOR_ID)
+        # Check that the distributors and importer are present
+        self.assertEqual(len(repos[0]['distributors']), 2)
+        for x in xrange(0, 2):
+            self.assertTrue(repos[0]['distributors'][x]['id'] in distributor_list)
+            distributor_list.remove(repos[0]['distributors'][x]['id'])
+
+        self.assertEqual(len(repos[0]['importers']), 1)
+        self.assertEqual(repos[0]['importers'][0]['id'], ids.YUM_IMPORTER_ID)
 
     def test_get_repositories_no_details(self):
         # Setup

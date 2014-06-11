@@ -29,12 +29,6 @@ class RpmRepoListCommand(ListRepositoriesCommand):
             if pulp_constants.REPO_NOTE_TYPE_KEY in notes and notes[pulp_constants.REPO_NOTE_TYPE_KEY] == constants.REPO_NOTE_RPM:
                 rpm_repos.append(repo)
 
-        # There isn't really anything compelling in the exporter distributor
-        # to display to the user, so remove it entirely.
-        for r in rpm_repos:
-            if 'distributors' in r:
-                r['distributors'] = [x for x in r['distributors'] if x['id'] == YUM_DISTRIBUTOR_ID]
-
         # Strip out the certificate and private key if present
         for r in rpm_repos:
             # The importers will only be present in a --details view, so make
