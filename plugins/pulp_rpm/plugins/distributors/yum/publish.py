@@ -441,6 +441,19 @@ class PublishDrpmStep(UnitPublishStep):
         self.context = PrestodeltaXMLFileContext(self.get_working_dir(), checksum_type)
         self.context.initialize()
 
+    def is_skipped(self):
+        """
+        Test to find out if the step should be skipped.
+
+        :return: whether or not the step should be skipped
+        :rtype:  bool
+        """
+        # skip if there are no DRPMs.
+        if self._get_total([TYPE_ID_DRPM]) == 0:
+            return True
+
+        return super(PublishDrpmStep, self).is_skipped()
+
     def process_unit(self, unit):
         """
         Link the unit to the drpm content directory and the package_dir
