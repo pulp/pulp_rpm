@@ -144,7 +144,8 @@ class BaseSearchCommand(DisplayUnitAssociationsCommand):
         :type  type_ids:    list, tuple
 
         :param out_func:    optional callable to be used in place of
-                            prompt.render_document. must accept one dict
+                            prompt.render_document. Must accept one dict and an
+                            optional list of fields
         :type  out_func:    callable
 
         :param kwargs:  CLI options as input by the user and passed in by okaara
@@ -412,13 +413,21 @@ class SearchErrataCommand(BaseSearchCommand):
             }
             self.run_search([TYPE_ERRATUM], self.write_erratum_detail, **new_kwargs)
 
-    def write_erratum_detail(self, erratum_list):
+    def write_erratum_detail(self, erratum_list, fields=None):
         """
         Write an erratum out in a specially formatted way. It is not known why this
         was originally needed.
 
-        :param erratum_list: list one erratum documents; will be of length 1
-        :type  erratum_list: list
+        This function is only called when the --erratum-id argument is used, which
+        prints the details for an erratum. The generic run_search function still
+        passes the FIELDS_ERRATA list (which is for the render_document_list function),
+        but since this is specifically for errata details, it is ignored here.
+
+        :param erratum_list:    list one erratum documents; will be of length 1
+        :type  erratum_list:    list
+        :param fields:          A list of fields that the generic run_search function
+        hands to all output functions with a single type id in the search. This is ignored
+        :type  fields:          list
         """
         erratum_meta = erratum_list[0]
 
