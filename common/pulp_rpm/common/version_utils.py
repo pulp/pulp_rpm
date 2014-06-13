@@ -52,6 +52,7 @@ LETTERS_TEMPLATE = '$%s'  # substitute in segment
 #
 # This regex is used on a single character to determine if it should be included.
 LETTER_REGEX = re.compile(r'[a-zA-Z]')
+INT_REGEX = re.compile('^-?\d+$')
 
 # Keys the encoded fields are stored under in the unit's metadata
 VERSION_INDEX = 'version_sort_index'
@@ -154,8 +155,4 @@ def _is_int(x):
     :type x: str
     :rtype: bool
     """
-    try:
-        int(x)
-        return True
-    except ValueError:
-        return False
+    return INT_REGEX.match(x) is not None
