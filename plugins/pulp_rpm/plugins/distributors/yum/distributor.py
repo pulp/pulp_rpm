@@ -1,3 +1,4 @@
+import errno
 import os
 import shutil
 
@@ -92,18 +93,29 @@ class YumHTTPDistributor(Distributor):
         :param config: plugin configuration
         :type  config: pulp.plugins.config.PluginCallConfiguration
         """
+
+        # remove the directories that might have been created for this repo/distributor
+        dir_list = [repo.working_dir,
+                    configuration.get_master_publish_dir(repo, TYPE_ID_DISTRIBUTOR_YUM)]
+
+        for repo_dir in dir_list:
+            shutil.rmtree(repo_dir, ignore_errors=True)
+
+        # remove the symlinks that might have been created for this repo/distributor
         http_publish_dir = os.path.join(configuration.get_http_publish_dir(config),
                                         configuration.get_repo_relative_path(repo, config))
         https_publish_dir = os.path.join(configuration.get_https_publish_dir(config),
                                          configuration.get_repo_relative_path(repo, config))
-        # remove the directories that might have been created for this repo/distributor
-        dir_list = [repo.working_dir,
-                    configuration.get_master_publish_dir(repo, TYPE_ID_DISTRIBUTOR_YUM),
-                    http_publish_dir,
-                    https_publish_dir]
 
-        for repo_dir in dir_list:
-            shutil.rmtree(repo_dir, ignore_errors=True)
+        symlink_list = [http_publish_dir, https_publish_dir]
+
+        for symlink in symlink_list:
+            try:
+                os.unlink(symlink)
+            except OSError as error:
+                # If the symlink doesn't exist pass
+                if error.errno != errno.ENOENT:
+                    raise
 
         # remove certificates for certificate based auth
         configuration.remove_cert_based_auth(repo, config)
