@@ -2,7 +2,7 @@ import csv
 from gettext import gettext as _
 import os
 
-from pulp.client.commands.repo.upload import UploadCommand
+from pulp.client.commands.repo.upload import UploadCommand, MetadataException
 from pulp.client.extensions.extensions import PulpCliOption, PulpCliFlag
 
 from pulp_rpm.common.ids import TYPE_ID_ERRATA
@@ -130,8 +130,7 @@ class CreateErratumCommand(UploadCommand):
             if ref_csv_file:
                 references = self.parse_reference_csv(ref_csv_file)
         except ParseException, e:
-            self.context.prompt.render_failure_message(e.msg)
-            return e.code
+            raise MetadataException(e.msg)
         try:
             pushcount = int(kwargs[OPT_PUSHCOUNT.keyword])
         except Exception:
@@ -166,6 +165,10 @@ class CreateErratumCommand(UploadCommand):
             msg = _('Package list CSV file [%(f)s] not found') % {'f' : csvfile}
             raise ParseException(msg, os.EX_IOERR)
         plist = parse_csv(csvfile)
+        if len(plist) == 0:
+            msg = _('Package list CSV file [%(f)s] must contain at least one package') % {'f': csvfile}
+            raise MetadataException(msg)
+
         pkgs = []
         for p in plist:
             if not len(p) == 9:

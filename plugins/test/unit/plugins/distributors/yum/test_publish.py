@@ -467,6 +467,12 @@ class PublishDrpmStepTests(BaseYumDistributorPublishStepTests):
 
         mock_symlink.assert_any_call('/bar', os.path.join(self.working_dir, 'drpms', 'foo.rpm'))
 
+    def test_skip_if_no_units(self):
+        step = publish.PublishDrpmStep(mock.Mock(package_dir=None))
+        step.parent = self.publisher
+
+        self.assertTrue(step.is_skipped())
+
     @mock.patch('pulp.server.async.task_status_manager.TaskStatusManager.update_task_status')
     @mock.patch('pulp.plugins.conduits.repo_publish.RepoPublishConduit.get_units')
     def test_publish_drpms(self, mock_get_units, mock_update):

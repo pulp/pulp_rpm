@@ -1,7 +1,9 @@
 
 import mock
+
 from pulp.bindings.responses import Response
 from pulp.client.commands.criteria import DisplayUnitAssociationsCommand
+from pulp.client.extensions.core import PulpPrompt
 
 from pulp_rpm.extensions.admin import contents
 from pulp_rpm.devel.client_base import PulpClientTests
@@ -417,3 +419,127 @@ class SearchErrataCommand(PulpClientTests):
         self.assertEqual(command.context, self.context)
         self.assertEqual(command.name, 'errata')
         self.assertEqual(command.description, contents.DESC_ERRATA)
+
+    @mock.patch('pulp.bindings.repository.RepositoryUnitAPI.search')
+    def test_run_search_errata(self, mock_search):
+        """
+        Test that when the --erratum-id argument isn't used, the default
+        render_document_list output function is called
+        """
+        # Setup
+        mock_out = mock.MagicMock()
+        units = [{'a': 'a', 'metadata': 'm'}]
+        mock_search.return_value = Response(200, units)
+
+        user_input = {
+            'repo-id': 'repo-1',
+            'erratum-id': None,
+            DisplayUnitAssociationsCommand.ASSOCIATION_FLAG.keyword: False,
+        }
+
+        # Test
+        self.context.prompt.render_document_list = mock_out
+        command = contents.SearchErrataCommand(self.context)
+        command.errata(**user_input)
+
+        # Verify
+        expected = {
+            'type_ids': [contents.TYPE_ERRATUM],
+            'erratum-id': None,
+            DisplayUnitAssociationsCommand.ASSOCIATION_FLAG.keyword: False,
+        }
+        mock_search.assert_called_once_with('repo-1', **expected)
+        # Because there's only one type_id and contents.FIELDS_BY_TYPE[FIELDS_ERRATA] is
+        # defined, the output function should be called with the metadata and FIELDS_ERRATA
+        mock_out.assert_called_once_with(['m'], contents.FIELDS_ERRATA)
+
+    @mock.patch('pulp.bindings.repository.RepositoryUnitAPI.search')
+    def test_run_search_errata_details(self, mock_search):
+        """
+        Test that when the --erratum-id argument is used, the custom output
+        function write_erratum_detail is called instead of render_document_list
+        """
+        # Setup
+        mock_out = mock.MagicMock()
+        units = [{'a': 'a', 'metadata': 'm'}]
+        mock_search.return_value = Response(200, units)
+
+        user_input = {
+            'repo-id': 'repo-1',
+            'erratum-id': 'RHEA-0000:0000',
+            DisplayUnitAssociationsCommand.ASSOCIATION_FLAG.keyword: False
+        }
+
+        # Test
+        command = contents.SearchErrataCommand(self.context)
+        command.write_erratum_detail = mock_out
+        command.errata(**user_input)
+
+        # Verify
+        expected = {
+            'type_ids': [contents.TYPE_ERRATUM],
+            'filters': {'id': 'RHEA-0000:0000'},
+        }
+        mock_search.assert_called_once_with('repo-1', **expected)
+        # Because there's only one type_id and contents.FIELDS_BY_TYPE[FIELDS_ERRATA] is
+        # defined, the write_erratum_detail should be called with the metadata and FIELDS_ERRATA
+        mock_out.assert_called_once_with(['m'], contents.FIELDS_ERRATA)
+
+    def test_write_erratum_detail(self):
+        errata_list = [
+            {
+                'issued': '2012-01-27 16:08:08',
+                'references': [
+                    {
+                        'href': 'www.example.com',
+                        'type': 'enhancement',
+                        'id': 'example_reference',
+                        'title': 'Example Reference'
+                    }
+                ],
+                '_content_type_id': 'erratum',
+                'id': 'RHEA-2012:0003',
+                'from': 'errata@redhat.com',
+                'severity': '',
+                'title': 'Bird_Erratum',
+                '_ns': 'units_erratum',
+                'version': '1',
+                'reboot_suggested': False,
+                'type': 'security',
+                'pkglist': [
+                    {
+                        'packages': [
+                            {
+                                'src': 'http://www.fedoraproject.org',
+                                'name': 'crow',
+                                'sum': None,
+                                'filename': 'crow-0.8-1.noarch.rpm',
+                                'epoch': None,
+                                'version': '0.8',
+                                'release': '1',
+                                'arch': 'noarch'
+                            }
+                        ],
+                        'name': '1',
+                        'short': ''
+                    }
+                ],
+                'status': 'stable',
+                'updated': '',
+                'description': 'Bird_Erratum',
+                '_last_updated': 1402514111,
+                'pushcount': '',
+                '_storage_path': None,
+                'rights': '',
+                'solution': '',
+                'summary': '',
+                'release': '1',
+                '_id': '0058de26-29e6-4ba8-b230-7e1a3e261894'
+            }
+        ]
+        self.context.prompt = mock.MagicMock(spec=PulpPrompt)
+        command = contents.SearchErrataCommand(self.context)
+
+        # Test that the formatter handles an errata list and calls write
+        command.write_erratum_detail(errata_list)
+        self.assertEqual(1, self.context.prompt.write.call_count)
