@@ -426,7 +426,8 @@ class SearchErrataCommand(BaseSearchCommand):
         :param erratum_list:    list one erratum documents; will be of length 1
         :type  erratum_list:    list
         :param fields:          A list of fields that the generic run_search function
-        hands to all output functions with a single type id in the search. This is ignored
+                                hands to all output functions with a single type id in
+                                the search. This is ignored.
         :type  fields:          list
         """
         erratum_meta = erratum_list[0]
