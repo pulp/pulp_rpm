@@ -2,7 +2,7 @@ import os
 
 import mock
 from pulp.bindings.responses import Task
-from pulp.client.commands.repo.upload import UploadCommand, FLAG_VERBOSE
+from pulp.client.commands.repo.upload import UploadCommand, FLAG_VERBOSE, MetadataException
 from pulp.client.commands.options import OPTION_REPO_ID
 from pulp.client.commands.polling import FLAG_BACKGROUND
 
@@ -97,6 +97,66 @@ class CreateRpmCommandTests(PulpClientTests):
             'references' : expected_reference_list,
         }
         self.assertEqual(expected, metadata)
+
+    def test_generate_metadata_malformed_csv(self):
+        """
+        Test the generate_metadata function with a malformed csv file which
+        contains the incorrect number of comma separated values (but isn't
+        an empty file).
+        """
+        # Setup
+        pkg_list_file = os.path.join(DATA_DIR, 'malformed_packages.csv')
+        args = {
+            errata.OPT_PKG_LIST.keyword: pkg_list_file,
+            errata.OPT_TITLE.keyword: 'test-title',
+            errata.OPT_DESC.keyword: 'test-description',
+            errata.OPT_VERSION.keyword: 'test-version',
+            errata.OPT_RELEASE.keyword: 'test-release',
+            errata.OPT_TYPE.keyword: 'test-type',
+            errata.OPT_STATUS.keyword: 'test-status',
+            errata.OPT_UPDATED.keyword: 'test-updated',
+            errata.OPT_ISSUED.keyword: 'test-issued',
+            errata.OPT_SEVERITY.keyword: 'test-severity',
+            errata.OPT_RIGHTS.keyword: 'test-rights',
+            errata.OPT_SUMMARY.keyword: 'test-summary',
+            errata.OPT_SOLUTION.keyword: 'test-solution',
+            errata.OPT_FROM.keyword: 'test-from',
+            errata.OPT_REBOOT.keyword: 'test-reboot',
+            errata.OPT_PUSHCOUNT.keyword: '1',
+        }
+
+        # Test
+        self.assertRaises(MetadataException, self.command.generate_metadata, None, **args)
+
+    def test_generate_metadata_empty_csv(self):
+        """
+        Test the generate_metadata function with a completely empty csv file.
+        This should raise an exception because an erratum should reference at
+        least one package.
+        """
+        # Setup
+        pkg_list_file = os.path.join(DATA_DIR, 'empty.csv')
+        args = {
+            errata.OPT_PKG_LIST.keyword: pkg_list_file,
+            errata.OPT_TITLE.keyword: 'test-title',
+            errata.OPT_DESC.keyword: 'test-description',
+            errata.OPT_VERSION.keyword: 'test-version',
+            errata.OPT_RELEASE.keyword: 'test-release',
+            errata.OPT_TYPE.keyword: 'test-type',
+            errata.OPT_STATUS.keyword: 'test-status',
+            errata.OPT_UPDATED.keyword: 'test-updated',
+            errata.OPT_ISSUED.keyword: 'test-issued',
+            errata.OPT_SEVERITY.keyword: 'test-severity',
+            errata.OPT_RIGHTS.keyword: 'test-rights',
+            errata.OPT_SUMMARY.keyword: 'test-summary',
+            errata.OPT_SOLUTION.keyword: 'test-solution',
+            errata.OPT_FROM.keyword: 'test-from',
+            errata.OPT_REBOOT.keyword: 'test-reboot',
+            errata.OPT_PUSHCOUNT.keyword: '1',
+        }
+
+        # Test
+        self.assertRaises(MetadataException, self.command.generate_metadata, None, **args)
 
     def test_succeeded(self):
         self.command.prompt = mock.Mock()
