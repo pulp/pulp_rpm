@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema attributeFormDefault="unqualified" elementFormDefault="qualified" xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  <xs:element name="pulp_distribution" type="pulp_distributionType"/>
+  <xs:complexType name="pulp_distributionType">
+    <xs:sequence>
+      <xs:element name="file" maxOccurs="unbounded" minOccurs="0" type="xs:string"/>
+    </xs:sequence>
+    <xs:attribute type="xs:string" name="version"/>
+  </xs:complexType>
+</xs:schema>

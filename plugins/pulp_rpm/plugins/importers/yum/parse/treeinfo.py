@@ -3,12 +3,16 @@ import logging
 import os
 import shutil
 import tempfile
+#import xml.etree.ElementTree as ET
 
+from lxml import etree as ET
 from nectar.listener import AggregatingEventListener
 from nectar.request import DownloadRequest
+from pulp.server.exceptions import PulpCodedValidationException
 
 from pulp_rpm.common import constants, ids
 from pulp_rpm.plugins.db import models
+from pulp_rpm.plugins import error_codes
 from pulp_rpm.plugins.importers.yum.listener import DistroFileListener
 from pulp_rpm.plugins.importers.yum.repomd import nectar_factory
 
@@ -17,6 +21,7 @@ SECTION_GENERAL = 'general'
 SECTION_STAGE2 = 'stage2'
 SECTION_CHECKSUMS = 'checksums'
 KEY_PACKAGEDIR = 'packagedir'
+KEY_DISTRIBUTION_CONTEXT = 'distribution_context'
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -56,6 +61,10 @@ def sync(sync_conduit, feed, working_dir, nectar_config, report, progress_callba
             _LOGGER.error('could not parse treefile')
             report['state'] = constants.STATE_FAILED
             return
+
+        # Get any errors
+        dist_files = process_distribution(feed, tmp_dir, nectar_config, model, report)
+        files.extend(dist_files)
 
         report.set_initial_values(len(files))
         listener = DistroFileListener(report, progress_callback)
@@ -160,6 +169,86 @@ def get_treefile(feed, tmp_dir, nectar_config):
             return path
 
 
+def process_distribution(feed, tmp_dir, nectar_config, model, report):
+    """
+
+    :param feed:            URL to the repository
+    :type  feed:            str
+    :param tmp_dir:         full path to the temporary directory being used
+    :type  tmp_dir:         str
+    :param nectar_config:   download config to be used by nectar
+    :type  nectar_config:   nectar.config.DownloaderConfig
+    :param model:
+    :type model:
+    :param report:
+    :type report:
+    :return: list of file dictionaries
+    :rtype: list of dict
+    """
+    # Get the Distribution file
+    result = get_distribution_file(feed, tmp_dir, nectar_config)
+    files = []
+    # If there is a Distribution file - parse it and add all files to the file_list
+    if result:
+        xsd = os.path.join(os.path.dirname(__file__), 'pulp_distribution.xsd')
+        schema_doc = ET.parse(xsd)
+        xmlschema = ET.XMLSchema(schema_doc)
+        try:
+            tree = ET.parse(result)
+            xmlschema.assertValid(tree)
+        except Exception, e:
+            raise PulpCodedValidationException(validation_exceptions=[
+                PulpCodedValidationException(error_code=error_codes.RPM1001, feed=feed,
+                                             validation_exceptions=[e])])
+
+        model.metadata[constants.CONFIG_KEY_DISTRIBUTION_XML_FILE] = constants.DISTRIBUTION_XML
+        # parse the distribution file and add all the files to the download request
+        root = tree.getroot()
+        for file_element in root.findall('file'):
+            relative_path = file_element.text
+            files.append({
+                'relativepath': relative_path,
+                'checksum': None,
+                'checksumtype': None,
+            })
+
+        # Add the distribution file to the list of files
+        files.append({
+                'relativepath': constants.DISTRIBUTION_XML,
+                'checksum': None,
+                'checksumtype': None,
+        })
+    return files
+
+
+def get_distribution_file(feed, tmp_dir, nectar_config):
+    """
+    Download the pulp_distribution.xml and return its full path on disk, or None if not found
+
+    :param feed:            URL to the repository
+    :type  feed:            str
+    :param tmp_dir:         full path to the temporary directory being used
+    :type  tmp_dir:         str
+    :param nectar_config:   download config to be used by nectar
+    :type  nectar_config:   nectar.config.DownloaderConfig
+
+    :return:        full path to distribution file on disk, or None if not found
+    :rtype:         str or NoneType
+    """
+    filename = constants.DISTRIBUTION_XML
+
+    path = os.path.join(tmp_dir, filename)
+    url = os.path.join(feed, filename)
+    request = DownloadRequest(url, path)
+    listener = AggregatingEventListener()
+    downloader = nectar_factory.create_downloader(feed, nectar_config, listener)
+    downloader.download([request])
+    if len(listener.succeeded_reports) == 1:
+        return path
+
+    return None
+
+
 def parse_treefile(path):
     """
     The treefile seems to be approximately in INI format, which can be read
@@ -168,7 +257,7 @@ def parse_treefile(path):
     :param path:    full path to the treefile
     :return:        instance of Distribution model, and a list of dicts
                     describing the distribution's files
-    :rtype:         (pulp_rpm.plugins.db.models.Distribution, dict)
+    :rtype:         (pulp_rpm.plugins.db.models.Distribution, list of dict)
     """
     parser = ConfigParser.RawConfigParser()
     # the default implementation of this method makes all option names lowercase,

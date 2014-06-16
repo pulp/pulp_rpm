@@ -8,6 +8,12 @@ Pulp 2.4.0
 New Features
 ------------
 
+-  Support for creating a pulp_manifest.xml in kickstart repositories to list additional files
+   that will be downloaded as part of the repo.  A command line utility has been created at
+   pulp_rpm/playpen/yum_distributor/generate_distribution_manifest.py to help with creating the
+   manifest file.  This file should be stored as a peer of the treeinfo file in a source
+   repository that is being synced by Pulp.
+
 
 API Changes
 -----------
@@ -23,6 +29,8 @@ attributes can be found in the technical reference.
 
 Upgrade Instructions
 --------------------
+
+ - pulp_rpm has added a dependency on python-lxml for xml parsing
 
 Please see the
 `Pulp Platform upgrade instructions <https://pulp-user-guide.readthedocs.org/en/pulp-2.4/release-notes.html>`_
