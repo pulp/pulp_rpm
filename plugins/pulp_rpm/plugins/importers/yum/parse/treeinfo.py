@@ -3,7 +3,6 @@ import logging
 import os
 import shutil
 import tempfile
-#import xml.etree.ElementTree as ET
 
 from lxml import etree as ET
 from nectar.listener import AggregatingEventListener
