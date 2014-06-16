@@ -38,9 +38,9 @@ class RpmRepoListCommandTests(PulpClientTests):
 
         # Check that the distributors and importer are present
         self.assertEqual(len(repos[0]['distributors']), 2)
-        for x in xrange(0, 2):
-            self.assertTrue(repos[0]['distributors'][x]['id'] in distributor_list)
-            distributor_list.remove(repos[0]['distributors'][x]['id'])
+        for distributor in repos[0]['distributors']:
+            self.assertTrue(distributor['id'] in distributor_list)
+            distributor_list.remove(distributor['id'])
 
         self.assertEqual(len(repos[0]['importers']), 1)
         self.assertEqual(repos[0]['importers'][0]['id'], ids.YUM_IMPORTER_ID)
