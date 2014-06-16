@@ -1,11 +1,12 @@
+import ConfigParser
+import errno
+import os
+import shutil
 import tempfile
 import unittest
-import shutil
-import os
-import ConfigParser
 
 import mock
-from mock import Mock, patch
+from mock import Mock, patch, call
 from pulp.devel.unit.util import compare_dict
 from pulp.plugins.conduits.repo_config import RepoConfigConduit
 from pulp.plugins.conduits.repo_publish import RepoPublishConduit
@@ -15,6 +16,10 @@ from pulp.plugins.model import Repository
 from pulp_rpm.common.ids import TYPE_ID_DISTRIBUTOR_YUM
 from pulp_rpm.plugins.distributors.yum import distributor
 from pulp_rpm.plugins.distributors.yum.distributor import YumHTTPDistributor, pulp_server_config
+
+
+DISTRIBUTOR = 'pulp_rpm.plugins.distributors.yum.distributor'
+CONFIGURATION = DISTRIBUTOR + '.configuration'
 
 
 class YumDistributorTests(unittest.TestCase):
@@ -149,34 +154,89 @@ class YumDistributorTests(unittest.TestCase):
         }
         compare_dict(result, target)
 
-    @patch('pulp_rpm.plugins.distributors.yum.distributor.configuration.get_repo_relative_path')
-    @patch('pulp_rpm.plugins.distributors.yum.distributor.configuration.remove_cert_based_auth')
-    @patch('pulp_rpm.plugins.distributors.yum.distributor.configuration.get_master_publish_dir')
-    @patch('pulp_rpm.plugins.distributors.yum.distributor.configuration.get_http_publish_dir')
-    @patch('pulp_rpm.plugins.distributors.yum.distributor.configuration.get_https_publish_dir')
-    def test_distributor_removed(self, mock_http, mock_https, mock_master, remove_cert,
-                                 mock_rel_path):
-        mock_http.return_value = os.path.join(self.working_dir, 'http')
-        mock_https.return_value = os.path.join(self.working_dir, 'https')
-        mock_master.return_value = os.path.join(self.working_dir, 'master')
-        mock_rel_path.return_value = os.path.join('test_repo')
-        http_dir = os.path.join(mock_http.return_value, mock_rel_path.return_value)
-        https_dir = os.path.join(mock_https.return_value, mock_rel_path.return_value)
-        master_dir = os.path.join(mock_master.return_value, mock_rel_path.return_value)
-        os.makedirs(http_dir)
-        os.makedirs(https_dir)
-        os.makedirs(master_dir)
-        os.makedirs(os.path.join(self.working_dir, 'working'))
-        test_distributor = YumHTTPDistributor()
-        repo = Mock()
-        repo.working_dir = os.path.join(self.working_dir, 'working')
-        config = {}
-        test_distributor.distributor_removed(repo, config)
-        self.assertFalse(os.path.exists(http_dir))
-        self.assertFalse(os.path.exists(https_dir))
-        self.assertFalse(os.path.exists(master_dir))
 
-        remove_cert.assert_called_with(repo, config)
+class TestDistributorDistributorRemoved(unittest.TestCase):
+
+    def _apply_mock_patches(self):
+        self.patch_a = patch(CONFIGURATION + '.get_repo_relative_path')
+        self.mock_rel_path = self.patch_a.start()
+
+        self.patch_b = patch(CONFIGURATION + '.get_master_publish_dir')
+        self.mock_master = self.patch_b.start()
+
+        self.patch_c = patch(CONFIGURATION + '.get_http_publish_dir')
+        self.mock_http = self.patch_c.start()
+
+        self.patch_d = patch(CONFIGURATION + '.get_https_publish_dir')
+        self.mock_https = self.patch_d.start()
+
+        self.patch_e = patch(CONFIGURATION + '.remove_cert_based_auth')
+        self.mock_remove_cert = self.patch_e.start()
+
+        self.patch_f = patch(DISTRIBUTOR + '.shutil.rmtree')
+        self.mock_rmtree = self.patch_f.start()
+
+        self.patch_g = patch(DISTRIBUTOR + '.os')
+        self.mock_os = self.patch_g.start()
+
+    def setUp(self):
+        self._apply_mock_patches()
+        self.working_dir = tempfile.mkdtemp()
+        self.distributor = distributor.YumHTTPDistributor()
+        self.mock_repo = Mock()
+        self.config = {}
+        self.distributor.distributor_removed(self.mock_repo, self.config)
+
+    def tearDown(self):
+        self.patch_a.stop()
+        self.patch_b.stop()
+        self.patch_c.stop()
+        self.patch_d.stop()
+        self.patch_e.stop()
+        self.patch_f.stop()
+        self.patch_g.stop()
+
+    def test_distributor_remove_distributor_calls_get_master_publish_dir(self):
+        self.mock_master.assert_called_once_with(self.mock_repo, TYPE_ID_DISTRIBUTOR_YUM)
+
+    def test_distributor_remove_distributor_calls_get_http_publish_dir(self):
+        self.mock_http.assert_called_once_with(self.config)
+
+    def test_distributor_remove_distributor_calls_get_https_publish_dir(self):
+        self.mock_https.assert_called_once_with(self.config)
+
+    def test_distributor_remove_distributor_calls_get_repo_relative_path_twice(self):
+        rel_path_calls = [
+            call(self.mock_repo, self.config),
+            call(self.mock_repo, self.config),
+        ]
+        self.mock_rel_path.assert_has_calls(rel_path_calls)
+
+    def test_distributor_remove_distributor_calls_remove_cert_based_auth(self):
+        self.mock_remove_cert.assert_called_once_with(self.mock_repo, self.config)
+
+    def test_distributor_uses_rmtree_to_remove_working_dir_and_master_dir(self):
+        rmtree_calls = [
+            call(self.mock_repo.working_dir, ignore_errors=True),
+            call(self.mock_master.return_value, ignore_errors=True)
+        ]
+        self.mock_rmtree.assert_has_calls(rmtree_calls)
+
+    def test_distributor_uses_unlink_to_remove_http_and_https_symlinks(self):
+        unlink_calls = [
+            call(self.mock_os.path.join.return_value),
+            call(self.mock_os.path.join.return_value)
+        ]
+        self.mock_os.unlink.assert_has_calls(unlink_calls)
+
+    def test_distributor_unlink_call_handles_OSError_raised(self):
+        os_error_to_raise = OSError()
+        os_error_to_raise.errno = errno.ENOENT
+        self.mock_os.unlink.side_effect = os_error_to_raise
+        try:
+            self.distributor.distributor_removed(self.mock_repo, self.config)
+        except Exception:
+            self.fail('Distributor unlink should handle symlinks that do not exist.')
 
 
 class TestEntryPoint(unittest.TestCase):
