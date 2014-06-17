@@ -14,7 +14,7 @@
 
 Name: pulp-rpm
 Version: 2.4.0
-Release: 0.20.beta%{?dist}
+Release: 0.21.beta%{?dist}
 Summary: Support for RPM content in the Pulp platform
 Group: Development/Languages
 License: GPLv2
@@ -272,6 +272,18 @@ A collection of yum plugins supplementing Pulp consumer operations.
 
 
 %changelog
+* Tue Jun 17 2014 Randy Barlow <rbarlow@redhat.com> 2.4.0-0.21.beta
+- 973784 - improving performance of depsolve (mhrivnak@redhat.com)
+- 1107117 - Viewing the details of an erratum using "pulp-admin rpm repo
+  content errata --repo-id=<Repo ID> --erratum-id=<errata id>" now behaves as
+  expected (jcline@redhat.com)
+- 1101622 - Erratum uploads from pulp-admin now stop when malformed csv files
+  are found (jcline@redhat.com)
+- 995082 - 'pulp-admin rpm repo list --details' now displays all distributors
+  attached to a repository (jcline@redhat.com)
+- 1104839 - pulp no longer creates a prestodelta.xml file if there are no DRPMs
+  to publish (mhrivnak@redhat.com)
+
 * Tue Jun 10 2014 Jeff Ortel <jortel@redhat.com> 2.4.0-0.20.beta
 - 1099600 - fix treeinfo files during upgrades (cduryee@redhat.com)
 - 1097790 - check task details of erratum upload to determine if task succeeded
