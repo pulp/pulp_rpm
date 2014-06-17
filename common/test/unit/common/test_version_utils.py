@@ -62,4 +62,6 @@ class UtilityTests(unittest.TestCase):
     def test_is_int(self):
         self.assertTrue(version_utils._is_int('1'))
         self.assertTrue(version_utils._is_int('10'))
+        self.assertTrue(version_utils._is_int('-3'))
+        self.assertFalse(version_utils._is_int('.3'))
         self.assertTrue(not version_utils._is_int('foo'))
