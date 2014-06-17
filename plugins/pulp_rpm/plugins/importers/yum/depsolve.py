@@ -247,7 +247,7 @@ class Solver(object):
         :return:    list of (pulp.plugins.model.Unit, list of provides)
         """
         fields = list(models.RPM.UNIT_KEY_NAMES)
-        fields.extend(['provides', 'id'])
+        fields.extend(['provides', 'id', 'version_sort_index', 'release_sort_index'])
         criteria = UnitAssociationCriteria(type_ids=[models.RPM.TYPE], unit_fields=fields)
         return list(self.search_method(criteria))
 
@@ -296,14 +296,16 @@ class Solver(object):
         source_units = self._source_with_provides
         tree = {}
         for unit in source_units:
+            my_cmp_tuple = (unit.unit_key['epoch'], unit.metadata['version_sort_index'],
+                            unit.metadata['release_sort_index'])
             for provide in unit.metadata.get('provides', []):
                 unit_dict = tree.setdefault(provide['name'], {})
-                newest_version = unit_dict.get(unit.unit_key['name'], tuple())
+                newest_version = unit_dict.get(unit.unit_key['name'], None)
                 if newest_version:
-                    # turn it into an RPM instance to get the version comparison
-                    newest_model = models.RPM.from_package_info(newest_version.unit_key)
-                    my_model = models.RPM.from_package_info(unit.unit_key)
-                    if my_model > newest_model:
+                    newest_cmp_tuple = (newest_version.unit_key['epoch'],
+                                        newest_version.metadata['version_sort_index'],
+                                        newest_version.metadata['release_sort_index'])
+                    if cmp(my_cmp_tuple, newest_cmp_tuple) == 1:
                         unit_dict[unit.unit_key['name']] = unit
                 else:
                     unit_dict[unit.unit_key['name']] = unit
