@@ -11,7 +11,7 @@ from pulp_rpm.plugins.db import models
 from pulp_rpm.plugins.importers.yum.parse import treeinfo
 
 
-DATA_PATH = os.path.join(os.path.dirname(__file__), '../../../../../data/')
+DATA_PATH = os.path.join(os.path.dirname(__file__), '..', '..', '..', '..', '..', 'data')
 DISTRIBUTION_DATA_PATH = os.path.join(DATA_PATH, 'pulp_distribution')
 DISTRIBUTION_GOOD_FILE = os.path.join(DISTRIBUTION_DATA_PATH, 'distribution_good.xml')
 DISTRIBUTION_BAD_SYNTAX_FILE = os.path.join(DISTRIBUTION_DATA_PATH,

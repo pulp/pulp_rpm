@@ -170,6 +170,8 @@ def get_treefile(feed, tmp_dir, nectar_config):
 
 def process_distribution(feed, tmp_dir, nectar_config, model, report):
     """
+    Get the pulp_distribution.xml file from the server and if it exists download all the
+    files it references to add them to the distribution unit.
 
     :param feed:            URL to the repository
     :type  feed:            str

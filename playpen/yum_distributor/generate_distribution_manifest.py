@@ -7,6 +7,17 @@ import xml.etree.cElementTree as ET
 
 
 def create_manifest(parent_directory, files):
+    """
+    Create a .pulp_distribution.xml manifest in the specified directory
+    for the given list of files/directories.  For each item in the file list, if it is
+    a file then add the file to the list.  If it is a directory all files contained within that
+    directory will be added.
+
+    :param parent_directory: The directory where the .pulp_distribution.xml file will be created
+    :type parent_directory: str
+    :param files: list of relative paths from "parent_directory" to the files to be added
+    :type files: list of str
+    """
     # Validate the arguments
     if not os.path.exists(parent_directory):
         print 'Error reading directory: %s' % parent_directory
@@ -16,6 +27,7 @@ def create_manifest(parent_directory, files):
         if not os.path.exists(full_path):
             print 'Error reading directory or file: %s' % full_path
 
+    # Write out the .pulp_distribution.xml
     root = ET.Element("pulp_distribution", {'version': '1'})
     for filename in files:
         full_path = os.path.join(parent_directory, filename)
