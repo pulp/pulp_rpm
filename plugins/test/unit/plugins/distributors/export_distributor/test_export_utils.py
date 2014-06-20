@@ -63,9 +63,7 @@ class TestValidateExportConfig(unittest.TestCase):
         result, msg = export_utils.validate_export_config(PluginCallConfiguration({}, self.repo_config))
         self.assertFalse(result)
 
-    @mock.patch('os.path.isdir', autospec=True)
-    @mock.patch('os.access', autospec=True)
-    def test_full_config(self, mock_access, mock_isdir):
+    def test_full_config(self):
         self.repo_config[constants.SKIP_KEYWORD] = []
         self.repo_config[constants.ISO_PREFIX_KEYWORD] = 'prefix'
         self.repo_config[constants.ISO_SIZE_KEYWORD] = 630
@@ -75,10 +73,6 @@ class TestValidateExportConfig(unittest.TestCase):
 
         result, msg = export_utils.validate_export_config(PluginCallConfiguration({}, self.repo_config))
         self.assertTrue(result)
-        mock_isdir.assert_called_once_with(export_dir)
-        self.assertEqual(2, mock_access.call_count)
-        self.assertEqual((export_dir, os.R_OK), mock_access.call_args_list[0][0])
-        self.assertEqual((export_dir, os.W_OK), mock_access.call_args_list[1][0])
 
     def test_bad_skip_config(self):
         # Setup
@@ -120,25 +114,11 @@ class TestValidateExportConfig(unittest.TestCase):
         result = export_utils.validate_export_config(PluginCallConfiguration({}, self.repo_config))
         self.assertFalse(result[0])
 
-    @mock.patch('os.path.isdir', autospec=True)
-    def test_missing_export_dir(self, mock_isdir):
+    def test_non_absolute_path(self):
         # Setup
-        self.repo_config[constants.EXPORT_DIRECTORY_KEYWORD] = '/directory/not/found'
-        mock_isdir.return_value = False
+        self.repo_config[constants.EXPORT_DIRECTORY_KEYWORD] = 'non/absolute/path'
 
         # Test that if the export directory isn't found, validation fails
-        result = export_utils.validate_export_config(PluginCallConfiguration({}, self.repo_config))
-        self.assertFalse(result[0])
-
-    @mock.patch('os.access', autospec=True)
-    @mock.patch('os.path.isdir', autospec=True)
-    def test_unwritable_export_dir(self, mock_isdir, mock_access):
-        # Setup
-        self.repo_config[constants.EXPORT_DIRECTORY_KEYWORD] = '/some/dir'
-        mock_isdir.return_value = True
-        mock_access.return_value = False
-
-        # Test that if the export directory isn't writable, validation fails
         result = export_utils.validate_export_config(PluginCallConfiguration({}, self.repo_config))
         self.assertFalse(result[0])
 
