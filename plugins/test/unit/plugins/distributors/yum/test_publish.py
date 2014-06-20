@@ -1,5 +1,6 @@
 import os
 import shutil
+import subprocess
 import tempfile
 import unittest
 
@@ -11,7 +12,7 @@ from pulp.plugins.conduits.repo_publish import RepoPublishConduit
 from pulp.plugins.config import PluginCallConfiguration
 from pulp.plugins.model import Repository, Unit
 from pulp.plugins.util.publish_step import PublishStep
-from pulp.server.exceptions import InvalidValue
+from pulp.server.exceptions import InvalidValue, PulpCodedException
 
 from pulp_rpm.common import constants
 from pulp_rpm.common.ids import (
@@ -123,6 +124,7 @@ class BaseYumDistributorPublishStepTests(BaseYumDistributorPublishTests):
 
 class BaseYumRepoPublisherTests(BaseYumDistributorPublishTests):
 
+    @mock.patch('pulp_rpm.plugins.distributors.yum.publish.GenerateSqliteForRepoStep')
     @mock.patch('pulp.server.managers.factory.repo_distributor_manager')
     @mock.patch('pulp_rpm.plugins.distributors.yum.publish.PublishCompsStep')
     @mock.patch('pulp_rpm.plugins.distributors.yum.publish.Publisher._build_final_report')
@@ -133,7 +135,8 @@ class BaseYumRepoPublisherTests(BaseYumDistributorPublishTests):
     @mock.patch('pulp_rpm.plugins.distributors.yum.publish.PublishDistributionStep')
     def test_publish(self, mock_publish_distribution, mock_publish_rpms, mock_publish_drpms,
                      mock_publish_errata, mock_publish_metadata,
-                     mock_build_final_report, mock_publish_comps, mock_distributor_manager):
+                     mock_build_final_report, mock_publish_comps, mock_distributor_manager,
+                     mock_generate_sqlite):
 
         self._init_publisher()
         self.publisher.repo.content_unit_counts = {}
@@ -146,6 +149,7 @@ class BaseYumRepoPublisherTests(BaseYumDistributorPublishTests):
         mock_publish_metadata.assert_called_once()
         mock_build_final_report.assert_called_once()
         mock_publish_comps.assert_called_once()
+        mock_generate_sqlite.assert_called_once()
 
         #Ensure that the publish cleaned up after itself
         self.assertFalse(os.path.exists(self.publisher.working_dir))
@@ -230,12 +234,10 @@ class ExportRepoGroupPublisherTests(BaseYumDistributorPublishStepTests):
         self.assertTrue(isinstance(step.children[0], publish.ExportRepoPublisher))
         self.assertEquals(len(step.children), 1)
 
-
     @mock.patch('pulp_rpm.plugins.distributors.yum.publish.RepoQueryManager')
     @mock.patch('pulp_rpm.plugins.distributors.yum.publish.export_utils.create_date_range_filter')
     def test_init_with_iso(self, mock_export_utils, mock_query_manager):
         mock_export_utils.return_value = 'foo'
-        export_dir = 'flux'
         config = PluginCallConfiguration(None, {})
         repo_group = mock.Mock(repo_ids=['foo', 'bar'],
                                working_dir=self.working_dir)
@@ -334,7 +336,7 @@ class PublishErrataStepIncrementalTests(BaseYumDistributorPublishStepTests):
             })
 
 
-class CreateIsoStepTesets(BaseYumDistributorPublishStepTests):
+class CreateIsoStepTests(BaseYumDistributorPublishStepTests):
 
     @mock.patch('pulp_rpm.plugins.distributors.yum.publish.generate_iso.create_iso')
     def test_process_main(self, mock_create):
@@ -345,8 +347,6 @@ class CreateIsoStepTesets(BaseYumDistributorPublishStepTests):
         })
         step.process_main()
         mock_create.assert_called_once_with('foo', 'bar', 'flux', 5)
-
-
 
 
 class GenerateListingsFilesStep(BaseYumDistributorPublishStepTests):
@@ -447,8 +447,7 @@ class PublishDrpmStepTests(BaseYumDistributorPublishStepTests):
         test_unit = mock.Mock(storage_path='/bar', metadata={'filename': 'foo.rpm'})
 
         step.context = mock.Mock()
-        step.get_step = mock.Mock()
-        step.get_step.return_value.package_dir = None
+        step.dist_step.package_dirs = []
         step.process_unit(test_unit)
 
         mock_symlink.assert_called_once_with('/bar', os.path.join(self.working_dir, 'drpms',
@@ -463,7 +462,9 @@ class PublishDrpmStepTests(BaseYumDistributorPublishStepTests):
         test_unit = mock.Mock(storage_path='/bar', metadata={'filename': 'foo.rpm'})
 
         step.context = mock.Mock()
+        step.dist_step.package_dirs = ['/bar']
         step.process_unit(test_unit)
+
 
         mock_symlink.assert_any_call('/bar', os.path.join(self.working_dir, 'drpms', 'foo.rpm'))
 
@@ -481,15 +482,20 @@ class PublishDrpmStepTests(BaseYumDistributorPublishStepTests):
         units = [self._generate_drpm(u) for u in ('A', 'B')]
         mock_get_units.return_value = units
 
-        step = publish.PublishDrpmStep(mock.Mock(package_dir=None))
+        package_dir_base = os.path.join(self.working_dir, 'bar')
+        step = publish.PublishDrpmStep(mock.Mock(package_dirs=[package_dir_base]))
         step.parent = self.publisher
 
         step.process()
 
         for u in units:
-            path = os.path.join(self.working_dir, 'drpms', u.unit_key['filename'])
+            unit_path = os.path.join('drpms', u.unit_key['filename'])
+            path = os.path.join(self.working_dir, unit_path)
             self.assertTrue(os.path.exists(path))
             self.assertTrue(os.path.islink(path))
+            package_dir_path = os.path.join(package_dir_base, unit_path)
+            self.assertTrue(os.path.exists(package_dir_path))
+            self.assertTrue(os.path.islink(package_dir_path))
 
         self.assertTrue(os.path.exists(
             os.path.join(self.working_dir, 'repodata/prestodelta.xml.gz')))
@@ -667,23 +673,12 @@ class PublishDistributionStepTests(BaseYumDistributorPublishStepTests):
         step._publish_distribution_files(unit)
         #This would throw an exception if it didn't work properly
 
-    def test_publish_distribution_packages_link(self):
-        unit = self._generate_distribution_unit('one')
-        step = publish.PublishDistributionStep()
-        step.parent = self.publisher
-        step._publish_distribution_packages_link(unit)
-
-        created_link = os.path.join(self.publisher.repo.working_dir, 'Packages')
-        self.assertTrue(os.path.islink(created_link))
-        self.assertEquals(os.path.realpath(created_link),
-                          os.path.realpath(self.publisher.repo.working_dir))
-
     def test_publish_distribution_packages_link_with_packagedir(self):
         unit = self._generate_distribution_unit('one', {'packagedir': 'Server'})
         step = publish.PublishDistributionStep()
         step.parent = self.publisher
         step._publish_distribution_packages_link(unit)
-        self.assertEquals(os.path.join(self.working_dir, 'Server'), step.package_dir)
+        self.assertEquals(os.path.join(self.working_dir, 'Server'), step.package_dirs[0])
 
     def test_publish_distribution_packages_link_with_invalid_packagedir(self):
         self._init_publisher()
@@ -692,15 +687,15 @@ class PublishDistributionStepTests(BaseYumDistributorPublishStepTests):
         unit = self._generate_distribution_unit('one', {'packagedir': 'Server/../../foo'})
         self.assertRaises(InvalidValue, step._publish_distribution_packages_link, unit)
 
-    def test_publish_distribution_packages_link_with_packagedir_equals_Packages(self):
+    def test_publish_distribution_packages_link_with_packagedir_equals_packages(self):
         unit = self._generate_distribution_unit('one', {'packagedir': 'Packages'})
         step = publish.PublishDistributionStep()
         step.parent = self.publisher
         step._publish_distribution_packages_link(unit)
         packages_dir = os.path.join(self.publisher.repo.working_dir, 'Packages')
-        self.assertEquals(packages_dir, step.package_dir)
+        self.assertEquals(packages_dir, step.package_dirs[0])
 
-    def test_publish_distribution_packages_link_with_packagedir_delete_existing_Packages(self):
+    def test_publish_distribution_packages_link_with_packagedir_delete_existing_packages(self):
         packages_dir = os.path.join(self.working_dir, 'Packages')
         old_directory = os.path.join(self.working_dir, "foo")
         os.mkdir(old_directory)
@@ -710,7 +705,7 @@ class PublishDistributionStepTests(BaseYumDistributorPublishStepTests):
         step = publish.PublishDistributionStep()
         step.parent = self.publisher
         step._publish_distribution_packages_link(unit)
-        self.assertEquals(os.path.realpath(packages_dir), self.working_dir)
+        self.assertFalse(os.path.islink(packages_dir))
 
     @mock.patch('pulp_rpm.plugins.distributors.yum.publish.PublishStep._create_symlink')
     def test_publish_distribution_packages_link_error(self, mock_symlink):
@@ -756,7 +751,7 @@ class PublishRpmStepTests(BaseYumDistributorPublishStepTests):
         units = [self._generate_rpm(u) for u in ('one', 'two', 'tree')]
         mock_get_units.return_value = units
 
-        step = publish.PublishRpmStep(mock.Mock(package_dir=None))
+        step = publish.PublishRpmStep(mock.Mock(package_dirs=[]))
         step.parent = self.publisher
 
         step.process()
@@ -778,8 +773,9 @@ class PublishRpmStepTests(BaseYumDistributorPublishStepTests):
         self.publisher.repo.content_unit_counts = {TYPE_ID_RPM: 1}
         package_dir = os.path.join(self.working_dir, 'packages')
 
-        step = publish.PublishRpmStep(mock.Mock(package_dir=package_dir))
+        step = publish.PublishRpmStep(mock.Mock(package_dirs=[package_dir]))
         self.publisher.add_child(step)
+
         step.process()
 
         unit_path = os.path.join(package_dir, unit.unit_key['name'])
@@ -882,3 +878,37 @@ class PublishMetadataStepTests(BaseYumDistributorPublishStepTests):
 
         # Verify
         self.assertEqual(0, mock_report_progress.call_count)
+
+
+class GenerateSqliteForRepoStepTests(BaseYumDistributorPublishStepTests):
+
+    @mock.patch('pulp_rpm.plugins.distributors.yum.publish.subprocess.check_call')
+    def test_process_main(self, mock_check_call):
+        step = publish.GenerateSqliteForRepoStep('/foo')
+        step.process_main()
+        mock_check_call.assert_called_once_with('createrepo -d --update --skip-stat /foo',
+                                                shell=True)
+
+    @mock.patch('pulp_rpm.plugins.distributors.yum.publish.subprocess.check_call')
+    def test_process_main_with_error(self, mock_check_call):
+        step = publish.GenerateSqliteForRepoStep('/foo')
+        mock_check_call.side_effect = subprocess.CalledProcessError(2, 'flux', output='bar')
+        self.assertRaises(PulpCodedException, step.process_main)
+
+    def test_is_skipped_no_config(self):
+        # Generating sqlite files is turned off by default
+        step = publish.GenerateSqliteForRepoStep('/foo')
+        self.publisher.add_child(step)
+        self.assertTrue(step.is_skipped())
+
+    def test_is_skipped_config_falise(self):
+        step = publish.GenerateSqliteForRepoStep('/foo')
+        self.publisher.add_child(step)
+        self.publisher.get_config().default_config.update({'generate_sqlite': False})
+        self.assertTrue(step.is_skipped())
+
+    def test_is_skipped_config_true(self):
+        step = publish.GenerateSqliteForRepoStep('/foo')
+        self.publisher.add_child(step)
+        self.publisher.get_config().default_config.update({'generate_sqlite': True})
+        self.assertFalse(step.is_skipped())

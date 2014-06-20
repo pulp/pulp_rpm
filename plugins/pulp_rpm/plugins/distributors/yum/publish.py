@@ -2,6 +2,7 @@ from collections import namedtuple
 import copy
 from gettext import gettext as _
 import os
+import subprocess
 
 from pulp.common.compat import json
 from pulp.plugins.config import PluginCallConfiguration
@@ -11,7 +12,7 @@ from pulp.plugins.util.publish_step import AtomicDirectoryPublishStep
 from pulp.server.db.model.criteria import UnitAssociationCriteria
 from pulp.server.managers.repo.query import RepoQueryManager
 import pulp.server.managers.repo._common as common_utils
-from pulp.server.exceptions import InvalidValue
+from pulp.server.exceptions import InvalidValue, PulpCodedException
 
 from pulp_rpm.common import constants
 from pulp_rpm.common.ids import (
@@ -71,6 +72,7 @@ class BaseYumRepoPublisher(PublishStep):
         self.add_child(PublishCompsStep())
         self.add_child(PublishMetadataStep())
         self.add_child(CloseRepoMetadataStep())
+        self.add_child(GenerateSqliteForRepoStep(self.get_working_dir()))
 
     def get_checksum_type(self):
         if not self.checksum_type:
@@ -382,8 +384,7 @@ class PublishRpmStep(UnitPublishStep):
         relative_path = util.get_relpath_from_unit(unit)
         destination_path = os.path.join(self.get_working_dir(), relative_path)
         self._create_symlink(source_path, destination_path)
-        package_dir = self.dist_step.package_dir
-        if package_dir:
+        for package_dir in self.dist_step.package_dirs:
             destination_path = os.path.join(package_dir, relative_path)
             self._create_symlink(source_path, destination_path)
 
@@ -465,8 +466,7 @@ class PublishDrpmStep(UnitPublishStep):
         relative_path = os.path.join('drpms', util.get_relpath_from_unit(unit))
         destination_path = os.path.join(self.get_working_dir(), relative_path)
         self._create_symlink(source_path, destination_path)
-        package_dir = self.dist_step.package_dir
-        if package_dir:
+        for package_dir in self.dist_step.package_dirs:
             destination_path = os.path.join(package_dir, relative_path)
             self._create_symlink(source_path, destination_path)
         self.context.add_unit_metadata(unit)
@@ -652,7 +652,7 @@ class PublishDistributionStep(UnitPublishStep):
         """
         super(PublishDistributionStep, self).__init__(constants.PUBLISH_DISTRIBUTION_STEP,
                                                       TYPE_ID_DISTRO)
-        self.package_dir = None
+        self.package_dirs = []
         self.description = _('Publishing Distribution files')
 
     def initialize(self):
@@ -760,20 +760,20 @@ class PublishDistributionStep(UnitPublishStep):
                 # raise a validation exception
                 msg = _('Error publishing repository: %(repo)s.  The treeinfo file specified a '
                         'packagedir \"%(packagedir)s\" that is not contained within the repository'
-                        % {'repo': self.parent.repo.id, 'packagedir': self.package_dir})
+                        % {'repo': self.parent.repo.id, 'packagedir': package_path})
                 logger.info(msg)
                 raise InvalidValue(KEY_PACKAGEDIR)
 
-            self.package_dir = real_package_path
+            self.package_dirs.append(real_package_path)
             if os.path.islink(package_path):
                 # a package path exists as a symlink we are going to remove it since
                 # the _create_symlink will create a real directory
                 os.unlink(package_path)
 
-        if package_path is not os.path.join(symlink_dir, 'Packages'):
-            # create the Packages symlink to the content dir, in the content dir
-            packages_symlink_path = os.path.join(symlink_dir, 'Packages')
-            self._create_symlink("./", packages_symlink_path)
+        default_packages_symlink = os.path.join(symlink_dir, 'Packages')
+        if package_path != default_packages_symlink:
+            # Add the Packages directory to the content directory
+            self.package_dirs.append(default_packages_symlink)
 
 
 class CreateIsoStep(PublishStep):
@@ -794,3 +794,33 @@ class CreateIsoStep(PublishStep):
         image_size = self.get_config().get(constants.ISO_SIZE_KEYWORD)
         image_prefix = self.get_config().get(constants.ISO_PREFIX_KEYWORD) or self.get_repo().id
         generate_iso.create_iso(self.content_dir, self.output_dir, image_prefix, image_size)
+
+
+class GenerateSqliteForRepoStep(PublishStep):
+    """
+    Generate the Sqlite files for a given repository using the createrepo command
+    """
+    def __init__(self, content_dir):
+        super(GenerateSqliteForRepoStep, self).__init__(constants.PUBLISH_GENERATE_SQLITE_FILE_STEP)
+        self.description = _('Generating sqlite files')
+        self.content_dir = content_dir
+
+    def is_skipped(self):
+        """
+        Check the repo for the config option to generate the sqlite files.
+        Skip generation if the config option is not specified
+
+        :returns: Whether or not generating sqlite files has been enabled for this repository
+        :rtype: bool
+        """
+        return not self.get_config().get('generate_sqlite', False)
+
+    def process_main(self):
+        """
+        Call out to createrepo command line in order to process the files
+        """
+        try:
+            subprocess.check_call('createrepo -d --update --skip-stat %s' % self.content_dir,
+                                  shell=True)
+        except subprocess.CalledProcessError, error:
+            raise PulpCodedException(message=error.output)

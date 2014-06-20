@@ -55,6 +55,7 @@ PUBLISH_OVER_HTTPS_STEP = 'publish_over_https'
 PUBLISH_REPOMD_STEP = 'publish_repo_metadata'
 PUBLISH_GENERATE_LISTING_FILE_STEP = 'initialize_repo_metadata'
 PUBLISH_STEP_ISO = 'save_iso'
+PUBLISH_GENERATE_SQLITE_FILE_STEP = 'generate sqlite'
 PUBLISH_STEP_EXPORT_REPO_GROUP = 'export_repo_group'
 
 
