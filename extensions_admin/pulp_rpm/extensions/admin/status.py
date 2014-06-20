@@ -168,7 +168,10 @@ class RpmStatusRenderer(StatusRenderer):
 
     def render_download_step(self, progress_report):
         """
-        :type  progress_report: pulp_rpm.plugins.importers.yum.report.ContentReport
+        :param progress_report: A dictionary containing a key called 'yum_importer' that is a
+                                dictionary that has a key that is 'content' that indexes a
+                                pulp_rpm.plugins.importers.yum.report.ContentReport.
+        :type  progress_report: dict
         """
         data = progress_report['yum_importer']['content']
         state = data['state']
