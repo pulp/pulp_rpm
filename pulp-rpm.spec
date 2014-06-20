@@ -194,6 +194,7 @@ to provide RPM specific support.
 Summary: The RPM admin client extensions
 Group: Development/Languages
 Requires: pulp-admin-client = %{pulp_version}
+Requires: python-pulp-rpm-common = %{pulp_version}
 
 %description admin-extensions
 A collection of extensions that supplement and override generic admin
