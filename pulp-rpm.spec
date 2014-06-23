@@ -163,6 +163,7 @@ Requires: python-rhsm >= 1.8.0
 Requires: pyliblzma
 Requires: python-nectar >= 1.2.1
 Requires: genisoimage
+Requires: m2crypto
 
 %description plugins
 Provides a collection of platform plugins that extend the Pulp platform
