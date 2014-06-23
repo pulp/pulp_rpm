@@ -891,7 +891,7 @@ class GenerateSqliteForRepoStepTests(BaseYumDistributorPublishStepTests):
     @mock.patch('pulp_rpm.plugins.distributors.yum.publish.subprocess.check_call')
     def test_process_main_with_error(self, mock_check_call):
         step = publish.GenerateSqliteForRepoStep('/foo')
-        mock_check_call.side_effect = subprocess.CalledProcessError(2, 'flux', output='bar')
+        mock_check_call.side_effect = subprocess.CalledProcessError(2, 'flux')
         self.assertRaises(PulpCodedException, step.process_main)
 
     def test_is_skipped_no_config(self):
