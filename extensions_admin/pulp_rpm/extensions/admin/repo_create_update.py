@@ -38,6 +38,7 @@ EXPORT_DISTRIBUTOR_CONFIG_KEYS = [
     ('http', 'serve_http'),
     ('https', 'serve_https'),
     ('https_ca', 'host_ca'),
+    ('generate_sqlite', 'generate_sqlite'),
     ('skip', 'skip'),
 ]
 

@@ -131,8 +131,10 @@ ISO_PREFIX_KEYWORD = 'iso_prefix'
 ISO_SIZE_KEYWORD = 'iso_size'
 SKIP_KEYWORD = 'skip'
 START_DATE_KEYWORD = 'start_date'
+GENERATE_SQLITE_KEYWORD = 'generate_sqlite'
 EXPORT_OPTIONAL_CONFIG_KEYS = (END_DATE_KEYWORD, ISO_PREFIX_KEYWORD, SKIP_KEYWORD,
-                               EXPORT_DIRECTORY_KEYWORD, START_DATE_KEYWORD, ISO_SIZE_KEYWORD)
+                               EXPORT_DIRECTORY_KEYWORD, START_DATE_KEYWORD, ISO_SIZE_KEYWORD,
+                               GENERATE_SQLITE_KEYWORD)
 
 EXPORT_HTTP_DIR = '/var/lib/pulp/published/http/exports/repo'
 EXPORT_HTTPS_DIR = '/var/lib/pulp/published/https/exports/repo'

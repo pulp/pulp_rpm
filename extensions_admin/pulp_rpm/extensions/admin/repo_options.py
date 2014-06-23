@@ -81,7 +81,7 @@ d = _('GPG key used to sign and verify packages in the repository')
 OPT_GPG_KEY = PulpCliOption('--gpg-key', d, required=False)
 
 d = _('if "true", sqlite files will be generated for the repository metadata during publish')
-OPT_GENERATE_SQLITE = PulpCliOption('--generate_sqlite', d, required=False,
+OPT_GENERATE_SQLITE = PulpCliOption('--generate-sqlite', d, required=False,
                                     parse_func=parsers.parse_boolean)
 
 
