@@ -105,15 +105,9 @@ def validate_export_config(config):
                     return False, msg
         if key == constants.EXPORT_DIRECTORY_KEYWORD:
             export_dir = config.get(key)
-            if export_dir:
-                # Check that the export directory exists and is read/writable
-                export_dir = str(export_dir)
-                if not os.path.isdir(export_dir):
-                    msg = _("Value for 'export_dir' is not an existing directory: %s" % export_dir)
-                    return False, msg
-                if not os.access(export_dir, os.R_OK) or not os.access(export_dir, os.W_OK):
-                    msg = _("Unable to read & write to specified 'export_dir': %s" % export_dir)
-                    return False, msg
+            if not os.path.isabs(export_dir):
+                msg = _("Value for 'export_dir' must be an absolute path: %s" % export_dir)
+                return False, msg
 
     return True, None
 
