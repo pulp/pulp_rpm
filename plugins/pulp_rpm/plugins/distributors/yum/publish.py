@@ -705,7 +705,7 @@ class PublishDistributionStep(UnitPublishStep):
             # create a symlink from content location to repo location.
             symlink_treeinfo_path = os.path.join(self.get_working_dir(), treeinfo_file_name)
             logger.debug("creating treeinfo symlink from %s to %s" % (src_treeinfo_path,
-                                                                    symlink_treeinfo_path))
+                                                                      symlink_treeinfo_path))
             self._create_symlink(src_treeinfo_path, symlink_treeinfo_path)
 
     def _publish_distribution_files(self, distribution_unit):
@@ -801,6 +801,13 @@ class GenerateSqliteForRepoStep(PublishStep):
     Generate the Sqlite files for a given repository using the createrepo command
     """
     def __init__(self, content_dir):
+        """
+        Initialize the step for creating sqlite files
+
+        :param content_dir: The base directory of the repository.  This directory should contain
+                            the repodata directory
+        :type content_dir: str
+        """
         super(GenerateSqliteForRepoStep, self).__init__(constants.PUBLISH_GENERATE_SQLITE_FILE_STEP)
         self.description = _('Generating sqlite files')
         self.content_dir = content_dir
@@ -808,7 +815,7 @@ class GenerateSqliteForRepoStep(PublishStep):
     def is_skipped(self):
         """
         Check the repo for the config option to generate the sqlite files.
-        Skip generation if the config option is not specified
+        Skip generation if the config option is not specified.
 
         :returns: Whether or not generating sqlite files has been enabled for this repository
         :rtype: bool
@@ -817,7 +824,7 @@ class GenerateSqliteForRepoStep(PublishStep):
 
     def process_main(self):
         """
-        Call out to createrepo command line in order to process the files
+        Call out to createrepo command line in order to process the files.
         """
         try:
             subprocess.check_call('createrepo -d --update --skip-stat %s' % self.content_dir,

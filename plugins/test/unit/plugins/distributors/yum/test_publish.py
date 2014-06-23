@@ -465,7 +465,6 @@ class PublishDrpmStepTests(BaseYumDistributorPublishStepTests):
         step.dist_step.package_dirs = ['/bar']
         step.process_unit(test_unit)
 
-
         mock_symlink.assert_any_call('/bar', os.path.join(self.working_dir, 'drpms', 'foo.rpm'))
 
     def test_skip_if_no_units(self):
