@@ -826,8 +826,9 @@ class GenerateSqliteForRepoStep(PublishStep):
         """
         Call out to createrepo command line in order to process the files.
         """
-        try:
-            subprocess.check_call('createrepo -d --update --skip-stat %s' % self.content_dir,
-                                  shell=True)
-        except subprocess.CalledProcessError, error:
-            raise PulpCodedException(message=error.output)
+        pipe = subprocess.Popen('createrepo -d --update --skip-stat %s' % self.content_dir,
+                                shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        stdout, stderr = pipe.communicate()
+        if pipe.returncode != 0:
+            result_string = '%s\n::\n%s' % (stdout, stderr)
+            raise PulpCodedException(message=result_string)

@@ -1,6 +1,5 @@
 import os
 import shutil
-import subprocess
 import tempfile
 import unittest
 
@@ -881,17 +880,24 @@ class PublishMetadataStepTests(BaseYumDistributorPublishStepTests):
 
 class GenerateSqliteForRepoStepTests(BaseYumDistributorPublishStepTests):
 
-    @mock.patch('pulp_rpm.plugins.distributors.yum.publish.subprocess.check_call')
-    def test_process_main(self, mock_check_call):
+    @mock.patch('pulp_rpm.plugins.distributors.yum.publish.subprocess.Popen')
+    def test_process_main(self, Popen):
+        pipe_output = ('some output', None)
+        Popen.return_value = mock.MagicMock()
+        Popen.return_value.returncode = 0
+        Popen.return_value.communicate.return_value = pipe_output
         step = publish.GenerateSqliteForRepoStep('/foo')
         step.process_main()
-        mock_check_call.assert_called_once_with('createrepo -d --update --skip-stat /foo',
-                                                shell=True)
+        Popen.assert_called_once_with('createrepo -d --update --skip-stat /foo',
+                                      shell=True, stderr=mock.ANY, stdout=mock.ANY)
 
-    @mock.patch('pulp_rpm.plugins.distributors.yum.publish.subprocess.check_call')
-    def test_process_main_with_error(self, mock_check_call):
+    @mock.patch('pulp_rpm.plugins.distributors.yum.publish.subprocess.Popen')
+    def test_process_main_with_error(self, Popen):
         step = publish.GenerateSqliteForRepoStep('/foo')
-        mock_check_call.side_effect = subprocess.CalledProcessError(2, 'flux')
+        pipe_output = ('some output', None)
+        Popen.return_value = mock.MagicMock()
+        Popen.return_value.returncode = 1
+        Popen.return_value.communicate.return_value = pipe_output
         self.assertRaises(PulpCodedException, step.process_main)
 
     def test_is_skipped_no_config(self):
