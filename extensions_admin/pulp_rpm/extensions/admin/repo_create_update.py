@@ -24,6 +24,7 @@ YUM_DISTRIBUTOR_CONFIG_KEYS = [
     ('relative_url', 'relative_url'),
     ('http', 'serve_http'),
     ('https', 'serve_https'),
+    ('generate_sqlite', 'generate_sqlite'),
     ('gpgkey', 'gpg_key'),
     ('checksum_type', 'checksum_type'),
     ('auth_ca', 'auth_ca'),
@@ -37,6 +38,7 @@ EXPORT_DISTRIBUTOR_CONFIG_KEYS = [
     ('http', 'serve_http'),
     ('https', 'serve_https'),
     ('https_ca', 'host_ca'),
+    ('generate_sqlite', 'generate_sqlite'),
     ('skip', 'skip'),
 ]
 

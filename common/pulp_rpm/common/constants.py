@@ -55,6 +55,7 @@ PUBLISH_OVER_HTTPS_STEP = 'publish_over_https'
 PUBLISH_REPOMD_STEP = 'publish_repo_metadata'
 PUBLISH_GENERATE_LISTING_FILE_STEP = 'initialize_repo_metadata'
 PUBLISH_STEP_ISO = 'save_iso'
+PUBLISH_GENERATE_SQLITE_FILE_STEP = 'generate sqlite'
 PUBLISH_STEP_EXPORT_REPO_GROUP = 'export_repo_group'
 
 
@@ -130,8 +131,10 @@ ISO_PREFIX_KEYWORD = 'iso_prefix'
 ISO_SIZE_KEYWORD = 'iso_size'
 SKIP_KEYWORD = 'skip'
 START_DATE_KEYWORD = 'start_date'
+GENERATE_SQLITE_KEYWORD = 'generate_sqlite'
 EXPORT_OPTIONAL_CONFIG_KEYS = (END_DATE_KEYWORD, ISO_PREFIX_KEYWORD, SKIP_KEYWORD,
-                               EXPORT_DIRECTORY_KEYWORD, START_DATE_KEYWORD, ISO_SIZE_KEYWORD)
+                               EXPORT_DIRECTORY_KEYWORD, START_DATE_KEYWORD, ISO_SIZE_KEYWORD,
+                               GENERATE_SQLITE_KEYWORD)
 
 EXPORT_HTTP_DIR = '/var/lib/pulp/published/http/exports/repo'
 EXPORT_HTTPS_DIR = '/var/lib/pulp/published/https/exports/repo'

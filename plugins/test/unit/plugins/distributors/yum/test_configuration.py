@@ -279,12 +279,12 @@ class YumDistributorConfigurationTests(unittest.TestCase):
         mock_validate_boolean.assert_called_once_with('skip_pkg_tags', True, error_messages)
 
     @mock.patch('pulp_rpm.plugins.distributors.yum.configuration._validate_boolean')
-    def test_use_createrepo(self, mock_validate_boolean):
+    def test_generate_sqlite(self, mock_validate_boolean):
         error_messages = []
 
-        configuration._validate_use_createrepo(False, error_messages)
+        configuration._validate_generate_sqlite(False, error_messages)
 
-        mock_validate_boolean.assert_called_once_with('use_createrepo', False, error_messages,
+        mock_validate_boolean.assert_called_once_with('generate_sqlite', False, error_messages,
                                                       False)
 
     # -- public api ------------------------------------------------------------
@@ -354,7 +354,7 @@ class YumDistributorConfigurationTests(unittest.TestCase):
     @mock.patch('pulp_rpm.plugins.distributors.yum.configuration._validate_protected')
     @mock.patch('pulp_rpm.plugins.distributors.yum.configuration._validate_skip')
     @mock.patch('pulp_rpm.plugins.distributors.yum.configuration._validate_skip_pkg_tags')
-    @mock.patch('pulp_rpm.plugins.distributors.yum.configuration._validate_use_createrepo')
+    @mock.patch('pulp_rpm.plugins.distributors.yum.configuration._validate_generate_sqlite')
     @mock.patch('pulp_rpm.plugins.distributors.yum.configuration.'
                 '_check_for_relative_path_conflicts')
     @mock.patch('pulp_rpm.plugins.distributors.yum.configuration.process_cert_based_auth')
@@ -370,7 +370,7 @@ class YumDistributorConfigurationTests(unittest.TestCase):
                          'protected': True,
                          'skip': {'drpms': 1},
                          'skip_pkg_tags': True,
-                         'use_createrepo': False}
+                         'generate_sqlite': False}
 
         repo = Repository('test')
         config = self._generate_call_config(**config_kwargs)
