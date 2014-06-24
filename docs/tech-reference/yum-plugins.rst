@@ -523,9 +523,10 @@ Optional Configuration Parameters
  to consumers to use in verifying content in the repository. The value to this
  option must be the full path to the GPG key file.
 
-``use_createrepo``
- This is mostly a debug flag to override default snippet-based metadata generation.
- ``False`` will not run and uses existing metadata from sync.
+``generate_sqlite``
+ Boolean flag to indicate whether or not sqlite files should be generated during
+ a repository publish.  If unspecified it will not run due to the extra time needed to
+ perform this operation.
 
 ``checksum_type``
  Checksum type to use for metadata generation

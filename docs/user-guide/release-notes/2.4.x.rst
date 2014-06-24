@@ -13,10 +13,16 @@ New Features
    at pulp_rpm/playpen/yum_distributor/generate_distribution_manifest.py can be used to help with
    creating the manifest file. This file should be stored as a peer of the treeinfo file in a source
    repository that is being synced by Pulp.
+ - Added the ability to generate sqlite repository metadata files as part of an RPM repo
+   publish.
 
 
 API Changes
 -----------
+ - The ``generate_sqlite`` metadata flag was added to the yum_distributor distributor type.
+   Enabling that flag will turn on generation of sqlite repo metadata files.  This is not
+   enabled by default.
+ - Removed the ``use_createrepo`` in favor of the more precise ``generate_sqlite`` flag
 
 Yum Importer
 ^^^^^^^^^^^^

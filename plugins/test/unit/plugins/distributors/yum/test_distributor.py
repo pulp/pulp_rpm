@@ -238,6 +238,12 @@ class TestDistributorDistributorRemoved(unittest.TestCase):
         except Exception:
             self.fail('Distributor unlink should handle symlinks that do not exist.')
 
+    def test_distributor_unlink_call_handles_non_oserror_raised(self):
+        os_error_to_raise = OSError()
+        self.mock_os.unlink.side_effect = os_error_to_raise
+        self.assertRaises(OSError, self.distributor.distributor_removed, self.mock_repo,
+                          self.config)
+
 
 class TestEntryPoint(unittest.TestCase):
     """

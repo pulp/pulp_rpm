@@ -80,6 +80,11 @@ OPT_CHECKSUM_TYPE = PulpCliOption('--checksum-type', d, required=False)
 d = _('GPG key used to sign and verify packages in the repository')
 OPT_GPG_KEY = PulpCliOption('--gpg-key', d, required=False)
 
+d = _('if "true", sqlite files will be generated for the repository metadata during publish')
+OPT_GENERATE_SQLITE = PulpCliOption('--generate-sqlite', d, required=False,
+                                    parse_func=parsers.parse_boolean)
+
+
 # -- publish security options -------------------------------------------------
 
 d = _('full path to the CA certificate that signed the repository hosts\'s SSL '
@@ -111,6 +116,7 @@ def add_distributor_config_to_command(command):
     publish_group.add_option(OPT_SERVE_HTTPS)
     publish_group.add_option(OPT_CHECKSUM_TYPE)
     publish_group.add_option(OPT_GPG_KEY)
+    publish_group.add_option(OPT_GENERATE_SQLITE)
 
     # Order added indicates order in usage, so pay attention to this order when
     # dorking with it to make sure it makes sense
