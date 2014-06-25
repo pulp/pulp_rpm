@@ -14,7 +14,7 @@
 
 Name: pulp-rpm
 Version: 2.4.0
-Release: 0.22.beta%{?dist}
+Release: 0.23.beta%{?dist}
 Summary: Support for RPM content in the Pulp platform
 Group: Development/Languages
 License: GPLv2
@@ -272,6 +272,9 @@ A collection of yum plugins supplementing Pulp consumer operations.
 
 
 %changelog
+* Wed Jun 25 2014 Randy Barlow <rbarlow@redhat.com> 2.4.0-0.23.beta
+- Pulp rebuild
+
 * Tue Jun 24 2014 Randy Barlow <rbarlow@redhat.com> 2.4.0-0.22.beta
 - 1099771 - Add a unit test to assert correct behavior for reporting invalid
   checksums. (rbarlow@redhat.com)
