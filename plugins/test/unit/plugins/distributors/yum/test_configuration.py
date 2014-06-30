@@ -287,6 +287,23 @@ class YumDistributorConfigurationTests(unittest.TestCase):
         mock_validate_boolean.assert_called_once_with('generate_sqlite', False, error_messages,
                                                       False)
 
+    # prevent this from running, because it has unexpected side-effects
+    @mock.patch('pulp_rpm.plugins.distributors.yum.configuration.process_cert_based_auth')
+    def test_gpg_key(self, mock_process_auth):
+        config_dict = {
+            'http': True,
+            'https': True,
+            'relative_url': 'a/b/c',
+            'gpgkey': '/tmp/my.gpg',
+        }
+        config = self._generate_call_config(**config_dict)
+
+        valid, reason = configuration.validate_config(Repository('myrepo'),
+                                                      config, mock.MagicMock())
+
+        self.assertTrue(valid is True)
+        self.assertTrue(reason is None)
+
     # -- public api ------------------------------------------------------------
 
     def test_get_http_publish_dir_default(self):
