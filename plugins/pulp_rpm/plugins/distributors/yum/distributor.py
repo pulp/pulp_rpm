@@ -110,8 +110,9 @@ class YumHTTPDistributor(Distributor):
         symlink_list = [http_publish_dir, https_publish_dir]
 
         for symlink in symlink_list:
+            symlink_without_trailing_slash = symlink.rstrip(os.sep)
             try:
-                os.unlink(symlink)
+                os.unlink(symlink_without_trailing_slash)
             except OSError as error:
                 # If the symlink doesn't exist pass
                 if error.errno != errno.ENOENT:
