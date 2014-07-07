@@ -143,7 +143,9 @@ class ExportRepoPublisher(BaseYumRepoPublisher):
                                                                                            config)]
 
             master_dir = configuration.get_master_publish_dir(repo, self.get_distributor_type())
-            self.add_child(AtomicDirectoryPublishStep(output_dir, publish_location, master_dir))
+            atomic_publish = AtomicDirectoryPublishStep(output_dir, publish_location, master_dir)
+            atomic_publish.description = _('Moving ISO to final location')
+            self.add_child(atomic_publish)
 
 
 class ExportRepoGroupPublisher(PublishStep):
