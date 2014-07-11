@@ -14,7 +14,7 @@
 
 Name: pulp-rpm
 Version: 2.4.0
-Release: 0.23.beta%{?dist}
+Release: 0.24.beta%{?dist}
 Summary: Support for RPM content in the Pulp platform
 Group: Development/Languages
 License: GPLv2
@@ -273,6 +273,11 @@ A collection of yum plugins supplementing Pulp consumer operations.
 
 
 %changelog
+* Fri Jul 11 2014 Brian Bouterse <bmbouter@gmail.com> 2.4.0-0.24.beta
+- 1097816 - adding "gpgkey" as a valid distributor config value
+  (mhrivnak@redhat.com)
+- 1111322 - Fix client side error trying to update iso repo (bcourt@redhat.com)
+
 * Wed Jun 25 2014 Randy Barlow <rbarlow@redhat.com> 2.4.0-0.23.beta
 - Pulp rebuild
 
