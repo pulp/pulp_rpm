@@ -15,6 +15,7 @@ from yum.plugins import TYPE_CORE, TYPE_INTERACTIVE
 from yum.rpmtrans import RPMBaseCallback
 from yum.callbacks import DownloadBaseCallback, PT_MESSAGES
 from yum.Errors import InstallError
+from yum import constants
 
 
 log = getLogger(__name__)
@@ -23,7 +24,7 @@ log = getLogger(__name__)
 class Package:
     """
     Package management.
-    Returned I{Package} NEVRA+ objects:
+    Returned *Package* NEVRA+ objects:
       - qname   : qualified name
       - repoid  : repository id
       - name    : package name
@@ -33,21 +34,22 @@ class Package:
       - arch    : package arch
     """
 
-    @classmethod
-    def summary(cls, tsInfo, states=('i','u')):
+    @staticmethod
+    def tx_summary(ts_info, states):
         """
         Get transaction summary.
-        @param tsInfo: A yum transaction.
-        @type tsInfo: YumTransaction
-        @param states: A list of yum transaction states.
-        @type states: tuple|list
-        @return: (resolved[],deps[])
-        @rtype: tuple
+        :param ts_info: A yum transaction.
+        :type ts_info: YumTransaction
+        :param states: A list of yum transaction states.
+        :type states: tuple|list
+        :return: {resolved=[Package,],deps=[Package,], failed=[Package,]}
+        :rtype: tuple
         """
-        resolved = []
         deps = []
-        for t in tsInfo:
-            if t.ts_state not in states:
+        resolved = []
+        failed = []
+        for t in ts_info:
+            if t.output_state not in states:
                 continue
             qname = str(t.po)
             package = dict(
@@ -58,42 +60,58 @@ class Package:
                 release=t.po.rel,
                 arch=t.po.arch,
                 epoch=t.po.epoch)
+            if t.output_state == constants.TS_FAILED:
+                failed.append(package)
             if t.isDep:
                 deps.append(package)
             else:
                 resolved.append(package)
-        return (resolved, deps)
+        return dict(resolved=resolved, deps=deps, failed=failed)
 
-    @classmethod
-    def installed(cls, tsInfo):
+    @staticmethod
+    def installed(ts_info):
         """
         Get transaction summary for installed packages.
-        @param tsInfo: A yum transaction.
-        @type tsInfo: YumTransaction
-        @return: (resolved[],deps[])
-        @rtype: tuple
+        :param ts_info: A yum transaction.
+        :type ts_info: YumTransaction
+        :return: Installed packages: {resolved=[Package,],deps=[Package,], failed=[Package,]}
+        :rtype: dict
         """
-        return cls.summary(tsInfo)
+        states = (constants.TS_FAILED, constants.TS_INSTALL, constants.TS_UPDATE)
+        return Package.tx_summary(ts_info, states)
 
-    @classmethod
-    def erased(cls, tsInfo):
+    @staticmethod
+    def updated(ts_info):
+        """
+        Get transaction summary for updated packages.
+        :param ts_info: A yum transaction.
+        :type ts_info: YumTransaction
+        :return: Installed packages: {resolved=[Package,],deps=[Package,], failed=[Package,]}
+        :rtype: dict
+        """
+        states = (constants.TS_FAILED, constants.TS_INSTALL, constants.TS_UPDATE)
+        return Package.tx_summary(ts_info, states)
+
+    @staticmethod
+    def erased(ts_info):
         """
         Get transaction summary for erased packages.
-        @param tsInfo: A yum transaction.
-        @type tsInfo: YumTransaction
-        @return: (resolved[],deps[])
-        @rtype: tuple
+        :param ts_info: A yum transaction.
+        :type ts_info: YumTransaction
+        :return: Erased packages: {resolved=[Package,],deps=[Package,], failed=[Package,]}
+        :rtype: dict
         """
-        return cls.summary(tsInfo, ('e',))
+        states = (constants.TS_FAILED, constants.TS_ERASE)
+        return Package.tx_summary(ts_info, states)
 
     def __init__(self, apply=True, importkeys=False, progress=None):
         """
-        @param apply: Apply changes (not dry-run).
-        @type apply: bool
-        @param importkeys: Allow the import of GPG keys.
-        @type importkeys: bool
-        @param progress: A progress report.
-        @type progress: L{ProgressReport}
+        :param apply: Apply changes (not dry-run).
+        :type apply: bool
+        :param importkeys: Allow the import of GPG keys.
+        :type importkeys: bool
+        :param progress: A progress report.
+        :type progress: ProgressReport
         """
         self.apply = apply
         self.importkeys = importkeys
@@ -102,79 +120,76 @@ class Package:
     def install(self, names):
         """
         Install packages by name.
-        @param names: A list of package names.
-        @type names: [str,]
-        @return: Packages installed.
-            {resolved=[Package,],deps=[Package,]}
-        @rtype: dict
+        :param names: A list of package names.
+        :type names: [str,]
+        :return: Packages installed.
+            {resolved=[Package,],deps=[Package,], failed=[Package,]}
+        :rtype: dict
         """
         yb = Yum(self.importkeys, self.progress)
         try:
-            for info in names:
+            for pattern in names:
                 try:
-                    yb.install(pattern=info)
+                    yb.install(pattern=pattern)
                 except InstallError, caught:
-                    caught.value = '%s: %s' % (info, str(caught))
+                    caught.value = '%s: %s' % (pattern, str(caught))
                     raise caught
             yb.resolveDeps()
-            resolved, deps = self.installed(yb.tsInfo)
-            if self.apply and resolved:
+            if self.apply and len(yb.tsInfo):
                 yb.processTransaction()
             else:
                 yb.progress.set_status(True)
+            return Package.installed(yb.tsInfo)
         finally:
             yb.close()
-        return dict(resolved=resolved, deps=deps)
 
     def uninstall(self, names):
         """
         Uninstall (erase) packages by name.
-        @param names: A list of package names to be removed.
-        @type names: list
-        @return: Packages uninstalled (erased).
-            {resolved=[Package,],deps=[Package,]}
-        @rtype: dict
+        :param names: A list of package names to be removed.
+        :type names: list
+        :return: Packages uninstalled (erased).
+            {resolved=[Package,],deps=[Package,], failed=[Package,]}
+        :rtype: dict
         """
         yb = Yum(progress=self.progress)
         try:
-            for info in names:
-                yb.remove(pattern=info)
+            for pattern in names:
+                yb.remove(pattern=pattern)
             yb.resolveDeps()
-            resolved, deps = self.erased(yb.tsInfo)
-            if self.apply and resolved:
+            if self.apply and len(yb.tsInfo):
                 yb.processTransaction()
             else:
                 yb.progress.set_status(True)
+            return Package.erased(yb.tsInfo)
         finally:
             yb.close()
-        return dict(resolved=resolved, deps=deps)
 
-    def update(self, names=[]):
+    def update(self, names=()):
         """
         Update installed packages.
         When (names) is not specified, all packages are updated.
-        @param names: A list of package names.
-        @type names: [str,]
-        @return: Packages installed (updated).
-            {resolved=[Package,],deps=[Package,]}
-        @rtype: dict
+        :param names: A list of package names.
+        :type names: [str,]
+        :return: Packages installed (updated).
+            {resolved=[Package,],deps=[Package,], failed=[Package,]}
+        :rtype: dict
         """
         yb = Yum(self.importkeys, self.progress)
         try:
             if names:
-                for info in names:
-                    yb.update(pattern=info)
+                for pattern in names:
+                    yb.update(pattern=pattern)
             else:
                 yb.update()
             yb.resolveDeps()
-            resolved, deps = self.installed(yb.tsInfo)
-            if self.apply and resolved:
+            if self.apply and len(yb.tsInfo):
                 yb.processTransaction()
             else:
                 yb.progress.set_status(True)
+            return Package.updated(yb.tsInfo)
         finally:
             yb.close()
-        return dict(resolved=resolved, deps=deps)
 
 
 class PackageGroup:
@@ -184,10 +199,10 @@ class PackageGroup:
 
     def __init__(self, apply=True, importkeys=False, progress=None):
         """
-        @param apply: Apply changes (not dry-run).
-        @type apply: bool
-        @param importkeys: Allow the import of GPG keys.
-        @type importkeys: bool
+        :param apply: Apply changes (not dry-run).
+        :type apply: bool
+        :param importkeys: Allow the import of GPG keys.
+        :type importkeys: bool
         """
         self.apply = apply
         self.importkeys = importkeys
@@ -196,58 +211,55 @@ class PackageGroup:
     def install(self, names):
         """
         Install package groups by name.
-        @param names: A list of package group names.
-        @type names: list
-        @return: Packages installed.
-            {resolved=[Package,],deps=[Package,]}
-        @rtype: dict
+        :param names: A list of package group names.
+        :type names: list
+        :return: Packages installed.
+            {resolved=[Package,],deps=[Package,], failed=[Package,]}
+        :rtype: dict
         """
         yb = Yum(self.importkeys, self.progress)
         try:
             for name in names:
                 yb.selectGroup(name)
             yb.resolveDeps()
-            resolved, deps = Package.installed(yb.tsInfo)
-            if self.apply and resolved:
+            if self.apply and len(yb.tsInfo):
                 yb.processTransaction()
             else:
                 yb.progress.set_status(True)
+            return Package.installed(yb.tsInfo)
         finally:
             yb.close()
-        return dict(resolved=resolved, deps=deps)
 
     def uninstall(self, names):
         """
         Uninstall package groups by name.
-        @param names: A list of package group names.
-        @type names: [str,]
-        @return: Packages uninstalled.
-            {resolved=[Package,],deps=[Package,]}
-        @rtype: dict
+        :param names: A list of package group names.
+        :type names: [str,]
+        :return: Packages uninstalled.
+            {resolved=[Package,],deps=[Package,], failed=[Package,]}
+        :rtype: dict
         """
-        removed = {}
         yb = Yum(progress=self.progress)
         try:
             for name in names:
                 yb.groupRemove(name)
             yb.resolveDeps()
-            resolved, deps = Package.erased(yb.tsInfo)
-            if self.apply and resolved:
+            if self.apply and len(yb.tsInfo):
                 yb.processTransaction()
             else:
                 yb.progress.set_status(True)
+            return Package.erased(yb.tsInfo)
         finally:
             yb.close()
-        return dict(resolved=resolved, deps=deps)
 
 
 class ProgressReport:
     """
     Package (and group) progress reporting object.
-    @ivar step: A list package steps.
+    :ivar step: A list package steps.
         Each step is: (name, status)
-    @type step: tuple
-    @ivar details: Details about package actions taking place
+    :type step: tuple
+    :ivar details: Details about package actions taking place
         in the current step.
     """
 
@@ -266,8 +278,8 @@ class ProgressReport:
         """
         Push the specified step.
         First, update the last status to SUCCEEDED.
-        @param name: The step name to push.
-        @type name: str
+        :param name: The step name to push.
+        :type name: str
         """
         self.set_status(self.SUCCEEDED)
         self.steps.append([name, self.PENDING])
@@ -277,8 +289,8 @@ class ProgressReport:
     def set_status(self, status):
         """
         Update the status of the current step.
-        @param status: The status.
-        @type status: bool
+        :param status: The status.
+        :type status: bool
         """
         if not self.steps:
             return
@@ -291,8 +303,8 @@ class ProgressReport:
     def set_action(self, action, package):
         """
         Set the specified package action for the current step.
-        @param action: The action being performed.
-        @type action: str
+        :param action: The action being performed.
+        :type action: str
         """
         self.details = dict(action=action, package=str(package))
         self._updated()
@@ -300,8 +312,8 @@ class ProgressReport:
     def error(self, msg):
         """
         Report an error on the current step.
-        @param msg: The error message to report.
-        @type msg: str
+        :param msg: The error message to report.
+        :type msg: str
         """
         self.set_status(self.FAILED)
         self.details = dict(error=msg)
@@ -320,14 +332,14 @@ class ProcessTransCallback:
     The callback used by YumBase to report transaction progress.
     The event is forwarded to the report object to be consolidated
     with other reported progress information.
-    @ivar report: A report object to be notified.
-    @type report: L{ProgressReport}
+    :ivar report: A report object to be notified.
+    :type report: ProgressReport
     """
 
     def __init__(self, report):
         """
-        @param report: A report object to be notified.
-        @type report: L{ProgressReport}
+        :param report: A report object to be notified.
+        :type report: ProgressReport
         """
         self.report = report
 
@@ -336,10 +348,10 @@ class ProcessTransCallback:
         Called by YumBase to report transaction progress events.
         The event is forwarded to the report object to be consolidated
         with other reported progress information.
-        @param state: The next state.
-        @type state: int
-        @param data: Information describing the event.
-        @type data: object
+        :param state: The next state.
+        :type state: int
+        :param data: Information describing the event.
+        :type data: object
         """
         if state in PT_MESSAGES:
             self.report.push_step(PT_MESSAGES[state])
@@ -350,16 +362,16 @@ class RPMCallback(RPMBaseCallback):
     The RPM transaction progress callback.
     The event is forwarded to the report object to be consolidated
     with other reported progress information.
-    @ivar report: A report object to be notified.
-    @type report: L{ProgressReport}
-    @ivar events: A set of event keys.
-    @type events: set
+    :ivar report: A report object to be notified.
+    :type report: ProgressReport
+    :ivar events: A set of event keys.
+    :type events: set
     """
 
     def __init__(self, report):
         """
-        @param report: A report object to be notified.
-        @type report: L{ProgressReport}
+        :param report: A report object to be notified.
+        :type report: ProgressReport
         """
         RPMBaseCallback.__init__(self)
         self.report = report
@@ -375,17 +387,17 @@ class RPMCallback(RPMBaseCallback):
         and action combination.
         The event is forwarded to the report object to be consolidated
         with other reported progress information.
-        @param package: A package object (subject of the event).
-        @type package: str
-        @param action: The action in progress on the package.
-        @type action: int
-        @param unused: Ignored parameters.
+        :param package: A package object (subject of the event).
+        :type package: str
+        :param action: The action in progress on the package.
+        :type action: int
+        :param unused: Ignored parameters.
         """
         key = (str(package), action)
         if key in self.events:
             return
         self.events.add(key)
-        self.report.set_action(self.action[action], package)
+        self.report.set_action(self.action.get(action, str(action)), package)
 
     def filelog(self, package, action):
         """
@@ -393,20 +405,20 @@ class RPMCallback(RPMBaseCallback):
         The event is forwarded to the report object to be consolidated
         with other reported progress information.
         Note: logging to /var/log/yum.log happens in the super impl.
-        @param package: A package object (subject of the event).
-        @type package: str
-        @param action: The action in progress on the package.
-        @type action: int
+        :param package: A package object (subject of the event).
+        :type package: str
+        :param action: The action in progress on the package.
+        :type action: int
         """
-        self.report.set_action(self.fileaction[action], package)
+        self.report.set_action(self.fileaction.get(action, str(action)), package)
 
     def errorlog(self, msg):
         """
         Notification of package related errors.
         The event is forwarded to the report object to be consolidated
         with other reported progress information.
-        @param msg: An error message.
-        @type msg: str
+        :param msg: An error message.
+        :type msg: str
         """
         self.report.error(msg)
 
@@ -415,12 +427,12 @@ class RPMCallback(RPMBaseCallback):
         Notification of package package verification.
         The event is forwarded to the report object to be consolidated
         with other reported progress information.
-        @param base: The base transaction.
-        @type base: object
-        @param tx: A transaction member.
-        @type tx: object
-        @param count: The transaction member count.
-        @type count: int
+        :param base: The base transaction.
+        :type base: object
+        :param tx: A transaction member.
+        :type tx: object
+        :param count: The transaction member count.
+        :type count: int
         """
         action = 'Verifying'
         self.report.set_action(action, tx.po)
@@ -431,14 +443,14 @@ class DownloadCallback(DownloadBaseCallback):
     The callback used for YumBase to report file downloads.
     The event is forwarded to the report object to be consolidated
     with other reported progress information.
-    @ivar report: A report object to be notified.
-    @type report: L{ProgressReport}
+    :ivar report: A report object to be notified.
+    :type report: ProgressReport
     """
 
     def __init__(self, report):
         """
-        @param report: A report object to be notified.
-        @type report: L{ProgressReport}
+        :param report: A report object to be notified.
+        :type report: ProgressReport
         """
         DownloadBaseCallback.__init__(self)
         self.report = report
@@ -448,8 +460,8 @@ class DownloadCallback(DownloadBaseCallback):
         Notification that a file download has started.
         The event is forwarded to the report object to be consolidated
         with other reported progress information.
-        @param now: timestamp.
-        @type now: float
+        :param now: timestamp.
+        :type now: float
         """
         DownloadBaseCallback._do_start(self, now)
         action = 'Downloading'
@@ -477,10 +489,10 @@ class Yum(YumBase):
           - custom configuration.
           - setting the progress bar for download progress reporting.
           - prime our progress report object.
-        @param importkeys: Allow the import of GPG keys.
-        @type importkeys: bool
-        @param progress: A progress reporting object.
-        @type progress: L{ProgressReport}
+        :param importkeys: Allow the import of GPG keys.
+        :type importkeys: bool
+        :param progress: A progress reporting object.
+        :type progress: ProgressReport
         """
         parser = OptionParser()
         parser.parse_args([])
@@ -540,8 +552,8 @@ class Yum(YumBase):
         """
         Process the transaction.
         The method is overridden so we can add progress reporting.
-        The I{callback} is used to report high-level progress.
-        The I{display} is used to report rpm-level progress.
+        The *callback* is used to report high-level progress.
+        The *display* is used to report rpm-level progress.
         """
         try:
             callback = ProcessTransCallback(self.progress)

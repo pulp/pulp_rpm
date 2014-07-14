@@ -40,14 +40,14 @@ class GroupReport(ContentReport):
 class PackageProgress(ProgressReport):
     """
     Provides integration with the handler conduit.
-    @ivar conduit: A handler conduit.
-    @type conduit: L{pulp.agent.lib.conduit.Conduit}
+    :ivar conduit: A handler conduit.
+    :type conduit: pulp.agent.lib.conduit.Conduit
     """
 
     def __init__(self, conduit):
         """
-        @param conduit: A handler conduit.
-        @type conduit: L{pulp.agent.lib.conduit.Conduit}
+        :param conduit: A handler conduit.
+        :type conduit: pulp.agent.lib.conduit.Conduit
         """
         ProgressReport.__init__(self)
         self.conduit = conduit
@@ -64,52 +64,44 @@ class PackageProgress(ProgressReport):
 class PackageHandler(ContentHandler):
     """
     The package (rpm) content handler.
-    @ivar cfg: configuration
-    @type cfg: dict
+    :ivar cfg: configuration
+    :type cfg: dict
     """
 
     def install(self, conduit, units, options):
         """
         Install content unit(s).
-        @param conduit: A handler conduit.
-        @type conduit: L{pulp.agent.lib.conduit.Conduit}
-        @param units: A list of content unit_keys.
-        @type units: list
-        @param options: Unit install options.
+        :param conduit: A handler conduit.
+        :type conduit: pulp.agent.lib.conduit.Conduit
+        :param units: A list of content unit_keys.
+        :type units: list
+        :param options: Unit install options.
           - apply : apply the transaction
           - importkeys : import GPG keys
           - reboot : Reboot after installed
-        @type options: dict
-        @return: An install report.  See: L{Package.install}
-        @rtype: L{PackageReport}
+        :type options: dict
+        :return: An install report.  See: Package.install
+        :rtype: PackageReport
         """
         report = PackageReport()
         pkg = self.__impl(conduit, options)
         names = []
         for unit_key in units:
-
-            unit_dict = {
-                'name': unit_key['name'],
-                 'epoch': '*',
-                 'version': '*',
-                 'release': '*',
-                 'arch': '*'
+            nevra = {
+                'name': None,
+                'epoch': '*',
+                'version': '*',
+                'release': '*',
+                'arch': '*'
             }
-
-            if 'epoch' in unit_key:
-                unit_dict['epoch'] = unit_key['epoch']
-            if 'version' in unit_key:
-                unit_dict['version'] = unit_key['version']
-            if 'release' in unit_key:
-                unit_dict['release'] = unit_key['release']
-            if 'arch' in unit_key:
-                unit_dict['arch'] = unit_key['arch']
-
-            unit_name = '%(epoch)s:%(name)s-%(version)s-%(release)s.%(arch)s' % unit_dict
-            names.append(unit_name)
-
+            nevra.update(unit_key)
+            name = '%(epoch)s:%(name)s-%(version)s-%(release)s.%(arch)s' % nevra
+            names.append(name)
         details = pkg.install(names)
-        report.set_succeeded(details)
+        if details['failed']:
+            report.set_failed(details)
+        else:
+            report.set_succeeded(details)
         return report
 
     def update(self, conduit, units, options):
@@ -117,17 +109,17 @@ class PackageHandler(ContentHandler):
         Update content unit(s).
         Unit key of {} or None indicates updates update all
         but only if (all) option is True.
-        @param conduit: A handler conduit.
-        @type conduit: L{pulp.agent.lib.conduit.Conduit}
-        @param units: A list of content unit_keys.
-        @type units: list
-        @param options: Unit update options.
+        :param conduit: A handler conduit.
+        :type conduit: pulp.agent.lib.conduit.Conduit
+        :param units: A list of content unit_keys.
+        :type units: list
+        :param options: Unit update options.
           - apply : apply the transaction
           - importkeys : import GPG keys
           - reboot : Reboot after installed
-        @type options: dict
-        @return: An update report.  See: L{Package.update}
-        @rtype: L{PackageReport}
+        :type options: dict
+        :return: An update report.  See: Package.update
+        :rtype: PackageReport
         """
         report = PackageReport()
         all = options.get('all', False)
@@ -135,37 +127,43 @@ class PackageHandler(ContentHandler):
         names = [key['name'] for key in units if key]
         if names or all:
             details = pkg.update(names)
-            report.set_succeeded(details)
+            if details['failed']:
+                report.set_failed(details)
+            else:
+                report.set_succeeded(details)
         return report
 
     def uninstall(self, conduit, units, options):
         """
         Uninstall content unit(s).
-        @param conduit: A handler conduit.
-        @type conduit: L{pulp.agent.lib.conduit.Conduit}
-        @param units: A list of content unit_keys.
-        @type units: list
-        @param options: Unit uninstall options.
+        :param conduit: A handler conduit.
+        :type conduit: pulp.agent.lib.conduit.Conduit
+        :param units: A list of content unit_keys.
+        :type units: list
+        :param options: Unit uninstall options.
           - apply : apply the transaction
           - reboot : Reboot after installed
-        @type options: dict
-        @return: An uninstall report.  See: L{Package.uninstall}
-        @rtype: L{PackageReport}
+        :type options: dict
+        :return: An uninstall report.  See: Package.uninstall
+        :rtype: PackageReport
         """
         report = PackageReport()
         pkg = self.__impl(conduit, options)
         names = [key['name'] for key in units]
         details = pkg.uninstall(names)
-        report.set_succeeded(details)
+        if details['failed']:
+            report.set_failed(details)
+        else:
+            report.set_succeeded(details)
         return report
     
     def profile(self, conduit):
         """
         Get package profile.
-        @param conduit: A handler conduit.
-        @type conduit: L{pulp.agent.lib.conduit.Conduit}
-        @return: An profile report.
-        @rtype: L{ProfileReport}
+        :param conduit: A handler conduit.
+        :type conduit: pulp.agent.lib.conduit.Conduit
+        :return: An profile report.
+        :rtype: ProfileReport
         """
         report = ProfileReport()
         details = get_profile("rpm").collect()
@@ -175,10 +173,10 @@ class PackageHandler(ContentHandler):
     def __impl(self, conduit, options):
         """
         Get package implementation.
-        @param options: Passed options.
-        @type options: dict
-        @return: A package object.
-        @rtype: L{Package}
+        :param options: Passed options.
+        :type options: dict
+        :return: A package object.
+        :rtype: Package
         """
         apply = options.get('apply', True)
         importkeys = options.get('importkeys', False)
@@ -192,21 +190,21 @@ class PackageHandler(ContentHandler):
 class GroupHandler(ContentHandler):
     """
     The package group content handler.
-    @ivar cfg: configuration
-    @type cfg: dict
+    :ivar cfg: configuration
+    :type cfg: dict
     """
 
     def install(self, conduit, units, options):
         """
         Install content unit(s).
-        @param conduit: A handler conduit.
-        @type conduit: L{pulp.agent.lib.conduit.Conduit}
-        @param units: A list of content unit_keys.
-        @type units: list
-        @param options: Unit install options.
-        @type options: dict
-        @return: An install report.
-        @rtype: L{GroupReport}
+        :param conduit: A handler conduit.
+        :type conduit: pulp.agent.lib.conduit.Conduit
+        :param units: A list of content unit_keys.
+        :type units: list
+        :param options: Unit install options.
+        :type options: dict
+        :return: An install report.
+        :rtype: GroupReport
         """
         report = GroupReport()
         grp = self.__impl(conduit, options)
@@ -218,14 +216,14 @@ class GroupHandler(ContentHandler):
     def uninstall(self, conduit, units, options):
         """
         Uninstall content unit(s).
-        @param conduit: A handler conduit.
-        @type conduit: L{pulp.agent.lib.conduit.Conduit}
-        @param units: A list of content unit_keys.
-        @type units: list
-        @param options: Unit uninstall options.
-        @type options: dict
-        @return: An uninstall report.
-        @rtype: L{GroupReport}
+        :param conduit: A handler conduit.
+        :type conduit: pulp.agent.lib.conduit.Conduit
+        :param units: A list of content unit_keys.
+        :type units: list
+        :param options: Unit uninstall options.
+        :type options: dict
+        :return: An uninstall report.
+        :rtype: GroupReport
         """
         report = GroupReport()
         grp = self.__impl(conduit, options)
@@ -237,10 +235,10 @@ class GroupHandler(ContentHandler):
     def __impl(self, conduit, options):
         """
         Get package group implementation.
-        @param options: Passed options.
-        @type options: dict
-        @return: A package object.
-        @rtype: L{Package}
+        :param options: Passed options.
+        :type options: dict
+        :return: A package object.
+        :rtype: Package
         """
         apply = options.get('apply', True)
         importkeys = options.get('importkeys', False)
