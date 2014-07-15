@@ -95,7 +95,7 @@ class TestPackages(HandlerTest):
             deps = YumBase.UPDATE_DEPS
         for unit in removed:
             resolved.append(unit)
-            deps = YumBase.REMOVE_DEPS
+            deps = YumBase.ERASE_DEPS
         self.assertTrue(report.succeeded)
         num_changes = len(resolved) + len(deps)
         if reboot:
@@ -189,12 +189,18 @@ class TestPackages(HandlerTest):
     @patch.object(mock_yum.YumBase, 'install')
     def test_install_all_fields(self, mock_yum_install):
         # Setup
-        units = [{'type_id': self.TYPE_ID, 'unit_key': {'name': 'zsh',
-                                                        'epoch': '3',
-                                                        'version': '2.2',
-                                                        'release': '3.3',
-                                                        'arch': 'x86_64'
-                                                        }}]
+        units = [
+            {
+                'type_id': self.TYPE_ID,
+                'unit_key': {
+                    'name': 'zsh',
+                    'epoch': '3',
+                    'version': '2.2',
+                    'release': '3.3',
+                    'arch': 'x86_64'
+                }
+            }
+        ]
         # Test
         conduit = Conduit()
         self.dispatcher.install(conduit, units, {})
@@ -357,7 +363,7 @@ class TestGroups(HandlerTest):
             deps = YumBase.INSTALL_DEPS
         for group in removed:
             resolved += [str(p) for p in YumBase.GROUPS[group]]
-            deps = YumBase.REMOVE_DEPS
+            deps = YumBase.ERASE_DEPS
         self.assertTrue(report.succeeded)
         num_changes = len(resolved)+len(deps)
         if reboot:
@@ -380,7 +386,7 @@ class TestGroups(HandlerTest):
 
     def test_install(self):
         # Setup
-        groups = ['mygroup', 'pulp']
+        groups = ['plain', 'pulp']
         units = [dict(type_id=self.TYPE_ID, unit_key=dict(name=g)) for g in groups]
         # Test
         conduit = Conduit()
@@ -393,7 +399,7 @@ class TestGroups(HandlerTest):
         
     def test_install_importkeys(self):
         # Setup
-        groups = ['mygroup', 'pulp']
+        groups = ['plain', 'pulp']
         units = [dict(type_id=self.TYPE_ID, unit_key=dict(name=g)) for g in groups]
         # Test
         conduit = Conduit()
@@ -407,7 +413,7 @@ class TestGroups(HandlerTest):
         
     def test_install_noapply(self):
         # Setup
-        groups = ['mygroup', 'pulp']
+        groups = ['plain', 'pulp']
         units = [dict(type_id=self.TYPE_ID, unit_key=dict(name=g)) for g in groups]
         # Test
         conduit = Conduit()
@@ -421,7 +427,7 @@ class TestGroups(HandlerTest):
 
     def test_install_notfound(self):
         # Setup
-        groups = ['mygroup', 'pulp', 'xxxx']
+        groups = ['plain', 'pulp', 'xxxx']
         units = [dict(type_id=self.TYPE_ID, unit_key=dict(name=g)) for g in groups]
         # Test
         conduit = Conduit()
@@ -434,7 +440,7 @@ class TestGroups(HandlerTest):
 
     def test_install_with_reboot(self):
         # Setup
-        groups = ['mygroup']
+        groups = ['plain']
         units = [dict(type_id=self.TYPE_ID, unit_key=dict(name=g)) for g in groups]
         # Test
         conduit = Conduit()
@@ -449,7 +455,7 @@ class TestGroups(HandlerTest):
 
     def test_uninstall(self):
         # Setup
-        groups = ['mygroup', 'pulp']
+        groups = ['plain', 'pulp']
         units = [dict(type_id=self.TYPE_ID, unit_key=dict(name=g)) for g in groups]
         # Test
         conduit = Conduit()
@@ -462,7 +468,7 @@ class TestGroups(HandlerTest):
         
     def test_uninstall_noapply(self):
         # Setup
-        groups = ['mygroup', 'pulp']
+        groups = ['plain', 'pulp']
         units = [dict(type_id=self.TYPE_ID, unit_key=dict(name=g)) for g in groups]
         # Test
         conduit = Conduit()
@@ -477,7 +483,7 @@ class TestGroups(HandlerTest):
 
     def test_uninstall_with_reboot(self):
         # Setup
-        groups = ['mygroup']
+        groups = ['plain']
         units = [dict(type_id=self.TYPE_ID, unit_key=dict(name=g)) for g in groups]
         # Test
         conduit = Conduit()
