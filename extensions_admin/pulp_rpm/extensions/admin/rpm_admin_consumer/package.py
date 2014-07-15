@@ -15,6 +15,7 @@ from pulp_rpm.extensions.admin.rpm_admin_consumer.options import FLAG_IMPORT_KEY
 
 # progress tracker -------------------------------------------------------------
 
+
 class YumConsumerPackageProgressTracker(consumer_content.ConsumerContentProgressTracker):
 
     def display_details(self, details):
@@ -33,6 +34,7 @@ class YumConsumerPackageProgressTracker(consumer_content.ConsumerContentProgress
             return
 
 # sections ---------------------------------------------------------------------
+
 
 class YumConsumerPackageSection(PulpCliSection):
 
@@ -89,6 +91,7 @@ class YumConsumerSchedulesSection(PulpCliSection):
         self.add_command(consumer_content.ConsumerContentNextRunCommand(context, action))
 
 # commands ---------------------------------------------------------------------
+
 
 class YumConsumerPackageInstallCommand(consumer_content.ConsumerContentInstallCommand):
 
