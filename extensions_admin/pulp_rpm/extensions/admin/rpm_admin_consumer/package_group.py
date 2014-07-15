@@ -57,6 +57,7 @@ class YumConsumerPackageGroupSchedulesSection(PulpCliSection):
 
 # commands ---------------------------------------------------------------------
 
+
 class YumConsumerPackageGroupInstallCommand(consumer_content.ConsumerContentInstallCommand):
 
     def __init__(self, context):
@@ -98,34 +99,46 @@ class YumConsumerPackageGroupInstallCommand(consumer_content.ConsumerContentInst
         # whether or not the operation succeeded or failed; that is in the
         # report stored as the task's result
 
-        if not task.result['succeeded']:
+        prompt = self.context.prompt
+        details = task.result['details'][TYPE_ID_PKG_GROUP]['details']
+
+        if task.result['succeeded']:
+            msg = _('Install Succeeded')
+            prompt.render_success_message(msg)
+        else:
             msg = _('Install Failed')
-            details = task.result['details'][TYPE_ID_PKG_GROUP]['details']
-            self.context.prompt.render_failure_message(msg)
+            prompt.render_failure_message(msg)
+
+        # exception reported
+
+        if 'message' in details:
             self.context.prompt.render_failure_message(details['message'])
             return
 
-        prompt = self.context.prompt
-        msg = _('Install Succeeded')
-        prompt.render_success_message(msg)
+        # transaction summary
 
-        details = task.result['details'][TYPE_ID_PKG_GROUP]['details']
+        failed = details['failed']
         resolved = details['resolved']
+        installed = [p for p in resolved if p not in failed]
+        deps = [p for p in details['deps'] if p not in failed]
         fields = ['name', 'version', 'arch', 'repoid']
 
-        if resolved:
-            prompt.render_title(_('Installed'))
-            prompt.render_document_list(resolved, order=fields, filters=fields)
-
-        else:
-            msg = _('Packages for groups already installed')
+        if not resolved:
+            msg = _('Packages already installed')
             prompt.render_success_message(msg)
+            return
 
-        deps = details['deps']
+        if installed:
+            prompt.render_title(_('Installed'))
+            prompt.render_document_list(installed, order=fields, filters=fields)
 
         if deps:
             prompt.render_title(_('Installed for Dependencies'))
             prompt.render_document_list(deps, order=fields, filters=fields)
+
+        if failed:
+            prompt.render_title(_('Failed'))
+            prompt.render_document_list(failed, order=fields, filters=fields)
 
 
 class YumConsumerPackageGroupUninstallCommand(consumer_content.ConsumerContentUninstallCommand):
@@ -166,32 +179,43 @@ class YumConsumerPackageGroupUninstallCommand(consumer_content.ConsumerContentUn
         # whether or not the operation succeeded or failed; that is in the
         # report stored as the task's result
 
-        if not task.result['succeeded']:
+        prompt = self.context.prompt
+        details = task.result['details'][TYPE_ID_PKG_GROUP]['details']
+
+        if task.result['succeeded']:
+            msg = _('Uninstall Succeeded')
+            prompt.render_success_message(msg)
+        else:
             msg = _('Uninstall Failed')
-            details = task.result['details'][TYPE_ID_PKG_GROUP]['details']
-            self.context.prompt.render_failure_message(msg)
+            prompt.render_failure_message(msg)
+
+        # exception reported
+
+        if 'message' in details:
             self.context.prompt.render_failure_message(details['message'])
             return
 
-        prompt = self.context.prompt
-        msg = _('Uninstall Succeeded')
-        prompt.render_success_message(msg)
+        # transaction summary
 
-        details = task.result['details'][TYPE_ID_PKG_GROUP]['details']
+        failed = details['failed']
         resolved = details['resolved']
+        erased = [p for p in resolved if p not in failed]
+        deps = [p for p in details['deps'] if p not in failed]
         fields = ['name', 'version', 'arch', 'repoid']
 
-        if resolved:
-            prompt.render_title(_('Uninstalled'))
-            prompt.render_document_list(resolved, order=fields, filters=fields)
-
-        else:
+        if not resolved:
             msg = _('No matching packages found to uninstall')
             prompt.render_success_message(msg)
+            return
 
-        deps = details['deps']
+        if erased:
+            prompt.render_title(_('Uninstalled'))
+            prompt.render_document_list(erased, order=fields, filters=fields)
 
         if deps:
             prompt.render_title(_('Uninstalled for Dependencies'))
             prompt.render_document_list(deps, order=fields, filters=fields)
 
+        if failed:
+            prompt.render_title(_('Failed'))
+            prompt.render_document_list(failed, order=fields, filters=fields)
