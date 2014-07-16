@@ -1,7 +1,8 @@
 
 import mock
 
-from yum.Errors import InstallError
+from yum.Errors import InstallError, GroupsError
+from yum import constants
 
 
 def install():
@@ -13,7 +14,7 @@ class Pkg:
 
     ARCH = 'noarch'
 
-    def __init__(self, name, version, release=1, arch=ARCH):
+    def __init__(self, name, version, release='1', arch=ARCH):
         self.name = name
         self.ver = version
         self.rel = str(release)
@@ -21,16 +22,20 @@ class Pkg:
         self.epoch = '0'
 
     def __str__(self):
-        return self.name
+        if int(self.epoch) > 0:
+            format = '%(epoch)s:%(name)s-%(ver)s-%(rel)s.%(arch)s'
+        else:
+            format = '%(name)s-%(ver)s-%(rel)s.%(arch)s'
+        return format % self.__dict__
 
 
 class TxMember:
 
-     def __init__(self, state, repoid, pkg, isDep=0):
-         self.ts_state = state
-         self.repoid = repoid
-         self.isDep = isDep
-         self.po = pkg
+    def __init__(self, state, repoid, pkg, isDep=0):
+        self.output_state = state
+        self.repoid = repoid
+        self.isDep = isDep
+        self.po = pkg
 
 
 class Config(object):
@@ -39,36 +44,48 @@ class Config(object):
 
 class YumBase:
 
+    FAILED_PKG = '__failed__'
     UNKNOWN_PKG = '__unknown__'
+
+    NEED_UPDATE = [
+        Pkg('openssl', '3.2'),
+        Pkg('libc', '2.5'),
+    ]
 
     INSTALL_DEPS = [
         Pkg('dep1', '3.2'),
-        Pkg('dep2', '2.5', '1'),
+        Pkg('dep2', '2.5'),
     ]
 
     UPDATE_DEPS = [
         Pkg('dep1', '3.2'),
-        Pkg('dep2', '2.5', '1'),
+        Pkg('dep2', '2.5'),
     ]
 
-    REMOVE_DEPS = [
+    ERASE_DEPS = [
         Pkg('dep1', '3.2'),
-        Pkg('dep2', '2.5', '1'),
+        Pkg('dep2', '2.5'),
     ]
 
     STATES = {
-        'i':INSTALL_DEPS,
-        'u':UPDATE_DEPS,
-        'e':REMOVE_DEPS,
+        constants.TS_INSTALL: INSTALL_DEPS,
+        constants.TS_UPDATE: UPDATE_DEPS,
+        constants.TS_ERASE: ERASE_DEPS,
     }
 
     REPOID = 'fedora'
 
     GROUPS = {
-        'mygroup':[
+        'plain':[
             Pkg('zsh', '3.2'),
             Pkg('xchat', '1.3'),
             Pkg('thunderbird', '10.1.7'),
+        ],
+        'plain-failed':[
+            Pkg('zsh', '3.2'),
+            Pkg('xchat', '1.3'),
+            Pkg('thunderbird', '10.1.7'),
+            Pkg(FAILED_PKG, '6.3'),
         ],
         'pulp':[
             Pkg('okaara', '0.25'),
@@ -78,9 +95,14 @@ class YumBase:
         ],
     }
 
+    def process_transaction(self, *args, **kwargs):
+        for t in self.tsInfo:
+            if t.po.name == self.FAILED_PKG:
+                t.output_state = constants.TS_FAILED
+
     doPluginSetup = mock.Mock()
     registerCommand = mock.Mock()
-    processTransaction = mock.Mock()
+    processTransaction = mock.Mock(side_effect=process_transaction)
     close = mock.Mock()
     closeRpmDB = mock.Mock()
 
@@ -88,7 +110,7 @@ class YumBase:
     def reset(cls):
         cls.doPluginSetup.reset_mock()
         cls.registerCommand.reset_mock()
-        cls.processTransaction.reset_mock()
+        cls.processTransaction = mock.Mock(side_effect=cls.process_transaction)
         cls.close.reset_mock()
         cls.closeRpmDB.reset_mock()
 
@@ -99,65 +121,54 @@ class YumBase:
         self.repos = mock.Mock()
 
     def install(self, pattern):
-        if pattern != YumBase.UNKNOWN_PKG:
-            state = 'i'
-            version = '1.0'
-            repoid = self.REPOID
-            self.__validpkg(pattern)
-            pkg = Pkg(pattern, version)
-            t = TxMember(state, repoid, pkg)
-            self.tsInfo.append(t)
-        else:
+        if YumBase.UNKNOWN_PKG in pattern:
             raise InstallError('package not found')
+        pkg = Pkg(pattern, '1.0')
+        t = TxMember(constants.TS_INSTALL, self.REPOID, pkg)
+        self.tsInfo.append(t)
 
-    def update(self, pattern):
-        state = 'u'
-        version = '1.0'
-        repoid = self.REPOID
-        self.__validpkg(pattern)
-        pkg = Pkg(pattern, version)
-        t = TxMember(state, repoid, pkg)
+    def update(self, pattern=None):
+        # all
+        if not pattern:
+            for pkg in self.NEED_UPDATE:
+                t = TxMember(constants.TS_UPDATE, self.REPOID, pkg)
+                self.tsInfo.append(t)
+            return
+        # specific package
+        if YumBase.UNKNOWN_PKG in pattern:
+            return []
+        pkg = Pkg(pattern, '1.0')
+        t = TxMember(constants.TS_UPDATE, self.REPOID, pkg)
         self.tsInfo.append(t)
 
     def remove(self, pattern):
-        state = 'e'
-        version = '1.0'
-        repoid = self.REPOID
-        self.__validpkg(pattern)
-        pkg = Pkg(pattern, version)
-        t = TxMember(state, repoid, pkg)
+        if YumBase.UNKNOWN_PKG in pattern:
+            return []
+        pkg = Pkg(pattern, '1.0')
+        t = TxMember(constants.TS_ERASE, self.REPOID, pkg)
         self.tsInfo.append(t)
 
-    def __validpkg(self, pattern):
-        if self.UNKNOWN_PKG in pattern:
-            raise Exception('package not found')
-
     def selectGroup(self, name):
-        state = 'i'
-        repoid = self.REPOID
         grp = self.GROUPS.get(name)
         if grp is None:
-            raise Exception, 'Group not found'
+            raise GroupsError('Group not found')
         for pkg in grp:
-            t = TxMember(state, repoid, pkg)
+            t = TxMember(constants.TS_INSTALL, self.REPOID, pkg)
             self.tsInfo.append(t)
 
     def groupRemove(self, name):
-        state = 'e'
-        repoid = self.REPOID
         grp = self.GROUPS.get(name)
         if grp is None:
-            raise Exception, 'Group not found'
+            raise GroupsError('Group not found')
         for pkg in grp:
-            t = TxMember(state, repoid, pkg)
+            t = TxMember(constants.TS_ERASE, self.REPOID, pkg)
             self.tsInfo.append(t)
 
     def resolveDeps(self):
         deps = {}
-        repoid = self.REPOID
         for t in self.tsInfo:
-            deps[t.ts_state] = self.STATES[t.ts_state]
+            deps[t.output_state] = self.STATES[t.output_state]
         for state, pkglist in deps.items():
             for pkg in pkglist:
-                t = TxMember(state, repoid, pkg, 1)
+                t = TxMember(state, self.REPOID, pkg, 1)
                 self.tsInfo.append(t)
