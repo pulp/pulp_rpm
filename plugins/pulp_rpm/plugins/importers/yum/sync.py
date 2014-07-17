@@ -397,9 +397,9 @@ class RepoSync(object):
             download_wrapper = alternate.Packages(self.sync_feed, self.nectar_config,
                                                   units_to_download, self.tmp_dir, event_listener)
             # allow the downloader to be accessed by the cancel method if necessary
-            self.downloader = download_wrapper
+            self.downloader = download_wrapper.downloader
             _logger.info(_('Downloading %(num)s RPMs.') % {'num': len(rpms_to_download)})
-            download_wrapper.download()
+            download_wrapper.download_packages()
             self.downloader = None
         finally:
             primary_file_handle.close()
