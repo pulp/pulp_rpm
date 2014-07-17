@@ -59,7 +59,7 @@ class YumDistributorTests(unittest.TestCase):
 
     # -- publish tests ---------------------------------------------------------
 
-    @mock.patch('pulp_rpm.plugins.distributors.yum.publish.Publisher.publish')
+    @mock.patch('pulp_rpm.plugins.distributors.yum.distributor.publish')
     def test_publish_repo(self, mock_publish):
         repo = Repository('test')
         config = PluginCallConfiguration(None, None)
@@ -67,7 +67,7 @@ class YumDistributorTests(unittest.TestCase):
 
         self.distributor.publish_repo(repo, conduit, config)
 
-        mock_publish.assert_called_once()
+        mock_publish.Publisher.return_value.publish.assert_called_once()
 
     def test_cancel_publish_repo(self):
 

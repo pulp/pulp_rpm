@@ -4,6 +4,7 @@ from gettext import gettext as _
 import os
 import subprocess
 
+from pulp.common import dateutils
 from pulp.common.compat import json
 from pulp.plugins.config import PluginCallConfiguration
 from pulp.plugins.conduits.repo_publish import RepoPublishConduit
@@ -44,7 +45,7 @@ class BaseYumRepoPublisher(PublishStep):
     of a yum repository over HTTP and/or HTTPS.
     """
 
-    def __init__(self, repo, publish_conduit, config, distributor_type):
+    def __init__(self, repo, publish_conduit, config, distributor_type, association_filters=None):
         """
         :param repo: Pulp managed Yum repository
         :type  repo: pulp.plugins.model.Repository
@@ -66,7 +67,7 @@ class BaseYumRepoPublisher(PublishStep):
         self.add_child(InitRepoMetadataStep())
         dist_step = PublishDistributionStep()
         self.add_child(dist_step)
-        self.add_child(PublishRpmStep(dist_step))
+        self.add_child(PublishRpmStep(dist_step, association_filters=association_filters))
         self.add_child(PublishDrpmStep(dist_step))
         self.add_child(PublishErrataStep())
         self.add_child(PublishCompsStep())
@@ -221,11 +222,51 @@ class Publisher(BaseYumRepoPublisher):
         :param distributor_type: The type of the distributor that is being published
         :type distributor_type: str
         """
-        super(Publisher, self).__init__(repo, publish_conduit, config, distributor_type)
+
+        repo_relative_path = configuration.get_repo_relative_path(repo, config)
+
+        last_published = publish_conduit.last_publish()
+        if hasattr(last_published, 'tzinfo') and last_published.tzinfo:
+            last_published = dateutils.to_naive_utc_datetime(last_published)
+        last_deleted = repo.last_unit_removed
+        if hasattr(last_deleted, 'tzinfo') and last_deleted.tzinfo:
+            last_deleted = dateutils.to_naive_utc_datetime(last_deleted)
+        date_filter = None
+
+        insert_step = None
+        if last_published and \
+                ((last_deleted and last_published > last_deleted) or not last_deleted):
+            # Add the step to copy the current published directory into place
+            working_dir = repo.working_dir
+            specific_master = None
+
+            if config.get(constants.PUBLISH_HTTPS_KEYWORD):
+                root_publish_dir = configuration.get_https_publish_dir(config)
+                repo_publish_dir = os.path.join(root_publish_dir, repo_relative_path)
+                specific_master = os.path.realpath(repo_publish_dir)
+            if not specific_master and config.get(constants.PUBLISH_HTTP_KEYWORD):
+                root_publish_dir = configuration.get_http_publish_dir(config)
+                repo_publish_dir = os.path.join(root_publish_dir, repo_relative_path)
+                specific_master = os.path.realpath(repo_publish_dir)
+
+            # Only do an incremental publish if the previous publish can be found
+            if os.path.exists(specific_master):
+                insert_step = CopyDirectoryStep(specific_master, working_dir,
+                                                preserve_symlinks=True)
+                # Pass something useful to the super so that it knows the publish info
+                string_date = dateutils.format_iso8601_datetime(last_published)
+                date_filter = export_utils.create_date_range_filter(
+                    {constants.START_DATE_KEYWORD: string_date})
+
+        super(Publisher, self).__init__(repo, publish_conduit, config, distributor_type,
+                                        association_filters=date_filter)
+
+        if insert_step:
+            self.insert_child(0, insert_step)
+
 
         # Add the web specific directory publishing processing steps
         target_directories = []
-        repo_relative_path = configuration.get_repo_relative_path(repo, config)
 
         # it's convenient to create these now, but we won't add them until later,
         # because we want them to run last
