@@ -92,6 +92,7 @@ class MetadataFiles(object):
                    'filelists', 'filelists_db',
                    'other', 'other_db',
                    'primary', 'primary_db',
+                   'deltainfo', 'susedata',
                    'updateinfo', 'updateinfo_db'])
 
     def __init__(self, repo_url, dst_dir, nectar_config):
