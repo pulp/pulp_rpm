@@ -226,11 +226,7 @@ class Publisher(BaseYumRepoPublisher):
         repo_relative_path = configuration.get_repo_relative_path(repo, config)
 
         last_published = publish_conduit.last_publish()
-        if hasattr(last_published, 'tzinfo') and last_published.tzinfo:
-            last_published = dateutils.to_naive_utc_datetime(last_published)
         last_deleted = repo.last_unit_removed
-        if hasattr(last_deleted, 'tzinfo') and last_deleted.tzinfo:
-            last_deleted = dateutils.to_naive_utc_datetime(last_deleted)
         date_filter = None
 
         insert_step = None
