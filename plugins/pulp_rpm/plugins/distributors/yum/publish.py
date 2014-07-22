@@ -67,7 +67,8 @@ class BaseYumRepoPublisher(PublishStep):
         self.add_child(InitRepoMetadataStep())
         dist_step = PublishDistributionStep()
         self.add_child(dist_step)
-        self.add_child(PublishRpmStep(dist_step, association_filters=association_filters))
+        self.rpm_step = PublishRpmStep(dist_step, association_filters=association_filters)
+        self.add_child(self.rpm_step)
         self.add_child(PublishDrpmStep(dist_step))
         self.add_child(PublishErrataStep())
         self.add_child(PublishCompsStep())
@@ -259,6 +260,7 @@ class Publisher(BaseYumRepoPublisher):
 
         if insert_step:
             self.insert_child(0, insert_step)
+            self.rpm_step.fast_forward = True
 
 
         # Add the web specific directory publishing processing steps
@@ -374,12 +376,13 @@ class PublishRpmStep(UnitPublishStep):
         self.other_context = None
         self.primary_context = None
         self.dist_step = dist_step
+        self.fast_forward = False
 
     def initialize(self):
         """
         Create each of the three metadata contexts required for publishing RPM & SRPM
         """
-        total = self._get_total()
+        total = self._get_total(ignore_filter=self.fast_forward)
 
         checksum_type = self.parent.get_checksum_type()
         self.file_lists_context = FilelistsXMLFileContext(self.get_working_dir(), total,

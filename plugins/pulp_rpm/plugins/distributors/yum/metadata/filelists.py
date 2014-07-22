@@ -29,26 +29,9 @@ class FilelistsXMLFileContext(FastForwardXmlFileContext):
         attributes = {'xmlns': FILE_LISTS_NAMESPACE,
                       'packages': str(self.num_packages)}
         super(FilelistsXMLFileContext, self).__init__(metadata_file_path, 'filelists',
+                                                      search_tag='package',
                                                       root_attributes=attributes,
                                                       checksum_type=checksum_type)
-
-    def initialize(self):
-        """
-        Initialize all the file handles and fast forward the xml to the point where we should
-        start adding content
-        """
-        super(FilelistsXMLFileContext, self).initialize()
-        # Fast Forward to where we can start writing
-        if self.fast_forward:
-            for event in self.xml_generator:
-                if event[0] == pulldom.START_ELEMENT and event[1].nodeName == 'filelists':
-                    # Get the current packages count and add it to the previous
-                    package_count = int(event[1].attributes['packages'].value)
-                    package_count += self.num_packages
-                    event[1].attributes['packages'].value = str(package_count)
-                elif event[0] == pulldom.END_ELEMENT and event[1].nodeName == 'filelists':
-                    # break out and insert more stuff here
-                    break
 
     def add_unit_metadata(self, unit):
         """
