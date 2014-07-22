@@ -503,9 +503,10 @@ class TestDownload(BaseSyncTest):
         self.assertEqual(report.removed_count, 0)
         self.assertEqual(report.updated_count, 0)
 
+    @mock.patch('pulp_rpm.plugins.importers.yum.repomd.alternate.ContentContainer')
     @mock.patch('pulp_rpm.plugins.importers.yum.repomd.nectar_factory.create_downloader', autospec=True)
     @mock.patch.object(packages, 'package_list_generator', autospec=True)
-    def test_rpms_to_download(self, mock_package_list_generator, mock_create_downloader):
+    def test_rpms_to_download(self, mock_package_list_generator, mock_create_downloader, mock_container):
         """
         test with only RPMs specified to download
         """
@@ -524,15 +525,19 @@ class TestDownload(BaseSyncTest):
         self.downloader.download = mock.MagicMock(spec_set=self.downloader.download)
         mock_create_downloader.return_value = self.downloader
 
+        fake_container = mock.Mock()
+        fake_container.refresh.return_value = {}
+        mock_container.return_value = fake_container
+
         # call download, passing in only two of the 3 rpms as units we want
         report = self.reposync.download(self.metadata_files, set(m.as_named_tuple for m in rpms[:2]), set())
 
         # make sure we skipped DRPMs
-        self.assertEqual(self.downloader.download.call_count, 1)
+        self.assertEqual(self.downloader.download.call_count, 0)
         self.assertEqual(mock_package_list_generator.call_count, 1)
 
         # verify that the download requests were correct
-        requests = list(self.downloader.download.call_args[0][0])
+        requests = list(fake_container.download.call_args[0][2])
         self.assertEqual(len(requests), 2)
         self.assertEqual(requests[0].url, os.path.join(self.url, self.RELATIVEPATH))
         self.assertEqual(requests[0].destination, os.path.join(self.reposync.tmp_dir, self.RELATIVEPATH))
@@ -542,9 +547,10 @@ class TestDownload(BaseSyncTest):
         self.assertTrue(requests[1].data is rpms[1])
         self.assertTrue(file_handle.closed)
 
+    @mock.patch('pulp_rpm.plugins.importers.yum.repomd.alternate.ContentContainer')
     @mock.patch('pulp_rpm.plugins.importers.yum.repomd.nectar_factory.create_downloader', autospec=True)
     @mock.patch.object(packages, 'package_list_generator', autospec=True)
-    def test_drpms_to_download(self, mock_package_list_generator, mock_create_downloader):
+    def test_drpms_to_download(self, mock_package_list_generator, mock_create_downloader, mock_container):
         """
         test with only DRPMs specified to download
         """
@@ -560,10 +566,15 @@ class TestDownload(BaseSyncTest):
         self.downloader.download = mock.MagicMock(spec_set=self.downloader.download)
         mock_create_downloader.return_value = self.downloader
 
+        fake_container = mock.Mock()
+        fake_container.refresh.return_value = {}
+        mock_container.return_value = fake_container
+
+
         # call download, passing in only two of the 3 rpms as units we want
         report = self.reposync.download(self.metadata_files, set(), set(m.as_named_tuple for m in drpms[:2]))
 
-        self.assertEqual(self.downloader.download.call_count, 2)
+        self.assertEqual(self.downloader.download.call_count, 1)
         self.assertEqual(mock_package_list_generator.call_count, 2)
 
         # verify that the download requests were correct
