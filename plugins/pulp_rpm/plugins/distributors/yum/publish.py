@@ -262,7 +262,6 @@ class Publisher(BaseYumRepoPublisher):
             self.insert_child(0, insert_step)
             self.rpm_step.fast_forward = True
 
-
         # Add the web specific directory publishing processing steps
         target_directories = []
 

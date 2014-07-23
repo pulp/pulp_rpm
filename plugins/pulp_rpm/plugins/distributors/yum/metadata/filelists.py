@@ -1,5 +1,4 @@
 import os
-from xml.dom import pulldom
 
 from pulp.plugins.util.metadata_writer import FastForwardXmlFileContext
 
@@ -42,4 +41,3 @@ class FilelistsXMLFileContext(FastForwardXmlFileContext):
         """
         metadata = unit.metadata['repodata']['filelists']
         self.metadata_file_handle.write(metadata)
-

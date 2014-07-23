@@ -1,10 +1,8 @@
 import os
-from xml.dom import pulldom
 
 from pulp.plugins.util.metadata_writer import FastForwardXmlFileContext
 
-from pulp_rpm.plugins.distributors.yum.metadata.metadata import (
-    PreGeneratedMetadataContext, REPO_DATA_DIR_NAME)
+from pulp_rpm.plugins.distributors.yum.metadata.metadata import REPO_DATA_DIR_NAME
 
 
 OTHER_XML_FILE_NAME = 'other.xml.gz'
@@ -43,6 +41,3 @@ class OtherXMLFileContext(FastForwardXmlFileContext):
         """
         metadata = unit.metadata['repodata']['other']
         self.metadata_file_handle.write(metadata)
-
-
-
