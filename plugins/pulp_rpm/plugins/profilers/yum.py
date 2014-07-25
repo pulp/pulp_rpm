@@ -206,7 +206,8 @@ class YumProfiler(Profiler):
     def _form_lookup_table(rpms):
         """
         Build a dictionary mapping RPM names and arches (generated with the _form_lookup_key()
-        method) to the full unit key for each RPM.
+        method) to the full unit key for each RPM. In case of multiple rpms with same name and
+        arch, unit key of the newest rpm is stored as the value.
 
         :param rpms: A list of RPM unit keys
         :type  rpms: list
@@ -215,9 +216,13 @@ class YumProfiler(Profiler):
         """
         lookup = {}
         for rpm in rpms:
-            # Since only one name.arch is allowed to be installed on a machine,
-            # we will use "name arch" as a key in the lookup table
             key = YumProfiler._form_lookup_key(rpm)
+            # In case of duplicate key, replace the value only if the rpm is newer
+            # than the old value.
+            if key in lookup:
+                existing_unit = lookup[key]
+                if not util.is_rpm_newer(rpm, existing_unit):
+                    continue
             lookup[key] = rpm
         return lookup
 
