@@ -570,7 +570,6 @@ class TestDownload(BaseSyncTest):
         fake_container.refresh.return_value = {}
         mock_container.return_value = fake_container
 
-
         # call download, passing in only two of the 3 rpms as units we want
         report = self.reposync.download(self.metadata_files, set(), set(m.as_named_tuple for m in drpms[:2]))
 
