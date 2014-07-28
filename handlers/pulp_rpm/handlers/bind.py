@@ -47,9 +47,10 @@ class RepoHandler(BindHandler):
             repo_name,
             urls,
             details.get('gpg_keys', {}),
-            details.get('ca_cert'),
             details.get('client_cert'),
-            len(urls) > 0,)
+            len(urls) > 0,
+            verify_ssl=cfg.server.verify_ssl,
+            ca_path=cfg.server.ca_path)
         report.set_succeeded()
         return report
 
