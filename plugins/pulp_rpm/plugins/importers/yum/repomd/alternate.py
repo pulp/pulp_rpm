@@ -64,7 +64,7 @@ class Packages(object):
         request_list = []
         for unit in self.units:
             url = urljoin(self.base_url, unit.download_path)
-            file_name = unit.relative_path.rsplit('/', 1)[-1]
+            file_name = os.path.basename(unit.relative_path)
             destination = os.path.join(self.dst_dir, file_name)
             request = Request(
                 type_id=unit.TYPE,
