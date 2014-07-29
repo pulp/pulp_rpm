@@ -520,6 +520,9 @@ class TestBind(HandlerTest):
     REPO_DIR = os.path.join(TEST_DIR, 'etc/yum.repos.d')
     REPO_FILE = os.path.join(REPO_DIR, 'pulp-test.repo')
     CONFIGURATION = {
+        'server': {
+            'verify_ssl': 'true',
+        },
         'filesystem':{
             'repo_file':REPO_FILE,
             'mirror_list_dir':MIRROR_DIR,
@@ -545,17 +548,18 @@ class TestBind(HandlerTest):
 
     @patch('pulp_rpm.handlers.repolib.Lock')
     def test_bind(self, mock_lock):
-        # Test
         options = {}
         conduit = TestConduit(self.CONFIGURATION)
         bindings = [dict(self.BINDING)]
+
         report = self.dispatcher.bind(conduit, bindings, options)
-        # Verify
+
         self.assertTrue(report.succeeded)
         self.assertTrue(os.path.isfile(self.REPO_FILE))
         repofile = Config(self.REPO_FILE)
         self.assertEqual(repofile[self.REPO_ID]['name'], self.REPO_NAME)
         self.assertEqual(repofile[self.REPO_ID]['enabled'], '1')
+        self.assertEqual(repofile[self.REPO_ID]['sslverify'], '1')
 
     @patch('pulp_rpm.handlers.repolib.Lock')
     def test_unbind(self, mock_lock):
