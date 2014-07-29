@@ -38,6 +38,7 @@ class RepoHandler(BindHandler):
         repo_name = details['repo_name']
         urls = self.__urls(details)
         report = BindReport(repo_id)
+        verify_ssl = cfg.server.verify_ssl.lower() != 'false'
         repolib.bind(
             cfg.filesystem.repo_file,
             os.path.join(cfg.filesystem.mirror_list_dir, repo_id),
@@ -49,7 +50,7 @@ class RepoHandler(BindHandler):
             details.get('gpg_keys', {}),
             details.get('client_cert'),
             len(urls) > 0,
-            verify_ssl=cfg.server.verify_ssl,
+            verify_ssl=verify_ssl,
             ca_path=cfg.server.ca_path)
         report.set_succeeded()
         return report
