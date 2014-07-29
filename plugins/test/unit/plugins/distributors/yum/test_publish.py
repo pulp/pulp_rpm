@@ -1,15 +1,20 @@
+import datetime
 import os
 import shutil
 import tempfile
 import unittest
 
+import isodate
 import mock
+
+
 from pulp.common.compat import json
 from pulp.common.plugins import reporting_constants
 from pulp.devel.unit.util import touch, compare_dict
 from pulp.plugins.conduits.repo_publish import RepoPublishConduit
 from pulp.plugins.config import PluginCallConfiguration
 from pulp.plugins.model import Repository, Unit
+import pulp.server.managers.factory as manager_factory
 from pulp.plugins.util.publish_step import PublishStep
 from pulp.server.exceptions import InvalidValue, PulpCodedException
 
@@ -27,6 +32,8 @@ class BaseYumDistributorPublishTests(unittest.TestCase):
 
     def setUp(self):
         super(BaseYumDistributorPublishTests, self).setUp()
+
+        manager_factory.initialize()
 
         self.working_dir = tempfile.mkdtemp(prefix='working_')
         self.published_dir = tempfile.mkdtemp(prefix='published_')
@@ -54,6 +61,7 @@ class BaseYumDistributorPublishTests(unittest.TestCase):
         self.repo = repo
 
         conduit = RepoPublishConduit(repo.id, YUM_DISTRIBUTOR_ID)
+        conduit.last_publish = mock.Mock(return_value=None)
         conduit.get_repo_scratchpad = mock.Mock(return_value={})
 
         config_defaults = {'http': True,
@@ -287,6 +295,73 @@ class PublisherTests(BaseYumDistributorPublishStepTests):
         self.assertEqual(http_step.root_dir, configuration.get_http_publish_dir(config))
         self.assertEqual(https_step.target_dir, target_publish_locations[0][1])
         self.assertEqual(https_step.root_dir, configuration.get_https_publish_dir(config))
+
+    @mock.patch('pulp_rpm.plugins.distributors.yum.publish.configuration.get_https_publish_dir')
+    def test_init_incremental_publish_from_https_dir(self, mock_get_https_dir):
+        config = PluginCallConfiguration(None, {
+            constants.PUBLISH_HTTPS_KEYWORD: True,
+            constants.PUBLISH_HTTP_KEYWORD: False})
+        # Set the last publish time
+        self.publisher.get_conduit().last_publish = \
+            mock.Mock(return_value=datetime.datetime.now(tz=isodate.UTC))
+
+        # set up the previous publish directory
+        repo = self.publisher.get_repo()
+        mock_get_https_dir.return_value = self.working_dir
+        specific_master = os.path.join(self.working_dir,
+                                       configuration.get_repo_relative_path(repo, config))
+        os.makedirs(specific_master)
+
+        step = publish.Publisher(self.publisher.get_repo(),
+                                 self.publisher.get_conduit(),
+                                 config, YUM_DISTRIBUTOR_ID)
+        self.assertTrue(isinstance(step.children[0], publish.CopyDirectoryStep))
+
+    @mock.patch('pulp_rpm.plugins.distributors.yum.publish.configuration.get_https_publish_dir')
+    def test_init_incremental_publish_blocked_by_deletion(self, mock_get_https_dir):
+        config = PluginCallConfiguration(None, {
+            constants.PUBLISH_HTTPS_KEYWORD: True,
+            constants.PUBLISH_HTTP_KEYWORD: False})
+        # Set the last publish & delete time
+        delete_time = datetime.datetime.now(tz=isodate.UTC)
+        self.publisher.get_repo().last_unit_removed = delete_time
+        last_publish = delete_time + datetime.timedelta(hours=-1)
+        self.publisher.get_conduit().last_publish = \
+            mock.Mock(return_value=last_publish)
+
+        # set up the previous publish directory
+        repo = self.publisher.get_repo()
+        mock_get_https_dir.return_value = self.working_dir
+        specific_master = os.path.join(self.working_dir,
+                                       configuration.get_repo_relative_path(repo, config))
+        os.makedirs(specific_master)
+
+        step = publish.Publisher(self.publisher.get_repo(),
+                                 self.publisher.get_conduit(),
+                                 config, YUM_DISTRIBUTOR_ID)
+        self.assertFalse(isinstance(step.children[0], publish.CopyDirectoryStep))
+
+
+    @mock.patch('pulp_rpm.plugins.distributors.yum.publish.configuration.get_http_publish_dir')
+    def test_init_incremental_publish_from_http_dir(self, mock_get_http_dir):
+        config = PluginCallConfiguration(None, {
+            constants.PUBLISH_HTTPS_KEYWORD: False,
+            constants.PUBLISH_HTTP_KEYWORD: True})
+        # Set the last publish time
+        self.publisher.get_conduit().last_publish = \
+            mock.Mock(return_value=datetime.datetime.now(tz=isodate.UTC))
+
+        # set up the previous publish directory
+        repo = self.publisher.get_repo()
+        mock_get_http_dir.return_value = self.working_dir
+        specific_master = os.path.join(self.working_dir,
+                                       configuration.get_repo_relative_path(repo, config))
+        os.makedirs(specific_master)
+
+        step = publish.Publisher(self.publisher.get_repo(),
+                                 self.publisher.get_conduit(),
+                                 config, YUM_DISTRIBUTOR_ID)
+        self.assertTrue(isinstance(step.children[0], publish.CopyDirectoryStep))
 
 
 class PublishRpmAndDrpmStepIncrementalTests(BaseYumDistributorPublishStepTests):

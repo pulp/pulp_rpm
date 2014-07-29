@@ -1,18 +1,15 @@
 import os
-from xml.etree import ElementTree
 
-from pulp_rpm.plugins.distributors.yum.metadata.metadata import (
-    PreGeneratedMetadataContext, REPO_DATA_DIR_NAME)
-from pulp_rpm.yum_plugin import util
+from pulp.plugins.util.metadata_writer import FastForwardXmlFileContext
 
+from pulp_rpm.plugins.distributors.yum.metadata.metadata import REPO_DATA_DIR_NAME
 
-_LOG = util.getLogger(__name__)
 
 OTHER_XML_FILE_NAME = 'other.xml.gz'
 OTHER_NAMESPACE = 'http://linux.duke.edu/metadata/other'
 
 
-class OtherXMLFileContext(PreGeneratedMetadataContext):
+class OtherXMLFileContext(FastForwardXmlFileContext):
     """
     Context manager for generating the other.xml.gz file.
     """
@@ -22,36 +19,25 @@ class OtherXMLFileContext(PreGeneratedMetadataContext):
         :param working_dir: working directory to create the other.xml.gz in
         :type  working_dir: str
         :param num_units: total number of units whose metadata will be written
-                          into the other.xml.gz metadata file
+                          into the other.xml.gz metadata file, or the number of packages added
         :type  num_units: int
         """
 
         metadata_file_path = os.path.join(working_dir, REPO_DATA_DIR_NAME, OTHER_XML_FILE_NAME)
-        super(OtherXMLFileContext, self).__init__(metadata_file_path, checksum_type)
-
         self.num_packages = num_units
-
-    def _write_root_tag_open(self):
-
         attributes = {'xmlns': OTHER_NAMESPACE,
                       'packages': str(self.num_packages)}
-
-        metadata_element = ElementTree.Element('otherdata', attributes)
-        bogus_element = ElementTree.SubElement(metadata_element, '')
-
-        metadata_tags_string = ElementTree.tostring(metadata_element, 'utf-8')
-        # use a bogus sub-element to programmaticly split the opening and closing tags
-        bogus_tag_string = ElementTree.tostring(bogus_element, 'utf-8')
-        opening_tag, closing_tag = metadata_tags_string.split(bogus_tag_string, 1)
-
-        self.metadata_file_handle.write(opening_tag + '\n')
-
-        def _write_root_tag_close_closure(*args):
-            self.metadata_file_handle.write(closing_tag + '\n')
-
-        self._write_root_tag_close = _write_root_tag_close_closure
+        super(OtherXMLFileContext, self).__init__(metadata_file_path, 'otherdata',
+                                                  search_tag='package',
+                                                  root_attributes=attributes,
+                                                  checksum_type=checksum_type)
 
     def add_unit_metadata(self, unit):
+        """
+        Add the metadata to primary.xml.gz for the given unit.
 
-        self._add_unit_pre_generated_metadata('other', unit)
-
+        :param unit: unit whose metadata is to be written
+        :type  unit: pulp.plugins.model.Unit
+        """
+        metadata = unit.metadata['repodata']['other']
+        self.metadata_file_handle.write(metadata)
