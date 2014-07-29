@@ -55,7 +55,9 @@ class BaseYumRepoPublisher(PublishStep):
         :type  config: pulp.plugins.config.PluginCallConfiguration
         :param distributor_type: The type of the distributor that is being published
         :type distributor_type: str
-        :param association_filters: Any filters to be applied to the list of RPMs being published
+        :param association_filters: Any filters to be applied to the list of RPMs being published,
+                                    See pulp.server.db.model.criteria.UnitAssociationCriteria
+                                    for details on what can be included in the association_filters
         :type association_filters: dict
 
         """
