@@ -445,7 +445,7 @@ class PublishCompsStepTests(BaseYumDistributorPublishStepTests):
         step = publish.PublishCompsStep()
         step.parent = self.publisher
         step.comps_context = mock.Mock()
-        self.publisher.publish_conduit.get_units = mock.Mock(side_effect=[['foo', 'bar'],
+        self.publisher.get_conduit().get_units = mock.Mock(side_effect=[['foo', 'bar'],
                                                                           ['baz', 'qux'],
                                                                           ['quux', 'waldo']])
 
