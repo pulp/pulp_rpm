@@ -1,10 +1,10 @@
 import logging
 import os
 
+from pulp.plugins.util.misc import paginate
 from pulp.server.db.model.criteria import Criteria, UnitAssociationCriteria
 
 from pulp_rpm.plugins.db import models
-from pulp_rpm.plugins.importers.yum.utils import paginate
 from pulp_rpm.yum_plugin.util import get_relpath_from_unit
 
 

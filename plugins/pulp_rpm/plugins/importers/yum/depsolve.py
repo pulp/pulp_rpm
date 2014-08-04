@@ -2,11 +2,11 @@
 
 import logging
 
+from pulp.plugins.util.misc import paginate
 from pulp.server.db.model.criteria import UnitAssociationCriteria
 
 from pulp_rpm.common import version_utils
 from pulp_rpm.plugins.db import models
-from pulp_rpm.plugins.importers.yum.utils import paginate
 
 
 _LOGGER = logging.getLogger(__name__)
