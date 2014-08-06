@@ -2,6 +2,7 @@ import os
 import shutil
 import unittest
 
+from pulp.bindings.server import DEFAULT_CA_PATH
 from pulp.common.lock import Lock
 
 from pulp_rpm.handlers import repolib
@@ -90,7 +91,116 @@ class TestRepolib(unittest.TestCase):
         content = f.read()
         f.close()
         self.assertEqual(CLIENTCERT, content)
+        # verify_ssl defaults to True
         self.assertTrue(loaded['sslverify'], '1')
+        self.assertEqual(loaded['sslcacert'], DEFAULT_CA_PATH)
+
+    def test_bind_ssl_verify_false(self):
+        """
+        Tests binding a repo with verify_ssl set explicitly to False.
+        """
+        url_list = ['http://pulpserver']
+
+        repolib.bind(TEST_REPO_FILENAME, TEST_MIRROR_LIST_FILENAME, TEST_KEYS_DIR, TEST_CERT_DIR,
+                     REPO_ID, REPO_NAME, url_list, {}, CLIENTCERT, ENABLED, LOCK, verify_ssl=False)
+
+        self.assertTrue(os.path.exists(TEST_REPO_FILENAME))
+        self.assertTrue(not os.path.exists(TEST_MIRROR_LIST_FILENAME))
+        repo_file = RepoFile(TEST_REPO_FILENAME)
+        repo_file.load()
+
+        self.assertEqual(1, len(repo_file.all_repos()))
+
+        loaded = repo_file.get_repo(REPO_ID)
+        self.assertTrue(loaded is not None)
+        self.assertEqual(loaded['name'], REPO_NAME)
+        self.assertTrue(loaded['enabled'])
+        self.assertEqual(loaded['gpgcheck'], '0')
+        self.assertEqual(loaded['gpgkey'], None)
+
+        self.assertEqual(loaded['baseurl'], url_list[0])
+        self.assertTrue('mirrorlist' not in loaded)
+
+        path = loaded['sslclientcert']
+        f = open(path)
+        content = f.read()
+        f.close()
+        self.assertEqual(CLIENTCERT, content)
+        self.assertTrue(loaded['sslverify'], '0')
+        # No CA path should have been used
+        self.assertEqual(loaded['sslcacert'], None)
+
+    def test_bind_ssl_verify_true_default_ca_path(self):
+        """
+        Tests binding a repo with verify_ssl set explicitly to True and the default ca_path.
+        """
+        url_list = ['http://pulpserver']
+
+        repolib.bind(TEST_REPO_FILENAME, TEST_MIRROR_LIST_FILENAME, TEST_KEYS_DIR, TEST_CERT_DIR,
+                     REPO_ID, REPO_NAME, url_list, {}, CLIENTCERT, ENABLED, LOCK, verify_ssl=True)
+
+        self.assertTrue(os.path.exists(TEST_REPO_FILENAME))
+        self.assertTrue(not os.path.exists(TEST_MIRROR_LIST_FILENAME))
+        repo_file = RepoFile(TEST_REPO_FILENAME)
+        repo_file.load()
+
+        self.assertEqual(1, len(repo_file.all_repos()))
+
+        loaded = repo_file.get_repo(REPO_ID)
+        self.assertTrue(loaded is not None)
+        self.assertEqual(loaded['name'], REPO_NAME)
+        self.assertTrue(loaded['enabled'])
+        self.assertEqual(loaded['gpgcheck'], '0')
+        self.assertEqual(loaded['gpgkey'], None)
+
+        self.assertEqual(loaded['baseurl'], url_list[0])
+        self.assertTrue('mirrorlist' not in loaded)
+
+        path = loaded['sslclientcert']
+        f = open(path)
+        content = f.read()
+        f.close()
+        self.assertEqual(CLIENTCERT, content)
+        self.assertTrue(loaded['sslverify'], '1')
+        # The default CA path should have been used
+        self.assertEqual(loaded['sslcacert'], DEFAULT_CA_PATH)
+
+    def test_bind_ssl_verify_true_explicit_ca_path(self):
+        """
+        Tests binding a repo with verify_ssl set explicitly to True and an explicit ca_path.
+        """
+        url_list = ['http://pulpserver']
+        ca_path = '/some/path'
+
+        repolib.bind(TEST_REPO_FILENAME, TEST_MIRROR_LIST_FILENAME, TEST_KEYS_DIR, TEST_CERT_DIR,
+                     REPO_ID, REPO_NAME, url_list, {}, CLIENTCERT, ENABLED, LOCK, verify_ssl=True,
+                     ca_path=ca_path)
+
+        self.assertTrue(os.path.exists(TEST_REPO_FILENAME))
+        self.assertTrue(not os.path.exists(TEST_MIRROR_LIST_FILENAME))
+        repo_file = RepoFile(TEST_REPO_FILENAME)
+        repo_file.load()
+
+        self.assertEqual(1, len(repo_file.all_repos()))
+
+        loaded = repo_file.get_repo(REPO_ID)
+        self.assertTrue(loaded is not None)
+        self.assertEqual(loaded['name'], REPO_NAME)
+        self.assertTrue(loaded['enabled'])
+        self.assertEqual(loaded['gpgcheck'], '0')
+        self.assertEqual(loaded['gpgkey'], None)
+
+        self.assertEqual(loaded['baseurl'], url_list[0])
+        self.assertTrue('mirrorlist' not in loaded)
+
+        path = loaded['sslclientcert']
+        f = open(path)
+        content = f.read()
+        f.close()
+        self.assertEqual(CLIENTCERT, content)
+        self.assertTrue(loaded['sslverify'], '1')
+        # The default CA path should have been used
+        self.assertEqual(loaded['sslcacert'], ca_path)
 
     def test_bind_existing_file(self):
         """
