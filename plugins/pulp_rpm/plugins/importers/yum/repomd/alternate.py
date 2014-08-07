@@ -3,12 +3,20 @@ import os
 
 from threading import Event
 from urlparse import urljoin
+from logging import getLogger
+from gettext import gettext as _
 
 from nectar.report import DownloadReport
 
 from pulp.server.content.sources import ContentContainer, Listener, Request
 
 from pulp_rpm.plugins.importers.yum.repomd.nectar_factory import create_downloader
+
+
+log = getLogger(__name__)
+
+
+CONTAINER_REPORT = _('The content container reported: %(r)s for base URL: %(u)s')
 
 
 class Packages(object):
@@ -57,11 +65,13 @@ class Packages(object):
         """
         return self
 
-    def download_packages(self):
+    @property
+    def requests(self):
         """
-        Download packages using alternate content source container.
+        Get requests for the units requested to be downloaded.
+        :return: An iterable of: Request
+        :rtype: iterable
         """
-        request_list = []
         for unit in self.units:
             url = urljoin(self.base_url, unit.download_path)
             file_name = os.path.basename(unit.relative_path)
@@ -72,9 +82,14 @@ class Packages(object):
                 url=url,
                 destination=destination)
             request.data = unit
-            request_list.append(request)
-        listener = ContainerListener(self.listener)
-        self.container.download(self.canceled, self.primary, request_list, listener)
+            yield request
+
+    def download_packages(self):
+        """
+        Download packages using alternate content source container.
+        """
+        report = self.container.download(self.canceled, self.primary, self.requests, self.listener)
+        log.info(CONTAINER_REPORT, dict(r=report.dict(), u=self.base_url))
 
     def cancel(self):
         """

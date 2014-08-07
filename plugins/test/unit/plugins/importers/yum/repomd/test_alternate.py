@@ -5,9 +5,7 @@ from uuid import uuid4
 from unittest import TestCase
 from urlparse import urljoin
 
-from mock import patch, Mock, ANY
-
-from nectar.report import DownloadReport
+from mock import patch, Mock
 
 from pulp.server.content.sources.model import Request
 from pulp_rpm.plugins.importers.yum.repomd.alternate import Packages, ContainerListener
@@ -35,8 +33,10 @@ class TestPackages(TestCase):
         dst_dir = str(uuid4())
         listener = Mock()
 
+        # test
         packages = Packages(base_url, nectar_conf, units, dst_dir, listener)
 
+        # validation
         fake_create_downloader.assert_called_with(base_url, nectar_conf)
 
         self.assertEqual(packages.base_url, base_url)
@@ -48,16 +48,18 @@ class TestPackages(TestCase):
         self.assertEqual(packages.canceled, fake_event())
 
     def test_downloader(self):
+        # test
         packages = Packages('http://none', None, [], '', None)
+
+        # validation
         self.assertEqual(packages.downloader, packages)
 
     @patch('pulp_rpm.plugins.importers.yum.repomd.alternate.Event', Mock())
     @patch('pulp_rpm.plugins.importers.yum.repomd.alternate.create_downloader', Mock())
-    @patch('pulp_rpm.plugins.importers.yum.repomd.alternate.ContentContainer.download')
-    @patch('pulp_rpm.plugins.importers.yum.repomd.alternate.ContainerListener')
-    def test_download(self, fake_listener, fake_download):
+    @patch('pulp_rpm.plugins.importers.yum.repomd.alternate.ContentContainer')
+    @patch('pulp_rpm.plugins.importers.yum.repomd.alternate.Packages.requests')
+    def test_download(self, fake_requests, fake_container):
         listener = Mock()
-        fake_listener.return_value = listener
         base_url = 'http://host'
         units = [
             Unit(),
@@ -65,27 +67,49 @@ class TestPackages(TestCase):
             Unit(),
         ]
 
-        packages = Packages(base_url, None, units, '', Mock())
+        # test
+        packages = Packages(base_url, None, units, '', listener)
         packages.download_packages()
 
-        fake_listener.assert_called_with(packages.listener)
-        fake_download.assert_called_with(packages.canceled, packages.primary, ANY, listener)
+        # validation
+        fake_container().download.assert_called_with(
+            packages.canceled, packages.primary, fake_requests, listener)
 
-        calls = fake_download.mock_calls
-        self.assertEqual(len(calls), 1)
-        requests = calls[0][1][2]
+    @patch('pulp_rpm.plugins.importers.yum.repomd.alternate.Event', Mock())
+    @patch('pulp_rpm.plugins.importers.yum.repomd.alternate.create_downloader', Mock())
+    @patch('pulp_rpm.plugins.importers.yum.repomd.alternate.ContentContainer', Mock())
+    @patch('pulp_rpm.plugins.importers.yum.repomd.alternate.Request')
+    def test_requests_property(self, fake_request):
+        listener = Mock()
+        base_url = 'http://host'
+        units = [
+            Unit(),
+            Unit(),
+            Unit(),
+        ]
+
+        # test
+        packages = Packages(base_url, None, units, '', listener)
+        requests = list(packages.requests)
+
+        calls = fake_request.call_args_list
         self.assertEqual(len(requests), len(units))
-        for n, request in enumerate(requests):
-            self.assertTrue(isinstance(request, Request))
-            self.assertEqual(request.type_id, units[n].TYPE)
-            self.assertEqual(request.unit_key, units[n].unit_key)
-            self.assertEqual(request.url, urljoin(base_url, units[n].download_path))
-            self.assertEqual(request.destination, os.path.join(packages.dst_dir, units[n].relative_path))
+        for n, call in enumerate(calls):
+            self.assertEqual(call[1]['type_id'], units[n].TYPE)
+            self.assertEqual(call[1]['unit_key'], units[n].unit_key)
+            self.assertEqual(call[1]['url'], urljoin(base_url, units[n].download_path))
+            self.assertEqual(call[1]['destination'],
+                             os.path.join(packages.dst_dir, units[n].relative_path))
+        self.assertEqual(len(requests), len(units))
 
-    def test_caneel(self):
+    def test_cancel(self):
         packages = Packages('http://none', None, [], '', None)
         self.assertFalse(packages.canceled.is_set())
+
+        # test
         packages.cancel()
+
+        # validation
         self.assertTrue(packages.canceled.is_set())
 
 
@@ -101,9 +125,11 @@ class TestListener(TestCase):
         request.data = Mock()
         content_listener = Mock()
 
+        # test
         listener = ContainerListener(content_listener)
         listener.download_succeeded(request)
 
+        # validation
         calls = content_listener.download_succeeded.mock_calls
         self.assertEqual(len(calls), 1)
         report = calls[0][1][0]
@@ -117,9 +143,11 @@ class TestListener(TestCase):
         request.errors = [1, 2, 3]
         content_listener = Mock()
 
+        # test
         listener = ContainerListener(content_listener)
         listener.download_failed(request)
 
+        # validation
         calls = content_listener.download_failed.mock_calls
         self.assertEqual(len(calls), 1)
         report = calls[0][1][0]
