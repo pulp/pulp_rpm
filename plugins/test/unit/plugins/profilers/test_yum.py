@@ -338,6 +338,12 @@ class TestYumProfilerRPM(rpm_support_base.PulpRPMTests):
         bar = self.create_profile_entry("patb", 0, "0.1", "2", arch, "Test Vendor")
         return {TYPE_ID_RPM:[foo, bar]}
 
+    def get_test_profile_with_duplicate_packages(self, arch="x86_64"):
+        foo = self.create_profile_entry("emoticons", 0, "0.0.1", "1", arch, "Test Vendor")
+        bar = self.create_profile_entry("patb", 0, "0.0.1", "1", arch, "Test Vendor")
+        newer_bar = self.create_profile_entry("patb", 0, "0.0.2", "1", arch, "Test Vendor")
+        return {TYPE_ID_RPM: [foo, newer_bar, bar]}
+
     def test_metadata(self):
         """
         Test the metadata() method.
@@ -352,6 +358,17 @@ class TestYumProfilerRPM(rpm_support_base.PulpRPMTests):
         self.assertTrue(TYPE_ID_RPM in data["types"])
         self.assertTrue(TYPE_ID_ERRATA in data["types"])
 
+    def test_form_lookup_table(self):
+        """
+        Test that form_lookup_table creates a table with the latest rpm in the profile as a value
+        corresponding to the rpm name and arch.
+        """
+        test_profile = self.get_test_profile_with_duplicate_packages()
+        consumer_lookup = YumProfiler._form_lookup_table(test_profile[TYPE_ID_RPM])
+        self.assertEqual(len(consumer_lookup), 2)
+        self.assertEqual(consumer_lookup['patb x86_64'],
+                         self.create_profile_entry("patb", 0, "0.0.2", "1", "x86_64", "Test Vendor"))
+
     def test_rpm_applicable_to_consumer(self):
         rpm = {}
         prof = YumProfiler()
@@ -362,6 +379,22 @@ class TestYumProfilerRPM(rpm_support_base.PulpRPMTests):
         # The consumer has already been configured with a profile containing 'emoticons'
         rpm = self.create_profile_entry("emoticons", 0, "0.1", "2", "x86_64", "Test Vendor")
         applicable = prof._is_rpm_applicable(rpm, self.test_consumer_lookup)
+        self.assertTrue(applicable)
+
+    def test_rpm_applicable_with_profile_containing_duplicate_packages(self):
+        """
+        If a consumer profile contains multiple rpms with same name and arch (eg. in case of
+        kernel rpms), make sure that the applicability calculations take into consideration
+        the newest rpm installed.
+        """
+        consumer_profile = self.get_test_profile_with_duplicate_packages()
+        test_consumer_lookup = YumProfiler._form_lookup_table(consumer_profile[TYPE_ID_RPM])
+        rpm = self.create_profile_entry("patb", 0, "0.0.2", "1", "x86_64", "Test Vendor")
+        yum_profiler = YumProfiler()
+        applicable = yum_profiler._is_rpm_applicable(rpm, test_consumer_lookup)
+        self.assertFalse(applicable)
+        newer_rpm = self.create_profile_entry("patb", 0, "0.0.3", "1", "x86_64", "Test Vendor")
+        applicable = yum_profiler._is_rpm_applicable(newer_rpm, test_consumer_lookup)
         self.assertTrue(applicable)
 
     def test_unit_applicable_true(self):

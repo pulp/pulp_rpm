@@ -35,7 +35,7 @@ class TestRepoFile(unittest.TestCase):
         add_me['baseurl'] = 'http://localhost/repo'
         add_me['enabled'] = 1
         add_me['gpgkey'] = '/tmp/key'
-        add_me['sslverify'] = 0
+        add_me['sslverify'] = 1
         add_me['gpgcheck'] = 0
         add_me['sslcacert'] = '/tmp/sslcacert'
         add_me['sslclientcert'] = '/tmp/clientcert'
@@ -592,8 +592,7 @@ class TestRepoKeyFiles(unittest.TestCase):
         key_list = repo_keys.key_filenames()
         self.assertTrue(key_list is not None)
         self.assertEqual(0, len(key_list))
-        
-# -- repo cert files tests ----------------------------------------------------------------
+
 
 class TestRepoCertFiles(unittest.TestCase):
 
@@ -606,57 +605,32 @@ class TestRepoCertFiles(unittest.TestCase):
         # Clean up in case the test file was saved in a test
         if os.path.exists(TEST_CERT_ROOT_DIR):
             shutil.rmtree(TEST_CERT_ROOT_DIR)
-            
+
     def test_repo_first_time(self, repoid='repo1'):
-        # setup
         repoid = 'repo1'
-        ca = 'MY-CA-CERT'
         client = 'MY-CLIENT-KEY_AND_CERT'
         cf = CertFiles(TEST_CERT_ROOT_DIR, repoid)
-        cf.update(ca, client)
-        capath, clientpath = cf.apply()
-        #verify
+
+        cf.update(client)
+
+        clientpath = cf.apply()
         rootdir = os.path.join(TEST_CERT_ROOT_DIR, repoid)
         self.assertTrue(os.path.exists(rootdir))
-        self.assertEqual(capath, os.path.join(rootdir, CertFiles.CA))
         self.assertEqual(clientpath, os.path.join(rootdir, CertFiles.CLIENT))
-        for path, content in ((capath, ca),(clientpath, client)):
-            f = open(path)
-            pem = f.read()
-            f.close()
-            self.assertEqual(pem, content)
-    
+        f = open(clientpath)
+        pem = f.read()
+        f.close()
+        self.assertEqual(pem, client)
+
     def test_update(self):
-        # setup
         repoid = 'repo1'
         self.test_repo_first_time(repoid)
-        ca = 'MY-NEW-CA-CERT'
         client = 'MY-NEW-CLIENT-KEY_AND_CERT'
         cf = CertFiles(TEST_CERT_ROOT_DIR, repoid)
-        cf.update(ca, client)
-        capath, clientpath = cf.apply()
-        #verify
-        rootdir = os.path.join(TEST_CERT_ROOT_DIR, repoid)
-        self.assertTrue(os.path.exists(rootdir))
-        self.assertEqual(capath, os.path.join(rootdir, CertFiles.CA))
-        self.assertEqual(clientpath, os.path.join(rootdir, CertFiles.CLIENT))
-        self.assertEqual(len(os.listdir(rootdir)), 2)
-        for path, content in ((capath, ca),(clientpath, client)):
-            f = open(path)
-            pem = f.read()
-            f.close()
-            self.assertEqual(pem, content)
-    
-    def test_clear_ca(self):
-        # setup
-        repoid = 'repo1'
-        self.test_repo_first_time(repoid)
-        ca = None
-        client = 'MY-NEW-CLIENT-KEY_AND_CERT'
-        cf = CertFiles(TEST_CERT_ROOT_DIR, repoid)
-        cf.update(ca, client)
-        capath, clientpath = cf.apply()
-        #verify
+
+        cf.update(client)
+
+        clientpath = cf.apply()
         rootdir = os.path.join(TEST_CERT_ROOT_DIR, repoid)
         self.assertTrue(os.path.exists(rootdir))
         self.assertEqual(clientpath, os.path.join(rootdir, CertFiles.CLIENT))
@@ -665,41 +639,19 @@ class TestRepoCertFiles(unittest.TestCase):
         pem = f.read()
         f.close()
         self.assertEqual(pem, client)
-    
-    def test_clear_client(self):
-        # setup
+
+    def test_clear(self):
         repoid = 'repo1'
         self.test_repo_first_time(repoid)
-        ca = 'MY-NEW-CA-CERT'
         client = None
         cf = CertFiles(TEST_CERT_ROOT_DIR, repoid)
-        cf.update(ca, client)
-        capath, clientpath = cf.apply()
-        #verify
-        rootdir = os.path.join(TEST_CERT_ROOT_DIR, repoid)
-        self.assertTrue(os.path.exists(rootdir))
-        self.assertEqual(capath, os.path.join(rootdir, CertFiles.CA))
-        self.assertEqual(len(os.listdir(rootdir)), 1)
-        f = open(capath)
-        pem = f.read()
-        f.close()
-        self.assertEqual(pem, ca)
-    
-    def test_clear_both(self):
-        # setup
-        repoid = 'repo1'
-        self.test_repo_first_time(repoid)
-        ca = None
-        client = None
-        cf = CertFiles(TEST_CERT_ROOT_DIR, repoid)
-        cf.update(ca, client)
-        capath, clientpath = cf.apply()
-        #verify
+        cf.update(client)
+
+        cf.apply()
+
         rootdir = os.path.join(TEST_CERT_ROOT_DIR, repoid)
         self.assertFalse(os.path.exists(rootdir))
-    
 
-# -- utilities ------------------------------------------------------------------------
 
 def _repo_eq(repo1, repo2):
     """
