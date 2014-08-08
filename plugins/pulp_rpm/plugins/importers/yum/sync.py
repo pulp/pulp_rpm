@@ -11,7 +11,8 @@ from pulp.plugins.util import nectar_config as nectar_utils
 from pulp_rpm.common import constants
 from pulp_rpm.plugins.db import models
 from pulp_rpm.plugins.importers.yum import existing, purge
-from pulp_rpm.plugins.importers.yum.repomd import metadata, primary, packages, updateinfo, presto, group
+from pulp_rpm.plugins.importers.yum.repomd import (
+    metadata, primary, packages, updateinfo, presto, group, alternate)
 from pulp_rpm.plugins.importers.yum.listener import ContentListener
 from pulp_rpm.plugins.importers.yum.parse import treeinfo
 from pulp_rpm.plugins.importers.yum.report import ContentReport, DistributionReport
@@ -393,8 +394,8 @@ class RepoSync(object):
                                                                       primary.process_package_element)
             units_to_download = self._filtered_unit_generator(package_model_generator, rpms_to_download)
 
-            download_wrapper = packages.Packages(self.sync_feed, self.nectar_config,
-                                                 units_to_download, self.tmp_dir, event_listener)
+            download_wrapper = alternate.Packages(self.sync_feed, self.nectar_config,
+                                                  units_to_download, self.tmp_dir, event_listener)
             # allow the downloader to be accessed by the cancel method if necessary
             self.downloader = download_wrapper.downloader
             _logger.info(_('Downloading %(num)s RPMs.') % {'num': len(rpms_to_download)})
