@@ -296,14 +296,14 @@ def _update_provides_requires(unit):
                                      requires_element.findall('entry')) if requires_element else []
 
 
-def _generate_rpm_data(rpm_filename, user_metadata):
+def _generate_rpm_data(rpm_filename, user_metadata=None):
     """
     For the given RPM, analyzes its metadata to generate the appropriate unit
     key and metadata fields, returning both to the caller.
 
     :param rpm_filename: full path to the RPM to analyze
     :type  rpm_filename: str
-    :param user_metadata: user supplied metadata about the unit
+    :param user_metadata: user supplied metadata about the unit. This is optional.
     :type  user_metadata: dict
 
     :return: tuple of unit key and unit metadata for the RPM
@@ -333,9 +333,8 @@ def _generate_rpm_data(rpm_filename, user_metadata):
 
     # -- Unit Key -----------------------
     # Checksum
-    user_checksum = user_metadata.get('checksum_type')
-    if user_checksum:
-        unit_key['checksumtype'] = user_checksum
+    if user_metadata and user_metadata.get('checksum_type'):
+        unit_key['checksumtype'] = user_metadata.get('checksum_type')
     else:
         unit_key['checksumtype'] = verification.TYPE_SHA256
     unit_key['checksum'] = _calculate_checksum(unit_key['checksumtype'], rpm_filename)
