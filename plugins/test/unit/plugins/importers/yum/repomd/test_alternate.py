@@ -57,7 +57,7 @@ class TestPackages(TestCase):
     @patch('pulp_rpm.plugins.importers.yum.repomd.alternate.Event', Mock())
     @patch('pulp_rpm.plugins.importers.yum.repomd.alternate.create_downloader', Mock())
     @patch('pulp_rpm.plugins.importers.yum.repomd.alternate.ContentContainer')
-    @patch('pulp_rpm.plugins.importers.yum.repomd.alternate.Packages.requests')
+    @patch('pulp_rpm.plugins.importers.yum.repomd.alternate.Packages.get_requests')
     def test_download(self, fake_requests, fake_container):
         listener = Mock()
         base_url = 'http://host'
@@ -73,13 +73,13 @@ class TestPackages(TestCase):
 
         # validation
         fake_container().download.assert_called_with(
-            packages.canceled, packages.primary, fake_requests, listener)
+            packages.canceled, packages.primary, fake_requests(), listener)
 
     @patch('pulp_rpm.plugins.importers.yum.repomd.alternate.Event', Mock())
     @patch('pulp_rpm.plugins.importers.yum.repomd.alternate.create_downloader', Mock())
     @patch('pulp_rpm.plugins.importers.yum.repomd.alternate.ContentContainer', Mock())
     @patch('pulp_rpm.plugins.importers.yum.repomd.alternate.Request')
-    def test_requests_property(self, fake_request):
+    def test_get_requests(self, fake_request):
         listener = Mock()
         base_url = 'http://host'
         units = [
@@ -90,7 +90,7 @@ class TestPackages(TestCase):
 
         # test
         packages = Packages(base_url, None, units, '', listener)
-        requests = list(packages.requests)
+        requests = list(packages.get_requests())
 
         calls = fake_request.call_args_list
         self.assertEqual(len(requests), len(units))

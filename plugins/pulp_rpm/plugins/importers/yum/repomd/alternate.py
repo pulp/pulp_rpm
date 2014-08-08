@@ -65,8 +65,7 @@ class Packages(object):
         """
         return self
 
-    @property
-    def requests(self):
+    def get_requests(self):
         """
         Get requests for the units requested to be downloaded.
         :return: An iterable of: Request
@@ -88,7 +87,8 @@ class Packages(object):
         """
         Download packages using alternate content source container.
         """
-        report = self.container.download(self.canceled, self.primary, self.requests, self.listener)
+        report = self.container.download(
+            self.canceled, self.primary, self.get_requests(), self.listener)
         log.info(CONTAINER_REPORT, dict(r=report.dict(), u=self.base_url))
 
     def cancel(self):
