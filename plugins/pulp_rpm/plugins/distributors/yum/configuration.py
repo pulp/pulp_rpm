@@ -1,3 +1,4 @@
+from functools import partial
 import os
 from ConfigParser import SafeConfigParser
 from gettext import gettext as _
@@ -17,7 +18,7 @@ _LOG = util.getLogger(__name__)
 
 REQUIRED_CONFIG_KEYS = ('relative_url', 'http', 'https')
 
-OPTIONAL_CONFIG_KEYS = ('gpgkey', 'auth_ca', 'auth_cert', 'checksum_type',
+OPTIONAL_CONFIG_KEYS = ('gpgkey', 'auth_ca', 'auth_cert', 'https_ca', 'checksum_type',
                         'http_publish_dir', 'https_publish_dir', 'protected',
                         'skip', 'skip_pkg_tags', 'generate_sqlite')
 
@@ -96,6 +97,7 @@ def validate_config(repo, config, config_conduit):
         'auth_ca': _validate_auth_ca,
         'auth_cert': _validate_auth_cert,
         'checksum_type': _validate_checksum_type,
+        'https_ca': partial(_validate_certificate, 'https_ca'),
         'http_publish_dir': _validate_http_publish_dir,
         'https_publish_dir': _validate_https_publish_dir,
         'protected': _validate_protected,
