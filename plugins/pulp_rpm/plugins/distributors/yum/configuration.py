@@ -367,10 +367,6 @@ def _validate_auth_cert(auth_cert, error_messages):
     _validate_certificate('auth_cert', auth_cert, error_messages)
 
 
-def _validate_https_ca_cert(cert, error_messages):
-    _validate_certificate('https_ca', cert, error_messages)
-
-
 def _validate_checksum_type(checksum_type, error_messages):
 
     if checksum_type is None or util.is_valid_checksum_type(checksum_type):
