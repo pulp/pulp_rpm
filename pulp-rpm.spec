@@ -14,7 +14,7 @@
 
 Name: pulp-rpm
 Version: 2.4.0
-Release: 0.30.beta%{?dist}
+Release: 1%{?dist}
 Summary: Support for RPM content in the Pulp platform
 Group: Development/Languages
 License: GPLv2
@@ -273,6 +273,9 @@ A collection of yum plugins supplementing Pulp consumer operations.
 
 
 %changelog
+* Sat Aug 09 2014 Randy Barlow <rbarlow@redhat.com> 2.4.0-1
+- 1121264 - correcting the documentation for max_speed (mhrivnak@redhat.com)
+
 * Thu Jul 31 2014 Randy Barlow <rbarlow@redhat.com> 2.4.0-0.30.beta
 - Pulp rebuild
 
