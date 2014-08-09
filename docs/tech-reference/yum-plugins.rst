@@ -422,7 +422,8 @@ configuration values are optional.
  Password to use for proxy server authentication.
 
 ``max_speed``
- Limit the Max speed in KB/sec per thread during package downloads; defaults to None
+ The maximum download speed in bytes/sec for a task (such as a sync);
+ defaults to None
 
 ``validate``
  If True, as the repository is synchronized the checksum of each file will be
