@@ -58,3 +58,34 @@ class TestDownloadMetadataFiles(unittest.TestCase):
         self.assertEqual(len(requests), 2)
         self.assertTrue(requests[0].destination.endswith('primary'))
         self.assertTrue(requests[1].destination.endswith('pkgtags.sqlite.gz'))
+
+
+class TestMetadataFiles(unittest.TestCase):
+    def setUp(self):
+        self.metadata_files = metadata.MetadataFiles('http://pulpproject.org',
+                                                     '/a/b/c',
+                                                     DownloaderConfig())
+
+    @mock.patch('pulp_rpm.plugins.importers.yum.repomd.metadata.change_location_tag')
+    @mock.patch('pulp_rpm.plugins.importers.yum.repomd.metadata.gdbm.open')
+    @mock.patch('pulp_rpm.plugins.importers.yum.repomd.metadata.other')
+    @mock.patch('pulp_rpm.plugins.importers.yum.repomd.metadata.filelists')
+    def test_add_repo_data_filters_location_tag(self, mock_filelists, mock_other, mock_open,
+                                                mock_change_location_tag):
+        model = mock.Mock(metadata={})
+        raw_xml = '<location xml:base="flux" href="qux"/>'
+        model.raw_xml = raw_xml
+        mock_open.return_value = mock.MagicMock()
+        mock_open.return_value.__getitem__.return_value = raw_xml
+        mock_open.return_value.close = mock.Mock()
+        self.metadata_files.generate_db_key = mock.Mock(return_value='foo')
+        self.metadata_files.dbs = mock.MagicMock()
+        mock_filelists.process_package_element.return_value = ('a', 'b')
+        mock_other.process_package_element.return_value = ('a', 'b')
+
+        # we actually only care about the location tag, the previous mock setup
+        # was to enable this testing
+        mock_change_location_tag.return_value = 'baz'
+        self.metadata_files.add_repodata(model)
+        mock_change_location_tag.assert_called_once_with(raw_xml, model.relative_path)
+        self.assertEquals('baz', model.metadata['repodata']['primary'])
