@@ -1,3 +1,6 @@
+"""
+This module contains tests for the pulp_rpm.handlers.repo_file module.
+"""
 from ConfigParser import DuplicateSectionError
 import os
 import shutil
@@ -10,6 +13,22 @@ TEST_REPO_FILENAME = '/tmp/TestRepoFile.repo'
 TEST_MIRROR_LIST_FILENAME = '/tmp/TestRepoFile.mirrorlist'
 TEST_KEYS_ROOT_DIR = '/tmp/TestRepoFile-keys'
 TEST_CERT_ROOT_DIR = '/tmp/TestRepoFile-Certificates'
+
+
+class TestRepo(unittest.TestCase):
+    """
+    This class contains tests for the Repo object.
+    """
+    def test_sslverify_default_1(self):
+        """
+        This test asserts that Repo.PROPERTIES.sslverify is '1'.
+        """
+        self.assertEqual(Repo.PROPERTIES[3][0], 'sslverify')
+        self.assertEqual(Repo.PROPERTIES[3][1], '1')
+
+        # A Repo instance should also have this property
+        repo = Repo('some_id')
+        self.assertEqual(repo['sslverify'], '1')
 
 
 class TestRepoFile(unittest.TestCase):
