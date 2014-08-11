@@ -75,6 +75,8 @@ class PackageXMLFileContext(MetadataFileContext):
         """
         group_element = ElementTree.Element('group')
         ElementTree.SubElement(group_element, 'id').text = group_unit.unit_key['id']
+        ElementTree.SubElement(group_element, 'default').text = \
+            str(group_unit.metadata['default']).lower()
         ElementTree.SubElement(group_element, 'uservisible').text = \
             str(group_unit.metadata['user_visible']).lower()
         ElementTree.SubElement(group_element, 'display_order').text = \
