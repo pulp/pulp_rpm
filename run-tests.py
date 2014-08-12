@@ -11,6 +11,7 @@ PROJECT_DIR = os.path.dirname(__file__)
 subprocess.call(['find', PROJECT_DIR, '-name', '*.pyc', '-delete'])
 
 PACKAGES = [
+    PROJECT_DIR,
     'pulp_rpm',
     'rpm_repo',
     'rpm_sync',

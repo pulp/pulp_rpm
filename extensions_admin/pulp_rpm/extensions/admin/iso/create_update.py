@@ -96,9 +96,11 @@ class ISORepoCreateUpdateMixin(ImporterConfigMixin, ISODistributorConfigMixin):
             return os.EX_DATAERR
 
         distributors = [
-            {'distributor_type_id': ids.TYPE_ID_DISTRIBUTOR_ISO, 'distributor_config': distributor_config,
+            {'distributor_type_id': ids.TYPE_ID_DISTRIBUTOR_ISO,
+             'distributor_config': distributor_config,
              'auto_publish': True, 'distributor_id': ids.TYPE_ID_DISTRIBUTOR_ISO}]
-        self._perform_command(repo_id, display_name, description, notes, importer_config, distributors)
+        self._perform_command(repo_id, display_name, description, notes, importer_config,
+                              distributors, user_input)
 
 
 class ISORepoCreateCommand(ISORepoCreateUpdateMixin, CreateRepositoryCommand):
@@ -115,9 +117,10 @@ class ISORepoCreateCommand(ISORepoCreateUpdateMixin, CreateRepositoryCommand):
         ISORepoCreateUpdateMixin.__init__(self)
 
     def _perform_command(self, repo_id, display_name, description, notes,
-                         importer_config, distributors):
+                         importer_config, distributors, user_input):
         self.context.server.repo.create_and_configure(repo_id, display_name, description, notes,
-                                                      ids.TYPE_ID_IMPORTER_ISO, importer_config, distributors)
+                                                      ids.TYPE_ID_IMPORTER_ISO, importer_config,
+                                                      distributors)
 
         msg = _('Successfully created repository [%(r)s]') % {'r': repo_id}
         self.prompt.render_success_message(msg, tag='repo-created')
@@ -136,7 +139,7 @@ class ISORepoUpdateCommand(ISORepoCreateUpdateMixin, UpdateRepositoryCommand):
         ISORepoCreateUpdateMixin.__init__(self)
 
     def _perform_command(self, repo_id, display_name, description, notes,
-                         importer_config, distributors):
+                         importer_config, distributors, user_input):
         distributor_configs = {}
         for distributor in distributors:
             distributor_configs[distributor['distributor_id']] = distributor['distributor_config']
@@ -147,10 +150,6 @@ class ISORepoUpdateCommand(ISORepoCreateUpdateMixin, UpdateRepositoryCommand):
 
         if not response.is_async():
             msg = _('Repository [%(r)s] successfully updated')
-            self.prompt.render_success_message(msg % {'r' : repo_id}, tag='repo-updated')
+            self.prompt.render_success_message(msg % {'r': repo_id}, tag='repo-updated')
         else:
-            msg = _('Repository update postponed due to another operation. '
-                    'Progress on this task can be viewed using the commands '
-                    'under "repo tasks"')
-            self.prompt.render_paragraph(msg, tag='update-postponed')
-            self.prompt.render_reasons(response.response_body.reasons)
+            self.poll([response.response_body], user_input)

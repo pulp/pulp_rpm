@@ -59,7 +59,7 @@ class YumDistributorTests(unittest.TestCase):
 
     # -- publish tests ---------------------------------------------------------
 
-    @mock.patch('pulp_rpm.plugins.distributors.yum.publish.Publisher.publish')
+    @mock.patch('pulp_rpm.plugins.distributors.yum.distributor.publish')
     def test_publish_repo(self, mock_publish):
         repo = Repository('test')
         config = PluginCallConfiguration(None, None)
@@ -67,7 +67,7 @@ class YumDistributorTests(unittest.TestCase):
 
         self.distributor.publish_repo(repo, conduit, config)
 
-        mock_publish.assert_called_once()
+        mock_publish.Publisher.return_value.publish.assert_called_once()
 
     def test_cancel_publish_repo(self):
 
@@ -215,21 +215,21 @@ class TestDistributorDistributorRemoved(unittest.TestCase):
     def test_distributor_remove_distributor_calls_remove_cert_based_auth(self):
         self.mock_remove_cert.assert_called_once_with(self.mock_repo, self.config)
 
-    def test_distributor_uses_rmtree_to_remove_working_dir_and_master_dir(self):
+    def test_distributor_remove_distributor_uses_rmtree_to_remove_working_dir_and_master_dir(self):
         rmtree_calls = [
             call(self.mock_repo.working_dir, ignore_errors=True),
             call(self.mock_master.return_value, ignore_errors=True)
         ]
         self.mock_rmtree.assert_has_calls(rmtree_calls)
 
-    def test_distributor_uses_unlink_to_remove_http_and_https_symlinks(self):
+    def test_distributor_remove_distributor_uses_unlink_to_remove_http_and_https_symlinks(self):
         unlink_calls = [
-            call(self.mock_os.path.join.return_value),
-            call(self.mock_os.path.join.return_value)
+            call(self.mock_os.path.join.return_value.rstrip.return_value),
+            call(self.mock_os.path.join.return_value.rstrip.return_value)
         ]
         self.mock_os.unlink.assert_has_calls(unlink_calls)
 
-    def test_distributor_unlink_call_handles_OSError_raised(self):
+    def test_distributor_remove_distributor_unlink_call_handles_OSError_raised(self):
         os_error_to_raise = OSError()
         os_error_to_raise.errno = errno.ENOENT
         self.mock_os.unlink.side_effect = os_error_to_raise
@@ -237,6 +237,12 @@ class TestDistributorDistributorRemoved(unittest.TestCase):
             self.distributor.distributor_removed(self.mock_repo, self.config)
         except Exception:
             self.fail('Distributor unlink should handle symlinks that do not exist.')
+
+    def test_distributor_remove_distributor_unlink_call_handles_non_oserror_raised(self):
+        os_error_to_raise = OSError()
+        self.mock_os.unlink.side_effect = os_error_to_raise
+        self.assertRaises(OSError, self.distributor.distributor_removed, self.mock_repo,
+                          self.config)
 
 
 class TestEntryPoint(unittest.TestCase):

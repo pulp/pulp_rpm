@@ -2,13 +2,12 @@ import os
 import shutil
 import unittest
 
+from pulp.bindings.server import DEFAULT_CA_PATH
 from pulp.common.lock import Lock
 
 from pulp_rpm.handlers import repolib
 from pulp_rpm.handlers.repo_file import MirrorListFile, RepoFile, Repo
 
-
-# -- constants ------------------------------------------------------------------------
 
 TEST_REPO_FILENAME = '/tmp/TestRepolibFile.repo'
 TEST_MIRROR_LIST_FILENAME = '/tmp/TestRepolibFile.mirrorlist'
@@ -26,7 +25,6 @@ ENABLED = True
 _LOCK_FILE = '/tmp/test_repolib_lock.pid'
 LOCK = Lock(_LOCK_FILE)
 
-# -- test classes ---------------------------------------------------------------------
 
 class TestRepolib(unittest.TestCase):
 
@@ -62,21 +60,17 @@ class TestRepolib(unittest.TestCase):
         if os.path.exists(_LOCK_FILE):
             os.remove(_LOCK_FILE)
 
-    # -- bind tests ------------------------------------------------------------------
-
     def test_bind_new_file(self):
         """
         Tests binding a repo when the underlying .repo file does not exist.
         """
-
-        # Test
         url_list = ['http://pulpserver']
-        repolib.bind(TEST_REPO_FILENAME, TEST_MIRROR_LIST_FILENAME, TEST_KEYS_DIR, TEST_CERT_DIR, REPO_ID, REPO_NAME, url_list, {}, CACERT, CLIENTCERT, ENABLED, LOCK)
 
-        # Verify
+        repolib.bind(TEST_REPO_FILENAME, TEST_MIRROR_LIST_FILENAME, TEST_KEYS_DIR, TEST_CERT_DIR,
+                     REPO_ID, REPO_NAME, url_list, {}, CLIENTCERT, ENABLED, LOCK)
+
         self.assertTrue(os.path.exists(TEST_REPO_FILENAME))
         self.assertTrue(not os.path.exists(TEST_MIRROR_LIST_FILENAME))
-
         repo_file = RepoFile(TEST_REPO_FILENAME)
         repo_file.load()
 
@@ -92,17 +86,121 @@ class TestRepolib(unittest.TestCase):
         self.assertEqual(loaded['baseurl'], url_list[0])
         self.assertTrue('mirrorlist' not in loaded)
 
-        path = loaded['sslcacert']
+        path = loaded['sslclientcert']
         f = open(path)
         content = f.read()
         f.close()
-        self.assertEqual(CACERT, content)
+        self.assertEqual(CLIENTCERT, content)
+        # verify_ssl defaults to True
+        self.assertTrue(loaded['sslverify'], '1')
+        self.assertEqual(loaded['sslcacert'], DEFAULT_CA_PATH)
+
+    def test_bind_ssl_verify_false(self):
+        """
+        Tests binding a repo with verify_ssl set explicitly to False.
+        """
+        url_list = ['http://pulpserver']
+
+        repolib.bind(TEST_REPO_FILENAME, TEST_MIRROR_LIST_FILENAME, TEST_KEYS_DIR, TEST_CERT_DIR,
+                     REPO_ID, REPO_NAME, url_list, {}, CLIENTCERT, ENABLED, LOCK, verify_ssl=False)
+
+        self.assertTrue(os.path.exists(TEST_REPO_FILENAME))
+        self.assertTrue(not os.path.exists(TEST_MIRROR_LIST_FILENAME))
+        repo_file = RepoFile(TEST_REPO_FILENAME)
+        repo_file.load()
+
+        self.assertEqual(1, len(repo_file.all_repos()))
+
+        loaded = repo_file.get_repo(REPO_ID)
+        self.assertTrue(loaded is not None)
+        self.assertEqual(loaded['name'], REPO_NAME)
+        self.assertTrue(loaded['enabled'])
+        self.assertEqual(loaded['gpgcheck'], '0')
+        self.assertEqual(loaded['gpgkey'], None)
+
+        self.assertEqual(loaded['baseurl'], url_list[0])
+        self.assertTrue('mirrorlist' not in loaded)
+
+        path = loaded['sslclientcert']
+        f = open(path)
+        content = f.read()
+        f.close()
+        self.assertEqual(CLIENTCERT, content)
+        self.assertTrue(loaded['sslverify'], '0')
+        # No CA path should have been used
+        self.assertEqual(loaded['sslcacert'], None)
+
+    def test_bind_ssl_verify_true_default_ca_path(self):
+        """
+        Tests binding a repo with verify_ssl set explicitly to True and the default ca_path.
+        """
+        url_list = ['http://pulpserver']
+
+        repolib.bind(TEST_REPO_FILENAME, TEST_MIRROR_LIST_FILENAME, TEST_KEYS_DIR, TEST_CERT_DIR,
+                     REPO_ID, REPO_NAME, url_list, {}, CLIENTCERT, ENABLED, LOCK, verify_ssl=True)
+
+        self.assertTrue(os.path.exists(TEST_REPO_FILENAME))
+        self.assertTrue(not os.path.exists(TEST_MIRROR_LIST_FILENAME))
+        repo_file = RepoFile(TEST_REPO_FILENAME)
+        repo_file.load()
+
+        self.assertEqual(1, len(repo_file.all_repos()))
+
+        loaded = repo_file.get_repo(REPO_ID)
+        self.assertTrue(loaded is not None)
+        self.assertEqual(loaded['name'], REPO_NAME)
+        self.assertTrue(loaded['enabled'])
+        self.assertEqual(loaded['gpgcheck'], '0')
+        self.assertEqual(loaded['gpgkey'], None)
+
+        self.assertEqual(loaded['baseurl'], url_list[0])
+        self.assertTrue('mirrorlist' not in loaded)
+
         path = loaded['sslclientcert']
         f = open(path)
         content = f.read()
         f.close()
         self.assertEqual(CLIENTCERT, content)
         self.assertTrue(loaded['sslverify'], '1')
+        # The default CA path should have been used
+        self.assertEqual(loaded['sslcacert'], DEFAULT_CA_PATH)
+
+    def test_bind_ssl_verify_true_explicit_ca_path(self):
+        """
+        Tests binding a repo with verify_ssl set explicitly to True and an explicit ca_path.
+        """
+        url_list = ['http://pulpserver']
+        ca_path = '/some/path'
+
+        repolib.bind(TEST_REPO_FILENAME, TEST_MIRROR_LIST_FILENAME, TEST_KEYS_DIR, TEST_CERT_DIR,
+                     REPO_ID, REPO_NAME, url_list, {}, CLIENTCERT, ENABLED, LOCK, verify_ssl=True,
+                     ca_path=ca_path)
+
+        self.assertTrue(os.path.exists(TEST_REPO_FILENAME))
+        self.assertTrue(not os.path.exists(TEST_MIRROR_LIST_FILENAME))
+        repo_file = RepoFile(TEST_REPO_FILENAME)
+        repo_file.load()
+
+        self.assertEqual(1, len(repo_file.all_repos()))
+
+        loaded = repo_file.get_repo(REPO_ID)
+        self.assertTrue(loaded is not None)
+        self.assertEqual(loaded['name'], REPO_NAME)
+        self.assertTrue(loaded['enabled'])
+        self.assertEqual(loaded['gpgcheck'], '0')
+        self.assertEqual(loaded['gpgkey'], None)
+
+        self.assertEqual(loaded['baseurl'], url_list[0])
+        self.assertTrue('mirrorlist' not in loaded)
+
+        path = loaded['sslclientcert']
+        f = open(path)
+        content = f.read()
+        f.close()
+        self.assertEqual(CLIENTCERT, content)
+        self.assertTrue(loaded['sslverify'], '1')
+        # The default CA path should have been used
+        self.assertEqual(loaded['sslcacert'], ca_path)
 
     def test_bind_existing_file(self):
         """
@@ -117,7 +215,8 @@ class TestRepolib(unittest.TestCase):
 
         # Test
         url_list = ['http://pulpserver']
-        repolib.bind(TEST_REPO_FILENAME, TEST_MIRROR_LIST_FILENAME, TEST_KEYS_DIR, TEST_CERT_DIR, REPO_ID, REPO_NAME, url_list, {}, None, None, ENABLED, LOCK)
+        repolib.bind(TEST_REPO_FILENAME, TEST_MIRROR_LIST_FILENAME, TEST_KEYS_DIR, TEST_CERT_DIR,
+                     REPO_ID, REPO_NAME, url_list, {}, None, ENABLED, LOCK)
 
         # Verify
         self.assertTrue(os.path.exists(TEST_REPO_FILENAME))
@@ -132,20 +231,16 @@ class TestRepolib(unittest.TestCase):
         Tests calling bind on an existing repo with new repo data. The host URL and key data
         remain unchanged.
         """
-
-        # Setup
         url_list = ['http://pulp1', 'http://pulp2']
-        repolib.bind(TEST_REPO_FILENAME, TEST_MIRROR_LIST_FILENAME, TEST_KEYS_DIR, TEST_CERT_DIR, REPO_ID, REPO_NAME, url_list, None, None, None, ENABLED, LOCK)
-
-        # Test
+        repolib.bind(TEST_REPO_FILENAME, TEST_MIRROR_LIST_FILENAME, TEST_KEYS_DIR, TEST_CERT_DIR,
+                     REPO_ID, REPO_NAME, url_list, None, None, ENABLED, LOCK)
         updated_name = 'Updated'
 
-        repolib.bind(TEST_REPO_FILENAME, TEST_MIRROR_LIST_FILENAME, TEST_KEYS_DIR, TEST_CERT_DIR, REPO_ID, updated_name, None, None, None, None, ENABLED, LOCK)
+        repolib.bind(TEST_REPO_FILENAME, TEST_MIRROR_LIST_FILENAME, TEST_KEYS_DIR, TEST_CERT_DIR,
+                     REPO_ID, updated_name, None, None, None, ENABLED, LOCK)
 
-        # Verify
         repo_file = RepoFile(TEST_REPO_FILENAME)
         repo_file.load()
-
         loaded = repo_file.get_repo(REPO_ID)
         self.assertEqual(loaded['name'], updated_name)
 
@@ -155,23 +250,18 @@ class TestRepolib(unittest.TestCase):
         the more complex case where a mirror list existed in the original repo but is
         not necessary in the updated repo.
         """
-
-        # Setup
         url_list = ['http://pulp1', 'http://pulp2']
-        repolib.bind(TEST_REPO_FILENAME, TEST_MIRROR_LIST_FILENAME, TEST_KEYS_DIR, TEST_CERT_DIR, REPO_ID, REPO_NAME, url_list, None, None, None, ENABLED, LOCK)
-
+        repolib.bind(TEST_REPO_FILENAME, TEST_MIRROR_LIST_FILENAME, TEST_KEYS_DIR, TEST_CERT_DIR,
+                     REPO_ID, REPO_NAME, url_list, None, None, ENABLED, LOCK)
         self.assertTrue(os.path.exists(TEST_MIRROR_LIST_FILENAME))
 
-        # Test
-        repolib.bind(TEST_REPO_FILENAME, TEST_MIRROR_LIST_FILENAME, TEST_KEYS_DIR, TEST_CERT_DIR, REPO_ID, None, ['http://pulpx'], None, None, None, ENABLED, LOCK)
+        repolib.bind(TEST_REPO_FILENAME, TEST_MIRROR_LIST_FILENAME, TEST_KEYS_DIR, TEST_CERT_DIR,
+                     REPO_ID, None, ['http://pulpx'], None, None, ENABLED, LOCK)
 
-        # Verify
         repo_file = RepoFile(TEST_REPO_FILENAME)
         repo_file.load()
-
         loaded = repo_file.get_repo(REPO_ID)
         self.assertEqual(loaded['baseurl'], 'http://pulpx')
-
         self.assertTrue(not os.path.exists(TEST_MIRROR_LIST_FILENAME))
 
     def test_bind_host_urls_one_to_many(self):
@@ -179,15 +269,13 @@ class TestRepolib(unittest.TestCase):
         Tests that changing from a single URL to many properly updates the baseurl and
         mirrorlist entries of the repo.
         """
-
-        # Setup
-        repolib.bind(TEST_REPO_FILENAME, TEST_MIRROR_LIST_FILENAME, TEST_KEYS_DIR, TEST_CERT_DIR, REPO_ID, REPO_NAME, ['https://pulpx'], None, None, None, ENABLED, LOCK)
-
-        # Test
+        repolib.bind(TEST_REPO_FILENAME, TEST_MIRROR_LIST_FILENAME, TEST_KEYS_DIR, TEST_CERT_DIR,
+                     REPO_ID, REPO_NAME, ['https://pulpx'], None, None, ENABLED, LOCK)
         url_list = ['http://pulp1', 'http://pulp2']
-        repolib.bind(TEST_REPO_FILENAME, TEST_MIRROR_LIST_FILENAME, TEST_KEYS_DIR, TEST_CERT_DIR, REPO_ID, REPO_NAME, url_list, None, None, None, ENABLED, LOCK)
 
-        # Verify
+        repolib.bind(TEST_REPO_FILENAME, TEST_MIRROR_LIST_FILENAME, TEST_KEYS_DIR, TEST_CERT_DIR,
+                     REPO_ID, REPO_NAME, url_list, None, None, ENABLED, LOCK)
+
         repo_file = RepoFile(TEST_REPO_FILENAME)
         repo_file.load()
 
@@ -202,10 +290,12 @@ class TestRepolib(unittest.TestCase):
         """
         # Setup
         url_list = ['http://pulp1', 'http://pulp2']
-        repolib.bind(TEST_REPO_FILENAME, TEST_MIRROR_LIST_FILENAME, TEST_KEYS_DIR, TEST_CERT_DIR, REPO_ID, REPO_NAME, url_list, None, None, None, ENABLED, LOCK)
+        repolib.bind(TEST_REPO_FILENAME, TEST_MIRROR_LIST_FILENAME, TEST_KEYS_DIR, TEST_CERT_DIR,
+                     REPO_ID, REPO_NAME, url_list, None, None, ENABLED, LOCK)
 
         # Test
-        repolib.bind(TEST_REPO_FILENAME, TEST_MIRROR_LIST_FILENAME, TEST_KEYS_DIR, TEST_CERT_DIR, REPO_ID, REPO_NAME, ['http://pulpx'], None, None, None, ENABLED, LOCK)
+        repolib.bind(TEST_REPO_FILENAME, TEST_MIRROR_LIST_FILENAME, TEST_KEYS_DIR, TEST_CERT_DIR,
+                     REPO_ID, REPO_NAME, ['http://pulpx'], None, None, ENABLED, LOCK)
 
         # Verify
         repo_file = RepoFile(TEST_REPO_FILENAME)
@@ -219,16 +309,14 @@ class TestRepolib(unittest.TestCase):
         """
         Tests changing the GPG keys on a previously bound repo.
         """
-
-        # Setup
         keys = {'key1' : 'KEY1', 'key2' : 'KEY2'}
-        repolib.bind(TEST_REPO_FILENAME, TEST_MIRROR_LIST_FILENAME, TEST_KEYS_DIR, TEST_CERT_DIR, REPO_ID, REPO_NAME, ['http://pulp'], keys, None, None, ENABLED, LOCK)
-
-        # Test
+        repolib.bind(TEST_REPO_FILENAME, TEST_MIRROR_LIST_FILENAME, TEST_KEYS_DIR, TEST_CERT_DIR,
+                     REPO_ID, REPO_NAME, ['http://pulp'], keys, None, ENABLED, LOCK)
         new_keys = {'key1' : 'KEYX'}
-        repolib.bind(TEST_REPO_FILENAME, TEST_MIRROR_LIST_FILENAME, TEST_KEYS_DIR, TEST_CERT_DIR, REPO_ID, None, None, new_keys, None, None, ENABLED, LOCK)
 
-        # Verify
+        repolib.bind(TEST_REPO_FILENAME, TEST_MIRROR_LIST_FILENAME, TEST_KEYS_DIR, TEST_CERT_DIR,
+                     REPO_ID, None, None, new_keys, None, ENABLED, LOCK)
+
         repo_file = RepoFile(TEST_REPO_FILENAME)
         repo_file.load()
 
@@ -248,25 +336,21 @@ class TestRepolib(unittest.TestCase):
         Tests that updating a previously bound repo by removing its keys correctly
         configures the repo and deletes the key files.
         """
-
-        # Setup
         keys = {'key1' : 'KEY1', 'key2' : 'KEY2'}
-        repolib.bind(TEST_REPO_FILENAME, TEST_MIRROR_LIST_FILENAME, TEST_KEYS_DIR, TEST_CERT_DIR, REPO_ID, REPO_NAME, ['http://pulp'], keys, None, None, ENABLED, LOCK)
+        repolib.bind(TEST_REPO_FILENAME, TEST_MIRROR_LIST_FILENAME, TEST_KEYS_DIR, TEST_CERT_DIR,
+                     REPO_ID, REPO_NAME, ['http://pulp'], keys, None, ENABLED, LOCK)
 
-        # Test
-        repolib.bind(TEST_REPO_FILENAME, TEST_MIRROR_LIST_FILENAME, TEST_KEYS_DIR, TEST_CERT_DIR, REPO_ID, None, None, {}, None, None, ENABLED, LOCK)
+        repolib.bind(TEST_REPO_FILENAME, TEST_MIRROR_LIST_FILENAME, TEST_KEYS_DIR, TEST_CERT_DIR,
+                     REPO_ID, None, None, {}, None, ENABLED, LOCK)
 
-        # Verify
         repo_file = RepoFile(TEST_REPO_FILENAME)
         repo_file.load()
-
         loaded = repo_file.get_repo(REPO_ID)
         self.assertEqual(loaded['gpgcheck'], '0')
         self.assertEqual(loaded['gpgkey'], None)
         self.assertTrue(not os.path.exists(os.path.join(TEST_KEYS_DIR, REPO_ID)))
 
-    def test_clear_cacert(self):
-        # setup
+    def test_clear_ca_path(self):
         repolib.bind(
             TEST_REPO_FILENAME,
             TEST_MIRROR_LIST_FILENAME,
@@ -276,10 +360,12 @@ class TestRepolib(unittest.TestCase):
             REPO_NAME,
             ['http://pulp'],
             [],
-            CACERT,
             CLIENTCERT,
             ENABLED,
-            LOCK)
+            LOCK,
+            verify_ssl=True,
+            ca_path='/some/path')
+
         repolib.bind(
             TEST_REPO_FILENAME,
             TEST_MIRROR_LIST_FILENAME,
@@ -289,14 +375,13 @@ class TestRepolib(unittest.TestCase):
             REPO_NAME,
             ['http://pulp'],
             [],
-            None,
             CLIENTCERT,
             ENABLED,
             LOCK)
+
         repo_file = RepoFile(TEST_REPO_FILENAME)
         repo_file.load()
         loaded = repo_file.get_repo(REPO_ID)
-        # verify
         certdir = os.path.join(TEST_CERT_DIR, REPO_ID)
         self.assertTrue(len(os.listdir(certdir)), 1)
         path = loaded['sslclientcert']
@@ -317,7 +402,6 @@ class TestRepolib(unittest.TestCase):
             REPO_NAME,
             ['http://pulp'],
             [],
-            CACERT,
             CLIENTCERT,
             ENABLED,
             LOCK)
@@ -330,63 +414,56 @@ class TestRepolib(unittest.TestCase):
             REPO_NAME,
             ['http://pulp'],
             [],
-            CACERT,
             None,
             ENABLED,
-            LOCK)
+            LOCK,
+            verify_ssl=True)
         repo_file = RepoFile(TEST_REPO_FILENAME)
         repo_file.load()
         loaded = repo_file.get_repo(REPO_ID)
-        # verify
+        certdir = os.path.join(TEST_CERT_DIR, REPO_ID)
+        self.assertFalse(os.path.exists(certdir))
+        self.assertTrue(loaded['sslverify'], '1')
+
+    def test_update_ca_path(self):
+        NEW_PATH = '/new/path/'
+        repolib.bind(
+            TEST_REPO_FILENAME,
+            TEST_MIRROR_LIST_FILENAME,
+            TEST_KEYS_DIR,
+            TEST_CERT_DIR,
+            REPO_ID,
+            REPO_NAME,
+            ['http://pulp'],
+            [],
+            CLIENTCERT,
+            ENABLED,
+            LOCK,
+            verify_ssl=True,
+            ca_path='/some/path/')
+
+        repolib.bind(
+            TEST_REPO_FILENAME,
+            TEST_MIRROR_LIST_FILENAME,
+            TEST_KEYS_DIR,
+            TEST_CERT_DIR,
+            REPO_ID,
+            REPO_NAME,
+            ['http://pulp'],
+            [],
+            CLIENTCERT,
+            ENABLED,
+            LOCK,
+            verify_ssl=True,
+            ca_path=NEW_PATH)
+
+        repo_file = RepoFile(TEST_REPO_FILENAME)
+        repo_file.load()
+        loaded = repo_file.get_repo(REPO_ID)
         certdir = os.path.join(TEST_CERT_DIR, REPO_ID)
         self.assertTrue(len(os.listdir(certdir)), 1)
         path = loaded['sslcacert']
-        f = open(path)
-        content = f.read()
-        f.close()
-        self.assertEqual(CACERT, content)
-        self.assertTrue(loaded['sslverify'], '1')
-
-    def test_update_cacert(self):
-        # setup
-        NEWCACERT = 'THE-NEW-CA-CERT'
-        repolib.bind(
-            TEST_REPO_FILENAME,
-            TEST_MIRROR_LIST_FILENAME,
-            TEST_KEYS_DIR,
-            TEST_CERT_DIR,
-            REPO_ID,
-            REPO_NAME,
-            ['http://pulp'],
-            [],
-            CACERT,
-            CLIENTCERT,
-            ENABLED,
-            LOCK)
-        repolib.bind(
-            TEST_REPO_FILENAME,
-            TEST_MIRROR_LIST_FILENAME,
-            TEST_KEYS_DIR,
-            TEST_CERT_DIR,
-            REPO_ID,
-            REPO_NAME,
-            ['http://pulp'],
-            [],
-            NEWCACERT,
-            CLIENTCERT,
-            ENABLED,
-            LOCK)
-        repo_file = RepoFile(TEST_REPO_FILENAME)
-        repo_file.load()
-        loaded = repo_file.get_repo(REPO_ID)
-        # verify
-        certdir = os.path.join(TEST_CERT_DIR, REPO_ID)
-        self.assertTrue(len(os.listdir(certdir)), 2)
-        path = loaded['sslcacert']
-        f = open(path)
-        content = f.read()
-        f.close()
-        self.assertEqual(NEWCACERT, content)
+        self.assertEqual(path, NEW_PATH)
         path = loaded['sslclientcert']
         f = open(path)
         content = f.read()
@@ -395,7 +472,6 @@ class TestRepolib(unittest.TestCase):
         self.assertTrue(loaded['sslverify'], '1')
 
     def test_update_clientcert(self):
-        # setup
         NEWCLIENTCRT = 'THE-NEW-CLIENT-CERT'
         repolib.bind(
             TEST_REPO_FILENAME,
@@ -406,10 +482,10 @@ class TestRepolib(unittest.TestCase):
             REPO_NAME,
             ['http://pulp'],
             [],
-            CACERT,
             CLIENTCERT,
             ENABLED,
             LOCK)
+
         repolib.bind(
             TEST_REPO_FILENAME,
             TEST_MIRROR_LIST_FILENAME,
@@ -419,21 +495,15 @@ class TestRepolib(unittest.TestCase):
             REPO_NAME,
             ['http://pulp'],
             [],
-            CACERT,
             NEWCLIENTCRT,
             ENABLED,
             LOCK)
+
         repo_file = RepoFile(TEST_REPO_FILENAME)
         repo_file.load()
         loaded = repo_file.get_repo(REPO_ID)
-        # verify
         certdir = os.path.join(TEST_CERT_DIR, REPO_ID)
-        self.assertTrue(len(os.listdir(certdir)), 2)
-        path = loaded['sslcacert']
-        f = open(path)
-        content = f.read()
-        f.close()
-        self.assertEqual(CACERT, content)
+        self.assertTrue(len(os.listdir(certdir)), 1)
         path = loaded['sslclientcert']
         f = open(path)
         content = f.read()
@@ -445,18 +515,15 @@ class TestRepolib(unittest.TestCase):
         """
         Tests that binding with a single URL will produce a baseurl in the repo.
         """
-
-        # Test
         url_list = ['http://pulpserver']
-        repolib.bind(TEST_REPO_FILENAME, TEST_MIRROR_LIST_FILENAME, TEST_KEYS_DIR, TEST_CERT_DIR, REPO_ID, REPO_NAME, url_list, {}, None, None, ENABLED, LOCK)
 
-        # Verify
+        repolib.bind(TEST_REPO_FILENAME, TEST_MIRROR_LIST_FILENAME, TEST_KEYS_DIR, TEST_CERT_DIR,
+                     REPO_ID, REPO_NAME, url_list, {}, None, ENABLED, LOCK)
+
         self.assertTrue(os.path.exists(TEST_REPO_FILENAME))
         self.assertTrue(not os.path.exists(TEST_MIRROR_LIST_FILENAME))
-
         repo_file = RepoFile(TEST_REPO_FILENAME)
         repo_file.load()
-
         loaded = repo_file.get_repo(REPO_ID)
         self.assertEqual(loaded['baseurl'], url_list[0])
         self.assertTrue('mirrorlist' not in loaded)
@@ -466,25 +533,20 @@ class TestRepolib(unittest.TestCase):
         Tests that binding with a list of URLs will produce a mirror list and the
         correct mirrorlist entry in the repo entry.
         """
-
-        # Test
         url_list = ['http://pulpserver', 'http://otherserver']
-        repolib.bind(TEST_REPO_FILENAME, TEST_MIRROR_LIST_FILENAME, TEST_KEYS_DIR, TEST_CERT_DIR, REPO_ID, REPO_NAME, url_list, {}, None, None, ENABLED, LOCK)
 
-        # Verify
+        repolib.bind(TEST_REPO_FILENAME, TEST_MIRROR_LIST_FILENAME, TEST_KEYS_DIR, TEST_CERT_DIR,
+                     REPO_ID, REPO_NAME, url_list, {}, None, ENABLED, LOCK)
+
         self.assertTrue(os.path.exists(TEST_REPO_FILENAME))
         self.assertTrue(os.path.exists(TEST_MIRROR_LIST_FILENAME))
-
         repo_file = RepoFile(TEST_REPO_FILENAME)
         repo_file.load()
-
         loaded = repo_file.get_repo(REPO_ID)
         self.assertTrue('baseurl' not in loaded)
         self.assertEqual(loaded['mirrorlist'], 'file:' + TEST_MIRROR_LIST_FILENAME)
-
         mirror_list_file = MirrorListFile(TEST_MIRROR_LIST_FILENAME)
         mirror_list_file.load()
-
         self.assertEqual(mirror_list_file.entries[0], 'http://pulpserver')
         self.assertEqual(mirror_list_file.entries[1], 'http://otherserver')
 
@@ -492,23 +554,18 @@ class TestRepolib(unittest.TestCase):
         """
         Tests that binding with multiple key URLs correctly stores the repo entry.
         """
-
-        # Test
         url_list = ['http://pulpserver']
         keys = {'key1' : 'KEY1', 'key2' : 'KEY2'}
 
-        repolib.bind(TEST_REPO_FILENAME, TEST_MIRROR_LIST_FILENAME, TEST_KEYS_DIR, TEST_CERT_DIR, REPO_ID, REPO_NAME, url_list, keys, None, None, ENABLED, LOCK)
+        repolib.bind(TEST_REPO_FILENAME, TEST_MIRROR_LIST_FILENAME, TEST_KEYS_DIR, TEST_CERT_DIR,
+                     REPO_ID, REPO_NAME, url_list, keys, None, ENABLED, LOCK)
 
-        # Verify
         repo_file = RepoFile(TEST_REPO_FILENAME)
         repo_file.load()
-
         loaded = repo_file.get_repo(REPO_ID)
         self.assertEqual(loaded['gpgcheck'], '1')
         self.assertEqual(2, len(loaded['gpgkey'].split('\n')))
         self.assertEqual(2, len(os.listdir(os.path.join(TEST_KEYS_DIR, REPO_ID))))
-
-    # -- unbind tests ------------------------------------------------------------------
 
     def test_unbind_repo_exists(self):
         """
@@ -538,39 +595,32 @@ class TestRepolib(unittest.TestCase):
         Tests that unbinding a repo that had a mirror list deletes the mirror list
         file.
         """
-
-        # Setup
         url_list = ['http://pulp1', 'http://pulp2', 'http://pulp3']
-        repolib.bind(TEST_REPO_FILENAME, TEST_MIRROR_LIST_FILENAME, TEST_KEYS_DIR, TEST_CERT_DIR, REPO_ID, REPO_NAME, url_list, {}, None, None, ENABLED, LOCK)
+        repolib.bind(TEST_REPO_FILENAME, TEST_MIRROR_LIST_FILENAME, TEST_KEYS_DIR, TEST_CERT_DIR,
+                     REPO_ID, REPO_NAME, url_list, {}, None, ENABLED, LOCK)
         self.assertTrue(os.path.exists(TEST_MIRROR_LIST_FILENAME))
 
-        # Test
-        repolib.unbind(TEST_REPO_FILENAME, TEST_MIRROR_LIST_FILENAME, TEST_KEYS_DIR, TEST_CERT_DIR, REPO_ID, LOCK)
+        repolib.unbind(TEST_REPO_FILENAME, TEST_MIRROR_LIST_FILENAME, TEST_KEYS_DIR, TEST_CERT_DIR,
+                       REPO_ID, LOCK)
 
-        # Verify
         repo_file = RepoFile(TEST_REPO_FILENAME)
         repo_file.load()
         self.assertEqual(0, len(repo_file.all_repos()))
-
         self.assertTrue(not os.path.exists(TEST_MIRROR_LIST_FILENAME))
 
     def test_unbind_repo_with_keys(self):
         """
         Tests that unbinding a repo that had GPG keys deletes the key files.
         """
-
-        # Setup
         url_list = ['http://pulp1']
         keys = {'key1' : 'KEY1', 'key2' : 'KEY2'}
-
-        repolib.bind(TEST_REPO_FILENAME, TEST_MIRROR_LIST_FILENAME, TEST_KEYS_DIR, TEST_CERT_DIR, REPO_ID, REPO_NAME, url_list, keys, None, None, ENABLED, LOCK)
-
+        repolib.bind(TEST_REPO_FILENAME, TEST_MIRROR_LIST_FILENAME, TEST_KEYS_DIR, TEST_CERT_DIR,
+                     REPO_ID, REPO_NAME, url_list, keys, None, ENABLED, LOCK)
         self.assertTrue(os.path.exists(os.path.join(TEST_KEYS_DIR, REPO_ID)))
 
-        # Test
-        repolib.unbind(TEST_REPO_FILENAME, TEST_MIRROR_LIST_FILENAME, TEST_KEYS_DIR, TEST_CERT_DIR, REPO_ID, LOCK)
+        repolib.unbind(TEST_REPO_FILENAME, TEST_MIRROR_LIST_FILENAME, TEST_KEYS_DIR, TEST_CERT_DIR,
+                       REPO_ID, LOCK)
 
-        # Verify
         self.assertTrue(not os.path.exists(os.path.join(TEST_KEYS_DIR, REPO_ID)))
 
     def test_unbind_missing_file(self):
@@ -593,28 +643,22 @@ class TestRepolib(unittest.TestCase):
         Tests that calling unbind on a repo that isn't bound does not result in
         an error.
         """
+        repolib.bind(TEST_REPO_FILENAME, TEST_MIRROR_LIST_FILENAME, TEST_KEYS_DIR, TEST_CERT_DIR,
+                     REPO_ID, REPO_NAME, ['http://pulp'], {}, None, ENABLED, LOCK)
 
-        # Setup
-        repolib.bind(TEST_REPO_FILENAME, TEST_MIRROR_LIST_FILENAME, TEST_KEYS_DIR, TEST_CERT_DIR, REPO_ID, REPO_NAME, ['http://pulp'], {}, None, None, ENABLED, LOCK)
-
-        # Test
-        repolib.unbind(TEST_REPO_FILENAME, TEST_MIRROR_LIST_FILENAME, TEST_KEYS_DIR, TEST_CERT_DIR, 'fake-repo', LOCK)
-
-        # Verify
-        # The above shouldn't throw an error; the net effect is still that the repo is unbound
-
+        # This shouldn't throw an error; the net effect is still that the repo is unbound. This test
+        # just makes sure this runs without error, which is why there are no assertions.
+        repolib.unbind(TEST_REPO_FILENAME, TEST_MIRROR_LIST_FILENAME, TEST_KEYS_DIR, TEST_CERT_DIR,
+                       'fake-repo', LOCK)
 
     def test_delete_repo_file(self):
         """
         Tests that calling delete_repo_file deletes the repo file.
         """
-
-        # Setup
-        repolib.bind(TEST_REPO_FILENAME, TEST_MIRROR_LIST_FILENAME, TEST_KEYS_DIR, TEST_CERT_DIR, REPO_ID, REPO_NAME, ['http://pulp'], {}, None, None, ENABLED, LOCK)
+        repolib.bind(TEST_REPO_FILENAME, TEST_MIRROR_LIST_FILENAME, TEST_KEYS_DIR, TEST_CERT_DIR,
+                     REPO_ID, REPO_NAME, ['http://pulp'], {}, None, ENABLED, LOCK)
         self.assertTrue(os.path.exists(TEST_REPO_FILENAME))
 
-        # Test
         repolib.delete_repo_file(TEST_REPO_FILENAME, LOCK)
 
-        # Verify
         self.assertFalse(os.path.exists(TEST_REPO_FILENAME))

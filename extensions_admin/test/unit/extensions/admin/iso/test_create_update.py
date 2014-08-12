@@ -348,7 +348,7 @@ class TestISORepoCreateCommand(PulpClientTests):
         command.prompt = mock.MagicMock()
 
         command._perform_command(repo_id, display_name, description, notes,
-                                        importer_config, distributors)
+                                        importer_config, distributors, {})
 
         # Make sure the correct call was made to create the repo
         self.context.server.repo.create_and_configure.assert_called_once_with(
@@ -500,6 +500,7 @@ class TestISORepoUpdateCommand(PulpClientTests):
             'auto_publish': True, 'distributor_id': ids.TYPE_ID_DISTRIBUTOR_ISO}]
         # Set up a mock on create_and_configure, so we can intercept the call and inspect
         self.context.server.repo.update_repo_and_plugins = mock.MagicMock()
+        command.poll = mock.MagicMock()
 
         class Response(object):
             def is_async(self):
@@ -515,7 +516,7 @@ class TestISORepoUpdateCommand(PulpClientTests):
         command.prompt = mock.MagicMock()
 
         command._perform_command(repo_id, display_name, description, notes,
-                                        importer_config, distributors)
+                                        importer_config, distributors, {})
 
         # Make sure the correct call was made to create the repo
         distributor_configs = {
@@ -524,13 +525,8 @@ class TestISORepoUpdateCommand(PulpClientTests):
             repo_id, display_name, description, notes,
             importer_config, distributor_configs)
 
-        # We should have told the user that the repo was created successfully
-        self.assertEqual(command.prompt.render_paragraph.call_count, 1)
-        self.assertEqual(command.prompt.render_paragraph.mock_calls[0][2]['tag'],
-                         'update-postponed')
-        self.assertEqual(command.prompt.render_reasons.call_count, 1)
-        self.assertEqual(command.prompt.render_reasons.mock_calls[0][1][0],
-                         'Is this a good reason?')
+        # We should have called the polling loop
+        self.assertTrue(command.poll.called)
 
     def test__perform_command_sync(self):
         """
@@ -560,7 +556,7 @@ class TestISORepoUpdateCommand(PulpClientTests):
         command.prompt = mock.MagicMock()
 
         command._perform_command(repo_id, display_name, description, notes,
-                                        importer_config, distributors)
+                                        importer_config, distributors, {})
 
         # Make sure the correct call was made to create the repo
         distributor_configs = {

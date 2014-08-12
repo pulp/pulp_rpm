@@ -4,6 +4,8 @@ Contains package (RPM) group management section and commands.
 
 from gettext import gettext as _
 
+from okaara.prompt import COLOR_RED
+
 from pulp.client.commands.consumer import content as consumer_content
 from pulp.client.extensions.extensions import PulpCliSection
 
@@ -11,7 +13,30 @@ from pulp_rpm.common.ids import TYPE_ID_PKG_GROUP
 from pulp_rpm.extensions.admin.content_schedules import YumConsumerContentCreateScheduleCommand
 from pulp_rpm.extensions.admin.rpm_admin_consumer.options import FLAG_IMPORT_KEYS, FLAG_NO_COMMIT, FLAG_REBOOT
 
+
+# progress tracker -------------------------------------------------------------
+
+
+class YumConsumerPackageProgressTracker(consumer_content.ConsumerContentProgressTracker):
+
+    def display_details(self, details):
+        action = details.get('action')
+        package = details.get('package')
+        error = details.get('error')
+        self.details = None
+        if action:
+            self.details = '%+12s: %s' % (action, package)
+            self.prompt.write(self.details)
+            return
+        if error:
+            action = 'Error'
+            self.details = '%+12s: %s' % (action, error)
+            self.prompt.write(self.details, COLOR_RED)
+            return
+
+
 # sections ---------------------------------------------------------------------
+
 
 class YumConsumerPackageGroupSection(PulpCliSection):
 
@@ -57,11 +82,14 @@ class YumConsumerPackageGroupSchedulesSection(PulpCliSection):
 
 # commands ---------------------------------------------------------------------
 
+
 class YumConsumerPackageGroupInstallCommand(consumer_content.ConsumerContentInstallCommand):
 
     def __init__(self, context):
         description = _('triggers an immediate package group install on a consumer')
-        super(YumConsumerPackageGroupInstallCommand, self).__init__(context, description=description)
+        progress_tracker = YumConsumerPackageProgressTracker(context.prompt)
+        super(YumConsumerPackageGroupInstallCommand, self).__init__(context, description=description,
+                                                                    progress_tracker=progress_tracker)
 
     def add_content_options(self):
         self.create_option('--name',
@@ -98,41 +126,55 @@ class YumConsumerPackageGroupInstallCommand(consumer_content.ConsumerContentInst
         # whether or not the operation succeeded or failed; that is in the
         # report stored as the task's result
 
-        if not task.result['succeeded']:
+        prompt = self.context.prompt
+        details = task.result['details'][TYPE_ID_PKG_GROUP]['details']
+
+        if task.result['succeeded']:
+            msg = _('Install Succeeded')
+            prompt.render_success_message(msg)
+        else:
             msg = _('Install Failed')
-            details = task.result['details'][TYPE_ID_PKG_GROUP]['details']
-            self.context.prompt.render_failure_message(msg)
+            prompt.render_failure_message(msg)
+
+        # exception reported
+
+        if 'message' in details:
             self.context.prompt.render_failure_message(details['message'])
             return
 
-        prompt = self.context.prompt
-        msg = _('Install Succeeded')
-        prompt.render_success_message(msg)
+        # transaction summary
 
-        details = task.result['details'][TYPE_ID_PKG_GROUP]['details']
+        failed = details['failed']
         resolved = details['resolved']
+        installed = [p for p in resolved if p not in failed]
+        deps = [p for p in details['deps'] if p not in failed]
         fields = ['name', 'version', 'arch', 'repoid']
 
-        if resolved:
-            prompt.render_title(_('Installed'))
-            prompt.render_document_list(resolved, order=fields, filters=fields)
-
-        else:
-            msg = _('Packages for groups already installed')
+        if not resolved:
+            msg = _('Packages already installed')
             prompt.render_success_message(msg)
+            return
 
-        deps = details['deps']
+        if installed:
+            prompt.render_title(_('Installed'))
+            prompt.render_document_list(installed, order=fields, filters=fields)
 
         if deps:
             prompt.render_title(_('Installed for Dependencies'))
             prompt.render_document_list(deps, order=fields, filters=fields)
+
+        if failed:
+            prompt.render_title(_('Failed'))
+            prompt.render_document_list(failed, order=fields, filters=fields)
 
 
 class YumConsumerPackageGroupUninstallCommand(consumer_content.ConsumerContentUninstallCommand):
 
     def __init__(self, context):
         description = _('triggers an immediate package group removal on a consumer')
-        super(YumConsumerPackageGroupUninstallCommand, self).__init__(context, description=description)
+        progress_tracker = YumConsumerPackageProgressTracker(context.prompt)
+        super(YumConsumerPackageGroupUninstallCommand, self).__init__(context, description=description,
+                                                                      progress_tracker=progress_tracker)
 
     def add_content_options(self):
         self.create_option('--name',
@@ -166,32 +208,43 @@ class YumConsumerPackageGroupUninstallCommand(consumer_content.ConsumerContentUn
         # whether or not the operation succeeded or failed; that is in the
         # report stored as the task's result
 
-        if not task.result['succeeded']:
+        prompt = self.context.prompt
+        details = task.result['details'][TYPE_ID_PKG_GROUP]['details']
+
+        if task.result['succeeded']:
+            msg = _('Uninstall Succeeded')
+            prompt.render_success_message(msg)
+        else:
             msg = _('Uninstall Failed')
-            details = task.result['details'][TYPE_ID_PKG_GROUP]['details']
-            self.context.prompt.render_failure_message(msg)
+            prompt.render_failure_message(msg)
+
+        # exception reported
+
+        if 'message' in details:
             self.context.prompt.render_failure_message(details['message'])
             return
 
-        prompt = self.context.prompt
-        msg = _('Uninstall Succeeded')
-        prompt.render_success_message(msg)
+        # transaction summary
 
-        details = task.result['details'][TYPE_ID_PKG_GROUP]['details']
+        failed = details['failed']
         resolved = details['resolved']
+        erased = [p for p in resolved if p not in failed]
+        deps = [p for p in details['deps'] if p not in failed]
         fields = ['name', 'version', 'arch', 'repoid']
 
-        if resolved:
-            prompt.render_title(_('Uninstalled'))
-            prompt.render_document_list(resolved, order=fields, filters=fields)
-
-        else:
+        if not resolved:
             msg = _('No matching packages found to uninstall')
             prompt.render_success_message(msg)
+            return
 
-        deps = details['deps']
+        if erased:
+            prompt.render_title(_('Uninstalled'))
+            prompt.render_document_list(erased, order=fields, filters=fields)
 
         if deps:
             prompt.render_title(_('Uninstalled for Dependencies'))
             prompt.render_document_list(deps, order=fields, filters=fields)
 
+        if failed:
+            prompt.render_title(_('Failed'))
+            prompt.render_document_list(failed, order=fields, filters=fields)

@@ -422,7 +422,8 @@ configuration values are optional.
  Password to use for proxy server authentication.
 
 ``max_speed``
- Limit the Max speed in KB/sec per thread during package downloads; defaults to None
+ The maximum download speed in bytes/sec for a task (such as a sync);
+ defaults to None
 
 ``validate``
  If True, as the repository is synchronized the checksum of each file will be
@@ -523,9 +524,10 @@ Optional Configuration Parameters
  to consumers to use in verifying content in the repository. The value to this
  option must be the full path to the GPG key file.
 
-``use_createrepo``
- This is mostly a debug flag to override default snippet-based metadata generation.
- ``False`` will not run and uses existing metadata from sync.
+``generate_sqlite``
+ Boolean flag to indicate whether or not sqlite files should be generated during
+ a repository publish.  If unspecified it will not run due to the extra time needed to
+ perform this operation.
 
 ``checksum_type``
  Checksum type to use for metadata generation

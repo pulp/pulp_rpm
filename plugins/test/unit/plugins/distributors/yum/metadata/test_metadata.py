@@ -2,21 +2,16 @@ import gzip
 import hashlib
 import os
 import shutil
+import tempfile
 import unittest
 
 from pulp.plugins.model import Unit
 
 from pulp_rpm.common.ids import TYPE_ID_RPM
-from pulp_rpm.plugins.distributors.yum.metadata.filelists import (
-    FilelistsXMLFileContext, FILE_LISTS_NAMESPACE, FILE_LISTS_XML_FILE_NAME)
 from pulp_rpm.plugins.distributors.yum.metadata.metadata import (
     MetadataFileContext, PreGeneratedMetadataContext, REPO_DATA_DIR_NAME)
-from pulp_rpm.plugins.distributors.yum.metadata.other import (
-    OtherXMLFileContext, OTHER_NAMESPACE, OTHER_XML_FILE_NAME)
 from pulp_rpm.plugins.distributors.yum.metadata.prestodelta import (
     PrestodeltaXMLFileContext, PRESTO_DELTA_FILE_NAME)
-from pulp_rpm.plugins.distributors.yum.metadata.primary import (
-    PrimaryXMLFileContext, COMMON_NAMESPACE, RPM_NAMESPACE, PRIMARY_XML_FILE_NAME)
 from pulp_rpm.plugins.distributors.yum.metadata.repomd import (
     RepomdXMLFileContext, REPO_XML_NAME_SPACE, RPM_XML_NAME_SPACE, REPOMD_FILE_NAME)
 from pulp_rpm.plugins.distributors.yum.metadata.updateinfo import (
@@ -24,7 +19,7 @@ from pulp_rpm.plugins.distributors.yum.metadata.updateinfo import (
 from pulp_rpm.plugins.importers.yum.repomd import packages, presto, updateinfo
 
 
-DATA_DIR = os.path.join(os.path.dirname(__file__), '../data/')
+DATA_DIR = os.path.join(os.path.dirname(__file__), '..', '..', '..', '..', '..', 'data')
 
 
 class YumDistributorMetadataTests(unittest.TestCase):
@@ -32,7 +27,7 @@ class YumDistributorMetadataTests(unittest.TestCase):
     def setUp(self):
         super(YumDistributorMetadataTests, self).setUp()
 
-        self.metadata_file_dir = '/tmp/test_yum_distributor_metadata/'
+        self.metadata_file_dir = tempfile.mkdtemp()
 
     def tearDown(self):
         super(YumDistributorMetadataTests, self).tearDown()
@@ -93,21 +88,21 @@ class YumDistributorMetadataTests(unittest.TestCase):
 
     def test_open_handle_bad_parent_permissions(self):
 
-        path = os.path.join(self.metadata_file_dir, 'nope.xml')
-        context = MetadataFileContext(path)
+        test_dir = os.path.join(self.metadata_file_dir, 'test')
+        os.makedirs(test_dir, mode=0000)
 
-        os.makedirs(self.metadata_file_dir, mode=0000)
+        path = os.path.join(test_dir, 'nope.xml')
+        context = MetadataFileContext(path)
 
         self.assertRaises(RuntimeError, context._open_metadata_file_handle)
 
-        os.chmod(self.metadata_file_dir, 0777)
+        os.chmod(test_dir, 0777)
 
     def test_open_handle_file_exists(self):
 
         path = os.path.join(self.metadata_file_dir, 'overwriteme.xml')
         context = MetadataFileContext(path)
 
-        os.makedirs(self.metadata_file_dir)
         with open(path, 'w') as h:
             h.flush()
 
@@ -124,7 +119,6 @@ class YumDistributorMetadataTests(unittest.TestCase):
         path = os.path.join(self.metadata_file_dir, 'nope_again.xml')
         context = MetadataFileContext(path)
 
-        os.makedirs(self.metadata_file_dir)
         with open(path, 'w') as h:
             h.flush()
         os.chmod(path, 0000)
@@ -171,7 +165,7 @@ class YumDistributorMetadataTests(unittest.TestCase):
         self.assertEqual(content, expected_content)
 
     def test_is_closed_gzip_file(self):
-        path = os.path.join(os.path.dirname(__file__), '../data/foo.tar.gz')
+        path = os.path.join(DATA_DIR, 'foo.tar.gz')
 
         file_object = gzip.open(path)
         file_object.close()
@@ -179,7 +173,7 @@ class YumDistributorMetadataTests(unittest.TestCase):
         self.assertTrue(MetadataFileContext._is_closed(file_object))
 
     def test_is_open_gzip_file(self):
-        path = os.path.join(os.path.dirname(__file__), '../data/foo.tar.gz')
+        path = os.path.join(DATA_DIR, 'foo.tar.gz')
 
         file_object = gzip.open(path)
 
@@ -188,7 +182,7 @@ class YumDistributorMetadataTests(unittest.TestCase):
         file_object.close()
 
     def test_is_closed_file(self):
-        path = os.path.join(os.path.dirname(__file__), '../data/foo.tar.gz')
+        path = os.path.join(DATA_DIR, 'foo.tar.gz')
 
         # opening as a regular file, not with gzip
         file_object = open(path)
@@ -197,7 +191,7 @@ class YumDistributorMetadataTests(unittest.TestCase):
         self.assertTrue(MetadataFileContext._is_closed(file_object))
 
     def test_is_open_file(self):
-        path = os.path.join(os.path.dirname(__file__), '../data/foo.tar.gz')
+        path = os.path.join(DATA_DIR, 'foo.tar.gz')
 
         # opening as a regular file, not with gzip
         file_object = open(path)
@@ -215,7 +209,7 @@ class YumDistributorMetadataTests(unittest.TestCase):
         # this test makes sure that we can properly detect the closed state of
         # a gzip file, because on python 2.6 we have to take special measures
         # to do so.
-        path = os.path.join(os.path.dirname(__file__), '../data/foo.tar.gz')
+        path = os.path.join(DATA_DIR, 'foo.tar.gz')
 
         context = MetadataFileContext('/a/b/c')
         context.metadata_file_handle = gzip.open(path)
@@ -316,265 +310,6 @@ class YumDistributorMetadataTests(unittest.TestCase):
         context._close_metadata_file_handle()
 
         self.assertEqual(os.path.getsize(path), 0)
-
-    # -- primary.xml context testing -------------------------------------------
-
-    def test_primary_file_creation(self):
-
-        path = os.path.join(self.metadata_file_dir,
-                            REPO_DATA_DIR_NAME,
-                            PRIMARY_XML_FILE_NAME)
-
-        context = PrimaryXMLFileContext(self.metadata_file_dir, 0)
-
-        context._open_metadata_file_handle()
-        context._close_metadata_file_handle()
-
-        self.assertTrue(os.path.exists(path))
-
-    def test_primary_opening_tag(self):
-
-        path = os.path.join(self.metadata_file_dir,
-                            REPO_DATA_DIR_NAME,
-                            PRIMARY_XML_FILE_NAME)
-
-        context = PrimaryXMLFileContext(self.metadata_file_dir, 0)
-
-        context._open_metadata_file_handle()
-        context._write_root_tag_open()
-        context._close_metadata_file_handle()
-
-        self.assertNotEqual(os.path.getsize(path), 0)
-
-        primary_handle = gzip.open(path, 'r')
-        content = primary_handle.read()
-        primary_handle.close()
-
-        self.assertTrue(content.startswith('<metadata'))
-        self.assertEqual(content.count('xmlns="%s"' % COMMON_NAMESPACE), 1)
-        self.assertEqual(content.count('xmlns:rpm="%s"' % RPM_NAMESPACE), 1)
-        self.assertEqual(content.count('packages="0"'), 1)
-
-    def test_primary_closing_tag(self):
-
-        context = PrimaryXMLFileContext(self.metadata_file_dir, 0)
-        context._open_metadata_file_handle()
-
-        self.assertRaises(NotImplementedError, context._write_root_tag_close)
-
-        context._write_root_tag_open()
-
-        try:
-            context._write_root_tag_close()
-
-        except Exception, e:
-            self.fail(e.message)
-
-        context._close_metadata_file_handle()
-
-    def test_primary_unit_metadata(self):
-
-        path = os.path.join(self.metadata_file_dir,
-                            REPO_DATA_DIR_NAME,
-                            PRIMARY_XML_FILE_NAME)
-
-        unit = self._generate_rpm('seems-legit')
-
-        context = PrimaryXMLFileContext(self.metadata_file_dir, 1)
-
-        context._open_metadata_file_handle()
-        context.add_unit_metadata(unit)
-        context._close_metadata_file_handle()
-
-        handle = gzip.open(path, 'r')
-        content = handle.read()
-        handle.close()
-
-        self.assertEqual(content, 'PRIMARY')
-
-    def test_primary_with_keyword(self):
-
-        with PrimaryXMLFileContext(self.metadata_file_dir, 0):
-            pass
-
-        path = os.path.join(self.metadata_file_dir,
-                            REPO_DATA_DIR_NAME,
-                            PRIMARY_XML_FILE_NAME)
-
-        self.assertTrue(os.path.exists(path))
-        # the xml header, opening, and closing tags should have been written
-        self.assertNotEqual(os.path.getsize(path), 0)
-
-        primary_handle = gzip.open(path, 'r')
-        content_lines = primary_handle.readlines()
-        primary_handle.close()
-
-        self.assertEqual(len(content_lines), 3)
-        self.assertEqual(content_lines[0], '<?xml version="1.0" encoding="UTF-8"?>\n')
-        self.assertEqual(content_lines[2], '</metadata>\n')
-
-    def test_primary_with_keyword_and_add_unit(self):
-
-        unit = self._generate_rpm('with-context')
-
-        with PrimaryXMLFileContext(self.metadata_file_dir, 1) as context:
-
-            try:
-                context.add_unit_metadata(unit)
-
-            except Exception, e:
-                self.fail(e.message)
-
-    # -- other.xml context testing ---------------------------------------------
-
-    def test_other_file_creation(self):
-
-        path = os.path.join(self.metadata_file_dir,
-                            REPO_DATA_DIR_NAME,
-                            OTHER_XML_FILE_NAME)
-
-        context = OtherXMLFileContext(self.metadata_file_dir, 0)
-
-        context._open_metadata_file_handle()
-        context._close_metadata_file_handle()
-
-        self.assertTrue(os.path.exists(path))
-
-    def test_other_opening_tag(self):
-
-        path = os.path.join(self.metadata_file_dir,
-                            REPO_DATA_DIR_NAME,
-                            OTHER_XML_FILE_NAME)
-
-        context = OtherXMLFileContext(self.metadata_file_dir, 0)
-
-        context._open_metadata_file_handle()
-        context._write_root_tag_open()
-        context._close_metadata_file_handle()
-
-        self.assertNotEqual(os.path.getsize(path), 0)
-
-        other_handle = gzip.open(path, 'r')
-        context = other_handle.read()
-        other_handle.close()
-
-        self.assertTrue(context.startswith('<otherdata'))
-        self.assertEqual(context.count('xmlns="%s"' % OTHER_NAMESPACE), 1)
-        self.assertEqual(context.count('packages="0"'), 1)
-
-    def test_other_closing_tag(self):
-
-        context = OtherXMLFileContext(self.metadata_file_dir, 0)
-        context._open_metadata_file_handle()
-
-        self.assertRaises(NotImplementedError, context._write_root_tag_close)
-
-        context._write_root_tag_open()
-
-        try:
-            context._write_root_tag_close()
-
-        except Exception, e:
-            self.fail(e.message)
-
-        context._close_metadata_file_handle()
-
-    def test_other_unit_metadata(self):
-
-        path = os.path.join(self.metadata_file_dir,
-                            REPO_DATA_DIR_NAME,
-                            OTHER_XML_FILE_NAME)
-
-        unit = self._generate_rpm('uh-huh')
-
-        context = OtherXMLFileContext(self.metadata_file_dir, 1)
-
-        context._open_metadata_file_handle()
-        context.add_unit_metadata(unit)
-        context._close_metadata_file_handle()
-
-        self.assertNotEqual(os.path.getsize(path), 0)
-
-        handle = gzip.open(path, 'r')
-        content = handle.read()
-        handle.close()
-
-        self.assertEqual(content, 'OTHER')
-
-    # -- filelists.xml context testing -----------------------------------------
-
-    def test_filelists_file_creation(self):
-
-        path = os.path.join(self.metadata_file_dir,
-                            REPO_DATA_DIR_NAME,
-                            FILE_LISTS_XML_FILE_NAME)
-
-        context = FilelistsXMLFileContext(self.metadata_file_dir, 0)
-
-        context._open_metadata_file_handle()
-        context._close_metadata_file_handle()
-
-        self.assertTrue(os.path.exists(path))
-
-
-    def test_filelists_opening_tag(self):
-
-        path = os.path.join(self.metadata_file_dir,
-                            REPO_DATA_DIR_NAME,
-                            FILE_LISTS_XML_FILE_NAME)
-
-        context = FilelistsXMLFileContext(self.metadata_file_dir, 0)
-
-        context._open_metadata_file_handle()
-        context._write_root_tag_open()
-        context._close_metadata_file_handle()
-
-        self.assertNotEqual(os.path.getsize(path), 0)
-
-        filelists_handle = gzip.open(path, 'r')
-        content = filelists_handle.read()
-        filelists_handle.close()
-
-        self.assertTrue(content.startswith('<filelists'))
-        self.assertEqual(content.count('xmlns="%s"' % FILE_LISTS_NAMESPACE), 1)
-        self.assertEqual(content.count('packages="0"'), 1)
-
-    def test_filelists_closing_tag(self):
-
-        context = FilelistsXMLFileContext(self.metadata_file_dir, 0)
-        context._open_metadata_file_handle()
-
-        self.assertRaises(NotImplementedError, context._write_root_tag_close)
-
-        context._write_root_tag_open()
-
-        try:
-            context._write_root_tag_close()
-
-        except Exception, e:
-            self.fail(e.message)
-
-        context._close_metadata_file_handle()
-
-    def test_filelists_unit_metadata(self):
-
-        path = os.path.join(self.metadata_file_dir,
-                            REPO_DATA_DIR_NAME,
-                            FILE_LISTS_XML_FILE_NAME)
-
-        unit = self._generate_rpm('ive-got-files')
-
-        context = FilelistsXMLFileContext(self.metadata_file_dir, 1)
-
-        context._open_metadata_file_handle()
-        context.add_unit_metadata(unit)
-        context._close_metadata_file_handle()
-
-        handle = gzip.open(path, 'r')
-        content = handle.read()
-        handle.close()
-
-        self.assertEqual(content, 'FILELISTS')
 
     # -- updateinfo.xml testing ------------------------------------------------
 

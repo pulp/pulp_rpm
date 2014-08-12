@@ -29,6 +29,7 @@ class TestPackageXMLFileContext(unittest.TestCase):
     def _generate_group_unit(self, name):
         unit_key = {'id': name}
         unit_metadata = {'user_visible': True,
+                         'default': True,
                          'display_order': 0,
                          'name': name,
                          'description': name + u'description',
@@ -77,7 +78,7 @@ class TestPackageXMLFileContext(unittest.TestCase):
     def test_add_package_group_unit_metadata_minimal(self):
         group_unit = self._generate_group_unit('foo')
         self.context.add_package_group_unit_metadata(group_unit)
-        source_str =  '<group><id>foo</id><uservisible>true</uservisible><display_order>0'\
+        source_str =  '<group><id>foo</id><default>true</default><uservisible>true</uservisible><display_order>0'\
                           '</display_order><name>foo</name><description>foodescription'\
                           '</description><packagelist /></group>'
         source_element = ElementTree.fromstring(source_str)
@@ -88,6 +89,7 @@ class TestPackageXMLFileContext(unittest.TestCase):
     def test_add_package_group_unit_metadata_complex(self):
         group_unit = self._generate_group_unit('foo')
         group_unit.metadata['translated_name'] = {u'af': u'af_name', u'ze': u'ze_name'}
+        group_unit.metadata['default'] = False
         group_unit.metadata['langonly'] = u'bar'
         group_unit.metadata['translated_description'] = {u'af': u'af_desc', u'ze': u'ze_desc'}
         group_unit.metadata['mandatory_package_names'] = [u'package2', u'package1', u'package3']
@@ -95,26 +97,28 @@ class TestPackageXMLFileContext(unittest.TestCase):
         group_unit.metadata['optional_package_names'] = [u'package9', u'package8', u'package7']
         group_unit.metadata['conditional_package_names'] = [(u'package10', u'foo,bar,baz')]
         self.context.add_package_group_unit_metadata(group_unit)
-        source_str = '<group><id>foo</id><uservisible>true</uservisible><display_order>0' \
-                      '</display_order><langonly>bar</langonly>'\
-                      '<name>foo</name>'\
-                      '<name xml:lang="af">af_name</name>'\
-                      '<name xml:lang="ze">ze_name</name>'\
-                      '<description>foodescription</description>'\
-                      '<description xml:lang="af">af_desc</description>'\
-                      '<description xml:lang="ze">ze_desc</description>'\
-                      '<packagelist><packagereq type="mandatory">package1</packagereq>'\
-                      '<packagereq type="mandatory">package2</packagereq>'\
-                      '<packagereq type="mandatory">package3</packagereq>'\
-                      '<packagereq type="default">package4</packagereq>'\
-                      '<packagereq type="default">package5</packagereq>'\
-                      '<packagereq type="default">package6</packagereq>'\
-                      '<packagereq type="optional">package7</packagereq>'\
-                      '<packagereq type="optional">package8</packagereq>'\
-                      '<packagereq type="optional">package9</packagereq>'\
-                      '<packagereq requires="foo,bar,baz" type="conditional">package10'\
-                      '</packagereq>'\
-                      '</packagelist></group>'
+        source_str = '<group><id>foo</id>' \
+                     '<default>false</default>' \
+                     '<uservisible>true</uservisible><display_order>0' \
+                     '</display_order><langonly>bar</langonly>'\
+                     '<name>foo</name>'\
+                     '<name xml:lang="af">af_name</name>'\
+                     '<name xml:lang="ze">ze_name</name>'\
+                     '<description>foodescription</description>'\
+                     '<description xml:lang="af">af_desc</description>'\
+                     '<description xml:lang="ze">ze_desc</description>'\
+                     '<packagelist><packagereq type="mandatory">package1</packagereq>'\
+                     '<packagereq type="mandatory">package2</packagereq>'\
+                     '<packagereq type="mandatory">package3</packagereq>'\
+                     '<packagereq type="default">package4</packagereq>'\
+                     '<packagereq type="default">package5</packagereq>'\
+                     '<packagereq type="default">package6</packagereq>'\
+                     '<packagereq type="optional">package7</packagereq>'\
+                     '<packagereq type="optional">package8</packagereq>'\
+                     '<packagereq type="optional">package9</packagereq>'\
+                     '<packagereq requires="foo,bar,baz" type="conditional">package10'\
+                     '</packagereq>'\
+                     '</packagelist></group>'
         source_element = ElementTree.fromstring(source_str)
         xml_str = self.context.metadata_file_handle.write.call_args[0][0]
         target_element = ElementTree.fromstring(xml_str)

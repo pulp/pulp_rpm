@@ -1,3 +1,4 @@
+from functools import partial
 import os
 from ConfigParser import SafeConfigParser
 from gettext import gettext as _
@@ -17,9 +18,9 @@ _LOG = util.getLogger(__name__)
 
 REQUIRED_CONFIG_KEYS = ('relative_url', 'http', 'https')
 
-OPTIONAL_CONFIG_KEYS = ('auth_ca', 'auth_cert', 'checksum_type',
+OPTIONAL_CONFIG_KEYS = ('gpgkey', 'auth_ca', 'auth_cert', 'https_ca', 'checksum_type',
                         'http_publish_dir', 'https_publish_dir', 'protected',
-                        'skip', 'skip_pkg_tags', 'use_createrepo')
+                        'skip', 'skip_pkg_tags', 'generate_sqlite')
 
 ROOT_PUBLISH_DIR = '/var/lib/pulp/published/yum'
 MASTER_PUBLISH_DIR = os.path.join(ROOT_PUBLISH_DIR, 'master')
@@ -96,12 +97,13 @@ def validate_config(repo, config, config_conduit):
         'auth_ca': _validate_auth_ca,
         'auth_cert': _validate_auth_cert,
         'checksum_type': _validate_checksum_type,
+        'https_ca': partial(_validate_certificate, 'https_ca'),
         'http_publish_dir': _validate_http_publish_dir,
         'https_publish_dir': _validate_https_publish_dir,
         'protected': _validate_protected,
         'skip': _validate_skip,
         'skip_pkg_tags': _validate_skip_pkg_tags,
-        'use_createrepo': _validate_use_createrepo,
+        'generate_sqlite': _validate_generate_sqlite,
     }
 
     # iterate through the options that have validation methods and validate them
@@ -394,8 +396,8 @@ def _validate_skip_pkg_tags(skip_pkg_tags, error_messages):
     _validate_boolean('skip_pkg_tags', skip_pkg_tags, error_messages)
 
 
-def _validate_use_createrepo(use_createrepo, error_messages):
-    _validate_boolean('use_createrepo', use_createrepo, error_messages, False)
+def _validate_generate_sqlite(use_createrepo, error_messages):
+    _validate_boolean('generate_sqlite', use_createrepo, error_messages, False)
 
 # -- generalized validation methods --------------------------------------------
 

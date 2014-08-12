@@ -15,6 +15,7 @@ from nectar.listener import AggregatingEventListener
 from nectar.request import DownloadRequest
 
 from pulp_rpm.plugins.importers.yum import utils
+from pulp_rpm.plugins.importers.yum.parse.rpm import change_location_tag
 from pulp_rpm.plugins.importers.yum.repomd import filelists, nectar_factory, other
 from pulp_rpm.plugins.importers.yum.repomd.packages import package_list_generator
 
@@ -326,7 +327,8 @@ class MetadataFiles(object):
             unit_key, items = process_func(element)
             model.metadata[metadata_key] = items
 
-        repodata['primary'] = model.raw_xml
+        raw_xml = model.raw_xml
+        repodata['primary'] = change_location_tag(raw_xml, model.relative_path)
 
 # utilities --------------------------------------------------------------------
 

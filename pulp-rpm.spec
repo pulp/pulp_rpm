@@ -164,6 +164,7 @@ Requires: pyliblzma
 Requires: python-nectar >= 1.2.1
 Requires: genisoimage
 Requires: m2crypto
+Requires: python-lxml
 
 %description plugins
 Provides a collection of platform plugins that extend the Pulp platform
@@ -195,6 +196,7 @@ to provide RPM specific support.
 Summary: The RPM admin client extensions
 Group: Development/Languages
 Requires: pulp-admin-client = %{pulp_version}
+Requires: python-pulp-rpm-common = %{pulp_version}
 
 %description admin-extensions
 A collection of extensions that supplement and override generic admin
