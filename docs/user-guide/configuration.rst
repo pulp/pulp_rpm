@@ -67,20 +67,3 @@ or ``update`` command using the following options respectively:
 * ``--feed-cert``
 * ``--feed-key``
 
-
-Certificate Revocation Lists
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-Pulp supports the ability to honor Certificate Revocation Lists (CRLs).
-
-The directory in which CRLs are stored is configured through the
-``[crl] location`` attribute in ``/etc/pulp/repo_auth.conf``.
-
-CRLs must be named in a specific format. The name must be the CRL issuer's hash
-ending with the suffix of .r0, r1, etc.
-
-The recommended configuration is to copy the CRL to the specified CRL directory
-on the Pulp server as described above. Once the file is in place, create a symbolic
-link with the correct naming structure using the following command::
-
-  $ ln -s Example_CRL.pem `openssl crl -hash -noout -in Example_CRL.pem`.r0

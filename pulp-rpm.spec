@@ -163,6 +163,7 @@ Requires: python-rhsm >= 1.8.0
 Requires: pyliblzma
 Requires: python-nectar >= 1.2.1
 Requires: genisoimage
+Requires: m2crypto
 Requires: python-lxml
 
 %description plugins
