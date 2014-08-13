@@ -13,8 +13,8 @@
 # ---- Pulp (rpm) --------------------------------------------------------------
 
 Name: pulp-rpm
-Version: 2.4.0
-Release: 0.21.beta%{?dist}
+Version: 2.4.1
+Release: 0.1.alpha%{?dist}
 Summary: Support for RPM content in the Pulp platform
 Group: Development/Languages
 License: GPLv2
@@ -275,6 +275,25 @@ A collection of yum plugins supplementing Pulp consumer operations.
 
 
 %changelog
+* Wed Aug 13 2014 Randy Barlow <rbarlow@redhat.com> 2.4.1-0.1.alpha
+- 1128292 - Specify the default attribute on generated package group xml.  This
+  fixes a bug where the graphical installer failed to select a default option
+  on RHEL 6 if we do not specify a default. (bcourt@redhat.com)
+- 1101566 - unit_metadata is now optional for the yum import upload
+  (jcline@redhat.com)
+- 1108306 - Adjust the location tag in the primary xml snippet during repo
+  sync.  This was previously only done during upload. (bcourt@redhat.com)
+- 1118501 - updating logic to form consumer profile lookup table with the
+  newest rpm, so that in case of multiple packages with same name and arch,
+  applicability logic does not fail (skarmark@redhat.com)
+- 1121264 - correcting the documentation for max_speed (mhrivnak@redhat.com)
+- 1116060 - Fix handling of failed package installs. (jortel@redhat.com)
+- 1097816 - adding "gpgkey" as a valid distributor config value
+  (mhrivnak@redhat.com)
+- 1111322 - Fix client side error trying to update iso repo (bcourt@redhat.com)
+- 1099771 - Add a unit test to assert correct behavior for reporting invalid
+  checksums. (rbarlow@redhat.com)
+
 * Tue Jun 17 2014 Randy Barlow <rbarlow@redhat.com> 2.4.0-0.21.beta
 - 973784 - improving performance of depsolve (mhrivnak@redhat.com)
 - 1107117 - Viewing the details of an erratum using "pulp-admin rpm repo
