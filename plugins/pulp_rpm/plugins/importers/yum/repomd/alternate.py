@@ -52,7 +52,7 @@ class Packages(object):
         self.base_url = base_url
         self.units = units
         self.dst_dir = dst_dir
-        self.listener = listener
+        self.listener = ContainerListener(listener)
         self.primary = create_downloader(base_url, nectar_conf)
         self.container = ContentContainer()
         self.canceled = Event()

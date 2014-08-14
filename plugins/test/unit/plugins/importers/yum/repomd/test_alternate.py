@@ -42,7 +42,8 @@ class TestPackages(TestCase):
         self.assertEqual(packages.base_url, base_url)
         self.assertEqual(packages.units, units)
         self.assertEqual(packages.dst_dir, dst_dir)
-        self.assertEqual(packages.listener, listener)
+        self.assertTrue(isinstance(packages.listener, ContainerListener))
+        self.assertEqual(packages.listener.content_listener, listener)
         self.assertEqual(packages.primary, fake_create_downloader())
         self.assertEqual(packages.container, fake_container())
         self.assertEqual(packages.canceled, fake_event())
@@ -73,7 +74,7 @@ class TestPackages(TestCase):
 
         # validation
         fake_container().download.assert_called_with(
-            packages.canceled, packages.primary, fake_requests(), listener)
+            packages.canceled, packages.primary, fake_requests(), packages.listener)
 
     @patch('pulp_rpm.plugins.importers.yum.repomd.alternate.Event', Mock())
     @patch('pulp_rpm.plugins.importers.yum.repomd.alternate.create_downloader', Mock())
