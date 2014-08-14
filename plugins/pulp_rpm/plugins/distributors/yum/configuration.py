@@ -298,30 +298,30 @@ def get_repo_checksum_type(publish_conduit, config):
     importer sets this value if available on the repo scratchpad.
 
     WARNING: This method has a side effect of saving the checksum type on the distributor
-    config if a checksum has not already been set on the distributor config.
+    config if a checksum has not already been set on the distributor config. However, it
+    will only save the checksum type if it was explicitly provided. It will not save a
+    checksum type to the distributor if the default was used.
 
-    :param config: publish conduit
-    :type  config: pulp.plugins.conduits.repo_publish.RepoPublishConduit
-
-    :param config: plugin configuration
-    :type  config: pulp.plugins.config.PluginCallConfiguration
+    :param publish_conduit: publish conduit
+    :type  publish_conduit: pulp.plugins.conduits.repo_publish.RepoPublishConduit
+    :param config:          plugin configuration
+    :type  config:          pulp.plugins.config.PluginCallConfiguration
 
     :return the type of checksum to use for the repository
     :rtype str
     """
+    # Try to get the checksum type from the config; otherwise, fall back to the scratchpad
     checksum_type = config.get(CONFIG_KEY_CHECKSUM_TYPE)
     if not checksum_type:
         scratchpad_data = publish_conduit.get_repo_scratchpad()
-        if not scratchpad_data or SCRATCHPAD_DEFAULT_METADATA_CHECKSUM not in scratchpad_data:
-            checksum_type = CONFIG_DEFAULT_CHECKSUM
-        else:
+        if scratchpad_data and SCRATCHPAD_DEFAULT_METADATA_CHECKSUM in scratchpad_data:
             checksum_type = scratchpad_data[SCRATCHPAD_DEFAULT_METADATA_CHECKSUM]
 
     if checksum_type == 'sha':
         checksum_type = 'sha1'
 
     distributor_config = config.repo_plugin_config
-    if 'checksum_type' not in distributor_config:
+    if CONFIG_KEY_CHECKSUM_TYPE not in distributor_config and checksum_type:
         distributor_manager = factory.repo_distributor_manager()
         try:
             distributor = distributor_manager.get_distributor(publish_conduit.repo_id,
@@ -334,6 +334,11 @@ def get_repo_checksum_type(publish_conduit, config):
             # If the distributor doesn't exist on the repo (such as with a group distributor
             # this is ok
             pass
+
+    # If no checksum type is set, use the default
+    if not checksum_type:
+        checksum_type = CONFIG_DEFAULT_CHECKSUM
+
     return checksum_type
 
 
