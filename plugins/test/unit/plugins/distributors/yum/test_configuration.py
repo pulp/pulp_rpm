@@ -637,6 +637,23 @@ class TestGetRepoChecksumType(unittest.TestCase):
         self.assertEquals(CONFIG_DEFAULT_CHECKSUM,
                           configuration.get_repo_checksum_type(self.mock_conduit, self.config))
 
+    @patch('pulp.server.managers.factory.repo_distributor_manager')
+    def test_get_repo_checksum_default_no_update(self, mock_distributor_manager):
+        """
+        Tests that when the default checksum type is used, it does not update the
+        distributor config. This is because if a repository is created and then
+        published without syncing, it will force the checksum type to be the
+        default. When you later sync the repo and it has a checksum type that
+        isn't the default, it will break.
+        """
+        # Setup
+        self.mock_conduit.get_repo_scratchpad.return_value = {'foo': 'value'}
+
+        # Test
+        self.assertEquals(CONFIG_DEFAULT_CHECKSUM,
+                          configuration.get_repo_checksum_type(self.mock_conduit, self.config))
+        self.assertFalse(mock_distributor_manager.return_value.update_distributor_config.called)
+
     def test_get_repo_checksum_convert_sha_to_sha1(self):
         config_with_checksum = PluginCallConfiguration({}, {CONFIG_KEY_CHECKSUM_TYPE: 'sha'})
         self.assertEquals('sha1', configuration.get_repo_checksum_type(self.mock_conduit,
