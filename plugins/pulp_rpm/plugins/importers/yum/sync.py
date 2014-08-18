@@ -196,11 +196,14 @@ class RepoSync(object):
             metadata_files.download_repomd()
         except IOError, e:
             raise FailedException(str(e))
+        _logger.info(_('Parsing metadata.'))
 
         try:
             metadata_files.parse_repomd()
         except ValueError, e:
             raise FailedException(str(e))
+
+        _logger.info(_('Downloading metadata files.'))
 
         metadata_files.download_metadata_files()
         self.downloader = None
