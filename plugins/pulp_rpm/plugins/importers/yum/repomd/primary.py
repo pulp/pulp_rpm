@@ -10,6 +10,7 @@ from pulp_rpm.plugins.importers.yum import utils
 # primary.xml element tags -----------------------------------------------------
 METADATA_FILE_NAME = 'primary'
 
+XML_SPEC_URL = 'http://www.w3.org/XML/1998/namespace'
 COMMON_SPEC_URL = 'http://linux.duke.edu/metadata/common'
 RPM_SPEC_URL = 'http://linux.duke.edu/metadata/rpm'
 
@@ -42,6 +43,7 @@ RPM_PROVIDES_TAG = '{%s}provides' % RPM_SPEC_URL
 RPM_REQUIRES_TAG = '{%s}requires' % RPM_SPEC_URL
 RPM_ENTRY_TAG = '{%s}entry' % RPM_SPEC_URL
 
+XML_BASE_ATTRIBUTE = '{%s}base' % XML_SPEC_URL
 
 # package information dictionary -----------------------------------------------
 
@@ -153,6 +155,11 @@ def process_package_element(package_element):
     location_element = package_element.find(LOCATION_TAG)
     if location_element is not None:
         href = location_element.attrib['href']
+        base_url = None
+        for attribute, value in location_element.items():
+            if attribute == 'base' or attribute.endswith('}base'):
+                base_url = value
+        package_info['base_url'] = base_url
         filename = os.path.basename(href)
         package_info['relativepath'] = href
         package_info['filename'] = filename

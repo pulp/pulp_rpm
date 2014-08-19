@@ -72,7 +72,10 @@ class Packages(object):
         :rtype: iterable
         """
         for unit in self.units:
-            url = urljoin(self.base_url, unit.download_path)
+            if unit.metadata.get('base_url'):
+                url = urljoin(unit.metadata.get('base_url'), unit.download_path)
+            else:
+                url = urljoin(self.base_url, unit.download_path)
             file_name = os.path.basename(unit.relative_path)
             destination = os.path.join(self.dst_dir, file_name)
             request = Request(
