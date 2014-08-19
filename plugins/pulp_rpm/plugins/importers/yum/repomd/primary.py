@@ -10,7 +10,6 @@ from pulp_rpm.plugins.importers.yum import utils
 # primary.xml element tags -----------------------------------------------------
 METADATA_FILE_NAME = 'primary'
 
-XML_SPEC_URL = 'http://www.w3.org/XML/1998/namespace'
 COMMON_SPEC_URL = 'http://linux.duke.edu/metadata/common'
 RPM_SPEC_URL = 'http://linux.duke.edu/metadata/rpm'
 
@@ -42,8 +41,6 @@ RPM_HEADER_RANGE_TAG = '{%s}header-range' % RPM_SPEC_URL
 RPM_PROVIDES_TAG = '{%s}provides' % RPM_SPEC_URL
 RPM_REQUIRES_TAG = '{%s}requires' % RPM_SPEC_URL
 RPM_ENTRY_TAG = '{%s}entry' % RPM_SPEC_URL
-
-XML_BASE_ATTRIBUTE = '{%s}base' % XML_SPEC_URL
 
 # package information dictionary -----------------------------------------------
 
