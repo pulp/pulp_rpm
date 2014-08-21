@@ -44,6 +44,18 @@ class TestProcessRPMElement(unittest.TestCase):
         self.assertEqual(model.checksum, 'c2c85a567d1b92dd6131bd326611b162ed485f6f97583e46459b430006908d66')
         self.assertEqual(model.checksumtype, 'sha256')
 
+    def test_xml_base_overrides_base_url(self):
+        rpms = packages.package_list_generator(StringIO(F18_XML_ALTERNATE_LOCATION),
+                                               primary.PACKAGE_TAG,
+                                               primary.process_package_element)
+        rpms = list(rpms)
+
+        self.assertEqual(len(rpms), 1)
+        model = rpms[0]
+        self.assertTrue(isinstance(model, models.RPM))
+        # Test the location
+        self.assertEqual(model.metadata['base_url'], 'http://www.foo.com/repo')
+
 
 F18_SOURCE_XML = """<?xml version="1.0" encoding="UTF-8"?>
 <metadata xmlns="http://linux.duke.edu/metadata/common" xmlns:rpm="http://linux.duke.edu/metadata/rpm" packages="1">
@@ -94,6 +106,57 @@ F18_XML = """<?xml version="1.0" encoding="UTF-8"?>
   <time file="1354738068" build="1354735351"/>
   <size package="62796" installed="176600" archive="177640"/>
 <location href="Packages/o/opensm-libs-3.3.15-3.fc18.x86_64.rpm"/>
+  <format>
+    <rpm:license>GPLv2 or BSD</rpm:license>
+    <rpm:vendor>Fedora Project</rpm:vendor>
+    <rpm:group>System Environment/Libraries</rpm:group>
+    <rpm:buildhost>buildvm-21.phx2.fedoraproject.org</rpm:buildhost>
+    <rpm:sourcerpm>opensm-3.3.15-3.fc18.src.rpm</rpm:sourcerpm>
+    <rpm:header-range start="1384" end="8104"/>
+    <rpm:provides>
+      <rpm:entry name="libopensm.so.5()(64bit)"/>
+      <rpm:entry name="libopensm.so.5(OPENSM_1.5)(64bit)"/>
+      <rpm:entry name="libosmcomp.so.3()(64bit)"/>
+      <rpm:entry name="libosmcomp.so.3(OSMCOMP_2.3)(64bit)"/>
+      <rpm:entry name="libosmvendor.so.3()(64bit)"/>
+      <rpm:entry name="libosmvendor.so.3(OSMVENDOR_2.0)(64bit)"/>
+      <rpm:entry name="opensm-libs" flags="EQ" epoch="0" ver="3.3.15" rel="3.fc18"/>
+      <rpm:entry name="opensm-libs(x86-64)" flags="EQ" epoch="0" ver="3.3.15" rel="3.fc18"/>
+    </rpm:provides>
+    <rpm:requires>
+      <rpm:entry name="/sbin/ldconfig"/>
+      <rpm:entry name="/sbin/ldconfig" pre="1"/>
+      <rpm:entry name="libc.so.6(GLIBC_2.14)(64bit)"/>
+      <rpm:entry name="libdl.so.2()(64bit)"/>
+      <rpm:entry name="libgcc_s.so.1()(64bit)"/>
+      <rpm:entry name="libgcc_s.so.1(GCC_3.0)(64bit)"/>
+      <rpm:entry name="libgcc_s.so.1(GCC_3.3.1)(64bit)"/>
+      <rpm:entry name="libibumad.so.3()(64bit)"/>
+      <rpm:entry name="libibumad.so.3(IBUMAD_1.0)(64bit)"/>
+      <rpm:entry name="libpthread.so.0()(64bit)"/>
+      <rpm:entry name="libpthread.so.0(GLIBC_2.2.5)(64bit)"/>
+      <rpm:entry name="libpthread.so.0(GLIBC_2.3.2)(64bit)"/>
+      <rpm:entry name="rtld(GNU_HASH)"/>
+    </rpm:requires>
+  </format>
+</package>
+</metadata>
+"""
+
+F18_XML_ALTERNATE_LOCATION = """<?xml version="1.0" encoding="UTF-8"?>
+<metadata xmlns="http://linux.duke.edu/metadata/common" xmlns:rpm="http://linux.duke.edu/metadata/rpm" packages="1">
+<package type="rpm">
+  <name>opensm-libs</name>
+  <arch>x86_64</arch>
+  <version epoch="0" ver="3.3.15" rel="3.fc18"/>
+  <checksum type="sha256" pkgid="YES">c2c85a567d1b92dd6131bd326611b162ed485f6f97583e46459b430006908d66</checksum>
+  <summary>Libraries used by opensm and included utilities</summary>
+  <description>Shared libraries for Infiniband user space access</description>
+  <packager>Fedora Project</packager>
+  <url>http://www.openfabrics.org/</url>
+  <time file="1354738068" build="1354735351"/>
+  <size package="62796" installed="176600" archive="177640"/>
+<location xml:base="http://www.foo.com/repo" href="Packages/o/opensm-libs-3.3.15-3.fc18.x86_64.rpm"/>
   <format>
     <rpm:license>GPLv2 or BSD</rpm:license>
     <rpm:vendor>Fedora Project</rpm:vendor>
