@@ -41,3 +41,12 @@ Upgrade Instructions
 Please see the
 `Pulp Platform upgrade instructions <https://pulp-user-guide.readthedocs.org/en/pulp-2.4/release-notes.html>`_
 for information on how to complete the upgrade.
+
+Known Issues
+------------
+There is a bug where if you have migrated from Pulp 2.0 or earlier of to any version prior to 2.4
+and are performing a second migration to 2.4 or greater you may encounter an error that
+``Applying migration pulp_rpm.plugins.migrations.0003_custom_metadata_on_scratchpad failed``.
+This is caused because of old data that is no longer needed.
+The following command can be used to remove the data that is no longer needed:
+``find /var/lib/pulp/working/repos/ -path '*/yum_importer' -type d -exec rm -rf '{}' \;``
