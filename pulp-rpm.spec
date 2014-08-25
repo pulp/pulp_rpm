@@ -13,8 +13,8 @@
 # ---- Pulp (rpm) --------------------------------------------------------------
 
 Name: pulp-rpm
-Version: 2.4.0
-Release: 0.21.beta%{?dist}
+Version: 2.4.1
+Release: 0.4.beta%{?dist}
 Summary: Support for RPM content in the Pulp platform
 Group: Development/Languages
 License: GPLv2
@@ -275,6 +275,51 @@ A collection of yum plugins supplementing Pulp consumer operations.
 
 
 %changelog
+* Mon Aug 25 2014 Randy Barlow <rbarlow@redhat.com> 2.4.1-0.4.beta
+- 1130312 - Add release notes for 2.4.1. (rbarlow@redhat.com)
+
+* Fri Aug 22 2014 Randy Barlow <rbarlow@redhat.com> 2.4.1-0.3.beta
+- 1131260 - use platform openssl for certificate verification.
+  (jortel@redhat.com)
+
+* Wed Aug 20 2014 Randy Barlow <rbarlow@redhat.com> 2.4.1-0.2.alpha
+- 1118501 - updating logic to form consumer profile lookup table with the
+  newest rpm, so that in case of multiple packages with same name and arch,
+  applicability logic does not fail (skarmark@redhat.com)
+
+* Sat Aug 09 2014 Randy Barlow <rbarlow@redhat.com> 2.4.0-1
+- 1121264 - correcting the documentation for max_speed (mhrivnak@redhat.com)
+
+* Thu Jul 31 2014 Randy Barlow <rbarlow@redhat.com> 2.4.0-0.30.beta
+- Pulp rebuild
+
+* Tue Jul 29 2014 Randy Barlow <rbarlow@redhat.com> 2.4.0-0.29.beta
+- Pulp rebuild
+
+* Tue Jul 29 2014 Randy Barlow <rbarlow@redhat.com> 2.4.0-0.28.beta
+- Pulp rebuild
+
+* Tue Jul 29 2014 Randy Barlow <rbarlow@redhat.com> 2.4.0-0.27.beta
+- Pulp rebuild
+
+* Mon Jul 28 2014 Randy Barlow <rbarlow@redhat.com> 2.4.0-0.26.beta
+- Pulp rebuild
+
+* Wed Jul 16 2014 Unknown name 2.4.0-0.25.beta
+- 1116060 - Fix handling of failed package installs. (jortel@redhat.com)
+
+* Fri Jul 11 2014 Brian Bouterse <bmbouter@gmail.com> 2.4.0-0.24.beta
+- 1097816 - adding "gpgkey" as a valid distributor config value
+  (mhrivnak@redhat.com)
+- 1111322 - Fix client side error trying to update iso repo (bcourt@redhat.com)
+
+* Wed Jun 25 2014 Randy Barlow <rbarlow@redhat.com> 2.4.0-0.23.beta
+- Pulp rebuild
+
+* Tue Jun 24 2014 Randy Barlow <rbarlow@redhat.com> 2.4.0-0.22.beta
+- 1099771 - Add a unit test to assert correct behavior for reporting invalid
+  checksums. (rbarlow@redhat.com)
+
 * Tue Jun 17 2014 Randy Barlow <rbarlow@redhat.com> 2.4.0-0.21.beta
 - 973784 - improving performance of depsolve (mhrivnak@redhat.com)
 - 1107117 - Viewing the details of an erratum using "pulp-admin rpm repo
