@@ -38,6 +38,7 @@ import os
 
 from M2Crypto import X509, BIO
 from pulp.common.util import encode_unicode
+from pulp.server.common.openssl import Certificate
 
 
 LOG = logging.getLogger(__name__)
@@ -304,12 +305,9 @@ class RepoCertUtils:
         @return: true if the certificate is verified by OpenSSL APIs, false otherwise
         @rtype:  boolean
         """
-        store = X509.X509_Store()
-        for ca in ca_certs:
-            store.add_cert(ca)
-        store_ctx = X509.X509_Store_Context()
-        store_ctx.init(store, cert)
-        retval = store_ctx.verify_cert()
+        certificate = Certificate(cert.as_pem())
+        ca_chain = [Certificate(c.as_pem()) for c in ca_certs]
+        retval = certificate.verify(ca_chain)
         if retval != 1 and log_func:
             msg = "Cert verification failed against %d ca cert(s)" % len(ca_certs)
             if self.log_failed_cert:
