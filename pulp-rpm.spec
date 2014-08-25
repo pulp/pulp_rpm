@@ -14,7 +14,7 @@
 
 Name: pulp-rpm
 Version: 2.4.1
-Release: 0.3.beta%{?dist}
+Release: 0.4.beta%{?dist}
 Summary: Support for RPM content in the Pulp platform
 Group: Development/Languages
 License: GPLv2
@@ -274,6 +274,9 @@ A collection of yum plugins supplementing Pulp consumer operations.
 
 
 %changelog
+* Mon Aug 25 2014 Randy Barlow <rbarlow@redhat.com> 2.4.1-0.4.beta
+- 1130312 - Add release notes for 2.4.1. (rbarlow@redhat.com)
+
 * Fri Aug 22 2014 Randy Barlow <rbarlow@redhat.com> 2.4.1-0.3.beta
 - 1131260 - use platform openssl for certificate verification.
   (jortel@redhat.com)
