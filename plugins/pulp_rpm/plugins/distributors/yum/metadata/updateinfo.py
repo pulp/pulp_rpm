@@ -45,7 +45,7 @@ class UpdateinfoXMLFileContext(MetadataFileContext):
         update_attributes = {'status': erratum_unit.metadata['status'],
                              'type': erratum_unit.metadata['type'],
                              'version': erratum_unit.metadata['version'],
-                             'from': erratum_unit.metadata.get('from', '')}
+                             'from': erratum_unit.metadata.get('from', '') or ''}
         update_element = ElementTree.Element('update', update_attributes)
 
         id_element = ElementTree.SubElement(update_element, 'id')
@@ -104,7 +104,7 @@ class UpdateinfoXMLFileContext(MetadataFileContext):
                                       'release': package['release'],
                                       'epoch': package['epoch'] or '0',
                                       'arch': package['arch'],
-                                      'src': package.get('src', '')}
+                                      'src': package.get('src', '') or ''}
                 package_element = ElementTree.SubElement(collection_element, 'package', package_attributes)
 
                 filename_element = ElementTree.SubElement(package_element, 'filename')
