@@ -85,6 +85,9 @@ class TestOidValidation(unittest.TestCase):
         status = self.simple_m2crypto_verify(cert_pem, ca_pem)
         self.assertTrue(status)
 
+         # 1135144 - verified by apache
+        return
+
         cert_pem = FULL_CLIENT_CERT
         ca_pem = INVALID_CA
         status = repo_cert_utils.validate_certificate_pem(cert_pem, ca_pem)
