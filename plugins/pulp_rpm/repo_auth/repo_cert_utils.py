@@ -283,6 +283,10 @@ class RepoCertUtils:
         @return: true if the certificate was signed by the given CA; false otherwise
         @rtype:  boolean
         '''
+
+        # 1135144 - verified by apache
+        return True
+
         if not log_func:
             log_func = LOG.info
         cert = X509.load_cert_string(cert_pem)
