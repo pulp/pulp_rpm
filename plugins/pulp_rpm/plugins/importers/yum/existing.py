@@ -120,6 +120,9 @@ def check_all_and_associate(wanted, sync_conduit):
                 relative_path = get_relpath_from_unit(unit)
             downloaded_unit = sync_conduit.init_unit(unit_type, unit.unit_key,
                                                      unit.metadata, relative_path)
+
+            # 1125388 - make sure we keep storage_path on the new unit model obj
+            downloaded_unit.storage_path = unit.storage_path
             sync_conduit.save_unit(downloaded_unit)
 
             # Discard already downloaded unit from the return value.
