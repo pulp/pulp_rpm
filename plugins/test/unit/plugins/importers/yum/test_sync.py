@@ -907,6 +907,10 @@ class TestAlreadyDownloadedUnits(BaseSyncTest):
             unit.storage_path = "existing_storage_path"
         result = check_all_and_associate(input_units, self.conduit)
         self.assertEqual(len(list(result)), 0)
+        # verify we are saving the storage path
+        for c in mock_save.mock_calls:
+            (conduit, unit) = c[1]
+            self.assertEquals(unit.storage_path, "existing_storage_path")
 
     @mock.patch('pulp.plugins.conduits.repo_sync.RepoSyncConduit.search_all_units', autospec=True)
     @mock.patch('pulp.plugins.conduits.repo_sync.RepoSyncConduit.save_unit', autospec=True)
