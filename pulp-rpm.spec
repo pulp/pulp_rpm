@@ -13,8 +13,8 @@
 # ---- Pulp (rpm) --------------------------------------------------------------
 
 Name: pulp-rpm
-Version: 2.4.1
-Release: 0.7.beta%{?dist}
+Version: 2.5.0
+Release: 0.1.alpha%{?dist}
 Summary: Support for RPM content in the Pulp platform
 Group: Development/Languages
 License: GPLv2
@@ -275,6 +275,34 @@ A collection of yum plugins supplementing Pulp consumer operations.
 
 
 %changelog
+* Tue Sep 09 2014 Randy Barlow <rbarlow@redhat.com> 2.5.0-0.1.alpha
+- 1125388 - ensure we save storage_path when saving units (cduryee@redhat.com)
+- 1126960 - support the xml:base attribute on rpm packages in the primary.xml
+  for delineating an alternate base location during RPM sync
+  (bcourt@redhat.com)
+- 1130305 - Document workaround for when migration 3 updates fail.
+  (bcourt@redhat.com)
+- 1130305 - Document workaround for when migration 3 updates fail.
+  (bcourt@redhat.com)
+- 1022553 - The 'pulp-admin rpm consumer unbind' command now reports a missing
+  binding in a more friendly way (jcline@redhat.com)
+- 1130305 - Document workaround for when migration 3 updates fail.
+  (bcourt@redhat.com)
+- 1127298 - Alternate Content sources needs to wrap the nectar listener in a
+  container listener. (bcourt@redhat.com)
+- 1127793 - The checksum is now saved to the distributor only if explicitly
+  provided (jcline@redhat.com)
+- 1128292 - Specify the default attribute on generated package group xml.  This
+  fixes a bug where the graphical installer failed to select a default option
+  on RHEL 6 if we do not specify a default. (bcourt@redhat.com)
+- 1101566 - unit_metadata is now optional for the yum import upload
+  (jcline@redhat.com)
+- 1108306 - Adjust the location tag in the primary xml snippet during repo
+  sync.  This was previously only done during upload. (bcourt@redhat.com)
+- 1118501 - updating logic to form consumer profile lookup table with the
+  newest rpm, so that in case of multiple packages with same name and arch,
+  applicability logic does not fail (skarmark@redhat.com)
+
 * Thu Sep 04 2014 Randy Barlow <rbarlow@redhat.com> 2.4.1-0.7.beta
 - Pulp rebuild
 
