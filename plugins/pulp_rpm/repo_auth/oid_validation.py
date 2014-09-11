@@ -13,15 +13,13 @@ The OID structure follows the Red Hat model. Download URLs are found at:
 The * represents the product ID and is not used as part of this calculation.
 '''
 
-from ConfigParser import SafeConfigParser
+from ConfigParser import NoOptionError, SafeConfigParser
 
 from rhsm import certificate
 
 from pulp_rpm.repo_auth.protected_repo_utils import ProtectedRepoUtils
 from pulp_rpm.repo_auth.repo_cert_utils import RepoCertUtils
 
-
-# -- constants -----------------------------------------------------------------
 
 # This needs to be accessible on both Pulp and the CDS instances, so a
 # separate config file for repo auth purposes is used.
@@ -33,7 +31,6 @@ CONFIG_FILENAME = '/etc/pulp/repo_auth.conf'
 # hardcoded until we actually get a use case to make it variable.
 RELATIVE_URL = '/pulp/repos' # no trailing backslash; we take care of normalizing it later
 
-# -- framework -----------------------------------------------------------------
 
 def authenticate(environ, config=None):
     '''
@@ -71,44 +68,53 @@ class OidValidator:
         @param cert_pem: PEM encoded client certificate sent with the request
         @type  cert_pem: string
         '''
+        # Determine whether we should check the client certificates' signatures.
+        try:
+            verify_ssl = self.config.getboolean('main', 'verify_ssl')
+        except NoOptionError:
+            verify_ssl = True
+
         # Load the repo credentials if they exist
-        passes_individual_ca = False
         repo_bundle = self._matching_repo_bundle(dest)
-        if repo_bundle is not None:
-
-            # If there is an individual bundle but no client certificate has been specified,
-            # they are invalid
-            if cert_pem == '':
-                return False
-
-            # Make sure the client cert is signed by the correct CA
-            is_valid = self.repo_cert_utils.validate_certificate_pem(cert_pem, repo_bundle['ca'], log_func=log_func)
-            if not is_valid:
-                log_func('Client certificate did not match the repo consumer CA certificate')
-                return False
-            else:
-                # Indicate it passed individual check so we don't run the global too
-                passes_individual_ca = True
-
         # Load the global repo auth cert bundle and check it's CA against the client cert
         # if it didn't already pass the individual auth check
         global_bundle = self.repo_cert_utils.read_global_cert_bundle(['ca'])
-        if not passes_individual_ca and global_bundle is not None:
-
-            # If there is a global repo bundle but no client certificate has been specified,
-            # they are invalid
-            if cert_pem == '':
-                return False
-
-            # Make sure the client cert is signed by the correct CA
-            is_valid = self.repo_cert_utils.validate_certificate_pem(cert_pem, global_bundle['ca'], log_func=log_func)
-            if not is_valid:
-                log_func('Client certificate did not match the global repo auth CA certificate')
-                return False
-
         # If there were neither global nor repo auth credentials, auth passes.
         if global_bundle is None and repo_bundle is None:
             return True
+
+        if verify_ssl:
+            passes_individual_ca = False
+            if repo_bundle is not None:
+
+                # If there is an individual bundle but no client certificate has been specified,
+                # they are invalid
+                if cert_pem == '':
+                    return False
+
+                # Make sure the client cert is signed by the correct CA
+                is_valid = self.repo_cert_utils.validate_certificate_pem(
+                    cert_pem, repo_bundle['ca'], log_func=log_func)
+                if not is_valid:
+                    log_func('Client certificate did not match the repo consumer CA certificate')
+                    return False
+                else:
+                    # Indicate it passed individual check so we don't run the global too
+                    passes_individual_ca = True
+
+            if not passes_individual_ca and global_bundle is not None:
+
+                # If there is a global repo bundle but no client certificate has been specified,
+                # they are invalid
+                if cert_pem == '':
+                    return False
+
+                # Make sure the client cert is signed by the correct CA
+                is_valid = self.repo_cert_utils.validate_certificate_pem(
+                    cert_pem, global_bundle['ca'], log_func=log_func)
+                if not is_valid:
+                    log_func('Client certificate did not match the global repo auth CA certificate')
+                    return False
 
         # If the credentials were specified for either case, apply the OID checks.
         is_valid = self._check_extensions(cert_pem, dest, log_func)
