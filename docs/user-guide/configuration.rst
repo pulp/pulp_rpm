@@ -29,7 +29,7 @@ Validation With Your Web Server
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 If you are using the repository protection feature and if you do not require different certificate
-authorities on each repository, it is recommended that you configure your web browser to validate
+authorities on each repository, it is recommended that you configure your web server to validate
 client certificates against trusted certificate authorities instead of having Pulp do it. For
 Apache, please see their `documentation <https://httpd.apache.org/docs/2.2/mod/mod_ssl.html>`_ if
 you wish to learn how to do this. You can set the new ``verify_ssl`` setting to ``false`` in
