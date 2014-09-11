@@ -74,10 +74,17 @@ class OidValidator:
         except NoOptionError:
             verify_ssl = True
 
+        # Load the repo credentials if they exist
+        repo_bundle = self._matching_repo_bundle(dest)
+        # Load the global repo auth cert bundle and check it's CA against the client cert
+        # if it didn't already pass the individual auth check
+        global_bundle = self.repo_cert_utils.read_global_cert_bundle(['ca'])
+        # If there were neither global nor repo auth credentials, auth passes.
+        if global_bundle is None and repo_bundle is None:
+            return True
+
         if verify_ssl:
-            # Load the repo credentials if they exist
             passes_individual_ca = False
-            repo_bundle = self._matching_repo_bundle(dest)
             if repo_bundle is not None:
 
                 # If there is an individual bundle but no client certificate has been specified,
@@ -95,9 +102,6 @@ class OidValidator:
                     # Indicate it passed individual check so we don't run the global too
                     passes_individual_ca = True
 
-            # Load the global repo auth cert bundle and check it's CA against the client cert
-            # if it didn't already pass the individual auth check
-            global_bundle = self.repo_cert_utils.read_global_cert_bundle(['ca'])
             if not passes_individual_ca and global_bundle is not None:
 
                 # If there is a global repo bundle but no client certificate has been specified,
@@ -111,10 +115,6 @@ class OidValidator:
                 if not is_valid:
                     log_func('Client certificate did not match the global repo auth CA certificate')
                     return False
-
-            # If there were neither global nor repo auth credentials, auth passes.
-            if global_bundle is None and repo_bundle is None:
-                return True
 
         # If the credentials were specified for either case, apply the OID checks.
         is_valid = self._check_extensions(cert_pem, dest, log_func)
