@@ -303,6 +303,9 @@ A collection of yum plugins supplementing Pulp consumer operations.
   newest rpm, so that in case of multiple packages with same name and arch,
   applicability logic does not fail (skarmark@redhat.com)
 
+* Thu Sep 11 2014 Randy Barlow <rbarlow@redhat.com> 2.4.1-0.8.beta
+- 1131260 - Add verify_ssl to repo_auth.conf. (rbarlow@redhat.com)
+
 * Thu Sep 04 2014 Randy Barlow <rbarlow@redhat.com> 2.4.1-0.7.beta
 - Pulp rebuild
 
