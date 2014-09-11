@@ -38,6 +38,9 @@ the ``[main]]`` section of ``/etc/pulp/repo_auth.conf`` if you wish to configure
 the certificate signatures. There is a performance advantage to configuring this setting this way if
 you are able to use your web server to validate client certificates instead of Pulp.
 
+Pulp 2.4.0
+==========
+
 New Features
 ------------
 
