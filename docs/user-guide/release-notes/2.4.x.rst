@@ -5,11 +5,38 @@ Pulp 2.4 Release Notes
 Pulp 2.4.1
 ==========
 
+New Features
+------------
+
+The 2.4.1 release drops the need for Pulp's custom build of M2Crypto. You should remove the Pulp
+version of M2Crypto from your machine and downgrade to the version supplied by your operating
+system. As a result of this, the per-repo client certificate checks that are performed by our
+repository authorization system are inefficient, and you may notice degradation in performance
+if you are using this feature. The Pulp team has provided a workaround, but it can only be used if
+you don't wish to use different CAs on different repositories. See the upgrade instructions below.
+
+Bug Fixes
+---------
+
 The 2.4.1 release is a minor bugfix release. You can see the list of bugs that were fixed
 `here <https://bugzilla.redhat.com/buglist.cgi?bug_status=VERIFIED&bug_status=RELEASE_PENDING&bug_status=CLOSED&classification=Community&component=iso-support&component=rpm-support&list_id=2768109&product=Pulp&query_format=advanced&target_release=2.4.1>`_.
 
-Pulp 2.4.0
-==========
+Upgrade Instructions
+--------------------
+
+If you have the custom Pulp-provided M2Crypto package installed, you should downgrade to the
+M2Crypto package that is provided by your operating system::
+
+    $ sudo yum downgrade M2Crypto
+
+If you are using the repository protection feature and if you do not require different certificate
+authorities on each repository, it is recommended that you configure your web browser to validate
+client certificates against trusted certificate authorities instead of having Pulp do it. For
+Apache, please see their `documentation <https://httpd.apache.org/docs/2.2/mod/mod_ssl.html>`_ if
+you wish to learn how to do this. You can set the new ``verify_ssl`` setting to ``false`` in
+the ``[main]]`` section of ``/etc/pulp/repo_auth.conf`` if you wish to configure Pulp not to check
+the certificate signatures. There is a performance advantage to configuring this setting this way if
+you are able to use your web server to validate client certificates instead of Pulp.
 
 New Features
 ------------

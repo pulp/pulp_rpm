@@ -20,12 +20,9 @@ import pulp_rpm.repo_auth.oid_validation as oid_validation
 from pulp_rpm.repo_auth.repo_cert_utils import RepoCertUtils
 
 
-# -- constants ------------------------------------------------------------------
-
 CERT_TEST_DIR = '/tmp/test_oid_validation/'
 CONFIG_FILENAME = '/etc/pulp/repo_auth.conf'
 
-# -- mocks ----------------------------------------------------------------------
 
 def mock_environ(client_cert_pem, uri):
     environ = {}
@@ -33,7 +30,7 @@ def mock_environ(client_cert_pem, uri):
     # Set REQUEST_URI the same way that it will be set via mod_wsgi
     path = urlparse.urlparse(uri)[2]
     environ["REQUEST_URI"] = path
-    
+
     class Errors:
         def write(self, *args, **kwargs):
             pass
@@ -41,7 +38,6 @@ def mock_environ(client_cert_pem, uri):
     environ["wsgi.errors"] = Errors()
     return environ
 
-# -- test cases -----------------------------------------------------------------
 
 class TestOidValidation(unittest.TestCase):
 
@@ -54,8 +50,6 @@ class TestOidValidation(unittest.TestCase):
             os.remove(protected_repo_listings_file)
 
     def setUp(self):
-#        self.validator = OidValidator(self.config)
-#        self.clean()
         self.config = SafeConfigParser()
         self.config.read(CONFIG_FILENAME)
 
@@ -71,9 +65,86 @@ class TestOidValidation(unittest.TestCase):
         cert = X509.load_cert_string(cert_pem)
         issuer = cert.get_issuer()
         ca_cert = X509.load_cert_string(ca_pem)
-        #print "Cert issued by: %s, with hash of: %s" % (issuer, issuer.as_hash())
-        #print "CA is: %s, with hash of: %s" % (ca_cert.get_subject(), ca_cert.get_subject().as_hash())
         return cert.verify(ca_cert.get_pubkey())
+
+    @mock.patch('pulp_rpm.repo_auth.oid_validation.OidValidator._check_extensions',
+                return_value=True)
+    @mock.patch('pulp_rpm.repo_auth.oid_validation.RepoCertUtils.validate_certificate_pem')
+    @mock.patch(
+        'pulp_rpm.repo_auth.protected_repo_utils.ProtectedRepoUtils.read_protected_repo_listings')
+    @mock.patch('pulp_rpm.repo_auth.repo_cert_utils.RepoCertUtils.read_consumer_cert_bundle')
+    def test_is_valid_verify_ssl_false(self, mock_read_bundle, mock_read_listings,
+                                       validate_certificate_pem, _check_extensions):
+        """
+        Test is_valid when verify_ssl is false.
+        """
+        self.config.set('main', 'verify_ssl', 'false')
+        repo_x_bundle = {'ca' : INVALID_CA, 'key' : ANYKEY, 'cert' : ANYCERT, }
+        mock_read_listings.return_value = {'/pulp/pulp/fedora-14/x86_64': 'repo-x'}
+        mock_read_bundle.return_value = repo_x_bundle
+        request_x = mock_environ(FULL_CLIENT_CERT,
+                                 'https://localhost/pulp/repos/repos/pulp/pulp/fedora-14/x86_64/')
+
+        valid = oid_validation.authenticate(request_x, config=self.config)
+
+        # Make sure we didn't call into the cert validation code
+        self.assertEqual(validate_certificate_pem.call_count, 0)
+        # It should be valid because we mocked _check_extensions to return True
+        self.assertEqual(valid, True)
+
+    @mock.patch('pulp_rpm.repo_auth.oid_validation.OidValidator._check_extensions')
+    @mock.patch('pulp_rpm.repo_auth.oid_validation.RepoCertUtils.validate_certificate_pem',
+                return_value=False)
+    @mock.patch(
+        'pulp_rpm.repo_auth.protected_repo_utils.ProtectedRepoUtils.read_protected_repo_listings')
+    @mock.patch('pulp_rpm.repo_auth.repo_cert_utils.RepoCertUtils.read_consumer_cert_bundle')
+    def test_is_valid_verify_ssl_true(self, mock_read_bundle, mock_read_listings,
+                                      validate_certificate_pem, _check_extensions):
+        """
+        Test is_valid when verify_ssl is true.
+        """
+        self.config.set('main', 'verify_ssl', 'true')
+        repo_x_bundle = {'ca' : INVALID_CA, 'key' : ANYKEY, 'cert' : ANYCERT, }
+        mock_read_listings.return_value = {'/pulp/pulp/fedora-14/x86_64': 'repo-x'}
+        mock_read_bundle.return_value = repo_x_bundle
+        request_x = mock_environ(FULL_CLIENT_CERT,
+                                 'https://localhost/pulp/repos/repos/pulp/pulp/fedora-14/x86_64/')
+
+        valid = oid_validation.authenticate(request_x, config=self.config)
+
+        # Make sure we didn't call into the cert validation code
+        self.assertEqual(validate_certificate_pem.call_count, 1)
+        # It should be invalid because we mocked validate_certificate_pem to return False
+        self.assertEqual(valid, False)
+        # _check_extensions shouldn't have been called
+        self.assertEqual(_check_extensions.call_count, 0)
+
+    @mock.patch('pulp_rpm.repo_auth.oid_validation.OidValidator._check_extensions')
+    @mock.patch('pulp_rpm.repo_auth.oid_validation.RepoCertUtils.validate_certificate_pem',
+                return_value=False)
+    @mock.patch(
+        'pulp_rpm.repo_auth.protected_repo_utils.ProtectedRepoUtils.read_protected_repo_listings')
+    @mock.patch('pulp_rpm.repo_auth.repo_cert_utils.RepoCertUtils.read_consumer_cert_bundle')
+    def test_is_valid_verify_ssl_undefined(self, mock_read_bundle, mock_read_listings,
+                                      validate_certificate_pem, _check_extensions):
+        """
+        Test is_valid when verify_ssl is undefined.
+        """
+        self.config.remove_option('main', 'verify_ssl')
+        repo_x_bundle = {'ca' : INVALID_CA, 'key' : ANYKEY, 'cert' : ANYCERT, }
+        mock_read_listings.return_value = {'/pulp/pulp/fedora-14/x86_64': 'repo-x'}
+        mock_read_bundle.return_value = repo_x_bundle
+        request_x = mock_environ(FULL_CLIENT_CERT,
+                                 'https://localhost/pulp/repos/repos/pulp/pulp/fedora-14/x86_64/')
+
+        valid = oid_validation.authenticate(request_x, config=self.config)
+
+        # Make sure we didn't call into the cert validation code
+        self.assertEqual(validate_certificate_pem.call_count, 1)
+        # It should be invalid because we mocked validate_certificate_pem to return False
+        self.assertEqual(valid, False)
+        # _check_extensions shouldn't have been called
+        self.assertEqual(_check_extensions.call_count, 0)
 
     def test_basic_validate(self):
         repo_cert_utils = RepoCertUtils(config=self.config)
@@ -84,9 +155,6 @@ class TestOidValidation(unittest.TestCase):
         self.assertTrue(status)
         status = self.simple_m2crypto_verify(cert_pem, ca_pem)
         self.assertTrue(status)
-
-         # 1135144 - verified by apache
-        return
 
         cert_pem = FULL_CLIENT_CERT
         ca_pem = INVALID_CA
@@ -101,7 +169,6 @@ class TestOidValidation(unittest.TestCase):
         self.assertFalse(status)
         status = self.simple_m2crypto_verify(cert_pem, ca_pem)
         self.assertFalse(status)
-
 
     def __test_scenario_1(self):
         """

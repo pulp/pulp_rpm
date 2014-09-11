@@ -352,10 +352,6 @@ class TestCertVerify(unittest.TestCase):
         """
         Tests that verifying a cert with an incorrect CA returns false.
         """
-
-         # 1135144 - verified by apache
-        return
-
         self.assertTrue(not self.utils.validate_certificate(CERT, INVALID_CA))
 
     def test_valid_pem(self):
@@ -379,10 +375,6 @@ class TestCertVerify(unittest.TestCase):
         """
         Tests that verifying a PEM encoded cert string with an incorrect CA returns false.
         """
-
-         # 1135144 - verified by apache
-        return
-
         # Setup
         f = open(INVALID_CA)
         ca = f.read()
@@ -451,10 +443,6 @@ class TestCertVerify(unittest.TestCase):
         self.assertTrue(self.utils.validate_certificate_pem(test_cert_pem, ca_chain_pems))
 
     def test_validate_certificate_pem_with_incomplete_ca_chain(self):
-
-         # 1135144 - verified by apache
-        return
-
         ca_chain_path = os.path.join(CA_CHAIN_TEST_DATA, "certs/ROOT_CA/root_ca.pem")
         test_cert_path = os.path.join(CA_CHAIN_TEST_DATA, "certs/test_cert.pem")
 

@@ -25,6 +25,18 @@ Two configuration file changes are necessary to enable repository authentication
 * Edit ``/etc/pulp/repo_auth.conf`` and set the ``enabled`` option to ``true``.
   Save the file and restart Apache.
 
+Validation With Your Web Server
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+If you are using the repository protection feature and if you do not require different certificate
+authorities on each repository, it is recommended that you configure your web browser to validate
+client certificates against trusted certificate authorities instead of having Pulp do it. For
+Apache, please see their `documentation <https://httpd.apache.org/docs/2.2/mod/mod_ssl.html>`_ if
+you wish to learn how to do this. You can set the new ``verify_ssl`` setting to ``false`` in
+the ``[main]]`` section of ``/etc/pulp/repo_auth.conf`` if you wish to configure Pulp not to check
+the certificate signatures. There is a performance advantage to configuring this setting this way if
+you are able to use your web server to validate client certificates instead of Pulp.
+
 Global Repo Authentication
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
