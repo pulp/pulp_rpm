@@ -15,11 +15,12 @@
 Name: pulp-rpm
 Version: 2.5.0
 Release: 0.1.alpha%{?dist}
+%define nondist_release %(echo %{release} | sed 's/%{?dist}//')
 Summary: Support for RPM content in the Pulp platform
 Group: Development/Languages
 License: GPLv2
 URL: https://fedorahosted.org/pulp/
-Source0: https://fedorahosted.org/releases/p/u/%{name}/%{name}-%{version}.tar.gz
+Source0: https://github.com/pulp/pulp_rpm/archive/%{name}-%{version}-%{nondist_release}.tar.gz
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 BuildArch:      noarch
 BuildRequires:  python2-devel
@@ -275,6 +276,9 @@ A collection of yum plugins supplementing Pulp consumer operations.
 
 
 %changelog
+* Thu Sep 11 2014 Randy Barlow <rbarlow@redhat.com> 2.4.1-0.8.beta
+- 1131260 - Add verify_ssl to repo_auth.conf. (rbarlow@redhat.com)
+
 * Tue Sep 09 2014 Randy Barlow <rbarlow@redhat.com> 2.5.0-0.1.alpha
 - 1125388 - ensure we save storage_path when saving units (cduryee@redhat.com)
 - 1126960 - support the xml:base attribute on rpm packages in the primary.xml
@@ -302,9 +306,6 @@ A collection of yum plugins supplementing Pulp consumer operations.
 - 1118501 - updating logic to form consumer profile lookup table with the
   newest rpm, so that in case of multiple packages with same name and arch,
   applicability logic does not fail (skarmark@redhat.com)
-
-* Thu Sep 11 2014 Randy Barlow <rbarlow@redhat.com> 2.4.1-0.8.beta
-- 1131260 - Add verify_ssl to repo_auth.conf. (rbarlow@redhat.com)
 
 * Thu Sep 04 2014 Randy Barlow <rbarlow@redhat.com> 2.4.1-0.7.beta
 - Pulp rebuild
