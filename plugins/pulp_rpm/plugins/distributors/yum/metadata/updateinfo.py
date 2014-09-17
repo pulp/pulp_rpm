@@ -57,13 +57,24 @@ class UpdateinfoXMLFileContext(MetadataFileContext):
         reboot_element = ElementTree.SubElement(update_element, 'reboot_suggested')
         reboot_element.text = str(erratum_unit.metadata['reboot_suggested'])
 
-        for key in ('title', 'release', 'rights', 'description', 'solution',
+        # these elements are optional
+        for key in ('title', 'release', 'rights', 'solution',
                     'severity', 'summary', 'pushcount'):
 
             value = erratum_unit.metadata.get(key)
 
             if not value:
                 continue
+
+            sub_element = ElementTree.SubElement(update_element, key)
+            sub_element.text = unicode(value)
+
+        # these elements must be present even if text is empty
+        for key in ('description',):
+
+            value = erratum_unit.metadata.get(key)
+            if value is None:
+                value = ''
 
             sub_element = ElementTree.SubElement(update_element, key)
             sub_element.text = unicode(value)

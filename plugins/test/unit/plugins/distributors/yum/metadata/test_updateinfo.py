@@ -1,6 +1,7 @@
 """
 Tests for the pulp_rpm.plugins.distributors.yum.metadata.updateinfo module.
 """
+import re
 import unittest
 
 from pulp.plugins import model
@@ -69,3 +70,45 @@ class AddUnitMetadataTests(UpdateinfoXMLFileContextTests):
         self.assertEqual(self.updateinfo_xml_file_context.metadata_file_handle.write.call_count, 1)
         xml = self.updateinfo_xml_file_context.metadata_file_handle.write.mock_calls[0][1][0]
         self.assertTrue('<pushcount>1</pushcount>' in xml)
+
+    def test_no_description(self):
+        """
+        We had a bug[0] wherein an empty or missing description would result in
+        XML that did not include a description element. The corresponding upstream
+        repo (epel5) did have a description element that was merely empty, so the
+        distributor was modified to always include the description element.
+
+        [0] https://bugzilla.redhat.com/show_bug.cgi?id=1138475
+        """
+        type_id = ids.TYPE_ID_ERRATA
+        unit_key = {'id': 'RHSA-2014:0042'}
+        metadata = {
+            'title': 'Some Title',
+            'release': '2',
+            'rights': 'You have the right to remain silent.',
+            'solution': 'Open Source is the solution to your problems.',
+            'severity': 'High',
+            'summary': 'A Summary',
+            # Note that pushcount is an int and not a string. This should be OK (no exceptions).
+            'pushcount': 1,
+            'status': 'symbol',
+            'type': 'security',
+            'version': '2.4.1',
+            'issued': '2014-05-27',
+            'reboot_suggested': 'true',
+            'references': [],
+            }
+        storage_path = '/some/path'
+        created = '2014-04-27'
+        updated = '2014-04-28'
+        owner_type = 'soft brain\'d human'
+        owner_id = 'rbarlow'
+        erratum_unit = model.AssociatedUnit(type_id, unit_key, metadata, storage_path, created,
+                                            updated, owner_type, owner_id)
+
+        # This should not cause any Exception
+        self.updateinfo_xml_file_context.add_unit_metadata(erratum_unit)
+
+        self.assertEqual(self.updateinfo_xml_file_context.metadata_file_handle.write.call_count, 1)
+        xml = self.updateinfo_xml_file_context.metadata_file_handle.write.mock_calls[0][1][0]
+        self.assertTrue(re.search('<description */>', xml) is not None)
