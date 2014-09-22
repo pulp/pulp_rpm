@@ -11,8 +11,8 @@ repository.
 
 ::
 
-  $ pulp-admin rpm repo create --repo-id=pulp --relative-url=pulp_beta \
-  --feed=http://repos.fedorapeople.org/repos/pulp/pulp/v2/beta/fedora-17/x86_64/
+  $ pulp-admin rpm repo create --repo-id=zoo--relative-url=zoo \
+  --feed=http://repos.fedorapeople.org/repos/pulp/pulp/demo_repos/zoo/
   Successfully created repository [pulp]
 
 * ``--repo-id`` is required and must be unique.
@@ -26,13 +26,13 @@ repository and stores them in our new repository.
 
 ::
 
-  $ pulp-admin rpm repo sync run --repo-id=pulp
+  $ pulp-admin rpm repo sync run --repo-id=zoo
   +----------------------------------------------------------------------+
-                    Synchronizing Repository [pulp]
+                       Synchronizing Repository [zoo]
   +----------------------------------------------------------------------+
 
-  This command may be exited by pressing ctrl+c without affecting the actual
-  operation on the server.
+  This command may be exited via ctrl+c without affecting the request.
+
 
   Downloading metadata...
   [\]
@@ -40,7 +40,7 @@ repository and stores them in our new repository.
 
   Downloading repository content...
   [==================================================] 100%
-  RPMs:       43/43 items
+  RPMs:       0/0 items
   Delta RPMs: 0/0 items
 
   ... completed
@@ -58,27 +58,62 @@ repository and stores them in our new repository.
   [-]
   ... completed
 
-  Publishing packages...
+
+  Task Succeeded
+
+
+
+  Initializing repo metadata
+  [-]
+  ... completed
+
+  Publishing Distribution files
+  [-]
+  ... completed
+
+  Publishing RPMs
   [==================================================] 100%
-  Packages: 43/43 items
+  32 of 32 items
   ... completed
 
-  Publishing distributions...
+  Publishing Delta RPMs
+  ... skipped
+
+  Publishing Errata
   [==================================================] 100%
-  Distributions: 0/0 items
+  4 of 4 items
   ... completed
 
-  Generating metadata
-  [\]
+  Publishing Comps file
+  [==================================================] 100%
+  3 of 3 items
   ... completed
 
-  Publishing repository over HTTPS
+  Publishing Metadata.
+  [-]
+  ... completed
+
+  Closing repo metadata
+  [-]
+  ... completed
+
+  Generating sqlite files
+  ... skipped
+
+  Publishing files to web
+  [-]
+  ... completed
+
+  Writing Listings File
   [-]
   ... completed
 
 
+  Task Succeeded
+
+
 Your repository is now available to browse at
-`https://localhost/pulp/repos/pulp_beta/ <https://localhost/pulp/repos/pulp_beta/>`_.
+`https://localhost/pulp/repos/pulp_beta/ <https://localhost/pulp/repos/zoo/>`_.
 (adjust the hostname as necessary)
 
 Consumer Setup and Use
@@ -127,16 +162,19 @@ Let's initiate a package install from the server.
 
 ::
 
-  $ pulp-admin rpm consumer package install run --consumer-id=con1 -n wolf
-  Install task created with id [0ad6f101-3abc-43c4-b103-04719239e5ae]
 
-  This command may be exited via ctrl+c without affecting the install.
+  $ pulp-admin rpm consumer package install run --consumer-id=con1 -n wolf
+
+  Install task created with id [ c89d4578-cb4e-451f-a87a-63272e77670e ]
+
+  This command may be exited via ctrl+c without affecting the request.
 
   Refresh Repository Metadata             [ OK ]
   Downloading Packages                    [ OK ]
   Check Package Signatures                [ OK ]
   Running Test Transaction                [ OK ]
   Running Transaction                     [ OK ]
+
   Install Succeeded
 
   +----------------------------------------------------------------------+
