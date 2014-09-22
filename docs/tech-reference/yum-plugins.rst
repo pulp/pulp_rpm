@@ -329,7 +329,7 @@ Metadata
 
 
 Package Group Environment
-----------------------
+-------------------------
 
 The Package Group Environment's ID is ``package_environment``.
 
@@ -371,6 +371,29 @@ Metadata
  Package group IDs and whether they are default options.  The default flag must be set to either
  `True` or `False`.
  Example format: ``{"group" : <group_id>, "default" : True}``
+
+
+Yum Repo Metadata File
+----------------------
+
+The Yum Repo Metadata File's ID is ``yum_repo_metadata_file``.
+
+Unit Key
+^^^^^^^^
+``repo_id``
+ The repository id that this metadata file belongs to.
+
+``data_type``
+ The type of the metadata file.
+
+Metadata
+^^^^^^^^
+``checksum``
+ The checksum of the metadata file.
+
+``checksum_type``
+ The name of the algorithm used to calculate the ``checksum``.
+
 
 Yum Importer
 ============
