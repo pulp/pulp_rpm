@@ -75,5 +75,5 @@ Upgrade Instructions
  - pulp_rpm has added a dependency on python-lxml for xml parsing
 
 Please see the
-`Pulp Platform upgrade instructions <https://pulp-user-guide.readthedocs.org/en/pulp-2.4/release-notes.html>`_
+`Pulp Platform upgrade instructions <https://pulp-user-guide.readthedocs.org/en/2.4-release/release-notes.html>`_
 for information on how to complete the upgrade.
