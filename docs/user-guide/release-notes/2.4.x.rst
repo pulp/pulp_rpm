@@ -44,6 +44,11 @@ Pulp 2.4.0
 New Features
 ------------
 
+-  When a pulp_manifest.xml is added to kickstart repositories all of the additional files listed
+   in the manifest will be downloaded as part of the repo. The command line utility available
+   at pulp_rpm/playpen/yum_distributor/generate_distribution_manifest.py can be used to help with
+   creating the manifest file. This file should be stored as a peer of the treeinfo file in a source
+   repository that is being synced by Pulp.
  - Added the ability to generate sqlite repository metadata files as part of an RPM repo
    publish.
 
@@ -66,6 +71,8 @@ attributes can be found in the technical reference.
 
 Upgrade Instructions
 --------------------
+
+ - pulp_rpm has added a dependency on python-lxml for xml parsing
 
 Please see the
 `Pulp Platform upgrade instructions <https://pulp-user-guide.readthedocs.org/en/pulp-2.4/release-notes.html>`_
