@@ -19,7 +19,7 @@ Summary: Support for RPM content in the Pulp platform
 Group: Development/Languages
 License: GPLv2
 URL: https://fedorahosted.org/pulp/
-Source0: https://github.com/pulp/pulp_rpm/archive/%{name}-%{version}-1.tar.gz
+Source0: https://github.com/pulp/pulp_rpm/archive/%{name}-%{version}.tar.gz
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 BuildArch:      noarch
 BuildRequires:  python2-devel
