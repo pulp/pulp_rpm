@@ -14,7 +14,7 @@
 
 Name: pulp-rpm
 Version: 2.5.0
-Release: 0.2.beta%{?dist}
+Release: 0.5.beta%{?dist}
 Summary: Support for RPM content in the Pulp platform
 Group: Development/Languages
 License: GPLv2
@@ -275,6 +275,9 @@ A collection of yum plugins supplementing Pulp consumer operations.
 
 
 %changelog
+* Fri Sep 26 2014 Chris Duryee <cduryee@redhat.com> 2.5.0-0.5.beta
+- Pulp rebuild
+
 * Fri Sep 26 2014 Chris Duryee <cduryee@redhat.com> 2.5.0-0.2.beta
 - 1131260 - Add verify_ssl to repo_auth.conf. (rbarlow@redhat.com)
 
