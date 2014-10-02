@@ -451,7 +451,7 @@ configuration values are optional.
 ``validate``
  If True, as the repository is synchronized the checksum of each file will be
  verified against the metadata's expectation. Valid values to this option are
- ``True`` and ``False``; defaults to ``True``.
+ ``True`` and ``False``; defaults to ``False``.
 
 ``max_downloads``
  Number of threads used when synchronizing the repository. This count controls
