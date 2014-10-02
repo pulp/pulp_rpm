@@ -381,18 +381,18 @@ The Yum Repo Metadata File's ID is ``yum_repo_metadata_file``.
 Unit Key
 ^^^^^^^^
 ``repo_id``
- The repository id that this metadata file belongs to.
+ The repository id that this metadata file belongs to
 
 ``data_type``
- The type of the metadata file.
+ The type of the metadata file
 
 Metadata
 ^^^^^^^^
 ``checksum``
- The checksum of the metadata file.
+ The checksum of the metadata file
 
 ``checksum_type``
- The name of the algorithm used to calculate the ``checksum``.
+ The name of the algorithm used to calculate the ``checksum``
 
 
 Yum Importer
