@@ -1,6 +1,30 @@
 Configuration
 =============
 
+Yum Importer Configuration
+--------------------------
+
+The yum importer is configured by editing
+``/etc/pulp/server/plugins.conf.d/yum_importer.json``. This file must be valid `JSON`_.
+
+.. _JSON: http://json.org/
+
+The importer supports the settings documented in Pulp's `importer config docs`_.
+
+.. _importer config docs: https://pulp-user-guide.readthedocs.org/en/latest/server.html#importers
+
+ISO Importer Configuration
+--------------------------
+
+The ISO importer is configured by editing
+``/etc/pulp/server/plugins.conf.d/iso_importer.json``. This file must be valid `JSON`_.
+
+.. _JSON: http://json.org/
+
+The importer supports the settings documented in Pulp's `importer config docs`_.
+
+.. _importer config docs: https://pulp-user-guide.readthedocs.org/en/latest/server.html#importers
+
 Protected Repositories
 ----------------------
 
