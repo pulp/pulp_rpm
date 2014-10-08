@@ -23,4 +23,4 @@ Pulp does not support uploading of RPMs with non UTF-8 fields. When such an RPM 
         continue_on_error, self.__uuid_subtype), safe)
     InvalidStringData: strings in documents must be valid UTF-8
 
-If  you experience this problem, contact the RPM maintainer and ask them to change non UTF-8 fields to UTF-8. 
+If you experience this problem, contact the RPM maintainer and ask them to change non UTF-8 fields to UTF-8. 
