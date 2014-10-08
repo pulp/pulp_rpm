@@ -5,7 +5,7 @@ Troubleshooting
 RPM with non UTF-8 fields results in error
 ==========================================
 
-Pulp does not support uploading of RPMs with non UTF-8 fields. When such an RPM is uploaded the following traceback will appear in the logs::
+Pulp does not support RPMs with non UTF-8 fields. When such an RPM is encountered, the following traceback will appear in the logs::
 
     Content unit association failed [Unit [key={'name': 'ruby-zypptools', 'checksum': 'aa647a75db016962b72b8d7c1a328a2cf8cfd6a8d5827b58064ab383fde47231', 'epoch': '0', 'version': '0.2.0', 'release': '1.26', 'arch': 'x86_64', 'checksumtype': 'sha256'}] [type=rpm] [id=None]]
     Traceback (most recent call last):
