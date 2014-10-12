@@ -9,6 +9,8 @@ from nectar.listener import AggregatingEventListener
 from nectar.request import DownloadRequest
 from pulp.server.exceptions import PulpCodedValidationException
 
+from pulp.server.db.model.criteria import UnitAssociationCriteria
+
 from pulp_rpm.common import constants, ids
 from pulp_rpm.plugins.db import models
 from pulp_rpm.plugins import error_codes
@@ -79,6 +81,14 @@ def sync(sync_conduit, feed, working_dir, nectar_config, report, progress_callba
             # mkdtemp is very paranoid, so we'll change to more sensible perms
             os.chmod(unit.storage_path, 0o775)
             sync_conduit.save_unit(unit)
+            # find any old distribution units and remove them. See BZ #1150714
+            distribution_type_criteria = UnitAssociationCriteria(type_ids=[ids.TYPE_ID_DISTRO])
+            existing_units = sync_conduit.get_units(criteria=distribution_type_criteria)
+            for existing_unit in existing_units:
+                if existing_unit != unit:
+                    _LOGGER.info("Removing out-of-date distribution unit %s for repo %s" %
+                                 (existing_unit.unit_key, sync_conduit.repo_id))
+                    sync_conduit.remove_unit(existing_unit)
         else:
             _LOGGER.error('some distro file downloads failed')
             report['state'] = constants.STATE_FAILED
