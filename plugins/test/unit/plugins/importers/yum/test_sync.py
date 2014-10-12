@@ -9,10 +9,10 @@ from nectar.downloaders.base import Downloader
 from pulp.common.plugins import importer_constants
 from pulp.plugins.conduits.repo_sync import RepoSyncConduit
 from pulp.plugins.config import PluginCallConfiguration
-from pulp.plugins.model import Repository, SyncReport
+from pulp.plugins.model import Repository, SyncReport, Unit
 import pulp.server.managers.factory as manager_factory
 
-from pulp_rpm.common import constants
+from pulp_rpm.common import constants, ids
 from pulp_rpm.plugins.db import models
 from pulp_rpm.plugins.importers.yum.existing import check_all_and_associate
 from pulp_rpm.plugins.importers.yum.repomd import metadata, group, updateinfo, packages, presto, primary
@@ -1029,3 +1029,73 @@ repodata/repomd.xml = sha256:9876
                                                       'initrd = images/pxeboot/initrd.img\n',
                                                       '\n', '[checksums]\n',
                                                       'images/efiboot.img = sha256:12345\n'])
+
+
+# these tests are specifically to test bz #1150714
+@mock.patch('os.chmod', autospec=True)
+@mock.patch('shutil.move', autospec=True)
+@mock.patch('pulp_rpm.plugins.importers.yum.parse.treeinfo.get_treefile', autospec=True)
+@mock.patch('pulp_rpm.plugins.importers.yum.parse.treeinfo.parse_treefile', autospec=True)
+@mock.patch('pulp_rpm.plugins.importers.yum.report.DistributionReport', autospec=True)
+@mock.patch('shutil.rmtree', autospec=True)
+@mock.patch('tempfile.mkdtemp', autospec=True)
+@mock.patch('pulp_rpm.plugins.importers.yum.repomd.nectar_factory.create_downloader', autospec=True)
+class TestTreeinfoSync(BaseSyncTest):
+
+    def setUp(self, *mocks):
+        super(TestTreeinfoSync, self).setUp()
+        self.conduit.remove_unit = mock.MagicMock(spec_set=self.conduit.remove_unit)
+        self.conduit.init_unit = mock.MagicMock(spec_set=self.conduit.init_unit)
+        self.conduit.save_unit = mock.MagicMock(spec_set=self.conduit.save_unit)
+
+    # This is the case when we are syncing for the first time, or a treeinfo
+    # appeared for the first time
+    def test_treeinfo_sync_no_unit_removal(self, mock_nectar, mock_tempfile, mock_rmtree,
+                                           mock_report, mock_parse_treefile, mock_get_treefile,
+                                           mock_move, mock_chmod):
+        mock_model = models.Distribution('fake family', 'server', '3.11', 'baroque', metadata={})
+        mock_parse_treefile.return_value = (mock_model, "fake files")
+        mock_get_treefile.return_value = "/a/fake/path/to/the/treefile"
+        treeinfo.sync(self.conduit, "http://some/url", "/some/tempdir", "fake-nectar-conf",
+                      mock_report, lambda x: x)
+        self.assertEqual(self.conduit.remove_unit.call_count, 0)
+
+    # The "usual" case of one existing distribution unit on the repo. Ensure
+    # that we didn't try to remove anything.
+    def test_treeinfo_sync_one_unit_removal(self, mock_nectar, mock_tempfile, mock_rmtree,
+                                            mock_report, mock_parse_treefile, mock_get_treefile,
+                                            mock_move, mock_chmod):
+        # return one unit that is the same as what we saved. No removal should occur
+        mock_model = models.Distribution('fake family', 'server', '3.11', 'baroque', metadata={})
+        mock_unit = Unit(ids.TYPE_ID_DISTRO, mock_model.unit_key, mock_model.metadata, "/fake/path")
+        self.conduit.get_units = mock.MagicMock(spec_set=self.conduit.get_units)
+        self.conduit.get_units.return_value = [mock_unit]
+        self.conduit.init_unit = mock.MagicMock(spec_set=self.conduit.init_unit)
+        self.conduit.init_unit.return_value = mock_unit
+        mock_parse_treefile.return_value = (mock_model, "fake files")
+        mock_get_treefile.return_value = "/a/fake/path/to/the/treefile"
+        treeinfo.sync(self.conduit, "http://some/url", "/some/tempdir", "fake-nectar-conf",
+                      mock_report, lambda x: x)
+        self.assertEqual(self.conduit.remove_unit.call_count, 0)
+
+    # This is the case that occurs when symlinks like "6Server" are updated for
+    # a new release. Pulp will have created a new distribution unit and we need
+    # to remove any old units
+    def test_treeinfo_sync_two_unit_removal(self, mock_nectar, mock_tempfile, mock_rmtree,
+                                            mock_report, mock_parse_treefile, mock_get_treefile,
+                                            mock_move, mock_chmod):
+        # return one unit that is the same as what we saved. No removal should occur
+        mock_model = models.Distribution('fake family', 'server', '3.11', 'baroque', metadata={})
+        mock_model_old = models.Distribution('fake family', 'server', '3.10', 'baroque', metadata={})
+        mock_unit = Unit(ids.TYPE_ID_DISTRO, mock_model.unit_key, mock_model.metadata, "/fake/path")
+        mock_unit_old = Unit(ids.TYPE_ID_DISTRO, mock_model_old.unit_key, mock_model_old.metadata,
+                             "/fake/path")
+        self.conduit.get_units = mock.MagicMock(spec_set=self.conduit.get_units)
+        self.conduit.get_units.return_value = [mock_unit, mock_unit_old]
+        self.conduit.init_unit = mock.MagicMock(spec_set=self.conduit.init_unit)
+        self.conduit.init_unit.return_value = mock_unit
+        mock_parse_treefile.return_value = (mock_model, "fake files")
+        mock_get_treefile.return_value = "/a/fake/path/to/the/treefile"
+        treeinfo.sync(self.conduit, "http://some/url", "/some/tempdir", "fake-nectar-conf",
+                      mock_report, lambda x: x)
+        self.conduit.remove_unit.assert_called_once_with(mock_unit_old)
