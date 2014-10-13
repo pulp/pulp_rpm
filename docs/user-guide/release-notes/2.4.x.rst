@@ -2,6 +2,15 @@
 Pulp 2.4 Release Notes
 ======================
 
+Pulp 2.4.2
+==========
+
+Bug Fixes
+---------
+
+The 2.4.2 release is a minor bugfix release. You can see the list of bugs that were fixed
+`here <https://bugzilla.redhat.com/buglist.cgi?bug_status=VERIFIED&bug_status=RELEASE_PENDING&bug_status=CLOSED&classification=Community&component=iso-support&component=rpm-support&list_id=2768109&product=Pulp&query_format=advanced&target_release=2.4.2>`_.
+
 Pulp 2.4.1
 ==========
 
