@@ -13,8 +13,8 @@
 # ---- Pulp (rpm) --------------------------------------------------------------
 
 Name: pulp-rpm
-Version: 2.4.1
-Release: 1%{?dist}
+Version: 2.4.2
+Release: 0.1.beta%{?dist}
 Summary: Support for RPM content in the Pulp platform
 Group: Development/Languages
 License: GPLv2
@@ -274,6 +274,9 @@ A collection of yum plugins supplementing Pulp consumer operations.
 
 
 %changelog
+* Sun Oct 12 2014 Chris Duryee <cduryee@redhat.com> 2.4.2-0.1.beta
+- 1150714 - delete old distribution units when syncing (cduryee@redhat.com)
+
 * Tue Sep 23 2014 Randy Barlow <rbarlow@redhat.com> 2.4.1-1
 - Pulp rebuild
 
