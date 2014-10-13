@@ -275,6 +275,9 @@ A collection of yum plugins supplementing Pulp consumer operations.
 
 
 %changelog
+* Mon Oct 13 2014 Chris Duryee <cduryee@redhat.com> 2.4.2-1
+- Pulp rebuild
+
 * Sun Oct 12 2014 Chris Duryee <cduryee@redhat.com> 2.5.0-0.8.beta
 - 1150714 - delete old distribution units when syncing (cduryee@redhat.com)
 - 1049492 - Add docs for the yum_repo_metadata_file. (rbarlow@redhat.com)
