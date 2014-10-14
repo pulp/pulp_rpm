@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 #
-# Pulp RPM Technical Reference documentation build configuration file, created by
-# sphinx-quickstart on Tue Feb 12 10:30:37 2013.
+# Pulp RPM Support documentation build configuration file, created by
+# sphinx-quickstart on Tue Nov 27 11:32:17 2012.
 #
 # This file is execfile()d with the current directory set to its containing dir.
 #
@@ -23,7 +23,7 @@
 
 # Add any Sphinx extension module names here, as strings. They can be extensions
 # coming with Sphinx (named 'sphinx.ext.*') or your custom ones.
-extensions = []
+extensions = ['sphinx.ext.intersphinx']
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
@@ -38,8 +38,8 @@ source_suffix = '.rst'
 master_doc = 'index'
 
 # General information about the project.
-project = u'Pulp RPM Technical Reference'
-copyright = u'2013, Pulp Team'
+project = u'Pulp RPM Support'
+copyright = u'2012-2014, Pulp Team'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
@@ -162,7 +162,7 @@ html_static_path = ['_static']
 #html_file_suffix = None
 
 # Output file base name for HTML help builder.
-htmlhelp_basename = 'PulpRPMTechnicalReferencedoc'
+htmlhelp_basename = 'PulpRPMSupportdoc'
 
 
 # -- Options for LaTeX output --------------------------------------------------
@@ -181,7 +181,7 @@ latex_elements = {
 # Grouping the document tree into LaTeX files. List of tuples
 # (source start file, target name, title, author, documentclass [howto/manual]).
 latex_documents = [
-  ('index', 'PulpRPMTechnicalReference.tex', u'Pulp RPM Technical Reference Documentation',
+  ('index', 'PulpRPMSupport.tex', u'Pulp RPM Support Documentation',
    u'Pulp Team', 'manual'),
 ]
 
@@ -211,7 +211,7 @@ latex_documents = [
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
 man_pages = [
-    ('index', 'pulprpmtechnicalreference', u'Pulp RPM Technical Reference Documentation',
+    ('index', 'pulprpmsupport', u'Pulp RPM Support Documentation',
      [u'Pulp Team'], 1)
 ]
 
@@ -225,8 +225,8 @@ man_pages = [
 # (source start file, target name, title, author,
 #  dir menu entry, description, category)
 texinfo_documents = [
-  ('index', 'PulpRPMTechnicalReference', u'Pulp RPM Technical Reference Documentation',
-   u'Pulp Team', 'PulpRPMTechnicalReference', 'One line description of project.',
+  ('index', 'PulpRPMSupport', u'Pulp RPM Support Documentation',
+   u'Pulp Team', 'PulpRPMSupport', 'One line description of project.',
    'Miscellaneous'),
 ]
 
@@ -238,3 +238,7 @@ texinfo_documents = [
 
 # How to display URL addresses: 'footnote', 'no', or 'inline'.
 #texinfo_show_urls = 'footnote'
+
+
+# Example configuration for intersphinx: refer to the Python standard library.
+intersphinx_mapping = {'http://docs.python.org/': None}

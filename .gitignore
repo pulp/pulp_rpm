@@ -42,7 +42,7 @@ cover
 *.nja
 
 # Sphinx
-docs/*/_build
+docs/_build
 
 # Vim
 *.swp
