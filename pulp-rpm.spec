@@ -279,38 +279,13 @@ A collection of yum plugins supplementing Pulp consumer operations.
 - 1103232 - Document importer settings. (rbarlow@redhat.com)
 
 * Mon Oct 13 2014 Chris Duryee <cduryee@redhat.com> 2.4.2-1
-- Pulp rebuild
+- 1150714 - delete old distribution units when syncing (cduryee@redhat.com)
 
 * Sun Oct 12 2014 Chris Duryee <cduryee@redhat.com> 2.5.0-0.8.beta
 - 1150714 - delete old distribution units when syncing (cduryee@redhat.com)
 - 1049492 - Add docs for the yum_repo_metadata_file. (rbarlow@redhat.com)
 - 1139888 - Document the default for validate. (rbarlow@redhat.com)
-
-* Sun Oct 12 2014 Chris Duryee <cduryee@redhat.com> 2.4.2-0.1.beta
-- 1150714 - delete old distribution units when syncing (cduryee@redhat.com)
-
-* Thu Oct 02 2014 Chris Duryee <cduryee@redhat.com> 2.5.0-0.7.beta
-- Pulp rebuild
-
-* Fri Sep 26 2014 Chris Duryee <cduryee@redhat.com> 2.5.0-0.6.beta
-- Pulp rebuild
-
-* Fri Sep 26 2014 Chris Duryee <cduryee@redhat.com> 2.5.0-0.5.beta
-- Pulp rebuild
-
-* Fri Sep 26 2014 Chris Duryee <cduryee@redhat.com> 2.5.0-0.2.beta
 - 1131260 - Add verify_ssl to repo_auth.conf. (rbarlow@redhat.com)
-
-* Tue Sep 23 2014 Randy Barlow <rbarlow@redhat.com> 2.4.1-1
-- Pulp rebuild
-
-* Tue Sep 16 2014 Randy Barlow <rbarlow@redhat.com> 2.4.1-0.9.rc
-- Pulp rebuild
-
-* Thu Sep 11 2014 Randy Barlow <rbarlow@redhat.com> 2.4.1-0.8.beta
-- 1131260 - Add verify_ssl to repo_auth.conf. (rbarlow@redhat.com)
-
-* Tue Sep 09 2014 Randy Barlow <rbarlow@redhat.com> 2.5.0-0.1.alpha
 - 1125388 - ensure we save storage_path when saving units (cduryee@redhat.com)
 - 1126960 - support the xml:base attribute on rpm packages in the primary.xml
   for delineating an alternate base location during RPM sync
@@ -338,61 +313,24 @@ A collection of yum plugins supplementing Pulp consumer operations.
   newest rpm, so that in case of multiple packages with same name and arch,
   applicability logic does not fail (skarmark@redhat.com)
 
-* Thu Sep 04 2014 Randy Barlow <rbarlow@redhat.com> 2.4.1-0.7.beta
-- Pulp rebuild
-
-* Thu Aug 28 2014 Randy Barlow <rbarlow@redhat.com> 2.4.1-0.6.beta
+* Tue Sep 23 2014 Randy Barlow <rbarlow@redhat.com> 2.4.1-1
+- 1131260 - Add verify_ssl to repo_auth.conf. (rbarlow@redhat.com)
 - 1135144 - certificate verified by apache. (jortel@redhat.com)
-
-* Tue Aug 26 2014 Randy Barlow <rbarlow@redhat.com> 2.4.1-0.5.rc1
-- Pulp rebuild
-
-* Mon Aug 25 2014 Randy Barlow <rbarlow@redhat.com> 2.4.1-0.4.beta
 - 1130312 - Add release notes for 2.4.1. (rbarlow@redhat.com)
-
-* Fri Aug 22 2014 Randy Barlow <rbarlow@redhat.com> 2.4.1-0.3.beta
 - 1131260 - use platform openssl for certificate verification.
   (jortel@redhat.com)
-
-* Wed Aug 20 2014 Randy Barlow <rbarlow@redhat.com> 2.4.1-0.2.alpha
 - 1118501 - updating logic to form consumer profile lookup table with the
   newest rpm, so that in case of multiple packages with same name and arch,
   applicability logic does not fail (skarmark@redhat.com)
 
 * Sat Aug 09 2014 Randy Barlow <rbarlow@redhat.com> 2.4.0-1
 - 1121264 - correcting the documentation for max_speed (mhrivnak@redhat.com)
-
-* Thu Jul 31 2014 Randy Barlow <rbarlow@redhat.com> 2.4.0-0.30.beta
-- Pulp rebuild
-
-* Tue Jul 29 2014 Randy Barlow <rbarlow@redhat.com> 2.4.0-0.29.beta
-- Pulp rebuild
-
-* Tue Jul 29 2014 Randy Barlow <rbarlow@redhat.com> 2.4.0-0.28.beta
-- Pulp rebuild
-
-* Tue Jul 29 2014 Randy Barlow <rbarlow@redhat.com> 2.4.0-0.27.beta
-- Pulp rebuild
-
-* Mon Jul 28 2014 Randy Barlow <rbarlow@redhat.com> 2.4.0-0.26.beta
-- Pulp rebuild
-
-* Wed Jul 16 2014 Unknown name 2.4.0-0.25.beta
 - 1116060 - Fix handling of failed package installs. (jortel@redhat.com)
-
-* Fri Jul 11 2014 Brian Bouterse <bmbouter@gmail.com> 2.4.0-0.24.beta
 - 1097816 - adding "gpgkey" as a valid distributor config value
   (mhrivnak@redhat.com)
 - 1111322 - Fix client side error trying to update iso repo (bcourt@redhat.com)
-
-* Wed Jun 25 2014 Randy Barlow <rbarlow@redhat.com> 2.4.0-0.23.beta
-- Pulp rebuild
-
-* Tue Jun 24 2014 Randy Barlow <rbarlow@redhat.com> 2.4.0-0.22.beta
 - 1099771 - Add a unit test to assert correct behavior for reporting invalid
   checksums. (rbarlow@redhat.com)
-
-* Tue Jun 17 2014 Randy Barlow <rbarlow@redhat.com> 2.4.0-0.21.beta
 - 973784 - improving performance of depsolve (mhrivnak@redhat.com)
 - 1107117 - Viewing the details of an erratum using "pulp-admin rpm repo
   content errata --repo-id=<Repo ID> --erratum-id=<errata id>" now behaves as
@@ -403,13 +341,9 @@ A collection of yum plugins supplementing Pulp consumer operations.
   attached to a repository (jcline@redhat.com)
 - 1104839 - pulp no longer creates a prestodelta.xml file if there are no DRPMs
   to publish (mhrivnak@redhat.com)
-
-* Tue Jun 10 2014 Jeff Ortel <jortel@redhat.com> 2.4.0-0.20.beta
 - 1099600 - fix treeinfo files during upgrades (cduryee@redhat.com)
 - 1097790 - check task details of erratum upload to determine if task succeeded
   (cduryee@redhat.com)
-
-* Thu May 29 2014 Randy Barlow <rbarlow@redhat.com> 2.4.0-0.19.beta
 - 1102377 - generating listing files during repo publish (mhrivnak@redhat.com)
 - 1100027 - eliminating race condition during listing file generation
   (mhrivnak@redhat.com)
@@ -421,28 +355,17 @@ A collection of yum plugins supplementing Pulp consumer operations.
   (skarmark@redhat.com)
 - 1094498 - Added logic to re-download rpms, drpms and srpms that don't exist
   on disk during synchronization (skarmark@redhat.com)
-
-* Wed May 21 2014 Randy Barlow <rbarlow@redhat.com> 2.4.0-0.18.beta
 - 1096931 - improving repo update command to better detect spawned tasks
   (mhrivnak@redhat.com)
 - 1051700 - Don't build plugins or admin extensions on RHEL 5.
   (rbarlow@redhat.com)
-
-* Tue May 20 2014 Jeff Ortel <jortel@redhat.com> 2.4.0-0.17.beta
 - 1099236 - add Obsoletes for python-pulp-rpm-extension (cduryee@redhat.com)
 - 1098844 - updating yum distributor to publish rpms at the same level as
   repodata directory and not as per relative path of each unit
   (skarmark@redhat.com)
-
-* Fri May 16 2014 Randy Barlow <rbarlow@redhat.com> 2.4.0-0.16.beta
-- Pulp rebuild
-
-* Fri May 16 2014 Randy Barlow <rbarlow@redhat.com> 2.4.0-0.15.beta
 - 1095437 - convert checksum-type keyword to checksum_type (bcourt@redhat.com)
 - 1042932 - Update to use the step processor for exporting repos and repo
   groups (bcourt@redhat.com)
-
-* Thu May 15 2014 Randy Barlow <rbarlow@redhat.com> 2.4.0-0.14.beta
 - 1097434 - The profile translates erratum to rpm unit keys.
   (rbarlow@redhat.com)
 - 1097813 - post-upload linking of errata to rpms now works
@@ -455,18 +378,12 @@ A collection of yum plugins supplementing Pulp consumer operations.
   (mhrivnak@redhat.com)
 - 1080455 - fixing rendering error in pulp-consumer bind and unbind commands
   (skarmark@redhat.com)
-
-* Thu May 08 2014 Jeff Ortel <jortel@redhat.com> 2.4.0-0.13.beta
 - 1094404 - Fix to not delete all repo contents accidentally.
   (bmbouter@gmail.com)
 - 1090534 - Publish the repomd.xml file. (rbarlow@redhat.com)
 - 1082245 - Fix failed task reporting in content install commands.
   (jortel@redhat.com)
-
-* Fri May 02 2014 Barnaby Court <bcourt@redhat.com> 2.4.0-0.11.beta
 - 1091078 - rhui cataloger requires nectar >= 1.2.0. (jortel@redhat.com)
-
-* Thu Apr 24 2014 Randy Barlow <rbarlow@redhat.com> 2.4.0-0.10.beta
 - 1085087 - fixing yum importer so that packages are not re-downloaded for
   every repository (skarmark@redhat.com)
 - 1062725 - package install fails when requested package not available.
@@ -475,36 +392,16 @@ A collection of yum plugins supplementing Pulp consumer operations.
   printed for every rpm migrated (skarmark@redhat.com)
 - 1065016 - Don't require optionlist to be present. (rbarlow@redhat.com)
 - 1025465 - Log all ISO download failures. (rbarlow@redhat.com)
-
-* Mon Apr 14 2014 Randy Barlow <rbarlow@redhat.com> 2.4.0-0.9.beta
-- Pulp rebuild
-
-* Mon Apr 07 2014 Barnaby Court <bcourt@redhat.com> 2.4.0-0.8.beta
 - 1084077 - removing python-pulp-rpm-extension from admin and consumer
   extension deps as we no longer produce this rpm (skarmark@redhat.com)
 - 1081865 - updating location element in the repomd file to include href
   attribute (skarmark@redhat.com)
-
-* Wed Apr 02 2014 Jeff Ortel <jortel@redhat.com> 2.4.0-0.7.beta
-- Pulp rebuild
-
-* Wed Apr 02 2014 Jeff Ortel <jortel@redhat.com> 2.4.0-0.7.alpha
 - 1083098 - Fix rpm handler loading. (jortel@redhat.com)
-
-* Thu Mar 13 2014 Jeff Ortel <jortel@redhat.com> 2.4.0-0.6.alpha
-- Pulp rebuild
-
-* Thu Mar 13 2014 Jeff Ortel <jortel@redhat.com> 2.4.0-0.5.alpha
-- Pulp rebuild
-
-* Wed Mar 12 2014 Barnaby Court <bcourt@redhat.com> 2.4.0-0.4.alpha
 - 973784 - refactored dependency solving workflow for performance
   (mhrivnak@redhat.com)
 - 1070336 - Fix passing of the consumer group id when the --all option is used
   for the "pulp-admin rpm consumer group package update ..." command
   (bcourt@redhat.com)
-
-* Mon Feb 24 2014 Jeff Ortel <jortel@redhat.com> 2.4.0-0.3.alpha
 - 1067169 - Fixed the copy command so it outputs the result without crashing
   (mhrivnak@redhat.com)
 - 1064594 - initializing plugin loader for migration 0015 (mhrivnak@redhat.com)
@@ -516,8 +413,6 @@ A collection of yum plugins supplementing Pulp consumer operations.
   (bcourt@redhat.com)
 - 1056243 - Implement yum distributor create_consumer_payload (fix consumer
   binding) (bcourt@redhat.com)
-
-* Tue Jan 28 2014 Jeff Ortel <jortel@redhat.com> 2.4.0-0.2.alpha
 - 921743 - Adjust ownership and permissions for a variety of the RPM paths.
   (rbarlow@redhat.com)
 - 1034978 - Move to standard formatter for unit copy & remove extension
@@ -528,8 +423,6 @@ A collection of yum plugins supplementing Pulp consumer operations.
   distributor config during a publish. (bcourt@redhat.com)
 - 1029057 - Save the rpm repo checksum type from the repo scratchpad to the
   distributor config during a publish. (bcourt@redhat.com)
-
-* Thu Dec 12 2013 Jeff Ortel <jortel@redhat.com> 2.4.0-0.1.alpha
 - 1003965 - Error out of a sync if there is no feed url (bcourt@redhat.com)
 - 995076 - make sure to call finalize on the nectar config object
   (jason.connor@gmail.com)
@@ -544,109 +437,45 @@ A collection of yum plugins supplementing Pulp consumer operations.
 - 1020460 - Fixed removing skip list from an existing repository
   (jason.dobies@redhat.com)
 
-* Mon Nov 25 2013 Barnaby Court <bcourt@redhat.com> 2.3.1-0.3.beta
+* Mon Nov 25 2013 Barnaby Court <bcourt@redhat.com> 2.3.1-1
 - 1034366 - Failure to export RPM repositories to ISO where the repository does
   not have a checksum manually set. (bcourt@redhat.com)
-
-* Fri Nov 22 2013 Jeff Ortel <jortel@redhat.com> 2.3.1-0.2.beta
 - 1033776 - If scratchpad contains fields other than checksum_type then
   checksum may be calculated incorrectly. (bcourt@redhat.com)
 
-* Fri Nov 22 2013 Jeff Ortel <jortel@redhat.com> 2.3.1-0.1.beta
-- Pulp rebuild
-
-* Tue Nov 19 2013 Barnaby Court <bcourt@redhat.com> 2.3.0-0.37.beta
+* Tue Nov 19 2013 Barnaby Court <bcourt@redhat.com> 2.3.0-1
 - 1029057 - Save the rpm repo checksum type from the repo scratchpad to the
   distributor config during a publish. (bcourt@redhat.com)
-
-* Fri Nov 15 2013 Jeff Ortel <jortel@redhat.com> 2.3.0-0.36.beta
-- Pulp rebuild
-
-* Thu Nov 14 2013 Jeff Ortel <jortel@redhat.com> 2.3.0-0.35.beta
-- Pulp rebuild
-
-* Thu Nov 14 2013 Barnaby Court <bcourt@redhat.com> 2.3.0-0.34.beta
-- Pulp rebuild
-
-* Tue Nov 12 2013 Barnaby Court <bcourt@redhat.com> 2.3.0-0.33.beta
 - 1029057 - override sha with sha1 in order to support yum modifyrepo command.
   (bcourt@redhat.com)
-
-* Mon Nov 11 2013 Barnaby Court <bcourt@redhat.com> 2.3.0-0.32.beta
 - 1029057 - Set checksum for metadata from upstream repository on synced
   repositories. (bcourt@redhat.com)
-
-* Thu Nov 07 2013 Jeff Ortel <jortel@redhat.com> 2.3.0-0.31.beta
-- Pulp rebuild
-
-* Thu Nov 07 2013 Jeff Ortel <jortel@redhat.com> 2.3.0-0.30.beta
 - 1026907 - Fix dep equality comparison when a release is omitted.
   (jason.dobies@redhat.com)
-
-* Wed Nov 06 2013 Jeff Ortel <jortel@redhat.com> 2.3.0-0.29.beta
-- Pulp rebuild
-
-* Wed Nov 06 2013 Jeff Ortel <jortel@redhat.com> 2.3.0-0.28.beta
 - 1020007 - added loading of conf file to entry point (jason.connor@gmail.com)
-
-* Fri Nov 01 2013 Jeff Ortel <jortel@redhat.com> 2.3.0-0.27.beta
-- Pulp rebuild
-
-* Tue Oct 29 2013 Jeff Ortel <jortel@redhat.com> 2.3.0-0.26.beta
-- Pulp rebuild
-
-* Mon Oct 28 2013 Jeff Ortel <jortel@redhat.com> 2.3.0-0.25.beta
 - 1018235 - Docs about how a repo URL is generated. (jason.dobies@redhat.com)
-
-* Wed Oct 23 2013 Jeff Ortel <jortel@redhat.com> 2.3.0-0.24.beta
 - 1021672 - Ensure that if the treeinfo specifies a packagedir that the
   directory is created and a link to all the packages can be found within it
   (bcourt@redhat.com)
 - 1008010 - fixed parsing of the translated names and descriptions for groups
   and categories during import (mhrivnak@redhat.com)
-
-* Fri Oct 18 2013 Jeff Ortel <jortel@redhat.com> 2.3.0-0.23.beta
 - 1020415 - added a workaround for a bug in yum where it neglects to encode
   epochs to strings, which in rare circumstances could cause a failure to
   generate updateinfo.xml (mhrivnak@redhat.com)
-
-* Wed Oct 16 2013 Jeff Ortel <jortel@redhat.com> 2.3.0-0.22.beta
-- Pulp rebuild
-
-* Tue Oct 15 2013 Jeff Ortel <jortel@redhat.com> 2.3.0-0.21.beta
 - 973678 - Return a report when ISO uploads are processed. (rbarlow@redhat.com)
-
-* Mon Oct 14 2013 Jeff Ortel <jortel@redhat.com> 2.3.0-0.20.beta
-- Pulp rebuild
-
-* Fri Oct 11 2013 Jeff Ortel <jortel@redhat.com> 2.3.0-0.19.beta
-- Pulp rebuild
-
-* Thu Oct 10 2013 Jeff Ortel <jortel@redhat.com> 2.3.0-0.18.beta
 - 975503 - Add pulp-admin iso repo publish status command (bcourt@redhat.com)
 - 999129 - create and use unique subdirectories for rpm and iso uploads
   (skarmark@redhat.com)
-
-* Wed Oct 02 2013 Jeff Ortel <jortel@redhat.com> 2.3.0-0.17.beta
 - 1011267 - Display checksum validation errors via the RPM command line client
   (bcourt@redhat.com)
 - 962928 - adding repo feed validation in iso_importer to raise a more graceful
   error message than random traceback (skarmark@redhat.com)
-
-* Thu Sep 26 2013 Jeff Ortel <jortel@redhat.com> 2.3.0-0.16.alpha
 - 965751 - the iso importer now uses the threaded requests downloader instead
   of the curl downloader (mhrivnak@redhat.com)
 - 976435 - load puppet importer config from a file using a common method.
   (bcourt@redhat.com)
-
-* Thu Sep 26 2013 Jeff Ortel <jortel@redhat.com> 2.3.0-0.15.alpha
 - 979589 - fixing consumer update for all packages failing with  KeyError:
   'resolved' (skarmark@redhat.com)
-
-* Wed Sep 18 2013 Jeff Ortel <jortel@redhat.com> 2.3.0-0.14.alpha
-- Pulp rebuild
-
-* Wed Sep 18 2013 Jeff Ortel <jortel@redhat.com> 2.3.0-0.13.alpha
 - 1004790 - Remove legacy dependency on Grinder that is no longer required.
   (bcourt@redhat.com)
 - 953248 - Custom checksum on repository config was not honored.
@@ -656,24 +485,12 @@ A collection of yum plugins supplementing Pulp consumer operations.
   (mhrivnak@redhat.com)
 - 972913 - adding cli validation for conditional packages when upload a package
   group (skarmark@redhat.com)
-
-* Fri Sep 13 2013 Jeff Ortel <jortel@redhat.com> 2.3.0-0.12.alpha
-- Pulp rebuild
-
-* Thu Sep 12 2013 Jeff Ortel <jortel@redhat.com> 2.3.0-0.11.alpha
-- Pulp rebuild
-
-* Thu Sep 12 2013 Jeff Ortel <jortel@redhat.com> 2.3.0-0.10.alpha
 - 973678 - Do not allow ISOs named PULP_MANIFEST to be uploaded.
   (rbarlow@redhat.com)
-
-* Tue Sep 10 2013 Jeff Ortel <jortel@redhat.com> 2.3.0-0.9.alpha
 - 997177 - Move uploads to the content directory instead of copying them
   (bcourt@redhat.com)
 - 976845 - updating descriptions for iso repo sync and publish commands as both
   don't support status sub-command (skarmark@redhat.com)
-
-* Fri Sep 06 2013 Barnaby Court <bcourt@redhat.com> 2.3.0-0.8.alpha
 - 1004897 - Fix bug where distributor validate_config is finding relative path
   conflicts with the repository that is being updated (bcourt@redhat.com)
 - 979587 - updating consumer update command to default to all packages instead
@@ -687,20 +504,6 @@ A collection of yum plugins supplementing Pulp consumer operations.
 - 915330 - Fix performance degradation of importer and distributor
   configuration validation as the number of repositories increased
   (bcourt@redhat.com)
-
-* Fri Aug 30 2013 Barnaby Court <bcourt@redhat.com> 2.3.0-0.7.alpha
-- Pulp rebuild
-
-* Thu Aug 29 2013 Jeff Ortel <jortel@redhat.com> 2.3.0-0.6.alpha
-- Pulp rebuild
-
-* Thu Aug 29 2013 Barnaby Court <bcourt@redhat.com> 2.3.0-0.5.alpha
-- Pulp rebuild
-
-* Tue Aug 27 2013 Jeff Ortel <jortel@redhat.com> 2.3.0-0.4.alpha
-- Pulp rebuild
-
-* Tue Aug 27 2013 Jeff Ortel <jortel@redhat.com> 2.3.0-0.3.alpha
 - 956711 - Raise an error to the client if an attempt is made to install an
   errata that does not exist in a repository bound to the consumer
   (bcourt@redhat.com)
@@ -724,8 +527,6 @@ A collection of yum plugins supplementing Pulp consumer operations.
   XML is now correct. (mhrivnak@redhat.com)
 - 980181 - added listing file generation on publish and unpublish
   (jason.connor@gmail.com)
-
-* Thu Aug 01 2013 Jeff Ortel <jortel@redhat.com> 2.3.0-0.2.alpha
 - 988919 - non-standard repo metadata files that happen to be sqlite files can
   now be downloaded successfully during a sync (mhrivnak@redhat.com)
 - 988005 - uploads of units that are not RPMs work again (mhrivnak@redhat.com)
@@ -747,23 +548,13 @@ A collection of yum plugins supplementing Pulp consumer operations.
 - 950772 - Don't attempt state transitions away from STATE_CANCELLED.
   (rbarlow@redhat.com)
 
-* Mon Jul 15 2013 Jeff Ortel <jortel@redhat.com> 2.2.0-0.21.beta
+* Mon Jul 15 2013 Jeff Ortel <jortel@redhat.com> 2.2.0-1
 - 984104 - fixed a bug that caused multiple calls to group copy with the
   --recursive option to fail (mhrivnak@redhat.com)
 - 983323 - fixed an XML parsing incompatibility with python 2.6 where the
   default XML namespace was being mishandled. (mhrivnak@redhat.com)
-
-* Tue Jul 09 2013 Jeff Ortel <jortel@redhat.com> 2.2.0-0.20.beta
 - 982649 - fixing a python 2.6 incompatibility which caused writing of XML for
   individual packages to fail. (mhrivnak@redhat.com)
-
-* Mon Jul 08 2013 Jeff Ortel <jortel@redhat.com> 2.2.0-0.19.beta
-- Pulp rebuild
-
-* Wed Jul 03 2013 Jeff Ortel <jortel@redhat.com> 2.2.0-0.18.beta
-- Pulp rebuild
-
-* Wed Jul 03 2013 Jeff Ortel <jortel@redhat.com> 2.2.0-0.17.beta
 - 976042 - source RPMs are now categorized correctly as type "srpm".
   (mhrivnak@redhat.com)
 - 980572 - can now import groups from comps.xml files where some groups entries
@@ -772,14 +563,10 @@ A collection of yum plugins supplementing Pulp consumer operations.
 - 973402 - fixed a mishandling of XML namespaces in repo metadata that led to
   problems when installing packages with dependencies from a published repo.
   (mhrivnak@redhat.com)
-
-* Thu Jun 20 2013 Jeff Ortel <jortel@redhat.com> 2.2.0-0.5.beta
 - 976333 - Fixed importer config look up to use constant
   (jason.dobies@redhat.com)
 - 976333 - Updated the relative URL calculation to use the new key for feed
   (jason.dobies@redhat.com)
-
-* Mon Jun 17 2013 Jeff Ortel <jortel@redhat.com> 2.2.0-0.4.beta
 - 974663 - the importer can now save repo metadata files of unknown types in
   the database as units (mhrivnak@redhat.com)
 - 972909 - Extract the provides/requires fields from the XML server-side.
@@ -788,8 +575,6 @@ A collection of yum plugins supplementing Pulp consumer operations.
   (jortel@redhat.com)
 - 972909 - invalid requires and provides data originally generated by the v2.1
   upload workflow now gets corrected by a migration. (mhrivnak@redhat.com)
-
-* Tue Jun 11 2013 Jeff Ortel <jortel@redhat.com> 2.2.0-0.3.beta
 - 972911 - migration 0010 now works. Had to account for cases where a
   provide/require had already been converted, and cases where encoding was non-
   ASCII. (mhrivnak@redhat.com)
@@ -826,8 +611,6 @@ A collection of yum plugins supplementing Pulp consumer operations.
   list of tasks. (jortel@redhat.com)
 - 955700 - Added all command to pulp-admin rpm repo copy to copy all content
   units and unit tests for the same (skarmark@redhat.com)
-
-* Thu Jun 06 2013 Jeff Ortel <jortel@redhat.com> 2.2.0-0.2.beta
 - 969579 - Further corrections to the deps for yumplugins
   (jason.dobies@redhat.com)
 - 969579 - The client-side yum plugins don't require the server
@@ -848,8 +631,6 @@ A collection of yum plugins supplementing Pulp consumer operations.
 - 970267 - removing the use of a parameter that didn't exist in python 2.6.
   Thankfully I was passing the default value anyway, so the 2.6 behavior is
   what I want even without the parameter. (mhrivnak@redhat.com)
-
-* Tue Jun 04 2013 Jeff Ortel <jortel@redhat.com> 2.2.0-0.1.beta
 - 968535 - leverage --no-compress; need to compensate for anaconda bug related
   to compressed metadata. (jortel@redhat.com)
 - 968543 - remove conditional in pulp_version macro. (jortel@redhat.com)
@@ -860,36 +641,9 @@ A collection of yum plugins supplementing Pulp consumer operations.
 - 955702 - updating documentation for mirroring a repository with a valid url
   and corresponding output (skarmark@redhat.com)
 - 966178 - Added default to remove-missing (jason.dobies@redhat.com)
-
-* Thu May 30 2013 Jeff Ortel <jortel@redhat.com> 2.2.0-0.15.alpha
 - 950690 - Removed copy commands that aren't supported in the plugin
   (jason.dobies@redhat.com)
-
-* Fri May 24 2013 Jeff Ortel <jortel@redhat.com> 2.2.0-0.14.alpha
 - 966178 - Added default to remove-missing (jason.dobies@redhat.com)
-
-* Thu May 23 2013 Jeff Ortel <jortel@redhat.com> 2.2.0-0.13.alpha
-- Pulp rebuild
-
-* Thu May 23 2013 Jeff Ortel <jortel@redhat.com> 2.2.0-0.12.alpha
-- Pulp rebuild
-
-* Tue May 21 2013 Jeff Ortel <jortel@redhat.com> 2.2.0-0.11.alpha
-- Pulp rebuild
-
-* Mon May 20 2013 Jeff Ortel <jortel@redhat.com> 2.2.0-0.10.alpha
-- Pulp rebuild
-
-* Mon May 20 2013 Jeff Ortel <jortel@redhat.com> 2.2.0-0.9.alpha
-- Pulp rebuild
-
-* Fri May 17 2013 Jeff Ortel <jortel@redhat.com> 2.2.0-0.8.alpha
-- Pulp rebuild
-
-* Mon May 13 2013 Jeff Ortel <jortel@redhat.com> 2.2.0-0.5.alpha
-- Pulp rebuild
-
-* Mon May 13 2013 Jeff Ortel <jortel@redhat.com> 2.2.0-0.3.alpha
 - 959823 - splitting up a query for existing units by type, allowing each query
   to limit which fields are loaded, thus reducing the memory footprint.
   (mhrivnak@redhat.com)
@@ -914,8 +668,6 @@ A collection of yum plugins supplementing Pulp consumer operations.
   (jason.dobies@redhat.com)
 - 955172 - Removing rhsm from our repo and now using the regular python-rhsm
   (mhrivnak@redhat.com)
-
-* Fri Apr 19 2013 Jeff Ortel <jortel@redhat.com> 2.2.0-0.2.alpha
 - 953665 - added the ability for copy operations to not also copy child units,
   such as a group copying its RPMs. Also restricted the fetching of existing
   units to their unit key fields, which reduced RAM use tremendously. Copying a
@@ -923,8 +675,6 @@ A collection of yum plugins supplementing Pulp consumer operations.
   (mhrivnak@redhat.com)
 - 928084 - The ISOImporter now handles malformed PULP_MANIFEST files.
   (rbarlow@redhat.com)
-
-* Fri Apr 12 2013 Jeff Ortel <jortel@redhat.com> 2.2.0-0.1.alpha
 - 950740 - add support {?dist} in the Release: in .spec files.
   (jortel@redhat.com)
 - 947927 - When looking for nested elements in a copy, only check the source
@@ -955,7 +705,7 @@ A collection of yum plugins supplementing Pulp consumer operations.
   GPG.keys. (jortel@redhat.com)
 - 917083 - ghost pulp.repo so it's cleaned up on uninstall. (jortel@redhat.com)
 
-* Mon Mar 04 2013 Jeff Ortel <jortel@redhat.com> 2.1.0-0.19.alpha
+* Mon Mar 04 2013 Jeff Ortel <jortel@redhat.com> 2.1.0-1
 - 902514 - removed the <VirtualHost *:80> block in favor of using the
   platform's authoritative one. (mhrivnak@redhat.com)
 - 916336 - Change the default num_threads to 4. (rbarlow@redhat.com)
@@ -963,49 +713,10 @@ A collection of yum plugins supplementing Pulp consumer operations.
   global use (mhrivnak@redhat.com)
 - 889565 - Corrected configuration options from being flags to options
   (jason.dobies@redhat.com)
-
-* Tue Feb 26 2013 Jeff Ortel <jortel@redhat.com> 2.1.0-0.18.alpha
-- Pulp rebuild
-
-* Tue Feb 26 2013 Jeff Ortel <jortel@redhat.com> 2.1.0-0.17.alpha
-- Pulp rebuild
-
-* Mon Feb 25 2013 Jeff Ortel <jortel@redhat.com> 2.1.0-0.16.alpha
-- Pulp rebuild
-
-* Fri Feb 22 2013 Jeff Ortel <jortel@redhat.com> 2.1.0-0.14.alpha
 - 905119 - Remove unused /ks alias from the pulp_rpm.conf file.
   (rbarlow@redhat.com)
-
-* Thu Feb 21 2013 Jeff Ortel <jortel@redhat.com> 2.1.0-0.13.alpha
-- Pulp rebuild
-
-* Tue Feb 19 2013 Jeff Ortel <jortel@redhat.com> 2.1.0-0.12.alpha
-- Pulp rebuild
-
-* Thu Feb 14 2013 Jeff Ortel <jortel@redhat.com> 2.1.0-0.10.alpha
-- Pulp rebuild
-
-* Thu Feb 14 2013 Jeff Ortel <jortel@redhat.com> 2.1.0-0.9.alpha
-- Pulp rebuild
-
-* Wed Feb 13 2013 Jeff Ortel <jortel@redhat.com> 2.1.0-0.8.alpha
-- Pulp rebuild
-
-* Wed Feb 13 2013 Jeff Ortel <jortel@redhat.com> 2.1.0-0.7.alpha
-- Pulp rebuild
-
-* Tue Feb 12 2013 Jeff Ortel <jortel@redhat.com> 2.1.0-0.5.alpha
-- Pulp rebuild
-
-* Tue Feb 12 2013 Jeff Ortel <jortel@redhat.com> 2.1.0-0.4.alpha
 - 700945 - Include changelog and filelist info as part of rpm metadata
   (pkilambi@redhat.com)
-
-* Tue Feb 05 2013 Jeff Ortel <jortel@redhat.com> 2.1.0-0.3.alpha
-- Pulp rebuild
-
-* Tue Feb 05 2013 Jeff Ortel <jortel@redhat.com> 2.1.0-0.2.alpha
 - 782490 - include the distributor config key as part of key list
   (pkilambi@redhat.com)
 - 876725 - minor update to effectively use details.get (skarmark@redhat.com)
@@ -1019,8 +730,6 @@ A collection of yum plugins supplementing Pulp consumer operations.
   (jason.dobies@redhat.com)
 - 876725 - adding support for best effort install of content and unit tests
   (skarmark@redhat.com)
-
-* Sat Jan 19 2013 Jeff Ortel <jortel@redhat.com> 2.1.0-0.1.alpha
 - 894467 - Fixed incorrect validation for proxy port (jason.dobies@redhat.com)
 - 891423 - fix pkg group and category copy (pkilambi@redhat.com)
 - 891731 - fix the metadata for uploaded rpms to remove relaptive paths from
@@ -1101,13 +810,7 @@ A collection of yum plugins supplementing Pulp consumer operations.
 - 875163 - use group as the xml filename when generating comps so modifyrepo
   uses that as type id which yum expects (pkilambi@redhat.com)
 
-* Thu Dec 20 2012 Jeff Ortel <jortel@redhat.com> 2.0.6-0.19.rc
-- Pulp rebuild
-
-* Wed Dec 19 2012 Jeff Ortel <jortel@redhat.com> 2.0.6-0.19.beta
-- Pulp rebuild
-
-* Tue Dec 18 2012 Jeff Ortel <jortel@redhat.com> 2.0.6-0.18.beta
+* Thu Dec 20 2012 Jeff Ortel <jortel@redhat.com> 2.0.6-1
 - 887959 - Removing NameVirtualHost entries from plugin httpd conf files and
   adding it only at one place in main pulp.conf (skarmark@redhat.com)
 - 886240 - fixing distribution sync and publish * set the distro location when
@@ -1128,14 +831,10 @@ A collection of yum plugins supplementing Pulp consumer operations.
   it ends with .gz, even if comes from 'groups' data and not 'group_gz'
   (jmatthews@redhat.com)
 - 887123 - Process --verify-feed-ssl as a boolan. (rbarlow@redhat.com)
-
-* Thu Dec 13 2012 Jeff Ortel <jortel@redhat.com> 2.0.6-0.17.beta
 - 887026 - The yum distributor should not have been storing this value in
   server.conf. (jason.dobies@redhat.com)
 - 886986 - Default to verifying feed SSL certificates. (rbarlow@redhat.com)
 - 885264 - bump grinder requires to: 0.1.11-1. (jortel@redhat.com)
-
-* Thu Dec 13 2012 Jeff Ortel <jortel@redhat.com> 2.0.6-0.15.beta
 - 886240 - repo sync for a repo created with a feed of /var/lib/pulp of another
   repo results in less number of contents than the original repo
   (jmatthews@redhat.com)
@@ -1144,14 +843,7 @@ A collection of yum plugins supplementing Pulp consumer operations.
   for pagination of package metadata (jmatthews@redhat.com)
 - 857528 - Added missing feed message to the progress report so the client sees
   it (jason.dobies@redhat.com)
-
-* Mon Dec 10 2012 Jeff Ortel <jortel@redhat.com> 2.0.6-0.14.beta
 - 885264 - require grinder 0.1.10 (jortel@redhat.com)
-
-* Fri Dec 07 2012 Jeff Ortel <jortel@redhat.com> 2.0.6-0.13.beta
-- Pulp rebuild
-
-* Thu Dec 06 2012 Jeff Ortel <jortel@redhat.com> 2.0.6-0.12.beta
 - 881355 - fixed errata install CLI result parsing. (jortel@redhat.com)
 - 882421 - moving remove() method into the platform library so it can be used
   by other extension families (mhrivnak@redhat.com)
@@ -1168,11 +860,6 @@ A collection of yum plugins supplementing Pulp consumer operations.
 - 880391 - added remove distribution cli command (skarmark@redhat.com)
 - 877161 - importer side of changes to orphan distribution units
   (pkilambi@redhat.com)
-
-* Thu Nov 29 2012 Jeff Ortel <jortel@redhat.com> 2.0.6-0.11.beta
-- Pulp rebuild
-
-* Thu Nov 29 2012 Jeff Ortel <jortel@redhat.com> 2.0.6-0.10.beta
 - 877047 - if a file already exists, do not try to create a symlink
   (pkilambi@redhat.com)
 - 881639 - fix error message when binding does not exist. (jortel@redhat.com)
@@ -1183,11 +870,6 @@ A collection of yum plugins supplementing Pulp consumer operations.
 - 858855 - Directory created at runtime but included here so that it's cleaned
   up when rpm plugins are uninstalled. (jortel@redhat.com)
 - 862290 - Added support for non-RPM repo listing (jason.dobies@redhat.com)
-
-* Mon Nov 26 2012 Jay Dobies <jason.dobies@redhat.com> 2.0.6-0.9.beta
-- Pulp rebuild
-
-* Tue Nov 20 2012 Jeff Ortel <jortel@redhat.com> 2.0.6-0.3.beta
 - 878548 - Added empty conf files for the plugins in case we need to tell users
   to edit them in the future. I'd have liked to add comments about possible
   values, but comments aren't supported in JSON. (jason.dobies@redhat.com)
@@ -1200,9 +882,3 @@ A collection of yum plugins supplementing Pulp consumer operations.
 - 875163 - use group as the xml filename when generating comps so modifyrepo
   uses that as type id which yum expects (pkilambi@redhat.com)
 - 876174 - Migrated over missing consumer commands (jason.dobies@redhat.com)
-
-* Mon Nov 12 2012 Jeff Ortel <jortel@redhat.com> 2.0.6-0.2.beta
-- Pulp rebuild
-
-* Mon Nov 12 2012 Jeff Ortel <jortel@redhat.com> 2.0.6-0.1.beta
-- Pulp rebuild
