@@ -5,13 +5,12 @@ from rhsm.profile import get_profile
 from pulp.bindings.server import PulpConnection
 from pulp.bindings.bindings import Bindings
 from pulp.common.bundle import Bundle as BundleImpl
-from pulp.common.config import Config
+from pulp.client.consumer.config import read_config
 
 
 requires_api_version = '2.5'
 plugin_type = (TYPE_CORE,)
-cfg = Config('/etc/pulp/consumer/consumer.conf')
-cfg = cfg.graph()
+cfg = read_config()
 
 #
 # Pulp Integration
@@ -24,8 +23,8 @@ class Bundle(BundleImpl):
 
     def __init__(self):
         path = os.path.join(
-            cfg.filesystem.id_cert_dir,
-            cfg.filesystem.id_cert_filename)
+            cfg['filesystem']['id_cert_dir'],
+            cfg['filesystem']['id_cert_filename'])
         BundleImpl.__init__(self, path)
 
 
@@ -35,11 +34,11 @@ class PulpBindings(Bindings):
     """
 
     def __init__(self):
-        host = cfg.server.host
-        port = int(cfg.server.port)
+        host = cfg['server']['host']
+        port = int(cfg['server']['port'])
         cert = os.path.join(
-            cfg.filesystem.id_cert_dir,
-            cfg.filesystem.id_cert_filename)
+            cfg['filesystem']['id_cert_dir'],
+            cfg['filesystem']['id_cert_filename'])
         connection = PulpConnection(host, port, cert_filename=cert)
         Bindings.__init__(self, connection)
 
