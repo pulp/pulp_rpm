@@ -1068,7 +1068,7 @@ class TestTreeinfoSync(BaseSyncTest):
                                            mock_report, mock_parse_treefile, mock_get_treefile,
                                            mock_move, mock_chmod):
         mock_model = models.Distribution('fake family', 'server', '3.11', 'baroque', metadata={})
-        mock_parse_treefile.return_value = (mock_model, "fake files")
+        mock_parse_treefile.return_value = (mock_model, ["fake file 1"])
         mock_get_treefile.return_value = "/a/fake/path/to/the/treefile"
         treeinfo.sync(self.conduit, "http://some/url", "/some/tempdir", "fake-nectar-conf",
                       mock_report, lambda x: x)
@@ -1086,7 +1086,7 @@ class TestTreeinfoSync(BaseSyncTest):
         self.conduit.get_units.return_value = [mock_unit]
         self.conduit.init_unit = mock.MagicMock(spec_set=self.conduit.init_unit)
         self.conduit.init_unit.return_value = mock_unit
-        mock_parse_treefile.return_value = (mock_model, "fake files")
+        mock_parse_treefile.return_value = (mock_model, ["fake file 1"])
         mock_get_treefile.return_value = "/a/fake/path/to/the/treefile"
         treeinfo.sync(self.conduit, "http://some/url", "/some/tempdir", "fake-nectar-conf",
                       mock_report, lambda x: x)
@@ -1108,7 +1108,7 @@ class TestTreeinfoSync(BaseSyncTest):
         self.conduit.get_units.return_value = [mock_unit, mock_unit_old]
         self.conduit.init_unit = mock.MagicMock(spec_set=self.conduit.init_unit)
         self.conduit.init_unit.return_value = mock_unit
-        mock_parse_treefile.return_value = (mock_model, "fake files")
+        mock_parse_treefile.return_value = (mock_model, ["fake file 1"])
         mock_get_treefile.return_value = "/a/fake/path/to/the/treefile"
         treeinfo.sync(self.conduit, "http://some/url", "/some/tempdir", "fake-nectar-conf",
                       mock_report, lambda x: x)
