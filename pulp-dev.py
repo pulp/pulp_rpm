@@ -4,6 +4,9 @@ import optparse
 import os
 import sys
 
+from pulp.devel import environment
+
+
 WARNING_COLOR = '\033[31m'
 WARNING_RESET = '\033[0m'
 
@@ -15,6 +18,8 @@ WARNING_RESET = '\033[0m'
 
 # Standard directories
 DIR_PLUGINS = '/usr/lib/pulp/plugins'
+
+ROOT_DIR = os.path.abspath(os.path.dirname(__file__))
 
 DIRS = (
     '/var/lib/pulp/published/yum/http',
@@ -105,6 +110,9 @@ def getlinks():
 
 
 def install(opts):
+    # Install the packages in developer mode
+    environment.manage_setup_pys('install', ROOT_DIR)
+
     warnings = []
     create_dirs(opts)
     currdir = os.path.abspath(os.path.dirname(__file__))
@@ -127,6 +135,9 @@ def uninstall(opts):
             debug(opts, '%s does not exist, skipping' % dst)
             continue
         os.unlink(dst)
+
+    # Uninstall the packages
+    environment.manage_setup_pys('uninstall', ROOT_DIR)
 
     return os.EX_OK
 
