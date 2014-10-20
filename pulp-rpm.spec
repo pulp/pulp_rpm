@@ -275,7 +275,7 @@ A collection of yum plugins supplementing Pulp consumer operations.
 
 
 %changelog
-* Thu Oct 16 2014 Randy Barlow <rbarlow@redhat.com> 2.4.3-0.1.beta
+* Thu Oct 16 2014 Randy Barlow <rbarlow@redhat.com> 2.4.3-1
 - 1103232 - Document importer settings. (rbarlow@redhat.com)
 
 * Mon Oct 13 2014 Chris Duryee <cduryee@redhat.com> 2.4.2-1
