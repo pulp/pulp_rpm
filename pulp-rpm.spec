@@ -14,7 +14,7 @@
 
 Name: pulp-rpm
 Version: 2.5.0
-Release: 0.8.beta%{?dist}
+Release: 0.10.beta%{?dist}
 Summary: Support for RPM content in the Pulp platform
 Group: Development/Languages
 License: GPLv2
@@ -275,6 +275,13 @@ A collection of yum plugins supplementing Pulp consumer operations.
 
 
 %changelog
+* Mon Oct 20 2014 Dennis Kliban <dkliban@redhat.com> 2.5.0-0.10.beta
+- Pulp rebuild
+
+* Mon Oct 20 2014 Dennis Kliban <dkliban@redhat.com> 2.5.0-0.9.beta
+- 1150297 - Replace 2.4.x versions with 2.5.0. (rbarlow@redhat.com)
+- 1103232 - Document importer settings. (rbarlow@redhat.com)
+
 * Thu Oct 16 2014 Randy Barlow <rbarlow@redhat.com> 2.4.3-1
 - 1103232 - Document importer settings. (rbarlow@redhat.com)
 
