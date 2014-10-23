@@ -122,6 +122,70 @@ class TestValidateExportConfig(unittest.TestCase):
         result = export_utils.validate_export_config(PluginCallConfiguration({}, self.repo_config))
         self.assertFalse(result[0])
 
+    def test_none_path(self):
+        # Setup
+        self.repo_config[constants.EXPORT_DIRECTORY_KEYWORD] = None
+
+        # Test
+        result = export_utils.validate_export_config(PluginCallConfiguration({}, self.repo_config))
+        self.assertFalse(result[0])
+
+    def test_none_skip(self):
+        # Setup
+        self.repo_config[constants.SKIP_KEYWORD] = None
+
+        # Test
+        result = export_utils.validate_export_config(PluginCallConfiguration({}, self.repo_config))
+        self.assertFalse(result[0])
+
+    def test_none_iso_prefix(self):
+        # Setup
+        self.repo_config[constants.ISO_PREFIX_KEYWORD] = None
+
+        # Test
+        result = export_utils.validate_export_config(PluginCallConfiguration({}, self.repo_config))
+        self.assertFalse(result[0])
+
+    def test_none_iso_size(self):
+        # Setup
+        self.repo_config[constants.ISO_SIZE_KEYWORD] = None
+
+        # Test
+        result = export_utils.validate_export_config(PluginCallConfiguration({}, self.repo_config))
+        self.assertFalse(result[0])
+
+    def test_none_start_date(self):
+        # Setup
+        self.repo_config[constants.START_DATE_KEYWORD] = None
+
+        # Test
+        result = export_utils.validate_export_config(PluginCallConfiguration({}, self.repo_config))
+        self.assertFalse(result[0])
+
+    def test_none_end_date(self):
+        # Setup
+        self.repo_config[constants.END_DATE_KEYWORD] = None
+
+        # Test
+        result = export_utils.validate_export_config(PluginCallConfiguration({}, self.repo_config))
+        self.assertFalse(result[0])
+
+    def test_none_http(self):
+        # Setup
+        self.repo_config[constants.PUBLISH_HTTP_KEYWORD] = None
+
+        # Test
+        result = export_utils.validate_export_config(PluginCallConfiguration({}, self.repo_config))
+        self.assertFalse(result[0])
+
+    def test_none_https(self):
+        # Setup
+        self.repo_config[constants.PUBLISH_HTTPS_KEYWORD] = None
+
+        # Test
+        result = export_utils.validate_export_config(PluginCallConfiguration({}, self.repo_config))
+        self.assertFalse(result[0])
+
 
 class TestCreateDateRangeFilter(unittest.TestCase):
     """
