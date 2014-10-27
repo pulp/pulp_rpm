@@ -44,21 +44,23 @@ def validate_export_config(config):
     """
     # Check for the required configuration keys, as defined in constants
     for key in constants.EXPORT_REQUIRED_CONFIG_KEYS:
-        value = config.get(key)
-        if value is None:
+        if key not in config.keys():
             msg = _("Missing required configuration key: %(key)s" % {"key": key})
             _logger.error(msg)
             return False, msg
+        value = config.get(key)
+        if value is None:
+            msg = _("Value for %(key)s cannot be None! Insert a valid value." % {"key": key})
+            _logger.error(msg)
+            return False, msg
         if key == constants.PUBLISH_HTTP_KEYWORD:
-            config_http = config.get(key)
-            if config_http is not None and not isinstance(config_http, bool):
-                msg = _("http should be a boolean; got %s instead" % config_http)
+            if not isinstance(value, bool):
+                msg = _("http should be a boolean; got %s instead" % value)
                 _logger.error(msg)
                 return False, msg
         if key == constants.PUBLISH_HTTPS_KEYWORD:
-            config_https = config.get(key)
-            if config_https is not None and not isinstance(config_https, bool):
-                msg = _("https should be a boolean; got %s instead" % config_https)
+            if not isinstance(value, bool):
+                msg = _("https should be a boolean; got %s instead" % value)
                 _logger.error(msg)
                 return False, msg
 
@@ -69,44 +71,41 @@ def validate_export_config(config):
             msg = _("Configuration key '%(key)s' is not supported" % {"key": key})
             _logger.error(msg)
             return False, msg
+        value = config.get(key)
+        if value is None:
+            msg = _("Value for %(key)s cannot be None! Insert a valid value." % {"key": key})
+            _logger.error(msg)
+            return False, msg
         if key == constants.SKIP_KEYWORD:
-            metadata_types = config.get(key)
-            if metadata_types is not None and not isinstance(metadata_types, list):
-                msg = _("skip should be a list; got %s instead" % metadata_types)
+            if not isinstance(value, list):
+                msg = _("skip should be a list; got %s instead" % value)
                 _logger.error(msg)
                 return False, msg
         if key == constants.ISO_PREFIX_KEYWORD:
-            iso_prefix = config.get(key)
-            if iso_prefix is not None and not is_valid_prefix(str(iso_prefix)):
+            if not is_valid_prefix(str(value)):
                 msg = _("iso_prefix is not valid; valid characters include %s" % ISO_NAME_REGEX.pattern)
                 _logger.error(msg)
                 return False, msg
         if key == constants.ISO_SIZE_KEYWORD:
-            iso_size = config.get(key)
-            if iso_size is not None and int(iso_size) < 1:
+            if int(value) < 1:
                 msg = _('iso_size is not a positive integer')
                 _logger.error(msg)
                 return False, msg
         if key == constants.START_DATE_KEYWORD:
-            start_date = config.get(key)
-            if start_date:
                 try:
-                    dateutils.parse_iso8601_datetime(str(start_date))
+                    dateutils.parse_iso8601_datetime(str(value))
                 except isodate.ISO8601Error:
                     msg = _('Start date is not a valid iso8601 datetime. Format: yyyy-mm-ddThh:mm:ssZ')
                     return False, msg
         if key == constants.END_DATE_KEYWORD:
-            end_date = config.get(key)
-            if end_date:
                 try:
-                    dateutils.parse_iso8601_datetime(str(end_date))
+                    dateutils.parse_iso8601_datetime(str(value))
                 except isodate.ISO8601Error:
                     msg = _('End date is not a valid iso8601 datetime. Format: yyyy-mm-ddThh:mm:ssZ')
                     return False, msg
         if key == constants.EXPORT_DIRECTORY_KEYWORD:
-            export_dir = config.get(key)
-            if not os.path.isabs(export_dir):
-                msg = _("Value for 'export_dir' must be an absolute path: %s" % export_dir)
+            if not os.path.isabs(value):
+                msg = _("Value for 'export_dir' must be an absolute path: %s" % value)
                 return False, msg
 
     return True, None

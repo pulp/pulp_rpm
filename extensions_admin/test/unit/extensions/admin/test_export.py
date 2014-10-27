@@ -166,11 +166,6 @@ class TestRepoGroupExportRunCommand(PulpClientTests):
         expected_publish_config = {
             constants.PUBLISH_HTTP_KEYWORD: True,
             constants.PUBLISH_HTTPS_KEYWORD: True,
-            constants.ISO_PREFIX_KEYWORD: None,
-            constants.ISO_SIZE_KEYWORD: None,
-            constants.START_DATE_KEYWORD: None,
-            constants.END_DATE_KEYWORD: None,
-            constants.EXPORT_DIRECTORY_KEYWORD: None,
         }
 
         # Test

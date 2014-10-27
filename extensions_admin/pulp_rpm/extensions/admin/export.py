@@ -157,6 +157,11 @@ class RpmGroupExportCommand(PollingCommand):
             constants.EXPORT_DIRECTORY_KEYWORD: export_dir,
         }
 
+        # Remove keys from the config that have None value.
+        for key,value in publish_config.items():
+            if value is None:
+                del publish_config[key]
+
         self.prompt.render_title(_('Exporting Repository Group [%s]' % group_id))
 
         # Retrieve all publish tasks for this repository group

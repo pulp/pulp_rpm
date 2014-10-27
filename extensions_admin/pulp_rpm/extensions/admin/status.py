@@ -228,7 +228,7 @@ class RpmStatusRenderer(StatusRenderer):
 
                     for i in range(0, num_errors):
                         error = data['error_details'][i]
-                        if error[constants.ERROR_CODE] == constants.ERROR_CHECKSUM_TYPE_UNKNOWN:
+                        if error.get(constants.ERROR_CODE) == constants.ERROR_CHECKSUM_TYPE_UNKNOWN:
                             message_data = {
                                 'name': error[constants.NAME],
                                 'checksum_type': error[constants.CHECKSUM_TYPE],
@@ -237,14 +237,14 @@ class RpmStatusRenderer(StatusRenderer):
                             template = _('Package: %(name)s\nError: An invalid checksum type '
                                          '(%(checksum_type)s) was detected.\n'
                                          'Accepted checksum types: %(accepted)s')
-                        elif error[constants.ERROR_CODE] == constants.ERROR_CHECKSUM_VERIFICATION:
+                        elif error.get(constants.ERROR_CODE) == constants.ERROR_CHECKSUM_VERIFICATION:
                             message_data = {
                                 'name': error[constants.NAME],
                             }
                             template = _('Package: %(name)s\nError: An invalid checksum was '
                                          'detected.')
 
-                        elif error[constants.ERROR_CODE] == constants.ERROR_SIZE_VERIFICATION:
+                        elif error.get(constants.ERROR_CODE) == constants.ERROR_SIZE_VERIFICATION:
                             message_data = {
                                 'name': error[constants.NAME],
                             }
