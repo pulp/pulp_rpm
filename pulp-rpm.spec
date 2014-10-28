@@ -14,7 +14,7 @@
 
 Name: pulp-rpm
 Version: 2.5.0
-Release: 0.14.beta%{?dist}
+Release: 0.12.beta%{?dist}
 Summary: Support for RPM content in the Pulp platform
 Group: Development/Languages
 License: GPLv2
@@ -275,15 +275,23 @@ A collection of yum plugins supplementing Pulp consumer operations.
 
 
 %changelog
-* Tue Oct 28 2014 Dennis Kliban <dkliban@redhat.com> 2.5.0-0.14.beta
-- Pulp rebuild
-
-* Tue Oct 28 2014 Dennis Kliban <dkliban@redhat.com> 2.5.0-0.13.beta
-- Pulp rebuild
-
 * Mon Oct 27 2014 Randy Barlow <rbarlow@redhat.com> 2.5.0-0.12.beta
+- Pulp rebuild
+
+* Mon Oct 20 2014 Dennis Kliban <dkliban@redhat.com> 2.5.0-0.10.beta
+- Pulp rebuild
+
+* Mon Oct 20 2014 Dennis Kliban <dkliban@redhat.com> 2.5.0-0.9.beta
 - 1150297 - Replace 2.4.x versions with 2.5.0. (rbarlow@redhat.com)
 - 1103232 - Document importer settings. (rbarlow@redhat.com)
+
+* Thu Oct 16 2014 Randy Barlow <rbarlow@redhat.com> 2.4.3-1
+- 1103232 - Document importer settings. (rbarlow@redhat.com)
+
+* Mon Oct 13 2014 Chris Duryee <cduryee@redhat.com> 2.4.2-1
+- 1150714 - delete old distribution units when syncing (cduryee@redhat.com)
+
+* Sun Oct 12 2014 Chris Duryee <cduryee@redhat.com> 2.5.0-0.8.beta
 - 1150714 - delete old distribution units when syncing (cduryee@redhat.com)
 - 1049492 - Add docs for the yum_repo_metadata_file. (rbarlow@redhat.com)
 - 1139888 - Document the default for validate. (rbarlow@redhat.com)
@@ -314,12 +322,6 @@ A collection of yum plugins supplementing Pulp consumer operations.
 - 1118501 - updating logic to form consumer profile lookup table with the
   newest rpm, so that in case of multiple packages with same name and arch,
   applicability logic does not fail (skarmark@redhat.com)
-
-* Thu Oct 16 2014 Randy Barlow <rbarlow@redhat.com> 2.4.3-1
-- 1103232 - Document importer settings. (rbarlow@redhat.com)
-
-* Mon Oct 13 2014 Chris Duryee <cduryee@redhat.com> 2.4.2-1
-- 1150714 - delete old distribution units when syncing (cduryee@redhat.com)
 
 * Tue Sep 23 2014 Randy Barlow <rbarlow@redhat.com> 2.4.1-1
 - 1131260 - Add verify_ssl to repo_auth.conf. (rbarlow@redhat.com)
