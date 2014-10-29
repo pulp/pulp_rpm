@@ -1,0 +1,18 @@
+======================
+Pulp 2.5 Release Notes
+======================
+
+Pulp 2.5.1
+==========
+
+Bug Fixes
+---------
+
+The 2.5.1 release is a minor bugfix release. You can see the list of bugs that were fixed
+`here <https://bugzilla.redhat.com/buglist.cgi?bug_status=VERIFIED&bug_status=RELEASE_PENDING&bug_status=CLOSED&classification=Community&component=iso-support&component=rpm-support&list_id=2768109&product=Pulp&query_format=advanced&target_release=2.5.1>`_.
+
+`Bug #1153378 <https://bugzilla.redhat.com/show_bug.cgi?id=1153378>`_ was addressed in 2.5.1. If
+you have older (circa 2009) yum clients that fail in a way similar to what is described
+`in this bug <https://bugzilla.redhat.com/show_bug.cgi?id=647828#c1>`_, you may want to temporarily
+re-enable ``SSLInsecureRenegotation`` under ``/etc/httpd/conf.d/pulp_rpm.conf`` until your client
+systems have been updated.
