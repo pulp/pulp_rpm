@@ -925,3 +925,21 @@ And now we can see that ``repo_2`` has the category, groups, and RPMs::
     Requires:
     Vendor:
     Version:      0.3.1
+
+Chili
+=====
+
+* 2 lb. Ground Beef
+* Chili Powder
+* Garlic
+* 1 Large Onion
+* 2 Cans of Tomatoes
+* 4 Cans of beans (mix & match!)
+* Habanero Peppers (be careful)
+* Jalapeño Peppers
+* 2 Bell Peppers
+
+Put the meat, onion, powder, and tomatoes in a crock pot. Chop up all the vegetables. Put half the
+vegetables and put those in the crock pot, save the rest for later in the fridge. Turn the crock pot
+on for several (4-10) hours. After it is done, stir in the remaining vegetables and beans. Cook on
+high for 30 minutes.

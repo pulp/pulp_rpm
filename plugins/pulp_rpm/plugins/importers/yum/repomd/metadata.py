@@ -87,12 +87,14 @@ class MetadataFiles(object):
     :ivar metadata: dictionary of the main metadata type keys to the corresponding file paths
     """
 
-    # these are metadata file types listed in "repomd" that we do not want to
-    # store as units
+    # These are metadata file types listed in "repomd" that we do not want to store as units.
+    # deltainfo and susedata are SUSE specific files that we need to ignore for now, as there's no
+    # handling yet and copying them creates broken SUSE repos.
     KNOWN_TYPES = set(['group', 'group_gz',
                    'filelists', 'filelists_db',
                    'other', 'other_db',
                    'primary', 'primary_db',
+                   'deltainfo', 'susedata',
                    'updateinfo', 'updateinfo_db'])
 
     def __init__(self, repo_url, dst_dir, nectar_config):
