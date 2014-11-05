@@ -7,10 +7,6 @@ import sys
 from pulp.devel import environment
 
 
-WARNING_COLOR = '\033[31m'
-WARNING_RESET = '\033[0m'
-
-#
 # Str entry assumes same src and dst relative path.
 # Tuple entry is explicit (src, dst)
 #
@@ -29,7 +25,6 @@ DIRS = (
 LINKS = (
     # RPM Support Configuration
     ('plugins/etc/httpd/conf.d/pulp_rpm.conf', '/etc/httpd/conf.d/pulp_rpm.conf'),
-    ('plugins/etc/pulp/repo_auth.conf', '/etc/pulp/repo_auth.conf'),
     ('handlers/etc/pulp/agent/conf.d/rpm.conf', '/etc/pulp/agent/conf.d/rpm.conf'),
     ('handlers/etc/pulp/agent/conf.d/bind.conf', '/etc/pulp/agent/conf.d/bind.conf'),
     ('handlers/etc/pulp/agent/conf.d/linux.conf', '/etc/pulp/agent/conf.d/linux.conf'),
@@ -43,6 +38,12 @@ LINKS = (
     # RPM Support Web Configuration
     ('handlers/usr/lib/yum-plugins/pulp-profile-update.py', '/usr/lib/yum-plugins/pulp-profile-update.py'),
     ('plugins/srv/pulp/repo_auth.wsgi', '/srv/pulp/repo_auth.wsgi'),
+)
+
+
+PATHS_TO_COPY = (
+    {'source': 'plugins/etc/pulp/repo_auth.conf', 'destination': '/etc/pulp/repo_auth.conf',
+     'owner': 'root', 'group': 'root', 'mode': '644', 'overwrite': False},
 )
 
 
@@ -77,22 +78,12 @@ def parse_cmdline():
     return (opts, args)
 
 
-def warning(msg):
-    print "%s%s%s" % (WARNING_COLOR, msg, WARNING_RESET)
-
-
-def debug(opts, msg):
-    if not opts.debug:
-        return
-    sys.stderr.write('%s\n' % msg)
-
-
 def create_dirs(opts):
     for d in DIRS:
         if os.path.exists(d) and os.path.isdir(d):
-            debug(opts, 'skipping %s exists' % d)
+            environment.debug(opts, 'skipping %s exists' % d)
             continue
-        debug(opts, 'creating directory: %s' % d)
+        environment.debug(opts, 'creating directory: %s' % d)
         os.makedirs(d, 0777)
 
 
@@ -121,20 +112,24 @@ def install(opts):
         if warning_msg:
             warnings.append(warning_msg)
 
+    environment.copy_files(PATHS_TO_COPY, opts)
+
     if warnings:
         print "\n***\nPossible problems:  Please read below\n***"
         for w in warnings:
-            warning(w)
+            environment.warning(w)
     return os.EX_OK
 
 
 def uninstall(opts):
     for src, dst in getlinks():
-        debug(opts, 'removing link: %s' % dst)
+        environment.debug(opts, 'removing link: %s' % dst)
         if not os.path.islink(dst):
-            debug(opts, '%s does not exist, skipping' % dst)
+            environment.debug(opts, '%s does not exist, skipping' % dst)
             continue
         os.unlink(dst)
+
+    environment.uninstall_files(PATHS_TO_COPY, opts)
 
     # Uninstall the packages
     environment.manage_setup_pys('uninstall', ROOT_DIR)
@@ -150,7 +145,7 @@ def create_link(opts, src, dst):
         return "[%s] is not a symbolic link as we expected, please adjust if this is not what you intended." % (dst)
 
     if not os.path.exists(os.readlink(dst)):
-        warning('BROKEN LINK: [%s] attempting to delete and fix it to point to %s.' % (dst, src))
+        environment.warning('BROKEN LINK: [%s] attempting to delete and fix it to point to %s.' % (dst, src))
         try:
             os.unlink(dst)
             return _create_link(opts, src, dst)
@@ -158,7 +153,7 @@ def create_link(opts, src, dst):
             msg = "[%s] was a broken symlink, failed to delete and relink to [%s], please fix this manually" % (dst, src)
             return msg
 
-    debug(opts, 'verifying link: %s points to %s' % (dst, src))
+    environment.debug(opts, 'verifying link: %s points to %s' % (dst, src))
     dst_stat = os.stat(dst)
     src_stat = os.stat(src)
     if dst_stat.st_ino != src_stat.st_ino:
@@ -167,7 +162,7 @@ def create_link(opts, src, dst):
 
 
 def _create_link(opts, src, dst):
-        debug(opts, 'creating link: %s pointing to %s' % (dst, src))
+        environment.debug(opts, 'creating link: %s pointing to %s' % (dst, src))
         try:
             os.symlink(src, dst)
         except OSError, e:
