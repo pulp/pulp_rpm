@@ -14,7 +14,7 @@
 
 Name: pulp-rpm
 Version: 2.5.0
-Release: 0.16.rc%{?dist}
+Release: 0.17.rc%{?dist}
 Summary: Support for RPM content in the Pulp platform
 Group: Development/Languages
 License: GPLv2
@@ -275,6 +275,15 @@ A collection of yum plugins supplementing Pulp consumer operations.
 
 
 %changelog
+* Thu Nov 06 2014 asmacdo <asmacdo@gmail.com> 2.5.0-0.17.rc
+- 1155192 - Fix certificate verification error when set to False
+  (contact@andreagiardini.com)
+- 1153378 - remove SSLInsecureRenegotation from pulp_rpm.conf
+  (cduryee@redhat.com)
+- 1151490 - Repo group publish  fails with NoneType error (ipanova@redhat.com)
+- 1138475 - yum distributor now always includes "description" element for
+  errata (mhrivnak@redhat.com)
+
 * Mon Nov 03 2014 asmacdo <asmacdo@gmail.com> 2.5.0-0.16.rc
 - Pulp rebuild
 
