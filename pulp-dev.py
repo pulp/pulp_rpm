@@ -85,6 +85,7 @@ def create_dirs(opts):
             continue
         environment.debug(opts, 'creating directory: %s' % d)
         os.makedirs(d, 0777)
+    os.system('chown -R apache:apache /var/lib/pulp/published')
 
 
 def getlinks():
