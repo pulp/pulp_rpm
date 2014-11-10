@@ -14,7 +14,7 @@
 
 Name: pulp-rpm
 Version: 2.5.0
-Release: 0.17.rc%{?dist}
+Release: 0.18.rc%{?dist}
 Summary: Support for RPM content in the Pulp platform
 Group: Development/Languages
 License: GPLv2
@@ -275,6 +275,9 @@ A collection of yum plugins supplementing Pulp consumer operations.
 
 
 %changelog
+* Mon Nov 10 2014 asmacdo <asmacdo@gmail.com> 2.5.0-0.18.rc
+- Pulp rebuild
+
 * Thu Nov 06 2014 asmacdo <asmacdo@gmail.com> 2.5.0-0.17.rc
 - 1155192 - Fix certificate verification error when set to False
   (contact@andreagiardini.com)
