@@ -21,7 +21,7 @@ from pulp.server.exceptions import InvalidValue, PulpCodedException
 from pulp_rpm.common import constants
 from pulp_rpm.common.ids import (
     TYPE_ID_PKG_GROUP, TYPE_ID_PKG_CATEGORY, TYPE_ID_DISTRO, TYPE_ID_DRPM, TYPE_ID_RPM,
-    TYPE_ID_YUM_REPO_METADATA_FILE, YUM_DISTRIBUTOR_ID)
+    TYPE_ID_YUM_REPO_METADATA_FILE, YUM_DISTRIBUTOR_ID, EXPORT_DISTRIBUTOR_ID)
 from pulp_rpm.plugins.distributors.yum import configuration, publish
 
 
@@ -158,7 +158,7 @@ class BaseYumRepoPublisherTests(BaseYumDistributorPublishTests):
         mock_publish_comps.assert_called_once()
         mock_generate_sqlite.assert_called_once()
 
-        #Ensure that the publish cleaned up after itself
+        # Ensure that the publish cleaned up after itself
         self.assertFalse(os.path.exists(self.publisher.working_dir))
 
     @mock.patch('pulp_rpm.plugins.distributors.yum.publish.configuration.get_repo_checksum_type')
@@ -196,8 +196,8 @@ class ExportRepoPublisherTests(BaseYumDistributorPublishStepTests):
         self.assertEquals(step.children[1].association_filters, 'foo')
 
     @mock.patch('pulp_rpm.plugins.distributors.yum.publish.export_utils.create_date_range_filter')
-    def test_init_with_iso_export_dir(self, mock_export_utils):
-        mock_export_utils.return_value = None
+    def test_init_with_date_and_iso(self, mock_export_utils):
+        mock_export_utils.return_value = 'foo'
         config = PluginCallConfiguration(None, None)
         step = publish.ExportRepoPublisher(self.publisher.get_repo(),
                                            self.publisher.get_conduit(),
@@ -208,12 +208,15 @@ class ExportRepoPublisherTests(BaseYumDistributorPublishStepTests):
         self.assertTrue(isinstance(step.children[-2], publish.CreateIsoStep))
         self.assertTrue(isinstance(step.children[-1], publish.AtomicDirectoryPublishStep))
 
+        self.assertEquals(step.children[0].association_filters, 'foo')
+        self.assertEquals(step.children[1].association_filters, 'foo')
+
 
 class ExportRepoGroupPublisherTests(BaseYumDistributorPublishStepTests):
 
     @mock.patch('pulp_rpm.plugins.distributors.yum.publish.RepoQueryManager')
     @mock.patch('pulp_rpm.plugins.distributors.yum.publish.export_utils.create_date_range_filter')
-    def test_init_with_export_dir(self, mock_export_utils, mock_query_manager):
+    def test_init_with_date_and_export_dir(self, mock_export_utils, mock_query_manager):
         mock_export_utils.return_value = 'foo'
         export_dir = 'flux'
         config = PluginCallConfiguration(None, {constants.EXPORT_DIRECTORY_KEYWORD: export_dir})
@@ -221,7 +224,7 @@ class ExportRepoGroupPublisherTests(BaseYumDistributorPublishStepTests):
                                working_dir=self.working_dir)
         mock_query_manager.return_value.find_by_id_list.return_value = [{
             u'id': 'foo',
-            u'display_name': 'bar',
+            u'display_name': 'foo',
             u'description': 'description',
             u'notes': {'_repo-type': 'rpm-repo'},
             u'content_unit_counts': {'rpm': 1}
@@ -236,21 +239,54 @@ class ExportRepoGroupPublisherTests(BaseYumDistributorPublishStepTests):
         step = publish.ExportRepoGroupPublisher(repo_group,
                                                 self.publisher.get_conduit(),
                                                 config,
-                                                YUM_DISTRIBUTOR_ID)
+                                                EXPORT_DISTRIBUTOR_ID)
 
         self.assertTrue(isinstance(step.children[0], publish.ExportRepoPublisher))
         self.assertEquals(len(step.children), 1)
 
+        self.assertEquals(step.children[0].children[0].association_filters, 'foo')
+        self.assertEquals(step.children[0].children[1].association_filters, 'foo')
+
+    @mock.patch('pulp_rpm.plugins.distributors.yum.publish.RepoQueryManager')
+    def test_init_with_empty_repos_export_dir(self, mock_query_manager):
+        export_dir = 'flux'
+        config = PluginCallConfiguration(None, {constants.EXPORT_DIRECTORY_KEYWORD: export_dir})
+        repo_group = mock.Mock(repo_ids=[],
+                               working_dir=self.working_dir)
+        mock_query_manager.return_value.find_by_id_list.return_value = []
+        step = publish.ExportRepoGroupPublisher(repo_group,
+                                                self.publisher.get_conduit(),
+                                                config,
+                                                EXPORT_DISTRIBUTOR_ID)
+
+        self.assertTrue(isinstance(step.children[0], publish.GenerateListingFileStep))
+        self.assertEquals(len(step.children), 1)
+
+    @mock.patch('pulp_rpm.plugins.distributors.yum.publish.RepoQueryManager')
+    def test_init_with_empty_repos_iso(self, mock_query_manager):
+        config = PluginCallConfiguration(None, {})
+        repo_group = mock.Mock(repo_ids=[],
+                               working_dir=self.working_dir)
+        mock_query_manager.return_value.find_by_id_list.return_value = []
+        step = publish.ExportRepoGroupPublisher(repo_group,
+                                                self.publisher.get_conduit(),
+                                                config,
+                                                EXPORT_DISTRIBUTOR_ID)
+        self.assertTrue(isinstance(step.children[0], publish.GenerateListingFileStep))
+        self.assertTrue(isinstance(step.children[1], publish.CreateIsoStep))
+        self.assertTrue(isinstance(step.children[2], publish.AtomicDirectoryPublishStep))
+        self.assertEquals(len(step.children), 3)
+
     @mock.patch('pulp_rpm.plugins.distributors.yum.publish.RepoQueryManager')
     @mock.patch('pulp_rpm.plugins.distributors.yum.publish.export_utils.create_date_range_filter')
-    def test_init_with_iso(self, mock_export_utils, mock_query_manager):
+    def test_init_with_date_and_iso(self, mock_export_utils, mock_query_manager):
         mock_export_utils.return_value = 'foo'
         config = PluginCallConfiguration(None, {})
         repo_group = mock.Mock(repo_ids=['foo', 'bar'],
                                working_dir=self.working_dir)
         mock_query_manager.return_value.find_by_id_list.return_value = [{
             u'id': 'foo',
-            u'display_name': 'bar',
+            u'display_name': 'foo',
             u'description': 'description',
             u'notes': {'_repo-type': 'rpm-repo'},
             u'content_unit_counts': {'rpm': 1}
@@ -258,12 +294,15 @@ class ExportRepoGroupPublisherTests(BaseYumDistributorPublishStepTests):
         step = publish.ExportRepoGroupPublisher(repo_group,
                                                 self.publisher.get_conduit(),
                                                 config,
-                                                YUM_DISTRIBUTOR_ID)
+                                                EXPORT_DISTRIBUTOR_ID)
 
         self.assertTrue(isinstance(step.children[0], publish.ExportRepoPublisher))
         self.assertTrue(isinstance(step.children[1], publish.CreateIsoStep))
         self.assertTrue(isinstance(step.children[2], publish.AtomicDirectoryPublishStep))
         self.assertEquals(len(step.children), 3)
+
+        self.assertEquals(step.children[0].children[0].association_filters, 'foo')
+        self.assertEquals(step.children[0].children[1].association_filters, 'foo')
 
 
 class PublisherTests(BaseYumDistributorPublishStepTests):
@@ -340,7 +379,6 @@ class PublisherTests(BaseYumDistributorPublishStepTests):
                                  self.publisher.get_conduit(),
                                  config, YUM_DISTRIBUTOR_ID)
         self.assertFalse(isinstance(step.children[0], publish.CopyDirectoryStep))
-
 
     @mock.patch('pulp_rpm.plugins.distributors.yum.publish.configuration.get_http_publish_dir')
     def test_init_incremental_publish_from_http_dir(self, mock_get_http_dir):
@@ -446,8 +484,8 @@ class PublishCompsStepTests(BaseYumDistributorPublishStepTests):
         step.parent = self.publisher
         step.comps_context = mock.Mock()
         self.publisher.get_conduit().get_units = mock.Mock(side_effect=[['foo', 'bar'],
-                                                                          ['baz', 'qux'],
-                                                                          ['quux', 'waldo']])
+                                                                        ['baz', 'qux'],
+                                                                        ['quux', 'waldo']])
 
         unit_list = [x.unit for x in step.get_unit_generator()]
         self.assertEquals(unit_list, ['foo', 'bar', 'baz', 'qux', 'quux', 'waldo'])
@@ -744,7 +782,7 @@ class PublishDistributionStepTests(BaseYumDistributorPublishStepTests):
         step = publish.PublishDistributionStep()
         step.parent = self.publisher
         step._publish_distribution_files(unit)
-        #This would throw an exception if it didn't work properly
+        # This would throw an exception if it didn't work properly
 
     def test_publish_distribution_packages_link_with_packagedir(self):
         unit = self._generate_distribution_unit('one', {'packagedir': 'Server'})

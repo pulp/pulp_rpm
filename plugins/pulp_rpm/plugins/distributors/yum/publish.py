@@ -186,7 +186,9 @@ class ExportRepoGroupPublisher(PublishStep):
         query_manager = RepoQueryManager()
 
         repos = query_manager.find_by_id_list(repo_group.repo_ids)
+        empty_repos = True
         for repo in repos:
+            empty_repos = False
             repo = common_utils.to_transfer_repo(repo)
             # Make sure we only publish rpm repo's
             if repo.notes['_repo-type'] != 'rpm-repo':
@@ -199,6 +201,9 @@ class ExportRepoGroupPublisher(PublishStep):
                                             distributor_type)
             publisher.description = _("Exporting Repo: %s") % repo.id
             self.add_child(publisher)
+        if empty_repos:
+            os.makedirs(realized_dir)
+            self.add_child(GenerateListingFileStep(realized_dir, realized_dir))
 
         # If we aren't exporting to a directory add the ISO create & publish steps
         if not export_dir:
