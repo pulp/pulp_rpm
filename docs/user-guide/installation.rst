@@ -1,12 +1,10 @@
 Installation
 ============
 
-.. _Pulp User Guide: http://pulp-user-guide.readthedocs.org
-
 .. note::
-  If you followed the installation instructions in the `Pulp User Guide`_,
-  you already have RPM features installed. If not, this document will walk
-  you through the installation.
+  If you followed the Pulp :ref:`installation <pulp:server_installation>` instructions
+  you already have RPM features installed. If not, this document will walk you
+  through the installation.
 
 Prerequisites
 -------------
