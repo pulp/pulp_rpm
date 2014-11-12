@@ -9,7 +9,7 @@ Bug Fixes
 ---------
 
 The 2.4.2 release is a minor bugfix release. You can see the list of bugs that were fixed
-`here <https://bugzilla.redhat.com/buglist.cgi?bug_status=VERIFIED&bug_status=RELEASE_PENDING&bug_status=CLOSED&classification=Community&component=iso-support&component=rpm-support&list_id=2768109&product=Pulp&query_format=advanced&target_release=2.4.2>`_.
+:fixedbugs:`here <2.4.2>`.
 
 Pulp 2.4.1
 ==========
@@ -28,7 +28,7 @@ Bug Fixes
 ---------
 
 The 2.4.1 release is a minor bugfix release. You can see the list of bugs that were fixed
-`here <https://bugzilla.redhat.com/buglist.cgi?bug_status=VERIFIED&bug_status=RELEASE_PENDING&bug_status=CLOSED&classification=Community&component=iso-support&component=rpm-support&list_id=2768109&product=Pulp&query_format=advanced&target_release=2.4.1>`_.
+:fixedbugs:`here <2.4.1>`.
 
 Upgrade Instructions
 --------------------
@@ -53,7 +53,7 @@ Pulp 2.4.0
 New Features
 ------------
 
--  When a pulp_manifest.xml is added to kickstart repositories all of the additional files listed
+ - When a pulp_manifest.xml is added to kickstart repositories all of the additional files listed
    in the manifest will be downloaded as part of the repo. The command line utility available
    at pulp_rpm/playpen/yum_distributor/generate_distribution_manifest.py can be used to help with
    creating the manifest file. This file should be stored as a peer of the treeinfo file in a source

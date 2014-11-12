@@ -2,9 +2,9 @@ Installation
 ============
 
 .. note::
-  If you followed the Pulp :ref:`installation <pulp:server_installation>` instructions
-  you already have RPM features installed. If not, this document will walk you
-  through the installation.
+  If you followed the Pulp :ref:`installation <platform:server_installation>`
+  instructions you already have RPM features installed. If not, this document
+  will walk you through the installation.
 
 Prerequisites
 -------------
