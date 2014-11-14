@@ -9,7 +9,7 @@ entirely on the consumer.
 from logging import getLogger
 import os
 
-from pulp.bindings.server import DEFAULT_CA_PATH
+from pulp.common.constants import DEFAULT_CA_PATH
 from pulp.common.lock import Lock
 from pulp.common.util import decode_unicode
 

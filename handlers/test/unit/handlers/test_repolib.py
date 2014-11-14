@@ -2,7 +2,7 @@ import os
 import shutil
 import unittest
 
-from pulp.bindings.server import DEFAULT_CA_PATH
+from pulp.common.constants import DEFAULT_CA_PATH
 from pulp.common.lock import Lock
 
 from pulp_rpm.handlers import repolib
