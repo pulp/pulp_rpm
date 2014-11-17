@@ -13,3 +13,4 @@ User Guide
    features
    isos
    faq
+   troubleshooting

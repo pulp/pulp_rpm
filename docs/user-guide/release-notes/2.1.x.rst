@@ -20,18 +20,17 @@ worry about finding and retrieving the RPMs referenced by each group.
 Noteworthy Bugs Fixed
 ---------------------
 
-`873313 <https://bugzilla.redhat.com/show_bug.cgi?id=873313>`_ - Very high memory usage during repo sync
+:bz:`873313` - Very high memory usage during repo sync
 
-`947208 <https://bugzilla.redhat.com/show_bug.cgi?id=947208>`_ - RFE: Add proxy server support to the ISO
-importer
+:bz:`947208` - RFE: Add proxy server support to the ISO importer
 
-`949004 <https://bugzilla.redhat.com/show_bug.cgi?id=949004>`_ - The ISO Importer does not build the URL for the
-PULP_MANIFEST correctly
+:bz:`949004` - The ISO Importer does not build the URL for the PULP_MANIFEST
+correctly
 
-`949008 <https://bugzilla.redhat.com/show_bug.cgi?id=949008>`_ - The ISO importer set the SSL_VERIFY_HOST value
-to 1, when it should be 2
+:bz:`949008` - The ISO importer set the SSL_VERIFY_HOST value to 1, when it
+should be 2
 
-`953665 <https://bugzilla.redhat.com/show_bug.cgi?id=953665>`_ - Copying large repo uses tons of RAM and takes too long
+:bz:`953665` - Copying large repo uses tons of RAM and takes too long
 
 Upgrade Instructions
 --------------------
