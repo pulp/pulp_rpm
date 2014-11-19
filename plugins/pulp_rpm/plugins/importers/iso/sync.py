@@ -9,9 +9,9 @@ from nectar.downloaders.threaded import HTTPThreadedDownloader
 from nectar.downloaders.local import LocalFileDownloader
 from pulp.common.plugins import importer_constants
 from pulp.common.util import encode_unicode
-from pulp.plugins.conduits.mixins import UnitAssociationCriteria
+from pulp.plugins.conduits.mixins import Criteria, UnitAssociationCriteria
 
-from pulp_rpm.common import constants, ids
+from pulp_rpm.common import constants
 from pulp_rpm.common.progress import SyncProgressReport
 from pulp_rpm.plugins.db import models
 
@@ -21,11 +21,20 @@ logger = logging.getLogger(__name__)
 
 class ISOSyncRun(listener.DownloadEventListener):
     """
-    This class maintains state for a single repository sync (do not reuse it). We need to keep the state so
-    that we can cancel a sync that is in progress. It subclasses DownloadEventListener so it can pass itself
-    to the downloader library and receive the callbacks when downloads are complete.
+    This class maintains state for a single repository sync (do not reuse it). We need to keep
+    the state so that we can cancel a sync that is in progress. It subclasses DownloadEventListener
+    so it can pass itself to the downloader library and receive the callbacks when downloads are
+    complete.
     """
     def __init__(self, sync_conduit, config):
+        """
+        Initialize an ISOSyncRun.
+
+        :param sync_conduit: the sync conduit to use for this sync run.
+        :type  sync_conduit: pulp.plugins.conduits.repo_sync.RepoSyncConduit
+        :param config:       plugin configuration
+        :type  config:       pulp.plugins.config.PluginCallConfiguration
+        """
         self.sync_conduit = sync_conduit
         self._remove_missing_units = config.get(importer_constants.KEY_UNITS_REMOVE_MISSING,
                                                 default=constants.CONFIG_UNITS_REMOVE_MISSING_DEFAULT)
@@ -112,9 +121,9 @@ class ISOSyncRun(listener.DownloadEventListener):
 
     def download_succeeded(self, report):
         """
-        This is the callback that we will get from the downloader library when it succeeds in downloading a
-        file. This method will check to see if we are in the ISO downloading stage, and if we are, it will add
-        the new ISO to the database.
+        This is the callback that we will get from the downloader library when it succeeds in
+        downloading a file. This method will check to see if we are in the ISO downloading stage,
+        and if we are, it will add the new ISO to the database.
 
         :param report: The report of the file we downloaded
         :type  report: nectar.report.DownloadReport
@@ -151,9 +160,17 @@ class ISOSyncRun(listener.DownloadEventListener):
             # happen if the PULP_MANIFEST file isn't in the expected format.
             return self.progress_report.build_final_report()
 
+        # Discover what files we need to download and what we already have
+        filtered_isos = self._filter_missing_isos(manifest)
+        local_missing_isos, local_available_isos, remote_missing_isos = filtered_isos
+
+        # Associate units that are already in Pulp
+        if local_available_isos:
+            search_dicts = [unit.unit_key for unit in local_available_isos]
+            self.sync_conduit.associate_existing(models.ISO.TYPE, search_dicts)
+
         # Go get them filez
         self.progress_report.state = self.progress_report.STATE_ISOS_IN_PROGRESS
-        local_missing_isos, remote_missing_isos = self._filter_missing_isos(manifest)
         self._download_isos(local_missing_isos)
         if self._remove_missing_units:
             self._remove_units(remote_missing_isos)
@@ -168,16 +185,16 @@ class ISOSyncRun(listener.DownloadEventListener):
 
     def _download_isos(self, manifest):
         """
-        Makes the calls to retrieve the ISOs from the manifest, storing them on disk and recording them in the
-        Pulp database.
+        Makes the calls to retrieve the ISOs from the manifest, storing them on disk and
+        recording them in the Pulp database.
 
         :param manifest: The manifest containing a list of ISOs we want to download.
-        :type  manifest: list
+        :type  manifest: pulp_rpm.plugins.db.models.ISOManifest
         """
         self.progress_report.total_bytes = 0
         self.progress_report.num_isos = len(manifest)
-        # For each ISO in the manifest, we need to determine a relative path where we want it to be stored,
-        # and initialize the Unit that will represent it
+        # For each ISO in the manifest, we need to determine a relative path where we want
+        # it to be stored, and initialize the Unit that will represent it
         for iso in manifest:
             iso.init_unit(self.sync_conduit)
             iso.bytes_downloaded = 0
@@ -185,7 +202,8 @@ class ISOSyncRun(listener.DownloadEventListener):
             self.progress_report.total_bytes += iso.size
         self.progress_report.update_progress()
         # We need to build a list of DownloadRequests
-        download_requests = [request.DownloadRequest(iso.url, iso.storage_path, iso) for iso in manifest]
+        download_requests = [request.DownloadRequest(iso.url, iso.storage_path, iso) for
+                             iso in manifest]
         self.downloader.download(download_requests)
 
     def _download_manifest(self):
@@ -208,7 +226,7 @@ class ISOSyncRun(listener.DownloadEventListener):
         try:
             manifest = models.ISOManifest(manifest_destiny, self._repo_url)
         except ValueError, e:
-            self.progress_report.error_message = _('The PULP_MANIFEST file was not in the ' +\
+            self.progress_report.error_message = _('The PULP_MANIFEST file was not in the ' +
                                                    'expected format.')
             self.progress_report.state = self.progress_report.STATE_MANIFEST_FAILED
             raise ValueError(self.progress_report.error_message)
@@ -218,18 +236,18 @@ class ISOSyncRun(listener.DownloadEventListener):
     def _filter_missing_isos(self, manifest):
         """
         Use the sync_conduit and the manifest to determine which ISOs are at the feed_url
-        that are not in our local store, as well as which ISOs are in our local store that are not available
-        at the feed_url. Return a 2-tuple with this information. The first element of the tuple will be a
-        list of ISO objects that represent the missing ISOs. The second element will be a list of
-        Units that represent the ISOs we have in our local store that weren't found at the feed_url.
+        that are not in our local store, as well as which ISOs are in our local store that are not
+        available at the feed_url.
 
         :param manifest: An ISOManifest describing the ISOs that are available at the
                          feed_url that we are synchronizing with
         :type  manifest: pulp_rpm.plugins.db.models.ISOManifest
-        :return:         A 2-tuple. The first element of the tuple is a list of ISOs that we should retrieve
-                         from the feed_url. The second element of the tuple is a list of Units that
-                         represent the ISOs that we have in our local repo that were not found in the remote
-                         repo.
+        :return:         A 3-tuple. The first element of the tuple is a list of ISOs that we should
+                         retrieve from the feed_url. The second element of the tuple is a list of
+                         Units that are available locally already, but are not currently associated
+                         with the repository. The third element of the tuple is a list of Units that
+                         represent the ISOs that we have in our local repo that were not found in
+                         the remote repo.
         :rtype:          tuple
         """
         def _unit_key_str(iso):
@@ -241,22 +259,41 @@ class ISOSyncRun(listener.DownloadEventListener):
             """
             return '%s-%s-%s' % (iso.name, iso.checksum, iso.size)
 
-        module_criteria = UnitAssociationCriteria(type_ids=[ids.TYPE_ID_ISO])
-        existing_units = self.sync_conduit.get_units(criteria=module_criteria)
-
-        available_isos_by_key = dict([(_unit_key_str(iso), iso) for iso in manifest])
-        existing_units_by_key = dict([(_unit_key_str(models.ISO.from_unit(unit)), unit) \
+        # A list of all the ISOs we have in Pulp
+        search_criteria = Criteria(fields=models.ISO.UNIT_KEY_ISO)
+        existing_units = self.sync_conduit.search_all_units(models.ISO.TYPE, search_criteria)
+        existing_units_by_key = dict([(_unit_key_str(models.ISO.from_unit(unit)), unit)
                                       for unit in existing_units])
+        existing_unit_keys = set([_unit_key_str(models.ISO.from_unit(unit))
+                                  for unit in existing_units])
 
-        existing_unit_keys = set([_unit_key_str(models.ISO.from_unit(unit)) for unit in existing_units])
+        # A list of units currently associated with the repository
+        search_criteria = UnitAssociationCriteria(type_ids=[models.ISO.TYPE])
+        existing_repo_units = self.sync_conduit.get_units(search_criteria)
+        existing_repo_units_by_key = dict([(_unit_key_str(models.ISO.from_unit(unit)), unit)
+                                          for unit in existing_repo_units])
+        existing_repo_unit_keys = set([_unit_key_str(models.ISO.from_unit(unit))
+                                      for unit in existing_repo_units])
+
+        # A list of the ISOs in the remote repository
+        available_isos_by_key = dict([(_unit_key_str(iso), iso) for iso in manifest])
         available_iso_keys = set([_unit_key_str(iso) for iso in manifest])
 
+        # Content that is available locally and just needs to be associated with the repository
+        local_available_iso_keys = set([iso for iso in available_iso_keys
+                                        if iso in existing_unit_keys])
+        local_available_iso_keys = local_available_iso_keys - existing_repo_unit_keys
+        local_available_units = [existing_units_by_key[k] for k in local_available_iso_keys]
+
+        # Content that is missing locally and must be downloaded
         local_missing_iso_keys = list(available_iso_keys - existing_unit_keys)
         local_missing_isos = [available_isos_by_key[k] for k in local_missing_iso_keys]
-        remote_missing_unit_keys = list(existing_unit_keys - available_iso_keys)
-        remote_missing_units = [existing_units_by_key[k] for k in remote_missing_unit_keys]
 
-        return local_missing_isos, remote_missing_units
+        # Content that is missing from the remote repository that is present locally
+        remote_missing_unit_keys = list(existing_repo_unit_keys - available_iso_keys)
+        remote_missing_units = [existing_repo_units_by_key[k] for k in remote_missing_unit_keys]
+
+        return local_missing_isos, local_available_units, remote_missing_units
 
     def _remove_units(self, units):
         """

@@ -345,6 +345,7 @@ class ISO(object):
     This is a handy way to model an ISO unit, with some related utilities.
     """
     TYPE = ids.TYPE_ID_ISO
+    UNIT_KEY_ISO = ('name', 'size', 'checksum')
 
     def __init__(self, name, size, checksum, unit=None):
         """
