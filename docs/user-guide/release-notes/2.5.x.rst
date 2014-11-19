@@ -2,17 +2,11 @@
 Pulp 2.5 Release Notes
 ======================
 
-Pulp 2.5.1
+Pulp 2.5.0
 ==========
 
 Bug Fixes
 ---------
 
-The 2.5.1 release is a minor bugfix release. You can see the list of bugs that were fixed
-:fixedbugs:`here <2.5.1>`.
-
-:bz:`1153378` was addressed in 2.5.1. If
-you have older (circa 2009) yum clients that fail in a way similar to what is described
-:bz:`in this bug <647828#c1>`, you may want to temporarily
-re-enable ``SSLInsecureRenegotation`` under ``/etc/httpd/conf.d/pulp_rpm.conf`` until your client
-systems have been updated.
+The 2.5.0 release is a minor bugfix release. You can see the list of bugs that were fixed
+:fixedbugs:`here <2.5.0>`.
