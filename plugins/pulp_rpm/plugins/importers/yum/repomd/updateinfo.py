@@ -79,11 +79,16 @@ def _parse_reference(element):
 def _parse_collection(element):
     ret = {
         'packages': map(_parse_package, element.findall('package')),
-        'name': element.find('name').text,
     }
     # based on yum's parsing, this could be optional. See yum.update_md.UpdateNotice._parse_pkglist
     if 'short' in element.attrib:
         ret['short'] = element.attrib['short']
+
+    name = element.find('name')
+    if name is not None:
+        ret['name'] = name.text
+    else:
+        ret['name'] = ""
 
     return ret
 
