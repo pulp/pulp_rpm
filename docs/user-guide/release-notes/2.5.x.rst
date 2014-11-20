@@ -1,0 +1,18 @@
+======================
+Pulp 2.5 Release Notes
+======================
+
+Pulp 2.5.0
+==========
+
+New Features
+------------
+
+The Alternate Content Source feature now works during an rpm sync.
+
+Bug Fixes
+---------
+
+You can see the list of bugs that were fixed
+
+:fixedbugs:`here <2.5.0>`.
