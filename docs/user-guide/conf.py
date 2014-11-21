@@ -39,7 +39,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = u'Pulp RPM Support'
-copyright = u'2012-2013, Pulp Team'
+copyright = u'2012-2014, Pulp Team'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
