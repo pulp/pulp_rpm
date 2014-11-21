@@ -13,6 +13,5 @@ The Alternate Content Source feature now works during an rpm sync.
 Bug Fixes
 ---------
 
-You can see the list of bugs that were fixed
-
-:fixedbugs:`here <2.5.0>`.
+You can see the list of
+`bugs that were fixed <https://bugzilla.redhat.com/buglist.cgi?bug_status=VERIFIED&bug_status=RELEASE_PENDING&bug_status=CLOSED&classification=Community&component=iso-support&component=rpm-support&list_id=2768109&product=Pulp&query_format=advanced&target_release=2.5.0>`_.
