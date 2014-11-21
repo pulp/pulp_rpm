@@ -14,3 +14,11 @@ User Guide
    isos
    faq
    troubleshooting
+
+
+Indices and tables
+==================
+
+* :ref:`genindex`
+* :ref:`search`
+
