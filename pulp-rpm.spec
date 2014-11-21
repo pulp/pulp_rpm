@@ -14,7 +14,7 @@
 
 Name: pulp-rpm
 Version: 2.6.0
-Release: 0.19.rc%{?dist}
+Release: 0.1.alpha%{?dist}
 Summary: Support for RPM content in the Pulp platform
 Group: Development/Languages
 License: GPLv2
@@ -275,6 +275,20 @@ A collection of yum plugins supplementing Pulp consumer operations.
 
 
 %changelog
+* Fri Nov 21 2014 Chris Duryee <cduryee@redhat.com> 2.6.0-0.1.alpha
+- 1148937 - Repo group publish fails when there are no repo members in the
+  group (ipanova@redhat.com)
+- 1146294 - do not import pulp.bindings.server to get DEFAULT_CA_PATH
+  (cduryee@redhat.com)
+- 1073155 - fix permissions in dev setup script (cduryee@redhat.com)
+- 1155192 - Fix certificate verification error when set to False
+  (contact@andreagiardini.com)
+- 1153378 - remove SSLInsecureRenegotation from pulp_rpm.conf
+  (cduryee@redhat.com)
+- 1151490 - Repo group publish  fails with NoneType error (ipanova@redhat.com)
+- 1138475 - yum distributor now always includes "description" element for
+  errata (mhrivnak@redhat.com)
+
 * Mon Nov 17 2014 asmacdo <asmacdo@gmail.com> 2.5.0-0.19.rc
 - Pulp rebuild
 
