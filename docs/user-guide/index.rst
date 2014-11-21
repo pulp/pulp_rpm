@@ -15,6 +15,7 @@ Contents:
    features
    isos
    faq
+   troubleshooting
 
 
 Indices and tables
