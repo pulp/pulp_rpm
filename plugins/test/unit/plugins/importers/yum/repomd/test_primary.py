@@ -1,10 +1,38 @@
 # -*- coding: utf-8 -*-
 
 from cStringIO import StringIO
+from xml.etree import ElementTree
 import unittest
+
+import mock
 
 from pulp_rpm.plugins.db import models
 from pulp_rpm.plugins.importers.yum.repomd import primary, packages
+
+
+class TestProcessPackageElement(unittest.TestCase):
+    """
+    Assert correct behavior from the process_package_element() function.
+    """
+    @mock.patch('pulp_rpm.plugins.db.models.version_utils.encode')
+    @mock.patch('pulp_rpm.plugins.importers.yum.repomd.primary.utils.element_to_raw_xml')
+    def test_process_package_element_sanitizes_checksum_type(self, element_to_raw_xml, encode):
+        """
+        Assert that the function correctly sanitizes checksum types.
+        """
+        element = mock.MagicMock(spec=ElementTree.Element)
+
+        def element_find(tag_name):
+            sub_element = mock.MagicMock(spec=ElementTree.Element)
+            if tag_name == primary.CHECKSUM_TAG:
+                sub_element.attrib = {'type': 'sha'}
+            return sub_element
+
+        element.find.side_effect = element_find
+
+        model = primary.process_package_element(element)
+
+        self.assertEqual(model.checksumtype, 'sha1')
 
 
 class TestProcessSRPMElement(unittest.TestCase):

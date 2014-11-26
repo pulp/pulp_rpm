@@ -6,7 +6,7 @@ import tempfile
 from gettext import gettext as _
 
 from pulp.common.plugins import importer_constants
-from pulp.plugins.util import nectar_config as nectar_utils
+from pulp.plugins.util import nectar_config as nectar_utils, verification
 
 from pulp_rpm.common import constants
 from pulp_rpm.plugins.db import models
@@ -216,7 +216,7 @@ class RepoSync(object):
         the repo scratchpad.
 
         There is no good way to order a preference on the checksum type so the first one
-        found is returned
+        found is used.
 
         :param metadata_files:  object containing access to all metadata files
         :type  metadata_files:  pulp_rpm.plugins.importers.yum.repomd.metadata.MetadataFiles
@@ -227,6 +227,7 @@ class RepoSync(object):
                 checksum_type = metadata_item[1]['checksum']['algorithm']
                 break
         if checksum_type:
+            checksum_type = verification.sanitize_checksum_type(checksum_type)
             scratchpad = self.sync_conduit.get_repo_scratchpad()
             scratchpad[constants.SCRATCHPAD_DEFAULT_METADATA_CHECKSUM] = checksum_type
             self.sync_conduit.set_repo_scratchpad(scratchpad)
@@ -241,9 +242,12 @@ class RepoSync(object):
         """
         for metadata_type, file_info in metadata_files.metadata.iteritems():
             if metadata_type not in metadata_files.KNOWN_TYPES:
+                checksum_type = file_info['checksum']['algorithm']
+                checksum_type = verification.sanitize_checksum_type(checksum_type)
+
                 unit_metadata = {
                     'checksum': file_info['checksum']['hex_digest'],
-                    'checksum_type': file_info['checksum']['algorithm'],
+                    'checksum_type': checksum_type,
                 }
                 model = models.YumMetadataFile(metadata_type,
                                                self.sync_conduit.repo_id,

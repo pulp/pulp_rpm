@@ -6,7 +6,7 @@ import tempfile
 
 from nectar.listener import AggregatingEventListener
 from nectar.request import DownloadRequest
-
+from pulp.plugins.util import verification
 from pulp.server.db.model.criteria import UnitAssociationCriteria
 
 from pulp_rpm.common import constants, ids
@@ -222,6 +222,7 @@ def parse_treefile(path):
         for item in parser.items(SECTION_CHECKSUMS):
             relativepath = item[0]
             checksumtype, checksum = item[1].split(':')
+            checksumtype = verification.sanitize_checksum_type(checksumtype)
             files[relativepath] = {
                 'relativepath': relativepath,
                 'checksum': checksum,

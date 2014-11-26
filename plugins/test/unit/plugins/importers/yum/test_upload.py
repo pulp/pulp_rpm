@@ -565,3 +565,26 @@ class UploadPackageTests(unittest.TestCase):
         self.assertEqual(metadata['license'], 'GPLv2')
         self.assertEqual(metadata['relativepath'], 'walrus-5.21-1.noarch.rpm')
         self.assertEqual(metadata['vendor'], None)
+
+    def test__generate_rpm_data_sanitizes_checksum_type(self):
+        """
+        Assert that _generate_rpm_data() sanitizes the checksum type.
+        """
+        unit_key, metadata = upload._generate_rpm_data(self.upload_src_filename,
+                                                       {'checksum_type': 'sha'})
+
+        self.assertEqual(unit_key['name'], 'walrus')
+        self.assertEqual(unit_key['epoch'], '0')
+        self.assertEqual(unit_key['version'], '5.21')
+        self.assertEqual(unit_key['release'], '1')
+        self.assertEqual(unit_key['arch'], 'noarch')
+        self.assertEqual(unit_key['checksum'], '8dea2b64fc52062d79d5f96ba6415bffae4d2153')
+        # The checksumtype is sha1, even though it was set to sha because it was sanitized.
+        self.assertEqual(unit_key['checksumtype'], 'sha1')
+
+        self.assertEqual(metadata['buildhost'], 'smqe-ws15')
+        self.assertEqual(metadata['description'], 'A dummy package of walrus')
+        self.assertEqual(metadata['filename'], 'walrus-5.21-1.noarch.rpm')
+        self.assertEqual(metadata['license'], 'GPLv2')
+        self.assertEqual(metadata['relativepath'], 'walrus-5.21-1.noarch.rpm')
+        self.assertEqual(metadata['vendor'], None)
