@@ -129,7 +129,7 @@ install and system reboot.
 
 ::
 
-  $ sudo pulp-consumer -u admin register --consumer-id=con1
+  $ sudo pulp-consumer register --consumer-id=con1
   Enter password:
   Consumer [con1] successfully registered
 
