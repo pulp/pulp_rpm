@@ -201,7 +201,7 @@ def process_distribution(feed, tmp_dir, nectar_config, model, report):
     files = []
     # If there is a Distribution file - parse it and add all files to the file_list
     if result:
-        xsd = os.path.join(os.path.dirname(__file__), 'pulp_distribution.xsd')
+        xsd = os.path.join(constants.USR_SHARE_DIR, 'pulp_distribution.xsd')
         schema_doc = ET.parse(xsd)
         xmlschema = ET.XMLSchema(schema_doc)
         try:

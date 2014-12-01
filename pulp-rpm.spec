@@ -102,6 +102,10 @@ cp -R plugins/srv %{buildroot}
 
 # Type files
 cp -R plugins/types %{buildroot}/%{_usr}/lib/pulp/plugins
+
+# Distribution XSD files
+mkdir -p %{buildroot}/%{_usr}/share/pulp-rpm
+cp -R plugins/usr/share/pulp-rpm %{buildroot}/%{_usr}/share/
 %endif # End pulp_server if block
 
 # Directories
@@ -180,6 +184,7 @@ to provide RPM specific support.
 %config(noreplace) %{_sysconfdir}/httpd/conf.d/pulp_rpm.conf
 %{_usr}/lib/pulp/plugins/types/rpm_support.json
 %{_usr}/lib/pulp/plugins/types/iso_support.json
+%{_usr}/share/pulp-rpm/
 %{_sysconfdir}/pulp/vhosts80/rpm.conf
 %defattr(-,apache,apache,-)
 %{_var}/lib/pulp/published/yum/
