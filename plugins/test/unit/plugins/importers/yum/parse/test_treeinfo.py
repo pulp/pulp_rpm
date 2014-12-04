@@ -3,7 +3,7 @@
 import os
 import unittest
 
-from mock import patch, Mock
+from mock import patch, MagicMock, Mock
 
 from pulp_rpm.common import constants
 from pulp.server.exceptions import PulpCodedValidationException
@@ -128,3 +128,24 @@ class TestGetDistributionFile(unittest.TestCase):
         feed = 'http://www.foo.bar/flux/'
         file_name = treeinfo.get_distribution_file(feed, working_path, Mock())
         self.assertEquals(None, file_name)
+
+
+class TestParseTreefile(unittest.TestCase):
+    """
+    This class contains tests for the parse_treefile() function.
+    """
+    @patch('__builtin__.open', MagicMock())
+    @patch('pulp_rpm.plugins.importers.yum.parse.treeinfo.ConfigParser.RawConfigParser')
+    @patch('pulp_rpm.plugins.importers.yum.parse.treeinfo.models.Distribution')
+    def test_sanitizes_checksum_type(self, Distribution, RawConfigParser):
+        """
+        Ensure the the function properly sanitizes checksum types.
+        """
+        parser = MagicMock()
+        parser.has_section.return_value = True
+        parser.items.return_value = [['path', 'sha:checksum']]
+        RawConfigParser.return_value = parser
+
+        model, files = treeinfo.parse_treefile('/some/path')
+
+        self.assertEqual(files[0]['checksumtype'], 'sha1')

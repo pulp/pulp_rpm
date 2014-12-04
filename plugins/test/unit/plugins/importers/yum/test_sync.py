@@ -261,6 +261,9 @@ class TestGetMetadata(BaseSyncTest):
 
 
 class TestSaveMetadataChecksum(BaseSyncTest):
+    """
+    This class contains tests for the save_default_metadata_checksum_on_repo() method.
+    """
     def setUp(self):
         super(TestSaveMetadataChecksum, self).setUp()
         self.reposync.tmp_dir = '/tmp'
@@ -282,8 +285,26 @@ class TestSaveMetadataChecksum(BaseSyncTest):
         self.reposync.save_default_metadata_checksum_on_repo(self.metadata_files)
         self.assertFalse(self.conduit.set_repo_scratchpad.called)
 
+    def test_sanitizes_checksum_type(self):
+        """
+        Ensure that the method properly sanitizes the checksum type.
+        """
+        self.conduit.get_repo_scratchpad = mock.Mock(return_value={})
+        self.conduit.set_repo_scratchpad = mock.Mock()
+
+        file_info = deepcopy(metadata.FILE_INFO_SKEL)
+        file_info['checksum']['algorithm'] = 'sha'
+        self.metadata_files.metadata['foo'] = file_info
+
+        self.reposync.save_default_metadata_checksum_on_repo(self.metadata_files)
+        self.conduit.set_repo_scratchpad.assert_called_once_with(
+            {constants.SCRATCHPAD_DEFAULT_METADATA_CHECKSUM: 'sha1'})
+
 
 class ImportUnknownMetadataFiles(BaseSyncTest):
+    """
+    This class contains tests for the RepoSync.import_unknown_metadata_files function.
+    """
     def setUp(self):
         super(ImportUnknownMetadataFiles, self).setUp()
         self.conduit.save_unit = mock.MagicMock(spec_set=self.conduit.save_unit)
@@ -317,6 +338,28 @@ class ImportUnknownMetadataFiles(BaseSyncTest):
             models.YumMetadataFile.TYPE,
             {'repo_id': self.repo.id, 'data_type': 'fake_type'},
             {'checksum': 'checksum_value', 'checksum_type': 'sha257'},
+            '%s/fake_type.xml' % self.repo.id,
+        )
+        self.conduit.save_unit.assert_called_once_with(self.conduit.init_unit.return_value)
+        mock_copy.assert_called_once_with('path/to/fake_type.xml',
+                                          self.conduit.init_unit.return_value.storage_path)
+
+    @mock.patch('shutil.copyfile', autospec=True)
+    def test_sanitizes_checksum_type(self, mock_copy):
+        """
+        Assert that the method sanitizes the checksum type.
+        """
+        self.metadata_files.metadata['fake_type'] = {
+            'checksum': {'hex_digest': 'checksum_value', 'algorithm': 'sha'},
+            'local_path': 'path/to/fake_type.xml'
+        }
+
+        self.reposync.import_unknown_metadata_files(self.metadata_files)
+
+        self.conduit.init_unit.assert_called_once_with(
+            models.YumMetadataFile.TYPE,
+            {'repo_id': self.repo.id, 'data_type': 'fake_type'},
+            {'checksum': 'checksum_value', 'checksum_type': 'sha1'},
             '%s/fake_type.xml' % self.repo.id,
         )
         self.conduit.save_unit.assert_called_once_with(self.conduit.init_unit.return_value)

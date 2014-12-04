@@ -13,6 +13,79 @@ from pulp_rpm.common import ids
 from pulp_rpm.plugins.db import models
 
 
+class TestDistribution(unittest.TestCase):
+    """
+    This class contains tests for the Distribution class.
+    """
+    def test_process_download_reports_sanitizes_checksum_type(self):
+        """
+        Ensure that the process_download_reports() method calls sanitize_checksum_type correctly.
+        """
+        d = models.Distribution('family', 'variant', 'version', 'arch', {})
+        mock_report = mock.MagicMock()
+        # This should get altered to sha1
+        mock_report.data = {'checksumtype': 'sha', 'checksum': 'somesum',
+                            'relativepath': 'some/path'}
+        reports = [mock_report]
+
+        d.process_download_reports(reports)
+
+        self.assertEqual(d.metadata['files'][0]['checksumtype'], 'sha1')
+
+
+class TestDRPM(unittest.TestCase):
+    """
+    This class contains tests for the DRPM class.
+    """
+    def test___init___sanitizes_checksum_type(self):
+        """
+        Ensure that __init__() calls sanitize_checksum_type correctly.
+        """
+        # The sha should get changed to sha1
+        drpm = models.DRPM('epoch', 'version', 'release', 'filename', 'sha', 'checksum', {})
+
+        self.assertEqual(drpm.unit_key['checksumtype'], 'sha1')
+
+
+class TestErrata(unittest.TestCase):
+    """
+    This class contains tests for the Errata class.
+    """
+    def test_rpm_search_dicts_sanitizes_checksum_type_sum(self):
+        """
+        Assert that the rpm_search_dicts() method properly sanitizes checksum types with the sum
+        is specified with the 'sum' attribute.
+        """
+        errata = models.Errata('id', {})
+        errata.metadata = {
+            'pkglist': [
+                {'packages': [
+                    {'name': 'name', 'epoch': '0', 'version': '0.0', 'sum': ['sha', 'sum'],
+                     'release': 'release', 'arch': 'arch'}]}]}
+
+        ret = errata.rpm_search_dicts
+
+        self.assertEqual(len(ret), 1)
+        self.assertEqual(ret[0]['checksumtype'], 'sha1')
+
+    def test_rpm_search_dicts_sanitizes_checksum_type_sums(self):
+        """
+        Assert that the rpm_search_dicts() method properly sanitizes checksum types with the sum
+        is specified with the 'type' attribute.
+        """
+        errata = models.Errata('id', {})
+        errata.metadata = {
+            'pkglist': [
+                {'packages': [
+                    {'name': 'name', 'epoch': '0', 'version': '0.0', 'sums': ['sum1', 'sum2'],
+                     'release': 'release', 'arch': 'arch', 'type': 'sha'}]}]}
+
+        ret = errata.rpm_search_dicts
+
+        self.assertEqual(len(ret), 1)
+        self.assertEqual(ret[0]['checksumtype'], 'sha1')
+
+
 class TestISO(unittest.TestCase):
     """
     Test the ISO class.
@@ -404,3 +477,16 @@ class TestPackageEnvironment(unittest.TestCase):
         model = models.PackageEnvironment('foo_id', 'foo_repo', {'options': option_list})
         self.assertEquals(['id1', 'id2'], model.optional_group_ids)
 
+
+class TestRPM(unittest.TestCase):
+    """
+    This class contains tests for the RPM class.
+    """
+    def test___init___sanitizes_checksum_type(self):
+        """
+        Ensure that __init__() calls sanitize_checksum_type correctly.
+        """
+        # The sha should get changed to sha1
+        rpm = models.RPM('name', 'epoch', 'version', 'release', 'filename', 'sha', 'checksum', {})
+
+        self.assertEqual(rpm.unit_key['checksumtype'], 'sha1')

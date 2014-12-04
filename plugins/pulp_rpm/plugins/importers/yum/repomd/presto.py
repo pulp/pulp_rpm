@@ -1,6 +1,9 @@
 # -*- coding: utf-8 -*-
 
+from pulp.plugins.util import verification
+
 from pulp_rpm.plugins.db import models
+
 
 METADATA_FILE_NAME = 'prestodelta'
 
@@ -22,6 +25,7 @@ def process_package_element(element):
     sequence = delta.find('sequence')
     size = delta.find('size')
     checksum = delta.find('checksum')
+    checksum_type = verification.sanitize_checksum_type(checksum.attrib['type'])
 
     return models.DRPM.from_package_info({
         'type': 'drpm',
@@ -37,5 +41,5 @@ def process_package_element(element):
         'sequence': sequence.text,
         'size': int(size.text),
         'checksum': checksum.text,
-        'checksumtype': checksum.attrib['type'],
+        'checksumtype': checksum_type,
     })
