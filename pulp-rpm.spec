@@ -280,6 +280,9 @@ A collection of yum plugins supplementing Pulp consumer operations.
 
 
 %changelog
+* Thu Dec 04 2014 Randy Barlow <rbarlow@redhat.com> 2.4.4-0.1.beta
+- 1165355 - Sanitize checksum types. (rbarlow@redhat.com)
+
 * Fri Nov 21 2014 Chris Duryee <cduryee@redhat.com> 2.6.0-0.1.alpha
 - 1148937 - Repo group publish fails when there are no repo members in the
   group (ipanova@redhat.com)
