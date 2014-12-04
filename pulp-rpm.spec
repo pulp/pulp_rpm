@@ -280,6 +280,9 @@ A collection of yum plugins supplementing Pulp consumer operations.
 
 
 %changelog
+* Thu Dec 04 2014 Randy Barlow <rbarlow@redhat.com> 2.4.4-0.1.beta
+- 1165355 - Sanitize checksum types. (rbarlow@redhat.com)
+
 * Fri Nov 21 2014 Austin Macdonald <amacdona@redhat.com> 2.5.0-1
 - 1150297 - Replace 2.4.x versions with 2.5.0. (rbarlow@redhat.com)
 - 1103232 - Document importer settings. (rbarlow@redhat.com)
