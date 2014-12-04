@@ -280,6 +280,11 @@ A collection of yum plugins supplementing Pulp consumer operations.
 
 
 %changelog
+* Thu Dec 04 2014 Chris Duryee <cduryee@redhat.com> 2.5.1-0.1.beta
+- 1165355 - Sanitize checksum types. (rbarlow@redhat.com)
+- 1168602 - fix missing /usr/share/pulp-rpm/pulp_distribution.xsd in the spec
+  file (bcourt@redhat.com)
+
 * Thu Dec 04 2014 Randy Barlow <rbarlow@redhat.com> 2.4.4-0.1.beta
 - 1165355 - Sanitize checksum types. (rbarlow@redhat.com)
 
