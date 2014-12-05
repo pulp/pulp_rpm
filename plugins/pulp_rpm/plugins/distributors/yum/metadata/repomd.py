@@ -77,7 +77,9 @@ class RepomdXMLFileContext(MetadataFileContext):
         ElementTree.SubElement(data_element, 'location', location_attributes)
 
         timestamp_element = ElementTree.SubElement(data_element, 'timestamp')
-        timestamp_element.text = str(os.path.getmtime(file_path))
+        # Convert the float mtime to an integer before stringifying since
+        # yum will ignore timestamps that are floats
+        timestamp_element.text = str(int(os.path.getmtime(file_path)))
 
         size_element = ElementTree.SubElement(data_element, 'size')
         size_element.text = str(os.path.getsize(file_path))
