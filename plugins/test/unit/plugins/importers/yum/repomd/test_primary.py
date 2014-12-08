@@ -20,10 +20,10 @@ class TestProcessPackageElement(unittest.TestCase):
         """
         Assert that the function correctly sanitizes checksum types.
         """
-        element = mock.MagicMock(spec=ElementTree.Element)
+        element = mock.MagicMock()
 
         def element_find(tag_name):
-            sub_element = mock.MagicMock(spec=ElementTree.Element)
+            sub_element = mock.MagicMock()
             if tag_name == primary.CHECKSUM_TAG:
                 sub_element.attrib = {'type': 'sha'}
             return sub_element

@@ -17,18 +17,18 @@ class TestProcessPackageElement(unittest.TestCase):
         """
         Ensure that the checksum_type is properly sanitized.
         """
-        element = mock.MagicMock(spec=ElementTree.Element)
+        element = mock.MagicMock()
         element.attrib = {
             'name': 'some name', 'epoch': '89', 'version': '1.2.4', 'release': '2',
             'arch': 'x86_64', 'oldepoch': '88', 'oldversion': '1.2.3', 'oldrelease': '1'}
-        delta = mock.MagicMock(spec=ElementTree.Element)
-        checksum = mock.MagicMock(spec=ElementTree.Element)
+        delta = mock.MagicMock()
+        checksum = mock.MagicMock()
         checksum.attrib = {'type': 'sha'}
 
         def delta_find(element_name):
             if element_name == 'checksum':
                 return checksum
-            return mock.MagicMock(spec=ElementTree.Element)
+            return mock.MagicMock()
 
         delta.find.side_effect = delta_find
         element.find.return_value = delta
