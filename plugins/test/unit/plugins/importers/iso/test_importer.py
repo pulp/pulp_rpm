@@ -146,7 +146,7 @@ class TestISOImporter(PulpRPMTests):
     @mock.patch('pulp_rpm.plugins.importers.iso.sync.ISOSyncRun')
     def test_sync_calls_sync(self, mock_sync_run):
         repo = Repository('repo1')
-        sync_conduit = importer_mocks.get_sync_conduit(type_id=ids.TYPE_ID_ISO, pkg_dir='/a/b/c')
+        sync_conduit = importer_mocks.get_sync_conduit(pkg_dir='/a/b/c')
         config = importer_mocks.get_basic_config(**{
                     importer_constants.KEY_FEED: 'http://fake.com/iso_feed/'})
 
@@ -159,7 +159,7 @@ class TestISOImporter(PulpRPMTests):
     def test_sync_no_feed(self):
         repo = mock.MagicMock(spec=Repository)
         pkg_dir = os.path.join(self.temp_dir, 'content')
-        sync_conduit = importer_mocks.get_sync_conduit(type_id=ids.TYPE_ID_ISO, pkg_dir=pkg_dir)
+        sync_conduit = importer_mocks.get_sync_conduit(pkg_dir=pkg_dir)
         config = {importer_constants.KEY_FEED: None}
         config = importer_mocks.get_basic_config(**config)
 
@@ -188,7 +188,7 @@ class TestISOImporter(PulpRPMTests):
         temp_file_location = os.path.join(self.temp_dir, unit_key['name'])
         with open(temp_file_location, 'w') as temp_file:
             temp_file.write(file_data)
-        sync_conduit = importer_mocks.get_sync_conduit(type_id=ids.TYPE_ID_ISO, pkg_dir=pkg_dir)
+        sync_conduit = importer_mocks.get_sync_conduit(pkg_dir=pkg_dir)
         # Just so we don't have to care about the checksum
         config = importer_mocks.get_basic_config(**{importer_constants.KEY_VALIDATE: 'false'})
 
@@ -236,7 +236,7 @@ class TestISOImporter(PulpRPMTests):
         temp_file_location = os.path.join(self.temp_dir, 'test.iso')
         with open(temp_file_location, 'w') as temp_file:
             temp_file.write(file_data)
-        sync_conduit = importer_mocks.get_sync_conduit(type_id=ids.TYPE_ID_ISO, pkg_dir=pkg_dir)
+        sync_conduit = importer_mocks.get_sync_conduit(pkg_dir=pkg_dir)
         config = importer_mocks.get_basic_config(**{importer_constants.KEY_VALIDATE: 'false'})
 
         # Run the upload. This should be successful, since we have set validation off.
@@ -293,7 +293,7 @@ class TestISOImporter(PulpRPMTests):
         temp_file_location = os.path.join(self.temp_dir, 'test.iso')
         with open(temp_file_location, 'w') as temp_file:
             temp_file.write(file_data)
-        sync_conduit = importer_mocks.get_sync_conduit(type_id=ids.TYPE_ID_ISO, pkg_dir=pkg_dir)
+        sync_conduit = importer_mocks.get_sync_conduit(pkg_dir=pkg_dir)
         config = importer_mocks.get_basic_config(**{importer_constants.KEY_VALIDATE: 'true'})
 
         # Run the upload. This should fail due to the bad checksum
@@ -339,7 +339,7 @@ class TestISOImporter(PulpRPMTests):
         temp_file_location = os.path.join(self.temp_dir, 'test.iso')
         with open(temp_file_location, 'w') as temp_file:
             temp_file.write(file_data)
-        sync_conduit = importer_mocks.get_sync_conduit(type_id=ids.TYPE_ID_ISO, pkg_dir=pkg_dir)
+        sync_conduit = importer_mocks.get_sync_conduit(pkg_dir=pkg_dir)
         config = importer_mocks.get_basic_config(**{importer_constants.KEY_VALIDATE: 'true'})
 
         # Run the upload. This should be successful
@@ -389,7 +389,7 @@ class TestISOImporter(PulpRPMTests):
         temp_file_location = os.path.join(self.temp_dir, 'test.iso')
         with open(temp_file_location, 'w') as temp_file:
             temp_file.write(file_data)
-        sync_conduit = importer_mocks.get_sync_conduit(type_id=ids.TYPE_ID_ISO, pkg_dir=pkg_dir)
+        sync_conduit = importer_mocks.get_sync_conduit(pkg_dir=pkg_dir)
         # validate isn't set, so default should happen
         config = importer_mocks.get_basic_config()
 

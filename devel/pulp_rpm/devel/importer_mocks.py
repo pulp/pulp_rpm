@@ -9,7 +9,27 @@ from pulp.plugins.model import SyncReport, Unit
 import mock
 
 
-def get_sync_conduit(type_id=None, existing_units=None, pkg_dir=None):
+def get_sync_conduit(existing_units=None, pkg_dir=None, pulp_units=None):
+    """
+    This creates a mock pulp.plugins.conduits.repo_sync.RepoSyncConduit for testing.
+
+    :param existing_units:  A list of Units in the repository this conduit corresponds to.
+                            This should be a subset of existing_units, but if it's not
+                            the search_all_units will combine the two.
+    :type  existing_units:  list
+    :param pkg_dir:         The base directory for packages to use
+    :type  pkg_dir:         str
+    :param pulp_units:      A list of existing Units in Pulp.
+    :type  pulp_units:      list or None
+
+    :return: A mock sync conduit
+    :rtype:  Mock
+    """
+    if existing_units is None:
+        existing_units = []
+    if pulp_units is None:
+        pulp_units = []
+
     def build_failure_report(summary, details):
         return SyncReport(False, sync_conduit._added_count, sync_conduit._updated_count,
                           sync_conduit._removed_count, summary, details)
@@ -39,11 +59,16 @@ def get_sync_conduit(type_id=None, existing_units=None, pkg_dir=None):
 
     def search_all_units(type_id, criteria):
         ret_val = []
-        if existing_units:
-            for u in existing_units:
+        units = set(list(pulp_units) + list(existing_units))
+        if units:
+            for u in units:
                 if u.type_id == type_id:
-                    if u.unit_key['id'] == criteria['filters']['id']:
+                    if criteria['filters'] is None:
                         ret_val.append(u)
+                    else:
+                        for key, value in criteria['filter'].items():
+                            if key in u.unit_key and u.unit_key[key] == value:
+                                ret_val.append(u)
         return ret_val
 
     sync_conduit = mock.Mock(spec=RepoSyncConduit)
@@ -67,6 +92,7 @@ def get_import_conduit(source_units=None, existing_units=None):
                 continue
             units.append(u)
         return units
+
     def get_units(criteria=None):
         ret_val = []
         if existing_units:
@@ -79,6 +105,7 @@ def get_import_conduit(source_units=None, existing_units=None):
                 else:
                     ret_val.append(u)
         return ret_val
+
     def search_all_units(type_id=None, criteria=None):
         ret_val = []
         if existing_units:
@@ -88,6 +115,7 @@ def get_import_conduit(source_units=None, existing_units=None):
                 elif u.type_id in ["rpm", "srpm"]:
                     ret_val.append(u)
         return ret_val
+
     def save_unit(unit):
         units = []
         return units.append(unit)
@@ -104,6 +132,7 @@ def get_import_conduit(source_units=None, existing_units=None):
     import_conduit.get_repo_scratchpad = mock.Mock()
     import_conduit.get_repo_scratchpad.side_effect = get_repo_scratchpad
     return import_conduit
+
 
 def get_upload_conduit(type_id=None, unit_key=None, metadata=None, relative_path=None, pkg_dir=None):
     def side_effect(type_id, unit_key, metadata, relative_path):

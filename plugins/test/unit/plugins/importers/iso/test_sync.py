@@ -79,8 +79,9 @@ class TestISOSyncRun(PulpRPMTests):
                  {}, '/path/test2.iso'),
             Unit(TYPE_ID_ISO, {'name': 'test4.iso', 'size': 4, 'checksum': 'sum4'},
                  {}, '/path/test4.iso')]
-        self.sync_conduit = importer_mocks.get_sync_conduit(type_id=TYPE_ID_ISO, pkg_dir=self.pkg_dir,
-                                                            existing_units=self.existing_units)
+        self.sync_conduit = importer_mocks.get_sync_conduit(pkg_dir=self.pkg_dir,
+                                                            existing_units=self.existing_units,
+                                                            pulp_units=self.existing_units)
 
         self.iso_sync_run = ISOSyncRun(self.sync_conduit, self.config)
 
@@ -354,6 +355,10 @@ class TestISOSyncRun(PulpRPMTests):
             self.pkg_dir, unit.unit_key['name'], unit.unit_key['checksum'],
             str(unit.unit_key['size']), unit.unit_key['name'])
         self.assertEqual(unit.storage_path, expected_storage_path)
+
+        # Check that no other units were associated with the repository
+        self.assertEquals(0, self.sync_conduit.associate_existing.call_count)
+
         # The state should now be COMPLETE
         self.assertEqual(self.iso_sync_run.progress_report._state,
                          SyncProgressReport.STATE_COMPLETE)
@@ -362,6 +367,35 @@ class TestISOSyncRun(PulpRPMTests):
         self.assertEqual(self.sync_conduit.remove_unit.call_count, 0)
 
         self.assertEqual(report.summary['state'], ISOProgressReport.STATE_COMPLETE)
+
+    @patch('nectar.downloaders.threaded.HTTPThreadedDownloader.download')
+    def test_perform_sync_available_local(self, mock_download):
+        """
+        Test that when content is already available within Pulp it is associated with the
+        repository if necessary.
+        """
+        # Set up a sync where two of the units already exist in Pulp
+        mock_download.side_effect = self.fake_download
+        self.sync_conduit = importer_mocks.get_sync_conduit(pkg_dir=self.pkg_dir,
+                                                            existing_units=[],
+                                                            pulp_units=self.existing_units)
+        self.iso_sync_run = ISOSyncRun(self.sync_conduit, self.config)
+        self.iso_sync_run.perform_sync()
+
+        # Confirm the list of unit key dictionaries was given to associate_existing
+        expected_units = [unit.unit_key for unit in self.existing_units
+                          if unit.unit_key['name'] != 'test4.iso']
+        self.sync_conduit.associate_existing.assert_called_once_with(models.ISO.TYPE,
+                                                                     expected_units)
+        self.assertEqual(1, self.sync_conduit.associate_existing.call_count)
+
+        # test3.iso is in the manifest, but is not present locally, so we'd better download it.
+        self.assertEqual(2, mock_download.call_count)
+        expected_url = mock_download.call_args_list[0][0][0][0].url
+        self.assertEqual('http://fake.com/iso_feed/PULP_MANIFEST', expected_url)
+        expected_url = mock_download.call_args_list[1][0][0][0].url
+        self.assertEqual('http://fake.com/iso_feed/test3.iso', expected_url)
+
 
     @patch('nectar.downloaders.local.LocalFileDownloader.download')
     def test_perform_local_sync(self, mock_download):
@@ -616,17 +650,49 @@ class TestISOSyncRun(PulpRPMTests):
         doesn't suggest removing any ISOs.
         """
         # Let's put all three mammajammas in the manifest
-        manifest = ['%s,%s,%s'%(iso.unit_key['name'], iso.unit_key['checksum'], iso.unit_key['size']) \
+        manifest = ['%s,%s,%s'%(iso.unit_key['name'], iso.unit_key['checksum'],
+                                iso.unit_key['size'])
                     for iso in self.existing_units if iso.unit_key['name'] != 'test4.iso']
         manifest = '\n'.join(manifest)
         manifest = StringIO(manifest)
         manifest = models.ISOManifest(manifest, 'http://test.com')
 
-        local_missing_isos, remote_missing_isos = self.iso_sync_run._filter_missing_isos(manifest)
+        filtered_isos = self.iso_sync_run._filter_missing_isos(manifest)
+        local_missing_isos, local_available_isos, remote_missing_isos = filtered_isos
 
         # Only the third item from the manifest should be missing locally
         self.assertEqual(local_missing_isos, [iso for iso in manifest if iso.name == 'test3.iso'])
         # The remote repo doesn't have test4.iso, and so this method should tell us
         self.assertEqual(len(remote_missing_isos), 1)
         remote_missing_iso = remote_missing_isos[0]
-        self.assertEqual(remote_missing_iso.unit_key, {'name': 'test4.iso', 'size': 4, 'checksum': 'sum4'})
+        self.assertEqual(remote_missing_iso.unit_key,
+                         {'name': 'test4.iso', 'size': 4, 'checksum': 'sum4'})
+
+    def test__filter_missing_isos_available_isos(self):
+        """
+        Test that when there are units in Pulp that match those in the manifest, but that are
+        not currently associated with the repository, they are returned by _filter_missing_isos
+        as the second list in the 3-tuple.
+        """
+        # Let's put all three mammajammas in the manifest
+        manifest = ['%s,%s,%s' % (iso.unit_key['name'], iso.unit_key['checksum'],
+                                  iso.unit_key['size']) for iso in self.existing_units]
+        manifest = '\n'.join(manifest)
+        manifest = StringIO(manifest)
+        manifest = models.ISOManifest(manifest, 'http://test.com')
+
+        # Set up the sync conduit to return all three units as units in Pulp, but only the first
+        # is associated with the repository
+        sync_conduit = importer_mocks.get_sync_conduit(pkg_dir=self.pkg_dir,
+                                                       existing_units=[self.existing_units[0]],
+                                                       pulp_units=self.existing_units)
+        iso_sync_run = ISOSyncRun(sync_conduit, self.config)
+
+        filtered_isos = iso_sync_run._filter_missing_isos(manifest)
+        local_missing_isos, local_available_isos, remote_missing_isos = filtered_isos
+
+        # Everything except the first unit should be in the list of local available isos
+        self.assertEqual(0, len(local_missing_isos))
+        self.assertEqual(2, len(local_available_isos))
+        for expected, actual in zip(sorted(self.existing_units[1:]), sorted(local_available_isos)):
+            self.assertEqual(expected, actual)
