@@ -25,3 +25,14 @@ class PrimaryXMLFileContextTests(unittest.TestCase):
         self.context.add_unit_metadata(mock.Mock(metadata={'repodata': {'other': 'bar'}}))
         self.context.metadata_file_handle.write.assert_called_once_with('bar')
 
+    def test_add_unit_metadata_unicode(self):
+        """
+        Test that the other repodata is passed as a str even if it's a unicode object.
+        """
+        self.context.metadata_file_handle = mock.Mock()
+        expected_call = 'some unicode'
+        metadata = {
+            'repodata': {'other': unicode(expected_call)}
+        }
+        self.context.add_unit_metadata(mock.Mock(metadata=metadata))
+        self.context.metadata_file_handle.write.assert_called_once_with(expected_call)
