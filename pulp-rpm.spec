@@ -302,12 +302,6 @@ A collection of yum plugins supplementing Pulp consumer operations.
 - 1138475 - yum distributor now always includes "description" element for
   errata (mhrivnak@redhat.com)
 
-* Mon Nov 17 2014 asmacdo <asmacdo@gmail.com> 2.5.0-0.19.rc
-- Pulp rebuild
-
-* Mon Nov 10 2014 asmacdo <asmacdo@gmail.com> 2.5.0-0.18.rc
-- Pulp rebuild
-
 * Thu Nov 06 2014 asmacdo <asmacdo@gmail.com> 2.5.0-0.17.rc
 - 1155192 - Fix certificate verification error when set to False
   (contact@andreagiardini.com)
@@ -316,9 +310,6 @@ A collection of yum plugins supplementing Pulp consumer operations.
 - 1151490 - Repo group publish  fails with NoneType error (ipanova@redhat.com)
 - 1138475 - yum distributor now always includes "description" element for
   errata (mhrivnak@redhat.com)
-
-* Mon Nov 03 2014 asmacdo <asmacdo@gmail.com> 2.5.0-0.16.rc
-- Pulp rebuild
 
 * Fri Oct 31 2014 Austin Macdonald <amacdona@redhat.com> 2.5.0-0.15.rc
 - 1150297 - Replace 2.4.x versions with 2.5.0. (rbarlow@redhat.com)
