@@ -280,6 +280,10 @@ A collection of yum plugins supplementing Pulp consumer operations.
 
 
 %changelog
+* Wed Dec 10 2014 Barnaby Court <bcourt@redhat.com> 2.5.1-0.2.beta
+- 11157852 - Convert timestamp values in the repomd to integers from floats
+  (bcourt@redhat.com)
+
 * Thu Dec 04 2014 Chris Duryee <cduryee@redhat.com> 2.5.1-0.1.beta
 - 1165355 - Sanitize checksum types. (rbarlow@redhat.com)
 - 1168602 - fix missing /usr/share/pulp-rpm/pulp_distribution.xsd in the spec
