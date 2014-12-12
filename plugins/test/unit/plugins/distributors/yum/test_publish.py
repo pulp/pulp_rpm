@@ -963,7 +963,7 @@ class GenerateSqliteForRepoStepTests(BaseYumDistributorPublishStepTests):
         Popen.return_value.communicate.return_value = pipe_output
         step = publish.GenerateSqliteForRepoStep('/foo')
         step.process_main()
-        Popen.assert_called_once_with('createrepo -d --update --skip-stat /foo',
+        Popen.assert_called_once_with('createrepo_c -d --update --skip-stat /foo',
                                       shell=True, stderr=mock.ANY, stdout=mock.ANY)
 
     @mock.patch('pulp_rpm.plugins.distributors.yum.publish.subprocess.Popen')
