@@ -585,7 +585,7 @@ class PublishDrpmStepTests(BaseYumDistributorPublishStepTests):
 
         self.assertTrue(step.is_skipped())
 
-    @mock.patch('pulp.server.async.task_status_manager.TaskStatusManager.update_task_status')
+    @mock.patch('pulp.server.db.model.dispatch.TaskStatus')
     @mock.patch('pulp.plugins.conduits.repo_publish.RepoPublishConduit.get_units')
     def test_publish_drpms(self, mock_get_units, mock_update):
         self.publisher.repo.content_unit_counts = {TYPE_ID_DRPM: 2}
@@ -649,7 +649,7 @@ class PublishDistributionStepTests(BaseYumDistributorPublishStepTests):
 
         return Unit(TYPE_ID_DISTRO, unit_key, unit_metadata, storage_path)
 
-    @mock.patch('pulp.server.async.task_status_manager.TaskStatusManager.update_task_status')
+    @mock.patch('pulp.server.db.model.dispatch.TaskStatus')
     @mock.patch('pulp_rpm.plugins.distributors.yum.publish.PublishDistributionStep.'
                 '_publish_distribution_packages_link')
     @mock.patch('pulp_rpm.plugins.distributors.yum.publish.PublishDistributionStep.'
@@ -672,7 +672,7 @@ class PublishDistributionStepTests(BaseYumDistributorPublishStepTests):
         mock_packages.assert_called_once_with(units[0])
         self.assertEquals(step.state, reporting_constants.STATE_COMPLETE)
 
-    @mock.patch('pulp.server.async.task_status_manager.TaskStatusManager.update_task_status')
+    @mock.patch('pulp.server.db.model.dispatch.TaskStatus')
     @mock.patch('pulp_rpm.plugins.distributors.yum.publish.PublishDistributionStep.'
                 '_publish_distribution_treeinfo')
     @mock.patch('pulp.plugins.conduits.repo_publish.RepoPublishConduit.get_units')
@@ -854,7 +854,7 @@ class PublishRepoMetaDataStep(BaseYumDistributorPublishTests):
 
 class PublishRpmStepTests(BaseYumDistributorPublishStepTests):
 
-    @mock.patch('pulp.server.async.task_status_manager.TaskStatusManager.update_task_status')
+    @mock.patch('pulp.server.db.model.dispatch.TaskStatus')
     @mock.patch('pulp.plugins.conduits.repo_publish.RepoPublishConduit.get_units')
     def test_publish_rpms(self, mock_get_units, mock_update):
         self.publisher.repo.content_unit_counts = {TYPE_ID_RPM: 3}
@@ -876,7 +876,7 @@ class PublishRpmStepTests(BaseYumDistributorPublishStepTests):
         self.assertTrue(os.path.exists(os.path.join(self.working_dir, 'repodata/other.xml.gz')))
         self.assertTrue(os.path.exists(os.path.join(self.working_dir, 'repodata/primary.xml.gz')))
 
-    @mock.patch('pulp.server.async.task_status_manager.TaskStatusManager.update_task_status')
+    @mock.patch('pulp.server.db.model.dispatch.TaskStatus')
     @mock.patch('pulp.plugins.conduits.repo_publish.RepoPublishConduit.get_units')
     def test_process_unit_links_package_dir(self, mock_get_units, mock_update):
         unit = self._generate_rpm('one')
@@ -949,7 +949,7 @@ class PublishMetadataStepTests(BaseYumDistributorPublishStepTests):
 
         return Unit(TYPE_ID_YUM_REPO_METADATA_FILE, unit_key, unit_metadata, storage_path)
 
-    @mock.patch('pulp.server.async.task_status_manager.TaskStatusManager.update_task_status')
+    @mock.patch('pulp.server.db.model.dispatch.TaskStatus')
     @mock.patch('pulp.plugins.conduits.repo_publish.RepoPublishConduit.get_units')
     def test_publish_metadata(self, mock_get_units, mock_update):
         # Setup
