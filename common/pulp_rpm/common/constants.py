@@ -158,6 +158,9 @@ ERROR_KEY_ACTUAL_SIZE = 'actual_size'
 # Keys used for the scratchpad
 SCRATCHPAD_DEFAULT_METADATA_CHECKSUM = 'checksum_type'
 
+# User Share Directory
+USR_SHARE_DIR = '/usr/share/pulp-rpm'
+
 # -- extensions ---------------------------------------------------------------
 
 # Number of units to display by name for operations that return a list of

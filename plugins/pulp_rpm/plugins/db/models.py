@@ -5,6 +5,8 @@ from collections import namedtuple
 from gettext import gettext as _
 from urlparse import urljoin
 
+from pulp.plugins.util import verification
+
 from pulp_rpm.common import constants, ids, version_utils
 from pulp_rpm.common import file_utils
 
@@ -138,7 +140,7 @@ class Distribution(Package):
             # previous importer generated.
             metadata_files.append({
                 'checksum': report.data['checksum'],
-                'checksumtype': report.data['checksumtype'],
+                'checksumtype': verification.sanitize_checksum_type(report.data['checksumtype']),
                 'downloadurl': report.url,
                 'filename': os.path.basename(report.data['relativepath']),
                 'fileName': os.path.basename(report.data['relativepath']),
@@ -159,6 +161,7 @@ class DRPM(VersionedPackage):
     TYPE = ids.TYPE_ID_DRPM
 
     def __init__(self, epoch, version, release, filename, checksumtype, checksum, metadata):
+        checksumtype = verification.sanitize_checksum_type(checksumtype)
         Package.__init__(self, locals())
 
     @property
@@ -175,6 +178,7 @@ class RPM(VersionedPackage):
     TYPE = ids.TYPE_ID_RPM
 
     def __init__(self, name, epoch, version, release, arch, checksumtype, checksum, metadata):
+        checksumtype = verification.sanitize_checksum_type(checksumtype)
         Package.__init__(self, locals())
         self.raw_xml = ''
 
@@ -209,12 +213,12 @@ class Errata(Package):
             for package in collection.get('packages', []):
                 if len(package.get('sum') or []) == 2:
                     checksum = package['sum'][1]
-                    checksumtype = package['sum'][0]
+                    checksumtype = verification.sanitize_checksum_type(package['sum'][0])
                 elif 'sums' in package and 'type' in package:
                     # these are the field names we get from an erratum upload.
                     # I have no idea why they are different.
                     checksum = package['sums']
-                    checksumtype = package['type']
+                    checksumtype = verification.sanitize_checksum_type(package['type'])
                 else:
                     checksum = None
                     checksumtype = None

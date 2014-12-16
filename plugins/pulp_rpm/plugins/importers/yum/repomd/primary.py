@@ -3,6 +3,8 @@
 from copy import deepcopy
 import os
 
+from pulp.plugins.util import verification
+
 from pulp_rpm.plugins.db import models
 from pulp_rpm.plugins.importers.yum import utils
 
@@ -125,7 +127,8 @@ def process_package_element(package_element):
 
     checksum_element = package_element.find(CHECKSUM_TAG)
     if checksum_element is not None:
-        package_info['checksumtype'] = checksum_element.attrib['type']
+        checksum_type = verification.sanitize_checksum_type(checksum_element.attrib['type'])
+        package_info['checksumtype'] = checksum_type
         package_info['checksum'] = checksum_element.text
 
     summary_element = package_element.find(SUMMARY_TAG)

@@ -13,8 +13,8 @@
 # ---- Pulp (rpm) --------------------------------------------------------------
 
 Name: pulp-rpm
-Version: 2.5.0
-Release: 1%{?dist}
+Version: 2.5.1
+Release: 0.2.beta%{?dist}
 Summary: Support for RPM content in the Pulp platform
 Group: Development/Languages
 License: GPLv2
@@ -102,6 +102,10 @@ cp -R plugins/srv %{buildroot}
 
 # Type files
 cp -R plugins/types %{buildroot}/%{_usr}/lib/pulp/plugins
+
+# Distribution XSD files
+mkdir -p %{buildroot}/%{_usr}/share/pulp-rpm
+cp -R plugins/usr/share/pulp-rpm %{buildroot}/%{_usr}/share/
 %endif # End pulp_server if block
 
 # Directories
@@ -180,6 +184,7 @@ to provide RPM specific support.
 %config(noreplace) %{_sysconfdir}/httpd/conf.d/pulp_rpm.conf
 %{_usr}/lib/pulp/plugins/types/rpm_support.json
 %{_usr}/lib/pulp/plugins/types/iso_support.json
+%{_usr}/share/pulp-rpm/
 %{_sysconfdir}/pulp/vhosts80/rpm.conf
 %defattr(-,apache,apache,-)
 %{_var}/lib/pulp/published/yum/
@@ -275,6 +280,18 @@ A collection of yum plugins supplementing Pulp consumer operations.
 
 
 %changelog
+* Wed Dec 10 2014 Barnaby Court <bcourt@redhat.com> 2.5.1-0.2.beta
+- 11157852 - Convert timestamp values in the repomd to integers from floats
+  (bcourt@redhat.com)
+
+* Thu Dec 04 2014 Chris Duryee <cduryee@redhat.com> 2.5.1-0.1.beta
+- 1165355 - Sanitize checksum types. (rbarlow@redhat.com)
+- 1168602 - fix missing /usr/share/pulp-rpm/pulp_distribution.xsd in the spec
+  file (bcourt@redhat.com)
+
+* Thu Dec 04 2014 Randy Barlow <rbarlow@redhat.com> 2.4.4-0.1.beta
+- 1165355 - Sanitize checksum types. (rbarlow@redhat.com)
+
 * Fri Nov 21 2014 Austin Macdonald <amacdona@redhat.com> 2.5.0-1
 - 1150297 - Replace 2.4.x versions with 2.5.0. (rbarlow@redhat.com)
 - 1103232 - Document importer settings. (rbarlow@redhat.com)

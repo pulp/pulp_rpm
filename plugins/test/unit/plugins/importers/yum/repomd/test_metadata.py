@@ -89,3 +89,44 @@ class TestMetadataFiles(unittest.TestCase):
         self.metadata_files.add_repodata(model)
         mock_change_location_tag.assert_called_once_with(raw_xml, model.relative_path)
         self.assertEquals('baz', model.metadata['repodata']['primary'])
+
+
+class TestProcessRepomdDataElement(unittest.TestCase):
+    """
+    This class contains tests for the process_repomd_data_element() function.
+    """
+    def test_sanitizes_checksum_tag(self):
+        """
+        Assert that the function properly sanitizes the checksum type in the checksum tag.
+        """
+        def mock_find(tag):
+            checksum_element = mock.MagicMock()
+            if tag == metadata.CHECKSUM_TAG:
+                checksum_element.attrib = {'type': 'sha'}
+                checksum_element.text = 'checksum'
+            return checksum_element
+
+        data_element = mock.MagicMock()
+        data_element.find.side_effect = mock_find
+
+        file_info = metadata.process_repomd_data_element(data_element)
+
+        self.assertEqual(file_info['checksum']['algorithm'], 'sha1')
+
+    def test_sanitizes_open_checksum_tag(self):
+        """
+        Assert that the function properly sanitizes the checksum type in the open checksum tag.
+        """
+        def mock_find(tag):
+            checksum_element = mock.MagicMock()
+            if tag == metadata.OPEN_CHECKSUM_TAG:
+                checksum_element.attrib = {'type': 'sha'}
+                checksum_element.text = 'checksum'
+            return checksum_element
+
+        data_element = mock.MagicMock()
+        data_element.find.side_effect = mock_find
+
+        file_info = metadata.process_repomd_data_element(data_element)
+
+        self.assertEqual(file_info['open_checksum']['algorithm'], 'sha1')

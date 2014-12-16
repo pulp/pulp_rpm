@@ -4,7 +4,9 @@ import os
 import shutil
 import tempfile
 import unittest
+from xml.etree import cElementTree as et
 
+from mock import patch
 from pulp.plugins.model import Unit
 
 from pulp_rpm.common.ids import TYPE_ID_RPM
@@ -522,7 +524,8 @@ class YumDistributorMetadataTests(unittest.TestCase):
             self.assertEqual(content.count('xmlns:rpm="%s"' % RPM_XML_NAME_SPACE), 1)
             self.assertEqual(content.count('<revision>'), 1)
 
-    def test_repomd_metadata_file_metadata(self):
+    @patch('os.path.getmtime')
+    def test_repomd_metadata_file_metadata(self, mock_getmtime):
 
         path = os.path.join(self.metadata_file_dir,
                             REPO_DATA_DIR_NAME,
@@ -539,6 +542,7 @@ class YumDistributorMetadataTests(unittest.TestCase):
         test_metadata_file_handle.write(test_metadata_content)
         test_metadata_file_handle.close()
 
+        mock_getmtime.return_value = 45.5
         context = RepomdXMLFileContext(self.metadata_file_dir)
         context._open_metadata_file_handle()
         context.add_metadata_file_metadata('metadata', test_metadata_file_path)
@@ -547,11 +551,17 @@ class YumDistributorMetadataTests(unittest.TestCase):
         with open(path, 'r') as repomd_handle:
 
             content = repomd_handle.read()
-
             self.assertEqual(content.count('<data type="metadata"'), 1)
             self.assertEqual(content.count('<location href="%s/%s"' %
                                            (REPO_DATA_DIR_NAME, test_metadata_file_name)), 1)
             self.assertEqual(content.count('<timestamp>'), 1)
+            # yum does an integer conversion on the timestamp
+            # integer conversion of float strings will throw an error
+            # so make sure this isn't a float
+            xml_element = et.fromstring(content)
+            ts_value = (xml_element.findall('timestamp'))[0].text
+            int(ts_value)
+
             self.assertEqual(content.count('<size>'), 1)
             self.assertEqual(content.count('<checksum type="sha256">'), 1)
             self.assertEqual(content.count('<open-size>%s</open-size>' % len(test_metadata_content)), 1)

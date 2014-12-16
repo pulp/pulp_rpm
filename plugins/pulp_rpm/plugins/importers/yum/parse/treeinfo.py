@@ -7,8 +7,8 @@ import tempfile
 from lxml import etree as ET
 from nectar.listener import AggregatingEventListener
 from nectar.request import DownloadRequest
+from pulp.plugins.util import verification
 from pulp.server.exceptions import PulpCodedValidationException
-
 from pulp.server.db.model.criteria import UnitAssociationCriteria
 
 from pulp_rpm.common import constants, ids
@@ -201,7 +201,7 @@ def process_distribution(feed, tmp_dir, nectar_config, model, report):
     files = []
     # If there is a Distribution file - parse it and add all files to the file_list
     if result:
-        xsd = os.path.join(os.path.dirname(__file__), 'pulp_distribution.xsd')
+        xsd = os.path.join(constants.USR_SHARE_DIR, 'pulp_distribution.xsd')
         schema_doc = ET.parse(xsd)
         xmlschema = ET.XMLSchema(schema_doc)
         try:
@@ -312,6 +312,7 @@ def parse_treefile(path):
         for item in parser.items(SECTION_CHECKSUMS):
             relativepath = item[0]
             checksumtype, checksum = item[1].split(':')
+            checksumtype = verification.sanitize_checksum_type(checksumtype)
             files[relativepath] = {
                 'relativepath': relativepath,
                 'checksum': checksum,
