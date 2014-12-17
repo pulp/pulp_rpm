@@ -280,19 +280,13 @@ A collection of yum plugins supplementing Pulp consumer operations.
 
 
 %changelog
-* Wed Dec 10 2014 Barnaby Court <bcourt@redhat.com> 2.5.1-0.2.beta
+* Fri Nov 21 2014 Chris Duryee <cduryee@redhat.com> 2.6.0-0.1.alpha
 - 11157852 - Convert timestamp values in the repomd to integers from floats
   (bcourt@redhat.com)
-
-* Thu Dec 04 2014 Chris Duryee <cduryee@redhat.com> 2.5.1-0.1.beta
 - 1165355 - Sanitize checksum types. (rbarlow@redhat.com)
 - 1168602 - fix missing /usr/share/pulp-rpm/pulp_distribution.xsd in the spec
   file (bcourt@redhat.com)
-
-* Thu Dec 04 2014 Randy Barlow <rbarlow@redhat.com> 2.4.4-0.1.beta
 - 1165355 - Sanitize checksum types. (rbarlow@redhat.com)
-
-* Fri Nov 21 2014 Chris Duryee <cduryee@redhat.com> 2.6.0-0.1.alpha
 - 1148937 - Repo group publish fails when there are no repo members in the
   group (ipanova@redhat.com)
 - 1146294 - do not import pulp.bindings.server to get DEFAULT_CA_PATH
