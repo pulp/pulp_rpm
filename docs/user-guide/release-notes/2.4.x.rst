@@ -36,7 +36,7 @@ Upgrade Instructions
 If you have the custom Pulp-provided M2Crypto package installed, you should downgrade to the
 M2Crypto package that is provided by your operating system::
 
-    $ sudo yum downgrade M2Crypto
+    $ sudo yum downgrade m2crypto
 
 If you are using the repository protection feature and if you do not require different certificate
 authorities on each repository, it is recommended that you configure your web browser to validate
