@@ -1,9 +1,33 @@
-======================
-Pulp 2.4 Release Notes
-======================
+==========================
+Pulp RPM 2.4 Release Notes
+==========================
 
-Pulp 2.4.2
-==========
+Pulp RPM 2.4.4
+==============
+
+This release requires the application of a database migration due to
+`#1165355 <https://bugzilla.redhat.com/show_bug.cgi?id=1165355>`_. In that bug report, it was
+learned that Pulp considered "sha" and "sha1" to be different checksums. As a result, some users
+have experienced duplicate packages. This data migration changes all "sha" checksums to "sha1", and
+will remove packages with "sha" checksums if they are found to be duplicates of existing "sha1"
+packages.
+
+The 2.4.4 release is a minor bugfix release. You can see the list of bugs that were fixed
+`here <https://bugzilla.redhat.com/buglist.cgi?bug_status=VERIFIED&bug_status=RELEASE_PENDING&bug_status=CLOSED&classification=Community&component=iso-support&component=rpm-support&list_id=2768109&product=Pulp&query_format=advanced&target_release=2.4.4>`_.
+
+Please see the
+`Pulp Platform upgrade instructions <https://pulp-user-guide.readthedocs.org/en/2.4-release/release-notes.html>`_
+for information on how to perform the upgrade.
+
+
+Pulp RPM 2.4.3
+==============
+
+No changes were introduced in the Pulp RPM 2.4.3 release. The Pulp build system requires Pulp RPM to
+match versions with Pulp server, which did have an update.
+
+Pulp RPM 2.4.2
+==============
 
 Bug Fixes
 ---------
@@ -11,8 +35,8 @@ Bug Fixes
 The 2.4.2 release is a minor bugfix release. You can see the list of bugs that were fixed
 `here <https://bugzilla.redhat.com/buglist.cgi?bug_status=VERIFIED&bug_status=RELEASE_PENDING&bug_status=CLOSED&classification=Community&component=iso-support&component=rpm-support&list_id=2768109&product=Pulp&query_format=advanced&target_release=2.4.2>`_.
 
-Pulp 2.4.1
-==========
+Pulp RPM 2.4.1
+==============
 
 New Features
 ------------
@@ -47,8 +71,8 @@ the ``[main]]`` section of ``/etc/pulp/repo_auth.conf`` if you wish to configure
 the certificate signatures. There is a performance advantage to configuring this setting this way if
 you are able to use your web server to validate client certificates instead of Pulp.
 
-Pulp 2.4.0
-==========
+Pulp RPM 2.4.0
+==============
 
 New Features
 ------------
