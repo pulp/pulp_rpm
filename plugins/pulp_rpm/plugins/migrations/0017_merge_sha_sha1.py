@@ -51,7 +51,7 @@ def _migrate_errata():
         pkglist = erratum.get('pkglist', [])
         for collection in pkglist:
             for package in collection.get('packages', []):
-                if package['sum']:
+                if 'sum' in package and package['sum']:
                     sanitized_type = verification.sanitize_checksum_type(package['sum'][0])
                     if sanitized_type != package['sum'][0]:
                         package['sum'][0] = sanitized_type
