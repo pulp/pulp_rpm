@@ -6,7 +6,6 @@ from pulp.plugins.profiler import Profiler, InvalidUnitsRequested
 from pulp_rpm.common.ids import TYPE_ID_ERRATA, TYPE_ID_RPM
 from pulp_rpm.yum_plugin import util
 
-
 _logger = util.getLogger(__name__)
 
 
@@ -126,7 +125,7 @@ class YumProfiler(Profiler):
         """
         if content_type == TYPE_ID_RPM:
             profile = [
-                ((p['name'], p['epoch'], p['version'], p['release'], p['arch'], p['vendor']), p) \
+                ((p['name'], p['epoch'], p['version'], p['release'], p['arch'], p['vendor']), p)
                 for p in profile]
             profile.sort()
             return [p[1] for p in profile]
@@ -142,7 +141,7 @@ class YumProfiler(Profiler):
 
         :param content_type:  The content type id that the profile represents
         :type  content_type:  basestring
-        :param profile_lookup_table: lookup table of a unit profile keyed by "name arch" 
+        :param profile_lookup_table: lookup table of a unit profile keyed by "name arch"
         :type profile_lookup_table: dict
         :param bound_repo_id: repo id of a repository to be used to calculate applicability
                               against the given consumer profile
@@ -158,13 +157,19 @@ class YumProfiler(Profiler):
         additional_unit_fields = ['pkglist'] if content_type == TYPE_ID_ERRATA else []
         units = conduit.get_repo_units(bound_repo_id, content_type, additional_unit_fields)
 
+        # this needs to be fetched outside of the units loop :)
+        if content_type == TYPE_ID_ERRATA:
+            available_rpm_nevras = [YumProfiler._create_nevra(r.unit_key) for r in
+                                    conduit.get_repo_units(bound_repo_id, TYPE_ID_RPM)]
+
         applicable_unit_ids = []
         # Check applicability for each unit
         for unit in units:
             if content_type == TYPE_ID_RPM:
                 applicable = YumProfiler._is_rpm_applicable(unit.unit_key, profile_lookup_table)
             elif content_type == TYPE_ID_ERRATA:
-                applicable = YumProfiler._is_errata_applicable(unit, profile_lookup_table)
+                applicable = YumProfiler._is_errata_applicable(unit, profile_lookup_table,
+                                                                     available_rpm_nevras)
             else:
                 applicable = False
 
@@ -246,7 +251,7 @@ class YumProfiler(Profiler):
         return rpms
 
     @staticmethod
-    def _is_errata_applicable(errata, profile_lookup_table):
+    def _is_errata_applicable(errata, profile_lookup_table, available_rpm_nevras):
         """
         Checks whether given errata is applicable to the consumer.
 
@@ -262,8 +267,16 @@ class YumProfiler(Profiler):
         # Get rpms from errata
         errata_rpms = YumProfiler._get_rpms_from_errata(errata)
 
-        # Check if any rpm from errata is applicable to the consumer
+        # RHBZ #1171280: ensure we are only checking applicability against RPMs
+        # we have access to in the repo. This is to prevent a RHEL6 machine
+        # from finding RHEL7 packages, for example.
+        available_errata_rpms = []
         for errata_rpm in errata_rpms:
+            if YumProfiler._create_nevra(errata_rpm) in available_rpm_nevras:
+                available_errata_rpms.append(errata_rpm)
+
+        # Check if any rpm from errata is applicable to the consumer
+        for errata_rpm in available_errata_rpms:
             if YumProfiler._is_rpm_applicable(errata_rpm, profile_lookup_table):
                 return True
 
@@ -389,3 +402,18 @@ class YumProfiler(Profiler):
         errata_details['id'] = errata.unit_key['id']
         upgrade_details['errata_details'] = errata_details
         return ret_val, upgrade_details
+
+    @staticmethod
+    def _create_nevra(r):
+        """
+        A small helper method for comparing errata packages to rpm units
+
+        The "str()" conversion may be overly defensive but I am not sure. There
+        were mocks that needed this but I did not find an example during
+        testing with real data.
+
+        """
+        nevra = {'name': str(r['name']), 'epoch': str(r['epoch']),
+                 'version': str(r['version']), 'release': str(r['release']),
+                 'arch': str(r['arch'])}
+        return nevra
