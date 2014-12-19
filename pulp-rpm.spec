@@ -281,7 +281,14 @@ A collection of yum plugins supplementing Pulp consumer operations.
 
 
 %changelog
-* Fri Nov 21 2014 Chris Duryee <cduryee@redhat.com> 2.6.0-0.1.alpha
+* Fri Dec 19 2014 Randy Barlow <rbarlow@redhat.com> 2.5.2-0.0.beta
+- 1175818 - Fix failure on Errata with missing "sum" (rbarlow@redhat.com)
+- 1171280 - ensure packages are available when calculating applicability
+  (cduryee@redhat.com)
+- 1151485 - fixing a typo in 2.4 release notes documentation
+  (skarmark@redhat.com)
+
+* Wed Dec 10 2014 Barnaby Court <bcourt@redhat.com> 2.5.1-1
 - 11157852 - Convert timestamp values in the repomd to integers from floats
   (bcourt@redhat.com)
 - 1165355 - Sanitize checksum types. (rbarlow@redhat.com)
