@@ -12,10 +12,10 @@ UPDATE_INFO_XML_FILE_NAME = 'updateinfo.xml.gz'
 
 
 class UpdateinfoXMLFileContext(MetadataFileContext):
-
     def __init__(self, working_dir, checksum_type=None):
 
-        metadata_file_path = os.path.join(working_dir, REPO_DATA_DIR_NAME, UPDATE_INFO_XML_FILE_NAME)
+        metadata_file_path = os.path.join(working_dir, REPO_DATA_DIR_NAME,
+                                          UPDATE_INFO_XML_FILE_NAME)
         super(UpdateinfoXMLFileContext, self).__init__(metadata_file_path, checksum_type)
 
     def _write_root_tag_open(self):
@@ -52,7 +52,7 @@ class UpdateinfoXMLFileContext(MetadataFileContext):
         id_element.text = erratum_unit.unit_key['id']
 
         issued_attributes = {'date': erratum_unit.metadata['issued']}
-        issued_element = ElementTree.SubElement(update_element, 'issued', issued_attributes)
+        ElementTree.SubElement(update_element, 'issued', issued_attributes)
 
         reboot_element = ElementTree.SubElement(update_element, 'reboot_suggested')
         reboot_element.text = str(erratum_unit.metadata['reboot_suggested'])
@@ -83,17 +83,16 @@ class UpdateinfoXMLFileContext(MetadataFileContext):
 
         if updated:
             updated_attributes = {'date': updated}
-            updated_element = ElementTree.SubElement(update_element, 'updated', updated_attributes)
+            ElementTree.SubElement(update_element, 'updated', updated_attributes)
 
         references_element = ElementTree.SubElement(update_element, 'references')
 
         for reference in erratum_unit.metadata.get('references'):
-
             reference_attributes = {'id': reference['id'] or '',
                                     'title': reference['title'] or '',
                                     'type': reference['type'],
                                     'href': reference['href']}
-            reference_element = ElementTree.SubElement(references_element, 'reference', reference_attributes)
+            ElementTree.SubElement(references_element, 'reference', reference_attributes)
 
         for pkglist in erratum_unit.metadata.get('pkglist', []):
 
@@ -103,7 +102,8 @@ class UpdateinfoXMLFileContext(MetadataFileContext):
             short = pkglist.get('short')
             if short is not None:
                 collection_attributes['short'] = short
-            collection_element = ElementTree.SubElement(pkglist_element, 'collection', collection_attributes)
+            collection_element = ElementTree.SubElement(pkglist_element, 'collection',
+                                                        collection_attributes)
 
             name_element = ElementTree.SubElement(collection_element, 'name')
             name_element.text = pkglist['name']
@@ -116,7 +116,8 @@ class UpdateinfoXMLFileContext(MetadataFileContext):
                                       'epoch': package['epoch'] or '0',
                                       'arch': package['arch'],
                                       'src': package.get('src', '') or ''}
-                package_element = ElementTree.SubElement(collection_element, 'package', package_attributes)
+                package_element = ElementTree.SubElement(collection_element, 'package',
+                                                         package_attributes)
 
                 filename_element = ElementTree.SubElement(package_element, 'filename')
                 filename_element.text = package['filename']
@@ -138,4 +139,3 @@ class UpdateinfoXMLFileContext(MetadataFileContext):
         _logger.debug('Writing updateinfo unit metadata:\n' + update_element_string)
 
         self.metadata_file_handle.write(update_element_string + '\n')
-

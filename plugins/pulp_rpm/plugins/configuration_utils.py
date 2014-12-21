@@ -1,12 +1,14 @@
 from gettext import gettext as _
 
+
 class ValidationError(ValueError):
     pass
 
 
 def validate_non_required_bool(config, setting_name):
     """
-    Validate that the setting keyed in the config by setting_name is either not set, or if it is set that
+    Validate that the setting keyed in the config by setting_name is either not set, or if it is
+    set that
     it is a boolean value.
 
     :param config:       the config to be validated

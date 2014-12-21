@@ -78,7 +78,8 @@ class Package(object):
 class VersionedPackage(Package):
     @property
     def key_string_without_version(self):
-        keys = [getattr(self, key) for key in self.UNIT_KEY_NAMES if key not in ['epoch', 'version', 'release', 'checksum', 'checksumtype']]
+        keys = [getattr(self, key) for key in self.UNIT_KEY_NAMES if
+                key not in ['epoch', 'version', 'release', 'checksum', 'checksumtype']]
         keys.append(self.TYPE)
         return '-'.join(keys)
 
@@ -380,7 +381,8 @@ class ISO(object):
 
     def init_unit(self, conduit):
         """
-        Use the given conduit's init_unit() call to initialize a unit, and store the unit as self._unit.
+        Use the given conduit's init_unit() call to initialize a unit, and store the unit as
+        self._unit.
 
         :param conduit: The conduit to call init_unit() to get a Unit.
         :type  conduit: pulp.plugins.conduits.mixins.AddUnitMixin
@@ -438,10 +440,12 @@ class ISO(object):
                     actual_size = self.calculate_size(destination_file)
                     if actual_size != self.size:
                         raise ValueError(_('Downloading <%(name)s> failed validation. '
-                                           'The manifest specified that the file should be %(expected)s bytes, but '
-                                           'the downloaded file is %(found)s bytes.') % {'name': self.name,
-                                                                                         'expected': self.size,
-                                                                                         'found': actual_size})
+                                           'The manifest specified that the file should be %('
+                                           'expected)s bytes, but '
+                                           'the downloaded file is %(found)s bytes.') % {
+                                         'name': self.name,
+                                         'expected': self.size,
+                                         'found': actual_size})
 
                     # Validate the checksum
                     actual_checksum = self.calculate_checksum(destination_file)
@@ -483,7 +487,8 @@ class ISO(object):
 
 class ISOManifest(object):
     """
-    This class provides an API that is a handy way to interact with a PULP_MANIFEST file. It automatically
+    This class provides an API that is a handy way to interact with a PULP_MANIFEST file. It
+    automatically
     instantiates ISOs out of the items found in the manifest.
     """
     # This is the filename that the manifest is published to

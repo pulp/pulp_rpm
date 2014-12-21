@@ -16,10 +16,11 @@ _log = logging.getLogger('pulp')
 
 # Initialize plugin loader api and other managers
 factory.initialize()
-ass_query_mgr =  factory.repo_unit_association_query_manager()
+ass_query_mgr = factory.repo_unit_association_query_manager()
 ass_mgr = factory.repo_unit_association_manager()
 content_mgr = factory.content_manager()
 repo_mgr = factory.repo_manager()
+
 
 def _get_repos():
     """
@@ -33,6 +34,7 @@ def _get_repos():
     repo_ids = [repo['id'] for repo in repos]
     return repo_ids
 
+
 def _fix_pkg_group_category_repoid(repoid, typeid):
     """
     Looks up units with in a repo and validate if the repoid in the unit metadata matches the repo
@@ -41,7 +43,8 @@ def _fix_pkg_group_category_repoid(repoid, typeid):
      * create(save) new unit with fixed repoid
      * re-associate new unit with the repo
     """
-    units = ass_query_mgr.get_units(repo_id=repoid, criteria=UnitAssociationCriteria(type_ids=typeid))
+    units = ass_query_mgr.get_units(repo_id=repoid,
+                                    criteria=UnitAssociationCriteria(type_ids=typeid))
     for unit in units:
         if unit['metadata']['repo_id'] != repoid:
             _log.debug("Found unit %s to migrate" % unit['id'])
@@ -49,20 +52,24 @@ def _fix_pkg_group_category_repoid(repoid, typeid):
             new_unit_metadata = _safe_copy_unit(unit['metadata'])
             new_unit_metadata['repo_id'] = repoid
             try:
-                new_unit_id = content_mgr.add_content_unit(content_type=typeid, unit_id=None, unit_metadata=new_unit_metadata)
+                new_unit_id = content_mgr.add_content_unit(content_type=typeid, unit_id=None,
+                                                           unit_metadata=new_unit_metadata)
                 # Grab the association doc itself from the DB directly
-                association = RepoContentUnit.get_collection().find_one({'_id' : unit['_id']})
+                association = RepoContentUnit.get_collection().find_one({'_id': unit['_id']})
                 # Update to point to the new unit
                 association['unit_id'] = new_unit_id
                 # Save it back to the DB
                 RepoContentUnit.get_collection().save(association, safe=True)
             except pymongo.errors.DuplicateKeyError:
-                # If migrating this Unit to have the correct repo_id causes a duplicate, then there already
-                # is a Unit that has the correct metadata in place in this repository. Because of this, we
+                # If migrating this Unit to have the correct repo_id causes a duplicate,
+                # then there already
+                # is a Unit that has the correct metadata in place in this repository. Because of
+                #  this, we
                 # should remove the association of the unit with the repository
                 RepoContentUnit.get_collection().remove({'_id': unit['_id']})
                 # Since we removed a Unit from the repo, we should decrement the repo unit count
                 repo_mgr.update_unit_count(repoid, typeid, -1)
+
 
 def _safe_copy_unit(unit):
     """
@@ -73,9 +80,10 @@ def _safe_copy_unit(unit):
     u = copy.deepcopy(unit)
     # remove all the _ fields so save_unit defaults them
     for key in u.keys():
-        if key.startswith('_') :
+        if key.startswith('_'):
             del u[key]
     return u
+
 
 def _migrate_units():
     """
@@ -87,6 +95,7 @@ def _migrate_units():
         for typeid in [ids.TYPE_ID_PKG_GROUP, ids.TYPE_ID_PKG_CATEGORY]:
             _log.debug("Processing repo id %s with type %s" % (repoid, typeid))
             _fix_pkg_group_category_repoid(repoid, typeid)
+
 
 def migrate(*args, **kwargs):
     _migrate_units()

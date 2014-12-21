@@ -96,6 +96,7 @@ FILE_INFO_SKEL = {'path': None}
 
 # element processing methods ---------------------------------------------------
 
+
 def process_package_element(package_element):
     """
     Process a parsed primary.xml package element into a package information
@@ -200,7 +201,7 @@ def _process_format_element(format_element):
 
     vendor_element = format_element.find(RPM_VENDOR_TAG)
     if vendor_element is not None:
-        package_format['vendor'] = None # XXX figure out which attrib this is
+        package_format['vendor'] = None  # XXX figure out which attrib this is
 
     license_element = format_element.find(RPM_LICENSE_TAG)
     if license_element is not None:
@@ -225,13 +226,16 @@ def _process_format_element(format_element):
 
     provides_element = format_element.find(RPM_PROVIDES_TAG)
     if provides_element is not None:
-        package_format['provides'].extend(_process_rpm_entry_element(e) for e in provides_element.findall(RPM_ENTRY_TAG))
+        package_format['provides'].extend(
+            _process_rpm_entry_element(e) for e in provides_element.findall(RPM_ENTRY_TAG))
 
     requires_element = format_element.find(RPM_REQUIRES_TAG)
     if requires_element is not None:
-        package_format['requires'].extend(_process_rpm_entry_element(e) for e in requires_element.findall(RPM_ENTRY_TAG))
+        package_format['requires'].extend(
+            _process_rpm_entry_element(e) for e in requires_element.findall(RPM_ENTRY_TAG))
 
-    package_format['files'].extend(_process_file_element(e) for e in format_element.findall(FILE_TAG))
+    package_format['files'].extend(
+        _process_file_element(e) for e in format_element.findall(FILE_TAG))
 
     return package_format
 

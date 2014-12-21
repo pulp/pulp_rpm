@@ -11,7 +11,8 @@ from pulp_rpm.plugins.importers.yum.repomd import primary
 
 # this is required because some of the pre-migration XML tags use the "rpm"
 # namespace, which causes a parse error if that namespace isn't declared.
-FAKE_XML = '<?xml version="1.0" encoding="%(encoding)s"?><faketag xmlns:rpm="http://pulpproject.org">%(xml)s</faketag>'
+FAKE_XML = '<?xml version="1.0" encoding="%(encoding)s"?><faketag ' \
+           'xmlns:rpm="http://pulpproject.org">%(xml)s</faketag>'
 
 
 def migrate(*args, **kwargs):
@@ -26,12 +27,12 @@ def _migrate_collection(type_id):
         try:
             # make a guess at the encoding
             codec = 'UTF-8'
-            text = package['repodata']['primary'].encode(codec)
+            package['repodata']['primary'].encode(codec)
         except UnicodeEncodeError:
             # best second guess we have, and it will never fail due to the nature
             # of the encoding.
             codec = 'ISO-8859-1'
-            text = package['repodata']['primary'].encode(codec)
+            package['repodata']['primary'].encode(codec)
         fake_xml = FAKE_XML % {'encoding': codec, 'xml': package['repodata']['primary']}
         fake_element = ET.fromstring(fake_xml.encode(codec))
         utils.strip_ns(fake_element)
@@ -48,8 +49,10 @@ def _migrate_collection(type_id):
 
         # re-parse provides and requires. The format changed from 2.1, and the
         # 2.1 upload workflow was known to produce invalid data for these fields
-        package['provides'] = map(primary._process_rpm_entry_element, provides_element.findall('entry')) if provides_element else []
-        package['requires'] = map(primary._process_rpm_entry_element, requires_element.findall('entry')) if requires_element else []
+        package['provides'] = map(primary._process_rpm_entry_element,
+                                  provides_element.findall('entry')) if provides_element else []
+        package['requires'] = map(primary._process_rpm_entry_element,
+                                  requires_element.findall('entry')) if requires_element else []
 
         collection.save(package, safe=True)
 

@@ -44,7 +44,7 @@ class TestAssociate(unittest.TestCase):
         mock_copy_rpms.return_value = set(self.rpm_units)
 
         ret = associate.associate(self.source_repo, self.dest_repo, self.conduit,
-                            self.config, self.rpm_units)
+                                  self.config, self.rpm_units)
 
         self.assertEqual(set(ret), set(self.rpm_units))
 
@@ -129,7 +129,6 @@ class TestCopyRPMs(unittest.TestCase):
         self.assertEqual(mock_find.call_count, 1)
         self.assertEqual(mock_find.call_args[0][1], set(rpms))
         self.assertEqual(mock_get_existing.call_count, 1)
-
 
     @mock.patch('pulp_rpm.plugins.importers.yum.existing.get_existing_units', autospec=True)
     @mock.patch('pulp_rpm.plugins.importers.yum.depsolve.Solver.find_dependent_rpms', autospec=True)
@@ -285,7 +284,7 @@ class TestAssociateUnit(unittest.TestCase):
         model = model_factory.yum_md_file()
         unit = Unit(model.TYPE, model.unit_key, model.metadata, '/foo/bar')
 
-        ret = associate._associate_unit(self.repo, mock_conduit, unit)
+        associate._associate_unit(self.repo, mock_conduit, unit)
 
         expected_key = {'repo_id': self.repo.id, 'data_type': model.unit_key['data_type']}
         self.assertEqual(mock_conduit.init_unit.call_args[0][0], model.TYPE)
@@ -347,14 +346,15 @@ class TestGetRPMSToCopyByKey(unittest.TestCase):
         self.assertTrue(models.RPM.NAMEDTUPLE(**expected) in ret)
 
         mock_get_existing.assert_called_once_with(self.search_dicts, models.RPM.UNIT_KEY_NAMES,
-                                                  models.RPM.TYPE, self.conduit.get_destination_units)
+                                                  models.RPM.TYPE,
+                                                  self.conduit.get_destination_units)
 
 
 class TestGetRPMSToCopyByName(unittest.TestCase):
     RPM_NAMES = ('postfix', 'vim-common', 'python-mock')
 
     @mock.patch('pulp_rpm.plugins.importers.yum.existing.get_existing_units',
-               autospec=True, return_value=tuple())
+                autospec=True, return_value=tuple())
     def test_none_existing(self, mock_get_existing):
         mock_conduit = mock.MagicMock(spec_set=ImportUnitConduit('', '', '', '', '', ''))
 
@@ -363,7 +363,8 @@ class TestGetRPMSToCopyByName(unittest.TestCase):
         self.assertTrue(isinstance(ret, set))
         self.assertEqual(ret, set(self.RPM_NAMES))
         self.assertEqual(mock_get_existing.call_count, 1)
-        self.assertEqual(list(mock_get_existing.call_args[0][0]), list({'name': name} for name in self.RPM_NAMES))
+        self.assertEqual(list(mock_get_existing.call_args[0][0]),
+                         list({'name': name} for name in self.RPM_NAMES))
         self.assertEqual(mock_get_existing.call_args[0][1], models.RPM.UNIT_KEY_NAMES)
         self.assertEqual(mock_get_existing.call_args[0][2], models.RPM.TYPE)
         self.assertEqual(mock_get_existing.call_args[0][3], mock_conduit.get_destination_units)
@@ -377,7 +378,7 @@ class TestGetRPMSToCopyByName(unittest.TestCase):
             Unit(postfix.TYPE, postfix.unit_key, postfix.metadata, ''),
             Unit(vim.TYPE, vim.unit_key, vim.metadata, ''),
         ]
-        conduit = ImportUnitConduit('', '','', '', '', '')
+        conduit = ImportUnitConduit('', '', '', '', '', '')
         conduit.get_destination_units = mock.MagicMock(spec_set=conduit.get_destination_units,
                                                        return_value=existing)
 
@@ -385,16 +386,16 @@ class TestGetRPMSToCopyByName(unittest.TestCase):
 
         self.assertEqual(set(ret), set(['python-mock']))
         self.assertEqual(conduit.get_destination_units.call_count, 1)
-        self.assertTrue(isinstance(conduit.get_destination_units.call_args[0][0], UnitAssociationCriteria))
+        self.assertTrue(
+            isinstance(conduit.get_destination_units.call_args[0][0], UnitAssociationCriteria))
         self.assertEqual(conduit.get_destination_units.call_args[0][0].type_ids, [models.RPM.TYPE])
-        self.assertEqual(conduit.get_destination_units.call_args[0][0].unit_fields, models.RPM.UNIT_KEY_NAMES)
+        self.assertEqual(conduit.get_destination_units.call_args[0][0].unit_fields,
+                         models.RPM.UNIT_KEY_NAMES)
 
 
 class TestSafeCopyWithoutFile(unittest.TestCase):
-
     def test_metadata_clear_keys_prefixed_with_underscore(self):
         unit = model_factory.group_units(1)[0]
         unit.metadata['_foo'] = 'value'
         copied_unit = associate._safe_copy_unit_without_file(unit)
         self.assertEquals(None, copied_unit.metadata.get('_foo'))
-

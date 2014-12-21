@@ -5,6 +5,7 @@ from pulp.client.extensions.extensions import PulpCliCommand
 
 YUM_DISTRIBUTOR_ID = 'yum_distributor'
 
+
 class ConsumerGroupBindCommand(PulpCliCommand):
     def __init__(self, context, name, description):
         super(ConsumerGroupBindCommand, self).__init__(name, description, self.bind)
@@ -22,12 +23,13 @@ class ConsumerGroupBindCommand(PulpCliCommand):
             self.context.server.consumer_group_bind.bind(
                 consumer_group_id, repo_id, YUM_DISTRIBUTOR_ID)
             m = 'Consumer Group [%(c)s] successfully bound to repository [%(r)s]'
-            self.context.prompt.render_success_message(_(m) % \
-                {'c' : consumer_group_id, 'r' : repo_id})
+            self.context.prompt.render_success_message(_(m) %
+                                                       {'c': consumer_group_id, 'r': repo_id})
         except NotFoundException:
             m = 'Consumer Group [%(c)s] does not exist on the server'
             self.context.prompt.write(
-                _(m) % {'c' : consumer_group_id}, tag='not-found')
+                _(m) % {'c': consumer_group_id}, tag='not-found')
+
 
 class ConsumerGroupUnbindCommand(PulpCliCommand):
     def __init__(self, context, name, description):
@@ -46,9 +48,9 @@ class ConsumerGroupUnbindCommand(PulpCliCommand):
             self.context.server.consumer_group_bind.unbind(
                 consumer_group_id, repo_id, YUM_DISTRIBUTOR_ID)
             m = 'Consumer Group [%(c)s] successfully unbound from repository [%(r)s]'
-            self.context.prompt.render_success_message(_(m) % \
-                {'c' : consumer_group_id, 'r' : repo_id})
+            self.context.prompt.render_success_message(_(m) %
+                                                       {'c': consumer_group_id, 'r': repo_id})
         except NotFoundException:
             m = 'Consumer Group [%(c)s] does not exist on the server'
             self.context.prompt.write(
-                _(m) % {'c' : consumer_group_id}, tag='not-found')
+                _(m) % {'c': consumer_group_id}, tag='not-found')

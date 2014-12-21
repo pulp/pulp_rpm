@@ -12,14 +12,11 @@ PRESTO_DELTA_FILE_NAME = 'prestodelta.xml.gz'
 
 
 class PrestodeltaXMLFileContext(MetadataFileContext):
-
     def __init__(self, working_dir, checksum_type=None):
-
         metadata_file_path = os.path.join(working_dir, REPO_DATA_DIR_NAME, PRESTO_DELTA_FILE_NAME)
         super(PrestodeltaXMLFileContext, self).__init__(metadata_file_path, checksum_type)
 
     def _write_root_tag_open(self):
-
         presto_delta_element = ElementTree.Element('prestodelta')
         bogus_element = ElementTree.SubElement(presto_delta_element, '')
 
@@ -37,7 +34,6 @@ class PrestodeltaXMLFileContext(MetadataFileContext):
         self._write_root_tag_close = _write_root_tag_close_closure
 
     def add_unit_metadata(self, delta_unit):
-
         new_package_attributes = {'name': delta_unit.metadata['new_package'],
                                   'epoch': delta_unit.unit_key['epoch'],
                                   'version': delta_unit.unit_key['version'],
@@ -71,4 +67,3 @@ class PrestodeltaXMLFileContext(MetadataFileContext):
         _LOG.debug('Writing prestodelta unit metadata:\n' + new_package_element_string)
 
         self.metadata_file_handle.write(new_package_element_string + '\n')
-

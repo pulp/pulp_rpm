@@ -12,7 +12,6 @@ HASHLIB_ALGORITHMS = ('md5', 'sha1', 'sha224', 'sha256', 'sha384', 'sha512')
 REPO_DATA_DIR_NAME = 'repodata'
 REPOMD_FILE_NAME = 'repomd.xml'
 
-# -- base metadata file context class ------------------------------------------
 
 class MetadataFileContext(object):
     """
@@ -48,7 +47,6 @@ class MetadataFileContext(object):
     def __exit__(self, exc_type, exc_val, exc_tb):
 
         if None not in (exc_type, exc_val, exc_tb):
-
             err_msg = '\n'.join(traceback.format_exception(exc_type, exc_val, exc_tb))
             log_msg = _('Exception occurred while writing [%(m)s]\n%(e)s')
             # any errors here should have already been caught and logged
@@ -102,7 +100,8 @@ class MetadataFileContext(object):
 
             self.checksum = checksum
             file_name_with_checksum = checksum + '-' + file_name
-            new_file_path = os.path.join(os.path.dirname(self.metadata_file_path), file_name_with_checksum)
+            new_file_path = os.path.join(os.path.dirname(self.metadata_file_path),
+                                         file_name_with_checksum)
             os.rename(self.metadata_file_path, new_file_path)
             self.metadata_file_path = new_file_path
 
@@ -226,7 +225,6 @@ class PreGeneratedMetadataContext(MetadataFileContext):
                    (metadata_category, unit.unit_key.get('name', 'unknown')))
 
         if 'repodata' not in unit.metadata or metadata_category not in unit.metadata['repodata']:
-
             msg = _('No pre-generated metadata found for unit [%(u)s], [%(c)s]')
             _LOG.error(msg % {'u': str(unit.unit_key), 'c': metadata_category})
 
@@ -235,9 +233,9 @@ class PreGeneratedMetadataContext(MetadataFileContext):
         metadata = unit.metadata['repodata'][metadata_category]
 
         if not isinstance(metadata, basestring):
-
             msg = _('%(c)s metadata for [%(u)s] must be a string, but is a %(t)s')
-            _LOG.error(msg % {'c': metadata_category.title(), 'u': unit.id, 't': str(type(metadata))})
+            _LOG.error(
+                msg % {'c': metadata_category.title(), 'u': unit.id, 't': str(type(metadata))})
 
             return
 
@@ -254,4 +252,3 @@ class PreGeneratedMetadataContext(MetadataFileContext):
         :type  unit: pulp.plugins.model.Unit
         """
         raise NotImplementedError()
-

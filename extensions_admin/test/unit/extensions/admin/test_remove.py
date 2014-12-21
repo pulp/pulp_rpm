@@ -10,7 +10,6 @@ from pulp_rpm.extensions.admin.remove import BaseRemoveCommand, PackageRemoveCom
 
 
 class BaseRemoveCommandTests(PulpClientTests):
-
     def setUp(self):
         super(BaseRemoveCommandTests, self).setUp()
 

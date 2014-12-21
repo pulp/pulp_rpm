@@ -29,7 +29,7 @@ CONFIG_FILENAME = '/etc/pulp/repo_auth.conf'
 # we can't read it from there in case this runs on a CDS. I'm also pretty sure
 # Pulp would break in other ways if this was changed, so for now this is
 # hardcoded until we actually get a use case to make it variable.
-RELATIVE_URL = '/pulp/repos' # no trailing backslash; we take care of normalizing it later
+RELATIVE_URL = '/pulp/repos'  # no trailing backslash; we take care of normalizing it later
 
 
 def authenticate(environ, config=None):
@@ -43,16 +43,17 @@ def authenticate(environ, config=None):
 
     validator = OidValidator(config)
     valid = validator.is_valid(environ["REQUEST_URI"], cert_pem,
-        environ["wsgi.errors"].write)
+                               environ["wsgi.errors"].write)
     return valid
+
 
 def _config():
     config = SafeConfigParser()
     config.read(CONFIG_FILENAME)
     return config
 
-class OidValidator:
 
+class OidValidator:
     def __init__(self, config):
         self.config = config
         self.repo_cert_utils = RepoCertUtils(config)
@@ -128,7 +129,7 @@ class OidValidator:
         prot_repos = self.protected_repo_utils.read_protected_repo_listings()
 
         # Extract the repo portion of the URL
-        #   Example URL: https://guardian/pulp/repos/my-repo/pulp/fedora-13/i386/repodata/repomd.xml
+        # Example URL: https://guardian/pulp/repos/my-repo/pulp/fedora-13/i386/repodata/repomd.xml
         #   Repo Portion: /my-repo/pulp/fedora-13/i386/repodata/repomd.xml
         repo_url = dest[dest.find(RELATIVE_URL) + len(RELATIVE_URL):]
 

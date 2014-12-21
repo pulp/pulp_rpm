@@ -1,16 +1,9 @@
-import os
-import shutil
 import unittest
 
-import mock
 from pulp.plugins.config import PluginCallConfiguration
-from pulp.plugins.conduits.repo_publish import RepoPublishConduit
-from pulp.server.exceptions import MissingResource
-from pulp.plugins.model import AssociatedUnit, Repository, RepositoryGroup
 
-from pulp_rpm.plugins.distributors.export_distributor import export_utils, generate_iso
-from pulp_rpm.common import constants, ids
-from pulp_rpm.plugins.db import models
+from pulp_rpm.plugins.distributors.export_distributor import export_utils
+from pulp_rpm.common import constants
 
 
 class TestIsValidPrefix(unittest.TestCase):
@@ -18,6 +11,7 @@ class TestIsValidPrefix(unittest.TestCase):
     Tests that is_valid_prefix only returns true for strings containing alphanumeric characters,
     dashes, and underscores.
     """
+
     def test_invalid_prefix(self):
         self.assertFalse(export_utils.is_valid_prefix('prefix#with*special@chars'))
 
@@ -29,6 +23,7 @@ class TestValidateExportConfig(unittest.TestCase):
     """
     Tests for validate_export_config in export_utils
     """
+
     def setUp(self):
         self.repo_config = {
             constants.PUBLISH_HTTPS_KEYWORD: True,
@@ -49,29 +44,33 @@ class TestValidateExportConfig(unittest.TestCase):
     def test_non_bool_http_key(self):
         # Confirm including a non-boolean for the publish http keyword fails validation
         self.repo_config[constants.PUBLISH_HTTP_KEYWORD] = 'potato'
-        result, msg = export_utils.validate_export_config(PluginCallConfiguration({}, self.repo_config))
+        result, msg = export_utils.validate_export_config(
+            PluginCallConfiguration({}, self.repo_config))
         self.assertFalse(result)
 
     def test_non_bool_https_key(self):
         # Confirm including a non-boolean for the publish https keyword fails validation
         self.repo_config[constants.PUBLISH_HTTPS_KEYWORD] = 'potato'
-        result, msg = export_utils.validate_export_config(PluginCallConfiguration({}, self.repo_config))
+        result, msg = export_utils.validate_export_config(
+            PluginCallConfiguration({}, self.repo_config))
         self.assertFalse(result)
 
     def test_invalid_key(self):
         self.repo_config['leek'] = 'garlic'
-        result, msg = export_utils.validate_export_config(PluginCallConfiguration({}, self.repo_config))
+        result, msg = export_utils.validate_export_config(
+            PluginCallConfiguration({}, self.repo_config))
         self.assertFalse(result)
 
     def test_full_config(self):
         self.repo_config[constants.SKIP_KEYWORD] = []
         self.repo_config[constants.ISO_PREFIX_KEYWORD] = 'prefix'
         self.repo_config[constants.ISO_SIZE_KEYWORD] = 630
-        self.repo_config[constants.EXPORT_DIRECTORY_KEYWORD] = export_dir = '/path/to/dir'
+        self.repo_config[constants.EXPORT_DIRECTORY_KEYWORD] = '/path/to/dir'
         self.repo_config[constants.START_DATE_KEYWORD] = '2013-07-18T11:22:00'
         self.repo_config[constants.END_DATE_KEYWORD] = '2013-07-18T11:23:00'
 
-        result, msg = export_utils.validate_export_config(PluginCallConfiguration({}, self.repo_config))
+        result, msg = export_utils.validate_export_config(
+            PluginCallConfiguration({}, self.repo_config))
         self.assertTrue(result)
 
     def test_bad_skip_config(self):
@@ -191,6 +190,7 @@ class TestCreateDateRangeFilter(unittest.TestCase):
     """
     Tests for the create_date_range_filter method in export_utils
     """
+
     def setUp(self):
         self.repo_config = {
             constants.PUBLISH_HTTPS_KEYWORD: True,

@@ -8,7 +8,6 @@ from pulp_rpm.plugins.distributors.yum.metadata.primary import PrimaryXMLFileCon
 
 
 class PrimaryXMLFileContextTests(unittest.TestCase):
-
     def setUp(self):
         self.working_dir = tempfile.mkdtemp()
         self.context = PrimaryXMLFileContext(self.working_dir, 3)

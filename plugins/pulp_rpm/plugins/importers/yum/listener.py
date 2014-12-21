@@ -78,7 +78,8 @@ class ContentListener(DownloadEventListener):
         if isinstance(model, (models.RPM, models.SRPM)):
             self.metadata_files.add_repodata(model)
         # init unit, which is idempotent
-        unit = self.sync_conduit.init_unit(model.TYPE, model.unit_key, model.metadata, model.relative_path)
+        unit = self.sync_conduit.init_unit(model.TYPE, model.unit_key, model.metadata,
+                                           model.relative_path)
         # move to final location
         shutil.move(report.destination, unit.storage_path)
         # save unit
@@ -130,7 +131,8 @@ class ContentListener(DownloadEventListener):
 
     def _verify_checksum(self, model, report):
         """
-        Verifies the checksum of the given unit if the sync is configured to do so. If the verification
+        Verifies the checksum of the given unit if the sync is configured to do so. If the
+        verification
         fails, the error is noted in this instance's progress report and the error is re-raised.
 
         :param model: domain model instance of the package that was downloaded

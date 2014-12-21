@@ -8,7 +8,6 @@ from pulp_rpm.devel.client_base import PulpClientTests
 
 
 class StructureTests(PulpClientTests):
-
     def test_rpm_list_schedule_command(self):
         command = sync_schedules.RpmListScheduleCommand(self.context)
 

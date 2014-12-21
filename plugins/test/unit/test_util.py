@@ -36,7 +36,8 @@ class TestElementToRawXML(unittest.TestCase):
         # try to re-parse the XML to make sure it's valid. fake tag is necessary
         # to declare the prefix "rpm"
         fake_xml = '<fake xmlns:rpm="http://pulpproject.org">%s</fake>' % raw_xml
-        reparsed = ET.fromstring(fake_xml)
+        # fromstring just to make sure this is valid
+        ET.fromstring(fake_xml)
 
     def test_other(self):
         utils.strip_ns(self.other_element)
@@ -47,8 +48,8 @@ class TestElementToRawXML(unittest.TestCase):
         self.assertEqual(raw_xml.count('<changelog '), 10)
         self.assertEqual(raw_xml.count('author="Doug Ledford'), 7)
 
-        # re-parse just to make sure this is valid
-        reparsed = ET.fromstring(raw_xml)
+        # fromstring just to make sure this is valid
+        ET.fromstring(raw_xml)
 
     def test_filelists(self):
         utils.strip_ns(self.filelists_element)
@@ -60,8 +61,8 @@ class TestElementToRawXML(unittest.TestCase):
         self.assertTrue(raw_xml.find('<file>/usr/lib64/libosmcomp.so.3</file>') >= 0)
         self.assertEqual(raw_xml.count('<file>'), 6)
 
-        # re-parse just to make sure this is valid
-        reparsed = ET.fromstring(raw_xml)
+        # fromstring just to make sure this is valid
+        ET.fromstring(raw_xml)
 
 
 class TestRegisterNamespace(unittest.TestCase):
@@ -122,12 +123,14 @@ class TestStripNS(unittest.TestCase):
 
 
 PRIMARY_XML = """<?xml version="1.0" encoding="UTF-8"?>
-<metadata xmlns="http://linux.duke.edu/metadata/common" xmlns:rpm="http://linux.duke.edu/metadata/rpm" packages="32">
+<metadata xmlns="http://linux.duke.edu/metadata/common"
+xmlns:rpm="http://linux.duke.edu/metadata/rpm" packages="32">
 <package type="rpm">
   <name>penguin</name>
   <arch>noarch</arch>
   <version epoch="0" ver="0.9.1" rel="1"/>
-  <checksum type="sha256" pkgid="YES">57d314cc6f5322484cdcd33f4173374de95c53034de5b1168b9291ca0ad06dec</checksum>
+  <checksum type="sha256"
+  pkgid="YES">57d314cc6f5322484cdcd33f4173374de95c53034de5b1168b9291ca0ad06dec</checksum>
   <summary>A dummy package of penguin</summary>
   <description>A dummy package of penguin</description>
   <packager></packager>
@@ -156,30 +159,41 @@ PRIMARY_XML = """<?xml version="1.0" encoding="UTF-8"?>
 # from Fedora 18
 OTHER_XML = """<?xml version="1.0" encoding="UTF-8"?>
 <otherdata xmlns="http://linux.duke.edu/metadata/other" packages="33868">
-<package pkgid="c2c85a567d1b92dd6131bd326611b162ed485f6f97583e46459b430006908d66" name="opensm-libs" arch="x86_64">
+<package pkgid="c2c85a567d1b92dd6131bd326611b162ed485f6f97583e46459b430006908d66"
+name="opensm-libs" arch="x86_64">
     <version epoch="0" ver="3.3.15" rel="3.fc18"/>
 
-<changelog author="Fedora Release Engineering &lt;rel-eng@lists.fedoraproject.org&gt; - 3.3.5-2" date="1297166400">- Rebuilt for https://fedoraproject.org/wiki/Fedora_15_Mass_Rebuild</changelog>
-<changelog author="Doug Ledford &lt;dledford@redhat.com&gt; - 3.3.9-1" date="1311163200">- Update to latest upstream version
+<changelog author="Fedora Release Engineering &lt;rel-eng@lists.fedoraproject.org&gt; - 3.3.5-2"
+date="1297166400">- Rebuilt for https://fedoraproject.org/wiki/Fedora_15_Mass_Rebuild</changelog>
+<changelog author="Doug Ledford &lt;dledford@redhat.com&gt; - 3.3.9-1" date="1311163200">- Update
+to latest upstream version
 - Add /etc/sysconfig/opensm for use by opensm init script
 - Enable the ability to start more than one instance of opensm for multiple
   fabric support
 - Enable the ability to start opensm with a priority other than default for
   support of backup opensm instances</changelog>
-<changelog author="Kalev Lember &lt;kalevlember@gmail.com&gt; - 3.3.9-2" date="1313409600">- Rebuilt for rpm bug #728707</changelog>
-<changelog author="Doug Ledford &lt;dledford@redhat.com&gt; - 3.3.12-1" date="1325592000">- Update to latest upstream version</changelog>
-<changelog author="Doug Ledford &lt;dledford@redhat.com&gt; - 3.3.13-1" date="1330430400">- Update to latest upstream version
+<changelog author="Kalev Lember &lt;kalevlember@gmail.com&gt; - 3.3.9-2" date="1313409600">-
+Rebuilt for rpm bug #728707</changelog>
+<changelog author="Doug Ledford &lt;dledford@redhat.com&gt; - 3.3.12-1" date="1325592000">-
+Update to latest upstream version</changelog>
+<changelog author="Doug Ledford &lt;dledford@redhat.com&gt; - 3.3.13-1" date="1330430400">-
+Update to latest upstream version
 - Fix a minor issue in init scripts that would cause systemd to try and
   start/stop things in the wrong order
 - Add a patch to allow us to specify the subnet prefix on the command line</changelog>
-<changelog author="Doug Ledford &lt;dledford@redhat.com&gt; - 3.3.13-2" date="1331640000">- Fix the config file comment in the opensm init script
+<changelog author="Doug Ledford &lt;dledford@redhat.com&gt; - 3.3.13-2" date="1331640000">- Fix
+the config file comment in the opensm init script
 - Resolves: bz802727</changelog>
-<changelog author="Fedora Release Engineering &lt;rel-eng@lists.fedoraproject.org&gt; - 3.3.13-3" date="1342785600">- Rebuilt for https://fedoraproject.org/wiki/Fedora_18_Mass_Rebuild</changelog>
-<changelog author="Doug Ledford &lt;dledford@redhat.com&gt; - 3.3.15-1" date="1354017600">- Update to latest upstream release
+<changelog author="Fedora Release Engineering &lt;rel-eng@lists.fedoraproject.org&gt; - 3.3.13-3"
+date="1342785600">- Rebuilt for https://fedoraproject.org/wiki/Fedora_18_Mass_Rebuild</changelog>
+<changelog author="Doug Ledford &lt;dledford@redhat.com&gt; - 3.3.15-1" date="1354017600">-
+Update to latest upstream release
 - Update to systemd startup</changelog>
-<changelog author="Doug Ledford &lt;dledford@redhat.com&gt; - 3.3.15-2" date="1354708800">- More tweaks to systemd setup (proper scriptlets now)
+<changelog author="Doug Ledford &lt;dledford@redhat.com&gt; - 3.3.15-2" date="1354708800">- More
+tweaks to systemd setup (proper scriptlets now)
 - More tweaks to old sysv init script support (fix Requires)</changelog>
-<changelog author="Doug Ledford &lt;dledford@redhat.com&gt; - 3.3.15-3" date="1354708801">- Fix startup on read only root
+<changelog author="Doug Ledford &lt;dledford@redhat.com&gt; - 3.3.15-3" date="1354708801">- Fix
+startup on read only root
 - Update default config file
 - Resolves: bz817591</changelog>
 
@@ -190,7 +204,8 @@ OTHER_XML = """<?xml version="1.0" encoding="UTF-8"?>
 # from Fedora 18
 FILELIST_XML = """<?xml version="1.0" encoding="UTF-8"?>
 <filelists xmlns="http://linux.duke.edu/metadata/filelists" packages="33868">
-<package pkgid="c2c85a567d1b92dd6131bd326611b162ed485f6f97583e46459b430006908d66" name="opensm-libs" arch="x86_64">
+<package pkgid="c2c85a567d1b92dd6131bd326611b162ed485f6f97583e46459b430006908d66"
+name="opensm-libs" arch="x86_64">
     <version epoch="0" ver="3.3.15" rel="3.fc18"/>
 
     <file>/usr/lib64/libopensm.so.5</file>

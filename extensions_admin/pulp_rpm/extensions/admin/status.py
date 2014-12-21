@@ -4,15 +4,13 @@ plugins (both the sync and publish operations).
 """
 
 from gettext import gettext as _
-import functools
 
 from pulp.client.commands.repo.sync_publish import StatusRenderer
 from pulp.client.commands.repo.status import PublishStepStatusRenderer
 
 from pulp_rpm.common import constants, ids
 from pulp_rpm.common.status_utils import (
-    render_general_spinner_step, render_itemized_in_progress_state,
-    render_publish_step_in_progress_state)
+    render_general_spinner_step, render_itemized_in_progress_state)
 
 
 class CancelException(Exception):
@@ -20,7 +18,6 @@ class CancelException(Exception):
 
 
 class RpmStatusRenderer(StatusRenderer):
-
     def __init__(self, context):
         super(RpmStatusRenderer, self).__init__(context)
 
@@ -92,14 +89,18 @@ class RpmStatusRenderer(StatusRenderer):
 
         # Example Data:
         # "metadata": {
-        #    "state": "FINISHED"
+        # "state": "FINISHED"
         # }
 
         current_state = progress_report['yum_importer']['metadata']['state']
         self.check_for_cancelled_state(current_state)
+
         def update_func(new_state):
             self.metadata_last_state = new_state
-        render_general_spinner_step(self.prompt, self.metadata_spinner, current_state, self.metadata_last_state, _('Downloading metadata...'), update_func)
+
+        render_general_spinner_step(self.prompt, self.metadata_spinner, current_state,
+                                    self.metadata_last_state, _('Downloading metadata...'),
+                                    update_func)
 
         if self.metadata_last_state == constants.STATE_FAILED:
             self.prompt.render_failure_message(progress_report['yum_importer']['metadata']['error'])
@@ -117,17 +118,19 @@ class RpmStatusRenderer(StatusRenderer):
             self.prompt.write(_('Downloading distribution files...'))
 
         if (state in (constants.STATE_RUNNING, constants.STATE_COMPLETE) and
-                    self.distribution_sync_last_state not in constants.COMPLETE_STATES):
-            render_itemized_in_progress_state(self.prompt, data, _('distributions'), self.distribution_sync_bar, state)
+                self.distribution_sync_last_state not in constants.COMPLETE_STATES):
+            render_itemized_in_progress_state(self.prompt, data, _('distributions'),
+                                              self.distribution_sync_bar, state)
 
         elif state in constants.STATE_FAILED and \
-             self.distribution_sync_last_state not in constants.COMPLETE_STATES:
+                self.distribution_sync_last_state not in constants.COMPLETE_STATES:
 
             self.prompt.render_spacer()
             self.prompt.render_failure_message(_('Errors encountered during distribution sync:'))
 
             # TODO: read this from config
-            # display_error_count = self.context.extension_config.getint('main', 'num_display_errors')
+            # display_error_count = self.context.extension_config.getint('main',
+            # 'num_display_errors')
             display_error_count = 5
 
             num_errors = min(len(data['error_details']), display_error_count)
@@ -136,7 +139,7 @@ class RpmStatusRenderer(StatusRenderer):
 
                 # Each error is a list of filename and dict of details
                 # Example:
-                #    "error_details": [
+                # "error_details": [
                 #      [
                 #        "file:///mnt/iso/f18/images/boot.iso",
                 #        {
@@ -151,12 +154,12 @@ class RpmStatusRenderer(StatusRenderer):
                     error = data['error_details'][i]
 
                     message_data = {
-                        'filename' : error[0],
-                        'message' : error[1]['error_message'],
-                        'code' : error[1]['error_code'],
+                        'filename': error[0],
+                        'message': error[1]['error_message'],
+                        'code': error[1]['error_code'],
                     }
 
-                    template  = 'File: %(filename)s\n'
+                    template = 'File: %(filename)s\n'
                     template += 'Error Code:   %(code)s\n'
                     template += 'Error Message: %(message)s'
                     message = template % message_data
@@ -192,12 +195,12 @@ class RpmStatusRenderer(StatusRenderer):
         # summary is still available.
 
         if state in (constants.STATE_RUNNING, constants.STATE_COMPLETE) and \
-                        self.download_last_state not in constants.COMPLETE_STATES:
+           self.download_last_state not in constants.COMPLETE_STATES:
 
             self.download_last_state = state
 
-            template  = _('RPMs:       %(rpm_done)s/%(rpm_total)s items\n'
-                          'Delta RPMs: %(drpm_done)s/%(drpm_total)s items\n')
+            template = _('RPMs:       %(rpm_done)s/%(rpm_total)s items\n'
+                         'Delta RPMs: %(drpm_done)s/%(drpm_total)s items\n')
 
             bar_message = template % details
 
@@ -218,13 +221,15 @@ class RpmStatusRenderer(StatusRenderer):
 
                 # If there are any errors, write them out here
                 # TODO: read this from config
-                # display_error_count = self.context.extension_config.getint('main', 'num_display_errors')
+                # display_error_count = self.context.extension_config.getint('main',
+                # 'num_display_errors')
                 display_error_count = 5
 
                 num_errors = min(len(data['error_details']), display_error_count)
 
                 if num_errors > 0:
-                    self.prompt.render_failure_message(_('Individual package errors encountered during sync:'))
+                    self.prompt.render_failure_message(
+                        _('Individual package errors encountered during sync:'))
 
                     for i in range(0, num_errors):
                         error = data['error_details'][i]
@@ -232,12 +237,14 @@ class RpmStatusRenderer(StatusRenderer):
                             message_data = {
                                 'name': error[constants.NAME],
                                 'checksum_type': error[constants.CHECKSUM_TYPE],
-                                'accepted': ','.join(error.get(constants.ACCEPTED_CHECKSUM_TYPES, []))
+                                'accepted': ','.join(
+                                    error.get(constants.ACCEPTED_CHECKSUM_TYPES, []))
                             }
                             template = _('Package: %(name)s\nError: An invalid checksum type '
                                          '(%(checksum_type)s) was detected.\n'
                                          'Accepted checksum types: %(accepted)s')
-                        elif error.get(constants.ERROR_CODE) == constants.ERROR_CHECKSUM_VERIFICATION:
+                        elif error.get(
+                                constants.ERROR_CODE) == constants.ERROR_CHECKSUM_VERIFICATION:
                             message_data = {
                                 'name': error[constants.NAME],
                             }
@@ -271,7 +278,8 @@ class RpmStatusRenderer(StatusRenderer):
                         self.prompt.render_failure_message(message)
                     self.prompt.render_spacer()
 
-        elif state == constants.STATE_FAILED and self.download_last_state not in constants.COMPLETE_STATES:
+        elif state == constants.STATE_FAILED and self.download_last_state not in \
+                constants.COMPLETE_STATES:
 
             # This state means something went horribly wrong. There won't be
             # individual package error details which is why they are only
@@ -284,7 +292,7 @@ class RpmStatusRenderer(StatusRenderer):
 
         # Example Data:
         # "errata": {
-        #    "state": "FINISHED",
+        # "state": "FINISHED",
         #    "num_errata": 0
         # }
         current_state = progress_report['yum_importer']['errata']['state']
@@ -294,12 +302,14 @@ class RpmStatusRenderer(StatusRenderer):
 
         def update_func(new_state):
             self.errata_last_state = new_state
-        render_general_spinner_step(self.prompt, self.errata_spinner, current_state, self.errata_last_state, _('Importing errata...'), update_func)
+
+        render_general_spinner_step(self.prompt, self.errata_spinner, current_state,
+                                    self.errata_last_state, _('Importing errata...'), update_func)
 
     def render_comps_step(self, progress_report):
         # Example Data:
         # "comps": {
-        #    "state": "FINISHED",
+        # "state": "FINISHED",
         #    "num_available_groups": 0,
         #    "num_available_categories": 0,
         #    "num_orphaned_groups": 0,
@@ -309,6 +319,10 @@ class RpmStatusRenderer(StatusRenderer):
         # }
 
         current_state = progress_report['yum_importer']['comps']['state']
+
         def update_func(new_state):
             self.comps_last_state = new_state
-        render_general_spinner_step(self.prompt, self.comps_spinner, current_state, self.comps_last_state, _('Importing package groups/categories...'), update_func)
+
+        render_general_spinner_step(self.prompt, self.comps_spinner, current_state,
+                                    self.comps_last_state,
+                                    _('Importing package groups/categories...'), update_func)

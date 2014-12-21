@@ -11,7 +11,6 @@ from pulp_rpm.common.ids import (TYPE_ID_RPM, TYPE_ID_SRPM, TYPE_ID_DRPM, TYPE_I
 
 
 class UnitsDisplayTests(unittest.TestCase):
-
     def test_details_package(self):
         unit = {'name': 'foo',
                 'version': 'bar',
@@ -40,4 +39,5 @@ class UnitsDisplayTests(unittest.TestCase):
         self.assertTrue(mock_id_only is units_display.get_formatter_for_type(TYPE_ID_DISTRO))
         self.assertTrue(mock_id_only is units_display.get_formatter_for_type(TYPE_ID_PKG_GROUP))
         self.assertTrue(mock_id_only is units_display.get_formatter_for_type(TYPE_ID_PKG_CATEGORY))
-        self.assertTrue(mock_metadata is units_display.get_formatter_for_type(TYPE_ID_YUM_REPO_METADATA_FILE))
+        self.assertTrue(
+            mock_metadata is units_display.get_formatter_for_type(TYPE_ID_YUM_REPO_METADATA_FILE))

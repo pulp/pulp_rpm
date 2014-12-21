@@ -24,6 +24,7 @@ def process_package_element(element):
 
     return unit_key, changelogs
 
+
 def _parse_changelogs(elements):
     ret = []
     for element in elements:

@@ -9,12 +9,11 @@ from pulp.client.extensions.extensions import PulpCliSection
 
 from pulp_rpm.common.ids import TYPE_ID_ERRATA, TYPE_ID_RPM
 from pulp_rpm.extensions.admin.content_schedules import YumConsumerContentCreateScheduleCommand
-from pulp_rpm.extensions.admin.rpm_admin_consumer.options import FLAG_IMPORT_KEYS, FLAG_NO_COMMIT, FLAG_REBOOT
+from pulp_rpm.extensions.admin.rpm_admin_consumer.options import FLAG_IMPORT_KEYS, FLAG_NO_COMMIT, \
+    FLAG_REBOOT
 
-# sections ---------------------------------------------------------------------
 
 class YumConsumerErrataSection(PulpCliSection):
-
     def __init__(self, context):
         description = _('errata installation management')
         super(self.__class__, self).__init__('errata', description)
@@ -23,7 +22,6 @@ class YumConsumerErrataSection(PulpCliSection):
 
 
 class YumConsumerErrataInstallSection(PulpCliSection):
-
     def __init__(self, context):
         description = _('run or schedule an errata installation task')
         super(self.__class__, self).__init__('install', description)
@@ -33,7 +31,6 @@ class YumConsumerErrataInstallSection(PulpCliSection):
 
 
 class YumConsumerErrataSchedulesSection(PulpCliSection):
-
     def __init__(self, context, action):
         description = _('manage consumer errata %s schedules' % action)
         super(self.__class__, self).__init__('schedules', description)
@@ -44,10 +41,10 @@ class YumConsumerErrataSchedulesSection(PulpCliSection):
         self.add_command(consumer_content.ConsumerContentUpdateScheduleCommand(context, action))
         self.add_command(consumer_content.ConsumerContentNextRunCommand(context, action))
 
+
 # commands ---------------------------------------------------------------------
 
 class YumConsumerErrataInstallCommand(consumer_content.ConsumerContentInstallCommand):
-
     def __init__(self, context):
         description = _('triggers an immediate errata install on a consumer')
         super(YumConsumerErrataInstallCommand, self).__init__(context, description=description)
@@ -97,7 +94,7 @@ class YumConsumerErrataInstallCommand(consumer_content.ConsumerContentInstallCom
         # task.result will contain RPM units that were installed or updated
         # to satisfy the errata.
 
-        if task.result['details'].has_key(TYPE_ID_RPM):
+        if TYPE_ID_RPM in task.result['details']:
             details = task.result['details'][TYPE_ID_RPM]['details']
             resolved = details['resolved']
             fields = ['name', 'version', 'arch', 'repoid']
@@ -129,5 +126,5 @@ class YumConsumerErrataInstallCommand(consumer_content.ConsumerContentInstallCom
             message = task.result['details'][TYPE_ID_RPM]['details']['message']
             self.context.prompt.render_failure_message(message)
         except (KeyError, AttributeError, TypeError):
-            #do nothing as this parameter is not always included in a failure
+            # do nothing as this parameter is not always included in a failure
             pass

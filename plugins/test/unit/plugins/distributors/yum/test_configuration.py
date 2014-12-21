@@ -22,7 +22,6 @@ DATA_DIR = os.path.join(os.path.dirname(__file__), '../../../../data/')
 
 
 class YumDistributorConfigurationTests(unittest.TestCase):
-
     def setUp(self):
         super(YumDistributorConfigurationTests, self).setUp()
 
@@ -74,7 +73,6 @@ class YumDistributorConfigurationTests(unittest.TestCase):
 
         test_ca_path = os.path.join(DATA_DIR, 'test_ca.crt')
         with open(test_ca_path, 'r') as test_ca_handle:
-
             error_messages = []
             ca_cert = test_ca_handle.read()
 
@@ -447,7 +445,7 @@ class YumDistributorConfigurationTests(unittest.TestCase):
 
     @mock.patch('pulp_rpm.plugins.distributors.yum.configuration._LOG')
     def test_load_config_fails(self, mock_log):
-        #Test to ensure that we log a warning if the config can't be loaded
+        # Test to ensure that we log a warning if the config can't be loaded
         configuration.load_config("/bad/config/path")
         self.assertTrue(mock_log.warning.called)
 
@@ -523,7 +521,6 @@ class YumDistributorConfigurationTests(unittest.TestCase):
 
 
 class TestGetExportRepoPublishDirs(unittest.TestCase):
-
     def test_both_dirs(self):
         config = PluginCallConfiguration({}, {constants.PUBLISH_HTTP_KEYWORD: True,
                                               constants.PUBLISH_HTTPS_KEYWORD: True})
@@ -541,7 +538,6 @@ class TestGetExportRepoPublishDirs(unittest.TestCase):
 
 
 class TestGetExportRepoGroupPublishDirs(unittest.TestCase):
-
     def test_both_dirs(self):
         config = PluginCallConfiguration({}, {constants.PUBLISH_HTTP_KEYWORD: True,
                                               constants.PUBLISH_HTTPS_KEYWORD: True})
@@ -559,7 +555,6 @@ class TestGetExportRepoGroupPublishDirs(unittest.TestCase):
 
 
 class TestConfigurationValidationHelpers(unittest.TestCase):
-
     def test_validate_list_success(self):
         error_messages = []
         configuration._validate_list('foo', ['bar'], error_messages)
@@ -582,7 +577,6 @@ class TestConfigurationValidationHelpers(unittest.TestCase):
 
 
 class TestGetRepoChecksumType(unittest.TestCase):
-
     def setUp(self):
         self.config = PluginCallConfiguration({}, {})
         self.mock_conduit = MagicMock()
@@ -601,7 +595,7 @@ class TestGetRepoChecksumType(unittest.TestCase):
 
     @patch('pulp.server.managers.factory.repo_distributor_manager')
     def test_get_repo_checksum_not_in_scratchpad(self, mock_distributor_manager):
-        #Test with other data in the scratchpad
+        # Test with other data in the scratchpad
         self.mock_conduit.get_repo_scratchpad.return_value = \
             {'foo': 'bar'}
         self.assertEquals(CONFIG_DEFAULT_CHECKSUM,
@@ -617,7 +611,7 @@ class TestGetRepoChecksumType(unittest.TestCase):
 
         self.assertEquals('sha1',
                           configuration.get_repo_checksum_type(self.mock_conduit, self.config))
-        mock_distributor_manager.return_value.update_distributor_config.\
+        mock_distributor_manager.return_value.update_distributor_config. \
             assert_called_with(ANY, ANY, {'checksum_type': 'sha1'})
 
     @patch('pulp.server.managers.factory.repo_distributor_manager')

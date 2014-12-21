@@ -9,7 +9,6 @@ from pulp_rpm.extensions.admin import criteria_utils
 
 
 class ParseKeyValueTests(unittest.TestCase):
-
     def test_parse(self):
         # Setup
         user_input = ['name=foo', 'version=1.0', 'release=2', 'license=GPL']
@@ -19,7 +18,7 @@ class ParseKeyValueTests(unittest.TestCase):
 
         # Verify
         self.assertEqual(4, len(parsed))
-        parsed.sort(key=lambda x : x[0])
+        parsed.sort(key=lambda x: x[0])
         self.assertEqual(parsed[0][0], 'license')
         self.assertEqual(parsed[0][1], 'GPL')
         self.assertEqual(parsed[1][0], 'name')
@@ -31,7 +30,6 @@ class ParseKeyValueTests(unittest.TestCase):
 
 
 class ParseSortTests(unittest.TestCase):
-
     def test_parse(self):
         # Setup
         user_input = ['name,ascending', 'version,descending', 'release,ascending']
@@ -41,7 +39,7 @@ class ParseSortTests(unittest.TestCase):
 
         # Verify
         self.assertEqual(3, len(parsed))
-        parsed.sort(key=lambda x : x[0])
+        parsed.sort(key=lambda x: x[0])
         self.assertEqual(parsed[0][0], 'name')
         self.assertEqual(parsed[0][1], 'ascending')
         self.assertEqual(parsed[1][0], version_utils.RELEASE_INDEX)

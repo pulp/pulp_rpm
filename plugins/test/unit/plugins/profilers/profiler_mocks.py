@@ -2,13 +2,17 @@ import mock
 from pulp.plugins.model import Unit
 from pulp.plugins.conduits.profiler import ProfilerConduit
 
+
 def get_repo(repo_id):
     class Repo(object):
         def __init__(self, repo_id):
             self.id = repo_id
+
     return Repo(repo_id)
 
-def get_profiler_conduit(type_id=None, existing_units=None, repo_bindings=[], repo_units=[], errata_rpms=[]):
+
+def get_profiler_conduit(type_id=None, existing_units=None, repo_bindings=[], repo_units=[],
+                         errata_rpms=[]):
     def get_bindings(consumer_id=None):
         return repo_bindings
 
@@ -32,7 +36,7 @@ def get_profiler_conduit(type_id=None, existing_units=None, repo_bindings=[], re
             metadata['unit_id'] = u.id
             for f in additional_unit_fields:
                 if f == 'pkglist':
-                    metadata[f] = [{'packages':errata_rpms}]
+                    metadata[f] = [{'packages': errata_rpms}]
                 else:
                     metadata[f] = 'test-additional-field'
             ret_val.append(Unit(content_type_id, u.unit_key, metadata, None))
@@ -43,4 +47,3 @@ def get_profiler_conduit(type_id=None, existing_units=None, repo_bindings=[], re
     sync_conduit.get_repo_units.side_effect = get_repo_units
     sync_conduit.get_bindings.side_effect = get_bindings
     return sync_conduit
-

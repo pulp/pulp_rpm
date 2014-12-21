@@ -15,7 +15,6 @@ SIGNATURE = 'test-signature'
 
 
 class TestCataloger(TestCase):
-
     def test_entry_point(self):
         plugin, config = entry_point()
         self.assertEqual(plugin, RHUICataloger)
@@ -89,7 +88,6 @@ class TestCataloger(TestCase):
 
 
 class FakeOpener(object):
-
     def __init__(self, on_call=1):
         self.on_call = on_call
         self.calls = 0

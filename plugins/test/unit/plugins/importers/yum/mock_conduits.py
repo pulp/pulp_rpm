@@ -11,17 +11,14 @@ from pulp.plugins.conduits import repo_publish, repo_sync, unit_import
 from pulp.plugins.config import PluginCallConfiguration
 from pulp.plugins.model import Unit, PublishReport
 
-# -- plugin config -------------------------------------------------------------
 
 def plugin_call_config(**kwargs):
     plugin_config = {'num_retries': 0, 'retry_delay': 0}
     repo_plugin_config = kwargs
     return PluginCallConfiguration(plugin_config, repo_plugin_config)
 
-# -- publish conduits ----------------------------------------------------------
 
 def repo_publish_conduit(repo_scratchpad=None, distributor_scratchpad=None, existing_units=None):
-
     # closure variables
 
     repo_scratchpad = repo_scratchpad or {}
@@ -62,7 +59,6 @@ def repo_publish_conduit(repo_scratchpad=None, distributor_scratchpad=None, exis
 
 def repo_group_publish_conduit(multiple_repo_scratchpads=None, group_distributor_scratchpad=None,
                                existing_units_by_repo=None):
-
     # closure variables
 
     multiple_repo_scratchpads = multiple_repo_scratchpads or {}
@@ -99,11 +95,11 @@ def repo_group_publish_conduit(multiple_repo_scratchpads=None, group_distributor
 
     return conduit
 
+
 # -- sync conduits -------------------------------------------------------------
 
 def repo_sync_conduit(working_dir, repo_scratchpad=None, importer_scratchpad=None,
                       existing_units=None, linked_units=None, repo_id=None):
-
     # closure variables
 
     repo_scratchpad = repo_scratchpad or {}
@@ -148,11 +144,11 @@ def repo_sync_conduit(working_dir, repo_scratchpad=None, importer_scratchpad=Non
 
     return conduit
 
+
 # -- import conduits -----------------------------------------------------------
 
 def import_unit_conduit(working_dir, repo_scratchpad=None, importer_scratchpad=None,
                         existing_units=None, linked_units=None, source_units=None):
-
     # closure variables
 
     repo_scratchpad = repo_scratchpad or {}
@@ -197,10 +193,10 @@ def import_unit_conduit(working_dir, repo_scratchpad=None, importer_scratchpad=N
 
     return conduit
 
+
 # -- mixin closures ------------------------------------------------------------
 
 def repo_scratch_pad_mixin(repo_scratchpad):
-
     def get_repo_scratchpad():
         return repo_scratchpad
 
@@ -212,7 +208,6 @@ def repo_scratch_pad_mixin(repo_scratchpad):
 
 
 def repo_scratchpad_read_mixin(multiple_repo_scratchpads):
-
     def get_repo_scratchpad(repo_id):
         scratchpad = multiple_repo_scratchpads.setdefault(repo_id, {})
         return scratchpad
@@ -221,7 +216,6 @@ def repo_scratchpad_read_mixin(multiple_repo_scratchpads):
 
 
 def single_repo_units_mixin(existing_units):
-
     def get_units(criteria=None):
         if criteria is None:
             return existing_units[:]
@@ -246,7 +240,6 @@ def single_repo_units_mixin(existing_units):
 
 
 def multiple_repo_units_mixin(existing_units_by_repo):
-
     def get_units(repo_id, criteria):
         existing_units = existing_units_by_repo.setdefault(repo_id, [])
         single_repo_get_units = single_repo_units_mixin(existing_units)
@@ -256,7 +249,6 @@ def multiple_repo_units_mixin(existing_units_by_repo):
 
 
 def search_units_mixin(existing_units):
-
     def search_all_units(type_id, criteria):
         matched_units = []
         for unit in existing_units:
@@ -275,11 +267,10 @@ def search_units_mixin(existing_units):
             matched_units = matched_units[:criteria.limit]
         return matched_units
 
-    return  search_all_units
+    return search_all_units
 
 
 def generic_scratchpad_mixin(scratchpad):
-
     def get_scratchpad():
         return scratchpad
 
@@ -291,7 +282,6 @@ def generic_scratchpad_mixin(scratchpad):
 
 
 def add_unit_mixin(working_dir, existing_units, linked_units):
-
     def init_unit(type_id, unit_key, metadata, relative_path):
         storage_path = os.path.join(working_dir, relative_path)
         storage_dir = os.path.dirname(storage_path)
@@ -315,7 +305,6 @@ def add_unit_mixin(working_dir, existing_units, linked_units):
 
 
 def status_mixin():
-
     def set_progress(status):
         pass
 
@@ -323,7 +312,6 @@ def status_mixin():
 
 
 def publish_report_mixin():
-
     def build_success_report(summary, details):
         return PublishReport(True, summary, details)
 
@@ -331,4 +319,3 @@ def publish_report_mixin():
         return PublishReport(False, summary, details)
 
     return build_success_report, build_failure_report
-

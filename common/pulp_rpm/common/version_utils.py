@@ -43,9 +43,9 @@ NUMBER_DIVIDER = '-'
 LETTERS_TEMPLATE = '$%s'  # substitute in segment
 
 # From the Fedora link above:
-#  "digits" and "letters" are defined as ASCII digits ('0'-'9') and ASCII letters
-#  ('a'-'z' and 'A'-'Z'). Other Unicode digits and letters (like accented Latin letters)
-#  are not considered letters.
+# "digits" and "letters" are defined as ASCII digits ('0'-'9') and ASCII letters
+# ('a'-'z' and 'A'-'Z'). Other Unicode digits and letters (like accented Latin letters)
+# are not considered letters.
 #
 #  Each label is separated into a list of maximal alphabetic or numeric sections, with
 #  separators (non-alphanumeric characters) ignored.
@@ -59,7 +59,8 @@ VERSION_INDEX = 'version_sort_index'
 RELEASE_INDEX = 'release_sort_index'
 
 
-class TooManyDigits(ValueError): pass
+class TooManyDigits(ValueError):
+    pass
 
 
 def encode(field):
@@ -86,6 +87,7 @@ def encode(field):
         raise ValueError('Cannot not encode %s; too many digits in the field' % field)
 
     return encoded_field
+
 
 # -- private ------------------------------------------------------------------
 

@@ -30,7 +30,6 @@ class FailedException(Exception):
 
 
 class RepoSync(object):
-
     def __init__(self, repo, sync_conduit, call_config):
         """
         :param repo: metadata describing the repository
@@ -146,7 +145,8 @@ class RepoSync(object):
             self.set_progress()
 
         except CancelException:
-            report = self.sync_conduit.build_cancel_report(self._progress_summary, self.progress_status)
+            report = self.sync_conduit.build_cancel_report(self._progress_summary,
+                                                           self.progress_status)
             report.canceled_flag = True
             return report
 
@@ -157,7 +157,8 @@ class RepoSync(object):
                     value['state'] = constants.STATE_FAILED
                     value['error'] = str(e)
             self.set_progress()
-            report = self.sync_conduit.build_failure_report(self._progress_summary, self.progress_status)
+            report = self.sync_conduit.build_failure_report(self._progress_summary,
+                                                            self.progress_status)
             return report
 
         finally:
@@ -211,7 +212,7 @@ class RepoSync(object):
         metadata_files.generate_dbs()
         self.import_unknown_metadata_files(metadata_files)
         # TODO: verify metadata
-        #metadata_files.verify_metadata_files()
+        # metadata_files.verify_metadata_files()
         return metadata_files
 
     def save_default_metadata_checksum_on_repo(self, metadata_files):
@@ -256,9 +257,10 @@ class RepoSync(object):
                 model = models.YumMetadataFile(metadata_type,
                                                self.sync_conduit.repo_id,
                                                unit_metadata)
-                relative_path = os.path.join(model.relative_dir, os.path.basename(file_info['local_path']))
+                relative_path = os.path.join(model.relative_dir,
+                                             os.path.basename(file_info['local_path']))
                 unit = self.sync_conduit.init_unit(models.YumMetadataFile.TYPE, model.unit_key,
-                                            model.metadata, relative_path)
+                                                   model.metadata, relative_path)
                 shutil.copyfile(file_info['local_path'], unit.storage_path)
                 self.sync_conduit.save_unit(unit)
 
@@ -287,8 +289,10 @@ class RepoSync(object):
         :rtype:     tuple
         """
         _logger.info(_('Determining which units need to be downloaded.'))
-        rpms_to_download, rpms_count, rpms_total_size = self._decide_rpms_to_download(metadata_files)
-        drpms_to_download, drpms_count, drpms_total_size = self._decide_drpms_to_download(metadata_files)
+        rpms_to_download, rpms_count, rpms_total_size = self._decide_rpms_to_download(
+            metadata_files)
+        drpms_to_download, drpms_count, drpms_total_size = self._decide_drpms_to_download(
+            metadata_files)
 
         unit_counts = {
             'rpm': rpms_count,
@@ -316,9 +320,8 @@ class RepoSync(object):
         primary_file_handle = metadata_files.get_metadata_file_handle(primary.METADATA_FILE_NAME)
         try:
             # scan through all the metadata to decide which packages to download
-            package_info_generator = packages.package_list_generator(primary_file_handle,
-                                                                     primary.PACKAGE_TAG,
-                                                                     primary.process_package_element)
+            package_info_generator = packages.package_list_generator(
+                primary_file_handle, primary.PACKAGE_TAG, primary.process_package_element)
             wanted = self._identify_wanted_versions(package_info_generator)
             # check for the units that are already in the repo
             not_found_in_the_repo = existing.check_repo(wanted.iterkeys(),
@@ -352,9 +355,8 @@ class RepoSync(object):
         presto_file_handle = metadata_files.get_metadata_file_handle(presto.METADATA_FILE_NAME)
         if presto_file_handle:
             try:
-                package_info_generator = packages.package_list_generator(presto_file_handle,
-                                                                         presto.PACKAGE_TAG,
-                                                                         presto.process_package_element)
+                package_info_generator = packages.package_list_generator(
+                    presto_file_handle, presto.PACKAGE_TAG, presto.process_package_element)
                 wanted = self._identify_wanted_versions(package_info_generator)
                 # check for the units that are already in the repo
                 not_found_in_the_repo = existing.check_repo(wanted.iterkeys(),
@@ -393,13 +395,14 @@ class RepoSync(object):
         :rtype: pulp.plugins.model.SyncReport
         """
         # TODO: probably should make this more generic
-        event_listener = ContentListener(self.sync_conduit, self.progress_status, self.call_config, metadata_files)
+        event_listener = ContentListener(self.sync_conduit, self.progress_status, self.call_config,
+                                         metadata_files)
         primary_file_handle = metadata_files.get_metadata_file_handle(primary.METADATA_FILE_NAME)
         try:
-            package_model_generator = packages.package_list_generator(primary_file_handle,
-                                                                      primary.PACKAGE_TAG,
-                                                                      primary.process_package_element)
-            units_to_download = self._filtered_unit_generator(package_model_generator, rpms_to_download)
+            package_model_generator = packages.package_list_generator(
+                primary_file_handle, primary.PACKAGE_TAG, primary.process_package_element)
+            units_to_download = self._filtered_unit_generator(package_model_generator,
+                                                              rpms_to_download)
 
             download_wrapper = alternate.Packages(self.sync_feed, self.nectar_config,
                                                   units_to_download, self.tmp_dir, event_listener)
@@ -415,13 +418,14 @@ class RepoSync(object):
         presto_file_handle = metadata_files.get_metadata_file_handle(presto.METADATA_FILE_NAME)
         if presto_file_handle:
             try:
-                package_model_generator = packages.package_list_generator(presto_file_handle,
-                                                                          presto.PACKAGE_TAG,
-                                                                          presto.process_package_element)
-                units_to_download = self._filtered_unit_generator(package_model_generator, drpms_to_download)
+                package_model_generator = packages.package_list_generator(
+                    presto_file_handle, presto.PACKAGE_TAG, presto.process_package_element)
+                units_to_download = self._filtered_unit_generator(package_model_generator,
+                                                                  drpms_to_download)
 
                 download_wrapper = packages.Packages(self.sync_feed, self.nectar_config,
-                                                     units_to_download, self.tmp_dir, event_listener)
+                                                     units_to_download, self.tmp_dir,
+                                                     event_listener)
                 # allow the downloader to be accessed by the cancel method if necessary
                 self.downloader = download_wrapper.downloader
                 _logger.info(_('Downloading %(num)s DRPMs.') % {'num': len(drpms_to_download)})
@@ -467,7 +471,8 @@ class RepoSync(object):
             _logger.debug('updateinfo not found')
             return
         try:
-            self.save_fileless_units(errata_file_handle, updateinfo.PACKAGE_TAG, updateinfo.process_package_element)
+            self.save_fileless_units(errata_file_handle, updateinfo.PACKAGE_TAG,
+                                     updateinfo.process_package_element)
 
         finally:
             errata_file_handle.close()
@@ -534,7 +539,8 @@ class RepoSync(object):
             all_packages = packages.package_list_generator(file_handle,
                                                            tag,
                                                            process_func)
-            package_info_generator = (model for model in all_packages if model.as_named_tuple in to_save)
+            package_info_generator = (model for model in all_packages if
+                                      model.as_named_tuple in to_save)
 
         for model in package_info_generator:
             unit = self.sync_conduit.init_unit(model.TYPE, model.unit_key, model.metadata, None)
@@ -564,7 +570,8 @@ class RepoSync(object):
         # a tuple of (model as named tuple, size in bytes)
         wanted = {}
 
-        number_old_versions_to_keep = self.call_config.get(importer_constants.KEY_UNITS_RETAIN_OLD_COUNT)
+        number_old_versions_to_keep = self.call_config.get(
+            importer_constants.KEY_UNITS_RETAIN_OLD_COUNT)
         for model in package_info_generator:
             versions = wanted.setdefault(model.key_string_without_version, {})
             serialized_version = model.complete_version_serialized

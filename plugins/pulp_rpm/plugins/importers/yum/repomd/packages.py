@@ -58,7 +58,7 @@ def package_list_generator(xml_handle, package_tag, process_func=None):
         if not (element.tag == package_tag or re.sub(NS_STRIP_RE, '', element.tag) == package_tag):
             continue
 
-        root_element.clear() # clear all previously parsed ancestors of the root
+        root_element.clear()  # clear all previously parsed ancestors of the root
 
         package_info = process_func(element)
         yield package_info

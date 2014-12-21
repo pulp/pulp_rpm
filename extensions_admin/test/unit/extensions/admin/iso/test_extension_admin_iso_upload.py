@@ -9,6 +9,7 @@ class TestUploadISOCommand(PulpClientTests):
     """
     Test the UploadISOCommand class.
     """
+
     @mock.patch('pulp_rpm.extensions.admin.iso.upload.UploadCommand.__init__', autospec=True,
                 side_effect=upload.UploadCommand.__init__)
     def test___init__(self, __init__):
@@ -19,14 +20,16 @@ class TestUploadISOCommand(PulpClientTests):
 
         upload_command = upload.UploadISOCommand(self.context, fake_upload_manager)
 
-        __init__.assert_called_once_with(upload_command, self.context, fake_upload_manager, name=upload.NAME,
+        __init__.assert_called_once_with(upload_command, self.context, fake_upload_manager,
+                                         name=upload.NAME,
                                          description=upload.DESCRIPTION)
 
     def test_determine_type_id(self):
         """
         Assert that the determine_type_id() method always returns the ISO type.
         """
-        self.assertEqual(upload.UploadISOCommand.determine_type_id('/path/doesnt/matter/'), ids.TYPE_ID_ISO)
+        self.assertEqual(upload.UploadISOCommand.determine_type_id('/path/doesnt/matter/'),
+                         ids.TYPE_ID_ISO)
         self.assertEqual(upload.UploadISOCommand.
                          determine_type_id('/another/path/that/doesnt/matter/'),
                          ids.TYPE_ID_ISO)

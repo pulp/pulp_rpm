@@ -7,7 +7,6 @@ the commands.
 
 from gettext import gettext as _
 
-# -- constants ----------------------------------------------------------------
 
 # Root section all RPM specific functionality will be located under
 SECTION_ROOT = 'rpm'
@@ -45,7 +44,6 @@ DESC_GROUP_EXPORT = _('run or view the status of a repository group export')
 
 DESC_GROUP = _('repository group commands')
 
-# -- creation -----------------------------------------------------------------
 
 def ensure_root(cli):
     """
@@ -105,6 +103,7 @@ def ensure_repo_structure(cli):
     group_section.create_subsection(SECTION_EXPORT, DESC_GROUP_EXPORT)
 
     return repo_section
+
 
 # -- section retrieval --------------------------------------------------------
 

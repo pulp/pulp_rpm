@@ -95,10 +95,12 @@ class TestProcessRepomdDataElement(unittest.TestCase):
     """
     This class contains tests for the process_repomd_data_element() function.
     """
+
     def test_sanitizes_checksum_tag(self):
         """
         Assert that the function properly sanitizes the checksum type in the checksum tag.
         """
+
         def mock_find(tag):
             checksum_element = mock.MagicMock()
             if tag == metadata.CHECKSUM_TAG:
@@ -117,6 +119,7 @@ class TestProcessRepomdDataElement(unittest.TestCase):
         """
         Assert that the function properly sanitizes the checksum type in the open checksum tag.
         """
+
         def mock_find(tag):
             checksum_element = mock.MagicMock()
             if tag == metadata.OPEN_CHECKSUM_TAG:

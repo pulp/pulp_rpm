@@ -12,6 +12,7 @@ class TestValidate(unittest.TestCase):
     """
     Assert correct behavior from the configuration.validate() function.
     """
+
     @mock.patch('pulp_rpm.plugins.distributors.iso_distributor.configuration._validate_ssl_cert',
                 side_effect=configuration._validate_ssl_cert)
     @mock.patch('pulp_rpm.plugins.configuration_utils.validate_non_required_bool',
@@ -20,7 +21,8 @@ class TestValidate(unittest.TestCase):
         """
         Test that validate() uses all the right helpers.
         """
-        config = get_basic_config(**{constants.CONFIG_SERVE_HTTP: True, constants.CONFIG_SERVE_HTTPS: False})
+        config = get_basic_config(
+            **{constants.CONFIG_SERVE_HTTP: True, constants.CONFIG_SERVE_HTTPS: False})
 
         valid, msg = configuration.validate(config)
 
@@ -42,8 +44,9 @@ class TestValidate(unittest.TestCase):
         """
         Test that validate() handles a bad config correctly.
         """
-        config = get_basic_config(**{constants.CONFIG_SERVE_HTTP: True, constants.CONFIG_SERVE_HTTPS: False,
-                                     constants.CONFIG_SSL_AUTH_CA_CERT: 'Invalid cert.'})
+        config = get_basic_config(
+            **{constants.CONFIG_SERVE_HTTP: True, constants.CONFIG_SERVE_HTTPS: False,
+               constants.CONFIG_SSL_AUTH_CA_CERT: 'Invalid cert.'})
 
         valid, msg = configuration.validate(config)
 
@@ -55,7 +58,8 @@ class TestValidate(unittest.TestCase):
         """
         Test that validate() handles a good config correctly.
         """
-        config = get_basic_config(**{constants.CONFIG_SERVE_HTTP: True, constants.CONFIG_SERVE_HTTPS: False})
+        config = get_basic_config(
+            **{constants.CONFIG_SERVE_HTTP: True, constants.CONFIG_SERVE_HTTPS: False})
 
         valid, msg = configuration.validate(config)
 
@@ -68,6 +72,7 @@ class TestValidateSSLCert(unittest.TestCase):
     """
     Test the _validate_ssl_cert() function.
     """
+
     def test_bad_cert(self):
         """
         Assert that a bad cert raises an error.
@@ -78,7 +83,8 @@ class TestValidateSSLCert(unittest.TestCase):
             configuration._validate_ssl_cert(config, constants.CONFIG_SSL_AUTH_CA_CERT)
             self.fail('The validator should have raised an Exception, but it did not.')
         except configuration_utils.ValidationError, e:
-            self.assertEqual(str(e), 'The SSL certificate <ssl_auth_ca_cert> is not a valid certificate.')
+            self.assertEqual(str(e),
+                             'The SSL certificate <ssl_auth_ca_cert> is not a valid certificate.')
 
     @mock.patch('pulp_rpm.yum_plugin.util.validate_cert', return_value=True)
     def test_good_cert(self, validate_cert):

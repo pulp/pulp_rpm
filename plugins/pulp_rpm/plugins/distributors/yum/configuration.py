@@ -353,13 +353,13 @@ def _validate_https(https, error_messages):
 
 
 def _validate_relative_url(relative_url, error_messages):
-
     if relative_url is None:
         return
 
     if not isinstance(relative_url, basestring):
         msg = _('Configuration value for [relative_url] must be a string, but is a %(t)s')
         error_messages.append(msg % {'t': str(type(relative_url))})
+
 
 # -- optional config validation ------------------------------------------------
 
@@ -373,7 +373,6 @@ def _validate_auth_cert(auth_cert, error_messages):
 
 
 def _validate_checksum_type(checksum_type, error_messages):
-
     if checksum_type is None or util.is_valid_checksum_type(checksum_type):
         return
 
@@ -404,11 +403,11 @@ def _validate_skip_pkg_tags(skip_pkg_tags, error_messages):
 def _validate_generate_sqlite(use_createrepo, error_messages):
     _validate_boolean('generate_sqlite', use_createrepo, error_messages, False)
 
+
 # -- generalized validation methods --------------------------------------------
 
 
 def _validate_boolean(key, value, error_messages, none_ok=True):
-
     if isinstance(value, bool) or (none_ok and value is None):
         return
 
@@ -424,7 +423,6 @@ def _validate_list(key, value, error_messages, none_ok=True):
 
 
 def _validate_dictionary(key, value, error_messages, none_ok=True):
-
     if isinstance(value, dict) or (none_ok and value is None):
         return
 
@@ -433,7 +431,6 @@ def _validate_dictionary(key, value, error_messages, none_ok=True):
 
 
 def _validate_certificate(key, cert, error_messages):
-
     cert = cert.encode('utf-8')
 
     if util.validate_cert(cert):
@@ -444,7 +441,6 @@ def _validate_certificate(key, cert, error_messages):
 
 
 def _validate_usable_directory(key, path, error_messages):
-
     if not os.path.exists(path) or not os.path.isdir(path):
         msg = _('Configuration value for [%(k)s] must be an existing directory')
         error_messages.append(msg % {'k': key})
@@ -453,11 +449,11 @@ def _validate_usable_directory(key, path, error_messages):
         msg = _('Configuration value for [%(k)s] must be a directory that is readable and writable')
         error_messages.append(msg % {'k': key})
 
+
 # -- check for conflicting relative paths --------------------------------------
 
 
 def _check_for_relative_path_conflicts(repo, config, config_conduit, error_messages):
-
     relative_path = get_repo_relative_path(repo, config)
     conflicting_distributors = config_conduit.get_repo_distributors_by_relative_url(relative_path,
                                                                                     repo.id)

@@ -1,5 +1,4 @@
 import gzip
-import hashlib
 import os
 import time
 from xml.etree import ElementTree
@@ -18,7 +17,6 @@ RPM_XML_NAME_SPACE = 'http://linux.duke.edu/metadata/rpm'
 
 
 class RepomdXMLFileContext(MetadataFileContext):
-
     def __init__(self, working_dir, checksum_type=CONFIG_DEFAULT_CHECKSUM):
 
         metadata_file_path = os.path.join(working_dir, REPO_DATA_DIR_NAME, REPOMD_FILE_NAME)
@@ -101,7 +99,8 @@ class RepomdXMLFileContext(MetadataFileContext):
             open_size_element = ElementTree.SubElement(data_element, 'open-size')
 
             open_checksum_attributes = {'type': self.checksum_type}
-            open_checksum_element = ElementTree.SubElement(data_element, 'open-checksum', open_checksum_attributes)
+            open_checksum_element = ElementTree.SubElement(data_element, 'open-checksum',
+                                                           open_checksum_attributes)
 
             try:
                 file_handle = gzip.open(file_path, 'r')
@@ -126,5 +125,3 @@ class RepomdXMLFileContext(MetadataFileContext):
         _LOG.debug('Writing repomd metadata:\n' + data_element_string)
 
         self.metadata_file_handle.write(data_element_string + '\n')
-
-

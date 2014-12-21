@@ -25,6 +25,7 @@ def authenticate(environ):
 
     return _is_valid(cert_pem)
 
+
 # -- private -------------------------------------------------------------------
 
 def _is_valid(cert_pem):

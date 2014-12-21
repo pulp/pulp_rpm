@@ -15,7 +15,8 @@ from pulp_rpm.plugins.importers.yum.repomd import primary
 
 # this is required because some of the pre-migration XML tags use the "rpm"
 # namespace, which causes a parse error if that namespace isn't declared.
-FAKE_XML = '<?xml version="1.0" encoding="%(encoding)s"?><faketag xmlns:rpm="http://pulpproject.org">%(xml)s</faketag>'
+FAKE_XML = '<?xml version="1.0" encoding="%(encoding)s"?><faketag ' \
+           'xmlns:rpm="http://pulpproject.org">%(xml)s</faketag>'
 
 # Used when extracting metadata from an RPM
 RPMTAG_NOSOURCE = 1051
@@ -32,9 +33,16 @@ _LOGGER = logging.getLogger(__name__)
 # method can consistently format/word the failure report. These should not be
 # raised outside of this module.
 
-class ModelInstantiationError(Exception): pass
-class StoreFileError(Exception): pass
-class PackageMetadataError(Exception) : pass
+class ModelInstantiationError(Exception):
+    pass
+
+
+class StoreFileError(Exception):
+    pass
+
+
+class PackageMetadataError(Exception):
+    pass
 
 
 def upload(repo, type_id, unit_key, metadata, file_path, conduit, config):
@@ -70,12 +78,12 @@ def upload(repo, type_id, unit_key, metadata, file_path, conduit, config):
 
     # Dispatch to process the upload by type
     handlers = {
-        models.RPM.TYPE : _handle_package,
-        models.SRPM.TYPE : _handle_package,
-        models.PackageGroup.TYPE : _handle_group_category,
-        models.PackageCategory.TYPE : _handle_group_category,
-        models.Errata.TYPE : _handle_erratum,
-        models.YumMetadataFile.TYPE : _handle_yum_metadata_file,
+        models.RPM.TYPE: _handle_package,
+        models.SRPM.TYPE: _handle_package,
+        models.PackageGroup.TYPE: _handle_group_category,
+        models.PackageCategory.TYPE: _handle_group_category,
+        models.Errata.TYPE: _handle_erratum,
+        models.YumMetadataFile.TYPE: _handle_yum_metadata_file,
     }
 
     if type_id not in handlers:
@@ -291,9 +299,9 @@ def _update_provides_requires(unit):
     provides_element = format_element.find('provides')
     requires_element = format_element.find('requires')
     unit.metadata['provides'] = map(primary._process_rpm_entry_element,
-                                     provides_element.findall('entry')) if provides_element else []
+                                    provides_element.findall('entry')) if provides_element else []
     unit.metadata['requires'] = map(primary._process_rpm_entry_element,
-                                     requires_element.findall('entry')) if requires_element else []
+                                    requires_element.findall('entry')) if requires_element else []
 
 
 def _generate_rpm_data(rpm_filename, user_metadata=None):
@@ -311,7 +319,8 @@ def _generate_rpm_data(rpm_filename, user_metadata=None):
     """
 
     # Expected metadata fields:
-    # "vendor", "description", "buildhost", "license", "vendor", "requires", "provides", "relativepath", "filename"
+    # "vendor", "description", "buildhost", "license", "vendor", "requires", "provides",
+    # "relativepath", "filename"
     #
     # Expected unit key fields:
     # "name", "epoch", "version", "release", "arch", "checksumtype", "checksum"
@@ -345,7 +354,7 @@ def _generate_rpm_data(rpm_filename, user_metadata=None):
     for k in ['name', 'version', 'release', 'epoch']:
         unit_key[k] = headers[k]
 
-    #   Epoch munging
+    # Epoch munging
     if unit_key['epoch'] is None:
         unit_key['epoch'] = str(0)
     else:

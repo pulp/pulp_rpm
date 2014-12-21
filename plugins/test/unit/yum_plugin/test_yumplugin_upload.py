@@ -15,6 +15,7 @@ class TestUploadGenerateRpmData(unittest.TestCase):
     """
     Tests for upload._generate_rpm_data
     """
+
     def test_usual_filename(self):
         unit_key, metadata = upload._generate_rpm_data(RPM_USUAL_NAME, {})
         self.assertEquals('pulp-test-package-0.3.1-1.fc11.x86_64.rpm', metadata['filename'])
@@ -39,5 +40,6 @@ class TestUploadGenerateRpmData(unittest.TestCase):
         """
         Test that when user metadata is provided and contains a checksum type, that type is used
         """
-        unit_key, metadata = upload._generate_rpm_data(RPM_USUAL_NAME, {'checksum_type': verification.TYPE_MD5})
+        unit_key, metadata = upload._generate_rpm_data(RPM_USUAL_NAME,
+                                                       {'checksum_type': verification.TYPE_MD5})
         self.assertEquals(verification.TYPE_MD5, unit_key['checksumtype'])

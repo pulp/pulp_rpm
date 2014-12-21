@@ -13,6 +13,7 @@ from pulp_rpm.yum_plugin import util
 
 _log = logging.getLogger('pulp')
 
+
 def preserve_custom_metadata_on_repo_scratchpad():
     """
      Lookups all the yum based repos in pulp; grabs any custom metadata
@@ -27,7 +28,7 @@ def preserve_custom_metadata_on_repo_scratchpad():
     for repo_id in repo_ids:
         _log.debug("Processing repo %s" % repo_id)
         repo_scratchpad = factory.repo_manager().get_repo_scratchpad(repo_id)
-        if repo_scratchpad.has_key("repodata") and repo_scratchpad["repodata"]:
+        if "repodata" in repo_scratchpad and repo_scratchpad["repodata"]:
             # repo scratchpad already has repodata, skip migration
             _log.debug("repo [%s] scratchpad already has repodata, skip migration" % repo_id)
             continue
@@ -45,16 +46,18 @@ def preserve_custom_metadata_on_repo_scratchpad():
                 # no need to process these again
                 continue
             filetype_path = os.path.join(importer_repodata_dir,
-                os.path.basename(util.get_repomd_filetype_path(repomd_xml_path, ftype)))
+                                         os.path.basename(
+                                             util.get_repomd_filetype_path(repomd_xml_path, ftype)))
             if filetype_path.endswith('.gz'):
                 # if file is gzipped, decompress
                 data = gzip.open(filetype_path).read().decode("utf-8", "replace")
             else:
                 data = open(filetype_path).read().decode("utf-8", "replace")
-            repo_scratchpad["repodata"].update({ftype : data})
+            repo_scratchpad["repodata"].update({ftype: data})
         # set the custom metadata on scratchpad
         factory.repo_manager().set_repo_scratchpad(repo_id, repo_scratchpad)
         _log.info("Updated repo [%s] scratchpad with new custom repodata" % repo_id)
+
 
 def migrate(*args, **kwargs):
     preserve_custom_metadata_on_repo_scratchpad()

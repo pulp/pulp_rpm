@@ -19,6 +19,7 @@ class TestAddIsoSection(PulpClientTests):
     """
     Test the add_iso_section() function.
     """
+
     @mock.patch('pulp_rpm.extensions.admin.iso.structure._get_upload_manager')
     def test_add_iso_section(self, _get_upload_manager):
         # We don't really need to test upload managers here, so let's just fake one for now
@@ -41,6 +42,7 @@ class TestAddPublishSection(PulpClientTests):
     """
     Test the add_publish_section() function.
     """
+
     def test_add_publish_section(self):
         parent_section = self.cli.create_section('parent', 'Test parent section.')
 
@@ -59,10 +61,12 @@ class TestAddPublishSection(PulpClientTests):
         status_command = publish_section.commands['status']
         self.assertTrue(isinstance(status_command, sync_publish.PublishStatusCommand))
 
+
 class TestAddRepoSection(PulpClientTests):
     """
     Test the add_repo_section() function.
     """
+
     @mock.patch('pulp_rpm.extensions.admin.iso.structure._get_upload_manager')
     def test_add_repo_section(self, _get_upload_manager):
         # We don't really need to test upload managers here, so let's just fake one for now
@@ -130,6 +134,7 @@ class TestAddSchedulesSection(PulpClientTests):
     """
     Test the add_schedules_section() function.
     """
+
     def test_add_schedules_section(self):
         parent_section = self.cli.create_section('parent', 'Test parent section.')
 
@@ -183,6 +188,7 @@ class TestAddSyncSection(PulpClientTests):
     """
     Test the add_sync_section() function.
     """
+
     @mock.patch('pulp_rpm.extensions.admin.iso.structure.add_schedules_section',
                 side_effect=structure.add_schedules_section, autospec=True)
     def test_add_sync_section(self, add_schedules_section):
@@ -207,6 +213,7 @@ class TestAddUploadsSection(PulpClientTests):
     """
     Test the add_uploads_section() function.
     """
+
     @mock.patch('pulp_rpm.extensions.admin.iso.structure._get_upload_manager', autospec=True)
     def test_add_uploads_section(self, _get_upload_manager):
         parent_section = self.cli.create_section('parent', 'Test parent section.')
@@ -246,6 +253,7 @@ class TestGetUploadManager(PulpClientTests):
     """
     Test the _get_upload_manager() function.
     """
+
     @mock.patch('pulp.client.upload.manager.UploadManager.initialize', autospec=True)
     def test__get_upload_manager(self, initialize):
         self.context.config['filesystem'] = {'upload_working_dir': '/path/to/nowhere'}

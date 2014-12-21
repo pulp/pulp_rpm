@@ -46,6 +46,7 @@ class TestRepoGroupExportRunCommand(PulpClientTests):
     """
     This tests the rpm repo group export run command.
     """
+
     def setUp(self):
         super(TestRepoGroupExportRunCommand, self).setUp()
         self.patcher = mock.patch('pulp_rpm.extensions.admin.export._get_publish_tasks',
@@ -83,7 +84,8 @@ class TestRepoGroupExportRunCommand(PulpClientTests):
                             export.OPTION_ISO_SIZE]
 
         # Test
-        export.RpmGroupExportCommand(self.context, mock_renderer, ids.TYPE_ID_DISTRIBUTOR_GROUP_EXPORT)
+        export.RpmGroupExportCommand(self.context, mock_renderer,
+                                     ids.TYPE_ID_DISTRIBUTOR_GROUP_EXPORT)
 
         # Check that all the flags were added
         self.assertEqual(2, mock_create_flag.call_count)
@@ -204,7 +206,6 @@ class TestRepoGroupExportStatusCommand(PulpClientTests):
 
     def tearDown(self):
         self.patcher.stop()
-
 
     @mock.patch('okaara.cli.Command.add_option', autospec=True)
     def test_repo_group_export_status_structure(self, mock_add_option):

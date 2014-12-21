@@ -8,6 +8,7 @@ class TestValidateNonRequiredBool(unittest.TestCase):
     """
     Assert correct behavior from the _validate_required_bool() function.
     """
+
     def test_bool_not_set(self):
         """
         If the bool is not set, it should be cool.
@@ -27,8 +28,9 @@ class TestValidateNonRequiredBool(unittest.TestCase):
             configuration_utils.validate_non_required_bool(config, 'setting_name')
             self.fail('The validation should have failed, but it did not.')
         except configuration_utils.ValidationError, e:
-            self.assertEqual(str(e), 'The configuration parameter <setting_name> may only be set to a '
-                                     'boolean value, but is currently set to <Not true or false.>.')
+            self.assertEqual(str(e),
+                             'The configuration parameter <setting_name> may only be set to a '
+                             'boolean value, but is currently set to <Not true or false.>.')
 
     def test_bool_valid(self):
         """

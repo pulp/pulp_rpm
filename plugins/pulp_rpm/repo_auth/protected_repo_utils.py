@@ -10,8 +10,8 @@ from threading import RLock
 
 WRITE_LOCK = RLock()
 
-class ProtectedRepoUtils:
 
+class ProtectedRepoUtils:
     def __init__(self, config):
         self.config = config
 
@@ -78,10 +78,10 @@ class ProtectedRepoUtils:
         f.load()
         return f.listings
 
+
 # -- classes -------------------------------------------------------------------------
 
 class ProtectedRepoListingFile:
-
     def __init__(self, filename):
         '''
         @param filename: absolute path to the file; the file does not need to
@@ -95,7 +95,7 @@ class ProtectedRepoListingFile:
             raise ValueError('Filename must be specified when creating a ProtectedRepoListingFile')
 
         self.filename = filename
-        self.listings = {} # mapping of relative path to repo ID
+        self.listings = {}  # mapping of relative path to repo ID
 
     def delete(self):
         '''
@@ -172,4 +172,4 @@ class ProtectedRepoListingFile:
                                   as used when the repo path was first added
         @type  relative_path_url: str
         '''
-        self.listings.pop(relative_path_url, None) # will not error if key isn't present
+        self.listings.pop(relative_path_url, None)  # will not error if key isn't present

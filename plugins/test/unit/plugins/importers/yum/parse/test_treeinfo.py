@@ -134,6 +134,7 @@ class TestParseTreefile(unittest.TestCase):
     """
     This class contains tests for the parse_treefile() function.
     """
+
     @patch('__builtin__.open', MagicMock())
     @patch('pulp_rpm.plugins.importers.yum.parse.treeinfo.ConfigParser.RawConfigParser')
     @patch('pulp_rpm.plugins.importers.yum.parse.treeinfo.models.Distribution')

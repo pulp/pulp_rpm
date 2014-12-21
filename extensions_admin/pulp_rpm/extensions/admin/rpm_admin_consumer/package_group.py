@@ -11,14 +11,14 @@ from pulp.client.extensions.extensions import PulpCliSection
 
 from pulp_rpm.common.ids import TYPE_ID_PKG_GROUP
 from pulp_rpm.extensions.admin.content_schedules import YumConsumerContentCreateScheduleCommand
-from pulp_rpm.extensions.admin.rpm_admin_consumer.options import FLAG_IMPORT_KEYS, FLAG_NO_COMMIT, FLAG_REBOOT
+from pulp_rpm.extensions.admin.rpm_admin_consumer.options import FLAG_IMPORT_KEYS, FLAG_NO_COMMIT, \
+    FLAG_REBOOT
 
 
 # progress tracker -------------------------------------------------------------
 
 
 class YumConsumerPackageProgressTracker(consumer_content.ConsumerContentProgressTracker):
-
     def display_details(self, details):
         action = details.get('action')
         package = details.get('package')
@@ -39,7 +39,6 @@ class YumConsumerPackageProgressTracker(consumer_content.ConsumerContentProgress
 
 
 class YumConsumerPackageGroupSection(PulpCliSection):
-
     def __init__(self, context):
         description = _('package group installation management')
         super(YumConsumerPackageGroupSection, self).__init__('package-group', description)
@@ -50,7 +49,6 @@ class YumConsumerPackageGroupSection(PulpCliSection):
 
 
 class YumConsumerPackageGroupInstallSection(PulpCliSection):
-
     def __init__(self, context):
         description = _('run or schedule a package group installation task')
         super(YumConsumerPackageGroupInstallSection, self).__init__('install', description)
@@ -60,7 +58,6 @@ class YumConsumerPackageGroupInstallSection(PulpCliSection):
 
 
 class YumConsumerPackageGroupUninstallSection(PulpCliSection):
-
     def __init__(self, context):
         description = _('run or schedule a package group removal task')
         super(YumConsumerPackageGroupUninstallSection, self).__init__('uninstall', description)
@@ -75,21 +72,22 @@ class YumConsumerPackageGroupSchedulesSection(PulpCliSection):
         super(YumConsumerPackageGroupSchedulesSection, self).__init__('schedules', description)
 
         self.add_command(consumer_content.ConsumerContentListScheduleCommand(context, action))
-        self.add_command(YumConsumerContentCreateScheduleCommand(context, action, TYPE_ID_PKG_GROUP))
+        self.add_command(
+            YumConsumerContentCreateScheduleCommand(context, action, TYPE_ID_PKG_GROUP))
         self.add_command(consumer_content.ConsumerContentDeleteScheduleCommand(context, action))
         self.add_command(consumer_content.ConsumerContentUpdateScheduleCommand(context, action))
         self.add_command(consumer_content.NextRunCommand(context, action))
+
 
 # commands ---------------------------------------------------------------------
 
 
 class YumConsumerPackageGroupInstallCommand(consumer_content.ConsumerContentInstallCommand):
-
     def __init__(self, context):
         description = _('triggers an immediate package group install on a consumer')
         progress_tracker = YumConsumerPackageProgressTracker(context.prompt)
-        super(YumConsumerPackageGroupInstallCommand, self).__init__(context, description=description,
-                                                                    progress_tracker=progress_tracker)
+        super(YumConsumerPackageGroupInstallCommand, self).\
+            __init__(context, description=description, progress_tracker=progress_tracker)
 
     def add_content_options(self):
         self.create_option('--name',
@@ -106,7 +104,7 @@ class YumConsumerPackageGroupInstallCommand(consumer_content.ConsumerContentInst
     def get_install_options(self, kwargs):
         commit = not kwargs[FLAG_NO_COMMIT.keyword]
         reboot = kwargs[FLAG_REBOOT.keyword]
-        import_keys =  kwargs[FLAG_IMPORT_KEYS.keyword]
+        import_keys = kwargs[FLAG_IMPORT_KEYS.keyword]
 
         return {'apply': commit,
                 'reboot': reboot,
@@ -169,12 +167,11 @@ class YumConsumerPackageGroupInstallCommand(consumer_content.ConsumerContentInst
 
 
 class YumConsumerPackageGroupUninstallCommand(consumer_content.ConsumerContentUninstallCommand):
-
     def __init__(self, context):
         description = _('triggers an immediate package group removal on a consumer')
         progress_tracker = YumConsumerPackageProgressTracker(context.prompt)
-        super(YumConsumerPackageGroupUninstallCommand, self).__init__(context, description=description,
-                                                                      progress_tracker=progress_tracker)
+        super(YumConsumerPackageGroupUninstallCommand, self).\
+            __init__(context, description=description, progress_tracker=progress_tracker)
 
     def add_content_options(self):
         self.create_option('--name',

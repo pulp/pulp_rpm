@@ -63,7 +63,7 @@ class TestProcessCategoryElement(unittest.TestCase):
 
     def test_fedora18_real_data(self):
         categories = packages.package_list_generator(StringIO(F18_COMPS_XML), group.CATEGORY_TAG,
-                                                 self.process_category)
+                                                     self.process_category)
         categories = list(categories)
 
         self.assertEqual(len(categories), 1)
@@ -81,8 +81,9 @@ class TestProcessCategoryElement(unittest.TestCase):
         self.assertEqual(len(categories[0].metadata['translated_name']), 8)
 
     def test_centos6_real_data(self):
-        categories = packages.package_list_generator(StringIO(CENTOS6_COMPS_XML), group.CATEGORY_TAG,
-                                                 self.process_category)
+        categories = packages.package_list_generator(StringIO(CENTOS6_COMPS_XML),
+                                                     group.CATEGORY_TAG,
+                                                     self.process_category)
         categories = list(categories)
 
         self.assertEqual(len(categories), 1)
@@ -100,7 +101,6 @@ class TestProcessCategoryElement(unittest.TestCase):
 
 
 class TestProcessEnvironmentElement(unittest.TestCase):
-
     def setUp(self):
         self.process_environment = functools.partial(group.process_environment_element, 'repo1')
 
@@ -133,7 +133,7 @@ class TestProcessEnvironmentElement(unittest.TestCase):
         In debugging #1065016[0], we learned that optionlist might not always be present for each
         environment. This test ensures that the package environment returned by this method has an
         empty list when the optionlist isn't present.
-        
+
         [0] https://bugzilla.redhat.com/show_bug.cgi?id=1065016
         """
         env_element = ElementTree.Element('environment')
@@ -428,7 +428,8 @@ CENTOS6_COMPS_XML = u"""<?xml version='1.0' encoding='UTF-8'?>
    <packagelist>
       <packagereq requires="autocorr-en" type="conditional">autocorr-af</packagereq>
       <packagereq requires="hyphen" type="conditional">hyphen-af</packagereq>
-      <packagereq requires="libreoffice-core" type="conditional">libreoffice-langpack-af</packagereq>
+      <packagereq requires="libreoffice-core"
+      type="conditional">libreoffice-langpack-af</packagereq>
    </packagelist>
   </group>
   <group>
@@ -488,8 +489,8 @@ CENTOS6_COMPS_XML = u"""<?xml version='1.0' encoding='UTF-8'?>
    <uservisible>true</uservisible>
    <langonly>sq</langonly>
    <packagelist>
-   	          <packagereq requires="eclipse-platform" type="conditional">eclipse-nls-sq</packagereq>
-      <packagereq requires="hunspell" type="conditional">hunspell-sq</packagereq>
+       <packagereq requires="eclipse-platform" type="conditional">eclipse-nls-sq</packagereq>
+       <packagereq requires="hunspell" type="conditional">hunspell-sq</packagereq>
    </packagelist>
   </group>
   <category>

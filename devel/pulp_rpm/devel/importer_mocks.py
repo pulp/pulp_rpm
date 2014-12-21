@@ -134,7 +134,8 @@ def get_import_conduit(source_units=None, existing_units=None):
     return import_conduit
 
 
-def get_upload_conduit(type_id=None, unit_key=None, metadata=None, relative_path=None, pkg_dir=None):
+def get_upload_conduit(type_id=None, unit_key=None, metadata=None, relative_path=None,
+                       pkg_dir=None):
     def side_effect(type_id, unit_key, metadata, relative_path):
         if relative_path and pkg_dir:
             relative_path = os.path.join(pkg_dir, relative_path)
@@ -142,10 +143,6 @@ def get_upload_conduit(type_id=None, unit_key=None, metadata=None, relative_path
         return unit
 
     def get_units(criteria=None):
-        ret_units = True
-        if criteria and hasattr(criteria, "type_ids"):
-            if type_id and type_id not in criteria.type_ids:
-                ret_units = False
         return []
 
     upload_conduit = mock.Mock(spec=UploadConduit)
@@ -165,7 +162,9 @@ def get_upload_conduit(type_id=None, unit_key=None, metadata=None, relative_path
 
     return upload_conduit
 
-def get_dependency_conduit(type_id=None, unit_key=None, metadata=None, existing_units=None, relative_path=None, pkg_dir=None):
+
+def get_dependency_conduit(type_id=None, unit_key=None, metadata=None, existing_units=None,
+                           relative_path=None, pkg_dir=None):
     def side_effect(type_id, unit_key, metadata, relative_path):
         if relative_path and pkg_dir:
             relative_path = os.path.join(pkg_dir, relative_path)
@@ -188,7 +187,6 @@ def get_dependency_conduit(type_id=None, unit_key=None, metadata=None, existing_
     def get_repo_scratchpad(repoid=None):
         return {}
 
-
     dependency_conduit = mock.Mock(spec=DependencyResolutionConduit)
     dependency_conduit.get_units = mock.Mock()
     dependency_conduit.get_units.side_effect = get_units
@@ -203,6 +201,7 @@ def get_dependency_conduit(type_id=None, unit_key=None, metadata=None, existing_
 
     return dependency_conduit
 
+
 def get_basic_config(*arg, **kwargs):
     """
 
@@ -211,10 +210,10 @@ def get_basic_config(*arg, **kwargs):
     :return:
     :rtype: pulp.plugins.config.PluginCallConfiguration
     """
-    plugin_config = {"num_retries":0, "retry_delay":0}
+    plugin_config = {"num_retries": 0, "retry_delay": 0}
     repo_plugin_config = {}
     for key in kwargs:
         repo_plugin_config[key] = kwargs[key]
     config = PluginCallConfiguration(plugin_config,
-            repo_plugin_config=repo_plugin_config)
+                                     repo_plugin_config=repo_plugin_config)
     return config

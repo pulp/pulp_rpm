@@ -55,8 +55,8 @@ WRITE_LOCK = RLock()
 
 GLOBAL_BUNDLE_PREFIX = 'pulp-global-repo'
 
-class RepoCertUtils:
 
+class RepoCertUtils:
     def __init__(self, config):
         self.config = config
         self.log_failed_cert = True
@@ -74,9 +74,6 @@ class RepoCertUtils:
             self.max_num_certs_in_chain = self.config.getint('main', 'max_num_certs_in_chain')
         except:
             pass
-
-
-    # -- delete calls ----------------------------------------------------------------
 
     def delete_for_repo(self, repo_id):
         '''
@@ -244,7 +241,7 @@ class RepoCertUtils:
         '''
         Validates a certificate against a CA certificate.
         Input expects filenames.
-        
+
         @param cert_filename: full path to the PEM encoded certificate to validate
         @type  cert_filename: str
 
@@ -274,7 +271,8 @@ class RepoCertUtils:
         @param cert_pem: PEM encoded certificate
         @type  cert_pem: str
 
-        @param ca_pem: PEM encoded CA certificates, allows chain of CA certificates if concatenated together
+        @param ca_pem: PEM encoded CA certificates, allows chain of CA certificates if
+        concatenated together
         @type  ca_pem: str
 
         @param log_func: a function to log debug messages
@@ -367,7 +365,9 @@ class RepoCertUtils:
                     break
                 certs.append(cert)
                 if index == (self.max_num_certs_in_chain - 1) and log_func:
-                    log_func("**WARNING** Pulp reached maximum number of <%s> certs supported in a chain." % (self.max_num_certs_in_chain))
+                    log_func(
+                        "**WARNING** Pulp reached maximum number of <%s> certs supported in a "
+                        "chain." % self.max_num_certs_in_chain)
 
         except X509.X509Error:
             # This is the normal return path.
@@ -376,7 +376,8 @@ class RepoCertUtils:
 
     def get_debug_info_certs(self, cert, ca_certs):
         """
-        Debug method to display information certificates.  Typically used to print info after a verification failed.
+        Debug method to display information certificates.  Typically used to print info after a
+        verification failed.
         @param cert: a X509 certificate
         @type cert: M2Crypto.X509.X509
 
@@ -405,8 +406,11 @@ class RepoCertUtils:
         @return: string of debug information about the passed in X509
         @rtype: str
         """
-        msg = "subject=<%s>, issuer=<%s>, subject.as_hash=<%s>, issuer.as_hash=<%s>, fingerprint=<%s>, serial=<%s>, version=<%s>, check_ca=<%s>, notBefore=<%s>, notAfter=<%s>" % \
-              (cert.get_subject(), cert.get_issuer(), cert.get_subject().as_hash(), cert.get_issuer().as_hash(), cert.get_fingerprint(), cert.get_serial_number(),
+        msg = "subject=<%s>, issuer=<%s>, subject.as_hash=<%s>, issuer.as_hash=<%s>, " \
+              "fingerprint=<%s>, serial=<%s>, version=<%s>, check_ca=<%s>, notBefore=<%s>, " \
+              "notAfter=<%s>" % \
+              (cert.get_subject(), cert.get_issuer(), cert.get_subject().as_hash(),
+               cert.get_issuer().as_hash(), cert.get_fingerprint(), cert.get_serial_number(),
                cert.get_version(), cert.check_ca(), cert.get_not_before(), cert.get_not_after())
         return msg
 
@@ -513,4 +517,3 @@ class RepoCertUtils:
         '''
         global_cert_location = self.config.get('repos', 'global_cert_location')
         return global_cert_location
-
