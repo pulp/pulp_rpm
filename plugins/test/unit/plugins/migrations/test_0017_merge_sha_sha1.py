@@ -10,7 +10,7 @@ import mock
 migration = _import_all_the_way('pulp_rpm.plugins.migrations.0017_merge_sha_sha1')
 
 
-SUMLESS_ERRATA = [
+SUM_NONE_ERRATA = [
     {u'issued': u'2012-01-27 16:08:06', u'references': [], u'_content_type_id': u'erratum',
      u'id': u'RHEA-2012:0002', u'from': u'errata@redhat.com', u'severity': u'',
      u'title': u'Sea_Erratum', u'_ns': u'units_erratum', u'version': u'1',
@@ -38,6 +38,44 @@ SUMLESS_ERRATA = [
      u'pkglist': [
          {u'packages': [
             {u'src': u'http://www.fedoraproject.org', u'name': u'bear', u'sum': None,
+             u'filename': u'bear-4.1-1.noarch.rpm', u'epoch': u'0', u'version': u'4.1',
+             u'release': u'1', u'reboot_suggested': u'False', u'arch': u'noarch'}],
+          u'name': u'1', u'short': u''}],
+     u'status': u'stable', u'updated': u'', u'description': u'Bear_Erratum',
+     u'_last_updated': 1416857488, u'pushcount': u'', u'_storage_path': None, u'rights': u'',
+     u'solution': u'', u'summary': u'', u'release': u'1',
+     u'_id': u'87a0ee80-d421-40be-985a-ba0db51e27f5'}]
+
+# These errata are misisng the "sum" attribute on their packages. See
+# https://bugzilla.redhat.com/show_bug.cgi?id=1175818
+SUMLESS_ERRATA = [
+    {u'issued': u'2012-01-27 16:08:06', u'references': [], u'_content_type_id': u'erratum',
+     u'id': u'RHEA-2012:0002', u'from': u'errata@redhat.com', u'severity': u'',
+     u'title': u'Sea_Erratum', u'_ns': u'units_erratum', u'version': u'1',
+     u'reboot_suggested': True, u'type': u'security',
+     u'pkglist': [
+         {u'packages': [
+             {u'src': u'http://www.fedoraproject.org', u'name': u'walrus',
+              u'filename': u'walrus-0.71-1.noarch.rpm', u'epoch': u'0', u'version': u'0.71',
+              u'release': u'1', u'reboot_suggested': u'False', u'arch': u'noarch'},
+             {u'src': u'http://www.fedoraproject.org', u'name': u'penguin',
+              u'filename': u'penguin-0.9.1-1.noarch.rpm', u'epoch': u'0', u'version': u'0.9.1',
+              u'release': u'1', u'reboot_suggested': u'False', u'arch': u'noarch'},
+             {u'src': u'http://www.fedoraproject.org', u'name': u'shark',
+              u'filename': u'shark-0.1-1.noarch.rpm', u'epoch': u'0', u'version': u'0.1',
+              u'release': u'1', u'reboot_suggested': u'False', u'arch': u'noarch'}],
+          u'name': u'1', u'short': u''}],
+     u'status': u'stable', u'updated': u'', u'description': u'Sea_Erratum',
+     u'_last_updated': 1416857488, u'pushcount': u'', u'_storage_path': None, u'rights': u'',
+     u'solution': u'', u'summary': u'', u'release': u'1',
+     u'_id': u'2e56d875-ff44-45ee-84ff-7840e957872d'},
+    {u'issued': u'2012-01-27 16:08:05', u'references': [], u'_content_type_id': u'erratum',
+     u'id': u'RHEA-2012:0001', u'from': u'errata@redhat.com', u'severity': u'',
+     u'title': u'Bear_Erratum', u'_ns': u'units_erratum', u'version': u'1',
+     u'reboot_suggested': True, u'type': u'security',
+     u'pkglist': [
+         {u'packages': [
+            {u'src': u'http://www.fedoraproject.org', u'name': u'bear',
              u'filename': u'bear-4.1-1.noarch.rpm', u'epoch': u'0', u'version': u'4.1',
              u'release': u'1', u'reboot_suggested': u'False', u'arch': u'noarch'}],
           u'name': u'1', u'short': u''}],
@@ -351,7 +389,7 @@ class TestMigrate(unittest.TestCase):
         _migrate_errata.assert_called_once_with()
 
 
-class TestMigrateErratum(unittest.TestCase):
+class TestMigrateErrata(unittest.TestCase):
     """
     This class contains tests for the _migrate_errata() function.
     """
@@ -359,11 +397,30 @@ class TestMigrateErratum(unittest.TestCase):
                 autospec=True)
     def test_no_sum(self, get_collection):
         """
+        Ensure no failure happens when the packages are missing the "sum" field.
+
+        https://bugzilla.redhat.com/show_bug.cgi?id=1175818
+        """
+        errata = mock.MagicMock(spec=collection.Collection)
+        errata.find.return_value = SUMLESS_ERRATA
+        get_collection.return_value = errata
+
+        # This should not raise any Exceptions
+        migration._migrate_errata()
+
+        get_collection.assert_called_once_with('units_erratum')
+        # Since there were no sums, there should have been 0 calls to errata.update
+        self.assertEqual(errata.update.call_count, 0)
+
+    @mock.patch('pulp_rpm.plugins.migrations.0017_merge_sha_sha1.connection.get_collection',
+                autospec=True)
+    def test_sum_none(self, get_collection):
+        """
         All real-world errata that I could find did not have anything in the "sum" field,
         curiously. This test ensures that we handle that scenario accurately.
         """
         errata = mock.MagicMock(spec=collection.Collection)
-        errata.find.return_value = SUMLESS_ERRATA
+        errata.find.return_value = SUM_NONE_ERRATA
         get_collection.return_value = errata
 
         migration._migrate_errata()
