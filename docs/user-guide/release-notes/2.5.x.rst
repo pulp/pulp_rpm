@@ -1,9 +1,22 @@
-======================
-Pulp 2.5 Release Notes
-======================
+==========================
+Pulp RPM 2.5 Release Notes
+==========================
 
-Pulp 2.5.0
-==========
+Pulp RPM 2.5.2
+==============
+
+This release fixes `#1175818 <https://bugzilla.redhat.com/show_bug.cgi?id=1175818>`_. To perform the
+upgrade, follow the Platform `upgrade instructions <http://pulp-user-guide.readthedocs.org/en/2.5-release/release-notes/2.5.x.html#upgrade-instructions-for-2-4-x-2-5-x>`_.
+
+Pulp RPM 2.5.1
+==============
+
+This is an important bugfix release that contains the fix for
+`#1165355 <https://bugzilla.redhat.com/show_bug.cgi?id=1165355>`_ and
+`#1171509 <https://bugzilla.redhat.com/show_bug.cgi?id=1171509>`_.
+
+Pulp RPM 2.5.0
+==============
 
 New Features
 ------------
