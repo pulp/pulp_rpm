@@ -14,7 +14,7 @@
 
 Name: pulp-rpm
 Version: 2.6.0
-Release: 0.1.alpha%{?dist}
+Release: 0.2.beta%{?dist}
 Summary: Support for RPM content in the Pulp platform
 Group: Development/Languages
 License: GPLv2
@@ -281,6 +281,22 @@ A collection of yum plugins supplementing Pulp consumer operations.
 
 
 %changelog
+* Tue Dec 23 2014 Chris Duryee <cduryee@redhat.com> 2.6.0-0.2.beta
+- 1175818 - Fix failure on Errata with missing "sum" (rbarlow@redhat.com)
+- 1171280 - ensure packages are available when calculating applicability
+  (cduryee@redhat.com)
+- 972880 - The ISO importer now checks all ISO units before downloading new
+  content. (jcline@redhat.com)
+- 11157852 - Convert timestamp values in the repomd to integers from floats
+  (bcourt@redhat.com)
+- 1165355 - Sanitize checksum types. (rbarlow@redhat.com)
+- 1158945 - Pulp can now publish RPM packages with descriptions containing
+  unicode characters. (jcline@redhat.com)
+- 1168602 - fix missing /usr/share/pulp-rpm/pulp_distribution.xsd in the spec
+  file (bcourt@redhat.com)
+- 1151485 - fixing a typo in 2.4 release notes documentation
+  (skarmark@redhat.com)
+
 * Mon Dec 22 2014 Randy Barlow <rbarlow@redhat.com> 2.5.2-0.1.rc
 - Pulp rebuild
 
