@@ -8,8 +8,8 @@ from pulp_rpm.common import version_utils
 
 
 TRANSLATIONS = {
-    'version' : version_utils.VERSION_INDEX,
-    'release' : version_utils.RELEASE_INDEX,
+    'version': version_utils.VERSION_INDEX,
+    'release': version_utils.RELEASE_INDEX,
 }
 
 

@@ -96,22 +96,22 @@ class PackageXMLFileContext(MetadataFileContext):
 
         package_list_element = ElementTree.SubElement(group_element, 'packagelist')
         if 'mandatory_package_names' in group_unit.metadata and \
-            group_unit.metadata['mandatory_package_names']:
+                group_unit.metadata['mandatory_package_names']:
             for pkg in sorted(group_unit.metadata['mandatory_package_names']):
                 ElementTree.SubElement(package_list_element, 'packagereq',
                                        {'type': 'mandatory'}).text = pkg
         if 'default_package_names' in group_unit.metadata and \
-            group_unit.metadata['default_package_names']:
+                group_unit.metadata['default_package_names']:
             for pkg in sorted(group_unit.metadata['default_package_names']):
                 ElementTree.SubElement(package_list_element, 'packagereq',
                                        {'type': 'default'}).text = pkg
         if 'optional_package_names' in group_unit.metadata and \
-            group_unit.metadata['optional_package_names']:
+                group_unit.metadata['optional_package_names']:
             for pkg in sorted(group_unit.metadata['optional_package_names']):
                 ElementTree.SubElement(package_list_element, 'packagereq',
                                        {'type': 'optional'}).text = pkg
         if 'conditional_package_names' in group_unit.metadata and \
-            group_unit.metadata['conditional_package_names']:
+                group_unit.metadata['conditional_package_names']:
             for pkg_name, value in group_unit.metadata['conditional_package_names']:
                 ElementTree.SubElement(package_list_element, 'packagereq',
                                        {'type': 'conditional',
@@ -149,7 +149,7 @@ class PackageXMLFileContext(MetadataFileContext):
             for groupid in sorted(unit.metadata['packagegroupids']):
                 ElementTree.SubElement(group_list_element, 'groupid').text = groupid
 
-        #Write out the category xml to the file
+        # Write out the category xml to the file
         category_element_string = ElementTree.tostring(category_element, encoding='utf-8')
         _LOG.debug('Writing package_group unit metadata:\n' + category_element_string)
         self.metadata_file_handle.write(category_element_string)
@@ -192,7 +192,7 @@ class PackageXMLFileContext(MetadataFileContext):
                 else:
                     ElementTree.SubElement(option_list_element, 'groupid').text = option['group']
 
-        #Write out the category xml to the file
+        # Write out the category xml to the file
         environment_element_string = ElementTree.tostring(environment_element, encoding='utf-8')
         _LOG.debug('Writing package_environment unit metadata:\n' + environment_element_string)
         self.metadata_file_handle.write(environment_element_string)

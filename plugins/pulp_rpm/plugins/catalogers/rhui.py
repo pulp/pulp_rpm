@@ -1,6 +1,5 @@
-
 from logging import getLogger
-from urllib2 import urlopen, URLError
+from urllib2 import urlopen
 from base64 import urlsafe_b64encode
 from contextlib import closing
 
@@ -9,7 +8,6 @@ from pulp_rpm.plugins.catalogers.yum import YumCataloger
 
 
 log = getLogger(__name__)
-
 
 TYPE_ID = 'rhui'
 
@@ -29,7 +27,6 @@ def entry_point():
 
 
 class RHUICataloger(YumCataloger):
-
     @classmethod
     def metadata(cls):
         return {

@@ -5,7 +5,7 @@ import re
 import isodate
 from pulp.common import dateutils
 
-from pulp_rpm.common import constants, ids
+from pulp_rpm.common import constants
 from pulp_rpm.yum_plugin import util as yum_utils
 
 
@@ -17,7 +17,8 @@ ASSOCIATED_UNIT_DATE_KEYWORD = 'created'
 
 def is_valid_prefix(file_prefix):
     """
-    Used to check if the given file prefix is valid. A valid prefix contains only letters, numbers, _,
+    Used to check if the given file prefix is valid. A valid prefix contains only letters,
+    numbers, _,
     and -
 
     :param file_prefix: The string used to prefix the export file(s)
@@ -83,7 +84,8 @@ def validate_export_config(config):
                 return False, msg
         if key == constants.ISO_PREFIX_KEYWORD:
             if not is_valid_prefix(str(value)):
-                msg = _("iso_prefix is not valid; valid characters include %s" % ISO_NAME_REGEX.pattern)
+                msg = _(
+                    "iso_prefix is not valid; valid characters include %s" % ISO_NAME_REGEX.pattern)
                 _logger.error(msg)
                 return False, msg
         if key == constants.ISO_SIZE_KEYWORD:
@@ -92,17 +94,17 @@ def validate_export_config(config):
                 _logger.error(msg)
                 return False, msg
         if key == constants.START_DATE_KEYWORD:
-                try:
-                    dateutils.parse_iso8601_datetime(str(value))
-                except isodate.ISO8601Error:
-                    msg = _('Start date is not a valid iso8601 datetime. Format: yyyy-mm-ddThh:mm:ssZ')
-                    return False, msg
+            try:
+                dateutils.parse_iso8601_datetime(str(value))
+            except isodate.ISO8601Error:
+                msg = _('Start date is not a valid iso8601 datetime. Format: yyyy-mm-ddThh:mm:ssZ')
+                return False, msg
         if key == constants.END_DATE_KEYWORD:
-                try:
-                    dateutils.parse_iso8601_datetime(str(value))
-                except isodate.ISO8601Error:
-                    msg = _('End date is not a valid iso8601 datetime. Format: yyyy-mm-ddThh:mm:ssZ')
-                    return False, msg
+            try:
+                dateutils.parse_iso8601_datetime(str(value))
+            except isodate.ISO8601Error:
+                msg = _('End date is not a valid iso8601 datetime. Format: yyyy-mm-ddThh:mm:ssZ')
+                return False, msg
         if key == constants.EXPORT_DIRECTORY_KEYWORD:
             if not os.path.isabs(value):
                 msg = _("Value for 'export_dir' must be an absolute path: %s" % value)
@@ -113,7 +115,8 @@ def validate_export_config(config):
 
 def create_date_range_filter(config):
     """
-    Create a date filter based on start and end issue dates specified in the repo config. The returned
+    Create a date filter based on start and end issue dates specified in the repo config. The
+    returned
     filter is a dictionary which can be used directly in a mongo query.
 
     :param config: plugin configuration instance; the proposed repo configuration is found within
@@ -132,4 +135,3 @@ def create_date_range_filter(config):
     elif end_date:
         date_filter = {ASSOCIATED_UNIT_DATE_KEYWORD: {"$lte": end_date}}
     return date_filter
-

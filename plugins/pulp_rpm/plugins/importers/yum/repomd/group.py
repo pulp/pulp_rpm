@@ -27,16 +27,17 @@ def process_group_element(repo_id, element):
     :rtype:     pulp_rpm.plugins.db.models.PackageGroup
     """
     packagelist = element.find('packagelist')
-    conditional, default, mandatory, optional = _parse_packagelist(packagelist.findall('packagereq'))
+    conditional, default, mandatory, optional = _parse_packagelist(
+        packagelist.findall('packagereq'))
     langonly = element.find('langonly') or element.find('lang_only')
     name, translated_name = _parse_translated(element.findall('name'))
     description, translated_description = _parse_translated(element.findall('description'))
     display_order = element.find('display_order')
     # yum.comps.Group.parse suggests that this should default to False
-    group_default = _parse_bool(element.find('default').text)\
+    group_default = _parse_bool(element.find('default').text) \
         if element.find('default') is not None else False
     # yum.comps.Group.__init__ suggests that this should default to True
-    user_visible = _parse_bool(element.find('uservisible').text)\
+    user_visible = _parse_bool(element.find('uservisible').text) \
         if element.find('uservisible') is not None else True
 
     return models.PackageGroup.from_package_info({

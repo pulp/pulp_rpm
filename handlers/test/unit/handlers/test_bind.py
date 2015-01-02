@@ -10,6 +10,7 @@ class TestRepoHandler(unittest.TestCase):
     """
     Tests for the RepoHandler object.
     """
+
     @mock.patch('pulp_rpm.handlers.bind.repolib.bind')
     def test_bind_passes_ca_path(self, repolib_bind):
         """
@@ -20,13 +21,16 @@ class TestRepoHandler(unittest.TestCase):
         handler = bind.RepoHandler(cfg)
         conduit = mock.MagicMock(autospec=Conduit)
         ca_path = '/path/to/ca.crt'
+
         def get_consumer_config():
             class Config(object):
                 def graph(self):
                     config = mock.MagicMock()
                     config.server.ca_path = ca_path
                     return config
+
             return Config()
+
         conduit.get_consumer_config = get_consumer_config
         options = 'unused'
         binding = {
@@ -51,13 +55,16 @@ class TestRepoHandler(unittest.TestCase):
         conduit = mock.MagicMock(autospec=Conduit)
         # Case shouldn't matter
         verify_ssl = 'fAlSe'
+
         def get_consumer_config():
             class Config(object):
                 def graph(self):
                     config = mock.MagicMock()
                     config.server.verify_ssl = verify_ssl
                     return config
+
             return Config()
+
         conduit.get_consumer_config = get_consumer_config
         options = 'unused'
         binding = {
@@ -81,13 +88,16 @@ class TestRepoHandler(unittest.TestCase):
         handler = bind.RepoHandler(cfg)
         conduit = mock.MagicMock(autospec=Conduit)
         verify_ssl = 'some_typo'
+
         def get_consumer_config():
             class Config(object):
                 def graph(self):
                     config = mock.MagicMock()
                     config.server.verify_ssl = verify_ssl
                     return config
+
             return Config()
+
         conduit.get_consumer_config = get_consumer_config
         options = 'unused'
         binding = {
@@ -113,6 +123,7 @@ class TestRepoHandler(unittest.TestCase):
         conduit = mock.MagicMock(autospec=Conduit)
         # Case shouldn't matter
         verify_ssl = 'tRuE'
+
         def get_consumer_config():
             class Config(object):
                 def graph(self):
@@ -120,6 +131,7 @@ class TestRepoHandler(unittest.TestCase):
                     config.server.verify_ssl = verify_ssl
                     return config
             return Config()
+
         conduit.get_consumer_config = get_consumer_config
         options = 'unused'
         binding = {
@@ -133,4 +145,3 @@ class TestRepoHandler(unittest.TestCase):
         # Let's just focus on asserting that verify_ssl was correct, and that it was correctly
         # interpreted as a boolean
         self.assertEqual(repolib_bind.mock_calls[0][2]['verify_ssl'], True)
-

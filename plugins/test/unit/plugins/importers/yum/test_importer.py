@@ -11,7 +11,6 @@ from pulp_rpm.devel import rpm_support_base
 
 
 class CustomMetadataTests(rpm_support_base.PulpRPMTests):
-
     def setUp(self):
         super(CustomMetadataTests, self).setUp()
         self.root_dir = tempfile.mkdtemp(prefix='test-custom-metadata-')

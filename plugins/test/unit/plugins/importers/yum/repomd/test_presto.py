@@ -1,7 +1,6 @@
 """
 This module contains tests for the pulp_rpm.plugins.importers.yum.repomd.presto module.
 """
-from xml.etree import ElementTree
 import unittest
 
 import mock
@@ -13,6 +12,7 @@ class TestProcessPackageElement(unittest.TestCase):
     """
     This class contains tests for the process_package_element() function.
     """
+
     def test_sanitizes_checksum_type(self):
         """
         Ensure that the checksum_type is properly sanitized.

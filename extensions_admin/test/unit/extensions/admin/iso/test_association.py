@@ -7,7 +7,6 @@ from pulp_rpm.common.ids import (TYPE_ID_ISO)
 
 
 class TestGetFormatter(unittest.TestCase):
-
     def test_get_formatter(self):
         method = association._get_formatter(TYPE_ID_ISO)
         self.assertEquals('foo', method({'name': 'foo'}))
@@ -17,7 +16,6 @@ class TestGetFormatter(unittest.TestCase):
 
 
 class TestIsoRemoveCommand(unittest.TestCase):
-
     def test_setup(self):
         mock_context = MagicMock()
         command = association.IsoRemoveCommand(mock_context)
@@ -32,7 +30,6 @@ class TestIsoRemoveCommand(unittest.TestCase):
 
 
 class TestIsoCopyCommand(unittest.TestCase):
-
     def test_setup(self):
         mock_context = MagicMock()
         command = association.IsoCopyCommand(mock_context)

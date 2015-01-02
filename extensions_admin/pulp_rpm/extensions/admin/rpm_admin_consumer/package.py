@@ -17,7 +17,6 @@ from pulp_rpm.extensions.admin.rpm_admin_consumer.options import FLAG_IMPORT_KEY
 
 
 class YumConsumerPackageProgressTracker(consumer_content.ConsumerContentProgressTracker):
-
     def display_details(self, details):
         action = details.get('action')
         package = details.get('package')
@@ -33,14 +32,14 @@ class YumConsumerPackageProgressTracker(consumer_content.ConsumerContentProgress
             self.prompt.write(self.details, COLOR_RED)
             return
 
+
 # sections ---------------------------------------------------------------------
 
 
 class YumConsumerPackageSection(PulpCliSection):
-
     def __init__(self, context):
         description = _('package installation management')
-        super(YumConsumerPackageSection, self).__init__( 'package', description)
+        super(YumConsumerPackageSection, self).__init__('package', description)
 
         for Section in (YumConsumerPackageInstallSection,
                         YumConsumerPackageUpdateSection,
@@ -49,7 +48,6 @@ class YumConsumerPackageSection(PulpCliSection):
 
 
 class YumConsumerPackageInstallSection(PulpCliSection):
-
     def __init__(self, context):
         description = _('run or schedule a package installation task')
         super(YumConsumerPackageInstallSection, self).__init__('install', description)
@@ -59,7 +57,6 @@ class YumConsumerPackageInstallSection(PulpCliSection):
 
 
 class YumConsumerPackageUpdateSection(PulpCliSection):
-
     def __init__(self, context):
         description = _('run or schedule a package update task')
         super(YumConsumerPackageUpdateSection, self).__init__('update', description)
@@ -69,7 +66,6 @@ class YumConsumerPackageUpdateSection(PulpCliSection):
 
 
 class YumConsumerPackageUninstallSection(PulpCliSection):
-
     def __init__(self, context):
         description = _('run or schedule a package removal task')
         super(YumConsumerPackageUninstallSection, self).__init__('uninstall', description)
@@ -79,7 +75,6 @@ class YumConsumerPackageUninstallSection(PulpCliSection):
 
 
 class YumConsumerSchedulesSection(PulpCliSection):
-
     def __init__(self, context, action):
         description = _('manage consumer package %s schedules' % action)
         super(YumConsumerSchedulesSection, self).__init__('schedules', description)
@@ -90,11 +85,11 @@ class YumConsumerSchedulesSection(PulpCliSection):
         self.add_command(consumer_content.ConsumerContentUpdateScheduleCommand(context, action))
         self.add_command(consumer_content.ConsumerContentNextRunCommand(context, action))
 
+
 # commands ---------------------------------------------------------------------
 
 
 class YumConsumerPackageInstallCommand(consumer_content.ConsumerContentInstallCommand):
-
     def __init__(self, context):
         description = _('triggers an immediate package install on a consumer')
         progress_tracker = YumConsumerPackageProgressTracker(context.prompt)
@@ -183,7 +178,6 @@ class YumConsumerPackageInstallCommand(consumer_content.ConsumerContentInstallCo
 
 
 class YumConsumerPackageUpdateCommand(consumer_content.ConsumerContentUpdateCommand):
-
     def __init__(self, context):
         description = _('triggers an immediate package update on a consumer')
         progress_tracker = YumConsumerPackageProgressTracker(context.prompt)
@@ -223,7 +217,7 @@ class YumConsumerPackageUpdateCommand(consumer_content.ConsumerContentUpdateComm
         if kwargs['name'] is not None:
             return map(_unit_dict, kwargs['name'])
         else:
-            return [{'type_id': TYPE_ID_RPM, 'unit_key':None}]
+            return [{'type_id': TYPE_ID_RPM, 'unit_key': None}]
 
     def succeeded(self, task):
 
@@ -274,7 +268,6 @@ class YumConsumerPackageUpdateCommand(consumer_content.ConsumerContentUpdateComm
 
 
 class YumConsumerPackageUninstallCommand(consumer_content.ConsumerContentUninstallCommand):
-
     def __init__(self, context):
         description = _('triggers an immediate package removal on a consumer')
         progress_tracker = YumConsumerPackageProgressTracker(context.prompt)

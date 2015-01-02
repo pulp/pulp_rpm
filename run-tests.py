@@ -10,6 +10,11 @@ from pulp.devel.test_runner import run_tests
 PROJECT_DIR = os.path.dirname(__file__)
 subprocess.call(['find', PROJECT_DIR, '-name', '*.pyc', '-delete'])
 
+# Check the files for coding conventions
+config_file = os.path.join(PROJECT_DIR, 'flake8.cfg')
+subprocess.call(['flake8', '--config', config_file, '--exclude', 'playpen,docs,pulp-dev.py',
+                 PROJECT_DIR], )
+
 PACKAGES = [
     PROJECT_DIR,
     'pulp_rpm',

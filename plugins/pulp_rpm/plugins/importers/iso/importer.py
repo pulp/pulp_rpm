@@ -1,4 +1,3 @@
-
 import logging
 import os
 import shutil
@@ -34,6 +33,7 @@ class ISOImporter(Importer):
     """
     All methods that are missing docstrings are documented in the Importer superclass.
     """
+
     def cancel_sync_repo(self):
         """
         Cancel a running repository synchronization operation.
@@ -94,7 +94,6 @@ class ISOImporter(Importer):
             import_conduit.associate_unit(u)
 
         return units
-
 
     @classmethod
     def metadata(cls):

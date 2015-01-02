@@ -16,7 +16,6 @@ from pulp_rpm.devel import importer_mocks
 
 
 class TestEntryPoint(PulpRPMTests):
-
     @mock.patch('pulp.common.config.read_json_config')
     def test_entry_point(self, mock_read_config):
         mock_read_config.return_value = {}
@@ -33,6 +32,7 @@ class TestISOImporter(PulpRPMTests):
     """
     Test the ISOImporter object.
     """
+
     def setUp(self):
         self.temp_dir = tempfile.mkdtemp()
         self.iso_importer = importer.ISOImporter()
@@ -83,7 +83,8 @@ class TestISOImporter(PulpRPMTests):
         import_conduit = importer_mocks.get_import_conduit(source_units=source_units)
         # source_repo, dest_repo, and config aren't used by import_units, so we'll just set them to
         # None for simplicity.
-        imported_units = self.iso_importer.import_units(None, None, import_conduit, None, units=None)
+        imported_units = self.iso_importer.import_units(None, None, import_conduit, None,
+                                                        units=None)
 
         # There should have been four calls to the import_conduit. One to get_source_units(), and
         # three to associate units.
@@ -98,7 +99,7 @@ class TestISOImporter(PulpRPMTests):
         # correct Units.
         self.assertEqual(len(import_conduit.associate_unit.call_args_list), 3)
         expected_unit_names = ['test.iso', 'test2.iso', 'test3.iso']
-        actual_unit_names = [tuple(call)[0][0].unit_key['name'] \
+        actual_unit_names = [tuple(call)[0][0].unit_key['name']
                              for call in import_conduit.associate_unit.call_args_list]
         self.assertEqual(actual_unit_names, expected_unit_names)
 
@@ -128,7 +129,7 @@ class TestISOImporter(PulpRPMTests):
         # correct Units.
         self.assertEqual(len(import_conduit.associate_unit.call_args_list), 2)
         expected_unit_names = ['test.iso', 'test3.iso']
-        actual_unit_names = [tuple(call)[0][0].unit_key['name'] \
+        actual_unit_names = [tuple(call)[0][0].unit_key['name']
                              for call in import_conduit.associate_unit.call_args_list]
         self.assertEqual(actual_unit_names, expected_unit_names)
 
@@ -148,7 +149,7 @@ class TestISOImporter(PulpRPMTests):
         repo = Repository('repo1')
         sync_conduit = importer_mocks.get_sync_conduit(pkg_dir='/a/b/c')
         config = importer_mocks.get_basic_config(**{
-                    importer_constants.KEY_FEED: 'http://fake.com/iso_feed/'})
+            importer_constants.KEY_FEED: 'http://fake.com/iso_feed/'})
 
         self.iso_importer.sync_repo(repo, sync_conduit, config)
 
@@ -197,7 +198,8 @@ class TestISOImporter(PulpRPMTests):
 
         self.assertEqual(report['success_flag'], False)
         self.assertEqual(report['summary'], 'An ISO may not be named PULP_MANIFEST, as it '
-                         'conflicts with the name of the manifest during publishing.')
+                                            'conflicts with the name of the manifest during '
+                                            'publishing.')
 
         # init_unit() should have been called
         expected_rel_path = os.path.join(unit_key['name'], unit_key['checksum'],
@@ -426,19 +428,23 @@ class TestISOImporter(PulpRPMTests):
 
     def test_validate_config(self):
         """
-        We already have a seperate test module for config validation, but we can get 100% test coverage with
+        We already have a seperate test module for config validation, but we can get 100% test
+        coverage with
         this!
         """
         config = importer_mocks.get_basic_config(
-            **{importer_constants.KEY_FEED: "http://test.com/feed", importer_constants.KEY_MAX_SPEED: 128.8})
+            **{importer_constants.KEY_FEED: "http://test.com/feed",
+               importer_constants.KEY_MAX_SPEED: 128.8})
         # We'll pass None for the parameters that don't get used by validate_config
         status, error_message = self.iso_importer.validate_config(None, config)
         self.assertTrue(status)
         self.assertEqual(error_message, None)
 
-        config = importer_mocks.get_basic_config(**{importer_constants.KEY_FEED: "http://test.com/feed",
-                                                    importer_constants.KEY_MAX_SPEED: -42})
+        config = importer_mocks.get_basic_config(
+            **{importer_constants.KEY_FEED: "http://test.com/feed",
+               importer_constants.KEY_MAX_SPEED: -42})
         status, error_message = self.iso_importer.validate_config(None, config)
         self.assertFalse(status)
-        self.assertEqual(error_message, 'The configuration parameter <max_speed> must be set to a positive '
-                                        'numerical value, but is currently set to <-42.0>.')
+        self.assertEqual(error_message,
+                         'The configuration parameter <max_speed> must be set to a positive '
+                         'numerical value, but is currently set to <-42.0>.')

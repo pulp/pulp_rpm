@@ -17,6 +17,7 @@ RPM_SECTION = 'rpm'
 SECTION_DESC = _('manage RPM-related features')
 SEARCH_NAME = 'repos'
 
+
 def initialize(context):
 
     if context.cli.find_section(RPM_SECTION) is not None:
@@ -79,7 +80,8 @@ class UnbindCommand(PulpCliCommand):
         self.context = context
         self.prompt = context.prompt
         self.add_option(PulpCliOption('--repo-id', 'repository id', required=True))
-        self.add_option(PulpCliFlag('--force', 'delete the binding immediately and discontinue tracking consumer actions'))
+        self.add_option(PulpCliFlag('--force', 'delete the binding immediately and discontinue '
+                                               'tracking consumer actions'))
 
     def unbind(self, **kwargs):
         consumer_id = load_consumer_id(self.context)
@@ -92,7 +94,8 @@ class UnbindCommand(PulpCliCommand):
         force = kwargs['force']
 
         try:
-            response = self.context.server.bind.unbind(consumer_id, repo_id, YUM_DISTRIBUTOR_TYPE_ID, force)
+            response = self.context.server.bind.unbind(consumer_id, repo_id,
+                                                       YUM_DISTRIBUTOR_TYPE_ID, force)
             msg = _('Unbind tasks successfully created:')
             self.context.prompt.render_success_message(msg)
             tasks = [dict(task_id=str(t.task_id)) for t in response.response_body.spawned_tasks]

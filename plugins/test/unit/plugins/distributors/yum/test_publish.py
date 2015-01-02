@@ -222,19 +222,20 @@ class ExportRepoGroupPublisherTests(BaseYumDistributorPublishStepTests):
         config = PluginCallConfiguration(None, {constants.EXPORT_DIRECTORY_KEYWORD: export_dir})
         repo_group = mock.Mock(repo_ids=['foo', 'bar'],
                                working_dir=self.working_dir)
-        mock_query_manager.return_value.find_by_id_list.return_value = [{
-            u'id': 'foo',
-            u'display_name': 'foo',
-            u'description': 'description',
-            u'notes': {'_repo-type': 'rpm-repo'},
-            u'content_unit_counts': {'rpm': 1}
-        }, {
-            u'id': 'bar',
-            u'display_name': 'bar',
-            u'description': 'description',
-            u'notes': {'_repo-type': 'puppet'},
-            u'content_unit_counts': {'puppet-module': 1}
-        }]
+        mock_query_manager.return_value.find_by_id_list.return_value = \
+            [{
+                u'id': 'foo',
+                u'display_name': 'foo',
+                u'description': 'description',
+                u'notes': {'_repo-type': 'rpm-repo'},
+                u'content_unit_counts': {'rpm': 1}
+            }, {
+                u'id': 'bar',
+                u'display_name': 'bar',
+                u'description': 'description',
+                u'notes': {'_repo-type': 'puppet'},
+                u'content_unit_counts': {'puppet-module': 1}
+            }]
 
         step = publish.ExportRepoGroupPublisher(repo_group,
                                                 self.publisher.get_conduit(),
@@ -284,13 +285,14 @@ class ExportRepoGroupPublisherTests(BaseYumDistributorPublishStepTests):
         config = PluginCallConfiguration(None, {})
         repo_group = mock.Mock(repo_ids=['foo', 'bar'],
                                working_dir=self.working_dir)
-        mock_query_manager.return_value.find_by_id_list.return_value = [{
-            u'id': 'foo',
-            u'display_name': 'foo',
-            u'description': 'description',
-            u'notes': {'_repo-type': 'rpm-repo'},
-            u'content_unit_counts': {'rpm': 1}
-        }]
+        mock_query_manager.return_value.find_by_id_list.return_value = \
+            [{
+                u'id': 'foo',
+                u'display_name': 'foo',
+                u'description': 'description',
+                u'notes': {'_repo-type': 'rpm-repo'},
+                u'content_unit_counts': {'rpm': 1}
+            }]
         step = publish.ExportRepoGroupPublisher(repo_group,
                                                 self.publisher.get_conduit(),
                                                 config,
@@ -515,7 +517,7 @@ class PublishCompsStepTests(BaseYumDistributorPublishStepTests):
 
         step.finalize()
         step.comps_context.finalize.assert_called_once_with()
-        step.parent.repomd_file_context.\
+        step.parent.repomd_file_context. \
             add_metadata_file_metadata.assert_called_once_with('group', mock.ANY, mock.ANY)
 
     def test_finalize_no_initialization(self):
@@ -632,15 +634,15 @@ class PublishDistributionStepTests(BaseYumDistributorPublishStepTests):
         unit_metadata = {"files": [
             {
                 "downloadurl": "http://download-01.eng.brq.redhat.com/pub/rhel/released/RHEL-6/6.4/"
-                "Server/x86_64/os/images/boot.iso",
+                               "Server/x86_64/os/images/boot.iso",
                 "item_type": "distribution",
                 "savepath": "/var/lib/pulp/working/repos/distro/importers/yum_importer/tmpGn5a2b/"
-                "tmpE7TPuQ/images/boot.iso",
+                            "tmpE7TPuQ/images/boot.iso",
                 "checksumtype": "sha256",
                 "relativepath": "images/boot.iso",
                 "checksum": "929669e1203117f2b6a0d94f963af11db2eafe84f05c42c7e582d285430dc7a4",
                 "pkgpath": "/var/lib/pulp/content/distribution/ks-Red Hat Enterprise Linux-Server-"
-                "6.4-x86_64/images",
+                           "6.4-x86_64/images",
                 "filename": "boot.iso"
             }
         ]}
@@ -922,7 +924,7 @@ class PublishErrataStepTests(BaseYumDistributorPublishStepTests):
         step.context = mock.Mock()
         step.finalize()
         step.context.finalize.assert_called_once_with()
-        step.parent.repomd_file_context.\
+        step.parent.repomd_file_context. \
             add_metadata_file_metadata.assert_called_once_with('updateinfo', mock.ANY, mock.ANY)
 
     def test_finalize_no_initialization(self):

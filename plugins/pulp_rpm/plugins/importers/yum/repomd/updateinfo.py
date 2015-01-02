@@ -106,7 +106,7 @@ def _parse_package(element):
         'epoch': element.attrib.get('epoch', None),
         'version': element.attrib['version'],
         'release': element.attrib['release'],
-        'src': element.attrib.get('src', ''), # apparently this isn't required
+        'src': element.attrib.get('src', ''),  # apparently this isn't required
         'filename': element.find('filename').text,
         'sum': sum_tuple,
     }

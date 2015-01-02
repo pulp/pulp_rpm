@@ -8,23 +8,15 @@ from pulp_rpm.devel.client_base import PulpClientTests
 
 
 class RpmRepoListCommandTests(PulpClientTests):
-
     def test_get_repositories(self):
         # Setup
-        repos = [
-            {'id' : 'matching',
-             'notes' : {pulp_constants.REPO_NOTE_TYPE_KEY : constants.REPO_NOTE_RPM,},
-             'importers' : [
-                 {'config': {}, 'id': ids.YUM_IMPORTER_ID}
-             ],
-             'distributors' : [
-                 {'id' : ids.YUM_DISTRIBUTOR_ID},
-                 {'id' : ids.EXPORT_DISTRIBUTOR_ID}
-             ]
-            },
-            {'id' : 'non-rpm-repo',
-             'notes' : {}}
-        ]
+        repos = [{'id': 'matching',
+                  'notes': {pulp_constants.REPO_NOTE_TYPE_KEY: constants.REPO_NOTE_RPM, },
+                  'importers': [{'config': {}, 'id': ids.YUM_IMPORTER_ID}],
+                  'distributors': [{'id': ids.YUM_DISTRIBUTOR_ID},
+                                   {'id': ids.EXPORT_DISTRIBUTOR_ID}]
+                  },
+                 {'id': 'non-rpm-repo', 'notes': {}}]
         self.server_mock.request.return_value = 200, repos
         distributor_list = [ids.YUM_DISTRIBUTOR_ID, ids.EXPORT_DISTRIBUTOR_ID]
 
@@ -48,9 +40,9 @@ class RpmRepoListCommandTests(PulpClientTests):
     def test_get_repositories_no_details(self):
         # Setup
         repos = [
-            {'id' : 'foo',
-             'display_name' : 'bar',
-             'notes' : {pulp_constants.REPO_NOTE_TYPE_KEY : constants.REPO_NOTE_RPM,}}
+            {'id': 'foo',
+             'display_name': 'bar',
+             'notes': {pulp_constants.REPO_NOTE_TYPE_KEY: constants.REPO_NOTE_RPM, }}
         ]
         self.server_mock.request.return_value = 200, repos
 
@@ -66,17 +58,12 @@ class RpmRepoListCommandTests(PulpClientTests):
 
     def test_get_repositories_strip_ssl_cert(self):
         # Setup
-        repos = [
-            {'id' : 'matching',
-             'notes' : {pulp_constants.REPO_NOTE_TYPE_KEY : constants.REPO_NOTE_RPM,},
-             'importers' : [
-                 {'config' : {'ssl_client_cert' : 'foo'}}
-             ],
-             'distributors' : []
-            },
-            {'id' : 'non-rpm-repo',
-             'notes' : {}}
-        ]
+        repos = [{'id': 'matching',
+                  'notes': {pulp_constants.REPO_NOTE_TYPE_KEY: constants.REPO_NOTE_RPM, },
+                  'importers': [{'config': {'ssl_client_cert': 'foo'}}],
+                  'distributors': []
+                  },
+                 {'id': 'non-rpm-repo', 'notes': {}}]
         self.server_mock.request.return_value = 200, repos
 
         # Test
@@ -91,17 +78,12 @@ class RpmRepoListCommandTests(PulpClientTests):
 
     def test_get_repositories_strip_ssl_key(self):
         # Setup
-        repos = [
-            {'id' : 'matching',
-             'notes' : {pulp_constants.REPO_NOTE_TYPE_KEY : constants.REPO_NOTE_RPM,},
-             'importers' : [
-                 {'config' : {'ssl_client_key' : 'foo'}}
-             ],
-             'distributors' : []
-            },
-            {'id' : 'non-rpm-repo',
-             'notes' : {}}
-        ]
+        repos = [{'id': 'matching',
+                  'notes': {pulp_constants.REPO_NOTE_TYPE_KEY: constants.REPO_NOTE_RPM, },
+                  'importers': [{'config': {'ssl_client_key': 'foo'}}],
+                  'distributors': []
+                  },
+                 {'id': 'non-rpm-repo', 'notes': {}}]
         self.server_mock.request.return_value = 200, repos
 
         # Test
@@ -116,17 +98,13 @@ class RpmRepoListCommandTests(PulpClientTests):
 
     def test_get_other_repositories(self):
         # Setup
-        repos = [
-            {'repo_id' : 'matching',
-             'notes' : {pulp_constants.REPO_NOTE_TYPE_KEY : constants.REPO_NOTE_RPM,},
-             'distributors' : [
-                 {'id' : ids.YUM_DISTRIBUTOR_ID},
-                 {'id' : ids.EXPORT_DISTRIBUTOR_ID}
-             ]
-            },
-            {'repo_id' : 'non-rpm-repo-1',
-             'notes' : {}},
-        ]
+        repos = [{'repo_id': 'matching',
+                  'notes': {pulp_constants.REPO_NOTE_TYPE_KEY: constants.REPO_NOTE_RPM, },
+                  'distributors': [
+                      {'id': ids.YUM_DISTRIBUTOR_ID},
+                      {'id': ids.EXPORT_DISTRIBUTOR_ID}]
+                  },
+                 {'repo_id': 'non-rpm-repo-1', 'notes': {}}]
         self.server_mock.request.return_value = 200, repos
 
         # Test

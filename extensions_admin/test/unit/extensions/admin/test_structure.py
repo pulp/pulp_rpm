@@ -3,7 +3,6 @@ from pulp_rpm.extensions.admin import structure
 
 
 class StructureTests(PulpClientTests):
-
     def test_ensure_rpm_root(self):
         # Test
         returned_root_section = structure.ensure_root(self.cli)
@@ -48,7 +47,6 @@ class StructureTests(PulpClientTests):
 
 
 class SectionRetrievalTests(PulpClientTests):
-
     def setUp(self):
         super(SectionRetrievalTests, self).setUp()
         structure.ensure_repo_structure(self.cli)

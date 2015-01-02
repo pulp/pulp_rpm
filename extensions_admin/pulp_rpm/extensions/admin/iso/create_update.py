@@ -107,6 +107,7 @@ class ISORepoCreateCommand(ISORepoCreateUpdateMixin, CreateRepositoryCommand):
     """
     This is the create command for ISO repositories.
     """
+
     def __init__(self, context):
         """
         Call the __init__ methods for both of our superclasses.
@@ -130,6 +131,7 @@ class ISORepoUpdateCommand(ISORepoCreateUpdateMixin, UpdateRepositoryCommand):
     """
     This is the update command for ISO repositories.
     """
+
     def __init__(self, context):
         """
         Call the __init__ methods fo both superclasses.

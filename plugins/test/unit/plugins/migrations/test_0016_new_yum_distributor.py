@@ -16,7 +16,6 @@ MIGRATION_MODULE = 'pulp_rpm.plugins.migrations.0016_new_yum_distributor'
 
 
 class BaseMigrationTests(rpm_support_base.PulpRPMTests):
-
     def setUp(self):
         super(BaseMigrationTests, self).setUp()
 
@@ -47,9 +46,11 @@ class BaseMigrationTests(rpm_support_base.PulpRPMTests):
     def _generate_distributor(self, repo_id, config=None, previously_published=True):
         config = config or {}
         distributor_id = str(uuid.uuid4())
-        distributor_model = RepoDistributor(repo_id, distributor_id, 'yum_distributor', config, True)
+        distributor_model = RepoDistributor(repo_id, distributor_id, 'yum_distributor', config,
+                                            True)
         if previously_published:
-            distributor_model['last_published'] = dateutils.format_iso8601_datetime(datetime.datetime.now())
+            distributor_model['last_published'] = dateutils.format_iso8601_datetime(
+                datetime.datetime.now())
         self.distributors_collection.insert(distributor_model)
         return self.distributors_collection.find_one({'id': distributor_id})
 
@@ -63,7 +64,6 @@ class BaseMigrationTests(rpm_support_base.PulpRPMTests):
 
 
 class HelperMethodTests(BaseMigrationTests):
-
     def test_clear_working_dir(self):
 
         sub_dirs = ['one/two/', 'three/']
@@ -175,7 +175,6 @@ class HelperMethodTests(BaseMigrationTests):
 
 
 class MigrationTests(BaseMigrationTests):
-
     def setUp(self):
         super(MigrationTests, self).setUp()
 
@@ -197,10 +196,8 @@ class MigrationTests(BaseMigrationTests):
         self.migration_module._re_publish_repository = self.orig_re_publish_repository
         self.migration_module._remove_legacy_publish_dirs = self.orig_remove_legacy_publish_dirs
 
-
     @mock.patch('pulp.plugins.loader.api._is_initialized', return_value=True)
     def test_migrate(self, mock_is_init):
-
         repo_id = 'test_repo'
         config = {'relative_url': '/this/way/to/the/test_repo'}
 

@@ -1,4 +1,3 @@
-
 import os
 
 from threading import Event
@@ -14,7 +13,6 @@ from pulp_rpm.plugins.importers.yum.repomd.nectar_factory import create_download
 
 
 log = getLogger(__name__)
-
 
 CONTAINER_REPORT = _('The content container reported: %(r)s for base URL: %(u)s')
 

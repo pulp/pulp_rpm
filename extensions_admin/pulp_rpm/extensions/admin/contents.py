@@ -170,7 +170,6 @@ class BaseSearchCommand(DisplayUnitAssociationsCommand):
 
 
 class PackageSearchCommand(BaseSearchCommand):
-
     def __init__(self, type_id, context, *args, **kwargs):
         super(PackageSearchCommand, self).__init__(self.package_search, context, *args, **kwargs)
         self.type_id = type_id
@@ -234,7 +233,7 @@ class PackageSearchCommand(BaseSearchCommand):
                              if related_rpm[key] is not None])
 
             if related_rpm['flags'] is not None and \
-               related_rpm['flags'] in REQUIRES_COMPARISON_TRANSLATIONS:
+                    related_rpm['flags'] in REQUIRES_COMPARISON_TRANSLATIONS:
                 # Bridge between name and version info with the comparison operator if present
                 middle = ' ' + REQUIRES_COMPARISON_TRANSLATIONS[related_rpm['flags']] + ' '
             else:
@@ -267,21 +266,18 @@ class PackageSearchCommand(BaseSearchCommand):
 
 
 class SearchRpmsCommand(PackageSearchCommand):
-
     def __init__(self, context):
         super(SearchRpmsCommand, self).__init__(TYPE_RPM, context, name='rpm',
                                                 description=DESC_RPMS)
 
 
 class SearchSrpmsCommand(PackageSearchCommand):
-
     def __init__(self, context):
         super(SearchSrpmsCommand, self).__init__(TYPE_SRPM, context, name='srpm',
                                                  description=DESC_SRPMS)
 
 
 class SearchDrpmsCommand(BaseSearchCommand):
-
     def __init__(self, context):
         super(SearchDrpmsCommand, self).__init__(self.drpm, context, name='drpm',
                                                  description=DESC_DRPMS)
@@ -291,7 +287,6 @@ class SearchDrpmsCommand(BaseSearchCommand):
 
 
 class SearchPackageGroupsCommand(BaseSearchCommand):
-
     def __init__(self, context):
         super(SearchPackageGroupsCommand, self).__init__(self.package_group, context, name='group',
                                                          description=DESC_GROUPS)
@@ -301,7 +296,6 @@ class SearchPackageGroupsCommand(BaseSearchCommand):
 
 
 class SearchPackageCategoriesCommand(BaseSearchCommand):
-
     def __init__(self, context):
         super(SearchPackageCategoriesCommand, self).__init__(self.package_category, context,
                                                              name='category',
@@ -312,7 +306,6 @@ class SearchPackageCategoriesCommand(BaseSearchCommand):
 
 
 class SearchPackageEnvironmentsCommand(BaseSearchCommand):
-
     def __init__(self, context):
         super(SearchPackageEnvironmentsCommand, self).__init__(self.package_environment, context,
                                                                name='environment',
@@ -323,7 +316,6 @@ class SearchPackageEnvironmentsCommand(BaseSearchCommand):
 
 
 class SearchDistributionsCommand(BaseSearchCommand):
-
     def __init__(self, context):
         super(SearchDistributionsCommand, self).__init__(self.distribution, context,
                                                          name='distribution',
@@ -387,7 +379,6 @@ class SearchDistributionsCommand(BaseSearchCommand):
 
 
 class SearchErrataCommand(BaseSearchCommand):
-
     def __init__(self, context):
         super(SearchErrataCommand, self).__init__(self.errata, context, name='errata',
                                                   description=DESC_ERRATA)

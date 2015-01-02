@@ -22,8 +22,9 @@ DESC_PKG_CATEGORY = _('copy package categories from one repository to another')
 DESC_PKG_ENVIRONMENT = _('copy package environment from one repository to another')
 DESC_ALL = _('copy all content units from one repository to another')
 
-DESC_RECURSIVE = _('if specified, any dependencies of units being copied that are in the source repo '
-                   'will be copied as well')
+DESC_RECURSIVE = _(
+    'if specified, any dependencies of units being copied that are in the source repo '
+    'will be copied as well')
 FLAG_RECURSIVE = PulpCliFlag('--recursive', DESC_RECURSIVE)
 
 # -- commands -----------------------------------------------------------------
@@ -36,7 +37,8 @@ class NonRecursiveCopyCommand(UnitCopyCommand):
     """
 
     def __init__(self, context, name, description, type_id, unit_threshold=DISPLAY_UNITS_THRESHOLD):
-        super(NonRecursiveCopyCommand, self).__init__(context, name=name, description=description, type_id=type_id)
+        super(NonRecursiveCopyCommand, self).__init__(context, name=name, description=description,
+                                                      type_id=type_id)
 
         self.unit_threshold = unit_threshold
 
@@ -57,7 +59,8 @@ class RecursiveCopyCommand(NonRecursiveCopyCommand):
     """
 
     def __init__(self, context, name, description, type_id, unit_threshold=DISPLAY_UNITS_THRESHOLD):
-        super(RecursiveCopyCommand, self).__init__(context, name=name, description=description, type_id=type_id)
+        super(RecursiveCopyCommand, self).__init__(context, name=name, description=description,
+                                                   type_id=type_id)
 
         self.add_flag(FLAG_RECURSIVE)
 
@@ -74,6 +77,7 @@ class PackageCopyCommand(RecursiveCopyCommand):
     """
     Used for only RPMs and SRPMs to intercept the criteria and use sort indexes when necessary.
     """
+
     @staticmethod
     def _parse_key_value(args):
         return criteria_utils.parse_key_value(args)
@@ -91,57 +95,48 @@ class PackageCopyCommand(RecursiveCopyCommand):
 
 
 class RpmCopyCommand(PackageCopyCommand):
-
     def __init__(self, context):
         RecursiveCopyCommand.__init__(self, context, 'rpm', DESC_RPM, TYPE_ID_RPM)
 
 
 class SrpmCopyCommand(PackageCopyCommand):
-
     def __init__(self, context):
         RecursiveCopyCommand.__init__(self, context, 'srpm', DESC_SRPM, TYPE_ID_SRPM)
 
 
 class DrpmCopyCommand(RecursiveCopyCommand):
-
     def __init__(self, context):
-        RecursiveCopyCommand.__init__(self,context, 'drpm', DESC_DRPM, TYPE_ID_DRPM)
+        RecursiveCopyCommand.__init__(self, context, 'drpm', DESC_DRPM, TYPE_ID_DRPM)
 
 
 class ErrataCopyCommand(RecursiveCopyCommand):
-
     def __init__(self, context):
         RecursiveCopyCommand.__init__(self, context, 'errata', DESC_ERRATA, TYPE_ID_ERRATA)
 
 
 class DistributionCopyCommand(NonRecursiveCopyCommand):
-
     def __init__(self, context):
-        NonRecursiveCopyCommand.__init__(self, context, 'distribution', DESC_DISTRIBUTION, TYPE_ID_DISTRO)
+        NonRecursiveCopyCommand.__init__(self, context, 'distribution', DESC_DISTRIBUTION,
+                                         TYPE_ID_DISTRO)
 
 
 class PackageGroupCopyCommand(RecursiveCopyCommand):
-
     def __init__(self, context):
         RecursiveCopyCommand.__init__(self, context, 'group', DESC_PKG_GROUP, TYPE_ID_PKG_GROUP)
 
 
 class PackageCategoryCopyCommand(RecursiveCopyCommand):
-
     def __init__(self, context):
         RecursiveCopyCommand.__init__(self, context, 'category', DESC_PKG_CATEGORY,
                                       TYPE_ID_PKG_CATEGORY)
 
 
 class PackageEnvironmentCopyCommand(RecursiveCopyCommand):
-
     def __init__(self, context):
         RecursiveCopyCommand.__init__(self, context, 'environment', DESC_PKG_ENVIRONMENT,
                                       TYPE_ID_PKG_ENVIRONMENT)
 
 
 class AllCopyCommand(NonRecursiveCopyCommand):
-
     def __init__(self, context):
         NonRecursiveCopyCommand.__init__(self, context, 'all', DESC_ALL, None)
-

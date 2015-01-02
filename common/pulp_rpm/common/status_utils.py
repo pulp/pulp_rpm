@@ -5,7 +5,8 @@ from pulp_rpm.common import constants
 
 # -- general rendering functions ----------------------------------------------
 
-def render_general_spinner_step(prompt, spinner, current_state, last_state, start_text, state_update_func):
+def render_general_spinner_step(prompt, spinner, current_state, last_state, start_text,
+                                state_update_func):
     """
     There are a number of steps that are simply running or finished. This
     method will apply a standard display for those situations.
@@ -80,10 +81,10 @@ def render_itemized_in_progress_state(prompt, data, type_name, progress_bar, sta
     items_total = data['items_total']
 
     message_data = {
-        'name'        : type_name.title(),
-        'items_done'  : items_done,
-        'items_total' : items_total,
-        }
+        'name': type_name.title(),
+        'items_done': items_done,
+        'items_total': items_total,
+    }
 
     template = _('%(name)s: %(items_done)s/%(items_total)s items')
     bar_message = template % message_data
@@ -114,12 +115,12 @@ def render_itemized_in_progress_state(prompt, data, type_name, progress_bar, sta
             traceback = '\n'.join(error['traceback'])
 
             message_data = {
-                'name'      : error['filename'],
-                'error'      : error_msg,
-                'traceback' : traceback
+                'name': error['filename'],
+                'error': error_msg,
+                'traceback': traceback
             }
 
-            template  = _('File:    %(name)s\n')
+            template = _('File:    %(name)s\n')
             template += _('Error:   %(error)s\n')
             if message_data["traceback"]:
                 template += _('Traceback:\n')
@@ -130,7 +131,6 @@ def render_itemized_in_progress_state(prompt, data, type_name, progress_bar, sta
             prompt.render_failure_message(message)
 
         prompt.render_spacer()
-
 
 
 def render_publish_step_in_progress_state(prompt, data, type_name, progress_bar, state):
@@ -153,10 +153,10 @@ def render_publish_step_in_progress_state(prompt, data, type_name, progress_bar,
     items_done = data[constants.PROGRESS_PROCESSED_KEY]
 
     message_data = {
-        'name'        : type_name.title(),
-        'items_done'  : items_done,
-        'items_total' : items_total,
-        }
+        'name': type_name.title(),
+        'items_done': items_done,
+        'items_total': items_total,
+    }
 
     template = _('%(name)s: %(items_done)s/%(items_total)s items')
     bar_message = template % message_data
@@ -175,6 +175,6 @@ def render_publish_step_in_progress_state(prompt, data, type_name, progress_bar,
     num_errors = min(len(data[constants.PROGRESS_ERROR_DETAILS_KEY]), 5)
 
     if num_errors > 0:
-        prompt.render_failure_message(_('Errors encountered during publishing: see server log for details'))
+        prompt.render_failure_message(
+            _('Errors encountered during publishing: see server log for details'))
         prompt.render_spacer()
-

@@ -27,7 +27,6 @@ LOCK = Lock(_LOCK_FILE)
 
 
 class TestRepolib(unittest.TestCase):
-
     def setUp(self):
         # Clean up from any previous runs that may have exited abnormally
         if os.path.exists(TEST_REPO_FILENAME):
@@ -41,7 +40,6 @@ class TestRepolib(unittest.TestCase):
 
         if os.path.exists(TEST_CERT_DIR):
             shutil.rmtree(TEST_CERT_DIR)
-
 
     def tearDown(self):
         # Clean up in case the test file was saved in a test
@@ -309,10 +307,10 @@ class TestRepolib(unittest.TestCase):
         """
         Tests changing the GPG keys on a previously bound repo.
         """
-        keys = {'key1' : 'KEY1', 'key2' : 'KEY2'}
+        keys = {'key1': 'KEY1', 'key2': 'KEY2'}
         repolib.bind(TEST_REPO_FILENAME, TEST_MIRROR_LIST_FILENAME, TEST_KEYS_DIR, TEST_CERT_DIR,
                      REPO_ID, REPO_NAME, ['http://pulp'], keys, None, ENABLED, LOCK)
-        new_keys = {'key1' : 'KEYX'}
+        new_keys = {'key1': 'KEYX'}
 
         repolib.bind(TEST_REPO_FILENAME, TEST_MIRROR_LIST_FILENAME, TEST_KEYS_DIR, TEST_CERT_DIR,
                      REPO_ID, None, None, new_keys, None, ENABLED, LOCK)
@@ -336,7 +334,7 @@ class TestRepolib(unittest.TestCase):
         Tests that updating a previously bound repo by removing its keys correctly
         configures the repo and deletes the key files.
         """
-        keys = {'key1' : 'KEY1', 'key2' : 'KEY2'}
+        keys = {'key1': 'KEY1', 'key2': 'KEY2'}
         repolib.bind(TEST_REPO_FILENAME, TEST_MIRROR_LIST_FILENAME, TEST_KEYS_DIR, TEST_CERT_DIR,
                      REPO_ID, REPO_NAME, ['http://pulp'], keys, None, ENABLED, LOCK)
 
@@ -555,7 +553,7 @@ class TestRepolib(unittest.TestCase):
         Tests that binding with multiple key URLs correctly stores the repo entry.
         """
         url_list = ['http://pulpserver']
-        keys = {'key1' : 'KEY1', 'key2' : 'KEY2'}
+        keys = {'key1': 'KEY1', 'key2': 'KEY2'}
 
         repolib.bind(TEST_REPO_FILENAME, TEST_MIRROR_LIST_FILENAME, TEST_KEYS_DIR, TEST_CERT_DIR,
                      REPO_ID, REPO_NAME, url_list, keys, None, ENABLED, LOCK)
@@ -579,11 +577,13 @@ class TestRepolib(unittest.TestCase):
         repo_file.save()
 
         # Test
-        repolib.unbind(TEST_REPO_FILENAME, TEST_MIRROR_LIST_FILENAME, TEST_KEYS_DIR, TEST_CERT_DIR, 'test-unbind-repo', LOCK)
+        repolib.unbind(TEST_REPO_FILENAME, TEST_MIRROR_LIST_FILENAME, TEST_KEYS_DIR, TEST_CERT_DIR,
+                       'test-unbind-repo', LOCK)
 
         # verify
         repo_file = RepoFile(TEST_REPO_FILENAME)
-        repo_file.load(allow_missing=False) # the file should still be there, so error if it doesn't
+        repo_file.load(
+            allow_missing=False)  # the file should still be there, so error if it doesn't
 
         self.assertEqual(0, len(repo_file.all_repos()))
 
@@ -613,7 +613,7 @@ class TestRepolib(unittest.TestCase):
         Tests that unbinding a repo that had GPG keys deletes the key files.
         """
         url_list = ['http://pulp1']
-        keys = {'key1' : 'KEY1', 'key2' : 'KEY2'}
+        keys = {'key1': 'KEY1', 'key2': 'KEY2'}
         repolib.bind(TEST_REPO_FILENAME, TEST_MIRROR_LIST_FILENAME, TEST_KEYS_DIR, TEST_CERT_DIR,
                      REPO_ID, REPO_NAME, url_list, keys, None, ENABLED, LOCK)
         self.assertTrue(os.path.exists(os.path.join(TEST_KEYS_DIR, REPO_ID)))
@@ -633,7 +633,8 @@ class TestRepolib(unittest.TestCase):
         self.assertTrue(not os.path.exists(TEST_REPO_FILENAME))
 
         # Test
-        repolib.unbind(TEST_REPO_FILENAME, TEST_MIRROR_LIST_FILENAME, TEST_KEYS_DIR, TEST_CERT_DIR, REPO_ID, LOCK)
+        repolib.unbind(TEST_REPO_FILENAME, TEST_MIRROR_LIST_FILENAME, TEST_KEYS_DIR, TEST_CERT_DIR,
+                       REPO_ID, LOCK)
 
         # Verify
         # The above shouldn't throw an error

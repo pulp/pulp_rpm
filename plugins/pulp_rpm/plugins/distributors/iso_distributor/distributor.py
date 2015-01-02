@@ -1,4 +1,3 @@
-
 import os
 
 from pulp.plugins.file.distributor import FileDistributor
@@ -22,6 +21,7 @@ class ISODistributor(FileDistributor):
     """
     Distribute ISOs like a boss.
     """
+
     @classmethod
     def metadata(cls):
         """
@@ -108,7 +108,7 @@ class ISODistributor(FileDistributor):
         :rtype boolean
         """
         serve_https = config.get_boolean(constants.CONFIG_SERVE_HTTPS)
-        serve_https = serve_https if serve_https is not None else constants.CONFIG_SERVE_HTTPS_DEFAULT
+        serve_https = serve_https if serve_https is not None else \
+            constants.CONFIG_SERVE_HTTPS_DEFAULT
 
         return serve_https
-

@@ -12,6 +12,7 @@ class TesGetPackageXml(unittest.TestCase):
     of this methods functionality is tested indirectly
     by the upload tests.
     """
+
     @patch('createrepo.yumbased')
     def test_get_package_xml_yum_exception(self, mock_yumbased):
         mock_yumbased.CreateRepoPackage.side_effect = Exception()
@@ -23,6 +24,7 @@ class TestStringToUnicode(unittest.TestCase):
     """
     tests for the string_to_unicode
     """
+
     def test_non_supported_encoding(self):
         start_string = Mock()
         start_string.decode.side_effect = UnicodeError()

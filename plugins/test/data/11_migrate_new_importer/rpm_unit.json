@@ -1,0 +1,152 @@
+{
+    "_content_type_id": "rpm",
+    "_id": "a7c1e6cf-55d9-4c96-b96b-0806b8d06cea",
+    "_ns": "units_rpm",
+    "_storage_path": "/var/lib/pulp/content/rpm/.//pulp-agent/2.1.1/1.el6/noarch/708261189d2dfdb40144f607f6a36430c6b246fb81994f5a1dfd4302a2b18c24/pulp-agent-2.1.1-1.el6.noarch.rpm",
+    "arch": "noarch",
+    "buildhost": "rhel6-builder",
+    "changelog": [
+        [
+            1367928000,
+            "Jeff Ortel <jortel@redhat.com> 2.1.1-1",
+            "-"
+        ],
+        [
+            1367928000,
+            "Jeff Ortel <jortel@redhat.com> 2.1.1-0.10.beta",
+            "-"
+        ],
+        [
+            1367323200,
+            "Jeff Ortel <jortel@redhat.com> 2.1.1-0.9.beta",
+            "- 957890 - removing duplicate units in case when consumer is bound to copies of\n  same repo (skarmark@redhat.com)\n- 957890 - fixed duplicate unit listing in the applicability report and\n  performance improvement fix to avoid loading unnecessary units\n  (skarmark@redhat.com)"
+        ],
+        [
+            1366977600,
+            "Jeff Ortel <jortel@redhat.com> 2.1.1-0.8.beta",
+            "- 954038 - updating applicability api to send unit ids instead of translated\n  plugin unit objects to profilers and fixing a couple of performance issues\n  (skarmark@redhat.com)"
+        ],
+        [
+            1366804800,
+            "Jeff Ortel <jortel@redhat.com> 2.1.1-0.7.beta",
+            "-"
+        ],
+        [
+            1366804800,
+            "Jeff Ortel <jortel@redhat.com> 2.1.1-0.6.beta",
+            "-"
+        ],
+        [
+            1366372800,
+            "Jeff Ortel <jortel@redhat.com> 2.1.1-0.5.beta",
+            "- 953665 - added ability for copy commands to specify the fields of their units\n  that should be fetched, so as to avoid loading the entirety of every unit in\n  the source repository into RAM. Also added the ability to provide a custom\n  \"override_config\" based on CLI options. (mhrivnak@redhat.com)"
+        ],
+        [
+            1365768000,
+            "Jeff Ortel <jortel@redhat.com> 2.1.1-0.4.beta",
+            "-"
+        ],
+        [
+            1365768000,
+            "Jeff Ortel <jortel@redhat.com> 2.1.1-0.3.beta",
+            "-"
+        ],
+        [
+            1365768000,
+            "Jeff Ortel <jortel@redhat.com> 2.1.1-0.2.beta",
+            "-"
+        ]
+    ],
+    "checksum": "708261189d2dfdb40144f607f6a36430c6b246fb81994f5a1dfd4302a2b18c24",
+    "checksumtype": "sha256",
+    "description": "The pulp agent, used to provide remote command & control and\nscheduled actions such as reporting installed content profiles\non a defined interval.",
+    "epoch": "0",
+    "filelist": [
+        "/etc/pulp/agent/agent.conf",
+        "/etc/gofer/plugins/pulpplugin.conf",
+        "/usr/lib64/gofer/plugins/pulpplugin.py",
+        "/usr/lib64/gofer/plugins/pulpplugin.pyc",
+        "/usr/lib64/gofer/plugins/pulpplugin.pyo",
+        "/etc/rc.d/init.d/pulp-agent"
+    ],
+    "filename": "pulp-agent-2.1.1-1.el6.noarch.rpm",
+    "files": {
+        "file": [
+            "/etc/pulp/agent/agent.conf",
+            "/etc/gofer/plugins/pulpplugin.conf",
+            "/usr/lib64/gofer/plugins/pulpplugin.py",
+            "/usr/lib64/gofer/plugins/pulpplugin.pyc",
+            "/usr/lib64/gofer/plugins/pulpplugin.pyo",
+            "/etc/rc.d/init.d/pulp-agent"
+        ]
+    },
+    "license": "GPLv2",
+    "name": "pulp-agent",
+    "provides": [
+        [
+            "pulp-agent",
+            "EQ",
+            [
+                "0",
+                "2.1.1",
+                "1.el6"
+            ]
+        ],
+        [
+            "config(pulp-agent)",
+            "EQ",
+            [
+                "0",
+                "2.1.1",
+                "1.el6"
+            ]
+        ]
+    ],
+    "relativepath": "pulp-agent-2.1.1-1.el6.noarch.rpm",
+    "release": "1.el6",
+    "repodata": {
+        "filelists": "<package pkgid=\"708261189d2dfdb40144f607f6a36430c6b246fb81994f5a1dfd4302a2b18c24\" name=\"pulp-agent\" arch=\"noarch\">    <version epoch=\"0\" ver=\"2.1.1\" rel=\"1.el6\"/>    <file>/etc/gofer/plugins/pulpplugin.conf</file>    <file>/etc/pulp/agent/agent.conf</file>    <file>/etc/rc.d/init.d/pulp-agent</file>    <file>/usr/lib64/gofer/plugins/pulpplugin.py</file>    <file>/usr/lib64/gofer/plugins/pulpplugin.pyc</file>    <file>/usr/lib64/gofer/plugins/pulpplugin.pyo</file></package>",
+        "other": "<package pkgid=\"708261189d2dfdb40144f607f6a36430c6b246fb81994f5a1dfd4302a2b18c24\" name=\"pulp-agent\" arch=\"noarch\">    <version epoch=\"0\" ver=\"2.1.1\" rel=\"1.el6\"/><changelog author=\"Jeff Ortel &lt;jortel@redhat.com&gt; 2.1.1-0.2.beta\" date=\"1365768000\">-</changelog><changelog author=\"Jeff Ortel &lt;jortel@redhat.com&gt; 2.1.1-0.3.beta\" date=\"1365768001\">-</changelog><changelog author=\"Jeff Ortel &lt;jortel@redhat.com&gt; 2.1.1-0.4.beta\" date=\"1365768002\">-</changelog><changelog author=\"Jeff Ortel &lt;jortel@redhat.com&gt; 2.1.1-0.5.beta\" date=\"1366372800\">- 953665 - added ability for copy commands to specify the fields of their units  that should be fetched, so as to avoid loading the entirety of every unit in  the source repository into RAM. Also added the ability to provide a custom  \"override_config\" based on CLI options. (mhrivnak@redhat.com)</changelog><changelog author=\"Jeff Ortel &lt;jortel@redhat.com&gt; 2.1.1-0.6.beta\" date=\"1366804800\">-</changelog><changelog author=\"Jeff Ortel &lt;jortel@redhat.com&gt; 2.1.1-0.7.beta\" date=\"1366804801\">-</changelog><changelog author=\"Jeff Ortel &lt;jortel@redhat.com&gt; 2.1.1-0.8.beta\" date=\"1366977600\">- 954038 - updating applicability api to send unit ids instead of translated  plugin unit objects to profilers and fixing a couple of performance issues  (skarmark@redhat.com)</changelog><changelog author=\"Jeff Ortel &lt;jortel@redhat.com&gt; 2.1.1-0.9.beta\" date=\"1367323200\">- 957890 - removing duplicate units in case when consumer is bound to copies of  same repo (skarmark@redhat.com)- 957890 - fixed duplicate unit listing in the applicability report and  performance improvement fix to avoid loading unnecessary units  (skarmark@redhat.com)</changelog><changelog author=\"Jeff Ortel &lt;jortel@redhat.com&gt; 2.1.1-0.10.beta\" date=\"1367928000\">-</changelog><changelog author=\"Jeff Ortel &lt;jortel@redhat.com&gt; 2.1.1-1\" date=\"1367928001\">-</changelog></package>",
+        "primary": "<package type=\"rpm\">  <name>pulp-agent</name>  <arch>noarch</arch>  <version epoch=\"0\" ver=\"2.1.1\" rel=\"1.el6\"/>  <checksum type=\"sha256\" pkgid=\"YES\">708261189d2dfdb40144f607f6a36430c6b246fb81994f5a1dfd4302a2b18c24</checksum>  <summary>The Pulp agent</summary>  <description>The pulp agent, used to provide remote command &amp; control andscheduled actions such as reporting installed content profileson a defined interval.</description>  <packager></packager>  <url>https://fedorahosted.org/pulp/</url>  <time file=\"1367962980\" build=\"1367962910\"/>  <size package=\"88136\" installed=\"25944\" archive=\"26984\"/><location href=\"pulp-agent-2.1.1-1.el6.noarch.rpm\"/>  <format>    <rpm:license>GPLv2</rpm:license>    <rpm:vendor/>    <rpm:group>Development/Languages</rpm:group>    <rpm:buildhost>rhel6-builder</rpm:buildhost>    <rpm:sourcerpm>pulp-2.1.1-1.el6.src.rpm</rpm:sourcerpm>    <rpm:header-range start=\"280\" end=\"81648\"/>    <rpm:provides>      <rpm:entry name=\"config(pulp-agent)\" flags=\"EQ\" epoch=\"0\" ver=\"2.1.1\" rel=\"1.el6\"/>      <rpm:entry name=\"pulp-agent\" flags=\"EQ\" epoch=\"0\" ver=\"2.1.1\" rel=\"1.el6\"/>    </rpm:provides>    <rpm:requires>      <rpm:entry name=\"gofer\" flags=\"GE\" epoch=\"0\" ver=\"0.74\"/>      <rpm:entry name=\"pulp-consumer-client\" flags=\"EQ\" epoch=\"0\" ver=\"2.1.1\"/>      <rpm:entry name=\"python-pulp-agent-lib\" flags=\"EQ\" epoch=\"0\" ver=\"2.1.1\"/>      <rpm:entry name=\"python-pulp-bindings\" flags=\"EQ\" epoch=\"0\" ver=\"2.1.1\"/>    </rpm:requires>    <file>/etc/gofer/plugins/pulpplugin.conf</file>    <file>/etc/pulp/agent/agent.conf</file>    <file>/etc/rc.d/init.d/pulp-agent</file>  </format></package>"
+    },
+    "requires": [
+        [
+            "python-pulp-bindings",
+            "EQ",
+            [
+                "0",
+                "2.1.1",
+                null
+            ]
+        ],
+        [
+            "python-pulp-agent-lib",
+            "EQ",
+            [
+                "0",
+                "2.1.1",
+                null
+            ]
+        ],
+        [
+            "pulp-consumer-client",
+            "EQ",
+            [
+                "0",
+                "2.1.1",
+                null
+            ]
+        ],
+        [
+            "gofer",
+            "GE",
+            [
+                "0",
+                "0.74",
+                null
+            ]
+        ]
+    ],
+    "vendor": "",
+    "version": "2.1.1"
+}

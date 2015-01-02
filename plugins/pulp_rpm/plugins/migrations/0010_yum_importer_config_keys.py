@@ -22,19 +22,19 @@ def migrate(*args, **kwargs):
     repo_importers = get_collection('repo_importers')
 
     rename_query = {'$rename': {
-        'config.feed_url'         : 'config.feed',
-        'config.ssl_verify'       : 'config.ssl_validation',
-        'config.proxy_url'        : 'config.proxy_host',
-        'config.proxy_user'       : 'config.proxy_username',
-        'config.proxy_pass'       : 'config.proxy_password',
-        'config.num_threads'      : 'config.max_downloads',
-        'config.verify_checksum'  : 'config.validate', # see comment above
-        'config.remove_old'       : 'config.remove_missing',
-        'config.num_old_packages' : 'config.retain_old_count',
+        'config.feed_url': 'config.feed',
+        'config.ssl_verify': 'config.ssl_validation',
+        'config.proxy_url': 'config.proxy_host',
+        'config.proxy_user': 'config.proxy_username',
+        'config.proxy_pass': 'config.proxy_password',
+        'config.num_threads': 'config.max_downloads',
+        'config.verify_checksum': 'config.validate',  # see comment above
+        'config.remove_old': 'config.remove_missing',
+        'config.num_old_packages': 'config.retain_old_count',
     }}
     repo_importers.update({'importer_type_id': 'yum_importer'}, rename_query, safe=True, multi=True)
 
-    remove_query = {'$unset' : {'config.newest' : 1,
-                                'config.verify_size' : 1,
-                                'config.purge_orphaned' : 1}}
+    remove_query = {'$unset': {'config.newest': 1,
+                               'config.verify_size': 1,
+                               'config.purge_orphaned': 1}}
     repo_importers.update({'importer_type_id': 'yum_importer'}, remove_query, safe=True, multi=True)

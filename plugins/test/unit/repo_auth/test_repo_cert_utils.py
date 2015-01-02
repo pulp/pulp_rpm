@@ -26,12 +26,10 @@ CA_CHAIN_TEST_DATA = os.path.join(DATA_DIR, 'test_repo_cert_utils/chain')
 
 CONFIG = SafeConfigParser()
 CONFIG.read([os.path.join(DATA_DIR, 'test-override-pulp.conf'),
-            os.path.join(DATA_DIR, 'test-override-repoauth.conf')])
+             os.path.join(DATA_DIR, 'test-override-repoauth.conf')])
 
-# -- test cases ----------------------------------------------------------------------
 
 class TestValidateCertBundle(unittest.TestCase):
-
     def setUp(self):
         self.utils = repo_cert_utils.RepoCertUtils(CONFIG)
 
@@ -41,10 +39,10 @@ class TestValidateCertBundle(unittest.TestCase):
         """
 
         # Setup
-        bundle = {'ca' : 'PEM', 'cert' : 'PEM'}
+        bundle = {'ca': 'PEM', 'cert': 'PEM'}
 
         # Test
-        self.utils.validate_cert_bundle(bundle) # should not throw an error
+        self.utils.validate_cert_bundle(bundle)  # should not throw an error
 
     def test_validate_cert_bundle_missing_keys(self):
         """
@@ -53,8 +51,8 @@ class TestValidateCertBundle(unittest.TestCase):
         """
 
         # Test missing CA
-        self.assertRaises(ValueError, self.utils.validate_cert_bundle, {'cert' : 'PEM'})
-        self.assertRaises(ValueError, self.utils.validate_cert_bundle, {'ca' : 'PEM'})
+        self.assertRaises(ValueError, self.utils.validate_cert_bundle, {'cert': 'PEM'})
+        self.assertRaises(ValueError, self.utils.validate_cert_bundle, {'ca': 'PEM'})
 
     def test_validate_cert_bundle_non_dict(self):
         """
@@ -79,14 +77,13 @@ class TestValidateCertBundle(unittest.TestCase):
         """
 
         # Setup
-        bundle = {'ca' : 'PEM', 'cert' : 'PEM', 'foo' : 'bar'}
+        bundle = {'ca': 'PEM', 'cert': 'PEM', 'foo': 'bar'}
 
         # Test
         self.assertRaises(ValueError, self.utils.validate_cert_bundle, bundle)
 
 
 class TestCertStorage(unittest.TestCase):
-
     def clean(self):
         if os.path.exists(CONFIG.get('repos', 'cert_location')):
             shutil.rmtree(CONFIG.get('repos', 'cert_location'))
@@ -108,7 +105,7 @@ class TestCertStorage(unittest.TestCase):
 
         # Setup
         repo_id = 'test-repo-1'
-        bundle = {'ca' : 'FOO', 'cert' : 'BAR'}
+        bundle = {'ca': 'FOO', 'cert': 'BAR'}
 
         # Test
         files = self.utils.write_feed_cert_bundle(repo_id, bundle)
@@ -130,7 +127,7 @@ class TestCertStorage(unittest.TestCase):
 
         # Setup
         repo_id = 'test-repo-1'
-        bundle = {'ca' : 'FOO', 'cert' : 'BAR'}
+        bundle = {'ca': 'FOO', 'cert': 'BAR'}
 
         # Test
         files = self.utils.write_consumer_cert_bundle(repo_id, bundle)
@@ -151,7 +148,7 @@ class TestCertStorage(unittest.TestCase):
         """
 
         # Setup
-        bundle = {'ca' : 'FOO', 'cert' : 'BAR'}
+        bundle = {'ca': 'FOO', 'cert': 'BAR'}
 
         # Test Write
         files = self.utils.write_global_repo_cert_bundle(bundle)
@@ -175,7 +172,7 @@ class TestCertStorage(unittest.TestCase):
         # -----
 
         # Test Read Subset
-        read_bundle  = self.utils.read_global_cert_bundle(['ca'])
+        read_bundle = self.utils.read_global_cert_bundle(['ca'])
 
         # Verify Read Subset
         self.assertTrue(read_bundle is not None)
@@ -190,7 +187,7 @@ class TestCertStorage(unittest.TestCase):
         """
 
         # Setup
-        bundle = {'cert' : 'FOO'}
+        bundle = {'cert': 'FOO'}
 
         # Test
         files = self.utils.write_global_repo_cert_bundle(bundle)
@@ -206,7 +203,8 @@ class TestCertStorage(unittest.TestCase):
 
         self.assertEqual(read_bundle['cert'], bundle['cert'])
 
-        self.assertTrue(not os.path.exists(os.path.join(self.utils._global_cert_directory(), 'pulp-global-repo.ca')))
+        self.assertTrue(not os.path.exists(
+            os.path.join(self.utils._global_cert_directory(), 'pulp-global-repo.ca')))
 
     def test_remove_bundle_item(self):
         """
@@ -216,20 +214,21 @@ class TestCertStorage(unittest.TestCase):
 
         # Setup
         repo_id = 'test-repo-1'
-        bundle = {'ca' : 'FOO', 'cert' : 'BAR'}
+        bundle = {'ca': 'FOO', 'cert': 'BAR'}
         self.utils.write_feed_cert_bundle(repo_id, bundle)
 
         # Test
-        clean_bundle = {'ca' : None, 'cert' : 'BAR'} # remove ca, cert unchanged
+        clean_bundle = {'ca': None, 'cert': 'BAR'}  # remove ca, cert unchanged
         files = self.utils.write_feed_cert_bundle(repo_id, clean_bundle)
         self.assertTrue(files is not None)
-        self.assertEqual(2, len(files)) # no change to cert
+        self.assertEqual(2, len(files))  # no change to cert
         self.assertEqual(files['ca'], None)
 
         repo_cert_dir = self.utils._repo_cert_directory(repo_id)
         self.assertTrue(os.path.exists(repo_cert_dir))
 
-        self.assertTrue(not os.path.exists(os.path.join(self.utils._repo_cert_directory(repo_id), 'feed-%s.ca' % repo_id)))
+        self.assertTrue(not os.path.exists(
+            os.path.join(self.utils._repo_cert_directory(repo_id), 'feed-%s.ca' % repo_id)))
         self._verify_repo_file_contents(repo_id, 'feed-%s.cert' % repo_id, clean_bundle['cert'])
 
     def test_write_none_item(self):
@@ -242,7 +241,7 @@ class TestCertStorage(unittest.TestCase):
         repo_id = 'test-repo-5'
 
         # Test
-        clean_bundle = {'ca' : None, 'cert' : None}
+        clean_bundle = {'ca': None, 'cert': None}
         files = self.utils.write_feed_cert_bundle(repo_id, clean_bundle)
 
         # Verify
@@ -252,8 +251,10 @@ class TestCertStorage(unittest.TestCase):
         self.assertEqual(files['ca'], None)
         self.assertEqual(files['cert'], None)
 
-        self.assertTrue(not os.path.exists(os.path.join(self.utils._repo_cert_directory(repo_id), 'feed-%s.ca' % repo_id)))
-        self.assertTrue(not os.path.exists(os.path.join(self.utils._repo_cert_directory(repo_id), 'feed-%s.cert' % repo_id)))
+        self.assertTrue(not os.path.exists(
+            os.path.join(self.utils._repo_cert_directory(repo_id), 'feed-%s.ca' % repo_id)))
+        self.assertTrue(not os.path.exists(
+            os.path.join(self.utils._repo_cert_directory(repo_id), 'feed-%s.cert' % repo_id)))
 
     def test_write_none_consumer_bundle(self):
         """
@@ -263,7 +264,7 @@ class TestCertStorage(unittest.TestCase):
 
         # Setup
         repo_id = 'test-repo-1'
-        bundle = {'ca' : 'FOO', 'cert' : 'BAR'}
+        bundle = {'ca': 'FOO', 'cert': 'BAR'}
         files = self.utils.write_consumer_cert_bundle(repo_id, bundle)
 
         for f in files.values():
@@ -295,7 +296,7 @@ class TestCertStorage(unittest.TestCase):
 
         # Setup
         repo_id = 'test-repo-2'
-        bundle = {'ca' : 'FOO', 'cert' : 'BAR'}
+        bundle = {'ca': 'FOO', 'cert': 'BAR'}
 
         self.utils.write_feed_cert_bundle(repo_id, bundle)
         self.utils.write_consumer_cert_bundle(repo_id, bundle)
@@ -304,7 +305,7 @@ class TestCertStorage(unittest.TestCase):
         self.assertTrue(os.path.exists(repo_cert_dir))
 
         cert_files = os.listdir(repo_cert_dir)
-        self.assertEqual(4, len(cert_files)) # 2 bundles, 2 files each
+        self.assertEqual(4, len(cert_files))  # 2 bundles, 2 files each
 
         # Test
         self.utils.delete_for_repo(repo_id)
@@ -318,7 +319,7 @@ class TestCertStorage(unittest.TestCase):
         """
 
         # Setup
-        bundle = {'ca' : 'FOO', 'cert' : 'BAR'}
+        bundle = {'ca': 'FOO', 'cert': 'BAR'}
 
         self.utils.write_global_repo_cert_bundle(bundle)
 
@@ -337,8 +338,8 @@ class TestCertStorage(unittest.TestCase):
 
         self.assertEqual(read_contents, contents)
 
-class TestCertVerify(unittest.TestCase):
 
+class TestCertVerify(unittest.TestCase):
     def setUp(self):
         self.utils = repo_cert_utils.RepoCertUtils(CONFIG)
 
@@ -417,18 +418,22 @@ class TestCertVerify(unittest.TestCase):
         certs = self.utils.get_certs_from_string(data)
         self.assertEquals(len(certs), 3)
         self.assertTrue(certs[0].check_ca())
-        self.assertTrue(expected_root_ca_cert.get_subject().as_hash(), certs[0].get_subject().as_hash())
-        self.assertTrue(expected_root_ca_cert.get_issuer().as_hash(), certs[0].get_issuer().as_hash())
+        self.assertTrue(expected_root_ca_cert.get_subject().as_hash(),
+                        certs[0].get_subject().as_hash())
+        self.assertTrue(expected_root_ca_cert.get_issuer().as_hash(),
+                        certs[0].get_issuer().as_hash())
 
         self.assertTrue(certs[1].check_ca())
-        self.assertTrue(expected_sub_ca_cert.get_subject().as_hash(), certs[1].get_subject().as_hash())
-        self.assertTrue(expected_sub_ca_cert.get_issuer().as_hash(), certs[1].get_issuer().as_hash())
+        self.assertTrue(expected_sub_ca_cert.get_subject().as_hash(),
+                        certs[1].get_subject().as_hash())
+        self.assertTrue(expected_sub_ca_cert.get_issuer().as_hash(),
+                        certs[1].get_issuer().as_hash())
 
     def test_get_certs_from_string_more_than_maximum_allowed(self):
         root_ca_path = os.path.join(CA_CHAIN_TEST_DATA, "certs/ROOT_CA/root_ca.pem")
         cert_data = open(root_ca_path).read()
         many_certs = ""
-        for index in range(0, self.utils.max_num_certs_in_chain+200):
+        for index in range(0, self.utils.max_num_certs_in_chain + 200):
             many_certs += cert_data
         parsed_certs = self.utils.get_certs_from_string(many_certs)
         self.assertTrue(len(parsed_certs), self.utils.max_num_certs_in_chain)

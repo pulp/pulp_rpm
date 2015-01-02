@@ -14,7 +14,6 @@ from mock_yum import YumBase
 
 
 class TestConduit(Conduit):
-
     def __init__(self, cfg=None):
         self.cfg = (cfg or {})
 
@@ -24,7 +23,6 @@ class TestConduit(Conduit):
 
 
 class Deployer(object):
-
     def __init__(self):
         self.root = None
         self.cwd = os.path.abspath(os.path.dirname(__file__))
@@ -59,7 +57,6 @@ class Deployer(object):
 
 
 class HandlerTest(unittest.TestCase):
-
     def setUp(self):
         mock_yum.install()
         self.deployer = Deployer()
@@ -76,7 +73,6 @@ class HandlerTest(unittest.TestCase):
 
 
 class TestPackages(HandlerTest):
-
     TYPE_ID = 'rpm'
 
     def setUp(self):
@@ -119,10 +115,10 @@ class TestPackages(HandlerTest):
     def test_install(self):
         # Setup
         units = [
-            {'type_id':self.TYPE_ID, 'unit_key':{'name':'zsh'}},
-            {'type_id':self.TYPE_ID, 'unit_key':{'name':'ksh'}},
-            {'type_id':self.TYPE_ID, 'unit_key':{'name':'gofer'}},
-            {'type_id':self.TYPE_ID, 'unit_key':{'name':'okaara'}},
+            {'type_id': self.TYPE_ID, 'unit_key': {'name': 'zsh'}},
+            {'type_id': self.TYPE_ID, 'unit_key': {'name': 'ksh'}},
+            {'type_id': self.TYPE_ID, 'unit_key': {'name': 'gofer'}},
+            {'type_id': self.TYPE_ID, 'unit_key': {'name': 'okaara'}},
         ]
         # Test
         conduit = Conduit()
@@ -136,32 +132,32 @@ class TestPackages(HandlerTest):
     def test_install_noapply(self):
         # Setup
         units = [
-            {'type_id':self.TYPE_ID, 'unit_key':{'name':'zsh'}},
-            {'type_id':self.TYPE_ID, 'unit_key':{'name':'ksh'}},
-            {'type_id':self.TYPE_ID, 'unit_key':{'name':'gofer'}},
-            {'type_id':self.TYPE_ID, 'unit_key':{'name':'okaara'}},
+            {'type_id': self.TYPE_ID, 'unit_key': {'name': 'zsh'}},
+            {'type_id': self.TYPE_ID, 'unit_key': {'name': 'ksh'}},
+            {'type_id': self.TYPE_ID, 'unit_key': {'name': 'gofer'}},
+            {'type_id': self.TYPE_ID, 'unit_key': {'name': 'okaara'}},
         ]
         # Test
         conduit = Conduit()
-        options = {'apply':False}
+        options = {'apply': False}
         report = self.dispatcher.install(conduit, units, options)
         # Verify
         self.verify_succeeded(report, installed=units)
         self.assertFalse(report.reboot['scheduled'])
         self.assertFalse(os.system.called)
         self.assertFalse(YumBase.processTransaction.called)
-        
+
     def test_install_importkeys(self):
         # Setup
         units = [
-            {'type_id':self.TYPE_ID, 'unit_key':{'name':'zsh'}},
-            {'type_id':self.TYPE_ID, 'unit_key':{'name':'ksh'}},
-            {'type_id':self.TYPE_ID, 'unit_key':{'name':'gofer'}},
-            {'type_id':self.TYPE_ID, 'unit_key':{'name':'okaara'}},
+            {'type_id': self.TYPE_ID, 'unit_key': {'name': 'zsh'}},
+            {'type_id': self.TYPE_ID, 'unit_key': {'name': 'ksh'}},
+            {'type_id': self.TYPE_ID, 'unit_key': {'name': 'gofer'}},
+            {'type_id': self.TYPE_ID, 'unit_key': {'name': 'okaara'}},
         ]
         # Test
         conduit = Conduit()
-        options = {'importkeys':True}
+        options = {'importkeys': True}
         report = self.dispatcher.install(conduit, units, options)
         # Verify
         self.verify_succeeded(report, installed=units)
@@ -209,14 +205,14 @@ class TestPackages(HandlerTest):
     def test_install_with_reboot(self):
         # Setup
         units = [
-            {'type_id':self.TYPE_ID, 'unit_key':{'name':'zsh'}},
-            {'type_id':self.TYPE_ID, 'unit_key':{'name':'ksh'}},
-            {'type_id':self.TYPE_ID, 'unit_key':{'name':'gofer'}},
-            {'type_id':self.TYPE_ID, 'unit_key':{'name':'okaara'}},
+            {'type_id': self.TYPE_ID, 'unit_key': {'name': 'zsh'}},
+            {'type_id': self.TYPE_ID, 'unit_key': {'name': 'ksh'}},
+            {'type_id': self.TYPE_ID, 'unit_key': {'name': 'gofer'}},
+            {'type_id': self.TYPE_ID, 'unit_key': {'name': 'okaara'}},
         ]
         # Test
         conduit = Conduit()
-        options = {'reboot':True}
+        options = {'reboot': True}
         report = self.dispatcher.install(conduit, units, options)
         # Verify
         self.verify_succeeded(report, installed=units, reboot=True)
@@ -228,10 +224,10 @@ class TestPackages(HandlerTest):
     def test_update(self):
         # Setup
         units = [
-            {'type_id':self.TYPE_ID, 'unit_key':{'name':'zsh'}},
-            {'type_id':self.TYPE_ID, 'unit_key':{'name':'ksh'}},
-            {'type_id':self.TYPE_ID, 'unit_key':{'name':'gofer'}},
-            {'type_id':self.TYPE_ID, 'unit_key':{'name':'okaara'}},
+            {'type_id': self.TYPE_ID, 'unit_key': {'name': 'zsh'}},
+            {'type_id': self.TYPE_ID, 'unit_key': {'name': 'ksh'}},
+            {'type_id': self.TYPE_ID, 'unit_key': {'name': 'gofer'}},
+            {'type_id': self.TYPE_ID, 'unit_key': {'name': 'okaara'}},
         ]
         # Test
         conduit = Conduit()
@@ -241,36 +237,36 @@ class TestPackages(HandlerTest):
         self.assertFalse(report.reboot['scheduled'])
         self.assertFalse(os.system.called)
         self.assertTrue(YumBase.processTransaction.called)
-        
+
     def test_update_noapply(self):
         # Setup
         units = [
-            {'type_id':self.TYPE_ID, 'unit_key':{'name':'zsh'}},
-            {'type_id':self.TYPE_ID, 'unit_key':{'name':'ksh'}},
-            {'type_id':self.TYPE_ID, 'unit_key':{'name':'gofer'}},
-            {'type_id':self.TYPE_ID, 'unit_key':{'name':'okaara'}},
+            {'type_id': self.TYPE_ID, 'unit_key': {'name': 'zsh'}},
+            {'type_id': self.TYPE_ID, 'unit_key': {'name': 'ksh'}},
+            {'type_id': self.TYPE_ID, 'unit_key': {'name': 'gofer'}},
+            {'type_id': self.TYPE_ID, 'unit_key': {'name': 'okaara'}},
         ]
         # Test
         conduit = Conduit()
-        options = {'apply':False}
+        options = {'apply': False}
         report = self.dispatcher.update(conduit, units, options)
         # Verify
         self.verify_succeeded(report, updated=units)
         self.assertFalse(report.reboot['scheduled'])
         self.assertFalse(os.system.called)
         self.assertFalse(YumBase.processTransaction.called)
-        
+
     def test_update_importkeys(self):
         # Setup
         units = [
-            {'type_id':self.TYPE_ID, 'unit_key':{'name':'zsh'}},
-            {'type_id':self.TYPE_ID, 'unit_key':{'name':'ksh'}},
-            {'type_id':self.TYPE_ID, 'unit_key':{'name':'gofer'}},
-            {'type_id':self.TYPE_ID, 'unit_key':{'name':'okaara'}},
+            {'type_id': self.TYPE_ID, 'unit_key': {'name': 'zsh'}},
+            {'type_id': self.TYPE_ID, 'unit_key': {'name': 'ksh'}},
+            {'type_id': self.TYPE_ID, 'unit_key': {'name': 'gofer'}},
+            {'type_id': self.TYPE_ID, 'unit_key': {'name': 'okaara'}},
         ]
         # Test
         conduit = Conduit()
-        options = {'importkeys':True}
+        options = {'importkeys': True}
         report = self.dispatcher.update(conduit, units, options)
         # Verify
         self.verify_succeeded(report, updated=units)
@@ -281,14 +277,14 @@ class TestPackages(HandlerTest):
     def test_update_with_reboot(self):
         # Setup
         units = [
-            {'type_id':self.TYPE_ID, 'unit_key':{'name':'zsh'}},
-            {'type_id':self.TYPE_ID, 'unit_key':{'name':'ksh'}},
-            {'type_id':self.TYPE_ID, 'unit_key':{'name':'gofer'}},
-            {'type_id':self.TYPE_ID, 'unit_key':{'name':'okaara'}},
+            {'type_id': self.TYPE_ID, 'unit_key': {'name': 'zsh'}},
+            {'type_id': self.TYPE_ID, 'unit_key': {'name': 'ksh'}},
+            {'type_id': self.TYPE_ID, 'unit_key': {'name': 'gofer'}},
+            {'type_id': self.TYPE_ID, 'unit_key': {'name': 'okaara'}},
         ]
         # Test
         conduit = Conduit()
-        options = {'reboot':True, 'minutes':5}
+        options = {'reboot': True, 'minutes': 5}
         report = self.dispatcher.update(conduit, units, options)
         # Verify
         self.verify_succeeded(report, updated=units, reboot=True)
@@ -300,8 +296,8 @@ class TestPackages(HandlerTest):
     def test_uninstall(self):
         # Setup
         units = [
-            {'type_id':self.TYPE_ID, 'unit_key':{'name':'zsh'}},
-            {'type_id':self.TYPE_ID, 'unit_key':{'name':'okaara'}},
+            {'type_id': self.TYPE_ID, 'unit_key': {'name': 'zsh'}},
+            {'type_id': self.TYPE_ID, 'unit_key': {'name': 'okaara'}},
         ]
         # Test
         conduit = Conduit()
@@ -311,16 +307,16 @@ class TestPackages(HandlerTest):
         self.assertFalse(report.reboot['scheduled'])
         self.assertFalse(os.system.called)
         self.assertTrue(YumBase.processTransaction.called)
-        
+
     def test_uninstall_noapply(self):
         # Setup
         units = [
-            {'type_id':self.TYPE_ID, 'unit_key':{'name':'zsh'}},
-            {'type_id':self.TYPE_ID, 'unit_key':{'name':'okaara'}},
+            {'type_id': self.TYPE_ID, 'unit_key': {'name': 'zsh'}},
+            {'type_id': self.TYPE_ID, 'unit_key': {'name': 'okaara'}},
         ]
         # Test
         conduit = Conduit()
-        options = {'apply':False}
+        options = {'apply': False}
         report = self.dispatcher.uninstall(conduit, units, options)
         # Verify
         self.verify_succeeded(report, removed=units)
@@ -331,12 +327,12 @@ class TestPackages(HandlerTest):
     def test_uninstall_with_reboot(self):
         # Setup
         units = [
-            {'type_id':self.TYPE_ID, 'unit_key':{'name':'zsh'}},
-            {'type_id':self.TYPE_ID, 'unit_key':{'name':'kmod'}},
+            {'type_id': self.TYPE_ID, 'unit_key': {'name': 'zsh'}},
+            {'type_id': self.TYPE_ID, 'unit_key': {'name': 'kmod'}},
         ]
         # Test
         conduit = Conduit()
-        options = {'reboot':True}
+        options = {'reboot': True}
         report = self.dispatcher.uninstall(conduit, units, options)
         # Verify
         self.verify_succeeded(report, removed=units, reboot=True)
@@ -347,7 +343,6 @@ class TestPackages(HandlerTest):
 
 
 class TestGroups(HandlerTest):
-
     TYPE_ID = 'package_group'
 
     def setUp(self):
@@ -365,7 +360,7 @@ class TestGroups(HandlerTest):
             resolved += [str(p) for p in YumBase.GROUPS[group]]
             deps = YumBase.ERASE_DEPS
         self.assertTrue(report.succeeded)
-        num_changes = len(resolved)+len(deps)
+        num_changes = len(resolved) + len(deps)
         if reboot:
             num_changes += 1
         self.assertEquals(report.num_changes, num_changes)
@@ -396,28 +391,28 @@ class TestGroups(HandlerTest):
         self.assertFalse(report.reboot['scheduled'])
         self.assertFalse(os.system.called)
         self.assertTrue(YumBase.processTransaction.called)
-        
+
     def test_install_importkeys(self):
         # Setup
         groups = ['plain', 'pulp']
         units = [dict(type_id=self.TYPE_ID, unit_key=dict(name=g)) for g in groups]
         # Test
         conduit = Conduit()
-        options = {'importkeys':True}
+        options = {'importkeys': True}
         report = self.dispatcher.install(conduit, units, options)
         # Verify
         self.verify_succeeded(report, installed=groups)
         self.assertFalse(report.reboot['scheduled'])
         self.assertFalse(os.system.called)
         self.assertTrue(YumBase.processTransaction.called)
-        
+
     def test_install_noapply(self):
         # Setup
         groups = ['plain', 'pulp']
         units = [dict(type_id=self.TYPE_ID, unit_key=dict(name=g)) for g in groups]
         # Test
         conduit = Conduit()
-        options = {'apply':False}
+        options = {'apply': False}
         report = self.dispatcher.install(conduit, units, options)
         # Verify
         self.verify_succeeded(report, installed=groups)
@@ -444,7 +439,7 @@ class TestGroups(HandlerTest):
         units = [dict(type_id=self.TYPE_ID, unit_key=dict(name=g)) for g in groups]
         # Test
         conduit = Conduit()
-        options = {'reboot':True}
+        options = {'reboot': True}
         report = self.dispatcher.install(conduit, units, options)
         # Verify
         self.verify_succeeded(report, installed=groups, reboot=True)
@@ -465,14 +460,14 @@ class TestGroups(HandlerTest):
         self.assertFalse(report.reboot['scheduled'])
         self.assertFalse(os.system.called)
         self.assertTrue(YumBase.processTransaction.called)
-        
+
     def test_uninstall_noapply(self):
         # Setup
         groups = ['plain', 'pulp']
         units = [dict(type_id=self.TYPE_ID, unit_key=dict(name=g)) for g in groups]
         # Test
         conduit = Conduit()
-        options = {'apply':False}
+        options = {'apply': False}
         report = self.dispatcher.uninstall(conduit, units, options)
         # Verify
         self.verify_succeeded(report, removed=groups)
@@ -487,7 +482,7 @@ class TestGroups(HandlerTest):
         units = [dict(type_id=self.TYPE_ID, unit_key=dict(name=g)) for g in groups]
         # Test
         conduit = Conduit()
-        options = {'reboot':True}
+        options = {'reboot': True}
         report = self.dispatcher.uninstall(conduit, units, options)
         # Verify
         self.verify_succeeded(report, removed=groups, reboot=True)
@@ -498,21 +493,20 @@ class TestGroups(HandlerTest):
 
 
 class TestBind(HandlerTest):
-
     TYPE_ID = 'yum_distributor'
     REPO_ID = 'test-repo'
     REPO_NAME = 'My test-repository'
     DETAILS = {
-        'protocols':{'http':'http://myfake.com/content'},
-        'server_name':'test-server',
-        'relative_path':'/tmp/lib/pulp/xxx',
-        'ca_cert':'CA-CERT',
-        'client_cert':'CLIENT-CERT',
-        'repo_name':REPO_NAME,
+        'protocols': {'http': 'http://myfake.com/content'},
+        'server_name': 'test-server',
+        'relative_path': '/tmp/lib/pulp/xxx',
+        'ca_cert': 'CA-CERT',
+        'client_cert': 'CLIENT-CERT',
+        'repo_name': REPO_NAME,
         'gpg_keys': {'key1': 'GPG_1'},
     }
-    BINDING = {'type_id':TYPE_ID, 'repo_id':REPO_ID, 'details':DETAILS}
-    UNBINDING = {'type_id':TYPE_ID, 'repo_id':REPO_ID}
+    BINDING = {'type_id': TYPE_ID, 'repo_id': REPO_ID, 'details': DETAILS}
+    UNBINDING = {'type_id': TYPE_ID, 'repo_id': REPO_ID}
     TEST_DIR = '/tmp/pulp-test'
     MIRROR_DIR = os.path.join(TEST_DIR, 'mirrors')
     GPG_DIR = os.path.join(TEST_DIR, 'gpg')
@@ -523,11 +517,11 @@ class TestBind(HandlerTest):
         'server': {
             'verify_ssl': 'true',
         },
-        'filesystem':{
-            'repo_file':REPO_FILE,
-            'mirror_list_dir':MIRROR_DIR,
-            'gpg_keys_dir':GPG_DIR,
-            'cert_dir':CERT_DIR,
+        'filesystem': {
+            'repo_file': REPO_FILE,
+            'mirror_list_dir': MIRROR_DIR,
+            'gpg_keys_dir': GPG_DIR,
+            'cert_dir': CERT_DIR,
         }
     }
 
@@ -613,7 +607,6 @@ class TestBind(HandlerTest):
 
 
 class TestLinux(HandlerTest):
-
     TYPE_ID = 'Linux'
 
     def setUp(self):

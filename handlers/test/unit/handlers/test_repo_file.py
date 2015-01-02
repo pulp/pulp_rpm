@@ -19,6 +19,7 @@ class TestRepo(unittest.TestCase):
     """
     This class contains tests for the Repo object.
     """
+
     def test_sslverify_default_1(self):
         """
         This test asserts that Repo.PROPERTIES.sslverify is '1'.
@@ -32,7 +33,6 @@ class TestRepo(unittest.TestCase):
 
 
 class TestRepoFile(unittest.TestCase):
-
     def setUp(self):
         # Clean up from any previous runs that may have exited abnormally
         if os.path.exists(TEST_REPO_FILENAME):
@@ -124,7 +124,6 @@ class TestRepoFile(unittest.TestCase):
         # Test
         self.assertRaises(DuplicateSectionError, repo_file.add_repo, Repo('foo'))
 
-
     def test_delete_repo(self):
         """
         Tests removing an existing repo is correctly saved and loaded
@@ -138,7 +137,7 @@ class TestRepoFile(unittest.TestCase):
         repo_file.add_repo(repo1)
         repo_file.add_repo(repo2)
         repo_file.save()
-        
+
         # Test
         repo_file.remove_repo_by_name('test-repo-1')
         repo_file.save()
@@ -146,7 +145,7 @@ class TestRepoFile(unittest.TestCase):
         # Verify
         loaded = RepoFile(TEST_REPO_FILENAME)
         loaded.load()
-        
+
         self.assertEqual(1, len(loaded.all_repos()))
 
         self.assertTrue(loaded.get_repo('test-repo-1') is None)
@@ -238,7 +237,7 @@ class TestRepoFile(unittest.TestCase):
         # RepoFile will not create these directories so it should fail if this structure
         # does not exist.
         repo_file = RepoFile('/a/b/c/d')
-        
+
         self.assertRaises(IOError, repo_file.save)
 
     def test_broken_load(self):
@@ -380,10 +379,10 @@ class TestRepoFile(unittest.TestCase):
         self.assertEqual(loaded_repo['mirrorlist'], 'file://etc/pulp/mirrorlist')
         self.assertTrue('baseurl' not in loaded_repo)
 
+
 # -- mirror list tests ----------------------------------------------------------------
 
 class TestMirrorListFile(unittest.TestCase):
-
     def setUp(self):
         # Clean up from any previous runs that may have exited abnormally
         if os.path.exists(TEST_MIRROR_LIST_FILENAME):
@@ -425,7 +424,7 @@ class TestMirrorListFile(unittest.TestCase):
         # Verify Load
         self.assertEqual(2, len(loaded.entries))
 
-        #   Make sure the entries are returned in the correct order
+        # Make sure the entries are returned in the correct order
         self.assertEqual('http://cds-01', loaded.entries[0])
         self.assertEqual('http://cds-02', loaded.entries[1])
 
@@ -485,10 +484,10 @@ class TestMirrorListFile(unittest.TestCase):
         # Verify
         # Nothing to verify, this shouldn't have thrown an error
 
+
 # -- repo key files tests ----------------------------------------------------------------
 
 class TestRepoKeyFiles(unittest.TestCase):
-
     def setUp(self):
         # Clean up from any previous runs that may have exited abnormally
         if os.path.exists(TEST_KEYS_ROOT_DIR):
@@ -614,7 +613,6 @@ class TestRepoKeyFiles(unittest.TestCase):
 
 
 class TestRepoCertFiles(unittest.TestCase):
-
     def setUp(self):
         # Clean up from any previous runs that may have exited abnormally
         if os.path.exists(TEST_CERT_ROOT_DIR):

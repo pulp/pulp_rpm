@@ -8,7 +8,6 @@ DATA_DIR = os.path.abspath(os.path.dirname(__file__)) + '/../../data'
 
 
 class TestFileUtils(unittest.TestCase):
-
     def setUp(self):
         self.test_file = os.path.join(DATA_DIR, "cert.key")
 

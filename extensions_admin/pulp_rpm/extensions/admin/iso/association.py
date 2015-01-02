@@ -10,7 +10,7 @@ def _get_formatter(type_id):
     Return a method that can be used to provide a formatted name for an ISO unit
     """
     if type_id != TYPE_ID_ISO:
-            raise ValueError(_("The iso module formatter can not process %s units.") % type_id)
+        raise ValueError(_("The iso module formatter can not process %s units.") % type_id)
     return lambda x: "%(name)s" % x
 
 
@@ -18,6 +18,7 @@ class IsoRemoveCommand(UnitRemoveCommand):
     """
     CLI Command for removing an iso unit from a repository
     """
+
     def __init__(self, context):
         UnitRemoveCommand.__init__(self, context, type_id=TYPE_ID_ISO)
 
@@ -37,6 +38,7 @@ class IsoCopyCommand(UnitCopyCommand):
     """
     CLI Command for copying an iso unit from one repo to another
     """
+
     def __init__(self, context):
         UnitCopyCommand.__init__(self, context, type_id=TYPE_ID_ISO)
 

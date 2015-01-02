@@ -455,7 +455,7 @@ class DownloadCallback(DownloadBaseCallback):
         DownloadBaseCallback.__init__(self)
         self.report = report
 
-    def _do_start( self, now=None):
+    def _do_start(self, now=None):
         """
         Notification that a file download has started.
         The event is forwarded to the report object to be consolidated
@@ -527,11 +527,13 @@ class Yum(YumBase):
         """
         Clean handlers leaked by yum.
         """
+
         def strip(logger):
             for handler in logger.handlers:
                 logger.removeHandler(handler)
+
         try:
-            for n,lg in Logger.manager.loggerDict.items():
+            for n, lg in Logger.manager.loggerDict.items():
                 if n.startswith('yum.') and isinstance(lg, Logger):
                     strip(lg)
         except Exception:
@@ -563,4 +565,3 @@ class Yum(YumBase):
         except Exception:
             self.progress.set_status(False)
             raise
-

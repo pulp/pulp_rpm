@@ -155,7 +155,6 @@ class ExportRepoPublisher(BaseYumRepoPublisher):
 
 
 class ExportRepoGroupPublisher(PublishStep):
-
     def __init__(self, repo_group, publish_conduit, config, distributor_type):
         """
         :param repo_group: Pulp managed Yum repository
@@ -181,8 +180,9 @@ class ExportRepoGroupPublisher(PublishStep):
         if export_dir:
             repo_config = config
         else:
-            repo_config = PluginCallConfiguration(flat_config, {constants.EXPORT_DIRECTORY_KEYWORD:
-                                                                realized_dir})
+            repo_config = PluginCallConfiguration(flat_config,
+                                                  {constants.EXPORT_DIRECTORY_KEYWORD:
+                                                   realized_dir})
         query_manager = RepoQueryManager()
 
         repos = query_manager.find_by_id_list(repo_group.repo_ids)
@@ -319,7 +319,6 @@ class GenerateListingFileStep(PublishStep):
 
 
 class InitRepoMetadataStep(PublishStep):
-
     def __init__(self, step=constants.PUBLISH_INIT_REPOMD_STEP):
         """
         Initialize and set the ID of the step
@@ -334,7 +333,6 @@ class InitRepoMetadataStep(PublishStep):
 
 
 class CloseRepoMetadataStep(PublishStep):
-
     def __init__(self, step=constants.PUBLISH_CLOSE_REPOMD_STEP):
         """
         Initialize and set the ID of the step
@@ -468,7 +466,7 @@ class PublishMetadataStep(UnitPublishStep):
         self._create_symlink(unit.storage_path, link_path)
 
         # Add the proper relative reference to the metadata file to repomd
-        self.parent.repomd_file_context.\
+        self.parent.repomd_file_context. \
             add_metadata_file_metadata(unit.unit_key['data_type'], link_path)
 
 
@@ -527,7 +525,7 @@ class PublishDrpmStep(UnitPublishStep):
         """
         if self.context:
             self.context.finalize()
-            self.parent.repomd_file_context.\
+            self.parent.repomd_file_context. \
                 add_metadata_file_metadata('prestodelta', self.context.metadata_file_path,
                                            self.context.checksum)
 
@@ -536,6 +534,7 @@ class PublishErrataStep(UnitPublishStep):
     """
     Publish all errata
     """
+
     def __init__(self, **kwargs):
         super(PublishErrataStep, self).__init__(constants.PUBLISH_ERRATA_STEP, TYPE_ID_ERRATA,
                                                 **kwargs)
@@ -561,7 +560,7 @@ class PublishErrataStep(UnitPublishStep):
         """
         if self.context:
             self.context.finalize()
-            self.parent.repomd_file_context.\
+            self.parent.repomd_file_context. \
                 add_metadata_file_metadata('updateinfo', self.context.metadata_file_path,
                                            self.context.checksum)
 
@@ -570,6 +569,7 @@ class PublishRpmAndDrpmStepIncremental(UnitPublishStep):
     """
     Publish all incremental errata
     """
+
     def __init__(self, **kwargs):
         super(PublishRpmAndDrpmStepIncremental, self).__init__(constants.PUBLISH_RPMS_STEP,
                                                                [TYPE_ID_RPM, TYPE_ID_SRPM,
@@ -610,6 +610,7 @@ class PublishErrataStepIncremental(UnitPublishStep):
     """
     Publish all incremental errata
     """
+
     def __init__(self, **kwargs):
         super(PublishErrataStepIncremental, self).__init__(constants.PUBLISH_ERRATA_STEP,
                                                            TYPE_ID_ERRATA, **kwargs)
@@ -685,7 +686,7 @@ class PublishCompsStep(UnitPublishStep):
         if self.comps_context:
             self.comps_context.finalize()
             if self.parent.repomd_file_context:
-                self.parent.repomd_file_context.\
+                self.parent.repomd_file_context. \
                     add_metadata_file_metadata('group', self.comps_context.metadata_file_path,
                                                self.comps_context.checksum)
 
@@ -798,7 +799,7 @@ class PublishDistributionStep(UnitPublishStep):
         package_path = None
 
         if KEY_PACKAGEDIR in distribution_unit.metadata and \
-           distribution_unit.metadata[KEY_PACKAGEDIR] is not None:
+                distribution_unit.metadata[KEY_PACKAGEDIR] is not None:
             # The packages_dir is a relative directory that exists underneath the repo directory
             # Verify that this directory is valid.
             package_path = os.path.join(symlink_dir, distribution_unit.metadata[KEY_PACKAGEDIR])
@@ -831,6 +832,7 @@ class CreateIsoStep(PublishStep):
     Export a directory to an ISO or a collection of ISO files
 
     """
+
     def __init__(self, content_dir, output_dir):
         super(CreateIsoStep, self).__init__(constants.PUBLISH_STEP_ISO)
         self.description = _('Exporting ISO')
@@ -850,6 +852,7 @@ class GenerateSqliteForRepoStep(PublishStep):
     """
     Generate the Sqlite files for a given repository using the createrepo command
     """
+
     def __init__(self, content_dir):
         """
         Initialize the step for creating sqlite files
@@ -876,8 +879,9 @@ class GenerateSqliteForRepoStep(PublishStep):
         """
         Call out to createrepo command line in order to process the files.
         """
-        pipe = subprocess.Popen('createrepo_c -d --update --keep-all-metadata --skip-stat %s' % self.content_dir,
-                                shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        pipe = subprocess.Popen(
+            'createrepo_c -d --update --keep-all-metadata --skip-stat %s' % self.content_dir,
+            shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         stdout, stderr = pipe.communicate()
         if pipe.returncode != 0:
             result_string = '%s\n::\n%s' % (stdout, stderr)

@@ -13,9 +13,10 @@ from pulp_rpm.yum_plugin.updateinfo import encode_epoch
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), '../../data')
 
+
 class TestEpochEncoding(unittest.TestCase):
     def setUp(self):
-        path = os.path.join(DATA_DIR,'erratum.pickle')
+        path = os.path.join(DATA_DIR, 'erratum.pickle')
         self.erratum = pickle.load(open(path))
         unit_key = {'id': self.erratum['id']}
         metadata = dict((k, v) for k, v in self.erratum.items() if not k.startswith('_'))

@@ -15,10 +15,8 @@ CONFIG = SafeConfigParser()
 CONFIG.read([os.path.join(DATA_DIR, 'test-override-pulp.conf'),
              os.path.join(DATA_DIR, 'test-override-repoauth.conf')])
 
-# -- test cases ----------------------------------------------------------------------
 
 class TestProtectedRepoUtils(unittest.TestCase):
-
     def setUp(self):
         if os.path.exists(TEST_FILE):
             os.remove(TEST_FILE)
@@ -68,8 +66,8 @@ class TestProtectedRepoUtils(unittest.TestCase):
 
         self.assertEqual(0, len(listings))
 
-class TestProtectedRepoListingFile(unittest.TestCase):
 
+class TestProtectedRepoListingFile(unittest.TestCase):
     def setUp(self):
         if os.path.exists(TEST_FILE):
             os.remove(TEST_FILE)
@@ -145,7 +143,7 @@ class TestProtectedRepoListingFile(unittest.TestCase):
         self.assertEqual(1, len(f.listings))
 
         # Test
-        f.remove_protected_repo_path('bar') # should not error
+        f.remove_protected_repo_path('bar')  # should not error
 
         # Verify
         self.assertEqual(1, len(f.listings))

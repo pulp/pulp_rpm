@@ -1,8 +1,4 @@
-import hashlib
 import shutil
-import traceback
-import urlparse
-import time
 import uuid
 import os
 import logging
@@ -14,10 +10,14 @@ from M2Crypto import X509
 
 _ = gettext.gettext
 
-LOG_PREFIX_NAME="pulp.plugins"
+LOG_PREFIX_NAME = "pulp.plugins"
+
+
 def getLogger(name):
     log_name = LOG_PREFIX_NAME + "." + name
     return logging.getLogger(log_name)
+
+
 _LOG = getLogger(__name__)
 
 
@@ -68,7 +68,7 @@ def validate_cert(cert_pem):
     @rtype bool
     """
     try:
-        cert = X509.load_cert_string(cert_pem)
+        X509.load_cert_string(cert_pem)
     except X509.X509Error:
         return False
     return True
@@ -109,14 +109,15 @@ def is_rpm_newer(a, b):
     if a["arch"] != b["arch"]:
         return False
     value = rpmUtils.miscutils.compareEVR(
-            (a["epoch"], a["version"], a["release"]),
-            (b["epoch"], b["version"], b["release"]))
+        (a["epoch"], a["version"], a["release"]),
+        (b["epoch"], b["version"], b["release"]))
     if value > 0:
         return True
     return False
 
 
 ENCODING_LIST = ('utf8', 'iso-8859-1')
+
 
 def string_to_unicode(data):
     """
@@ -150,7 +151,8 @@ def generate_listing_files(root_publish_dir, repo_publish_dir):
 
     :param root_publish_dir: root directory
     :type  root_publish_dir: str
-    :param repo_publish_dir: the repository's publish directory, as a descendant of the root directory
+    :param repo_publish_dir: the repository's publish directory, as a descendant of the root
+    directory
     :type  repo_publish_dir: str
     """
     # normalize the paths for use with os.path.dirname by removing any trailing '/'s
@@ -159,7 +161,8 @@ def generate_listing_files(root_publish_dir, repo_publish_dir):
 
     # the repo_publish_dir *must* be a descendant of the root_publish_dir
     if not repo_publish_dir.startswith(root_publish_dir):
-        raise ValueError('repository publish directory must be a descendant of the root publish directory')
+        raise ValueError(
+            'repository publish directory must be a descendant of the root publish directory')
 
     # this is a weird case that handles a distinct difference between actual
     # Pulp behavior and the way unit tests against publish have been written
@@ -173,7 +176,8 @@ def generate_listing_files(root_publish_dir, repo_publish_dir):
         listing_file_path = os.path.join(working_dir, LISTING_FILE_NAME)
         tmp_file_path = os.path.join(working_dir, '.%s' % uuid.uuid4())
 
-        directories = [d for d in os.listdir(working_dir) if os.path.isdir(os.path.join(working_dir, d))]
+        directories = [d for d in os.listdir(working_dir) if
+                       os.path.isdir(os.path.join(working_dir, d))]
         directories.sort()
 
         # write the new listing file

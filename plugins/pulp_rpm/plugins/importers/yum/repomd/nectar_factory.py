@@ -12,9 +12,9 @@ from nectar.downloaders.threaded import HTTPThreadedDownloader
 
 # Mapping from scheme string to downloader class to instantiate
 SCHEME_DOWNLOADERS = {
-    'file'  : LocalFileDownloader,
-    'http'  : HTTPThreadedDownloader,
-    'https' : HTTPThreadedDownloader,
+    'file': LocalFileDownloader,
+    'http': HTTPThreadedDownloader,
+    'https': HTTPThreadedDownloader,
 }
 
 
@@ -41,4 +41,3 @@ def create_downloader(repo_url, nectar_config, event_listener=None):
         raise ValueError('Unsupported scheme: %s' % parsed.scheme)
 
     return SCHEME_DOWNLOADERS[parsed.scheme](nectar_config, event_listener=event_listener)
-

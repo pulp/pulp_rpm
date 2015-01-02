@@ -28,7 +28,6 @@ DESC_REMOVE = _('remove consumers from a group')
 
 
 class ListConsumerGroupMembersCommand(PulpCliCommand):
-
     def __init__(self, context, name='list', description=DESC_LIST, method=None):
         self.context = context
         self.prompt = context.prompt
@@ -45,18 +44,18 @@ class ListConsumerGroupMembersCommand(PulpCliCommand):
         self.prompt.render_title(_('Consumer Group Members'))
 
         consumer_group_id = kwargs[OPTION_GROUP_ID.keyword]
-        criteria = {'fields':('consumer_ids',),
-                    'filters':{'id':consumer_group_id}}
+        criteria = {'fields': ('consumer_ids',),
+                    'filters': {'id': consumer_group_id}}
 
         consumer_group_list = self.context.server.consumer_group_search.search(**criteria)
 
         if len(consumer_group_list) != 1:
             msg = _('Consumer group [%(g)s] does not exist on the server')
-            self.prompt.render_failure_message(msg % {'g' : consumer_group_id}, tag='not-found')
+            self.prompt.render_failure_message(msg % {'g': consumer_group_id}, tag='not-found')
         else:
             consumer_ids = consumer_group_list[0].get('consumer_ids')
             if consumer_ids:
-                criteria = {'filters':{'id':{'$in':consumer_ids}}}
+                criteria = {'filters': {'id': {'$in': consumer_ids}}}
                 consumer_list = self.context.server.consumer_search.search(**criteria)
 
                 filters = ['id', 'display_name', 'description', 'notes']
@@ -122,7 +121,6 @@ class ConsumerGroupMembersCommand(CriteriaCommand):
 
 
 class AddConsumerGroupMembersCommand(ConsumerGroupMembersCommand):
-
     def __init__(self, context, name='add', description=DESC_ADD, method=None):
         super(AddConsumerGroupMembersCommand, self).__init__(
             context, name, description, method
@@ -131,11 +129,10 @@ class AddConsumerGroupMembersCommand(ConsumerGroupMembersCommand):
     def _action(self, group_id, **kwargs):
         self.context.server.consumer_group_actions.associate(group_id, **kwargs)
         msg = _('Consumer Group [%(c)s] membership updated')
-        self.context.prompt.render_success_message(msg % {'c' : group_id})
+        self.context.prompt.render_success_message(msg % {'c': group_id})
 
 
 class RemoveConsumerGroupMembersCommand(ConsumerGroupMembersCommand):
-
     def __init__(self, context, name='remove', description=DESC_REMOVE, method=None):
         super(RemoveConsumerGroupMembersCommand, self).__init__(
             context, name, description, method
@@ -144,4 +141,4 @@ class RemoveConsumerGroupMembersCommand(ConsumerGroupMembersCommand):
     def _action(self, group_id, **kwargs):
         self.context.server.consumer_group_actions.unassociate(group_id, **kwargs)
         msg = _('Consumer Group [%(c)s] membership updated')
-        self.context.prompt.render_success_message(msg % {'c' : group_id})
+        self.context.prompt.render_success_message(msg % {'c': group_id})

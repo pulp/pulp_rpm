@@ -22,11 +22,13 @@ setup(
         ],
         'pulp.distributors': [
             'distributor = pulp_rpm.plugins.distributors.yum.distributor:entry_point',
-            'ExportDistributor = pulp_rpm.plugins.distributors.export_distributor.distributor:entry_point',
+            'ExportDistributor = pulp_rpm.plugins.distributors.export_distributor.distributor:'
+            'entry_point',
             'IsoDistributor = pulp_rpm.plugins.distributors.iso_distributor.distributor:entry_point'
         ],
         'pulp.group_distributors': [
-            'rpm_export = pulp_rpm.plugins.distributors.export_distributor.groupdistributor:entry_point',
+            'rpm_export = pulp_rpm.plugins.distributors.export_distributor.groupdistributor:'
+            'entry_point',
         ],
         'pulp.server.db.migrations': [
             'pulp_rpm = pulp_rpm.plugins.migrations'

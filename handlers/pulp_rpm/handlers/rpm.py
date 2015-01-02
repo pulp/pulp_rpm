@@ -19,7 +19,7 @@ class PackageReport(ContentReport):
 
     def set_succeeded(self, details):
         num_changes = \
-            len(details['resolved'])+ \
+            len(details['resolved']) + \
             len(details['deps'])
         ContentReport.set_succeeded(self, details, num_changes)
 
@@ -32,7 +32,7 @@ class GroupReport(ContentReport):
 
     def set_succeeded(self, details):
         num_changes = \
-            len(details['resolved'])+ \
+            len(details['resolved']) + \
             len(details['deps'])
         ContentReport.set_succeeded(self, details, num_changes)
 
@@ -156,7 +156,7 @@ class PackageHandler(ContentHandler):
         else:
             report.set_succeeded(details)
         return report
-    
+
     def profile(self, conduit):
         """
         Get package profile.

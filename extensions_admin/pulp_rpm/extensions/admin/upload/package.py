@@ -82,18 +82,18 @@ class _CreatePackageCommand(UploadCommand):
             unit_key = _generate_unit_key(bundle.filename)
 
             filters = {
-                'name' : unit_key['name'],
-                'version' : unit_key['version'],
-                'release' : unit_key['release'],
-                'epoch' : unit_key['epoch'],
-                'arch' : unit_key['arch'],
-                'checksumtype' : unit_key['checksumtype'],
-                'checksum' : unit_key['checksum'],
+                'name': unit_key['name'],
+                'version': unit_key['version'],
+                'release': unit_key['release'],
+                'epoch': unit_key['epoch'],
+                'arch': unit_key['arch'],
+                'checksumtype': unit_key['checksumtype'],
+                'checksum': unit_key['checksum'],
             }
 
             criteria = {
-                'type_ids' : [TYPE_ID_RPM],
-                'filters' : filters,
+                'type_ids': [TYPE_ID_RPM],
+                'filters': filters,
             }
 
             existing = self.context.server.repo_unit.search(repo_id, **criteria).response_body
@@ -127,7 +127,6 @@ class _CreatePackageCommand(UploadCommand):
 
 
 class CreateRpmCommand(_CreatePackageCommand):
-
     def __init__(self, context, upload_manager, name=NAME_RPM, description=DESC_RPM):
         super(CreateRpmCommand, self).__init__(context, upload_manager, TYPE_ID_RPM,
                                                SUFFIX_RPM, name, description)
@@ -135,7 +134,6 @@ class CreateRpmCommand(_CreatePackageCommand):
 
 
 class CreateSrpmCommand(_CreatePackageCommand):
-
     def __init__(self, context, upload_manager, name=NAME_SRPM, description=DESC_SRPM):
         super(CreateSrpmCommand, self).__init__(context, upload_manager, TYPE_ID_SRPM,
                                                 SUFFIX_SRPM, name, description)
@@ -175,14 +173,14 @@ def _generate_unit_key(rpm_filename):
     # -- Unit Key -----------------------
 
     # Checksum
-    unit_key['checksumtype'] = 'sha256' # hardcoded to this in v1 so leaving this way for now
+    unit_key['checksumtype'] = 'sha256'  # hardcoded to this in v1 so leaving this way for now
     unit_key['checksum'] = _calculate_checksum(unit_key['checksumtype'], rpm_filename)
 
     # Name, Version, Release, Epoch
     for k in ['name', 'version', 'release', 'epoch']:
         unit_key[k] = headers[k]
 
-    #   Epoch munging
+    # Epoch munging
     if unit_key['epoch'] is None:
         unit_key['epoch'] = str(0)
     else:

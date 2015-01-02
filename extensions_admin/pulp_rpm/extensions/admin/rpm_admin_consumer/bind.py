@@ -9,7 +9,6 @@ YUM_DISTRIBUTOR_ID = 'yum_distributor'
 
 
 class YumConsumerBindCommand(ConsumerBindCommand):
-
     def add_distributor_option(self):
         pass
 
@@ -18,7 +17,6 @@ class YumConsumerBindCommand(ConsumerBindCommand):
 
 
 class YumConsumerUnbindCommand(ConsumerUnbindCommand):
-
     def __init__(self, context, name=None, description=None):
         """
         Create a new YumConsumerUnbindCommand

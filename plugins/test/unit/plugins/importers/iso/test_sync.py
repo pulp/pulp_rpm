@@ -23,6 +23,7 @@ class TestISOSyncRun(PulpRPMTests):
     """
     Test the ISOSyncRun object.
     """
+
     def fake_download(self, requests):
         requests = list(requests)
         req = requests[0]
@@ -66,8 +67,9 @@ class TestISOSyncRun(PulpRPMTests):
         self.pkg_dir = os.path.join(self.temp_dir, 'content')
         os.mkdir(self.pkg_dir)
 
-        # These checksums correspond to the checksums of the files that our curl mocks will generate. Our
-        # curl mocks do not have a test4.iso, so that one is to test removal of old ISOs during sync
+        # These checksums correspond to the checksums of the files that our curl mocks will
+        # generate. Our curl mocks do not have a test4.iso, so that one is to test removal of
+        # old ISOs during sync
         self.existing_units = [
             Unit(TYPE_ID_ISO,
                  {'name': 'test.iso', 'size': 16,
@@ -125,27 +127,33 @@ class TestISOSyncRun(PulpRPMTests):
         Make sure the SSL validation is on by default.
         """
         # It should default to True
-        config = importer_mocks.get_basic_config(**{importer_constants.KEY_FEED: 'http://fake.com/iso_feed/'})
+        config = importer_mocks.get_basic_config(
+            **{importer_constants.KEY_FEED: 'http://fake.com/iso_feed/'})
         iso_sync_run = ISOSyncRun(self.sync_conduit, config)
         self.assertEqual(iso_sync_run.downloader.config.ssl_validation, True)
 
         # It should be possible to explicitly set it to False
-        config = importer_mocks.get_basic_config(**{importer_constants.KEY_FEED: 'http://fake.com/iso_feed/',
-                                                    importer_constants.KEY_SSL_VALIDATION: False})
+        config = importer_mocks.get_basic_config(
+            **{importer_constants.KEY_FEED: 'http://fake.com/iso_feed/',
+               importer_constants.KEY_SSL_VALIDATION: False})
         iso_sync_run = ISOSyncRun(self.sync_conduit, config)
         self.assertEqual(iso_sync_run.downloader.config.ssl_validation, False)
 
         # It should be possible to explicitly set it to True
-        config = importer_mocks.get_basic_config(**{importer_constants.KEY_FEED: 'http://fake.com/iso_feed/',
-                                                    importer_constants.KEY_SSL_VALIDATION: True})
+        config = importer_mocks.get_basic_config(
+            **{importer_constants.KEY_FEED: 'http://fake.com/iso_feed/',
+               importer_constants.KEY_SSL_VALIDATION: True})
         iso_sync_run = ISOSyncRun(self.sync_conduit, config)
         self.assertEqual(iso_sync_run.downloader.config.ssl_validation, True)
 
     def test__init___with_feed_lacking_trailing_slash(self):
         """
-        In bug https://bugzilla.redhat.com/show_bug.cgi?id=949004 we had a problem where feed URLs that didn't
-        have trailing slashes would get their last URL component clobbered when we used urljoin to determine
-        the path to PULP_MANIFEST. The solution is to have __init__() automatically append a trailing slash to
+        In bug https://bugzilla.redhat.com/show_bug.cgi?id=949004 we had a problem where feed
+        URLs that didn't
+        have trailing slashes would get their last URL component clobbered when we used urljoin
+        to determine
+        the path to PULP_MANIFEST. The solution is to have __init__() automatically append a
+        trailing slash to
         URLs that lack it so that urljoin will determine the correct path to PULP_MANIFEST.
         """
         config = importer_mocks.get_basic_config(
@@ -153,7 +161,8 @@ class TestISOSyncRun(PulpRPMTests):
 
         iso_sync_run = ISOSyncRun(self.sync_conduit, config)
 
-        # Humorously enough, the _repo_url attribute named no_trailing_slash should now have a trailing slash
+        # Humorously enough, the _repo_url attribute named no_trailing_slash should now have a
+        # trailing slash
         self.assertEqual(iso_sync_run._repo_url, 'http://fake.com/no_trailing_slash/')
 
     @patch('pulp_rpm.plugins.importers.iso.sync.HTTPThreadedDownloader.cancel',
@@ -162,20 +171,24 @@ class TestISOSyncRun(PulpRPMTests):
         """
         Test what happens if cancel_sync is called when there is no Bumper.
         """
-        # This just passes since the downloader library does not support cancellation. This helps us get one
+        # This just passes since the downloader library does not support cancellation. This helps
+        #  us get one
         # more line of coverage though!
         self.iso_sync_run.cancel_sync()
 
         # Assert that the cancel Mock was called
         cancel.assert_called_once_with(self.iso_sync_run.downloader)
         # The progress report's state should now be cancelled
-        self.assertEqual(self.iso_sync_run.progress_report.state, SyncProgressReport.STATE_CANCELLED)
+        self.assertEqual(self.iso_sync_run.progress_report.state,
+                         SyncProgressReport.STATE_CANCELLED)
 
     @patch('pulp_rpm.plugins.importers.iso.sync.logger')
     def test_download_failed_during_iso_download(self, logger):
         self.iso_sync_run.progress_report._state = SyncProgressReport.STATE_ISOS_IN_PROGRESS
-        url = 'http://www.theonion.com/articles/american-airlines-us-airways-merge-to-form-worlds,31302/'
-        iso = models.ISO('test.txt', 217, 'a1552efee6f04012bc7e1f3e02c00c6177b08217cead958c47ec83cb8f97f835')
+        url = 'http://www.theonion.com/articles/american-airlines-us-airways-merge-to-form' \
+              '-worlds,31302/'
+        iso = models.ISO('test.txt', 217,
+                         'a1552efee6f04012bc7e1f3e02c00c6177b08217cead958c47ec83cb8f97f835')
         report = DownloadReport(url, '/fake/destination', iso)
         report.error_msg = 'uh oh'
 
@@ -188,8 +201,8 @@ class TestISOSyncRun(PulpRPMTests):
     @patch('pulp_rpm.plugins.importers.iso.sync.logger')
     def test_download_failed_during_manifest(self, logger):
         self.iso_sync_run.progress_report._state = SyncProgressReport.STATE_MANIFEST_IN_PROGRESS
-        url = 'http://www.theonion.com/articles/' +\
-            'american-airlines-us-airways-merge-to-form-worlds,31302/'
+        url = 'http://www.theonion.com/articles/' + \
+              'american-airlines-us-airways-merge-to-form-worlds,31302/'
         report = DownloadReport(url, '/fake/destination')
         report.error_report = {'why': 'because'}
         report.error_msg = 'uh oh'
@@ -209,12 +222,15 @@ class TestISOSyncRun(PulpRPMTests):
         destination = os.path.join(self.temp_dir, 'test.txt')
         with open(destination, 'w') as test_file:
             test_file.write(
-                'Descartes walks into a bar and sits down, the bartender walks up to him and says "You, my '
-                'man, look like you need a stiff drink." Descartes considers this, and shakes his head "No, '
+                'Descartes walks into a bar and sits down, the bartender walks up to him and says '
+                '"You, my '
+                'man, look like you need a stiff drink." Descartes considers this, and shakes his '
+                'head "No, '
                 'I don\'t think-" and ceases to exist.')
         unit = MagicMock()
         unit.storage_path = destination
-        iso = models.ISO('test.txt', 217, 'a1552efee6f04012bc7e1f3e02c00c6177b08217cead958c47ec83cb8f97f835',
+        iso = models.ISO('test.txt', 217,
+                         'a1552efee6f04012bc7e1f3e02c00c6177b08217cead958c47ec83cb8f97f835',
                          unit)
         iso.url = 'http://fake.com'
         report = DownloadReport(iso.url, destination, iso)
@@ -234,19 +250,23 @@ class TestISOSyncRun(PulpRPMTests):
     @patch('pulp_rpm.plugins.importers.iso.sync.ISOSyncRun.download_failed')
     def test_download_succeeded_honors_validate_units_set_false(self, download_failed):
         """
-        We have a setting that makes download validation optional. This test ensures that download_succeeded()
+        We have a setting that makes download validation optional. This test ensures that
+        download_succeeded()
         honors that setting.
         """
-        # In this config, we will set validate_units to False, which should make our "wrong_checksum" OK
-        config = importer_mocks.get_basic_config(**{importer_constants.KEY_FEED: 'http://fake.com/iso_feed/',
-                                                    importer_constants.KEY_VALIDATE: False})
+        # In this config, we will set validate_units to False, which should make our
+        # "wrong_checksum" OK
+        config = importer_mocks.get_basic_config(
+            **{importer_constants.KEY_FEED: 'http://fake.com/iso_feed/',
+               importer_constants.KEY_VALIDATE: False})
 
         iso_sync_run = ISOSyncRun(self.sync_conduit, config)
 
         destination = os.path.join(self.temp_dir, 'test.iso')
         with open(destination, 'w') as test_iso:
-            test_iso.write('What happens when you combine a mosquito with a mountain climber? Nothing. You '
-                           'can\'t cross a vector with a scalar.')
+            test_iso.write(
+                'What happens when you combine a mosquito with a mountain climber? Nothing. You '
+                'can\'t cross a vector with a scalar.')
         unit = MagicMock()
         unit.storage_path = destination
         iso = models.ISO('test.txt', 114, 'wrong checksum', unit)
@@ -268,12 +288,15 @@ class TestISOSyncRun(PulpRPMTests):
     @patch('pulp_rpm.plugins.importers.iso.sync.ISOSyncRun.download_failed')
     def test_download_succeeded_honors_validate_units_set_true(self, download_failed):
         """
-        We have a setting that makes download validation optional. This test ensures that download_succeeded()
+        We have a setting that makes download validation optional. This test ensures that
+        download_succeeded()
         honors that setting.
         """
-        # In this config, we will set validate_units to False, which should make our "wrong_checksum" OK
-        config = importer_mocks.get_basic_config(**{importer_constants.KEY_FEED: 'http://fake.com/iso_feed/',
-                                                    importer_constants.KEY_VALIDATE: True})
+        # In this config, we will set validate_units to False, which should make our
+        # "wrong_checksum" OK
+        config = importer_mocks.get_basic_config(
+            **{importer_constants.KEY_FEED: 'http://fake.com/iso_feed/',
+               importer_constants.KEY_VALIDATE: True})
 
         iso_sync_run = ISOSyncRun(self.sync_conduit, config)
 
@@ -396,7 +419,6 @@ class TestISOSyncRun(PulpRPMTests):
         expected_url = mock_download.call_args_list[1][0][0][0].url
         self.assertEqual('http://fake.com/iso_feed/test3.iso', expected_url)
 
-
     @patch('nectar.downloaders.local.LocalFileDownloader.download')
     def test_perform_local_sync(self, mock_download):
         """
@@ -436,9 +458,11 @@ class TestISOSyncRun(PulpRPMTests):
         Assert the perform_sync correctly handles the situation when the PULP_MANIFEST file is not
         in the expected format.
         """
+
         def fake_download(request_list):
             for request in request_list:
                 request.destination.write('This is not what a PULP_MANIFEST should look like.')
+
         download.side_effect = fake_download
 
         self.iso_sync_run.perform_sync()
@@ -483,13 +507,14 @@ class TestISOSyncRun(PulpRPMTests):
 
         self.iso_sync_run = ISOSyncRun(self.sync_conduit, config)
 
-        report = self.iso_sync_run.perform_sync()
+        self.iso_sync_run.perform_sync()
 
         # There should now be three Units in the DB
         units = [tuple(call)[1][0] for call in self.sync_conduit.save_unit.mock_calls]
         self.assertEqual(len(units), 1)
-        expected_unit = {'checksum': '94f7fe923212286855dea858edac1b4a292301045af0ddb275544e5251a50b3c',
-                         'size': 34, 'contents': 'Are you starting to get the idea?\n', 'name': 'test3.iso'}
+        expected_unit = {
+            'checksum': '94f7fe923212286855dea858edac1b4a292301045af0ddb275544e5251a50b3c',
+            'size': 34, 'contents': 'Are you starting to get the idea?\n', 'name': 'test3.iso'}
         unit = units[0]
         self.assertEqual(unit.unit_key['checksum'], expected_unit['checksum'])
         self.assertEqual(unit.unit_key['size'], expected_unit['size'])
@@ -497,7 +522,8 @@ class TestISOSyncRun(PulpRPMTests):
             self.pkg_dir, unit.unit_key['name'], unit.unit_key['checksum'],
             str(unit.unit_key['size']), unit.unit_key['name'])
         self.assertEqual(unit.storage_path, expected_storage_path)
-        # There should be 0 calls to sync_conduit.remove_unit, since remove_missing_units is False by default
+        # There should be 0 calls to sync_conduit.remove_unit, since remove_missing_units is
+        # False by default
         self.assertEqual(self.sync_conduit.remove_unit.call_count, 0)
 
     @patch('nectar.downloaders.threaded.HTTPThreadedDownloader.download')
@@ -527,13 +553,14 @@ class TestISOSyncRun(PulpRPMTests):
         os.mkdir(working_dir)
         repo.working_dir = working_dir
 
-        report = self.iso_sync_run.perform_sync()
+        self.iso_sync_run.perform_sync()
 
         # There should now be three Units in the DB
         units = [tuple(call)[1][0] for call in self.sync_conduit.save_unit.mock_calls]
         self.assertEqual(len(units), 1)
-        expected_unit = {'checksum': '94f7fe923212286855dea858edac1b4a292301045af0ddb275544e5251a50b3c',
-                         'size': 34, 'contents': 'Are you starting to get the idea?\n', 'name': 'test3.iso'}
+        expected_unit = {
+            'checksum': '94f7fe923212286855dea858edac1b4a292301045af0ddb275544e5251a50b3c',
+            'size': 34, 'contents': 'Are you starting to get the idea?\n', 'name': 'test3.iso'}
         unit = units[0]
         self.assertEqual(unit.unit_key['checksum'], expected_unit['checksum'])
         self.assertEqual(unit.unit_key['size'], expected_unit['size'])
@@ -542,10 +569,12 @@ class TestISOSyncRun(PulpRPMTests):
             str(unit.unit_key['size']), unit.unit_key['name'])
         self.assertEqual(unit.storage_path, expected_storage_path)
 
-        # There should be 0 calls to sync_conduit.remove_unit, since remove_missing_units is False by default
+        # There should be 0 calls to sync_conduit.remove_unit, since remove_missing_units is
+        # False by default
         self.assertEqual(self.sync_conduit.remove_unit.call_count, 1)
         removed_unit = self.sync_conduit.remove_unit.mock_calls[0][1][0]
-        self.assertEqual(removed_unit.unit_key, {'name': 'test4.iso', 'size': 4, 'checksum': 'sum4'})
+        self.assertEqual(removed_unit.unit_key,
+                         {'name': 'test4.iso', 'size': 4, 'checksum': 'sum4'})
 
     @patch('nectar.downloaders.threaded.HTTPThreadedDownloader.download')
     def test__download_isos(self, mock_download):
@@ -555,9 +584,12 @@ class TestISOSyncRun(PulpRPMTests):
         self.iso_sync_run.progress_report._state = SyncProgressReport.STATE_ISOS_IN_PROGRESS
         # Let's put three ISOs in the manifest
         manifest = StringIO()
-        manifest.write('test.iso,f02d5a72cd2d57fa802840a76b44c6c6920a8b8e6b90b20e26c03876275069e0,16\n')
-        manifest.write('test2.iso,c7fbc0e821c0871805a99584c6a384533909f68a6bbe9a2a687d28d9f3b10c16,22\n')
-        manifest.write('test3.iso,94f7fe923212286855dea858edac1b4a292301045af0ddb275544e5251a50b3c,34')
+        manifest.write(
+            'test.iso,f02d5a72cd2d57fa802840a76b44c6c6920a8b8e6b90b20e26c03876275069e0,16\n')
+        manifest.write(
+            'test2.iso,c7fbc0e821c0871805a99584c6a384533909f68a6bbe9a2a687d28d9f3b10c16,22\n')
+        manifest.write(
+            'test3.iso,94f7fe923212286855dea858edac1b4a292301045af0ddb275544e5251a50b3c,34')
         manifest.seek(0)
         manifest = models.ISOManifest(manifest, 'https://fake.com/')
         # Add expected test data to each ISO
@@ -567,7 +599,8 @@ class TestISOSyncRun(PulpRPMTests):
 
         self.iso_sync_run._download_isos(manifest)
 
-        # There should have been two calls to the sync_conduit per ISO, for a total of six calls. Once each to
+        # There should have been two calls to the sync_conduit per ISO, for a total of six calls.
+        #  Once each to
         # initialize the unit, and once each to save it
         self.assertEqual(self.sync_conduit.init_unit.call_count, 3)
         self.assertEqual(self.sync_conduit.save_unit.call_count, 3)
@@ -626,9 +659,11 @@ class TestISOSyncRun(PulpRPMTests):
         Make sure that _download_manifest raises a ValueError if the PULP_MANIFEST isn't in the
         expected format.
         """
+
         def fake_download(request_list):
             for request in request_list:
                 request.destination.write('This is not what a PULP_MANIFEST should look like.')
+
         download.side_effect = fake_download
         self.iso_sync_run.progress_report.state = SyncProgressReport.STATE_MANIFEST_IN_PROGRESS
 
@@ -636,7 +671,7 @@ class TestISOSyncRun(PulpRPMTests):
             # This should raise a ValueError
             self.iso_sync_run._download_manifest()
             self.fail('A ValueError should have been raised by the previous line, but was not!')
-        except ValueError, e:
+        except ValueError:
             # Excellent, a ValueError was raised.
             self.assertEqual(self.iso_sync_run.progress_report._state,
                              SyncProgressReport.STATE_MANIFEST_FAILED)
@@ -645,13 +680,15 @@ class TestISOSyncRun(PulpRPMTests):
 
     def test__filter_missing_isos(self):
         """
-        Make sure this method returns the items from the manifest that weren't in the sync_conduit. By
-        default, remove_missing_units is False, so we will also assert that the return value of this method
+        Make sure this method returns the items from the manifest that weren't in the
+        sync_conduit. By
+        default, remove_missing_units is False, so we will also assert that the return value of
+        this method
         doesn't suggest removing any ISOs.
         """
         # Let's put all three mammajammas in the manifest
-        manifest = ['%s,%s,%s'%(iso.unit_key['name'], iso.unit_key['checksum'],
-                                iso.unit_key['size'])
+        manifest = ['%s,%s,%s' % (iso.unit_key['name'], iso.unit_key['checksum'],
+                                  iso.unit_key['size'])
                     for iso in self.existing_units if iso.unit_key['name'] != 'test4.iso']
         manifest = '\n'.join(manifest)
         manifest = StringIO(manifest)

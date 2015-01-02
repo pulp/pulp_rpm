@@ -18,6 +18,7 @@ class TestISOProgressReport(unittest.TestCase):
     """
     Test the ISOProgressReport class.
     """
+
     def setUp(self):
         self.conduit = importer_mocks.get_sync_conduit()
 
@@ -31,8 +32,8 @@ class TestISOProgressReport(unittest.TestCase):
         self.assertEqual(report.conduit, None)
         self.assertEqual(report._state, progress.ISOProgressReport.STATE_NOT_STARTED)
 
-        # The state_times attribute should be a dictionary with only the time the not started state was
-        # entered
+        # The state_times attribute should be a dictionary with only the time the not started
+        # state was entered
         self.assertTrue(isinstance(report.state_times, dict))
         self.assertEqual(len(report.state_times), 1)
         self.assertTrue(isinstance(report.state_times[progress.ISOProgressReport.STATE_NOT_STARTED],
@@ -65,14 +66,17 @@ class TestISOProgressReport(unittest.TestCase):
         """
         Test build_final_report() when there is a failure.
         """
-        report = progress.ISOProgressReport(self.conduit, state=progress.ISOProgressReport.STATE_FAILED)
+        report = progress.ISOProgressReport(self.conduit,
+                                            state=progress.ISOProgressReport.STATE_FAILED)
 
         conduit_report = report.build_final_report()
 
         # The success report call should not have been made
         self.assertEqual(self.conduit.build_success_report.call_count, 0)
-        # We should have called the failure report once with the serialized progress report as the summary
-        self.conduit.build_failure_report.assert_called_once_with(report.build_progress_report(), None)
+        # We should have called the failure report once with the serialized progress report as
+        # the summary
+        self.conduit.build_failure_report.assert_called_once_with(report.build_progress_report(),
+                                                                  None)
 
         # Inspect the conduit report
         self.assertEqual(conduit_report.success_flag, False)
@@ -84,14 +88,17 @@ class TestISOProgressReport(unittest.TestCase):
         """
         Test build_final_report() when there is success.
         """
-        report = progress.ISOProgressReport(self.conduit, state=progress.ISOProgressReport.STATE_COMPLETE)
+        report = progress.ISOProgressReport(self.conduit,
+                                            state=progress.ISOProgressReport.STATE_COMPLETE)
 
         conduit_report = report.build_final_report()
 
         # The failure report call should not have been made
         self.assertEqual(self.conduit.build_failure_report.call_count, 0)
-        # We should have called the success report once with the serialized progress report as the summary
-        self.conduit.build_success_report.assert_called_once_with(report.build_progress_report(), None)
+        # We should have called the success report once with the serialized progress report as
+        # the summary
+        self.conduit.build_success_report.assert_called_once_with(report.build_progress_report(),
+                                                                  None)
 
         # Inspect the conduit report
         self.assertEqual(conduit_report.success_flag, True)
@@ -147,8 +154,8 @@ class TestISOProgressReport(unittest.TestCase):
 
     def test_from_progress_report(self):
         """
-        Test that building an ISOProgressReport from the output of build_progress_report() makes an equivalent
-        ISOProgressReport.
+        Test that building an ISOProgressReport from the output of build_progress_report() makes
+        an equivalent ISOProgressReport.
         """
         state = progress.ISOProgressReport.STATE_FAILED
         state_times = {progress.ISOProgressReport.STATE_FAILED: datetime(2013, 5, 3, 20, 11, 3)}
@@ -161,8 +168,8 @@ class TestISOProgressReport(unittest.TestCase):
 
         report = progress.ISOProgressReport.from_progress_report(serial_report)
 
-        # All of the values that we had set in the initial report should be identical on this one, except that
-        # the conduit should be None
+        # All of the values that we had set in the initial report should be identical on this
+        # one, except that the conduit should be None
         self.assertEqual(report.conduit, None)
         self.assertEqual(report._state, original_report.state)
         self.assertEqual(report.state_times, original_report.state_times)
@@ -194,8 +201,8 @@ class TestISOProgressReport(unittest.TestCase):
 
         self.assertEqual(report.state, progress.ISOProgressReport.STATE_COMPLETE)
 
-    # Normally, the ISOProgressReport doesn't have ALLOWED_STATE_TRANSITIONS, so let's give it one for this
-    # test
+    # Normally, the ISOProgressReport doesn't have ALLOWED_STATE_TRANSITIONS, so let's give it
+    # one for this test
     @mock.patch('pulp_rpm.common.progress.ISOProgressReport.ALLOWED_STATE_TRANSITIONS',
                 {'state_1': ['state_2']}, create=True)
     def test__set_state_allowed_transition(self):
@@ -212,8 +219,8 @@ class TestISOProgressReport(unittest.TestCase):
         self.assertTrue(isinstance(report.state_times[report._state], datetime))
         self.conduit.set_progress.assert_called_once_with(report.build_progress_report())
 
-    # Normally, the ISOProgressReport doesn't have ALLOWED_STATE_TRANSITIONS, so let's give it one for this
-    # test
+    # Normally, the ISOProgressReport doesn't have ALLOWED_STATE_TRANSITIONS, so let's give it
+    # one for this test
     @mock.patch('pulp_rpm.common.progress.ISOProgressReport.ALLOWED_STATE_TRANSITIONS',
                 {'state_1': ['state_2']}, create=True)
     def test__set_state_disallowed_transition(self):
@@ -234,8 +241,8 @@ class TestISOProgressReport(unittest.TestCase):
         self.assertEqual(report.state, 'state_1')
         self.assertTrue('state_3' not in report.state_times)
 
-    # Normally, the ISOProgressReport doesn't have ALLOWED_STATE_TRANSITIONS, so let's give it one for this
-    # test
+    # Normally, the ISOProgressReport doesn't have ALLOWED_STATE_TRANSITIONS, so let's give it
+    # one for this test
     @mock.patch('pulp_rpm.common.progress.ISOProgressReport.ALLOWED_STATE_TRANSITIONS',
                 {'state_1': ['state_2']}, create=True)
     def test__set_state_same_state(self):
@@ -254,6 +261,7 @@ class TestSyncProgressReport(unittest.TestCase):
     """
     Test the SyncProgressReport class.
     """
+
     def setUp(self):
         self.conduit = importer_mocks.get_sync_conduit()
 
@@ -267,12 +275,13 @@ class TestSyncProgressReport(unittest.TestCase):
         self.assertEqual(report.conduit, None)
         self.assertEqual(report._state, progress.SyncProgressReport.STATE_NOT_STARTED)
 
-        # The state_times attribute should be a dictionary with only the time the not started state was
-        # entered
+        # The state_times attribute should be a dictionary with only the time the not started
+        # state was entered
         self.assertTrue(isinstance(report.state_times, dict))
         self.assertEqual(len(report.state_times), 1)
-        self.assertTrue(isinstance(report.state_times[progress.SyncProgressReport.STATE_NOT_STARTED],
-                                   datetime))
+        self.assertTrue(
+            isinstance(report.state_times[progress.SyncProgressReport.STATE_NOT_STARTED],
+                       datetime))
 
         self.assertEqual(report.error_message, None)
         self.assertEqual(report.traceback, None)

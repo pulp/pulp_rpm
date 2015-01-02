@@ -11,6 +11,7 @@ class ISORepoListCommand(ListRepositoriesCommand):
     """
     This command allows the user to list all of the ISO repositories.
     """
+
     def __init__(self, context):
         """
         Configure the title text to say ISO Repositories, and initialize our repo cache.
@@ -63,7 +64,7 @@ class ISORepoListCommand(ListRepositoriesCommand):
         for repo in all_repos:
             notes = repo['notes']
             if pulp_constants.REPO_NOTE_TYPE_KEY in notes and \
-                    notes[pulp_constants.REPO_NOTE_TYPE_KEY] == constants.REPO_NOTE_ISO:
+               notes[pulp_constants.REPO_NOTE_TYPE_KEY] == constants.REPO_NOTE_ISO:
                 iso_repos.append(repo)
 
         # Strip out the certificate and private key if present
@@ -71,13 +72,13 @@ class ISORepoListCommand(ListRepositoriesCommand):
             # The importers will only be present in a --details view, so make
             # sure it's there before proceeding
             if 'importers' in r:
-                imp_config = r['importers'][0]['config'] # there can only be one importer
-    
+                imp_config = r['importers'][0]['config']  # there can only be one importer
+
                 # If either are present, tell the user the feed is using SSL
                 if importer_constants.KEY_SSL_CLIENT_CERT in imp_config or \
-                        importer_constants.KEY_SSL_CLIENT_KEY in imp_config:
+                   importer_constants.KEY_SSL_CLIENT_KEY in imp_config:
                     imp_config['feed_ssl_configured'] = 'True'
-    
+
                 # Remove the actual values so they aren't displayed
                 imp_config.pop(importer_constants.KEY_SSL_CLIENT_CERT, None)
                 imp_config.pop(importer_constants.KEY_SSL_CLIENT_KEY, None)

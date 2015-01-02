@@ -8,7 +8,6 @@ from pulp_rpm.plugins.db import models
 from pulp_rpm.plugins.importers.yum import sync, associate, upload, config_validate
 
 
-
 # The platform currently doesn't support automatic loading of conf files when the plugin
 # uses entry points. The current thinking is that the conf files will be named the same as
 # the plugin and put in a conf.d type of location. For now, this implementation will assume

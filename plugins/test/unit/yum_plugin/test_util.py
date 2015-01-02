@@ -11,7 +11,6 @@ from pulp_rpm.yum_plugin import util
 
 
 class TestUtil(rpm_support_base.PulpRPMTests):
-
     def setUp(self):
         super(TestUtil, self).setUp()
         self.init()
@@ -29,10 +28,14 @@ class TestUtil(rpm_support_base.PulpRPMTests):
         shutil.rmtree(self.temp_dir)
 
     def test_is_rpm_newer(self):
-        rpm_a = {"name": "rpm_test_name", "epoch":"0", "release":"el6.1", "version":"2", "arch":"noarch"}
-        newer_a = {"name": "rpm_test_name", "epoch":"0", "release":"el6.1", "version":"3", "arch":"noarch"}
-        newer_a_diff_arch = {"name": "rpm_test_name", "epoch":"0", "release":"el6.1", "version":"2", "arch":"i386"}
-        rpm_b = {"name": "rpm_test_name_B", "epoch":"0", "release":"el6.1", "version":"5", "arch":"noarch"}
+        rpm_a = {"name": "rpm_test_name", "epoch": "0", "release": "el6.1", "version": "2",
+                 "arch": "noarch"}
+        newer_a = {"name": "rpm_test_name", "epoch": "0", "release": "el6.1", "version": "3",
+                   "arch": "noarch"}
+        newer_a_diff_arch = {"name": "rpm_test_name", "epoch": "0", "release": "el6.1",
+                             "version": "2", "arch": "i386"}
+        rpm_b = {"name": "rpm_test_name_B", "epoch": "0", "release": "el6.1", "version": "5",
+                 "arch": "noarch"}
 
         self.assertTrue(util.is_rpm_newer(newer_a, rpm_a))
         self.assertFalse(util.is_rpm_newer(newer_a_diff_arch, rpm_a))

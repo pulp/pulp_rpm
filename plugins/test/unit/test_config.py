@@ -16,7 +16,7 @@ class ValidateTests(unittest.TestCase):
 
     def test_valid(self):
         # Setup
-        config = PluginCallConfiguration({}, {}) # an empty configuration is valid
+        config = PluginCallConfiguration({}, {})  # an empty configuration is valid
 
         # Test
         result, error = config_validate.validate(config)
@@ -27,7 +27,8 @@ class ValidateTests(unittest.TestCase):
 
     def test_invalid(self):
         # Setup
-        config = PluginCallConfiguration({}, {importer_constants.KEY_PROXY_PORT : 'foo'}) # should always be wrong
+        config = PluginCallConfiguration(
+            {}, {importer_constants.KEY_PROXY_PORT: 'foo'})  # should always be wrong
 
         # Test
         result, error = config_validate.validate(config)
@@ -35,4 +36,4 @@ class ValidateTests(unittest.TestCase):
         # Verify
         self.assertEqual(False, result)
         self.assertTrue('Configuration errors' in error)
-        self.assertTrue(not error.endswith('\n')) # make sure trailing \n is stripped off
+        self.assertTrue(not error.endswith('\n'))  # make sure trailing \n is stripped off

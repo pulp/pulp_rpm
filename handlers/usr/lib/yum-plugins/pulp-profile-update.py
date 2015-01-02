@@ -16,6 +16,7 @@ cfg = read_config()
 # Pulp Integration
 #
 
+
 class Bundle(BundleImpl):
     """
     Consumer certificate (bundle)
@@ -43,6 +44,7 @@ class PulpBindings(Bindings):
         connection = PulpConnection(host, port, cert_filename=cert, verify_ssl=ssl)
         Bindings.__init__(self, connection)
 
+
 #
 # yum plugin
 #
@@ -55,7 +57,7 @@ def posttrans_hook(conduit):
         bundle = Bundle()
         myid = bundle.cn()
         if not myid:
-            return # not registered
+            return  # not registered
         bindings = PulpBindings()
         profile = get_profile('rpm').collect()
         http = bindings.profile.send(myid, 'rpm', profile)

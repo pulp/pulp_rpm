@@ -1,4 +1,3 @@
-
 from gettext import gettext as _
 import logging
 
@@ -19,8 +18,10 @@ def validate(config):
     :return:       tuple of (is_valid, error_message)
     :rtype:        tuple
     """
-    # This is a tuple of tuples. The inner tuples have two elements. The first element is a validation method
-    # that should be run, and the second element is the name of the config setting that should be validated by
+    # This is a tuple of tuples. The inner tuples have two elements. The first element is a
+    # validation method
+    # that should be run, and the second element is the name of the config setting that should be
+    #  validated by
     # it.
     validations = (
         (configuration_utils.validate_non_required_bool, constants.CONFIG_SERVE_HTTP,),
@@ -39,7 +40,8 @@ def validate(config):
 
 def _validate_ssl_cert(config, setting_name):
     """
-    Ensure that the setting_name from config is a valid SSL certificate, if it is given. This setting is not
+    Ensure that the setting_name from config is a valid SSL certificate, if it is given. This
+    setting is not
     required.
 
     :param config:       The config to validate

@@ -18,9 +18,9 @@ class ConditionalPackageNamesUpgradeTests(rpm_support_base.PulpRPMTests):
         # We'll only put the name and conditional_package_names attributes since the
         # migration only touches those fields
         package_groups = [
-            {"name": "v1_style_1", "conditional_package_names" : {'a': 1, 'b': 2}},
-            {"name": "v1_style_2", "conditional_package_names" : {'b': 1, 'c': 3}},
-            {"name": "v2_style", "conditional_package_names" : [['d', 4], ['e', 5]]}]
+            {"name": "v1_style_1", "conditional_package_names": {'a': 1, 'b': 2}},
+            {"name": "v1_style_2", "conditional_package_names": {'b': 1, 'c': 3}},
+            {"name": "v2_style", "conditional_package_names": [['d', 4], ['e', 5]]}]
         for package_group in package_groups:
             self.package_group_collection.insert(package_group)
         migration = _import_all_the_way(
@@ -31,9 +31,9 @@ class ConditionalPackageNamesUpgradeTests(rpm_support_base.PulpRPMTests):
 
         # Inspect the package groups
         expected_package_groups = [
-            {"name": "v1_style_1", "conditional_package_names" : [['a', 1], ['b', 2]]},
-            {"name": "v1_style_2", "conditional_package_names" : [['b', 1], ['c', 3]]},
-            {"name": "v2_style", "conditional_package_names" : [['d', 4], ['e', 5]]}]
+            {"name": "v1_style_1", "conditional_package_names": [['a', 1], ['b', 2]]},
+            {"name": "v1_style_2", "conditional_package_names": [['b', 1], ['c', 3]]},
+            {"name": "v2_style", "conditional_package_names": [['d', 4], ['e', 5]]}]
         for expected_package_group in expected_package_groups:
             package_group = self.package_group_collection.find_one(
                 {'name': expected_package_group['name']})

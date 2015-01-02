@@ -25,6 +25,7 @@ def authenticate(environ):
     # been found and will short-circuit any other validation checks.
     return not is_enabled
 
+
 def _config():
     config = SafeConfigParser()
     config.read(CONFIG_FILENAME)

@@ -17,7 +17,6 @@ DATA_DIR = os.path.abspath(os.path.dirname(__file__)) + '/../../data/'
 
 
 class RpmRepoCreateCommandTests(PulpClientTests):
-
     def setUp(self):
         super(RpmRepoCreateCommandTests, self).setUp()
 
@@ -45,36 +44,36 @@ class RpmRepoCreateCommandTests(PulpClientTests):
         cert_file = os.path.join(DATA_DIR, 'cert.crt')
         cert_key = os.path.join(DATA_DIR, 'cert.key')
         ca_cert = os.path.join(DATA_DIR, 'valid_ca.crt')
-        gpg_key = os.path.join(DATA_DIR, 'cert.key') # contents shouldn't matter
+        gpg_key = os.path.join(DATA_DIR, 'cert.key')  # contents shouldn't matter
 
         data = {
-            options.OPTION_REPO_ID.keyword : 'test-repo',
-            options.OPTION_NAME.keyword : 'Test Name',
-            options.OPTION_DESCRIPTION.keyword : 'Test Description',
-            options.OPTION_NOTES.keyword : {'a' : 'a'},
-            self.options_bundle.opt_feed.keyword : 'http://localhost',
-            self.options_bundle.opt_validate.keyword : True,
-            self.options_bundle.opt_remove_missing.keyword : True,
-            self.options_bundle.opt_retain_old_count.keyword : 2,
-            self.options_bundle.opt_proxy_host.keyword : 'http://localhost',
-            self.options_bundle.opt_proxy_port.keyword : 80,
-            self.options_bundle.opt_proxy_user.keyword : 'user',
-            self.options_bundle.opt_proxy_pass.keyword : 'pass',
-            self.options_bundle.opt_max_speed.keyword : 1024,
-            self.options_bundle.opt_max_downloads.keyword : 8,
-            self.options_bundle.opt_feed_ca_cert.keyword : ca_cert,
-            self.options_bundle.opt_verify_feed_ssl.keyword : True,
-            self.options_bundle.opt_feed_cert.keyword : cert_file,
-            self.options_bundle.opt_feed_key.keyword : cert_key,
-            repo_options.OPT_SKIP.keyword : [ids.TYPE_ID_RPM],
-            repo_options.OPT_RELATIVE_URL.keyword : '/repo',
-            repo_options.OPT_SERVE_HTTP.keyword : True,
-            repo_options.OPT_SERVE_HTTPS.keyword : True,
-            repo_options.OPT_CHECKSUM_TYPE.keyword : 'sha256',
-            repo_options.OPT_GPG_KEY.keyword : gpg_key,
-            repo_options.OPT_HOST_CA.keyword : ca_cert,
-            repo_options.OPT_AUTH_CA.keyword : ca_cert,
-            repo_options.OPT_AUTH_CERT.keyword : cert_file,
+            options.OPTION_REPO_ID.keyword: 'test-repo',
+            options.OPTION_NAME.keyword: 'Test Name',
+            options.OPTION_DESCRIPTION.keyword: 'Test Description',
+            options.OPTION_NOTES.keyword: {'a': 'a'},
+            self.options_bundle.opt_feed.keyword: 'http://localhost',
+            self.options_bundle.opt_validate.keyword: True,
+            self.options_bundle.opt_remove_missing.keyword: True,
+            self.options_bundle.opt_retain_old_count.keyword: 2,
+            self.options_bundle.opt_proxy_host.keyword: 'http://localhost',
+            self.options_bundle.opt_proxy_port.keyword: 80,
+            self.options_bundle.opt_proxy_user.keyword: 'user',
+            self.options_bundle.opt_proxy_pass.keyword: 'pass',
+            self.options_bundle.opt_max_speed.keyword: 1024,
+            self.options_bundle.opt_max_downloads.keyword: 8,
+            self.options_bundle.opt_feed_ca_cert.keyword: ca_cert,
+            self.options_bundle.opt_verify_feed_ssl.keyword: True,
+            self.options_bundle.opt_feed_cert.keyword: cert_file,
+            self.options_bundle.opt_feed_key.keyword: cert_key,
+            repo_options.OPT_SKIP.keyword: [ids.TYPE_ID_RPM],
+            repo_options.OPT_RELATIVE_URL.keyword: '/repo',
+            repo_options.OPT_SERVE_HTTP.keyword: True,
+            repo_options.OPT_SERVE_HTTPS.keyword: True,
+            repo_options.OPT_CHECKSUM_TYPE.keyword: 'sha256',
+            repo_options.OPT_GPG_KEY.keyword: gpg_key,
+            repo_options.OPT_HOST_CA.keyword: ca_cert,
+            repo_options.OPT_AUTH_CA.keyword: ca_cert,
+            repo_options.OPT_AUTH_CERT.keyword: cert_file,
         }
 
         self.server_mock.request.return_value = 201, {}
@@ -91,7 +90,7 @@ class RpmRepoCreateCommandTests(PulpClientTests):
 
         self.assertEqual(body['display_name'], 'Test Name')
         self.assertEqual(body['description'], 'Test Description')
-        self.assertEqual(body['notes'], {'_repo-type' : 'rpm-repo', 'a' : 'a'})
+        self.assertEqual(body['notes'], {'_repo-type': 'rpm-repo', 'a': 'a'})
 
         self.assertEqual(ids.TYPE_ID_IMPORTER_YUM, body['importer_type_id'])
         importer_config = body['importer_config']
@@ -159,13 +158,14 @@ class RpmRepoCreateCommandTests(PulpClientTests):
         body = json.loads(body)
 
         self.assertEqual(body['id'], 'r')
-        self.assertEqual(body['importer_config'][constants.KEY_VALIDATE], True) # not the string "true"
+        self.assertEqual(body['importer_config'][constants.KEY_VALIDATE],
+                         True)  # not the string "true"
 
     def test_process_relative_url_with_feed(self):
         # Setup
         repo_id = 'feed-repo'
-        importer_config = {constants.KEY_FEED : 'http://localhost/foo/bar/baz'}
-        distributor_config = {} # will be populated in this call
+        importer_config = {constants.KEY_FEED: 'http://localhost/foo/bar/baz'}
+        distributor_config = {}  # will be populated in this call
         command = repo_create_update.RpmRepoCreateCommand(self.context)
 
         # Test
@@ -179,7 +179,7 @@ class RpmRepoCreateCommandTests(PulpClientTests):
         # Setup
         repo_id = 'no-feed-repo'
         importer_config = {}
-        distributor_config = {} # will be populated in this call
+        distributor_config = {}  # will be populated in this call
         command = repo_create_update.RpmRepoCreateCommand(self.context)
 
         # Test
@@ -193,7 +193,7 @@ class RpmRepoCreateCommandTests(PulpClientTests):
         # Setup
         repo_id = 'specified'
         importer_config = {}
-        distributor_config = {'relative_url' : 'wombat'}
+        distributor_config = {'relative_url': 'wombat'}
         command = repo_create_update.RpmRepoCreateCommand(self.context)
 
         # Test
@@ -205,7 +205,6 @@ class RpmRepoCreateCommandTests(PulpClientTests):
 
 
 class RpmRepoUpdateCommandTests(PulpClientTests):
-
     def setUp(self):
         super(RpmRepoUpdateCommandTests, self).setUp()
         self.options_bundle = importer_config.OptionsBundle()
@@ -230,15 +229,15 @@ class RpmRepoUpdateCommandTests(PulpClientTests):
     def test_run_202(self):
         # Setup
         data = {
-            options.OPTION_REPO_ID.keyword : 'test-repo',
-            options.OPTION_NAME.keyword : 'Test Name',
-            options.OPTION_DESCRIPTION.keyword : 'Test Description',
-            options.OPTION_NOTES.keyword : {'b' : 'b'},
-            self.options_bundle.opt_feed.keyword : 'http://localhost',
-            repo_options.OPT_SERVE_HTTP.keyword : True,
-            repo_options.OPT_SERVE_HTTPS.keyword : True,
-            repo_options.OPT_SKIP.keyword : [ids.TYPE_ID_RPM],
-            }
+            options.OPTION_REPO_ID.keyword: 'test-repo',
+            options.OPTION_NAME.keyword: 'Test Name',
+            options.OPTION_DESCRIPTION.keyword: 'Test Description',
+            options.OPTION_NOTES.keyword: {'b': 'b'},
+            self.options_bundle.opt_feed.keyword: 'http://localhost',
+            repo_options.OPT_SERVE_HTTP.keyword: True,
+            repo_options.OPT_SERVE_HTTPS.keyword: True,
+            repo_options.OPT_SKIP.keyword: [ids.TYPE_ID_RPM],
+        }
 
         self.server_mock.request.return_value = 202, {}
 
@@ -252,14 +251,14 @@ class RpmRepoUpdateCommandTests(PulpClientTests):
     def test_run(self):
         # Setup
         data = {
-            options.OPTION_REPO_ID.keyword : 'test-repo',
-            options.OPTION_NAME.keyword : 'Test Name',
-            options.OPTION_DESCRIPTION.keyword : 'Test Description',
-            options.OPTION_NOTES.keyword : {'b' : 'b'},
-            self.options_bundle.opt_feed.keyword : 'http://localhost',
-            repo_options.OPT_SERVE_HTTP.keyword : True,
-            repo_options.OPT_SERVE_HTTPS.keyword : True,
-            repo_options.OPT_SKIP.keyword : [ids.TYPE_ID_RPM],
+            options.OPTION_REPO_ID.keyword: 'test-repo',
+            options.OPTION_NAME.keyword: 'Test Name',
+            options.OPTION_DESCRIPTION.keyword: 'Test Description',
+            options.OPTION_NOTES.keyword: {'b': 'b'},
+            self.options_bundle.opt_feed.keyword: 'http://localhost',
+            repo_options.OPT_SERVE_HTTP.keyword: True,
+            repo_options.OPT_SERVE_HTTPS.keyword: True,
+            repo_options.OPT_SKIP.keyword: [ids.TYPE_ID_RPM],
         }
 
         self.server_mock.request.return_value = 200, {}
@@ -277,7 +276,7 @@ class RpmRepoUpdateCommandTests(PulpClientTests):
         delta = body['delta']
         self.assertEqual(delta['display_name'], 'Test Name')
         self.assertEqual(delta['description'], 'Test Description')
-        self.assertEqual(delta['notes'], {'b' : 'b'})
+        self.assertEqual(delta['notes'], {'b': 'b'})
 
         yum_imp_config = body['importer_config']
         self.assertEqual(yum_imp_config[constants.KEY_FEED], 'http://localhost')
@@ -286,12 +285,12 @@ class RpmRepoUpdateCommandTests(PulpClientTests):
         yum_dist_config = body['distributor_configs'][ids.YUM_DISTRIBUTOR_ID]
         self.assertEqual(yum_dist_config['http'], True)
         self.assertEqual(yum_dist_config['https'], True)
-        self.assertEqual(yum_dist_config['skip'],  [ids.TYPE_ID_RPM])
-        
+        self.assertEqual(yum_dist_config['skip'], [ids.TYPE_ID_RPM])
+
         iso_dist_config = body['distributor_configs'][ids.EXPORT_DISTRIBUTOR_ID]
         self.assertEqual(iso_dist_config['http'], True)
         self.assertEqual(iso_dist_config['https'], True)
-        self.assertEqual(iso_dist_config['skip'],  [ids.TYPE_ID_RPM])
+        self.assertEqual(iso_dist_config['skip'], [ids.TYPE_ID_RPM])
 
     def test_run_through_cli(self):
         """
@@ -313,7 +312,8 @@ class RpmRepoUpdateCommandTests(PulpClientTests):
         body = self.server_mock.request.call_args[0][2]
         body = json.loads(body)
 
-        self.assertEqual(body['importer_config'][constants.KEY_VALIDATE], True) # not the string "true"
+        self.assertEqual(body['importer_config'][constants.KEY_VALIDATE],
+                         True)  # not the string "true"
 
     def test_remove_skip_types(self):
         # Setup
@@ -333,4 +333,3 @@ class RpmRepoUpdateCommandTests(PulpClientTests):
         self.assertEqual(body['importer_config']['type_skip_list'], None)
         self.assertEqual(body['distributor_configs']['yum_distributor']['skip'], None)
         self.assertEqual(body['distributor_configs']['export_distributor']['skip'], None)
-

@@ -10,8 +10,8 @@ from pulp_rpm.common.ids import TYPE_ID_RPM, TYPE_ID_PKG_GROUP, TYPE_ID_ERRATA
 
 SCHEDULE_INSTALL_ACTIONS = ('install', 'uninstall', 'update')
 
-class StructureTests(PulpClientTests):
 
+class StructureTests(PulpClientTests):
     def test_rpm_create_schedule_command(self):
         for content_type in (TYPE_ID_RPM, TYPE_ID_PKG_GROUP, TYPE_ID_ERRATA):
             for action in SCHEDULE_INSTALL_ACTIONS:
@@ -27,7 +27,6 @@ class StructureTests(PulpClientTests):
 
 
 class ConsumerContentInstallScheduleStrategyTests(PulpClientTests):
-
     def setUp(self):
         super(ConsumerContentInstallScheduleStrategyTests, self).setUp()
         self.strategy = YumConsumerContentScheduleStrategy(self.context, 'install', TYPE_ID_RPM)
@@ -38,8 +37,8 @@ class ConsumerContentInstallScheduleStrategyTests(PulpClientTests):
         schedule = '2012-09-18'
         failure_threshold = 3
         enabled = True
-        kwargs = {OPTION_CONSUMER_ID.keyword : 'test-consumer',
-                  'name': ['pkg1','pkg2']}
+        kwargs = {OPTION_CONSUMER_ID.keyword: 'test-consumer',
+                  'name': ['pkg1', 'pkg2']}
 
         # Test
         self.strategy.create_schedule(schedule, failure_threshold, enabled, kwargs)
@@ -58,7 +57,7 @@ class ConsumerContentInstallScheduleStrategyTests(PulpClientTests):
     def test_delete_schedule(self, mock_delete):
         # Setup
         schedule_id = 'fake-schedule'
-        kwargs = {OPTION_CONSUMER_ID.keyword : 'fake-consumer'}
+        kwargs = {OPTION_CONSUMER_ID.keyword: 'fake-consumer'}
 
         # Test
         self.strategy.delete_schedule(schedule_id, kwargs)
@@ -73,7 +72,7 @@ class ConsumerContentInstallScheduleStrategyTests(PulpClientTests):
     @mock.patch('pulp.bindings.consumer.ConsumerContentSchedulesAPI.list_schedules')
     def test_retrieve_schedules(self, mock_retrieve):
         # Setup
-        kwargs = {OPTION_CONSUMER_ID.keyword : 'retrieve-consumer'}
+        kwargs = {OPTION_CONSUMER_ID.keyword: 'retrieve-consumer'}
 
         # Test
         self.strategy.retrieve_schedules(kwargs)
@@ -87,7 +86,7 @@ class ConsumerContentInstallScheduleStrategyTests(PulpClientTests):
     @mock.patch('pulp.bindings.consumer.ConsumerContentSchedulesAPI.update_schedule')
     def test_update_schedule(self, mock_update):
         # Setup
-        kwargs = {OPTION_CONSUMER_ID.keyword : 'fake-consumer', 'a' : 'a'}
+        kwargs = {OPTION_CONSUMER_ID.keyword: 'fake-consumer', 'a': 'a'}
         schedule_id = 'schedule-id'
 
         # Test
@@ -100,11 +99,10 @@ class ConsumerContentInstallScheduleStrategyTests(PulpClientTests):
         self.assertEqual('fake-consumer', call_args[1])
         self.assertEqual(schedule_id, call_args[2])
         call_kwargs = mock_update.call_args[1]
-        self.assertEqual({'a' : 'a'}, call_kwargs)
+        self.assertEqual({'a': 'a'}, call_kwargs)
 
 
 class ConsumerContentUninstallScheduleStrategyTests(PulpClientTests):
-
     def setUp(self):
         super(ConsumerContentUninstallScheduleStrategyTests, self).setUp()
         self.strategy = YumConsumerContentScheduleStrategy(self.context, 'uninstall', TYPE_ID_RPM)
@@ -115,8 +113,8 @@ class ConsumerContentUninstallScheduleStrategyTests(PulpClientTests):
         schedule = '2012-09-18'
         failure_threshold = 3
         enabled = True
-        kwargs = {OPTION_CONSUMER_ID.keyword : 'test-consumer',
-                  'name': ['pkg1','pkg2']}
+        kwargs = {OPTION_CONSUMER_ID.keyword: 'test-consumer',
+                  'name': ['pkg1', 'pkg2']}
 
         # Test
         self.strategy.create_schedule(schedule, failure_threshold, enabled, kwargs)
@@ -135,7 +133,7 @@ class ConsumerContentUninstallScheduleStrategyTests(PulpClientTests):
     def test_delete_schedule(self, mock_delete):
         # Setup
         schedule_id = 'fake-schedule'
-        kwargs = {OPTION_CONSUMER_ID.keyword : 'fake-consumer'}
+        kwargs = {OPTION_CONSUMER_ID.keyword: 'fake-consumer'}
 
         # Test
         self.strategy.delete_schedule(schedule_id, kwargs)
@@ -150,7 +148,7 @@ class ConsumerContentUninstallScheduleStrategyTests(PulpClientTests):
     @mock.patch('pulp.bindings.consumer.ConsumerContentSchedulesAPI.list_schedules')
     def test_retrieve_schedules(self, mock_retrieve):
         # Setup
-        kwargs = {OPTION_CONSUMER_ID.keyword : 'retrieve-consumer'}
+        kwargs = {OPTION_CONSUMER_ID.keyword: 'retrieve-consumer'}
 
         # Test
         self.strategy.retrieve_schedules(kwargs)
@@ -164,7 +162,7 @@ class ConsumerContentUninstallScheduleStrategyTests(PulpClientTests):
     @mock.patch('pulp.bindings.consumer.ConsumerContentSchedulesAPI.update_schedule')
     def test_update_schedule(self, mock_update):
         # Setup
-        kwargs = {OPTION_CONSUMER_ID.keyword : 'fake-consumer', 'a' : 'a'}
+        kwargs = {OPTION_CONSUMER_ID.keyword: 'fake-consumer', 'a': 'a'}
         schedule_id = 'schedule-id'
 
         # Test
@@ -177,11 +175,10 @@ class ConsumerContentUninstallScheduleStrategyTests(PulpClientTests):
         self.assertEqual('fake-consumer', call_args[1])
         self.assertEqual(schedule_id, call_args[2])
         call_kwargs = mock_update.call_args[1]
-        self.assertEqual({'a' : 'a'}, call_kwargs)
+        self.assertEqual({'a': 'a'}, call_kwargs)
 
 
 class ConsumerContentUpdateScheduleStrategyTests(PulpClientTests):
-
     def setUp(self):
         super(ConsumerContentUpdateScheduleStrategyTests, self).setUp()
         self.strategy = YumConsumerContentScheduleStrategy(self.context, 'update', TYPE_ID_RPM)
@@ -192,8 +189,8 @@ class ConsumerContentUpdateScheduleStrategyTests(PulpClientTests):
         schedule = '2012-09-18'
         failure_threshold = 3
         enabled = True
-        kwargs = {OPTION_CONSUMER_ID.keyword : 'test-consumer',
-                  'name': ['pkg1','pkg2']}
+        kwargs = {OPTION_CONSUMER_ID.keyword: 'test-consumer',
+                  'name': ['pkg1', 'pkg2']}
 
         # Test
         self.strategy.create_schedule(schedule, failure_threshold, enabled, kwargs)
@@ -212,7 +209,7 @@ class ConsumerContentUpdateScheduleStrategyTests(PulpClientTests):
     def test_delete_schedule(self, mock_delete):
         # Setup
         schedule_id = 'fake-schedule'
-        kwargs = {OPTION_CONSUMER_ID.keyword : 'fake-consumer'}
+        kwargs = {OPTION_CONSUMER_ID.keyword: 'fake-consumer'}
 
         # Test
         self.strategy.delete_schedule(schedule_id, kwargs)
@@ -227,7 +224,7 @@ class ConsumerContentUpdateScheduleStrategyTests(PulpClientTests):
     @mock.patch('pulp.bindings.consumer.ConsumerContentSchedulesAPI.list_schedules')
     def test_retrieve_schedules(self, mock_retrieve):
         # Setup
-        kwargs = {OPTION_CONSUMER_ID.keyword : 'retrieve-consumer'}
+        kwargs = {OPTION_CONSUMER_ID.keyword: 'retrieve-consumer'}
 
         # Test
         self.strategy.retrieve_schedules(kwargs)
@@ -241,7 +238,7 @@ class ConsumerContentUpdateScheduleStrategyTests(PulpClientTests):
     @mock.patch('pulp.bindings.consumer.ConsumerContentSchedulesAPI.update_schedule')
     def test_update_schedule(self, mock_update):
         # Setup
-        kwargs = {OPTION_CONSUMER_ID.keyword : 'fake-consumer', 'a' : 'a'}
+        kwargs = {OPTION_CONSUMER_ID.keyword: 'fake-consumer', 'a': 'a'}
         schedule_id = 'schedule-id'
 
         # Test
@@ -254,5 +251,4 @@ class ConsumerContentUpdateScheduleStrategyTests(PulpClientTests):
         self.assertEqual('fake-consumer', call_args[1])
         self.assertEqual(schedule_id, call_args[2])
         call_kwargs = mock_update.call_args[1]
-        self.assertEqual({'a' : 'a'}, call_kwargs)
-
+        self.assertEqual({'a': 'a'}, call_kwargs)

@@ -6,7 +6,7 @@ from pulp.common.config import read_json_config
 from pulp.plugins.distributor import GroupDistributor
 from pulp.server.exceptions import PulpDataException
 
-from pulp_rpm.common import  ids
+from pulp_rpm.common import ids
 from pulp_rpm.plugins.db import models
 from pulp_rpm.plugins.distributors.export_distributor import export_utils
 from pulp_rpm.plugins.distributors.yum import configuration
@@ -24,7 +24,6 @@ def entry_point():
 
 
 class GroupISODistributor(GroupDistributor):
-
     def __init__(self):
         super(GroupISODistributor, self).__init__()
         self.cancelled = False
@@ -55,7 +54,8 @@ class GroupISODistributor(GroupDistributor):
             'id': ids.TYPE_ID_DISTRIBUTOR_GROUP_EXPORT,
             'display_name': _('Group Export Distributor'),
             'types': [models.RPM.TYPE, models.SRPM.TYPE, models.DRPM.TYPE, models.Errata.TYPE,
-                      models.Distribution.TYPE, models.PackageCategory.TYPE, models.PackageGroup.TYPE]
+                      models.Distribution.TYPE, models.PackageCategory.TYPE,
+                      models.PackageGroup.TYPE]
         }
 
     def validate_config(self, repo_group, config, config_conduit):
@@ -74,7 +74,8 @@ class GroupISODistributor(GroupDistributor):
         have a configured distributor of this type. The distributor configurations
         is found in each repository group in the "plugin_configs" field.
 
-        :param repo_group:          metadata describing the repository to which the configuration applies
+        :param repo_group:          metadata describing the repository to which the configuration
+        applies
         :type  repo_group:          pulp.plugins.model.Repository
         :param config:              plugin configuration instance
         :type  config:              pulp.plugins.config.PluginCallConfiguration
@@ -99,7 +100,8 @@ class GroupISODistributor(GroupDistributor):
         :return:                report describing the publish run
         :rtype:                 pulp.plugins.model.PublishReport
         """
-        # First, validate the configuration because there may be override config options, and currently,
+        # First, validate the configuration because there may be override config options,
+        # and currently,
         # validate_config is not called prior to publishing by the manager.
         valid_config, msg = export_utils.validate_export_config(config)
         if not valid_config:

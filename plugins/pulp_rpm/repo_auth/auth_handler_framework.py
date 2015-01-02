@@ -24,6 +24,7 @@ OPTIONAL_PLUGINS = (auth_enabled_validation.authenticate,
 
 # -- modpython --------------------------------------------------------------------
 
+
 def authenhandler(request):
     '''
     Hook into modpython to be invoked when a request is determining authentication.
@@ -44,6 +45,7 @@ def authenhandler(request):
         request.user = 'pulp_user'
 
     return code
+
 
 # -- private -----------------------------------------------------------------------
 

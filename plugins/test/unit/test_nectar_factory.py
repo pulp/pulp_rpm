@@ -10,7 +10,6 @@ from pulp_rpm.plugins.importers.yum.repomd import nectar_factory
 
 
 class NectarFactoryTests(unittest.TestCase):
-
     def setUp(self):
         super(NectarFactoryTests, self).setUp()
         self.mock_config = mock.MagicMock()

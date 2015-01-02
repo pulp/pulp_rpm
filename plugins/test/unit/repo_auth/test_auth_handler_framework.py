@@ -13,7 +13,6 @@ def win(request):
 
 
 class MockFunctionsTests(unittest.TestCase):
-
     def test_handle_fail_required_pass_optional(self):
         # Setup
         auth_framework.REQUIRED_PLUGINS = [win, win, fail]
@@ -76,7 +75,6 @@ class MockFunctionsTests(unittest.TestCase):
 
 
 class MockRequest(object):
-
     def add_common_vars(self):
         pass
 

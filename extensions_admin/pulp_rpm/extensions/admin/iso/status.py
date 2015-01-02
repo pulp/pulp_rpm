@@ -56,14 +56,15 @@ class ISOStatusRenderer(StatusRenderer):
                 runtime = (datetime.utcnow() -
                            sync_report.state_times[sync_report.STATE_MANIFEST_IN_PROGRESS])
                 runtime = (runtime.days * 3600 * 24) + runtime.seconds
-                if runtime: 
-                    average_speed = human_readable_bytes(sync_report.finished_bytes/runtime)
+                if runtime:
+                    average_speed = human_readable_bytes(sync_report.finished_bytes / runtime)
                 else:
                     average_speed = 0
                 bar_message = _("ISOs: %(num_complete)s/%(num_total)s\tData: "
                                 "%(bytes_complete)s/%(bytes_total)s\tAvg: %(speed)s/s")
                 bar_message = bar_message % {
-                    'num_complete': sync_report.num_isos_finished, 'num_total': sync_report.num_isos,
+                    'num_complete': sync_report.num_isos_finished,
+                    'num_total': sync_report.num_isos,
                     'speed': average_speed,
                     'bytes_complete': human_readable_bytes(sync_report.finished_bytes),
                     'bytes_total': human_readable_bytes(sync_report.total_bytes)}
@@ -83,7 +84,7 @@ class ISOStatusRenderer(StatusRenderer):
                         self.prompt.render_failure_message(
                             '\t%(name)s: %(msg)s' % {
                                 'name': failed_iso['name'], 'msg': failed_iso['error']},
-                                tag='iso_error_msg')
+                            tag='iso_error_msg')
                 self._sync_state = sync_report.state
 
     def _display_manifest_sync_report(self, sync_report):
@@ -125,7 +126,7 @@ class ISOStatusRenderer(StatusRenderer):
 
         if publish_report.state == publish_report.STATE_FAILED:
             self.prompt.render_failure_message(_('Publishing failed.'), tag='publish_failed')
-            self.prompt.write('\t%s'%publish_report.error_message, tag='error_message')
+            self.prompt.write('\t%s' % publish_report.error_message, tag='error_message')
             return
 
         if publish_report.state == publish_report.STATE_COMPLETE:
@@ -136,10 +137,11 @@ class ISOStatusRenderer(StatusRenderer):
 def human_readable_bytes(num):
     """
     This handy snippet was retrieved from
-    http://stackoverflow.com/questions/1094841/reusable-library-to-get-human-readable-version-of-file-size
+    http://stackoverflow.com/questions/1094841/reusable-library-to-get-human-readable-version-of
+    -file-size
     It takes a size in Bytes, and converts it to a nice human readable form.
     """
-    for x in ['B','kB','MB','GB']:
+    for x in ['B', 'kB', 'MB', 'GB']:
         if num < 1024.0:
             if x == 'B':
                 return '%s %s' % (num, x)

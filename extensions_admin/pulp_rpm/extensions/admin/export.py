@@ -58,6 +58,7 @@ class RpmExportCommand(RunPublishRepositoryCommand):
     """
     The 'pulp-admin rpm repo export run' command
     """
+
     def __init__(self, context, renderer):
         """
         The constructor for RpmExportCommand
@@ -79,6 +80,7 @@ class RpmGroupExportCommand(PollingCommand):
     """
     The 'pulp-admin rpm repo group export run' command.
     """
+
     def __init__(self, context, renderer, name='run', description=DESC_GROUP_EXPORT_RUN):
         """
         The constructor for RpmGroupExportCommand
@@ -158,7 +160,7 @@ class RpmGroupExportCommand(PollingCommand):
         }
 
         # Remove keys from the config that have None value.
-        for key,value in publish_config.items():
+        for key, value in publish_config.items():
             if value is None:
                 del publish_config[key]
 
@@ -196,6 +198,7 @@ class GroupExportStatusCommand(PollingCommand):
     """
     The rpm repo group export status command.
     """
+
     def __init__(self, context, renderer, name='status', description=DESC_GROUP_EXPORT_STATUS):
         """
         The constructor for GroupExportStatusCommand

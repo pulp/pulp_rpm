@@ -44,7 +44,8 @@ d = _('path to a CSV file containing reference information. '
 OPT_REFERENCE = PulpCliOption('--reference-csv', d, aliases=['-r'], required=False)
 
 d = _('path to a CSV file containing package list information. '
-      'Format for each entry is: "name,version,release,epoch,arch,filename,checksum,checksum_type,sourceurl"')
+      'Format for each entry is: "name,version,release,epoch,arch,filename,checksum,'
+      'checksum_type,sourceurl"')
 OPT_PKG_LIST = PulpCliOption('--pkglist-csv', d, aliases=['-p'], required=True)
 
 d = _('erratum issuer, used in the \'from_str\' for the erratum; typically an email address')
@@ -103,7 +104,7 @@ class CreateErratumCommand(UploadCommand):
 
     def generate_unit_key(self, filename, **kwargs):
         erratum_id = kwargs[OPT_ERRATUM_ID.keyword]
-        unit_key = {'id' : erratum_id}
+        unit_key = {'id': erratum_id}
         return unit_key
 
     def generate_metadata(self, filename, **kwargs):
@@ -134,70 +135,73 @@ class CreateErratumCommand(UploadCommand):
         try:
             pushcount = int(kwargs[OPT_PUSHCOUNT.keyword])
         except Exception:
-            msg = _("Error: Invalid pushcount [%(p)s]; should be an integer ") % {'p' : kwargs[OPT_PUSHCOUNT.keyword]}
+            msg = _("Error: Invalid pushcount [%(p)s]; should be an integer ") % \
+                {'p': kwargs[OPT_PUSHCOUNT.keyword]}
             self.context.prompt.render_failure_message(msg)
             return os.EX_DATAERR
 
         metadata = {
-            'title' : title,
-            'description' : description,
-            'version' : version,
-            'release' : release,
-            'type' : errata_type,
-            'status' : status,
-            'updated' : updated,
-            'issued' : issued,
-            'severity' : severity,
-            'references' : references,
-            'pkglist' : pkglist,
-            'rights' : rights,
-            'summary' : summary,
-            'solution' : solution,
-            'from' : from_str,
-            'pushcount' : pushcount,
-            'reboot_suggested' : reboot_suggested,
+            'title': title,
+            'description': description,
+            'version': version,
+            'release': release,
+            'type': errata_type,
+            'status': status,
+            'updated': updated,
+            'issued': issued,
+            'severity': severity,
+            'references': references,
+            'pkglist': pkglist,
+            'rights': rights,
+            'summary': summary,
+            'solution': solution,
+            'from': from_str,
+            'pushcount': pushcount,
+            'reboot_suggested': reboot_suggested,
         }
 
         return metadata
 
     def parse_package_csv(self, csvfile, errata_release):
         if not csvfile or not os.path.exists(csvfile):
-            msg = _('Package list CSV file [%(f)s] not found') % {'f' : csvfile}
+            msg = _('Package list CSV file [%(f)s] not found') % {'f': csvfile}
             raise ParseException(msg, os.EX_IOERR)
         plist = parse_csv(csvfile)
         if len(plist) == 0:
-            msg = _('Package list CSV file [%(f)s] must contain at least one package') % {'f': csvfile}
+            msg = _('Package list CSV file [%(f)s] must contain at least one package') % \
+                {'f': csvfile}
             raise MetadataException(msg)
 
         pkgs = []
         for p in plist:
             if not len(p) == 9:
-                data = {'f' : p, 'c' : csvfile, 'n' : len(p)}
+                data = {'f': p, 'c': csvfile, 'n': len(p)}
                 msg = _('Bad format [%(f)s] in csv [%(c)s], %(n)s arguments, expected 9') % data
                 raise ParseException(msg, os.EX_DATAERR)
-            name,version,release,epoch,arch,filename,sums,ptype,sourceurl = p
+            name, version, release, epoch, arch, filename, sums, ptype, sourceurl = p
             pdict = dict(name=name, version=version, release=release,
-                         epoch=epoch, arch=arch, filename=filename, sums=sums, type=ptype, src=sourceurl)
+                         epoch=epoch, arch=arch, filename=filename, sums=sums, type=ptype,
+                         src=sourceurl)
             pkgs.append(pdict)
-        plistdict = {'packages' : pkgs,
-                     'name'     : errata_release,
-                     'short'    : ""}
-        #TODO:  Revist good way to specify name/short with CLI options/CSV
+        plistdict = {'packages': pkgs,
+                     'name': errata_release,
+                     'short': ""}
+        # TODO:  Revist good way to specify name/short with CLI options/CSV
         return [plistdict]
 
     def parse_reference_csv(self, csvfile):
         if not csvfile or not os.path.exists(csvfile):
-            msg = _('References CSV file [%(f)s] not found') % {'f' : csvfile}
+            msg = _('References CSV file [%(f)s] not found') % {'f': csvfile}
             raise ParseException(msg, os.EX_IOERR)
         references = []
         reflist = parse_csv(csvfile)
         for ref in reflist:
             if not len(ref) == 4:
-                data = {'f' : ref, 'c' : csvfile, 'n' : len(ref)}
+                data = {'f': ref, 'c': csvfile, 'n': len(ref)}
                 msg = _("Bad format [%(f)s] in csv [%(c)s], %(n)s arguments, expected 4") % data
                 raise ParseException(msg, os.EX_DATAERR)
-            href,csvtype,id,title = ref
-            refdict = dict(href=href,type=csvtype,id=id,title=title)
+            href, csvtype, id, title = ref
+            refdict = dict(href=href, type=csvtype, id=id, title=title)
             references.append(refdict)
         return references
 
@@ -228,7 +232,7 @@ class ParseException(Exception):
 
 
 def parse_csv(filepath):
-    in_file  = open(filepath, "rb")
+    in_file = open(filepath, "rb")
     reader = csv.reader(in_file)
     lines = []
     for line in reader:

@@ -9,7 +9,6 @@ from pulp_rpm.extensions.admin.upload import category
 
 
 class CreatePackageCategoryCommand(PulpClientTests):
-
     def setUp(self):
         super(CreatePackageCategoryCommand, self).setUp()
         self.upload_manager = mock.MagicMock()
@@ -34,8 +33,8 @@ class CreatePackageCategoryCommand(PulpClientTests):
 
     def test_generate_unit_key(self):
         args = {
-            OPTION_REPO_ID.keyword : 'test-repo',
-            category.OPT_CATEGORY_ID.keyword : 'test-cat'
+            OPTION_REPO_ID.keyword: 'test-repo',
+            category.OPT_CATEGORY_ID.keyword: 'test-cat'
         }
         unit_key = self.command.generate_unit_key(None, **args)
         self.assertEqual(unit_key['id'], 'test-cat')
@@ -43,10 +42,10 @@ class CreatePackageCategoryCommand(PulpClientTests):
 
     def test_generate_metadata(self):
         args = {
-            category.OPT_NAME.keyword : 'test-name',
-            category.OPT_DESCRIPTION.keyword : 'test-description',
-            category.OPT_ORDER.keyword : 'test-order',
-            category.OPT_GROUP.keyword : 'test-group',
+            category.OPT_NAME.keyword: 'test-name',
+            category.OPT_DESCRIPTION.keyword: 'test-description',
+            category.OPT_ORDER.keyword: 'test-order',
+            category.OPT_GROUP.keyword: 'test-group',
         }
 
         metadata = self.command.generate_metadata(None, **args)
