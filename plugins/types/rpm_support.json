@@ -26,7 +26,7 @@
         "unit_key" :
                 ["id"],
         "search_indexes" : [
-            "id", "title", "version", "release", "type",
+            "id",  "version", "release", "type",
             "status", "updated", "issued", "severity", "references"
         ],
         "referenced_types" : ["rpm"]
