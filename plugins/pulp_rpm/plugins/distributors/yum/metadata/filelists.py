@@ -41,5 +41,5 @@ class FilelistsXMLFileContext(FastForwardXmlFileContext):
         """
         metadata = unit.metadata['repodata']['filelists']
         if isinstance(metadata, unicode):
-            metadata = metadata.encode(encoding='utf-8')
+            metadata = metadata.encode('utf-8')
         self.metadata_file_handle.write(metadata)
