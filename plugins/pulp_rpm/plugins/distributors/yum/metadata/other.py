@@ -41,5 +41,5 @@ class OtherXMLFileContext(FastForwardXmlFileContext):
         """
         metadata = unit.metadata['repodata']['other']
         if isinstance(metadata, unicode):
-            metadata = metadata.encode(encoding='utf-8')
+            metadata = metadata.encode('utf-8')
         self.metadata_file_handle.write(metadata)
