@@ -92,7 +92,8 @@ def sync(sync_conduit, feed, working_dir, nectar_config, report, progress_callba
         else:
             _LOGGER.error('some distro file downloads failed')
             report['state'] = constants.STATE_FAILED
-            report['error_details'] = [(fail.url, fail.error_report) for fail in listener.failed_reports]
+            report['error_details'] = [(fail.url, {'error_message': fail.error_msg})
+                                       for fail in listener.failed_reports]
             return
         report['state'] = constants.STATE_COMPLETE
     finally:
