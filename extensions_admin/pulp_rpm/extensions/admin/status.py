@@ -151,9 +151,9 @@ class RpmStatusRenderer(StatusRenderer):
                     error = data['error_details'][i]
 
                     message_data = {
-                        'filename' : error[0],
-                        'message' : error[1]['error_message'],
-                        'code' : error[1]['error_code'],
+                        'filename': error[0],
+                        'message': error[1].get('error_message'),
+                        'code': error[1].get('error_code'),
                     }
 
                     template  = 'File: %(filename)s\n'
