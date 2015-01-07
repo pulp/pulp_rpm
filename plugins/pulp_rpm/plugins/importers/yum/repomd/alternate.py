@@ -7,12 +7,13 @@ from gettext import gettext as _
 
 from nectar.report import DownloadReport
 
-from pulp.server.content.sources import ContentContainer, Listener, Request
+from pulp.server.content.sources.container import ContentContainer, Listener
+from pulp.server.content.sources.model import Request
 
 from pulp_rpm.plugins.importers.yum.repomd.nectar_factory import create_downloader
 
 
-log = getLogger(__name__)
+_log = getLogger(__name__)
 
 CONTAINER_REPORT = _('The content container reported: %(r)s for base URL: %(u)s')
 
@@ -90,7 +91,7 @@ class Packages(object):
         """
         report = self.container.download(
             self.canceled, self.primary, self.get_requests(), self.listener)
-        log.info(CONTAINER_REPORT, dict(r=report.dict(), u=self.base_url))
+        _log.info(CONTAINER_REPORT, dict(r=report.dict(), u=self.base_url))
 
     def cancel(self):
         """
