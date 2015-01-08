@@ -182,7 +182,7 @@ def errata_models(num):
             del r['checksumtype']
         ret.append(models.Errata(
             'name-%d' % count,
-            {'pkglist': [{'packages': rpms}]}
+            {'pkglist': [{'packages': rpms, 'name': 'somerepo-%d' % count}]}
         ))
         count = _errata_counter.next()
     return ret
