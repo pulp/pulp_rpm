@@ -226,7 +226,7 @@ Metadata
  Flag indicating if this erratum is installed it will require a reboot of the system
 
 Distribution
--------------
+------------
 
 The distribution type's ID is ``distribution``.
 
@@ -249,10 +249,13 @@ Unit Key
  Arch of the distribution tree. For example: x86_64
 
 Metadata
-^^^^^^^^^
+^^^^^^^^
 
 ``files``
  Files associated with the distribution tree.
+
+``timestamp``
+ The ``timestamp`` value as taken from the treeinfo file.
 
 Package Group
 -------------
