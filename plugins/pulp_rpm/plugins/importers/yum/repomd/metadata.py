@@ -2,6 +2,7 @@
 
 from copy import deepcopy
 import gdbm
+import bz2
 import gzip
 import hashlib
 import logging
@@ -241,6 +242,8 @@ class MetadataFiles(object):
             file_handle = gzip.open(file_path, 'r')
         elif file_path.endswith('.xz'):
             file_handle = lzma.LZMAFile(file_path, 'r')
+        elif file_path.endswith('.bz2'):
+            file_handle = bz2.BZ2File(file_path, 'r')
         else:
             file_handle = open(file_path, 'r')
         return file_handle
