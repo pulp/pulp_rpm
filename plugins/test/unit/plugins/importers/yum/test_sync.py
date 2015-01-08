@@ -11,6 +11,7 @@ from pulp.plugins.conduits.repo_sync import RepoSyncConduit
 from pulp.plugins.config import PluginCallConfiguration
 from pulp.plugins.model import Repository, SyncReport, Unit
 import pulp.server.managers.factory as manager_factory
+from pulp.server.exceptions import PulpCodedException
 
 from pulp_rpm.common import constants, ids
 from pulp_rpm.plugins.db import models
@@ -706,7 +707,8 @@ class TestGetErrata(BaseSyncTest):
         mock_save.assert_called_once_with(self.reposync,
                                           mock_get.return_value,
                                           updateinfo.PACKAGE_TAG,
-                                          updateinfo.process_package_element)
+                                          updateinfo.process_package_element,
+                                          additive_type=True)
 
 
 class TestGetCompsFileUnits(BaseSyncTest):
@@ -765,11 +767,16 @@ class TestGetCompsFileUnits(BaseSyncTest):
 
 
 class TestSaveFilelessUnits(BaseSyncTest):
+
     @mock.patch('pulp_rpm.plugins.importers.yum.existing.check_repo', autospec=True)
     @mock.patch('pulp_rpm.plugins.importers.yum.repomd.packages.package_list_generator', autospec=True)
-    def test_save_erratas_none_existing(self, mock_generator, mock_check_repo):
+    def test_save_fileless_units(self, mock_generator, mock_check_repo):
         """
-        test where no errata already exist, so all should be saved
+        test the "base" use case for save_fileless_units.
+
+        Note that we are using errata as the unit here, but errata are typically
+        saved with "additive_type" set to True.
+
         """
         errata = tuple(model_factory.errata_models(3))
         mock_generator.return_value = errata
@@ -791,31 +798,109 @@ class TestSaveFilelessUnits(BaseSyncTest):
         self.conduit.save_unit.assert_any_call(self.conduit.init_unit.return_value)
         self.assertEqual(self.conduit.save_unit.call_count, 3)
 
-    @mock.patch('pulp_rpm.plugins.importers.yum.existing.check_repo', autospec=True)
-    @mock.patch('pulp_rpm.plugins.importers.yum.repomd.packages.package_list_generator', autospec=True)
-    def test_save_erratas_some_existing(self, mock_generator, mock_check_repo):
+    def test_save_fileless_units_bad_args(self):
         """
-        test where some errata already exist, so only some should be saved
+        Ensure that an error is raised if save_fileless_units is called with
+        mutually exclusive args
+        """
+        self.assertRaises(PulpCodedException, self.reposync.save_fileless_units,
+                          None, None, None, mutable_type=True, additive_type=True)
+
+    @mock.patch('pulp_rpm.plugins.importers.yum.repomd.packages.'
+                'package_list_generator', autospec=True)
+    @mock.patch('pulp.plugins.conduits.mixins.SearchUnitsMixin.'
+                'find_unit_by_unit_key', autospec=True)
+    @mock.patch('pulp_rpm.plugins.importers.yum.sync.RepoSync._concatenate_units', autospec=True)
+    def test_save_erratas_none_existing(self, mock_concat, mock_find_unit, mock_generator):
+        """
+        test where no errata already exist, so all should be saved
         """
         errata = tuple(model_factory.errata_models(3))
         mock_generator.return_value = errata
-        mock_check_repo.return_value = [g.as_named_tuple for g in errata[:2]]
         self.conduit.init_unit = mock.MagicMock(spec_set=self.conduit.init_unit)
         self.conduit.save_unit = mock.MagicMock(spec_set=self.conduit.save_unit)
+        # all of these units are new, find_unit_by_unit_key will return None
+        mock_find_unit.return_value = None
         file_handle = StringIO()
 
-        self.reposync.save_fileless_units(file_handle, updateinfo.PACKAGE_TAG, updateinfo.process_package_element)
+        # errata are saved with the "additive=True" flag
+        self.reposync.save_fileless_units(file_handle, updateinfo.PACKAGE_TAG,
+                                          updateinfo.process_package_element, additive_type=True)
 
         mock_generator.assert_any_call(file_handle, updateinfo.PACKAGE_TAG, updateinfo.process_package_element)
-        self.assertEqual(mock_generator.call_count, 2)
-        self.assertEqual(mock_check_repo.call_count, 1)
-        self.assertEqual(list(mock_check_repo.call_args[0][0]), [g.as_named_tuple for g in errata])
-        self.assertEqual(mock_check_repo.call_args[0][1], self.conduit.get_units)
+        self.assertEqual(mock_generator.call_count, 1)
 
-        for model in errata[:2]:
+        for model in errata:
             self.conduit.init_unit.assert_any_call(model.TYPE, model.unit_key, model.metadata, None)
         self.conduit.save_unit.assert_any_call(self.conduit.init_unit.return_value)
-        self.assertEqual(self.conduit.save_unit.call_count, 2)
+        self.assertEqual(self.conduit.save_unit.call_count, 3)
+
+    @mock.patch('pulp_rpm.plugins.importers.yum.repomd.packages.'
+                'package_list_generator', autospec=True)
+    @mock.patch('pulp.plugins.conduits.mixins.SearchUnitsMixin.'
+                'find_unit_by_unit_key', autospec=True)
+    @mock.patch('pulp_rpm.plugins.importers.yum.sync.RepoSync._concatenate_units', autospec=True)
+    def test_save_erratas_some_existing(self, mock_concat, mock_find_unit, mock_generator):
+        """
+        test where some errata already exist. When "additive_type" is set, we
+        will always init and save a unit since it may have been modified.
+        """
+        errata = tuple(model_factory.errata_models(3))
+        mock_generator.return_value = errata
+        self.conduit.init_unit = mock.MagicMock(spec_set=self.conduit.init_unit)
+        self.conduit.save_unit = mock.MagicMock(spec_set=self.conduit.save_unit)
+        # all of these units are new, find_unit_by_unit_key will return None
+        mock_find_unit.return_value = None
+        file_handle = StringIO()
+
+        find_unit_retvals = [mock.Mock(), None, mock.Mock()]
+        def _find_unit_return(*args):
+            return find_unit_retvals.pop()
+        mock_find_unit.side_effect = _find_unit_return
+
+        concat_unit_retvals = ["fake-unit-b", "fake-unit-a"]
+        def _concat_unit_return(*args):
+            return concat_unit_retvals.pop()
+        mock_concat.side_effect = _concat_unit_return
+
+        # errata are saved with the "additive=True" flag
+        self.reposync.save_fileless_units(file_handle, updateinfo.PACKAGE_TAG,
+                                          updateinfo.process_package_element, additive_type=True)
+
+        mock_generator.assert_any_call(file_handle, updateinfo.PACKAGE_TAG,
+                                       updateinfo.process_package_element)
+        # the generator is called only once since we are not rewinding the file
+        # handle or checking the repo for existing elements.
+        self.assertEqual(mock_generator.call_count, 1)
+
+        for model in errata:
+            self.conduit.init_unit.assert_any_call(model.TYPE, model.unit_key, model.metadata, None)
+
+        self.conduit.save_unit.assert_any_call("fake-unit-a")
+        self.conduit.save_unit.assert_any_call("fake-unit-b")
+        self.conduit.save_unit.assert_any_call(self.conduit.init_unit.return_value)
+        self.assertEqual(self.conduit.save_unit.call_count, 3)
+
+    @mock.patch('pulp_rpm.plugins.importers.yum.repomd.packages.'
+                'package_list_generator', autospec=True)
+    @mock.patch('pulp_rpm.plugins.importers.yum.sync.RepoSync._concatenate_units', autospec=True)
+    @mock.patch('pulp.plugins.conduits.mixins.SearchUnitsMixin.'
+                'find_unit_by_unit_key', autospec=True)
+    def test_save_erratas_update_pkglist(self, mock_find_unit, mock_concat, mock_generator):
+        """
+        test that we call _concatenate_units when we find an existing errata
+        """
+        errata = tuple(model_factory.errata_models(3))
+        mock_generator.return_value = errata
+        self.conduit.init_unit = mock.MagicMock(spec_set=self.conduit.init_unit)
+        self.conduit.save_unit = mock.MagicMock(spec_set=self.conduit.save_unit)
+        mock_find_unit.return_value = "fake unit"
+        file_handle = StringIO()
+
+        self.reposync.save_fileless_units(file_handle, updateinfo.PACKAGE_TAG,
+                                          updateinfo.process_package_element, additive_type=True)
+
+        self.assertEqual(mock_concat.call_count, 3)
 
     @mock.patch('pulp_rpm.plugins.importers.yum.existing.check_repo', autospec=True)
     @mock.patch('pulp_rpm.plugins.importers.yum.repomd.packages.package_list_generator', autospec=True)
@@ -845,10 +930,14 @@ class TestSaveFilelessUnits(BaseSyncTest):
         self.assertEqual(self.conduit.save_unit.call_count, 3)
 
     @mock.patch('pulp_rpm.plugins.importers.yum.existing.check_repo', autospec=True)
-    @mock.patch('pulp_rpm.plugins.importers.yum.repomd.packages.package_list_generator', autospec=True)
-    def test_save_erratas_all_existing(self, mock_generator, mock_check_repo):
+    @mock.patch('pulp_rpm.plugins.importers.yum.repomd.packages.'
+                'package_list_generator', autospec=True)
+    @mock.patch('pulp.plugins.conduits.mixins.SearchUnitsMixin.'
+                'find_unit_by_unit_key', autospec=True)
+    @mock.patch('pulp_rpm.plugins.importers.yum.sync.RepoSync._concatenate_units', autospec=True)
+    def test_save_erratas_all_existing(self, mock_concat, mock_find_unit, mock_generator, mock_check_repo):
         """
-        test where all errata already exist, so none should be saved
+        test where all errata already exist
         """
         errata = tuple(model_factory.errata_models(3))
         mock_generator.return_value = errata
@@ -857,16 +946,159 @@ class TestSaveFilelessUnits(BaseSyncTest):
         self.conduit.save_unit = mock.MagicMock(spec_set=self.conduit.save_unit)
         file_handle = StringIO()
 
-        self.reposync.save_fileless_units(file_handle, updateinfo.PACKAGE_TAG, updateinfo.process_package_element)
+        self.reposync.save_fileless_units(file_handle, updateinfo.PACKAGE_TAG,
+                                          updateinfo.process_package_element, additive_type=True)
 
         mock_generator.assert_any_call(file_handle, updateinfo.PACKAGE_TAG, updateinfo.process_package_element)
-        self.assertEqual(mock_generator.call_count, 2)
-        self.assertEqual(mock_check_repo.call_count, 1)
-        self.assertEqual(list(mock_check_repo.call_args[0][0]), [g.as_named_tuple for g in errata])
-        self.assertEqual(mock_check_repo.call_args[0][1], self.conduit.get_units)
+        self.assertEqual(mock_generator.call_count, 1)
 
-        self.assertEqual(self.conduit.save_unit.call_count, 0)
+        self.assertEqual(self.conduit.save_unit.call_count, 3)
 
+    def test_concatenate_units_wrong_type_id(self):
+        """
+        Ensure that we get an exception if we try to concatenate units of different types!
+        """
+        mock_erratum_model = models.Errata('RHBA-1234', metadata={})
+        mock_existing_unit = Unit(ids.TYPE_ID_ERRATA, mock_erratum_model.unit_key,
+                                  mock_erratum_model.metadata, "/fake/path")
+
+        mock_dist_model = models.Distribution('fake family', 'server', '3.11',
+                                              'baroque', metadata={})
+        mock_new_unit = Unit(ids.TYPE_ID_DISTRO, mock_dist_model.unit_key,
+                             mock_dist_model.metadata, "/fake/path")
+
+        self.assertRaises(PulpCodedException, self.reposync._concatenate_units,
+                          mock_existing_unit, mock_new_unit)
+
+    def test_concatenate_units_wrong_unit_keys(self):
+        """
+        Ensure that we get an exception if we try to concatenate units with different unit_keys.
+        """
+        mock_existing_erratum_model = models.Errata('RHBA-1234', metadata={})
+        mock_existing_unit = Unit(ids.TYPE_ID_ERRATA, mock_existing_erratum_model.unit_key,
+                                  mock_existing_erratum_model.metadata, "/fake/path")
+
+        mock_new_erratum_model = models.Errata('RHBA-5678', metadata={})
+        mock_new_unit = Unit(ids.TYPE_ID_ERRATA, mock_new_erratum_model.unit_key,
+                                  mock_new_erratum_model.metadata, "/fake/path")
+
+        self.assertRaises(PulpCodedException, self.reposync._concatenate_units,
+                          mock_existing_unit, mock_new_unit)
+
+    def test_concatenate_units_unsupported_type(self):
+        """
+        Ensure that we get an exception if we try to concatenate unsupported units
+        """
+        mock_existing_dist_model = models.Distribution('fake family', 'server', '3.11',
+                                              'baroque', metadata={})
+        mock_existing_dist_unit = Unit(ids.TYPE_ID_DISTRO, mock_existing_dist_model.unit_key,
+                                       mock_existing_dist_model.metadata, "/fake/path")
+        mock_new_dist_model = models.Distribution('fake family', 'server', '3.11',
+                                                  'baroque', metadata={})
+        mock_new_dist_unit = Unit(ids.TYPE_ID_DISTRO, mock_new_dist_model.unit_key,
+                                  mock_new_dist_model.metadata, "/fake/path")
+
+        self.assertRaises(PulpCodedException, self.reposync._concatenate_units,
+                          mock_existing_dist_unit, mock_new_dist_unit)
+
+    def test_concatenate_units_errata(self):
+        """
+        Ensure that concatenation works
+        """
+        mock_existing_erratum_pkglist = [{'packages': [{"name": "some_package v1"},
+                                                       {"name": "another_package v1"}],
+                                          'name': 'v1 packages'}]
+        mock_existing_erratum_model = models.Errata('RHBA-1234', metadata={'pkglist':
+                                                                 mock_existing_erratum_pkglist})
+        mock_existing_unit = Unit(ids.TYPE_ID_ERRATA, mock_existing_erratum_model.unit_key,
+                                  mock_existing_erratum_model.metadata, "/fake/path")
+
+        mock_new_erratum_pkglist = [{'packages': [{"name": "some_package v2"},
+                                                  {"name": "another_package v2"}],
+                                     'name': 'v2 packages'}]
+        mock_new_erratum_model = models.Errata('RHBA-1234', metadata={'pkglist':
+                                                            mock_new_erratum_pkglist})
+        mock_new_unit = Unit(ids.TYPE_ID_ERRATA, mock_new_erratum_model.unit_key,
+                                  mock_new_erratum_model.metadata, "/fake/path")
+
+
+        concat_unit = self.reposync._concatenate_units(mock_existing_unit, mock_new_unit)
+
+        self.assertEquals(concat_unit.metadata, {'pkglist':
+                                                 [{'packages': [{'name': 'some_package v1'},
+                                                                {'name': 'another_package v1'}],
+                                                   'name': 'v1 packages'},
+                                                  {'packages': [{'name': 'some_package v2'},
+                                                                {'name': 'another_package v2'}],
+                                                   'name': 'v2 packages'}]})
+
+    def test_concatenate_units_errata_same_errata(self):
+        """
+        Ensure that we do not alter existing package lists when there is no new info
+        """
+        mock_existing_erratum_pkglist = [{'packages': [{"name": "some_package v1"},
+                                                       {"name": "another_package v1"}],
+                                          'name': 'v1 packages'}]
+        mock_existing_erratum_model = models.Errata('RHBA-1234', metadata={'pkglist':
+                                                                 mock_existing_erratum_pkglist})
+        mock_existing_unit = Unit(ids.TYPE_ID_ERRATA, mock_existing_erratum_model.unit_key,
+                                  mock_existing_erratum_model.metadata, "/fake/path")
+
+
+        # new erratum has the same package list and same ID
+        mock_new_erratum_pkglist = [{'packages': [{"name": "some_package v1"},
+                                                  {"name": "another_package v1"}],
+                                     'name': 'v1 packages'}]
+
+        mock_new_erratum_model = models.Errata('RHBA-1234', metadata={'pkglist':
+                                                            mock_new_erratum_pkglist})
+        mock_new_unit = Unit(ids.TYPE_ID_ERRATA, mock_new_erratum_model.unit_key,
+                                  mock_new_erratum_model.metadata, "/fake/path")
+
+
+        concat_unit = self.reposync._concatenate_units(mock_existing_unit, mock_new_unit)
+
+        self.assertEquals(concat_unit.metadata, {'pkglist':
+                                                 [{'packages': [{'name': 'some_package v1'},
+                                                                {'name': 'another_package v1'}],
+                                                 'name': 'v1 packages'}]})
+
+    def test_concatenate_units_errata_avoid_double_concat(self):
+        """
+        Ensure that we do not append a package list to an errata a second time
+        """
+        mock_existing_erratum_pkglist = [{'packages': [{'name': 'some_package v1'},
+                                                       {'name': 'another_package v1'}],
+                                          'name': 'v1 packages'},
+                                         {'packages': [{'name': 'some_package v2'},
+                                                       {'name': 'another_package v2'}],
+                                          'name': 'v2 packages'}]
+
+        mock_existing_erratum_model = models.Errata('RHBA-1234', metadata={'pkglist':
+                                                                 mock_existing_erratum_pkglist})
+        mock_existing_unit = Unit(ids.TYPE_ID_ERRATA, mock_existing_erratum_model.unit_key,
+                                  mock_existing_erratum_model.metadata, "/fake/path")
+
+        # new erratum has a subset of what we already know
+        mock_new_erratum_pkglist = [{'packages': [{"name": "some_package v1"},
+                                                  {"name": "another_package v1"}],
+                                     'name': 'v1 packages'}]
+
+        mock_new_erratum_model = models.Errata('RHBA-1234', metadata={'pkglist':
+                                                            mock_new_erratum_pkglist})
+        mock_new_unit = Unit(ids.TYPE_ID_ERRATA, mock_new_erratum_model.unit_key,
+                                  mock_new_erratum_model.metadata, "/fake/path")
+
+
+        concat_unit = self.reposync._concatenate_units(mock_existing_unit, mock_new_unit)
+
+        self.assertEquals(concat_unit.metadata, {'pkglist':
+                                                 [{'packages': [{'name': 'some_package v1'},
+                                                  {'name': 'another_package v1'}],
+                                                  'name': 'v1 packages'},
+                                                  {'packages': [{'name': 'some_package v2'},
+                                                  {'name': 'another_package v2'}],
+                                                  'name': 'v2 packages'}]})
 
 class TestIdentifyWantedVersions(BaseSyncTest):
     def test_keep_all(self):
