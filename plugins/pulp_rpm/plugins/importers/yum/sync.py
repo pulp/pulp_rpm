@@ -7,8 +7,9 @@ from gettext import gettext as _
 
 from pulp.common.plugins import importer_constants
 from pulp.plugins.util import nectar_config as nectar_utils, verification
+from pulp.server.exceptions import PulpCodedException
 
-from pulp_rpm.common import constants
+from pulp_rpm.common import constants, ids
 from pulp_rpm.plugins.db import models
 from pulp_rpm.plugins.importers.yum import existing, purge
 from pulp_rpm.plugins.importers.yum.repomd import (
@@ -467,8 +468,8 @@ class RepoSync(object):
             _logger.debug('updateinfo not found')
             return
         try:
-            self.save_fileless_units(errata_file_handle, updateinfo.PACKAGE_TAG, updateinfo.process_package_element)
-
+            self.save_fileless_units(errata_file_handle, updateinfo.PACKAGE_TAG,
+                                     updateinfo.process_package_element, additive_type=True)
         finally:
             errata_file_handle.close()
 
@@ -498,7 +499,8 @@ class RepoSync(object):
         finally:
             group_file_handle.close()
 
-    def save_fileless_units(self, file_handle, tag, process_func, mutable_type=False):
+    def save_fileless_units(self, file_handle, tag, process_func, mutable_type=False,
+                                                                  additive_type=False):
         """
         Generic method for saving units parsed from a repo metadata file where
         the units do not have files to store on disk. For example, groups.
@@ -517,14 +519,25 @@ class RepoSync(object):
                                 useful for units like group and category which
                                 don't have a version, but could change
         :type  mutable_type:    bool
+        :param additive_type:   iff True, units will be updated instead of
+                                replaced. For example, if you wanted to save an
+                                errata and concatenate its package list with an
+                                existing errata, you'd set this. Note that mutable_type
+                                and additive_type are mutually exclusive.
+        :type  additive_type:   bool
         """
+
+        if mutable_type and additive_type:
+            raise PulpCodedException(message="The mutable_type and additive_type arguments for "
+                                             "this method are mutually exclusive.")
+
         # iterate through the file and determine what we want to have
         package_info_generator = packages.package_list_generator(file_handle,
                                                                  tag,
                                                                  process_func)
         # if units aren't mutable, we don't need to attempt saving units that
         # we already have
-        if not mutable_type:
+        if not mutable_type and not additive_type:
             wanted = (model.as_named_tuple for model in package_info_generator)
             # given what we want, filter out what we already have
             to_save = existing.check_repo(wanted, self.sync_conduit.get_units)
@@ -538,7 +551,51 @@ class RepoSync(object):
 
         for model in package_info_generator:
             unit = self.sync_conduit.init_unit(model.TYPE, model.unit_key, model.metadata, None)
+            if additive_type:
+                existing_unit = self.sync_conduit.find_unit_by_unit_key(model.TYPE, model.unit_key)
+                if existing_unit:
+                    unit = self._concatenate_units(existing_unit, unit)
+
             self.sync_conduit.save_unit(unit)
+
+    def _concatenate_units(self, existing_unit, new_unit):
+        """
+        Perform unit concatenation.
+
+        :param existing_unit: The unit that is already in the DB
+        :type  existing_unit: pulp.plugins.model.Unit
+
+        :param new_unit: The unit we are combining with the existing unit
+        :type  new_unit: pulp.plugins.model.Unit
+        """
+        if existing_unit.type_id != new_unit.type_id:
+            raise PulpCodedException(message="Cannot concatenate two units of different types. "
+                                             "Tried to concatenate %s with %s" %
+                                             (existing_unit.type_id, new_unit.type_id))
+
+        if existing_unit.unit_key != new_unit.unit_key:
+            raise PulpCodedException(message="Concatenated units must have the same unit key. "
+                                             "Tried to concatenate %s with %s" %
+                                             (existing_unit.unit_key, new_unit.unit_key))
+
+        if existing_unit.type_id == ids.TYPE_ID_ERRATA:
+            # start with the package list we have in existing_unit
+            package_lists = existing_unit.metadata['pkglist']
+
+            # add in anything from new_unit that we don't already have. We key
+            # package lists by name for this concatenation.
+            new_package_lists = []
+            existing_package_list_names = [p['name'] for p in existing_unit.metadata['pkglist']]
+
+            for possible_new_pkglist in new_unit.metadata['pkglist']:
+                if possible_new_pkglist['name'] not in existing_package_list_names:
+                    existing_unit.metadata['pkglist'] += [possible_new_pkglist]
+        else:
+            raise PulpCodedException(message="Concatenation of unit type %s is not supported" %
+                                             existing_unit.type_id)
+
+        # return the unit now that we've possibly modified it.
+        return existing_unit
 
     def finalize(self):
         """
