@@ -7,8 +7,10 @@ from xml.etree import cElementTree as ET
 import rpm
 from pulp.plugins.util import verification
 from pulp.server.db.model.criteria import UnitAssociationCriteria
+from pulp.server.exceptions import PulpCodedValidationException, PulpCodedException
 
 from pulp_rpm.plugins.db import models
+from pulp_rpm.plugins import error_codes
 from pulp_rpm.plugins.importers.yum import utils
 from pulp_rpm.plugins.importers.yum.parse import rpm as rpm_parse
 from pulp_rpm.plugins.importers.yum.repomd import primary
@@ -95,6 +97,9 @@ def upload(repo, type_id, unit_key, metadata, file_path, conduit, config):
         msg = 'metadata for the given package could not be extracted'
         _LOGGER.exception(msg)
         return _fail_report(msg)
+    except PulpCodedException, e:
+        _LOGGER.exception(e)
+        return _fail_report(str(e))
     except:
         msg = 'unexpected error occurred importing uploaded file'
         _LOGGER.exception(msg)
@@ -227,13 +232,12 @@ def _handle_package(type_id, unit_key, metadata, file_path, conduit, config):
     :type  conduit: pulp.plugins.conduits.upload.UploadConduit
     :type  config: pulp.plugins.config.PluginCallConfiguration
     """
-
     # Extract the RPM key and metadata
     try:
-        new_unit_key, new_unit_metadata = _generate_rpm_data(file_path, metadata)
+        new_unit_key, new_unit_metadata = _generate_rpm_data(type_id, file_path, metadata)
     except:
         _LOGGER.exception('Error extracting RPM metadata for [%s]' % file_path)
-        raise PackageMetadataError()
+        raise
 
     # Update the RPM-extracted data with anything additional the user specified.
     # Allow the user-specified values to override the extracted ones.
@@ -296,11 +300,13 @@ def _update_provides_requires(unit):
                                      requires_element.findall('entry')) if requires_element else []
 
 
-def _generate_rpm_data(rpm_filename, user_metadata=None):
+def _generate_rpm_data(type_id, rpm_filename, user_metadata=None):
     """
     For the given RPM, analyzes its metadata to generate the appropriate unit
     key and metadata fields, returning both to the caller.
 
+    :param type_id: The type of the unit that is being generated
+    :type  type_id: str
     :param rpm_filename: full path to the RPM to analyze
     :type  rpm_filename: str
     :param user_metadata: user supplied metadata about the unit. This is optional.
@@ -364,10 +370,14 @@ def _generate_rpm_data(rpm_filename, user_metadata=None):
 
     # construct filename from metadata (BZ #1101168)
     if headers[rpm.RPMTAG_SOURCEPACKAGE]:
+        if type_id != models.SRPM.TYPE:
+            raise PulpCodedValidationException(error_code=error_codes.RPM1002)
         rpm_basefilename = "%s-%s-%s.src.rpm" % (headers['name'],
                                                  headers['version'],
                                                  headers['release'])
     else:
+        if type_id != models.RPM.TYPE:
+            raise PulpCodedValidationException(error_code=error_codes.RPM1003)
         rpm_basefilename = "%s-%s-%s.%s.rpm" % (headers['name'],
                                                 headers['version'],
                                                 headers['release'],
