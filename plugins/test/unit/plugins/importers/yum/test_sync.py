@@ -476,7 +476,7 @@ class TestDecideDRPMsToDownload(BaseSyncTest):
         self.assertEqual(ret, (set(), 0, 0))
 
     def test_no_file_available(self):
-        self.assertTrue(self.metadata_files.get_metadata_file_handle(presto.METADATA_FILE_NAME) is None)
+        self.assertTrue(self.metadata_files.get_metadata_file_handle(presto.METADATA_FILE_NAMES[0]) is None)
 
         ret = self.reposync._decide_drpms_to_download(self.metadata_files)
 
@@ -492,7 +492,7 @@ class TestDecideDRPMsToDownload(BaseSyncTest):
         presto_file = StringIO()
         mock_open.return_value = presto_file
         model = model_factory.drpm_models(1)[0]
-        self.metadata_files.metadata[presto.METADATA_FILE_NAME] = {'local_path': '/path/to/presto'}
+        self.metadata_files.metadata[presto.METADATA_FILE_NAMES[0]] = {'local_path': '/path/to/presto'}
         mock_generator.return_value = [model.as_named_tuple]
         mock_identify.return_value = {model.as_named_tuple: 1024}
         mock_check_repo.return_value = set([model.as_named_tuple])
@@ -510,7 +510,7 @@ class TestDecideDRPMsToDownload(BaseSyncTest):
     def test_closes_file_on_exception(self, mock_generator, mock_open):
         presto_file = StringIO()
         mock_open.return_value = presto_file
-        self.metadata_files.metadata[presto.METADATA_FILE_NAME] = {'local_path': '/path/to/presto'}
+        self.metadata_files.metadata[presto.METADATA_FILE_NAMES[0]] = {'local_path': '/path/to/presto'}
         mock_generator.side_effect = ValueError
 
         self.assertRaises(ValueError, self.reposync._decide_drpms_to_download,
@@ -537,8 +537,10 @@ class TestDownload(BaseSyncTest):
             spec_set=self.metadata_files.get_metadata_file_handle,
             side_effect=StringIO,
         )
+        # The 2nd/3rd calls are for the prestodelta, deltaninfo files
         mock_package_list_generator.side_effect = iter([model_factory.rpm_models(3),
-                                                       model_factory.drpm_models(3)])
+                                                       model_factory.drpm_models(3),
+                                                       None])
 
         report = self.reposync.download(self.metadata_files, set(), set())
 
@@ -557,7 +559,7 @@ class TestDownload(BaseSyncTest):
         file_handle = StringIO()
         self.metadata_files.get_metadata_file_handle = mock.MagicMock(
             spec_set=self.metadata_files.get_metadata_file_handle,
-            side_effect=[file_handle, None],  # None means it will skip DRPMs
+            side_effect=[file_handle, None, None],  # None means it will skip DRPMs
         )
         rpms = model_factory.rpm_models(3)
         for rpm in rpms:
@@ -601,12 +603,16 @@ class TestDownload(BaseSyncTest):
         file_handle = StringIO()
         self.metadata_files.get_metadata_file_handle = mock.MagicMock(
             spec_set=self.metadata_files.get_metadata_file_handle,
-            side_effect=[StringIO(), file_handle],
+            # The second and third time this method is called are to get the deltainfo/prestodelta
+            # files
+            side_effect=[StringIO(), file_handle, file_handle],
         )
         drpms = model_factory.drpm_models(3)
         for drpm in drpms:
             drpm.metadata['relativepath'] = ''
-        mock_package_list_generator.side_effect = iter([[], drpms])
+
+        # including drpms twice catches both possible prestodelta file names
+        mock_package_list_generator.side_effect = iter([[], drpms, drpms])
         self.downloader.download = mock.MagicMock(spec_set=self.downloader.download)
         mock_create_downloader.return_value = self.downloader
 
@@ -617,8 +623,10 @@ class TestDownload(BaseSyncTest):
         # call download, passing in only two of the 3 rpms as units we want
         report = self.reposync.download(self.metadata_files, set(), set(m.as_named_tuple for m in drpms[:2]))
 
-        self.assertEqual(self.downloader.download.call_count, 1)
-        self.assertEqual(mock_package_list_generator.call_count, 2)
+        # check download call twice since each drpm metadata file referenced 1 drpm
+        self.assertEqual(self.downloader.download.call_count, 2)
+        # Package list generator gets called 3 time, once for the rpms and twice for drpms
+        self.assertEqual(mock_package_list_generator.call_count, 3)
 
         # verify that the download requests were correct
         requests = list(self.downloader.download.call_args[0][0])

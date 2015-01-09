@@ -4,8 +4,8 @@ from pulp.plugins.util import verification
 
 from pulp_rpm.plugins.db import models
 
-
-METADATA_FILE_NAME = 'prestodelta'
+# rhel/centos based distributions use 'prestodelta', suse based distributions use 'deltainfo'
+METADATA_FILE_NAMES = ['prestodelta', 'deltainfo']
 
 PACKAGE_TAG = 'newpackage'
 

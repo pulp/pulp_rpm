@@ -350,30 +350,35 @@ class RepoSync(object):
         if models.DRPM.TYPE in self.call_config.get(constants.CONFIG_SKIP, []):
             _logger.debug('skipping DRPM sync')
             return set(), 0, 0
-        presto_file_handle = metadata_files.get_metadata_file_handle(presto.METADATA_FILE_NAME)
-        if presto_file_handle:
-            try:
-                package_info_generator = packages.package_list_generator(presto_file_handle,
-                                                                         presto.PACKAGE_TAG,
-                                                                         presto.process_package_element)
-                wanted = self._identify_wanted_versions(package_info_generator)
-                # check for the units that are already in the repo
-                not_found_in_the_repo = existing.check_repo(wanted.iterkeys(),
-                                                            self.sync_conduit.get_units)
-                # check for the units that are not in the repo, but exist on the server
-                # and associate them to the repo
-                to_download = existing.check_all_and_associate(not_found_in_the_repo,
-                                                               self.sync_conduit)
-                count = len(to_download)
-                size = 0
-                for unit in to_download:
-                    size += wanted[unit]
-            finally:
-                presto_file_handle.close()
-        else:
-            to_download = set()
-            count = 0
-            size = 0
+
+        to_download = set()
+        count = 0
+        size = 0
+
+        # multiple options for deltainfo files depending on the distribution
+        # so we have to go through all of them
+        for metadata_file_name in presto.METADATA_FILE_NAMES:
+            presto_file_handle = metadata_files.get_metadata_file_handle(metadata_file_name)
+            if presto_file_handle:
+                try:
+                    package_info_generator = packages.package_list_generator(
+                        presto_file_handle,
+                        presto.PACKAGE_TAG,
+                        presto.process_package_element)
+                    wanted = self._identify_wanted_versions(package_info_generator)
+                    # check for the units that are already in the repo
+                    not_found_in_the_repo = existing.check_repo(wanted.iterkeys(),
+                                                                self.sync_conduit.get_units)
+                    # check for the units that are not in the repo, but exist on the server
+                    # and associate them to the repo
+                    to_download = existing.check_all_and_associate(not_found_in_the_repo,
+                                                                   self.sync_conduit)
+                    count += len(to_download)
+                    for unit in to_download:
+                        size += wanted[unit]
+                finally:
+                    presto_file_handle.close()
+
         return to_download, count, size
 
     def download(self, metadata_files, rpms_to_download, drpms_to_download):
@@ -413,23 +418,29 @@ class RepoSync(object):
             primary_file_handle.close()
 
         # download DRPMs
-        presto_file_handle = metadata_files.get_metadata_file_handle(presto.METADATA_FILE_NAME)
-        if presto_file_handle:
-            try:
-                package_model_generator = packages.package_list_generator(presto_file_handle,
-                                                                          presto.PACKAGE_TAG,
-                                                                          presto.process_package_element)
-                units_to_download = self._filtered_unit_generator(package_model_generator, drpms_to_download)
+        # multiple options for deltainfo files depending on the distribution
+        # so we have to go through all of them to get all the DRPMs
+        for presto_file_name in presto.METADATA_FILE_NAMES:
+            presto_file_handle = metadata_files.get_metadata_file_handle(presto_file_name)
+            if presto_file_handle:
+                try:
+                    package_model_generator = packages.package_list_generator(
+                        presto_file_handle,
+                        presto.PACKAGE_TAG,
+                        presto.process_package_element)
+                    units_to_download = self._filtered_unit_generator(package_model_generator,
+                                                                      drpms_to_download)
 
-                download_wrapper = packages.Packages(self.sync_feed, self.nectar_config,
-                                                     units_to_download, self.tmp_dir, event_listener)
-                # allow the downloader to be accessed by the cancel method if necessary
-                self.downloader = download_wrapper.downloader
-                _logger.info(_('Downloading %(num)s DRPMs.') % {'num': len(drpms_to_download)})
-                download_wrapper.download_packages()
-                self.downloader = None
-            finally:
-                presto_file_handle.close()
+                    download_wrapper = packages.Packages(self.sync_feed, self.nectar_config,
+                                                         units_to_download, self.tmp_dir,
+                                                         event_listener)
+                    # allow the downloader to be accessed by the cancel method if necessary
+                    self.downloader = download_wrapper.downloader
+                    _logger.info(_('Downloading %(num)s DRPMs.') % {'num': len(drpms_to_download)})
+                    download_wrapper.download_packages()
+                    self.downloader = None
+                finally:
+                    presto_file_handle.close()
 
         report = self.sync_conduit.build_success_report({}, {})
         return report
