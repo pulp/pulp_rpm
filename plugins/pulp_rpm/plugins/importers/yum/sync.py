@@ -351,6 +351,9 @@ class RepoSync(object):
             _logger.debug('skipping DRPM sync')
             return set(), 0, 0
         presto_file_handle = metadata_files.get_metadata_file_handle(presto.METADATA_FILE_NAME)
+        if not presto_file_handle:
+            presto_file_handle = metadata_files.get_metadata_file_handle(
+                presto.ALTERNATE_METADATA_FILE_NAME)
         if presto_file_handle:
             try:
                 package_info_generator = packages.package_list_generator(presto_file_handle,
@@ -414,6 +417,10 @@ class RepoSync(object):
 
         # download DRPMs
         presto_file_handle = metadata_files.get_metadata_file_handle(presto.METADATA_FILE_NAME)
+        if not presto_file_handle:
+            presto_file_handle = metadata_files.get_metadata_file_handle(
+                presto.ALTERNATE_METADATA_FILE_NAME)
+
         if presto_file_handle:
             try:
                 package_model_generator = packages.package_list_generator(presto_file_handle,

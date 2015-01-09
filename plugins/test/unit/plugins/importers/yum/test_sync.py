@@ -557,7 +557,7 @@ class TestDownload(BaseSyncTest):
         file_handle = StringIO()
         self.metadata_files.get_metadata_file_handle = mock.MagicMock(
             spec_set=self.metadata_files.get_metadata_file_handle,
-            side_effect=[file_handle, None],  # None means it will skip DRPMs
+            side_effect=[file_handle, None, None],  # None means it will skip DRPMs
         )
         rpms = model_factory.rpm_models(3)
         for rpm in rpms:
@@ -616,6 +616,48 @@ class TestDownload(BaseSyncTest):
 
         # call download, passing in only two of the 3 rpms as units we want
         report = self.reposync.download(self.metadata_files, set(), set(m.as_named_tuple for m in drpms[:2]))
+
+        self.assertEqual(self.downloader.download.call_count, 1)
+        self.assertEqual(mock_package_list_generator.call_count, 2)
+
+        # verify that the download requests were correct
+        requests = list(self.downloader.download.call_args[0][0])
+        self.assertEqual(len(requests), 2)
+        self.assertEqual(requests[0].url, os.path.join(self.url, drpms[0].filename))
+        self.assertEqual(requests[0].destination, os.path.join(self.reposync.tmp_dir, drpms[0].filename))
+        self.assertTrue(requests[0].data is drpms[0])
+        self.assertEqual(requests[1].url, os.path.join(self.url, drpms[1].filename))
+        self.assertEqual(requests[1].destination, os.path.join(self.reposync.tmp_dir, drpms[1].filename))
+        self.assertTrue(requests[1].data is drpms[1])
+        self.assertTrue(file_handle.closed)
+
+    @mock.patch('pulp_rpm.plugins.importers.yum.repomd.alternate.ContentContainer')
+    @mock.patch('pulp_rpm.plugins.importers.yum.repomd.nectar_factory.create_downloader',
+                autospec=True)
+    @mock.patch.object(packages, 'package_list_generator', autospec=True)
+    def test_drpms_to_download_deltainfo(self, mock_package_list_generator, mock_create_downloader,
+                                         mock_container):
+        """
+        test with only DRPMs specified to download in a deltainfo file
+        """
+        file_handle = StringIO()
+        self.metadata_files.get_metadata_file_handle = mock.MagicMock(
+            spec_set=self.metadata_files.get_metadata_file_handle,
+            side_effect=[StringIO(), None, file_handle],
+        )
+        drpms = model_factory.drpm_models(3)
+        for drpm in drpms:
+            drpm.metadata['relativepath'] = ''
+        mock_package_list_generator.side_effect = iter([[], drpms])
+        self.downloader.download = mock.MagicMock(spec_set=self.downloader.download)
+        mock_create_downloader.return_value = self.downloader
+
+        fake_container = mock.Mock()
+        fake_container.refresh.return_value = {}
+        mock_container.return_value = fake_container
+
+        # call download, passing in only two of the 3 rpms as units we want
+        self.reposync.download(self.metadata_files, set(), set(m.as_named_tuple for m in drpms[:2]))
 
         self.assertEqual(self.downloader.download.call_count, 1)
         self.assertEqual(mock_package_list_generator.call_count, 2)
