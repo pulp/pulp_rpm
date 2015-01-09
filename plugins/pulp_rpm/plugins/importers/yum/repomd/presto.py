@@ -6,6 +6,7 @@ from pulp_rpm.plugins.db import models
 
 
 METADATA_FILE_NAME = 'prestodelta'
+ALTERNATE_METADATA_FILE_NAME = 'deltainfo'
 
 PACKAGE_TAG = 'newpackage'
 
