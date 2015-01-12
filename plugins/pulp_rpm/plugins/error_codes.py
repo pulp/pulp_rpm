@@ -8,3 +8,5 @@ from pulp.common.error_codes import Error
 # error message nested inside of it.
 RPM1001 = Error("RPM1001", _("Error occurred parsing pulp_distribution.xml from feed: %(feed)s"),
                 ['feed'])
+RPM1002 = Error("RPM1002", _("Error uploading an RPM.  The specified file is a source rpm"), [])
+RPM1003 = Error("RPM1003", _("Error uploading an SRPM.  The specified file is a binary rpm"), [])
