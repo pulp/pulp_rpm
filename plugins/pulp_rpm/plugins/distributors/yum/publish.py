@@ -876,8 +876,9 @@ class GenerateSqliteForRepoStep(PublishStep):
         """
         Call out to createrepo command line in order to process the files.
         """
-        pipe = subprocess.Popen('createrepo_c -d --update --keep-all-metadata --skip-stat %s' % self.content_dir,
-                                shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        pipe = subprocess.Popen('createrepo_c -d --update --keep-all-metadata --skip-stat %s' %
+                                self.content_dir, shell=True, stdout=subprocess.PIPE,
+                                stderr=subprocess.PIPE)
         stdout, stderr = pipe.communicate()
         if pipe.returncode != 0:
             result_string = '%s\n::\n%s' % (stdout, stderr)
