@@ -451,9 +451,11 @@ class SearchErrataCommand(BaseSearchCommand):
                     description += '\n\n'
 
         # Reformat packages affected
-        package_list = ['  %s-%s:%s-%s.%s' % (p['name'], p['epoch'], p['version'], p['release'],
-                                              p['arch'])
-                        for p in erratum_meta['pkglist'][0]['packages']]
+        package_list = []
+        for pkglist in erratum_meta['pkglist']:
+            for p in pkglist['packages']:
+                package_list.append('  %s-%s:%s-%s.%s' %
+                                    (p['name'], p['epoch'], p['version'], p['release'], p['arch']))
 
         # Reformat reboot flag
         if erratum_meta['reboot_suggested']:
