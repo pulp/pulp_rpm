@@ -89,4 +89,3 @@ class RpmStatusRendererTests(client_base.PulpClientTests):
                            'Error Message: None'
 
         self.prompt.render_failure_message.assert_has_calls(mock.call(expected_message))
-
