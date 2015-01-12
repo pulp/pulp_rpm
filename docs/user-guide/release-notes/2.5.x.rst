@@ -13,6 +13,14 @@ The generation of sqlite files is now done with createrepo_c instead of createre
 Pulp RPM 2.5.2
 ==============
 
+New Features
+------------
+
+The generation of sqlite files is now done with createrepo_c instead of createrepo.
+
+Bug Fixes
+---------
+
 This release fixes `#1175818 <https://bugzilla.redhat.com/show_bug.cgi?id=1175818>`_. To perform the
 upgrade, follow the Platform `upgrade instructions <http://pulp-user-guide.readthedocs.org/en/2.5-release/release-notes/2.5.x.html#upgrade-instructions-for-2-4-x-2-5-x>`_.
 
