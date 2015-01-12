@@ -48,7 +48,7 @@ def package_list_generator(xml_handle, package_tag, process_func=None):
     # I know. This is a terrible misuse of SyntaxError. Don't blame the messenger.
     except SyntaxError:
         _LOGGER.error('failed to parse XML metadata file')
-        return
+        raise
 
     for event, element in xml_iterator:
         # if we're not at a fully parsed package element, keep going
