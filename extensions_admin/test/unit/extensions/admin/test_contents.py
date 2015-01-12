@@ -503,10 +503,26 @@ class SearchErrataCommand(PulpClientTests):
                                 'src': 'http://www.fedoraproject.org',
                                 'name': 'crow',
                                 'sum': None,
-                                'filename': 'crow-0.8-1.noarch.rpm',
-                                'epoch': None,
+                                'filename': 'crow-0.8-1.el9.noarch.rpm',
+                                'epoch': 1,
                                 'version': '0.8',
-                                'release': '1',
+                                'release': '1.el9',
+                                'arch': 'noarch'
+                            }
+                        ],
+                        'name': '1',
+                        'short': ''
+                    },
+                    {
+                        'packages': [
+                            {
+                                'src': 'http://www.fedoraproject.org',
+                                'name': 'crow',
+                                'sum': None,
+                                'filename': 'crow-0.9-1.el10.noarch.rpm',
+                                'epoch': 1,
+                                'version': '0.9',
+                                'release': '1.el10',
                                 'arch': 'noarch'
                             }
                         ],
@@ -533,3 +549,15 @@ class SearchErrataCommand(PulpClientTests):
         # Test that the formatter handles an errata list and calls write
         command.write_erratum_detail(errata_list)
         self.assertEqual(1, self.context.prompt.write.call_count)
+
+        # subclass str so we can use our own equality test. This lets us just
+        # check for the substring we are interested in.
+        class AnyStringWith(str):
+            def __eq__(self, other):
+                return self in other
+
+        # Test that both packages are printed (RHBZ #1171278)
+        self.context.prompt.write.\
+            assert_called_once_with(AnyStringWith("crow-1:0.8-1.el9.noarch"), skip_wrap=True)
+        self.context.prompt.write.\
+            assert_called_once_with(AnyStringWith("crow-1:0.9-1.el10.noarch"), skip_wrap=True)
