@@ -443,7 +443,9 @@ class UploadPackageTests(unittest.TestCase):
         self.assertTrue(not os.path.exists(self.upload_src_filename))
 
         #   Mock calls
-        mock_generate.assert_called_once_with(self.upload_src_filename, user_metadata)
+        mock_generate.assert_called_once_with(models.RPM.TYPE,
+                                              self.upload_src_filename,
+                                              user_metadata)
 
         full_unit_key = dict(unit_key)
         full_metadata = dict(metadata)
@@ -461,10 +463,12 @@ class UploadPackageTests(unittest.TestCase):
     @mock.patch('pulp_rpm.plugins.importers.yum.upload._generate_rpm_data')
     def test_handle_metadata_error(self, mock_generate):
         # Setup
-        mock_generate.side_effect = Exception()
+        class FooException(Exception):
+            pass
+        mock_generate.side_effect = FooException()
 
-        # Test
-        self.assertRaises(upload.PackageMetadataError, upload._handle_package, None, None,
+        # Test - Ensure we haven't blindly masked an exception
+        self.assertRaises(FooException, upload._handle_package, None, None,
                           None, None, None, None)
 
     @mock.patch('pulp_rpm.plugins.importers.yum.upload._generate_rpm_data')
@@ -503,7 +507,8 @@ class UploadPackageTests(unittest.TestCase):
 
     def test_generate_rpm_data(self):
         # Test
-        unit_key, metadata = upload._generate_rpm_data(self.upload_src_filename, {})
+        unit_key, metadata = upload._generate_rpm_data(models.RPM.TYPE,
+                                                       self.upload_src_filename, {})
 
         # Verify
         self.assertEqual(unit_key['name'], 'walrus')
@@ -524,7 +529,8 @@ class UploadPackageTests(unittest.TestCase):
 
     def test_generate_rpm_data_user_checksum(self):
         # Test
-        unit_key, metadata = upload._generate_rpm_data(self.upload_src_filename,
+        unit_key, metadata = upload._generate_rpm_data(models.RPM.TYPE,
+                                                       self.upload_src_filename,
                                                        {'checksum_type': 'sha1'})
 
         # Verify
@@ -545,7 +551,8 @@ class UploadPackageTests(unittest.TestCase):
 
     def test_generate_rpm_data_user_checksum_null(self):
         # Test
-        unit_key, metadata = upload._generate_rpm_data(self.upload_src_filename,
+        unit_key, metadata = upload._generate_rpm_data(models.RPM.TYPE,
+                                                       self.upload_src_filename,
                                                        {'checksum_type': None})
 
         # Verify
@@ -569,7 +576,8 @@ class UploadPackageTests(unittest.TestCase):
         """
         Assert that _generate_rpm_data() sanitizes the checksum type.
         """
-        unit_key, metadata = upload._generate_rpm_data(self.upload_src_filename,
+        unit_key, metadata = upload._generate_rpm_data(models.RPM.TYPE,
+                                                       self.upload_src_filename,
                                                        {'checksum_type': 'sha'})
 
         self.assertEqual(unit_key['name'], 'walrus')
