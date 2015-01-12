@@ -2,14 +2,6 @@
 Pulp RPM 2.5 Release Notes
 ==========================
 
-Pulp RPM 2.5.3
-==============
-
-New Features
-------------
-
-The generation of sqlite files is now done with createrepo_c instead of createrepo.
-
 Pulp RPM 2.5.2
 ==============
 
