@@ -1,5 +1,9 @@
 # -*- coding: utf-8 -*-
-
+import bz2
+import lzma
+import os
+import shutil
+import tempfile
 import unittest
 
 import mock
@@ -65,6 +69,10 @@ class TestMetadataFiles(unittest.TestCase):
         self.metadata_files = metadata.MetadataFiles('http://pulpproject.org',
                                                      '/a/b/c',
                                                      DownloaderConfig())
+        self.working_dir = tempfile.mkdtemp()
+
+    def tearDown(self):
+        shutil.rmtree(self.working_dir)
 
     @mock.patch('pulp_rpm.plugins.importers.yum.repomd.metadata.change_location_tag')
     @mock.patch('pulp_rpm.plugins.importers.yum.repomd.metadata.gdbm.open')
@@ -89,6 +97,35 @@ class TestMetadataFiles(unittest.TestCase):
         self.metadata_files.add_repodata(model)
         mock_change_location_tag.assert_called_once_with(raw_xml, model.relative_path)
         self.assertEquals('baz', model.metadata['repodata']['primary'])
+
+    def test_get_metadata_file_bz(self):
+
+        # create the test file
+        source_file = os.path.join(self.working_dir, 'foo.bz2')
+        compressed_file_handle = bz2.BZ2File(source_file, 'w')
+        compressed_file_handle.write('apples')
+        compressed_file_handle.close()
+        self.metadata_files.metadata['foo'] = {'local_path': source_file}
+
+        # validate it
+        handle = self.metadata_files.get_metadata_file_handle('foo')
+        data = handle.read()
+        self.assertEquals(data, 'apples')
+        handle.close()
+
+    def test_get_metadata_file_lzma(self):
+        # create the test file
+        source_file = os.path.join(self.working_dir, 'foo.xz')
+        handle = lzma.LZMAFile(source_file, 'w')
+        handle.write('apples')
+        handle.close()
+        self.metadata_files.metadata['foo'] = {'local_path': source_file}
+
+        # validate it
+        handle = self.metadata_files.get_metadata_file_handle('foo')
+        data = handle.read()
+        self.assertEquals(data, 'apples')
+        handle.close()
 
 
 class TestProcessRepomdDataElement(unittest.TestCase):
