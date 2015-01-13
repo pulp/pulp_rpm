@@ -14,7 +14,7 @@
 
 Name: pulp-rpm
 Version: 2.5.2
-Release: 0.2.beta%{?dist}
+Release: 0.3.beta%{?dist}
 Summary: Support for RPM content in the Pulp platform
 Group: Development/Languages
 License: GPLv2
@@ -281,6 +281,10 @@ A collection of yum plugins supplementing Pulp consumer operations.
 
 
 %changelog
+* Tue Jan 13 2015 Dennis Kliban <dkliban@redhat.com> 2.5.2-0.3.beta
+- 1171278 - allow pulp-admin to print all packages associated with errata
+  (cduryee@redhat.com)
+
 * Thu Jan 08 2015 Dennis Kliban <dkliban@redhat.com> 2.5.2-0.2.beta
 - 1171278 - update erratum when a new packagelist is encountered
   (cduryee@redhat.com)
