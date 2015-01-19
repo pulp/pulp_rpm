@@ -28,3 +28,16 @@ class FilelistsXMLFileContextTests(unittest.TestCase):
 
         context.metadata_file_handle.write.assert_called_once_with('bar')
 
+    def test_add_unit_metadata_unicode(self):
+        """
+        Test that the filelists repodata is passed as a str even if it's a unicode object.
+        """
+        context = FilelistsXMLFileContext(self.working_dir, 3)
+        context.metadata_file_handle = mock.Mock()
+        expected_call = 'some unicode'
+        metadata = {
+            'repodata': {'filelists': unicode(expected_call)}
+        }
+
+        context.add_unit_metadata(mock.Mock(metadata=metadata))
+        context.metadata_file_handle.write.assert_called_once_with(expected_call)
