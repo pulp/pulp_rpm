@@ -52,4 +52,6 @@ class PrimaryXMLFileContext(FastForwardXmlFileContext):
         :type  unit: pulp.plugins.model.Unit
         """
         metadata = unit.metadata['repodata']['primary']
+        if isinstance(metadata, unicode):
+            metadata = metadata.encode('utf-8')
         self.metadata_file_handle.write(metadata)
