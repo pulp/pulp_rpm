@@ -1366,6 +1366,30 @@ class TestTreeinfoSync(BaseSyncTest):
                       mock_report, lambda x: x)
         self.assertEqual(self.conduit.remove_unit.call_count, 0)
 
+    # The "usual" case of one existing distribution unit on the repo. Ensure
+    # that we didn't try to remove anything.
+    def test_treeinfo_sync_unchanged(self, mock_nectar, mock_tempfile, mock_rmtree,
+                                     mock_report, mock_parse_treefile, mock_get_treefile,
+                                     mock_move, mock_chmod):
+        # return one unit that is the same as what we saved. No removal should occur
+        metadata = {treeinfo.KEY_TIMESTAMP: 1354213090.94}
+        mock_model = models.Distribution('fake family', 'server', '3.11', 'baroque',
+                                         metadata=metadata.copy())
+        mock_unit = Unit(ids.TYPE_ID_DISTRO, mock_model.unit_key, metadata.copy(),
+                         "/fake/path")
+        self.conduit.get_units = mock.MagicMock(spec_set=self.conduit.get_units)
+        self.conduit.get_units.return_value = [mock_unit]
+        self.conduit.init_unit = mock.MagicMock(spec_set=self.conduit.init_unit)
+        self.conduit.init_unit.return_value = mock_unit
+        mock_parse_treefile.return_value = (mock_model, ["fake file 1"])
+        mock_get_treefile.return_value = "/a/fake/path/to/the/treefile"
+        treeinfo.sync(self.conduit, "http://some/url", "/some/tempdir", "fake-nectar-conf",
+                      mock_report, lambda x: x)
+        self.assertEqual(self.conduit.remove_unit.call_count, 0)
+        mock_report.__setitem__.assert_called_once_with('state', constants.STATE_COMPLETE)
+        # make sure the workflow did not proceed by making sure this call didn't happen
+        self.assertEqual(mock_report.set_initial_values.call_count, 0)
+
     # This is the case that occurs when symlinks like "6Server" are updated for
     # a new release. Pulp will have created a new distribution unit and we need
     # to remove any old units

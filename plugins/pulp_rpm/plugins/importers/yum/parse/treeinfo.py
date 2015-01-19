@@ -22,6 +22,7 @@ SECTION_GENERAL = 'general'
 SECTION_STAGE2 = 'stage2'
 SECTION_CHECKSUMS = 'checksums'
 KEY_PACKAGEDIR = 'packagedir'
+KEY_TIMESTAMP = 'timestamp'
 KEY_DISTRIBUTION_CONTEXT = 'distribution_context'
 
 _LOGGER = logging.getLogger(__name__)
@@ -63,6 +64,15 @@ def sync(sync_conduit, feed, working_dir, nectar_config, report, progress_callba
             report['state'] = constants.STATE_FAILED
             return
 
+        distribution_type_criteria = UnitAssociationCriteria(type_ids=[ids.TYPE_ID_DISTRO])
+        existing_units = sync_conduit.get_units(criteria=distribution_type_criteria)
+
+        # skip this whole process if the upstream treeinfo file hasn't changed
+        if len(existing_units) == 1 and existing_distribution_is_current(existing_units[0], model):
+            _LOGGER.debug('upstream distribution unchanged; skipping')
+            report['state'] = constants.STATE_COMPLETE
+            return
+
         # Get any errors
         dist_files = process_distribution(feed, tmp_dir, nectar_config, model, report)
         files.extend(dist_files)
@@ -82,8 +92,6 @@ def sync(sync_conduit, feed, working_dir, nectar_config, report, progress_callba
             os.chmod(unit.storage_path, 0o775)
             sync_conduit.save_unit(unit)
             # find any old distribution units and remove them. See BZ #1150714
-            distribution_type_criteria = UnitAssociationCriteria(type_ids=[ids.TYPE_ID_DISTRO])
-            existing_units = sync_conduit.get_units(criteria=distribution_type_criteria)
             for existing_unit in existing_units:
                 if existing_unit != unit:
                     _LOGGER.info("Removing out-of-date distribution unit %s for repo %s" %
@@ -97,6 +105,32 @@ def sync(sync_conduit, feed, working_dir, nectar_config, report, progress_callba
         report['state'] = constants.STATE_COMPLETE
     finally:
         shutil.rmtree(tmp_dir, ignore_errors=True)
+
+
+def existing_distribution_is_current(existing_unit, model):
+    """
+    Determines if the remote model is newer than the existing unit we have in
+    the database. This uses the timestamp attribute of each's treeinfo file to
+    make that determination.
+
+    :param existing_unit:   unit that currently exists in the repo
+    :type  existing_unit:   pulp.plugins.model.AssociatedUnit
+    :param model:           this model's unit key will be searched for in the DB
+    :type  model:           pulp_rpm.plugins.db.models.Distribution
+
+    :return:    False if model's timestamp is greater than existing_unit's timestamp,
+                or if that comparison cannot be made because timestamp data is
+                missing. Otherwise, True.
+    :rtype:     bool
+    """
+    existing_timestamp = existing_unit.metadata.get(KEY_TIMESTAMP)
+    remote_timestamp = model.metadata.get(KEY_TIMESTAMP)
+
+    if existing_timestamp is None or remote_timestamp is None:
+        _LOGGER.debug('treeinfo timestamp missing; will fetch upstream distribution')
+        return False
+
+    return remote_timestamp <= existing_timestamp
 
 
 def file_to_download_request(file_dict, feed, storage_path):
@@ -299,7 +333,10 @@ def parse_treefile(path):
             variant,
             parser.get(SECTION_GENERAL, 'version'),
             parser.get(SECTION_GENERAL, 'arch'),
-            metadata={KEY_PACKAGEDIR: packagedir}
+            metadata={
+                KEY_PACKAGEDIR: packagedir,
+                KEY_TIMESTAMP: float(parser.get(SECTION_GENERAL, KEY_TIMESTAMP)),
+            }
         )
     except (ConfigParser.NoSectionError, ConfigParser.NoOptionError):
         raise ValueError('invalid treefile: could not find unit key components')
