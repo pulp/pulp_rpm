@@ -1,0 +1,35 @@
+[images-x86_64]
+kernel = images/pxeboot/vmlinuz
+server_filelists.xml.gz = Server/repodata/101ecad62a146f3ab4e06ca16104cdb90b225a48-filelists.xml.gz
+server_primary.xml.gz = Server/repodata/d984304da8889ba9e906d8a0455418f4b7edc206-primary.xml.gz
+server_other.sqlite.bz2 = Server/repodata/53939e47b5c6e5e960f18fc7c209d60ce37ccc01-other.sqlite.bz2
+diskboot.img = images/diskboot.img
+server_comps-rhel5-server-core.xml = Server/repodata/8700492668c730742984ec61666e4f3499c07713-comps-rhel5-server-core.xml
+server_updateinfo.xml.gz = Server/repodata/329cf55bc21b6c16fcc54fbcb0edd91bcf27d3bd-updateinfo.xml.gz
+server_primary.sqlite.bz2 = Server/repodata/908500781155e417f50c845157ee922d22008961-primary.sqlite.bz2
+server_comps-rhel5-server-core.xml.gz = Server/repodata/61c1abdd05c1bf5abfb346f7d0b55abb8a519817-comps-rhel5-server-core.xml.gz
+boot.iso = images/boot.iso
+initrd = images/pxeboot/initrd.img
+server_repomd = Server/repodata/repomd.xml
+server_productid.gz = Server/repodata/productid.gz
+server_filelists.sqlite.bz2 = Server/repodata/289101a61191454ff75fe12046e26e85b0e2f482-filelists.sqlite.bz2
+server_other.xml.gz = Server/repodata/4ec225f636e39c137f8330c4ac2618f0020e85d6-other.xml.gz
+
+[images-xen]
+initrd = images/xen/initrd.img
+kernel = images/xen/vmlinuz
+
+[stage2]
+instimage = images/minstg2.img
+mainimage = images/stage2.img
+
+[general]
+family = Red Hat Enterprise Linux Server
+timestamp = 1354213090
+totaldiscs = 1
+label = RHEL-5.9-Server-RC-3.0
+variant = foo
+version = 5.9
+discnum = 1
+packagedir = Server
+arch = x86_64
