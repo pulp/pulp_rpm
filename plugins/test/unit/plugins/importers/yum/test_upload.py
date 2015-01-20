@@ -248,7 +248,7 @@ class UploadErratumTests(unittest.TestCase):
                                                      updateinfo.process_package_element)
             errata = list(errata)[0]
 
-        errata_unit = Unit(models.Errata.TYPE, errata.unit_key, errata.clean_metadata, None)
+        errata_unit = Unit(models.Errata.TYPE, errata.unit_key, errata.metadata, None)
 
         # Test
         upload._link_errata_to_rpms(mock_conduit, errata, errata_unit)

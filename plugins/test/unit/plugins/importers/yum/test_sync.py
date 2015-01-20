@@ -1,25 +1,26 @@
-from cStringIO import StringIO
 from copy import deepcopy
+from cStringIO import StringIO
 import os
 import unittest
 
-import mock
 from nectar.config import DownloaderConfig
 from nectar.downloaders.base import Downloader
 from pulp.common.plugins import importer_constants
 from pulp.plugins.conduits.repo_sync import RepoSyncConduit
 from pulp.plugins.config import PluginCallConfiguration
 from pulp.plugins.model import Repository, SyncReport, Unit
-import pulp.server.managers.factory as manager_factory
+from pulp.server import constants as server_constants
 from pulp.server.exceptions import PulpCodedException
+import mock
+import pulp.server.managers.factory as manager_factory
 
 from pulp_rpm.common import constants, ids
 from pulp_rpm.plugins.db import models
 from pulp_rpm.plugins.importers.yum.existing import check_all_and_associate
+from pulp_rpm.plugins.importers.yum.parse import treeinfo
 from pulp_rpm.plugins.importers.yum.repomd import metadata, group, updateinfo, packages, presto, \
     primary
 from pulp_rpm.plugins.importers.yum.sync import RepoSync, FailedException, CancelException
-from pulp_rpm.plugins.importers.yum.parse import treeinfo
 import model_factory
 
 
@@ -1063,13 +1064,14 @@ class TestSaveFilelessUnits(BaseSyncTest):
 
         concat_unit = self.reposync._concatenate_units(mock_existing_unit, mock_new_unit)
 
-        self.assertEquals(concat_unit.metadata, {'pkglist':
-                                                 [{'packages': [{'name': 'some_package v1'},
-                                                                {'name': 'another_package v1'}],
-                                                   'name': 'v1 packages'},
-                                                  {'packages': [{'name': 'some_package v2'},
-                                                                {'name': 'another_package v2'}],
-                                                   'name': 'v2 packages'}]})
+        self.assertEqual(concat_unit.metadata, {'pkglist':
+                                                [{'packages': [{'name': 'some_package v1'},
+                                                               {'name': 'another_package v1'}],
+                                                  'name': 'v1 packages'},
+                                                 {'packages': [{'name': 'some_package v2'},
+                                                               {'name': 'another_package v2'}],
+                                                  'name': 'v2 packages'}],
+                                                server_constants.PULP_USER_METADATA_FIELDNAME: {}})
 
     def test_concatenate_units_errata_same_errata(self):
         """
@@ -1097,10 +1099,11 @@ class TestSaveFilelessUnits(BaseSyncTest):
 
         concat_unit = self.reposync._concatenate_units(mock_existing_unit, mock_new_unit)
 
-        self.assertEquals(concat_unit.metadata, {'pkglist':
-                                                 [{'packages': [{'name': 'some_package v1'},
-                                                                {'name': 'another_package v1'}],
-                                                  'name': 'v1 packages'}]})
+        self.assertEqual(concat_unit.metadata, {'pkglist':
+                                                [{'packages': [{'name': 'some_package v1'},
+                                                               {'name': 'another_package v1'}],
+                                                 'name': 'v1 packages'}],
+                                                server_constants.PULP_USER_METADATA_FIELDNAME: {}})
 
     def test_concatenate_units_errata_avoid_double_concat(self):
         """
@@ -1132,13 +1135,14 @@ class TestSaveFilelessUnits(BaseSyncTest):
 
         concat_unit = self.reposync._concatenate_units(mock_existing_unit, mock_new_unit)
 
-        self.assertEquals(concat_unit.metadata, {'pkglist':
-                                                 [{'packages': [{'name': 'some_package v1'},
-                                                                {'name': 'another_package v1'}],
-                                                   'name': 'v1 packages'},
-                                                  {'packages': [{'name': 'some_package v2'},
-                                                                {'name': 'another_package v2'}],
-                                                   'name': 'v2 packages'}]})
+        self.assertEqual(concat_unit.metadata, {'pkglist':
+                                                [{'packages': [{'name': 'some_package v1'},
+                                                               {'name': 'another_package v1'}],
+                                                  'name': 'v1 packages'},
+                                                 {'packages': [{'name': 'some_package v2'},
+                                                               {'name': 'another_package v2'}],
+                                                  'name': 'v2 packages'}],
+                                                server_constants.PULP_USER_METADATA_FIELDNAME: {}})
 
 
 class TestIdentifyWantedVersions(BaseSyncTest):

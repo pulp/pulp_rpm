@@ -1,18 +1,17 @@
-# -*- coding: utf-8 -*-
-
 import os
 import shutil
 import tempfile
 
-import mock
 from pulp.common.plugins import importer_constants
 from pulp.plugins.model import Repository, Unit
+from pulp.server import constants as server_constants
+import mock
 
 from pulp_rpm.common import ids
+from pulp_rpm.devel import importer_mocks
+from pulp_rpm.devel.rpm_support_base import PulpRPMTests
 from pulp_rpm.plugins.db import models
 from pulp_rpm.plugins.importers.iso import importer, sync
-from pulp_rpm.devel.rpm_support_base import PulpRPMTests
-from pulp_rpm.devel import importer_mocks
 
 
 class TestEntryPoint(PulpRPMTests):
@@ -204,7 +203,9 @@ class TestISOImporter(PulpRPMTests):
         # init_unit() should have been called
         expected_rel_path = os.path.join(unit_key['name'], unit_key['checksum'],
                                          str(unit_key['size']), unit_key['name'])
-        sync_conduit.init_unit.assert_called_once_with(ids.TYPE_ID_ISO, unit_key, metadata,
+        modified_metadata = metadata.copy()
+        modified_metadata[server_constants.PULP_USER_METADATA_FIELDNAME] = {}
+        sync_conduit.init_unit.assert_called_once_with(ids.TYPE_ID_ISO, unit_key, modified_metadata,
                                                        expected_rel_path)
 
         # The file should have been deleted
@@ -252,7 +253,9 @@ class TestISOImporter(PulpRPMTests):
         # The conduit's init_unit method should have been called
         expected_rel_path = os.path.join(unit_key['name'], unit_key['checksum'],
                                          str(unit_key['size']), unit_key['name'])
-        sync_conduit.init_unit.assert_called_once_with(ids.TYPE_ID_ISO, unit_key, metadata,
+        modified_metadata = metadata.copy()
+        modified_metadata[server_constants.PULP_USER_METADATA_FIELDNAME] = {}
+        sync_conduit.init_unit.assert_called_once_with(ids.TYPE_ID_ISO, unit_key, modified_metadata,
                                                        expected_rel_path)
 
         # The file should have been moved to its final destination
@@ -307,7 +310,9 @@ class TestISOImporter(PulpRPMTests):
         # The conduit's init_unit method should have been called
         expected_rel_path = os.path.join(unit_key['name'], unit_key['checksum'],
                                          str(unit_key['size']), unit_key['name'])
-        sync_conduit.init_unit.assert_called_once_with(ids.TYPE_ID_ISO, unit_key, metadata,
+        modified_metadata = metadata.copy()
+        modified_metadata[server_constants.PULP_USER_METADATA_FIELDNAME] = {}
+        sync_conduit.init_unit.assert_called_once_with(ids.TYPE_ID_ISO, unit_key, modified_metadata,
                                                        expected_rel_path)
 
         # The file should have been deleted
@@ -353,7 +358,9 @@ class TestISOImporter(PulpRPMTests):
         # The conduit's init_unit method should have been called
         expected_rel_path = os.path.join(unit_key['name'], unit_key['checksum'],
                                          str(unit_key['size']), unit_key['name'])
-        sync_conduit.init_unit.assert_called_once_with(ids.TYPE_ID_ISO, unit_key, metadata,
+        modified_metadata = metadata.copy()
+        modified_metadata[server_constants.PULP_USER_METADATA_FIELDNAME] = {}
+        sync_conduit.init_unit.assert_called_once_with(ids.TYPE_ID_ISO, unit_key, modified_metadata,
                                                        expected_rel_path)
 
         # The file should have been moved to its final destination
@@ -409,7 +416,9 @@ class TestISOImporter(PulpRPMTests):
         # The conduit's init_unit method should have been called
         expected_rel_path = os.path.join(unit_key['name'], unit_key['checksum'],
                                          str(unit_key['size']), unit_key['name'])
-        sync_conduit.init_unit.assert_called_once_with(ids.TYPE_ID_ISO, unit_key, metadata,
+        modified_metadata = metadata.copy()
+        modified_metadata[server_constants.PULP_USER_METADATA_FIELDNAME] = {}
+        sync_conduit.init_unit.assert_called_once_with(ids.TYPE_ID_ISO, unit_key, modified_metadata,
                                                        expected_rel_path)
 
         # The file should have been moved to its final destination

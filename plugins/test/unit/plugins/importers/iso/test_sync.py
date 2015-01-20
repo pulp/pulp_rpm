@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 from cStringIO import StringIO
 import os
 import shutil
@@ -10,13 +8,14 @@ from nectar.downloaders.threaded import HTTPThreadedDownloader
 from nectar.report import DownloadReport
 from pulp.common.plugins import importer_constants
 from pulp.plugins.model import Repository, Unit
+from pulp.server import constants as server_constants
 
-from pulp_rpm.plugins.db import models
 from pulp_rpm.common.ids import TYPE_ID_ISO
 from pulp_rpm.common.progress import SyncProgressReport, ISOProgressReport
-from pulp_rpm.plugins.importers.iso.sync import ISOSyncRun
-from pulp_rpm.devel.rpm_support_base import PulpRPMTests
 from pulp_rpm.devel import importer_mocks
+from pulp_rpm.devel.rpm_support_base import PulpRPMTests
+from pulp_rpm.plugins.db import models
+from pulp_rpm.plugins.importers.iso.sync import ISOSyncRun
 
 
 class TestISOSyncRun(PulpRPMTests):
@@ -611,7 +610,7 @@ class TestISOSyncRun(PulpRPMTests):
             self.sync_conduit.init_unit.assert_any_call(
                 TYPE_ID_ISO,
                 {'name': iso.name, 'size': iso.size, 'checksum': iso.checksum},
-                {}, expected_relative_path)
+                {server_constants.PULP_USER_METADATA_FIELDNAME: {}}, expected_relative_path)
             unit = self.sync_conduit.save_unit.call_args_list[index][0][0]
             self.assertEqual(unit.unit_key['name'], iso.name)
             self.assertEqual(unit.unit_key['checksum'], iso.checksum)

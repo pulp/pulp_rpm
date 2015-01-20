@@ -4,19 +4,18 @@ import shutil
 import tempfile
 import unittest
 
-import isodate
-import mock
-
-
 from pulp.common.compat import json
 from pulp.common.plugins import reporting_constants
 from pulp.devel.unit.util import touch, compare_dict
 from pulp.plugins.conduits.repo_publish import RepoPublishConduit
 from pulp.plugins.config import PluginCallConfiguration
 from pulp.plugins.model import Repository, Unit
-import pulp.server.managers.factory as manager_factory
 from pulp.plugins.util.publish_step import PublishStep
+from pulp.server import constants as server_constants
 from pulp.server.exceptions import InvalidValue, PulpCodedException
+import isodate
+import mock
+import pulp.server.managers.factory as manager_factory
 
 from pulp_rpm.common import constants
 from pulp_rpm.common.ids import (
@@ -411,20 +410,21 @@ class PublishRpmAndDrpmStepIncrementalTests(BaseYumDistributorPublishStepTests):
         self.publisher.add_child(step)
         unit_key = {'name': 'foo', 'version': '1', 'release': '2', 'arch': 'flux'}
         metadata = {'filename': 'bar.txt', 'repodata': 'baz', '_test': 'hidden'}
-        original_metadata = metadata.copy()
         storage_path = os.path.join(self.working_dir, 'foo')
         touch(storage_path)
-        test_unit = Unit('foo_type', unit_key, metadata, storage_path)
+        test_unit = Unit('foo_type', unit_key, metadata.copy(), storage_path)
 
         step.process_unit(test_unit)
-        original_metadata.pop('repodata')
-        original_metadata.pop('_test')
+        modified_metadata = metadata.copy()
+        modified_metadata.pop('repodata')
+        modified_metadata.pop('_test')
+        modified_metadata[server_constants.PULP_USER_METADATA_FIELDNAME] = {}
         unit_file = os.path.join(self.working_dir, 'foo-1-2.flux.json')
         self.assertTrue(os.path.exists(unit_file))
         with open(unit_file) as file_handle:
             loaded = json.load(file_handle)
             compare_dict(loaded, {
-                'unit_key': unit_key, 'unit_metadata': original_metadata
+                'unit_key': unit_key, 'unit_metadata': modified_metadata
             })
 
 
@@ -435,19 +435,18 @@ class PublishErrataStepIncrementalTests(BaseYumDistributorPublishStepTests):
         self.publisher.add_child(step)
         unit_key = {'id': 'foo'}
         metadata = {'filename': 'bar.txt', '_test': 'hidden'}
-        original_metadata = metadata.copy()
-        test_unit = Unit('foo_type', unit_key, metadata, '')
+        test_unit = Unit('foo_type', unit_key, metadata.copy(), '')
 
         step.process_unit(test_unit)
 
-        original_metadata.pop('_test')
+        modified_metadata = metadata.copy()
+        modified_metadata.pop('_test')
+        modified_metadata[server_constants.PULP_USER_METADATA_FIELDNAME] = {}
         unit_file = os.path.join(self.working_dir, 'foo.json')
         self.assertTrue(os.path.exists(unit_file))
         with open(unit_file) as file_handle:
             loaded = json.load(file_handle)
-            compare_dict(loaded, {
-                'unit_key': unit_key, 'unit_metadata': original_metadata
-            })
+            compare_dict(loaded, {'unit_key': unit_key, 'unit_metadata': modified_metadata})
 
 
 class CreateIsoStepTests(BaseYumDistributorPublishStepTests):
