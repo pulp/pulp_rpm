@@ -10,8 +10,8 @@ from pulp.devel.mock_distributor import get_publish_conduit
 
 from pulp_rpm.common import constants, ids
 from pulp_rpm.plugins.distributors.iso_distributor import publish
-from pulp_rpm.repo_auth.protected_repo_utils import ProtectedRepoUtils
-from pulp_rpm.repo_auth.repo_cert_utils import RepoCertUtils
+from pulp.repoauth.protected_repo_utils import ProtectedRepoUtils
+from pulp.repoauth.repo_cert_utils import RepoCertUtils
 
 
 class PublishTests(unittest.TestCase):
@@ -46,8 +46,8 @@ class TestConfigureRepositoryProtection(unittest.TestCase):
     Test the _configure_repository_protection() function.
     """
 
-    @patch('pulp_rpm.repo_auth.protected_repo_utils.ProtectedRepoUtils.add_protected_repo')
-    @patch('pulp_rpm.repo_auth.repo_cert_utils.RepoCertUtils.write_consumer_cert_bundle')
+    @patch('pulp.repoauth.protected_repo_utils.ProtectedRepoUtils.add_protected_repo')
+    @patch('pulp.repoauth.repo_cert_utils.RepoCertUtils.write_consumer_cert_bundle')
     def test__configure_repository_protection(self, write_consumer_cert_bundle, add_protected_repo):
         repo = MagicMock()
         repo.id = 7
@@ -97,7 +97,7 @@ class TestRemoveRepositoryProtection(unittest.TestCase):
     Test the _remove_repository_protection() function.
     """
 
-    @patch('pulp_rpm.repo_auth.protected_repo_utils.ProtectedRepoUtils.delete_protected_repo')
+    @patch('pulp.repoauth.protected_repo_utils.ProtectedRepoUtils.delete_protected_repo')
     def test__remove_repository_protection(self, delete_protected_repo):
         repo = MagicMock()
         repo.id = 'reporeporeporepo'

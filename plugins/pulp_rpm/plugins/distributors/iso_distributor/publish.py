@@ -2,8 +2,8 @@ from ConfigParser import SafeConfigParser
 import logging
 
 from pulp_rpm.common import constants
-from pulp_rpm.repo_auth.protected_repo_utils import ProtectedRepoUtils
-from pulp_rpm.repo_auth.repo_cert_utils import RepoCertUtils
+from pulp.repoauth.protected_repo_utils import ProtectedRepoUtils
+from pulp.repoauth.repo_cert_utils import RepoCertUtils
 
 
 logger = logging.getLogger(__name__)

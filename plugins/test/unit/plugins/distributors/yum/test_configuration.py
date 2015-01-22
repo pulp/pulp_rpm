@@ -479,8 +479,8 @@ class YumDistributorConfigurationTests(unittest.TestCase):
 
     # -- cert based auth tests -------------------------------------------------
 
-    @mock.patch('pulp_rpm.repo_auth.protected_repo_utils.ProtectedRepoUtils.add_protected_repo')
-    @mock.patch('pulp_rpm.repo_auth.repo_cert_utils.RepoCertUtils.write_consumer_cert_bundle')
+    @mock.patch('pulp.repoauth.protected_repo_utils.ProtectedRepoUtils.add_protected_repo')
+    @mock.patch('pulp.repoauth.repo_cert_utils.RepoCertUtils.write_consumer_cert_bundle')
     def test_cert_based_auth_ca_and_cert(self, mock_write_consumer_cert_bundle,
                                          mock_add_protected_repo):
         repo = Repository('test')
@@ -493,7 +493,7 @@ class YumDistributorConfigurationTests(unittest.TestCase):
         mock_write_consumer_cert_bundle.assert_called_once_with(repo.id, bundle)
         mock_add_protected_repo.assert_called_once_with(repo.id, repo.id)
 
-    @mock.patch('pulp_rpm.repo_auth.protected_repo_utils.ProtectedRepoUtils.delete_protected_repo')
+    @mock.patch('pulp.repoauth.protected_repo_utils.ProtectedRepoUtils.delete_protected_repo')
     def test_cert_based_auth_ca_no_cert(self, mock_delete_protected_repo):
         repo = Repository('test')
         config = {'auth_ca': 'looks not so legit'}
@@ -502,7 +502,7 @@ class YumDistributorConfigurationTests(unittest.TestCase):
 
         mock_delete_protected_repo.assert_called_once_with(repo.id)
 
-    @mock.patch('pulp_rpm.repo_auth.protected_repo_utils.ProtectedRepoUtils.delete_protected_repo')
+    @mock.patch('pulp.repoauth.protected_repo_utils.ProtectedRepoUtils.delete_protected_repo')
     def test_cert_based_auth_no_ca_no_cert(self, mock_delete_protected_repo):
         repo = Repository('test')
 
@@ -510,7 +510,7 @@ class YumDistributorConfigurationTests(unittest.TestCase):
 
         mock_delete_protected_repo.assert_called_once_with(repo.id)
 
-    @mock.patch('pulp_rpm.repo_auth.protected_repo_utils.ProtectedRepoUtils.delete_protected_repo')
+    @mock.patch('pulp.repoauth.protected_repo_utils.ProtectedRepoUtils.delete_protected_repo')
     def test_remove_cert_based_auth(self, mock_delete_protected_repo):
         repo = Repository('test')
         config = {}
