@@ -29,6 +29,7 @@ class TestMigrate(unittest.TestCase):
             safe=True
         )
 
+
 class TestGetTimestamp(unittest.TestCase):
     def test_treeinfo(self):
         expected = 1354213090.94
