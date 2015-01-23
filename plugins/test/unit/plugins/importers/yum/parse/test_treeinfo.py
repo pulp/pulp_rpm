@@ -4,9 +4,10 @@ import os
 import unittest
 
 from mock import patch, MagicMock, Mock
+from pulp.plugins.model import AssociatedUnit
+from pulp.server.exceptions import PulpCodedValidationException
 
 from pulp_rpm.common import constants
-from pulp.server.exceptions import PulpCodedValidationException
 from pulp_rpm.plugins.db import models
 from pulp_rpm.plugins.importers.yum.parse import treeinfo
 
@@ -34,6 +35,7 @@ class TestRealData(unittest.TestCase):
             self.assertTrue(item['relativepath'])
         self.assertEquals('foo', model.variant)
         self.assertEquals('Server', model.metadata[treeinfo.KEY_PACKAGEDIR])
+        self.assertEquals(1354213090.94, model.metadata[treeinfo.KEY_TIMESTAMP])
 
     def test_rhel5_optional(self):
         path = os.path.join(DATA_PATH, 'treeinfo-rhel5-no-optional-keys')
@@ -49,6 +51,43 @@ class TestRealData(unittest.TestCase):
 
         self.assertEquals(None, model.variant)
         self.assertEquals(None, model.metadata[treeinfo.KEY_PACKAGEDIR])
+
+
+class TestExistingDistIsCurrent(unittest.TestCase):
+    def setUp(self):
+        path = os.path.join(DATA_PATH, 'treeinfo-rhel5')
+
+        self.model, files = treeinfo.parse_treefile(path)
+        self.unit = AssociatedUnit(models.Distribution.TYPE,
+                                   self.model.unit_key.copy(),
+                                   self.model.metadata.copy(), '/a/b/c/', None, None,
+                                   None, None)
+
+    def test_current(self):
+        ret = treeinfo.existing_distribution_is_current(self.unit, self.model)
+
+        self.assertTrue(ret is True)
+
+    def test_not_current(self):
+        self.unit.metadata[treeinfo.KEY_TIMESTAMP] = 600.0 # 10 mins after the epoch
+
+        ret = treeinfo.existing_distribution_is_current(self.unit, self.model)
+
+        self.assertTrue(ret is False)
+
+    def test_current_is_none(self):
+        self.unit.metadata[treeinfo.KEY_TIMESTAMP] = None
+
+        ret = treeinfo.existing_distribution_is_current(self.unit, self.model)
+
+        self.assertTrue(ret is False)
+
+    def test_remote_is_none(self):
+        self.model.metadata[treeinfo.KEY_TIMESTAMP] = None
+
+        ret = treeinfo.existing_distribution_is_current(self.unit, self.model)
+
+        self.assertTrue(ret is False)
 
 
 class TestProcessDistribution(unittest.TestCase):

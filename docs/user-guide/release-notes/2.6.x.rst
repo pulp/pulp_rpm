@@ -5,6 +5,13 @@ Pulp 2.6 Release Notes
 Pulp 2.6.0
 ==========
 
+New Behaviors
+-------------
+
+When doing a ``sync`` operation, if the upstream "distribution" unit has not
+changed since the last sync, pulp will no longer attempt to download additional
+distribution-related files.
+
 Bug Fixes
 ---------
 
