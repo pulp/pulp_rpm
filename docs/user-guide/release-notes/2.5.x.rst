@@ -2,6 +2,14 @@
 Pulp RPM 2.5 Release Notes
 ==========================
 
+Pulp RPM 2.5.3
+==============
+
+Bug Fixes
+---------
+
+This release fixes `#1176698 <https://bugzilla.redhat.com/show_bug.cgi?id=1176698>`_
+
 Pulp RPM 2.5.2
 ==============
 
