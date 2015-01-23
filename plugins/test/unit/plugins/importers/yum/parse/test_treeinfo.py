@@ -69,7 +69,7 @@ class TestExistingDistIsCurrent(unittest.TestCase):
         self.assertTrue(ret is True)
 
     def test_not_current(self):
-        self.unit.metadata[treeinfo.KEY_TIMESTAMP] = 600.0 # 10 mins after the epoch
+        self.unit.metadata[treeinfo.KEY_TIMESTAMP] = 600.0  # 10 mins after the epoch
 
         ret = treeinfo.existing_distribution_is_current(self.unit, self.model)
 
