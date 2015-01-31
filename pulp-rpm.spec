@@ -14,7 +14,7 @@
 
 Name: pulp-rpm
 Version: 2.5.3
-Release: 0.2.rc%{?dist}
+Release: 1%{?dist}
 Summary: Support for RPM content in the Pulp platform
 Group: Development/Languages
 License: GPLv2
@@ -281,22 +281,8 @@ A collection of yum plugins supplementing Pulp consumer operations.
 
 
 %changelog
-* Wed Jan 28 2015 Chris Duryee <cduryee@redhat.com> 2.5.3-0.2.rc
-- Pulp rebuild
-
-* Tue Jan 20 2015 Barnaby Court <bcourt@redhat.com> 2.5.3-0.1.beta
-- Pulp rebuild
-
-* Thu Jan 15 2015 Dennis Kliban <dkliban@redhat.com> 2.5.2-0.4.rc
-- 1171278 - allow pulp-admin to print all packages associated with errata
-  (cduryee@redhat.com)
-- 1171278 - update erratum when a new packagelist is encountered
-  (cduryee@redhat.com)
-- 1175818 - Fix failure on Errata with missing "sum" (rbarlow@redhat.com)
-- 1171280 - ensure packages are available when calculating applicability
-  (cduryee@redhat.com)
-- 1151485 - fixing a typo in 2.4 release notes documentation
-  (skarmark@redhat.com)
+* Fri Jan 30 2015 Chris Duryee <cduryee@redhat.com> 2.5.3-1
+- 1185367 - Fix rpm repo publish failure (bcourt@redhat.com)
 
 * Wed Dec 10 2014 Barnaby Court <bcourt@redhat.com> 2.5.1-1
 - 11157852 - Convert timestamp values in the repomd to integers from floats
