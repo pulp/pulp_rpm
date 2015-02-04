@@ -556,7 +556,8 @@ class PublishDrpmStepTests(BaseYumDistributorPublishStepTests):
     def test_process_unit(self, mock_symlink):
         step = publish.PublishDrpmStep(mock.Mock(package_dir=None))
         step.parent = self.publisher
-        test_unit = mock.Mock(storage_path='/bar', metadata={'filename': 'foo.rpm'})
+        test_unit = self._generate_drpm('foo.rpm')
+        test_unit.storage_path = '/bar'
 
         step.context = mock.Mock()
         step.dist_step.package_dirs = []
@@ -571,8 +572,8 @@ class PublishDrpmStepTests(BaseYumDistributorPublishStepTests):
         step = publish.PublishDrpmStep(mock.Mock(package_dir='bar'))
         step.parent = self.publisher
 
-        test_unit = mock.Mock(storage_path='/bar', metadata={'filename': 'foo.rpm'})
-
+        test_unit = self._generate_drpm('foo.rpm')
+        test_unit.storage_path = '/bar'
         step.context = mock.Mock()
         step.dist_step.package_dirs = ['/bar']
         step.process_unit(test_unit)
