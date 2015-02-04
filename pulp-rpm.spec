@@ -89,16 +89,12 @@ pushd plugins
 %{__python} setup.py install -O1 --skip-build --root %{buildroot}
 popd
 
-mkdir -p /srv
 mkdir -p %{buildroot}/%{_usr}/lib/pulp/plugins
 mkdir -p %{buildroot}/%{_var}/lib/pulp/published/yum/http
 mkdir -p %{buildroot}/%{_var}/lib/pulp/published/yum/https
 
 cp -R plugins/etc/httpd %{buildroot}/%{_sysconfdir}
 cp -R plugins/etc/pulp %{buildroot}/%{_sysconfdir}
-
-# WSGI
-cp -R plugins/srv %{buildroot}
 
 # Type files
 cp -R plugins/types %{buildroot}/%{_usr}/lib/pulp/plugins
@@ -161,6 +157,7 @@ A collection of modules shared among all RPM components.
 Summary: Pulp RPM plugins
 Group: Development/Languages
 Requires: python-pulp-rpm-common = %{pulp_version}
+Requires: python-pulp-repoauth >= 2.6.0
 Requires: pulp-server = %{pulp_version}
 Requires: createrepo >= 0.9.9-21
 Requires: createrepo_c >= 0.4.1-1
@@ -178,10 +175,8 @@ to provide RPM specific support.
 %files plugins
 %defattr(-,root,root,-)
 %{python_sitelib}/pulp_rpm/plugins/
-%{python_sitelib}/pulp_rpm/repo_auth/
 %{python_sitelib}/pulp_rpm/yum_plugin/
 %{python_sitelib}/pulp_rpm_plugins*.egg-info
-%config(noreplace) %{_sysconfdir}/pulp/repo_auth.conf
 %config(noreplace) %{_sysconfdir}/httpd/conf.d/pulp_rpm.conf
 %{_usr}/lib/pulp/plugins/types/rpm_support.json
 %{_usr}/lib/pulp/plugins/types/iso_support.json
@@ -190,8 +185,6 @@ to provide RPM specific support.
 %defattr(-,apache,apache,-)
 %{_var}/lib/pulp/published/yum/
 %{_sysconfdir}/pki/pulp/content/
-%defattr(-,root,root,-)
-/srv/pulp/repo_auth.wsgi
 %doc LICENSE COPYRIGHT
 %endif # End pulp_server if block
 
