@@ -181,8 +181,8 @@ class TestISOSyncRun(PulpRPMTests):
         self.assertEqual(self.iso_sync_run.progress_report.state,
                          SyncProgressReport.STATE_CANCELLED)
 
-    @patch('pulp_rpm.plugins.importers.iso.sync.logger')
-    def test_download_failed_during_iso_download(self, logger):
+    @patch('pulp_rpm.plugins.importers.iso.sync._logger')
+    def test_download_failed_during_iso_download(self, _logger):
         self.iso_sync_run.progress_report._state = SyncProgressReport.STATE_ISOS_IN_PROGRESS
         url = 'http://www.theonion.com/articles/american-airlines-us-airways-merge-to-form' \
               '-worlds,31302/'
@@ -193,12 +193,12 @@ class TestISOSyncRun(PulpRPMTests):
 
         self.iso_sync_run.download_failed(report)
 
-        self.assertEqual(logger.error.call_count, 1)
-        log_msg = logger.error.mock_calls[0][1][0]
+        self.assertEqual(_logger.error.call_count, 1)
+        log_msg = _logger.error.mock_calls[0][1][0]
         self.assertTrue('uh oh' in log_msg)
 
-    @patch('pulp_rpm.plugins.importers.iso.sync.logger')
-    def test_download_failed_during_manifest(self, logger):
+    @patch('pulp_rpm.plugins.importers.iso.sync._logger')
+    def test_download_failed_during_manifest(self, _logger):
         self.iso_sync_run.progress_report._state = SyncProgressReport.STATE_MANIFEST_IN_PROGRESS
         url = 'http://www.theonion.com/articles/' + \
               'american-airlines-us-airways-merge-to-form-worlds,31302/'
@@ -212,8 +212,8 @@ class TestISOSyncRun(PulpRPMTests):
         self.assertEqual(self.iso_sync_run.progress_report._state,
                          SyncProgressReport.STATE_MANIFEST_FAILED)
         self.assertEqual(self.iso_sync_run.progress_report.error_message, report.error_report)
-        self.assertEqual(logger.error.call_count, 1)
-        log_msg = logger.error.mock_calls[0][1][0]
+        self.assertEqual(_logger.error.call_count, 1)
+        log_msg = _logger.error.mock_calls[0][1][0]
         self.assertTrue('uh oh' in log_msg)
 
     @patch('pulp_rpm.plugins.importers.iso.sync.ISOSyncRun.download_failed')

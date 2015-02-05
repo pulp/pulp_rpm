@@ -1,18 +1,14 @@
-import logging
 import os
 import shutil
 
 from pulp.common import config as config_utils
 from pulp.common.plugins import importer_constants
-from pulp.plugins.conduits.mixins import UnitAssociationCriteria
 from pulp.plugins.importer import Importer
+from pulp.server.db.model.criteria import UnitAssociationCriteria
 
 from pulp_rpm.common import constants, ids
 from pulp_rpm.plugins.db import models
 from pulp_rpm.plugins.importers.iso import configuration, sync
-
-
-logger = logging.getLogger(__name__)
 
 
 # The leading '/etc/pulp/' will be added by the read_json_config method.

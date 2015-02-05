@@ -1,10 +1,11 @@
 from gettext import gettext as _
 
-from pulp.plugins.conduits.mixins import UnitAssociationCriteria
 from pulp.plugins.profiler import Profiler, InvalidUnitsRequested
+from pulp.server.db.model.criteria import UnitAssociationCriteria
 
 from pulp_rpm.common.ids import TYPE_ID_ERRATA, TYPE_ID_RPM
 from pulp_rpm.yum_plugin import util
+
 
 _logger = util.getLogger(__name__)
 

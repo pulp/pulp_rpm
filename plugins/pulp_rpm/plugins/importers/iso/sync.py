@@ -9,14 +9,14 @@ from nectar.downloaders.threaded import HTTPThreadedDownloader
 from nectar.downloaders.local import LocalFileDownloader
 from pulp.common.plugins import importer_constants
 from pulp.common.util import encode_unicode
-from pulp.plugins.conduits.mixins import Criteria, UnitAssociationCriteria
+from pulp.server.db.model.criteria import Criteria, UnitAssociationCriteria
 
 from pulp_rpm.common import constants
 from pulp_rpm.common.progress import SyncProgressReport
 from pulp_rpm.plugins.db import models
 
 
-logger = logging.getLogger(__name__)
+_logger = logging.getLogger(__name__)
 
 
 class ISOSyncRun(listener.DownloadEventListener):
@@ -101,7 +101,7 @@ class ISOSyncRun(listener.DownloadEventListener):
         # failed for that phase.
         msg = _('Failed to download %(url)s: %(error_msg)s.')
         msg = msg % {'url': report.url, 'error_msg': report.error_msg}
-        logger.error(msg)
+        _logger.error(msg)
         if self.progress_report.state == self.progress_report.STATE_MANIFEST_IN_PROGRESS:
             self.progress_report.state = self.progress_report.STATE_MANIFEST_FAILED
             self.progress_report.error_message = report.error_report
