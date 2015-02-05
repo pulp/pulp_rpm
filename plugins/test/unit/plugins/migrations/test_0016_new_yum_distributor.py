@@ -6,6 +6,7 @@ import uuid
 
 import mock
 from pulp.common import dateutils
+from pulp.server import config as pulp_config
 from pulp.server.db.migrate.models import _import_all_the_way
 from pulp.server.db.model.repository import Repo, RepoDistributor
 
@@ -172,6 +173,26 @@ class HelperMethodTests(BaseMigrationTests):
         self.migration_module._re_publish_repository(repo, dist)
 
         mock_publish.assert_called_once()
+
+    def test_distributor_working_dir(self):
+        distributor_id = 'distid'
+        repo_id = 'repoid'
+        storage_dir = pulp_config.config.get('server', 'storage_dir')
+        actual_dir = '%s/working/repos/%s/distributors/%s' % (storage_dir, repo_id, distributor_id)
+        directory = self.migration_module.distributor_working_dir(distributor_id, repo_id,
+                                                                  mkdir=False)
+        self.assertEqual(actual_dir, directory)
+
+    @mock.patch('os.makedirs')
+    def test_distributor_working_dir_makedirs(self, mock_makedirs):
+        distributor_id = 'distid'
+        repo_id = 'repoid'
+        storage_dir = pulp_config.config.get('server', 'storage_dir')
+        distributor_working_dir = '%s/working/repos/%s/distributors/%s' % (storage_dir, repo_id,
+                                                                           distributor_id)
+        directory = self.migration_module.distributor_working_dir(distributor_id, repo_id)
+        mock_makedirs.assert_has_calls([mock.call(distributor_working_dir)])
+        self.assertEqual(distributor_working_dir, directory)
 
 
 class MigrationTests(BaseMigrationTests):
