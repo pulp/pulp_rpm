@@ -100,6 +100,7 @@ class MetadataFiles(object):
                        'other', 'other_db',
                        'primary', 'primary_db',
                        'deltainfo', 'susedata',
+                       'prestodelta',
                        'updateinfo', 'updateinfo_db'])
 
     def __init__(self, repo_url, dst_dir, nectar_config):
@@ -200,8 +201,7 @@ class MetadataFiles(object):
         # TODO: vet this method and determine if it should be used
         for md in self.metadata.values():
             if 'local_path' not in md:
-                raise RuntimeError(
-                    '%s has not been downloaded' % md['relative_path'].rsplit('/', 1)[-1])
+                raise RuntimeError('%s has not been downloaded' % md['relative_path'].rsplit('/', 1)[-1])
 
             if md['size'] is None:
                 raise RuntimeError('%s cannot be verified, no file size' % md['local_path'])
@@ -216,8 +216,7 @@ class MetadataFiles(object):
 
             hash_constructor = getattr(hashlib, md['checksum']['algorithm'], None)
             if hash_constructor is None:
-                raise RuntimeError('%s failed verification, unsupported hash algorithm: %s' %
-                                   (md['local_path'], md['checksum']['algorithm']))
+                raise RuntimeError('%s failed verification, unsupported hash algorithm: %s' % (md['local_path'], md['checksum']['algorithm']))
 
             hash_obj = hash_constructor()
             with open(md['local_path'], 'rb') as file_handle:
@@ -272,9 +271,8 @@ class MetadataFiles(object):
         access to each unit's data.
         """
         for filename, tag, process_func in (
-                (filelists.METADATA_FILE_NAME, filelists.PACKAGE_TAG,
-                 filelists.process_package_element),
-                (other.METADATA_FILE_NAME, other.PACKAGE_TAG, other.process_package_element),
+            (filelists.METADATA_FILE_NAME, filelists.PACKAGE_TAG, filelists.process_package_element),
+            (other.METADATA_FILE_NAME, other.PACKAGE_TAG, other.process_package_element),
         ):
             xml_file_handle = self.get_metadata_file_handle(filename)
             try:
@@ -323,11 +321,11 @@ class MetadataFiles(object):
         :param model:   model instance to manipulate
         :type  model:   pulp_rpm.plugins.db.models.RPM
         """
-        repodata = model.metadata.setdefault('repodata', {})
+        repodata = model.metadata.setdefault('repodata',{})
         db_key = self.generate_db_key(model.unit_key)
         for filename, metadata_key, process_func in (
-                (filelists.METADATA_FILE_NAME, 'files', filelists.process_package_element),
-                (other.METADATA_FILE_NAME, 'changelog', other.process_package_element)
+            (filelists.METADATA_FILE_NAME, 'files', filelists.process_package_element),
+            (other.METADATA_FILE_NAME, 'changelog', other.process_package_element)
         ):
             try:
                 db_file = gdbm.open(self.dbs[filename], 'r')
@@ -341,7 +339,6 @@ class MetadataFiles(object):
 
         raw_xml = model.raw_xml
         repodata['primary'] = change_location_tag(raw_xml, model.relative_path)
-
 
 # utilities --------------------------------------------------------------------
 

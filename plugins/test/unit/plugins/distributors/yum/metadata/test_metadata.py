@@ -396,49 +396,6 @@ class YumDistributorMetadataTests(unittest.TestCase):
 
     # -- prestodelta.xml testing -----------------------------------------------
 
-    def test_prestodelta_file_creation(self):
-
-        path = os.path.join(self.metadata_file_dir,
-                            REPO_DATA_DIR_NAME,
-                            PRESTO_DELTA_FILE_NAME)
-
-        context = PrestodeltaXMLFileContext(self.metadata_file_dir)
-
-        context._open_metadata_file_handle()
-        context._close_metadata_file_handle()
-
-        self.assertTrue(os.path.exists(path))
-
-    def test_prestodelta_opening_closing_tags(self):
-
-        path = os.path.join(self.metadata_file_dir,
-                            REPO_DATA_DIR_NAME,
-                            PRESTO_DELTA_FILE_NAME)
-
-        context = PrestodeltaXMLFileContext(self.metadata_file_dir)
-
-        context._open_metadata_file_handle()
-
-        self.assertRaises(NotImplementedError, context._write_root_tag_close)
-
-        context._write_root_tag_open()
-
-        try:
-            context._write_root_tag_close()
-
-        except Exception, e:
-            self.fail(e.message)
-
-        context._close_metadata_file_handle()
-
-        self.assertNotEqual(os.path.getsize(path), 0)
-
-        prestodelta_handle = gzip.open(path, 'r')
-        content = prestodelta_handle.read()
-        prestodelta_handle.close()
-
-        self.assertEqual(content, '<prestodelta>\n</prestodelta>\n')
-
     def test_prestodelta_unit_metadata(self):
 
         path = os.path.join(self.metadata_file_dir,

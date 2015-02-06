@@ -507,13 +507,15 @@ class PublishDrpmStep(UnitPublishStep):
 
     def process_unit(self, unit):
         """
-        Link the unit to the drpm content directory and the package_dir
+        Link the unit to the drpm content directory and
+        update the prestodelta metadata file.
 
         :param unit: The unit to process
         :type unit: pulp.plugins.model.Unit
         """
         source_path = unit.storage_path
-        relative_path = os.path.join('drpms', util.get_relpath_from_unit(unit))
+        unit_filename = os.path.basename(unit.unit_key['filename'])
+        relative_path = os.path.join('drpms', unit_filename)
         destination_path = os.path.join(self.get_working_dir(), relative_path)
         self._create_symlink(source_path, destination_path)
         for package_dir in self.dist_step.package_dirs:
