@@ -62,13 +62,16 @@ class TestRemoveMissing(TestPurgeBase):
     @mock.patch.object(purge, 'get_remote_units', autospec=True)
     @mock.patch.object(purge, 'remove_missing_units', autospec=True)
     def test_remove_missing_drpms(self, mock_remove, mock_get_remote_units):
+        """
+        Test that the purge makes the appropriate calls and that it calls
+        for both of the prestodelta files
+        """
         purge.remove_missing_drpms(self.metadata_files, self.conduit)
 
-        mock_get_remote_units.assert_called_once_with(ANY,
-                                                      presto.PACKAGE_TAG,
-                                                      presto.process_package_element)
-        mock_remove.assert_called_once_with(self.conduit,
-                                            models.DRPM, mock_get_remote_units.return_value)
+        mock_get_remote_units.assert_called_with(ANY, presto.PACKAGE_TAG,
+                                                 presto.process_package_element)
+        self.assertEquals(2, mock_get_remote_units.call_count)
+        mock_remove.assert_called_once_with(self.conduit, models.DRPM, set())
 
     @mock.patch.object(purge, 'get_remote_units', autospec=True)
     @mock.patch.object(purge, 'remove_missing_units', autospec=True)

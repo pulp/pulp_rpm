@@ -103,10 +103,14 @@ def remove_missing_drpms(metadata_files, conduit):
                             and remove_unit methods.
     :type  conduit:         pulp.plugins.conduits.repo_sync.RepoSyncConduit
     """
-    file_function = functools.partial(metadata_files.get_metadata_file_handle,
-                                      presto.METADATA_FILE_NAME)
-    remote_named_tuples = get_remote_units(file_function, presto.PACKAGE_TAG,
-                                           presto.process_package_element)
+    remote_named_tuples = set()
+    for metadata_file_name in presto.METADATA_FILE_NAMES:
+        file_function = functools.partial(metadata_files.get_metadata_file_handle,
+                                          metadata_file_name)
+        file_tuples = get_remote_units(file_function, presto.PACKAGE_TAG,
+                                               presto.process_package_element)
+        remote_named_tuples = remote_named_tuples.union(file_tuples)
+
     remove_missing_units(conduit, models.DRPM, remote_named_tuples)
 
 
