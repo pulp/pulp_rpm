@@ -291,8 +291,10 @@ class RepoSync(object):
         :rtype:     tuple
         """
         _logger.info(_('Determining which units need to be downloaded.'))
-        rpms_to_download, rpms_count, rpms_total_size = self._decide_rpms_to_download(metadata_files)
-        drpms_to_download, drpms_count, drpms_total_size = self._decide_drpms_to_download(metadata_files)
+        rpms_to_download, rpms_count, rpms_total_size = \
+            self._decide_rpms_to_download(metadata_files)
+        drpms_to_download, drpms_count, drpms_total_size = \
+            self._decide_drpms_to_download(metadata_files)
 
         unit_counts = {
             'rpm': rpms_count,
@@ -561,7 +563,8 @@ class RepoSync(object):
             all_packages = packages.package_list_generator(file_handle,
                                                            tag,
                                                            process_func)
-            package_info_generator = (model for model in all_packages if model.as_named_tuple in to_save)
+            package_info_generator = \
+                (model for model in all_packages if model.as_named_tuple in to_save)
 
         for model in package_info_generator:
             unit = self.sync_conduit.init_unit(model.TYPE, model.unit_key, model.metadata, None)
@@ -593,12 +596,8 @@ class RepoSync(object):
                                              (existing_unit.unit_key, new_unit.unit_key))
 
         if existing_unit.type_id == ids.TYPE_ID_ERRATA:
-            # start with the package list we have in existing_unit
-            package_lists = existing_unit.metadata['pkglist']
-
             # add in anything from new_unit that we don't already have. We key
             # package lists by name for this concatenation.
-            new_package_lists = []
             existing_package_list_names = [p['name'] for p in existing_unit.metadata['pkglist']]
 
             for possible_new_pkglist in new_unit.metadata['pkglist']:
@@ -635,7 +634,8 @@ class RepoSync(object):
         # a tuple of (model as named tuple, size in bytes)
         wanted = {}
 
-        number_old_versions_to_keep = self.call_config.get(importer_constants.KEY_UNITS_RETAIN_OLD_COUNT)
+        number_old_versions_to_keep = \
+            self.call_config.get(importer_constants.KEY_UNITS_RETAIN_OLD_COUNT)
         for model in package_info_generator:
             versions = wanted.setdefault(model.key_string_without_version, {})
             serialized_version = model.complete_version_serialized
