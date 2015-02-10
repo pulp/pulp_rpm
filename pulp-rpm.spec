@@ -14,7 +14,7 @@
 
 Name: pulp-rpm
 Version: 2.6.0
-Release: 0.5.beta%{?dist}
+Release: 0.6.beta%{?dist}
 Summary: Support for RPM content in the Pulp platform
 Group: Development/Languages
 License: GPLv2
@@ -281,6 +281,10 @@ A collection of yum plugins supplementing Pulp consumer operations.
 
 
 %changelog
+* Tue Feb 10 2015 Chris Duryee <cduryee@redhat.com> 2.6.0-0.6.beta
+- 1147073 - when a distribution hasn't changed, sync no longer re-donwnloads
+  its files (mhrivnak@redhat.com)
+
 * Fri Jan 16 2015 Chris Duryee <cduryee@redhat.com> 2.6.0-0.5.beta
 - 1175616 - Don't index the title field of erratum due to max mongo index size.
   (bcourt@redhat.com)
