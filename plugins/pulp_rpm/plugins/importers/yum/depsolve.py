@@ -221,7 +221,9 @@ class Solver(object):
         :type  units:   iterable
 
         :return:        set of pulp.plugins.model.Unit instances which
-                        satisfy the passed-in requirements
+                        satisfy the passed-in requirements. Please see match()
+                        for details about the Units.
+
         :rtype:         set
         """
         reqs = self.get_requirements(units)
@@ -244,12 +246,26 @@ class Solver(object):
         """
         Get a list of all available packages with their "Provides" info.
 
+        Note that the 'provides' metadata will be flattened via _trim_provides().
+
         :return:    list of (pulp.plugins.model.Unit, list of provides)
         """
         fields = list(models.RPM.UNIT_KEY_NAMES)
         fields.extend(['provides', 'id', 'version_sort_index', 'release_sort_index'])
         criteria = UnitAssociationCriteria(type_ids=[models.RPM.TYPE], unit_fields=fields)
-        return list(self.search_method(criteria))
+        return [self._trim_provides(unit) for unit in self.search_method(criteria,
+                                                                         as_generator=True)]
+
+    def _trim_provides(self, unit):
+        """
+        A method to flatten/strip the "provides" metadata to just the name when
+        building the list of packages. See RHBZ #1185868.
+        """
+        new_provides = []
+        for provide in unit.metadata.get('provides', []):
+            new_provides.append(provide['name'])
+        unit.metadata['provides'] = new_provides
+        return unit
 
     @property
     def _provides_tree(self):
@@ -299,7 +315,7 @@ class Solver(object):
             my_cmp_tuple = (unit.unit_key['epoch'], unit.metadata['version_sort_index'],
                             unit.metadata['release_sort_index'])
             for provide in unit.metadata.get('provides', []):
-                unit_dict = tree.setdefault(provide['name'], {})
+                unit_dict = tree.setdefault(provide, {})
                 newest_version = unit_dict.get(unit.unit_key['name'], None)
                 if newest_version:
                     newest_cmp_tuple = (newest_version.unit_key['epoch'],
@@ -362,9 +378,11 @@ class Solver(object):
         :param reqs:    list of requirements
         :type  reqs:    list of Require() instances
         :return:        set of pulp.plugins.model.Unit instances which
-                        satisfy the passed-in requirements
+                        satisfy the passed-in requirements. These units will
+                        be flattened of their "provides" info to save memory.
         :rtype:         set
         """
+
         provides_tree = self._provides_tree
         packages_tree = self._packages_tree
         deps = set()
