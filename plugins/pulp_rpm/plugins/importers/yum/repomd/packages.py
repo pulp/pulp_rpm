@@ -37,7 +37,8 @@ def package_list_generator(xml_handle, package_tag, process_func=None):
     :rtype: generator
     """
     if process_func is None:
-        process_func = lambda x: x
+        def process_func(x):
+            return x
     parser = iterparse(xml_handle, events=('start', 'end'))
     xml_iterator = iter(parser)
 

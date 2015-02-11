@@ -154,7 +154,9 @@ class TestGetRemoteUnits(TestPurgeBase):
         mock_package_list_generator.return_value = rpms
         fake_file = StringIO()
         mock_open.return_value = fake_file
-        process_func = lambda x: x
+
+        def process_func(x):
+            return x
         file_function = functools.partial(self.metadata_files.get_metadata_file_handle,
                                           self.FAKE_TYPE)
         ret = purge.get_remote_units(file_function, 'bar', process_func)
