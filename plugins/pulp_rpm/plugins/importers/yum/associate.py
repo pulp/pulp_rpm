@@ -182,18 +182,28 @@ def copy_rpms(units, import_conduit, copy_deps, solver=None):
     unit_set = set()
 
     for unit in units:
+        # we are passing in units that may have flattened "provides" metadata.
+        # This flattened field is not used by associate_unit().
         import_conduit.associate_unit(unit)
         unit_set.add(unit)
 
     if copy_deps and unit_set:
         if solver is None:
             solver = depsolve.Solver(import_conduit.get_source_units)
+
+        # This returns units that have a flattened 'provides' metadata field
+        # for memory purposes (RHBZ #1185868)
         deps = solver.find_dependent_rpms(unit_set)
+
         # remove rpms already in the destination repo
         existing_units = set(existing.get_existing_units([dep.unit_key for dep in deps],
                                                          models.RPM.UNIT_KEY_NAMES, models.RPM.TYPE,
                                                          import_conduit.get_destination_units))
+
+        # the hash comparison for Units is unit key + type_id, the metadata
+        # field is not used.
         to_copy = deps - existing_units
+
         _LOGGER.debug('Copying deps: %s' % str(sorted([x.unit_key['name'] for x in to_copy])))
         if to_copy:
             unit_set |= copy_rpms(to_copy, import_conduit, copy_deps, solver)

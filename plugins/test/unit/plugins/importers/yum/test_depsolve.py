@@ -141,6 +141,14 @@ class TestProvidesTree(DepsolveTestCase):
         # the source list should have been cleared
         self.assertTrue(self.solver._cached_source_with_provides is None)
 
+    def test_trim_provides(self):
+        fake_unit = mock.Mock()
+        fake_unit.metadata = {'provides': [{'name': 'foo', 'another_field': 'bar'}]}
+
+        trimmed = self.solver._trim_provides(fake_unit)
+
+        self.assertEquals(trimmed.metadata, {'provides': ['foo']})
+
 
 class TestPackagesTree(DepsolveTestCase):
     @mock.patch('pulp_rpm.plugins.importers.yum.depsolve.Solver._build_packages_tree')
@@ -179,15 +187,21 @@ class TestFindDependentRPMs(DepsolveTestCase):
         super(TestFindDependentRPMs, self).setUp()
         self.mock_search.side_effect = self._get_units
 
-    def _get_units(self, criteria):
+    def _get_units(self, criteria, as_generator=False):
         """
         Fake the conduit get_units() call. If there are unit_filters, assume they have an $or clause
         and filter self.units for the units that have the same unit keys as the or clause.
         Otherwise, return self.units.
         """
         if criteria.unit_filters:
-            return [unit for unit in self.units if unit.unit_key in criteria.unit_filters['$or']]
-        return self.units
+            units = (unit for unit in self.units if unit.unit_key in criteria.unit_filters['$or'])
+        else:
+            units = (unit for unit in self.units)
+
+        if as_generator:
+            return units
+        else:
+            return list(units)
 
     def test_one_unit_with_dependencies(self):
         """
