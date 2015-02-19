@@ -113,4 +113,3 @@ class TestGroupISODistributor(unittest.TestCase):
         self.assertFalse(os.path.exists(http_dir))
         self.assertFalse(os.path.exists(https_dir))
         self.assertFalse(os.path.exists(master_dir))
-        self.assertFalse(os.path.exists(repo_working_dir))
