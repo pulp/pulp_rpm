@@ -102,14 +102,11 @@ class YumHTTPDistributor(Distributor):
             shutil.rmtree(repo_dir, ignore_errors=True)
 
         # remove the symlinks that might have been created for this repo/distributor
-        http_publish_dir = os.path.join(configuration.get_http_publish_dir(config),
-                                        configuration.get_repo_relative_path(repo, config))
-        https_publish_dir = os.path.join(configuration.get_https_publish_dir(config),
-                                         configuration.get_repo_relative_path(repo, config))
+        http_publish_dir = configuration.get_http_publish_dir(config)
+        https_publish_dir = configuration.get_https_publish_dir(config)
 
-        symlink_list = [http_publish_dir, https_publish_dir]
-
-        for symlink in symlink_list:
+        for publish_dir in [http_publish_dir, https_publish_dir]:
+            symlink = os.path.join(publish_dir, configuration.get_repo_relative_path(repo, config))
             symlink_without_trailing_slash = symlink.rstrip(os.sep)
             try:
                 os.unlink(symlink_without_trailing_slash)
@@ -117,9 +114,43 @@ class YumHTTPDistributor(Distributor):
                 # If the symlink doesn't exist pass
                 if error.errno != errno.ENOENT:
                     raise
+            else:
+                # Clean the directories that were hosted for this repo.
+                self.clean_simple_hosting_directories(symlink_without_trailing_slash, publish_dir)
 
         # remove certificates for certificate based auth
         configuration.remove_cert_based_auth(repo, config)
+
+    def clean_simple_hosting_directories(self, start_location, containing_dir):
+        """
+        Remove any orphaned directory structure left by the removal of a repo.
+
+        :param start_location: path of the symlink of the repo that was removed.
+        :type  start_location: str
+        :param containing_dir: path of the location of the base dir containing hosted repos
+        :type  containing_dir: str
+        """
+        up_dir = os.path.dirname(start_location)
+
+        # This function is potentially dangerous so it is important to restrict it to the
+        # publish directories.
+        if containing_dir not in os.path.dirname(up_dir):
+            return
+
+        # If the only file is the listing file, it is safe to delete the file and containing dir.
+        if os.listdir(up_dir) == ['listing']:
+            os.remove(os.path.join(up_dir, 'listing'))
+            try:
+                os.rmdir(up_dir)
+            except OSError:
+                # If this happened, there was a concurrency issue and it is no longer safe to
+                # remove the directory. It is possible that the concurrent operation created the
+                # listing file before this operation deleted it, so to be safe, we need to
+                # regenerate the listing file.
+                util.generate_listing_files(up_dir, up_dir)
+                return
+
+        self.clean_simple_hosting_directories(up_dir, containing_dir)
 
     def publish_repo(self, repo, publish_conduit, config):
         """
