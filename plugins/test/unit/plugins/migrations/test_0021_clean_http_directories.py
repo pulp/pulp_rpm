@@ -1,4 +1,3 @@
-import logging
 import os
 import shutil
 import tempfile
@@ -112,4 +111,3 @@ class TestMigrate(unittest.TestCase):
         self.assertTrue(os.path.isdir(os.path.join(self.publish_base, 'a')))
         self.assertTrue(os.path.isfile(non_orphan))
         self.assertTrue(os.path.isfile(other_file))
-
