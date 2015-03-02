@@ -7,6 +7,7 @@ import unittest
 
 import mock
 from mock import Mock, patch, call
+from pulp.devel.unit import util
 from pulp.devel.unit.util import compare_dict
 from pulp.plugins.conduits.repo_config import RepoConfigConduit
 from pulp.plugins.conduits.repo_publish import RepoPublishConduit
@@ -175,6 +176,9 @@ class TestDistributorDistributorRemoved(unittest.TestCase):
         self.patch_g = patch(DISTRIBUTOR + '.os')
         self.mock_os = self.patch_g.start()
 
+        self.patch_h = patch(DISTRIBUTOR + '.YumHTTPDistributor.clean_simple_hosting_directories')
+        self.mock_clean = self.patch_h.start()
+
     def setUp(self):
         self._apply_mock_patches()
         self.working_dir = tempfile.mkdtemp()
@@ -191,6 +195,7 @@ class TestDistributorDistributorRemoved(unittest.TestCase):
         self.patch_e.stop()
         self.patch_f.stop()
         self.patch_g.stop()
+        self.patch_h.stop()
 
     def test_distributor_remove_distributor_calls_get_master_publish_dir(self):
         self.mock_master.assert_called_once_with(self.mock_repo, TYPE_ID_DISTRIBUTOR_YUM)
@@ -210,6 +215,9 @@ class TestDistributorDistributorRemoved(unittest.TestCase):
 
     def test_distributor_remove_distributor_calls_remove_cert_based_auth(self):
         self.mock_remove_cert.assert_called_once_with(self.mock_repo, self.config)
+
+    def test_distributor_remove_distributor_calls_clean_simple_hosting_directories(self):
+        self.assertEqual(self.mock_clean.call_count, 2)
 
     def test_distributor_remove_distributor_uses_rmtree_to_remove_working_dir_and_master_dir(self):
         rmtree_calls = [
@@ -238,6 +246,68 @@ class TestDistributorDistributorRemoved(unittest.TestCase):
         self.mock_os.unlink.side_effect = os_error_to_raise
         self.assertRaises(OSError, self.distributor.distributor_removed, self.mock_repo,
                           self.config)
+
+
+class TestCleanSimpleHostingDirectories(unittest.TestCase):
+    """Test the clean_simple_hosting_directories method."""
+
+    def setUp(self):
+        """Setup a publish base"""
+        self.working_dir = tempfile.mkdtemp()
+        self.publish_base = os.path.join(self.working_dir, 'publish', 'dir')
+        util.touch(os.path.join(self.publish_base, 'listing'))
+        self.distributor = distributor.YumHTTPDistributor()
+
+    def tearDown(self):
+        """Cleanup the publish base"""
+        shutil.rmtree(self.working_dir, ignore_errors=True)
+
+    def test_clean_ophaned_leaf(self):
+        """
+        Test that an orphaned leaf is removed.
+        """
+        listing_file_a = os.path.join(self.publish_base, 'a', 'listing')
+        listing_file_b = os.path.join(self.publish_base, 'a', 'b', 'listing')
+        listing_file_c = os.path.join(self.publish_base, 'a', 'b', 'c', 'listing')
+        util.touch(listing_file_a)
+        util.touch(listing_file_b)
+        util.touch(listing_file_c)
+        old_symlink = os.path.join(self.publish_base, 'a', 'b', 'c', 'path_to_removed_symlink')
+        self.distributor.clean_simple_hosting_directories(old_symlink, self.publish_base)
+        self.assertFalse(os.path.isdir(os.path.join(self.publish_base, 'a')))
+
+    def test_clean_only_ophaned_leaf(self):
+        """
+        Test partially shared path, only unshared portion of ophan path should be removed.
+        """
+        listing_file_a = os.path.join(self.publish_base, 'a', 'listing')
+        listing_file_b = os.path.join(self.publish_base, 'a', 'b', 'listing')
+        listing_file_c = os.path.join(self.publish_base, 'a', 'b', 'c', 'listing')
+        non_orphan_listing = os.path.join(self.publish_base, 'a', 'other', 'listing')
+        non_orphan_file = os.path.join(self.publish_base, 'a', 'other', 'otherfile')
+        util.touch(listing_file_a)
+        util.touch(listing_file_b)
+        util.touch(listing_file_c)
+        util.touch(non_orphan_listing)
+        util.touch(non_orphan_file)
+        old_symlink = os.path.join(self.publish_base, 'a', 'b', 'c', 'path_to_removed_symlink')
+        self.distributor.clean_simple_hosting_directories(old_symlink, self.publish_base)
+        self.assertTrue(os.path.isdir(os.path.join(self.publish_base, 'a')))
+        self.assertFalse(os.path.isdir(os.path.join(self.publish_base, 'a', 'b')))
+
+    @mock.patch('pulp_rpm.plugins.distributors.yum.distributor.util')
+    @mock.patch('pulp_rpm.plugins.distributors.yum.distributor.os.rmdir')
+    def test_clean_with_concurrent_file_creation(self, mock_rmdir, mock_util):
+        """
+        Clean directories when a dir cannot be removed during orphaned directory removal.
+        """
+        mock_rmdir.side_effect = OSError()
+        listing_file_a = os.path.join(self.publish_base, 'a', 'listing')
+        updir = os.path.join(self.publish_base, 'a')
+        util.touch(listing_file_a)
+        old_symlink = os.path.join(self.publish_base, 'a', 'path_to_removed_symlink')
+        self.distributor.clean_simple_hosting_directories(old_symlink, self.publish_base)
+        mock_util.generate_listing_files.assert_called_once_with(updir, updir)
 
 
 class TestEntryPoint(unittest.TestCase):
