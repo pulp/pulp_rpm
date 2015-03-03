@@ -12,6 +12,7 @@ _logger = logging.getLogger(__name__)
 CONF_FILE_PATH = 'server/plugins.conf.d/%s.json' % TYPE_ID_DISTRIBUTOR_YUM
 config = read_json_config(CONF_FILE_PATH)
 
+
 def walk_and_clean_directories(base_directory):
     """
     Walk through all of the directories inside of the base dir and clean the orphaned directories.
@@ -29,6 +30,7 @@ def walk_and_clean_directories(base_directory):
         is_orphan = not dirs and (files == ['listing'] or files == [])
         if is_orphan and path != base_directory:
             clean_simple_hosting_directories(path, base_directory)
+
 
 def clean_simple_hosting_directories(leaf, containing_dir):
     """
@@ -62,6 +64,7 @@ def clean_simple_hosting_directories(leaf, containing_dir):
 
     up_dir = os.path.dirname(leaf)
     clean_simple_hosting_directories(up_dir, containing_dir)
+
 
 def migrate():
     """Clean up published orphaned directory structure."""
