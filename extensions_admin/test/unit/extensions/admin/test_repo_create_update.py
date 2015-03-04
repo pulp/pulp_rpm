@@ -203,6 +203,54 @@ class RpmRepoCreateCommandTests(PulpClientTests):
         self.assertTrue('relative_url' in distributor_config)
         self.assertEqual(distributor_config['relative_url'], 'wombat')
 
+    def test_process_yum_distributor_serve_protocol_defaults(self):
+        # Setup
+        distributor_config = {}  # will be populated in this call
+        command = repo_create_update.RpmRepoCreateCommand(self.context)
+
+        # Test
+        command.process_yum_distributor_serve_protocol(distributor_config)
+
+        # Verify
+        self.assertEqual(distributor_config['http'], False)
+        self.assertEqual(distributor_config['https'], True)
+
+    def test_process_yum_distributor_serve_protocol_new_values(self):
+        # Setup
+        distributor_config = {'http': True, 'https': False}
+        command = repo_create_update.RpmRepoCreateCommand(self.context)
+
+        # Test
+        command.process_yum_distributor_serve_protocol(distributor_config)
+
+        # Verify
+        self.assertEqual(distributor_config['http'], True)
+        self.assertEqual(distributor_config['https'], False)
+
+    def test_process_export_distributor_serve_protocol_defaults(self):
+        # Setup
+        distributor_config = {}  # will be populated in this call
+        command = repo_create_update.RpmRepoCreateCommand(self.context)
+
+        # Test
+        command.process_export_distributor_serve_protocol(distributor_config)
+
+        # Verify
+        self.assertEqual(distributor_config['http'], False)
+        self.assertEqual(distributor_config['https'], True)
+
+    def test_process_export_distributor_serve_protocol_new_values(self):
+        # Setup
+        distributor_config = {'http': True, 'https': False}
+        command = repo_create_update.RpmRepoCreateCommand(self.context)
+
+        # Test
+        command.process_export_distributor_serve_protocol(distributor_config)
+
+        # Verify
+        self.assertEqual(distributor_config['http'], True)
+        self.assertEqual(distributor_config['https'], False)
+
 
 class RpmRepoUpdateCommandTests(PulpClientTests):
 
