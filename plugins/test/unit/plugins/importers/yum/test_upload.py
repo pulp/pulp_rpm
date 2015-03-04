@@ -1,5 +1,6 @@
 import os
 import shutil
+import stat
 import tempfile
 import unittest
 
@@ -528,6 +529,9 @@ class UploadPackageTests(unittest.TestCase):
         self.assertEqual(metadata['license'], 'GPLv2')
         self.assertEqual(metadata['relativepath'], 'walrus-5.21-1.noarch.rpm')
         self.assertEqual(metadata['vendor'], None)
+        time_val = os.stat(self.upload_src_filename)[stat.ST_MTIME]
+        self.assertEqual(metadata['build_time'], 1331831368)
+        self.assertEqual(metadata['time'], time_val)
 
     def test_generate_rpm_data_user_checksum(self):
         # Test
