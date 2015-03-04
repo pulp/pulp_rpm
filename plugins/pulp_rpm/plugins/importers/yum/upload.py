@@ -2,6 +2,7 @@ import hashlib
 import logging
 import os
 import shutil
+import stat
 from xml.etree import cElementTree as ET
 
 import rpm
@@ -398,6 +399,11 @@ def _generate_rpm_data(type_id, rpm_filename, user_metadata=None):
     metadata['license'] = headers['license']
     metadata['vendor'] = headers['vendor']
     metadata['description'] = headers['description']
+    metadata['build_time'] = headers[rpm.RPMTAG_BUILDTIME]
+    # Use the mtime of the file to match what is in the generated xml from
+    # rpm_parse.get_package_xml(..)
+    file_stat = os.stat(rpm_filename)
+    metadata['time'] = file_stat[stat.ST_MTIME]
 
     return unit_key, metadata
 
