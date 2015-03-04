@@ -171,27 +171,15 @@ class RpmRepoCreateCommand(CreateRepositoryCommand, ImporterConfigMixin):
         Both http and https must be specified in the distributor config, so make sure they are
         initially set here (default to only https).
         """
-        if 'http' not in yum_distributor_config and 'https' not in yum_distributor_config:
-            yum_distributor_config['https'] = True
-            yum_distributor_config['http'] = False
-
-        # Make sure both are referenced
-        for k in ('http', 'https'):
-            if k not in yum_distributor_config:
-                yum_distributor_config[k] = False
+        yum_distributor_config['https'] = yum_distributor_config.get('https', True)
+        yum_distributor_config['http'] = yum_distributor_config.get('http', False)
 
     def process_export_distributor_serve_protocol(self, export_distributor_config):
         """
         Ensure default values for http and https for export distributor if they are not set.
         """
-        if 'http' not in export_distributor_config and 'https' not in export_distributor_config:
-            export_distributor_config['https'] = True
-            export_distributor_config['http'] = False
-
-        # Make sure both are referenced
-        for k in ('http', 'https'):
-            if k not in export_distributor_config:
-                export_distributor_config[k] = False
+        export_distributor_config['https'] = export_distributor_config.get('https', True)
+        export_distributor_config['http'] = export_distributor_config.get('http', False)
 
 
 class RpmRepoUpdateCommand(UpdateRepositoryCommand, ImporterConfigMixin):
