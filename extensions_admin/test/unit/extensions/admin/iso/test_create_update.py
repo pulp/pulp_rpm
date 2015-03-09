@@ -8,7 +8,8 @@ import os
 import unittest
 
 import mock
-from pulp.client import arg_utils, parsers
+from okaara import parsers
+from pulp.client import arg_utils
 from pulp.client.commands import options as std_options
 from pulp.client.commands.repo.cudl import (CreateRepositoryCommand,
                                             UpdateRepositoryCommand)

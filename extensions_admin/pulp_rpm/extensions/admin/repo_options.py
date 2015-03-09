@@ -5,13 +5,11 @@ out of the repo commands module itself to keep it from becoming unwieldy.
 
 from gettext import gettext as _
 
-from pulp.client import parsers
+from okaara import parsers
 from pulp.client.extensions.extensions import PulpCliOption, PulpCliOptionGroup
 
 from pulp_rpm.common import ids
 
-
-# -- data ---------------------------------------------------------------------
 
 # Used to validate user entered skip types
 VALID_SKIP_TYPES = [ids.TYPE_ID_RPM, ids.TYPE_ID_DRPM, ids.TYPE_ID_DISTRO, ids.TYPE_ID_ERRATA]
@@ -41,22 +39,19 @@ def parse_skip_types(t):
 
     return parsed
 
-# -- group names --------------------------------------------------------------
-
+# group names
 NAME_PUBLISHING = _('Publishing')
 NAME_AUTH = _('Consumer Authentication')
 
 ALL_GROUP_NAMES = (NAME_PUBLISHING, NAME_AUTH)
 
-# -- synchronization options --------------------------------------------------
-
+# synchronization options
 d = _('comma-separated list of types to omit when synchronizing, if not '
       'specified all types will be synchronized; valid values are: %(t)s')
 d = d % {'t': ', '.join(VALID_SKIP_TYPES)}
 OPT_SKIP = PulpCliOption('--skip', d, required=False, parse_func=parse_skip_types)
 
-# -- publish options ----------------------------------------------------------
-
+# publish options
 d = _('if "true", on each successful sync the repository will automatically be '
       'published on the configured protocols; if "false" synchronized content '
       'will only be available after manually publishing the repository; '
@@ -88,8 +83,7 @@ OPT_GENERATE_SQLITE = PulpCliOption('--generate-sqlite', d, required=False,
                                     parse_func=parsers.parse_boolean)
 
 
-# -- publish security options -------------------------------------------------
-
+# publish security options
 d = _('full path to the CA certificate that signed the repository hosts\'s SSL '
       'certificate when serving over HTTPS')
 OPT_HOST_CA = PulpCliOption('--host-ca', d, required=False)
