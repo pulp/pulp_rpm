@@ -1,7 +1,7 @@
 
 from gettext import gettext as _
 
-from pulp.bindings.exceptions import NotFoundException
+from pulp.bindings.exceptions import BadRequestException, NotFoundException
 from pulp.client.commands.repo.query import RepoSearchCommand
 from pulp.client.consumer_utils import load_consumer_id
 from pulp.client.extensions.extensions import PulpCliCommand, PulpCliOption, PulpCliFlag
@@ -16,6 +16,7 @@ YUM_DISTRIBUTOR_TYPE_ID = 'yum_distributor'
 RPM_SECTION = 'rpm'
 SECTION_DESC = _('manage RPM-related features')
 SEARCH_NAME = 'repos'
+
 
 def initialize(context):
 
@@ -60,16 +61,13 @@ class BindCommand(PulpCliCommand):
             self.context.prompt.render_success_message(msg)
             tasks = [dict(task_id=str(t.task_id)) for t in response.response_body.spawned_tasks]
             self.context.prompt.render_document_list(tasks)
-        except NotFoundException, e:
-            resources = e.extra_data['resources']
-            if 'consumer' in resources:
-                r_type = _('Consumer')
-                r_id = consumer_id
+        except BadRequestException, e:
+            property_names = e.extra_data['property_names']
+            if 'repo_id' in property_names:
+                msg = _('Repository [%(r)s] does not exist on the server')
             else:
-                r_type = _('Repository')
-                r_id = repo_id
-            msg = _('%(t)s [%(id)s] does not exist on the server')
-            self.context.prompt.write(msg % {'t': r_type, 'id': r_id}, tag='not-found')
+                msg = _('Repository [%(r)s] does not have a distributor')
+            self.context.prompt.render_failure_message(msg % {'r': repo_id}, tag='not-found')
 
 
 class UnbindCommand(PulpCliCommand):
@@ -92,16 +90,21 @@ class UnbindCommand(PulpCliCommand):
         force = kwargs['force']
 
         try:
-            response = self.context.server.bind.unbind(consumer_id, repo_id, YUM_DISTRIBUTOR_TYPE_ID, force)
+            response = self.context.server.bind.unbind(consumer_id, repo_id,
+                                                       YUM_DISTRIBUTOR_TYPE_ID, force)
             msg = _('Unbind tasks successfully created:')
             self.context.prompt.render_success_message(msg)
             tasks = [dict(task_id=str(t.task_id)) for t in response.response_body.spawned_tasks]
             self.context.prompt.render_document_list(tasks)
         except NotFoundException, e:
-            bind_id = e.extra_data['resources']['bind_id']
-            m = _('Binding [consumer: %(c)s, repository: %(r)s] does not exist on the server')
-            d = {
-                'c': bind_id['consumer_id'],
-                'r': bind_id['repo_id'],
-            }
-            self.context.prompt.write(m % d, tag='not-found')
+            resources = e.extra_data['resources']
+            if 'repo_id' in resources:
+                m = _('Repository [%(r)s] does not exist on the server')
+                d = {'r': repo_id}
+            else:
+                m = _('Binding [consumer: %(c)s, repository: %(r)s] does not exist on the server')
+                d = {
+                    'c': consumer_id,
+                    'r': repo_id,
+                }
+            self.context.prompt.render_failure_message(m % d, tag='not-found')
