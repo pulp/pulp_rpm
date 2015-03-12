@@ -2,7 +2,7 @@ from gettext import gettext as _
 import os
 import sys
 
-from pulp.client import parsers
+from okaara import parsers
 from pulp.client.commands.options import OPTION_REPO_ID
 from pulp.client.commands.repo.upload import UploadCommand
 from pulp.client.extensions.extensions import PulpCliOption

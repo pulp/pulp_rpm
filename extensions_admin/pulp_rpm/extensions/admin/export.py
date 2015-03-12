@@ -1,17 +1,16 @@
 from gettext import gettext as _
 
+from okaara import parsers
 from pulp.bindings import responses
 from pulp.client.commands import options
 from pulp.client.commands.repo.sync_publish import RunPublishRepositoryCommand
-from pulp.client import parsers, validators
+from pulp.client import validators
 from pulp.client.commands.polling import PollingCommand
 from pulp.client.extensions.extensions import PulpCliOption
 from pulp.common import tags as tag_utils
 
 from pulp_rpm.common import ids, constants
 
-
-# -- commands -----------------------------------------------------------------
 
 DESC_EXPORT_RUN = _('triggers an immediate export of a repository')
 DESC_GROUP_EXPORT_RUN = _('triggers an immediate export of a repository group')
