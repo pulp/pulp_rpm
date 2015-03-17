@@ -292,13 +292,34 @@ class TestYumProfilerErrata(rpm_support_base.PulpRPMTests):
         self.assertEqual(report_list, {TYPE_ID_ERRATA: [], TYPE_ID_RPM: []})
 
     def test_install_units(self):
+        """
+        Verify that all available packages in the erratum are installed
+
+        In this test, there are two packages in the erratum, and both are
+        available to the consumer. Thus, both should be installed.
+        """
         repo_id = "test_repo_id"
         errata_obj = self.get_test_errata_object()
         errata_unit = Unit(TYPE_ID_ERRATA, {"id":errata_obj["id"]}, errata_obj, None)
         existing_units = [errata_unit]
         test_repo = profiler_mocks.get_repo(repo_id)
+
+        # create two RPM units that match what is in the erratum
+        rpm_units = []
+        rpm_unit_key_1 = self.create_profile_entry("emoticons", 0, "0.1", "2", "x86_64",
+                                                   "Test Vendor")
+        rpm_units.append(Unit(TYPE_ID_RPM, rpm_unit_key_1, {}, None))
+
+        rpm_unit_key_2 = self.create_profile_entry("patb", 0, "0.1", "2", "x86_64", "Test Vendor")
+        rpm_units.append(Unit(TYPE_ID_RPM, rpm_unit_key_2, {}, None))
+
+        existing_units += rpm_units
+
         conduit = profiler_mocks.get_profiler_conduit(existing_units=existing_units,
-                                                      repo_bindings=[test_repo])
+                                                      repo_bindings=[test_repo],
+                                                      repo_units=rpm_units)
+
+
         example_errata = {"unit_key":errata_unit.unit_key, "type_id":TYPE_ID_ERRATA}
         prof = YumProfiler()
         translated_units  = prof.install_units(self.test_consumer, [example_errata], None, None,
@@ -306,10 +327,99 @@ class TestYumProfilerErrata(rpm_support_base.PulpRPMTests):
         # check repo_id passed to the conduit get_units()
         self.assertEqual(conduit.get_units.call_args[0][0].id, repo_id)
         # check unit association criteria passed to the conduit get_units()
-        self.assertEqual(conduit.get_units.call_args[0][1].type_ids, [TYPE_ID_ERRATA])
-        self.assertEqual(conduit.get_units.call_args[0][1].unit_filters, errata_unit.unit_key)
+        self.assertEqual(conduit.get_units.call_args_list[0][0][1].type_ids, [TYPE_ID_ERRATA])
+        self.assertEqual(conduit.get_units.call_args_list[0][0][1].unit_filters,
+                        errata_unit.unit_key)
         # validate translated units
         self.assertEqual(len(translated_units), 2)
+        expected = prof._get_rpms_from_errata(errata_unit)
+        for u in translated_units:
+            rpm_unit_key = u["unit_key"]
+            self.assertTrue(rpm_unit_key in expected)
+
+    def test_install_units_unit_not_in_repo(self):
+        """
+        This tests that if an erratum unit is requested to be installed, we do
+        not attempt to install any RPM units that are not available in repos.
+
+        For example, if an erratum contains packages for RHEL6 and RHEL7, we do
+        not want to ask a RHEL6 consumer to install RHEL7 packages that are
+        unavailable on that host.
+
+        This is a related issue to errata applicability but is slightly
+        different since the API caller wants to install a particular erratum, and is
+        not trying to determine which errata are applicable.
+
+        Note also that RHEA-2014:9999 has emoticons-0.1 and patb-0.1 in
+        different package collections; this is atypical and would likely not be
+        seen in the wild. I set it up like this to ensure the package list from
+        the erratum was being flattened during comparisons.
+
+        More detail is available in https://pulp.plan.io/issues/770
+        """
+        repo_id = "test_repo_id"
+
+        # this erratum has four RPMs but only two are available
+        errata_obj = self.get_test_errata_object(eid='RHEA-2014:9999')
+        errata_unit = Unit(TYPE_ID_ERRATA, {"id":errata_obj["id"]}, errata_obj, None)
+        existing_units = [errata_unit]
+        test_repo = profiler_mocks.get_repo(repo_id)
+
+        # create two RPM units that match what is in the erratum. There are
+        # higher versioned RPMs in the erratum that are not available; these
+        # should not be installed.
+
+        rpm_units = []
+        rpm_unit_key_1 = self.create_profile_entry("emoticons", 0, "0.1", "2", "x86_64",
+                                                   "Test Vendor")
+        rpm_units.append(Unit(TYPE_ID_RPM, rpm_unit_key_1, {}, None))
+
+        rpm_unit_key_2 = self.create_profile_entry("patb", 0, "0.1", "2", "x86_64", "Test Vendor")
+        rpm_units.append(Unit(TYPE_ID_RPM, rpm_unit_key_2, {}, None))
+
+        existing_units += rpm_units
+
+        conduit = profiler_mocks.get_profiler_conduit(existing_units=existing_units,
+                                                      repo_bindings=[test_repo],
+                                                      repo_units=rpm_units)
+
+        def mocked_get_units(repo_id, criteria=None):
+            """
+            Override the default get_units in profiler_mocks.
+
+            This method is specific to this particular unit test. The default
+            get_units() in profiler_mocks only checks the criteria's type_id and not any
+            other fields.
+
+            :param repo_id: repo ID (unused)
+            :type  repo_id: not used
+            :param criteria: unit association criteria
+            :type  criteria: pulp.server.db.model.criteria.UnitAssociationCriteria
+
+            """
+            if TYPE_ID_ERRATA in criteria.type_ids:
+                return [errata_unit]
+            elif criteria['unit_filters']['name'] == 'emoticons' and \
+                 criteria['unit_filters']['version'] == '0.1':
+                    return [rpm_units[0]]
+            elif criteria['unit_filters']['name'] == 'patb' and \
+                 criteria['unit_filters']['version'] == '0.1':
+                    return [rpm_units[1]]
+            else:
+                return []
+
+        conduit.get_units.side_effect = mocked_get_units
+
+        example_errata = {"unit_key":errata_unit.unit_key, "type_id":TYPE_ID_ERRATA}
+        prof = YumProfiler()
+        translated_units  = prof.install_units(self.test_consumer, [example_errata], None, None,
+                                               conduit)
+        # check repo_id passed to the conduit get_units()
+        self.assertEqual(conduit.get_units.call_args_list[0][0][0].id, repo_id)
+        # validate translated units
+        self.assertEqual(len(translated_units), 2)
+        self.assertEqual(translated_units[0]['unit_key']['filename'], 'patb-0.1-2.x86_64.rpm')
+        self.assertEqual(translated_units[1]['unit_key']['filename'], 'emoticons-0.1-2.x86_64.rpm')
         expected = prof._get_rpms_from_errata(errata_unit)
         for u in translated_units:
             rpm_unit_key = u["unit_key"]
