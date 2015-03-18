@@ -398,7 +398,7 @@ class YumProfiler(Profiler):
         for errata_rpm in errata_rpms:
             # the dicts from _get_rpms_from_errata contain some extra fields
             # that are not in the RPM unit key.
-            nvrea = {k: v for k, v in errata_rpm.iteritems() if k in NVREA_KEYS}
+            nvrea = dict((k, v) for k, v in errata_rpm.iteritems() if k in NVREA_KEYS)
             if YumProfiler._find_unit_associated_to_repos(TYPE_ID_RPM, nvrea,
                                                           repo_ids, conduit):
                 updated_rpms.append(errata_rpm)
