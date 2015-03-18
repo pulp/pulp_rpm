@@ -8,6 +8,8 @@ from pulp_rpm.yum_plugin import util
 
 _logger = util.getLogger(__name__)
 
+NVREA_KEYS = ['name', 'version', 'release', 'epoch', 'arch']
+
 
 def entry_point():
     """
@@ -353,6 +355,9 @@ class YumProfiler(Profiler):
         reference the subset of packages referenced by the erratum that are also applicable to the
         consumer. Only those rpms which will upgrade an existing rpm on the consumer are returned
 
+        Note that this method also checks to ensure that the RPMs are actually available to the
+        consumer.
+
         :param unit:                   A content unit key
         :type  unit:                   dict
         :param repo_ids:               Repo ids to restrict the unit search to.
@@ -381,10 +386,23 @@ class YumProfiler(Profiler):
                         {'key': unit_key, 'repos': repo_ids, 'consumer': consumer.id}
             raise InvalidUnitsRequested(message=error_msg, units=unit_key)
 
-        updated_rpms = YumProfiler._get_rpms_from_errata(errata)
+        # Get rpm dicts from errata
+        errata_rpms = YumProfiler._get_rpms_from_errata(errata)
         _logger.info(
             "Errata <%s> refers to %s updated rpms of: %s" % (errata.unit_key['id'],
-                                                              len(updated_rpms), updated_rpms))
+                                                              len(errata_rpms), errata_rpms))
+
+        # filter out RPMs we don't have access to (https://pulp.plan.io/issues/770).
+        updated_rpms = []
+
+        for errata_rpm in errata_rpms:
+            # the dicts from _get_rpms_from_errata contain some extra fields
+            # that are not in the RPM unit key.
+            nvrea = {k: v for k, v in errata_rpm.iteritems() if k in NVREA_KEYS}
+            if YumProfiler._find_unit_associated_to_repos(TYPE_ID_RPM, nvrea,
+                                                          repo_ids, conduit):
+                updated_rpms.append(errata_rpm)
+
         applicable_rpms, upgrade_details = YumProfiler._rpms_applicable_to_consumer(consumer,
                                                                                     updated_rpms)
         if applicable_rpms:
