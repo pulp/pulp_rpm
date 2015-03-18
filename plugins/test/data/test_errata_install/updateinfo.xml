@@ -21,6 +21,38 @@
 			</collection>
 		</pkglist>
 	</update>
+	<update from="enhancements@redhat.com" status="final" type="enhancements" version="1">
+		<id>RHEA-2014:9999</id>
+		<title>test package enhancements</title>
+		<issued date="2014-11-7 00:00:00"/>
+		<updated date="2014-11-8 00:00:00"/>
+		<description/>
+		<references/>
+		<pkglist>
+			<collection short="F21PTP">
+				<name>F21 Pulp Test Packages</name>
+				<package name="emoticons" version="9.1" release="2" epoch="0" arch="x86_64" src="xen-3.0.3-80.el5_3.3.src.rpm">
+					<filename>emoticons-9.1-2.x86_64.rpm</filename>
+					<sum type="md5">366bb5e73a5905eacb82c96e0578f92b</sum>
+				</package>
+				<package name="patb" version="0.1" release="2" epoch="0" arch="x86_64" src="xen-3.0.3-80.el5_3.3.src.rpm">
+					<filename>patb-0.1-2.x86_64.rpm</filename>
+					<sum type="md5">f3c197a29d9b66c5b65c5d62b25db5b4</sum>
+				</package>
+			</collection>
+			<collection short="F13PTP">
+				<name>F13 Pulp Test Packages</name>
+				<package name="emoticons" version="0.1" release="2" epoch="0" arch="x86_64" src="xen-3.0.3-80.el5_3.3.src.rpm">
+					<filename>emoticons-0.1-2.x86_64.rpm</filename>
+					<sum type="md5">366bb5e73a5905eacb82c96e0578f92b</sum>
+				</package>
+				<package name="patb" version="9.1" release="2" epoch="0" arch="x86_64" src="xen-3.0.3-80.el5_3.3.src.rpm">
+					<filename>patb-9.1-2.x86_64.rpm</filename>
+					<sum type="md5">f3c197a29d9b66c5b65c5d62b25db5b4</sum>
+				</package>
+			</collection>
+		</pkglist>
+	</update>
 	<update from="pulp-list@redhat.com" status="final" type="enhancements" version="1">
 		<id>grinder_test_2</id>
 		<title>Test Errata referring to grinder_test_package-2.0</title>
