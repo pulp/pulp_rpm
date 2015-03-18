@@ -132,7 +132,8 @@ class Package:
                 try:
                     yb.install(pattern=pattern)
                 except InstallError, caught:
-                    caught.value = '%s: %s' % (pattern, str(caught))
+                    description = unicode(caught).encode('utf-8')
+                    caught.value = '%s: %s' % (pattern, description)
                     raise caught
             yb.resolveDeps()
             if self.apply and len(yb.tsInfo):
@@ -455,7 +456,7 @@ class DownloadCallback(DownloadBaseCallback):
         DownloadBaseCallback.__init__(self)
         self.report = report
 
-    def _do_start( self, now=None):
+    def _do_start(self, now=None):
         """
         Notification that a file download has started.
         The event is forwarded to the report object to be consolidated
