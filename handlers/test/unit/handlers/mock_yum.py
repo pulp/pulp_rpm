@@ -119,7 +119,8 @@ class YumBase:
 
     def install(self, pattern):
         if YumBase.UNKNOWN_PKG in pattern:
-            raise InstallError('package not found')
+            name = u'D' + unichr(246) + 'g'
+            raise InstallError('package %s not found' % name)
         pkg = Pkg(pattern, '1.0')
         t = TxMember(constants.TS_INSTALL, self.REPOID, pkg)
         self.tsInfo.append(t)

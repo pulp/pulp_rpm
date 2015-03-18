@@ -132,7 +132,8 @@ class Package:
                 try:
                     yb.install(pattern=pattern)
                 except InstallError, caught:
-                    caught.value = '%s: %s' % (pattern, str(caught))
+                    description = unicode(caught).encode('utf-8')
+                    caught.value = '%s: %s' % (pattern, description)
                     raise caught
             yb.resolveDeps()
             if self.apply and len(yb.tsInfo):
