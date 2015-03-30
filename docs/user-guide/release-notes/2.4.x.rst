@@ -33,7 +33,9 @@ Bug Fixes
 ---------
 
 The 2.4.2 release is a minor bugfix release. You can see the list of bugs that were fixed
-:fixedbugs:`here <2.4.2>`.
+`here <https://bugzilla.redhat.com/buglist.cgi?bug_status=VERIFIED&bug_status=RELEASE_PENDING
+&bug_status=CLOSED&classification=Community&component=iso-support&component=rpm-support
+&list_id=3357893&product=Pulp&version=2.4.2>`_.
 
 Pulp RPM 2.4.1
 ==============
@@ -52,7 +54,9 @@ Bug Fixes
 ---------
 
 The 2.4.1 release is a minor bugfix release. You can see the list of bugs that were fixed
-:fixedbugs:`here <2.4.1>`.
+`here <https://bugzilla.redhat.com/buglist.cgi?bug_status=VERIFIED&bug_status=RELEASE_PENDING&
+bug_status=CLOSED&classification=Community&component=iso-support&component=rpm-support&
+list_id=3357893&product=Pulp&version=2.4.1>`_.
 
 Upgrade Instructions
 --------------------

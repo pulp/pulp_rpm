@@ -15,10 +15,10 @@ distribution-related files.
 Bug Fixes
 ---------
 
-See the list of `bugs that were fixed <https://pulp.plan.io/projects/pulp_rpm/issues?utf8=%E2%9C%93&set_filter=1&f%5B%5D=tracker_id&op%5Btracker_id%5D=%3D&v%5Btracker_id%5D%5B%5D=1&f%5B%5D=cf_4&op%5Bcf_4%5D=%3D&v%5Bcf_4%5D%5B%5D=2.6.0&f%5B%5D=&c%5B%5D=tracker&c%5B%5D=status&c%5B%5D=priority&c%5B%5D=cf_5&c%5B%5D=subject&c%5B%5D=author&c%5B%5D=assigned_to&group_by=>`_.
+See the list of :fixedbugs:`2.6.0`
 
-:bz:`1153378` was addressed in 2.6.0. If
+`RHBZ #1153378 <https://bugzilla.redhat.com/show_bug.cgi?id=1153378>`_ was addressed in 2.6.0. If
 you have older (circa 2009) yum clients that fail in a way similar to what is described
-:bz:`in this bug <647828#c1>`, you may want to temporarily
+`in this bug <https://bugzilla.redhat.com/show_bug.cgi?id=647828#c1>`_, you may want to temporarily
 re-enable ``SSLInsecureRenegotation`` under ``/etc/httpd/conf.d/pulp_rpm.conf`` until your client
 systems have been updated.
