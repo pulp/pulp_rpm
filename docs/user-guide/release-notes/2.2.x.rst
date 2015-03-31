@@ -115,12 +115,16 @@ Pulp 2.2.1
 ==========
 
 Multiple proxy-related issues related to authentication and HTTPS to the proxy
-were fixed in :bz:`1022662` and :bz:`1014368`.
+were fixed in `RHBZ #1022662 <https://bugzilla.redhat.com/show_bug.cgi?id=1022662>`_ and
+`RHBZ #1014368 <https://bugzilla.redhat.com/show_bug.cgi?id=1014368>`_.
 
-A :bz:`version comparison bug <1026907>` that caused recursive copies to not
-copy all dependencies was fixed.
+A `version comparison bug <https://bugzilla.redhat.com/show_bug.cgi?id=1026907>`_ that
+caused recursive copies to not copy all dependencies was fixed.
 
-A race condition with XML namespace parsing :bz:`was fixed <1019865>`.
+A race condition with XML namespace parsing
+`was fixed <https://bugzilla.redhat.com/show_bug.cgi?id=1019865>`_.
 
 Several ISO-related bugs were fixed. They can be seen in the list of
-:fixedbugs:`all fixed bugs <2.2.1>`.
+`all fixed bugs <https://bugzilla.redhat.com/buglist.cgi?bug_status=VERIFIED&
+bug_status=RELEASE_PENDING&bug_status=CLOSED&classification=Community&component=iso-support&
+component=rpm-support&list_id=3357893&product=Pulp&version=2.2.1>`_.
