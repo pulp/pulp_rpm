@@ -30,14 +30,14 @@ Client Changes
 Notable Bug Fixes
 -----------------
 
--  In some cases, :bz:`repo groups were displayed with a translated name only
-   <1021656>`. This is fixed in 2.3,
+-  In some cases, `repo groups were displayed with a translated name only
+   <https://bugzilla.redhat.com/show_bug.cgi?id=1021656>`_. This is fixed in 2.3,
    but a re-sync is required of any affected repository.
 
--  Consumers are :bz:`now notified <975980>`
+-  Consumers are `now notified <https://bugzilla.redhat.com/show_bug.cgi?id=975980>`_
    when the relative path of a bound repository is changed.
 
--  It is now :bz:`far more intuitive <979587>`
+-  It is now `far more intuitive <https://bugzilla.redhat.com/show_bug.cgi?id=979587>`_
    to update all packages on a consumer from ``pulp-admin``.
 
 
@@ -45,7 +45,9 @@ All Bugs
 --------
 
 You can see the complete list of over 100 bugs that were
-:fixedbugs:`fixed in Pulp 2.3.0 <2.3.0>`.
+`fixed in Pulp 2.3.0 <https://bugzilla.redhat.com/buglist.cgi?bug_status=VERIFIED
+&bug_status=RELEASE_PENDING&bug_status=CLOSED&classification=Community&component=
+iso-support&component=rpm-support&list_id=3357893&product=Pulp&version=2.3.0>`_.
 
 
 Known Issues
@@ -62,10 +64,11 @@ Pulp 2.3.1
 Bugs Fixed
 ----------
 
-- :bz:`SRPM copy <1045100>` is now supported
+- `SRPM copy <https://bugzilla.redhat.com/show_bug.cgi?id=1045100>`_ is now supported
   by ``pulp-admin``.
 
-- REST API clients could :bz:`see incorrect behavior <1038309>`
+- REST API clients could
+  `see incorrect behavior <https://bugzilla.redhat.com/show_bug.cgi?id=1038309>`_
   if using a ``distributor_id`` value different from the ``distributor_type_id``
   when adding a distributor to a repository. This issue did not affect users who
   only use ``pulp-admin`` to interact with the REST API.
