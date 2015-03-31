@@ -249,8 +249,11 @@ texinfo_documents = [
 intersphinx_mapping = {'python': ('http://docs.python.org/2.7/', None),
                        'platform': (("http://pulp.readthedocs.org/en/%s/" % rtd_builder), None)}
 
-extlinks = {'bz': ('https://bugzilla.redhat.com/show_bug.cgi?id=%s', 'RHBZ #'),
-            'fixedbugs': ('https://bugzilla.redhat.com/buglist.cgi?bug_status=VERIFIED'\
-                          '&bug_status=RELEASE_PENDING&bug_status=CLOSED&classificatio'\
-                          'n=Community&component=iso-support&component=rpm-support&lis'\
-                          't_id=2768109&product=Pulp&version=%s', None)}
+extlinks = {'redmine': ('https://pulp.plan.io/issues/%s', '#'),
+            'fixedbugs': ('https://pulp.plan.io/projects/pulp_rpm/issues?c%%5B%%5D=tracker&c%%5B'
+                          '%%5D=status&c%%5B%%5D=priority&c%%5B%%5D=cf_5&c%%5B%%5D=subject&c%%5B'
+                          '%%5D=author&c%%5B%%5D=assigned_to&c%%5B%%5D=cf_3&f%%5B%%5D=cf_4&f%%5B'
+                          '%%5D=tracker_id&f%%5B%%5D=&group_by=&op%%5Bcf_4%%5D=%%3D&op%%5Btracke'
+                          'r_id%%5D=%%3D&set_filter=1&sort=priority%%3Adesc%%2Ccf_5%%3Adesc%%2Cs'
+                          'tatus&utf8=%%E2%%9C%%93&v%%5Bcf_4%%5D%%5B%%5D=%s&v%%5Btracker_id%%5D%'
+                          '%5B%%5D=1', 'bugs fixed in ')}
