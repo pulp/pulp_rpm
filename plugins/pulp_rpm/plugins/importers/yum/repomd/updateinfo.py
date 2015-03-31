@@ -23,8 +23,13 @@ def process_package_element(element):
     :return:    dictionary describing an errata
     :rtype:     dict
     """
+    description_element = element.find('description')
+    if description_element is not None:
+        description_text = description_element.text
+    else:
+        description_text = ''
     package_info = {
-        'description': element.find('description').text,
+        'description': description_text,
         'from': element.attrib['from'],
         'id': element.find('id').text,
         'issued': element.find('issued').attrib['date'],
