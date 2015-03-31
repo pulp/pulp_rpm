@@ -1,0 +1,169 @@
+<updates>
+    <update type="bugfix" from="SCIENTIFIC-LINUX-ERRATA@LISTSERV.FNAL.GOV" status="final"
+            version="1.4">
+        <id>SLBA-2011:1512-2</id>
+        <title>libguestfs bug fix update</title>
+        <release>Scientific Linux</release>
+        <issued date="2012-02-15 00:00:00"/>
+        <references>
+            <reference title="part-get-bootable gives wrong result with an unordered part layout"
+                       type="bugzilla" id="603000"
+                       href="https://bugzilla.redhat.com/show_bug.cgi?id=603000"/>
+            <reference
+                    title="libguestfs protocol loses synchronization if you 'upload' before mounting disks"
+                    type="bugzilla" id="627835"
+                    href="https://bugzilla.redhat.com/show_bug.cgi?id=627835"/>
+            <reference title="libguestfs: unknown filesystem label SWAP-sda2" type="bugzilla"
+                       id="666578" href="https://bugzilla.redhat.com/show_bug.cgi?id=666578"/>
+            <reference title="RFE: guestfs_last_errno should be exposed in perl bindings"
+                       type="bugzilla" id="672491"
+                       href="https://bugzilla.redhat.com/show_bug.cgi?id=672491"/>
+            <reference title="virt-inspector reports unknown filesystem UUID" type="bugzilla"
+                       id="678231" href="https://bugzilla.redhat.com/show_bug.cgi?id=678231"/>
+            <reference
+                    title="libguestfs incorrectly detects Red Hat desktop as 'redhat-based' instead of 'redhat'"
+                    type="bugzilla" id="682980"
+                    href="https://bugzilla.redhat.com/show_bug.cgi?id=682980"/>
+            <reference
+                    title="calling guestfs_kill_subprocess() then guestfs_close() causes a lockup in some applications"
+                    type="bugzilla" id="684980"
+                    href="https://bugzilla.redhat.com/show_bug.cgi?id=684980"/>
+            <reference title="Got error when expanding ntfs filesystem" type="bugzilla" id="685009"
+                       href="https://bugzilla.redhat.com/show_bug.cgi?id=685009"/>
+            <reference title="fish: add luks-open mapped device to tab completion list"
+                       type="bugzilla" id="688062"
+                       href="https://bugzilla.redhat.com/show_bug.cgi?id=688062"/>
+            <reference
+                    title="Better to point out in manual page that fullvirt query doesn't support Windows guest"
+                    type="bugzilla" id="690358"
+                    href="https://bugzilla.redhat.com/show_bug.cgi?id=690358"/>
+            <reference
+                    title="inspect-list-applications fails to detect 32 bit apps installed under WOW64 emulator on 64 bit Windows"
+                    type="bugzilla" id="692394"
+                    href="https://bugzilla.redhat.com/show_bug.cgi?id=692394"/>
+            <reference
+                    title="sfdisk's python interface only accepts lists of type 'list' for the lines parameter"
+                    type="bugzilla" id="693306"
+                    href="https://bugzilla.redhat.com/show_bug.cgi?id=693306"/>
+            <reference
+                    title="virt-make-fs generates qemu-img command line containing decimal point: &quot;qemu-img: Invalid image size specified!&quot;"
+                    type="bugzilla" id="695881"
+                    href="https://bugzilla.redhat.com/show_bug.cgi?id=695881"/>
+            <reference
+                    title="error: luks_open: cryptsetup: error while loading shared libraries: libfipscheck.so.1: cannot open shared object file: No such file or directory"
+                    type="bugzilla" id="727178"
+                    href="https://bugzilla.redhat.com/show_bug.cgi?id=727178"/>
+            <reference title="appliance crashes running aug_init with flags=4" type="bugzilla"
+                       id="729887" href="https://bugzilla.redhat.com/show_bug.cgi?id=729887"/>
+            <reference
+                    title="'guestfish --remote run' hangs in a shell command substitution context"
+                    type="bugzilla" id="730248"
+                    href="https://bugzilla.redhat.com/show_bug.cgi?id=730248"/>
+            <reference title="RHBA-2011:1512-2" type="self" id="RHBA-2011:1512-2"
+                       href="https://rhn.redhat.com/errata/RHBA-2011-1512.html"/>
+        </references>
+        <pkglist>
+            <collection short="SL6">
+                <name>Scientific Linux 6</name>
+                <package epoch="1" name="guestfish" version="1.7.17" release="26.el6" arch="x86_64"
+                         src="libguestfs-1.7.17-26.el6.src.rpm">
+                    <filename>Packages/guestfish-1.7.17-26.el6.x86_64.rpm</filename>
+                    <sum type="sha256">
+                        853b3371ad67613d197ca22e742c8ef8f82f3da5fd6ef6a040166d6aba54220e
+                    </sum>
+                </package>
+                <package epoch="1" name="libguestfs" version="1.7.17" release="26.el6" arch="x86_64"
+                         src="libguestfs-1.7.17-26.el6.src.rpm">
+                    <filename>Packages/libguestfs-1.7.17-26.el6.x86_64.rpm</filename>
+                    <sum type="sha256">
+                        86c77f9da548d4830e6a57929cb9ea7336f184984fb54c8033aef409a81761aa
+                    </sum>
+                </package>
+                <package epoch="1" name="libguestfs-devel" version="1.7.17" release="26.el6"
+                         arch="x86_64" src="libguestfs-1.7.17-26.el6.src.rpm">
+                    <filename>Packages/libguestfs-devel-1.7.17-26.el6.x86_64.rpm</filename>
+                    <sum type="sha256">
+                        ebc25db2b0f9e36a72919a9f5af2756ad088177973ae73217d8c103791eabc00
+                    </sum>
+                </package>
+                <package epoch="1" name="libguestfs-java" version="1.7.17" release="26.el6"
+                         arch="x86_64" src="libguestfs-1.7.17-26.el6.src.rpm">
+                    <filename>Packages/libguestfs-java-1.7.17-26.el6.x86_64.rpm</filename>
+                    <sum type="sha256">
+                        6c00f418f550c376deae4836151c1a02dd79e506e2ad02d6efb2f460a890ba4e
+                    </sum>
+                </package>
+                <package epoch="1" name="libguestfs-java-devel" version="1.7.17" release="26.el6"
+                         arch="x86_64" src="libguestfs-1.7.17-26.el6.src.rpm">
+                    <filename>Packages/libguestfs-java-devel-1.7.17-26.el6.x86_64.rpm</filename>
+                    <sum type="sha256">
+                        9ef959a5b326c4a0fd2ccbe5db8bc8c7903f14f6c18e234070ae2ae356232614
+                    </sum>
+                </package>
+                <package epoch="1" name="libguestfs-javadoc" version="1.7.17" release="26.el6"
+                         arch="x86_64" src="libguestfs-1.7.17-26.el6.src.rpm">
+                    <filename>Packages/libguestfs-javadoc-1.7.17-26.el6.x86_64.rpm</filename>
+                    <sum type="sha256">
+                        58d5db8affb1602d353d04e6cdbcb3d6e2406492f84da2e85b14764c4edab197
+                    </sum>
+                </package>
+                <package epoch="1" name="libguestfs-mount" version="1.7.17" release="26.el6"
+                         arch="x86_64" src="libguestfs-1.7.17-26.el6.src.rpm">
+                    <filename>Packages/libguestfs-mount-1.7.17-26.el6.x86_64.rpm</filename>
+                    <sum type="sha256">
+                        496715e5dae44c305e2f762c6708723bdf725ed1dadae3d4babfbd45b7fdd746
+                    </sum>
+                </package>
+                <package epoch="1" name="libguestfs-tools" version="1.7.17" release="26.el6"
+                         arch="x86_64" src="libguestfs-1.7.17-26.el6.src.rpm">
+                    <filename>Packages/libguestfs-tools-1.7.17-26.el6.x86_64.rpm</filename>
+                    <sum type="sha256">
+                        c4bd8fd7bcda10d44c59579bdfb0a48a39d6686a6d30fb7531cfe9107ba4dfcd
+                    </sum>
+                </package>
+                <package epoch="1" name="libguestfs-tools-c" version="1.7.17" release="26.el6"
+                         arch="x86_64" src="libguestfs-1.7.17-26.el6.src.rpm">
+                    <filename>Packages/libguestfs-tools-c-1.7.17-26.el6.x86_64.rpm</filename>
+                    <sum type="sha256">
+                        49682b4c7a587f97d55274ff7185fbc240d06b3b7e18979e16a83ec8e1c5d9e3
+                    </sum>
+                </package>
+                <package epoch="1" name="ocaml-libguestfs" version="1.7.17" release="26.el6"
+                         arch="x86_64" src="libguestfs-1.7.17-26.el6.src.rpm">
+                    <filename>Packages/ocaml-libguestfs-1.7.17-26.el6.x86_64.rpm</filename>
+                    <sum type="sha256">
+                        487fd843cdef9639048efb62178da9924b5b18be2dae5b5b2a148d459cf5eb79
+                    </sum>
+                </package>
+                <package epoch="1" name="ocaml-libguestfs-devel" version="1.7.17" release="26.el6"
+                         arch="x86_64" src="libguestfs-1.7.17-26.el6.src.rpm">
+                    <filename>Packages/ocaml-libguestfs-devel-1.7.17-26.el6.x86_64.rpm</filename>
+                    <sum type="sha256">
+                        152a076072f6fc2a94820459131976b4d643651cb7aefb412515cf18d17f52c6
+                    </sum>
+                </package>
+                <package epoch="1" name="perl-Sys-Guestfs" version="1.7.17" release="26.el6"
+                         arch="x86_64" src="libguestfs-1.7.17-26.el6.src.rpm">
+                    <filename>Packages/perl-Sys-Guestfs-1.7.17-26.el6.x86_64.rpm</filename>
+                    <sum type="sha256">
+                        b3071db5563a69cc7ba68012a9c2bafc51b597f17f3d0d609b83c3750415c6fe
+                    </sum>
+                </package>
+                <package epoch="1" name="python-libguestfs" version="1.7.17" release="26.el6"
+                         arch="x86_64" src="libguestfs-1.7.17-26.el6.src.rpm">
+                    <filename>Packages/python-libguestfs-1.7.17-26.el6.x86_64.rpm</filename>
+                    <sum type="sha256">
+                        ca8bf32e62557da2990fd8ad1a94a0fa06f8fe104a9b10c4f73e6b33dc04d797
+                    </sum>
+                </package>
+                <package epoch="1" name="ruby-libguestfs" version="1.7.17" release="26.el6"
+                         arch="x86_64" src="libguestfs-1.7.17-26.el6.src.rpm">
+                    <filename>Packages/ruby-libguestfs-1.7.17-26.el6.x86_64.rpm</filename>
+                    <sum type="sha256">
+                        7dfb594c8b8625eab7df545edb8b34a31ea0a92401071013754986031b9d92a0
+                    </sum>
+                </package>
+            </collection>
+        </pkglist>
+    </update>
+</updates>
