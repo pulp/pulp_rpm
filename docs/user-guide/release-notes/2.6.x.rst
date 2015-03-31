@@ -12,7 +12,7 @@ Syncing of erratum from Scientific Linux repositories is now working.
 Bug Fixes
 ---------
 
-See the list of `bugs that were fixed <https://pulp.plan.io/projects/pulp_rpm/issues?set_filter=1&f%5B%5D=tracker_id&op%5Btracker_id%5D=%3D&v%5Btracker_id%5D%5B%5D=1&f%5B%5D=cf_4&op%5Bcf_4%5D=%3D&v%5Bcf_4%5D%5B%5D=2.6.1>`_.
+See the list of :fixedbugs:`2.6.1`
 
 Pulp 2.6.0
 ==========
