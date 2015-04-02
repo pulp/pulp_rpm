@@ -4,12 +4,14 @@ import os
 import shutil
 import tempfile
 from gettext import gettext as _
+import traceback
 
 from pulp.common.plugins import importer_constants
 from pulp.plugins.util import nectar_config as nectar_utils, verification
 from pulp.server.exceptions import PulpCodedException
 
 from pulp_rpm.common import constants, ids
+from pulp_rpm.plugins import error_codes
 from pulp_rpm.plugins.db import models
 from pulp_rpm.plugins.importers.yum import existing, purge
 from pulp_rpm.plugins.importers.yum.repomd import (
@@ -23,10 +25,6 @@ _logger = logging.getLogger(__name__)
 
 
 class CancelException(Exception):
-    pass
-
-
-class FailedException(Exception):
     pass
 
 
@@ -100,7 +98,7 @@ class RepoSync(object):
 
             # Verify that we have a feed url.  if there is no feed url then we have nothing to sync
             if self.sync_feed is None:
-                raise FailedException(_('Unable to sync a repository that has no feed'))
+                raise PulpCodedException(error_code=error_codes.RPM1005)
 
             metadata_files = self.get_metadata()
             # Save the default checksum from the metadata
@@ -153,12 +151,13 @@ class RepoSync(object):
             return report
 
         except Exception, e:
-            _logger.exception('sync failed')
             for step, value in self.progress_status.iteritems():
                 if value.get('state') == constants.STATE_RUNNING:
                     value['state'] = constants.STATE_FAILED
                     value['error'] = str(e)
             self.set_progress()
+            if isinstance(e, PulpCodedException):
+                raise
             report = self.sync_conduit.build_failure_report(self._progress_summary,
                                                             self.progress_status)
             return report
@@ -198,13 +197,15 @@ class RepoSync(object):
         try:
             metadata_files.download_repomd()
         except IOError, e:
-            raise FailedException(str(e))
+            raise PulpCodedException(error_code=error_codes.RPM1004, reason=str(e))
+
         _logger.info(_('Parsing metadata.'))
 
         try:
             metadata_files.parse_repomd()
-        except ValueError, e:
-            raise FailedException(str(e))
+        except ValueError:
+            _logger.debug(traceback.format_exc())
+            raise PulpCodedException(error_code=error_codes.RPM1006)
 
         _logger.info(_('Downloading metadata files.'))
 

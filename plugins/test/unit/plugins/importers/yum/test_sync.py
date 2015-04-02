@@ -1,7 +1,11 @@
 from copy import deepcopy
 from cStringIO import StringIO
 import os
-import unittest
+
+try:
+    import unittest2 as unittest
+except ImportError:
+    import unittest
 
 from nectar.config import DownloaderConfig
 from nectar.downloaders.base import Downloader
@@ -14,12 +18,13 @@ import pulp.server.managers.factory as manager_factory
 import mock
 
 from pulp_rpm.common import constants, ids
+from pulp_rpm.plugins import error_codes
 from pulp_rpm.plugins.db import models
 from pulp_rpm.plugins.importers.yum.existing import check_all_and_associate
 from pulp_rpm.plugins.importers.yum.parse import treeinfo
 from pulp_rpm.plugins.importers.yum.repomd import metadata, group, updateinfo, packages, presto, \
     primary
-from pulp_rpm.plugins.importers.yum.sync import RepoSync, FailedException, CancelException
+from pulp_rpm.plugins.importers.yum.sync import RepoSync, CancelException
 import model_factory
 
 
@@ -201,9 +206,10 @@ class TestRun(BaseSyncTest):
         self.config = PluginCallConfiguration({}, {})
         reposync = RepoSync(self.repo, self.conduit, self.config)
         reposync.call_config.get(importer_constants.KEY_FEED)
-        report = reposync.run()
-        self.assertEquals(report.details['metadata']['error'],
-                          'Unable to sync a repository that has no feed')
+
+        with self.assertRaises(PulpCodedException) as e:
+            reposync.run()
+        self.assertEquals(e.exception.error_code, error_codes.RPM1005)
 
 
 class TestProgressSummary(BaseSyncTest):
@@ -230,14 +236,20 @@ class TestGetMetadata(BaseSyncTest):
         mock_metadata_files.return_value = self.metadata_files
         self.metadata_files.download_repomd = mock.MagicMock(side_effect=IOError, autospec=True)
 
-        self.assertRaises(FailedException, self.reposync.get_metadata)
+        with self.assertRaises(PulpCodedException) as e:
+            self.reposync.get_metadata()
+
+        self.assertEqual(e.exception.error_code, error_codes.RPM1004)
 
     @mock.patch.object(metadata, 'MetadataFiles', autospec=True)
     def test_failed_download_repomd(self, mock_metadata_files):
         mock_metadata_files.return_value = self.metadata_files
-        self.metadata_files.parse_repomd = mock.MagicMock(side_effect=ValueError, autospec=True)
+        self.metadata_files.download_repomd = mock.MagicMock(side_effect=IOError, autospec=True)
 
-        self.assertRaises(FailedException, self.reposync.get_metadata)
+        with self.assertRaises(PulpCodedException) as e:
+            self.reposync.get_metadata()
+
+        self.assertEqual(e.exception.error_code, error_codes.RPM1004)
 
     @mock.patch.object(metadata, 'MetadataFiles', autospec=True)
     def test_failed_parse_repomd(self, mock_metadata_files):
@@ -245,7 +257,10 @@ class TestGetMetadata(BaseSyncTest):
         self.metadata_files.download_repomd = mock.MagicMock(autospec=True)
         self.metadata_files.parse_repomd = mock.MagicMock(side_effect=ValueError, autospec=True)
 
-        self.assertRaises(FailedException, self.reposync.get_metadata)
+        with self.assertRaises(PulpCodedException) as e:
+            self.reposync.get_metadata()
+
+        self.assertEqual(e.exception.error_code, error_codes.RPM1006)
 
     @mock.patch.object(metadata, 'MetadataFiles', autospec=True)
     def test_success(self, mock_metadata_files):
