@@ -169,6 +169,30 @@ class TestYumProfilerErrata(rpm_support_base.PulpRPMTests):
                 self.assertTrue(r.has_key(key))
                 self.assertTrue(r[key])
 
+    def test_get_rpms_from_errata_no_epoch(self):
+        """
+        Test that we default to '0' for the epoch if one doesn't exist.
+        """
+        errata_obj = self.get_test_errata_object(eid='RHEA-2010:8888')
+        errata_unit = Unit(TYPE_ID_ERRATA, {"id": errata_obj["id"]}, errata_obj, None)
+        prof = YumProfiler()
+        rpms = prof._get_rpms_from_errata(errata_unit)
+        # Expected data:
+        # [{'src': 'xen-3.0.3-80.el5_3.3.src.rpm', 'name': 'emoticons',
+        #   'sum': ('md5', '366bb5e73a5905eacb82c96e0578f92b'),
+        #   'filename': 'emoticons-0.1-2.x86_64.rpm', 'epoch': '0',
+        #   'version': '0.1', 'release': '2', 'arch': 'x86_64'},
+        # {'src': 'xen-3.0.3-80.el5_3.3.src.rpm', 'name': 'patb',
+        #   'sum': ('md5', 'f3c197a29d9b66c5b65c5d62b25db5b4'),
+        #   'filename': 'patb-0.1-2.x86_64.rpm', 'epoch': '0',
+        #   'version': '0.1', 'release': '2', 'arch': 'x86_64'}]
+        self.assertEqual(len(rpms), 2)
+        self.assertTrue(rpms[0]["name"] in ['emoticons', 'patb'])
+        self.assertTrue(rpms[1]["name"] in ['emoticons', 'patb'])
+        for r in rpms:
+            self.assertTrue('epoch' in r)
+            self.assertTrue(r['epoch'] == '0')
+
     def test_rpms_applicable_to_consumer(self):
         errata_rpms = []
         prof = YumProfiler()

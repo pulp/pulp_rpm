@@ -238,6 +238,9 @@ class YumProfiler(Profiler):
         """
         Return a list of RPMs that are referenced by an errata's pkglist
 
+        This method will translate 'null' to '0' in the epoch field. All
+        package lists should contain epoch fields but some do not.
+
         :param errata: The errata we wish to query for RPMs it contains
         :type errata:  pulp.plugins.model.Unit
         :return:       list of rpms, which are each a dict of nevra info
@@ -249,6 +252,8 @@ class YumProfiler(Profiler):
             return rpms
         for pkgs in errata.metadata['pkglist']:
             for rpm in pkgs["packages"]:
+                if 'epoch' not in rpm or rpm['epoch'] is None:
+                    rpm['epoch'] = '0'
                 rpms.append(rpm)
         return rpms
 
