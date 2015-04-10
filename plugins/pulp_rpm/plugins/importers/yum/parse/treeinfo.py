@@ -54,7 +54,6 @@ def sync(sync_conduit, feed, working_dir, nectar_config, report, progress_callba
         treefile_path = get_treefile(feed, tmp_dir, nectar_config)
         if not treefile_path:
             _LOGGER.debug('no treefile found')
-            report['state'] = constants.STATE_COMPLETE
             return
 
         try:
@@ -70,7 +69,6 @@ def sync(sync_conduit, feed, working_dir, nectar_config, report, progress_callba
         # skip this whole process if the upstream treeinfo file hasn't changed
         if len(existing_units) == 1 and existing_distribution_is_current(existing_units[0], model):
             _LOGGER.debug('upstream distribution unchanged; skipping')
-            report['state'] = constants.STATE_COMPLETE
             return
 
         # Get any errors
@@ -104,7 +102,6 @@ def sync(sync_conduit, feed, working_dir, nectar_config, report, progress_callba
             report['error_details'] = [(fail.url, fail.error_report) for fail in
                                        listener.failed_reports]
             return
-        report['state'] = constants.STATE_COMPLETE
     finally:
         shutil.rmtree(tmp_dir, ignore_errors=True)
 
