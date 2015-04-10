@@ -2,6 +2,23 @@
 Pulp 2.6 Release Notes
 ======================
 
+Pulp 2.6.2
+==========
+
+New Behaviors
+-------------
+
+The sync process checks the revision number in upstream metadata to determine
+if it has changed since the previous sync. If not, most steps in the sync will
+be skipped. On large repositories, this has reduced best-case sync times from
+an order of minutes to a few seconds.
+
+Bug Fixes
+---------
+
+See the list of :fixedbugs:`2.6.2`
+
+
 Pulp 2.6.1
 ==========
 
