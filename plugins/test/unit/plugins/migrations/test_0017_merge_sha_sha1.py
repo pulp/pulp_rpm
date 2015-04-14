@@ -571,8 +571,7 @@ class TestMigrateRPMlikeUnits(unittest.TestCase):
             {"_id": "547df04da0cfd118fc1f7069", "updated": "2014-12-02T17:01:01Z",
              "repo_id": "confused-bear", "created": "2014-12-02T17:01:01Z",
              "_ns": "repo_content_units", "unit_id": SHA_RPM['_id'],
-             "unit_type_id": "rpm", "owner_type": "importer", "id": "547df04da0cfd118fc1f7069",
-             "owner_id": "yum_importer"}]
+             "unit_type_id": "rpm", "id": "547df04da0cfd118fc1f7069"}]
 
         migration._migrate_rpmlike_units('rpm')
 
@@ -623,8 +622,7 @@ class TestMigrateRPMlikeUnits(unittest.TestCase):
             {"_id": "547df04da0cfd118fc1f7069", "updated": "2014-12-02T17:01:01Z",
              "repo_id": "confused-bear", "created": "2014-12-02T17:01:01Z",
              "_ns": "repo_content_units", "unit_id": SHA_RPM['_id'],
-             "unit_type_id": "rpm", "owner_type": "importer", "id": "547df04da0cfd118fc1f7069",
-             "owner_id": "yum_importer"}]
+             "unit_type_id": "rpm", "id": "547df04da0cfd118fc1f7069"}]
 
         migration._migrate_rpmlike_units('rpm')
 

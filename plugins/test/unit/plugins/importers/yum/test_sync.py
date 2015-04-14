@@ -32,7 +32,7 @@ class BaseSyncTest(unittest.TestCase):
         self.metadata_files = metadata.MetadataFiles(self.url, '/foo/bar', DownloaderConfig())
         self.metadata_files.download_repomd = mock.MagicMock()
         self.repo = Repository('repo1')
-        self.conduit = RepoSyncConduit(self.repo.id, 'yum_importer', 'user', 'me')
+        self.conduit = RepoSyncConduit(self.repo.id, 'yum_importer')
         self.conduit.set_progress = mock.MagicMock(spec_set=self.conduit.set_progress)
         self.config = PluginCallConfiguration({}, {importer_constants.KEY_FEED: self.url})
         self.reposync = RepoSync(self.repo, self.conduit, self.config)

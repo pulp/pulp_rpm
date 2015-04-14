@@ -11,7 +11,6 @@ from pulp.plugins.config import PluginCallConfiguration
 from pulp.plugins.model import Repository
 from pulp.server.db.model.criteria import UnitAssociationCriteria
 from pulp.server.managers import factory as manager_factory
-from pulp.server.managers.repo.unit_association import OWNER_TYPE_IMPORTER
 
 from pulp_rpm.plugins.db import models
 from pulp_rpm.plugins.importers.yum import purge
@@ -28,7 +27,7 @@ class TestPurgeBase(unittest.TestCase):
                                                      DownloaderConfig())
         self.repo = Repository('repo1')
         self.config = PluginCallConfiguration({}, {})
-        self.conduit = RepoSyncConduit(self.repo.id, 'yum_importer', 'user', 'me')
+        self.conduit = RepoSyncConduit(self.repo.id, 'yum_importer')
 
 
 class TestRemoveMissing(TestPurgeBase):
@@ -129,8 +128,6 @@ class TestGetExistingUnits(TestPurgeBase):
         self.assertEqual(criteria.type_ids, [models.RPM.TYPE])
         # limit the query to keys in the unit key, to conserve RAM
         self.assertEqual(criteria.unit_fields, models.RPM.UNIT_KEY_NAMES)
-        # don't purge units that were uploaded or copied
-        self.assertEqual(criteria.association_filters, {'owner_type': OWNER_TYPE_IMPORTER})
 
 
 class TestGetRemoteUnits(TestPurgeBase):

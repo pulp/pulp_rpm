@@ -226,8 +226,7 @@ def add_unit(id, repo_id, type_id):
 
 def associate_unit(mongo_id, to_repo_id, type_id):
     manager = factory.repo_unit_association_manager()
-    manager.associate_unit_by_id(to_repo_id, type_id, mongo_id, 'importer',
-                                 'yum_importer', update_repo_metadata=True)
+    manager.associate_unit_by_id(to_repo_id, type_id, mongo_id, update_repo_metadata=True)
 
 
 def generate_unit(unit_id, repo_id):

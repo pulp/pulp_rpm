@@ -280,7 +280,7 @@ class TestAssociateUnit(unittest.TestCase):
 
     @mock.patch('shutil.copyfile')
     def test_yum_md_file(self, mock_copyfile):
-        mock_conduit = mock.MagicMock(spec_set=ImportUnitConduit('', '', '', '', '', ''))
+        mock_conduit = mock.MagicMock(spec_set=ImportUnitConduit('', '', '', ''))
         model = model_factory.yum_md_file()
         unit = Unit(model.TYPE, model.unit_key, model.metadata, '/foo/bar')
 
@@ -356,7 +356,7 @@ class TestGetRPMSToCopyByName(unittest.TestCase):
     @mock.patch('pulp_rpm.plugins.importers.yum.existing.get_existing_units',
                 autospec=True, return_value=tuple())
     def test_none_existing(self, mock_get_existing):
-        mock_conduit = mock.MagicMock(spec_set=ImportUnitConduit('', '', '', '', '', ''))
+        mock_conduit = mock.MagicMock(spec_set=ImportUnitConduit('', '', '', ''))
 
         ret = associate.get_rpms_to_copy_by_name(self.RPM_NAMES, mock_conduit)
 
@@ -378,7 +378,7 @@ class TestGetRPMSToCopyByName(unittest.TestCase):
             Unit(postfix.TYPE, postfix.unit_key, postfix.metadata, ''),
             Unit(vim.TYPE, vim.unit_key, vim.metadata, ''),
         ]
-        conduit = ImportUnitConduit('', '', '', '', '', '')
+        conduit = ImportUnitConduit('', '', '', '')
         conduit.get_destination_units = mock.MagicMock(spec_set=conduit.get_destination_units,
                                                        return_value=existing)
 
