@@ -194,7 +194,7 @@ class PackageSearchCommand(BaseSearchCommand):
             if kwargs.get(self.ASSOCIATION_FLAG.keyword):
                 # including most fields
                 display_filter = ['updated', 'repo_id', 'created', 'unit_id', 'metadata',
-                                  'unit_type_id', 'owner_type', 'id', 'owner_id']
+                                  'unit_type_id', 'id']
                 # display the unit info first
                 order = [ASSOCIATION_METADATA_KEYWORD]
 

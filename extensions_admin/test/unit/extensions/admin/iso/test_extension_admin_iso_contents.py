@@ -32,9 +32,9 @@ class TestISOSearchCommand(PulpClientTests):
                  u'checksum': u'705406710465312e060e2668abbc3d01cce7f7ad1a0ed4cceeee212f0cbe6689',
                  u'_content_type_id': u'iso', u'_id': u'2aaa7976-6a2a-4d79-9f13-a72fe4a40ef4',
                  u'_ns': u'units_iso', u'size': 960},
-             u'unit_type_id': u'iso', u'owner_type': u'importer',
+             u'unit_type_id': u'iso',
              u'_id': {u'$oid': u'51b8d713b1a8a11c292579c1'}, u'id': u'51b8d713b1a8a11c292579c1',
-             u'owner_id': u'iso_importer'},
+             },
             {u'updated': u'2013-06-13T00:16:20Z', u'repo_id': u'cdn',
              u'created': u'2013-06-13T00:16:20Z',
              u'_ns': u'repo_content_units', u'unit_id': u'fb43a929-77a8-4f31-a95d-510bdb4379f0',
@@ -46,9 +46,9 @@ class TestISOSearchCommand(PulpClientTests):
                  u'checksum': u'26b8fc26aa337c23592cb67e7c05fc0eff4e0d2eb5d70e74c6b27d57becce313',
                  u'_content_type_id': u'iso', u'_id': u'fb43a929-77a8-4f31-a95d-510bdb4379f0',
                  u'_ns': u'units_iso', u'size': 984},
-             u'unit_type_id': u'iso', u'owner_type': u'importer',
+             u'unit_type_id': u'iso',
              u'_id': {u'$oid': u'51b8d714b1a8a11c292579c2'}, u'id': u'51b8d714b1a8a11c292579c2',
-             u'owner_id': u'iso_importer'}]
+             }]
         self.context.server.repo_unit.search = mock.MagicMock(return_value=fake_isos)
         # Let's mock the render_document_list method so we can inspect it
         self.context.prompt.render_document_list = mock.MagicMock()
@@ -102,7 +102,7 @@ class TestISOSearchCommand(PulpClientTests):
                 if key not in ISOSearchCommand.ISO_FIELDS:
                     del iso['metadata'][key]
         expected_filters = ['metadata', 'updated', 'repo_id', 'created', 'unit_id', 'unit_type_id',
-                            'owner_type', 'id', 'owner_id']
+                            'id']
         self.context.prompt.render_document_list.assert_called_once_with(
             massaged_isos, filters=expected_filters, order=expected_filters)
 
