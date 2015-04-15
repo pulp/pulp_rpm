@@ -50,6 +50,7 @@ class PulpRPMTests(unittest.TestCase):
 
     @classmethod
     def tearDownClass(cls):
+        stop_logging()
         name = config.config.get('database', 'name')
         connection._CONNECTION.drop_database(name)
         shutil.rmtree('/tmp/pulp')
