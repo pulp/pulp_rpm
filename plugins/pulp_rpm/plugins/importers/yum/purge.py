@@ -4,7 +4,6 @@ import logging
 
 from pulp.common.plugins import importer_constants
 from pulp.server.db.model.criteria import UnitAssociationCriteria
-from pulp.server.managers.repo.unit_association import OWNER_TYPE_IMPORTER
 
 from pulp_rpm.plugins.db import models
 from pulp_rpm.plugins.importers.yum.repomd import packages, primary, presto, updateinfo, group
@@ -221,10 +220,8 @@ def get_existing_units(model, unit_search_func):
     :return:    iterable of Unit instances that appear in the repository
     :rtype:     iterable of pulp.plugins.model.Unit
     """
-    assoc_filters = {'owner_type': OWNER_TYPE_IMPORTER}
     criteria = UnitAssociationCriteria([model.TYPE],
-                                       unit_fields=model.UNIT_KEY_NAMES,
-                                       association_filters=assoc_filters)
+                                       unit_fields=model.UNIT_KEY_NAMES)
     return unit_search_func(criteria)
 
 

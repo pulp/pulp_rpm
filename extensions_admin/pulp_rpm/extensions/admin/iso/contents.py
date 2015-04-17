@@ -40,7 +40,7 @@ class ISOSearchCommand(DisplayUnitAssociationsCommand):
                         del iso['metadata'][key]
             # Only display these fields to the user, in this order
             display_filter = ['metadata', 'updated', 'repo_id', 'created', 'unit_id',
-                              'unit_type_id', 'owner_type', 'id', 'owner_id']
+                              'unit_type_id', 'id']
         else:
             # The user did not request details, so let's only show them the metadata and the fields
             # that are particular to an ISO

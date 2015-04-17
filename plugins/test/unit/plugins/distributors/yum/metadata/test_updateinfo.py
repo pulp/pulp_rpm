@@ -62,10 +62,8 @@ class AddUnitMetadataTests(UpdateinfoXMLFileContextTests):
         storage_path = '/some/path'
         created = '2014-04-27'
         updated = '2014-04-28'
-        owner_type = 'soft brain\'d human'
-        owner_id = 'rbarlow'
         erratum_unit = model.AssociatedUnit(type_id, unit_key, metadata, storage_path, created,
-                                            updated, owner_type, owner_id)
+                                            updated)
 
         # This should not cause any Exception
         self.updateinfo_xml_file_context.add_unit_metadata(erratum_unit)
@@ -104,10 +102,8 @@ class AddUnitMetadataTests(UpdateinfoXMLFileContextTests):
         storage_path = '/some/path'
         created = '2014-04-27'
         updated = '2014-04-28'
-        owner_type = 'soft brain\'d human'
-        owner_id = 'rbarlow'
         erratum_unit = model.AssociatedUnit(type_id, unit_key, metadata, storage_path, created,
-                                            updated, owner_type, owner_id)
+                                            updated)
 
         # This should not cause any Exception
         self.updateinfo_xml_file_context.add_unit_metadata(erratum_unit)
