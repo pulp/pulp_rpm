@@ -1,6 +1,7 @@
 from copy import deepcopy
 from cStringIO import StringIO
 import os
+import time
 
 try:
     import unittest2 as unittest
@@ -39,9 +40,130 @@ class BaseSyncTest(unittest.TestCase):
         self.repo = Repository('repo1')
         self.conduit = RepoSyncConduit(self.repo.id, 'yum_importer')
         self.conduit.set_progress = mock.MagicMock(spec_set=self.conduit.set_progress)
+        self.conduit.get_scratchpad = mock.MagicMock(spec_set=self.conduit.get_scratchpad,
+                                                     return_value={})
+        self.conduit.set_scratchpad = mock.MagicMock(spec_set=self.conduit.get_scratchpad)
         self.config = PluginCallConfiguration({}, {importer_constants.KEY_FEED: self.url})
         self.reposync = RepoSync(self.repo, self.conduit, self.config)
         self.downloader = Downloader(DownloaderConfig())
+
+
+class TestUpdateState(BaseSyncTest):
+    def setUp(self):
+        super(TestUpdateState, self).setUp()
+        self.state_dict = {constants.PROGRESS_STATE_KEY: constants.STATE_NOT_STARTED}
+
+    def test_normal_states(self):
+        with self.reposync.update_state(self.state_dict):
+            self.assertEqual(self.state_dict[constants.PROGRESS_STATE_KEY], constants.STATE_RUNNING)
+
+        self.assertEqual(self.state_dict[constants.PROGRESS_STATE_KEY], constants.STATE_COMPLETE)
+
+    def test_updates_progress(self):
+        progress_call_count = self.conduit.set_progress.call_count
+
+        with self.reposync.update_state(self.state_dict):
+            self.assertEqual(self.conduit.set_progress.call_count, progress_call_count + 1)
+
+        self.assertEqual(self.conduit.set_progress.call_count, progress_call_count + 2)
+
+    def test_failure(self):
+        with self.reposync.update_state(self.state_dict):
+            self.state_dict[constants.PROGRESS_STATE_KEY] = constants.STATE_FAILED
+
+        # make sure the context manager did not change the state from "failed"
+        self.assertEqual(self.state_dict[constants.PROGRESS_STATE_KEY], constants.STATE_FAILED)
+
+    def test_cancelled(self):
+        with self.reposync.update_state(self.state_dict):
+            self.state_dict[constants.PROGRESS_STATE_KEY] = constants.STATE_CANCELLED
+
+        # make sure the context manager did not change the state from "failed"
+        self.assertEqual(self.state_dict[constants.PROGRESS_STATE_KEY], constants.STATE_CANCELLED)
+
+    def test_skipped_type(self):
+        self.reposync.call_config.override_config[constants.CONFIG_SKIP] = ['sometype']
+
+        with self.reposync.update_state(self.state_dict, 'sometype') as skip:
+            self.assertTrue(skip is True)
+            self.assertEqual(self.state_dict[constants.PROGRESS_STATE_KEY], constants.STATE_SKIPPED)
+
+        self.assertEqual(self.state_dict[constants.PROGRESS_STATE_KEY], constants.STATE_SKIPPED)
+
+    def test_nonskipped_type(self):
+        self.reposync.call_config.override_config[constants.CONFIG_SKIP] = ['sometype']
+
+        with self.reposync.update_state(self.state_dict, 'someothertype') as skip:
+            self.assertTrue(skip is False)
+            self.assertEqual(self.state_dict[constants.PROGRESS_STATE_KEY], constants.STATE_RUNNING)
+
+        self.assertEqual(self.state_dict[constants.PROGRESS_STATE_KEY], constants.STATE_COMPLETE)
+
+
+class TestSaveRepomdRevision(BaseSyncTest):
+    def test_empty_scratchpad(self):
+        self.reposync.current_revision = 1234
+
+        self.reposync.save_repomd_revision()
+
+        self.conduit.set_scratchpad.assert_called_once_with({
+            constants.REPOMD_REVISION_KEY: 1234,
+            constants.PREVIOUS_SKIP_LIST: [],
+        })
+
+    def test_existing_scratchpad(self):
+        self.conduit.get_scratchpad.return_value = {'a': 2}
+        self.reposync.current_revision = 1234
+
+        self.reposync.save_repomd_revision()
+
+        expected = {
+            constants.REPOMD_REVISION_KEY: 1234,
+            constants.PREVIOUS_SKIP_LIST: [],
+            'a': 2,
+        }
+        self.conduit.set_scratchpad.assert_called_once_with(expected)
+
+    def test_no_existing_scratchpad(self):
+        self.conduit.get_scratchpad.return_value = None
+        self.reposync.current_revision = 1234
+
+        self.reposync.save_repomd_revision()
+
+        self.conduit.set_scratchpad.assert_called_once_with({
+            constants.REPOMD_REVISION_KEY: 1234,
+            constants.PREVIOUS_SKIP_LIST: [],
+        })
+
+    def test_with_errors(self):
+        """
+        No update should happen if there were errors
+        """
+        self.reposync.content_report['error_details'] = [{'a': 2}]
+
+        self.reposync.save_repomd_revision()
+
+        self.assertEqual(self.conduit.set_scratchpad.call_count, 0)
+
+    def test_state_failed(self):
+        """
+        No update should happen if the task failed
+        """
+        self.reposync.content_report[constants.PROGRESS_STATE_KEY] = constants.STATE_FAILED
+
+        self.reposync.save_repomd_revision()
+
+        self.assertEqual(self.conduit.set_scratchpad.call_count, 0)
+
+    def test_state_cancelled(self):
+        """
+        No update should happen if the task was cancelled
+        """
+        self.reposync.content_report[constants.PROGRESS_STATE_KEY] = constants.STATE_CANCELLED
+
+        self.reposync.save_repomd_revision()
+
+        self.assertEqual(self.conduit.set_scratchpad.call_count, 0)
 
 
 class TestInit(BaseSyncTest):
@@ -103,6 +225,8 @@ class TestRun(BaseSyncTest):
             spec_set=self.reposync.get_comps_file_units)
 
         self.reposync.set_progress = mock.MagicMock(spec_set=self.reposync.set_progress)
+        self.reposync.save_repomd_revision = mock.MagicMock(
+            spec_set=self.reposync.save_repomd_revision)
 
     @mock.patch('shutil.rmtree', autospec=True)
     @mock.patch('tempfile.mkdtemp', autospec=True)
@@ -130,6 +254,7 @@ class TestRun(BaseSyncTest):
                            group.ENVIRONMENT_TAG),
                  mock.call(self.metadata_files, group.process_category_element, group.CATEGORY_TAG)]
         self.reposync.get_comps_file_units.assert_has_calls(calls, any_order=True)
+        self.reposync.save_repomd_revision.assert_called_once_with()
 
         mock_treeinfo_sync.assert_called_once_with(self.conduit, self.url,
                                                    mock_mkdtemp.return_value,
@@ -232,6 +357,43 @@ class TestGetMetadata(BaseSyncTest):
         self.reposync.tmp_dir = '/tmp'
 
     @mock.patch.object(metadata, 'MetadataFiles', autospec=True)
+    def test_metadata_unchanged(self, mock_metadata_files):
+        mock_metadata_instance = mock_metadata_files.return_value
+        mock_metadata_instance.revision = 1234
+        mock_metadata_instance.downloader = mock.MagicMock()
+        self.conduit.get_scratchpad.return_value = {constants.REPOMD_REVISION_KEY: 1234}
+
+        ret = self.reposync.get_metadata()
+
+        self.assertEqual(self.reposync.current_revision, 1234)
+        self.assertTrue(self.reposync.skip_repomd_steps is True)
+        self.assertEqual(mock_metadata_instance.download_metadata_files.call_count, 0)
+        self.assertTrue(ret is mock_metadata_instance)
+
+    @mock.patch.object(metadata, 'MetadataFiles', autospec=True)
+    def test_metadata_unchanged_but_skip_list_shrank(self, mock_metadata_files):
+        """
+        Test the case where the metadata didn't change, but the skip list is
+        smaller. In that case, the full sync should happen even though the
+        metadata didn't change.
+        """
+        mock_metadata_instance = mock_metadata_files.return_value
+        mock_metadata_instance.revision = 1234
+        mock_metadata_instance.downloader = mock.MagicMock()
+        self.conduit.get_scratchpad.return_value = {
+            constants.REPOMD_REVISION_KEY: 1234,
+            constants.PREVIOUS_SKIP_LIST: ['foo', 'bar'],
+        }
+        self.config.override_config[constants.CONFIG_SKIP] = ['foo']
+        self.reposync.import_unknown_metadata_files = mock.MagicMock(
+            spec_set=self.reposync.import_unknown_metadata_files)
+
+        self.reposync.get_metadata()
+
+        self.assertTrue(self.reposync.skip_repomd_steps is False)
+        self.assertEqual(mock_metadata_instance.download_metadata_files.call_count, 1)
+
+    @mock.patch.object(metadata, 'MetadataFiles', autospec=True)
     def test_failed_download(self, mock_metadata_files):
         mock_metadata_files.return_value = self.metadata_files
         self.metadata_files.download_repomd = mock.MagicMock(side_effect=IOError, autospec=True)
@@ -264,19 +426,21 @@ class TestGetMetadata(BaseSyncTest):
 
     @mock.patch.object(metadata, 'MetadataFiles', autospec=True)
     def test_success(self, mock_metadata_files):
-        mock_metadata_instane = mock_metadata_files.return_value
-        mock_metadata_instane.downloader = mock.MagicMock()
+        mock_metadata_instance = mock_metadata_files.return_value
+        mock_metadata_instance.revision = int(time.time()) + 60 * 60 * 24
+        mock_metadata_instance.downloader = mock.MagicMock()
         self.reposync.import_unknown_metadata_files = mock.MagicMock(
             spec_set=self.reposync.import_unknown_metadata_files)
 
         ret = self.reposync.get_metadata()
 
-        self.assertEqual(ret, mock_metadata_instane)
-        mock_metadata_instane.download_repomd.assert_called_once_with()
-        mock_metadata_instane.parse_repomd.assert_called_once_with()
-        mock_metadata_instane.download_metadata_files.assert_called_once_with()
-        mock_metadata_instane.generate_dbs.assert_called_once_with()
-        self.reposync.import_unknown_metadata_files.assert_called_once_with(mock_metadata_instane)
+        self.assertEqual(ret, mock_metadata_instance)
+        self.assertTrue(self.reposync.skip_repomd_steps is False)
+        mock_metadata_instance.download_repomd.assert_called_once_with()
+        mock_metadata_instance.parse_repomd.assert_called_once_with()
+        mock_metadata_instance.download_metadata_files.assert_called_once_with()
+        mock_metadata_instance.generate_dbs.assert_called_once_with()
+        self.reposync.import_unknown_metadata_files.assert_called_once_with(mock_metadata_instance)
 
 
 class TestSaveMetadataChecksum(BaseSyncTest):
@@ -1452,7 +1616,6 @@ class TestTreeinfoSync(BaseSyncTest):
         treeinfo.sync(self.conduit, "http://some/url", "/some/tempdir", "fake-nectar-conf",
                       mock_report, lambda x: x)
         self.assertEqual(self.conduit.remove_unit.call_count, 0)
-        mock_report.__setitem__.assert_called_once_with('state', constants.STATE_COMPLETE)
         # make sure the workflow did not proceed by making sure this call didn't happen
         self.assertEqual(mock_report.set_initial_values.call_count, 0)
 
