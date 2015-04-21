@@ -93,6 +93,9 @@ class YumProfiler(Profiler):
             if unit['type_id'] == TYPE_ID_RPM:
                 translated_units.append(unit)
             elif unit['type_id'] == TYPE_ID_ERRATA:
+                if TYPE_ID_RPM not in consumer.profiles:
+                    reason = _('Consumer has no RPM unit profile')
+                    raise InvalidUnitsRequested(units, reason)
                 values, upgrade_details = YumProfiler._translate_erratum(
                     unit, conduit.get_bindings(consumer.id), consumer, conduit)
                 if values:

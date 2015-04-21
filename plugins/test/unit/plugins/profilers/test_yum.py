@@ -3,8 +3,10 @@ import os
 import shutil
 import tempfile
 
-from pulp.plugins.model import Consumer, Unit
 import mock
+
+from pulp.plugins.model import Consumer, Unit
+from pulp.plugins.profiler import InvalidUnitsRequested
 
 from pulp_rpm.common.ids import TYPE_ID_ERRATA, TYPE_ID_RPM
 from pulp_rpm.devel import rpm_support_base
@@ -360,6 +362,24 @@ class TestYumProfilerErrata(rpm_support_base.PulpRPMTests):
         for u in translated_units:
             rpm_unit_key = u["unit_key"]
             self.assertTrue(rpm_unit_key in expected)
+
+    def test_install_units_no_profile(self):
+        """
+        Test the InvalidUnitsRequested is raised when the consumer has no RPM profile.
+        """
+        config = {}
+        options = {}
+        conduit = mock.Mock()
+        consumer = mock.Mock(profiles={'OTHER': {}})
+        units = [{'type_id': TYPE_ID_ERRATA}]
+        self.assertRaises(
+            InvalidUnitsRequested,
+            YumProfiler.install_units,
+            consumer,
+            units,
+            options,
+            config,
+            conduit)
 
     def test_install_units_unit_not_in_repo(self):
         """
