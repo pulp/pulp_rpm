@@ -2,6 +2,19 @@
 Pulp 2.6 Release Notes
 ======================
 
+Pulp 2.6.2
+==========
+
+New Behaviors
+-------------
+Install errata tasks will fail during unit translation when the consumer
+does not have an RPM profile.
+
+Bug Fixes
+---------
+
+See the list of :fixedbugs:`2.6.2`
+
 Pulp 2.6.1
 ==========
 
