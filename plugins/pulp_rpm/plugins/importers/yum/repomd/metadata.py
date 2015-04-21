@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 
+import contextlib
 from copy import deepcopy
 import gdbm
 import bz2
@@ -134,8 +135,6 @@ class MetadataFiles(object):
             error_report = self.event_listener.failed_reports[0]
             raise IOError(error_report.error_msg)
 
-    # TODO (jconnonr 2013-03-07) add a method to validate/verify the repomd.xml file
-
     def parse_repomd(self):
         """
         Parse the downloaded repomd.xml file and populate the metadata dictionary.
@@ -162,7 +161,12 @@ class MetadataFiles(object):
             root_element.clear()
 
             if element.tag == REVISION_TAG:
-                self.revision = element.text
+                try:
+                    self.revision = int(element.text)
+                except ValueError:
+                    _LOGGER.info('repository revision is not an integer. '
+                                 'unable to consider skipping steps.')
+                    self.revision = 0
 
             if element.tag == DATA_TAG:
                 file_info = process_repomd_data_element(element)
@@ -271,13 +275,11 @@ class MetadataFiles(object):
             (filelists.METADATA_FILE_NAME, filelists.PACKAGE_TAG, filelists.process_package_element),
             (other.METADATA_FILE_NAME, other.PACKAGE_TAG, other.process_package_element),
         ):
-            xml_file_handle = self.get_metadata_file_handle(filename)
-            try:
+            with contextlib.closing(self.get_metadata_file_handle(filename)) as xml_file_handle:
                 generator = package_list_generator(xml_file_handle, tag)
                 db_filename = os.path.join(self.dst_dir, '%s.db' % filename)
                 # always a New file, and open with Fast writing mode.
-                db_file_handle = gdbm.open(db_filename, 'nf')
-                try:
+                with contextlib.closing(gdbm.open(db_filename, 'nf')) as db_file_handle:
                     for element in generator:
                         utils.strip_ns(element)
                         raw_xml = utils.element_to_raw_xml(element)
@@ -285,10 +287,6 @@ class MetadataFiles(object):
                         db_key = self.generate_db_key(unit_key)
                         db_file_handle[db_key] = raw_xml
                     db_file_handle.sync()
-                finally:
-                    db_file_handle.close()
-            finally:
-                xml_file_handle.close()
             self.dbs[filename] = db_filename
 
     @staticmethod

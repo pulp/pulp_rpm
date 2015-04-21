@@ -1,3 +1,4 @@
+import contextlib
 import functools
 import logging
 import os
@@ -62,6 +63,8 @@ class RepoSync(object):
 
         flat_call_config = call_config.flatten()
         self.nectar_config = nectar_utils.importer_config_to_nectar_config(flat_call_config)
+        self.skip_repomd_steps = False
+        self.current_revision = 0
 
     def set_progress(self):
         """
@@ -84,6 +87,41 @@ class RepoSync(object):
             repo_url += '/'
         return repo_url
 
+    @contextlib.contextmanager
+    def update_state(self, state_dict, unit_type=None):
+        """
+        Manage the state of a step in the sync process. This sets the state to
+        running and complete when appropriate, and optionally decides if the
+        step should be skipped (if a unit_type is passed in). This reports
+        progress before and after the step executes.
+
+        This context manager yields a boolean value; if True, the step should
+        be skipped.
+
+        :param state_dict:  any dictionary containing a key "state" whose value
+                            is the state of the current step.
+        :type  state_dict:  dict
+        :param unit_type:   optional unit type. If provided, and if the value
+                            appears in the list of configured types to skip,
+                            the state will be set to SKIPPED and the yielded
+                            boolean will be True.
+        :type  unit_type:   str
+        """
+        skip_config = self.call_config.get(constants.CONFIG_SKIP, [])
+        skip = unit_type is not None and unit_type in skip_config
+
+        if skip:
+            state_dict[constants.PROGRESS_STATE_KEY] = constants.STATE_SKIPPED
+        else:
+            state_dict[constants.PROGRESS_STATE_KEY] = constants.STATE_RUNNING
+        self.set_progress()
+
+        yield skip
+
+        if state_dict[constants.PROGRESS_STATE_KEY] == constants.STATE_RUNNING:
+            state_dict[constants.PROGRESS_STATE_KEY] = constants.STATE_COMPLETE
+        self.set_progress()
+
     def run(self):
         """
         Steps through the entire workflow of a repo sync.
@@ -95,56 +133,40 @@ class RepoSync(object):
         # we delete below
         self.tmp_dir = tempfile.mkdtemp(dir=self.working_dir)
         try:
-            self.progress_status['metadata']['state'] = constants.STATE_RUNNING
-            self.set_progress()
+            with self.update_state(self.progress_status['metadata']):
+                # Verify that we have a feed url.
+                # if there is no feed url, then we have nothing to sync
+                if self.sync_feed is None:
+                    raise FailedException(_('Unable to sync a repository that has no feed'))
 
-            # Verify that we have a feed url.  if there is no feed url then we have nothing to sync
-            if self.sync_feed is None:
-                raise FailedException(_('Unable to sync a repository that has no feed'))
+                metadata_files = self.get_metadata()
+                # Save the default checksum from the metadata
+                self.save_default_metadata_checksum_on_repo(metadata_files)
 
-            metadata_files = self.get_metadata()
-            # Save the default checksum from the metadata
-            self.save_default_metadata_checksum_on_repo(metadata_files)
-
-            if self.progress_status['metadata']['state'] == constants.STATE_RUNNING:
-                self.progress_status['metadata']['state'] = constants.STATE_COMPLETE
-            self.set_progress()
-
-            self.content_report['state'] = constants.STATE_RUNNING
-            self.set_progress()
-            self.update_content(metadata_files)
-            if self.content_report['state'] == constants.STATE_RUNNING:
-                self.content_report['state'] = constants.STATE_COMPLETE
-            self.set_progress()
+            with self.update_state(self.content_report) as skip:
+                if not (skip or self.skip_repomd_steps):
+                    self.update_content(metadata_files)
 
             _logger.info(_('Downloading additional units.'))
-            if models.Distribution.TYPE in self.call_config.get(constants.CONFIG_SKIP, []):
-                self.distribution_report['state'] = constants.STATE_SKIPPED
-            else:
-                self.distribution_report['state'] = constants.STATE_RUNNING
-                self.set_progress()
-                treeinfo.sync(self.sync_conduit, self.sync_feed, self.tmp_dir,
-                              self.nectar_config, self.distribution_report, self.set_progress)
-            self.set_progress()
 
-            if models.Errata.TYPE in self.call_config.get(constants.CONFIG_SKIP, []):
-                self.progress_status['errata']['state'] = constants.STATE_SKIPPED
-            else:
-                self.progress_status['errata']['state'] = constants.STATE_RUNNING
-                self.set_progress()
-                self.get_errata(metadata_files)
-                self.progress_status['errata']['state'] = constants.STATE_COMPLETE
-            self.set_progress()
+            with self.update_state(self.distribution_report, models.Distribution.TYPE) as skip:
+                if not skip:
+                    treeinfo.sync(self.sync_conduit, self.sync_feed, self.tmp_dir,
+                                  self.nectar_config, self.distribution_report,
+                                  self.set_progress)
 
-            self.progress_status['comps']['state'] = constants.STATE_RUNNING
-            self.set_progress()
-            self.get_comps_file_units(metadata_files, group.process_group_element, group.GROUP_TAG)
-            self.get_comps_file_units(metadata_files, group.process_category_element,
-                                      group.CATEGORY_TAG)
-            self.get_comps_file_units(metadata_files, group.process_environment_element,
-                                      group.ENVIRONMENT_TAG)
-            self.progress_status['comps']['state'] = constants.STATE_COMPLETE
-            self.set_progress()
+            with self.update_state(self.progress_status['errata'], models.Errata.TYPE) as skip:
+                if not (skip or self.skip_repomd_steps):
+                    self.get_errata(metadata_files)
+
+            with self.update_state(self.progress_status['comps']) as skip:
+                if not (skip or self.skip_repomd_steps):
+                    self.get_comps_file_units(metadata_files, group.process_group_element,
+                                              group.GROUP_TAG)
+                    self.get_comps_file_units(metadata_files, group.process_category_element,
+                                              group.CATEGORY_TAG)
+                    self.get_comps_file_units(metadata_files, group.process_environment_element,
+                                              group.ENVIRONMENT_TAG)
 
         except CancelException:
             report = self.sync_conduit.build_cancel_report(self._progress_summary, self.progress_status)
@@ -165,6 +187,7 @@ class RepoSync(object):
             # clean up whatever we may have left behind
             shutil.rmtree(self.tmp_dir, ignore_errors=True)
 
+        self.save_repomd_revision()
         _logger.info(_('Sync complete.'))
         return self.sync_conduit.build_success_report(self._progress_summary, self.progress_status)
 
@@ -204,16 +227,44 @@ class RepoSync(object):
         except ValueError, e:
             raise FailedException(str(e))
 
-        _logger.info(_('Downloading metadata files.'))
+        scratchpad = self.sync_conduit.get_scratchpad() or {}
+        previous_revision = scratchpad.get(constants.REPOMD_REVISION_KEY, 0)
+        previous_skip_set = set(scratchpad.get(constants.PREVIOUS_SKIP_LIST, []))
+        current_skip_set = set(self.call_config.get(constants.CONFIG_SKIP, []))
+        self.current_revision = metadata_files.revision
+        # if the revision is positive, hasn't increased and the skip list doesn't include
+        # new types that weren't present on the last run...
+        if 0 < metadata_files.revision <= previous_revision \
+                and previous_skip_set - current_skip_set == set():
+            _logger.info(_('upstream repo metadata has not changed. Skipping steps.'))
+            self.skip_repomd_steps = True
+            return metadata_files
+        else:
+            _logger.info(_('Downloading metadata files.'))
+            metadata_files.download_metadata_files()
+            self.downloader = None
+            _logger.info(_('Generating metadata databases.'))
+            metadata_files.generate_dbs()
+            self.import_unknown_metadata_files(metadata_files)
+            return metadata_files
 
-        metadata_files.download_metadata_files()
-        self.downloader = None
-        _logger.info(_('Generating metadata databases.'))
-        metadata_files.generate_dbs()
-        self.import_unknown_metadata_files(metadata_files)
-        # TODO: verify metadata
-        #metadata_files.verify_metadata_files()
-        return metadata_files
+    def save_repomd_revision(self):
+        """
+        If there were no errors during the sync, save the repomd revision
+        number to the scratchpad along with the configured skip list used
+        by this run.
+        """
+        non_success_states = (constants.STATE_FAILED, constants.STATE_CANCELLED)
+        if len(self.content_report['error_details']) == 0\
+                and self.content_report[constants.PROGRESS_STATE_KEY] not in non_success_states:
+            _logger.debug(_('saving repomd.xml revision number and skip list to scratchpad'))
+            scratchpad = self.sync_conduit.get_scratchpad() or {}
+            scratchpad[constants.REPOMD_REVISION_KEY] = self.current_revision
+            # we save the skip list so if one of the types contained in it gets removed, the next
+            # sync will know to not skip based on repomd revision
+            scratchpad[constants.PREVIOUS_SKIP_LIST] = self.call_config.get(
+                constants.CONFIG_SKIP, [])
+            self.sync_conduit.set_scratchpad(scratchpad)
 
     def save_default_metadata_checksum_on_repo(self, metadata_files):
         """
