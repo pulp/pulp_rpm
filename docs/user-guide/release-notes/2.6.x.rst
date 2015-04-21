@@ -10,6 +10,11 @@ New Behaviors
 Install errata tasks will fail during unit translation when the consumer
 does not have an RPM profile.
 
+The sync process checks the revision number in upstream metadata to determine
+if it has changed since the previous sync. If not, most steps in the sync will
+be skipped. On large repositories, this has reduced best-case sync times from
+an order of minutes to a few seconds.
+
 Bug Fixes
 ---------
 

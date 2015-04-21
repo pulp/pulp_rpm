@@ -175,3 +175,7 @@ APPLICABILITY_REPORT_STYLE_BY_CONSUMERS = 'by_consumers'
 
 # The path to the repo_auth.conf file
 REPO_AUTH_CONFIG_FILE = '/etc/pulp/repo_auth.conf'
+
+# used in the scratchpad
+REPOMD_REVISION_KEY = 'repomd_revision'
+PREVIOUS_SKIP_LIST = 'previous_skip_list'
