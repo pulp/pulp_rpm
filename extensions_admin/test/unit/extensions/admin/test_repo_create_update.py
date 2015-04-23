@@ -59,6 +59,8 @@ class RpmRepoCreateCommandTests(PulpClientTests):
             self.options_bundle.opt_proxy_port.keyword: 80,
             self.options_bundle.opt_proxy_user.keyword: 'user',
             self.options_bundle.opt_proxy_pass.keyword: 'pass',
+            self.options_bundle.opt_basic_auth_user.keyword: 'basicuser',
+            self.options_bundle.opt_basic_auth_pass.keyword: 'basicpass',
             self.options_bundle.opt_max_speed.keyword: 1024,
             self.options_bundle.opt_max_downloads.keyword: 8,
             self.options_bundle.opt_feed_ca_cert.keyword: ca_cert,
@@ -104,6 +106,8 @@ class RpmRepoCreateCommandTests(PulpClientTests):
         self.assertEqual(importer_config[constants.KEY_PROXY_PORT], 80)
         self.assertEqual(importer_config[constants.KEY_PROXY_USER], 'user')
         self.assertEqual(importer_config[constants.KEY_PROXY_PASS], 'pass')
+        self.assertEqual(importer_config[constants.KEY_BASIC_AUTH_USER], 'basicuser')
+        self.assertEqual(importer_config[constants.KEY_BASIC_AUTH_PASS], 'basicpass')
         self.assertEqual(importer_config[constants.KEY_MAX_SPEED], 1024)
         self.assertEqual(importer_config[constants.KEY_MAX_DOWNLOADS], 8)
         self.assertEqual(importer_config[repo_create_update.CONFIG_KEY_SKIP], [ids.TYPE_ID_RPM])

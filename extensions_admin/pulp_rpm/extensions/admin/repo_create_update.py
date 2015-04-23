@@ -64,6 +64,7 @@ class RpmRepoCreateCommand(CreateRepositoryCommand, ImporterConfigMixin):
                                      include_sync=True,
                                      include_ssl=True,
                                      include_proxy=True,
+                                     include_basic_auth=True,
                                      include_throttling=True,
                                      include_unit_policy=True)
 
@@ -197,6 +198,7 @@ class RpmRepoUpdateCommand(UpdateRepositoryCommand, ImporterConfigMixin):
                                      include_sync=True,
                                      include_ssl=True,
                                      include_proxy=True,
+                                     include_basic_auth=True,
                                      include_throttling=True,
                                      include_unit_policy=True)
 
