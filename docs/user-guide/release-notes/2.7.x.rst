@@ -8,7 +8,11 @@ Pulp 2.7.0
 New Features
 ------------
 
-The repo authentication functionality associated with pulp_rpm has been moved
-into platform. This allows other plugins to take advantage of this
-functionality.
+* The repo authentication functionality associated with pulp_rpm has been moved
+  into platform. This allows other plugins to take advantage of this
+  functionality.
+
+* The RPM plugin supports basic auth when fetching data from upstream repos.
+  This can be configured via ``basicauth-user`` and ``basicauth-pass`` when
+  creating or updating a repository.
 

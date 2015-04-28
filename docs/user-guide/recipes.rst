@@ -195,6 +195,10 @@ the "Download" link from the "Entitlement Certificate" column to retrieve the
 certificate and key, bundled into a single file. You can pass that same file as
 the ``--feed-cert`` and ``--feed-key`` options when you create the repo.
 
+It is also possible to sync a repo that is protected via basic authentication.
+The ``--basicauth-user`` and ``--basicauth-pass`` options are used for this
+during repo creation or update.
+
 .. _export-repos:
 
 Export Repositories and Repository Groups
