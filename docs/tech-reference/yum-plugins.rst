@@ -447,6 +447,12 @@ configuration values are optional.
 ``proxy_password``
  Password to use for proxy server authentication.
 
+``basic_auth_username``
+ Username to pass to the feed URL's server if it requires authentication.
+
+``basic_auth_password``
+ Password to use for server authentication.
+
 ``max_speed``
  The maximum download speed in bytes/sec for a task (such as a sync);
  defaults to None
