@@ -5,10 +5,6 @@ Pulp 2.6 Release Notes
 Pulp 2.6.1
 ==========
 
-New Behaviors
--------------
-Syncing of erratum from Scientific Linux repositories is now working.
-
 Bug Fixes
 ---------
 
