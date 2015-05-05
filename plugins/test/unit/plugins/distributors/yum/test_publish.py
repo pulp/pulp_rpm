@@ -1002,14 +1002,18 @@ class GenerateSqliteForRepoStepTests(BaseYumDistributorPublishStepTests):
         Popen.return_value.returncode = 0
         Popen.return_value.communicate.return_value = pipe_output
         step = publish.GenerateSqliteForRepoStep('/foo')
+        step.parent = mock.MagicMock()
+        step.parent.get_checksum_type.return_value = 'sha1'
         step.process_main()
         Popen.assert_called_once_with('createrepo_c -d --update --keep-all-metadata '
+                                      '-s sha1 '
                                       '--skip-stat /foo',
                                       shell=True, stderr=mock.ANY, stdout=mock.ANY)
 
     @mock.patch('pulp_rpm.plugins.distributors.yum.publish.subprocess.Popen')
     def test_process_main_with_error(self, Popen):
         step = publish.GenerateSqliteForRepoStep('/foo')
+        step.parent = mock.MagicMock()
         pipe_output = ('some output', None)
         Popen.return_value = mock.MagicMock()
         Popen.return_value.returncode = 1
