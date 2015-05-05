@@ -4,7 +4,7 @@ import shutil
 
 from pulp.common.config import read_json_config
 from pulp.plugins.distributor import Distributor
-from pulp.server.config import config as pulp_server_config
+from pulp.server import config as pulp_server_config
 
 import pulp_rpm.common.constants as constants
 from pulp_rpm.common.ids import (
@@ -202,8 +202,8 @@ class YumHTTPDistributor(Distributor):
         """
         payload = dict()
         payload['repo_name'] = repo.display_name
-        payload['server_name'] = pulp_server_config.get('server', 'server_name')
-        ssl_ca_path = pulp_server_config.get('security', 'ssl_ca_certificate')
+        payload['server_name'] = pulp_server_config.config.get('server', 'server_name')
+        ssl_ca_path = pulp_server_config.config.get('security', 'ssl_ca_certificate')
         try:
             payload['ca_cert'] = open(ssl_ca_path).read()
         except (OSError, IOError):
