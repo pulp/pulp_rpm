@@ -7,6 +7,7 @@ import unittest
 
 import mock
 from mock import Mock, patch, call
+from pulp.devel import mock_config
 from pulp.devel.unit import util
 from pulp.devel.unit.util import compare_dict
 from pulp.plugins.conduits.repo_config import RepoConfigConduit
@@ -16,7 +17,7 @@ from pulp.plugins.model import Repository
 
 from pulp_rpm.common.ids import TYPE_ID_DISTRIBUTOR_YUM
 from pulp_rpm.plugins.distributors.yum import distributor
-from pulp_rpm.plugins.distributors.yum.distributor import YumHTTPDistributor, pulp_server_config
+from pulp_rpm.plugins.distributors.yum.distributor import YumHTTPDistributor
 
 
 DISTRIBUTOR = 'pulp_rpm.plugins.distributors.yum.distributor'
@@ -33,8 +34,6 @@ class YumDistributorTests(unittest.TestCase):
         shutil.rmtree(self.working_dir)
         self.distributor = None
 
-    # -- metadata test ---------------------------------------------------------
-
     def test_metadata(self):
         metadata = distributor.YumHTTPDistributor.metadata()
 
@@ -43,8 +42,6 @@ class YumDistributorTests(unittest.TestCase):
 
         self.assertEqual(metadata['id'], TYPE_ID_DISTRIBUTOR_YUM)
         self.assertEqual(metadata['display_name'], distributor.DISTRIBUTOR_DISPLAY_NAME)
-
-    # -- configuration test ----------------------------------------------------
 
     @mock.patch('pulp_rpm.plugins.distributors.yum.configuration.validate_config')
     def test_validate_config(self, mock_validate_config):
@@ -55,8 +52,6 @@ class YumDistributorTests(unittest.TestCase):
         self.distributor.validate_config(repo, config, conduit)
 
         mock_validate_config.assert_called_once_with(repo, config, conduit)
-
-    # -- publish tests ---------------------------------------------------------
 
     @mock.patch('pulp_rpm.plugins.distributors.yum.distributor.publish')
     def test_publish_repo(self, mock_publish):
@@ -90,26 +85,28 @@ class YumDistributorTests(unittest.TestCase):
                   'http': True,
                   'https': True}
         binding_config = {}
-        pulp_server_config.set('server', 'server_name', 'apple')
         cert_file = os.path.join(self.working_dir, "orange_file")
-        with open(cert_file, 'w') as filewriter:
-            filewriter.write("orange")
 
-        pulp_server_config.set('security', 'ssl_ca_certificate', cert_file)
+        with mock_config.patch({'server': {'server_name': 'apple'},
+                                'security': {'ssl_ca_certificate': cert_file}}):
+            with open(cert_file, 'w') as filewriter:
+                filewriter.write("orange")
 
-        result = local_distributor.create_consumer_payload(repo, config, binding_config)
+            result = local_distributor.create_consumer_payload(repo, config, binding_config)
 
-        target = {
-            'server_name': 'apple',
-            'ca_cert': 'orange',
-            'relative_path': '/pulp/repos/bar',
-            'gpg_keys': {'pulp.key': 'kiwi'},
-            'client_cert': 'durian',
-            'protocols': ['http', 'https'],
-            'repo_name': 'foo'
-        }
-        compare_dict(result, target)
+            target = {
+                'server_name': 'apple',
+                'ca_cert': 'orange',
+                'relative_path': '/pulp/repos/bar',
+                'gpg_keys': {'pulp.key': 'kiwi'},
+                'client_cert': 'durian',
+                'protocols': ['http', 'https'],
+                'repo_name': 'foo'
+            }
+            compare_dict(result, target)
 
+    @mock_config.patch({'server': {'server_name': 'apple'},
+                        'security': {'ssl_ca_certificate': 'orange'}})
     @patch('pulp_rpm.plugins.distributors.yum.distributor.configuration.load_config')
     def test_create_consumer_payload_global_auth(self, mock_load_config):
         test_distributor = YumHTTPDistributor()
@@ -121,8 +118,6 @@ class YumDistributorTests(unittest.TestCase):
                   'http': True,
                   'https': True}
         binding_config = {}
-        pulp_server_config.set('server', 'server_name', 'apple')
-        pulp_server_config.set('security', 'ssl_ca_certificate', 'orange')
 
         repo_auth_config = ConfigParser.SafeConfigParser()
         repo_auth_config.add_section('repos')

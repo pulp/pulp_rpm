@@ -5,7 +5,6 @@ import unittest
 
 from pulp.server import config
 from pulp.server.managers.auth.cert.cert_generator import SerialNumber
-from pulp.server.db import connection
 from pulp.server.logs import start_logging, stop_logging
 from pulp.server.managers import factory as manager_factory
 
@@ -43,16 +42,12 @@ class PulpRPMTests(unittest.TestCase):
         config_filename = os.path.join(TEST_DATA_DIR, 'test-override-pulp.conf')
         config.config.read(config_filename)
         start_logging()
-        name = config.config.get('database', 'name')
-        connection.initialize(name)
         manager_factory.initialize()
         constants.DISTRIBUTION_STORAGE_PATH = TEMP_DISTRO_STORAGE_DIR
 
     @classmethod
     def tearDownClass(cls):
         stop_logging()
-        name = config.config.get('database', 'name')
-        connection._CONNECTION.drop_database(name)
         shutil.rmtree('/tmp/pulp')
 
     def setUp(self):
