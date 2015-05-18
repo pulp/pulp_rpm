@@ -103,7 +103,7 @@ class RepomdXMLFileContext(MetadataFileContext):
                                                            open_checksum_attributes)
 
             try:
-                file_handle = gzip.open(file_path, 'r')
+                file_handle = gzip.open(file_path, 'rb')
 
             except:
                 # cannot have an else clause to the try without an except clause
@@ -111,10 +111,14 @@ class RepomdXMLFileContext(MetadataFileContext):
 
             else:
                 try:
-                    content = file_handle.read()
-                    open_size_element.text = str(len(content))
-                    open_checksum_element.text = self.checksum_constructor(content).hexdigest()
-
+                    hash_constructor = self.checksum_constructor()
+                    while True:
+                        portion = file_handle.read(32768)
+                        if not portion:
+                            break
+                        hash_constructor.update(portion)
+                    open_size_element.text = str(file_handle.tell())
+                    open_checksum_element.text = hash_constructor.hexdigest()
                 finally:
                     file_handle.close()
 
