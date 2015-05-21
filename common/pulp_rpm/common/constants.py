@@ -126,6 +126,7 @@ CONFIG_KEY_DISTRIBUTION_XML_FILE = 'pulp_distribution_xml_file'
 # Configuration constants for export distributors
 PUBLISH_HTTP_KEYWORD = 'http'
 PUBLISH_HTTPS_KEYWORD = 'https'
+CREATE_PULP_MANIFEST = 'manifest'
 EXPORT_REQUIRED_CONFIG_KEYS = (PUBLISH_HTTP_KEYWORD, PUBLISH_HTTPS_KEYWORD)
 
 END_DATE_KEYWORD = 'end_date'
@@ -137,7 +138,7 @@ START_DATE_KEYWORD = 'start_date'
 GENERATE_SQLITE_KEYWORD = 'generate_sqlite'
 EXPORT_OPTIONAL_CONFIG_KEYS = (END_DATE_KEYWORD, ISO_PREFIX_KEYWORD, SKIP_KEYWORD,
                                EXPORT_DIRECTORY_KEYWORD, START_DATE_KEYWORD, ISO_SIZE_KEYWORD,
-                               GENERATE_SQLITE_KEYWORD)
+                               GENERATE_SQLITE_KEYWORD, CREATE_PULP_MANIFEST)
 
 EXPORT_HTTP_DIR = '/var/lib/pulp/published/http/exports/repo'
 EXPORT_HTTPS_DIR = '/var/lib/pulp/published/https/exports/repo'

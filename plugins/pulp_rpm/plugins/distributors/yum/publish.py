@@ -8,7 +8,8 @@ from pulp.common import dateutils
 from pulp.common.compat import json
 from pulp.plugins.config import PluginCallConfiguration
 from pulp.plugins.conduits.repo_publish import RepoPublishConduit
-from pulp.plugins.util.publish_step import PublishStep, UnitPublishStep, CopyDirectoryStep
+from pulp.plugins.util.publish_step import PublishStep, UnitPublishStep, CopyDirectoryStep,\
+    CreatePulpManifestStep
 from pulp.plugins.util.publish_step import AtomicDirectoryPublishStep
 from pulp.server.db.model.criteria import UnitAssociationCriteria
 from pulp.server.managers.repo.query import RepoQueryManager
@@ -144,6 +145,11 @@ class ExportRepoPublisher(BaseYumRepoPublisher):
             # Create the steps to generate the ISO and publish them to their final location
             output_dir = os.path.join(working_directory, 'output')
             self.add_child(CreateIsoStep(realized_dir, output_dir))
+
+            # create the PULP_MANIFEST file if requested in the config
+            if config.get_boolean(constants.CREATE_PULP_MANIFEST) is True:
+                self.add_child(CreatePulpManifestStep(output_dir))
+
             publish_location = [('/', location)
                                 for location in configuration.get_export_repo_publish_dirs(repo,
                                                                                            config)]
@@ -210,6 +216,11 @@ class ExportRepoGroupPublisher(PublishStep):
             # Create the steps to generate the ISO and publish them to their final location
             output_dir = os.path.join(working_dir, 'output')
             self.add_child(CreateIsoStep(realized_dir, output_dir))
+
+            # create the PULP_MANIFEST file if requested in the config
+            if config.get_boolean(constants.CREATE_PULP_MANIFEST) is True:
+                self.add_child(CreatePulpManifestStep(output_dir))
+
             export_dirs = configuration.get_export_repo_group_publish_dirs(repo_group, config)
             publish_location = [('/', location) for location in export_dirs]
 
