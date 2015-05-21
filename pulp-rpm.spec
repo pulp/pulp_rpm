@@ -157,7 +157,7 @@ A collection of modules shared among all RPM components.
 Summary: Pulp RPM plugins
 Group: Development/Languages
 Requires: python-pulp-rpm-common = %{pulp_version}
-Requires: python-pulp-repoauth >= 2.6.0
+Requires: python-pulp-oid_validation >= 2.7.0
 Requires: pulp-server = %{pulp_version}
 Requires: createrepo >= 0.9.9-21
 Requires: createrepo_c >= 0.4.1-1
