@@ -32,7 +32,7 @@ class RpmRepoListCommand(ListRepositoriesCommand):
         for r in rpm_repos:
             # The importers will only be present in a --details view, so make
             # sure it's there before proceeding
-            if 'importers[0]' not in r:
+            if 'importers' not in r:
                 continue
 
             imp_config = r['importers'][0]['config']  # there can only be one importer
