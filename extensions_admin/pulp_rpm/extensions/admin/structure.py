@@ -32,7 +32,7 @@ DESC_REPO = _('repository lifecycle commands')
 
 DESC_COPY = _('copies one or more content units between repositories')
 DESC_UPLOADS = _('upload modules into a repository')
-DESC_REMOVE = _('remove copied or uploaded modules from a repository')
+DESC_REMOVE = _('remove modules from a repository')
 DESC_CONTENTS = _('search the contents of a repository')
 
 DESC_SYNC = _('run, schedule, or view the status of sync tasks')
