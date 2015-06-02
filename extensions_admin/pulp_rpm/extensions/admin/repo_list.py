@@ -34,8 +34,10 @@ class RpmRepoListCommand(ListRepositoriesCommand):
             # sure it's there before proceeding
             if 'importers' not in r:
                 continue
-
-            imp_config = r['importers'][0]['config']  # there can only be one importer
+            try:
+                imp_config = r['importers'][0]['config']  # there can only be one importer
+            except IndexError:
+                continue
 
             # If either are present, tell the user the feed is using SSL
             if 'ssl_client_cert' in imp_config or 'ssl_client_key' in imp_config:
