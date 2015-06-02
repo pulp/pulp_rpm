@@ -127,7 +127,7 @@ class TestISOStatusRenderer(unittest.TestCase):
         # A message should have been rendered to the user about the cancellation
         self.assertEqual(renderer.prompt.render_failure_message.call_count, 1)
         self.assertEqual(renderer.prompt.render_failure_message.mock_calls[0][2]['tag'],
-                         'cancelled')
+                         'canceled')
 
     @mock.patch('pulp_rpm.extensions.admin.iso.status.ISOStatusRenderer._display_publish_report',
                 side_effect=status.ISOStatusRenderer._display_publish_report, autospec=True)
