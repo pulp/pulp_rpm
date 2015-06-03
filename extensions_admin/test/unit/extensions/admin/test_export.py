@@ -27,11 +27,14 @@ class TestRepoExportRunCommand(PulpClientTests):
         override arguments
         """
         # Setup
-        expected_options = [export.OPTION_EXPORT_DIR,
-                            export.OPTION_END_DATE,
-                            export.OPTION_START_DATE,
-                            export.OPTION_ISO_PREFIX,
-                            export.OPTION_ISO_SIZE]
+        expected_options = [
+            export.FLAG_MANIFEST,
+            export.OPTION_EXPORT_DIR,
+            export.OPTION_END_DATE,
+            export.OPTION_START_DATE,
+            export.OPTION_ISO_PREFIX,
+            export.OPTION_ISO_SIZE,
+        ]
 
         # Test
         export.RpmExportCommand(self.context, mock.Mock())
@@ -55,6 +58,7 @@ class TestRepoGroupExportRunCommand(PulpClientTests):
         self.mock_get_publish_tasks.return_value = []
 
         self.kwargs = {
+            export.FLAG_MANIFEST.keyword: None,
             options.OPTION_GROUP_ID.keyword: 'test-group',
             export.OPTION_ISO_PREFIX.keyword: None,
             export.OPTION_ISO_SIZE.keyword: None,
@@ -75,13 +79,16 @@ class TestRepoGroupExportRunCommand(PulpClientTests):
         Test to make sure the export run command is set up correctly
         """
         mock_renderer = mock.Mock(spec=status.StatusRenderer)
-        expected_options = [FLAG_BACKGROUND,
-                            options.OPTION_GROUP_ID,
-                            export.OPTION_EXPORT_DIR,
-                            export.OPTION_END_DATE,
-                            export.OPTION_START_DATE,
-                            export.OPTION_ISO_PREFIX,
-                            export.OPTION_ISO_SIZE]
+        expected_options = [
+            FLAG_BACKGROUND,
+            options.OPTION_GROUP_ID,
+            export.FLAG_MANIFEST,
+            export.OPTION_EXPORT_DIR,
+            export.OPTION_END_DATE,
+            export.OPTION_START_DATE,
+            export.OPTION_ISO_PREFIX,
+            export.OPTION_ISO_SIZE,
+        ]
 
         # Test
         export.RpmGroupExportCommand(self.context, mock_renderer,

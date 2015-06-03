@@ -10,7 +10,7 @@ from pulp.devel.unit.util import touch, compare_dict
 from pulp.plugins.conduits.repo_publish import RepoPublishConduit
 from pulp.plugins.config import PluginCallConfiguration
 from pulp.plugins.model import Repository, Unit
-from pulp.plugins.util.publish_step import PublishStep
+from pulp.plugins.util.publish_step import PublishStep, CreatePulpManifestStep
 from pulp.server import constants as server_constants
 from pulp.server.exceptions import InvalidValue, PulpCodedException
 import isodate
@@ -207,8 +207,24 @@ class ExportRepoPublisherTests(BaseYumDistributorPublishStepTests):
         self.assertTrue(isinstance(step.children[-2], publish.CreateIsoStep))
         self.assertTrue(isinstance(step.children[-1], publish.AtomicDirectoryPublishStep))
 
+        for child in step.children:
+            self.assertFalse(isinstance(child, CreatePulpManifestStep))
+
         self.assertEquals(step.children[0].association_filters, 'foo')
         self.assertEquals(step.children[1].association_filters, 'foo')
+
+    @mock.patch('pulp_rpm.plugins.distributors.yum.publish.export_utils.create_date_range_filter')
+    def test_init_with_create_manifest(self, mock_export_utils):
+        mock_export_utils.return_value = 'foo'
+        config = PluginCallConfiguration({constants.CREATE_PULP_MANIFEST: True}, None)
+        step = publish.ExportRepoPublisher(
+            self.publisher.get_repo(),
+            self.publisher.get_conduit(),
+            config,
+            YUM_DISTRIBUTOR_ID,
+        )
+
+        self.assertTrue(isinstance(step.children[-2], CreatePulpManifestStep))
 
 
 class ExportRepoGroupPublisherTests(BaseYumDistributorPublishStepTests):
@@ -304,6 +320,27 @@ class ExportRepoGroupPublisherTests(BaseYumDistributorPublishStepTests):
 
         self.assertEquals(step.children[0].children[0].association_filters, 'foo')
         self.assertEquals(step.children[0].children[1].association_filters, 'foo')
+
+    @mock.patch('pulp_rpm.plugins.distributors.yum.publish.RepoQueryManager')
+    @mock.patch('pulp_rpm.plugins.distributors.yum.publish.export_utils.create_date_range_filter')
+    def test_init_with_create_manifest(self, mock_export_utils, mock_query_manager):
+        mock_export_utils.return_value = 'foo'
+        config = PluginCallConfiguration(None, {constants.CREATE_PULP_MANIFEST: True})
+        repo_group = mock.Mock(repo_ids=['foo', 'bar'],
+                               working_dir=self.working_dir)
+        mock_query_manager.return_value.find_by_id_list.return_value = [{
+            u'id': 'foo',
+            u'display_name': 'foo',
+            u'description': 'description',
+            u'notes': {'_repo-type': 'rpm-repo'},
+            u'content_unit_counts': {'rpm': 1}
+        }]
+        step = publish.ExportRepoGroupPublisher(repo_group,
+                                                self.publisher.get_conduit(),
+                                                config,
+                                                EXPORT_DISTRIBUTOR_ID)
+
+        self.assertTrue(isinstance(step.children[-2], CreatePulpManifestStep))
 
 
 class PublisherTests(BaseYumDistributorPublishStepTests):

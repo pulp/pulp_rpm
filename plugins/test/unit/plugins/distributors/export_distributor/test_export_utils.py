@@ -68,6 +68,7 @@ class TestValidateExportConfig(unittest.TestCase):
         self.repo_config[constants.EXPORT_DIRECTORY_KEYWORD] = '/path/to/dir'
         self.repo_config[constants.START_DATE_KEYWORD] = '2013-07-18T11:22:00'
         self.repo_config[constants.END_DATE_KEYWORD] = '2013-07-18T11:23:00'
+        self.repo_config[constants.CREATE_PULP_MANIFEST] = True
 
         result, msg = export_utils.validate_export_config(
             PluginCallConfiguration({}, self.repo_config))
@@ -180,6 +181,13 @@ class TestValidateExportConfig(unittest.TestCase):
     def test_none_https(self):
         # Setup
         self.repo_config[constants.PUBLISH_HTTPS_KEYWORD] = None
+
+        # Test
+        result = export_utils.validate_export_config(PluginCallConfiguration({}, self.repo_config))
+        self.assertFalse(result[0])
+
+    def test_bad_manifest_flag(self):
+        self.repo_config[constants.CREATE_PULP_MANIFEST] = 'true'
 
         # Test
         result = export_utils.validate_export_config(PluginCallConfiguration({}, self.repo_config))
