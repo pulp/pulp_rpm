@@ -16,3 +16,7 @@ New Features
   This can be configured via ``basicauth-user`` and ``basicauth-pass`` when
   creating or updating a repository.
 
+* The export distributor can optionally create a PULP_MANIFEST file in the directory where
+  ISOs are generated. This allows the pulp ISO importer to directly import the published product.
+  See the help text for ``pulp-admin rpm repo sync run``, or the distributor documentation for
+  details.
