@@ -29,7 +29,7 @@ class ISOStatusRenderer(StatusRenderer):
             self._display_iso_sync_report(sync_report)
 
             if sync_report.state == sync_report.STATE_CANCELLED:
-                self.prompt.render_failure_message('The download was cancelled.', tag='cancelled')
+                self.prompt.render_failure_message('The download was canceled.', tag='canceled')
 
         if ids.TYPE_ID_DISTRIBUTOR_ISO in progress_report:
             publish_report = progress.PublishProgressReport.from_progress_report(

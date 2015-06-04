@@ -77,7 +77,7 @@ class RpmStatusRenderer(StatusRenderer):
                 self.publish_steps_renderer.display_report(progress_report)
 
         except CancelException:
-            self.prompt.render_failure_message(_('Operation cancelled.'))
+            self.prompt.render_failure_message(_('Operation canceled.'))
 
     def check_for_cancelled_state(self, state):
         if state == constants.STATE_CANCELLED:
