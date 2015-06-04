@@ -539,7 +539,7 @@ Now that we have these two files, we can create our new errata like so::
 
     Starting upload of selected units. If this process is stopped through ctrl+c,
     the uploads will be paused and may be resumed later using the resume command or
-    cancelled entirely using the cancel command.
+    canceled entirely using the cancel command.
 
     Importing into the repository...
     ... completed
@@ -627,7 +627,7 @@ Now let's build a package group for our demo repo test files::
 
    Starting upload of selected units. If this process is stopped through ctrl+c,
    the uploads will be paused and may be resumed later using the resume command or
-   cancelled entirely using the cancel command.
+   canceled entirely using the cancel command.
 
    Importing into the repository...
    ... completed
@@ -796,7 +796,7 @@ two groups::
 
     Starting upload of selected units. If this process is stopped through ctrl+c,
     the uploads will be paused and may be resumed later using the resume command or
-    cancelled entirely using the cancel command.
+    canceled entirely using the cancel command.
 
     Importing into the repository...
     ... completed
