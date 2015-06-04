@@ -29,30 +29,35 @@ OPT_CONDITIONAL_NAME = PulpCliOption('--cond-name', d, allow_multiple=True, requ
 
 d = _('mandatory package name to include in the package group; multiple may '
       'be indicated by specifying the argument multiple times')
-OPT_MANDATORY_NAME = PulpCliOption('--mand-name', d, allow_multiple=True, required=False)
+OPT_MANDATORY_NAME = PulpCliOption('--mand-name', d, allow_multiple=True, required=False,
+                                   default=[])
 
 d = _('optional package name to include in the package group; multiple may '
       'be indicated by specifying the argument multiple times')
-OPT_OPTIONAL_NAME = PulpCliOption('--opt-name', d, allow_multiple=True, required=False)
+OPT_OPTIONAL_NAME = PulpCliOption('--opt-name', d, allow_multiple=True, required=False, default=[])
 
 d = _('default package name to include in the package group; multiple may '
       'be indicated by specifying the argument multiple times')
-OPT_DEFAULT_NAME = PulpCliOption('--default-name', d, aliases=['-p'], allow_multiple=True, required=False)
+OPT_DEFAULT_NAME = PulpCliOption('--default-name', d, aliases=['-p'], allow_multiple=True,
+                                 required=False, default=[])
 
 d = _('display order for the package group')
-OPT_DISPLAY_ORDER = PulpCliOption('--display-order', d, allow_multiple=False, required=False, default=0)
+OPT_DISPLAY_ORDER = PulpCliOption('--display-order', d, allow_multiple=False, required=False,
+                                  default=0)
 
 d = _('sets the "langonly" attribute for the package group')
 OPT_LANGONLY = PulpCliOption('--langonly', d, allow_multiple=False, required=False)
 
 d = _('set "default" flag on package group to True')
-OPT_DEFAULT = PulpCliOption('--default', d, allow_multiple=False, required=False, parse_func=parsers.parse_boolean)
+OPT_DEFAULT = PulpCliOption('--default', d, allow_multiple=False, required=False,
+                            parse_func=parsers.parse_boolean)
 
 d = _('set "user_visible" flag on package group to True')
-OPT_USER_VISIBLE = PulpCliOption('--user-visible', d, allow_multiple=False, required=False, parse_func=parsers.parse_boolean)
+OPT_USER_VISIBLE = PulpCliOption('--user-visible', d, allow_multiple=False, required=False,
+                                 parse_func=parsers.parse_boolean)
 
 
-class CreatePackageGroupCommand(UploadCommand) :
+class CreatePackageGroupCommand(UploadCommand):
     """
     Handles the creation of a package group.
     """
@@ -74,16 +79,16 @@ class CreatePackageGroupCommand(UploadCommand) :
         self.add_option(OPT_DEFAULT)
         self.add_option(OPT_USER_VISIBLE)
 
-    def determine_type_id(self, filename, **kwargs) : 
+    def determine_type_id(self, filename, **kwargs):
         return TYPE_ID_PKG_GROUP
 
-    def generate_unit_key(self, filename, **kwargs) : 
+    def generate_unit_key(self, filename, **kwargs):
         pkg_group_id = kwargs[OPT_GROUP_ID.keyword]
         repo_id = kwargs[OPTION_REPO_ID.keyword]
-        unit_key = {'id'  :  pkg_group_id, 'repo_id'  :  repo_id}
+        unit_key = {'id':  pkg_group_id, 'repo_id':  repo_id}
         return unit_key
 
-    def generate_metadata(self, filename, **kwargs) : 
+    def generate_metadata(self, filename, **kwargs):
         name = kwargs[OPT_NAME.keyword]
         description = kwargs[OPT_DESCRIPTION.keyword]
         mand_names = kwargs[OPT_MANDATORY_NAME.keyword]
@@ -103,22 +108,22 @@ class CreatePackageGroupCommand(UploadCommand) :
                     key, value = entry.split(':')
                 except ValueError:
                     self.prompt.render_failure_message(_("Invalid value for argument : %(cond)s\n"
-                                                         % {'cond' : OPT_CONDITIONAL_NAME.keyword}))
+                                                         % {'cond': OPT_CONDITIONAL_NAME.keyword}))
                     sys.exit(os.EX_DATAERR)
                 cond_names.append((key.strip(), value.strip()))
 
         metadata = {
-            'name' : name,
-            'description' : description,
-            'mandatory_package_names' : mand_names,
-            'optional_package_names' : opt_names,
-            'default_package_names' : default_names,
-            'conditional_package_names' : cond_names,
-            'default' : default,
-            'user_visible' : user_visible,
-            'langonly' : langonly,
-            'display_order' : display_order,
-            'translated_description' : {},
-            'translated_name' : '',
+            'name': name,
+            'description': description,
+            'mandatory_package_names': mand_names,
+            'optional_package_names': opt_names,
+            'default_package_names': default_names,
+            'conditional_package_names': cond_names,
+            'default': default,
+            'user_visible': user_visible,
+            'langonly': langonly,
+            'display_order': display_order,
+            'translated_description': {},
+            'translated_name': '',
         }
         return metadata
