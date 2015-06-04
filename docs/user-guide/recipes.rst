@@ -460,6 +460,10 @@ RHEAs::
       --from-repo-id=repo_1 --to-repo-id=repo_2
     Progress on this task can be viewed using the commands under "repo tasks".
 
+.. note::
+  Use the --recursive flag to copy any dependencies of units being copied from the source repo
+  into the destination repo.
+
 We can inspect the progress of this operation using
 ``pulp-admin repo tasks list --repo-id=repo_1``. There are only a few
 errata to be copied here so it should be complete shortly. Now we can inspect
@@ -672,6 +676,10 @@ And now we will copy our package group, ``pulp_test`` from ``repo_1`` to
      --to-repo-id=repo_2
    Progress on this task can be viewed using the commands under "repo tasks".
 
+.. note::
+  Use the --recursive flag to copy any dependencies of units being copied from the source repo
+  into the destination repo.
+
 This task should complete fairly quickly since there isn't much to do with our
 tiny example repo, but we can check on the progress to verify that it is
 finished::
@@ -833,6 +841,10 @@ Now let's copy ``example_category`` from ``repo_1`` to ``repo_2``::
     $ pulp-admin rpm repo copy category --match id=example_category \
       --from-repo-id=repo_1 --to-repo-id=repo_2
     Progress on this task can be viewed using the commands under "repo tasks".
+
+.. note::
+  Use the --recursive flag to copy any dependencies of units being copied from the source repo
+  into the destination repo.
 
 We should check out the task to see when it's done with the repo tasks command::
 

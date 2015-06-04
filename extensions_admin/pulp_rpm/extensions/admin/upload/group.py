@@ -29,16 +29,17 @@ OPT_CONDITIONAL_NAME = PulpCliOption('--cond-name', d, allow_multiple=True, requ
 
 d = _('mandatory package name to include in the package group; multiple may '
       'be indicated by specifying the argument multiple times')
-OPT_MANDATORY_NAME = PulpCliOption('--mand-name', d, allow_multiple=True, required=False)
+OPT_MANDATORY_NAME = PulpCliOption('--mand-name', d, allow_multiple=True, required=False,
+                                   default=[])
 
 d = _('optional package name to include in the package group; multiple may '
       'be indicated by specifying the argument multiple times')
-OPT_OPTIONAL_NAME = PulpCliOption('--opt-name', d, allow_multiple=True, required=False)
+OPT_OPTIONAL_NAME = PulpCliOption('--opt-name', d, allow_multiple=True, required=False, default=[])
 
 d = _('default package name to include in the package group; multiple may '
       'be indicated by specifying the argument multiple times')
 OPT_DEFAULT_NAME = PulpCliOption('--default-name', d, aliases=['-p'], allow_multiple=True,
-                                 required=False)
+                                 required=False, default=[])
 
 d = _('display order for the package group')
 OPT_DISPLAY_ORDER = PulpCliOption('--display-order', d, allow_multiple=False, required=False,

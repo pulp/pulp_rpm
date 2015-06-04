@@ -82,11 +82,67 @@ class CreatePackageGroupCommand(PulpClientTests):
             group.OPT_DEFAULT.keyword: 'test-default',
             group.OPT_LANGONLY.keyword: 'test-lang',
             group.OPT_USER_VISIBLE.keyword: 'test-user-visible',
-            group.OPT_CONDITIONAL_NAME.keyword: 'invalid_conditional'
-            # invalid format of conditional
+            group.OPT_CONDITIONAL_NAME.keyword: 'invalid_conditional'  # invalid format
         }
 
         self.assertRaises(SystemExit, self.command.generate_metadata, None, **args)
+
+    def test_opt_name_option(self):
+        # Setup
+        self.cli.add_command(self.command)
+        mock_generate = mock.MagicMock()
+        self.command.generate_metadata = mock_generate
+
+        # Test
+        cmd = 'group --repo-id repo-a --group-id group-a --name name-a ' \
+              '--description desc-a'
+        self.server_mock.request.return_value = [200, '']
+        exit_code = self.cli.run(cmd.split())
+
+        # Verify
+        self.assertEqual(exit_code, 0)
+
+        kwargs = mock_generate.call_args[1]
+        self.assertTrue('opt-name' in kwargs)
+        self.assertEqual(kwargs['opt-name'], [])
+
+    def test_default_name_option(self):
+        # Setup
+        self.cli.add_command(self.command)
+        mock_generate = mock.MagicMock()
+        self.command.generate_metadata = mock_generate
+
+        # Test
+        cmd = 'group --repo-id repo-a --group-id group-a --name name-a ' \
+              '--description desc-a'
+        self.server_mock.request.return_value = [200, '']
+        exit_code = self.cli.run(cmd.split())
+
+        # Verify
+        self.assertEqual(exit_code, 0)
+
+        kwargs = mock_generate.call_args[1]
+        self.assertTrue('default-name' in kwargs)
+        self.assertEqual(kwargs['default-name'], [])
+
+    def test_mand_name_option(self):
+        # Setup
+        self.cli.add_command(self.command)
+        mock_generate = mock.MagicMock()
+        self.command.generate_metadata = mock_generate
+
+        # Test
+        cmd = 'group --repo-id repo-a --group-id group-a --name name-a ' \
+              '--description desc-a'
+        self.server_mock.request.return_value = [200, '']
+        exit_code = self.cli.run(cmd.split())
+
+        # Verify
+        self.assertEqual(exit_code, 0)
+
+        kwargs = mock_generate.call_args[1]
+        self.assertTrue('mand-name' in kwargs)
+        self.assertEqual(kwargs['mand-name'], [])
 
     def test_user_visible_option(self):
         # Setup
