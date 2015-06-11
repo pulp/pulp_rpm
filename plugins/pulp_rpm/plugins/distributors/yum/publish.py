@@ -11,9 +11,8 @@ from pulp.plugins.conduits.repo_publish import RepoPublishConduit
 from pulp.plugins.util.publish_step import PublishStep, UnitPublishStep, CopyDirectoryStep,\
     CreatePulpManifestStep
 from pulp.plugins.util.publish_step import AtomicDirectoryPublishStep
+from pulp.server.db import model
 from pulp.server.db.model.criteria import UnitAssociationCriteria
-from pulp.server.managers.repo.query import RepoQueryManager
-import pulp.server.managers.repo._common as common_utils
 from pulp.server.exceptions import InvalidValue, PulpCodedException
 
 from pulp_rpm.common import constants
@@ -191,13 +190,12 @@ class ExportRepoGroupPublisher(PublishStep):
         else:
             repo_config = PluginCallConfiguration(flat_config, {constants.EXPORT_DIRECTORY_KEYWORD:
                                                                 realized_dir})
-        query_manager = RepoQueryManager()
 
-        repos = query_manager.find_by_id_list(repo_group.repo_ids)
+        repo_objs = model.Repository.objects(repo_id__in=repo_group.repo_ids)
         empty_repos = True
-        for repo in repos:
+        for repo_obj in repo_objs:
             empty_repos = False
-            repo = common_utils.to_transfer_repo(repo)
+            repo = repo_obj.to_transfer_repo()
             # Make sure we only publish rpm repo's
             if repo.notes['_repo-type'] != 'rpm-repo':
                 continue

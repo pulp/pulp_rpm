@@ -12,6 +12,7 @@ from pulp.plugins.config import PluginCallConfiguration
 from pulp.plugins.model import Repository, Unit
 from pulp.plugins.util.publish_step import PublishStep, CreatePulpManifestStep
 from pulp.server import constants as server_constants
+from pulp.server.db import model
 from pulp.server.exceptions import InvalidValue, PulpCodedException
 import isodate
 import mock
@@ -232,28 +233,21 @@ class ExportRepoPublisherTests(BaseYumDistributorPublishStepTests):
 class ExportRepoGroupPublisherTests(BaseYumDistributorPublishStepTests):
 
     @mock.patch('pulp_rpm.plugins.distributors.yum.publish.BaseYumRepoPublisher.get_working_dir')
-    @mock.patch('pulp_rpm.plugins.distributors.yum.publish.RepoQueryManager')
+    @mock.patch('pulp_rpm.plugins.distributors.yum.publish.model.Repository.objects')
     @mock.patch('pulp_rpm.plugins.distributors.yum.publish.export_utils.create_date_range_filter')
-    def test_init_with_date_and_export_dir(self, mock_export_utils, mock_query_manager, m_wd):
+    def test_init_with_date_and_export_dir(self, mock_export_utils, mock_repo_qs, m_wd):
         mock_export_utils.return_value = 'foo'
         export_dir = 'flux'
         config = PluginCallConfiguration(None, {constants.EXPORT_DIRECTORY_KEYWORD: export_dir})
         repo_group = mock.Mock(repo_ids=['foo', 'bar'],
                                working_dir=self.working_dir)
-        mock_query_manager.return_value.find_by_id_list.return_value = \
-            [{
-                u'id': 'foo',
-                u'display_name': 'foo',
-                u'description': 'description',
-                u'notes': {'_repo-type': 'rpm-repo'},
-                u'content_unit_counts': {'rpm': 1}
-            }, {
-                u'id': 'bar',
-                u'display_name': 'bar',
-                u'description': 'description',
-                u'notes': {'_repo-type': 'puppet'},
-                u'content_unit_counts': {'puppet-module': 1}
-            }]
+        foo = model.Repository(repo_id='foo', display_name='foo', description='description',
+                               notes={'_repo-type': 'rpm-repo'}, content_unit_counts={'rpm': 1})
+
+        bar = model.Repository(repo_id='bar', display_name='bar', description='description',
+                               notes={'_repo-type': 'puppet'},
+                               content_unit_counts={'puppet-module': 1})
+        mock_repo_qs.return_value = [foo, bar]
 
         step = publish.ExportRepoGroupPublisher(repo_group,
                                                 self.publisher.get_conduit(),
@@ -266,13 +260,13 @@ class ExportRepoGroupPublisherTests(BaseYumDistributorPublishStepTests):
         self.assertEquals(step.children[0].children[0].association_filters, 'foo')
         self.assertEquals(step.children[0].children[1].association_filters, 'foo')
 
-    @mock.patch('pulp_rpm.plugins.distributors.yum.publish.RepoQueryManager')
-    def test_init_with_empty_repos_export_dir(self, mock_query_manager):
+    @mock.patch('pulp_rpm.plugins.distributors.yum.publish.model.Repository.objects')
+    def test_init_with_empty_repos_export_dir(self, mock_repo_qs):
         export_dir = 'flux'
         config = PluginCallConfiguration(None, {constants.EXPORT_DIRECTORY_KEYWORD: export_dir})
         repo_group = mock.Mock(repo_ids=[],
                                working_dir=self.working_dir)
-        mock_query_manager.return_value.find_by_id_list.return_value = []
+        mock_repo_qs.return_value = []
         step = publish.ExportRepoGroupPublisher(repo_group,
                                                 self.publisher.get_conduit(),
                                                 config,
@@ -281,12 +275,12 @@ class ExportRepoGroupPublisherTests(BaseYumDistributorPublishStepTests):
         self.assertTrue(isinstance(step.children[0], publish.GenerateListingFileStep))
         self.assertEquals(len(step.children), 1)
 
-    @mock.patch('pulp_rpm.plugins.distributors.yum.publish.RepoQueryManager')
-    def test_init_with_empty_repos_iso(self, mock_query_manager):
+    @mock.patch('pulp_rpm.plugins.distributors.yum.publish.model.Repository.objects')
+    def test_init_with_empty_repos_iso(self, mock_repo_qs):
         config = PluginCallConfiguration(None, {})
         repo_group = mock.Mock(repo_ids=[],
                                working_dir=self.working_dir)
-        mock_query_manager.return_value.find_by_id_list.return_value = []
+        mock_repo_qs.return_value = []
         step = publish.ExportRepoGroupPublisher(repo_group,
                                                 self.publisher.get_conduit(),
                                                 config,
@@ -297,21 +291,17 @@ class ExportRepoGroupPublisherTests(BaseYumDistributorPublishStepTests):
         self.assertEquals(len(step.children), 3)
 
     @mock.patch('pulp_rpm.plugins.distributors.yum.publish.BaseYumRepoPublisher.get_working_dir')
-    @mock.patch('pulp_rpm.plugins.distributors.yum.publish.RepoQueryManager')
+    @mock.patch('pulp_rpm.plugins.distributors.yum.publish.model.Repository.objects')
     @mock.patch('pulp_rpm.plugins.distributors.yum.publish.export_utils.create_date_range_filter')
-    def test_init_with_date_and_iso(self, mock_export_utils, mock_query_manager, m_wd):
+    def test_init_with_date_and_iso(self, mock_export_utils, mock_repo_qs, mock_wd):
         mock_export_utils.return_value = 'foo'
         config = PluginCallConfiguration(None, {})
         repo_group = mock.Mock(repo_ids=['foo', 'bar'],
                                working_dir=self.working_dir)
-        mock_query_manager.return_value.find_by_id_list.return_value = \
-            [{
-                u'id': 'foo',
-                u'display_name': 'foo',
-                u'description': 'description',
-                u'notes': {'_repo-type': 'rpm-repo'},
-                u'content_unit_counts': {'rpm': 1}
-            }]
+        foo = model.Repository(repo_id='foo', display_name='foo', description='description',
+                               notes={'_repo-type': 'rpm-repo'}, content_unit_counts={'rpm': 1})
+
+        mock_repo_qs.return_value = [foo]
         step = publish.ExportRepoGroupPublisher(repo_group,
                                                 self.publisher.get_conduit(),
                                                 config,
@@ -326,20 +316,18 @@ class ExportRepoGroupPublisherTests(BaseYumDistributorPublishStepTests):
         self.assertEquals(step.children[0].children[1].association_filters, 'foo')
 
     @mock.patch('pulp_rpm.plugins.distributors.yum.publish.BaseYumRepoPublisher.get_working_dir')
-    @mock.patch('pulp_rpm.plugins.distributors.yum.publish.RepoQueryManager')
+    @mock.patch('pulp_rpm.plugins.distributors.yum.publish.model.Repository.objects')
     @mock.patch('pulp_rpm.plugins.distributors.yum.publish.export_utils.create_date_range_filter')
-    def test_init_with_create_manifest(self, mock_export_utils, mock_query_manager, m_wd):
+    def test_init_with_create_manifest(self, mock_export_utils, mock_repo_qs, m_wd):
         mock_export_utils.return_value = 'foo'
         config = PluginCallConfiguration(None, {constants.CREATE_PULP_MANIFEST: True})
         repo_group = mock.Mock(repo_ids=['foo', 'bar'],
                                working_dir=self.working_dir)
-        mock_query_manager.return_value.find_by_id_list.return_value = [{
-            u'id': 'foo',
-            u'display_name': 'foo',
-            u'description': 'description',
-            u'notes': {'_repo-type': 'rpm-repo'},
-            u'content_unit_counts': {'rpm': 1}
-        }]
+        mock_repo = mock.MagicMock(id='foo', display_name='foo', description='description',
+                                   notes={'_repo-type': 'rpm-repo'}, content_unit_counts={'rpm': 1})
+        mock_transfer = mock.MagicMock()
+        mock_repo.to_transfer_repo.return_value = mock_transfer
+        mock_repo_qs.return_value = [mock_repo]
         step = publish.ExportRepoGroupPublisher(repo_group,
                                                 self.publisher.get_conduit(),
                                                 config,

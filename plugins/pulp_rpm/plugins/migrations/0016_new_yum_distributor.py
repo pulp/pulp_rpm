@@ -15,8 +15,8 @@ from pulp.plugins.conduits.repo_publish import RepoPublishConduit
 from pulp.plugins.config import PluginCallConfiguration
 from pulp.plugins.loader import api
 from pulp.server import config as pulp_config
+from pulp.server.db import model
 from pulp.server.db.connection import get_collection
-from pulp.server.managers.repo import _common as common_utils
 
 from pulp_rpm.plugins.distributors.yum.publish import Publisher
 
@@ -45,9 +45,9 @@ def migrate(*args, **kwargs):
     yum_distributors = list(
         distributor_collection.find({'distributor_type_id': YUM_DISTRIBUTOR_ID}))
 
-    repo_collection = get_collection('repos')
     repo_ids = list(set(d['repo_id'] for d in yum_distributors))
-    repos = dict((r['id'], r) for r in repo_collection.find({'id': {'$in': repo_ids}}))
+    repo_objs = model.Repository.objects(repo_id__in=repo_ids)
+    repos = dict((repo_obj.repo_id, repo_obj.to_transfer_repo()) for repo_obj in repo_objs)
 
     for d in yum_distributors:
         repo = repos[d['repo_id']]
@@ -157,14 +157,14 @@ def _clear_orphaned_publish_dirs(root_dir, publish_dir):
     _clear_orphaned_publish_dirs(root_dir, os.path.dirname(publish_dir))
 
 
-def _re_publish_repository(repo, distributor):
+def _re_publish_repository(repo_obj, distributor):
     """
     Re-publish the repository using the new yum distributor.
 
     NOTE: this may be a bit time-consuming.
     """
 
-    repo = common_utils.to_transfer_repo(repo)
+    repo = repo_obj.to_transfer_repo()
     repo.working_dir = distributor_working_dir(distributor['distributor_type_id'],
                                                repo.id)
     conduit = RepoPublishConduit(repo.id, distributor['id'])
