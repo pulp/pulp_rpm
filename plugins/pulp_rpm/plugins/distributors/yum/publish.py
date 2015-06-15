@@ -46,7 +46,8 @@ class BaseYumRepoPublisher(PublishStep):
     of a yum repository over HTTP and/or HTTPS.
     """
 
-    def __init__(self, repo, publish_conduit, config, distributor_type, association_filters=None):
+    def __init__(self, repo, publish_conduit, config, distributor_type, association_filters=None,
+                 **kwargs):
         """
         :param repo: Pulp managed Yum repository
         :type  repo: pulp.plugins.model.Repository
@@ -64,7 +65,7 @@ class BaseYumRepoPublisher(PublishStep):
         """
         super(BaseYumRepoPublisher, self).__init__(constants.PUBLISH_REPO_STEP, repo,
                                                    publish_conduit, config,
-                                                   distributor_type=distributor_type)
+                                                   distributor_type=distributor_type, **kwargs)
 
         self.repomd_file_context = None
         self.checksum_type = None
@@ -98,7 +99,7 @@ class ExportRepoPublisher(BaseYumRepoPublisher):
     of a yum repository over HTTP and/or HTTPS.
     """
 
-    def __init__(self, repo, publish_conduit, config, distributor_type):
+    def __init__(self, repo, publish_conduit, config, distributor_type, **kwargs):
         """
         :param repo: Pulp managed Yum repository
         :type  repo: pulp.plugins.model.Repository
@@ -109,7 +110,8 @@ class ExportRepoPublisher(BaseYumRepoPublisher):
         :param distributor_type: The type of the distributor that is being published
         :type distributor_type: str
         """
-        super(ExportRepoPublisher, self).__init__(repo, publish_conduit, config, distributor_type)
+        super(ExportRepoPublisher, self).__init__(repo, publish_conduit, config, distributor_type,
+                                                  **kwargs)
 
         date_filter = export_utils.create_date_range_filter(config)
         if date_filter:
@@ -234,7 +236,7 @@ class Publisher(BaseYumRepoPublisher):
     of a yum repository over HTTP and/or HTTPS.
     """
 
-    def __init__(self, repo, publish_conduit, config, distributor_type):
+    def __init__(self, repo, publish_conduit, config, distributor_type, **kwargs):
         """
         :param repo: Pulp managed Yum repository
         :type  repo: pulp.plugins.model.Repository
@@ -278,7 +280,7 @@ class Publisher(BaseYumRepoPublisher):
                     {constants.START_DATE_KEYWORD: string_date})
 
         super(Publisher, self).__init__(repo, publish_conduit, config, distributor_type,
-                                        association_filters=date_filter)
+                                        association_filters=date_filter, **kwargs)
 
         if insert_step:
             self.insert_child(0, insert_step)
