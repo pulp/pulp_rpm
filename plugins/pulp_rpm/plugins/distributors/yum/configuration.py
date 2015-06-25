@@ -461,13 +461,18 @@ def _check_for_relative_path_conflicts(repo, config, config_conduit, error_messa
     relative_path = get_repo_relative_path(repo, config)
     conflicting_distributors = config_conduit.get_repo_distributors_by_relative_url(relative_path,
                                                                                     repo.id)
-
     # in all honesty, this loop should execute at most once
     # but it may be interesting/useful for erroneous situations
     for distributor in conflicting_distributors:
         conflicting_repo_id = distributor['repo_id']
-        conflicting_relative_url = distributor['config']['relative_url'] or conflicting_repo_id
-        msg = _('Relative URL [%(p)s] for repository [%(r)s] conflicts with existing '
-                'relative URL [%(u)s] for repository [%(c)s]')
-        error_messages.append(msg % {'p': relative_path, 'r': repo.id,
-                                     'u': conflicting_relative_url, 'c': conflicting_repo_id})
+        conflicting_relative_url = None
+        if 'relative_url' in distributor['config']:
+            conflicting_relative_url = distributor['config']['relative_url']
+            msg = _('Relative URL [{relative_path}] for repository [{repo_id}] conflicts with '
+                    'existing relative URL [{conflict_url}] for repository [{conflict_repo}]')
+        else:
+            msg = _('Relative URL [{relative_path}] for repository [{repo_id}] conflicts with '
+                    'repo id for existing repository [{conflict_repo}]')
+        error_messages.append(msg.format(relative_path=relative_path, repo_id=repo.id,
+                                         conflict_url=conflicting_relative_url,
+                                         conflict_repo=conflicting_repo_id))
