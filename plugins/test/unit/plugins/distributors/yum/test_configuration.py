@@ -463,10 +463,10 @@ class YumDistributorConfigurationTests(unittest.TestCase):
         self.assertEqual(conduit.get_repo_distributors_by_relative_url.call_count, 1)
         self.assertEqual(len(error_messages), 0)
 
-    def test_relative_path_conflicts_conflicts(self):
+    def test_relative_path_conflicts_with_relative_path(self):
         repo = Repository('test')
-        config = {}
-        conflicting_distributor = {'repo_id': 'i_suck',
+        config = {'relative_url': 'test'}
+        conflicting_distributor = {'repo_id': 'zoo_repo',
                                    'config': {'relative_url': 'test'}}
         conduit = mock.MagicMock()
         conduit.get_repo_distributors_by_relative_url = mock.MagicMock(
@@ -476,6 +476,46 @@ class YumDistributorConfigurationTests(unittest.TestCase):
         configuration._check_for_relative_path_conflicts(repo, config, conduit, error_messages)
 
         self.assertEqual(len(error_messages), 1)
+        message = ('Relative URL [test] for repository [test] conflicts with existing relative URL'
+                   ' [test] for repository [zoo_repo]')
+        self.assertEqual(error_messages, [message])
+
+    def test_relative_path_conflicts_with_repo_id(self):
+        repo = Repository('test')
+        config = {'relative_url': 'zoo_repo'}
+        conflicting_distributor = {'repo_id': 'zoo_repo',
+                                   'config': {}}
+        conduit = mock.MagicMock()
+        conduit.get_repo_distributors_by_relative_url = mock.MagicMock(
+            return_value=[conflicting_distributor])
+        error_messages = []
+
+        configuration._check_for_relative_path_conflicts(repo, config, conduit, error_messages)
+
+        self.assertEqual(len(error_messages), 1)
+        message = ('Relative URL [zoo_repo] for repository [test] conflicts with repo id for '
+                   'existing repository [zoo_repo]')
+        self.assertEqual(error_messages, [message])
+
+    def test_relative_path_conflicts_with_both(self):
+        repo = Repository('test')
+        config = {'relative_url': 'zoo_repo'}
+        conflicting_distributor = [{'repo_id': 'zoo_repo',
+                                   'config': {'relative_url': 'zoo_repo'}},
+                                   {'repo_id': 'zoo_repo',
+                                   'config': {}}]
+        conduit = mock.MagicMock()
+        conduit.get_repo_distributors_by_relative_url = mock.MagicMock(
+            return_value=conflicting_distributor)
+        error_messages = []
+
+        configuration._check_for_relative_path_conflicts(repo, config, conduit, error_messages)
+        messages = [('Relative URL [zoo_repo] for repository [test] conflicts with existing '
+                     'relative URL [zoo_repo] for repository [zoo_repo]'),
+                    ('Relative URL [zoo_repo] for repository [test] conflicts with repo id for '
+                     'existing repository [zoo_repo]')]
+        self.assertEqual(len(error_messages), 2)
+        self.assertEqual(error_messages, messages)
 
     # -- cert based auth tests -------------------------------------------------
 
