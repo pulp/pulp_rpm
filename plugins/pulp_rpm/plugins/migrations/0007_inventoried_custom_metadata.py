@@ -8,7 +8,8 @@ from xml.etree import ElementTree
 
 from pulp.plugins.types import database as types_database
 from pulp.server import config as pulp_config
-from pulp.server.db.model.repository import Repo, RepoImporter, RepoContentUnit
+from pulp.server.db.connection import get_collection
+from pulp.server.db.model.repository import RepoImporter, RepoContentUnit
 
 
 _LOG = logging.getLogger('pulp')
@@ -102,8 +103,9 @@ def repositories_with_yum_importers():
     repo_yum_importers = repo_importer_collection.find({'importer_type_id': _TYPE_YUM_IMPORTER},
                                                        fields=['repo_id'])
     yum_repo_ids = [i['repo_id'] for i in repo_yum_importers]
-    repo_collection = Repo.get_collection()
-    yum_repos = repo_collection.find({'id': {'$in': yum_repo_ids}}, fields=['id', 'scratchpad'])
+    repo_collection = get_collection('repos')
+    yum_repos = repo_collection.find({'repo_id': {'$in': yum_repo_ids}},
+                                     fields=['repo_id', 'scratchpad'])
     return list(yum_repos)
 
 
@@ -163,10 +165,11 @@ def add_content_unit_to_repo(repo_id, content_unit):
 
 
 def remove_repodata_from_scratchpad(repo_id):
-    repo_collection = Repo.get_collection()
-    repo = repo_collection.find_one({'id': repo_id}, fields=['scratchpad'])
+    repo_collection = get_collection('repos')
+    repo = repo_collection.find_one({'repo_id': repo_id}, fields=['scratchpad'])
     repo['scratchpad'].pop('repodata', None)
-    repo_collection.update({'id': repo_id}, {'$set': {'scratchpad': repo['scratchpad']}}, safe=True)
+    repo_collection.update({'repo_id': repo_id}, {'$set': {'scratchpad': repo['scratchpad']}},
+                           safe=True)
 
 # -- repodata.xml parsing ------------------------------------------------------
 

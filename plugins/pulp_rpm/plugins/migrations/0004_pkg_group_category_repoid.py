@@ -5,8 +5,10 @@ import copy
 import logging
 
 import pymongo.errors
+from pulp.server.db.migrations.lib import managers
 from pulp.server.managers import factory
-from pulp.server.managers.repo.cud import RepoContentUnit
+from pulp.server.controllers import repository as repo_controller
+from pulp.server.db.model.repository import RepoContentUnit
 from pulp.server.managers.repo.unit_association_query import UnitAssociationCriteria
 
 from pulp_rpm.common import ids
@@ -19,7 +21,7 @@ factory.initialize()
 ass_query_mgr = factory.repo_unit_association_query_manager()
 ass_mgr = factory.repo_unit_association_manager()
 content_mgr = factory.content_manager()
-repo_mgr = factory.repo_manager()
+repo_mgr = managers.RepoManager()
 
 
 def _get_repos():
@@ -27,7 +29,7 @@ def _get_repos():
      Lookups all the yum based repos in pulp.
      @return a list of repoids
     """
-    repos = factory.repo_query_manager().find_with_importer_type("yum_importer")
+    repos = repo_mgr.find_with_importer_type("yum_importer")
     if not repos:
         _log.debug("No repos found to perform db migrate")
         return []
@@ -68,7 +70,7 @@ def _fix_pkg_group_category_repoid(repoid, typeid):
                 # should remove the association of the unit with the repository
                 RepoContentUnit.get_collection().remove({'_id': unit['_id']})
                 # Since we removed a Unit from the repo, we should decrement the repo unit count
-                repo_mgr.update_unit_count(repoid, typeid, -1)
+                repo_controller.update_unit_count(repoid, typeid, -1)
 
 
 def _safe_copy_unit(unit):

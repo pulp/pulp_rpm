@@ -8,7 +8,8 @@ import mock
 from pulp.common import dateutils
 from pulp.server import config as pulp_config
 from pulp.server.db.migrate.models import _import_all_the_way
-from pulp.server.db.model.repository import Repo, RepoDistributor
+from pulp.server.db import model
+from pulp.server.db.model.repository import RepoDistributor
 
 from pulp_rpm.devel import rpm_support_base
 
@@ -20,7 +21,6 @@ class BaseMigrationTests(rpm_support_base.PulpRPMTests):
     def setUp(self):
         super(BaseMigrationTests, self).setUp()
 
-        self.repos_collection = Repo.get_collection()
         self.distributors_collection = RepoDistributor.get_collection()
 
         self.root_test_dir = tempfile.mkdtemp(prefix='test_0016_migration_')
@@ -32,7 +32,7 @@ class BaseMigrationTests(rpm_support_base.PulpRPMTests):
     def tearDown(self):
         super(BaseMigrationTests, self).tearDown()
 
-        self.repos_collection.drop()
+        model.Repository.drop_collection()
         self.distributors_collection.drop()
 
         shutil.rmtree(self.root_test_dir, ignore_errors=True)
@@ -40,9 +40,9 @@ class BaseMigrationTests(rpm_support_base.PulpRPMTests):
     # -- test data setup -------------------------------------------------------
 
     def _generate_repo(self, repo_id):
-        repo_model = Repo(repo_id, repo_id)
-        self.repos_collection.insert(repo_model)
-        return self.repos_collection.find_one({'id': repo_id})
+        repo_model = model.Repository(repo_id=repo_id, display_name=repo_id)
+        repo_model.save()
+        return repo_model
 
     def _generate_distributor(self, repo_id, config=None, previously_published=True):
         config = config or {}

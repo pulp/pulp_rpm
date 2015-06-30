@@ -9,6 +9,7 @@ from pulp.server import config as pulp_config
 from pulp.server.managers import factory
 
 from pulp_rpm.yum_plugin import util
+from pulp.server.db.migrations.lib import managers
 
 
 _log = logging.getLogger('pulp')
@@ -88,7 +89,7 @@ def preserve_custom_metadata_on_repo_scratchpad():
      and set the the data on repo scratchpad.
     """
     factory.initialize()
-    repos = factory.repo_query_manager().find_with_importer_type("yum_importer")
+    repos = managers.RepoManager().find_with_importer_type("yum_importer")
     if not repos:
         _log.debug("No repos found to perform db migrate")
         return

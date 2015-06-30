@@ -1,7 +1,11 @@
 from urlparse import urljoin
 import os
 import shutil
-import unittest
+
+try:
+    import unittest2 as unittest
+except ImportError:
+    import unittest
 
 from pulp.server import config
 from pulp.server.managers.auth.cert.cert_generator import SerialNumber

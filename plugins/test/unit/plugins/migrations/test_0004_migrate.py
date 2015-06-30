@@ -1,6 +1,9 @@
+import mock
+
 from pulp.plugins.types import database as types_db
 from pulp.plugins.types.model import TypeDefinition
-from pulp.server.db.model.repository import Repo, RepoContentUnit, RepoImporter
+from pulp.server.db import model
+from pulp.server.db.model.repository import RepoContentUnit, RepoImporter
 from pulp.server.db.migrate.models import _import_all_the_way
 from pulp.server.managers import factory
 
@@ -28,11 +31,10 @@ class Migration0004Tests(rpm_support_base.PulpRPMTests):
         self.source_repo_id = 'source-repo'  # where units were copied from with the bad code
         self.dest_repo_id = 'dest-repo'  # where bad units were copied to
 
-        source_repo = Repo(self.source_repo_id, '')
-        Repo.get_collection().insert(source_repo, safe=True)
-
-        dest_repo = Repo(self.dest_repo_id, '')
-        Repo.get_collection().insert(dest_repo, safe=True)
+        source_repo = model.Repository(repo_id=self.source_repo_id)
+        source_repo.save()
+        dest_repo = model.Repository(repo_id=self.dest_repo_id)
+        dest_repo.save()
 
         source_importer = RepoImporter(self.source_repo_id, 'yum_importer', 'yum_importer', {})
         RepoImporter.get_collection().insert(source_importer, safe=True)
@@ -48,7 +50,7 @@ class Migration0004Tests(rpm_support_base.PulpRPMTests):
 
         RepoContentUnit.get_collection().remove()
         RepoImporter.get_collection().remove()
-        Repo.get_collection().remove()
+        model.Repository.drop_collection()
 
     def test_migrate_duplicates(self):
         """
@@ -86,10 +88,10 @@ class Migration0004Tests(rpm_support_base.PulpRPMTests):
         self.assertEqual(query_manager.get_units(self.source_repo_id), [])
 
         # Verify the repo counts
-        self.assertEqual(
-            Repo.get_collection().find({'id': 'source-repo'})[0]['content_unit_counts'], {})
-        self.assertEqual(Repo.get_collection().find({'id': 'dest-repo'})[0]['content_unit_counts'],
-                         {'package_group': 1})
+        source = model.Repository.objects.get(repo_id='source-repo')
+        self.assertDictEqual(source.content_unit_counts, {})
+        dest = model.Repository.objects.get(repo_id='dest-repo')
+        self.assertDictEqual(dest.content_unit_counts, {'package_group': 1})
 
     def test_migrate_duplicates_doesnt_delete_from_source_repo(self):
         """
@@ -135,11 +137,10 @@ class Migration0004Tests(rpm_support_base.PulpRPMTests):
         self.assertEqual(source_unit['unit_id'], source_repo_group_id)
 
         # Verify the repo counts
-        self.assertEqual(
-            Repo.get_collection().find({'id': 'source-repo'})[0]['content_unit_counts'],
-            {'package_group': 1})
-        self.assertEqual(Repo.get_collection().find({'id': 'dest-repo'})[0]['content_unit_counts'],
-                         {'package_group': 1})
+        source = model.Repository.objects.get(repo_id='source-repo')
+        self.assertEqual(source.content_unit_counts, {'package_group': 1})
+        dest = model.Repository.objects.get(repo_id='dest-repo')
+        self.assertEqual(dest.content_unit_counts, {'package_group': 1})
 
     def test_migrate_groups(self):
         # Setup
@@ -224,7 +225,8 @@ def add_unit(id, repo_id, type_id):
     return unit_id
 
 
-def associate_unit(mongo_id, to_repo_id, type_id):
+@mock.patch('pulp.server.managers.repo.unit_association.repo_controller.update_last_unit_added')
+def associate_unit(mongo_id, to_repo_id, type_id, mock_update_last):
     manager = factory.repo_unit_association_manager()
     manager.associate_unit_by_id(to_repo_id, type_id, mongo_id, update_repo_metadata=True)
 
