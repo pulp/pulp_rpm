@@ -86,6 +86,12 @@ def validate_config(repo, config, config_conduit):
     for key in extraneous_keys:
         error_messages.append(msg % {'k': key})
 
+    # check that http and https are not set to false simultaneously
+    if config['https'] is False and config['http'] is False:
+        msg = _('Settings serve via http and https are both set to false.'
+                ' At least one option should be set to true.')
+        error_messages.append(msg)
+
     # when adding validation methods, make sure to register them here
     # yes, the individual sections are in alphabetical oder
     configured_key_validation_methods = {
