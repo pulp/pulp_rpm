@@ -5,12 +5,13 @@ import shutil
 import tempfile
 
 from lxml import etree as ET
+import mongoengine
 from nectar.listener import AggregatingEventListener
 from nectar.request import DownloadRequest
 from pulp.plugins.util import verification
 from pulp.server.exceptions import PulpCodedValidationException
-from pulp.server.db.model.criteria import UnitAssociationCriteria
-from pulp.server.util import copytree as pulp_copytree
+from pulp.server.controllers import repository as repo_controller
+from pulp.server.db import model as platform_models
 
 from pulp_rpm.common import constants, ids
 from pulp_rpm.plugins.db import models
@@ -29,10 +30,12 @@ KEY_DISTRIBUTION_CONTEXT = 'distribution_context'
 _LOGGER = logging.getLogger(__name__)
 
 
-def sync(sync_conduit, feed, working_dir, nectar_config, report, progress_callback):
+def sync(repo, sync_conduit, feed, working_dir, nectar_config, report, progress_callback):
     """
     Look for a distribution in the target repo and sync it if found
 
+    :param repo: The repository that is the target of the sync
+    :type repo: pulp.server.db.model.Repository
     :param sync_conduit:        conduit provided by the platform
     :type  sync_conduit:        pulp.plugins.conduits.repo_sync.RepoSyncConduit
     :param feed:                URL of the yum repo being sync'd
@@ -47,9 +50,6 @@ def sync(sync_conduit, feed, working_dir, nectar_config, report, progress_callba
     :param progress_callback:   function that takes no arguments but induces
                                 the current progress report to be sent.
     """
-    # this temporary dir will hopefully be moved to the unit's storage path
-    # if all downloads go well. If not, it will be deleted below, ensuring a
-    # complete cleanup
     tmp_dir = tempfile.mkdtemp(dir=working_dir)
     try:
         treefile_path = get_treefile(feed, tmp_dir, nectar_config)
@@ -64,8 +64,10 @@ def sync(sync_conduit, feed, working_dir, nectar_config, report, progress_callba
             report['state'] = constants.STATE_FAILED
             return
 
-        distribution_type_criteria = UnitAssociationCriteria(type_ids=[ids.TYPE_ID_DISTRO])
-        existing_units = sync_conduit.get_units(criteria=distribution_type_criteria)
+        existing_units = repo_controller.find_repo_content_units(
+            repo, repo_content_unit_q=mongoengine.Q(unit_type_id=ids.TYPE_ID_DISTRO),
+            yield_content_unit=True)
+        existing_units = list(existing_units)
 
         # skip this whole process if the upstream treeinfo file hasn't changed
         if len(existing_units) == 1 and existing_distribution_is_current(existing_units[0], model):
@@ -82,21 +84,22 @@ def sync(sync_conduit, feed, working_dir, nectar_config, report, progress_callba
         _LOGGER.debug('downloading distribution files')
         downloader.download(file_to_download_request(f, feed, tmp_dir) for f in files)
         if len(listener.failed_reports) == 0:
-            unit = sync_conduit.init_unit(ids.TYPE_ID_DISTRO, model.unit_key, model.metadata,
-                                          model.relative_path)
+            model.set_content(tmp_dir)
+            model.save()
+            # The save sets the content path, which is needed to generate the download_reports
+            # Long term this should be done by a serializer
             model.process_download_reports(listener.succeeded_reports)
-            # remove pre-existing dir
-            shutil.rmtree(unit.storage_path, ignore_errors=True)
-            pulp_copytree(tmp_dir, unit.storage_path)
-            # mkdtemp is very paranoid, so we'll change to more sensible perms
-            os.chmod(unit.storage_path, 0o775)
-            sync_conduit.save_unit(unit)
+            model.save()
+
+            repo_controller.associate_single_unit(repo, model)
+
             # find any old distribution units and remove them. See BZ #1150714
             for existing_unit in existing_units:
-                if existing_unit != unit:
+                if existing_unit != model:
                     _LOGGER.info("Removing out-of-date distribution unit %s for repo %s" %
                                  (existing_unit.unit_key, sync_conduit.repo_id))
-                    sync_conduit.remove_unit(existing_unit)
+                    platform_models.RepositoryContentUnit.objects(
+                        repo_id=sync_conduit.repo_id, unit_id=existing_unit.id).delete()
         else:
             _LOGGER.error('some distro file downloads failed')
             report['state'] = constants.STATE_FAILED
@@ -114,7 +117,7 @@ def existing_distribution_is_current(existing_unit, model):
     make that determination.
 
     :param existing_unit:   unit that currently exists in the repo
-    :type  existing_unit:   pulp.plugins.model.AssociatedUnit
+    :type  existing_unit:   pulp_rpm.plugins.db.models.Distribution
     :param model:           this model's unit key will be searched for in the DB
     :type  model:           pulp_rpm.plugins.db.models.Distribution
 
@@ -123,8 +126,8 @@ def existing_distribution_is_current(existing_unit, model):
                 missing. Otherwise, True.
     :rtype:     bool
     """
-    existing_timestamp = existing_unit.metadata.get(KEY_TIMESTAMP)
-    remote_timestamp = model.metadata.get(KEY_TIMESTAMP)
+    existing_timestamp = existing_unit.timestamp
+    remote_timestamp = model.timestamp
 
     if existing_timestamp is None or remote_timestamp is None:
         _LOGGER.debug('treeinfo timestamp missing; will fetch upstream distribution')
@@ -328,16 +331,29 @@ def parse_treefile(path):
         packagedir = None
 
     try:
-        model = models.Distribution(
-            parser.get(SECTION_GENERAL, 'family'),
-            variant,
-            parser.get(SECTION_GENERAL, 'version'),
-            parser.get(SECTION_GENERAL, 'arch'),
-            metadata={
-                KEY_PACKAGEDIR: packagedir,
-                KEY_TIMESTAMP: float(parser.get(SECTION_GENERAL, KEY_TIMESTAMP)),
-            }
+        new_model = models.Distribution(
+            family=parser.get(SECTION_GENERAL, 'family'),
+            variant=variant,
+            version=parser.get(SECTION_GENERAL, 'version'),
+            arch=parser.get(SECTION_GENERAL, 'arch'),
+            packagedir=packagedir,
+            timestamp=float(parser.get(SECTION_GENERAL, KEY_TIMESTAMP))
         )
+        # Look for an existing distribution
+        existing_dist = models.Distribution.objects(
+            family=new_model.family,
+            variant=new_model.variant,
+            version=new_model.version,
+            arch=new_model.arch
+        ).first()
+        if existing_dist:
+            # update with the new information:
+            existing_dist.packagedir = packagedir
+            existing_dist.timestamp = new_model.timestamp
+            model = existing_dist
+        else:
+            model = new_model
+
     except (ConfigParser.NoSectionError, ConfigParser.NoOptionError):
         raise ValueError('invalid treefile: could not find unit key components')
     files = {}

@@ -3,6 +3,7 @@ from urllib2 import urlopen
 from base64 import urlsafe_b64encode
 from contextlib import closing
 
+from pulp_rpm.common import ids
 from pulp_rpm.plugins.db import models
 from pulp_rpm.plugins.catalogers.yum import YumCataloger
 
@@ -32,7 +33,7 @@ class RHUICataloger(YumCataloger):
         return {
             'id': TYPE_ID,
             'display_name': "RHUI Cataloger",
-            'types': [models.RPM.TYPE]
+            'types': [ids.TYPE_ID_RPM]
         }
 
     def nectar_config(self, config):

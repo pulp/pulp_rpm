@@ -218,10 +218,10 @@ def get_existing_units(model, unit_search_func):
     :type  unit_search_func;    function
 
     :return:    iterable of Unit instances that appear in the repository
-    :rtype:     iterable of pulp.plugins.model.Unit
+    :rtype:     iterable of pulp.server.db.model.ContentUnit
     """
-    criteria = UnitAssociationCriteria([model.TYPE],
-                                       unit_fields=model.UNIT_KEY_NAMES)
+    criteria = UnitAssociationCriteria([model.unit_type_id],
+                                       unit_fields=model.unit_key_fields)
     return unit_search_func(criteria)
 
 

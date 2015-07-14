@@ -4,6 +4,7 @@ import os
 import shutil
 
 from pulp.server.db.model.criteria import UnitAssociationCriteria
+from pulp.server.controllers import repository as repo_controller
 
 from pulp_rpm.common import constants
 from pulp_rpm.plugins.db import models
@@ -23,9 +24,9 @@ def associate(source_repo, dest_repo, import_conduit, config, units=None):
     may be garbage collected.
 
     :param source_repo:     source repo
-    :type  source_repo:     pulp.plugins.model.Repository
+    :type  source_repo:     pulp.server.db.model.Repository
     :param dest_repo:       destination repo
-    :type  dest_repo:       pulp.plugins.model.Repository
+    :type  dest_repo:       pulp.server.db.model.Repository
     :param import_conduit:  import conduit passed to the Importer
     :type  import_conduit:  pulp.plugins.conduits.unit_import.ImportUnitConduit
     :param config:          config object for the distributor
@@ -37,7 +38,7 @@ def associate(source_repo, dest_repo, import_conduit, config, units=None):
     if units is None:
         # this might use a lot of RAM since RPMs tend to have lots of metadata
         # TODO: so we should probably do something about that
-        units = import_conduit.get_source_units()
+        units = repo_controller.find_repo_content_units(source_repo, yield_content_unit=True)
 
     # get config items that we care about
     recursive = config.get(constants.CONFIG_RECURSIVE)
@@ -49,8 +50,8 @@ def associate(source_repo, dest_repo, import_conduit, config, units=None):
     units = None
 
     associated_units |= copy_rpms(
-        (unit for unit in associated_units if unit.type_id == models.RPM.TYPE),
-        import_conduit, recursive)
+        (unit for unit in associated_units if isinstance(unit, models.RPM)),
+        source_repo, dest_repo, import_conduit, recursive)
 
     # return here if we shouldn't get child units
     if not recursive:
@@ -70,12 +71,13 @@ def associate(source_repo, dest_repo, import_conduit, config, units=None):
     wanted_rpms = get_rpms_to_copy_by_key(rpm_search_dicts, import_conduit)
     rpm_search_dicts = None
     rpms_to_copy = filter_available_rpms(wanted_rpms, import_conduit)
-    associated_units |= copy_rpms(rpms_to_copy, import_conduit, recursive)
+    associated_units |= copy_rpms(rpms_to_copy, source_repo, dest_repo, import_conduit, recursive)
     rpms_to_copy = None
 
     # ------ get RPM children of groups ------
     names_to_copy = get_rpms_to_copy_by_name(rpm_names, import_conduit)
-    associated_units |= copy_rpms_by_name(names_to_copy, import_conduit, recursive)
+    associated_units |= copy_rpms_by_name(names_to_copy, source_repo, dest_repo,
+                                          import_conduit, recursive)
 
     return list(associated_units)
 
@@ -156,13 +158,17 @@ def filter_available_rpms(rpms, import_conduit):
                                        import_conduit.get_source_units)
 
 
-def copy_rpms(units, import_conduit, copy_deps, solver=None):
+def copy_rpms(units, source_repo, dest_repo, import_conduit, copy_deps, solver=None, ):
     """
     Copy RPMs from the source repo to the destination repo, and optionally copy
     dependencies as well. Dependencies are resolved recursively.
 
     :param units:           iterable of Units
     :type  units:           iterable of pulp.plugins.models.Unit
+    :param source_repo: The repository we are copying units from.
+    :type source_repo: pulp.server.db.model.Repository
+    :param dest_repo: The repository we are copying units to
+    :type dest_repo: pulp.server.db.model.Repository
     :param import_conduit:  import conduit passed to the Importer
     :type  import_conduit:  pulp.plugins.conduits.unit_import.ImportUnitConduit
     :param copy_deps:       if True, copies dependencies as specified in "Requires"
@@ -206,7 +212,8 @@ def copy_rpms(units, import_conduit, copy_deps, solver=None):
 
         _LOGGER.debug('Copying deps: %s' % str(sorted([x.unit_key['name'] for x in to_copy])))
         if to_copy:
-            unit_set |= copy_rpms(to_copy, import_conduit, copy_deps, solver)
+            unit_set |= copy_rpms(to_copy, source_repo, dest_repo, import_conduit, copy_deps,
+                                  solver)
 
     return unit_set
 
@@ -236,12 +243,16 @@ def _no_checksum_clean_unit_key(unit_tuple):
     return ret
 
 
-def copy_rpms_by_name(names, import_conduit, copy_deps):
+def copy_rpms_by_name(names, source_repo, dest_repo, import_conduit, copy_deps):
     """
     Copy RPMs from source repo to destination repo by name
 
     :param names:           iterable of RPM names
     :type  names:           iterable of basestring
+    :param source_repo: The repository we are copying units from.
+    :type source_repo: pulp.server.db.model.Repository
+    :param dest_repo: The repository we are copying units to
+    :type dest_repo: pulp.server.db.model.Repository
     :param import_conduit:  import conduit passed to the Importer
     :type  import_conduit:  pulp.plugins.conduits.unit_import.ImportUnitConduit
 
@@ -263,7 +274,7 @@ def copy_rpms_by_name(names, import_conduit, copy_deps):
             to_copy[model.key_string_without_version] = max(
                 ((model.complete_version_serialized, unit), previous))
 
-    return copy_rpms((unit for v, unit in to_copy.itervalues()), import_conduit, copy_deps)
+    return copy_rpms((unit for v, unit in to_copy.itervalues()), source_repo, dest_repo, import_conduit, copy_deps)
 
 
 def identify_children_to_copy(units):
@@ -308,53 +319,37 @@ def _associate_unit(dest_repo, import_conduit, unit):
     other means
 
     :param dest_repo:       destination repo
-    :type  dest_repo:       pulp.plugins.model.Repository
+    :type  dest_repo:       pulp.server.db.model.Repository
     :param import_conduit:  import conduit passed to the Importer
     :type  import_conduit:  pulp.plugins.conduits.unit_import.ImportUnitConduit
     :param unit:            Unit to be copied
-    :type  unit:            pulp.plugins.model.Unit
+    :type  unit:            pulp.server.db.model.ContentUnit
 
     :return:                copied unit
-    :rtype:                 pulp.plugins.model.Unit
+    :rtype:                 pulp.server.db.model.ContentUnit
     """
-    if unit.type_id in (models.PackageGroup.TYPE,
-                        models.PackageCategory.TYPE,
-                        models.PackageEnvironment.TYPE):
-        new_unit = _safe_copy_unit_without_file(unit)
-        new_unit.unit_key['repo_id'] = dest_repo.id
-        saved_unit = import_conduit.save_unit(new_unit)
-        return saved_unit
-    elif unit.type_id == models.RPM.TYPE:
+    if isinstance(unit, models.PackageGroup) or \
+        isinstance(unit, models.PackageCategory) or \
+        isinstance(unit, models.PackageEnvironment):
+        new_unit = copy.deepcopy(unit)
+        # Clear out the old id and repo_id
+        new_unit.id = None
+        new_unit.repo_id = dest_repo.repo_id
+        new_unit.save()
+        repo_controller.associate_single_unit(repository=dest_repo, unit=new_unit)
+        return new_unit
+    elif isinstance(unit, models.RPM):
         # copy will happen in one batch
         return unit
-    elif unit.type_id == models.YumMetadataFile.TYPE:
-        model = models.YumMetadataFile(unit.unit_key['data_type'], dest_repo.id, unit.metadata)
-        model.clean_metadata()
-        relative_path = os.path.join(model.relative_dir, os.path.basename(unit.storage_path))
-        new_unit = import_conduit.init_unit(model.TYPE, model.unit_key, model.metadata,
-                                            relative_path)
-        shutil.copyfile(unit.storage_path, new_unit.storage_path)
-        import_conduit.save_unit(new_unit)
-        return new_unit
+    elif isinstance(unit, models.YumMetadataFile):
+        new_unit = copy.deepcopy(unit)
+        new_unit.storage_path = None
+        new_unit.repo_id = dest_repo.repo_id,
+        new_unit.set_content(unit.storage_path)
+        new_unit.save()
+        repo_controller.associate_single_unit(repository=dest_repo, unit=new_unit)
+        return new_unit()
     else:
-        import_conduit.associate_unit(unit)
+        repo_controller.associate_single_unit(repository=dest_repo, unit=unit)
         return unit
 
-
-def _safe_copy_unit_without_file(unit):
-    """
-    Makes a deep copy of the unit, removes its "id", and removes anything in
-    "metadata" whose key starts with a "_".
-
-    :param unit:    unit to be copied
-    :type  unit:    pulp.plugins.model.Unit
-
-    :return:        copy of the unit
-    :rtype unit:    pulp.plugins.model.Unit
-    """
-    new_unit = copy.deepcopy(unit)
-    new_unit.id = None
-    for key in new_unit.metadata.keys():
-        if key.startswith('_'):
-            del new_unit.metadata[key]
-    return new_unit

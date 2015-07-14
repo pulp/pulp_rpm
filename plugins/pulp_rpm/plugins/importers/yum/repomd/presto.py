@@ -27,19 +27,17 @@ def process_package_element(element):
     checksum = delta.find('checksum')
     checksum_type = verification.sanitize_checksum_type(checksum.attrib['type'])
 
-    return models.DRPM.from_package_info({
-        'type': 'drpm',
-        'new_package': element.attrib['name'],
-        'epoch': element.attrib['epoch'],
-        'version': element.attrib['version'],
-        'release': element.attrib['release'],
-        'arch': element.attrib['arch'],
-        'oldepoch': delta.attrib['oldepoch'],
-        'oldversion': delta.attrib['oldversion'],
-        'oldrelease': delta.attrib['oldrelease'],
-        'filename': filename.text,
-        'sequence': sequence.text,
-        'size': int(size.text),
-        'checksum': checksum.text,
-        'checksumtype': checksum_type,
-    })
+    return models.DRPM(
+        new_package=element.attrib['name'],
+        epoch=element.attrib['epoch'],
+        version=element.attrib['version'],
+        release=element.attrib['release'],
+        arch=element.attrib['arch'],
+        old_epoch=delta.attrib['oldepoch'],
+        old_version=delta.attrib['oldversion'],
+        old_release=delta.attrib['oldrelease'],
+        file_name=filename.text,
+        sequence=sequence.text,
+        size=int(size.text),
+        checksum=checksum.text,
+        checksum_type=checksum_type)

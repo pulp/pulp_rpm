@@ -40,23 +40,24 @@ def process_group_element(repo_id, element):
     user_visible = _parse_bool(element.find('uservisible').text) \
         if element.find('uservisible') is not None else True
 
-    return models.PackageGroup.from_package_info({
-        'conditional_package_names': conditional,
-        'default': group_default,
-        'default_package_names': default,
-        'description': description,
-        # default of 1024 is from yum's own parsing of these objects
-        'display_order': int(display_order.text) if display_order else 1024,
-        'id': element.find('id').text,
-        'langonly': langonly.text if langonly else None,
-        'mandatory_package_names': mandatory,
-        'name': name,
-        'optional_package_names': optional,
-        'repo_id': repo_id,
-        'translated_description': translated_description,
-        'translated_name': translated_name,
-        'user_visible': user_visible,
-    })
+    unit = models.PackageGroup()
+    unit.conditional_package_names = conditional
+    unit.default = group_default
+    unit.default_package_names = default
+    unit.description = description
+    # default of 1024 is from yum's own parsing of these objects
+    unit.display_order = int(display_order.text) if display_order else 1024
+    unit.package_group_id = element.find('id').text
+    unit.langonly = langonly.text if langonly else None
+    unit.mandatory_package_names = mandatory
+    unit.name = name
+    unit.optional_package_names = optional
+    unit.repo_id = repo_id
+    unit.translated_description = translated_description
+    unit.translated_name = translated_name
+    unit.user_visible = user_visible
+
+    return unit
 
 
 def process_category_element(repo_id, element):
@@ -76,17 +77,17 @@ def process_category_element(repo_id, element):
     display_order = element.find('display_order')
     groups = element.find('grouplist').findall('groupid')
 
-    return models.PackageCategory.from_package_info({
-        'description': description,
-        # default of 1024 is from yum's own parsing of these objects
-        'display_order': int(display_order.text) if display_order is not None else 1024,
-        'packagegroupids': [group.text for group in groups],
-        'id': element.find('id').text,
-        'name': name,
-        'repo_id': repo_id,
-        'translated_description': translated_description,
-        'translated_name': translated_name,
-    })
+    unit = models.PackageCategory()
+    unit.description = description
+    # default of 1024 is from yum's own parsing of these objects
+    unit.display_order = int(display_order.text) if display_order is not None else 1024
+    unit.group_ids = [group.text for group in groups]
+    unit.package_category_id = element.find('id').text
+    unit.name = name
+    unit.repo_id = repo_id
+    unit.translated_description = translated_description
+    unit.translated_name = translated_name
+    return unit
 
 
 def process_environment_element(repo_id, element):
@@ -114,18 +115,18 @@ def process_environment_element(repo_id, element):
             default = group.attrib.get('default', False)
             options.append({'group': group.text, 'default': default})
 
-    return models.PackageEnvironment.from_package_info({
-        'description': description,
-        # default of 1024 is from yum's own parsing of these objects
-        'display_order': int(display_order.text) if display_order is not None else 1024,
-        'group_ids': [group.text for group in groups],
-        'id': element.find('id').text,
-        'name': name,
-        'repo_id': repo_id,
-        'translated_description': translated_description,
-        'translated_name': translated_name,
-        'options': options
-    })
+    unit = models.PackageEnvironment()
+    unit.description = description
+    # default of 1024 is from yum's own parsing of these objects
+    unit.display_order = int(display_order.text) if display_order is not None else 1024
+    unit.group_ids = [group.text for group in groups]
+    unit.package_environment_id = element.find('id').text
+    unit.name = name
+    unit.repo_id = repo_id
+    unit.translated_description = translated_description
+    unit.translated_name = translated_name
+    unit.options = options
+    return unit
 
 
 def _parse_packagelist(packages):

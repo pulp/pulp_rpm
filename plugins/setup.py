@@ -32,6 +32,18 @@ setup(
         ],
         'pulp.server.db.migrations': [
             'pulp_rpm = pulp_rpm.plugins.migrations'
+        ],
+        'pulp.unit_models': [
+            'rpm=pulp_rpm.plugins.db.models:RPM',
+            'srpm=pulp_rpm.plugins.db.models:SRPM',
+            'drpm=pulp_rpm.plugins.db.models:DRPM',
+            'distribution=pulp_rpm.plugins.db.models:Distribution',
+            'erratum=pulp_rpm.plugins.db.models:Errata',
+            'package_group=pulp_rpm.plugins.db.models:PackageGroup',
+            'package_category=pulp_rpm.plugins.db.models:PackageCategory',
+            'package_environment=pulp_rpm.plugins.db.models:PackageEnvironment',
+            'yum_repo_metadata_file=pulp_rpm.plugins.db.models:YumMetadataFile',
+            'iso=pulp_rpm.plugins.db.models:ISO'
         ]
     }
 )

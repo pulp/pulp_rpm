@@ -8,6 +8,8 @@ from xml.etree import cElementTree as ET
 
 import rpm
 from pulp.plugins.util import verification
+from pulp.plugins.loader import api as plugin_api
+from pulp.server.controllers import repository as repo_controller
 from pulp.server.db.model.criteria import UnitAssociationCriteria
 from pulp.server.exceptions import PulpCodedValidationException, PulpCodedException
 
@@ -83,12 +85,12 @@ def upload(repo, type_id, unit_key, metadata, file_path, conduit, config):
 
     # Dispatch to process the upload by type
     handlers = {
-        models.RPM.TYPE: _handle_package,
-        models.SRPM.TYPE: _handle_package,
-        models.PackageGroup.TYPE: _handle_group_category,
-        models.PackageCategory.TYPE: _handle_group_category,
-        models.Errata.TYPE: _handle_erratum,
-        models.YumMetadataFile.TYPE: _handle_yum_metadata_file,
+        models.RPM.unit_type_id: _handle_package,
+        models.SRPM.unit_type_id: _handle_package,
+        models.PackageGroup.unit_type_id: _handle_group_category,
+        models.PackageCategory.unit_type_id: _handle_group_category,
+        models.Errata.unit_type_id: _handle_erratum,
+        models.YumMetadataFile.unit_type_id: _handle_yum_metadata_file,
     }
 
     if type_id not in handlers:
@@ -136,41 +138,21 @@ def _handle_erratum(repo, type_id, unit_key, metadata, file_path, conduit, confi
     """
 
     # Validate the user specified data by instantiating the model
-    try:
-        model_class = models.TYPE_MAP[type_id]
-        model = model_class(metadata=metadata, **unit_key)
-    except TypeError:
-        raise ModelInstantiationError()
+    model_data = dict()
+    model_data.update(unit_key)
+    if metadata:
+        model_data.update(metadata)
 
-    unit = conduit.init_unit(model.TYPE, model.unit_key, model.metadata, None)
+
+    model_class = plugin_api.get_unit_model_by_id(type_id)
+    model = model_class(**model_data)
+
+    # TODO Find out if the unit exists, if it does, associated, if not, create
+    unit = conduit.init_unit(model.unit_type_id, model.unit_key, model.metadata, None)
 
     # this save must happen before the link is created, because the link logic
     # requires the unit to have an "id".
     saved_unit = conduit.save_unit(unit)
-
-    if not config.get_boolean(CONFIG_SKIP_ERRATUM_LINK):
-        _link_errata_to_rpms(conduit, model, saved_unit)
-
-
-def _link_errata_to_rpms(conduit, errata_model, errata_unit):
-    """
-    Creates links in the Pulp data model between an erratum and its RPMs.
-
-    :param conduit: provides access to relevant Pulp functionality
-    :type  conduit: pulp.plugins.conduits.unit_add.UnitAddConduit
-    :param errata_model:    model object representing an errata
-    :type  errata_model:    pulp_rpm.plugins.db.models.Errata
-    :param errata_unit:     unit object representing an errata
-    :type  errata_unit:     pulp.plugins.model.Unit
-    """
-    fields = list(models.RPM.UNIT_KEY_NAMES)
-    fields.append('_storage_path')
-    filters = {'$or': errata_model.rpm_search_dicts}
-    for model_type in (models.RPM.TYPE, models.SRPM.TYPE):
-        criteria = UnitAssociationCriteria(type_ids=[model_type], unit_fields=fields,
-                                           unit_filters=filters)
-        for unit in conduit.get_units(criteria):
-            conduit.link_unit(errata_unit, unit, bidirectional=True)
 
 
 def _handle_yum_metadata_file(repo, type_id, unit_key, metadata, file_path, conduit, config):
@@ -187,24 +169,24 @@ def _handle_yum_metadata_file(repo, type_id, unit_key, metadata, file_path, cond
     """
 
     # Validate the user specified data by instantiating the model
-    try:
-        model = models.YumMetadataFile(metadata=metadata, **unit_key)
-    except TypeError:
-        raise ModelInstantiationError()
+    model_data = dict()
+    model_data.update(unit_key)
+    if metadata:
+        model_data.update(metadata)
 
     # Replicates the logic in yum/sync.py.import_unknown_metadata_files.
     # The local_path variable is removed since it's not included in the metadata when
     # synchronized.
-    file_relative_path = model.metadata.pop('local_path')
-    relative_path = os.path.join(model.relative_dir, file_relative_path)
+    file_relative_path = model_data.pop('local_path')
+
+    translated_data = models.YumMetadataFile.SERIALIZER().from_representation(model_data)
+
+    model = models.YumMetadataFile(**translated_data)
+    model.set_content(file_relative_path)
+    model.save()
 
     # Move the file to its final storage location in Pulp
-    try:
-        unit = conduit.init_unit(model.TYPE, model.unit_key, model.metadata, relative_path)
-        shutil.move(file_path, unit.storage_path)
-        conduit.save_unit(unit)
-    except IOError:
-        raise StoreFileError()
+    repo_controller.associate_single_unit(conduit.repo, model)
 
 
 def _handle_group_category(repo, type_id, unit_key, metadata, file_path, conduit, config):
@@ -233,12 +215,12 @@ def _handle_group_category(repo, type_id, unit_key, metadata, file_path, conduit
     else:
         # Validate the user specified data by instantiating the model
         try:
-            model_class = models.TYPE_MAP[type_id]
+            model_class = plugin_api.get_unit_model_by_id(type_id)
             model = model_class(metadata=metadata, **unit_key)
         except TypeError:
             raise ModelInstantiationError()
 
-        unit = conduit.init_unit(model.TYPE, model.unit_key, model.metadata, None)
+        unit = conduit.init_unit(model.unit_type_id, model.unit_key, model.metadata, None)
         conduit.save_unit(unit)
 
 
@@ -295,14 +277,14 @@ def _handle_package(repo, type_id, unit_key, metadata, file_path, conduit, confi
 
     # Validate the user specified data by instantiating the model
     try:
-        model_class = models.TYPE_MAP[type_id]
+        model_class = plugin_api.get_unit_model_by_id(type_id)
         model = model_class(metadata=new_unit_metadata, **new_unit_key)
     except TypeError:
         raise ModelInstantiationError()
 
     # Move the file to its final storage location in Pulp
     try:
-        unit = conduit.init_unit(model.TYPE, model.unit_key,
+        unit = conduit.init_unit(model.unit_type_id, model.unit_key,
                                  model.metadata, model.relative_path)
         shutil.move(file_path, unit.storage_path)
     except IOError:
@@ -421,13 +403,13 @@ def _generate_rpm_data(type_id, rpm_filename, user_metadata=None):
 
     # construct filename from metadata (BZ #1101168)
     if headers[rpm.RPMTAG_SOURCEPACKAGE]:
-        if type_id != models.SRPM.TYPE:
+        if type_id != models.SRPM.unit_type_id:
             raise PulpCodedValidationException(error_code=error_codes.RPM1002)
         rpm_basefilename = "%s-%s-%s.src.rpm" % (headers['name'],
                                                  headers['version'],
                                                  headers['release'])
     else:
-        if type_id != models.RPM.TYPE:
+        if type_id != models.RPM.unit_type_id:
             raise PulpCodedValidationException(error_code=error_codes.RPM1003)
         rpm_basefilename = "%s-%s-%s.%s.rpm" % (headers['name'],
                                                 headers['version'],

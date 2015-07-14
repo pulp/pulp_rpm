@@ -312,7 +312,7 @@ class MetadataFiles(object):
         # clean out these entries if they exist, because they won't be in the
         # XML files we're indexing.
         unit_key.pop('checksum', None)
-        unit_key.pop('checksumtype', None)
+        unit_key.pop('checksum_type', None)
         sorted_key_names = sorted(unit_key.keys())
         return '::'.join('%s:%s' % (name, unit_key[name]) for name in sorted_key_names)
 
@@ -323,9 +323,8 @@ class MetadataFiles(object):
         based on data obtained in the raw XML snippets.
 
         :param model:   model instance to manipulate
-        :type  model:   pulp_rpm.plugins.db.models.RPM
+        :type  model:   pulp_rpm.plugins.db.models.RpmBase
         """
-        repodata = model.metadata.setdefault('repodata', {})
         db_key = self.generate_db_key(model.unit_key)
         for filename, metadata_key, process_func in (
             (filelists.METADATA_FILE_NAME, 'files', filelists.process_package_element),
@@ -336,13 +335,13 @@ class MetadataFiles(object):
                 raw_xml = db_file[db_key]
             finally:
                 db_file.close()
-            repodata[filename] = raw_xml
+            model.repodata[filename] = raw_xml
             element = ElementTree.fromstring(raw_xml)
             unit_key, items = process_func(element)
-            model.metadata[metadata_key] = items
+            setattr(model, metadata_key, items)
 
         raw_xml = model.raw_xml
-        repodata['primary'] = change_location_tag(raw_xml, model.relative_path)
+        model.repodata['primary'] = change_location_tag(raw_xml, model.file_name)
 
 
 def process_repomd_data_element(data_element):

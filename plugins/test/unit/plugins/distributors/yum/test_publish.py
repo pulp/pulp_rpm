@@ -148,7 +148,7 @@ class BaseYumRepoPublisherTests(BaseYumDistributorPublishTests):
 
         self._init_publisher()
         self.publisher.repo.content_unit_counts = {}
-        self.publisher.publish()
+        self.publisher.process_lifecycle()
 
         mock_publish_distribution.assert_called_once()
         mock_publish_rpms.assert_called_once()

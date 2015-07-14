@@ -3,6 +3,7 @@ import shutil
 
 from pulp.common.config import read_json_config
 from pulp.plugins.distributor import Distributor
+from pulp.server.db import model as platform_models
 from pulp.server.exceptions import PulpDataException
 
 from pulp_rpm.plugins.distributors.export_distributor import export_utils
@@ -109,12 +110,12 @@ class ISODistributor(Distributor):
         if progress_callback:
             progress_callback(type_id, status)
 
-    def publish_repo(self, repo, publish_conduit, config):
+    def publish_repo(self, transfer_repo, publish_conduit, config):
         """
         Export a yum repository to a given directory, or to ISO
 
-        :param repo:            metadata describing the repository
-        :type  repo:            pulp.plugins.model.Repository
+        :param transfer_repo: metadata describing the repository
+        :type  transfer_repo: pulp.plugins.model.Repository
         :param publish_conduit: provides access to relevant Pulp functionality
         :type  publish_conduit: pulp.plugins.conduits.repo_publish.RepoPublishConduit
         :param config:          plugin configuration
@@ -123,31 +124,35 @@ class ISODistributor(Distributor):
         :return: report describing the publish run
         :rtype:  pulp.plugins.model.PublishReport
         """
+        repo = platform_models.Repository.objects.get(repo_id=transfer_repo.id)
+
         # First, validate the configuration because there may be override config options, and
         # currently, validate_config is not called prior to publishing by the manager.
         valid_config, msg = export_utils.validate_export_config(config)
         if not valid_config:
             raise PulpDataException(msg)
 
-        _logger.info('Starting export of [%s]' % repo.id)
+        _logger.info('Starting export of [%s]' % repo.repo_id)
         self._publisher = ExportRepoPublisher(repo, publish_conduit, config,
                                               ids.TYPE_ID_DISTRIBUTOR_EXPORT)
-        return self._publisher.publish()
+        return self._publisher.process_lifecycle()
 
-    def distributor_removed(self, repo, config):
+    def distributor_removed(self, transfer_repo, config):
         """
         Called when a distributor of this type is removed from a repository.
 
-        :param repo: metadata describing the repository
-        :type  repo: pulp.plugins.model.Repository
+        :param transfer_repo: metadata describing the repository
+        :type  transfer_repo: pulp.plugins.model.Repository
 
         :param config: plugin configuration
         :type  config: pulp.plugins.config.PluginCallConfiguration
         """
+        repo = platform_models.Repository.objects.get(repo_id=transfer_repo.id)
+
         # remove the directories that might have been created for this repo/distributor
         dir_list = [configuration.get_master_publish_dir(repo, ids.TYPE_ID_DISTRIBUTOR_EXPORT),
-                    os.path.join(configuration.HTTP_EXPORT_DIR, repo.id),
-                    os.path.join(configuration.HTTPS_EXPORT_DIR, repo.id)]
+                    os.path.join(configuration.HTTP_EXPORT_DIR, repo.repo_id),
+                    os.path.join(configuration.HTTPS_EXPORT_DIR, repo.repo_id)]
 
         for repo_dir in dir_list:
             shutil.rmtree(repo_dir, ignore_errors=True)

@@ -3,10 +3,10 @@ import errno
 import os
 import shutil
 import tempfile
-import unittest
 
 import mock
 from mock import Mock, patch, call
+from pulp.common.compat import unittest
 from pulp.devel import mock_config
 from pulp.devel.unit import util
 from pulp.devel.unit.util import compare_dict
@@ -43,19 +43,24 @@ class YumDistributorTests(unittest.TestCase):
         self.assertEqual(metadata['id'], TYPE_ID_DISTRIBUTOR_YUM)
         self.assertEqual(metadata['display_name'], distributor.DISTRIBUTOR_DISPLAY_NAME)
 
+    @patch('pulp_rpm.plugins.distributors.yum.distributor.platform_models')
     @mock.patch('pulp_rpm.plugins.distributors.yum.configuration.validate_config')
-    def test_validate_config(self, mock_validate_config):
+    def test_validate_config(self, mock_validate_config, m_platform_models):
         repo = Repository('test')
+        m_repo = Mock(repo_id='test')
+        m_platform_models.Repository.objects.get.return_value = m_repo
         config = PluginCallConfiguration(None, None)
         conduit = RepoConfigConduit(TYPE_ID_DISTRIBUTOR_YUM)
 
         self.distributor.validate_config(repo, config, conduit)
 
-        mock_validate_config.assert_called_once_with(repo, config, conduit)
+        mock_validate_config.assert_called_once_with(m_repo, config, conduit)
 
+    @patch('pulp_rpm.plugins.distributors.yum.distributor.platform_models')
     @mock.patch('pulp_rpm.plugins.distributors.yum.distributor.publish')
-    def test_publish_repo(self, mock_publish):
+    def test_publish_repo(self, mock_publish, m_platform_models):
         repo = Repository('test')
+        m_platform_models.Repository.objects.get.return_value = Mock(repo_id='test')
         config = PluginCallConfiguration(None, None)
         conduit = RepoPublishConduit(repo.id, TYPE_ID_DISTRIBUTOR_YUM)
 
@@ -73,11 +78,15 @@ class YumDistributorTests(unittest.TestCase):
 
         self.distributor._publisher = None
 
-    def test_create_consumer_payload(self):
+    @patch('pulp_rpm.plugins.distributors.yum.distributor.pulp_server_config')
+    @patch('pulp_rpm.plugins.distributors.yum.distributor.platform_models')
+    def test_create_consumer_payload(self, m_platform_models, m_config):
         local_distributor = YumHTTPDistributor()
         repo = Mock()
         repo.display_name = 'foo'
         repo.id = 'bar'
+        m_repo = Mock(repo_id='bar', display_name='foo')
+        m_platform_models.Repository.objects.get.return_value = m_repo
         config = {'https_ca': 'pear',
                   'gpgkey': 'kiwi',
                   'auth_cert': 'durian',
@@ -87,36 +96,48 @@ class YumDistributorTests(unittest.TestCase):
         binding_config = {}
         cert_file = os.path.join(self.working_dir, "orange_file")
 
-        with mock_config.patch({'server': {'server_name': 'apple'},
-                                'security': {'ssl_ca_certificate': cert_file}}):
-            with open(cert_file, 'w') as filewriter:
-                filewriter.write("orange")
+        m_config.config = ConfigParser.SafeConfigParser()
+        m_config.config.add_section('server')
+        m_config.config.set('server', 'server_name', 'apple')
+        m_config.config.add_section('security')
+        m_config.config.set('security', 'ssl_ca_certificate', cert_file)
+        with open(cert_file, 'w') as filewriter:
+            filewriter.write("orange")
 
-            result = local_distributor.create_consumer_payload(repo, config, binding_config)
+        result = local_distributor.create_consumer_payload(repo, config, binding_config)
 
-            target = {
-                'server_name': 'apple',
-                'ca_cert': 'orange',
-                'relative_path': '/pulp/repos/bar',
-                'gpg_keys': {'pulp.key': 'kiwi'},
-                'client_cert': 'durian',
-                'protocols': ['http', 'https'],
-                'repo_name': 'foo'
-            }
-            compare_dict(result, target)
+        target = {
+            'server_name': 'apple',
+            'ca_cert': 'orange',
+            'relative_path': '/pulp/repos/bar',
+            'gpg_keys': {'pulp.key': 'kiwi'},
+            'client_cert': 'durian',
+            'protocols': ['http', 'https'],
+            'repo_name': 'foo'
+        }
+        self.assertDictEqual(result, target)
 
-    @mock_config.patch({'server': {'server_name': 'apple'},
-                        'security': {'ssl_ca_certificate': 'orange'}})
+    @patch('pulp_rpm.plugins.distributors.yum.distributor.pulp_server_config')
+    @patch('pulp_rpm.plugins.distributors.yum.distributor.platform_models')
     @patch('pulp_rpm.plugins.distributors.yum.distributor.configuration.load_config')
-    def test_create_consumer_payload_global_auth(self, mock_load_config):
+    def test_create_consumer_payload_global_auth(self, mock_load_config, m_platform_models,
+                                                 m_config):
         test_distributor = YumHTTPDistributor()
         repo = Mock()
         repo.display_name = 'foo'
         repo.id = 'bar'
+        m_repo = Mock(repo_id='bar', display_name='foo')
+        m_platform_models.Repository.objects.get.return_value = m_repo
         config = {'https_ca': 'pear',
                   'gpgkey': 'kiwi',
                   'http': True,
                   'https': True}
+        m_config.config = ConfigParser.SafeConfigParser()
+        m_config.config.add_section('server')
+        m_config.config.set('server', 'server_name', 'apple')
+        m_config.config.add_section('security')
+        m_config.config.set('security', 'ssl_ca_certificate', 'orange')
+
         binding_config = {}
 
         repo_auth_config = ConfigParser.SafeConfigParser()
@@ -148,98 +169,126 @@ class YumDistributorTests(unittest.TestCase):
         compare_dict(result, target)
 
 
+@patch('pulp_rpm.plugins.distributors.yum.distributor.platform_models')
+@patch('pulp_rpm.plugins.distributors.yum.distributor.configuration.get_repo_relative_path')
+@patch('pulp_rpm.plugins.distributors.yum.distributor.configuration.get_master_publish_dir')
+@patch('pulp_rpm.plugins.distributors.yum.distributor.configuration.get_http_publish_dir')
+@patch('pulp_rpm.plugins.distributors.yum.distributor.configuration.get_https_publish_dir')
+@patch('pulp_rpm.plugins.distributors.yum.distributor.configuration.remove_cert_based_auth')
+@patch('pulp_rpm.plugins.distributors.yum.distributor.shutil.rmtree')
+@patch('pulp_rpm.plugins.distributors.yum.distributor.os')
+@patch('pulp_rpm.plugins.distributors.yum.distributor.YumHTTPDistributor.'
+       'clean_simple_hosting_directories')
 class TestDistributorDistributorRemoved(unittest.TestCase):
-    def _apply_mock_patches(self):
-        self.patch_a = patch(CONFIGURATION + '.get_repo_relative_path')
-        self.mock_rel_path = self.patch_a.start()
-
-        self.patch_b = patch(CONFIGURATION + '.get_master_publish_dir')
-        self.mock_master = self.patch_b.start()
-
-        self.patch_c = patch(CONFIGURATION + '.get_http_publish_dir')
-        self.mock_http = self.patch_c.start()
-
-        self.patch_d = patch(CONFIGURATION + '.get_https_publish_dir')
-        self.mock_https = self.patch_d.start()
-
-        self.patch_e = patch(CONFIGURATION + '.remove_cert_based_auth')
-        self.mock_remove_cert = self.patch_e.start()
-
-        self.patch_f = patch(DISTRIBUTOR + '.shutil.rmtree')
-        self.mock_rmtree = self.patch_f.start()
-
-        self.patch_g = patch(DISTRIBUTOR + '.os')
-        self.mock_os = self.patch_g.start()
-
-        self.patch_h = patch(DISTRIBUTOR + '.YumHTTPDistributor.clean_simple_hosting_directories')
-        self.mock_clean = self.patch_h.start()
 
     def setUp(self):
-        self._apply_mock_patches()
+        # self._apply_mock_patches()
         self.working_dir = tempfile.mkdtemp()
         self.distributor = distributor.YumHTTPDistributor()
-        self.mock_repo = Mock()
+        self.mock_transfer_repo = Mock(id='foo')
+        self.mock_repo = Mock(repo_id='foo')
         self.config = {}
-        self.distributor.distributor_removed(self.mock_repo, self.config)
 
     def tearDown(self):
-        self.patch_a.stop()
-        self.patch_b.stop()
-        self.patch_c.stop()
-        self.patch_d.stop()
-        self.patch_e.stop()
-        self.patch_f.stop()
-        self.patch_g.stop()
-        self.patch_h.stop()
+        shutil.rmtree(self.working_dir)
 
-    def test_distributor_remove_distributor_calls_get_master_publish_dir(self):
-        self.mock_master.assert_called_once_with(self.mock_repo, TYPE_ID_DISTRIBUTOR_YUM)
+    def test_distributor_remove_distributor_calls_get_master_publish_dir(
+            self, m_csh, m_os, m_rmtree, m_remove_cert_based_auth, m_get_https_publish_dir,
+            m_get_http_publish_dir, m_get_master_publish_dir, m_get_repo_relative_path,
+            m_platform_models):
 
-    def test_distributor_remove_distributor_calls_get_http_publish_dir(self):
-        self.mock_http.assert_called_once_with(self.config)
+        m_platform_models.Repository.objects.get.return_value = self.mock_repo
+        self.distributor.distributor_removed(self.mock_transfer_repo, self.config)
+        m_get_master_publish_dir.assert_called_once_with(self.mock_repo, TYPE_ID_DISTRIBUTOR_YUM)
 
-    def test_distributor_remove_distributor_calls_get_https_publish_dir(self):
-        self.mock_https.assert_called_once_with(self.config)
+    def test_distributor_remove_distributor_calls_get_http_publish_dir(
+            self, m_csh, m_os, m_rmtree, m_remove_cert_based_auth, m_get_https_publish_dir,
+            m_get_http_publish_dir, m_get_master_publish_dir, m_get_repo_relative_path,
+            m_platform_models):
+        m_platform_models.Repository.objects.get.return_value = self.mock_repo
+        self.distributor.distributor_removed(self.mock_transfer_repo, self.config)
+        m_get_http_publish_dir.assert_called_once_with(self.config)
 
-    def test_distributor_remove_distributor_calls_get_repo_relative_path_twice(self):
+    def test_distributor_remove_distributor_calls_get_https_publish_dir(
+            self, m_csh, m_os, m_rmtree, m_remove_cert_based_auth, m_get_https_publish_dir,
+            m_get_http_publish_dir, m_get_master_publish_dir, m_get_repo_relative_path,
+            m_platform_models):
+        m_platform_models.Repository.objects.get.return_value = self.mock_repo
+        self.distributor.distributor_removed(self.mock_transfer_repo, self.config)
+        m_get_https_publish_dir.assert_called_once_with(self.config)
+
+    def test_distributor_remove_distributor_calls_get_repo_relative_path_twice(
+            self, m_csh, m_os, m_rmtree, m_remove_cert_based_auth, m_get_https_publish_dir,
+            m_get_http_publish_dir, m_get_master_publish_dir, m_get_repo_relative_path,
+            m_platform_models):
+        m_platform_models.Repository.objects.get.return_value = self.mock_repo
+        self.distributor.distributor_removed(self.mock_transfer_repo, self.config)
         rel_path_calls = [
             call(self.mock_repo, self.config),
             call(self.mock_repo, self.config),
         ]
-        self.mock_rel_path.assert_has_calls(rel_path_calls)
+        m_get_repo_relative_path.assert_has_calls(rel_path_calls)
 
-    def test_distributor_remove_distributor_calls_remove_cert_based_auth(self):
-        self.mock_remove_cert.assert_called_once_with(self.mock_repo, self.config)
+    def test_distributor_remove_distributor_calls_remove_cert_based_auth(
+            self, m_csh, m_os, m_rmtree, m_remove_cert_based_auth, m_get_https_publish_dir,
+            m_get_http_publish_dir, m_get_master_publish_dir, m_get_repo_relative_path,
+            m_platform_models):
+        m_platform_models.Repository.objects.get.return_value = self.mock_repo
+        self.distributor.distributor_removed(self.mock_transfer_repo, self.config)
+        m_remove_cert_based_auth.assert_called_once_with(self.mock_repo, self.config)
 
-    def test_distributor_remove_distributor_calls_clean_simple_hosting_directories(self):
-        self.assertEqual(self.mock_clean.call_count, 2)
+    def test_distributor_remove_distributor_calls_clean_simple_hosting_directories(
+            self, m_csh, m_os, m_rmtree, m_remove_cert_based_auth, m_get_https_publish_dir,
+            m_get_http_publish_dir, m_get_master_publish_dir, m_get_repo_relative_path,
+            m_platform_models):
+        m_platform_models.Repository.objects.get.return_value = self.mock_repo
+        self.distributor.distributor_removed(self.mock_transfer_repo, self.config)
+        self.assertEqual(m_csh.call_count, 2)
 
-    def test_distributor_remove_distributor_uses_rmtree_to_remove_working_dir_and_master_dir(self):
+    def test_distributor_remove_distributor_uses_rmtree_to_remove_working_dir_and_master_dir(
+            self, m_csh, m_os, m_rmtree, m_remove_cert_based_auth, m_get_https_publish_dir,
+            m_get_http_publish_dir, m_get_master_publish_dir, m_get_repo_relative_path,
+            m_platform_models):
+        m_platform_models.Repository.objects.get.return_value = self.mock_repo
+        self.distributor.distributor_removed(self.mock_transfer_repo, self.config)
         rmtree_calls = [
-            call(self.mock_master.return_value, ignore_errors=True)
+            call(m_get_master_publish_dir.return_value, ignore_errors=True)
         ]
-        self.mock_rmtree.assert_has_calls(rmtree_calls)
+        m_rmtree.assert_has_calls(rmtree_calls)
 
-    def test_distributor_remove_distributor_uses_unlink_to_remove_http_and_https_symlinks(self):
+    def test_distributor_remove_distributor_uses_unlink_to_remove_http_and_https_symlinks(
+            self, m_csh, m_os, m_rmtree, m_remove_cert_based_auth, m_get_https_publish_dir,
+            m_get_http_publish_dir, m_get_master_publish_dir, m_get_repo_relative_path,
+            m_platform_models):
+        m_platform_models.Repository.objects.get.return_value = self.mock_repo
+        self.distributor.distributor_removed(self.mock_transfer_repo, self.config)
         unlink_calls = [
-            call(self.mock_os.path.join.return_value.rstrip.return_value),
-            call(self.mock_os.path.join.return_value.rstrip.return_value)
+            call(m_os.path.join.return_value.rstrip.return_value),
+            call(m_os.path.join.return_value.rstrip.return_value)
         ]
-        self.mock_os.unlink.assert_has_calls(unlink_calls)
+        m_os.unlink.assert_has_calls(unlink_calls)
 
-    def test_distributor_remove_distributor_unlink_call_handles_OSError_raised(self):
+    def test_distributor_remove_distributor_unlink_call_handles_OSError_raised(
+            self, m_csh, m_os, m_rmtree, m_remove_cert_based_auth, m_get_https_publish_dir,
+            m_get_http_publish_dir, m_get_master_publish_dir, m_get_repo_relative_path,
+            m_platform_models):
+        m_platform_models.Repository.objects.get.return_value = self.mock_repo
         os_error_to_raise = OSError()
         os_error_to_raise.errno = errno.ENOENT
-        self.mock_os.unlink.side_effect = os_error_to_raise
+        m_os.unlink.side_effect = os_error_to_raise
         try:
-            self.distributor.distributor_removed(self.mock_repo, self.config)
+            self.distributor.distributor_removed(self.mock_transfer_repo, self.config)
         except Exception:
             self.fail('Distributor unlink should handle symlinks that do not exist.')
 
-    def test_distributor_remove_distributor_unlink_call_handles_non_oserror_raised(self):
+    def test_distributor_remove_distributor_unlink_call_handles_non_oserror_raised(
+            self, m_csh, m_os, m_rmtree, m_remove_cert_based_auth, m_get_https_publish_dir,
+            m_get_http_publish_dir, m_get_master_publish_dir, m_get_repo_relative_path,
+            m_platform_models):
+        m_platform_models.Repository.objects.get.return_value = self.mock_repo
         os_error_to_raise = OSError()
-        self.mock_os.unlink.side_effect = os_error_to_raise
-        self.assertRaises(OSError, self.distributor.distributor_removed, self.mock_repo,
+        m_os.unlink.side_effect = os_error_to_raise
+        self.assertRaises(OSError, self.distributor.distributor_removed, self.mock_transfer_repo,
                           self.config)
 
 

@@ -1,93 +1,72 @@
 import csv
 import logging
 import os
-from collections import namedtuple
 from gettext import gettext as _
 from urlparse import urljoin
 
+import mongoengine
 from pulp.plugins.util import verification
+from pulp.server.db.model import ContentUnit
 
-from pulp_rpm.common import constants, ids, version_utils
+from pulp_rpm.common import version_utils
 from pulp_rpm.common import file_utils
-
+from pulp_rpm.plugins import serializers
 
 _LOGGER = logging.getLogger(__name__)
 
 
-class Package(object):
-    UNIT_KEY_NAMES = tuple()
-    TYPE = None
-    NAMEDTUPLE = None
+class Package(ContentUnit):
 
-    def __init__(self, local_vars):
-        self.metadata = local_vars.get('metadata', {})
-        for name in self.UNIT_KEY_NAMES:
-            setattr(self, name, local_vars[name])
-            # Add the serialized version and release if available
-            if name == 'version':
-                self.metadata['version_sort_index'] = version_utils.encode(local_vars[name])
-            elif name == 'release':
-                self.metadata['release_sort_index'] = version_utils.encode(local_vars[name])
-
-    @property
-    def unit_key(self):
-        key = {}
-        for name in self.UNIT_KEY_NAMES:
-            key[name] = getattr(self, name)
-        return key
-
-    @property
-    def as_named_tuple(self):
-        """
-
-        :return:
-        :rtype collections.namedtuple
-        """
-        return self.NAMEDTUPLE(**self.unit_key)
-
-    @classmethod
-    def from_package_info(cls, package_info):
-        unit_key = {}
-        metadata = {}
-        for key, value in package_info.iteritems():
-            if key in cls.UNIT_KEY_NAMES:
-                unit_key[key] = value
-            elif key == 'type' and cls != Errata:
-                continue
-            else:
-                metadata[key] = value
-        unit_key['metadata'] = metadata
-
-        return cls(**unit_key)
-
-    def clean_metadata(self):
-        """
-        Iterate through each key in the "metadata" dict, and if it starts with
-        a "_", delete it. This is to clean out mongo-specific and platform-specific
-        data. In the future, this will likely go away if we more strongly define
-        which fields each model will hold.
-        """
-        for key in self.metadata.keys():
-            if key.startswith('_'):
-                del self.metadata[key]
+    meta = {
+        'abstract': True,
+    }
 
     def __str__(self):
-        return '%s: %s' % (self.TYPE, '-'.join(getattr(self, name) for name in self.UNIT_KEY_NAMES))
+        return '%s: %s' % (self.unit_type_id,
+                           '-'.join(getattr(self, name) for name in self.unit_key_fields))
 
 
 class VersionedPackage(Package):
+
+    # All subclasses use both a version and a release
+    version = mongoengine.StringField(required=True)
+    release = mongoengine.StringField(required=True)
+
+    # We generate these two
+    version_sort_index = mongoengine.StringField()
+    release_sort_index = mongoengine.StringField()
+
+    meta = {
+        'abstract': True,
+    }
+
+    @classmethod
+    def pre_save_signal(cls, sender, document, **kwargs):
+        """
+        Generate the version & Release sort index before saving
+
+        :param sender: sender class
+        :type sender: object
+        :param document: Document that sent the signal
+        :type document: pulp_rpm.plugins.db.models.VersionedPackage
+        """
+        super(VersionedPackage, cls).pre_save_signal(sender, document, **kwargs)
+        document.version_sort_index = version_utils.encode(document.version)
+        document.release_sort_index = version_utils.encode(document.release)
+
+    # Used by RPM, SRPM, DRPM
     @property
     def key_string_without_version(self):
-        keys = [getattr(self, key) for key in self.UNIT_KEY_NAMES if
-                key not in ['epoch', 'version', 'release', 'checksum', 'checksumtype']]
-        keys.append(self.TYPE)
+        keys = [getattr(self, key) for key in self.unit_key_fields if
+                key not in ['epoch', 'version', 'release', 'checksum', 'checksum_type']]
+        keys.append(self.unit_type_id)
         return '-'.join(keys)
 
     @property
     def complete_version(self):
         values = []
         for name in ('epoch', 'version', 'release'):
-            if name in self.UNIT_KEY_NAMES:
+            if name in self.unit_key_fields:
                 values.append(getattr(self, name))
         return tuple(values)
 
@@ -95,6 +74,7 @@ class VersionedPackage(Package):
     def complete_version_serialized(self):
         return tuple(version_utils.encode(field) for field in self.complete_version)
 
+    # TODO DANGER DANGER, WHAT HAPPENS WITH MongoEngine BaseDocument
     def __cmp__(self, other):
         return cmp(
             self.complete_version_serialized,
@@ -103,19 +83,38 @@ class VersionedPackage(Package):
 
 
 class Distribution(Package):
-    UNIT_KEY_NAMES = ('id', 'family', 'variant', 'version', 'arch')
-    TYPE = ids.TYPE_ID_DISTRO
 
-    def __init__(self, family, variant, version, arch, metadata, id=None):
-        kwargs = locals()
-        # I don't know why this is the "id", but am following the pattern of the
-        # original importer
-        if kwargs['id'] is None:
-            # the original importer leaves out any elements that are None, so
-            # we will blindly trust that here.
-            id_pieces = filter(lambda x: x is not None, ('ks', family, variant, version, arch))
-            kwargs['id'] = '-'.join(id_pieces)
-        super(Distribution, self).__init__(kwargs)
+    distribution_id = mongoengine.StringField(required=True)
+    family = mongoengine.StringField(required=True)
+    variant = mongoengine.StringField(required=True)
+    version = mongoengine.StringField(required=True)
+    arch = mongoengine.StringField(required=True)
+
+    files = mongoengine.ListField()
+    timestamp = mongoengine.FloatField()
+    packagedir = mongoengine.StringField()
+
+    # Pretty sure the version_sort_index is never used for Distribution units
+    version_sort_index = mongoengine.StringField()
+
+    # For backward compatibility
+    _ns = mongoengine.StringField(default='units_distribution')
+    unit_type_id = mongoengine.StringField(db_field='_content_type_id', required=True,
+                                           default='distribution')
+
+    unit_key_fields = ('distribution_id', 'family', 'variant', 'version', 'arch')
+
+    meta = {'collection': 'units_distribution',
+            'indexes': [
+                'distribution_id', 'family', 'variant', 'version', 'arch',
+                # Unit key Index
+                {
+                    'fields': ['distribution_id', 'family', 'variant', 'version', 'arch'],
+                    'unique': True
+                }],
+            'allow_inheritance': False}
+
+    SERIALIZER = serializers.Distribution
 
     @property
     def relative_path(self):
@@ -124,7 +123,30 @@ class Distribution(Package):
         related files get stored. For most unit types, this path is to one
         file.
         """
-        return self.id
+        return self.distribution_id
+
+    @classmethod
+    def pre_save_signal(cls, sender, document, **kwargs):
+        """
+        Generate the version & Release sort index before saving
+
+        :param sender: sender class
+        :type sender: object
+        :param document: Document that sent the signal
+        :type document: pulp_rpm.plugins.db.models.Distribution
+        """
+        document.version_sort_index = version_utils.encode(document.version)
+        if not document.distribution_id:
+            # the original importer leaves out any elements that are None, so
+            # we will blindly trust that here.
+            id_pieces = filter(lambda x: x is not None,
+                               ('ks',
+                                document.family,
+                                document.variant,
+                                document.version,
+                                document.arch))
+            document.distribution_id = '-'.join(id_pieces)
+        super(Package, cls).pre_save_signal(sender, document, **kwargs)
 
     def process_download_reports(self, reports):
         """
@@ -134,22 +156,21 @@ class Distribution(Package):
         :param reports: list of successful download reports
         :type  reports: list(pulp.common.download.report.DownloadReport)
         """
-        # TODO: maybe this shouldn't be in common
-        metadata_files = self.metadata.setdefault('files', [])
+        if not isinstance(self.files, list):
+            self.files = []
+
         for report in reports:
             # the following data model is mostly intended to match what the
             # previous importer generated.
-            metadata_files.append({
+            self.files.append({
                 'checksum': report.data['checksum'],
                 'checksumtype': verification.sanitize_checksum_type(report.data['checksumtype']),
                 'downloadurl': report.url,
                 'filename': os.path.basename(report.data['relativepath']),
                 'fileName': os.path.basename(report.data['relativepath']),
-                'item_type': self.TYPE,
+                'item_type': "distribution",
                 'pkgpath': os.path.join(
-                    constants.DISTRIBUTION_STORAGE_PATH,
-                    self.id,
-                    os.path.dirname(report.data['relativepath']),
+                    self.storage_path, os.path.dirname(report.data['relativepath']),
                 ),
                 'relativepath': report.data['relativepath'],
                 'savepath': report.destination,
@@ -158,59 +179,198 @@ class Distribution(Package):
 
 
 class DRPM(VersionedPackage):
-    UNIT_KEY_NAMES = ('epoch', 'version', 'release', 'filename', 'checksumtype', 'checksum')
-    TYPE = ids.TYPE_ID_DRPM
 
-    def __init__(self, epoch, version, release, filename, checksumtype, checksum, metadata):
-        checksumtype = verification.sanitize_checksum_type(checksumtype)
-        Package.__init__(self, locals())
+    # Unit Key Fields
+    epoch = mongoengine.StringField(required=True)
+    file_name = mongoengine.StringField(db_field='filename', required=True)
+    checksum_type = mongoengine.StringField(db_field='checksumtype', required=True)
+    checksum = mongoengine.StringField(required=True)
+
+    # Other Fields
+    sequence = mongoengine.StringField()
+    new_package = mongoengine.StringField()
+    arch = mongoengine.StringField()
+    size = mongoengine.IntField()
+    old_epoch = mongoengine.StringField(db_field='oldepoch')
+    old_version = mongoengine.StringField(db_field='oldversion')
+    old_release = mongoengine.StringField(db_field='oldrelease')
+
+    # For backward compatibility
+    _ns = mongoengine.StringField(default='units_drpm')
+    unit_type_id = mongoengine.StringField(db_field='_content_type_id', required=True,
+                                           default='drpm')
+
+    unit_key_fields = ('epoch', 'version', 'release', 'file_name', 'checksum_type', 'checksum')
+
+    meta = {'collection': 'units_drpm',
+            'indexes': [
+                "epoch", "version", "release", "file_name", "checksum",
+                # Unit key Index
+                {
+                    'fields': ["epoch", "version", "release", 'file_name', "checksum_type", "checksum"],
+                    'unique': True
+                }],
+            'allow_inheritance': False}
+
+    SERIALIZER = serializers.Drpm
+
+    def __init__(self, *args, **kwargs):
+        if 'checksum_type' in kwargs:
+            kwargs['checksum_type'] = verification.sanitize_checksum_type(kwargs['checksum_type'])
+        super(DRPM, self).__init__(*args, **kwargs)
 
     @property
     def relative_path(self):
-        return self.filename
+        """
+        This should only be used during the initial sync
+        """
+        return self.file_name
 
     @property
     def download_path(self):
-        return self.filename
+        """
+        This should only be used during the initial sync
+        """
+        return self.file_name
 
 
-class RPM(VersionedPackage):
-    UNIT_KEY_NAMES = ('name', 'epoch', 'version', 'release', 'arch', 'checksumtype', 'checksum')
-    TYPE = ids.TYPE_ID_RPM
+class RpmBase(VersionedPackage):
 
-    def __init__(self, name, epoch, version, release, arch, checksumtype, checksum, metadata):
-        checksumtype = verification.sanitize_checksum_type(checksumtype)
-        Package.__init__(self, locals())
+    # Unit Key Fields
+    name = mongoengine.StringField(required=True)
+    epoch = mongoengine.StringField(required=True)
+    version = mongoengine.StringField(required=True)
+    release = mongoengine.StringField(required=True)
+    arch = mongoengine.StringField(required=True)
+    checksum_type = mongoengine.StringField(db_field='checksumtype', required=True)
+    checksum = mongoengine.StringField(required=True)
+
+    # Other Fields
+    build_time = mongoengine.IntField()
+    buildhost = mongoengine.StringField()
+    vendor = mongoengine.StringField()
+    size = mongoengine.IntField()
+    base_url = mongoengine.StringField()
+    file_name = mongoengine.StringField(db_field='filename')
+    relative_url_path = mongoengine.StringField()
+    relative_path = mongoengine.StringField(db_field='relativepath')
+    group = mongoengine.StringField()
+
+    provides = mongoengine.ListField()
+    files = mongoengine.DictField()
+    repodata = mongoengine.DictField(default={})
+    description = mongoengine.StringField()
+    header_range = mongoengine.DictField()
+    source_rpm = mongoengine.StringField(db_field='sourcerpm')
+    license = mongoengine.StringField()
+    changelog = mongoengine.ListField()
+    url = mongoengine.StringField()
+    summary = mongoengine.StringField()
+    time = mongoengine.IntField()
+    requires = mongoengine.ListField()
+
+    # For backward compatibility
+    _ns = mongoengine.StringField(default='units_rpm')
+    unit_type_id = mongoengine.StringField(db_field='_content_type_id', required=True,
+                                           default='rpm')
+
+    unit_key_fields = ('name', 'epoch', 'version', 'release', 'arch', 'checksum_type', 'checksum')
+
+    meta = {'indexes': [
+                "name", "epoch", "version", "release", "arch", "file_name", "checksum",
+                "checksum_type", "version_sort_index",
+                ("version_sort_index", "release_sort_index"),
+                # Unit key Index
+                {
+                    'fields': ["name", "epoch", "version", "release", "arch",
+                               "checksum_type", "checksum"],
+                    'unique': True
+                }],
+            'abstract': True}
+
+    SERIALIZER = serializers.RpmBase
+
+    def __init__(self, *args, **kwargs):
+        if 'checksum_type' in kwargs:
+            kwargs['checksum_type'] = verification.sanitize_checksum_type(kwargs['checksum_type'])
+        super(RpmBase, self).__init__(*args, **kwargs)
+        # raw_xml is only used during the initial sync
         self.raw_xml = ''
 
     @property
-    def relative_path(self):
-        unit_key = self.unit_key
-        return os.path.join(
-            unit_key['name'], unit_key['version'], unit_key['release'],
-            unit_key['arch'], unit_key['checksum'], self.metadata['filename']
-        )
-
-    @property
     def download_path(self):
-        return self.metadata['relativepath']
+        """
+        This should only be used during the initial sync
+        """
+        return os.path.join(self.checksum, self.file_name)
 
 
-class SRPM(RPM):
-    TYPE = ids.TYPE_ID_SRPM
+class RPM(RpmBase):
+
+    # For backward compatibility
+    _ns = mongoengine.StringField(default='units_rpm')
+    unit_type_id = mongoengine.StringField(db_field='_content_type_id', required=True,
+                                           default='rpm')
+    meta = {'collection': 'units_rpm',
+            'allow_inheritance': False}
+
+
+class SRPM(RpmBase):
+
+    # For backward compatibility
+    _ns = mongoengine.StringField(default='units_srpm')
+    unit_type_id = mongoengine.StringField(db_field='_content_type_id', required=True,
+                                           default='srpm')
+    meta = {
+        'collection': 'units_srpm',
+        'allow_inheritance': False}
 
 
 class Errata(Package):
-    UNIT_KEY_NAMES = ('id',)
-    TYPE = ids.TYPE_ID_ERRATA
 
-    def __init__(self, id, metadata):
-        Package.__init__(self, locals())
+    errata_id = mongoengine.StringField(required=True)
+    status = mongoengine.StringField()
+    updated = mongoengine.StringField(required=True, default='')
+    description = mongoengine.StringField()
+    issued = mongoengine.StringField()
+    pushcount = mongoengine.StringField()
+    references = mongoengine.ListField()
+    reboot_suggested = mongoengine.BooleanField()
+    errata_from = mongoengine.StringField(db_field='from')
+    severity = mongoengine.StringField()
+    rights = mongoengine.StringField()
+    version = mongoengine.StringField()
+    release = mongoengine.StringField()
+    type = mongoengine.StringField()
+    pkglist = mongoengine.ListField()
+    title = mongoengine.StringField()
+    solution = mongoengine.StringField()
+    summary = mongoengine.StringField()
+
+    # For backward compatibility
+    _ns = mongoengine.StringField(default='units_erratum')
+    unit_type_id = mongoengine.StringField(db_field='_content_type_id', required=True,
+                                           default='erratum')
+
+    unit_key_fields = ('errata_id',)
+
+    meta = {'indexes': [
+        "errata_id", "version", "release", "type", "status", "updated",
+        "issued", "severity", "references",
+        # Unit key Index
+        {
+            'fields': unit_key_fields,
+            'unique': True
+        }],
+        'collection': 'units_erratum',
+        'allow_inheritance': False}
+
+    SERIALIZER = serializers.Errata
 
     @property
     def rpm_search_dicts(self):
         ret = []
-        for collection in self.metadata.get('pkglist', []):
+        for collection in self.pkglist:
             for package in collection.get('packages', []):
                 if len(package.get('sum') or []) == 2:
                     checksum = package['sum'][1]
@@ -226,9 +386,9 @@ class Errata(Package):
                 rpm = RPM(name=package['name'], epoch=package['epoch'],
                           version=package['version'], release=package['release'],
                           arch=package['arch'], checksum=checksum,
-                          checksumtype=checksumtype, metadata={})
+                          checksum_type=checksumtype)
                 unit_key = rpm.unit_key
-                for key in ['checksum', 'checksumtype']:
+                for key in ['checksum', 'checksum_type']:
                     if unit_key[key] is None:
                         del unit_key[key]
                 ret.append(unit_key)
@@ -236,55 +396,145 @@ class Errata(Package):
 
 
 class PackageGroup(Package):
-    UNIT_KEY_NAMES = ('id', 'repo_id')
-    TYPE = ids.TYPE_ID_PKG_GROUP
 
-    def __init__(self, id, repo_id, metadata):
-        Package.__init__(self, locals())
-        # these attributes should default to False based on yum.comps.Group.parse
-        for name in ('default', 'user_visible'):
-            if self.metadata.get(name) is None:
-                self.metadata[name] = False
+    package_group_id = mongoengine.StringField(required=True)
+    repo_id = mongoengine.StringField(required=True)
+
+    description = mongoengine.StringField()
+    default_package_names = mongoengine.ListField()
+    optional_package_names = mongoengine.ListField()
+    mandatory_package_names = mongoengine.ListField()
+    name = mongoengine.StringField()
+    default = mongoengine.BooleanField(default=False)
+    display_order = mongoengine.IntField()
+    user_visible = mongoengine.BooleanField(default=False)
+    translated_name = mongoengine.DictField()
+    translated_description = mongoengine.DictField()
+    langonly = mongoengine.StringField()
+    conditional_package_names = mongoengine.ListField()
+
+    # For backward compatibility
+    _ns = mongoengine.StringField(default='units_package_group')
+    unit_type_id = mongoengine.StringField(db_field='_content_type_id', required=True,
+                                           default='package_group')
+
+    unit_key_fields = ('package_group_id', 'repo_id')
+
+    meta = {
+        'indexes': [
+            'package_group_id', 'repo_id', 'name', 'mandatory_package_names',
+            'conditional_package_names',
+            'optional_package_names', 'default_package_names',
+                # Unit key Index
+                {
+                    'fields': ('package_group_id', 'repo_id'),
+                    'unique': True
+                }],
+            'collection': 'units_package_group',
+            'allow_inheritance': False}
+
+    SERIALIZER = serializers.PackageGroup
+    #
+    # UNIT_KEY_NAMES = ('id', 'repo_id')
+    # TYPE = ids.TYPE_ID_PKG_GROUP
 
     @property
     def all_package_names(self):
         names = []
-        for list_name in [
-            'mandatory_package_names',
-            'default_package_names',
-            'optional_package_names',
-            # TODO: conditional package names
-        ]:
-            names.extend(self.metadata.get(list_name, []))
+        names.extend(self.mandatory_package_names)
+        names.extend(self.default_package_names)
+        names.extend(self.optional_package_names)
+        # TODO: conditional package names
         return names
 
 
 class PackageCategory(Package):
-    UNIT_KEY_NAMES = ('id', 'repo_id')
-    TYPE = ids.TYPE_ID_PKG_CATEGORY
 
-    def __init__(self, id, repo_id, metadata):
-        Package.__init__(self, locals())
+    package_category_id = mongoengine.StringField(required=True)
+    repo_id = mongoengine.StringField(required=True)
 
-    @property
-    def group_names(self):
-        return self.metadata.get('packagegroupids', [])
+    description = mongoengine.StringField()
+    group_ids = mongoengine.ListField(db_field='packagegroupids')
+    translated_description = mongoengine.DictField()
+    translated_name = mongoengine.DictField()
+    display_order = mongoengine.IntField()
+    name = mongoengine.StringField()
+
+    # For backward compatibility
+    _ns = mongoengine.StringField(default='units_package_category')
+    unit_type_id = mongoengine.StringField(db_field='_content_type_id', required=True,
+                                           default='package_category')
+
+    unit_key_fields = ('package_category_id', 'repo_id')
+
+    meta = {
+        'indexes': [
+            'package_category_id', 'repo_id', 'name', 'group_ids',
+            # Unit key Index
+            {
+                'fields': ('package_category_id', 'repo_id'),
+                'unique': True
+            }],
+            'collection': 'units_package_category',
+            'allow_inheritance': False}
+
+    SERIALIZER = serializers.PackageCategory
+    # UNIT_KEY_NAMES = ('id', 'repo_id')
+    # TYPE = ids.TYPE_ID_PKG_CATEGORY
+    #
+    # def __init__(self, id, repo_id, metadata):
+    #     Package.__init__(self, locals())
+    #
+    # @property
+    # def group_names(self):
+    #     return self.metadata.get('packagegroupids', [])
 
 
 class PackageEnvironment(Package):
-    UNIT_KEY_NAMES = ('id', 'repo_id')
-    TYPE = ids.TYPE_ID_PKG_ENVIRONMENT
+    package_environment_id = mongoengine.StringField(required=True)
+    repo_id = mongoengine.StringField(required=True)
 
-    def __init__(self, id, repo_id, metadata):
-        Package.__init__(self, locals())
+    group_ids = mongoengine.ListField()
+    description = mongoengine.StringField()
+    translated_name = mongoengine.DictField()
+    translated_description = mongoengine.DictField()
+    options = mongoengine.ListField()
+    display_order = mongoengine.IntField()
+    name = mongoengine.StringField()
 
-    @property
-    def group_ids(self):
-        return self.metadata.get('group_ids', [])
+    # For backward compatibility
+    _ns = mongoengine.StringField(default='units_package_environment')
+    unit_type_id = mongoengine.StringField(db_field='_content_type_id', required=True,
+                                           default='package_environment')
 
-    @property
-    def options(self):
-        return self.metadata.get('options', [])
+    unit_key_fields = ('package_environment_id', 'repo_id')
+
+    meta = {
+        'indexes': [
+            'package_environment_id', 'repo_id', 'name', 'group_ids',
+            # Unit key Index
+            {
+                'fields': ('package_environment_id', 'repo_id'),
+                'unique': True
+            }],
+        'collection': 'units_package_environment',
+        'allow_inheritance': False}
+
+    SERIALIZER = serializers.PackageEnvironment
+
+    # UNIT_KEY_NAMES = ('id', 'repo_id')
+    # TYPE = ids.TYPE_ID_PKG_ENVIRONMENT
+
+    # def __init__(self, id, repo_id, metadata):
+    #     Package.__init__(self, locals())
+
+    # @property
+    # def group_ids(self):
+    #     return self.metadata.get('group_ids', [])
+
+    # @property
+    # def options(self):
+    #     return self.metadata.get('options', [])
 
     @property
     def optional_group_ids(self):
@@ -292,51 +542,77 @@ class PackageEnvironment(Package):
 
 
 class YumMetadataFile(Package):
-    UNIT_KEY_NAMES = ('data_type', 'repo_id')
-    TYPE = ids.TYPE_ID_YUM_REPO_METADATA_FILE
+    data_type = mongoengine.StringField(required=True)
+    repo_id = mongoengine.StringField(required=True)
 
-    def __init__(self, data_type, repo_id, metadata):
-        Package.__init__(self, locals())
+    checksum = mongoengine.StringField()
+    checksum_type = mongoengine.StringField()
 
-    @property
-    def relative_dir(self):
-        """
-        returns the relative path to the directory where the file should be
-        stored. Since we don't have the filename in the metadata, we can't
-        derive the full path here.
-        """
-        return self.repo_id
+    # For backward compatibility
+    _ns = mongoengine.StringField(default='units_yum_repo_metadata_file')
+    unit_type_id = mongoengine.StringField(db_field='_content_type_id', required=True,
+                                           default='yum_repo_metadata_file')
+
+    unit_key_fields = ('data_type', 'repo_id')
+
+    meta = {
+        'indexes': [
+            'data_type',
+            # Unit key Index
+            {
+                'fields': ('data_type', 'repo_id'),
+                'unique': True
+            }],
+        'collection': 'units_yum_repo_metadata_file',
+        'allow_inheritance': False}
+
+    SERIALIZER = serializers.YumMetadataFile
+
+    # UNIT_KEY_NAMES = ('data_type', 'repo_id')
+    # TYPE = ids.TYPE_ID_YUM_REPO_METADATA_FILE
+
+    # def __init__(self, data_type, repo_id, metadata):
+    #     Package.__init__(self, locals())
+    #
+    # @property
+    # def relative_dir(self):
+    #     """
+    #     returns the relative path to the directory where the file should be
+    #     stored. Since we don't have the filename in the metadata, we can't
+    #     derive the full path here.
+    #     """
+    #     return self.repo_id
+
+#
+# TYPE_MAP = {
+#     Distribution.TYPE: Distribution,
+#     DRPM.TYPE: DRPM,
+#     Errata.TYPE: Errata,
+#     PackageCategory.TYPE: PackageCategory,
+#     PackageGroup.TYPE: PackageGroup,
+#     PackageEnvironment.TYPE: PackageEnvironment,
+#     RPM.TYPE: RPM,
+#     SRPM.TYPE: SRPM,
+#     YumMetadataFile.TYPE: YumMetadataFile,
+# }
+#
+# # put the NAMEDTUPLE attribute on each model class
+# for model_class in TYPE_MAP.values():
+#     model_class.NAMEDTUPLE = namedtuple(model_class.TYPE, model_class.UNIT_KEY_NAMES)
 
 
-TYPE_MAP = {
-    Distribution.TYPE: Distribution,
-    DRPM.TYPE: DRPM,
-    Errata.TYPE: Errata,
-    PackageCategory.TYPE: PackageCategory,
-    PackageGroup.TYPE: PackageGroup,
-    PackageEnvironment.TYPE: PackageEnvironment,
-    RPM.TYPE: RPM,
-    SRPM.TYPE: SRPM,
-    YumMetadataFile.TYPE: YumMetadataFile,
-}
-
-# put the NAMEDTUPLE attribute on each model class
-for model_class in TYPE_MAP.values():
-    model_class.NAMEDTUPLE = namedtuple(model_class.TYPE, model_class.UNIT_KEY_NAMES)
-
-
-def from_typed_unit_key_tuple(typed_tuple):
-    """
-    This assumes that the __init__ method takes unit key arguments in order
-    followed by a dictionary for other metadata.
-
-    :param typed_tuple:
-    :return:
-    """
-    package_class = TYPE_MAP[typed_tuple[0]]
-    args = typed_tuple[1:]
-    foo = {'metadata': {}}
-    return package_class.from_package_info(*args, **foo)
+# def from_typed_unit_key_tuple(typed_tuple):
+#     """
+#     This assumes that the __init__ method takes unit key arguments in order
+#     followed by a dictionary for other metadata.
+#
+#     :param typed_tuple:
+#     :return:
+#     """
+#     package_class = TYPE_MAP[typed_tuple[0]]
+#     args = typed_tuple[1:]
+#     foo = {'metadata': {}}
+#     return package_class.from_package_info(*args, **foo)
 
 
 # ------------ ISO Models --------------- #
@@ -345,70 +621,93 @@ def from_typed_unit_key_tuple(typed_tuple):
 CHECKSUM_CHUNK_SIZE = 32 * 1024 * 1024
 
 
-class ISO(object):
+class ISO(ContentUnit):
     """
     This is a handy way to model an ISO unit, with some related utilities.
     """
-    TYPE = ids.TYPE_ID_ISO
-    UNIT_KEY_ISO = ('name', 'size', 'checksum')
+    name = mongoengine.StringField(required=True)
+    checksum = mongoengine.StringField(required=True)
+    size = mongoengine.IntField(required=True)
 
-    def __init__(self, name, size, checksum, unit=None):
-        """
-        Initialize an ISO, with its name, size, and checksum.
+    # For backward compatibility
+    _ns = mongoengine.StringField(default='units_iso')
+    unit_type_id = mongoengine.StringField(db_field='_content_type_id', required=True,
+                                           default='iso')
 
-        :param name:     The name of the ISO
-        :type  name:     basestring
-        :param size:     The size of the ISO, in bytes
-        :type  size:     int
-        :param checksum: The SHA-256 checksum of the ISO
-        :type  checksum: basestring
-        """
-        self.name = name
-        self.size = size
-        self.checksum = checksum
+    unit_key_fields = ('name', 'checksum', 'size')
 
-        # This is the Unit that the ISO represents. An ISO doesn't always have a Unit backing it,
-        # particularly during repository synchronization or ISO uploads when the ISOs are being
-        # initialized.
-        self._unit = unit
+    meta = {
+        'indexes': [
+            # Unit key Index
+            {
+                'fields': ('name', 'checksum', 'size'),
+                'unique': True
+            }],
+        'collection': 'units_iso',
+        'allow_inheritance': False}
 
-    @classmethod
-    def from_unit(cls, unit):
-        """
-        Construct an ISO out of a Unit.
-        """
-        return cls(unit.unit_key['name'], unit.unit_key['size'], unit.unit_key['checksum'], unit)
+    SERIALIZER = serializers.ISO
 
-    def init_unit(self, conduit):
-        """
-        Use the given conduit's init_unit() call to initialize a unit, and store the unit as
-        self._unit.
+    # TYPE = ids.TYPE_ID_ISO
+    # UNIT_KEY_ISO = ('name', 'size', 'checksum')
 
-        :param conduit: The conduit to call init_unit() to get a Unit.
-        :type  conduit: pulp.plugins.conduits.mixins.AddUnitMixin
-        """
-        relative_path = os.path.join(self.name, self.checksum, str(self.size), self.name)
-        unit_key = {'name': self.name, 'size': self.size, 'checksum': self.checksum}
-        metadata = {}
-        self._unit = conduit.init_unit(self.TYPE, unit_key, metadata, relative_path)
+    # def __init__(self, name, size, checksum, unit=None):
+    #     """
+    #     Initialize an ISO, with its name, size, and checksum.
+    #
+    #     :param name:     The name of the ISO
+    #     :type  name:     basestring
+    #     :param size:     The size of the ISO, in bytes
+    #     :type  size:     int
+    #     :param checksum: The SHA-256 checksum of the ISO
+    #     :type  checksum: basestring
+    #     """
+    #     self.name = name
+    #     self.size = size
+    #     self.checksum = checksum
+    #
+    #     # This is the Unit that the ISO represents. An ISO doesn't always have a Unit backing it,
+    #     # particularly during repository synchronization or ISO uploads when the ISOs are being
+    #     # initialized.
+    #     self._unit = unit
 
-    def save_unit(self, conduit):
-        """
-        Use the given conduit's save_unit() call to save self._unit.
+    # @classmethod
+    # def from_unit(cls, unit):
+    #     """
+    #     Construct an ISO out of a Unit.
+    #     """
+    #     return cls(unit.unit_key['name'], unit.unit_key['size'], unit.unit_key['checksum'], unit)
+    #
+    # def init_unit(self, conduit):
+    #     """
+    #     Use the given conduit's init_unit() call to initialize a unit, and store the unit as
+    #     self._unit.
+    #
+    #     :param conduit: The conduit to call init_unit() to get a Unit.
+    #     :type  conduit: pulp.plugins.conduits.mixins.AddUnitMixin
+    #     """
+    #     relative_path = os.path.join(self.name, self.checksum, str(self.size), self.name)
+    #     unit_key = {'name': self.name, 'size': self.size, 'checksum': self.checksum}
+    #     metadata = {}
+    #     self._unit = conduit.init_unit(self.TYPE, unit_key, metadata, relative_path)
 
-        :param conduit: The conduit to call save_unit() with.
-        :type  conduit: pulp.plugins.conduits.mixins.AddUnitMixin
-        """
-        conduit.save_unit(self._unit)
+    # def save_unit(self, conduit):
+    #     """
+    #     Use the given conduit's save_unit() call to save self._unit.
+    #
+    #     :param conduit: The conduit to call save_unit() with.
+    #     :type  conduit: pulp.plugins.conduits.mixins.AddUnitMixin
+    #     """
+    #     conduit.save_unit(self._unit)
+    #
+    # @property
+    # def storage_path(self):
+    #     """
+    #     Return the storage path of the Unit that underlies this ISO.
+    #     """
+    #     return self._unit.storage_path
 
-    @property
-    def storage_path(self):
-        """
-        Return the storage path of the Unit that underlies this ISO.
-        """
-        return self._unit.storage_path
-
-    def validate(self, full_validation=True):
+    def validate_iso(self, storage_path, full_validation=True):
         """
         Validate that the name of the ISO is not the same as the manifest's name. Also, if
         full_validation is True, validate that the file found at self.storage_path matches the size
@@ -426,17 +725,8 @@ class ISO(object):
             raise ValueError(msg)
 
         if full_validation:
-
-            try:
-                destination_file = open(self.storage_path)
-
-            except:
-                # Cannot have an else clause to the try without the except.
-                raise
-
-            else:
-                try:
-                    # Validate the size
+            with open(storage_path) as destination_file:
+                 # Validate the size
                     actual_size = self.calculate_size(destination_file)
                     if actual_size != self.size:
                         raise ValueError(_('Downloading <%(name)s> failed validation. '
@@ -455,9 +745,6 @@ class ISO(object):
                               'specified the checksum to be %(c)s, but it was %(f)s.') % {
                                 'name': self.name, 'c': self.checksum,
                                 'f': actual_checksum})
-
-                finally:
-                    destination_file.close()
 
     @staticmethod
     def calculate_checksum(file_handle):
@@ -511,7 +798,7 @@ class ISOManifest(object):
         self._isos = []
         for unit in manifest_csv:
             name, checksum, size = unit
-            iso = ISO(name, int(size), checksum)
+            iso = ISO(name=name, size=int(size), checksum=checksum)
             # Take a URL onto the ISO so we know where we can get it
             iso.url = urljoin(repo_url, name)
             self._isos.append(iso)

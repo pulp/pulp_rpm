@@ -4,7 +4,8 @@ import shutil
 
 from pulp.common.config import read_json_config
 from pulp.plugins.distributor import Distributor
-from pulp.server import config as pulp_server_config
+from pulp.server.config import config as pulp_server_config
+from pulp.server.db import model as platform_models
 
 import pulp_rpm.common.constants as constants
 from pulp_rpm.common.ids import (
@@ -58,16 +59,16 @@ class YumHTTPDistributor(Distributor):
                           TYPE_ID_PKG_GROUP, TYPE_ID_PKG_CATEGORY, TYPE_ID_DISTRO,
                           TYPE_ID_YUM_REPO_METADATA_FILE]}
 
-    def validate_config(self, repo, config, config_conduit):
+    def validate_config(self, transfer_repo, config, config_conduit):
         """
         Allows the distributor to check the contents of a potential configuration
         for the given repository. This call is made both for the addition of
         this distributor to a new repository as well as updating the configuration
         for this distributor on a previously configured repository.
 
-        :param repo: metadata describing the repository to which the
-                     configuration applies
-        :type  repo: pulp.plugins.model.Repository
+        :param transfer_repo: metadata describing the repository to which the
+            configuration applies
+        :type  transfer_repo: pulp.plugins.model.Repository
 
         :param config: plugin configuration instance; the proposed repo
                        configuration is found within
@@ -79,20 +80,22 @@ class YumHTTPDistributor(Distributor):
         :return: tuple of (bool, str) to describe the result
         :rtype:  tuple
         """
-        _logger.debug('Validating yum repository configuration: %s' % repo.id)
+        _logger.debug('Validating yum repository configuration: %s' % transfer_repo.id)
+        repo = platform_models.Repository.objects.get(repo_id=transfer_repo.id)
 
         return configuration.validate_config(repo, config, config_conduit)
 
-    def distributor_removed(self, repo, config):
+    def distributor_removed(self, transfer_repo, config):
         """
         Called when a distributor of this type is removed from a repository.
 
-        :param repo: metadata describing the repository
-        :type  repo: pulp.plugins.model.Repository
+        :param transfer_repo: metadata describing the repository
+        :type  transfer_repo: pulp.plugins.model.Repository
 
         :param config: plugin configuration
         :type  config: pulp.plugins.config.PluginCallConfiguration
         """
+        repo = platform_models.Repository.objects.get(repo_id=transfer_repo.id)
 
         # remove the directories that might have been created for this repo/distributor
         repo_dir = configuration.get_master_publish_dir(repo, TYPE_ID_DISTRIBUTOR_YUM)
@@ -149,12 +152,12 @@ class YumHTTPDistributor(Distributor):
 
         self.clean_simple_hosting_directories(up_dir, containing_dir)
 
-    def publish_repo(self, repo, publish_conduit, config):
+    def publish_repo(self, transfer_repo, publish_conduit, config):
         """
         Publishes the given repository.
 
-        :param repo: metadata describing the repository
-        :type  repo: pulp.plugins.model.Repository
+        :param transfer_repo: metadata describing the repository
+        :type  transfer_repo: pulp.plugins.model.Repository
 
         :param publish_conduit: provides access to relevant Pulp functionality
         :type  publish_conduit: pulp.plugins.conduits.repo_publish.RepoPublishConduit
@@ -165,10 +168,12 @@ class YumHTTPDistributor(Distributor):
         :return: report describing the publish run
         :rtype:  pulp.plugins.model.PublishReport
         """
-        _logger.debug('Publishing yum repository: %s' % repo.id)
+        _logger.debug('Publishing yum repository: %s' % transfer_repo.id)
+        repo = platform_models.Repository.objects.get(repo_id=transfer_repo.id)
+        repo.repo_id = transfer_repo.id
 
         self._publisher = publish.Publisher(repo, publish_conduit, config, TYPE_ID_DISTRIBUTOR_YUM)
-        return self._publisher.publish()
+        return self._publisher.process_lifecycle()
 
     def cancel_publish_repo(self):
         """
@@ -180,14 +185,14 @@ class YumHTTPDistributor(Distributor):
         if self._publisher is not None:
             self._publisher.cancel()
 
-    def create_consumer_payload(self, repo, config, binding_config):
+    def create_consumer_payload(self, transfer_repo, config, binding_config):
         """
         Called when a consumer binds to a repository using this distributor.
         This call should return a dictionary describing all data the consumer
         will need to access the repository.
 
-        :param repo: metadata describing the repository
-        :type  repo: pulp.plugins.model.Repository
+        :param transfer_repo: metadata describing the repository
+        :type  transfer_repo: pulp.plugins.model.Repository
 
         :param config: plugin configuration
         :type  config: pulp.plugins.config.PluginCallConfiguration
@@ -200,6 +205,8 @@ class YumHTTPDistributor(Distributor):
         :return: dictionary of relevant data
         :rtype:  dict
         """
+        repo = platform_models.Repository.objects.get(repo_id=transfer_repo.id)
+
         payload = dict()
         payload['repo_name'] = repo.display_name
         payload['server_name'] = pulp_server_config.config.get('server', 'server_name')

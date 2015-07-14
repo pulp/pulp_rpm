@@ -7,7 +7,6 @@ from pulp.plugins.distributor import GroupDistributor
 from pulp.server.exceptions import PulpDataException
 
 from pulp_rpm.common import ids
-from pulp_rpm.plugins.db import models
 from pulp_rpm.plugins.distributors.export_distributor import export_utils
 from pulp_rpm.plugins.distributors.yum import configuration
 from pulp_rpm.yum_plugin import util
@@ -53,9 +52,13 @@ class GroupISODistributor(GroupDistributor):
         return {
             'id': ids.TYPE_ID_DISTRIBUTOR_GROUP_EXPORT,
             'display_name': _('Group Export Distributor'),
-            'types': [models.RPM.TYPE, models.SRPM.TYPE, models.DRPM.TYPE, models.Errata.TYPE,
-                      models.Distribution.TYPE, models.PackageCategory.TYPE,
-                      models.PackageGroup.TYPE]
+            'types': [ids.TYPE_ID_RPM,
+                      ids.TYPE_ID_SRPM,
+                      ids.TYPE_ID_DRPM,
+                      ids.TYPE_ID_ERRATA,
+                      ids.TYPE_ID_DISTRO,
+                      ids.TYPE_ID_PKG_CATEGORY,
+                      ids.TYPE_ID_PKG_GROUP]
         }
 
     def validate_config(self, repo_group, config, config_conduit):
@@ -110,7 +113,7 @@ class GroupISODistributor(GroupDistributor):
         _logger.info('Beginning export of the following repository group: [%s]' % repo_group.id)
         self._publisher = ExportRepoGroupPublisher(repo_group, publish_conduit, config,
                                                    ids.TYPE_ID_DISTRIBUTOR_GROUP_EXPORT)
-        return self._publisher.publish()
+        return self._publisher.process_lifecycle()
 
     def cancel_publish_repo(self):
         """
