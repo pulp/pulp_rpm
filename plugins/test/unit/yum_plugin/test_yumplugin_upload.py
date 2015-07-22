@@ -16,6 +16,7 @@ class TestUploadGenerateRpmData(unittest.TestCase):
     """
     Tests for upload._generate_rpm_data
     """
+
     def test_usual_filename(self):
         unit_key, metadata = upload._generate_rpm_data(models.RPM.TYPE, RPM_USUAL_NAME, {})
         self.assertEquals('pulp-test-package-0.3.1-1.fc11.x86_64.rpm', metadata['filename'])

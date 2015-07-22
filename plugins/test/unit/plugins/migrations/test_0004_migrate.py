@@ -14,19 +14,19 @@ TYPE_DEF_CATEGORY = TypeDefinition('package_category', '', '', ['id', 'repo_id']
 
 
 class Migration0004Tests(rpm_support_base.PulpRPMTests):
-
     def setUp(self):
         super(Migration0004Tests, self).setUp()
 
         # Special way to import modules that start with a number
-        self.migration = _import_all_the_way('pulp_rpm.plugins.migrations.0004_pkg_group_category_repoid')
+        self.migration = _import_all_the_way(
+            'pulp_rpm.plugins.migrations.0004_pkg_group_category_repoid')
 
         factory.initialize()
         types_db.update_database([TYPE_DEF_GROUP, TYPE_DEF_CATEGORY])
 
         # Create the repositories necessary for the tests
-        self.source_repo_id = 'source-repo' # where units were copied from with the bad code
-        self.dest_repo_id = 'dest-repo' # where bad units were copied to
+        self.source_repo_id = 'source-repo'  # where units were copied from with the bad code
+        self.dest_repo_id = 'dest-repo'  # where bad units were copied to
 
         source_repo = Repo(self.source_repo_id, '')
         Repo.get_collection().insert(source_repo, safe=True)
@@ -52,7 +52,8 @@ class Migration0004Tests(rpm_support_base.PulpRPMTests):
 
     def test_migrate_duplicates(self):
         """
-        This tests the correct behavior when we try to change the repo_id on an object, and end up causing
+        This tests the correct behavior when we try to change the repo_id on an object,
+        and end up causing
         a duplicate error due to our uniqueness constraint.
         """
         # Let's put two units here with the same IDs with two different repo_ids, and the run the
@@ -70,8 +71,10 @@ class Migration0004Tests(rpm_support_base.PulpRPMTests):
         group_collection = types_db.type_units_collection(ids.TYPE_ID_PKG_GROUP)
         all_groups = list(group_collection.find())
         self.assertEqual(len(all_groups), 2)
-        self.assertEqual(group_collection.find({'id': 'group', 'repo_id': self.dest_repo_id}).count(), 1)
-        self.assertEqual(group_collection.find({'id': 'group', 'repo_id': self.source_repo_id}).count(), 1)
+        self.assertEqual(
+            group_collection.find({'id': 'group', 'repo_id': self.dest_repo_id}).count(), 1)
+        self.assertEqual(
+            group_collection.find({'id': 'group', 'repo_id': self.source_repo_id}).count(), 1)
 
         # Let's make sure that the dest group is associated, but not the source one
         query_manager = factory.repo_unit_association_query_manager()
@@ -83,14 +86,17 @@ class Migration0004Tests(rpm_support_base.PulpRPMTests):
         self.assertEqual(query_manager.get_units(self.source_repo_id), [])
 
         # Verify the repo counts
-        self.assertEqual(Repo.get_collection().find({'id': 'source-repo'})[0]['content_unit_counts'], {})
+        self.assertEqual(
+            Repo.get_collection().find({'id': 'source-repo'})[0]['content_unit_counts'], {})
         self.assertEqual(Repo.get_collection().find({'id': 'dest-repo'})[0]['content_unit_counts'],
-                        {'package_group': 1})
+                         {'package_group': 1})
 
     def test_migrate_duplicates_doesnt_delete_from_source_repo(self):
         """
-        This tests the correct behavior when we try to change the repo_id on an object, and end up causing
-        a duplicate error due to our uniqueness constraint. It also makes sure the units are not deleted from
+        This tests the correct behavior when we try to change the repo_id on an object,
+        and end up causing
+        a duplicate error due to our uniqueness constraint. It also makes sure the units are not
+        deleted from
         the source repository if they are in the source repository.
         """
         # Let's put two units here with the same IDs with two different repo_ids, and the run the
@@ -110,8 +116,10 @@ class Migration0004Tests(rpm_support_base.PulpRPMTests):
         group_collection = types_db.type_units_collection(ids.TYPE_ID_PKG_GROUP)
         all_groups = list(group_collection.find())
         self.assertEqual(len(all_groups), 2)
-        self.assertEqual(group_collection.find({'id': 'group', 'repo_id': self.dest_repo_id}).count(), 1)
-        self.assertEqual(group_collection.find({'id': 'group', 'repo_id': self.source_repo_id}).count(), 1)
+        self.assertEqual(
+            group_collection.find({'id': 'group', 'repo_id': self.dest_repo_id}).count(), 1)
+        self.assertEqual(
+            group_collection.find({'id': 'group', 'repo_id': self.source_repo_id}).count(), 1)
 
         # Let's make sure that there are two associations, and that they are correct.
         query_manager = factory.repo_unit_association_query_manager()
@@ -127,10 +135,11 @@ class Migration0004Tests(rpm_support_base.PulpRPMTests):
         self.assertEqual(source_unit['unit_id'], source_repo_group_id)
 
         # Verify the repo counts
-        self.assertEqual(Repo.get_collection().find({'id': 'source-repo'})[0]['content_unit_counts'],
-                         {'package_group': 1})
+        self.assertEqual(
+            Repo.get_collection().find({'id': 'source-repo'})[0]['content_unit_counts'],
+            {'package_group': 1})
         self.assertEqual(Repo.get_collection().find({'id': 'dest-repo'})[0]['content_unit_counts'],
-                        {'package_group': 1})
+                         {'package_group': 1})
 
     def test_migrate_groups(self):
         # Setup
@@ -149,7 +158,7 @@ class Migration0004Tests(rpm_support_base.PulpRPMTests):
         all_groups = group_coll.find({}).sort('repo_id', 1)
         self.assertEqual(2, all_groups.count())
 
-        dest_group = all_groups[0] # ordered by ID, this will be first
+        dest_group = all_groups[0]  # ordered by ID, this will be first
         self.assertEqual(dest_group['id'], 'g1')
         self.assertEqual(dest_group['repo_id'], self.dest_repo_id)
 
@@ -184,7 +193,7 @@ class Migration0004Tests(rpm_support_base.PulpRPMTests):
         all_cats = group_coll.find({}).sort('repo_id', 1)
         self.assertEqual(2, all_cats.count())
 
-        dest_cat = all_cats[0] # ordered by ID, this will be first
+        dest_cat = all_cats[0]  # ordered by ID, this will be first
         self.assertEqual(dest_cat['id'], 'c1')
         self.assertEqual(dest_cat['repo_id'], self.dest_repo_id)
 
@@ -207,19 +216,20 @@ class Migration0004Tests(rpm_support_base.PulpRPMTests):
 
 
 def add_unit(id, repo_id, type_id):
-    metadata = {'id' : id, 'repo_id' : repo_id,}
+    metadata = {'id': id, 'repo_id': repo_id, }
 
     unit_id = factory.content_manager().add_content_unit(
         type_id, None, metadata)
 
     return unit_id
 
+
 def associate_unit(mongo_id, to_repo_id, type_id):
     manager = factory.repo_unit_association_manager()
-    manager.associate_unit_by_id(to_repo_id, type_id, mongo_id, 'importer',
-                                 'yum_importer', update_repo_metadata=True)
+    manager.associate_unit_by_id(to_repo_id, type_id, mongo_id, update_repo_metadata=True)
+
 
 def generate_unit(unit_id, repo_id):
     # generate a package group or category unit
-    return {'id' : unit_id,
-            'repo_id' : repo_id,}
+    return {'id': unit_id,
+            'repo_id': repo_id, }

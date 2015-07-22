@@ -1,4 +1,3 @@
-
 import mock
 
 from yum.Errors import InstallError, GroupsError
@@ -7,11 +6,11 @@ from yum import constants
 
 def install():
     import yum
+
     yum.YumBase = YumBase
 
 
 class Pkg:
-
     ARCH = 'noarch'
 
     def __init__(self, name, version, release='1', arch=ARCH):
@@ -30,7 +29,6 @@ class Pkg:
 
 
 class TxMember:
-
     def __init__(self, state, repoid, pkg, isDep=0):
         self.output_state = state
         self.repoid = repoid
@@ -43,7 +41,6 @@ class Config(object):
 
 
 class YumBase:
-
     FAILED_PKG = '__failed__'
     UNKNOWN_PKG = '__unknown__'
 
@@ -76,18 +73,18 @@ class YumBase:
     REPOID = 'fedora'
 
     GROUPS = {
-        'plain':[
+        'plain': [
             Pkg('zsh', '3.2'),
             Pkg('xchat', '1.3'),
             Pkg('thunderbird', '10.1.7'),
         ],
-        'plain-failed':[
+        'plain-failed': [
             Pkg('zsh', '3.2'),
             Pkg('xchat', '1.3'),
             Pkg('thunderbird', '10.1.7'),
             Pkg(FAILED_PKG, '6.3'),
         ],
-        'pulp':[
+        'pulp': [
             Pkg('okaara', '0.25'),
             Pkg('gofer', '0.70', '2'),
             Pkg('mongo', '1.3.2'),

@@ -528,11 +528,13 @@ class Yum(YumBase):
         """
         Clean handlers leaked by yum.
         """
+
         def strip(logger):
             for handler in logger.handlers:
                 logger.removeHandler(handler)
+
         try:
-            for n,lg in Logger.manager.loggerDict.items():
+            for n, lg in Logger.manager.loggerDict.items():
                 if n.startswith('yum.') and isinstance(lg, Logger):
                     strip(lg)
         except Exception:
@@ -564,4 +566,3 @@ class Yum(YumBase):
         except Exception:
             self.progress.set_status(False)
             raise
-

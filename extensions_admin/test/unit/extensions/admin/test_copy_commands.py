@@ -41,15 +41,15 @@ class RecursiveCopyCommandTests(PulpClientTests):
 
     def test_generate_override_config(self):
         # Test
-        user_input = {copy_commands.FLAG_RECURSIVE.keyword : True}
+        user_input = {copy_commands.FLAG_RECURSIVE.keyword: True}
         override_config = self.command.generate_override_config(**user_input)
 
         # Verify
-        self.assertEqual(override_config, {CONFIG_RECURSIVE : True})
+        self.assertEqual(override_config, {CONFIG_RECURSIVE: True})
 
     def test_generate_override_config_no_recursive(self):
         # Test
-        user_input = {copy_commands.FLAG_RECURSIVE.keyword : None}
+        user_input = {copy_commands.FLAG_RECURSIVE.keyword: None}
         override_config = self.command.generate_override_config(**user_input)
 
         # Verify
@@ -76,21 +76,22 @@ class PackageCopyCommandTests(PulpClientTests):
     @mock.patch('pulp.client.commands.unit.UnitCopyCommand.modify_user_input')
     def test_modify_user_input(self, mock_super):
         command = copy_commands.PackageCopyCommand(self.context, 'copy', '', '')
-        user_input = {'a' : 'a'}
+        user_input = {'a': 'a'}
         command.modify_user_input(user_input)
 
         # The super call is required.
         self.assertEqual(1, mock_super.call_count)
 
         # The user_input variable itself should be modified.
-        self.assertEqual(user_input, {'a': 'a', 'fields' : UNIT_KEY_RPM})
+        self.assertEqual(user_input, {'a': 'a', 'fields': UNIT_KEY_RPM})
 
     def test_get_formatter_for_type(self):
         command = copy_commands.PackageCopyCommand(self.context, 'copy', '', '')
 
         # get a formatter and make sure it can be used
         formatter = command.get_formatter_for_type(TYPE_ID_RPM)
-        unit_string = formatter({'name': 'package1', 'version': '1.2.3', 'release': '1', 'arch': 'x86_64'})
+        unit_string = formatter(
+            {'name': 'package1', 'version': '1.2.3', 'release': '1', 'arch': 'x86_64'})
 
         # make sure the name appears in the formatted string somewhere, which
         # seems like a reasonable assumption for any implementation of such

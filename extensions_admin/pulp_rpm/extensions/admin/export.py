@@ -1,17 +1,16 @@
 from gettext import gettext as _
 
+from okaara import parsers
 from pulp.bindings import responses
 from pulp.client.commands import options
 from pulp.client.commands.repo.sync_publish import RunPublishRepositoryCommand
-from pulp.client import parsers, validators
+from pulp.client import validators
 from pulp.client.commands.polling import PollingCommand
-from pulp.client.extensions.extensions import PulpCliOption
+from pulp.client.extensions.extensions import PulpCliOption, PulpCliFlag
 from pulp.common import tags as tag_utils
 
 from pulp_rpm.common import ids, constants
 
-
-# -- commands -----------------------------------------------------------------
 
 DESC_EXPORT_RUN = _('triggers an immediate export of a repository')
 DESC_GROUP_EXPORT_RUN = _('triggers an immediate export of a repository group')
@@ -37,6 +36,7 @@ DESC_SERVE_HTTP = _('if this flag is used, the ISO images will be served over HT
                     'this export is to a directory, this has no effect.')
 DESC_SERVE_HTTPS = _('if this flag is used, the ISO images will be served over HTTPS; if '
                      'this export is to a directory, this has no effect.')
+DESC_MANIFEST = _('if this flag is used, a PULP_MANIFEST file will be created')
 
 # Flag names, which are also the kwarg keywords
 SERVE_HTTP = 'serve-http'
@@ -53,11 +53,14 @@ OPTION_EXPORT_DIR = PulpCliOption('--export-dir', DESC_EXPORT_DIR, required=Fals
 OPTION_ISO_SIZE = PulpCliOption('--iso-size', DESC_ISO_SIZE, required=False,
                                 parse_func=parsers.parse_optional_positive_int)
 
+FLAG_MANIFEST = PulpCliFlag('--' + constants.CREATE_PULP_MANIFEST, DESC_MANIFEST, ['-m'])
+
 
 class RpmExportCommand(RunPublishRepositoryCommand):
     """
     The 'pulp-admin rpm repo export run' command
     """
+
     def __init__(self, context, renderer):
         """
         The constructor for RpmExportCommand
@@ -66,7 +69,7 @@ class RpmExportCommand(RunPublishRepositoryCommand):
         :type  context: pulp.client.extensions.core.ClientContext
         """
         override_config_options = [OPTION_EXPORT_DIR, OPTION_ISO_PREFIX, OPTION_ISO_SIZE,
-                                   OPTION_START_DATE, OPTION_END_DATE]
+                                   OPTION_START_DATE, OPTION_END_DATE, FLAG_MANIFEST]
 
         super(RpmExportCommand, self).__init__(context=context,
                                                renderer=renderer,
@@ -79,6 +82,7 @@ class RpmGroupExportCommand(PollingCommand):
     """
     The 'pulp-admin rpm repo group export run' command.
     """
+
     def __init__(self, context, renderer, name='run', description=DESC_GROUP_EXPORT_RUN):
         """
         The constructor for RpmGroupExportCommand
@@ -105,6 +109,7 @@ class RpmGroupExportCommand(PollingCommand):
         self.add_option(OPTION_START_DATE)
         self.add_option(OPTION_END_DATE)
         self.add_option(OPTION_EXPORT_DIR)
+        self.add_flag(FLAG_MANIFEST)
 
         self.create_flag('--' + SERVE_HTTP, DESC_SERVE_HTTP)
         self.create_flag('--' + SERVE_HTTPS, DESC_SERVE_HTTPS)
@@ -121,6 +126,7 @@ class RpmGroupExportCommand(PollingCommand):
         start_date = kwargs[OPTION_START_DATE.keyword]
         end_date = kwargs[OPTION_END_DATE.keyword]
         export_dir = kwargs[OPTION_EXPORT_DIR.keyword]
+        manifest = kwargs[FLAG_MANIFEST.keyword]
         serve_http = kwargs[SERVE_HTTP]
         serve_https = kwargs[SERVE_HTTPS]
 
@@ -131,7 +137,7 @@ class RpmGroupExportCommand(PollingCommand):
         response = self.context.server.repo_group_distributor.distributors(group_id)
         all_distributors = response.response_body
         distributors = []
-        # Iterate through and do comparision since the API doesn't support full search
+        # Iterate through and do comparison since the API doesn't support full search
         for distributor in all_distributors:
             if distributor.get('distributor_type_id') == ids.TYPE_ID_DISTRIBUTOR_GROUP_EXPORT:
                 distributors.append(distributor)
@@ -155,10 +161,11 @@ class RpmGroupExportCommand(PollingCommand):
             constants.START_DATE_KEYWORD: start_date,
             constants.END_DATE_KEYWORD: end_date,
             constants.EXPORT_DIRECTORY_KEYWORD: export_dir,
+            constants.CREATE_PULP_MANIFEST: manifest,
         }
 
         # Remove keys from the config that have None value.
-        for key,value in publish_config.items():
+        for key, value in publish_config.items():
             if value is None:
                 del publish_config[key]
 
@@ -196,6 +203,7 @@ class GroupExportStatusCommand(PollingCommand):
     """
     The rpm repo group export status command.
     """
+
     def __init__(self, context, renderer, name='status', description=DESC_GROUP_EXPORT_STATUS):
         """
         The constructor for GroupExportStatusCommand

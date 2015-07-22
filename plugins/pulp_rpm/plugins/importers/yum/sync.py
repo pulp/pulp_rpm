@@ -2,21 +2,29 @@ import contextlib
 import functools
 import logging
 import os
+import random
+import re
 import shutil
 import tempfile
+import traceback
 from gettext import gettext as _
+from cStringIO import StringIO
+
+
+from nectar.request import DownloadRequest
 
 from pulp.common.plugins import importer_constants
 from pulp.plugins.util import nectar_config as nectar_utils, verification
 from pulp.server.exceptions import PulpCodedException
 
 from pulp_rpm.common import constants, ids
+from pulp_rpm.plugins import error_codes
 from pulp_rpm.plugins.db import models
 from pulp_rpm.plugins.importers.yum import existing, purge
-from pulp_rpm.plugins.importers.yum.repomd import (
-    metadata, primary, packages, updateinfo, presto, group, alternate)
 from pulp_rpm.plugins.importers.yum.listener import ContentListener
 from pulp_rpm.plugins.importers.yum.parse import treeinfo
+from pulp_rpm.plugins.importers.yum.repomd import (
+    alternate, group, metadata, nectar_factory, packages, presto, primary, updateinfo)
 from pulp_rpm.plugins.importers.yum.report import ContentReport, DistributionReport
 
 
@@ -24,10 +32,6 @@ _logger = logging.getLogger(__name__)
 
 
 class CancelException(Exception):
-    pass
-
-
-class FailedException(Exception):
     pass
 
 
@@ -79,12 +83,51 @@ class RepoSync(object):
     @property
     def sync_feed(self):
         """
-        :return:    the URL of the feed we should sync
-        :rtype:     str
+        :return:    a list of the URLs of the feeds we can sync
+        :rtype:     list
         """
         repo_url = self.call_config.get(importer_constants.KEY_FEED)
-        if repo_url is not None and not repo_url.endswith('/'):
-            repo_url += '/'
+        if repo_url:
+            repo_url_slash = repo_url
+            self.tmp_dir = tempfile.mkdtemp(dir=self.working_dir)
+            if not repo_url.endswith('/'):
+                    repo_url_slash = repo_url + '/'
+            try:
+                self.check_metadata(repo_url_slash)
+                return [repo_url_slash]
+            except PulpCodedException:
+                # treat as mirrorlist
+                return self._parse_as_mirrorlist(repo_url)
+            finally:
+                shutil.rmtree(self.tmp_dir, ignore_errors=True)
+        return [repo_url]
+
+    def _parse_as_mirrorlist(self, feed):
+        """
+        Treats the provided feed as mirrorlist. Parses its content and extracts
+        urls to sync.
+
+        :param feed: feed that should be treated as mirrorlist
+        :type:       str
+
+        :return:    list the URLs received from the mirrorlist
+        :rtype:     list
+        """
+        url_file = StringIO()
+        downloader = nectar_factory.create_downloader(feed, self.nectar_config)
+        request = DownloadRequest(feed, url_file)
+        downloader.download_one(request)
+        url_file.seek(0)
+        url_parse = url_file.read().split('\n')
+        repo_url = []
+        # Due to the fact, that format of mirrorlist can be different, this regex
+        # matches the cases when the url is not commented out and does not have any
+        # punctuation characters in front.
+        pattern = re.compile("(^|^[\w\s=]+\s)((http(s)?)://.*)")
+        for line in url_parse:
+            for match in re.finditer(pattern, line):
+                repo_url.append(match.group(2))
+        random.shuffle(repo_url)
         return repo_url
 
     @contextlib.contextmanager
@@ -129,67 +172,101 @@ class RepoSync(object):
         :return:    A SyncReport detailing how the sync went
         :rtype:     pulp.plugins.model.SyncReport
         """
-        # using this tmp dir ensures that cleanup leaves nothing behind, since
-        # we delete below
-        self.tmp_dir = tempfile.mkdtemp(dir=self.working_dir)
-        try:
-            with self.update_state(self.progress_status['metadata']):
-                # Verify that we have a feed url.
-                # if there is no feed url, then we have nothing to sync
-                if self.sync_feed is None:
-                    raise FailedException(_('Unable to sync a repository that has no feed'))
+        # Empty list could be returned in case _parse_as_mirrorlist()
+        # was not able to find any valid url
+        if self.sync_feed == []:
+            raise PulpCodedException(error_code=error_codes.RPM1004, reason='Not found')
+        url_count = 0
+        for url in self.sync_feed:
+            # Verify that we have a feed url.
+            # if there is no feed url, then we have nothing to sync
+            if url is None:
+                raise PulpCodedException(error_code=error_codes.RPM1005)
+            # using this tmp dir ensures that cleanup leaves nothing behind, since
+            # we delete below
+            self.tmp_dir = tempfile.mkdtemp(dir=self.working_dir)
+            url_count += 1
+            try:
+                with self.update_state(self.progress_status['metadata']):
+                    metadata_files = self.check_metadata(url)
+                    metadata_files = self.get_metadata(metadata_files)
 
-                metadata_files = self.get_metadata()
-                # Save the default checksum from the metadata
-                self.save_default_metadata_checksum_on_repo(metadata_files)
+                    # Save the default checksum from the metadata
+                    self.save_default_metadata_checksum_on_repo(metadata_files)
 
-            with self.update_state(self.content_report) as skip:
-                if not (skip or self.skip_repomd_steps):
-                    self.update_content(metadata_files)
+                with self.update_state(self.content_report) as skip:
+                    if not (skip or self.skip_repomd_steps):
+                        self.update_content(metadata_files, url)
 
-            _logger.info(_('Downloading additional units.'))
+                _logger.info(_('Downloading additional units.'))
 
-            with self.update_state(self.distribution_report, models.Distribution.TYPE) as skip:
-                if not skip:
-                    treeinfo.sync(self.sync_conduit, self.sync_feed, self.tmp_dir,
-                                  self.nectar_config, self.distribution_report,
-                                  self.set_progress)
+                with self.update_state(self.distribution_report, models.Distribution.TYPE) as skip:
+                    if not skip:
+                        treeinfo.sync(self.sync_conduit, url, self.tmp_dir,
+                                      self.nectar_config, self.distribution_report,
+                                      self.set_progress)
 
-            with self.update_state(self.progress_status['errata'], models.Errata.TYPE) as skip:
-                if not (skip or self.skip_repomd_steps):
-                    self.get_errata(metadata_files)
+                with self.update_state(self.progress_status['errata'], models.Errata.TYPE) as skip:
+                    if not (skip or self.skip_repomd_steps):
+                        self.get_errata(metadata_files)
 
-            with self.update_state(self.progress_status['comps']) as skip:
-                if not (skip or self.skip_repomd_steps):
-                    self.get_comps_file_units(metadata_files, group.process_group_element,
-                                              group.GROUP_TAG)
-                    self.get_comps_file_units(metadata_files, group.process_category_element,
-                                              group.CATEGORY_TAG)
-                    self.get_comps_file_units(metadata_files, group.process_environment_element,
-                                              group.ENVIRONMENT_TAG)
+                with self.update_state(self.progress_status['comps']) as skip:
+                    if not (skip or self.skip_repomd_steps):
+                        self.get_comps_file_units(metadata_files, group.process_group_element,
+                                                  group.GROUP_TAG)
+                        self.get_comps_file_units(metadata_files, group.process_category_element,
+                                                  group.CATEGORY_TAG)
+                        self.get_comps_file_units(metadata_files, group.process_environment_element,
+                                                  group.ENVIRONMENT_TAG)
 
-        except CancelException:
-            report = self.sync_conduit.build_cancel_report(self._progress_summary, self.progress_status)
-            report.canceled_flag = True
-            return report
+            except CancelException:
+                report = self.sync_conduit.build_cancel_report(self._progress_summary,
+                                                               self.progress_status)
+                report.canceled_flag = True
+                return report
 
-        except Exception, e:
-            _logger.exception('sync failed')
-            for step, value in self.progress_status.iteritems():
-                if value.get('state') == constants.STATE_RUNNING:
-                    value['state'] = constants.STATE_FAILED
-                    value['error'] = str(e)
-            self.set_progress()
-            report = self.sync_conduit.build_failure_report(self._progress_summary, self.progress_status)
-            return report
+            except PulpCodedException, e:
+                # Check if the caught exception indicates that the mirror is bad.
+                # Try next mirror in the list without raising the exception.
+                # In case it was the last mirror in the list, raise the exception.
+                bad_mirror_exceptions = [error_codes.RPM1004, error_codes.RPM1006]
+                if (e.error_code in bad_mirror_exceptions) and \
+                        url_count != len(self.sync_feed):
+                            continue
+                else:
+                    self._set_failed_state(e)
+                    raise
 
-        finally:
-            # clean up whatever we may have left behind
-            shutil.rmtree(self.tmp_dir, ignore_errors=True)
+            except Exception, e:
+                # In case other exceptions were caught that are not related to the state of the
+                # mirror, raise the exception immediately and do not iterate throught the rest
+                # of the mirrors.
+                self._set_failed_state(e)
+                report = self.sync_conduit.build_failure_report(self._progress_summary,
+                                                                self.progress_status)
+                return report
 
-        self.save_repomd_revision()
-        _logger.info(_('Sync complete.'))
-        return self.sync_conduit.build_success_report(self._progress_summary, self.progress_status)
+            finally:
+                # clean up whatever we may have left behind
+                shutil.rmtree(self.tmp_dir, ignore_errors=True)
+
+            self.save_repomd_revision()
+            _logger.info(_('Sync complete.'))
+            return self.sync_conduit.build_success_report(self._progress_summary,
+                                                          self.progress_status)
+
+    def _set_failed_state(self, exception):
+        """
+        Sets failed state of the task and caught error in the progress status.
+
+        :param exception: caught exception
+        :type: Exception
+        """
+        for step, value in self.progress_status.iteritems():
+            if value.get('state') == constants.STATE_RUNNING:
+                value['state'] = constants.STATE_FAILED
+                value['error'] = str(exception)
+        self.set_progress()
 
     @property
     def _progress_summary(self):
@@ -206,27 +283,42 @@ class RepoSync(object):
             ret[step_name] = {'state': progress_dict['state']}
         return ret
 
-    def get_metadata(self):
+    def check_metadata(self, url):
         """
-        :return:    instance of MetadataFiles where each relevant file has been
-                    identified and downloaded.
+        :param url: curret URL we should sync
+        :type: str
+
+        :return:    instance of MetadataFiles
         :rtype:     pulp_rpm.plugins.importers.yum.repomd.metadata.MetadataFiles
         """
-        _logger.info(_('Downloading metadata from %(feed)s.') % {'feed': self.sync_feed})
-        metadata_files = metadata.MetadataFiles(self.sync_feed, self.tmp_dir, self.nectar_config)
-        # allow the downloader to be accessed by the cancel method if necessary
-        self.downloader = metadata_files.downloader
+        _logger.info(_('Downloading metadata from %(feed)s.') % {'feed': url})
+        metadata_files = metadata.MetadataFiles(url, self.tmp_dir, self.nectar_config)
         try:
             metadata_files.download_repomd()
         except IOError, e:
-            raise FailedException(str(e))
+            raise PulpCodedException(error_code=error_codes.RPM1004, reason=str(e))
+
         _logger.info(_('Parsing metadata.'))
 
         try:
             metadata_files.parse_repomd()
-        except ValueError, e:
-            raise FailedException(str(e))
+        except ValueError:
+            _logger.debug(traceback.format_exc())
+            raise PulpCodedException(error_code=error_codes.RPM1006)
+        return metadata_files
 
+    def get_metadata(self, metadata_files):
+        """
+        :param metadata_files: instance of MetadataFiles
+        :type: pulp_rpm.plugins.importers.yum.repomd.metadata.MetadataFiles
+
+        :return:    instance of MetadataFiles where each relevant file has been
+                    identified and downloaded.
+        :rtype:     pulp_rpm.plugins.importers.yum.repomd.metadata.MetadataFiles
+        """
+
+        # allow the downloader to be accessed by the cancel method if necessary
+        self.downloader = metadata_files.downloader
         scratchpad = self.sync_conduit.get_scratchpad() or {}
         previous_revision = scratchpad.get(constants.REPOMD_REVISION_KEY, 0)
         previous_skip_set = set(scratchpad.get(constants.PREVIOUS_SKIP_LIST, []))
@@ -308,21 +400,24 @@ class RepoSync(object):
                 model = models.YumMetadataFile(metadata_type,
                                                self.sync_conduit.repo_id,
                                                unit_metadata)
-                relative_path = os.path.join(model.relative_dir, os.path.basename(file_info['local_path']))
+                relative_path = os.path.join(model.relative_dir,
+                                             os.path.basename(file_info['local_path']))
                 unit = self.sync_conduit.init_unit(models.YumMetadataFile.TYPE, model.unit_key,
-                                            model.metadata, relative_path)
+                                                   model.metadata, relative_path)
                 shutil.copyfile(file_info['local_path'], unit.storage_path)
                 self.sync_conduit.save_unit(unit)
 
-    def update_content(self, metadata_files):
+    def update_content(self, metadata_files, url):
         """
         Decides what to download and then downloads it
 
         :param metadata_files:  instance of MetadataFiles
         :type  metadata_files:  pulp_rpm.plugins.importers.yum.repomd.metadata.MetadataFiles
+        :param url: curret URL we should sync
+        :type: str
         """
         rpms_to_download, drpms_to_download = self._decide_what_to_download(metadata_files)
-        self.download(metadata_files, rpms_to_download, drpms_to_download)
+        self.download(metadata_files, rpms_to_download, drpms_to_download, url)
         # removes unwanted units according to the config settings
         purge.purge_unwanted_units(metadata_files, self.sync_conduit, self.call_config)
 
@@ -339,8 +434,10 @@ class RepoSync(object):
         :rtype:     tuple
         """
         _logger.info(_('Determining which units need to be downloaded.'))
-        rpms_to_download, rpms_count, rpms_total_size = self._decide_rpms_to_download(metadata_files)
-        drpms_to_download, drpms_count, drpms_total_size = self._decide_drpms_to_download(metadata_files)
+        rpms_to_download, rpms_count, rpms_total_size = \
+            self._decide_rpms_to_download(metadata_files)
+        drpms_to_download, drpms_count, drpms_total_size = \
+            self._decide_drpms_to_download(metadata_files)
 
         unit_counts = {
             'rpm': rpms_count,
@@ -368,9 +465,8 @@ class RepoSync(object):
         primary_file_handle = metadata_files.get_metadata_file_handle(primary.METADATA_FILE_NAME)
         try:
             # scan through all the metadata to decide which packages to download
-            package_info_generator = packages.package_list_generator(primary_file_handle,
-                                                                     primary.PACKAGE_TAG,
-                                                                     primary.process_package_element)
+            package_info_generator = packages.package_list_generator(
+                primary_file_handle, primary.PACKAGE_TAG, primary.process_package_element)
             wanted = self._identify_wanted_versions(package_info_generator)
             # check for the units that are already in the repo
             not_found_in_the_repo = existing.check_repo(wanted.iterkeys(),
@@ -432,7 +528,7 @@ class RepoSync(object):
 
         return to_download, count, size
 
-    def download(self, metadata_files, rpms_to_download, drpms_to_download):
+    def download(self, metadata_files, rpms_to_download, drpms_to_download, url):
         """
         Actually download the requested RPMs and DRPMs. This method iterates over
         the appropriate metadata file and downloads those items which are present
@@ -446,19 +542,22 @@ class RepoSync(object):
         :type  rpms_to_download:    set
         :param drpms_to_download:   set of DRPM.NAMEDTUPLEs
         :type  drpms_to_download:   set
+        :param url: curret URL we should sync
+        :type: str
 
         :rtype: pulp.plugins.model.SyncReport
         """
         # TODO: probably should make this more generic
-        event_listener = ContentListener(self.sync_conduit, self.progress_status, self.call_config, metadata_files)
+        event_listener = ContentListener(self.sync_conduit, self.progress_status, self.call_config,
+                                         metadata_files)
         primary_file_handle = metadata_files.get_metadata_file_handle(primary.METADATA_FILE_NAME)
         try:
-            package_model_generator = packages.package_list_generator(primary_file_handle,
-                                                                      primary.PACKAGE_TAG,
-                                                                      primary.process_package_element)
-            units_to_download = self._filtered_unit_generator(package_model_generator, rpms_to_download)
+            package_model_generator = packages.package_list_generator(
+                primary_file_handle, primary.PACKAGE_TAG, primary.process_package_element)
+            units_to_download = self._filtered_unit_generator(package_model_generator,
+                                                              rpms_to_download)
 
-            download_wrapper = alternate.Packages(self.sync_feed, self.nectar_config,
+            download_wrapper = alternate.Packages(url, self.nectar_config,
                                                   units_to_download, self.tmp_dir, event_listener)
             # allow the downloader to be accessed by the cancel method if necessary
             self.downloader = download_wrapper.downloader
@@ -482,7 +581,7 @@ class RepoSync(object):
                     units_to_download = self._filtered_unit_generator(package_model_generator,
                                                                       drpms_to_download)
 
-                    download_wrapper = packages.Packages(self.sync_feed, self.nectar_config,
+                    download_wrapper = packages.Packages(url, self.nectar_config,
                                                          units_to_download, self.tmp_dir,
                                                          event_listener)
                     # allow the downloader to be accessed by the cancel method if necessary
@@ -562,7 +661,7 @@ class RepoSync(object):
             group_file_handle.close()
 
     def save_fileless_units(self, file_handle, tag, process_func, mutable_type=False,
-                                                                  additive_type=False):
+                            additive_type=False):
         """
         Generic method for saving units parsed from a repo metadata file where
         the units do not have files to store on disk. For example, groups.
@@ -609,7 +708,8 @@ class RepoSync(object):
             all_packages = packages.package_list_generator(file_handle,
                                                            tag,
                                                            process_func)
-            package_info_generator = (model for model in all_packages if model.as_named_tuple in to_save)
+            package_info_generator = \
+                (model for model in all_packages if model.as_named_tuple in to_save)
 
         for model in package_info_generator:
             unit = self.sync_conduit.init_unit(model.TYPE, model.unit_key, model.metadata, None)
@@ -641,12 +741,8 @@ class RepoSync(object):
                                              (existing_unit.unit_key, new_unit.unit_key))
 
         if existing_unit.type_id == ids.TYPE_ID_ERRATA:
-            # start with the package list we have in existing_unit
-            package_lists = existing_unit.metadata['pkglist']
-
             # add in anything from new_unit that we don't already have. We key
             # package lists by name for this concatenation.
-            new_package_lists = []
             existing_package_list_names = [p['name'] for p in existing_unit.metadata['pkglist']]
 
             for possible_new_pkglist in new_unit.metadata['pkglist']:
@@ -683,7 +779,8 @@ class RepoSync(object):
         # a tuple of (model as named tuple, size in bytes)
         wanted = {}
 
-        number_old_versions_to_keep = self.call_config.get(importer_constants.KEY_UNITS_RETAIN_OLD_COUNT)
+        number_old_versions_to_keep = \
+            self.call_config.get(importer_constants.KEY_UNITS_RETAIN_OLD_COUNT)
         for model in package_info_generator:
             versions = wanted.setdefault(model.key_string_without_version, {})
             serialized_version = model.complete_version_serialized

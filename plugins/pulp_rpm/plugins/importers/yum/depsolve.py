@@ -20,11 +20,11 @@ class Requirement(object):
     greater than.
     """
     # These are the values that can be passed to the flags parameter
-    EQ = 'EQ' # Equal
-    LT = 'LT' # Less Than
-    LE = 'LE' # Less than or Equal
-    GT = 'GT' # Greater Than
-    GE = 'GE' # Greater than or Equal
+    EQ = 'EQ'  # Equal
+    LT = 'LT'  # Less Than
+    LE = 'LE'  # Less than or Equal
+    GT = 'GT'  # Greater Than
+    GE = 'GE'  # Greater than or Equal
 
     def __init__(self, name, epoch=None, version=None, release=None, flags=None):
         """
@@ -424,7 +424,8 @@ class Solver(object):
             filters = {'$or': search_dicts}
             fields = list(models.RPM.UNIT_KEY_NAMES)
             fields.extend(['requires', 'id'])
-            criteria = UnitAssociationCriteria(type_ids=[models.RPM.TYPE], unit_filters=filters, unit_fields=fields)
+            criteria = UnitAssociationCriteria(type_ids=[models.RPM.TYPE], unit_filters=filters,
+                                               unit_fields=fields)
             for result in self.search_method(criteria):
                 for require in result.metadata.get('requires', []):
                     yield Requirement(**require)

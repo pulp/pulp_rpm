@@ -15,7 +15,6 @@ from pulp_rpm.plugins.distributors.yum.metadata.package import PackageXMLFileCon
 
 
 class TestPackageXMLFileContext(unittest.TestCase):
-
     def setUp(self):
         self.working_dir = tempfile.mkdtemp()
         self.context = PackageXMLFileContext(self.working_dir)
@@ -65,8 +64,8 @@ class TestPackageXMLFileContext(unittest.TestCase):
     def test_write_root_tag_open(self):
         self.context._write_root_tag_open()
         self.context.metadata_file_handle.write.assert_called_once_with(
-                          '<!DOCTYPE comps PUBLIC "-//Red Hat, Inc.//DTD Comps info//EN" '
-                          '"comps.dtd">\n<comps>')
+            '<!DOCTYPE comps PUBLIC "-//Red Hat, Inc.//DTD Comps info//EN" '
+            '"comps.dtd">\n<comps>')
 
     def test_write_root_tag_close(self):
         self.context._write_root_tag_open()
@@ -78,9 +77,10 @@ class TestPackageXMLFileContext(unittest.TestCase):
     def test_add_package_group_unit_metadata_minimal(self):
         group_unit = self._generate_group_unit('foo')
         self.context.add_package_group_unit_metadata(group_unit)
-        source_str =  '<group><id>foo</id><default>true</default><uservisible>true</uservisible><display_order>0'\
-                          '</display_order><name>foo</name><description>foodescription'\
-                          '</description><packagelist /></group>'
+        source_str = '<group><id>foo</id><default>true</default><uservisible>true</uservisible' \
+                     '><display_order>0' \
+                     '</display_order><name>foo</name><description>foodescription' \
+                     '</description><packagelist /></group>'
         source_element = ElementTree.fromstring(source_str)
         xml_str = self.context.metadata_file_handle.write.call_args[0][0]
         target_element = ElementTree.fromstring(xml_str)
@@ -100,24 +100,24 @@ class TestPackageXMLFileContext(unittest.TestCase):
         source_str = '<group><id>foo</id>' \
                      '<default>false</default>' \
                      '<uservisible>true</uservisible><display_order>0' \
-                     '</display_order><langonly>bar</langonly>'\
-                     '<name>foo</name>'\
-                     '<name xml:lang="af">af_name</name>'\
-                     '<name xml:lang="ze">ze_name</name>'\
-                     '<description>foodescription</description>'\
-                     '<description xml:lang="af">af_desc</description>'\
-                     '<description xml:lang="ze">ze_desc</description>'\
-                     '<packagelist><packagereq type="mandatory">package1</packagereq>'\
-                     '<packagereq type="mandatory">package2</packagereq>'\
-                     '<packagereq type="mandatory">package3</packagereq>'\
-                     '<packagereq type="default">package4</packagereq>'\
-                     '<packagereq type="default">package5</packagereq>'\
-                     '<packagereq type="default">package6</packagereq>'\
-                     '<packagereq type="optional">package7</packagereq>'\
-                     '<packagereq type="optional">package8</packagereq>'\
-                     '<packagereq type="optional">package9</packagereq>'\
-                     '<packagereq requires="foo,bar,baz" type="conditional">package10'\
-                     '</packagereq>'\
+                     '</display_order><langonly>bar</langonly>' \
+                     '<name>foo</name>' \
+                     '<name xml:lang="af">af_name</name>' \
+                     '<name xml:lang="ze">ze_name</name>' \
+                     '<description>foodescription</description>' \
+                     '<description xml:lang="af">af_desc</description>' \
+                     '<description xml:lang="ze">ze_desc</description>' \
+                     '<packagelist><packagereq type="mandatory">package1</packagereq>' \
+                     '<packagereq type="mandatory">package2</packagereq>' \
+                     '<packagereq type="mandatory">package3</packagereq>' \
+                     '<packagereq type="default">package4</packagereq>' \
+                     '<packagereq type="default">package5</packagereq>' \
+                     '<packagereq type="default">package6</packagereq>' \
+                     '<packagereq type="optional">package7</packagereq>' \
+                     '<packagereq type="optional">package8</packagereq>' \
+                     '<packagereq type="optional">package9</packagereq>' \
+                     '<packagereq requires="foo,bar,baz" type="conditional">package10' \
+                     '</packagereq>' \
                      '</packagelist></group>'
         source_element = ElementTree.fromstring(source_str)
         xml_str = self.context.metadata_file_handle.write.call_args[0][0]
@@ -128,9 +128,9 @@ class TestPackageXMLFileContext(unittest.TestCase):
         category_unit = self._generate_category_unit('category_name')
         self.context.add_package_category_unit_metadata(category_unit)
         source_str = '<category><id>category_name</id><display_order>0</display_order>' \
-                      '<name>category_name</name>'\
-                      '<description>category_name – description</description>'\
-                      '<grouplist /></category>'
+                     '<name>category_name</name>' \
+                     '<description>category_name – description</description>' \
+                     '<grouplist /></category>'
         source_element = ElementTree.fromstring(source_str)
         xml_str = self.context.metadata_file_handle.write.call_args[0][0]
         target_element = ElementTree.fromstring(xml_str)
@@ -144,17 +144,17 @@ class TestPackageXMLFileContext(unittest.TestCase):
         unit.metadata['packagegroupids'] = [u'package2', u'package1']
         self.context.add_package_category_unit_metadata(unit)
         source_str = '<category><id>category_name</id><display_order>0</display_order>' \
-                      '<name>category_name</name>' \
-                      '<name xml:lang="af">af_name</name>'\
-                      '<name xml:lang="ze">ze_name</name>'\
-                      '<description>category_name – description</description>'\
-                      '<description xml:lang="af">af_desc</description>'\
-                      '<description xml:lang="ze">ze_desc</description>'\
-                      '<grouplist>'\
-                      '<groupid>package1</groupid>'\
-                      '<groupid>package2</groupid>'\
-                      '</grouplist>'\
-                      '</category>'
+                     '<name>category_name</name>' \
+                     '<name xml:lang="af">af_name</name>' \
+                     '<name xml:lang="ze">ze_name</name>' \
+                     '<description>category_name – description</description>' \
+                     '<description xml:lang="af">af_desc</description>' \
+                     '<description xml:lang="ze">ze_desc</description>' \
+                     '<grouplist>' \
+                     '<groupid>package1</groupid>' \
+                     '<groupid>package2</groupid>' \
+                     '</grouplist>' \
+                     '</category>'
         source_element = ElementTree.fromstring(source_str)
         xml_str = self.context.metadata_file_handle.write.call_args[0][0]
         target_element = ElementTree.fromstring(xml_str)
@@ -164,10 +164,10 @@ class TestPackageXMLFileContext(unittest.TestCase):
         unit = self._generate_environment_unit('environment_name')
         self.context.add_package_environment_unit_metadata(unit)
 
-        source_str = '<environment><id>environment_name</id><display_order>0</display_order>'\
-                      '<name>environment_name</name>'\
-                      '<description>environment_name – description</description>'\
-                      '<grouplist /><optionlist /></environment>'
+        source_str = '<environment><id>environment_name</id><display_order>0</display_order>' \
+                     '<name>environment_name</name>' \
+                     '<description>environment_name – description</description>' \
+                     '<grouplist /><optionlist /></environment>'
         source_element = ElementTree.fromstring(source_str)
         xml_str = self.context.metadata_file_handle.write.call_args[0][0]
         target_element = ElementTree.fromstring(xml_str)
@@ -182,7 +182,7 @@ class TestPackageXMLFileContext(unittest.TestCase):
         unit.metadata['options'] = [{'group': 'package3', 'default': False},
                                     {'group': u'package4', 'default': True}]
         self.context.add_package_environment_unit_metadata(unit)
-        source_str = '<environment><id>environment_name</id><display_order>0</display_order>'\
+        source_str = '<environment><id>environment_name</id><display_order>0</display_order>' \
                      '<name>environment_name</name>' \
                      '<name xml:lang="af">af_name</name>' \
                      '<name xml:lang="ze">ze_name</name>' \
@@ -199,6 +199,3 @@ class TestPackageXMLFileContext(unittest.TestCase):
         xml_str = self.context.metadata_file_handle.write.call_args[0][0]
         target_element = ElementTree.fromstring(xml_str)
         compare_element(source_element, target_element)
-
-
-

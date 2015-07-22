@@ -2,7 +2,7 @@ from gettext import gettext as _
 import os
 import sys
 
-from pulp.client import parsers
+from okaara import parsers
 from pulp.client.commands.options import OPTION_REPO_ID
 from pulp.client.commands.repo.upload import UploadCommand
 from pulp.client.extensions.extensions import PulpCliOption
@@ -85,7 +85,7 @@ class CreatePackageGroupCommand(UploadCommand):
     def generate_unit_key(self, filename, **kwargs):
         pkg_group_id = kwargs[OPT_GROUP_ID.keyword]
         repo_id = kwargs[OPTION_REPO_ID.keyword]
-        unit_key = {'id':  pkg_group_id, 'repo_id':  repo_id}
+        unit_key = {'id': pkg_group_id, 'repo_id': repo_id}
         return unit_key
 
     def generate_metadata(self, filename, **kwargs):

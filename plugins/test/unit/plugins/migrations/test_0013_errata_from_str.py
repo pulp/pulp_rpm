@@ -10,6 +10,7 @@ class TestMigrateErrataFromStr(rpm_support_base.PulpRPMTests):
     """
     Test migration #0013.
     """
+
     def setUp(self):
         super(TestMigrateErrataFromStr, self).setUp()
 
@@ -46,119 +47,117 @@ class TestMigrateErrataFromStr(rpm_support_base.PulpRPMTests):
 
 
 ERRATA_OLD = """{
-	"status" : "stable",
-	"updated" : "",
-	"description" : "Bird_Erratum",
-	"issued" : "2012-01-27 16:08:08",
-	"pushcount" : 1,
-	"references" : [ ],
-	"_content_type_id" : "erratum",
-	"id" : "RHEA-2012:0003",
-	"from_str" : "errata@redhat.com",
-	"_storage_path" : null,
-	"reboot_suggested" : false,
-	"severity" : "",
-	"rights" : "",
-	"_ns" : "units_erratum",
-	"title" : "Bird_Erratum",
-	"solution" : "",
-	"summary" : "",
-	"version" : "1",
-	"release" : "1",
-	"type" : "security",
-	"pkglist" : [
-		{
-			"packages" : [
-				{
-					"src" : "http://www.fedoraproject.org",
-					"name" : "crow",
-					"filename" : "crow-0.8-1.noarch.rpm",
-					"epoch" : null,
-					"version" : "0.8",
-					"release" : "1",
-					"arch" : "noarch"
-				},
-				{
-					"src" : "http://www.fedoraproject.org",
-					"name" : "stork",
-					"filename" : "stork-0.12-2.noarch.rpm",
-					"epoch" : null,
-					"version" : "0.12",
-					"release" : "2",
-					"arch" : "noarch"
-				},
-				{
-					"src" : "http://www.fedoraproject.org",
-					"name" : "duck",
-					"filename" : "duck-0.6-1.noarch.rpm",
-					"epoch" : null,
-					"version" : "0.6",
-					"release" : "1",
-					"arch" : "noarch"
-				}
-			],
-			"name" : "1",
-			"short" : ""
-		}
-	]
+    "status" : "stable",
+    "updated" : "",
+    "description" : "Bird_Erratum",
+    "issued" : "2012-01-27 16:08:08",
+    "pushcount" : 1,
+    "references" : [ ],
+    "_content_type_id" : "erratum",
+    "id" : "RHEA-2012:0003",
+    "from_str" : "errata@redhat.com",
+    "_storage_path" : null,
+    "reboot_suggested" : false,
+    "severity" : "",
+    "rights" : "",
+    "_ns" : "units_erratum",
+    "title" : "Bird_Erratum",
+    "solution" : "",
+    "summary" : "",
+    "version" : "1",
+    "release" : "1",
+    "type" : "security",
+    "pkglist" : [
+        {
+            "packages" : [
+                {
+                    "src" : "http://www.fedoraproject.org",
+                    "name" : "crow",
+                    "filename" : "crow-0.8-1.noarch.rpm",
+                    "epoch" : null,
+                    "version" : "0.8",
+                    "release" : "1",
+                    "arch" : "noarch"
+                },
+                {
+                    "src" : "http://www.fedoraproject.org",
+                    "name" : "stork",
+                    "filename" : "stork-0.12-2.noarch.rpm",
+                    "epoch" : null,
+                    "version" : "0.12",
+                    "release" : "2",
+                    "arch" : "noarch"
+                },
+                {
+                    "src" : "http://www.fedoraproject.org",
+                    "name" : "duck",
+                    "filename" : "duck-0.6-1.noarch.rpm",
+                    "epoch" : null,
+                    "version" : "0.6",
+                    "release" : "1",
+                    "arch" : "noarch"
+                }
+            ],
+            "name" : "1",
+            "short" : ""
+        }
+    ]
 }"""
-
 
 ERRATA_NEW = """{
-	"status" : "stable",
-	"updated" : "",
-	"description" : "Fish_Erratum",
-	"issued" : "2012-01-27 16:08:18",
-	"pushcount" : 1,
-	"references" : [ ],
-	"_content_type_id" : "erratum",
-	"id" : "RHEA-2012:0004",
-	"from" : "errata@redhat.com",
-	"_storage_path" : null,
-	"reboot_suggested" : false,
-	"severity" : "",
-	"rights" : "",
-	"_ns" : "units_erratum",
-	"title" : "Fish_Erratum",
-	"solution" : "",
-	"summary" : "",
-	"version" : "1",
-	"release" : "1",
-	"type" : "security",
-	"pkglist" : [
-		{
-			"packages" : [
-				{
-					"src" : "http://www.fedoraproject.org",
-					"name" : "crow",
-					"filename" : "crow-0.8-2.noarch.rpm",
-					"epoch" : null,
-					"version" : "0.8",
-					"release" : "1",
-					"arch" : "noarch"
-				},
-				{
-					"src" : "http://www.fedoraproject.org",
-					"name" : "stork",
-					"filename" : "stork-0.12-3.noarch.rpm",
-					"epoch" : null,
-					"version" : "0.12",
-					"release" : "2",
-					"arch" : "noarch"
-				},
-				{
-					"src" : "http://www.fedoraproject.org",
-					"name" : "duck",
-					"filename" : "duck-0.6-2.noarch.rpm",
-					"epoch" : null,
-					"version" : "0.6",
-					"release" : "1",
-					"arch" : "noarch"
-				}
-			],
-			"name" : "1",
-			"short" : ""
-		}
-	]
+    "status" : "stable",
+    "updated" : "",
+    "description" : "Fish_Erratum",
+    "issued" : "2012-01-27 16:08:18",
+    "pushcount" : 1,
+    "references" : [ ],
+    "_content_type_id" : "erratum",
+    "id" : "RHEA-2012:0004",
+    "from" : "errata@redhat.com",
+    "_storage_path" : null,
+    "reboot_suggested" : false,
+    "severity" : "",
+    "rights" : "",
+    "_ns" : "units_erratum",
+    "title" : "Fish_Erratum",
+    "solution" : "",
+    "summary" : "",
+    "version" : "1",
+    "release" : "1",
+    "type" : "security",
+    "pkglist" : [
+        {
+            "packages" : [
+                {
+                    "src" : "http://www.fedoraproject.org",
+                    "name" : "crow",
+                    "filename" : "crow-0.8-2.noarch.rpm",
+                    "epoch" : null,
+                    "version" : "0.8",
+                    "release" : "1",
+                    "arch" : "noarch"
+                },
+                {
+                    "src" : "http://www.fedoraproject.org",
+                    "name" : "stork",
+                    "filename" : "stork-0.12-3.noarch.rpm",
+                    "epoch" : null,
+                    "version" : "0.12",
+                    "release" : "2",
+                    "arch" : "noarch"
+                },
+                {
+                    "src" : "http://www.fedoraproject.org",
+                    "name" : "duck",
+                    "filename" : "duck-0.6-2.noarch.rpm",
+                    "epoch" : null,
+                    "version" : "0.6",
+                    "release" : "1",
+                    "arch" : "noarch"
+                }
+            ],
+            "name" : "1",
+            "short" : ""
+        }
+    ]
 }"""
-

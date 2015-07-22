@@ -81,7 +81,8 @@ def sync(sync_conduit, feed, working_dir, nectar_config, report, progress_callba
         _LOGGER.debug('downloading distribution files')
         downloader.download(file_to_download_request(f, feed, tmp_dir) for f in files)
         if len(listener.failed_reports) == 0:
-            unit = sync_conduit.init_unit(ids.TYPE_ID_DISTRO, model.unit_key, model.metadata, model.relative_path)
+            unit = sync_conduit.init_unit(ids.TYPE_ID_DISTRO, model.unit_key, model.metadata,
+                                          model.relative_path)
             model.process_download_reports(listener.succeeded_reports)
             # remove pre-existing dir
             shutil.rmtree(unit.storage_path, ignore_errors=True)
@@ -98,7 +99,8 @@ def sync(sync_conduit, feed, working_dir, nectar_config, report, progress_callba
         else:
             _LOGGER.error('some distro file downloads failed')
             report['state'] = constants.STATE_FAILED
-            report['error_details'] = [(fail.url, fail.error_report) for fail in listener.failed_reports]
+            report['error_details'] = [(fail.url, fail.error_report) for fail in
+                                       listener.failed_reports]
             return
     finally:
         shutil.rmtree(tmp_dir, ignore_errors=True)
@@ -256,9 +258,9 @@ def process_distribution(feed, tmp_dir, nectar_config, model, report):
 
         # Add the distribution file to the list of files
         files.append({
-                'relativepath': constants.DISTRIBUTION_XML,
-                'checksum': None,
-                'checksumtype': None,
+            'relativepath': constants.DISTRIBUTION_XML,
+            'checksum': None,
+            'checksumtype': None,
         })
     return files
 

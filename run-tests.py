@@ -36,4 +36,4 @@ PLUGIN_TESTS = [
 dir_safe_all_platforms = [os.path.join(os.path.dirname(__file__), x) for x in TESTS]
 dir_safe_non_rhel5 = [os.path.join(os.path.dirname(__file__), x) for x in PLUGIN_TESTS]
 
-run_tests(PACKAGES, dir_safe_all_platforms, dir_safe_non_rhel5)
+run_tests(PACKAGES, dir_safe_all_platforms, dir_safe_non_rhel5, flake8_paths=[PROJECT_DIR])

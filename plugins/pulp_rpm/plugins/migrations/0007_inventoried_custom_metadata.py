@@ -6,7 +6,7 @@ import shutil
 import uuid
 from xml.etree import ElementTree
 
-from pulp.plugins.types import  database as types_database
+from pulp.plugins.types import database as types_database
 from pulp.server import config as pulp_config
 from pulp.server.db.model.repository import Repo, RepoImporter, RepoContentUnit
 
@@ -26,13 +26,14 @@ _BASE_FTYPE_LIST = ('primary', 'primary_db', 'filelists_db', 'filelists', 'other
 
 # -- migration entry point -----------------------------------------------------
 
+
 def migrate(*args, **kwargs):
     inventory_custom_metadata()
+
 
 # -- custom metadata migration -------------------------------------------------
 
 def inventory_custom_metadata():
-
     repo_list = repositories_with_yum_importers()
 
     if not repo_list:
@@ -44,7 +45,6 @@ def inventory_custom_metadata():
 
 
 def migrate_repo(repo):
-
     repo_id = repo['id']
 
     _LOG.info('Inventorying custom metadata for yum repository %s' % repo_id)
@@ -62,7 +62,8 @@ def migrate_repo(repo):
     repomd_file_path = os.path.join(repodata_dir, _REPOMD_FILE)
 
     if not os.path.exists(repomd_file_path):
-        _LOG.info('Yum repository %s has no %s, cannot inventory custom metadata' % (repo_id, repomd_file_path))
+        _LOG.info('Yum repository %s has no %s, cannot inventory custom metadata' %
+                  (repo_id, repomd_file_path))
         return
 
     ftype_dict = parse_repomd_xml(repomd_file_path, _BASE_FTYPE_LIST)
@@ -71,7 +72,8 @@ def migrate_repo(repo):
 
         if ftype not in ftype_contents_dict:
             # problematic, the custom metadata exists, but we don't have the contents
-            _LOG.info('Skipping custom metadata %s on yum repository %s, contents not found' % (ftype, repo_id))
+            _LOG.info('Skipping custom metadata %s on yum repository %s, contents not found' %
+                      (ftype, repo_id))
             continue
 
         ftype_data['repo_id'] = repo_id
@@ -81,7 +83,8 @@ def migrate_repo(repo):
         relative_path = '%s/%s' % (repo_id, ftype_file_name)
 
         if not os.path.exists(source_path):
-            _LOG.info('Skipping custom metadata %s on yum repository %s, source file not found' % (ftype, repo_id))
+            _LOG.info('Skipping custom metadata %s on yum repository %s, source file not found' %
+                      (ftype, repo_id))
             continue
 
         content_unit = create_content_unit(ftype_data, relative_path)
@@ -91,11 +94,13 @@ def migrate_repo(repo):
 
         _LOG.info('Successfully added custom metadata %s to yum repository %s' % (ftype, repo_id))
 
+
 # -- pulp utilities ------------------------------------------------------------
 
 def repositories_with_yum_importers():
     repo_importer_collection = RepoImporter.get_collection()
-    repo_yum_importers = repo_importer_collection.find({'importer_type_id': _TYPE_YUM_IMPORTER}, fields=['repo_id'])
+    repo_yum_importers = repo_importer_collection.find({'importer_type_id': _TYPE_YUM_IMPORTER},
+                                                       fields=['repo_id'])
     yum_repo_ids = [i['repo_id'] for i in repo_yum_importers]
     repo_collection = Repo.get_collection()
     yum_repos = repo_collection.find({'id': {'$in': yum_repo_ids}}, fields=['id', 'scratchpad'])
@@ -104,7 +109,8 @@ def repositories_with_yum_importers():
 
 def importer_working_dir(importer_type_id, repo_id):
     storage_dir = pulp_config.config.get('server', 'storage_dir')
-    working_dir = os.path.join(storage_dir, 'working', 'repos', repo_id, 'importers', importer_type_id)
+    working_dir = os.path.join(storage_dir, 'working', 'repos', repo_id, 'importers',
+                               importer_type_id)
     return working_dir
 
 
@@ -123,7 +129,8 @@ def get_content_storage_path(relative_path):
     if relative_path.startswith('/'):
         relative_path = relative_path[1:]
     storage_dir = pulp_config.config.get('server', 'storage_dir')
-    content_storage_path = os.path.join(storage_dir, 'content', _TYPE_YUM_REPO_METADATA_FILE, relative_path)
+    content_storage_path = os.path.join(storage_dir, 'content', _TYPE_YUM_REPO_METADATA_FILE,
+                                        relative_path)
     content_storage_dir = os.path.dirname(content_storage_path)
     if not os.path.exists(content_storage_dir):
         os.makedirs(content_storage_dir)
@@ -209,5 +216,3 @@ def parse_repomd_xml(repomd_file_path, skip_data_types=None):
         data_type_dict[data_type['data_type']] = data_type
 
     return data_type_dict
-
-

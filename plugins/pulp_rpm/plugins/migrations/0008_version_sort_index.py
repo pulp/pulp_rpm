@@ -20,7 +20,7 @@ def _update_type(type_id):
     collection = types_db.type_units_collection(type_id)
 
     # Both indexes should be set at the same time, so this single check should be safe
-    fix_us = collection.find({'version_sort_index' : None})
+    fix_us = collection.find({'version_sort_index': None})
     for package in fix_us:
         package['version_sort_index'] = version_utils.encode(package['version'])
         package['release_sort_index'] = version_utils.encode(package['release'])

@@ -24,7 +24,6 @@ EXPIRES = 90
 
 
 class TestCataloger(TestCase):
-
     @staticmethod
     def _normalized(url):
         parts = list(urlsplit(url))
@@ -70,7 +69,7 @@ class TestCataloger(TestCase):
         cataloger.nectar_config = Mock()
         downloader = cataloger.get_downloader(conduit, config, url)
 
-        fake_factory.create_downloader.assert_called_with(url,  cataloger.nectar_config())
+        fake_factory.create_downloader.assert_called_with(url, cataloger.nectar_config())
         self.assertEqual(downloader, fake_downloader)
 
     @patch('pulp.server.managers.content.catalog.ContentCatalogManager.add_entry')

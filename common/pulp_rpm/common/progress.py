@@ -10,41 +10,44 @@ from pulp.common.dateutils import format_iso8601_datetime, parse_iso8601_datetim
 
 class ISOProgressReport(object):
     """
-    This class is not meant to be instantiated directly, but has some common methods that are used by the Sync
-    and Progress report objects.
+    This class is not meant to be instantiated directly, but has some common methods that are
+    used by the Sync and Progress report objects.
     """
     # The following states can be set using the state() property
     # This is the starting state, before the sync or publish begins
-    STATE_NOT_STARTED =          'not_started'
+    STATE_NOT_STARTED = 'not_started'
     # When everything is done
-    STATE_COMPLETE =             'complete'
-    # If an error occurs outside of the manifest or isos in progress states, this general failed state can be
+    STATE_COMPLETE = 'complete'
+    # If an error occurs outside of the manifest or isos in progress states, this general failed
+    # state can be
     # set
-    STATE_FAILED =               'failed'
+    STATE_FAILED = 'failed'
     # When the user has cancelled a sync
-    STATE_CANCELLED =            'cancelled'
+    STATE_CANCELLED = 'cancelled'
 
     def __init__(self, conduit=None, state=None, state_times=None, error_message=None,
                  traceback=None):
         """
         Initialize the ISOProgressReport. All parameters except conduit can be ignored if you are
-        instantiating the report for use from an importer or distributor. The other parameters are used when
-        instantiating the report from a serialized report in the client.
+        instantiating the report for use from an importer or distributor. The other parameters
+        are used when instantiating the report from a serialized report in the client.
 
-        :param conduit:            A sync or publish conduit that should be used to report progress to the
-                                   client.
+        :param conduit:            A sync or publish conduit that should be used to report
+                                   progress to the client.
         :type  conduit:            pulp.plugins.conduits.repo_sync.RepoSyncConduit or
                                    pulp.plugins.conduits.repo_publish.RepoPublishConduit
-        :param state:              The state the ISOProgressReport should be initialized to. See the STATE_*
-                                   class variables for valid states.
+        :param state:              The state the ISOProgressReport should be initialized to. See
+                                   the STATE_* class variables for valid states.
         :type  state:              basestring
-        :param state_times:        A dictionary mapping state names to the time the report entered that state
+        :param state_times:        A dictionary mapping state names to the time the report
+                                   entered that state
         :type  state_times:        dict
-        :param error_message:      A general error message. This is used when the error encountered was not
+        :param error_message:      A general error message. This is used when the error
+                                   encountered was not
                                    specific to any particular ISO.
         :type  error_message:      basestring
-        :param traceback:          If there was a traceback associated with an error_message, it should be
-                                   included here
+        :param traceback:          If there was a traceback associated with an error_message,
+                                   it should be included here
         :type  traceback:          basestring--delete--delete
         """
         self.conduit = conduit
@@ -122,7 +125,7 @@ class ISOProgressReport(object):
         for key, value in report['state_times'].items():
             report['state_times'][key] = parse_iso8601_datetime(value)
 
-        #python 2.4 does not support unicode keys so convert to string
+        # python 2.4 does not support unicode keys so convert to string
         new_report = {}
         for key in report:
             new_report[str(key)] = report[key]
@@ -198,35 +201,39 @@ class SyncProgressReport(ISOProgressReport):
     """
     # These states correspond to the progress of the manifest stage
     STATE_MANIFEST_IN_PROGRESS = 'manifest_in_progress'
-    STATE_MANIFEST_FAILED =      'manifest_failed'
-    # These states correspond to the progress of the ISOs stage. Note that there is no STATE_MANIFEST_COMPLETE,
-    # as the next transition is STATE_ISOS_IN_PROGRESS
-    STATE_ISOS_IN_PROGRESS =     'isos_in_progress'
-    STATE_ISOS_FAILED =          'isos_failed'
+    STATE_MANIFEST_FAILED = 'manifest_failed'
+    # These states correspond to the progress of the ISOs stage. Note that there is no
+    # STATE_MANIFEST_COMPLETE, as the next transition is STATE_ISOS_IN_PROGRESS
+    STATE_ISOS_IN_PROGRESS = 'isos_in_progress'
+    STATE_ISOS_FAILED = 'isos_failed'
 
     # A mapping of current states to allowed next states
     ALLOWED_STATE_TRANSITIONS = {
-        ISOProgressReport.STATE_NOT_STARTED: (STATE_MANIFEST_IN_PROGRESS, ISOProgressReport.STATE_FAILED,
-                                              ISOProgressReport.STATE_CANCELLED),
-        STATE_MANIFEST_IN_PROGRESS: (STATE_MANIFEST_FAILED, STATE_ISOS_IN_PROGRESS, ISOProgressReport.STATE_CANCELLED),
-        STATE_ISOS_IN_PROGRESS: (STATE_ISOS_FAILED, ISOProgressReport.STATE_COMPLETE, ISOProgressReport.STATE_CANCELLED)
+        ISOProgressReport.STATE_NOT_STARTED: (
+            STATE_MANIFEST_IN_PROGRESS, ISOProgressReport.STATE_FAILED,
+            ISOProgressReport.STATE_CANCELLED),
+        STATE_MANIFEST_IN_PROGRESS: (
+            STATE_MANIFEST_FAILED, STATE_ISOS_IN_PROGRESS, ISOProgressReport.STATE_CANCELLED),
+        STATE_ISOS_IN_PROGRESS: (
+            STATE_ISOS_FAILED, ISOProgressReport.STATE_COMPLETE, ISOProgressReport.STATE_CANCELLED)
     }
 
-    def __init__(self, conduit=None, total_bytes=None, finished_bytes=0,  num_isos=None,
+    def __init__(self, conduit=None, total_bytes=None, finished_bytes=0, num_isos=None,
                  num_isos_finished=0, iso_error_messages=None, **kwargs):
         """
-        Initialize the SyncProgressReport, setting all of the given parameters to it. See the superclass
-        method of the same name for the use cases for the parameters.
+        Initialize the SyncProgressReport, setting all of the given parameters to it. See the
+        superclass method of the same name for the use cases for the parameters.
 
-        :param total_bytes:    The total number of bytes we need to download
-        :type  total_bytes:    int
+        :param total_bytes: The total number of bytes we need to download
+        :type  total_bytes: int
         :param finished_bytes: The number of bytes we have already downloaded
         :type  finished_bytes: int
-        :param num_isos:           The number of ISOs that need to be downloaded or published
-        :type  num_isos:           int
+        :param num_isos: The number of ISOs that need to be downloaded or published
+        :type  num_isos: int
         :param num_isos_finished:  The number of ISOs that have finished downloading
         :type  num_isos_finished:  int
-        :param iso_error_messages: A dictionary mapping ISO names to errors encountered while downloading them
+        :param iso_error_messages: A dictionary mapping ISO names to errors encountered while
+                                   downloading them
         :type  iso_error_messages: dict
         """
         super(self.__class__, self).__init__(conduit, **kwargs)
@@ -276,8 +283,8 @@ class SyncProgressReport(ISOProgressReport):
 
     def _set_state(self, new_state):
         """
-        This method allows users to set a new state to the ISOProgressReport. It enforces state transitions to
-        only happen in a certain fashion.
+        This method allows users to set a new state to the ISOProgressReport. It enforces state
+        transitions to only happen in a certain fashion.
 
         :param new_state: The new state that the caller wishes the ISOProgressReport to be set to
         :type  new_state: basestring

@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 
 from cStringIO import StringIO
-from xml.etree import ElementTree
 import unittest
 
 import mock
@@ -14,6 +13,7 @@ class TestProcessPackageElement(unittest.TestCase):
     """
     Assert correct behavior from the process_package_element() function.
     """
+
     @mock.patch('pulp_rpm.plugins.db.models.version_utils.encode')
     @mock.patch('pulp_rpm.plugins.importers.yum.repomd.primary.utils.element_to_raw_xml')
     def test_process_package_element_sanitizes_checksum_type(self, element_to_raw_xml, encode):
@@ -38,8 +38,8 @@ class TestProcessPackageElement(unittest.TestCase):
 class TestProcessSRPMElement(unittest.TestCase):
     def test_fedora18_real_data(self):
         rpms = packages.package_list_generator(StringIO(F18_SOURCE_XML),
-                                                 primary.PACKAGE_TAG,
-                                                 primary.process_package_element)
+                                               primary.PACKAGE_TAG,
+                                               primary.process_package_element)
         rpms = list(rpms)
 
         self.assertEqual(len(rpms), 1)
@@ -50,7 +50,8 @@ class TestProcessSRPMElement(unittest.TestCase):
         self.assertEqual(model.version, '2.3.4')
         self.assertEqual(model.release, '20.fc18')
         self.assertEqual(model.arch, 'src')
-        self.assertEqual(model.checksum, '2d46d2c03e36583370d203e7ae63b00cfcd739421b58f8f00a89c56ac74654fa')
+        self.assertEqual(model.checksum,
+                         '2d46d2c03e36583370d203e7ae63b00cfcd739421b58f8f00a89c56ac74654fa')
         self.assertEqual(model.checksumtype, 'sha256')
 
 
@@ -69,7 +70,8 @@ class TestProcessRPMElement(unittest.TestCase):
         self.assertEqual(model.version, '3.3.15')
         self.assertEqual(model.release, '3.fc18')
         self.assertEqual(model.arch, 'x86_64')
-        self.assertEqual(model.checksum, 'c2c85a567d1b92dd6131bd326611b162ed485f6f97583e46459b430006908d66')
+        self.assertEqual(model.checksum,
+                         'c2c85a567d1b92dd6131bd326611b162ed485f6f97583e46459b430006908d66')
         self.assertEqual(model.checksumtype, 'sha256')
 
     def test_xml_base_overrides_base_url(self):
@@ -86,12 +88,14 @@ class TestProcessRPMElement(unittest.TestCase):
 
 
 F18_SOURCE_XML = """<?xml version="1.0" encoding="UTF-8"?>
-<metadata xmlns="http://linux.duke.edu/metadata/common" xmlns:rpm="http://linux.duke.edu/metadata/rpm" packages="1">
+<metadata xmlns="http://linux.duke.edu/metadata/common"
+xmlns:rpm="http://linux.duke.edu/metadata/rpm" packages="1">
 <package type="rpm">
   <name>openhpi-subagent</name>
   <arch>src</arch>
   <version epoch="0" ver="2.3.4" rel="20.fc18"/>
-  <checksum type="sha256" pkgid="YES">2d46d2c03e36583370d203e7ae63b00cfcd739421b58f8f00a89c56ac74654fa</checksum>
+  <checksum type="sha256"
+  pkgid="YES">2d46d2c03e36583370d203e7ae63b00cfcd739421b58f8f00a89c56ac74654fa</checksum>
   <summary>NetSNMP subagent for OpenHPI</summary>
   <description>The openhpi-subagent package contains the Service Availability Forum's
 Hardware Platform Interface SNMP sub-agent.</description>
@@ -119,14 +123,15 @@ Hardware Platform Interface SNMP sub-agent.</description>
 </metadata>
 """
 
-
 F18_XML = """<?xml version="1.0" encoding="UTF-8"?>
-<metadata xmlns="http://linux.duke.edu/metadata/common" xmlns:rpm="http://linux.duke.edu/metadata/rpm" packages="1">
+<metadata xmlns="http://linux.duke.edu/metadata/common"
+xmlns:rpm="http://linux.duke.edu/metadata/rpm" packages="1">
 <package type="rpm">
   <name>opensm-libs</name>
   <arch>x86_64</arch>
   <version epoch="0" ver="3.3.15" rel="3.fc18"/>
-  <checksum type="sha256" pkgid="YES">c2c85a567d1b92dd6131bd326611b162ed485f6f97583e46459b430006908d66</checksum>
+  <checksum type="sha256"
+  pkgid="YES">c2c85a567d1b92dd6131bd326611b162ed485f6f97583e46459b430006908d66</checksum>
   <summary>Libraries used by opensm and included utilities</summary>
   <description>Shared libraries for Infiniband user space access</description>
   <packager>Fedora Project</packager>
@@ -172,19 +177,22 @@ F18_XML = """<?xml version="1.0" encoding="UTF-8"?>
 """
 
 F18_XML_ALTERNATE_LOCATION = """<?xml version="1.0" encoding="UTF-8"?>
-<metadata xmlns="http://linux.duke.edu/metadata/common" xmlns:rpm="http://linux.duke.edu/metadata/rpm" packages="1">
+<metadata xmlns="http://linux.duke.edu/metadata/common"
+xmlns:rpm="http://linux.duke.edu/metadata/rpm" packages="1">
 <package type="rpm">
   <name>opensm-libs</name>
   <arch>x86_64</arch>
   <version epoch="0" ver="3.3.15" rel="3.fc18"/>
-  <checksum type="sha256" pkgid="YES">c2c85a567d1b92dd6131bd326611b162ed485f6f97583e46459b430006908d66</checksum>
+  <checksum type="sha256"
+  pkgid="YES">c2c85a567d1b92dd6131bd326611b162ed485f6f97583e46459b430006908d66</checksum>
   <summary>Libraries used by opensm and included utilities</summary>
   <description>Shared libraries for Infiniband user space access</description>
   <packager>Fedora Project</packager>
   <url>http://www.openfabrics.org/</url>
   <time file="1354738068" build="1354735351"/>
   <size package="62796" installed="176600" archive="177640"/>
-<location xml:base="http://www.foo.com/repo" href="Packages/o/opensm-libs-3.3.15-3.fc18.x86_64.rpm"/>
+<location xml:base="http://www.foo.com/repo"
+href="Packages/o/opensm-libs-3.3.15-3.fc18.x86_64.rpm"/>
   <format>
     <rpm:license>GPLv2 or BSD</rpm:license>
     <rpm:vendor>Fedora Project</rpm:vendor>

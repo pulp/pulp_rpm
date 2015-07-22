@@ -24,7 +24,6 @@ CONFIGURATION = DISTRIBUTOR + '.configuration'
 
 
 class YumDistributorTests(unittest.TestCase):
-
     def setUp(self):
         self.working_dir = tempfile.mkdtemp()
 
@@ -37,7 +36,6 @@ class YumDistributorTests(unittest.TestCase):
     # -- metadata test ---------------------------------------------------------
 
     def test_metadata(self):
-
         metadata = distributor.YumHTTPDistributor.metadata()
 
         for key in ('id', 'display_name', 'types'):
@@ -71,7 +69,6 @@ class YumDistributorTests(unittest.TestCase):
         mock_publish.Publisher.return_value.publish.assert_called_once()
 
     def test_cancel_publish_repo(self):
-
         self.distributor._publisher = mock.MagicMock()
 
         self.distributor.cancel_publish_repo()
@@ -157,7 +154,6 @@ class YumDistributorTests(unittest.TestCase):
 
 
 class TestDistributorDistributorRemoved(unittest.TestCase):
-
     def _apply_mock_patches(self):
         self.patch_a = patch(CONFIGURATION + '.get_repo_relative_path')
         self.mock_rel_path = self.patch_a.start()
@@ -225,7 +221,6 @@ class TestDistributorDistributorRemoved(unittest.TestCase):
 
     def test_distributor_remove_distributor_uses_rmtree_to_remove_working_dir_and_master_dir(self):
         rmtree_calls = [
-            call(self.mock_repo.working_dir, ignore_errors=True),
             call(self.mock_master.return_value, ignore_errors=True)
         ]
         self.mock_rmtree.assert_has_calls(rmtree_calls)
@@ -319,6 +314,7 @@ class TestEntryPoint(unittest.TestCase):
     """
     Test the entry_point method. This is really just to get good coverage numbers, but hey.
     """
+
     @patch('pulp_rpm.plugins.distributors.yum.distributor.read_json_config')
     def test_entry_point(self, mock_read_json):
         yum_distributor, config = distributor.entry_point()

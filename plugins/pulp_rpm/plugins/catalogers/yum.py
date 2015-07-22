@@ -24,7 +24,6 @@ def entry_point():
 
 
 class YumCataloger(Cataloger):
-
     @classmethod
     def metadata(cls):
         return {

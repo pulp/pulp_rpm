@@ -51,7 +51,8 @@ class TestMigration(rpm_support_base.PulpRPMTests):
                           'arch': 'x86_64', 'vendor': 'Red Hat, Inc.'}]},
         ]
         self.collection.insert(consumer_unit_profiles)
-        migration_module = _import_all_the_way('pulp_rpm.plugins.migrations.0014_add_consumer_profile_hash')
+        migration_module = _import_all_the_way(
+            'pulp_rpm.plugins.migrations.0014_add_consumer_profile_hash')
 
         # Run the migration
         migration_module.migrate('arg_1', kwarg_1='kwarg_1')
@@ -79,6 +80,6 @@ class TestMigration(rpm_support_base.PulpRPMTests):
         # we already asserted that 1 is equal to 2
         profiler = yum.YumProfiler()
         for profile in [consumer_1_profile, consumer_3_rpm_profile]:
-            sorted_profile = profiler.update_profile(None, profile['profile'], None, None)
+            profiler.update_profile(None, profile['profile'], None, None)
             expected_hash = UnitProfile.calculate_hash(profile['profile'])
             self.assertEqual(profile['profile_hash'], expected_hash)

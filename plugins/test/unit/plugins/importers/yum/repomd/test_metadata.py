@@ -74,7 +74,8 @@ class TestParseRepomd(unittest.TestCase):
         self.assertEqual(self.metadata_files.metadata['filelists']['size'], 2022)
         self.assertEqual(self.metadata_files.metadata['filelists']['open_size'], 6514)
         self.assertEqual(self.metadata_files.metadata['filelists']['timestamp'], 1331832478)
-        self.assertEqual(self.metadata_files.metadata['filelists']['checksum']['algorithm'], 'sha256')
+        self.assertEqual(self.metadata_files.metadata['filelists']['checksum']['algorithm'],
+                         'sha256')
         self.assertEqual(self.metadata_files.metadata['filelists']['checksum']['hex_digest'],
                          'b1a19cee1da6a1ddc798fcb85629bb73c0ce817e2ead51b33d60e9482af4dcf0')
         self.assertEqual(self.metadata_files.metadata['filelists']['open_checksum']['algorithm'],
@@ -272,10 +273,12 @@ class TestProcessRepomdDataElement(unittest.TestCase):
     """
     This class contains tests for the process_repomd_data_element() function.
     """
+
     def test_sanitizes_checksum_tag(self):
         """
         Assert that the function properly sanitizes the checksum type in the checksum tag.
         """
+
         def mock_find(tag):
             checksum_element = mock.MagicMock()
             if tag == metadata.CHECKSUM_TAG:
@@ -294,6 +297,7 @@ class TestProcessRepomdDataElement(unittest.TestCase):
         """
         Assert that the function properly sanitizes the checksum type in the open checksum tag.
         """
+
         def mock_find(tag):
             checksum_element = mock.MagicMock()
             if tag == metadata.OPEN_CHECKSUM_TAG:

@@ -1,4 +1,3 @@
-
 from gettext import gettext as _
 import logging
 
@@ -47,8 +46,10 @@ def validate(config):
 
 def _cast_to_int_without_allowing_floats(value):
     """
-    Attempt to return an int of the value, without allowing any floating point values. This is useful to
-    ensure that you get an int type out of value, while allowing a string representation of the value. If
+    Attempt to return an int of the value, without allowing any floating point values. This is
+    useful to
+    ensure that you get an int type out of value, while allowing a string representation of the
+    value. If
     there are any non numerical characters in value, this will raise ValueError.
 
     :param value: The value you want to validate
@@ -83,8 +84,9 @@ def _validate_feed_url(config):
     if not feed_url and all([config.get(setting) is None for setting in dependencies]):
         return
     elif not feed_url:
-        msg = _('The configuration parameter <%(name)s> is required when any of the following other '
-                'parameters are defined: ' + ', '.join(dependencies) + '.')
+        msg = _(
+            'The configuration parameter <%(name)s> is required when any of the following other '
+            'parameters are defined: ' + ', '.join(dependencies) + '.')
         msg = msg % {'name': importer_constants.KEY_FEED}
         raise configuration_utils.ValidationError(msg)
 
@@ -110,9 +112,12 @@ def _validate_max_speed(config):
         if max_speed <= 0:
             raise ValueError()
     except ValueError:
-        msg = _('The configuration parameter <%(max_speed_name)s> must be set to a positive numerical value, '
-                'but is currently set to <%(max_speed_value)s>.')
-        msg = msg % {'max_speed_name': importer_constants.KEY_MAX_SPEED, 'max_speed_value': max_speed}
+        msg = _(
+            'The configuration parameter <%(max_speed_name)s> must be set to a positive numerical '
+            'value, '
+            'but is currently set to <%(max_speed_value)s>.')
+        msg = msg % {'max_speed_name': importer_constants.KEY_MAX_SPEED,
+                     'max_speed_value': max_speed}
         raise configuration_utils.ValidationError(msg)
 
 
@@ -133,15 +138,19 @@ def _validate_num_threads(config):
         if num_threads < 1:
             raise ValueError()
     except ValueError:
-        msg = _('The configuration parameter <%(num_threads_name)s> must be set to a positive integer, but '
-                'is currently set to <%(num_threads)s>.')
-        msg = msg % {'num_threads_name': importer_constants.KEY_MAX_DOWNLOADS, 'num_threads': num_threads}
+        msg = _(
+            'The configuration parameter <%(num_threads_name)s> must be set to a positive '
+            'integer, but '
+            'is currently set to <%(num_threads)s>.')
+        msg = msg % {'num_threads_name': importer_constants.KEY_MAX_DOWNLOADS,
+                     'num_threads': num_threads}
         raise configuration_utils.ValidationError(msg)
 
 
 def _validate_proxy_password(config):
     """
-    The proxy_password setting is optional. However, if it is set, it must be a string. Also, if it is set,
+    The proxy_password setting is optional. However, if it is set, it must be a string. Also,
+    if it is set,
     proxy_user must also be set.
 
     :param config: The configuration object that we are validating.
@@ -153,22 +162,27 @@ def _validate_proxy_password(config):
         return
     elif proxy_password is None:
         # If proxy_password is set, proxy_username must also be set
-        msg = _('The configuration parameter <%(username_name)s> requires the <%(password_name)s> parameter '
-                'to also be set.')
+        msg = _(
+            'The configuration parameter <%(username_name)s> requires the <%(password_name)s> '
+            'parameter '
+            'to also be set.')
         msg = msg % {'password_name': importer_constants.KEY_PROXY_PASS,
-                   'username_name': importer_constants.KEY_PROXY_USER}
+                     'username_name': importer_constants.KEY_PROXY_USER}
         raise configuration_utils.ValidationError(msg)
 
     if not isinstance(proxy_password, basestring):
-        msg = _('The configuration parameter <%(proxy_password_name)s> should be a string, but it was '
-                '%(type)s.')
-        msg = msg % {'proxy_password_name': importer_constants.KEY_PROXY_PASS, 'type': type(proxy_password)}
+        msg = _(
+            'The configuration parameter <%(proxy_password_name)s> should be a string, but it was '
+            '%(type)s.')
+        msg = msg % {'proxy_password_name': importer_constants.KEY_PROXY_PASS,
+                     'type': type(proxy_password)}
         raise configuration_utils.ValidationError(msg)
 
 
 def _validate_proxy_port(config):
     """
-    The proxy_port is optional. If it is set, this will make sure the proxy_url is also set, and that the port
+    The proxy_port is optional. If it is set, this will make sure the proxy_url is also set,
+    and that the port
     is a positive integer.
 
     :param config: The configuration object that we are validating.
@@ -184,8 +198,10 @@ def _validate_proxy_port(config):
         if proxy_port < 1:
             raise ValueError()
     except ValueError:
-        msg = _('The configuration parameter <%(name)s> must be set to a positive integer, but is currently '
-                'set to <%(value)s>.')
+        msg = _(
+            'The configuration parameter <%(name)s> must be set to a positive integer, '
+            'but is currently '
+            'set to <%(value)s>.')
         msg = msg % {'name': importer_constants.KEY_PROXY_PORT, 'value': proxy_port}
         raise configuration_utils.ValidationError(msg)
 
@@ -204,8 +220,9 @@ def _validate_proxy_url(config):
         # Proxy url is not required
         return
     elif proxy_url is None:
-        msg = _('The configuration parameter <%(name)s> is required when any of the following other '
-                'parameters are defined: ' + ', '.join(dependencies) + '.')
+        msg = _(
+            'The configuration parameter <%(name)s> is required when any of the following other '
+            'parameters are defined: ' + ', '.join(dependencies) + '.')
         msg = msg % {'name': importer_constants.KEY_PROXY_HOST}
         raise configuration_utils.ValidationError(msg)
     if not isinstance(proxy_url, basestring):
@@ -216,7 +233,8 @@ def _validate_proxy_url(config):
 
 def _validate_proxy_username(config):
     """
-    The proxy_username is optional. If it is set, this method will ensure that it is a string, and it will
+    The proxy_username is optional. If it is set, this method will ensure that it is a string,
+    and it will
     also ensure that the proxy_password and proxy_url settings are set.
 
     :param config: The configuration object that we are validating.
@@ -228,8 +246,10 @@ def _validate_proxy_username(config):
         return
     elif proxy_username is None:
         # If proxy_password is set, proxy_username must also be set
-        msg = _('The configuration parameter <%(password_name)s> requires the <%(username_name)s> parameter '
-                'to also be set.')
+        msg = _(
+            'The configuration parameter <%(password_name)s> requires the <%(username_name)s> '
+            'parameter '
+            'to also be set.')
         msg = msg % {'password_name': importer_constants.KEY_PROXY_PASS,
                      'username_name': importer_constants.KEY_PROXY_USER}
         raise configuration_utils.ValidationError(msg)
@@ -242,13 +262,15 @@ def _validate_proxy_username(config):
 
 def _validate_remove_missing_units(config):
     """
-    This method will validate the optional config setting called "remove_missing_units". If it is set, it must
+    This method will validate the optional config setting called "remove_missing_units". If it is
+    set, it must
     be a boolean, otherwise it may be None.
 
     :param config: the config to be validated
     :type  config: pulp.plugins.config.PluginCallConfiguration
     """
-    configuration_utils.validate_non_required_bool(config, importer_constants.KEY_UNITS_REMOVE_MISSING)
+    configuration_utils.validate_non_required_bool(config,
+                                                   importer_constants.KEY_UNITS_REMOVE_MISSING)
 
 
 def _validate_ssl_ca_cert(config):
@@ -281,9 +303,12 @@ def _validate_ssl_client_cert(config):
         return
     elif ssl_client_cert is None:
         # If the key is set, we should also have a cert
-        msg = _('The configuration parameter <%(key_name)s> requires the <%(cert_name)s> parameter to also '
-                'be set.')
-        msg = msg % {'key_name': importer_constants.KEY_SSL_CLIENT_KEY, 'cert_name': importer_constants.KEY_SSL_CLIENT_CERT}
+        msg = _(
+            'The configuration parameter <%(key_name)s> requires the <%(cert_name)s> parameter to '
+            'also '
+            'be set.')
+        msg = msg % {'key_name': importer_constants.KEY_SSL_CLIENT_KEY,
+                     'cert_name': importer_constants.KEY_SSL_CLIENT_CERT}
         raise configuration_utils.ValidationError(msg)
 
     if not isinstance(ssl_client_cert, basestring):

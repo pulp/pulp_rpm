@@ -22,7 +22,6 @@ DATA_DIR = os.path.join(os.path.dirname(__file__), '../../../../data/')
 
 
 class YumDistributorConfigurationTests(unittest.TestCase):
-
     def setUp(self):
         super(YumDistributorConfigurationTests, self).setUp()
 
@@ -74,7 +73,6 @@ class YumDistributorConfigurationTests(unittest.TestCase):
 
         test_ca_path = os.path.join(DATA_DIR, 'test_ca.crt')
         with open(test_ca_path, 'r') as test_ca_handle:
-
             error_messages = []
             ca_cert = test_ca_handle.read()
 
@@ -447,7 +445,7 @@ class YumDistributorConfigurationTests(unittest.TestCase):
 
     @mock.patch('pulp_rpm.plugins.distributors.yum.configuration._LOG')
     def test_load_config_fails(self, mock_log):
-        #Test to ensure that we log a warning if the config can't be loaded
+        # Test to ensure that we log a warning if the config can't be loaded
         configuration.load_config("/bad/config/path")
         self.assertTrue(mock_log.warning.called)
 
@@ -465,10 +463,10 @@ class YumDistributorConfigurationTests(unittest.TestCase):
         self.assertEqual(conduit.get_repo_distributors_by_relative_url.call_count, 1)
         self.assertEqual(len(error_messages), 0)
 
-    def test_relative_path_conflicts_conflicts(self):
+    def test_relative_path_conflicts_with_relative_path(self):
         repo = Repository('test')
-        config = {}
-        conflicting_distributor = {'repo_id': 'i_suck',
+        config = {'relative_url': 'test'}
+        conflicting_distributor = {'repo_id': 'zoo_repo',
                                    'config': {'relative_url': 'test'}}
         conduit = mock.MagicMock()
         conduit.get_repo_distributors_by_relative_url = mock.MagicMock(
@@ -478,11 +476,51 @@ class YumDistributorConfigurationTests(unittest.TestCase):
         configuration._check_for_relative_path_conflicts(repo, config, conduit, error_messages)
 
         self.assertEqual(len(error_messages), 1)
+        message = ('Relative URL [test] for repository [test] conflicts with existing relative URL'
+                   ' [test] for repository [zoo_repo]')
+        self.assertEqual(error_messages, [message])
+
+    def test_relative_path_conflicts_with_repo_id(self):
+        repo = Repository('test')
+        config = {'relative_url': 'zoo_repo'}
+        conflicting_distributor = {'repo_id': 'zoo_repo',
+                                   'config': {}}
+        conduit = mock.MagicMock()
+        conduit.get_repo_distributors_by_relative_url = mock.MagicMock(
+            return_value=[conflicting_distributor])
+        error_messages = []
+
+        configuration._check_for_relative_path_conflicts(repo, config, conduit, error_messages)
+
+        self.assertEqual(len(error_messages), 1)
+        message = ('Relative URL [zoo_repo] for repository [test] conflicts with repo id for '
+                   'existing repository [zoo_repo]')
+        self.assertEqual(error_messages, [message])
+
+    def test_relative_path_conflicts_with_both(self):
+        repo = Repository('test')
+        config = {'relative_url': 'zoo_repo'}
+        conflicting_distributor = [{'repo_id': 'zoo_repo',
+                                   'config': {'relative_url': 'zoo_repo'}},
+                                   {'repo_id': 'zoo_repo',
+                                   'config': {}}]
+        conduit = mock.MagicMock()
+        conduit.get_repo_distributors_by_relative_url = mock.MagicMock(
+            return_value=conflicting_distributor)
+        error_messages = []
+
+        configuration._check_for_relative_path_conflicts(repo, config, conduit, error_messages)
+        messages = [('Relative URL [zoo_repo] for repository [test] conflicts with existing '
+                     'relative URL [zoo_repo] for repository [zoo_repo]'),
+                    ('Relative URL [zoo_repo] for repository [test] conflicts with repo id for '
+                     'existing repository [zoo_repo]')]
+        self.assertEqual(len(error_messages), 2)
+        self.assertEqual(error_messages, messages)
 
     # -- cert based auth tests -------------------------------------------------
 
-    @mock.patch('pulp_rpm.repo_auth.protected_repo_utils.ProtectedRepoUtils.add_protected_repo')
-    @mock.patch('pulp_rpm.repo_auth.repo_cert_utils.RepoCertUtils.write_consumer_cert_bundle')
+    @mock.patch('pulp.repoauth.protected_repo_utils.ProtectedRepoUtils.add_protected_repo')
+    @mock.patch('pulp.repoauth.repo_cert_utils.RepoCertUtils.write_consumer_cert_bundle')
     def test_cert_based_auth_ca_and_cert(self, mock_write_consumer_cert_bundle,
                                          mock_add_protected_repo):
         repo = Repository('test')
@@ -495,7 +533,7 @@ class YumDistributorConfigurationTests(unittest.TestCase):
         mock_write_consumer_cert_bundle.assert_called_once_with(repo.id, bundle)
         mock_add_protected_repo.assert_called_once_with(repo.id, repo.id)
 
-    @mock.patch('pulp_rpm.repo_auth.protected_repo_utils.ProtectedRepoUtils.delete_protected_repo')
+    @mock.patch('pulp.repoauth.protected_repo_utils.ProtectedRepoUtils.delete_protected_repo')
     def test_cert_based_auth_ca_no_cert(self, mock_delete_protected_repo):
         repo = Repository('test')
         config = {'auth_ca': 'looks not so legit'}
@@ -504,7 +542,7 @@ class YumDistributorConfigurationTests(unittest.TestCase):
 
         mock_delete_protected_repo.assert_called_once_with(repo.id)
 
-    @mock.patch('pulp_rpm.repo_auth.protected_repo_utils.ProtectedRepoUtils.delete_protected_repo')
+    @mock.patch('pulp.repoauth.protected_repo_utils.ProtectedRepoUtils.delete_protected_repo')
     def test_cert_based_auth_no_ca_no_cert(self, mock_delete_protected_repo):
         repo = Repository('test')
 
@@ -512,7 +550,7 @@ class YumDistributorConfigurationTests(unittest.TestCase):
 
         mock_delete_protected_repo.assert_called_once_with(repo.id)
 
-    @mock.patch('pulp_rpm.repo_auth.protected_repo_utils.ProtectedRepoUtils.delete_protected_repo')
+    @mock.patch('pulp.repoauth.protected_repo_utils.ProtectedRepoUtils.delete_protected_repo')
     def test_remove_cert_based_auth(self, mock_delete_protected_repo):
         repo = Repository('test')
         config = {}
@@ -523,7 +561,6 @@ class YumDistributorConfigurationTests(unittest.TestCase):
 
 
 class TestGetExportRepoPublishDirs(unittest.TestCase):
-
     def test_both_dirs(self):
         config = PluginCallConfiguration({}, {constants.PUBLISH_HTTP_KEYWORD: True,
                                               constants.PUBLISH_HTTPS_KEYWORD: True})
@@ -541,7 +578,6 @@ class TestGetExportRepoPublishDirs(unittest.TestCase):
 
 
 class TestGetExportRepoGroupPublishDirs(unittest.TestCase):
-
     def test_both_dirs(self):
         config = PluginCallConfiguration({}, {constants.PUBLISH_HTTP_KEYWORD: True,
                                               constants.PUBLISH_HTTPS_KEYWORD: True})
@@ -559,7 +595,6 @@ class TestGetExportRepoGroupPublishDirs(unittest.TestCase):
 
 
 class TestConfigurationValidationHelpers(unittest.TestCase):
-
     def test_validate_list_success(self):
         error_messages = []
         configuration._validate_list('foo', ['bar'], error_messages)
@@ -582,7 +617,6 @@ class TestConfigurationValidationHelpers(unittest.TestCase):
 
 
 class TestGetRepoChecksumType(unittest.TestCase):
-
     def setUp(self):
         self.config = PluginCallConfiguration({}, {})
         self.mock_conduit = MagicMock()
@@ -601,7 +635,7 @@ class TestGetRepoChecksumType(unittest.TestCase):
 
     @patch('pulp.server.managers.factory.repo_distributor_manager')
     def test_get_repo_checksum_not_in_scratchpad(self, mock_distributor_manager):
-        #Test with other data in the scratchpad
+        # Test with other data in the scratchpad
         self.mock_conduit.get_repo_scratchpad.return_value = \
             {'foo': 'bar'}
         self.assertEquals(CONFIG_DEFAULT_CHECKSUM,
@@ -617,7 +651,7 @@ class TestGetRepoChecksumType(unittest.TestCase):
 
         self.assertEquals('sha1',
                           configuration.get_repo_checksum_type(self.mock_conduit, self.config))
-        mock_distributor_manager.return_value.update_distributor_config.\
+        mock_distributor_manager.return_value.update_distributor_config. \
             assert_called_with(ANY, ANY, {'checksum_type': 'sha1'})
 
     @patch('pulp.server.managers.factory.repo_distributor_manager')

@@ -23,8 +23,8 @@ class ConsumerGroupBindCommand(PulpCliCommand):
             self.context.server.consumer_group_bind.bind(
                 consumer_group_id, repo_id, YUM_DISTRIBUTOR_ID)
             m = 'Consumer Group [%(c)s] successfully bound to repository [%(r)s]'
-            self.context.prompt.render_success_message(_(m) % {'c': consumer_group_id,
-                                                               'r': repo_id})
+            self.context.prompt.render_success_message(_(m) %
+                                                       {'c': consumer_group_id, 'r': repo_id})
         except NotFoundException:
             m = 'Consumer Group [%(c)s] does not exist on the server'
             self.context.prompt.render_failure_message(
@@ -48,8 +48,8 @@ class ConsumerGroupUnbindCommand(PulpCliCommand):
             self.context.server.consumer_group_bind.unbind(
                 consumer_group_id, repo_id, YUM_DISTRIBUTOR_ID)
             m = 'Consumer Group [%(c)s] successfully unbound from repository [%(r)s]'
-            self.context.prompt.render_success_message(_(m) % {'c': consumer_group_id,
-                                                               'r': repo_id})
+            self.context.prompt.render_success_message(_(m) %
+                                                       {'c': consumer_group_id, 'r': repo_id})
         except NotFoundException, e:
             resources = e.extra_data['resources']
             if 'repo_id' in resources:

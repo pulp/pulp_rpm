@@ -95,11 +95,8 @@ class YumHTTPDistributor(Distributor):
         """
 
         # remove the directories that might have been created for this repo/distributor
-        dir_list = [repo.working_dir,
-                    configuration.get_master_publish_dir(repo, TYPE_ID_DISTRIBUTOR_YUM)]
-
-        for repo_dir in dir_list:
-            shutil.rmtree(repo_dir, ignore_errors=True)
+        repo_dir = configuration.get_master_publish_dir(repo, TYPE_ID_DISTRIBUTOR_YUM)
+        shutil.rmtree(repo_dir, ignore_errors=True)
 
         # remove the symlinks that might have been created for this repo/distributor
         http_publish_dir = configuration.get_http_publish_dir(config)

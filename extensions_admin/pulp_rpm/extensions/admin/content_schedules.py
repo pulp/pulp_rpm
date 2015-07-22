@@ -8,11 +8,10 @@ from pulp.client.extensions.extensions import PulpCliOption
 
 from pulp_rpm.common.ids import TYPE_ID_RPM, TYPE_ID_ERRATA, TYPE_ID_PKG_GROUP
 
-# -- commands -----------------------------------------------------------------
 
 class YumConsumerContentCreateScheduleCommand(ConsumerContentCreateScheduleCommand):
     def __init__(self, context, action, content_type, strategy=None):
-        assert(content_type in (TYPE_ID_RPM, TYPE_ID_ERRATA, TYPE_ID_PKG_GROUP))
+        assert (content_type in (TYPE_ID_RPM, TYPE_ID_ERRATA, TYPE_ID_PKG_GROUP))
 
         strategy = strategy or YumConsumerContentScheduleStrategy(context, action, content_type)
         super(YumConsumerContentCreateScheduleCommand, self).__init__(context, action, strategy)
@@ -22,20 +21,22 @@ class YumConsumerContentCreateScheduleCommand(ConsumerContentCreateScheduleComma
         self.options.remove(OPTION_CONTENT_UNIT)
 
         if content_type == TYPE_ID_RPM:
-            self.add_option(PulpCliOption('--name', _('package name; may be repeated for multiple packages'),
-                                          required=True, allow_multiple=True, aliases=['-n']))
+            self.add_option(
+                PulpCliOption('--name', _('package name; may be repeated for multiple packages'),
+                              required=True, allow_multiple=True, aliases=['-n']))
         elif content_type == TYPE_ID_ERRATA:
-            self.add_option(PulpCliOption('--errata-id', _('erratum id; may be repeated for multiple errata'),
-                                          required=True, allow_multiple=True, aliases=['-e']))
+            self.add_option(
+                PulpCliOption('--errata-id', _('erratum id; may be repeated for multiple errata'),
+                              required=True, allow_multiple=True, aliases=['-e']))
         elif content_type == TYPE_ID_PKG_GROUP:
-            self.add_option(PulpCliOption('--name', _('package group name; may be repeated for multiple package groups'),
-                                          required=True, allow_multiple=True, aliases=['-n']))
+            self.add_option(PulpCliOption('--name', _(
+                'package group name; may be repeated for multiple package groups'),
+                required=True, allow_multiple=True, aliases=['-n']))
 
 
 # -- framework classes --------------------------------------------------------
 
 class YumConsumerContentScheduleStrategy(ConsumerContentScheduleStrategy):
-
     # See super class for method documentation
 
     def __init__(self, context, action, content_type):
@@ -62,5 +63,5 @@ class YumConsumerContentScheduleStrategy(ConsumerContentScheduleStrategy):
         # Eventually we'll support passing in content install arguments to the scheduled
         # call. When we do, options will be created here from kwargs.
         options = {}
-        return self.api.add_schedule(self.action, consumer_id, schedule, units, failure_threshold, enabled, options)
-
+        return self.api.add_schedule(self.action, consumer_id, schedule, units, failure_threshold,
+                                     enabled, options)

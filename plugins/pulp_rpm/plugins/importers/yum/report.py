@@ -9,7 +9,6 @@ from pulp_rpm.plugins.db import models
 
 _logger = logging.getLogger(__name__)
 
-
 type_done_map = {
     models.RPM.TYPE: 'rpm_done',
     models.SRPM.TYPE: 'rpm_done',
@@ -17,8 +16,8 @@ type_done_map = {
 }
 
 type_total_map = {
-    'rpm_total' : models.RPM.TYPE,
-    'drpm_total' : models.DRPM.TYPE,
+    'rpm_total': models.RPM.TYPE,
+    'drpm_total': models.DRPM.TYPE,
 }
 
 
@@ -43,9 +42,9 @@ class ContentReport(dict):
         self['size_left'] = 0
         self['state'] = constants.STATE_NOT_STARTED
         self['details'] = {
-            'rpm_done' : 0,
+            'rpm_done': 0,
             'rpm_total': 0,
-            'drpm_done' : 0,
+            'drpm_done': 0,
             'drpm_total': 0,
         }
 

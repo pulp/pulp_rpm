@@ -6,7 +6,6 @@ older incorrect cached data needs to be removed.
 [1] https://bugzilla.redhat.com/show_bug.cgi?id=1171280
 
 """
-from gettext import gettext as _
 import logging
 
 from pulp.server.db import connection

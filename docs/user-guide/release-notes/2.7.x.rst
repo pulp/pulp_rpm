@@ -1,0 +1,22 @@
+======================
+Pulp 2.7 Release Notes
+======================
+
+Pulp 2.7.0
+==========
+
+New Features
+------------
+
+* The repo authentication functionality associated with pulp_rpm has been moved
+  into platform. This allows other plugins to take advantage of this
+  functionality.
+
+* The RPM plugin supports basic auth when fetching data from upstream repos.
+  This can be configured via ``basicauth-user`` and ``basicauth-pass`` when
+  creating or updating a repository.
+
+* The export distributor can optionally create a PULP_MANIFEST file in the directory where
+  ISOs are generated. This allows the pulp ISO importer to directly import the published product.
+  See the help text for ``pulp-admin rpm repo sync run``, or the distributor documentation for
+  details.

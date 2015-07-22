@@ -14,6 +14,7 @@ from pulp.common.config import read_json_config
 from pulp.plugins.conduits.repo_publish import RepoPublishConduit
 from pulp.plugins.config import PluginCallConfiguration
 from pulp.plugins.loader import api
+from pulp.server import config as pulp_config
 from pulp.server.db.connection import get_collection
 from pulp.server.managers.repo import _common as common_utils
 
@@ -41,7 +42,8 @@ def migrate(*args, **kwargs):
         api.initialize()
 
     distributor_collection = get_collection('repo_distributors')
-    yum_distributors = list(distributor_collection.find({'distributor_type_id': YUM_DISTRIBUTOR_ID}))
+    yum_distributors = list(
+        distributor_collection.find({'distributor_type_id': YUM_DISTRIBUTOR_ID}))
 
     repo_collection = get_collection('repos')
     repo_ids = list(set(d['repo_id'] for d in yum_distributors))
@@ -78,9 +80,11 @@ def _clear_working_dir(repo, working_dir=None):
                 shutil.rmtree(p, ignore_errors=True)
 
             else:
-                try: os.unlink(p)
+                try:
+                    os.unlink(p)
                 # this is a best-effort kinda thing
-                except: pass
+                except:
+                    pass
 
 
 def _clear_old_publish_dirs(repo, config):
@@ -136,12 +140,16 @@ def _clear_orphaned_publish_dirs(root_dir, publish_dir):
         listing_path = os.path.join(publish_dir, 'listing')
 
         if os.path.exists(listing_path):
-            try: os.unlink(listing_path)
-            except: pass
+            try:
+                os.unlink(listing_path)
+            except:
+                pass
 
         if os.path.islink(publish_dir):
-            try: os.unlink(publish_dir)
-            except: pass
+            try:
+                os.unlink(publish_dir)
+            except:
+                pass
 
         else:
             os.rmdir(publish_dir)
@@ -157,7 +165,8 @@ def _re_publish_repository(repo, distributor):
     """
 
     repo = common_utils.to_transfer_repo(repo)
-    repo.working_dir = common_utils.distributor_working_dir(distributor['distributor_type_id'], repo.id)
+    repo.working_dir = distributor_working_dir(distributor['distributor_type_id'],
+                                               repo.id)
     conduit = RepoPublishConduit(repo.id, distributor['id'])
     config = PluginCallConfiguration(NEW_DISTRIBUTOR_CONF, distributor['config'])
 
@@ -166,6 +175,28 @@ def _re_publish_repository(repo, distributor):
 
 
 def _remove_legacy_publish_dirs():
-
     _clear_orphaned_publish_dirs(OLD_ROOT_PUBLISH_DIR, OLD_HTTP_PUBLISH_DIR)
     _clear_orphaned_publish_dirs(OLD_ROOT_PUBLISH_DIR, OLD_HTTPS_PUBLISH_DIR)
+
+
+def distributor_working_dir(distributor_type_id, repo_id, mkdir=True):
+    """
+    Determines the working directory for a distributor to use for a repository.
+    If the mkdir argument is set to true, the directory will be created as
+    part of this call. See the module-level docstrings for more information on
+    the directory structure.
+    :param mkdir: if true, this call will create the directory; otherwise the
+                  full path will just be generated
+    :type  mkdir: bool
+    :return: full path on disk to the directory the distributor can use for the
+             given repository
+    :rtype:  str
+    """
+    storage_dir = pulp_config.config.get('server', 'storage_dir')
+    working_dir = os.path.join(storage_dir, 'working', 'repos', repo_id, 'distributors',
+                               distributor_type_id)
+
+    if mkdir and not os.path.exists(working_dir):
+        os.makedirs(working_dir)
+
+    return working_dir

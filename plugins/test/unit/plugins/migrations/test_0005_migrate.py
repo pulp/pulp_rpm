@@ -12,14 +12,15 @@ from pulp_rpm.devel import rpm_support_base
 class TestMigrationAddMetadata(rpm_support_base.PulpRPMTests):
     def setUp(self):
         super(TestMigrationAddMetadata, self).setUp()
-        self.module = MigrationModule('pulp_rpm.plugins.migrations.0005_rpm_changelog_files')._module
+        self.module = MigrationModule(
+            'pulp_rpm.plugins.migrations.0005_rpm_changelog_files')._module
 
         self.fake_unit = {'_storage_path': '/tmp/foo'}
         self.mock_ts = mock.MagicMock()
         self.mock_collection = mock.MagicMock()
 
         self.mock_package = mock.MagicMock()
-        self.mock_package.changelog = [('now', 'foo@bar.com', 'description'),]
+        self.mock_package.changelog = [('now', 'foo@bar.com', 'description'), ]
         self.mock_package.filelist = ['/a', '/b', '/c']
         self.mock_package.files = {
             'ghost': ['/xyz'],

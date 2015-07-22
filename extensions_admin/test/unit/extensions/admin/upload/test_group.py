@@ -9,7 +9,6 @@ from pulp_rpm.devel.client_base import PulpClientTests
 
 
 class CreatePackageGroupCommand(PulpClientTests):
-
     def setUp(self):
         super(CreatePackageGroupCommand, self).setUp()
         self.upload_manager = mock.MagicMock()
@@ -54,7 +53,7 @@ class CreatePackageGroupCommand(PulpClientTests):
             group.OPT_DEFAULT.keyword: 'test-default',
             group.OPT_LANGONLY.keyword: 'test-lang',
             group.OPT_USER_VISIBLE.keyword: 'test-user-visible',
-            group.OPT_CONDITIONAL_NAME.keyword: ['a:A', 'b: B']  # with and without spaces around:
+            group.OPT_CONDITIONAL_NAME.keyword: ['a:A', 'b : B']  # with and without spaces around :
         }
 
         metadata = self.command.generate_metadata(None, **args)

@@ -8,7 +8,6 @@ from pulp_rpm.plugins.distributors.yum.metadata.filelists import FilelistsXMLFil
 
 
 class FilelistsXMLFileContextTests(unittest.TestCase):
-
     def setUp(self):
         self.working_dir = tempfile.mkdtemp()
 

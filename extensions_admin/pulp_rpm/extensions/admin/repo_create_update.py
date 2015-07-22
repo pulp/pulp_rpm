@@ -53,7 +53,6 @@ class RpmRepoOptionsBundle(OptionsBundle):
 
 
 class RpmRepoCreateCommand(CreateRepositoryCommand, ImporterConfigMixin):
-
     def __init__(self, context):
 
         # Adds things like name, description
@@ -65,6 +64,7 @@ class RpmRepoCreateCommand(CreateRepositoryCommand, ImporterConfigMixin):
                                      include_sync=True,
                                      include_ssl=True,
                                      include_proxy=True,
+                                     include_basic_auth=True,
                                      include_throttling=True,
                                      include_unit_policy=True)
 
@@ -119,12 +119,12 @@ class RpmRepoCreateCommand(CreateRepositoryCommand, ImporterConfigMixin):
         # Create the repository; let exceptions bubble up to the framework exception handler
         distributors = self.package_distributors(yum_distributor_config, export_distributor_config)
         self.context.server.repo.create_and_configure(
-           repo_id, display_name, description, notes,
-           ids.TYPE_ID_IMPORTER_YUM, importer_config, distributors
+            repo_id, display_name, description, notes,
+            ids.TYPE_ID_IMPORTER_YUM, importer_config, distributors
         )
 
         msg = _('Successfully created repository [%(r)s]')
-        self.prompt.render_success_message(msg % {'r' : repo_id})
+        self.prompt.render_success_message(msg % {'r': repo_id})
 
     def package_distributors(self, yum_distributor_config, export_distributor_config):
         """
@@ -184,7 +184,6 @@ class RpmRepoCreateCommand(CreateRepositoryCommand, ImporterConfigMixin):
 
 
 class RpmRepoUpdateCommand(UpdateRepositoryCommand, ImporterConfigMixin):
-
     def __init__(self, context):
         super(RpmRepoUpdateCommand, self).__init__(context)
 
@@ -199,6 +198,7 @@ class RpmRepoUpdateCommand(UpdateRepositoryCommand, ImporterConfigMixin):
                                      include_sync=True,
                                      include_ssl=True,
                                      include_proxy=True,
+                                     include_basic_auth=True,
                                      include_throttling=True,
                                      include_unit_policy=True)
 
@@ -260,7 +260,7 @@ class RpmRepoUpdateCommand(UpdateRepositoryCommand, ImporterConfigMixin):
 
         if not response.is_async():
             msg = _('Repository [%(r)s] successfully updated')
-            self.prompt.render_success_message(msg % {'r' : repo_id})
+            self.prompt.render_success_message(msg % {'r': repo_id})
         else:
             self.poll([response.response_body], kwargs)
 
@@ -335,9 +335,9 @@ def _prep_config(kwargs, plugin_config_keys):
     # User-specified flags use hyphens but the importer/distributor want
     # underscores, so do a quick translation here before anything else.
     for k in kwargs.keys():
-        v = kwargs.pop(k)
+        val = kwargs.pop(k)
         new_key = k.replace('-', '_')
-        kwargs[new_key] = v
+        kwargs[new_key] = val
 
     # Populate the plugin config with the plugin-relevant keys in the user args
     user_arg_keys = [k[1] for k in plugin_config_keys]

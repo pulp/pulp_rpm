@@ -8,6 +8,7 @@ class ISOImporterConfigKeysMigrationTests(rpm_support_base.PulpRPMTests):
     """
     Test migration #0009.
     """
+
     def setUp(self):
         super(self.__class__, self).setUp()
         self.repo_importers = get_collection('repo_importers')
@@ -17,17 +18,17 @@ class ISOImporterConfigKeysMigrationTests(rpm_support_base.PulpRPMTests):
              "importer_type_id": "iso_importer", "last_sync": "2013-04-09T16:57:06-04:00",
              "scheduled_syncs": [], "scratchpad": None,
              "config": {
-                "proxy_user": "rbarlow",
-                "feed_url": "http://pkilambi.fedorapeople.org/test_file_repo/",
-                "proxy_url": "localhost", "proxy_password": "password", "proxy_port": 3128,
-                "id": "proxy" },
+                 "proxy_user": "rbarlow",
+                 "feed_url": "http://pkilambi.fedorapeople.org/test_file_repo/",
+                 "proxy_url": "localhost", "proxy_password": "password", "proxy_port": 3128,
+                 "id": "proxy"},
              "id": "iso_importer"},
             # This one has only the configs that were changed set
             {'repo_id': 'test', 'importer_type_id': 'iso_importer',
              'config': {
-                'feed_url': 'http://feed.com/isos', 'num_threads': 42,
-                'proxy_url': 'proxy.com', 'proxy_user': 'jeeves',
-                'remove_missing_units': False, 'validate_units': True},
+                 'feed_url': 'http://feed.com/isos', 'num_threads': 42,
+                 'proxy_url': 'proxy.com', 'proxy_user': 'jeeves',
+                 'remove_missing_units': False, 'validate_units': True},
              'id': 'iso_importer'},
             # This is here just to make sure we ignore it with our query, since this
             # migration should only alter ISOImporters

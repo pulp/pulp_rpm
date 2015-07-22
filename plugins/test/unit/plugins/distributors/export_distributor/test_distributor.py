@@ -4,7 +4,6 @@ import tempfile
 import unittest
 
 import mock
-from pulp.devel.unit.util import touch
 from pulp.plugins.model import Repository
 from pulp.plugins.config import PluginCallConfiguration
 from pulp.plugins.conduits.repo_publish import RepoPublishConduit
@@ -18,14 +17,12 @@ from pulp_rpm.common.ids import (TYPE_ID_DISTRO, TYPE_ID_PKG_GROUP, TYPE_ID_ERRA
 
 
 class TestEntryPoint(unittest.TestCase):
-
     def test_entry_point(self):
         distributor, config = entry_point()
         self.assertEquals(distributor, ISODistributor)
 
 
 class TestISODistributor(unittest.TestCase):
-
     def setUp(self):
         self.working_dir = tempfile.mkdtemp()
         self.repo = Repository('test')
@@ -66,7 +63,8 @@ class TestISODistributor(unittest.TestCase):
         export_utils.validate_export_config = validate_config
 
     @mock.patch('pulp_rpm.plugins.distributors.export_distributor.distributor.ExportRepoPublisher')
-    @mock.patch('pulp_rpm.plugins.distributors.export_distributor.export_utils.validate_export_config')
+    @mock.patch(
+        'pulp_rpm.plugins.distributors.export_distributor.export_utils.validate_export_config')
     def test_publish_repo(self, mock_validate, export_publisher):
 
         mock_validate.return_value = (True, None)
@@ -76,7 +74,8 @@ class TestISODistributor(unittest.TestCase):
 
         self.assertEquals('foo', distributor.publish_repo(self.repo, self.conduit, self.config))
 
-    @mock.patch('pulp_rpm.plugins.distributors.export_distributor.export_utils.validate_export_config')
+    @mock.patch(
+        'pulp_rpm.plugins.distributors.export_distributor.export_utils.validate_export_config')
     def test_publish_repo_invalid_config(self, mock_validate):
 
         mock_validate.return_value = (False, 'bar')
@@ -144,5 +143,3 @@ class TestISODistributor(unittest.TestCase):
         self.assertFalse(os.path.exists(http_dir))
         self.assertFalse(os.path.exists(https_dir))
         self.assertFalse(os.path.exists(master_dir))
-        self.assertFalse(os.path.exists(repo_working_dir))
-

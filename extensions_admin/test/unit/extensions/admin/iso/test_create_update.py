@@ -8,7 +8,8 @@ import os
 import unittest
 
 import mock
-from pulp.client import arg_utils, parsers
+from okaara import parsers
+from pulp.client import arg_utils
 from pulp.client.commands import options as std_options
 from pulp.client.commands.repo.cudl import (CreateRepositoryCommand,
                                             UpdateRepositoryCommand)
@@ -24,7 +25,8 @@ from pulp_rpm.extensions.admin.iso import create_update
 
 def mock_convert_file_contents(file_keys, args):
     """
-    Mock the pulp.client.arg_utils.convert_file_contents() function to stick "This is a file." as any file.
+    Mock the pulp.client.arg_utils.convert_file_contents() function to stick "This is a file." as
+    any file.
     """
     for key in file_keys:
         if key in args:
@@ -35,6 +37,7 @@ class TestISODistributorConfigMixin(unittest.TestCase):
     """
     Test the ISODistributorConfigMixin class.
     """
+
     @mock.patch('pulp_rpm.extensions.admin.iso.create_update.ISODistributorConfigMixin.'
                 'add_option_group', create=True)
     def test___init__(self, add_option_group):
@@ -81,8 +84,9 @@ class TestISODistributorConfigMixin(unittest.TestCase):
         self.assertEqual(add_option_group.mock_calls[0][1][0],
                          distributor_config_mixin.publishing_group)
 
-    @mock.patch('pulp_rpm.extensions.admin.iso.create_update.ISODistributorConfigMixin.add_option_group',
-                mock.MagicMock(), create=True)
+    @mock.patch(
+        'pulp_rpm.extensions.admin.iso.create_update.ISODistributorConfigMixin.add_option_group',
+        mock.MagicMock(), create=True)
     @mock.patch('pulp_rpm.extensions.admin.iso.create_update.arg_utils.convert_file_contents',
                 mock_convert_file_contents)
     def test__parse_distributor_config_all_set(self):
@@ -99,8 +103,9 @@ class TestISODistributorConfigMixin(unittest.TestCase):
         self.assertEqual(config[constants.CONFIG_SERVE_HTTPS], 'false')
         self.assertEqual(config[constants.CONFIG_SSL_AUTH_CA_CERT], 'This is a file.')
 
-    @mock.patch('pulp_rpm.extensions.admin.iso.create_update.ISODistributorConfigMixin.add_option_group',
-                mock.MagicMock(), create=True)
+    @mock.patch(
+        'pulp_rpm.extensions.admin.iso.create_update.ISODistributorConfigMixin.add_option_group',
+        mock.MagicMock(), create=True)
     def test__parse_distributor_config_bad_file_path(self):
         """
         Test the _parse_distributor_config() method with a non-existing file path for the
@@ -112,8 +117,9 @@ class TestISODistributorConfigMixin(unittest.TestCase):
         self.assertRaises(arg_utils.InvalidConfig, mixin._parse_distributor_config,
                           user_input)
 
-    @mock.patch('pulp_rpm.extensions.admin.iso.create_update.ISODistributorConfigMixin.add_option_group',
-                mock.MagicMock(), create=True)
+    @mock.patch(
+        'pulp_rpm.extensions.admin.iso.create_update.ISODistributorConfigMixin.add_option_group',
+        mock.MagicMock(), create=True)
     def test__parse_distributor_config_only_http_set(self):
         """
         Test the _parse_distributor_config() method with only the http setting set.
@@ -131,6 +137,7 @@ class TestISORepoCreateCommand(PulpClientTests):
     """
     Test the ISORepoCreateCommand class.
     """
+
     @mock.patch('pulp_rpm.extensions.admin.iso.create_update.ISODistributorConfigMixin.'
                 '__init__', side_effect=create_update.ISODistributorConfigMixin.__init__,
                 autospec=True)
@@ -339,16 +346,15 @@ class TestISORepoCreateCommand(PulpClientTests):
             importer_constants.KEY_FEED: 'https://feed.com/isos',
             importer_constants.KEY_SSL_CLIENT_CERT: 'This is a file.',
             importer_constants.KEY_SSL_CLIENT_KEY: 'This is a file.'}
-        distributors = [{
-            'distributor_type': ids.TYPE_ID_DISTRIBUTOR_ISO,
-            'distributor_config': {'serve_http': True},
-            'auto_publish': True, 'distributor_id': ids.TYPE_ID_DISTRIBUTOR_ISO}]
+        distributors = [{'distributor_type': ids.TYPE_ID_DISTRIBUTOR_ISO,
+                         'distributor_config': {'serve_http': True},
+                         'auto_publish': True, 'distributor_id': ids.TYPE_ID_DISTRIBUTOR_ISO}]
         # Set up a mock on create_and_configure, so we can intercept the call and inspect
         self.context.server.repo.create_and_configure = mock.MagicMock()
         command.prompt = mock.MagicMock()
 
         command._perform_command(repo_id, display_name, description, notes,
-                                        importer_config, distributors, {})
+                                 importer_config, distributors, {})
 
         # Make sure the correct call was made to create the repo
         self.context.server.repo.create_and_configure.assert_called_once_with(
@@ -365,6 +371,7 @@ class TestISORepoUpdateCommand(PulpClientTests):
     """
     Test the ISORepoUpdateCommand class.
     """
+
     @mock.patch('pulp_rpm.extensions.admin.iso.create_update.ISODistributorConfigMixin.'
                 '__init__', side_effect=create_update.ISODistributorConfigMixin.__init__,
                 autospec=True)
@@ -494,10 +501,9 @@ class TestISORepoUpdateCommand(PulpClientTests):
             importer_constants.KEY_FEED: 'https://feed.com/isos',
             importer_constants.KEY_SSL_CLIENT_CERT: 'This is a file.',
             importer_constants.KEY_SSL_CLIENT_KEY: 'This is a file.'}
-        distributors = [{
-            'distributor_type': ids.TYPE_ID_DISTRIBUTOR_ISO,
-            'distributor_config': {'serve_http': True},
-            'auto_publish': True, 'distributor_id': ids.TYPE_ID_DISTRIBUTOR_ISO}]
+        distributors = [{'distributor_type': ids.TYPE_ID_DISTRIBUTOR_ISO,
+                         'distributor_config': {'serve_http': True},
+                         'auto_publish': True, 'distributor_id': ids.TYPE_ID_DISTRIBUTOR_ISO}]
         # Set up a mock on create_and_configure, so we can intercept the call and inspect
         self.context.server.repo.update_repo_and_plugins = mock.MagicMock()
         command.poll = mock.MagicMock()
@@ -516,7 +522,7 @@ class TestISORepoUpdateCommand(PulpClientTests):
         command.prompt = mock.MagicMock()
 
         command._perform_command(repo_id, display_name, description, notes,
-                                        importer_config, distributors, {})
+                                 importer_config, distributors, {})
 
         # Make sure the correct call was made to create the repo
         distributor_configs = {
@@ -541,10 +547,9 @@ class TestISORepoUpdateCommand(PulpClientTests):
             importer_constants.KEY_FEED: 'https://feed.com/isos',
             importer_constants.KEY_SSL_CLIENT_CERT: 'This is a file.',
             importer_constants.KEY_SSL_CLIENT_KEY: 'This is a file.'}
-        distributors = [{
-            'distributor_type': ids.TYPE_ID_DISTRIBUTOR_ISO,
-            'distributor_config': {'serve_http': True},
-            'auto_publish': True, 'distributor_id': ids.TYPE_ID_DISTRIBUTOR_ISO}]
+        distributors = [{'distributor_type': ids.TYPE_ID_DISTRIBUTOR_ISO,
+                         'distributor_config': {'serve_http': True},
+                         'auto_publish': True, 'distributor_id': ids.TYPE_ID_DISTRIBUTOR_ISO}]
         # Set up a mock on create_and_configure, so we can intercept the call and inspect
         self.context.server.repo.update_repo_and_plugins = mock.MagicMock()
 
@@ -556,7 +561,7 @@ class TestISORepoUpdateCommand(PulpClientTests):
         command.prompt = mock.MagicMock()
 
         command._perform_command(repo_id, display_name, description, notes,
-                                        importer_config, distributors, {})
+                                 importer_config, distributors, {})
 
         # Make sure the correct call was made to create the repo
         distributor_configs = {

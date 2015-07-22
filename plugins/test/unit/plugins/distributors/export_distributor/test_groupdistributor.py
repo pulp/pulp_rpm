@@ -4,23 +4,19 @@ import unittest
 import os
 
 import mock
-from mock import patch
 from pulp.server.exceptions import PulpDataException
 from pulp.plugins.model import RepositoryGroup
 from pulp.plugins.config import PluginCallConfiguration
 
 from pulp_rpm.plugins.distributors.export_distributor import export_utils
-from pulp_rpm.plugins.distributors.yum import configuration
 from pulp_rpm.plugins.distributors.export_distributor.groupdistributor import GroupISODistributor, \
     entry_point
 from pulp_rpm.common.ids import (TYPE_ID_DISTRO, TYPE_ID_PKG_GROUP, TYPE_ID_ERRATA, TYPE_ID_DRPM,
                                  TYPE_ID_SRPM, TYPE_ID_RPM, TYPE_ID_PKG_CATEGORY,
                                  TYPE_ID_DISTRIBUTOR_GROUP_EXPORT)
-from pulp_rpm.common import constants
 
 
 class TestEntryPoint(unittest.TestCase):
-
     def test_entry_point(self):
         distributor, config = entry_point()
         self.assertEquals(distributor, GroupISODistributor)
@@ -30,6 +26,7 @@ class TestGroupISODistributor(unittest.TestCase):
     """
     Tests the metadata and validate_config methods for GroupISODistributor
     """
+
     def setUp(self):
         self.working_dir = tempfile.mkdtemp()
         self.repo = RepositoryGroup('test', 'foo', 'bar', {}, ['zoo', 'zoo2'])
@@ -63,9 +60,9 @@ class TestGroupISODistributor(unittest.TestCase):
 
     @mock.patch('pulp_rpm.plugins.distributors.export_distributor.groupdistributor.'
                 'ExportRepoGroupPublisher')
-    @mock.patch('pulp_rpm.plugins.distributors.export_distributor.export_utils.validate_export_config')
+    @mock.patch(
+        'pulp_rpm.plugins.distributors.export_distributor.export_utils.validate_export_config')
     def test_publish_group(self, mock_validate, export_publisher):
-
         mock_validate.return_value = (True, None)
         distributor = GroupISODistributor()
         export_publisher.return_value = mock.Mock()
@@ -73,9 +70,9 @@ class TestGroupISODistributor(unittest.TestCase):
 
         self.assertEquals('foo', distributor.publish_group(self.repo, self.conduit, self.config))
 
-    @mock.patch('pulp_rpm.plugins.distributors.export_distributor.export_utils.validate_export_config')
+    @mock.patch(
+        'pulp_rpm.plugins.distributors.export_distributor.export_utils.validate_export_config')
     def test_publish_repo_invalid_config(self, mock_validate):
-
         mock_validate.return_value = (False, 'bar')
         distributor = GroupISODistributor()
 
@@ -116,5 +113,3 @@ class TestGroupISODistributor(unittest.TestCase):
         self.assertFalse(os.path.exists(http_dir))
         self.assertFalse(os.path.exists(https_dir))
         self.assertFalse(os.path.exists(master_dir))
-        self.assertFalse(os.path.exists(repo_working_dir))
-

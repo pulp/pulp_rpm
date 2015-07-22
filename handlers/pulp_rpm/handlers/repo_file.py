@@ -155,7 +155,7 @@ class RepoFile(object):
 
         # Write the contents of the parser
         self.parser.write(f)
-        
+
         f.close()
 
     # -- contents manipulation ------------------------------------------------------------
@@ -197,7 +197,7 @@ class RepoFile(object):
         @type  repo: L{Repo}
         '''
         self._repo_to_parser(repo)
-        
+
     def get_repo(self, repo_id):
         '''
         Loads a repo by repo ID. If the repo does not exist, returns None.
@@ -258,6 +258,7 @@ class RepoFile(object):
 
         return repo
 
+
 class MirrorListFile(object):
     '''
     This is a similar abstraction as RepoFile is. It represents a single local mirror
@@ -298,7 +299,7 @@ class MirrorListFile(object):
         @type  url_list: list
         '''
         self.entries.extend(url_list)
-        
+
     def delete(self):
         '''
         If the mirror list file exists, it will be deleted. If not, this method does nothing.
@@ -319,7 +320,7 @@ class MirrorListFile(object):
         entries = f.read()
         self.entries = entries.split()
         f.close()
-        
+
     def save(self):
         '''
         Writes the entries in this instance out to the file.
@@ -331,6 +332,7 @@ class MirrorListFile(object):
             f.write(entry)
             f.write('\n')
         f.close()
+
 
 class RepoKeyFiles(object):
     '''
@@ -364,7 +366,7 @@ class RepoKeyFiles(object):
 
         self.repo_keys_dir = os.path.join(keys_root_dir, repo_id)
 
-        self.keys = {} # key file path: key contents
+        self.keys = {}  # key file path: key contents
 
     def add_key(self, key_name, key_contents):
         '''
@@ -421,7 +423,7 @@ class CertFiles(object):
     :ivar rootdir:    The root directory to write the certs.
     :type rootdir:    str
     :ivar clientcert: The client key & certifiate PEM text.
-    :type clientcert: str 
+    :type clientcert: str
     '''
     CLIENT = 'client.crt'
 
@@ -431,7 +433,7 @@ class CertFiles(object):
         the certificate files are written.
         @type rootdir: str
         @param repoid: The ID of the repo.
-        @type repoid: str 
+        @type repoid: str
         '''
         self.rootdir = os.path.join(rootdir, repoid)
         self.clientcert = None
@@ -518,4 +520,3 @@ class Reader(object):
             ln = '\n'
         self.idx = i
         return ln
-

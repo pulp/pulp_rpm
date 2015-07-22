@@ -8,9 +8,9 @@ from pulp_rpm.plugins.importers.yum import listener
 
 
 class TestContentListener(unittest.TestCase):
-
     def setUp(self):
-        self.test_rpm_path = os.path.join(os.path.dirname(__file__), '../../../../data/walrus-5.21-1.noarch.rpm')
+        self.test_rpm_path = os.path.join(os.path.dirname(__file__),
+                                          '../../../../data/walrus-5.21-1.noarch.rpm')
         self.sync_conduit = mock.MagicMock()
         self.progress_report = mock.MagicMock()
         self.sync_call_config = mock.MagicMock()
@@ -45,10 +45,10 @@ class TestContentListener(unittest.TestCase):
     @mock.patch('pulp.plugins.util.verification.verify_size')
     @mock.patch('shutil.move', autospec=True)
     def test_download_successful_invalid_file_size(self, mock_move, mock_verify_size,
-                                                 mock_verify_checksum, mock_open):
+                                                   mock_verify_checksum, mock_open):
         self.sync_call_config.get.return_value = True
 
-        mock_verify_size.side_effect = verification.VerificationException(22) #seed the size found
+        mock_verify_size.side_effect = verification.VerificationException(22)  # seed the size found
         content_listener = listener.ContentListener(self.sync_conduit, self.progress_report,
                                                     self.sync_call_config, self.metadata_files)
 
@@ -62,7 +62,7 @@ class TestContentListener(unittest.TestCase):
     @mock.patch('pulp.plugins.util.verification.verify_size')
     @mock.patch('shutil.move', autospec=True)
     def test_download_successful_invalid_checksum_type(self, mock_move, mock_verify_size,
-                                                 mock_verify_checksum, mock_open):
+                                                       mock_verify_checksum, mock_open):
         self.sync_call_config.get.return_value = True
 
         mock_verify_checksum.side_effect = verification.InvalidChecksumType()
@@ -79,7 +79,7 @@ class TestContentListener(unittest.TestCase):
     @mock.patch('pulp.plugins.util.verification.verify_size')
     @mock.patch('shutil.move', autospec=True)
     def test_download_successful_invalid_checksum_verification(self, mock_move, mock_verify_size,
-                                                 mock_verify_checksum, mock_open):
+                                                               mock_verify_checksum, mock_open):
         self.sync_call_config.get.return_value = True
 
         mock_verify_checksum.side_effect = verification.VerificationException('bad')

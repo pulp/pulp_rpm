@@ -8,7 +8,8 @@ from consumer_group_bind import ConsumerGroupBindCommand, ConsumerGroupUnbindCom
 from consumer_group_package import ConsumerGroupPackageSection
 from errata import YumConsumerErrataSection
 from package import YumConsumerPackageSection
-from pulp_rpm.extensions.admin.rpm_admin_consumer.package_group import YumConsumerPackageGroupSection
+from pulp_rpm.extensions.admin.rpm_admin_consumer.package_group import \
+    YumConsumerPackageGroupSection
 
 
 # -- framework hook -----------------------------------------------------------

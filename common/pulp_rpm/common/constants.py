@@ -1,6 +1,7 @@
 # -- progress states ----------------------------------------------------------
 
-# These are used by the RPM reports, but not by the ISO reports (since those use their own state machines)
+# These are used by the RPM reports, but not by the ISO reports (since those use their own state
+# machines)
 STATE_NOT_STARTED = 'NOT_STARTED'
 STATE_RUNNING = 'IN_PROGRESS'
 STATE_COMPLETE = 'FINISHED'
@@ -58,7 +59,6 @@ PUBLISH_STEP_ISO = 'save_iso'
 PUBLISH_GENERATE_SQLITE_FILE_STEP = 'generate sqlite'
 PUBLISH_STEP_EXPORT_REPO_GROUP = 'export_repo_group'
 
-
 PUBLISH_STEPS = (PUBLISH_RPMS_STEP, PUBLISH_DELTA_RPMS_STEP, PUBLISH_ERRATA_STEP,
                  PUBLISH_COMPS_STEP, PUBLISH_DISTRIBUTION_STEP, PUBLISH_METADATA_STEP,
                  PUBLISH_TO_MASTER_STEP, PUBLISH_OVER_HTTP_STEP, PUBLISH_OVER_HTTPS_STEP,
@@ -82,18 +82,18 @@ PUBLISHED_DISTRIBUTION_FILES_KEY = 'published_distributions'
 
 # The default number of threads to be used with downloading ISOs. We should convert the RPM code to
 # use this same value.
-CONFIG_MAX_DOWNLOADS_DEFAULT        = 5
+CONFIG_MAX_DOWNLOADS_DEFAULT = 5
 # By default, we should use the CA certificate to validate the remote host
-CONFIG_SSL_VALIDATION_DEFAULT       = True
+CONFIG_SSL_VALIDATION_DEFAULT = True
 # By default, do not remove units that are in the repo that are not in the feed
 CONFIG_UNITS_REMOVE_MISSING_DEFAULT = False
 # By default, lets validate units
-CONFIG_VALIDATE_DEFAULT             = True
+CONFIG_VALIDATE_DEFAULT = True
 
 # Distributor configuration key names
-CONFIG_SERVE_HTTP          = 'serve_http'
-CONFIG_SERVE_HTTP_DEFAULT  = False
-CONFIG_SERVE_HTTPS         = 'serve_https'
+CONFIG_SERVE_HTTP = 'serve_http'
+CONFIG_SERVE_HTTP_DEFAULT = False
+CONFIG_SERVE_HTTPS = 'serve_https'
 CONFIG_SERVE_HTTPS_DEFAULT = True
 CONFIG_KEY_CHECKSUM_TYPE = 'checksum_type'
 CONFIG_DEFAULT_CHECKSUM = 'sha256'
@@ -101,9 +101,10 @@ CONFIG_DEFAULT_CHECKSUM = 'sha256'
 # list of types to skip at sync time
 CONFIG_SKIP = 'type_skip_list'
 
-# This is the CA that we should verify client entitlement certificates with. If it is set, and protected repos
-# are enabled serverwide, we will protect the repo with this cert over SSL. If it is unset, no repo protection
-# will be configured. This option is currently only used by the ISO distributor.
+# This is the CA that we should verify client entitlement certificates with. If it is set,
+# and protected repos are enabled serverwide, we will protect the repo with this cert over SSL.
+# If it is unset, no repo protection will be configured. This option is currently only used by
+# the ISO distributor.
 CONFIG_SSL_AUTH_CA_CERT = 'ssl_auth_ca_cert'
 
 # Copy operation config
@@ -125,6 +126,7 @@ CONFIG_KEY_DISTRIBUTION_XML_FILE = 'pulp_distribution_xml_file'
 # Configuration constants for export distributors
 PUBLISH_HTTP_KEYWORD = 'http'
 PUBLISH_HTTPS_KEYWORD = 'https'
+CREATE_PULP_MANIFEST = 'manifest'
 EXPORT_REQUIRED_CONFIG_KEYS = (PUBLISH_HTTP_KEYWORD, PUBLISH_HTTPS_KEYWORD)
 
 END_DATE_KEYWORD = 'end_date'
@@ -136,7 +138,7 @@ START_DATE_KEYWORD = 'start_date'
 GENERATE_SQLITE_KEYWORD = 'generate_sqlite'
 EXPORT_OPTIONAL_CONFIG_KEYS = (END_DATE_KEYWORD, ISO_PREFIX_KEYWORD, SKIP_KEYWORD,
                                EXPORT_DIRECTORY_KEYWORD, START_DATE_KEYWORD, ISO_SIZE_KEYWORD,
-                               GENERATE_SQLITE_KEYWORD)
+                               GENERATE_SQLITE_KEYWORD, CREATE_PULP_MANIFEST)
 
 EXPORT_HTTP_DIR = '/var/lib/pulp/published/http/exports/repo'
 EXPORT_HTTPS_DIR = '/var/lib/pulp/published/https/exports/repo'

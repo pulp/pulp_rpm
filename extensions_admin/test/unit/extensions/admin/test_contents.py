@@ -1,4 +1,3 @@
-
 import mock
 
 from pulp.bindings.responses import Response
@@ -10,7 +9,6 @@ from pulp_rpm.devel.client_base import PulpClientTests
 
 
 class PackageSearchCommandTests(PulpClientTests):
-
     def test_structure(self):
         command = contents.PackageSearchCommand(None, self.context)
         self.assertTrue(isinstance(command, DisplayUnitAssociationsCommand))
@@ -62,7 +60,7 @@ class PackageSearchCommandTests(PulpClientTests):
         user_input = {
             'repo-id': 'repo-1',
             DisplayUnitAssociationsCommand.ASSOCIATION_FLAG.keyword: False,
-            }
+        }
 
         # Test
         command = contents.BaseSearchCommand(None, self.context)
@@ -102,25 +100,25 @@ class PackageSearchCommandTests(PulpClientTests):
 
     def test_reformat_rpm_provides_requires(self):
         # Setup
-        test_rpm = {'provides': [
-            {'name': 'name.1',
-             'version': 'version.1',
-             'release': 'release.1',
-             'epoch': 'epoch.1',
-             'flags': None},
-            {'name': 'name.2',
-             'version': None,
-             'release': None,
-             'epoch': None,
-             'flags': None},
-            ],
-            'requires': [
-                {'name': 'name.1',
-                 'version': 'version.1',
-                 'release': 'release.1',
-                 'epoch': 'epoch.1',
-                 'flags': 'GT'},
-            ]}
+        test_rpm = {
+            'provides': [{'name': 'name.1',
+                          'version': 'version.1',
+                          'release': 'release.1',
+                          'epoch': 'epoch.1',
+                          'flags': None},
+                         {'name': 'name.2',
+                          'version': None,
+                          'release': None,
+                          'epoch': None,
+                          'flags': None},
+                         ],
+            'requires': [{'name': 'name.1',
+                          'version': 'version.1',
+                          'release': 'release.1',
+                          'epoch': 'epoch.1',
+                          'flags': 'GT'},
+                         ]
+        }
 
         # Test
         command = contents.PackageSearchCommand(None, self.context)
@@ -342,7 +340,6 @@ class PackageSearchCommandTests(PulpClientTests):
 
 
 class SearchRpmsCommand(PulpClientTests):
-
     def test_structure(self):
         command = contents.SearchRpmsCommand(self.context)
         self.assertTrue(isinstance(command, contents.PackageSearchCommand))
@@ -352,7 +349,6 @@ class SearchRpmsCommand(PulpClientTests):
 
 
 class SearchSrpmsCommand(PulpClientTests):
-
     def test_structure(self):
         command = contents.SearchSrpmsCommand(self.context)
         self.assertTrue(isinstance(command, contents.PackageSearchCommand))
@@ -362,7 +358,6 @@ class SearchSrpmsCommand(PulpClientTests):
 
 
 class SearchDrpmsCommand(PulpClientTests):
-
     def test_structure(self):
         command = contents.SearchDrpmsCommand(self.context)
         self.assertTrue(isinstance(command, contents.BaseSearchCommand))
@@ -372,7 +367,6 @@ class SearchDrpmsCommand(PulpClientTests):
 
 
 class SearchPackageGroupsCommand(PulpClientTests):
-
     def test_structure(self):
         command = contents.SearchPackageGroupsCommand(self.context)
         self.assertTrue(isinstance(command, contents.BaseSearchCommand))
@@ -382,7 +376,6 @@ class SearchPackageGroupsCommand(PulpClientTests):
 
 
 class SearchPackageCategoriesCommand(PulpClientTests):
-
     def test_structure(self):
         command = contents.SearchPackageCategoriesCommand(self.context)
         self.assertTrue(isinstance(command, contents.BaseSearchCommand))
@@ -392,7 +385,6 @@ class SearchPackageCategoriesCommand(PulpClientTests):
 
 
 class SearchPackageEnvironmentsCommand(PulpClientTests):
-
     def test_structure(self):
         command = contents.SearchPackageEnvironmentsCommand(self.context)
         self.assertTrue(isinstance(command, contents.BaseSearchCommand))
@@ -402,7 +394,6 @@ class SearchPackageEnvironmentsCommand(PulpClientTests):
 
 
 class SearchDistributionsCommand(PulpClientTests):
-
     def test_structure(self):
         command = contents.SearchDistributionsCommand(self.context)
         self.assertTrue(isinstance(command, contents.BaseSearchCommand))
@@ -412,7 +403,6 @@ class SearchDistributionsCommand(PulpClientTests):
 
 
 class SearchErrataCommand(PulpClientTests):
-
     def test_structure(self):
         command = contents.SearchErrataCommand(self.context)
         self.assertTrue(isinstance(command, contents.BaseSearchCommand))

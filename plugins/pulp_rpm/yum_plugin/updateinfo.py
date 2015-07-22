@@ -9,13 +9,13 @@ log = util.getLogger(__name__)
 #
 # yum 3.2.22 compat:  UpdateMetadata.add_notice() not
 # supported in 3.2.22.
-# 
-if yum.__version__ < (3,2,28):
+#
+if yum.__version__ < (3, 2, 28):
     def add_notice(self, un):
         if not un or not un["update_id"] or un['update_id'] in self._notices:
             return
         self._notices[un['update_id']] = un
-        pkglist =  un['pkglist'] or []
+        pkglist = un['pkglist'] or []
         for pkg in pkglist:
             for filedata in pkg['packages']:
                 self._cache['%s-%s-%s' % (filedata['name'],
@@ -24,24 +24,26 @@ if yum.__version__ < (3,2,28):
                 no = self._no_cache.setdefault(filedata['name'], set())
                 no.add(un)
         return True
+
     UpdateMetadata.add_notice = add_notice
 
 
 # Work around for:  https://bugzilla.redhat.com/show_bug.cgi?id=886240#c13
-# Yum's UpdateMetadata.xml() is injecting an extra </pkglist> if an errata spans more than 1 collection
+# Yum's UpdateMetadata.xml() is injecting an extra </pkglist> if an errata spans more than 1
+# collection
 # Our fix is to remove all but the last closing </pkglist>
 def remove_extra_pkglist_closing_tag(self):
     # Assumes that the XML should be formated with only one <pkglist>...</pkglist>
     # Therefore all extra </pkglist> beyond the final closing tag are invalid
     orig_xml = YUM_UPDATE_MD_UPDATE_NOTICE_ORIG_XML_METHOD(self)
     num_closing_pkglist_tags = orig_xml.count("</pkglist>")
-    fixed_xml = orig_xml.replace('</pkglist>', '', num_closing_pkglist_tags-1)
+    fixed_xml = orig_xml.replace('</pkglist>', '', num_closing_pkglist_tags - 1)
     return fixed_xml
+
+
 YUM_UPDATE_MD_UPDATE_NOTICE_ORIG_XML_METHOD = yum.update_md.UpdateNotice.xml
 yum.update_md.UpdateNotice.xml = remove_extra_pkglist_closing_tag
 # End of workaround for https://bugzilla.redhat.com/show_bug.cgi?id=886240#c13
-
-
 
 
 def get_update_notices(path_to_updateinfo):
@@ -58,6 +60,7 @@ def get_update_notices(path_to_updateinfo):
         notices.append(info.get_metadata())
     return notices
 
+
 def get_errata(path_to_updateinfo):
     """
     @param path_to_updateinfo: path to updateinfo metadata xml file
@@ -72,6 +75,7 @@ def get_errata(path_to_updateinfo):
         e = _translate_updatenotice_to_erratum(u)
         errata.append(e)
     return errata
+
 
 def _translate_updatenotice_to_erratum(unotice):
     id = unotice['update_id']
@@ -89,21 +93,22 @@ def _translate_updatenotice_to_erratum(unotice):
     references = unotice['references']
     pkglist = unotice['pkglist']
     severity = ""
-    if unotice.has_key('severity'):
+    if 'severity' in unotice:
         severity = unotice['severity']
     rights = ""
-    if unotice.has_key('rights'):
-        rights   = unotice['rights']
+    if 'rights' in unotice:
+        rights = unotice['rights']
     summary = ""
-    if unotice.has_key('summary'):
+    if 'summary' in unotice:
         summary = unotice['summary']
     solution = ""
-    if unotice.has_key('solution'):
+    if 'solution' in unotice:
         solution = unotice['solution']
     erratum = Errata(id, title, description, version, release, type,
-        status, updated, issued, pushcount, from_str, reboot_suggested,
-        references, pkglist, severity, rights, summary, solution)
+                     status, updated, issued, pushcount, from_str, reboot_suggested,
+                     references, pkglist, severity, rights, summary, solution)
     return erratum
+
 
 class Errata(dict):
     """
@@ -112,9 +117,9 @@ class Errata(dict):
     """
 
     def __init__(self, id, title, description, version, release, type, status=u"",
-            updated=u"", issued=u"", pushcount=1, from_str=u"",
-            reboot_suggested=False, references=[], pkglist=[], severity=u"",
-            rights=u"", summary=u"", solution=u""):
+                 updated=u"", issued=u"", pushcount=1, from_str=u"",
+                 reboot_suggested=False, references=[], pkglist=[], severity=u"",
+                 rights=u"", summary=u"", solution=u""):
         self.id = id
         self.title = title
         self.description = description
@@ -139,8 +144,10 @@ class Errata(dict):
 
     def __getattr__(self, attr):
         return self.get(attr, None)
+
     __setattr__ = dict.__setitem__
     __delattr__ = dict.__delitem__
+
 
 def updateinfo(errata_units, save_location):
     um = UpdateMetadata()
@@ -149,25 +156,25 @@ def updateinfo(errata_units, save_location):
         un = UpdateNotice()
 
         _md = {
-            'from'             : e.metadata['from'],
-            'type'             : e.metadata['type'],
-            'title'            : e.metadata['title'],
-            'release'          : e.metadata.get('release', ''),
-            'status'           : e.metadata['status'],
-            'version'          : e.metadata['version'],
-            'pushcount'        : e.metadata.get('pushcount', ''),
-            'update_id'        : e.unit_key['id'],
-            'issued'           : e.metadata['issued'],
-            'updated'          : e.metadata.get('updated', ''),
-            'description'      : e.metadata['description'],
-            'references'       : e.metadata['references'],
-            'pkglist'          : e.metadata['pkglist'],
-            'reboot_suggested' : e.metadata.get('reboot_suggested', False),
-            'severity'         : e.metadata.get('severity', ''),
-            'rights'           : e.metadata.get('rights', ''),
-            'summary'          : e.metadata.get('summary', ''),
-            'solution'         : e.metadata.get('solution', ''),
-            }
+            'from': e.metadata['from'],
+            'type': e.metadata['type'],
+            'title': e.metadata['title'],
+            'release': e.metadata.get('release', ''),
+            'status': e.metadata['status'],
+            'version': e.metadata['version'],
+            'pushcount': e.metadata.get('pushcount', ''),
+            'update_id': e.unit_key['id'],
+            'issued': e.metadata['issued'],
+            'updated': e.metadata.get('updated', ''),
+            'description': e.metadata['description'],
+            'references': e.metadata['references'],
+            'pkglist': e.metadata['pkglist'],
+            'reboot_suggested': e.metadata.get('reboot_suggested', False),
+            'severity': e.metadata.get('severity', ''),
+            'rights': e.metadata.get('rights', ''),
+            'summary': e.metadata.get('summary', ''),
+            'solution': e.metadata.get('solution', ''),
+        }
         un._md = _md
         um.add_notice(un)
 
@@ -179,7 +186,7 @@ def updateinfo(errata_units, save_location):
         updateinfo_path = "%s/%s" % (save_location, "updateinfo.xml")
         f = open(updateinfo_path, 'wt')
         try:
-            updateinfo_xml = um.xml(fileobj=f)
+            um.xml(fileobj=f)
             log.info("updateinfo.xml generated and written to file %s" % updateinfo_path)
         finally:
             f.close()

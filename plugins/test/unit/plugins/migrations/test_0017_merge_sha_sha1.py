@@ -37,9 +37,9 @@ SUM_NONE_ERRATA = [
      u'reboot_suggested': True, u'type': u'security',
      u'pkglist': [
          {u'packages': [
-            {u'src': u'http://www.fedoraproject.org', u'name': u'bear', u'sum': None,
-             u'filename': u'bear-4.1-1.noarch.rpm', u'epoch': u'0', u'version': u'4.1',
-             u'release': u'1', u'reboot_suggested': u'False', u'arch': u'noarch'}],
+             {u'src': u'http://www.fedoraproject.org', u'name': u'bear', u'sum': None,
+              u'filename': u'bear-4.1-1.noarch.rpm', u'epoch': u'0', u'version': u'4.1',
+              u'release': u'1', u'reboot_suggested': u'False', u'arch': u'noarch'}],
           u'name': u'1', u'short': u''}],
      u'status': u'stable', u'updated': u'', u'description': u'Bear_Erratum',
      u'_last_updated': 1416857488, u'pushcount': u'', u'_storage_path': None, u'rights': u'',
@@ -112,10 +112,10 @@ SHA_ERRATA = [
      u'reboot_suggested': True, u'type': u'security',
      u'pkglist': [
          {u'packages': [
-            {u'src': u'http://www.fedoraproject.org', u'name': u'bear',
-             u'sum': ['SHA', 'some checksum'],
-             u'filename': u'bear-4.1-1.noarch.rpm', u'epoch': u'0', u'version': u'4.1',
-             u'release': u'1', u'reboot_suggested': u'False', u'arch': u'noarch'}],
+             {u'src': u'http://www.fedoraproject.org', u'name': u'bear',
+              u'sum': ['SHA', 'some checksum'],
+              u'filename': u'bear-4.1-1.noarch.rpm', u'epoch': u'0', u'version': u'4.1',
+              u'release': u'1', u'reboot_suggested': u'False', u'arch': u'noarch'}],
           u'name': u'1', u'short': u''}],
      u'status': u'stable', u'updated': u'', u'description': u'Bear_Erratum',
      u'_last_updated': 1416857488, u'pushcount': u'', u'_storage_path': None, u'rights': u'',
@@ -150,10 +150,10 @@ SHA1_ERRATA = [
      u'reboot_suggested': True, u'type': u'security',
      u'pkglist': [
          {u'packages': [
-            {u'src': u'http://www.fedoraproject.org', u'name': u'bear',
-             u'sum': ['sha1', 'some checksum'],
-             u'filename': u'bear-4.1-1.noarch.rpm', u'epoch': u'0', u'version': u'4.1',
-             u'release': u'1', u'reboot_suggested': u'False', u'arch': u'noarch'}],
+             {u'src': u'http://www.fedoraproject.org', u'name': u'bear',
+              u'sum': ['sha1', 'some checksum'],
+              u'filename': u'bear-4.1-1.noarch.rpm', u'epoch': u'0', u'version': u'4.1',
+              u'release': u'1', u'reboot_suggested': u'False', u'arch': u'noarch'}],
           u'name': u'1', u'short': u''}],
      u'status': u'stable', u'updated': u'', u'description': u'Bear_Erratum',
      u'_last_updated': 1416857488, u'pushcount': u'', u'_storage_path': None, u'rights': u'',
@@ -189,10 +189,10 @@ CAPITALIZED_SHA1_ERRATA = [
      u'reboot_suggested': True, u'type': u'security',
      u'pkglist': [
          {u'packages': [
-            {u'src': u'http://www.fedoraproject.org', u'name': u'bear',
-             u'sum': ['SHA1', 'some checksum'],
-             u'filename': u'bear-4.1-1.noarch.rpm', u'epoch': u'0', u'version': u'4.1',
-             u'release': u'1', u'reboot_suggested': u'False', u'arch': u'noarch'}],
+             {u'src': u'http://www.fedoraproject.org', u'name': u'bear',
+              u'sum': ['SHA1', 'some checksum'],
+              u'filename': u'bear-4.1-1.noarch.rpm', u'epoch': u'0', u'version': u'4.1',
+              u'release': u'1', u'reboot_suggested': u'False', u'arch': u'noarch'}],
           u'name': u'1', u'short': u''}],
      u'status': u'stable', u'updated': u'', u'description': u'Bear_Erratum',
      u'_last_updated': 1416857488, u'pushcount': u'', u'_storage_path': None, u'rights': u'',
@@ -211,7 +211,7 @@ CAPITALIZED_RPM = {
     "epoch": "0", "filelist": ["/tmp/bear.txt"], "filename": "bear-4.1-1.noarch.rpm",
     "files": {"dir": [], "file": ["/tmp/bear.txt"]}, "group": "Internet/Applications",
     "header_range": {"start": 872, "end": 2289}, "license": "GPLv2", "name": "bear",
-    "provides": [{"release": "1", "epoch": "0",  "version": "4.1",  "flags": "EQ",
+    "provides": [{"release": "1", "epoch": "0", "version": "4.1", "flags": "EQ",
                   "name": "bear"}],
     "relative_url_path": None, "relativepath": "bear-4.1-1.noarch.rpm", "release": "1",
     "release_sort_index": "01-1",
@@ -239,10 +239,10 @@ CAPITALIZED_RPM = {
                    "<rpm:header-range start=\"872\" end=\"2289\"/>\n    <rpm:provides>\n      "
                    "<rpm:entry name=\"bear\" flags=\"EQ\" epoch=\"0\" ver=\"4.1\" rel=\"1\"/>\n   "
                    "</rpm:provides>\n  </format>\n</package>"},
-        "requires": [], "size": 2438, "sourcerpm": "bear-4.1-1.src.rpm",
-        "summary": "A dummy package of bear", "time": 1331832453,
-        "url": "http://tstrachota.fedorapeople.org", "vendor": None, "version": "4.1",
-        "version_sort_index": "01-4.01-1"}
+    "requires": [], "size": 2438, "sourcerpm": "bear-4.1-1.src.rpm",
+    "summary": "A dummy package of bear", "time": 1331832453,
+    "url": "http://tstrachota.fedorapeople.org", "vendor": None, "version": "4.1",
+    "version_sort_index": "01-4.01-1"}
 
 SHA_RPM = {
     "_content_type_id": "rpm", "_id": "c0038e92-505f-46a8-a8d1-d6fe710604f7",
@@ -256,7 +256,7 @@ SHA_RPM = {
     "epoch": "0", "filelist": ["/tmp/bear.txt"], "filename": "bear-4.1-1.noarch.rpm",
     "files": {"dir": [], "file": ["/tmp/bear.txt"]}, "group": "Internet/Applications",
     "header_range": {"start": 872, "end": 2289}, "license": "GPLv2", "name": "bear",
-    "provides": [{"release": "1", "epoch": "0",  "version": "4.1",  "flags": "EQ",
+    "provides": [{"release": "1", "epoch": "0", "version": "4.1", "flags": "EQ",
                   "name": "bear"}],
     "relative_url_path": None, "relativepath": "bear-4.1-1.noarch.rpm", "release": "1",
     "release_sort_index": "01-1",
@@ -284,10 +284,10 @@ SHA_RPM = {
                    "<rpm:header-range start=\"872\" end=\"2289\"/>\n    <rpm:provides>\n      "
                    "<rpm:entry name=\"bear\" flags=\"EQ\" epoch=\"0\" ver=\"4.1\" rel=\"1\"/>\n   "
                    "</rpm:provides>\n  </format>\n</package>"},
-        "requires": [], "size": 2438, "sourcerpm": "bear-4.1-1.src.rpm",
-        "summary": "A dummy package of bear", "time": 1331832453,
-        "url": "http://tstrachota.fedorapeople.org", "vendor": None, "version": "4.1",
-        "version_sort_index": "01-4.01-1"}
+    "requires": [], "size": 2438, "sourcerpm": "bear-4.1-1.src.rpm",
+    "summary": "A dummy package of bear", "time": 1331832453,
+    "url": "http://tstrachota.fedorapeople.org", "vendor": None, "version": "4.1",
+    "version_sort_index": "01-4.01-1"}
 
 SHA1_RPM = {
     "_content_type_id": "rpm", "_id": "c0038e92-505f-46a8-a8d1-d6fe710604f8",
@@ -301,7 +301,7 @@ SHA1_RPM = {
     "epoch": "0", "filelist": ["/tmp/bear.txt"], "filename": "bear-4.1-1.noarch.rpm",
     "files": {"dir": [], "file": ["/tmp/bear.txt"]}, "group": "Internet/Applications",
     "header_range": {"start": 872, "end": 2289}, "license": "GPLv2", "name": "bear",
-    "provides": [{"release": "1", "epoch": "0",  "version": "4.1",  "flags": "EQ",
+    "provides": [{"release": "1", "epoch": "0", "version": "4.1", "flags": "EQ",
                   "name": "bear"}],
     "relative_url_path": None, "relativepath": "bear-4.1-1.noarch.rpm", "release": "1",
     "release_sort_index": "01-1",
@@ -329,10 +329,10 @@ SHA1_RPM = {
                    "<rpm:header-range start=\"872\" end=\"2289\"/>\n    <rpm:provides>\n      "
                    "<rpm:entry name=\"bear\" flags=\"EQ\" epoch=\"0\" ver=\"4.1\" rel=\"1\"/>\n   "
                    "</rpm:provides>\n  </format>\n</package>"},
-        "requires": [], "size": 2438, "sourcerpm": "bear-4.1-1.src.rpm",
-        "summary": "A dummy package of bear", "time": 1331832453,
-        "url": "http://tstrachota.fedorapeople.org", "vendor": None, "version": "4.1",
-        "version_sort_index": "01-4.01-1"}
+    "requires": [], "size": 2438, "sourcerpm": "bear-4.1-1.src.rpm",
+    "summary": "A dummy package of bear", "time": 1331832453,
+    "url": "http://tstrachota.fedorapeople.org", "vendor": None, "version": "4.1",
+    "version_sort_index": "01-4.01-1"}
 
 CAPITALIZED_YUM_METADATA_FILE = [
     {"_id": "912e27dd-2bff-489f-9b81-9c5425554d65",
@@ -393,6 +393,7 @@ class TestMigrateErrata(unittest.TestCase):
     """
     This class contains tests for the _migrate_errata() function.
     """
+
     @mock.patch('pulp_rpm.plugins.migrations.0017_merge_sha_sha1.connection.get_collection',
                 autospec=True)
     def test_no_sum(self, get_collection):
@@ -503,6 +504,7 @@ class TestMigrateRPMlikeUnits(unittest.TestCase):
     """
     This class contains tests for _migrate_rpmlike_units().
     """
+
     def _generate_get_collection_mock(self):
         def get_collection(collection_name):
             if collection_name not in ('repos', 'repo_content_units', 'units_rpm'):
@@ -515,6 +517,7 @@ class TestMigrateRPMlikeUnits(unittest.TestCase):
                 collection = mock.MagicMock()
                 setattr(self, attribute_name, collection)
                 return collection
+
         return get_collection
 
     @mock.patch('pulp_rpm.plugins.migrations.0017_merge_sha_sha1.connection.get_collection',
@@ -568,8 +571,7 @@ class TestMigrateRPMlikeUnits(unittest.TestCase):
             {"_id": "547df04da0cfd118fc1f7069", "updated": "2014-12-02T17:01:01Z",
              "repo_id": "confused-bear", "created": "2014-12-02T17:01:01Z",
              "_ns": "repo_content_units", "unit_id": SHA_RPM['_id'],
-             "unit_type_id": "rpm", "owner_type": "importer", "id": "547df04da0cfd118fc1f7069",
-             "owner_id": "yum_importer"}]
+             "unit_type_id": "rpm", "id": "547df04da0cfd118fc1f7069"}]
 
         migration._migrate_rpmlike_units('rpm')
 
@@ -620,8 +622,7 @@ class TestMigrateRPMlikeUnits(unittest.TestCase):
             {"_id": "547df04da0cfd118fc1f7069", "updated": "2014-12-02T17:01:01Z",
              "repo_id": "confused-bear", "created": "2014-12-02T17:01:01Z",
              "_ns": "repo_content_units", "unit_id": SHA_RPM['_id'],
-             "unit_type_id": "rpm", "owner_type": "importer", "id": "547df04da0cfd118fc1f7069",
-             "owner_id": "yum_importer"}]
+             "unit_type_id": "rpm", "id": "547df04da0cfd118fc1f7069"}]
 
         migration._migrate_rpmlike_units('rpm')
 
@@ -757,6 +758,7 @@ class TestMigrateYumMetadataFiles(unittest.TestCase):
     """
     This class contains tests for _migrate_yum_metadata_files().
     """
+
     @mock.patch('pulp_rpm.plugins.migrations.0017_merge_sha_sha1.connection.get_collection',
                 autospec=True)
     def test_no_change_necessary(self, get_collection):

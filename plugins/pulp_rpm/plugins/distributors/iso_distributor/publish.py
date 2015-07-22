@@ -1,16 +1,15 @@
-
 from ConfigParser import SafeConfigParser
 import logging
 
 from pulp_rpm.common import constants
-from pulp_rpm.repo_auth.protected_repo_utils import ProtectedRepoUtils
-from pulp_rpm.repo_auth.repo_cert_utils import RepoCertUtils
+from pulp.repoauth.protected_repo_utils import ProtectedRepoUtils
+from pulp.repoauth.repo_cert_utils import RepoCertUtils
 
 
 logger = logging.getLogger(__name__)
 
-
 BUILD_DIRNAME = 'build'
+
 
 def configure_repository_protection(repo, authorization_ca_cert):
     """
@@ -37,6 +36,7 @@ def configure_repository_protection(repo, authorization_ca_cert):
     # Add this repository to the protected list. This will tell the repo protection application
     # that it should enforce protection on this relative path
     protected_repo_utils.add_protected_repo(relative_path, repo.id)
+
 
 def _get_relative_path(repo):
     """

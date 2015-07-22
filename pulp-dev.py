@@ -38,13 +38,6 @@ LINKS = (
 
     # RPM Support Web Configuration
     ('handlers/usr/lib/yum-plugins/pulp-profile-update.py', '/usr/lib/yum-plugins/pulp-profile-update.py'),
-    ('plugins/srv/pulp/repo_auth.wsgi', '/srv/pulp/repo_auth.wsgi'),
-)
-
-
-PATHS_TO_COPY = (
-    {'source': 'plugins/etc/pulp/repo_auth.conf', 'destination': '/etc/pulp/repo_auth.conf',
-     'owner': 'root', 'group': 'root', 'mode': '644', 'overwrite': False},
 )
 
 
@@ -114,8 +107,6 @@ def install(opts):
         if warning_msg:
             warnings.append(warning_msg)
 
-    environment.copy_files(PATHS_TO_COPY, opts)
-
     if warnings:
         print "\n***\nPossible problems:  Please read below\n***"
         for w in warnings:
@@ -130,8 +121,6 @@ def uninstall(opts):
             environment.debug(opts, '%s does not exist, skipping' % dst)
             continue
         os.unlink(dst)
-
-    environment.uninstall_files(PATHS_TO_COPY, opts)
 
     # Uninstall the packages
     environment.manage_setup_pys('uninstall', ROOT_DIR)

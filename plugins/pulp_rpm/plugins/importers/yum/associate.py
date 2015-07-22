@@ -48,8 +48,9 @@ def associate(source_repo, dest_repo, import_conduit, config, units=None):
     # allow garbage collection
     units = None
 
-    associated_units |= copy_rpms((unit for unit in associated_units if unit.type_id == models.RPM.TYPE),
-              import_conduit, recursive)
+    associated_units |= copy_rpms(
+        (unit for unit in associated_units if unit.type_id == models.RPM.TYPE),
+        import_conduit, recursive)
 
     # return here if we shouldn't get child units
     if not recursive:
@@ -62,7 +63,8 @@ def associate(source_repo, dest_repo, import_conduit, config, units=None):
                                              unit_filters={'id': {'$in': list(group_ids)}})
     group_units = list(import_conduit.get_source_units(group_criteria))
     if group_units:
-        associated_units |= set(associate(source_repo, dest_repo, import_conduit, config, group_units))
+        associated_units |= set(
+            associate(source_repo, dest_repo, import_conduit, config, group_units))
 
     # ------ get RPM children of errata ------
     wanted_rpms = get_rpms_to_copy_by_key(rpm_search_dicts, import_conduit)
@@ -102,7 +104,8 @@ def get_rpms_to_copy_by_key(rpm_search_dicts, import_conduit):
 
     # identify which of those RPMs already exist
     existing_units = existing.get_existing_units(rpm_search_dicts, models.RPM.UNIT_KEY_NAMES,
-                                models.RPM.TYPE, import_conduit.get_destination_units)
+                                                 models.RPM.TYPE,
+                                                 import_conduit.get_destination_units)
     # remove units that already exist in the destination from the set of units
     # we want to copy
     for unit in existing_units:
@@ -149,8 +152,8 @@ def filter_available_rpms(rpms, import_conduit):
     :return:    iterable of pulp.plugins.model.Unit
     """
     return existing.get_existing_units((_no_checksum_clean_unit_key(unit) for unit in rpms),
-                                        models.RPM.UNIT_KEY_NAMES, models.RPM.TYPE,
-                                        import_conduit.get_source_units)
+                                       models.RPM.UNIT_KEY_NAMES, models.RPM.TYPE,
+                                       import_conduit.get_source_units)
 
 
 def copy_rpms(units, import_conduit, copy_deps, solver=None):
@@ -257,7 +260,8 @@ def copy_rpms_by_name(names, import_conduit, copy_deps):
         if previous is None:
             to_copy[model.key_string_without_version] = (model.complete_version_serialized, unit)
         else:
-            to_copy[model.key_string_without_version] = max(((model.complete_version_serialized, unit), previous))
+            to_copy[model.key_string_without_version] = max(
+                ((model.complete_version_serialized, unit), previous))
 
     return copy_rpms((unit for v, unit in to_copy.itervalues()), import_conduit, copy_deps)
 
@@ -327,7 +331,8 @@ def _associate_unit(dest_repo, import_conduit, unit):
         model = models.YumMetadataFile(unit.unit_key['data_type'], dest_repo.id, unit.metadata)
         model.clean_metadata()
         relative_path = os.path.join(model.relative_dir, os.path.basename(unit.storage_path))
-        new_unit = import_conduit.init_unit(model.TYPE, model.unit_key, model.metadata, relative_path)
+        new_unit = import_conduit.init_unit(model.TYPE, model.unit_key, model.metadata,
+                                            relative_path)
         shutil.copyfile(unit.storage_path, new_unit.storage_path)
         import_conduit.save_unit(new_unit)
         return new_unit

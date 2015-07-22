@@ -1,6 +1,5 @@
 from cStringIO import StringIO
 from collections import namedtuple
-import itertools
 import re
 import sys
 

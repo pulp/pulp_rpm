@@ -1,4 +1,3 @@
-
 TYPE_ID_DISTRIBUTOR_EXPORT = "export_distributor"
 TYPE_ID_DISTRIBUTOR_GROUP_EXPORT = 'group_export_distributor'
 TYPE_ID_DISTRIBUTOR_ISO = "iso_distributor"
@@ -28,7 +27,7 @@ UNIT_KEY_ERRATA = ("id",)
 METADATA_ERRATA = (
     "title", "description", "version", "release", "type", "status", "updated",
     "issued", "severity", "references", "pkglist", "rights", "summary",
-    "solution", "from_str", "pushcount", "reboot_suggested" )
+    "solution", "from_str", "pushcount", "reboot_suggested")
 
 TYPE_ID_PKG_GROUP = 'package_group'
 TYPE_ID_PKG_CATEGORY = 'package_category'
@@ -56,7 +55,7 @@ METADATA_DISTRO = ("files",)
 
 TYPE_ID_DRPM = 'drpm'
 UNIT_KEY_DRPM = (
-"epoch", "version", "release", "filename", "checksum", "checksumtype")
+    "epoch", "version", "release", "filename", "checksum", "checksumtype")
 
 METADATA_DRPM = ("size", "sequence", "new_package", "relativepath")
 

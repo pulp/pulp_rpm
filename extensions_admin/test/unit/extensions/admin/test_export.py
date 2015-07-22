@@ -27,11 +27,14 @@ class TestRepoExportRunCommand(PulpClientTests):
         override arguments
         """
         # Setup
-        expected_options = [export.OPTION_EXPORT_DIR,
-                            export.OPTION_END_DATE,
-                            export.OPTION_START_DATE,
-                            export.OPTION_ISO_PREFIX,
-                            export.OPTION_ISO_SIZE]
+        expected_options = [
+            export.FLAG_MANIFEST,
+            export.OPTION_EXPORT_DIR,
+            export.OPTION_END_DATE,
+            export.OPTION_START_DATE,
+            export.OPTION_ISO_PREFIX,
+            export.OPTION_ISO_SIZE,
+        ]
 
         # Test
         export.RpmExportCommand(self.context, mock.Mock())
@@ -46,6 +49,7 @@ class TestRepoGroupExportRunCommand(PulpClientTests):
     """
     This tests the rpm repo group export run command.
     """
+
     def setUp(self):
         super(TestRepoGroupExportRunCommand, self).setUp()
         self.patcher = mock.patch('pulp_rpm.extensions.admin.export._get_publish_tasks',
@@ -54,6 +58,7 @@ class TestRepoGroupExportRunCommand(PulpClientTests):
         self.mock_get_publish_tasks.return_value = []
 
         self.kwargs = {
+            export.FLAG_MANIFEST.keyword: None,
             options.OPTION_GROUP_ID.keyword: 'test-group',
             export.OPTION_ISO_PREFIX.keyword: None,
             export.OPTION_ISO_SIZE.keyword: None,
@@ -74,16 +79,20 @@ class TestRepoGroupExportRunCommand(PulpClientTests):
         Test to make sure the export run command is set up correctly
         """
         mock_renderer = mock.Mock(spec=status.StatusRenderer)
-        expected_options = [FLAG_BACKGROUND,
-                            options.OPTION_GROUP_ID,
-                            export.OPTION_EXPORT_DIR,
-                            export.OPTION_END_DATE,
-                            export.OPTION_START_DATE,
-                            export.OPTION_ISO_PREFIX,
-                            export.OPTION_ISO_SIZE]
+        expected_options = [
+            FLAG_BACKGROUND,
+            options.OPTION_GROUP_ID,
+            export.FLAG_MANIFEST,
+            export.OPTION_EXPORT_DIR,
+            export.OPTION_END_DATE,
+            export.OPTION_START_DATE,
+            export.OPTION_ISO_PREFIX,
+            export.OPTION_ISO_SIZE,
+        ]
 
         # Test
-        export.RpmGroupExportCommand(self.context, mock_renderer, ids.TYPE_ID_DISTRIBUTOR_GROUP_EXPORT)
+        export.RpmGroupExportCommand(self.context, mock_renderer,
+                                     ids.TYPE_ID_DISTRIBUTOR_GROUP_EXPORT)
 
         # Check that all the flags were added
         self.assertEqual(2, mock_create_flag.call_count)
@@ -204,7 +213,6 @@ class TestRepoGroupExportStatusCommand(PulpClientTests):
 
     def tearDown(self):
         self.patcher.stop()
-
 
     @mock.patch('okaara.cli.Command.add_option', autospec=True)
     def test_repo_group_export_status_structure(self, mock_add_option):

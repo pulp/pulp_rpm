@@ -15,7 +15,7 @@ _logger = util.getLogger(__name__)
 CONF_FILE_PATH = 'server/plugins.conf.d/%s.json' % ids.TYPE_ID_DISTRIBUTOR_EXPORT
 
 # Things left to do:
-#   Cancelling a publish operation is not currently supported
+# Cancelling a publish operation is not currently supported
 #   Published ISOs are left in the working directory. See export_utils.publish_isos to fix this.
 #   This is not currently in the python path. When that gets fixed, the imports should be fixed.
 
@@ -26,7 +26,6 @@ def entry_point():
 
 
 class ISODistributor(Distributor):
-
     def __init__(self):
         super(ISODistributor, self).__init__()
         self._publisher = None
@@ -146,8 +145,7 @@ class ISODistributor(Distributor):
         :type  config: pulp.plugins.config.PluginCallConfiguration
         """
         # remove the directories that might have been created for this repo/distributor
-        dir_list = [repo.working_dir,
-                    configuration.get_master_publish_dir(repo, ids.TYPE_ID_DISTRIBUTOR_EXPORT),
+        dir_list = [configuration.get_master_publish_dir(repo, ids.TYPE_ID_DISTRIBUTOR_EXPORT),
                     os.path.join(configuration.HTTP_EXPORT_DIR, repo.id),
                     os.path.join(configuration.HTTPS_EXPORT_DIR, repo.id)]
 

@@ -16,6 +16,7 @@ class DepsolveTestCase(unittest.TestCase):
     """
     The test case superclass for this module. It makes some RPMs that are useful for depsolve tests.
     """
+
     def _make_units(self, rpms):
         """
         Turn each of the rpms in the list into self.unit_# (where # is the index of the RPM plus
@@ -24,7 +25,7 @@ class DepsolveTestCase(unittest.TestCase):
         self.units = []
         for i, rpm in enumerate(rpms):
             unit = Unit(rpm.TYPE, rpm.unit_key, rpm.metadata, '')
-            setattr(self, 'unit_%s'%i, unit)
+            setattr(self, 'unit_%s' % i, unit)
             self.units.append(unit)
 
     def setUp(self):
@@ -60,7 +61,7 @@ class DepsolveTestCase(unittest.TestCase):
             'gcalctool', '0', '5.28.2', '3', 'x86_64', 'sha256', 'some_sum',
             {'requires': [],
              'provides': [{'name': 'calculator'}]})
-        self.rpms = [getattr(self, 'rpm_%s'%i) for i in range(7)]
+        self.rpms = [getattr(self, 'rpm_%s' % i) for i in range(7)]
 
         self._make_units(self.rpms)
 
@@ -72,6 +73,7 @@ class TestBuildProvidesTree(DepsolveTestCase):
     """
     Test the _build_provides_tree() function.
     """
+
     def test_empty_provides(self):
         """
         Make sure the function can handle RPMs without provides data.
@@ -176,7 +178,6 @@ class TestPackagesTree(DepsolveTestCase):
         self.assertTrue(self.solver._cached_source_with_provides is None)
 
 
-
 class TestFindDependentRPMs(DepsolveTestCase):
     """
     Test the find_dependent_rpms() function.
@@ -255,6 +256,7 @@ class TestMatch(DepsolveTestCase):
     """
     Test the match() function.
     """
+
     def test_provides_matches_requires(self):
         """
         Assert that match correctly handles provides that match requires.
@@ -276,6 +278,7 @@ class TestRequirement(unittest.TestCase):
     """
     Test the Requirement class.
     """
+
     def test___init___no_flags(self):
         """
         Test the __init__() method with no flags, which should choose EQ by default.

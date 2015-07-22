@@ -1,4 +1,3 @@
-
 import os
 
 from uuid import uuid4
@@ -12,7 +11,6 @@ from pulp_rpm.plugins.importers.yum.repomd.alternate import Packages, ContainerL
 
 
 class Unit(object):
-
     TYPE = 'unit'
 
     def __init__(self):
@@ -23,7 +21,6 @@ class Unit(object):
 
 
 class TestPackages(TestCase):
-
     @patch('pulp_rpm.plugins.importers.yum.repomd.alternate.Event')
     @patch('pulp_rpm.plugins.importers.yum.repomd.alternate.ContentContainer')
     @patch('pulp_rpm.plugins.importers.yum.repomd.alternate.create_downloader')
@@ -104,7 +101,6 @@ class TestPackages(TestCase):
                              os.path.join(packages.dst_dir, units[n].relative_path))
         self.assertEqual(len(requests), len(units))
 
-
     @patch('pulp_rpm.plugins.importers.yum.repomd.alternate.Event', Mock())
     @patch('pulp_rpm.plugins.importers.yum.repomd.alternate.create_downloader', Mock())
     @patch('pulp_rpm.plugins.importers.yum.repomd.alternate.ContentContainer', Mock())
@@ -148,7 +144,6 @@ class TestPackages(TestCase):
 
 
 class TestListener(TestCase):
-
     def test_construction(self):
         content_listener = Mock()
         listener = ContainerListener(content_listener)

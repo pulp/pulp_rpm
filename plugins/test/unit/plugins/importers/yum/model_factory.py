@@ -21,6 +21,7 @@ def as_units(f):
     def wrapper(*args, **kwargs):
         models = f(*args, **kwargs)
         return [Unit(model.TYPE, model.unit_key, model.metadata, '') for model in models]
+
     return wrapper
 
 
@@ -111,7 +112,7 @@ def group_models(num, same_repo=True):
         ret.append(models.PackageGroup(
             'name-%d' % count,
             repo_id,
-            {'default_package_names':['abc%d' % count, 'xyz%d' % count]}
+            {'default_package_names': ['abc%d' % count, 'xyz%d' % count]}
         ))
         count = _group_counter.next()
     return ret
@@ -132,7 +133,7 @@ def category_models(num, same_repo=True):
         ret.append(models.PackageCategory(
             'name-%d' % count,
             repo_id,
-            {'packagegroupids':['abc%d' % count, 'xyz%d' % count]}
+            {'packagegroupids': ['abc%d' % count, 'xyz%d' % count]}
         ))
         count = _category_counter.next()
     return ret
@@ -156,7 +157,7 @@ def environment_models(num, same_repo=True):
             {'group_ids': ['abc%d' % count, 'xyz%d' % count],
              'options': [{'default': False, 'group': 'op%d' % count},
                          {'default': True, 'group': 'bz%d' % count}]
-            }
+             }
         ))
         count = _environment_counter.next()
     return ret

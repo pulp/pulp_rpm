@@ -105,7 +105,7 @@ file::
 
     Starting upload of selected units. If this process is stopped through ctrl+c,
     the uploads will be paused and may be resumed later using the resume command or
-    cancelled entirely using the cancel command.
+    canceled entirely using the cancel command.
 
     Uploading: Fedora-17-x86_64-Live-Desktop.iso
     [==================================================] 100%

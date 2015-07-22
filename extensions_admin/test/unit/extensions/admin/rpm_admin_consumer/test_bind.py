@@ -8,11 +8,11 @@ import mock
 
 from pulp.bindings.exceptions import NotFoundException
 from pulp.client.extensions.exceptions import CODE_NOT_FOUND
-from pulp_rpm.extensions.admin.rpm_admin_consumer.bind import YumConsumerUnbindCommand, UnbindExceptionHandler
+from pulp_rpm.extensions.admin.rpm_admin_consumer.bind import YumConsumerUnbindCommand, \
+    UnbindExceptionHandler
 
 
 class TestYumConsumerUnbindCommand(unittest.TestCase):
-
     def test_init(self):
         """
         Assert that the exception handler is the custom unbind handler
@@ -24,7 +24,6 @@ class TestYumConsumerUnbindCommand(unittest.TestCase):
 
 
 class TestUnbindExceptionHandler(unittest.TestCase):
-
     def test_handle_not_found_bind_id(self):
         """
         Test that when the bind_id is returned, a user-friendly message is printed
@@ -36,9 +35,11 @@ class TestUnbindExceptionHandler(unittest.TestCase):
 
         result = handler.handle_not_found(exception)
         self.assertEquals(result, CODE_NOT_FOUND)
-        mock_prompt.render_failure_message.assert_called_once_with(_('The binding could not be found.'))
+        mock_prompt.render_failure_message.assert_called_once_with(
+            _('The binding could not be found.'))
 
-    @mock.patch('pulp.client.extensions.exceptions.ExceptionHandler.handle_not_found', autospec=True)
+    @mock.patch('pulp.client.extensions.exceptions.ExceptionHandler.handle_not_found',
+                autospec=True)
     def test_handle_not_found_default(self, mock_super_not_found):
         """
         Test that for all other cases, the parent class handler is called
@@ -50,4 +51,3 @@ class TestUnbindExceptionHandler(unittest.TestCase):
         result = handler.handle_not_found(exception)
         self.assertEquals(result, CODE_NOT_FOUND)
         mock_super_not_found.assert_called_once_with(handler, exception)
-

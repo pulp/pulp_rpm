@@ -9,6 +9,7 @@ from pulp_rpm.yum_plugin import metadata
 
 _log = logging.getLogger('pulp')
 
+
 def _migrate_rpm_unit_repodata():
     """
     Looks up rpm unit collection in the db and computes the repodata if not already available;
@@ -22,6 +23,7 @@ def _migrate_rpm_unit_repodata():
             rpm_unit["repodata"] = metadata.get_package_xml(rpm_unit['_storage_path'])
             collection.save(rpm_unit, safe=True)
     _log.info("Migrated rpms to include rpm metadata")
+
 
 def migrate(*args, **kwargs):
     _migrate_rpm_unit_repodata()

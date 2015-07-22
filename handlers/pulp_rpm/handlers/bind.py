@@ -109,11 +109,11 @@ class RepoHandler(BindHandler):
             return urls
         hosts = details['server_name']
         if not isinstance(hosts, list):
-            hosts = [hosts,]
+            hosts = [hosts, ]
         path = details['relative_path']
         for host in hosts:
             url = '://'.join((protocol, host))
-            urls.append(url+path)
+            urls.append(url + path)
         return urls
 
     def __protocol(self, details):

@@ -1,4 +1,3 @@
-
 from urlparse import urljoin
 import os
 import shutil
@@ -16,8 +15,7 @@ import pulp_rpm.common.constants as constants
 SerialNumber.PATH = '/tmp/sn.dat'
 TEMP_DISTRO_STORAGE_DIR = '/tmp/pulp/var/lib/pulp/content/distribution/'
 
-
-TEST_DATA_DIR = os.path.join(os.path.dirname(__file__),  '../../../plugins/test/data',)
+TEST_DATA_DIR = os.path.join(os.path.dirname(__file__), '../../../plugins/test/data', )
 DEMO_REPOS_PATH = os.path.join(TEST_DATA_DIR, 'repos.fedorapeople.org', 'repos', 'pulp',
                                'pulp', 'demo_repos')
 
@@ -66,5 +64,3 @@ class PulpRPMTests(unittest.TestCase):
         if os.path.exists(dst):
             shutil.rmtree(dst)
         shutil.copytree(src, dst)
-
-

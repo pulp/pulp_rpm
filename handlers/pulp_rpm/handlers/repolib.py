@@ -18,7 +18,6 @@ from pulp_rpm.handlers.repo_file import Repo, RepoFile, MirrorListFile, RepoKeyF
 
 log = getLogger(__name__)
 
-
 LOCK_FILE = '/var/run/subsys/pulp/repolib.pid'
 
 
@@ -152,7 +151,7 @@ def unbind(repo_filename, mirror_list_filename, keys_root_dir, cert_root_dir, re
     @param keys_root_dir: absolute path to the root directory in which the keys for
                           all repos will be stored
     @type  keys_root_dir: string
-    
+
     @param cert_root_dir: absolute path to the root directory in which the certs for
                           all repos will be stored
     @type  cert_root_dir: string
@@ -177,7 +176,7 @@ def unbind(repo_filename, mirror_list_filename, keys_root_dir, cert_root_dir, re
         # Repo file changes
         repo_file = RepoFile(repo_filename)
         repo_file.load()
-        repo_file.remove_repo_by_name(repo_id) # will not throw an error if repo doesn't exist
+        repo_file.remove_repo_by_name(repo_id)  # will not throw an error if repo doesn't exist
         repo_file.save()
 
         # Mirror list removal
@@ -313,7 +312,7 @@ def _handle_host_urls(repo, url_list, mirror_list_filename):
         mirror_list_file.save()
 
         repo['mirrorlist'] = 'file:' + mirror_list_filename
-        repo['baseurl'] = None # make sure to zero this out in case of an update
+        repo['baseurl'] = None  # make sure to zero this out in case of an update
 
         log.info('Created mirrorlist for repo [%s] at [%s]' % (repo.id, mirror_list_filename))
     else:
@@ -325,6 +324,7 @@ def _handle_host_urls(repo, url_list, mirror_list_filename):
             os.remove(mirror_list_filename)
 
         repo['baseurl'] = url_list[0]
-        repo['mirrorlist'] = None # make sure to zero this out in case of an update
+        repo['mirrorlist'] = None  # make sure to zero this out in case of an update
 
-        log.info('Configuring repo [%s] to use baseurl [%s]' % (decode_unicode(repo.id), url_list[0]))
+        log.info(
+            'Configuring repo [%s] to use baseurl [%s]' % (decode_unicode(repo.id), url_list[0]))

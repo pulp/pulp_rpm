@@ -19,7 +19,7 @@ from pulp.client.extensions.extensions import (PulpCliCommand, PulpCliOption)
 DESC_CREATE = _('creates a new consumer group')
 DESC_DELETE = _('deletes a consumer group')
 DESC_UPDATE = _('updates the metadata about the group itself (not its members)')
-DESC_LIST   = _('lists consumer groups on the Pulp server')
+DESC_LIST = _('lists consumer groups on the Pulp server')
 DESC_SEARCH = _('searches for consumer groups on the Pulp server')
 
 # Defaults to pass to render_document_list when displaying groups
@@ -28,7 +28,6 @@ DEFAULT_ORDER = DEFAULT_FILTERS
 
 
 class CreateConsumerGroupCommand(PulpCliCommand):
-
     def __init__(self, context, name='create', description=DESC_CREATE, method=None):
         self.context = context
         self.prompt = context.prompt
@@ -56,11 +55,10 @@ class CreateConsumerGroupCommand(PulpCliCommand):
         self.context.server.consumer_group.create(consumer_group_id, name, description, notes)
 
         msg = _('Consumer Group [%(group)s] successfully created')
-        self.prompt.render_success_message(msg % {'group' : consumer_group_id})
+        self.prompt.render_success_message(msg % {'group': consumer_group_id})
 
 
 class UpdateConsumerGroupCommand(PulpCliCommand):
-
     def __init__(self, context, name='update', description=DESC_UPDATE, method=None):
         self.context = context
         self.prompt = context.prompt
@@ -78,7 +76,7 @@ class UpdateConsumerGroupCommand(PulpCliCommand):
     def run(self, **kwargs):
         # Assemble the delta for all options that were passed in
         delta = dict([(k, v) for k, v in kwargs.items() if v is not None])
-        delta.pop(OPTION_GROUP_ID.keyword) # not needed in the delta
+        delta.pop(OPTION_GROUP_ID.keyword)  # not needed in the delta
 
         if delta.pop(OPTION_NAME.keyword, None) is not None:
             delta['display_name'] = kwargs[OPTION_NAME.keyword]
@@ -89,14 +87,13 @@ class UpdateConsumerGroupCommand(PulpCliCommand):
         try:
             self.context.server.consumer_group.update(kwargs[OPTION_GROUP_ID.keyword], delta)
             msg = _('Consumer Group [%(group)s] successfully updated')
-            self.prompt.render_success_message(msg % {'group' : kwargs[OPTION_GROUP_ID.keyword]})
+            self.prompt.render_success_message(msg % {'group': kwargs[OPTION_GROUP_ID.keyword]})
         except NotFoundException:
             msg = _('Consumer Group [%(group)s] does not exist on the server')
-            self.prompt.write(msg % {'group' : kwargs[OPTION_GROUP_ID.keyword]}, tag='not-found')
+            self.prompt.write(msg % {'group': kwargs[OPTION_GROUP_ID.keyword]}, tag='not-found')
 
 
 class DeleteConsumerGroupCommand(PulpCliCommand):
-
     def __init__(self, context, name='delete', description=DESC_DELETE, method=None):
         self.context = context
         self.prompt = context.prompt
@@ -114,14 +111,13 @@ class DeleteConsumerGroupCommand(PulpCliCommand):
         try:
             self.context.server.consumer_group.delete(id)
             msg = _('Consumer Group [%(group)s] successfully deleted')
-            self.prompt.render_success_message(msg % {'group' : id})
+            self.prompt.render_success_message(msg % {'group': id})
         except NotFoundException:
             msg = _('Consumer Group [%(group)s] does not exist on the server')
-            self.prompt.write(msg % {'group' : id}, tag='not-found')
+            self.prompt.write(msg % {'group': id}, tag='not-found')
 
 
 class ListConsumerGroupsCommand(PulpCliCommand):
-
     def __init__(self, context, name='list', description=DESC_LIST, method=None):
         self.context = context
         self.prompt = context.prompt
@@ -131,7 +127,9 @@ class ListConsumerGroupsCommand(PulpCliCommand):
 
         super(ListConsumerGroupsCommand, self).__init__(name, description, method)
 
-        self.add_option(PulpCliOption('--fields', _('comma-separated list of repo group fields; if specified, only the given fields will displayed'), required=False))
+        self.add_option(PulpCliOption('--fields', _(
+            'comma-separated list of repo group fields; if specified, only the given fields will '
+            'displayed'), required=False))
 
     def run(self, **kwargs):
         self.prompt.render_title(_('Consumer Groups'))
@@ -152,7 +150,6 @@ class ListConsumerGroupsCommand(PulpCliCommand):
 
 
 class SearchConsumerGroupsCommand(CriteriaCommand):
-
     def __init__(self, context, name='search', description=DESC_SEARCH, method=None):
         self.context = context
         self.prompt = context.prompt

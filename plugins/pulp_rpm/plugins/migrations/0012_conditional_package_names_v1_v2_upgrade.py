@@ -21,8 +21,9 @@ def migrate(*args, **kwargs):
     package_group_collection = get_collection('units_package_group')
     for package_group in package_group_collection.find():
         if isinstance(package_group['conditional_package_names'], dict):
-            new_conditional_package_names = [[key, value] \
-                for key, value in package_group['conditional_package_names'].items()]
+            new_conditional_package_names = [[key, value]
+                                             for key, value in
+                                             package_group['conditional_package_names'].items()]
             package_group_collection.update(
                 {'_id': package_group['_id']},
                 {'$set': {'conditional_package_names': new_conditional_package_names}}, safe=True)

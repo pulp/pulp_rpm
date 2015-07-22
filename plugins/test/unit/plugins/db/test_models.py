@@ -17,6 +17,7 @@ class TestDistribution(unittest.TestCase):
     """
     This class contains tests for the Distribution class.
     """
+
     def test_process_download_reports_sanitizes_checksum_type(self):
         """
         Ensure that the process_download_reports() method calls sanitize_checksum_type correctly.
@@ -37,6 +38,7 @@ class TestDRPM(unittest.TestCase):
     """
     This class contains tests for the DRPM class.
     """
+
     def test___init___sanitizes_checksum_type(self):
         """
         Ensure that __init__() calls sanitize_checksum_type correctly.
@@ -51,6 +53,7 @@ class TestErrata(unittest.TestCase):
     """
     This class contains tests for the Errata class.
     """
+
     def test_rpm_search_dicts_sanitizes_checksum_type_sum(self):
         """
         Assert that the rpm_search_dicts() method properly sanitizes checksum types with the sum
@@ -90,6 +93,7 @@ class TestISO(unittest.TestCase):
     """
     Test the ISO class.
     """
+
     def setUp(self):
         self.temp_dir = tempfile.mkdtemp()
 
@@ -126,17 +130,22 @@ class TestISO(unittest.TestCase):
     @mock.patch('pulp_rpm.plugins.db.models.CHECKSUM_CHUNK_SIZE', 8)
     def test_calculate_checksum_large_file(self):
         """
-        Test the static calculate_checksum() method with a file that's larger than CHECKSUM_CHUNK_SIZE. Instead
-        of testing with an actual large file, we've mocked CHECKSUM_CHUNK_SIZE to be 8 bytes, which is smaller
-        than our test file. This will ensure that we go through the while loop in calculate_checksum() more than
+        Test the static calculate_checksum() method with a file that's larger than
+        CHECKSUM_CHUNK_SIZE. Instead
+        of testing with an actual large file, we've mocked CHECKSUM_CHUNK_SIZE to be 8 bytes,
+        which is smaller
+        than our test file. This will ensure that we go through the while loop in
+        calculate_checksum() more than
         once.
         """
         fake_iso_data = 'I wish I were an ISO, but I am really a String. '
-        # Let's just make sure that the premise of the test is correct, that our test file is larger than the
+        # Let's just make sure that the premise of the test is correct, that our test file is
+        # larger than the
         # chunk size
         self.assertTrue(len(fake_iso_data) > models.CHECKSUM_CHUNK_SIZE)
         fake_iso_file = StringIO(fake_iso_data)
-        # Just for fun, to make sure the checksum calculator does seek to 0 as it should, let's seek to 42
+        # Just for fun, to make sure the checksum calculator does seek to 0 as it should,
+        # let's seek to 42
         fake_iso_file.seek(42)
 
         calculated_checksum = models.ISO.calculate_checksum(fake_iso_file)
@@ -150,10 +159,12 @@ class TestISO(unittest.TestCase):
 
     def test_calculate_checksum_small_file(self):
         """
-        Test the static calculate_checksum() method with a file that's smaller than CHECKSUM_CHUNK_SIZE.
+        Test the static calculate_checksum() method with a file that's smaller than
+        CHECKSUM_CHUNK_SIZE.
         """
         fake_iso_data = 'I wish I were an ISO, but I am really a String.'
-        # Let's just make sure that the premise of the test is correct, that our small file is smaller than the
+        # Let's just make sure that the premise of the test is correct, that our small file is
+        # smaller than the
         # chunk size
         self.assertTrue(len(fake_iso_data) < models.CHECKSUM_CHUNK_SIZE)
         fake_iso_file = StringIO(fake_iso_data)
@@ -221,7 +232,8 @@ class TestISO(unittest.TestCase):
         self.assertEqual(iso._unit, unit)
         expected_relative_path = os.path.join('name', 'checksum', '42', 'name')
         conduit.init_unit.assert_called_once_with(
-            ids.TYPE_ID_ISO, {'name': 'name', 'size': 42, 'checksum': 'checksum'}, {}, expected_relative_path)
+            ids.TYPE_ID_ISO, {'name': 'name', 'size': 42, 'checksum': 'checksum'}, {},
+            expected_relative_path)
 
     def test_save_unit(self):
         unit = mock.MagicMock()
@@ -251,12 +263,14 @@ class TestISO(unittest.TestCase):
         destination = os.path.join(self.temp_dir, 'test.txt')
         try:
             test_file = open(destination, 'w')
-            test_file.write("I heard there was this band called 1023MB, they haven't got any gigs yet.")
+            test_file.write(
+                "I heard there was this band called 1023MB, they haven't got any gigs yet.")
         finally:
             test_file.close()
         unit = mock.MagicMock()
         unit.storage_path = destination
-        iso = models.ISO('test.txt', 73, '36891c265290bf4610b488a8eb884d32a29fd17bb9886d899e75f4cf29d3f464',
+        iso = models.ISO('test.txt', 73,
+                         '36891c265290bf4610b488a8eb884d32a29fd17bb9886d899e75f4cf29d3f464',
                          unit)
 
         # This should validate, i.e., should not raise any Exception
@@ -272,10 +286,12 @@ class TestISO(unittest.TestCase):
         name = 'PULP_MANIFEST'
         destination = os.path.join(self.temp_dir, name)
         with open(destination, 'w') as test_file:
-            test_file.write("I heard there was this band called 1023MB, they haven't got any gigs yet.")
+            test_file.write(
+                "I heard there was this band called 1023MB, they haven't got any gigs yet.")
         unit = mock.MagicMock()
         unit.storage_path = destination
-        iso = models.ISO(name, 73, '36891c265290bf4610b488a8eb884d32a29fd17bb9886d899e75f4cf29d3f464',
+        iso = models.ISO(name, 73,
+                         '36891c265290bf4610b488a8eb884d32a29fd17bb9886d899e75f4cf29d3f464',
                          unit)
 
         # This should raise a ValueError with an appropriate error message
@@ -286,7 +302,7 @@ class TestISO(unittest.TestCase):
         except ValueError, e:
             self.assertEqual(
                 str(e), 'An ISO may not be named PULP_MANIFEST, as it conflicts with the name of '
-                'the manifest during publishing.')
+                        'the manifest during publishing.')
 
     def test_validate_invalid_name_full_validation_true(self):
         """
@@ -298,10 +314,12 @@ class TestISO(unittest.TestCase):
         name = 'PULP_MANIFEST'
         destination = os.path.join(self.temp_dir, name)
         with open(destination, 'w') as test_file:
-            test_file.write("I heard there was this band called 1023MB, they haven't got any gigs yet.")
+            test_file.write(
+                "I heard there was this band called 1023MB, they haven't got any gigs yet.")
         unit = mock.MagicMock()
         unit.storage_path = destination
-        iso = models.ISO(name, 73, '36891c265290bf4610b488a8eb884d32a29fd17bb9886d899e75f4cf29d3f464',
+        iso = models.ISO(name, 73,
+                         '36891c265290bf4610b488a8eb884d32a29fd17bb9886d899e75f4cf29d3f464',
                          unit)
 
         # This should raise a ValueError with an appropriate error message
@@ -312,7 +330,7 @@ class TestISO(unittest.TestCase):
         except ValueError, e:
             self.assertEqual(
                 str(e), 'An ISO may not be named PULP_MANIFEST, as it conflicts with the name of '
-                'the manifest during publishing.')
+                        'the manifest during publishing.')
 
     def test_validate_wrong_checksum_full_validation_false(self):
         """
@@ -321,8 +339,9 @@ class TestISO(unittest.TestCase):
         """
         destination = os.path.join(self.temp_dir, 'test.txt')
         with open(destination, 'w') as test_file:
-            test_file.write('Two chemists walk into a bar, the first one says "I\'ll have some H2O." to '
-                            'which the other adds "I\'ll have some H2O, too." The second chemist died.')
+            test_file.write(
+                'Two chemists walk into a bar, the first one says "I\'ll have some H2O." to '
+                'which the other adds "I\'ll have some H2O, too." The second chemist died.')
         unit = mock.MagicMock()
         unit.storage_path = destination
         iso = models.ISO('test.txt', 146, 'terrible_pun', unit)
@@ -338,8 +357,9 @@ class TestISO(unittest.TestCase):
         destination = os.path.join(self.temp_dir, 'test.txt')
         try:
             test_file = open(destination, 'w')
-            test_file.write('Two chemists walk into a bar, the first one says "I\'ll have some H2O." to '
-                            'which the other adds "I\'ll have some H2O, too." The second chemist died.')
+            test_file.write(
+                'Two chemists walk into a bar, the first one says "I\'ll have some H2O." to '
+                'which the other adds "I\'ll have some H2O, too." The second chemist died.')
         finally:
             test_file.close()
         unit = mock.MagicMock()
@@ -352,9 +372,10 @@ class TestISO(unittest.TestCase):
             self.fail('A ValueError should have been raised, but it was not.')
         except ValueError, e:
             self.assertEqual(
-                str(e), 'Downloading <test.txt> failed checksum validation. The manifest specified the '
-                        'checksum to be terrible_pun, but it was '
-                        'dfec884065223f24c3ef333d4c7dcc0eb785a683cfada51ce071410b32a905e8.')
+                str(e),
+                'Downloading <test.txt> failed checksum validation. The manifest specified the '
+                'checksum to be terrible_pun, but it was '
+                'dfec884065223f24c3ef333d4c7dcc0eb785a683cfada51ce071410b32a905e8.')
 
     def test_validate_wrong_size_full_validation_false(self):
         """
@@ -363,7 +384,8 @@ class TestISO(unittest.TestCase):
         """
         destination = os.path.join(self.temp_dir, 'test.txt')
         with open(destination, 'w') as test_file:
-            test_file.write("Hey girl, what's your sine? It must be math.pi/2 because you're the 1.")
+            test_file.write(
+                "Hey girl, what's your sine? It must be math.pi/2 because you're the 1.")
         unit = mock.MagicMock()
         unit.storage_path = destination
         iso = models.ISO('test.txt', math.pi,
@@ -380,7 +402,8 @@ class TestISO(unittest.TestCase):
         destination = os.path.join(self.temp_dir, 'test.txt')
         try:
             test_file = open(destination, 'w')
-            test_file.write("Hey girl, what's your sine? It must be math.pi/2 because you're the 1.")
+            test_file.write(
+                "Hey girl, what's your sine? It must be math.pi/2 because you're the 1.")
         finally:
             test_file.close()
         unit = mock.MagicMock()
@@ -402,6 +425,7 @@ class TestISOManifest(unittest.TestCase):
     """
     Test the ISOManifest class.
     """
+
     def test___init__(self):
         """
         Assert good behavior from the __init__() method.
@@ -426,7 +450,8 @@ class TestISOManifest(unittest.TestCase):
         Assert good behavior from the __init__() method.
         """
         manifest_file = StringIO()
-        manifest_file.write('test1.iso,checksum1,1\ntest2.iso,doesnt_have_a_size\ntest3.iso,checksum3,3')
+        manifest_file.write(
+            'test1.iso,checksum1,1\ntest2.iso,doesnt_have_a_size\ntest3.iso,checksum3,3')
         repo_url = 'http://awesomestuff.com/repo/'
 
         self.assertRaises(ValueError, models.ISOManifest, manifest_file, repo_url)
@@ -461,7 +486,6 @@ class TestISOManifest(unittest.TestCase):
 
 
 class TestPackageEnvironment(unittest.TestCase):
-
     def test_get_group_ids(self):
         group_id_list = ['id1', 'id2']
         model = models.PackageEnvironment('foo_id', 'foo_repo', {'group_ids': group_id_list})
@@ -482,6 +506,7 @@ class TestRPM(unittest.TestCase):
     """
     This class contains tests for the RPM class.
     """
+
     def test___init___sanitizes_checksum_type(self):
         """
         Ensure that __init__() calls sanitize_checksum_type correctly.

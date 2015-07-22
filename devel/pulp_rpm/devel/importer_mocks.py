@@ -3,7 +3,6 @@ import os
 from pulp.plugins.conduits.repo_sync import RepoSyncConduit
 from pulp.plugins.conduits.upload import UploadConduit
 from pulp.plugins.conduits.unit_import import ImportUnitConduit
-from pulp.plugins.conduits.dependency import DependencyResolutionConduit
 from pulp.plugins.config import PluginCallConfiguration
 from pulp.plugins.model import SyncReport, Unit
 import mock
@@ -134,7 +133,8 @@ def get_import_conduit(source_units=None, existing_units=None):
     return import_conduit
 
 
-def get_upload_conduit(type_id=None, unit_key=None, metadata=None, relative_path=None, pkg_dir=None):
+def get_upload_conduit(type_id=None, unit_key=None, metadata=None, relative_path=None,
+                       pkg_dir=None):
     def side_effect(type_id, unit_key, metadata, relative_path):
         if relative_path and pkg_dir:
             relative_path = os.path.join(pkg_dir, relative_path)
@@ -142,10 +142,6 @@ def get_upload_conduit(type_id=None, unit_key=None, metadata=None, relative_path
         return unit
 
     def get_units(criteria=None):
-        ret_units = True
-        if criteria and hasattr(criteria, "type_ids"):
-            if type_id and type_id not in criteria.type_ids:
-                ret_units = False
         return []
 
     upload_conduit = mock.Mock(spec=UploadConduit)
@@ -165,43 +161,6 @@ def get_upload_conduit(type_id=None, unit_key=None, metadata=None, relative_path
 
     return upload_conduit
 
-def get_dependency_conduit(type_id=None, unit_key=None, metadata=None, existing_units=None, relative_path=None, pkg_dir=None):
-    def side_effect(type_id, unit_key, metadata, relative_path):
-        if relative_path and pkg_dir:
-            relative_path = os.path.join(pkg_dir, relative_path)
-        unit = Unit(type_id, unit_key, metadata, relative_path)
-        return unit
-
-    def get_units(criteria=None):
-        ret_val = []
-        if existing_units:
-            for u in existing_units:
-                if criteria:
-                    if criteria.skip:
-                        return []
-                    if u.type_id in criteria.type_ids:
-                        ret_val.append(u)
-                else:
-                    ret_val.append(u)
-        return ret_val
-
-    def get_repo_scratchpad(repoid=None):
-        return {}
-
-
-    dependency_conduit = mock.Mock(spec=DependencyResolutionConduit)
-    dependency_conduit.get_units = mock.Mock()
-    dependency_conduit.get_units.side_effect = get_units
-    dependency_conduit.build_failure_report = mock.Mock()
-    dependency_conduit.build_failure_report.side_effect = side_effect
-
-    dependency_conduit.build_success_report = mock.Mock()
-    dependency_conduit.build_success_report.side_effect = side_effect
-
-    dependency_conduit.get_repo_scratchpad = mock.Mock()
-    dependency_conduit.get_repo_scratchpad.side_effect = get_repo_scratchpad
-
-    return dependency_conduit
 
 def get_basic_config(*arg, **kwargs):
     """
@@ -211,10 +170,10 @@ def get_basic_config(*arg, **kwargs):
     :return:
     :rtype: pulp.plugins.config.PluginCallConfiguration
     """
-    plugin_config = {"num_retries":0, "retry_delay":0}
+    plugin_config = {"num_retries": 0, "retry_delay": 0}
     repo_plugin_config = {}
     for key in kwargs:
         repo_plugin_config[key] = kwargs[key]
     config = PluginCallConfiguration(plugin_config,
-            repo_plugin_config=repo_plugin_config)
+                                     repo_plugin_config=repo_plugin_config)
     return config

@@ -10,10 +10,10 @@ from mock_yum import YumBase
 
 
 class ToolTest(unittest.TestCase):
-
     def setUp(self):
         mock_yum.install()
         from pulp_rpm.handlers.rpmtools import Package, PackageGroup
+
         self.Package = Package
         self.PackageGroup = PackageGroup
 
@@ -22,7 +22,6 @@ class ToolTest(unittest.TestCase):
 
 
 class TestPackages(ToolTest):
-
     def verify(self, report, installed=None, updated=None, removed=None, failed=None):
         resolved = []
         deps = []
@@ -330,7 +329,6 @@ class TestPackages(ToolTest):
 
 
 class TestGroups(ToolTest):
-
     def verify(self, report, installed=None, removed=None, failed=None):
         resolved = []
         deps = []
@@ -432,14 +430,14 @@ class TestGroups(ToolTest):
 
 
 class TestProgressReport(unittest.TestCase):
-
     def setUp(self):
         from yum.callbacks import PT_MESSAGES
-        from pulp_rpm.handlers.rpmtools import\
-            ProcessTransCallback,\
-            RPMCallback,\
-            DownloadCallback,\
+        from pulp_rpm.handlers.rpmtools import \
+            ProcessTransCallback, \
+            RPMCallback, \
+            DownloadCallback, \
             ProgressReport
+
         self.PT_MESSAGES = PT_MESSAGES
         self.ProcessTransCallback = ProcessTransCallback
         self.RPMCallback = RPMCallback

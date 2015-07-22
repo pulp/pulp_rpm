@@ -12,60 +12,60 @@ class YumImporterConfigMigrationTests(rpm_support_base.PulpRPMTests):
 
         self.repo_importers = get_collection('repo_importers')
 
-        importers = (
+        importers = \
+            (
+                # Proxy changes
+                {'repo_id': 'proxy',
+                 'id': 'yum_importer',
+                 'importer_type_id': 'yum_importer',
+                 'config': {
+                     'proxy_url': 'localhost',
+                     'proxy_port': 3128,
+                     'proxy_user': 'user-1',
+                     'proxy_password': 'pass-1',
+                 },
+                 },
 
-            # Proxy changes
-            {'repo_id' : 'proxy',
-             'id' : 'yum_importer',
-             'importer_type_id' : 'yum_importer',
-             'config' : {
-                'proxy_url' : 'localhost',
-                'proxy_port' : 3128,
-                'proxy_user' : 'user-1',
-                'proxy_password' : 'pass-1',
-             },
-            },
+                # Non-proxy changes + unchanged things
+                {'repo_id': 'mixed',
+                 'id': 'yum_importer',
+                 'importer_type_id': 'yum_importer',
+                 'config': {
+                     'feed_url': 'http://localhost/repo',
+                     'ssl_verify': True,
+                     'num_threads': 42,
+                     'verify_checksum': True,
+                     'remove_old': False,
+                     'num_old_packages': 3,
+                     'skip': ['rpm'],
+                     'max_speed': 1024,
+                 },
+                 },
 
-            # Non-proxy changes + unchanged things
-            {'repo_id' : 'mixed',
-             'id' : 'yum_importer',
-             'importer_type_id' : 'yum_importer',
-             'config' : {
-                'feed_url' : 'http://localhost/repo',
-                'ssl_verify' : True,
-                'num_threads' : 42,
-                'verify_checksum' : True,
-                'remove_old' : False,
-                'num_old_packages' : 3,
-                'skip' : ['rpm'],
-                'max_speed' : 1024,
-              },
-             },
+                # Things to remove + unchanged things
+                {'repo_id': 'remove',
+                 'id': 'yum_importer',
+                 'importer_type_id': 'yum_importer',
+                 'config': {
+                     'feed': 'localhost',
+                     'newest': True,
+                     'verify_size': True,
+                     'purge_orphaned': True,
+                 },
+                 },
 
-            # Things to remove + unchanged things
-            {'repo_id' : 'remove',
-             'id' : 'yum_importer',
-             'importer_type_id' : 'yum_importer',
-             'config' : {
-                 'feed' : 'localhost',
-                 'newest' : True,
-                 'verify_size' : True,
-                 'purge_orphaned' : True,
-             },
-            },
-
-            # Non-yum importer
-            {'repo_id' : 'no-touch',
-             'id' : 'non_yum_importer',
-             'importer_type_id' : 'non_yum_importer',
-             'config' : {
-                 'feed' : 'localhost',
-                 'newest' : True,
-                 'verify_size' : True,
-                 'purge_orphaned' : True,
-             },
-            },
-        )
+                # Non-yum importer
+                {'repo_id': 'no-touch',
+                 'id': 'non_yum_importer',
+                 'importer_type_id': 'non_yum_importer',
+                 'config': {
+                     'feed': 'localhost',
+                     'newest': True,
+                     'verify_size': True,
+                     'purge_orphaned': True,
+                 },
+                 },
+            )
 
         for importer in importers:
             self.repo_importers.save(importer, safe=True)
@@ -80,7 +80,7 @@ class YumImporterConfigMigrationTests(rpm_support_base.PulpRPMTests):
         migration.migrate()
 
         # Verify
-        proxy = self.repo_importers.find_one({'repo_id' : 'proxy'})
+        proxy = self.repo_importers.find_one({'repo_id': 'proxy'})
         self.assertTrue('proxy_url' not in proxy['config'])
         self.assertTrue('proxy_user' not in proxy['config'])
         self.assertTrue('proxy_pass' not in proxy['config'])
@@ -88,7 +88,7 @@ class YumImporterConfigMigrationTests(rpm_support_base.PulpRPMTests):
         self.assertEqual(proxy['config']['proxy_username'], 'user-1')
         self.assertEqual(proxy['config']['proxy_password'], 'pass-1')
 
-        mixed = self.repo_importers.find_one({'repo_id' : 'mixed'})
+        mixed = self.repo_importers.find_one({'repo_id': 'mixed'})
         self.assertTrue('feed_url' not in mixed['config'])
         self.assertTrue('ssl_verify' not in mixed['config'])
         self.assertTrue('num_threads' not in mixed['config'])
@@ -104,13 +104,13 @@ class YumImporterConfigMigrationTests(rpm_support_base.PulpRPMTests):
         self.assertEqual(mixed['config']['skip'], ['rpm'])
         self.assertEqual(mixed['config']['max_speed'], 1024)
 
-        remove = self.repo_importers.find_one({'repo_id' : 'remove'})
+        remove = self.repo_importers.find_one({'repo_id': 'remove'})
         self.assertTrue('newest' not in remove['config'])
         self.assertTrue('verify_size' not in remove['config'])
         self.assertTrue('purge_orphaned' not in remove['config'])
         self.assertEqual(remove['config']['feed'], 'localhost')
 
-        no_touch = self.repo_importers.find_one({'repo_id' : 'no-touch'})
+        no_touch = self.repo_importers.find_one({'repo_id': 'no-touch'})
         self.assertEqual(no_touch['config']['feed'], 'localhost')
         self.assertEqual(no_touch['config']['newest'], True)
         self.assertEqual(no_touch['config']['verify_size'], True)

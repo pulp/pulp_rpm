@@ -49,7 +49,7 @@ class CreatePackageCategoryCommand(UploadCommand):
     def generate_unit_key(self, filename, **kwargs):
         repo_id = kwargs[OPTION_REPO_ID.keyword]
         cat_id = kwargs[OPT_CATEGORY_ID.keyword]
-        unit_key = {'id' : cat_id, 'repo_id' : repo_id}
+        unit_key = {'id': cat_id, 'repo_id': repo_id}
         return unit_key
 
     def generate_metadata(self, filename, **kwargs):
@@ -59,11 +59,11 @@ class CreatePackageCategoryCommand(UploadCommand):
         packagegroupids = kwargs[OPT_GROUP.keyword]
 
         metadata = {
-            'name' : name,
-            'description' : description,
-            'display_order' : display_order,
-            'packagegroupids' : packagegroupids,
-            'translated_description' : {},
-            'translated_name' : '',
+            'name': name,
+            'description': description,
+            'display_order': display_order,
+            'packagegroupids': packagegroupids,
+            'translated_description': {},
+            'translated_name': '',
         }
         return metadata

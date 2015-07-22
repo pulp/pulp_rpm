@@ -38,9 +38,9 @@ def get_package_xml(pkg_path, sumtype=verification.TYPE_SHA256):
     po._cachedir = None
     primary_xml_snippet = change_location_tag(po.xml_dump_primary_metadata(), pkg_path)
     metadata = {
-        'primary' : primary_xml_snippet,
+        'primary': primary_xml_snippet,
         'filelists': po.xml_dump_filelists_metadata(),
-        'other'   : po.xml_dump_other_metadata(),
+        'other': po.xml_dump_other_metadata(),
     }
     return metadata
 
@@ -59,7 +59,7 @@ def change_location_tag(primary_xml_snippet, relpath):
 
     basename = os.path.basename(relpath)
     start_index = primary_xml_snippet.find("<location ")
-    end_index = primary_xml_snippet.find("/>", start_index) + 2 # adjust to end of closing tag
+    end_index = primary_xml_snippet.find("/>", start_index) + 2  # adjust to end of closing tag
 
     first_portion = string_to_unicode(primary_xml_snippet[:start_index])
     end_portion = string_to_unicode(primary_xml_snippet[end_index:])

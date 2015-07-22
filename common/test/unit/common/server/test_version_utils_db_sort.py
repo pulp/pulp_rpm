@@ -8,7 +8,8 @@ from pulp_rpm.devel import rpm_support_base
 class DatabaseSortTests(rpm_support_base.PulpRPMTests):
     """
     Tests using the database's sort capabilities rather than Python's to be closer to the
-    actual usage.  This is in the server sub-package so it will not be tested on python-2.4 platforms
+    actual usage.  This is in the server sub-package so it will not be tested on python-2.4
+    platforms
     """
 
     def setUp(self):
@@ -19,8 +20,8 @@ class DatabaseSortTests(rpm_support_base.PulpRPMTests):
         connection._DATABASE.drop_collection('test_version_compare')
 
     def test_numbers(self):
-        # If both the elements are numbers, the larger number is considered newer. So 5 is newer than 4
-        # and 10 is newer than 2.
+        # If both the elements are numbers, the larger number is considered newer. So 5 is newer
+        # than 4 and 10 is newer than 2.
         self.assert_greater_than_or_equal('5', '4')
         self.assert_greater_than_or_equal('1.2', '1.1')
         self.assert_greater_than_or_equal('3.9', '3.1')
@@ -32,9 +33,9 @@ class DatabaseSortTests(rpm_support_base.PulpRPMTests):
         self.assert_greater_than_or_equal('0.2.beta.1', '0.2.alpha.17')
 
     def test_letter_case(self):
-        # If both the elements are alphabetic, they are compared using the Unix strcmp function, with the
-        # greater string resulting in a newer element. So 'add' is newer than 'ZULU' (because lowercase
-        # characters win in strcmp comparisons).
+        # If both the elements are alphabetic, they are compared using the Unix strcmp function,
+        # with the greater string resulting in a newer element. So 'add' is newer than 'ZULU'
+        # (because lowercase characters win in strcmp comparisons).
         self.assert_greater_than_or_equal('add', 'ZULU')  # see fedora link in version_utils
 
     def test_letters_v_numbers(self):
@@ -48,15 +49,15 @@ class DatabaseSortTests(rpm_support_base.PulpRPMTests):
         self.assert_greater_than_or_equal('2.0', '2a')
 
     def test_different_length_ints(self):
-        # The elements in the list are compared one by one using the following algorithm. In case one
-        # of the lists run out, the other label wins as the newer label. So, for example, (1, 2) is
-        # newer than (1, 1), and (1, 2, 0) is newer than (1, 2).
+        # The elements in the list are compared one by one using the following algorithm. In case
+        # one of the lists run out, the other label wins as the newer label. So, for example,
+        # (1, 2) is newer than (1, 1), and (1, 2, 0) is newer than (1, 2).
         self.assert_greater_than_or_equal('1.2', '1.1.0')
         self.assert_greater_than_or_equal('1.2.0', '1.2')
 
     def test_different_length_letters(self):
-        # If both the elements are alphabetic, they are compared using the Unix strcmp function, with the
-        # greater string resulting in a newer element. So 'aba' is newer than 'ab'.
+        # If both the elements are alphabetic, they are compared using the Unix strcmp function,
+        # with the greater string resulting in a newer element. So 'aba' is newer than 'ab'.
         self.assert_greater_than_or_equal('aba', 'ab')
 
     def test_leading_zeroes(self):
@@ -66,8 +67,8 @@ class DatabaseSortTests(rpm_support_base.PulpRPMTests):
         encoded1 = encode(version1)
         encoded2 = encode(version2)
 
-        self.db.insert({'version' : version1, 'version_sort_index' : encoded1}, safe=True)
-        self.db.insert({'version' : version2, 'version_sort_index' : encoded2}, safe=True)
+        self.db.insert({'version': version1, 'version_sort_index': encoded1}, safe=True)
+        self.db.insert({'version': version2, 'version_sort_index': encoded2}, safe=True)
 
         sorted_versions = self.db.find({}).sort([('version_sort_index', pymongo.DESCENDING)])
 

@@ -9,14 +9,14 @@ from nectar.downloaders.threaded import HTTPThreadedDownloader
 from nectar.downloaders.local import LocalFileDownloader
 from pulp.common.plugins import importer_constants
 from pulp.common.util import encode_unicode
-from pulp.plugins.conduits.mixins import Criteria, UnitAssociationCriteria
+from pulp.server.db.model.criteria import Criteria, UnitAssociationCriteria
 
 from pulp_rpm.common import constants
 from pulp_rpm.common.progress import SyncProgressReport
 from pulp_rpm.plugins.db import models
 
 
-logger = logging.getLogger(__name__)
+_logger = logging.getLogger(__name__)
 
 
 class ISOSyncRun(listener.DownloadEventListener):
@@ -26,6 +26,7 @@ class ISOSyncRun(listener.DownloadEventListener):
     so it can pass itself to the downloader library and receive the callbacks when downloads are
     complete.
     """
+
     def __init__(self, sync_conduit, config):
         """
         Initialize an ISOSyncRun.
@@ -36,12 +37,14 @@ class ISOSyncRun(listener.DownloadEventListener):
         :type  config:       pulp.plugins.config.PluginCallConfiguration
         """
         self.sync_conduit = sync_conduit
-        self._remove_missing_units = config.get(importer_constants.KEY_UNITS_REMOVE_MISSING,
-                                                default=constants.CONFIG_UNITS_REMOVE_MISSING_DEFAULT)
+        self._remove_missing_units = config.get(
+            importer_constants.KEY_UNITS_REMOVE_MISSING,
+            default=constants.CONFIG_UNITS_REMOVE_MISSING_DEFAULT)
         self._validate_downloads = config.get(importer_constants.KEY_VALIDATE,
                                               default=constants.CONFIG_VALIDATE_DEFAULT)
         self._repo_url = encode_unicode(config.get(importer_constants.KEY_FEED))
-        # The _repo_url must end in a trailing slash, because we will use urljoin to determine the path to
+        # The _repo_url must end in a trailing slash, because we will use urljoin to determine
+        # the path to
         # PULP_MANIFEST later
         if self._repo_url[-1] != '/':
             self._repo_url = self._repo_url + '/'
@@ -56,7 +59,8 @@ class ISOSyncRun(listener.DownloadEventListener):
         else:
             max_downloads = constants.CONFIG_MAX_DOWNLOADS_DEFAULT
         ssl_validation = config.get_boolean(importer_constants.KEY_SSL_VALIDATION)
-        ssl_validation = ssl_validation if ssl_validation is not None else constants.CONFIG_VALIDATE_DEFAULT
+        ssl_validation = ssl_validation if ssl_validation is not None else \
+            constants.CONFIG_VALIDATE_DEFAULT
         downloader_config = {
             'max_speed': max_speed,
             'max_concurrent': max_downloads,
@@ -70,7 +74,8 @@ class ISOSyncRun(listener.DownloadEventListener):
             'proxy_password': config.get(importer_constants.KEY_PROXY_PASS)}
         downloader_config = DownloaderConfig(**downloader_config)
 
-        # We will pass self as the event_listener, so that we can receive the callbacks in this class
+        # We will pass self as the event_listener, so that we can receive the callbacks in this
+        # class
         if self._repo_url.lower().startswith('file'):
             self.downloader = LocalFileDownloader(downloader_config, self)
         else:
@@ -81,7 +86,8 @@ class ISOSyncRun(listener.DownloadEventListener):
         """
         This method will cancel a sync that is in progress.
         """
-        # We used to support sync cancellation, but the current downloader implementation does not support it
+        # We used to support sync cancellation, but the current downloader implementation does
+        # not support it
         # and so for now we will just pass
         self.progress_report.state = self.progress_report.STATE_CANCELLED
         self.downloader.cancel()
@@ -95,7 +101,7 @@ class ISOSyncRun(listener.DownloadEventListener):
         # failed for that phase.
         msg = _('Failed to download %(url)s: %(error_msg)s.')
         msg = msg % {'url': report.url, 'error_msg': report.error_msg}
-        logger.error(msg)
+        _logger.error(msg)
         if self.progress_report.state == self.progress_report.STATE_MANIFEST_IN_PROGRESS:
             self.progress_report.state = self.progress_report.STATE_MANIFEST_FAILED
             self.progress_report.error_message = report.error_report
@@ -106,7 +112,8 @@ class ISOSyncRun(listener.DownloadEventListener):
 
     def download_progress(self, report):
         """
-        We will get notified from time to time about some bytes we've downloaded. We can update our progress
+        We will get notified from time to time about some bytes we've downloaded. We can update
+        our progress
         report with this information so the client can see the progress.
 
         :param report: The report of the file we are downloading
@@ -225,7 +232,7 @@ class ISOSyncRun(listener.DownloadEventListener):
         manifest_destiny.seek(0)
         try:
             manifest = models.ISOManifest(manifest_destiny, self._repo_url)
-        except ValueError, e:
+        except ValueError:
             self.progress_report.error_message = _('The PULP_MANIFEST file was not in the ' +
                                                    'expected format.')
             self.progress_report.state = self.progress_report.STATE_MANIFEST_FAILED
@@ -250,6 +257,7 @@ class ISOSyncRun(listener.DownloadEventListener):
                          the remote repo.
         :rtype:          tuple
         """
+
         def _unit_key_str(iso):
             """
             Return a simple string representation of the unit key of the ISO.
@@ -271,9 +279,9 @@ class ISOSyncRun(listener.DownloadEventListener):
         search_criteria = UnitAssociationCriteria(type_ids=[models.ISO.TYPE])
         existing_repo_units = self.sync_conduit.get_units(search_criteria)
         existing_repo_units_by_key = dict([(_unit_key_str(models.ISO.from_unit(unit)), unit)
-                                          for unit in existing_repo_units])
+                                           for unit in existing_repo_units])
         existing_repo_unit_keys = set([_unit_key_str(models.ISO.from_unit(unit))
-                                      for unit in existing_repo_units])
+                                       for unit in existing_repo_units])
 
         # A list of the ISOs in the remote repository
         available_isos_by_key = dict([(_unit_key_str(iso), iso) for iso in manifest])

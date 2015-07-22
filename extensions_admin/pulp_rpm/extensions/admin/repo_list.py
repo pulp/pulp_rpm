@@ -6,11 +6,9 @@ from pulp.client.commands.repo.cudl import ListRepositoriesCommand
 from pulp.common import constants as pulp_constants
 
 from pulp_rpm.common import constants
-from pulp_rpm.common.ids import YUM_DISTRIBUTOR_ID
 
 
 class RpmRepoListCommand(ListRepositoriesCommand):
-
     def __init__(self, context):
         repos_title = _('RPM Repositories')
         super(RpmRepoListCommand, self).__init__(context, repos_title=repos_title)
@@ -26,7 +24,8 @@ class RpmRepoListCommand(ListRepositoriesCommand):
         rpm_repos = []
         for repo in all_repos:
             notes = repo['notes']
-            if pulp_constants.REPO_NOTE_TYPE_KEY in notes and notes[pulp_constants.REPO_NOTE_TYPE_KEY] == constants.REPO_NOTE_RPM:
+            if pulp_constants.REPO_NOTE_TYPE_KEY in notes and notes[
+                    pulp_constants.REPO_NOTE_TYPE_KEY] == constants.REPO_NOTE_RPM:
                 rpm_repos.append(repo)
 
         # Strip out the certificate and private key if present
@@ -35,8 +34,10 @@ class RpmRepoListCommand(ListRepositoriesCommand):
             # sure it's there before proceeding
             if 'importers' not in r:
                 continue
-
-            imp_config = r['importers'][0]['config'] # there can only be one importer
+            try:
+                imp_config = r['importers'][0]['config']  # there can only be one importer
+            except IndexError:
+                continue
 
             # If either are present, tell the user the feed is using SSL
             if 'ssl_client_cert' in imp_config or 'ssl_client_key' in imp_config:

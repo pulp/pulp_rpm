@@ -183,7 +183,6 @@ class UploadDispatchTests(unittest.TestCase):
 
 
 class UploadErratumTests(unittest.TestCase):
-
     @mock.patch('pulp_rpm.plugins.importers.yum.upload._link_errata_to_rpms')
     def test_handle_erratum_with_link(self, mock_link):
         # Setup
@@ -250,7 +249,7 @@ class UploadErratumTests(unittest.TestCase):
                                                      updateinfo.process_package_element)
             errata = list(errata)[0]
 
-        errata_unit = Unit(models.Errata.TYPE, errata.unit_key, errata.clean_metadata, None)
+        errata_unit = Unit(models.Errata.TYPE, errata.unit_key, errata.metadata, None)
 
         # Test
         upload._link_errata_to_rpms(mock_conduit, errata, errata_unit)
@@ -261,7 +260,6 @@ class UploadErratumTests(unittest.TestCase):
 
 
 class UploadYumRepoMetadataFileTests(unittest.TestCase):
-
     def setUp(self):
         super(UploadYumRepoMetadataFileTests, self).setUp()
 
@@ -295,7 +293,7 @@ class UploadYumRepoMetadataFileTests(unittest.TestCase):
 
         # Verify
 
-        #   File was moved correctly
+        # File was moved correctly
         self.assertTrue(not os.path.exists(self.upload_source_filename))
         self.assertTrue(os.path.exists(self.upload_dest_filename))
 
@@ -336,7 +334,6 @@ class UploadYumRepoMetadataFileTests(unittest.TestCase):
 
 
 class GroupCategoryTests(unittest.TestCase):
-
     def test_handle_for_group(self):
         # Setup
         unit_key = {'id': 'test-group', 'repo_id': 'test-repo'}
@@ -389,7 +386,6 @@ class GroupCategoryTests(unittest.TestCase):
 
 
 class UploadPackageTests(unittest.TestCase):
-
     def setUp(self):
         super(UploadPackageTests, self).setUp()
 
@@ -437,12 +433,13 @@ class UploadPackageTests(unittest.TestCase):
         mock_conduit.init_unit.return_value = inited_unit
 
         # Test
-        upload._handle_package(models.RPM.TYPE, user_unit_key, user_metadata, self.upload_src_filename,
+        upload._handle_package(models.RPM.TYPE, user_unit_key, user_metadata,
+                               self.upload_src_filename,
                                mock_conduit, config)
 
         # Verify
 
-        #   File was moved as part of the import
+        # File was moved as part of the import
         self.assertTrue(os.path.exists(self.upload_dest_filename))
         self.assertTrue(not os.path.exists(self.upload_src_filename))
 
@@ -520,7 +517,8 @@ class UploadPackageTests(unittest.TestCase):
         self.assertEqual(unit_key['version'], '5.21')
         self.assertEqual(unit_key['release'], '1')
         self.assertEqual(unit_key['arch'], 'noarch')
-        self.assertEqual(unit_key['checksum'], 'e837a635cc99f967a70f34b268baa52e0f412c1502e08e924ff5b09f1f9573f2')
+        self.assertEqual(unit_key['checksum'],
+                         'e837a635cc99f967a70f34b268baa52e0f412c1502e08e924ff5b09f1f9573f2')
         self.assertEqual(unit_key['checksumtype'], 'sha256')
 
         self.assertEqual(metadata['buildhost'], 'smqe-ws15')
@@ -567,7 +565,8 @@ class UploadPackageTests(unittest.TestCase):
         self.assertEqual(unit_key['version'], '5.21')
         self.assertEqual(unit_key['release'], '1')
         self.assertEqual(unit_key['arch'], 'noarch')
-        self.assertEqual(unit_key['checksum'], 'e837a635cc99f967a70f34b268baa52e0f412c1502e08e924ff5b09f1f9573f2')
+        self.assertEqual(unit_key['checksum'],
+                         'e837a635cc99f967a70f34b268baa52e0f412c1502e08e924ff5b09f1f9573f2')
         self.assertEqual(unit_key['checksumtype'], 'sha256')
 
         self.assertEqual(metadata['buildhost'], 'smqe-ws15')

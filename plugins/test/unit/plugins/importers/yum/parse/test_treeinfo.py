@@ -60,8 +60,7 @@ class TestExistingDistIsCurrent(unittest.TestCase):
         self.model, files = treeinfo.parse_treefile(path)
         self.unit = AssociatedUnit(models.Distribution.TYPE,
                                    self.model.unit_key.copy(),
-                                   self.model.metadata.copy(), '/a/b/c/', None, None,
-                                   None, None)
+                                   self.model.metadata.copy(), '/a/b/c/', None, None)
 
     def test_current(self):
         ret = treeinfo.existing_distribution_is_current(self.unit, self.model)
@@ -173,6 +172,7 @@ class TestParseTreefile(unittest.TestCase):
     """
     This class contains tests for the parse_treefile() function.
     """
+
     @patch('__builtin__.open', MagicMock())
     @patch('pulp_rpm.plugins.importers.yum.parse.treeinfo.ConfigParser.RawConfigParser')
     @patch('pulp_rpm.plugins.importers.yum.parse.treeinfo.models.Distribution')

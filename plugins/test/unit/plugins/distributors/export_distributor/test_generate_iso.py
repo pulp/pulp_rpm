@@ -12,6 +12,7 @@ class TestCreateIso(unittest.TestCase):
     """
     Test the create_iso method in generate_iso
     """
+
     def setUp(self):
         self.get_dir_file_list = generate_iso._get_dir_file_list_and_size
         self.make_iso = generate_iso._make_iso
@@ -33,7 +34,8 @@ class TestCreateIso(unittest.TestCase):
         # Assert all the helper methods were called correctly
         generate_iso.create_iso('/target/dir', '/output/dir', 'prefix')
         generate_iso._get_dir_file_list_and_size.assert_called_once_with('/target/dir')
-        generate_iso._compute_image_files.assert_called_once_with(['files'], generate_iso.DVD_ISO_SIZE *
+        generate_iso._compute_image_files.assert_called_once_with(['files'],
+                                                                  generate_iso.DVD_ISO_SIZE *
                                                                   1024 * 1024)
         self.assertEqual('list', generate_iso._make_iso.call_args[0][0])
         self.assertEqual('/target/dir', generate_iso._make_iso.call_args[0][1])
@@ -44,6 +46,7 @@ class TestMakeIso(unittest.TestCase):
     """
     Test the _make_iso helper method in generate_iso
     """
+
     @mock.patch('os.path.isdir', autospec=True, return_value=True)
     @mock.patch('os.close', autospec=True)
     @mock.patch('os.unlink', autospec=True)
@@ -92,6 +95,7 @@ class TestParseImageSize(unittest.TestCase):
     """
     Test the _parse_image_size helper method in generate_iso
     """
+
     def test_non_int(self):
         # Assert a ValueError is raised when something that isn't an int is given
         self.assertRaises(ValueError, generate_iso._parse_image_size, 'I\'ve made a huge mistake')
@@ -115,6 +119,7 @@ class TestComputeImageFiles(unittest.TestCase):
     """
     Test the _compute_image_files helper method in generate_iso
     """
+
     def test_file_larger_than_image(self):
         # Setup
         max_image_size = 5
@@ -140,6 +145,7 @@ class TestGetGraft(unittest.TestCase):
     """
     Test the _get_grafts helper method in generate_iso
     """
+
     def test_get_grafts(self):
         # Setup
         files = ['/target/dir/path1', '/target/dir/relative/path2']
@@ -155,6 +161,7 @@ class TestGetPathSpecFile(unittest.TestCase):
     """
     test the _get_pathspec_file helper method in generate_iso
     """
+
     @mock.patch('os.close', autospec=True)
     @mock.patch('os.write', autospec=True)
     @mock.patch('tempfile.mkstemp', autospec=True, return_value=('descriptor', 'filename'))
@@ -176,13 +183,15 @@ class TestGetDirFileListAndSize(unittest.TestCase):
     """
     Test the _get_dir_file_list_and_size helper method in generate_iso
     """
+
     @mock.patch('os.stat', autospec=True, return_value={stat.ST_SIZE: 10})
     @mock.patch('os.walk', autospec=True, return_value=[('/root', ['dir'], ['file1'])])
     def test_get_dir_file_list(self, mock_walk, mock_stat):
         # Setup
         expected_file_list = [('/root/file1', 10)]
 
-        # Test that our silly walk mock is called, and that the correct file list and size is returned
+        # Test that our silly walk mock is called, and that the correct file list and size is
+        # returned
         file_list, total_size = generate_iso._get_dir_file_list_and_size('/target/dir')
         mock_walk.assert_called_once_with('/target/dir')
         self.assertEqual(expected_file_list, file_list)

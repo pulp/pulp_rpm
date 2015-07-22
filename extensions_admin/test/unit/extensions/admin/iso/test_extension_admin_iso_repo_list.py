@@ -9,74 +9,71 @@ from pulp_rpm.devel.client_base import PulpClientTests
 from pulp_rpm.extensions.admin.iso import repo_list
 
 
-
-
-
-
 # These are some test repos that are returned by the repo_mock() repo object. They were copied from
 # real repositories from a working database and then massaged into this form for testing purposes
 TEST_REPOS = [
     {'display_name': 'test_iso_repo', 'description': None,
      'distributors': [
-        {'repo_id': 'test_iso_repo', '_ns': 'repo_distributors',
-         'last_publish': '2013-05-21T12:41:17-04:00', 'auto_publish': True,
-         'scheduled_publishes': [], 'distributor_type_id': 'iso_distributor',
-         '_id': {'$oid': '519ba0a0b1a8a15a1fcae0b1'}, 'config': {}, 'id': 'iso_distributor'}],
+         {'repo_id': 'test_iso_repo', '_ns': 'repo_distributors',
+          'last_publish': '2013-05-21T12:41:17-04:00', 'auto_publish': True,
+          'scheduled_publishes': [], 'distributor_type_id': 'iso_distributor',
+          '_id': {'$oid': '519ba0a0b1a8a15a1fcae0b1'}, 'config': {}, 'id': 'iso_distributor'}],
      '_ns': 'repos', 'notes': {'_repo-type': 'iso-repo'}, 'content_unit_counts': {'iso': 3},
      'importers': [
-        {'repo_id': 'test_iso_repo', '_ns': 'repo_importers', 'importer_type_id': 'iso_importer',
-         'last_sync': '2013-05-21T12:44:52-04:00', 'scheduled_syncs': [],
-         '_id': {'$oid': '519ba0a0b1a8a15a1fcae0b0'},
-         'config': {
-            importer_constants.KEY_FEED: 'http://pkilambi.fedorapeople.org/test_file_repo/',
-            importer_constants.KEY_MAX_DOWNLOADS: 1, importer_constants.KEY_MAX_SPEED: 50000},
-         'id': 'iso_importer'}],
+         {'repo_id': 'test_iso_repo', '_ns': 'repo_importers', 'importer_type_id': 'iso_importer',
+          'last_sync': '2013-05-21T12:44:52-04:00', 'scheduled_syncs': [],
+          '_id': {'$oid': '519ba0a0b1a8a15a1fcae0b0'},
+          'config': {
+              importer_constants.KEY_FEED: 'http://pkilambi.fedorapeople.org/test_file_repo/',
+              importer_constants.KEY_MAX_DOWNLOADS: 1, importer_constants.KEY_MAX_SPEED: 50000},
+          'id': 'iso_importer'}],
      '_id': {'$oid': '519ba0a0b1a8a15a1fcae0af'}, 'id': 'test_iso_repo',
      '_href': '/pulp/api/v2/repositories/test_iso_repo/'},
     # This is an ISO repository that uses SSL certificates. This helps us test that the certificates
     # get scrubbed appropriately by the ISORepoListCommand.
     {'display_name': 'cdn', 'description': None,
      'distributors': [
-        {'repo_id': 'cdn', '_ns': 'repo_distributors', 'last_publish': None,
-         'auto_publish': False, 'scheduled_publishes': [], 'distributor_type_id': 'iso_distributor',
-         '_id': {'$oid': '5163309cb1a8a160d0117efd'},
-         'config': {constants.CONFIG_SSL_AUTH_CA_CERT: 'A cert',
-                    constants.CONFIG_SERVE_HTTPS: True, constants.CONFIG_SERVE_HTTP: False},
-         'id': 'iso_dist'}],
+         {'repo_id': 'cdn', '_ns': 'repo_distributors', 'last_publish': None,
+          'auto_publish': False, 'scheduled_publishes': [],
+          'distributor_type_id': 'iso_distributor',
+          '_id': {'$oid': '5163309cb1a8a160d0117efd'},
+          'config': {constants.CONFIG_SSL_AUTH_CA_CERT: 'A cert',
+                     constants.CONFIG_SERVE_HTTPS: True, constants.CONFIG_SERVE_HTTP: False},
+          'id': 'iso_dist'}],
      '_ns': 'repos', 'notes': {'_repo-type': 'iso-repo'}, 'content_unit_counts': {'iso': 5},
      'importers': [
-        {'repo_id': 'cdn', '_ns': 'repo_importers', 'importer_type_id': 'iso_importer',
-         'last_sync': '2013-04-08T18:12:20-04:00', 'scheduled_syncs': [],
-         '_id': {'$oid': '5163309cb1a8a160d0117ef3'},
-         'config': {
-            importer_constants.KEY_FEED: 'https://cdn.redhat.com/iso',
-            importer_constants.KEY_SSL_CA_CERT: 'CA Certificate',
-            importer_constants.KEY_SSL_CLIENT_CERT: 'Client Certificate',
-            'id': 'cdn', importer_constants.KEY_SSL_CLIENT_KEY: 'Client Key'},
-         'id': 'iso_importer'}],
+         {'repo_id': 'cdn', '_ns': 'repo_importers', 'importer_type_id': 'iso_importer',
+          'last_sync': '2013-04-08T18:12:20-04:00', 'scheduled_syncs': [],
+          '_id': {'$oid': '5163309cb1a8a160d0117ef3'},
+          'config': {
+              importer_constants.KEY_FEED: 'https://cdn.redhat.com/iso',
+              importer_constants.KEY_SSL_CA_CERT: 'CA Certificate',
+              importer_constants.KEY_SSL_CLIENT_CERT: 'Client Certificate',
+              'id': 'cdn', importer_constants.KEY_SSL_CLIENT_KEY: 'Client Key'},
+          'id': 'iso_importer'}],
      '_id': {'$oid': '5163309cb1a8a160d0117eea'}, 'id': 'cdn',
      '_href': '/pulp/api/v2/repositories/cdn/'},
     # This is an RPM repository. It should get filtered out by get_repositories(), and it should be
     # shown by get_other_repositories().
     {'display_name': 'zoo', 'description': None,
      'distributors': [
-        {'repo_id': 'zoo', '_ns': 'repo_distributors', 'last_publish': '2013-04-30T10:27:31-04:00',
-         'auto_publish': True, 'scheduled_publishes': [], 'distributor_type_id': 'yum_distributor',
-         '_id': {'$oid': '517fd4c3b1a8a112da54b1ba'},
-         'config': {'http': False, 'relative_url': '/repos/pulp/pulp/demo_repos/zoo/',
-                    'https': True}, 'id': 'yum_distributor'},
-        {'repo_id': 'zoo', '_ns': 'repo_distributors', 'last_publish': None, 'auto_publish': False,
-         'scheduled_publishes': [], 'distributor_type_id': 'export_distributor',
-         '_id': {'$oid': '517fd4c3b1a8a112da54b1bb'}, 'config': {'http': False, 'https': True},
-         'id': 'export_distributor'}],
+         {'repo_id': 'zoo', '_ns': 'repo_distributors', 'last_publish': '2013-04-30T10:27:31-04:00',
+          'auto_publish': True, 'scheduled_publishes': [], 'distributor_type_id': 'yum_distributor',
+          '_id': {'$oid': '517fd4c3b1a8a112da54b1ba'},
+          'config': {'http': False, 'relative_url': '/repos/pulp/pulp/demo_repos/zoo/',
+                     'https': True}, 'id': 'yum_distributor'},
+         {'repo_id': 'zoo', '_ns': 'repo_distributors', 'last_publish': None, 'auto_publish': False,
+          'scheduled_publishes': [], 'distributor_type_id': 'export_distributor',
+          '_id': {'$oid': '517fd4c3b1a8a112da54b1bb'}, 'config': {'http': False, 'https': True},
+          'id': 'export_distributor'}],
      '_ns': 'repos', 'notes': {'_repo-type': 'rpm-repo'},
      'content_unit_counts': {'package_group': 2, 'package_category': 1, 'rpm': 32, 'erratum': 4},
      'importers': [
-        {'repo_id': 'zoo', '_ns': 'repo_importers', 'importer_type_id': 'yum_importer',
-         'last_sync': '2013-04-30T10:27:29-04:00', 'scheduled_syncs': [],
-         '_id': {'$oid': '517fd4c3b1a8a112da54b1b9'},
-         'config': {'feed_url': 'http://repos.fedorapeople.org/repos/pulp/pulp/demo_repos/zoo/'},
-         'id': 'yum_importer'}],
+         {'repo_id': 'zoo', '_ns': 'repo_importers', 'importer_type_id': 'yum_importer',
+          'last_sync': '2013-04-30T10:27:29-04:00', 'scheduled_syncs': [],
+          '_id': {'$oid': '517fd4c3b1a8a112da54b1b9'},
+          'config': {'feed_url': 'http://repos.fedorapeople.org/repos/pulp/pulp/demo_repos/zoo/'},
+          'id': 'yum_importer'}],
      '_id': {'$oid': '517fd4c3b1a8a112da54b1b8'}, 'id': 'zoo',
      '_href': '/pulp/api/v2/repositories/zoo/'}]
 
@@ -94,6 +91,7 @@ class TestISORepoListCommand(PulpClientTests):
     """
     Test the ISORepoListCommand class.
     """
+
     @mock.patch('pulp_rpm.extensions.admin.iso.repo_list.ListRepositoriesCommand.__init__',
                 side_effect=repo_list.ListRepositoriesCommand.__init__, autospec=True)
     def test___init__(self, list_repo_init):

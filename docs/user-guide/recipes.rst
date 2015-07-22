@@ -195,6 +195,10 @@ the "Download" link from the "Entitlement Certificate" column to retrieve the
 certificate and key, bundled into a single file. You can pass that same file as
 the ``--feed-cert`` and ``--feed-key`` options when you create the repo.
 
+It is also possible to sync a repo that is protected via basic authentication.
+The ``--basicauth-user`` and ``--basicauth-pass`` options are used for this
+during repo creation or update.
+
 .. _export-repos:
 
 Export Repositories and Repository Groups
@@ -539,7 +543,7 @@ Now that we have these two files, we can create our new errata like so::
 
     Starting upload of selected units. If this process is stopped through ctrl+c,
     the uploads will be paused and may be resumed later using the resume command or
-    cancelled entirely using the cancel command.
+    canceled entirely using the cancel command.
 
     Importing into the repository...
     ... completed
@@ -627,7 +631,7 @@ Now let's build a package group for our demo repo test files::
 
    Starting upload of selected units. If this process is stopped through ctrl+c,
    the uploads will be paused and may be resumed later using the resume command or
-   cancelled entirely using the cancel command.
+   canceled entirely using the cancel command.
 
    Importing into the repository...
    ... completed
@@ -800,7 +804,7 @@ two groups::
 
     Starting upload of selected units. If this process is stopped through ctrl+c,
     the uploads will be paused and may be resumed later using the resume command or
-    cancelled entirely using the cancel command.
+    canceled entirely using the cancel command.
 
     Importing into the repository...
     ... completed

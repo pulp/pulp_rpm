@@ -25,7 +25,6 @@ DATA_DIR = os.path.join(os.path.dirname(__file__), '..', '..', '..', '..', '..',
 
 
 class YumDistributorMetadataTests(unittest.TestCase):
-
     def setUp(self):
         super(YumDistributorMetadataTests, self).setUp()
 
@@ -203,7 +202,8 @@ class YumDistributorMetadataTests(unittest.TestCase):
         file_object.close()
 
     def test_is_closed_file_attribute_error(self):
-        # passing in a list gives it an object that does not have a closed attribute, thus triggering
+        # passing in a list gives it an object that does not have a closed attribute,
+        # thus triggering
         # an Attribute error that cannot be solved with the python 2.6 compatibility code
         self.assertRaises(AttributeError, MetadataFileContext._is_closed, [])
 
@@ -243,7 +243,8 @@ class YumDistributorMetadataTests(unittest.TestCase):
         context.finalize()
 
         expected_metadata_file_name = context.checksum + '-' + 'test.xml'
-        expected_metadata_file_path = os.path.join(self.metadata_file_dir, expected_metadata_file_name)
+        expected_metadata_file_path = os.path.join(self.metadata_file_dir,
+                                                   expected_metadata_file_name)
         self.assertEqual(expected_metadata_file_path, context.metadata_file_path)
 
     def test_finalize_for_repomd_file_with_valid_checksum_type(self):
@@ -421,17 +422,28 @@ class YumDistributorMetadataTests(unittest.TestCase):
         prestodelta_handle.close()
 
         self.assertEqual(content.count('name="yum"'), 1)
-        self.assertEqual(content.count('epoch="0"'), 2) # also matches oldepoch
-        self.assertEqual(content.count('version="3.4.3"'), 2) # also matches oldversion
+        self.assertEqual(content.count('epoch="0"'), 2)  # also matches oldepoch
+        self.assertEqual(content.count('version="3.4.3"'), 2)  # also matches oldversion
         self.assertEqual(content.count('release="16.fc16"'), 1)
         self.assertEqual(content.count('arch="noarch"'), 1)
         self.assertEqual(content.count('oldepoch="0"'), 1)
         self.assertEqual(content.count('oldversion="3.4.3"'), 1)
         self.assertEqual(content.count('oldrelease="11.fc16"'), 1)
-        self.assertEqual(content.count('<filename>drpms/yum-3.4.3-11.fc16_3.4.3-16.fc16.noarch.drpm</filename>'), 1)
-        self.assertEqual(content.count('<sequence>yum-3.4.3-11.fc16-fa4535420dc8db63b7349d4262e3920b211141321242121222421212124242121272421212121212a1212121286272121212309f210ee210be2108e210fc210de110ae110fd110cd1108c110db110ab110fa110ca1109a110b9110a8110f710c710e6108610d510a510f4109410d310a310f2109210e11</sequence>'), 1)
+        self.assertEqual(
+            content.count('<filename>drpms/yum-3.4.3-11.fc16_3.4.3-16.fc16.noarch.drpm</filename>'),
+            1)
+        self.assertEqual(content.count(
+            '<sequence>yum-3.4.3-11.fc16'
+            '-fa4535420dc8db63b7349d4262e3920b211141321242121222421212124242121272421212121212a121'
+            '2121286272121212309f210ee210be2108e210fc210de110ae110fd110cd1108c110db110ab110fa110ca1'
+            '109a110b9110a8110f710c710e6108610d510a510f4109410d310a310f2109210e11</sequence>'),
+            1)
         self.assertEqual(content.count('<size>183029</size>'), 1)
-        self.assertEqual(content.count('<checksum type="sha256">77fad55681f652e06e8ba8fd6f11e505c4d85041ee30a37bbf8f573c4fb8f570</checksum>'), 1)
+        self.assertEqual(content.count(
+            '<checksum '
+            'type="sha256">77fad55681f652e06e8ba8fd6f11e505c4d85041ee30a37bbf8f573c4fb8f570'
+            '</checksum>'),
+            1)
 
     # -- repomd.xml testing ----------------------------------------------------
 
@@ -506,7 +518,6 @@ class YumDistributorMetadataTests(unittest.TestCase):
         context._close_metadata_file_handle()
 
         with open(path, 'r') as repomd_handle:
-
             content = repomd_handle.read()
             self.assertEqual(content.count('<data type="metadata"'), 1)
             self.assertEqual(content.count('<location href="%s/%s"' %
@@ -521,5 +532,6 @@ class YumDistributorMetadataTests(unittest.TestCase):
 
             self.assertEqual(content.count('<size>'), 1)
             self.assertEqual(content.count('<checksum type="sha256">'), 1)
-            self.assertEqual(content.count('<open-size>%s</open-size>' % len(test_metadata_content)), 1)
+            self.assertEqual(
+                content.count('<open-size>%s</open-size>' % len(test_metadata_content)), 1)
             self.assertEqual(content.count('<open-checksum type="sha256">'), 1)

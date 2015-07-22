@@ -3,7 +3,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='pulp_rpm_plugins',
-    version='2.6.3b2',
+    version='2.7.1a1',
     license='GPLv2+',
     packages=find_packages(),
     author='Pulp Team',
@@ -22,11 +22,13 @@ setup(
         ],
         'pulp.distributors': [
             'distributor = pulp_rpm.plugins.distributors.yum.distributor:entry_point',
-            'ExportDistributor = pulp_rpm.plugins.distributors.export_distributor.distributor:entry_point',
+            'ExportDistributor = pulp_rpm.plugins.distributors.export_distributor.distributor:'
+            'entry_point',
             'IsoDistributor = pulp_rpm.plugins.distributors.iso_distributor.distributor:entry_point'
         ],
         'pulp.group_distributors': [
-            'rpm_export = pulp_rpm.plugins.distributors.export_distributor.groupdistributor:entry_point',
+            'rpm_export = pulp_rpm.plugins.distributors.export_distributor.groupdistributor:'
+            'entry_point',
         ],
         'pulp.server.db.migrations': [
             'pulp_rpm = pulp_rpm.plugins.migrations'
