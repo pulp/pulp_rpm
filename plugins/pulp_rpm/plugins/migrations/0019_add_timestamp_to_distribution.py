@@ -57,4 +57,4 @@ def migrate(*args, **kwargs):
         timestamp = _get_timestamp(distribution)
 
         dist_collection.update({'_id': distribution['_id']},
-                               {'$set': {'timestamp': timestamp}}, safe=True)
+                               {'$set': {'timestamp': timestamp}})

@@ -68,7 +68,7 @@ class YumImporterConfigMigrationTests(rpm_support_base.PulpRPMTests):
             )
 
         for importer in importers:
-            self.repo_importers.save(importer, safe=True)
+            self.repo_importers.save(importer)
 
     def tearDown(self):
         super(YumImporterConfigMigrationTests, self).tearDown()

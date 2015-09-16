@@ -43,6 +43,6 @@ class VersionSortIndexMigrationTests(rpm_support_base.PulpRPMTests):
     def add_sample_data(self, type_id):
         collection = types_db.type_units_collection(type_id)
 
-        collection.save({'version': '1.1', 'release': '1.1'}, safe=True)
+        collection.save({'version': '1.1', 'release': '1.1'})
         collection.save({'version': '3.1', 'version_sort_index': 'fake',
-                         'release': '3.1', 'release_sort_index': 'fake'}, safe=True)
+                         'release': '3.1', 'release_sort_index': 'fake'})

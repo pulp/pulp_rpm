@@ -16,4 +16,4 @@ def migrate(*args, **kwargs):
         'config.remove_missing_units': 'config.remove_missing',
         'config.validate_units': 'config.validate',
     }}
-    repo_importers.update({'importer_type_id': 'iso_importer'}, rename_query, safe=True, multi=True)
+    repo_importers.update({'importer_type_id': 'iso_importer'}, rename_query, multi=True)

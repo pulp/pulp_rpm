@@ -67,8 +67,8 @@ class DatabaseSortTests(rpm_support_base.PulpRPMTests):
         encoded1 = encode(version1)
         encoded2 = encode(version2)
 
-        self.db.insert({'version': version1, 'version_sort_index': encoded1}, safe=True)
-        self.db.insert({'version': version2, 'version_sort_index': encoded2}, safe=True)
+        self.db.insert({'version': version1, 'version_sort_index': encoded1})
+        self.db.insert({'version': version2, 'version_sort_index': encoded2})
 
         sorted_versions = self.db.find({}).sort([('version_sort_index', pymongo.DESCENDING)])
 

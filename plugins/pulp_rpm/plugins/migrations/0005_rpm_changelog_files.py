@@ -31,7 +31,7 @@ def _migrate_unit(rpm_unit, ts, collection):
             elif key == "files":
                 data = _decode_files(value)
             rpm_unit[key] = data
-    collection.save(rpm_unit, safe=True)
+    collection.save(rpm_unit)
 
 
 def _decode_changelog(changelog_tuple):

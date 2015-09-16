@@ -21,7 +21,7 @@ def _migrate_rpm_unit_repodata():
         if "repodata" not in rpm_unit or not rpm_unit["repodata"]:
             # if repodata is not in the schema or repodata is empty
             rpm_unit["repodata"] = metadata.get_package_xml(rpm_unit['_storage_path'])
-            collection.save(rpm_unit, safe=True)
+            collection.save(rpm_unit)
     _log.info("Migrated rpms to include rpm metadata")
 
 

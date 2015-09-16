@@ -54,7 +54,7 @@ def _migrate_collection(type_id):
         package['requires'] = map(primary._process_rpm_entry_element,
                                   requires_element.findall('entry')) if requires_element else []
 
-        collection.save(package, safe=True)
+        collection.save(package)
 
 
 if __name__ == '__main__':

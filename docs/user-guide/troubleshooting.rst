@@ -16,7 +16,7 @@ Pulp does not support RPMs with non UTF-8 fields. When such an RPM is encountere
       File "/usr/lib/python2.6/site-packages/pulp/plugins/conduits/mixins.py", line 534, in _add_unit
         unit_id = content_manager.add_content_unit(unit.type_id, None, pulp_unit)
       File "/usr/lib/python2.6/site-packages/pulp/server/managers/content/cud.py", line 35, in add_content_unit
-        collection.insert(unit_doc, safe=True)
+        collection.insert(unit_doc)
       File "/usr/lib/python2.6/site-packages/pulp/server/db/connection.py", line 140, in retry
         return method(*args, **kwargs)
       File "/usr/lib64/python2.6/site-packages/pymongo/collection.py", line 357, in insert

@@ -31,4 +31,4 @@ def migrate(*args, **kwargs):
             # Now let's update the consumer_unit_profile with the hash
             consumer_unit_profiles_collection.update(
                 {'_id': consumer_unit_profile['_id']},
-                {'$set': {'profile_hash': profile_hash}}, safe=True)
+                {'$set': {'profile_hash': profile_hash}})
