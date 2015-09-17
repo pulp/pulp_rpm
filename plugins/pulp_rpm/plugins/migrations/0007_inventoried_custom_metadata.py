@@ -121,7 +121,7 @@ def create_content_unit(unit_data, relative_path=None):
     unit_data['_id'] = str(uuid.uuid4())
     unit_data['_content_type_id'] = _TYPE_YUM_REPO_METADATA_FILE
     unit_data['_storage_path'] = get_content_storage_path(relative_path)
-    collection.insert(unit_data, safe=True)
+    collection.insert(unit_data)
     return unit_data
 
 
@@ -161,15 +161,14 @@ def add_content_unit_to_repo(repo_id, content_unit):
     associated_unit = RepoContentUnit(repo_id, content_unit['_id'], _TYPE_YUM_REPO_METADATA_FILE,
                                       RepoContentUnit.OWNER_TYPE_IMPORTER, _TYPE_YUM_IMPORTER)
     collection = RepoContentUnit.get_collection()
-    collection.insert(associated_unit, safe=True)
+    collection.insert(associated_unit)
 
 
 def remove_repodata_from_scratchpad(repo_id):
     repo_collection = get_collection('repos')
     repo = repo_collection.find_one({'repo_id': repo_id}, fields=['scratchpad'])
     repo['scratchpad'].pop('repodata', None)
-    repo_collection.update({'repo_id': repo_id}, {'$set': {'scratchpad': repo['scratchpad']}},
-                           safe=True)
+    repo_collection.update({'repo_id': repo_id}, {'$set': {'scratchpad': repo['scratchpad']}})
 
 # -- repodata.xml parsing ------------------------------------------------------
 

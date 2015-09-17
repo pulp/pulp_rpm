@@ -35,13 +35,13 @@ def _migrate_rpm_repositories():
                     distributor_type_id=ids.TYPE_ID_DISTRIBUTOR_EXPORT,
                     config=EXPORT_DISTRIBUTOR_CONFIG,
                     auto_publish=False)
-                collection.save(export_distributor, safe=True)
+                collection.save(export_distributor)
 
             # Remove iso_distributor associated with the repo
             iso_distributor = collection.find_one(
                 {'repo_id': repo_distributor['repo_id'], 'distributor_type_id': 'iso_distributor'})
             if iso_distributor is not None:
-                collection.remove(iso_distributor, safe=True)
+                collection.remove(iso_distributor)
 
 
 def migrate(*args, **kwargs):

@@ -25,4 +25,4 @@ def _update_type(type_id):
         package['version_sort_index'] = version_utils.encode(package['version'])
         package['release_sort_index'] = version_utils.encode(package['release'])
 
-        collection.save(package, safe=True)
+        collection.save(package)

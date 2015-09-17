@@ -37,10 +37,10 @@ class Migration0004Tests(rpm_support_base.PulpRPMTests):
         dest_repo.save()
 
         source_importer = RepoImporter(self.source_repo_id, 'yum_importer', 'yum_importer', {})
-        RepoImporter.get_collection().insert(source_importer, safe=True)
+        RepoImporter.get_collection().insert(source_importer)
 
         dest_importer = RepoImporter(self.dest_repo_id, 'yum_importer', 'yum_importer', {})
-        RepoImporter.get_collection().insert(dest_importer, safe=True)
+        RepoImporter.get_collection().insert(dest_importer)
 
     def tearDown(self):
         super(Migration0004Tests, self).tearDown()

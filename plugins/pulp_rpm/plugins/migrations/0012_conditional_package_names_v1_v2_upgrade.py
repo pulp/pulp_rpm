@@ -26,7 +26,7 @@ def migrate(*args, **kwargs):
                                              package_group['conditional_package_names'].items()]
             package_group_collection.update(
                 {'_id': package_group['_id']},
-                {'$set': {'conditional_package_names': new_conditional_package_names}}, safe=True)
+                {'$set': {'conditional_package_names': new_conditional_package_names}})
 
 
 # Allow this migration to be run outside of the migration system
