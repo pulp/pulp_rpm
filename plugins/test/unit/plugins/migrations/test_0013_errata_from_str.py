@@ -22,12 +22,12 @@ class TestMigrateErrataFromStr(rpm_support_base.PulpRPMTests):
         ]
 
         for erratum in errata:
-            self.collection.save(erratum, safe=True)
+            self.collection.save(erratum)
 
     def tearDown(self):
         super(TestMigrateErrataFromStr, self).tearDown()
 
-        self.collection.remove(safe=True)
+        self.collection.remove()
 
     def test_migrate(self):
         migration = _import_all_the_way('pulp_rpm.plugins.migrations.0013_errata_from_str')

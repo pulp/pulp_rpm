@@ -43,7 +43,7 @@ def _fix_distribution_units(dist_collection):
             if file['downloadurl'].endswith('repodata/repomd.xml'):
                 distribution['files'].remove(file)
         dist_collection.update({'_id': distribution['_id']},
-                               {'$set': {"files": distribution['files']}}, safe=True)
+                               {'$set': {"files": distribution['files']}})
 
 
 def migrate(*args, **kwargs):
