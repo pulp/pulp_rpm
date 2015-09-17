@@ -7,4 +7,4 @@ def migrate(*args, **kwargs):
     """
     errata_collection = get_collection('units_erratum')
     rename_query = {'$rename': {'from_str': 'from'}}
-    errata_collection.update({}, rename_query, safe=True, multi=True)
+    errata_collection.update({}, rename_query, multi=True)

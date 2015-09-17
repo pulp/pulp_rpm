@@ -26,7 +26,6 @@ class TestMigrate(unittest.TestCase):
         self.assertEqual(mock_get_collection.call_count, 1)
         mock_get_collection.return_value.update.assert_called_once_with(
             {'_id': fake_distribution1['_id']}, {'$set': {'timestamp': 1354213090.94}},
-            safe=True
         )
 
 

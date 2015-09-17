@@ -32,9 +32,9 @@ def migrate(*args, **kwargs):
         'config.remove_old': 'config.remove_missing',
         'config.num_old_packages': 'config.retain_old_count',
     }}
-    repo_importers.update({'importer_type_id': 'yum_importer'}, rename_query, safe=True, multi=True)
+    repo_importers.update({'importer_type_id': 'yum_importer'}, rename_query, multi=True)
 
     remove_query = {'$unset': {'config.newest': 1,
                                'config.verify_size': 1,
                                'config.purge_orphaned': 1}}
-    repo_importers.update({'importer_type_id': 'yum_importer'}, remove_query, safe=True, multi=True)
+    repo_importers.update({'importer_type_id': 'yum_importer'}, remove_query, multi=True)

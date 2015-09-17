@@ -37,12 +37,12 @@ class ISOImporterConfigKeysMigrationTests(rpm_support_base.PulpRPMTests):
         )
 
         for importer in importers:
-            self.repo_importers.save(importer, safe=True)
+            self.repo_importers.save(importer)
 
     def tearDown(self):
         super(self.__class__, self).tearDown()
 
-        self.repo_importers.remove(safe=True)
+        self.repo_importers.remove()
 
     def test_migrate(self):
         migration = _import_all_the_way('pulp_rpm.plugins.migrations.0009_iso_importer_config_keys')

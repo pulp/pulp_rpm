@@ -34,7 +34,7 @@ class MigrationTests(rpm_support_base.PulpRPMTests):
         mock_collection.find.assert_called_once_with({'files': {'$exists': True}})
         mock_collection.update.assert_called_once_with(
             {'_id': u'6ec94809-6d4f-48cf-9077-88d003eb284e'},
-            {'$set': {'files': []}}, safe=True)
+            {'$set': {'files': []}})
 
     def test_fix_distribution_units_multifile(self):
         """
@@ -52,7 +52,7 @@ class MigrationTests(rpm_support_base.PulpRPMTests):
                 {'files': [{'downloadurl': 'http ://fake-url/os/another_file',
                             'item_type': 'distribution',
                             'fileName': 'another_file'}]}},
-            safe=True)
+        )
 
     @patch('os.walk')
     @patch('pulp_rpm.plugins.importers.yum.parse.treeinfo.strip_treeinfo_repomd')

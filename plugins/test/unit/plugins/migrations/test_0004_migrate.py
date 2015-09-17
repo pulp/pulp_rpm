@@ -29,16 +29,16 @@ class Migration0004Tests(rpm_support_base.PulpRPMTests):
         self.dest_repo_id = 'dest-repo'  # where bad units were copied to
 
         source_repo = Repo(self.source_repo_id, '')
-        Repo.get_collection().insert(source_repo, safe=True)
+        Repo.get_collection().insert(source_repo)
 
         dest_repo = Repo(self.dest_repo_id, '')
-        Repo.get_collection().insert(dest_repo, safe=True)
+        Repo.get_collection().insert(dest_repo)
 
         source_importer = RepoImporter(self.source_repo_id, 'yum_importer', 'yum_importer', {})
-        RepoImporter.get_collection().insert(source_importer, safe=True)
+        RepoImporter.get_collection().insert(source_importer)
 
         dest_importer = RepoImporter(self.dest_repo_id, 'yum_importer', 'yum_importer', {})
-        RepoImporter.get_collection().insert(dest_importer, safe=True)
+        RepoImporter.get_collection().insert(dest_importer)
 
     def tearDown(self):
         super(Migration0004Tests, self).tearDown()

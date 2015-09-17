@@ -59,7 +59,7 @@ def _fix_pkg_group_category_repoid(repoid, typeid):
                 # Update to point to the new unit
                 association['unit_id'] = new_unit_id
                 # Save it back to the DB
-                RepoContentUnit.get_collection().save(association, safe=True)
+                RepoContentUnit.get_collection().save(association)
             except pymongo.errors.DuplicateKeyError:
                 # If migrating this Unit to have the correct repo_id causes a duplicate,
                 # then there already
