@@ -11,7 +11,7 @@ from pulp.plugins.conduits.repo_publish import RepoPublishConduit
 from pulp.plugins.util.publish_step import PublishStep, UnitPublishStep, CopyDirectoryStep,\
     CreatePulpManifestStep
 from pulp.plugins.util.publish_step import AtomicDirectoryPublishStep
-from pulp.server.db import model
+from pulp.server.db import models
 from pulp.server.db.model.criteria import UnitAssociationCriteria
 from pulp.server.exceptions import InvalidValue, PulpCodedException
 
@@ -191,7 +191,7 @@ class ExportRepoGroupPublisher(PublishStep):
             repo_config = PluginCallConfiguration(flat_config, {constants.EXPORT_DIRECTORY_KEYWORD:
                                                                 realized_dir})
 
-        repo_objs = model.Repository.objects(repo_id__in=repo_group.repo_ids)
+        repo_objs = models.Repository.objects(repo_id__in=repo_group.repo_ids)
         empty_repos = True
         for repo_obj in repo_objs:
             empty_repos = False

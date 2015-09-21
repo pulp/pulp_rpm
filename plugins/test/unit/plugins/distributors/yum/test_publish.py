@@ -12,7 +12,7 @@ from pulp.plugins.config import PluginCallConfiguration
 from pulp.plugins.model import Repository, Unit
 from pulp.plugins.util.publish_step import PublishStep, CreatePulpManifestStep
 from pulp.server import constants as server_constants
-from pulp.server.db import model
+from pulp.server.db import models
 from pulp.server.exceptions import InvalidValue, PulpCodedException
 import isodate
 import mock
@@ -233,7 +233,7 @@ class ExportRepoPublisherTests(BaseYumDistributorPublishStepTests):
 class ExportRepoGroupPublisherTests(BaseYumDistributorPublishStepTests):
 
     @mock.patch('pulp_rpm.plugins.distributors.yum.publish.BaseYumRepoPublisher.get_working_dir')
-    @mock.patch('pulp_rpm.plugins.distributors.yum.publish.model.Repository.objects')
+    @mock.patch('pulp_rpm.plugins.distributors.yum.publish.models.Repository.objects')
     @mock.patch('pulp_rpm.plugins.distributors.yum.publish.export_utils.create_date_range_filter')
     def test_init_with_date_and_export_dir(self, mock_export_utils, mock_repo_qs, m_wd):
         mock_export_utils.return_value = 'foo'
@@ -241,12 +241,12 @@ class ExportRepoGroupPublisherTests(BaseYumDistributorPublishStepTests):
         config = PluginCallConfiguration(None, {constants.EXPORT_DIRECTORY_KEYWORD: export_dir})
         repo_group = mock.Mock(repo_ids=['foo', 'bar'],
                                working_dir=self.working_dir)
-        foo = model.Repository(repo_id='foo', display_name='foo', description='description',
-                               notes={'_repo-type': 'rpm-repo'}, content_unit_counts={'rpm': 1})
+        foo = models.Repository(repo_id='foo', display_name='foo', description='description',
+                                notes={'_repo-type': 'rpm-repo'}, content_unit_counts={'rpm': 1})
 
-        bar = model.Repository(repo_id='bar', display_name='bar', description='description',
-                               notes={'_repo-type': 'puppet'},
-                               content_unit_counts={'puppet-module': 1})
+        bar = models.Repository(repo_id='bar', display_name='bar', description='description',
+                                notes={'_repo-type': 'puppet'},
+                                content_unit_counts={'puppet-module': 1})
         mock_repo_qs.return_value = [foo, bar]
 
         step = publish.ExportRepoGroupPublisher(repo_group,
@@ -260,7 +260,7 @@ class ExportRepoGroupPublisherTests(BaseYumDistributorPublishStepTests):
         self.assertEquals(step.children[0].children[0].association_filters, 'foo')
         self.assertEquals(step.children[0].children[1].association_filters, 'foo')
 
-    @mock.patch('pulp_rpm.plugins.distributors.yum.publish.model.Repository.objects')
+    @mock.patch('pulp_rpm.plugins.distributors.yum.publish.models.Repository.objects')
     def test_init_with_empty_repos_export_dir(self, mock_repo_qs):
         export_dir = 'flux'
         config = PluginCallConfiguration(None, {constants.EXPORT_DIRECTORY_KEYWORD: export_dir})
@@ -275,7 +275,7 @@ class ExportRepoGroupPublisherTests(BaseYumDistributorPublishStepTests):
         self.assertTrue(isinstance(step.children[0], publish.GenerateListingFileStep))
         self.assertEquals(len(step.children), 1)
 
-    @mock.patch('pulp_rpm.plugins.distributors.yum.publish.model.Repository.objects')
+    @mock.patch('pulp_rpm.plugins.distributors.yum.publish.models.Repository.objects')
     def test_init_with_empty_repos_iso(self, mock_repo_qs):
         config = PluginCallConfiguration(None, {})
         repo_group = mock.Mock(repo_ids=[],
@@ -291,15 +291,15 @@ class ExportRepoGroupPublisherTests(BaseYumDistributorPublishStepTests):
         self.assertEquals(len(step.children), 3)
 
     @mock.patch('pulp_rpm.plugins.distributors.yum.publish.BaseYumRepoPublisher.get_working_dir')
-    @mock.patch('pulp_rpm.plugins.distributors.yum.publish.model.Repository.objects')
+    @mock.patch('pulp_rpm.plugins.distributors.yum.publish.models.Repository.objects')
     @mock.patch('pulp_rpm.plugins.distributors.yum.publish.export_utils.create_date_range_filter')
     def test_init_with_date_and_iso(self, mock_export_utils, mock_repo_qs, mock_wd):
         mock_export_utils.return_value = 'foo'
         config = PluginCallConfiguration(None, {})
         repo_group = mock.Mock(repo_ids=['foo', 'bar'],
                                working_dir=self.working_dir)
-        foo = model.Repository(repo_id='foo', display_name='foo', description='description',
-                               notes={'_repo-type': 'rpm-repo'}, content_unit_counts={'rpm': 1})
+        foo = models.Repository(repo_id='foo', display_name='foo', description='description',
+                                notes={'_repo-type': 'rpm-repo'}, content_unit_counts={'rpm': 1})
 
         mock_repo_qs.return_value = [foo]
         step = publish.ExportRepoGroupPublisher(repo_group,
@@ -316,7 +316,7 @@ class ExportRepoGroupPublisherTests(BaseYumDistributorPublishStepTests):
         self.assertEquals(step.children[0].children[1].association_filters, 'foo')
 
     @mock.patch('pulp_rpm.plugins.distributors.yum.publish.BaseYumRepoPublisher.get_working_dir')
-    @mock.patch('pulp_rpm.plugins.distributors.yum.publish.model.Repository.objects')
+    @mock.patch('pulp_rpm.plugins.distributors.yum.publish.models.Repository.objects')
     @mock.patch('pulp_rpm.plugins.distributors.yum.publish.export_utils.create_date_range_filter')
     def test_init_with_create_manifest(self, mock_export_utils, mock_repo_qs, m_wd):
         mock_export_utils.return_value = 'foo'
@@ -617,7 +617,7 @@ class PublishDrpmStepTests(BaseYumDistributorPublishStepTests):
 
         self.assertTrue(step.is_skipped())
 
-    @mock.patch('pulp.server.db.model.TaskStatus')
+    @mock.patch('pulp.server.db.models.TaskStatus')
     @mock.patch('pulp.plugins.conduits.repo_publish.RepoPublishConduit.get_units')
     def test_publish_drpms(self, mock_get_units, mock_update):
         self.publisher.repo.content_unit_counts = {TYPE_ID_DRPM: 2}
@@ -681,7 +681,7 @@ class PublishDistributionStepTests(BaseYumDistributorPublishStepTests):
 
         return Unit(TYPE_ID_DISTRO, unit_key, unit_metadata, storage_path)
 
-    @mock.patch('pulp.server.db.model.TaskStatus')
+    @mock.patch('pulp.server.db.models.TaskStatus')
     @mock.patch('pulp_rpm.plugins.distributors.yum.publish.PublishDistributionStep.'
                 '_publish_distribution_packages_link')
     @mock.patch('pulp_rpm.plugins.distributors.yum.publish.PublishDistributionStep.'
@@ -704,7 +704,7 @@ class PublishDistributionStepTests(BaseYumDistributorPublishStepTests):
         mock_packages.assert_called_once_with(units[0])
         self.assertEquals(step.state, reporting_constants.STATE_COMPLETE)
 
-    @mock.patch('pulp.server.db.model.TaskStatus')
+    @mock.patch('pulp.server.db.models.TaskStatus')
     @mock.patch('pulp_rpm.plugins.distributors.yum.publish.PublishDistributionStep.'
                 '_publish_distribution_treeinfo')
     @mock.patch('pulp.plugins.conduits.repo_publish.RepoPublishConduit.get_units')
@@ -886,7 +886,7 @@ class PublishRepoMetaDataStep(BaseYumDistributorPublishTests):
 
 class PublishRpmStepTests(BaseYumDistributorPublishStepTests):
 
-    @mock.patch('pulp.server.db.model.TaskStatus')
+    @mock.patch('pulp.server.db.models.TaskStatus')
     @mock.patch('pulp.plugins.conduits.repo_publish.RepoPublishConduit.get_units')
     def test_publish_rpms(self, mock_get_units, mock_update):
         self.publisher.repo.content_unit_counts = {TYPE_ID_RPM: 3}
@@ -908,7 +908,7 @@ class PublishRpmStepTests(BaseYumDistributorPublishStepTests):
         self.assertTrue(os.path.exists(os.path.join(self.working_dir, 'repodata/other.xml.gz')))
         self.assertTrue(os.path.exists(os.path.join(self.working_dir, 'repodata/primary.xml.gz')))
 
-    @mock.patch('pulp.server.db.model.TaskStatus')
+    @mock.patch('pulp.server.db.models.TaskStatus')
     @mock.patch('pulp.plugins.conduits.repo_publish.RepoPublishConduit.get_units')
     def test_process_unit_links_package_dir(self, mock_get_units, mock_update):
         unit = self._generate_rpm('one')
@@ -981,7 +981,7 @@ class PublishMetadataStepTests(BaseYumDistributorPublishStepTests):
 
         return Unit(TYPE_ID_YUM_REPO_METADATA_FILE, unit_key, unit_metadata, storage_path)
 
-    @mock.patch('pulp.server.db.model.TaskStatus')
+    @mock.patch('pulp.server.db.models.TaskStatus')
     @mock.patch('pulp.plugins.conduits.repo_publish.RepoPublishConduit.get_units')
     def test_publish_metadata(self, mock_get_units, mock_update):
         # Setup
