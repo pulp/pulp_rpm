@@ -942,6 +942,81 @@ And now we can see that ``repo_2`` has the category, groups, and RPMs::
     Vendor:
     Version:      0.3.1
 
+Comps
+=====
+
+.. _upload_comps_xml_file:
+
+Upload comps.xml file
+---------------------
+
+This is an example of creating a repo and uploading a comps.xml file into it.
+
+::
+
+  $ pulp-admin rpm repo create --repo-id comps-repo
+
+  Successfully created repository [comps-repo]
+
+  $ pulp-admin rpm repo uploads comps --repo-id comps-repo --file ~/sample-comps.xml
+
+
+  +----------------------------------------------------------------------+
+                                Unit Upload
+  +----------------------------------------------------------------------+
+
+  Extracting necessary metadata for each request...
+  [==================================================] 100%
+  Analyzing: sample-comps.xml
+  ... completed
+
+  Creating upload requests on the server...
+  [==================================================] 100%
+  Initializing: sample-comps.xml
+  ... completed
+
+  Starting upload of selected units. If this process is stopped through ctrl+c,
+  the uploads will be paused and may be resumed later using the resume command or
+  canceled entirely using the cancel command.
+
+  Uploading: sample-comps.xml
+  [==================================================] 100%
+  8407/8407 bytes
+  ... completed
+
+  Importing into the repository...
+  This command may be exited via ctrl+c without affecting the request.
+
+
+  [\]
+  Running...
+
+  Task Succeeded
+
+
+  Deleting the upload request...
+  ... completed
+
+
+Now let's list the repo and check its content.
+
+::
+
+  $ pulp-admin rpm repo list --repo-id comps-repo
+
+  +----------------------------------------------------------------------+
+                              RPM Repositories
+  +----------------------------------------------------------------------+
+
+  Id:                   comps-repo
+  Display Name:         comps-repo
+  Description:          None
+  Content Unit Counts:  
+    Package Category:    2
+    Package Environment: 1
+    Package Group:       3
+
+
 Chili
 =====
 

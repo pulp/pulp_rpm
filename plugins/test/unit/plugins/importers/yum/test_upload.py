@@ -9,11 +9,13 @@ from pulp.plugins.config import PluginCallConfiguration
 from pulp.plugins.model import Unit
 
 from pulp_rpm.plugins.db import models
-from pulp_rpm.plugins.importers.yum.repomd import packages, updateinfo
+from pulp_rpm.plugins.importers.yum.repomd import packages, updateinfo, group
 from pulp_rpm.plugins.importers.yum import upload
+import model_factory
 
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), '../../../../data')
+XML_FILENAME = 'Fedora-19-comps.xml'
 
 
 class UploadDispatchTests(unittest.TestCase):
@@ -39,7 +41,7 @@ class UploadDispatchTests(unittest.TestCase):
                                self.file_path, self.conduit, self.config)
 
         # Verify
-        mock_handle.assert_called_once_with(models.RPM.TYPE, self.unit_key, self.metadata,
+        mock_handle.assert_called_once_with(None, models.RPM.TYPE, self.unit_key, self.metadata,
                                             self.file_path, self.conduit, self.config)
 
         self.assertTrue(report is not None)
@@ -52,7 +54,7 @@ class UploadDispatchTests(unittest.TestCase):
                                self.file_path, self.conduit, self.config)
 
         # Verify
-        mock_handle.assert_called_once_with(models.SRPM.TYPE, self.unit_key, self.metadata,
+        mock_handle.assert_called_once_with(None, models.SRPM.TYPE, self.unit_key, self.metadata,
                                             self.file_path, self.conduit, self.config)
 
         self.assertTrue(report is not None)
@@ -65,7 +67,7 @@ class UploadDispatchTests(unittest.TestCase):
                                self.file_path, self.conduit, self.config)
 
         # Verify
-        mock_handle.assert_called_once_with(models.PackageGroup.TYPE, self.unit_key,
+        mock_handle.assert_called_once_with(None, models.PackageGroup.TYPE, self.unit_key,
                                             self.metadata, self.file_path, self.conduit,
                                             self.config)
 
@@ -79,7 +81,7 @@ class UploadDispatchTests(unittest.TestCase):
                                self.file_path, self.conduit, self.config)
 
         # Verify
-        mock_handle.assert_called_once_with(models.PackageCategory.TYPE, self.unit_key,
+        mock_handle.assert_called_once_with(None, models.PackageCategory.TYPE, self.unit_key,
                                             self.metadata, self.file_path, self.conduit,
                                             self.config)
 
@@ -93,7 +95,7 @@ class UploadDispatchTests(unittest.TestCase):
                                self.file_path, self.conduit, self.config)
 
         # Verify
-        mock_handle.assert_called_once_with(models.Errata.TYPE, self.unit_key,
+        mock_handle.assert_called_once_with(None, models.Errata.TYPE, self.unit_key,
                                             self.metadata, self.file_path, self.conduit,
                                             self.config)
 
@@ -107,7 +109,7 @@ class UploadDispatchTests(unittest.TestCase):
                                self.file_path, self.conduit, self.config)
 
         # Verify
-        mock_handle.assert_called_once_with(models.YumMetadataFile.TYPE, self.unit_key,
+        mock_handle.assert_called_once_with(None, models.YumMetadataFile.TYPE, self.unit_key,
                                             self.metadata, self.file_path, self.conduit,
                                             self.config)
 
@@ -189,6 +191,7 @@ class UploadErratumTests(unittest.TestCase):
         unit_key = {'id': 'test-erratum'}
         metadata = {'a': 'a'}
         config = PluginCallConfiguration({}, {})
+        mock_repo = mock.MagicMock()
 
         mock_conduit = mock.MagicMock()
         inited_unit = Unit(models.Errata.TYPE, unit_key, metadata, None)
@@ -198,7 +201,7 @@ class UploadErratumTests(unittest.TestCase):
         mock_conduit.save_unit.return_value = saved_unit
 
         # Test
-        upload._handle_erratum(models.Errata.TYPE, unit_key, metadata, None,
+        upload._handle_erratum(mock_repo, models.Errata.TYPE, unit_key, metadata, None,
                                mock_conduit, config)
 
         # Verify
@@ -221,9 +224,10 @@ class UploadErratumTests(unittest.TestCase):
         config = PluginCallConfiguration({}, {},
                                          override_config={upload.CONFIG_SKIP_ERRATUM_LINK: True})
         mock_conduit = mock.MagicMock()
+        mock_repo = mock.MagicMock()
 
         # Test
-        upload._handle_erratum(models.Errata.TYPE, unit_key, metadata, None,
+        upload._handle_erratum(mock_repo, models.Errata.TYPE, unit_key, metadata, None,
                                mock_conduit, config)
 
         # Verify
@@ -232,9 +236,10 @@ class UploadErratumTests(unittest.TestCase):
     def test_handle_erratum_model_error(self):
         # Setup
         unit_key = {'foo': 'bar'}
+        mock_repo = mock.MagicMock()
 
         # Test
-        self.assertRaises(upload.ModelInstantiationError, upload._handle_erratum,
+        self.assertRaises(upload.ModelInstantiationError, upload._handle_erratum, mock_repo,
                           models.Errata.TYPE, unit_key, {}, None, None, None)
 
     def test_link_errata_to_rpms(self):
@@ -281,6 +286,7 @@ class UploadYumRepoMetadataFileTests(unittest.TestCase):
         metadata = {'local_path': 'repodata/productid', 'checksum': 'abcdef',
                     'checksumtype': 'sha256'}
         config = PluginCallConfiguration({}, {})
+        mock_repo = mock.MagicMock()
 
         mock_conduit = mock.MagicMock()
         inited_unit = Unit(models.YumMetadataFile.TYPE, unit_key, metadata,
@@ -288,7 +294,7 @@ class UploadYumRepoMetadataFileTests(unittest.TestCase):
         mock_conduit.init_unit.return_value = inited_unit
 
         # Test
-        upload._handle_yum_metadata_file(models.YumMetadataFile.TYPE, unit_key, metadata,
+        upload._handle_yum_metadata_file(mock_repo, models.YumMetadataFile.TYPE, unit_key, metadata,
                                          self.upload_source_filename, mock_conduit, config)
 
         # Verify
@@ -308,16 +314,18 @@ class UploadYumRepoMetadataFileTests(unittest.TestCase):
     def test_handle_yum_metadata_file_model_error(self):
         # Setup
         unit_key = {'foo': 'bar'}
+        mock_repo = mock.MagicMock()
 
         # Test
         self.assertRaises(upload.ModelInstantiationError, upload._handle_yum_metadata_file,
-                          models.Errata.TYPE, unit_key, {}, None, None, None)
+                          mock_repo, models.Errata.TYPE, unit_key, {}, None, None, None)
 
     def test_handle_yum_metadata_file_storage_error(self):
         # Setup
         unit_key = {'data_type': 'product-id', 'repo_id': 'test-repo'}
         metadata = {'local_path': 'repodata/productid'}
         config = PluginCallConfiguration({}, {})
+        mock_repo = mock.MagicMock()
 
         mock_conduit = mock.MagicMock()
         inited_unit = Unit(models.YumMetadataFile.TYPE, unit_key, metadata,
@@ -328,24 +336,26 @@ class UploadYumRepoMetadataFileTests(unittest.TestCase):
         mock_conduit.init_unit.return_value = inited_unit
 
         # Test
-        self.assertRaises(upload.StoreFileError, upload._handle_yum_metadata_file,
+        self.assertRaises(upload.StoreFileError, upload._handle_yum_metadata_file, mock_repo,
                           models.YumMetadataFile.TYPE, unit_key, metadata,
                           self.upload_source_filename, mock_conduit, config)
 
 
 class GroupCategoryTests(unittest.TestCase):
+
     def test_handle_for_group(self):
         # Setup
         unit_key = {'id': 'test-group', 'repo_id': 'test-repo'}
         metadata = {}
         config = PluginCallConfiguration({}, {})
+        mock_repo = mock.MagicMock()
 
         mock_conduit = mock.MagicMock()
         inited_unit = Unit(models.PackageGroup.TYPE, unit_key, metadata, None)
         mock_conduit.init_unit.return_value = inited_unit
 
         # Test
-        upload._handle_group_category(models.PackageGroup.TYPE, unit_key, metadata, None,
+        upload._handle_group_category(mock_repo, models.PackageGroup.TYPE, unit_key, metadata, None,
                                       mock_conduit, config)
 
         # Verify
@@ -360,14 +370,15 @@ class GroupCategoryTests(unittest.TestCase):
         unit_key = {'id': 'test-category', 'repo_id': 'test-repo'}
         metadata = {}
         config = PluginCallConfiguration({}, {})
+        mock_repo = mock.MagicMock()
 
         mock_conduit = mock.MagicMock()
         inited_unit = Unit(models.PackageCategory.TYPE, unit_key, metadata, None)
         mock_conduit.init_unit.return_value = inited_unit
 
         # Test
-        upload._handle_group_category(models.PackageCategory.TYPE, unit_key, metadata, None,
-                                      mock_conduit, config)
+        upload._handle_group_category(mock_repo, models.PackageCategory.TYPE, unit_key, metadata,
+                                      None, mock_conduit, config)
 
         # Verify
         mock_conduit.init_unit.assert_called_once_with(models.PackageCategory.TYPE, unit_key,
@@ -376,13 +387,65 @@ class GroupCategoryTests(unittest.TestCase):
         saved_unit = mock_conduit.save_unit.call_args[0][0]
         self.assertEqual(inited_unit, saved_unit)
 
+    @mock.patch('pulp_rpm.plugins.importers.yum.upload._get_file_units')
+    def test_handle_for_comps(self, mock_file_units):
+        # Setup
+        self.sample_comps_filename = os.path.join(DATA_DIR, 'simple_repo_comps', XML_FILENAME)
+        unit_key = {}
+        metadata = {}
+        config = PluginCallConfiguration({}, {})
+        mock_repo = mock.MagicMock()
+        mock_repo.id = 'some_id'
+        mock_conduit = mock.MagicMock()
+
+        # Test
+        upload._handle_group_category(mock_repo, models.PackageCategory.TYPE, unit_key, metadata,
+                                      self.sample_comps_filename, mock_conduit, config)
+
+        # Verify
+        self.assertEqual(mock_file_units.call_count, 3)
+        group_args = (self.sample_comps_filename, group.process_group_element, group.GROUP_TAG,
+                      mock_conduit, mock_repo.id)
+        category_args = (self.sample_comps_filename, group.process_category_element,
+                         group.CATEGORY_TAG, mock_conduit, mock_repo.id)
+        environment_args = (self.sample_comps_filename, group.process_environment_element,
+                            group.ENVIRONMENT_TAG, mock_conduit, mock_repo.id)
+        self.assertEqual(mock_file_units.call_args_list[0][0], group_args)
+        self.assertEqual(mock_file_units.call_args_list[1][0], category_args)
+        self.assertEqual(mock_file_units.call_args_list[2][0], environment_args)
+
     def test_model_error(self):
         # Setup
         unit_key = {'foo': 'bar'}
+        mock_repo = mock.MagicMock()
 
         # Test
-        self.assertRaises(upload.ModelInstantiationError, upload._handle_group_category,
+        self.assertRaises(upload.ModelInstantiationError, upload._handle_group_category, mock_repo,
                           models.PackageGroup.TYPE, unit_key, {}, None, None, None)
+
+    @mock.patch('pulp_rpm.plugins.importers.yum.repomd.packages.package_list_generator',
+                autospec=True)
+    def test_get_file_units(self, mock_generator):
+        # Setup
+        self.sample_comps_filename = os.path.join(DATA_DIR, 'simple_repo_comps', XML_FILENAME)
+        mock_repo = mock.MagicMock()
+        mock_repo.id = 'some_id'
+        mock_conduit = mock.MagicMock()
+        mock_process_element = mock.Mock()
+        category = tuple(model_factory.category_models(3))
+        mock_generator.return_value = category
+
+        # Test
+        upload._get_file_units(self.sample_comps_filename, mock_process_element, 'foo',
+                               mock_conduit, mock_repo.id)
+
+        # Verify
+        self.assertEqual(mock_generator.call_count, 1)
+
+        for model in category:
+            mock_conduit.init_unit.assert_any_call(model.TYPE, model.unit_key, model.metadata, None)
+            mock_conduit.save_unit.assert_any_call(mock_conduit.init_unit.return_value)
+        self.assertEqual(mock_conduit.save_unit.call_count, 3)
 
 
 class UploadPackageTests(unittest.TestCase):
@@ -427,13 +490,14 @@ class UploadPackageTests(unittest.TestCase):
         user_unit_key = {'version': '100'}
         user_metadata = {'extra-meta': 'e'}
         config = PluginCallConfiguration({}, {})
+        mock_repo = mock.MagicMock()
 
         mock_conduit = mock.MagicMock()
         inited_unit = Unit(models.RPM.TYPE, unit_key, metadata, self.upload_dest_filename)
         mock_conduit.init_unit.return_value = inited_unit
 
         # Test
-        upload._handle_package(models.RPM.TYPE, user_unit_key, user_metadata,
+        upload._handle_package(mock_repo, models.RPM.TYPE, user_unit_key, user_metadata,
                                self.upload_src_filename,
                                mock_conduit, config)
 
@@ -467,18 +531,20 @@ class UploadPackageTests(unittest.TestCase):
         class FooException(Exception):
             pass
         mock_generate.side_effect = FooException()
+        mock_repo = mock.MagicMock()
 
         # Test - Ensure we haven't blindly masked an exception
-        self.assertRaises(FooException, upload._handle_package, None, None,
+        self.assertRaises(FooException, upload._handle_package, mock_repo, None, None,
                           None, None, None, None)
 
     @mock.patch('pulp_rpm.plugins.importers.yum.upload._generate_rpm_data')
     def test_handle_model_instantiation_error(self, mock_generate):
         # Setup
         mock_generate.return_value = {}, {}  # incomplete unit key, will error
+        mock_repo = mock.MagicMock()
 
         # Test
-        self.assertRaises(upload.ModelInstantiationError, upload._handle_package,
+        self.assertRaises(upload.ModelInstantiationError, upload._handle_package, mock_repo,
                           models.RPM.TYPE, None, None, None, None, None)
 
     @mock.patch('pulp_rpm.plugins.importers.yum.upload._generate_rpm_data')
@@ -498,12 +564,13 @@ class UploadPackageTests(unittest.TestCase):
         }
         mock_generate.return_value = unit_key, metadata
         config = PluginCallConfiguration({}, {})
+        mock_repo = mock.MagicMock()
 
         mock_conduit = mock.MagicMock()
         mock_conduit.init_unit.side_effect = IOError()
 
         # Test
-        self.assertRaises(upload.StoreFileError, upload._handle_package, models.RPM.TYPE,
+        self.assertRaises(upload.StoreFileError, upload._handle_package, mock_repo, models.RPM.TYPE,
                           unit_key, metadata, self.upload_src_filename, mock_conduit, config)
 
     def test_generate_rpm_data(self):
