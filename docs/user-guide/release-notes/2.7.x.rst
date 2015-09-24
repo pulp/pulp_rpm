@@ -20,3 +20,6 @@ New Features
   ISOs are generated. This allows the pulp ISO importer to directly import the published product.
   See the help text for ``pulp-admin rpm repo sync run``, or the distributor documentation for
   details.
+
+* Comps.xml file can now be uploaded into pulp via CLI or API. The unit_type_id to use for import
+  of the content is ``package_group`` or ``package_category``.

@@ -376,6 +376,11 @@ Metadata
  Example format: ``{"group" : <group_id>, "default" : True}``
 
 
+.. note::
+    Package_group, package_category and package environment elements can also be uploaded via comps file.
+    For more info see :ref:` upload_comps_xml_file`.
+
+
 Yum Repo Metadata File
 ----------------------
 

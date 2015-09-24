@@ -12,7 +12,7 @@ from pulp_rpm.plugins.importers.yum.repomd import group, packages
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), '../../../../../data/')
 
-FEDORA_19_COMPS_XML = os.path.join(DATA_DIR, "Fedora-19-comps.xml")
+FEDORA_19_COMPS_XML = os.path.join(DATA_DIR, "simple_repo_comps", "Fedora-19-comps.xml")
 
 
 class TestProcessGroupElement(unittest.TestCase):

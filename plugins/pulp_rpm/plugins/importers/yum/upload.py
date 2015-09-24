@@ -1,4 +1,5 @@
 import hashlib
+import functools
 import logging
 import os
 import shutil
@@ -14,7 +15,8 @@ from pulp_rpm.plugins.db import models
 from pulp_rpm.plugins import error_codes
 from pulp_rpm.plugins.importers.yum import utils
 from pulp_rpm.plugins.importers.yum.parse import rpm as rpm_parse
-from pulp_rpm.plugins.importers.yum.repomd import primary
+from pulp_rpm.plugins.importers.yum.repomd import primary, group, packages
+
 
 # this is required because some of the pre-migration XML tags use the "rpm"
 # namespace, which causes a parse error if that namespace isn't declared.
@@ -93,7 +95,7 @@ def upload(repo, type_id, unit_key, metadata, file_path, conduit, config):
         return _fail_report('%s is not a supported type for upload' % type_id)
 
     try:
-        handlers[type_id](type_id, unit_key, metadata, file_path, conduit, config)
+        handlers[type_id](repo, type_id, unit_key, metadata, file_path, conduit, config)
     except ModelInstantiationError:
         msg = 'metadata for the uploaded file was invalid'
         _LOGGER.exception(msg)
@@ -118,12 +120,13 @@ def upload(repo, type_id, unit_key, metadata, file_path, conduit, config):
     return report
 
 
-def _handle_erratum(type_id, unit_key, metadata, file_path, conduit, config):
+def _handle_erratum(repo, type_id, unit_key, metadata, file_path, conduit, config):
     """
     Handles the upload for an erratum. There is no file uploaded so the only
     steps are to save the metadata and optionally link the erratum to RPMs
     in the repository.
 
+    :type  repo: pulp.plugins.model.Repository
     :type  type_id: str
     :type  unit_key: dict
     :type  metadata: dict or None
@@ -170,10 +173,11 @@ def _link_errata_to_rpms(conduit, errata_model, errata_unit):
             conduit.link_unit(errata_unit, unit, bidirectional=True)
 
 
-def _handle_yum_metadata_file(type_id, unit_key, metadata, file_path, conduit, config):
+def _handle_yum_metadata_file(repo, type_id, unit_key, metadata, file_path, conduit, config):
     """
     Handles the upload for a yum repository metadata file.
 
+    :type  repo: pulp.plugins.model.Repository
     :type  type_id: str
     :type  unit_key: dict
     :type  metadata: dict or None
@@ -203,11 +207,13 @@ def _handle_yum_metadata_file(type_id, unit_key, metadata, file_path, conduit, c
         raise StoreFileError()
 
 
-def _handle_group_category(type_id, unit_key, metadata, file_path, conduit, config):
+def _handle_group_category(repo, type_id, unit_key, metadata, file_path, conduit, config):
     """
-    Handles the creation of a package group or category. There is no file uploaded,
-    so the process is simply to create the unit in Pulp.
+    Handles the creation of a package group or category. If a file was uploaded, treat
+    this as upload of a comps file. If no file was uploaded, the process is simply to create
+    the unit in Pulp.
 
+    :type  repo: pulp.plugins.model.Repository
     :type  type_id: str
     :type  unit_key: dict
     :type  metadata: dict or None
@@ -215,25 +221,59 @@ def _handle_group_category(type_id, unit_key, metadata, file_path, conduit, conf
     :type  conduit: pulp.plugins.conduits.upload.UploadConduit
     :type  config: pulp.plugins.config.PluginCallConfiguration
     """
+    # If a file was uploaded, assume it is a comps.xml file.
+    if file_path is not None and os.path.getsize(file_path) > 0:
+        repo_id = repo.id
+        _get_file_units(file_path, group.process_group_element,
+                        group.GROUP_TAG, conduit, repo_id)
+        _get_file_units(file_path, group.process_category_element,
+                        group.CATEGORY_TAG, conduit, repo_id)
+        _get_file_units(file_path, group.process_environment_element,
+                        group.ENVIRONMENT_TAG, conduit, repo_id)
+    else:
+        # Validate the user specified data by instantiating the model
+        try:
+            model_class = models.TYPE_MAP[type_id]
+            model = model_class(metadata=metadata, **unit_key)
+        except TypeError:
+            raise ModelInstantiationError()
 
-    # Validate the user specified data by instantiating the model
-    try:
-        model_class = models.TYPE_MAP[type_id]
-        model = model_class(metadata=metadata, **unit_key)
-    except TypeError:
-        raise ModelInstantiationError()
-
-    unit = conduit.init_unit(model.TYPE, model.unit_key, model.metadata, None)
-    conduit.save_unit(unit)
+        unit = conduit.init_unit(model.TYPE, model.unit_key, model.metadata, None)
+        conduit.save_unit(unit)
 
 
-def _handle_package(type_id, unit_key, metadata, file_path, conduit, config):
+def _get_file_units(filename, processing_function, tag, conduit, repo_id):
+    """
+    Given a comps.xml file, this method decides which groups/categories to get and saves
+    the parsed units.
+
+    :param filename:  open file-like object containing metadata
+    :type  filename:  file
+    :param processing_function:  method to use for generating the units
+    :type  processing_function:  function
+    :param tag:  XML tag that identifies each unit
+    :type  tag:  str
+    :param conduit:  provides access to relevant Pulp functionality
+    :type  conduit:  pulp.plugins.conduits.upload.UploadConduit
+    :param repo_id:  id of the repo into which unit will be uploaded
+    :type  repo_id:  str
+    """
+
+    process_func = functools.partial(processing_function, repo_id)
+    package_info_generator = packages.package_list_generator(filename, tag, process_func)
+    for model in package_info_generator:
+        unit = conduit.init_unit(model.TYPE, model.unit_key, model.metadata, None)
+        conduit.save_unit(unit)
+
+
+def _handle_package(repo, type_id, unit_key, metadata, file_path, conduit, config):
     """
     Handles the upload for an RPM or SRPM. For these types, the unit_key
     and metadata will only contain additions the user wishes to add. The
     typical use case is that the file is uploaded and all of the necessary
     data, both unit key and metadata, are extracted in this method.
 
+    :type  repo: pulp.plugins.model.Repository
     :type  type_id: str
     :type  unit_key: dict
     :type  metadata: dict or None
