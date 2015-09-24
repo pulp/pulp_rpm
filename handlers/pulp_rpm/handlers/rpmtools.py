@@ -7,6 +7,7 @@ collections of classes:
    package and package group operations.
 """
 
+from gettext import gettext as _
 from logging import getLogger, Logger
 from optparse import OptionParser
 
@@ -19,6 +20,10 @@ from yum import constants
 
 
 log = getLogger(__name__)
+
+INSTALLED = _('Installed: %(p)s')
+UPDATED = _('Updated: %(p)s')
+ERASED = _('Erased: %(p)s')
 
 
 class Package:
@@ -67,6 +72,20 @@ class Package:
             else:
                 resolved.append(package)
         return dict(resolved=resolved, deps=deps, failed=failed)
+
+    @staticmethod
+    def affected(details):
+        """
+        Get a list of packages affected in a transaction.
+        :param details: The transaction details returned by tx_summary.
+        :type details: dict
+        :return: A list of fully qualified package names.
+        :rtype: list
+        """
+        affected = []
+        for key in ('resolved', 'deps'):
+            affected.extend([p['qname'] for p in details[key]])
+        return affected
 
     @staticmethod
     def installed(ts_info):
@@ -140,7 +159,11 @@ class Package:
                 yb.processTransaction()
             else:
                 yb.progress.set_status(True)
-            return Package.installed(yb.tsInfo)
+            details = Package.installed(yb.tsInfo)
+            affected = Package.affected(details)
+            map(log.info, [INSTALLED % dict(p=p) for p in affected])
+            map(yb.logfile.info, [INSTALLED % dict(p=p) for p in affected])
+            return details
         finally:
             yb.close()
 
@@ -162,7 +185,11 @@ class Package:
                 yb.processTransaction()
             else:
                 yb.progress.set_status(True)
-            return Package.erased(yb.tsInfo)
+            details = Package.erased(yb.tsInfo)
+            affected = Package.affected(details)
+            map(log.info, [ERASED % dict(p=p) for p in affected])
+            map(yb.logfile.info, [ERASED % dict(p=p) for p in affected])
+            return details
         finally:
             yb.close()
 
@@ -188,7 +215,11 @@ class Package:
                 yb.processTransaction()
             else:
                 yb.progress.set_status(True)
-            return Package.updated(yb.tsInfo)
+            details = Package.updated(yb.tsInfo)
+            affected = Package.affected(details)
+            map(log.info, [UPDATED % dict(p=p) for p in affected])
+            map(yb.logfile.info, [UPDATED % dict(p=p) for p in affected])
+            return details
         finally:
             yb.close()
 
@@ -227,7 +258,11 @@ class PackageGroup:
                 yb.processTransaction()
             else:
                 yb.progress.set_status(True)
-            return Package.installed(yb.tsInfo)
+            details = Package.installed(yb.tsInfo)
+            affected = Package.affected(details)
+            map(log.info, [INSTALLED % dict(p=p) for p in affected])
+            map(yb.logfile.info, [INSTALLED % dict(p=p) for p in affected])
+            return details
         finally:
             yb.close()
 
@@ -249,7 +284,11 @@ class PackageGroup:
                 yb.processTransaction()
             else:
                 yb.progress.set_status(True)
-            return Package.erased(yb.tsInfo)
+            details = Package.erased(yb.tsInfo)
+            affected = Package.affected(details)
+            map(log.info, [ERASED % dict(p=p) for p in affected])
+            map(yb.logfile.info, [ERASED % dict(p=p) for p in affected])
+            return details
         finally:
             yb.close()
 
@@ -506,6 +545,7 @@ class Yum(YumBase):
         bar = DownloadCallback(self.progress)
         self.repos.setProgressBar(bar)
         self.progress.push_step('Refresh Repository Metadata')
+        self.logfile = getLogger('yum.filelogging')
 
     def doPluginSetup(self, *args, **kwargs):
         """
