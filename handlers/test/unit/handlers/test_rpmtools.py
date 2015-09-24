@@ -98,6 +98,20 @@ class TestPackages(ToolTest):
         self.assertEqual(report['deps'], _deps)
         self.assertEqual(report['failed'], _failed)
 
+    def test_affected(self):
+        details = {
+            'resolved': [
+                {'qname': 'dog-1.0'},
+                {'qname': 'cat-2.0'},
+            ],
+            'deps': [
+                {'qname': 'kennel-1.0'},
+            ]
+        }
+        self.assertEqual(
+            self.Package.affected(details),
+            ['dog-1.0', 'cat-2.0', 'kennel-1.0'])
+
     def test_install(self):
         # Setup
         packages = [
