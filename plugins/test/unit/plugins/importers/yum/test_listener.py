@@ -17,8 +17,8 @@ class TestContentListener(unittest.TestCase):
         self.metadata_files = mock.MagicMock()
         self.report = mock.MagicMock()
 
-    @mock.patch('shutil.move', autospec=True)
-    def test_download_successful(self, mock_move):
+    @mock.patch('shutil.copy', autospec=True)
+    def test_download_successful(self, mock_copy):
         self.sync_call_config.get.return_value = False
         content_listener = listener.ContentListener(self.sync_conduit, self.progress_report,
                                                     self.sync_call_config, self.metadata_files)
@@ -28,8 +28,8 @@ class TestContentListener(unittest.TestCase):
     @mock.patch('__builtin__.open', autospec=True)
     @mock.patch('pulp.plugins.util.verification.verify_checksum')
     @mock.patch('pulp.plugins.util.verification.verify_size')
-    @mock.patch('shutil.move', autospec=True)
-    def test_download_successful_with_validation(self, mock_move, mock_verify_size,
+    @mock.patch('shutil.copy', autospec=True)
+    def test_download_successful_with_validation(self, mock_copy, mock_verify_size,
                                                  mock_verify_checksum, mock_open):
         self.sync_call_config.get.return_value = True
         content_listener = listener.ContentListener(self.sync_conduit, self.progress_report,
@@ -43,8 +43,8 @@ class TestContentListener(unittest.TestCase):
     @mock.patch('__builtin__.open', autospec=True)
     @mock.patch('pulp.plugins.util.verification.verify_checksum')
     @mock.patch('pulp.plugins.util.verification.verify_size')
-    @mock.patch('shutil.move', autospec=True)
-    def test_download_successful_invalid_file_size(self, mock_move, mock_verify_size,
+    @mock.patch('shutil.copy', autospec=True)
+    def test_download_successful_invalid_file_size(self, mock_copy, mock_verify_size,
                                                    mock_verify_checksum, mock_open):
         self.sync_call_config.get.return_value = True
 
@@ -60,8 +60,8 @@ class TestContentListener(unittest.TestCase):
     @mock.patch('__builtin__.open', autospec=True)
     @mock.patch('pulp.plugins.util.verification.verify_checksum')
     @mock.patch('pulp.plugins.util.verification.verify_size')
-    @mock.patch('shutil.move', autospec=True)
-    def test_download_successful_invalid_checksum_type(self, mock_move, mock_verify_size,
+    @mock.patch('shutil.copy', autospec=True)
+    def test_download_successful_invalid_checksum_type(self, mock_copy, mock_verify_size,
                                                        mock_verify_checksum, mock_open):
         self.sync_call_config.get.return_value = True
 
@@ -77,8 +77,8 @@ class TestContentListener(unittest.TestCase):
     @mock.patch('__builtin__.open', autospec=True)
     @mock.patch('pulp.plugins.util.verification.verify_checksum')
     @mock.patch('pulp.plugins.util.verification.verify_size')
-    @mock.patch('shutil.move', autospec=True)
-    def test_download_successful_invalid_checksum_verification(self, mock_move, mock_verify_size,
+    @mock.patch('shutil.copy', autospec=True)
+    def test_download_successful_invalid_checksum_verification(self, mock_copy, mock_verify_size,
                                                                mock_verify_checksum, mock_open):
         self.sync_call_config.get.return_value = True
 
