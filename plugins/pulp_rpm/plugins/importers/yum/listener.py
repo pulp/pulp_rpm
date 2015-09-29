@@ -80,8 +80,13 @@ class ContentListener(DownloadEventListener):
         # init unit, which is idempotent
         unit = self.sync_conduit.init_unit(model.TYPE, model.unit_key, model.metadata,
                                            model.relative_path)
-        # move to final location
-        shutil.move(report.destination, unit.storage_path)
+        # move to final location.
+        # we cannot use here shutil.move because it preserves all the file attributes,
+        # even the selinux labels from the the source directory, that has different label
+        # from the desination one.
+        # we dont't have to worry about the content from working directory as it gets cleaned up,
+        # when a task finishes.
+        shutil.copy(report.destination, unit.storage_path)
         # save unit
         self.sync_conduit.save_unit(unit)
         self.progress_report['content'].success(model)
