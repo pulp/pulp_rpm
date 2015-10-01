@@ -86,7 +86,7 @@ def sync(sync_conduit, feed, working_dir, nectar_config, report, progress_callba
             model.process_download_reports(listener.succeeded_reports)
             # remove pre-existing dir
             shutil.rmtree(unit.storage_path, ignore_errors=True)
-            shutil.move(tmp_dir, unit.storage_path)
+            shutil.copy(tmp_dir, unit.storage_path)
             # mkdtemp is very paranoid, so we'll change to more sensible perms
             os.chmod(unit.storage_path, 0o775)
             sync_conduit.save_unit(unit)
