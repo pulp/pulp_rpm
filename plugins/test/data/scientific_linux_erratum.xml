@@ -4,7 +4,6 @@
         <id>SLBA-2011:1512-2</id>
         <title>libguestfs bug fix update</title>
         <release>Scientific Linux</release>
-        <issued date="2012-02-15 00:00:00"/>
         <references>
             <reference title="part-get-bootable gives wrong result with an unordered part layout"
                        type="bugzilla" id="603000"
