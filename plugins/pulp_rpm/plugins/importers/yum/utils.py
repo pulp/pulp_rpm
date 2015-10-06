@@ -52,7 +52,7 @@ def element_to_raw_xml(element, namespaces_to_register=None, default_namespace_u
 
     tree = ET.ElementTree(element)
     io = StringIO()
-    tree.write(io)
+    tree.write(io, encoding='utf-8')
     ret = io.getvalue()
 
     for namespace in namespaces_to_register:
