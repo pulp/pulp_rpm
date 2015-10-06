@@ -32,7 +32,7 @@ def process_package_element(element):
         'description': description_text,
         'from': element.attrib['from'],
         'id': element.find('id').text,
-        'issued': element.find('issued').attrib['date'],
+        'issued': '',
         'pushcount': '',
         # yum defaults this to False, and sets it to True if any package in
         # any collection has an element present with tag 'reboot_suggested'.
@@ -64,9 +64,14 @@ def process_package_element(element):
         if child is not None:
             package_info[attr_name] = child.text
 
+    issued_element = element.find('issued')
+    if issued_element is not None:
+        package_info['issued'] = issued_element.attrib['date']
+
     updated_element = element.find('updated')
     if updated_element is not None:
         package_info['updated'] = updated_element.attrib['date']
+
     return models.Errata.from_package_info(package_info)
 
 
