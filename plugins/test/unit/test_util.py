@@ -9,6 +9,7 @@ from pulp_rpm.plugins.importers.yum.repomd import primary
 class TestElementToRawXML(unittest.TestCase):
     def setUp(self):
         self.rpm_element = ET.fromstring(PRIMARY_XML)[0]
+        self.rpm_element.text = u'\U000ff004'
         self.other_element = ET.fromstring(OTHER_XML)[0]
         self.filelists_element = ET.fromstring(FILELIST_XML)[0]
 
