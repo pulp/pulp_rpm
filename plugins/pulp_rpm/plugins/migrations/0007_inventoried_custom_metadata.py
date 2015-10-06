@@ -9,7 +9,7 @@ from xml.etree import ElementTree
 from pulp.plugins.types import database as types_database
 from pulp.server import config as pulp_config
 from pulp.server.db.connection import get_collection
-from pulp.server.db.model.repository import RepoImporter, RepoContentUnit
+from pulp.server.db.model.repository import RepoContentUnit
 
 
 _LOG = logging.getLogger('pulp')
@@ -99,7 +99,7 @@ def migrate_repo(repo):
 # -- pulp utilities ------------------------------------------------------------
 
 def repositories_with_yum_importers():
-    repo_importer_collection = RepoImporter.get_collection()
+    repo_importer_collection = get_collection('repo_importers')
     repo_yum_importers = repo_importer_collection.find({'importer_type_id': _TYPE_YUM_IMPORTER},
                                                        fields=['repo_id'])
     yum_repo_ids = [i['repo_id'] for i in repo_yum_importers]
