@@ -9,6 +9,7 @@ from pulp.server.managers import factory
 
 from pulp_rpm.common import ids
 from pulp_rpm.devel import rpm_support_base
+from pulp.plugins.loader import api
 
 
 # Trimmed down versions of the type defs
@@ -25,6 +26,7 @@ class Migration0004Tests(rpm_support_base.PulpRPMTests):
             'pulp_rpm.plugins.migrations.0004_pkg_group_category_repoid')
 
         factory.initialize()
+        api.initialize(False)
         types_db.update_database([TYPE_DEF_GROUP, TYPE_DEF_CATEGORY])
 
         # Create the repositories necessary for the tests
