@@ -51,7 +51,7 @@ def check_repo(wanted):
             if rpm_srpm_drpm:
                 # For RPMs, SRPMs and DRPMs, also check if the file exists on the filesystem.
                 # If not, we do not want to skip downloading the unit.
-                if unit.storage_path is None or not os.path.isfile(unit.storage_path):
+                if unit._storage_path is None or not os.path.isfile(unit._storage_path):
                     continue
             values.discard(unit.unit_key_as_named_tuple)
 
@@ -98,17 +98,17 @@ def check_all_and_associate(wanted, sync_conduit):
     sorted_units = _sort_by_type(wanted)
     for unit_type, values in sorted_units.iteritems():
         model = plugin_api.get_unit_model_by_id(unit_type)
-        fields = model.unit_key_fields + ('storage_path',)
+        fields = model.unit_key_fields + ('_storage_path',)
         rpm_srpm_drpm = unit_type in (ids.TYPE_ID_RPM,
                                       ids.TYPE_ID_SRPM,
                                       ids.TYPE_ID_DRPM)
 
         unit_generator = (model(**unit_tuple._asdict()) for unit_tuple in values)
-        for unit in units_controller.find_units(unit_generator, fields=fields):
+        for unit in units_controller.find_units(unit_generator):
             if rpm_srpm_drpm:
                 # For RPMs, SRPMs and DRPMs, also check if the file exists on the filesystem.
                 # If not, we do not want to skip downloading the unit.
-                if unit.storage_path is None or not os.path.isfile(unit.storage_path):
+                if unit._storage_path is None or not os.path.isfile(unit._storage_path):
                     continue
             # Add the existing unit to the repository
             repo_controller.associate_single_unit(sync_conduit.repo, unit)

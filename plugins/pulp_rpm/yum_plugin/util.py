@@ -89,7 +89,7 @@ def get_relpath_from_unit(unit):
     elif "filename" in unit.unit_key:
         relpath = unit.unit_key["filename"]
     else:
-        relpath = os.path.basename(unit.storage_path)
+        relpath = os.path.basename(unit._storage_path)
     return relpath
 
 

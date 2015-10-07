@@ -130,8 +130,8 @@ class PackageXMLFileContext(MetadataFileContext):
         self._write_translated_fields(category_element, 'description', unit.translated_description)
 
         group_list_element = ElementTree.SubElement(category_element, 'grouplist')
-        if unit.group_ids:
-            for groupid in sorted(unit.group_ids):
+        if unit.packagegroupids:
+            for groupid in sorted(unit.packagegroupids):
                 ElementTree.SubElement(group_list_element, 'groupid').text = groupid
 
         # Write out the category xml to the file
@@ -158,8 +158,8 @@ class PackageXMLFileContext(MetadataFileContext):
                                       unit.translated_description)
 
         group_list_element = ElementTree.SubElement(environment_element, 'grouplist')
-        if unit.group_ids:
-            for groupid in sorted(unit.group_ids):
+        if unit.packagegroupids:
+            for groupid in sorted(unit.packagegroupids):
                 ElementTree.SubElement(group_list_element, 'groupid').text = groupid
 
         option_list_element = ElementTree.SubElement(environment_element, 'optionlist')

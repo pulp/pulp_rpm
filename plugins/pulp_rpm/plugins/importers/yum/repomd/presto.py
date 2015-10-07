@@ -33,11 +33,11 @@ def process_package_element(element):
         version=element.attrib['version'],
         release=element.attrib['release'],
         arch=element.attrib['arch'],
-        old_epoch=delta.attrib['oldepoch'],
-        old_version=delta.attrib['oldversion'],
-        old_release=delta.attrib['oldrelease'],
-        file_name=filename.text,
+        oldepoch=delta.attrib['oldepoch'],
+        oldversion=delta.attrib['oldversion'],
+        oldrelease=delta.attrib['oldrelease'],
+        filename=filename.text,
         sequence=sequence.text,
         size=int(size.text),
         checksum=checksum.text,
-        checksum_type=checksum_type)
+        checksumtype=checksum_type)

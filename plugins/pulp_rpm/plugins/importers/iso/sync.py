@@ -182,7 +182,7 @@ class ISOSyncRun(listener.DownloadEventListener):
         # Associate units that are already in Pulp
         if local_available_isos:
             search_dicts = [unit.unit_key for unit in local_available_isos]
-            self.sync_conduit.associate_existing(models.ISO.unit_type_id, search_dicts)
+            self.sync_conduit.associate_existing(models.ISO._content_type_id, search_dicts)
 
         # Go get them filez
         self.progress_report.state = self.progress_report.STATE_ISOS_IN_PROGRESS

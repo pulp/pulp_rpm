@@ -81,7 +81,7 @@ def process_category_element(repo_id, element):
     unit.description = description
     # default of 1024 is from yum's own parsing of these objects
     unit.display_order = int(display_order.text) if display_order is not None else 1024
-    unit.group_ids = [group.text for group in groups]
+    unit.packagegroupids = [group.text for group in groups]
     unit.package_category_id = element.find('id').text
     unit.name = name
     unit.repo_id = repo_id

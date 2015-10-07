@@ -169,7 +169,7 @@ class YumHTTPDistributor(Distributor):
         :rtype:  pulp.plugins.model.PublishReport
         """
         _logger.debug('Publishing yum repository: %s' % transfer_repo.id)
-        repo = platform_models.Repository.objects.get(repo_id=transfer_repo.id)
+        repo = transfer_repo.repo_obj
         repo.repo_id = transfer_repo.id
 
         self._publisher = publish.Publisher(repo, publish_conduit, config, TYPE_ID_DISTRIBUTOR_YUM)

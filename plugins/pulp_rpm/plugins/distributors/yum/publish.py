@@ -238,8 +238,8 @@ class Publisher(BaseYumRepoPublisher):
 
     def __init__(self, repo, publish_conduit, config, distributor_type, **kwargs):
         """
-        :param repo: Pulp managed Yum repository
-        :type  repo: pulp.plugins.model.Repository
+        :param repo: repository being published
+        :type  repo: pulp.server.db.model.Repository
         :param publish_conduit: Conduit providing access to relative Pulp functionality
         :type  publish_conduit: pulp.plugins.conduits.repo_publish.RepoPublishConduit
         :param config: Pulp configuration for the distributor
@@ -400,7 +400,7 @@ class PublishRpmStep(platform_steps.UnitPublishStep):
         """
         Create each of the three metadata contexts required for publishing RPM & SRPM
         """
-        total = self.get_total(ignore_filter=self.fast_forward)
+        total = self._get_total(ignore_filter=self.fast_forward)
 
         checksum_type = self.parent.get_checksum_type()
         self.file_lists_context = FilelistsXMLFileContext(self.get_working_dir(), total,
@@ -439,11 +439,11 @@ class PublishRpmStep(platform_steps.UnitPublishStep):
         :type item: pulp_rpm.plugins.db.models.RPM or pulp_rpm.plugins.db.models.SRPM
         """
         unit = item
-        source_path = unit.storage_path
-        destination_path = os.path.join(self.get_working_dir(), unit.file_name)
+        source_path = unit._storage_path
+        destination_path = os.path.join(self.get_working_dir(), unit.filename)
         plugin_misc.create_symlink(source_path, destination_path)
         for package_dir in self.dist_step.package_dirs:
-            destination_path = os.path.join(package_dir, unit.file_name)
+            destination_path = os.path.join(package_dir, unit.filename)
             plugin_misc.create_symlink(source_path, destination_path)
 
         for context in (self.file_lists_context, self.other_context, self.primary_context):
@@ -465,16 +465,16 @@ class PublishMetadataStep(platform_steps.UnitPublishStep):
         Copy the metadata file into place and add it tot he repomd file.
 
         :param item: The unit to process
-        :type item: pulp.plugins.model.Unit
+        :type item: pulp.server.db.model.ContentUnit
         """
         unit = item
         # Copy the file to the location on disk where the published repo is built
         publish_location_relative_path = os.path.join(self.get_working_dir(),
                                                       REPO_DATA_DIR_NAME)
 
-        metadata_file_name = os.path.basename(unit.storage_path)
+        metadata_file_name = os.path.basename(unit._storage_path)
         link_path = os.path.join(publish_location_relative_path, metadata_file_name)
-        plugin_misc.create_symlink(unit.storage_path, link_path)
+        plugin_misc.create_symlink(unit._storage_path, link_path)
 
         # Add the proper relative reference to the metadata file to repomd
         self.parent.repomd_file_context.\
@@ -520,10 +520,10 @@ class PublishDrpmStep(platform_steps.UnitPublishStep):
         update the prestodelta metadata file.
 
         :param item: The unit to process
-        :type item: pulp.plugins.model.Unit
+        :type item: pulp.server.db.model.ContentUnit
         """
         unit = item
-        source_path = unit.storage_path
+        source_path = unit._storage_path
         unit_filename = os.path.basename(unit.unit_key['filename'])
         relative_path = os.path.join('drpms', unit_filename)
         destination_path = os.path.join(self.get_working_dir(), relative_path)
@@ -597,7 +597,7 @@ class PublishRpmAndDrpmStepIncremental(platform_steps.UnitPublishStep):
         :type unit: pulp.server.db.model.ContentUnit
         """
         unit = item
-        source_path = unit.storage_path
+        source_path = unit._storage_path
         relative_path = util.get_relpath_from_unit(unit)
         destination_path = os.path.join(self.get_working_dir(), relative_path)
         plugin_misc.create_symlink(source_path, destination_path)
@@ -767,7 +767,7 @@ class PublishDistributionStep(platform_steps.UnitPublishStep):
                                   of files to be published should be pulled from.
         :type distribution_unit: pulp_rpm.plugins.db.models.Distribution
         """
-        distribution_unit_storage_path = distribution_unit.storage_path
+        distribution_unit_storage_path = distribution_unit._storage_path
         src_treeinfo_path = None
         treeinfo_file_name = None
         for treeinfo in constants.TREE_INFO_LIST:
@@ -802,7 +802,7 @@ class PublishDistributionStep(platform_steps.UnitPublishStep):
         total_files = len(distro_files)
         logger.debug("Found %s distribution files to symlink" % total_files)
 
-        source_path_dir = distribution_unit.storage_path
+        source_path_dir = distribution_unit._storage_path
         symlink_dir = self.get_working_dir()
         for dfile in distro_files:
             if dfile['relativepath'].startswith('repodata/'):

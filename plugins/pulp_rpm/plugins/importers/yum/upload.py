@@ -10,7 +10,6 @@ import rpm
 from pulp.plugins.util import verification
 from pulp.plugins.loader import api as plugin_api
 from pulp.server.controllers import repository as repo_controller
-from pulp.server.db.model.criteria import UnitAssociationCriteria
 from pulp.server.exceptions import PulpCodedValidationException, PulpCodedException
 
 from pulp_rpm.plugins.db import models
@@ -85,12 +84,12 @@ def upload(repo, type_id, unit_key, metadata, file_path, conduit, config):
 
     # Dispatch to process the upload by type
     handlers = {
-        models.RPM.unit_type_id: _handle_package,
-        models.SRPM.unit_type_id: _handle_package,
-        models.PackageGroup.unit_type_id: _handle_group_category,
-        models.PackageCategory.unit_type_id: _handle_group_category,
-        models.Errata.unit_type_id: _handle_erratum,
-        models.YumMetadataFile.unit_type_id: _handle_yum_metadata_file,
+        models.RPM._content_type_id: _handle_package,
+        models.SRPM._content_type_id: _handle_package,
+        models.PackageGroup._content_type_id: _handle_group_category,
+        models.PackageCategory._content_type_id: _handle_group_category,
+        models.Errata._content_type_id: _handle_erratum,
+        models.YumMetadataFile._content_type_id: _handle_yum_metadata_file,
     }
 
     if type_id not in handlers:
@@ -148,7 +147,7 @@ def _handle_erratum(repo, type_id, unit_key, metadata, file_path, conduit, confi
     model = model_class(**model_data)
 
     # TODO Find out if the unit exists, if it does, associated, if not, create
-    unit = conduit.init_unit(model.unit_type_id, model.unit_key, model.metadata, None)
+    unit = conduit.init_unit(model._content_type_id, model.unit_key, model.metadata, None)
 
     # this save must happen before the link is created, because the link logic
     # requires the unit to have an "id".
@@ -220,7 +219,7 @@ def _handle_group_category(repo, type_id, unit_key, metadata, file_path, conduit
         except TypeError:
             raise ModelInstantiationError()
 
-        unit = conduit.init_unit(model.unit_type_id, model.unit_key, model.metadata, None)
+        unit = conduit.init_unit(model._content_type_id, model.unit_key, model.metadata, None)
         conduit.save_unit(unit)
 
 
@@ -283,19 +282,20 @@ def _handle_package(repo, type_id, unit_key, metadata, file_path, conduit, confi
         raise ModelInstantiationError()
 
     # Move the file to its final storage location in Pulp
+    # TODO this needs to be redone to use set_content() or whatever replaces set_content()
     try:
-        unit = conduit.init_unit(model.unit_type_id, model.unit_key,
+        unit = conduit.init_unit(model._content_type_id, model.unit_key,
                                  model.metadata, model.relative_path)
-        shutil.move(file_path, unit.storage_path)
+        shutil.move(file_path, unit.storage_path) # TODO this should probably be unit._storage_path
     except IOError:
         raise StoreFileError()
 
     # Extract the repodata snippets
-    unit.metadata['repodata'] = rpm_parse.get_package_xml(unit.storage_path,
+    unit.metadata['repodata'] = rpm_parse.get_package_xml(unit._storage_path, # TODO storage_path?
                                                           sumtype=new_unit_key['checksumtype'])
     _update_provides_requires(unit)
     # check if the unit has duplicate nevra
-    purge.remove_unit_duplicate_nevra(unit.unit_key, unit.type_id, repo.id)
+    purge.remove_unit_duplicate_nevra(model, repo) # TODO ensure the types of this call are correct
     # Save the unit in Pulp
     conduit.save_unit(unit)
 
@@ -403,13 +403,13 @@ def _generate_rpm_data(type_id, rpm_filename, user_metadata=None):
 
     # construct filename from metadata (BZ #1101168)
     if headers[rpm.RPMTAG_SOURCEPACKAGE]:
-        if type_id != models.SRPM.unit_type_id:
+        if type_id != models.SRPM._content_type_id:
             raise PulpCodedValidationException(error_code=error_codes.RPM1002)
         rpm_basefilename = "%s-%s-%s.src.rpm" % (headers['name'],
                                                  headers['version'],
                                                  headers['release'])
     else:
-        if type_id != models.RPM.unit_type_id:
+        if type_id != models.RPM._content_type_id:
             raise PulpCodedValidationException(error_code=error_codes.RPM1003)
         rpm_basefilename = "%s-%s-%s.%s.rpm" % (headers['name'],
                                                 headers['version'],

@@ -6,7 +6,7 @@ from urlparse import urljoin
 
 import mongoengine
 from pulp.plugins.util import verification
-from pulp.server.db.model import ContentUnit
+from pulp.server.db.model import FileContentUnit
 
 from pulp_rpm.common import version_utils
 from pulp_rpm.common import file_utils
@@ -15,18 +15,20 @@ from pulp_rpm.plugins import serializers
 _LOGGER = logging.getLogger(__name__)
 
 
-class Package(ContentUnit):
+class Package(FileContentUnit):
+    # TODO add docstring to this class
 
     meta = {
         'abstract': True,
     }
 
     def __str__(self):
-        return '%s: %s' % (self.unit_type_id,
+        return '%s: %s' % (self._content_type_id,
                            '-'.join(getattr(self, name) for name in self.unit_key_fields))
 
 
 class VersionedPackage(Package):
+    # TODO add docstring to this class
 
     # All subclasses use both a version and a release
     version = mongoengine.StringField(required=True)
@@ -58,8 +60,8 @@ class VersionedPackage(Package):
     @property
     def key_string_without_version(self):
         keys = [getattr(self, key) for key in self.unit_key_fields if
-                key not in ['epoch', 'version', 'release', 'checksum', 'checksum_type']]
-        keys.append(self.unit_type_id)
+                key not in ['epoch', 'version', 'release', 'checksum', 'checksumtype']]
+        keys.append(self._content_type_id)
         return '-'.join(keys)
 
     @property
@@ -74,7 +76,7 @@ class VersionedPackage(Package):
     def complete_version_serialized(self):
         return tuple(version_utils.encode(field) for field in self.complete_version)
 
-    # TODO DANGER DANGER, WHAT HAPPENS WITH MongoEngine BaseDocument
+    # TODO DANGER DANGER, WHAT HAPPENS WITH MongoEngine BaseDocument???
     def __cmp__(self, other):
         return cmp(
             self.complete_version_serialized,
@@ -83,6 +85,7 @@ class VersionedPackage(Package):
 
 
 class Distribution(Package):
+    # TODO add docstring to this class
 
     distribution_id = mongoengine.StringField(required=True)
     family = mongoengine.StringField(required=True)
@@ -99,8 +102,7 @@ class Distribution(Package):
 
     # For backward compatibility
     _ns = mongoengine.StringField(default='units_distribution')
-    unit_type_id = mongoengine.StringField(db_field='_content_type_id', required=True,
-                                           default='distribution')
+    _content_type_id = mongoengine.StringField(required=True, default='distribution')
 
     unit_key_fields = ('distribution_id', 'family', 'variant', 'version', 'arch')
 
@@ -170,7 +172,7 @@ class Distribution(Package):
                 'fileName': os.path.basename(report.data['relativepath']),
                 'item_type': "distribution",
                 'pkgpath': os.path.join(
-                    self.storage_path, os.path.dirname(report.data['relativepath']),
+                    self._storage_path, os.path.dirname(report.data['relativepath']),
                 ),
                 'relativepath': report.data['relativepath'],
                 'savepath': report.destination,
@@ -179,11 +181,12 @@ class Distribution(Package):
 
 
 class DRPM(VersionedPackage):
+    # TODO add docstring to this class
 
     # Unit Key Fields
     epoch = mongoengine.StringField(required=True)
-    file_name = mongoengine.StringField(db_field='filename', required=True)
-    checksum_type = mongoengine.StringField(db_field='checksumtype', required=True)
+    filename = mongoengine.StringField(required=True)
+    checksumtype = mongoengine.StringField(required=True)
     checksum = mongoengine.StringField(required=True)
 
     # Other Fields
@@ -191,23 +194,22 @@ class DRPM(VersionedPackage):
     new_package = mongoengine.StringField()
     arch = mongoengine.StringField()
     size = mongoengine.IntField()
-    old_epoch = mongoengine.StringField(db_field='oldepoch')
-    old_version = mongoengine.StringField(db_field='oldversion')
-    old_release = mongoengine.StringField(db_field='oldrelease')
+    oldepoch = mongoengine.StringField()
+    oldversion = mongoengine.StringField()
+    oldrelease = mongoengine.StringField()
 
     # For backward compatibility
     _ns = mongoengine.StringField(default='units_drpm')
-    unit_type_id = mongoengine.StringField(db_field='_content_type_id', required=True,
-                                           default='drpm')
+    _content_type_id = mongoengine.StringField(required=True, default='drpm')
 
-    unit_key_fields = ('epoch', 'version', 'release', 'file_name', 'checksum_type', 'checksum')
+    unit_key_fields = ('epoch', 'version', 'release', 'filename', 'checksumtype', 'checksum')
 
     meta = {'collection': 'units_drpm',
             'indexes': [
-                "epoch", "version", "release", "file_name", "checksum",
+                "epoch", "version", "release", "filename", "checksum",
                 # Unit key Index
                 {
-                    'fields': ["epoch", "version", "release", 'file_name', "checksum_type", "checksum"],
+                    'fields': ["epoch", "version", "release", 'filename', "checksumtype", "checksum"],
                     'unique': True
                 }],
             'allow_inheritance': False}
@@ -215,8 +217,8 @@ class DRPM(VersionedPackage):
     SERIALIZER = serializers.Drpm
 
     def __init__(self, *args, **kwargs):
-        if 'checksum_type' in kwargs:
-            kwargs['checksum_type'] = verification.sanitize_checksum_type(kwargs['checksum_type'])
+        if 'checksumtype' in kwargs:
+            kwargs['checksumtype'] = verification.sanitize_checksum_type(kwargs['checksumtype'])
         super(DRPM, self).__init__(*args, **kwargs)
 
     @property
@@ -224,17 +226,18 @@ class DRPM(VersionedPackage):
         """
         This should only be used during the initial sync
         """
-        return self.file_name
+        return self.filename
 
     @property
     def download_path(self):
         """
         This should only be used during the initial sync
         """
-        return self.file_name
+        return self.filename
 
 
 class RpmBase(VersionedPackage):
+    # TODO add docstring to this class
 
     # Unit Key Fields
     name = mongoengine.StringField(required=True)
@@ -242,7 +245,7 @@ class RpmBase(VersionedPackage):
     version = mongoengine.StringField(required=True)
     release = mongoengine.StringField(required=True)
     arch = mongoengine.StringField(required=True)
-    checksum_type = mongoengine.StringField(db_field='checksumtype', required=True)
+    checksumtype = mongoengine.StringField(required=True)
     checksum = mongoengine.StringField(required=True)
 
     # Other Fields
@@ -251,9 +254,9 @@ class RpmBase(VersionedPackage):
     vendor = mongoengine.StringField()
     size = mongoengine.IntField()
     base_url = mongoengine.StringField()
-    file_name = mongoengine.StringField(db_field='filename')
+    filename = mongoengine.StringField()
     relative_url_path = mongoengine.StringField()
-    relative_path = mongoengine.StringField(db_field='relativepath')
+    relativepath = mongoengine.StringField()
     group = mongoengine.StringField()
 
     provides = mongoengine.ListField()
@@ -261,7 +264,7 @@ class RpmBase(VersionedPackage):
     repodata = mongoengine.DictField(default={})
     description = mongoengine.StringField()
     header_range = mongoengine.DictField()
-    source_rpm = mongoengine.StringField(db_field='sourcerpm')
+    sourcerpm = mongoengine.StringField()
     license = mongoengine.StringField()
     changelog = mongoengine.ListField()
     url = mongoengine.StringField()
@@ -271,19 +274,17 @@ class RpmBase(VersionedPackage):
 
     # For backward compatibility
     _ns = mongoengine.StringField(default='units_rpm')
-    unit_type_id = mongoengine.StringField(db_field='_content_type_id', required=True,
-                                           default='rpm')
+    _content_type_id = mongoengine.StringField(required=True, default='rpm')
 
-    unit_key_fields = ('name', 'epoch', 'version', 'release', 'arch', 'checksum_type', 'checksum')
+    unit_key_fields = ('name', 'epoch', 'version', 'release', 'arch', 'checksumtype', 'checksum')
 
     meta = {'indexes': [
-                "name", "epoch", "version", "release", "arch", "file_name", "checksum",
-                "checksum_type", "version_sort_index",
+                "name", "epoch", "version", "release", "arch", "filename", "checksum",
+                "checksumtype", "version_sort_index",
                 ("version_sort_index", "release_sort_index"),
-                # Unit key Index
                 {
                     'fields': ["name", "epoch", "version", "release", "arch",
-                               "checksum_type", "checksum"],
+                               "checksumtype", "checksum"],
                     'unique': True
                 }],
             'abstract': True}
@@ -291,8 +292,8 @@ class RpmBase(VersionedPackage):
     SERIALIZER = serializers.RpmBase
 
     def __init__(self, *args, **kwargs):
-        if 'checksum_type' in kwargs:
-            kwargs['checksum_type'] = verification.sanitize_checksum_type(kwargs['checksum_type'])
+        if 'checksumtype' in kwargs:
+            kwargs['checksumtype'] = verification.sanitize_checksum_type(kwargs['checksumtype'])
         super(RpmBase, self).__init__(*args, **kwargs)
         # raw_xml is only used during the initial sync
         self.raw_xml = ''
@@ -302,32 +303,34 @@ class RpmBase(VersionedPackage):
         """
         This should only be used during the initial sync
         """
-        return os.path.join(self.checksum, self.file_name)
+        return os.path.join(self.checksum, self.filename)
 
 
 class RPM(RpmBase):
+    # TODO add docstring to this class
 
     # For backward compatibility
     _ns = mongoengine.StringField(default='units_rpm')
-    unit_type_id = mongoengine.StringField(db_field='_content_type_id', required=True,
-                                           default='rpm')
+    _content_type_id = mongoengine.StringField(required=True, default='rpm')
+
     meta = {'collection': 'units_rpm',
             'allow_inheritance': False}
 
 
 class SRPM(RpmBase):
+    # TODO add docstring to this class
 
     # For backward compatibility
     _ns = mongoengine.StringField(default='units_srpm')
-    unit_type_id = mongoengine.StringField(db_field='_content_type_id', required=True,
-                                           default='srpm')
+    _content_type_id = mongoengine.StringField(required=True, default='srpm')
+
     meta = {
         'collection': 'units_srpm',
         'allow_inheritance': False}
 
 
 class Errata(Package):
-
+    # TODO add docstring to this class
     errata_id = mongoengine.StringField(required=True)
     status = mongoengine.StringField()
     updated = mongoengine.StringField(required=True, default='')
@@ -349,15 +352,13 @@ class Errata(Package):
 
     # For backward compatibility
     _ns = mongoengine.StringField(default='units_erratum')
-    unit_type_id = mongoengine.StringField(db_field='_content_type_id', required=True,
-                                           default='erratum')
+    _content_type_id = mongoengine.StringField(required=True, default='erratum')
 
     unit_key_fields = ('errata_id',)
 
     meta = {'indexes': [
         "errata_id", "version", "release", "type", "status", "updated",
         "issued", "severity", "references",
-        # Unit key Index
         {
             'fields': unit_key_fields,
             'unique': True
@@ -386,9 +387,9 @@ class Errata(Package):
                 rpm = RPM(name=package['name'], epoch=package['epoch'],
                           version=package['version'], release=package['release'],
                           arch=package['arch'], checksum=checksum,
-                          checksum_type=checksumtype)
+                          checksumtype=checksumtype)
                 unit_key = rpm.unit_key
-                for key in ['checksum', 'checksum_type']:
+                for key in ['checksum', 'checksumtype']:
                     if unit_key[key] is None:
                         del unit_key[key]
                 ret.append(unit_key)
@@ -396,7 +397,7 @@ class Errata(Package):
 
 
 class PackageGroup(Package):
-
+    # TODO add docstring to this class
     package_group_id = mongoengine.StringField(required=True)
     repo_id = mongoengine.StringField(required=True)
 
@@ -415,8 +416,7 @@ class PackageGroup(Package):
 
     # For backward compatibility
     _ns = mongoengine.StringField(default='units_package_group')
-    unit_type_id = mongoengine.StringField(db_field='_content_type_id', required=True,
-                                           default='package_group')
+    _content_type_id = mongoengine.StringField(required=True, default='package_group')
 
     unit_key_fields = ('package_group_id', 'repo_id')
 
@@ -425,7 +425,6 @@ class PackageGroup(Package):
             'package_group_id', 'repo_id', 'name', 'mandatory_package_names',
             'conditional_package_names',
             'optional_package_names', 'default_package_names',
-                # Unit key Index
                 {
                     'fields': ('package_group_id', 'repo_id'),
                     'unique': True
@@ -434,9 +433,6 @@ class PackageGroup(Package):
             'allow_inheritance': False}
 
     SERIALIZER = serializers.PackageGroup
-    #
-    # UNIT_KEY_NAMES = ('id', 'repo_id')
-    # TYPE = ids.TYPE_ID_PKG_GROUP
 
     @property
     def all_package_names(self):
@@ -449,12 +445,12 @@ class PackageGroup(Package):
 
 
 class PackageCategory(Package):
-
+    # TODO add docstring to this class
     package_category_id = mongoengine.StringField(required=True)
     repo_id = mongoengine.StringField(required=True)
 
     description = mongoengine.StringField()
-    group_ids = mongoengine.ListField(db_field='packagegroupids')
+    packagegroupids = mongoengine.ListField()
     translated_description = mongoengine.DictField()
     translated_name = mongoengine.DictField()
     display_order = mongoengine.IntField()
@@ -462,15 +458,13 @@ class PackageCategory(Package):
 
     # For backward compatibility
     _ns = mongoengine.StringField(default='units_package_category')
-    unit_type_id = mongoengine.StringField(db_field='_content_type_id', required=True,
-                                           default='package_category')
+    _content_type_id = mongoengine.StringField(required=True, default='package_category')
 
     unit_key_fields = ('package_category_id', 'repo_id')
 
     meta = {
         'indexes': [
-            'package_category_id', 'repo_id', 'name', 'group_ids',
-            # Unit key Index
+            'package_category_id', 'repo_id', 'name', 'packagegroupids',
             {
                 'fields': ('package_category_id', 'repo_id'),
                 'unique': True
@@ -479,18 +473,10 @@ class PackageCategory(Package):
             'allow_inheritance': False}
 
     SERIALIZER = serializers.PackageCategory
-    # UNIT_KEY_NAMES = ('id', 'repo_id')
-    # TYPE = ids.TYPE_ID_PKG_CATEGORY
-    #
-    # def __init__(self, id, repo_id, metadata):
-    #     Package.__init__(self, locals())
-    #
-    # @property
-    # def group_names(self):
-    #     return self.metadata.get('packagegroupids', [])
 
 
 class PackageEnvironment(Package):
+    # TODO add docstring to this class
     package_environment_id = mongoengine.StringField(required=True)
     repo_id = mongoengine.StringField(required=True)
 
@@ -504,8 +490,7 @@ class PackageEnvironment(Package):
 
     # For backward compatibility
     _ns = mongoengine.StringField(default='units_package_environment')
-    unit_type_id = mongoengine.StringField(db_field='_content_type_id', required=True,
-                                           default='package_environment')
+    _content_type_id = mongoengine.StringField(required=True, default='package_environment')
 
     unit_key_fields = ('package_environment_id', 'repo_id')
 
@@ -522,26 +507,13 @@ class PackageEnvironment(Package):
 
     SERIALIZER = serializers.PackageEnvironment
 
-    # UNIT_KEY_NAMES = ('id', 'repo_id')
-    # TYPE = ids.TYPE_ID_PKG_ENVIRONMENT
-
-    # def __init__(self, id, repo_id, metadata):
-    #     Package.__init__(self, locals())
-
-    # @property
-    # def group_ids(self):
-    #     return self.metadata.get('group_ids', [])
-
-    # @property
-    # def options(self):
-    #     return self.metadata.get('options', [])
-
     @property
     def optional_group_ids(self):
         return [d.get('group') for d in self.options]
 
 
 class YumMetadataFile(Package):
+    # TODO add docstring to this class
     data_type = mongoengine.StringField(required=True)
     repo_id = mongoengine.StringField(required=True)
 
@@ -550,8 +522,7 @@ class YumMetadataFile(Package):
 
     # For backward compatibility
     _ns = mongoengine.StringField(default='units_yum_repo_metadata_file')
-    unit_type_id = mongoengine.StringField(db_field='_content_type_id', required=True,
-                                           default='yum_repo_metadata_file')
+    _content_type_id = mongoengine.StringField(required=True, default='yum_repo_metadata_file')
 
     unit_key_fields = ('data_type', 'repo_id')
 
@@ -568,60 +539,12 @@ class YumMetadataFile(Package):
 
     SERIALIZER = serializers.YumMetadataFile
 
-    # UNIT_KEY_NAMES = ('data_type', 'repo_id')
-    # TYPE = ids.TYPE_ID_YUM_REPO_METADATA_FILE
-
-    # def __init__(self, data_type, repo_id, metadata):
-    #     Package.__init__(self, locals())
-    #
-    # @property
-    # def relative_dir(self):
-    #     """
-    #     returns the relative path to the directory where the file should be
-    #     stored. Since we don't have the filename in the metadata, we can't
-    #     derive the full path here.
-    #     """
-    #     return self.repo_id
-
-#
-# TYPE_MAP = {
-#     Distribution.TYPE: Distribution,
-#     DRPM.TYPE: DRPM,
-#     Errata.TYPE: Errata,
-#     PackageCategory.TYPE: PackageCategory,
-#     PackageGroup.TYPE: PackageGroup,
-#     PackageEnvironment.TYPE: PackageEnvironment,
-#     RPM.TYPE: RPM,
-#     SRPM.TYPE: SRPM,
-#     YumMetadataFile.TYPE: YumMetadataFile,
-# }
-#
-# # put the NAMEDTUPLE attribute on each model class
-# for model_class in TYPE_MAP.values():
-#     model_class.NAMEDTUPLE = namedtuple(model_class.TYPE, model_class.UNIT_KEY_NAMES)
-
-
-# def from_typed_unit_key_tuple(typed_tuple):
-#     """
-#     This assumes that the __init__ method takes unit key arguments in order
-#     followed by a dictionary for other metadata.
-#
-#     :param typed_tuple:
-#     :return:
-#     """
-#     package_class = TYPE_MAP[typed_tuple[0]]
-#     args = typed_tuple[1:]
-#     foo = {'metadata': {}}
-#     return package_class.from_package_info(*args, **foo)
-
-
-# ------------ ISO Models --------------- #
 
 # How many bytes we want to read into RAM at a time when calculating an ISO checksum
 CHECKSUM_CHUNK_SIZE = 32 * 1024 * 1024
 
 
-class ISO(ContentUnit):
+class ISO(FileContentUnit):
     """
     This is a handy way to model an ISO unit, with some related utilities.
     """
@@ -631,14 +554,12 @@ class ISO(ContentUnit):
 
     # For backward compatibility
     _ns = mongoengine.StringField(default='units_iso')
-    unit_type_id = mongoengine.StringField(db_field='_content_type_id', required=True,
-                                           default='iso')
+    _content_type_id = mongoengine.StringField(required=True, default='iso')
 
     unit_key_fields = ('name', 'checksum', 'size')
 
     meta = {
         'indexes': [
-            # Unit key Index
             {
                 'fields': ('name', 'checksum', 'size'),
                 'unique': True
@@ -647,65 +568,6 @@ class ISO(ContentUnit):
         'allow_inheritance': False}
 
     SERIALIZER = serializers.ISO
-
-    # TYPE = ids.TYPE_ID_ISO
-    # UNIT_KEY_ISO = ('name', 'size', 'checksum')
-
-    # def __init__(self, name, size, checksum, unit=None):
-    #     """
-    #     Initialize an ISO, with its name, size, and checksum.
-    #
-    #     :param name:     The name of the ISO
-    #     :type  name:     basestring
-    #     :param size:     The size of the ISO, in bytes
-    #     :type  size:     int
-    #     :param checksum: The SHA-256 checksum of the ISO
-    #     :type  checksum: basestring
-    #     """
-    #     self.name = name
-    #     self.size = size
-    #     self.checksum = checksum
-    #
-    #     # This is the Unit that the ISO represents. An ISO doesn't always have a Unit backing it,
-    #     # particularly during repository synchronization or ISO uploads when the ISOs are being
-    #     # initialized.
-    #     self._unit = unit
-
-    # @classmethod
-    # def from_unit(cls, unit):
-    #     """
-    #     Construct an ISO out of a Unit.
-    #     """
-    #     return cls(unit.unit_key['name'], unit.unit_key['size'], unit.unit_key['checksum'], unit)
-    #
-    # def init_unit(self, conduit):
-    #     """
-    #     Use the given conduit's init_unit() call to initialize a unit, and store the unit as
-    #     self._unit.
-    #
-    #     :param conduit: The conduit to call init_unit() to get a Unit.
-    #     :type  conduit: pulp.plugins.conduits.mixins.AddUnitMixin
-    #     """
-    #     relative_path = os.path.join(self.name, self.checksum, str(self.size), self.name)
-    #     unit_key = {'name': self.name, 'size': self.size, 'checksum': self.checksum}
-    #     metadata = {}
-    #     self._unit = conduit.init_unit(self.TYPE, unit_key, metadata, relative_path)
-
-    # def save_unit(self, conduit):
-    #     """
-    #     Use the given conduit's save_unit() call to save self._unit.
-    #
-    #     :param conduit: The conduit to call save_unit() with.
-    #     :type  conduit: pulp.plugins.conduits.mixins.AddUnitMixin
-    #     """
-    #     conduit.save_unit(self._unit)
-    #
-    # @property
-    # def storage_path(self):
-    #     """
-    #     Return the storage path of the Unit that underlies this ISO.
-    #     """
-    #     return self._unit.storage_path
 
     def validate_iso(self, storage_path, full_validation=True):
         """

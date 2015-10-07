@@ -1,10 +1,17 @@
 """
-This migration renames `id` fields of each unit collection to
-something more specificof the units collections to something
-more specific. This works around mongoengines inability to
-have a _id and id field on a document.
+This migration renames fields that are renamed due to required changes
+as part of the switch to mongoengine.
 """
 from pulp.server.db import connection
+from pymongo.errors import OperationFailure
+
+
+def _drop_and_silence_exception(collection, index_name):
+    try:
+        collection.drop_index(index_name)
+    except OperationFailure:
+        # The index is already dropped
+        pass
 
 
 def migrate(*args, **kwargs):
@@ -16,37 +23,29 @@ def migrate(*args, **kwargs):
     :param kwargs: unused
     :type  kwargs: dict
     """
+    db = connection.get_database()
 
-    migrate_id('units_distribution', 'distribution_id')
-    migrate_id('units_erratum', 'errata_id')
-    migrate_id('units_package_group', 'package_group_id')
-    migrate_id('units_package_category', 'package_category_id')
-    migrate_id('units_package_environment', 'package_environment_id')
+    collection = db['units_distribution']
+    collection.update({}, {"$rename": {"id": "distribution_id"}})
+    _drop_and_silence_exception(collection, 'id_1')
+    _drop_and_silence_exception(collection, 'id_1_family_1_variant_1_version_1_arch_1')
 
+    collection = db['units_erratum']
+    collection.update({}, {"$rename": {"id": "errata_id"}})
+    collection.update({}, {"$rename": {"from": "errata_from"}})
+    _drop_and_silence_exception(collection, 'id_1')
 
-def migrate_id(collection, new_field_name):
-    """
-    Migrate a given collection
+    collection = db['units_package_group']
+    collection.update({}, {"$rename": {"id": "package_group_id"}})
+    _drop_and_silence_exception(collection, 'id_1')
+    _drop_and_silence_exception(collection, 'id_1_repo_id_1')
 
-    Drop all indexes in the collection containing the 'id' field
-    and rename the id field to a new name
+    collection = db['units_package_category']
+    collection.update({}, {"$rename": {"id": "package_category_id"}})
+    _drop_and_silence_exception(collection, 'id_1')
+    _drop_and_silence_exception(collection, 'id_1_repo_id_1')
 
-    :param collection: the name of the collection to migrate
-    :type collection: str
-    :param new_field_name: The new name for the 'id' field
-    :type new_field_name: str
-    """
-    collection = connection.get_collection(collection)
-    # Drop any index containing an id
-    index_info = collection.index_information()
-    indexes_to_drop = []
-    for index_name, index_details in index_info.iteritems():
-        for index_key in index_details['key']:
-            if index_key[0] == 'id':
-                indexes_to_drop.append(index_name)
-
-    for index in indexes_to_drop:
-        collection.drop_index(index)
-
-    # Rename the id
-    collection.update({}, {'$rename': {'id': new_field_name}})
+    collection = db['units_package_environment']
+    collection.update({}, {"$rename": {"id": "package_environment_id"}})
+    _drop_and_silence_exception(collection, 'id_1')
+    _drop_and_silence_exception(collection, 'id_1_repo_id_1')

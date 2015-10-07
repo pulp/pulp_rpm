@@ -51,7 +51,7 @@ class YumCataloger(Cataloger):
             for model in _packages:
                 unit_key = model.unit_key
                 url = urljoin(base_url, model.download_path)
-                conduit.add_entry(models.RPM.unit_type_id, unit_key, url)
+                conduit.add_entry(models.RPM._content_type_id, unit_key, url)
         finally:
             fp.close()
 

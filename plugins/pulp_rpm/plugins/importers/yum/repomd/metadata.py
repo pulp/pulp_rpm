@@ -312,7 +312,7 @@ class MetadataFiles(object):
         # clean out these entries if they exist, because they won't be in the
         # XML files we're indexing.
         unit_key.pop('checksum', None)
-        unit_key.pop('checksum_type', None)
+        unit_key.pop('checksumtype', None)
         sorted_key_names = sorted(unit_key.keys())
         return '::'.join('%s:%s' % (name, unit_key[name]) for name in sorted_key_names)
 
@@ -341,7 +341,7 @@ class MetadataFiles(object):
             setattr(model, metadata_key, items)
 
         raw_xml = model.raw_xml
-        model.repodata['primary'] = change_location_tag(raw_xml, model.file_name)
+        model.repodata['primary'] = change_location_tag(raw_xml, model.filename)
 
 
 def process_repomd_data_element(data_element):

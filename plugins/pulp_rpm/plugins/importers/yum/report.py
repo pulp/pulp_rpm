@@ -62,14 +62,14 @@ class ContentReport(dict):
         if self['items_left'] % 100 == 0:
             _logger.debug(_('%(n)s items left to download.') % {'n': self['items_left']})
         self['size_left'] -= model.size
-        done_attribute = type_done_map[model.unit_type_id]
+        done_attribute = type_done_map[model._content_type_id]
         self['details'][done_attribute] += 1
         return self
 
     def failure(self, model, error_report):
         self['items_left'] -= 1
         self['size_left'] -= model.size
-        done_attribute = type_done_map[model.unit_type_id]
+        done_attribute = type_done_map[model._content_type_id]
         self['details'][done_attribute] += 1
         self['error_details'].append(error_report)
         return self

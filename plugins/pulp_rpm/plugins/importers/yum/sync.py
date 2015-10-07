@@ -40,7 +40,7 @@ class RepoSync(object):
 
     def __init__(self, repo, sync_conduit, call_config):
         """
-        :param repo: metadata describing the repository
+        :param repo: the repository to sync
         :type  repo: pulp.server.db.model.Repository
 
         :param sync_conduit: provides access to relevant Pulp functionality
@@ -214,8 +214,8 @@ class RepoSync(object):
 
                 _logger.info(_('Downloading additional units.'))
 
-                with self.update_state(self.distribution_report, models.Distribution.unit_type_id) \
-                        as skip:
+                with self.update_state(self.distribution_report,
+                                       models.Distribution._content_type_id) as skip:
                     if not skip:
                         treeinfo.sync(self.repo, self.sync_conduit, url, self.tmp_dir,
                                       self.nectar_config, self.distribution_report,
@@ -304,7 +304,7 @@ class RepoSync(object):
     def check_metadata(self, url):
         """
         :param url: curret URL we should sync
-        :type: str
+        :type url: str
 
         :return:    instance of MetadataFiles
         :rtype:     pulp_rpm.plugins.importers.yum.repomd.metadata.MetadataFiles
@@ -754,7 +754,7 @@ class RepoSync(object):
         :param new_unit: The unit we are combining with the existing unit
         :type  new_unit: pulp.server.db.model.ContentUnit
         """
-        if existing_unit.unit_type_id != new_unit.unit_type_id:
+        if existing_unit._content_type_id != new_unit._content_type_id:
             raise PulpCodedException(message="Cannot concatenate two units of different types. "
                                              "Tried to concatenate %s with %s" %
                                              (existing_unit.type_id, new_unit.type_id))

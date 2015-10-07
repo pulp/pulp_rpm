@@ -343,9 +343,9 @@ def _associate_unit(dest_repo, import_conduit, unit):
         return unit
     elif isinstance(unit, models.YumMetadataFile):
         new_unit = copy.deepcopy(unit)
-        new_unit.storage_path = None
+        new_unit._storage_path = None
         new_unit.repo_id = dest_repo.repo_id,
-        new_unit.set_content(unit.storage_path)
+        new_unit.set_content(unit._storage_path)
         new_unit.save()
         repo_controller.associate_single_unit(repository=dest_repo, unit=new_unit)
         return new_unit()

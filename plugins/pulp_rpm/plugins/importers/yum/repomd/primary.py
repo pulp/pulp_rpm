@@ -57,7 +57,7 @@ PACKAGE_INFO_SKEL = {'type': None,
                      'release': None,
                      'epoch': None,
                      'checksum': None,
-                     'checksum_type': None,
+                     'checksumtype': None,
                      'summary': None,
                      'description': None,
                      'changelog': None,
@@ -65,7 +65,7 @@ PACKAGE_INFO_SKEL = {'type': None,
                      'url': None,
                      'time': None,
                      'size': None,
-                     'file_name': None,
+                     'filename': None,
                      'relative_url_path': None}
 
 PACKAGE_FORMAT_SKEL = {'vendor': None,
@@ -75,7 +75,7 @@ PACKAGE_FORMAT_SKEL = {'vendor': None,
                        'buildhost': None,
                        'requires': [],
                        'provides': [],
-                       'source_rpm': None,
+                       'sourcerpm': None,
                        'files': []}
 
 # RPM entry dictionary ---------------------------------------------------------
@@ -128,7 +128,7 @@ def process_package_element(package_element):
     checksum_element = package_element.find(CHECKSUM_TAG)
     if checksum_element is not None:
         checksum_type = verification.sanitize_checksum_type(checksum_element.attrib['type'])
-        package_info['checksum_type'] = checksum_type
+        package_info['checksumtype'] = checksum_type
         package_info['checksum'] = checksum_element.text
 
     summary_element = package_element.find(SUMMARY_TAG)
@@ -161,8 +161,8 @@ def process_package_element(package_element):
                 base_url = value
         package_info['base_url'] = base_url
         filename = os.path.basename(href)
-        package_info['relative_path'] = href
-        package_info['file_name'] = filename
+        package_info['relativepath'] = href
+        package_info['filename'] = filename
         # we don't make any attempt to preserve the original directory structure
         # this element will end up being converted back to XML and stuffed into
         # the DB on the unit object, so this  is our chance to modify it.
@@ -222,7 +222,7 @@ def _process_format_element(format_element):
 
     sourcerpm_element = format_element.find(RPM_SOURCERPM_TAG)
     if sourcerpm_element is not None:
-        package_format['source_rpm'] = sourcerpm_element.text
+        package_format['sourcerpm'] = sourcerpm_element.text
 
     provides_element = format_element.find(RPM_PROVIDES_TAG)
     if provides_element is not None:

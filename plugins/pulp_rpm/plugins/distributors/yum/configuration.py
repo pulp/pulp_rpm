@@ -281,10 +281,12 @@ def get_https_publish_dir(config=None):
 def get_repo_relative_path(repo, config=None):
     """
     Get the configured relative path for the given repository.
+
     :param repo: repository to get relative path for
-    :type  repo: pulp.plugins.model.Repository
+    :type  repo: pulp.server.db.model.Repository
     :param config: configuration instance for the repository
     :type  config: pulp.plugins.config.PluginCallConfiguration or dict or None
+
     :return: relative path for the repository
     :rtype:  str
     """
