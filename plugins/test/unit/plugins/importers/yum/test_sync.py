@@ -750,7 +750,8 @@ class TestDecideRPMsToDownload(BaseSyncTest):
         mock_identify.return_value = {model.as_named_tuple: 1024}
         mock_check_repo.return_value = set([model.as_named_tuple])
 
-        ret = self.reposync._decide_rpms_to_download(self.metadata_files)
+        with mock.patch.object(self.conduit, 'search_all_units'):
+            ret = self.reposync._decide_rpms_to_download(self.metadata_files)
 
         self.assertEqual(ret, (set([model.as_named_tuple]), 1, 1024))
         mock_open.assert_called_once_with('/path/to/primary', 'r')
@@ -809,7 +810,8 @@ class TestDecideDRPMsToDownload(BaseSyncTest):
         mock_identify.return_value = {model.as_named_tuple: 1024}
         mock_check_repo.return_value = set([model.as_named_tuple])
 
-        ret = self.reposync._decide_drpms_to_download(self.metadata_files)
+        with mock.patch.object(self.conduit, 'search_all_units'):
+            ret = self.reposync._decide_drpms_to_download(self.metadata_files)
 
         self.assertEqual(ret, (set([model.as_named_tuple]), 1, 1024))
         mock_open.assert_called_once_with('/path/to/presto', 'r')
