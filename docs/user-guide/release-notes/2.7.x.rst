@@ -20,3 +20,6 @@ New Features
   ISOs are generated. This allows the pulp ISO importer to directly import the published product.
   See the help text for ``pulp-admin rpm repo sync run``, or the distributor documentation for
   details.
+
+* The RPM plugin supports mirrorlist urls when syncing repo. This can be specified at repo creation
+  step via ``feed`` option.
