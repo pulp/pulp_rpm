@@ -23,3 +23,6 @@ New Features
 
 * Comps.xml file can now be uploaded into pulp via CLI or API. The unit_type_id to use for import
   of the content is ``package_group`` or ``package_category``.
+
+* The RPM plugin supports mirrorlist urls when syncing repo. This can be specified at repo creation
+  step via ``feed`` option.
