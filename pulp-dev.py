@@ -29,7 +29,8 @@ LINKS = (
     ('handlers/etc/pulp/agent/conf.d/bind.conf', '/etc/pulp/agent/conf.d/bind.conf'),
     ('handlers/etc/pulp/agent/conf.d/linux.conf', '/etc/pulp/agent/conf.d/linux.conf'),
     ('plugins/etc/pulp/vhosts80/rpm.conf', '/etc/pulp/vhosts80/rpm.conf'),
-    ('handlers/etc/yum/pluginconf.d/pulp-profile-update.conf', '/etc/yum/pluginconf.d/pulp-profile-update.conf'),
+    ('handlers/etc/yum/pluginconf.d/pulp-profile-update.conf',
+     '/etc/yum/pluginconf.d/pulp-profile-update.conf'),
 
     # RPM Support Plugins
     ('plugins/types/rpm_support.json', DIR_PLUGINS + '/types/rpm_support.json'),
@@ -37,7 +38,8 @@ LINKS = (
     ('plugins/usr/share/pulp-rpm', '/usr/share/pulp-rpm'),
 
     # RPM Support Web Configuration
-    ('handlers/usr/lib/yum-plugins/pulp-profile-update.py', '/usr/lib/yum-plugins/pulp-profile-update.py'),
+    ('handlers/usr/lib/yum-plugins/pulp-profile-update.py',
+     '/usr/lib/yum-plugins/pulp-profile-update.py'),
 )
 
 
@@ -103,7 +105,7 @@ def install(opts):
     create_dirs(opts)
     currdir = os.path.abspath(os.path.dirname(__file__))
     for src, dst in getlinks():
-        warning_msg = create_link(opts, os.path.join(currdir,src), dst)
+        warning_msg = create_link(opts, os.path.join(currdir, src), dst)
         if warning_msg:
             warnings.append(warning_msg)
 
@@ -133,22 +135,26 @@ def create_link(opts, src, dst):
         return _create_link(opts, src, dst)
 
     if not os.path.islink(dst):
-        return "[%s] is not a symbolic link as we expected, please adjust if this is not what you intended." % (dst)
+        return ("[%s] is not a symbolic link as we expected, please adjust if this is not what "
+                "you intended." % (dst))
 
     if not os.path.exists(os.readlink(dst)):
-        environment.warning('BROKEN LINK: [%s] attempting to delete and fix it to point to %s.' % (dst, src))
+        environment.warning(
+            'BROKEN LINK: [%s] attempting to delete and fix it to point to %s.' % (dst, src))
         try:
             os.unlink(dst)
             return _create_link(opts, src, dst)
         except:
-            msg = "[%s] was a broken symlink, failed to delete and relink to [%s], please fix this manually" % (dst, src)
+            msg = ("[%s] was a broken symlink, failed to delete and relink to [%s], please fix "
+                   "this manually" % (dst, src))
             return msg
 
     environment.debug(opts, 'verifying link: %s points to %s' % (dst, src))
     dst_stat = os.stat(dst)
     src_stat = os.stat(src)
     if dst_stat.st_ino != src_stat.st_ino:
-        msg = "[%s] is pointing to [%s] which is different than the intended target [%s]" % (dst, os.readlink(dst), src)
+        msg = ("[%s] is pointing to [%s] which is different than the intended target "
+               "[%s]" % (dst, os.readlink(dst), src))
         return msg
 
 
@@ -157,10 +163,10 @@ def _create_link(opts, src, dst):
         try:
             os.symlink(src, dst)
         except OSError, e:
-            msg = "Unable to create symlink for [%s] pointing to [%s], received error: <%s>" % (dst, src, e)
+            msg = ("Unable to create symlink for [%s] pointing to [%s], received error: "
+                   "<%s>" % (dst, src, e))
             return msg
 
-# -----------------------------------------------------------------------------
 
 if __name__ == '__main__':
     # TODO add something to check for permissions
