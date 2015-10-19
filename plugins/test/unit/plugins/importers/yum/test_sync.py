@@ -1676,7 +1676,7 @@ repodata/repomd.xml = sha256:9876
 
 # these tests are specifically to test bz #1150714
 @mock.patch('os.chmod', autospec=True)
-@mock.patch('shutil.copy', autospec=True)
+@mock.patch('pulp_rpm.plugins.importers.yum.parse.treeinfo.pulp_copytree', autospec=True)
 @mock.patch('pulp_rpm.plugins.importers.yum.parse.treeinfo.get_treefile', autospec=True)
 @mock.patch('pulp_rpm.plugins.importers.yum.parse.treeinfo.parse_treefile', autospec=True)
 @mock.patch('pulp_rpm.plugins.importers.yum.report.DistributionReport', autospec=True)
