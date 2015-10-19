@@ -10,6 +10,7 @@ from nectar.request import DownloadRequest
 from pulp.plugins.util import verification
 from pulp.server.exceptions import PulpCodedValidationException
 from pulp.server.db.model.criteria import UnitAssociationCriteria
+from pulp.server.util import copytree as pulp_copytree
 
 from pulp_rpm.common import constants, ids
 from pulp_rpm.plugins.db import models
@@ -86,7 +87,7 @@ def sync(sync_conduit, feed, working_dir, nectar_config, report, progress_callba
             model.process_download_reports(listener.succeeded_reports)
             # remove pre-existing dir
             shutil.rmtree(unit.storage_path, ignore_errors=True)
-            shutil.copy(tmp_dir, unit.storage_path)
+            pulp_copytree(tmp_dir, unit.storage_path)
             # mkdtemp is very paranoid, so we'll change to more sensible perms
             os.chmod(unit.storage_path, 0o775)
             sync_conduit.save_unit(unit)
