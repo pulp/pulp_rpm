@@ -8,7 +8,7 @@ import mock
 from pulp.common import dateutils
 from pulp.server import config as pulp_config
 from pulp.server.db.migrate.models import _import_all_the_way
-from pulp.server.db import model
+from pulp.server.db import models
 from pulp.server.db.model.repository import RepoDistributor
 
 from pulp_rpm.devel import rpm_support_base
@@ -32,7 +32,7 @@ class BaseMigrationTests(rpm_support_base.PulpRPMTests):
     def tearDown(self):
         super(BaseMigrationTests, self).tearDown()
 
-        model.Repository.drop_collection()
+        models.Repository.drop_collection()
         self.distributors_collection.drop()
 
         shutil.rmtree(self.root_test_dir, ignore_errors=True)
@@ -40,7 +40,7 @@ class BaseMigrationTests(rpm_support_base.PulpRPMTests):
     # -- test data setup -------------------------------------------------------
 
     def _generate_repo(self, repo_id):
-        repo_model = model.Repository(repo_id=repo_id, display_name=repo_id)
+        repo_model = models.Repository(repo_id=repo_id, display_name=repo_id)
         repo_model.save()
         return repo_model
 

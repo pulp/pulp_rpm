@@ -15,7 +15,7 @@ from pulp.plugins.conduits.repo_publish import RepoPublishConduit
 from pulp.plugins.config import PluginCallConfiguration
 from pulp.plugins.loader import api
 from pulp.server import config as pulp_config
-from pulp.server.db import model
+from pulp.server.db import models
 from pulp.server.db.connection import get_collection
 
 from pulp_rpm.plugins.distributors.yum.publish import Publisher
@@ -46,7 +46,7 @@ def migrate(*args, **kwargs):
         distributor_collection.find({'distributor_type_id': YUM_DISTRIBUTOR_ID}))
 
     repo_ids = list(set(d['repo_id'] for d in yum_distributors))
-    repo_objs = model.Repository.objects(repo_id__in=repo_ids)
+    repo_objs = models.Repository.objects(repo_id__in=repo_ids)
     repos = dict((repo_obj.repo_id, repo_obj.to_transfer_repo()) for repo_obj in repo_objs)
 
     for d in yum_distributors:

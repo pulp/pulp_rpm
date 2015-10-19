@@ -2,7 +2,7 @@ import mock
 
 from pulp.plugins.types import database as types_db
 from pulp.plugins.types.model import TypeDefinition
-from pulp.server.db import model
+from pulp.server.db import models
 from pulp.server.db.model.repository import RepoContentUnit, RepoImporter
 from pulp.server.db.migrate.models import _import_all_the_way
 from pulp.server.managers import factory
@@ -33,9 +33,9 @@ class Migration0004Tests(rpm_support_base.PulpRPMTests):
         self.source_repo_id = 'source-repo'  # where units were copied from with the bad code
         self.dest_repo_id = 'dest-repo'  # where bad units were copied to
 
-        source_repo = model.Repository(repo_id=self.source_repo_id)
+        source_repo = models.Repository(repo_id=self.source_repo_id)
         source_repo.save()
-        dest_repo = model.Repository(repo_id=self.dest_repo_id)
+        dest_repo = models.Repository(repo_id=self.dest_repo_id)
         dest_repo.save()
 
         source_importer = RepoImporter(self.source_repo_id, 'yum_importer', 'yum_importer', {})
@@ -52,7 +52,7 @@ class Migration0004Tests(rpm_support_base.PulpRPMTests):
 
         RepoContentUnit.get_collection().remove()
         RepoImporter.get_collection().remove()
-        model.Repository.drop_collection()
+        models.Repository.drop_collection()
 
     def test_migrate_duplicates(self):
         """
@@ -90,9 +90,9 @@ class Migration0004Tests(rpm_support_base.PulpRPMTests):
         self.assertEqual(query_manager.get_units(self.source_repo_id), [])
 
         # Verify the repo counts
-        source = model.Repository.objects.get(repo_id='source-repo')
+        source = models.Repository.objects.get(repo_id='source-repo')
         self.assertDictEqual(source.content_unit_counts, {})
-        dest = model.Repository.objects.get(repo_id='dest-repo')
+        dest = models.Repository.objects.get(repo_id='dest-repo')
         self.assertDictEqual(dest.content_unit_counts, {'package_group': 1})
 
     def test_migrate_duplicates_doesnt_delete_from_source_repo(self):
@@ -139,9 +139,9 @@ class Migration0004Tests(rpm_support_base.PulpRPMTests):
         self.assertEqual(source_unit['unit_id'], source_repo_group_id)
 
         # Verify the repo counts
-        source = model.Repository.objects.get(repo_id='source-repo')
+        source = models.Repository.objects.get(repo_id='source-repo')
         self.assertEqual(source.content_unit_counts, {'package_group': 1})
-        dest = model.Repository.objects.get(repo_id='dest-repo')
+        dest = models.Repository.objects.get(repo_id='dest-repo')
         self.assertEqual(dest.content_unit_counts, {'package_group': 1})
 
     def test_migrate_groups(self):
