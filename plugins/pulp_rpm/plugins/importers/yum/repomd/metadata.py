@@ -166,7 +166,7 @@ class MetadataFiles(object):
             if element.tag == REVISION_TAG:
                 try:
                     self.revision = int(element.text)
-                except ValueError:
+                except (TypeError, ValueError):
                     _LOGGER.info('repository revision is not an integer. '
                                  'unable to consider skipping steps.')
                     self.revision = 0
