@@ -13,7 +13,7 @@ from pulp.server.exceptions import PulpCodedValidationException, PulpCodedExcept
 
 from pulp_rpm.plugins.db import models
 from pulp_rpm.plugins import error_codes
-from pulp_rpm.plugins.importers.yum import utils
+from pulp_rpm.plugins.importers.yum import purge, utils
 from pulp_rpm.plugins.importers.yum.parse import rpm as rpm_parse
 from pulp_rpm.plugins.importers.yum.repomd import primary, group, packages
 
@@ -312,7 +312,8 @@ def _handle_package(repo, type_id, unit_key, metadata, file_path, conduit, confi
     unit.metadata['repodata'] = rpm_parse.get_package_xml(unit.storage_path,
                                                           sumtype=new_unit_key['checksumtype'])
     _update_provides_requires(unit)
-
+    # check if the unit has duplicate nevra
+    purge.remove_unit_duplicate_nevra(unit.unit_key, unit.type_id, repo.id)
     # Save the unit in Pulp
     conduit.save_unit(unit)
 

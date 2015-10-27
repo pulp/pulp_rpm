@@ -294,3 +294,21 @@ class TestPurgeUnwantedUnits(TestPurgeBase):
         purge.purge_unwanted_units(self.metadata_files, self.conduit, self.config)
 
         mock_remove_old_versions.assert_called_once_with(3, self.conduit)
+
+
+class RemoveUnitDuplicateNevra(TestPurgeBase):
+
+    @mock.patch.object(purge, 'RepoUnitAssociationManager', autospec=True)
+    @mock.patch.object(purge, 'UnitAssociationCriteria', autospec=True)
+    def test_remove_unit_duplicate_nerva(self, mock_criteria, mock_association):
+        unit_key = {'name': 'test-nevra', 'epoch': 0, 'version': 1, 'release': '23',
+                    'arch': 'noarch', 'checksum': '1234abc', 'checksumtype': 'sha256'}
+        type_id = 'rpm'
+        repo_id = 'test-repo'
+        mock_criteria.return_value = {'$and': [{'some': 'criteria'}]}
+
+        purge.remove_unit_duplicate_nevra(unit_key, type_id, repo_id)
+
+        mock_association.unassociate_by_criteria.assert_called_once_with(
+            repo_id,
+            mock_criteria.return_value)
