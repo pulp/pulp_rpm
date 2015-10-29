@@ -470,8 +470,9 @@ class UploadPackageTests(unittest.TestCase):
         if os.path.exists(self.tmp_dir):
             shutil.rmtree(self.tmp_dir)
 
+    @mock.patch('pulp_rpm.plugins.importers.yum.upload.purge.remove_unit_duplicate_nevra')
     @mock.patch('pulp_rpm.plugins.importers.yum.upload._generate_rpm_data')
-    def test_handle_package(self, mock_generate):
+    def test_handle_package(self, mock_generate, mock_nevra):
         # Setup
         unit_key = {
             'name': 'walrus',
