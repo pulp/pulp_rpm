@@ -18,18 +18,23 @@ class TestContentListener(unittest.TestCase):
         self.report = mock.MagicMock()
 
     @mock.patch('shutil.move', autospec=True)
-    def test_download_successful(self, mock_move):
+    @mock.patch('pulp_rpm.plugins.importers.yum.listener.purge.remove_unit_duplicate_nevra')
+    def test_download_successful(self, mock_nevra, mock_move):
         self.sync_call_config.get.return_value = False
         content_listener = listener.ContentListener(self.sync_conduit, self.progress_report,
                                                     self.sync_call_config, self.metadata_files)
         content_listener.download_succeeded(self.report)
         self.progress_report['content'].success.assert_called_once_with(self.report.data)
+        mock_nevra.assert_called_once_with(self.sync_conduit.init_unit().unit_key,
+                                           self.sync_conduit.init_unit().type_id,
+                                           self.sync_conduit.repo_id)
 
     @mock.patch('__builtin__.open', autospec=True)
     @mock.patch('pulp.plugins.util.verification.verify_checksum')
     @mock.patch('pulp.plugins.util.verification.verify_size')
+    @mock.patch('pulp_rpm.plugins.importers.yum.listener.purge.remove_unit_duplicate_nevra')
     @mock.patch('shutil.move', autospec=True)
-    def test_download_successful_with_validation(self, mock_move, mock_verify_size,
+    def test_download_successful_with_validation(self, mock_move, mock_nevra, mock_verify_size,
                                                  mock_verify_checksum, mock_open):
         self.sync_call_config.get.return_value = True
         content_listener = listener.ContentListener(self.sync_conduit, self.progress_report,
@@ -39,6 +44,9 @@ class TestContentListener(unittest.TestCase):
         self.progress_report['content'].success.assert_called_once_with(self.report.data)
         mock_verify_size.assert_called_once()
         mock_verify_checksum.assert_called_once()
+        mock_nevra.assert_called_once_with(self.sync_conduit.init_unit().unit_key,
+                                           self.sync_conduit.init_unit().type_id,
+                                           self.sync_conduit.repo_id)
 
     @mock.patch('__builtin__.open', autospec=True)
     @mock.patch('pulp.plugins.util.verification.verify_checksum')

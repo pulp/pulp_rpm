@@ -12,7 +12,7 @@ from pulp.server.exceptions import PulpCodedValidationException, PulpCodedExcept
 
 from pulp_rpm.plugins.db import models
 from pulp_rpm.plugins import error_codes
-from pulp_rpm.plugins.importers.yum import utils
+from pulp_rpm.plugins.importers.yum import purge, utils
 from pulp_rpm.plugins.importers.yum.parse import rpm as rpm_parse
 from pulp_rpm.plugins.importers.yum.repomd import primary
 
@@ -85,7 +85,7 @@ def upload(repo, type_id, unit_key, metadata, file_path, conduit, config):
         return _fail_report('%s is not a supported type for upload' % type_id)
 
     try:
-        handlers[type_id](type_id, unit_key, metadata, file_path, conduit, config)
+        handlers[type_id](repo, type_id, unit_key, metadata, file_path, conduit, config)
     except ModelInstantiationError:
         msg = 'metadata for the uploaded file was invalid'
         _LOGGER.exception(msg)
@@ -110,7 +110,7 @@ def upload(repo, type_id, unit_key, metadata, file_path, conduit, config):
     return report
 
 
-def _handle_erratum(type_id, unit_key, metadata, file_path, conduit, config):
+def _handle_erratum(repo, type_id, unit_key, metadata, file_path, conduit, config):
     """
     Handles the upload for an erratum. There is no file uploaded so the only
     steps are to save the metadata and optionally link the erratum to RPMs
@@ -162,7 +162,7 @@ def _link_errata_to_rpms(conduit, errata_model, errata_unit):
             conduit.link_unit(errata_unit, unit, bidirectional=True)
 
 
-def _handle_yum_metadata_file(type_id, unit_key, metadata, file_path, conduit, config):
+def _handle_yum_metadata_file(repo, type_id, unit_key, metadata, file_path, conduit, config):
     """
     Handles the upload for a yum repository metadata file.
 
@@ -195,7 +195,7 @@ def _handle_yum_metadata_file(type_id, unit_key, metadata, file_path, conduit, c
         raise StoreFileError()
 
 
-def _handle_group_category(type_id, unit_key, metadata, file_path, conduit, config):
+def _handle_group_category(repo, type_id, unit_key, metadata, file_path, conduit, config):
     """
     Handles the creation of a package group or category. There is no file uploaded,
     so the process is simply to create the unit in Pulp.
@@ -219,7 +219,7 @@ def _handle_group_category(type_id, unit_key, metadata, file_path, conduit, conf
     conduit.save_unit(unit)
 
 
-def _handle_package(type_id, unit_key, metadata, file_path, conduit, config):
+def _handle_package(repo, type_id, unit_key, metadata, file_path, conduit, config):
     """
     Handles the upload for an RPM or SRPM. For these types, the unit_key
     and metadata will only contain additions the user wishes to add. The
@@ -264,7 +264,8 @@ def _handle_package(type_id, unit_key, metadata, file_path, conduit, config):
     unit.metadata['repodata'] = rpm_parse.get_package_xml(unit.storage_path,
                                                           sumtype=new_unit_key['checksumtype'])
     _update_provides_requires(unit)
-
+    # check if the unit has duplicate nevra
+    purge.remove_unit_duplicate_nevra(unit.unit_key, unit.type_id, repo.id)
     # Save the unit in Pulp
     conduit.save_unit(unit)
 
