@@ -220,6 +220,18 @@ class TestSyncFeed(BaseSyncTest):
 
         self.assertEqual(ret, [self.url])
 
+    @mock.patch('pulp_rpm.plugins.importers.yum.sync.RepoSync.check_metadata',
+                spec_set=RepoSync.check_metadata)
+    def test_query_without_trailing_slash(self, mock_check_metadata):
+        # it should add back the trailing slash if not present without changing the query string
+        query = '?foo=bar'
+        self.config.override_config[importer_constants.KEY_FEED] = self.url.rstrip('/') + query
+
+        ret = self.reposync.sync_feed
+        expected = [self.url + query]
+
+        self.assertEqual(ret, expected)
+
     def test_repo_url_is_none(self):
 
         self.config.override_config[importer_constants.KEY_FEED] = None
