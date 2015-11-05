@@ -144,19 +144,20 @@ class TestPackages(TestCase):
 
 
 class TestListener(TestCase):
+
     def test_construction(self):
         content_listener = Mock()
         listener = ContainerListener(content_listener)
         self.assertEqual(listener.content_listener, content_listener)
 
-    def test_download_succeeded(self):
+    def test_on_succeeded(self):
         request = Request('T1', {'A': 1}, 'http://test', '/tmp/test')
         request.data = Mock()
         content_listener = Mock()
 
         # test
         listener = ContainerListener(content_listener)
-        listener.download_succeeded(request)
+        listener.on_succeeded(request)
 
         # validation
         calls = content_listener.download_succeeded.mock_calls
@@ -166,7 +167,7 @@ class TestListener(TestCase):
         self.assertEqual(report.destination, request.destination)
         self.assertEqual(report.data, request.data)
 
-    def test_download_failed(self):
+    def test_on_failed(self):
         request = Request('T1', {'A': 1}, 'http://test', '/tmp/test')
         request.data = Mock()
         request.errors = [1, 2, 3]
@@ -174,7 +175,7 @@ class TestListener(TestCase):
 
         # test
         listener = ContainerListener(content_listener)
-        listener.download_failed(request)
+        listener.on_failed(request)
 
         # validation
         calls = content_listener.download_failed.mock_calls

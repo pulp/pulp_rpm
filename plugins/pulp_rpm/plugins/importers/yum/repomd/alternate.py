@@ -7,7 +7,8 @@ from gettext import gettext as _
 
 from nectar.report import DownloadReport
 
-from pulp.server.content.sources.container import ContentContainer, Listener
+from pulp.server.content.sources.container import ContentContainer
+from pulp.server.content.sources.event import Listener
 from pulp.server.content.sources.model import Request
 
 from pulp_rpm.plugins.importers.yum.repomd.nectar_factory import create_downloader
@@ -114,7 +115,7 @@ class ContainerListener(Listener):
         Listener.__init__(self)
         self.content_listener = content_listener
 
-    def download_succeeded(self, request):
+    def on_succeeded(self, request):
         """
         Notification that downloading has succeeded for the specified request.
         Fields mapped and forwarded to the wrapped listener.
@@ -124,7 +125,7 @@ class ContainerListener(Listener):
         report = DownloadReport(request.url, request.destination, request.data)
         self.content_listener.download_succeeded(report)
 
-    def download_failed(self, request):
+    def on_failed(self, request):
         """
         Notification that downloading has failed for the specified request.
         Fields mapped and forwarded to the wrapped listener.
