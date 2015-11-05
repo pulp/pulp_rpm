@@ -3,7 +3,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='pulp_rpm_plugins',
-    version='2.7.0c8',
+    version='2.7.0',
     license='GPLv2+',
     packages=find_packages(),
     author='Pulp Team',
