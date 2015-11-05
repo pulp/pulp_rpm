@@ -3,7 +3,8 @@ import mock
 from pulp.plugins.types import database as types_db
 from pulp.plugins.types.model import TypeDefinition
 from pulp.server.db import model
-from pulp.server.db.model.repository import RepoContentUnit, RepoImporter
+from pulp.server.db.connection import get_collection
+from pulp.server.db.model.repository import RepoContentUnit
 from pulp.server.db.migrate.models import _import_all_the_way
 from pulp.server.managers import factory
 
@@ -38,11 +39,11 @@ class Migration0004Tests(rpm_support_base.PulpRPMTests):
         dest_repo = model.Repository(repo_id=self.dest_repo_id)
         dest_repo.save()
 
-        source_importer = RepoImporter(self.source_repo_id, 'yum_importer', 'yum_importer', {})
-        RepoImporter.get_collection().insert(source_importer)
+        source_importer = model.Importer(self.source_repo_id, 'yum_importer', {})
+        source_importer.save()
 
-        dest_importer = RepoImporter(self.dest_repo_id, 'yum_importer', 'yum_importer', {})
-        RepoImporter.get_collection().insert(dest_importer)
+        dest_importer = model.Importer(self.dest_repo_id, 'yum_importer', {})
+        dest_importer.save()
 
     def tearDown(self):
         super(Migration0004Tests, self).tearDown()
@@ -51,7 +52,7 @@ class Migration0004Tests(rpm_support_base.PulpRPMTests):
         types_db.clean()
 
         RepoContentUnit.get_collection().remove()
-        RepoImporter.get_collection().remove()
+        get_collection('repo_importers').remove()
         model.Repository.drop_collection()
 
     def test_migrate_duplicates(self):
