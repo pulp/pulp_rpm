@@ -903,7 +903,7 @@ class TestDownload(BaseSyncTest):
         self.assertEqual(mock_package_list_generator.call_count, 1)
 
         # verify that the download requests were correct
-        requests = list(fake_container.download.call_args[0][2])
+        requests = list(fake_container.download.call_args[0][1])
         self.assertEqual(len(requests), 2)
         self.assertEqual(requests[0].url, os.path.join(self.url, self.RELATIVEPATH))
         self.assertEqual(requests[0].destination,
