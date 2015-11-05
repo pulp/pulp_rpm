@@ -1,6 +1,5 @@
 import os
 
-from threading import Event
 from urlparse import urljoin
 from logging import getLogger
 from gettext import gettext as _
@@ -34,8 +33,6 @@ class Packages(object):
     :type primary: nectar.downloaders.base.Downloader
     :ivar container: A content container.
     :type container: ContentContainer
-    :ivar canceled: An event that signals the running download has been canceled.
-    :type canceled: threading.Event
     """
 
     def __init__(self, base_url, nectar_conf, units, dst_dir, listener):
@@ -55,7 +52,6 @@ class Packages(object):
         self.listener = ContainerListener(listener)
         self.primary = create_downloader(base_url, nectar_conf)
         self.container = ContentContainer()
-        self.canceled = Event()
 
     @property
     def downloader(self):
@@ -90,15 +86,8 @@ class Packages(object):
         """
         Download packages using alternate content source container.
         """
-        report = self.container.download(
-            self.canceled, self.primary, self.get_requests(), self.listener)
+        report = self.container.download(self.primary, self.get_requests(), self.listener)
         _log.info(CONTAINER_REPORT, dict(r=report.dict(), u=self.base_url))
-
-    def cancel(self):
-        """
-        Cancel a running download.
-        """
-        self.canceled.set()
 
 
 class ContainerListener(Listener):

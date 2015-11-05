@@ -21,10 +21,9 @@ class Unit(object):
 
 
 class TestPackages(TestCase):
-    @patch('pulp_rpm.plugins.importers.yum.repomd.alternate.Event')
     @patch('pulp_rpm.plugins.importers.yum.repomd.alternate.ContentContainer')
     @patch('pulp_rpm.plugins.importers.yum.repomd.alternate.create_downloader')
-    def test_construction(self, fake_create_downloader, fake_container, fake_event):
+    def test_construction(self, fake_create_downloader, fake_container):
         base_url = str(uuid4())
         nectar_conf = Mock()
         units = Mock()
@@ -44,7 +43,6 @@ class TestPackages(TestCase):
         self.assertEqual(packages.listener.content_listener, listener)
         self.assertEqual(packages.primary, fake_create_downloader())
         self.assertEqual(packages.container, fake_container())
-        self.assertEqual(packages.canceled, fake_event())
 
     def test_downloader(self):
         # test
@@ -53,7 +51,6 @@ class TestPackages(TestCase):
         # validation
         self.assertEqual(packages.downloader, packages)
 
-    @patch('pulp_rpm.plugins.importers.yum.repomd.alternate.Event', Mock())
     @patch('pulp_rpm.plugins.importers.yum.repomd.alternate.create_downloader', Mock())
     @patch('pulp_rpm.plugins.importers.yum.repomd.alternate.ContentContainer')
     @patch('pulp_rpm.plugins.importers.yum.repomd.alternate.Packages.get_requests')
@@ -72,9 +69,8 @@ class TestPackages(TestCase):
 
         # validation
         fake_container().download.assert_called_with(
-            packages.canceled, packages.primary, fake_requests(), packages.listener)
+            packages.primary, fake_requests(), packages.listener)
 
-    @patch('pulp_rpm.plugins.importers.yum.repomd.alternate.Event', Mock())
     @patch('pulp_rpm.plugins.importers.yum.repomd.alternate.create_downloader', Mock())
     @patch('pulp_rpm.plugins.importers.yum.repomd.alternate.ContentContainer', Mock())
     @patch('pulp_rpm.plugins.importers.yum.repomd.alternate.Request')
@@ -101,7 +97,6 @@ class TestPackages(TestCase):
                              os.path.join(packages.dst_dir, units[n].relative_path))
         self.assertEqual(len(requests), len(units))
 
-    @patch('pulp_rpm.plugins.importers.yum.repomd.alternate.Event', Mock())
     @patch('pulp_rpm.plugins.importers.yum.repomd.alternate.create_downloader', Mock())
     @patch('pulp_rpm.plugins.importers.yum.repomd.alternate.ContentContainer', Mock())
     @patch('pulp_rpm.plugins.importers.yum.repomd.alternate.Request')
@@ -131,16 +126,6 @@ class TestPackages(TestCase):
             self.assertEqual(call[1]['destination'],
                              os.path.join(packages.dst_dir, units[n].relative_path))
         self.assertEqual(len(requests), len(units))
-
-    def test_cancel(self):
-        packages = Packages('http://none', None, [], '', None)
-        self.assertFalse(packages.canceled.is_set())
-
-        # test
-        packages.cancel()
-
-        # validation
-        self.assertTrue(packages.canceled.is_set())
 
 
 class TestListener(TestCase):
