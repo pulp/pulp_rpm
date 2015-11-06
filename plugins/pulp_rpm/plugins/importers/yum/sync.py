@@ -9,7 +9,7 @@ import tempfile
 import traceback
 from gettext import gettext as _
 from cStringIO import StringIO
-
+from urlparse import urlparse, urlunparse
 
 from nectar.request import DownloadRequest
 
@@ -90,8 +90,13 @@ class RepoSync(object):
         if repo_url:
             repo_url_slash = repo_url
             self.tmp_dir = tempfile.mkdtemp(dir=self.working_dir)
-            if not repo_url.endswith('/'):
-                    repo_url_slash = repo_url + '/'
+            parsed = urlparse(repo_url)
+            path = parsed.path
+            if not path.endswith('/'):
+                path += '/'
+            repo_url_slash = urlunparse(
+                (parsed.scheme, parsed.netloc, path, parsed.params, parsed.query, parsed.fragment)
+            )
             try:
                 self.check_metadata(repo_url_slash)
                 return [repo_url_slash]
