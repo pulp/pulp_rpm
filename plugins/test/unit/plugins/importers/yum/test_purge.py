@@ -294,3 +294,30 @@ class TestPurgeUnwantedUnits(TestPurgeBase):
         purge.purge_unwanted_units(self.metadata_files, self.conduit, self.config)
 
         mock_remove_old_versions.assert_called_once_with(3, self.conduit)
+
+
+class RemoveUnitDuplicateNevra(TestPurgeBase):
+
+    @mock.patch.object(purge, 'RepoUnitAssociationManager', autospec=True)
+    @mock.patch.object(purge, 'UnitAssociationCriteria', autospec=True)
+    def test_remove_unit_duplicate_nerva(self, mock_criteria, mock_association):
+        unit_key = {'name': 'test-nevra', 'epoch': 0, 'version': 1, 'release': '23',
+                    'arch': 'noarch', 'checksum': '1234abc', 'checksumtype': 'sha256'}
+        type_id = 'rpm'
+        repo_id = 'test-repo'
+        expected_filters = set([('arch', 'noarch'), ('epoch', 0), ('name', 'test-nevra'),
+                                ('release', '23'), ('version', 1)])
+
+        purge.remove_unit_duplicate_nevra(unit_key, type_id, repo_id)
+
+        # verify
+        self.assertEqual(mock_criteria.mock_calls[0][2]['type_ids'], 'rpm')
+        self.assertEqual(mock_criteria.mock_calls[0][2]['unit_filters'].keys(), ['$and'])
+        result_filters = mock_criteria.mock_calls[0][2]['unit_filters']['$and']
+        unit_filters = set()
+        for i in result_filters:
+            unit_filters.add(i.items()[0])
+        self.assertEqual(unit_filters, expected_filters)
+        mock_association.unassociate_by_criteria.assert_called_once_with(
+            repo_id,
+            mock_criteria.return_value)

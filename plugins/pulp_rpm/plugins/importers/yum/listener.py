@@ -7,6 +7,7 @@ from pulp.plugins.util import verification
 
 from pulp_rpm.common import constants
 from pulp_rpm.plugins.db import models
+from pulp_rpm.plugins.importers.yum import purge
 
 
 _logger = logging.getLogger(__name__)
@@ -80,6 +81,9 @@ class ContentListener(DownloadEventListener):
         # init unit, which is idempotent
         unit = self.sync_conduit.init_unit(model.TYPE, model.unit_key, model.metadata,
                                            model.relative_path)
+        # check if the unit has duplicate nevra
+        repo_id = self.sync_conduit.repo_id
+        purge.remove_unit_duplicate_nevra(unit.unit_key, unit.type_id, repo_id)
         # move to final location.
         # we cannot use here shutil.move because it preserves all the file attributes,
         # even the selinux labels from the the source directory, that has different label
