@@ -4,7 +4,7 @@ import logging
 
 from pulp.common.plugins import importer_constants
 from pulp.server.db.model.criteria import UnitAssociationCriteria
-
+from pulp.server.managers.repo.unit_association import RepoUnitAssociationManager
 from pulp_rpm.plugins.db import models
 from pulp_rpm.plugins.importers.yum.repomd import packages, primary, presto, updateinfo, group
 
@@ -260,3 +260,28 @@ def get_remote_units(file_function, tag, process_func):
     finally:
         file_handle.close()
     return remote_named_tuples
+
+
+def remove_unit_duplicate_nevra(unit_key, type_id, repo_id):
+    """
+    Removes units from the repo that have same NEVRA, ignoring the checksum
+    and checksum type.
+
+    :param unit_key: dictionary of key:value pairs that make a unique
+                     identifier of the unit specified by the user
+    :type unit_key: dict
+    :param type_id: type of unit being checked for duplicate nevra
+    :type type_id:  str
+    :param repo_id: id of the repo from which units will be unassociated
+    :type repo_id:  str
+    """
+    nevra_filters = unit_key.copy()
+    del nevra_filters['checksum']
+    del nevra_filters['checksumtype']
+    list_filters = []
+    for i in nevra_filters.items():
+        list_filters.append(dict([i]))
+    filters = {'$and': list_filters}
+    criteria = UnitAssociationCriteria(type_ids=type_id, unit_filters=filters)
+    # unassociate unit from repo that match given criteria
+    RepoUnitAssociationManager.unassociate_by_criteria(repo_id, criteria)

@@ -470,8 +470,9 @@ class UploadPackageTests(unittest.TestCase):
         if os.path.exists(self.tmp_dir):
             shutil.rmtree(self.tmp_dir)
 
+    @mock.patch('pulp_rpm.plugins.importers.yum.upload.purge.remove_unit_duplicate_nevra')
     @mock.patch('pulp_rpm.plugins.importers.yum.upload._generate_rpm_data')
-    def test_handle_package(self, mock_generate):
+    def test_handle_package(self, mock_generate, mock_nevra):
         # Setup
         unit_key = {
             'name': 'walrus',
@@ -498,8 +499,7 @@ class UploadPackageTests(unittest.TestCase):
 
         # Test
         upload._handle_package(mock_repo, models.RPM.TYPE, user_unit_key, user_metadata,
-                               self.upload_src_filename,
-                               mock_conduit, config)
+                               self.upload_src_filename, mock_conduit, config)
 
         # Verify
 
@@ -521,6 +521,9 @@ class UploadPackageTests(unittest.TestCase):
 
         mock_conduit.init_unit.assert_called_once_with(models.RPM.TYPE, full_unit_key,
                                                        full_metadata, expected_relative_path)
+
+        mock_nevra.assert_called_once_with(full_unit_key, models.RPM.TYPE, mock_repo.id)
+
         mock_conduit.save_unit.assert_called_once()
         saved_unit = mock_conduit.save_unit.call_args[0][0]
         self.assertEqual(inited_unit, saved_unit)
