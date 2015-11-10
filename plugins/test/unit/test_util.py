@@ -1,5 +1,6 @@
 import re
 import unittest
+from urlparse import urlparse
 from xml.etree import cElementTree as ET
 
 from pulp_rpm.plugins.importers.yum import utils
@@ -121,6 +122,53 @@ class TestStripNS(unittest.TestCase):
         self.assertFalse(element.tag.startswith('{'))
         for child in element:
             self._check_all_elements(child)
+
+
+class TestRepoURLModify(unittest.TestCase):
+    test_url = 'scheme://user:pass@hostname/path?query#fragment'
+
+    def test_no_config(self):
+        # test that with no configuration, the URL modifier does nothing
+        url_modify = utils.RepoURLModifier()
+        modified_url = url_modify(self.test_url)
+        self.assertEqual(modified_url, self.test_url)
+
+    def test_add_trailing_slash(self):
+        # test that a trailing slash is added to the path
+        url_modify = utils.RepoURLModifier({'ensure_trailing_slash': True})
+        modified_url = url_modify(self.test_url)
+        modified_url_path = urlparse(modified_url).path
+        self.assertEqual(modified_url_path, '/path/')
+
+        # for fun, try to add another trailing slash to the modified, which should make no change
+        modified_url = url_modify(modified_url)
+        modified_url_path = urlparse(modified_url).path
+        self.assertEqual(modified_url_path, '/path/')
+
+    def test_path_append(self):
+        # test that a path fragment is appended correctly
+        url_modify = utils.RepoURLModifier({'path_append': 'appended'})
+        modified_url = url_modify(self.test_url)
+        modified_url_path = urlparse(modified_url).path
+        self.assertEqual(modified_url_path, '/path/appended')
+
+    def test_sles_token(self):
+        # test the the query string is properly overwritten with the sles auth token
+        url_modify = utils.RepoURLModifier({'query_auth_token': 'gabbagabbahey'})
+        self.assertTrue(self.test_url.endswith('?query#fragment'))
+        modified_url = url_modify(self.test_url)
+        self.assertTrue(modified_url.endswith('?gabbagabbahey#fragment'))
+
+    def test_kwargs_update(self):
+        # test that passed-in kwargs are applied and take precedence over the initial config
+        url_modify = utils.RepoURLModifier({'path_append': 'appended'})
+        modified_url = url_modify(self.test_url, path_append='updated', ensure_trailing_slash=True)
+        modified_url_path = urlparse(modified_url).path
+        self.assertEqual(modified_url_path, '/path/updated/')
+
+        # make sure the kwargs didn't overwrite the modifier config
+        self.assertEqual(url_modify.conf['path_append'], 'appended')
+        self.assertFalse('ensure_trailing_slash' in url_modify.conf)
 
 
 PRIMARY_XML = """<?xml version="1.0" encoding="UTF-8"?>

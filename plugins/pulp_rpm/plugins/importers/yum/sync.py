@@ -9,7 +9,6 @@ import tempfile
 import traceback
 from gettext import gettext as _
 from cStringIO import StringIO
-from urlparse import urlparse, urlunparse
 
 from nectar.request import DownloadRequest
 
@@ -20,7 +19,7 @@ from pulp.server.exceptions import PulpCodedException
 from pulp_rpm.common import constants, ids
 from pulp_rpm.plugins import error_codes
 from pulp_rpm.plugins.db import models
-from pulp_rpm.plugins.importers.yum import existing, purge
+from pulp_rpm.plugins.importers.yum import existing, purge, utils
 from pulp_rpm.plugins.importers.yum.listener import ContentListener
 from pulp_rpm.plugins.importers.yum.parse import treeinfo
 from pulp_rpm.plugins.importers.yum.repomd import (
@@ -70,6 +69,10 @@ class RepoSync(object):
         self.skip_repomd_steps = False
         self.current_revision = 0
 
+        self._url_modify = utils.RepoURLModifier({
+            'query_auth_token': call_config.get('query_auth_token')
+        })
+
     def set_progress(self):
         """
         A convenience method to perform this very repetitive task. This is also
@@ -88,15 +91,8 @@ class RepoSync(object):
         """
         repo_url = self.call_config.get(importer_constants.KEY_FEED)
         if repo_url:
-            repo_url_slash = repo_url
+            repo_url_slash = self._url_modify(repo_url, ensure_trailing_slash=True)
             self.tmp_dir = tempfile.mkdtemp(dir=self.working_dir)
-            parsed = urlparse(repo_url)
-            path = parsed.path
-            if not path.endswith('/'):
-                path += '/'
-            repo_url_slash = urlunparse(
-                (parsed.scheme, parsed.netloc, path, parsed.params, parsed.query, parsed.fragment)
-            )
             try:
                 self.check_metadata(repo_url_slash)
                 return [repo_url_slash]
@@ -209,7 +205,7 @@ class RepoSync(object):
                     if not skip:
                         treeinfo.sync(self.sync_conduit, url, self.tmp_dir,
                                       self.nectar_config, self.distribution_report,
-                                      self.set_progress)
+                                      self.set_progress, self._url_modify)
 
                 with self.update_state(self.progress_status['errata'], models.Errata.TYPE) as skip:
                     if not (skip or self.skip_repomd_steps):
@@ -297,7 +293,8 @@ class RepoSync(object):
         :rtype:     pulp_rpm.plugins.importers.yum.repomd.metadata.MetadataFiles
         """
         _logger.info(_('Downloading metadata from %(feed)s.') % {'feed': url})
-        metadata_files = metadata.MetadataFiles(url, self.tmp_dir, self.nectar_config)
+        metadata_files = metadata.MetadataFiles(url, self.tmp_dir, self.nectar_config,
+                                                self._url_modify)
         try:
             metadata_files.download_repomd()
         except IOError, e:
@@ -563,7 +560,8 @@ class RepoSync(object):
                                                               rpms_to_download)
 
             download_wrapper = alternate.Packages(url, self.nectar_config,
-                                                  units_to_download, self.tmp_dir, event_listener)
+                                                  units_to_download, self.tmp_dir, event_listener,
+                                                  self._url_modify)
             # allow the downloader to be accessed by the cancel method if necessary
             self.downloader = download_wrapper.downloader
             _logger.info(_('Downloading %(num)s RPMs.') % {'num': len(rpms_to_download)})
@@ -588,7 +586,7 @@ class RepoSync(object):
 
                     download_wrapper = packages.Packages(url, self.nectar_config,
                                                          units_to_download, self.tmp_dir,
-                                                         event_listener)
+                                                         event_listener, self._url_modify)
                     # allow the downloader to be accessed by the cancel method if necessary
                     self.downloader = download_wrapper.downloader
                     _logger.info(_('Downloading %(num)s DRPMs.') % {'num': len(drpms_to_download)})

@@ -354,7 +354,8 @@ class TestRun(BaseSyncTest):
                                                    mock_mkdtemp.return_value,
                                                    self.reposync.nectar_config,
                                                    self.reposync.distribution_report,
-                                                   self.reposync.set_progress)
+                                                   self.reposync.set_progress,
+                                                   self.reposync._url_modify)
         # make sure we cleaned up the temporary directory
         mock_rmtree.assert_called_with(mock_mkdtemp.return_value, ignore_errors=True)
 
@@ -975,6 +976,70 @@ class TestDownload(BaseSyncTest):
                          os.path.join(self.reposync.tmp_dir, drpms[1].filename))
         self.assertTrue(requests[1].data is drpms[1])
         self.assertTrue(file_handle.closed)
+
+
+class TestQueryAuthToken(BaseSyncTest):
+    def setUp(self):
+        super(TestQueryAuthToken, self).setUp()
+        self.qstring = '?letmein'
+        self.config = PluginCallConfiguration({}, {importer_constants.KEY_FEED: self.url,
+                                                   'query_auth_token': self.qstring[1:]})
+        self.reposync = RepoSync(self.repo, self.conduit, self.config)
+        self.reposync.tmp_dir = '/dev/null/tmp'
+
+    @mock.patch('pulp_rpm.plugins.importers.yum.repomd.alternate.ContentContainer')
+    @mock.patch('pulp_rpm.plugins.importers.yum.repomd.nectar_factory.create_downloader',
+                autospec=True)
+    @mock.patch.object(packages, 'package_list_generator', autospec=True)
+    def test_query_auth_token_append(
+            self, mock_package_list_generator, mock_create_downloader, mock_container):
+        """
+        test RPMs to download with auth token
+
+        tests the main feed URL and individual package URLs have the auth token applied
+
+        """
+        file_handle = StringIO()
+        self.metadata_files = metadata.MetadataFiles(self.url, '/foo/bar', DownloaderConfig(),
+                                                     self.reposync._url_modify)
+        self.assertEqual(self.metadata_files.repo_url, self.url + self.qstring)
+        self.metadata_files.get_metadata_file_handle = mock.MagicMock(
+            spec_set=self.metadata_files.get_metadata_file_handle,
+            side_effect=[file_handle, None, None],  # None means it will skip DRPMs
+        )
+
+        package_names = []
+        rpms = model_factory.rpm_models(3)
+        for i, rpm in enumerate(rpms):
+            package = 'package-{}.rpm'.format(i)
+            package_names.append(package)
+            rpm.metadata['filename'] = rpm.metadata['relativepath'] = package
+
+        mock_package_list_generator.return_value = rpms
+        self.downloader.download = mock.MagicMock(spec_set=self.downloader.download)
+        mock_create_downloader.return_value = self.downloader
+
+        fake_container = mock.Mock()
+        fake_container.refresh.return_value = {}
+        mock_container.return_value = fake_container
+
+        self.reposync.download(self.metadata_files, set(m.as_named_tuple for m in rpms), set(),
+                               self.url)
+
+        requests = list(fake_container.download.call_args[0][2])
+        # the individual package urls
+        for i, request in enumerate(requests):
+            self.assertEqual(request.url, os.path.join(self.url, package_names[i]) + self.qstring)
+
+    @mock.patch('pulp_rpm.plugins.importers.yum.repomd.metadata.MetadataFiles', autospec=True)
+    def test_reposync_copies_url_modify(self, mock_metadata_files):
+        # test that RepoSync properly passes its URL modifier to MetadataFiles
+        self.assertIsNone(mock_metadata_files.call_args)
+        self.reposync.check_metadata('blah')
+
+        # should only be one call
+        self.assertEqual(mock_metadata_files.call_count, 1)
+        self.assertIs(mock_metadata_files.call_args[0][3], self.reposync._url_modify)
 
 
 class TestCancel(BaseSyncTest):

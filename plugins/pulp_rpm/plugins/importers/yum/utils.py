@@ -1,7 +1,8 @@
-from cStringIO import StringIO
-from collections import namedtuple
 import re
 import sys
+from cStringIO import StringIO
+from collections import namedtuple
+from urlparse import urljoin, urlparse, urlunparse
 
 from pulp.common.compat import check_builtin
 
@@ -99,3 +100,72 @@ def strip_ns(element, uri=None):
         element.tag = element.tag.replace('{%s}' % uri, '')
     for child in list(element):
         strip_ns(child, uri)
+
+
+class RepoURLModifier(object):
+    """
+    Repository URL Modifier
+
+    :ivar conf: URL modifier persistent configuration
+    :type conf: dict
+
+    """
+    def __init__(self, conf=None):
+        """
+        :ivar conf: URL modifier persistent configuration
+        :type conf: dict
+
+        """
+        self.conf = conf or dict()
+
+    def __call__(self, url, **kwargs):
+        """
+        Modify a URL based on the keys in the url modify conf
+
+        :param url:         URL to modify
+        :type:              str
+
+        :return:     The modified URL
+        :rtype:      str
+
+        The URL modify conf values are derived from the the importer config
+        as described below. Extra keyword arguments will also be added to the
+        modify_conf and processed.
+
+        Values used from the importer config:
+
+            * If 'query_auth_token' is found in the importer config, it will
+              be copied to modify_conf
+
+        Valid keys in modify_conf, which can be passes as option keyword args,
+        will be processed in order as described here:
+
+            * path_append: If found, will be appended to the URL path component
+            * ensure_trailing_slash: If found and evaluates as true, add a
+              trailing slash (if needed) to the URL path component
+            * query_auth_token: If found, will become or replace the URLs
+              query string, used for authenticating to repositories like SLES 12
+              (and higher), which use this mechanism
+
+        """
+        modify_conf = self.conf.copy()
+        modify_conf.update(kwargs)
+
+        scheme, netloc, path, params, query, fragment = urlparse(url)
+
+        if modify_conf.get('path_append'):
+            if not path.endswith('/'):
+                path += '/'
+            path = urljoin(path, modify_conf['path_append'])
+
+        if modify_conf.get('ensure_trailing_slash'):
+            if not path.endswith('/'):
+                path += '/'
+
+        if modify_conf.get('query_auth_token'):
+            query = modify_conf['query_auth_token']
+
+        url = urlunparse(
+            (scheme, netloc, path, params, query, fragment)
+        )
+        return url
