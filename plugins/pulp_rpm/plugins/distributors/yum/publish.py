@@ -891,6 +891,7 @@ class GenerateSqliteForRepoStep(PublishStep):
         """
         checksum_type = self.parent.get_checksum_type()
         pipe = subprocess.Popen('createrepo_c -d --update --keep-all-metadata '
+                                '--local-sqlite '
                                 '-s %(checksum_type)s --skip-stat %(content_dir)s' %
                                 {'checksum_type': checksum_type, 'content_dir': self.content_dir},
                                 shell=True, stdout=subprocess.PIPE,
