@@ -1043,7 +1043,8 @@ class GenerateSqliteForRepoStepTests(BaseYumDistributorPublishStepTests):
         step.parent.get_checksum_type.return_value = 'sha1'
         step.process_main()
         Popen.assert_called_once_with('createrepo_c -d --update --keep-all-metadata '
-                                      '-s sha1 '
+                                      '--local-sqlite '
+                                     '-s sha1 '
                                       '--skip-stat /foo',
                                       shell=True, stderr=mock.ANY, stdout=mock.ANY)
 
