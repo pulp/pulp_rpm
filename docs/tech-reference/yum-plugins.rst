@@ -458,6 +458,11 @@ configuration values are optional.
 ``basic_auth_password``
  Password to use for server authentication.
 
+``query_auth_token``
+ An authorization token that will be added to every request made to the feed URL's
+ server, which may be required to sync from repositories that use this method of
+ authorization (SLES 12, for example).
+
 ``max_speed``
  The maximum download speed in bytes/sec for a task (such as a sync);
  defaults to None
@@ -509,7 +514,7 @@ Yum Distributor
 
 The Yum Distributor ID is ``yum_distributor``.
 
-Configuration Parameters 
+Configuration Parameters
 ------------------------
 
 The following options are available to the Yum Distributor configuration.

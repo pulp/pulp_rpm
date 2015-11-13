@@ -10,6 +10,7 @@ from pulp.server.exceptions import PulpCodedValidationException
 from pulp_rpm.common import constants
 from pulp_rpm.plugins.db import models
 from pulp_rpm.plugins.importers.yum.parse import treeinfo
+from pulp_rpm.plugins.importers.yum.utils import RepoURLModifier
 
 
 DATA_PATH = os.path.join(os.path.dirname(__file__), '..', '..', '..', '..', '..', 'data')
@@ -188,3 +189,32 @@ class TestParseTreefile(unittest.TestCase):
         model, files = treeinfo.parse_treefile('/some/path')
 
         self.assertEqual(files[0]['checksumtype'], 'sha1')
+
+
+class TestQueryAuthToken(unittest.TestCase):
+    """
+    Test that the auth token query string is properly appended if needed
+    """
+    @patch('pulp_rpm.plugins.importers.yum.parse.treeinfo.nectar_factory.create_downloader')
+    def test_get_treefile(self, mock_create_downloader):
+        qstring = '?foo'
+        url_modify = RepoURLModifier({'query_auth_token': qstring[1:]})
+        working_path = '/tmp/'
+        feed = 'http://host/path/'
+        treeinfo.get_treefile(feed, working_path, Mock(), url_modify)
+        request = mock_create_downloader.return_value.method_calls[0][1][0][0]
+        # Thanks to the mock, get_treeinfo will succeed on the first request, so
+        # the expected URL gets built against the first TREE_INFO_LIST member
+        self.assertTrue(request.url == os.path.join(feed, constants.TREE_INFO_LIST[0] + qstring))
+
+    @patch('pulp_rpm.plugins.importers.yum.parse.treeinfo.nectar_factory.create_downloader')
+    @patch('pulp_rpm.plugins.importers.yum.parse.treeinfo.AggregatingEventListener')
+    def test_get_distribution_file(self, mock_listener, mock_create_downloader):
+        qstring = '?foo'
+        url_modify = RepoURLModifier({'query_auth_token': qstring[1:]})
+        mock_listener.return_value.succeeded_reports = ['report']
+        working_path = '/tmp/'
+        feed = 'http://host/path/'
+        treeinfo.get_distribution_file(feed, working_path, Mock(), url_modify)
+        request = mock_create_downloader.return_value.method_calls[0][1][0][0]
+        self.assertEquals(request.url, os.path.join(feed, constants.DISTRIBUTION_XML + qstring))

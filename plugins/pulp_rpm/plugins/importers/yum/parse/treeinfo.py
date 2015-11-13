@@ -17,6 +17,7 @@ from pulp_rpm.plugins.db import models
 from pulp_rpm.plugins import error_codes
 from pulp_rpm.plugins.importers.yum.listener import DistroFileListener
 from pulp_rpm.plugins.importers.yum.repomd import nectar_factory
+from pulp_rpm.plugins.importers.yum.utils import RepoURLModifier
 
 
 SECTION_GENERAL = 'general'
@@ -29,7 +30,8 @@ KEY_DISTRIBUTION_CONTEXT = 'distribution_context'
 _LOGGER = logging.getLogger(__name__)
 
 
-def sync(sync_conduit, feed, working_dir, nectar_config, report, progress_callback):
+def sync(sync_conduit, feed, working_dir, nectar_config, report, progress_callback,
+         url_modify=None):
     """
     Look for a distribution in the target repo and sync it if found
 
@@ -52,7 +54,8 @@ def sync(sync_conduit, feed, working_dir, nectar_config, report, progress_callba
     # complete cleanup
     tmp_dir = tempfile.mkdtemp(dir=working_dir)
     try:
-        treefile_path = get_treefile(feed, tmp_dir, nectar_config)
+        url_modify = url_modify or RepoURLModifier()
+        treefile_path = get_treefile(feed, tmp_dir, nectar_config, url_modify)
         if not treefile_path:
             _LOGGER.debug('no treefile found')
             return
@@ -185,7 +188,7 @@ def strip_treeinfo_repomd(treeinfo_path):
         f.truncate()
 
 
-def get_treefile(feed, tmp_dir, nectar_config):
+def get_treefile(feed, tmp_dir, nectar_config, url_modify=None):
     """
     Download the treefile and return its full path on disk, or None if not found
 
@@ -195,6 +198,8 @@ def get_treefile(feed, tmp_dir, nectar_config):
     :type  tmp_dir:         str
     :param nectar_config:   download config to be used by nectar
     :type  nectar_config:   nectar.config.DownloaderConfig
+    :param url_modify:      Optional URL modifier
+    :type  url_modify:      pulp_rpm.plugins.importers.yum.utils.RepoURLModifier
 
     :return:        full path to treefile on disk, or None if not found
     :rtype:         str or NoneType
@@ -202,6 +207,8 @@ def get_treefile(feed, tmp_dir, nectar_config):
     for filename in constants.TREE_INFO_LIST:
         path = os.path.join(tmp_dir, filename)
         url = os.path.join(feed, filename)
+        if url_modify:
+            url = url_modify(url)
         request = DownloadRequest(url, path)
         listener = AggregatingEventListener()
         downloader = nectar_factory.create_downloader(feed, nectar_config, listener)
@@ -266,7 +273,7 @@ def process_distribution(feed, tmp_dir, nectar_config, model, report):
     return files
 
 
-def get_distribution_file(feed, tmp_dir, nectar_config):
+def get_distribution_file(feed, tmp_dir, nectar_config, url_modify=None):
     """
     Download the pulp_distribution.xml and return its full path on disk, or None if not found
 
@@ -276,6 +283,8 @@ def get_distribution_file(feed, tmp_dir, nectar_config):
     :type  tmp_dir:         str
     :param nectar_config:   download config to be used by nectar
     :type  nectar_config:   nectar.config.DownloaderConfig
+    :param url_modify:      Optional URL modifier
+    :type  url_modify:      pulp_rpm.plugins.importers.yum.utils.RepoURLModifier
 
     :return:        full path to distribution file on disk, or None if not found
     :rtype:         str or NoneType
@@ -284,6 +293,8 @@ def get_distribution_file(feed, tmp_dir, nectar_config):
 
     path = os.path.join(tmp_dir, filename)
     url = os.path.join(feed, filename)
+    if url_modify:
+        url = url_modify(url)
     request = DownloadRequest(url, path)
     listener = AggregatingEventListener()
     downloader = nectar_factory.create_downloader(feed, nectar_config, listener)
