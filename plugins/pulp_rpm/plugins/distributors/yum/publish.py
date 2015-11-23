@@ -20,6 +20,7 @@ from pulp_rpm.common.ids import (
     TYPE_ID_RPM, TYPE_ID_SRPM, TYPE_ID_DRPM, TYPE_ID_ERRATA, TYPE_ID_PKG_GROUP,
     TYPE_ID_PKG_CATEGORY, TYPE_ID_PKG_ENVIRONMENT, TYPE_ID_DISTRO, TYPE_ID_YUM_REPO_METADATA_FILE)
 from pulp_rpm.yum_plugin import util
+from pulp_rpm.plugins.db import models
 from pulp_rpm.plugins.distributors.export_distributor import export_utils
 from pulp_rpm.plugins.distributors.export_distributor import generate_iso
 from pulp_rpm.plugins.importers.yum.parse.treeinfo import KEY_PACKAGEDIR
@@ -72,7 +73,7 @@ class BaseYumRepoPublisher(platform_steps.PluginStep):
         self.add_child(InitRepoMetadataStep())
         dist_step = PublishDistributionStep()
         self.add_child(dist_step)
-        self.rpm_step = PublishRpmStep(dist_step, association_filters=association_filters)
+        self.rpm_step = PublishRpmStep(dist_step, repo_content_unit_q=association_filters)
         self.add_child(self.rpm_step)
         self.add_child(PublishDrpmStep(dist_step))
         self.add_child(PublishErrataStep())
@@ -381,14 +382,14 @@ class PublishRepoMetaDataStep(platform_steps.UnitPublishStep):
             self.repomd_file_context.finalize()
 
 
-class PublishRpmStep(platform_steps.UnitPublishStep):
+class PublishRpmStep(platform_steps.UnitModelPluginStep):
     """
     Step for publishing RPM & SRPM units
     """
 
     def __init__(self, dist_step, **kwargs):
         super(PublishRpmStep, self).__init__(constants.PUBLISH_RPMS_STEP,
-                                             [TYPE_ID_RPM, TYPE_ID_SRPM], **kwargs)
+                                             [models.RPM, models.SRPM], **kwargs)
         self.description = _('Publishing RPMs')
         self.file_lists_context = None
         self.other_context = None
@@ -400,7 +401,7 @@ class PublishRpmStep(platform_steps.UnitPublishStep):
         """
         Create each of the three metadata contexts required for publishing RPM & SRPM
         """
-        total = self._get_total(ignore_filter=self.fast_forward)
+        total = self.get_total()
 
         checksum_type = self.parent.get_checksum_type()
         self.file_lists_context = FilelistsXMLFileContext(self.get_working_dir(), total,
@@ -481,13 +482,13 @@ class PublishMetadataStep(platform_steps.UnitPublishStep):
             add_metadata_file_metadata(unit.unit_key['data_type'], link_path)
 
 
-class PublishDrpmStep(platform_steps.UnitPublishStep):
+class PublishDrpmStep(platform_steps.UnitModelPluginStep):
     """
     Publish Delta RPMS
     """
 
     def __init__(self, dist_step, **kwargs):
-        super(PublishDrpmStep, self).__init__(constants.PUBLISH_DELTA_RPMS_STEP, TYPE_ID_DRPM,
+        super(PublishDrpmStep, self).__init__(constants.PUBLISH_DELTA_RPMS_STEP, [models.DRPM],
                                               **kwargs)
         self.description = _('Publishing Delta RPMs')
         self.context = None
@@ -544,12 +545,12 @@ class PublishDrpmStep(platform_steps.UnitPublishStep):
                                            self.context.checksum)
 
 
-class PublishErrataStep(platform_steps.UnitPublishStep):
+class PublishErrataStep(platform_steps.UnitModelPluginStep):
     """
     Publish all errata
     """
     def __init__(self, **kwargs):
-        super(PublishErrataStep, self).__init__(constants.PUBLISH_ERRATA_STEP, TYPE_ID_ERRATA,
+        super(PublishErrataStep, self).__init__(constants.PUBLISH_ERRATA_STEP, [models.Errata],
                                                 **kwargs)
         self.context = None
         self.description = _('Publishing Errata')
