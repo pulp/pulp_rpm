@@ -60,3 +60,6 @@ UNIT_KEY_DRPM = (
 METADATA_DRPM = ("size", "sequence", "new_package", "relativepath")
 
 TYPE_ID_YUM_REPO_METADATA_FILE = 'yum_repo_metadata_file'
+
+# These types don't have support for the query-param auth token yet
+QUERY_AUTH_TOKEN_UNSUPPORTED = (TYPE_ID_ISO, TYPE_ID_ERRATA, TYPE_ID_DISTRO)
