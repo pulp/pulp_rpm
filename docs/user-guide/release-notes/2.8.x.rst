@@ -1,0 +1,13 @@
+======================
+Pulp 2.8 Release Notes
+======================
+
+Pulp 2.8.0
+==========
+
+New Features
+------------
+
+* The default Apache configuration has changed in order to support deferred content
+  downloading. All requests to ``/pulp/repos`` are now re-written to ``/pulp/content``.
+
