@@ -8,6 +8,7 @@ from mock import patch, Mock
 
 from pulp.server.content.sources.model import Request
 from pulp_rpm.plugins.importers.yum.repomd.alternate import Packages, ContainerListener
+from pulp_rpm.plugins.importers.yum.utils import RepoURLModifier
 
 
 class Unit(object):
@@ -130,6 +131,36 @@ class TestPackages(TestCase):
             self.assertEqual(call[1]['url'], urljoin(unit_base_url, units[n].download_path))
             self.assertEqual(call[1]['destination'],
                              os.path.join(packages.dst_dir, units[n].relative_path))
+        self.assertEqual(len(requests), len(units))
+
+    @patch('pulp_rpm.plugins.importers.yum.repomd.alternate.Event', Mock())
+    @patch('pulp_rpm.plugins.importers.yum.repomd.alternate.create_downloader', Mock())
+    @patch('pulp_rpm.plugins.importers.yum.repomd.alternate.ContentContainer', Mock())
+    @patch('pulp_rpm.plugins.importers.yum.repomd.alternate.Request')
+    def test_get_requests_auth_token(self, fake_request):
+        qstring = '?foo'
+        listener = Mock()
+        base_url = 'http://host'
+        units = [
+            Unit(),
+            Unit(),
+            Unit(),
+        ]
+        # set each unit to use a different base url
+        for n, unit in enumerate(units):
+            unit.metadata['base_url'] = '%s:%s/' % (base_url, n)
+
+        # test
+        url_modify = RepoURLModifier(query_auth_token=qstring[1:])
+        packages = Packages(base_url, None, units, '', listener, url_modify)
+        requests = list(packages.get_requests())
+
+        calls = fake_request.call_args_list
+        self.assertEqual(len(requests), len(units))
+        for n, call in enumerate(calls):
+            unit_base_url = '%s:%s/' % (base_url, n)
+            expected = urljoin(unit_base_url, units[n].download_path) + qstring
+            self.assertEqual(call[1]['url'], expected)
         self.assertEqual(len(requests), len(units))
 
     def test_cancel(self):

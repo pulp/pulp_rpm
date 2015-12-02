@@ -1037,7 +1037,7 @@ class GenerateSqliteForRepoStepTests(BaseYumDistributorPublishStepTests):
         step.process_main()
         Popen.assert_called_once_with('createrepo_c -d --update --keep-all-metadata '
                                       '--local-sqlite '
-                                     '-s sha1 '
+                                      '-s sha1 '
                                       '--skip-stat /foo',
                                       shell=True, stderr=mock.ANY, stdout=mock.ANY)
 
