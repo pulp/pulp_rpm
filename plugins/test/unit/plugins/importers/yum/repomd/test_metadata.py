@@ -9,6 +9,7 @@ import unittest
 import mock
 from nectar.config import DownloaderConfig
 
+from pulp_rpm.plugins.importers.yum.utils import RepoURLModifier
 from pulp_rpm.plugins.importers.yum.repomd import metadata
 
 
@@ -203,6 +204,45 @@ class TestDownloadMetadataFiles(unittest.TestCase):
         self.assertEqual(len(requests), 2)
         self.assertTrue(requests[0].destination.endswith('primary'))
         self.assertTrue(requests[1].destination.endswith('pkgtags.sqlite.gz'))
+
+
+class TestQueryAuthToken(unittest.TestCase):
+    def setUp(self):
+        self.qstring = '?foo'
+        self.url_modify = RepoURLModifier(query_auth_token=self.qstring[1:])
+        self.metadata_files = metadata.MetadataFiles('http://pulpproject.org',
+                                                     '/a/b/c',
+                                                     DownloaderConfig(),
+                                                     self.url_modify)
+
+    def test_repo_url(self):
+        self.assertTrue(self.metadata_files.repo_url.endswith(self.qstring))
+
+    # DownloadRequest is already in metadata, so it needs to be mocked in-module
+    @mock.patch('pulp_rpm.plugins.importers.yum.repomd.metadata.DownloadRequest', autospec=True)
+    def test_download_repomd(self, mock_download_request):
+        self.metadata_files.download_repomd()
+        self.assertTrue(mock_download_request.call_args[0][0].endswith(self.qstring))
+
+    def test_download_metadata_files(self):
+        self.metadata_files.metadata = {
+            'primary': file_info_factory('primary'),
+            # this one isn't "known" and thus should be downloaded
+            'pkgtags': file_info_factory('pkgtags', 'x/y/z/pkgtags.sqlite.gz'),
+        }
+
+        self.metadata_files.downloader.download = mock.MagicMock(
+            spec_set=self.metadata_files.downloader.download)
+
+        self.metadata_files.download_metadata_files()
+
+        requests = self.metadata_files.downloader.download.call_args[0][0]
+
+        # make sure both files had download requests created and passed to the
+        # downloader
+        self.assertEqual(len(requests), 2)
+        self.assertTrue(requests[0].url.endswith('primary' + self.qstring))
+        self.assertTrue(requests[1].url.endswith('pkgtags.sqlite.gz' + self.qstring))
 
 
 class TestMetadataFiles(unittest.TestCase):

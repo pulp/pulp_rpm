@@ -1,7 +1,6 @@
 import os
 
 from threading import Event
-from urlparse import urljoin
 from logging import getLogger
 from gettext import gettext as _
 
@@ -10,6 +9,7 @@ from nectar.report import DownloadReport
 from pulp.server.content.sources.container import ContentContainer, Listener
 from pulp.server.content.sources.model import Request
 
+from pulp_rpm.plugins.importers.yum.utils import RepoURLModifier
 from pulp_rpm.plugins.importers.yum.repomd.nectar_factory import create_downloader
 
 
@@ -37,7 +37,7 @@ class Packages(object):
     :type canceled: threading.Event
     """
 
-    def __init__(self, base_url, nectar_conf, units, dst_dir, listener):
+    def __init__(self, base_url, nectar_conf, units, dst_dir, listener, url_modify=None):
         """
         :param base_url: The repository base url.
         :type base_url: str
@@ -47,6 +47,8 @@ class Packages(object):
         :type dst_dir: str
         :param listener: A nectar listener.
         :type listener: nectar.listener.DownloadListener
+        :param url_modify: Optional URL modifier
+        :type url_modify: pulp_rpm.plugins.importers.yum.utils.RepoURLModifier
         """
         self.base_url = base_url
         self.units = units
@@ -55,6 +57,7 @@ class Packages(object):
         self.primary = create_downloader(base_url, nectar_conf)
         self.container = ContentContainer()
         self.canceled = Event()
+        self._url_modify = url_modify or RepoURLModifier()
 
     @property
     def downloader(self):
@@ -71,10 +74,8 @@ class Packages(object):
         :rtype: iterable
         """
         for unit in self.units:
-            if unit.metadata.get('base_url'):
-                url = urljoin(unit.metadata.get('base_url'), unit.download_path)
-            else:
-                url = urljoin(self.base_url, unit.download_path)
+            base_url = unit.metadata.get('base_url') or self.base_url
+            url = self._url_modify(base_url, path_append=unit.download_path)
             file_name = os.path.basename(unit.relative_path)
             destination = os.path.join(self.dst_dir, file_name)
             request = Request(
