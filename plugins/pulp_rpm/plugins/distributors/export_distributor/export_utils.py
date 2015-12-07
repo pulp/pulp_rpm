@@ -3,6 +3,7 @@ import os
 import re
 
 import isodate
+import mongoengine
 from pulp.common import dateutils
 
 from pulp_rpm.common import constants
@@ -118,23 +119,20 @@ def validate_export_config(config):
 
 def create_date_range_filter(config):
     """
-    Create a date filter based on start and end issue dates specified in the repo config. The
-    returned
-    filter is a dictionary which can be used directly in a mongo query.
+    Create a date filter based on start and end issue dates specified in the repo config.
 
     :param config: plugin configuration instance; the proposed repo configuration is found within
     :type  config: pulp.plugins.config.PluginCallConfiguration
 
-    :return: date filter dict with issued date ranges in mongo query format
-    :rtype:  {}
+    :return: Q object with start and/or end dates, or None if start and end dates are not provided
+    :rtype:  mongoengine.Q or types.NoneType
     """
     start_date = config.get(constants.START_DATE_KEYWORD)
     end_date = config.get(constants.END_DATE_KEYWORD)
-    date_filter = None
+
     if start_date and end_date:
-        date_filter = {ASSOCIATED_UNIT_DATE_KEYWORD: {"$gte": start_date, "$lte": end_date}}
+        return mongoengine.Q(created__gte=start_date, created__lte=end_date)
     elif start_date:
-        date_filter = {ASSOCIATED_UNIT_DATE_KEYWORD: {"$gte": start_date}}
+        return mongoengine.Q(created__gte=start_date)
     elif end_date:
-        date_filter = {ASSOCIATED_UNIT_DATE_KEYWORD: {"$lte": end_date}}
-    return date_filter
+        return mongoengine.Q(created__lte=end_date)

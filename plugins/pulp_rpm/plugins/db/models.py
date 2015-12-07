@@ -27,6 +27,22 @@ class Package(FileContentUnit):
         return '%s: %s' % (self._content_type_id,
                            '-'.join(getattr(self, name) for name in self.unit_key_fields))
 
+    def create_legacy_metadata_dict(self):
+        """
+        Pulp's legacy unit model had a "metadata" attribute, which the Incremental steps below used
+        as the basis for the data that gets written to disk. This function re-creates that data
+        structure and filters out fields whose name starts with a _.
+
+        :return:    a dictionary with keys and values that are all of the fields on the unit model,
+                    minus those in the unit key and those that start with an underscore.
+        :rtype:     dict
+        """
+        field_names = filter(lambda k: not k.startswith('_'), self.__class__._fields.keys())
+        metadata_dict = {}
+        for name in field_names:
+            metadata_dict[name] = getattr(self, name)
+        return metadata_dict
+
 
 class NonMetadataPackage(Package):
     """

@@ -194,6 +194,21 @@ def get_master_publish_dir(repo, distributor_type):
     return os.path.join(MASTER_PUBLISH_DIR, distributor_type, repo.repo_id)
 
 
+def get_master_publish_dir_from_group(repo_group, distributor_type):
+    """
+    Get the master publishing directory for the given repository group.
+
+    :param repo_group:  a repository group
+    :type  repo_group:  pulp.plugins.model.RepositoryGroup
+    :param distributor_type:    type ID for a distributor
+    :type  distributor_type:    str
+
+    :return:    path to the master publishing directory
+    :rtype:     str
+    """
+    return os.path.join(MASTER_PUBLISH_DIR, distributor_type, repo_group.id)
+
+
 def get_export_repo_publish_dirs(repo, config):
     """
     Get the web publishing directories for a repo export

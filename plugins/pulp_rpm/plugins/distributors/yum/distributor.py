@@ -169,10 +169,9 @@ class YumHTTPDistributor(Distributor):
         :rtype:  pulp.plugins.model.PublishReport
         """
         _logger.debug('Publishing yum repository: %s' % transfer_repo.id)
-        repo = transfer_repo.repo_obj
-        repo.repo_id = transfer_repo.id
 
-        self._publisher = publish.Publisher(repo, publish_conduit, config, TYPE_ID_DISTRIBUTOR_YUM)
+        self._publisher = publish.Publisher(transfer_repo, publish_conduit, config,
+                                            TYPE_ID_DISTRIBUTOR_YUM)
         return self._publisher.process_lifecycle()
 
     def cancel_publish_repo(self):

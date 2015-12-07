@@ -1,4 +1,3 @@
-from collections import namedtuple
 import copy
 from gettext import gettext as _
 import os
@@ -11,14 +10,10 @@ from pulp.plugins.config import PluginCallConfiguration
 from pulp.plugins.conduits.repo_publish import RepoPublishConduit
 from pulp.plugins.util import misc as plugin_misc
 from pulp.plugins.util import publish_step as platform_steps
-from pulp.server.controllers import repository as repo_controller
 from pulp.server.db import model
 from pulp.server.exceptions import InvalidValue, PulpCodedException
 
 from pulp_rpm.common import constants
-from pulp_rpm.common.ids import (
-    TYPE_ID_RPM, TYPE_ID_SRPM, TYPE_ID_DRPM, TYPE_ID_ERRATA, TYPE_ID_PKG_GROUP,
-    TYPE_ID_PKG_CATEGORY, TYPE_ID_PKG_ENVIRONMENT, TYPE_ID_DISTRO, TYPE_ID_YUM_REPO_METADATA_FILE)
 from pulp_rpm.yum_plugin import util
 from pulp_rpm.plugins.db import models
 from pulp_rpm.plugins.distributors.export_distributor import export_utils
@@ -36,8 +31,6 @@ from .metadata.package import PackageXMLFileContext
 
 
 logger = util.getLogger(__name__)
-PACKAGE_FIELDS = ['id', 'name', 'version', 'release', 'arch', 'epoch',
-                  '_storage_path', 'checksum', 'checksumtype', 'repodata']
 
 
 class BaseYumRepoPublisher(platform_steps.PluginStep):
@@ -113,20 +106,20 @@ class ExportRepoPublisher(BaseYumRepoPublisher):
         super(ExportRepoPublisher, self).__init__(repo, publish_conduit, config, distributor_type,
                                                   **kwargs)
 
-        date_filter = export_utils.create_date_range_filter(config)
-        if date_filter:
+        date_q = export_utils.create_date_range_filter(config)
+        if date_q:
             # Since this is a partial export we don't generate metadata
             # we have to clear out the previously added steps
             # we only need special version s of the rpm, drpm, and errata steps
             self.clear_children()
-            self.add_child(PublishRpmAndDrpmStepIncremental(association_filters=date_filter))
-            self.add_child(PublishErrataStepIncremental(association_filters=date_filter))
+            self.add_child(PublishRpmAndDrpmStepIncremental(repo_content_unit_q=date_q))
+            self.add_child(PublishErrataStepIncremental(repo_content_unit_q=date_q))
 
         working_directory = self.get_working_dir()
         export_dir = config.get(constants.EXPORT_DIRECTORY_KEYWORD)
         if export_dir:
             target_dir = os.path.join(export_dir,
-                                      configuration.get_repo_relative_path(repo, config))
+                                      configuration.get_repo_relative_path(repo.repo_obj, config))
             self.add_child(platform_steps.CopyDirectoryStep(working_directory, target_dir))
             self.add_child(GenerateListingFileStep(export_dir, target_dir))
         else:
@@ -134,13 +127,14 @@ class ExportRepoPublisher(BaseYumRepoPublisher):
             content_dir = os.path.join(working_directory, 'scratch')
             for step in self.children:
                 step.working_dir = content_dir
+            self.working_dir = content_dir
 
             # Set up step to copy all the files to a realized directory with no symlinks
             # This could be optimized with a pathspec so that we don't create all the files
             # separately
             realized_dir = os.path.join(working_directory, 'realized')
             copy_target = os.path.join(realized_dir,
-                                       configuration.get_repo_relative_path(repo, config))
+                                       configuration.get_repo_relative_path(repo.repo_obj, config))
             self.add_child(platform_steps.CopyDirectoryStep(content_dir, copy_target))
             self.add_child(GenerateListingFileStep(realized_dir, copy_target))
 
@@ -152,11 +146,10 @@ class ExportRepoPublisher(BaseYumRepoPublisher):
             if config.get_boolean(constants.CREATE_PULP_MANIFEST) is True:
                 self.add_child(platform_steps.CreatePulpManifestStep(output_dir))
 
-            publish_location = [('/', location)
-                                for location in configuration.get_export_repo_publish_dirs(repo,
-                                                                                           config)]
+            dirs = configuration.get_export_repo_publish_dirs(repo.repo_obj, config)
+            publish_location = [('/', location) for location in dirs]
 
-            master_dir = configuration.get_master_publish_dir(repo, self.get_plugin_type())
+            master_dir = configuration.get_master_publish_dir(repo.repo_obj, self.get_plugin_type())
             atomic_publish = platform_steps.AtomicDirectoryPublishStep(
                 output_dir, publish_location, master_dir)
             atomic_publish.description = _('Moving ISO to final location')
@@ -178,7 +171,6 @@ class ExportRepoGroupPublisher(platform_steps.PluginStep):
         """
         super(ExportRepoGroupPublisher, self).__init__(constants.PUBLISH_STEP_EXPORT_REPO_GROUP,
                                                        repo_group, publish_conduit, config,
-                                                       working_dir=repo_group.working_dir,
                                                        plugin_type=distributor_type)
 
         working_dir = self.get_working_dir()
@@ -203,11 +195,11 @@ class ExportRepoGroupPublisher(platform_steps.PluginStep):
                 continue
 
             repo_config_copy = copy.deepcopy(repo_config)
-            repo.working_dir = os.path.join(scratch_dir, repo.repo_id)
-            repo_conduit = RepoPublishConduit(repo.repo_id, distributor_type)
+            repo_working_dir = os.path.join(scratch_dir, repo.id)
+            repo_conduit = RepoPublishConduit(repo.id, distributor_type)
             publisher = ExportRepoPublisher(repo, repo_conduit, repo_config_copy,
-                                            distributor_type)
-            publisher.description = _("Exporting Repo: %s") % repo.repo_id
+                                            distributor_type, working_dir=repo_working_dir)
+            publisher.description = _("Exporting Repo: %s") % repo.id
             self.add_child(publisher)
         if empty_repos:
             os.makedirs(realized_dir)
@@ -226,7 +218,8 @@ class ExportRepoGroupPublisher(platform_steps.PluginStep):
             export_dirs = configuration.get_export_repo_group_publish_dirs(repo_group, config)
             publish_location = [('/', location) for location in export_dirs]
 
-            master_dir = configuration.get_master_publish_dir(repo_group, distributor_type)
+            master_dir = configuration.get_master_publish_dir_from_group(repo_group,
+                                                                         distributor_type)
             self.add_child(platform_steps.AtomicDirectoryPublishStep(output_dir, publish_location,
                                                                      master_dir))
 
@@ -237,10 +230,10 @@ class Publisher(BaseYumRepoPublisher):
     of a yum repository over HTTP and/or HTTPS.
     """
 
-    def __init__(self, repo, publish_conduit, config, distributor_type, **kwargs):
+    def __init__(self, transfer_repo, publish_conduit, config, distributor_type, **kwargs):
         """
-        :param repo: repository being published
-        :type  repo: pulp.server.db.model.Repository
+        :param transfer_repo: repository being published
+        :type  transfer_repo: pulp.plugins.db.model.Repository
         :param publish_conduit: Conduit providing access to relative Pulp functionality
         :type  publish_conduit: pulp.plugins.conduits.repo_publish.RepoPublishConduit
         :param config: Pulp configuration for the distributor
@@ -248,6 +241,7 @@ class Publisher(BaseYumRepoPublisher):
         :param distributor_type: The type of the distributor that is being published
         :type distributor_type: str
         """
+        repo = transfer_repo.repo_obj
 
         repo_relative_path = configuration.get_repo_relative_path(repo, config)
 
@@ -274,7 +268,7 @@ class Publisher(BaseYumRepoPublisher):
                 string_date = dateutils.format_iso8601_datetime(last_published)
                 date_filter = mongoengine.Q(created__gte=string_date)
 
-        super(Publisher, self).__init__(repo, publish_conduit, config, distributor_type,
+        super(Publisher, self).__init__(transfer_repo, publish_conduit, config, distributor_type,
                                         association_filters=date_filter, **kwargs)
 
         if date_filter:
@@ -356,32 +350,6 @@ class CloseRepoMetadataStep(platform_steps.PluginStep):
             self.parent.repomd_file_context.finalize()
 
 
-class PublishRepoMetaDataStep(platform_steps.UnitPublishStep):
-    """
-    Step for managing overall repo metadata
-    """
-
-    def __init__(self):
-        super(PublishRepoMetaDataStep, self).__init__(constants.PUBLISH_REPOMD_STEP, TYPE_ID_RPM)
-        self.repomd_file_context = None
-        self.checksum_type = None
-
-    def initialize(self):
-        """
-        open the metadata context
-        """
-        self.repomd_file_context = RepomdXMLFileContext(self.get_working_dir(),
-                                                        self.parent.get_checksum_type())
-        self.repomd_file_context.initialize()
-
-    def finalize(self):
-        """
-        Close the metadata context
-        """
-        if self.repomd_file_context:
-            self.repomd_file_context.finalize()
-
-
 class PublishRpmStep(platform_steps.UnitModelPluginStep):
     """
     Step for publishing RPM & SRPM units
@@ -451,14 +419,14 @@ class PublishRpmStep(platform_steps.UnitModelPluginStep):
             context.add_unit_metadata(unit)
 
 
-class PublishMetadataStep(platform_steps.UnitPublishStep):
+class PublishMetadataStep(platform_steps.UnitModelPluginStep):
     """
     Publish extra metadata files that are copied from another repo and not generated
     """
 
     def __init__(self):
         super(PublishMetadataStep, self).__init__(constants.PUBLISH_METADATA_STEP,
-                                                  TYPE_ID_YUM_REPO_METADATA_FILE)
+                                                  [models.YumMetadataFile])
         self.description = _('Publishing Metadata.')
 
     def process_main(self, item=None):
@@ -579,16 +547,36 @@ class PublishErrataStep(platform_steps.UnitModelPluginStep):
                                            self.context.checksum)
 
 
-class PublishRpmAndDrpmStepIncremental(platform_steps.UnitPublishStep):
+class PublishRpmAndDrpmStepIncremental(platform_steps.UnitModelPluginStep):
     """
-    Publish all incremental errata
+    Publish all incremental rpms and drpms
     """
     def __init__(self, **kwargs):
         super(PublishRpmAndDrpmStepIncremental, self).__init__(constants.PUBLISH_RPMS_STEP,
-                                                               [TYPE_ID_RPM, TYPE_ID_SRPM,
-                                                                TYPE_ID_DRPM],
-                                                               unit_fields=PACKAGE_FIELDS, **kwargs)
+                                                               [models.RPM, models.SRPM,
+                                                                models.DRPM], **kwargs)
         self.description = _('Publishing RPM, SRPM, and DRPM')
+
+    def initialize(self):
+        """
+        In case there are no units that get processed, nothing else would create this directory.
+        Its existence is required by the CopyDirectoryStep.
+        """
+        super(PublishRpmAndDrpmStepIncremental, self).initialize()
+        if not os.path.exists(self.get_working_dir()):
+            os.makedirs(self.get_working_dir())
+
+    @property
+    def unit_querysets(self):
+        """
+        Limits the queryset's fields
+
+        :return:    generator of mongoengine.QuerySet objects that have fields limited
+        :rtype:     generator
+        """
+        querysets = super(PublishRpmAndDrpmStepIncremental, self).unit_querysets
+        # The repodata field can be huge, and we don't need it right now.
+        return (qs.exclude('repodata') for qs in querysets)
 
     def process_main(self, item=None):
         """
@@ -599,7 +587,7 @@ class PublishRpmAndDrpmStepIncremental(platform_steps.UnitPublishStep):
         """
         unit = item
         source_path = unit._storage_path
-        relative_path = util.get_relpath_from_unit(unit)
+        relative_path = unit.filename
         destination_path = os.path.join(self.get_working_dir(), relative_path)
         plugin_misc.create_symlink(source_path, destination_path)
 
@@ -607,27 +595,22 @@ class PublishRpmAndDrpmStepIncremental(platform_steps.UnitPublishStep):
             unit.unit_key['release'] + '.' + unit.unit_key['arch'] + '.json'
         path = os.path.join(self.get_working_dir(), filename)
 
-        # TODO REFACTOR FOR NEW MODEL BASED STUFF
-        # Remove all keys that start with an underscore, like _id and _ns
-        for key_to_remove in filter(lambda key: key[0] == '_', unit.metadata.keys()):
-            unit.metadata.pop(key_to_remove)
-        # repodata will be regenerated on import, so remove it as well
-        if 'repodata' in unit.metadata:
-            unit.metadata.pop('repodata')
-
-        dict_to_write = {'unit_key': unit.unit_key, 'unit_metadata': unit.metadata}
+        metadata_dict = unit.create_legacy_metadata_dict()
+        # The repodata is large, and can get re-generated during upload, so we leave it out here.
+        metadata_dict.pop('repodata', None)
+        dict_to_write = {'unit_key': unit.unit_key, 'unit_metadata': metadata_dict}
 
         with open(path, 'w') as f:
             json.dump(dict_to_write, f)
 
 
-class PublishErrataStepIncremental(platform_steps.UnitPublishStep):
+class PublishErrataStepIncremental(platform_steps.UnitModelPluginStep):
     """
     Publish all incremental errata
     """
     def __init__(self, **kwargs):
         super(PublishErrataStepIncremental, self).__init__(constants.PUBLISH_ERRATA_STEP,
-                                                           TYPE_ID_ERRATA, **kwargs)
+                                                           [models.Errata], **kwargs)
         self.description = _('Publishing Errata')
 
     def process_main(self, item=None):
@@ -636,65 +619,37 @@ class PublishErrataStepIncremental(platform_steps.UnitPublishStep):
         :type item: pulp_rpm.plugins.db.models.Errata
         """
         unit = item
-        # Remove unnecessary keys, like _id
-        for key_to_remove in filter(lambda key: key[0] == '_', unit.metadata.keys()):
-            unit.metadata.pop(key_to_remove)
-
-        # TODO List out all the metadata field by field
-        # TODO Could the to_json be used?
         errata_dict = {
             'unit_key': unit.unit_key,
-            'unit_metadata': unit.metadata
+            'unit_metadata': unit.create_legacy_metadata_dict()
         }
 
-        json_file_path = os.path.join(self.get_working_dir(), unit.unit_key['id'] + '.json')
+        json_file_path = os.path.join(self.get_working_dir(), unit.unit_key['errata_id'] + '.json')
         with open(json_file_path, 'w') as f:
             json.dump(errata_dict, f)
 
 
-class PublishCompsStep(platform_steps.UnitPublishStep):
+class PublishCompsStep(platform_steps.UnitModelPluginStep):
     def __init__(self):
         super(PublishCompsStep, self).__init__(constants.PUBLISH_COMPS_STEP,
-                                               [TYPE_ID_PKG_GROUP, TYPE_ID_PKG_CATEGORY,
-                                                TYPE_ID_PKG_ENVIRONMENT])
+                                               [models.PackageGroup, models.PackageCategory,
+                                                models.PackageEnvironment])
         self.comps_context = None
         self.description = _('Publishing Comps file')
-
-    def get_iterator(self):
-        """
-        Returns a generator of Named Tuples containing the original unit and the
-        processing method that will be used to process that particular unit.
-        """
-        # set the process unit method to categories
-        category_generator = repo_controller.find_repo_content_units(
-            self.get_repo(), repo_content_unit_q=mongoengine.Q(unit_type_id=TYPE_ID_PKG_CATEGORY),
-            yield_content_unit=True)
-
-        UnitProcessor = namedtuple('UnitProcessor', 'unit process')
-        for category in category_generator:
-            yield UnitProcessor(category, self.comps_context.add_package_category_unit_metadata)
-
-        # set the process unit method to groups
-        groups_generator = repo_controller.find_repo_content_units(
-            self.get_repo(), repo_content_unit_q=mongoengine.Q(unit_type_id=TYPE_ID_PKG_GROUP),
-            yield_content_unit=True)
-        for group in groups_generator:
-            yield UnitProcessor(group, self.comps_context.add_package_group_unit_metadata)
-
-        # set the process unit method to environments
-        groups_generator = repo_controller.find_repo_content_units(
-            self.get_repo(),
-            repo_content_unit_q=mongoengine.Q(unit_type_id=TYPE_ID_PKG_ENVIRONMENT),
-            yield_content_unit=True)
-        for group in groups_generator:
-            yield UnitProcessor(group, self.comps_context.add_package_environment_unit_metadata)
 
     def process_main(self, item=None):
         """
         Process each unit created by the generator using the associated
         process command
         """
-        item.process(item.unit)
+        if isinstance(item, models.PackageCategory):
+            self.comps_context.add_package_category_unit_metadata(item)
+        elif isinstance(item, models.PackageEnvironment):
+            self.comps_context.add_package_environment_unit_metadata(item)
+        elif isinstance(item, models.PackageGroup):
+            self.comps_context.add_package_group_unit_metadata(item)
+        else:
+            logger.warning(_('Unknown comps unit type: %(n)s') % {'n': item.__class__})
 
     def initialize(self):
         """
@@ -716,7 +671,7 @@ class PublishCompsStep(platform_steps.UnitPublishStep):
                                                self.comps_context.checksum)
 
 
-class PublishDistributionStep(platform_steps.UnitPublishStep):
+class PublishDistributionStep(platform_steps.UnitModelPluginStep):
     """
     Publish distribution files associated with the anaconda installer
     """
@@ -727,7 +682,7 @@ class PublishDistributionStep(platform_steps.UnitPublishStep):
         plugins even if it is not specified
         """
         super(PublishDistributionStep, self).__init__(constants.PUBLISH_DISTRIBUTION_STEP,
-                                                      TYPE_ID_DISTRO)
+                                                      [models.Distribution])
         self.package_dirs = []
         self.description = _('Publishing Distribution files')
 
@@ -870,8 +825,7 @@ class CreateIsoStep(platform_steps.PluginStep):
         Publish a directory from to a tar file
         """
         image_size = self.get_config().get(constants.ISO_SIZE_KEYWORD)
-        image_prefix = self.get_config().get(constants.ISO_PREFIX_KEYWORD) or \
-                       self.get_repo().repo_id
+        image_prefix = self.get_config().get(constants.ISO_PREFIX_KEYWORD) or self.get_repo().id
         generate_iso.create_iso(self.content_dir, self.output_dir, image_prefix, image_size)
 
 

@@ -124,16 +124,14 @@ class ISODistributor(Distributor):
         :return: report describing the publish run
         :rtype:  pulp.plugins.model.PublishReport
         """
-        repo = platform_models.Repository.objects.get(repo_id=transfer_repo.id)
-
         # First, validate the configuration because there may be override config options, and
         # currently, validate_config is not called prior to publishing by the manager.
         valid_config, msg = export_utils.validate_export_config(config)
         if not valid_config:
             raise PulpDataException(msg)
 
-        _logger.info('Starting export of [%s]' % repo.repo_id)
-        self._publisher = ExportRepoPublisher(repo, publish_conduit, config,
+        _logger.info('Starting export of [%s]' % transfer_repo.id)
+        self._publisher = ExportRepoPublisher(transfer_repo, publish_conduit, config,
                                               ids.TYPE_ID_DISTRIBUTOR_EXPORT)
         return self._publisher.process_lifecycle()
 
@@ -147,12 +145,12 @@ class ISODistributor(Distributor):
         :param config: plugin configuration
         :type  config: pulp.plugins.config.PluginCallConfiguration
         """
-        repo = platform_models.Repository.objects.get(repo_id=transfer_repo.id)
-
         # remove the directories that might have been created for this repo/distributor
-        dir_list = [configuration.get_master_publish_dir(repo, ids.TYPE_ID_DISTRIBUTOR_EXPORT),
-                    os.path.join(configuration.HTTP_EXPORT_DIR, repo.repo_id),
-                    os.path.join(configuration.HTTPS_EXPORT_DIR, repo.repo_id)]
+        master_dir = configuration.get_master_publish_dir(transfer_repo.repo_obj,
+                                                          ids.TYPE_ID_DISTRIBUTOR_EXPORT)
+        dir_list = [master_dir,
+                    os.path.join(configuration.HTTP_EXPORT_DIR, transfer_repo.id),
+                    os.path.join(configuration.HTTPS_EXPORT_DIR, transfer_repo.id)]
 
         for repo_dir in dir_list:
             shutil.rmtree(repo_dir, ignore_errors=True)

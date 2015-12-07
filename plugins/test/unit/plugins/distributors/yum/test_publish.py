@@ -859,31 +859,6 @@ class PublishDistributionStepTests(BaseYumDistributorPublishStepTests):
         self.assertRaises(Exception, step._publish_distribution_packages_link)
 
 
-class PublishRepoMetaDataStep(BaseYumDistributorPublishTests):
-
-    @mock.patch('pulp_rpm.plugins.distributors.yum.publish.RepomdXMLFileContext')
-    @mock.patch('pulp_rpm.plugins.distributors.yum.publish.configuration')
-    def test_initialize_metadata(self, mock_configuration, mock_context):
-        step = publish.PublishRepoMetaDataStep()
-        step.parent = mock.Mock()
-        step.parent.get_checksum_type.return_value = 'foo'
-
-        step.initialize()
-
-        mock_context.assert_called_with(step.get_working_dir(), 'foo')
-        self.assertTrue(mock_context.return_value.initialize.called)
-
-    def test_finalize_metadata(self):
-        step = publish.PublishRepoMetaDataStep()
-        step.repomd_file_context = mock.Mock()
-        step.finalize()
-        self.assertTrue(step.repomd_file_context.finalize.called)
-
-    def test_finalize_metadata_no_context(self):
-        step = publish.PublishRepoMetaDataStep()
-        step.finalize()
-
-
 class PublishRpmStepTests(BaseYumDistributorPublishStepTests):
 
     @mock.patch('pulp.server.db.model.TaskStatus')

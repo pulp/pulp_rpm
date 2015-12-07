@@ -158,8 +158,8 @@ class PackageXMLFileContext(MetadataFileContext):
                                       unit.translated_description)
 
         group_list_element = ElementTree.SubElement(environment_element, 'grouplist')
-        if unit.packagegroupids:
-            for groupid in sorted(unit.packagegroupids):
+        if unit.group_ids:
+            for groupid in sorted(unit.group_ids):
                 ElementTree.SubElement(group_list_element, 'groupid').text = groupid
 
         option_list_element = ElementTree.SubElement(environment_element, 'optionlist')
