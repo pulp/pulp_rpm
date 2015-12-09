@@ -134,7 +134,6 @@ class BaseYumDistributorPublishStepTests(BaseYumDistributorPublishTests):
 class BaseYumRepoPublisherTests(BaseYumDistributorPublishTests):
 
     @mock.patch('pulp_rpm.plugins.distributors.yum.publish.GenerateSqliteForRepoStep')
-    @mock.patch('pulp.server.managers.factory.repo_distributor_manager')
     @mock.patch('pulp_rpm.plugins.distributors.yum.publish.PublishCompsStep')
     @mock.patch('pulp_rpm.plugins.distributors.yum.publish.Publisher._build_final_report')
     @mock.patch('pulp_rpm.plugins.distributors.yum.publish.PublishMetadataStep')
@@ -144,7 +143,7 @@ class BaseYumRepoPublisherTests(BaseYumDistributorPublishTests):
     @mock.patch('pulp_rpm.plugins.distributors.yum.publish.PublishDistributionStep')
     def test_publish(self, mock_publish_distribution, mock_publish_rpms, mock_publish_drpms,
                      mock_publish_errata, mock_publish_metadata,
-                     mock_build_final_report, mock_publish_comps, mock_distributor_manager,
+                     mock_build_final_report, mock_publish_comps,
                      mock_generate_sqlite):
 
         self._init_publisher()

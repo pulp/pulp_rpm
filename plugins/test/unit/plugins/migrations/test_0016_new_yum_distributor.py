@@ -7,9 +7,9 @@ import uuid
 import mock
 from pulp.common import dateutils
 from pulp.server import config as pulp_config
-from pulp.server.db.migrate.models import _import_all_the_way
 from pulp.server.db import model
-from pulp.server.db.model.repository import RepoDistributor
+from pulp.server.db.connection import get_collection
+from pulp.server.db.migrate.models import _import_all_the_way
 
 from pulp_rpm.devel import rpm_support_base
 
@@ -21,7 +21,7 @@ class BaseMigrationTests(rpm_support_base.PulpRPMTests):
     def setUp(self):
         super(BaseMigrationTests, self).setUp()
 
-        self.distributors_collection = RepoDistributor.get_collection()
+        self.distributors_collection = get_collection('repo_distributors')
 
         self.root_test_dir = tempfile.mkdtemp(prefix='test_0016_migration_')
         self.http_publish_dir = os.path.join(self.root_test_dir, 'http', 'repos')
@@ -47,13 +47,13 @@ class BaseMigrationTests(rpm_support_base.PulpRPMTests):
     def _generate_distributor(self, repo_id, config=None, previously_published=True):
         config = config or {}
         distributor_id = str(uuid.uuid4())
-        distributor_model = RepoDistributor(repo_id, distributor_id, 'yum_distributor', config,
-                                            True)
+        distributor_model = model.Distributor(repo_id, distributor_id, 'yum_distributor', config,
+                                              True)
         if previously_published:
-            distributor_model['last_published'] = dateutils.format_iso8601_datetime(
+            distributor_model.last_published = dateutils.format_iso8601_datetime(
                 datetime.datetime.now())
-        self.distributors_collection.insert(distributor_model)
-        return self.distributors_collection.find_one({'id': distributor_id})
+        distributor_model.save()
+        return self.distributors_collection.find_one({'distributor_id': distributor_id})
 
     @staticmethod
     def _touch(path):
