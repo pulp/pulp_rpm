@@ -38,7 +38,7 @@ class BaseSyncTest(unittest.TestCase):
         self.metadata_files = metadata.MetadataFiles(self.url, '/foo/bar', DownloaderConfig())
         self.metadata_files.download_repomd = mock.MagicMock()
         self.repo = Repository('repo1')
-        self.conduit = RepoSyncConduit(self.repo.id, 'yum_importer')
+        self.conduit = RepoSyncConduit(self.repo.id, 'yum_importer', 'abc123')
         self.conduit.set_progress = mock.MagicMock(spec_set=self.conduit.set_progress)
         self.conduit.get_scratchpad = mock.MagicMock(spec_set=self.conduit.get_scratchpad,
                                                      return_value={})
