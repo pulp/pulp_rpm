@@ -279,7 +279,10 @@ def remove_unit_duplicate_nevra(unit, repo):
     del nevra_filters['checksum']
     del nevra_filters['checksumtype']
     Q_filters = [Q(**{key: value}) for key, value in nevra_filters.iteritems()]
-    Q_filters.append(Q(_content_type_id=unit._content_type_id))
     Q_nevra_filter = reduce(operator.and_, Q_filters)
-    unit_iterator = repo_controller.find_repo_content_units(repo, units_q=Q_nevra_filter, yield_content_unit=True)
+    Q_type_filter = Q(unit_type_id=unit._content_type_id)
+    unit_iterator = repo_controller.find_repo_content_units(repo,
+                                                            repo_content_unit_q=Q_type_filter,
+                                                            units_q=Q_nevra_filter,
+                                                            yield_content_unit=True)
     repo_controller.disassociate_units(repo, unit_iterator)

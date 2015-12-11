@@ -12,6 +12,7 @@ from pulp_rpm.common import version_utils
 from pulp_rpm.common import file_utils
 from pulp_rpm.plugins import serializers
 
+
 _LOGGER = logging.getLogger(__name__)
 
 
@@ -27,12 +28,38 @@ class Package(FileContentUnit):
                            '-'.join(getattr(self, name) for name in self.unit_key_fields))
 
 
-class VersionedPackage(Package):
-    # TODO add docstring to this class
+class NonMetadataPackage(Package):
+    """
+    An abstract model to be subclassed by packages which are not metadata
 
-    # All subclasses use both a version and a release
+    It is tempting to have checksum auto-calculate as a pre_save_signal(), but with checksum being
+    part of the unit_key it is needed when __init__() is called. The filename is not provided to
+    __init__() which makes doing it then impossible. For now, the checksum field is the
+    responsibility of the unit instantiator.
+
+    :ivar version: The version field of the package
+    :type version: mongoengine.Stringfield
+
+    :ivar release: The release field of the package
+    :type release: mongoengine.Stringfield
+
+    :ivar checksumtype: The checksum type of the package.
+    :type checksumtype: mongoengine.StringField
+
+    :ivar checksum: The checksum of the package.
+    :type checksum: mongoengine.StringField
+
+    :ivar version_sort_index: ???
+    :type version_sort_index: mongoengine.StringField
+
+    :ivar release_sort_index: ???
+    :type release_sort_index: mongoengine.StringField
+    """
+
     version = mongoengine.StringField(required=True)
     release = mongoengine.StringField(required=True)
+    checksumtype = mongoengine.StringField(required=True)
+    checksum = mongoengine.StringField(required=True)
 
     # We generate these two
     version_sort_index = mongoengine.StringField()
@@ -42,6 +69,11 @@ class VersionedPackage(Package):
         'abstract': True,
     }
 
+    def __init__(self, *args, **kwargs):
+        if 'checksumtype' in kwargs:
+            kwargs['checksumtype'] = verification.sanitize_checksum_type(kwargs['checksumtype'])
+        super(NonMetadataPackage, self).__init__(*args, **kwargs)
+
     @classmethod
     def pre_save_signal(cls, sender, document, **kwargs):
         """
@@ -50,9 +82,9 @@ class VersionedPackage(Package):
         :param sender: sender class
         :type sender: object
         :param document: Document that sent the signal
-        :type document: pulp_rpm.plugins.db.models.VersionedPackage
+        :type document: pulp_rpm.plugins.db.models.NonMetadataPackage
         """
-        super(VersionedPackage, cls).pre_save_signal(sender, document, **kwargs)
+        super(NonMetadataPackage, cls).pre_save_signal(sender, document, **kwargs)
         document.version_sort_index = version_utils.encode(document.version)
         document.release_sort_index = version_utils.encode(document.release)
 
@@ -180,14 +212,12 @@ class Distribution(Package):
             })
 
 
-class DRPM(VersionedPackage):
+class DRPM(NonMetadataPackage):
     # TODO add docstring to this class
 
     # Unit Key Fields
     epoch = mongoengine.StringField(required=True)
     filename = mongoengine.StringField(required=True)
-    checksumtype = mongoengine.StringField(required=True)
-    checksum = mongoengine.StringField(required=True)
 
     # Other Fields
     sequence = mongoengine.StringField()
@@ -216,11 +246,6 @@ class DRPM(VersionedPackage):
 
     SERIALIZER = serializers.Drpm
 
-    def __init__(self, *args, **kwargs):
-        if 'checksumtype' in kwargs:
-            kwargs['checksumtype'] = verification.sanitize_checksum_type(kwargs['checksumtype'])
-        super(DRPM, self).__init__(*args, **kwargs)
-
     @property
     def relative_path(self):
         """
@@ -236,7 +261,7 @@ class DRPM(VersionedPackage):
         return self.filename
 
 
-class RpmBase(VersionedPackage):
+class RpmBase(NonMetadataPackage):
     # TODO add docstring to this class
 
     # Unit Key Fields
@@ -245,8 +270,6 @@ class RpmBase(VersionedPackage):
     version = mongoengine.StringField(required=True)
     release = mongoengine.StringField(required=True)
     arch = mongoengine.StringField(required=True)
-    checksumtype = mongoengine.StringField(required=True)
-    checksum = mongoengine.StringField(required=True)
 
     # Other Fields
     build_time = mongoengine.IntField()
@@ -292,8 +315,6 @@ class RpmBase(VersionedPackage):
     SERIALIZER = serializers.RpmBase
 
     def __init__(self, *args, **kwargs):
-        if 'checksumtype' in kwargs:
-            kwargs['checksumtype'] = verification.sanitize_checksum_type(kwargs['checksumtype'])
         super(RpmBase, self).__init__(*args, **kwargs)
         # raw_xml is only used during the initial sync
         self.raw_xml = ''

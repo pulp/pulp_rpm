@@ -124,6 +124,6 @@ class CreatePackageGroupCommand(UploadCommand):
             'langonly': langonly,
             'display_order': display_order,
             'translated_description': {},
-            'translated_name': '',
+            'translated_name': {},
         }
         return metadata
