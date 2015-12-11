@@ -320,8 +320,10 @@ def _associate_unit(dest_repo, import_conduit, unit):
 
     :param dest_repo:       destination repo
     :type  dest_repo:       pulp.server.db.model.Repository
+
     :param import_conduit:  import conduit passed to the Importer
     :type  import_conduit:  pulp.plugins.conduits.unit_import.ImportUnitConduit
+
     :param unit:            Unit to be copied
     :type  unit:            pulp.server.db.model.ContentUnit
 

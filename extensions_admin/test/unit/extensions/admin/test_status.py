@@ -25,8 +25,8 @@ class RpmStatusRendererTests(client_base.PulpClientTests):
         """
         self.prompt.render_failure_message = mock.MagicMock()
         content_report = report.ContentReport()
-        model = models.RPM('name', 0, '1.0.1', '2', 'x86_64', 'non_existing_checksum', 'checksum',
-                           {'size': 1024})
+        model = models.RPM(name='name', epoch=0, version='1.0.1', release='2', arch='x86_64',
+                           checksumtype='sha1', checksum='abcd', size=1024)
         error_report = {
             constants.NAME: model.unit_key['name'],
             constants.ERROR_CODE: constants.ERROR_CHECKSUM_TYPE_UNKNOWN,

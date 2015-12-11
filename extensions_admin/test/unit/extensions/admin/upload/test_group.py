@@ -69,7 +69,7 @@ class CreatePackageGroupCommand(PulpClientTests):
         self.assertEqual(metadata['langonly'], 'test-lang')
         self.assertEqual(metadata['display_order'], 'test-order')
         self.assertEqual(metadata['translated_description'], {})
-        self.assertEqual(metadata['translated_name'], '')
+        self.assertEqual(metadata['translated_name'], {})
 
     def test_generate_metadata_invalid_conditional_names(self):
         args = {
