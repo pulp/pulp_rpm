@@ -43,6 +43,25 @@ class Package(FileContentUnit):
             metadata_dict[name] = getattr(self, name)
         return metadata_dict
 
+    def clone(self):
+        """
+        Creates a new instance of an equivalent unit, with the unique ID missing. This is useful
+        for the PackageGroup and similar units, where there is a regular need to create a copy of
+        a unit, changing just one field in the unit key.
+
+        This is a strange use case, so at this point it doesn't seem worth putting this method
+        into the platform.
+
+        deepcopy does not appear to work, presumably because of all the special handling that
+        mongoengine does in the metaclass. Suggestions are welcome for a better way to clone.
+
+        :return:    a new unit instance without a unique ID
+        :rtype:     Package
+        """
+        son_data = self.to_mongo()
+        son_data.pop('_id')
+        return self.__class__(**son_data)
+
 
 class NonMetadataPackage(Package):
     """

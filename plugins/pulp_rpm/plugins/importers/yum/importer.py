@@ -42,7 +42,8 @@ class YumImporter(Importer):
     def validate_config(self, repo, config):
         return config_validate.validate(config)
 
-    def import_units(self, source_transfer_repo, dest_transfer_repo, import_conduit, config, units=None):
+    def import_units(self, source_transfer_repo, dest_transfer_repo, import_conduit, config,
+                     units=None):
         source_repo = platform_models.Repository.objects.get(repo_id=source_transfer_repo.id)
         dest_repo = platform_models.Repository.objects.get(repo_id=dest_transfer_repo.id)
 
