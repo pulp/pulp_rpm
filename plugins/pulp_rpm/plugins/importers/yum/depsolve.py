@@ -162,7 +162,7 @@ class Requirement(object):
 
         :param unit:    a Unit object that will be examined to determine if it
                         fills this requirement
-        :type unit:     pulp.server.db.model.ContentUnit
+        :type unit:     pulp_rpm.plugins.db.models.RPM
         :return:        True if the unit satisfies the Requirement, False otherwise
         :rtype:         bool
         """
@@ -217,10 +217,10 @@ class Solver(object):
         the dependencies of those units. Dependencies are resolved only within the
         repository search by "self.search_method".
 
-        :param units:   iterable of pulp.plugins.model.Unit
+        :param units:   iterable of pulp_rpm.plugins.models.RPM
         :type  units:   iterable
 
-        :return:        set of pulp.plugins.model.Unit instances which
+        :return:        set of pulp_rpm.plugins.db.models.RPM instances which
                         satisfy the passed-in requirements. Please see match()
                         for details about the Units.
 
@@ -235,7 +235,7 @@ class Solver(object):
         Returns a list of available packages with Provides info, and caches
         the result so it won't have to be re-generated.
 
-        :return:    list of tuples (RPM namedtuple, "provides" list)
+        :return:    list of pulp_rpm.plugins.db.models.RPM
         :rtype      list
         """
         if self._cached_source_with_provides is None:
@@ -248,7 +248,8 @@ class Solver(object):
 
         Note that the 'provides' metadata will be flattened via _trim_provides().
 
-        :return:    list of (pulp.plugins.model.Unit, list of provides)
+        :return:    list of pulp_rpm.plugins.db.models.RPM
+        :rtype:     list
         """
         fields = list(models.RPM.unit_key_fields)
         fields.extend(['provides', 'version_sort_index', 'release_sort_index'])
@@ -383,7 +384,7 @@ class Solver(object):
 
         :param reqs:    list of requirements
         :type  reqs:    list of Require() instances
-        :return:        set of pulp.plugins.model.Unit instances which
+        :return:        set of pulp_rpm.plugins.db.models.RPM instances which
                         satisfy the passed-in requirements. These units will
                         be flattened of their "provides" info to save memory.
         :rtype:         set
@@ -404,12 +405,9 @@ class Solver(object):
             # find in package names
             unit_list = packages_tree.get(req.name, [])
             applicable_units = filter(req.fills_requirement, unit_list)
-            rpms_with_units = [
-                (models.RPM.from_package_info(unit.unit_key), unit) for unit in applicable_units
-            ]
-            if rpms_with_units:
-                newest_rpm, newest_unit = max(rpms_with_units)
-                deps.add(newest_unit)
+            if applicable_units:
+                newest = max(applicable_units)
+                deps.add(newest)
 
         return deps
 
@@ -426,12 +424,8 @@ class Solver(object):
         :rtype:     generator
         """
         for segment in paginate(units):
-            search_dicts = [unit.unit_key for unit in segment]
-            filters = {'$or': search_dicts}
-            fields = list(models.RPM.UNIT_KEY_NAMES)
-            fields.extend(['requires', 'id'])
-            criteria = UnitAssociationCriteria(type_ids=[models.RPM.TYPE], unit_filters=filters,
-                                               unit_fields=fields)
-            for result in self.search_method(criteria):
-                for require in result.metadata.get('requires', []):
+            unit_ids = [unit.id for unit in segment]
+            fields = ['requires', 'id']
+            for result in models.RPM.objects.filter(id__in=unit_ids).only(*fields):
+                for require in result.requires or []:
                     yield Requirement(**require)

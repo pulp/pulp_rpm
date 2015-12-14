@@ -7,7 +7,8 @@ from pulp_rpm.extensions.admin import units_display, criteria_utils
 from pulp_rpm.common.constants import DISPLAY_UNITS_THRESHOLD, CONFIG_RECURSIVE
 from pulp_rpm.common.ids import (TYPE_ID_RPM, TYPE_ID_SRPM, TYPE_ID_DRPM, TYPE_ID_ERRATA,
                                  TYPE_ID_DISTRO, TYPE_ID_PKG_GROUP, TYPE_ID_PKG_CATEGORY,
-                                 TYPE_ID_PKG_ENVIRONMENT, UNIT_KEY_RPM)
+                                 TYPE_ID_PKG_ENVIRONMENT, TYPE_ID_YUM_REPO_METADATA_FILE,
+                                 UNIT_KEY_RPM)
 
 
 # -- constants ----------------------------------------------------------------
@@ -20,6 +21,7 @@ DESC_DISTRIBUTION = _('copy distributions from one repository to another')
 DESC_PKG_GROUP = _('copy package groups from one repository to another')
 DESC_PKG_CATEGORY = _('copy package categories from one repository to another')
 DESC_PKG_ENVIRONMENT = _('copy package environment from one repository to another')
+DESC_METAFILE = _('copy yum repo metadata files from one repository to another')
 DESC_ALL = _('copy all content units from one repository to another')
 
 DESC_RECURSIVE = _(
@@ -136,6 +138,11 @@ class PackageEnvironmentCopyCommand(RecursiveCopyCommand):
         RecursiveCopyCommand.__init__(self, context, 'environment', DESC_PKG_ENVIRONMENT,
                                       TYPE_ID_PKG_ENVIRONMENT)
 
+
+class YumRepoMetadataFileCommand(NonRecursiveCopyCommand):
+    def __init__(self, context):
+        NonRecursiveCopyCommand.__init__(self, context, 'metafile', DESC_METAFILE,
+                                         TYPE_ID_YUM_REPO_METADATA_FILE)
 
 class AllCopyCommand(NonRecursiveCopyCommand):
     def __init__(self, context):
