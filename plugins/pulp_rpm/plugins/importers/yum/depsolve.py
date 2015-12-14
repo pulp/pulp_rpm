@@ -1,11 +1,8 @@
-# -*- coding: utf-8 -*-
-
 import logging
 
 import mongoengine
 from pulp.plugins.util.misc import paginate
 from pulp.server.controllers import repository as repo_controller
-from pulp.server.db.model.criteria import UnitAssociationCriteria
 
 from pulp_rpm.common import version_utils
 from pulp_rpm.common import ids

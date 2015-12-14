@@ -11,12 +11,10 @@ from nectar.downloaders.threaded import HTTPThreadedDownloader
 from nectar.downloaders.local import LocalFileDownloader
 from pulp.common.plugins import importer_constants
 from pulp.common.util import encode_unicode
-from pulp.plugins.util import publish_step as platform_steps
 from pulp.server.controllers import repository as repo_controller
-from pulp.server.db.model.criteria import Criteria, UnitAssociationCriteria
 from pulp.server.managers.repo import _common as common_utils
 
-from pulp_rpm.common import constants, ids
+from pulp_rpm.common import constants
 from pulp_rpm.common.progress import SyncProgressReport
 from pulp_rpm.plugins.db import models
 

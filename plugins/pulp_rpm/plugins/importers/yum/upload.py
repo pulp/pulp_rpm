@@ -180,7 +180,7 @@ def _handle_erratum(repo, type_id, unit_key, metadata, file_path, conduit, confi
 
     if not config.get_boolean(CONFIG_SKIP_ERRATUM_LINK):
         for model_type in [models.RPM.TYPE, models.SRPM.TYPE]:
-            pass # TODO Find out if the unit exists, if it does, associated, if not, create
+            pass  # TODO Find out if the unit exists, if it does, associated, if not, create
 
 
 def _handle_yum_metadata_file(repo, type_id, unit_key, metadata, file_path, conduit, config):
@@ -352,7 +352,7 @@ def _handle_package(repo, type_id, unit_key, metadata, file_path, conduit, confi
                 with open(file_path) as dest_file:
                     verification.verify_checksum(dest_file, rpm_data['checksumtype'],
                                                  rpm_data['checksum'])
-            except verification.VerificationException, e:
+            except verification.VerificationException:
                 raise PulpCodedException(error_code=platform_errors.PLP1013)
         else:
             rpm_data['checksum'] = _calculate_checksum(rpm_data['checksumtype'], file_path)
@@ -370,7 +370,6 @@ def _handle_package(repo, type_id, unit_key, metadata, file_path, conduit, confi
         unit = model_class(**rpm_data)
     except TypeError:
         raise ModelInstantiationError()
-
 
     # Extract the repodata snippets
     unit.repodata = rpm_parse.get_package_xml(file_path, sumtype=unit.checksumtype)

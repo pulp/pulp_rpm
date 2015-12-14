@@ -1,7 +1,6 @@
 import contextlib
 import functools
 import logging
-import os
 import random
 import re
 import shutil

@@ -144,6 +144,7 @@ class YumRepoMetadataFileCommand(NonRecursiveCopyCommand):
         NonRecursiveCopyCommand.__init__(self, context, 'metafile', DESC_METAFILE,
                                          TYPE_ID_YUM_REPO_METADATA_FILE)
 
+
 class AllCopyCommand(NonRecursiveCopyCommand):
     def __init__(self, context):
         NonRecursiveCopyCommand.__init__(self, context, 'all', DESC_ALL, None)

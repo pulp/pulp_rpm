@@ -111,7 +111,7 @@ def check_all_and_associate(wanted, sync_conduit):
     for unit_type, values in sorted_units.iteritems():
         model = plugin_api.get_unit_model_by_id(unit_type)
         # FIXME "fields" does not get used, but it should
-        fields = model.unit_key_fields + ('_storage_path',)
+        # fields = model.unit_key_fields + ('_storage_path',)
         rpm_srpm_drpm = unit_type in (ids.TYPE_ID_RPM,
                                       ids.TYPE_ID_SRPM,
                                       ids.TYPE_ID_DRPM)

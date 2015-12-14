@@ -274,7 +274,8 @@ class DRPM(NonMetadataPackage):
                 "epoch", "version", "release", "filename", "checksum",
                 # Unit key Index
                 {
-                    'fields': ["epoch", "version", "release", 'filename', "checksumtype", "checksum"],
+                    'fields': ["epoch", "version", "release", 'filename', "checksumtype",
+                               "checksum"],
                     'unique': True
                 }],
             'allow_inheritance': False}
@@ -337,15 +338,15 @@ class RpmBase(NonMetadataPackage):
     unit_key_fields = ('name', 'epoch', 'version', 'release', 'arch', 'checksumtype', 'checksum')
 
     meta = {'indexes': [
-                "name", "epoch", "version", "release", "arch", "filename", "checksum",
-                "checksumtype", "version_sort_index",
-                ("version_sort_index", "release_sort_index"),
-                {
-                    'fields': ["name", "epoch", "version", "release", "arch",
-                               "checksumtype", "checksum"],
-                    'unique': True
-                }],
-            'abstract': True}
+        "name", "epoch", "version", "release", "arch", "filename", "checksum",
+        "checksumtype", "version_sort_index",
+        ("version_sort_index", "release_sort_index"),
+        {
+            'fields': ["name", "epoch", "version", "release", "arch",
+                       "checksumtype", "checksum"],
+            'unique': True
+        }],
+        'abstract': True}
 
     SERIALIZER = serializers.RpmBase
 
@@ -479,14 +480,13 @@ class PackageGroup(Package):
     meta = {
         'indexes': [
             'package_group_id', 'repo_id', 'name', 'mandatory_package_names',
-            'conditional_package_names',
-            'optional_package_names', 'default_package_names',
-                {
-                    'fields': ('package_group_id', 'repo_id'),
-                    'unique': True
-                }],
-            'collection': 'units_package_group',
-            'allow_inheritance': False}
+            'conditional_package_names', 'optional_package_names', 'default_package_names',
+            {
+                'fields': ('package_group_id', 'repo_id'),
+                'unique': True
+            }],
+        'collection': 'units_package_group',
+        'allow_inheritance': False}
 
     SERIALIZER = serializers.PackageGroup
 
@@ -525,8 +525,8 @@ class PackageCategory(Package):
                 'fields': ('package_category_id', 'repo_id'),
                 'unique': True
             }],
-            'collection': 'units_package_category',
-            'allow_inheritance': False}
+        'collection': 'units_package_category',
+        'allow_inheritance': False}
 
     SERIALIZER = serializers.PackageCategory
 
@@ -644,25 +644,25 @@ class ISO(FileContentUnit):
 
         if full_validation:
             with open(storage_path) as destination_file:
-                 # Validate the size
-                    actual_size = self.calculate_size(destination_file)
-                    if actual_size != self.size:
-                        raise ValueError(_('Downloading <%(name)s> failed validation. '
-                                           'The manifest specified that the file should be %('
-                                           'expected)s bytes, but '
-                                           'the downloaded file is %(found)s bytes.') % {
-                                         'name': self.name,
-                                         'expected': self.size,
-                                         'found': actual_size})
+                # Validate the size
+                actual_size = self.calculate_size(destination_file)
+                if actual_size != self.size:
+                    raise ValueError(_('Downloading <%(name)s> failed validation. '
+                                       'The manifest specified that the file should be %('
+                                       'expected)s bytes, but '
+                                       'the downloaded file is %(found)s bytes.') % {
+                                     'name': self.name,
+                                     'expected': self.size,
+                                     'found': actual_size})
 
-                    # Validate the checksum
-                    actual_checksum = self.calculate_checksum(destination_file)
-                    if actual_checksum != self.checksum:
-                        raise ValueError(
-                            _('Downloading <%(name)s> failed checksum validation. The manifest '
-                              'specified the checksum to be %(c)s, but it was %(f)s.') % {
-                                'name': self.name, 'c': self.checksum,
-                                'f': actual_checksum})
+                # Validate the checksum
+                actual_checksum = self.calculate_checksum(destination_file)
+                if actual_checksum != self.checksum:
+                    raise ValueError(
+                        _('Downloading <%(name)s> failed checksum validation. The manifest '
+                          'specified the checksum to be %(c)s, but it was %(f)s.') % {
+                            'name': self.name, 'c': self.checksum,
+                            'f': actual_checksum})
 
     @staticmethod
     def calculate_checksum(file_handle):

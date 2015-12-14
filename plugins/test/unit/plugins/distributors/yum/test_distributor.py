@@ -7,7 +7,6 @@ import tempfile
 import mock
 from mock import Mock, patch, call
 from pulp.common.compat import unittest
-from pulp.devel import mock_config
 from pulp.devel.unit import util
 from pulp.devel.unit.util import compare_dict
 from pulp.plugins.conduits.repo_config import RepoConfigConduit
