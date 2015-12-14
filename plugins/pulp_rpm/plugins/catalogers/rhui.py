@@ -4,7 +4,6 @@ from base64 import urlsafe_b64encode
 from contextlib import closing
 
 from pulp_rpm.common import ids
-from pulp_rpm.plugins.db import models
 from pulp_rpm.plugins.catalogers.yum import YumCataloger
 
 

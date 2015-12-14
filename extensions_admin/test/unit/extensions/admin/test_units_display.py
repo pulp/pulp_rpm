@@ -1,12 +1,9 @@
-# -*- coding: utf-8 -*-
-
 import unittest
 
 from mock import patch
 
 from pulp_rpm.extensions.admin import units_display
-from pulp_rpm.common.ids import (TYPE_ID_RPM, TYPE_ID_SRPM, TYPE_ID_DRPM, TYPE_ID_ERRATA,
-                                 TYPE_ID_DISTRO, TYPE_ID_PKG_GROUP, TYPE_ID_PKG_CATEGORY,
+from pulp_rpm.common.ids import (TYPE_ID_RPM, TYPE_ID_SRPM, TYPE_ID_DRPM,
                                  TYPE_ID_YUM_REPO_METADATA_FILE)
 
 

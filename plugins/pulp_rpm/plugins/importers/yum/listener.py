@@ -95,7 +95,8 @@ class ContentListener(DownloadEventListener):
 
         repo_controller.associate_single_unit(self.sync_conduit.repo, model)
 
-        self.progress_report['content'].success(model) # TODO consider that if an exception occurs before here maybe it shouldn't call success?
+        # TODO consider that if an exception occurs before here maybe it shouldn't call success?
+        self.progress_report['content'].success(model)
         self.sync_conduit.set_progress(self.progress_report)
 
     def download_failed(self, report):

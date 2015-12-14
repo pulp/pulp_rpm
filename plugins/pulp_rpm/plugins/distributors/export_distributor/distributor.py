@@ -3,7 +3,6 @@ import shutil
 
 from pulp.common.config import read_json_config
 from pulp.plugins.distributor import Distributor
-from pulp.server.db import model as platform_models
 from pulp.server.exceptions import PulpDataException
 
 from pulp_rpm.plugins.distributors.export_distributor import export_utils

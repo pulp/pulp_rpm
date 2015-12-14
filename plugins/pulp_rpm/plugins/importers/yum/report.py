@@ -1,11 +1,8 @@
-# -*- coding: utf-8 -*-
-
 from gettext import gettext as _
 import logging
 
 from pulp_rpm.common import constants
 from pulp_rpm.common import ids
-from pulp_rpm.plugins.db import models
 
 
 _logger = logging.getLogger(__name__)

@@ -1,6 +1,3 @@
-import os
-import shutil
-
 from pulp.common import config as config_utils
 from pulp.common.plugins import importer_constants
 from pulp.plugins.importer import Importer
