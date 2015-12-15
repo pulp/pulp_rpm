@@ -93,7 +93,6 @@ class TestErrata(unittest.TestCase):
         self.assertEqual(ret[0]['checksumtype'], 'sha1')
 
 
-@skip_broken
 class TestISO(unittest.TestCase):
     """
     Test the ISO class.
@@ -105,6 +104,7 @@ class TestISO(unittest.TestCase):
     def tearDown(self):
         shutil.rmtree(self.temp_dir)
 
+    @skip_broken
     def test___init__(self):
         """
         Make sure __init__() sets all the proper attributes.
@@ -116,6 +116,7 @@ class TestISO(unittest.TestCase):
         self.assertEqual(iso.checksum, 'checksum')
         self.assertEqual(iso._unit, None)
 
+    @skip_broken
     def test_calculate_checksum_empty_file(self):
         """
         Test the static calculate_checksum() method with an empty file.
@@ -132,6 +133,7 @@ class TestISO(unittest.TestCase):
 
         self.assertEqual(calculated_checksum, expected_checksum)
 
+    @skip_broken
     @mock.patch('pulp_rpm.plugins.db.models.CHECKSUM_CHUNK_SIZE', 8)
     def test_calculate_checksum_large_file(self):
         """
@@ -162,6 +164,7 @@ class TestISO(unittest.TestCase):
 
         self.assertEqual(calculated_checksum, expected_checksum)
 
+    @skip_broken
     def test_calculate_checksum_small_file(self):
         """
         Test the static calculate_checksum() method with a file that's smaller than
@@ -185,6 +188,7 @@ class TestISO(unittest.TestCase):
 
         self.assertEqual(calculated_checksum, expected_checksum)
 
+    @skip_broken
     def test_calculate_size(self):
         """
         Test the static calculate_size() method.
@@ -198,6 +202,7 @@ class TestISO(unittest.TestCase):
 
         self.assertEqual(size, len(fake_iso_data))
 
+    @skip_broken
     def test_calculate_size_empty_file(self):
         """
         Test the static calculate_size() method for an empty file.
@@ -209,6 +214,7 @@ class TestISO(unittest.TestCase):
 
         self.assertEqual(size, 0)
 
+    @skip_broken
     def test_from_unit(self):
         """
         Test correct behavior from the from_unit() method.
@@ -223,6 +229,7 @@ class TestISO(unittest.TestCase):
         self.assertEqual(iso.checksum, 'checksum')
         self.assertEqual(iso._unit, unit)
 
+    @skip_broken
     def test_init_unit(self):
         """
         Assert correct behavior from the init_unit() method.
@@ -240,6 +247,7 @@ class TestISO(unittest.TestCase):
             ids.TYPE_ID_ISO, {'name': 'name', 'size': 42, 'checksum': 'checksum'}, {},
             expected_relative_path)
 
+    @skip_broken
     def test_save_unit(self):
         unit = mock.MagicMock()
         iso = models.ISO('name', 42, 'checksum', unit)
@@ -249,6 +257,7 @@ class TestISO(unittest.TestCase):
 
         conduit.save_unit.assert_called_once_with(unit)
 
+    @skip_broken
     def test_storage_path(self):
         """
         Make sure the storage_path() method returns the underlying Unit's storage_path attribute.
@@ -261,6 +270,7 @@ class TestISO(unittest.TestCase):
 
         self.assertEqual(storage_path, unit.storage_path)
 
+    @skip_broken
     def test_validate(self):
         """
         Assert that validate() raises no Exception when passed correct data.
@@ -281,6 +291,7 @@ class TestISO(unittest.TestCase):
         # This should validate, i.e., should not raise any Exception
         iso.validate()
 
+    @skip_broken
     def test_validate_invalid_name_full_validation_false(self):
         """
         Due to a bug[0], we don't want to allow an ISO named PULP_MANIFEST. This test checks that
@@ -309,6 +320,7 @@ class TestISO(unittest.TestCase):
                 str(e), 'An ISO may not be named PULP_MANIFEST, as it conflicts with the name of '
                         'the manifest during publishing.')
 
+    @skip_broken
     def test_validate_invalid_name_full_validation_true(self):
         """
         Due to a bug[0], we don't want to allow an ISO named PULP_MANIFEST. This test asserts that
@@ -337,6 +349,7 @@ class TestISO(unittest.TestCase):
                 str(e), 'An ISO may not be named PULP_MANIFEST, as it conflicts with the name of '
                         'the manifest during publishing.')
 
+    @skip_broken
     def test_validate_wrong_checksum_full_validation_false(self):
         """
         Assert that validate() does not raise a ValueError when the checksum is not correct and
@@ -354,6 +367,7 @@ class TestISO(unittest.TestCase):
         # This should not raise a ValueError since full_validation is False
         iso.validate(full_validation=False)
 
+    @skip_broken
     def test_validate_wrong_checksum_full_validation_true(self):
         """
         Assert that validate() raises a ValueError when the checksum is not correct and
@@ -382,6 +396,7 @@ class TestISO(unittest.TestCase):
                 'checksum to be terrible_pun, but it was '
                 'dfec884065223f24c3ef333d4c7dcc0eb785a683cfada51ce071410b32a905e8.')
 
+    @skip_broken
     def test_validate_wrong_size_full_validation_false(self):
         """
         Assert that validate() does not raise a ValueError when given an incorrect size and
@@ -399,6 +414,7 @@ class TestISO(unittest.TestCase):
         # This should not raise an Exception because full_validation is set to False
         iso.validate(full_validation=False)
 
+    @skip_broken
     def test_validate_wrong_size_full_validation_true(self):
         """
         Assert that validate() raises a ValueError when given an incorrect size and full_validation
