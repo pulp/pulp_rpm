@@ -5,11 +5,13 @@ import tempfile
 import mock
 from pulp.plugins.model import Repository
 
+from pulp_rpm.devel.skip import skip_broken
 from pulp_rpm.plugins.importers.yum.importer import YumImporter
 import mock_conduits
 from pulp_rpm.devel import rpm_support_base
 
 
+@skip_broken
 class CustomMetadataTests(rpm_support_base.PulpRPMTests):
     def setUp(self):
         super(CustomMetadataTests, self).setUp()

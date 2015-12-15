@@ -18,9 +18,6 @@ class UnitsDisplayTests(unittest.TestCase):
     def test_details_drpm(self):
         self.assertEquals(units_display._details_drpm({'filename': 'foo'}), 'foo')
 
-    def test_details_id_only(self):
-        self.assertEquals(units_display._details_id_only({'id': 'foo'}), 'foo')
-
     def test__yum_repo_metadata_name_only(self):
         self.assertEqual(units_display._yum_repo_metadata_name_only({'data_type': 'foo'}), 'foo')
 

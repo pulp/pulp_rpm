@@ -67,11 +67,11 @@ class TestGetRelativePath(unittest.TestCase):
 
     def test__get_relative_path(self):
         repo = MagicMock()
-        repo.id = 'awesome_repo'
+        repo.repo_id = 'awesome_repo'
 
         relative_path = publish._get_relative_path(repo)
 
-        self.assertEqual(relative_path, repo.id)
+        self.assertEqual(relative_path, repo.repo_id)
 
 
 class TestGetRepositoryProtectionUtils(unittest.TestCase):

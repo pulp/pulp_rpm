@@ -12,7 +12,7 @@ from mock import patch, Mock
 from pulp.server.managers import factory as managers
 from pulp.plugins.conduits.cataloger import CatalogerConduit
 
-from pulp_rpm.plugins.db import models
+from pulp_rpm.common import ids
 from pulp_rpm.plugins.catalogers.yum import TYPE_ID, YumCataloger, entry_point
 
 
@@ -53,7 +53,7 @@ class TestCataloger(TestCase):
         expected = {
             'id': TYPE_ID,
             'display_name': "Yum Cataloger",
-            'types': [models.RPM.TYPE]
+            'types': [ids.TYPE_ID_RPM]
         }
         self.assertEqual(md, expected)
 

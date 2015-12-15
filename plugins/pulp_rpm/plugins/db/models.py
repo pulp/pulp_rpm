@@ -185,6 +185,23 @@ class Distribution(Package):
 
     SERIALIZER = serializers.Distribution
 
+    def __init__(self, *args, **kwargs):
+        """
+        Adds the distribution_id if not already defined, which is derived based on the other 4 unit
+        key fields.
+        """
+        super(Distribution, self).__init__(*args, **kwargs)
+        if not self.distribution_id:
+            # the original importer leaves out any elements that are None, so
+            # we will blindly trust that here.
+            id_pieces = filter(lambda x: x is not None,
+                               ('ks',
+                                self.family,
+                                self.variant,
+                                self.version,
+                                self.arch))
+            self.distribution_id = '-'.join(id_pieces)
+
     @property
     def relative_path(self):
         """
@@ -205,16 +222,6 @@ class Distribution(Package):
         :type document: pulp_rpm.plugins.db.models.Distribution
         """
         document.version_sort_index = version_utils.encode(document.version)
-        if not document.distribution_id:
-            # the original importer leaves out any elements that are None, so
-            # we will blindly trust that here.
-            id_pieces = filter(lambda x: x is not None,
-                               ('ks',
-                                document.family,
-                                document.variant,
-                                document.version,
-                                document.arch))
-            document.distribution_id = '-'.join(id_pieces)
         super(Package, cls).pre_save_signal(sender, document, **kwargs)
 
     def process_download_reports(self, reports):
