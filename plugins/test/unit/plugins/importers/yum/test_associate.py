@@ -17,19 +17,25 @@ from pulp_rpm.plugins.importers.yum import associate
 manager_factory.initialize()
 
 
-@skip_broken
 class TestAssociate(unittest.TestCase):
     def setUp(self):
-        self.source_repo = Repository('repo-source')
-        self.dest_repo = Repository('repo-dest')
-        self.rpm_units = model_factory.rpm_units(2)
-        self.category_units = model_factory.category_units(2)
-        self.group_units = model_factory.group_units(2)
-        self.group1_names = self.group_units[0].metadata['default_package_names']
-        self.group2_names = self.group_units[1].metadata['default_package_names']
-        self.conduit = mock.MagicMock()
-        self.config = PluginCallConfiguration({}, {}, {})
+        # Code below causes EL6 to fail. We believe due to unittest2 backport incorrectly running
+        # setUp() even though unittest in 2.7+ indicates if a test is skipped setUp() should not be
+        # run. When removing @skip_broken from tests in this class you should uncomment this and
+        # port it to work with the tests you are fixing.
+        #
+        # self.source_repo = Repository('repo-source')
+        # self.dest_repo = Repository('repo-dest')
+        # self.rpm_units = model_factory.rpm_units(2)
+        # self.category_units = model_factory.category_units(2)
+        # self.group_units = model_factory.group_units(2)
+        # self.group1_names = self.group_units[0].metadata['default_package_names']
+        # self.group2_names = self.group_units[1].metadata['default_package_names']
+        # self.conduit = mock.MagicMock()
+        # self.config = PluginCallConfiguration({}, {}, {})
+        pass
 
+    @skip_broken
     @mock.patch.object(associate, '_associate_unit', autospec=True)
     def test_no_units_provided(self, mock_associate):
         self.conduit.get_source_units.return_value = self.group_units
@@ -41,6 +47,7 @@ class TestAssociate(unittest.TestCase):
         mock_associate.assert_any_call(self.dest_repo, self.conduit, self.group_units[0])
         mock_associate.assert_any_call(self.dest_repo, self.conduit, self.group_units[1])
 
+    @skip_broken
     @mock.patch.object(associate, 'copy_rpms', autospec=True)
     def test_calls_copy_rpms(self, mock_copy_rpms):
         mock_copy_rpms.return_value = set(self.rpm_units)
@@ -55,6 +62,7 @@ class TestAssociate(unittest.TestCase):
         self.assertEqual(mock_copy_rpms.call_args[0][1], self.conduit)
         self.assertFalse(mock_copy_rpms.call_args[0][2])
 
+    @skip_broken
     @mock.patch.object(associate, 'copy_rpms_by_name', autospec=True)
     @mock.patch('pulp_rpm.plugins.importers.yum.existing.get_existing_units', autospec=True)
     @mock.patch.object(associate, '_associate_unit', wraps=lambda x, y, z: z)
@@ -83,6 +91,7 @@ class TestAssociate(unittest.TestCase):
 
         self.assertEqual(set(ret), set(self.group_units) | set(self.rpm_units))
 
+    @skip_broken
     @mock.patch.object(associate, 'filter_available_rpms', autospec=True, return_value=[])
     @mock.patch.object(associate, 'copy_rpms', autospec=True)
     @mock.patch.object(associate, '_associate_unit', wraps=lambda x, y, z: z)
@@ -260,11 +269,11 @@ class TestIdentifyChildrenToCopy(unittest.TestCase):
         self.assertEqual(rpm_search_dicts, units[0].metadata['pkglist'][0]['packages'])
 
 
-@skip_broken
 class TestAssociateUnit(unittest.TestCase):
     def setUp(self):
         self.repo = Repository('repo1')
 
+    @skip_broken
     @mock.patch('shutil.copyfile')
     def test_rpm(self, mock_copyfile):
         model = model_factory.rpm_models(1)[0]
@@ -276,6 +285,7 @@ class TestAssociateUnit(unittest.TestCase):
         self.assertTrue(ret is unit)
         self.assertEqual(mock_copyfile.call_count, 0)
 
+    @skip_broken
     def test_distribution(self):
         unit = model_factory.drpm_units(1)[0]
         mock_conduit = mock.MagicMock(spec_set=ImportUnitConduit)
@@ -285,6 +295,7 @@ class TestAssociateUnit(unittest.TestCase):
         self.assertTrue(ret is unit)
         mock_conduit.associate_unit.assert_called_once_with(unit)
 
+    @skip_broken
     @mock.patch('shutil.copyfile')
     def test_yum_md_file(self, mock_copyfile):
         mock_conduit = mock.MagicMock(spec_set=ImportUnitConduit('', '', '', ''))
@@ -303,6 +314,7 @@ class TestAssociateUnit(unittest.TestCase):
         mock_copyfile.assert_called_once_with(unit.storage_path,
                                               mock_conduit.init_unit.return_value.storage_path)
 
+    @skip_broken
     def test_group(self):
         unit = model_factory.group_units(1)[0]
         mock_conduit = mock.MagicMock()
@@ -316,13 +328,19 @@ class TestAssociateUnit(unittest.TestCase):
         self.assertEqual(saved_unit.unit_key['id'], unit.unit_key['id'])
 
 
-@skip_broken
 class TestGetRPMSToCopyByKey(unittest.TestCase):
     def setUp(self):
-        self.units = model_factory.rpm_units(2)
-        self.search_dicts = [unit.unit_key for unit in self.units]
-        self.conduit = mock.MagicMock()
+        # Code below causes EL6 to fail. We believe due to unittest2 backport incorrectly running
+        # setUp() even though unittest in 2.7+ indicates if a test is skipped setUp() should not be
+        # run. When removing @skip_broken from tests in this class you should uncomment this and
+        # port it to work with the tests you are fixing.
+        #
+        # self.units = model_factory.rpm_units(2)
+        # self.search_dicts = [unit.unit_key for unit in self.units]
+        # self.conduit = mock.MagicMock()
+        pass
 
+    @skip_broken
     @mock.patch('pulp_rpm.plugins.importers.yum.existing.get_existing_units',
                 autospec=True, return_value=tuple())
     def test_none_existing(self, mock_get_existing):
@@ -339,6 +357,7 @@ class TestGetRPMSToCopyByKey(unittest.TestCase):
         self.assertTrue(models.RPM.NAMEDTUPLE(**expected1) in ret)
         self.assertTrue(models.RPM.NAMEDTUPLE(**expected2) in ret)
 
+    @skip_broken
     @mock.patch('pulp_rpm.plugins.importers.yum.existing.get_existing_units',
                 autospec=True)
     def test_some_existing(self, mock_get_existing):

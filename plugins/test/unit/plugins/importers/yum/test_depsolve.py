@@ -182,15 +182,20 @@ class TestPackagesTree(DepsolveTestCase):
         self.assertTrue(self.solver._cached_source_with_provides is None)
 
 
-@skip_broken
 class TestFindDependentRPMs(DepsolveTestCase):
     """
     Test the find_dependent_rpms() function.
     """
 
     def setUp(self):
-        super(TestFindDependentRPMs, self).setUp()
-        self.mock_search.side_effect = self._get_units
+        # Code below causes EL6 to fail. We believe due to unittest2 backport incorrectly running
+        # setUp() even though unittest in 2.7+ indicates if a test is skipped setUp() should not be
+        # run. When removing @skip_broken from tests in this class you should uncomment this and
+        # port it to work with the tests you are fixing.
+        #
+        # super(TestFindDependentRPMs, self).setUp()
+        # self.mock_search.side_effect = self._get_units
+        pass
 
     def _get_units(self, criteria, as_generator=False):
         """
@@ -208,6 +213,7 @@ class TestFindDependentRPMs(DepsolveTestCase):
         else:
             return list(units)
 
+    @skip_broken
     def test_one_unit_with_dependencies(self):
         """
         Call find_dependent_rpms with the Firefox unit. It should return a dependency on xulrunner.
@@ -220,6 +226,7 @@ class TestFindDependentRPMs(DepsolveTestCase):
         expected_rpms = set([self.unit_2])
         self.assertEqual(dependent_rpms, expected_rpms)
 
+    @skip_broken
     def test_two_units_with_dependencies(self):
         """
         Call find_dependent_rpms() with firefox and gnome-calcualtor. It should return xulrunner and
@@ -233,6 +240,7 @@ class TestFindDependentRPMs(DepsolveTestCase):
         expected_rpms = set([self.unit_2, self.unit_5])
         self.assertEqual(dependent_rpms, expected_rpms)
 
+    @skip_broken
     def test_with_no_dependencies(self):
         """
         Call with glib2, which doesn't list any dependencies.
@@ -245,6 +253,7 @@ class TestFindDependentRPMs(DepsolveTestCase):
         expected_rpms = set([])
         self.assertEqual(dependent_rpms, expected_rpms)
 
+    @skip_broken
     def test_with_no_units(self):
         """
         Call with no units, which shouldn't return any dependencies.
