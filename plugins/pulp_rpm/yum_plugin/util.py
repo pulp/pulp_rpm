@@ -74,25 +74,6 @@ def validate_cert(cert_pem):
     return True
 
 
-def get_relpath_from_unit(unit):
-    """
-    @param unit
-    @type AssociatedUnit
-
-    @return relative path
-    @rtype str
-    """
-    if "filename" in unit.metadata:
-        relpath = unit.metadata["filename"]
-    elif "fileName" in unit.unit_key:
-        relpath = unit.unit_key["fileName"]
-    elif "filename" in unit.unit_key:
-        relpath = unit.unit_key["filename"]
-    else:
-        relpath = os.path.basename(unit._storage_path)
-    return relpath
-
-
 def is_rpm_newer(a, b):
     """
     @var a: represents rpm metadata

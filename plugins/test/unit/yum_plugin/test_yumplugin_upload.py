@@ -1,9 +1,11 @@
 import os
 import unittest
 
+from pulp.plugins.util import verification
+
+from pulp_rpm.devel.skip import skip_broken
 from pulp_rpm.plugins.importers.yum import upload
 from pulp_rpm.plugins.db import models
-from pulp.plugins.util import verification
 
 
 DATA_DIR = os.path.abspath(os.path.dirname(__file__)) + '/../../data/'
@@ -12,6 +14,7 @@ RPM_UNUSUAL_NAME = DATA_DIR + 'unusual-rpm-filename.data'
 SRPM_USUAL_NAME = DATA_DIR + 'test-srpm01-1.0-1.src.rpm'
 
 
+@skip_broken
 class TestUploadGenerateRpmData(unittest.TestCase):
     """
     Tests for upload._generate_rpm_data

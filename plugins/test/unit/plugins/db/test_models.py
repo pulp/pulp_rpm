@@ -10,9 +10,11 @@ import unittest
 import mock
 
 from pulp_rpm.common import ids
+from pulp_rpm.devel.skip import skip_broken
 from pulp_rpm.plugins.db import models
 
 
+@skip_broken
 class TestDistribution(unittest.TestCase):
     """
     This class contains tests for the Distribution class.
@@ -34,6 +36,7 @@ class TestDistribution(unittest.TestCase):
         self.assertEqual(d.metadata['files'][0]['checksumtype'], 'sha1')
 
 
+@skip_broken
 class TestDRPM(unittest.TestCase):
     """
     This class contains tests for the DRPM class.
@@ -49,6 +52,7 @@ class TestDRPM(unittest.TestCase):
         self.assertEqual(drpm.unit_key['checksumtype'], 'sha1')
 
 
+@skip_broken
 class TestErrata(unittest.TestCase):
     """
     This class contains tests for the Errata class.
@@ -89,6 +93,7 @@ class TestErrata(unittest.TestCase):
         self.assertEqual(ret[0]['checksumtype'], 'sha1')
 
 
+@skip_broken
 class TestISO(unittest.TestCase):
     """
     Test the ISO class.
@@ -421,6 +426,7 @@ class TestISO(unittest.TestCase):
                         'file should be 3.14159265359 bytes, but the downloaded file is 70 bytes.')
 
 
+@skip_broken
 class TestISOManifest(unittest.TestCase):
     """
     Test the ISOManifest class.
@@ -485,6 +491,7 @@ class TestISOManifest(unittest.TestCase):
         self.assertEqual(len(manifest), 3)
 
 
+@skip_broken
 class TestPackageEnvironment(unittest.TestCase):
     def test_get_group_ids(self):
         group_id_list = ['id1', 'id2']
@@ -507,6 +514,7 @@ class TestRPM(unittest.TestCase):
     This class contains tests for the RPM class.
     """
 
+    @skip_broken
     def test___init___sanitizes_checksum_type(self):
         """
         Ensure that __init__() calls sanitize_checksum_type correctly.

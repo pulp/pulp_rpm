@@ -33,14 +33,13 @@ def rpm_models(num, same_name_and_arch=False):
         if not same_name_and_arch:
             name = 'name-%d' % count
         ret.append(models.RPM(
-            name,
-            '0',
-            '2.1.%d' % count,
-            '1-1',
-            'x86_64',
-            'sha256',
-            'somehash-%d' % count,
-            {}
+            name=name,
+            epoch='0',
+            version='2.1.%d' % count,
+            release='1-1',
+            arch='x86_64',
+            checksumtype='sha256',
+            checksum='somehash-%d' % count
         ))
         count = _rpm_counter.next()
     return ret
@@ -59,14 +58,13 @@ def srpm_models(num, same_name_and_arch=False):
         if not same_name_and_arch:
             name = 'name-%d' % count
         ret.append(models.SRPM(
-            name,
-            '0',
-            '2.1.%d' % count,
-            '1-1',
-            'x86_64',
-            'sha256',
-            'somehash-%d' % count,
-            {}
+            name=name,
+            epoch='0',
+            version='2.1.%d' % count,
+            release='1-1',
+            arch='x86_64',
+            checksumtype='sha256',
+            checksum='somehash-%d' % count
         ))
         count = _srpm_counter.next()
     return ret
@@ -85,13 +83,12 @@ def drpm_models(num, same_filename_and_arch=False):
         if not same_filename_and_arch:
             filename = 'filename-%d' % count
         ret.append(models.DRPM(
-            '0',
-            '2.1.%d' % count,
-            '1-1',
-            filename,
-            'sha256',
-            'somehash-%d' % count,
-            {}
+            epoch='0',
+            version='2.1.%d' % count,
+            release='1-1',
+            filename=filename,
+            checksumtype='sha256',
+            checksum='somehash-%d' % count
         ))
         count = _drpm_counter.next()
     return ret

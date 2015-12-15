@@ -22,7 +22,7 @@ class TestProcessErratumElement(unittest.TestCase):
         self.assertEqual(len(errata), 1)
         erratum = errata[0]
         self.assertTrue(isinstance(erratum, models.Errata))
-        self.assertEqual(erratum.metadata.get('rights'), 'Copyright 2010 Red Hat Inc')
+        self.assertEqual(erratum.rights, 'Copyright 2010 Red Hat Inc')
         description = """NetworkManager is a system network service that manages network devices and
 connections, attempting to keep active network connectivity when available. It
 manages Ethernet, wireless, mobile broadband (WWAN), and PPPoE devices, and
@@ -44,20 +44,20 @@ along with the PEAP-GTC authentication mechanism.
 Users are advised to upgrade to these updated packages, which resolve this
 issue, and add these enhancements.
 """
-        self.assertEqual(erratum.metadata.get('description'), description)
-        self.assertTrue(erratum.metadata.get('summary') is not None)
-        self.assertEqual(erratum.id, 'RHBA-2010:0836')
-        self.assertEqual(erratum.metadata.get('type'), 'bugfix')
-        self.assertEqual(erratum.metadata.get('issued'), '2010-11-10 00:00:00')
-        self.assertEqual(erratum.metadata.get('updated'), '2010-11-10 00:00:00')
-        self.assertEqual(erratum.metadata.get('reboot_suggested'), False)
-        self.assertEqual(erratum.metadata.get('severity'), '')
+        self.assertEqual(erratum.description, description)
+        self.assertTrue(erratum.summary is not None)
+        self.assertEqual(erratum.errata_id, 'RHBA-2010:0836')
+        self.assertEqual(erratum.type, 'bugfix')
+        self.assertEqual(erratum.issued, '2010-11-10 00:00:00')
+        self.assertEqual(erratum.updated, '2010-11-10 00:00:00')
+        self.assertEqual(erratum.reboot_suggested, False)
+        self.assertEqual(erratum.severity, '')
 
         rpms = erratum.rpm_search_dicts
         self.assertEqual(len(rpms), 4)
         for rpm in rpms:
             # make sure all of the correct keys are present
-            model = models.RPM.from_package_info(rpm)
+            model = models.RPM(**rpm)
             self.assertEqual(model.checksumtype, 'sha256')
             self.assertTrue(len(model.checksum) > 0)
             self.assertTrue(model.name.startswith('NetworkManager'))
@@ -74,15 +74,15 @@ issue, and add these enhancements.
         self.assertEqual(len(errata), 1)
         erratum = errata[0]
         self.assertTrue(isinstance(erratum, models.Errata))
-        self.assertEqual(erratum.metadata.get('rights'), '')
-        self.assertEqual(erratum.metadata.get('description'), '')
-        self.assertTrue(erratum.metadata.get('summary') is not None)
-        self.assertEqual(erratum.id, 'SLBA-2011:1512-2')
-        self.assertEqual(erratum.metadata.get('type'), 'bugfix')
-        self.assertEqual(erratum.metadata.get('issued'), '')
-        self.assertEqual(erratum.metadata.get('updated'), '')
-        self.assertEqual(erratum.metadata.get('reboot_suggested'), False)
-        self.assertEqual(erratum.metadata.get('severity'), '')
+        self.assertEqual(erratum.rights, '')
+        self.assertEqual(erratum.description, '')
+        self.assertTrue(erratum.summary is not None)
+        self.assertEqual(erratum.errata_id, 'SLBA-2011:1512-2')
+        self.assertEqual(erratum.type, 'bugfix')
+        self.assertEqual(erratum.issued, '')
+        self.assertEqual(erratum.updated, '')
+        self.assertEqual(erratum.reboot_suggested, False)
+        self.assertEqual(erratum.severity, '')
 
         rpms = erratum.rpm_search_dicts
         self.assertEqual(len(rpms), 14)

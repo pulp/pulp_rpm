@@ -23,7 +23,7 @@ class FilelistsXMLFileContextTests(unittest.TestCase):
         context = FilelistsXMLFileContext(self.working_dir, 3)
         context.metadata_file_handle = mock.Mock()
 
-        context.add_unit_metadata(mock.Mock(metadata={'repodata': {'filelists': 'bar'}}))
+        context.add_unit_metadata(mock.Mock(repodata={'filelists': 'bar'}))
 
         context.metadata_file_handle.write.assert_called_once_with('bar')
 
@@ -34,9 +34,7 @@ class FilelistsXMLFileContextTests(unittest.TestCase):
         context = FilelistsXMLFileContext(self.working_dir, 3)
         context.metadata_file_handle = mock.Mock()
         expected_call = 'some unicode'
-        metadata = {
-            'repodata': {'filelists': unicode(expected_call)}
-        }
+        repodata = {'filelists': unicode(expected_call)}
 
-        context.add_unit_metadata(mock.Mock(metadata=metadata))
+        context.add_unit_metadata(mock.Mock(repodata=repodata))
         context.metadata_file_handle.write.assert_called_once_with(expected_call)

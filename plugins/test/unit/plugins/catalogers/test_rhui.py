@@ -5,7 +5,7 @@ from base64 import urlsafe_b64encode
 from mock import patch, Mock
 from nectar.config import DownloaderConfig
 
-from pulp_rpm.plugins.db import models
+from pulp_rpm.common import ids
 from pulp_rpm.plugins.catalogers.rhui import (
     TYPE_ID, RHUICataloger, entry_point, ID_DOC_URL, ID_SIG_URL, ID_DOC_HEADER, ID_SIG_HEADER)
 
@@ -25,7 +25,7 @@ class TestCataloger(TestCase):
         expected = {
             'id': TYPE_ID,
             'display_name': "RHUI Cataloger",
-            'types': [models.RPM.TYPE]
+            'types': [ids.TYPE_ID_RPM]
         }
         self.assertEqual(md, expected)
 
