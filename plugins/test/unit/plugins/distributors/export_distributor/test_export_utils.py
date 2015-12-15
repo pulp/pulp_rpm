@@ -1,5 +1,5 @@
-import unittest
-
+import mongoengine
+from pulp.common.compat import unittest
 from pulp.plugins.config import PluginCallConfiguration
 
 from pulp_rpm.plugins.distributors.export_distributor import export_utils
@@ -204,7 +204,8 @@ class TestCreateDateRangeFilter(unittest.TestCase):
             constants.PUBLISH_HTTPS_KEYWORD: True,
             constants.PUBLISH_HTTP_KEYWORD: False,
         }
-        self.test_date = '2010-01-01 12:00:00'
+        self.start_date = '2010-01-01 12:00:00'
+        self.end_date = '2010-01-02 12:00:00'
 
     def test_no_filter(self):
         # Test calling create_date_range_filter with no dates in the configuration
@@ -213,32 +214,31 @@ class TestCreateDateRangeFilter(unittest.TestCase):
 
     def test_start_date_only(self):
         # Set up a configuration with a start date, and the expected return
-        self.repo_config[constants.START_DATE_KEYWORD] = self.test_date
+        self.repo_config[constants.START_DATE_KEYWORD] = self.start_date
         config = PluginCallConfiguration({}, self.repo_config)
-        expected_filter = {export_utils.ASSOCIATED_UNIT_DATE_KEYWORD: {'$gte': self.test_date}}
+        expected = mongoengine.Q(created__gte=self.start_date)
 
         # Test
         date_filter = export_utils.create_date_range_filter(config)
-        self.assertEqual(expected_filter, date_filter)
+        self.assertDictEqual(expected.query, date_filter.query)
 
     def test_end_date_only(self):
         # Set up a configuration with an end date, and the expected return
-        self.repo_config[constants.END_DATE_KEYWORD] = self.test_date
+        self.repo_config[constants.END_DATE_KEYWORD] = self.end_date
         config = PluginCallConfiguration({}, self.repo_config)
-        expected_filter = {export_utils.ASSOCIATED_UNIT_DATE_KEYWORD: {'$lte': self.test_date}}
+        expected = mongoengine.Q(created__lte=self.end_date)
 
         # Test
         date_filter = export_utils.create_date_range_filter(config)
-        self.assertEqual(expected_filter, date_filter)
+        self.assertDictEqual(expected.query, date_filter.query)
 
     def test_start_and_end_date(self):
         # Set up a configuration with both a start date and an end date.
-        self.repo_config[constants.START_DATE_KEYWORD] = self.test_date
-        self.repo_config[constants.END_DATE_KEYWORD] = self.test_date
+        self.repo_config[constants.START_DATE_KEYWORD] = self.start_date
+        self.repo_config[constants.END_DATE_KEYWORD] = self.end_date
         config = PluginCallConfiguration({}, self.repo_config)
-        expected_filter = {export_utils.ASSOCIATED_UNIT_DATE_KEYWORD: {'$gte': self.test_date,
-                                                                       '$lte': self.test_date}}
+        expected = mongoengine.Q(created__gte=self.start_date, created__lte=self.end_date)
 
         # Test
         date_filter = export_utils.create_date_range_filter(config)
-        self.assertEqual(expected_filter, date_filter)
+        self.assertDictEqual(expected.query, date_filter.query)

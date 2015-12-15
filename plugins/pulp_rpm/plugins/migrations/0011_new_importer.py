@@ -5,7 +5,6 @@ from xml.etree import cElementTree as ET
 from pulp.plugins.types import database as types_db
 from pulp.server.db import connection
 
-from pulp_rpm.plugins.db.models import RPM, SRPM
 from pulp_rpm.plugins.importers.yum import utils
 from pulp_rpm.plugins.importers.yum.repomd import primary
 
@@ -16,7 +15,7 @@ FAKE_XML = '<?xml version="1.0" encoding="%(encoding)s"?><faketag ' \
 
 
 def migrate(*args, **kwargs):
-    for type_id in (RPM.TYPE, SRPM.TYPE):
+    for type_id in ('rpm', 'srpm'):
         _migrate_collection(type_id)
 
 
@@ -43,7 +42,7 @@ def _migrate_collection(type_id):
 
         # add these attributes, which we previously didn't track in the DB.
         package['size'] = int(primary_element.find('size').attrib['package'])
-        if type_id == RPM.TYPE:
+        if type_id == 'rpm':
             package['sourcerpm'] = format_element.find('sourcerpm').text
             package['summary'] = primary_element.find('summary').text
 

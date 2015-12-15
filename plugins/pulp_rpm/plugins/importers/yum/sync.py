@@ -1,7 +1,6 @@
 import contextlib
 import functools
 import logging
-import os
 import random
 import re
 import shutil
@@ -15,6 +14,8 @@ from nectar.request import DownloadRequest
 from pulp.common.plugins import importer_constants
 from pulp.plugins.util import nectar_config as nectar_utils, verification
 from pulp.server.exceptions import PulpCodedException
+from pulp.server.managers.repo import _common as common_utils
+from pulp.server.controllers import repository as repo_controller
 
 from pulp_rpm.common import constants, ids
 from pulp_rpm.plugins import error_codes
@@ -38,8 +39,8 @@ class RepoSync(object):
 
     def __init__(self, repo, sync_conduit, call_config):
         """
-        :param repo: metadata describing the repository
-        :type  repo: pulp.plugins.model.Repository
+        :param repo: the repository to sync
+        :type  repo: pulp.server.db.model.Repository
 
         :param sync_conduit: provides access to relevant Pulp functionality
         :type  sync_conduit: pulp.plugins.conduits.repo_sync.RepoSyncConduit
@@ -48,7 +49,7 @@ class RepoSync(object):
         :type  call_config: pulp.plugins.config.PluginCallConfiguration
         """
         self.cancelled = False
-        self.working_dir = repo.working_dir
+        self.working_dir = common_utils.get_working_directory()
         self.content_report = ContentReport()
         self.distribution_report = DistributionReport()
         self.progress_status = {
@@ -212,13 +213,14 @@ class RepoSync(object):
 
                 _logger.info(_('Downloading additional units.'))
 
-                with self.update_state(self.distribution_report, models.Distribution.TYPE) as skip:
+                with self.update_state(self.distribution_report,
+                                       models.Distribution._content_type_id) as skip:
                     if not skip:
-                        treeinfo.sync(self.sync_conduit, url, self.tmp_dir,
+                        treeinfo.sync(self.repo, self.sync_conduit, url, self.tmp_dir,
                                       self.nectar_config, self.distribution_report,
                                       self.set_progress)
 
-                with self.update_state(self.progress_status['errata'], models.Errata.TYPE) as skip:
+                with self.update_state(self.progress_status['errata'], ids.TYPE_ID_ERRATA) as skip:
                     if not (skip or self.skip_repomd_steps):
                         self.get_errata(metadata_files)
 
@@ -253,6 +255,7 @@ class RepoSync(object):
                 # In case other exceptions were caught that are not related to the state of the
                 # mirror, raise the exception immediately and do not iterate throught the rest
                 # of the mirrors.
+                _logger.exception(e)
                 self._set_failed_state(e)
                 report = self.sync_conduit.build_failure_report(self._progress_summary,
                                                                 self.progress_status)
@@ -261,6 +264,8 @@ class RepoSync(object):
             finally:
                 # clean up whatever we may have left behind
                 shutil.rmtree(self.tmp_dir, ignore_errors=True)
+                # recalculate all the unit counts
+                repo_controller.rebuild_content_unit_counts(self.repo)
 
             self.save_repomd_revision()
             _logger.info(_('Sync complete.'))
@@ -298,7 +303,7 @@ class RepoSync(object):
     def check_metadata(self, url):
         """
         :param url: curret URL we should sync
-        :type: str
+        :type url: str
 
         :return:    instance of MetadataFiles
         :rtype:     pulp_rpm.plugins.importers.yum.repomd.metadata.MetadataFiles
@@ -405,20 +410,28 @@ class RepoSync(object):
             if metadata_type not in metadata_files.KNOWN_TYPES:
                 checksum_type = file_info['checksum']['algorithm']
                 checksum_type = verification.sanitize_checksum_type(checksum_type)
+                checksum = file_info['checksum']['hex_digest']
+                # Find an existing model
+                model = models.YumMetadataFile.objects(data_type=metadata_type,
+                                                       repo_id=self.repo.repo_id).first()
+                # If an existing model, use that
+                if model:
+                    model.checksum = checksum
+                    model.checksum_type = checksum_type
+                    model.set_content(file_info['local_path'])
+                    model.save()
+                else:
+                    # Else, create a  new mode
+                    model = models.YumMetadataFile(
+                        data_type=metadata_type,
+                        repo_id=self.repo.repo_id,
+                        checksum=checksum,
+                        checksum_type=checksum_type)
+                    model.set_content(file_info['local_path'])
+                    model.save()
 
-                unit_metadata = {
-                    'checksum': file_info['checksum']['hex_digest'],
-                    'checksum_type': checksum_type,
-                }
-                model = models.YumMetadataFile(metadata_type,
-                                               self.sync_conduit.repo_id,
-                                               unit_metadata)
-                relative_path = os.path.join(model.relative_dir,
-                                             os.path.basename(file_info['local_path']))
-                unit = self.sync_conduit.init_unit(models.YumMetadataFile.TYPE, model.unit_key,
-                                                   model.metadata, relative_path)
-                shutil.copyfile(file_info['local_path'], unit.storage_path)
-                self.sync_conduit.save_unit(unit)
+                # associate/re-associate model to the repo
+                repo_controller.associate_single_unit(self.repo, model)
 
     def update_content(self, metadata_files, url):
         """
@@ -472,7 +485,7 @@ class RepoSync(object):
         :return:    tuple of (set(RPM.NAMEDTUPLEs), number of RPMs, total size in bytes)
         :rtype:     tuple
         """
-        if models.RPM.TYPE in self.call_config.get(constants.CONFIG_SKIP, []):
+        if ids.TYPE_ID_RPM in self.call_config.get(constants.CONFIG_SKIP, []):
             _logger.debug('skipping RPM sync')
             return set(), 0, 0
         primary_file_handle = metadata_files.get_metadata_file_handle(primary.METADATA_FILE_NAME)
@@ -481,12 +494,9 @@ class RepoSync(object):
             package_info_generator = packages.package_list_generator(
                 primary_file_handle, primary.PACKAGE_TAG, primary.process_package_element)
             wanted = self._identify_wanted_versions(package_info_generator)
-            # check for the units that are already in the repo
-            not_found_in_the_repo = existing.check_repo(wanted.iterkeys(),
-                                                        self.sync_conduit.get_units)
             # check for the units that are not in the repo, but exist on the server
             # and associate them to the repo
-            to_download = existing.check_all_and_associate(not_found_in_the_repo,
+            to_download = existing.check_all_and_associate(wanted.iterkeys(),
                                                            self.sync_conduit)
             count = len(to_download)
             size = 0
@@ -507,7 +517,7 @@ class RepoSync(object):
         :return:    tuple of (set(DRPM.NAMEDTUPLEs), number of DRPMs, total size in bytes)
         :rtype:     tuple
         """
-        if models.DRPM.TYPE in self.call_config.get(constants.CONFIG_SKIP, []):
+        if ids.TYPE_ID_DRPM in self.call_config.get(constants.CONFIG_SKIP, []):
             _logger.debug('skipping DRPM sync')
             return set(), 0, 0
 
@@ -526,12 +536,9 @@ class RepoSync(object):
                         presto.PACKAGE_TAG,
                         presto.process_package_element)
                     wanted = self._identify_wanted_versions(package_info_generator)
-                    # check for the units that are already in the repo
-                    not_found_in_the_repo = existing.check_repo(wanted.iterkeys(),
-                                                                self.sync_conduit.get_units)
                     # check for the units that are not in the repo, but exist on the server
                     # and associate them to the repo
-                    to_download = existing.check_all_and_associate(not_found_in_the_repo,
+                    to_download = existing.check_all_and_associate(wanted.iterkeys(),
                                                                    self.sync_conduit)
                     count += len(to_download)
                     for unit in to_download:
@@ -668,7 +675,7 @@ class RepoSync(object):
             return
 
         try:
-            process_func = functools.partial(processing_function, self.repo.id)
+            process_func = functools.partial(processing_function, self.repo.repo_id)
 
             self.save_fileless_units(group_file_handle, tag, process_func, mutable_type=True)
         finally:
@@ -713,9 +720,9 @@ class RepoSync(object):
         # if units aren't mutable, we don't need to attempt saving units that
         # we already have
         if not mutable_type and not additive_type:
-            wanted = (model.as_named_tuple for model in package_info_generator)
+            wanted = (model.unit_key_as_named_tuple for model in package_info_generator)
             # given what we want, filter out what we already have
-            to_save = existing.check_repo(wanted, self.sync_conduit.get_units)
+            to_save = existing.check_repo(wanted)
 
             # rewind, iterate again through the file, and save what we need
             file_handle.seek(0)
@@ -723,16 +730,18 @@ class RepoSync(object):
                                                            tag,
                                                            process_func)
             package_info_generator = \
-                (model for model in all_packages if model.as_named_tuple in to_save)
+                (model for model in all_packages if model.unit_key_as_named_tuple in to_save)
 
         for model in package_info_generator:
-            unit = self.sync_conduit.init_unit(model.TYPE, model.unit_key, model.metadata, None)
-            if additive_type:
-                existing_unit = self.sync_conduit.find_unit_by_unit_key(model.TYPE, model.unit_key)
-                if existing_unit:
-                    unit = self._concatenate_units(existing_unit, unit)
+            existing_unit = model.__class__.objects(**model.unit_key).first()
+            if not existing_unit:
+                model.save()
+            else:
+                if additive_type:
+                    model = self._concatenate_units(existing_unit, model)
+                    model.save()
 
-            self.sync_conduit.save_unit(unit)
+            repo_controller.associate_single_unit(self.repo, model)
 
     def _concatenate_units(self, existing_unit, new_unit):
         """
@@ -742,9 +751,9 @@ class RepoSync(object):
         :type  existing_unit: pulp.plugins.model.Unit
 
         :param new_unit: The unit we are combining with the existing unit
-        :type  new_unit: pulp.plugins.model.Unit
+        :type  new_unit: pulp.server.db.model.ContentUnit
         """
-        if existing_unit.type_id != new_unit.type_id:
+        if existing_unit._content_type_id != new_unit._content_type_id:
             raise PulpCodedException(message="Cannot concatenate two units of different types. "
                                              "Tried to concatenate %s with %s" %
                                              (existing_unit.type_id, new_unit.type_id))
@@ -754,14 +763,14 @@ class RepoSync(object):
                                              "Tried to concatenate %s with %s" %
                                              (existing_unit.unit_key, new_unit.unit_key))
 
-        if existing_unit.type_id == ids.TYPE_ID_ERRATA:
+        if isinstance(existing_unit, models.Errata):
             # add in anything from new_unit that we don't already have. We key
             # package lists by name for this concatenation.
-            existing_package_list_names = [p['name'] for p in existing_unit.metadata['pkglist']]
+            existing_package_list_names = [p['name'] for p in existing_unit.pkglist]
 
-            for possible_new_pkglist in new_unit.metadata['pkglist']:
+            for possible_new_pkglist in new_unit.pkglist:
                 if possible_new_pkglist['name'] not in existing_package_list_names:
-                    existing_unit.metadata['pkglist'] += [possible_new_pkglist]
+                    existing_unit.pkglist += [possible_new_pkglist]
         else:
             raise PulpCodedException(message="Concatenation of unit type %s is not supported" %
                                              existing_unit.type_id)
@@ -798,20 +807,20 @@ class RepoSync(object):
         for model in package_info_generator:
             versions = wanted.setdefault(model.key_string_without_version, {})
             serialized_version = model.complete_version_serialized
-            size = model.metadata['size']
+            size = model.size
 
             # if we are limited on the number of old versions we can have,
             if number_old_versions_to_keep is not None:
                 number_to_keep = number_old_versions_to_keep + 1
                 if len(versions) < number_to_keep:
-                    versions[serialized_version] = (model.as_named_tuple, size)
+                    versions[serialized_version] = (model.unit_key_as_named_tuple, size)
                 else:
                     smallest_version = sorted(versions.keys(), reverse=True)[:number_to_keep][-1]
                     if serialized_version > smallest_version:
                         del versions[smallest_version]
-                        versions[serialized_version] = (model.as_named_tuple, size)
+                        versions[serialized_version] = (model.unit_key_as_named_tuple, size)
             else:
-                versions[serialized_version] = (model.as_named_tuple, size)
+                versions[serialized_version] = (model.unit_key_as_named_tuple, size)
         ret = {}
         for units in wanted.itervalues():
             for unit, size in units.itervalues():
@@ -840,5 +849,5 @@ class RepoSync(object):
             if to_download is None:
                 # assume we want to download everything
                 yield unit
-            elif unit.as_named_tuple in to_download:
+            elif unit.unit_key_as_named_tuple in to_download:
                 yield unit

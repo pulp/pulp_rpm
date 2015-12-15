@@ -1,9 +1,8 @@
-import os
-import shutil
-
 from pulp.common import config as config_utils
 from pulp.common.plugins import importer_constants
 from pulp.plugins.importer import Importer
+from pulp.server.controllers import repository as repo_controller
+from pulp.server.db import model as platform_models
 from pulp.server.db.model.criteria import UnitAssociationCriteria
 
 from pulp_rpm.common import constants, ids
@@ -99,7 +98,9 @@ class ISOImporter(Importer):
             'types': [ids.TYPE_ID_ISO]
         }
 
-    def sync_repo(self, repo, sync_conduit, config):
+    def sync_repo(self, transfer_repo, sync_conduit, config):
+        repo = platform_models.Repository.objects.get(repo_id=transfer_repo.id)
+        sync_conduit.repo = repo
         if config.get(importer_constants.KEY_FEED) is None:
             raise ValueError('Repository without feed cannot be synchronized')
         self.iso_sync = sync.ISOSyncRun(sync_conduit, config)
@@ -107,27 +108,31 @@ class ISOImporter(Importer):
         self.iso_sync = None
         return report
 
-    def upload_unit(self, repo, type_id, unit_key, metadata, file_path, conduit, config):
+    def upload_unit(self, transfer_repo, type_id, unit_key, metadata, file_path, conduit, config):
         """
         See super(self.__class__, self).upload_unit() for the docblock explaining this method. In
         short, it handles ISO uploads.
         """
-        iso = models.ISO(unit_key['name'], unit_key['size'], unit_key['checksum'])
-        iso.init_unit(conduit)
+        repo = platform_models.Repository.objects.get(repo_id=transfer_repo.id)
 
-        shutil.move(file_path, iso.storage_path)
+        iso = models.ISO(
+            name=unit_key['name'], size=unit_key['size'], checksum=unit_key['checksum'])
+        existing_iso = models.ISO.objects(**iso.unit_key).first()
+        if existing_iso:
+            iso = existing_iso
+
+        iso.set_content(file_path)
         validate = config.get_boolean(importer_constants.KEY_VALIDATE)
         validate = validate if validate is not None else constants.CONFIG_VALIDATE_DEFAULT
         try:
             # Let's validate the ISO. This will raise a
             # ValueError if the ISO does not validate correctly.
-            iso.validate(full_validation=validate)
+            iso.validate_iso(full_validation=validate)
         except ValueError, e:
-            # If validation raises a ValueError, we should delete the file and raise
-            os.remove(iso.storage_path)
             return {'success_flag': False, 'summary': e.message, 'details': None}
 
-        iso.save_unit(conduit)
+        iso.save()
+        repo_controller.associate_single_unit(repo, iso)
         return {'success_flag': True, 'summary': None, 'details': None}
 
     def validate_config(self, repo, config):

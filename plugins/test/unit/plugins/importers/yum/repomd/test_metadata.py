@@ -9,6 +9,7 @@ import unittest
 import mock
 from nectar.config import DownloaderConfig
 
+from pulp_rpm.devel.skip import skip_broken
 from pulp_rpm.plugins.importers.yum.utils import RepoURLModifier
 from pulp_rpm.plugins.importers.yum.repomd import metadata
 
@@ -255,6 +256,7 @@ class TestMetadataFiles(unittest.TestCase):
     def tearDown(self):
         shutil.rmtree(self.working_dir)
 
+    @skip_broken
     @mock.patch('pulp_rpm.plugins.importers.yum.repomd.metadata.change_location_tag')
     @mock.patch('pulp_rpm.plugins.importers.yum.repomd.metadata.gdbm.open')
     @mock.patch('pulp_rpm.plugins.importers.yum.repomd.metadata.other')
@@ -314,6 +316,7 @@ class TestProcessRepomdDataElement(unittest.TestCase):
     This class contains tests for the process_repomd_data_element() function.
     """
 
+    @skip_broken
     def test_sanitizes_checksum_tag(self):
         """
         Assert that the function properly sanitizes the checksum type in the checksum tag.
@@ -333,6 +336,7 @@ class TestProcessRepomdDataElement(unittest.TestCase):
 
         self.assertEqual(file_info['checksum']['algorithm'], 'sha1')
 
+    @skip_broken
     def test_sanitizes_open_checksum_tag(self):
         """
         Assert that the function properly sanitizes the checksum type in the open checksum tag.

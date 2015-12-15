@@ -1,23 +1,21 @@
-# -*- coding: utf-8 -*-
-
 from gettext import gettext as _
 import logging
 
 from pulp_rpm.common import constants
-from pulp_rpm.plugins.db import models
+from pulp_rpm.common import ids
 
 
 _logger = logging.getLogger(__name__)
 
 type_done_map = {
-    models.RPM.TYPE: 'rpm_done',
-    models.SRPM.TYPE: 'rpm_done',
-    models.DRPM.TYPE: 'drpm_done',
+    ids.TYPE_ID_RPM: 'rpm_done',
+    ids.TYPE_ID_SRPM: 'rpm_done',
+    ids.TYPE_ID_DRPM: 'drpm_done',
 }
 
 type_total_map = {
-    'rpm_total': models.RPM.TYPE,
-    'drpm_total': models.DRPM.TYPE,
+    'rpm_total': ids.TYPE_ID_RPM,
+    'drpm_total': ids.TYPE_ID_DRPM,
 }
 
 
@@ -60,15 +58,15 @@ class ContentReport(dict):
         self['items_left'] -= 1
         if self['items_left'] % 100 == 0:
             _logger.debug(_('%(n)s items left to download.') % {'n': self['items_left']})
-        self['size_left'] -= model.metadata['size']
-        done_attribute = type_done_map[model.TYPE]
+        self['size_left'] -= model.size
+        done_attribute = type_done_map[model._content_type_id]
         self['details'][done_attribute] += 1
         return self
 
     def failure(self, model, error_report):
         self['items_left'] -= 1
-        self['size_left'] -= model.metadata['size']
-        done_attribute = type_done_map[model.TYPE]
+        self['size_left'] -= model.size
+        done_attribute = type_done_map[model._content_type_id]
         self['details'][done_attribute] += 1
         self['error_details'].append(error_report)
         return self

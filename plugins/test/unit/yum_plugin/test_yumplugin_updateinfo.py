@@ -6,7 +6,7 @@ import unittest
 import mock
 from pulp.plugins.model import Unit
 
-from pulp_rpm.plugins.db import models
+from pulp_rpm.common import ids
 from pulp_rpm.yum_plugin import updateinfo
 from pulp_rpm.yum_plugin.updateinfo import encode_epoch
 
@@ -21,7 +21,7 @@ class TestEpochEncoding(unittest.TestCase):
         unit_key = {'id': self.erratum['id']}
         metadata = dict((k, v) for k, v in self.erratum.items() if not k.startswith('_'))
         del metadata['id']
-        self.unit = Unit(models.Errata.TYPE, unit_key, metadata, '')
+        self.unit = Unit(ids.TYPE_ID_ERRATA, unit_key, metadata, '')
 
     @mock.patch.object(updateinfo.log, 'error')
     @mock.patch('__builtin__.open')

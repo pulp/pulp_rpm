@@ -1,11 +1,11 @@
-# -*- coding: utf-8 -*-
-
 import logging
 
+import mongoengine
 from pulp.plugins.util.misc import paginate
-from pulp.server.db.model.criteria import UnitAssociationCriteria
+from pulp.server.controllers import repository as repo_controller
 
 from pulp_rpm.common import version_utils
+from pulp_rpm.common import ids
 from pulp_rpm.plugins.db import models
 
 
@@ -159,16 +159,15 @@ class Requirement(object):
 
         :param unit:    a Unit object that will be examined to determine if it
                         fills this requirement
-        :type unit:     pulp.plugins.model.Unit
+        :type unit:     pulp_rpm.plugins.db.models.RPM
         :return:        True if the unit satisfies the Requirement, False otherwise
         :rtype:         bool
         """
-        unit_key = unit.unit_key
-        if self.name != unit_key['name']:
+        if self.name != unit.name:
             return False
 
         # this is easier to use in the comparison than a full Unit object
-        unit_as_namedtuple = models.RPM.NAMEDTUPLE(**unit_key)
+        unit_as_namedtuple = unit.unit_key_as_named_tuple
 
         if self.flags == self.EQ:
             if self.is_versioned:
@@ -196,15 +195,13 @@ class Solver(object):
     Resolves RPM dependencies within a pulp repository
     """
 
-    def __init__(self, search_method):
+    def __init__(self, source_repo):
         """
-        :param search_method:   method that takes a UnitAssociationCriteria and
-                                performs a search within a repository. Usually this
-                                will be a method on a conduit such as "conduit.get_units"
-        :type  search_method:   function
+        :param source_repo: The source repository that is being searched
+        :type  source_repo: pulp.server.db.model.Repository
         """
         super(Solver, self).__init__()
-        self.search_method = search_method
+        self.source_repo = source_repo
         self._cached_source_with_provides = None
         self._cached_provides_tree = None
         self._cached_packages_tree = None
@@ -217,10 +214,10 @@ class Solver(object):
         the dependencies of those units. Dependencies are resolved only within the
         repository search by "self.search_method".
 
-        :param units:   iterable of pulp.plugins.model.Unit
+        :param units:   iterable of pulp_rpm.plugins.models.RPM
         :type  units:   iterable
 
-        :return:        set of pulp.plugins.model.Unit instances which
+        :return:        set of pulp_rpm.plugins.db.models.RPM instances which
                         satisfy the passed-in requirements. Please see match()
                         for details about the Units.
 
@@ -235,7 +232,7 @@ class Solver(object):
         Returns a list of available packages with Provides info, and caches
         the result so it won't have to be re-generated.
 
-        :return:    list of tuples (RPM namedtuple, "provides" list)
+        :return:    list of pulp_rpm.plugins.db.models.RPM
         :rtype      list
         """
         if self._cached_source_with_provides is None:
@@ -248,23 +245,30 @@ class Solver(object):
 
         Note that the 'provides' metadata will be flattened via _trim_provides().
 
-        :return:    list of (pulp.plugins.model.Unit, list of provides)
+        :return:    list of pulp_rpm.plugins.db.models.RPM
+        :rtype:     list
         """
-        fields = list(models.RPM.UNIT_KEY_NAMES)
-        fields.extend(['provides', 'id', 'version_sort_index', 'release_sort_index'])
-        criteria = UnitAssociationCriteria(type_ids=[models.RPM.TYPE], unit_fields=fields)
-        return [self._trim_provides(unit) for unit in self.search_method(criteria,
-                                                                         as_generator=True)]
+        fields = list(models.RPM.unit_key_fields)
+        fields.extend(['provides', 'version_sort_index', 'release_sort_index'])
+        units = repo_controller.find_repo_content_units(
+            repository=self.source_repo,
+            repo_content_unit_q=mongoengine.Q(unit_type_id=ids.TYPE_ID_RPM),
+            unit_fields=fields, yield_content_unit=True
+        )
+        return [self._trim_provides(unit) for unit in units]
 
     def _trim_provides(self, unit):
         """
         A method to flatten/strip the "provides" metadata to just the name when
         building the list of packages. See RHBZ #1185868.
+
+        :param unit: unit to trim
+        :type unit: pulp_rpm.plugins.db.models.RPM
         """
         new_provides = []
-        for provide in unit.metadata.get('provides', []):
+        for provide in unit.provides:
             new_provides.append(provide['name'])
-        unit.metadata['provides'] = new_provides
+        unit.provides = new_provides
         return unit
 
     @property
@@ -312,19 +316,19 @@ class Solver(object):
         source_units = self._source_with_provides
         tree = {}
         for unit in source_units:
-            my_cmp_tuple = (unit.unit_key['epoch'], unit.metadata['version_sort_index'],
-                            unit.metadata['release_sort_index'])
-            for provide in unit.metadata.get('provides', []):
+            my_cmp_tuple = (unit.epoch, unit.version_sort_index,
+                            unit.release_sort_index)
+            for provide in unit.provides:
                 unit_dict = tree.setdefault(provide, {})
-                newest_version = unit_dict.get(unit.unit_key['name'], None)
+                newest_version = unit_dict.get(unit.name, None)
                 if newest_version:
-                    newest_cmp_tuple = (newest_version.unit_key['epoch'],
-                                        newest_version.metadata['version_sort_index'],
-                                        newest_version.metadata['release_sort_index'])
+                    newest_cmp_tuple = (newest_version.epoch,
+                                        newest_version.version_sort_index,
+                                        newest_version.release_sort_index)
                     if cmp(my_cmp_tuple, newest_cmp_tuple) == 1:
-                        unit_dict[unit.unit_key['name']] = unit
+                        unit_dict[unit.name] = unit
                 else:
-                    unit_dict[unit.unit_key['name']] = unit
+                    unit_dict[unit.name] = unit
         return tree
 
     @property
@@ -365,7 +369,7 @@ class Solver(object):
         """
         tree = {}
         for unit in self._source_with_provides:
-            version_list = tree.setdefault(unit.unit_key['name'], [])
+            version_list = tree.setdefault(unit.name, [])
             version_list.append(unit)
 
         return tree
@@ -377,7 +381,7 @@ class Solver(object):
 
         :param reqs:    list of requirements
         :type  reqs:    list of Require() instances
-        :return:        set of pulp.plugins.model.Unit instances which
+        :return:        set of pulp_rpm.plugins.db.models.RPM instances which
                         satisfy the passed-in requirements. These units will
                         be flattened of their "provides" info to save memory.
         :rtype:         set
@@ -398,12 +402,9 @@ class Solver(object):
             # find in package names
             unit_list = packages_tree.get(req.name, [])
             applicable_units = filter(req.fills_requirement, unit_list)
-            rpms_with_units = [
-                (models.RPM.from_package_info(unit.unit_key), unit) for unit in applicable_units
-            ]
-            if rpms_with_units:
-                newest_rpm, newest_unit = max(rpms_with_units)
-                deps.add(newest_unit)
+            if applicable_units:
+                newest = max(applicable_units)
+                deps.add(newest)
 
         return deps
 
@@ -420,12 +421,8 @@ class Solver(object):
         :rtype:     generator
         """
         for segment in paginate(units):
-            search_dicts = [unit.unit_key for unit in segment]
-            filters = {'$or': search_dicts}
-            fields = list(models.RPM.UNIT_KEY_NAMES)
-            fields.extend(['requires', 'id'])
-            criteria = UnitAssociationCriteria(type_ids=[models.RPM.TYPE], unit_filters=filters,
-                                               unit_fields=fields)
-            for result in self.search_method(criteria):
-                for require in result.metadata.get('requires', []):
+            unit_ids = [unit.id for unit in segment]
+            fields = ['requires', 'id']
+            for result in models.RPM.objects.filter(id__in=unit_ids).only(*fields):
+                for require in result.requires or []:
                     yield Requirement(**require)
