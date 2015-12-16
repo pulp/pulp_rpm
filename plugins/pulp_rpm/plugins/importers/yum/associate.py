@@ -212,7 +212,7 @@ def copy_rpms(units, source_repo, dest_repo, import_conduit, copy_deps, solver=N
         # field is not used.
         to_copy = deps - existing_units
 
-        _LOGGER.debug('Copying deps: %s' % str(sorted([x.unit_key['name'] for x in to_copy])))
+        _LOGGER.debug('Copying deps: %s' % str(sorted([x.name for x in to_copy])))
         if to_copy:
             unit_set |= copy_rpms(to_copy, source_repo, dest_repo, import_conduit, copy_deps,
                                   solver)

@@ -179,7 +179,7 @@ def _handle_erratum(repo, type_id, unit_key, metadata, file_path, conduit, confi
     unit.save()
 
     if not config.get_boolean(CONFIG_SKIP_ERRATUM_LINK):
-        for model_type in [models.RPM.TYPE, models.SRPM.TYPE]:
+        for model_type in [models.RPM, models.SRPM]:
             pass  # TODO Find out if the unit exists, if it does, associated, if not, create
 
 

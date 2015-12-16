@@ -447,7 +447,7 @@ class PublishMetadataStep(platform_steps.UnitModelPluginStep):
 
         # Add the proper relative reference to the metadata file to repomd
         self.parent.repomd_file_context.\
-            add_metadata_file_metadata(unit.unit_key['data_type'], link_path)
+            add_metadata_file_metadata(unit.data_type, link_path)
 
 
 class PublishDrpmStep(platform_steps.UnitModelPluginStep):
@@ -493,7 +493,7 @@ class PublishDrpmStep(platform_steps.UnitModelPluginStep):
         """
         unit = item
         source_path = unit._storage_path
-        unit_filename = os.path.basename(unit.unit_key['filename'])
+        unit_filename = os.path.basename(unit.filename)
         relative_path = os.path.join('drpms', unit_filename)
         destination_path = os.path.join(self.get_working_dir(), relative_path)
         plugin_misc.create_symlink(source_path, destination_path)
@@ -583,7 +583,7 @@ class PublishRpmAndDrpmStepIncremental(platform_steps.UnitModelPluginStep):
         Link the unit to the content directory and the package_dir
 
         :param unit: The unit to process
-        :type unit: pulp.server.db.model.ContentUnit
+        :type unit: pulp.server.db.model.NonMetadataPackage
         """
         unit = item
         source_path = unit._storage_path
@@ -591,8 +591,7 @@ class PublishRpmAndDrpmStepIncremental(platform_steps.UnitModelPluginStep):
         destination_path = os.path.join(self.get_working_dir(), relative_path)
         plugin_misc.create_symlink(source_path, destination_path)
 
-        filename = unit.unit_key['name'] + '-' + unit.unit_key['version'] + '-' + \
-            unit.unit_key['release'] + '.' + unit.unit_key['arch'] + '.json'
+        filename = unit.name + '-' + unit.version + '-' + unit.release + '.' + unit.arch + '.json'
         path = os.path.join(self.get_working_dir(), filename)
 
         metadata_dict = unit.create_legacy_metadata_dict()
@@ -624,7 +623,7 @@ class PublishErrataStepIncremental(platform_steps.UnitModelPluginStep):
             'unit_metadata': unit.create_legacy_metadata_dict()
         }
 
-        json_file_path = os.path.join(self.get_working_dir(), unit.unit_key['errata_id'] + '.json')
+        json_file_path = os.path.join(self.get_working_dir(), unit.errata_id + '.json')
         with open(json_file_path, 'w') as f:
             json.dump(errata_dict, f)
 
@@ -701,7 +700,7 @@ class PublishDistributionStep(platform_steps.UnitModelPluginStep):
         Process the distribution unit
 
         :param item: The unit to process
-        :type item pulp_rpm.plugins.db.models.Distribution
+        :type  item: pulp_rpm.plugins.db.models.Distribution
         """
         unit = item
         self._publish_distribution_treeinfo(unit)

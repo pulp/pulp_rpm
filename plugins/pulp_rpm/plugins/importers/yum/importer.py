@@ -5,6 +5,7 @@ from pulp.common.config import read_json_config
 from pulp.server.db import model as platform_models
 
 from pulp_rpm.common import ids
+from pulp_rpm.plugins.db import models
 from pulp_rpm.plugins.importers.yum import sync, associate, upload, config_validate
 
 
@@ -33,9 +34,15 @@ class YumImporter(Importer):
             'id': ids.TYPE_ID_IMPORTER_YUM,
             'display_name': _('Yum Importer'),
             'types': [
-                ids.TYPE_ID_DISTRO, ids.TYPE_ID_DRPM, ids.TYPE_ID_ERRATA,
-                ids.TYPE_ID_PKG_GROUP, ids.TYPE_ID_PKG_CATEGORY, ids.TYPE_ID_RPM,
-                ids.TYPE_ID_SRPM, ids.TYPE_ID_YUM_REPO_METADATA_FILE, ids.TYPE_ID_PKG_ENVIRONMENT
+                models.Distribution._content_type_id.default,
+                models.DRPM._content_type_id.default,
+                models.Errata._content_type_id.default,
+                models.PackageGroup._content_type_id.default,
+                models.PackageCategory._content_type_id.default,
+                models.RPM._content_type_id.default,
+                models.SRPM._content_type_id.default,
+                models.YumMetadataFile._content_type_id.default,
+                models.PackageEnvironment._content_type_id.default
             ]
         }
 
@@ -50,8 +57,7 @@ class YumImporter(Importer):
         return associate.associate(source_repo, dest_repo, import_conduit, config, units)
 
     def upload_unit(self, transfer_repo, type_id, unit_key, metadata, file_path, conduit, config):
-        repo = platform_models.Repository.objects.get(repo_id=transfer_repo.id)
-        repo.repo_id = transfer_repo.id
+        repo = transfer_repo.repo_obj
         conduit.repo = repo
         return upload.upload(repo, type_id, unit_key, metadata, file_path, conduit, config)
 
@@ -69,7 +75,7 @@ class YumImporter(Importer):
         :return: report of the details of the sync
         :rtype:  pulp.plugins.model.SyncReport
         """
-        repo = platform_models.Repository.objects.get(repo_id=transfer_repo.id)
+        repo = transfer_repo.repo_obj
         sync_conduit.repo = repo
         self._current_sync = sync.RepoSync(repo, sync_conduit, call_config)
         report = self._current_sync.run()

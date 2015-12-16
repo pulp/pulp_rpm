@@ -5,7 +5,6 @@ import shutil
 from pulp.common.config import read_json_config
 from pulp.plugins.distributor import Distributor
 from pulp.server.config import config as pulp_server_config
-from pulp.server.db import model as platform_models
 
 import pulp_rpm.common.constants as constants
 from pulp_rpm.common.ids import (
@@ -81,7 +80,7 @@ class YumHTTPDistributor(Distributor):
         :rtype:  tuple
         """
         _logger.debug('Validating yum repository configuration: %s' % transfer_repo.id)
-        repo = platform_models.Repository.objects.get(repo_id=transfer_repo.id)
+        repo = transfer_repo.repo_obj
 
         return configuration.validate_config(repo, config, config_conduit)
 
@@ -95,7 +94,7 @@ class YumHTTPDistributor(Distributor):
         :param config: plugin configuration
         :type  config: pulp.plugins.config.PluginCallConfiguration
         """
-        repo = platform_models.Repository.objects.get(repo_id=transfer_repo.id)
+        repo = transfer_repo.repo_obj
 
         # remove the directories that might have been created for this repo/distributor
         repo_dir = configuration.get_master_publish_dir(repo, TYPE_ID_DISTRIBUTOR_YUM)
@@ -204,7 +203,7 @@ class YumHTTPDistributor(Distributor):
         :return: dictionary of relevant data
         :rtype:  dict
         """
-        repo = platform_models.Repository.objects.get(repo_id=transfer_repo.id)
+        repo = transfer_repo.repo_obj
 
         payload = dict()
         payload['repo_name'] = repo.display_name

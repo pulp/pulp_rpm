@@ -2,20 +2,20 @@ from gettext import gettext as _
 import logging
 
 from pulp_rpm.common import constants
-from pulp_rpm.common import ids
+from pulp_rpm.plugins.db import models
 
 
 _logger = logging.getLogger(__name__)
 
 type_done_map = {
-    ids.TYPE_ID_RPM: 'rpm_done',
-    ids.TYPE_ID_SRPM: 'rpm_done',
-    ids.TYPE_ID_DRPM: 'drpm_done',
+    models.RPM._content_type_id.default: 'rpm_done',
+    models.SRPM._content_type_id.default: 'rpm_done',
+    models.DRPM._content_type_id.default: 'drpm_done',
 }
 
 type_total_map = {
-    'rpm_total': ids.TYPE_ID_RPM,
-    'drpm_total': ids.TYPE_ID_DRPM,
+    'rpm_total': models.RPM._content_type_id.default,
+    'drpm_total': models.DRPM._content_type_id.default,
 }
 
 

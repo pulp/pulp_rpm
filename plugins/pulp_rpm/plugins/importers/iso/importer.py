@@ -2,7 +2,6 @@ from pulp.common import config as config_utils
 from pulp.common.plugins import importer_constants
 from pulp.plugins.importer import Importer
 from pulp.server.controllers import repository as repo_controller
-from pulp.server.db import model as platform_models
 from pulp.server.db.model.criteria import UnitAssociationCriteria
 
 from pulp_rpm.common import constants, ids
@@ -99,8 +98,7 @@ class ISOImporter(Importer):
         }
 
     def sync_repo(self, transfer_repo, sync_conduit, config):
-        repo = platform_models.Repository.objects.get(repo_id=transfer_repo.id)
-        sync_conduit.repo = repo
+        sync_conduit.repo = transfer_repo.repo_obj
         if config.get(importer_constants.KEY_FEED) is None:
             raise ValueError('Repository without feed cannot be synchronized')
         self.iso_sync = sync.ISOSyncRun(sync_conduit, config)
@@ -113,7 +111,7 @@ class ISOImporter(Importer):
         See super(self.__class__, self).upload_unit() for the docblock explaining this method. In
         short, it handles ISO uploads.
         """
-        repo = platform_models.Repository.objects.get(repo_id=transfer_repo.id)
+        repo = transfer_repo.repo_obj
 
         iso = models.ISO(
             name=unit_key['name'], size=unit_key['size'], checksum=unit_key['checksum'])

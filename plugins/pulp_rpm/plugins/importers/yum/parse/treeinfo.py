@@ -99,7 +99,9 @@ def sync(repo, sync_conduit, feed, working_dir, nectar_config, report, progress_
                     _LOGGER.info("Removing out-of-date distribution unit %s for repo %s" %
                                  (existing_unit.unit_key, sync_conduit.repo_id))
                     platform_models.RepositoryContentUnit.objects(
-                        repo_id=sync_conduit.repo_id, unit_id=existing_unit.id).delete()
+                        repo_id=sync_conduit.repo_id,
+                        unit_type_id=models.Distribution._content_type_id.default,
+                        unit_id=existing_unit.id).delete()
         else:
             _LOGGER.error('some distro file downloads failed')
             report['state'] = constants.STATE_FAILED

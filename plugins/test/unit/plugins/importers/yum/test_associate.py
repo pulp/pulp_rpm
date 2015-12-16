@@ -2,7 +2,6 @@ import unittest
 
 import mock
 from pulp.plugins.conduits.unit_import import ImportUnitConduit
-from pulp.plugins.config import PluginCallConfiguration
 from pulp.plugins.model import Unit, Repository
 from pulp.server.db.model.criteria import UnitAssociationCriteria
 import pulp.server.managers.factory as manager_factory

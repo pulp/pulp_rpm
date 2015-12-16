@@ -24,9 +24,9 @@ class PrestodeltaXMLFileContext(XmlFileContext):
     def add_unit_metadata(self, delta_unit):
 
         new_package_attributes = {'name': delta_unit.new_package,
-                                  'epoch': delta_unit.unit_key['epoch'],
-                                  'version': delta_unit.unit_key['version'],
-                                  'release': delta_unit.unit_key['release'],
+                                  'epoch': delta_unit.epoch,
+                                  'version': delta_unit.version,
+                                  'release': delta_unit.release,
                                   'arch': delta_unit.arch}
 
         new_package_element = ElementTree.Element('newpackage', new_package_attributes)
@@ -38,7 +38,7 @@ class PrestodeltaXMLFileContext(XmlFileContext):
         delta_element = ElementTree.SubElement(new_package_element, 'delta', delta_attributes)
 
         file_name_element = ElementTree.SubElement(delta_element, 'filename')
-        unit_filename = os.path.basename(delta_unit.unit_key['filename'])
+        unit_filename = os.path.basename(delta_unit.filename)
         file_name_element.text = os.path.join('drpms', unit_filename)
 
         sequence_element = ElementTree.SubElement(delta_element, 'sequence')
@@ -47,10 +47,10 @@ class PrestodeltaXMLFileContext(XmlFileContext):
         size_element = ElementTree.SubElement(delta_element, 'size')
         size_element.text = str(delta_unit.size)
 
-        checksum_attributes = {'type': delta_unit.unit_key['checksumtype']}
+        checksum_attributes = {'type': delta_unit.checksumtype}
 
         checksum_element = ElementTree.SubElement(delta_element, 'checksum', checksum_attributes)
-        checksum_element.text = delta_unit.unit_key['checksum']
+        checksum_element.text = delta_unit.checksum
 
         new_package_element_string = ElementTree.tostring(new_package_element, 'utf-8')
 

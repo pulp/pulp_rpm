@@ -11,6 +11,7 @@ from pulp.server.db.model import FileContentUnit
 from pulp_rpm.common import version_utils
 from pulp_rpm.common import file_utils
 from pulp_rpm.plugins import serializers
+from pulp_rpm.plugins.db.fields import ChecksumTypeStringField
 
 
 _LOGGER = logging.getLogger(__name__)
@@ -117,8 +118,8 @@ class NonMetadataPackage(Package):
 
     version = mongoengine.StringField(required=True)
     release = mongoengine.StringField(required=True)
-    checksumtype = mongoengine.StringField(required=True)
     checksum = mongoengine.StringField(required=True)
+    checksumtype = ChecksumTypeStringField(required=True)
 
     # We generate these two
     version_sort_index = mongoengine.StringField()
