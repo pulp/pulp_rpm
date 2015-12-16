@@ -161,7 +161,7 @@ def filter_available_rpms(rpms, import_conduit, repo):
                                        models.RPM, repo)
 
 
-def copy_rpms(units, source_repo, dest_repo, import_conduit, copy_deps, solver=None, ):
+def copy_rpms(units, source_repo, dest_repo, import_conduit, copy_deps, solver=None):
     """
     Copy RPMs from the source repo to the destination repo, and optionally copy
     dependencies as well. Dependencies are resolved recursively.

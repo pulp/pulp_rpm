@@ -55,6 +55,7 @@ def initialize(context):
     remove_section.add_command(remove.PackageCategoryRemoveCommand(context))
     remove_section.add_command(remove.PackageEnvironmentRemoveCommand(context))
     remove_section.add_command(remove.DistributionRemoveCommand(context))
+    remove_section.add_command(remove.YumMetadataFileRemoveCommand(context))
 
     contents_section = structure.repo_contents_section(context.cli)
     contents_section.add_command(contents.SearchRpmsCommand(context))
@@ -65,6 +66,7 @@ def initialize(context):
     contents_section.add_command(contents.SearchPackageEnvironmentsCommand(context))
     contents_section.add_command(contents.SearchDistributionsCommand(context))
     contents_section.add_command(contents.SearchErrataCommand(context))
+    contents_section.add_command(contents.SearchYumMetadataFileCommand(context))
 
     # Add the group section, all its subsections, and commands
     group_export_section = structure.repo_group_export_section(context.cli)

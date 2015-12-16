@@ -19,6 +19,8 @@ _LOGGER = logging.getLogger(__name__)
 class Package(FileContentUnit):
     # TODO add docstring to this class
 
+    SERIALIZER = None
+
     meta = {
         'abstract': True,
     }
@@ -61,6 +63,28 @@ class Package(FileContentUnit):
         son_data = self.to_mongo()
         son_data.pop('_id')
         return self.__class__(**son_data)
+
+    def to_id_dict(self):
+        """
+        Overrides the platform method, whose purpose is to provide a minimal representation that
+        can be returned in a view. For example, the repo associate action represents units this
+        way.
+
+        For models where members of the unit key had to be renamed and must be serialized with the
+        original name for API compatibility, this method does that translation.
+
+        :return:    dictionary with key "type_id" and the value corresponding to the unit type; and
+                    key "unit_key" whose value is the unit's translated unit key.
+        :rtype:     dict
+        """
+        ret = super(Package, self).to_id_dict()
+        if self.SERIALIZER is not None:
+            unit_key = ret['unit_key']
+            for new, old in self.SERIALIZER.Meta.remapped_fields.items():
+                if new in unit_key:
+                    unit_key[old] = unit_key[new]
+                    del unit_key[new]
+        return ret
 
 
 class NonMetadataPackage(Package):
