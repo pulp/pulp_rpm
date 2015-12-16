@@ -171,7 +171,7 @@ def _re_publish_repository(repo_obj, distributor):
     config = PluginCallConfiguration(NEW_DISTRIBUTOR_CONF, distributor['config'])
 
     publisher = Publisher(repo, conduit, config, YUM_DISTRIBUTOR_ID)
-    publisher.publish()
+    publisher.process_lifecycle()
 
 
 def _remove_legacy_publish_dirs():

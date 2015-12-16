@@ -1,17 +1,19 @@
 import logging
 import os
 
+import mongoengine
+from pulp.plugins.loader import api as plugin_api
 from pulp.plugins.util.misc import paginate
-from pulp.server.db.model.criteria import Criteria, UnitAssociationCriteria
+from pulp.server.controllers import repository as repo_controller
+from pulp.server.controllers import units as units_controller
 
-from pulp_rpm.plugins.db import models
-from pulp_rpm.yum_plugin.util import get_relpath_from_unit
+from pulp_rpm.common import ids
 
 
 _LOGGER = logging.getLogger(__name__)
 
 
-def check_repo(wanted, unit_search_method):
+def check_repo(wanted):
     """
     Given an iterable of units as namedtuples, this function will search for them
     using the given search method and return the set of tuples that were not
@@ -37,39 +39,53 @@ def check_repo(wanted, unit_search_method):
     sorted_units = _sort_by_type(wanted)
     # UAQ for each type
     for unit_type, values in sorted_units.iteritems():
-        model = models.TYPE_MAP[unit_type]
-        fields = model.UNIT_KEY_NAMES + ('_storage_path',)
-        rpm_srpm_drpm = unit_type in (models.RPM.TYPE, models.SRPM.TYPE, models.DRPM.TYPE)
-        unit_keys_generator = (unit._asdict() for unit in values.copy())
+        model = plugin_api.get_unit_model_by_id(unit_type)
 
-        for unit in get_existing_units(unit_keys_generator, fields, unit_type, unit_search_method):
+        fields = model.unit_key_fields + ('_storage_path',)
+        rpm_srpm_drpm = unit_type in (ids.TYPE_ID_RPM,
+                                      ids.TYPE_ID_SRPM,
+                                      ids.TYPE_ID_DRPM)
+
+        unit_generator = (model(**unit_tuple._asdict()) for unit_tuple in values)
+        # FIXME this function being called doesn't have a fields parameter
+        for unit in units_controller.find_units(unit_generator, fields=fields):
             if rpm_srpm_drpm:
                 # For RPMs, SRPMs and DRPMs, also check if the file exists on the filesystem.
                 # If not, we do not want to skip downloading the unit.
-                if unit.storage_path is None or not os.path.isfile(unit.storage_path):
+                if unit._storage_path is None or not os.path.isfile(unit._storage_path):
                     continue
-            named_tuple = model(metadata=unit.metadata, **unit.unit_key).as_named_tuple
-            values.discard(named_tuple)
+            values.discard(unit.unit_key_as_named_tuple)
 
     ret = set()
     ret.update(*sorted_units.values())
     return ret
 
 
-def get_existing_units(search_dicts, unit_fields, unit_type, search_method):
+def get_existing_units(search_dicts, unit_class, repo):
     """
+    Get units from the given repository that match the search terms. The unit instances will only
+    have their unit key fields populated.
 
-    :param search_dicts:
-    :param unit_fields:
-    :param unit_type:
-    :param search_method:
-    :return:    generator of Units
+    :param search_dicts:    iterable of dictionaries that should be used to search units
+    :type  search_dicts:    iterable
+    :param unit_class:      subclass representing the type of unit to search for
+    :type  unit_class:      pulp_rpm.plugins.db.models.Package
+    :param repo:            repository to search in
+    :type  repo:            pulp.server.db.model.Repository
+
+    :return:    generator of unit_class instances with only their unit key fields populated
+    :rtype:     generator
     """
+    unit_fields = unit_class.unit_key_fields
     for segment in paginate(search_dicts):
         unit_filters = {'$or': list(segment)}
-        criteria = UnitAssociationCriteria([unit_type], unit_filters=unit_filters,
-                                           unit_fields=unit_fields, association_fields=[])
-        for result in search_method(criteria):
+        units_q = mongoengine.Q(__raw__=unit_filters)
+        association_q = mongoengine.Q(unit_type_id=unit_class._content_type_id.default)
+
+        for result in repo_controller.find_repo_content_units(repo, units_q=units_q,
+                                                              repo_content_unit_q=association_q,
+                                                              unit_fields=unit_fields,
+                                                              yield_content_unit=True):
             yield result
 
 
@@ -93,71 +109,27 @@ def check_all_and_associate(wanted, sync_conduit):
     """
     sorted_units = _sort_by_type(wanted)
     for unit_type, values in sorted_units.iteritems():
-        model = models.TYPE_MAP[unit_type]
-        unit_fields = model.UNIT_KEY_NAMES + ('_storage_path', 'filename')
-        rpm_srpm_drpm = unit_type in (models.RPM.TYPE, models.SRPM.TYPE, models.DRPM.TYPE)
-        rpm_or_srpm = unit_type in (models.RPM.TYPE, models.SRPM.TYPE)
+        model = plugin_api.get_unit_model_by_id(unit_type)
+        # FIXME "fields" does not get used, but it should
+        # fields = model.unit_key_fields + ('_storage_path',)
+        rpm_srpm_drpm = unit_type in (ids.TYPE_ID_RPM,
+                                      ids.TYPE_ID_SRPM,
+                                      ids.TYPE_ID_DRPM)
 
-        unit_keys_generator = (unit._asdict() for unit in values.copy())
-        for unit in get_all_existing_units(unit_keys_generator, unit_fields, unit_type,
-                                           sync_conduit.search_all_units):
-            # For RPMs, SRPMs and DRPMs, also check if the file exists on the filesystem.
-            # If not, we do not want to skip downloading the unit.
+        unit_generator = (model(**unit_tuple._asdict()) for unit_tuple in values)
+        for unit in units_controller.find_units(unit_generator):
             if rpm_srpm_drpm:
-                if unit.storage_path is None or not os.path.isfile(unit.storage_path):
+                # For RPMs, SRPMs and DRPMs, also check if the file exists on the filesystem.
+                # If not, we do not want to skip downloading the unit.
+                if unit._storage_path is None or not os.path.isfile(unit._storage_path):
                     continue
-
-            # Since the unit is already downloaded, call respective sync_conduit calls to import
-            # the unit in given repository.
-            if rpm_or_srpm:
-                unit_key = unit.unit_key
-                rpm_or_srpm_unit = model(unit_key['name'], unit_key['epoch'], unit_key['version'],
-                                         unit_key['release'], unit_key['arch'],
-                                         unit_key['checksumtype'], unit_key['checksum'],
-                                         unit.metadata)
-                relative_path = rpm_or_srpm_unit.relative_path
-            else:
-                relative_path = get_relpath_from_unit(unit)
-            downloaded_unit = sync_conduit.init_unit(unit_type, unit.unit_key,
-                                                     unit.metadata, relative_path)
-
-            # 1125388 - make sure we keep storage_path on the new unit model obj
-            downloaded_unit.storage_path = unit.storage_path
-            sync_conduit.save_unit(downloaded_unit)
-
-            # Discard already downloaded unit from the return value.
-            named_tuple = model(metadata=unit.metadata, **unit.unit_key).as_named_tuple
-            values.discard(named_tuple)
+            # Add the existing unit to the repository
+            repo_controller.associate_single_unit(sync_conduit.repo, unit)
+            values.discard(unit.unit_key_as_named_tuple)
 
     ret = set()
     ret.update(*sorted_units.values())
     return ret
-
-
-def get_all_existing_units(search_dicts, unit_fields, unit_type, search_method):
-    """
-    Get all existing units on the server which match given search_dicts using
-    given search_method.
-
-    :param search_dicts:  unit keys generator
-    :type search_dicts:   iterator of unit keys
-    :param unit_fields:   unit fields to be requested to the search_method
-    :type unit_fields:    list or tuple
-    :param unit_type:     unit type
-    :type unit_type:      basestring
-    :param search_method: search method to be used to search for non-repo-specific units
-    :type search_method:  a search method accepting a unit type and
-                          pulp.server.db.criteria.Criteria as parameters
-    :return:              generator of Units found using the search_method
-    :rtype:               iterator of pulp.plugins.model.Unit
-    """
-    # Instead of separate query for each unit, we are using paginate to query
-    # for a lot of units at once.
-    for segment in paginate(search_dicts):
-        unit_filters = {'$or': list(segment)}
-        criteria = Criteria(filters=unit_filters, fields=unit_fields)
-        for result in search_method(unit_type, criteria):
-            yield result
 
 
 def _sort_by_type(wanted):

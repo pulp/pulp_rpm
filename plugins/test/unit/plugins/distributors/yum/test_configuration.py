@@ -8,8 +8,8 @@ import mock
 from mock import MagicMock, patch, ANY
 from pulp.plugins.conduits.repo_config import RepoConfigConduit
 from pulp.plugins.config import PluginCallConfiguration
-from pulp.plugins.model import Repository
 from pulp.server.exceptions import MissingResource
+from pulp.server.db.model import Repository
 
 from pulp_rpm.common.constants import CONFIG_KEY_CHECKSUM_TYPE, \
     SCRATCHPAD_DEFAULT_METADATA_CHECKSUM, CONFIG_DEFAULT_CHECKSUM
@@ -469,7 +469,7 @@ class YumDistributorConfigurationTests(unittest.TestCase):
     # -- conflicting relative paths --------------------------------------------
 
     def test_relative_path_conflicts_none(self):
-        repo = Repository('test')
+        repo = Repository(repo_id='test')
         config = {}
         conduit = mock.MagicMock()
         conduit.get_repo_distributors_by_relative_url = mock.MagicMock(return_value=[])
@@ -481,7 +481,7 @@ class YumDistributorConfigurationTests(unittest.TestCase):
         self.assertEqual(len(error_messages), 0)
 
     def test_relative_path_conflicts_with_relative_path(self):
-        repo = Repository('test')
+        repo = Repository(repo_id='test')
         config = {'relative_url': 'test'}
         conflicting_distributor = {'repo_id': 'zoo_repo',
                                    'config': {'relative_url': 'test'}}
@@ -498,7 +498,7 @@ class YumDistributorConfigurationTests(unittest.TestCase):
         self.assertEqual(error_messages, [message])
 
     def test_relative_path_conflicts_with_repo_id(self):
-        repo = Repository('test')
+        repo = Repository(repo_id='test')
         config = {'relative_url': 'zoo_repo'}
         conflicting_distributor = {'repo_id': 'zoo_repo',
                                    'config': {}}
@@ -515,7 +515,7 @@ class YumDistributorConfigurationTests(unittest.TestCase):
         self.assertEqual(error_messages, [message])
 
     def test_relative_path_conflicts_with_both(self):
-        repo = Repository('test')
+        repo = Repository(repo_id='test')
         config = {'relative_url': 'zoo_repo'}
         conflicting_distributor = [{'repo_id': 'zoo_repo',
                                    'config': {'relative_url': 'zoo_repo'}},
@@ -540,48 +540,48 @@ class YumDistributorConfigurationTests(unittest.TestCase):
     @mock.patch('pulp.repoauth.repo_cert_utils.RepoCertUtils.write_consumer_cert_bundle')
     def test_cert_based_auth_ca_and_cert(self, mock_write_consumer_cert_bundle,
                                          mock_add_protected_repo):
-        repo = Repository('test')
+        repo = Repository(repo_id='test')
         config = {'auth_ca': 'looks legit',
                   'auth_cert': '1234567890'}
         bundle = {'ca': config['auth_ca'], 'cert': config['auth_cert']}
 
         configuration.process_cert_based_auth(repo, config)
 
-        mock_write_consumer_cert_bundle.assert_called_once_with(repo.id, bundle)
-        mock_add_protected_repo.assert_called_once_with(repo.id, repo.id)
+        mock_write_consumer_cert_bundle.assert_called_once_with(repo.repo_id, bundle)
+        mock_add_protected_repo.assert_called_once_with(repo.repo_id, repo.repo_id)
 
     @mock.patch('pulp.repoauth.protected_repo_utils.ProtectedRepoUtils.delete_protected_repo')
     def test_cert_based_auth_ca_no_cert(self, mock_delete_protected_repo):
-        repo = Repository('test')
+        repo = Repository(repo_id='test')
         config = {'auth_ca': 'looks not so legit'}
 
         configuration.process_cert_based_auth(repo, config)
 
-        mock_delete_protected_repo.assert_called_once_with(repo.id)
+        mock_delete_protected_repo.assert_called_once_with(repo.repo_id)
 
     @mock.patch('pulp.repoauth.protected_repo_utils.ProtectedRepoUtils.delete_protected_repo')
     def test_cert_based_auth_no_ca_no_cert(self, mock_delete_protected_repo):
-        repo = Repository('test')
+        repo = Repository(repo_id='test')
 
         configuration.process_cert_based_auth(repo, {})
 
-        mock_delete_protected_repo.assert_called_once_with(repo.id)
+        mock_delete_protected_repo.assert_called_once_with(repo.repo_id)
 
     @mock.patch('pulp.repoauth.protected_repo_utils.ProtectedRepoUtils.delete_protected_repo')
     def test_remove_cert_based_auth(self, mock_delete_protected_repo):
-        repo = Repository('test')
+        repo = Repository(repo_id='test')
         config = {}
 
         configuration.remove_cert_based_auth(repo, config)
 
-        mock_delete_protected_repo.assert_called_once_with(repo.id)
+        mock_delete_protected_repo.assert_called_once_with(repo.repo_id)
 
 
 class TestGetExportRepoPublishDirs(unittest.TestCase):
     def test_both_dirs(self):
         config = PluginCallConfiguration({}, {constants.PUBLISH_HTTP_KEYWORD: True,
                                               constants.PUBLISH_HTTPS_KEYWORD: True})
-        repo = mock.Mock(id='foo')
+        repo = mock.Mock(repo_id='foo')
         dirs = configuration.get_export_repo_publish_dirs(repo, config)
         self.assertEquals(dirs, [
             os.path.join(configuration.HTTP_EXPORT_DIR, 'foo'),
@@ -589,7 +589,7 @@ class TestGetExportRepoPublishDirs(unittest.TestCase):
 
     def test_no_dirs(self):
         config = PluginCallConfiguration({}, {})
-        repo = mock.Mock(id='foo')
+        repo = mock.Mock(repo_id='foo')
         dirs = configuration.get_export_repo_publish_dirs(repo, config)
         self.assertEquals(dirs, [])
 

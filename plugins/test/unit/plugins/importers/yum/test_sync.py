@@ -19,6 +19,7 @@ import pulp.server.managers.factory as manager_factory
 import mock
 
 from pulp_rpm.common import constants, ids
+from pulp_rpm.devel.skip import skip_broken
 from pulp_rpm.plugins import error_codes
 from pulp_rpm.plugins.db import models
 from pulp_rpm.plugins.importers.yum.existing import check_all_and_associate
@@ -48,6 +49,7 @@ class BaseSyncTest(unittest.TestCase):
         self.downloader = Downloader(DownloaderConfig())
 
 
+@skip_broken
 class TestUpdateState(BaseSyncTest):
     def setUp(self):
         super(TestUpdateState, self).setUp()
@@ -100,6 +102,7 @@ class TestUpdateState(BaseSyncTest):
         self.assertEqual(self.state_dict[constants.PROGRESS_STATE_KEY], constants.STATE_COMPLETE)
 
 
+@skip_broken
 class TestSaveRepomdRevision(BaseSyncTest):
     def test_empty_scratchpad(self):
         self.reposync.current_revision = 1234
@@ -166,6 +169,7 @@ class TestSaveRepomdRevision(BaseSyncTest):
         self.assertEqual(self.conduit.set_scratchpad.call_count, 0)
 
 
+@skip_broken
 class TestInit(BaseSyncTest):
     def test_sets_initial_progress(self):
         self.conduit.set_progress.assert_called_once_with(self.reposync.progress_status)
@@ -185,6 +189,7 @@ class TestInit(BaseSyncTest):
         self.assertEqual(self.reposync.call_config.get(constants.CONFIG_SKIP, []), [])
 
 
+@skip_broken
 class TestSetProgress(BaseSyncTest):
     def test_not_canceled(self):
         self.conduit.set_progress = mock.MagicMock(spec_set=self.conduit.set_progress)
@@ -202,6 +207,7 @@ class TestSetProgress(BaseSyncTest):
         self.conduit.set_progress.assert_called_once_with(self.reposync.progress_status)
 
 
+@skip_broken
 class TestSyncFeed(BaseSyncTest):
 
     @mock.patch('pulp_rpm.plugins.importers.yum.sync.RepoSync.check_metadata',
@@ -281,6 +287,7 @@ class TestSyncFeed(BaseSyncTest):
         mock_rmtree.assert_called_with(mock_mkdtemp.return_value, ignore_errors=True)
 
 
+@skip_broken
 class TestParseMirrorlist(BaseSyncTest):
 
     @mock.patch('pulp_rpm.plugins.importers.yum.sync.DownloadRequest')
@@ -296,6 +303,7 @@ class TestParseMirrorlist(BaseSyncTest):
         self.assertEqual(ret, ['https://some/url/'])
 
 
+@skip_broken
 class TestRun(BaseSyncTest):
     def setUp(self):
         super(TestRun, self).setUp()
@@ -455,6 +463,7 @@ class TestRun(BaseSyncTest):
         self.assertEquals(e.exception.error_code, error_codes.RPM1005)
 
 
+@skip_broken
 class TestProgressSummary(BaseSyncTest):
     def test_content(self):
         ret = self.reposync._progress_summary
@@ -469,6 +478,7 @@ class TestProgressSummary(BaseSyncTest):
                              ret[step_name]['state'])
 
 
+@skip_broken
 class TestGetMetadata(BaseSyncTest):
     def setUp(self):
         super(TestGetMetadata, self).setUp()
@@ -577,6 +587,7 @@ class TestGetMetadata(BaseSyncTest):
         self.reposync.import_unknown_metadata_files.assert_called_once_with(mock_metadata_instance)
 
 
+@skip_broken
 class TestSaveMetadataChecksum(BaseSyncTest):
     """
     This class contains tests for the save_default_metadata_checksum_on_repo() method.
@@ -619,6 +630,7 @@ class TestSaveMetadataChecksum(BaseSyncTest):
             {constants.SCRATCHPAD_DEFAULT_METADATA_CHECKSUM: 'sha1'})
 
 
+@skip_broken
 class ImportUnknownMetadataFiles(BaseSyncTest):
     """
     This class contains tests for the RepoSync.import_unknown_metadata_files function.
@@ -686,6 +698,7 @@ class ImportUnknownMetadataFiles(BaseSyncTest):
                                           self.conduit.init_unit.return_value.storage_path)
 
 
+@skip_broken
 class TestUpdateContent(BaseSyncTest):
     """
     The function being tested doesn't really do anything besides walk through a
@@ -709,6 +722,7 @@ class TestUpdateContent(BaseSyncTest):
         mock_purge.assert_called_once_with(self.metadata_files, self.conduit, self.config)
 
 
+@skip_broken
 class TestDecideWhatToDownload(BaseSyncTest):
     @mock.patch('pulp_rpm.plugins.importers.yum.sync.RepoSync._decide_rpms_to_download',
                 spec_set=RepoSync._decide_rpms_to_download)
@@ -740,6 +754,7 @@ class TestDecideWhatToDownload(BaseSyncTest):
         self.assertEqual(report['content']['details']['drpm_total'], 1)
 
 
+@skip_broken
 class TestDecideRPMsToDownload(BaseSyncTest):
     def test_skip_rpms(self):
         self.config.override_config[constants.CONFIG_SKIP] = [models.RPM.TYPE]
@@ -792,6 +807,7 @@ class TestDecideRPMsToDownload(BaseSyncTest):
         self.assertTrue(primary_file.closed)
 
 
+@skip_broken
 class TestDecideDRPMsToDownload(BaseSyncTest):
     def test_skip_drpms(self):
         self.config.override_config[constants.CONFIG_SKIP] = [models.DRPM.TYPE]
@@ -852,6 +868,7 @@ class TestDecideDRPMsToDownload(BaseSyncTest):
         self.assertTrue(presto_file.closed)
 
 
+@skip_broken
 class TestDownload(BaseSyncTest):
     RELATIVEPATH = 'myrelativepath'
 
@@ -982,6 +999,7 @@ class TestDownload(BaseSyncTest):
         self.assertTrue(file_handle.closed)
 
 
+@skip_broken
 class TestQueryAuthToken(BaseSyncTest):
     def setUp(self):
         super(TestQueryAuthToken, self).setUp()
@@ -1060,6 +1078,7 @@ class TestQueryAuthToken(BaseSyncTest):
             self.assertTrue(unit_type in skip_config)
 
 
+@skip_broken
 class TestCancel(BaseSyncTest):
     def test_sets_bools(self):
         self.reposync.downloader = self.downloader
@@ -1095,6 +1114,7 @@ class TestCancel(BaseSyncTest):
         self.assertEqual(report.details['metadata']['state'], constants.STATE_CANCELLED)
 
 
+@skip_broken
 class TestGetErrata(BaseSyncTest):
     @mock.patch.object(RepoSync, 'save_fileless_units', autospec=True)
     def test_no_metadata(self, mock_save):
@@ -1143,6 +1163,7 @@ class TestGetErrata(BaseSyncTest):
                                           additive_type=True)
 
 
+@skip_broken
 class TestGetCompsFileUnits(BaseSyncTest):
     @mock.patch.object(RepoSync, 'save_fileless_units', autospec=True)
     def test_no_metadata(self, mock_save):
@@ -1197,6 +1218,7 @@ class TestGetCompsFileUnits(BaseSyncTest):
         mock_process_element.assert_called_once_with(self.repo.id, fake_element)
 
 
+@skip_broken
 class TestSaveFilelessUnits(BaseSyncTest):
     @mock.patch('pulp_rpm.plugins.importers.yum.existing.check_repo', autospec=True)
     @mock.patch('pulp_rpm.plugins.importers.yum.repomd.packages.package_list_generator',
@@ -1543,6 +1565,7 @@ class TestSaveFilelessUnits(BaseSyncTest):
                            'pulp_user_metadata': {}})
 
 
+@skip_broken
 class TestIdentifyWantedVersions(BaseSyncTest):
     def test_keep_all(self):
         self.config.override_config[importer_constants.KEY_UNITS_RETAIN_OLD_COUNT] = None
@@ -1591,6 +1614,7 @@ class TestIdentifyWantedVersions(BaseSyncTest):
             self.assertEqual(size, 1024)
 
 
+@skip_broken
 class TestFilteredUnitGenerator(BaseSyncTest):
     def test_without_to_download(self):
         units = model_factory.rpm_models(3)
@@ -1610,6 +1634,7 @@ class TestFilteredUnitGenerator(BaseSyncTest):
         self.assertEqual(result, units[:2])
 
 
+@skip_broken
 class TestAlreadyDownloadedUnits(BaseSyncTest):
     @mock.patch('pulp.plugins.conduits.repo_sync.RepoSyncConduit.search_all_units', autospec=True)
     @mock.patch('pulp.plugins.conduits.repo_sync.RepoSyncConduit.save_unit', autospec=True)
@@ -1697,6 +1722,7 @@ class TestAlreadyDownloadedUnits(BaseSyncTest):
         self.assertEqual(len(list(result)), 3)
 
 
+@skip_broken
 class TestTreeinfoAlterations(BaseSyncTest):
     TREEINFO_NO_REPOMD = """
 [general]
@@ -1768,6 +1794,7 @@ repodata/repomd.xml = sha256:9876
 
 
 # these tests are specifically to test bz #1150714
+@skip_broken
 @mock.patch('os.chmod', autospec=True)
 @mock.patch('pulp_rpm.plugins.importers.yum.parse.treeinfo.pulp_copytree', autospec=True)
 @mock.patch('pulp_rpm.plugins.importers.yum.parse.treeinfo.get_treefile', autospec=True)

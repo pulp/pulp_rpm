@@ -109,12 +109,12 @@ class ISODistributor(Distributor):
         if progress_callback:
             progress_callback(type_id, status)
 
-    def publish_repo(self, repo, publish_conduit, config):
+    def publish_repo(self, transfer_repo, publish_conduit, config):
         """
         Export a yum repository to a given directory, or to ISO
 
-        :param repo:            metadata describing the repository
-        :type  repo:            pulp.plugins.model.Repository
+        :param transfer_repo: metadata describing the repository
+        :type  transfer_repo: pulp.plugins.model.Repository
         :param publish_conduit: provides access to relevant Pulp functionality
         :type  publish_conduit: pulp.plugins.conduits.repo_publish.RepoPublishConduit
         :param config:          plugin configuration
@@ -129,25 +129,27 @@ class ISODistributor(Distributor):
         if not valid_config:
             raise PulpDataException(msg)
 
-        _logger.info('Starting export of [%s]' % repo.id)
-        self._publisher = ExportRepoPublisher(repo, publish_conduit, config,
+        _logger.info('Starting export of [%s]' % transfer_repo.id)
+        self._publisher = ExportRepoPublisher(transfer_repo, publish_conduit, config,
                                               ids.TYPE_ID_DISTRIBUTOR_EXPORT)
-        return self._publisher.publish()
+        return self._publisher.process_lifecycle()
 
-    def distributor_removed(self, repo, config):
+    def distributor_removed(self, transfer_repo, config):
         """
         Called when a distributor of this type is removed from a repository.
 
-        :param repo: metadata describing the repository
-        :type  repo: pulp.plugins.model.Repository
+        :param transfer_repo: metadata describing the repository
+        :type  transfer_repo: pulp.plugins.model.Repository
 
         :param config: plugin configuration
         :type  config: pulp.plugins.config.PluginCallConfiguration
         """
         # remove the directories that might have been created for this repo/distributor
-        dir_list = [configuration.get_master_publish_dir(repo, ids.TYPE_ID_DISTRIBUTOR_EXPORT),
-                    os.path.join(configuration.HTTP_EXPORT_DIR, repo.id),
-                    os.path.join(configuration.HTTPS_EXPORT_DIR, repo.id)]
+        master_dir = configuration.get_master_publish_dir(transfer_repo.repo_obj,
+                                                          ids.TYPE_ID_DISTRIBUTOR_EXPORT)
+        dir_list = [master_dir,
+                    os.path.join(configuration.HTTP_EXPORT_DIR, transfer_repo.id),
+                    os.path.join(configuration.HTTPS_EXPORT_DIR, transfer_repo.id)]
 
         for repo_dir in dir_list:
             shutil.rmtree(repo_dir, ignore_errors=True)

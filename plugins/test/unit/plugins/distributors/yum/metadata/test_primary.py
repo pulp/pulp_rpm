@@ -21,7 +21,7 @@ class PrimaryXMLFileContextTests(unittest.TestCase):
 
     def test_add_unit_metadata(self):
         self.context.metadata_file_handle = mock.Mock()
-        self.context.add_unit_metadata(mock.Mock(metadata={'repodata': {'primary': 'bar'}}))
+        self.context.add_unit_metadata(mock.Mock(repodata={'primary': 'bar'}))
         self.context.metadata_file_handle.write.assert_called_once_with('bar')
 
     def test_add_unit_metadata_unicode(self):
@@ -30,8 +30,6 @@ class PrimaryXMLFileContextTests(unittest.TestCase):
         """
         self.context.metadata_file_handle = mock.Mock()
         expected_call = 'some unicode'
-        metadata = {
-            'repodata': {'primary': unicode(expected_call)}
-        }
-        self.context.add_unit_metadata(mock.Mock(metadata=metadata))
+        repodata = {'primary': unicode(expected_call)}
+        self.context.add_unit_metadata(mock.Mock(repodata=repodata))
         self.context.metadata_file_handle.write.assert_called_once_with(expected_call)

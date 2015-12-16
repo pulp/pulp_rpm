@@ -43,11 +43,11 @@ def _get_relative_path(repo):
     Return the relative path for a particular repository.
 
     :param repo: The repo we need hosting locations for
-    :type  repo: pulp.plugins.model.Repository
+    :type  repo: pulp.server.db.model.Repository
     :return:     relative path for the repo
     :rtype:      basestring
     """
-    return repo.id
+    return repo.repo_id
 
 
 def _get_repository_protection_utils():
@@ -70,7 +70,7 @@ def remove_repository_protection(repo):
     Remove repository protection from the given repository.
 
     :param repo: The repository to remove protection from
-    :type  repo: pulp.plugins.model.Repository
+    :type  repo: pulp.server.db.model.Repository
     """
     protected_repo_utils = _get_repository_protection_utils()[1]
     relative_path = _get_relative_path(repo)

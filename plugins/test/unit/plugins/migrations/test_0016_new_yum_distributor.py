@@ -164,7 +164,7 @@ class HelperMethodTests(BaseMigrationTests):
             self.assertFalse(os.path.exists(os.path.join(path, 'listing')))
 
     @mock.patch('pulp_rpm.plugins.distributors.yum.publish.Publisher.get_working_dir')
-    @mock.patch('pulp_rpm.plugins.distributors.yum.publish.Publisher.publish')
+    @mock.patch('pulp_rpm.plugins.distributors.yum.publish.Publisher.process_lifecycle')
     def test_re_publish_repository(self, mock_publish, m_wd):
 
         repo_id = 'test_repo'

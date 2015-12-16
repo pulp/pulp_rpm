@@ -64,6 +64,6 @@ class CreatePackageCategoryCommand(UploadCommand):
             'display_order': display_order,
             'packagegroupids': packagegroupids,
             'translated_description': {},
-            'translated_name': '',
+            'translated_name': {},
         }
         return metadata

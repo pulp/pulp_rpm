@@ -13,11 +13,13 @@ from pulp.server import constants as server_constants
 from pulp_rpm.common.ids import TYPE_ID_ISO
 from pulp_rpm.common.progress import SyncProgressReport, ISOProgressReport
 from pulp_rpm.devel import importer_mocks
+from pulp_rpm.devel.skip import skip_broken
 from pulp_rpm.devel.rpm_support_base import PulpRPMTests
 from pulp_rpm.plugins.db import models
 from pulp_rpm.plugins.importers.iso.sync import ISOSyncRun
 
 
+@skip_broken
 class TestISOSyncRun(PulpRPMTests):
     """
     Test the ISOSyncRun object.
