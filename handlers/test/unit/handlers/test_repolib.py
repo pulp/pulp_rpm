@@ -106,6 +106,33 @@ class TestRepolib(unittest.TestCase):
         # No CA path should have been used
         self.assertEqual(loaded['sslcacert'], None)
 
+    def test_bind_new_repo_no_name(self):
+        """
+        Tests binding a repository that doesn't exist without providing a name.
+        """
+        url_list = ['http://pulpserver']
+
+        repolib.bind(self.TEST_REPO_FILENAME, self.TEST_MIRROR_LIST_FILENAME, self.TEST_KEYS_DIR,
+                     self.TEST_CERT_DIR,
+                     REPO_ID, None, url_list, {}, CLIENTCERT, ENABLED, self.LOCK)
+
+        self.assertTrue(os.path.exists(self.TEST_REPO_FILENAME))
+        self.assertTrue(not os.path.exists(self.TEST_MIRROR_LIST_FILENAME))
+        repo_file = RepoFile(self.TEST_REPO_FILENAME)
+        repo_file.load()
+
+        self.assertEqual(1, len(repo_file.all_repos()))
+
+        loaded = repo_file.get_repo(REPO_ID)
+        self.assertTrue(loaded is not None)
+        self.assertEqual(loaded['name'], REPO_ID)
+        self.assertTrue(loaded['enabled'])
+        self.assertEqual(loaded['gpgcheck'], '0')
+        self.assertEqual(loaded['gpgkey'], None)
+
+        self.assertEqual(loaded['baseurl'], url_list[0])
+        self.assertTrue('mirrorlist' not in loaded)
+
     def test_bind_ssl_verify_true_default_ca_path(self):
         """
         Tests binding a repo with verify_ssl set explicitly to True and the default ca_path.
