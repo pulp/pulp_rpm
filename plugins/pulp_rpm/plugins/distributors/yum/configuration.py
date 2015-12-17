@@ -3,8 +3,9 @@ import os
 from ConfigParser import SafeConfigParser
 from gettext import gettext as _
 
+from pulp.server.db import model
+from pulp.server.controllers import distributor as dist_controller
 from pulp.server.exceptions import MissingResource
-from pulp.server.managers import factory
 
 from pulp_rpm.common.constants import SCRATCHPAD_DEFAULT_METADATA_CHECKSUM, \
     CONFIG_DEFAULT_CHECKSUM, CONFIG_KEY_CHECKSUM_TYPE, REPO_AUTH_CONFIG_FILE, \
@@ -345,14 +346,12 @@ def get_repo_checksum_type(publish_conduit, config):
 
     distributor_config = config.repo_plugin_config
     if CONFIG_KEY_CHECKSUM_TYPE not in distributor_config and checksum_type:
-        distributor_manager = factory.repo_distributor_manager()
         try:
-            distributor = distributor_manager.get_distributor(publish_conduit.repo_id,
-                                                              publish_conduit.distributor_id)
-            if distributor['distributor_type_id'] == TYPE_ID_DISTRIBUTOR_YUM:
-                distributor_manager.update_distributor_config(publish_conduit.repo_id,
-                                                              publish_conduit.distributor_id,
-                                                              {'checksum_type': checksum_type})
+            dist = model.Distributor.objects.get_or_404(
+                repo_id=publish_conduit.repo_id, distributor_id=publish_conduit.distributor_id)
+            if dist.distributor_type_id == TYPE_ID_DISTRIBUTOR_YUM:
+                dist_controller.update(dist.repo_id, dist.distributor_id,
+                                       config={'checksum_type': checksum_type})
         except MissingResource:
             # If the distributor doesn't exist on the repo (such as with a group distributor
             # this is ok
