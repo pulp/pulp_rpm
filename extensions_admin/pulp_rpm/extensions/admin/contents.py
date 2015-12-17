@@ -5,6 +5,7 @@ from pulp.client.commands.criteria import DisplayUnitAssociationsCommand
 from pulp.client.extensions.extensions import PulpCliOptionGroup, PulpCliOption
 
 from pulp_rpm.extensions.admin import criteria_utils
+from pulp_rpm.common import ids
 
 
 # -- constants ----------------------------------------------------------------
@@ -120,6 +121,7 @@ DESC_ENVIRONMENTS = _('search for package environments (collections of package g
                       'in a repository')
 DESC_DISTRIBUTIONS = _('list distributions in a repository')
 DESC_ERRATA = _('search errata in a repository')
+DESC_YUM_METADATA_FILE = _('search for Yum Metadata Files in a repository')
 
 ASSOCIATION_METADATA_KEYWORD = 'metadata'
 
@@ -313,6 +315,16 @@ class SearchPackageEnvironmentsCommand(BaseSearchCommand):
 
     def package_environment(self, **kwargs):
         self.run_search([TYPE_PACKAGE_ENVIRONMENT], **kwargs)
+
+
+class SearchYumMetadataFileCommand(BaseSearchCommand):
+    def __init__(self, context):
+        super(SearchYumMetadataFileCommand, self).__init__(self.yum_metadata_file, context,
+                                                           name='metafile',
+                                                           description=DESC_YUM_METADATA_FILE)
+
+    def yum_metadata_file(self, **kwargs):
+        self.run_search([ids.TYPE_ID_YUM_REPO_METADATA_FILE], **kwargs)
 
 
 class SearchDistributionsCommand(BaseSearchCommand):

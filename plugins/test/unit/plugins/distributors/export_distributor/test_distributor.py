@@ -70,7 +70,7 @@ class TestISODistributor(unittest.TestCase):
         mock_validate.return_value = (True, None)
         distributor = ISODistributor()
         export_publisher.return_value = mock.Mock()
-        export_publisher.return_value.publish.return_value = 'foo'
+        export_publisher.return_value.process_lifecycle.return_value = 'foo'
 
         self.assertEquals('foo', distributor.publish_repo(self.repo, self.conduit, self.config))
 

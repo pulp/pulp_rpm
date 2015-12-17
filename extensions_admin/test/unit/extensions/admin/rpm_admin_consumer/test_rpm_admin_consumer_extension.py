@@ -1,5 +1,5 @@
-#!/usr/bin/python
-#
+#!/usr/bin/env python2
+
 from mock import Mock
 from pulp.bindings.responses import STATE_FINISHED
 from pulp.bindings.tasks import Task

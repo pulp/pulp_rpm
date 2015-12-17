@@ -8,27 +8,27 @@ from pulp.plugins.util import verification
 
 _LOGGER = logging.getLogger(__name__)
 
-# TODO: OMG so sorry, we should replace this at the earliest opportunity. This
-# uses createrepo and yum to generate some of the repo metadata
-
 
 def get_package_xml(pkg_path, sumtype=verification.TYPE_SHA256):
     """
     Method to generate repo xmls - primary, filelists and other
     for a given rpm.
 
-    :param pkg_path: rpm package path on the filesystem
+    :param pkg_path: package path on the filesystem
     :type  pkg_path: str
 
     :param sumtype: The type of checksum to use for creating the package xml
-    :type  sumtype: str
+    :type  sumtype: basestring
 
     :return:    rpm metadata dictionary or empty if rpm path doesnt exist
     :rtype:     dict
     """
     ts = rpmUtils.transaction.initReadOnlyTransaction()
     try:
-        po = yumbased.CreateRepoPackage(ts, pkg_path, sumtype=sumtype)
+        # createrepo raises an exception if sumtype is unicode
+        # https://bugzilla.redhat.com/show_bug.cgi?id=1290021
+        sumtype_as_str = str(sumtype)
+        po = yumbased.CreateRepoPackage(ts, pkg_path, sumtype=sumtype_as_str)
     except Exception, e:
         # I hate this, but yum doesn't use reasonable exceptions like IOError
         # and ValueError.

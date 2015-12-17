@@ -96,9 +96,6 @@ mkdir -p %{buildroot}/%{_var}/lib/pulp/published/yum/https
 cp -R plugins/etc/httpd %{buildroot}/%{_sysconfdir}
 cp -R plugins/etc/pulp %{buildroot}/%{_sysconfdir}
 
-# Type files
-cp -R plugins/types %{buildroot}/%{_usr}/lib/pulp/plugins
-
 # Distribution XSD files
 mkdir -p %{buildroot}/%{_usr}/share/pulp-rpm
 cp -R plugins/usr/share/pulp-rpm %{buildroot}/%{_usr}/share/
@@ -178,8 +175,6 @@ to provide RPM specific support.
 %{python_sitelib}/pulp_rpm/yum_plugin/
 %{python_sitelib}/pulp_rpm_plugins*.egg-info
 %config(noreplace) %{_sysconfdir}/httpd/conf.d/pulp_rpm.conf
-%{_usr}/lib/pulp/plugins/types/rpm_support.json
-%{_usr}/lib/pulp/plugins/types/iso_support.json
 %{_usr}/share/pulp-rpm/
 %{_sysconfdir}/pulp/vhosts80/rpm.conf
 %defattr(-,apache,apache,-)

@@ -1,23 +1,29 @@
 import os
-
 from uuid import uuid4
 from unittest import TestCase
 from urlparse import urljoin
 
 from mock import patch, Mock
+from mongoengine import StringField
 
 from pulp.server.content.sources.model import Request
+from pulp.server.db.model import ContentUnit
+
 from pulp_rpm.plugins.importers.yum.repomd.alternate import Packages, ContainerListener
+from pulp_rpm.plugins.importers.yum.utils import RepoURLModifier
 
 
-class Unit(object):
-    TYPE = 'unit'
-
-    def __init__(self):
-        self.unit_key = str(uuid4())
-        self.download_path = str(uuid4())
-        self.relative_path = str(uuid4())
-        self.metadata = {}
+class Unit(ContentUnit):
+    """
+    Test unit.
+    """
+    _content_type_id = StringField(required=True, default='distribution')
+    base_url = StringField()
+    filename = StringField()
+    relative_url_path = StringField()
+    relativepath = StringField()
+    download_path = StringField()
+    unit_key_fields = ('filename',)
 
 
 class TestPackages(TestCase):
@@ -82,6 +88,12 @@ class TestPackages(TestCase):
             Unit(),
             Unit(),
         ]
+        # set each unit to use a different base url
+        for n, unit in enumerate(units):
+            unit.base_url = '%s:%s/' % (base_url, n)
+            unit.filename = 'file%d' % n
+            unit.download_path = unit.filename
+            unit.relativepath = unit.filename
 
         # test
         packages = Packages(base_url, None, units, '', listener)
@@ -90,11 +102,10 @@ class TestPackages(TestCase):
         calls = fake_request.call_args_list
         self.assertEqual(len(requests), len(units))
         for n, call in enumerate(calls):
-            self.assertEqual(call[1]['type_id'], units[n].TYPE)
             self.assertEqual(call[1]['unit_key'], units[n].unit_key)
-            self.assertEqual(call[1]['url'], urljoin(base_url, units[n].download_path))
+            self.assertEqual(call[1]['url'], urljoin(units[n].base_url, units[n].download_path))
             self.assertEqual(call[1]['destination'],
-                             os.path.join(packages.dst_dir, units[n].relative_path))
+                             os.path.join(packages.dst_dir, units[n].relativepath))
         self.assertEqual(len(requests), len(units))
 
     @patch('pulp_rpm.plugins.importers.yum.repomd.alternate.create_downloader', Mock())
@@ -110,7 +121,10 @@ class TestPackages(TestCase):
         ]
         # set each unit to use a different base url
         for n, unit in enumerate(units):
-            unit.metadata['base_url'] = '%s:%s/' % (base_url, n)
+            unit.base_url = '%s:%s/' % (base_url, n)
+            unit.filename = 'file%d' % n
+            unit.download_path = unit.filename
+            unit.relativepath = unit.filename
 
         # test
         packages = Packages(base_url, None, units, '', listener)
@@ -119,12 +133,43 @@ class TestPackages(TestCase):
         calls = fake_request.call_args_list
         self.assertEqual(len(requests), len(units))
         for n, call in enumerate(calls):
-            self.assertEqual(call[1]['type_id'], units[n].TYPE)
             self.assertEqual(call[1]['unit_key'], units[n].unit_key)
             unit_base_url = '%s:%s/' % (base_url, n)
             self.assertEqual(call[1]['url'], urljoin(unit_base_url, units[n].download_path))
             self.assertEqual(call[1]['destination'],
-                             os.path.join(packages.dst_dir, units[n].relative_path))
+                             os.path.join(packages.dst_dir, units[n].relativepath))
+        self.assertEqual(len(requests), len(units))
+
+    @patch('pulp_rpm.plugins.importers.yum.repomd.alternate.create_downloader', Mock())
+    @patch('pulp_rpm.plugins.importers.yum.repomd.alternate.ContentContainer', Mock())
+    @patch('pulp_rpm.plugins.importers.yum.repomd.alternate.Request')
+    def test_get_requests_auth_token(self, fake_request):
+        qstring = '?foo'
+        listener = Mock()
+        base_url = 'http://host'
+        units = [
+            Unit(),
+            Unit(),
+            Unit(),
+        ]
+        # set each unit to use a different base url
+        for n, unit in enumerate(units):
+            unit.base_url = '%s:%s/' % (base_url, n)
+            unit.filename = 'file%d' % n
+            unit.download_path = unit.filename
+            unit.relativepath = unit.filename
+
+        # test
+        url_modify = RepoURLModifier(query_auth_token=qstring[1:])
+        packages = Packages(base_url, None, units, '', listener, url_modify)
+        requests = list(packages.get_requests())
+
+        calls = fake_request.call_args_list
+        self.assertEqual(len(requests), len(units))
+        for n, call in enumerate(calls):
+            unit_base_url = '%s:%s/' % (base_url, n)
+            expected = urljoin(unit_base_url, units[n].download_path) + qstring
+            self.assertEqual(call[1]['url'], expected)
         self.assertEqual(len(requests), len(units))
 
 

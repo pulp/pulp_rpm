@@ -11,3 +11,39 @@ New Features
 * The default Apache configuration has changed in order to support deferred content
   downloading. All requests to ``/pulp/repos`` are now re-written to ``/pulp/content``.
 
+Database Changes
+----------------
+
+The database has renamed some field names for RPM unit models. This change should not be noticeable through the API,
+but it does come with a migration which drops some indexes. The following field names are renamed:
+
+=========================  ==============  ======================
+Collection                 Old Field Name  New Field Name
+=========================  ==============  ======================
+units_distribution         id              distribution_id
+units_erratum              from            errata_from
+units_erratum              id              errata_id
+units_package_group        id              package_group_id
+units_package_category     id              package_category_id
+units_package_environment  id              package_environment_id
+=========================  ==============  ======================
+
+
+The following indexes have been dropped:
+
+=========================  ==============
+Collection                 Index Name
+=========================  ==============
+units_distribution         id_1
+units_distribution         id_1_family_1_variant_1_version_1_arch_1
+units_erratum              id_1
+units_package_group        id_1
+units_package_group        id_1_repo_id_1
+units_package_category     id_1
+units_package_category     id_1_repo_id_1
+units_package_environment  id_1
+units_package_environment  id_1_repo_id_1
+=========================  ==============
+
+Several indexes have been created, check your db to see what indexes are in place.
+

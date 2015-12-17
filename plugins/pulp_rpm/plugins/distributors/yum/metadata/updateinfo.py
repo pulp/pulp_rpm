@@ -1,8 +1,9 @@
 import os
 from xml.etree import ElementTree
 
-from pulp_rpm.plugins.distributors.yum.metadata.metadata import (
-    MetadataFileContext, REPO_DATA_DIR_NAME)
+from pulp.plugins.util.metadata_writer import XmlFileContext
+
+from pulp_rpm.plugins.distributors.yum.metadata.metadata import REPO_DATA_DIR_NAME
 from pulp_rpm.yum_plugin import util
 
 
@@ -11,57 +12,42 @@ _logger = util.getLogger(__name__)
 UPDATE_INFO_XML_FILE_NAME = 'updateinfo.xml.gz'
 
 
-class UpdateinfoXMLFileContext(MetadataFileContext):
+class UpdateinfoXMLFileContext(XmlFileContext):
     def __init__(self, working_dir, checksum_type=None):
-
         metadata_file_path = os.path.join(working_dir, REPO_DATA_DIR_NAME,
                                           UPDATE_INFO_XML_FILE_NAME)
-        super(UpdateinfoXMLFileContext, self).__init__(metadata_file_path, checksum_type)
+        super(UpdateinfoXMLFileContext, self).__init__(
+            metadata_file_path, 'updates', checksum_type=checksum_type)
 
-    def _write_root_tag_open(self):
-
-        updates_element = ElementTree.Element('updates')
-        bogus_element = ElementTree.SubElement(updates_element, '')
-
-        updates_tags_string = ElementTree.tostring(updates_element, 'utf-8')
-        bogus_tag_string = ElementTree.tostring(bogus_element, 'utf-8')
-        opening_tag, closing_tag = updates_tags_string.split(bogus_tag_string, 1)
-
-        self.metadata_file_handle.write(opening_tag + '\n')
-
-        def _write_root_tag_close_closure(*args):
-            self.metadata_file_handle.write(closing_tag + '\n')
-
-        self._write_root_tag_close = _write_root_tag_close_closure
-
-    def add_unit_metadata(self, erratum_unit):
+    def add_unit_metadata(self, item):
         """
         Write the XML representation of erratum_unit to self.metadata_file_handle
         (updateinfo.xml.gx).
 
-        :param erratum_unit: The erratum unit that should be written to updateinfo.xml.
-        :type  erratum_unit: pulp.plugins.model.AssociatedUnit
+        :param item: The erratum unit that should be written to updateinfo.xml.
+        :type  item: pulp_rpm.plugins.db.models.Errata
         """
-        update_attributes = {'status': erratum_unit.metadata['status'],
-                             'type': erratum_unit.metadata['type'],
-                             'version': erratum_unit.metadata['version'],
-                             'from': erratum_unit.metadata.get('from', '') or ''}
+        erratum_unit = item
+        update_attributes = {'status': erratum_unit.status,
+                             'type': erratum_unit.type,
+                             'version': erratum_unit.version,
+                             'from': erratum_unit.errata_from or ''}
         update_element = ElementTree.Element('update', update_attributes)
 
         id_element = ElementTree.SubElement(update_element, 'id')
-        id_element.text = erratum_unit.unit_key['id']
+        id_element.text = erratum_unit.errata_id
 
-        issued_attributes = {'date': erratum_unit.metadata['issued']}
+        issued_attributes = {'date': erratum_unit.issued}
         ElementTree.SubElement(update_element, 'issued', issued_attributes)
 
         reboot_element = ElementTree.SubElement(update_element, 'reboot_suggested')
-        reboot_element.text = str(erratum_unit.metadata['reboot_suggested'])
+        reboot_element.text = str(erratum_unit.reboot_suggested)
 
         # these elements are optional
         for key in ('title', 'release', 'rights', 'solution',
                     'severity', 'summary', 'pushcount'):
 
-            value = erratum_unit.metadata.get(key)
+            value = getattr(erratum_unit, key)
 
             if not value:
                 continue
@@ -72,14 +58,14 @@ class UpdateinfoXMLFileContext(MetadataFileContext):
         # these elements must be present even if text is empty
         for key in ('description',):
 
-            value = erratum_unit.metadata.get(key)
+            value = getattr(erratum_unit, key)
             if value is None:
                 value = ''
 
             sub_element = ElementTree.SubElement(update_element, key)
             sub_element.text = unicode(value)
 
-        updated = erratum_unit.metadata.get('updated')
+        updated = erratum_unit.updated
 
         if updated:
             updated_attributes = {'date': updated}
@@ -87,14 +73,14 @@ class UpdateinfoXMLFileContext(MetadataFileContext):
 
         references_element = ElementTree.SubElement(update_element, 'references')
 
-        for reference in erratum_unit.metadata.get('references'):
+        for reference in erratum_unit.references:
             reference_attributes = {'id': reference['id'] or '',
                                     'title': reference['title'] or '',
                                     'type': reference['type'],
                                     'href': reference['href']}
             ElementTree.SubElement(references_element, 'reference', reference_attributes)
 
-        for pkglist in erratum_unit.metadata.get('pkglist', []):
+        for pkglist in erratum_unit.pkglist:
 
             pkglist_element = ElementTree.SubElement(update_element, 'pkglist')
 

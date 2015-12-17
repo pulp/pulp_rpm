@@ -5,7 +5,6 @@ import shutil
 import tempfile
 import unittest
 
-from pulp.plugins.model import Unit
 from pulp_rpm.devel import rpm_support_base
 from pulp_rpm.yum_plugin import util
 
@@ -64,30 +63,6 @@ class TestStringToUnicode(unittest.TestCase):
         result = util.string_to_unicode(u'€'.encode('utf8'))
         self.assertTrue(isinstance(result, unicode))
         self.assertEqual(result, u'€')
-
-
-class TestRelativePath(unittest.TestCase):
-    def test_get_relpath_from_unit(self):
-        unit = Unit(type_id='random',
-                    unit_key={"filename": "test_unit_key_filename"},
-                    metadata={"filename": "test_metadata_filename"},
-                    storage_path="/test/storage/path")
-        self.assertEqual(util.get_relpath_from_unit(unit), "test_metadata_filename")
-        unit = Unit(type_id='random',
-                    unit_key={"filename": "test_unit_key_filename"},
-                    metadata={},
-                    storage_path="/test/storage/path")
-        self.assertEqual(util.get_relpath_from_unit(unit), "test_unit_key_filename")
-        unit = Unit(type_id='random',
-                    unit_key={"fileName": "test_unit_key_fileName"},
-                    metadata={},
-                    storage_path="/test/storage/path")
-        self.assertEqual(util.get_relpath_from_unit(unit), "test_unit_key_fileName")
-        unit = Unit(type_id='random',
-                    unit_key={},
-                    metadata={},
-                    storage_path="/test/storage/path")
-        self.assertEqual(util.get_relpath_from_unit(unit), "path")
 
 
 class TestGenerateListingFiles(unittest.TestCase):

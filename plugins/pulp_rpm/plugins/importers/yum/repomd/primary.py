@@ -109,8 +109,7 @@ def process_package_element(package_element):
     # NOTE the use of deepcopy relies on cpython's very sensible policy of never
     # duplicating string literals, this may not hold up in other implementations
     # the python interpreter.
-    package_info = deepcopy(PACKAGE_INFO_SKEL)
-    package_info['type'] = package_element.attrib['type']
+    package_info = dict()
 
     name_element = package_element.find(NAME_TAG)
     if name_element is not None:
@@ -173,9 +172,9 @@ def process_package_element(package_element):
     package_info.update(_process_format_element(format_element))
 
     if package_info['arch'].lower() == 'src':
-        model = models.SRPM.from_package_info(package_info)
+        model = models.SRPM(**package_info)
     else:
-        model = models.RPM.from_package_info(package_info)
+        model = models.RPM(**package_info)
     # add the raw XML so it can be saved in the database later
     rpm_namespace = utils.Namespace('rpm', RPM_SPEC_URL)
     model.raw_xml = utils.element_to_raw_xml(package_element, [rpm_namespace], COMMON_SPEC_URL)
@@ -194,7 +193,7 @@ def _process_format_element(format_element):
     # NOTE the use of deepcopy relies on cpython's very sensible policy of never
     # duplicating string literals, this may not hold up in other implementations
     # the python interpreter.
-    package_format = deepcopy(PACKAGE_FORMAT_SKEL)
+    package_format = dict()
 
     if format_element is None:
         return package_format
@@ -213,6 +212,7 @@ def _process_format_element(format_element):
 
     header_range_element = format_element.find(RPM_HEADER_RANGE_TAG)
     if header_range_element is not None:
+        package_format['header_range'] = dict()
         package_format['header_range']['start'] = int(header_range_element.attrib['start'])
         package_format['header_range']['end'] = int(header_range_element.attrib['end'])
 
@@ -226,16 +226,16 @@ def _process_format_element(format_element):
 
     provides_element = format_element.find(RPM_PROVIDES_TAG)
     if provides_element is not None:
-        package_format['provides'].extend(
-            _process_rpm_entry_element(e) for e in provides_element.findall(RPM_ENTRY_TAG))
+        package_format['provides'] = \
+            [_process_rpm_entry_element(e) for e in provides_element.findall(RPM_ENTRY_TAG)]
 
     requires_element = format_element.find(RPM_REQUIRES_TAG)
     if requires_element is not None:
-        package_format['requires'].extend(
-            _process_rpm_entry_element(e) for e in requires_element.findall(RPM_ENTRY_TAG))
+        package_format['requires'] = \
+            [_process_rpm_entry_element(e) for e in requires_element.findall(RPM_ENTRY_TAG)]
 
-    package_format['files'].extend(
-        _process_file_element(e) for e in format_element.findall(FILE_TAG))
+    package_format['files'] = \
+        [_process_file_element(e) for e in format_element.findall(FILE_TAG)]
 
     return package_format
 

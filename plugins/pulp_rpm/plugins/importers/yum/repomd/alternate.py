@@ -1,6 +1,5 @@
 import os
 
-from urlparse import urljoin
 from logging import getLogger
 from gettext import gettext as _
 
@@ -10,6 +9,7 @@ from pulp.server.content.sources.container import ContentContainer
 from pulp.server.content.sources.event import Listener
 from pulp.server.content.sources.model import Request
 
+from pulp_rpm.plugins.importers.yum.utils import RepoURLModifier
 from pulp_rpm.plugins.importers.yum.repomd.nectar_factory import create_downloader
 
 
@@ -21,6 +21,7 @@ CONTAINER_REPORT = _('The content container reported: %(r)s for base URL: %(u)s'
 class Packages(object):
     """
     Package downloader.
+
     :ivar base_url: The repository base url.
     :type base_url: str
     :ivar units: An iterable of units to download.
@@ -33,9 +34,11 @@ class Packages(object):
     :type primary: nectar.downloaders.base.Downloader
     :ivar container: A content container.
     :type container: ContentContainer
+    :ivar url_modify: Optional URL modifier.
+    :type url_modify: pulp_rpm.plugins.importers.yum.utils.RepoURLModifier
     """
 
-    def __init__(self, base_url, nectar_conf, units, dst_dir, listener):
+    def __init__(self, base_url, nectar_conf, units, dst_dir, listener, url_modify=None):
         """
         :param base_url: The repository base url.
         :type base_url: str
@@ -45,6 +48,8 @@ class Packages(object):
         :type dst_dir: str
         :param listener: A nectar listener.
         :type listener: nectar.listener.DownloadListener
+        :param url_modify: Optional URL modifier
+        :type url_modify: pulp_rpm.plugins.importers.yum.utils.RepoURLModifier
         """
         self.base_url = base_url
         self.units = units
@@ -52,6 +57,7 @@ class Packages(object):
         self.listener = ContainerListener(listener)
         self.primary = create_downloader(base_url, nectar_conf)
         self.container = ContentContainer()
+        self.url_modify = url_modify or RepoURLModifier()
 
     @property
     def downloader(self):
@@ -64,18 +70,16 @@ class Packages(object):
     def get_requests(self):
         """
         Get requests for the units requested to be downloaded.
+
         :return: An iterable of: Request
         :rtype: iterable
         """
         for unit in self.units:
-            if unit.metadata.get('base_url'):
-                url = urljoin(unit.metadata.get('base_url'), unit.download_path)
-            else:
-                url = urljoin(self.base_url, unit.download_path)
-            file_name = os.path.basename(unit.relative_path)
-            destination = os.path.join(self.dst_dir, file_name)
+            base_url = unit.base_url or self.base_url
+            url = self.url_modify(base_url, path_append=unit.filename)
+            destination = os.path.join(self.dst_dir, unit.filename)
             request = Request(
-                type_id=unit.TYPE,
+                type_id=unit.type_id,
                 unit_key=unit.unit_key,
                 url=url,
                 destination=destination)
