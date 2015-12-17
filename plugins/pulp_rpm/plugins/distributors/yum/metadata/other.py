@@ -37,9 +37,9 @@ class OtherXMLFileContext(FastForwardXmlFileContext):
         Add the metadata to primary.xml.gz for the given unit.
 
         :param unit: unit whose metadata is to be written
-        :type  unit: pulp.plugins.model.Unit
+        :type  unit: pulp_rpm.plugins.db.models.RpmBase
         """
-        metadata = unit.metadata['repodata']['other']
+        metadata = unit.repodata['other']
         if isinstance(metadata, unicode):
             metadata = metadata.encode('utf-8')
         self.metadata_file_handle.write(metadata)

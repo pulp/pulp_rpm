@@ -8,9 +8,8 @@ import unittest
 import mock
 from pulp.server.db.migrate.models import _import_all_the_way
 
-from pulp_rpm.plugins.db.models import RPM, SRPM
-
-
+RPM_TYPE = 'rpm'
+SRPM_TYPE = 'srpm'
 migration = _import_all_the_way('pulp_rpm.plugins.migrations.0011_new_importer')
 DATA_DIR = os.path.join(os.path.dirname(__file__), '..', '..', '..', 'data',
                         '11_migrate_new_importer')
@@ -25,15 +24,15 @@ class TestMigrateNewImporter(unittest.TestCase):
     def test_types(self, mock_add):
         migration.migrate()
         self.assertEqual(mock_add.call_count, 2)
-        mock_add.assert_any_call(RPM.TYPE)
-        mock_add.assert_any_call(SRPM.TYPE)
+        mock_add.assert_any_call(RPM_TYPE)
+        mock_add.assert_any_call(SRPM_TYPE)
 
     @mock.patch('pulp.plugins.types.database.type_units_collection')
     def test_adds_size(self, mock_collection):
         mock_collection.return_value.find.return_value = [self.rpm_unit]
         self.assertFalse('size' in self.rpm_unit)
 
-        migration._migrate_collection(RPM.TYPE)
+        migration._migrate_collection(RPM_TYPE)
         result = mock_collection.return_value.save.call_args[0][0]
 
         self.assertTrue('size' in result)
@@ -44,7 +43,7 @@ class TestMigrateNewImporter(unittest.TestCase):
         mock_collection.return_value.find.return_value = [self.rpm_unit]
         self.assertFalse('sourcerpm' in self.rpm_unit)
 
-        migration._migrate_collection(RPM.TYPE)
+        migration._migrate_collection(RPM_TYPE)
         result = mock_collection.return_value.save.call_args[0][0]
 
         self.assertTrue('sourcerpm' in result)
@@ -55,7 +54,7 @@ class TestMigrateNewImporter(unittest.TestCase):
         mock_collection.return_value.find.return_value = [self.rpm_unit]
         self.assertFalse('summary' in self.rpm_unit)
 
-        migration._migrate_collection(RPM.TYPE)
+        migration._migrate_collection(RPM_TYPE)
         result = mock_collection.return_value.save.call_args[0][0]
 
         self.assertTrue('summary' in result)
@@ -65,7 +64,7 @@ class TestMigrateNewImporter(unittest.TestCase):
     def test_preserve_xml(self, mock_collection):
         mock_collection.return_value.find.return_value = [self.rpm_unit]
 
-        migration._migrate_collection(RPM.TYPE)
+        migration._migrate_collection(RPM_TYPE)
         result = mock_collection.return_value.save.call_args[0][0]
 
         # ensure no changes to actual XML
@@ -76,7 +75,7 @@ class TestMigrateNewImporter(unittest.TestCase):
     def test_reformats_provides(self, mock_collection):
         mock_collection.return_value.find.return_value = [self.rpm_unit]
 
-        migration._migrate_collection(RPM.TYPE)
+        migration._migrate_collection(RPM_TYPE)
         result = mock_collection.return_value.save.call_args[0][0]
 
         provides = result['provides']
@@ -98,7 +97,7 @@ class TestMigrateNewImporter(unittest.TestCase):
     def test_reformats_requires(self, mock_collection):
         mock_collection.return_value.find.return_value = [self.rpm_unit]
 
-        migration._migrate_collection(RPM.TYPE)
+        migration._migrate_collection(RPM_TYPE)
         result = mock_collection.return_value.save.call_args[0][0]
 
         requires = result['requires']
@@ -114,7 +113,7 @@ class TestMigrateNewImporter(unittest.TestCase):
         self.assertTrue('summary' not in self.srpm_unit)
         mock_collection.return_value.find.return_value = [self.srpm_unit]
 
-        migration._migrate_collection(SRPM.TYPE)
+        migration._migrate_collection(SRPM_TYPE)
         result = mock_collection.return_value.save.call_args[0][0]
         self.assertTrue('sourcerpm' not in result)
         self.assertTrue('summary' not in result)

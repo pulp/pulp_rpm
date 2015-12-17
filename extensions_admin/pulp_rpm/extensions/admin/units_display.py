@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 from pulp_rpm.common.ids import (TYPE_ID_RPM, TYPE_ID_SRPM, TYPE_ID_DRPM, TYPE_ID_ERRATA,
                                  TYPE_ID_DISTRO, TYPE_ID_PKG_GROUP, TYPE_ID_PKG_CATEGORY,
                                  TYPE_ID_PKG_ENVIRONMENT, TYPE_ID_YUM_REPO_METADATA_FILE)
@@ -17,11 +15,11 @@ def get_formatter_for_type(type_id):
         TYPE_ID_RPM: _details_package,
         TYPE_ID_SRPM: _details_package,
         TYPE_ID_DRPM: _details_drpm,
-        TYPE_ID_ERRATA: _details_id_only,
-        TYPE_ID_DISTRO: _details_id_only,
-        TYPE_ID_PKG_GROUP: _details_id_only,
-        TYPE_ID_PKG_CATEGORY: _details_id_only,
-        TYPE_ID_PKG_ENVIRONMENT: _details_id_only,
+        TYPE_ID_ERRATA: lambda x: x.get('id'),
+        TYPE_ID_DISTRO: lambda x: x.get('id'),
+        TYPE_ID_PKG_GROUP: lambda x: x.get('id'),
+        TYPE_ID_PKG_CATEGORY: lambda x: x.get('id'),
+        TYPE_ID_PKG_ENVIRONMENT: lambda x: x.get('id'),
         TYPE_ID_YUM_REPO_METADATA_FILE: _yum_repo_metadata_name_only,
     }
     return type_formatters[type_id]
@@ -62,22 +60,6 @@ def _details_drpm(drpm):
     :rtype: str
     """
     return drpm['filename']
-
-
-def _details_id_only(unit):
-    """
-    A formatter that prints the id of a unit.
-
-    The unit argument is expected to contain the key 'id', and is expected to have a string
-    as the corresponding value. The formatter returns the value of 'id' as the formatted
-    string to use. This is a simple package formatter.
-
-    :param unit: The unit to have its formatting returned.
-    :type unit: dict
-    :return: The display string of the unit
-    :rtype: str
-    """
-    return unit['id']
 
 
 def _yum_repo_metadata_name_only(unit):

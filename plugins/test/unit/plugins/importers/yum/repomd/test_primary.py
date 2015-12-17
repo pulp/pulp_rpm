@@ -84,7 +84,7 @@ class TestProcessRPMElement(unittest.TestCase):
         model = rpms[0]
         self.assertTrue(isinstance(model, models.RPM))
         # Test the location
-        self.assertEqual(model.metadata['base_url'], 'http://www.foo.com/repo')
+        self.assertEqual(model.base_url, 'http://www.foo.com/repo')
 
 
 F18_SOURCE_XML = """<?xml version="1.0" encoding="UTF-8"?>

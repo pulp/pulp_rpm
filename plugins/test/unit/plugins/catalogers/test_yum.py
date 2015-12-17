@@ -12,8 +12,8 @@ from mock import patch, Mock
 from pulp.server.managers import factory as managers
 from pulp.plugins.conduits.cataloger import CatalogerConduit
 
-from pulp_rpm.plugins.db import models
 from pulp_rpm.plugins.catalogers.yum import TYPE_ID, YumCataloger, entry_point
+from pulp_rpm.plugins.db.models import RPM
 
 
 TAR_PATH = os.path.join(os.path.dirname(__file__), '../../../data/cataloger-test-repo.tar')
@@ -53,7 +53,7 @@ class TestCataloger(TestCase):
         expected = {
             'id': TYPE_ID,
             'display_name': "Yum Cataloger",
-            'types': [models.RPM.TYPE]
+            'types': [RPM._content_type_id.default]
         }
         self.assertEqual(md, expected)
 

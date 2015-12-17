@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python2
 
 import optparse
 import os
@@ -33,8 +33,6 @@ LINKS = (
      '/etc/yum/pluginconf.d/pulp-profile-update.conf'),
 
     # RPM Support Plugins
-    ('plugins/types/rpm_support.json', DIR_PLUGINS + '/types/rpm_support.json'),
-    ('plugins/types/iso_support.json', DIR_PLUGINS + '/types/iso_support.json'),
     ('plugins/usr/share/pulp-rpm', '/usr/share/pulp-rpm'),
 
     # RPM Support Web Configuration

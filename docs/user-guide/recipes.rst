@@ -523,7 +523,7 @@ package_list.csv for this::
 
 Now that we have these two files, we can create our new errata like so::
 
-    $ pulp-admin rpm repo uploads erratum --erratum_id=DEMO_ID_1 \
+    $ pulp-admin rpm repo uploads erratum --erratum-id=DEMO_ID_1 \
       --title="1: pulp-test-package bit conservation" \
       --description="1: pulp-test-package now conserves your precious bits." \
       --version=1 --release="el6" --type="bugzilla" --status="final" \

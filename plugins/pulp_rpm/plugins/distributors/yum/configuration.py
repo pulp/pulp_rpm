@@ -3,8 +3,9 @@ import os
 from ConfigParser import SafeConfigParser
 from gettext import gettext as _
 
+from pulp.server.db import model
+from pulp.server.controllers import distributor as dist_controller
 from pulp.server.exceptions import MissingResource
-from pulp.server.managers import factory
 
 from pulp_rpm.common.constants import SCRATCHPAD_DEFAULT_METADATA_CHECKSUM, \
     CONFIG_DEFAULT_CHECKSUM, CONFIG_KEY_CHECKSUM_TYPE, REPO_AUTH_CONFIG_FILE, \
@@ -58,7 +59,7 @@ def validate_config(repo, config, config_conduit):
     Validate the prospective configuration instance for the the give repository.
 
     :param repo: repository to validate the config for
-    :type  repo: pulp.plugins.model.Repository
+    :type  repo: pulp.server.db.model.Repository
     :param config: configuration instance to validate
     :type  config: pulp.plugins.config.PluginCallConfiguration
     :param config_conduit: conduit providing access to relevant Pulp functionality
@@ -140,7 +141,7 @@ def process_cert_based_auth(repo, config):
     Write the CA and Cert files in the PKI, if present. Remove them, if not.
 
     :param repo: repository to validate the config for
-    :type  repo: pulp.plugins.model.Repository
+    :type  repo: pulp.server.db.model.Repository
     :param config: configuration instance to validate
     :type  config: pulp.plugins.config.PluginCallConfiguration or dict
     """
@@ -160,8 +161,8 @@ def process_cert_based_auth(repo, config):
         repo_cert_utils_instance = repo_cert_utils.RepoCertUtils(auth_config)
         bundle = {'ca': auth_ca, 'cert': auth_cert}
 
-        repo_cert_utils_instance.write_consumer_cert_bundle(repo.id, bundle)
-        protected_repo_utils_instance.add_protected_repo(relative_path, repo.id)
+        repo_cert_utils_instance.write_consumer_cert_bundle(repo.repo_id, bundle)
+        protected_repo_utils_instance.add_protected_repo(relative_path, repo.repo_id)
 
 
 def remove_cert_based_auth(repo, config):
@@ -169,7 +170,7 @@ def remove_cert_based_auth(repo, config):
     Remove the CA and Cert files in the PKI
 
     :param repo: repository to validate the config for
-    :type  repo: pulp.plugins.model.Repository
+    :type  repo: pulp.server.db.model.Repository
     :param config: configuration instance to validate
     :type  config: pulp.plugins.config.PluginCallConfiguration or dict
     """
@@ -184,14 +185,29 @@ def get_master_publish_dir(repo, distributor_type):
     Get the master publishing directory for the given repository.
 
     :param repo: repository to get the master publishing directory for
-    :type  repo: pulp.plugins.model.Repository
+    :type  repo: pulp.server.db.model.Repository
     :param distributor_type: The type id of distributor that is being published
     :type distributor_type: str
     :return: master publishing directory for the given repository
     :rtype:  str
     """
 
-    return os.path.join(MASTER_PUBLISH_DIR, distributor_type, repo.id)
+    return os.path.join(MASTER_PUBLISH_DIR, distributor_type, repo.repo_id)
+
+
+def get_master_publish_dir_from_group(repo_group, distributor_type):
+    """
+    Get the master publishing directory for the given repository group.
+
+    :param repo_group:  a repository group
+    :type  repo_group:  pulp.plugins.model.RepositoryGroup
+    :param distributor_type:    type ID for a distributor
+    :type  distributor_type:    str
+
+    :return:    path to the master publishing directory
+    :rtype:     str
+    """
+    return os.path.join(MASTER_PUBLISH_DIR, distributor_type, repo_group.id)
 
 
 def get_export_repo_publish_dirs(repo, config):
@@ -199,7 +215,7 @@ def get_export_repo_publish_dirs(repo, config):
     Get the web publishing directories for a repo export
 
     :param repo: repository to get the master publishing directory for
-    :type  repo: pulp.plugins.model.Repository
+    :type  repo: pulp.server.db.model.Repository
     :param config: configuration instance
     :type  config: pulp.plugins.config.PluginCallConfiguration
     :return: list of publishing locations on disk
@@ -207,9 +223,9 @@ def get_export_repo_publish_dirs(repo, config):
     """
     publish_dirs = []
     if config.get(PUBLISH_HTTP_KEYWORD):
-        publish_dirs.append(os.path.join(HTTP_EXPORT_DIR, repo.id))
+        publish_dirs.append(os.path.join(HTTP_EXPORT_DIR, repo.repo_id))
     if config.get(PUBLISH_HTTPS_KEYWORD):
-        publish_dirs.append(os.path.join(HTTPS_EXPORT_DIR, repo.id))
+        publish_dirs.append(os.path.join(HTTPS_EXPORT_DIR, repo.repo_id))
 
     return publish_dirs
 
@@ -281,16 +297,18 @@ def get_https_publish_dir(config=None):
 def get_repo_relative_path(repo, config=None):
     """
     Get the configured relative path for the given repository.
+
     :param repo: repository to get relative path for
-    :type  repo: pulp.plugins.model.Repository
+    :type  repo: pulp.server.db.model.Repository
     :param config: configuration instance for the repository
     :type  config: pulp.plugins.config.PluginCallConfiguration or dict or None
+
     :return: relative path for the repository
     :rtype:  str
     """
 
     config = config or {}
-    relative_path = config.get('relative_url', repo.id) or repo.id
+    relative_path = config.get('relative_url', repo.repo_id) or repo.repo_id
 
     if relative_path.startswith('/'):
         relative_path = relative_path[1:]
@@ -328,14 +346,12 @@ def get_repo_checksum_type(publish_conduit, config):
 
     distributor_config = config.repo_plugin_config
     if CONFIG_KEY_CHECKSUM_TYPE not in distributor_config and checksum_type:
-        distributor_manager = factory.repo_distributor_manager()
         try:
-            distributor = distributor_manager.get_distributor(publish_conduit.repo_id,
-                                                              publish_conduit.distributor_id)
-            if distributor['distributor_type_id'] == TYPE_ID_DISTRIBUTOR_YUM:
-                distributor_manager.update_distributor_config(publish_conduit.repo_id,
-                                                              publish_conduit.distributor_id,
-                                                              {'checksum_type': checksum_type})
+            dist = model.Distributor.objects.get_or_404(
+                repo_id=publish_conduit.repo_id, distributor_id=publish_conduit.distributor_id)
+            if dist.distributor_type_id == TYPE_ID_DISTRIBUTOR_YUM:
+                dist_controller.update(dist.repo_id, dist.distributor_id,
+                                       config={'checksum_type': checksum_type})
         except MissingResource:
             # If the distributor doesn't exist on the repo (such as with a group distributor
             # this is ok
@@ -462,7 +478,7 @@ def _validate_usable_directory(key, path, error_messages):
 def _check_for_relative_path_conflicts(repo, config, config_conduit, error_messages):
     relative_path = get_repo_relative_path(repo, config)
     conflicting_distributors = config_conduit.get_repo_distributors_by_relative_url(relative_path,
-                                                                                    repo.id)
+                                                                                    repo.repo_id)
     # in all honesty, this loop should execute at most once
     # but it may be interesting/useful for erroneous situations
     for distributor in conflicting_distributors:
@@ -475,6 +491,6 @@ def _check_for_relative_path_conflicts(repo, config, config_conduit, error_messa
         else:
             msg = _('Relative URL [{relative_path}] for repository [{repo_id}] conflicts with '
                     'repo id for existing repository [{conflict_repo}]')
-        error_messages.append(msg.format(relative_path=relative_path, repo_id=repo.id,
+        error_messages.append(msg.format(relative_path=relative_path, repo_id=repo.repo_id,
                                          conflict_url=conflicting_relative_url,
                                          conflict_repo=conflicting_repo_id))

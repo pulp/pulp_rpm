@@ -3,12 +3,12 @@
 import logging
 import os
 import re
-from urlparse import urljoin
 from xml.etree.cElementTree import iterparse
 
 from nectar.request import DownloadRequest
 
 from pulp_rpm.plugins.importers.yum.repomd import nectar_factory
+from pulp_rpm.plugins.importers.yum.utils import RepoURLModifier
 
 
 _LOGGER = logging.getLogger(__name__)
@@ -81,13 +81,14 @@ class Packages(object):
     """
 
     def __init__(self, repo_url, nectar_config, package_model_iterator, dst_dir,
-                 event_listener=None):
+                 event_listener=None, url_modify=None):
         self.repo_url = repo_url
         self.package_model_iterator = package_model_iterator
         self.dst_dir = dst_dir
 
         self.downloader = nectar_factory.create_downloader(repo_url, nectar_config,
                                                            event_listener)
+        self._url_modify = url_modify or RepoURLModifier()
 
     def download_packages(self):
         """
@@ -104,7 +105,7 @@ class Packages(object):
         :rtype: generator
         """
         for model in self.package_model_iterator:
-            url = urljoin(self.repo_url, model.download_path)
+            url = self._url_modify(self.repo_url, path_append=model.download_path)
 
             file_name = model.relative_path.rsplit('/', 1)[-1]
             destination = os.path.join(self.dst_dir, file_name)

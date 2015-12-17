@@ -30,8 +30,8 @@ def process_package_element(element):
         description_text = ''
     package_info = {
         'description': description_text,
-        'from': element.attrib['from'],
-        'id': element.find('id').text,
+        'errata_from': element.attrib['from'],
+        'errata_id': element.find('id').text,
         'issued': '',
         'pushcount': '',
         # yum defaults this to False, and sets it to True if any package in
@@ -72,7 +72,7 @@ def process_package_element(element):
     if updated_element is not None:
         package_info['updated'] = updated_element.attrib['date']
 
-    return models.Errata.from_package_info(package_info)
+    return models.Errata(**package_info)
 
 
 def _parse_reference(element):

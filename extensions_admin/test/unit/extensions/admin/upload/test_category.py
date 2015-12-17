@@ -55,4 +55,4 @@ class CreatePackageCategoryCommand(PulpClientTests):
         self.assertEqual(metadata['display_order'], 'test-order')
         self.assertEqual(metadata['packagegroupids'], 'test-group')
         self.assertEqual(metadata['translated_description'], {})
-        self.assertEqual(metadata['translated_name'], '')
+        self.assertEqual(metadata['translated_name'], {})

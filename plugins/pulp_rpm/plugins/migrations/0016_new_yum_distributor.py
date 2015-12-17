@@ -53,7 +53,7 @@ def migrate(*args, **kwargs):
         repo = repos[d['repo_id']]
         config = d['config'] or {}
 
-        if d['last_publish'] is None:
+        if d.get('last_publish') is None:
             continue
 
         _clear_working_dir(repo)
@@ -167,11 +167,11 @@ def _re_publish_repository(repo_obj, distributor):
     repo = repo_obj.to_transfer_repo()
     repo.working_dir = distributor_working_dir(distributor['distributor_type_id'],
                                                repo.id)
-    conduit = RepoPublishConduit(repo.id, distributor['id'])
+    conduit = RepoPublishConduit(repo.id, distributor['distributor_id'])
     config = PluginCallConfiguration(NEW_DISTRIBUTOR_CONF, distributor['config'])
 
     publisher = Publisher(repo, conduit, config, YUM_DISTRIBUTOR_ID)
-    publisher.publish()
+    publisher.process_lifecycle()
 
 
 def _remove_legacy_publish_dirs():

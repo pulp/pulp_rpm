@@ -9,7 +9,6 @@ import hashlib
 import logging
 import lzma
 import os
-from urlparse import urljoin
 from xml.etree import ElementTree
 from xml.etree.cElementTree import iterparse
 
@@ -104,7 +103,7 @@ class MetadataFiles(object):
                        'prestodelta',
                        'updateinfo', 'updateinfo_db'])
 
-    def __init__(self, repo_url, dst_dir, nectar_config):
+    def __init__(self, repo_url, dst_dir, nectar_config, url_modify=None):
         """
         :param repo_url:        URL for the base of a yum repository
         :type  repo_url:        basestring
@@ -113,13 +112,17 @@ class MetadataFiles(object):
         :type  dst_dir:         basestring
         :param nectar_config:   download config for nectar
         :type  nectar_config:   nectar.config.DownloaderConfig
+        :param url_modify:      Optional URL modifier
+        :type  url_modify:      pulp_rpm.plugins.importers.yum.utils.RepoURLModifier
         """
         super(MetadataFiles, self).__init__()
-        self.repo_url = repo_url
+
+        self._url_modify = url_modify or utils.RepoURLModifier()
+        self.repo_url = self._url_modify(repo_url)
         self.dst_dir = dst_dir
         self.event_listener = AggregatingEventListener()
 
-        self.downloader = nectar_factory.create_downloader(repo_url, nectar_config,
+        self.downloader = nectar_factory.create_downloader(self.repo_url, nectar_config,
                                                            self.event_listener)
 
         self.revision = None
@@ -131,7 +134,7 @@ class MetadataFiles(object):
         Download the main repomd.xml file.
         """
         repomd_dst_path = os.path.join(self.dst_dir, REPOMD_FILE_NAME)
-        repomd_url = urljoin(self.repo_url, REPOMD_URL_RELATIVE_PATH)
+        repomd_url = self._url_modify(self.repo_url, path_append=REPOMD_URL_RELATIVE_PATH)
         repomd_request = DownloadRequest(repomd_url, repomd_dst_path)
         self.downloader.download([repomd_request])
         if self.event_listener.failed_reports:
@@ -188,7 +191,7 @@ class MetadataFiles(object):
             # we don't care about the sqlite files
             if file_name.endswith('_db') and file_name in self.KNOWN_TYPES:
                 continue
-            url = urljoin(self.repo_url, file_info['relative_path'])
+            url = self._url_modify(self.repo_url, path_append=file_info['relative_path'])
             dst = os.path.join(self.dst_dir, file_info['relative_path'].rsplit('/', 1)[-1])
 
             file_info['local_path'] = dst
@@ -320,9 +323,8 @@ class MetadataFiles(object):
         based on data obtained in the raw XML snippets.
 
         :param model:   model instance to manipulate
-        :type  model:   pulp_rpm.plugins.db.models.RPM
+        :type  model:   pulp_rpm.plugins.db.models.RpmBase
         """
-        repodata = model.metadata.setdefault('repodata', {})
         db_key = self.generate_db_key(model.unit_key)
         for filename, metadata_key, process_func in (
             (filelists.METADATA_FILE_NAME, 'files', filelists.process_package_element),
@@ -333,13 +335,13 @@ class MetadataFiles(object):
                 raw_xml = db_file[db_key]
             finally:
                 db_file.close()
-            repodata[filename] = raw_xml
+            model.repodata[filename] = raw_xml
             element = ElementTree.fromstring(raw_xml)
             unit_key, items = process_func(element)
-            model.metadata[metadata_key] = items
+            setattr(model, metadata_key, items)
 
         raw_xml = model.raw_xml
-        repodata['primary'] = change_location_tag(raw_xml, model.relative_path)
+        model.repodata['primary'] = change_location_tag(raw_xml, model.filename)
 
 
 def process_repomd_data_element(data_element):

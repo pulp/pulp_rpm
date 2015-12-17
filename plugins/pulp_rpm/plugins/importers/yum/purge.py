@@ -1,9 +1,12 @@
 from gettext import gettext as _
 import functools
 import logging
+import operator
 
+from mongoengine import Q
 from pulp.common.plugins import importer_constants
 from pulp.server.db.model.criteria import UnitAssociationCriteria
+from pulp.server.controllers import repository as repo_controller
 
 from pulp_rpm.plugins.db import models
 from pulp_rpm.plugins.importers.yum.repomd import packages, primary, presto, updateinfo, group
@@ -218,10 +221,10 @@ def get_existing_units(model, unit_search_func):
     :type  unit_search_func;    function
 
     :return:    iterable of Unit instances that appear in the repository
-    :rtype:     iterable of pulp.plugins.model.Unit
+    :rtype:     iterable of pulp.server.db.model.ContentUnit
     """
-    criteria = UnitAssociationCriteria([model.TYPE],
-                                       unit_fields=model.UNIT_KEY_NAMES)
+    criteria = UnitAssociationCriteria([model._content_type_id],
+                                       unit_fields=model.unit_key_fields)
     return unit_search_func(criteria)
 
 
@@ -260,3 +263,26 @@ def get_remote_units(file_function, tag, process_func):
     finally:
         file_handle.close()
     return remote_named_tuples
+
+
+def remove_unit_duplicate_nevra(unit, repo):
+    """
+    Removes units from the repo that have same NEVRA, ignoring the checksum
+    and checksum type.
+
+    :param unit: The unit whose NEVRA should be removed
+    :type unit_key: subclass of ContentUnit
+    :param repo: the repo from which units will be unassociated
+    :type repo: pulp.server.db.model.Repository
+    """
+    nevra_filters = unit.unit_key.copy()
+    del nevra_filters['checksum']
+    del nevra_filters['checksumtype']
+    Q_filters = [Q(**{key: value}) for key, value in nevra_filters.iteritems()]
+    Q_nevra_filter = reduce(operator.and_, Q_filters)
+    Q_type_filter = Q(unit_type_id=unit._content_type_id)
+    unit_iterator = repo_controller.find_repo_content_units(repo,
+                                                            repo_content_unit_q=Q_type_filter,
+                                                            units_q=Q_nevra_filter,
+                                                            yield_content_unit=True)
+    repo_controller.disassociate_units(repo, unit_iterator)

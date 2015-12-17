@@ -19,7 +19,7 @@ def entry_point():
 
 class ISODistributor(FileDistributor):
     """
-    Distribute ISOs like a boss.
+    Distribute ISOs
     """
 
     @classmethod
@@ -39,6 +39,28 @@ class ISODistributor(FileDistributor):
     def validate_config(self, repo, config, config_conduit):
         return configuration.validate(config)
 
+    def publish_repo(self, transfer_repo, publish_conduit, config):
+        """
+        Publish the repository.
+
+        :param transfer_repo: metadata describing the repo
+        :type  transfer_repo: pulp.plugins.model.Repository
+
+        :param publish_conduit: The conduit for publishing a repo
+        :type  publish_conduit: pulp.plugins.conduits.repo_publish.RepoPublishConduit
+
+        :param config: plugin configuration
+        :type  config: pulp.plugins.config.PluginConfiguration
+
+        :param config_conduit: Configuration Conduit;
+        :type config_conduit: pulp.plugins.conduits.repo_validate.RepoConfigConduit
+
+        :return: report describing the publish operation
+        :rtype: pulp.plugins.model.PublishReport
+        """
+        repo = transfer_repo.repo_obj
+        return super(ISODistributor, self).publish_repo(repo, publish_conduit, config)
+
     def unpublish_repo(self, repo, config):
         """
         Perform actions necessary when upublishing a repo
@@ -46,7 +68,7 @@ class ISODistributor(FileDistributor):
         Please also see the superclass method definition for more documentation on this method.
 
         :param repo: metadata describing the repository
-        :type  repo: pulp.plugins.model.Repository
+        :type  repo: pulp.server.db.model.Repository
 
         :param config: plugin configuration
         :type  config: pulp.plugins.config.PluginCallConfiguration
@@ -59,16 +81,18 @@ class ISODistributor(FileDistributor):
         Get the paths on the filesystem where the build directory should be copied
 
         :param repo: The repository that is going to be hosted
-        :type repo: pulp.plugins.model.Repository
+        :type repo: pulp.server.db.model.Repository
+
         :param config:    plugin configuration
         :type  config:    pulp.plugins.config.PluginConfiguration
+
         :return : list of paths on the filesystem where the build directory should be copied
         :rtype list of str
         """
 
         hosting_locations = []
         # Publish the HTTP portion, if applicable
-        http_dest_dir = os.path.join(constants.ISO_HTTP_DIR, repo.id)
+        http_dest_dir = os.path.join(constants.ISO_HTTP_DIR, repo.repo_id)
 
         serve_http = config.get_boolean(constants.CONFIG_SERVE_HTTP)
         serve_http = serve_http if serve_http is not None else constants.CONFIG_SERVE_HTTP_DEFAULT
@@ -77,7 +101,7 @@ class ISODistributor(FileDistributor):
 
         # Publish the HTTPs portion, if applicable
         if self._is_https_supported(config):
-            https_dest_dir = os.path.join(constants.ISO_HTTPS_DIR, repo.id)
+            https_dest_dir = os.path.join(constants.ISO_HTTPS_DIR, repo.repo_id)
             hosting_locations.append(https_dest_dir)
 
         return hosting_locations
@@ -88,7 +112,8 @@ class ISODistributor(FileDistributor):
         been moved into place on the filesystem
 
         :param repo: The repository that is going to be hosted
-        :type repo: pulp.plugins.model.Repository
+        :type repo: pulp.server.db.model.Repository
+
         :param config: the configuration for the repository
         :type  config: pulp.plugins.config.PluginCallConfiguration
         """

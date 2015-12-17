@@ -7,6 +7,7 @@ import unittest
 from pulp.plugins import model
 import mock
 
+from pulp_rpm.devel.skip import skip_broken
 from pulp_rpm.common import ids
 from pulp_rpm.plugins.distributors.yum.metadata import updateinfo
 
@@ -26,6 +27,7 @@ class UpdateinfoXMLFileContextTests(unittest.TestCase):
         self.updateinfo_xml_file_context.metadata_file_handle = mock.MagicMock()
 
 
+@skip_broken
 class AddUnitMetadataTests(UpdateinfoXMLFileContextTests):
     """
     Tests the UpdateinfoXMLFileContext.add_unit_metadata() method.

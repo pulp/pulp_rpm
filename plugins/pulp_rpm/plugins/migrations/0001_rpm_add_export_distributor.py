@@ -3,7 +3,8 @@
 # Migrating all old rpm repositories to have export_distributor along with yum_distributor
 import logging
 
-from pulp.server.db.model.repository import RepoDistributor
+from pulp.server.db.connection import get_collection
+from pulp.server.db import model
 
 from pulp_rpm.common import ids
 
@@ -19,7 +20,7 @@ def _migrate_rpm_repositories():
     with no export_distributor already associated to them. Since we have renamed iso_distributor
     to export_distributor, it also removes iso_distributor associated with an rpm repo.
     '''
-    collection = RepoDistributor.get_collection()
+    collection = get_collection('repo_distributors')
     for repo_distributor in collection.find():
 
         # Check only for rpm repos
@@ -29,9 +30,9 @@ def _migrate_rpm_repositories():
             if collection.find_one({'repo_id': repo_distributor['repo_id'],
                                     'distributor_type_id': ids.TYPE_ID_DISTRIBUTOR_EXPORT}) is None:
                 # If not, create a new one with default config
-                export_distributor = RepoDistributor(
+                export_distributor = model.Distributor(
                     repo_id=repo_distributor['repo_id'],
-                    id=ids.EXPORT_DISTRIBUTOR_ID,
+                    distributor_id=ids.EXPORT_DISTRIBUTOR_ID,
                     distributor_type_id=ids.TYPE_ID_DISTRIBUTOR_EXPORT,
                     config=EXPORT_DISTRIBUTOR_CONFIG,
                     auto_publish=False)
