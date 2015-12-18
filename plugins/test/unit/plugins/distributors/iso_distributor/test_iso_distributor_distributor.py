@@ -134,7 +134,7 @@ class TestISODistributor(unittest.TestCase):
         self.iso_distributor.get_hosting_locations = MagicMock()
         self.iso_distributor.get_hosting_locations.return_value = []
         self.iso_distributor.unpublish_repo(repo, {})
-        mock_publish.assert_called_once_with(repo)
+        mock_publish.assert_called_once_with(repo.repo_obj)
 
     @patch(
         'pulp_rpm.plugins.distributors.iso_distributor.distributor.publish'

@@ -61,18 +61,19 @@ class ISODistributor(FileDistributor):
         repo = transfer_repo.repo_obj
         return super(ISODistributor, self).publish_repo(repo, publish_conduit, config)
 
-    def unpublish_repo(self, repo, config):
+    def unpublish_repo(self, transfer_repo, config):
         """
         Perform actions necessary when upublishing a repo
 
         Please also see the superclass method definition for more documentation on this method.
 
-        :param repo: metadata describing the repository
-        :type  repo: pulp.server.db.model.Repository
+        :param transfer_repo: metadata describing the repo
+        :type  transfer_repo: pulp.plugins.model.Repository
 
         :param config: plugin configuration
         :type  config: pulp.plugins.config.PluginCallConfiguration
         """
+        repo = transfer_repo.repo_obj
         super(ISODistributor, self).unpublish_repo(repo, config)
         publish.remove_repository_protection(repo)
 
