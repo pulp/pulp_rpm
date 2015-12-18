@@ -88,11 +88,48 @@ class YumDistributorTests(unittest.TestCase):
         binding_config = {}
         cert_file = os.path.join(self.working_dir, "orange_file")
 
-        m_config.config = ConfigParser.SafeConfigParser()
-        m_config.config.add_section('server')
-        m_config.config.set('server', 'server_name', 'apple')
-        m_config.config.add_section('security')
-        m_config.config.set('security', 'ssl_ca_certificate', cert_file)
+        mock_server_conf = {'server': {'server_name': 'apple'}}
+        m_config.get.side_effect = lambda section, key: mock_server_conf[section][key]
+        with open(cert_file, 'w') as filewriter:
+            filewriter.write("orange")
+
+        result = local_distributor.create_consumer_payload(repo, config, binding_config)
+
+        target = {
+            'server_name': 'apple',
+            'ca_cert': 'pear',
+            'relative_path': '/pulp/repos/bar',
+            'gpg_keys': {'pulp.key': 'kiwi'},
+            'client_cert': 'durian',
+            'protocols': ['http', 'https'],
+            'repo_name': 'foo'
+        }
+        self.assertDictEqual(result, target)
+
+    @patch('pulp_rpm.plugins.distributors.yum.distributor.pulp_server_config')
+    def test_create_consumer_payload_no_https_ca(self, m_config):
+        """Assert if there is no 'https_ca' key, the deprecated 'ssl_ca_certificate' is used."""
+        local_distributor = YumHTTPDistributor()
+        repo = Mock()
+        repo.display_name = 'foo'
+        repo.id = 'bar'
+        repo.repo_obj = Mock(repo_id='bar', display_name='foo')
+        config = {
+            'gpgkey': 'kiwi',
+            'auth_cert': 'durian',
+            'auth_ca': True,
+            'http': True,
+            'https': True
+        }
+        binding_config = {}
+        cert_file = os.path.join(self.working_dir, "orange_file")
+
+        mock_server_conf = {
+            'server': {'server_name': 'apple'},
+            'security': {'ssl_ca_certificate': cert_file}
+        }
+        m_config.get.side_effect = lambda section, key: mock_server_conf[section][key]
+
         with open(cert_file, 'w') as filewriter:
             filewriter.write("orange")
 
@@ -101,6 +138,42 @@ class YumDistributorTests(unittest.TestCase):
         target = {
             'server_name': 'apple',
             'ca_cert': 'orange',
+            'relative_path': '/pulp/repos/bar',
+            'gpg_keys': {'pulp.key': 'kiwi'},
+            'client_cert': 'durian',
+            'protocols': ['http', 'https'],
+            'repo_name': 'foo'
+        }
+        self.assertDictEqual(result, target)
+
+    @patch('pulp_rpm.plugins.distributors.yum.distributor.pulp_server_config')
+    def test_create_consumer_payload_no_https_ca_no_ssl_ca(self, m_config):
+        """Assert if there is no 'https_ca' key and no 'ssl_ca_certificate', None is used."""
+        local_distributor = YumHTTPDistributor()
+        repo = Mock()
+        repo.display_name = 'foo'
+        repo.id = 'bar'
+        repo.repo_obj = Mock(repo_id='bar', display_name='foo')
+        config = {
+            'gpgkey': 'kiwi',
+            'auth_cert': 'durian',
+            'auth_ca': True,
+            'http': True,
+            'https': True
+        }
+        binding_config = {}
+
+        mock_server_conf = {
+            'server': {'server_name': 'apple'},
+            'security': {'ssl_ca_certificate': 'this/path/will/get/you/nowhere'}
+        }
+        m_config.get.side_effect = lambda section, key: mock_server_conf[section][key]
+
+        result = local_distributor.create_consumer_payload(repo, config, binding_config)
+
+        target = {
+            'server_name': 'apple',
+            'ca_cert': None,
             'relative_path': '/pulp/repos/bar',
             'gpg_keys': {'pulp.key': 'kiwi'},
             'client_cert': 'durian',
@@ -121,11 +194,8 @@ class YumDistributorTests(unittest.TestCase):
                   'gpgkey': 'kiwi',
                   'http': True,
                   'https': True}
-        m_config.config = ConfigParser.SafeConfigParser()
-        m_config.config.add_section('server')
-        m_config.config.set('server', 'server_name', 'apple')
-        m_config.config.add_section('security')
-        m_config.config.set('security', 'ssl_ca_certificate', 'orange')
+        mock_server_conf = {'server': {'server_name': 'apple'}}
+        m_config.get.side_effect = lambda section, key: mock_server_conf[section][key]
 
         binding_config = {}
 

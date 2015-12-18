@@ -207,12 +207,19 @@ class YumHTTPDistributor(Distributor):
 
         payload = dict()
         payload['repo_name'] = repo.display_name
-        payload['server_name'] = pulp_server_config.config.get('server', 'server_name')
-        ssl_ca_path = pulp_server_config.config.get('security', 'ssl_ca_certificate')
-        try:
-            payload['ca_cert'] = open(ssl_ca_path).read()
-        except (OSError, IOError):
-            payload['ca_cert'] = config.get('https_ca')
+        payload['server_name'] = pulp_server_config.get('server', 'server_name')
+
+        payload['ca_cert'] = config.get('https_ca')
+        if payload['ca_cert'] is None:
+            try:
+                # 'ssl_ca_certificate' is deprecated and this should be removed in Pulp 3.0
+                ssl_ca_path = pulp_server_config.get('security', 'ssl_ca_certificate')
+                with open(ssl_ca_path) as ca_file:
+                    payload['ca_cert'] = ca_file.read()
+            except (OSError, IOError):
+                # We do not generate a certificate at the default setting of 'ssl_ca_certificate'
+                # so this is expected unless the user explicitly configures it.
+                pass
 
         payload['relative_path'] = \
             '/'.join([RELATIVE_URL, configuration.get_repo_relative_path(repo, config)])
@@ -234,11 +241,14 @@ class YumHTTPDistributor(Distributor):
             global_auth_cert = os.path.join(global_cert_dir, 'pulp-global-repo.cert')
             global_auth_key = os.path.join(global_cert_dir, 'pulp-global-repo.key')
             global_auth_ca = os.path.join(global_cert_dir, 'pulp-global-repo.ca')
-            if os.path.exists(global_auth_ca) and \
-                    os.path.exists(global_auth_cert) and \
-                    os.path.exists(global_auth_key):
-                payload['global_auth_cert'] = open(global_auth_cert).read()
-                payload['global_auth_key'] = open(global_auth_key).read()
-                payload['global_auth_ca'] = open(global_auth_ca).read()
+            if os.path.exists(global_auth_ca):
+                with open(global_auth_ca) as auth_ca_file:
+                    payload['global_auth_ca'] = auth_ca_file.read()
+
+            if os.path.exists(global_auth_cert) and os.path.exists(global_auth_key):
+                with open(global_auth_cert) as auth_cert_file:
+                    payload['global_auth_cert'] = auth_cert_file.read()
+                with open(global_auth_key) as auth_key_file:
+                    payload['global_auth_key'] = auth_key_file.read()
 
         return payload

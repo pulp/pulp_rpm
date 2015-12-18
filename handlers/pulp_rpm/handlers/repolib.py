@@ -71,6 +71,8 @@ def bind(repo_filename,
     :type  gpg_keys:             dict {string: string}
     :param clientcert:           The client certificate (PEM).
     :type  clientcert:           str
+    :param enabled:              Whether or not the repository is set to 'enabled'
+    :type  enabled:              bool
     :param lock:                 if the default lock is unacceptble, it may be overridden in this
                                  variable
     :type  lock:                 L{Lock}
@@ -96,10 +98,19 @@ def bind(repo_filename,
         # Therefore, any of the major data components (repo data, url list, keys)
         # may be None.
 
-        if repo_name is not None:
-            repo = _convert_repo(repo_id, enabled, repo_name)
-        else:
-            repo = repo_file.get_repo(repo_id)
+        repo = repo_file.get_repo(repo_id)
+        if not repo:
+            # if no repo name is provided for a new repo, use the id for the name
+            repo = Repo(repo_id)
+            if repo_name is None:
+                repo['name'] = repo_id
+            else:
+                repo['name'] = repo_name
+
+        repo['enabled'] = str(int(enabled))
+
+        if repo_name:
+            repo['name'] = repo_name
 
         if gpg_keys is not None:
             _handle_gpg_keys(repo, gpg_keys, keys_root_dir)
@@ -229,31 +240,6 @@ def mirror_list_filename(dir, repo_id):
     @type  repo_id: string
     """
     return os.path.join(dir, repo_id + '.mirrorlist')
-
-
-def _convert_repo(repo_id, enabled, name):
-    """
-    Converts the dict repository representation into the repo file domain instance.
-    This will *not* populate the baseurl parameter of the repo. That will be done
-    elsewhere to take into account if a mirror list is required depending on the
-    host URLs sent with the bind response.
-
-    @param repo_id: The repository unique ID.
-    @type repo_id: str
-
-    @param enabled: The repository enabled flag.
-    @type enabled: bool
-
-    @param name: The repository name.
-    @type name: str
-
-    @return: repo instance in the repo file format
-    @rtype:  L{Repo}
-    """
-    repo = Repo(repo_id)
-    repo['name'] = name
-    repo['enabled'] = str(int(enabled))
-    return repo
 
 
 def _handle_gpg_keys(repo, gpg_keys, keys_root_dir):
