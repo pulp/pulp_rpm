@@ -1,4 +1,4 @@
-import os
+from gettext import gettext as _
 
 from pulp.common import config as config_utils
 from pulp.common.plugins import importer_constants
@@ -110,18 +110,33 @@ class ISOImporter(Importer):
 
     def upload_unit(self, transfer_repo, type_id, unit_key, metadata, file_path, conduit, config):
         """
-        See super(self.__class__, self).upload_unit() for the docblock explaining this method. In
-        short, it handles ISO uploads.
+        Handles the creation and association of an ISO.
+
+        :param repo: The repository to import the package into
+        :type  repo: pulp.server.db.model.Repository
+
+        :param type_id: The type_id of the package being uploaded
+        :type  type_id: str
+
+        :param unit_key: A dictionary of fields to overwrite introspected field values
+        :type  unit_key: dict
+
+        :param metadata: A dictionary of fields to overwrite introspected field values, or None
+        :type  metadata: dict or None
+
+        :param file_path: The path to the uploaded package
+        :type  file_path: str
+
+        :param conduit: provides access to relevant Pulp functionality
+        :type  conduit: pulp.plugins.conduits.upload.UploadConduit
+
+        :param config: plugin configuration for the repository
+        :type  config: pulp.plugins.config.PluginCallConfiguration
         """
-        repo = transfer_repo.repo_obj
+        if models.ISO.objects.filter(**unit_key).count() > 0:
+            return {'success_flag': False, 'summary': _('ISO already exists'), 'details': None}
 
-        iso = models.ISO(
-            name=unit_key['name'], size=unit_key['size'], checksum=unit_key['checksum'])
-        iso.set_storage_path(os.path.basename(file_path))
-        existing_iso = models.ISO.objects(**iso.unit_key).first()
-        if existing_iso:
-            iso = existing_iso
-
+        iso = models.ISO(**unit_key)
         validate = config.get_boolean(importer_constants.KEY_VALIDATE)
         validate = validate if validate is not None else constants.CONFIG_VALIDATE_DEFAULT
         try:
@@ -134,7 +149,8 @@ class ISOImporter(Importer):
         iso.save()
         iso.import_content(file_path)
 
-        repo_controller.associate_single_unit(repo, iso)
+        repo_controller.associate_single_unit(transfer_repo.repo_obj, iso)
+        repo_controller.update_unit_count(transfer_repo.repo_obj.repo_id, iso._content_type_id, 1)
         return {'success_flag': True, 'summary': None, 'details': None}
 
     def validate_config(self, repo, config):

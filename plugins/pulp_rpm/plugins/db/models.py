@@ -421,7 +421,7 @@ class Errata(Package):
     updated = mongoengine.StringField(required=True, default='')
     description = mongoengine.StringField()
     issued = mongoengine.StringField()
-    pushcount = mongoengine.StringField()
+    pushcount = mongoengine.IntField()
     references = mongoengine.ListField()
     reboot_suggested = mongoengine.BooleanField()
     errata_from = mongoengine.StringField(db_field='from')
@@ -658,6 +658,9 @@ class ISO(FileContentUnit):
         Validate that the name of the ISO is not the same as the manifest's name. Also, if
         full_validation is True, validate that the file found at self.storage_path matches the size
         and checksum of self. A ValueError will be raised if the validation fails.
+
+        :param storage_path   : The path to the file to perform validation on
+        :type  storage_path   : basestring
 
         :param full_validation: Whether or not to perform validation on the size and checksum of the
                                 ISO. Name validation is always performed.
