@@ -178,43 +178,46 @@ def _handle_erratum(repo, type_id, unit_key, metadata, file_path, conduit, confi
 
     unit.save()
 
-    if not config.get_boolean(CONFIG_SKIP_ERRATUM_LINK):
-        for model_type in [models.RPM, models.SRPM]:
-            pass  # TODO Find out if the unit exists, if it does, associated, if not, create
-
 
 def _handle_yum_metadata_file(repo, type_id, unit_key, metadata, file_path, conduit, config):
     """
-    Handles the upload for a yum repository metadata file.
+    Handles the upload for a Yum repository metadata file.
 
+    :param repo: The repository to import the package into
     :type  repo: pulp.server.db.model.Repository
+
+    :param type_id: The type_id of the package being uploaded
     :type  type_id: str
+
+    :param unit_key: A dictionary of fields to overwrite introspected field values
     :type  unit_key: dict
+
+    :param metadata: A dictionary of fields to overwrite introspected field values, or None
     :type  metadata: dict or None
+
+    :param file_path: The path to the uploaded package
     :type  file_path: str
+
+    :param conduit: provides access to relevant Pulp functionality
     :type  conduit: pulp.plugins.conduits.upload.UploadConduit
+
+    :param config: plugin configuration for the repository
     :type  config: pulp.plugins.config.PluginCallConfiguration
     """
+    model_class = plugin_api.get_unit_model_by_id(type_id)
+    update_fields_inbound(model_class, unit_key or {})
+    update_fields_inbound(model_class, metadata or {})
 
-    # Validate the user specified data by instantiating the model
-    model_data = dict()
-    model_data.update(unit_key)
-    if metadata:
-        model_data.update(metadata)
+    unit_data = {}
+    unit_data.update(metadata or {})
+    unit_data.update(unit_key or {})
 
-    # Replicates the logic in yum/sync.py.import_unknown_metadata_files.
-    # The local_path variable is removed since it's not included in the metadata when
-    # synchronized.
-    file_relative_path = model_data.pop('local_path')
-
-    translated_data = models.YumMetadataFile.SERIALIZER().from_representation(model_data)
-
-    model = models.YumMetadataFile(**translated_data)
-    model.set_content(file_relative_path)
+    model = models.YumMetadataFile(**unit_data)
+    model.set_content(file_path)
     model.save()
 
-    # Move the file to its final storage location in Pulp
     repo_controller.associate_single_unit(conduit.repo, model)
+    repo_controller.update_unit_count(repo, model._content_type_id, 1)
 
 
 def _handle_group_category_comps(repo, type_id, unit_key, metadata, file_path, conduit, config):

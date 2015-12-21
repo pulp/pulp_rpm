@@ -24,15 +24,20 @@ def associate(source_repo, dest_repo, import_conduit, config, units=None):
 
     :param source_repo:     source repo
     :type  source_repo:     pulp.server.db.model.Repository
+
     :param dest_repo:       destination repo
     :type  dest_repo:       pulp.server.db.model.Repository
+
     :param import_conduit:  import conduit passed to the Importer
     :type  import_conduit:  pulp.plugins.conduits.unit_import.ImportUnitConduit
+
     :param config:          config object for the distributor
     :type  config:          pulp.plugins.config.PluginCallConfiguration
+
     :param units:           iterable of ContentUnit objects to copy
     :type  units:           iterable
-    :return:
+
+    :return:                List of associated units.
     """
     if units is None:
         # this might use a lot of RAM since RPMs tend to have lots of metadata
