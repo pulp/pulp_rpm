@@ -146,7 +146,7 @@ class ISOSyncRun(listener.DownloadEventListener):
             iso.set_content(report.destination)
             try:
                 if self._validate_downloads:
-                    iso.validate_iso(storage_path=report.destination)
+                    iso.validate_iso(report.destination)
                 iso.save()
                 repo_controller.associate_single_unit(self.sync_conduit.repo, iso)
 
