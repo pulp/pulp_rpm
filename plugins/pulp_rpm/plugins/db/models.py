@@ -228,6 +228,17 @@ class Distribution(Package):
             self.distribution_id = '-'.join(id_pieces)
 
     @property
+    def list_files(self):
+        """
+        List absolute paths to files associated with this unit.
+
+        :return: A list of absolute file paths.
+        :rtype: list
+        """
+        _dir = self.storage_path
+        return [os.path.join(_dir, f['relativepath']) for f in self.files]
+
+    @property
     def relative_path(self):
         """
         For this model, the relative path will be a directory in which all
@@ -248,35 +259,6 @@ class Distribution(Package):
         """
         document.version_sort_index = version_utils.encode(document.version)
         super(Package, cls).pre_save_signal(sender, document, **kwargs)
-
-    def process_download_reports(self, reports):
-        """
-        Once downloading is complete, add information about each file to this
-        model instance. This is required before saving the new unit.
-
-        :param reports: list of successful download reports
-        :type  reports: list(pulp.common.download.report.DownloadReport)
-        """
-        if not isinstance(self.files, list):
-            self.files = []
-
-        for report in reports:
-            # the following data model is mostly intended to match what the
-            # previous importer generated.
-            self.files.append({
-                'checksum': report.data['checksum'],
-                'checksumtype': verification.sanitize_checksum_type(report.data['checksumtype']),
-                'downloadurl': report.url,
-                'filename': os.path.basename(report.data['relativepath']),
-                'fileName': os.path.basename(report.data['relativepath']),
-                'item_type': "distribution",
-                'pkgpath': os.path.join(
-                    self._storage_path, os.path.dirname(report.data['relativepath']),
-                ),
-                'relativepath': report.data['relativepath'],
-                'savepath': report.destination,
-                'size': report.total_bytes,
-            })
 
 
 class DRPM(NonMetadataPackage):
@@ -388,11 +370,25 @@ class RpmBase(NonMetadataPackage):
         self.raw_xml = ''
 
     @property
+    def relative_path(self):  # TODO: what is this used for?
+        """
+        This should only be used during the initial sync
+        """
+        return os.path.join(
+            self.name,
+            self.version,
+            self.release,
+            self.arch,
+            self.checksum,
+            self.filename
+        )
+
+    @property
     def download_path(self):
         """
         This should only be used during the initial sync
         """
-        return os.path.join(self.checksum, self.filename)
+        return self.relativepath
 
 
 class RPM(RpmBase):

@@ -55,7 +55,7 @@ class MigrationTests(rpm_support_base.PulpRPMTests):
         )
 
     @patch('os.walk')
-    @patch('pulp_rpm.plugins.importers.yum.parse.treeinfo.strip_treeinfo_repomd')
+    @patch('pulp_rpm.plugins.importers.yum.parse.treeinfo.DistSync.strip_treeinfo_repomd')
     def test_treeinfo_fix(self, mock_strip_treeinfo, mock_walk):
         mock_walk.return_value = [('/some/path/', [], ['treeinfo', 'file-A'])]
         migration = _import_all_the_way('pulp_rpm.plugins.migrations.0015_fix_distributor_units')
@@ -63,7 +63,7 @@ class MigrationTests(rpm_support_base.PulpRPMTests):
         mock_strip_treeinfo.assert_called_once_with('/some/path/treeinfo')
 
     @patch('os.walk')
-    @patch('pulp_rpm.plugins.importers.yum.parse.treeinfo.strip_treeinfo_repomd')
+    @patch('pulp_rpm.plugins.importers.yum.parse.treeinfo.DistSync.strip_treeinfo_repomd')
     def test_treeinfo_fix_dot_treeinfo(self, mock_strip_treeinfo, mock_walk):
         mock_walk.return_value = [('/some/path/', [], ['file-A', '.treeinfo'])]
         migration = _import_all_the_way('pulp_rpm.plugins.migrations.0015_fix_distributor_units')

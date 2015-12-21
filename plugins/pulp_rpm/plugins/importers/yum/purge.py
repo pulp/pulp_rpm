@@ -271,7 +271,7 @@ def remove_unit_duplicate_nevra(unit, repo):
     and checksum type.
 
     :param unit: The unit whose NEVRA should be removed
-    :type unit_key: subclass of ContentUnit
+    :type unit: ContentUnit
     :param repo: the repo from which units will be unassociated
     :type repo: pulp.server.db.model.Repository
     """
