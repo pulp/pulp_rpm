@@ -210,8 +210,9 @@ def _handle_yum_metadata_file(repo, type_id, unit_key, metadata, file_path, cond
     translated_data = models.YumMetadataFile.SERIALIZER().from_representation(model_data)
 
     model = models.YumMetadataFile(**translated_data)
-    model.set_content(file_relative_path)
+    model.set_storage_path(os.path.basename(file_relative_path))
     model.save()
+    model.import_content(file_relative_path)
 
     # Move the file to its final storage location in Pulp
     repo_controller.associate_single_unit(conduit.repo, model)
@@ -268,8 +269,11 @@ def _handle_group_category_comps(repo, type_id, unit_key, metadata, file_path, c
         except TypeError:
             raise ModelInstantiationError()
 
-        unit.set_content(file_path)
         unit.save()
+
+        if file_path:
+            unit.set_storage_path(os.path.basename(file_path))
+            unit.import_content(file_path)
 
         repo_controller.associate_single_unit(repo, unit)
         repo_controller.rebuild_content_unit_counts(repo)
@@ -378,8 +382,9 @@ def _handle_package(repo, type_id, unit_key, metadata, file_path, conduit, confi
     # check if the unit has duplicate nevra
     purge.remove_unit_duplicate_nevra(unit, repo)
 
-    unit.set_content(file_path)
+    unit.set_storage_path(os.path.basename(file_path))
     unit.save()
+    unit.import_content(file_path)
 
     repo_controller.associate_single_unit(repo, unit)
     repo_controller.rebuild_content_unit_counts(repo)

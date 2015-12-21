@@ -61,7 +61,8 @@ class ISORepoCreateUpdateMixin(ImporterConfigMixin, ISODistributorConfigMixin):
         """
         # Add sync-related options to the create command
         ImporterConfigMixin.__init__(self, include_sync=True, include_ssl=True, include_proxy=True,
-                                     include_throttling=True, include_unit_policy=True)
+                                     include_throttling=True, include_unit_policy=True,
+                                     include_download_policy=True)
 
         ISODistributorConfigMixin.__init__(self)
 

@@ -46,8 +46,8 @@ def check_repo(wanted):
                                       ids.TYPE_ID_SRPM,
                                       ids.TYPE_ID_DRPM)
 
-        unit_generator = (model(**unit_tuple._asdict()) for unit_tuple in values)
         # FIXME this function being called doesn't have a fields parameter
+        unit_generator = (model(**unit_tuple._asdict()) for unit_tuple in values.copy())
         for unit in units_controller.find_units(unit_generator, fields=fields):
             if rpm_srpm_drpm:
                 # For RPMs, SRPMs and DRPMs, also check if the file exists on the filesystem.
@@ -89,7 +89,7 @@ def get_existing_units(search_dicts, unit_class, repo):
             yield result
 
 
-def check_all_and_associate(wanted, sync_conduit):
+def check_all_and_associate(wanted, conduit, download_deferred):
     """
     Given a set of unit keys as namedtuples, this function checks if a unit
     already exists in Pulp and returns the set of tuples that were not
@@ -98,10 +98,12 @@ def check_all_and_associate(wanted, sync_conduit):
     also associates the unit to the given repo. Note that the check for the actual file
     is performed only for the supported unit types.
 
-    :param wanted:          iterable of units as namedtuples
-    :type  wanted:          iterable
-    :param sync_conduit:    repo sync conduit
-    :type  sync_conduit:    pulp.plugins.conduits.repo_sync.RepoSync
+    :param wanted:            iterable of units as namedtuples
+    :type  wanted:            iterable
+    :param conduit:           repo sync conduit
+    :type  conduit:           pulp.plugins.conduits.repo_sync.RepoSync
+    :param download_deferred: indicates downloading is deferred (or not).
+    :type  download_deferred: bool
 
     :return:    set of unit keys as namedtuples, identifying which of the
                 named tuples received as input were not found on the server.
@@ -112,24 +114,19 @@ def check_all_and_associate(wanted, sync_conduit):
         model = plugin_api.get_unit_model_by_id(unit_type)
         # FIXME "fields" does not get used, but it should
         # fields = model.unit_key_fields + ('_storage_path',)
-        rpm_srpm_drpm = unit_type in (ids.TYPE_ID_RPM,
-                                      ids.TYPE_ID_SRPM,
-                                      ids.TYPE_ID_DRPM)
-
-        unit_generator = (model(**unit_tuple._asdict()) for unit_tuple in values)
+        unit_generator = (model(**unit_tuple._asdict()) for unit_tuple in values.copy())
         for unit in units_controller.find_units(unit_generator):
-            if rpm_srpm_drpm:
-                # For RPMs, SRPMs and DRPMs, also check if the file exists on the filesystem.
-                # If not, we do not want to skip downloading the unit.
+            # Existing RPMs, DRPMs and SRPMs are disqualified when the associated
+            # package file does not exist and downloading is not deferred.
+            if not download_deferred and unit_type in (
+                    ids.TYPE_ID_RPM, ids.TYPE_ID_SRPM, ids.TYPE_ID_DRPM):
                 if unit._storage_path is None or not os.path.isfile(unit._storage_path):
                     continue
-            # Add the existing unit to the repository
-            repo_controller.associate_single_unit(sync_conduit.repo, unit)
+            repo_controller.associate_single_unit(conduit.repo, unit)
             values.discard(unit.unit_key_as_named_tuple)
-
-    ret = set()
-    ret.update(*sorted_units.values())
-    return ret
+    still_wanted = set()
+    still_wanted.update(*sorted_units.values())
+    return still_wanted
 
 
 def _sort_by_type(wanted):

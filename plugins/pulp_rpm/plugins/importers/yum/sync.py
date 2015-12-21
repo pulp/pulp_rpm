@@ -1,17 +1,21 @@
 import contextlib
 import functools
 import logging
+import os
 import random
 import re
 import shutil
 import tempfile
 import traceback
+
 from gettext import gettext as _
 from cStringIO import StringIO
+from urlparse import urljoin
 
 from nectar.request import DownloadRequest
 
 from pulp.common.plugins import importer_constants
+from pulp.server.db.model import LazyCatalogEntry
 from pulp.plugins.util import nectar_config as nectar_utils, verification
 from pulp.server.exceptions import PulpCodedException
 from pulp.server.managers.repo import _common as common_utils
@@ -20,12 +24,13 @@ from pulp.server.controllers import repository as repo_controller
 from pulp_rpm.common import constants, ids
 from pulp_rpm.plugins import error_codes
 from pulp_rpm.plugins.db import models
-from pulp_rpm.plugins.importers.yum import existing, purge, utils
-from pulp_rpm.plugins.importers.yum.listener import ContentListener
-from pulp_rpm.plugins.importers.yum.parse import treeinfo
+from pulp_rpm.plugins.importers.yum import existing, purge
+from pulp_rpm.plugins.importers.yum.listener import RPMListener, DRPMListener
+from pulp_rpm.plugins.importers.yum.parse.treeinfo import DistSync
 from pulp_rpm.plugins.importers.yum.repomd import (
     alternate, group, metadata, nectar_factory, packages, presto, primary, updateinfo)
 from pulp_rpm.plugins.importers.yum.report import ContentReport, DistributionReport
+from pulp_rpm.plugins.importers.yum.utils import RepoURLModifier
 
 
 _logger = logging.getLogger(__name__)
@@ -37,53 +42,50 @@ class CancelException(Exception):
 
 class RepoSync(object):
 
-    def __init__(self, repo, sync_conduit, call_config):
+    def __init__(self, repo, conduit, config):
         """
         :param repo: the repository to sync
-        :type  repo: pulp.server.db.model.Repository
-
-        :param sync_conduit: provides access to relevant Pulp functionality
-        :type  sync_conduit: pulp.plugins.conduits.repo_sync.RepoSyncConduit
-
-        :param call_config: plugin configuration
-        :type  call_config: pulp.plugins.config.PluginCallConfiguration
+        :type repo: pulp.server.db.model.Repository
+        :param conduit: provides access to relevant Pulp functionality
+        :type conduit: pulp.plugins.conduits.repo_sync.RepoSyncConduit
+        :param config: plugin configuration
+        :type config: pulp.plugins.config.PluginCallConfiguration
         """
         self.cancelled = False
         self.working_dir = common_utils.get_working_directory()
         self.content_report = ContentReport()
         self.distribution_report = DistributionReport()
-        self.progress_status = {
+        self.progress_report = {
             'metadata': {'state': 'NOT_STARTED'},
             'content': self.content_report,
             'distribution': self.distribution_report,
             'errata': {'state': 'NOT_STARTED'},
             'comps': {'state': 'NOT_STARTED'},
         }
-        self.sync_conduit = sync_conduit
+        self.conduit = conduit
         self.set_progress()
         self.repo = repo
-
-        self.call_config = call_config
-
-        flat_call_config = call_config.flatten()
-        self.nectar_config = nectar_utils.importer_config_to_nectar_config(flat_call_config)
+        self.config = config
+        self.nectar_config = nectar_utils.importer_config_to_nectar_config(config.flatten())
         self.skip_repomd_steps = False
         self.current_revision = 0
+        self.downloader = None
+        self.tmp_dir = None
 
         url_modify_config = {}
-        if call_config.get('query_auth_token'):
-            url_modify_config['query_auth_token'] = call_config.get('query_auth_token')
-            skip_config = self.call_config.get(constants.CONFIG_SKIP, [])
+        if config.get('query_auth_token'):
+            url_modify_config['query_auth_token'] = config.get('query_auth_token')
+            skip_config = self.config.get(constants.CONFIG_SKIP, [])
 
             for type_id in ids.QUERY_AUTH_TOKEN_UNSUPPORTED:
                 if type_id not in skip_config:
                     skip_config.append(type_id)
-            self.call_config.override_config[constants.CONFIG_SKIP] = skip_config
+            self.config.override_config[constants.CONFIG_SKIP] = skip_config
             _logger.info(
                 _('The following unit types do not support query auth tokens and will be skipped:'
                   ' {skipped_types}').format(skipped_types=ids.QUERY_AUTH_TOKEN_UNSUPPORTED)
             )
-        self._url_modify = utils.RepoURLModifier(**url_modify_config)
+        self._url_modify = RepoURLModifier(**url_modify_config)
 
     def set_progress(self):
         """
@@ -91,7 +93,7 @@ class RepoSync(object):
         a convenient time to check if we've been cancelled, and if so, raise
         the proper exception.
         """
-        self.sync_conduit.set_progress(self.progress_status)
+        self.conduit.set_progress(self.progress_report)
         if self.cancelled is True:
             raise CancelException
 
@@ -101,7 +103,7 @@ class RepoSync(object):
         :return:    a list of the URLs of the feeds we can sync
         :rtype:     list
         """
-        repo_url = self.call_config.get(importer_constants.KEY_FEED)
+        repo_url = self.config.get(importer_constants.KEY_FEED)
         if repo_url:
             repo_url_slash = self._url_modify(repo_url, ensure_trailing_slash=True)
             self.tmp_dir = tempfile.mkdtemp(dir=self.working_dir)
@@ -114,6 +116,19 @@ class RepoSync(object):
             finally:
                 shutil.rmtree(self.tmp_dir, ignore_errors=True)
         return [repo_url]
+
+    @property
+    def download_deferred(self):
+        """
+        Test the download policy to determine if downloading is deferred.
+
+        :return: True if deferred.
+        :rtype: bool
+        """
+        policy = self.config.get(
+            importer_constants.DOWNLOAD_POLICY,
+            importer_constants.DOWNLOAD_IMMEDIATE)
+        return policy != importer_constants.DOWNLOAD_IMMEDIATE
 
     def _parse_as_mirrorlist(self, feed):
         """
@@ -163,7 +178,7 @@ class RepoSync(object):
                             boolean will be True.
         :type  unit_type:   str
         """
-        skip_config = self.call_config.get(constants.CONFIG_SKIP, [])
+        skip_config = self.config.get(constants.CONFIG_SKIP, [])
         skip = unit_type is not None and unit_type in skip_config
 
         if skip:
@@ -187,7 +202,7 @@ class RepoSync(object):
         """
         # Empty list could be returned in case _parse_as_mirrorlist()
         # was not able to find any valid url
-        if self.sync_feed == []:
+        if not self.sync_feed:
             raise PulpCodedException(error_code=error_codes.RPM1004, reason='Not found')
         url_count = 0
         for url in self.sync_feed:
@@ -200,7 +215,7 @@ class RepoSync(object):
             self.tmp_dir = tempfile.mkdtemp(dir=self.working_dir)
             url_count += 1
             try:
-                with self.update_state(self.progress_status['metadata']):
+                with self.update_state(self.progress_report['metadata']):
                     metadata_files = self.check_metadata(url)
                     metadata_files = self.get_metadata(metadata_files)
 
@@ -216,15 +231,14 @@ class RepoSync(object):
                 with self.update_state(self.distribution_report,
                                        models.Distribution._content_type_id) as skip:
                     if not skip:
-                        treeinfo.sync(self.repo, self.sync_conduit, url, self.tmp_dir,
-                                      self.nectar_config, self.distribution_report,
-                                      self.set_progress)
+                        dist_sync = DistSync(self, url)
+                        dist_sync.run()
 
-                with self.update_state(self.progress_status['errata'], ids.TYPE_ID_ERRATA) as skip:
+                with self.update_state(self.progress_report['errata'], ids.TYPE_ID_ERRATA) as skip:
                     if not (skip or self.skip_repomd_steps):
                         self.get_errata(metadata_files)
 
-                with self.update_state(self.progress_status['comps']) as skip:
+                with self.update_state(self.progress_report['comps']) as skip:
                     if not (skip or self.skip_repomd_steps):
                         self.get_comps_file_units(metadata_files, group.process_group_element,
                                                   group.GROUP_TAG)
@@ -234,8 +248,8 @@ class RepoSync(object):
                                                   group.ENVIRONMENT_TAG)
 
             except CancelException:
-                report = self.sync_conduit.build_cancel_report(self._progress_summary,
-                                                               self.progress_status)
+                report = self.conduit.build_cancel_report(self._progress_summary,
+                                                          self.progress_report)
                 report.canceled_flag = True
                 return report
 
@@ -257,8 +271,8 @@ class RepoSync(object):
                 # of the mirrors.
                 _logger.exception(e)
                 self._set_failed_state(e)
-                report = self.sync_conduit.build_failure_report(self._progress_summary,
-                                                                self.progress_status)
+                report = self.conduit.build_failure_report(self._progress_summary,
+                                                           self.progress_report)
                 return report
 
             finally:
@@ -269,8 +283,8 @@ class RepoSync(object):
 
             self.save_repomd_revision()
             _logger.info(_('Sync complete.'))
-            return self.sync_conduit.build_success_report(self._progress_summary,
-                                                          self.progress_status)
+            return self.conduit.build_success_report(self._progress_summary,
+                                                     self.progress_report)
 
     def _set_failed_state(self, exception):
         """
@@ -279,7 +293,7 @@ class RepoSync(object):
         :param exception: caught exception
         :type: Exception
         """
-        for step, value in self.progress_status.iteritems():
+        for step, value in self.progress_report.iteritems():
             if value.get('state') == constants.STATE_RUNNING:
                 value['state'] = constants.STATE_FAILED
                 value['error'] = str(exception)
@@ -296,7 +310,7 @@ class RepoSync(object):
         :type:      dict
         """
         ret = {}
-        for step_name, progress_dict in self.progress_status.iteritems():
+        for step_name, progress_dict in self.progress_report.iteritems():
             ret[step_name] = {'state': progress_dict['state']}
         return ret
 
@@ -337,10 +351,10 @@ class RepoSync(object):
 
         # allow the downloader to be accessed by the cancel method if necessary
         self.downloader = metadata_files.downloader
-        scratchpad = self.sync_conduit.get_scratchpad() or {}
+        scratchpad = self.conduit.get_scratchpad() or {}
         previous_revision = scratchpad.get(constants.REPOMD_REVISION_KEY, 0)
         previous_skip_set = set(scratchpad.get(constants.PREVIOUS_SKIP_LIST, []))
-        current_skip_set = set(self.call_config.get(constants.CONFIG_SKIP, []))
+        current_skip_set = set(self.config.get(constants.CONFIG_SKIP, []))
         self.current_revision = metadata_files.revision
         # if the revision is positive, hasn't increased and the skip list doesn't include
         # new types that weren't present on the last run...
@@ -368,13 +382,13 @@ class RepoSync(object):
         if len(self.content_report['error_details']) == 0\
                 and self.content_report[constants.PROGRESS_STATE_KEY] not in non_success_states:
             _logger.debug(_('saving repomd.xml revision number and skip list to scratchpad'))
-            scratchpad = self.sync_conduit.get_scratchpad() or {}
+            scratchpad = self.conduit.get_scratchpad() or {}
             scratchpad[constants.REPOMD_REVISION_KEY] = self.current_revision
             # we save the skip list so if one of the types contained in it gets removed, the next
             # sync will know to not skip based on repomd revision
-            scratchpad[constants.PREVIOUS_SKIP_LIST] = self.call_config.get(
+            scratchpad[constants.PREVIOUS_SKIP_LIST] = self.config.get(
                 constants.CONFIG_SKIP, [])
-            self.sync_conduit.set_scratchpad(scratchpad)
+            self.conduit.set_scratchpad(scratchpad)
 
     def save_default_metadata_checksum_on_repo(self, metadata_files):
         """
@@ -394,9 +408,9 @@ class RepoSync(object):
                 break
         if checksum_type:
             checksum_type = verification.sanitize_checksum_type(checksum_type)
-            scratchpad = self.sync_conduit.get_repo_scratchpad()
+            scratchpad = self.conduit.get_repo_scratchpad()
             scratchpad[constants.SCRATCHPAD_DEFAULT_METADATA_CHECKSUM] = checksum_type
-            self.sync_conduit.set_repo_scratchpad(scratchpad)
+            self.conduit.set_repo_scratchpad(scratchpad)
 
     def import_unknown_metadata_files(self, metadata_files):
         """
@@ -408,18 +422,18 @@ class RepoSync(object):
         """
         for metadata_type, file_info in metadata_files.metadata.iteritems():
             if metadata_type not in metadata_files.KNOWN_TYPES:
+                file_path = file_info['local_path']
                 checksum_type = file_info['checksum']['algorithm']
                 checksum_type = verification.sanitize_checksum_type(checksum_type)
                 checksum = file_info['checksum']['hex_digest']
                 # Find an existing model
-                model = models.YumMetadataFile.objects(data_type=metadata_type,
-                                                       repo_id=self.repo.repo_id).first()
+                model = models.YumMetadataFile.objects.filter(
+                    data_type=metadata_type,
+                    repo_id=self.repo.repo_id).first()
                 # If an existing model, use that
                 if model:
                     model.checksum = checksum
                     model.checksum_type = checksum_type
-                    model.set_content(file_info['local_path'])
-                    model.save()
                 else:
                     # Else, create a  new mode
                     model = models.YumMetadataFile(
@@ -427,8 +441,10 @@ class RepoSync(object):
                         repo_id=self.repo.repo_id,
                         checksum=checksum,
                         checksum_type=checksum_type)
-                    model.set_content(file_info['local_path'])
-                    model.save()
+
+                model.set_storage_path(os.path.basename(file_path))
+                model.save()
+                model.import_content(file_path)
 
                 # associate/re-associate model to the repo
                 repo_controller.associate_single_unit(self.repo, model)
@@ -443,9 +459,11 @@ class RepoSync(object):
         :type: str
         """
         rpms_to_download, drpms_to_download = self._decide_what_to_download(metadata_files)
-        self.download(metadata_files, rpms_to_download, drpms_to_download, url)
+        self.download_rpms(metadata_files, rpms_to_download, url)
+        self.download_drpms(metadata_files, drpms_to_download, url)
+        self.conduit.build_success_report({}, {})
         # removes unwanted units according to the config settings
-        purge.purge_unwanted_units(metadata_files, self.sync_conduit, self.call_config)
+        purge.purge_unwanted_units(metadata_files, self.conduit, self.config)
 
     def _decide_what_to_download(self, metadata_files):
         """
@@ -485,7 +503,7 @@ class RepoSync(object):
         :return:    tuple of (set(RPM.NAMEDTUPLEs), number of RPMs, total size in bytes)
         :rtype:     tuple
         """
-        if ids.TYPE_ID_RPM in self.call_config.get(constants.CONFIG_SKIP, []):
+        if ids.TYPE_ID_RPM in self.config.get(constants.CONFIG_SKIP, []):
             _logger.debug('skipping RPM sync')
             return set(), 0, 0
         primary_file_handle = metadata_files.get_metadata_file_handle(primary.METADATA_FILE_NAME)
@@ -496,8 +514,8 @@ class RepoSync(object):
             wanted = self._identify_wanted_versions(package_info_generator)
             # check for the units that are not in the repo, but exist on the server
             # and associate them to the repo
-            to_download = existing.check_all_and_associate(wanted.iterkeys(),
-                                                           self.sync_conduit)
+            to_download = existing.check_all_and_associate(
+                wanted.iterkeys(), self.conduit, self.download_deferred)
             count = len(to_download)
             size = 0
             for unit in to_download:
@@ -517,7 +535,7 @@ class RepoSync(object):
         :return:    tuple of (set(DRPM.NAMEDTUPLEs), number of DRPMs, total size in bytes)
         :rtype:     tuple
         """
-        if ids.TYPE_ID_DRPM in self.call_config.get(constants.CONFIG_SKIP, []):
+        if ids.TYPE_ID_DRPM in self.config.get(constants.CONFIG_SKIP, []):
             _logger.debug('skipping DRPM sync')
             return set(), 0, 0
 
@@ -538,8 +556,8 @@ class RepoSync(object):
                     wanted = self._identify_wanted_versions(package_info_generator)
                     # check for the units that are not in the repo, but exist on the server
                     # and associate them to the repo
-                    to_download = existing.check_all_and_associate(wanted.iterkeys(),
-                                                                   self.sync_conduit)
+                    to_download = existing.check_all_and_associate(
+                        wanted.iterkeys(), self.conduit, self.download_deferred)
                     count += len(to_download)
                     for unit in to_download:
                         size += wanted[unit]
@@ -548,11 +566,53 @@ class RepoSync(object):
 
         return to_download, count, size
 
-    def download(self, metadata_files, rpms_to_download, drpms_to_download, url):
+    def catalog_generator(self, base_url, units):
         """
-        Actually download the requested RPMs and DRPMs. This method iterates over
+        Provides a wrapper around the *units* generator.
+        As the generator is iterated, the deferred downloading (lazy) catalog entry is added.
+
+        :param base_url: The base download URL.
+        :type base_url: str
+        :param units: A generator of (rpm|drpm) units.
+        :return: A generator of units.
+        :rtype: generator
+        """
+        for unit in units:
+            unit.set_storage_path(unit.filename)
+            entry = LazyCatalogEntry()
+            entry.path = unit.storage_path
+            entry.importer_id = str(self.conduit.importer_object_id)
+            entry.unit_id = unit.id
+            entry.unit_type_id = unit.type_id
+            entry.url = urljoin(base_url, unit.filename)
+            entry.save_revision()
+            yield unit
+
+    def add_rpm_unit(self, metadata_files, unit):
+        """
+        Add the specified RPM unit.
+
+        :param metadata_files: metadata files object.
+        :type metadata_files: pulp_rpm.plugins.importers.yum.repomd.metadata.MetadataFiles
+        :param unit: A content unit.
+        :type unit: pulp_rpm.plugins.db.models.RpmBase
+        """
+        metadata_files.add_repodata(unit)
+        purge.remove_unit_duplicate_nevra(unit, self.conduit.repo)
+        unit.set_storage_path(unit.filename)
+        unit.save()
+        repo_controller.associate_single_unit(self.conduit.repo, unit)
+        self.progress_report['content'].success(unit)
+        self.conduit.set_progress(self.progress_report)
+
+    # added for clarity
+    add_drpm_unit = add_rpm_unit
+
+    def download_rpms(self, metadata_files, rpms_to_download, url):
+        """
+        Actually download the requested RPMs. This method iterates over
         the appropriate metadata file and downloads those items which are present
-        in the corresponding set. It also checks for the RPMs and DRPMs which exist
+        in the corresponding set. It also checks for the RPMs which exist
         in other repositories before downloading them. If they are already downloaded,
         we skip the download and just associate them to the given repository.
 
@@ -560,26 +620,39 @@ class RepoSync(object):
         :type  metadata_files:      pulp_rpm.plugins.importers.yum.repomd.metadata.MetadataFiles
         :param rpms_to_download:    set of RPM.NAMEDTUPLEs
         :type  rpms_to_download:    set
-        :param drpms_to_download:   set of DRPM.NAMEDTUPLEs
-        :type  drpms_to_download:   set
-        :param url: curret URL we should sync
+        :param url: current URL we should sync
         :type: str
-
-        :rtype: pulp.plugins.model.SyncReport
         """
-        # TODO: probably should make this more generic
-        event_listener = ContentListener(self.sync_conduit, self.progress_status, self.call_config,
-                                         metadata_files)
+        event_listener = RPMListener(self, metadata_files)
         primary_file_handle = metadata_files.get_metadata_file_handle(primary.METADATA_FILE_NAME)
+
         try:
             package_model_generator = packages.package_list_generator(
-                primary_file_handle, primary.PACKAGE_TAG, primary.process_package_element)
+                primary_file_handle,
+                primary.PACKAGE_TAG,
+                primary.process_package_element)
+
             units_to_download = self._filtered_unit_generator(package_model_generator,
                                                               rpms_to_download)
 
-            download_wrapper = alternate.Packages(url, self.nectar_config,
-                                                  units_to_download, self.tmp_dir, event_listener,
-                                                  self._url_modify)
+            # Wrapped in a generator that adds entries to
+            # the deferred (Lazy) catalog.
+            units_to_download = self.catalog_generator(url, units_to_download)
+
+            if self.download_deferred:
+                for unit in units_to_download:
+                    unit.downloaded = False
+                    self.add_rpm_unit(metadata_files, unit)
+                return
+
+            download_wrapper = alternate.Packages(
+                url,
+                self.nectar_config,
+                units_to_download,
+                self.tmp_dir,
+                event_listener,
+                self._url_modify)
+
             # allow the downloader to be accessed by the cancel method if necessary
             self.downloader = download_wrapper.downloader
             _logger.info(_('Downloading %(num)s RPMs.') % {'num': len(rpms_to_download)})
@@ -588,9 +661,26 @@ class RepoSync(object):
         finally:
             primary_file_handle.close()
 
-        # download DRPMs
-        # multiple options for deltainfo files depending on the distribution
-        # so we have to go through all of them to get all the DRPMs
+    def download_drpms(self, metadata_files, drpms_to_download, url):
+        """
+        Actually download the requested DRPMs. This method iterates over
+        the appropriate metadata file and downloads those items which are present
+        in the corresponding set. It also checks for the DRPMs which exist
+        in other repositories before downloading them. If they are already downloaded,
+        we skip the download and just associate them to the given repository.
+
+        Multiple options for deltainfo files depending on the distribution
+        so we have to go through all of them to get all the DRPMs
+
+        :param metadata_files:      populated instance of MetadataFiles
+        :type  metadata_files:      pulp_rpm.plugins.importers.yum.repomd.metadata.MetadataFiles
+        :param drpms_to_download:   set of DRPM.NAMEDTUPLEs
+        :type  drpms_to_download:   set
+        :param url: current URL we should sync
+        :type: str
+        """
+        event_listener = DRPMListener(self, metadata_files)
+
         for presto_file_name in presto.METADATA_FILE_NAMES:
             presto_file_handle = metadata_files.get_metadata_file_handle(presto_file_name)
             if presto_file_handle:
@@ -599,12 +689,28 @@ class RepoSync(object):
                         presto_file_handle,
                         presto.PACKAGE_TAG,
                         presto.process_package_element)
+
                     units_to_download = self._filtered_unit_generator(package_model_generator,
                                                                       drpms_to_download)
 
-                    download_wrapper = packages.Packages(url, self.nectar_config,
-                                                         units_to_download, self.tmp_dir,
-                                                         event_listener, self._url_modify)
+                    # Wrapped in a generator that adds entries to
+                    # the deferred (Lazy) catalog.
+                    units_to_download = self.catalog_generator(url, units_to_download)
+
+                    if self.download_deferred:
+                        for unit in units_to_download:
+                            unit.downloaded = False
+                            self.add_drpm_unit(metadata_files, unit)
+                        continue
+
+                    download_wrapper = packages.Packages(
+                        url,
+                        self.nectar_config,
+                        units_to_download,
+                        self.tmp_dir,
+                        event_listener,
+                        self._url_modify)
+
                     # allow the downloader to be accessed by the cancel method if necessary
                     self.downloader = download_wrapper.downloader
                     _logger.info(_('Downloading %(num)s DRPMs.') % {'num': len(drpms_to_download)})
@@ -613,16 +719,13 @@ class RepoSync(object):
                 finally:
                     presto_file_handle.close()
 
-        report = self.sync_conduit.build_success_report({}, {})
-        return report
-
     def cancel(self):
         """
         Cancels the current sync. Looks for a "downloader" object and calls its
         "cancel" method, and then triggers a progress report.
         """
         self.cancelled = True
-        for step, value in self.progress_status.iteritems():
+        for step, value in self.progress_report.iteritems():
             if value.get('state') == constants.STATE_RUNNING:
                 value['state'] = constants.STATE_CANCELLED
         try:
@@ -733,7 +836,7 @@ class RepoSync(object):
                 (model for model in all_packages if model.unit_key_as_named_tuple in to_save)
 
         for model in package_info_generator:
-            existing_unit = model.__class__.objects(**model.unit_key).first()
+            existing_unit = model.__class__.objects.filter(**model.unit_key).first()
             if not existing_unit:
                 model.save()
             else:
@@ -803,7 +906,7 @@ class RepoSync(object):
         wanted = {}
 
         number_old_versions_to_keep = \
-            self.call_config.get(importer_constants.KEY_UNITS_RETAIN_OLD_COUNT)
+            self.config.get(importer_constants.KEY_UNITS_RETAIN_OLD_COUNT)
         for model in package_info_generator:
             versions = wanted.setdefault(model.key_string_without_version, {})
             serialized_version = model.complete_version_serialized

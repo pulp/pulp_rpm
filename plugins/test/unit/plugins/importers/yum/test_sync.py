@@ -707,10 +707,12 @@ class TestUpdateContent(BaseSyncTest):
 
     @mock.patch('pulp_rpm.plugins.importers.yum.sync.RepoSync._decide_what_to_download',
                 spec_set=RepoSync._decide_what_to_download)
-    @mock.patch('pulp_rpm.plugins.importers.yum.sync.RepoSync.download',
-                spec_set=RepoSync.download)
+    @mock.patch('pulp_rpm.plugins.importers.yum.sync.RepoSync.download_drpms',
+                spec_set=RepoSync.download_drpms)
+    @mock.patch('pulp_rpm.plugins.importers.yum.sync.RepoSync.download_rpms',
+                spec_set=RepoSync.download_rpms)
     @mock.patch('pulp_rpm.plugins.importers.yum.purge.purge_unwanted_units', autospec=True)
-    def test_workflow(self, mock_purge, mock_download, mock_decide):
+    def test_workflow(self, mock_purge, mock_download_rpms, mock_download_drpms, mock_decide):
         rpms = set([1, 2, 3])
         drpms = set([4, 5, 6])
         mock_decide.return_value = (rpms, drpms)
@@ -718,7 +720,8 @@ class TestUpdateContent(BaseSyncTest):
         self.reposync.update_content(self.metadata_files, self.url)
 
         mock_decide.assert_called_once_with(self.metadata_files)
-        mock_download.assert_called_once_with(self.metadata_files, rpms, drpms, self.url)
+        mock_download_rpms.assert_called_once_with(self.metadata_files, rpms, drpms, self.url)
+        mock_download_drpms.assert_called_once_with(self.metadata_files, rpms, drpms, self.url)
         mock_purge.assert_called_once_with(self.metadata_files, self.conduit, self.config)
 
 

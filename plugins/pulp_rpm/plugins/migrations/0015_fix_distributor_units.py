@@ -7,7 +7,7 @@ import os
 from pulp.server.db.connection import get_collection
 from pulp.server import config as pulp_config
 
-from pulp_rpm.plugins.importers.yum.parse import treeinfo
+from pulp_rpm.plugins.importers.yum.parse.treeinfo import DistSync
 
 _logger = logging.getLogger('pulp_rpm.plugins.migrations.0015')
 
@@ -25,7 +25,7 @@ def _fix_treeinfo_files(distribution_dir):
             if fname.startswith('treeinfo') or fname.startswith('.treeinfo'):
                 treeinfo_file = os.path.join(root, fname)
                 _logger.info("stripping repomd.xml checksum from %s" % treeinfo_file)
-                treeinfo.strip_treeinfo_repomd(treeinfo_file)
+                DistSync.strip_treeinfo_repomd(treeinfo_file)
 
 
 def _fix_distribution_units(dist_collection):

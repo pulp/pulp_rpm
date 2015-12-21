@@ -66,7 +66,8 @@ class RpmRepoCreateCommand(CreateRepositoryCommand, ImporterConfigMixin):
                                      include_proxy=True,
                                      include_basic_auth=True,
                                      include_throttling=True,
-                                     include_unit_policy=True)
+                                     include_unit_policy=True,
+                                     include_download_policy=True)
 
         # Adds all distributor config options
         repo_options.add_distributor_config_to_command(self)
@@ -200,7 +201,8 @@ class RpmRepoUpdateCommand(UpdateRepositoryCommand, ImporterConfigMixin):
                                      include_proxy=True,
                                      include_basic_auth=True,
                                      include_throttling=True,
-                                     include_unit_policy=True)
+                                     include_unit_policy=True,
+                                     include_download_policy=True)
 
         # Adds all distributor config options
         repo_options.add_distributor_config_to_command(self)
