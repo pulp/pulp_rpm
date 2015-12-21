@@ -4,32 +4,32 @@ from unittest import TestCase
 from urlparse import urljoin
 
 from mock import patch, Mock
-import mongoengine
+from mongoengine import StringField
+
 from pulp.server.content.sources.model import Request
 from pulp.server.db.model import ContentUnit
 
-from pulp_rpm.devel.skip import skip_broken
 from pulp_rpm.plugins.importers.yum.repomd.alternate import Packages, ContainerListener
 from pulp_rpm.plugins.importers.yum.utils import RepoURLModifier
 
 
 class Unit(ContentUnit):
-
-    _content_type_id = mongoengine.StringField(required=True, default='distribution')
-    base_url = mongoengine.StringField()
-    filename = mongoengine.StringField()
-    relative_url_path = mongoengine.StringField()
-    relativepath = mongoengine.StringField()
-    download_path = mongoengine.StringField()
-
+    """
+    Test unit.
+    """
+    _content_type_id = StringField(required=True, default='distribution')
+    base_url = StringField()
+    filename = StringField()
+    relative_url_path = StringField()
+    relativepath = StringField()
+    download_path = StringField()
     unit_key_fields = ('filename',)
 
 
 class TestPackages(TestCase):
-    @patch('pulp_rpm.plugins.importers.yum.repomd.alternate.Event')
     @patch('pulp_rpm.plugins.importers.yum.repomd.alternate.ContentContainer')
     @patch('pulp_rpm.plugins.importers.yum.repomd.alternate.create_downloader')
-    def test_construction(self, fake_create_downloader, fake_container, fake_event):
+    def test_construction(self, fake_create_downloader, fake_container):
         base_url = str(uuid4())
         nectar_conf = Mock()
         units = Mock()
@@ -49,7 +49,6 @@ class TestPackages(TestCase):
         self.assertEqual(packages.listener.content_listener, listener)
         self.assertEqual(packages.primary, fake_create_downloader())
         self.assertEqual(packages.container, fake_container())
-        self.assertEqual(packages.canceled, fake_event())
 
     def test_downloader(self):
         # test
@@ -58,7 +57,6 @@ class TestPackages(TestCase):
         # validation
         self.assertEqual(packages.downloader, packages)
 
-    @patch('pulp_rpm.plugins.importers.yum.repomd.alternate.Event', Mock())
     @patch('pulp_rpm.plugins.importers.yum.repomd.alternate.create_downloader', Mock())
     @patch('pulp_rpm.plugins.importers.yum.repomd.alternate.ContentContainer')
     @patch('pulp_rpm.plugins.importers.yum.repomd.alternate.Packages.get_requests')
@@ -77,10 +75,8 @@ class TestPackages(TestCase):
 
         # validation
         fake_container().download.assert_called_with(
-            packages.canceled, packages.primary, fake_requests(), packages.listener)
+            packages.primary, fake_requests(), packages.listener)
 
-    @skip_broken
-    @patch('pulp_rpm.plugins.importers.yum.repomd.alternate.Event', Mock())
     @patch('pulp_rpm.plugins.importers.yum.repomd.alternate.create_downloader', Mock())
     @patch('pulp_rpm.plugins.importers.yum.repomd.alternate.ContentContainer', Mock())
     @patch('pulp_rpm.plugins.importers.yum.repomd.alternate.Request')
@@ -107,12 +103,11 @@ class TestPackages(TestCase):
         self.assertEqual(len(requests), len(units))
         for n, call in enumerate(calls):
             self.assertEqual(call[1]['unit_key'], units[n].unit_key)
-            self.assertEqual(call[1]['url'], urljoin(base_url, units[n].download_path))
+            self.assertEqual(call[1]['url'], urljoin(units[n].base_url, units[n].download_path))
             self.assertEqual(call[1]['destination'],
                              os.path.join(packages.dst_dir, units[n].relativepath))
         self.assertEqual(len(requests), len(units))
 
-    @patch('pulp_rpm.plugins.importers.yum.repomd.alternate.Event', Mock())
     @patch('pulp_rpm.plugins.importers.yum.repomd.alternate.create_downloader', Mock())
     @patch('pulp_rpm.plugins.importers.yum.repomd.alternate.ContentContainer', Mock())
     @patch('pulp_rpm.plugins.importers.yum.repomd.alternate.Request')
@@ -145,7 +140,6 @@ class TestPackages(TestCase):
                              os.path.join(packages.dst_dir, units[n].relativepath))
         self.assertEqual(len(requests), len(units))
 
-    @patch('pulp_rpm.plugins.importers.yum.repomd.alternate.Event', Mock())
     @patch('pulp_rpm.plugins.importers.yum.repomd.alternate.create_downloader', Mock())
     @patch('pulp_rpm.plugins.importers.yum.repomd.alternate.ContentContainer', Mock())
     @patch('pulp_rpm.plugins.importers.yum.repomd.alternate.Request')
@@ -178,31 +172,22 @@ class TestPackages(TestCase):
             self.assertEqual(call[1]['url'], expected)
         self.assertEqual(len(requests), len(units))
 
-    def test_cancel(self):
-        packages = Packages('http://none', None, [], '', None)
-        self.assertFalse(packages.canceled.is_set())
-
-        # test
-        packages.cancel()
-
-        # validation
-        self.assertTrue(packages.canceled.is_set())
-
 
 class TestListener(TestCase):
+
     def test_construction(self):
         content_listener = Mock()
         listener = ContainerListener(content_listener)
         self.assertEqual(listener.content_listener, content_listener)
 
-    def test_download_succeeded(self):
+    def test_on_succeeded(self):
         request = Request('T1', {'A': 1}, 'http://test', '/tmp/test')
         request.data = Mock()
         content_listener = Mock()
 
         # test
         listener = ContainerListener(content_listener)
-        listener.download_succeeded(request)
+        listener.on_succeeded(request)
 
         # validation
         calls = content_listener.download_succeeded.mock_calls
@@ -212,7 +197,7 @@ class TestListener(TestCase):
         self.assertEqual(report.destination, request.destination)
         self.assertEqual(report.data, request.data)
 
-    def test_download_failed(self):
+    def test_on_failed(self):
         request = Request('T1', {'A': 1}, 'http://test', '/tmp/test')
         request.data = Mock()
         request.errors = [1, 2, 3]
@@ -220,7 +205,7 @@ class TestListener(TestCase):
 
         # test
         listener = ContainerListener(content_listener)
-        listener.download_failed(request)
+        listener.on_failed(request)
 
         # validation
         calls = content_listener.download_failed.mock_calls

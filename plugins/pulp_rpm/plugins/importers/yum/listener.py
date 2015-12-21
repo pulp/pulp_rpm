@@ -3,21 +3,26 @@ import logging
 from nectar.listener import DownloadEventListener, AggregatingEventListener
 from pulp.common.plugins import importer_constants
 from pulp.plugins.util import verification
-from pulp.server.controllers import repository as repo_controller
 
 from pulp_rpm.common import constants
-from pulp_rpm.plugins.db import models
-from pulp_rpm.plugins.importers.yum import purge
 
 
 _logger = logging.getLogger(__name__)
 
 
-class DistroFileListener(AggregatingEventListener):
-    def __init__(self, progress_report, progress_callback):
-        super(DistroFileListener, self).__init__()
-        self.progress_report = progress_report
-        self.progress_callback = progress_callback
+class DistFileListener(AggregatingEventListener):
+    """
+    :ivar sync: The active sync object.
+    :type sync: pulp_rpm.plugins.importers.yum.parse.treeinfo.DistSync
+    """
+
+    def __init__(self, sync):
+        """
+        :param sync: The active sync object.
+        :type sync: pulp_rpm.plugins.importers.yum.parse.treeinfo.DistSync
+        """
+        super(DistFileListener, self).__init__()
+        self.sync = sync
 
     def download_succeeded(self, report):
         """
@@ -27,7 +32,7 @@ class DistroFileListener(AggregatingEventListener):
         :return:
         """
         self._decrement()
-        super(DistroFileListener, self).download_succeeded(report)
+        super(DistFileListener, self).download_succeeded(report)
 
     def download_failed(self, report):
         """
@@ -37,31 +42,33 @@ class DistroFileListener(AggregatingEventListener):
         :return:
         """
         self._decrement()
-        super(DistroFileListener, self).download_failed(report)
+        super(DistFileListener, self).download_failed(report)
 
     def _decrement(self):
-        self.progress_report['items_left'] -= 1
-        self.progress_callback()
+        self.sync.progress_report['items_left'] -= 1
+        self.sync.set_progress()
 
 
-class ContentListener(DownloadEventListener):
+class PackageListener(DownloadEventListener):
+    """
+    Listener for package downloads.
 
-    def __init__(self, sync_conduit, progress_report, sync_call_config, metadata_files):
+    :ivar sync: An active sync object.
+    :type sync: pulp_rpm.plugins.importers.yum.sync.RepoSync
+    :ivar metadata_files: Repository metadata files.
+    :type metadata_files: pulp_rpm.plugins.importers.yum.repomd.metadata.MetadataFiles
+    """
+
+    def __init__(self, sync, metadata_files):
         """
-        :param sync_conduit: sync conduit for the sync
-        :type sync_conduit: pulp.plugins.conduits.repo_sync.RepoSyncConduit
-        :param progress_report: progress report to write into
-        :type progress_report: dict
-        :param sync_call_config: call config for the sync
-        :type sync_call_config: pulp.plugins.config.PluginCallConfig
-        :param metadata_files: metadata files object corresponding with the current sync
+        :param sync: An active sync object.
+        :type sync: pulp_rpm.plugins.importers.yum.sync.RepoSync
+        :param metadata_files: Repository metadata files.
         :type metadata_files: pulp_rpm.plugins.importers.yum.repomd.metadata.MetadataFiles
         """
-        super(ContentListener, self).__init__()
-        self.sync_conduit = sync_conduit
-        self.progress_report = progress_report
-        self.sync_call_config = sync_call_config
+        super(PackageListener, self).__init__()
         self.metadata_files = metadata_files
+        self.sync = sync
 
     def download_succeeded(self, report):
         """
@@ -70,34 +77,9 @@ class ContentListener(DownloadEventListener):
         :param report: the report for the succeeded download.
         :type  report: nectar.report.DownloadReport
         """
-        model = report.data
-
-        try:
-            self._verify_size(model, report)
-            self._verify_checksum(model, report)
-        except verification.VerificationException:
-            # The verify methods populates the error details of the progress report.
-            # There is also no need to clean up the bad file as the sync will blow away
-            # the temp directory after it finishes. Simply punch out so the good unit
-            # handling below doesn't run.
-            return
-        except verification.InvalidChecksumType:
-            return
-
-        # these are the only types we store repo metadata snippets on in the DB
-        if isinstance(model, (models.RPM, models.SRPM)):
-            self.metadata_files.add_repodata(model)
-
-        purge.remove_unit_duplicate_nevra(model, self.sync_conduit.repo)
-
-        model.set_content(report.destination)
-        model.save()
-
-        repo_controller.associate_single_unit(self.sync_conduit.repo, model)
-
-        # TODO consider that if an exception occurs before here maybe it shouldn't call success?
-        self.progress_report['content'].success(model)
-        self.sync_conduit.set_progress(self.progress_report)
+        unit = report.data
+        self._verify_size(unit, report)
+        self._verify_checksum(unit, report)
 
     def download_failed(self, report):
         """
@@ -106,79 +88,111 @@ class ContentListener(DownloadEventListener):
         :param report: the report for the failed download.
         :type  report: nectar.report.DownloadReport
         """
-        model = report.data
+        unit = report.data
         report.error_report['url'] = report.url
-        self.progress_report['content'].failure(model, report.error_report)
-        self.sync_conduit.set_progress(self.progress_report)
+        self.sync.progress_report['content'].failure(unit, report.error_report)
+        self.sync.set_progress()
 
-    def _verify_size(self, model, report):
+    def _verify_size(self, unit, report):
         """
-        Verifies the size of the given unit if the sync is configured to do so. If the verification
-        fails, the error is noted in this instance's progress report and the error is re-raised.
+        Verifies the size of the given unit if the sync is configured to do so.
+        If the verification fails, the error is noted in this instance's progress
+        report and the error is re-raised.
 
-        :param model: domain model instance of the package that was downloaded
-        :type  model: pulp_rpm.plugins.db.models.RpmBase
+        :param unit: domain model instance of the package that was downloaded
+        :type  unit: pulp_rpm.plugins.db.models.RpmBase
         :param report: report handed to this listener by the downloader
         :type  report: nectar.report.DownloadReport
 
         :raises verification.VerificationException: if the size of the content is incorrect
         """
 
-        if not self.sync_call_config.get(importer_constants.KEY_VALIDATE):
+        if not self.sync.config.get(importer_constants.KEY_VALIDATE):
             return
 
         try:
-            with open(report.destination) as dest_file:
-                verification.verify_size(dest_file, model.size)
+            with open(report.destination) as fp:
+                verification.verify_size(fp, unit.size)
 
         except verification.VerificationException, e:
             error_report = {
-                constants.UNIT_KEY: model.unit_key,
+                constants.UNIT_KEY: unit.unit_key,
                 constants.ERROR_CODE: constants.ERROR_SIZE_VERIFICATION,
-                constants.ERROR_KEY_EXPECTED_SIZE: model.size,
+                constants.ERROR_KEY_EXPECTED_SIZE: unit.size,
                 constants.ERROR_KEY_ACTUAL_SIZE: e[0]
             }
-            self.progress_report['content'].failure(model, error_report)
+            self.sync.progress_report['content'].failure(unit, error_report)
             raise
 
-    def _verify_checksum(self, model, report):
+    def _verify_checksum(self, unit, report):
         """
-        Verifies the checksum of the given unit if the sync is configured to do so. If the
-        verification
-        fails, the error is noted in this instance's progress report and the error is re-raised.
+        Verifies the checksum of the given unit if the sync is configured to do so.
+        If the verification fails, the error is noted in this instance's progress
+        report and the error is re-raised.
 
-        :param model: domain model instance of the package that was downloaded
-        :type  model: pulp_rpm.plugins.db.models.RpmBase
+        :param unit: domain model instance of the package that was downloaded
+        :type  unit: pulp_rpm.plugins.db.models.RpmBase
         :param report: report handed to this listener by the downloader
         :type  report: nectar.report.DownloadReport
 
         :raises verification.VerificationException: if the checksum of the content is incorrect
         """
 
-        if not self.sync_call_config.get(importer_constants.KEY_VALIDATE):
+        if not self.sync.config.get(importer_constants.KEY_VALIDATE):
             return
 
         try:
-            with open(report.destination) as dest_file:
-                verification.verify_checksum(dest_file, model.checksumtype,
-                                             model.checksum)
+            with open(report.destination) as fp:
+                verification.verify_checksum(fp, unit.checksumtype, unit.checksum)
 
         except verification.VerificationException, e:
             error_report = {
-                constants.NAME: model.name,
+                constants.NAME: unit.name,
                 constants.ERROR_CODE: constants.ERROR_CHECKSUM_VERIFICATION,
-                constants.CHECKSUM_TYPE: model.checksumtype,
-                constants.ERROR_KEY_CHECKSUM_EXPECTED: model.checksum,
+                constants.CHECKSUM_TYPE: unit.checksumtype,
+                constants.ERROR_KEY_CHECKSUM_EXPECTED: unit.checksum,
                 constants.ERROR_KEY_CHECKSUM_ACTUAL: e[0]
             }
-            self.progress_report['content'].failure(model, error_report)
+            self.sync.progress_report['content'].failure(unit, error_report)
             raise
-        except verification.InvalidChecksumType, e:
+        except verification.InvalidChecksumType:
             error_report = {
-                constants.NAME: model.name,
+                constants.NAME: unit.name,
                 constants.ERROR_CODE: constants.ERROR_CHECKSUM_TYPE_UNKNOWN,
-                constants.CHECKSUM_TYPE: model.checksumtype,
+                constants.CHECKSUM_TYPE: unit.checksumtype,
                 constants.ACCEPTED_CHECKSUM_TYPES: verification.CHECKSUM_FUNCTIONS.keys()
             }
-            self.progress_report['content'].failure(model, error_report)
+            self.sync.progress_report['content'].failure(unit, error_report)
             raise
+
+
+class RPMListener(PackageListener):
+    """
+    The RPM package download lister.
+    """
+
+    def download_succeeded(self, report):
+        unit = report.data
+        try:
+            super(RPMListener, self).download_succeeded(report)
+        except (verification.VerificationException, verification.InvalidChecksumType):
+            # verification failed, unit not added
+            return
+        self.sync.add_rpm_unit(self.metadata_files, unit)
+        unit.import_content(report.destination)
+
+
+class DRPMListener(PackageListener):
+    """
+    The Delta RPM package download lister.
+    """
+
+    def download_succeeded(self, report):
+        unit = report.data
+        try:
+            super(DRPMListener, self).download_succeeded(report)
+        except (verification.VerificationException, verification.InvalidChecksumType):
+            # verification failed, unit not added
+            return
+        self.sync.add_drpm_unit(self.metadata_files, unit)
+        unit.import_content(report.destination)

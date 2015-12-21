@@ -1,3 +1,5 @@
+import os
+
 from pulp.common import config as config_utils
 from pulp.common.plugins import importer_constants
 from pulp.plugins.importer import Importer
@@ -115,21 +117,23 @@ class ISOImporter(Importer):
 
         iso = models.ISO(
             name=unit_key['name'], size=unit_key['size'], checksum=unit_key['checksum'])
+        iso.set_storage_path(os.path.basename(file_path))
         existing_iso = models.ISO.objects(**iso.unit_key).first()
         if existing_iso:
             iso = existing_iso
 
-        iso.set_content(file_path)
         validate = config.get_boolean(importer_constants.KEY_VALIDATE)
         validate = validate if validate is not None else constants.CONFIG_VALIDATE_DEFAULT
         try:
             # Let's validate the ISO. This will raise a
             # ValueError if the ISO does not validate correctly.
-            iso.validate_iso(full_validation=validate)
+            iso.validate_iso(file_path, full_validation=validate)
         except ValueError, e:
             return {'success_flag': False, 'summary': e.message, 'details': None}
 
         iso.save()
+        iso.import_content(file_path)
+
         repo_controller.associate_single_unit(repo, iso)
         return {'success_flag': True, 'summary': None, 'details': None}
 

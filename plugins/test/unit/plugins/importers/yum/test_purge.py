@@ -29,7 +29,7 @@ class TestPurgeBase(unittest.TestCase):
                                                      DownloaderConfig())
         self.repo = Repository('repo1')
         self.config = PluginCallConfiguration({}, {})
-        self.conduit = RepoSyncConduit(self.repo.id, 'yum_importer')
+        self.conduit = RepoSyncConduit(self.repo.id, 'yum_importer', 'abc123')
 
 
 class TestRemoveMissing(TestPurgeBase):

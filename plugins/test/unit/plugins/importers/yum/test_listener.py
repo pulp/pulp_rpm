@@ -8,13 +8,13 @@ from pulp_rpm.devel.skip import skip_broken
 from pulp_rpm.plugins.importers.yum import listener
 
 
-class TestContentListener(unittest.TestCase):
+class TestPackageListener(unittest.TestCase):
     def setUp(self):
         self.test_rpm_path = os.path.join(os.path.dirname(__file__),
                                           '../../../../data/walrus-5.21-1.noarch.rpm')
-        self.sync_conduit = mock.MagicMock()
+        self.conduit = mock.MagicMock()
         self.progress_report = mock.MagicMock()
-        self.sync_call_config = mock.MagicMock()
+        self.config = mock.MagicMock()
         self.metadata_files = mock.MagicMock()
         self.report = mock.MagicMock()
 
@@ -23,14 +23,13 @@ class TestContentListener(unittest.TestCase):
     @mock.patch('shutil.copy', autospec=True)
     @mock.patch('pulp_rpm.plugins.importers.yum.listener.purge.remove_unit_duplicate_nevra')
     def test_download_successful(self, mock_nevra, mock_copy, mock_assoc):
-        self.sync_call_config.get.return_value = False
-        content_listener = listener.ContentListener(self.sync_conduit, self.progress_report,
-                                                    self.sync_call_config, self.metadata_files)
+        self.config.get.return_value = False
+        content_listener = listener.PackageListener(self, self.metadata_files)
         content_listener.download_succeeded(self.report)
         self.progress_report['content'].success.assert_called_once_with(self.report.data)
-        mock_nevra.assert_called_once_with(self.sync_conduit.init_unit().unit_key,
-                                           self.sync_conduit.init_unit().type_id,
-                                           self.sync_conduit.repo_id)
+        mock_nevra.assert_called_once_with(self.conduit.init_unit().unit_key,
+                                           self.conduit.init_unit().type_id,
+                                           self.conduit.repo_id)
 
     @skip_broken
     @mock.patch('pulp.server.controllers.repository.associate_single_unit')
@@ -41,17 +40,16 @@ class TestContentListener(unittest.TestCase):
     @mock.patch('shutil.copy', autospec=True)
     def test_download_successful_with_validation(self, mock_copy, mock_nevra, mock_verify_size,
                                                  mock_verify_checksum, mock_open, mock_assoc):
-        self.sync_call_config.get.return_value = True
-        content_listener = listener.ContentListener(self.sync_conduit, self.progress_report,
-                                                    self.sync_call_config, self.metadata_files)
+        self.config.get.return_value = True
+        content_listener = listener.PackageListener(self, self.metadata_files)
         content_listener.download_succeeded(self.report)
 
         self.progress_report['content'].success.assert_called_once_with(self.report.data)
         mock_verify_size.assert_called_once()
         mock_verify_checksum.assert_called_once()
-        mock_nevra.assert_called_once_with(self.sync_conduit.init_unit().unit_key,
-                                           self.sync_conduit.init_unit().type_id,
-                                           self.sync_conduit.repo_id)
+        mock_nevra.assert_called_once_with(self.conduit.init_unit().unit_key,
+                                           self.conduit.init_unit().type_id,
+                                           self.conduit.repo_id)
 
     @mock.patch('__builtin__.open', autospec=True)
     @mock.patch('pulp.plugins.util.verification.verify_checksum')
@@ -59,13 +57,13 @@ class TestContentListener(unittest.TestCase):
     @mock.patch('shutil.copy', autospec=True)
     def test_download_successful_invalid_file_size(self, mock_copy, mock_verify_size,
                                                    mock_verify_checksum, mock_open):
-        self.sync_call_config.get.return_value = True
+        self.config.get.return_value = True
 
         mock_verify_size.side_effect = verification.VerificationException(22)  # seed the size found
-        content_listener = listener.ContentListener(self.sync_conduit, self.progress_report,
-                                                    self.sync_call_config, self.metadata_files)
+        content_listener = listener.PackageListener(self, self.metadata_files)
 
-        content_listener.download_succeeded(self.report)
+        self.assertRaises(
+            verification.VerificationException, content_listener.download_succeeded, self.report)
 
         mock_verify_size.assert_called_once()
         self.assertFalse(self.progress_report['content'].success.called)
@@ -76,13 +74,13 @@ class TestContentListener(unittest.TestCase):
     @mock.patch('shutil.copy', autospec=True)
     def test_download_successful_invalid_checksum_type(self, mock_copy, mock_verify_size,
                                                        mock_verify_checksum, mock_open):
-        self.sync_call_config.get.return_value = True
+        self.config.get.return_value = True
 
         mock_verify_checksum.side_effect = verification.InvalidChecksumType()
-        content_listener = listener.ContentListener(self.sync_conduit, self.progress_report,
-                                                    self.sync_call_config, self.metadata_files)
+        content_listener = listener.PackageListener(self, self.metadata_files)
 
-        content_listener.download_succeeded(self.report)
+        self.assertRaises(
+            verification.InvalidChecksumType, content_listener.download_succeeded, self.report)
 
         mock_verify_checksum.assert_called_once()
         self.assertFalse(self.progress_report['content'].success.called)
@@ -93,13 +91,13 @@ class TestContentListener(unittest.TestCase):
     @mock.patch('shutil.copy', autospec=True)
     def test_download_successful_invalid_checksum_verification(self, mock_copy, mock_verify_size,
                                                                mock_verify_checksum, mock_open):
-        self.sync_call_config.get.return_value = True
+        self.config.get.return_value = True
 
         mock_verify_checksum.side_effect = verification.VerificationException('bad')
-        content_listener = listener.ContentListener(self.sync_conduit, self.progress_report,
-                                                    self.sync_call_config, self.metadata_files)
+        content_listener = listener.PackageListener(self, self.metadata_files)
 
-        content_listener.download_succeeded(self.report)
+        self.assertRaises(
+            verification.VerificationException, content_listener.download_succeeded, self.report)
 
         mock_verify_checksum.assert_called_once()
         self.assertFalse(self.progress_report['content'].success.called)

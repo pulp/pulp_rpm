@@ -1,12 +1,12 @@
 import os
 
-from threading import Event
 from logging import getLogger
 from gettext import gettext as _
 
 from nectar.report import DownloadReport
 
-from pulp.server.content.sources.container import ContentContainer, Listener
+from pulp.server.content.sources.container import ContentContainer
+from pulp.server.content.sources.event import Listener
 from pulp.server.content.sources.model import Request
 
 from pulp_rpm.plugins.importers.yum.utils import RepoURLModifier
@@ -34,8 +34,8 @@ class Packages(object):
     :type primary: nectar.downloaders.base.Downloader
     :ivar container: A content container.
     :type container: ContentContainer
-    :ivar canceled: An event that signals the running download has been canceled.
-    :type canceled: threading.Event
+    :ivar url_modify: Optional URL modifier.
+    :type url_modify: pulp_rpm.plugins.importers.yum.utils.RepoURLModifier
     """
 
     def __init__(self, base_url, nectar_conf, units, dst_dir, listener, url_modify=None):
@@ -57,8 +57,7 @@ class Packages(object):
         self.listener = ContainerListener(listener)
         self.primary = create_downloader(base_url, nectar_conf)
         self.container = ContentContainer()
-        self.canceled = Event()
-        self._url_modify = url_modify or RepoURLModifier()
+        self.url_modify = url_modify or RepoURLModifier()
 
     @property
     def downloader(self):
@@ -77,10 +76,10 @@ class Packages(object):
         """
         for unit in self.units:
             base_url = unit.base_url or self.base_url
-            url = self._url_modify(base_url, path_append=unit.filename)
+            url = self.url_modify(base_url, path_append=unit.filename)
             destination = os.path.join(self.dst_dir, unit.filename)
             request = Request(
-                type_id=unit._content_type_id,
+                type_id=unit.type_id,
                 unit_key=unit.unit_key,
                 url=url,
                 destination=destination)
@@ -91,15 +90,8 @@ class Packages(object):
         """
         Download packages using alternate content source container.
         """
-        report = self.container.download(
-            self.canceled, self.primary, self.get_requests(), self.listener)
+        report = self.container.download(self.primary, self.get_requests(), self.listener)
         _log.info(CONTAINER_REPORT, dict(r=report.dict(), u=self.base_url))
-
-    def cancel(self):
-        """
-        Cancel a running download.
-        """
-        self.canceled.set()
 
 
 class ContainerListener(Listener):
@@ -116,7 +108,7 @@ class ContainerListener(Listener):
         Listener.__init__(self)
         self.content_listener = content_listener
 
-    def download_succeeded(self, request):
+    def on_succeeded(self, request):
         """
         Notification that downloading has succeeded for the specified request.
         Fields mapped and forwarded to the wrapped listener.
@@ -126,7 +118,7 @@ class ContainerListener(Listener):
         report = DownloadReport(request.url, request.destination, request.data)
         self.content_listener.download_succeeded(report)
 
-    def download_failed(self, request):
+    def on_failed(self, request):
         """
         Notification that downloading has failed for the specified request.
         Fields mapped and forwarded to the wrapped listener.

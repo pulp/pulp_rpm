@@ -2,6 +2,7 @@ from gettext import gettext as _
 import logging
 
 import mongoengine
+import os
 from pulp.plugins.util.misc import paginate
 from pulp.server.controllers import repository as repo_controller
 
@@ -348,8 +349,6 @@ def associate_copy_for_repo(unit, dest_repo, set_content=False):
     """
     new_unit = unit.clone()
     new_unit.repo_id = dest_repo.repo_id
-    if set_content:
-        new_unit.set_content(unit._storage_path)
 
     try:
         new_unit.save()
@@ -359,6 +358,10 @@ def associate_copy_for_repo(unit, dest_repo, set_content=False):
         _LOGGER.debug(_('replacing pre-existing copy of %(u)s' % {'u': new_unit}))
         new_unit.__class__.objects.filter(**new_unit.unit_key).delete()
         new_unit.save()
+
+    if set_content:
+        new_unit.set_storage_path(os.path.basename(unit._storage_path))
+        new_unit.import_content(unit._storage_path)
 
     repo_controller.associate_single_unit(repository=dest_repo, unit=new_unit)
     return new_unit

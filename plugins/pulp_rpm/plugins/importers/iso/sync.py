@@ -9,9 +9,11 @@ from nectar import listener, request
 from nectar.config import DownloaderConfig
 from nectar.downloaders.threaded import HTTPThreadedDownloader
 from nectar.downloaders.local import LocalFileDownloader
+
 from pulp.common.plugins import importer_constants
 from pulp.common.util import encode_unicode
 from pulp.server.controllers import repository as repo_controller
+from pulp.server.db.model import LazyCatalogEntry
 from pulp.server.managers.repo import _common as common_utils
 
 from pulp_rpm.common import constants
@@ -40,6 +42,7 @@ class ISOSyncRun(listener.DownloadEventListener):
         :type  config:       pulp.plugins.config.PluginCallConfiguration
         """
         self.sync_conduit = sync_conduit
+        self.config = config
         self._remove_missing_units = config.get(
             importer_constants.KEY_UNITS_REMOVE_MISSING,
             default=constants.CONFIG_UNITS_REMOVE_MISSING_DEFAULT)
@@ -84,6 +87,19 @@ class ISOSyncRun(listener.DownloadEventListener):
         else:
             self.downloader = HTTPThreadedDownloader(downloader_config, self)
         self.progress_report = SyncProgressReport(sync_conduit)
+
+    @property
+    def download_deferred(self):
+        """
+        Test the download policy to determine if downloading is deferred.
+
+        :return: True if deferred.
+        :rtype: bool
+        """
+        policy = self.config.get(
+            importer_constants.DOWNLOAD_POLICY,
+            importer_constants.DOWNLOAD_IMMEDIATE)
+        return policy != importer_constants.DOWNLOAD_IMMEDIATE
 
     def cancel_sync(self):
         """
@@ -143,11 +159,12 @@ class ISOSyncRun(listener.DownloadEventListener):
             # This will update our bytes downloaded
             self.download_progress(report)
             iso = report.data
-            iso.set_content(report.destination)
+            iso.set_storage_path(os.path.basename(report.destination))
             try:
                 if self._validate_downloads:
                     iso.validate_iso(storage_path=report.destination)
                 iso.save()
+                iso.import_content(report.destination)
                 repo_controller.associate_single_unit(self.sync_conduit.repo, iso)
 
                 # We can drop this ISO from the url --> ISO map
@@ -155,6 +172,23 @@ class ISOSyncRun(listener.DownloadEventListener):
                 self.progress_report.update_progress()
             except ValueError:
                 self.download_failed(report)
+
+    def add_catalog_entries(self, units):
+        """
+        Add entries to the deferred downloading (lazy) catalog.
+
+        :param units: A list of: pulp_rpm.plugins.db.models.ISO.
+        :type units: list
+        """
+        for unit in units:
+            unit.set_storage_path(unit.name)
+            entry = LazyCatalogEntry()
+            entry.path = unit.storage_path
+            entry.importer_id = str(self.sync_conduit.importer_object_id)
+            entry.unit_id = unit.id
+            entry.unit_type_id = unit.type_id
+            entry.url = unit.url
+            entry.save_revision()
 
     def perform_sync(self):
         """
@@ -182,9 +216,21 @@ class ISOSyncRun(listener.DownloadEventListener):
             search_dicts = [unit.unit_key for unit in local_available_isos]
             self.sync_conduit.associate_existing(models.ISO._content_type_id, search_dicts)
 
-        # Go get them filez
+        # Deferred downloading (Lazy) entries.
+        self.add_catalog_entries(local_missing_isos)
+
         self.progress_report.state = self.progress_report.STATE_ISOS_IN_PROGRESS
-        self._download_isos(local_missing_isos)
+
+        # Download files and add units.
+        if self.download_deferred:
+            for iso in local_missing_isos:
+                iso.downloaded = False
+                iso.save()
+                repo_controller.associate_single_unit(self.sync_conduit.repo, iso)
+        else:
+            self._download_isos(local_missing_isos)
+
+        # Remove unwanted iso units
         if self._remove_missing_units:
             repo_controller.disassociate_units(self.sync_conduit.repo, remote_missing_isos)
 

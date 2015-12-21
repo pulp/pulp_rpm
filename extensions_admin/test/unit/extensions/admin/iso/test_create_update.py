@@ -156,7 +156,7 @@ class TestISORepoCreateCommand(PulpClientTests):
         create_repo_init.assert_called_once_with(command, self.context)
         importer_config_init.assert_called_once_with(
             command, include_sync=True, include_ssl=True, include_proxy=True,
-            include_throttling=True, include_unit_policy=True)
+            include_throttling=True, include_unit_policy=True, include_download_policy=True)
         distributor_config_init.assert_called_once_with(command)
 
         # Make sure we don't present the --retain-old-count option to the user
@@ -390,7 +390,7 @@ class TestISORepoUpdateCommand(PulpClientTests):
         update_repo_init.assert_called_once_with(command, self.context)
         importer_config_init.assert_called_once_with(
             command, include_sync=True, include_ssl=True, include_proxy=True,
-            include_throttling=True, include_unit_policy=True)
+            include_throttling=True, include_unit_policy=True, include_download_policy=True)
         distributor_config_init.assert_called_once_with(command)
 
         # Make sure we don't present the --retain-old-count option to the user
