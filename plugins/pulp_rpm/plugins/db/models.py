@@ -421,7 +421,7 @@ class Errata(Package):
     updated = mongoengine.StringField(required=True, default='')
     description = mongoengine.StringField()
     issued = mongoengine.StringField()
-    pushcount = mongoengine.IntField()
+    pushcount = mongoengine.StringField()
     references = mongoengine.ListField()
     reboot_suggested = mongoengine.BooleanField()
     errata_from = mongoengine.StringField(db_field='from')
