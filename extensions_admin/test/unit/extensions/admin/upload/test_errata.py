@@ -91,7 +91,7 @@ class CreateRpmCommandTests(PulpClientTests):
             'summary': 'test-summary',
             'solution': 'test-solution',
             'from': 'test-from',
-            'pushcount': 1,
+            'pushcount': '1',
             'reboot_suggested': 'test-reboot',
             'pkglist': expected_package_list,
             'references': expected_reference_list,
