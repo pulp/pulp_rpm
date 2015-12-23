@@ -140,6 +140,8 @@ class CreateErratumCommand(UploadCommand):
             self.context.prompt.render_failure_message(msg)
             return os.EX_DATAERR
 
+        pushcount_str = str(pushcount)
+
         metadata = {
             'title': title,
             'description': description,
@@ -156,7 +158,7 @@ class CreateErratumCommand(UploadCommand):
             'summary': summary,
             'solution': solution,
             'from': from_str,
-            'pushcount': pushcount,
+            'pushcount': pushcount_str,
             'reboot_suggested': reboot_suggested,
         }
 

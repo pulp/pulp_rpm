@@ -14,8 +14,36 @@ New Features
 Database Changes
 ----------------
 
-The database has renamed some field names for RPM unit models. This change should not be noticeable through the API,
-but it does come with a migration which drops some indexes. The following field names are renamed:
+The 2.8.0 release comes with strong validation enabled at the database layer. This required some
+database changes to be made. These changes should go unnoticed for most users, however, for those
+users integrating with Pulp in a deep way, this may affect you. This section recaps known changes.
+
+Database Field Type Modifications
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The following collections and fields have had some data quality fixes applied to avoid validation
+issues.
+
+========================= ====================== ============================================
+Collection                Field Name             Data Quality Fix
+========================= ====================== ============================================
+units_package_category    translated_name        Previous values of "" are now {}
+units_package_category    translated_description Previous values of "" are now {}
+units_package_environment translated_name        Previous values of "" are now {}
+units_package_environment translated_description Previous values of "" are now {}
+units_package_group       translated_name        Previous values of "" are now {}
+units_package_group       translated_description Previous values of "" are now {}
+units_erratum             pushcount              All int and floats converted to strings. All
+                                                 null values are unset.
+========================= ====================== ============================================
+
+
+Database Fields Renamed
+^^^^^^^^^^^^^^^^^^^^^^^
+
+The database has renamed some field names for RPM unit models. This change should not be noticeable
+through the API, but it does come with a migration which drops some indexes. The following field
+names are renamed:
 
 =========================  ==============  ======================
 Collection                 Old Field Name  New Field Name
@@ -28,6 +56,8 @@ units_package_category     id              package_category_id
 units_package_environment  id              package_environment_id
 =========================  ==============  ======================
 
+Database Index Changes
+^^^^^^^^^^^^^^^^^^^^^^
 
 The following indexes have been dropped:
 
@@ -46,4 +76,3 @@ units_package_environment  id_1_repo_id_1
 =========================  ==============
 
 Several indexes have been created, check your db to see what indexes are in place.
-
