@@ -598,7 +598,6 @@ class RepoSync(object):
         :type unit: pulp_rpm.plugins.db.models.RpmBase
         """
         metadata_files.add_repodata(unit)
-        purge.remove_unit_duplicate_nevra(unit, self.conduit.repo)
         unit.set_storage_path(unit.filename)
         unit.save()
         repo_controller.associate_single_unit(self.conduit.repo, unit)
