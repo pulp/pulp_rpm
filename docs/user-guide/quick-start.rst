@@ -11,7 +11,7 @@ repository.
 
 ::
 
-  $ pulp-admin rpm repo create --repo-id=zoo--relative-url=zoo \
+  $ pulp-admin rpm repo create --repo-id=zoo --relative-url=zoo \
   --feed=http://repos.fedorapeople.org/repos/pulp/pulp/demo_repos/zoo/
   Successfully created repository [pulp]
 
