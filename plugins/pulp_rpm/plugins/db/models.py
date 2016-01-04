@@ -168,8 +168,19 @@ class NonMetadataPackage(Package):
     def complete_version_serialized(self):
         return tuple(version_utils.encode(field) for field in self.complete_version)
 
-    # TODO DANGER DANGER, WHAT HAPPENS WITH MongoEngine BaseDocument???
     def __cmp__(self, other):
+        """
+        Allows for comparison using the tuple from complete_version_serialized().
+
+        Generally this compares using rank comparison on the fields: epoch, version, release.
+
+        This needs to be replaced when adding Python 3 support.
+
+        Python 3 removes __cmp__ in favor of rich comparison operators. When porting this to
+        Python 3, replace __cmp__ with the __lt__, __le__, __gt__, __ge__ methods. The __eq__ or
+        __neq__ should *not* be implemented because we could be affecting mongoengine internal
+        behaviors by doing so.
+        """
         return cmp(
             self.complete_version_serialized,
             other.complete_version_serialized
