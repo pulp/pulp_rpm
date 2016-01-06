@@ -150,7 +150,7 @@ class ISOImporter(Importer):
         iso.import_content(file_path)
 
         repo_controller.associate_single_unit(transfer_repo.repo_obj, iso)
-        repo_controller.update_unit_count(transfer_repo.repo_obj.repo_id, iso._content_type_id, 1)
+
         return {'success_flag': True, 'summary': None, 'details': None}
 
     def validate_config(self, repo, config):

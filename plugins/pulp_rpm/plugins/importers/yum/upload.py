@@ -218,7 +218,6 @@ def _handle_yum_metadata_file(repo, type_id, unit_key, metadata, file_path, cond
     model.import_content(file_path)
 
     repo_controller.associate_single_unit(conduit.repo, model)
-    repo_controller.update_unit_count(repo, model._content_type_id, 1)
 
 
 def _handle_group_category_comps(repo, type_id, unit_key, metadata, file_path, conduit, config):
@@ -279,7 +278,6 @@ def _handle_group_category_comps(repo, type_id, unit_key, metadata, file_path, c
             unit.import_content(file_path)
 
         repo_controller.associate_single_unit(repo, unit)
-        repo_controller.rebuild_content_unit_counts(repo)
 
 
 def _get_and_save_file_units(filename, processing_function, tag, conduit, repo_id):
@@ -390,7 +388,6 @@ def _handle_package(repo, type_id, unit_key, metadata, file_path, conduit, confi
     unit.import_content(file_path)
 
     repo_controller.associate_single_unit(repo, unit)
-    repo_controller.rebuild_content_unit_counts(repo)
 
 
 def _update_provides_requires(unit):
