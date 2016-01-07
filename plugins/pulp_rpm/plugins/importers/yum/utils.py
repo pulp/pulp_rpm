@@ -105,67 +105,52 @@ def strip_ns(element, uri=None):
 class RepoURLModifier(object):
     """
     Repository URL Modifier
-
-    :ivar conf: URL modifier persistent configuration
-    :type conf: dict
-
     """
-    def __init__(self, path_append=None, ensure_trailing_slash=None, query_auth_token=None):
+    def __init__(self, query_auth_token=None):
         """
-        :ivar conf: URL modifier persistent configuration, populated from optional keyword
-                    arguments (see :py:meth:`RepoURLModifier.__call__` for allowed options).
-        :type conf: dict
+        Initialize the URL modifier with defaults, populated from optional keyword arguments
+
+        :param query_auth_token: If specified, will become the query string in modified URLs
+                                 unless overridden when this instance is called
+        :type query_auth_token: str or None
 
         """
-        self.conf = {
-            'path_append': path_append,
-            'ensure_trailing_slash': ensure_trailing_slash,
-            'query_auth_token': query_auth_token,
-        }
+        self._query_auth_token = query_auth_token
 
-    def __call__(self, url, **kwargs):
+    def __call__(self, url, path_append=None, ensure_trailing_slash=None, query_auth_token=None):
         """
-        Modify a URL based on the keys in the url modify conf
+        Modify a URL based on the keys in the url modify conf. URL modification takes place in the
+        order of arguments, so (for example) ensure_trailing_slash will add a trailing slash, if
+        needed, *after* appending a path specified with path_append.
 
-        :param url:         URL to modify
-        :type:              str
+        :param url: URL to modify
+        :type url: str
+        :param path_append: path fragment to append to the end of the given URL's path
+        :type path_append: str or None
+        :param ensure_trailing_slash: if True, ensure that the URL path ends with a trailing slash
+        :type ensure_trailing_slash: bool or None
+        :param query_auth_token: If specified, will become the query string in the modified URL
+        :type query_auth_token: str or None
 
         :return:     The modified URL
         :rtype:      str
 
-        URL modification config keys, which can be overridden with optional keyword args,
-        and will be processed in order as described here:
-
-            * path_append: If found, will be appended to the URL path component
-            * ensure_trailing_slash: If found and evaluates as true, add a
-              trailing slash (if needed) to the URL path component
-            * query_auth_token: If found, will become or replace the URLs
-              query string, used for authenticating to repositories like SLES 12
-              (and higher), which use this mechanism
-
         """
-        modify_conf = self.conf.copy()
-        # validate the kwargs against modify_conf keys to keep things DRY but still valid
-        for key in kwargs:
-            if key not in modify_conf:
-                msg = ('Unknown URL modification configuration key: "{0}", '
-                       'key must be one of {1}').format(key, ', '.join(modify_conf.keys()))
-                raise LookupError(msg)
-            modify_conf[key] = kwargs[key]
+        query_auth_token = query_auth_token or self._query_auth_token
 
         scheme, netloc, path, params, query, fragment = urlparse(url)
 
-        if modify_conf['path_append']:
+        if path_append:
             if not path.endswith('/'):
                 path += '/'
-            path = urljoin(path, modify_conf['path_append'])
+            path = urljoin(path, path_append)
 
-        if modify_conf['ensure_trailing_slash']:
+        if ensure_trailing_slash:
             if not path.endswith('/'):
                 path += '/'
 
-        if modify_conf['query_auth_token']:
-            query = modify_conf['query_auth_token']
+        if query_auth_token:
+            query = query_auth_token
 
         url = urlunparse(
             (scheme, netloc, path, params, query, fragment)
