@@ -62,6 +62,11 @@ Optional Configuration Parameters
  ISO images and published over HTTP or HTTPS. Instead, they are written to the export directory.
  This option is useful if exporting to an external hard drive, for example.
 
+``relative_url``
+ Relative path at which the repository will be served when exported. If this option is specified with
+ ``export_dir``, this will become the exported subdirectory name instead of the default, which is the
+ repository id.
+
 ``manifest``
  If this boolean is True, a PULP_MANIFEST file will be created in the directory where ISOs are
  created. This allows the ISO importer to directly import what was published. Defaults to False.
