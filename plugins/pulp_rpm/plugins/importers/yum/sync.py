@@ -278,8 +278,6 @@ class RepoSync(object):
             finally:
                 # clean up whatever we may have left behind
                 shutil.rmtree(self.tmp_dir, ignore_errors=True)
-                # recalculate all the unit counts
-                repo_controller.rebuild_content_unit_counts(self.repo)
 
             self.save_repomd_revision()
             _logger.info(_('Sync complete.'))
