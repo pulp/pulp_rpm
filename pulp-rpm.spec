@@ -269,6 +269,10 @@ A collection of yum plugins supplementing Pulp consumer operations.
 
 
 %changelog
+* Mon Jan 11 2016 Dennis Kliban <dkliban@redhat.com> 2.8.0-0.1.beta
+- 1264 - UnicodeEncodeError while synchronizing Fedora 21 and 22 updates
+  (ipanova@redhat.com)
+
 * Tue Feb 10 2015 Chris Duryee <cduryee@redhat.com> 2.6.0-0.7.beta
 - Pulp rebuild
 
