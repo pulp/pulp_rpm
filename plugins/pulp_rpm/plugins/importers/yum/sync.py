@@ -840,6 +840,9 @@ class RepoSync(object):
                 if additive_type:
                     model = self._concatenate_units(existing_unit, model)
                     model.save()
+                else:
+                    # make sure the associate_unit call gets the existing unit
+                    model = existing_unit
 
             repo_controller.associate_single_unit(self.repo, model)
 
