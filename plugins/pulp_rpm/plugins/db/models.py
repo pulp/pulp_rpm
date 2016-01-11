@@ -6,7 +6,7 @@ from urlparse import urljoin
 
 import mongoengine
 from pulp.plugins.util import verification
-from pulp.server.db.model import FileContentUnit
+from pulp.server.db.model import ContentUnit, FileContentUnit
 
 from pulp_rpm.common import version_utils
 from pulp_rpm.common import file_utils
@@ -17,7 +17,7 @@ from pulp_rpm.plugins.db.fields import ChecksumTypeStringField
 _LOGGER = logging.getLogger(__name__)
 
 
-class Package(FileContentUnit):
+class UnitMixin(object):
     # TODO add docstring to this class
 
     SERIALIZER = None
@@ -78,7 +78,7 @@ class Package(FileContentUnit):
                     key "unit_key" whose value is the unit's translated unit key.
         :rtype:     dict
         """
-        ret = super(Package, self).to_id_dict()
+        ret = super(UnitMixin, self).to_id_dict()
         if self.SERIALIZER is not None:
             unit_key = ret['unit_key']
             for new, old in self.SERIALIZER.Meta.remapped_fields.items():
@@ -88,7 +88,7 @@ class Package(FileContentUnit):
         return ret
 
 
-class NonMetadataPackage(Package):
+class NonMetadataPackage(UnitMixin, FileContentUnit):
     """
     An abstract model to be subclassed by packages which are not metadata
 
@@ -187,7 +187,7 @@ class NonMetadataPackage(Package):
         )
 
 
-class Distribution(Package):
+class Distribution(UnitMixin, FileContentUnit):
     # TODO add docstring to this class
 
     distribution_id = mongoengine.StringField(required=True)
@@ -269,7 +269,7 @@ class Distribution(Package):
         :type document: pulp_rpm.plugins.db.models.Distribution
         """
         document.version_sort_index = version_utils.encode(document.version)
-        super(Package, cls).pre_save_signal(sender, document, **kwargs)
+        super(Distribution, cls).pre_save_signal(sender, document, **kwargs)
 
 
 class DRPM(NonMetadataPackage):
@@ -425,7 +425,7 @@ class SRPM(RpmBase):
         'allow_inheritance': False}
 
 
-class Errata(Package):
+class Errata(UnitMixin, ContentUnit):
     # TODO add docstring to this class
     errata_id = mongoengine.StringField(required=True)
     status = mongoengine.StringField()
@@ -492,7 +492,7 @@ class Errata(Package):
         return ret
 
 
-class PackageGroup(Package):
+class PackageGroup(UnitMixin, ContentUnit):
     # TODO add docstring to this class
     package_group_id = mongoengine.StringField(required=True)
     repo_id = mongoengine.StringField(required=True)
@@ -539,7 +539,7 @@ class PackageGroup(Package):
         return names
 
 
-class PackageCategory(Package):
+class PackageCategory(UnitMixin, ContentUnit):
     # TODO add docstring to this class
     package_category_id = mongoengine.StringField(required=True)
     repo_id = mongoengine.StringField(required=True)
@@ -570,7 +570,7 @@ class PackageCategory(Package):
     SERIALIZER = serializers.PackageCategory
 
 
-class PackageEnvironment(Package):
+class PackageEnvironment(UnitMixin, ContentUnit):
     # TODO add docstring to this class
     package_environment_id = mongoengine.StringField(required=True)
     repo_id = mongoengine.StringField(required=True)
@@ -607,7 +607,7 @@ class PackageEnvironment(Package):
         return [d.get('group') for d in self.options]
 
 
-class YumMetadataFile(Package):
+class YumMetadataFile(UnitMixin, FileContentUnit):
     # TODO add docstring to this class
     data_type = mongoengine.StringField(required=True)
     repo_id = mongoengine.StringField(required=True)
