@@ -64,7 +64,8 @@ Optional Configuration Parameters
 
 ``relative_url``
  Relative path at which the repository will be served when exported. If this option is specified with
- ``export_dir``, this will become the exported subdirectory name instead of the default, which is the
+
+``export_dir``, this will become the exported subdirectory name instead of the default, which is the
  repository id.
 
 ``manifest``

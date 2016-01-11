@@ -30,6 +30,7 @@ class TestRepoExportRunCommand(PulpClientTests):
         expected_options = [
             export.FLAG_MANIFEST,
             export.OPTION_EXPORT_DIR,
+            export.OPTION_RELATIVE_URL,
             export.OPTION_END_DATE,
             export.OPTION_START_DATE,
             export.OPTION_ISO_PREFIX,
@@ -65,6 +66,7 @@ class TestRepoGroupExportRunCommand(PulpClientTests):
             export.OPTION_START_DATE.keyword: None,
             export.OPTION_END_DATE.keyword: None,
             export.OPTION_EXPORT_DIR.keyword: None,
+            export.OPTION_RELATIVE_URL.keyword: None,
             export.SERVE_HTTP: True,
             export.SERVE_HTTPS: True
         }
@@ -84,6 +86,7 @@ class TestRepoGroupExportRunCommand(PulpClientTests):
             options.OPTION_GROUP_ID,
             export.FLAG_MANIFEST,
             export.OPTION_EXPORT_DIR,
+            export.OPTION_RELATIVE_URL,
             export.OPTION_END_DATE,
             export.OPTION_START_DATE,
             export.OPTION_ISO_PREFIX,
