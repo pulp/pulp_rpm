@@ -372,16 +372,12 @@ class SearchDistributionsCommand(BaseSearchCommand):
         self.context.prompt.write(_('Files:'))
         for f in distro['files']:
             data = {
-                'filename': f['filename'],
                 'path': f['relativepath'],
-                'size': f['size'],
                 'type': f['checksumtype'],
                 'checksum': f['checksum'],
             }
 
-            self.context.prompt.write(_('  Filename:       %(filename)s') % data)
             self.context.prompt.write(_('  Relative Path:  %(path)s') % data)
-            self.context.prompt.write(_('  Size:           %(size)s') % data)
             self.context.prompt.write(_('  Checksum Type:  %(type)s') % data)
 
             checksum = self.context.prompt.wrap(_('  Checksum:       %(checksum)s') % data,
