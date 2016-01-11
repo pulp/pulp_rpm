@@ -58,8 +58,7 @@ class ISODistributor(FileDistributor):
         :return: report describing the publish operation
         :rtype: pulp.plugins.model.PublishReport
         """
-        repo = transfer_repo.repo_obj
-        return super(ISODistributor, self).publish_repo(repo, publish_conduit, config)
+        return super(ISODistributor, self).publish_repo(transfer_repo, publish_conduit, config)
 
     def unpublish_repo(self, transfer_repo, config):
         """
@@ -73,16 +72,15 @@ class ISODistributor(FileDistributor):
         :param config: plugin configuration
         :type  config: pulp.plugins.config.PluginCallConfiguration
         """
-        repo = transfer_repo.repo_obj
-        super(ISODistributor, self).unpublish_repo(repo, config)
-        publish.remove_repository_protection(repo)
+        super(ISODistributor, self).unpublish_repo(transfer_repo, config)
+        publish.remove_repository_protection(transfer_repo.repo_obj)
 
     def get_hosting_locations(self, repo, config):
         """
         Get the paths on the filesystem where the build directory should be copied
 
         :param repo: The repository that is going to be hosted
-        :type repo: pulp.server.db.model.Repository
+        :type  repo: pulp.plugins.model.Repository
 
         :param config:    plugin configuration
         :type  config:    pulp.plugins.config.PluginConfiguration
@@ -93,7 +91,7 @@ class ISODistributor(FileDistributor):
 
         hosting_locations = []
         # Publish the HTTP portion, if applicable
-        http_dest_dir = os.path.join(constants.ISO_HTTP_DIR, repo.repo_id)
+        http_dest_dir = os.path.join(constants.ISO_HTTP_DIR, repo.id)
 
         serve_http = config.get_boolean(constants.CONFIG_SERVE_HTTP)
         serve_http = serve_http if serve_http is not None else constants.CONFIG_SERVE_HTTP_DEFAULT
@@ -102,7 +100,7 @@ class ISODistributor(FileDistributor):
 
         # Publish the HTTPs portion, if applicable
         if self._is_https_supported(config):
-            https_dest_dir = os.path.join(constants.ISO_HTTPS_DIR, repo.repo_id)
+            https_dest_dir = os.path.join(constants.ISO_HTTPS_DIR, repo.id)
             hosting_locations.append(https_dest_dir)
 
         return hosting_locations
@@ -113,7 +111,7 @@ class ISODistributor(FileDistributor):
         been moved into place on the filesystem
 
         :param repo: The repository that is going to be hosted
-        :type repo: pulp.server.db.model.Repository
+        :type  repo: pulp.plugins.model.Repository
 
         :param config: the configuration for the repository
         :type  config: pulp.plugins.config.PluginCallConfiguration
