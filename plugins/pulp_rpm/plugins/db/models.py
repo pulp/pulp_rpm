@@ -356,10 +356,6 @@ class RpmBase(NonMetadataPackage):
     time = mongoengine.IntField()
     requires = mongoengine.ListField()
 
-    # For backward compatibility
-    _ns = mongoengine.StringField(default='units_rpm')
-    _content_type_id = mongoengine.StringField(required=True, default='rpm')
-
     unit_key_fields = ('name', 'epoch', 'version', 'release', 'arch', 'checksumtype', 'checksum')
 
     meta = {'indexes': [
