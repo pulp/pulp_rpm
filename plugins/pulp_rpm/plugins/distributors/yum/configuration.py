@@ -9,7 +9,7 @@ from pulp.server.exceptions import MissingResource
 
 from pulp_rpm.common.constants import SCRATCHPAD_DEFAULT_METADATA_CHECKSUM, \
     CONFIG_DEFAULT_CHECKSUM, CONFIG_KEY_CHECKSUM_TYPE, REPO_AUTH_CONFIG_FILE, \
-    PUBLISH_HTTP_KEYWORD, PUBLISH_HTTPS_KEYWORD
+    PUBLISH_HTTP_KEYWORD, PUBLISH_HTTPS_KEYWORD, RELATIVE_URL_KEYWORD
 from pulp_rpm.common.ids import TYPE_ID_DISTRIBUTOR_YUM
 from pulp.repoauth import protected_repo_utils, repo_cert_utils
 from pulp_rpm.yum_plugin import util
@@ -222,10 +222,15 @@ def get_export_repo_publish_dirs(repo, config):
     :rtype:  list of str
     """
     publish_dirs = []
+    if config.get(RELATIVE_URL_KEYWORD):
+        repo_path_base = config.get(RELATIVE_URL_KEYWORD)
+    else:
+        repo_path_base = repo.repo_id
+
     if config.get(PUBLISH_HTTP_KEYWORD):
-        publish_dirs.append(os.path.join(HTTP_EXPORT_DIR, repo.repo_id))
+        publish_dirs.append(os.path.join(HTTP_EXPORT_DIR, repo_path_base))
     if config.get(PUBLISH_HTTPS_KEYWORD):
-        publish_dirs.append(os.path.join(HTTPS_EXPORT_DIR, repo.repo_id))
+        publish_dirs.append(os.path.join(HTTPS_EXPORT_DIR, repo_path_base))
 
     return publish_dirs
 
@@ -242,10 +247,15 @@ def get_export_repo_group_publish_dirs(repo, config):
     :rtype:  list of str
     """
     publish_dirs = []
+    if config.get(RELATIVE_URL_KEYWORD):
+        repo_path_base = config.get(RELATIVE_URL_KEYWORD)
+    else:
+        repo_path_base = repo.id
+
     if config.get(PUBLISH_HTTP_KEYWORD):
-        publish_dirs.append(os.path.join(HTTP_EXPORT_GROUP_DIR, repo.id))
+        publish_dirs.append(os.path.join(HTTP_EXPORT_GROUP_DIR, repo_path_base))
     if config.get(PUBLISH_HTTPS_KEYWORD):
-        publish_dirs.append(os.path.join(HTTPS_EXPORT_GROUP_DIR, repo.id))
+        publish_dirs.append(os.path.join(HTTPS_EXPORT_GROUP_DIR, repo_path_base))
 
     return publish_dirs
 

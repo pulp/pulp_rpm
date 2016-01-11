@@ -68,6 +68,7 @@ class TestValidateExportConfig(unittest.TestCase):
         self.repo_config[constants.EXPORT_DIRECTORY_KEYWORD] = '/path/to/dir'
         self.repo_config[constants.START_DATE_KEYWORD] = '2013-07-18T11:22:00'
         self.repo_config[constants.END_DATE_KEYWORD] = '2013-07-18T11:23:00'
+        self.repo_config[constants.RELATIVE_URL_KEYWORD] = 'relative/url'
         self.repo_config[constants.CREATE_PULP_MANIFEST] = True
 
         result, msg = export_utils.validate_export_config(
@@ -111,6 +112,11 @@ class TestValidateExportConfig(unittest.TestCase):
         self.repo_config[constants.END_DATE_KEYWORD] = 'malformed date'
 
         # Test
+        result = export_utils.validate_export_config(PluginCallConfiguration({}, self.repo_config))
+        self.assertFalse(result[0])
+
+    def test_bad_relative_url(self):
+        self.repo_config[constants.RELATIVE_URL_KEYWORD] = '/absolute/path'
         result = export_utils.validate_export_config(PluginCallConfiguration({}, self.repo_config))
         self.assertFalse(result[0])
 
@@ -183,6 +189,11 @@ class TestValidateExportConfig(unittest.TestCase):
         self.repo_config[constants.PUBLISH_HTTPS_KEYWORD] = None
 
         # Test
+        result = export_utils.validate_export_config(PluginCallConfiguration({}, self.repo_config))
+        self.assertFalse(result[0])
+
+    def test_none_relative_url(self):
+        self.repo_config[constants.RELATIVE_URL_KEYWORD] = None
         result = export_utils.validate_export_config(PluginCallConfiguration({}, self.repo_config))
         self.assertFalse(result[0])
 

@@ -110,6 +110,10 @@ def validate_export_config(config):
             if not os.path.isabs(value):
                 msg = _("Value for 'export_dir' must be an absolute path: %s" % value)
                 return False, msg
+        if key == constants.RELATIVE_URL_KEYWORD:
+            if os.path.isabs(value):
+                msg = _("Value for '%s' must be be a relative path: %s" % (key, value))
+                return False, msg
         if key == constants.CREATE_PULP_MANIFEST:
             if not isinstance(value, bool):
                 return False, _('Value for "manifest" must be a boolean.')
