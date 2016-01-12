@@ -35,15 +35,11 @@ DESC_ISO_SIZE = _('the maximum size, in MiB (1024 kiB), of each exported ISO; if
 DESC_BACKGROUND = _('if specified, the CLI process will end but the process will continue on '
                     'the server; the progress can be later displayed using the status command')
 # These two flags exist because there is currently no place to configure group publishes
-DESC_SERVE_HTTP = _('if this flag is used, the ISO images will be served over HTTP; if '
+DESC_SERVE_HTTP = _('the ISO images will be served over HTTP; default to False; if '
                     'this export is to a directory, this has no effect.')
-DESC_SERVE_HTTPS = _('if this flag is used, the ISO images will be served over HTTPS; if '
+DESC_SERVE_HTTPS = _('the ISO images will be served over HTTPS; defaults to True; if '
                      'this export is to a directory, this has no effect.')
 DESC_MANIFEST = _('if this flag is used, a PULP_MANIFEST file will be created')
-
-# Flag names, which are also the kwarg keywords
-SERVE_HTTP = 'serve-http'
-SERVE_HTTPS = 'serve-https'
 
 # The iso prefix is restricted to the same character set as an id, so we use the id_validator
 OPTION_ISO_PREFIX = PulpCliOption('--iso-prefix', DESC_ISO_PREFIX, required=False,
@@ -56,7 +52,10 @@ OPTION_EXPORT_DIR = PulpCliOption('--export-dir', DESC_EXPORT_DIR, required=Fals
 OPTION_RELATIVE_URL = PulpCliOption('--relative-url', DESC_RELATIVE_URL, required=False)
 OPTION_ISO_SIZE = PulpCliOption('--iso-size', DESC_ISO_SIZE, required=False,
                                 parse_func=parsers.parse_optional_positive_int)
-
+OPTION_SERVE_HTTPS = PulpCliOption('--serve-https', DESC_SERVE_HTTPS, required=False,
+                                   default='true', parse_func=parsers.parse_boolean)
+OPTION_SERVE_HTTP = PulpCliOption('--serve-http', DESC_SERVE_HTTP, required=False, default='false',
+                                  parse_func=parsers.parse_boolean)
 FLAG_MANIFEST = PulpCliFlag('--' + constants.CREATE_PULP_MANIFEST, DESC_MANIFEST, ['-m'])
 
 
@@ -115,10 +114,10 @@ class RpmGroupExportCommand(PollingCommand):
         self.add_option(OPTION_END_DATE)
         self.add_option(OPTION_EXPORT_DIR)
         self.add_option(OPTION_RELATIVE_URL)
-        self.add_flag(FLAG_MANIFEST)
+        self.add_option(OPTION_SERVE_HTTPS)
+        self.add_option(OPTION_SERVE_HTTP)
 
-        self.create_flag('--' + SERVE_HTTP, DESC_SERVE_HTTP)
-        self.create_flag('--' + SERVE_HTTPS, DESC_SERVE_HTTPS)
+        self.add_flag(FLAG_MANIFEST)
 
     def run(self, **kwargs):
         """
@@ -134,8 +133,8 @@ class RpmGroupExportCommand(PollingCommand):
         export_dir = kwargs[OPTION_EXPORT_DIR.keyword]
         relative_url = kwargs[OPTION_RELATIVE_URL.keyword]
         manifest = kwargs[FLAG_MANIFEST.keyword]
-        serve_http = kwargs[SERVE_HTTP]
-        serve_https = kwargs[SERVE_HTTPS]
+        serve_http = kwargs[OPTION_SERVE_HTTP.keyword]
+        serve_https = kwargs[OPTION_SERVE_HTTPS.keyword]
 
         # Since the export distributor is not added to a repository group on creation, add it here
         # if it is not already associated with the group id

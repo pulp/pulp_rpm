@@ -67,16 +67,15 @@ class TestRepoGroupExportRunCommand(PulpClientTests):
             export.OPTION_END_DATE.keyword: None,
             export.OPTION_EXPORT_DIR.keyword: None,
             export.OPTION_RELATIVE_URL.keyword: None,
-            export.SERVE_HTTP: True,
-            export.SERVE_HTTPS: True
+            export.OPTION_SERVE_HTTP.keyword: True,
+            export.OPTION_SERVE_HTTPS.keyword: True
         }
 
     def tearDown(self):
         self.patcher.stop()
 
-    @mock.patch('pulp.client.extensions.extensions.PulpCliCommand.create_flag', autospec=True)
     @mock.patch('okaara.cli.Command.add_option', autospec=True)
-    def test_rpm_group_export_setup(self, mock_add_option, mock_create_flag):
+    def test_rpm_group_export_setup(self, mock_add_option):
         """
         Test to make sure the export run command is set up correctly
         """
@@ -91,18 +90,13 @@ class TestRepoGroupExportRunCommand(PulpClientTests):
             export.OPTION_START_DATE,
             export.OPTION_ISO_PREFIX,
             export.OPTION_ISO_SIZE,
+            export.OPTION_SERVE_HTTPS,
+            export.OPTION_SERVE_HTTP
         ]
 
         # Test
         export.RpmGroupExportCommand(self.context, mock_renderer,
                                      ids.TYPE_ID_DISTRIBUTOR_GROUP_EXPORT)
-
-        # Check that all the flags were added
-        self.assertEqual(2, mock_create_flag.call_count)
-        self.assertEqual('--' + export.SERVE_HTTP, mock_create_flag.call_args_list[0][0][1])
-        self.assertEqual(export.DESC_SERVE_HTTP, mock_create_flag.call_args_list[0][0][2])
-        self.assertEqual('--' + export.SERVE_HTTPS, mock_create_flag.call_args_list[1][0][1])
-        self.assertEqual(export.DESC_SERVE_HTTPS, mock_create_flag.call_args_list[1][0][2])
 
         # Check that all the options were added
         actual_options = []
