@@ -27,6 +27,9 @@ DESC_END_DATE = _('end date for an incremental export; only content associated w
 DESC_EXPORT_DIR = _('the full path to a directory; if specified, the repository will be exported '
                     'to the given directory instead of being placed in ISOs and published via '
                     'HTTP or HTTPS')
+DESC_RELATIVE_URL = _('relative path at which the repository will be served when exported. '
+                      'if specified with --export-dir, this will be the exported subdirectory name '
+                      'instead of the default, which is the repository id.')
 DESC_ISO_SIZE = _('the maximum size, in MiB (1024 kiB), of each exported ISO; if this is not '
                   'specified, single layer DVD-sized ISOs are created')
 DESC_BACKGROUND = _('if specified, the CLI process will end but the process will continue on '
@@ -50,6 +53,7 @@ OPTION_START_DATE = PulpCliOption('--start-date', DESC_START_DATE, required=Fals
 OPTION_END_DATE = PulpCliOption('--end-date', DESC_END_DATE, required=False,
                                 validate_func=validators.iso8601_datetime_validator)
 OPTION_EXPORT_DIR = PulpCliOption('--export-dir', DESC_EXPORT_DIR, required=False)
+OPTION_RELATIVE_URL = PulpCliOption('--relative-url', DESC_RELATIVE_URL, required=False)
 OPTION_ISO_SIZE = PulpCliOption('--iso-size', DESC_ISO_SIZE, required=False,
                                 parse_func=parsers.parse_optional_positive_int)
 
@@ -69,7 +73,8 @@ class RpmExportCommand(RunPublishRepositoryCommand):
         :type  context: pulp.client.extensions.core.ClientContext
         """
         override_config_options = [OPTION_EXPORT_DIR, OPTION_ISO_PREFIX, OPTION_ISO_SIZE,
-                                   OPTION_START_DATE, OPTION_END_DATE, FLAG_MANIFEST]
+                                   OPTION_START_DATE, OPTION_END_DATE, FLAG_MANIFEST,
+                                   OPTION_RELATIVE_URL]
 
         super(RpmExportCommand, self).__init__(context=context,
                                                renderer=renderer,
@@ -109,6 +114,7 @@ class RpmGroupExportCommand(PollingCommand):
         self.add_option(OPTION_START_DATE)
         self.add_option(OPTION_END_DATE)
         self.add_option(OPTION_EXPORT_DIR)
+        self.add_option(OPTION_RELATIVE_URL)
         self.add_flag(FLAG_MANIFEST)
 
         self.create_flag('--' + SERVE_HTTP, DESC_SERVE_HTTP)
@@ -126,6 +132,7 @@ class RpmGroupExportCommand(PollingCommand):
         start_date = kwargs[OPTION_START_DATE.keyword]
         end_date = kwargs[OPTION_END_DATE.keyword]
         export_dir = kwargs[OPTION_EXPORT_DIR.keyword]
+        relative_url = kwargs[OPTION_RELATIVE_URL.keyword]
         manifest = kwargs[FLAG_MANIFEST.keyword]
         serve_http = kwargs[SERVE_HTTP]
         serve_https = kwargs[SERVE_HTTPS]
@@ -161,6 +168,7 @@ class RpmGroupExportCommand(PollingCommand):
             constants.START_DATE_KEYWORD: start_date,
             constants.END_DATE_KEYWORD: end_date,
             constants.EXPORT_DIRECTORY_KEYWORD: export_dir,
+            constants.RELATIVE_URL_KEYWORD: relative_url,
             constants.CREATE_PULP_MANIFEST: manifest,
         }
 
