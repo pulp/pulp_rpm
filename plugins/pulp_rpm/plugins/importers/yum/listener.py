@@ -179,7 +179,7 @@ class RPMListener(PackageListener):
             # verification failed, unit not added
             return
         self.sync.add_rpm_unit(self.metadata_files, unit)
-        unit.import_content(report.destination)
+        unit.safe_import_content(report.destination)
 
 
 class DRPMListener(PackageListener):
@@ -195,4 +195,4 @@ class DRPMListener(PackageListener):
             # verification failed, unit not added
             return
         self.sync.add_drpm_unit(self.metadata_files, unit)
-        unit.import_content(report.destination)
+        unit.safe_import_content(report.destination)

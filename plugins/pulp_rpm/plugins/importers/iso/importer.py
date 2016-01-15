@@ -146,8 +146,7 @@ class ISOImporter(Importer):
         except ValueError, e:
             return {'success_flag': False, 'summary': e.message, 'details': None}
 
-        iso.save()
-        iso.import_content(file_path)
+        iso.save_and_import_content(file_path)
 
         repo_controller.associate_single_unit(transfer_repo.repo_obj, iso)
 

@@ -183,11 +183,11 @@ class DistSync(object):
 
         # The treeinfo file is always imported into platform
         # # storage regardless of the download policy
-        unit.import_content(treeinfo_path, os.path.basename(treeinfo_path))
+        unit.safe_import_content(treeinfo_path, os.path.basename(treeinfo_path))
 
         # The downloaded files are imported into platform storage.
         for destination, location in downloaded:
-            unit.import_content(destination, location)
+            unit.safe_import_content(destination, location)
 
         # Associate the unit.
         repo_controller.associate_single_unit(self.repo, unit)

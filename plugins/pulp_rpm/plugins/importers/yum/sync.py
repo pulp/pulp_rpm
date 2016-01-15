@@ -441,8 +441,7 @@ class RepoSync(object):
                         checksum_type=checksum_type)
 
                 model.set_storage_path(os.path.basename(file_path))
-                model.save()
-                model.import_content(file_path)
+                model.save_and_import_content(file_path)
 
                 # associate/re-associate model to the repo
                 repo_controller.associate_single_unit(self.repo, model)

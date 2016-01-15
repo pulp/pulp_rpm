@@ -214,8 +214,7 @@ def _handle_yum_metadata_file(repo, type_id, unit_key, metadata, file_path, cond
 
     model = models.YumMetadataFile(**unit_data)
     model.set_storage_path(os.path.basename(file_path))
-    model.save()
-    model.import_content(file_path)
+    model.save_and_import_content(file_path)
 
     repo_controller.associate_single_unit(conduit.repo, model)
 
@@ -275,7 +274,7 @@ def _handle_group_category_comps(repo, type_id, unit_key, metadata, file_path, c
 
         if file_path:
             unit.set_storage_path(os.path.basename(file_path))
-            unit.import_content(file_path)
+            unit.safe_import_content(file_path)
 
         repo_controller.associate_single_unit(repo, unit)
 
@@ -384,8 +383,7 @@ def _handle_package(repo, type_id, unit_key, metadata, file_path, conduit, confi
     purge.remove_unit_duplicate_nevra(unit, repo)
 
     unit.set_storage_path(os.path.basename(file_path))
-    unit.save()
-    unit.import_content(file_path)
+    unit.save_and_import_content(file_path)
 
     repo_controller.associate_single_unit(repo, unit)
 

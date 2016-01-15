@@ -163,8 +163,7 @@ class ISOSyncRun(listener.DownloadEventListener):
             try:
                 if self._validate_downloads:
                     iso.validate_iso(report.destination)
-                iso.save()
-                iso.import_content(report.destination)
+                iso.save_and_import_content(report.destination)
                 repo_controller.associate_single_unit(self.sync_conduit.repo, iso)
 
                 # We can drop this ISO from the url --> ISO map
