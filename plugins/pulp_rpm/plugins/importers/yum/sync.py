@@ -582,7 +582,7 @@ class RepoSync(object):
             entry.importer_id = str(self.conduit.importer_object_id)
             entry.unit_id = unit.id
             entry.unit_type_id = unit.type_id
-            entry.url = urljoin(base_url, unit.relativepath)
+            entry.url = urljoin(base_url, unit.download_path)
             entry.save_revision()
             yield unit
 
