@@ -236,10 +236,12 @@ class DistSync(object):
         if not isinstance(unit.files, list):
             _list = list(unit.files)
         for _file in files:
+            if _file[CHECKSUM_TYPE] is not None:
+                _file[CHECKSUM_TYPE] = verification.sanitize_checksum_type(_file[CHECKSUM_TYPE])
             _list.append({
                 RELATIVE_PATH: _file[RELATIVE_PATH],
                 CHECKSUM: _file[CHECKSUM],
-                CHECKSUM_TYPE: verification.sanitize_checksum_type(_file[CHECKSUM_TYPE])})
+                CHECKSUM_TYPE: _file[CHECKSUM_TYPE]})
         unit.files = _list
 
     def download_files(self, tmp_dir, files):
@@ -278,18 +280,22 @@ class DistSync(object):
         Once downloading is complete, add information about each file to this
         model instance. This is required before saving the new unit.
 
+        :param unit:    A distribution model object.
+        :type  unit:    pulp_rpm.plugins.db.models.Distribution
         :param reports: list of successful pulp.common.download.report.DownloadReport
-        :type reports: list
+        :type  reports: list
         """
         files = []
         if not isinstance(unit.files, list):
             files = list(unit.files)
         for report in reports:
             _file = report.data
+            if _file[CHECKSUM_TYPE] is not None:
+                _file[CHECKSUM_TYPE] = verification.sanitize_checksum_type(_file[CHECKSUM_TYPE])
             files.append({
                 RELATIVE_PATH: _file[RELATIVE_PATH],
                 CHECKSUM: _file[CHECKSUM],
-                CHECKSUM_TYPE: verification.sanitize_checksum_type(_file[CHECKSUM_TYPE])})
+                CHECKSUM_TYPE: _file[CHECKSUM_TYPE]})
         unit.files = files
 
     @staticmethod
