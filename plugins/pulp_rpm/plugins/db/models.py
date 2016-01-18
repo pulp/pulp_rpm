@@ -238,7 +238,6 @@ class Distribution(UnitMixin, FileContentUnit):
                                 self.arch))
             self.distribution_id = '-'.join(id_pieces)
 
-    @property
     def list_files(self):
         """
         List absolute paths to files associated with this unit.
