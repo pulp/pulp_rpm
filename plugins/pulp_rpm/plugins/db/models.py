@@ -448,7 +448,7 @@ class Errata(UnitMixin, ContentUnit):
     unit_key_fields = ('errata_id',)
 
     meta = {'indexes': [
-        "errata_id", "version", "release", "type", "status", "updated",
+        "version", "release", "type", "status", "updated",
         "issued", "severity", "references",
         {
             'fields': unit_key_fields,
