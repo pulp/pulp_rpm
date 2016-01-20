@@ -193,6 +193,14 @@ class YumDistributorConfigurationTests(unittest.TestCase):
 
         self.assertEqual(len(error_messages), 1)
 
+    def test_relative_url_not_relative(self):
+        error_messages = []
+        url = '/foo/bar/baz/6.4/x86_64/os'
+
+        configuration._validate_relative_url(url, error_messages)
+
+        self.assertEqual(len(error_messages), 1)
+
     # -- optional option validation --------------------------------------------
 
     @mock.patch('pulp_rpm.plugins.distributors.yum.configuration._validate_certificate')

@@ -142,6 +142,7 @@ class RpmRepoCreateCommandTests(PulpClientTests):
         iso_config = iso_distributor['distributor_config']
         self.assertEqual(iso_config['http'], True)
         self.assertEqual(iso_config['https'], True)
+        self.assertEqual(iso_config['relative_url'], '/repo')
         self.assertEqual(iso_config['skip'], [ids.TYPE_ID_RPM])
 
         self.assertEqual([TAG_SUCCESS], self.prompt.get_write_tags())
@@ -177,7 +178,7 @@ class RpmRepoCreateCommandTests(PulpClientTests):
 
         # Verify
         self.assertTrue('relative_url' in distributor_config)
-        self.assertEqual(distributor_config['relative_url'], '/foo/bar/baz')
+        self.assertEqual(distributor_config['relative_url'], 'foo/bar/baz')
 
     def test_process_relative_url_no_feed(self):
         # Setup

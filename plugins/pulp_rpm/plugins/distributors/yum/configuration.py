@@ -392,6 +392,9 @@ def _validate_relative_url(relative_url, error_messages):
         msg = _('Configuration value for [relative_url] must be a string, but is a %(t)s')
         error_messages.append(msg % {'t': str(type(relative_url))})
 
+    elif os.path.isabs(relative_url):
+        msg = _("Value for [relative_url]  must be be a relative path: %s" % relative_url)
+        error_messages.append(msg % {'r': relative_url})
 
 # -- optional config validation ------------------------------------------------
 
