@@ -98,7 +98,7 @@ class TestGroupISODistributor(unittest.TestCase):
         repo_working_dir = os.path.join(self.working_dir, 'repodir')
         self.repo.working_dir = repo_working_dir
 
-        mock_configuration.get_master_publish_dir.return_value = master_dir
+        mock_configuration.get_master_publish_dir_from_group.return_value = master_dir
         mock_configuration.HTTP_EXPORT_GROUP_DIR = http_dir
         mock_configuration.HTTPS_EXPORT_GROUP_DIR = https_dir
         http_dir = os.path.join(http_dir, self.repo.id)

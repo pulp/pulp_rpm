@@ -133,8 +133,8 @@ class GroupISODistributor(GroupDistributor):
         :type  config: pulp.plugins.config.PluginCallConfiguration
         """
         # remove the directories that might have been created for this repo/distributor
-        dir_list = [configuration.get_master_publish_dir(repo,
-                                                         ids.TYPE_ID_DISTRIBUTOR_GROUP_EXPORT),
+        dir_list = [configuration.get_master_publish_dir_from_group(repo,
+                    ids.TYPE_ID_DISTRIBUTOR_GROUP_EXPORT),
                     os.path.join(configuration.HTTP_EXPORT_GROUP_DIR, repo.id),
                     os.path.join(configuration.HTTPS_EXPORT_GROUP_DIR, repo.id)]
 
