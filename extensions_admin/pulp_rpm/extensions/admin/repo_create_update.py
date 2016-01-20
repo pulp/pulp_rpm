@@ -37,6 +37,7 @@ YUM_DISTRIBUTOR_CONFIG_KEYS = [
 EXPORT_DISTRIBUTOR_CONFIG_KEYS = [
     ('http', 'serve_http'),
     ('https', 'serve_https'),
+    ('relative_url', 'relative_url'),
     ('generate_sqlite', 'generate_sqlite'),
     ('skip', 'skip'),
 ]
@@ -114,6 +115,7 @@ class RpmRepoCreateCommand(CreateRepositoryCommand, ImporterConfigMixin):
 
         # Special (temporary until we fix the distributor) distributor config handling
         self.process_relative_url(repo_id, importer_config, yum_distributor_config)
+        self.process_relative_url(repo_id, importer_config, export_distributor_config)
         self.process_yum_distributor_serve_protocol(yum_distributor_config)
         self.process_export_distributor_serve_protocol(export_distributor_config)
 
@@ -145,7 +147,7 @@ class RpmRepoCreateCommand(CreateRepositoryCommand, ImporterConfigMixin):
 
     # -- distributor config odditity handling ---------------------------------
 
-    def process_relative_url(self, repo_id, importer_config, yum_distributor_config):
+    def process_relative_url(self, repo_id, importer_config, distributor_config):
         """
         During create (but not update), if the relative path isn't specified it is derived
         from the feed_url.
@@ -153,7 +155,7 @@ class RpmRepoCreateCommand(CreateRepositoryCommand, ImporterConfigMixin):
         Ultimately, this belongs in the distributor itself. When we rewrite the yum distributor,
         we'll remove this entirely from the client. jdob, May 10, 2013
         """
-        if 'relative_url' not in yum_distributor_config:
+        if 'relative_url' not in distributor_config:
             if importer_constants.KEY_FEED in importer_config:
                 if importer_config[importer_constants.KEY_FEED] is None:
                     self.prompt.render_failure_message(_('Given repository feed URL is invalid.'))
@@ -163,10 +165,11 @@ class RpmRepoCreateCommand(CreateRepositoryCommand, ImporterConfigMixin):
                 if url_parse[2] in ('', '/'):
                     relative_path = '/' + repo_id
                 else:
-                    relative_path = url_parse[2]
-                yum_distributor_config['relative_url'] = relative_path
+                    # make the path relative
+                    relative_path = url_parse[2][1:]
+                distributor_config['relative_url'] = relative_path
             else:
-                yum_distributor_config['relative_url'] = repo_id
+                distributor_config['relative_url'] = repo_id
 
     def process_yum_distributor_serve_protocol(self, yum_distributor_config):
         """
