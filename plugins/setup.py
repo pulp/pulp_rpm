@@ -4,7 +4,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='pulp_rpm_plugins',
-    version='2.8.0b3',
+    version='2.8.0b4',
     license='GPLv2+',
     packages=find_packages(),
     author='Pulp Team',
