@@ -131,6 +131,8 @@ class ExportRepoPublisher(BaseYumRepoPublisher):
             content_dir = os.path.join(working_directory, 'scratch')
             for step in self.children:
                 step.working_dir = content_dir
+            if not os.path.exists(content_dir):
+                os.makedirs(content_dir)
 
             # Set up step to copy all the files to a realized directory with no symlinks
             # This could be optimized with a pathspec so that we don't create all the files
