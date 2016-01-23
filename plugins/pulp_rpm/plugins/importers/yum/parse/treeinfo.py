@@ -200,7 +200,7 @@ class DistSync(object):
             _logger.info(msg.format(k=existing_unit.unit_key, r=self.repo.repo_id))
             qs = RepositoryContentUnit.objects.filter(
                 repo_id=self.repo.repo_id,
-                unit_id=existing_unit.id)
+                unit_id=existing_unit.unit_id)
             qs.delete()
 
     def update_catalog_entries(self, unit, files):
@@ -217,7 +217,7 @@ class DistSync(object):
             entry = LazyCatalogEntry()
             entry.path = os.path.join(root, _file[RELATIVE_PATH])
             entry.url = urljoin(self.feed, _file[RELATIVE_PATH])
-            entry.unit_id = unit.id
+            entry.unit_id = unit.unit_id
             entry.unit_type_id = unit.type_id
             entry.importer_id = str(self.parent.conduit.importer_object_id)
             entry.save_revision()
