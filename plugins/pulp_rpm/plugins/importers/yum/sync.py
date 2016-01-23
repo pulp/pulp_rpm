@@ -579,7 +579,7 @@ class RepoSync(object):
             entry = LazyCatalogEntry()
             entry.path = unit.storage_path
             entry.importer_id = str(self.conduit.importer_object_id)
-            entry.unit_id = unit.id
+            entry.unit_id = unit.unit_id
             entry.unit_type_id = unit.type_id
             entry.url = urljoin(base_url, unit.download_path)
             entry.save_revision()
