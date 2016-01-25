@@ -26,26 +26,26 @@ def migrate(*args, **kwargs):
     db = connection.get_database()
 
     collection = db['units_distribution']
-    collection.update({}, {"$rename": {"id": "distribution_id"}})
     _drop_and_silence_exception(collection, 'id_1')
     _drop_and_silence_exception(collection, 'id_1_family_1_variant_1_version_1_arch_1')
+    collection.update({}, {"$rename": {"id": "distribution_id"}}, multi=True)
 
     collection = db['units_erratum']
-    collection.update({}, {"$rename": {"id": "errata_id"}})
-    collection.update({}, {"$rename": {"from": "errata_from"}})
     _drop_and_silence_exception(collection, 'id_1')
+    collection.update({}, {"$rename": {"id": "errata_id"}}, multi=True)
+    collection.update({}, {"$rename": {"from": "errata_from"}}, multi=True)
 
     collection = db['units_package_group']
-    collection.update({}, {"$rename": {"id": "package_group_id"}})
     _drop_and_silence_exception(collection, 'id_1')
     _drop_and_silence_exception(collection, 'id_1_repo_id_1')
+    collection.update({}, {"$rename": {"id": "package_group_id"}}, multi=True)
 
     collection = db['units_package_category']
-    collection.update({}, {"$rename": {"id": "package_category_id"}})
     _drop_and_silence_exception(collection, 'id_1')
     _drop_and_silence_exception(collection, 'id_1_repo_id_1')
+    collection.update({}, {"$rename": {"id": "package_category_id"}}, multi=True)
 
     collection = db['units_package_environment']
-    collection.update({}, {"$rename": {"id": "package_environment_id"}})
     _drop_and_silence_exception(collection, 'id_1')
     _drop_and_silence_exception(collection, 'id_1_repo_id_1')
+    collection.update({}, {"$rename": {"id": "package_environment_id"}}, multi=True)
