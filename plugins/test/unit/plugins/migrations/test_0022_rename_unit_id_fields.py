@@ -35,19 +35,19 @@ class TestMigrate(unittest.TestCase):
         mock_connection.get_database.assert_called_once_with()
 
         mock_units_distribution.update.assert_called_once_with(
-            {}, {'$rename': {'id': 'distribution_id'}})
+            {}, {'$rename': {'id': 'distribution_id'}}, multi=True)
         mock_units_erratum.update.assert_has_calls([
-            mock.call({}, {'$rename': {'id': 'errata_id'}}),
-            mock.call({}, {'$rename': {'from': 'errata_from'}})
+            mock.call({}, {'$rename': {'id': 'errata_id'}}, multi=True),
+            mock.call({}, {'$rename': {'from': 'errata_from'}}, multi=True)
         ])
         mock_units_package_category.update.assert_called_once_with(
-            {}, {'$rename': {'id': 'package_category_id'}}
+            {}, {'$rename': {'id': 'package_category_id'}}, multi=True
         )
         mock_units_package_environment.update.assert_called_once_with(
-            {}, {'$rename': {'id': 'package_environment_id'}}
+            {}, {'$rename': {'id': 'package_environment_id'}}, multi=True
         )
         mock_units_package_group.update.assert_called_once_with(
-            {}, {'$rename': {'id': 'package_group_id'}}
+            {}, {'$rename': {'id': 'package_group_id'}}, multi=True
         )
 
         expected_calls = [
