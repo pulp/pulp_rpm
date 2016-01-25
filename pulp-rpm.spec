@@ -117,8 +117,6 @@ cp -R handlers/usr/lib/yum-plugins %{buildroot}/%{_usr}/lib
 # Ghost repository file for consumers
 touch %{buildroot}/%{_sysconfdir}/yum.repos.d/pulp.repo
 
-# Remove tests
-rm -rf %{buildroot}/%{python_sitelib}/test
 
 %clean
 rm -rf %{buildroot}
