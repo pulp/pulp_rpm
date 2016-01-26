@@ -61,9 +61,9 @@ def remove_old_versions(num_to_keep, conduit):
                         and remove_unit methods.
     :type  conduit:     pulp.plugins.conduits.repo_sync.RepoSyncConduit
     """
-    for model in (models.RPM, models.SRPM, models.DRPM):
+    for unit_type in (models.RPM, models.SRPM, models.DRPM):
         units = {}
-        for unit in get_existing_units(model, conduit.get_units):
+        for unit in get_existing_units(unit_type, conduit.get_units):
             model_instance = model(metadata=unit.metadata, **unit.unit_key)
             key = model_instance.key_string_without_version
             serialized_version = model_instance.complete_version_serialized
@@ -256,8 +256,8 @@ def get_remote_units(file_function, tag, process_func):
                                                                  tag,
                                                                  process_func)
 
-        for model in package_info_generator:
-            named_tuple = model.as_named_tuple
+        for unit in package_info_generator:
+            named_tuple = unit.as_named_tuple
             remote_named_tuples.add(named_tuple)
 
     finally:
