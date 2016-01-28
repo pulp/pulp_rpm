@@ -13,7 +13,7 @@ from pulp.plugins.util import publish_step as platform_steps
 from pulp.server.db import model
 from pulp.server.exceptions import InvalidValue, PulpCodedException
 
-from pulp_rpm.common import constants
+from pulp_rpm.common import constants, ids
 from pulp_rpm.yum_plugin import util
 from pulp_rpm.plugins.db import models
 from pulp_rpm.plugins.distributors.export_distributor import export_utils
@@ -195,6 +195,23 @@ class ExportRepoGroupPublisher(platform_steps.PluginStep):
                 continue
 
             repo_config_copy = copy.deepcopy(repo_config)
+
+            # Need some code to pull the distributor
+            distributor = model.Distributor.objects(repo_id=repo_obj['repo_id'],
+                                                    distributor_id=ids.EXPORT_DISTRIBUTOR_ID,
+                                                    config__relative_url__exists=True).first()
+
+            if distributor is not None:
+                relative_url = distributor['config']['relative_url']
+            else:
+                relative_url = repo_obj['repo_id']
+
+            if not export_dir:
+                repo_config_copy.override_config['relative_url'] = relative_url
+            else:
+                merged_rel = repo_config_copy.get('relative_url', '') + '/' + relative_url
+                repo_config_copy.override_config['relative_url'] = merged_rel
+
             repo_working_dir = os.path.join(scratch_dir, repo.id)
             repo_conduit = RepoPublishConduit(repo.id, distributor_type)
             publisher = ExportRepoPublisher(repo, repo_conduit, repo_config_copy,
