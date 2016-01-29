@@ -42,6 +42,7 @@ class RpmStatusRenderer(StatusRenderer):
         # UI Widgets
         self.metadata_spinner = self.prompt.create_spinner()
         self.download_bar = self.prompt.create_progress_bar()
+        self.download_spinner = self.prompt.create_spinner()
         self.distribution_sync_bar = self.prompt.create_progress_bar()
         self.errata_spinner = self.prompt.create_spinner()
         self.comps_spinner = self.prompt.create_spinner()
@@ -207,15 +208,18 @@ class RpmStatusRenderer(StatusRenderer):
             overall_done = data['size_total'] - data['size_left']
             overall_total = data['size_total']
 
-            # If all of the packages are already downloaded and up to date,
-            # the total bytes to process will be 0. This means the download
-            # step is basically finished, so fill the progress bar.
-            if overall_total == 0:
-                overall_total = overall_done = 1
-
-            self.download_bar.render(overall_done, overall_total, message=bar_message)
+            try:
+                self.download_bar.render(overall_done, overall_total, message=bar_message)
+            except ZeroDivisionError:
+                # overall_total is 0 -- render a spinner until we know enough to make a bar
+                self.download_spinner.next()
 
             if state == constants.STATE_COMPLETE:
+                # If all of the packages are already downloaded and up to date, the overall total
+                # will be 0. In that event, fill the download bar since the state is complete.
+                if overall_total == 0:
+                    overall_total = overall_done = 1
+                    self.download_bar.render(overall_done, overall_total, message=bar_message)
                 self.prompt.write(_('... completed'))
                 self.prompt.render_spacer()
 
