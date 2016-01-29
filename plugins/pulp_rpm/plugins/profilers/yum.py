@@ -102,7 +102,43 @@ class YumProfiler(Profiler):
                     unit, conduit.get_bindings(consumer.id), consumer, conduit)
                 if values:
                     translated_units.extend(values)
+        translated_units = YumProfiler._remove_superseded_units(translated_units)
         return translated_units
+
+    @staticmethod
+    def _remove_superseded_units(translated_units):
+        """
+        After generating a list of units to install, remove packages from the set that superseded
+        by newer units (same name/arch, higher epoch/version/release)
+
+        :param translated_units: a list of dictionaries containing info on the 'translated units'.
+                                 each dictionary contains 'type_id' and 'unit_key' keys.
+                                 All type_ids should be RPM, other types will be ignored.
+        :type translated_units: list
+
+        :return: a version of the translated_units list where superseded packages
+                 (packages with newer versions present in the list of units) are removed
+        :rtype: list
+        """
+        # for units that have filterable unit keys (all nevra fields in unit_key), use
+        # _from_lookup_table to filter superseded units out of the filterable units
+        # based on the install_units docs, all units should be filterable, but working
+        # under that guideline breaks tests for this module, so unfilterable units are
+        # ignored and returned
+        filterable_units = []
+        unfilterable_units = []
+        for unit in translated_units:
+            if 'unit_key' in unit and all(field in unit['unit_key'] for field in NVREA_KEYS):
+                filterable_units.append(unit)
+            else:
+                unfilterable_units.append(unit)
+
+        lookup_keys = [u['unit_key'] for u in filterable_units]
+        filter_keys = YumProfiler._form_lookup_table(lookup_keys).values()
+        filtered_units = filter(lambda u: u['unit_key'] in filter_keys, filterable_units)
+
+        # remember to give back the unfilterable units in addition to the filtered ones
+        return filtered_units + unfilterable_units
 
     @staticmethod
     def update_profile(consumer, content_type, profile, config):
@@ -254,7 +290,8 @@ class YumProfiler(Profiler):
         """
         rpms = []
         if "pkglist" not in errata.metadata:
-            _logger.warning("metadata for errata <%s> lacks a 'pkglist'" % (errata.unit_key['id']))
+            _logger.warning("metadata for errata <%s> lacks a 'pkglist'" % (
+                            errata.unit_key.get('errata_id')))
             return rpms
         for pkgs in errata.metadata['pkglist']:
             for rpm in pkgs["packages"]:
