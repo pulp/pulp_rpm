@@ -135,8 +135,8 @@ class TestRepoURLModify(unittest.TestCase):
 
     def test_add_trailing_slash(self):
         # test that a trailing slash is added to the path
-        url_modify = utils.RepoURLModifier(ensure_trailing_slash=True)
-        modified_url = url_modify(self.test_url)
+        url_modify = utils.RepoURLModifier()
+        modified_url = url_modify(self.test_url, ensure_trailing_slash=True)
         modified_url_path = urlparse(modified_url).path
         self.assertEqual(modified_url_path, '/path/')
 
@@ -147,8 +147,8 @@ class TestRepoURLModify(unittest.TestCase):
 
     def test_path_append(self):
         # test that a path fragment is appended correctly
-        url_modify = utils.RepoURLModifier(path_append='appended')
-        modified_url = url_modify(self.test_url)
+        url_modify = utils.RepoURLModifier()
+        modified_url = url_modify(self.test_url, path_append='appended')
         modified_url_path = urlparse(modified_url).path
         self.assertEqual(modified_url_path, '/path/appended')
 
@@ -159,24 +159,12 @@ class TestRepoURLModify(unittest.TestCase):
         self.assertTrue(modified_url.endswith('?gabbagabbahey#fragment'))
 
     def test_kwargs_update(self):
-        # test that passed-in kwargs are applied and take precedence over the initial config
-        url_modify = utils.RepoURLModifier(path_append='appended')
-        modified_url = url_modify(self.test_url, path_append='updated', ensure_trailing_slash=True)
-        modified_url_path = urlparse(modified_url).path
-        self.assertEqual(modified_url_path, '/path/updated/')
-
-        # make sure the kwargs didn't overwrite the modifier config
-        self.assertEqual(url_modify.conf['path_append'], 'appended')
-        self.assertTrue(url_modify.conf['ensure_trailing_slash'] is None)
-
-    def test_bad_kwargs(self):
-        # can't instantiate with bad kwargs
-        self.assertRaises(TypeError, utils.RepoURLModifier, bad_kwarg="I'm not supported.")
-
-        # can't call with bad kwargs
-        url_modify = utils.RepoURLModifier()
-        self.assertRaises(LookupError, url_modify, 'url_goes_here',
-                          bad_kwarg="I'm not supported either.")
+        # test that passed-in kwargs are applied and take precedence over the stateful config
+        url_modify = utils.RepoURLModifier(query_auth_token='foo')
+        modified_url = url_modify(self.test_url, query_auth_token='bar')
+        modified_url_query = urlparse(modified_url).query
+        self.assertEqual(modified_url_query, 'bar')
+        self.assertEqual(url_modify._query_auth_token, 'foo')
 
 
 PRIMARY_XML = """<?xml version="1.0" encoding="UTF-8"?>
