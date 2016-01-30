@@ -403,7 +403,7 @@ class YumProfiler(Profiler):
         # Get rpm dicts from errata
         errata_rpms = YumProfiler._get_rpms_from_errata(errata)
         _logger.info(
-            "Errata <%s> refers to %s updated rpms of: %s" % (errata.unit_key['id'],
+            "Errata <%s> refers to %s updated rpms of: %s" % (errata.unit_key.get('errata_id'),
                                                               len(errata_rpms), errata_rpms))
 
         # filter out RPMs we don't have access to (https://pulp.plan.io/issues/770).
@@ -431,7 +431,7 @@ class YumProfiler(Profiler):
         _logger.info("Translated errata <%s> to <%s>" % (errata, ret_val))
         # Add applicable errata details to the applicability report
         errata_details = errata.metadata
-        errata_details['id'] = errata.unit_key['id']
+        errata_details['id'] = errata.unit_key.get('errata_id')
         upgrade_details['errata_details'] = errata_details
         return ret_val, upgrade_details
 
