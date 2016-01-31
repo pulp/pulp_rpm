@@ -22,7 +22,10 @@ def get_profiler_conduit(type_id=None, existing_units=None, repo_bindings=[], re
             for u in existing_units:
                 if criteria:
                     if u.type_id in criteria.type_ids:
-                        ret_val.append(u)
+                        if u.unit_key == criteria.unit_filters:
+                            ret_val.insert(0, u)
+                        else:
+                            ret_val.append(u)
                 else:
                     ret_val.append(u)
         return ret_val

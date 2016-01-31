@@ -323,7 +323,7 @@ class TestYumProfilerErrata(rpm_support_base.PulpRPMTests):
         """
         repo_id = "test_repo_id"
         errata_obj = self.get_test_errata_object()
-        errata_unit = Unit(TYPE_ID_ERRATA, {"id": errata_obj["id"]}, errata_obj, None)
+        errata_unit = Unit(TYPE_ID_ERRATA, {"errata_id": errata_obj["id"]}, errata_obj, None)
         existing_units = [errata_unit]
         test_repo = profiler_mocks.get_repo(repo_id)
 
@@ -358,6 +358,79 @@ class TestYumProfilerErrata(rpm_support_base.PulpRPMTests):
         for u in translated_units:
             rpm_unit_key = u["unit_key"]
             self.assertTrue(rpm_unit_key in expected)
+
+    def test_install_units_with_superseding_versions(self):
+        """
+        Verify that errata installing multiple versions of a package installs the latest package
+
+        In this test, there are three errata to install. Two provide the same package, but one
+        errata has a higher version. The third errata installs two unrelated packages.
+
+        Only the most recent package versions should be installed.
+        """
+        profiler = YumProfiler()
+
+        # "older" errata is associated with lower version rpm
+        errata_obj_old = self.get_test_errata_object(eid='grinder_test_2')
+        errata_old = Unit(TYPE_ID_ERRATA, {"errata_id": errata_obj_old["id"]}, errata_obj_old, None)
+        rpm_key_old = self.create_profile_entry(
+            "grinder_test_package", 0, "2.0", "1.fc14", "noarch", "Test Vendor")
+
+        # "newer" errata is associated with higher version rpm
+        errata_obj_new = self.get_test_errata_object(eid='grinder_test_3')
+        errata_new = Unit(TYPE_ID_ERRATA, {"errata_id": errata_obj_new["id"]}, errata_obj_new, None)
+        rpm_key_new = self.create_profile_entry(
+            "grinder_test_package", 0, "3.0", "1.fc14", "noarch", "Test Vendor")
+
+        # "unrelated" errata is a different package, a control
+        errata_obj_unr = self.get_test_errata_object(eid='RHEA-2010:9999')
+        errata_unr = Unit(TYPE_ID_ERRATA, {"errata_id": errata_obj_unr["id"]}, errata_obj_unr, None)
+        rpm_key_unr_1 = self.create_profile_entry(
+            "emoticons", 0, "0.1", "2", "x86_64", "Test Vendor")
+        rpm_key_unr_2 = self.create_profile_entry(
+            "patb", 0, "0.1", "2", "x86_64", "Test Vendor")
+
+        # units list for the conduit
+        rpm_keys = [rpm_key_old, rpm_key_new, rpm_key_unr_1, rpm_key_unr_2]
+        rpm_units = [Unit(TYPE_ID_RPM, rpm_key, {}, None) for rpm_key in rpm_keys]
+        existing_units = [errata_old, errata_new, errata_unr] + rpm_units
+
+        # Set the profile to indicate that the errata apply by including fake unit keys of
+        # installed packages with lower versions that need to be upgraded
+        rpm_keys_installed = [
+            self.create_profile_entry(
+                "grinder_test_package", 0, "1.0", "1.fc14", "noarch", "Test Vendor"),
+            self.create_profile_entry(
+                "emoticons", 0, "0.0", "1", "x86_64", "Test Vendor"),
+            self.create_profile_entry(
+                "patb", 0, "0.0", "2", "x86_64", "Test Vendor")
+        ]
+        profiles = {TYPE_ID_RPM: rpm_keys_installed}
+
+        # put together all the args for install_units and call it
+        consumer = Consumer(self.consumer_id, profiles)
+        errata = [
+            {"unit_key": errata_old.unit_key, "type_id": TYPE_ID_ERRATA},
+            {"unit_key": errata_new.unit_key, "type_id": TYPE_ID_ERRATA},
+            {"unit_key": errata_unr.unit_key, "type_id": TYPE_ID_ERRATA},
+        ]
+        test_repo = profiler_mocks.get_repo("test_repo_id")
+        conduit = profiler_mocks.get_profiler_conduit(existing_units=existing_units,
+                                                      repo_bindings=[test_repo],
+                                                      repo_units=rpm_units)
+        translated_units = profiler.install_units(consumer, errata, None, None, conduit)
+
+        # validate translated units:
+        # - the unrelated rpms should still be present
+        # - the rpm from the "newer" errata should still be present
+        # - the rpm from the "older" errata should have been removed
+        # - the total number of units present is 3
+        translated_filenames = [u['unit_key']['filename'] for u in translated_units]
+        self.assertTrue('emoticons-0.1-2.x86_64.rpm' in translated_filenames)
+        self.assertTrue('patb-0.1-2.x86_64.rpm' in translated_filenames)
+        self.assertTrue('grinder_test_package-3.0-1.fc14.noarch.rpm' in translated_filenames)
+        self.assertTrue('grinder_test_package-2.0-1.fc14.noarch.rpm' not in translated_filenames)
+        self.assertEqual(len(translated_units), 3)
 
     def test_install_units_no_profile(self):
         """
@@ -401,7 +474,7 @@ class TestYumProfilerErrata(rpm_support_base.PulpRPMTests):
 
         # this erratum has four RPMs but only two are available
         errata_obj = self.get_test_errata_object(eid='RHEA-2014:9999')
-        errata_unit = Unit(TYPE_ID_ERRATA, {"id": errata_obj["id"]}, errata_obj, None)
+        errata_unit = Unit(TYPE_ID_ERRATA, {"errata_id": errata_obj["id"]}, errata_obj, None)
         existing_units = [errata_unit]
         test_repo = profiler_mocks.get_repo(repo_id)
 
