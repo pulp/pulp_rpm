@@ -76,7 +76,7 @@ class Packages(object):
         """
         for unit in self.units:
             base_url = unit.base_url or self.base_url
-            url = self.url_modify(base_url, path_append=unit.filename)
+            url = self.url_modify(base_url, path_append=unit.download_path)
             destination = os.path.join(self.dst_dir, unit.filename)
             request = Request(
                 type_id=unit.type_id,
