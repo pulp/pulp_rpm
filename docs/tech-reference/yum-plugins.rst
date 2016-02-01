@@ -510,6 +510,14 @@ configuration values are optional.
  save substantial time to set this to False and thus not have the importer verify
  the presence of each. default is True.
 
+``download_policy``
+ Set the download policy for a repository. By default this is ``immediate``.
+ The other options are ``on_demand``, where content is only downloaded when
+ a client requests it, and ``background``, where the sync does not download
+ content, but after the sync completes a task is dispatched to download all
+ the content in the background. The content is available for client retrieval
+ during this time.
+
 Yum Distributor
 ===============
 
