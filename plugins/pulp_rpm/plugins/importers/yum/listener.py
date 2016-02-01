@@ -80,6 +80,7 @@ class PackageListener(DownloadEventListener):
         unit = report.data
         self._verify_size(unit, report)
         self._verify_checksum(unit, report)
+        self.sync.conduit._added_count += 1
 
     def download_failed(self, report):
         """
