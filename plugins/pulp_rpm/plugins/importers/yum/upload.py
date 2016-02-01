@@ -108,6 +108,7 @@ def upload(repo, type_id, unit_key, metadata, file_path, conduit, config):
         models.PackageGroup._content_type_id.default: _handle_group_category_comps,
         models.PackageCategory._content_type_id.default: _handle_group_category_comps,
         models.PackageEnvironment._content_type_id.default: _handle_group_category_comps,
+        models.PackageLangpacks._content_type_id.default: _handle_group_category_comps,
         models.Errata._content_type_id.default: _handle_erratum,
         models.YumMetadataFile._content_type_id.default: _handle_yum_metadata_file,
     }
@@ -267,6 +268,8 @@ def _handle_group_category_comps(repo, type_id, unit_key, metadata, file_path, c
                                  group.CATEGORY_TAG, conduit, repo)
         _get_and_save_file_units(file_path, group.process_environment_element,
                                  group.ENVIRONMENT_TAG, conduit, repo)
+        _get_and_save_file_units(file_path, group.process_langpacks_element,
+                                 group.LANGPACKS_TAG, conduit, repo)
     else:
         # uploading a package group, package category or package environment
         unit_data = {}

@@ -7,7 +7,7 @@ from pulp_rpm.common.constants import DISPLAY_UNITS_THRESHOLD
 from pulp_rpm.common.ids import (TYPE_ID_RPM, TYPE_ID_SRPM, TYPE_ID_DRPM,
                                  TYPE_ID_ERRATA, TYPE_ID_PKG_GROUP, TYPE_ID_PKG_ENVIRONMENT,
                                  TYPE_ID_PKG_CATEGORY, TYPE_ID_DISTRO, UNIT_KEY_RPM,
-                                 TYPE_ID_YUM_REPO_METADATA_FILE)
+                                 TYPE_ID_YUM_REPO_METADATA_FILE, TYPE_ID_PKG_LANGPACKS)
 
 DESC_RPM = _('remove RPMs from a repository')
 DESC_SRPM = _('remove SRPMs from a repository')
@@ -16,6 +16,7 @@ DESC_ERRATA = _('remove errata from a repository')
 DESC_GROUP = _('remove package groups from a repository')
 DESC_CATEGORY = _('remove package categories from a repository')
 DESC_ENVIRONMENT = _('remove package environments from a repository')
+DESC_LANGPACKS = _('remove package langpacks from a repository')
 DESC_DISTRIBUTION = _('remove distributions from a repository')
 DESC_METAFILE = _('remove yum metadata files from a repository')
 
@@ -101,6 +102,13 @@ class PackageEnvironmentRemoveCommand(BaseRemoveCommand):
         super(PackageEnvironmentRemoveCommand, self).__init__(context, 'environment',
                                                               DESC_ENVIRONMENT,
                                                               TYPE_ID_PKG_ENVIRONMENT)
+
+
+class PackageLangpacksRemoveCommand(BaseRemoveCommand):
+    def __init__(self, context):
+        super(PackageLangpacksRemoveCommand, self).__init__(context, 'langpacks',
+                                                            DESC_LANGPACKS,
+                                                            TYPE_ID_PKG_LANGPACKS)
 
 
 class DistributionRemoveCommand(BaseRemoveCommand):

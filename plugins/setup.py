@@ -43,6 +43,7 @@ setup(
             'package_group=pulp_rpm.plugins.db.models:PackageGroup',
             'package_category=pulp_rpm.plugins.db.models:PackageCategory',
             'package_environment=pulp_rpm.plugins.db.models:PackageEnvironment',
+            'package_langpacks=pulp_rpm.plugins.db.models:PackageLangpacks',
             'yum_repo_metadata_file=pulp_rpm.plugins.db.models:YumMetadataFile',
             'iso=pulp_rpm.plugins.db.models:ISO'
         ]

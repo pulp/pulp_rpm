@@ -668,7 +668,7 @@ class PublishCompsStep(platform_steps.UnitModelPluginStep):
     def __init__(self):
         super(PublishCompsStep, self).__init__(constants.PUBLISH_COMPS_STEP,
                                                [models.PackageGroup, models.PackageCategory,
-                                                models.PackageEnvironment])
+                                                models.PackageEnvironment, models.PackageLangpacks])
         self.comps_context = None
         self.description = _('Publishing Comps file')
 
@@ -683,6 +683,8 @@ class PublishCompsStep(platform_steps.UnitModelPluginStep):
             self.comps_context.add_package_environment_unit_metadata(item)
         elif isinstance(item, models.PackageGroup):
             self.comps_context.add_package_group_unit_metadata(item)
+        elif isinstance(item, models.PackageLangpacks):
+            self.comps_context.add_package_langpacks_unit_metadata(item)
         else:
             logger.warning(_('Unknown comps unit type: %(n)s') % {'n': item.__class__})
 

@@ -58,6 +58,14 @@ class PackageEnvironment(platform_serializers.ModelSerializer):
         remapped_fields = {'package_environment_id': 'id'}
 
 
+class PackageLangpacks(platform_serializers.ModelSerializer):
+    """
+    Serializer for a PackageLangpacks models
+    """
+    class Meta:
+        remapped_fields = {}
+
+
 class YumMetadataFile(platform_serializers.ModelSerializer):
     """
     Serializer for a YumMetadataFile models

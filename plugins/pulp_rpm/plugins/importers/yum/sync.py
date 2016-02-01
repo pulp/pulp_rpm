@@ -239,6 +239,8 @@ class RepoSync(object):
                                                   group.CATEGORY_TAG)
                         self.get_comps_file_units(metadata_files, group.process_environment_element,
                                                   group.ENVIRONMENT_TAG)
+                        self.get_comps_file_units(metadata_files, group.process_langpacks_element,
+                                                  group.LANGPACKS_TAG)
 
                 with self.update_state(self.progress_report['purge_duplicates']) as skip:
                     if not (skip or self.skip_repomd_steps):
