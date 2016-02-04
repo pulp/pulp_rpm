@@ -8,6 +8,7 @@ from pulp.common.plugins import importer_constants
 from pulp.server.db.model.criteria import UnitAssociationCriteria
 from pulp.server.controllers import repository as repo_controller
 
+from pulp_rpm.common import ids
 from pulp_rpm.plugins.db import models
 from pulp_rpm.plugins.importers.yum.repomd import packages, primary, presto, updateinfo, group
 
@@ -201,7 +202,7 @@ def remove_missing_units(conduit, model, remote_named_tuples):
     :type  remote_named_tuples: set
     """
     for unit in get_existing_units(model, conduit.get_units):
-        named_tuple = model(metadata=unit.metadata, **unit.unit_key).as_named_tuple
+        named_tuple = model(**unit.unit_key).unit_key_as_named_tuple
         try:
             # if we found it, remove it so we can free memory as we go along
             remote_named_tuples.remove(named_tuple)
@@ -223,7 +224,7 @@ def get_existing_units(model, unit_search_func):
     :return:    iterable of Unit instances that appear in the repository
     :rtype:     iterable of pulp.server.db.model.ContentUnit
     """
-    criteria = UnitAssociationCriteria([model._content_type_id],
+    criteria = UnitAssociationCriteria([model._content_type_id.default],
                                        unit_fields=model.unit_key_fields)
     return unit_search_func(criteria)
 
@@ -257,7 +258,7 @@ def get_remote_units(file_function, tag, process_func):
                                                                  process_func)
 
         for model in package_info_generator:
-            named_tuple = model.as_named_tuple
+            named_tuple = model.unit_key_as_named_tuple
             remote_named_tuples.add(named_tuple)
 
     finally:
