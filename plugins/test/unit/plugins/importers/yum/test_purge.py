@@ -1,16 +1,20 @@
 from cStringIO import StringIO
-import unittest
 import functools
 
 import mock
 from mock import ANY
 from nectar.config import DownloaderConfig
+from pulp.common import dateutils
+from pulp.common.compat import unittest
 from pulp.common.plugins import importer_constants
 from pulp.plugins.conduits.repo_sync import RepoSyncConduit
 from pulp.plugins.config import PluginCallConfiguration
 from pulp.plugins.model import Repository
+from pulp.server.controllers import repository as repo_controller
+from pulp.server.db import model as platform_model
 from pulp.server.db.model.criteria import UnitAssociationCriteria
 from pulp.server.managers import factory as manager_factory
+from pymongo.errors import OperationFailure
 
 from pulp_rpm.common import ids
 from pulp_rpm.devel.skip import skip_broken
@@ -333,3 +337,153 @@ class RemoveUnitDuplicateNevra(TestPurgeBase):
         mock_association.unassociate_by_criteria.assert_called_once_with(
             repo_id,
             mock_criteria.return_value)
+
+
+class RemoveRepoDuplicateNevra(TestPurgeBase):
+    """Remove units with duplicate nevra from a single repository
+
+    This uses mongo aggregation for scalability, so it works directly with mongo for testing
+    """
+    UNIT_TYPES = models.RPM, models.SRPM, models.DRPM
+
+    def setUp(self):
+        super(RemoveRepoDuplicateNevra, self).setUp()
+
+        # repo_a is based on the test repo defined in TestPurgeBase
+        self.repo_a = platform_model.Repository(repo_id=self.repo.id)
+        self.repo_a.save()
+
+        # repo_b is a control repo, that should be untouched by purge functions
+        self.repo_b = platform_model.Repository(repo_id='b')
+        self.repo_b.save()
+
+        # create units
+        unit_key_base = {
+            'epoch': '0',
+            'version': '0',
+            'release': '23',
+            'arch': 'noarch',
+            'checksumtype': 'sha256',
+            '_last_updated': 0,
+        }
+
+        units = []
+        self.duplicate_unit_ids = set()
+        for unit_type in self.UNIT_TYPES:
+            unit_key_dupe = unit_key_base.copy()
+            unit_key_uniq = unit_key_base.copy()
+
+            # account for slightly different unit key field on drpm
+            if unit_type is models.DRPM:
+                unit_key_dupe['filename'] = 'dupe'
+                unit_key_uniq['filename'] = 'uniq'
+            else:
+                unit_key_dupe['name'] = 'dupe'
+                unit_key_uniq['name'] = 'uniq'
+
+            # create units with duplicate nevra for this type
+            # after purging, only one of the three should remain
+            for i in range(3):
+                unit_dupe = unit_type(**unit_key_dupe)
+                # use the unit's python id to guarantee a unique "checksum"
+                unit_dupe.checksum = str(id(unit_dupe))
+                unit_dupe.save()
+                units.append(unit_dupe)
+                if i != 0:
+                    # after the first unit, stash the "extra" duplicates to make it easier
+                    # to modify the unit association updated timestamps for predictable sorting
+                    self.duplicate_unit_ids.add(unit_dupe.id)
+
+            # use the incrementing unit count to make the uniq unit's nevra unique
+            unit_key_uniq['version'] = str(len(units))
+
+            # create a unit with unique nevra
+            unit_uniq = unit_type(**unit_key_uniq)
+            unit_uniq.checksum = str(hash(unit_uniq))
+            unit_uniq.save()
+            units.append(unit_uniq)
+
+        # associate each unit with each repo
+        for repo in self.repo_a, self.repo_b:
+            for i, unit in enumerate(units):
+                repo_controller.associate_single_unit(repo, unit)
+
+        # Sanity check: 3 dupe units and 1 uniq unit for n unit types, for each repo
+        expected_rcu_count = 4 * len(self.UNIT_TYPES)
+        for repo_id in self.repo_a.repo_id, self.repo_b.repo_id:
+            self.assertEqual(platform_model.RepositoryContentUnit.objects.filter(
+                repo_id=repo_id).count(), expected_rcu_count)
+
+        # To ensure the purge mechanism behavior is predictable for testing,
+        # go through the duplicate unit IDs and set their updated time to be in the past,
+        # since unit associations were all just created at the same time.
+        # The older associations are the ones that should be purged.
+        earlier_timestamp = dateutils.now_utc_timestamp() - 3600
+        formatted_timestamp = dateutils.format_iso8601_utc_timestamp(earlier_timestamp)
+        platform_model.RepositoryContentUnit.objects.filter(unit_id__in=self.duplicate_unit_ids)\
+            .update(set__updated=formatted_timestamp)
+
+    def tearDown(self):
+        platform_model.RepositoryContentUnit.objects.all().delete()
+        platform_model.Repository.objects.all().delete()
+        for unit_type in self.UNIT_TYPES:
+            unit_type.objects.all().delete()
+
+    def test_remove_repo_duplicate_nevra_unit_counts(self):
+        # ensure that the unit associations are correct for each repo after purge
+        purge.remove_repo_duplicate_nevra(self.conduit.repo_id)
+
+        # duplicate removal should have removed two duplicates of each type for repo a
+        expected_rcu_count_a = 2 * len(self.UNIT_TYPES)
+        self.assertEqual(platform_model.RepositoryContentUnit.objects.filter(
+            repo_id=self.repo_a.repo_id).count(), expected_rcu_count_a)
+
+        # repo B counts should be unchanged, since its duplicates were not purged
+        expected_rcu_count_b = 4 * len(self.UNIT_TYPES)
+        self.assertEqual(platform_model.RepositoryContentUnit.objects.filter(
+            repo_id=self.repo_b.repo_id).count(), expected_rcu_count_b)
+
+        # get a list of all the unit ids associated with the purged repo, demonstrate that
+        # none of the duplicate unit ids are assocated with the purged repo
+        repo_rcu = platform_model.RepositoryContentUnit.objects.filter(repo_id=self.repo_a.repo_id)
+        repo_rcu_ids = set([rcu.unit_id for rcu in repo_rcu])
+        self.assertFalse(self.duplicate_unit_ids.intersection(repo_rcu_ids))
+
+    def test_duplicate_nevra_generators(self):
+        # the two different duplicate nevra generators (mapreduce vs. aggregation) should return
+        # exactly the same list of packages. The two mechanisms operate slightly differently, so
+        # the return values need to be sorted before comparison.
+        unit = self.UNIT_TYPES[0]
+        fields = purge._duplicate_key_nevra_fields(unit)
+        try:
+            aggregated_units = sorted(purge._duplicate_key_id_generator_aggregation(unit, fields))
+        except OperationFailure:
+            self.skipTest("Aggregation fails on mongodb < 2.6, skipping generator comparison")
+        mapreduced_units = sorted(purge._duplicate_key_id_generator_mapreduce(unit, fields))
+        # units were returned by each mechanism
+        self.assertTrue(mapreduced_units)
+        self.assertTrue(aggregated_units)
+        # the two mechanisms returned the same units
+        self.assertEqual(mapreduced_units, aggregated_units)
+
+
+@mock.patch.object(models.RPM, 'objects')
+@mock.patch.object(purge, '_duplicate_key_id_generator_aggregation')
+@mock.patch.object(purge, '_duplicate_key_id_generator_mapreduce')
+class RemoveRepoDuplicateNevraGenerators(unittest.TestCase):
+    """Test the generator selection logic in _duplicate_key_id_generator"""
+    def test_aggregation_by_default(self, mapreduce, aggregate, manager):
+        # aggregate raises no exception, aggregation generator is used
+        manager.aggregate.return_value = None
+        purge._duplicate_key_id_generator(models.RPM)
+        self.assertTrue(aggregate.called)
+        self.assertFalse(mapreduce.called)
+
+    @mock.patch('logging.Logger.info')
+    def test_mapreduce_when_aggregation_fails(self, logger, mapreduce, aggregate, manager):
+        # when the attempt to use aggregation fails, mapreduce is used and a message is logged
+        manager.aggregate.side_effect = OperationFailure("mocked failure")
+        purge._duplicate_key_id_generator(models.RPM)
+        self.assertFalse(aggregate.called)
+        self.assertTrue(mapreduce.called)
+        self.assertEqual(logger.call_count, 1)
