@@ -486,10 +486,6 @@ configuration values are optional.
  Count indicating how many old rpm versions to retain; defaults to 0. This count
  only takes effect when ``remove_old`` option is set to ``True``.
 
-``purge_orphaned``
- If True, as the repository is synchronized, packages no longer available from the
- source repository will be deleted; defaults to ``True``.
-
 ``skip``
   List of content types to be skipped during the repository synchronization.
   If unspecified, all types will be synchronized. Valid values are: rpm, drpm,
