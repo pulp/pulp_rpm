@@ -211,12 +211,7 @@ class Distribution(UnitMixin, FileContentUnit):
 
     meta = {'collection': 'units_distribution',
             'indexes': [
-                'distribution_id', 'family', 'variant', 'version', 'arch',
-                # Unit key Index
-                {
-                    'fields': ['distribution_id', 'family', 'variant', 'version', 'arch'],
-                    'unique': True
-                }],
+                'distribution_id', 'family', 'variant', 'version', 'arch'],
             'allow_inheritance': False}
 
     SERIALIZER = serializers.Distribution
@@ -295,13 +290,7 @@ class DRPM(NonMetadataPackage):
 
     meta = {'collection': 'units_drpm',
             'indexes': [
-                "epoch", "version", "release", "filename", "checksum",
-                # Unit key Index
-                {
-                    'fields': ["epoch", "version", "release", 'filename', "checksumtype",
-                               "checksum"],
-                    'unique': True
-                }],
+                "epoch", "version", "release", "filename", "checksum"],
             'allow_inheritance': False}
 
     SERIALIZER = serializers.Drpm
@@ -360,12 +349,7 @@ class RpmBase(NonMetadataPackage):
     meta = {'indexes': [
         "name", "epoch", "version", "release", "arch", "filename", "checksum",
         "checksumtype", "version_sort_index",
-        ("version_sort_index", "release_sort_index"),
-        {
-            'fields': ["name", "epoch", "version", "release", "arch",
-                       "checksumtype", "checksum"],
-            'unique': True
-        }],
+        ("version_sort_index", "release_sort_index")],
         'abstract': True}
 
     SERIALIZER = serializers.RpmBase
@@ -449,11 +433,7 @@ class Errata(UnitMixin, ContentUnit):
 
     meta = {'indexes': [
         "version", "release", "type", "status", "updated",
-        "issued", "severity", "references",
-        {
-            'fields': unit_key_fields,
-            'unique': True
-        }],
+        "issued", "severity", "references"],
         'collection': 'units_erratum',
         'allow_inheritance': False}
 
@@ -514,11 +494,8 @@ class PackageGroup(UnitMixin, ContentUnit):
     meta = {
         'indexes': [
             'package_group_id', 'repo_id', 'name', 'mandatory_package_names',
-            'conditional_package_names', 'optional_package_names', 'default_package_names',
-            {
-                'fields': ('package_group_id', 'repo_id'),
-                'unique': True
-            }],
+            'conditional_package_names', 'optional_package_names', 'default_package_names'
+        ],
         'collection': 'units_package_group',
         'allow_inheritance': False}
 
@@ -554,11 +531,8 @@ class PackageCategory(UnitMixin, ContentUnit):
 
     meta = {
         'indexes': [
-            'package_category_id', 'repo_id', 'name', 'packagegroupids',
-            {
-                'fields': ('package_category_id', 'repo_id'),
-                'unique': True
-            }],
+            'package_category_id', 'repo_id', 'name', 'packagegroupids'
+        ],
         'collection': 'units_package_category',
         'allow_inheritance': False}
 
@@ -585,13 +559,7 @@ class PackageEnvironment(UnitMixin, ContentUnit):
     unit_key_fields = ('package_environment_id', 'repo_id')
 
     meta = {
-        'indexes': [
-            'package_environment_id', 'repo_id', 'name', 'group_ids',
-            # Unit key Index
-            {
-                'fields': ('package_environment_id', 'repo_id'),
-                'unique': True
-            }],
+        'indexes': ['package_environment_id', 'repo_id', 'name', 'group_ids'],
         'collection': 'units_package_environment',
         'allow_inheritance': False}
 
@@ -617,13 +585,7 @@ class YumMetadataFile(UnitMixin, FileContentUnit):
     unit_key_fields = ('data_type', 'repo_id')
 
     meta = {
-        'indexes': [
-            'data_type',
-            # Unit key Index
-            {
-                'fields': ('data_type', 'repo_id'),
-                'unique': True
-            }],
+        'indexes': ['data_type'],
         'collection': 'units_yum_repo_metadata_file',
         'allow_inheritance': False}
 
@@ -648,14 +610,7 @@ class ISO(FileContentUnit):
 
     unit_key_fields = ('name', 'checksum', 'size')
 
-    meta = {
-        'indexes': [
-            {
-                'fields': ('name', 'checksum', 'size'),
-                'unique': True
-            }],
-        'collection': 'units_iso',
-        'allow_inheritance': False}
+    meta = {'collection': 'units_iso', 'allow_inheritance': False}
 
     SERIALIZER = serializers.ISO
 
