@@ -675,3 +675,37 @@ class UploadPackageTests(unittest.TestCase):
         self.assertEqual(metadata['license'], 'GPLv2')
         self.assertEqual(metadata['relativepath'], 'walrus-5.21-1.noarch.rpm')
         self.assertEqual(metadata['vendor'], None)
+
+
+class TestMangleRepodataPrimaryXML(unittest.TestCase):
+    # a snippet from repodata primary xml for a package
+    # this snippet has been truncated to only provide the tags needed to test
+    PRIMARY_XML = '''
+    <package type="rpm">
+      <location href="fixme" />
+      <format>
+        <rpm:provides>
+          <rpm:entry name="shark" flags="EQ" epoch="0" ver="0.1" rel="1"/>
+        </rpm:provides>
+        <rpm:requires>
+          <rpm:entry name="shark" flags="EQ" epoch="0" ver="0.1" rel="1"/>
+          <rpm:entry name="walrus" flags="EQ" epoch="0" ver="5.21" rel="1"/>
+        </rpm:requires>
+      </format>
+    </package>
+    '''
+
+    def setUp(self):
+        self.unit = models.RPM()
+        self.unit.repodata['primary'] = self.PRIMARY_XML
+        self.unit.filename = 'fixed-filename.rpm'
+
+    def test_update_provides_requires(self):
+        upload._update_provides_requires(self.unit)
+        self.assertEqual(len(self.unit.provides), 1)
+        self.assertEqual(len(self.unit.requires), 2)
+
+    def test_update_location(self):
+        upload._update_location(self.unit)
+        self.assertTrue('fixme' not in self.unit.repodata['primary'])
+        self.assertTrue(self.unit.filename in self.unit.repodata['primary'])

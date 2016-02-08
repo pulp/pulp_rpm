@@ -486,10 +486,6 @@ configuration values are optional.
  Count indicating how many old rpm versions to retain; defaults to 0. This count
  only takes effect when ``remove_old`` option is set to ``True``.
 
-``purge_orphaned``
- If True, as the repository is synchronized, packages no longer available from the
- source repository will be deleted; defaults to ``True``.
-
 ``skip``
   List of content types to be skipped during the repository synchronization.
   If unspecified, all types will be synchronized. Valid values are: rpm, drpm,
@@ -509,6 +505,14 @@ configuration values are optional.
  that all of a group's RPMs are available in the destination repository, it can
  save substantial time to set this to False and thus not have the importer verify
  the presence of each. default is True.
+
+``download_policy``
+ Set the download policy for a repository. By default this is ``immediate``.
+ The other options are ``on_demand``, where content is only downloaded when
+ a client requests it, and ``background``, where the sync does not download
+ content, but after the sync completes a task is dispatched to download all
+ the content in the background. The content is available for client retrieval
+ during this time.
 
 Yum Distributor
 ===============

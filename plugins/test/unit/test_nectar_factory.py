@@ -9,6 +9,9 @@ from nectar.downloaders.threaded import HTTPThreadedDownloader
 from pulp_rpm.plugins.importers.yum.repomd import nectar_factory
 
 
+@mock.patch("nectar.downloaders.local.LocalFileDownloader.__init__", mock.Mock(return_value=None))
+@mock.patch("nectar.downloaders.threaded.HTTPThreadedDownloader.__init__",
+            mock.Mock(return_value=None))
 class NectarFactoryTests(unittest.TestCase):
     def setUp(self):
         super(NectarFactoryTests, self).setUp()

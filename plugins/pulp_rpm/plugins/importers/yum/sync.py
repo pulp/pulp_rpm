@@ -61,6 +61,7 @@ class RepoSync(object):
             'distribution': self.distribution_report,
             'errata': {'state': 'NOT_STARTED'},
             'comps': {'state': 'NOT_STARTED'},
+            'purge_duplicates': {'state': 'NOT_STARTED'},
         }
         self.conduit = conduit
         self.set_progress()
@@ -246,6 +247,10 @@ class RepoSync(object):
                                                   group.CATEGORY_TAG)
                         self.get_comps_file_units(metadata_files, group.process_environment_element,
                                                   group.ENVIRONMENT_TAG)
+
+                with self.update_state(self.progress_report['purge_duplicates']) as skip:
+                    if not (skip or self.skip_repomd_steps):
+                        purge.remove_repo_duplicate_nevra(self.conduit.repo_id)
 
             except CancelException:
                 report = self.conduit.build_cancel_report(self._progress_summary,
