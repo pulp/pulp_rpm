@@ -50,6 +50,7 @@ class TestPackages(TestCase):
         self.assertEqual(packages.primary, fake_create_downloader())
         self.assertEqual(packages.container, fake_container())
 
+    @patch('pulp_rpm.plugins.importers.yum.repomd.alternate.create_downloader', Mock())
     def test_downloader(self):
         # test
         packages = Packages('http://none', None, [], '', None)
