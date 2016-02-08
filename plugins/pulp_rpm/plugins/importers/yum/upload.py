@@ -271,11 +271,6 @@ def _handle_group_category_comps(repo, type_id, unit_key, metadata, file_path, c
             raise ModelInstantiationError()
 
         unit.save()
-
-        if file_path:
-            unit.set_storage_path(os.path.basename(file_path))
-            unit.safe_import_content(file_path)
-
         repo_controller.associate_single_unit(repo, unit)
 
 
