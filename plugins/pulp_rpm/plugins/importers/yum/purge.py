@@ -67,7 +67,7 @@ def remove_old_versions(num_to_keep, conduit):
     for unit_type in (models.RPM, models.SRPM, models.DRPM):
         units = {}
         for unit in get_existing_units(unit_type, conduit.get_units):
-            model_instance = model(metadata=unit.metadata, **unit.unit_key)
+            model_instance = unit_type(**unit.unit_key)
             key = model_instance.key_string_without_version
             serialized_version = model_instance.complete_version_serialized
             versions = units.setdefault(key, {})
