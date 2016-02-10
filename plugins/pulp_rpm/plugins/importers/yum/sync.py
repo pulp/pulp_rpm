@@ -12,6 +12,7 @@ from gettext import gettext as _
 from cStringIO import StringIO
 from urlparse import urljoin
 
+from mongoengine import NotUniqueError
 from nectar.request import DownloadRequest
 
 from pulp.common.plugins import importer_constants
@@ -601,7 +602,10 @@ class RepoSync(object):
         """
         metadata_files.add_repodata(unit)
         unit.set_storage_path(unit.filename)
-        unit.save()
+        try:
+            unit.save()
+        except NotUniqueError:
+            unit = unit.__class__.objects.filter(**unit.unit_key).first()
         repo_controller.associate_single_unit(self.conduit.repo, unit)
         self.progress_report['content'].success(unit)
         self.conduit.set_progress(self.progress_report)
