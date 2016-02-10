@@ -10,7 +10,7 @@ from pulp.plugins.model import Unit
 
 from pulp_rpm.devel.skip import skip_broken
 from pulp_rpm.plugins.db import models
-from pulp_rpm.plugins.importers.yum.repomd import packages, updateinfo, group
+from pulp_rpm.plugins.importers.yum.repomd import group
 from pulp_rpm.plugins.importers.yum import upload
 import model_factory
 
@@ -186,85 +186,42 @@ class UploadDispatchTests(unittest.TestCase):
         self.assertTrue('unexpected' in report['details']['errors'][0])
 
 
-@skip_broken
-class UploadErratumTests(unittest.TestCase):
-    @mock.patch('pulp_rpm.plugins.importers.yum.upload._link_errata_to_rpms')
-    def test_handle_erratum_with_link(self, mock_link):
-        # Setup
+@mock.patch('pulp_rpm.plugins.importers.yum.upload.repo_controller')
+@mock.patch('pulp_rpm.plugins.importers.yum.upload.plugin_api.get_unit_model_by_id')
+@mock.patch('pulp_rpm.plugins.importers.yum.upload.update_fields_inbound')
+class TestUploadErratum(unittest.TestCase):
+    """
+    Tests for uploading erratum.
+    """
+
+    def test_handle_with_link(self, m_update, m_model_by_id, m_repo_ctrl):
+        """
+        Ensure that erratum uploaded without the skip erratum link flag are associated.
+        """
         unit_key = {'id': 'test-erratum'}
         metadata = {'a': 'a'}
+        mock_repo = mock.MagicMock()
+        mock_conduit = mock.MagicMock()
         config = PluginCallConfiguration({}, {})
-        mock_repo = mock.MagicMock()
+        m_unit = m_model_by_id().return_value
 
-        mock_conduit = mock.MagicMock()
-        inited_unit = Unit(models.Errata.TYPE, unit_key, metadata, None)
-        saved_unit = Unit(models.Errata.TYPE, unit_key, metadata, None)
-        saved_unit.id = 'ihaveanidnow'
-        mock_conduit.init_unit.return_value = inited_unit
-        mock_conduit.save_unit.return_value = saved_unit
-
-        # Test
-        upload._handle_erratum(mock_repo, models.Errata.TYPE, unit_key, metadata, None,
+        upload._handle_erratum(mock_repo, 'm_type', unit_key, metadata, None,
                                mock_conduit, config)
+        m_repo_ctrl.associate_single_unit.assert_called_once_with(mock_repo, m_unit)
 
-        # Verify
-        mock_conduit.init_unit.assert_called_once_with(models.Errata.TYPE, unit_key,
-                                                       metadata, None)
-        mock_conduit.save_unit.assert_called_once_with(inited_unit)
-
-        mock_link.assert_called_once()
-        self.assertEqual(mock_link.call_args[0][0], mock_conduit)
-        self.assertTrue(isinstance(mock_link.call_args[0][1], models.Errata))
-        # it is very important that this is the saved_unit, and not the inited_unit,
-        # because the underlying link logic requires it to have an "id".
-        self.assertTrue(mock_link.call_args[0][2] is saved_unit)
-
-    @mock.patch('pulp_rpm.plugins.importers.yum.upload._link_errata_to_rpms')
-    def test_handle_erratum_no_link(self, mock_link):
-        # Setup
+    def test_handle_with_no_link(self, m_update, m_model_by_id, m_repo_ctrl):
+        """
+        Ensure that erratum uploaded with the skip erratum link flag are not associated.
+        """
         unit_key = {'id': 'test-erratum'}
         metadata = {'a': 'a'}
-        config = PluginCallConfiguration({}, {},
-                                         override_config={upload.CONFIG_SKIP_ERRATUM_LINK: True})
-        mock_conduit = mock.MagicMock()
         mock_repo = mock.MagicMock()
-
-        # Test
-        upload._handle_erratum(mock_repo, models.Errata.TYPE, unit_key, metadata, None,
+        mock_conduit = mock.MagicMock()
+        config = PluginCallConfiguration(
+            {}, {}, override_config={upload.CONFIG_SKIP_ERRATUM_LINK: True})
+        upload._handle_erratum(mock_repo, 'm_type', unit_key, metadata, None,
                                mock_conduit, config)
-
-        # Verify
-        self.assertEqual(0, mock_link.call_count)
-
-    def test_handle_erratum_model_error(self):
-        # Setup
-        unit_key = {'foo': 'bar'}
-        mock_repo = mock.MagicMock()
-
-        # Test
-        self.assertRaises(upload.ModelInstantiationError, upload._handle_erratum, mock_repo,
-                          models.Errata.TYPE, unit_key, {}, None, None, None)
-
-    def test_link_errata_to_rpms(self):
-        # Setup
-        mock_conduit = mock.MagicMock()
-        mock_conduit.get_units.return_value = ['a', 'b']
-
-        sample_errata_file = os.path.join(DATA_DIR, 'RHBA-2010-0836.erratum.xml')
-        with open(sample_errata_file) as f:
-            errata = packages.package_list_generator(f,
-                                                     updateinfo.PACKAGE_TAG,
-                                                     updateinfo.process_package_element)
-            errata = list(errata)[0]
-
-        errata_unit = Unit(models.Errata.TYPE, errata.unit_key, errata.metadata, None)
-
-        # Test
-        upload._link_errata_to_rpms(mock_conduit, errata, errata_unit)
-
-        # Verify
-        self.assertEqual(2, mock_conduit.get_units.call_count)  # once each for RPM and SRPM
-        self.assertEqual(4, mock_conduit.link_unit.call_count)  # twice each for RPM and SRPM
+        self.assertFalse(m_repo_ctrl.associate_single_unit.called)
 
 
 @skip_broken

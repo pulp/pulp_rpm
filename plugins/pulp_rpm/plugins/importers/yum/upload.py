@@ -178,6 +178,9 @@ def _handle_erratum(repo, type_id, unit_key, metadata, file_path, conduit, confi
 
     unit.save()
 
+    if not config.get_boolean(CONFIG_SKIP_ERRATUM_LINK):
+        repo_controller.associate_single_unit(repo, unit)
+
 
 def _handle_yum_metadata_file(repo, type_id, unit_key, metadata, file_path, conduit, config):
     """
