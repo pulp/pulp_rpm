@@ -4,6 +4,7 @@ import logging
 import os
 import stat
 from xml.etree import cElementTree as ET
+from mongoengine import NotUniqueError
 
 from pulp.plugins.loader import api as plugin_api
 from pulp.plugins.util import verification
@@ -379,7 +380,10 @@ def _handle_package(repo, type_id, unit_key, metadata, file_path, conduit, confi
     purge.remove_unit_duplicate_nevra(unit, repo)
 
     unit.set_storage_path(os.path.basename(file_path))
-    unit.save_and_import_content(file_path)
+    try:
+        unit.save_and_import_content(file_path)
+    except NotUniqueError:
+        unit = unit.__class__.objects.filter(**unit.unit_key).first()
 
     repo_controller.associate_single_unit(repo, unit)
 
