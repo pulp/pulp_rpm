@@ -5,6 +5,8 @@ import logging
 import os
 import tempfile
 
+from mongoengine import NotUniqueError
+
 from nectar import listener, request
 from nectar.config import DownloaderConfig
 from nectar.downloaders.threaded import HTTPThreadedDownloader
@@ -163,7 +165,10 @@ class ISOSyncRun(listener.DownloadEventListener):
             try:
                 if self._validate_downloads:
                     iso.validate_iso(report.destination)
-                iso.save_and_import_content(report.destination)
+                try:
+                    iso.save_and_import_content(report.destination)
+                except NotUniqueError:
+                    iso = iso.__class__.objects.filter(**iso.unit_key).first()
                 repo_controller.associate_single_unit(self.sync_conduit.repo, iso)
 
                 # We can drop this ISO from the url --> ISO map
@@ -213,7 +218,7 @@ class ISOSyncRun(listener.DownloadEventListener):
         # Associate units that are already in Pulp
         if local_available_isos:
             search_dicts = [unit.unit_key for unit in local_available_isos]
-            self.sync_conduit.associate_existing(models.ISO._content_type_id, search_dicts)
+            self.sync_conduit.associate_existing(models.ISO._content_type_id.default, search_dicts)
 
         # Deferred downloading (Lazy) entries.
         self.add_catalog_entries(local_missing_isos)
@@ -224,7 +229,10 @@ class ISOSyncRun(listener.DownloadEventListener):
         if self.download_deferred:
             for iso in local_missing_isos:
                 iso.downloaded = False
-                iso.save()
+                try:
+                    iso.save()
+                except NotUniqueError:
+                    iso = iso.__class__.objects.filter(**iso.unit_key).first()
                 repo_controller.associate_single_unit(self.sync_conduit.repo, iso)
         else:
             self._download_isos(local_missing_isos)
