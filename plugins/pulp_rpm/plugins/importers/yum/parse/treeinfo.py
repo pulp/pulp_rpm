@@ -271,8 +271,8 @@ class DistSync(object):
             ]
             raise DownloadFailed()
         for report in listener.succeeded_reports:
-            location = report.destination.lstrip(tmp_dir)
-            yield report.destination, location.lstrip('/')
+            location = os.path.relpath(report.destination, tmp_dir)
+            yield report.destination, location
 
     @staticmethod
     def process_successful_download_reports(unit, reports):
