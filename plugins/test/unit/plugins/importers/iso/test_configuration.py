@@ -52,49 +52,7 @@ class TestValidateFeedUrl(PulpRPMTests):
         self.assertTrue(status is False)
         self.assertEqual(error_message,
                          '<%(feed)s> must be a string.' % {'feed': importer_constants.KEY_FEED})
-
-    def test_required_when_other_parameters_are_present(self):
-        for parameters in [
-            {importer_constants.KEY_MAX_SPEED: '1024'}, {importer_constants.KEY_MAX_DOWNLOADS: 2},
-            {importer_constants.KEY_PROXY_PASS: 'flock_of_seagulls',
-             importer_constants.KEY_PROXY_USER: 'big_kahuna_burger',
-             importer_constants.KEY_PROXY_HOST: 'http://test.com'},
-            {importer_constants.KEY_PROXY_HOST: 'http://test.com',
-             importer_constants.KEY_PROXY_PORT: '3037'},
-            {importer_constants.KEY_PROXY_HOST: 'http://test.com'},
-            {importer_constants.KEY_UNITS_REMOVE_MISSING: True},
-            {importer_constants.KEY_SSL_CA_CERT: 'cert'},
-            {importer_constants.KEY_SSL_CLIENT_CERT: 'cert'},
-            {importer_constants.KEY_SSL_CLIENT_CERT: 'cert',
-                importer_constants.KEY_SSL_CLIENT_KEY: 'key'},
-                {importer_constants.KEY_VALIDATE: True}]:
-            # Each of the above configurations should cause the validator to complain about the
-            # feed_url
-            # missing
-            config = importer_mocks.get_basic_config(**parameters)
-            status, error_message = configuration.validate(config)
-            self.assertTrue(status is False)
-            self.assertEqual(
-                error_message,
-                'The configuration parameter <%(feed)s> is required when any of the following '
-                'other '
-                'parameters are defined: %(max_speed)s, %(num_threads)s, %(proxy_pass)s, '
-                '%(proxy_port)s, '
-                '%(proxy_host)s, %(proxy_user)s, %(remove_missing_units)s, %(ssl_ca_cert)s, '
-                '%(ssl_client_cert)s, %(ssl_client_key)s, %(validate_units)s.' % {
-                    'feed': importer_constants.KEY_FEED,
-                    'max_speed': importer_constants.KEY_MAX_SPEED,
-                    'num_threads': importer_constants.KEY_MAX_DOWNLOADS,
-                    'proxy_pass': importer_constants.KEY_PROXY_PASS,
-                    'proxy_port': importer_constants.KEY_PROXY_PORT,
-                    'proxy_host': importer_constants.KEY_PROXY_HOST,
-                    'proxy_user': importer_constants.KEY_PROXY_USER,
-                    'remove_missing_units': importer_constants.KEY_UNITS_REMOVE_MISSING,
-                    'ssl_ca_cert': importer_constants.KEY_SSL_CA_CERT,
-                    'ssl_client_cert': importer_constants.KEY_SSL_CLIENT_CERT,
-                    'ssl_client_key': importer_constants.KEY_SSL_CLIENT_KEY,
-                    'validate_units': importer_constants.KEY_VALIDATE})
-
+ 
     def test_valid(self):
         config = importer_mocks.get_basic_config(
             **{importer_constants.KEY_FEED: "http://test.com/feed"})
