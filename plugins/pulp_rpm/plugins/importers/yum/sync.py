@@ -332,7 +332,8 @@ class RepoSync(object):
         try:
             metadata_files.download_repomd()
         except IOError, e:
-            raise PulpCodedException(error_code=error_codes.RPM1004, reason=str(e))
+            msg = "Error retrieving metadata: " + str(e)
+            raise IOError(msg)
 
         _logger.info(_('Parsing metadata.'))
 
@@ -340,7 +341,7 @@ class RepoSync(object):
             metadata_files.parse_repomd()
         except ValueError:
             _logger.debug(traceback.format_exc())
-            raise PulpCodedException(error_code=error_codes.RPM1006)
+            raise ValueError("Could not parse repository metadata")
         return metadata_files
 
     def get_metadata(self, metadata_files):
@@ -818,8 +819,8 @@ class RepoSync(object):
         """
 
         if mutable_type and additive_type:
-            raise PulpCodedException(message="The mutable_type and additive_type arguments for "
-                                             "this method are mutually exclusive.")
+            raise ValueError("The mutable_type and additive_type arguments for "
+                             "this method are mutually exclusive.")
 
         # iterate through the file and determine what we want to have
         package_info_generator = packages.package_list_generator(file_handle,
