@@ -37,10 +37,6 @@ from pulp_rpm.plugins.importers.yum.utils import RepoURLModifier
 _logger = logging.getLogger(__name__)
 
 
-class CancelException(Exception):
-    pass
-
-
 class RepoSync(object):
 
     def __init__(self, repo, conduit, config):
@@ -52,7 +48,6 @@ class RepoSync(object):
         :param config: plugin configuration
         :type config: pulp.plugins.config.PluginCallConfiguration
         """
-        self.cancelled = False
         self.working_dir = common_utils.get_working_directory()
         self.content_report = ContentReport()
         self.distribution_report = DistributionReport()
@@ -91,13 +86,9 @@ class RepoSync(object):
 
     def set_progress(self):
         """
-        A convenience method to perform this very repetitive task. This is also
-        a convenient time to check if we've been cancelled, and if so, raise
-        the proper exception.
+        A convenience method to perform this very repetitive task.
         """
         self.conduit.set_progress(self.progress_report)
-        if self.cancelled is True:
-            raise CancelException
 
     @property
     def sync_feed(self):
@@ -253,12 +244,6 @@ class RepoSync(object):
                     if not (skip or self.skip_repomd_steps):
                         purge.remove_repo_duplicate_nevra(self.conduit.repo_id)
 
-            except CancelException:
-                report = self.conduit.build_cancel_report(self._progress_summary,
-                                                          self.progress_report)
-                report.canceled_flag = True
-                return report
-
             except PulpCodedException, e:
                 # Check if the caught exception indicates that the mirror is bad.
                 # Try next mirror in the list without raising the exception.
@@ -284,7 +269,6 @@ class RepoSync(object):
             finally:
                 # clean up whatever we may have left behind
                 shutil.rmtree(self.tmp_dir, ignore_errors=True)
-
             self.save_repomd_revision()
             _logger.info(_('Sync complete.'))
             return self.conduit.build_success_report(self._progress_summary,
@@ -353,7 +337,6 @@ class RepoSync(object):
         :rtype:     pulp_rpm.plugins.importers.yum.repomd.metadata.MetadataFiles
         """
 
-        # allow the downloader to be accessed by the cancel method if necessary
         self.downloader = metadata_files.downloader
         scratchpad = self.conduit.get_scratchpad() or {}
         previous_revision = scratchpad.get(constants.REPOMD_REVISION_KEY, 0)
@@ -658,7 +641,6 @@ class RepoSync(object):
                 event_listener,
                 self._url_modify)
 
-            # allow the downloader to be accessed by the cancel method if necessary
             self.downloader = download_wrapper.downloader
             _logger.info(_('Downloading %(num)s RPMs.') % {'num': len(rpms_to_download)})
             download_wrapper.download_packages()
@@ -716,34 +698,12 @@ class RepoSync(object):
                         event_listener,
                         self._url_modify)
 
-                    # allow the downloader to be accessed by the cancel method if necessary
                     self.downloader = download_wrapper.downloader
                     _logger.info(_('Downloading %(num)s DRPMs.') % {'num': len(drpms_to_download)})
                     download_wrapper.download_packages()
                     self.downloader = None
                 finally:
                     presto_file_handle.close()
-
-    def cancel(self):
-        """
-        Cancels the current sync. Looks for a "downloader" object and calls its
-        "cancel" method, and then triggers a progress report.
-        """
-        self.cancelled = True
-        for step, value in self.progress_report.iteritems():
-            if value.get('state') == constants.STATE_RUNNING:
-                value['state'] = constants.STATE_CANCELLED
-        try:
-            self.downloader.cancel()
-        except AttributeError:
-            # there might not be a downloader to cancel right now.
-            _logger.debug('could not cancel downloader')
-        try:
-            self.set_progress()
-        # this exception is only raised for the benefit of the run() method so
-        # that it can discontinue execution of its workflow.
-        except CancelException:
-            pass
 
     def get_errata(self, metadata_files):
         """
@@ -888,12 +848,6 @@ class RepoSync(object):
 
         # return the unit now that we've possibly modified it.
         return existing_unit
-
-    def finalize(self):
-        """
-        Perform any necessary cleanup.
-        """
-        self.nectar_config.finalize()
 
     def _identify_wanted_versions(self, package_info_generator):
         """

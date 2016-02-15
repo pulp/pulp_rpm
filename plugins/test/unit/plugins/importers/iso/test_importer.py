@@ -12,7 +12,7 @@ from pulp_rpm.devel import importer_mocks
 from pulp_rpm.devel.rpm_support_base import PulpRPMTests
 from pulp_rpm.devel.skip import skip_broken
 from pulp_rpm.plugins.db import models
-from pulp_rpm.plugins.importers.iso import importer, sync
+from pulp_rpm.plugins.importers.iso import importer
 
 
 class TestEntryPoint(PulpRPMTests):
@@ -39,17 +39,6 @@ class TestISOImporter(PulpRPMTests):
 
     def tearDown(self):
         shutil.rmtree(self.temp_dir)
-
-    def test_cancel_sync_repo(self):
-        """
-        Make sure the cancel sync gets passed on.
-        """
-        self.iso_importer.iso_sync = mock.MagicMock(spec=sync.ISOSyncRun)
-
-        self.iso_importer.cancel_sync_repo()
-
-        # Assert that the mock cancel has been called once, with no args
-        self.iso_importer.iso_sync.cancel_sync.assert_called_once_with()
 
     def test_import_units__units_empty_list(self):
         """

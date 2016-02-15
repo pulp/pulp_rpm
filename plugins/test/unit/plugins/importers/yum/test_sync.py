@@ -26,7 +26,7 @@ from pulp_rpm.plugins.importers.yum.existing import check_all_and_associate
 from pulp_rpm.plugins.importers.yum.parse import treeinfo
 from pulp_rpm.plugins.importers.yum.repomd import metadata, group, updateinfo, packages, presto, \
     primary
-from pulp_rpm.plugins.importers.yum.sync import RepoSync, CancelException
+from pulp_rpm.plugins.importers.yum.sync import RepoSync
 import model_factory
 
 
@@ -179,32 +179,11 @@ class TestInit(BaseSyncTest):
         for step_name, report in self.reposync.progress_status.iteritems():
             self.assertEqual(report['state'], constants.STATE_NOT_STARTED)
 
-    def test_not_immediately_canceled(self):
-        self.assertFalse(self.reposync.cancelled)
-
     def test_nectar_config(self):
         self.assertTrue(isinstance(self.reposync.nectar_config, DownloaderConfig))
 
     def test_nothing_skipped(self):
         self.assertEqual(self.reposync.call_config.get(constants.CONFIG_SKIP, []), [])
-
-
-@skip_broken
-class TestSetProgress(BaseSyncTest):
-    def test_not_canceled(self):
-        self.conduit.set_progress = mock.MagicMock(spec_set=self.conduit.set_progress)
-
-        self.reposync.set_progress()
-
-        self.conduit.set_progress.assert_called_once_with(self.reposync.progress_status)
-
-    def test_canceled(self):
-        self.conduit.set_progress = mock.MagicMock(spec_set=self.conduit.set_progress)
-        self.reposync.cancelled = True
-
-        self.assertRaises(CancelException, self.reposync.set_progress)
-
-        self.conduit.set_progress.assert_called_once_with(self.reposync.progress_status)
 
 
 @skip_broken
@@ -399,25 +378,6 @@ class TestRun(BaseSyncTest):
                          constants.STATE_SKIPPED)
         self.assertEqual(report.details['distribution']['state'],
                          constants.STATE_SKIPPED)
-
-    @mock.patch('pulp_rpm.plugins.importers.yum.sync.treeinfo')
-    @mock.patch('shutil.rmtree', autospec=True)
-    @mock.patch('tempfile.mkdtemp', autospec=True)
-    @mock.patch('nectar.config.DownloaderConfig.finalize')
-    def test_finalize(self, mock_finalize, mock_mkdtemp, mock_rmtree, mock_treeinfo):
-        self.reposync.run()
-
-        mock_finalize.assert_called_once()
-
-    @mock.patch('shutil.rmtree', autospec=True)
-    @mock.patch('tempfile.mkdtemp', autospec=True)
-    def test_cancel(self, mock_mkdtemp, mock_rmtree):
-        self.reposync.get_metadata.side_effect = CancelException
-
-        report = self.reposync.run()
-
-        self.assertTrue(report.canceled_flag)
-        self.assertFalse(report.success_flag)
 
     @mock.patch('shutil.rmtree', autospec=True)
     @mock.patch('tempfile.mkdtemp', autospec=True)
@@ -1079,42 +1039,6 @@ class TestQueryAuthToken(BaseSyncTest):
         # ...and all of the unsupported types must be configured to skip
         for unit_type in ids.QUERY_AUTH_TOKEN_UNSUPPORTED:
             self.assertTrue(unit_type in skip_config)
-
-
-@skip_broken
-class TestCancel(BaseSyncTest):
-    def test_sets_bools(self):
-        self.reposync.downloader = self.downloader
-
-        self.reposync.cancel()
-
-        self.assertTrue(self.reposync.cancelled)
-        self.assertTrue(self.downloader.is_canceled)
-
-    def test_handles_no_downloader(self):
-        # it shouldn't get upset if there isn't a downloader available
-        self.reposync.cancel()
-
-        self.assertTrue(self.reposync.cancelled)
-        self.assertTrue(getattr(self.reposync, 'downloader', None) is None)
-
-    def test_sets_progress(self):
-        # get a sync running, but have the "get_metadata" call actually result
-        # in a "cancel" call
-
-        def cancel_side_effect(*args, **kwargs):
-            self.reposync.cancel()
-
-        self.reposync.check_metadata = mock.MagicMock(spec_set=self.reposync.check_metadata)
-        self.reposync.get_metadata = mock.MagicMock(side_effect=cancel_side_effect,
-                                                    spec_set=self.reposync.get_metadata)
-        self.reposync.save_default_metadata_checksum_on_repo = mock.MagicMock()
-        report = self.reposync.run()
-
-        # this proves that the progress was correctly set and a corresponding report
-        # was made
-        self.assertTrue(report.canceled_flag)
-        self.assertEqual(report.details['metadata']['state'], constants.STATE_CANCELLED)
 
 
 @skip_broken

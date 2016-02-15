@@ -79,7 +79,8 @@ class ISOSyncRun(listener.DownloadEventListener):
             'proxy_url': config.get(importer_constants.KEY_PROXY_HOST),
             'proxy_port': config.get(importer_constants.KEY_PROXY_PORT),
             'proxy_username': config.get(importer_constants.KEY_PROXY_USER),
-            'proxy_password': config.get(importer_constants.KEY_PROXY_PASS)}
+            'proxy_password': config.get(importer_constants.KEY_PROXY_PASS),
+            'working_dir': common_utils.get_working_directory()}
         downloader_config = DownloaderConfig(**downloader_config)
 
         # We will pass self as the event_listener, so that we can receive the callbacks in this
@@ -102,16 +103,6 @@ class ISOSyncRun(listener.DownloadEventListener):
             importer_constants.DOWNLOAD_POLICY,
             importer_constants.DOWNLOAD_IMMEDIATE)
         return policy != importer_constants.DOWNLOAD_IMMEDIATE
-
-    def cancel_sync(self):
-        """
-        This method will cancel a sync that is in progress.
-        """
-        # We used to support sync cancellation, but the current downloader implementation does
-        # not support it
-        # and so for now we will just pass
-        self.progress_report.state = self.progress_report.STATE_CANCELLED
-        self.downloader.cancel()
 
     def download_failed(self, report):
         """

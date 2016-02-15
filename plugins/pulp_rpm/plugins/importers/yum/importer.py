@@ -79,12 +79,4 @@ class YumImporter(Importer):
         sync_conduit.repo = repo
         self._current_sync = sync.RepoSync(repo, sync_conduit, call_config)
         report = self._current_sync.run()
-        self._current_sync.finalize()
         return report
-
-    def cancel_sync_repo(self):
-        """
-        Cancel a currently running repository synchronization operation.
-        """
-        self._current_sync.cancel()
-        self._current_sync.finalize()
