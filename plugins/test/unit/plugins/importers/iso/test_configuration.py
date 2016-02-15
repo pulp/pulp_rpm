@@ -52,7 +52,7 @@ class TestValidateFeedUrl(PulpRPMTests):
         self.assertTrue(status is False)
         self.assertEqual(error_message,
                          '<%(feed)s> must be a string.' % {'feed': importer_constants.KEY_FEED})
- 
+
     def test_valid(self):
         config = importer_mocks.get_basic_config(
             **{importer_constants.KEY_FEED: "http://test.com/feed"})
