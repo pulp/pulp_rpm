@@ -166,10 +166,11 @@ class ISOSyncRun(listener.DownloadEventListener):
                 if self._validate_downloads:
                     iso.validate_iso(report.destination)
                 try:
-                    iso.save_and_import_content(report.destination)
+                    iso.save()
                 except NotUniqueError:
                     iso = iso.__class__.objects.filter(**iso.unit_key).first()
                 repo_controller.associate_single_unit(self.sync_conduit.repo, iso)
+                iso.safe_import_content(report.destination)
 
                 # We can drop this ISO from the url --> ISO map
                 self.progress_report.num_isos_finished += 1
@@ -212,7 +213,7 @@ class ISOSyncRun(listener.DownloadEventListener):
             return self.progress_report.build_final_report()
 
         # Discover what files we need to download and what we already have
-        filtered_isos = self._filter_missing_isos(manifest)
+        filtered_isos = self._filter_missing_isos(manifest, self.download_deferred)
         local_missing_isos, local_available_isos, remote_missing_isos = filtered_isos
 
         # Associate units that are already in Pulp
@@ -234,6 +235,7 @@ class ISOSyncRun(listener.DownloadEventListener):
                 except NotUniqueError:
                     iso = iso.__class__.objects.filter(**iso.unit_key).first()
                 repo_controller.associate_single_unit(self.sync_conduit.repo, iso)
+
         else:
             self._download_isos(local_missing_isos)
 
@@ -303,7 +305,7 @@ class ISOSyncRun(listener.DownloadEventListener):
 
         return manifest
 
-    def _filter_missing_isos(self, manifest):
+    def _filter_missing_isos(self, manifest, download_deferred):
         """
         Use the sync_conduit and the manifest to determine which ISOs are at the feed_url
         that are not in our local store, as well as which ISOs are in our local store that are not
@@ -312,6 +314,8 @@ class ISOSyncRun(listener.DownloadEventListener):
         :param manifest: An ISOManifest describing the ISOs that are available at the
                          feed_url that we are synchronizing with
         :type  manifest: pulp_rpm.plugins.db.models.ISOManifest
+        :param download_deferred: indicates downloading is deferred (or not).
+        :type  download_deferred: bool
         :return:         A 3-tuple. The first element of the tuple is a list of ISOs that we should
                          retrieve from the feed_url. The second element of the tuple is a list of
                          Units that are available locally already, but are not currently associated
@@ -323,10 +327,12 @@ class ISOSyncRun(listener.DownloadEventListener):
         # A list of all the ISOs we have in Pulp
         existing_units = models.ISO.objects()
         existing_units_by_key = dict([(unit.unit_key_str, unit)
-                                      for unit in existing_units])
+                                      for unit in existing_units if not download_deferred and
+                                      os.path.isfile(unit.storage_path)])
         existing_units.rewind()
         existing_unit_keys = set([unit.unit_key_str
-                                  for unit in existing_units])
+                                  for unit in existing_units if not download_deferred and
+                                  os.path.isfile(unit.storage_path)])
 
         # A list of units currently associated with the repository
         existing_repo_units = repo_controller.find_repo_content_units(
