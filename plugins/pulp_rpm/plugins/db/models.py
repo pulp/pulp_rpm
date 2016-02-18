@@ -388,7 +388,11 @@ class RPM(RpmBase):
     _ns = mongoengine.StringField(default='units_rpm')
     _content_type_id = mongoengine.StringField(required=True, default='rpm')
 
-    meta = {'collection': 'units_rpm',
+    meta = {'indexes': [
+                'name', 'epoch', 'version', 'release', 'arch', 'filename', 'checksum',
+                'checksumtype', 'version_sort_index',
+                ('version_sort_index', 'release_sort_index')],
+            'collection': 'units_rpm',
             'allow_inheritance': False}
 
 
@@ -399,9 +403,12 @@ class SRPM(RpmBase):
     _ns = mongoengine.StringField(default='units_srpm')
     _content_type_id = mongoengine.StringField(required=True, default='srpm')
 
-    meta = {
-        'collection': 'units_srpm',
-        'allow_inheritance': False}
+    meta = {'indexes': [
+                'name', 'epoch', 'version', 'release', 'arch', 'filename', 'checksum',
+                'checksumtype', 'version_sort_index',
+                ('version_sort_index', 'release_sort_index')],
+            'collection': 'units_srpm',
+            'allow_inheritance': False}
 
 
 class Errata(UnitMixin, ContentUnit):
