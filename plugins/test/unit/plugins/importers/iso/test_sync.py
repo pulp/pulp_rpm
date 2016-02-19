@@ -4,7 +4,6 @@ import shutil
 import tempfile
 
 from mock import MagicMock, patch
-from nectar.downloaders.threaded import HTTPThreadedDownloader
 from nectar.report import DownloadReport
 from pulp.common.plugins import importer_constants
 from pulp.plugins.model import Repository, Unit
@@ -165,23 +164,6 @@ class TestISOSyncRun(PulpRPMTests):
         # Humorously enough, the _repo_url attribute named no_trailing_slash should now have a
         # trailing slash
         self.assertEqual(iso_sync_run._repo_url, 'http://fake.com/no_trailing_slash/')
-
-    @patch('pulp_rpm.plugins.importers.iso.sync.HTTPThreadedDownloader.cancel',
-           side_effect=HTTPThreadedDownloader.cancel, autospec=HTTPThreadedDownloader.cancel)
-    def test_cancel_sync(self, cancel):
-        """
-        Test what happens if cancel_sync is called when there is no Bumper.
-        """
-        # This just passes since the downloader library does not support cancellation. This helps
-        #  us get one
-        # more line of coverage though!
-        self.iso_sync_run.cancel_sync()
-
-        # Assert that the cancel Mock was called
-        cancel.assert_called_once_with(self.iso_sync_run.downloader)
-        # The progress report's state should now be cancelled
-        self.assertEqual(self.iso_sync_run.progress_report.state,
-                         SyncProgressReport.STATE_CANCELLED)
 
     @patch('pulp_rpm.plugins.importers.iso.sync._logger')
     def test_download_failed_during_iso_download(self, _logger):
