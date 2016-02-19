@@ -267,6 +267,13 @@ A collection of yum plugins supplementing Pulp consumer operations.
 
 
 %changelog
+* Fri Feb 19 2016 Dennis Kliban <dkliban@redhat.com> 2.8.0-0.5.beta
+- 1626 - Fix yum repo sync cancellation. (ipanova@redhat.com)
+- 1659 - ISO Sync is not performed correctly if download policy was changed.
+  (ipanova@redhat.com)
+- 1660 - Cannot create/update ISO repo without feed. (ipanova@redhat.com)
+- 1624 - Repo sync with --retain-old-count is failing (ipanova@redhat.com)
+
 * Thu Jan 28 2016 Dennis Kliban <dkliban@redhat.com> 2.8.0-0.4.beta
 - Pulp rebuild
 
