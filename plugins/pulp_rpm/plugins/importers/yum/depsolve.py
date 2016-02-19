@@ -239,6 +239,25 @@ class Solver(object):
             self._cached_source_with_provides = self._build_source_with_provides()
         return self._cached_source_with_provides
 
+    def _unit_generator(self, fields):
+        """
+        Yields RPM content units in the current source repo with the specified fields
+
+        Note that the 'provides' metadata will be flattened via _trim_provides().
+
+        :param fields: list of fields to include in the yielded units
+        :type fields: list
+
+        :return:    iterable of pulp_rpm.plugins.db.models.RPM
+        :rtype:     generator
+        """
+        # integration point with repo_controller, ideal for mocking in testing
+        return repo_controller.find_repo_content_units(
+            repository=self.source_repo,
+            repo_content_unit_q=mongoengine.Q(unit_type_id=ids.TYPE_ID_RPM),
+            unit_fields=fields, yield_content_unit=True
+        )
+
     def _build_source_with_provides(self):
         """
         Get a list of all available packages with their "Provides" info.
@@ -250,11 +269,7 @@ class Solver(object):
         """
         fields = list(models.RPM.unit_key_fields)
         fields.extend(['provides', 'version_sort_index', 'release_sort_index'])
-        units = repo_controller.find_repo_content_units(
-            repository=self.source_repo,
-            repo_content_unit_q=mongoengine.Q(unit_type_id=ids.TYPE_ID_RPM),
-            unit_fields=fields, yield_content_unit=True
-        )
+        units = self._unit_generator(fields)
         return [self._trim_provides(unit) for unit in units]
 
     def _trim_provides(self, unit):
@@ -265,10 +280,7 @@ class Solver(object):
         :param unit: unit to trim
         :type unit: pulp_rpm.plugins.db.models.RPM
         """
-        new_provides = []
-        for provide in unit.provides:
-            new_provides.append(provide['name'])
-        unit.provides = new_provides
+        unit.provides = [provide['name'] for provide in unit.provides]
         return unit
 
     @property
@@ -413,16 +425,13 @@ class Solver(object):
         For an iterable of RPM Units, return a generator of Require() instances that
         represent the requirements for those RPMs.
 
-        :param units:   iterable of RPMs for which a query should be performed to
-                        retrieve their Requires entries.
-        :type  units:   iterable of pulp.plugins.model.Unit
+        :param units:   iterable of pulp_rpm.plugins.models.RPM
+        :type  units:   iterable
 
         :return:    generator of Require() instances
         :rtype:     generator
         """
         for segment in paginate(units):
-            unit_ids = [unit.id for unit in segment]
-            fields = ['requires', 'id']
-            for result in models.RPM.objects.filter(id__in=unit_ids).only(*fields):
-                for require in result.requires or []:
+            for unit in segment:
+                for require in unit.requires or []:
                     yield Requirement(**require)
