@@ -483,8 +483,8 @@ configuration values are optional.
  to this option are ``True`` and ``False``; defaults to ``False``
 
 ``retain_old_count``
- Count indicating how many old rpm versions to retain; defaults to 0. This count
- only takes effect when ``remove_old`` option is set to ``True``.
+ Count indicating how many old rpm versions to retain; by default it will download
+ all versions available.
 
 ``skip``
   List of content types to be skipped during the repository synchronization.
