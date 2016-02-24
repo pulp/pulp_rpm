@@ -218,7 +218,10 @@ def _handle_yum_metadata_file(repo, type_id, unit_key, metadata, file_path, cond
 
     model = models.YumMetadataFile(**unit_data)
     model.set_storage_path(os.path.basename(file_path))
-    model.save_and_import_content(file_path)
+    try:
+        model.save_and_import_content(file_path)
+    except NotUniqueError:
+        model = model.__class__.objects.get(**model.unit_key)
 
     repo_controller.associate_single_unit(conduit.repo, model)
 
