@@ -208,6 +208,8 @@ class Distribution(UnitMixin, FileContentUnit):
     _content_type_id = mongoengine.StringField(required=True, default='distribution')
 
     unit_key_fields = ('distribution_id', 'family', 'variant', 'version', 'arch')
+    unit_display_name = 'Distribution'
+    unit_description = 'Kickstart trees and all accompanying files'
 
     meta = {'collection': 'units_distribution',
             'indexes': [
@@ -287,6 +289,8 @@ class DRPM(NonMetadataPackage):
     _content_type_id = mongoengine.StringField(required=True, default='drpm')
 
     unit_key_fields = ('epoch', 'version', 'release', 'filename', 'checksumtype', 'checksum')
+    unit_display_name = 'DRPM'
+    unit_description = 'DRPM'
 
     meta = {'collection': 'units_drpm',
             'indexes': [
@@ -388,6 +392,10 @@ class RPM(RpmBase):
     _ns = mongoengine.StringField(default='units_rpm')
     _content_type_id = mongoengine.StringField(required=True, default='rpm')
 
+    unit_display_name = 'RPM'
+    unit_description = 'RPM'
+    unit_referenced_types = ['erratum']
+
     meta = {'collection': 'units_rpm',
             'allow_inheritance': False}
 
@@ -398,6 +406,9 @@ class SRPM(RpmBase):
     # For backward compatibility
     _ns = mongoengine.StringField(default='units_srpm')
     _content_type_id = mongoengine.StringField(required=True, default='srpm')
+
+    unit_display_name = 'SRPM'
+    unit_description = 'SRPM'
 
     meta = {
         'collection': 'units_srpm',
@@ -430,6 +441,9 @@ class Errata(UnitMixin, ContentUnit):
     _content_type_id = mongoengine.StringField(required=True, default='erratum')
 
     unit_key_fields = ('errata_id',)
+    unit_display_name = 'Erratum'
+    unit_description = 'Erratum advisory information'
+    unit_referenced_types = ['rpm']
 
     meta = {'indexes': [
         "version", "release", "type", "status", "updated",
@@ -490,6 +504,8 @@ class PackageGroup(UnitMixin, ContentUnit):
     _content_type_id = mongoengine.StringField(required=True, default='package_group')
 
     unit_key_fields = ('package_group_id', 'repo_id')
+    unit_display_name = 'Package Group'
+    unit_description = 'Yum Package group information'
 
     meta = {
         'indexes': [
@@ -528,6 +544,8 @@ class PackageCategory(UnitMixin, ContentUnit):
     _content_type_id = mongoengine.StringField(required=True, default='package_category')
 
     unit_key_fields = ('package_category_id', 'repo_id')
+    unit_display_name = 'Package Category'
+    unit_description = 'Yum Package category information'
 
     meta = {
         'indexes': [
@@ -557,6 +575,8 @@ class PackageEnvironment(UnitMixin, ContentUnit):
     _content_type_id = mongoengine.StringField(required=True, default='package_environment')
 
     unit_key_fields = ('package_environment_id', 'repo_id')
+    unit_display_name = 'Package Environment'
+    unit_description = 'Yum Package environment information'
 
     meta = {
         'indexes': ['package_environment_id', 'repo_id', 'name', 'group_ids'],
@@ -583,6 +603,8 @@ class YumMetadataFile(UnitMixin, FileContentUnit):
     _content_type_id = mongoengine.StringField(required=True, default='yum_repo_metadata_file')
 
     unit_key_fields = ('data_type', 'repo_id')
+    unit_display_name = 'YUM Repository Metadata File'
+    unit_description = 'YUM Repository Metadata File'
 
     meta = {
         'indexes': ['data_type'],
@@ -609,6 +631,8 @@ class ISO(FileContentUnit):
     _content_type_id = mongoengine.StringField(required=True, default='iso')
 
     unit_key_fields = ('name', 'checksum', 'size')
+    unit_display_name = 'ISO'
+    unit_description = 'ISO'
 
     meta = {'collection': 'units_iso', 'allow_inheritance': False}
 
