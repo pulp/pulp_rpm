@@ -24,10 +24,10 @@ New Features
 
 * Yum metadata files or ``metafile`` can now be removed from a repository content   using CLI.
 
-* Relative URLs are now supported using the '--relative-url' option when exporting repositories.
+* Relative URLs are now supported using the ``--relative-url`` option when exporting repositories.
 
-* Repo Groups can now be exported over 'https' by default. New options '--serve-https' and
- '--serve-http' are available for configuration.
+* Repo Groups can now be exported over ``https`` by default. New options ``--serve-https`` and
+  ``--serve-http`` are available for configuration.
 
 Database Changes
 ----------------
