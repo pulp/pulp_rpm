@@ -1,5 +1,7 @@
 from gettext import gettext as _
 
+from mongoengine import NotUniqueError
+
 from pulp.common import config as config_utils
 from pulp.common.plugins import importer_constants
 from pulp.plugins.importer import Importer
@@ -140,7 +142,10 @@ class ISOImporter(Importer):
         except ValueError, e:
             return {'success_flag': False, 'summary': e.message, 'details': None}
 
-        iso.save_and_import_content(file_path)
+        try:
+            iso.save_and_import_content(file_path)
+        except NotUniqueError:
+            iso = iso.__class__.objects.get(**iso.unit_key)
 
         repo_controller.associate_single_unit(transfer_repo.repo_obj, iso)
 
