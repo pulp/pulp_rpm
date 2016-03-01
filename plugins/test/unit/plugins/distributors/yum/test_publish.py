@@ -941,6 +941,32 @@ class PublishRpmStepTests(BaseYumDistributorPublishStepTests):
         step.parent = self.publisher
         step.finalize()
 
+    def test_total_packages_in_repo(self):
+        """
+        the "total_packages_in_repo" property should calculate a number based on content unit counts
+        on the repo
+        """
+        repo = model.Repository(repo_id='foo')
+        repo.content_unit_counts = {'rpm': 2, 'srpm': 3}
+        step = publish.PublishRpmStep(mock.Mock(package_dir=None))
+        step.repo = repo.to_transfer_repo()
+
+        total = step.total_packages_in_repo
+
+        self.assertEqual(total, 5)
+
+    def test_total_packages_in_repo_empty_repo(self):
+        """
+        in case the repo is empty and has no data in content_unit_counts, make sure this returns 0
+        """
+        repo = model.Repository(repo_id='foo')
+        step = publish.PublishRpmStep(mock.Mock(package_dir=None))
+        step.repo = repo.to_transfer_repo()
+
+        total = step.total_packages_in_repo
+
+        self.assertEqual(total, 0)
+
 
 class PublishErrataStepTests(BaseYumDistributorPublishStepTests):
 

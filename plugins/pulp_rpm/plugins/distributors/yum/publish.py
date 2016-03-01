@@ -382,11 +382,26 @@ class PublishRpmStep(platform_steps.UnitModelPluginStep):
         self.dist_step = dist_step
         self.fast_forward = False
 
+    @property
+    def total_packages_in_repo(self):
+        """
+        Determine how many total RPMs and SRPMs are in the repo. This corresponds to the total
+        number of published packages that will show up in the published metadata.
+
+        :return:    total number of RPMs and SRPMs in the repo
+        :rtype:     int
+        """
+        rpm_total = self.get_repo().repo_obj.content_unit_counts.get(
+            models.RPM._content_type_id.default, 0)
+        srpm_total = self.get_repo().repo_obj.content_unit_counts.get(
+            models.SRPM._content_type_id.default, 0)
+        return rpm_total + srpm_total
+
     def initialize(self):
         """
         Create each of the three metadata contexts required for publishing RPM & SRPM
         """
-        total = self.get_total()
+        total = self.total_packages_in_repo
 
         checksum_type = self.parent.get_checksum_type()
         self.file_lists_context = FilelistsXMLFileContext(self.get_working_dir(), total,
