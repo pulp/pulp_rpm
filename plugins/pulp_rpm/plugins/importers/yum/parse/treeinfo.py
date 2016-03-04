@@ -414,10 +414,6 @@ class DistSync(object):
                         feed=self.feed,
                         validation_exceptions=[e])])
 
-            # This is broken and best I can tell - not used.
-            # model.metadata[constants.CONFIG_KEY_DISTRIBUTION_XML_FILE] = \
-            #     constants.DISTRIBUTION_XML
-
             # parse the distribution file and add all the files to the download request
             root = tree.getroot()
             for file_element in root.findall('file'):

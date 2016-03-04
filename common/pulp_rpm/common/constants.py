@@ -121,7 +121,6 @@ DISTRIBUTION_STORAGE_PATH = '/var/lib/pulp/content/distribution/'
 # can be '.treeinfo' or 'treeinfo' (in cdn case) we need to check which one exists
 TREE_INFO_LIST = ['.treeinfo', 'treeinfo']
 DISTRIBUTION_XML = 'PULP_DISTRIBUTION.xml'
-CONFIG_KEY_DISTRIBUTION_XML_FILE = 'pulp_distribution_xml_file'
 
 # Configuration constants for export distributors
 PUBLISH_HTTP_KEYWORD = 'http'
