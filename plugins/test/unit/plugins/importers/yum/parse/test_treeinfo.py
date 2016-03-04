@@ -101,21 +101,16 @@ class TestProcessDistribution(unittest.TestCase):
         self.assertEquals('foo/bar.txt', files[0]['relativepath'])
         self.assertEquals('baz/qux.txt', files[1]['relativepath'])
         self.assertEquals(constants.DISTRIBUTION_XML, files[2]['relativepath'])
-        # TODO: This functionality is commented out in treeinfo.py
-        # self.assertEquals(model.metadata[constants.CONFIG_KEY_DISTRIBUTION_XML_FILE],
-        #                   constants.DISTRIBUTION_XML)
 
     @patch('pulp_rpm.plugins.importers.yum.parse.treeinfo.DistSync.get_distribution_file',
            return_value=None)
     def test_no_distribution(self, mock_get_dist):
         parent = Mock()
         tmp_dir = Mock()
-        model = Mock(metadata=dict())
         dist = DistSync(parent, '')
         files = dist.process_distribution(tmp_dir)
 
         self.assertEquals(0, len(files))
-        self.assertEquals(None, model.metadata.get(constants.CONFIG_KEY_DISTRIBUTION_XML_FILE))
 
     @patch('pulp_rpm.plugins.importers.yum.parse.treeinfo.DistSync.get_distribution_file',
            return_value=DISTRIBUTION_BAD_SYNTAX_FILE)
