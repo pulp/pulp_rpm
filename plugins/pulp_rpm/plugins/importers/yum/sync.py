@@ -571,6 +571,8 @@ class RepoSync(object):
             entry.unit_id = unit.id
             entry.unit_type_id = unit.type_id
             entry.url = urljoin(base_url, unit.download_path)
+            entry.checksum = unit.checksum
+            entry.checksum_algorithm = unit.checksumtype
             entry.save_revision()
             yield unit
 
