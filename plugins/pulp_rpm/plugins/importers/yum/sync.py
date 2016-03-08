@@ -576,14 +576,15 @@ class RepoSync(object):
 
     def add_rpm_unit(self, metadata_files, unit):
         """
-        Add the specified RPM unit.
+        Add the specified RPM, SRPM or DRPM unit.
 
         :param metadata_files: metadata files object.
         :type metadata_files: pulp_rpm.plugins.importers.yum.repomd.metadata.MetadataFiles
         :param unit: A content unit.
         :type unit: pulp_rpm.plugins.db.models.RpmBase
         """
-        metadata_files.add_repodata(unit)
+        if isinstance(unit, (models.RPM, models.SRPM)):
+            metadata_files.add_repodata(unit)
         unit.set_storage_path(unit.filename)
         try:
             unit.save()

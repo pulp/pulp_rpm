@@ -17,6 +17,7 @@ from pulp.plugins.model import Repository, SyncReport, Unit
 from pulp.server.exceptions import PulpCodedException
 import pulp.server.managers.factory as manager_factory
 import mock
+from bson import ObjectId
 
 from pulp_rpm.common import constants, ids
 from pulp_rpm.devel.skip import skip_broken
@@ -39,14 +40,45 @@ class BaseSyncTest(unittest.TestCase):
         self.metadata_files = metadata.MetadataFiles(self.url, '/foo/bar', DownloaderConfig())
         self.metadata_files.download_repomd = mock.MagicMock()
         self.repo = Repository('repo1')
-        self.conduit = RepoSyncConduit(self.repo.id, 'yum_importer', 'abc123')
+        self.conduit = RepoSyncConduit(self.repo.id, 'yum_importer', ObjectId())
+        # this happens in the YumImporter's sync_repo() method. I don't know why.
+        self.conduit.repo = self.repo
         self.conduit.set_progress = mock.MagicMock(spec_set=self.conduit.set_progress)
         self.conduit.get_scratchpad = mock.MagicMock(spec_set=self.conduit.get_scratchpad,
                                                      return_value={})
         self.conduit.set_scratchpad = mock.MagicMock(spec_set=self.conduit.get_scratchpad)
         self.config = PluginCallConfiguration({}, {importer_constants.KEY_FEED: self.url})
-        self.reposync = RepoSync(self.repo, self.conduit, self.config)
+        with mock.patch('pulp.server.managers.repo._common.get_working_directory'):
+            self.reposync = RepoSync(self.repo, self.conduit, self.config)
         self.downloader = Downloader(DownloaderConfig())
+
+
+class TestAddRpmUnit(BaseSyncTest):
+    @mock.patch('pulp.server.controllers.repository.associate_single_unit')
+    def test_drpm_does_not_add_repodata(self, mock_assoc):
+        unit = models.DRPM(epoch=0, version='1.1.1', release='0', filename='foo.drpm',
+                           checksumtype='sha256', checksum='abc123')
+        self.metadata_files.add_repodata = mock.MagicMock()
+        unit.set_storage_path = mock.MagicMock()
+        unit.save = mock.MagicMock()
+        self.reposync.progress_report = mock.MagicMock()
+
+        self.reposync.add_rpm_unit(self.metadata_files, unit)
+
+        self.assertEqual(self.metadata_files.add_repodata.call_count, 0)
+
+    @mock.patch('pulp.server.controllers.repository.associate_single_unit')
+    def test_rpm_adds_repodata(self, mock_assoc):
+        unit = models.RPM(name='foo', epoch=0, version='1.1.1', release='0', arch='x86_64',
+                          checksumtype='sha256', checksum='abc123')
+        self.metadata_files.add_repodata = mock.MagicMock()
+        unit.set_storage_path = mock.MagicMock()
+        unit.save = mock.MagicMock()
+        self.reposync.progress_report = mock.MagicMock()
+
+        self.reposync.add_rpm_unit(self.metadata_files, unit)
+
+        self.metadata_files.add_repodata.assert_called_once_with(unit)
 
 
 @skip_broken
