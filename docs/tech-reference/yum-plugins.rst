@@ -228,7 +228,20 @@ Metadata
 Distribution
 ------------
 
-The distribution type's ID is ``distribution``.
+The distribution type's ID is ``distribution``. A distribution tree is described in a
+``treeinfo`` or ``.treeinfo`` file. This INI-style file is described in the
+`productmd <https://release-engineering.github.io/productmd/treeinfo-1.0.html>`_
+project's documentation. A distribution tree can be created with the
+`lorax <https://github.com/rhinstaller/lorax/>`_ tool and is used by the
+`anaconda <https://github.com/rhinstaller/anaconda>`_ installer to kickstart installations.
+A distribution is contained within a yum repository.
+
+There are cases where a repository contains files that are not referenced by the repository's
+metadata files or by the ``treeinfo`` file. In these cases, there may be a
+``PULP_DISTRIBUTION.xml`` file present used to enumerate such files. This XML file was introduced
+in the 2.5 release of the ``pulp_rpm`` plugin. The initial
+`schema <https://github.com/pulp/pulp_rpm/blob/2.5-release/plugins/usr/share/pulp-rpm/pulp_distribution.xsd>`_
+fails to include elements necessary for file validation.
 
 Unit Key
 ^^^^^^^^
