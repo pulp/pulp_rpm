@@ -96,7 +96,8 @@ class Package:
         :return: Installed packages: {resolved=[Package,],deps=[Package,], failed=[Package,]}
         :rtype: dict
         """
-        states = (constants.TS_FAILED, constants.TS_INSTALL, constants.TS_UPDATE)
+        states = (constants.TS_FAILED, constants.TS_INSTALL,
+                  constants.TS_TRUEINSTALL, constants.TS_UPDATE)
         return Package.tx_summary(ts_info, states)
 
     @staticmethod
@@ -108,7 +109,8 @@ class Package:
         :return: Installed packages: {resolved=[Package,],deps=[Package,], failed=[Package,]}
         :rtype: dict
         """
-        states = (constants.TS_FAILED, constants.TS_INSTALL, constants.TS_UPDATE)
+        states = (constants.TS_FAILED, constants.TS_INSTALL,
+                  constants.TS_TRUEINSTALL, constants.TS_UPDATE)
         return Package.tx_summary(ts_info, states)
 
     @staticmethod
