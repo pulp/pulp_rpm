@@ -8,6 +8,7 @@ import unittest
 
 import mock
 from nectar.config import DownloaderConfig
+from nectar.report import DownloadReport
 
 from pulp_rpm.devel.skip import skip_broken
 from pulp_rpm.plugins.importers.yum.utils import RepoURLModifier
@@ -205,6 +206,21 @@ class TestDownloadMetadataFiles(unittest.TestCase):
         self.assertEqual(len(requests), 2)
         self.assertTrue(requests[0].destination.endswith('primary'))
         self.assertTrue(requests[1].destination.endswith('pkgtags.sqlite.gz'))
+
+    def test_failed_reports(self):
+        self.metadata_files.downloader.download = mock.MagicMock(
+            spec_set=self.metadata_files.downloader.download
+        )
+        self.metadata_files.metadata = {
+            'primary': file_info_factory('primary'),
+        }
+
+        report = DownloadReport('url', '/destination')
+        report.download_failed()
+        self.metadata_files.event_listener.failed_reports.append(report)
+
+        # Ensure an exception is raised if the download failed
+        self.assertRaises(IOError, self.metadata_files.download_metadata_files)
 
 
 class TestQueryAuthToken(unittest.TestCase):
