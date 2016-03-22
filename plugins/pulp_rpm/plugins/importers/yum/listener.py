@@ -1,4 +1,7 @@
+from contextlib import contextmanager
+from gettext import gettext as _
 import logging
+import os
 
 from nectar.listener import DownloadEventListener, AggregatingEventListener
 from pulp.common.plugins import importer_constants
@@ -165,6 +168,22 @@ class PackageListener(DownloadEventListener):
             self.sync.progress_report['content'].failure(unit, error_report)
             raise
 
+    @contextmanager
+    def deleting(self, path):
+        """
+        Remove the file at path if possible, but don't let any exceptions bubble up.
+
+        Like contextlib.closing, but more fun!
+
+        :param path:    full path to a file that should be deleted
+        :type  path:    basestring
+        """
+        yield
+        try:
+            os.remove(path)
+        except Exception as e:
+            _logger.warning(_('Could not remove file from temporary location: {0}').format(e))
+
 
 class RPMListener(PackageListener):
     """
@@ -172,14 +191,15 @@ class RPMListener(PackageListener):
     """
 
     def download_succeeded(self, report):
-        unit = report.data
-        try:
-            super(RPMListener, self).download_succeeded(report)
-        except (verification.VerificationException, verification.InvalidChecksumType):
-            # verification failed, unit not added
-            return
-        self.sync.add_rpm_unit(self.metadata_files, unit)
-        unit.safe_import_content(report.destination)
+        with self.deleting(report.destination):
+            unit = report.data
+            try:
+                super(RPMListener, self).download_succeeded(report)
+            except (verification.VerificationException, verification.InvalidChecksumType):
+                # verification failed, unit not added
+                return
+            self.sync.add_rpm_unit(self.metadata_files, unit)
+            unit.safe_import_content(report.destination)
 
 
 class DRPMListener(PackageListener):
@@ -188,11 +208,12 @@ class DRPMListener(PackageListener):
     """
 
     def download_succeeded(self, report):
-        unit = report.data
-        try:
-            super(DRPMListener, self).download_succeeded(report)
-        except (verification.VerificationException, verification.InvalidChecksumType):
-            # verification failed, unit not added
-            return
-        self.sync.add_drpm_unit(self.metadata_files, unit)
-        unit.safe_import_content(report.destination)
+        with self.deleting(report.destination):
+            unit = report.data
+            try:
+                super(DRPMListener, self).download_succeeded(report)
+            except (verification.VerificationException, verification.InvalidChecksumType):
+                # verification failed, unit not added
+                return
+            self.sync.add_drpm_unit(self.metadata_files, unit)
+            unit.safe_import_content(report.destination)

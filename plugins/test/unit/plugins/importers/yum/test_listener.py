@@ -2,10 +2,81 @@ import os
 import unittest
 
 import mock
+from nectar.report import DownloadReport
 from pulp.plugins.util import verification
 
 from pulp_rpm.devel.skip import skip_broken
 from pulp_rpm.plugins.importers.yum import listener
+
+
+class TestPackageListenerDeleting(unittest.TestCase):
+    def setUp(self):
+        self.mock_sync = mock.MagicMock()
+        self.mock_metadata_files = mock.MagicMock()
+        self.listener = listener.PackageListener(self.mock_sync, self.mock_metadata_files)
+
+    @mock.patch('os.remove')
+    def test_removes_path(self, mock_remove):
+        path = '/a/b/c'
+
+        with self.listener.deleting(path):
+            pass
+
+        mock_remove.assert_called_once_with(path)
+
+    @mock.patch('os.remove', side_effect=IOError)
+    def test_squashes_exception(self, mock_remove):
+        path = '/a/b/c'
+
+        # this should not raise any exceptions
+        with self.listener.deleting(path):
+            pass
+
+        mock_remove.assert_called_once_with(path)
+
+
+class TestRPMListenerDownloadSucceeded(unittest.TestCase):
+    def setUp(self):
+        self.mock_sync = mock.MagicMock()
+        # this causes validation to be skipped
+        self.mock_sync.config.get.return_value = False
+        self.mock_metadata_files = mock.MagicMock()
+        self.listener = listener.RPMListener(self.mock_sync, self.mock_metadata_files)
+        self.report = DownloadReport('http://pulpproject.org', '/a/b/c')
+
+    @mock.patch.object(listener.RPMListener, 'deleting')
+    def test_calls_deleting(self, mock_deleting):
+        unit = mock.MagicMock()
+        self.report.data = unit
+
+        self.listener.download_succeeded(self.report)
+
+        # it was called correctly
+        mock_deleting.assert_called_once_with('/a/b/c')
+        # it was used as a context manager
+        self.assertEqual(mock_deleting.return_value.__exit__.call_count, 1)
+
+
+class TestDRPMListenerDownloadSucceeded(unittest.TestCase):
+    def setUp(self):
+        self.mock_sync = mock.MagicMock()
+        # this causes validation to be skipped
+        self.mock_sync.config.get.return_value = False
+        self.mock_metadata_files = mock.MagicMock()
+        self.listener = listener.DRPMListener(self.mock_sync, self.mock_metadata_files)
+        self.report = DownloadReport('http://pulpproject.org', '/a/b/c')
+
+    @mock.patch.object(listener.DRPMListener, 'deleting')
+    def test_calls_deleting(self, mock_deleting):
+        unit = mock.MagicMock()
+        self.report.data = unit
+
+        self.listener.download_succeeded(self.report)
+
+        # it was called correctly
+        mock_deleting.assert_called_once_with('/a/b/c')
+        # it was used as a context manager
+        self.assertEqual(mock_deleting.return_value.__exit__.call_count, 1)
 
 
 class TestPackageListener(unittest.TestCase):
