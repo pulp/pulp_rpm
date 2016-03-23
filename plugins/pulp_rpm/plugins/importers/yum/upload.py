@@ -131,8 +131,8 @@ def upload(repo, type_id, unit_key, metadata, file_path, conduit, config):
     except PulpCodedException, e:
         _LOGGER.exception(e)
         return _fail_report(str(e))
-    except:
-        msg = 'unexpected error occurred importing uploaded file'
+    except Exception as e:
+        msg = 'unexpected error occurred importing uploaded file: %s' % e
         _LOGGER.exception(msg)
         return _fail_report(msg)
 
