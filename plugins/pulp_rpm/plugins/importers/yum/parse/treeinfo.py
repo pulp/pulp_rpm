@@ -152,10 +152,13 @@ class DistSync(object):
 
         existing_units = list(existing_units)
 
+        # determine missing units
+        missing_units = repo_controller.missing_unit_count(self.repo.repo_id)
         # Continue only when the distribution has changed.
         if len(existing_units) == 1 and \
-                self.existing_distribution_is_current(existing_units[0], unit):
-            _logger.debug(_('upstream distribution unchanged; skipping'))
+                self.existing_distribution_is_current(existing_units[0], unit) and \
+                (self.download_deferred or not missing_units):
+            _logger.info(_('upstream distribution unchanged; skipping'))
             return
 
         # Process the distribution
@@ -186,8 +189,13 @@ class DistSync(object):
         unit.safe_import_content(treeinfo_path, os.path.basename(treeinfo_path))
 
         # The downloaded files are imported into platform storage.
-        for destination, location in downloaded:
-            unit.safe_import_content(destination, location)
+        if downloaded:
+            for destination, location in downloaded:
+                unit.safe_import_content(destination, location)
+            else:
+                if not unit.downloaded:
+                    unit.downloaded = True
+                    unit.save()
 
         # Associate the unit.
         repo_controller.associate_single_unit(self.repo, unit)

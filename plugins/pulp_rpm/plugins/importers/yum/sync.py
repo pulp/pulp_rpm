@@ -345,8 +345,11 @@ class RepoSync(object):
         self.current_revision = metadata_files.revision
         # if the revision is positive, hasn't increased and the skip list doesn't include
         # new types that weren't present on the last run...
+        # determine missing units
+        missing_units = repo_controller.missing_unit_count(self.repo.repo_id)
         if 0 < metadata_files.revision <= previous_revision \
-                and previous_skip_set - current_skip_set == set():
+                and previous_skip_set - current_skip_set == set() \
+                and (self.download_deferred or not missing_units):
             _logger.info(_('upstream repo metadata has not changed. Skipping steps.'))
             self.skip_repomd_steps = True
             return metadata_files
@@ -584,6 +587,9 @@ class RepoSync(object):
         :type metadata_files: pulp_rpm.plugins.importers.yum.repomd.metadata.MetadataFiles
         :param unit: A content unit.
         :type unit: pulp_rpm.plugins.db.models.RpmBase
+
+        :return:    A content unit
+        :rtype:     pulp_rpm.plugins.db.models.RpmBase
         """
         if isinstance(unit, (models.RPM, models.SRPM)):
             metadata_files.add_repodata(unit)
@@ -595,6 +601,7 @@ class RepoSync(object):
         repo_controller.associate_single_unit(self.conduit.repo, unit)
         self.progress_report['content'].success(unit)
         self.conduit.set_progress(self.progress_report)
+        return unit
 
     # added for clarity
     add_drpm_unit = add_rpm_unit

@@ -56,6 +56,32 @@ class TestRPMListenerDownloadSucceeded(unittest.TestCase):
         # it was used as a context manager
         self.assertEqual(mock_deleting.return_value.__exit__.call_count, 1)
 
+    def test_change_download_flag(self):
+        unit = mock.MagicMock()
+        self.report.data = unit
+        added_unit = mock.MagicMock()
+        added_unit.downloaded = False
+        self.mock_sync.add_rpm_unit.return_value = added_unit
+
+        self.listener.download_succeeded(self.report)
+
+        # test flag changed to True and save was called
+        self.assertEqual(added_unit.downloaded, True)
+        self.assertEqual(added_unit.save.call_count, 1)
+
+    def test_save_not_called(self):
+        unit = mock.MagicMock()
+        self.report.data = unit
+        added_unit = mock.MagicMock()
+        added_unit.downloaded = True
+        self.mock_sync.add_rpm_unit.return_value = added_unit
+
+        self.listener.download_succeeded(self.report)
+
+        # test flag is still set to True but save was not called
+        self.assertEqual(added_unit.downloaded, True)
+        self.assertEqual(added_unit.save.call_count, 0)
+
 
 class TestDRPMListenerDownloadSucceeded(unittest.TestCase):
     def setUp(self):
@@ -77,6 +103,32 @@ class TestDRPMListenerDownloadSucceeded(unittest.TestCase):
         mock_deleting.assert_called_once_with('/a/b/c')
         # it was used as a context manager
         self.assertEqual(mock_deleting.return_value.__exit__.call_count, 1)
+
+    def test_change_download_flag(self):
+        unit = mock.MagicMock()
+        self.report.data = unit
+        added_unit = mock.MagicMock()
+        added_unit.downloaded = False
+        self.mock_sync.add_drpm_unit.return_value = added_unit
+
+        self.listener.download_succeeded(self.report)
+
+        # test flag changed to True and save was called
+        self.assertEqual(added_unit.downloaded, True)
+        self.assertEqual(added_unit.save.call_count, 1)
+
+    def test_save_not_called(self):
+        unit = mock.MagicMock()
+        self.report.data = unit
+        added_unit = mock.MagicMock()
+        added_unit.downloaded = True
+        self.mock_sync.add_drpm_unit.return_value = added_unit
+
+        self.listener.download_succeeded(self.report)
+
+        # test flag is still set to True but save was not called
+        self.assertEqual(added_unit.downloaded, True)
+        self.assertEqual(added_unit.save.call_count, 0)
 
 
 class TestPackageListener(unittest.TestCase):
