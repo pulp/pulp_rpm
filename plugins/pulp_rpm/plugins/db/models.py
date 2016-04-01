@@ -130,7 +130,7 @@ class NonMetadataPackage(UnitMixin, FileContentUnit):
     }
 
     def __init__(self, *args, **kwargs):
-        if 'checksumtype' in kwargs:
+        if kwargs.get('checksumtype') is not None:
             kwargs['checksumtype'] = verification.sanitize_checksum_type(kwargs['checksumtype'])
         super(NonMetadataPackage, self).__init__(*args, **kwargs)
 

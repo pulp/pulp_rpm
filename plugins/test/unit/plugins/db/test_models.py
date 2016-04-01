@@ -14,6 +14,17 @@ from pulp_rpm.devel.skip import skip_broken
 from pulp_rpm.plugins.db import models
 
 
+class TestNonMetadataModel(unittest.TestCase):
+    def test_init_no_checksum(self):
+        """
+        Make sure the class can be instantiated with a checksum and checksumtype set to None. It may
+        not be possible to save it this way, but it should be usable as an instance.
+
+        https://pulp.plan.io/issues/1792
+        """
+        models.NonMetadataPackage(version='1.0.0', release='2', checksumtype=None, checksum=None)
+
+
 @skip_broken
 class TestDistribution(unittest.TestCase):
     """
@@ -52,7 +63,6 @@ class TestDRPM(unittest.TestCase):
         self.assertEqual(drpm.unit_key['checksumtype'], 'sha1')
 
 
-@skip_broken
 class TestErrata(unittest.TestCase):
     """
     This class contains tests for the Errata class.
@@ -63,12 +73,11 @@ class TestErrata(unittest.TestCase):
         Assert that the rpm_search_dicts() method properly sanitizes checksum types with the sum
         is specified with the 'sum' attribute.
         """
-        errata = models.Errata('id', {})
-        errata.metadata = {
-            'pkglist': [
-                {'packages': [
-                    {'name': 'name', 'epoch': '0', 'version': '0.0', 'sum': ['sha', 'sum'],
-                     'release': 'release', 'arch': 'arch'}]}]}
+        errata = models.Errata()
+        errata.pkglist = [
+            {'packages': [
+                {'name': 'name', 'epoch': '0', 'version': '0.0', 'sum': ['sha', 'sum'],
+                 'release': 'release', 'arch': 'arch'}]}]
 
         ret = errata.rpm_search_dicts
 
@@ -80,17 +89,35 @@ class TestErrata(unittest.TestCase):
         Assert that the rpm_search_dicts() method properly sanitizes checksum types with the sum
         is specified with the 'type' attribute.
         """
-        errata = models.Errata('id', {})
-        errata.metadata = {
-            'pkglist': [
-                {'packages': [
-                    {'name': 'name', 'epoch': '0', 'version': '0.0', 'sums': ['sum1', 'sum2'],
-                     'release': 'release', 'arch': 'arch', 'type': 'sha'}]}]}
+        errata = models.Errata()
+        errata.pkglist = [
+            {'packages': [
+                {'name': 'name', 'epoch': '0', 'version': '0.0', 'sums': ['sum1', 'sum2'],
+                 'release': 'release', 'arch': 'arch', 'type': 'sha'}]}]
 
         ret = errata.rpm_search_dicts
 
         self.assertEqual(len(ret), 1)
         self.assertEqual(ret[0]['checksumtype'], 'sha1')
+
+    def test_rpm_search_dicts_no_checksum(self):
+        """
+        Assert that the rpm_search_dicts() method tolerates a missing checksumtype, as is found
+        when using this demo repo: https://repos.fedorapeople.org/repos/pulp/pulp/demo_repos/zoo/
+        """
+        errata = models.Errata()
+        errata.pkglist = [
+            {'packages': [
+                {'name': 'foo', 'epoch': '0', 'version': '0.0', 'sum': None,
+                 'release': 'release', 'arch': 'arch'}]}]
+
+        ret = errata.rpm_search_dicts
+
+        # sanity-check that there is one result with the correct name
+        self.assertEqual(len(ret), 1)
+        self.assertEqual(ret[0]['name'], 'foo')
+        # make sure this field is still not present
+        self.assertTrue('checksumtype' not in ret[0])
 
 
 class TestISO(unittest.TestCase):
