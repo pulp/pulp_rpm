@@ -2,13 +2,22 @@
 Pulp 2.8 Release Notes
 ======================
 
+Pulp 2.8.1
+==========
+
+Bug Fixes
+---------
+
+See the list of :fixedbugs:`2.8.1`
+
+
 Pulp 2.8.0
 ==========
 
 New Behaviors
 -------------
-Repo sync cancellation now exists immediately. 
-If the syncronization of the repo is cancelled, the worker process exits immediately with
+Repo sync cancellation now exits immediately.
+If the synchronization of the repo is cancelled, the worker process exits immediately with
 sys.exit(). A new worker process is created immediately, so further tasks are normally picked up
 and executed.
 
