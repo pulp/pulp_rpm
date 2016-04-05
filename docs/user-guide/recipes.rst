@@ -942,6 +942,118 @@ And now we can see that ``repo_2`` has the category, groups, and RPMs::
     Vendor:
     Version:      0.3.1
 
+
+Package Environments
+====================
+
+.. _creating_package_environments:
+
+Create Your Own Package Environmet
+----------------------------------
+
+
+You can also define your own package environments with the :command:`pulp_admin`
+utility. Let's create and sync a repo::
+
+    $ pulp-admin rpm repo create --repo-id=repo_1 \
+      --feed=http://repos.fedorapeople.org/repos/pulp/pulp/demo_repos/pulp_unittest/
+    Successfully created repository [repo_1]
+
+    $ pulp-admin rpm repo sync run --repo-id=repo_1
+
+Now let's build two package groups for our demo repo test files::
+
+   $ pulp-admin rpm repo uploads group --repo-id=repo_1 \
+     --group-id=pulp_test_packages --name="Pulp Test Packages" \
+     --description="A package group of Pulp test files." \
+     --mand-name=pulp-dot-2.0-test --mand-name=pulp-test-package
+
+   $ pulp-admin rpm repo uploads group --repo-id=repo_1 \
+     --group-id=pulp_dotted_name_packages --name="Pulp Dotted Name Packages" \
+     --description="A group of packages that have dots in their names." \
+     --mand-name=pulp-dot-2.0-test
+
+And now we can create a package environment that is a collection of these
+two groups::
+    $ pulp-admin rpm repo uploads environment --repo-id repo_1 --environment-id test-env \
+    --name test-env --description test-env --group pulp_dotted_name_packages \
+    --group pulp_test_packages
+
+    +----------------------------------------------------------------------+
+                                  Unit Upload
+    +----------------------------------------------------------------------+
+
+    Extracting necessary metadata for each request...
+    ... completed
+
+    Creating upload requests on the server...
+    [==================================================] 100%
+    Initializing upload
+    ... completed
+
+    Starting upload of selected units. If this process is stopped through ctrl+c,
+    the uploads will be paused and may be resumed later using the resume command or
+    canceled entirely using the cancel command.
+
+    Importing into the repository...
+    This command may be exited via ctrl+c without affecting the request.
+
+
+    [\]
+    Running...
+
+    Task Succeeded
+
+
+    Deleting the upload request...
+    ... completed
+
+
+The package environment details can be listed as well::
+    $ pulp-admin rpm repo content environment --repo-id repo_1 --match id=test-env
+
+    Description: test-env
+    Group Ids:   pulp_dotted_name_packages, pulp_test_packages
+    Id:          test-env
+    Name:        test-env
+    Options:     
+
+
+Copying Package Environments
+----------------------------
+
+Like package groups, environments can be copied between repos, which will bring
+along their groups. Assuming you've performed the steps from the
+:ref:`creating_package_environments` section, let's begin by creating an empty
+second repo::
+
+    $ pulp-admin rpm repo create --repo-id=repo_2
+    Successfully created repository [repo_2]
+
+Now let's copy ``test-env`` from ``repo_1`` to ``repo_2``::
+
+    $ pulp-admin rpm repo copy environment --match id=test-env \
+      --from-repo-id=repo_1 --to-repo-id=repo_2
+    Progress on this task can be viewed using the commands under "repo tasks".
+
+.. note::
+  Use the --recursive flag to copy any dependencies of units being copied from the source repo
+  into the destination repo.
+
+Observe that ``repo_2`` contains newly copied package environment::
+    $ pulp-admin repo list --repo-id repo_2
+
+    +----------------------------------------------------------------------+
+                                  Repositories
+    +----------------------------------------------------------------------+
+
+    Id:                   repo_2
+    Display Name:         None
+    Description:          None
+    Content Unit Counts:  
+      Package Environment: 1
+
+
 Comps
 =====
 
