@@ -184,6 +184,10 @@ class ISOSyncRun(listener.DownloadEventListener):
             entry.unit_id = unit.id
             entry.unit_type_id = unit.type_id
             entry.url = unit.url
+            entry.checksum = unit.checksum
+            # The current ISO model does not define a checksum type, but appears to use sha256.
+            # Once the model includes the checksum type, this should use that field.
+            entry.checksum_algorithm = 'sha256'
             entry.save_revision()
 
     def perform_sync(self):

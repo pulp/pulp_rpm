@@ -52,7 +52,7 @@ class TestPackages(ToolTest):
         install = [
             mock_yum.TxMember(constants.TS_INSTALL, repo_id, mock_yum.Pkg('A', '1.0')),
             mock_yum.TxMember(constants.TS_INSTALL, repo_id, mock_yum.Pkg('B', '1.0')),
-            mock_yum.TxMember(constants.TS_INSTALL, repo_id, mock_yum.Pkg('C', '1.0')),
+            mock_yum.TxMember(constants.TS_TRUEINSTALL, repo_id, mock_yum.Pkg('C', '1.0')),
         ]
         erase = [
             mock_yum.TxMember(constants.TS_ERASE, repo_id, mock_yum.Pkg('D', '1.0')),
@@ -63,7 +63,7 @@ class TestPackages(ToolTest):
         ]
         ts_info = install + deps + erase + failed
         package = self.Package()
-        states = [constants.TS_FAILED, constants.TS_INSTALL]
+        states = [constants.TS_FAILED, constants.TS_INSTALL, constants.TS_TRUEINSTALL]
         # Test
         report = package.tx_summary(ts_info, states)
         # Verify
@@ -118,6 +118,7 @@ class TestPackages(ToolTest):
             'ksh',
             'gofer',
             'okaara',
+            'kernel',
         ]
         # Test
         package = self.Package()
@@ -198,6 +199,7 @@ class TestPackages(ToolTest):
             'ksh',
             'gofer',
             'okaara',
+            'kernel',
         ]
         # Test
         package = self.Package()

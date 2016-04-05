@@ -200,6 +200,9 @@ class MetadataFiles(object):
             download_request_list.append(request)
 
         self.downloader.download(download_request_list)
+        if self.event_listener.failed_reports:
+            error_report = self.event_listener.failed_reports[0]
+            raise IOError(error_report.error_msg)
 
     def verify_metadata_files(self):
         """

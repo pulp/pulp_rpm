@@ -220,6 +220,8 @@ class DistSync(object):
             entry.unit_id = unit.id
             entry.unit_type_id = unit.type_id
             entry.importer_id = str(self.parent.conduit.importer_object_id)
+            entry.checksum = _file[CHECKSUM]
+            entry.checksum_algorithm = _file[CHECKSUM_TYPE]
             entry.save_revision()
 
     @staticmethod
