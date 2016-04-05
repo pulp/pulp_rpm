@@ -276,7 +276,11 @@ def _handle_group_category_comps(repo, type_id, unit_key, metadata, file_path, c
         except TypeError:
             raise ModelInstantiationError()
 
-        unit.save()
+        try:
+            unit.save()
+        except NotUniqueError:
+            unit = unit.__class__.objects.filter(**unit.unit_key).first()
+
         repo_controller.associate_single_unit(repo, unit)
 
 
@@ -304,7 +308,11 @@ def _get_and_save_file_units(filename, processing_function, tag, conduit, repo):
     process_func = functools.partial(processing_function, repo_id)
     package_info_generator = packages.package_list_generator(filename, tag, process_func)
     for model in package_info_generator:
-        model.save()
+        try:
+            model.save()
+        except NotUniqueError:
+            model = model.__class__.objects.filter(**model.unit_key).first()
+
         repo_controller.associate_single_unit(repo, model)
 
 
