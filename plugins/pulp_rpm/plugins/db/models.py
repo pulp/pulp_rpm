@@ -360,7 +360,7 @@ class Distribution(UnitMixin, FileContentUnit):
 
     distribution_id = mongoengine.StringField(required=True)
     family = mongoengine.StringField(required=True)
-    variant = mongoengine.StringField(required=True)
+    variant = mongoengine.StringField()
     version = mongoengine.StringField(required=True)
     arch = mongoengine.StringField(required=True)
 
@@ -402,6 +402,15 @@ class Distribution(UnitMixin, FileContentUnit):
                                 self.version,
                                 self.arch))
             self.distribution_id = '-'.join(id_pieces)
+
+    def __str__(self):
+        """
+        Since `variant` might be None (itself a dirty work-around the model being wrong),
+        this method must be overridden.
+        :return:
+        """
+        return '%s: %s' % (self._content_type_id,
+                           '-'.join(getattr(self, name) or 'None' for name in self.unit_key_fields))
 
     def list_files(self):
         """
