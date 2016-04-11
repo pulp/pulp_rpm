@@ -811,6 +811,10 @@ class RepoSync(object):
                 (model for model in all_packages if model.unit_key_as_named_tuple in to_save)
 
         for model in package_info_generator:
+            # Add repo_id to each collection of the pkglist of the new erratum
+            if isinstance(model, models.Errata):
+                for collection in model.pkglist:
+                    collection['_pulp_repo_id'] = self.repo.repo_id
             existing_unit = model.__class__.objects.filter(**model.unit_key).first()
             if not existing_unit:
                 model.save()
@@ -845,13 +849,7 @@ class RepoSync(object):
                                              (existing_unit.unit_key, new_unit.unit_key))
 
         if isinstance(existing_unit, models.Errata):
-            # add in anything from new_unit that we don't already have. We key
-            # package lists by name for this concatenation.
-            existing_package_list_names = [p['name'] for p in existing_unit.pkglist]
-
-            for possible_new_pkglist in new_unit.pkglist:
-                if possible_new_pkglist['name'] not in existing_package_list_names:
-                    existing_unit.pkglist += [possible_new_pkglist]
+            existing_unit.merge_errata(new_unit)
         else:
             raise PulpCodedException(message="Concatenation of unit type %s is not supported" %
                                              existing_unit.type_id)
