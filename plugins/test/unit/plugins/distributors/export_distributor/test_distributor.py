@@ -7,7 +7,7 @@ import mock
 from pulp.plugins.model import Repository
 from pulp.plugins.config import PluginCallConfiguration
 from pulp.plugins.conduits.repo_publish import RepoPublishConduit
-from pulp.server.exceptions import PulpDataException
+from pulp.server.exceptions import PulpDataException, PulpCodedException
 
 from pulp_rpm.plugins.distributors.export_distributor import export_utils
 from pulp_rpm.plugins.distributors.export_distributor.distributor import ISODistributor, entry_point
@@ -62,10 +62,11 @@ class TestISODistributor(unittest.TestCase):
         # Clean up
         export_utils.validate_export_config = validate_config
 
+    @mock.patch.object(ISODistributor, 'ensure_all_units_downloaded')
     @mock.patch('pulp_rpm.plugins.distributors.export_distributor.distributor.ExportRepoPublisher')
     @mock.patch(
         'pulp_rpm.plugins.distributors.export_distributor.export_utils.validate_export_config')
-    def test_publish_repo(self, mock_validate, export_publisher):
+    def test_publish_repo(self, mock_validate, export_publisher, mock_ensure_downloaded):
 
         mock_validate.return_value = (True, None)
         distributor = ISODistributor()
@@ -73,6 +74,18 @@ class TestISODistributor(unittest.TestCase):
         export_publisher.return_value.process_lifecycle.return_value = 'foo'
 
         self.assertEquals('foo', distributor.publish_repo(self.repo, self.conduit, self.config))
+
+    @mock.patch.object(ISODistributor, 'ensure_all_units_downloaded',
+                       side_effect=PulpCodedException)
+    @mock.patch(
+        'pulp_rpm.plugins.distributors.export_distributor.export_utils.validate_export_config')
+    def test_publish_repo_missing_files(self, mock_validate, mock_ensure_downloaded):
+
+        mock_validate.return_value = (True, None)
+        distributor = ISODistributor()
+
+        self.assertRaises(PulpCodedException, distributor.publish_repo, self.repo, self.conduit,
+                          self.config)
 
     @mock.patch(
         'pulp_rpm.plugins.distributors.export_distributor.export_utils.validate_export_config')
