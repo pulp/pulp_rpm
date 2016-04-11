@@ -25,12 +25,12 @@ class TestNonMetadataModel(unittest.TestCase):
         models.NonMetadataPackage(version='1.0.0', release='2', checksumtype=None, checksum=None)
 
 
-@skip_broken
 class TestDistribution(unittest.TestCase):
     """
     This class contains tests for the Distribution class.
     """
 
+    @skip_broken
     def test_process_download_reports_sanitizes_checksum_type(self):
         """
         Ensure that the process_download_reports() method calls sanitize_checksum_type correctly.
@@ -45,6 +45,22 @@ class TestDistribution(unittest.TestCase):
         d.process_download_reports(reports)
 
         self.assertEqual(d.metadata['files'][0]['checksumtype'], 'sha1')
+
+    def test_str(self):
+        """
+        Assert __str__ works with distributions.
+        """
+        d = models.Distribution(family='family', variant='variant', version='version', arch='arch')
+        self.assertEqual('distribution: ks-family-variant-version-arch-family-'
+                         'variant-version-arch', str(d))
+
+    def test_str_no_variant(self):
+        """
+        Assert __str__ works with distributions that don't have a Variant.
+        """
+        d = models.Distribution(family='family', variant=None, version='version', arch='arch')
+        self.assertEqual('distribution: ks-family-version-arch-family-None-version-arch',
+                         str(d))
 
 
 @skip_broken
