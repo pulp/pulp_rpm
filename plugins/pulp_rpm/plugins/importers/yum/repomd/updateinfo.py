@@ -82,7 +82,7 @@ def _parse_reference(element):
         'id': element.attrib.get('id'),
         'href': element.attrib['href'],
         'type': element.attrib['type'],
-        'title': element.text,
+        'title': element.attrib['title']
     }
 
 
