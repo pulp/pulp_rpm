@@ -1,7 +1,8 @@
 import copy
-from gettext import gettext as _
 import os
 import subprocess
+from gettext import gettext as _
+from xml.etree import cElementTree
 
 import mongoengine
 from pulp.common import dateutils
@@ -786,18 +787,60 @@ class PublishDistributionStep(platform_steps.UnitModelPluginStep):
             logger.warning(msg)
             return
 
-        distro_files = distribution_unit.files
+        # The files from `treeinfo` and `PULP_DISTRIBUTION.xml` are mashed into the
+        # files list on the unit. This is a hacky work-around to unmash them, filter
+        # out anything that is in the main repodata directory (which is potentially not
+        # safe, but was happening before I got here and we don't have time to fix this
+        # properly right now), and generate a new `PULP_DISTRIBUTION.xml` that doesn't
+        # reference files that don't exist in this publish.
+        pulp_distribution_file = False
+        distro_files = [f['relativepath'] for f in distribution_unit.files]
+        if constants.DISTRIBUTION_XML in distro_files:
+            distro_files.remove(constants.DISTRIBUTION_XML)
+            pulp_distribution_file = True
+        distro_files = filter(lambda f: not f.startswith('repodata/'), distro_files)
         total_files = len(distro_files)
         logger.debug("Found %s distribution files to symlink" % total_files)
 
         source_path_dir = distribution_unit._storage_path
         symlink_dir = self.get_working_dir()
         for dfile in distro_files:
-            if dfile['relativepath'].startswith('repodata/'):
-                continue
-            source_path = os.path.join(source_path_dir, dfile['relativepath'])
-            symlink_path = os.path.join(symlink_dir, dfile['relativepath'])
+            source_path = os.path.join(source_path_dir, dfile)
+            symlink_path = os.path.join(symlink_dir, dfile)
             plugin_misc.create_symlink(source_path, symlink_path)
+
+        # Not all repositories have this file so this is only done if the upstream repo
+        # had the file.
+        if pulp_distribution_file:
+            xml_file_path = os.path.join(source_path_dir, constants.DISTRIBUTION_XML)
+            self._write_pulp_distribution_file(distro_files, xml_file_path)
+
+    def _write_pulp_distribution_file(self, distro_files, old_xml_file_path):
+        """
+        This method re-creates the `PULP_DISTRIBUTION.xml` file.
+
+        It only adds a file to the new `PULP_DISTRIBUTION.xml` if the file existed in the
+        old one fetched from the upstream repository. This is to stop it from including
+        files added to the Distribution from the treeinfo file. It's messy and it should
+        go away as soon as we re-work Distributions.
+
+        :param distro_files: A list of file paths pulled from a `Distribution` unit.
+        :type  distro_files: list of str
+        :param old_xml_file_path: The absolute path to the old PULP_DISTRIBUTION.xml
+                                  from upstream. The files referenced in here act as
+                                  a filter for the new PULP_DISTRIBUTION.xml file.
+        """
+        old_xml_tree = cElementTree.parse(old_xml_file_path)
+        old_xml_root = old_xml_tree.getroot()
+        old_files = [old_element.text for old_element in old_xml_root.iter('file')]
+        distro_files = filter(lambda f: f in old_files, distro_files)
+        new_xml_root = cElementTree.Element("pulp_distribution", {'version': '1'})
+        for distro_file in distro_files:
+            element = cElementTree.SubElement(new_xml_root, 'file')
+            element.text = distro_file
+
+        tree = cElementTree.ElementTree(new_xml_root)
+        tree.write(os.path.join(self.get_working_dir(), constants.DISTRIBUTION_XML))
 
     def _publish_distribution_packages_link(self, distribution_unit):
         """

@@ -95,8 +95,9 @@ class TestProcessDistribution(unittest.TestCase):
         tmp_dir = Mock()
         parent = Mock()
         dist = DistSync(parent, '')
-        files = dist.process_distribution(tmp_dir)
+        files, dist_file = dist.process_distribution(tmp_dir)
 
+        self.assertEqual(dist_file, DISTRIBUTION_GOOD_FILE)
         self.assertEquals(3, len(files))
         self.assertEquals('foo/bar.txt', files[0]['relativepath'])
         self.assertEquals('baz/qux.txt', files[1]['relativepath'])
@@ -108,9 +109,10 @@ class TestProcessDistribution(unittest.TestCase):
         parent = Mock()
         tmp_dir = Mock()
         dist = DistSync(parent, '')
-        files = dist.process_distribution(tmp_dir)
+        files, dist_file = dist.process_distribution(tmp_dir)
 
         self.assertEquals(0, len(files))
+        self.assertEqual(dist_file, None)
 
     @patch('pulp_rpm.plugins.importers.yum.parse.treeinfo.DistSync.get_distribution_file',
            return_value=DISTRIBUTION_BAD_SYNTAX_FILE)

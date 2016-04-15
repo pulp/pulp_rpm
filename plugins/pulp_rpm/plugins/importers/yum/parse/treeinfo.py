@@ -162,7 +162,7 @@ class DistSync(object):
             return
 
         # Process the distribution
-        dist_files = self.process_distribution(tmp_dir)
+        dist_files, pulp_dist_xml_path = self.process_distribution(tmp_dir)
         files.extend(dist_files)
 
         self.update_unit_files(unit, files)
@@ -184,9 +184,11 @@ class DistSync(object):
         # Update deferred downloading catalog
         self.update_catalog_entries(unit, files)
 
-        # The treeinfo file is always imported into platform
+        # The treeinfo and PULP_DISTRIBTION.xml files are always imported into platform
         # # storage regardless of the download policy
         unit.safe_import_content(treeinfo_path, os.path.basename(treeinfo_path))
+        if pulp_dist_xml_path is not None:
+            unit.safe_import_content(pulp_dist_xml_path, os.path.basename(pulp_dist_xml_path))
 
         # The downloaded files are imported into platform storage.
         if downloaded:
@@ -403,8 +405,9 @@ class DistSync(object):
 
         :param tmp_dir: The absolute path to the temporary directory
         :type tmp_dir: str
-        :return: A list of file dictionaries
-        :rtype: list
+        :return: A tuple that contains the list of file dictionaries and the absolute path
+                 to the distribution file, or None if no PULP_DISTRIBUTION.xml was found.
+        :rtype: (list, basestring)
         """
         # Get the Distribution file
         result = self.get_distribution_file(tmp_dir)
@@ -440,7 +443,7 @@ class DistSync(object):
                 CHECKSUM: None,
                 CHECKSUM_TYPE: None,
             })
-        return files
+        return files, result
 
     def get_distribution_file(self, tmp_dir):
         """
