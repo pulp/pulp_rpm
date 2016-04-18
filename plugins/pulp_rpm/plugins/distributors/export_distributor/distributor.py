@@ -129,6 +129,9 @@ class ISODistributor(Distributor):
         if not valid_config:
             raise PulpDataException(msg)
 
+        # raises a PulpCodedException if all units are not downloaded
+        self.ensure_all_units_downloaded(transfer_repo.id)
+
         _logger.info('Starting export of [%s]' % transfer_repo.id)
         self._publisher = ExportRepoPublisher(transfer_repo, publish_conduit, config,
                                               ids.TYPE_ID_DISTRIBUTOR_EXPORT)
