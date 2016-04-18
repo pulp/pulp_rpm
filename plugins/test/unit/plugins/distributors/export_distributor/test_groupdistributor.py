@@ -4,9 +4,9 @@ import unittest
 import os
 
 import mock
-from pulp.server.exceptions import PulpDataException
 from pulp.plugins.model import RepositoryGroup
 from pulp.plugins.config import PluginCallConfiguration
+from pulp.server.exceptions import PulpDataException, PulpCodedException
 
 from pulp_rpm.plugins.distributors.export_distributor import export_utils
 from pulp_rpm.plugins.distributors.export_distributor.groupdistributor import GroupISODistributor, \
@@ -58,17 +58,29 @@ class TestGroupISODistributor(unittest.TestCase):
         # Clean up
         export_utils.validate_export_config = validate_config
 
+    @mock.patch.object(GroupISODistributor, 'ensure_all_units_downloaded', return_value=True)
     @mock.patch('pulp_rpm.plugins.distributors.export_distributor.groupdistributor.'
                 'ExportRepoGroupPublisher')
     @mock.patch(
         'pulp_rpm.plugins.distributors.export_distributor.export_utils.validate_export_config')
-    def test_publish_group(self, mock_validate, export_publisher):
+    def test_publish_group(self, mock_validate, export_publisher, mock_ensure_downloaded):
         mock_validate.return_value = (True, None)
         distributor = GroupISODistributor()
         export_publisher.return_value = mock.Mock()
         export_publisher.return_value.process_lifecycle.return_value = 'foo'
 
         self.assertEquals('foo', distributor.publish_group(self.repo, self.conduit, self.config))
+
+    @mock.patch.object(GroupISODistributor, 'ensure_all_units_downloaded',
+                       side_effect=PulpCodedException)
+    @mock.patch(
+        'pulp_rpm.plugins.distributors.export_distributor.export_utils.validate_export_config')
+    def test_publish_group_missing_files(self, mock_validate, mock_ensure_downloaded):
+        mock_validate.return_value = (True, None)
+        distributor = GroupISODistributor()
+
+        self.assertRaises(PulpCodedException, distributor.publish_group, self.repo, self.conduit,
+                          self.config)
 
     @mock.patch(
         'pulp_rpm.plugins.distributors.export_distributor.export_utils.validate_export_config')
