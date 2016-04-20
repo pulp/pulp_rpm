@@ -596,3 +596,7 @@ Optional Configuration Parameters
  List of content types to skip during the repository publish.
  If unspecified, all types will be published. Valid values are: rpm, drpm,
  distribution, errata, packagegroup.
+
+``force_full``
+Boolean flag to indicate whether or not publish should be done from scratch.
+If unspecified the incremental publish will be performed when possible.

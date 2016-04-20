@@ -265,10 +265,12 @@ class Publisher(BaseYumRepoPublisher):
 
         last_published = publish_conduit.last_publish()
         last_deleted = repo.last_unit_removed
+        force_full = config.get('force_full', False)
         date_filter = None
 
         if last_published and \
-                ((last_deleted and last_published > last_deleted) or not last_deleted):
+                (last_deleted is None or last_published > last_deleted) and \
+                not force_full:
             # Add the step to copy the current published directory into place
             specific_master = None
             if config.get(constants.PUBLISH_HTTPS_KEYWORD):
