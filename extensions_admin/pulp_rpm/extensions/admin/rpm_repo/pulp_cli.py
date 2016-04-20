@@ -11,7 +11,7 @@ from pulp_rpm.extensions.admin import structure
 from pulp_rpm.extensions.admin.upload import package
 from pulp_rpm.extensions.admin import (contents, copy_commands, export, remove, repo_create_update,
                                        repo_list, status, sync_schedules)
-from pulp_rpm.extensions.admin.upload import (category, comps, errata)
+from pulp_rpm.extensions.admin.upload import (category, comps, environment, errata)
 from pulp_rpm.extensions.admin.upload import group as package_group
 
 
@@ -81,6 +81,8 @@ def initialize(context):
     uploads_section.add_command(package_group.CreatePackageGroupCommand(context, upload_manager))
     uploads_section.add_command(category.CreatePackageCategoryCommand(context, upload_manager))
     uploads_section.add_command(comps.CreateCompsCommand(context, upload_manager))
+    uploads_section.add_command(
+        environment.CreatePackageEnvironmentCommand(context, upload_manager))
     uploads_section.add_command(upload.ResumeCommand(context, upload_manager))
     uploads_section.add_command(upload.CancelCommand(context, upload_manager))
     uploads_section.add_command(upload.ListCommand(context, upload_manager))
