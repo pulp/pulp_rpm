@@ -97,6 +97,8 @@ class UpdateinfoXMLFileContext(XmlFileContext):
         ElementTree.SubElement(update_element, 'issued', issued_attributes)
 
         reboot_element = ElementTree.SubElement(update_element, 'reboot_suggested')
+        if erratum_unit.reboot_suggested is None:
+            erratum_unit.reboot_suggested = False
         reboot_element.text = str(erratum_unit.reboot_suggested)
 
         # these elements are optional
