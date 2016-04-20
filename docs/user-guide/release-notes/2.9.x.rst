@@ -9,3 +9,5 @@ New Features
 ------------
 
 * Now it is possible to upload ``package_environment`` element via CLI and API.
+
+* Publication of the RPMs can now be done non-incrementally using ``--force-full`` option.
