@@ -1,92 +1,78 @@
-=================
-Rsync distributor
-=================
+=====================
+RPM rsync Distributor
+=====================
 
 Purpose:
 ========
-Rsync distributor should be used for syncing already published files into remote
-machine. That means, rsync distributor isn't designed to work as standalone
-distributor.
-
-How it works
-============
-Rsync distributor publishes in fast-forward mode by default. It selects
-new content since last_published timestamp, however it also check predistributor
-publish history if there weren't publishes that were non-fast-forward or
-failed. In that case, cdn_distributor publishes everything from scratch.
-Publish process is diveded into multiple steps:
-unit query, origin publish, content publish, extra data publish
-
-1. Unit query step fetchs units from database and creates realive symlinks to
-units _storage_dir in <working_repo_dir>/<extra_dir>/.relative
-
-2. origin publish syncs hard files from /var/lib/pulp/content/ to remote server
-There can by multiple origin publish steps if there are more then one content
-types to be synced.
-
-3. content publish syncs files <working_repo_dir>/<extra_dir>/.relative to
-remote server. Remote repo directory is calculated from ``remote_root`` and
-relative_url.
-
-4. extra data publish happens only if there are extra data to be synced. For
-example extra data for rpm repo are repodata/* files.
-
-
-Supported types
-==============
-For now, rsync distributor can sync any content from rpm and docker repositories
-
-Requirements
-============
-To work proprely, your repository needs to have associated distributor that
-procude data output. For docker repositories, docker_web_distributor is needed
-and for rpm repositories, yum_distributor is needed. For now, cdn_distributor
-will use configuration from first distributor with desired distributor_type
-mentioned above.
+The RPM rsync distributor publishes RPM content to a remote server. The distributor uses rsync over
+ssh to perform the file transfer.
 
 Configuration
 =============
-Here's example of cdn_distributor configuration
+Here's an example of rpm_rsync_distributor configuration:
 
-{
-    "handler_type": "rsync",
-    "remote": {
-        "auth_type": "publickey",
-        "login": "rcm-cron",
-        "key_path": "/etc/httpd/id_rsa",
-        "ssh_login": "rcm-cron",
-        "host": "pulp04.web.stage.ext.phx2.redhat.com",
-        "remote_root": "/mnt/cdn/cdn-stage",
-        "skip_repodata": false
+.. code-block:: json
+
+    {
+     "distributor_id": "my_rpm_rsync_distributor",
+     "distributor_type_id": "rpm_rsync_distributor",
+     "distributor_config": {
+        "remote": {
+            "auth_type": "publickey",
+            "ssh_user": "foo",
+            "ssh_identity_file": "/home/user/.ssh/id_rsa",
+            "host": "192.168.121.1",
+            "root": "/home/foo/pulp_root_dir"
+        },
+        "predistributor_id": "yum_distributor",
+        }
     }
-}
 
-``handler_type``
-  for now rsync is only supported handler
+
+``predistributor_id``
+  The id of the yum_distributor associated with the same repository. The publish history of this
+  yum_distributor determines if the publish will be incremental.
+
+The ``distributor_config`` contains a ``remote`` section made up of the following settings:
 
 ``auth_type``
-  for now publickey is only supported
+  Two authentication methods are supported: ``publickey`` and ``password``.
 
-``login``
-  ssh login to remote machine
+``ssh_user``
+  ssh user for remote server
 
-``key_path``
-  path to public key on pulp machine that will be used as identity file for ssh
+``ssh_identity_file``
+  A path to the private key that will be used as identity file for ssh. When ``auth_type`` is
+  ``publickey`` this is a required config. The key has to be readable by user ``apache``.
 
-``ssh_login``
-  artifact from old ages, can be probably removed. Isn't used anymore
+``ssh_password``
+  Password for ``ssh_user`` on remote server. Password is required when ``auth_type`` is 'password'.
 
 ``host``
-  remote hostname
+  The hostname of the remote server.
 
-``remote_root``
-  remote root directory with all the data. (content + published_contnet)
+``root``
+  Absolute path to the remote root directory where all the data (content and published content)
+  lives. Remote equivalent to ``/var/lib/pulp``. The repository's relative url is appended to the
+  ``root`` to determine the location of published repository.
 
 Optional configuration
 ----------------------
 
 ``skip_fast_forward``
-  if true, rsync distribtor will sync all content of repository.
+  If true, the rsync distributor will publish all of the content of the repository. If false
+  (default), the publish is incremental when the predistributor's last publish was incremental.
 
-``origin_only``
-  if true, rsync distribtor will sync hard content (e.g. /var/lib/pulp/content)
+``content_units_only``
+  If true, the distributor will publish content units only (e.g. ``/var/lib/pulp/content``). The
+  symlinks of a published repository will not be rsynced.
+
+``skip_repodata``
+  If true, repodata will be omitted from the publish.
+
+``delete``
+  If true, ``--delete`` is appended to the rsync command for symlinks and repodata so that any old files no longer present in
+  the local published directory are removed from the remote server.
+
+``remote_units_path``
+  The relative path from the ``root`` where unit files should live. Defaults to ``content/units``.

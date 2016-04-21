@@ -1,66 +1,38 @@
-# -*- coding: utf-8 -*-
-#
-# Copyright © 2013 Red Hat, Inc.
-#
-# This software is licensed to you under the GNU General Public License as
-# published by the Free Software Foundation; either version 2 of the License
-# (GPLv2) or (at your option) any later version.
-# There is NO WARRANTY for this software, express or implied, including the
-# implied warranties of MERCHANTABILITY, NON-INFRINGEMENT, or FITNESS FOR A
-# PARTICULAR PURPOSE.
-# You should have received a copy of GPLv2 along with this software;
-# if not, see http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt
+from gettext import gettext as _
+import logging
 
 from pulp.common.config import read_json_config
 from pulp.plugins.distributor import Distributor
-from . import configuration, publish
+from pulp.plugins.rsync import configuration
 
-# -- global constants ----------------------------------------------------------
+from pulp_rpm.plugins.distributors.rsync import publish
+from pulp_rpm.common.ids import (TYPE_ID_DISTRO, TYPE_ID_DRPM, TYPE_ID_ERRATA, TYPE_ID_PKG_GROUP,
+                                 TYPE_ID_PKG_CATEGORY, TYPE_ID_RPM, TYPE_ID_SRPM,
+                                 TYPE_ID_YUM_REPO_METADATA_FILE)
 
-TYPES = []
+_LOG = logging.getLogger(__name__)
 
+TYPE_ID_DISTRIBUTOR_RPM_RSYNC = 'rpm_rsync_distributor'
+CONF_FILE_PATH = 'server/plugins.conf.d/%s.json' % TYPE_ID_DISTRIBUTOR_RPM_RSYNC
 
-try:
-    from pulp_rpm.common.ids import (TYPE_ID_DISTRO, TYPE_ID_DRPM, TYPE_ID_ERRATA, TYPE_ID_PKG_GROUP,
-                                     TYPE_ID_PKG_CATEGORY, TYPE_ID_RPM, TYPE_ID_SRPM, TYPE_ID_DISTRIBUTOR_YUM,
-                                     TYPE_ID_YUM_REPO_METADATA_FILE)
-    TYPES.extend([TYPE_ID_DISTRO, TYPE_ID_DRPM, TYPE_ID_ERRATA, TYPE_ID_PKG_GROUP,
-                                     TYPE_ID_PKG_CATEGORY, TYPE_ID_RPM,
-                                     TYPE_ID_SRPM, TYPE_ID_DISTRIBUTOR_YUM,
-                                     TYPE_ID_YUM_REPO_METADATA_FILE])
-except ImportError:
-    pass
+DISTRIBUTOR_DISPLAY_NAME = 'RPM Rsync Distributor'
 
-try:
-    from pulp_docker.common.constants import (IMAGE_TYPE_ID)
-    TYPES.extend([IMAGE_TYPE_ID])
-except ImportError:
-    pass
-
-
-
-_LOG = configuration.getLogger(__name__)
-
-TYPE_ID_DISTRIBUTOR_RH_CDN = 'cdn_distributor'
-CONF_FILE_PATH = 'server/plugins.conf.d/%s.json' % TYPE_ID_DISTRIBUTOR_RH_CDN
-
-DISTRIBUTOR_DISPLAY_NAME = 'RH CDN Distributor'
-
-# -- entry point ---------------------------------------------------------------
 
 def entry_point():
     config = read_json_config(CONF_FILE_PATH)
-    return RHCDNDistributor, config
+    return RPMRsyncDistributor, config
 
-# -- distributor ---------------------------------------------------------------
 
-class RHCDNDistributor(Distributor):
+class RPMRsyncDistributor(Distributor):
     """
-    Distributor class for publishing repo directory to RH CDN
+    Distributor class for publishing RPM repo to remote server.
+
+    :ivar canceled: if true, task has been canceled
+    :ivar _publisher: instance of RPMRsyncPublisher
     """
 
     def __init__(self):
-        super(RHCDNDistributor, self).__init__()
+        super(RPMRsyncDistributor, self).__init__()
 
         self.canceled = False
         self._publisher = None
@@ -73,9 +45,11 @@ class RHCDNDistributor(Distributor):
         :return: description of the distributor's capabilities
         :rtype:  dict
         """
-        return {'id': TYPE_ID_DISTRIBUTOR_RH_CDN,
+        return {'id': TYPE_ID_DISTRIBUTOR_RPM_RSYNC,
                 'display_name': DISTRIBUTOR_DISPLAY_NAME,
-                'types': TYPES}
+                'types': [TYPE_ID_RPM, TYPE_ID_SRPM, TYPE_ID_DRPM, TYPE_ID_ERRATA,
+                          TYPE_ID_PKG_GROUP, TYPE_ID_PKG_CATEGORY, TYPE_ID_DISTRO,
+                          TYPE_ID_YUM_REPO_METADATA_FILE]}
 
     # -- repo lifecycle methods ------------------------------------------------
 
@@ -100,34 +74,9 @@ class RHCDNDistributor(Distributor):
         :return: tuple of (bool, str) to describe the result
         :rtype:  tuple
         """
-        _LOG.debug('Validating yum repository configuration: %s' % repo.id)
+        _LOG.debug(_('Validating yum repository configuration: %(repoid)s') % {'repoid': repo.id})
 
         return configuration.validate_config(repo, config, config_conduit)
-
-    def distributor_added(self, repo, config):
-        """
-        Called upon the successful addition of a distributor of this type to a
-        repository.
-
-        :param repo: metadata describing the repository
-        :type  repo: pulp.plugins.model.Repository
-
-        :param config: plugin configuration
-        :type  config: pulp.plugins.config.PluginCallConfiguration
-        """
-        pass
-
-    def distributor_removed(self, repo, config):
-        """
-        Called when a distributor of this type is removed from a repository.
-
-        :param repo: metadata describing the repository
-        :type  repo: pulp.plugins.model.Repository
-
-        :param config: plugin configuration
-        :type  config: pulp.plugins.config.PluginCallConfiguration
-        """
-        pass
 
     # -- actions ---------------------------------------------------------------
 
@@ -147,47 +96,19 @@ class RHCDNDistributor(Distributor):
         :return: report describing the publish run
         :rtype:  pulp.plugins.model.PublishReport
         """
-        _LOG.debug('Publishing yum repository: %s' % repo.id)
+        _LOG.debug(_('Publishing yum repository: %(repoid)s') % {'repoid': repo.id})
 
-        self._publisher = publish.Publisher(repo, publish_conduit, config, TYPE_ID_DISTRIBUTOR_RH_CDN)
+        self._publisher = publish.RPMRsyncPublisher(repo, publish_conduit, config,
+                                                    TYPE_ID_DISTRIBUTOR_RPM_RSYNC)
         return self._publisher.publish()
-	#return {}
 
     def cancel_publish_repo(self):
         """
         Call cancellation control hook.
 
-        :param call_request: call request for the call to cancel
-        :type call_request: pulp.server.dispatch.call.CallRequest
-        :param call_report: call report for the call to cancel
-        :type call_report: pulp.server.dispatch.call.CallReport
         """
-        _LOG.debug('Canceling publishing repo to RH CDN')
+        _LOG.debug(_('Canceling publishing repo to remote server'))
 
         self.canceled = True
         if self._publisher is not None:
             self._publisher.cancel()
-
-    def create_consumer_payload(self, repo, config, binding_config):
-        """
-        Called when a consumer binds to a repository using this distributor.
-        This call should return a dictionary describing all data the consumer
-        will need to access the repository.
-
-        :param repo: metadata describing the repository
-        :type  repo: pulp.plugins.model.Repository
-
-        :param config: plugin configuration
-        :type  config: pulp.plugins.config.PluginCallConfiguration
-
-        :param binding_config: configuration applicable only for the specific
-               consumer the payload is generated for; this will be None
-               if there are no specific options for the consumer in question
-        :type  binding_config: object or None
-
-        :return: dictionary of relevant data
-        :rtype:  dict
-        """
-        return {}
-
-

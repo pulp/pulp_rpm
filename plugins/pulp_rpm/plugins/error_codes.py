@@ -24,3 +24,4 @@ RPM1008 = Error("RPM1008", _('Checksum type "%(checksumtype)s" is not available 
                 ['checksumtype'])
 RPM1009 = Error("RPM1009", _('Checksum type "%(checksumtype)s" is not supported.'),
                 ['checksumtype'])
+RPM1010 = Error("RPM1010", _('RPMRsyncDistributor requires a predistributor to be configured.'), [])

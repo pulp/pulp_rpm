@@ -163,6 +163,7 @@ Requires: genisoimage
 Requires: m2crypto
 Requires: python-lxml
 Requires: repoview
+Requires: rsync
 
 %description plugins
 Provides a collection of platform plugins that extend the Pulp platform

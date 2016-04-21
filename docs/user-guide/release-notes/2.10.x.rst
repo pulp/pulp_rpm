@@ -11,4 +11,8 @@ New Features
 * The yum distributor and export distributor now can use the configured checksum type for
   updateinfo.xml generation which may differ from the configured checksum type for all
   repo metadata. It can be specified via pulp-admin repo "create" and "update" commands.
+
 * Full re-sync can be done now using ``--force-full`` option.
+
+* The RPM rsync distributor has been added. The new distributor can be used to publish repositories
+  published by yum_distributor to a remote server.
