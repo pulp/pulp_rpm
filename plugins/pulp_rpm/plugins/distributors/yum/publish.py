@@ -831,6 +831,7 @@ class PublishDistributionStep(platform_steps.UnitModelPluginStep):
         :param old_xml_file_path: The absolute path to the old PULP_DISTRIBUTION.xml
                                   from upstream. The files referenced in here act as
                                   a filter for the new PULP_DISTRIBUTION.xml file.
+        :type  old_xml_file_path: basestring
         """
         old_xml_tree = cElementTree.parse(old_xml_file_path)
         old_xml_root = old_xml_tree.getroot()

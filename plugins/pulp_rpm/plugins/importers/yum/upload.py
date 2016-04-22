@@ -360,7 +360,7 @@ def _handle_package(repo, type_id, unit_key, metadata, file_path, conduit, confi
 
     # set checksum and checksumtype
     if metadata:
-        checksumtype = metadata.pop('checksumtype', verification.TYPE_SHA256)
+        checksumtype = metadata.pop('checksum_type', verification.TYPE_SHA256)
         rpm_data['checksumtype'] = verification.sanitize_checksum_type(checksumtype)
         if 'checksum' in metadata:
             rpm_data['checksum'] = metadata.pop('checksum')

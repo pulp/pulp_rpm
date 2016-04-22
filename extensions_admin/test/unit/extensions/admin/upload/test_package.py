@@ -56,7 +56,7 @@ class CreatePackageCommandTests(PulpClientTests):
         unit_key, metadata = self.command.generate_unit_key_and_metadata(filename, **command_kwargs)
 
         self.assertEqual(unit_key, {})
-        self.assertEqual(metadata, {'checksumtype': 'sha1'})
+        self.assertEqual(metadata, {'checksum_type': 'sha1'})
 
     def test_create_upload_list_skip_existing(self):
         # Setup
