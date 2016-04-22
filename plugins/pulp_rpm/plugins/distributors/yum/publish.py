@@ -833,7 +833,7 @@ class PublishDistributionStep(platform_steps.UnitModelPluginStep):
         """
         old_xml_tree = cElementTree.parse(old_xml_file_path)
         old_xml_root = old_xml_tree.getroot()
-        old_files = [old_element.text for old_element in old_xml_root.iter('file')]
+        old_files = [old_element.text for old_element in old_xml_root.getiterator('file')]
         distro_files = filter(lambda f: f in old_files, distro_files)
         new_xml_root = cElementTree.Element("pulp_distribution", {'version': '1'})
         for distro_file in distro_files:
