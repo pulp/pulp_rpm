@@ -154,8 +154,9 @@ class BaseYumRepoPublisherTests(BaseYumDistributorPublishTests):
 
         mock_publish_distribution.assert_called_once()
         mock_publish_rpms.assert_called_once()
-        mock_publish_drpms.assert_called_once()
-        mock_publish_errata.assert_called_once()
+        mock_publish_drpms.assert_called_once_with(mock_publish_distribution(),
+                                                   repo_content_unit_q=None)
+        mock_publish_errata.assert_called_once_with(repo_content_unit_q=None)
         mock_publish_metadata.assert_called_once()
         mock_build_final_report.assert_called_once()
         mock_publish_comps.assert_called_once()

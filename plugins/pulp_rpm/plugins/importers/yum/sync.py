@@ -269,7 +269,12 @@ class RepoSync(object):
             finally:
                 # clean up whatever we may have left behind
                 shutil.rmtree(self.tmp_dir, ignore_errors=True)
-            self.save_repomd_revision()
+
+            if self.config.override_config.get(importer_constants.KEY_FEED):
+                self.erase_repomd_revision()
+            else:
+                self.save_repomd_revision()
+
             _logger.info(_('Sync complete.'))
             return self.conduit.build_success_report(self._progress_summary,
                                                      self.progress_report)
@@ -343,11 +348,15 @@ class RepoSync(object):
         previous_skip_set = set(scratchpad.get(constants.PREVIOUS_SKIP_LIST, []))
         current_skip_set = set(self.config.get(constants.CONFIG_SKIP, []))
         self.current_revision = metadata_files.revision
-        # if the revision is positive, hasn't increased and the skip list doesn't include
-        # new types that weren't present on the last run...
         # determine missing units
         missing_units = repo_controller.missing_unit_count(self.repo.repo_id)
+        # if the current MD revision is not newer than the old one
+        # and we aren't using an override URL
+        # and the skip list doesn't have any new types
+        # and there are no missing units, or we have deferred download enabled
+        # then skip fetching the repo MD :)
         if 0 < metadata_files.revision <= previous_revision \
+                and not self.config.override_config.get(importer_constants.KEY_FEED) \
                 and previous_skip_set - current_skip_set == set() \
                 and (self.download_deferred or not missing_units):
             _logger.info(_('upstream repo metadata has not changed. Skipping steps.'))
@@ -378,6 +387,17 @@ class RepoSync(object):
             # sync will know to not skip based on repomd revision
             scratchpad[constants.PREVIOUS_SKIP_LIST] = self.config.get(
                 constants.CONFIG_SKIP, [])
+            self.conduit.set_scratchpad(scratchpad)
+
+    def erase_repomd_revision(self):
+        """
+        If we are syncing from a one-off URL, we should clobber the old repomd revision.
+        """
+        _logger.debug(_('erasing repomd.xml revision number and skip list from scratchpad'))
+        scratchpad = self.conduit.get_scratchpad()
+        if scratchpad:
+            scratchpad[constants.REPOMD_REVISION_KEY] = None
+            scratchpad[constants.PREVIOUS_SKIP_LIST] = []
             self.conduit.set_scratchpad(scratchpad)
 
     def save_default_metadata_checksum_on_repo(self, metadata_files):
