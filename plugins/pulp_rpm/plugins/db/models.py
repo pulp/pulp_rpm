@@ -492,7 +492,132 @@ class DRPM(NonMetadataPackage):
 
 
 class RpmBase(NonMetadataPackage):
-    # TODO add docstring to this class
+    """
+    This class is designed to be sub-classed by both RPM and SRPM, as these two
+    package types are similar. Most fields map to metadata fields in the RPM package
+    format.
+
+    :ivar arch: The target architecture for a package. For example, 'x86_64', 'i686',
+                or 'noarch'.
+    :type arch: mongoengine.StringField
+
+    :ivar buildhost: Hostname of the system that built the package.
+    :type buildhost: mongoengine.StringField
+
+    :ivar changelog: A list of changelog entries for the package. The purpose of these
+                     changelogs depend on the packager. Fedora uses to changelog
+                     to document changes to the package's spec file. The format of each
+                     entry is the time (in seconds since the epoch) of the changelog entry,
+                     the author and release as a string, and the list of release notes as
+                     a string.
+    :type changelog: list of [int, basestring, basestring]
+
+    :ivar checksum: The checksum of the package.
+    :type checksum: mongoengine.StringField
+
+    :ivar checksumtype: The checksum type used in the ``checksum`` field.
+    :type checksumtype: mongoengine.StringField
+
+    :ivar description: The human-readable description for a package.
+    :type description: mongoengine.StringField
+
+    :ivar epoch: The package's epoch.
+    :type epoch: mongoengine.StringField
+
+    :ivar files: All the files provided by this package. The dictionary has two keys: "file",
+                 and "dir". "file" maps to a list of strings, which are paths to files the
+                 package provides (for example, "/etc/pulp/server.conf". "dir" maps to a list
+                 of directories the package owns (for example, "/etc/pulp").
+    :type files: dict
+
+    :ivar group: The RPM group this package is a part of. As of ``rpm-4.13.0``,
+                 the following groups are documented in /usr/share/doc/rpm/GROUPS:
+                    Amusements/Games
+                    Amusements/Graphics
+                    Applications/Archiving
+                    Applications/Communications
+                    Applications/Databases
+                    Applications/Editors
+                    Applications/Emulators
+                    Applications/Engineering
+                    Applications/File
+                    Applications/Internet
+                    Applications/Multimedia
+                    Applications/Productivity
+                    Applications/Publishing
+                    Applications/System
+                    Applications/Text
+                    Development/Debuggers
+                    Development/Languages
+                    Development/Libraries
+                    Development/System
+                    Development/Tools
+                    Documentation
+                    System Environment/Base
+                    System Environment/Daemons
+                    System Environment/Kernel
+                    System Environment/Libraries
+                    System Environment/Shells
+                    User Interface/Desktops
+                    User Interface/X
+                    User Interface/X Hardware Support
+    :type group: mongoengine.StringField
+
+    :ivar header_range: The byte range of the package; it contains the 'start' and 'end'
+                        keys which have integer values representing a byte index.
+    :type header_range: dict
+
+    :ivar license: The license or licenses applicable to the package.
+    :type license: mongoengine.StringField
+
+    :ivar name: The package's name. For example, 'pulp-server' would be the
+                name of a package with the NVRA 'pulp-server-2.8.0-1.el7.noarch.rpm'.
+    :type name: mongoengine.StringField
+
+    :ivar provides: List of packages/libraries this package provides. Each entry is a
+                    dictionary with the "release", "epoch", "version", "flags", and "name"
+                    field.
+    :type provides: list of dict
+
+    :ivar release: The release of a particular version of the package. Although this field
+                   can technically be anything, packaging guidelines usually require it to
+                   be an integer followed by the platform, e.g. '1.el7' or '3.f24'. This field
+                   is incremented by the packager whenever a new release of the same version
+                   is created.
+    :type release: mongoengine.Stringfield
+
+    :ivar requires: List of packages/libraries this package requires. Each entry is a dictionary
+                    with the "release", "epoch", "version", "flags", and "name" field.
+    :type requires: list of dict
+
+    :ivar sourcerpm: Name of the source package (srpm) the package was built from.
+    :type sourcerpm: mongoengine.StringField
+
+    :ivar vendor: The name of the organization that produced the RPM.
+    :type vendor: mongoengine.StringField
+
+    :ivar size: size, in bytes, of this package. Note that the RPM has other size fields,
+                namely the size of the archive portion of the package file and the size
+                of the package when installed.
+    :type size: mongoengine.IntField
+
+    :ivar summary: Short description of the package.
+    :type summary: mongoengine.StringField
+
+    :ivar build_time: Time the package was built in seconds since the epoch.
+    :type build_time: mongoengine.IntField
+
+    :ivar time: The mtime of the package file in seconds since the epoch; this
+                is the 'file' time attribute in the primary XML.
+    :type time: mongoengine.IntField
+
+    :ivar url: URL with more information about the packaged software. This could
+               be the project's website or its code repository.
+    :type url: mongoengine.StringField
+
+    :ivar version: The version of the package. For example, '2.8.0'.
+    :type version: mongoengine.Stringfield
+    """
 
     # Unit Key Fields
     name = mongoengine.StringField(required=True)
