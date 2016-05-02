@@ -693,16 +693,18 @@ class TestPublishDistributionWritePulpDistributionFile(unittest.TestCase):
             if child.text == path:
                 self.fail('path in XML: %s' % path)
 
-    def test_removes_file_entries(self):
+    @mock.patch('os.path.join')
+    @mock.patch('os.remove')
+    def test_removes_file_entries(self, mock_remove, mock_path_join):
         """
         Make sure any paths in "distro_files" that are not present in the original XML get
         filtered out.
         """
+        mock_path_join.side_effect = [self.target]
         paths = list(self.included_paths)
         paths.append('remove/me')
 
-        with mock.patch('os.path.join', return_value=self.target):
-            self.step._write_pulp_distribution_file(paths, self.xml_path)
+        self.step._write_pulp_distribution_file(paths, self.xml_path)
 
         root = ET.fromstring(self.target.getvalue())
 
