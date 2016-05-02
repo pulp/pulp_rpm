@@ -843,7 +843,14 @@ class PublishDistributionStep(platform_steps.UnitModelPluginStep):
             element.text = distro_file
 
         tree = cElementTree.ElementTree(new_xml_root)
-        tree.write(os.path.join(self.get_working_dir(), constants.DISTRIBUTION_XML))
+        distribution_xml_path = os.path.join(self.get_working_dir(), constants.DISTRIBUTION_XML)
+        try:
+            os.remove(distribution_xml_path)
+        except OSError as e:
+            if e.errno != os.errno.ENOENT:
+                raise
+
+        tree.write(distribution_xml_path)
 
     def _publish_distribution_packages_link(self, distribution_unit):
         """
