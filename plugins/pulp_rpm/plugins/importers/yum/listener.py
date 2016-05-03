@@ -1,11 +1,8 @@
-from contextlib import contextmanager
-from gettext import gettext as _
 import logging
-import os
-
 from nectar.listener import DownloadEventListener, AggregatingEventListener
 from pulp.common.plugins import importer_constants
 from pulp.plugins.util import verification
+from pulp.server import util
 
 from pulp_rpm.common import constants
 
@@ -168,22 +165,6 @@ class PackageListener(DownloadEventListener):
             self.sync.progress_report['content'].failure(unit, error_report)
             raise
 
-    @contextmanager
-    def deleting(self, path):
-        """
-        Remove the file at path if possible, but don't let any exceptions bubble up.
-
-        Like contextlib.closing, but more fun!
-
-        :param path:    full path to a file that should be deleted
-        :type  path:    basestring
-        """
-        yield
-        try:
-            os.remove(path)
-        except Exception as e:
-            _logger.warning(_('Could not remove file from temporary location: {0}').format(e))
-
 
 class RPMListener(PackageListener):
     """
@@ -191,7 +172,7 @@ class RPMListener(PackageListener):
     """
 
     def download_succeeded(self, report):
-        with self.deleting(report.destination):
+        with util.deleting(report.destination):
             unit = report.data
             try:
                 super(RPMListener, self).download_succeeded(report)
@@ -211,7 +192,7 @@ class DRPMListener(PackageListener):
     """
 
     def download_succeeded(self, report):
-        with self.deleting(report.destination):
+        with util.deleting(report.destination):
             unit = report.data
             try:
                 super(DRPMListener, self).download_succeeded(report)

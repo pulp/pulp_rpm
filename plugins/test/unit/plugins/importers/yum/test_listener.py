@@ -9,32 +9,6 @@ from pulp_rpm.devel.skip import skip_broken
 from pulp_rpm.plugins.importers.yum import listener
 
 
-class TestPackageListenerDeleting(unittest.TestCase):
-    def setUp(self):
-        self.mock_sync = mock.MagicMock()
-        self.mock_metadata_files = mock.MagicMock()
-        self.listener = listener.PackageListener(self.mock_sync, self.mock_metadata_files)
-
-    @mock.patch('os.remove')
-    def test_removes_path(self, mock_remove):
-        path = '/a/b/c'
-
-        with self.listener.deleting(path):
-            pass
-
-        mock_remove.assert_called_once_with(path)
-
-    @mock.patch('os.remove', side_effect=IOError)
-    def test_squashes_exception(self, mock_remove):
-        path = '/a/b/c'
-
-        # this should not raise any exceptions
-        with self.listener.deleting(path):
-            pass
-
-        mock_remove.assert_called_once_with(path)
-
-
 class TestRPMListenerDownloadSucceeded(unittest.TestCase):
     def setUp(self):
         self.mock_sync = mock.MagicMock()
@@ -44,7 +18,7 @@ class TestRPMListenerDownloadSucceeded(unittest.TestCase):
         self.listener = listener.RPMListener(self.mock_sync, self.mock_metadata_files)
         self.report = DownloadReport('http://pulpproject.org', '/a/b/c')
 
-    @mock.patch.object(listener.RPMListener, 'deleting')
+    @mock.patch('pulp.server.util.deleting')
     def test_calls_deleting(self, mock_deleting):
         unit = mock.MagicMock()
         self.report.data = unit
@@ -92,7 +66,7 @@ class TestDRPMListenerDownloadSucceeded(unittest.TestCase):
         self.listener = listener.DRPMListener(self.mock_sync, self.mock_metadata_files)
         self.report = DownloadReport('http://pulpproject.org', '/a/b/c')
 
-    @mock.patch.object(listener.DRPMListener, 'deleting')
+    @mock.patch('pulp.server.util.deleting')
     def test_calls_deleting(self, mock_deleting):
         unit = mock.MagicMock()
         self.report.data = unit
