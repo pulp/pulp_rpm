@@ -527,8 +527,10 @@ Now that we have these two files, we can create our new errata like so::
       --title="1: pulp-test-package bit conservation" \
       --description="1: pulp-test-package now conserves your precious bits." \
       --version=1 --release="el6" --type="bugzilla" --status="final" \
-      --updated="`date`" --issued="`date`" --reference-csv=references.csv \
-      --pkglist-csv=package_list.csv --from=pulp-list@redhat.com --repo-id=repo
+      --updated="`date -u +'%Y-%m-%d %H:%M:%S %Z'`" \
+      --issued="`date -u +'%Y-%m-%d %H:%M:%S %Z'`" \
+      --reference-csv=references.csv --pkglist-csv=package_list.csv \
+      --from=pulp-list@redhat.com --repo-id=repo
     +----------------------------------------------------------------------+
                                   Unit Upload
     +----------------------------------------------------------------------+
@@ -553,11 +555,11 @@ Now that we have these two files, we can create our new errata like so::
 
 And now we are able to see that our errata is part of the repo::
 
-    $ pulp-admin rpm repo content errata --repo-id=repo --match type=bugzilla
+    $ pulp-admin rpm repo content errata --repo-id=repo --erratum_id=DEMO_ID_1
     Description:      1: pulp-test-package now conserves your precious bits.
     From Str:         pulp-list@redhat.com
     Id:               DEMO_ID_1
-    Issued:           Wed Dec 19 12:19:18 EST 2012
+    Issued:           2012-12-19 12:19:18 UTC
     Pkglist:          
       Name:     el6
       Packages: 
@@ -592,7 +594,7 @@ And now we are able to see that our errata is part of the repo::
     Summary:          None
     Title:            1: pulp-test-package bit conservation
     Type:             bugzilla
-    Updated:          Wed Dec 19 12:19:18 EST 2012
+    Updated:          2012-12-19 12:19:18 UTC
     Version:          1
 
 Package Groups

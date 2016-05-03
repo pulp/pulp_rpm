@@ -147,6 +147,13 @@ def _handle_erratum(repo, type_id, unit_key, metadata, file_path, conduit, confi
     steps are to save the metadata and optionally link the erratum to RPMs
     in the repository.
 
+    NOTE: For now errata is handled differently than other units. Uploaded erratum should not
+    overwrite the existing one if the latter exists, they should be merged. This is only because
+    of the way erratum is stored in the MongoDB and it is in `our plans`_ to re-think how to do
+    it correctly.
+
+    .. _our plans: https://pulp.plan.io/issues/1803
+
     :param repo: The repository to import the package into
     :type  repo: pulp.server.db.model.Repository
 
@@ -176,10 +183,19 @@ def _handle_erratum(repo, type_id, unit_key, metadata, file_path, conduit, confi
     unit_data.update(metadata or {})
     unit_data.update(unit_key or {})
 
-    unit = model_class(**unit_data)
+    existing_unit = model_class.objects.filter(**unit_key).first()
+    new_unit = model_class(**unit_data)
+
+    # Add repo_id to each collection of the pkglist of the new erratum
+    for collection in new_unit.pkglist:
+        collection['_pulp_repo_id'] = repo.repo_id
+
+    unit = new_unit
+    if existing_unit:
+        existing_unit.merge_errata(new_unit)
+        unit = existing_unit
 
     unit.save()
-
     if not config.get_boolean(CONFIG_SKIP_ERRATUM_LINK):
         repo_controller.associate_single_unit(repo, unit)
 
