@@ -145,7 +145,7 @@ class PackageXMLFileContext(MetadataFileContext):
 
         :param unit: The environment group to publish
         :type unit: pulp_rpm.plugins.db.models.PackageEnvironment
-       """
+        """
         environment_element = ElementTree.Element('environment')
 
         ElementTree.SubElement(environment_element, 'id').text = unit.package_environment_id
@@ -175,3 +175,19 @@ class PackageXMLFileContext(MetadataFileContext):
         environment_element_string = ElementTree.tostring(environment_element, encoding='utf-8')
         _LOG.debug('Writing package_environment unit metadata:\n' + environment_element_string)
         self.metadata_file_handle.write(environment_element_string)
+
+    def add_package_langpacks_unit_metadata(self, unit):
+        """
+        Write out the XML representation of a PackageLangpacks unit
+
+        :param unit: The langpacks unit to publish
+        :type unit: pulp_rpm.plugins.db.models.PackageLangpacks
+       """
+        langpacks_element = ElementTree.Element('langpacks')
+        for match_dict in unit.matches:
+            ElementTree.SubElement(langpacks_element, 'match', match_dict)
+
+        # Write out the langpacks xml to the file
+        langpacks_element_string = ElementTree.tostring(langpacks_element, encoding='utf-8')
+        _LOG.debug('Writing package_langpacks unit metadata:\n' + langpacks_element_string)
+        self.metadata_file_handle.write(langpacks_element_string)

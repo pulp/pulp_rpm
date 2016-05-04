@@ -324,7 +324,13 @@ def _associate_unit(dest_repo, unit):
     :return:                copied unit
     :rtype:                 pulp.server.db.model.ContentUnit
     """
-    if isinstance(unit, (models.PackageGroup, models.PackageCategory, models.PackageEnvironment)):
+    types_to_be_copied = (
+        models.PackageGroup,
+        models.PackageCategory,
+        models.PackageEnvironment,
+        models.PackageLangpacks
+    )
+    if isinstance(unit, types_to_be_copied):
         return associate_copy_for_repo(unit, dest_repo)
     elif isinstance(unit, models.RPM):
         # copy will happen in one batch

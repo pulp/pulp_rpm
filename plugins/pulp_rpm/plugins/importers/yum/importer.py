@@ -42,7 +42,8 @@ class YumImporter(Importer):
                 models.RPM._content_type_id.default,
                 models.SRPM._content_type_id.default,
                 models.YumMetadataFile._content_type_id.default,
-                models.PackageEnvironment._content_type_id.default
+                models.PackageEnvironment._content_type_id.default,
+                models.PackageLangpacks._content_type_id.default,
             ]
         }
 

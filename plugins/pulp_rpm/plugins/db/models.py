@@ -1005,6 +1005,24 @@ class PackageEnvironment(UnitMixin, ContentUnit):
         return [d.get('group') for d in self.options]
 
 
+class PackageLangpacks(UnitMixin, ContentUnit):
+    # TODO add docstring to this class
+    repo_id = mongoengine.StringField(required=True)
+    matches = mongoengine.ListField()
+
+    # For backward compatibility
+    _ns = mongoengine.StringField(default='units_package_langpacks')
+    _content_type_id = mongoengine.StringField(required=True, default='package_langpacks')
+
+    unit_key_fields = ('repo_id',)
+
+    meta = {
+        'collection': 'units_package_langpacks',
+        'allow_inheritance': False}
+
+    SERIALIZER = serializers.PackageLangpacks
+
+
 class YumMetadataFile(UnitMixin, FileContentUnit):
     # TODO add docstring to this class
     data_type = mongoengine.StringField(required=True)
