@@ -6,8 +6,8 @@ import unittest
 from pulp.common.constants import DEFAULT_CA_PATH
 from pulp.common.lock import Lock
 
-from pulp_rpm.handlers import repolib
-from pulp_rpm.handlers.repo_file import MirrorListFile, RepoFile, Repo
+from pulp_rpm.handlers.lib import repolib
+from pulp_rpm.handlers.lib.repo_file import MirrorListFile, RepoFile, Repo
 
 
 CACERT = 'MY-CA-CERTIFICATE'

@@ -8,7 +8,7 @@ collections of classes:
 """
 
 from gettext import gettext as _
-from logging import getLogger, Logger
+from logging import getLogger
 from optparse import OptionParser
 
 from yum import YumBase
@@ -26,7 +26,7 @@ UPDATED = _('Updated: %(p)s')
 ERASED = _('Erased: %(p)s')
 
 
-class Package:
+class Package(object):
     """
     Package management.
     Returned *Package* NEVRA+ objects:
@@ -226,7 +226,7 @@ class Package:
             yb.close()
 
 
-class PackageGroup:
+class PackageGroup(object):
     """
     PackageGroup management.
     """
@@ -295,12 +295,12 @@ class PackageGroup:
             yb.close()
 
 
-class ProgressReport:
+class ProgressReport(object):
     """
     Package (and group) progress reporting object.
-    :ivar step: A list package steps.
+    :ivar steps: A list package steps.
         Each step is: (name, status)
-    :type step: tuple
+    :type steps: list
     :ivar details: Details about package actions taking place
         in the current step.
     """
@@ -347,8 +347,10 @@ class ProgressReport:
         Set the specified package action for the current step.
         :param action: The action being performed.
         :type action: str
+        :param package: A package description
+        :type package: str
         """
-        self.details = dict(action=action, package=str(package))
+        self.details = dict(action=action, package=package)
         self._updated()
 
     def error(self, msg):
@@ -439,7 +441,7 @@ class RPMCallback(RPMBaseCallback):
         if key in self.events:
             return
         self.events.add(key)
-        self.report.set_action(self.action.get(action, str(action)), package)
+        self.report.set_action(self.action.get(action, str(action)), str(package))
 
     def filelog(self, package, action):
         """
@@ -452,7 +454,7 @@ class RPMCallback(RPMBaseCallback):
         :param action: The action in progress on the package.
         :type action: int
         """
-        self.report.set_action(self.fileaction.get(action, str(action)), package)
+        self.report.set_action(self.fileaction.get(action, str(action)), str(package))
 
     def errorlog(self, msg):
         """
@@ -477,7 +479,7 @@ class RPMCallback(RPMBaseCallback):
         :type count: int
         """
         action = 'Verifying'
-        self.report.set_action(action, tx.po)
+        self.report.set_action(action, str(tx.po))
 
 
 class DownloadCallback(DownloadBaseCallback):
@@ -559,41 +561,15 @@ class Yum(YumBase):
         options, args = p.parse_args([])
         self.plugins.setCmdLine(options, args)
 
-    def registerCommand(self, command):
+    def registerCommand(self, *unused):
         """
         Support TYPE_INTERACTIVE plugins.
         Commands ignored.
         """
+        # TODO: Not seeing this in YumBase anymore.  Still needed?
         pass
 
-    def cleanLoggers(self):
-        """
-        Clean handlers leaked by yum.
-        """
-
-        def strip(logger):
-            for handler in logger.handlers:
-                logger.removeHandler(handler)
-
-        try:
-            for n, lg in Logger.manager.loggerDict.items():
-                if n.startswith('yum.') and isinstance(lg, Logger):
-                    strip(lg)
-        except Exception:
-            log.exception('logger cleanup failed')
-            raise
-
-    def close(self):
-        """
-        This should be handled by __del__() but YumBase
-        objects never seem to completely go out of scope and
-        garbage collected.
-        """
-        YumBase.close(self)
-        self.closeRpmDB()
-        self.cleanLoggers()
-
-    def processTransaction(self):
+    def processTransaction(self, *unused):
         """
         Process the transaction.
         The method is overridden so we can add progress reporting.

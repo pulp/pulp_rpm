@@ -3,10 +3,11 @@
 from logging import getLogger
 
 from rhsm.profile import get_profile
+
 from pulp.agent.lib.handler import ContentHandler
 from pulp.agent.lib.report import ProfileReport, ContentReport
-
-from pulp_rpm.handlers.rpmtools import Package, PackageGroup, ProgressReport
+from pulp_rpm.handlers.lib.rpmtools import ProgressReport
+from pulp_rpm.handlers.lib.facade import Package, PackageGroup
 
 log = getLogger(__name__)
 
@@ -64,8 +65,6 @@ class PackageProgress(ProgressReport):
 class PackageHandler(ContentHandler):
     """
     The package (rpm) content handler.
-    :ivar cfg: configuration
-    :type cfg: dict
     """
 
     def install(self, conduit, units, options):
@@ -84,7 +83,7 @@ class PackageHandler(ContentHandler):
         :rtype: PackageReport
         """
         report = PackageReport()
-        pkg = self.__impl(conduit, options)
+        pkg = self._impl(conduit, options)
         names = []
         for unit_key in units:
             nevra = {
@@ -123,7 +122,7 @@ class PackageHandler(ContentHandler):
         """
         report = PackageReport()
         all = options.get('all', False)
-        pkg = self.__impl(conduit, options)
+        pkg = self._impl(conduit, options)
         names = [key['name'] for key in units if key]
         if names or all:
             details = pkg.update(names)
@@ -148,7 +147,7 @@ class PackageHandler(ContentHandler):
         :rtype: PackageReport
         """
         report = PackageReport()
-        pkg = self.__impl(conduit, options)
+        pkg = self._impl(conduit, options)
         names = [key['name'] for key in units]
         details = pkg.uninstall(names)
         if details['failed']:
@@ -170,7 +169,7 @@ class PackageHandler(ContentHandler):
         report.set_succeeded(details)
         return report
 
-    def __impl(self, conduit, options):
+    def _impl(self, conduit, options):
         """
         Get package implementation.
         :param options: Passed options.
@@ -190,8 +189,6 @@ class PackageHandler(ContentHandler):
 class GroupHandler(ContentHandler):
     """
     The package group content handler.
-    :ivar cfg: configuration
-    :type cfg: dict
     """
 
     def install(self, conduit, units, options):
@@ -207,7 +204,7 @@ class GroupHandler(ContentHandler):
         :rtype: GroupReport
         """
         report = GroupReport()
-        grp = self.__impl(conduit, options)
+        grp = self._impl(conduit, options)
         names = [key['name'] for key in units]
         details = grp.install(names)
         report.set_succeeded(details)
@@ -226,13 +223,13 @@ class GroupHandler(ContentHandler):
         :rtype: GroupReport
         """
         report = GroupReport()
-        grp = self.__impl(conduit, options)
+        grp = self._impl(conduit, options)
         names = [key['name'] for key in units]
         details = grp.uninstall(names)
         report.set_succeeded(details)
         return report
 
-    def __impl(self, conduit, options):
+    def _impl(self, conduit, options):
         """
         Get package group implementation.
         :param options: Passed options.
