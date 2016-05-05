@@ -219,7 +219,13 @@ class TestFindDependentRPMs(DepsolveTestCase):
         # It should return a dependency on xulrunner
         units = [self.rpm_1]
 
-        dependent_rpms = self.solver.find_dependent_rpms(units)
+        # The DB query exists to add fields to the units. That isn't needed here, since the
+        # pre-cooked units (self.rpm_1 for example) already have all the fields. So the mock
+        # just returns the original units as-is.
+        with mock.patch.object(models.RPM, 'objects') as mock_objects:
+            mock_objects.filter.return_value.only.return_value = units
+
+            dependent_rpms = self.solver.find_dependent_rpms(units)
 
         # Firefox only depends directly on xulrunner
         expected_rpms = set([self.rpm_2])
@@ -230,7 +236,13 @@ class TestFindDependentRPMs(DepsolveTestCase):
         # It should return xulrunner and glib2.
         units = [self.rpm_1, self.rpm_4]
 
-        dependent_rpms = self.solver.find_dependent_rpms(units)
+        # The DB query exists to add fields to the units. That isn't needed here, since the
+        # pre-cooked units (self.rpm_1 for example) already have all the fields. So the mock
+        # just returns the original units as-is.
+        with mock.patch.object(models.RPM, 'objects') as mock_objects:
+            mock_objects.filter.return_value.only.return_value = units
+
+            dependent_rpms = self.solver.find_dependent_rpms(units)
 
         # Firefox only depends directly on xulrunner, and gnome-calculator needs glib2
         expected_rpms = set([self.rpm_2, self.rpm_5])
