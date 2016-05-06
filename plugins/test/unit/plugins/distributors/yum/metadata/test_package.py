@@ -28,11 +28,11 @@ class TestPackageXMLFileContext(unittest.TestCase):
         shutil.rmtree(self.working_dir)
 
     def _generate_group_unit(self, name):
+        # display_order is omitted here on purpose, to check its default value
         unit_data = {'package_group_id': name,
                      'repo_id': 'repo1',
                      'user_visible': True,
                      'default': True,
-                     'display_order': 0,
                      'name': name,
                      'description': name + u'description',
                      'mandatory_package_names': [],
@@ -46,7 +46,6 @@ class TestPackageXMLFileContext(unittest.TestCase):
         unit_key = {'id': name}
         unit_metadata = {'id': name,
                          'user_visible': True,
-                         'display_order': 0,
                          'name': name,
                          'description': name + u' – description',
                          'grouplist': []}
@@ -57,7 +56,6 @@ class TestPackageXMLFileContext(unittest.TestCase):
         # TODO fix this like _generate_group_unit above
         unit_key = {'id': name}
         unit_metadata = {'id': name,
-                         'display_order': 0,
                          'name': name,
                          'description': name + u' – description',
                          'grouplist': [],
@@ -82,7 +80,7 @@ class TestPackageXMLFileContext(unittest.TestCase):
         group_unit = self._generate_group_unit('foo')
         self.context.add_package_group_unit_metadata(group_unit)
         source_str = '<group><id>foo</id><default>true</default><uservisible>true</uservisible' \
-                     '><display_order>0' \
+                     '><display_order>1024' \
                      '</display_order><name>foo</name><description>foodescription' \
                      '</description><packagelist /></group>'
         source_element = ElementTree.fromstring(source_str)
@@ -94,6 +92,7 @@ class TestPackageXMLFileContext(unittest.TestCase):
         group_unit = self._generate_group_unit('foo')
         group_unit.translated_name = {u'af': u'af_name', u'ze': u'ze_name'}
         group_unit.default = False
+        group_unit.display_order = 0
         group_unit.langonly = u'bar'
         group_unit.translated_description = {u'af': u'af_desc', u'ze': u'ze_desc'}
         group_unit.mandatory_package_names = [u'package2', u'package1', u'package3']
@@ -132,7 +131,7 @@ class TestPackageXMLFileContext(unittest.TestCase):
     def test_add_package_category_unit_metadata_minimal(self):
         category_unit = self._generate_category_unit('category_name')
         self.context.add_package_category_unit_metadata(category_unit)
-        source_str = '<category><id>category_name</id><display_order>0</display_order>' \
+        source_str = '<category><id>category_name</id><display_order>1024</display_order>' \
                      '<name>category_name</name>' \
                      '<description>category_name – description</description>' \
                      '<grouplist /></category>'
@@ -149,7 +148,7 @@ class TestPackageXMLFileContext(unittest.TestCase):
         unit.metadata['translated_description'] = {u'af': u'af_desc', u'ze': u'ze_desc'}
         unit.metadata['packagegroupids'] = [u'package2', u'package1']
         self.context.add_package_category_unit_metadata(unit)
-        source_str = '<category><id>category_name</id><display_order>0</display_order>' \
+        source_str = '<category><id>category_name</id><display_order>1024</display_order>' \
                      '<name>category_name</name>' \
                      '<name xml:lang="af">af_name</name>' \
                      '<name xml:lang="ze">ze_name</name>' \
@@ -171,7 +170,7 @@ class TestPackageXMLFileContext(unittest.TestCase):
         unit = self._generate_environment_unit('environment_name')
         self.context.add_package_environment_unit_metadata(unit)
 
-        source_str = '<environment><id>environment_name</id><display_order>0</display_order>' \
+        source_str = '<environment><id>environment_name</id><display_order>1024</display_order>' \
                      '<name>environment_name</name>' \
                      '<description>environment_name – description</description>' \
                      '<grouplist /><optionlist /></environment>'
@@ -190,7 +189,7 @@ class TestPackageXMLFileContext(unittest.TestCase):
         unit.metadata['options'] = [{'group': 'package3', 'default': False},
                                     {'group': u'package4', 'default': True}]
         self.context.add_package_environment_unit_metadata(unit)
-        source_str = '<environment><id>environment_name</id><display_order>0</display_order>' \
+        source_str = '<environment><id>environment_name</id><display_order>1024</display_order>' \
                      '<name>environment_name</name>' \
                      '<name xml:lang="af">af_name</name>' \
                      '<name xml:lang="ze">ze_name</name>' \

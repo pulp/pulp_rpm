@@ -301,7 +301,7 @@ Metadata
  Language support groups are selected based on this option
 
 ``display_order``
- Display order of the package group
+ Display order of the package group. If not specified, default value is '1024'
 
 ``mandatory_package_names``
  Mandatory package names to include in the package group
@@ -338,7 +338,7 @@ Metadata
  Description of the package group category
 
 ``display_order``
- Display order of the package group category
+ Display order of the package group category. If not specified, default value is '1024'
 
 ``packagegroupids``
  Package group IDs associated with the package category
@@ -377,7 +377,7 @@ Metadata
  Example format: ``{"ru" : 'KDE Plasma Workspaces - легко настраиваемый графический интерфейс пользователя, который содержит панель, рабочий стол, системные значки и виджеты рабочего стола, а также множество мощных приложений KDE.'}``
 
 ``display_order``
- Display order of the package group environment
+ Display order of the package group environment. If not specified, default value is '1024'
 
 ``group_ids``
  List of Package group IDs associated with the package environment
