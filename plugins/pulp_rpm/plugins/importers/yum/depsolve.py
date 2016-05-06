@@ -432,6 +432,10 @@ class Solver(object):
         :rtype:     generator
         """
         for segment in paginate(units):
-            for unit in segment:
-                for require in unit.requires or []:
+            unit_ids = [unit.id for unit in segment]
+            # The "requires" field is required by this workflow, but is not populated on the
+            # incoming "units". Thus we need to re-fetch units with that field.
+            fields = ['requires', 'id']
+            for result in models.RPM.objects.filter(id__in=unit_ids).only(*fields):
+                for require in result.requires or []:
                     yield Requirement(**require)
