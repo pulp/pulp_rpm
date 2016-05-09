@@ -40,6 +40,7 @@ class BaseSyncTest(unittest.TestCase):
         self.metadata_files = metadata.MetadataFiles(self.url, '/foo/bar', DownloaderConfig())
         self.metadata_files.download_repomd = mock.MagicMock()
         self.repo = Repository('repo1')
+        self.repo.repo_id = self.repo.id
         self.conduit = RepoSyncConduit(self.repo.id, 'yum_importer', ObjectId())
         # this happens in the YumImporter's sync_repo() method. I don't know why.
         self.conduit.repo = self.repo
@@ -132,6 +133,19 @@ class TestUpdateState(BaseSyncTest):
             self.assertEqual(self.state_dict[constants.PROGRESS_STATE_KEY], constants.STATE_RUNNING)
 
         self.assertEqual(self.state_dict[constants.PROGRESS_STATE_KEY], constants.STATE_COMPLETE)
+
+
+class TestEraseRepomdRevision(BaseSyncTest):
+    def test_erase_scratchpad(self):
+        self.conduit.get_scratchpad.return_value = {'a': 2}
+
+        self.reposync.erase_repomd_revision()
+
+        self.conduit.set_scratchpad.assert_called_once_with({
+            'a': 2,
+            constants.REPOMD_REVISION_KEY: None,
+            constants.PREVIOUS_SKIP_LIST: [],
+        })
 
 
 @skip_broken
@@ -470,7 +484,6 @@ class TestProgressSummary(BaseSyncTest):
                              ret[step_name]['state'])
 
 
-@skip_broken
 class TestGetMetadata(BaseSyncTest):
     def setUp(self):
         super(TestGetMetadata, self).setUp()
@@ -505,6 +518,22 @@ class TestGetMetadata(BaseSyncTest):
 
         self.assertTrue(self.reposync.skip_repomd_steps is False)
         self.assertEqual(mock_metadata_instance.download_metadata_files.call_count, 1)
+
+    @mock.patch.object(metadata, 'MetadataFiles', autospec=True)
+    def test_metadata_feed_override(self, mock_metadata_files):
+        """with feed override is set, a full sync should be performed"""
+        mock_metadata_instance = mock_metadata_files.return_value
+        mock_metadata_instance.revision = 1
+        mock_metadata_instance.downloader = mock.MagicMock()
+        mock_metadata_instance.save_repomd_version = mock.MagicMock()
+        self.config.override_config[importer_constants.KEY_FEED] = 'http://pulpproject.org'
+        self.conduit.get_scratchpad.return_value = {constants.REPOMD_REVISION_KEY: 1234}
+        self.reposync.import_unknown_metadata_files = mock.MagicMock(
+            spec_set=self.reposync.import_unknown_metadata_files)
+
+        self.reposync.get_metadata(self.reposync.check_metadata(self.url))
+
+        self.assertTrue(self.reposync.skip_repomd_steps is False)
 
     @mock.patch.object(metadata, 'MetadataFiles', autospec=True)
     def test_metadata_unchanged_but_skip_list_shrank(self, mock_metadata_files):

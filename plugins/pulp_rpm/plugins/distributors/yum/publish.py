@@ -69,8 +69,8 @@ class BaseYumRepoPublisher(platform_steps.PluginStep):
         self.add_child(dist_step)
         self.rpm_step = PublishRpmStep(dist_step, repo_content_unit_q=association_filters)
         self.add_child(self.rpm_step)
-        self.add_child(PublishDrpmStep(dist_step))
-        self.add_child(PublishErrataStep())
+        self.add_child(PublishDrpmStep(dist_step, repo_content_unit_q=association_filters))
+        self.add_child(PublishErrataStep(repo_content_unit_q=association_filters))
         self.add_child(PublishCompsStep())
         self.add_child(PublishMetadataStep())
         self.add_child(CloseRepoMetadataStep())
@@ -104,17 +104,23 @@ class ExportRepoPublisher(BaseYumRepoPublisher):
         :param distributor_type: The type of the distributor that is being published
         :type distributor_type: str
         """
-        super(ExportRepoPublisher, self).__init__(repo, publish_conduit, config, distributor_type,
-                                                  **kwargs)
 
         date_q = export_utils.create_date_range_filter(config)
-        if date_q:
-            # Since this is a partial export we don't generate metadata
-            # we have to clear out the previously added steps
-            # we only need special version s of the rpm, drpm, and errata steps
-            self.clear_children()
-            self.add_child(PublishRpmAndDrpmStepIncremental(repo_content_unit_q=date_q))
-            self.add_child(PublishErrataStepIncremental(repo_content_unit_q=date_q))
+
+        if config.get_boolean(constants.INCREMENTAL_EXPORT_REPOMD_KEYWORD):
+            super(ExportRepoPublisher, self).__init__(repo, publish_conduit, config,
+                                                      distributor_type, association_filters=date_q,
+                                                      **kwargs)
+        else:
+            super(ExportRepoPublisher, self).__init__(repo, publish_conduit, config,
+                                                      distributor_type, **kwargs)
+            if date_q:
+                # Since this is a partial export we don't generate metadata
+                # we have to clear out the previously added steps
+                # we only need special version s of the rpm, drpm, and errata steps
+                self.clear_children()
+                self.add_child(PublishRpmAndDrpmStepIncremental(repo_content_unit_q=date_q))
+                self.add_child(PublishErrataStepIncremental(repo_content_unit_q=date_q))
 
         working_directory = self.get_working_dir()
         export_dir = config.get(constants.EXPORT_DIRECTORY_KEYWORD)
@@ -248,7 +254,8 @@ class Publisher(BaseYumRepoPublisher):
     of a yum repository over HTTP and/or HTTPS.
     """
 
-    def __init__(self, transfer_repo, publish_conduit, config, distributor_type, **kwargs):
+    def __init__(self, transfer_repo, publish_conduit, config, distributor_type,
+                 association_filters=None, **kwargs):
         """
         :param transfer_repo: repository being published
         :type  transfer_repo: pulp.plugins.db.model.Repository
@@ -256,6 +263,8 @@ class Publisher(BaseYumRepoPublisher):
         :type  publish_conduit: pulp.plugins.conduits.repo_publish.RepoPublishConduit
         :param config: Pulp configuration for the distributor
         :type  config: pulp.plugins.config.PluginCallConfiguration
+        :param association_filters: Any filters to be applied to the list of RPMs being published
+        :type association_filters: mongoengine.Q
         :param distributor_type: The type of the distributor that is being published
         :type distributor_type: str
         """
@@ -265,8 +274,21 @@ class Publisher(BaseYumRepoPublisher):
 
         last_published = publish_conduit.last_publish()
         last_deleted = repo.last_unit_removed
-        force_full = config.get('force_full', False)
-        date_filter = None
+
+        # NB: there is an "incremental publish optmization" (aka fast-forward
+        # publish), and an unrelated "incremental publish". The former is
+        # related to avoiding extra disk IO on publishes, and the latter is for
+        # publishing units in a date range.  In order to do the "incremental
+        # publish", we need to disable the "incremental publish optimization"
+        # to ensure the prior published repo contents are cleared out. This is
+        # done via the "force_full" option.
+
+        if association_filters:
+            force_full = True
+            date_filter = association_filters
+        else:
+            force_full = config.get('force_full', False)
+            date_filter = None
 
         if last_published and \
                 (last_deleted is None or last_published > last_deleted) and \
