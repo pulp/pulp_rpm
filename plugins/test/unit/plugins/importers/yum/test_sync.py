@@ -495,6 +495,7 @@ class TestGetMetadata(BaseSyncTest):
         mock_metadata_instance.revision = 1234
         mock_metadata_instance.downloader = mock.MagicMock()
         self.conduit.get_scratchpad.return_value = {constants.REPOMD_REVISION_KEY: 1234}
+        self.conduit.last_sync = mock.MagicMock(return_value=None)
 
         ret = self.reposync.get_metadata(self.reposync.check_metadata(self.url))
 
@@ -510,6 +511,7 @@ class TestGetMetadata(BaseSyncTest):
         mock_metadata_instance.revision = 0
         mock_metadata_instance.downloader = mock.MagicMock()
         self.conduit.get_scratchpad.return_value = {constants.REPOMD_REVISION_KEY: 0}
+        self.conduit.last_sync = mock.MagicMock(return_value=None)
         self.reposync.import_unknown_metadata_files = mock.MagicMock(
             spec_set=self.reposync.import_unknown_metadata_files)
 
@@ -528,6 +530,7 @@ class TestGetMetadata(BaseSyncTest):
         mock_metadata_instance.save_repomd_version = mock.MagicMock()
         self.config.override_config[importer_constants.KEY_FEED] = 'http://pulpproject.org'
         self.conduit.get_scratchpad.return_value = {constants.REPOMD_REVISION_KEY: 1234}
+        self.conduit.last_sync = mock.MagicMock(return_value=None)
         self.reposync.import_unknown_metadata_files = mock.MagicMock(
             spec_set=self.reposync.import_unknown_metadata_files)
 
@@ -550,6 +553,7 @@ class TestGetMetadata(BaseSyncTest):
             constants.PREVIOUS_SKIP_LIST: ['foo', 'bar'],
         }
         self.config.override_config[constants.CONFIG_SKIP] = ['foo']
+        self.conduit.last_sync = mock.MagicMock(return_value=None)
         self.reposync.import_unknown_metadata_files = mock.MagicMock(
             spec_set=self.reposync.import_unknown_metadata_files)
 
@@ -596,6 +600,7 @@ class TestGetMetadata(BaseSyncTest):
         mock_metadata_instance.downloader = mock.MagicMock()
         self.reposync.import_unknown_metadata_files = mock.MagicMock(
             spec_set=self.reposync.import_unknown_metadata_files)
+        self.conduit.last_sync = mock.MagicMock(return_value=None)
 
         ret = self.reposync.get_metadata(self.reposync.check_metadata(self.url))
 
