@@ -15,6 +15,7 @@ from urlparse import urljoin
 from mongoengine import NotUniqueError
 from nectar.request import DownloadRequest
 
+from pulp.common import dateutils
 from pulp.common.plugins import importer_constants
 from pulp.server.db.model import LazyCatalogEntry
 from pulp.plugins.util import nectar_config as nectar_utils, verification
@@ -329,6 +330,8 @@ class RepoSync(object):
 
     def get_metadata(self, metadata_files):
         """
+        Get metadata and decide whether to sync the repository or not.
+
         :param metadata_files: instance of MetadataFiles
         :type: pulp_rpm.plugins.importers.yum.repomd.metadata.MetadataFiles
 
@@ -343,13 +346,19 @@ class RepoSync(object):
         previous_skip_set = set(scratchpad.get(constants.PREVIOUS_SKIP_LIST, []))
         current_skip_set = set(self.config.get(constants.CONFIG_SKIP, []))
         self.current_revision = metadata_files.revision
-        # if the revision is positive, hasn't increased and the skip list doesn't include
-        # new types that weren't present on the last run...
-        # determine missing units
         missing_units = repo_controller.missing_unit_count(self.repo.repo_id)
+
+        last_sync = self.conduit.last_sync()
+        sync_due_to_unit_removal = False
+        if last_sync is not None:
+            last_sync = dateutils.parse_iso8601_datetime(last_sync)
+            last_removed = self.repo.last_unit_removed
+            sync_due_to_unit_removal = last_removed is not None and last_sync < last_removed
+
         if 0 < metadata_files.revision <= previous_revision \
                 and previous_skip_set - current_skip_set == set() \
-                and (self.download_deferred or not missing_units):
+                and (self.download_deferred or not missing_units) \
+                and not sync_due_to_unit_removal:
             _logger.info(_('upstream repo metadata has not changed. Skipping steps.'))
             self.skip_repomd_steps = True
             return metadata_files
