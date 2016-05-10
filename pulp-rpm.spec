@@ -267,6 +267,9 @@ A collection of yum plugins supplementing Pulp consumer operations.
 
 
 %changelog
+* Tue May 10 2016 Sean Myers <sean.myers@redhat.com> 2.8.3-0.3.rc
+- Pulp rebuild
+
 * Tue May 03 2016 Sean Myers <sean.myers@redhat.com> 2.8.3-0.2.beta
 - fixed sync for reference title (jluza@redhat.com)
 - 1782 - reboot_suggested is False by default if during unit upload there was
