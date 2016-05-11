@@ -79,8 +79,10 @@ class PackageXMLFileContext(MetadataFileContext):
             str(group_unit.default).lower()
         ElementTree.SubElement(group_element, 'uservisible').text = \
             str(group_unit.user_visible).lower()
+        # If the order is not specified, then 1024 should be set as default.
+        # With value of 1024 the group will be displayed at the very bottom of the list.
         ElementTree.SubElement(group_element, 'display_order').text = \
-            str(group_unit.display_order)
+            str(group_unit.display_order) if group_unit.display_order is not None else '1024'
 
         if group_unit.langonly:
             ElementTree.SubElement(group_element, 'langonly').text = group_unit.langonly
@@ -122,8 +124,10 @@ class PackageXMLFileContext(MetadataFileContext):
         """
         category_element = ElementTree.Element('category')
         ElementTree.SubElement(category_element, 'id').text = unit.package_category_id
+        # If the order is not specified, then 1024 should be set as default.
+        # With value of 1024 the group will be displayed at the very bottom of the list.
         ElementTree.SubElement(category_element, 'display_order').text = \
-            str(unit.display_order)
+            str(unit.display_order) if unit.display_order is not None else '1024'
         ElementTree.SubElement(category_element, 'name').text = unit.name
         self._write_translated_fields(category_element, 'name', unit.translated_name)
         ElementTree.SubElement(category_element, 'description').text = unit.description
@@ -149,8 +153,10 @@ class PackageXMLFileContext(MetadataFileContext):
         environment_element = ElementTree.Element('environment')
 
         ElementTree.SubElement(environment_element, 'id').text = unit.package_environment_id
+        # If the order is not specified, then 1024 should be set as default.
+        # With value of 1024 the group will be displayed at the very bottom of the list.
         ElementTree.SubElement(environment_element, 'display_order').text = \
-            str(unit.display_order)
+            str(unit.display_order) if unit.display_order is not None else '1024'
         ElementTree.SubElement(environment_element, 'name').text = unit.name
         self._write_translated_fields(environment_element, 'name', unit.translated_name)
         ElementTree.SubElement(environment_element, 'description').text = unit.description

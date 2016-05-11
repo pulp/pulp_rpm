@@ -19,8 +19,8 @@ OPT_NAME = PulpCliOption('--name', d, aliases=['-n'], required=True)
 d = _('description of the package environment')
 OPT_DESCRIPTION = PulpCliOption('--description', d, aliases=['-d'], required=True)
 
-d = _('display order for the package environment')
-OPT_ORDER = PulpCliOption('--display-order', d, allow_multiple=False, required=False, default=0)
+d = _('display order for the package environment. Defaults to 1024')
+OPT_ORDER = PulpCliOption('--display-order', d, allow_multiple=False, required=False, default=1024)
 
 d = _('package group IDs to include in the package environment; multiple may '
       'be indicated by specifying the argument multiple times')
