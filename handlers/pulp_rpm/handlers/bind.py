@@ -6,7 +6,7 @@ from logging import getLogger
 from pulp.agent.lib.handler import BindHandler
 from pulp.agent.lib.report import BindReport, CleanReport
 
-from pulp_rpm.handlers import repolib
+from pulp_rpm.handlers.lib import repolib
 
 
 log = getLogger(__name__)
@@ -36,7 +36,7 @@ class RepoHandler(BindHandler):
         details = binding['details']
         repo_id = binding['repo_id']
         repo_name = details['repo_name']
-        urls = self.__urls(details)
+        urls = self._urls(details)
         report = BindReport(repo_id)
         verify_ssl = cfg.server.verify_ssl.lower() != 'false'
         repolib.bind(
@@ -94,7 +94,7 @@ class RepoHandler(BindHandler):
         report.set_succeeded()
         return report
 
-    def __urls(self, details):
+    def _urls(self, details):
         """
         Construct a list of URLs.
         @param details: The bind details (payload).
@@ -103,7 +103,7 @@ class RepoHandler(BindHandler):
         @rtype: list
         """
         urls = []
-        protocol = self.__protocol(details)
+        protocol = self._protocol(details)
         if not protocol:
             # not enabled
             return urls
@@ -116,7 +116,7 @@ class RepoHandler(BindHandler):
             urls.append(url + path)
         return urls
 
-    def __protocol(self, details):
+    def _protocol(self, details):
         """
         Select the protcol based on preferences.
         @param details: The bind details (payload).
