@@ -12,12 +12,13 @@ have experienced duplicate packages. This data migration changes all "sha" check
 will remove packages with "sha" checksums if they are found to be duplicates of existing "sha1"
 packages.
 
-The 2.4.4 release is a minor bugfix release. You can see the list of bugs that were fixed
-`here <https://bugzilla.redhat.com/buglist.cgi?bug_status=VERIFIED&bug_status=RELEASE_PENDING&bug_status=CLOSED&classification=Community&component=iso-support&component=rpm-support&list_id=2768109&product=Pulp&query_format=advanced&target_release=2.4.4>`_.
+The 2.4.4 release is a minor bugfix release. You can see the
+`list of 2.4.4 bugs that were fixed <https://bugzilla.redhat.com/buglist.cgi?bug_status=VERIFIED&
+bug_ status=RELEASE_PENDING&bug_status=CLOSED&classification=Community&component=iso-support&
+component =rpm-support&list_id=2768109&product=Pulp&query_format=advanced&target_release=2.4.4>`_.
 
-Please see the
-`Pulp Platform upgrade instructions <https://pulp-user-guide.readthedocs.org/en/2.4-release/release-notes.html>`_
-for information on how to perform the upgrade.
+Please see the `Pulp Platform upgrade instructions <https://pulp-user-guide.readthedocs.org/
+en/2.4-release/release-notes.html>`_ for information on how to perform the upgrade.
 
 
 Pulp RPM 2.4.3
@@ -32,10 +33,10 @@ Pulp RPM 2.4.2
 Bug Fixes
 ---------
 
-The 2.4.2 release is a minor bugfix release. You can see the list of bugs that were fixed
-`here <https://bugzilla.redhat.com/buglist.cgi?bug_status=VERIFIED&bug_status=RELEASE_PENDING
-&bug_status=CLOSED&classification=Community&component=iso-support&component=rpm-support
-&list_id=3357893&product=Pulp&version=2.4.2>`_.
+The 2.4.2 release is a minor bugfix release. You can see the
+`list of 2.4.2 bugs that were fixed <https://bugzilla.redhat.com/buglist.cgi?bug_status=VERIFIED&
+bug_status=RELEASE_PENDING &bug_status=CLOSED&classification=Community&component=iso-support&
+component=rpm-support &list_id=3357893&product=Pulp&version=2.4.2>`_.
 
 Pulp RPM 2.4.1
 ==============
@@ -53,10 +54,10 @@ you don't wish to use different CAs on different repositories. See the upgrade i
 Bug Fixes
 ---------
 
-The 2.4.1 release is a minor bugfix release. You can see the list of bugs that were fixed
-`here <https://bugzilla.redhat.com/buglist.cgi?bug_status=VERIFIED&bug_status=RELEASE_PENDING&
-bug_status=CLOSED&classification=Community&component=iso-support&component=rpm-support&
-list_id=3357893&product=Pulp&version=2.4.1>`_.
+The 2.4.1 release is a minor bugfix release. You can see the
+`list of 2.4.1 bugs that were fixed <https://bugzilla.redhat.com/buglist.cgi?bug_status=VERIFIED&
+bug_status=RELEASE_PENDING& bug_status=CLOSED&classification=Community&component=iso-support&
+component=rpm-support& list_id=3357893&product=Pulp&version=2.4.1>`_.
 
 Upgrade Instructions
 --------------------
@@ -111,9 +112,8 @@ Upgrade Instructions
 
  - pulp_rpm has added a dependency on python-lxml for xml parsing
 
-Please see the
-`Pulp Platform upgrade instructions <https://pulp-user-guide.readthedocs.org/en/2.4-release/release-notes.html>`_
-for information on how to complete the upgrade.
+Please see the `Pulp Platform upgrade instructions <https://pulp-user-guide.readthedocs.org/
+en/2.4-release/release-notes.html>`_ for information on how to perform the upgrade.
 
 Known Issues
 ------------
