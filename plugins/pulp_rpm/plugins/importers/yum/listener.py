@@ -184,23 +184,3 @@ class RPMListener(PackageListener):
             if not added_unit.downloaded:
                 added_unit.downloaded = True
                 added_unit.save()
-
-
-class DRPMListener(PackageListener):
-    """
-    The Delta RPM package download lister.
-    """
-
-    def download_succeeded(self, report):
-        with util.deleting(report.destination):
-            unit = report.data
-            try:
-                super(DRPMListener, self).download_succeeded(report)
-            except (verification.VerificationException, verification.InvalidChecksumType):
-                # verification failed, unit not added
-                return
-            added_unit = self.sync.add_drpm_unit(self.metadata_files, unit)
-            added_unit.safe_import_content(report.destination)
-            if not added_unit.downloaded:
-                added_unit.downloaded = True
-                added_unit.save()
