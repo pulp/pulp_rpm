@@ -27,7 +27,7 @@ from pulp_rpm.common import constants, ids
 from pulp_rpm.plugins import error_codes
 from pulp_rpm.plugins.db import models
 from pulp_rpm.plugins.importers.yum import existing, purge
-from pulp_rpm.plugins.importers.yum.listener import RPMListener, DRPMListener
+from pulp_rpm.plugins.importers.yum.listener import RPMListener
 from pulp_rpm.plugins.importers.yum.parse.treeinfo import DistSync
 from pulp_rpm.plugins.importers.yum.repomd import (
     alternate, group, metadata, nectar_factory, packages, presto, primary, updateinfo)
@@ -636,9 +636,6 @@ class RepoSync(object):
         self.conduit.set_progress(self.progress_report)
         return unit
 
-    # added for clarity
-    add_drpm_unit = add_rpm_unit
-
     def download_rpms(self, metadata_files, rpms_to_download, url):
         """
         Actually download the requested RPMs. This method iterates over
@@ -709,7 +706,7 @@ class RepoSync(object):
         :param url: current URL we should sync
         :type: str
         """
-        event_listener = DRPMListener(self, metadata_files)
+        event_listener = RPMListener(self, metadata_files)
 
         for presto_file_name in presto.METADATA_FILE_NAMES:
             presto_file_handle = metadata_files.get_metadata_file_handle(presto_file_name)
@@ -730,7 +727,7 @@ class RepoSync(object):
                     if self.download_deferred:
                         for unit in units_to_download:
                             unit.downloaded = False
-                            self.add_drpm_unit(metadata_files, unit)
+                            self.add_rpm_unit(metadata_files, unit)
                         continue
 
                     download_wrapper = packages.Packages(
