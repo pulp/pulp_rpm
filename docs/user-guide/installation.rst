@@ -10,9 +10,9 @@ Prerequisites
 -------------
 
 The only requirement is to meet the prerequisites of the Pulp Platform. Please
-see the `Pulp User Guide`_ for prerequisites including repository setup. Also
-reference that document to learn more about what each of the following components
-are for.
+see the :ref:`Pulp Installation Guide <platform:server_installation>` for
+prerequisites including repository setup. Also reference that document to learn
+more about what each of the following components are for.
 
 Server
 ------
