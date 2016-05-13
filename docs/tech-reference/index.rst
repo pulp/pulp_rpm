@@ -7,4 +7,5 @@ Technical Reference
    yum-plugins
    export-distributor
    iso-plugins
+   rpm
    sort-index
