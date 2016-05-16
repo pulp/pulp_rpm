@@ -154,8 +154,8 @@ Group: Development/Languages
 Requires: python-pulp-rpm-common = %{pulp_version}
 Requires: python-pulp-oid_validation >= 2.7.0
 Requires: pulp-server = %{pulp_version}
-Requires: createrepo >= 0.9.9-21
 Requires: createrepo_c >= 0.4.1-1
+Requires: python-createrepo_c >= 0.4.1-1
 Requires: python-rhsm >= 1.8.0
 Requires: pyliblzma
 Requires: python-nectar >= 1.2.1

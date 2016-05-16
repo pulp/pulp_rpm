@@ -3,9 +3,17 @@ import logging
 import os
 import rpm as rpm_module
 
-from createrepo import yumbased
+import createrepo_c
 from pulp.server import util
+from pulp.plugins.util import verification
 import rpmUtils
+
+
+CHECKSUM_BY_TYPE = {
+    verification.TYPE_MD5: createrepo_c.MD5,
+    verification.TYPE_SHA1: createrepo_c.SHA1,
+    verification.TYPE_SHA256: createrepo_c.SHA256,
+}
 
 
 _LOGGER = logging.getLogger(__name__)
@@ -25,26 +33,19 @@ def get_package_xml(pkg_path, sumtype=util.TYPE_SHA256):
     :return:    rpm metadata dictionary or empty if rpm path doesnt exist
     :rtype:     dict
     """
-    ts = rpmUtils.transaction.initReadOnlyTransaction()
+    snippet_dict = {}
     try:
-        # createrepo raises an exception if sumtype is unicode
-        # https://bugzilla.redhat.com/show_bug.cgi?id=1290021
-        sumtype_as_str = str(sumtype)
-        po = yumbased.CreateRepoPackage(ts, pkg_path, sumtype=sumtype_as_str)
-    except Exception, e:
-        # I hate this, but yum doesn't use reasonable exceptions like IOError
-        # and ValueError.
-        _LOGGER.error(str(e))
-        return {}
-    # RHEL6 createrepo throws a ValueError if _cachedir is not set
-    po._cachedir = None
-    primary_xml_snippet = change_location_tag(po.xml_dump_primary_metadata(), pkg_path)
-    metadata = {
-        'primary': primary_xml_snippet,
-        'filelists': po.xml_dump_filelists_metadata(),
-        'other': po.xml_dump_other_metadata(),
-    }
-    return metadata
+        xml_snippets = createrepo_c.xml_from_rpm(pkg_path, checksum_type=CHECKSUM_BY_TYPE[sumtype],
+                                                 location_href=os.path.basename(pkg_path))
+        snippet_dict = {
+            'primary': xml_snippets[0],
+            'filelists': xml_snippets[1],
+            'other': xml_snippets[2],
+        }
+    except IOError as e:
+        _LOGGER.info(str(e))
+
+    return snippet_dict
 
 
 def change_location_tag(primary_xml_snippet, relpath):
