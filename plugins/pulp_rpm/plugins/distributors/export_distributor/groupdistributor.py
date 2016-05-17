@@ -110,6 +110,9 @@ class GroupISODistributor(GroupDistributor):
         if not valid_config:
             raise PulpDataException(msg)
 
+        # raises a PulpCodedException if all units are not downloaded
+        self.ensure_all_units_downloaded(repo_group)
+
         _logger.info('Beginning export of the following repository group: [%s]' % repo_group.id)
         self._publisher = ExportRepoGroupPublisher(repo_group, publish_conduit, config,
                                                    ids.TYPE_ID_DISTRIBUTOR_GROUP_EXPORT)

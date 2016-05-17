@@ -131,8 +131,8 @@ def upload(repo, type_id, unit_key, metadata, file_path, conduit, config):
     except PulpCodedException, e:
         _LOGGER.exception(e)
         return _fail_report(str(e))
-    except:
-        msg = 'unexpected error occurred importing uploaded file'
+    except Exception as e:
+        msg = 'unexpected error occurred importing uploaded file: %s' % e
         _LOGGER.exception(msg)
         return _fail_report(msg)
 
@@ -260,13 +260,12 @@ def _handle_group_category_comps(repo, type_id, unit_key, metadata, file_path, c
 
     if file_path is not None and os.path.getsize(file_path) > 0:
         # uploading a comps.xml
-        repo_id = repo.repo_id
         _get_and_save_file_units(file_path, group.process_group_element,
-                                 group.GROUP_TAG, conduit, repo_id)
+                                 group.GROUP_TAG, conduit, repo)
         _get_and_save_file_units(file_path, group.process_category_element,
-                                 group.CATEGORY_TAG, conduit, repo_id)
+                                 group.CATEGORY_TAG, conduit, repo)
         _get_and_save_file_units(file_path, group.process_environment_element,
-                                 group.ENVIRONMENT_TAG, conduit, repo_id)
+                                 group.ENVIRONMENT_TAG, conduit, repo)
     else:
         # uploading a package group or package category
         unit_data = {}
@@ -277,11 +276,15 @@ def _handle_group_category_comps(repo, type_id, unit_key, metadata, file_path, c
         except TypeError:
             raise ModelInstantiationError()
 
-        unit.save()
+        try:
+            unit.save()
+        except NotUniqueError:
+            unit = unit.__class__.objects.filter(**unit.unit_key).first()
+
         repo_controller.associate_single_unit(repo, unit)
 
 
-def _get_and_save_file_units(filename, processing_function, tag, conduit, repo_id):
+def _get_and_save_file_units(filename, processing_function, tag, conduit, repo):
     """
     Given a comps.xml file, this method decides which groups/categories to get and saves
     the parsed units.
@@ -298,13 +301,19 @@ def _get_and_save_file_units(filename, processing_function, tag, conduit, repo_i
     :param conduit:  provides access to relevant Pulp functionality
     :type  conduit:  pulp.plugins.conduits.upload.UploadConduit
 
-    :param repo_id:  id of the repo into which unit will be uploaded
-    :type  repo_id:  str
+    :param repo: The repository to import the package into
+    :type  repo: pulp.server.db.model.Repository
     """
+    repo_id = repo.repo_id
     process_func = functools.partial(processing_function, repo_id)
     package_info_generator = packages.package_list_generator(filename, tag, process_func)
     for model in package_info_generator:
-        model.save()
+        try:
+            model.save()
+        except NotUniqueError:
+            model = model.__class__.objects.filter(**model.unit_key).first()
+
+        repo_controller.associate_single_unit(repo, model)
 
 
 def _handle_package(repo, type_id, unit_key, metadata, file_path, conduit, config):
@@ -350,7 +359,7 @@ def _handle_package(repo, type_id, unit_key, metadata, file_path, conduit, confi
 
     # set checksum and checksumtype
     if metadata:
-        checksumtype = metadata.pop('checksumtype', verification.TYPE_SHA256)
+        checksumtype = metadata.pop('checksum_type', verification.TYPE_SHA256)
         rpm_data['checksumtype'] = verification.sanitize_checksum_type(checksumtype)
         if 'checksum' in metadata:
             rpm_data['checksum'] = metadata.pop('checksum')

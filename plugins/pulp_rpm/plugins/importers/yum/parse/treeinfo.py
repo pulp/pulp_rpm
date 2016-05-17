@@ -152,14 +152,17 @@ class DistSync(object):
 
         existing_units = list(existing_units)
 
+        # determine missing units
+        missing_units = repo_controller.missing_unit_count(self.repo.repo_id)
         # Continue only when the distribution has changed.
         if len(existing_units) == 1 and \
-                self.existing_distribution_is_current(existing_units[0], unit):
-            _logger.debug(_('upstream distribution unchanged; skipping'))
+                self.existing_distribution_is_current(existing_units[0], unit) and \
+                (self.download_deferred or not missing_units):
+            _logger.info(_('upstream distribution unchanged; skipping'))
             return
 
         # Process the distribution
-        dist_files = self.process_distribution(tmp_dir)
+        dist_files, pulp_dist_xml_path = self.process_distribution(tmp_dir)
         files.extend(dist_files)
 
         self.update_unit_files(unit, files)
@@ -181,13 +184,20 @@ class DistSync(object):
         # Update deferred downloading catalog
         self.update_catalog_entries(unit, files)
 
-        # The treeinfo file is always imported into platform
+        # The treeinfo and PULP_DISTRIBTION.xml files are always imported into platform
         # # storage regardless of the download policy
         unit.safe_import_content(treeinfo_path, os.path.basename(treeinfo_path))
+        if pulp_dist_xml_path is not None:
+            unit.safe_import_content(pulp_dist_xml_path, os.path.basename(pulp_dist_xml_path))
 
         # The downloaded files are imported into platform storage.
-        for destination, location in downloaded:
-            unit.safe_import_content(destination, location)
+        if downloaded:
+            for destination, location in downloaded:
+                unit.safe_import_content(destination, location)
+            else:
+                if not unit.downloaded:
+                    unit.downloaded = True
+                    unit.save()
 
         # Associate the unit.
         repo_controller.associate_single_unit(self.repo, unit)
@@ -395,8 +405,9 @@ class DistSync(object):
 
         :param tmp_dir: The absolute path to the temporary directory
         :type tmp_dir: str
-        :return: A list of file dictionaries
-        :rtype: list
+        :return: A tuple that contains the list of file dictionaries and the absolute path
+                 to the distribution file, or None if no PULP_DISTRIBUTION.xml was found.
+        :rtype: (list, basestring)
         """
         # Get the Distribution file
         result = self.get_distribution_file(tmp_dir)
@@ -432,7 +443,7 @@ class DistSync(object):
                 CHECKSUM: None,
                 CHECKSUM_TYPE: None,
             })
-        return files
+        return files, result
 
     def get_distribution_file(self, tmp_dir):
         """

@@ -198,8 +198,11 @@ class RPMListener(PackageListener):
             except (verification.VerificationException, verification.InvalidChecksumType):
                 # verification failed, unit not added
                 return
-            self.sync.add_rpm_unit(self.metadata_files, unit)
-            unit.safe_import_content(report.destination)
+            added_unit = self.sync.add_rpm_unit(self.metadata_files, unit)
+            added_unit.safe_import_content(report.destination)
+            if not added_unit.downloaded:
+                added_unit.downloaded = True
+                added_unit.save()
 
 
 class DRPMListener(PackageListener):
@@ -215,5 +218,8 @@ class DRPMListener(PackageListener):
             except (verification.VerificationException, verification.InvalidChecksumType):
                 # verification failed, unit not added
                 return
-            self.sync.add_drpm_unit(self.metadata_files, unit)
-            unit.safe_import_content(report.destination)
+            added_unit = self.sync.add_drpm_unit(self.metadata_files, unit)
+            added_unit.safe_import_content(report.destination)
+            if not added_unit.downloaded:
+                added_unit.downloaded = True
+                added_unit.save()

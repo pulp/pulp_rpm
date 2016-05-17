@@ -1,8 +1,10 @@
+from cStringIO import StringIO
 import datetime
 import os
 import shutil
 import tempfile
 import unittest
+from xml.etree import cElementTree as ET
 
 from pulp.common.compat import json
 from pulp.common.plugins import reporting_constants
@@ -668,6 +670,50 @@ class PublishDrpmStepTests(BaseYumDistributorPublishStepTests):
         step = publish.PublishDrpmStep(mock.Mock())
         step.parent = self.publisher
         step.finalize()
+
+
+class TestPublishDistributionWritePulpDistributionFile(unittest.TestCase):
+    xml_path = os.path.join(DATA_DIR, constants.DISTRIBUTION_XML)
+    included_paths = ('foo', 'a/b', 'a/c')
+
+    def setUp(self):
+        super(TestPublishDistributionWritePulpDistributionFile, self).setUp()
+        self.step = publish.PublishDistributionStep()
+        self.step.working_dir = '/foo/bar'
+        self.target = StringIO()
+
+    def assertPathPresent(self, root, path):
+        for child in root:
+            if child.text == path:
+                return
+        self.fail('path not found in XML: %s' % path)
+
+    def assertPathNotPresent(self, root, path):
+        for child in root:
+            if child.text == path:
+                self.fail('path in XML: %s' % path)
+
+    @mock.patch('os.path.join')
+    @mock.patch('os.remove')
+    def test_removes_file_entries(self, mock_remove, mock_path_join):
+        """
+        Make sure any paths in "distro_files" that are not present in the original XML get
+        filtered out.
+        """
+        mock_path_join.side_effect = [self.target]
+        paths = list(self.included_paths)
+        paths.append('remove/me')
+
+        self.step._write_pulp_distribution_file(paths, self.xml_path)
+
+        root = ET.fromstring(self.target.getvalue())
+
+        self.assertEqual(len(root), len(self.included_paths))
+        # make sure it removed this entry that was not in the original file
+        self.assertPathNotPresent(root, 'remove/me')
+        # make sure it kept these entries
+        for path in self.included_paths:
+            self.assertPathPresent(root, path)
 
 
 class PublishDistributionStepTests(BaseYumDistributorPublishStepTests):

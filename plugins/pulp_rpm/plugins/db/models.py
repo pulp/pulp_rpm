@@ -130,7 +130,7 @@ class NonMetadataPackage(UnitMixin, FileContentUnit):
     }
 
     def __init__(self, *args, **kwargs):
-        if 'checksumtype' in kwargs:
+        if kwargs.get('checksumtype') is not None:
             kwargs['checksumtype'] = verification.sanitize_checksum_type(kwargs['checksumtype'])
         super(NonMetadataPackage, self).__init__(*args, **kwargs)
 
@@ -188,11 +188,179 @@ class NonMetadataPackage(UnitMixin, FileContentUnit):
 
 
 class Distribution(UnitMixin, FileContentUnit):
-    # TODO add docstring to this class
+    """
+    Model for an RPM distribution tree (also sometimes referenced as an installable tree).
+    A distribution tree is described by a file in root of an RPM repository named either
+    "treeinfo" or ".treeinfo". This INI file is used by system installers to boot from a URL.
+    It describes the operating system or product contained in the distribution tree and
+    where the bootable media is located for various platforms (where platform means
+    'x86_64', 'xen', or similar).
+
+    Note: This model should be rewritten. It fails to capture what a distribution tree
+          is and what is required for one to be valid. It seems that distribution trees
+          are produced by Anaconda tooling, namely the Lorax project. Red Hat's Release
+          Engineering team maintains a library, productmd, which provides tools to work
+          with product, compose, and installation media metadata. We should should use
+          this tool to work with "treeinfo" files so we don't duplicate work other teams
+          have done. The issue tracking this is https://pulp.plan.io/issues/1769
+
+    The description of the "treeinfo" format is included below, originally take from
+    https://release-engineering.github.io/productmd/treeinfo-1.0.html
+
+    ```
+    [header]
+    version = 1.0                         ; metadata version; format: $major<int>.$minor<int>
+
+    [release]
+    name = <str>                          ; release name, for example: "Fedora",
+                                          ; "Red Hat Enterprise Linux", "Spacewalk"
+    short = <str>                         ; release short name, for example: "F", "RHEL",
+                                          ; "Spacewalk"
+    version = <str>                       ; release version, for example: "21", "7.0", "2.1"
+    is_layered = <bool=False>             ; typically False for an operating system, True otherwise
+
+    [base_product]
+    name = <str>                          ; base product name, for example: "Fedora",
+                                          ; "Red Hat Enterprise Linux"
+    short = <str>                         ; base product short name, for example: "F", "RHEL"
+    version = <str>                       ; base product *major* version, for example: "21", "7"
+
+    [tree]
+    arch = <str>                          ; tree architecture, for example x86_64
+    build_timestamp = <int|float>         ; tree build time timestamp; format: unix time
+    platforms = <str>[, <str> ...]        ; supported platforms; for example x86_64,xen
+    variants = <str>[, <str> ...]         ; UIDs of available variants, for example
+                                          ; "Server,Workstation"
+
+    [checksums]
+    ; checksums of selected files in a tree:
+    ; * all repodata/repomd.xml
+    ; * all images captured in [images-*] and [stage2] sections
+    $path = $checksum_type<str>:checksum_value<str>
+
+    [images-$platform<str>]
+    ; images compatible with particular $platform
+    $file_name = $relative_path<str>
+
+    [stage2]
+    ; optional section, available only on bootable media with Anaconda installer
+    instimage = <str>                     ; relative path to Anaconda instimage (obsolete)
+    mainimage = <str>                     ; relative path to Anaconda stage2 image
+
+    [media]
+    ; optional section, available only on media
+    discnum = <int>                       ; disc number
+    totaldiscs = <int>                    ; number of discs in media set
+
+    [variant-$variant_uid]
+    id = <str>                            ; variant ID
+    uid = <str>                           ; variant UID ($parent_UID.$ID)
+    name = <str>                          ; variant name
+    type = <str>                          ; variant, optional
+    variants = <str>[,<str>...]           ; UIDs of child variants
+    addons = <str>[,<str>...]             ; UIDs of child addons
+
+    ; variant paths
+    ; all paths are relative to .treeinfo location
+    packages = <str>                      ; directory with binary RPMs
+    repository = <str>                    ; YUM repository with binary RPMs
+    source_packages = <str>               ; directory with source RPMs
+    source_repository = <str>             ; YUM repository with source RPMs
+    debug_packages = <str>                ; directory with debug RPMs
+    debug_repository = <str>              ; YUM repository with debug RPMs
+    identity = <str>                      ; path to a pem file that identifies a product
+
+    [addon-$addon_uid]
+    id = <str>                            ; addon ID
+    uid = <str>                           ; addon UID ($parent_UID.$ID)
+    name = <str>                          ; addon name
+    type = addon
+
+    ; addon paths
+    ; see variant paths
+
+    [general]
+    ; WARNING.0 = This section provides compatibility with pre-productmd treeinfos.
+    ; WARNING.1 = Read productmd documentation for details about new format.
+    family = <str>                        ; equal to [release]/name
+    version = <str>                       ; equal to [release]/version
+    name = <str>                          ; equal to "$family $version"
+    arch = <str>                          ; equal to [tree]/arch
+    platforms = <str>[,<str>...]          ; equal to [tree]/platforms
+    packagedir = <str>                    ; equal to [variant-*]/packages
+    repository = <str>                    ; equal to [variant-*]/repository
+    timestamp = <int>                     ; equal to [tree]/build_timestamp
+    variant = <str>                       ; variant UID of first variant (sorted alphabetically)
+    ```
+
+    Older "treeinfo" file formats exist. They vary from repository to repository, but look
+    similar to the following:
+
+    ```
+    [general]
+    name = Fedora-Server-21
+    family = Fedora-Server
+    timestamp = 1417653911.68
+    variant = Server
+    version = 21
+    packagedir =
+    arch = x86_64
+
+    [stage2]
+    mainimage = LiveOS/squashfs.img
+
+    [images-x86_64]
+    kernel = images/pxeboot/vmlinuz
+    initrd = images/pxeboot/initrd.img
+    upgrade = images/pxeboot/upgrade.img
+    boot.iso = images/boot.iso
+
+    [images-xen]
+    kernel = images/pxeboot/vmlinuz
+    initrd = images/pxeboot/initrd.img
+    upgrade = images/pxeboot/upgrade.img
+
+    [checksums]
+    images/efiboot.img = sha256:de48c8b25f03861c00c355ccf78108159f1f2aa63d0d63f92815146c24f60164
+    images/macboot.img = sha256:da76ff5490b4ae7e123f19b8f4b36efd6b7c435073551978d50c5181852a87f5
+    images/product.img = sha256:ffce14a7a95be20b36f302cb0698be8c19fda798807d3d63a491d6f7c1b23b5b
+    images/boot.iso = sha256:56af126a50c227d779a200b414f68ea7bcf58e21c8035500cd21ba164f85b9b4
+    images/pxeboot/vmlinuz = sha256:81c28a439f1d23786057d3b57db66e00b2b1a39b64d54de1a90cf2617e53...
+    images/pxeboot/initrd.img = sha256:aadebd07c4c0f19304f0df7535a8f4218e5141602f95adec08ad1e22f...
+    images/pxeboot/upgrade.img = sha256:224d098fb3903583b491692c5e0e1d20ea840d51f4da671ced97d422...
+    repodata/repomd.xml = sha256:3af1609aa27949bf1e02e9204a7d4da7efee470063dadbc3ea0be3ef7f1f4d14
+    ```
+
+    Note that not all fields may be present. For example, some RHEL 5 repositories do not
+    contain the `variant` field in their "treeinfo" files.
+
+    :ivar distribution_id: The concatenation of the values of `family`, `variant`, `version`,
+                           and `arch`
+    :ivar family:          Equivalent to the "treeinfo" [release] section's 'name' field. For
+                           example, 'Fedora', 'Red Hat Enterprise Linux', or 'Spacewalk'.
+    :ivar variant:         The variant contained in the repository. The current version of the
+                           model is problematic since some old "treeinfo" files don't have
+                           variants, and some new repositories have _several_ variants. Since
+                           we currently use the [general] section of the "treeinfo" file, this
+                           variant will be the first variant (alphabetically) in the distribution
+                           tree.
+    :ivar version:         Equivalent to the "treeinfo" [release] section's 'version' field.
+                           For example, '21', '7.0', and '2.1'
+    :ivar arch:            Equivalent to the "treeinfo" [tree] section's 'arch' field. The
+                           architecture the tree was built for. For example, 'x86_64'.
+    :ivar files:           A somewhat hodgepodge list of files in the distribution. It contains
+                           some of the files described in the "treeinfo" files, and potentially
+                           files described by an XML file called "PULP_DISTRIBUTION.xml".
+    :ivar timestamp:       Equivalent to the "treeinfo" [tree] section's 'build_timestamp' field.
+    :ivar packagedir:      Equivalent to the "treeinfo" [variant-*] section's 'packages' field.
+                           It's possible in the future that distribution trees will have several
+                           different packagedir fields, so we need to fix our model here.
+    :ivar version_sort_index: ?
+    """
 
     distribution_id = mongoengine.StringField(required=True)
     family = mongoengine.StringField(required=True)
-    variant = mongoengine.StringField(required=True)
+    variant = mongoengine.StringField()
     version = mongoengine.StringField(required=True)
     arch = mongoengine.StringField(required=True)
 
@@ -234,6 +402,15 @@ class Distribution(UnitMixin, FileContentUnit):
                                 self.version,
                                 self.arch))
             self.distribution_id = '-'.join(id_pieces)
+
+    def __str__(self):
+        """
+        Since `variant` might be None (itself a dirty work-around the model being wrong),
+        this method must be overridden.
+        :return:
+        """
+        return '%s: %s' % (self._content_type_id,
+                           '-'.join(getattr(self, name) or 'None' for name in self.unit_key_fields))
 
     def list_files(self):
         """
