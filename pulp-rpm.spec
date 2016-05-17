@@ -267,6 +267,9 @@ A collection of yum plugins supplementing Pulp consumer operations.
 
 
 %changelog
+* Tue May 17 2016 Sean Myers <sean.myers@redhat.com> 2.8.3-1
+- Pulp rebuild
+
 * Mon May 16 2016 pulpbot <pulp-infra@redhat.com> 2.8.3-0.4.rc
 - Pulp rebuild
 
