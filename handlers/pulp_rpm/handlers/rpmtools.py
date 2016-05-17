@@ -17,6 +17,16 @@ from yum.rpmtrans import RPMBaseCallback
 from yum.callbacks import DownloadBaseCallback, PT_MESSAGES
 from yum.Errors import InstallError
 from yum import constants
+try:
+    from yum import updateinfo
+    USE_SECURITY_PLUGIN = False
+except ImportError:
+    # This conditional import works around a bug in yum
+    # https://bugzilla.redhat.com/show_bug.cgi?id=1336499
+    import sys
+    sys.path.append('/usr/lib/yum-plugins/')
+    import security
+    USE_SECURITY_PLUGIN = True
 
 
 log = getLogger(__name__)
@@ -212,6 +222,41 @@ class Package:
                     yb.update(pattern=pattern)
             else:
                 yb.update()
+            yb.resolveDeps()
+            if self.apply and len(yb.tsInfo):
+                yb.processTransaction()
+            else:
+                yb.progress.set_status(True)
+            details = Package.updated(yb.tsInfo)
+            affected = Package.affected(details)
+            map(log.info, [UPDATED % dict(p=p) for p in affected])
+            map(yb.logfile.info, [UPDATED % dict(p=p) for p in affected])
+            return details
+        finally:
+            yb.close()
+
+    def update_minimal(self, advisories=[]):
+        """
+        Update installed packages.
+        When (names) is not specified, all packages are updated.
+        :param advisories: A list of advisory ids.
+        :type advisories: [str,]
+        :return: Packages installed (updated).
+            {resolved=[Package,],deps=[Package,], failed=[Package,]}
+        :rtype: dict
+        """
+        yb = Yum(self.importkeys, self.progress)
+        try:
+            if not USE_SECURITY_PLUGIN:
+                updateinfo_filters = {'bzs': [], 'bugfix': None, 'sevs': [], 'security': None,
+                                      'advs': advisories, 'cves': []}
+                yb.updateinfo_filters = updateinfo_filters
+                updateinfo.update_minimal(yb)
+            else:
+                cmd = security.SecurityUpdateCommand()
+                yb.plugins.cmdline[0].advisory = advisories
+                yb.plugins.cmdline[1].append('update-minimal')
+                cmd.doCommand(yb, 'update-minimal', [])
             yb.resolveDeps()
             if self.apply and len(yb.tsInfo):
                 yb.processTransaction()
