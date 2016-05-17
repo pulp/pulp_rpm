@@ -98,11 +98,7 @@ class YumProfiler(Profiler):
                 if TYPE_ID_RPM not in consumer.profiles:
                     reason = _('Consumer has no RPM unit profile')
                     raise InvalidUnitsRequested(units, reason)
-                values, upgrade_details = YumProfiler._translate_erratum(
-                    unit, conduit.get_bindings(consumer.id), consumer, conduit)
-                if values:
-                    translated_units.extend(values)
-        translated_units = YumProfiler._remove_superseded_units(translated_units)
+                translated_units.append(unit)
         return translated_units
 
     @staticmethod
