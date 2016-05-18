@@ -691,13 +691,13 @@ class Errata(UnitMixin, ContentUnit):
         - merging of the pkglists in case of the erratum with the same id in different repositories
         - overwriting the erratum metadata based on the `updated` field
 
-        NOTE: The second part should be eliminated after we change the way erratum is stored in the
+        NOTE: The first part should be eliminated after we change the way erratum is stored in the
         MongoDB.
 
         :param other: The erratum we are combining with this one
         :type  other: pulp_rpm.plugins.db.models.Errata
         """
-        self.merge_pkglists(other)
+        self.merge_pkglists_and_save(other)
         if self.update_needed(other):
             for field_name in self.mutable_erratum_fields:
                 setattr(self, field_name, getattr(other, field_name))
@@ -724,9 +724,9 @@ class Errata(UnitMixin, ContentUnit):
         new_updated_dt = util.errata_format_to_datetime(other.updated, msg=other_err_msg)
         return new_updated_dt > existing_updated_dt
 
-    def merge_pkglists(self, other):
+    def merge_pkglists_and_save(self, other):
         """
-        Merge pkglists of the two errata.
+        Merge pkglists of the two errata and save the result to the database.
 
          - add _pulp_repo_id to old collection if packages are the same
          - update existing collection if the other collection is newer and from the same
@@ -768,7 +768,14 @@ class Errata(UnitMixin, ContentUnit):
             # no collection with such name or no collection with such name and _pulp_repo_id
             else:
                 collections_to_add.append(new_collection)
+
+        # It is very important to call save() here to save recent modifications to the existing
+        # collections in the pkglist in the database before new collections will be added to
+        # the pkglist, because mongoengine does not allow to modify existing items in the list
+        # and add new items to the list at the same time.
+        self.save()
         self.pkglist += collections_to_add
+        self.save()
 
 
 class PackageGroup(UnitMixin, ContentUnit):
