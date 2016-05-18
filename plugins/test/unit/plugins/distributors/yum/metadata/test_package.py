@@ -1,34 +1,33 @@
 # -*- coding: utf-8 -*-
-
-import os
-import shutil
-import tempfile
-import unittest
-from xml.etree import ElementTree
-
 import mock
-from pulp.devel.unit.server.util import compare_element
-from pulp.plugins.model import Unit
 
-from pulp_rpm.common.ids import TYPE_ID_PKG_CATEGORY, TYPE_ID_PKG_ENVIRONMENT
-from pulp_rpm.devel.skip import skip_broken
+from cStringIO import StringIO
+
+from pulp.common.compat import unittest
+from pulp.plugins.util.saxwriter import XMLWriter
 from pulp_rpm.plugins.db import models
 from pulp_rpm.plugins.distributors.yum.metadata.package import PackageXMLFileContext
 
 
 class TestPackageXMLFileContext(unittest.TestCase):
-    def setUp(self):
-        self.working_dir = tempfile.mkdtemp()
-        self.context = PackageXMLFileContext(self.working_dir)
-        self.context.metadata_file_handle = mock.Mock()
-        self.maxDiff = None
-        self.context._write_root_tag_close = mock.Mock()
-
-    def tearDown(self):
-        shutil.rmtree(self.working_dir)
+    """
+    Test correct generation of comps.xml file
+    """
+    @mock.patch('pulp.plugins.util.metadata_writer.MetadataFileContext._open_metadata_file_handle')
+    def setUp(self, mock_parent_open_file_handle):
+        self.context = PackageXMLFileContext('/foo')
+        self.context.metadata_file_handle = StringIO()
+        self.context._open_metadata_file_handle()
 
     def _generate_group_unit(self, name):
-        # display_order is omitted here on purpose, to check its default value
+        """
+        Generate package group unit.
+
+        display_order is omitted on purpose, to check its default value
+
+        :param name: name of the unit
+        :type  name: str
+        """
         unit_data = {'package_group_id': name,
                      'repo_id': 'repo1',
                      'user_visible': True,
@@ -42,57 +41,86 @@ class TestPackageXMLFileContext(unittest.TestCase):
         return models.PackageGroup(**unit_data)
 
     def _generate_category_unit(self, name):
-        # TODO fix this like _generate_group_unit above
-        unit_key = {'id': name}
-        unit_metadata = {'id': name,
-                         'user_visible': True,
-                         'name': name,
-                         'description': name + u' – description',
-                         'grouplist': []}
-        storage_path = os.path.join(self.working_dir, name)
-        return Unit(TYPE_ID_PKG_CATEGORY, unit_key, unit_metadata, storage_path)
+        """
+        Generate package category unit.
+
+        :param name: name of the unit
+        :type  name: str
+        """
+        unit_data = {'package_category_id': name,
+                     'display_order': 0,
+                     'name': name,
+                     'description': name + u' – description',
+                     'packagegroupids': []}
+        return models.PackageCategory(**unit_data)
 
     def _generate_environment_unit(self, name):
-        # TODO fix this like _generate_group_unit above
-        unit_key = {'id': name}
-        unit_metadata = {'id': name,
-                         'name': name,
-                         'description': name + u' – description',
-                         'grouplist': [],
-                         'optionlist': []}
-        storage_path = os.path.join(self.working_dir, name)
-        return Unit(TYPE_ID_PKG_ENVIRONMENT, unit_key, unit_metadata, storage_path)
+        """
+        Generate package environment unit.
 
-    def test_write_root_tag_open(self):
-        self.context._write_root_tag_open()
-        self.context.metadata_file_handle.write.assert_called_once_with(
-            '<!DOCTYPE comps PUBLIC "-//Red Hat, Inc.//DTD Comps info//EN" '
-            '"comps.dtd">\n<comps>')
+        :param name: name of the unit
+        :type  name: str
+        """
+        unit_data = {'package_environment_id': name,
+                     'display_order': 0,
+                     'name': name,
+                     'description': name + u' – description',
+                     'group_ids': [],
+                     'options': []}
+        return models.PackageEnvironment(**unit_data)
 
-    def test_write_root_tag_close(self):
-        self.context._write_root_tag_open()
-        self.context.metadata_file_handle.write.reset_mock()
-        self.context._write_root_tag_close()
-        self.context.metadata_file_handle.write.assert_called_once_with(
-            '</comps>\n')
+    def _generate_langpacks_unit(self):
+        """
+        Generate package langpacks unit.
+        """
+        unit_data = {'matches': []}
+        return models.PackageLangpacks(**unit_data)
+
+    @mock.patch('pulp.plugins.util.metadata_writer.MetadataFileContext._open_metadata_file_handle')
+    def test__open_metadata_file_handle(self, mock_parent_open_file_handle):
+        """
+        Test that parent method for opening file is called and the XML generator is instantiated.
+        """
+        self.context._open_metadata_file_handle()
+        mock_parent_open_file_handle.assert_called_once_with()
+        self.assertTrue(isinstance(self.context.xml_generator, XMLWriter))
+
+    def test__write_file_header(self):
+        """
+        Test that the correct header is written.
+        """
+        self.context._write_file_header()
+        expected_xml = '<?xml version="1.0" encoding="utf-8"?>\n' \
+            '<!DOCTYPE comps PUBLIC "-//Red Hat, Inc.//DTD Comps info//EN" "comps.dtd">\n' \
+            '<comps'
+        generated_xml = self.context.metadata_file_handle.getvalue()
+        self.assertEqual(generated_xml, expected_xml)
 
     def test_add_package_group_unit_metadata_minimal(self):
+        """
+        Test the generation of minimal package group unit.
+        """
         group_unit = self._generate_group_unit('foo')
         self.context.add_package_group_unit_metadata(group_unit)
-        source_str = '<group><id>foo</id><default>true</default><uservisible>true</uservisible' \
-                     '><display_order>1024' \
-                     '</display_order><name>foo</name><description>foodescription' \
-                     '</description><packagelist /></group>'
-        source_element = ElementTree.fromstring(source_str)
-        xml_str = self.context.metadata_file_handle.write.call_args[0][0]
-        target_element = ElementTree.fromstring(xml_str)
-        compare_element(source_element, target_element)
+        expected_xml = '<group>\n' \
+                       '  <id>foo</id>\n' \
+                       '  <default>true</default>\n' \
+                       '  <uservisible>true</uservisible>\n' \
+                       '  <display_order>1024</display_order>\n' \
+                       '  <name>foo</name>\n' \
+                       '  <description>foodescription</description>\n' \
+                       '  <packagelist />\n' \
+                       '</group>\n'
+        generated_xml = self.context.metadata_file_handle.getvalue()
+        self.assertEqual(generated_xml, expected_xml)
 
     def test_add_package_group_unit_metadata_complex(self):
+        """
+        Test the generation of complex package group unit.
+        """
         group_unit = self._generate_group_unit('foo')
         group_unit.translated_name = {u'af': u'af_name', u'ze': u'ze_name'}
         group_unit.default = False
-        group_unit.display_order = 0
         group_unit.langonly = u'bar'
         group_unit.translated_description = {u'af': u'af_desc', u'ze': u'ze_desc'}
         group_unit.mandatory_package_names = [u'package2', u'package1', u'package3']
@@ -100,109 +128,145 @@ class TestPackageXMLFileContext(unittest.TestCase):
         group_unit.optional_package_names = [u'package9', u'package8', u'package7']
         group_unit.conditional_package_names = [(u'package10', u'foo,bar,baz')]
         self.context.add_package_group_unit_metadata(group_unit)
-        source_str = '<group><id>foo</id>' \
-                     '<default>false</default>' \
-                     '<uservisible>true</uservisible><display_order>0' \
-                     '</display_order><langonly>bar</langonly>' \
-                     '<name>foo</name>' \
-                     '<name xml:lang="af">af_name</name>' \
-                     '<name xml:lang="ze">ze_name</name>' \
-                     '<description>foodescription</description>' \
-                     '<description xml:lang="af">af_desc</description>' \
-                     '<description xml:lang="ze">ze_desc</description>' \
-                     '<packagelist><packagereq type="mandatory">package1</packagereq>' \
-                     '<packagereq type="mandatory">package2</packagereq>' \
-                     '<packagereq type="mandatory">package3</packagereq>' \
-                     '<packagereq type="default">package4</packagereq>' \
-                     '<packagereq type="default">package5</packagereq>' \
-                     '<packagereq type="default">package6</packagereq>' \
-                     '<packagereq type="optional">package7</packagereq>' \
-                     '<packagereq type="optional">package8</packagereq>' \
-                     '<packagereq type="optional">package9</packagereq>' \
-                     '<packagereq requires="foo,bar,baz" type="conditional">package10' \
-                     '</packagereq>' \
-                     '</packagelist></group>'
-        source_element = ElementTree.fromstring(source_str)
-        xml_str = self.context.metadata_file_handle.write.call_args[0][0]
-        target_element = ElementTree.fromstring(xml_str)
-        compare_element(source_element, target_element)
+        expected_xml = '<group>\n' \
+                       '  <id>foo</id>\n' \
+                       '  <default>false</default>\n' \
+                       '  <uservisible>true</uservisible>\n' \
+                       '  <display_order>1024</display_order>\n' \
+                       '  <langonly>bar</langonly>\n' \
+                       '  <name>foo</name>\n' \
+                       '  <name xml:lang="af">af_name</name>\n' \
+                       '  <name xml:lang="ze">ze_name</name>\n' \
+                       '  <description>foodescription</description>\n' \
+                       '  <description xml:lang="af">af_desc</description>\n' \
+                       '  <description xml:lang="ze">ze_desc</description>\n' \
+                       '  <packagelist>\n' \
+                       '    <packagereq type="mandatory">package1</packagereq>\n' \
+                       '    <packagereq type="mandatory">package2</packagereq>\n' \
+                       '    <packagereq type="mandatory">package3</packagereq>\n' \
+                       '    <packagereq type="default">package4</packagereq>\n' \
+                       '    <packagereq type="default">package5</packagereq>\n' \
+                       '    <packagereq type="default">package6</packagereq>\n' \
+                       '    <packagereq type="optional">package7</packagereq>\n' \
+                       '    <packagereq type="optional">package8</packagereq>\n' \
+                       '    <packagereq type="optional">package9</packagereq>\n' \
+                       '    <packagereq requires="foo,bar,baz" type="conditional">'\
+                       'package10</packagereq>\n' \
+                       '  </packagelist>\n' \
+                       '</group>\n'
+        generated_xml = self.context.metadata_file_handle.getvalue()
+        self.assertEqual(generated_xml, expected_xml)
 
-    @skip_broken
     def test_add_package_category_unit_metadata_minimal(self):
+        """
+        Test the generation of minimal package category unit.
+        """
         category_unit = self._generate_category_unit('category_name')
         self.context.add_package_category_unit_metadata(category_unit)
-        source_str = '<category><id>category_name</id><display_order>1024</display_order>' \
-                     '<name>category_name</name>' \
-                     '<description>category_name – description</description>' \
-                     '<grouplist /></category>'
-        source_element = ElementTree.fromstring(source_str)
-        xml_str = self.context.metadata_file_handle.write.call_args[0][0]
-        target_element = ElementTree.fromstring(xml_str)
-        compare_element(source_element, target_element)
+        expected_xml = '<category>\n' \
+                       '  <id>category_name</id>\n' \
+                       '  <display_order>0</display_order>\n' \
+                       '  <name>category_name</name>\n' \
+                       '  <description>category_name – description</description>\n' \
+                       '  <grouplist />\n' \
+                       '</category>\n'
+        generated_xml = self.context.metadata_file_handle.getvalue()
+        self.assertEqual(generated_xml, expected_xml)
 
-    @skip_broken
     def test_add_package_category_unit_metadata_complex(self):
+        """
+        Test the generation of complex package category unit.
+        """
         unit = self._generate_category_unit('category_name')
-        unit.unit_key['id'] = None
-        unit.metadata['translated_name'] = {u'af': u'af_name', u'ze': u'ze_name'}
-        unit.metadata['translated_description'] = {u'af': u'af_desc', u'ze': u'ze_desc'}
-        unit.metadata['packagegroupids'] = [u'package2', u'package1']
+        unit.translated_name = {u'af': u'af_name', u'ze': u'ze_name'}
+        unit.translated_description = {u'af': u'af_desc', u'ze': u'ze_desc'}
+        unit.packagegroupids = [u'package2', u'package1']
         self.context.add_package_category_unit_metadata(unit)
-        source_str = '<category><id>category_name</id><display_order>1024</display_order>' \
-                     '<name>category_name</name>' \
-                     '<name xml:lang="af">af_name</name>' \
-                     '<name xml:lang="ze">ze_name</name>' \
-                     '<description>category_name – description</description>' \
-                     '<description xml:lang="af">af_desc</description>' \
-                     '<description xml:lang="ze">ze_desc</description>' \
-                     '<grouplist>' \
-                     '<groupid>package1</groupid>' \
-                     '<groupid>package2</groupid>' \
-                     '</grouplist>' \
-                     '</category>'
-        source_element = ElementTree.fromstring(source_str)
-        xml_str = self.context.metadata_file_handle.write.call_args[0][0]
-        target_element = ElementTree.fromstring(xml_str)
-        compare_element(source_element, target_element)
+        expected_xml = '<category>\n' \
+                       '  <id>category_name</id>\n' \
+                       '  <display_order>0</display_order>\n' \
+                       '  <name>category_name</name>\n' \
+                       '  <name xml:lang="af">af_name</name>\n' \
+                       '  <name xml:lang="ze">ze_name</name>\n' \
+                       '  <description>category_name – description</description>\n' \
+                       '  <description xml:lang="af">af_desc</description>\n' \
+                       '  <description xml:lang="ze">ze_desc</description>\n' \
+                       '  <grouplist>\n' \
+                       '    <groupid>package1</groupid>\n' \
+                       '    <groupid>package2</groupid>\n' \
+                       '  </grouplist>\n' \
+                       '</category>\n'
+        generated_xml = self.context.metadata_file_handle.getvalue()
+        self.assertEqual(generated_xml, expected_xml)
 
-    @skip_broken
     def test_add_package_environment_unit_metadata_simple(self):
+        """
+        Test the generation of simple package environment unit.
+        """
         unit = self._generate_environment_unit('environment_name')
         self.context.add_package_environment_unit_metadata(unit)
+        expected_xml = '<environment>\n' \
+                       '  <id>environment_name</id>\n' \
+                       '  <display_order>0</display_order>\n' \
+                       '  <name>environment_name</name>\n' \
+                       '  <description>environment_name – description</description>\n' \
+                       '  <grouplist />\n' \
+                       '  <optionlist />\n' \
+                       '</environment>\n'
+        generated_xml = self.context.metadata_file_handle.getvalue()
+        self.assertEqual(generated_xml, expected_xml)
 
-        source_str = '<environment><id>environment_name</id><display_order>1024</display_order>' \
-                     '<name>environment_name</name>' \
-                     '<description>environment_name – description</description>' \
-                     '<grouplist /><optionlist /></environment>'
-        source_element = ElementTree.fromstring(source_str)
-        xml_str = self.context.metadata_file_handle.write.call_args[0][0]
-        target_element = ElementTree.fromstring(xml_str)
-        compare_element(source_element, target_element)
-
-    @skip_broken
     def test_add_package_environment_unit_metadata_complex(self):
+        """
+        Test the generation of complex package environment unit.
+        """
         unit = self._generate_environment_unit('environment_name')
-        unit.unit_key['id'] = None
-        unit.metadata['translated_name'] = {u'af': u'af_name', u'ze': u'ze_name'}
-        unit.metadata['translated_description'] = {u'af': u'af_desc', u'ze': u'ze_desc'}
-        unit.metadata['group_ids'] = [u'package2', u'package1']
-        unit.metadata['options'] = [{'group': 'package3', 'default': False},
-                                    {'group': u'package4', 'default': True}]
+        unit.translated_name = {u'af': u'af_name', u'ze': u'ze_name'}
+        unit.translated_description = {u'af': u'af_desc', u'ze': u'ze_desc'}
+        unit.group_ids = [u'package2', u'package1']
+        unit.options = [{'group': 'package3', 'default': False},
+                        {'group': u'package4', 'default': True}]
         self.context.add_package_environment_unit_metadata(unit)
-        source_str = '<environment><id>environment_name</id><display_order>1024</display_order>' \
-                     '<name>environment_name</name>' \
-                     '<name xml:lang="af">af_name</name>' \
-                     '<name xml:lang="ze">ze_name</name>' \
-                     '<description>environment_name – description</description>' \
-                     '<description xml:lang="af">af_desc</description>' \
-                     '<description xml:lang="ze">ze_desc</description>' \
-                     '<grouplist><groupid>package1</groupid><groupid>package2</groupid>' \
-                     '</grouplist><optionlist>' \
-                     '<groupid>package3</groupid>' \
-                     '<groupid default="true">package4</groupid>' \
-                     '</optionlist></environment>'
+        expected_xml = '<environment>\n' \
+                       '  <id>environment_name</id>\n' \
+                       '  <display_order>0</display_order>\n' \
+                       '  <name>environment_name</name>\n' \
+                       '  <name xml:lang="af">af_name</name>\n' \
+                       '  <name xml:lang="ze">ze_name</name>\n' \
+                       '  <description>environment_name – description</description>\n' \
+                       '  <description xml:lang="af">af_desc</description>\n' \
+                       '  <description xml:lang="ze">ze_desc</description>\n' \
+                       '  <grouplist>\n' \
+                       '    <groupid>package1</groupid>\n' \
+                       '    <groupid>package2</groupid>\n' \
+                       '  </grouplist>\n' \
+                       '  <optionlist>\n' \
+                       '    <groupid>package3</groupid>\n' \
+                       '    <groupid default="true">package4</groupid>\n' \
+                       '  </optionlist>\n' \
+                       '</environment>\n'
+        generated_xml = self.context.metadata_file_handle.getvalue()
+        self.assertEqual(generated_xml, expected_xml)
 
-        source_element = ElementTree.fromstring(source_str)
-        xml_str = self.context.metadata_file_handle.write.call_args[0][0]
-        target_element = ElementTree.fromstring(xml_str)
-        compare_element(source_element, target_element)
+    def test_add_package_langpacks_unit_metadata_simple(self):
+        """
+        Test the generation of simple package langpacks unit.
+        """
+        unit = self._generate_langpacks_unit()
+        self.context.add_package_langpacks_unit_metadata(unit)
+        expected_xml = '<langpacks />\n'
+        generated_xml = self.context.metadata_file_handle.getvalue()
+        self.assertEqual(generated_xml, expected_xml)
+
+    def test_add_package_langpacks_unit_metadata_complex(self):
+        """
+        Test the generation of complex package langpacks unit.
+        """
+        unit = self._generate_langpacks_unit()
+        unit.matches = [{'install': 'package-%s', 'name': 'package-en'}]
+        self.context.add_package_langpacks_unit_metadata(unit)
+        expected_xml = '<langpacks>\n' \
+                       '  <match name="package-en" install="package-%s" />\n' \
+                       '</langpacks>\n'
+        generated_xml = self.context.metadata_file_handle.getvalue()
+        self.assertEqual(generated_xml, expected_xml)
