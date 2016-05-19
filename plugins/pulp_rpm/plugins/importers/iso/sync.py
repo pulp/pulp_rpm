@@ -217,7 +217,7 @@ class ISOSyncRun(listener.DownloadEventListener):
             self.sync_conduit.associate_existing(models.ISO._content_type_id.default, search_dicts)
 
         # Deferred downloading (Lazy) entries.
-        self.add_catalog_entries(local_missing_isos)
+        self.add_catalog_entries(local_available_isos)
 
         self.progress_report.state = self.progress_report.STATE_ISOS_IN_PROGRESS
 
@@ -229,8 +229,8 @@ class ISOSyncRun(listener.DownloadEventListener):
                     iso.save()
                 except NotUniqueError:
                     iso = iso.__class__.objects.filter(**iso.unit_key).first()
+                self.add_catalog_entries([iso])
                 repo_controller.associate_single_unit(self.sync_conduit.repo, iso)
-
         else:
             self._download_isos(local_missing_isos)
 

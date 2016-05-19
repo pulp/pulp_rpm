@@ -89,7 +89,7 @@ def get_existing_units(search_dicts, unit_class, repo):
             yield result
 
 
-def check_all_and_associate(wanted, conduit, download_deferred):
+def check_all_and_associate(wanted, conduit, download_deferred, catalog):
     """
     Given a set of unit keys as namedtuples, this function checks if a unit
     already exists in Pulp and returns the set of tuples that were not
@@ -104,6 +104,8 @@ def check_all_and_associate(wanted, conduit, download_deferred):
     :type  conduit:           pulp.plugins.conduits.repo_sync.RepoSync
     :param download_deferred: indicates downloading is deferred (or not).
     :type  download_deferred: bool
+    :param catalog:           Deferred downloading catalog.
+    :type  catalog:           pulp_rpm.plugins.importers.yum.sync.PackageCatalog
 
     :return:    set of unit keys as namedtuples, identifying which of the
                 named tuples received as input were not found on the server.
@@ -122,6 +124,7 @@ def check_all_and_associate(wanted, conduit, download_deferred):
                     ids.TYPE_ID_RPM, ids.TYPE_ID_SRPM, ids.TYPE_ID_DRPM):
                 if unit._storage_path is None or not os.path.isfile(unit._storage_path):
                     continue
+            catalog.add(unit)
             repo_controller.associate_single_unit(conduit.repo, unit)
             values.discard(unit.unit_key_as_named_tuple)
     still_wanted = set()
