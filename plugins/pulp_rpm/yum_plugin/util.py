@@ -9,6 +9,9 @@ import yum
 import rpmUtils
 from M2Crypto import X509
 
+from pulp.server.exceptions import PulpCodedValidationException
+from pulp_rpm.plugins import error_codes
+
 _ = gettext.gettext
 
 LOG_PREFIX_NAME = "pulp.plugins"
@@ -195,16 +198,14 @@ def errata_format_to_datetime(datetime_str, msg):
     :raises ValueError: if the date and time are in unknown format
     """
     strptime_pattern = '%Y-%m-%d %H:%M:%S'
-    err_msg = _('Unknown format: unable to convert "%s" to the datetime object' % datetime_str)
-
     datetime_str = datetime_str.strip()
     if datetime_str.endswith(' UTC'):
         datetime_str = datetime_str[:-4]
 
     try:
         datetime_obj = datetime.datetime.strptime(datetime_str, strptime_pattern)
-    except ValueError as e:
-        e.args += (err_msg, msg)
-        raise
+    except ValueError:
+        raise PulpCodedValidationException(error_code=error_codes.RPM1007, details=msg,
+                                           expected_format=strptime_pattern)
 
     return datetime_obj
