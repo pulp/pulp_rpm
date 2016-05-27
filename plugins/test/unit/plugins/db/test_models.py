@@ -61,7 +61,7 @@ class TestDistribution(unittest.TestCase):
         Assert __str__ works with distributions that don't have a Variant.
         """
         d = models.Distribution(family='family', variant=None, version='version', arch='arch')
-        self.assertEqual('distribution: ks-family-version-arch-family-None-version-arch',
+        self.assertEqual('distribution: ks-family--version-arch-family-None-version-arch',
                          str(d))
 
 

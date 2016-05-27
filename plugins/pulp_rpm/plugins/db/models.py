@@ -362,7 +362,7 @@ class Distribution(UnitMixin, FileContentUnit):
 
     distribution_id = mongoengine.StringField(required=True)
     family = mongoengine.StringField(required=True)
-    variant = mongoengine.StringField()
+    variant = mongoengine.StringField(default='')
     version = mongoengine.StringField(required=True)
     arch = mongoengine.StringField(required=True)
 
