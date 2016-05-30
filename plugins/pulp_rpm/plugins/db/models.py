@@ -716,8 +716,7 @@ class Errata(UnitMixin, ContentUnit):
         :return: True if the other erratum is newer than the existing one
         :rtype:  bool
         """
-        err_msg = _('Fail to update the %(which)s erratum %(id)s: '
-                    'Unable to parse the `updated` field')
+        err_msg = _('Fail to update the %(which)s erratum %(id)s.')
         existing_err_msg = err_msg % {'which': 'existing', 'id': self.errata_id}
         other_err_msg = err_msg % {'which': 'uploaded', 'id': self.errata_id}
         existing_updated_dt = util.errata_format_to_datetime(self.updated, msg=existing_err_msg)
