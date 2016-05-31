@@ -2,6 +2,17 @@
 Pulp 2.8 Release Notes
 ======================
 
+Pulp 2.8.4
+==========
+
+This is a hotfix release to address migration failures introduced in previous
+versions of the Pulp RPM Plugin.
+
+Bug Fixes
+---------
+
+See the list of :fixedbugs:`2.8.4`
+
 Pulp 2.8.3
 ==========
 
