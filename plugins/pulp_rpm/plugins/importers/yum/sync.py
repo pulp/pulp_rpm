@@ -17,11 +17,12 @@ from nectar.request import DownloadRequest
 
 from pulp.common import dateutils
 from pulp.common.plugins import importer_constants
+from pulp.plugins.util import nectar_config as nectar_utils
+from pulp.server import util
+from pulp.server.controllers import repository as repo_controller
 from pulp.server.db.model import LazyCatalogEntry
-from pulp.plugins.util import nectar_config as nectar_utils, verification
 from pulp.server.exceptions import PulpCodedException
 from pulp.server.managers.repo import _common as common_utils
-from pulp.server.controllers import repository as repo_controller
 
 from pulp_rpm.common import constants, ids
 from pulp_rpm.plugins import error_codes
@@ -430,7 +431,7 @@ class RepoSync(object):
                 checksum_type = metadata_item[1]['checksum']['algorithm']
                 break
         if checksum_type:
-            checksum_type = verification.sanitize_checksum_type(checksum_type)
+            checksum_type = util.sanitize_checksum_type(checksum_type)
             scratchpad = self.conduit.get_repo_scratchpad()
             scratchpad[constants.SCRATCHPAD_DEFAULT_METADATA_CHECKSUM] = checksum_type
             self.conduit.set_repo_scratchpad(scratchpad)
@@ -447,7 +448,7 @@ class RepoSync(object):
             if metadata_type not in metadata_files.KNOWN_TYPES:
                 file_path = file_info['local_path']
                 checksum_type = file_info['checksum']['algorithm']
-                checksum_type = verification.sanitize_checksum_type(checksum_type)
+                checksum_type = util.sanitize_checksum_type(checksum_type)
                 checksum = file_info['checksum']['hex_digest']
                 # Find an existing model
                 model = models.YumMetadataFile.objects.filter(

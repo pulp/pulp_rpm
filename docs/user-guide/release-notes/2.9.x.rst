@@ -13,4 +13,5 @@ New Features
 * The <langpacks> tag in comps.xml are synced and published for repositories. These units are also
   parsed on upload. ``pulp-admin`` also has upload, remove, and search support for 
   package_langpacks.
+* The yum distributor now uses the configured checksum type for all repo metadata.
 

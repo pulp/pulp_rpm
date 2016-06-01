@@ -1,8 +1,8 @@
 """
 Tests for the pulp_rpm.extensions.admin.status module.
 """
-from pulp.plugins.util import verification
 import mock
+import pulp.server.util as server_util
 
 from pulp_rpm.common import constants
 from pulp_rpm.devel import client_base
@@ -31,7 +31,7 @@ class RpmStatusRendererTests(client_base.PulpClientTests):
             constants.NAME: model.unit_key['name'],
             constants.ERROR_CODE: constants.ERROR_CHECKSUM_TYPE_UNKNOWN,
             constants.CHECKSUM_TYPE: model.unit_key['checksumtype'],
-            constants.ACCEPTED_CHECKSUM_TYPES: verification.CHECKSUM_FUNCTIONS.keys()}
+            constants.ACCEPTED_CHECKSUM_TYPES: server_util.CHECKSUM_FUNCTIONS.keys()}
         content_report.failure(model, error_report)
         content_report['state'] = constants.STATE_COMPLETE
         progress_report = {'yum_importer': {'content': content_report}}

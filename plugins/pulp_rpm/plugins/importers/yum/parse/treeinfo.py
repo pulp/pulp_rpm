@@ -13,10 +13,10 @@ from mongoengine import Q
 from nectar.listener import AggregatingEventListener
 from nectar.request import DownloadRequest
 
-from pulp.plugins.util import verification
 from pulp.server.db.model import LazyCatalogEntry, RepositoryContentUnit
 from pulp.server.exceptions import PulpCodedValidationException
 from pulp.server.controllers import repository as repo_controller
+from pulp.server import util
 
 from pulp_rpm.common import constants, ids
 from pulp_rpm.plugins.db.models import Distribution
@@ -249,7 +249,7 @@ class DistSync(object):
             _list = list(unit.files)
         for _file in files:
             if _file[CHECKSUM_TYPE] is not None:
-                _file[CHECKSUM_TYPE] = verification.sanitize_checksum_type(_file[CHECKSUM_TYPE])
+                _file[CHECKSUM_TYPE] = util.sanitize_checksum_type(_file[CHECKSUM_TYPE])
             _list.append({
                 RELATIVE_PATH: _file[RELATIVE_PATH],
                 CHECKSUM: _file[CHECKSUM],
@@ -303,7 +303,7 @@ class DistSync(object):
         for report in reports:
             _file = report.data
             if _file[CHECKSUM_TYPE] is not None:
-                _file[CHECKSUM_TYPE] = verification.sanitize_checksum_type(_file[CHECKSUM_TYPE])
+                _file[CHECKSUM_TYPE] = util.sanitize_checksum_type(_file[CHECKSUM_TYPE])
             files.append({
                 RELATIVE_PATH: _file[RELATIVE_PATH],
                 CHECKSUM: _file[CHECKSUM],
@@ -534,7 +534,7 @@ class DistSync(object):
             for item in parser.items(SECTION_CHECKSUMS):
                 relativepath = item[0]
                 checksumtype, checksum = item[1].split(':')
-                checksumtype = verification.sanitize_checksum_type(checksumtype)
+                checksumtype = util.sanitize_checksum_type(checksumtype)
                 files[relativepath] = {
                     RELATIVE_PATH: relativepath,
                     CHECKSUM: checksum,

@@ -1,16 +1,15 @@
 import functools
-import hashlib
+from gettext import gettext as _
 import logging
 import os
 import stat
-from xml.etree import cElementTree as ET
 from mongoengine import NotUniqueError
 
 from pulp.plugins.loader import api as plugin_api
-from pulp.plugins.util import verification
 from pulp.server.controllers import repository as repo_controller
 from pulp.server.exceptions import PulpCodedValidationException, PulpCodedException
 from pulp.server.exceptions import error_codes as platform_errors
+from pulp.server import util
 import rpm
 
 from pulp_rpm.plugins.db import models
@@ -18,12 +17,6 @@ from pulp_rpm.plugins import error_codes
 from pulp_rpm.plugins.importers.yum import purge, utils
 from pulp_rpm.plugins.importers.yum.parse import rpm as rpm_parse
 from pulp_rpm.plugins.importers.yum.repomd import primary, group, packages
-
-
-# this is required because some of the pre-migration XML tags use the "rpm"
-# namespace, which causes a parse error if that namespace isn't declared.
-FAKE_XML = '<?xml version="1.0" encoding="%(encoding)s"?><faketag ' \
-           'xmlns:rpm="http://pulpproject.org">%(xml)s</faketag>'
 
 # Used when extracting metadata from an RPM
 RPMTAG_NOSOURCE = 1051
@@ -373,27 +366,32 @@ def _handle_package(repo, type_id, unit_key, metadata, file_path, conduit, confi
         _LOGGER.exception('Error extracting RPM metadata for [%s]' % file_path)
         raise
 
+    # metadata can be None
+    metadata = metadata or {}
+
     model_class = plugin_api.get_unit_model_by_id(type_id)
     update_fields_inbound(model_class, unit_key or {})
     update_fields_inbound(model_class, metadata or {})
 
-    # set checksum and checksumtype
-    if metadata:
-        checksumtype = metadata.pop('checksum_type', verification.TYPE_SHA256)
-        rpm_data['checksumtype'] = verification.sanitize_checksum_type(checksumtype)
-        if 'checksum' in metadata:
-            rpm_data['checksum'] = metadata.pop('checksum')
-            try:
-                with open(file_path) as dest_file:
-                    verification.verify_checksum(dest_file, rpm_data['checksumtype'],
-                                                 rpm_data['checksum'])
-            except verification.VerificationException:
-                raise PulpCodedException(error_code=platform_errors.PLP1013)
-        else:
-            rpm_data['checksum'] = _calculate_checksum(rpm_data['checksumtype'], file_path)
-    else:
-        rpm_data['checksumtype'] = verification.TYPE_SHA256
-        rpm_data['checksum'] = _calculate_checksum(rpm_data['checksumtype'], file_path)
+    with open(file_path) as fp:
+        sums = util.calculate_checksums(fp, models.RpmBase.DEFAULT_CHECKSUM_TYPES)
+
+    # validate checksum if possible
+    if metadata.get('checksum'):
+        checksumtype = metadata.pop('checksum_type', util.TYPE_SHA256)
+        checksumtype = util.sanitize_checksum_type(checksumtype)
+        if checksumtype not in sums:
+            raise PulpCodedException(error_code=error_codes.RPM1009, checksumtype=checksumtype)
+        if metadata['checksum'] != sums[checksumtype]:
+            raise PulpCodedException(error_code=platform_errors.PLP1013)
+        _LOGGER.debug(_('Upload checksum matches.'))
+
+    # Save all uploaded RPMs with sha256 in the unit key, since we can now publish with other
+    # types, regardless of what is in the unit key.
+    rpm_data['checksumtype'] = util.TYPE_SHA256
+    rpm_data['checksum'] = sums[util.TYPE_SHA256]
+    # keep all available checksum values on the model
+    rpm_data['checksums'] = sums
 
     # Update the RPM-extracted data with anything additional the user specified.
     # Allow the user-specified values to override the extracted ones.
@@ -409,7 +407,7 @@ def _handle_package(repo, type_id, unit_key, metadata, file_path, conduit, confi
     # Extract/adjust the repodata snippets
     unit.repodata = rpm_parse.get_package_xml(file_path, sumtype=unit.checksumtype)
     _update_provides_requires(unit)
-    _update_location(unit)
+    unit.modify_xml()
 
     # check if the unit has duplicate nevra
     purge.remove_unit_duplicate_nevra(unit, repo)
@@ -423,29 +421,6 @@ def _handle_package(repo, type_id, unit_key, metadata, file_path, conduit, confi
     repo_controller.associate_single_unit(repo, unit)
 
 
-def _fake_xml_element(repodata_snippet):
-    """
-    Wrap a snippet of xml in a fake element so it can coerced to an ElementTree Element
-
-    :param repodata_snippet: Snippet of XML to be turn into an ElementTree Element
-    :type repodata_snippet: str
-
-    :return: Parsed ElementTree Element containing the parsed repodata snippet
-    :rtype: xml.etree.ElementTree.Element
-    """
-    try:
-        # make a guess at the encoding
-        codec = 'UTF-8'
-        repodata_snippet.encode(codec)
-    except UnicodeEncodeError:
-        # best second guess we have, and it will never fail due to the nature
-        # of the encoding.
-        codec = 'ISO-8859-1'
-    fake_xml = FAKE_XML % {'encoding': codec, 'xml': repodata_snippet}
-    # s/fromstring/phone_home/
-    return ET.fromstring(fake_xml.encode(codec))
-
-
 def _update_provides_requires(unit):
     """
     Determines the provides and requires fields based on the RPM's XML snippet and updates
@@ -455,7 +430,7 @@ def _update_provides_requires(unit):
                  a key called 'repodata'
     :type  unit: subclass of pulp.server.db.model.ContentUnit
     """
-    fake_element = _fake_xml_element(unit.repodata['primary'])
+    fake_element = utils.fake_xml_element(unit.repodata['primary'])
     utils.strip_ns(fake_element)
     primary_element = fake_element.find('package')
     format_element = primary_element.find('format')
@@ -465,35 +440,6 @@ def _update_provides_requires(unit):
                         provides_element.findall('entry')) if provides_element else []
     unit.requires = map(primary._process_rpm_entry_element,
                         requires_element.findall('entry')) if requires_element else []
-
-
-def _update_location(unit):
-    """
-    Fix a unit's repodata primary xml
-
-    When uploading a unit, the href in the generated xml's location tag is
-    based on the content unit file path, which is an autogenerated unique
-    value. This sets the href back to the unit filename, which matches the
-    published repo layout and allows uploaded units to again be downloaded
-    from the published repo.
-
-    :param unit: the unit being added to Pulp; the metadata attribute must already have
-                 a key called 'repodata'
-    :type  unit: subclass of pulp.server.db.model.ContentUnit
-    """
-    fake_element = _fake_xml_element(unit.repodata['primary'])
-    primary_element = fake_element.find('package')
-    location_element = primary_element.find('location')
-    location_element.set('href', unit.filename)
-    new_location = ET.tostring(location_element).strip()
-    lines = list(unit.repodata['primary'].splitlines())
-    # rather than deal with the xml namespaces, just
-    # replace the old location with the new one in-place
-    for i, line in enumerate(lines):
-        index = line.find('<location')
-        if index != -1:
-            lines[i] = line[:index] + new_location
-    unit.repodata['primary'] = '\n'.join(lines)
 
 
 def _extract_rpm_data(type_id, rpm_filename):
@@ -576,18 +522,6 @@ def _extract_rpm_data(type_id, rpm_filename):
     rpm_data['time'] = file_stat[stat.ST_MTIME]
 
     return rpm_data
-
-
-def _calculate_checksum(checksum_type, filename):
-    m = hashlib.new(checksum_type)
-    f = open(filename, 'r')
-    while True:
-        file_buffer = f.read(CHECKSUM_READ_BUFFER_SIZE)
-        if not file_buffer:
-            break
-        m.update(file_buffer)
-    f.close()
-    return m.hexdigest()
 
 
 def _fail_report(message):

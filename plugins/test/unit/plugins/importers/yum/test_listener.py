@@ -4,6 +4,7 @@ import unittest
 import mock
 from nectar.report import DownloadReport
 from pulp.plugins.util import verification
+from pulp.server import util
 
 from pulp_rpm.devel.skip import skip_broken
 from pulp_rpm.plugins.importers.yum import listener
@@ -32,6 +33,7 @@ class TestRPMListenerDownloadSucceeded(unittest.TestCase):
 
     def test_change_download_flag(self):
         unit = mock.MagicMock()
+        unit.checksumtype = 'sha256'
         self.report.data = unit
         added_unit = mock.MagicMock()
         added_unit.downloaded = False
@@ -118,24 +120,24 @@ class TestPackageListener(unittest.TestCase):
         self.assertFalse(self.progress_report['content'].success.called)
 
     @mock.patch('__builtin__.open', autospec=True)
-    @mock.patch('pulp.plugins.util.verification.verify_checksum')
+    @mock.patch('pulp_rpm.plugins.importers.yum.listener.PackageListener._verify_checksum')
     @mock.patch('pulp.plugins.util.verification.verify_size')
     @mock.patch('shutil.copy', autospec=True)
     def test_download_successful_invalid_checksum_type(self, mock_copy, mock_verify_size,
                                                        mock_verify_checksum, mock_open):
         self.config.get.return_value = True
 
-        mock_verify_checksum.side_effect = verification.InvalidChecksumType()
+        mock_verify_checksum.side_effect = util.InvalidChecksumType()
         content_listener = listener.PackageListener(self, self.metadata_files)
 
         self.assertRaises(
-            verification.InvalidChecksumType, content_listener.download_succeeded, self.report)
+            util.InvalidChecksumType, content_listener.download_succeeded, self.report)
 
         mock_verify_checksum.assert_called_once()
         self.assertFalse(self.progress_report['content'].success.called)
 
     @mock.patch('__builtin__.open', autospec=True)
-    @mock.patch('pulp.plugins.util.verification.verify_checksum')
+    @mock.patch('pulp_rpm.plugins.importers.yum.listener.PackageListener._verify_checksum')
     @mock.patch('pulp.plugins.util.verification.verify_size')
     @mock.patch('shutil.copy', autospec=True)
     def test_download_successful_invalid_checksum_verification(self, mock_copy, mock_verify_size,
@@ -146,7 +148,7 @@ class TestPackageListener(unittest.TestCase):
         content_listener = listener.PackageListener(self, self.metadata_files)
 
         self.assertRaises(
-            verification.VerificationException, content_listener.download_succeeded, self.report)
+            util.InvalidChecksumType, content_listener.download_succeeded, self.report)
 
         mock_verify_checksum.assert_called_once()
         self.assertFalse(self.progress_report['content'].success.called)
