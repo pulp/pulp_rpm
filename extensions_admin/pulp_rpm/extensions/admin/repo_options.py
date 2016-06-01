@@ -82,6 +82,10 @@ d = _('if "true", sqlite files will be generated for the repository metadata dur
 OPT_GENERATE_SQLITE = PulpCliOption('--generate-sqlite', d, required=False,
                                     parse_func=parsers.parse_boolean)
 
+d = _('if "true", static HTML files will be generated during publish for the fast browsing of '
+      'the repository')
+OPT_REPOVIEW = PulpCliOption('--repoview', d, required=False,
+                             parse_func=parsers.parse_boolean)
 
 # publish security options
 d = _('full path to the CA certificate that signed the repository hosts\'s SSL '
@@ -113,6 +117,7 @@ def add_distributor_config_to_command(command):
     publish_group.add_option(OPT_CHECKSUM_TYPE)
     publish_group.add_option(OPT_GPG_KEY)
     publish_group.add_option(OPT_GENERATE_SQLITE)
+    publish_group.add_option(OPT_REPOVIEW)
 
     # Order added indicates order in usage, so pay attention to this order when
     # dorking with it to make sure it makes sense

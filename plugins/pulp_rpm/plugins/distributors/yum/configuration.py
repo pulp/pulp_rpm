@@ -21,7 +21,7 @@ REQUIRED_CONFIG_KEYS = ('relative_url', 'http', 'https')
 
 OPTIONAL_CONFIG_KEYS = ('gpgkey', 'auth_ca', 'auth_cert', 'https_ca', 'checksum_type',
                         'http_publish_dir', 'https_publish_dir', 'protected',
-                        'skip', 'skip_pkg_tags', 'generate_sqlite', 'force_full')
+                        'skip', 'skip_pkg_tags', 'generate_sqlite', 'force_full', 'repoview')
 
 ROOT_PUBLISH_DIR = '/var/lib/pulp/published/yum'
 MASTER_PUBLISH_DIR = os.path.join(ROOT_PUBLISH_DIR, 'master')

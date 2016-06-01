@@ -162,6 +162,7 @@ Requires: python-nectar >= 1.2.1
 Requires: genisoimage
 Requires: m2crypto
 Requires: python-lxml
+Requires: repoview
 
 %description plugins
 Provides a collection of platform plugins that extend the Pulp platform

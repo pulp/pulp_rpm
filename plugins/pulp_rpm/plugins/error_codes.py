@@ -3,6 +3,10 @@ from gettext import gettext as _
 from pulp.common.error_codes import Error
 
 
+RPM0001 = Error("RPM0001", _("Error occurred during '%(command)s' execution: "
+                             "%(stdout)s\n::\n%(stderr)s"),
+                ['command', 'stdout', 'stderr'])
+
 # Create a section for general validation errors (RPM1000 - RPM2999)
 # Validation problems should be reported with a general PLP1000 error with a more specific
 # error message nested inside of it.

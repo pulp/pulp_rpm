@@ -3,10 +3,9 @@ import datetime
 import os
 import shutil
 import tempfile
-import unittest
 from xml.etree import cElementTree as ET
 
-from pulp.common.compat import json
+from pulp.common.compat import json, unittest
 from pulp.common.plugins import reporting_constants
 from pulp.devel.unit.util import touch, compare_dict
 from pulp.plugins.conduits.repo_publish import RepoPublishConduit
@@ -1131,7 +1130,9 @@ class GenerateSqliteForRepoStepTests(BaseYumDistributorPublishStepTests):
         Popen.return_value = mock.MagicMock()
         Popen.return_value.returncode = 1
         Popen.return_value.communicate.return_value = pipe_output
-        self.assertRaises(PulpCodedException, step.process_main)
+        with self.assertRaisesRegexp(PulpCodedException, 'createrepo_c') as cm:
+            step.process_main()
+        self.assertEqual(cm.exception.error_code.code, 'RPM0001')
 
     def test_is_skipped_no_config(self):
         # Generating sqlite files is turned off by default
@@ -1149,4 +1150,70 @@ class GenerateSqliteForRepoStepTests(BaseYumDistributorPublishStepTests):
         step = publish.GenerateSqliteForRepoStep('/foo')
         self.publisher.add_child(step)
         self.publisher.get_config().default_config.update({'generate_sqlite': True})
+        self.assertFalse(step.is_skipped())
+
+
+class GenerateRepoviewStepTests(BaseYumDistributorPublishStepTests):
+    """
+    Test GenerateRepoviewStep of the publish process.
+    """
+    @mock.patch('pulp.plugins.util.publish_step.PluginStep.get_repo')
+    @mock.patch('pulp_rpm.plugins.distributors.yum.publish.subprocess.Popen')
+    def test_process_main(self, Popen, mock_get_repo):
+        """
+        Test that repoview tool was called with proper parameters.
+        """
+        pipe_output = ('some output', None)
+        Popen.return_value = mock.MagicMock()
+        Popen.return_value.returncode = 0
+        Popen.return_value.communicate.return_value = pipe_output
+        mock_get_repo.return_value.id = 'test-repo'
+        step = publish.GenerateRepoviewStep('/foo')
+        step.process_main()
+        Popen.assert_called_once_with('repoview --title test-repo /foo',
+                                      shell=True, stderr=mock.ANY, stdout=mock.ANY)
+
+    @mock.patch('pulp_rpm.plugins.distributors.yum.publish.subprocess.Popen')
+    def test_process_main_with_error(self, Popen):
+        """
+        Test that PulpCodedException is raised if some error happened during the execution
+        of a child process.
+        """
+        step = publish.GenerateRepoviewStep('/foo')
+        step.parent = mock.MagicMock()
+        pipe_output = ('some output', None)
+        Popen.return_value = mock.MagicMock()
+        Popen.return_value.returncode = 1
+        Popen.return_value.communicate.return_value = pipe_output
+        with self.assertRaisesRegexp(PulpCodedException, 'repoview') as cm:
+            step.process_main()
+        self.assertEqual(cm.exception.error_code.code, 'RPM0001')
+
+    def test_is_skipped_no_config(self):
+        """
+        Test that GenerateRepoviewStep is skipped if the repoview flag was not specified
+        in the config.
+        """
+        step = publish.GenerateRepoviewStep('/foo')
+        self.publisher.add_child(step)
+        self.assertTrue(step.is_skipped())
+
+    def test_is_skipped_config_false(self):
+        """
+        Test that GenerateRepoviewStep is skipped if the repoview flag was set to False
+        in the config.
+        """
+        step = publish.GenerateRepoviewStep('/foo')
+        self.publisher.add_child(step)
+        self.publisher.get_config().default_config.update({'repoview': False})
+        self.assertTrue(step.is_skipped())
+
+    def test_is_skipped_config_true(self):
+        """
+        Test that GenerateRepoviewStep is not skipped if the repoview flag was set to True
+        in the config.
+        """
+        step = publish.GenerateRepoviewStep('/foo')
+        self.publisher.add_child(step)
+        self.publisher.get_config().default_config.update({'repoview': True})
         self.assertFalse(step.is_skipped())

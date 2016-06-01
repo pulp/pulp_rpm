@@ -14,4 +14,5 @@ New Features
   parsed on upload. ``pulp-admin`` also has upload, remove, and search support for 
   package_langpacks.
 * The yum distributor now uses the configured checksum type for all repo metadata.
-
+* Repoview support is added. The ability to generate HTML files to browse a repository can be
+  enabled by using ``--repoview`` option for the yum_distributor.

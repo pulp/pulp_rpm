@@ -32,6 +32,7 @@ YUM_DISTRIBUTOR_CONFIG_KEYS = [
     ('https_ca', 'host_ca'),
     ('generate_metadata', 'regenerate_metadata'),
     ('skip', 'skip'),
+    ('repoview', 'repoview'),
 ]
 
 EXPORT_DISTRIBUTOR_CONFIG_KEYS = [
@@ -343,6 +344,11 @@ def _prep_config(kwargs, plugin_config_keys):
         val = kwargs.pop(k)
         new_key = k.replace('-', '_')
         kwargs[new_key] = val
+
+    # If repoview is requested we have to enable sqlite generation as well.
+    # For consistency it is done for all distributors.
+    if kwargs.get('repoview', False):
+        kwargs['generate_sqlite'] = True
 
     # Populate the plugin config with the plugin-relevant keys in the user args
     user_arg_keys = [k[1] for k in plugin_config_keys]

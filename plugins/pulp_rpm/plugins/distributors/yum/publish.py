@@ -16,6 +16,7 @@ from pulp.server.exceptions import InvalidValue, PulpCodedException
 
 from pulp_rpm.common import constants, ids
 from pulp_rpm.yum_plugin import util
+from pulp_rpm.plugins import error_codes
 from pulp_rpm.plugins.db import models
 from pulp_rpm.plugins.distributors.export_distributor import export_utils
 from pulp_rpm.plugins.distributors.export_distributor import generate_iso
@@ -336,6 +337,8 @@ class Publisher(BaseYumRepoPublisher):
             repo_publish_dir = os.path.join(root_publish_dir, repo_relative_path)
             target_directories.append(['/', repo_publish_dir])
             listing_steps.append(GenerateListingFileStep(root_publish_dir, repo_publish_dir))
+
+        self.add_child(GenerateRepoviewStep(self.get_working_dir()))
 
         master_publish_dir = configuration.get_master_publish_dir(repo, distributor_type)
         atomic_publish_step = platform_steps.AtomicDirectoryPublishStep(
@@ -977,5 +980,45 @@ class GenerateSqliteForRepoStep(platform_steps.PluginStep):
                                 stderr=subprocess.PIPE)
         stdout, stderr = pipe.communicate()
         if pipe.returncode != 0:
-            result_string = '%s\n::\n%s' % (stdout, stderr)
-            raise PulpCodedException(message=result_string)
+            raise PulpCodedException(error_codes.RPM0001, command='createrepo_c', stdout=stdout,
+                                     stderr=stderr)
+
+
+class GenerateRepoviewStep(platform_steps.PluginStep):
+    """
+    Generate the static HTML files for a given repository using the repoview command
+    """
+    def __init__(self, content_dir):
+        """
+        Initialize the step for creating sqlite files
+
+        :param content_dir: The base directory of the repository.  This directory should contain
+                            the repodata directory
+        :type content_dir: str
+        """
+        super(GenerateRepoviewStep, self).__init__(constants.PUBLISH_GENERATE_REPOVIEW_STEP)
+        self.description = _('Generating HTML files')
+        self.content_dir = content_dir
+
+    def is_skipped(self):
+        """
+        Check the repo for the config option to generate the HTML files.
+        Skip generation if the config option is not specified.
+
+        :returns: Whether or not generating HTML files has been enabled for this repository
+        :rtype: bool
+        """
+        return not self.get_config().get('repoview', False)
+
+    def process_main(self, item=None):
+        """
+        Call out to repoview command line in order to process the files.
+        """
+        pipe = subprocess.Popen('repoview --title %(repo)s %(content_dir)s' %
+                                {'content_dir': self.content_dir, 'repo': self.get_repo().id},
+                                shell=True, stdout=subprocess.PIPE,
+                                stderr=subprocess.PIPE)
+        stdout, stderr = pipe.communicate()
+        if pipe.returncode != 0:
+            raise PulpCodedException(error_codes.RPM0001, command='repoview', stdout=stdout,
+                                     stderr=stderr)
