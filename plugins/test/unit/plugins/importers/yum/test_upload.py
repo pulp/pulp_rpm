@@ -651,35 +651,59 @@ class UploadPackageTests(unittest.TestCase):
         self.assertEqual(metadata['vendor'], None)
 
 
-class TestMangleRepodataPrimaryXML(unittest.TestCase):
+class TestUpdateProvidesRequires(unittest.TestCase):
     # a snippet from repodata primary xml for a package
     # this snippet has been truncated to only provide the tags needed to test
-    PRIMARY_XML = '''
-    <package type="rpm">
-      <location href="fixme" />
-      <format>
-        <rpm:provides>
-          <rpm:entry name="shark" flags="EQ" epoch="0" ver="0.1" rel="1"/>
-        </rpm:provides>
-        <rpm:requires>
-          <rpm:entry name="shark" flags="EQ" epoch="0" ver="0.1" rel="1"/>
-          <rpm:entry name="walrus" flags="EQ" epoch="0" ver="5.21" rel="1"/>
-        </rpm:requires>
-      </format>
-    </package>
+    PRIMARY_EXCERPT = '''
+<package type="rpm">
+  <name>shark</name>
+  <arch>noarch</arch>
+  <version epoch="0" rel="1" ver="0.1" />
+  <checksum pkgid="YES"
+  type="sha256">951e0eacf3e6e6102b10acb2e689243b5866ec2c7720e783749dbd32f4a69ab3</checksum>
+  <summary>A dummy package of shark</summary>
+  <description>A dummy package of shark</description>
+  <packager />
+  <url>http://tstrachota.fedorapeople.org</url>
+  <time build="1331831369" file="1331832459" />
+  <size archive="296" installed="42" package="2441" />
+  <location href="fixme/shark-0.1-1.noarch.rpm" />
+  <format>
+    <rpm:license>GPLv2</rpm:license>
+    <rpm:vendor />
+    <rpm:group>Internet/Applications</rpm:group>
+    <rpm:buildhost>smqe-ws15</rpm:buildhost>
+    <rpm:sourcerpm>shark-0.1-1.src.rpm</rpm:sourcerpm>
+    <rpm:header-range end="2289" start="872" />
+    <rpm:provides>
+      <rpm:entry epoch="0" flags="EQ" name="shark" rel="1" ver="0.1" />
+    </rpm:provides>
+    <rpm:requires>
+      <rpm:entry name="shark" flags="EQ" epoch="0" ver="0.1" rel="1"/>
+      <rpm:entry name="walrus" flags="EQ" epoch="0" ver="5.21" rel="1"/>
+    </rpm:requires>
+  </format>
+</package>
     '''
+    OTHER_EXCERPT = '''
+<package arch="noarch" name="shark"
+    pkgid="951e0eacf3e6e6102b10acb2e689243b5866ec2c7720e783749dbd32f4a69ab3">
+    <version epoch="0" rel="1" ver="0.1" />
+</package>'''
+    FILELISTS_EXCERPT = '''
+<package arch="noarch" name="shark"
+    pkgid="951e0eacf3e6e6102b10acb2e689243b5866ec2c7720e783749dbd32f4a69ab3">
+    <version epoch="0" rel="1" ver="0.1" />
+    <file>/tmp/shark.txt</file>
+</package>'''
 
     def setUp(self):
         self.unit = models.RPM()
-        self.unit.repodata['primary'] = self.PRIMARY_XML
-        self.unit.filename = 'fixed-filename.rpm'
+        self.unit.repodata['primary'] = self.PRIMARY_EXCERPT
+        self.unit.repodata['filelists'] = self.FILELISTS_EXCERPT
+        self.unit.repodata['other'] = self.OTHER_EXCERPT
 
     def test_update_provides_requires(self):
         upload._update_provides_requires(self.unit)
         self.assertEqual(len(self.unit.provides), 1)
         self.assertEqual(len(self.unit.requires), 2)
-
-    def test_update_location(self):
-        upload._update_location(self.unit)
-        self.assertTrue('fixme' not in self.unit.repodata['primary'])
-        self.assertTrue(self.unit.filename in self.unit.repodata['primary'])

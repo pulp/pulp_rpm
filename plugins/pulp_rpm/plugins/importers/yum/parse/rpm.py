@@ -2,14 +2,14 @@ import logging
 import os
 
 from createrepo import yumbased
+from pulp.server import util
 import rpmUtils
-from pulp.plugins.util import verification
 
 
 _LOGGER = logging.getLogger(__name__)
 
 
-def get_package_xml(pkg_path, sumtype=verification.TYPE_SHA256):
+def get_package_xml(pkg_path, sumtype=util.TYPE_SHA256):
     """
     Method to generate repo xmls - primary, filelists and other
     for a given rpm.

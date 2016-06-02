@@ -1,5 +1,5 @@
 from mongoengine import StringField
-from pulp.plugins.util import verification
+from pulp.server import util
 
 
 class ChecksumTypeStringField(StringField):
@@ -14,4 +14,4 @@ class ChecksumTypeStringField(StringField):
         :return: None
         """
         super(ChecksumTypeStringField, self).validate(value)
-        verification.sanitize_checksum_type(value)
+        util.sanitize_checksum_type(value)

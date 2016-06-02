@@ -16,7 +16,7 @@ class TestProcessPackageElement(unittest.TestCase):
 
     @mock.patch('pulp_rpm.plugins.db.models.version_utils.encode')
     @mock.patch('pulp_rpm.plugins.importers.yum.repomd.primary.utils.element_to_raw_xml')
-    def test_process_package_element_sanitizes_checksum_type(self, element_to_raw_xml, encode):
+    def test_sanitizes_checksum_type(self, element_to_raw_xml, encode):
         """
         Assert that the function correctly sanitizes checksum types.
         """
@@ -33,6 +33,20 @@ class TestProcessPackageElement(unittest.TestCase):
         model = primary.process_package_element(element)
 
         self.assertEqual(model.checksumtype, 'sha1')
+
+    def test_adds_templates(self):
+        """
+        Assert that the function correctly adds templates.
+        """
+        rpms = packages.package_list_generator(StringIO(F18_XML),
+                                               primary.PACKAGE_TAG,
+                                               primary.process_package_element)
+        rpms = list(rpms)
+        self.assertEqual(len(rpms), 1)
+        model = rpms[0]
+
+        self.assertTrue(model.CHECKSUM_TEMPLATE in model.raw_xml)
+        self.assertTrue(model.CHECKSUMTYPE_TEMPLATE in model.raw_xml)
 
 
 class TestProcessSRPMElement(unittest.TestCase):

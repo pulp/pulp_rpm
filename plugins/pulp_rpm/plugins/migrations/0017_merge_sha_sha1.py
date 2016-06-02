@@ -16,8 +16,8 @@ import logging
 
 from pymongo import errors
 
-from pulp.plugins.util import verification
 from pulp.server.db import connection
+from pulp.server import util
 
 
 _logger = logging.getLogger(__name__)
@@ -52,7 +52,7 @@ def _migrate_errata():
         for collection in pkglist:
             for package in collection.get('packages', []):
                 if 'sum' in package and package['sum']:
-                    sanitized_type = verification.sanitize_checksum_type(package['sum'][0])
+                    sanitized_type = util.sanitize_checksum_type(package['sum'][0])
                     if sanitized_type != package['sum'][0]:
                         package['sum'][0] = sanitized_type
                         changed = True
@@ -75,7 +75,7 @@ def _migrate_rpmlike_units(unit_type):
 
     for unit in unit_collection.find():
         try:
-            sanitized_type = verification.sanitize_checksum_type(unit['checksumtype'])
+            sanitized_type = util.sanitize_checksum_type(unit['checksumtype'])
             if sanitized_type != unit['checksumtype']:
                 # Let's see if we can get away with changing its checksumtype to the sanitized
                 # value. If this works, we won't have to do anything else.
@@ -128,7 +128,7 @@ def _migrate_yum_metadata_files():
     """
     collection = connection.get_collection('units_yum_repo_metadata_file')
     for unit in collection.find():
-        sanitized_type = verification.sanitize_checksum_type(unit['checksum_type'])
+        sanitized_type = util.sanitize_checksum_type(unit['checksum_type'])
         if sanitized_type != unit['checksum_type']:
             collection.update({'_id': unit['_id']},
                               {'$set': {'checksum_type': sanitized_type}})

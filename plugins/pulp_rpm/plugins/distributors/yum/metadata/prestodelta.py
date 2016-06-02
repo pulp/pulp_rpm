@@ -47,10 +47,10 @@ class PrestodeltaXMLFileContext(XmlFileContext):
         size_element = ElementTree.SubElement(delta_element, 'size')
         size_element.text = str(delta_unit.size)
 
-        checksum_attributes = {'type': delta_unit.checksumtype}
+        checksum_attributes = {'type': self.checksum_type}
 
         checksum_element = ElementTree.SubElement(delta_element, 'checksum', checksum_attributes)
-        checksum_element.text = delta_unit.checksum
+        checksum_element.text = delta_unit.get_or_calculate_and_save_checksum(self.checksum_type)
 
         new_package_element_string = ElementTree.tostring(new_package_element, 'utf-8')
 

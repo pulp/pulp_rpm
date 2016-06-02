@@ -590,7 +590,9 @@ Optional Configuration Parameters
  perform this operation.
 
 ``checksum_type``
- Checksum type to use for metadata generation
+ Checksum type to use for metadata generation. For any units where the checksum of this type is not
+ already known, it will be computed on-the-fly and saved for future use. If any such units have not
+ been downloaded, then checksum calculation is impossible, and the publish will fail gracefully.
 
 ``skip``
  List of content types to skip during the repository publish.

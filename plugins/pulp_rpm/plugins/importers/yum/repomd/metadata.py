@@ -14,8 +14,9 @@ from xml.etree.cElementTree import iterparse
 
 from nectar.listener import AggregatingEventListener
 from nectar.request import DownloadRequest
-from pulp.plugins.util import verification
+from pulp.server import util
 
+from pulp_rpm.plugins.db import models
 from pulp_rpm.plugins.importers.yum import utils
 from pulp_rpm.plugins.importers.yum.parse.rpm import change_location_tag
 from pulp_rpm.plugins.importers.yum.repomd import filelists, nectar_factory, other
@@ -294,6 +295,7 @@ class MetadataFiles(object):
                 with contextlib.closing(gdbm.open(db_filename, 'nf')) as db_file_handle:
                     for element in generator:
                         utils.strip_ns(element)
+                        element.attrib['pkgid'] = models.RpmBase.PKGID_TEMPLATE
                         raw_xml = utils.element_to_raw_xml(element)
                         unit_key, _ = process_func(element)
                         db_key = self.generate_db_key(unit_key)
@@ -376,7 +378,7 @@ def process_repomd_data_element(data_element):
 
     checksum_element = data_element.find(CHECKSUM_TAG)
     if checksum_element is not None:
-        checksum_type = verification.sanitize_checksum_type(checksum_element.attrib['type'])
+        checksum_type = util.sanitize_checksum_type(checksum_element.attrib['type'])
         file_info['checksum']['algorithm'] = checksum_type
         file_info['checksum']['hex_digest'] = checksum_element.text
 
@@ -390,7 +392,7 @@ def process_repomd_data_element(data_element):
 
     open_checksum_element = data_element.find(OPEN_CHECKSUM_TAG)
     if open_checksum_element is not None:
-        checksum_type = verification.sanitize_checksum_type(open_checksum_element.attrib['type'])
+        checksum_type = util.sanitize_checksum_type(open_checksum_element.attrib['type'])
         file_info['open_checksum']['algorithm'] = checksum_type
         file_info['open_checksum']['hex_digest'] = open_checksum_element.text
 
