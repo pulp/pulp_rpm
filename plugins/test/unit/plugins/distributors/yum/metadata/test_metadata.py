@@ -1,4 +1,5 @@
 import gzip
+import hashlib
 import os
 import shutil
 import tempfile
@@ -56,6 +57,197 @@ class YumDistributorMetadataTests(unittest.TestCase):
         return Unit(TYPE_ID_RPM, unit_key, unit_metadata, storage_path)
 
     # -- metadata file context base class tests --------------------------------
+
+    def test_metadata_instantiation(self):
+        try:
+            metadata_file_context = MetadataFileContext('fu.xml')
+        except Exception, e:
+            self.fail(e.message)
+
+        self.assertEqual(metadata_file_context.checksum_type, None)
+
+    def test_metadata_instantiation_with_checksum_type(self):
+        test_checksum_type = 'sha1'
+
+        try:
+            metadata_file_context = MetadataFileContext('fu.xml', checksum_type=test_checksum_type)
+        except Exception, e:
+            self.fail(e.message)
+
+        self.assertEqual(metadata_file_context.checksum_type, 'sha1')
+        self.assertEqual(metadata_file_context.checksum_constructor,
+                         getattr(hashlib, test_checksum_type))
+
+    def test_open_handle(self):
+
+        path = os.path.join(self.metadata_file_dir, 'open_handle.xml')
+        context = MetadataFileContext(path)
+
+        context._open_metadata_file_handle()
+
+        self.assertTrue(os.path.exists(path))
+
+        context._close_metadata_file_handle()
+
+    def test_open_handle_bad_parent_permissions(self):
+
+        test_dir = os.path.join(self.metadata_file_dir, 'test')
+        os.makedirs(test_dir, mode=0000)
+
+        path = os.path.join(test_dir, 'nope.xml')
+        context = MetadataFileContext(path)
+
+        self.assertRaises(RuntimeError, context._open_metadata_file_handle)
+
+        os.chmod(test_dir, 0777)
+
+    def test_open_handle_file_exists(self):
+
+        path = os.path.join(self.metadata_file_dir, 'overwriteme.xml')
+        context = MetadataFileContext(path)
+
+        with open(path, 'w') as h:
+            h.flush()
+
+        try:
+            context._open_metadata_file_handle()
+
+        except Exception, e:
+            self.fail(e.message)
+
+        context._close_metadata_file_handle()
+
+    def test_open_handle_bad_file_permissions(self):
+
+        path = os.path.join(self.metadata_file_dir, 'nope_again.xml')
+        context = MetadataFileContext(path)
+
+        with open(path, 'w') as h:
+            h.flush()
+        os.chmod(path, 0000)
+
+        self.assertRaises(RuntimeError, context._open_metadata_file_handle)
+
+        os.chmod(path, 0777)
+
+    def test_open_handle_gzip(self):
+
+        path = os.path.join(self.metadata_file_dir, 'test.xml.gz')
+        context = MetadataFileContext(path)
+
+        context._open_metadata_file_handle()
+
+        self.assertTrue(os.path.exists(path))
+
+        context._write_xml_header()
+        context._close_metadata_file_handle()
+
+        try:
+            h = gzip.open(path)
+
+        except Exception, e:
+            self.fail(e.message)
+
+        h.close()
+
+    def test_write_xml_header(self):
+
+        path = os.path.join(self.metadata_file_dir, 'header.xml')
+        context = MetadataFileContext(path)
+
+        context._open_metadata_file_handle()
+        context._write_xml_header()
+        context._close_metadata_file_handle()
+
+        self.assertTrue(os.path.exists(path))
+
+        with open(path) as h:
+            content = h.read()
+
+        expected_content = '<?xml version="1.0" encoding="UTF-8"?>\n'
+        self.assertEqual(content, expected_content)
+
+    def test_is_closed_gzip_file(self):
+        path = os.path.join(DATA_DIR, 'foo.tar.gz')
+
+        file_object = gzip.open(path)
+        file_object.close()
+
+        self.assertTrue(MetadataFileContext._is_closed(file_object))
+
+    def test_is_open_gzip_file(self):
+        path = os.path.join(DATA_DIR, 'foo.tar.gz')
+
+        file_object = gzip.open(path)
+
+        self.assertFalse(MetadataFileContext._is_closed(file_object))
+
+        file_object.close()
+
+    def test_is_closed_file(self):
+        path = os.path.join(DATA_DIR, 'foo.tar.gz')
+
+        # opening as a regular file, not with gzip
+        file_object = open(path)
+        file_object.close()
+
+        self.assertTrue(MetadataFileContext._is_closed(file_object))
+
+    def test_is_open_file(self):
+        path = os.path.join(DATA_DIR, 'foo.tar.gz')
+
+        # opening as a regular file, not with gzip
+        file_object = open(path)
+
+        self.assertFalse(MetadataFileContext._is_closed(file_object))
+
+        file_object.close()
+
+    def test_is_closed_file_attribute_error(self):
+        # passing in a list gives it an object that does not have a closed attribute,
+        # thus triggering
+        # an Attribute error that cannot be solved with the python 2.6 compatibility code
+        self.assertRaises(AttributeError, MetadataFileContext._is_closed, [])
+
+    def test_finalize_closed_gzip_file(self):
+        # this test makes sure that we can properly detect the closed state of
+        # a gzip file, because on python 2.6 we have to take special measures
+        # to do so.
+        path = os.path.join(DATA_DIR, 'foo.tar.gz')
+
+        context = MetadataFileContext('/a/b/c')
+        context.metadata_file_handle = gzip.open(path)
+        context.metadata_file_handle.close()
+
+        # just make sure this doesn't complain.
+        context.finalize()
+
+    def test_finalize_checksum_type_none(self):
+
+        path = os.path.join(self.metadata_file_dir, 'test.xml')
+        context = MetadataFileContext(path)
+
+        context._open_metadata_file_handle()
+        context._write_xml_header()
+        context._close_metadata_file_handle()
+        context.finalize()
+
+        self.assertEqual(context.metadata_file_path, path)
+
+    def test_finalize_with_valid_checksum_type(self):
+
+        path = os.path.join(self.metadata_file_dir, 'test.xml')
+        checksum_type = 'sha1'
+        context = MetadataFileContext(path, checksum_type)
+
+        context._open_metadata_file_handle()
+        context._write_xml_header()
+        context.finalize()
+
+        expected_metadata_file_name = context.checksum + '-' + 'test.xml'
+        expected_metadata_file_path = os.path.join(self.metadata_file_dir,
+                                                   expected_metadata_file_name)
+        self.assertEqual(expected_metadata_file_path, context.metadata_file_path)
 
     def test_finalize_for_repomd_file_with_valid_checksum_type(self):
 
