@@ -351,8 +351,8 @@ def associate_copy_for_repo(unit, dest_repo, set_content=False):
     :type  unit:            pulp_rpm.plugins.db.models.Package
     :param dest_repo:       destination repo
     :type  dest_repo:       pulp.server.db.model.Repository
-    :param set_content:     if True, the set_unit() method will be called on the new unit. Default
-                            is False.
+    :param set_content:     if True, the set_storage_path() method will be called on the new unit.
+                            Default is False.
     :type  set_content:     bool
 
     :return:    new unit that was saved and associated
@@ -360,6 +360,9 @@ def associate_copy_for_repo(unit, dest_repo, set_content=False):
     """
     new_unit = unit.clone()
     new_unit.repo_id = dest_repo.repo_id
+    if set_content:
+        # calculate a new storage path since the unit key has changed
+        new_unit.set_storage_path(os.path.basename(unit._storage_path))
 
     try:
         new_unit.save()
@@ -371,7 +374,6 @@ def associate_copy_for_repo(unit, dest_repo, set_content=False):
         new_unit.save()
 
     if set_content:
-        new_unit.set_storage_path(os.path.basename(unit._storage_path))
         new_unit.safe_import_content(unit._storage_path)
 
     repo_controller.associate_single_unit(repository=dest_repo, unit=new_unit)
