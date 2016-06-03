@@ -2,6 +2,14 @@
 Pulp 2.8 Release Notes
 ======================
 
+Pulp 2.8.5
+=================
+
+- A migration included in this release fixes an issue which caused YumMetadatafile not stored
+  in the correct storage path. You also may want to re-publish repos to update the symlinks to
+  point to the correct storage file. When you run `pulp-manage-db`, the migration will print
+  information to stdout about the repos that need to be re-published.
+
 Pulp 2.8.4
 ==========
 
