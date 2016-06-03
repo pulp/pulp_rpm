@@ -124,6 +124,7 @@ class RpmGroupExportCommand(PollingCommand):
         self.add_option(OPTION_SERVE_HTTPS)
         self.add_option(OPTION_SERVE_HTTP)
         self.add_option(OPTION_INCREMENTAL_MD)
+        self.add_option(repo_options.OPT_CHECKSUM_TYPE)
 
         self.add_flag(FLAG_MANIFEST)
 
@@ -144,6 +145,7 @@ class RpmGroupExportCommand(PollingCommand):
         serve_http = kwargs[OPTION_SERVE_HTTP.keyword]
         serve_https = kwargs[OPTION_SERVE_HTTPS.keyword]
         incremental_md = kwargs[OPTION_INCREMENTAL_MD.keyword]
+        checksum_type = kwargs[repo_options.OPT_CHECKSUM_TYPE.keyword]
 
         # Since the export distributor is not added to a repository group on creation, add it here
         # if it is not already associated with the group id
@@ -179,6 +181,7 @@ class RpmGroupExportCommand(PollingCommand):
             constants.RELATIVE_URL_KEYWORD: relative_url,
             constants.CREATE_PULP_MANIFEST: manifest,
             constants.INCREMENTAL_EXPORT_REPOMD_KEYWORD: incremental_md,
+            constants.CHECKSUM_TYPE: checksum_type,
         }
 
         # Remove keys from the config that have None value.

@@ -71,7 +71,8 @@ class TestRepoGroupExportRunCommand(PulpClientTests):
             export.OPTION_RELATIVE_URL.keyword: None,
             export.OPTION_SERVE_HTTP.keyword: True,
             export.OPTION_SERVE_HTTPS.keyword: True,
-            export.OPTION_INCREMENTAL_MD.keyword: False
+            export.OPTION_INCREMENTAL_MD.keyword: False,
+            repo_options.OPT_CHECKSUM_TYPE.keyword: None,
         }
 
     def tearDown(self):
@@ -95,7 +96,8 @@ class TestRepoGroupExportRunCommand(PulpClientTests):
             export.OPTION_ISO_SIZE,
             export.OPTION_SERVE_HTTPS,
             export.OPTION_SERVE_HTTP,
-            export.OPTION_INCREMENTAL_MD
+            export.OPTION_INCREMENTAL_MD,
+            repo_options.OPT_CHECKSUM_TYPE,
         ]
 
         # Test

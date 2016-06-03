@@ -71,3 +71,8 @@ Optional Configuration Parameters
 ``manifest``
  If this boolean is True, a PULP_MANIFEST file will be created in the directory where ISOs are
  created. This allows the ISO importer to directly import what was published. Defaults to False.
+
+``checksum_type``
+ Checksum type to use for metadata generation. For any units where the checksum of this type is not
+ already known, it will be computed on-the-fly and saved for future use. If any such units have not
+ been downloaded, then checksum calculation is impossible, and the publish will fail gracefully.
