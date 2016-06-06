@@ -287,7 +287,7 @@ class Publisher(BaseYumRepoPublisher):
             force_full = True
             date_filter = association_filters
         else:
-            force_full = config.get('force_full', False)
+            force_full = config.get(constants.FORCE_FULL_KEYWORD, False)
             date_filter = None
 
         if last_published and \
