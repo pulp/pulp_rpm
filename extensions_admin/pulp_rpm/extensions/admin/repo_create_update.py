@@ -33,6 +33,7 @@ YUM_DISTRIBUTOR_CONFIG_KEYS = [
     ('generate_metadata', 'regenerate_metadata'),
     ('skip', 'skip'),
     ('repoview', 'repoview'),
+    ('packages_directory', 'packages_directory'),
 ]
 
 EXPORT_DISTRIBUTOR_CONFIG_KEYS = [
