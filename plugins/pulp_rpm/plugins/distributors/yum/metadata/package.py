@@ -2,10 +2,10 @@
 This module is used for generating all metadata related to package groups and categories
 """
 import os
-from xml.etree import ElementTree
 
-from pulp_rpm.plugins.distributors.yum.metadata.metadata import (
-    MetadataFileContext, REPO_DATA_DIR_NAME)
+from pulp.plugins.util.metadata_writer import XmlFileContext
+from pulp.plugins.util.saxwriter import XMLWriter
+from pulp_rpm.plugins.distributors.yum.metadata.metadata import REPO_DATA_DIR_NAME
 from pulp_rpm.yum_plugin import util
 
 
@@ -14,7 +14,7 @@ _LOG = util.getLogger(__name__)
 PACKAGE_XML_FILE_NAME = 'comps.xml'
 
 
-class PackageXMLFileContext(MetadataFileContext):
+class PackageXMLFileContext(XmlFileContext):
     """
     The PackageXMLFileContext is used to generate the comps.xml file used in yum repositories
     for storing information about package categories and package groups
@@ -29,34 +29,30 @@ class PackageXMLFileContext(MetadataFileContext):
         """
 
         metadata_file_path = os.path.join(working_dir, REPO_DATA_DIR_NAME, PACKAGE_XML_FILE_NAME)
-        super(PackageXMLFileContext, self).__init__(metadata_file_path, checksum_type)
+        super(PackageXMLFileContext, self).__init__(metadata_file_path, 'comps',
+                                                    checksum_type=checksum_type)
 
-    def _write_root_tag_open(self):
+    def _open_metadata_file_handle(self):
         """
-        Write the opening tag for the root element of a given metadata XML file.
+        Open the metadata file handle, creating any missing parent directories.
+        If the file already exists, this will overwrite it.
         """
+        super(PackageXMLFileContext, self)._open_metadata_file_handle()
+        self.xml_generator = XMLWriter(self.metadata_file_handle, short_empty_elements=True)
 
-        updates_element = ElementTree.Element('comps')
-        bogus_element = ElementTree.SubElement(updates_element, '')
+    def _write_file_header(self):
+        """
+        Write out the beginning of the comps.xml file
+        """
+        self.xml_generator.startDocument()
+        doctype = '<!DOCTYPE comps PUBLIC "-//Red Hat, Inc.//DTD Comps info//EN" "comps.dtd">'
+        self.xml_generator.writeDoctype(doctype)
+        self.xml_generator.startElement(self.root_tag, self.root_attributes)
 
-        updates_tags_string = ElementTree.tostring(updates_element, 'utf-8')
-        bogus_tag_string = ElementTree.tostring(bogus_element, 'utf-8')
-        opening_tag, closing_tag = updates_tags_string.split(bogus_tag_string, 1)
-
-        doctype = u'<!DOCTYPE comps PUBLIC "-//Red Hat, Inc.//DTD Comps info//EN" "comps.dtd">'
-        self.metadata_file_handle.write(unicode(doctype + '\n' + opening_tag))
-
-        def _write_root_tag_close_closure(*args):
-            self.metadata_file_handle.write(unicode(closing_tag + '\n'))
-
-        self._write_root_tag_close = _write_root_tag_close_closure
-
-    def _write_translated_fields(self, element, tag_name, translated_fields):
+    def _write_translated_fields(self, tag_name, translated_fields):
         """
         Write out the xml for a translated field
 
-        :param element: The ElementTree element that will contain the fields
-        :type element: xml.etree.ElemenTree.element
         :param tag_name: The xml tag name to generate for the translated field
         :type tag_name: str
         :param translated_fields: The dictionary of locales and the translated text
@@ -64,7 +60,7 @@ class PackageXMLFileContext(MetadataFileContext):
         """
         if translated_fields:
             for locale, field_text in sorted(translated_fields.iteritems()):
-                ElementTree.SubElement(element, tag_name, {'xml:lang': locale}).text = field_text
+                self.xml_generator.completeElement(tag_name, {'xml:lang': locale}, field_text)
 
     def add_package_group_unit_metadata(self, group_unit):
         """
@@ -73,47 +69,39 @@ class PackageXMLFileContext(MetadataFileContext):
         :param group_unit: the group to publish
         :type group_unit: pulp_rpm.plugins.db.models.PackageGroup
         """
-        group_element = ElementTree.Element('group')
-        ElementTree.SubElement(group_element, 'id').text = group_unit.package_group_id
-        ElementTree.SubElement(group_element, 'default').text = \
-            str(group_unit.default).lower()
-        ElementTree.SubElement(group_element, 'uservisible').text = \
-            str(group_unit.user_visible).lower()
+        self.xml_generator.startElement('group', {})
+        self.xml_generator.completeElement('id', {}, group_unit.package_group_id)
+        self.xml_generator.completeElement('default', {}, str(group_unit.default).lower())
+        self.xml_generator.completeElement('uservisible', {}, str(group_unit.user_visible).lower())
+
         # If the order is not specified, then 1024 should be set as default.
         # With value of 1024 the group will be displayed at the very bottom of the list.
-        ElementTree.SubElement(group_element, 'display_order').text = \
-            str(group_unit.display_order) if group_unit.display_order is not None else '1024'
+        display_order = group_unit.display_order if group_unit.display_order is not None else 1024
+        self.xml_generator.completeElement('display_order', {}, str(display_order))
 
         if group_unit.langonly:
-            ElementTree.SubElement(group_element, 'langonly').text = group_unit.langonly
-        ElementTree.SubElement(group_element, 'name').text = group_unit.name
-        self._write_translated_fields(group_element, 'name', group_unit.translated_name)
-        ElementTree.SubElement(group_element, 'description').text = group_unit.description
-        self._write_translated_fields(group_element, 'description',
-                                      group_unit.translated_description)
+            self.xml_generator.completeElement('langonly', {}, group_unit.langonly)
+        self.xml_generator.completeElement('name', {}, group_unit.name)
+        self._write_translated_fields('name', group_unit.translated_name)
+        self.xml_generator.completeElement('description', {}, group_unit.description)
+        self._write_translated_fields('description', group_unit.translated_description)
 
-        package_list_element = ElementTree.SubElement(group_element, 'packagelist')
+        self.xml_generator.startElement('packagelist', {})
         if group_unit.mandatory_package_names:
             for pkg in sorted(group_unit.mandatory_package_names):
-                ElementTree.SubElement(package_list_element, 'packagereq',
-                                       {'type': 'mandatory'}).text = pkg
+                self.xml_generator.completeElement('packagereq', {'type': 'mandatory'}, pkg)
         if group_unit.default_package_names:
             for pkg in sorted(group_unit.default_package_names):
-                ElementTree.SubElement(package_list_element, 'packagereq',
-                                       {'type': 'default'}).text = pkg
+                self.xml_generator.completeElement('packagereq', {'type': 'default'}, pkg)
         if group_unit.optional_package_names:
             for pkg in sorted(group_unit.optional_package_names):
-                ElementTree.SubElement(package_list_element, 'packagereq',
-                                       {'type': 'optional'}).text = pkg
+                self.xml_generator.completeElement('packagereq', {'type': 'optional'}, pkg)
         if group_unit.conditional_package_names:
             for pkg_name, value in group_unit.conditional_package_names:
-                ElementTree.SubElement(package_list_element, 'packagereq',
-                                       {'type': 'conditional',
-                                        'requires': value}).text = pkg_name
-
-        group_element_string = ElementTree.tostring(group_element, 'utf-8')
-        _LOG.debug('Writing package_group unit metadata:\n' + group_element_string)
-        self.metadata_file_handle.write(group_element_string)
+                attrs = {'type': 'conditional', 'requires': value}
+                self.xml_generator.completeElement('packagereq', attrs, pkg_name)
+        self.xml_generator.endElement('packagelist')
+        self.xml_generator.endElement('group')
 
     def add_package_category_unit_metadata(self, unit):
         """
@@ -122,26 +110,25 @@ class PackageXMLFileContext(MetadataFileContext):
         :param unit: The category to publish
         :type unit: pulp_rpm.plugins.db.models.PackageCategory
         """
-        category_element = ElementTree.Element('category')
-        ElementTree.SubElement(category_element, 'id').text = unit.package_category_id
+        self.xml_generator.startElement('category')
+        self.xml_generator.completeElement('id', {}, unit.package_category_id)
+
         # If the order is not specified, then 1024 should be set as default.
         # With value of 1024 the group will be displayed at the very bottom of the list.
-        ElementTree.SubElement(category_element, 'display_order').text = \
-            str(unit.display_order) if unit.display_order is not None else '1024'
-        ElementTree.SubElement(category_element, 'name').text = unit.name
-        self._write_translated_fields(category_element, 'name', unit.translated_name)
-        ElementTree.SubElement(category_element, 'description').text = unit.description
-        self._write_translated_fields(category_element, 'description', unit.translated_description)
+        display_order = unit.display_order if unit.display_order is not None else 1024
+        self.xml_generator.completeElement('display_order', {}, str(display_order))
 
-        group_list_element = ElementTree.SubElement(category_element, 'grouplist')
+        self.xml_generator.completeElement('name', {}, unit.name)
+        self._write_translated_fields('name', unit.translated_name)
+        self.xml_generator.completeElement('description', {}, unit.description)
+        self._write_translated_fields('description', unit.translated_description)
+
+        self.xml_generator.startElement('grouplist', {})
         if unit.packagegroupids:
             for groupid in sorted(unit.packagegroupids):
-                ElementTree.SubElement(group_list_element, 'groupid').text = groupid
-
-        # Write out the category xml to the file
-        category_element_string = ElementTree.tostring(category_element, encoding='utf-8')
-        _LOG.debug('Writing package_group unit metadata:\n' + category_element_string)
-        self.metadata_file_handle.write(category_element_string)
+                self.xml_generator.completeElement('groupid', {}, groupid)
+        self.xml_generator.endElement('grouplist')
+        self.xml_generator.endElement('category')
 
     def add_package_environment_unit_metadata(self, unit):
         """
@@ -150,37 +137,36 @@ class PackageXMLFileContext(MetadataFileContext):
         :param unit: The environment group to publish
         :type unit: pulp_rpm.plugins.db.models.PackageEnvironment
         """
-        environment_element = ElementTree.Element('environment')
+        self.xml_generator.startElement('environment', {})
+        self.xml_generator.completeElement('id', {}, unit.package_environment_id)
 
-        ElementTree.SubElement(environment_element, 'id').text = unit.package_environment_id
         # If the order is not specified, then 1024 should be set as default.
         # With value of 1024 the group will be displayed at the very bottom of the list.
-        ElementTree.SubElement(environment_element, 'display_order').text = \
-            str(unit.display_order) if unit.display_order is not None else '1024'
-        ElementTree.SubElement(environment_element, 'name').text = unit.name
-        self._write_translated_fields(environment_element, 'name', unit.translated_name)
-        ElementTree.SubElement(environment_element, 'description').text = unit.description
-        self._write_translated_fields(environment_element, 'description',
-                                      unit.translated_description)
+        display_order = unit.display_order if unit.display_order is not None else 1024
+        self.xml_generator.completeElement('display_order', {}, str(display_order))
 
-        group_list_element = ElementTree.SubElement(environment_element, 'grouplist')
+        self.xml_generator.completeElement('name', {}, unit.name)
+        self._write_translated_fields('name', unit.translated_name)
+        self.xml_generator.completeElement('description', {}, unit.description)
+        self._write_translated_fields('description', unit.translated_description)
+
+        self.xml_generator.startElement('grouplist', {})
         if unit.group_ids:
             for groupid in sorted(unit.group_ids):
-                ElementTree.SubElement(group_list_element, 'groupid').text = groupid
+                self.xml_generator.completeElement('groupid', {}, groupid)
+        self.xml_generator.endElement('grouplist')
 
-        option_list_element = ElementTree.SubElement(environment_element, 'optionlist')
+        self.xml_generator.startElement('optionlist', {})
         if unit.options:
             for option in sorted(unit.options):
                 if option['default']:
-                    ElementTree.SubElement(option_list_element, 'groupid',
-                                           {'default': 'true'}).text = option['group']
+                    attributes = {'default': 'true'}
+                    self.xml_generator.completeElement('groupid', attributes, option['group'])
                 else:
-                    ElementTree.SubElement(option_list_element, 'groupid').text = option['group']
+                    self.xml_generator.completeElement('groupid', {}, option['group'])
 
-        # Write out the category xml to the file
-        environment_element_string = ElementTree.tostring(environment_element, encoding='utf-8')
-        _LOG.debug('Writing package_environment unit metadata:\n' + environment_element_string)
-        self.metadata_file_handle.write(environment_element_string)
+        self.xml_generator.endElement('optionlist')
+        self.xml_generator.endElement('environment')
 
     def add_package_langpacks_unit_metadata(self, unit):
         """
@@ -188,12 +174,8 @@ class PackageXMLFileContext(MetadataFileContext):
 
         :param unit: The langpacks unit to publish
         :type unit: pulp_rpm.plugins.db.models.PackageLangpacks
-       """
-        langpacks_element = ElementTree.Element('langpacks')
+        """
+        self.xml_generator.startElement('langpacks', {})
         for match_dict in unit.matches:
-            ElementTree.SubElement(langpacks_element, 'match', match_dict)
-
-        # Write out the langpacks xml to the file
-        langpacks_element_string = ElementTree.tostring(langpacks_element, encoding='utf-8')
-        _LOG.debug('Writing package_langpacks unit metadata:\n' + langpacks_element_string)
-        self.metadata_file_handle.write(langpacks_element_string)
+            self.xml_generator.completeElement('match', match_dict, '')
+        self.xml_generator.endElement('langpacks')
