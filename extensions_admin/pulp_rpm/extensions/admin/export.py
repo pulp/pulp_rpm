@@ -10,6 +10,7 @@ from pulp.client.extensions.extensions import PulpCliOption, PulpCliFlag
 from pulp.common import tags as tag_utils
 
 from pulp_rpm.common import ids, constants
+from pulp_rpm.extensions.admin import repo_options
 
 
 DESC_EXPORT_RUN = _('triggers an immediate export of a repository')
@@ -78,7 +79,8 @@ class RpmExportCommand(RunPublishRepositoryCommand):
         """
         override_config_options = [OPTION_EXPORT_DIR, OPTION_ISO_PREFIX, OPTION_ISO_SIZE,
                                    OPTION_START_DATE, OPTION_END_DATE, FLAG_MANIFEST,
-                                   OPTION_RELATIVE_URL, OPTION_INCREMENTAL_MD]
+                                   OPTION_RELATIVE_URL, OPTION_INCREMENTAL_MD,
+                                   repo_options.OPT_CHECKSUM_TYPE]
 
         super(RpmExportCommand, self).__init__(context=context,
                                                renderer=renderer,
@@ -122,6 +124,7 @@ class RpmGroupExportCommand(PollingCommand):
         self.add_option(OPTION_SERVE_HTTPS)
         self.add_option(OPTION_SERVE_HTTP)
         self.add_option(OPTION_INCREMENTAL_MD)
+        self.add_option(repo_options.OPT_CHECKSUM_TYPE)
 
         self.add_flag(FLAG_MANIFEST)
 
@@ -142,6 +145,7 @@ class RpmGroupExportCommand(PollingCommand):
         serve_http = kwargs[OPTION_SERVE_HTTP.keyword]
         serve_https = kwargs[OPTION_SERVE_HTTPS.keyword]
         incremental_md = kwargs[OPTION_INCREMENTAL_MD.keyword]
+        checksum_type = kwargs[repo_options.OPT_CHECKSUM_TYPE.keyword]
 
         # Since the export distributor is not added to a repository group on creation, add it here
         # if it is not already associated with the group id
@@ -177,6 +181,7 @@ class RpmGroupExportCommand(PollingCommand):
             constants.RELATIVE_URL_KEYWORD: relative_url,
             constants.CREATE_PULP_MANIFEST: manifest,
             constants.INCREMENTAL_EXPORT_REPOMD_KEYWORD: incremental_md,
+            constants.CHECKSUM_TYPE: checksum_type,
         }
 
         # Remove keys from the config that have None value.

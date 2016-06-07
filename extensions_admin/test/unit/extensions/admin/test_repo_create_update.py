@@ -144,6 +144,7 @@ class RpmRepoCreateCommandTests(PulpClientTests):
         self.assertEqual(iso_config['https'], True)
         self.assertEqual(iso_config['relative_url'], '/repo')
         self.assertEqual(iso_config['skip'], [ids.TYPE_ID_RPM])
+        self.assertEqual(iso_config['checksum_type'], 'sha256')
 
         self.assertEqual([TAG_SUCCESS], self.prompt.get_write_tags())
 
@@ -312,6 +313,7 @@ class RpmRepoUpdateCommandTests(PulpClientTests):
             repo_options.OPT_SERVE_HTTP.keyword: True,
             repo_options.OPT_SERVE_HTTPS.keyword: True,
             repo_options.OPT_SKIP.keyword: [ids.TYPE_ID_RPM],
+            repo_options.OPT_CHECKSUM_TYPE.keyword: 'sha1',
         }
 
         self.server_mock.request.return_value = 200, {}
@@ -339,11 +341,13 @@ class RpmRepoUpdateCommandTests(PulpClientTests):
         self.assertEqual(yum_dist_config['http'], True)
         self.assertEqual(yum_dist_config['https'], True)
         self.assertEqual(yum_dist_config['skip'], [ids.TYPE_ID_RPM])
+        self.assertEqual(yum_dist_config['checksum_type'], 'sha1')
 
         iso_dist_config = body['distributor_configs'][ids.EXPORT_DISTRIBUTOR_ID]
         self.assertEqual(iso_dist_config['http'], True)
         self.assertEqual(iso_dist_config['https'], True)
         self.assertEqual(iso_dist_config['skip'], [ids.TYPE_ID_RPM])
+        self.assertEqual(iso_dist_config['checksum_type'], 'sha1')
 
     def test_run_through_cli(self):
         """
