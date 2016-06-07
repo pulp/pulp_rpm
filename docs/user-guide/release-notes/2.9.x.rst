@@ -13,6 +13,8 @@ New Features
 * The <langpacks> tag in comps.xml are synced and published for repositories. These units are also
   parsed on upload. ``pulp-admin`` also has upload, remove, and search support for 
   package_langpacks.
-* The yum distributor now uses the configured checksum type for all repo metadata.
+* The yum distributor and export distributor now use the configured checksum type for all repo
+  metadata. The pulp-admin repo "create" and "update" commands now save the specified checksum type
+  on both distributors.
 * Repoview support is added. The ability to generate HTML files to browse a repository can be
   enabled by using ``--repoview`` option for the yum_distributor.

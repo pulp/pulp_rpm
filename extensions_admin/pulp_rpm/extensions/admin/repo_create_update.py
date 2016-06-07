@@ -41,6 +41,7 @@ EXPORT_DISTRIBUTOR_CONFIG_KEYS = [
     ('relative_url', 'relative_url'),
     ('generate_sqlite', 'generate_sqlite'),
     ('skip', 'skip'),
+    ('checksum_type', 'checksum_type'),
 ]
 
 

@@ -9,7 +9,7 @@ from pulp.devel.unit.util import compare_dict
 from pulp_rpm.extensions.admin import export
 from pulp_rpm.common import constants, ids
 from pulp_rpm.devel.client_base import PulpClientTests
-from pulp_rpm.extensions.admin import status
+from pulp_rpm.extensions.admin import repo_options, status
 
 
 class TestRepoExportRunCommand(PulpClientTests):
@@ -35,7 +35,8 @@ class TestRepoExportRunCommand(PulpClientTests):
             export.OPTION_START_DATE,
             export.OPTION_ISO_PREFIX,
             export.OPTION_ISO_SIZE,
-            export.OPTION_INCREMENTAL_MD
+            export.OPTION_INCREMENTAL_MD,
+            repo_options.OPT_CHECKSUM_TYPE,
         ]
 
         # Test
