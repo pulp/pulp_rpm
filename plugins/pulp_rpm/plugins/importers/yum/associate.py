@@ -370,7 +370,9 @@ def associate_copy_for_repo(unit, dest_repo, set_content=False):
         # It is possible that a previous copy exists as an orphan, in which case it can safely
         # be deleted and replaced with this new version.
         _LOGGER.debug(_('replacing pre-existing copy of %(u)s' % {'u': new_unit}))
-        new_unit.__class__.objects.filter(**new_unit.unit_key).delete()
+        existing_unit_qs = new_unit.__class__.objects.filter(**new_unit.unit_key)
+        repo_controller.disassociate_units(dest_repo, existing_unit_qs)
+        existing_unit_qs.delete()
         new_unit.save()
 
     if set_content:
