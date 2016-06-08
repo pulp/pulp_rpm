@@ -5,7 +5,7 @@ import mock
 from pulp.server.db.migrate.models import _import_all_the_way
 
 
-PATH_TO_MODULE = 'pulp_rpm.plugins.migrations.0031_checksums_and_templates'
+PATH_TO_MODULE = 'pulp_rpm.plugins.migrations.0033_checksums_and_templates'
 migration = _import_all_the_way(PATH_TO_MODULE)
 
 
