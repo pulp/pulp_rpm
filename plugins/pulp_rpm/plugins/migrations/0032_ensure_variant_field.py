@@ -23,4 +23,3 @@ def migrate(*args, **kwargs):
             {variant: {'$exists': False}}
         ]},
         {'$set': {variant: ''}}, multi=True)
-
