@@ -1,6 +1,10 @@
+import os
+import shutil
+
 from pulp.server.db import connection
 
 from pulp.plugins.migration.standard_storage_path import Migration, Plan
+from pulp.plugins.util.misc import mkdir
 
 
 def migrate(*args, **kwargs):
@@ -11,9 +15,9 @@ def migrate(*args, **kwargs):
     migration.add(rpm_plan())
     migration.add(srpm_plan())
     migration.add(drpm_plan())
-    migration.add(distribution_plan())
-    migration.add(yum_metadata_plan())
-    migration.add(iso_plan())
+    migration.add(YumMetadataFile())
+    migration.add(Distribution())
+    migration.add(ISO())
     migration()
 
 
@@ -79,50 +83,111 @@ def drpm_plan():
     return Plan(collection, key_fields)
 
 
-def distribution_plan():
+class Distribution(Plan):
     """
-    Factory to create an Distribution migration plan.
-
-    :return: A configured plan.
-    :rtype: Plan
+    The migration plan for Distribution units.
     """
-    key_fields = (
-        'distribution_id',
-        'family',
-        'variant',
-        'version',
-        'arch'
-    )
-    collection = connection.get_collection('units_distribution')
-    return Plan(collection, key_fields, join_leaf=False)
+
+    def __init__(self):
+        """
+        Call super with collection and fields.
+        """
+        key_fields = (
+            'distribution_id',
+            'family',
+            'variant',
+            'version',
+            'arch'
+        )
+        collection = connection.get_collection('units_distribution')
+        super(Distribution, self).__init__(collection, key_fields, join_leaf=False)
+
+    def _new_path(self, unit):
+        """
+        The *variant* might not exist in the document for older units.
+        Default the variant part of the unit key to '' which matches the model.
+
+        :param unit: The unit being migrated.
+        :type  unit: pulp.plugins.migration.standard_storage_path.Unit
+        :return: The new path.
+        :rtype: str
+        """
+        unit.document.setdefault('variant', '')
+        return super(Distribution, self)._new_path(unit)
 
 
-def yum_metadata_plan():
+class ISO(Plan):
     """
-    Factory to create an YUM metadata migration plan.
-
-    :return: A configured plan.
-    :rtype: Plan
+    The migration plan for ISO units.
     """
-    key_fields = (
-        'data_type',
-        'repo_id'
-    )
-    collection = connection.get_collection('units_yum_repo_metadata_file')
-    return Plan(collection, key_fields)
+
+    def __init__(self):
+        """
+        Call super with collection and fields.
+        """
+        key_fields = (
+            'name',
+            'checksum',
+            'size'
+        )
+        collection = connection.get_collection('units_iso')
+        super(ISO, self).__init__(collection, key_fields)
+
+    def _new_path(self, unit):
+        """
+        Units created by 2.8.0 don't include the ISO name.  This was a regression
+        that is being corrected by this additional logic.  If the storage path
+        does not end with the *name* stored in the unit, it is appended.
+
+        :param unit: The unit being migrated.
+        :type  unit: pulp.plugins.migration.standard_storage_path.Unit
+        :return: The new path.
+        :rtype: str
+        """
+        name = unit.document['name']
+        path = unit.document['_storage_path']
+        if not path.endswith(name):
+            unit.document['_storage_path'] = name
+        new_path = super(ISO, self)._new_path(unit)
+        return new_path
 
 
-def iso_plan():
+class YumMetadataFile(Plan):
     """
-    Factory to create an ISO migration plan.
-
-    :return: A configured plan.
-    :rtype: Plan
+    The migration plan for yum_repo_metadata_file units.
     """
-    key_fields = (
-        'name',
-        'checksum',
-        'size'
-    )
-    collection = connection.get_collection('units_iso')
-    return Plan(collection, key_fields)
+
+    def __init__(self):
+        """
+        Call super with collection and fields.
+        """
+        key_fields = (
+            'data_type',
+            'repo_id'
+        )
+        collection = connection.get_collection('units_yum_repo_metadata_file')
+        super(YumMetadataFile, self).__init__(collection, key_fields)
+
+    def migrate(self, unit_id, path, new_path):
+        """
+        Migrate the unit.
+          1. copy content
+          2. update the DB
+        :param unit_id: A unit UUID.
+        :type unit_id: str
+        :param path: The current storage path.
+        :type path: str
+        :param new_path: The new storage path.
+        :type new_path: str
+        """
+        # the content should be copied(and not moved) due to this issue #1944
+        if os.path.exists(path):
+            mkdir(os.path.dirname(new_path))
+            shutil.copy(path, new_path)
+        self.collection.update_one(
+            filter={
+                '_id': unit_id
+            },
+            update={
+                '$set': {'_storage_path': new_path}
+            })

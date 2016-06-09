@@ -1,3 +1,5 @@
+import os
+
 from unittest import TestCase
 
 from mock import Mock, patch
@@ -14,9 +16,9 @@ class TestMigrate(TestCase):
     """
     Test migration 0028.
     """
-    @patch(PATH_TO_MODULE + '.iso_plan')
-    @patch(PATH_TO_MODULE + '.yum_metadata_plan')
-    @patch(PATH_TO_MODULE + '.distribution_plan')
+    @patch(PATH_TO_MODULE + '.ISO')
+    @patch(PATH_TO_MODULE + '.Distribution')
+    @patch(PATH_TO_MODULE + '.YumMetadataFile')
     @patch(PATH_TO_MODULE + '.drpm_plan')
     @patch(PATH_TO_MODULE + '.srpm_plan')
     @patch(PATH_TO_MODULE + '.rpm_plan')
@@ -104,10 +106,56 @@ class TestPlans(TestCase):
         self.assertTrue(plan.join_leaf)
         self.assertTrue(isinstance(plan, migration.Plan))
 
+
+class TestISO(TestCase):
+
     @patch(PATH_TO_MODULE + '.connection.get_collection')
-    def test_distribution(self, get_collection):
+    def test_init(self, get_collection):
         # test
-        plan = migration.distribution_plan()
+        plan = migration.ISO()
+
+        # validation
+        get_collection.assert_called_once_with('units_iso')
+        self.assertEqual(plan.collection, get_collection.return_value)
+        self.assertEqual(
+            plan.key_fields,
+            (
+                'name',
+                'checksum',
+                'size'
+            ))
+        self.assertTrue(plan.join_leaf)
+        self.assertTrue(isinstance(plan, migration.Plan))
+
+    @patch(PATH_TO_MODULE + '.Plan._new_path')
+    @patch(PATH_TO_MODULE + '.connection.get_collection', Mock())
+    def test_new_path(self, new_path):
+        name = 'rhel.iso'
+        unit = Mock(
+            document={
+                '_storage_path': 'something',
+                'name': name
+            })
+
+        def _new_path(u):
+            return os.path.join('1234', u.document['_storage_path'])
+
+        new_path.side_effect = _new_path
+
+        # test
+        plan = migration.ISO()
+        path = plan._new_path(unit)
+
+        # validation
+        self.assertEqual(path, os.path.join('1234', name))
+
+
+class TestDistribution(TestCase):
+
+    @patch(PATH_TO_MODULE + '.connection.get_collection')
+    def test_init(self, get_collection):
+        # test
+        plan = migration.Distribution()
 
         # validation
         get_collection.assert_called_once_with('units_distribution')
@@ -124,10 +172,40 @@ class TestPlans(TestCase):
         self.assertFalse(plan.join_leaf)
         self.assertTrue(isinstance(plan, migration.Plan))
 
-    @patch(PATH_TO_MODULE + '.connection.get_collection')
-    def test_yum_metadata(self, get_collection):
+    @patch(PATH_TO_MODULE + '.Plan._new_path')
+    @patch(PATH_TO_MODULE + '.connection.get_collection', Mock())
+    def test_new_path(self, new_path):
+        variant = 1234
+        unit = Mock(document={'variant': variant})
+
         # test
-        plan = migration.yum_metadata_plan()
+        plan = migration.Distribution()
+        path = plan._new_path(unit)
+
+        # validation
+        self.assertEqual(unit.document['variant'], variant)
+        self.assertEqual(path, new_path.return_value)
+
+    @patch(PATH_TO_MODULE + '.Plan._new_path')
+    @patch(PATH_TO_MODULE + '.connection.get_collection', Mock())
+    def test_new_path_without_variant(self, new_path):
+        unit = Mock(document={})
+
+        # test
+        plan = migration.Distribution()
+        path = plan._new_path(unit)
+
+        # validation
+        self.assertEqual(unit.document['variant'], '')
+        self.assertEqual(path, new_path.return_value)
+
+
+class TestYumMetadataFile(TestCase):
+
+    @patch(PATH_TO_MODULE + '.connection.get_collection')
+    def test_init(self, get_collection):
+        # test
+        plan = migration.YumMetadataFile()
 
         # validation
         get_collection.assert_called_once_with('units_yum_repo_metadata_file')
@@ -141,20 +219,14 @@ class TestPlans(TestCase):
         self.assertTrue(plan.join_leaf)
         self.assertTrue(isinstance(plan, migration.Plan))
 
-    @patch(PATH_TO_MODULE + '.connection.get_collection')
-    def test_iso(self, get_collection):
+    @patch(PATH_TO_MODULE + '.YumMetadataFile.migrate')
+    @patch(PATH_TO_MODULE + '.connection.get_collection', Mock())
+    def test_migrate(self, mock_migrate):
+
         # test
-        plan = migration.iso_plan()
+        plan = migration.YumMetadataFile()
+        migrated = plan.migrate('unit_id', 'something', 'new_path')
 
         # validation
-        get_collection.assert_called_once_with('units_iso')
-        self.assertEqual(plan.collection, get_collection.return_value)
-        self.assertEqual(
-            plan.key_fields,
-            (
-                'name',
-                'checksum',
-                'size'
-            ))
-        self.assertTrue(plan.join_leaf)
-        self.assertTrue(isinstance(plan, migration.Plan))
+        mock_migrate.assert_called_once_with('unit_id', 'something', 'new_path')
+        self.assertEqual(migrated, mock_migrate.return_value)
