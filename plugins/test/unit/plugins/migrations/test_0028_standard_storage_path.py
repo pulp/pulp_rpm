@@ -219,14 +219,24 @@ class TestYumMetadataFile(TestCase):
         self.assertTrue(plan.join_leaf)
         self.assertTrue(isinstance(plan, migration.Plan))
 
-    @patch(PATH_TO_MODULE + '.YumMetadataFile.migrate')
+    @patch(PATH_TO_MODULE + '.shutil')
+    @patch(PATH_TO_MODULE + '.mkdir')
     @patch(PATH_TO_MODULE + '.connection.get_collection', Mock())
-    def test_migrate(self, mock_migrate):
+    @patch('os.path.exists')
+    def test_migrate(self, path_exists, mkdir, shutil):
+        unit_id = '123'
+        path = '/tmp/old/path_1'
+        new_path = '/tmp/new/content/path_2'
+        path_exists.return_value = True
 
         # test
         plan = migration.YumMetadataFile()
-        migrated = plan.migrate('unit_id', 'something', 'new_path')
+        plan.migrate(unit_id, path, new_path)
 
         # validation
-        mock_migrate.assert_called_once_with('unit_id', 'something', 'new_path')
-        self.assertEqual(migrated, mock_migrate.return_value)
+        path_exists.assert_called_once_with(path)
+        mkdir.assert_called_once_with(os.path.dirname(new_path))
+        shutil.copy.assert_called_once_with(path, new_path)
+        plan.collection.update_one.assert_called_once_with(
+            filter={'_id': unit_id},
+            update={'$set': {'_storage_path': new_path}})
