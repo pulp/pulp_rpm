@@ -3,7 +3,7 @@ import shutil
 
 from pulp.server.db import connection
 
-from pulp.plugins.migration.standard_storage_path import Migration, Plan
+from pulp.plugins.migration.standard_storage_path import Migration, Plan, Unit
 from pulp.plugins.util.misc import mkdir
 
 
@@ -16,7 +16,7 @@ def migrate(*args, **kwargs):
     migration.add(srpm_plan())
     migration.add(drpm_plan())
     migration.add(YumMetadataFile())
-    migration.add(Distribution())
+    migration.add(DistributionPlan())
     migration.add(ISO())
     migration()
 
@@ -83,7 +83,7 @@ def drpm_plan():
     return Plan(collection, key_fields)
 
 
-class Distribution(Plan):
+class DistributionPlan(Plan):
     """
     The migration plan for Distribution units.
     """
@@ -100,7 +100,8 @@ class Distribution(Plan):
             'arch'
         )
         collection = connection.get_collection('units_distribution')
-        super(Distribution, self).__init__(collection, key_fields, join_leaf=False)
+        super(DistributionPlan, self).__init__(collection, key_fields, join_leaf=False)
+        self.fields.add('files')
 
     def _new_path(self, unit):
         """
@@ -113,7 +114,36 @@ class Distribution(Plan):
         :rtype: str
         """
         unit.document.setdefault('variant', '')
-        return super(Distribution, self)._new_path(unit)
+        return super(DistributionPlan, self)._new_path(unit)
+
+    def _new_unit(self, document):
+        """
+        Create a new distribution unit for the specified document.
+
+        :param document: A content unit document fetched from the DB.
+        :type document: dict
+        :return: A new unit.
+        :rtype: DistributionUnit
+        """
+        return DistributionUnit(self, document)
+
+
+class DistributionUnit(Unit):
+    """
+    Specialized distribution unit.
+    """
+
+    @property
+    def files(self):
+        """
+        List of files (relative paths) associated with the unit.
+        """
+        files = [
+            'treeinfo',
+            '.treeinfo'
+        ]
+        files.extend([f['relativepath'] for f in self.document['files']])
+        return files
 
 
 class ISO(Plan):

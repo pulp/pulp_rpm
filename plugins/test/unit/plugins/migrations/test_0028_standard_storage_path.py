@@ -17,7 +17,7 @@ class TestMigrate(TestCase):
     Test migration 0028.
     """
     @patch(PATH_TO_MODULE + '.ISO')
-    @patch(PATH_TO_MODULE + '.Distribution')
+    @patch(PATH_TO_MODULE + '.DistributionPlan')
     @patch(PATH_TO_MODULE + '.YumMetadataFile')
     @patch(PATH_TO_MODULE + '.drpm_plan')
     @patch(PATH_TO_MODULE + '.srpm_plan')
@@ -150,12 +150,12 @@ class TestISO(TestCase):
         self.assertEqual(path, os.path.join('1234', name))
 
 
-class TestDistribution(TestCase):
+class TestDistributionPlan(TestCase):
 
     @patch(PATH_TO_MODULE + '.connection.get_collection')
     def test_init(self, get_collection):
         # test
-        plan = migration.Distribution()
+        plan = migration.DistributionPlan()
 
         # validation
         get_collection.assert_called_once_with('units_distribution')
@@ -170,6 +170,7 @@ class TestDistribution(TestCase):
                 'arch'
             ))
         self.assertFalse(plan.join_leaf)
+        self.assertEqual(plan.fields, set(['files']))
         self.assertTrue(isinstance(plan, migration.Plan))
 
     @patch(PATH_TO_MODULE + '.Plan._new_path')
@@ -179,7 +180,7 @@ class TestDistribution(TestCase):
         unit = Mock(document={'variant': variant})
 
         # test
-        plan = migration.Distribution()
+        plan = migration.DistributionPlan()
         path = plan._new_path(unit)
 
         # validation
@@ -192,12 +193,48 @@ class TestDistribution(TestCase):
         unit = Mock(document={})
 
         # test
-        plan = migration.Distribution()
+        plan = migration.DistributionPlan()
         path = plan._new_path(unit)
 
         # validation
         self.assertEqual(unit.document['variant'], '')
         self.assertEqual(path, new_path.return_value)
+
+    @patch(PATH_TO_MODULE + '.connection.get_collection', Mock())
+    def test_new_unit(self):
+        document = {'A': 1}
+
+        # test
+        plan = migration.DistributionPlan()
+        unit = plan._new_unit(document)
+
+        # validation
+        self.assertTrue(isinstance(unit, migration.DistributionUnit))
+        self.assertEqual(unit.document, document)
+
+
+class TestDistributionUnit(TestCase):
+
+    def test_files(self):
+        plan = Mock()
+        document = {
+            'files': [
+                {'relativepath': 'path_1'},
+                {'relativepath': 'path_2'},
+                {'relativepath': 'path_3'},
+            ]
+        }
+
+        # test
+        unit = migration.DistributionUnit(plan, document)
+
+        # validation
+        files = [
+            'treeinfo',
+            '.treeinfo'
+        ]
+        files.extend([f['relativepath'] for f in document['files']])
+        self.assertEqual(unit.files, files)
 
 
 class TestYumMetadataFile(TestCase):
