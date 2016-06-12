@@ -303,6 +303,10 @@ def args_to_yum_distributor_config(kwargs):
             # flip the flag to true.
             distributor_config['protected'] = True
 
+    # Repoview tool uses sqlite files, thus we enable generation of the latter.
+    if distributor_config.get('repoview', False):
+        distributor_config['generate_sqlite'] = True
+
     return distributor_config
 
 
@@ -346,11 +350,6 @@ def _prep_config(kwargs, plugin_config_keys):
         val = kwargs.pop(k)
         new_key = k.replace('-', '_')
         kwargs[new_key] = val
-
-    # If repoview is requested we have to enable sqlite generation as well.
-    # For consistency it is done for all distributors.
-    if kwargs.get('repoview', False):
-        kwargs['generate_sqlite'] = True
 
     # Populate the plugin config with the plugin-relevant keys in the user args
     user_arg_keys = [k[1] for k in plugin_config_keys]

@@ -82,8 +82,8 @@ d = _('if "true", sqlite files will be generated for the repository metadata dur
 OPT_GENERATE_SQLITE = PulpCliOption('--generate-sqlite', d, required=False,
                                     parse_func=parsers.parse_boolean)
 
-d = _('if "true", static HTML files will be generated during publish for the fast browsing of '
-      'the repository')
+d = _('if "true", static HTML files will be generated during publish by the repoview tool for '
+      'faster browsing of the repository. Enables --generate-sqlite flag.')
 OPT_REPOVIEW = PulpCliOption('--repoview', d, required=False,
                              parse_func=parsers.parse_boolean)
 
