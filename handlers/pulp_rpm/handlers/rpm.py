@@ -273,7 +273,7 @@ class ErratumHandler(ContentHandler):
         """
         report = PackageReport()
         pkg = self.__impl(conduit, options)
-        advisories = [unit_key['errata_id'] for unit_key in units]
+        advisories = [unit_key['id'] for unit_key in units]
         details = pkg.update_minimal(advisories=advisories)
         if details['failed']:
             report.set_failed(details)
