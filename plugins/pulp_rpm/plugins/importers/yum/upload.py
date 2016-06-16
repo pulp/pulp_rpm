@@ -458,16 +458,7 @@ def _extract_rpm_data(type_id, rpm_filename):
     rpm_data = dict()
 
     # Read the RPM header attributes for use later
-    ts = rpm.TransactionSet()
-    ts.setVSFlags(rpm._RPMVSF_NOSIGNATURES)
-    fd = os.open(rpm_filename, os.O_RDONLY)
-    try:
-        headers = ts.hdrFromFdno(fd)
-        os.close(fd)
-    except rpm.error:
-        # Raised if the headers cannot be read
-        os.close(fd)
-        raise
+    headers = rpm_parse.package_headers(rpm_filename)
 
     for k in ['name', 'version', 'release', 'epoch']:
         rpm_data[k] = headers[k]
@@ -520,6 +511,7 @@ def _extract_rpm_data(type_id, rpm_filename):
     # rpm_parse.get_package_xml(..)
     file_stat = os.stat(rpm_filename)
     rpm_data['time'] = file_stat[stat.ST_MTIME]
+    rpm_data['signature'] = rpm_parse.package_signature(headers)
 
     return rpm_data
 

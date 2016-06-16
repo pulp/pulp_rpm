@@ -31,7 +31,8 @@ class TestRPMListenerDownloadSucceeded(unittest.TestCase):
         # it was used as a context manager
         self.assertEqual(mock_deleting.return_value.__exit__.call_count, 1)
 
-    def test_change_download_flag(self):
+    @mock.patch('pulp_rpm.plugins.importers.yum.listener.rpm_parse')
+    def test_change_download_flag(self, mock_rpm_parse):
         unit = mock.MagicMock()
         unit.checksumtype = 'sha256'
         self.report.data = unit
@@ -44,19 +45,9 @@ class TestRPMListenerDownloadSucceeded(unittest.TestCase):
         # test flag changed to True and save was called
         self.assertEqual(added_unit.downloaded, True)
         self.assertEqual(added_unit.save.call_count, 1)
-
-    def test_save_not_called(self):
-        unit = mock.MagicMock()
-        self.report.data = unit
-        added_unit = mock.MagicMock()
-        added_unit.downloaded = True
-        self.mock_sync.add_rpm_unit.return_value = added_unit
-
-        self.listener.download_succeeded(self.report)
-
-        # test flag is still set to True but save was not called
-        self.assertEqual(added_unit.downloaded, True)
-        self.assertEqual(added_unit.save.call_count, 0)
+        mock_rpm_parse.package_headers.assert_called_once_with('/a/b/c')
+        headers = mock_rpm_parse.package_headers.return_value
+        mock_rpm_parse.package_signature.assert_called_once_with(headers)
 
 
 class TestPackageListener(unittest.TestCase):
