@@ -706,7 +706,7 @@ class RepoSync(object):
                         catalog = PackageCatalog(self.conduit.importer_object_id, url)
                         for unit in units_to_download:
                             unit.downloaded = False
-                            unit = self.add_drpm_unit(metadata_files, unit)
+                            unit = self.add_rpm_unit(metadata_files, unit)
                             catalog.add(unit)
                         continue
 
