@@ -1083,7 +1083,7 @@ utility. Let's create and sync a repo::
 
 Now let's build a package langpacks entry for the hyphen package::
 
-   $ pulp-admin rpm repo uploads langpacks -i hyphen -n hyphen-%s --repo-id repo_1
+   $ pulp-admin rpm repo uploads langpacks --name hyphen --install hyphen-%s --repo-id repo_1
    +----------------------------------------------------------------------+
                                  Unit Upload
    +----------------------------------------------------------------------+
@@ -1110,8 +1110,8 @@ We can see that the package langpacks is now part of our repo::
 
    $ pulp-admin rpm repo content langpacks --repo-id=repo_1
    Matches:
-     Install: hyphen
-     Name:    hyphen-%s
+     Install: hyphen-%s
+     Name:    hyphen
 
 .. note::
  Package langpacks will also be created and associated with a repository if they are specified
