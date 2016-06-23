@@ -6,7 +6,6 @@ from pulp.plugins.cataloger import Cataloger
 from pulp.server.content.sources import descriptor
 
 from pulp_rpm.common import ids
-from pulp_rpm.plugins.db import models
 from pulp_rpm.plugins.importers.yum.repomd.metadata import MetadataFiles
 from pulp_rpm.plugins.importers.yum.repomd import primary, nectar_factory
 from pulp_rpm.plugins.importers.yum.repomd import packages
@@ -51,7 +50,7 @@ class YumCataloger(Cataloger):
             for model in _packages:
                 unit_key = model.unit_key
                 url = urljoin(base_url, model.download_path)
-                conduit.add_entry(models.RPM._content_type_id, unit_key, url)
+                conduit.add_entry(model._content_type_id, unit_key, url)
         finally:
             fp.close()
 

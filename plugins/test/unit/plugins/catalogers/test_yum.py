@@ -90,6 +90,19 @@ class TestCataloger(TestCase):
                     entry['unit_key'],
                     self._normalized(entry['url'])))
 
+    @patch('pulp.server.managers.content.catalog.ContentCatalogManager.add_entry')
+    def test_json_serializable(self, mock_add):
+        """
+        ensure the arguments are json serializable
+        see https://pulp.plan.io/issues/2012
+        """
+        url = 'file://%s/' % self.tmp_dir
+        conduit = CatalogerConduit(SOURCE_ID, EXPIRES)
+        cataloger = YumCataloger()
+        cataloger.refresh(conduit, {}, url)
+        for call in mock_add.call_args_list:
+            json.dumps(call)
+
     @patch('pulp_rpm.plugins.catalogers.yum.descriptor')
     def test_nectar_config(self, fake_descriptor):
         config = Mock()
