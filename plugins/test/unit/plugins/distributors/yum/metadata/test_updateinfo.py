@@ -12,11 +12,11 @@ from pulp_rpm.plugins.distributors.yum.metadata.updateinfo import UpdateinfoXMLF
 
 class UpdateinfoXMLFileContextTests(unittest.TestCase):
     """
-    Test correct generation of comps.xml file
+    Test correct generation of updateinfo.xml file
     """
     @mock.patch('pulp.plugins.util.metadata_writer.MetadataFileContext._open_metadata_file_handle')
     def setUp(self, mock_parent_open_file_handle):
-        self.context = UpdateinfoXMLFileContext('/foo')
+        self.context = UpdateinfoXMLFileContext('/foo', checksum_type='sha256')
         self.context.metadata_file_handle = StringIO()
         self.context._open_metadata_file_handle()
 
@@ -32,7 +32,15 @@ class UpdateinfoXMLFileContextTests(unittest.TestCase):
                      'epoch': '0',
                      'version': '0.3.1',
                      'release': '1.fc22',
-                     'type': 'sha256'}]
+                     'type': 'sha256'},
+                    {'src': 'another-test-package-3.2-1.fc22.src.rpm',
+                     'name': 'another-test-package',
+                     'arch': 'x86_64',
+                     'filename': 'another-test-package-0.3.1-1.fc22.x86_64.rpm',
+                     'epoch': '0',
+                     'version': '3.2',
+                     'release': '1.fc22',
+                     'sum': ['md5', 'md5_checksum', 'sha256', 'sha256_checksum']}]
         unit_data = {'errata_id': 'RHSA-2014:0042',
                      'title': 'Some Title',
                      'release': '2',
@@ -98,15 +106,45 @@ class UpdateinfoXMLFileContextTests(unittest.TestCase):
         Test that no duplicated pkglists are generated.
         """
         erratum = self._generate_erratum_unit()
-        print erratum.pkglist
         expected_pkg_str = '<package src="pulp-test-package-0.3.1-1.fc22.src.rpm" ' \
                            'name="pulp-test-package" epoch="0" version="0.3.1" '\
                            'release="1.fc22" arch="x86_64">'
         self.context.add_unit_metadata(erratum)
 
         generated_xml = self.context.metadata_file_handle.getvalue()
-        print generated_xml
         self.assertEqual(generated_xml.count(expected_pkg_str), 1)
+
+    def test__get_package_checksum_tuple_sums_field(self):
+        """
+        Test that the `sums` package field is handled correctly.
+        """
+        erratum = self._generate_erratum_unit()
+        package_with_sums_field = erratum.pkglist[0]['packages'][0]
+        result = self.context._get_package_checksum_tuple(package_with_sums_field)
+        expected_checksum_tuple = ('sha256', 'sums')
+        self.assertEqual(result, expected_checksum_tuple)
+
+    def test__get_package_checksum_tuple_repo_type(self):
+        """
+        Test that the package checksum of the repository checksum type is published if available.
+        """
+        erratum = self._generate_erratum_unit()
+        package_with_multiple_checksums = erratum.pkglist[0]['packages'][1]
+        result = self.context._get_package_checksum_tuple(package_with_multiple_checksums)
+        expected_checksum_tuple = ('sha256', 'sha256_checksum')
+        self.assertEqual(result, expected_checksum_tuple)
+
+    def test__get_package_checksum_tuple_no_checksum(self):
+        """
+        Test that the package checksum is not published if the requested checksum type is not
+        available.
+        """
+        erratum = self._generate_erratum_unit()
+        self.context.checksum_type = 'sha1'
+        package_with_multiple_checksums = erratum.pkglist[0]['packages'][1]
+        result = self.context._get_package_checksum_tuple(package_with_multiple_checksums)
+        expected_checksum_tuple = ()
+        self.assertEqual(result, expected_checksum_tuple)
 
     def test_add_errata_unit_metadata(self):
         """
@@ -139,6 +177,15 @@ class UpdateinfoXMLFileContextTests(unittest.TestCase):
                        'name="pulp-test-package" epoch="0" version="0.3.1" release="1.fc22" ' \
                        'arch="x86_64">\n' \
                        '        <filename>pulp-test-package-0.3.1-1.fc22.x86_64.rpm</filename>\n' \
+                       '        <sum type="sha256">sums</sum>\n' \
+                       '        <reboot_suggested>False</reboot_suggested>\n' \
+                       '      </package>\n' \
+                       '      <package src="another-test-package-3.2-1.fc22.src.rpm" ' \
+                       'name="another-test-package" epoch="0" version="3.2" release="1.fc22" ' \
+                       'arch="x86_64">\n' \
+                       '        <filename>another-test-package-0.3.1-1.fc22.x86_64.rpm' \
+                       '</filename>\n' \
+                       '        <sum type="sha256">sha256_checksum</sum>\n' \
                        '        <reboot_suggested>False</reboot_suggested>\n' \
                        '      </package>\n' \
                        '    </collection>\n' \
