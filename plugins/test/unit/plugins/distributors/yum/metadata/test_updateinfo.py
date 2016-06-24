@@ -21,7 +21,9 @@ class UpdateinfoXMLFileContextTests(unittest.TestCase):
         """
         Build an UpdateinfoXMLFileContext and store it on self.updateinfo_xml_file_context.
         """
-        self.updateinfo_xml_file_context = updateinfo.UpdateinfoXMLFileContext('some_working_dir')
+        nevra_in_repo = set([('pulp-test-package', '0', '0.3.1', '1.fc22', 'x86_64')])
+        self.updateinfo_xml_file_context = updateinfo.UpdateinfoXMLFileContext('some_working_dir',
+                                                                               nevra_in_repo)
         # Let's fake the metadata_file_handle attribute so we can inspect calls to it.
         self.updateinfo_xml_file_context.metadata_file_handle = mock.MagicMock()
 
