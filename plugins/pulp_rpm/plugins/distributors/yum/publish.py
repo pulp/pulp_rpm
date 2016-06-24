@@ -1,4 +1,5 @@
 import copy
+import itertools
 import os
 import subprocess
 from gettext import gettext as _
@@ -13,6 +14,7 @@ from pulp.plugins.util import misc as plugin_misc
 from pulp.plugins.util import publish_step as platform_steps
 from pulp.server.db import model
 from pulp.server.exceptions import InvalidValue, PulpCodedException
+from pulp.server.controllers import repository as repo_controller
 
 from pulp_rpm.common import constants, ids
 from pulp_rpm.yum_plugin import util
@@ -577,6 +579,7 @@ class PublishErrataStep(platform_steps.UnitModelPluginStep):
     """
     Publish all errata
     """
+
     def __init__(self, **kwargs):
         super(PublishErrataStep, self).__init__(constants.PUBLISH_ERRATA_STEP, [models.Errata],
                                                 **kwargs)
@@ -589,10 +592,19 @@ class PublishErrataStep(platform_steps.UnitModelPluginStep):
         Initialize the UpdateInfo file and set the method used to process the unit to the
         one that is built into the UpdateinfoXMLFileContext
         """
+        repo_id = self.get_repo().id
+        nevra_fields = ('name', 'epoch', 'version', 'release', 'arch')
+        querysets = repo_controller.get_unit_model_querysets(repo_id, models.RPM)
+        nevra_scalars = itertools.chain(*[q.scalar(*nevra_fields) for q in querysets])
+        nevra_in_repo = set()
+        for scalar in nevra_scalars:
+            nevra_in_repo.add(models.NEVRA(*scalar))
+
         checksum_type = self.parent.get_checksum_type()
-        self.context = UpdateinfoXMLFileContext(self.get_working_dir(), checksum_type,
-                                                self.get_conduit())
+        self.context = UpdateinfoXMLFileContext(self.get_working_dir(), nevra_in_repo,
+                                                checksum_type, self.get_conduit())
         self.context.initialize()
+
         # set the self.process_unit method to the corresponding method on the
         # UpdateInfoXMLFileContext as there is no other processing to be done for each unit.
         self.process_main = self.context.add_unit_metadata

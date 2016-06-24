@@ -1,3 +1,4 @@
+from collections import namedtuple
 import csv
 import logging
 import os
@@ -23,6 +24,9 @@ from pulp_rpm.yum_plugin import util
 
 
 _LOGGER = logging.getLogger(__name__)
+
+
+NEVRA = namedtuple('NEVRA', ['name', 'epoch', 'version', 'release', 'arch'])
 
 
 class UnitMixin(object):
