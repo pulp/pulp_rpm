@@ -2,17 +2,16 @@ Installation
 ============
 
 .. note::
-  If you followed the Pulp :ref:`installation <platform:server_installation>`
-  instructions you already have RPM features installed. If not, this document
-  will walk you through the installation.
+  If you followed the Pulp installation instructions you already have RPM
+  features installed. If not, this document will walk you through the installation.
 
 Prerequisites
 -------------
 
 The only requirement is to meet the prerequisites of the Pulp Platform. Please
-see the :ref:`Pulp Installation Guide <platform:server_installation>` for
-prerequisites including repository setup. Also reference that document to learn
-more about what each of the following components are for.
+see the Pulp Installation Guide for prerequisites including repository setup.
+Also reference that document to learn more about what each of the following
+components are for.
 
 Server
 ------
