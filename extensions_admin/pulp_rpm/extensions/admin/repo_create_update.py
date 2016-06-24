@@ -18,8 +18,6 @@ from pulp_rpm.extensions.admin import repo_options
 from pulp_rpm.common import constants, ids
 
 
-CONFIG_KEY_SKIP = 'type_skip_list'
-
 YUM_DISTRIBUTOR_CONFIG_KEYS = [
     ('relative_url', 'relative_url'),
     ('http', 'serve_http'),
@@ -85,10 +83,16 @@ class RpmRepoCreateCommand(CreateRepositoryCommand, ImporterConfigMixin):
         """
         super(RpmRepoCreateCommand, self).populate_sync_group()
         self.sync_group.add_option(repo_options.OPT_SKIP)
+        self.sync_group.add_option(repo_options.OPT_REQUIRE_SIG)
+        self.sync_group.add_option(repo_options.OPT_ALLOWED_KEYS)
 
     def parse_sync_group(self, user_input):
         config = ImporterConfigMixin.parse_sync_group(self, user_input)
-        safe_parse(user_input, config, repo_options.OPT_SKIP.keyword, CONFIG_KEY_SKIP)
+        safe_parse(user_input, config, repo_options.OPT_SKIP.keyword, constants.CONFIG_SKIP)
+        safe_parse(user_input, config, repo_options.OPT_REQUIRE_SIG.keyword,
+                   constants.CONFIG_REQUIRE_SIGNATURE)
+        safe_parse(user_input, config, repo_options.OPT_ALLOWED_KEYS.keyword,
+                   constants.CONFIG_ALLOWED_KEYS)
         return config
 
     # -- create repository command overrides ----------------------------------
@@ -220,6 +224,8 @@ class RpmRepoUpdateCommand(UpdateRepositoryCommand, ImporterConfigMixin):
         """
         super(RpmRepoUpdateCommand, self).populate_sync_group()
         self.sync_group.add_option(repo_options.OPT_SKIP)
+        self.sync_group.add_option(repo_options.OPT_REQUIRE_SIG)
+        self.sync_group.add_option(repo_options.OPT_ALLOWED_KEYS)
 
     def parse_sync_group(self, user_input):
         """
@@ -232,7 +238,11 @@ class RpmRepoUpdateCommand(UpdateRepositoryCommand, ImporterConfigMixin):
         :rtype:  dict
         """
         config = super(RpmRepoUpdateCommand, self).parse_sync_group(user_input)
-        safe_parse(user_input, config, repo_options.OPT_SKIP.keyword, CONFIG_KEY_SKIP)
+        safe_parse(user_input, config, repo_options.OPT_SKIP.keyword, constants.CONFIG_SKIP)
+        safe_parse(user_input, config, repo_options.OPT_REQUIRE_SIG.keyword,
+                   constants.CONFIG_REQUIRE_SIGNATURE)
+        safe_parse(user_input, config, repo_options.OPT_ALLOWED_KEYS.keyword,
+                   constants.CONFIG_ALLOWED_KEYS)
         return config
 
     def run(self, **kwargs):

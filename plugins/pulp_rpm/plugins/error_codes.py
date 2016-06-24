@@ -31,3 +31,7 @@ RPM1011 = Error("RPM1011", _('ISORsyncDistributor requires a predistributor to b
 RPM1012 = Error("RPM1012", _('Checksum type "%(checksumtype)s" requested for updateinfo.xml is not '
                              'available for all packages listed in the errata.'),
                 ['checksumtype'])
+RPM1013 = Error("RPM1013", _('Cannot import unsigned Package "%(package)s".'), ['package'])
+RPM1014 = Error("RPM1014", _('Invalid signature key "%(key)s" found for Package: "%(package)s". '
+                             'Allowed Signatures keys "%(allowed)s".'),
+                ['key', 'package', 'allowed'])

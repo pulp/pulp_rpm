@@ -15,6 +15,8 @@ COMPLETE_STATES = (STATE_COMPLETE, STATE_FAILED, STATE_SKIPPED)
 ERROR_SIZE_VERIFICATION = 'size_mismatch'
 ERROR_CHECKSUM_VERIFICATION = 'checksum_mismatch'
 ERROR_CHECKSUM_TYPE_UNKNOWN = 'checksum_type_unknown'
+ERROR_INVALID_PACKAGE_SIG = 'invalid_package_signature'
+ERROR_SIGNATURE_VERIFICATION = 'signature_verification_failure'
 
 # Standard keywords for progress reports to include
 PROGRESS_STATE_KEY = 'state'
@@ -75,7 +77,7 @@ PUBLISH_REPORT_KEYS = (PROGRESS_STATE_KEY, PROGRESS_TOTAL_KEY, PROGRESS_PROCESSE
 
 # -- configuration ------------------------------------------------------------
 
-# Used as a note on a repository to indicate it is a Puppet repository
+# Used as a note on a repository to indicate it is a RPM/ISO repository
 REPO_NOTE_RPM = 'rpm-repo'
 REPO_NOTE_ISO = 'iso-repo'
 
@@ -90,6 +92,10 @@ CONFIG_SSL_VALIDATION_DEFAULT = True
 CONFIG_UNITS_REMOVE_MISSING_DEFAULT = False
 # By default, lets validate units
 CONFIG_VALIDATE_DEFAULT = True
+
+# Importer configuration key names
+CONFIG_REQUIRE_SIGNATURE = 'require_signature'
+CONFIG_ALLOWED_KEYS = 'allowed_keys'
 
 # Distributor configuration key names
 CONFIG_SERVE_HTTP = 'serve_http'

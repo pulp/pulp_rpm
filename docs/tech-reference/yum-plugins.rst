@@ -530,6 +530,14 @@ configuration values are optional.
  ``force_full``
  Boolean flag. If true, full re-sync is triggered.
 
+``require_signature``
+Requires that imported packages like RPM/DRPM/SRPM should be signed. Defaults to False.
+
+``allowed_keys``
+Comma-separated list of allowed signature keys that imported packages can be signed with.
+The key should be lowercase 8 character abbreviated fingerprint (so called short key ID).
+
+
 Yum Distributor
 ===============
 

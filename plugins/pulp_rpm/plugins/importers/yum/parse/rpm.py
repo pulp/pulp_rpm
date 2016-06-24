@@ -6,6 +6,9 @@ import rpm as rpm_module
 from createrepo import yumbased
 from pulp.server import util
 import rpmUtils
+from pulp.server.exceptions import PulpCodedException
+from pulp_rpm.common import constants
+from pulp_rpm.plugins import error_codes
 
 
 _LOGGER = logging.getLogger(__name__)
@@ -127,7 +130,8 @@ def package_signature(headers):
     :param headers: package header
     :type  headers: rpm.hdr
 
-    :return: package signature
+    :return: short key id the package was signed with
+             (short key id is the 8 character abbreviated fingerprint)
     :rtype: str
     """
 
@@ -143,3 +147,46 @@ def package_signature(headers):
         return None
     # gpg program uses the last 8 characters of the fingerprint
     return signature.split()[-1][-8:]
+
+
+def signature_enabled(config):
+    """
+    Check if the signature policy is enabled.
+
+    :param config: configuration instance passed to the importer
+    :type  config: pulp.plugins.config.PluginCallConfiguration
+
+    :return: true if enabled, false otherwise
+    :rtype: boolean
+    """
+
+    require_signature = config.get(constants.CONFIG_REQUIRE_SIGNATURE, False)
+    allowed_keys = config.get(constants.CONFIG_ALLOWED_KEYS)
+    if require_signature or allowed_keys:
+        return True
+    return False
+
+
+def verify_signature(unit, config):
+    """
+    Verify package signature.
+
+    :param unit: model instance of the package
+    :type  unit: pulp_rpm.plugins.db.models.RPM/DRPM/SRPM
+
+    :param config: configuration instance passed to the importer
+    :type  config: pulp.plugins.config.PluginCallConfiguration
+
+    :raise: PulpCodedException if the signature check did not pass
+    """
+
+    signing_key = unit.signing_key
+    require_signature = config.get(constants.CONFIG_REQUIRE_SIGNATURE, False)
+    allowed_keys = config.get(constants.CONFIG_ALLOWED_KEYS, [])
+    if require_signature and not signing_key:
+        raise PulpCodedException(error_code=error_codes.RPM1013, package=unit.filename)
+    if allowed_keys:
+        allowed_keys = [key.lower() for key in allowed_keys]
+        if signing_key and signing_key not in allowed_keys:
+                raise PulpCodedException(error_code=error_codes.RPM1014, key=signing_key,
+                                         package=unit.filename, allowed=allowed_keys)

@@ -49,6 +49,20 @@ class TestRPMListenerDownloadSucceeded(unittest.TestCase):
         headers = mock_rpm_parse.package_headers.return_value
         mock_rpm_parse.package_signature.assert_called_once_with(headers)
 
+    @mock.patch('pulp_rpm.plugins.importers.yum.listener.rpm_parse')
+    def test_save_not_called(self, mock_rpm_parse):
+        unit = mock.MagicMock()
+        self.report.data = unit
+        added_unit = mock.MagicMock()
+        added_unit.downloaded = True
+        self.mock_sync.add_rpm_unit.return_value = added_unit
+
+        self.listener.download_succeeded(self.report)
+
+        # test flag is still set to True but save was not called
+        self.assertEqual(added_unit.downloaded, True)
+        self.assertEqual(added_unit.save.call_count, 0)
+
 
 class TestPackageListener(unittest.TestCase):
     def setUp(self):

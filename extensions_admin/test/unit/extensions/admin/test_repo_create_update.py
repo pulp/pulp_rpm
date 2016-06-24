@@ -8,6 +8,7 @@ from pulp.common.compat import json
 from pulp.common.plugins import importer_constants as constants
 
 from pulp_rpm.common import ids
+from pulp_rpm.common import constants as rpm_constants
 from pulp_rpm.devel.client_base import PulpClientTests
 from pulp_rpm.extensions.admin import repo_options
 from pulp_rpm.extensions.admin import repo_create_update
@@ -112,7 +113,7 @@ class RpmRepoCreateCommandTests(PulpClientTests):
         self.assertEqual(importer_config[constants.KEY_BASIC_AUTH_PASS], 'basicpass')
         self.assertEqual(importer_config[constants.KEY_MAX_SPEED], 1024)
         self.assertEqual(importer_config[constants.KEY_MAX_DOWNLOADS], 8)
-        self.assertEqual(importer_config[repo_create_update.CONFIG_KEY_SKIP], [ids.TYPE_ID_RPM])
+        self.assertEqual(importer_config[rpm_constants.CONFIG_SKIP], [ids.TYPE_ID_RPM])
         self.assertEqual(importer_config[constants.KEY_UNITS_REMOVE_MISSING], True)
         self.assertEqual(importer_config[constants.KEY_UNITS_RETAIN_OLD_COUNT], 2)
 
@@ -343,7 +344,7 @@ class RpmRepoUpdateCommandTests(PulpClientTests):
 
         yum_imp_config = body['importer_config']
         self.assertEqual(yum_imp_config[constants.KEY_FEED], 'http://localhost')
-        self.assertEqual(yum_imp_config[repo_create_update.CONFIG_KEY_SKIP], [ids.TYPE_ID_RPM])
+        self.assertEqual(yum_imp_config[rpm_constants.CONFIG_SKIP], [ids.TYPE_ID_RPM])
 
         yum_dist_config = body['distributor_configs'][ids.YUM_DISTRIBUTOR_ID]
         self.assertEqual(yum_dist_config['http'], True)

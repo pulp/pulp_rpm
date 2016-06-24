@@ -6,6 +6,7 @@ import rpm as rpm_module
 from mock import patch, Mock
 from pulp.common.compat import unittest
 from pulp.devel.unit import util
+from pulp.server.exceptions import PulpCodedException
 
 from pulp_rpm.plugins.importers.yum.parse import rpm
 
@@ -47,12 +48,52 @@ class PackageHeaders(unittest.TestCase):
         sample_rpm_filename = os.path.join(DATA_DIR, 'walrus-5.21-1.noarch.rpm')
         headers = rpm.package_headers(sample_rpm_filename)
         self.assertTrue(isinstance(headers, rpm_module.hdr))
-        signature = rpm.package_signature(headers)
-        self.assertEquals(signature, 'f78fb195')
-        self.assertEquals(len(signature), 8)
+        signing_key = rpm.package_signature(headers)
+        self.assertEquals(signing_key, 'f78fb195')
+        self.assertEquals(len(signing_key), 8)
 
     def test_invalid_package_headers(self):
         fake_rpm_file = os.path.join(DATA_DIR, 'fake.rpm')
         with self.assertRaises(rpm_module.error) as e:
             rpm.package_headers(fake_rpm_file)
         self.assertEquals(e.exception.message, 'error reading package header')
+
+
+class SignatureEnabled(unittest.TestCase):
+    """
+    tests for signature policy state
+    """
+
+    def test_signature_check_enabled(self):
+        config = {"require_signature": True, "allowed_keys": []}
+        response = rpm.signature_enabled(config)
+        self.assertTrue(response)
+
+    def test_signature_check_disabled(self):
+        config = {"require_signature": False, "allowed_keys": []}
+        response = rpm.signature_enabled(config)
+        self.assertFalse(response)
+
+
+class VerifySignature(unittest.TestCase):
+    """
+    test for package signature verification
+    """
+
+    def test_reject_unsigned_packages(self):
+        unit = Mock()
+        unit.signing_key = None
+        config = {"require_signature": True}
+
+        with self.assertRaises(PulpCodedException) as cm:
+                rpm.verify_signature(unit, config)
+                self.assertEqual(cm.exception.error_code.code, 'RPM1013')
+
+    def test_invalid_package_signature(self):
+        unit = Mock()
+        unit.signing_key = '12345678'
+        config = {"allowed_keys": ['87654321']}
+
+        with self.assertRaises(PulpCodedException) as cm:
+            rpm.verify_signature(unit, config)
+            self.assertEqual(cm.exception.error_code.code, 'RPM1014')

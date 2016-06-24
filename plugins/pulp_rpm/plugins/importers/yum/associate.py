@@ -5,11 +5,13 @@ import mongoengine
 import os
 from pulp.plugins.util.misc import paginate
 from pulp.server.controllers import repository as repo_controller
+from pulp.server.exceptions import PulpCodedException
 
 from pulp_rpm.common import constants, ids
 from pulp_rpm.plugins.db import models
 from pulp_rpm.plugins.importers.yum import depsolve
 from pulp_rpm.plugins.importers.yum import existing
+from pulp_rpm.plugins.importers.yum.parse import rpm as rpm_parse
 
 
 _LOGGER = logging.getLogger(__name__)
@@ -35,8 +37,8 @@ def associate(source_repo, dest_repo, import_conduit, config, units=None):
     :param config:          config object for the distributor
     :type  config:          pulp.plugins.config.PluginCallConfiguration
 
-    :param units:           iterable of ContentUnit objects to copy
-    :type  units:           iterable
+    :param units:           generator of ContentUnit objects to copy
+    :type  units:           generator
 
     :return:                List of associated units.
     """
@@ -50,13 +52,23 @@ def associate(source_repo, dest_repo, import_conduit, config, units=None):
     if recursive is None:
         recursive = False
 
-    associated_units = set([_associate_unit(dest_repo, unit) for unit in units])
-    # allow garbage collection
-    units = None
+    # make a set from generator to be able to iterate through it several times
+    units = set(units)
+    # we need to filter out rpm units since in reality they were not associated
+    associated_units = [_associate_unit(dest_repo, unit, config) for unit in units
+                        if not isinstance(unit, models.RPM)]
+    if None in associated_units:
+        _LOGGER.warning(_('%s packages failed signature check and were not imported.'
+                        % len(associated_units)))
+
+    associated_units = set(associated_units)
 
     associated_units |= copy_rpms(
-        (unit for unit in associated_units if isinstance(unit, models.RPM)),
-        source_repo, dest_repo, import_conduit, recursive)
+        (unit for unit in units if isinstance(unit, models.RPM)),
+        source_repo, dest_repo, import_conduit, config, recursive)
+
+    # allow garbage collection
+    units = None
 
     # return here if we shouldn't get child units
     if not recursive:
@@ -76,14 +88,14 @@ def associate(source_repo, dest_repo, import_conduit, config, units=None):
     wanted_rpms = get_rpms_to_copy_by_key(rpm_search_dicts, import_conduit, source_repo)
     rpm_search_dicts = None
     rpms_to_copy = filter_available_rpms(wanted_rpms, import_conduit, source_repo)
-    associated_units |= copy_rpms(rpms_to_copy, source_repo, dest_repo, import_conduit, recursive)
+    associated_units |= copy_rpms(rpms_to_copy, source_repo, dest_repo, import_conduit, config,
+                                  recursive)
     rpms_to_copy = None
 
     # ------ get RPM children of groups ------
     names_to_copy = get_rpms_to_copy_by_name(rpm_names, import_conduit, dest_repo)
     associated_units |= copy_rpms_by_name(names_to_copy, source_repo, dest_repo,
-                                          import_conduit, recursive)
-
+                                          import_conduit, config, recursive)
     return list(associated_units)
 
 
@@ -167,7 +179,7 @@ def filter_available_rpms(rpms, import_conduit, repo):
                                        models.RPM, repo)
 
 
-def copy_rpms(units, source_repo, dest_repo, import_conduit, copy_deps, solver=None):
+def copy_rpms(units, source_repo, dest_repo, import_conduit, config, copy_deps, solver=None):
     """
     Copy RPMs from the source repo to the destination repo, and optionally copy
     dependencies as well. Dependencies are resolved recursively.
@@ -180,6 +192,8 @@ def copy_rpms(units, source_repo, dest_repo, import_conduit, copy_deps, solver=N
     :type dest_repo: pulp.server.db.model.Repository
     :param import_conduit:  import conduit passed to the Importer
     :type  import_conduit:  pulp.plugins.conduits.unit_import.ImportUnitConduit
+    :param config:          configuration instance passed to the importer of the destination repo
+    :type  config:          pulp.plugins.config.PluginCallConfiguration
     :param copy_deps:       if True, copies dependencies as specified in "Requires"
                             lines in the RPM metadata. Matches against NEVRAs
                             and Provides declarations that are found in the
@@ -196,11 +210,26 @@ def copy_rpms(units, source_repo, dest_repo, import_conduit, copy_deps, solver=N
     """
     unit_set = set()
 
+    failed_signature_check = 0
     for unit in units:
         # we are passing in units that may have flattened "provides" metadata.
         # This flattened field is not used by associate_single_unit().
-        repo_controller.associate_single_unit(dest_repo, unit)
+        if rpm_parse.signature_enabled(config):
+            if unit.downloaded:
+                try:
+                    rpm_parse.verify_signature(unit, config)
+                except PulpCodedException as e:
+                    _LOGGER.debug(e)
+                    failed_signature_check += 1
+                    continue
+            else:
+                continue
+        repo_controller.associate_single_unit(repository=dest_repo, unit=unit)
         unit_set.add(unit)
+
+    if failed_signature_check:
+        _LOGGER.warning(_('%s packages failed signature check and were not imported.'
+                        % failed_signature_check))
 
     if copy_deps and unit_set:
         if solver is None:
@@ -220,8 +249,8 @@ def copy_rpms(units, source_repo, dest_repo, import_conduit, copy_deps, solver=N
 
         _LOGGER.debug('Copying deps: %s' % str(sorted([x.name for x in to_copy])))
         if to_copy:
-            unit_set |= copy_rpms(to_copy, source_repo, dest_repo, import_conduit, copy_deps,
-                                  solver)
+            unit_set |= copy_rpms(to_copy, source_repo, dest_repo, import_conduit, config,
+                                  copy_deps, solver)
 
     return unit_set
 
@@ -251,7 +280,7 @@ def _no_checksum_clean_unit_key(unit_tuple):
     return ret
 
 
-def copy_rpms_by_name(names, source_repo, dest_repo, import_conduit, copy_deps):
+def copy_rpms_by_name(names, source_repo, dest_repo, import_conduit, config, copy_deps):
     """
     Copy RPMs from source repo to destination repo by name
 
@@ -274,7 +303,7 @@ def copy_rpms_by_name(names, source_repo, dest_repo, import_conduit, copy_deps):
                                                     unit_fields=models.RPM.unit_key_fields,
                                                     yield_content_unit=True)
 
-    return copy_rpms(units, source_repo, dest_repo, import_conduit, copy_deps)
+    return copy_rpms(units, source_repo, dest_repo, import_conduit, config, copy_deps)
 
 
 def identify_children_to_copy(units):
@@ -303,7 +332,7 @@ def identify_children_to_copy(units):
     return groups, rpm_names, rpm_search_dicts
 
 
-def _associate_unit(dest_repo, unit):
+def _associate_unit(dest_repo, unit, config):
     """
     Associate one particular unit with the destination repository. There are
     behavioral exceptions based on type:
@@ -321,7 +350,10 @@ def _associate_unit(dest_repo, unit):
     :param unit:            Unit to be copied
     :type  unit:            pulp.server.db.model.ContentUnit
 
-    :return:                copied unit
+    :param config:          configuration instance passed to the importer of the destination repo
+    :type  config:          pulp.plugins.config.PluginCallConfiguration
+
+    :return:                copied unit or None if the unit was not copied
     :rtype:                 pulp.server.db.model.ContentUnit
     """
     types_to_be_copied = (
@@ -337,6 +369,16 @@ def _associate_unit(dest_repo, unit):
         return unit
     elif isinstance(unit, models.YumMetadataFile):
         return associate_copy_for_repo(unit, dest_repo, True)
+    elif isinstance(unit, (models.DRPM, models.SRPM)):
+            if rpm_parse.signature_enabled(config):
+                if unit.downloaded:
+                    try:
+                        rpm_parse.verify_signature(unit, config)
+                    except PulpCodedException as e:
+                        _LOGGER.debug(e)
+                        return
+            repo_controller.associate_single_unit(repository=dest_repo, unit=unit)
+            return unit
     else:
         repo_controller.associate_single_unit(repository=dest_repo, unit=unit)
         return unit
