@@ -5,6 +5,7 @@ from pulp.plugins.util import verification
 from pulp.server import util
 
 from pulp_rpm.common import constants
+from pulp_rpm.plugins.importers.yum.parse import rpm as rpm_parse
 
 
 _logger = logging.getLogger(__name__)
@@ -183,7 +184,7 @@ class PackageListener(DownloadEventListener):
 
 class RPMListener(PackageListener):
     """
-    The RPM package download lister.
+    The RPM/SRPM/DRPM package download listener.
     """
 
     def download_succeeded(self, report):
@@ -194,8 +195,14 @@ class RPMListener(PackageListener):
             except (verification.VerificationException, util.InvalidChecksumType):
                 # verification failed, unit not added
                 return
+
+            # we need to read package header in order to extract signature info
+            # unit is not added if header cannot be read
+            headers = rpm_parse.package_headers(report.destination)
+
             added_unit = self.sync.add_rpm_unit(self.metadata_files, unit)
             added_unit.safe_import_content(report.destination)
             if not added_unit.downloaded:
                 added_unit.downloaded = True
-                added_unit.save()
+            added_unit['signature'] = rpm_parse.package_signature(headers)
+            added_unit.save()

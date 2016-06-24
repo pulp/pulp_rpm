@@ -1,5 +1,7 @@
+from __future__ import absolute_import
 import logging
 import os
+import rpm as rpm_module
 
 from createrepo import yumbased
 from pulp.server import util
@@ -90,3 +92,54 @@ def string_to_unicode(data):
         except UnicodeError:
             # try others
             continue
+
+
+def package_headers(filename):
+    """
+    Return package header from rpm/srpm/drpm.
+
+    :param filename: full path to the package to analyze
+    :type  filename: str
+
+    :return: package header
+    :rtype: rpm.hdr
+    """
+
+    # Read the RPM header attributes for use later
+    ts = rpm_module.TransactionSet()
+    ts.setVSFlags(rpm_module._RPMVSF_NOSIGNATURES)
+    fd = os.open(filename, os.O_RDONLY)
+    try:
+        headers = ts.hdrFromFdno(fd)
+        os.close(fd)
+    except rpm_module.error:
+        # Raised if the headers cannot be read
+        os.close(fd)
+        raise
+
+    return headers
+
+
+def package_signature(headers):
+    """
+    Extract package signature from rpm/srpm/drpm.
+
+    :param headers: package header
+    :type  headers: rpm.hdr
+
+    :return: package signature
+    :rtype: str
+    """
+
+    # this expression looks up at the header that was encrypted whether with RSA or DSA algorithm,
+    # then extracts all the possible signature tags, so the signature can be none, signed with a
+    # gpg or pgp key.
+    # this exact expression is also used in the yum code
+    # https://github.com/rpm-software-management/yum/blob/master/rpmUtils/miscutils.py#L105
+    signature = headers.sprintf("%|DSAHEADER?{%{DSAHEADER:pgpsig}}:"
+                                "{%|RSAHEADER?{%{RSAHEADER:pgpsig}}:{%|SIGGPG?{%{SIGGPG:pgpsig}}:"
+                                "{%|SIGPGP?{%{SIGPGP:pgpsig}}:{none}|}|}|}|")
+    if signature == "none":
+        return None
+    # gpg program uses the last 8 characters of the fingerprint
+    return signature.split()[-1][-8:]
