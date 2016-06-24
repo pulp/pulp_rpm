@@ -85,6 +85,38 @@ class UpdateinfoXMLFileContext(XmlFileContext):
 
         return repo_unit_nevra
 
+    def _get_package_checksum_tuple(self, package):
+        """
+        Decide which checksum to publish for the given package in the erratum package list.
+
+        Handle two possible ways of specifying the checksum in the erratum package list:
+        - in the `sum` package field as a list of alternating checksum types and values,
+          e.g. ['type1', 'checksum1', 'type2', 'checksum2']
+        - in the `type` and `sums` package fields. It is only the case when the erratum was uploaded
+          via pulp-admin. Only one type of the checksum could be specified this way.
+
+        :param package: package from the erratum package list
+        :type  package: dict
+        :return: checksum type and value to publish
+        :rtype: tuple
+        """
+        package_checksum_tuple = ()
+        repo_checksum_type = self.checksum_type
+        package_checksums = package.get('sum')
+        if package_checksums:
+            checksum_types = package_checksums[::2]
+            checksum_values = package_checksums[1::2]
+            checksums = dict(zip(checksum_types, checksum_values))
+            if repo_checksum_type in checksums:
+                checksum_value = checksums[repo_checksum_type]
+                package_checksum_tuple = (repo_checksum_type, checksum_value)
+        else:
+            checksum_type = package.get('type')
+            checksum_value = package.get('sums')
+            if checksum_type == repo_checksum_type and checksum_value:
+                package_checksum_tuple = (checksum_type, checksum_value)
+        return package_checksum_tuple
+
     def add_unit_metadata(self, item):
         """
         Write the XML representation of erratum_unit to self.metadata_file_handle
@@ -173,9 +205,9 @@ class UpdateinfoXMLFileContext(XmlFileContext):
                 self.xml_generator.startElement('package', package_attributes)
                 self.xml_generator.completeElement('filename', {}, package['filename'])
 
-                checksum_tuple = package.get('sum', None)
-                if checksum_tuple is not None:
-                    checksum_type, checksum_value = checksum_tuple
+                package_checksum_tuple = self._get_package_checksum_tuple(package)
+                if package_checksum_tuple:
+                    checksum_type, checksum_value = package_checksum_tuple
                     sum_attributes = {'type': checksum_type}
                     self.xml_generator.completeElement('sum', sum_attributes, checksum_value)
 
