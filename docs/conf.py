@@ -30,7 +30,7 @@ rtd_builder = 'latest'
 
 # Add any Sphinx extension module names here, as strings. They can be extensions
 # coming with Sphinx (named 'sphinx.ext.*') or your custom ones.
-extensions = ['sphinx.ext.intersphinx', 'sphinx.ext.extlinks']
+extensions = ['sphinx.ext.extlinks']
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
@@ -245,9 +245,6 @@ texinfo_documents = [
 
 # How to display URL addresses: 'footnote', 'no', or 'inline'.
 #texinfo_show_urls = 'footnote'
-
-intersphinx_mapping = {'python': ('http://docs.python.org/2.7/', None),
-                       'platform': (("http://pulp.readthedocs.org/en/%s/" % rtd_builder), None)}
 
 extlinks = {'redmine': ('https://pulp.plan.io/issues/%s', '#'),
             'fixedbugs': ('https://pulp.plan.io/projects/pulp_rpm/issues?c%%5B%%5D=tracker&c%%5B'
