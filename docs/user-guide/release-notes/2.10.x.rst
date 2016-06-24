@@ -1,0 +1,13 @@
+=======================
+Pulp 2.10 Release Notes
+=======================
+
+Pulp 2.10.0
+===========
+
+New Features
+------------
+
+* The yum distributor and export distributor now can use the configured checksum type for
+  updateinfo.xml generation which may differ from the configured checksum type for all
+  repo metadata. It can be specified via pulp-admin repo "create" and "update" commands.

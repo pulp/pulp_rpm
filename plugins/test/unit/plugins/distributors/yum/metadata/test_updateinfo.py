@@ -125,9 +125,9 @@ class UpdateinfoXMLFileContextTests(unittest.TestCase):
         expected_checksum_tuple = ('sha256', 'sums')
         self.assertEqual(result, expected_checksum_tuple)
 
-    def test__get_package_checksum_tuple_repo_type(self):
+    def test__get_package_checksum_tuple_dist_type(self):
         """
-        Test that the package checksum of the repository checksum type is published if available.
+        Test that the package checksum of the distributor checksum type is published if available.
         """
         erratum = self._generate_erratum_unit()
         package_with_multiple_checksums = erratum.pkglist[0]['packages'][1]
@@ -135,16 +135,43 @@ class UpdateinfoXMLFileContextTests(unittest.TestCase):
         expected_checksum_tuple = ('sha256', 'sha256_checksum')
         self.assertEqual(result, expected_checksum_tuple)
 
-    def test__get_package_checksum_tuple_no_checksum(self):
+    def test__get_package_checksum_tuple_unknown_type(self):
         """
         Test that the package checksum is not published if the requested checksum type is not
         available.
         """
         erratum = self._generate_erratum_unit()
-        self.context.checksum_type = 'sha1'
+        self.context.checksum_type = 'unknown type #1'
+        self.context.updateinfo_checksum_type = 'unknown type #2'
         package_with_multiple_checksums = erratum.pkglist[0]['packages'][1]
         result = self.context._get_package_checksum_tuple(package_with_multiple_checksums)
         expected_checksum_tuple = ()
+        self.assertEqual(result, expected_checksum_tuple)
+
+    def test__get_package_checksum_tuple_updateinfo_type(self):
+        """
+        Test that the package checksum of requested checksum type for updateinfo.xml is
+        published if available.
+        """
+        erratum = self._generate_erratum_unit()
+        self.context.checksum_type = 'sha256'
+        self.context.updateinfo_checksum_type = 'md5'
+        package_with_multiple_checksums = erratum.pkglist[0]['packages'][1]
+        result = self.context._get_package_checksum_tuple(package_with_multiple_checksums)
+        expected_checksum_tuple = ('md5', 'md5_checksum')
+        self.assertEqual(result, expected_checksum_tuple)
+
+    def test__get_package_checksum_tuple_updateinfo_unknown_type(self):
+        """
+        Test that the package checksum of the distributor checksum type is published if
+        the updateinfo checksum type is unavailable.
+        """
+        erratum = self._generate_erratum_unit()
+        self.context.checksum_type = 'sha256'
+        self.context.updateinfo_checksum_type = 'unknown type'
+        package_with_multiple_checksums = erratum.pkglist[0]['packages'][1]
+        result = self.context._get_package_checksum_tuple(package_with_multiple_checksums)
+        expected_checksum_tuple = ('sha256', 'sha256_checksum')
         self.assertEqual(result, expected_checksum_tuple)
 
     def test_add_errata_unit_metadata(self):

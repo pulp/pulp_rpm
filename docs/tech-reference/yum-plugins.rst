@@ -599,6 +599,10 @@ Optional Configuration Parameters
  already known, it will be computed on-the-fly and saved for future use. If any such units have not
  been downloaded, then checksum calculation is impossible, and the publish will fail gracefully.
 
+``updateinfo_checksum_type``
+ Checksum type to use for updateinfo.xml generation. For each package listed in updateinfo.xml
+ the checksum of this type will be published if available, otherwise ``checksum_type`` will be used.
+
 ``skip``
  List of content types to skip during the repository publish.
  If unspecified, all types will be published. Valid values are: rpm, drpm,

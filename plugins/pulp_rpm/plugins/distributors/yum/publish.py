@@ -601,8 +601,10 @@ class PublishErrataStep(platform_steps.UnitModelPluginStep):
             nevra_in_repo.add(models.NEVRA(*scalar))
 
         checksum_type = self.parent.get_checksum_type()
+        updateinfo_checksum_type = self.get_config().get('updateinfo_checksum_type')
         self.context = UpdateinfoXMLFileContext(self.get_working_dir(), nevra_in_repo,
-                                                checksum_type, self.get_conduit())
+                                                checksum_type, self.get_conduit(),
+                                                updateinfo_checksum_type)
         self.context.initialize()
 
         # set the self.process_unit method to the corresponding method on the
