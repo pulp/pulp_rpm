@@ -16,7 +16,8 @@ class UpdateinfoXMLFileContextTests(unittest.TestCase):
     """
     @mock.patch('pulp.plugins.util.metadata_writer.MetadataFileContext._open_metadata_file_handle')
     def setUp(self, mock_parent_open_file_handle):
-        self.context = UpdateinfoXMLFileContext('/foo', checksum_type='sha256')
+        nevra_in_repo = set([('pulp-test-package', '0', '0.3.1', '1.fc22', 'x86_64')])
+        self.context = UpdateinfoXMLFileContext('/foo', nevra_in_repo, checksum_type='sha256')
         self.context.metadata_file_handle = StringIO()
         self.context._open_metadata_file_handle()
 

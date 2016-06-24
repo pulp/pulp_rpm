@@ -1017,14 +1017,22 @@ class PublishRpmStepTests(BaseYumDistributorPublishStepTests):
 class PublishErrataStepTests(BaseYumDistributorPublishStepTests):
 
     @mock.patch('pulp_rpm.plugins.distributors.yum.publish.UpdateinfoXMLFileContext')
-    def test_initialize_metadata(self, mock_context):
+    @mock.patch('pulp_rpm.plugins.distributors.yum.publish.models')
+    @mock.patch('pulp_rpm.plugins.distributors.yum.publish.repo_controller')
+    def test_initialize_metadata(self, mock_repo_controller, mock_models, mock_context):
         self._init_publisher()
         step = publish.PublishErrataStep()
         step.parent = self.publisher
+        mock_queryset = mock.Mock()
+        mock_repo_controller.get_unit_model_querysets.return_value = [mock_queryset]
+        mock_queryset.scalar.return_value = [('n1', 'e1', 'v1', 'r1', 'a1')]
 
         step.initialize()
         mock_context.return_value.initialize.assert_called_once_with()
-        self.assertEquals(step.process_main, step.context.add_unit_metadata)
+        repo_id = step.get_repo().id
+        mock_repo_controller.get_unit_model_querysets.assert_called_once_with(repo_id,
+                                                                              mock_models.RPM)
+        mock_queryset.scalar.assert_called_once_with('name', 'epoch', 'version', 'release', 'arch')
 
     def test_finalize_metadata(self):
         self._init_publisher()
