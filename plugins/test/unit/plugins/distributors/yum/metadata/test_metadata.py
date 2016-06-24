@@ -377,7 +377,7 @@ class YumDistributorMetadataTests(unittest.TestCase):
         # just checking
         self.assertEqual(erratum_unit.unit_key['errata_id'], 'RHEA-2010:9999')
 
-        context = UpdateinfoXMLFileContext(self.metadata_file_dir)
+        context = UpdateinfoXMLFileContext(self.metadata_file_dir, checksum_type='md5')
         context._open_metadata_file_handle()
         context.add_unit_metadata(erratum_unit)
         context._close_metadata_file_handle()
@@ -422,7 +422,8 @@ class YumDistributorMetadataTests(unittest.TestCase):
 
         mock_conduit = Mock()
         mock_conduit.repo_id = 'mock_conduit_repo'
-        context = UpdateinfoXMLFileContext(self.metadata_file_dir, conduit=mock_conduit)
+        context = UpdateinfoXMLFileContext(self.metadata_file_dir, conduit=mock_conduit,
+                                           checksum_type='md5')
         context._open_metadata_file_handle()
         context.add_unit_metadata(erratum_unit)
         context._close_metadata_file_handle()
