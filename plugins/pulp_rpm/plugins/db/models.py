@@ -2,6 +2,7 @@ import csv
 import logging
 import os
 from gettext import gettext as _
+from operator import itemgetter
 from urlparse import urljoin
 
 import mongoengine
@@ -12,6 +13,7 @@ from pulp_rpm.common import version_utils
 from pulp_rpm.common import file_utils
 from pulp_rpm.plugins import serializers
 from pulp_rpm.plugins.db.fields import ChecksumTypeStringField
+from pulp_rpm.yum_plugin import util
 
 
 _LOGGER = logging.getLogger(__name__)
@@ -360,7 +362,7 @@ class Distribution(UnitMixin, FileContentUnit):
 
     distribution_id = mongoengine.StringField(required=True)
     family = mongoengine.StringField(required=True)
-    variant = mongoengine.StringField()
+    variant = mongoengine.StringField(default='')
     version = mongoengine.StringField(required=True)
     arch = mongoengine.StringField(required=True)
 
@@ -630,6 +632,10 @@ class Errata(UnitMixin, ContentUnit):
 
     SERIALIZER = serializers.Errata
 
+    mutable_erratum_fields = ('status', 'updated', 'description', 'pushcount', 'references',
+                              'reboot_suggested', 'errata_from', 'severity', 'rights', 'version',
+                              'release', 'type', 'title', 'solution', 'summary')
+
     @property
     def rpm_search_dicts(self):
         ret = []
@@ -656,6 +662,119 @@ class Errata(UnitMixin, ContentUnit):
                         del unit_key[key]
                 ret.append(unit_key)
         return ret
+
+    @staticmethod
+    def _check_packages(existing_packages, new_packages):
+        """
+        Check if the new packages are the same as the existing ones.
+
+        :param existing_packages: list of packages presented in the existing erratum
+        :type  existing_packages: list of dicts
+
+        :param new_packages: list of packages presented in the new erratum
+        :type  new_packages: list of dicts
+
+        :return: True, if the lists of packages are equal
+        :rtype: bool
+        """
+        if len(existing_packages) == len(new_packages):
+            existing_packages.sort(key=itemgetter('filename'))
+            new_packages.sort(key=itemgetter('filename'))
+            return existing_packages == new_packages
+        return False
+
+    def merge_errata(self, other):
+        """
+        Merge two errata with the same errata_id.
+
+        There are two parts:
+        - merging of the pkglists in case of the erratum with the same id in different repositories
+        - overwriting the erratum metadata based on the `updated` field
+
+        NOTE: The first part should be eliminated after we change the way erratum is stored in the
+        MongoDB.
+
+        :param other: The erratum we are combining with this one
+        :type  other: pulp_rpm.plugins.db.models.Errata
+        """
+        self.merge_pkglists_and_save(other)
+        if self.update_needed(other):
+            for field_name in self.mutable_erratum_fields:
+                setattr(self, field_name, getattr(other, field_name))
+
+    def update_needed(self, other):
+        """
+        Decide based on the `updated` field if the update of the existing erratum is needed.
+
+        The `updated` field is just a string in the MongoDB, so there is no strict format for this
+        date-time field. If we are not able to parse the `updated` field either in existing
+        erratum or in the new erratum, the metadata of existing erratum won't be updated.
+
+        :param other: potentially a newer version of the erratum
+        :type  other: pulp_rpm.plugins.db.models.Errata
+
+        :return: True if the other erratum is newer than the existing one
+        :rtype:  bool
+        """
+        err_msg = _('Fail to update the %(which)s erratum %(id)s.')
+        existing_err_msg = err_msg % {'which': 'existing', 'id': self.errata_id}
+        other_err_msg = err_msg % {'which': 'uploaded', 'id': self.errata_id}
+        existing_updated_dt = util.errata_format_to_datetime(self.updated, msg=existing_err_msg)
+        new_updated_dt = util.errata_format_to_datetime(other.updated, msg=other_err_msg)
+        return new_updated_dt > existing_updated_dt
+
+    def merge_pkglists_and_save(self, other):
+        """
+        Merge pkglists of the two errata and save the result to the database.
+
+         - add _pulp_repo_id to old collection if packages are the same
+         - update existing collection if the other collection is newer and from the same
+           repository
+         - otherwise add a new collection
+
+        :param other: The erratum we are combining with the existing one
+        :type  other: pulp_rpm.plugins.db.models.Errata
+
+        """
+        existing_pkglist_map = {}
+        for idx, p in enumerate(self.pkglist):
+            package_name = p['name']
+            package_repo_id = p.get('_pulp_repo_id')
+            pkglist_key = (package_name, package_repo_id)
+            existing_pkglist_map[pkglist_key] = idx
+
+        collections_to_add = []
+        for new_collection in other.pkglist:
+            coll_name = new_collection['name']
+
+            # collection with such name does not contain _pulp_repo_id
+            if (coll_name, None) in existing_pkglist_map:
+                coll_idx = existing_pkglist_map[(coll_name, None)]
+                existing_collection = self.pkglist[coll_idx]
+                if self._check_packages(existing_collection['packages'],
+                                        new_collection['packages']):
+                    existing_collection['_pulp_repo_id'] = new_collection['_pulp_repo_id']
+                else:
+                    collections_to_add.append(new_collection)
+
+            # collection with such name and _pulp_repo_id already exists
+            elif (coll_name, new_collection['_pulp_repo_id']) in existing_pkglist_map:
+                if self.update_needed(other):
+                    coll_idx = existing_pkglist_map[
+                        (coll_name, new_collection['_pulp_repo_id'])]
+                    self.pkglist[coll_idx]['packages'] = new_collection['packages']
+
+            # no collection with such name or no collection with such name and _pulp_repo_id
+            else:
+                collections_to_add.append(new_collection)
+
+        # It is very important to call save() here to save recent modifications to the existing
+        # collections in the pkglist in the database before new collections will be added to
+        # the pkglist, because mongoengine does not allow to modify existing items in the list
+        # and add new items to the list at the same time.
+        self.save()
+        self.pkglist += collections_to_add
+        self.save()
 
 
 class PackageGroup(UnitMixin, ContentUnit):

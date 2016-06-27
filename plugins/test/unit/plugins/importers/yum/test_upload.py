@@ -203,6 +203,7 @@ class TestUploadErratum(unittest.TestCase):
         mock_repo = mock.MagicMock()
         mock_conduit = mock.MagicMock()
         config = PluginCallConfiguration({}, {})
+        m_model_by_id.return_value.objects.filter.return_value.first.return_value = None
         m_unit = m_model_by_id().return_value
 
         upload._handle_erratum(mock_repo, 'm_type', unit_key, metadata, None,
@@ -222,6 +223,22 @@ class TestUploadErratum(unittest.TestCase):
         upload._handle_erratum(mock_repo, 'm_type', unit_key, metadata, None,
                                mock_conduit, config)
         self.assertFalse(m_repo_ctrl.associate_single_unit.called)
+
+    def test_handle_erratum_same_id(self, m_update, m_model_by_id, m_repo_ctrl):
+        """
+        Ensure that the merge of errata is initiated if the erratum with the same id already exists.
+        """
+        unit_key = {'id': 'test-erratum'}
+        metadata = {'a': 'a'}
+        mock_repo = mock.MagicMock()
+        mock_conduit = mock.MagicMock()
+        config = PluginCallConfiguration({}, {})
+        m_unit = m_model_by_id.return_value.objects.filter.return_value.first.return_value
+
+        upload._handle_erratum(mock_repo, 'm_type', unit_key, metadata, None,
+                               mock_conduit, config)
+        self.assertEqual(m_unit.merge_errata.call_count, 1)
+        m_repo_ctrl.associate_single_unit.assert_called_once_with(mock_repo, m_unit)
 
 
 @skip_broken

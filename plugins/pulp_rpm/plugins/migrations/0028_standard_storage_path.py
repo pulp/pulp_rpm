@@ -1,6 +1,10 @@
+import os
+import shutil
+
 from pulp.server.db import connection
 
-from pulp.plugins.migration.standard_storage_path import Migration, Plan
+from pulp.plugins.migration.standard_storage_path import Migration, Plan, Unit
+from pulp.plugins.util.misc import mkdir
 
 
 def migrate(*args, **kwargs):
@@ -11,8 +15,8 @@ def migrate(*args, **kwargs):
     migration.add(rpm_plan())
     migration.add(srpm_plan())
     migration.add(drpm_plan())
-    migration.add(yum_metadata_plan())
-    migration.add(Distribution())
+    migration.add(YumMetadataFile())
+    migration.add(DistributionPlan())
     migration.add(ISO())
     migration()
 
@@ -79,22 +83,7 @@ def drpm_plan():
     return Plan(collection, key_fields)
 
 
-def yum_metadata_plan():
-    """
-    Factory to create an YUM metadata migration plan.
-
-    :return: A configured plan.
-    :rtype: Plan
-    """
-    key_fields = (
-        'data_type',
-        'repo_id'
-    )
-    collection = connection.get_collection('units_yum_repo_metadata_file')
-    return Plan(collection, key_fields)
-
-
-class Distribution(Plan):
+class DistributionPlan(Plan):
     """
     The migration plan for Distribution units.
     """
@@ -111,7 +100,8 @@ class Distribution(Plan):
             'arch'
         )
         collection = connection.get_collection('units_distribution')
-        super(Distribution, self).__init__(collection, key_fields, join_leaf=False)
+        super(DistributionPlan, self).__init__(collection, key_fields, join_leaf=False)
+        self.fields.add('files')
 
     def _new_path(self, unit):
         """
@@ -124,7 +114,36 @@ class Distribution(Plan):
         :rtype: str
         """
         unit.document.setdefault('variant', '')
-        return super(Distribution, self)._new_path(unit)
+        return super(DistributionPlan, self)._new_path(unit)
+
+    def _new_unit(self, document):
+        """
+        Create a new distribution unit for the specified document.
+
+        :param document: A content unit document fetched from the DB.
+        :type document: dict
+        :return: A new unit.
+        :rtype: DistributionUnit
+        """
+        return DistributionUnit(self, document)
+
+
+class DistributionUnit(Unit):
+    """
+    Specialized distribution unit.
+    """
+
+    @property
+    def files(self):
+        """
+        List of files (relative paths) associated with the unit.
+        """
+        files = [
+            'treeinfo',
+            '.treeinfo'
+        ]
+        files.extend([f['relativepath'] for f in self.document['files']])
+        return files
 
 
 class ISO(Plan):
@@ -161,3 +180,44 @@ class ISO(Plan):
             unit.document['_storage_path'] = name
         new_path = super(ISO, self)._new_path(unit)
         return new_path
+
+
+class YumMetadataFile(Plan):
+    """
+    The migration plan for yum_repo_metadata_file units.
+    """
+
+    def __init__(self):
+        """
+        Call super with collection and fields.
+        """
+        key_fields = (
+            'data_type',
+            'repo_id'
+        )
+        collection = connection.get_collection('units_yum_repo_metadata_file')
+        super(YumMetadataFile, self).__init__(collection, key_fields)
+
+    def migrate(self, unit_id, path, new_path):
+        """
+        Migrate the unit.
+          1. copy content
+          2. update the DB
+        :param unit_id: A unit UUID.
+        :type unit_id: str
+        :param path: The current storage path.
+        :type path: str
+        :param new_path: The new storage path.
+        :type new_path: str
+        """
+        # the content should be copied(and not moved) due to this issue #1944
+        if os.path.exists(path):
+            mkdir(os.path.dirname(new_path))
+            shutil.copy(path, new_path)
+        self.collection.update_one(
+            filter={
+                '_id': unit_id
+            },
+            update={
+                '$set': {'_storage_path': new_path}
+            })

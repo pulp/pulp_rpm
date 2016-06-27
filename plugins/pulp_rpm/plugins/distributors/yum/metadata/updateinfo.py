@@ -144,7 +144,12 @@ class UpdateinfoXMLFileContext(XmlFileContext):
         else:
             repo_unit_nevra = None
 
+        seen_pkglists = set()
         for pkglist in erratum_unit.pkglist:
+            packages = tuple(sorted(p['filename'] for p in pkglist['packages']))
+            if packages in seen_pkglists:
+                continue
+            seen_pkglists.add(packages)
 
             pkglist_element = ElementTree.SubElement(update_element, 'pkglist')
 

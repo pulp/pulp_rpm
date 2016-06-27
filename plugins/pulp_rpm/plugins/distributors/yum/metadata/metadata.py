@@ -130,7 +130,7 @@ class MetadataFileContext(object):
         else:
 
             msg = _('Overwriting existing metadata file [%(p)s]')
-            _LOG.warn(msg % {'p': self.metadata_file_path})
+            _LOG.debug(msg % {'p': self.metadata_file_path})
 
             if not os.access(self.metadata_file_path, os.R_OK | os.W_OK):
                 msg = _('Insufficient permissions to overwrite [%(p)s]')

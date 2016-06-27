@@ -43,13 +43,13 @@ class TestRealData(unittest.TestCase):
         model, files = DistSync.parse_treeinfo_file(path)
 
         self.assertTrue(isinstance(model, models.Distribution))
-        self.assertEqual(model.distribution_id, 'ks-Red Hat Enterprise Linux Server-5.9-x86_64')
+        self.assertEqual(model.distribution_id, 'ks-Red Hat Enterprise Linux Server--5.9-x86_64')
 
         self.assertEqual(len(files), 19)
         for item in files:
             self.assertTrue(item['relativepath'])
 
-        self.assertEquals(None, model.variant)
+        self.assertEquals('', model.variant)
         self.assertEquals(None, model.packagedir)
 
 

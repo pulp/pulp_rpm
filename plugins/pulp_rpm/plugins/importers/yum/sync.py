@@ -15,6 +15,7 @@ from urlparse import urljoin
 from mongoengine import NotUniqueError
 from nectar.request import DownloadRequest
 
+from pulp.common import dateutils
 from pulp.common.plugins import importer_constants
 from pulp.server.db.model import LazyCatalogEntry
 from pulp.plugins.util import nectar_config as nectar_utils, verification
@@ -329,6 +330,8 @@ class RepoSync(object):
 
     def get_metadata(self, metadata_files):
         """
+        Get metadata and decide whether to sync the repository or not.
+
         :param metadata_files: instance of MetadataFiles
         :type: pulp_rpm.plugins.importers.yum.repomd.metadata.MetadataFiles
 
@@ -343,13 +346,19 @@ class RepoSync(object):
         previous_skip_set = set(scratchpad.get(constants.PREVIOUS_SKIP_LIST, []))
         current_skip_set = set(self.config.get(constants.CONFIG_SKIP, []))
         self.current_revision = metadata_files.revision
-        # if the revision is positive, hasn't increased and the skip list doesn't include
-        # new types that weren't present on the last run...
-        # determine missing units
         missing_units = repo_controller.missing_unit_count(self.repo.repo_id)
+
+        last_sync = self.conduit.last_sync()
+        sync_due_to_unit_removal = False
+        if last_sync is not None:
+            last_sync = dateutils.parse_iso8601_datetime(last_sync)
+            last_removed = self.repo.last_unit_removed
+            sync_due_to_unit_removal = last_removed is not None and last_sync < last_removed
+
         if 0 < metadata_files.revision <= previous_revision \
                 and previous_skip_set - current_skip_set == set() \
-                and (self.download_deferred or not missing_units):
+                and (self.download_deferred or not missing_units) \
+                and not sync_due_to_unit_removal:
             _logger.info(_('upstream repo metadata has not changed. Skipping steps.'))
             self.skip_repomd_steps = True
             return metadata_files
@@ -447,14 +456,15 @@ class RepoSync(object):
         :param url: curret URL we should sync
         :type: str
         """
-        rpms_to_download, drpms_to_download = self._decide_what_to_download(metadata_files)
+        catalog = PackageCatalog(self.conduit.importer_object_id, url)
+        rpms_to_download, drpms_to_download = self._decide_what_to_download(metadata_files, catalog)
         self.download_rpms(metadata_files, rpms_to_download, url)
         self.download_drpms(metadata_files, drpms_to_download, url)
         self.conduit.build_success_report({}, {})
         # removes unwanted units according to the config settings
         purge.purge_unwanted_units(metadata_files, self.conduit, self.config)
 
-    def _decide_what_to_download(self, metadata_files):
+    def _decide_what_to_download(self, metadata_files, catalog):
         """
         Given the metadata files, decides which RPMs and DRPMs should be
         downloaded. Also sets initial values on the progress report for total
@@ -462,15 +472,17 @@ class RepoSync(object):
 
         :param metadata_files:  instance of MetadataFiles
         :type  metadata_files:  pulp_rpm.plugins.importers.yum.repomd.metadata.MetadataFiles
+        :param catalog:         Deferred downloading catalog.
+        :type  catalog:         PackageCatalog
 
         :return:    tuple of (set(RPM.NAMEDTUPLEs), set(DRPM.NAMEDTUPLEs))
         :rtype:     tuple
         """
         _logger.info(_('Determining which units need to be downloaded.'))
         rpms_to_download, rpms_count, rpms_total_size = \
-            self._decide_rpms_to_download(metadata_files)
+            self._decide_rpms_to_download(metadata_files, catalog)
         drpms_to_download, drpms_count, drpms_total_size = \
-            self._decide_drpms_to_download(metadata_files)
+            self._decide_drpms_to_download(metadata_files, catalog)
 
         unit_counts = {
             'rpm': rpms_count,
@@ -481,13 +493,15 @@ class RepoSync(object):
         self.set_progress()
         return rpms_to_download, drpms_to_download
 
-    def _decide_rpms_to_download(self, metadata_files):
+    def _decide_rpms_to_download(self, metadata_files, catalog):
         """
         Decide which RPMs should be downloaded based on the repo metadata and on
         the importer config.
 
         :param metadata_files:  instance of MetadataFiles
         :type  metadata_files:  pulp_rpm.plugins.importers.yum.repomd.metadata.MetadataFiles
+        :param catalog:         Deferred downloading catalog.
+        :type  catalog:         PackageCatalog
 
         :return:    tuple of (set(RPM.NAMEDTUPLEs), number of RPMs, total size in bytes)
         :rtype:     tuple
@@ -504,7 +518,7 @@ class RepoSync(object):
             # check for the units that are not in the repo, but exist on the server
             # and associate them to the repo
             to_download = existing.check_all_and_associate(
-                wanted.iterkeys(), self.conduit, self.download_deferred)
+                wanted.iterkeys(), self.conduit, self.download_deferred, catalog)
             count = len(to_download)
             size = 0
             for unit in to_download:
@@ -513,13 +527,15 @@ class RepoSync(object):
         finally:
             primary_file_handle.close()
 
-    def _decide_drpms_to_download(self, metadata_files):
+    def _decide_drpms_to_download(self, metadata_files, catalog):
         """
         Decide which DRPMs should be downloaded based on the repo metadata and on
         the importer config.
 
         :param metadata_files:  instance of MetadataFiles
         :type  metadata_files:  pulp_rpm.plugins.importers.yum.repomd.metadata.MetadataFiles
+        :param catalog:         Deferred downloading catalog.
+        :type  catalog:         PackageCatalog
 
         :return:    tuple of (set(DRPM.NAMEDTUPLEs), number of DRPMs, total size in bytes)
         :rtype:     tuple
@@ -546,7 +562,7 @@ class RepoSync(object):
                     # check for the units that are not in the repo, but exist on the server
                     # and associate them to the repo
                     to_download = existing.check_all_and_associate(
-                        wanted.iterkeys(), self.conduit, self.download_deferred)
+                        wanted.iterkeys(), self.conduit, self.download_deferred, catalog)
                     count += len(to_download)
                     for unit in to_download:
                         size += wanted[unit]
@@ -554,30 +570,6 @@ class RepoSync(object):
                     presto_file_handle.close()
 
         return to_download, count, size
-
-    def catalog_generator(self, base_url, units):
-        """
-        Provides a wrapper around the *units* generator.
-        As the generator is iterated, the deferred downloading (lazy) catalog entry is added.
-
-        :param base_url: The base download URL.
-        :type base_url: str
-        :param units: A generator of (rpm|drpm) units.
-        :return: A generator of units.
-        :rtype: generator
-        """
-        for unit in units:
-            unit.set_storage_path(unit.filename)
-            entry = LazyCatalogEntry()
-            entry.path = unit.storage_path
-            entry.importer_id = str(self.conduit.importer_object_id)
-            entry.unit_id = unit.id
-            entry.unit_type_id = unit.type_id
-            entry.url = urljoin(base_url, unit.download_path)
-            entry.checksum = unit.checksum
-            entry.checksum_algorithm = unit.checksumtype
-            entry.save_revision()
-            yield unit
 
     def add_rpm_unit(self, metadata_files, unit):
         """
@@ -633,14 +625,12 @@ class RepoSync(object):
             units_to_download = self._filtered_unit_generator(package_model_generator,
                                                               rpms_to_download)
 
-            # Wrapped in a generator that adds entries to
-            # the deferred (Lazy) catalog.
-            units_to_download = self.catalog_generator(url, units_to_download)
-
             if self.download_deferred:
+                catalog = PackageCatalog(self.conduit.importer_object_id, url)
                 for unit in units_to_download:
                     unit.downloaded = False
-                    self.add_rpm_unit(metadata_files, unit)
+                    unit = self.add_rpm_unit(metadata_files, unit)
+                    catalog.add(unit)
                 return
 
             download_wrapper = alternate.Packages(
@@ -690,14 +680,12 @@ class RepoSync(object):
                     units_to_download = self._filtered_unit_generator(package_model_generator,
                                                                       drpms_to_download)
 
-                    # Wrapped in a generator that adds entries to
-                    # the deferred (Lazy) catalog.
-                    units_to_download = self.catalog_generator(url, units_to_download)
-
                     if self.download_deferred:
+                        catalog = PackageCatalog(self.conduit.importer_object_id, url)
                         for unit in units_to_download:
                             unit.downloaded = False
-                            self.add_drpm_unit(metadata_files, unit)
+                            unit = self.add_drpm_unit(metadata_files, unit)
+                            catalog.add(unit)
                         continue
 
                     download_wrapper = packages.Packages(
@@ -811,6 +799,10 @@ class RepoSync(object):
                 (model for model in all_packages if model.unit_key_as_named_tuple in to_save)
 
         for model in package_info_generator:
+            # Add repo_id to each collection of the pkglist of the new erratum
+            if isinstance(model, models.Errata):
+                for collection in model.pkglist:
+                    collection['_pulp_repo_id'] = self.repo.repo_id
             existing_unit = model.__class__.objects.filter(**model.unit_key).first()
             if not existing_unit:
                 model.save()
@@ -845,13 +837,7 @@ class RepoSync(object):
                                              (existing_unit.unit_key, new_unit.unit_key))
 
         if isinstance(existing_unit, models.Errata):
-            # add in anything from new_unit that we don't already have. We key
-            # package lists by name for this concatenation.
-            existing_package_list_names = [p['name'] for p in existing_unit.pkglist]
-
-            for possible_new_pkglist in new_unit.pkglist:
-                if possible_new_pkglist['name'] not in existing_package_list_names:
-                    existing_unit.pkglist += [possible_new_pkglist]
+            existing_unit.merge_errata(new_unit)
         else:
             raise PulpCodedException(message="Concatenation of unit type %s is not supported" %
                                              existing_unit.type_id)
@@ -926,3 +912,42 @@ class RepoSync(object):
                 yield unit
             elif unit.unit_key_as_named_tuple in to_download:
                 yield unit
+
+
+class PackageCatalog(object):
+    """
+    Provides deferred catalog management for package units.
+
+    :ivar importer_id: The import DB object ID.
+    :type importer_id: bson.objectid.ObjectId
+    :ivar base_url: The base URL used to download content.
+    :type base_url: str
+    """
+
+    def __init__(self, importer_id, base_url):
+        """
+        :param importer_id: The import DB object ID.
+        :type importer_id: bson.objectid.ObjectId
+        :param base_url: The base URL used to download content.
+        :type base_url: str
+        """
+        self.importer_id = importer_id
+        self.base_url = base_url
+
+    def add(self, unit):
+        """
+        Add the specified content unit to the catalog.
+
+        :param unit: A unit being added.
+        :type unit: pulp_rpm.plugins.db.models.RpmBase
+        """
+        unit.set_storage_path(unit.filename)
+        entry = LazyCatalogEntry()
+        entry.path = unit.storage_path
+        entry.importer_id = str(self.importer_id)
+        entry.unit_id = unit.id
+        entry.unit_type_id = unit.type_id
+        entry.url = urljoin(self.base_url, unit.download_path)
+        entry.checksum = unit.checksum
+        entry.checksum_algorithm = unit.checksumtype
+        entry.save_revision()

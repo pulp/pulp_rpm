@@ -1,72 +1,81 @@
-import unittest
+from unittest import TestCase
 
-from mock import Mock, patch
+from mock import patch, call, Mock
 from yum import constants
-from yum.Errors import InstallError, GroupsError
+from yum.Errors import InstallError
+from yum.callbacks import PT_MESSAGES
 
-import mock_yum
-
-from mock_yum import YumBase
-
-
-class ToolTest(unittest.TestCase):
-    def setUp(self):
-        mock_yum.install()
-        from pulp_rpm.handlers.rpmtools import Package, PackageGroup
-
-        self.Package = Package
-        self.PackageGroup = PackageGroup
-
-    def tearDown(self):
-        YumBase.reset()
+from pulp_rpm.handlers.rpmtools import (
+    Package,
+    PackageGroup,
+    ProcessTransCallback,
+    RPMCallback,
+    DownloadCallback,
+    ProgressReport,
+    Yum)
 
 
-class TestPackages(ToolTest):
-    def verify(self, report, installed=None, updated=None, removed=None, failed=None):
-        resolved = []
-        deps = []
-        for package in installed or []:
-            resolved.append(package)
-            deps = YumBase.INSTALL_DEPS
-        for package in updated or []:
-            resolved.append(package)
-            deps = YumBase.UPDATE_DEPS
-        for package in removed or []:
-            resolved.append(package)
-            deps = YumBase.ERASE_DEPS
-        self.assertEquals([p['name'] for p in report['resolved']], resolved)
-        self.assertEquals([p['name'] for p in report['deps']], [p.name for p in deps])
-        self.assertEquals([p['name'] for p in report['failed']], failed or [])
+MODULE = 'pulp_rpm.handlers.rpmtools'
+
+
+class Pkg(object):
+
+    def __init__(self, name, version, release='1', arch='noarch'):
+        self.name = name
+        self.ver = version
+        self.rel = str(release)
+        self.arch = arch
+        self.epoch = '0'
+
+    def __str__(self):
+        if int(self.epoch) > 0:
+            _format = '%(epoch)s:%(name)s-%(ver)s-%(rel)s.%(arch)s'
+        else:
+            _format = '%(name)s-%(ver)s-%(rel)s.%(arch)s'
+        return _format % self.__dict__
+
+
+class TxMember(object):
+    def __init__(self, state, repoid, pkg, isDep=0):
+        self.output_state = state
+        self.repoid = repoid
+        self.isDep = isDep
+        self.po = pkg
+
+
+class TestPackage(TestCase):
 
     def test_tx_summary(self):
-        # Setup
         repo_id = 'fedora'
         deps = [
-            mock_yum.TxMember(
-                constants.TS_INSTALL, repo_id, mock_yum.Pkg('D1', '1.0'), isDep=True),
-            mock_yum.TxMember(
-                constants.TS_INSTALL, repo_id, mock_yum.Pkg('D2', '1.0'), isDep=True),
-            mock_yum.TxMember(
-                constants.TS_INSTALL, repo_id, mock_yum.Pkg('D3', '1.0'), isDep=True),
+            TxMember(constants.TS_INSTALL, repo_id, Pkg('D1', '1.0'), isDep=True),
+            TxMember(constants.TS_INSTALL, repo_id, Pkg('D2', '1.0'), isDep=True),
+            TxMember(constants.TS_INSTALL, repo_id, Pkg('D3', '1.0'), isDep=True),
         ]
         install = [
-            mock_yum.TxMember(constants.TS_INSTALL, repo_id, mock_yum.Pkg('A', '1.0')),
-            mock_yum.TxMember(constants.TS_INSTALL, repo_id, mock_yum.Pkg('B', '1.0')),
-            mock_yum.TxMember(constants.TS_TRUEINSTALL, repo_id, mock_yum.Pkg('C', '1.0')),
+            TxMember(constants.TS_INSTALL, repo_id, Pkg('A', '1.0')),
+            TxMember(constants.TS_INSTALL, repo_id, Pkg('B', '1.0')),
+            TxMember(constants.TS_TRUEINSTALL, repo_id, Pkg('C', '1.0')),
         ]
         erase = [
-            mock_yum.TxMember(constants.TS_ERASE, repo_id, mock_yum.Pkg('D', '1.0')),
+            TxMember(constants.TS_ERASE, repo_id, Pkg('D', '1.0')),
         ]
         failed = [
-            mock_yum.TxMember(constants.TS_FAILED, repo_id, mock_yum.Pkg('E', '1.0')),
-            mock_yum.TxMember(constants.TS_FAILED, repo_id, mock_yum.Pkg('F', '1.0')),
+            TxMember(constants.TS_FAILED, repo_id, Pkg('E', '1.0')),
+            TxMember(constants.TS_FAILED, repo_id, Pkg('F', '1.0')),
         ]
         ts_info = install + deps + erase + failed
-        package = self.Package()
-        states = [constants.TS_FAILED, constants.TS_INSTALL, constants.TS_TRUEINSTALL]
-        # Test
+        package = Package()
+        states = [
+            constants.TS_FAILED,
+            constants.TS_INSTALL,
+            constants.TS_TRUEINSTALL
+        ]
+
+        # test
         report = package.tx_summary(ts_info, states)
-        # Verify
+
+        # validation
         _resolved = [
             {'epoch': '0', 'version': '1.0', 'name': 'A', 'release': '1',
              'arch': 'noarch', 'qname': 'A-1.0-1.noarch', 'repoid': 'fedora'},
@@ -93,6 +102,7 @@ class TestPackages(ToolTest):
             {'epoch': '0', 'version': '1.0', 'name': 'D3', 'release': '1',
              'arch': 'noarch', 'qname': 'D3-1.0-1.noarch', 'repoid': 'fedora'},
         ]
+
         self.assertEqual(report['resolved'], _resolved)
         self.assertEqual(report['deps'], _deps)
         self.assertEqual(report['failed'], _failed)
@@ -108,411 +118,637 @@ class TestPackages(ToolTest):
             ]
         }
         self.assertEqual(
-            self.Package.affected(details),
+            Package.affected(details),
             ['dog-1.0', 'cat-2.0', 'kennel-1.0'])
 
-    def test_install(self):
-        # Setup
-        packages = [
+    @patch(MODULE + '.Package.tx_summary')
+    def test_installed(self, tx_summary):
+        # test
+        ts_info = Mock()
+        installed = Package.installed(ts_info)
+
+        # validation
+        states = (
+            constants.TS_FAILED,
+            constants.TS_INSTALL,
+            constants.TS_TRUEINSTALL,
+            constants.TS_UPDATE
+        )
+        tx_summary.assert_called_once_with(ts_info, states)
+        self.assertEqual(installed, tx_summary.return_value)
+
+    @patch(MODULE + '.Package.tx_summary')
+    def test_updated(self, tx_summary):
+        # test
+        ts_info = Mock()
+        updated = Package.updated(ts_info)
+
+        # validation
+        states = (
+            constants.TS_FAILED,
+            constants.TS_INSTALL,
+            constants.TS_TRUEINSTALL,
+            constants.TS_UPDATE
+        )
+        tx_summary.assert_called_once_with(ts_info, states)
+        self.assertEqual(updated, tx_summary.return_value)
+
+    @patch(MODULE + '.Package.tx_summary')
+    def test_erased(self, tx_summary):
+        # test
+        ts_info = Mock()
+        erased = Package.erased(ts_info)
+
+        # validation
+        states = (
+            constants.TS_FAILED,
+            constants.TS_ERASE
+        )
+        tx_summary.assert_called_once_with(ts_info, states)
+        self.assertEqual(erased, tx_summary.return_value)
+
+    @patch(MODULE + '.Yum')
+    @patch(MODULE + '.Package.affected')
+    @patch(MODULE + '.Package.installed')
+    def test_install(self, installed, affected, yum):
+        names = [
             'zsh',
             'ksh',
             'gofer',
             'okaara',
             'kernel',
         ]
-        # Test
-        package = self.Package()
-        report = package.install(packages)
-        # Verify
-        self.verify(report, installed=packages)
-        self.assertTrue(YumBase.processTransaction.called)
-        self.assertTrue(YumBase.close.called)
 
-    def test_install_failed(self):
-        # Setup
-        packages = [
-            'zsh',
-            'ksh',
-            'gofer',
-            'okaara',
-            YumBase.FAILED_PKG,
-        ]
-        # Test
-        package = self.Package()
-        report = package.install(packages)
-        # Verify
-        self.verify(report, installed=packages, failed=[YumBase.FAILED_PKG])
-        self.assertTrue(YumBase.processTransaction.called)
-        self.assertTrue(YumBase.close.called)
+        progress = Mock()
+        yum.return_value.tsInfo.__len__.return_value = len(names)
 
-    def test_install_noapply(self):
-        # Setup
-        packages = [
-            'zsh',
-            'ksh',
-            'gofer',
-            'okaara',
-        ]
-        # Test
-        package = self.Package(apply=False)
-        report = package.install(packages)
-        # Verify
-        self.verify(report, installed=packages)
-        self.assertFalse(YumBase.processTransaction.called)
-        self.assertTrue(YumBase.close.called)
+        # test
+        package = Package(importkeys=123, progress=progress)
+        details = package.install(names)
 
-    def test_install_importkeys(self):
-        # Setup
-        packages = [
-            'zsh',
-            'ksh',
-            'gofer',
-            'okaara',
-        ]
-        # Test
-        package = self.Package(importkeys=True)
-        report = package.install(packages)
-        # Verify
-        self.verify(report, installed=packages)
-        self.assertTrue(YumBase.processTransaction.called)
-        self.assertTrue(YumBase.close.called)
+        # validation
+        yum.assert_called_once_with(123, progress)
+        self.assertEqual(
+            yum.return_value.install.call_args_list,
+            [
+                call(pattern=n) for n in names
+            ])
+        yum.return_value.resolveDeps.assert_called_once_with()
+        yum.return_value.processTransaction.assert_called_once_with()
+        yum.return_value.close.assert_called_once_with()
+        installed.assert_called_once_with(yum.return_value.tsInfo)
+        affected.assert_called_once_with(installed.return_value)
+        self.assertEqual(details, installed.return_value)
 
-    def test_install_not_found(self):
-        # Setup
-        packages = [
-            'zsh',
-            'ksh',
-            'gofer',
-            'okaara',
-            YumBase.UNKNOWN_PKG,
-        ]
-        # Test & verify
-        package = self.Package()
-        self.assertRaises(InstallError, package.install, packages)
-        self.assertFalse(YumBase.processTransaction.called)
-        self.assertTrue(YumBase.close.called)
-
-    def test_update(self):
-        # Setup
-        packages = [
+    @patch(MODULE + '.Yum')
+    @patch(MODULE + '.Package.affected')
+    @patch(MODULE + '.Package.installed')
+    def test_install_not_applied(self, installed, affected, yum):
+        names = [
             'zsh',
             'ksh',
             'gofer',
             'okaara',
             'kernel',
         ]
-        # Test
-        package = self.Package()
-        report = package.update(packages)
-        # Verify
-        self.verify(report, updated=packages)
-        self.assertTrue(YumBase.processTransaction.called)
-        self.assertTrue(YumBase.close.called)
 
-    def test_update_all(self):
-        # Setup
-        packages = []
-        # Test
-        package = self.Package()
-        report = package.update(packages)
-        # Verify
-        self.verify(report, updated=[p.name for p in YumBase.NEED_UPDATE])
-        self.assertTrue(YumBase.processTransaction.called)
-        self.assertTrue(YumBase.close.called)
+        progress = Mock()
+        yum.return_value.tsInfo.__len__.return_value = len(names)
+        yum.return_value.progress = progress
 
-    def test_update_failed(self):
-        # Setup
-        packages = [
+        # test
+        package = Package(apply=False, progress=progress)
+        details = package.install(names)
+
+        # validation
+        self.assertEqual(
+            yum.return_value.install.call_args_list,
+            [
+                call(pattern=n) for n in names
+            ])
+        yum.return_value.resolveDeps.assert_called_once_with()
+        yum.return_value.close.assert_called_once_with()
+        progress.set_status.assert_called_once_with(True)
+        installed.assert_called_once_with(yum.return_value.tsInfo)
+        affected.assert_called_once_with(installed.return_value)
+        self.assertFalse(yum.return_value.processTransaction.called)
+        self.assertEqual(details, installed.return_value)
+
+    @patch(MODULE + '.Yum')
+    @patch(MODULE + '.Package.affected')
+    @patch(MODULE + '.Package.installed')
+    def test_install_no_transactions(self, installed, affected, yum):
+        names = [
             'zsh',
-            'ksh',
-            'gofer',
-            YumBase.FAILED_PKG,
-            'okaara',
+            'kernel',
         ]
-        # Test
-        package = self.Package()
-        report = package.update(packages)
-        # Verify
-        self.verify(report, updated=packages, failed=[YumBase.FAILED_PKG])
-        self.assertTrue(YumBase.processTransaction.called)
-        self.assertTrue(YumBase.close.called)
 
-    def test_update_noapply(self):
-        # Setup
-        packages = [
-            'zsh',
-            'ksh',
-            'gofer',
-            'okaara',
-        ]
-        # Test
-        package = self.Package(apply=False)
-        report = package.update(packages)
-        # Verify
-        self.verify(report, updated=packages)
-        self.assertFalse(YumBase.processTransaction.called)
-        self.assertTrue(YumBase.close.called)
+        progress = Mock()
+        yum.return_value.tsInfo.__len__.return_value = 0
+        yum.return_value.progress = progress
 
-    def test_update_importkeys(self):
-        # Setup
-        packages = [
-            'zsh',
-            'ksh',
-            'gofer',
-            'okaara',
-        ]
-        # Test
-        package = self.Package(importkeys=True)
-        report = package.update(packages)
-        # Verify
-        self.verify(report, updated=packages)
-        self.assertTrue(YumBase.processTransaction.called)
-        self.assertTrue(YumBase.close.called)
+        # test
+        package = Package(progress=progress)
+        details = package.install(names)
 
-    def test_update_notfound(self):
-        # Setup
-        packages = [
+        # validation
+        self.assertEqual(
+            yum.return_value.install.call_args_list,
+            [
+                call(pattern=n) for n in names
+            ])
+        yum.return_value.resolveDeps.assert_called_once_with()
+        yum.return_value.close.assert_called_once_with()
+        progress.set_status.assert_called_once_with(True)
+        installed.assert_called_once_with(yum.return_value.tsInfo)
+        affected.assert_called_once_with(installed.return_value)
+        self.assertFalse(yum.return_value.processTransaction.called)
+        self.assertEqual(details, installed.return_value)
+
+    @patch(MODULE + '.Yum')
+    def test_install_error(self, yum):
+        names = ['kernel']
+        yum.return_value.install.side_effect = InstallError(value=u'D' + unichr(246) + 'g')
+
+        # test
+        package = Package()
+        self.assertRaises(InstallError, package.install, names)
+
+    @patch(MODULE + '.Yum')
+    @patch(MODULE + '.Package.affected')
+    @patch(MODULE + '.Package.updated')
+    def test_update(self, updated, affected, yum):
+        names = [
             'zsh',
             'ksh',
             'gofer',
             'okaara',
-            YumBase.UNKNOWN_PKG,
+            'kernel',
         ]
-        # Test & verify
-        package = self.Package()
-        report = package.update(packages)
-        self.verify(report, updated=packages[:-1])
-        self.assertTrue(YumBase.processTransaction.called)
-        self.assertTrue(YumBase.close.called)
 
-    def test_uninstall(self):
-        # Setup
-        packages = [
+        progress = Mock()
+        yum.return_value.tsInfo.__len__.return_value = len(names)
+
+        # test
+        package = Package(importkeys=123, progress=progress)
+        details = package.update(names)
+
+        # validation
+        yum.assert_called_once_with(123, progress)
+        self.assertEqual(
+            yum.return_value.update.call_args_list,
+            [
+                call(pattern=n) for n in names
+            ])
+        yum.return_value.resolveDeps.assert_called_once_with()
+        yum.return_value.processTransaction.assert_called_once_with()
+        yum.return_value.close.assert_called_once_with()
+        updated.assert_called_once_with(yum.return_value.tsInfo)
+        affected.assert_called_once_with(updated.return_value)
+        self.assertEqual(details, updated.return_value)
+
+    @patch(MODULE + '.Yum')
+    @patch(MODULE + '.Package.affected')
+    @patch(MODULE + '.Package.updated')
+    def test_update_all(self, updated, affected, yum):
+        progress = Mock()
+        yum.return_value.tsInfo.__len__.return_value = 10
+
+        # test
+        package = Package(importkeys=123, progress=progress)
+        details = package.update()
+
+        # validation
+        yum.assert_called_once_with(123, progress)
+        yum.return_value.update.assert_called_once_with()
+        yum.return_value.resolveDeps.assert_called_once_with()
+        yum.return_value.processTransaction.assert_called_once_with()
+        yum.return_value.close.assert_called_once_with()
+        updated.assert_called_once_with(yum.return_value.tsInfo)
+        affected.assert_called_once_with(updated.return_value)
+        self.assertEqual(details, updated.return_value)
+
+    @patch(MODULE + '.Yum')
+    @patch(MODULE + '.Package.affected')
+    @patch(MODULE + '.Package.updated')
+    def test_update_not_applied(self, updated, affected, yum):
+        names = [
             'zsh',
             'ksh',
+            'gofer',
+            'okaara',
+            'kernel',
         ]
-        # Test
-        package = self.Package()
-        report = package.uninstall(packages)
-        # Verify
-        self.verify(report, removed=packages)
-        self.assertTrue(YumBase.processTransaction.called)
-        self.assertTrue(YumBase.close.called)
 
-    def test_uninstall_failed(self):
-        # Setup
-        packages = [
+        progress = Mock()
+        yum.return_value.tsInfo.__len__.return_value = len(names)
+        yum.return_value.progress = progress
+
+        # test
+        package = Package(apply=False, progress=progress)
+        details = package.update(names)
+
+        # validation
+        self.assertEqual(
+            yum.return_value.update.call_args_list,
+            [
+                call(pattern=n) for n in names
+            ])
+        yum.return_value.resolveDeps.assert_called_once_with()
+        progress.set_status.assert_called_once_with(True)
+        updated.assert_called_once_with(yum.return_value.tsInfo)
+        affected.assert_called_once_with(updated.return_value)
+        self.assertFalse(yum.return_value.processTransaction.called)
+        self.assertEqual(details, updated.return_value)
+
+    @patch(MODULE + '.Yum')
+    @patch(MODULE + '.Package.affected')
+    @patch(MODULE + '.Package.updated')
+    def test_update_no_transactions(self, updated, affected, yum):
+        names = [
+            'zsh',
+            'kernel',
+        ]
+
+        progress = Mock()
+        yum.return_value.tsInfo.__len__.return_value = 0
+        yum.return_value.progress = progress
+
+        # test
+        package = Package(progress=progress)
+        details = package.update(names)
+
+        # validation
+        self.assertEqual(
+            yum.return_value.update.call_args_list,
+            [
+                call(pattern=n) for n in names
+            ])
+        yum.return_value.resolveDeps.assert_called_once_with()
+        progress.set_status.assert_called_once_with(True)
+        updated.assert_called_once_with(yum.return_value.tsInfo)
+        affected.assert_called_once_with(updated.return_value)
+        self.assertFalse(yum.return_value.processTransaction.called)
+        self.assertEqual(details, updated.return_value)
+
+    @patch(MODULE + '.Yum')
+    @patch(MODULE + '.Package.affected')
+    @patch(MODULE + '.Package.erased')
+    def test_uninstall(self, erased, affected, yum):
+        names = [
             'zsh',
             'ksh',
-            YumBase.FAILED_PKG,
+            'gofer',
+            'okaara',
+            'kernel',
         ]
-        # Test
-        package = self.Package()
-        report = package.uninstall(packages)
-        # Verify
-        self.verify(report, removed=packages, failed=[YumBase.FAILED_PKG])
-        self.assertTrue(YumBase.processTransaction.called)
-        self.assertTrue(YumBase.close.called)
 
-    def test_uninstall_noapply(self):
-        # Setup
-        packages = [
+        progress = Mock()
+        yum.return_value.tsInfo.__len__.return_value = len(names)
+
+        # test
+        package = Package(progress=progress)
+        details = package.uninstall(names)
+
+        # validation
+        yum.assert_called_once_with(progress=progress)
+        self.assertEqual(
+            yum.return_value.remove.call_args_list,
+            [
+                call(pattern=n) for n in names
+            ])
+        yum.return_value.resolveDeps.assert_called_once_with()
+        yum.return_value.processTransaction.assert_called_once_with()
+        yum.return_value.close.assert_called_once_with()
+        erased.assert_called_once_with(yum.return_value.tsInfo)
+        affected.assert_called_once_with(erased.return_value)
+        self.assertEqual(details, erased.return_value)
+
+    @patch(MODULE + '.Yum')
+    @patch(MODULE + '.Package.affected')
+    @patch(MODULE + '.Package.erased')
+    def test_uninstall_not_applied(self, errased, affected, yum):
+        names = [
             'zsh',
             'ksh',
+            'gofer',
+            'okaara',
+            'kernel',
         ]
-        # Test
-        package = self.Package(apply=False)
-        report = package.uninstall(packages)
-        # Verify
-        self.verify(report, removed=packages)
-        self.assertFalse(YumBase.processTransaction.called)
-        self.assertTrue(YumBase.close.called)
 
-    def test_uninstall_notfound(self):
-        # Setup
-        packages = [
+        progress = Mock()
+        yum.return_value.tsInfo.__len__.return_value = len(names)
+        yum.return_value.progress = progress
+
+        # test
+        package = Package(apply=False, progress=progress)
+        details = package.uninstall(names)
+
+        # validation
+        self.assertEqual(
+            yum.return_value.remove.call_args_list,
+            [
+                call(pattern=n) for n in names
+            ])
+        yum.return_value.resolveDeps.assert_called_once_with()
+        progress.set_status.assert_called_once_with(True)
+        errased.assert_called_once_with(yum.return_value.tsInfo)
+        affected.assert_called_once_with(errased.return_value)
+        self.assertFalse(yum.return_value.processTransaction.called)
+        self.assertEqual(details, errased.return_value)
+
+    @patch(MODULE + '.Yum')
+    @patch(MODULE + '.Package.affected')
+    @patch(MODULE + '.Package.erased')
+    def test_uninstall_no_transactions(self, erased, affected, yum):
+        names = [
             'zsh',
-            'ksh',
-            YumBase.UNKNOWN_PKG,
+            'kernel',
         ]
-        # Test
-        package = self.Package(apply=False)
-        report = package.uninstall(packages)
-        # Verify
-        self.verify(report, removed=packages[:-1])
-        self.assertFalse(YumBase.processTransaction.called)
-        self.assertTrue(YumBase.close.called)
+
+        progress = Mock()
+        yum.return_value.tsInfo.__len__.return_value = 0
+        yum.return_value.progress = progress
+
+        # test
+        package = Package(progress=progress)
+        details = package.uninstall(names)
+
+        # validation
+        self.assertEqual(
+            yum.return_value.remove.call_args_list,
+            [
+                call(pattern=n) for n in names
+            ])
+        yum.return_value.resolveDeps.assert_called_once_with()
+        progress.set_status.assert_called_once_with(True)
+        erased.assert_called_once_with(yum.return_value.tsInfo)
+        affected.assert_called_once_with(erased.return_value)
+        self.assertFalse(yum.return_value.processTransaction.called)
+        self.assertEqual(details, erased.return_value)
 
 
-class TestGroups(ToolTest):
-    def verify(self, report, installed=None, removed=None, failed=None):
-        resolved = []
-        deps = []
-        for group in installed or []:
-            resolved += [p.name for p in YumBase.GROUPS[group]]
-            deps = YumBase.INSTALL_DEPS
-        for group in removed or []:
-            resolved += [p.name for p in YumBase.GROUPS[group]]
-            deps = YumBase.ERASE_DEPS
-        self.assertEquals([p['name'] for p in report['resolved']], resolved)
-        self.assertEquals([p['name'] for p in report['deps']], [p.name for p in deps])
-        self.assertEquals([p['name'] for p in report['failed']], failed or [])
+class TestPackageGroup(TestCase):
 
-    def test_install(self):
-        # Setup
-        groups = ['plain', 'pulp']
-        # Test
-        group = self.PackageGroup()
-        report = group.install(groups)
-        # Verify
-        self.verify(report, installed=groups)
-        self.assertTrue(YumBase.processTransaction.called)
-        self.assertTrue(YumBase.close.called)
+    @patch(MODULE + '.Yum')
+    @patch(MODULE + '.Package.affected')
+    @patch(MODULE + '.Package.installed')
+    def test_install(self, installed, affected, yum):
+        names = [
+            'group_1',
+            'group_2'
+        ]
 
-    def test_install_failed(self):
-        # Setup
-        groups = ['plain-failed', 'pulp']
-        # Test
-        group = self.PackageGroup()
-        report = group.install(groups)
-        # Verify
-        self.verify(report, installed=groups, failed=[YumBase.FAILED_PKG])
-        self.assertTrue(YumBase.processTransaction.called)
-        self.assertTrue(YumBase.close.called)
+        progress = Mock()
+        yum.return_value.tsInfo.__len__.return_value = len(names)
 
-    def test_install_importkeys(self):
-        # Setup
-        groups = ['plain', 'pulp']
-        # Test
-        group = self.PackageGroup(importkeys=True)
-        report = group.install(groups)
-        # Verify
-        self.verify(report, installed=groups)
-        self.assertTrue(YumBase.processTransaction.called)
-        self.assertTrue(YumBase.close.called)
+        # test
+        package = PackageGroup(importkeys=123, progress=progress)
+        details = package.install(names)
 
-    def test_install_noapply(self):
-        # Setup
-        groups = ['plain', 'pulp']
-        # Test
-        group = self.PackageGroup(apply=False)
-        report = group.install(groups)
-        # Verify
-        self.verify(report, installed=groups)
-        self.assertFalse(YumBase.processTransaction.called)
-        self.assertTrue(YumBase.close.called)
+        # validation
+        yum.assert_called_once_with(123, progress)
+        self.assertEqual(
+            yum.return_value.selectGroup.call_args_list,
+            [
+                call(n) for n in names
+            ])
+        yum.return_value.resolveDeps.assert_called_once_with()
+        yum.return_value.processTransaction.assert_called_once_with()
+        yum.return_value.close.assert_called_once_with()
+        installed.assert_called_once_with(yum.return_value.tsInfo)
+        affected.assert_called_once_with(installed.return_value)
+        self.assertEqual(details, installed.return_value)
 
-    def test_install_notfound(self):
-        # Setup
-        groups = ['plain', 'pulp', 'xxxx']
-        # Test & verify
-        group = self.PackageGroup()
-        self.assertRaises(GroupsError, group.install, groups)
-        self.assertFalse(YumBase.processTransaction.called)
-        self.assertTrue(YumBase.close.called)
+    @patch(MODULE + '.Yum')
+    @patch(MODULE + '.Package.affected')
+    @patch(MODULE + '.Package.installed')
+    def test_install_not_applied(self, installed, affected, yum):
+        names = [
+            'group_1',
+            'group_2'
+        ]
 
-    def test_uninstall(self):
-        # Setup
-        groups = ['plain', 'pulp']
-        # Test
-        group = self.PackageGroup()
-        report = group.uninstall(groups)
-        # Verify
-        self.verify(report, removed=groups)
-        self.assertTrue(YumBase.processTransaction.called)
-        self.assertTrue(YumBase.close.called)
+        progress = Mock()
+        yum.return_value.tsInfo.__len__.return_value = len(names)
+        yum.return_value.progress = progress
 
-    def test_uninstall_failed(self):
-        # Setup
-        groups = ['plain-failed', 'pulp']
-        # Test
-        group = self.PackageGroup()
-        report = group.uninstall(groups)
-        # Verify
-        self.verify(report, removed=groups, failed=[YumBase.FAILED_PKG])
-        self.assertTrue(YumBase.processTransaction.called)
-        self.assertTrue(YumBase.close.called)
+        # test
+        package = PackageGroup(apply=False, progress=progress)
+        details = package.install(names)
 
-    def test_uninstall_noapply(self):
-        # Setup
-        groups = ['plain', 'pulp']
-        # Test
-        group = self.PackageGroup(apply=False)
-        report = group.uninstall(groups)
-        # Verify
-        self.verify(report, removed=groups)
-        self.assertFalse(YumBase.processTransaction.called)
-        self.assertTrue(YumBase.close.called)
+        # validation
+        self.assertEqual(
+            yum.return_value.selectGroup.call_args_list,
+            [
+                call(n) for n in names
+            ])
+        yum.return_value.resolveDeps.assert_called_once_with()
+        yum.return_value.close.assert_called_once_with()
+        progress.set_status.assert_called_once_with(True)
+        installed.assert_called_once_with(yum.return_value.tsInfo)
+        affected.assert_called_once_with(installed.return_value)
+        self.assertFalse(yum.return_value.processTransaction.called)
+        self.assertEqual(details, installed.return_value)
+
+    @patch(MODULE + '.Yum')
+    @patch(MODULE + '.Package.affected')
+    @patch(MODULE + '.Package.installed')
+    def test_install_no_transactions(self, installed, affected, yum):
+        names = [
+            'group_1',
+            'group_2'
+        ]
+
+        progress = Mock()
+        yum.return_value.tsInfo.__len__.return_value = 0
+        yum.return_value.progress = progress
+
+        # test
+        package = PackageGroup(progress=progress)
+        details = package.install(names)
+
+        # validation
+        self.assertEqual(
+            yum.return_value.selectGroup.call_args_list,
+            [
+                call(n) for n in names
+            ])
+        yum.return_value.resolveDeps.assert_called_once_with()
+        yum.return_value.close.assert_called_once_with()
+        progress.set_status.assert_called_once_with(True)
+        installed.assert_called_once_with(yum.return_value.tsInfo)
+        affected.assert_called_once_with(installed.return_value)
+        self.assertFalse(yum.return_value.processTransaction.called)
+        self.assertEqual(details, installed.return_value)
+
+    @patch(MODULE + '.Yum')
+    @patch(MODULE + '.Package.affected')
+    @patch(MODULE + '.Package.erased')
+    def test_uninstall(self, erased, affected, yum):
+        names = [
+            'group_1',
+            'group_2'
+        ]
+
+        progress = Mock()
+        yum.return_value.tsInfo.__len__.return_value = len(names)
+
+        # test
+        package = PackageGroup(progress=progress)
+        details = package.uninstall(names)
+
+        # validation
+        yum.assert_called_once_with(progress=progress)
+        self.assertEqual(
+            yum.return_value.groupRemove.call_args_list,
+            [
+                call(n) for n in names
+            ])
+        yum.return_value.resolveDeps.assert_called_once_with()
+        yum.return_value.processTransaction.assert_called_once_with()
+        yum.return_value.close.assert_called_once_with()
+        erased.assert_called_once_with(yum.return_value.tsInfo)
+        affected.assert_called_once_with(erased.return_value)
+        self.assertEqual(details, erased.return_value)
+
+    @patch(MODULE + '.Yum')
+    @patch(MODULE + '.Package.affected')
+    @patch(MODULE + '.Package.erased')
+    def test_uninstall_not_applied(self, errased, affected, yum):
+        names = [
+            'group_1',
+            'group_2'
+        ]
+
+        progress = Mock()
+        yum.return_value.tsInfo.__len__.return_value = len(names)
+        yum.return_value.progress = progress
+
+        # test
+        package = PackageGroup(apply=False, progress=progress)
+        details = package.uninstall(names)
+
+        # validation
+        self.assertEqual(
+            yum.return_value.groupRemove.call_args_list,
+            [
+                call(n) for n in names
+            ])
+        yum.return_value.resolveDeps.assert_called_once_with()
+        progress.set_status.assert_called_once_with(True)
+        errased.assert_called_once_with(yum.return_value.tsInfo)
+        affected.assert_called_once_with(errased.return_value)
+        self.assertFalse(yum.return_value.processTransaction.called)
+        self.assertEqual(details, errased.return_value)
+
+    @patch(MODULE + '.Yum')
+    @patch(MODULE + '.Package.affected')
+    @patch(MODULE + '.Package.erased')
+    def test_uninstall_no_transactions(self, erased, affected, yum):
+        names = [
+            'group_1',
+            'group_2'
+        ]
+
+        progress = Mock()
+        yum.return_value.tsInfo.__len__.return_value = 0
+        yum.return_value.progress = progress
+
+        # test
+        package = PackageGroup(progress=progress)
+        details = package.uninstall(names)
+
+        # validation
+        self.assertEqual(
+            yum.return_value.groupRemove.call_args_list,
+            [
+                call(n) for n in names
+            ])
+        yum.return_value.resolveDeps.assert_called_once_with()
+        progress.set_status.assert_called_once_with(True)
+        erased.assert_called_once_with(yum.return_value.tsInfo)
+        affected.assert_called_once_with(erased.return_value)
+        self.assertFalse(yum.return_value.processTransaction.called)
+        self.assertEqual(details, erased.return_value)
 
 
-class TestProgressReport(unittest.TestCase):
-    def setUp(self):
-        from yum.callbacks import PT_MESSAGES
-        from pulp_rpm.handlers.rpmtools import \
-            ProcessTransCallback, \
-            RPMCallback, \
-            DownloadCallback, \
-            ProgressReport
+class TestProgressReport(TestCase):
 
-        self.PT_MESSAGES = PT_MESSAGES
-        self.ProcessTransCallback = ProcessTransCallback
-        self.RPMCallback = RPMCallback
-        self.DownloadCallback = DownloadCallback
-        self.ProgressReport = ProgressReport
-
-    @patch('pulp_rpm.handlers.rpmtools.ProgressReport._updated')
+    @patch(MODULE + '.ProgressReport._updated')
     def test_push_step(self, _updated):
-        pr = self.ProgressReport()
         step = 'started'
+
+        # test
+        pr = ProgressReport()
         pr.push_step(step)
+
+        # validation
         self.assertEqual(pr.details, {})
         self.assertEqual(pr.steps, [[step, None]])
         self.assertTrue(_updated.called)
 
-    @patch('pulp_rpm.handlers.rpmtools.ProgressReport._updated')
+    @patch(MODULE + '.ProgressReport._updated')
     def test_set_status(self, _updated):
-        pr = self.ProgressReport()
         step = 'started'
+
+        # test
+        pr = ProgressReport()
         pr.push_step(step)
         pr.set_status(True)
+
+        # validation
         self.assertEqual(pr.steps, [[step, True]])
         self.assertEqual(pr.details, {})
         self.assertTrue(_updated.called)
 
-    @patch('pulp_rpm.handlers.rpmtools.ProgressReport._updated')
+    @patch(MODULE + '.ProgressReport._updated')
     def test_set_status_no_steps(self, _updated):
-        pr = self.ProgressReport()
+        # test
+        pr = ProgressReport()
         pr.set_status(True)
+
+        # validation
         self.assertEqual(pr.steps, [])
         self.assertEqual(pr.details, {})
         self.assertFalse(_updated.called)
 
-    @patch('pulp_rpm.handlers.rpmtools.ProgressReport._updated')
+    @patch(MODULE + '.ProgressReport._updated')
     def test_set_action(self, _updated):
-        pr = self.ProgressReport()
+        pr = ProgressReport()
         package = 'openssl'
         action = '100'
+
+        # test
         pr.set_action(action, package)
+
+        # validation
         self.assertEqual(pr.details, dict(action=action, package=package))
         self.assertTrue(_updated.called)
 
-    @patch('pulp_rpm.handlers.rpmtools.ProgressReport._updated')
+    @patch(MODULE + '.ProgressReport._updated')
     def test_error(self, _updated):
-        pr = self.ProgressReport()
+        pr = ProgressReport()
         step = 'started'
         pr.push_step(step)
         message = 'This is bad'
+
+        # test
         pr.error(message)
+
+        # validation
         self.assertEqual(pr.details, dict(error=message))
         self.assertEqual(pr.steps, [[step, False]])
         self.assertTrue(_updated.called)
 
     def test_report_steps(self):
-        STEPS = ('A', 'B', 'C')
-        ACTION = ('downloading', 'package-xyz-1.0-1.f16.rpm')
-        pr = self.ProgressReport()
+        steps = ('A', 'B', 'C')
+        action = ('downloading', 'package-xyz-1.0-1.f16.rpm')
+
+        # test and validation
+        pr = ProgressReport()
         pr._updated = Mock()
-        for s in STEPS:
+        for s in steps:
             # validate steps pushed with status of None
             pr.push_step(s)
             name, status = pr.steps[-1]
@@ -521,10 +757,10 @@ class TestProgressReport(unittest.TestCase):
             # validate details cleared on state pushed
             self.assertEqual(len(pr.details), 0)
             # set the action
-            pr.set_action(ACTION[0], ACTION[1])
+            pr.set_action(action[0], action[1])
             # validate action
-            self.assertEqual(pr.details['action'], ACTION[0])
-            self.assertEqual(pr.details['package'], ACTION[1])
+            self.assertEqual(pr.details['action'], action[0])
+            self.assertEqual(pr.details['package'], action[1])
             # validate previous step status is set (True) on next
             # push when status is None
             prev = pr.steps[-2:-1]
@@ -534,37 +770,62 @@ class TestProgressReport(unittest.TestCase):
     def test_report_steps_with_errors(self):
         # Test that previous state with status=False is not
         # set (True) on next state push
-        STEPS = ('A', 'B', 'C')
-        pr = self.ProgressReport()
+        steps = ('A', 'B', 'C')
+
+        # test
+        pr = ProgressReport()
         pr._updated = Mock()
-        pr.push_step(STEPS[0])
-        pr.push_step(STEPS[1])
+        pr.push_step(steps[0])
+        pr.push_step(steps[1])
         pr.set_status(False)
-        pr.push_step(STEPS[2])
+        pr.push_step(steps[2])
+
+        # validation
         self.assertTrue(pr.steps[0][1])
         self.assertFalse(pr.steps[1][1])
         self.assertTrue(pr.steps[2][1] is None)
 
+    @patch(MODULE + '.log')
+    def test_updated(self, log):
+        # test
+        pr = ProgressReport()
+        pr._updated()
+
+        # validation
+        self.assertTrue(log.info.called)
+
+
+class TestProcessTransCallback(TestCase):
+
     def test_trans_callback(self):
-        pr = self.ProgressReport()
+        pr = ProgressReport()
         pr._updated = Mock()
-        cb = self.ProcessTransCallback(pr)
-        for state in sorted(self.PT_MESSAGES.keys()):
+
+        # test
+        cb = ProcessTransCallback(pr)
+        for state in sorted(PT_MESSAGES.keys()):
             cb.event(state)
         pr.set_status(True)
-        self.assertEqual(len(self.PT_MESSAGES), len(pr.steps))
+
+        # validation
+        self.assertEqual(len(PT_MESSAGES), len(pr.steps))
         i = 0
-        for state in sorted(self.PT_MESSAGES.keys()):
+        for state in sorted(PT_MESSAGES.keys()):
             step = pr.steps[i]
-            name = self.PT_MESSAGES[state]
+            name = PT_MESSAGES[state]
             self.assertEqual(step[0], name)
             self.assertTrue(step[1])
             i += 1
 
+
+class TestRPMCallback(TestCase):
+
     def test_event(self):
         package = 'openssl'
         pr = Mock()
-        cb = self.RPMCallback(pr)
+
+        # test and validation
+        cb = RPMCallback(pr)
         expected_actions = set()
         for action, description in cb.action.items():
             cb.event(package, action)
@@ -574,9 +835,11 @@ class TestProgressReport(unittest.TestCase):
             pr.set_action.assert_called_with(description, package)
 
     def test_action(self):
-        pr = self.ProgressReport()
+        pr = ProgressReport()
         pr._updated = Mock()
-        cb = self.RPMCallback(pr)
+
+        # test and validation
+        cb = RPMCallback(pr)
         for action in sorted(cb.action.keys()):
             package = '%s_package' % action
             cb.event(package, action)
@@ -585,20 +848,26 @@ class TestProgressReport(unittest.TestCase):
         self.assertEqual(len(pr.steps), 0)
 
     def test_action_invalid_action(self):
-        pr = self.ProgressReport()
+        pr = ProgressReport()
         pr._updated = Mock()
-        cb = self.RPMCallback(pr)
+
+        # test
+        cb = RPMCallback(pr)
         package = 'openssl'
         action = 12345678
         cb.event(package, action)
+
+        # validation
         self.assertEqual(pr.details['action'], str(action))
         self.assertEqual(pr.details['package'], package)
         self.assertEqual(len(pr.steps), 0)
 
     def test_filelog(self):
-        pr = self.ProgressReport()
+        pr = ProgressReport()
         pr._updated = Mock()
-        cb = self.RPMCallback(pr)
+
+        # test and validation
+        cb = RPMCallback(pr)
         for action in sorted(cb.fileaction.keys()):
             package = '%s_package' % action
             cb.filelog(package, action)
@@ -607,22 +876,30 @@ class TestProgressReport(unittest.TestCase):
         self.assertEqual(len(pr.steps), 0)
 
     def test_filelog_invalid_action(self):
-        pr = self.ProgressReport()
+        pr = ProgressReport()
         pr._updated = Mock()
-        cb = self.RPMCallback(pr)
+
+        # test
+        cb = RPMCallback(pr)
         package = 'openssl'
         action = 12345678
         cb.filelog(package, action)
+
+        # validation
         self.assertEqual(pr.details['action'], str(action))
         self.assertEqual(pr.details['package'], package)
         self.assertEqual(len(pr.steps), 0)
 
     def test_errorlog(self):
-        pr = self.ProgressReport()
+        pr = ProgressReport()
         pr._updated = Mock()
-        cb = self.RPMCallback(pr)
+
+        # test
+        cb = RPMCallback(pr)
         message = 'Something bad happened'
         cb.errorlog(message)
+
+        # validation
         self.assertEqual(pr.details['error'], message)
         self.assertEqual(len(pr.steps), 0)
 
@@ -630,18 +907,106 @@ class TestProgressReport(unittest.TestCase):
         pr = Mock()
         tx = Mock()
         tx.po = 'openssl'
-        cb = self.RPMCallback(pr)
+        cb = RPMCallback(pr)
+
+        # test
         cb.verify_txmbr(None, tx, 10)
+
+        # validation
         pr.set_action.assert_called_with('Verifying', tx.po)
 
     def test_download_callback(self):
-        FILES = ('A', 'B', 'C')
-        pr = self.ProgressReport()
+        files = ('A', 'B', 'C')
+        pr = ProgressReport()
         pr._updated = Mock()
-        cb = self.DownloadCallback(pr)
-        for file in FILES:
+
+        # test and validation
+        cb = DownloadCallback(pr)
+        for file in files:
             path = '/path/%s' % file
             cb.start(filename=path, basename=file, size=1024)
             self.assertEqual(pr.details['action'], 'Downloading')
             self.assertEqual(pr.details['package'], '%s | 1.0 k' % file)
         self.assertEqual(len(pr.steps), 0)
+
+
+class TestYum(TestCase):
+
+    @patch(MODULE + '.DownloadCallback')
+    @patch(MODULE + '.OptionParser')
+    @patch(MODULE + '.Yum.repos', Mock())
+    def test_init(self, parser, download):
+        parser.return_value.parse_args.return_value = (Mock(), Mock())
+        progress = Mock()
+
+        # test
+        yum = Yum(True, progress)
+
+        # validation
+        parser.assert_called_with()
+        parser.return_value.parse_args.assert_called_with([])
+        download.assert_called_once_with(progress)
+        yum.repos.setProgressBar.assert_called_once_with(download.return_value)
+        self.assertEqual(yum.progress, progress)
+        self.assertTrue(progress.push_step.called)
+
+    @patch(MODULE + '.OptionParser')
+    @patch(MODULE + '.YumBase.doPluginSetup')
+    def test_doPluginSetup(self, setup, parser):
+        parser.return_value.parse_args.return_value = (Mock(), Mock())
+        yum = Yum()
+        yum.plugins = Mock()
+        parser.return_value.parse_args.reset_mock()
+        setup.reset_mock()
+
+        # test
+        yum.doPluginSetup()
+
+        # validation
+        setup.assert_called_once_with(yum)
+        parser.return_value.parse_args.assert_once_called_with([])
+        yum.plugins.setCmdLine.assert_called_once_with(*parser.return_value.parse_args.return_value)
+
+    def test_registerCommand(self):
+        # test
+        yum = Yum()
+        yum.registerCommand('')
+
+        # validation
+        # called for coverage only.
+
+    @patch(MODULE + '.RPMCallback')
+    @patch(MODULE + '.ProcessTransCallback')
+    @patch(MODULE + '.YumBase.processTransaction')
+    def test_processTransaction(self, process, trans_callback, rpm_callback):
+        progress = Mock()
+
+        # test
+        yum = Yum(progress=progress)
+        yum.processTransaction()
+
+        # validation
+        process.assert_called_once_with(
+            yum, trans_callback.return_value, rpmDisplay=rpm_callback.return_value)
+        trans_callback.assert_called_once_with(yum.progress)
+        rpm_callback.assert_called_once_with(yum.progress)
+        yum.progress.set_status.assert_called_once_with(True)
+
+    @patch(MODULE + '.RPMCallback')
+    @patch(MODULE + '.ProcessTransCallback')
+    @patch(MODULE + '.YumBase.processTransaction')
+    def test_processTransaction_raised(self, process, trans_callback, rpm_callback):
+        process.side_effect = ValueError
+        progress = Mock()
+
+        # test
+        yum = Yum(progress=progress)
+        self.assertRaises(ValueError, yum.processTransaction)
+
+        # validation
+        process.assert_called_once_with(
+            yum, trans_callback.return_value, rpmDisplay=rpm_callback.return_value)
+        trans_callback.assert_called_once_with(yum.progress)
+        rpm_callback.assert_called_once_with(yum.progress)
+        yum.progress.set_status.assert_called_once_with(False)
+        del yum

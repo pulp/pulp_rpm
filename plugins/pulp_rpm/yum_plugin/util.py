@@ -1,12 +1,16 @@
+import datetime
+import gettext
+import logging
+import os
 import shutil
 import uuid
-import os
-import logging
-import gettext
 
 import yum
 import rpmUtils
 from M2Crypto import X509
+
+from pulp.server.exceptions import PulpCodedValidationException
+from pulp_rpm.plugins import error_codes
 
 _ = gettext.gettext
 
@@ -173,3 +177,35 @@ def generate_listing_files(root_publish_dir, repo_publish_dir):
 
         # work up the directory structure
         working_dir = os.path.dirname(working_dir)
+
+
+def errata_format_to_datetime(datetime_str, msg):
+    """
+    Convert known errata date-time formats to datetime object.
+
+    Expected formats are:
+     - '%Y-%m-%d %H:%M:%S'
+     - '%Y-%m-%d %H:%M:%S UTC'
+
+    :param datetime_str: date and time in errata specific format
+    :type  datetime_str: str
+
+    :param msg: additional error message in case of exception
+    :type  msg: str
+
+    :return: parsed date and time
+    :rtype: datetime.datetime
+    :raises ValueError: if the date and time are in unknown format
+    """
+    strptime_pattern = '%Y-%m-%d %H:%M:%S'
+    datetime_str = datetime_str.strip()
+    if datetime_str.endswith(' UTC'):
+        datetime_str = datetime_str[:-4]
+
+    try:
+        datetime_obj = datetime.datetime.strptime(datetime_str, strptime_pattern)
+    except ValueError:
+        raise PulpCodedValidationException(error_code=error_codes.RPM1007, details=msg,
+                                           expected_format=strptime_pattern)
+
+    return datetime_obj

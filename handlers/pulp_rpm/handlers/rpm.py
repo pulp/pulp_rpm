@@ -247,3 +247,52 @@ class GroupHandler(ContentHandler):
             importkeys=importkeys,
             progress=PackageProgress(conduit))
         return impl
+
+
+class ErratumHandler(ContentHandler):
+    """
+    The package (rpm) content handler.
+    :ivar cfg: configuration
+    :type cfg: dict
+    """
+
+    def install(self, conduit, units, options):
+        """
+        Install content unit(s).
+        :param conduit: A handler conduit.
+        :type conduit: pulp.agent.lib.conduit.Conduit
+        :param units: A list of content unit_keys.
+        :type units: list
+        :param options: Unit install options.
+          - apply : apply the transaction
+          - importkeys : import GPG keys
+          - reboot : Reboot after installed
+        :type options: dict
+        :return: An install report.  See: Package.install
+        :rtype: PackageReport
+        """
+        report = PackageReport()
+        pkg = self.__impl(conduit, options)
+        advisories = [unit_key['id'] for unit_key in units]
+        details = pkg.update_minimal(advisories=advisories)
+        if details['failed']:
+            report.set_failed(details)
+        else:
+            report.set_succeeded(details)
+        return report
+
+    def __impl(self, conduit, options):
+        """
+        Get package implementation.
+        :param options: Passed options.
+        :type options: dict
+        :return: A package object.
+        :rtype: Package
+        """
+        apply = options.get('apply', True)
+        importkeys = options.get('importkeys', False)
+        impl = Package(
+            apply=apply,
+            importkeys=importkeys,
+            progress=PackageProgress(conduit))
+        return impl

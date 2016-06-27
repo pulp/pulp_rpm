@@ -2,11 +2,20 @@
 Pulp 2.8 Release Notes
 ======================
 
+Pulp 2.8.5
+==========
+
+Some of the improvements as resulf of :fixedbugs:`2.8.5` include:
+
+    * Errata installation on consumers occurs much faster. The behavior is equivalent to running
+      `yum update-minimal --advisories=<errata_id>,<other_errata_id>` on the consumer. This
+      change requires the `yum` package on the consumer to be up to date.
+
 Pulp 2.8.4
 ==========
 
-This is a hotfix release to address migration failures introduced in previous
-versions of the Pulp RPM Plugin.
+This is a hotfix release to address migration failures introduced in earlier versions
+of Pulp.
 
 Bug Fixes
 ---------

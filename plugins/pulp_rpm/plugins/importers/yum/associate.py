@@ -345,8 +345,8 @@ def associate_copy_for_repo(unit, dest_repo, set_content=False):
     :type  unit:            pulp_rpm.plugins.db.models.Package
     :param dest_repo:       destination repo
     :type  dest_repo:       pulp.server.db.model.Repository
-    :param set_content:     if True, the set_unit() method will be called on the new unit. Default
-                            is False.
+    :param set_content:     if True, the set_storage_path() method will be called on the new unit.
+                            Default is False.
     :type  set_content:     bool
 
     :return:    new unit that was saved and associated
@@ -354,6 +354,9 @@ def associate_copy_for_repo(unit, dest_repo, set_content=False):
     """
     new_unit = unit.clone()
     new_unit.repo_id = dest_repo.repo_id
+    if set_content:
+        # calculate a new storage path since the unit key has changed
+        new_unit.set_storage_path(os.path.basename(unit._storage_path))
 
     try:
         new_unit.save()
@@ -361,11 +364,12 @@ def associate_copy_for_repo(unit, dest_repo, set_content=False):
         # It is possible that a previous copy exists as an orphan, in which case it can safely
         # be deleted and replaced with this new version.
         _LOGGER.debug(_('replacing pre-existing copy of %(u)s' % {'u': new_unit}))
-        new_unit.__class__.objects.filter(**new_unit.unit_key).delete()
+        existing_unit_qs = new_unit.__class__.objects.filter(**new_unit.unit_key)
+        repo_controller.disassociate_units(dest_repo, existing_unit_qs)
+        existing_unit_qs.delete()
         new_unit.save()
 
     if set_content:
-        new_unit.set_storage_path(os.path.basename(unit._storage_path))
         new_unit.safe_import_content(unit._storage_path)
 
     repo_controller.associate_single_unit(repository=dest_repo, unit=new_unit)

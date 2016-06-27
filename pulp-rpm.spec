@@ -13,7 +13,7 @@
 # ---- Pulp (rpm) --------------------------------------------------------------
 
 Name: pulp-rpm
-Version: 2.8.4
+Version: 2.8.5
 Release: 1%{?dist}
 Summary: Support for RPM content in the Pulp platform
 Group: Development/Languages
@@ -267,22 +267,13 @@ A collection of yum plugins supplementing Pulp consumer operations.
 
 
 %changelog
-* Mon Jun 06 2016 Sean Myers <sean.myers@redhat.com> 2.8.4-1
+* Mon Jun 27 2016 Sean Myers <sean.myers@redhat.com> 2.8.5-1
 - Pulp rebuild
 
-* Tue May 31 2016 Sean Myers <sean.myers@redhat.com> 2.8.4-0.2.beta
+* Fri Jun 17 2016 Sean Myers <sean.myers@redhat.com> 2.8.5-0.1.beta
 - Pulp rebuild
 
-* Tue May 17 2016 Sean Myers <sean.myers@redhat.com> 2.8.3-1
-- Pulp rebuild
-
-* Mon May 16 2016 pulpbot <pulp-infra@redhat.com> 2.8.3-0.4.rc
-- Pulp rebuild
-
-* Tue May 10 2016 Sean Myers <sean.myers@redhat.com> 2.8.3-0.3.rc
-- Pulp rebuild
-
-* Tue May 03 2016 Sean Myers <sean.myers@redhat.com> 2.8.3-0.2.beta
+* Thu May 26 2016 Sean Myers <sean.myers@redhat.com> 2.8.4-0.1.beta
 - fixed sync for reference title (jluza@redhat.com)
 - 1782 - reboot_suggested is False by default if during unit upload there was
   not specified any value. (ipanova@redhat.com)
