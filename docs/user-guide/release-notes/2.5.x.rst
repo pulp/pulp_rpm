@@ -25,8 +25,8 @@ This release fixes `#1175818 <https://bugzilla.redhat.com/show_bug.cgi?id=117581
 `#1178920 <https://bugzilla.redhat.com/show_bug.cgi?id=1178920>`_,
 `#1171278 <https://bugzilla.redhat.com/show_bug.cgi?id=1171278>`_ and
 `#1159040 <https://bugzilla.redhat.com/show_bug.cgi?id=1159040>`_. To perform the
-upgrade, follow the Platform `upgrade instructions <http://pulp-user-guide.readthedocs.org/en/
-2.5-release/release-notes/2.5.x.html#upgrade-instructions-for-2-4-x-2-5-x>`_.
+upgrade, follow the Platform `upgrade instructions <https://docs.pulpproject.org/en/latest/
+user-guide/release-notes/2.5.x.html#upgrade-instructions-for-2-4-x-2-5-x>`_.
 
 Pulp RPM 2.5.1
 ==============

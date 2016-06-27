@@ -43,7 +43,7 @@ Upgrade Instructions
 Upgrade the Pulp Packages
 ^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Please see the `Pulp Platform 2.1.1 upgrade instructions <https://pulp-user-guide.readthedocs.io/en/pulp-2.1/release-notes.html#pulp-2-1-1>`_
+Please see the `Pulp Platform 2.1.1 upgrade instructions <https://docs.pulpproject.org/en/latest/user-guide/release-notes/2.1.x.html#pulp-2-1-1>`_
 for information on how to complete the upgrade.
 
 Pulp 2.1.0
@@ -95,5 +95,5 @@ Upgrade the Pulp Packages
 ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Please see the
-`Pulp Platform 2.1.0 upgrade instructions <https://pulp-user-guide.readthedocs.io/en/pulp-2.1/release-notes.html#pulp-2-1-0>`_
+`Pulp Platform 2.1.0 upgrade instructions <https://docs.pulpproject.org/en/latest/user-guide/release-notes/2.1.x.html#pulp-2-1-0>`_
 for information on how to complete the upgrade.
