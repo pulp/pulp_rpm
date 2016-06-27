@@ -16,13 +16,6 @@
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 #sys.path.insert(0, os.path.abspath('.'))
 
-# this var should refer to where intersphinx should pull inv files from. For
-# example, this would be set to '2.6-release' for the 2.6 branches, which would
-# pull objects.inv from http://pulp.readthedocs.org/en/2.6-release/objects.inv.
-# For master, this should point to 'latest'.
-
-rtd_builder = 'latest'
-
 # -- General configuration -----------------------------------------------------
 
 # If your documentation needs a minimal Sphinx version, state it here.

@@ -11,7 +11,7 @@ The yum importer is configured by editing
 
 The importer supports the settings documented in Pulp's `importer config docs`_.
 
-.. _importer config docs: https://pulp.readthedocs.org/en/latest/user-guide/server.html#importers
+.. _importer config docs: https://docs.pulpproject.org/en/latest/user-guide/server.html#importers
 
 ISO Importer Configuration
 --------------------------
@@ -23,7 +23,7 @@ The ISO importer is configured by editing
 
 The importer supports the settings documented in Pulp's `importer config docs`_.
 
-.. _importer config docs: https://pulp.readthedocs.org/en/latest/user-guide/server.html#importers
+.. _importer config docs: https://docs.pulpproject.org/en/latest/user-guide/server.html#importers
 
 Protected Repositories
 ----------------------
