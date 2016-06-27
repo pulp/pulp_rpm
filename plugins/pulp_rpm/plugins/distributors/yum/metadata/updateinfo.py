@@ -87,10 +87,9 @@ class UpdateinfoXMLFileContext(XmlFileContext):
         issued_attributes = {'date': erratum_unit.issued}
         ElementTree.SubElement(update_element, 'issued', issued_attributes)
 
-        reboot_element = ElementTree.SubElement(update_element, 'reboot_suggested')
-        if erratum_unit.reboot_suggested is None:
-            erratum_unit.reboot_suggested = False
-        reboot_element.text = str(erratum_unit.reboot_suggested)
+        if erratum_unit.reboot_suggested:
+            reboot_element = ElementTree.SubElement(update_element, 'reboot_suggested')
+            reboot_element.text = 'True'
 
         # these elements are optional
         for key in ('title', 'release', 'rights', 'solution',
@@ -186,8 +185,9 @@ class UpdateinfoXMLFileContext(XmlFileContext):
                     sum_element = ElementTree.SubElement(package_element, 'sum', sum_attributes)
                     sum_element.text = checksum_value
 
-                reboot_element = ElementTree.SubElement(package_element, 'reboot_suggested')
-                reboot_element.text = str(package.get('reboot_suggested', False))
+                if package.get('reboot_suggested'):
+                    reboot_element = ElementTree.SubElement(package_element, 'reboot_suggested')
+                    reboot_element.text = 'True'
 
         # write the top-level XML element out to the file
         update_element_string = ElementTree.tostring(update_element, 'utf-8')
