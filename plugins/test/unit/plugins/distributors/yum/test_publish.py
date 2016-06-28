@@ -151,15 +151,16 @@ class BaseYumRepoPublisherTests(BaseYumDistributorPublishTests):
         self.publisher.repo.content_unit_counts = {}
         self.publisher.process_lifecycle()
 
-        mock_publish_distribution.assert_called_once()
-        mock_publish_rpms.assert_called_once()
+        mock_publish_distribution.assert_called_once_with()
+        mock_publish_rpms.assert_called_once_with(mock_publish_distribution(),
+                                                  repo_content_unit_q=None)
         mock_publish_drpms.assert_called_once_with(mock_publish_distribution(),
                                                    repo_content_unit_q=None)
-        mock_publish_errata.assert_called_once_with(repo_content_unit_q=None)
-        mock_publish_metadata.assert_called_once()
+        mock_publish_errata.assert_called_once_with()
+        mock_publish_metadata.assert_called_once_with()
         mock_build_final_report.assert_called_once()
-        mock_publish_comps.assert_called_once()
-        mock_generate_sqlite.assert_called_once()
+        mock_publish_comps.assert_called_once_with()
+        mock_generate_sqlite.assert_called_once_with(self.working_dir)
 
     @mock.patch('pulp_rpm.plugins.distributors.yum.publish.configuration.get_repo_checksum_type')
     def test_get_checksum_type(self, mock_get_checksum):
@@ -177,59 +178,93 @@ class BaseYumRepoPublisherTests(BaseYumDistributorPublishTests):
         self.assertEquals('sha1', publisher.checksum_type)
 
 
-class ExportRepoPublisherTests(BaseYumDistributorPublishStepTests):
+@mock.patch('pulp_rpm.plugins.distributors.yum.publish.export_utils.create_date_range_filter')
+class ExportRepoPublisherTests(unittest.TestCase):
+    """
+    Test that the export steps are correct.
+    """
+    def setUp(self):
+        repo = model.Repository(repo_id='foo')
+        self.transfer_repo = repo.to_transfer_repo()
+        self.filter = 'some filter'
+        self.working_dir = 'working_dir'
+        self.export_dir = 'export_dir'
+        self.content_dir = os.path.join(self.working_dir, 'scratch')
+        self.realized_dir = os.path.join(self.working_dir, 'realized')
+        self.output_dir = os.path.join(self.working_dir, 'output')
+        self.export_target_dir = os.path.join(self.export_dir, repo.repo_id)
+        self.iso_target_dir = os.path.join(self.realized_dir, repo.repo_id)
+        self.master_dir = os.path.join(configuration.MASTER_PUBLISH_DIR, YUM_DISTRIBUTOR_ID,
+                                       repo.repo_id)
+        self.conduit = RepoPublishConduit(repo.repo_id, YUM_DISTRIBUTOR_ID)
 
-    @skip_broken
-    @mock.patch('pulp_rpm.plugins.distributors.yum.publish.export_utils.create_date_range_filter')
-    def test_init_with_date_filter_and_export_dir(self, mock_export_utils):
-        mock_export_utils.return_value = 'foo'
-        export_dir = 'flux'
-        config = PluginCallConfiguration(None, {constants.EXPORT_DIRECTORY_KEYWORD: export_dir})
-        step = publish.ExportRepoPublisher(self.publisher.get_repo(),
-                                           self.publisher.get_conduit(),
-                                           config,
-                                           YUM_DISTRIBUTOR_ID, working_dir=self.working_dir)
-        self.assertTrue(isinstance(step.children[0], publish.PublishRpmAndDrpmStepIncremental))
-        self.assertTrue(isinstance(step.children[1], publish.PublishErrataStepIncremental))
-        self.assertTrue(isinstance(step.children[2], publish.CopyDirectoryStep))
-        self.assertTrue(isinstance(step.children[3], publish.GenerateListingFileStep))
+    @mock.patch('pulp_rpm.plugins.distributors.yum.publish.GenerateListingFileStep')
+    @mock.patch('pulp.plugins.util.publish_step.CopyDirectoryStep')
+    @mock.patch('pulp_rpm.plugins.distributors.yum.publish.PublishErrataStepIncremental')
+    @mock.patch('pulp_rpm.plugins.distributors.yum.publish.PublishRpmAndDrpmStepIncremental')
+    def test_export_init_export_dir(self, mock_rpm_incremental, mock_errata_incremental,
+                                    mock_copydir, mock_listing, mock_export_utils):
+        """
+        Verify the publish steps when the export directory is specified.
+        """
+        mock_export_utils.return_value = self.filter
+        config = PluginCallConfiguration(None,
+                                         {constants.EXPORT_DIRECTORY_KEYWORD: self.export_dir})
+        publish.ExportRepoPublisher(self.transfer_repo, self.conduit, config, YUM_DISTRIBUTOR_ID,
+                                    working_dir=self.working_dir)
 
-        self.assertEquals(step.children[0].association_filters, 'foo')
-        self.assertEquals(step.children[1].association_filters, 'foo')
+        mock_rpm_incremental.assert_called_once_with(repo_content_unit_q=mock_export_utils())
+        mock_errata_incremental.assert_called_once_with(repo_content_unit_q=mock_export_utils())
+        mock_copydir.assert_called_once_with(self.working_dir, self.export_target_dir)
+        mock_listing.assert_called_once_with(self.export_dir, self.export_target_dir)
 
-    @skip_broken
-    @mock.patch('pulp_rpm.plugins.distributors.yum.publish.export_utils.create_date_range_filter')
-    def test_init_with_date_and_iso(self, mock_export_utils):
-        mock_export_utils.return_value = 'foo'
+    @mock.patch('pulp.plugins.util.publish_step.CreatePulpManifestStep')
+    @mock.patch('pulp.plugins.util.publish_step.AtomicDirectoryPublishStep')
+    @mock.patch('pulp_rpm.plugins.distributors.yum.publish.CreateIsoStep')
+    @mock.patch('pulp_rpm.plugins.distributors.yum.publish.GenerateListingFileStep')
+    @mock.patch('pulp.plugins.util.publish_step.CopyDirectoryStep')
+    @mock.patch('pulp_rpm.plugins.distributors.yum.publish.PublishErrataStepIncremental')
+    @mock.patch('pulp_rpm.plugins.distributors.yum.publish.PublishRpmAndDrpmStepIncremental')
+    def test_export_init_iso(self, mock_rpm_incremental, mock_errata_incremental, mock_copydir,
+                             mock_listing, mock_create_iso, mock_atomic_publish, mock_manifest,
+                             mock_export_utils):
+        """
+        Verify the publish steps when the export directory is not specified.
+        """
+        mock_export_utils.return_value = self.filter
         config = PluginCallConfiguration(None, None)
-        step = publish.ExportRepoPublisher(self.publisher.get_repo(),
-                                           self.publisher.get_conduit(),
-                                           config,
-                                           YUM_DISTRIBUTOR_ID, working_dir=self.working_dir)
-        self.assertTrue(isinstance(step.children[-4], publish.CopyDirectoryStep))
-        self.assertTrue(isinstance(step.children[-3], publish.GenerateListingFileStep))
-        self.assertTrue(isinstance(step.children[-2], publish.CreateIsoStep))
-        self.assertTrue(isinstance(step.children[-1], publish.AtomicDirectoryPublishStep))
+        publish.ExportRepoPublisher(self.transfer_repo, self.conduit, config, YUM_DISTRIBUTOR_ID,
+                                    working_dir=self.working_dir)
+        mock_rpm_incremental.assert_called_once_with(repo_content_unit_q=mock_export_utils())
+        mock_errata_incremental.assert_called_once_with(repo_content_unit_q=mock_export_utils())
+        mock_copydir.assert_called_once_with(self.content_dir, self.iso_target_dir)
+        mock_listing.assert_called_once_with(self.realized_dir, self.iso_target_dir)
+        mock_create_iso.assert_called_once_with(self.realized_dir, self.output_dir)
+        mock_atomic_publish.assert_called_once_with(self.output_dir, [], self.master_dir)
+        self.assertEqual(mock_manifest.call_count, 0)
 
-        for child in step.children:
-            self.assertFalse(isinstance(child, CreatePulpManifestStep))
-
-        self.assertEquals(step.children[0].association_filters, 'foo')
-        self.assertEquals(step.children[1].association_filters, 'foo')
-
-    @skip_broken
-    @mock.patch('pulp_rpm.plugins.distributors.yum.publish.export_utils.create_date_range_filter')
-    def test_init_with_create_manifest(self, mock_export_utils):
-        mock_export_utils.return_value = 'foo'
+    @mock.patch('pulp.plugins.util.publish_step.CreatePulpManifestStep')
+    def test_export_create_manifest(self, mock_manifest, mock_export_utils):
+        """
+        Test that the manifest step is added when the manifest flag is set to True.
+        """
+        mock_export_utils.return_value = self.filter
         config = PluginCallConfiguration({constants.CREATE_PULP_MANIFEST: True}, None)
-        step = publish.ExportRepoPublisher(
-            self.publisher.get_repo(),
-            self.publisher.get_conduit(),
-            config,
-            YUM_DISTRIBUTOR_ID, working_dir=self.working_dir
-        )
+        publish.ExportRepoPublisher(self.transfer_repo, self.conduit, config, YUM_DISTRIBUTOR_ID,
+                                    working_dir=self.working_dir)
+        mock_manifest.assert_called_once_with(self.output_dir)
 
-        self.assertTrue(isinstance(step.children[-2], CreatePulpManifestStep))
+    @mock.patch('pulp_rpm.plugins.distributors.yum.publish.PublishErrataStep')
+    def test_export_incremental_repomd(self, mock_errata, mock_export_utils):
+        """
+        Test that the errata step is called with filters when the incremental_export_repomd flag
+        is set to True.
+        """
+        mock_export_utils.return_value = self.filter
+        config = PluginCallConfiguration(None, {constants.INCREMENTAL_EXPORT_REPOMD_KEYWORD: True})
+        publish.ExportRepoPublisher(self.transfer_repo, self.conduit, config, YUM_DISTRIBUTOR_ID,
+                                    working_dir=self.working_dir)
+        mock_errata.assert_called_once_with(repo_content_unit_q=mock_export_utils())
 
 
 class ExportRepoGroupPublisherTests(BaseYumDistributorPublishStepTests):
