@@ -73,7 +73,11 @@ class BaseYumRepoPublisher(platform_steps.PluginStep):
         self.rpm_step = PublishRpmStep(dist_step, repo_content_unit_q=association_filters)
         self.add_child(self.rpm_step)
         self.add_child(PublishDrpmStep(dist_step, repo_content_unit_q=association_filters))
-        self.add_child(PublishErrataStep(repo_content_unit_q=association_filters))
+        errata_step_kwargs = {}
+        if config.get_boolean(constants.INCREMENTAL_EXPORT_REPOMD_KEYWORD):
+            errata_step_kwargs['repo_content_unit_q'] = association_filters
+        errata_step = PublishErrataStep(**errata_step_kwargs)
+        self.add_child(errata_step)
         self.add_child(PublishCompsStep())
         self.add_child(PublishMetadataStep())
         self.add_child(CloseRepoMetadataStep())
@@ -599,6 +603,7 @@ class PublishErrataStep(platform_steps.UnitModelPluginStep):
         nevra_in_repo = set()
         for scalar in nevra_scalars:
             nevra_in_repo.add(models.NEVRA(*scalar))
+        logger.warn(nevra_in_repo)
 
         checksum_type = self.parent.get_checksum_type()
         self.context = UpdateinfoXMLFileContext(self.get_working_dir(), nevra_in_repo,
