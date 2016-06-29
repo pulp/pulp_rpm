@@ -837,8 +837,8 @@ class RpmBase(NonMetadataPackage):
         self._templatize_pkgid(filelists)
 
         self.repodata['primary'] = utils.remove_fake_element(utils.element_to_text(faked_primary))
-        self.repodata['other'] = utils.remove_fake_element(utils.element_to_text(other))
-        self.repodata['filelists'] = utils.remove_fake_element(utils.element_to_text(filelists))
+        self.repodata['other'] = utils.element_to_text(other)
+        self.repodata['filelists'] = utils.element_to_text(filelists)
 
     @classmethod
     def _templatize_pkgid(cls, element):
