@@ -6,6 +6,7 @@ import math
 import os
 import shutil
 import tempfile
+from xml.etree import ElementTree as ET
 
 import mock
 from pulp.common.compat import unittest
@@ -151,6 +152,12 @@ class TestRpmBaseModifyXML(unittest.TestCase):
         self.unit.filename = 'fixed-filename.rpm'
         self.checksum = '951e0eacf3e6e6102b10acb2e689243b5866ec2c7720e783749dbd32f4a69ab3'
 
+    def assertParsable(self, text):
+        try:
+            ET.fromstring(text)
+        except ET.ParseError:
+            self.fail('could not parse XML')
+
     def test_update_location(self):
         self.unit.modify_xml()
 
@@ -168,11 +175,13 @@ class TestRpmBaseModifyXML(unittest.TestCase):
         self.unit.modify_xml()
         self.assertTrue('{{ pkgid }}' in self.unit.repodata['other'])
         self.assertTrue(self.checksum not in self.unit.repodata['other'])
+        self.assertParsable(self.unit.repodata['other'])
 
     def test_checksum_filelists_pkgid(self):
         self.unit.modify_xml()
         self.assertTrue('{{ pkgid }}' in self.unit.repodata['filelists'])
         self.assertTrue(self.checksum not in self.unit.repodata['filelists'])
+        self.assertParsable(self.unit.repodata['filelists'])
 
 
 class TestDistribution(unittest.TestCase):

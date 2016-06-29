@@ -1,4 +1,5 @@
 from pulp.common.compat import unittest
+from xml.etree import ElementTree as ET
 
 import mock
 
@@ -88,17 +89,25 @@ class TestModifyXml(unittest.TestCase):
             'filelists': FILELISTS,
         }
 
+    def assertParsable(self, text):
+        try:
+            ET.fromstring(text)
+        except ET.ParseError:
+            self.fail('could not parse XML')
+
     def test_other_template(self):
         ret = migration._modify_xml(self.repodata)
 
         self.assertTrue('{{ pkgid }}' in ret['other'])
         self.assertTrue('f4200643b' not in ret['other'])
+        self.assertParsable(ret['other'])
 
     def test_filelists_template(self):
         ret = migration._modify_xml(self.repodata)
 
         self.assertTrue('{{ pkgid }}' in ret['filelists'])
         self.assertTrue('f4200643b' not in ret['filelists'])
+        self.assertParsable(ret['filelists'])
 
     def test_primary_template(self):
         ret = migration._modify_xml(self.repodata)
