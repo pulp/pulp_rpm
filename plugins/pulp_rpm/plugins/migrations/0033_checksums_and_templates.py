@@ -107,8 +107,8 @@ def _modify_xml(repodata):
 
     return {
         'primary': remove_fake_element(element_to_text(faked_primary)),
-        'other': remove_fake_element(element_to_text(other)),
-        'filelists': remove_fake_element(element_to_text(filelists)),
+        'other': element_to_text(other),
+        'filelists': element_to_text(filelists),
     }
 
 
