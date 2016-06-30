@@ -128,10 +128,8 @@ class UpdateinfoXMLFileContext(XmlFileContext):
         issued_attributes = {'date': erratum_unit.issued}
         self.xml_generator.completeElement('issued', issued_attributes, '')
 
-        if erratum_unit.reboot_suggested is None:
-            erratum_unit.reboot_suggested = False
-        reboot_suggested_str = str(erratum_unit.reboot_suggested)
-        self.xml_generator.completeElement('reboot_suggested', {}, reboot_suggested_str)
+        if erratum_unit.reboot_suggested:
+            self.xml_generator.completeElement('reboot_suggested', {}, 'True')
 
         for element in self.optional_errata_fields:
             element_value = getattr(erratum_unit, element)
@@ -204,8 +202,8 @@ class UpdateinfoXMLFileContext(XmlFileContext):
                     sum_attributes = {'type': checksum_type}
                     self.xml_generator.completeElement('sum', sum_attributes, checksum_value)
 
-                reboot_suggested_str = str(package.get('reboot_suggested', False))
-                self.xml_generator.completeElement('reboot_suggested', {}, reboot_suggested_str)
+                if package.get('reboot_suggested'):
+                    self.xml_generator.completeElement('reboot_suggested', {}, 'True')
                 self.xml_generator.endElement('package')
 
             self.xml_generator.endElement('collection')

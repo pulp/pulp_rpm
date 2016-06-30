@@ -570,6 +570,34 @@ class TestErrata(unittest.TestCase):
         self.assertNotEqual(existing_erratum.field1, uploaded_erratum.field1)
         self.assertNotEqual(existing_erratum.field2, uploaded_erratum.field2)
 
+    @mock.patch('pulp_rpm.plugins.db.models.Errata.merge_pkglists_and_save')
+    @mock.patch('pulp_rpm.plugins.db.models.Errata.update_needed')
+    def test_merge_fixes_reboot_needed(self, mock_update_needed, mock_merge_pkglists):
+        """
+        Test that the reboot_suggested value is overwritten by the one on the erratum being merged.
+        """
+        existing_erratum, new_erratum = models.Errata(), models.Errata()
+        mock_update_needed.return_value = False
+        existing_erratum.reboot_suggested = True
+        new_erratum.reboot_suggested = False
+        existing_erratum.merge_errata(new_erratum)
+
+        self.assertFalse(existing_erratum.reboot_suggested)
+
+    @mock.patch('pulp_rpm.plugins.db.models.Errata.merge_pkglists_and_save')
+    @mock.patch('pulp_rpm.plugins.db.models.Errata.update_needed')
+    def test_merge_preserves_reboot_needed(self, mock_update_needed, mock_merge_pkglists):
+        """
+        Test that the reboot_suggested value is preserved when both are True.
+        """
+        existing_erratum, new_erratum = models.Errata(), models.Errata()
+        mock_update_needed.return_value = False
+        existing_erratum.reboot_suggested = True
+        new_erratum.reboot_suggested = True
+        existing_erratum.merge_errata(new_erratum)
+
+        self.assertTrue(existing_erratum.reboot_suggested)
+
 
 class TestISO(unittest.TestCase):
     """

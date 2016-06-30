@@ -102,6 +102,30 @@ class UpdateinfoXMLFileContextTests(unittest.TestCase):
         generated_xml = self.context.metadata_file_handle.getvalue()
         self.assertTrue(re.search('<description */>', generated_xml) is not None)
 
+    def test_reboot_suggested(self):
+        """
+        Test that when reboot_suggested is True, the element is present in the XML
+        """
+        erratum = self._generate_erratum_unit()
+        erratum.reboot_suggested = True
+
+        self.context.add_unit_metadata(erratum)
+
+        xml = self.context.metadata_file_handle.getvalue()
+        self.assertTrue('reboot_suggested' in xml)
+
+    def test_no_reboot_suggested(self):
+        """
+        Test that when reboot_suggested is False, the element is not present in the XML
+        """
+        erratum = self._generate_erratum_unit()
+        erratum.reboot_suggested = False
+
+        self.context.add_unit_metadata(erratum)
+
+        xml = self.context.metadata_file_handle.getvalue()
+        self.assertTrue('reboot_suggested' not in xml)
+
     def test_no_duplicated_pkglists(self):
         """
         Test that no duplicated pkglists are generated.
@@ -157,7 +181,6 @@ class UpdateinfoXMLFileContextTests(unittest.TestCase):
         expected_xml = '<update status="symbol" from="" version="2.4.1" type="security">\n' \
                        '  <id>RHSA-2014:0042</id>\n' \
                        '  <issued date="2014-05-27 00:00:00" />\n' \
-                       '  <reboot_suggested>False</reboot_suggested>\n' \
                        '  <title>Some Title</title>\n' \
                        '  <release>2</release>\n' \
                        '  <rights>You have the right to remain silent.</rights>\n' \
@@ -179,7 +202,6 @@ class UpdateinfoXMLFileContextTests(unittest.TestCase):
                        'arch="x86_64">\n' \
                        '        <filename>pulp-test-package-0.3.1-1.fc22.x86_64.rpm</filename>\n' \
                        '        <sum type="sha256">sums</sum>\n' \
-                       '        <reboot_suggested>False</reboot_suggested>\n' \
                        '      </package>\n' \
                        '      <package src="another-test-package-3.2-1.fc22.src.rpm" ' \
                        'name="another-test-package" epoch="0" version="3.2" release="1.fc22" ' \
@@ -187,7 +209,6 @@ class UpdateinfoXMLFileContextTests(unittest.TestCase):
                        '        <filename>another-test-package-0.3.1-1.fc22.x86_64.rpm' \
                        '</filename>\n' \
                        '        <sum type="sha256">sha256_checksum</sum>\n' \
-                       '        <reboot_suggested>False</reboot_suggested>\n' \
                        '      </package>\n' \
                        '    </collection>\n' \
                        '  </pkglist>\n' \

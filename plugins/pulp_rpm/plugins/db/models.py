@@ -1004,9 +1004,10 @@ class Errata(UnitMixin, ContentUnit):
         """
         Merge two errata with the same errata_id.
 
-        There are two parts:
+        There are three parts:
         - merging of the pkglists in case of the erratum with the same id in different repositories
         - overwriting the erratum metadata based on the `updated` field
+        - overwriting the "reboot_suggested" value because of https://pulp.plan.io/issues/2032
 
         NOTE: The first part should be eliminated after we change the way erratum is stored in the
         MongoDB.
@@ -1018,6 +1019,11 @@ class Errata(UnitMixin, ContentUnit):
         if self.update_needed(other):
             for field_name in self.mutable_erratum_fields:
                 setattr(self, field_name, getattr(other, field_name))
+        # This is due to https://pulp.plan.io/issues/2032
+        # Syncs previously could have misinterpreted the reboot_suggested element and saved a
+        # value of True when it should have been False. The only way to correct that data in pulp
+        # is to do so here, during a subsequent sync.
+        self.reboot_suggested = other.reboot_suggested
 
     def update_needed(self, other):
         """
