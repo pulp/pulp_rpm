@@ -729,8 +729,12 @@ class Errata(UnitMixin, ContentUnit):
         err_msg = _('Fail to update the %(which)s erratum %(id)s.')
         existing_err_msg = err_msg % {'which': 'existing', 'id': self.errata_id}
         other_err_msg = err_msg % {'which': 'uploaded', 'id': self.errata_id}
-        existing_updated_dt = util.errata_format_to_datetime(self.updated, msg=existing_err_msg)
-        new_updated_dt = util.errata_format_to_datetime(other.updated, msg=other_err_msg)
+        try:
+            existing_updated_dt = util.errata_format_to_datetime(self.updated, msg=existing_err_msg)
+            new_updated_dt = util.errata_format_to_datetime(other.updated, msg=other_err_msg)
+        except ValueError as e:
+            _LOGGER.warn(str(e))
+            return False
         return new_updated_dt > existing_updated_dt
 
     def merge_pkglists_and_save(self, other):
