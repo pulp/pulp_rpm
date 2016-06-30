@@ -10,7 +10,6 @@ import tempfile
 import mock
 
 from pulp.common.compat import unittest
-from pulp.server.exceptions import PulpCodedValidationException
 from pulp_rpm.common import ids
 from pulp_rpm.devel.skip import skip_broken
 from pulp_rpm.plugins.db import models
@@ -202,29 +201,47 @@ class TestErrata(unittest.TestCase):
         ret = existing_erratum.update_needed(uploaded_erratum)
         self.assertFalse(ret)
 
-    def test_update_needed_bad_date_existing(self):
+    @mock.patch('pulp_rpm.plugins.db.models._LOGGER')
+    def test_update_needed_different_supported_date_formats(self, mock_logger):
+        """
+        Assert that the supported datetime format are handled correctly and without any warning
+        """
+        existing_erratum, uploaded_erratum = models.Errata(), models.Errata()
+        existing_erratum.updated = '2015-01-01'
+        uploaded_erratum.updated = '2016-01-01 00:00:00'
+        ret = existing_erratum.update_needed(uploaded_erratum)
+        self.assertTrue(ret)
+        mock_logger.warn.assert_not_called()
+
+    @mock.patch('pulp_rpm.plugins.db.models._LOGGER')
+    def test_update_needed_bad_date_existing(self, mock_logger):
         """
         Assert that if the `updated` date of the existing erratum is in the unknown format, then
-        the PulpCodedValidationException is raised.
+        the erratum is not updated and the warning is logged.
         """
         existing_erratum, uploaded_erratum = models.Errata(), models.Errata()
         existing_erratum.updated = 'Fri Jan  1 00:00:00 UTC 2016'
         uploaded_erratum.updated = '2016-04-01 00:00:00 UTC'
-        with self.assertRaisesRegexp(PulpCodedValidationException, 'existing erratum') as cm:
-            existing_erratum.update_needed(uploaded_erratum)
-        self.assertEqual('RPM1007', cm.exception.error_code.code)
+        ret = existing_erratum.update_needed(uploaded_erratum)
+        warn_msg = mock_logger.warn.call_args[0][0]
+        self.assertFalse(ret)
+        mock_logger.warn.assert_called_once()
+        self.assertTrue('existing erratum' in warn_msg)
 
-    def test_update_needed_bad_date_uploaded(self):
+    @mock.patch('pulp_rpm.plugins.db.models._LOGGER')
+    def test_update_needed_bad_date_uploaded(self, mock_logger):
         """
         Assert that if the `updated` date of the uploaded erratum is in the unknown format, then
-        the PulpCodedValidationException is raised.
+        the erratum is not updated and the warning is logged.
         """
         existing_erratum, uploaded_erratum = models.Errata(), models.Errata()
         existing_erratum.updated = '2016-01-01 00:00:00 UTC'
         uploaded_erratum.updated = 'Fri Apr  1 00:00:00 UTC 2016'
-        with self.assertRaisesRegexp(PulpCodedValidationException, 'uploaded erratum') as cm:
-            existing_erratum.update_needed(uploaded_erratum)
-        self.assertEqual('RPM1007', cm.exception.error_code.code)
+        ret = existing_erratum.update_needed(uploaded_erratum)
+        warn_msg = mock_logger.warn.call_args[0][0]
+        self.assertFalse(ret)
+        mock_logger.warn.assert_called_once()
+        self.assertTrue('uploaded erratum' in warn_msg)
 
     @mock.patch('pulp_rpm.plugins.db.models.Errata.save')
     def test_merge_pkglists_oldstyle_newstyle_same_collection(self, mock_save):
