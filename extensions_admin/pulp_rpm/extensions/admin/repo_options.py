@@ -75,6 +75,9 @@ OPT_SERVE_HTTPS = PulpCliOption('--serve-https', d, required=False,
 d = _('type of checksum to use during metadata generation')
 OPT_CHECKSUM_TYPE = PulpCliOption('--checksum-type', d, required=False)
 
+d = _('type of checksum to use during updateinfo.xml generation')
+OPT_UPDATEINFO_CHECKSUM_TYPE = PulpCliOption('--updateinfo-checksum-type', d, required=False)
+
 d = _('GPG key used to sign and verify packages in the repository')
 OPT_GPG_KEY = PulpCliOption('--gpg-key', d, required=False)
 
@@ -118,6 +121,7 @@ def add_distributor_config_to_command(command):
     publish_group.add_option(OPT_GPG_KEY)
     publish_group.add_option(OPT_GENERATE_SQLITE)
     publish_group.add_option(OPT_REPOVIEW)
+    publish_group.add_option(OPT_UPDATEINFO_CHECKSUM_TYPE)
 
     # Order added indicates order in usage, so pay attention to this order when
     # dorking with it to make sure it makes sense

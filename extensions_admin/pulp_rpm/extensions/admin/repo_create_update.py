@@ -27,6 +27,7 @@ YUM_DISTRIBUTOR_CONFIG_KEYS = [
     ('generate_sqlite', 'generate_sqlite'),
     ('gpgkey', 'gpg_key'),
     ('checksum_type', 'checksum_type'),
+    ('updateinfo_checksum_type', 'updateinfo_checksum_type'),
     ('auth_ca', 'auth_ca'),
     ('auth_cert', 'auth_cert'),
     ('https_ca', 'host_ca'),
@@ -43,6 +44,7 @@ EXPORT_DISTRIBUTOR_CONFIG_KEYS = [
     ('generate_sqlite', 'generate_sqlite'),
     ('skip', 'skip'),
     ('checksum_type', 'checksum_type'),
+    ('updateinfo_checksum_type', 'updateinfo_checksum_type'),
 ]
 
 

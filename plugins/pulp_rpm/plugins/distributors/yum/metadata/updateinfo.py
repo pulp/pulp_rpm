@@ -14,8 +14,8 @@ UPDATE_INFO_XML_FILE_NAME = 'updateinfo.xml.gz'
 
 
 class UpdateinfoXMLFileContext(XmlFileContext):
-
-    def __init__(self, working_dir, nevra_in_repo, checksum_type=None, conduit=None):
+    def __init__(self, working_dir, nevra_in_repo, checksum_type=None, conduit=None,
+                 updateinfo_checksum_type=None):
         """
         Creates and writes updateinfo XML data.
 
@@ -27,6 +27,8 @@ class UpdateinfoXMLFileContext(XmlFileContext):
         :type checksum_type:  basestring
         :param conduit: A conduit to use
         :type conduit:  pulp.plugins.conduits.repo_publish.RepoPublishConduit
+        :param updateinfo_checksum_type: The type of checksum to be used in the package list
+        :type updateinfo_checksum_type:  basestring
         """
         self.nevra_in_repo = nevra_in_repo
         metadata_file_path = os.path.join(working_dir, REPO_DATA_DIR_NAME,
@@ -34,6 +36,7 @@ class UpdateinfoXMLFileContext(XmlFileContext):
         self.conduit = conduit
         super(UpdateinfoXMLFileContext, self).__init__(
             metadata_file_path, 'updates', checksum_type=checksum_type)
+        self.updateinfo_checksum_type = updateinfo_checksum_type
         self.optional_errata_fields = ('title', 'release', 'rights', 'solution', 'severity',
                                        'summary', 'pushcount')
         self.mandatory_errata_fields = ('description',)
@@ -80,6 +83,8 @@ class UpdateinfoXMLFileContext(XmlFileContext):
     def _get_package_checksum_tuple(self, package):
         """
         Decide which checksum to publish for the given package in the erratum package list.
+        The updateinfo_checksum_type is used if specified and available, otherwise the distributor
+        checksum type will be published if available.
 
         Handle two possible ways of specifying the checksum in the erratum package list:
         - in the `sum` package field as a list of alternating checksum types and values,
@@ -90,24 +95,25 @@ class UpdateinfoXMLFileContext(XmlFileContext):
         :param package: package from the erratum package list
         :type  package: dict
         :return: checksum type and value to publish. An empty tuple is returned if there is
-                 no checksum of the repository checksum type available.
+                 no checksum of the requested or distributor checksum type available.
         :rtype: tuple
         """
         package_checksum_tuple = ()
-        repo_checksum_type = self.checksum_type
-        package_checksums = package.get('sum')
-        if package_checksums:
-            checksum_types = package_checksums[::2]
-            checksum_values = package_checksums[1::2]
-            checksums = dict(zip(checksum_types, checksum_values))
-            if repo_checksum_type in checksums:
-                checksum_value = checksums[repo_checksum_type]
-                package_checksum_tuple = (repo_checksum_type, checksum_value)
-        else:
-            checksum_type = package.get('type')
-            checksum_value = package.get('sums')
-            if checksum_type == repo_checksum_type and checksum_value:
+        dist_checksum_type = self.checksum_type
+        package_checksums = package.get('sum', [])
+        if package.get('type'):
+            package_checksums += [package['type'], package.get('sums')]
+
+        for checksum_type in (self.updateinfo_checksum_type, dist_checksum_type):
+            try:
+                checksum_index = package_checksums.index(checksum_type) + 1
+                checksum_value = package_checksums[checksum_index]
                 package_checksum_tuple = (checksum_type, checksum_value)
+                break
+            except (ValueError, IndexError):
+                # no checksum of the requested or distributor checksum type found
+                pass
+
         return package_checksum_tuple
 
     def add_unit_metadata(self, item):
