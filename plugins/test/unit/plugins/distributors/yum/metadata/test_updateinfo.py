@@ -103,6 +103,32 @@ class AddUnitMetadataTests(UpdateinfoXMLFileContextTests):
         xml = self.updateinfo_xml_file_context.metadata_file_handle.write.mock_calls[0][1][0]
         self.assertTrue(re.search('<description */>', xml) is not None)
 
+    def test_reboot_suggested(self):
+        """
+        Test that when reboot_suggested is True, the element is present in the XML
+        """
+        erratum = models.Errata(**self.unit_data)
+        erratum.reboot_suggested = True
+
+        self.updateinfo_xml_file_context.add_unit_metadata(erratum)
+
+        self.assertEqual(self.updateinfo_xml_file_context.metadata_file_handle.write.call_count, 1)
+        xml = self.updateinfo_xml_file_context.metadata_file_handle.write.mock_calls[0][1][0]
+        self.assertTrue('reboot_suggested' in xml)
+
+    def test_no_reboot_suggested(self):
+        """
+        Test that when reboot_suggested is False, the element is not present in the XML
+        """
+        erratum = models.Errata(**self.unit_data)
+        erratum.reboot_suggested = False
+
+        self.updateinfo_xml_file_context.add_unit_metadata(erratum)
+
+        self.assertEqual(self.updateinfo_xml_file_context.metadata_file_handle.write.call_count, 1)
+        xml = self.updateinfo_xml_file_context.metadata_file_handle.write.mock_calls[0][1][0]
+        self.assertTrue('reboot_suggested' not in xml)
+
     def test_no_duplicated_pkglists(self):
         """
         Test that no duplicated pkglists are generated.
