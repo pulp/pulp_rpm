@@ -113,6 +113,11 @@ class TestYumProfilerErrata(rpm_support_base.PulpRPMTests):
         self.profiles_been_updated = self.get_test_profile_been_updated()
         self.test_consumer_been_updated = Consumer(self.consumer_id_been_updated,
                                                    self.profiles_been_updated)
+        # consumer has been partly updated, and has the updated rpms installed
+        self.consumer_id_partly_updated = "%s.partly_updated" % (self.consumer_id)
+        self.profiles_partly_updated = self.get_test_profile_partly_updated()
+        self.test_consumer_partly_updated = Consumer(self.consumer_id_partly_updated,
+                                                     self.profiles_partly_updated)
 
     def tearDown(self):
         super(TestYumProfilerErrata, self).tearDown()
@@ -149,6 +154,11 @@ class TestYumProfilerErrata(rpm_support_base.PulpRPMTests):
     def get_test_profile_been_updated(self, arch="x86_64"):
         foo = self.create_profile_entry("emoticons", 0, "0.1", "2", arch, "Test Vendor")
         bar = self.create_profile_entry("patb", 0, "0.1", "2", arch, "Test Vendor")
+        return {TYPE_ID_RPM: [foo, bar]}
+
+    def get_test_profile_partly_updated(self, arch="x86_64"):
+        foo = self.create_profile_entry("emoticons", 0, "0.1", "3", arch, "Test Vendor")
+        bar = self.create_profile_entry("patb", 0, "0.1", "1", arch, "Test Vendor")
         return {TYPE_ID_RPM: [foo, bar]}
 
     def test_get_rpms_from_errata(self):
@@ -263,6 +273,32 @@ class TestYumProfilerErrata(rpm_support_base.PulpRPMTests):
         bound_repo_id = "test_repo_id"
         report_list = prof.calculate_applicable_units(unit_profile, bound_repo_id, None, conduit)
         self.assertEqual(report_list, {TYPE_ID_RPM: ['a_test_id'], TYPE_ID_ERRATA: ['an_errata']})
+
+    def test_unit_conflicting_errata(self):
+        # Errata refers to RPMs which ARE part of our test consumer's profile,
+        # AND in the repo. BUT there might be other RPMs already newer.
+        errata_obj = self.get_test_errata_object()
+        errata_unit = Unit(TYPE_ID_ERRATA, {"id": errata_obj["id"]}, errata_obj, None)
+        errata_unit.id = 'an_errata'
+
+        # create a unit for which errata would be applicable
+        rpm_unit_key1 = self.create_profile_entry("emoticons", 0, "0.1", "2", "x86_64",
+                                                  "Test Vendor")
+        rpm_unit1 = Unit(TYPE_ID_RPM, rpm_unit_key1, {}, None)
+        # Let's give it an id, so we can assert for it later
+        rpm_unit1.id = 'a_test_id'
+
+        test_repo = profiler_mocks.get_repo("test_repo_id")
+
+        prof = YumProfiler()
+        errata_rpms = prof._get_rpms_from_errata(errata_unit)
+        conduit = profiler_mocks.get_profiler_conduit(repo_units=[errata_unit, rpm_unit1],
+                                                      repo_bindings=[test_repo],
+                                                      errata_rpms=errata_rpms)
+        unit_profile = self.test_consumer_partly_updated.profiles[TYPE_ID_RPM]
+        bound_repo_id = "test_repo_id"
+        report_list = prof.calculate_applicable_units(unit_profile, bound_repo_id, None, conduit)
+        self.assertEqual(report_list, {TYPE_ID_RPM: [], TYPE_ID_ERRATA: []})
 
     def test_unit_applicable_same_name_diff_arch(self):
         # Errata refers to RPMs that are x86_64, the test consumer is i386
