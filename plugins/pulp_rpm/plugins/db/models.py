@@ -720,21 +720,32 @@ class Errata(UnitMixin, ContentUnit):
         date-time field. If we are not able to parse the `updated` field either in existing
         erratum or in the new erratum, the metadata of existing erratum won't be updated.
 
+        When the other `updated` field is an empty string, False is returned. When the existing
+        `updated` field is an empty string, it is treated as the unix epoch. This allows erratum
+        published with an empty `updated` field to be updated later when the erratum is updated and
+        the `updated` field is set.
+
         :param other: potentially a newer version of the erratum
         :type  other: pulp_rpm.plugins.db.models.Errata
 
         :return: True if the other erratum is newer than the existing one
         :rtype:  bool
+
+        :raises ValueError: If either self or other `updated` fields is not an parseable datetime
+                            format.
         """
+        if other.updated == "":
+            return False
+        if self.updated == "":
+            self_updated_field = '1970-01-01'
+        else:
+            self_updated_field = self.updated
         err_msg = _('Fail to update the %(which)s erratum %(id)s.')
         existing_err_msg = err_msg % {'which': 'existing', 'id': self.errata_id}
         other_err_msg = err_msg % {'which': 'uploaded', 'id': self.errata_id}
-        try:
-            existing_updated_dt = util.errata_format_to_datetime(self.updated, msg=existing_err_msg)
-            new_updated_dt = util.errata_format_to_datetime(other.updated, msg=other_err_msg)
-        except ValueError as e:
-            _LOGGER.warn(str(e))
-            return False
+        existing_updated_dt = util.errata_format_to_datetime(self_updated_field,
+                                                             msg=existing_err_msg)
+        new_updated_dt = util.errata_format_to_datetime(other.updated, msg=other_err_msg)
         return new_updated_dt > existing_updated_dt
 
     def merge_pkglists_and_save(self, other):

@@ -204,9 +204,10 @@ def errata_format_to_datetime(datetime_str, msg):
     for strptime_pattern in strptime_patterns:
         try:
             datetime_obj = datetime.datetime.strptime(datetime_str, strptime_pattern)
-            break
         except ValueError:
             continue
+        else:
+            break
     else:
         raise ValueError(msg)
     return datetime_obj

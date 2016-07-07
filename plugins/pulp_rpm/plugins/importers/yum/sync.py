@@ -798,6 +798,7 @@ class RepoSync(object):
             package_info_generator = \
                 (model for model in all_packages if model.unit_key_as_named_tuple in to_save)
 
+        errata_could_not_be_merged_count = 0
         for model in package_info_generator:
             # Add repo_id to each collection of the pkglist of the new erratum
             if isinstance(model, models.Errata):
@@ -808,13 +809,30 @@ class RepoSync(object):
                 model.save()
             else:
                 if additive_type:
-                    model = self._concatenate_units(existing_unit, model)
+                    try:
+                        model = self._concatenate_units(existing_unit, model)
+                    except ValueError:
+                        # Sometimes Errata units cannot be merged and a ValueError is raised
+                        # Count the errors and log them further down
+                        if isinstance(model, models.Errata):
+                            msg = _('The Errata "%(errata_id)s" could not be merged from the '
+                                    'remote repository. This is likely due to the existing or new '
+                                    'Errata not containing a valid `updated` field.')
+                            _logger.debug(msg % {'errata_id': model.errata_id})
+                            errata_could_not_be_merged_count += 1
+                            continue
+                        else:
+                            raise
                     model.save()
                 else:
                     # make sure the associate_unit call gets the existing unit
                     model = existing_unit
 
             repo_controller.associate_single_unit(self.repo, model)
+        if errata_could_not_be_merged_count != 0:
+            msg = _('There were %(count)d Errata units which could not be merged. This is likely '
+                    'due to Errata in this repo not containing valid `updated` fields.')
+            _logger.warn(msg % {'count': errata_could_not_be_merged_count})
 
     def _concatenate_units(self, existing_unit, new_unit):
         """

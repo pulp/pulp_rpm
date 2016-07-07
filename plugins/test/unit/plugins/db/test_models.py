@@ -201,8 +201,7 @@ class TestErrata(unittest.TestCase):
         ret = existing_erratum.update_needed(uploaded_erratum)
         self.assertFalse(ret)
 
-    @mock.patch('pulp_rpm.plugins.db.models._LOGGER')
-    def test_update_needed_different_supported_date_formats(self, mock_logger):
+    def test_update_needed_different_supported_date_formats(self):
         """
         Assert that the supported datetime format are handled correctly and without any warning
         """
@@ -211,37 +210,47 @@ class TestErrata(unittest.TestCase):
         uploaded_erratum.updated = '2016-01-01 00:00:00'
         ret = existing_erratum.update_needed(uploaded_erratum)
         self.assertTrue(ret)
-        mock_logger.warn.assert_not_called()
 
-    @mock.patch('pulp_rpm.plugins.db.models._LOGGER')
-    def test_update_needed_bad_date_existing(self, mock_logger):
+    def test_update_needed_bad_date_existing(self):
         """
         Assert that if the `updated` date of the existing erratum is in the unknown format, then
-        the erratum is not updated and the warning is logged.
+        a ValueError is raised.
         """
         existing_erratum, uploaded_erratum = models.Errata(), models.Errata()
         existing_erratum.updated = 'Fri Jan  1 00:00:00 UTC 2016'
         uploaded_erratum.updated = '2016-04-01 00:00:00 UTC'
-        ret = existing_erratum.update_needed(uploaded_erratum)
-        warn_msg = mock_logger.warn.call_args[0][0]
-        self.assertFalse(ret)
-        mock_logger.warn.assert_called_once()
-        self.assertTrue('existing erratum' in warn_msg)
+        self.assertRaises(ValueError, existing_erratum.update_needed, uploaded_erratum)
 
-    @mock.patch('pulp_rpm.plugins.db.models._LOGGER')
-    def test_update_needed_bad_date_uploaded(self, mock_logger):
+    def test_update_needed_bad_date_uploaded(self):
         """
         Assert that if the `updated` date of the uploaded erratum is in the unknown format, then
-        the erratum is not updated and the warning is logged.
+        a ValueError is raised.
         """
         existing_erratum, uploaded_erratum = models.Errata(), models.Errata()
         existing_erratum.updated = '2016-01-01 00:00:00 UTC'
         uploaded_erratum.updated = 'Fri Apr  1 00:00:00 UTC 2016'
-        ret = existing_erratum.update_needed(uploaded_erratum)
-        warn_msg = mock_logger.warn.call_args[0][0]
-        self.assertFalse(ret)
-        mock_logger.warn.assert_called_once()
-        self.assertTrue('uploaded erratum' in warn_msg)
+        self.assertRaises(ValueError, existing_erratum.update_needed, uploaded_erratum)
+
+    def test_update_needed_empty_date_existing(self):
+        """
+        Test an empty existing `updated` erratum field.
+
+        Assert that an empty existing `updated` field is considered older than an uploaded
+        erratum with a valid `updated` field.
+        """
+        existing_erratum, uploaded_erratum = models.Errata(), models.Errata()
+        existing_erratum.updated = ''
+        uploaded_erratum.updated = '2016-04-01 00:00:00 UTC'
+        self.assertEqual(True, existing_erratum.update_needed(uploaded_erratum))
+
+    def test_update_needed_empty_date_uploaded(self):
+        """
+        Test that an empty uploaded erratum `updated` field returns False.
+        """
+        existing_erratum, uploaded_erratum = models.Errata(), models.Errata()
+        existing_erratum.updated = '2016-01-01 00:00:00 UTC'
+        uploaded_erratum.updated = ''
+        self.assertEqual(False, existing_erratum.update_needed(uploaded_erratum))
 
     @mock.patch('pulp_rpm.plugins.db.models.Errata.save')
     def test_merge_pkglists_oldstyle_newstyle_same_collection(self, mock_save):
