@@ -11,7 +11,7 @@ from xml.etree import ElementTree as ET
 import mock
 from pulp.common.compat import unittest
 import pulp.common.error_codes as platform_error_codes
-from pulp.server.exceptions import PulpCodedException, PulpCodedValidationException
+from pulp.server.exceptions import PulpCodedException
 
 from pulp_rpm.common import ids
 from pulp_rpm.devel.skip import skip_broken
@@ -359,29 +359,56 @@ class TestErrata(unittest.TestCase):
         ret = existing_erratum.update_needed(uploaded_erratum)
         self.assertFalse(ret)
 
+    def test_update_needed_different_supported_date_formats(self):
+        """
+        Assert that the supported datetime format are handled correctly and without any warning
+        """
+        existing_erratum, uploaded_erratum = models.Errata(), models.Errata()
+        existing_erratum.updated = '2015-01-01'
+        uploaded_erratum.updated = '2016-01-01 00:00:00'
+        ret = existing_erratum.update_needed(uploaded_erratum)
+        self.assertTrue(ret)
+
     def test_update_needed_bad_date_existing(self):
         """
         Assert that if the `updated` date of the existing erratum is in the unknown format, then
-        the PulpCodedValidationException is raised.
+        a ValueError is raised.
         """
         existing_erratum, uploaded_erratum = models.Errata(), models.Errata()
         existing_erratum.updated = 'Fri Jan  1 00:00:00 UTC 2016'
         uploaded_erratum.updated = '2016-04-01 00:00:00 UTC'
-        with self.assertRaisesRegexp(PulpCodedValidationException, 'existing erratum') as cm:
-            existing_erratum.update_needed(uploaded_erratum)
-        self.assertEqual('RPM1007', cm.exception.error_code.code)
+        self.assertRaises(ValueError, existing_erratum.update_needed, uploaded_erratum)
 
     def test_update_needed_bad_date_uploaded(self):
         """
         Assert that if the `updated` date of the uploaded erratum is in the unknown format, then
-        the PulpCodedValidationException is raised.
+        a ValueError is raised.
         """
         existing_erratum, uploaded_erratum = models.Errata(), models.Errata()
         existing_erratum.updated = '2016-01-01 00:00:00 UTC'
         uploaded_erratum.updated = 'Fri Apr  1 00:00:00 UTC 2016'
-        with self.assertRaisesRegexp(PulpCodedValidationException, 'uploaded erratum') as cm:
-            existing_erratum.update_needed(uploaded_erratum)
-        self.assertEqual('RPM1007', cm.exception.error_code.code)
+        self.assertRaises(ValueError, existing_erratum.update_needed, uploaded_erratum)
+
+    def test_update_needed_empty_date_existing(self):
+        """
+        Test an empty existing `updated` erratum field.
+
+        Assert that an empty existing `updated` field is considered older than an uploaded
+        erratum with a valid `updated` field.
+        """
+        existing_erratum, uploaded_erratum = models.Errata(), models.Errata()
+        existing_erratum.updated = ''
+        uploaded_erratum.updated = '2016-04-01 00:00:00 UTC'
+        self.assertEqual(True, existing_erratum.update_needed(uploaded_erratum))
+
+    def test_update_needed_empty_date_uploaded(self):
+        """
+        Test that an empty uploaded erratum `updated` field returns False.
+        """
+        existing_erratum, uploaded_erratum = models.Errata(), models.Errata()
+        existing_erratum.updated = '2016-01-01 00:00:00 UTC'
+        uploaded_erratum.updated = ''
+        self.assertEqual(False, existing_erratum.update_needed(uploaded_erratum))
 
     @mock.patch('pulp_rpm.plugins.db.models.Errata.save')
     def test_merge_pkglists_oldstyle_newstyle_same_collection(self, mock_save):
