@@ -930,8 +930,8 @@ class PublishDistributionStep(platform_steps.UnitModelPluginStep):
                 # a package path exists as a symlink we are going to remove it since
                 # the _create_symlink will create a real directory
                 os.unlink(package_path)
-        default_dir = self.get_config().get('packages_directory', 'Packages')
-        default_packages_symlink = os.path.join(symlink_dir, default_dir)
+
+        default_packages_symlink = os.path.join(symlink_dir, 'Packages')
         if package_path != default_packages_symlink:
             # Add the Packages directory to the content directory
             self.package_dirs.append(default_packages_symlink)
