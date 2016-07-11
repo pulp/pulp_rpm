@@ -20,6 +20,3 @@ New Features
   pulp-admin command to run a group export accepts a checksum type argument.
 * Repoview support is added. The ability to generate HTML files to browse a repository can be
   enabled by using ``--repoview`` option for the yum_distributor.
-* The yum distributor now supports the optional parameter
-  ``packages_directory`` which can be used for custom destination directory
-  for packages during the publish process.
