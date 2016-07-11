@@ -70,6 +70,7 @@ class RepoSync(object):
         self.current_revision = 0
         self.downloader = None
         self.tmp_dir = None
+        self.force_full = config.get('force_full', False)
 
         url_modify_config = {}
         if config.get('query_auth_token'):
@@ -368,7 +369,7 @@ class RepoSync(object):
         # and there are no missing units, or we have deferred download enabled
         # and no units were removed after last sync
         # then skip fetching the repo MD :)
-        if 0 < metadata_files.revision <= previous_revision \
+        if not self.force_full and 0 < metadata_files.revision <= previous_revision \
                 and not self.config.override_config.get(importer_constants.KEY_FEED) \
                 and previous_skip_set - current_skip_set == set() \
                 and (self.download_deferred or not missing_units) \
