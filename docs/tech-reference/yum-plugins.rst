@@ -527,6 +527,10 @@ configuration values are optional.
  the content in the background. The content is available for client retrieval
  during this time.
 
+ ``force_full``
+ Boolean flag to indicate whether or not publish should be done from scratch.
+ If unspecified the incremental publish will be performed when possible.
+
 Yum Distributor
 ===============
 
