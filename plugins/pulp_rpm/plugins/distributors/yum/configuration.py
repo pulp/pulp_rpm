@@ -22,7 +22,7 @@ REQUIRED_CONFIG_KEYS = ('relative_url', 'http', 'https')
 OPTIONAL_CONFIG_KEYS = ('gpgkey', 'auth_ca', 'auth_cert', 'https_ca', 'checksum_type',
                         'http_publish_dir', 'https_publish_dir', 'protected',
                         'skip', 'skip_pkg_tags', 'generate_sqlite', 'force_full',
-                        'repoview', 'packages_directory', 'updateinfo_checksum_type')
+                        'repoview', 'updateinfo_checksum_type')
 
 ROOT_PUBLISH_DIR = '/var/lib/pulp/published/yum'
 MASTER_PUBLISH_DIR = os.path.join(ROOT_PUBLISH_DIR, 'master')
@@ -112,7 +112,6 @@ def validate_config(repo, config, config_conduit):
         'skip': _validate_skip,
         'skip_pkg_tags': _validate_skip_pkg_tags,
         'generate_sqlite': _validate_generate_sqlite,
-        'packages_directory': _validate_packages_directory
     }
 
     # iterate through the options that have validation methods and validate them
@@ -442,14 +441,6 @@ def _validate_skip_pkg_tags(skip_pkg_tags, error_messages):
 def _validate_generate_sqlite(use_createrepo, error_messages):
     _validate_boolean('generate_sqlite', use_createrepo, error_messages, False)
 
-
-def _validate_packages_directory(packages_directory, error_messages):
-    if packages_directory is None:
-        return
-
-    if not isinstance(packages_directory, basestring):
-        msg = _('Configuration value for [packages_directory] must be a string, but is a %(t)s')
-        error_messages.append(msg % {'t': str(type(packages_directory))})
 
 # -- generalized validation methods --------------------------------------------
 
