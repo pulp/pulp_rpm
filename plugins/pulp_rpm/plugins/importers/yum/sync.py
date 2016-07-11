@@ -70,6 +70,7 @@ class RepoSync(object):
         self.current_revision = 0
         self.downloader = None
         self.tmp_dir = None
+        self.force_full = config.get('force_full', False)
 
         url_modify_config = {}
         if config.get('query_auth_token'):
@@ -372,7 +373,7 @@ class RepoSync(object):
                 and not self.config.override_config.get(importer_constants.KEY_FEED) \
                 and previous_skip_set - current_skip_set == set() \
                 and (self.download_deferred or not missing_units) \
-                and not sync_due_to_unit_removal:
+                and not sync_due_to_unit_removal and not self.force_full:
             _logger.info(_('upstream repo metadata has not changed. Skipping steps.'))
             self.skip_repomd_steps = True
             return metadata_files
