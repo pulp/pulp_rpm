@@ -11,7 +11,7 @@ New Features
 * Now it is possible to upload ``package_environment`` element via CLI and API.
 * Publication of the RPMs can now be done non-incrementally using ``--force-full`` option.
 * The <langpacks> tag in comps.xml are synced and published for repositories. These units are also
-  parsed on upload. ``pulp-admin`` also has upload, remove, and search support for 
+  parsed on upload. ``pulp-admin`` also has upload, remove, and search support for
   package_langpacks.
 * The yum distributor and export distributor now use the configured checksum type for all repo
   metadata. The pulp-admin repo "create" and "update" commands now save the specified checksum type
@@ -23,3 +23,27 @@ New Features
 * The yum distributor now supports the optional parameter
   ``packages_directory`` which can be used for custom destination directory
   for packages during the publish process.
+
+Known Issues
+------------
+
+Several issues were reported against Pulp 2.8 that were not included in the Pulp 2.9.0 release
+as a result of release timing. The list of :fixedbugs:`2.8.6` outlines these bugs, but
+there is one issue in particular that can potentially break RPM repository syncing after
+upgrading: :redmine:`2048`
+
+This issue is related to resyncing errata from some repositories, and in a pulp-admin sync
+operation looks like this::
+
+    Task Failed
+
+    Could not parse errata `updated` field: expected format '%Y-%m-%d %H:%M:%S'.
+    Fail to update the existing erratum SOME_ERRATUM_ID.
+
+As a workaround, you can choose to skip errata in the feed repository. To do this, you can
+update the repo to skip errata::
+
+    pulp-admin rpm repo update --repo-id <repo-id> --skip=erratum
+
+This will be fixed in Pulp 2.9.1. If you require errata to be synced from a feed repository,
+consider delaying an upgrade to Pulp 2.9 until 2.9.1 is released.
