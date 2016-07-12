@@ -8,7 +8,7 @@ from pulp.client.commands.options import OPTION_REPO_ID
 from pulp.client.commands.repo.upload import UploadCommand, MetadataException
 from pulp.client.extensions.extensions import PulpCliFlag
 
-from pulp_rpm.common.ids import TYPE_ID_RPM, TYPE_ID_SRPM
+from pulp_rpm.common.ids import TYPE_ID_RPM, TYPE_ID_SRPM, TYPE_ID_DRPM
 from pulp_rpm.extensions.admin.repo_options import OPT_CHECKSUM_TYPE
 
 
@@ -20,6 +20,10 @@ NAME_SRPM = 'srpm'
 DESC_SRPM = _('uploads one or more SRPMs into a repository')
 SUFFIX_SRPM = '.src.rpm'
 
+NAME_DRPM = 'drpm'
+DESC_DRPM = _('uploads one or more DRPMs into a repository')
+SUFFIX_DRPM = '.drpm'
+
 DESC_SKIP_EXISTING = _('if specified, RPMs that already exist on the server will not be uploaded')
 FLAG_SKIP_EXISTING = PulpCliFlag('--skip-existing', DESC_SKIP_EXISTING)
 
@@ -29,7 +33,7 @@ CHECKSUM_READ_BUFFER_SIZE = 65536
 
 class _CreatePackageCommand(UploadCommand):
     """
-    Base command for uploading RPMs and SRPMs. This shouldn't be instantiated directly
+    Base command for uploading RPMs, SRPMs and DRPMs. This shouldn't be instantiated directly
     outside of this module in favor of one of the type-specific subclasses.
     """
 
@@ -79,10 +83,17 @@ class _CreatePackageCommand(UploadCommand):
 
             # The key is no longer in the bundle by default (it's extracted server-side),
             # but it's needed for this check, so generate it here.
-            unit_key = _generate_unit_key(bundle.filename)
+            try:
+                unit_key = _generate_unit_key(bundle.filename)
+            except MetadataException:
+                if self.type_id != TYPE_ID_DRPM:
+                    raise
+                else:
+                    self.prompt.warning(
+                        _('%s: RPM only DRPMs are not supported.') % bundle.filename)
+                    continue
 
             filters = {
-                'name': unit_key['name'],
                 'version': unit_key['version'],
                 'release': unit_key['release'],
                 'epoch': unit_key['epoch'],
@@ -90,9 +101,13 @@ class _CreatePackageCommand(UploadCommand):
                 'checksumtype': unit_key['checksumtype'],
                 'checksum': unit_key['checksum'],
             }
+            if self.type_id != TYPE_ID_DRPM:
+                filters['name'] = unit_key['name']
+            else:
+                filters['new_package'] = unit_key['name']
 
             criteria = {
-                'type_ids': [TYPE_ID_RPM],
+                'type_ids': [TYPE_ID_RPM] if self.type_id != TYPE_ID_DRPM else [TYPE_ID_DRPM],
                 'filters': filters,
             }
 
@@ -137,6 +152,13 @@ class CreateSrpmCommand(_CreatePackageCommand):
     def __init__(self, context, upload_manager, name=NAME_SRPM, description=DESC_SRPM):
         super(CreateSrpmCommand, self).__init__(context, upload_manager, TYPE_ID_SRPM,
                                                 SUFFIX_SRPM, name, description)
+        self.add_option(OPT_CHECKSUM_TYPE)
+
+
+class CreateDrpmCommand(_CreatePackageCommand):
+    def __init__(self, context, upload_manager, name=NAME_DRPM, description=DESC_DRPM):
+        super(CreateDrpmCommand, self).__init__(context, upload_manager, TYPE_ID_DRPM,
+                                                SUFFIX_DRPM, name, description)
         self.add_option(OPT_CHECKSUM_TYPE)
 
 

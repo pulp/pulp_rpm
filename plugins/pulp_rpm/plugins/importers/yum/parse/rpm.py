@@ -1,11 +1,14 @@
 from __future__ import absolute_import
+
 import logging
 import os
-import rpm as rpm_module
+from gettext import gettext as _
 
+import deltarpm
+import rpm as rpm_module
+import rpmUtils
 from createrepo import yumbased
 from pulp.server import util
-import rpmUtils
 from pulp.server.exceptions import PulpCodedException
 from pulp_rpm.common import constants
 from pulp_rpm.plugins import error_codes
@@ -123,6 +126,27 @@ def package_headers(filename):
     return headers
 
 
+def drpm_package_info(filename):
+    """
+    Return info about delta rpm package.
+
+    :param filename: full path to the package to analyze
+    :type  filename: str
+
+    :return: delta rpm package info
+      * "nevr" - nevr of the new package
+      * "seq" - seq without old_nevr
+      * "old_nevr" - nevr of the old package
+    :rtype: dict
+    """
+    try:
+        return deltarpm.readDeltaRPM(filename)
+    except SystemError:  # does silly exception reporting (print) => missing from tests
+        msg = _('failed to load DRPM metadata on file %s error') % filename
+        _LOGGER.exception(msg)
+        raise
+
+
 def package_signature(headers):
     """
     Extract package signature from rpm/srpm/drpm.
@@ -190,3 +214,138 @@ def verify_signature(unit, config):
         if signing_key and signing_key not in allowed_keys:
                 raise PulpCodedException(error_code=error_codes.RPM1014, key=signing_key,
                                          package=unit.filename, allowed=allowed_keys)
+
+
+def nevra(name):
+    """Parse NEVRA.
+
+    inspired by:
+    https://github.com/rpm-software-management/hawkey/blob/d61bf52871fcc8e41c92921c8cd92abaa4dfaed5/src/util.c#L157. # NOQA
+    We don't use hawkey because it is not available on all platforms we support.
+
+    :param name: NEVRA (jay-3:3.10-4.fc3.x86_64)
+    :type  name: str
+
+    :return: parsed NEVRA (name, epoch, version, release, architecture)
+                           str    int     str      str         str
+    :rtype: tuple
+    """
+    if name.count(".") < 1:
+        msg = _("failed to parse nevra '%s' not a valid nevra") % name
+        _LOGGER.exception(msg)
+        raise ValueError(msg)
+
+    arch_dot_pos = name.rfind(".")
+    arch = name[arch_dot_pos + 1:]
+
+    return nevr(name[:arch_dot_pos]) + (arch, )
+
+
+def nevra_to_nevr(name, epoch, version, release, architecture):
+    """Convert nevra tuple to nevr.
+
+    :param name: name
+    :type  name: str
+
+    :param epoch: epoch
+    :type  epoch: int
+
+    :param version: version
+    :type  version: str
+
+    :param release: release
+    :type  release: str
+
+    :param architecture: architecture
+    :type  architecture: str
+
+    :return: NEVR (name, epoch, version, release)
+                   str    int     str      str
+    :rtype: tuple
+    """
+    return name, epoch, version, release
+
+
+def nevr(name):
+    """
+    Parse NEVR.
+
+    inspired by:
+    https://github.com/rpm-software-management/hawkey/blob/d61bf52871fcc8e41c92921c8cd92abaa4dfaed5/src/util.c#L157. # NOQA
+
+    :param name: NEVR "jay-test-3:3.10-4.fc3"
+    :type  name: str
+
+    :return: parsed NEVR (name, epoch, version, release)
+                          str    int     str      str
+    :rtype: tuple
+    """
+    if name.count("-") < 2:  # release or name is missing
+        msg = _("failed to parse nevr '%s' not a valid nevr") % name
+        _LOGGER.exception(msg)
+        raise ValueError(msg)
+
+    release_dash_pos = name.rfind("-")
+    release = name[release_dash_pos + 1:]
+    name_epoch_version = name[:release_dash_pos]
+    name_dash_pos = name_epoch_version.rfind("-")
+    package_name = name_epoch_version[:name_dash_pos]
+
+    epoch_version = name_epoch_version[name_dash_pos + 1:].split(":")
+    if len(epoch_version) == 1:
+        epoch = 0
+        version = epoch_version[0]
+    elif len(epoch_version) == 2:
+        epoch = int(epoch_version[0])
+        version = epoch_version[1]
+    else:
+        # more than one ':'
+        msg = _("failed to parse nevr '%s' not a valid nevr") % name
+        _LOGGER.exception(msg)
+        raise ValueError(msg)
+
+    return package_name, epoch, version, release
+
+
+def nevr_to_evr(name, epoch, version, release):
+    """Convert nevra tuple to nevr.
+
+    :param name: name
+    :type  name: str
+
+    :param epoch: epoch
+    :type  epoch: int
+
+    :param version: version
+    :type  version: str
+
+    :param release: release
+    :type  release: str
+
+
+    :return: EVR (epoch, version, release)
+                   int     str      str
+    :rtype: tuple
+    """
+    return epoch, version, release
+
+
+def evr_to_str(epoch, version, release):
+    """Get EVR epoch:version-relese from tuple nevr.
+
+    :param epoch: epoch
+    :type  epoch: int
+
+    :param version: version
+    :type  version: str
+
+    :param release: release
+    :type  release: str
+
+    :return: EVR "3:3.10-4.fc3"
+    :rtype: str
+    """
+    if epoch == 0:
+        return "%s-%s" % (version, release)
+    else:
+        return "%s:%s-%s" % (epoch, version, release)

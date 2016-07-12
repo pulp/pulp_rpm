@@ -1,17 +1,18 @@
 import copy
 import os
+from gettext import gettext as _
 
 import mock
+
 from pulp.bindings.responses import Response, Task
 from pulp.client.commands.options import OPTION_REPO_ID
-from pulp.client.commands.repo.upload import UploadCommand, FileBundle
+from pulp.client.commands.repo.upload import FileBundle, MetadataException, UploadCommand
 
-from pulp_rpm.extensions.admin.upload import package
-from pulp_rpm.common.ids import TYPE_ID_RPM, TYPE_ID_SRPM
+from pulp_rpm.common.ids import TYPE_ID_DRPM, TYPE_ID_RPM, TYPE_ID_SRPM
 from pulp_rpm.devel.client_base import PulpClientTests
-from pulp_rpm.extensions.admin.upload.package import FLAG_SKIP_EXISTING
 from pulp_rpm.extensions.admin.repo_options import OPT_CHECKSUM_TYPE
-
+from pulp_rpm.extensions.admin.upload import package
+from pulp_rpm.extensions.admin.upload.package import FLAG_SKIP_EXISTING
 
 DATA_DIR = os.path.abspath(os.path.dirname(__file__)) + '/../../../data'
 RPM_DIR = DATA_DIR + '/simple_repo_no_comps'
@@ -132,6 +133,24 @@ class CreatePackageCommandTests(PulpClientTests):
         self.assertEqual(orig_file_bundles, upload_file_bundles)
         self.assertEqual(0, self.bindings.repo_unit.search.call_count)
 
+    @mock.patch("pulp_rpm.extensions.admin.upload.package._generate_unit_key", autospec=True)
+    def test_create_upload_list_rpm_only_drpm(self, mock__generate_unit_key):
+        """Test upload of RPM only DRPM."""
+        self.command.prompt = mock.Mock()
+        self.command.type_id = TYPE_ID_DRPM
+        msg = _('The given file is not a valid RPM')
+        mock__generate_unit_key.side_effect = MetadataException(msg)
+        bundle = FileBundle('a')
+        user_args = {
+            FLAG_SKIP_EXISTING.keyword: True,
+            OPTION_REPO_ID.keyword: 'repo-1'
+        }
+
+        self.command.create_upload_list([bundle], **user_args)
+
+        w_msg = _('%s: RPM only DRPMs are not supported.') % bundle.filename
+        self.command.prompt.warning.assert_called_once_with(w_msg)
+
     def test_succeeded(self):
         self.command.prompt = mock.Mock()
         task = Task({})
@@ -172,4 +191,22 @@ class CreateSrpmCommandTests(PulpClientTests):
         self.assertEqual(self.command.description, package.DESC_SRPM)
         self.assertEqual(self.command.suffix, package.SUFFIX_SRPM)
         self.assertEqual(self.command.type_id, TYPE_ID_SRPM)
+        self.assertTrue(OPT_CHECKSUM_TYPE in self.command.options)
+
+
+class CreateDrpmCommandTests(PulpClientTests):
+    def setUp(self):
+        super(CreateDrpmCommandTests, self).setUp()
+        self.upload_manager = mock.MagicMock()
+        self.command = package.CreateDrpmCommand(self.context, self.upload_manager)
+
+    def test_structure(self):
+        """
+        Test command structure of pulp-admin rpm repo uploads drpm.
+        """
+        self.assertTrue(isinstance(self.command, package._CreatePackageCommand))
+        self.assertEqual(self.command.name, package.NAME_DRPM)
+        self.assertEqual(self.command.description, package.DESC_DRPM)
+        self.assertEqual(self.command.suffix, package.SUFFIX_DRPM)
+        self.assertEqual(self.command.type_id, TYPE_ID_DRPM)
         self.assertTrue(OPT_CHECKSUM_TYPE in self.command.options)
