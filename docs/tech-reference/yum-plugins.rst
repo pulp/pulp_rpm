@@ -527,6 +527,9 @@ configuration values are optional.
  the content in the background. The content is available for client retrieval
  during this time.
 
+ ``force_full``
+ Boolean flag. If true, full re-sync is triggered.
+
 Yum Distributor
 ===============
 
