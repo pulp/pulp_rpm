@@ -1,3 +1,4 @@
+from collections import namedtuple
 import csv
 import logging
 import os
@@ -17,6 +18,9 @@ from pulp_rpm.yum_plugin import util
 
 
 _LOGGER = logging.getLogger(__name__)
+
+
+NEVRA = namedtuple('NEVRA', ['name', 'epoch', 'version', 'release', 'arch'])
 
 
 class UnitMixin(object):
@@ -687,9 +691,10 @@ class Errata(UnitMixin, ContentUnit):
         """
         Merge two errata with the same errata_id.
 
-        There are two parts:
+        There are three parts:
         - merging of the pkglists in case of the erratum with the same id in different repositories
         - overwriting the erratum metadata based on the `updated` field
+        - overwriting the "reboot_suggested" value because of https://pulp.plan.io/issues/2032
 
         NOTE: The first part should be eliminated after we change the way erratum is stored in the
         MongoDB.
@@ -701,6 +706,11 @@ class Errata(UnitMixin, ContentUnit):
         if self.update_needed(other):
             for field_name in self.mutable_erratum_fields:
                 setattr(self, field_name, getattr(other, field_name))
+        # This is due to https://pulp.plan.io/issues/2032
+        # Syncs previously could have misinterpreted the reboot_suggested element and saved a
+        # value of True when it should have been False. The only way to correct that data in pulp
+        # is to do so here, during a subsequent sync.
+        self.reboot_suggested = other.reboot_suggested
 
     def update_needed(self, other):
         """
@@ -710,16 +720,31 @@ class Errata(UnitMixin, ContentUnit):
         date-time field. If we are not able to parse the `updated` field either in existing
         erratum or in the new erratum, the metadata of existing erratum won't be updated.
 
+        When the other `updated` field is an empty string, False is returned. When the existing
+        `updated` field is an empty string, it is treated as the unix epoch. This allows erratum
+        published with an empty `updated` field to be updated later when the erratum is updated and
+        the `updated` field is set.
+
         :param other: potentially a newer version of the erratum
         :type  other: pulp_rpm.plugins.db.models.Errata
 
         :return: True if the other erratum is newer than the existing one
         :rtype:  bool
+
+        :raises ValueError: If either self or other `updated` fields is not an parseable datetime
+                            format.
         """
+        if other.updated == "":
+            return False
+        if self.updated == "":
+            self_updated_field = '1970-01-01'
+        else:
+            self_updated_field = self.updated
         err_msg = _('Fail to update the %(which)s erratum %(id)s.')
         existing_err_msg = err_msg % {'which': 'existing', 'id': self.errata_id}
         other_err_msg = err_msg % {'which': 'uploaded', 'id': self.errata_id}
-        existing_updated_dt = util.errata_format_to_datetime(self.updated, msg=existing_err_msg)
+        existing_updated_dt = util.errata_format_to_datetime(self_updated_field,
+                                                             msg=existing_err_msg)
         new_updated_dt = util.errata_format_to_datetime(other.updated, msg=other_err_msg)
         return new_updated_dt > existing_updated_dt
 

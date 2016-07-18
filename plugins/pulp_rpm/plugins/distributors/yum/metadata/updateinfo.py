@@ -1,9 +1,7 @@
 import os
 from xml.etree import ElementTree
 
-import mongoengine
 from pulp.plugins.util.metadata_writer import XmlFileContext
-from pulp.server.db.model import RepositoryContentUnit
 
 from pulp_rpm.plugins.distributors.yum.metadata.metadata import REPO_DATA_DIR_NAME
 from pulp_rpm.plugins.db import models
@@ -16,64 +14,57 @@ UPDATE_INFO_XML_FILE_NAME = 'updateinfo.xml.gz'
 
 
 class UpdateinfoXMLFileContext(XmlFileContext):
-    def __init__(self, working_dir, checksum_type=None, conduit=None):
+
+    def __init__(self, working_dir, nevra_in_repo, checksum_type=None, conduit=None):
+        """
+        Creates and writes updateinfo XML data.
+
+        :param working_dir: The working directory for the request
+        :type working_dir:  basestring
+        :param nevra_in_repo: The nevra of all rpms in the repo.
+        :type nevra_in_repo:  set of models.NEVRA objects
+        :param checksum_type: The type of checksum to be used
+        :type checksum_type:  basestring
+        :param conduit: A conduit to use
+        :type conduit:  pulp.plugins.conduits.repo_publish.RepoPublishConduit
+        """
+        self.nevra_in_repo = nevra_in_repo
         metadata_file_path = os.path.join(working_dir, REPO_DATA_DIR_NAME,
                                           UPDATE_INFO_XML_FILE_NAME)
         self.conduit = conduit
         super(UpdateinfoXMLFileContext, self).__init__(
             metadata_file_path, 'updates', checksum_type=checksum_type)
 
-    def _repo_unit_nevra(self, erratum_unit, repo_id):
+    def _get_repo_unit_nevra(self, erratum_unit):
         """
         Return a list of NEVRA dicts for units in a single repo referenced by the given errata.
 
         Pulp errata units combine the known packages from all synced repos. Given an errata unit
         and a repo, return a list of NEVRA dicts that can be used to filter out packages not
-        linked to that repo when generating a repo's updateinfo XML file. While returning that
-        list of NEVRA dicts is the main goal, doing so quickly and without running out of memory
-        is what makes this a little bit tricky.
-
-        Build up a super-fancy query to get the unit ids for all NEVRA seen in these errata
-        check repo/unit associations for this errata to limit the packages in the published
-        updateinfo to the units in the repo being currently published.
+        linked to that repo when generating a repo's updateinfo XML file.
 
         :param erratum_unit: The erratum unit that should be written to updateinfo.xml.
         :type erratum_unit: pulp_rpm.plugins.db.models.Errata
-        :param repo_id: The repo_id of a pulp repository in which to find units
-        :type repo_id: str
+
         :return: a list of NEVRA dicts for units in a single repo referenced by the given errata
         :rtype: list
         """
-        nevra_fields = ('name', 'epoch', 'version', 'release', 'arch')
-        nevra_q = mongoengine.Q()
+        nevra_in_repo_and_pkglist = []
         for pkglist in erratum_unit.pkglist:
             for pkg in pkglist['packages']:
-                pkg_nevra = dict((field, pkg[field]) for field in nevra_fields)
-                nevra_q |= mongoengine.Q(**pkg_nevra)
-
-        # Aim the super-fancy query at mongo to get the units that this errata refers to
-        # The scaler method on the end returns a list of tuples to try to save some memory
-        # and also cut down on mongoengine model instance hydration costs.
-        nevra_units = models.RPM.objects.filter(nevra_q).scalar('id', *nevra_fields)
-
-        # Split up the nevra unit entries into a mapping of the unit id to its nevra fields
-        nevra_unit_map = dict((nevra_unit[0], nevra_unit[1:]) for nevra_unit in nevra_units)
-
-        # Get all of the unit ids from this errata that are associated with the current repo.
-        # Cast this as a set for speedier lookups when iterating of the nevra unit map.
-        repo_unit_ids = set(RepositoryContentUnit.objects.filter(
-            unit_id__in=nevra_unit_map.keys(), repo_id=repo_id).scalar('unit_id'))
-
-        # Finally(!), intersect the repo unit ids with the unit nevra ids to
-        # create a list of nevra dicts that can be easily compared to the
-        # errata package nevra and exclude unrelated packages
-        repo_unit_nevra = []
-        for nevra_unit_id, nevra_field_values in nevra_unit_map.items():
-            # based on the args to scalar when nevra_units was created:
-            if nevra_unit_id in repo_unit_ids:
-                repo_unit_nevra.append(dict(zip(nevra_fields, nevra_field_values)))
-
-        return repo_unit_nevra
+                pkg_nevra = models.NEVRA(name=pkg['name'], epoch=pkg['epoch'],
+                                         version=pkg['version'], release=pkg['release'],
+                                         arch=pkg['arch'])
+                if pkg_nevra in self.nevra_in_repo:
+                    pkg_dict = {
+                        'name': pkg_nevra.name,
+                        'epoch': pkg_nevra.epoch,
+                        'version': pkg_nevra.version,
+                        'release': pkg_nevra.release,
+                        'arch': pkg_nevra.arch,
+                    }
+                    nevra_in_repo_and_pkglist.append(pkg_dict)
+        return nevra_in_repo_and_pkglist
 
     def add_unit_metadata(self, item):
         """
@@ -96,10 +87,9 @@ class UpdateinfoXMLFileContext(XmlFileContext):
         issued_attributes = {'date': erratum_unit.issued}
         ElementTree.SubElement(update_element, 'issued', issued_attributes)
 
-        reboot_element = ElementTree.SubElement(update_element, 'reboot_suggested')
-        if erratum_unit.reboot_suggested is None:
-            erratum_unit.reboot_suggested = False
-        reboot_element.text = str(erratum_unit.reboot_suggested)
+        if erratum_unit.reboot_suggested:
+            reboot_element = ElementTree.SubElement(update_element, 'reboot_suggested')
+            reboot_element.text = 'True'
 
         # these elements are optional
         for key in ('title', 'release', 'rights', 'solution',
@@ -140,7 +130,7 @@ class UpdateinfoXMLFileContext(XmlFileContext):
 
         # If we can pull a repo_id off the conduit, use that to generate repo-specific nevra
         if self.conduit and hasattr(self.conduit, 'repo_id'):
-            repo_unit_nevra = self._repo_unit_nevra(erratum_unit, self.conduit.repo_id)
+            repo_unit_nevra = self._get_repo_unit_nevra(erratum_unit)
         else:
             repo_unit_nevra = None
 
@@ -195,8 +185,9 @@ class UpdateinfoXMLFileContext(XmlFileContext):
                     sum_element = ElementTree.SubElement(package_element, 'sum', sum_attributes)
                     sum_element.text = checksum_value
 
-                reboot_element = ElementTree.SubElement(package_element, 'reboot_suggested')
-                reboot_element.text = str(package.get('reboot_suggested', False))
+                if package.get('reboot_suggested'):
+                    reboot_element = ElementTree.SubElement(package_element, 'reboot_suggested')
+                    reboot_element.text = 'True'
 
         # write the top-level XML element out to the file
         update_element_string = ElementTree.tostring(update_element, 'utf-8')

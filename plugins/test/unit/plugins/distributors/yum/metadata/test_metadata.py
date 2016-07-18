@@ -7,7 +7,6 @@ import unittest
 from xml.etree import cElementTree as et
 
 from mock import Mock, patch
-from mongoengine.queryset.visitor import QCombination
 from pulp.plugins.model import Unit
 
 from pulp_rpm.common.ids import TYPE_ID_RPM
@@ -324,7 +323,7 @@ class YumDistributorMetadataTests(unittest.TestCase):
                             REPO_DATA_DIR_NAME,
                             UPDATE_INFO_XML_FILE_NAME)
 
-        context = UpdateinfoXMLFileContext(self.metadata_file_dir)
+        context = UpdateinfoXMLFileContext(self.metadata_file_dir, set())
 
         context._open_metadata_file_handle()
         context._close_metadata_file_handle()
@@ -377,7 +376,7 @@ class YumDistributorMetadataTests(unittest.TestCase):
         # just checking
         self.assertEqual(erratum_unit.unit_key['errata_id'], 'RHEA-2010:9999')
 
-        context = UpdateinfoXMLFileContext(self.metadata_file_dir)
+        context = UpdateinfoXMLFileContext(self.metadata_file_dir, set())
         context._open_metadata_file_handle()
         context.add_unit_metadata(erratum_unit)
         context._close_metadata_file_handle()
@@ -397,8 +396,8 @@ class YumDistributorMetadataTests(unittest.TestCase):
         self.assertEqual(content.count('<package'), 2)
         self.assertEqual(content.count('<sum type="md5">f3c197a29d9b66c5b65c5d62b25db5b4</sum>'), 1)
 
-    @patch.object(UpdateinfoXMLFileContext, '_repo_unit_nevra')
-    def test_updateinfo_unit_metadata_with_repo(self, repo_unit_nevra):
+    @patch.object(UpdateinfoXMLFileContext, '_get_repo_unit_nevra')
+    def test_updateinfo_unit_metadata_with_repo(self, mock__get_repo_unit_nevra):
 
         path = os.path.join(self.metadata_file_dir,
                             REPO_DATA_DIR_NAME,
@@ -410,7 +409,7 @@ class YumDistributorMetadataTests(unittest.TestCase):
 
         # mock out the repo/unit nevra matcher so that only one unit in the referenced errata
         # is included in the output updateinfo XML
-        repo_unit_nevra.return_value = [
+        mock__get_repo_unit_nevra.return_value = [
             {'name': 'patb', 'epoch': '0', 'version': '0.1',
              'release': '2', 'arch': 'x86_64'},
         ]
@@ -422,7 +421,7 @@ class YumDistributorMetadataTests(unittest.TestCase):
 
         mock_conduit = Mock()
         mock_conduit.repo_id = 'mock_conduit_repo'
-        context = UpdateinfoXMLFileContext(self.metadata_file_dir, conduit=mock_conduit)
+        context = UpdateinfoXMLFileContext(self.metadata_file_dir, set(), conduit=mock_conduit)
         context._open_metadata_file_handle()
         context.add_unit_metadata(erratum_unit)
         context._close_metadata_file_handle()
@@ -442,65 +441,22 @@ class YumDistributorMetadataTests(unittest.TestCase):
         self.assertEqual(content.count('<package'), 1)
         self.assertEqual(content.count('<sum type="md5">f3c197a29d9b66c5b65c5d62b25db5b4</sum>'), 1)
 
-    @patch('pulp_rpm.plugins.db.models.RPM')
-    def test_updateinfo_repo_unit_nevra_q_filter(self, mock_rpm):
-        # A mongoengine "QCombination" object is used to efficiently search for units
-        # by nevra. This checks that the QCombination object is properly created based
-        # on the errata unit parsed from the test updateinfo XML.
-        with open(os.path.join(DATA_DIR, 'updateinfo.xml'), 'r') as handle:
-            generator = packages.package_list_generator(
-                handle, 'update', updateinfo.process_package_element)
-            erratum_unit = next(generator)
-
-        context = UpdateinfoXMLFileContext(self.metadata_file_dir)
-        context._repo_unit_nevra(erratum_unit, 'mock_repo')
-
-        # Call 0 to mock_rpm's filter should have one arg, which should be the QCombination
-        # object that is built with an OR operator, with two children (one for each package
-        # in the errata unit that was passed to the method under test.
-        qcombination = mock_rpm.objects.filter.call_args_list[0][0][0]
-        self.assertTrue(isinstance(qcombination, QCombination))
-        self.assertEqual(qcombination.operation, qcombination.OR)
-        self.assertEqual(len(qcombination.children), 2)
-
-    @patch('pulp_rpm.plugins.db.models.RPM')
-    @patch('pulp_rpm.plugins.distributors.yum.metadata.updateinfo.RepositoryContentUnit')
-    def test_updateinfo_repo_unit_nevra_return(self, mock_rcu, mock_rpm):
-        # Build up the mock data as well as the expected returns
+    def test_updateinfo_get_repo_unit_nevra_return(self):
         nevra_fields = ('name', 'epoch', 'version', 'release', 'arch')
         unit1_nevra = ('n1', 'e1', 'v1', 'r1', 'a1')
         unit1_nevra_dict = dict(zip(nevra_fields, unit1_nevra))
         unit2_nevra = ('n2', 'e2', 'v2', 'r2', 'a2')
         unit2_nevra_dict = dict(zip(nevra_fields, unit2_nevra))
 
-        # This is the result to the query for all units with a given nevra
-        # The expected value is a list of tuples containing unit ids and nevra fields;
-        mock_rpm.objects.filter().scalar.return_value = [
-            ('id1',) + unit1_nevra,
-            ('id2',) + unit2_nevra,
-        ]
-        # The expected value here is a list of unit IDs from the previous query that are
-        # associated with our mock repo.
-        mock_rcu.objects.filter().scalar.return_value = ['id1']
+        erratum_unit = Mock()
+        erratum_unit.pkglist = [{'packages': [
+            unit1_nevra_dict,
+            unit2_nevra_dict,
+        ]}]
 
-        # Load the updateinfo XML to get an erratum unit to process
-        with open(os.path.join(DATA_DIR, 'updateinfo.xml'), 'r') as handle:
-            generator = packages.package_list_generator(
-                handle, 'update', updateinfo.process_package_element)
-            erratum_unit = next(generator)
+        context = UpdateinfoXMLFileContext(self.metadata_file_dir, set([unit1_nevra]))
+        repo_unit_nevra = context._get_repo_unit_nevra(erratum_unit)
 
-        context = UpdateinfoXMLFileContext(self.metadata_file_dir)
-        repo_unit_nevra = context._repo_unit_nevra(erratum_unit, 'mock_repo')
-
-        # Call 0 created the scalar mock, so we're interested in call 1. In this case, check
-        # that filter was called at least once with the expected filter kwargs and values.
-        mock_rcu.objects.filter.assert_any_call(unit_id__in=['id2', 'id1'], repo_id='mock_repo')
-
-        # And finally, make sure the return value is actually good!
-        # We made the RPM mock simulate two units known to pulp with the nevra seen in our errata.
-        # Then, we made the RepositoryContentUnit mock simulate that only one of those units is
-        # associated with the passed-in repo. The return value should be a list with only the
-        # single matching unit's nevra dict in it.
         self.assertEqual(len(repo_unit_nevra), 1)
         self.assertTrue(unit1_nevra_dict in repo_unit_nevra)
         self.assertTrue(unit2_nevra_dict not in repo_unit_nevra)

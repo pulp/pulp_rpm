@@ -10,7 +10,6 @@ import tempfile
 import mock
 
 from pulp.common.compat import unittest
-from pulp.server.exceptions import PulpCodedValidationException
 from pulp_rpm.common import ids
 from pulp_rpm.devel.skip import skip_broken
 from pulp_rpm.plugins.db import models
@@ -202,29 +201,56 @@ class TestErrata(unittest.TestCase):
         ret = existing_erratum.update_needed(uploaded_erratum)
         self.assertFalse(ret)
 
+    def test_update_needed_different_supported_date_formats(self):
+        """
+        Assert that the supported datetime format are handled correctly and without any warning
+        """
+        existing_erratum, uploaded_erratum = models.Errata(), models.Errata()
+        existing_erratum.updated = '2015-01-01'
+        uploaded_erratum.updated = '2016-01-01 00:00:00'
+        ret = existing_erratum.update_needed(uploaded_erratum)
+        self.assertTrue(ret)
+
     def test_update_needed_bad_date_existing(self):
         """
         Assert that if the `updated` date of the existing erratum is in the unknown format, then
-        the PulpCodedValidationException is raised.
+        a ValueError is raised.
         """
         existing_erratum, uploaded_erratum = models.Errata(), models.Errata()
         existing_erratum.updated = 'Fri Jan  1 00:00:00 UTC 2016'
         uploaded_erratum.updated = '2016-04-01 00:00:00 UTC'
-        with self.assertRaisesRegexp(PulpCodedValidationException, 'existing erratum') as cm:
-            existing_erratum.update_needed(uploaded_erratum)
-        self.assertEqual('RPM1007', cm.exception.error_code.code)
+        self.assertRaises(ValueError, existing_erratum.update_needed, uploaded_erratum)
 
     def test_update_needed_bad_date_uploaded(self):
         """
         Assert that if the `updated` date of the uploaded erratum is in the unknown format, then
-        the PulpCodedValidationException is raised.
+        a ValueError is raised.
         """
         existing_erratum, uploaded_erratum = models.Errata(), models.Errata()
         existing_erratum.updated = '2016-01-01 00:00:00 UTC'
         uploaded_erratum.updated = 'Fri Apr  1 00:00:00 UTC 2016'
-        with self.assertRaisesRegexp(PulpCodedValidationException, 'uploaded erratum') as cm:
-            existing_erratum.update_needed(uploaded_erratum)
-        self.assertEqual('RPM1007', cm.exception.error_code.code)
+        self.assertRaises(ValueError, existing_erratum.update_needed, uploaded_erratum)
+
+    def test_update_needed_empty_date_existing(self):
+        """
+        Test an empty existing `updated` erratum field.
+
+        Assert that an empty existing `updated` field is considered older than an uploaded
+        erratum with a valid `updated` field.
+        """
+        existing_erratum, uploaded_erratum = models.Errata(), models.Errata()
+        existing_erratum.updated = ''
+        uploaded_erratum.updated = '2016-04-01 00:00:00 UTC'
+        self.assertEqual(True, existing_erratum.update_needed(uploaded_erratum))
+
+    def test_update_needed_empty_date_uploaded(self):
+        """
+        Test that an empty uploaded erratum `updated` field returns False.
+        """
+        existing_erratum, uploaded_erratum = models.Errata(), models.Errata()
+        existing_erratum.updated = '2016-01-01 00:00:00 UTC'
+        uploaded_erratum.updated = ''
+        self.assertEqual(False, existing_erratum.update_needed(uploaded_erratum))
 
     @mock.patch('pulp_rpm.plugins.db.models.Errata.save')
     def test_merge_pkglists_oldstyle_newstyle_same_collection(self, mock_save):
@@ -412,6 +438,34 @@ class TestErrata(unittest.TestCase):
         # make sure the existing erratum is not changed
         self.assertNotEqual(existing_erratum.field1, uploaded_erratum.field1)
         self.assertNotEqual(existing_erratum.field2, uploaded_erratum.field2)
+
+    @mock.patch('pulp_rpm.plugins.db.models.Errata.merge_pkglists_and_save')
+    @mock.patch('pulp_rpm.plugins.db.models.Errata.update_needed')
+    def test_merge_fixes_reboot_needed(self, mock_update_needed, mock_merge_pkglists):
+        """
+        Test that the reboot_suggested value is overwritten by the one on the erratum being merged.
+        """
+        existing_erratum, new_erratum = models.Errata(), models.Errata()
+        mock_update_needed.return_value = False
+        existing_erratum.reboot_suggested = True
+        new_erratum.reboot_suggested = False
+        existing_erratum.merge_errata(new_erratum)
+
+        self.assertFalse(existing_erratum.reboot_suggested)
+
+    @mock.patch('pulp_rpm.plugins.db.models.Errata.merge_pkglists_and_save')
+    @mock.patch('pulp_rpm.plugins.db.models.Errata.update_needed')
+    def test_merge_preserves_reboot_needed(self, mock_update_needed, mock_merge_pkglists):
+        """
+        Test that the reboot_suggested value is preserved when both are True.
+        """
+        existing_erratum, new_erratum = models.Errata(), models.Errata()
+        mock_update_needed.return_value = False
+        existing_erratum.reboot_suggested = True
+        new_erratum.reboot_suggested = True
+        existing_erratum.merge_errata(new_erratum)
+
+        self.assertTrue(existing_erratum.reboot_suggested)
 
 
 class TestISO(unittest.TestCase):

@@ -2,6 +2,18 @@
 Pulp 2.8 Release Notes
 ======================
 
+Pulp 2.8.6
+==========
+
+See the list of :fixedbugs:`2.8.6`
+
+In particular, issue 2032 fixed an incorrect publishing and parsing of Errata. The consequence was
+that yum might think an Erratum served by pulp suggests a reboot, when it actually does not. It is
+highly recommended that you re-publish any repositories that contain Errata after upgrading, which
+will correct the information about whether a reboot is suggested. Furthermore, if you sync Errata
+from one Pulp to another, it is highly recommended that you re-sync each repository that contains
+Errata. This will fix any records that have an incorrect value for "reboot_suggested".
+
 Pulp 2.8.5
 ==========
 
