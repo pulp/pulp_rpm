@@ -161,14 +161,14 @@ class UpdateinfoXMLFileContextTests(unittest.TestCase):
 
     def test__get_package_checksum_tuple_no_checksum(self):
         """
-        Test that the package checksum is not published if the requested checksum type is not
+        Test that the longest package checksum is published if the requested checksum type is not
         available.
         """
         erratum = self._generate_erratum_unit()
         self.context.checksum_type = 'sha1'
         package_with_multiple_checksums = erratum.pkglist[0]['packages'][1]
         result = self.context._get_package_checksum_tuple(package_with_multiple_checksums)
-        expected_checksum_tuple = ()
+        expected_checksum_tuple = ('sha256', 'sha256_checksum')
         self.assertEqual(result, expected_checksum_tuple)
 
     def test_add_errata_unit_metadata(self):
