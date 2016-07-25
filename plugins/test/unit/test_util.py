@@ -167,6 +167,25 @@ class TestRepoURLModify(unittest.TestCase):
         self.assertEqual(url_modify._query_auth_token, 'foo')
 
 
+class TestFakeXMLElement(unittest.TestCase):
+    def test_invalid_encoding(self):
+        et = utils.fake_xml_element(XML_BAD_ENCODING)
+        expected_string = u'P\xc3\xa1cman Winter <pacman@winter.me> - 0.9.4-5'
+        # compare the name of author with invalid character
+        self.assertEqual(et.getchildren()[0].getchildren()[1].items()[1][1], expected_string)
+
+XML_BAD_ENCODING = (
+    '<package pkgid="YES" '
+    'name="penguin" arch="x86_64">\n'
+    '<version epoch="0" ver="1.0.0" rel="1.el7"/>\n'
+    '<changelog author="P\xc3\xa1cman Winter &lt;pacman@winter.me&gt; - 0.9.4-5" '
+    'date="1235907800">\n'
+    '- add logo for better look</changelog>\n'
+    '<changelog author="Penguin Winter &lt;penguin@winter.me&gt; - 0.9.8-1" date="12535255200">\n'
+    '- added more water</changelog>\n'
+    '</package>'
+)
+
 PRIMARY_XML = """<?xml version="1.0" encoding="UTF-8"?>
 <metadata xmlns="http://linux.duke.edu/metadata/common"
 xmlns:rpm="http://linux.duke.edu/metadata/rpm" packages="32">
