@@ -9,3 +9,5 @@ New Features
 ------------
 
 * Added support for uploading DRPMs via `pulp-admin rpm repo uploads drpm` or via API.
+* A full sync will be forced if the sync configuration has been changed or content has been removed
+  since the last sync.
