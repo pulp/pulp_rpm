@@ -43,7 +43,7 @@ The ``distributor_config`` contains a ``remote`` section with the following sett
 
 ``ssh_identity_file``
   The path to the private key to be used as the ssh identity file. When ``auth_type`` is
-``publickey`` this is a required config. The key has to be readable by user ``apache``.
+  ``publickey`` this is a required config. The key has to be readable by user ``apache``.
 
 ``ssh_password``
   The password to be used for ``ssh_user`` on the remote server. ``ssh_password`` is required when
