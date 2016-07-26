@@ -880,6 +880,15 @@ class RpmBase(NonMetadataPackage):
         location_element = package_element.find('location')
         location_element.set('href', filename)
 
+    def get_symlink_name(self):
+        """
+        Provides the name that should be used when creating a symlink.
+
+        :return: file name as it appears in a published repository
+        :rtype: str
+        """
+        return self.filename
+
 
 class RPM(RpmBase):
     # TODO add docstring to this class
