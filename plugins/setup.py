@@ -27,7 +27,9 @@ setup(
             'entry_point',
             'IsoDistributor = pulp_rpm.plugins.distributors.iso_distributor.distributor:'
             'entry_point',
-            'RsyncDistributor = pulp_rpm.plugins.distributors.rsync.distributor:entry_point'
+            'RsyncDistributor = pulp_rpm.plugins.distributors.rsync.distributor:entry_point',
+            'IsoRsyncDistributor = pulp_rpm.plugins.distributors.iso_rsync_distributor.distributor'
+            ':entry_point'
         ],
         'pulp.group_distributors': [
             'rpm_export = pulp_rpm.plugins.distributors.export_distributor.groupdistributor:'

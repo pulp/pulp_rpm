@@ -1366,6 +1366,15 @@ class ISO(FileContentUnit):
         # Calculate the size by seeking to the end to find the file size with tell()
         return file_utils.calculate_size(file_handle)
 
+    def get_symlink_name(self):
+        """
+        Provides the name that should be used when creating a symlink.
+
+        :return: file name as it appears in a published repository
+        :rtype: str
+        """
+        return self.name
+
 
 class ISOManifest(object):
     """
