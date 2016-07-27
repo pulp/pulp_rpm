@@ -83,8 +83,8 @@ class UpdateinfoXMLFileContext(XmlFileContext):
     def _get_package_checksum_tuple(self, package):
         """
         Decide which checksum to publish for the given package in the erratum package list.
-        The updateinfo_checksum_type is used if specified and available, otherwise the distributor
-        checksum type will be published if available.
+        If available, the checksum of the distributor checksum type will be published, otherwise
+        the longest one will be chosen.
 
         Handle two possible ways of specifying the checksum in the erratum package list:
         - in the `sum` package field as a list of alternating checksum types and values,
@@ -95,7 +95,7 @@ class UpdateinfoXMLFileContext(XmlFileContext):
         :param package: package from the erratum package list
         :type  package: dict
         :return: checksum type and value to publish. An empty tuple is returned if there is
-                 no checksum of the requested or distributor checksum type available.
+                 no checksum available.
         :rtype: tuple
         """
         package_checksum_tuple = ()
@@ -104,15 +104,23 @@ class UpdateinfoXMLFileContext(XmlFileContext):
         if package.get('type'):
             package_checksums += [package['type'], package.get('sums')]
 
-        for checksum_type in (self.updateinfo_checksum_type, dist_checksum_type):
-            try:
-                checksum_index = package_checksums.index(checksum_type) + 1
-                checksum_value = package_checksums[checksum_index]
+        if package_checksums:
+            for checksum_type in (self.updateinfo_checksum_type, dist_checksum_type):
+                try:
+                    checksum_index = package_checksums.index(checksum_type) + 1
+                except (ValueError, IndexError):
+                    # no checksum of the requested checksum type found
+                    continue
+                else:
+                    checksum_value = package_checksums[checksum_index]
+                    package_checksum_tuple = (checksum_type, checksum_value)
+                    break
+            else:
+                # choose the longest(the best?) checksum available
+                checksum_value = max(package_checksums[1::2], key=len)
+                checksum_type_index = package_checksums.index(checksum_value) - 1
+                checksum_type = package_checksums[checksum_type_index]
                 package_checksum_tuple = (checksum_type, checksum_value)
-                break
-            except (ValueError, IndexError):
-                # no checksum of the requested or distributor checksum type found
-                pass
 
         return package_checksum_tuple
 
