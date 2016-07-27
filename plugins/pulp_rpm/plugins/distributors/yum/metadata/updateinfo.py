@@ -2,11 +2,12 @@ import os
 
 from pulp.plugins.util.metadata_writer import XmlFileContext
 from pulp.plugins.util.saxwriter import XMLWriter
+from pulp.server.exceptions import PulpCodedException
 
-from pulp_rpm.plugins.distributors.yum.metadata.metadata import REPO_DATA_DIR_NAME
+from pulp_rpm.plugins import error_codes
 from pulp_rpm.plugins.db import models
+from pulp_rpm.plugins.distributors.yum.metadata.metadata import REPO_DATA_DIR_NAME
 from pulp_rpm.yum_plugin import util
-
 
 _logger = util.getLogger(__name__)
 
@@ -83,8 +84,10 @@ class UpdateinfoXMLFileContext(XmlFileContext):
     def _get_package_checksum_tuple(self, package):
         """
         Decide which checksum to publish for the given package in the erratum package list.
-        If available, the checksum of the distributor checksum type will be published, otherwise
-        the longest one will be chosen.
+        If updateinfo_checksum_type is requested explicitly, the checksum of this type will be
+        published.
+        If no checksum_type is requested, the checksum of the distributor checksum type
+        will be published, if available. Otherwise the longest one will be chosen.
 
         Handle two possible ways of specifying the checksum in the erratum package list:
         - in the `sum` package field as a list of alternating checksum types and values,
@@ -97,25 +100,30 @@ class UpdateinfoXMLFileContext(XmlFileContext):
         :return: checksum type and value to publish. An empty tuple is returned if there is
                  no checksum available.
         :rtype: tuple
+        :raises PulpCodedException: if updateinfo_checksum_type is not available
         """
         package_checksum_tuple = ()
         dist_checksum_type = self.checksum_type
-        package_checksums = package.get('sum', [])
+        package_checksums = package.get('sum') or []
         if package.get('type'):
             package_checksums += [package['type'], package.get('sums')]
 
-        if package_checksums:
-            for checksum_type in (self.updateinfo_checksum_type, dist_checksum_type):
-                try:
-                    checksum_index = package_checksums.index(checksum_type) + 1
-                except (ValueError, IndexError):
-                    # no checksum of the requested checksum type found
-                    continue
-                else:
-                    checksum_value = package_checksums[checksum_index]
-                    package_checksum_tuple = (checksum_type, checksum_value)
-                    break
+        for checksum_type in (self.updateinfo_checksum_type, dist_checksum_type):
+            try:
+                checksum_index = package_checksums.index(checksum_type) + 1
+            except (ValueError, IndexError):
+                # raise exception if updateinfo_checksum_type is unavailable
+                if self.updateinfo_checksum_type and \
+                   checksum_type == self.updateinfo_checksum_type:
+                    raise PulpCodedException(error_codes.RPM1012,
+                                             checksumtype=self.updateinfo_checksum_type)
+                continue
             else:
+                checksum_value = package_checksums[checksum_index]
+                package_checksum_tuple = (checksum_type, checksum_value)
+                break
+        else:
+            if package_checksums:
                 # choose the longest(the best?) checksum available
                 checksum_value = max(package_checksums[1::2], key=len)
                 checksum_type_index = package_checksums.index(checksum_value) - 1

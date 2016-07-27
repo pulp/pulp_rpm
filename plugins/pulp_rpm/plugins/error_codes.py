@@ -28,3 +28,6 @@ RPM1010 = Error("RPM1010", _('RPMRsyncDistributor requires a predistributor to b
                 [])
 RPM1011 = Error("RPM1011", _('ISORsyncDistributor requires a predistributor to be configured.'),
                 [])
+RPM1012 = Error("RPM1012", _('Checksum type "%(checksumtype)s" requested for updateinfo.xml is not '
+                             'available for all packages listed in the errata.'),
+                ['checksumtype'])

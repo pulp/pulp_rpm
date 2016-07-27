@@ -6,6 +6,8 @@ from cStringIO import StringIO
 import mock
 
 from pulp.common.compat import unittest
+from pulp.server.exceptions import PulpCodedException
+
 from pulp_rpm.plugins.db import models
 from pulp_rpm.plugins.distributors.yum.metadata.updateinfo import UpdateinfoXMLFileContext
 
@@ -161,12 +163,11 @@ class UpdateinfoXMLFileContextTests(unittest.TestCase):
 
     def test__get_package_checksum_tuple_unknown_type(self):
         """
-        Test that the longest package checksum is published if the requested checksum type is not
+        Test that the longest package checksum is published if the distributor checksum type is not
         available.
         """
         erratum = self._generate_erratum_unit()
         self.context.checksum_type = 'unknown type #1'
-        self.context.updateinfo_checksum_type = 'unknown type #2'
         package_with_multiple_checksums = erratum.pkglist[0]['packages'][1]
         result = self.context._get_package_checksum_tuple(package_with_multiple_checksums)
         expected_checksum_tuple = ('sha256', 'sha256_checksum')
@@ -187,16 +188,15 @@ class UpdateinfoXMLFileContextTests(unittest.TestCase):
 
     def test__get_package_checksum_tuple_updateinfo_unknown_type(self):
         """
-        Test that the package checksum of the distributor checksum type is published if
-        the updateinfo checksum type is unavailable.
+        Test that the proper exception is raised if the updateinfo checksum type is unavailable.
         """
         erratum = self._generate_erratum_unit()
         self.context.checksum_type = 'sha256'
         self.context.updateinfo_checksum_type = 'unknown type'
         package_with_multiple_checksums = erratum.pkglist[0]['packages'][1]
-        result = self.context._get_package_checksum_tuple(package_with_multiple_checksums)
-        expected_checksum_tuple = ('sha256', 'sha256_checksum')
-        self.assertEqual(result, expected_checksum_tuple)
+        with self.assertRaises(PulpCodedException) as e:
+            self.context._get_package_checksum_tuple(package_with_multiple_checksums)
+        self.assertEqual(e.exception.error_code.code, 'RPM1012')
 
     def test_add_errata_unit_metadata(self):
         """
