@@ -80,6 +80,8 @@ class UpdateinfoXMLFileContext(XmlFileContext):
     def _get_package_checksum_tuple(self, package):
         """
         Decide which checksum to publish for the given package in the erratum package list.
+        If available, the checksum of the distributor checksum type will be published, otherwise
+        the longest one will be chosen.
 
         Handle two possible ways of specifying the checksum in the erratum package list:
         - in the `sum` package field as a list of alternating checksum types and values,
@@ -90,24 +92,28 @@ class UpdateinfoXMLFileContext(XmlFileContext):
         :param package: package from the erratum package list
         :type  package: dict
         :return: checksum type and value to publish. An empty tuple is returned if there is
-                 no checksum of the repository checksum type available.
+                 no checksum available.
         :rtype: tuple
         """
         package_checksum_tuple = ()
-        repo_checksum_type = self.checksum_type
-        package_checksums = package.get('sum')
+        dist_checksum_type = self.checksum_type
+        package_checksums = package.get('sum', [])
+        if package.get('type'):
+            package_checksums += [package['type'], package.get('sums')]
+
         if package_checksums:
-            checksum_types = package_checksums[::2]
-            checksum_values = package_checksums[1::2]
-            checksums = dict(zip(checksum_types, checksum_values))
-            if repo_checksum_type in checksums:
-                checksum_value = checksums[repo_checksum_type]
-                package_checksum_tuple = (repo_checksum_type, checksum_value)
-        else:
-            checksum_type = package.get('type')
-            checksum_value = package.get('sums')
-            if checksum_type == repo_checksum_type and checksum_value:
-                package_checksum_tuple = (checksum_type, checksum_value)
+            try:
+                checksum_index = package_checksums.index(dist_checksum_type) + 1
+            except (ValueError, IndexError):
+                # choose the longest(the best?) checksum available
+                checksum_value = max(package_checksums[1::2], key=len)
+                checksum_type_index = package_checksums.index(checksum_value) - 1
+                checksum_type = package_checksums[checksum_type_index]
+            else:
+                checksum_type = dist_checksum_type
+                checksum_value = package_checksums[checksum_index]
+            package_checksum_tuple = (checksum_type, checksum_value)
+
         return package_checksum_tuple
 
     def add_unit_metadata(self, item):
