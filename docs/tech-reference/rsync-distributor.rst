@@ -14,17 +14,17 @@ Here's an example of rpm_rsync_distributor configuration:
 .. code-block:: json
 
     {
-     "distributor_id": "my_rpm_rsync_distributor",
-     "distributor_type_id": "rpm_rsync_distributor",
-     "distributor_config": {
-        "remote": {
-            "auth_type": "publickey",
-            "ssh_user": "foo",
-            "ssh_identity_file": "/home/user/.ssh/id_rsa",
-            "host": "192.168.121.1",
-            "root": "/home/foo/pulp_root_dir"
-        },
-        "predistributor_id": "yum_distributor",
+        "distributor_id": "my_rpm_rsync_distributor",
+        "distributor_type_id": "rpm_rsync_distributor",
+        "distributor_config": {
+            "remote": {
+                "auth_type": "publickey",
+                "ssh_user": "foo",
+                "ssh_identity_file": "/home/user/.ssh/id_rsa",
+                "host": "192.168.121.1",
+                "root": "/home/foo/pulp_root_dir"
+            },
+            "predistributor_id": "yum_distributor"
         }
     }
 
