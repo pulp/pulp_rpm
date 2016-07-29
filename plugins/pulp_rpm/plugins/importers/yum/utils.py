@@ -130,6 +130,8 @@ def fake_xml_element(repodata_snippet):
         # best second guess we have, and it will never fail due to the nature
         # of the encoding.
         codec = 'ISO-8859-1'
+    except UnicodeDecodeError:
+        repodata_snippet = repodata_snippet.decode("ISO-8859-1")
     fake_xml = FAKE_XML % {'encoding': codec, 'xml': repodata_snippet,
                            'namespace': constants.RPM_NAMESPACE}
     # s/fromstring/phone_home/
