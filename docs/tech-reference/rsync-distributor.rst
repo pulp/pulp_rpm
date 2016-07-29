@@ -59,9 +59,10 @@ The ``distributor_config`` contains a ``remote`` section made up of the followin
 Optional configuration
 ----------------------
 
-``skip_fast_forward``
+``force_full``
   If true, the rsync distributor will publish all of the content of the repository. If false
   (default), the publish is incremental when the predistributor's last publish was incremental.
+  This value does not affect the ``skip_repodata`` and ``content_units_only`` configs.
 
 ``content_units_only``
   If true, the distributor will publish content units only (e.g. ``/var/lib/pulp/content``). The
