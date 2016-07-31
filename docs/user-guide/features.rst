@@ -54,6 +54,26 @@ For each Pulp-hosted repository that is protected, a consumer certificate can be
 supplied that will be distributed to consumers when they bind. That certificate
 will allow them to access the protected repository.
 
+Package signature verification
+------------------------------
+
+RPM repositories can have signature verification policy enabled.
+With this policy it can be restricted if only RPM/SRPM/DRPM packages, that are
+signed, will be imported and accepted into the repo. There is also a possibility
+to specify the list of allowed signature keys. These are the keys that are usually
+used to sign packages. It is enough to provide in the list short key ID that is
+8 characters long. So during the import phase, packages will be checked with which
+key they were signed and if this key is among allowed, the import of the package
+into the repo will be granted. Requirement of the package signature and list of
+allowed signature keys can be changed at anytime.
+
+This signature validation is granted within the current importer settings and current
+import of the content, without taking into consideration already present content in
+the repository.
+In order to parse package signature it is needed to download the content first. That's
+why signature verification cannot be enabled with on_demand or background download policy,
+only the immediate download policy is compatible with signature verification.
+
 Export
 ------
 

@@ -29,6 +29,7 @@ from pulp_rpm.plugins import error_codes
 from pulp_rpm.plugins.db import models
 from pulp_rpm.plugins.importers.yum import existing, purge
 from pulp_rpm.plugins.importers.yum.listener import RPMListener
+from pulp_rpm.plugins.importers.yum.parse import rpm as rpm_parse
 from pulp_rpm.plugins.importers.yum.parse.treeinfo import DistSync
 from pulp_rpm.plugins.importers.yum.repomd import (
     alternate, group, metadata, nectar_factory, packages, presto, primary, updateinfo)
@@ -486,6 +487,20 @@ class RepoSync(object):
         rpms_to_download, drpms_to_download = self._decide_what_to_download(metadata_files, catalog)
         self.download_rpms(metadata_files, rpms_to_download, url)
         self.download_drpms(metadata_files, drpms_to_download, url)
+        failed_signature_check = 0
+        new_report = []
+        for error in self.progress_report['content']['error_details']:
+            if error[constants.ERROR_CODE] == constants.ERROR_SIGNATURE_VERIFICATION:
+                failed_signature_check += 1
+            else:
+                new_report.append(error)
+        if failed_signature_check:
+            d = {constants.ERROR_CODE: constants.ERROR_INVALID_PACKAGE_SIG,
+                 'count': '%s' % failed_signature_check}
+            new_report.append(d)
+            self.progress_report['content']['error_details'] = new_report
+            _logger.warning(_('%s packages failed signature check and were not imported.'
+                            % failed_signature_check))
         self.conduit.build_success_report({}, {})
         # removes unwanted units according to the config settings
         purge.purge_unwanted_units(metadata_files, self.conduit, self.config)
@@ -544,7 +559,7 @@ class RepoSync(object):
             # check for the units that are not in the repo, but exist on the server
             # and associate them to the repo
             to_download = existing.check_all_and_associate(
-                wanted.iterkeys(), self.conduit, self.download_deferred, catalog)
+                wanted.iterkeys(), self.conduit, self.config, self.download_deferred, catalog)
             count = len(to_download)
             size = 0
             for unit in to_download:
@@ -588,7 +603,8 @@ class RepoSync(object):
                     # check for the units that are not in the repo, but exist on the server
                     # and associate them to the repo
                     to_download = existing.check_all_and_associate(
-                        wanted.iterkeys(), self.conduit, self.download_deferred, catalog)
+                        wanted.iterkeys(), self.conduit, self.config, self.download_deferred,
+                        catalog)
                     count += len(to_download)
                     for unit in to_download:
                         size += wanted[unit]
@@ -616,6 +632,20 @@ class RepoSync(object):
             unit.save()
         except NotUniqueError:
             unit = unit.__class__.objects.filter(**unit.unit_key).first()
+        if rpm_parse.signature_enabled(self.config):
+            try:
+                rpm_parse.verify_signature(unit, self.config)
+            except PulpCodedException as e:
+                _logger.debug(e)
+                error_report = {
+                    constants.NAME: unit.filename,
+                    constants.ERROR_CODE: constants.ERROR_SIGNATURE_VERIFICATION,
+                }
+
+                self.progress_report['content'].failure(unit, error_report)
+                self.conduit.set_progress(self.progress_report)
+                return unit
+
         repo_controller.associate_single_unit(self.conduit.repo, unit)
         self.progress_report['content'].success(unit)
         self.conduit.set_progress(self.progress_report)

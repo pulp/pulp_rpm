@@ -418,6 +418,8 @@ def _handle_package(repo, type_id, unit_key, metadata, file_path, conduit, confi
     except NotUniqueError:
         unit = unit.__class__.objects.filter(**unit.unit_key).first()
 
+    if rpm_parse.signature_enabled(config):
+        rpm_parse.verify_signature(unit, config)
     repo_controller.associate_single_unit(repo, unit)
 
 
@@ -511,7 +513,7 @@ def _extract_rpm_data(type_id, rpm_filename):
     # rpm_parse.get_package_xml(..)
     file_stat = os.stat(rpm_filename)
     rpm_data['time'] = file_stat[stat.ST_MTIME]
-    rpm_data['signature'] = rpm_parse.package_signature(headers)
+    rpm_data['signing_key'] = rpm_parse.package_signature(headers)
 
     return rpm_data
 

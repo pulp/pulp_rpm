@@ -93,7 +93,8 @@ class PackageCopyCommand(RecursiveCopyCommand):
 
         # Work around to scope the fields loaded by the platform to limit the amount of
         # RAM used. This addition will find its way to the criteria parsing in the bindings.
-        user_input['fields'] = UNIT_KEY_RPM
+        # need these flags for later usage
+        user_input['fields'] = UNIT_KEY_RPM + ('downloaded', 'signing_key', 'filename')
 
 
 class RpmCopyCommand(PackageCopyCommand):

@@ -199,10 +199,9 @@ class RPMListener(PackageListener):
             # we need to read package header in order to extract signature info
             # unit is not added if header cannot be read
             headers = rpm_parse.package_headers(report.destination)
-
+            unit['signing_key'] = rpm_parse.package_signature(headers)
             added_unit = self.sync.add_rpm_unit(self.metadata_files, unit)
             added_unit.safe_import_content(report.destination)
             if not added_unit.downloaded:
                 added_unit.downloaded = True
-            added_unit['signature'] = rpm_parse.package_signature(headers)
-            added_unit.save()
+                added_unit.save()

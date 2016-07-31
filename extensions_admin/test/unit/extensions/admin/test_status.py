@@ -46,6 +46,33 @@ class RpmStatusRendererTests(client_base.PulpClientTests):
         self.assertTrue('An invalid checksum type (sha1) was detected.' in
                         self.prompt.render_failure_message.mock_calls[1][1][0])
 
+    def test_render_download_step_invalid_signature_error(self):
+        """
+        Assert correct behavior from render_download_step() when the progress report contains errors
+        about packages that did not pass signature verification.
+        """
+        self.prompt.render_failure_message = mock.MagicMock()
+        content_report = report.ContentReport()
+        model = models.RPM(name='name', epoch=0, version='1.0.1', release='2', arch='x86_64',
+                           checksumtype='sha1', checksum='abcd', size=1024)
+        error_report = {
+            'count': 32,
+            constants.ERROR_CODE: 'invalid_package_signature',
+        }
+        content_report.failure(model, error_report)
+        content_report['state'] = constants.STATE_COMPLETE
+        progress_report = {'yum_importer': {'content': content_report}}
+        renderer = status.RpmStatusRenderer(self.context)
+
+        renderer.render_download_step(progress_report)
+
+        # The call above should not have failed, and the error messages asserted below should have
+        # been printed for the user.
+        self.assertTrue('package errors encountered' in
+                        self.prompt.render_failure_message.mock_calls[0][1][0])
+        self.assertTrue('32 packages failed signature check and were not imported.' in
+                        self.prompt.render_failure_message.mock_calls[1][1][0])
+
     def test_render_distribution_sync_step_with_error(self):
         """
         Assert that the expected messages are passed to render_failure_message in the event of a

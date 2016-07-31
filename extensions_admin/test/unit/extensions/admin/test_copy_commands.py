@@ -83,7 +83,8 @@ class PackageCopyCommandTests(PulpClientTests):
         self.assertEqual(1, mock_super.call_count)
 
         # The user_input variable itself should be modified.
-        self.assertEqual(user_input, {'a': 'a', 'fields': UNIT_KEY_RPM})
+        self.assertEqual(user_input, {'a': 'a', 'fields': UNIT_KEY_RPM +
+                                      ('downloaded', 'signing_key', 'filename')})
 
     def test_get_formatter_for_type(self):
         command = copy_commands.PackageCopyCommand(self.context, 'copy', '', '')

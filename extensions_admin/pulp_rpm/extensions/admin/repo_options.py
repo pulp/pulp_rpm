@@ -51,6 +51,15 @@ d = _('comma-separated list of types to omit when synchronizing, if not '
 d = d % {'t': ', '.join(VALID_SKIP_TYPES)}
 OPT_SKIP = PulpCliOption('--skip', d, required=False, parse_func=parse_skip_types)
 
+d = _('Require that imported packages should be signed. Defaults to False')
+OPT_REQUIRE_SIG = PulpCliOption('--require-signature', d, required=False,
+                                parse_func=parsers.parse_boolean)
+
+d = _('List of allowed signature keys that imported packages can be signed with. '
+      'Comma separated values.')
+OPT_ALLOWED_KEYS = PulpCliOption('--allowed-keys', d, required=False, allow_multiple=False,
+                                 parse_func=parsers.parse_csv_string)
+
 # publish options
 d = _('if "true", on each successful sync the repository will automatically be '
       'published on the configured protocols; if "false" synchronized content '

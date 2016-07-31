@@ -199,6 +199,50 @@ It is also possible to sync a repo that is protected via basic authentication.
 The ``--basicauth-user`` and ``--basicauth-pass`` options are used for this
 during repo creation or update.
 
+
+Sync a repo with signature verification
+=======================================
+
+Syncing a repo with signature verification is done by specifying ``--require-signature``
+and ``--allowed-keys``. With these options enabled, just signed packages will be synced
+and in addition just those packages that were signed with specific keys that were provided
+in the allow keys list.
+
+Let's try to sync from a remote feed where packages are unsigned.
+
+::
+
+    $ pulp-admin rpm repo create --repo-id reject-unsigned  \
+        --feed https://repos.fedorapeople.org/repos/pulp/pulp/demo_repos/test_srpm_repo/ \
+        --require-signature True
+
+    Successfully created repository [reject-unsigned]
+
+    $ pulp-admin rpm repo sync run --repo-id reject-unsigned
+
+    +----------------------------------------------------------------------+
+                   Synchronizing Repository [reject-unsigned]
+    +----------------------------------------------------------------------+
+
+    This command may be exited via ctrl+c without affecting the request.
+
+
+    Downloading metadata...
+    [|]
+    ... completed
+
+    Downloading repository content...
+    [==================================================] 100%
+    RPMs:       3/3 items
+    Delta RPMs: 0/0 items
+
+    ... completed
+
+    Individual package errors encountered during sync:
+
+    3 packages failed signature check and were not imported.
+
+
 .. _export-repos:
 
 Export Repositories and Repository Groups

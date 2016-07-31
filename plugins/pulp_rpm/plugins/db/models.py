@@ -121,8 +121,8 @@ class NonMetadataPackage(UnitMixin, FileContentUnit):
     :ivar checksum: The checksum of the package.
     :type checksum: mongoengine.StringField
 
-    :ivar signature: The signature of the package.
-    :type signature: mongoengine.StringField
+    :ivar signing_key: 8-character abbreviated fingerprint signing key of the package.
+    :type signing_key: mongoengine.StringField
 
     :ivar version_sort_index: ???
     :type version_sort_index: mongoengine.StringField
@@ -136,7 +136,7 @@ class NonMetadataPackage(UnitMixin, FileContentUnit):
     checksum = mongoengine.StringField(required=True)
     checksumtype = ChecksumTypeStringField(required=True)
     checksums = mongoengine.DictField()
-    signature = mongoengine.StringField()
+    signing_key = mongoengine.StringField()
 
     # We generate these two
     version_sort_index = mongoengine.StringField()
