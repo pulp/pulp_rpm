@@ -94,12 +94,3 @@ class ISORsyncDistributor(Distributor):
         self._publisher = publish.ISORsyncPublisher(repo, publish_conduit, config,
                                                     TYPE_ID_DISTRIBUTOR_ISO_RSYNC)
         return self._publisher.publish()
-
-    def cancel_publish_repo(self):
-        """
-        Call cancellation control hook.
-        """
-        _LOG.debug(_('Canceling publishing repo to remote server'))
-        self.canceled = True
-        if self._publisher is not None:
-            self._publisher.cancel()
