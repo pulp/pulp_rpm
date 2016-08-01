@@ -35,19 +35,12 @@ Here is an example iso_rsync_distributor configuration:
 
 The ``distributor_config`` contains a ``remote`` section with the following settings:
 
-``auth_type``
-  Two authentication methods are supported: ``publickey`` and ``password``.
-
 ``ssh_user``
   The ssh user for remote server.
 
 ``ssh_identity_file``
-  The path to the private key to be used as the ssh identity file. When ``auth_type`` is
-  ``publickey`` this is a required config. The key has to be readable by user ``apache``.
-
-``ssh_password``
-  The password to be used for ``ssh_user`` on the remote server. ``ssh_password`` is required when
-  ``auth_type`` is 'password'.
+  Absolute path to the private key that will be used as the identity file for ssh. The key has to
+  be readable by user ``apache``.
 
 ``host``
   The hostname of the remote server.
