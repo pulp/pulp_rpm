@@ -35,18 +35,12 @@ Here's an example of rpm_rsync_distributor configuration:
 
 The ``distributor_config`` contains a ``remote`` section made up of the following settings:
 
-``auth_type``
-  Two authentication methods are supported: ``publickey`` and ``password``.
-
 ``ssh_user``
   ssh user for remote server
 
 ``ssh_identity_file``
-  A path to the private key that will be used as identity file for ssh. When ``auth_type`` is
-  ``publickey`` this is a required config. The key has to be readable by user ``apache``.
-
-``ssh_password``
-  Password for ``ssh_user`` on remote server. Password is required when ``auth_type`` is 'password'.
+  Absolute path to the private key that will be used as the identity file for ssh. The key has to
+  be readable by user ``apache``.
 
 ``host``
   The hostname of the remote server.
