@@ -9,9 +9,7 @@ ssh to perform the file transfer.
 
 Configuration
 =============
-Here is an example iso_rsync_distributor configuration:
-
-.. code-block:: json
+Here is an example iso_rsync_distributor configuration::
 
     {
      "distributor_id": "my_iso_rsync_distributor",
