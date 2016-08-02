@@ -9,9 +9,7 @@ ssh to perform the file transfer.
 
 Configuration
 =============
-Here's an example of rpm_rsync_distributor configuration:
-
-.. code-block:: json
+Here's an example of rpm_rsync_distributor configuration::
 
     {
      "distributor_id": "my_rpm_rsync_distributor",
