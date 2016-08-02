@@ -1,23 +1,23 @@
-from collections import namedtuple
 import csv
+import errno
 import logging
 import os
+from collections import namedtuple
 from gettext import gettext as _
 from operator import itemgetter
 from urlparse import urljoin
 
-import errno
-from django.template import Context, Template
 import mongoengine
+from django.template import Context, Template
+
 import pulp.common.error_codes as platform_error_codes
+import pulp.server.webservices.templatetags  # NOQA
+import pulp.server.util as server_util
 from pulp.server.db.model import ContentUnit, FileContentUnit
 from pulp.server.exceptions import PulpCodedException
-import pulp.server.util as server_util
 
-from pulp_rpm.common import version_utils
-from pulp_rpm.common import file_utils
-from pulp_rpm.plugins import error_codes
-from pulp_rpm.plugins import serializers
+from pulp_rpm.common import version_utils, file_utils
+from pulp_rpm.plugins import error_codes, serializers
 from pulp_rpm.plugins.db.fields import ChecksumTypeStringField
 from pulp_rpm.plugins.importers.yum import utils
 from pulp_rpm.yum_plugin import util
@@ -722,6 +722,9 @@ class RpmBase(NonMetadataPackage):
     CHECKSUMTYPE_TEMPLATE = '{{ checksumtype }}'
     PKGID_TEMPLATE = '{{ pkgid }}'
     DEFAULT_CHECKSUM_TYPES = (server_util.TYPE_MD5, server_util.TYPE_SHA1, server_util.TYPE_SHA256)
+    ESCAPE_TEMPLATE_VARS_TAGS = {
+        'primary': ('description', 'summary'),
+        'other': ('changelog',)}
 
     def __init__(self, *args, **kwargs):
         super(RpmBase, self).__init__(*args, **kwargs)
@@ -760,6 +763,8 @@ class RpmBase(NonMetadataPackage):
         :rtype:     basestring
         """
         metadata = self.repodata['primary']
+        for tag in self.ESCAPE_TEMPLATE_VARS_TAGS['primary']:
+            metadata = self._escape_django_template_vars(metadata, tag)
         context = Context({'checksum': self.get_or_calculate_and_save_checksum(checksumtype),
                            'checksumtype': checksumtype})
 
@@ -776,6 +781,8 @@ class RpmBase(NonMetadataPackage):
         :rtype:     basestring
         """
         metadata = self.repodata['other']
+        for tag in self.ESCAPE_TEMPLATE_VARS_TAGS['other']:
+            metadata = self._escape_django_template_vars(metadata, tag)
         context = Context({'pkgid': self.get_or_calculate_and_save_checksum(checksumtype)})
         return self._render(metadata, context)
 
@@ -812,6 +819,28 @@ class RpmBase(NonMetadataPackage):
             rendered = rendered.encode('utf-8')
 
         return rendered
+
+    @staticmethod
+    def _escape_django_template_vars(template, tag_name):
+        """
+        Escape Django template variables by wrapping the specified element into `verbatim`
+        templatetag.
+
+        :param template: a Django template
+        :type  template: basestring
+        :param tag_name: name of the element to wrap
+        :type  tad_name: basestring
+
+        :return: a Django template with the escaped template variables in the specified element
+        :rype: basestring
+        """
+        start_tag = '<%s' % tag_name
+        end_tag = '</%s>' % tag_name
+        start_templatetag = '{%% verbatim pulp_%s_escape_method %%}' % tag_name
+        end_templatetag = '{%% endverbatim pulp_%s_escape_method %%}' % tag_name
+        template = template.replace(start_tag, start_templatetag + start_tag)
+        template = template.replace(end_tag, end_tag + end_templatetag)
+        return template
 
     def modify_xml(self):
         """
