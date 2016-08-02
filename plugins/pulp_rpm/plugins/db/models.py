@@ -1,27 +1,26 @@
-from collections import namedtuple
 import csv
+import errno
 import logging
 import os
+from collections import namedtuple
 from gettext import gettext as _
 from operator import itemgetter
 from urlparse import urljoin
 
-import errno
 from django.template import Context, Template
+
 import mongoengine
 import pulp.common.error_codes as platform_error_codes
+import pulp.server.util as server_util
+import pulp.server.webservices.templatetags  # NOQA
 from pulp.server.db.model import ContentUnit, FileContentUnit
 from pulp.server.exceptions import PulpCodedException
-import pulp.server.util as server_util
 
-from pulp_rpm.common import version_utils
-from pulp_rpm.common import file_utils
-from pulp_rpm.plugins import error_codes
-from pulp_rpm.plugins import serializers
+from pulp_rpm.common import file_utils, version_utils
+from pulp_rpm.plugins import error_codes, serializers
 from pulp_rpm.plugins.db.fields import ChecksumTypeStringField
 from pulp_rpm.plugins.importers.yum import utils
 from pulp_rpm.yum_plugin import util
-
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -836,8 +835,18 @@ class RpmBase(NonMetadataPackage):
         self._templatize_pkgid(other)
         self._templatize_pkgid(filelists)
 
+        text_other = utils.element_to_text(other)
+
+        other_l = text_other.find(">")
+        other_r = text_other.rfind("</")
+
+        text_other = ("%s{%% verbatim pulp_changelog_escape_method %%}%s"
+                      "{%% endverbatim pulp_changelog_escape_method %%}%s"
+                      ) % (text_other[:other_l+1],  text_other[other_l+1:other_r],
+                           text_other[other_r:])
+
         self.repodata['primary'] = utils.remove_fake_element(utils.element_to_text(faked_primary))
-        self.repodata['other'] = utils.element_to_text(other)
+        self.repodata['other'] = text_other
         self.repodata['filelists'] = utils.element_to_text(filelists)
 
     @classmethod

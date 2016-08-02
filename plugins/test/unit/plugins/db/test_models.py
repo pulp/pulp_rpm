@@ -183,6 +183,17 @@ class TestRpmBaseModifyXML(unittest.TestCase):
         self.assertTrue(self.checksum not in self.unit.repodata['filelists'])
         self.assertParsable(self.unit.repodata['filelists'])
 
+    def test_verbatim_in_other(self):
+        self.unit.modify_xml()
+        start_tag = '{% verbatim pulp_changelog_escape_method %}'
+        end_tag = '{% endverbatim pulp_changelog_escape_method %}'
+        end = end_tag + '</package>'
+        start = '<package arch="noarch" name="shark" pkgid="{{ pkgid }}">' + start_tag
+        self.assertTrue(start_tag in self.unit.repodata['other'])
+        self.assertTrue(end_tag in self.unit.repodata['other'])
+        self.assertEqual(end, self.unit.repodata['other'][-len(end):])
+        self.assertEqual(start, self.unit.repodata['other'][:len(start)])
+
 
 class TestDistribution(unittest.TestCase):
     """
