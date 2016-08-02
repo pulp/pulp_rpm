@@ -1089,6 +1089,7 @@ class TestRpmBaseRender(unittest.TestCase):
         self.unit.repodata['other'] = '''
 <package arch="noarch" name="cat" pkgid="{{ pkgid }}">
     <version epoch="0" rel="1" ver="1.0" />
+    <changelog>Sometimes contains {{ template vars }} description</changelog>
 </package>'''
         self.unit.repodata['primary'] = '''
 <package type="rpm">
@@ -1096,8 +1097,8 @@ class TestRpmBaseRender(unittest.TestCase):
   <arch>noarch</arch>
   <version epoch="0" rel="1" ver="1.0" />
   <checksum pkgid="YES" type="{{ checksumtype }}">{{ checksum }}</checksum>
-  <summary>A dummy package of cat</summary>
-  <description>A dummy package of cat</description>
+  <summary>A dummy {{ var }} package of cat</summary>
+  <description>A dummy package of cat with some description of {{ template var}}</description>
   <packager />
   <url>http://tstrachota.fedorapeople.org</url>
   <time build="1331831362" file="1331832453" />
@@ -1131,3 +1132,15 @@ class TestRpmBaseRender(unittest.TestCase):
 
         self.assertTrue('abc123' in ret)
         self.assertTrue('sha1' in ret)
+
+    def test__escape_django_template_vars(self):
+        """
+        Test that a requested element is wrapped into `verbatim` templatetag.
+        """
+        template = '<tag>description</tag><some_tag>text</some_tag><tag>another description</tag>'
+        expected_template = ('{% verbatim pulp_tag_escape_method %}<tag>description</tag>'
+                             '{% endverbatim pulp_tag_escape_method %}<some_tag>text</some_tag>'
+                             '{% verbatim pulp_tag_escape_method %}<tag>another description</tag>'
+                             '{% endverbatim pulp_tag_escape_method %}')
+        result = self.unit._escape_django_template_vars(template, 'tag')
+        self.assertEqual(result, expected_template)
