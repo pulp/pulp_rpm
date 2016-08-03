@@ -13,7 +13,7 @@
 # ---- Pulp (rpm) --------------------------------------------------------------
 
 Name: pulp-rpm
-Version: 2.10.1
+Version: 2.10.0
 Release: 0.1.beta%{?dist}
 Summary: Support for RPM content in the Pulp platform
 Group: Development/Languages
