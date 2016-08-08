@@ -1098,7 +1098,7 @@ class TestRpmBaseRender(unittest.TestCase):
   <version epoch="0" rel="1" ver="1.0" />
   <checksum pkgid="YES" type="{{ checksumtype }}">{{ checksum }}</checksum>
   <summary>A dummy {{ var }} package of cat</summary>
-  <description>A dummy package of cat with some description of {{ template var}}</description>
+  <description>A dummy package of cat with some description of {% character </description>
   <packager />
   <url>http://tstrachota.fedorapeople.org</url>
   <time build="1331831362" file="1331832453" />
@@ -1133,14 +1133,26 @@ class TestRpmBaseRender(unittest.TestCase):
         self.assertTrue('abc123' in ret)
         self.assertTrue('sha1' in ret)
 
-    def test__escape_django_template_vars(self):
+    def test__escape_django_syntax_chars(self):
         """
-        Test that a requested element is wrapped into `verbatim` templatetag.
+        Test that for a requested element all syntax characters are substituted with
+        the corresponding templatetag.
+
+        List of characters and the corresponding names of the templatetag could be found in
+        django.template.defaulttags.TemplateTagNode.mapping.
+        For now, those characters are:
+            >>> from django.template.defaulttags import TemplateTagNode
+            >>> TemplateTagNode.mapping.values()
+            [u'{#', u'{{', u'%}', u'#}', u'{', u'}}', u'{%', u'}']
+
+        E.g. '{%' should be substituted with '{% templatetag openblock %}'
         """
-        template = '<tag>description</tag><some_tag>text</some_tag><tag>another description</tag>'
-        expected_template = ('{% verbatim pulp_tag_escape_method %}<tag>description</tag>'
-                             '{% endverbatim pulp_tag_escape_method %}<some_tag>text</some_tag>'
-                             '{% verbatim pulp_tag_escape_method %}<tag>another description</tag>'
-                             '{% endverbatim pulp_tag_escape_method %}')
-        result = self.unit._escape_django_template_vars(template, 'tag')
+        template = ('<tag>{some {{ var }}</tag><some_tag>text</some_tag>'
+                    '<tag>some {% tag %} {# comment #} }</tag>')
+        expected_template = ('<tag>{% templatetag openbrace %}some {% templatetag openvariable %}'
+                             ' var {% templatetag closevariable %}</tag><some_tag>text</some_tag>'
+                             '<tag>some {% templatetag openblock %} tag '
+                             '{% templatetag closeblock %} {% templatetag opencomment %} comment '
+                             '{% templatetag closecomment %} {% templatetag closebrace %}</tag>')
+        result = self.unit._escape_django_syntax_chars(template, 'tag')
         self.assertEqual(result, expected_template)
