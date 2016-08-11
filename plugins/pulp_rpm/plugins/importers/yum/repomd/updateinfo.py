@@ -41,7 +41,7 @@ def process_package_element(element):
         'references': map(_parse_reference, element.find('references') or []),
         'release': '',
         'rights': '',
-        'pkglist': map(_parse_collection, element.find('pkglist') or []),
+        'pkglist': map(_parse_collection, element.findall('pkglist') or []),
         'severity': '',
         'solution': '',
         'status': element.attrib['status'],
@@ -87,6 +87,7 @@ def _parse_reference(element):
 
 
 def _parse_collection(element):
+    element = element.find('collection')
     ret = {
         'packages': map(_parse_package, element.findall('package')),
     }
