@@ -1,0 +1,11 @@
+=======================
+Pulp 2.11 Release Notes
+=======================
+
+Pulp 2.11.0
+===========
+
+New Features
+------------
+
+* Added support for uploading DRPMs via `pulp-admin rpm repo uploads drpm` or via API.
