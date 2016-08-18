@@ -1,5 +1,3 @@
-import os
-
 from pulp.plugins.rsync.publish import Publisher, RSyncPublishStep
 from pulp.plugins.util.publish_step import RSyncFastForwardUnitPublishStep
 from pulp.server.db.model import Distributor
@@ -8,6 +6,7 @@ from pulp.server.exceptions import PulpCodedException
 from pulp_rpm.common import constants
 from pulp_rpm.plugins.db import models
 from pulp_rpm.plugins import error_codes
+from pulp_rpm.plugins.distributors.yum.configuration import get_repo_relative_path
 
 
 class ISORsyncPublisher(Publisher):
@@ -39,15 +38,6 @@ class ISORsyncPublisher(Publisher):
         else:
             return constants.ISO_HTTPS_DIR
 
-    def get_master_directory(self):
-        """
-        Returns path to master directory of the predistributor.
-
-        :return: path to 'master' publish directory
-        :rtype: str
-        """
-        return os.path.join(self._get_root_publish_dir(), self.repo.id)
-
     def _add_necesary_steps(self, date_filter=None, config=None):
         """
         This method adds all the steps that are needed to accomplish an ISO rsync publish. This
@@ -66,7 +56,8 @@ class ISORsyncPublisher(Publisher):
         :param config: Pulp configuration for the distributor
         :type  config: pulp.plugins.config.PluginCallConfiguration
         """
-        remote_repo_path = self.repo.id
+        predistributor = self._get_predistributor()
+        remote_repo_path = get_repo_relative_path(self.repo.repo_obj, predistributor.config)
 
         # Find all the units associated with repo before last publish with predistributor
         gen_step = RSyncFastForwardUnitPublishStep("Unit query step (ISO)",

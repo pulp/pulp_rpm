@@ -104,6 +104,7 @@ CONFIG_SERVE_HTTPS = 'serve_https'
 CONFIG_SERVE_HTTPS_DEFAULT = True
 CONFIG_KEY_CHECKSUM_TYPE = 'checksum_type'
 CONFIG_DEFAULT_CHECKSUM = 'sha256'
+CONFIG_RELATIVE_URL = 'relative_url'
 
 # list of types to skip at sync time
 CONFIG_SKIP = 'type_skip_list'

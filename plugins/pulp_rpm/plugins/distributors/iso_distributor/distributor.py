@@ -5,6 +5,7 @@ from pulp.plugins.file.distributor import FileDistributor
 from pulp_rpm.common import ids
 from pulp_rpm.common import constants
 from pulp_rpm.plugins.distributors.iso_distributor import configuration, publish
+from pulp_rpm.plugins.distributors.yum.configuration import get_repo_relative_path
 
 
 def entry_point():
@@ -37,7 +38,7 @@ class ISODistributor(FileDistributor):
         }
 
     def validate_config(self, repo, config, config_conduit):
-        return configuration.validate(config)
+        return configuration.validate(config, repo.repo_obj, config_conduit)
 
     def publish_repo(self, transfer_repo, publish_conduit, config):
         """
@@ -90,8 +91,9 @@ class ISODistributor(FileDistributor):
         """
 
         hosting_locations = []
+        repo_relative_path = get_repo_relative_path(repo.repo_obj, config)
         # Publish the HTTP portion, if applicable
-        http_dest_dir = os.path.join(constants.ISO_HTTP_DIR, repo.id)
+        http_dest_dir = os.path.join(constants.ISO_HTTP_DIR, repo_relative_path)
 
         serve_http = config.get_boolean(constants.CONFIG_SERVE_HTTP)
         serve_http = serve_http if serve_http is not None else constants.CONFIG_SERVE_HTTP_DEFAULT
@@ -100,7 +102,7 @@ class ISODistributor(FileDistributor):
 
         # Publish the HTTPs portion, if applicable
         if self._is_https_supported(config):
-            https_dest_dir = os.path.join(constants.ISO_HTTPS_DIR, repo.id)
+            https_dest_dir = os.path.join(constants.ISO_HTTPS_DIR, repo_relative_path)
             hosting_locations.append(https_dest_dir)
 
         return hosting_locations

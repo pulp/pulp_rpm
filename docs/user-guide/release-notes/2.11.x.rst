@@ -13,3 +13,4 @@ New Features
   since the last sync.
 * The yum_importer can sync a distribution unit even when no yum metadata is present in the repo.
   This is useful for kickstart trees related to Project Atomic.
+* Added support for publishing ISO repositories to custom relative paths.
