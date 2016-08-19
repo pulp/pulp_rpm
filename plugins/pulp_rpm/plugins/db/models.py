@@ -1,23 +1,24 @@
-from collections import namedtuple
 import csv
+import errno
 import logging
+import re
 import os
+from collections import namedtuple
 from gettext import gettext as _
 from operator import itemgetter
 from urlparse import urljoin
 
-import errno
-from django.template import Context, Template
 import mongoengine
+from django.template import Context, Template
+from django.template.defaulttags import TemplateTagNode
+
 import pulp.common.error_codes as platform_error_codes
+import pulp.server.util as server_util
 from pulp.server.db.model import ContentUnit, FileContentUnit
 from pulp.server.exceptions import PulpCodedException
-import pulp.server.util as server_util
 
-from pulp_rpm.common import version_utils
-from pulp_rpm.common import file_utils
-from pulp_rpm.plugins import error_codes
-from pulp_rpm.plugins import serializers
+from pulp_rpm.common import version_utils, file_utils
+from pulp_rpm.plugins import error_codes, serializers
 from pulp_rpm.plugins.db.fields import ChecksumTypeStringField
 from pulp_rpm.plugins.importers.yum import utils
 from pulp_rpm.yum_plugin import util
@@ -722,6 +723,9 @@ class RpmBase(NonMetadataPackage):
     CHECKSUMTYPE_TEMPLATE = '{{ checksumtype }}'
     PKGID_TEMPLATE = '{{ pkgid }}'
     DEFAULT_CHECKSUM_TYPES = (server_util.TYPE_MD5, server_util.TYPE_SHA1, server_util.TYPE_SHA256)
+    ESCAPE_TEMPLATE_VARS_TAGS = {
+        'primary': ('description', 'summary'),
+        'other': ('changelog',)}
 
     def __init__(self, *args, **kwargs):
         super(RpmBase, self).__init__(*args, **kwargs)
@@ -760,6 +764,8 @@ class RpmBase(NonMetadataPackage):
         :rtype:     basestring
         """
         metadata = self.repodata['primary']
+        for tag in self.ESCAPE_TEMPLATE_VARS_TAGS['primary']:
+            metadata = self._escape_django_syntax_chars(metadata, tag)
         context = Context({'checksum': self.get_or_calculate_and_save_checksum(checksumtype),
                            'checksumtype': checksumtype})
 
@@ -776,6 +782,8 @@ class RpmBase(NonMetadataPackage):
         :rtype:     basestring
         """
         metadata = self.repodata['other']
+        for tag in self.ESCAPE_TEMPLATE_VARS_TAGS['other']:
+            metadata = self._escape_django_syntax_chars(metadata, tag)
         context = Context({'pkgid': self.get_or_calculate_and_save_checksum(checksumtype)})
         return self._render(metadata, context)
 
@@ -812,6 +820,67 @@ class RpmBase(NonMetadataPackage):
             rendered = rendered.encode('utf-8')
 
         return rendered
+
+    @staticmethod
+    def _escape_django_syntax_chars(template, tag_name):
+        """
+        Escape Django syntax characters by replacing them with the corresponding templatetag.
+
+        NOTE: This function does not handle the following XML syntax:
+         - namespaces in the format of namespace_alias:tag_name
+         - nested tag with the same name, e.g. <a><a>...</a></a>
+         It is unlikely that the syntax above is used in the metadata of the content units.
+
+        :param template: a Django template
+        :type  template: basestring
+        :param tag_name: name of the element to wrap
+        :type  tag_name: basestring
+
+        :return: a Django template with the escaped syntax characters in the specified element
+        :rype: basestring
+        """
+        start_tag_pattern = r'<%s.*?(?<!/)>' % tag_name
+        end_tag_pattern = r'</%s>' % tag_name
+        complete_tag_pattern = r'(%s)(.*?)(%s)' % (start_tag_pattern, end_tag_pattern)
+        tag_re = re.compile(complete_tag_pattern, flags=re.DOTALL)
+        template = tag_re.sub(RpmBase._generate_tag_replacement_str, template)
+        return template
+
+    @staticmethod
+    def _generate_tag_replacement_str(mobj):
+        """
+        Generate replacement string for the matched XML element.
+
+        :param mobj: matched object consisted of 3 groups:
+                     opening tag, value and closing tag.
+        :type  mobj: _sre.SRE_Match
+
+        :return: replacement string for the given match object
+        :rtype: basestring
+        """
+        start_tag = mobj.group(1)
+        value = RpmBase._substitute_special_chars(mobj.group(2))
+        end_tag = mobj.group(3)
+        return start_tag + value + end_tag
+
+    @staticmethod
+    def _substitute_special_chars(template):
+        """
+        Make the substitution of the syntax characters with the corresponding templatetag.
+        The syntax characters to be substituted can be found in
+        django.template.defaulttags.TemplateTagNode.mapping.
+
+        :param template: a piece of the template in which substitution should happen
+        :type  template: basestring
+
+        :return: string with syntax characters substituted
+        :rtype: basestriing
+        """
+        templatetag_map = dict((sym, name) for name, sym in TemplateTagNode.mapping.items())
+        symbols_pattern = '(%s)' % '|'.join(templatetag_map.keys())
+        return re.sub(symbols_pattern,
+                      lambda mobj: '{%% templatetag %s %%}' % templatetag_map[mobj.group(1)],
+                      template)
 
     def modify_xml(self):
         """

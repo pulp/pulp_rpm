@@ -167,6 +167,27 @@ class TestRepoURLModify(unittest.TestCase):
         self.assertEqual(url_modify._query_auth_token, 'foo')
 
 
+class TestFakeXMLElement(unittest.TestCase):
+    """
+    Test that encoding is handled correctly during creation of the fake XML.
+    """
+    def test_xml_unicode(self):
+        """
+        Test input in the unicode form with non-ASCII characters.
+        """
+        data = u'\u0435\u0440\u0443\u043d\u0434\u0430'
+        et = utils.fake_xml_element(data)
+        self.assertEqual(et.text, data)
+
+    def test_xml_str_utf8(self):
+        """
+        Test input in the str form encoded as utf-8.
+        """
+        data = u'\u0435\u0440\u0443\u043d\u0434\u0430'
+        et = utils.fake_xml_element(data.encode('utf-8'))
+        self.assertEqual(et.text, data)
+
+
 PRIMARY_XML = """<?xml version="1.0" encoding="UTF-8"?>
 <metadata xmlns="http://linux.duke.edu/metadata/common"
 xmlns:rpm="http://linux.duke.edu/metadata/rpm" packages="32">

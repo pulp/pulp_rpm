@@ -1089,6 +1089,7 @@ class TestRpmBaseRender(unittest.TestCase):
         self.unit.repodata['other'] = '''
 <package arch="noarch" name="cat" pkgid="{{ pkgid }}">
     <version epoch="0" rel="1" ver="1.0" />
+    <changelog>Sometimes contains {{ template vars }} description</changelog>
 </package>'''
         self.unit.repodata['primary'] = '''
 <package type="rpm">
@@ -1096,8 +1097,8 @@ class TestRpmBaseRender(unittest.TestCase):
   <arch>noarch</arch>
   <version epoch="0" rel="1" ver="1.0" />
   <checksum pkgid="YES" type="{{ checksumtype }}">{{ checksum }}</checksum>
-  <summary>A dummy package of cat</summary>
-  <description>A dummy package of cat</description>
+  <summary>A dummy {{ var }} package of cat</summary>
+  <description>A dummy package of cat with some description of {% character </description>
   <packager />
   <url>http://tstrachota.fedorapeople.org</url>
   <time build="1331831362" file="1331832453" />
@@ -1131,3 +1132,27 @@ class TestRpmBaseRender(unittest.TestCase):
 
         self.assertTrue('abc123' in ret)
         self.assertTrue('sha1' in ret)
+
+    def test__escape_django_syntax_chars(self):
+        """
+        Test that for a requested element all syntax characters are substituted with
+        the corresponding templatetag.
+
+        List of characters and the corresponding names of the templatetag could be found in
+        django.template.defaulttags.TemplateTagNode.mapping.
+        For now, those characters are:
+            >>> from django.template.defaulttags import TemplateTagNode
+            >>> TemplateTagNode.mapping.values()
+            [u'{#', u'{{', u'%}', u'#}', u'{', u'}}', u'{%', u'}']
+
+        E.g. '{%' should be substituted with '{% templatetag openblock %}'
+        """
+        template = ('<tag>{some {{ var }}</tag><some_tag>text</some_tag>'
+                    '<tag>some {% tag %} {# comment #} }</tag>')
+        expected_template = ('<tag>{% templatetag openbrace %}some {% templatetag openvariable %}'
+                             ' var {% templatetag closevariable %}</tag><some_tag>text</some_tag>'
+                             '<tag>some {% templatetag openblock %} tag '
+                             '{% templatetag closeblock %} {% templatetag opencomment %} comment '
+                             '{% templatetag closecomment %} {% templatetag closebrace %}</tag>')
+        result = self.unit._escape_django_syntax_chars(template, 'tag')
+        self.assertEqual(result, expected_template)
