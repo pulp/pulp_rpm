@@ -532,10 +532,15 @@ configuration values are optional.
 
 ``require_signature``
 Requires that imported packages like RPM/DRPM/SRPM should be signed. Defaults to False.
+This does not trigger package signature verification, it only guarantees that the package
+is signed.
 
 ``allowed_keys``
-Comma-separated list of allowed signature keys that imported packages can be signed with.
-The key should be lowercase 8 character abbreviated fingerprint (so called short key ID).
+Comma-separated list of allowed signature key IDs that imported packages can be signed with.
+The key should be lowercase 8 character abbreviated fingerprint (the so-called short key ID).
+Since short key IDs are `easy to impersonate <https://evil32.com/>`_, this feature is intended to
+make it easy to filter packages based on their signing key and does not use these key IDs for
+package signature verification.
 
 
 Yum Distributor
