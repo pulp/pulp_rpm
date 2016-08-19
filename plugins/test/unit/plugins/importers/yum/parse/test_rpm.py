@@ -76,9 +76,9 @@ class SignatureEnabled(unittest.TestCase):
         self.assertFalse(response)
 
 
-class VerifySignature(unittest.TestCase):
+class FilterSignature(unittest.TestCase):
     """
-    test for package signature verification
+    test for package signature filtering
     """
 
     def test_reject_unsigned_packages(self):
@@ -87,7 +87,7 @@ class VerifySignature(unittest.TestCase):
         config = {"require_signature": True}
 
         with self.assertRaises(PulpCodedException) as cm:
-                rpm.verify_signature(unit, config)
+                rpm.filter_signature(unit, config)
                 self.assertEqual(cm.exception.error_code.code, 'RPM1013')
 
     def test_invalid_package_signature(self):
@@ -96,7 +96,7 @@ class VerifySignature(unittest.TestCase):
         config = {"allowed_keys": ['87654321']}
 
         with self.assertRaises(PulpCodedException) as cm:
-            rpm.verify_signature(unit, config)
+            rpm.filter_signature(unit, config)
             self.assertEqual(cm.exception.error_code.code, 'RPM1014')
 
 

@@ -516,7 +516,7 @@ class RepoSync(object):
         failed_signature_check = 0
         new_report = []
         for error in self.progress_report['content']['error_details']:
-            if error[constants.ERROR_CODE] == constants.ERROR_SIGNATURE_VERIFICATION:
+            if error[constants.ERROR_CODE] == constants.ERROR_KEY_ID_FILTER:
                 failed_signature_check += 1
             else:
                 new_report.append(error)
@@ -525,7 +525,7 @@ class RepoSync(object):
                  'count': '%s' % failed_signature_check}
             new_report.append(d)
             self.progress_report['content']['error_details'] = new_report
-            _logger.warning(_('%s packages failed signature check and were not imported.'
+            _logger.warning(_('%s packages failed signature filter and were not imported.'
                             % failed_signature_check))
         self.conduit.build_success_report({}, {})
         # removes unwanted units according to the config settings
@@ -660,12 +660,12 @@ class RepoSync(object):
             unit = unit.__class__.objects.filter(**unit.unit_key).first()
         if rpm_parse.signature_enabled(self.config):
             try:
-                rpm_parse.verify_signature(unit, self.config)
+                rpm_parse.filter_signature(unit, self.config)
             except PulpCodedException as e:
                 _logger.debug(e)
                 error_report = {
                     constants.NAME: unit.filename,
-                    constants.ERROR_CODE: constants.ERROR_SIGNATURE_VERIFICATION,
+                    constants.ERROR_CODE: constants.ERROR_KEY_ID_FILTER,
                 }
 
                 self.progress_report['content'].failure(unit, error_report)

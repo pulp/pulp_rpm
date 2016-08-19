@@ -81,7 +81,8 @@ class TestAddRpmUnit(BaseSyncTest):
         self.metadata_files.add_repodata.assert_called_once_with(unit)
 
     @mock.patch('pulp_rpm.plugins.importers.yum.sync.rpm_parse')
-    def test_rpm_signature_filter_pass(self, mock_rpm_parse):
+    @mock.patch('pulp.server.controllers.repository.associate_single_unit')
+    def test_rpm_signature_filter_pass(self, mock_assoc, mock_rpm_parse):
         unit = models.RPM(name='foo', epoch=0, version='1.1.1', release='0', arch='x86_64',
                           checksumtype='sha256', checksum='abc123')
         self.metadata_files.add_repodata = mock.MagicMock()
@@ -93,10 +94,12 @@ class TestAddRpmUnit(BaseSyncTest):
         self.reposync.add_rpm_unit(self.metadata_files, unit)
 
         self.metadata_files.add_repodata.assert_called_once_with(unit)
-        mock_rpm_parse.verify_signature.assert_called_once_with(unit, self.config)
+        mock_rpm_parse.filter_signature.assert_called_once_with(unit, self.config)
+        mock_assoc.assert_called_once_with(self.conduit.repo, unit)
 
     @mock.patch('pulp_rpm.plugins.importers.yum.sync.rpm_parse')
-    def test_rpm_signature_filter_failed(self, mock_rpm_parse):
+    @mock.patch('pulp.server.controllers.repository.associate_single_unit')
+    def test_rpm_signature_filter_failed(self, mock_assoc, mock_rpm_parse):
         unit = models.RPM(name='foo', epoch=0, version='1.1.1', release='0', arch='x86_64',
                           checksumtype='sha256', checksum='abc123')
         self.metadata_files.add_repodata = mock.MagicMock()
@@ -104,15 +107,17 @@ class TestAddRpmUnit(BaseSyncTest):
         unit.save = mock.MagicMock()
         self.reposync.progress_report = mock.MagicMock()
         mock_rpm_parse.signature_enabled.return_value = True
-        mock_rpm_parse.verify_signature.side_effect = PulpCodedException()
+        mock_rpm_parse.filter_signature.side_effect = PulpCodedException()
 
         self.reposync.add_rpm_unit(self.metadata_files, unit)
 
         self.metadata_files.add_repodata.assert_called_once_with(unit)
-        mock_rpm_parse.verify_signature.assert_called_once_with(unit, self.config)
+        mock_rpm_parse.filter_signature.assert_called_once_with(unit, self.config)
+        self.assertFalse(mock_assoc.called)
 
     @mock.patch('pulp_rpm.plugins.importers.yum.sync.rpm_parse')
-    def test_rpm_signature_filter_disabled(self, mock_rpm_parse):
+    @mock.patch('pulp.server.controllers.repository.associate_single_unit')
+    def test_rpm_signature_filter_disabled(self, mock_assoc, mock_rpm_parse):
         unit = models.RPM(name='foo', epoch=0, version='1.1.1', release='0', arch='x86_64',
                           checksumtype='sha256', checksum='abc123')
         self.metadata_files.add_repodata = mock.MagicMock()
@@ -125,6 +130,7 @@ class TestAddRpmUnit(BaseSyncTest):
 
         self.metadata_files.add_repodata.assert_called_once_with(unit)
         self.assertFalse(mock_rpm_parse.filter_signature.called)
+        mock_assoc.assert_called_once_with(self.conduit.repo, unit)
 
 
 @skip_broken

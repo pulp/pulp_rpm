@@ -191,9 +191,9 @@ def signature_enabled(config):
     return False
 
 
-def verify_signature(unit, config):
+def filter_signature(unit, config):
     """
-    Verify package signature.
+    Filter package based on GPG signature and allowed GPG key IDs
 
     :param unit: model instance of the package
     :type  unit: pulp_rpm.plugins.db.models.RPM/DRPM/SRPM
@@ -201,7 +201,7 @@ def verify_signature(unit, config):
     :param config: configuration instance passed to the importer
     :type  config: pulp.plugins.config.PluginCallConfiguration
 
-    :raise: PulpCodedException if the signature check did not pass
+    :raise: PulpCodedException if the package signing key ID does not exist or is not allowed
     """
 
     signing_key = unit.signing_key

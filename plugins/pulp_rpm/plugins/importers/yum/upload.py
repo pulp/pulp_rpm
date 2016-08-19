@@ -432,7 +432,7 @@ def _handle_package(repo, type_id, unit_key, metadata, file_path, conduit, confi
         unit = unit.__class__.objects.filter(**unit.unit_key).first()
 
     if rpm_parse.signature_enabled(config):
-        rpm_parse.verify_signature(unit, config)
+        rpm_parse.filter_signature(unit, config)
     repo_controller.associate_single_unit(repo, unit)
 
 
