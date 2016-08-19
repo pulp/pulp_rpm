@@ -63,7 +63,7 @@ def _validate_allowed_keys(config, error_messages):
     allowed_keys = config.get(constants.CONFIG_ALLOWED_KEYS, [])
     for key in allowed_keys:
         if len(key) != 8:
-            msg = _('Signature key %s should be 8 characters long') % key
+            msg = _('Signature key ID %s should be 8 characters long') % key
             error_messages.append(msg)
 
 
@@ -85,5 +85,5 @@ def _validate_lazy_compatibility(config, error_messages):
     allowed_keys = config.get(constants.CONFIG_ALLOWED_KEYS)
     if download_policy != importer_constants.DOWNLOAD_IMMEDIATE and \
             (require_signature or allowed_keys):
-        msg = _('%s download policy and signature check are not compatible') % download_policy
+        msg = _('%s download policy and signature filter are not compatible') % download_policy
         error_messages.append(msg)

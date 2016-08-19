@@ -16,7 +16,7 @@ ERROR_SIZE_VERIFICATION = 'size_mismatch'
 ERROR_CHECKSUM_VERIFICATION = 'checksum_mismatch'
 ERROR_CHECKSUM_TYPE_UNKNOWN = 'checksum_type_unknown'
 ERROR_INVALID_PACKAGE_SIG = 'invalid_package_signature'
-ERROR_SIGNATURE_VERIFICATION = 'signature_verification_failure'
+ERROR_KEY_ID_FILTER = 'gpg_key_id_filter_failure'
 
 # Standard keywords for progress reports to include
 PROGRESS_STATE_KEY = 'state'

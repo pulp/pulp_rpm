@@ -121,7 +121,7 @@ class NonMetadataPackage(UnitMixin, FileContentUnit):
     :ivar checksum: The checksum of the package.
     :type checksum: mongoengine.StringField
 
-    :ivar signing_key: 8-character abbreviated fingerprint signing key of the package.
+    :ivar signing_key: 8-character abbreviated signing key fingerprint that signed the package.
     :type signing_key: mongoengine.StringField
 
     :ivar version_sort_index: ???
