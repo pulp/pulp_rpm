@@ -37,8 +37,9 @@ The ``distributor_config`` contains a ``remote`` section made up of the followin
   ssh user for remote server
 
 ``ssh_identity_file``
-  Absolute path to the private key that will be used as the identity file for ssh. The key has to
-  be readable by user ``apache``.
+  Absolute path to the private key that will be used as the identity file for ssh. The key must be
+  owned by user ``apache`` and must not be readable by other users. (If key permissions are too lax,
+  the SSH application will refuse to use the key.)
 
 ``host``
   The hostname of the remote server.
