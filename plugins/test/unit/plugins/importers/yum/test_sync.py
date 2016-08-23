@@ -81,7 +81,6 @@ class TestAddRpmUnit(BaseSyncTest):
 
         self.metadata_files.add_repodata.assert_called_once_with(unit)
 
-
 @skip_broken
 class TestUpdateState(BaseSyncTest):
     def setUp(self):

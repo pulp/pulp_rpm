@@ -31,7 +31,8 @@ class TestRPMListenerDownloadSucceeded(unittest.TestCase):
         # it was used as a context manager
         self.assertEqual(mock_deleting.return_value.__exit__.call_count, 1)
 
-    def test_change_download_flag(self):
+    @mock.patch('pulp_rpm.plugins.importers.yum.listener.RPMListener._import_and_verify_content')
+    def test_change_download_flag(self, mock_rpm_import):
         unit = mock.MagicMock()
         unit.checksumtype = 'sha256'
         self.report.data = unit

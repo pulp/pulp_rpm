@@ -1,8 +1,12 @@
 import logging
+import os
+import tempfile
+
 from nectar.listener import DownloadEventListener, AggregatingEventListener
 from pulp.common.plugins import importer_constants
 from pulp.plugins.util import verification
 from pulp.server import util
+from pulp.server.content.storage import mkdir
 
 from pulp_rpm.common import constants
 
@@ -78,9 +82,9 @@ class PackageListener(DownloadEventListener):
         :type  report: nectar.report.DownloadReport
         """
         unit = report.data
-        self._verify_size(unit, report)
+        self.verify_size(unit, report.destination)
         self._validate_checksumtype(unit)
-        self._verify_checksum(unit, report)
+        self._verify_checksum(unit, report.destination)
 
     def download_failed(self, report):
         """
@@ -94,7 +98,7 @@ class PackageListener(DownloadEventListener):
         self.sync.progress_report['content'].failure(unit, report.error_report)
         self.sync.set_progress()
 
-    def _verify_size(self, unit, report):
+    def verify_size(self, unit, location):
         """
         Verifies the size of the given unit if the sync is configured to do so.
         If the verification fails, the error is noted in this instance's progress
@@ -102,8 +106,8 @@ class PackageListener(DownloadEventListener):
 
         :param unit: domain model instance of the package that was downloaded
         :type  unit: pulp_rpm.plugins.db.models.RpmBase
-        :param report: report handed to this listener by the downloader
-        :type  report: nectar.report.DownloadReport
+        :param location: location of the unit that needs to be verified
+        :type  location: str
 
         :raises verification.VerificationException: if the size of the content is incorrect
         """
@@ -112,7 +116,7 @@ class PackageListener(DownloadEventListener):
             return
 
         try:
-            with open(report.destination) as fp:
+            with open(location) as fp:
                 verification.verify_size(fp, unit.size)
 
         except verification.VerificationException, e:
@@ -125,7 +129,7 @@ class PackageListener(DownloadEventListener):
             self.sync.progress_report['content'].failure(unit, error_report)
             raise
 
-    def _verify_checksum(self, unit, report):
+    def _verify_checksum(self, unit, location):
         """
         Verifies the checksum of the given unit if the sync is configured to do so.
         If the verification fails, the error is noted in this instance's progress
@@ -133,8 +137,8 @@ class PackageListener(DownloadEventListener):
 
         :param unit: domain model instance of the package that was downloaded
         :type  unit: pulp_rpm.plugins.db.models.NonMetadataPackage
-        :param report: report handed to this listener by the downloader
-        :type  report: nectar.report.DownloadReport
+        :param location: location of the unit that needs to be verified
+        :type  location: str
 
         :raises verification.VerificationException: if the checksum of the content is incorrect
         """
@@ -142,7 +146,7 @@ class PackageListener(DownloadEventListener):
         if not self.sync.config.get(importer_constants.KEY_VALIDATE):
             return
 
-        with open(report.destination) as fp:
+        with open(location) as fp:
             sums = util.calculate_checksums(fp, [util.TYPE_MD5, util.TYPE_SHA1, util.TYPE_SHA256])
 
         if sums[unit.checksumtype] != unit.checksum:
@@ -195,7 +199,42 @@ class RPMListener(PackageListener):
                 # verification failed, unit not added
                 return
             added_unit = self.sync.add_rpm_unit(self.metadata_files, unit)
-            added_unit.safe_import_content(report.destination)
+            self._import_and_verify_content(added_unit, report.destination)
+            self.sync.associate_rpm_unit(added_unit)
             if not added_unit.downloaded:
                 added_unit.downloaded = True
                 added_unit.save()
+
+    def _import_and_verify_content(self, unit, path):
+        """
+        Import(copy) content to the temporary file at its final location.
+        Verify size of the file to make sure that file is not corrupted.
+        Do the atomic rename.
+
+        :param unit: downloaded unit which should be imported
+        :type  unit: pulp_rpm.plugins.db.models.NonMetadataPackage
+        :param path: The absolute path to the file to be stored.
+        :type  path: str
+        """
+        destination = unit.storage_path
+        mkdir(os.path.dirname(destination))
+        fd, temp_destination = tempfile.mkstemp(dir=os.path.dirname(destination))
+
+        # to avoid a file descriptor leak, close the one opened by tempfile.mkstemp which we are not
+        # going to use.
+        os.close(fd)
+
+        try:
+            unit.import_content(path, destination=temp_destination)
+            self.verify_size(unit, temp_destination)
+        except verification.VerificationException:
+            self.clean_orphans()
+            os.remove(temp_destination)
+            # verification failed, unit not added
+            return
+        except:
+            self.clean_orphans()
+            os.remove(temp_destination)
+            raise
+
+        os.rename(temp_destination, destination)
