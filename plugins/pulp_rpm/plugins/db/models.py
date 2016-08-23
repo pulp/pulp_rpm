@@ -14,6 +14,7 @@ from django.template.defaulttags import TemplateTagNode
 
 import pulp.common.error_codes as platform_error_codes
 import pulp.server.util as server_util
+from pulp.plugins.util import verification
 from pulp.server.db.model import ContentUnit, FileContentUnit
 from pulp.server.exceptions import PulpCodedException
 
@@ -577,6 +578,17 @@ class DRPM(NonMetadataPackage):
         """
         return self.filename
 
+    def verify_size(self, location):
+        """
+        Verify size of the file at the specified location
+
+        :param location: path to the unit location
+        :type  location: str
+        """
+        if self.size is not None:
+            with open(location) as fp:
+                verification.verify_size(fp, self.size)
+
 
 class RpmBase(NonMetadataPackage):
     """
@@ -981,6 +993,17 @@ class RpmBase(NonMetadataPackage):
         :rtype: str
         """
         return self.filename
+
+    def verify_size(self, location):
+        """
+        Verify size of the file at the specified location
+
+        :param location: path to the unit location
+        :type  location: str
+        """
+        if self.size is not None:
+            with open(location) as fp:
+                verification.verify_size(fp, self.size)
 
 
 class RPM(RpmBase):

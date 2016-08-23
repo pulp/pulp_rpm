@@ -222,7 +222,6 @@ class TestDistribution(unittest.TestCase):
                          str(d))
 
 
-@skip_broken
 class TestDRPM(unittest.TestCase):
     """
     This class contains tests for the DRPM class.
@@ -232,10 +231,17 @@ class TestDRPM(unittest.TestCase):
         """
         Ensure that __init__() calls sanitize_checksum_type correctly.
         """
-        # The sha should get changed to sha1
-        drpm = models.DRPM('epoch', 'version', 'release', 'filename', 'sha', 'checksum', {})
+        unit_metadata = {'epoch': 'epoch',
+                         'version': 'version',
+                         'release': 'release',
+                         'filename': 'filename',
+                         'checksumtype': 'sha',
+                         'checksum': 'checksum'}
 
-        self.assertEqual(drpm.unit_key['checksumtype'], 'sha1')
+        # The sha should get changed to sha1
+        drpm = models.DRPM(**unit_metadata)
+
+        self.assertEqual(drpm.checksumtype, 'sha1')
 
 
 class TestErrata(unittest.TestCase):
@@ -1062,16 +1068,21 @@ class TestRPM(unittest.TestCase):
     """
     This class contains tests for the RPM class.
     """
-
-    @skip_broken
     def test___init___sanitizes_checksum_type(self):
         """
         Ensure that __init__() calls sanitize_checksum_type correctly.
         """
-        # The sha should get changed to sha1
-        rpm = models.RPM('name', 'epoch', 'version', 'release', 'filename', 'sha', 'checksum', {})
+        unit_metadata = {'name': 'name',
+                         'epoch': 'epoch',
+                         'version': 'version',
+                         'release': 'release',
+                         'checksumtype': 'sha',
+                         'checksum': 'checksum'}
 
-        self.assertEqual(rpm.unit_key['checksumtype'], 'sha1')
+        # The sha should get changed to sha1
+        rpm = models.RPM(**unit_metadata)
+
+        self.assertEqual(rpm.checksumtype, 'sha1')
 
 
 class TestRpmBaseRender(unittest.TestCase):
