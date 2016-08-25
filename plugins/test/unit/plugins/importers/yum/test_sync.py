@@ -607,24 +607,15 @@ class TestGetMetadata(BaseSyncTest):
         self.assertEqual(mock_metadata_instance.download_metadata_files.call_count, 1)
 
     @mock.patch.object(metadata, 'MetadataFiles', autospec=True)
-    def test_failed_download(self, mock_metadata_files):
-        mock_metadata_files.return_value = self.metadata_files
-        self.metadata_files.download_repomd = mock.MagicMock(side_effect=IOError, autospec=True)
-
-        with self.assertRaises(PulpCodedException) as e:
-            self.reposync.check_metadata(self.url)
-
-        self.assertEqual(e.exception.error_code, error_codes.RPM1004)
-
-    @mock.patch.object(metadata, 'MetadataFiles', autospec=True)
     def test_failed_download_repomd(self, mock_metadata_files):
         mock_metadata_files.return_value = self.metadata_files
-        self.metadata_files.download_repomd = mock.MagicMock(side_effect=IOError, autospec=True)
+        self.metadata_files.download_repomd = mock.MagicMock(side_effect=IOError('omg'),
+                                                             autospec=True)
 
-        with self.assertRaises(PulpCodedException) as e:
-            self.reposync.check_metadata(self.url)
+        self.reposync.check_metadata(self.url)
 
-        self.assertEqual(e.exception.error_code, error_codes.RPM1004)
+        self.assertTrue(self.reposync.skip_repomd_steps)
+        self.assertEqual(self.reposync.repomd_not_found_reason, 'omg')
 
     @mock.patch.object(metadata, 'MetadataFiles', autospec=True)
     def test_failed_parse_repomd(self, mock_metadata_files):

@@ -59,6 +59,9 @@ class DistSync(object):
         """
         self.parent = parent
         self.feed = feed
+        # was a treeinfo file found? This lets the high-level sync workflow report an error to the
+        # user in case no metadata was found for a distribution or a yum repo.
+        self.metadata_found = False
 
     @property
     def nectar_config(self):
@@ -137,6 +140,7 @@ class DistSync(object):
         if not treeinfo_path:
             _logger.debug(_('No treeinfo found'))
             return
+        self.metadata_found = True
 
         try:
             unit, files = self.parse_treeinfo_file(treeinfo_path)
