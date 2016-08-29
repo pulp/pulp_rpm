@@ -118,6 +118,7 @@ class PackageListener(DownloadEventListener):
 
         except verification.VerificationException, e:
             error_report = {
+                constants.NAME: unit.name,
                 constants.UNIT_KEY: unit.unit_key,
                 constants.ERROR_CODE: constants.ERROR_SIZE_VERIFICATION,
                 constants.ERROR_KEY_EXPECTED_SIZE: unit.size,
