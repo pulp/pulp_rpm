@@ -672,10 +672,19 @@ class RepoSync(object):
                 self.conduit.set_progress(self.progress_report)
                 return unit
 
+        return unit
+
+    def associate_rpm_unit(self, unit):
+        """
+        Associate unit with a repo and report this unit as a successfully synced one.
+        It should be a last step in the sync of one unit.
+
+        :param unit: A content unit
+        :type  unit: pulp_rpm.plugins.db.models.RpmBase
+        """
         repo_controller.associate_single_unit(self.conduit.repo, unit)
         self.progress_report['content'].success(unit)
         self.conduit.set_progress(self.progress_report)
-        return unit
 
     def download_rpms(self, metadata_files, rpms_to_download, url):
         """
@@ -709,6 +718,7 @@ class RepoSync(object):
                 for unit in units_to_download:
                     unit.downloaded = False
                     unit = self.add_rpm_unit(metadata_files, unit)
+                    self.associate_rpm_unit(unit)
                     catalog.add(unit)
                 return
 
@@ -764,6 +774,7 @@ class RepoSync(object):
                         for unit in units_to_download:
                             unit.downloaded = False
                             unit = self.add_rpm_unit(metadata_files, unit)
+                            self.associate_rpm_unit(unit)
                             catalog.add(unit)
                         continue
 
