@@ -254,7 +254,7 @@ class RpmStatusRenderer(StatusRenderer):
                             message_data = {
                                 'count': error['count'],
                             }
-                            template = _('%(count)s packages failed signature check and were not '
+                            template = _('%(count)s packages failed signature filter and were not '
                                          'imported.')
 
                         elif error.get(

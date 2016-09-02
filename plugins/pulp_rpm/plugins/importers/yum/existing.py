@@ -131,7 +131,7 @@ def check_all_and_associate(wanted, conduit, config, download_deferred, catalog)
             catalog.add(unit)
             if rpm_parse.signature_enabled(config):
                 try:
-                    rpm_parse.verify_signature(unit, config)
+                    rpm_parse.filter_signature(unit, config)
                 except PulpCodedException as e:
                     _LOGGER.debug(e)
                     continue

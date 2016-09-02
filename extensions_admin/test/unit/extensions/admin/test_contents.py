@@ -538,7 +538,6 @@ class SearchErrataCommand(PulpClientTests):
                 '_storage_path': None,
                 'rights': '',
                 'solution': '',
-                'summary': '',
                 'release': '1',
                 '_id': '0058de26-29e6-4ba8-b230-7e1a3e261894'
             }
@@ -561,3 +560,6 @@ class SearchErrataCommand(PulpClientTests):
             assert_called_once_with(AnyStringWith("crow-1:0.8-1.el9.noarch"), skip_wrap=True)
         self.context.prompt.write.\
             assert_called_once_with(AnyStringWith("crow-1:0.9-1.el10.noarch"), skip_wrap=True)
+        # Test correct rendering if metadata missing https://pulp.plan.io/issues/1881
+        self.context.prompt.write.\
+            assert_called_once_with(AnyStringWith("Summary:           None"), skip_wrap=True)

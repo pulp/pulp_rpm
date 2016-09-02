@@ -455,6 +455,25 @@ class YumDistributorConfigurationTests(unittest.TestCase):
 
         self.assertEqual(mock_check.call_count, 1)
 
+    @mock.patch('pulp_rpm.plugins.distributors.yum.configuration.'
+                '_check_for_relative_path_conflicts')
+    def test_validate_config_https_http_null(self, mock_check):
+        repo = Repository('test')
+        config = self._generate_call_config(relative_url=None)
+        conduit = RepoConfigConduit(TYPE_ID_DISTRIBUTOR_YUM)
+
+        valid, reasons = configuration.validate_config(repo, config, conduit)
+
+        self.assertFalse(valid)
+
+        expected_reason = ('Configuration key [http] is required, but was not provided\n'
+                           'Configuration key [https] is required, but was not provided\n'
+                           'Settings serve via http and https are both set to false.'
+                           ' At least one option should be set to true.')
+        self.assertEqual(reasons, expected_reason)
+
+        self.assertEqual(mock_check.call_count, 1)
+
     def test_load_config(self):
         config_handle, config_path = tempfile.mkstemp(prefix='test_yum_distributor-')
         os.close(config_handle)

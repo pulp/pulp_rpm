@@ -104,6 +104,78 @@ a day.
   Schedule successfully created
 
 
+Uploading Content
+=================
+
+It is easy to upload RPMs, SRPMs and DRPMs from your machine via ``pulp-admin rpm repo uploads <content_type>`` to pulp.
+
+::
+
+  $ pulp-admin rpm repo uploads rpm --repo-id zoo --dir . --dir /tmp/downloaded_rpms --file ../bear-4.1-1.noarch.rpm
+  +----------------------------------------------------------------------+
+                                Unit Upload
+  +----------------------------------------------------------------------+
+
+  Extracting necessary metadata for each request...
+  [==================================================] 100%
+  Analyzing: cow-2.2-3.noarch.rpm
+  ... completed
+
+  Creating upload requests on the server...
+  [==================================================] 100%
+  Initializing: cow-2.2-3.noarch.rpm
+  ... completed
+
+  Starting upload of selected units. If this process is stopped through ctrl+c,
+  the uploads will be paused and may be resumed later using the resume command or
+  canceled entirely using the cancel command.
+
+  Uploading: bear-4.1-1.noarch.rpm
+  [==================================================] 100%
+  2438/2438 bytes
+  ... completed
+
+  Importing into the repository...
+  This command may be exited via ctrl+c without affecting the request.
+
+
+  [\]
+  Running...
+
+  Task Succeeded
+
+
+  Deleting the upload request...
+  ... completed
+
+  Uploading: cow-2.2-3.noarch.rpm
+  [==================================================] 100%
+  2420/2420 bytes
+  ... completed
+
+  Importing into the repository...
+  This command may be exited via ctrl+c without affecting the request.
+
+
+  [\]
+  Running...
+
+  Task Succeeded
+
+
+  Deleting the upload request...
+  ... completed
+
+This command will upload all RPMs in ``/tmp/downloaded_rpms`` directory and an rpm package on
+path ``../bear-4.1-1.noarch.rpm``.  You can specify as many directories and files as you want.
+
+It's also possible to use ``--skip-existing`` flag to skip uploading packages which already are on the server.
+
+.. note::
+  RPM-only deltaRPMs are **not** supported, RPM-only deltaRPM file format does not include
+  RPM header and therefore pulp is unable to export important data from the package.
+  When you try to upload one it will lead to task failure.
+
 .. _configure-proxy:
 
 Use a Proxy
@@ -200,13 +272,13 @@ The ``--basicauth-user`` and ``--basicauth-pass`` options are used for this
 during repo creation or update.
 
 
-Sync a repo with signature verification
-=======================================
+Sync a repo with GPG Key ID Filtering
+=====================================
 
-Syncing a repo with signature verification is done by specifying ``--require-signature``
-and ``--allowed-keys``. With these options enabled, just signed packages will be synced
-and in addition just those packages that were signed with specific keys that were provided
-in the allow keys list.
+Syncing a repo with key ID filtering is done by specifying ``--require-signature``
+and ``--allowed-keys``. With these options enabled, only signed packages will be synced.
+In addition, only packages that were signed with specific keys that were provided
+in the allowed keys list will be synced.
 
 Let's try to sync from a remote feed where packages are unsigned.
 
@@ -240,7 +312,7 @@ Let's try to sync from a remote feed where packages are unsigned.
 
     Individual package errors encountered during sync:
 
-    3 packages failed signature check and were not imported.
+    3 packages failed signature filter and were not imported.
 
 
 .. _export-repos:
@@ -419,7 +491,7 @@ Let's begin by creating our two repositories, ``repo_1`` and ``repo_2``::
     $ pulp-admin rpm repo create --repo-id=repo_2 \
       --relative-url=repo_2
     Successfully created repository [repo_2]
-    
+
 Next, we will sync ``repo_1``, so that it will have some errata that we can
 copy::
 
@@ -604,9 +676,9 @@ And now we are able to see that our errata is part of the repo::
     From Str:         pulp-list@redhat.com
     Id:               DEMO_ID_1
     Issued:           2012-12-19 12:19:18 UTC
-    Pkglist:          
+    Pkglist:
       Name:     el6
-      Packages: 
+      Packages:
         Arch:     x86_64
         Epoch:    0
         Filename: pulp-test-package-0.3.1-1.fc11.x86_64.rpm
@@ -616,10 +688,10 @@ And now we are able to see that our errata is part of the repo::
         Sums:     6bce3f26e1fc0fc52ac996f39c0d0e14fc26fb8077081d5b4dbfb6431b08aa9f
         Type:     sha256
         Version:  0.3.1
-      Short:    
+      Short:
     Pushcount:        1
     Reboot Suggested: False
-    References:       
+    References:
       Href:  http://bugzilla.redhat.com/bugzilla/show_bug.cgi?id=123456
       Id:    123456
       Title: pulp-test-package-0.2.1 prints mean error messages to users
@@ -1072,7 +1144,7 @@ The package environment details can be listed as well::
     Group Ids:   pulp_dotted_name_packages, pulp_test_packages
     Id:          test-env
     Name:        test-env
-    Options:     
+    Options:
 
 .. note::
  Package environments will also be created and associated with a repository if they are specified
@@ -1110,7 +1182,7 @@ Observe that ``repo_2`` contains newly copied package environment::
     Id:                   repo_2
     Display Name:         None
     Description:          None
-    Content Unit Counts:  
+    Content Unit Counts:
       Package Environment: 1
 
 
@@ -1277,7 +1349,7 @@ Now let's list the repo and check its content.
   Id:                   comps-repo
   Display Name:         comps-repo
   Description:          None
-  Content Unit Counts:  
+  Content Unit Counts:
     Package Category:    2
     Package Environment: 1
     Package Group:       3
