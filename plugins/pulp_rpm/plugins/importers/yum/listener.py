@@ -118,6 +118,7 @@ class PackageListener(DownloadEventListener):
 
         except verification.VerificationException, e:
             error_report = {
+                constants.NAME: unit.name,
                 constants.UNIT_KEY: unit.unit_key,
                 constants.ERROR_CODE: constants.ERROR_SIZE_VERIFICATION,
                 constants.ERROR_KEY_EXPECTED_SIZE: unit.size,
@@ -202,6 +203,7 @@ class RPMListener(PackageListener):
             unit['signing_key'] = rpm_parse.package_signature(headers)
             added_unit = self.sync.add_rpm_unit(self.metadata_files, unit)
             added_unit.safe_import_content(report.destination)
+            self.sync.associate_rpm_unit(unit)
             if not added_unit.downloaded:
                 added_unit.downloaded = True
                 added_unit.save()

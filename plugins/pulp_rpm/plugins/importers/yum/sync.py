@@ -15,7 +15,6 @@ from urlparse import urljoin
 from mongoengine import NotUniqueError
 from nectar.request import DownloadRequest
 
-from pulp.common import dateutils
 from pulp.common.plugins import importer_constants
 from pulp.plugins.util import nectar_config as nectar_utils
 from pulp.server import util
@@ -41,6 +40,17 @@ _logger = logging.getLogger(__name__)
 
 
 class RepoSync(object):
+    """
+    :ivar skip_repomd_steps:    if True, all parts of the sync that depend on yum repo metadata
+                                will be skipped.
+    :type skip_repomd_steps:    bool
+    :ivar metadata_found:       if True, at least one type of repo metadata was found: either
+                                yum metadata, or a treeinfo file
+    :type metadata_found:       bool
+    :ivar repomd_not_found_reason:  The reason to show the user why the yum repo metadata could
+                                    not be found.
+    :type repomd_not_found_reason:  basestring
+    """
 
     def __init__(self, repo, conduit, config):
         """
@@ -71,7 +81,13 @@ class RepoSync(object):
         self.current_revision = 0
         self.downloader = None
         self.tmp_dir = None
-        self.force_full = config.get('force_full', False)
+        # Was any repo metadata found? Includes either yum metadata or a treeinfo file. If this is
+        # False at the end of the sync, then an error will be presented to the user.
+        self.metadata_found = False
+        # Store the reason that yum repo metadata was not found. In case a treeinfo file is also
+        # not found, this error will be the one presented to the user. That preserves pre-existing
+        # behavior that is yum-centric.
+        self.repomd_not_found_reason = ''
 
         url_modify_config = {}
         if config.get('query_auth_token'):
@@ -214,10 +230,11 @@ class RepoSync(object):
             try:
                 with self.update_state(self.progress_report['metadata']):
                     metadata_files = self.check_metadata(url)
-                    metadata_files = self.get_metadata(metadata_files)
+                    if not self.skip_repomd_steps:
+                        metadata_files = self.get_metadata(metadata_files)
 
-                    # Save the default checksum from the metadata
-                    self.save_default_metadata_checksum_on_repo(metadata_files)
+                        # Save the default checksum from the metadata
+                        self.save_default_metadata_checksum_on_repo(metadata_files)
 
                 with self.update_state(self.content_report) as skip:
                     if not (skip or self.skip_repomd_steps):
@@ -230,6 +247,7 @@ class RepoSync(object):
                     if not skip:
                         dist_sync = DistSync(self, url)
                         dist_sync.run()
+                        self.metadata_found |= dist_sync.metadata_found
 
                 with self.update_state(self.progress_report['errata'], ids.TYPE_ID_ERRATA) as skip:
                     if not (skip or self.skip_repomd_steps):
@@ -276,6 +294,11 @@ class RepoSync(object):
                 # clean up whatever we may have left behind
                 shutil.rmtree(self.tmp_dir, ignore_errors=True)
 
+            if not self.metadata_found:
+                # could not find yum repo metadata or a treeinfo file
+                raise PulpCodedException(error_code=error_codes.RPM1004,
+                                         reason=self.repomd_not_found_reason)
+
             if self.config.override_config.get(importer_constants.KEY_FEED):
                 self.erase_repomd_revision()
             else:
@@ -315,20 +338,33 @@ class RepoSync(object):
 
     def check_metadata(self, url):
         """
+        Download and parse repomd.xml
+
+        If the download fails, sets the "skip_repomd_steps" attribute to True and populates the
+        "repomd_not_found_reason" attribute.
+
         :param url: curret URL we should sync
         :type url: str
 
         :return:    instance of MetadataFiles
         :rtype:     pulp_rpm.plugins.importers.yum.repomd.metadata.MetadataFiles
+
+        :raises PulpCodedException: if the metadata cannot be parsed
         """
         _logger.info(_('Downloading metadata from %(feed)s.') % {'feed': url})
         metadata_files = metadata.MetadataFiles(url, self.tmp_dir, self.nectar_config,
                                                 self._url_modify)
         try:
             metadata_files.download_repomd()
-        except IOError, e:
-            raise PulpCodedException(error_code=error_codes.RPM1004, reason=str(e))
+        except IOError as e:
+            # Skip the rest of this method, and tell the rest of the repomd-dependent steps to
+            # also skip what they do.
+            self.skip_repomd_steps = True
+            self.repomd_not_found_reason = e.message
+            _logger.debug(_('No yum repo metadata found.'))
+            return
 
+        self.metadata_found = True
         _logger.info(_('Parsing metadata.'))
 
         try:
@@ -349,32 +385,27 @@ class RepoSync(object):
                     identified and downloaded.
         :rtype:     pulp_rpm.plugins.importers.yum.repomd.metadata.MetadataFiles
         """
-
         self.downloader = metadata_files.downloader
         scratchpad = self.conduit.get_scratchpad() or {}
         previous_revision = scratchpad.get(constants.REPOMD_REVISION_KEY, 0)
-        previous_skip_set = set(scratchpad.get(constants.PREVIOUS_SKIP_LIST, []))
-        current_skip_set = set(self.config.get(constants.CONFIG_SKIP, []))
         self.current_revision = metadata_files.revision
-        last_sync = self.conduit.last_sync()
-        sync_due_to_unit_removal = False
-        if last_sync is not None:
-            last_sync = dateutils.parse_iso8601_datetime(last_sync)
-            last_removed = self.repo.last_unit_removed
-            sync_due_to_unit_removal = last_removed is not None and last_sync < last_removed
         # determine missing units
         missing_units = repo_controller.missing_unit_count(self.repo.repo_id)
-        # if the current MD revision is not newer than the old one
-        # and we aren't using an override URL
-        # and the skip list doesn't have any new types
+
+        force_full_sync = repo_controller.check_perform_full_sync(self.repo.repo_id,
+                                                                  self.conduit,
+                                                                  self.config)
+
+        # if the platform does not prescribe forcing a full sync
+        # (due to removed unit, force_full flag, config change, etc.)
+        # the current MD revision is not newer than the old one
         # and there are no missing units, or we have deferred download enabled
-        # and no units were removed after last sync
         # then skip fetching the repo MD :)
-        if not self.force_full and 0 < metadata_files.revision <= previous_revision \
-                and not self.config.override_config.get(importer_constants.KEY_FEED) \
-                and previous_skip_set - current_skip_set == set() \
-                and (self.download_deferred or not missing_units) \
-                and not sync_due_to_unit_removal:
+        skip_sync_steps = not force_full_sync and \
+            0 < self.current_revision <= previous_revision and \
+            (self.download_deferred or not missing_units)
+
+        if skip_sync_steps:
             _logger.info(_('upstream repo metadata has not changed. Skipping steps.'))
             self.skip_repomd_steps = True
             return metadata_files
@@ -399,10 +430,6 @@ class RepoSync(object):
             _logger.debug(_('saving repomd.xml revision number and skip list to scratchpad'))
             scratchpad = self.conduit.get_scratchpad() or {}
             scratchpad[constants.REPOMD_REVISION_KEY] = self.current_revision
-            # we save the skip list so if one of the types contained in it gets removed, the next
-            # sync will know to not skip based on repomd revision
-            scratchpad[constants.PREVIOUS_SKIP_LIST] = self.config.get(
-                constants.CONFIG_SKIP, [])
             self.conduit.set_scratchpad(scratchpad)
 
     def erase_repomd_revision(self):
@@ -413,7 +440,6 @@ class RepoSync(object):
         scratchpad = self.conduit.get_scratchpad()
         if scratchpad:
             scratchpad[constants.REPOMD_REVISION_KEY] = None
-            scratchpad[constants.PREVIOUS_SKIP_LIST] = []
             self.conduit.set_scratchpad(scratchpad)
 
     def save_default_metadata_checksum_on_repo(self, metadata_files):
@@ -490,7 +516,7 @@ class RepoSync(object):
         failed_signature_check = 0
         new_report = []
         for error in self.progress_report['content']['error_details']:
-            if error[constants.ERROR_CODE] == constants.ERROR_SIGNATURE_VERIFICATION:
+            if error[constants.ERROR_CODE] == constants.ERROR_KEY_ID_FILTER:
                 failed_signature_check += 1
             else:
                 new_report.append(error)
@@ -499,7 +525,7 @@ class RepoSync(object):
                  'count': '%s' % failed_signature_check}
             new_report.append(d)
             self.progress_report['content']['error_details'] = new_report
-            _logger.warning(_('%s packages failed signature check and were not imported.'
+            _logger.warning(_('%s packages failed signature filter and were not imported.'
                             % failed_signature_check))
         self.conduit.build_success_report({}, {})
         # removes unwanted units according to the config settings
@@ -634,22 +660,31 @@ class RepoSync(object):
             unit = unit.__class__.objects.filter(**unit.unit_key).first()
         if rpm_parse.signature_enabled(self.config):
             try:
-                rpm_parse.verify_signature(unit, self.config)
+                rpm_parse.filter_signature(unit, self.config)
             except PulpCodedException as e:
                 _logger.debug(e)
                 error_report = {
                     constants.NAME: unit.filename,
-                    constants.ERROR_CODE: constants.ERROR_SIGNATURE_VERIFICATION,
+                    constants.ERROR_CODE: constants.ERROR_KEY_ID_FILTER,
                 }
 
                 self.progress_report['content'].failure(unit, error_report)
                 self.conduit.set_progress(self.progress_report)
                 return unit
 
+        return unit
+
+    def associate_rpm_unit(self, unit):
+        """
+        Associate unit with a repo and report this unit as a successfully synced one.
+        It should be a last step in the sync of one unit.
+
+        :param unit: A content unit
+        :type  unit: pulp_rpm.plugins.db.models.RpmBase
+        """
         repo_controller.associate_single_unit(self.conduit.repo, unit)
         self.progress_report['content'].success(unit)
         self.conduit.set_progress(self.progress_report)
-        return unit
 
     def download_rpms(self, metadata_files, rpms_to_download, url):
         """
@@ -683,6 +718,7 @@ class RepoSync(object):
                 for unit in units_to_download:
                     unit.downloaded = False
                     unit = self.add_rpm_unit(metadata_files, unit)
+                    self.associate_rpm_unit(unit)
                     catalog.add(unit)
                 return
 
@@ -738,6 +774,7 @@ class RepoSync(object):
                         for unit in units_to_download:
                             unit.downloaded = False
                             unit = self.add_rpm_unit(metadata_files, unit)
+                            self.associate_rpm_unit(unit)
                             catalog.add(unit)
                         continue
 

@@ -58,7 +58,7 @@ def associate(source_repo, dest_repo, import_conduit, config, units=None):
     associated_units = [_associate_unit(dest_repo, unit, config) for unit in units
                         if not isinstance(unit, models.RPM)]
     if None in associated_units:
-        _LOGGER.warning(_('%s packages failed signature check and were not imported.'
+        _LOGGER.warning(_('%s packages failed signature filter and were not imported.'
                         % len(associated_units)))
 
     associated_units = set(associated_units)
@@ -217,7 +217,7 @@ def copy_rpms(units, source_repo, dest_repo, import_conduit, config, copy_deps, 
         if rpm_parse.signature_enabled(config):
             if unit.downloaded:
                 try:
-                    rpm_parse.verify_signature(unit, config)
+                    rpm_parse.filter_signature(unit, config)
                 except PulpCodedException as e:
                     _LOGGER.debug(e)
                     failed_signature_check += 1
@@ -228,7 +228,7 @@ def copy_rpms(units, source_repo, dest_repo, import_conduit, config, copy_deps, 
         unit_set.add(unit)
 
     if failed_signature_check:
-        _LOGGER.warning(_('%s packages failed signature check and were not imported.'
+        _LOGGER.warning(_('%s packages failed signature filter and were not imported.'
                         % failed_signature_check))
 
     if copy_deps and unit_set:
@@ -373,7 +373,7 @@ def _associate_unit(dest_repo, unit, config):
             if rpm_parse.signature_enabled(config):
                 if unit.downloaded:
                     try:
-                        rpm_parse.verify_signature(unit, config)
+                        rpm_parse.filter_signature(unit, config)
                     except PulpCodedException as e:
                         _LOGGER.debug(e)
                         return

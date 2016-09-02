@@ -72,6 +72,7 @@ class ISORsyncPublisher(Publisher):
         gen_step = RSyncFastForwardUnitPublishStep("Unit query step (ISO)",
                                                    ISORsyncPublisher.REPO_CONTENT_MODELS,
                                                    repo=self.repo,
+                                                   repo_content_unit_q=date_filter,
                                                    remote_repo_path=remote_repo_path,
                                                    published_unit_path=[],
                                                    unit_fields=ISORsyncPublisher.UNIT_FIELDS)

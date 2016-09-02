@@ -89,7 +89,7 @@ def validate_config(repo, config, config_conduit):
         error_messages.append(msg % {'k': key})
 
     # check that http and https are not set to false simultaneously
-    if config['https'] is False and config['http'] is False:
+    if config.get('https', False) is False and config.get('http', False) is False:
         msg = _('Settings serve via http and https are both set to false.'
                 ' At least one option should be set to true.')
         error_messages.append(msg)

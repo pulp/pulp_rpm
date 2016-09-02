@@ -32,6 +32,6 @@ RPM1012 = Error("RPM1012", _('Checksum type "%(checksumtype)s" requested for upd
                              'available for all packages listed in the errata.'),
                 ['checksumtype'])
 RPM1013 = Error("RPM1013", _('Cannot import unsigned Package "%(package)s".'), ['package'])
-RPM1014 = Error("RPM1014", _('Invalid signature key "%(key)s" found for Package: "%(package)s". '
+RPM1014 = Error("RPM1014", _('Invalid signature key ID "%(key)s" found for Package: "%(package)s". '
                              'Allowed Signatures keys "%(allowed)s".'),
                 ['key', 'package', 'allowed'])

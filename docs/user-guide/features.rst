@@ -54,25 +54,22 @@ For each Pulp-hosted repository that is protected, a consumer certificate can be
 supplied that will be distributed to consumers when they bind. That certificate
 will allow them to access the protected repository.
 
-Package signature verification
-------------------------------
+Package Signatures and GPG Key ID Filtering
+-------------------------------------------
 
-RPM repositories can have signature verification policy enabled.
-With this policy it can be restricted if only RPM/SRPM/DRPM packages, that are
-signed, will be imported and accepted into the repo. There is also a possibility
-to specify the list of allowed signature keys. These are the keys that are usually
-used to sign packages. It is enough to provide in the list short key ID that is
-8 characters long. So during the import phase, packages will be checked with which
-key they were signed and if this key is among allowed, the import of the package
-into the repo will be granted. Requirement of the package signature and list of
-allowed signature keys can be changed at anytime.
+RPM repositories have limited support for acting on package GPG signatures,
+including requiring packages to have GPG signatures, and whitelisting signing
+key IDs to only sync packages with matching signing key IDs. The signing key
+ID filtering feature uses the 8-character "short" key ID, which does not uniquely
+identify a GPG signing key. This feature does not verify package signatures.
 
-This signature validation is granted within the current importer settings and current
-import of the content, without taking into consideration already present content in
+This signature filtering is granted within the current importer settings and current
+import of the content, without taking into consideration content already present in
 the repository.
-In order to parse package signature it is needed to download the content first. That's
-why signature verification cannot be enabled with on_demand or background download policy,
-only the immediate download policy is compatible with signature verification.
+
+These features cannot be enable with on_demand or background download policies, since
+access to the package files is required to get the GPG signature information.
+Only the immediate download policy is compatible with signature filtering.
 
 Export
 ------

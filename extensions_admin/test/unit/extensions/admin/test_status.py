@@ -49,7 +49,7 @@ class RpmStatusRendererTests(client_base.PulpClientTests):
     def test_render_download_step_invalid_signature_error(self):
         """
         Assert correct behavior from render_download_step() when the progress report contains errors
-        about packages that did not pass signature verification.
+        about packages that did not pass signature filtering.
         """
         self.prompt.render_failure_message = mock.MagicMock()
         content_report = report.ContentReport()
@@ -70,7 +70,7 @@ class RpmStatusRendererTests(client_base.PulpClientTests):
         # been printed for the user.
         self.assertTrue('package errors encountered' in
                         self.prompt.render_failure_message.mock_calls[0][1][0])
-        self.assertTrue('32 packages failed signature check and were not imported.' in
+        self.assertTrue('32 packages failed signature filter and were not imported.' in
                         self.prompt.render_failure_message.mock_calls[1][1][0])
 
     def test_render_distribution_sync_step_with_error(self):
