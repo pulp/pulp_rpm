@@ -80,51 +80,58 @@ class TestAddRpmUnit(BaseSyncTest):
 
         self.metadata_files.add_repodata.assert_called_once_with(unit)
 
+
+class TestSignatureFilterPassed(BaseSyncTest):
+    """
+    Test `signature_filter_passed` method
+    """
     @mock.patch('pulp_rpm.plugins.importers.yum.sync.rpm_parse')
     def test_rpm_signature_filter_pass(self, mock_rpm_parse):
+        """
+        Test that result is positive if unit passes the filter
+        """
         unit = models.RPM(name='foo', epoch=0, version='1.1.1', release='0', arch='x86_64',
                           checksumtype='sha256', checksum='abc123')
-        self.metadata_files.add_repodata = mock.MagicMock()
-        unit.set_storage_path = mock.MagicMock()
-        unit.save = mock.MagicMock()
-        self.reposync.progress_report = mock.MagicMock()
         mock_rpm_parse.signature_enabled.return_value = True
 
-        self.reposync.add_rpm_unit(self.metadata_files, unit)
+        signature_filter_passed = self.reposync.signature_filter_passed(unit)
 
-        self.metadata_files.add_repodata.assert_called_once_with(unit)
         mock_rpm_parse.filter_signature.assert_called_once_with(unit, self.config)
+        self.assertTrue(signature_filter_passed)
 
+    @mock.patch('pulp_rpm.plugins.importers.yum.sync._logger')
     @mock.patch('pulp_rpm.plugins.importers.yum.sync.rpm_parse')
-    def test_rpm_signature_filter_failed(self, mock_rpm_parse):
+    def test_rpm_signature_filter_failed(self, mock_rpm_parse, mock_logger):
+        """
+        Test that result is negative if unit does not pass the filter
+        """
         unit = models.RPM(name='foo', epoch=0, version='1.1.1', release='0', arch='x86_64',
                           checksumtype='sha256', checksum='abc123')
-        self.metadata_files.add_repodata = mock.MagicMock()
-        unit.set_storage_path = mock.MagicMock()
-        unit.save = mock.MagicMock()
         self.reposync.progress_report = mock.MagicMock()
         mock_rpm_parse.signature_enabled.return_value = True
         mock_rpm_parse.filter_signature.side_effect = PulpCodedException()
 
-        self.reposync.add_rpm_unit(self.metadata_files, unit)
+        signature_filter_passed = self.reposync.signature_filter_passed(unit)
 
-        self.metadata_files.add_repodata.assert_called_once_with(unit)
         mock_rpm_parse.filter_signature.assert_called_once_with(unit, self.config)
+        self.assertEqual(mock_logger.debug.call_count, 1)
+        self.assertEqual(self.reposync.progress_report['content'].failure.call_count, 1)
+        self.conduit.set_progress.assert_called_with(self.reposync.progress_report)
+        self.assertFalse(signature_filter_passed)
 
     @mock.patch('pulp_rpm.plugins.importers.yum.sync.rpm_parse')
     def test_rpm_signature_filter_disabled(self, mock_rpm_parse):
+        """
+        Test that result is positive if filter is not applied
+        """
         unit = models.RPM(name='foo', epoch=0, version='1.1.1', release='0', arch='x86_64',
                           checksumtype='sha256', checksum='abc123')
-        self.metadata_files.add_repodata = mock.MagicMock()
-        unit.set_storage_path = mock.MagicMock()
-        unit.save = mock.MagicMock()
-        self.reposync.progress_report = mock.MagicMock()
         mock_rpm_parse.signature_enabled.return_value = False
 
-        self.reposync.add_rpm_unit(self.metadata_files, unit)
+        signature_filter_passed = self.reposync.signature_filter_passed(unit)
 
-        self.metadata_files.add_repodata.assert_called_once_with(unit)
         self.assertFalse(mock_rpm_parse.filter_signature.called)
+        self.assertTrue(signature_filter_passed)
 
 
 @skip_broken
