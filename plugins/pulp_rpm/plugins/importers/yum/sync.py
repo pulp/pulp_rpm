@@ -632,6 +632,19 @@ class RepoSync(object):
             unit.save()
         except NotUniqueError:
             unit = unit.__class__.objects.filter(**unit.unit_key).first()
+
+        return unit
+
+    def signature_filter_passed(self, unit):
+        """
+        Decide whether to associate unit or not based on its signature.
+
+        :param unit: A content unit.
+        :type unit: pulp_rpm.plugins.db.models.RpmBase
+
+        :rtype: bool
+        :return: True if unit passes the signature filter and has to be associated
+        """
         if rpm_parse.signature_enabled(self.config):
             try:
                 rpm_parse.filter_signature(unit, self.config)
@@ -644,9 +657,9 @@ class RepoSync(object):
 
                 self.progress_report['content'].failure(unit, error_report)
                 self.conduit.set_progress(self.progress_report)
-                return unit
+                return False
 
-        return unit
+        return True
 
     def associate_rpm_unit(self, unit):
         """
