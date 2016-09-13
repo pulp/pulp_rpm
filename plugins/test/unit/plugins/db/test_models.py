@@ -167,19 +167,19 @@ class TestRpmBaseModifyXML(unittest.TestCase):
 
     def test_checksum_template(self):
         self.unit.modify_xml()
-        self.assertTrue('{{ checksum }}' in self.unit.repodata['primary'])
-        self.assertTrue('{{ checksumtype }}' in self.unit.repodata['primary'])
+        self.assertTrue('%(checksum)s' in self.unit.repodata['primary'])
+        self.assertTrue('%(checksumtype)s' in self.unit.repodata['primary'])
         self.assertTrue(self.checksum not in self.unit.repodata['primary'])
 
     def test_checksum_other_pkgid(self):
         self.unit.modify_xml()
-        self.assertTrue('{{ pkgid }}' in self.unit.repodata['other'])
+        self.assertTrue('%(pkgid)s' in self.unit.repodata['other'])
         self.assertTrue(self.checksum not in self.unit.repodata['other'])
         self.assertParsable(self.unit.repodata['other'])
 
     def test_checksum_filelists_pkgid(self):
         self.unit.modify_xml()
-        self.assertTrue('{{ pkgid }}' in self.unit.repodata['filelists'])
+        self.assertTrue('%(pkgid)s' in self.unit.repodata['filelists'])
         self.assertTrue(self.checksum not in self.unit.repodata['filelists'])
         self.assertParsable(self.unit.repodata['filelists'])
 
@@ -1093,23 +1093,23 @@ class TestRpmBaseRender(unittest.TestCase):
         self.unit.checksumtype = 'sha1'
         self.unit.checksums = {'sha1': 'abc123'}
         self.unit.repodata['filelists'] = '''
-<package arch="noarch" name="cat" pkgid="{{ pkgid }}">
+<package arch="noarch" name="cat" pkgid="%(pkgid)s">
     <version epoch="0" rel="1" ver="1.0" />
     <file>/tmp/cat.txt</file>
 </package>'''
         self.unit.repodata['other'] = '''
-<package arch="noarch" name="cat" pkgid="{{ pkgid }}">
+<package arch="noarch" name="cat" pkgid="%(pkgid)s">
     <version epoch="0" rel="1" ver="1.0" />
-    <changelog>Sometimes contains {{ template vars }} description</changelog>
+    <changelog>Sometimes contains %% description</changelog>
 </package>'''
         self.unit.repodata['primary'] = '''
 <package type="rpm">
   <name>cat</name>
   <arch>noarch</arch>
   <version epoch="0" rel="1" ver="1.0" />
-  <checksum pkgid="YES" type="{{ checksumtype }}">{{ checksum }}</checksum>
+  <checksum pkgid="YES" type="%(checksumtype)s">%(checksum)s</checksum>
   <summary>A dummy {{ var }} package of cat</summary>
-  <description>A dummy package of cat with some description of {% character </description>
+  <description>A dummy package of cat with some description of {%% character </description>
   <packager />
   <url>http://tstrachota.fedorapeople.org</url>
   <time build="1331831362" file="1331832453" />
@@ -1144,26 +1144,16 @@ class TestRpmBaseRender(unittest.TestCase):
         self.assertTrue('abc123' in ret)
         self.assertTrue('sha1' in ret)
 
-    def test__escape_django_syntax_chars(self):
-        """
-        Test that for a requested element all syntax characters are substituted with
-        the corresponding templatetag.
+    def test__escape_repodata(self):
+        """Test escape_repodata function."""
+        self.unit.repodata = {
+            "filelists": "%something more",
+            "other": "something other but much longer {{ }} %%",
+            "primary": "}{ %(test)s %s {% }} $"
+        }
 
-        List of characters and the corresponding names of the templatetag could be found in
-        django.template.defaulttags.TemplateTagNode.mapping.
-        For now, those characters are:
-            >>> from django.template.defaulttags import TemplateTagNode
-            >>> TemplateTagNode.mapping.values()
-            [u'{#', u'{{', u'%}', u'#}', u'{', u'}}', u'{%', u'}']
+        self.unit.escape_repodata()
 
-        E.g. '{%' should be substituted with '{% templatetag openblock %}'
-        """
-        template = ('<tag>{some {{ var }}</tag><some_tag>text</some_tag>'
-                    '<tag>some {% tag %} {# comment #} }</tag>')
-        expected_template = ('<tag>{% templatetag openbrace %}some {% templatetag openvariable %}'
-                             ' var {% templatetag closevariable %}</tag><some_tag>text</some_tag>'
-                             '<tag>some {% templatetag openblock %} tag '
-                             '{% templatetag closeblock %} {% templatetag opencomment %} comment '
-                             '{% templatetag closecomment %} {% templatetag closebrace %}</tag>')
-        result = self.unit._escape_django_syntax_chars(template, 'tag')
-        self.assertEqual(result, expected_template)
+        self.assertEqual(self.unit.repodata["filelists"], "%%something more")
+        self.assertEqual(self.unit.repodata["other"], "something other but much longer {{ }} %%%%")
+        self.assertEqual(self.unit.repodata["primary"], "}{ %%(test)s %%s {%% }} $")
