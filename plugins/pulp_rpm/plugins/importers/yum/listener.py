@@ -203,7 +203,7 @@ class RPMListener(PackageListener):
             unit['signing_key'] = rpm_parse.package_signature(headers)
             added_unit = self.sync.add_rpm_unit(self.metadata_files, unit)
             added_unit.safe_import_content(report.destination)
-            self.sync.associate_rpm_unit(unit)
+            self.sync.associate_rpm_unit(added_unit)
             if not added_unit.downloaded:
                 added_unit.downloaded = True
                 added_unit.save()
