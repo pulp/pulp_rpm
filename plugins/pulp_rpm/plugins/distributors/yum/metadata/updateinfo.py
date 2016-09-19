@@ -63,7 +63,7 @@ class UpdateinfoXMLFileContext(XmlFileContext):
         nevra_in_repo_and_pkglist = []
         for pkglist in erratum_unit.pkglist:
             for pkg in pkglist['packages']:
-                pkg_nevra = models.NEVRA(name=pkg['name'], epoch=pkg['epoch'],
+                pkg_nevra = models.NEVRA(name=pkg['name'], epoch=pkg['epoch'] or '0',
                                          version=pkg['version'], release=pkg['release'],
                                          arch=pkg['arch'])
                 if pkg_nevra in self.nevra_in_repo:

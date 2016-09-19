@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 
+import itertools
 import logging
 
 from pulp_rpm.plugins.db import models
@@ -15,7 +16,7 @@ PACKAGE_TAG = 'update'
 def process_package_element(element):
     """
     Process one XML block from updateinfo.xml and return a dict describing
-    and errata
+    an erratum
 
     :param element: object representing one "errata" block from the XML file
     :type  element: xml.etree.ElementTree.Element
@@ -28,6 +29,10 @@ def process_package_element(element):
         description_text = description_element.text
     else:
         description_text = ''
+
+    pkglists = map(_parse_pkglist, element.findall('pkglist') or [])
+    pkglist_collections = list(itertools.chain(*pkglists))
+
     package_info = {
         'description': description_text,
         'errata_from': element.attrib['from'],
@@ -41,7 +46,7 @@ def process_package_element(element):
         'references': map(_parse_reference, element.find('references') or []),
         'release': '',
         'rights': '',
-        'pkglist': map(_parse_collection, element.find('pkglist') or []),
+        'pkglist': pkglist_collections,
         'severity': '',
         'solution': '',
         'status': element.attrib['status'],
@@ -84,6 +89,10 @@ def _parse_reference(element):
         'type': element.attrib['type'],
         'title': element.attrib.get('title')
     }
+
+
+def _parse_pkglist(element):
+    return map(_parse_collection, element.findall('collection') or [])
 
 
 def _parse_collection(element):

@@ -55,8 +55,7 @@ class BaseSyncTest(unittest.TestCase):
 
 
 class TestAddRpmUnit(BaseSyncTest):
-    @mock.patch('pulp.server.controllers.repository.associate_single_unit')
-    def test_drpm_does_not_add_repodata(self, mock_assoc):
+    def test_drpm_does_not_add_repodata(self):
         unit = models.DRPM(epoch=0, version='1.1.1', release='0', filename='foo.drpm',
                            checksumtype='sha256', checksum='abc123')
         self.metadata_files.add_repodata = mock.MagicMock()
@@ -68,8 +67,7 @@ class TestAddRpmUnit(BaseSyncTest):
 
         self.assertEqual(self.metadata_files.add_repodata.call_count, 0)
 
-    @mock.patch('pulp.server.controllers.repository.associate_single_unit')
-    def test_rpm_adds_repodata(self, mock_assoc):
+    def test_rpm_adds_repodata(self):
         unit = models.RPM(name='foo', epoch=0, version='1.1.1', release='0', arch='x86_64',
                           checksumtype='sha256', checksum='abc123')
         self.metadata_files.add_repodata = mock.MagicMock()
