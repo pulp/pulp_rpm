@@ -77,7 +77,8 @@ class TestISODistributorConfigMixin(unittest.TestCase):
         # The HTTP, HTTPS, and CA options should be in the publishing group
         self.assertEqual(set(distributor_config_mixin.publishing_group.options),
                          set([distributor_config_mixin.opt_http, distributor_config_mixin.opt_https,
-                              distributor_config_mixin.opt_auth_ca]))
+                              distributor_config_mixin.opt_auth_ca,
+                              distributor_config_mixin.opt_relative_url]))
 
         # Lastly, the add_option_group mock should have been called once
         self.assertEqual(add_option_group.call_count, 1)
