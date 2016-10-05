@@ -24,7 +24,7 @@ class TestValidate(unittest.TestCase):
         config = get_basic_config(
             **{constants.CONFIG_SERVE_HTTP: True, constants.CONFIG_SERVE_HTTPS: False})
 
-        valid, msg = configuration.validate(config)
+        valid, msg = configuration.validate(config, None, None)
 
         # Assert the return values
         self.assertEqual(valid, True)
@@ -48,7 +48,7 @@ class TestValidate(unittest.TestCase):
             **{constants.CONFIG_SERVE_HTTP: True, constants.CONFIG_SERVE_HTTPS: False,
                constants.CONFIG_SSL_AUTH_CA_CERT: 'Invalid cert.'})
 
-        valid, msg = configuration.validate(config)
+        valid, msg = configuration.validate(config, None, None)
 
         # We passed a valid config, so validate() should have indicated that everything was cool
         self.assertFalse(valid)
@@ -61,7 +61,7 @@ class TestValidate(unittest.TestCase):
         config = get_basic_config(
             **{constants.CONFIG_SERVE_HTTP: True, constants.CONFIG_SERVE_HTTPS: False})
 
-        valid, msg = configuration.validate(config)
+        valid, msg = configuration.validate(config, None, None)
 
         # We passed a valid config, so validate() should have indicated that everything was cool
         self.assertTrue(valid)

@@ -57,8 +57,8 @@ The ``distributor_config`` contains a ``remote`` section with the following sett
 
 ``root``
   The absolute path to the remote root directory where all the data (content and published content)
-  lives. This is the remote equivalent to ``/var/lib/pulp``. The repo id is appended to the
-  ``root`` path to determine the location of published repository.
+  lives. This is the remote equivalent to ``/var/lib/pulp``. The ``relative_url`` of the
+  predistributor is appended to the ``root`` to determine the location of published repository.
 
 Optional configuration
 ----------------------

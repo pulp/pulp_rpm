@@ -47,7 +47,7 @@ class TestISODistributor(unittest.TestCase):
 
     def _get_default_repo(self):
         repo = MagicMock()
-        repo.id = 'awesome_repo'
+        repo.repo_obj.repo_id = 'awesome_repo'
         return repo
 
     def test_metadata(self):
@@ -61,21 +61,24 @@ class TestISODistributor(unittest.TestCase):
         # ease
         config = get_basic_config(**{constants.CONFIG_SERVE_HTTP: True,
                                      constants.CONFIG_SERVE_HTTPS: True})
-        status, error_message = self.iso_distributor.validate_config(None, config, None)
+        repo = self._get_default_repo()
+        status, error_message = self.iso_distributor.validate_config(repo, config, None)
         self.assertTrue(status)
         self.assertEqual(error_message, None)
 
         # Try setting the HTTP one to a string, which should be OK as long as it's still True
         config = get_basic_config(**{constants.CONFIG_SERVE_HTTP: "True",
                                      constants.CONFIG_SERVE_HTTPS: True})
-        status, error_message = self.iso_distributor.validate_config(None, config, None)
+        repo = self._get_default_repo()
+        status, error_message = self.iso_distributor.validate_config(repo, config, None)
         self.assertTrue(status)
         self.assertEqual(error_message, None)
 
         # Now try setting the HTTPS one to an invalid string
         config = get_basic_config(**{constants.CONFIG_SERVE_HTTP: True,
                                      constants.CONFIG_SERVE_HTTPS: "Heyo!"})
-        status, error_message = self.iso_distributor.validate_config(None, config, None)
+        repo = self._get_default_repo()
+        status, error_message = self.iso_distributor.validate_config(repo, config, None)
         self.assertFalse(status)
         self.assertEqual(error_message,
                          'The configuration parameter <serve_https> may only be set to a '
@@ -90,18 +93,20 @@ class TestISODistributor(unittest.TestCase):
                                      constants.CONFIG_SERVE_HTTPS: False})
         locations = self.iso_distributor.get_hosting_locations(repo, config)
         self.assertEquals(1, len(locations))
-        self.assertEquals(os.path.join(constants.ISO_HTTP_DIR, repo.id), locations[0])
+        self.assertEquals(os.path.join(constants.ISO_HTTP_DIR, repo.repo_obj.repo_id),
+                          locations[0])
 
     def test_get_hosting_locations_https_only(self):
         """
         Test the _get_hosting_locations() for an http only repository function.
         """
         repo = self._get_default_repo()
-        config = get_basic_config(**{constants.CONFIG_SERVE_HTTPS: True})
+        config = get_basic_config(**{constants.CONFIG_SERVE_HTTPS: True, 'relative_url': None})
 
         locations = self.iso_distributor.get_hosting_locations(repo, config)
         self.assertEquals(1, len(locations))
-        self.assertEquals(os.path.join(constants.ISO_HTTPS_DIR, repo.id), locations[0])
+        self.assertEquals(os.path.join(constants.ISO_HTTPS_DIR, repo.repo_obj.repo_id),
+                          locations[0])
 
     def test_get_hosting_locations_https_only_default(self):
         """
@@ -111,7 +116,8 @@ class TestISODistributor(unittest.TestCase):
         config = get_basic_config()
         locations = self.iso_distributor.get_hosting_locations(repo, config)
         self.assertEquals(1, len(locations))
-        self.assertEquals(os.path.join(constants.ISO_HTTPS_DIR, repo.id), locations[0])
+        self.assertEquals(os.path.join(constants.ISO_HTTPS_DIR, repo.repo_obj.repo_id),
+                          locations[0])
 
     def test_get_hosting_locations_http_and_https(self):
         """
@@ -122,8 +128,9 @@ class TestISODistributor(unittest.TestCase):
                                      constants.CONFIG_SERVE_HTTPS: True})
         locations = self.iso_distributor.get_hosting_locations(repo, config)
         self.assertEquals(2, len(locations))
-        self.assertEquals(os.path.join(constants.ISO_HTTP_DIR, repo.id), locations[0])
-        self.assertEquals(os.path.join(constants.ISO_HTTPS_DIR, repo.id), locations[1])
+        self.assertEquals(os.path.join(constants.ISO_HTTP_DIR, repo.repo_obj.repo_id), locations[0])
+        self.assertEquals(os.path.join(constants.ISO_HTTPS_DIR, repo.repo_obj.repo_id),
+                          locations[1])
 
     @patch(
         'pulp_rpm.plugins.distributors.iso_distributor.distributor.publish'

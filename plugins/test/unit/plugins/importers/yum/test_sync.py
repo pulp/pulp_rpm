@@ -80,51 +80,58 @@ class TestAddRpmUnit(BaseSyncTest):
 
         self.metadata_files.add_repodata.assert_called_once_with(unit)
 
+
+class TestSignatureFilterPassed(BaseSyncTest):
+    """
+    Test `signature_filter_passed` method
+    """
     @mock.patch('pulp_rpm.plugins.importers.yum.sync.rpm_parse')
     def test_rpm_signature_filter_pass(self, mock_rpm_parse):
+        """
+        Test that result is positive if unit passes the filter
+        """
         unit = models.RPM(name='foo', epoch=0, version='1.1.1', release='0', arch='x86_64',
                           checksumtype='sha256', checksum='abc123')
-        self.metadata_files.add_repodata = mock.MagicMock()
-        unit.set_storage_path = mock.MagicMock()
-        unit.save = mock.MagicMock()
-        self.reposync.progress_report = mock.MagicMock()
         mock_rpm_parse.signature_enabled.return_value = True
 
-        self.reposync.add_rpm_unit(self.metadata_files, unit)
+        signature_filter_passed = self.reposync.signature_filter_passed(unit)
 
-        self.metadata_files.add_repodata.assert_called_once_with(unit)
         mock_rpm_parse.filter_signature.assert_called_once_with(unit, self.config)
+        self.assertTrue(signature_filter_passed)
 
+    @mock.patch('pulp_rpm.plugins.importers.yum.sync._logger')
     @mock.patch('pulp_rpm.plugins.importers.yum.sync.rpm_parse')
-    def test_rpm_signature_filter_failed(self, mock_rpm_parse):
+    def test_rpm_signature_filter_failed(self, mock_rpm_parse, mock_logger):
+        """
+        Test that result is negative if unit does not pass the filter
+        """
         unit = models.RPM(name='foo', epoch=0, version='1.1.1', release='0', arch='x86_64',
                           checksumtype='sha256', checksum='abc123')
-        self.metadata_files.add_repodata = mock.MagicMock()
-        unit.set_storage_path = mock.MagicMock()
-        unit.save = mock.MagicMock()
         self.reposync.progress_report = mock.MagicMock()
         mock_rpm_parse.signature_enabled.return_value = True
         mock_rpm_parse.filter_signature.side_effect = PulpCodedException()
 
-        self.reposync.add_rpm_unit(self.metadata_files, unit)
+        signature_filter_passed = self.reposync.signature_filter_passed(unit)
 
-        self.metadata_files.add_repodata.assert_called_once_with(unit)
         mock_rpm_parse.filter_signature.assert_called_once_with(unit, self.config)
+        self.assertEqual(mock_logger.debug.call_count, 1)
+        self.assertEqual(self.reposync.progress_report['content'].failure.call_count, 1)
+        self.conduit.set_progress.assert_called_with(self.reposync.progress_report)
+        self.assertFalse(signature_filter_passed)
 
     @mock.patch('pulp_rpm.plugins.importers.yum.sync.rpm_parse')
     def test_rpm_signature_filter_disabled(self, mock_rpm_parse):
+        """
+        Test that result is positive if filter is not applied
+        """
         unit = models.RPM(name='foo', epoch=0, version='1.1.1', release='0', arch='x86_64',
                           checksumtype='sha256', checksum='abc123')
-        self.metadata_files.add_repodata = mock.MagicMock()
-        unit.set_storage_path = mock.MagicMock()
-        unit.save = mock.MagicMock()
-        self.reposync.progress_report = mock.MagicMock()
         mock_rpm_parse.signature_enabled.return_value = False
 
-        self.reposync.add_rpm_unit(self.metadata_files, unit)
+        signature_filter_passed = self.reposync.signature_filter_passed(unit)
 
-        self.metadata_files.add_repodata.assert_called_once_with(unit)
         self.assertFalse(mock_rpm_parse.filter_signature.called)
+        self.assertTrue(signature_filter_passed)
 
 
 @skip_broken
@@ -273,12 +280,12 @@ class TestInit(BaseSyncTest):
         self.assertEqual(self.reposync.call_config.get(constants.CONFIG_SKIP, []), [])
 
 
-@skip_broken
+@mock.patch('tempfile.mkdtemp')
 class TestSyncFeed(BaseSyncTest):
 
     @mock.patch('pulp_rpm.plugins.importers.yum.sync.RepoSync.check_metadata',
                 spec_set=RepoSync.check_metadata)
-    def test_with_trailing_slash(self, mock_check_metadata):
+    def test_with_trailing_slash(self, mock_check_metadata, mock_mkdtemp):
 
         ret = self.reposync.sync_feed
 
@@ -286,7 +293,7 @@ class TestSyncFeed(BaseSyncTest):
 
     @mock.patch('pulp_rpm.plugins.importers.yum.sync.RepoSync.check_metadata',
                 spec_set=RepoSync.check_metadata)
-    def test_without_trailing_slash(self, mock_check_metadata):
+    def test_without_trailing_slash(self, mock_check_metadata, mock_mkdtemp):
 
         # it should add back the trailing slash if not present
         self.config.override_config[importer_constants.KEY_FEED] = self.url.rstrip('/')
@@ -297,7 +304,7 @@ class TestSyncFeed(BaseSyncTest):
 
     @mock.patch('pulp_rpm.plugins.importers.yum.sync.RepoSync.check_metadata',
                 spec_set=RepoSync.check_metadata)
-    def test_query_without_trailing_slash(self, mock_check_metadata):
+    def test_query_without_trailing_slash(self, mock_check_metadata, mock_mkdtemp):
         # it should add back the trailing slash if not present without changing the query string
         query = '?foo=bar'
         self.config.override_config[importer_constants.KEY_FEED] = self.url.rstrip('/') + query
@@ -307,7 +314,7 @@ class TestSyncFeed(BaseSyncTest):
 
         self.assertEqual(ret, expected)
 
-    def test_repo_url_is_none(self):
+    def test_repo_url_is_none(self, mock_mkdtemp):
 
         self.config.override_config[importer_constants.KEY_FEED] = None
 
@@ -319,7 +326,7 @@ class TestSyncFeed(BaseSyncTest):
                 spec_set=RepoSync._parse_as_mirrorlist)
     @mock.patch('pulp_rpm.plugins.importers.yum.sync.RepoSync.check_metadata',
                 spec_set=RepoSync.check_metadata)
-    def test_repo_url_is_url(self, mock_check_metadata, mock_parse_mirrorlist):
+    def test_repo_url_is_url(self, mock_check_metadata, mock_parse_mirrorlist, mock_mkdtemp):
 
         ret = self.reposync.sync_feed
 
@@ -332,7 +339,16 @@ class TestSyncFeed(BaseSyncTest):
                 spec_set=RepoSync.check_metadata)
     @mock.patch('pulp_rpm.plugins.importers.yum.sync.RepoSync._parse_as_mirrorlist',
                 spec_set=RepoSync._parse_as_mirrorlist)
-    def test_repo_url_is_mirror(self, mock_parse_mirrorlist, mock_check_metadata):
+    def test_repo_url_is_fedora_mirror(self, mock_parse_mirrorlist, mock_check_metadata,
+                                       mock_mkdtemp):
+        """
+        Fedora's mirror service has an unexpected behavior that even with a malformed path
+        such as this:
+        http://mirrors.fedoraproject.org/mirrorlist/BAD/DATA?repo=fedora-24&arch=x86_64
+        it will return the mirrorlist as if the path was just /mirrorlist/. That means
+        we won't get a Not Found error, but instead a parsing error, which shows up as
+        a PulpCodedException.
+        """
 
         mock_check_metadata.side_effect = PulpCodedException()
 
@@ -342,15 +358,44 @@ class TestSyncFeed(BaseSyncTest):
         mock_check_metadata.assert_called_once_with(self.url)
         mock_parse_mirrorlist.assert_called_once_with(self.url)
 
-    @mock.patch('shutil.rmtree', autospec=True)
-    @mock.patch('tempfile.mkdtemp', autospec=True)
     @mock.patch('pulp_rpm.plugins.importers.yum.sync.RepoSync.check_metadata',
                 spec_set=RepoSync.check_metadata)
-    def test_removes_tmp_dir(self, mock_check_matadata, mock_mkdtemp, mock_rmtree):
+    @mock.patch('pulp_rpm.plugins.importers.yum.sync.RepoSync._parse_as_mirrorlist',
+                spec_set=RepoSync._parse_as_mirrorlist)
+    def test_repo_url_is_mirror(self, mock_parse_mirrorlist, mock_check_metadata, mock_mkdtemp):
+        """
+        Tests the case where a connection error or 4xx is encountered trying to get
+        repodata/repomd.xml
+        """
 
-        self.reposync.sync_feed
+        mock_check_metadata.return_value = None
 
-        mock_rmtree.assert_called_with(mock_mkdtemp.return_value, ignore_errors=True)
+        ret = self.reposync.sync_feed
+        self.assertFalse(ret == [self.url])
+
+        mock_check_metadata.assert_called_once_with(self.url)
+        mock_parse_mirrorlist.assert_called_once_with(self.url)
+
+    @mock.patch('pulp_rpm.plugins.importers.yum.sync.RepoSync.check_metadata',
+                spec_set=RepoSync.check_metadata)
+    @mock.patch('pulp_rpm.plugins.importers.yum.sync.RepoSync._parse_as_mirrorlist',
+                spec_set=RepoSync._parse_as_mirrorlist)
+    def test_repo_url_has_no_yum_metadata(self, mock_parse_mirrorlist, mock_check_metadata,
+                                          mock_mkdtemp):
+        """
+        Test the case where the repo URL has no repomd.xml nor a mirrorlist.
+        """
+
+        mock_check_metadata.return_value = None
+        mock_parse_mirrorlist.return_value = []
+
+        ret = self.reposync.sync_feed
+        self.assertEqual(ret, [self.url])
+        # This must be set so the workflow skips ahead to the distribution sync attempt.
+        self.assertTrue(self.reposync.skip_repomd_steps)
+
+        mock_check_metadata.assert_called_once_with(self.url)
+        mock_parse_mirrorlist.assert_called_once_with(self.url)
 
 
 @skip_broken
@@ -608,7 +653,6 @@ class TestGetMetadata(BaseSyncTest):
 
         self.reposync.check_metadata(self.url)
 
-        self.assertTrue(self.reposync.skip_repomd_steps)
         self.assertEqual(self.reposync.repomd_not_found_reason, 'omg')
 
     @mock.patch.object(metadata, 'MetadataFiles', autospec=True)

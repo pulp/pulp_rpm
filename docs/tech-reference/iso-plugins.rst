@@ -152,3 +152,7 @@ configuration parameters are required.
  enabled, the distributed repository will become a protected repository. The given CA certificate will be used
  to verify the clients' entitlement certificates. If this certificate is not provided, the repository will be an
  unprotected repository.
+
+``relative_url``
+The path at which the repository will be served, relative to the root configured in
+``/etc/httpd/conf.d/pulp_rpm.conf``. The default root is ``/pulp/isos``.

@@ -120,14 +120,28 @@ class RepoSync(object):
         if repo_url:
             repo_url_slash = self._url_modify(repo_url, ensure_trailing_slash=True)
             self.tmp_dir = tempfile.mkdtemp(dir=self.working_dir)
+
+            # Try getting and parsing repomd.xml. If it works, return the URL.
             try:
-                self.check_metadata(repo_url_slash)
-                return [repo_url_slash]
+                # it returns None if it can't download repomd.xml
+                if self.check_metadata(repo_url_slash):
+                    return [repo_url_slash]
             except PulpCodedException:
-                # treat as mirrorlist
-                return self._parse_as_mirrorlist(repo_url)
-            finally:
-                shutil.rmtree(self.tmp_dir, ignore_errors=True)
+                # Fedora's mirror service has an unexpected behavior that even with a malformed path
+                # such as this:
+                # http://mirrors.fedoraproject.org/mirrorlist/BAD/DATA?repo=fedora-24&arch=x86_64
+                # it will return the mirrorlist as if the path was just /mirrorlist/. That means
+                # we won't get a Not Found error, but instead a parsing error, which shows up as
+                # a PulpCodedException.
+                pass
+
+            # Try treating it as a mirrorlist.
+            urls = self._parse_as_mirrorlist(repo_url)
+            if urls:
+                return urls
+
+            # It's not a mirrorlist either, so skip all repomd steps.
+            self.skip_repomd_steps = True
         return [repo_url]
 
     @property
@@ -357,9 +371,7 @@ class RepoSync(object):
         try:
             metadata_files.download_repomd()
         except IOError as e:
-            # Skip the rest of this method, and tell the rest of the repomd-dependent steps to
-            # also skip what they do.
-            self.skip_repomd_steps = True
+            # remember the reason so it can be reported to the user if no treeinfo is found either.
             self.repomd_not_found_reason = e.message
             _logger.debug(_('No yum repo metadata found.'))
             return
@@ -658,6 +670,19 @@ class RepoSync(object):
             unit.save()
         except NotUniqueError:
             unit = unit.__class__.objects.filter(**unit.unit_key).first()
+
+        return unit
+
+    def signature_filter_passed(self, unit):
+        """
+        Decide whether to associate unit or not based on its signature.
+
+        :param unit: A content unit.
+        :type unit: pulp_rpm.plugins.db.models.RpmBase
+
+        :rtype: bool
+        :return: True if unit passes the signature filter and has to be associated
+        """
         if rpm_parse.signature_enabled(self.config):
             try:
                 rpm_parse.filter_signature(unit, self.config)
@@ -670,9 +695,9 @@ class RepoSync(object):
 
                 self.progress_report['content'].failure(unit, error_report)
                 self.conduit.set_progress(self.progress_report)
-                return unit
+                return False
 
-        return unit
+        return True
 
     def associate_rpm_unit(self, unit):
         """
