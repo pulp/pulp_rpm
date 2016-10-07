@@ -5,11 +5,7 @@ import consumer_group_cudl
 import consumer_group_members
 from bind import YumConsumerBindCommand, YumConsumerUnbindCommand
 from consumer_group_bind import ConsumerGroupBindCommand, ConsumerGroupUnbindCommand
-from consumer_group_package import ConsumerGroupPackageSection
 from errata import YumConsumerErrataSection
-from package import YumConsumerPackageSection
-from pulp_rpm.extensions.admin.rpm_admin_consumer.package_group import \
-    YumConsumerPackageGroupSection
 
 
 # -- framework hook -----------------------------------------------------------
@@ -24,8 +20,6 @@ def initialize(context):
     consumer_section.add_command(YumConsumerUnbindCommand(context))
 
     # New subsections
-    consumer_section.add_subsection(YumConsumerPackageSection(context))
-    consumer_section.add_subsection(YumConsumerPackageGroupSection(context))
     consumer_section.add_subsection(YumConsumerErrataSection(context))
 
     # Consumer groups
@@ -53,6 +47,3 @@ def initialize(context):
     members_section.add_command(consumer_group_members.ListConsumerGroupMembersCommand(context))
     members_section.add_command(consumer_group_members.AddConsumerGroupMembersCommand(context))
     members_section.add_command(consumer_group_members.RemoveConsumerGroupMembersCommand(context))
-
-    # New subsections for group subsection
-    consumer_group_section.add_subsection(ConsumerGroupPackageSection(context))
