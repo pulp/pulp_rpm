@@ -118,11 +118,17 @@ def check_all_and_associate(wanted, conduit, download_deferred, catalog):
         # fields = model.unit_key_fields + ('_storage_path',)
         unit_generator = (model(**unit_tuple._asdict()) for unit_tuple in values.copy())
         for unit in units_controller.find_units(unit_generator):
-            # Existing RPMs, DRPMs and SRPMs are disqualified when the associated
-            # package file does not exist and downloading is not deferred.
-            if not download_deferred and unit_type in (
-                    ids.TYPE_ID_RPM, ids.TYPE_ID_SRPM, ids.TYPE_ID_DRPM):
-                if unit._storage_path is None or not os.path.isfile(unit._storage_path):
+            is_rpm_drpm_srpm = unit_type in (ids.TYPE_ID_RPM, ids.TYPE_ID_SRPM, ids.TYPE_ID_DRPM)
+            file_exists = unit._storage_path is not None and os.path.isfile(unit._storage_path)
+            if is_rpm_drpm_srpm:
+                # no matter what is the download policy, if existing unit has a valid storage_path,
+                # we need to set the downloaded flag to True
+                if file_exists and not unit.downloaded:
+                    unit.downloaded = True
+                    unit.save()
+                # Existing RPMs, DRPMs and SRPMs are disqualified when the associated
+                # package file does not exist and downloading is not deferred.
+                if not download_deferred and not file_exists:
                     continue
             catalog.add(unit)
             repo_controller.associate_single_unit(conduit.repo, unit)
