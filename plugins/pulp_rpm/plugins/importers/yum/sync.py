@@ -138,6 +138,9 @@ class RepoSync(object):
             # Try treating it as a mirrorlist.
             urls = self._parse_as_mirrorlist(repo_url)
             if urls:
+                # set flag to True so when we would iterate through list of urls
+                # we would not skip repomd steps
+                self.skip_repomd_steps = False
                 return urls
 
             # It's not a mirrorlist either, so skip all repomd steps.
@@ -282,6 +285,11 @@ class RepoSync(object):
                     if not (skip or self.skip_repomd_steps):
                         purge.remove_repo_duplicate_nevra(self.conduit.repo_id)
 
+                # skip to the next URL in case metadata was not found, neither it was possible to
+                # sync distribution that does not have yum repo metadata
+                if not self.metadata_found:
+                    continue
+
             except PulpCodedException, e:
                 # Check if the caught exception indicates that the mirror is bad.
                 # Try next mirror in the list without raising the exception.
@@ -374,8 +382,11 @@ class RepoSync(object):
             # remember the reason so it can be reported to the user if no treeinfo is found either.
             self.repomd_not_found_reason = e.message
             _logger.debug(_('No yum repo metadata found.'))
+            # set flag to True in order to skip repomd steps, since metadata was not found
+            self.skip_repomd_steps = True
             return
 
+        self.skip_repomd_steps = False
         self.metadata_found = True
         _logger.info(_('Parsing metadata.'))
 
