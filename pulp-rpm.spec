@@ -269,6 +269,9 @@ A collection of yum plugins supplementing Pulp consumer operations.
 
 
 %changelog
+* Tue Oct 18 2016 Sean Myers <sean.myers@redhat.com> 2.10.1-0.1.beta
+- Pulp rebuild
+
 * Mon Aug 29 2016 Sean Myers <sean.myers@redhat.com> 2.10.0-0.4.beta
 - Pulp rebuild
 
