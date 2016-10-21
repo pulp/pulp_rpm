@@ -199,8 +199,8 @@ class YumProfiler(Profiler):
 
         # this needs to be fetched outside of the units loop :)
         if content_type == TYPE_ID_ERRATA:
-            available_rpm_nevras = [YumProfiler._create_nevra(r.unit_key) for r in
-                                    conduit.get_repo_units(bound_repo_id, TYPE_ID_RPM)]
+            available_rpm_nevras = set([YumProfiler._create_nevra(r.unit_key) for r in
+                                        conduit.get_repo_units(bound_repo_id, TYPE_ID_RPM)])
 
         applicable_unit_ids = []
         # Check applicability for each unit
@@ -478,7 +478,4 @@ class YumProfiler(Profiler):
         testing with real data.
 
         """
-        nevra = {'name': str(r['name']), 'epoch': str(r['epoch']),
-                 'version': str(r['version']), 'release': str(r['release']),
-                 'arch': str(r['arch'])}
-        return nevra
+        return tuple(str(r[k]) for k in ('name', 'epoch', 'version', 'release', 'arch'))
