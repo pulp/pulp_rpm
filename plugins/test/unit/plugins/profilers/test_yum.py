@@ -341,8 +341,7 @@ class TestYumProfilerErrata(rpm_support_base.PulpRPMTests):
                'extra_field': 'extra'}
 
         result = YumProfiler._create_nevra(rpm)
-        self.assertEquals(result, {'name': 'foo', 'epoch': '0', 'version': '1',
-                                   'release': '5', 'arch': '8088'})
+        self.assertEquals(result, ('foo', '0', '1', '5', '8088'))
 
 
 class TestYumProfilerRPM(rpm_support_base.PulpRPMTests):
