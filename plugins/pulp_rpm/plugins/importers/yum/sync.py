@@ -8,6 +8,7 @@ import shutil
 import tempfile
 import traceback
 
+from collections import namedtuple
 from gettext import gettext as _
 from cStringIO import StringIO
 from urlparse import urljoin
@@ -37,6 +38,13 @@ from pulp_rpm.plugins.importers.yum.utils import RepoURLModifier
 
 
 _logger = logging.getLogger(__name__)
+
+
+# Data about wanted units.
+# size - The size in bytes for the associated file.
+# download_path - The relative path within the upstream YUM repository
+#                 used to construct the download URL.
+WantedUnitInfo = namedtuple('WantedUnitInfo', ('size', 'download_path'))
 
 
 class RepoSync(object):
@@ -543,11 +551,11 @@ class RepoSync(object):
             # check for the units that are not in the repo, but exist on the server
             # and associate them to the repo
             to_download = existing.check_all_and_associate(
-                wanted.iterkeys(), self.conduit, self.download_deferred, catalog)
+                wanted, self.conduit, self.download_deferred, catalog)
             count = len(to_download)
             size = 0
             for unit in to_download:
-                size += wanted[unit]
+                size += wanted[unit].size
             return to_download, count, size
         finally:
             primary_file_handle.close()
@@ -587,10 +595,10 @@ class RepoSync(object):
                     # check for the units that are not in the repo, but exist on the server
                     # and associate them to the repo
                     to_download = existing.check_all_and_associate(
-                        wanted.iterkeys(), self.conduit, self.download_deferred, catalog)
+                        wanted, self.conduit, self.download_deferred, catalog)
                     count += len(to_download)
                     for unit in to_download:
-                        size += wanted[unit]
+                        size += wanted[unit].size
                 finally:
                     presto_file_handle.close()
 
@@ -663,7 +671,7 @@ class RepoSync(object):
                     unit.downloaded = False
                     unit = self.add_rpm_unit(metadata_files, unit)
                     self.associate_rpm_unit(unit)
-                    catalog.add(unit)
+                    catalog.add(unit, unit.download_path)
                 return
 
             download_wrapper = alternate.Packages(
@@ -719,7 +727,7 @@ class RepoSync(object):
                             unit.downloaded = False
                             unit = self.add_rpm_unit(metadata_files, unit)
                             self.associate_rpm_unit(unit)
-                            catalog.add(unit)
+                            catalog.add(unit, unit.download_path)
                         continue
 
                     download_wrapper = packages.Packages(
@@ -920,28 +928,29 @@ class RepoSync(object):
         for model in package_info_generator:
             versions = wanted.setdefault(model.key_string_without_version, {})
             serialized_version = model.complete_version_serialized
-            size = model.size
+            info = WantedUnitInfo(model.size, model.download_path)
 
             # if we are limited on the number of old versions we can have,
             if number_old_versions_to_keep is not None:
                 number_to_keep = number_old_versions_to_keep + 1
                 if len(versions) < number_to_keep:
-                    versions[serialized_version] = (model.unit_key_as_named_tuple, size)
+                    versions[serialized_version] = (model.unit_key_as_named_tuple, info)
                 else:
                     smallest_version = sorted(versions.keys(), reverse=True)[:number_to_keep][-1]
                     if serialized_version > smallest_version:
                         del versions[smallest_version]
-                        versions[serialized_version] = (model.unit_key_as_named_tuple, size)
+                        versions[serialized_version] = (model.unit_key_as_named_tuple, info)
             else:
-                versions[serialized_version] = (model.unit_key_as_named_tuple, size)
+                versions[serialized_version] = (model.unit_key_as_named_tuple, info)
         ret = {}
         for units in wanted.itervalues():
-            for unit, size in units.itervalues():
-                ret[unit] = size
+            for unit, info in units.itervalues():
+                ret[unit] = info
 
         return ret
 
-    def _filtered_unit_generator(self, units, to_download=None):
+    @staticmethod
+    def _filtered_unit_generator(units, to_download=None):
         """
         Given an iterator of Package instances and a collection (preferably a
         set for performance reasons) of Packages as named tuples, this returns
@@ -986,12 +995,15 @@ class PackageCatalog(object):
         self.importer_id = importer_id
         self.base_url = base_url
 
-    def add(self, unit):
+    def add(self, unit, path):
         """
         Add the specified content unit to the catalog.
 
         :param unit: A unit being added.
         :type unit: pulp_rpm.plugins.db.models.RpmBase
+        :param path: The relative path within the upstream YUM repository
+#           used to construct the download URL.
+        :type path: str
         """
         unit.set_storage_path(unit.filename)
         entry = LazyCatalogEntry()
@@ -999,7 +1011,7 @@ class PackageCatalog(object):
         entry.importer_id = str(self.importer_id)
         entry.unit_id = unit.id
         entry.unit_type_id = unit.type_id
-        entry.url = urljoin(self.base_url, unit.download_path)
+        entry.url = urljoin(self.base_url, path)
         entry.checksum = unit.checksum
         entry.checksum_algorithm = unit.checksumtype
         entry.save_revision()
