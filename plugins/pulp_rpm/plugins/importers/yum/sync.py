@@ -252,6 +252,7 @@ class RepoSync(object):
             # we delete below
             self.tmp_dir = tempfile.mkdtemp(dir=self.working_dir)
             url_count += 1
+            is_last_mirror = url_count == len(self.sync_feed)
             try:
                 with self.update_state(self.progress_report['metadata']):
                     metadata_files = self.check_metadata(url)
@@ -293,9 +294,11 @@ class RepoSync(object):
                     if not (skip or self.skip_repomd_steps):
                         purge.remove_repo_duplicate_nevra(self.conduit.repo_id)
 
-                # skip to the next URL in case metadata was not found, neither it was possible to
-                # sync distribution that does not have yum repo metadata
-                if not self.metadata_found:
+                # skip to the next URL in case:
+                #  - metadata was not found
+                #  - it was not possible to sync distribution that does not have yum repo metadata
+                #  - it was not the last mirror in the list
+                if not self.metadata_found and not is_last_mirror:
                     continue
 
             except PulpCodedException, e:
@@ -303,9 +306,8 @@ class RepoSync(object):
                 # Try next mirror in the list without raising the exception.
                 # In case it was the last mirror in the list, raise the exception.
                 bad_mirror_exceptions = [error_codes.RPM1004, error_codes.RPM1006]
-                if (e.error_code in bad_mirror_exceptions) and \
-                        url_count != len(self.sync_feed):
-                            continue
+                if (e.error_code in bad_mirror_exceptions) and not is_last_mirror:
+                    continue
                 else:
                     self._set_failed_state(e)
                     raise
