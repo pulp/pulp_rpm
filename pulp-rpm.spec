@@ -271,6 +271,14 @@ A collection of yum plugins supplementing Pulp consumer operations.
 
 
 %changelog
+* Tue Oct 25 2016 Sean Myers <sean.myers@redhat.com> 2.11.0-0.1.beta
+- added rsync distributor (jluza@redhat.com)
+- 1982 - --force-full option for yum importer (fdobrovo@redhat.com)
+- 1876 - Add in a sample program to generate the file (bkearney@redhat.com)
+- fixed sync for reference title (jluza@redhat.com)
+- 1782 - reboot_suggested is False by default if during unit upload there was
+  not specified any value. (ipanova@redhat.com)
+
 * Wed Apr 06 2016 Sean Myers <sean.myers@redhat.com> 2.8.2-1
 - Pulp rebuild
 
