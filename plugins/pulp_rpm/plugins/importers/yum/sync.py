@@ -632,6 +632,19 @@ class RepoSync(object):
             unit.save()
         except NotUniqueError:
             unit = unit.__class__.objects.filter(**unit.unit_key).first()
+
+        return unit
+
+    def signature_filter_passed(self, unit):
+        """
+        Decide whether to associate unit or not based on its signature.
+
+        :param unit: A content unit.
+        :type unit: pulp_rpm.plugins.db.models.RpmBase
+
+        :rtype: bool
+        :return: True if unit passes the signature filter and has to be associated
+        """
         if rpm_parse.signature_enabled(self.config):
             try:
                 rpm_parse.filter_signature(unit, self.config)
@@ -644,12 +657,21 @@ class RepoSync(object):
 
                 self.progress_report['content'].failure(unit, error_report)
                 self.conduit.set_progress(self.progress_report)
-                return unit
+                return False
 
+        return True
+
+    def associate_rpm_unit(self, unit):
+        """
+        Associate unit with a repo and report this unit as a successfully synced one.
+        It should be a last step in the sync of one unit.
+
+        :param unit: A content unit
+        :type  unit: pulp_rpm.plugins.db.models.RpmBase
+        """
         repo_controller.associate_single_unit(self.conduit.repo, unit)
         self.progress_report['content'].success(unit)
         self.conduit.set_progress(self.progress_report)
-        return unit
 
     def download_rpms(self, metadata_files, rpms_to_download, url):
         """
@@ -683,6 +705,7 @@ class RepoSync(object):
                 for unit in units_to_download:
                     unit.downloaded = False
                     unit = self.add_rpm_unit(metadata_files, unit)
+                    self.associate_rpm_unit(unit)
                     catalog.add(unit)
                 return
 
@@ -738,6 +761,7 @@ class RepoSync(object):
                         for unit in units_to_download:
                             unit.downloaded = False
                             unit = self.add_rpm_unit(metadata_files, unit)
+                            self.associate_rpm_unit(unit)
                             catalog.add(unit)
                         continue
 
