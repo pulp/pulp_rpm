@@ -234,7 +234,7 @@ class RepoSync(object):
                 _logger.info(_('Downloading additional units.'))
 
                 with self.update_state(self.distribution_report,
-                                       models.Distribution._content_type_id) as skip:
+                                       ids.TYPE_ID_DISTRO) as skip:
                     if not skip:
                         dist_sync = DistSync(self, url)
                         dist_sync.run()
