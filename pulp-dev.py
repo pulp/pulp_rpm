@@ -25,19 +25,14 @@ DIRS = (
 LINKS = (
     # RPM Support Configuration
     ('plugins/etc/httpd/conf.d/pulp_rpm.conf', '/etc/httpd/conf.d/pulp_rpm.conf'),
-    ('handlers/etc/pulp/agent/conf.d/rpm.conf', '/etc/pulp/agent/conf.d/rpm.conf'),
-    ('handlers/etc/pulp/agent/conf.d/bind.conf', '/etc/pulp/agent/conf.d/bind.conf'),
-    ('handlers/etc/pulp/agent/conf.d/linux.conf', '/etc/pulp/agent/conf.d/linux.conf'),
     ('plugins/etc/pulp/vhosts80/rpm.conf', '/etc/pulp/vhosts80/rpm.conf'),
-    ('handlers/etc/yum/pluginconf.d/pulp-profile-update.conf',
-     '/etc/yum/pluginconf.d/pulp-profile-update.conf'),
+    ('/etc/yum/pluginconf.d/pulp-profile-update.conf'),
 
     # RPM Support Plugins
     ('plugins/usr/share/pulp-rpm', '/usr/share/pulp-rpm'),
 
     # RPM Support Web Configuration
-    ('handlers/usr/lib/yum-plugins/pulp-profile-update.py',
-     '/usr/lib/yum-plugins/pulp-profile-update.py'),
+    ('/usr/lib/yum-plugins/pulp-profile-update.py'),
 )
 
 

@@ -66,19 +66,3 @@ support installed. If not, just install the following package.
 ::
 
   $ sudo yum install pulp-rpm-consumer-extensions
-
-Agent
------
-
-If you followed the Pulp User Guide install instructions, you already have RPM
-support installed. If not, just install the following package.
-
-::
-
-  $ sudo yum install pulp-rpm-handlers
-
-Then restart the Pulp agent.
-
-::
-
-  $ sudo service pulp-agent restart
