@@ -173,10 +173,16 @@ class ISOSyncRun(listener.DownloadEventListener):
         """
         Add entries to the deferred downloading (lazy) catalog.
 
+        Skip entries which are not eligible for lazy catalog.
+        (Don't have url attribute.)
+
         :param units: A list of: pulp_rpm.plugins.db.models.ISO.
         :type units: list
         """
         for unit in units:
+            # Unit is from pulp manifest
+            if not hasattr(unit, "url"):
+                continue
             unit.set_storage_path(unit.name)
             entry = LazyCatalogEntry()
             entry.path = unit.storage_path
@@ -229,7 +235,8 @@ class ISOSyncRun(listener.DownloadEventListener):
                     iso.save()
                 except NotUniqueError:
                     iso = iso.__class__.objects.filter(**iso.unit_key).first()
-                self.add_catalog_entries([iso])
+                else:
+                    self.add_catalog_entries([iso])
                 repo_controller.associate_single_unit(self.sync_conduit.repo, iso)
         else:
             self._download_isos(local_missing_isos)
