@@ -16,7 +16,7 @@ from pulp.server.db import model
 from pulp.server.exceptions import InvalidValue, PulpCodedException
 from pulp.server.controllers import repository as repo_controller
 
-from pulp_rpm.common import constants, ids
+from pulp_rpm.common import constants, ids, file_utils
 from pulp_rpm.yum_plugin import util
 from pulp_rpm.plugins import error_codes
 from pulp_rpm.plugins.db import models
@@ -63,7 +63,6 @@ class BaseYumRepoPublisher(platform_steps.PluginStep):
         super(BaseYumRepoPublisher, self).__init__(constants.PUBLISH_REPO_STEP, repo,
                                                    publish_conduit, config,
                                                    plugin_type=distributor_type, **kwargs)
-
         self.repomd_file_context = None
         self.checksum_type = None
 
@@ -475,7 +474,8 @@ class PublishRpmStep(platform_steps.UnitModelPluginStep):
         """
         unit = item
         source_path = unit._storage_path
-        destination_path = os.path.join(self.get_working_dir(), unit.filename)
+        relative_path = file_utils.make_packages_relative_path(unit.filename)
+        destination_path = os.path.join(self.get_working_dir(), relative_path)
         plugin_misc.create_symlink(source_path, destination_path)
         for package_dir in self.dist_step.package_dirs:
             destination_path = os.path.join(package_dir, unit.filename)
@@ -666,7 +666,7 @@ class PublishRpmAndDrpmStepIncremental(platform_steps.UnitModelPluginStep):
         """
         unit = item
         source_path = unit._storage_path
-        relative_path = unit.filename
+        relative_path = file_utils.make_packages_relative_path(unit.filename)
         destination_path = os.path.join(self.get_working_dir(), relative_path)
         plugin_misc.create_symlink(source_path, destination_path)
 

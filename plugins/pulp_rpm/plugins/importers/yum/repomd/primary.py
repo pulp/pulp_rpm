@@ -4,6 +4,7 @@ import os
 
 from pulp.server import util
 
+from pulp_rpm.common import file_utils
 from pulp_rpm.plugins.db import models
 from pulp_rpm.plugins.importers.yum import utils
 
@@ -151,7 +152,7 @@ def process_package_element(package_element):
         # we don't make any attempt to preserve the original directory structure
         # this element will end up being converted back to XML and stuffed into
         # the DB on the unit object, so this  is our chance to modify it.
-        location_element.attrib['href'] = filename
+        location_element.attrib['href'] = file_utils.make_packages_relative_path(filename)
 
     format_element = package_element.find(FORMAT_TAG)
     package_info.update(_process_format_element(format_element))
