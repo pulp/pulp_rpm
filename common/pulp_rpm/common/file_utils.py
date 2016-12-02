@@ -1,4 +1,7 @@
 import hashlib
+import os
+
+from .constants import PULP_PACKAGES_DIR
 
 CHECKSUM_CHUNK_SIZE = 32 * 1024 * 1024
 
@@ -34,3 +37,17 @@ def calculate_size(file_handle):
     file_handle.seek(0, 2)
     size = file_handle.tell()
     return size
+
+
+def make_packages_relative_path(filename):
+    """Create relative path for package inside repository.
+
+    e.g. "foo.rpm" -> "Packages/f/foo.rpm"
+
+    :param filename: Path to RPM/SRPM file or just it's filename
+    :type  filename: string
+    :return:         Relative path to package inside repository
+    :rtype:          string
+    """
+    _filename = os.path.basename(filename)
+    return os.path.join(PULP_PACKAGES_DIR, _filename[0].lower(), _filename)
