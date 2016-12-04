@@ -8,7 +8,7 @@ from urlparse import urljoin
 
 import mongoengine
 from pulp.plugins.util import verification
-from pulp.server.db.model import ContentUnit, FileContentUnit
+from pulp.server.db.model import ContentUnit, FileContentUnit, RepositoryContentUnit
 
 from pulp_rpm.common import version_utils
 from pulp_rpm.common import file_utils
@@ -191,6 +191,21 @@ class NonMetadataPackage(UnitMixin, FileContentUnit):
             self.complete_version_serialized,
             other.complete_version_serialized
         )
+
+    def is_associated(self, repo_id):
+        """
+        Indicate if unit is associated with the particular repository.
+
+        :param repo_id: id of repository association with which should be checked
+        :type  repo_id: str
+
+        :return: 0 if unit is not associated with repository, >0 otherwise
+        :rtype: int
+        """
+        qs = RepositoryContentUnit.objects(repo_id=repo_id,
+                                           unit_id=self.id,
+                                           unit_type_id=self._content_type_id)
+        return qs.count()
 
 
 class Distribution(UnitMixin, FileContentUnit):
@@ -798,8 +813,10 @@ class Errata(UnitMixin, ContentUnit):
         # the pkglist, because mongoengine does not allow to modify existing items in the list
         # and add new items to the list at the same time.
         self.save()
-        self.pkglist += collections_to_add
-        self.save()
+
+        if collections_to_add:
+            self.pkglist += collections_to_add
+            self.save()
 
 
 class PackageGroup(UnitMixin, ContentUnit):
