@@ -1189,8 +1189,10 @@ class Errata(UnitMixin, ContentUnit):
         # the pkglist, because mongoengine does not allow to modify existing items in the list
         # and add new items to the list at the same time.
         self.save()
-        self.pkglist += collections_to_add
-        self.save()
+
+        if collections_to_add:
+            self.pkglist += collections_to_add
+            self.save()
 
 
 class PackageGroup(UnitMixin, ContentUnit):
