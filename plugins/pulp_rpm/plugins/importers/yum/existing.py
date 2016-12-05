@@ -131,8 +131,9 @@ def check_all_and_associate(wanted, conduit, download_deferred, catalog):
                 # package file does not exist and downloading is not deferred.
                 if not download_deferred and not file_exists:
                     continue
-            catalog.add(unit, wanted[unit.unit_key_as_named_tuple].download_path)
-            repo_controller.associate_single_unit(conduit.repo, unit)
+            if not unit.is_associated(conduit.repo.repo_id):
+                catalog.add(unit, wanted[unit.unit_key_as_named_tuple].download_path)
+                repo_controller.associate_single_unit(conduit.repo, unit)
             values.discard(unit.unit_key_as_named_tuple)
     still_wanted = set()
     still_wanted.update(*sorted_units.values())
