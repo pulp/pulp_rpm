@@ -13,7 +13,7 @@
 # ---- Pulp (rpm) --------------------------------------------------------------
 
 Name: pulp-rpm
-Version: 2.10.2
+Version: 2.10.3
 Release: 1%{?dist}
 Summary: Support for RPM content in the Pulp platform
 Group: Development/Languages
@@ -269,10 +269,7 @@ A collection of yum plugins supplementing Pulp consumer operations.
 
 
 %changelog
-* Thu Nov 17 2016 Sean Myers <sean.myers@redhat.com> 2.10.2-1
-- Pulp rebuild
-
-* Mon Oct 31 2016 Sean Myers <sean.myers@redhat.com> 2.10.1-1
+* Thu Dec 01 2016 Sean Myers <sean.myers@redhat.com> 2.10.3-1
 - Pulp rebuild
 
 * Tue Oct 18 2016 Sean Myers <sean.myers@redhat.com> 2.10.1-0.1.beta

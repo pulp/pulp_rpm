@@ -100,8 +100,9 @@ def check_all_and_associate(wanted, conduit, config, download_deferred, catalog)
     also associates the unit to the given repo. Note that the check for the actual file
     is performed only for the supported unit types.
 
-    :param wanted:            iterable of units as namedtuples
-    :type  wanted:            iterable
+    :param wanted:            dict where keys are units as namedtuples, and values are
+                              WantedUnitInfo instances
+    :type  wanted:            dict
     :param conduit:           repo sync conduit
     :type  conduit:           pulp.plugins.conduits.repo_sync.RepoSync
     :param config:            configuration instance passed to the importer
@@ -115,7 +116,7 @@ def check_all_and_associate(wanted, conduit, config, download_deferred, catalog)
                 named tuples received as input were not found on the server.
     :rtype:     set
     """
-    sorted_units = _sort_by_type(wanted)
+    sorted_units = _sort_by_type(wanted.iterkeys())
     for unit_type, values in sorted_units.iteritems():
         model = plugin_api.get_unit_model_by_id(unit_type)
         # FIXME "fields" does not get used, but it should
@@ -134,7 +135,7 @@ def check_all_and_associate(wanted, conduit, config, download_deferred, catalog)
                 # package file does not exist and downloading is not deferred.
                 if not download_deferred and not file_exists:
                     continue
-            catalog.add(unit)
+            catalog.add(unit, wanted[unit.unit_key_as_named_tuple].download_path)
             if rpm_parse.signature_enabled(config):
                 try:
                     rpm_parse.filter_signature(unit, config)
