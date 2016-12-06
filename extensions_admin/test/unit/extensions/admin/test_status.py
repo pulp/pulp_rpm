@@ -1,8 +1,8 @@
 """
 Tests for the pulp_rpm.extensions.admin.status module.
 """
-from pulp.plugins.util import verification
 import mock
+import pulp.server.util as server_util
 
 from pulp_rpm.common import constants
 from pulp_rpm.devel import client_base
@@ -31,7 +31,7 @@ class RpmStatusRendererTests(client_base.PulpClientTests):
             constants.NAME: model.unit_key['name'],
             constants.ERROR_CODE: constants.ERROR_CHECKSUM_TYPE_UNKNOWN,
             constants.CHECKSUM_TYPE: model.unit_key['checksumtype'],
-            constants.ACCEPTED_CHECKSUM_TYPES: verification.CHECKSUM_FUNCTIONS.keys()}
+            constants.ACCEPTED_CHECKSUM_TYPES: server_util.CHECKSUM_FUNCTIONS.keys()}
         content_report.failure(model, error_report)
         content_report['state'] = constants.STATE_COMPLETE
         progress_report = {'yum_importer': {'content': content_report}}
@@ -44,6 +44,33 @@ class RpmStatusRendererTests(client_base.PulpClientTests):
         self.assertTrue('package errors encountered' in
                         self.prompt.render_failure_message.mock_calls[0][1][0])
         self.assertTrue('An invalid checksum type (sha1) was detected.' in
+                        self.prompt.render_failure_message.mock_calls[1][1][0])
+
+    def test_render_download_step_invalid_signature_error(self):
+        """
+        Assert correct behavior from render_download_step() when the progress report contains errors
+        about packages that did not pass signature filtering.
+        """
+        self.prompt.render_failure_message = mock.MagicMock()
+        content_report = report.ContentReport()
+        model = models.RPM(name='name', epoch=0, version='1.0.1', release='2', arch='x86_64',
+                           checksumtype='sha1', checksum='abcd', size=1024)
+        error_report = {
+            'count': 32,
+            constants.ERROR_CODE: 'invalid_package_signature',
+        }
+        content_report.failure(model, error_report)
+        content_report['state'] = constants.STATE_COMPLETE
+        progress_report = {'yum_importer': {'content': content_report}}
+        renderer = status.RpmStatusRenderer(self.context)
+
+        renderer.render_download_step(progress_report)
+
+        # The call above should not have failed, and the error messages asserted below should have
+        # been printed for the user.
+        self.assertTrue('package errors encountered' in
+                        self.prompt.render_failure_message.mock_calls[0][1][0])
+        self.assertTrue('32 packages failed signature filter and were not imported.' in
                         self.prompt.render_failure_message.mock_calls[1][1][0])
 
     def test_render_distribution_sync_step_with_error(self):

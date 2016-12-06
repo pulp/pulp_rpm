@@ -54,6 +54,23 @@ For each Pulp-hosted repository that is protected, a consumer certificate can be
 supplied that will be distributed to consumers when they bind. That certificate
 will allow them to access the protected repository.
 
+Package Signatures and GPG Key ID Filtering
+-------------------------------------------
+
+RPM repositories have limited support for acting on package GPG signatures,
+including requiring packages to have GPG signatures, and whitelisting signing
+key IDs to only sync packages with matching signing key IDs. The signing key
+ID filtering feature uses the 8-character "short" key ID, which does not uniquely
+identify a GPG signing key. This feature does not verify package signatures.
+
+This signature filtering is granted within the current importer settings and current
+import of the content, without taking into consideration content already present in
+the repository.
+
+These features cannot be enable with on_demand or background download policies, since
+access to the package files is required to get the GPG signature information.
+Only the immediate download policy is compatible with signature filtering.
+
 Export
 ------
 

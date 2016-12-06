@@ -6,12 +6,16 @@ import math
 import os
 import shutil
 import tempfile
+from xml.etree import ElementTree as ET
 
 import mock
-
 from pulp.common.compat import unittest
+import pulp.common.error_codes as platform_error_codes
+from pulp.server.exceptions import PulpCodedException
+
 from pulp_rpm.common import ids
 from pulp_rpm.devel.skip import skip_broken
+from pulp_rpm.plugins import error_codes
 from pulp_rpm.plugins.db import models
 
 
@@ -24,6 +28,160 @@ class TestNonMetadataModel(unittest.TestCase):
         https://pulp.plan.io/issues/1792
         """
         models.NonMetadataPackage(version='1.0.0', release='2', checksumtype=None, checksum=None)
+
+
+class TestNonMetadataGetOrCalculateChecksum(unittest.TestCase):
+    def setUp(self):
+        super(TestNonMetadataGetOrCalculateChecksum, self).setUp()
+        self.model = models.RPM(name='foo', epoch='0', version='1.0.0', release='2', arch='noarch',
+                                checksumtype='sha1', checksum='abc123')
+        self.model.checksums = {'sha256': 'asum'}
+
+    def test_invalid_type(self):
+        self.assertRaises(ValueError, self.model.get_or_calculate_and_save_checksum, 'sha1.5')
+
+    def test_value_already_in_checksums(self):
+        ret = self.model.get_or_calculate_and_save_checksum('sha256')
+
+        self.assertEqual(ret, 'asum')
+
+    def test_value_in_unit_key(self):
+        with mock.patch.object(self.model, 'save') as mock_save:
+            ret = self.model.get_or_calculate_and_save_checksum('sha1')
+
+        self.assertEqual(ret, self.model.checksum)
+        # make sure the checksum was added to the dict and the model was saved
+        self.assertTrue('sha1' in self.model.checksums)
+        mock_save.assert_called_once_with()
+
+    @mock.patch('__builtin__.open')
+    @mock.patch('pulp.server.util.calculate_checksums')
+    def test_calculate_value(self, mock_calculate_checksums, mock_open):
+        mock_calculate_checksums.return_value = {'md5': 'md5 sum'}
+
+        with mock.patch.object(self.model, 'save') as mock_save:
+            ret = self.model.get_or_calculate_and_save_checksum('md5')
+
+        self.assertEqual(ret, 'md5 sum')
+        mock_save.assert_called_once_with()
+
+    def test_not_downloaded(self):
+        self.model.downloaded = False
+
+        with self.assertRaises(PulpCodedException) as assertion:
+            self.model.get_or_calculate_and_save_checksum('md5')
+
+        self.assertEqual(assertion.exception.error_code, error_codes.RPM1008)
+
+    def test_cannot_open_file_missing(self):
+        """
+        When the file is missing but expected, raise a PulpCodedException.
+        """
+        self.model._storage_path = '/tmp/a/b/c/d/e'
+
+        with self.assertRaises(PulpCodedException) as assertion:
+            self.model.get_or_calculate_and_save_checksum('md5')
+
+        self.assertEqual(assertion.exception.error_code, platform_error_codes.PLP0048)
+
+    @mock.patch('__builtin__.open')
+    def test_cannot_open_other_reason(self, mock_open):
+        """
+        Make sure if there is some other reason that opening the file failed, that bubbles up.
+        """
+        class MyException(Exception):
+            pass
+
+        mock_open.side_effect = MyException
+        self.model._storage_path = '/tmp/a/b/c/d/e'
+
+        self.assertRaises(MyException, self.model.get_or_calculate_and_save_checksum, 'md5')
+
+
+class TestRpmBaseModifyXML(unittest.TestCase):
+    # a snippet from repodata primary xml for a package
+    # this snippet has been truncated to only provide the tags needed to test
+    PRIMARY_EXCERPT = '''
+<package type="rpm">
+  <name>shark</name>
+  <arch>noarch</arch>
+  <version epoch="0" rel="1" ver="0.1" />
+  <checksum pkgid="YES"
+  type="sha256">951e0eacf3e6e6102b10acb2e689243b5866ec2c7720e783749dbd32f4a69ab3</checksum>
+  <summary>A dummy package of shark</summary>
+  <description>A dummy package of shark</description>
+  <packager />
+  <url>http://tstrachota.fedorapeople.org</url>
+  <time build="1331831369" file="1331832459" />
+  <size archive="296" installed="42" package="2441" />
+  <location href="fixme/shark-0.1-1.noarch.rpm" />
+  <format>
+    <rpm:license>GPLv2</rpm:license>
+    <rpm:vendor />
+    <rpm:group>Internet/Applications</rpm:group>
+    <rpm:buildhost>smqe-ws15</rpm:buildhost>
+    <rpm:sourcerpm>shark-0.1-1.src.rpm</rpm:sourcerpm>
+    <rpm:header-range end="2289" start="872" />
+    <rpm:provides>
+      <rpm:entry epoch="0" flags="EQ" name="shark" rel="1" ver="0.1" />
+    </rpm:provides>
+    <rpm:requires>
+      <rpm:entry name="shark" flags="EQ" epoch="0" ver="0.1" rel="1"/>
+      <rpm:entry name="walrus" flags="EQ" epoch="0" ver="5.21" rel="1"/>
+    </rpm:requires>
+  </format>
+</package>
+    '''
+    OTHER_EXCERPT = '''
+<package arch="noarch" name="shark"
+    pkgid="951e0eacf3e6e6102b10acb2e689243b5866ec2c7720e783749dbd32f4a69ab3">
+    <version epoch="0" rel="1" ver="0.1" />
+</package>'''
+    FILELISTS_EXCERPT = '''
+<package arch="noarch" name="shark"
+    pkgid="951e0eacf3e6e6102b10acb2e689243b5866ec2c7720e783749dbd32f4a69ab3">
+    <version epoch="0" rel="1" ver="0.1" />
+    <file>/tmp/shark.txt</file>
+</package>'''
+
+    def setUp(self):
+        self.unit = models.RPM()
+        self.unit.repodata['primary'] = self.PRIMARY_EXCERPT
+        self.unit.repodata['filelists'] = self.FILELISTS_EXCERPT
+        self.unit.repodata['other'] = self.OTHER_EXCERPT
+        self.unit.filename = 'fixed-filename.rpm'
+        self.checksum = '951e0eacf3e6e6102b10acb2e689243b5866ec2c7720e783749dbd32f4a69ab3'
+
+    def assertParsable(self, text):
+        try:
+            ET.fromstring(text)
+        except ET.ParseError:
+            self.fail('could not parse XML')
+
+    def test_update_location(self):
+        self.unit.modify_xml()
+
+        self.assertTrue('fixme' not in self.unit.repodata['primary'])
+        self.assertTrue('<location href="fixed-filename.rpm"'
+                        in self.unit.repodata['primary'])
+
+    def test_checksum_template(self):
+        self.unit.modify_xml()
+        self.assertTrue('{{ checksum }}' in self.unit.repodata['primary'])
+        self.assertTrue('{{ checksumtype }}' in self.unit.repodata['primary'])
+        self.assertTrue(self.checksum not in self.unit.repodata['primary'])
+
+    def test_checksum_other_pkgid(self):
+        self.unit.modify_xml()
+        self.assertTrue('{{ pkgid }}' in self.unit.repodata['other'])
+        self.assertTrue(self.checksum not in self.unit.repodata['other'])
+        self.assertParsable(self.unit.repodata['other'])
+
+    def test_checksum_filelists_pkgid(self):
+        self.unit.modify_xml()
+        self.assertTrue('{{ pkgid }}' in self.unit.repodata['filelists'])
+        self.assertTrue(self.checksum not in self.unit.repodata['filelists'])
+        self.assertParsable(self.unit.repodata['filelists'])
 
 
 class TestDistribution(unittest.TestCase):
@@ -914,3 +1072,87 @@ class TestRPM(unittest.TestCase):
         rpm = models.RPM('name', 'epoch', 'version', 'release', 'filename', 'sha', 'checksum', {})
 
         self.assertEqual(rpm.unit_key['checksumtype'], 'sha1')
+
+
+class TestRpmBaseRender(unittest.TestCase):
+    def setUp(self):
+        super(TestRpmBaseRender, self).setUp()
+        self.unit = models.RPM(name='cat', epoch='0', version='1.0', release='1', arch='noarch')
+        self.unit.checksum = 'abc123'
+        self.unit.checksumtype = 'sha1'
+        self.unit.checksums = {'sha1': 'abc123'}
+        self.unit.repodata['filelists'] = '''
+<package arch="noarch" name="cat" pkgid="{{ pkgid }}">
+    <version epoch="0" rel="1" ver="1.0" />
+    <file>/tmp/cat.txt</file>
+</package>'''
+        self.unit.repodata['other'] = '''
+<package arch="noarch" name="cat" pkgid="{{ pkgid }}">
+    <version epoch="0" rel="1" ver="1.0" />
+    <changelog>Sometimes contains {{ template vars }} description</changelog>
+</package>'''
+        self.unit.repodata['primary'] = '''
+<package type="rpm">
+  <name>cat</name>
+  <arch>noarch</arch>
+  <version epoch="0" rel="1" ver="1.0" />
+  <checksum pkgid="YES" type="{{ checksumtype }}">{{ checksum }}</checksum>
+  <summary>A dummy {{ var }} package of cat</summary>
+  <description>A dummy package of cat with some description of {% character </description>
+  <packager />
+  <url>http://tstrachota.fedorapeople.org</url>
+  <time build="1331831362" file="1331832453" />
+  <size archive="292" installed="42" package="2420" />
+<location href="cat-1.0-1.noarch.rpm"/>
+  <format>
+    <rpm:license>GPLv2</rpm:license>
+    <rpm:vendor />
+    <rpm:group>Internet/Applications</rpm:group>
+    <rpm:buildhost>smqe-ws15</rpm:buildhost>
+    <rpm:sourcerpm>cat-1.0-1.src.rpm</rpm:sourcerpm>
+    <rpm:header-range end="2273" start="872" />
+    <rpm:provides>
+      <rpm:entry epoch="0" flags="EQ" name="cat" rel="1" ver="1.0" />
+    </rpm:provides>
+  </format>
+</package>'''
+
+    def test_render_filelists(self):
+        ret = self.unit.render_filelists('sha1')
+
+        self.assertTrue('abc123' in ret)
+
+    def test_render_other(self):
+        ret = self.unit.render_other('sha1')
+
+        self.assertTrue('abc123' in ret)
+
+    def test_render_primary(self):
+        ret = self.unit.render_primary('sha1')
+
+        self.assertTrue('abc123' in ret)
+        self.assertTrue('sha1' in ret)
+
+    def test__escape_django_syntax_chars(self):
+        """
+        Test that for a requested element all syntax characters are substituted with
+        the corresponding templatetag.
+
+        List of characters and the corresponding names of the templatetag could be found in
+        django.template.defaulttags.TemplateTagNode.mapping.
+        For now, those characters are:
+            >>> from django.template.defaulttags import TemplateTagNode
+            >>> TemplateTagNode.mapping.values()
+            [u'{#', u'{{', u'%}', u'#}', u'{', u'}}', u'{%', u'}']
+
+        E.g. '{%' should be substituted with '{% templatetag openblock %}'
+        """
+        template = ('<tag>{some {{ var }}</tag><some_tag>text</some_tag>'
+                    '<tag>some {% tag %} {# comment #} }</tag>')
+        expected_template = ('<tag>{% templatetag openbrace %}some {% templatetag openvariable %}'
+                             ' var {% templatetag closevariable %}</tag><some_tag>text</some_tag>'
+                             '<tag>some {% templatetag openblock %} tag '
+                             '{% templatetag closeblock %} {% templatetag opencomment %} comment '
+                             '{% templatetag closecomment %} {% templatetag closebrace %}</tag>')
+        result = self.unit._escape_django_syntax_chars(template, 'tag')
+        self.assertEqual(result, expected_template)

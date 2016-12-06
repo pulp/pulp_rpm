@@ -51,6 +51,15 @@ d = _('comma-separated list of types to omit when synchronizing, if not '
 d = d % {'t': ', '.join(VALID_SKIP_TYPES)}
 OPT_SKIP = PulpCliOption('--skip', d, required=False, parse_func=parse_skip_types)
 
+d = _('Require that imported packages should be signed. Defaults to False')
+OPT_REQUIRE_SIG = PulpCliOption('--require-signature', d, required=False,
+                                parse_func=parsers.parse_boolean)
+
+d = _('List of allowed signature keys that imported packages can be signed with. '
+      'Comma separated values.')
+OPT_ALLOWED_KEYS = PulpCliOption('--allowed-keys', d, required=False, allow_multiple=False,
+                                 parse_func=parsers.parse_csv_string)
+
 # publish options
 d = _('if "true", on each successful sync the repository will automatically be '
       'published on the configured protocols; if "false" synchronized content '
@@ -75,6 +84,9 @@ OPT_SERVE_HTTPS = PulpCliOption('--serve-https', d, required=False,
 d = _('type of checksum to use during metadata generation')
 OPT_CHECKSUM_TYPE = PulpCliOption('--checksum-type', d, required=False)
 
+d = _('type of checksum to use during updateinfo.xml generation')
+OPT_UPDATEINFO_CHECKSUM_TYPE = PulpCliOption('--updateinfo-checksum-type', d, required=False)
+
 d = _('GPG key used to sign and verify packages in the repository')
 OPT_GPG_KEY = PulpCliOption('--gpg-key', d, required=False)
 
@@ -82,6 +94,10 @@ d = _('if "true", sqlite files will be generated for the repository metadata dur
 OPT_GENERATE_SQLITE = PulpCliOption('--generate-sqlite', d, required=False,
                                     parse_func=parsers.parse_boolean)
 
+d = _('if "true", static HTML files will be generated during publish by the repoview tool for '
+      'faster browsing of the repository. Enables --generate-sqlite flag.')
+OPT_REPOVIEW = PulpCliOption('--repoview', d, required=False,
+                             parse_func=parsers.parse_boolean)
 
 # publish security options
 d = _('full path to the CA certificate that signed the repository hosts\'s SSL '
@@ -113,6 +129,8 @@ def add_distributor_config_to_command(command):
     publish_group.add_option(OPT_CHECKSUM_TYPE)
     publish_group.add_option(OPT_GPG_KEY)
     publish_group.add_option(OPT_GENERATE_SQLITE)
+    publish_group.add_option(OPT_REPOVIEW)
+    publish_group.add_option(OPT_UPDATEINFO_CHECKSUM_TYPE)
 
     # Order added indicates order in usage, so pay attention to this order when
     # dorking with it to make sure it makes sense

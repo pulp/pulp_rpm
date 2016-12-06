@@ -15,6 +15,8 @@ COMPLETE_STATES = (STATE_COMPLETE, STATE_FAILED, STATE_SKIPPED)
 ERROR_SIZE_VERIFICATION = 'size_mismatch'
 ERROR_CHECKSUM_VERIFICATION = 'checksum_mismatch'
 ERROR_CHECKSUM_TYPE_UNKNOWN = 'checksum_type_unknown'
+ERROR_INVALID_PACKAGE_SIG = 'invalid_package_signature'
+ERROR_KEY_ID_FILTER = 'gpg_key_id_filter_failure'
 
 # Standard keywords for progress reports to include
 PROGRESS_STATE_KEY = 'state'
@@ -58,6 +60,7 @@ PUBLISH_GENERATE_LISTING_FILE_STEP = 'initialize_repo_metadata'
 PUBLISH_STEP_ISO = 'save_iso'
 PUBLISH_GENERATE_SQLITE_FILE_STEP = 'generate sqlite'
 PUBLISH_STEP_EXPORT_REPO_GROUP = 'export_repo_group'
+PUBLISH_GENERATE_REPOVIEW_STEP = 'repoview'
 
 PUBLISH_STEPS = (PUBLISH_RPMS_STEP, PUBLISH_DELTA_RPMS_STEP, PUBLISH_ERRATA_STEP,
                  PUBLISH_COMPS_STEP, PUBLISH_DISTRIBUTION_STEP, PUBLISH_METADATA_STEP,
@@ -74,7 +77,7 @@ PUBLISH_REPORT_KEYS = (PROGRESS_STATE_KEY, PROGRESS_TOTAL_KEY, PROGRESS_PROCESSE
 
 # -- configuration ------------------------------------------------------------
 
-# Used as a note on a repository to indicate it is a Puppet repository
+# Used as a note on a repository to indicate it is a RPM/ISO repository
 REPO_NOTE_RPM = 'rpm-repo'
 REPO_NOTE_ISO = 'iso-repo'
 
@@ -89,6 +92,10 @@ CONFIG_SSL_VALIDATION_DEFAULT = True
 CONFIG_UNITS_REMOVE_MISSING_DEFAULT = False
 # By default, lets validate units
 CONFIG_VALIDATE_DEFAULT = True
+
+# Importer configuration key names
+CONFIG_REQUIRE_SIGNATURE = 'require_signature'
+CONFIG_ALLOWED_KEYS = 'allowed_keys'
 
 # Distributor configuration key names
 CONFIG_SERVE_HTTP = 'serve_http'
@@ -136,9 +143,14 @@ SKIP_KEYWORD = 'skip'
 START_DATE_KEYWORD = 'start_date'
 GENERATE_SQLITE_KEYWORD = 'generate_sqlite'
 RELATIVE_URL_KEYWORD = 'relative_url'
+INCREMENTAL_EXPORT_REPOMD_KEYWORD = 'incremental_export_repomd'
+FORCE_FULL_KEYWORD = 'force_full'
+UPDATEINFO_CHECKSUM_TYPE_KEYWORD = 'updateinfo_checksum_type'
 EXPORT_OPTIONAL_CONFIG_KEYS = (END_DATE_KEYWORD, ISO_PREFIX_KEYWORD, SKIP_KEYWORD,
                                EXPORT_DIRECTORY_KEYWORD, START_DATE_KEYWORD, ISO_SIZE_KEYWORD,
-                               GENERATE_SQLITE_KEYWORD, CREATE_PULP_MANIFEST, RELATIVE_URL_KEYWORD)
+                               GENERATE_SQLITE_KEYWORD, CREATE_PULP_MANIFEST, RELATIVE_URL_KEYWORD,
+                               INCREMENTAL_EXPORT_REPOMD_KEYWORD, FORCE_FULL_KEYWORD,
+                               CONFIG_KEY_CHECKSUM_TYPE, UPDATEINFO_CHECKSUM_TYPE_KEYWORD)
 
 EXPORT_HTTP_DIR = '/var/lib/pulp/published/http/exports/repo'
 EXPORT_HTTPS_DIR = '/var/lib/pulp/published/https/exports/repo'
@@ -180,3 +192,6 @@ REPO_AUTH_CONFIG_FILE = '/etc/pulp/repo_auth.conf'
 # used in the scratchpad
 REPOMD_REVISION_KEY = 'repomd_revision'
 PREVIOUS_SKIP_LIST = 'previous_skip_list'
+
+COMMON_NAMESPACE = 'http://linux.duke.edu/metadata/common'
+RPM_NAMESPACE = 'http://linux.duke.edu/metadata/rpm'

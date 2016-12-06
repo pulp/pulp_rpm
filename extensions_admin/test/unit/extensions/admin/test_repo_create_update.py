@@ -8,6 +8,7 @@ from pulp.common.compat import json
 from pulp.common.plugins import importer_constants as constants
 
 from pulp_rpm.common import ids
+from pulp_rpm.common import constants as rpm_constants
 from pulp_rpm.devel.client_base import PulpClientTests
 from pulp_rpm.extensions.admin import repo_options
 from pulp_rpm.extensions.admin import repo_create_update
@@ -72,10 +73,12 @@ class RpmRepoCreateCommandTests(PulpClientTests):
             repo_options.OPT_SERVE_HTTP.keyword: True,
             repo_options.OPT_SERVE_HTTPS.keyword: True,
             repo_options.OPT_CHECKSUM_TYPE.keyword: 'sha256',
+            repo_options.OPT_UPDATEINFO_CHECKSUM_TYPE.keyword: 'md5',
             repo_options.OPT_GPG_KEY.keyword: gpg_key,
             repo_options.OPT_HOST_CA.keyword: ca_cert,
             repo_options.OPT_AUTH_CA.keyword: ca_cert,
             repo_options.OPT_AUTH_CERT.keyword: cert_file,
+            repo_options.OPT_REPOVIEW.keyword: True,
         }
 
         self.server_mock.request.return_value = 201, {}
@@ -110,7 +113,7 @@ class RpmRepoCreateCommandTests(PulpClientTests):
         self.assertEqual(importer_config[constants.KEY_BASIC_AUTH_PASS], 'basicpass')
         self.assertEqual(importer_config[constants.KEY_MAX_SPEED], 1024)
         self.assertEqual(importer_config[constants.KEY_MAX_DOWNLOADS], 8)
-        self.assertEqual(importer_config[repo_create_update.CONFIG_KEY_SKIP], [ids.TYPE_ID_RPM])
+        self.assertEqual(importer_config[rpm_constants.CONFIG_SKIP], [ids.TYPE_ID_RPM])
         self.assertEqual(importer_config[constants.KEY_UNITS_REMOVE_MISSING], True)
         self.assertEqual(importer_config[constants.KEY_UNITS_RETAIN_OLD_COUNT], 2)
 
@@ -129,10 +132,13 @@ class RpmRepoCreateCommandTests(PulpClientTests):
         self.assertEqual(yum_config['https'], True)
         self.assertTrue(yum_config['gpgkey'] is not None)
         self.assertEqual(yum_config['checksum_type'], 'sha256')
+        self.assertEqual(yum_config['updateinfo_checksum_type'], 'md5')
         self.assertTrue(yum_config['auth_ca'] is not None)
         self.assertTrue(yum_config['auth_cert'] is not None)
         self.assertTrue(yum_config['https_ca'] is not None)
         self.assertEqual(yum_config['skip'], [ids.TYPE_ID_RPM])
+        self.assertEqual(yum_config['repoview'], True)
+        self.assertEqual(yum_config['generate_sqlite'], True)
 
         iso_distributor = body['distributors'][1]
         self.assertEqual(ids.TYPE_ID_DISTRIBUTOR_EXPORT, iso_distributor['distributor_id'])
@@ -144,6 +150,8 @@ class RpmRepoCreateCommandTests(PulpClientTests):
         self.assertEqual(iso_config['https'], True)
         self.assertEqual(iso_config['relative_url'], '/repo')
         self.assertEqual(iso_config['skip'], [ids.TYPE_ID_RPM])
+        self.assertEqual(iso_config['checksum_type'], 'sha256')
+        self.assertEqual(iso_config['updateinfo_checksum_type'], 'md5')
 
         self.assertEqual([TAG_SUCCESS], self.prompt.get_write_tags())
 
@@ -312,6 +320,9 @@ class RpmRepoUpdateCommandTests(PulpClientTests):
             repo_options.OPT_SERVE_HTTP.keyword: True,
             repo_options.OPT_SERVE_HTTPS.keyword: True,
             repo_options.OPT_SKIP.keyword: [ids.TYPE_ID_RPM],
+            repo_options.OPT_CHECKSUM_TYPE.keyword: 'sha1',
+            repo_options.OPT_UPDATEINFO_CHECKSUM_TYPE.keyword: 'md5',
+            repo_options.OPT_REPOVIEW.keyword: True,
         }
 
         self.server_mock.request.return_value = 200, {}
@@ -333,17 +344,23 @@ class RpmRepoUpdateCommandTests(PulpClientTests):
 
         yum_imp_config = body['importer_config']
         self.assertEqual(yum_imp_config[constants.KEY_FEED], 'http://localhost')
-        self.assertEqual(yum_imp_config[repo_create_update.CONFIG_KEY_SKIP], [ids.TYPE_ID_RPM])
+        self.assertEqual(yum_imp_config[rpm_constants.CONFIG_SKIP], [ids.TYPE_ID_RPM])
 
         yum_dist_config = body['distributor_configs'][ids.YUM_DISTRIBUTOR_ID]
         self.assertEqual(yum_dist_config['http'], True)
         self.assertEqual(yum_dist_config['https'], True)
         self.assertEqual(yum_dist_config['skip'], [ids.TYPE_ID_RPM])
+        self.assertEqual(yum_dist_config['checksum_type'], 'sha1')
+        self.assertEqual(yum_dist_config['updateinfo_checksum_type'], 'md5')
+        self.assertEqual(yum_dist_config['repoview'], True)
+        self.assertEqual(yum_dist_config['generate_sqlite'], True)
 
         iso_dist_config = body['distributor_configs'][ids.EXPORT_DISTRIBUTOR_ID]
         self.assertEqual(iso_dist_config['http'], True)
         self.assertEqual(iso_dist_config['https'], True)
         self.assertEqual(iso_dist_config['skip'], [ids.TYPE_ID_RPM])
+        self.assertEqual(iso_dist_config['checksum_type'], 'sha1')
+        self.assertEqual(iso_dist_config['updateinfo_checksum_type'], 'md5')
 
     def test_run_through_cli(self):
         """

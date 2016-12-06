@@ -18,6 +18,7 @@ from pulp.server.controllers import repository as repo_controller
 
 from pulp_rpm.common import constants, ids
 from pulp_rpm.yum_plugin import util
+from pulp_rpm.plugins import error_codes
 from pulp_rpm.plugins.db import models
 from pulp_rpm.plugins.distributors.export_distributor import export_utils
 from pulp_rpm.plugins.distributors.export_distributor import generate_iso
@@ -71,8 +72,12 @@ class BaseYumRepoPublisher(platform_steps.PluginStep):
         self.add_child(dist_step)
         self.rpm_step = PublishRpmStep(dist_step, repo_content_unit_q=association_filters)
         self.add_child(self.rpm_step)
-        self.add_child(PublishDrpmStep(dist_step))
-        self.add_child(PublishErrataStep())
+        self.add_child(PublishDrpmStep(dist_step, repo_content_unit_q=association_filters))
+        errata_step_kwargs = {}
+        if config.get_boolean(constants.INCREMENTAL_EXPORT_REPOMD_KEYWORD):
+            errata_step_kwargs['repo_content_unit_q'] = association_filters
+        errata_step = PublishErrataStep(**errata_step_kwargs)
+        self.add_child(errata_step)
         self.add_child(PublishCompsStep())
         self.add_child(PublishMetadataStep())
         self.add_child(CloseRepoMetadataStep())
@@ -106,17 +111,23 @@ class ExportRepoPublisher(BaseYumRepoPublisher):
         :param distributor_type: The type of the distributor that is being published
         :type distributor_type: str
         """
-        super(ExportRepoPublisher, self).__init__(repo, publish_conduit, config, distributor_type,
-                                                  **kwargs)
 
         date_q = export_utils.create_date_range_filter(config)
-        if date_q:
-            # Since this is a partial export we don't generate metadata
-            # we have to clear out the previously added steps
-            # we only need special version s of the rpm, drpm, and errata steps
-            self.clear_children()
-            self.add_child(PublishRpmAndDrpmStepIncremental(repo_content_unit_q=date_q))
-            self.add_child(PublishErrataStepIncremental(repo_content_unit_q=date_q))
+
+        if config.get_boolean(constants.INCREMENTAL_EXPORT_REPOMD_KEYWORD):
+            super(ExportRepoPublisher, self).__init__(repo, publish_conduit, config,
+                                                      distributor_type, association_filters=date_q,
+                                                      **kwargs)
+        else:
+            super(ExportRepoPublisher, self).__init__(repo, publish_conduit, config,
+                                                      distributor_type, **kwargs)
+            if date_q:
+                # Since this is a partial export we don't generate metadata
+                # we have to clear out the previously added steps
+                # we only need special version s of the rpm, drpm, and errata steps
+                self.clear_children()
+                self.add_child(PublishRpmAndDrpmStepIncremental(repo_content_unit_q=date_q))
+                self.add_child(PublishErrataStepIncremental(repo_content_unit_q=date_q))
 
         working_directory = self.get_working_dir()
         export_dir = config.get(constants.EXPORT_DIRECTORY_KEYWORD)
@@ -250,7 +261,8 @@ class Publisher(BaseYumRepoPublisher):
     of a yum repository over HTTP and/or HTTPS.
     """
 
-    def __init__(self, transfer_repo, publish_conduit, config, distributor_type, **kwargs):
+    def __init__(self, transfer_repo, publish_conduit, config, distributor_type,
+                 association_filters=None, **kwargs):
         """
         :param transfer_repo: repository being published
         :type  transfer_repo: pulp.plugins.db.model.Repository
@@ -258,6 +270,8 @@ class Publisher(BaseYumRepoPublisher):
         :type  publish_conduit: pulp.plugins.conduits.repo_publish.RepoPublishConduit
         :param config: Pulp configuration for the distributor
         :type  config: pulp.plugins.config.PluginCallConfiguration
+        :param association_filters: Any filters to be applied to the list of RPMs being published
+        :type association_filters: mongoengine.Q
         :param distributor_type: The type of the distributor that is being published
         :type distributor_type: str
         """
@@ -267,10 +281,25 @@ class Publisher(BaseYumRepoPublisher):
 
         last_published = publish_conduit.last_publish()
         last_deleted = repo.last_unit_removed
-        date_filter = None
+
+        # NB: there is an "incremental publish optmization" (aka fast-forward
+        # publish), and an unrelated "incremental publish". The former is
+        # related to avoiding extra disk IO on publishes, and the latter is for
+        # publishing units in a date range.  In order to do the "incremental
+        # publish", we need to disable the "incremental publish optimization"
+        # to ensure the prior published repo contents are cleared out. This is
+        # done via the "force_full" option.
+
+        if association_filters:
+            force_full = True
+            date_filter = association_filters
+        else:
+            force_full = config.get(constants.FORCE_FULL_KEYWORD, False)
+            date_filter = None
 
         if last_published and \
-                ((last_deleted and last_published > last_deleted) or not last_deleted):
+                (last_deleted is None or last_published > last_deleted) and \
+                not force_full:
             # Add the step to copy the current published directory into place
             specific_master = None
             if config.get(constants.PUBLISH_HTTPS_KEYWORD):
@@ -314,6 +343,8 @@ class Publisher(BaseYumRepoPublisher):
             repo_publish_dir = os.path.join(root_publish_dir, repo_relative_path)
             target_directories.append(['/', repo_publish_dir])
             listing_steps.append(GenerateListingFileStep(root_publish_dir, repo_publish_dir))
+
+        self.add_child(GenerateRepoviewStep(self.get_working_dir()))
 
         master_publish_dir = configuration.get_master_publish_dir(repo, distributor_type)
         atomic_publish_step = platform_steps.AtomicDirectoryPublishStep(
@@ -574,8 +605,10 @@ class PublishErrataStep(platform_steps.UnitModelPluginStep):
             nevra_in_repo.add(models.NEVRA(*scalar))
 
         checksum_type = self.parent.get_checksum_type()
+        updateinfo_checksum_type = self.get_config().get('updateinfo_checksum_type')
         self.context = UpdateinfoXMLFileContext(self.get_working_dir(), nevra_in_repo,
-                                                checksum_type, self.get_conduit())
+                                                checksum_type, self.get_conduit(),
+                                                updateinfo_checksum_type)
         self.context.initialize()
 
         # set the self.process_unit method to the corresponding method on the
@@ -678,7 +711,7 @@ class PublishCompsStep(platform_steps.UnitModelPluginStep):
     def __init__(self):
         super(PublishCompsStep, self).__init__(constants.PUBLISH_COMPS_STEP,
                                                [models.PackageGroup, models.PackageCategory,
-                                                models.PackageEnvironment])
+                                                models.PackageEnvironment, models.PackageLangpacks])
         self.comps_context = None
         self.description = _('Publishing Comps file')
 
@@ -693,6 +726,8 @@ class PublishCompsStep(platform_steps.UnitModelPluginStep):
             self.comps_context.add_package_environment_unit_metadata(item)
         elif isinstance(item, models.PackageGroup):
             self.comps_context.add_package_group_unit_metadata(item)
+        elif isinstance(item, models.PackageLangpacks):
+            self.comps_context.add_package_langpacks_unit_metadata(item)
         else:
             logger.warning(_('Unknown comps unit type: %(n)s') % {'n': item.__class__})
 
@@ -963,5 +998,45 @@ class GenerateSqliteForRepoStep(platform_steps.PluginStep):
                                 stderr=subprocess.PIPE)
         stdout, stderr = pipe.communicate()
         if pipe.returncode != 0:
-            result_string = '%s\n::\n%s' % (stdout, stderr)
-            raise PulpCodedException(message=result_string)
+            raise PulpCodedException(error_codes.RPM0001, command='createrepo_c', stdout=stdout,
+                                     stderr=stderr)
+
+
+class GenerateRepoviewStep(platform_steps.PluginStep):
+    """
+    Generate the static HTML files for a given repository using the repoview command
+    """
+    def __init__(self, content_dir):
+        """
+        Initialize the step for creating sqlite files
+
+        :param content_dir: The base directory of the repository.  This directory should contain
+                            the repodata directory
+        :type content_dir: str
+        """
+        super(GenerateRepoviewStep, self).__init__(constants.PUBLISH_GENERATE_REPOVIEW_STEP)
+        self.description = _('Generating HTML files')
+        self.content_dir = content_dir
+
+    def is_skipped(self):
+        """
+        Check the repo for the config option to generate the HTML files.
+        Skip generation if the config option is not specified.
+
+        :returns: Whether or not generating HTML files has been enabled for this repository
+        :rtype: bool
+        """
+        return not self.get_config().get('repoview', False)
+
+    def process_main(self, item=None):
+        """
+        Call out to repoview command line in order to process the files.
+        """
+        pipe = subprocess.Popen('repoview --title %(repo)s %(content_dir)s' %
+                                {'content_dir': self.content_dir, 'repo': self.get_repo().id},
+                                shell=True, stdout=subprocess.PIPE,
+                                stderr=subprocess.PIPE)
+        stdout, stderr = pipe.communicate()
+        if pipe.returncode != 0:
+            raise PulpCodedException(error_codes.RPM0001, command='repoview', stdout=stdout,
+                                     stderr=stderr)

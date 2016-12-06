@@ -21,7 +21,8 @@ REQUIRED_CONFIG_KEYS = ('relative_url', 'http', 'https')
 
 OPTIONAL_CONFIG_KEYS = ('gpgkey', 'auth_ca', 'auth_cert', 'https_ca', 'checksum_type',
                         'http_publish_dir', 'https_publish_dir', 'protected',
-                        'skip', 'skip_pkg_tags', 'generate_sqlite')
+                        'skip', 'skip_pkg_tags', 'generate_sqlite', 'force_full',
+                        'repoview', 'updateinfo_checksum_type')
 
 ROOT_PUBLISH_DIR = '/var/lib/pulp/published/yum'
 MASTER_PUBLISH_DIR = os.path.join(ROOT_PUBLISH_DIR, 'master')
@@ -94,7 +95,7 @@ def validate_config(repo, config, config_conduit):
         error_messages.append(msg)
 
     # when adding validation methods, make sure to register them here
-    # yes, the individual sections are in alphabetical oder
+    # yes, the individual sections are in alphabetical order
     configured_key_validation_methods = {
         # required options
         'http': _validate_http,
@@ -123,6 +124,8 @@ def validate_config(repo, config, config_conduit):
 
     # check that the relative path does not conflict with any existing repos
     _check_for_relative_path_conflicts(repo, config, config_conduit, error_messages)
+
+    _check_repoview_sqlite_conflicts(config, error_messages)
 
     # if we have errors, log them, and return False with a concatenated error message
     if error_messages:
@@ -507,3 +510,24 @@ def _check_for_relative_path_conflicts(repo, config, config_conduit, error_messa
         error_messages.append(msg.format(relative_path=relative_path, repo_id=repo.repo_id,
                                          conflict_url=conflicting_relative_url,
                                          conflict_repo=conflicting_repo_id))
+
+
+def _check_repoview_sqlite_conflicts(config, error_messages):
+    """
+    Check that generate_sqlite flag is enabled if repoview flag is.
+
+    Repoview tool uses sqlite files, so repoview flag can be enabled only if generate_sqlite
+    flag is set to True.
+
+    :param config: configuration to validate
+    :type  config: dict
+    :param error_messages: error messages so far
+    :type  error_messages: list
+    """
+    repoview_opt = config.get('repoview', False)
+    generate_sqlite_opt = config.get('generate_sqlite', False)
+    if repoview_opt and not generate_sqlite_opt:
+        msg = _('Repoview functionality depends on the sqlite files. If you want to enable '
+                '`repoview` option, enable `generate_sqlite` as well. If you want to disable '
+                '`generate_sqlite` option, disable `repoview` as well.')
+        error_messages.append(msg)

@@ -721,3 +721,44 @@ class TestGetRepoChecksumType(unittest.TestCase):
         m_dist_qs.get_or_404.side_effect = MissingResource()
         self.assertEquals(CONFIG_DEFAULT_CHECKSUM,
                           configuration.get_repo_checksum_type(self.mock_conduit, self.config))
+
+
+class TestRepoviewSqliteConflicts(unittest.TestCase):
+    """
+    Test that ia combination of repoview and generate_sqlite options is validated correctly.
+    """
+    def test_conflicts_repoview_false_sqlite_false(self):
+        """
+        Test that no error occured if both repoview and generate_sqlite are set to False.
+        """
+        config = {'repoview': False, 'generate_sqlite': False}
+        error_messages = []
+        configuration._check_repoview_sqlite_conflicts(config, error_messages)
+        self.assertFalse(error_messages)
+
+    def test_conflicts_repoview_false_sqlite_true(self):
+        """
+        Test that no error occured if only generate_sqlite is set to True.
+        """
+        config = {'repoview': False, 'generate_sqlite': True}
+        error_messages = []
+        configuration._check_repoview_sqlite_conflicts(config, error_messages)
+        self.assertFalse(error_messages)
+
+    def test_conflicts_repoview_true_sqlite_false(self):
+        """
+        Test that error occured if only repoview is set to True.
+        """
+        config = {'repoview': True, 'generate_sqlite': False}
+        error_messages = []
+        configuration._check_repoview_sqlite_conflicts(config, error_messages)
+        self.assertEqual(len(error_messages), 1)
+
+    def test_conflicts_repoview_true_sqlite_true(self):
+        """
+        Test that no error occured if both repoview and generate_sqlite are set to True.
+        """
+        config = {'repoview': True, 'generate_sqlite': True}
+        error_messages = []
+        configuration._check_repoview_sqlite_conflicts(config, error_messages)
+        self.assertFalse(error_messages)

@@ -1,7 +1,7 @@
 import os
 import unittest
 
-from pulp.plugins.util import verification
+from pulp.server import util
 
 from pulp_rpm.devel.skip import skip_broken
 from pulp_rpm.plugins.importers.yum import upload
@@ -38,7 +38,7 @@ class TestUploadGenerateRpmData(unittest.TestCase):
         type is used.
         """
         unit_key, metadata = upload._generate_rpm_data(models.RPM.TYPE, RPM_USUAL_NAME, {})
-        self.assertEquals(verification.TYPE_SHA256, unit_key['checksumtype'])
+        self.assertEquals(util.TYPE_SHA256, unit_key['checksumtype'])
 
     def test_user_metadata_present_with_checksum_type(self):
         """
@@ -46,5 +46,5 @@ class TestUploadGenerateRpmData(unittest.TestCase):
         """
         unit_key, metadata = upload._generate_rpm_data(models.RPM.TYPE,
                                                        RPM_USUAL_NAME,
-                                                       {'checksum_type': verification.TYPE_MD5})
-        self.assertEquals(verification.TYPE_MD5, unit_key['checksumtype'])
+                                                       {'checksum_type': util.TYPE_MD5})
+        self.assertEquals(util.TYPE_MD5, unit_key['checksumtype'])

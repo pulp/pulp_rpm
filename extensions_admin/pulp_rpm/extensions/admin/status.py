@@ -250,6 +250,13 @@ class RpmStatusRenderer(StatusRenderer):
                             template = _('Package: %(name)s\nError: An invalid checksum type '
                                          '(%(checksum_type)s) was detected.\n'
                                          'Accepted checksum types: %(accepted)s')
+                        elif error.get(constants.ERROR_CODE) == constants.ERROR_INVALID_PACKAGE_SIG:
+                            message_data = {
+                                'count': error['count'],
+                            }
+                            template = _('%(count)s packages failed signature filter and were not '
+                                         'imported.')
+
                         elif error.get(
                                 constants.ERROR_CODE) == constants.ERROR_CHECKSUM_VERIFICATION:
                             message_data = {

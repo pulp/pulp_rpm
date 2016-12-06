@@ -199,6 +199,50 @@ It is also possible to sync a repo that is protected via basic authentication.
 The ``--basicauth-user`` and ``--basicauth-pass`` options are used for this
 during repo creation or update.
 
+
+Sync a repo with GPG Key ID Filtering
+=====================================
+
+Syncing a repo with key ID filtering is done by specifying ``--require-signature``
+and ``--allowed-keys``. With these options enabled, only signed packages will be synced.
+In addition, only packages that were signed with specific keys that were provided
+in the allowed keys list will be synced.
+
+Let's try to sync from a remote feed where packages are unsigned.
+
+::
+
+    $ pulp-admin rpm repo create --repo-id reject-unsigned  \
+        --feed https://repos.fedorapeople.org/repos/pulp/pulp/demo_repos/test_srpm_repo/ \
+        --require-signature True
+
+    Successfully created repository [reject-unsigned]
+
+    $ pulp-admin rpm repo sync run --repo-id reject-unsigned
+
+    +----------------------------------------------------------------------+
+                   Synchronizing Repository [reject-unsigned]
+    +----------------------------------------------------------------------+
+
+    This command may be exited via ctrl+c without affecting the request.
+
+
+    Downloading metadata...
+    [|]
+    ... completed
+
+    Downloading repository content...
+    [==================================================] 100%
+    RPMs:       3/3 items
+    Delta RPMs: 0/0 items
+
+    ... completed
+
+    Individual package errors encountered during sync:
+
+    3 packages failed signature filter and were not imported.
+
+
 .. _export-repos:
 
 Export Repositories and Repository Groups
@@ -659,6 +703,10 @@ We can see that the package group is now part of our repo::
    Translated Name:
    User Visible:              False
 
+.. note::
+ Package groups will also be created and associated with a repository if they are specified
+ in a comps file and you `Upload a comps.xml file`_.
+
 Copying Package Groups Between Repos
 ------------------------------------
 
@@ -827,6 +875,10 @@ The package category details can be listed as well::
     Translated Description:
     Translated Name:
 
+.. note::
+ Package categories will also be created and associated with a repository if they are specified
+ in a comps file and you `Upload a comps.xml file`_.
+
 Copying Package Categories
 --------------------------
 
@@ -944,13 +996,225 @@ And now we can see that ``repo_2`` has the category, groups, and RPMs::
     Vendor:
     Version:      0.3.1
 
+
+Package Environments
+====================
+
+.. _creating_package_environments:
+
+Create Your Own Package Environment
+-----------------------------------
+
+
+You can also define your own package environments with the :command:`pulp_admin`
+utility. Let's create and sync a repo::
+
+    $ pulp-admin rpm repo create --repo-id=repo_1 \
+      --feed=http://repos.fedorapeople.org/repos/pulp/pulp/demo_repos/pulp_unittest/
+    Successfully created repository [repo_1]
+
+    $ pulp-admin rpm repo sync run --repo-id=repo_1
+
+Now let's build two package groups for our demo repo test files::
+
+   $ pulp-admin rpm repo uploads group --repo-id=repo_1 \
+     --group-id=pulp_test_packages --name="Pulp Test Packages" \
+     --description="A package group of Pulp test files." \
+     --mand-name=pulp-dot-2.0-test --mand-name=pulp-test-package
+
+   $ pulp-admin rpm repo uploads group --repo-id=repo_1 \
+     --group-id=pulp_dotted_name_packages --name="Pulp Dotted Name Packages" \
+     --description="A group of packages that have dots in their names." \
+     --mand-name=pulp-dot-2.0-test
+
+And now we can create a package environment that is a collection of these
+two groups::
+
+    $ pulp-admin rpm repo uploads environment --repo-id repo_1 --environment-id test-env \
+    --name test-env --description test-env --group pulp_dotted_name_packages \
+    --group pulp_test_packages
+
+    +----------------------------------------------------------------------+
+                                  Unit Upload
+    +----------------------------------------------------------------------+
+
+    Extracting necessary metadata for each request...
+    ... completed
+
+    Creating upload requests on the server...
+    [==================================================] 100%
+    Initializing upload
+    ... completed
+
+    Starting upload of selected units. If this process is stopped through ctrl+c,
+    the uploads will be paused and may be resumed later using the resume command or
+    canceled entirely using the cancel command.
+
+    Importing into the repository...
+    This command may be exited via ctrl+c without affecting the request.
+
+
+    [\]
+    Running...
+
+    Task Succeeded
+
+
+    Deleting the upload request...
+    ... completed
+
+
+The package environment details can be listed as well::
+
+    $ pulp-admin rpm repo content environment --repo-id repo_1 --match id=test-env
+
+    Description: test-env
+    Group Ids:   pulp_dotted_name_packages, pulp_test_packages
+    Id:          test-env
+    Name:        test-env
+    Options:     
+
+.. note::
+ Package environments will also be created and associated with a repository if they are specified
+ in a comps file and you `Upload a comps.xml file`_.
+
+Copying Package Environments
+----------------------------
+
+Like package groups, environments can be copied between repos, which will bring
+along their groups. Assuming you've performed the steps from the
+:ref:`creating_package_environments` section, let's begin by creating an empty
+second repo::
+
+    $ pulp-admin rpm repo create --repo-id=repo_2
+    Successfully created repository [repo_2]
+
+Now let's copy ``test-env`` from ``repo_1`` to ``repo_2``::
+
+    $ pulp-admin rpm repo copy environment --match id=test-env \
+      --from-repo-id=repo_1 --to-repo-id=repo_2
+    Progress on this task can be viewed using the commands under "repo tasks".
+
+.. note::
+  Use the --recursive flag to copy any dependencies of units being copied from the source repo
+  into the destination repo.
+
+Observe that ``repo_2`` contains newly copied package environment::
+
+    $ pulp-admin repo list --repo-id repo_2
+
+    +----------------------------------------------------------------------+
+                                  Repositories
+    +----------------------------------------------------------------------+
+
+    Id:                   repo_2
+    Display Name:         None
+    Description:          None
+    Content Unit Counts:  
+      Package Environment: 1
+
+
+Package Langpacks
+=================
+
+Creating Package Langpacks
+--------------------------
+
+You can also define your own package langpacks with the :command:`pulp_admin`
+utility. Let's create and sync a repo::
+
+    $ pulp-admin rpm repo create --repo-id=repo_1
+
+Now let's build a package langpacks entry for the hyphen package::
+
+   $ pulp-admin rpm repo uploads langpacks --name hyphen --install hyphen-%s --repo-id repo_1
+   +----------------------------------------------------------------------+
+                                 Unit Upload
+   +----------------------------------------------------------------------+
+
+   Extracting necessary metadata for each request...
+   ... completed
+
+   Creating upload requests on the server...
+   [==================================================] 100%
+   Initializing upload
+   ... completed
+
+   Starting upload of selected units. If this process is stopped through ctrl+c,
+   the uploads will be paused and may be resumed later using the resume command or
+   canceled entirely using the cancel command.
+
+   Importing into the repository...
+   ... completed
+
+   Deleting the upload request...
+   ... completed
+
+We can see that the package langpacks is now part of our repo::
+
+   $ pulp-admin rpm repo content langpacks --repo-id=repo_1
+   Matches:
+     Install: hyphen-%s
+     Name:    hyphen
+
+.. note::
+ Package langpacks will also be created and associated with a repository if they are specified
+ in a comps file and you `Upload a comps.xml file`_.
+
+Copying Package Langpacks
+-------------------------
+
+Like package environments, package langpacks can be copied between repos. Assuming you've
+performed the steps from the `Creating Package Langpacks`_ section, let's begin by creating
+an empty second repo::
+
+    $ pulp-admin rpm repo create --repo-id=repo_2
+    Successfully created repository [repo_2]
+
+Now let's copy the langpacks from ``repo_1`` to ``repo_2``::
+
+    $ pulp-admin rpm repo copy langpacks --from-repo-id=repo_1 --to-repo-id=repo_2
+
+Observe that ``repo_2`` contains newly copied package langpacks::
+
+    $ pulp-admin repo list --repo-id repo_2
+
+    +----------------------------------------------------------------------+
+                                  Repositories
+    +----------------------------------------------------------------------+
+
+    Id:                   repo_2
+    Display Name:         None
+    Description:          None
+    Content Unit Counts:
+      Package Langpacks: 1
+
+Searching Package Langpacks
+---------------------------
+
+Package langpacks can be searched for within a specific repo. Assuming you've performed the
+steps from the `Copying Package Langpacks`_ section, let's search for the recently copied
+langpacks within ``repo_2``::
+
+    $ pulp-admin rpm repo content langpacks --repo-id repo_2
+
+Removing Package Langpacks
+--------------------------
+
+Package langpacks can be removed from a specific repo. Assuming you've performed the steps
+from the `Copying Package Langpacks`_ section, let's remove the recently copied langpacks
+within ``repo_2``::
+
+    $ pulp-admin rpm repo remove langpacks --repo-id repo_2 --str-eq repo_id=repo_2
+
+
 Comps
 =====
 
 .. _upload_comps_xml_file:
 
-Upload comps.xml file
----------------------
+Upload a comps.xml file
+-----------------------
 
 This is an example of creating a repo and uploading a comps.xml file into it.
 

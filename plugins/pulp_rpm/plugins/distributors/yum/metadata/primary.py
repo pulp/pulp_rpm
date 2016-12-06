@@ -2,6 +2,7 @@ import os
 
 from pulp.plugins.util.metadata_writer import FastForwardXmlFileContext
 
+from pulp_rpm.common import constants
 from pulp_rpm.plugins.distributors.yum.metadata.metadata import REPO_DATA_DIR_NAME
 from pulp_rpm.yum_plugin import util
 
@@ -9,8 +10,6 @@ from pulp_rpm.yum_plugin import util
 _LOG = util.getLogger(__name__)
 
 PRIMARY_XML_FILE_NAME = 'primary.xml.gz'
-COMMON_NAMESPACE = 'http://linux.duke.edu/metadata/common'
-RPM_NAMESPACE = 'http://linux.duke.edu/metadata/rpm'
 
 
 class PrimaryXMLFileContext(FastForwardXmlFileContext):
@@ -29,8 +28,8 @@ class PrimaryXMLFileContext(FastForwardXmlFileContext):
 
         metadata_file_path = os.path.join(working_dir, REPO_DATA_DIR_NAME, PRIMARY_XML_FILE_NAME)
         self.num_packages = num_units
-        attributes = {'xmlns': COMMON_NAMESPACE,
-                      'xmlns:rpm': RPM_NAMESPACE,
+        attributes = {'xmlns': constants.COMMON_NAMESPACE,
+                      'xmlns:rpm': constants.RPM_NAMESPACE,
                       'packages': str(self.num_packages)}
         super(PrimaryXMLFileContext, self).__init__(metadata_file_path, 'metadata',
                                                     search_tag='package',
@@ -51,7 +50,4 @@ class PrimaryXMLFileContext(FastForwardXmlFileContext):
         :param unit: unit whose metadata is to be written
         :type  unit: pulp_rpm.plugins.db.models.RpmBase
         """
-        metadata = unit.repodata['primary']
-        if isinstance(metadata, unicode):
-            metadata = metadata.encode('utf-8')
-        self.metadata_file_handle.write(metadata)
+        self.metadata_file_handle.write(unit.render_primary(self.checksum_type))

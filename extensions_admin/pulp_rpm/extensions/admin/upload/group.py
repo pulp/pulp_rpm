@@ -41,9 +41,9 @@ d = _('default package name to include in the package group; multiple may '
 OPT_DEFAULT_NAME = PulpCliOption('--default-name', d, aliases=['-p'], allow_multiple=True,
                                  required=False, default=[])
 
-d = _('display order for the package group')
+d = _('display order for the package group. Defaults to 1024')
 OPT_DISPLAY_ORDER = PulpCliOption('--display-order', d, allow_multiple=False, required=False,
-                                  default=0)
+                                  default=1024)
 
 d = _('sets the "langonly" attribute for the package group')
 OPT_LANGONLY = PulpCliOption('--langonly', d, allow_multiple=False, required=False)

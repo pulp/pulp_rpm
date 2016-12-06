@@ -1,15 +1,20 @@
+from __future__ import absolute_import
 import logging
 import os
+import rpm as rpm_module
 
 from createrepo import yumbased
+from pulp.server import util
 import rpmUtils
-from pulp.plugins.util import verification
+from pulp.server.exceptions import PulpCodedException
+from pulp_rpm.common import constants
+from pulp_rpm.plugins import error_codes
 
 
 _LOGGER = logging.getLogger(__name__)
 
 
-def get_package_xml(pkg_path, sumtype=verification.TYPE_SHA256):
+def get_package_xml(pkg_path, sumtype=util.TYPE_SHA256):
     """
     Method to generate repo xmls - primary, filelists and other
     for a given rpm.
@@ -90,3 +95,98 @@ def string_to_unicode(data):
         except UnicodeError:
             # try others
             continue
+
+
+def package_headers(filename):
+    """
+    Return package header from rpm/srpm/drpm.
+
+    :param filename: full path to the package to analyze
+    :type  filename: str
+
+    :return: package header
+    :rtype: rpm.hdr
+    """
+
+    # Read the RPM header attributes for use later
+    ts = rpm_module.TransactionSet()
+    ts.setVSFlags(rpm_module._RPMVSF_NOSIGNATURES)
+    fd = os.open(filename, os.O_RDONLY)
+    try:
+        headers = ts.hdrFromFdno(fd)
+        os.close(fd)
+    except rpm_module.error:
+        # Raised if the headers cannot be read
+        os.close(fd)
+        raise
+
+    return headers
+
+
+def package_signature(headers):
+    """
+    Extract package signature from rpm/srpm/drpm.
+
+    :param headers: package header
+    :type  headers: rpm.hdr
+
+    :return: short key id the package was signed with
+             (short key id is the 8 character abbreviated fingerprint)
+    :rtype: str
+    """
+
+    # this expression looks up at the header that was encrypted whether with RSA or DSA algorithm,
+    # then extracts all the possible signature tags, so the signature can be none, signed with a
+    # gpg or pgp key.
+    # this exact expression is also used in the yum code
+    # https://github.com/rpm-software-management/yum/blob/master/rpmUtils/miscutils.py#L105
+    signature = headers.sprintf("%|DSAHEADER?{%{DSAHEADER:pgpsig}}:"
+                                "{%|RSAHEADER?{%{RSAHEADER:pgpsig}}:{%|SIGGPG?{%{SIGGPG:pgpsig}}:"
+                                "{%|SIGPGP?{%{SIGPGP:pgpsig}}:{none}|}|}|}|")
+    if signature == "none":
+        return None
+    # gpg program uses the last 8 characters of the fingerprint
+    return signature.split()[-1][-8:]
+
+
+def signature_enabled(config):
+    """
+    Check if the signature policy is enabled.
+
+    :param config: configuration instance passed to the importer
+    :type  config: pulp.plugins.config.PluginCallConfiguration
+
+    :return: true if enabled, false otherwise
+    :rtype: boolean
+    """
+
+    require_signature = config.get(constants.CONFIG_REQUIRE_SIGNATURE, False)
+    allowed_keys = config.get(constants.CONFIG_ALLOWED_KEYS)
+    if require_signature or allowed_keys:
+        return True
+    return False
+
+
+def filter_signature(unit, config):
+    """
+    Filter package based on GPG signature and allowed GPG key IDs
+
+    :param unit: model instance of the package
+    :type  unit: pulp_rpm.plugins.db.models.RPM/DRPM/SRPM
+
+    :param config: configuration instance passed to the importer
+    :type  config: pulp.plugins.config.PluginCallConfiguration
+
+    :raise: PulpCodedException if the package signing key ID does not exist or is not allowed
+    """
+
+    signing_key = unit.signing_key
+    require_signature = config.get(constants.CONFIG_REQUIRE_SIGNATURE, False)
+    allowed_keys = config.get(constants.CONFIG_ALLOWED_KEYS, [])
+    if require_signature and not signing_key:
+        raise PulpCodedException(error_code=error_codes.RPM1013, package=unit.filename)
+    if allowed_keys:
+        allowed_keys = [key.lower() for key in allowed_keys]
+        if signing_key and signing_key not in allowed_keys:
+                raise PulpCodedException(error_code=error_codes.RPM1014, key=signing_key,
+                                         package=unit.filename, allowed=allowed_keys)

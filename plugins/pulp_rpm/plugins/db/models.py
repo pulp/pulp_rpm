@@ -1,19 +1,26 @@
-from collections import namedtuple
 import csv
+import errno
 import logging
+import re
 import os
+from collections import namedtuple
 from gettext import gettext as _
 from operator import itemgetter
 from urlparse import urljoin
 
 import mongoengine
-from pulp.plugins.util import verification
-from pulp.server.db.model import ContentUnit, FileContentUnit
+from django.template import Context, Template
+from django.template.defaulttags import TemplateTagNode
 
-from pulp_rpm.common import version_utils
-from pulp_rpm.common import file_utils
-from pulp_rpm.plugins import serializers
+import pulp.common.error_codes as platform_error_codes
+import pulp.server.util as server_util
+from pulp.server.db.model import ContentUnit, FileContentUnit
+from pulp.server.exceptions import PulpCodedException
+
+from pulp_rpm.common import version_utils, file_utils
+from pulp_rpm.plugins import error_codes, serializers
 from pulp_rpm.plugins.db.fields import ChecksumTypeStringField
+from pulp_rpm.plugins.importers.yum import utils
 from pulp_rpm.yum_plugin import util
 
 
@@ -115,6 +122,9 @@ class NonMetadataPackage(UnitMixin, FileContentUnit):
     :ivar checksum: The checksum of the package.
     :type checksum: mongoengine.StringField
 
+    :ivar signing_key: 8-character abbreviated signing key fingerprint that signed the package.
+    :type signing_key: mongoengine.StringField
+
     :ivar version_sort_index: ???
     :type version_sort_index: mongoengine.StringField
 
@@ -126,6 +136,8 @@ class NonMetadataPackage(UnitMixin, FileContentUnit):
     release = mongoengine.StringField(required=True)
     checksum = mongoengine.StringField(required=True)
     checksumtype = ChecksumTypeStringField(required=True)
+    checksums = mongoengine.DictField()
+    signing_key = mongoengine.StringField()
 
     # We generate these two
     version_sort_index = mongoengine.StringField()
@@ -137,7 +149,7 @@ class NonMetadataPackage(UnitMixin, FileContentUnit):
 
     def __init__(self, *args, **kwargs):
         if kwargs.get('checksumtype') is not None:
-            kwargs['checksumtype'] = verification.sanitize_checksum_type(kwargs['checksumtype'])
+            kwargs['checksumtype'] = server_util.sanitize_checksum_type(kwargs['checksumtype'])
         super(NonMetadataPackage, self).__init__(*args, **kwargs)
 
     @classmethod
@@ -191,6 +203,51 @@ class NonMetadataPackage(UnitMixin, FileContentUnit):
             self.complete_version_serialized,
             other.complete_version_serialized
         )
+
+    def get_or_calculate_and_save_checksum(self, checksumtype):
+        """
+        Tries to get the checksum value for the specified type from the "checksums" attribute.
+        If it is not available, calculates the value and saves it in self.checksums before
+        returning it.
+
+        SIDE EFFECT: This method will save the model if the requested checksumtype is not populated
+                     on the model in the "checksums" attribute.
+
+        :param checksumtype:   any checksum type supported by the platform
+        :type  checksumtype:   basestring
+
+        :return:    checksum value of the requested type
+        :rtype:     basestring
+
+        :raises PulpCodedException: if the checksumtype is not available
+        """
+        if checksumtype not in server_util.CHECKSUM_FUNCTIONS:
+            raise ValueError(_('Checksum type %(checksumtype)s is not supported') %
+                             {'checksumtype': checksumtype})
+
+        value = self.checksums.get(checksumtype)
+
+        if not value:
+            if self.checksumtype == checksumtype:
+                value = self.checksum
+            elif not self.downloaded:
+                raise PulpCodedException(error_code=error_codes.RPM1008,
+                                         checksumtype=checksumtype)
+            else:
+                _LOGGER.debug(_('calculating checksum of type %(ctype)s for unit %(unit)s') %
+                              {'ctype': checksumtype, 'unit': self})
+                try:
+                    with open(self._storage_path) as f:
+                        value = server_util.calculate_checksums(f, [checksumtype])[checksumtype]
+                except IOError as e:
+                    if e.errno == errno.ENOENT:
+                        raise PulpCodedException(platform_error_codes.PLP0048, unit=str(self))
+                    else:
+                        raise
+            self.checksums[checksumtype] = value
+            self.save()
+
+        return value
 
 
 class Distribution(UnitMixin, FileContentUnit):
@@ -498,7 +555,132 @@ class DRPM(NonMetadataPackage):
 
 
 class RpmBase(NonMetadataPackage):
-    # TODO add docstring to this class
+    """
+    This class is designed to be sub-classed by both RPM and SRPM, as these two
+    package types are similar. Most fields map to metadata fields in the RPM package
+    format.
+
+    :ivar arch: The target architecture for a package. For example, 'x86_64', 'i686',
+                or 'noarch'.
+    :type arch: mongoengine.StringField
+
+    :ivar buildhost: Hostname of the system that built the package.
+    :type buildhost: mongoengine.StringField
+
+    :ivar changelog: A list of changelog entries for the package. The purpose of these
+                     changelogs depend on the packager. Fedora uses to changelog
+                     to document changes to the package's spec file. The format of each
+                     entry is the time (in seconds since the epoch) of the changelog entry,
+                     the author and release as a string, and the list of release notes as
+                     a string.
+    :type changelog: list of [int, basestring, basestring]
+
+    :ivar checksum: The checksum of the package.
+    :type checksum: mongoengine.StringField
+
+    :ivar checksumtype: The checksum type used in the ``checksum`` field.
+    :type checksumtype: mongoengine.StringField
+
+    :ivar description: The human-readable description for a package.
+    :type description: mongoengine.StringField
+
+    :ivar epoch: The package's epoch.
+    :type epoch: mongoengine.StringField
+
+    :ivar files: All the files provided by this package. The dictionary has two keys: "file",
+                 and "dir". "file" maps to a list of strings, which are paths to files the
+                 package provides (for example, "/etc/pulp/server.conf". "dir" maps to a list
+                 of directories the package owns (for example, "/etc/pulp").
+    :type files: dict
+
+    :ivar group: The RPM group this package is a part of. As of ``rpm-4.13.0``,
+                 the following groups are documented in /usr/share/doc/rpm/GROUPS:
+                    Amusements/Games
+                    Amusements/Graphics
+                    Applications/Archiving
+                    Applications/Communications
+                    Applications/Databases
+                    Applications/Editors
+                    Applications/Emulators
+                    Applications/Engineering
+                    Applications/File
+                    Applications/Internet
+                    Applications/Multimedia
+                    Applications/Productivity
+                    Applications/Publishing
+                    Applications/System
+                    Applications/Text
+                    Development/Debuggers
+                    Development/Languages
+                    Development/Libraries
+                    Development/System
+                    Development/Tools
+                    Documentation
+                    System Environment/Base
+                    System Environment/Daemons
+                    System Environment/Kernel
+                    System Environment/Libraries
+                    System Environment/Shells
+                    User Interface/Desktops
+                    User Interface/X
+                    User Interface/X Hardware Support
+    :type group: mongoengine.StringField
+
+    :ivar header_range: The byte range of the package; it contains the 'start' and 'end'
+                        keys which have integer values representing a byte index.
+    :type header_range: dict
+
+    :ivar license: The license or licenses applicable to the package.
+    :type license: mongoengine.StringField
+
+    :ivar name: The package's name. For example, 'pulp-server' would be the
+                name of a package with the NVRA 'pulp-server-2.8.0-1.el7.noarch.rpm'.
+    :type name: mongoengine.StringField
+
+    :ivar provides: List of packages/libraries this package provides. Each entry is a
+                    dictionary with the "release", "epoch", "version", "flags", and "name"
+                    field.
+    :type provides: list of dict
+
+    :ivar release: The release of a particular version of the package. Although this field
+                   can technically be anything, packaging guidelines usually require it to
+                   be an integer followed by the platform, e.g. '1.el7' or '3.f24'. This field
+                   is incremented by the packager whenever a new release of the same version
+                   is created.
+    :type release: mongoengine.Stringfield
+
+    :ivar requires: List of packages/libraries this package requires. Each entry is a dictionary
+                    with the "release", "epoch", "version", "flags", and "name" field.
+    :type requires: list of dict
+
+    :ivar sourcerpm: Name of the source package (srpm) the package was built from.
+    :type sourcerpm: mongoengine.StringField
+
+    :ivar vendor: The name of the organization that produced the RPM.
+    :type vendor: mongoengine.StringField
+
+    :ivar size: size, in bytes, of this package. Note that the RPM has other size fields,
+                namely the size of the archive portion of the package file and the size
+                of the package when installed.
+    :type size: mongoengine.IntField
+
+    :ivar summary: Short description of the package.
+    :type summary: mongoengine.StringField
+
+    :ivar build_time: Time the package was built in seconds since the epoch.
+    :type build_time: mongoengine.IntField
+
+    :ivar time: The mtime of the package file in seconds since the epoch; this
+                is the 'file' time attribute in the primary XML.
+    :type time: mongoengine.IntField
+
+    :ivar url: URL with more information about the packaged software. This could
+               be the project's website or its code repository.
+    :type url: mongoengine.StringField
+
+    :ivar version: The version of the package. For example, '2.8.0'.
+    :type version: mongoengine.Stringfield
+    """
 
     # Unit Key Fields
     name = mongoengine.StringField(required=True)
@@ -541,6 +723,14 @@ class RpmBase(NonMetadataPackage):
 
     SERIALIZER = serializers.RpmBase
 
+    CHECKSUM_TEMPLATE = '{{ checksum }}'
+    CHECKSUMTYPE_TEMPLATE = '{{ checksumtype }}'
+    PKGID_TEMPLATE = '{{ pkgid }}'
+    DEFAULT_CHECKSUM_TYPES = (server_util.TYPE_MD5, server_util.TYPE_SHA1, server_util.TYPE_SHA256)
+    ESCAPE_TEMPLATE_VARS_TAGS = {
+        'primary': ('description', 'summary'),
+        'other': ('changelog',)}
+
     def __init__(self, *args, **kwargs):
         super(RpmBase, self).__init__(*args, **kwargs)
         # raw_xml is only used during the initial sync
@@ -566,6 +756,207 @@ class RpmBase(NonMetadataPackage):
         This should only be used during the initial sync
         """
         return self.relativepath
+
+    def render_primary(self, checksumtype):
+        """
+        Renders the primary XML with the requested checksum type
+
+        :param checksumtype:   checksum type, such as sha1, sha256
+        :type  checksumtype:   basestring
+
+        :return:    primary XML for this unit
+        :rtype:     basestring
+        """
+        metadata = self.repodata['primary']
+        for tag in self.ESCAPE_TEMPLATE_VARS_TAGS['primary']:
+            metadata = self._escape_django_syntax_chars(metadata, tag)
+        context = Context({'checksum': self.get_or_calculate_and_save_checksum(checksumtype),
+                           'checksumtype': checksumtype})
+
+        return self._render(metadata, context)
+
+    def render_other(self, checksumtype):
+        """
+        Renders the other XML with the requested checksum type
+
+        :param checksumtype:   checksum type, such as sha1, sha256
+        :type  checksumtype:   basestring
+
+        :return:    other XML for this unit
+        :rtype:     basestring
+        """
+        metadata = self.repodata['other']
+        for tag in self.ESCAPE_TEMPLATE_VARS_TAGS['other']:
+            metadata = self._escape_django_syntax_chars(metadata, tag)
+        context = Context({'pkgid': self.get_or_calculate_and_save_checksum(checksumtype)})
+        return self._render(metadata, context)
+
+    def render_filelists(self, checksumtype):
+        """
+        Renders the filelists XML with the requested checksum type
+
+        :param checksumtype:   checksum type, such as sha1, sha256
+        :type  checksumtype:   basestring
+
+        :return:    filelists XML for this unit
+        :rtype:     basestring
+        """
+        metadata = self.repodata['filelists']
+        context = Context({'pkgid': self.get_or_calculate_and_save_checksum(checksumtype)})
+        return self._render(metadata, context)
+
+    @staticmethod
+    def _render(template, context):
+        """
+        Given a template as a string and a Context object, returns the rendered result as a string.
+
+        :param template:    a django template
+        :type  template:    basestring
+        :param context:     a django Context object with the required context for the template
+        :type  context:     django.template.Context
+
+        :return:    string that is the result of rendering the template with the context
+        :rtype:     basestring
+        """
+        t = Template(template)
+        rendered = t.render(context)
+        if isinstance(rendered, unicode):
+            rendered = rendered.encode('utf-8')
+
+        return rendered
+
+    @staticmethod
+    def _escape_django_syntax_chars(template, tag_name):
+        """
+        Escape Django syntax characters by replacing them with the corresponding templatetag.
+
+        NOTE: This function does not handle the following XML syntax:
+         - namespaces in the format of namespace_alias:tag_name
+         - nested tag with the same name, e.g. <a><a>...</a></a>
+         It is unlikely that the syntax above is used in the metadata of the content units.
+
+        :param template: a Django template
+        :type  template: basestring
+        :param tag_name: name of the element to wrap
+        :type  tag_name: basestring
+
+        :return: a Django template with the escaped syntax characters in the specified element
+        :rype: basestring
+        """
+        start_tag_pattern = r'<%s.*?(?<!/)>' % tag_name
+        end_tag_pattern = r'</%s>' % tag_name
+        complete_tag_pattern = r'(%s)(.*?)(%s)' % (start_tag_pattern, end_tag_pattern)
+        tag_re = re.compile(complete_tag_pattern, flags=re.DOTALL)
+        template = tag_re.sub(RpmBase._generate_tag_replacement_str, template)
+        return template
+
+    @staticmethod
+    def _generate_tag_replacement_str(mobj):
+        """
+        Generate replacement string for the matched XML element.
+
+        :param mobj: matched object consisted of 3 groups:
+                     opening tag, value and closing tag.
+        :type  mobj: _sre.SRE_Match
+
+        :return: replacement string for the given match object
+        :rtype: basestring
+        """
+        start_tag = mobj.group(1)
+        value = RpmBase._substitute_special_chars(mobj.group(2))
+        end_tag = mobj.group(3)
+        return start_tag + value + end_tag
+
+    @staticmethod
+    def _substitute_special_chars(template):
+        """
+        Make the substitution of the syntax characters with the corresponding templatetag.
+        The syntax characters to be substituted can be found in
+        django.template.defaulttags.TemplateTagNode.mapping.
+
+        :param template: a piece of the template in which substitution should happen
+        :type  template: basestring
+
+        :return: string with syntax characters substituted
+        :rtype: basestriing
+        """
+        templatetag_map = dict((sym, name) for name, sym in TemplateTagNode.mapping.items())
+        symbols_pattern = '(%s)' % '|'.join(templatetag_map.keys())
+        return re.sub(symbols_pattern,
+                      lambda mobj: '{%% templatetag %s %%}' % templatetag_map[mobj.group(1)],
+                      template)
+
+    def modify_xml(self):
+        """
+        Given a unit that has repodata XML snippets, modify them in several necessary ways. These
+        include changing the location value and adding template strings to checksum elements.
+        """
+        faked_primary = utils.fake_xml_element(self.repodata['primary'])
+        primary = faked_primary.find('package')
+
+        faked_other = utils.fake_xml_element(self.repodata['other'])
+        other = faked_other.find('package')
+
+        faked_filelists = utils.fake_xml_element(self.repodata['filelists'])
+        filelists = faked_filelists.find('package')
+
+        self._update_location(primary, self.filename)
+        self._templatize_checksum(primary)
+        self._templatize_pkgid(other)
+        self._templatize_pkgid(filelists)
+
+        self.repodata['primary'] = utils.remove_fake_element(utils.element_to_text(faked_primary))
+        self.repodata['other'] = utils.element_to_text(other)
+        self.repodata['filelists'] = utils.element_to_text(filelists)
+
+    @classmethod
+    def _templatize_pkgid(cls, element):
+        """
+        Modify the passed-in element so that its "pkgid" element contains a template string
+
+        :param element: XML element that has a "pkgid" attribute
+        :type  element: xml.etree.ElementTree.Element
+        """
+        element.attrib['pkgid'] = cls.PKGID_TEMPLATE
+
+    @classmethod
+    def _templatize_checksum(cls, package_element):
+        """
+        Modify the checksum element to contain template strings as the text, and as the "type"
+        attribute.
+
+        :param package_element: XML element with name "package" from primary.xml
+        :type  package_element: xml.etree.ElementTree.Element
+        """
+        c_elem = package_element.find('checksum')
+        c_elem.text = cls.CHECKSUM_TEMPLATE
+        c_elem.attrib['type'] = cls.CHECKSUMTYPE_TEMPLATE
+
+    @staticmethod
+    def _update_location(package_element, filename):
+        """
+        When uploading a unit, the href in the generated xml's location tag is
+        based on the content unit file path, which is an autogenerated unique
+        value. This sets the href back to the unit filename, which matches the
+        published repo layout and allows uploaded units to again be downloaded
+        from the published repo.
+
+        :param package_element: XML element with name "package" from primary.xml
+        :type  package_element: xml.etree.ElementTree.Element
+        :param filename:        the name of the RPM's file
+        :type  filename:        basestring
+        """
+        location_element = package_element.find('location')
+        location_element.set('href', filename)
+
+    def get_symlink_name(self):
+        """
+        Provides the name that should be used when creating a symlink.
+
+        :return: file name as it appears in a published repository
+        :rtype: str
+        """
+        return self.filename
 
 
 class RPM(RpmBase):
@@ -647,12 +1038,12 @@ class Errata(UnitMixin, ContentUnit):
             for package in collection.get('packages', []):
                 if len(package.get('sum') or []) == 2:
                     checksum = package['sum'][1]
-                    checksumtype = verification.sanitize_checksum_type(package['sum'][0])
+                    checksumtype = server_util.sanitize_checksum_type(package['sum'][0])
                 elif 'sums' in package and 'type' in package:
                     # these are the field names we get from an erratum upload.
                     # I have no idea why they are different.
                     checksum = package['sums']
-                    checksumtype = verification.sanitize_checksum_type(package['type'])
+                    checksumtype = server_util.sanitize_checksum_type(package['type'])
                 else:
                     checksum = None
                     checksumtype = None
@@ -911,6 +1302,24 @@ class PackageEnvironment(UnitMixin, ContentUnit):
         return [d.get('group') for d in self.options]
 
 
+class PackageLangpacks(UnitMixin, ContentUnit):
+    # TODO add docstring to this class
+    repo_id = mongoengine.StringField(required=True)
+    matches = mongoengine.ListField()
+
+    # For backward compatibility
+    _ns = mongoengine.StringField(default='units_package_langpacks')
+    _content_type_id = mongoengine.StringField(required=True, default='package_langpacks')
+
+    unit_key_fields = ('repo_id',)
+
+    meta = {
+        'collection': 'units_package_langpacks',
+        'allow_inheritance': False}
+
+    SERIALIZER = serializers.PackageLangpacks
+
+
 class YumMetadataFile(UnitMixin, FileContentUnit):
     # TODO add docstring to this class
     data_type = mongoengine.StringField(required=True)
@@ -1025,6 +1434,15 @@ class ISO(FileContentUnit):
         """
         # Calculate the size by seeking to the end to find the file size with tell()
         return file_utils.calculate_size(file_handle)
+
+    def get_symlink_name(self):
+        """
+        Provides the name that should be used when creating a symlink.
+
+        :return: file name as it appears in a published repository
+        :rtype: str
+        """
+        return self.name
 
 
 class ISOManifest(object):

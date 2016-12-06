@@ -10,6 +10,7 @@ _LOGGER = logging.getLogger(__name__)
 GROUP_TAG = 'group'
 CATEGORY_TAG = 'category'
 ENVIRONMENT_TAG = 'environment'
+LANGPACKS_TAG = 'langpacks'
 # this according to yum.comps.lang_attr
 LANGUAGE_TAG = '{http://www.w3.org/XML/1998/namespace}lang'
 
@@ -126,6 +127,27 @@ def process_environment_element(repo_id, element):
     unit.translated_description = translated_description
     unit.translated_name = translated_name
     unit.options = options
+    return unit
+
+
+def process_langpacks_element(repo_id, element):
+    """
+    Process one XML block from comps.xml and return a models.PackageLangpacks instance
+
+    :param repo_id: unique ID for the destination repository
+    :type  repo_id  basestring
+    :param element: object representing one "PackageLangpacks" block from the XML file
+    :type  element: xml.etree.ElementTree.Element
+
+    :return:    models.PackageLangpacks instance for the XML block
+    :rtype:     pulp_rpm.plugins.db.models.PackageLangpacks
+    """
+    unit = models.PackageLangpacks()
+    unit.repo_id = repo_id
+
+    for match in element.findall('match'):
+        unit.matches.append({'install': match.get('install'), 'name': match.get('name')})
+
     return unit
 
 

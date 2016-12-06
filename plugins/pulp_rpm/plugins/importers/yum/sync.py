@@ -18,17 +18,19 @@ from nectar.request import DownloadRequest
 
 from pulp.common import dateutils
 from pulp.common.plugins import importer_constants
+from pulp.plugins.util import nectar_config as nectar_utils
+from pulp.server import util
+from pulp.server.controllers import repository as repo_controller
 from pulp.server.db.model import LazyCatalogEntry
-from pulp.plugins.util import nectar_config as nectar_utils, verification
 from pulp.server.exceptions import PulpCodedException
 from pulp.server.managers.repo import _common as common_utils
-from pulp.server.controllers import repository as repo_controller
 
 from pulp_rpm.common import constants, ids
 from pulp_rpm.plugins import error_codes
 from pulp_rpm.plugins.db import models
 from pulp_rpm.plugins.importers.yum import existing, purge
-from pulp_rpm.plugins.importers.yum.listener import RPMListener, DRPMListener
+from pulp_rpm.plugins.importers.yum.listener import RPMListener
+from pulp_rpm.plugins.importers.yum.parse import rpm as rpm_parse
 from pulp_rpm.plugins.importers.yum.parse.treeinfo import DistSync
 from pulp_rpm.plugins.importers.yum.repomd import (
     alternate, group, metadata, nectar_factory, packages, presto, primary, updateinfo)
@@ -77,6 +79,7 @@ class RepoSync(object):
         self.current_revision = 0
         self.downloader = None
         self.tmp_dir = None
+        self.force_full = config.get('force_full', False)
 
         url_modify_config = {}
         if config.get('query_auth_token'):
@@ -231,7 +234,7 @@ class RepoSync(object):
                 _logger.info(_('Downloading additional units.'))
 
                 with self.update_state(self.distribution_report,
-                                       models.Distribution._content_type_id) as skip:
+                                       ids.TYPE_ID_DISTRO) as skip:
                     if not skip:
                         dist_sync = DistSync(self, url)
                         dist_sync.run()
@@ -248,6 +251,8 @@ class RepoSync(object):
                                                   group.CATEGORY_TAG)
                         self.get_comps_file_units(metadata_files, group.process_environment_element,
                                                   group.ENVIRONMENT_TAG)
+                        self.get_comps_file_units(metadata_files, group.process_langpacks_element,
+                                                  group.LANGPACKS_TAG)
 
                 with self.update_state(self.progress_report['purge_duplicates']) as skip:
                     if not (skip or self.skip_repomd_steps):
@@ -278,7 +283,12 @@ class RepoSync(object):
             finally:
                 # clean up whatever we may have left behind
                 shutil.rmtree(self.tmp_dir, ignore_errors=True)
-            self.save_repomd_revision()
+
+            if self.config.override_config.get(importer_constants.KEY_FEED):
+                self.erase_repomd_revision()
+            else:
+                self.save_repomd_revision()
+
             _logger.info(_('Sync complete.'))
             return self.conduit.build_success_report(self._progress_summary,
                                                      self.progress_report)
@@ -354,16 +364,22 @@ class RepoSync(object):
         previous_skip_set = set(scratchpad.get(constants.PREVIOUS_SKIP_LIST, []))
         current_skip_set = set(self.config.get(constants.CONFIG_SKIP, []))
         self.current_revision = metadata_files.revision
-        missing_units = repo_controller.missing_unit_count(self.repo.repo_id)
-
         last_sync = self.conduit.last_sync()
         sync_due_to_unit_removal = False
         if last_sync is not None:
             last_sync = dateutils.parse_iso8601_datetime(last_sync)
             last_removed = self.repo.last_unit_removed
             sync_due_to_unit_removal = last_removed is not None and last_sync < last_removed
-
-        if 0 < metadata_files.revision <= previous_revision \
+        # determine missing units
+        missing_units = repo_controller.missing_unit_count(self.repo.repo_id)
+        # if the current MD revision is not newer than the old one
+        # and we aren't using an override URL
+        # and the skip list doesn't have any new types
+        # and there are no missing units, or we have deferred download enabled
+        # and no units were removed after last sync
+        # then skip fetching the repo MD :)
+        if not self.force_full and 0 < metadata_files.revision <= previous_revision \
+                and not self.config.override_config.get(importer_constants.KEY_FEED) \
                 and previous_skip_set - current_skip_set == set() \
                 and (self.download_deferred or not missing_units) \
                 and not sync_due_to_unit_removal:
@@ -397,6 +413,17 @@ class RepoSync(object):
                 constants.CONFIG_SKIP, [])
             self.conduit.set_scratchpad(scratchpad)
 
+    def erase_repomd_revision(self):
+        """
+        If we are syncing from a one-off URL, we should clobber the old repomd revision.
+        """
+        _logger.debug(_('erasing repomd.xml revision number and skip list from scratchpad'))
+        scratchpad = self.conduit.get_scratchpad()
+        if scratchpad:
+            scratchpad[constants.REPOMD_REVISION_KEY] = None
+            scratchpad[constants.PREVIOUS_SKIP_LIST] = []
+            self.conduit.set_scratchpad(scratchpad)
+
     def save_default_metadata_checksum_on_repo(self, metadata_files):
         """
         Determine the default checksum that should be used for metadata files and save it in
@@ -414,7 +441,7 @@ class RepoSync(object):
                 checksum_type = metadata_item[1]['checksum']['algorithm']
                 break
         if checksum_type:
-            checksum_type = verification.sanitize_checksum_type(checksum_type)
+            checksum_type = util.sanitize_checksum_type(checksum_type)
             scratchpad = self.conduit.get_repo_scratchpad()
             scratchpad[constants.SCRATCHPAD_DEFAULT_METADATA_CHECKSUM] = checksum_type
             self.conduit.set_repo_scratchpad(scratchpad)
@@ -431,7 +458,7 @@ class RepoSync(object):
             if metadata_type not in metadata_files.KNOWN_TYPES:
                 file_path = file_info['local_path']
                 checksum_type = file_info['checksum']['algorithm']
-                checksum_type = verification.sanitize_checksum_type(checksum_type)
+                checksum_type = util.sanitize_checksum_type(checksum_type)
                 checksum = file_info['checksum']['hex_digest']
                 # Find an existing model
                 model = models.YumMetadataFile.objects.filter(
@@ -468,6 +495,20 @@ class RepoSync(object):
         rpms_to_download, drpms_to_download = self._decide_what_to_download(metadata_files, catalog)
         self.download_rpms(metadata_files, rpms_to_download, url)
         self.download_drpms(metadata_files, drpms_to_download, url)
+        failed_signature_check = 0
+        new_report = []
+        for error in self.progress_report['content']['error_details']:
+            if error[constants.ERROR_CODE] == constants.ERROR_KEY_ID_FILTER:
+                failed_signature_check += 1
+            else:
+                new_report.append(error)
+        if failed_signature_check:
+            d = {constants.ERROR_CODE: constants.ERROR_INVALID_PACKAGE_SIG,
+                 'count': '%s' % failed_signature_check}
+            new_report.append(d)
+            self.progress_report['content']['error_details'] = new_report
+            _logger.warning(_('%s packages failed signature filter and were not imported.'
+                            % failed_signature_check))
         self.conduit.build_success_report({}, {})
         # removes unwanted units according to the config settings
         purge.purge_unwanted_units(metadata_files, self.conduit, self.config)
@@ -526,7 +567,7 @@ class RepoSync(object):
             # check for the units that are not in the repo, but exist on the server
             # and associate them to the repo
             to_download = existing.check_all_and_associate(
-                wanted, self.conduit, self.download_deferred, catalog)
+                wanted, self.conduit, self.config, self.download_deferred, catalog)
             count = len(to_download)
             size = 0
             for unit in to_download:
@@ -570,7 +611,7 @@ class RepoSync(object):
                     # check for the units that are not in the repo, but exist on the server
                     # and associate them to the repo
                     to_download = existing.check_all_and_associate(
-                        wanted, self.conduit, self.download_deferred, catalog)
+                        wanted, self.conduit, self.config, self.download_deferred, catalog)
                     count += len(to_download)
                     for unit in to_download:
                         size += wanted[unit].size
@@ -598,13 +639,46 @@ class RepoSync(object):
             unit.save()
         except NotUniqueError:
             unit = unit.__class__.objects.filter(**unit.unit_key).first()
+
+        return unit
+
+    def signature_filter_passed(self, unit):
+        """
+        Decide whether to associate unit or not based on its signature.
+
+        :param unit: A content unit.
+        :type unit: pulp_rpm.plugins.db.models.RpmBase
+
+        :rtype: bool
+        :return: True if unit passes the signature filter and has to be associated
+        """
+        if rpm_parse.signature_enabled(self.config):
+            try:
+                rpm_parse.filter_signature(unit, self.config)
+            except PulpCodedException as e:
+                _logger.debug(e)
+                error_report = {
+                    constants.NAME: unit.filename,
+                    constants.ERROR_CODE: constants.ERROR_KEY_ID_FILTER,
+                }
+
+                self.progress_report['content'].failure(unit, error_report)
+                self.conduit.set_progress(self.progress_report)
+                return False
+
+        return True
+
+    def associate_rpm_unit(self, unit):
+        """
+        Associate unit with a repo and report this unit as a successfully synced one.
+        It should be a last step in the sync of one unit.
+
+        :param unit: A content unit
+        :type  unit: pulp_rpm.plugins.db.models.RpmBase
+        """
         repo_controller.associate_single_unit(self.conduit.repo, unit)
         self.progress_report['content'].success(unit)
         self.conduit.set_progress(self.progress_report)
-        return unit
-
-    # added for clarity
-    add_drpm_unit = add_rpm_unit
 
     def download_rpms(self, metadata_files, rpms_to_download, url):
         """
@@ -638,6 +712,7 @@ class RepoSync(object):
                 for unit in units_to_download:
                     unit.downloaded = False
                     unit = self.add_rpm_unit(metadata_files, unit)
+                    self.associate_rpm_unit(unit)
                     catalog.add(unit, unit.download_path)
                 return
 
@@ -674,7 +749,7 @@ class RepoSync(object):
         :param url: current URL we should sync
         :type: str
         """
-        event_listener = DRPMListener(self, metadata_files)
+        event_listener = RPMListener(self, metadata_files)
 
         for presto_file_name in presto.METADATA_FILE_NAMES:
             presto_file_handle = metadata_files.get_metadata_file_handle(presto_file_name)
@@ -692,7 +767,8 @@ class RepoSync(object):
                         catalog = PackageCatalog(self.conduit.importer_object_id, url)
                         for unit in units_to_download:
                             unit.downloaded = False
-                            unit = self.add_drpm_unit(metadata_files, unit)
+                            unit = self.add_rpm_unit(metadata_files, unit)
+                            self.associate_rpm_unit(unit)
                             catalog.add(unit, unit.download_path)
                         continue
 

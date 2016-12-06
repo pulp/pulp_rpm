@@ -376,7 +376,7 @@ class YumDistributorMetadataTests(unittest.TestCase):
         # just checking
         self.assertEqual(erratum_unit.unit_key['errata_id'], 'RHEA-2010:9999')
 
-        context = UpdateinfoXMLFileContext(self.metadata_file_dir, set())
+        context = UpdateinfoXMLFileContext(self.metadata_file_dir, set(), checksum_type='md5')
         context._open_metadata_file_handle()
         context.add_unit_metadata(erratum_unit)
         context._close_metadata_file_handle()
@@ -421,7 +421,8 @@ class YumDistributorMetadataTests(unittest.TestCase):
 
         mock_conduit = Mock()
         mock_conduit.repo_id = 'mock_conduit_repo'
-        context = UpdateinfoXMLFileContext(self.metadata_file_dir, set(), conduit=mock_conduit)
+        context = UpdateinfoXMLFileContext(self.metadata_file_dir, set(),
+                                           conduit=mock_conduit, checksum_type='md5')
         context._open_metadata_file_handle()
         context.add_unit_metadata(erratum_unit)
         context._close_metadata_file_handle()
@@ -460,6 +461,27 @@ class YumDistributorMetadataTests(unittest.TestCase):
         self.assertEqual(len(repo_unit_nevra), 1)
         self.assertTrue(unit1_nevra_dict in repo_unit_nevra)
         self.assertTrue(unit2_nevra_dict not in repo_unit_nevra)
+
+    def test_updateinfo_get_repo_unit_nevra_no_epoch(self):
+        """
+        Test that epoch defaults to 0 and corresponding erratum and RPM unit match
+        """
+        nevra_fields = ('name', 'epoch', 'version', 'release', 'arch')
+        erratum_unit_nevra = ('n1', None, 'v1', 'r1', 'a1')
+        erratum_unit_nevra_dict = dict(zip(nevra_fields, erratum_unit_nevra))
+        rpm_unit_nevra = ('n1', '0', 'v1', 'r1', 'a1')
+        rpm_unit_nevra_dict = dict(zip(nevra_fields, rpm_unit_nevra))
+
+        erratum_unit = Mock()
+        erratum_unit.pkglist = [{'packages': [
+            erratum_unit_nevra_dict,
+        ]}]
+
+        context = UpdateinfoXMLFileContext(self.metadata_file_dir, set([rpm_unit_nevra]))
+        repo_unit_nevra = context._get_repo_unit_nevra(erratum_unit)
+
+        self.assertEqual(len(repo_unit_nevra), 1)
+        self.assertTrue(rpm_unit_nevra_dict in repo_unit_nevra)
 
     # -- prestodelta.xml testing -----------------------------------------------
 

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-from pulp.plugins.util import verification
+from pulp.server import util
 
 from pulp_rpm.plugins.db import models
 
@@ -25,7 +25,7 @@ def process_package_element(element):
     sequence = delta.find('sequence')
     size = delta.find('size')
     checksum = delta.find('checksum')
-    checksum_type = verification.sanitize_checksum_type(checksum.attrib['type'])
+    checksum_type = util.sanitize_checksum_type(checksum.attrib['type'])
 
     return models.DRPM(
         new_package=element.attrib['name'],

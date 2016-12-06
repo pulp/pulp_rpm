@@ -13,8 +13,8 @@
 # ---- Pulp (rpm) --------------------------------------------------------------
 
 Name: pulp-rpm
-Version: 2.8.7
-Release: 0.1.beta%{?dist}
+Version: 2.10.3
+Release: 1%{?dist}
 Summary: Support for RPM content in the Pulp platform
 Group: Development/Languages
 License: GPLv2
@@ -162,6 +162,8 @@ Requires: python-nectar >= 1.2.1
 Requires: genisoimage
 Requires: m2crypto
 Requires: python-lxml
+Requires: repoview
+Requires: rsync
 
 %description plugins
 Provides a collection of platform plugins that extend the Pulp platform
@@ -267,16 +269,22 @@ A collection of yum plugins supplementing Pulp consumer operations.
 
 
 %changelog
-* Tue Jul 26 2016 Sean Myers <sean.myers@redhat.com> 2.8.7-0.1.beta
+* Thu Dec 01 2016 Sean Myers <sean.myers@redhat.com> 2.10.3-1
 - Pulp rebuild
 
-* Mon Jul 11 2016 Sean Myers <sean.myers@redhat.com> 2.8.6-0.1.beta
+* Tue Oct 18 2016 Sean Myers <sean.myers@redhat.com> 2.10.1-0.1.beta
 - Pulp rebuild
 
-* Fri Jun 17 2016 Sean Myers <sean.myers@redhat.com> 2.8.5-0.1.beta
+* Mon Aug 29 2016 Sean Myers <sean.myers@redhat.com> 2.10.0-0.4.beta
 - Pulp rebuild
 
-* Thu May 26 2016 Sean Myers <sean.myers@redhat.com> 2.8.4-0.1.beta
+* Fri Aug 19 2016 Sean Myers <sean.myers@redhat.com> 2.10.0-0.3.beta
+- Pulp rebuild
+
+* Wed Aug 03 2016 Sean Myers <sean.myers@redhat.com> 2.10.0-0.1.beta
+- added rsync distributor (jluza@redhat.com)
+- 1982 - --force-full option for yum importer (fdobrovo@redhat.com)
+- 1876 - Add in a sample program to generate the file (bkearney@redhat.com)
 - fixed sync for reference title (jluza@redhat.com)
 - 1782 - reboot_suggested is False by default if during unit upload there was
   not specified any value. (ipanova@redhat.com)

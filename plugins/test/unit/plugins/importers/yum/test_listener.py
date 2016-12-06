@@ -4,35 +4,10 @@ import unittest
 import mock
 from nectar.report import DownloadReport
 from pulp.plugins.util import verification
+from pulp.server import util
 
 from pulp_rpm.devel.skip import skip_broken
 from pulp_rpm.plugins.importers.yum import listener
-
-
-class TestPackageListenerDeleting(unittest.TestCase):
-    def setUp(self):
-        self.mock_sync = mock.MagicMock()
-        self.mock_metadata_files = mock.MagicMock()
-        self.listener = listener.PackageListener(self.mock_sync, self.mock_metadata_files)
-
-    @mock.patch('os.remove')
-    def test_removes_path(self, mock_remove):
-        path = '/a/b/c'
-
-        with self.listener.deleting(path):
-            pass
-
-        mock_remove.assert_called_once_with(path)
-
-    @mock.patch('os.remove', side_effect=IOError)
-    def test_squashes_exception(self, mock_remove):
-        path = '/a/b/c'
-
-        # this should not raise any exceptions
-        with self.listener.deleting(path):
-            pass
-
-        mock_remove.assert_called_once_with(path)
 
 
 class TestRPMListenerDownloadSucceeded(unittest.TestCase):
@@ -44,7 +19,7 @@ class TestRPMListenerDownloadSucceeded(unittest.TestCase):
         self.listener = listener.RPMListener(self.mock_sync, self.mock_metadata_files)
         self.report = DownloadReport('http://pulpproject.org', '/a/b/c')
 
-    @mock.patch.object(listener.RPMListener, 'deleting')
+    @mock.patch('pulp.server.util.deleting')
     def test_calls_deleting(self, mock_deleting):
         unit = mock.MagicMock()
         self.report.data = unit
@@ -56,8 +31,10 @@ class TestRPMListenerDownloadSucceeded(unittest.TestCase):
         # it was used as a context manager
         self.assertEqual(mock_deleting.return_value.__exit__.call_count, 1)
 
-    def test_change_download_flag(self):
+    @mock.patch('pulp_rpm.plugins.importers.yum.listener.rpm_parse')
+    def test_change_download_flag(self, mock_rpm_parse):
         unit = mock.MagicMock()
+        unit.checksumtype = 'sha256'
         self.report.data = unit
         added_unit = mock.MagicMock()
         added_unit.downloaded = False
@@ -68,61 +45,17 @@ class TestRPMListenerDownloadSucceeded(unittest.TestCase):
         # test flag changed to True and save was called
         self.assertEqual(added_unit.downloaded, True)
         self.assertEqual(added_unit.save.call_count, 1)
+        mock_rpm_parse.package_headers.assert_called_once_with('/a/b/c')
+        headers = mock_rpm_parse.package_headers.return_value
+        mock_rpm_parse.package_signature.assert_called_once_with(headers)
 
-    def test_save_not_called(self):
+    @mock.patch('pulp_rpm.plugins.importers.yum.listener.rpm_parse')
+    def test_save_not_called(self, mock_rpm_parse):
         unit = mock.MagicMock()
         self.report.data = unit
         added_unit = mock.MagicMock()
         added_unit.downloaded = True
         self.mock_sync.add_rpm_unit.return_value = added_unit
-
-        self.listener.download_succeeded(self.report)
-
-        # test flag is still set to True but save was not called
-        self.assertEqual(added_unit.downloaded, True)
-        self.assertEqual(added_unit.save.call_count, 0)
-
-
-class TestDRPMListenerDownloadSucceeded(unittest.TestCase):
-    def setUp(self):
-        self.mock_sync = mock.MagicMock()
-        # this causes validation to be skipped
-        self.mock_sync.config.get.return_value = False
-        self.mock_metadata_files = mock.MagicMock()
-        self.listener = listener.DRPMListener(self.mock_sync, self.mock_metadata_files)
-        self.report = DownloadReport('http://pulpproject.org', '/a/b/c')
-
-    @mock.patch.object(listener.DRPMListener, 'deleting')
-    def test_calls_deleting(self, mock_deleting):
-        unit = mock.MagicMock()
-        self.report.data = unit
-
-        self.listener.download_succeeded(self.report)
-
-        # it was called correctly
-        mock_deleting.assert_called_once_with('/a/b/c')
-        # it was used as a context manager
-        self.assertEqual(mock_deleting.return_value.__exit__.call_count, 1)
-
-    def test_change_download_flag(self):
-        unit = mock.MagicMock()
-        self.report.data = unit
-        added_unit = mock.MagicMock()
-        added_unit.downloaded = False
-        self.mock_sync.add_drpm_unit.return_value = added_unit
-
-        self.listener.download_succeeded(self.report)
-
-        # test flag changed to True and save was called
-        self.assertEqual(added_unit.downloaded, True)
-        self.assertEqual(added_unit.save.call_count, 1)
-
-    def test_save_not_called(self):
-        unit = mock.MagicMock()
-        self.report.data = unit
-        added_unit = mock.MagicMock()
-        added_unit.downloaded = True
-        self.mock_sync.add_drpm_unit.return_value = added_unit
 
         self.listener.download_succeeded(self.report)
 
@@ -192,24 +125,24 @@ class TestPackageListener(unittest.TestCase):
         self.assertFalse(self.progress_report['content'].success.called)
 
     @mock.patch('__builtin__.open', autospec=True)
-    @mock.patch('pulp.plugins.util.verification.verify_checksum')
+    @mock.patch('pulp_rpm.plugins.importers.yum.listener.PackageListener._verify_checksum')
     @mock.patch('pulp.plugins.util.verification.verify_size')
     @mock.patch('shutil.copy', autospec=True)
     def test_download_successful_invalid_checksum_type(self, mock_copy, mock_verify_size,
                                                        mock_verify_checksum, mock_open):
         self.config.get.return_value = True
 
-        mock_verify_checksum.side_effect = verification.InvalidChecksumType()
+        mock_verify_checksum.side_effect = util.InvalidChecksumType()
         content_listener = listener.PackageListener(self, self.metadata_files)
 
         self.assertRaises(
-            verification.InvalidChecksumType, content_listener.download_succeeded, self.report)
+            util.InvalidChecksumType, content_listener.download_succeeded, self.report)
 
         mock_verify_checksum.assert_called_once()
         self.assertFalse(self.progress_report['content'].success.called)
 
     @mock.patch('__builtin__.open', autospec=True)
-    @mock.patch('pulp.plugins.util.verification.verify_checksum')
+    @mock.patch('pulp_rpm.plugins.importers.yum.listener.PackageListener._verify_checksum')
     @mock.patch('pulp.plugins.util.verification.verify_size')
     @mock.patch('shutil.copy', autospec=True)
     def test_download_successful_invalid_checksum_verification(self, mock_copy, mock_verify_size,
@@ -220,7 +153,7 @@ class TestPackageListener(unittest.TestCase):
         content_listener = listener.PackageListener(self, self.metadata_files)
 
         self.assertRaises(
-            verification.VerificationException, content_listener.download_succeeded, self.report)
+            util.InvalidChecksumType, content_listener.download_succeeded, self.report)
 
         mock_verify_checksum.assert_called_once()
         self.assertFalse(self.progress_report['content'].success.called)

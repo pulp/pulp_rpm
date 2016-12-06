@@ -9,7 +9,7 @@ from pulp.devel.unit.util import compare_dict
 from pulp_rpm.extensions.admin import export
 from pulp_rpm.common import constants, ids
 from pulp_rpm.devel.client_base import PulpClientTests
-from pulp_rpm.extensions.admin import status
+from pulp_rpm.extensions.admin import repo_options, status
 
 
 class TestRepoExportRunCommand(PulpClientTests):
@@ -35,6 +35,9 @@ class TestRepoExportRunCommand(PulpClientTests):
             export.OPTION_START_DATE,
             export.OPTION_ISO_PREFIX,
             export.OPTION_ISO_SIZE,
+            export.OPTION_INCREMENTAL_MD,
+            repo_options.OPT_CHECKSUM_TYPE,
+            repo_options.OPT_UPDATEINFO_CHECKSUM_TYPE,
         ]
 
         # Test
@@ -68,7 +71,10 @@ class TestRepoGroupExportRunCommand(PulpClientTests):
             export.OPTION_EXPORT_DIR.keyword: None,
             export.OPTION_RELATIVE_URL.keyword: None,
             export.OPTION_SERVE_HTTP.keyword: True,
-            export.OPTION_SERVE_HTTPS.keyword: True
+            export.OPTION_SERVE_HTTPS.keyword: True,
+            export.OPTION_INCREMENTAL_MD.keyword: False,
+            repo_options.OPT_CHECKSUM_TYPE.keyword: None,
+            repo_options.OPT_UPDATEINFO_CHECKSUM_TYPE.keyword: None,
         }
 
     def tearDown(self):
@@ -91,7 +97,10 @@ class TestRepoGroupExportRunCommand(PulpClientTests):
             export.OPTION_ISO_PREFIX,
             export.OPTION_ISO_SIZE,
             export.OPTION_SERVE_HTTPS,
-            export.OPTION_SERVE_HTTP
+            export.OPTION_SERVE_HTTP,
+            export.OPTION_INCREMENTAL_MD,
+            repo_options.OPT_CHECKSUM_TYPE,
+            repo_options.OPT_UPDATEINFO_CHECKSUM_TYPE,
         ]
 
         # Test
@@ -172,6 +181,7 @@ class TestRepoGroupExportRunCommand(PulpClientTests):
         expected_publish_config = {
             constants.PUBLISH_HTTP_KEYWORD: True,
             constants.PUBLISH_HTTPS_KEYWORD: True,
+            constants.INCREMENTAL_EXPORT_REPOMD_KEYWORD: False,
         }
 
         # Test

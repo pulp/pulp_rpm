@@ -1,0 +1,25 @@
+=======================
+Pulp 2.10 Release Notes
+=======================
+
+Pulp 2.10.0
+===========
+
+New Features
+------------
+
+* The yum distributor and export distributor now can use the configured checksum type for
+  updateinfo.xml generation which may differ from the configured checksum type for all
+  repo metadata. It can be specified via pulp-admin repo "create" and "update" commands.
+
+* Full re-sync can be done now using ``--force-full`` option.
+
+* The RPM rsync distributor has been added. The new distributor can be used to publish repositories
+  published by yum_distributor to a remote server.
+
+* Package signature filtering can be enabled. There are two new options that are responsible
+  for signature filter behaviour ``--require-signature`` and ``--allowed-keys``. These options can
+  be specified via pulp-admin repo "create" and "update" commands, or via API by specifing them in
+  the importer configuration. More details can be found in `RPM Features
+  <http://docs.pulpproject.org/user-guide/features.html#package-signatures-and-gpg-key-id-filtering>`_ or in
+  `Recipes <http://docs.pulpproject.org/user-guide/recipes.html#sync-a-repo-with-gpg-key-id-filtering>`_.

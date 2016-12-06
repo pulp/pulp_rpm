@@ -20,10 +20,12 @@ TYPE_DISTRIBUTION = 'distribution'
 TYPE_PACKAGE_GROUP = 'package_group'
 TYPE_PACKAGE_CATEGORY = 'package_category'
 TYPE_PACKAGE_ENVIRONMENT = 'package_environment'
+TYPE_PACKAGE_LANGPACKS = 'package_langpacks'
+
 
 # Intentionally does not include distributions; they should be looked up specifically
 ALL_TYPES = (TYPE_RPM, TYPE_SRPM, TYPE_DRPM, TYPE_ERRATUM, TYPE_PACKAGE_GROUP,
-             TYPE_PACKAGE_CATEGORY, TYPE_PACKAGE_ENVIRONMENT)
+             TYPE_PACKAGE_CATEGORY, TYPE_PACKAGE_ENVIRONMENT, TYPE_PACKAGE_LANGPACKS)
 
 # List of all fields that the user can elect to display for each supported type
 FIELDS_RPM = ('arch', 'buildhost', 'checksum', 'checksumtype', 'description',
@@ -35,6 +37,8 @@ FIELDS_PACKAGE_GROUP = ('id', 'name', 'description', 'mandatory_package_names',
                         'default_package_names', 'user_visible')
 FIELDS_PACKAGE_CATEGORY = ('id', 'name', 'description', 'packagegroupids')
 FIELDS_PACKAGE_ENVIRONMENT = ('id', 'name', 'description', 'group_ids', 'options')
+FIELDS_PACKAGE_LANGPACKS = ('matches', )
+
 
 # Used when generating the --fields help text so it can be customized by type
 FIELDS_BY_TYPE = {
@@ -44,7 +48,8 @@ FIELDS_BY_TYPE = {
     TYPE_ERRATUM: FIELDS_ERRATA,
     TYPE_PACKAGE_GROUP: FIELDS_PACKAGE_GROUP,
     TYPE_PACKAGE_CATEGORY: FIELDS_PACKAGE_CATEGORY,
-    TYPE_PACKAGE_ENVIRONMENT: FIELDS_PACKAGE_ENVIRONMENT
+    TYPE_PACKAGE_ENVIRONMENT: FIELDS_PACKAGE_ENVIRONMENT,
+    TYPE_PACKAGE_LANGPACKS: FIELDS_PACKAGE_LANGPACKS,
 }
 
 # Ordering of metadata fields in each type. Keep in mind these are the display
@@ -57,6 +62,7 @@ ORDER_PACKAGE_GROUP = ['id', 'name', 'description', 'default_package_names',
                        'conditional_package_names', 'user_visible']
 ORDER_PACKAGE_CATEGORY = ['id', 'name', 'description', 'packagegroupids']
 ORDER_PACKAGE_ENVIRONMENT = ['id', 'name', 'description', 'group_ids', 'options']
+ORDER_PACKAGE_LANGPACKS = ['matches']
 
 # Used to lookup the right order list based on type
 ORDER_BY_TYPE = {
@@ -67,6 +73,7 @@ ORDER_BY_TYPE = {
     TYPE_PACKAGE_GROUP: ORDER_PACKAGE_GROUP,
     TYPE_PACKAGE_CATEGORY: ORDER_PACKAGE_CATEGORY,
     TYPE_PACKAGE_ENVIRONMENT: ORDER_PACKAGE_ENVIRONMENT,
+    TYPE_PACKAGE_LANGPACKS: ORDER_PACKAGE_LANGPACKS,
 }
 
 REQUIRES_COMPARISON_TRANSLATIONS = {
@@ -119,6 +126,7 @@ DESC_GROUPS = _('search for package groups in a repository')
 DESC_CATEGORIES = _('search for package categories (groups of package groups) in a repository')
 DESC_ENVIRONMENTS = _('search for package environments (collections of package groups)'
                       'in a repository')
+DESC_LANGPACKS = _('search for package langpacks in a repository')
 DESC_DISTRIBUTIONS = _('list distributions in a repository')
 DESC_ERRATA = _('search errata in a repository')
 DESC_YUM_METADATA_FILE = _('search for Yum Metadata Files in a repository')
@@ -163,7 +171,7 @@ class BaseSearchCommand(DisplayUnitAssociationsCommand):
             units = [u[ASSOCIATION_METADATA_KEYWORD] for u in units]
 
         # Some items either override output function and are not included
-        # in the FIELDS_BY_TYPE dictionary.  Check so tha they can
+        # in the FIELDS_BY_TYPE dictionary. Check so that they can
         # override the default behavior
         if len(type_ids) == 1 and FIELDS_BY_TYPE.get(type_ids[0]):
             out_func(units, FIELDS_BY_TYPE[type_ids[0]])
@@ -315,6 +323,16 @@ class SearchPackageEnvironmentsCommand(BaseSearchCommand):
 
     def package_environment(self, **kwargs):
         self.run_search([TYPE_PACKAGE_ENVIRONMENT], **kwargs)
+
+
+class SearchPackageLangpacksCommand(BaseSearchCommand):
+    def __init__(self, context):
+        super(SearchPackageLangpacksCommand, self).__init__(self.package_langpacks, context,
+                                                            name='langpacks',
+                                                            description=DESC_LANGPACKS)
+
+    def package_langpacks(self, **kwargs):
+        self.run_search([TYPE_PACKAGE_LANGPACKS], **kwargs)
 
 
 class SearchYumMetadataFileCommand(BaseSearchCommand):
@@ -473,16 +491,16 @@ class SearchErrataCommand(BaseSearchCommand):
 
         template_data = {
             'id': erratum_meta['id'],
-            'title': erratum_meta['title'],
-            'summary': erratum_meta['summary'],
+            'title': erratum_meta.get('title'),
+            'summary': erratum_meta.get('summary'),
             'desc': description,
-            'severity': erratum_meta['severity'],
-            'type': erratum_meta['type'],
-            'issued': erratum_meta['issued'],
+            'severity': erratum_meta.get('severity'),
+            'type': erratum_meta.get('type'),
+            'issued': erratum_meta.get('issued'),
             'updated': erratum_meta['updated'],
-            'version': erratum_meta['version'],
-            'release': erratum_meta['release'],
-            'status': erratum_meta['status'],
+            'version': erratum_meta.get('version'),
+            'release': erratum_meta.get('release'),
+            'status': erratum_meta.get('status'),
             'reboot': reboot,
             'pkgs': '\n'.join(package_list),
             'refs': references,

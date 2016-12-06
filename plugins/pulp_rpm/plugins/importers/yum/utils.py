@@ -2,9 +2,15 @@ import re
 import sys
 from cStringIO import StringIO
 from collections import namedtuple
+import logging
 from urlparse import urljoin, urlparse, urlunparse
 
 from pulp.common.compat import check_builtin
+
+from pulp_rpm.common import constants
+
+
+_logger = logging.getLogger(__name__)
 
 
 if sys.version_info < (2, 7):
@@ -16,6 +22,12 @@ else:
 # required for converting an element to raw XML
 STRIP_NS_RE = re.compile('{.*?}')
 Namespace = namedtuple('Namespace', ['name', 'uri'])
+
+
+# this is required because some of the pre-migration XML tags use the "rpm"
+# namespace, which causes a parse error if that namespace isn't declared.
+FAKE_XML = '<?xml version="1.0" encoding="%(encoding)s"?><faketag ' \
+           'xmlns:rpm="%(namespace)s">%(xml)s</faketag>'
 
 
 def element_to_raw_xml(element, namespaces_to_register=None, default_namespace_uri=None):
@@ -50,10 +62,7 @@ def element_to_raw_xml(element, namespaces_to_register=None, default_namespace_u
     if default_namespace_uri:
         strip_ns(element, default_namespace_uri)
 
-    tree = ET.ElementTree(element)
-    io = StringIO()
-    tree.write(io, encoding='utf-8')
-    ret = io.getvalue()
+    ret = element_to_text(element)
 
     for namespace in namespaces_to_register:
         # in python 2.7, these show up only on the root element. in 2.6, these
@@ -100,6 +109,71 @@ def strip_ns(element, uri=None):
         element.tag = element.tag.replace('{%s}' % uri, '')
     for child in list(element):
         strip_ns(child, uri)
+
+
+def fake_xml_element(repodata_snippet):
+    """
+    Wrap a snippet of xml in a fake element so it can be coerced to an ElementTree Element
+
+    :param repodata_snippet: Snippet of XML to be turn into an ElementTree Element
+    :type  repodata_snippet: str
+
+    :return: Parsed ElementTree Element containing the parsed repodata snippet
+    :rtype:  xml.etree.ElementTree.Element
+    """
+    register_namespace('rpm', constants.RPM_NAMESPACE)
+    try:
+        # make a guess at the encoding
+        codec = 'UTF-8'
+        repodata_snippet.encode(codec)
+    except UnicodeEncodeError:
+        # best second guess we have, and it will never fail due to the nature
+        # of the encoding.
+        codec = 'ISO-8859-1'
+    except UnicodeDecodeError:
+        # sometimes input contains non-ASCII characters and it is not in the unicode form
+        # in this case the best guess is that it is encoded as UTF-8
+        repodata_snippet = repodata_snippet.decode('UTF-8')
+    fake_xml = FAKE_XML % {'encoding': codec, 'xml': repodata_snippet,
+                           'namespace': constants.RPM_NAMESPACE}
+    # s/fromstring/phone_home/
+    return ET.fromstring(fake_xml.encode(codec))
+
+
+def element_to_text(element):
+    """
+    Given an element, return the raw XML as a string
+
+    :param element: an element instance that should be written as XML text
+    :type  element: xml.etree.ElementTree.Element
+
+    :return:    XML text
+    :rtype:     basestring
+    """
+    out = StringIO()
+    tree = ET.ElementTree(element)
+    tree.write(out, encoding='utf-8')
+    return out.getvalue()
+
+
+def remove_fake_element(xml_text, first_expected_name='package'):
+    """
+    Given XML text that results from data that ran through the fake_xml_element() function above,
+    remove the beginning and ending "faketag" elements.
+
+    :param xml_text:    XML that starts and ends with a <faketag> element
+    :type  xml_text:    basestring
+    :param first_expected_name: the name of the first element expected after the opening faketag
+                                element. Defaults to 'package'.
+    :type  first_expected_name: basestring
+
+    :return:    new XML string
+    :rtype:     basestring
+    """
+    start_index = xml_text.find('<' + first_expected_name)
+    end_index = xml_text.rfind('</faketag')
+
+    return xml_text[start_index:end_index]
 
 
 class RepoURLModifier(object):

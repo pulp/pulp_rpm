@@ -6,8 +6,10 @@ from pulp.plugins.loader import api as plugin_api
 from pulp.plugins.util.misc import paginate
 from pulp.server.controllers import repository as repo_controller
 from pulp.server.controllers import units as units_controller
+from pulp.server.exceptions import PulpCodedException
 
 from pulp_rpm.common import ids
+from pulp_rpm.plugins.importers.yum.parse import rpm as rpm_parse
 
 
 _LOGGER = logging.getLogger(__name__)
@@ -89,7 +91,7 @@ def get_existing_units(search_dicts, unit_class, repo):
             yield result
 
 
-def check_all_and_associate(wanted, conduit, download_deferred, catalog):
+def check_all_and_associate(wanted, conduit, config, download_deferred, catalog):
     """
     Given a set of unit keys as namedtuples, this function checks if a unit
     already exists in Pulp and returns the set of tuples that were not
@@ -103,6 +105,8 @@ def check_all_and_associate(wanted, conduit, download_deferred, catalog):
     :type  wanted:            dict
     :param conduit:           repo sync conduit
     :type  conduit:           pulp.plugins.conduits.repo_sync.RepoSync
+    :param config:            configuration instance passed to the importer
+    :type  config:            pulp.plugins.config.PluginCallConfiguration
     :param download_deferred: indicates downloading is deferred (or not).
     :type  download_deferred: bool
     :param catalog:           Deferred downloading catalog.
@@ -132,6 +136,12 @@ def check_all_and_associate(wanted, conduit, download_deferred, catalog):
                 if not download_deferred and not file_exists:
                     continue
             catalog.add(unit, wanted[unit.unit_key_as_named_tuple].download_path)
+            if rpm_parse.signature_enabled(config):
+                try:
+                    rpm_parse.filter_signature(unit, config)
+                except PulpCodedException as e:
+                    _LOGGER.debug(e)
+                    continue
             repo_controller.associate_single_unit(conduit.repo, unit)
             values.discard(unit.unit_key_as_named_tuple)
     still_wanted = set()

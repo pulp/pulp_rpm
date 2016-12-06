@@ -40,6 +40,7 @@ class BaseSyncTest(unittest.TestCase):
         self.metadata_files = metadata.MetadataFiles(self.url, '/foo/bar', DownloaderConfig())
         self.metadata_files.download_repomd = mock.MagicMock()
         self.repo = Repository('repo1')
+        self.repo.repo_id = self.repo.id
         self.conduit = RepoSyncConduit(self.repo.id, 'yum_importer', ObjectId())
         # this happens in the YumImporter's sync_repo() method. I don't know why.
         self.conduit.repo = self.repo
@@ -54,8 +55,7 @@ class BaseSyncTest(unittest.TestCase):
 
 
 class TestAddRpmUnit(BaseSyncTest):
-    @mock.patch('pulp.server.controllers.repository.associate_single_unit')
-    def test_drpm_does_not_add_repodata(self, mock_assoc):
+    def test_drpm_does_not_add_repodata(self):
         unit = models.DRPM(epoch=0, version='1.1.1', release='0', filename='foo.drpm',
                            checksumtype='sha256', checksum='abc123')
         self.metadata_files.add_repodata = mock.MagicMock()
@@ -67,8 +67,7 @@ class TestAddRpmUnit(BaseSyncTest):
 
         self.assertEqual(self.metadata_files.add_repodata.call_count, 0)
 
-    @mock.patch('pulp.server.controllers.repository.associate_single_unit')
-    def test_rpm_adds_repodata(self, mock_assoc):
+    def test_rpm_adds_repodata(self):
         unit = models.RPM(name='foo', epoch=0, version='1.1.1', release='0', arch='x86_64',
                           checksumtype='sha256', checksum='abc123')
         self.metadata_files.add_repodata = mock.MagicMock()
@@ -79,6 +78,59 @@ class TestAddRpmUnit(BaseSyncTest):
         self.reposync.add_rpm_unit(self.metadata_files, unit)
 
         self.metadata_files.add_repodata.assert_called_once_with(unit)
+
+
+class TestSignatureFilterPassed(BaseSyncTest):
+    """
+    Test `signature_filter_passed` method
+    """
+    @mock.patch('pulp_rpm.plugins.importers.yum.sync.rpm_parse')
+    def test_rpm_signature_filter_pass(self, mock_rpm_parse):
+        """
+        Test that result is positive if unit passes the filter
+        """
+        unit = models.RPM(name='foo', epoch=0, version='1.1.1', release='0', arch='x86_64',
+                          checksumtype='sha256', checksum='abc123')
+        mock_rpm_parse.signature_enabled.return_value = True
+
+        signature_filter_passed = self.reposync.signature_filter_passed(unit)
+
+        mock_rpm_parse.filter_signature.assert_called_once_with(unit, self.config)
+        self.assertTrue(signature_filter_passed)
+
+    @mock.patch('pulp_rpm.plugins.importers.yum.sync._logger')
+    @mock.patch('pulp_rpm.plugins.importers.yum.sync.rpm_parse')
+    def test_rpm_signature_filter_failed(self, mock_rpm_parse, mock_logger):
+        """
+        Test that result is negative if unit does not pass the filter
+        """
+        unit = models.RPM(name='foo', epoch=0, version='1.1.1', release='0', arch='x86_64',
+                          checksumtype='sha256', checksum='abc123')
+        self.reposync.progress_report = mock.MagicMock()
+        mock_rpm_parse.signature_enabled.return_value = True
+        mock_rpm_parse.filter_signature.side_effect = PulpCodedException()
+
+        signature_filter_passed = self.reposync.signature_filter_passed(unit)
+
+        mock_rpm_parse.filter_signature.assert_called_once_with(unit, self.config)
+        self.assertEqual(mock_logger.debug.call_count, 1)
+        self.assertEqual(self.reposync.progress_report['content'].failure.call_count, 1)
+        self.conduit.set_progress.assert_called_with(self.reposync.progress_report)
+        self.assertFalse(signature_filter_passed)
+
+    @mock.patch('pulp_rpm.plugins.importers.yum.sync.rpm_parse')
+    def test_rpm_signature_filter_disabled(self, mock_rpm_parse):
+        """
+        Test that result is positive if filter is not applied
+        """
+        unit = models.RPM(name='foo', epoch=0, version='1.1.1', release='0', arch='x86_64',
+                          checksumtype='sha256', checksum='abc123')
+        mock_rpm_parse.signature_enabled.return_value = False
+
+        signature_filter_passed = self.reposync.signature_filter_passed(unit)
+
+        self.assertFalse(mock_rpm_parse.filter_signature.called)
+        self.assertTrue(signature_filter_passed)
 
 
 @skip_broken
@@ -132,6 +184,19 @@ class TestUpdateState(BaseSyncTest):
             self.assertEqual(self.state_dict[constants.PROGRESS_STATE_KEY], constants.STATE_RUNNING)
 
         self.assertEqual(self.state_dict[constants.PROGRESS_STATE_KEY], constants.STATE_COMPLETE)
+
+
+class TestEraseRepomdRevision(BaseSyncTest):
+    def test_erase_scratchpad(self):
+        self.conduit.get_scratchpad.return_value = {'a': 2}
+
+        self.reposync.erase_repomd_revision()
+
+        self.conduit.set_scratchpad.assert_called_once_with({
+            'a': 2,
+            constants.REPOMD_REVISION_KEY: None,
+            constants.PREVIOUS_SKIP_LIST: [],
+        })
 
 
 @skip_broken
@@ -470,7 +535,6 @@ class TestProgressSummary(BaseSyncTest):
                              ret[step_name]['state'])
 
 
-@skip_broken
 class TestGetMetadata(BaseSyncTest):
     def setUp(self):
         super(TestGetMetadata, self).setUp()
@@ -482,6 +546,7 @@ class TestGetMetadata(BaseSyncTest):
         mock_metadata_instance.revision = 1234
         mock_metadata_instance.downloader = mock.MagicMock()
         self.conduit.get_scratchpad.return_value = {constants.REPOMD_REVISION_KEY: 1234}
+        self.conduit.last_sync = mock.MagicMock(return_value=None)
 
         ret = self.reposync.get_metadata(self.reposync.check_metadata(self.url))
 
@@ -497,6 +562,7 @@ class TestGetMetadata(BaseSyncTest):
         mock_metadata_instance.revision = 0
         mock_metadata_instance.downloader = mock.MagicMock()
         self.conduit.get_scratchpad.return_value = {constants.REPOMD_REVISION_KEY: 0}
+        self.conduit.last_sync = mock.MagicMock(return_value=None)
         self.reposync.import_unknown_metadata_files = mock.MagicMock(
             spec_set=self.reposync.import_unknown_metadata_files)
 
@@ -505,6 +571,23 @@ class TestGetMetadata(BaseSyncTest):
 
         self.assertTrue(self.reposync.skip_repomd_steps is False)
         self.assertEqual(mock_metadata_instance.download_metadata_files.call_count, 1)
+
+    @mock.patch.object(metadata, 'MetadataFiles', autospec=True)
+    def test_metadata_feed_override(self, mock_metadata_files):
+        """with feed override is set, a full sync should be performed"""
+        mock_metadata_instance = mock_metadata_files.return_value
+        mock_metadata_instance.revision = 1
+        mock_metadata_instance.downloader = mock.MagicMock()
+        mock_metadata_instance.save_repomd_version = mock.MagicMock()
+        self.config.override_config[importer_constants.KEY_FEED] = 'http://pulpproject.org'
+        self.conduit.get_scratchpad.return_value = {constants.REPOMD_REVISION_KEY: 1234}
+        self.conduit.last_sync = mock.MagicMock(return_value=None)
+        self.reposync.import_unknown_metadata_files = mock.MagicMock(
+            spec_set=self.reposync.import_unknown_metadata_files)
+
+        self.reposync.get_metadata(self.reposync.check_metadata(self.url))
+
+        self.assertTrue(self.reposync.skip_repomd_steps is False)
 
     @mock.patch.object(metadata, 'MetadataFiles', autospec=True)
     def test_metadata_unchanged_but_skip_list_shrank(self, mock_metadata_files):
@@ -521,6 +604,7 @@ class TestGetMetadata(BaseSyncTest):
             constants.PREVIOUS_SKIP_LIST: ['foo', 'bar'],
         }
         self.config.override_config[constants.CONFIG_SKIP] = ['foo']
+        self.conduit.last_sync = mock.MagicMock(return_value=None)
         self.reposync.import_unknown_metadata_files = mock.MagicMock(
             spec_set=self.reposync.import_unknown_metadata_files)
 
@@ -567,6 +651,7 @@ class TestGetMetadata(BaseSyncTest):
         mock_metadata_instance.downloader = mock.MagicMock()
         self.reposync.import_unknown_metadata_files = mock.MagicMock(
             spec_set=self.reposync.import_unknown_metadata_files)
+        self.conduit.last_sync = mock.MagicMock(return_value=None)
 
         ret = self.reposync.get_metadata(self.reposync.check_metadata(self.url))
 

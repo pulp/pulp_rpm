@@ -10,6 +10,7 @@ from pulp.client.extensions.extensions import PulpCliOption, PulpCliFlag
 from pulp.common import tags as tag_utils
 
 from pulp_rpm.common import ids, constants
+from pulp_rpm.extensions.admin import repo_options
 
 
 DESC_EXPORT_RUN = _('triggers an immediate export of a repository')
@@ -40,6 +41,8 @@ DESC_SERVE_HTTP = _('the ISO images will be served over HTTP; default to False; 
 DESC_SERVE_HTTPS = _('the ISO images will be served over HTTPS; defaults to True; if '
                      'this export is to a directory, this has no effect.')
 DESC_MANIFEST = _('if this flag is used, a PULP_MANIFEST file will be created')
+DESC_INCREMENTAL_MD = _('if this flag is used, incremental exports will use yum repodata'
+                        ' metadata instead of json.')
 
 # The iso prefix is restricted to the same character set as an id, so we use the id_validator
 OPTION_ISO_PREFIX = PulpCliOption('--iso-prefix', DESC_ISO_PREFIX, required=False,
@@ -57,6 +60,9 @@ OPTION_SERVE_HTTPS = PulpCliOption('--serve-https', DESC_SERVE_HTTPS, required=F
 OPTION_SERVE_HTTP = PulpCliOption('--serve-http', DESC_SERVE_HTTP, required=False, default='false',
                                   parse_func=parsers.parse_boolean)
 FLAG_MANIFEST = PulpCliFlag('--' + constants.CREATE_PULP_MANIFEST, DESC_MANIFEST, ['-m'])
+OPTION_INCREMENTAL_MD = PulpCliOption('--incremental-export-repomd', DESC_INCREMENTAL_MD,
+                                      required=False, default='false',
+                                      parse_func=parsers.parse_boolean)
 
 
 class RpmExportCommand(RunPublishRepositoryCommand):
@@ -73,7 +79,9 @@ class RpmExportCommand(RunPublishRepositoryCommand):
         """
         override_config_options = [OPTION_EXPORT_DIR, OPTION_ISO_PREFIX, OPTION_ISO_SIZE,
                                    OPTION_START_DATE, OPTION_END_DATE, FLAG_MANIFEST,
-                                   OPTION_RELATIVE_URL]
+                                   OPTION_RELATIVE_URL, OPTION_INCREMENTAL_MD,
+                                   repo_options.OPT_CHECKSUM_TYPE,
+                                   repo_options.OPT_UPDATEINFO_CHECKSUM_TYPE]
 
         super(RpmExportCommand, self).__init__(context=context,
                                                renderer=renderer,
@@ -116,6 +124,9 @@ class RpmGroupExportCommand(PollingCommand):
         self.add_option(OPTION_RELATIVE_URL)
         self.add_option(OPTION_SERVE_HTTPS)
         self.add_option(OPTION_SERVE_HTTP)
+        self.add_option(OPTION_INCREMENTAL_MD)
+        self.add_option(repo_options.OPT_CHECKSUM_TYPE)
+        self.add_option(repo_options.OPT_UPDATEINFO_CHECKSUM_TYPE)
 
         self.add_flag(FLAG_MANIFEST)
 
@@ -135,6 +146,9 @@ class RpmGroupExportCommand(PollingCommand):
         manifest = kwargs[FLAG_MANIFEST.keyword]
         serve_http = kwargs[OPTION_SERVE_HTTP.keyword]
         serve_https = kwargs[OPTION_SERVE_HTTPS.keyword]
+        incremental_md = kwargs[OPTION_INCREMENTAL_MD.keyword]
+        checksum_type = kwargs[repo_options.OPT_CHECKSUM_TYPE.keyword]
+        updateinfo_checksum_type = kwargs[repo_options.OPT_UPDATEINFO_CHECKSUM_TYPE.keyword]
 
         # Since the export distributor is not added to a repository group on creation, add it here
         # if it is not already associated with the group id
@@ -169,6 +183,9 @@ class RpmGroupExportCommand(PollingCommand):
             constants.EXPORT_DIRECTORY_KEYWORD: export_dir,
             constants.RELATIVE_URL_KEYWORD: relative_url,
             constants.CREATE_PULP_MANIFEST: manifest,
+            constants.INCREMENTAL_EXPORT_REPOMD_KEYWORD: incremental_md,
+            constants.CHECKSUM_TYPE: checksum_type,
+            constants.UPDATEINFO_CHECKSUM_TYPE_KEYWORD: updateinfo_checksum_type,
         }
 
         # Remove keys from the config that have None value.

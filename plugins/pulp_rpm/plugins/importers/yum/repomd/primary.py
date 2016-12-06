@@ -1,9 +1,8 @@
 # -*- coding: utf-8 -*-
 
-from copy import deepcopy
 import os
 
-from pulp.plugins.util import verification
+from pulp.server import util
 
 from pulp_rpm.plugins.db import models
 from pulp_rpm.plugins.importers.yum import utils
@@ -78,37 +77,19 @@ PACKAGE_FORMAT_SKEL = {'vendor': None,
                        'sourcerpm': None,
                        'files': []}
 
-# RPM entry dictionary ---------------------------------------------------------
-
-# RPM entry dictionaries will make up the values in the requires and provides lists
-
-RPM_ENTRY_SKEL = {'name': None,
-                  'version': None,
-                  'release': None,
-                  'epoch': None,
-                  'flags': None}
-
-# file information dictionary --------------------------------------------------
-
-# file information dictionaries will make up the values in the files lists
-
-FILE_INFO_SKEL = {'path': None}
-
 # element processing methods ---------------------------------------------------
 
 
 def process_package_element(package_element):
     """
-    Process a parsed primary.xml package element into a package information
-    dictionary.
+    Process a parsed primary.xml package element into a model instance.
+
+    In addition to parsing the data, this templatizes the raw XML that gets added.
 
     :param package_element: parsed primary.xml package element
     :return: package information dictionary
     :rtype: pulp_rpm.plugins.db.models.RPM
     """
-    # NOTE the use of deepcopy relies on cpython's very sensible policy of never
-    # duplicating string literals, this may not hold up in other implementations
-    # the python interpreter.
     package_info = dict()
 
     name_element = package_element.find(NAME_TAG)
@@ -127,9 +108,13 @@ def process_package_element(package_element):
 
     checksum_element = package_element.find(CHECKSUM_TAG)
     if checksum_element is not None:
-        checksum_type = verification.sanitize_checksum_type(checksum_element.attrib['type'])
+        checksum_type = util.sanitize_checksum_type(checksum_element.attrib['type'])
         package_info['checksumtype'] = checksum_type
         package_info['checksum'] = checksum_element.text
+
+        # convert these to template targets that will be rendered at publish time
+        checksum_element.text = models.RpmBase.CHECKSUM_TEMPLATE
+        checksum_element.attrib['type'] = models.RpmBase.CHECKSUMTYPE_TEMPLATE
 
     summary_element = package_element.find(SUMMARY_TAG)
     if summary_element is not None:
@@ -190,9 +175,6 @@ def _process_format_element(format_element):
     :return: package format dictionary
     :rtype: dict
     """
-    # NOTE the use of deepcopy relies on cpython's very sensible policy of never
-    # duplicating string literals, this may not hold up in other implementations
-    # the python interpreter.
     package_format = dict()
 
     if format_element is None:
@@ -249,10 +231,7 @@ def _process_rpm_entry_element(rpm_entry_element):
     :return: RPM entry dictionary
     :rtype: dict
     """
-    # NOTE the use of deepcopy relies on cpython's very sensible policy of never
-    # duplicating string literals, this may not hold up in other implementations
-    # the python interpreter.
-    rpm_entry = deepcopy(RPM_ENTRY_SKEL)
+    rpm_entry = dict()
 
     rpm_entry['name'] = rpm_entry_element.attrib['name']
     rpm_entry['version'] = rpm_entry_element.attrib.get('ver', None)
@@ -272,10 +251,7 @@ def _process_file_element(file_element):
     :return: file information dictionary
     :rtype: dict
     """
-    # NOTE the use of deepcopy relies on cpython's very sensible policy of never
-    # duplicating string literals, this may not hold up in other implementations
-    # the python interpreter.
-    file_info = deepcopy(FILE_INFO_SKEL)
+    file_info = dict()
 
     file_info['path'] = file_element.text
 

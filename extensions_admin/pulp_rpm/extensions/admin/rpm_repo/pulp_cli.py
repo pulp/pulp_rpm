@@ -11,7 +11,7 @@ from pulp_rpm.extensions.admin import structure
 from pulp_rpm.extensions.admin.upload import package
 from pulp_rpm.extensions.admin import (contents, copy_commands, export, remove, repo_create_update,
                                        repo_list, status, sync_schedules)
-from pulp_rpm.extensions.admin.upload import (category, comps, errata)
+from pulp_rpm.extensions.admin.upload import (category, comps, environment, errata, langpacks)
 from pulp_rpm.extensions.admin.upload import group as package_group
 
 
@@ -37,6 +37,7 @@ def initialize(context):
     copy_section.add_command(copy_commands.PackageGroupCopyCommand(context))
     copy_section.add_command(copy_commands.PackageCategoryCopyCommand(context))
     copy_section.add_command(copy_commands.PackageEnvironmentCopyCommand(context))
+    copy_section.add_command(copy_commands.PackageLangpacksCopyCommand(context))
     copy_section.add_command(copy_commands.AllCopyCommand(context))
     copy_section.add_command(copy_commands.SrpmCopyCommand(context))
     copy_section.add_command(copy_commands.YumRepoMetadataFileCommand(context))
@@ -54,6 +55,7 @@ def initialize(context):
     remove_section.add_command(remove.PackageGroupRemoveCommand(context))
     remove_section.add_command(remove.PackageCategoryRemoveCommand(context))
     remove_section.add_command(remove.PackageEnvironmentRemoveCommand(context))
+    remove_section.add_command(remove.PackageLangpacksRemoveCommand(context))
     remove_section.add_command(remove.DistributionRemoveCommand(context))
     remove_section.add_command(remove.YumMetadataFileRemoveCommand(context))
 
@@ -64,6 +66,7 @@ def initialize(context):
     contents_section.add_command(contents.SearchPackageGroupsCommand(context))
     contents_section.add_command(contents.SearchPackageCategoriesCommand(context))
     contents_section.add_command(contents.SearchPackageEnvironmentsCommand(context))
+    contents_section.add_command(contents.SearchPackageLangpacksCommand(context))
     contents_section.add_command(contents.SearchDistributionsCommand(context))
     contents_section.add_command(contents.SearchErrataCommand(context))
     contents_section.add_command(contents.SearchYumMetadataFileCommand(context))
@@ -81,6 +84,9 @@ def initialize(context):
     uploads_section.add_command(package_group.CreatePackageGroupCommand(context, upload_manager))
     uploads_section.add_command(category.CreatePackageCategoryCommand(context, upload_manager))
     uploads_section.add_command(comps.CreateCompsCommand(context, upload_manager))
+    uploads_section.add_command(
+        environment.CreatePackageEnvironmentCommand(context, upload_manager))
+    uploads_section.add_command(langpacks.CreatePackageLangpacksCommand(context, upload_manager))
     uploads_section.add_command(upload.ResumeCommand(context, upload_manager))
     uploads_section.add_command(upload.CancelCommand(context, upload_manager))
     uploads_section.add_command(upload.ListCommand(context, upload_manager))

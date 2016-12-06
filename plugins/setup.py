@@ -4,7 +4,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='pulp_rpm_plugins',
-    version='2.8.7b1',
+    version='2.10.3',
     license='GPLv2+',
     packages=find_packages(exclude=['test', 'test.*']),
     author='Pulp Team',
@@ -25,7 +25,11 @@ setup(
             'distributor = pulp_rpm.plugins.distributors.yum.distributor:entry_point',
             'ExportDistributor = pulp_rpm.plugins.distributors.export_distributor.distributor:'
             'entry_point',
-            'IsoDistributor = pulp_rpm.plugins.distributors.iso_distributor.distributor:entry_point'
+            'IsoDistributor = pulp_rpm.plugins.distributors.iso_distributor.distributor:'
+            'entry_point',
+            'RsyncDistributor = pulp_rpm.plugins.distributors.rsync.distributor:entry_point',
+            'IsoRsyncDistributor = pulp_rpm.plugins.distributors.iso_rsync_distributor.distributor'
+            ':entry_point'
         ],
         'pulp.group_distributors': [
             'rpm_export = pulp_rpm.plugins.distributors.export_distributor.groupdistributor:'
@@ -43,6 +47,7 @@ setup(
             'package_group=pulp_rpm.plugins.db.models:PackageGroup',
             'package_category=pulp_rpm.plugins.db.models:PackageCategory',
             'package_environment=pulp_rpm.plugins.db.models:PackageEnvironment',
+            'package_langpacks=pulp_rpm.plugins.db.models:PackageLangpacks',
             'yum_repo_metadata_file=pulp_rpm.plugins.db.models:YumMetadataFile',
             'iso=pulp_rpm.plugins.db.models:ISO'
         ]
