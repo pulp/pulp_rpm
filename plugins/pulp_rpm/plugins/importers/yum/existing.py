@@ -116,6 +116,12 @@ def check_all_and_associate(wanted, conduit, config, download_deferred, catalog)
                 named tuples received as input were not found on the server.
     :rtype:     set
     """
+    rpm_drpm_srpm = (ids.TYPE_ID_RPM, ids.TYPE_ID_SRPM, ids.TYPE_ID_DRPM)
+    all_associated_units = set()
+    for unit_type in rpm_drpm_srpm:
+        units_generator = repo_controller.get_associated_unit_ids(conduit.repo.repo_id, unit_type)
+        all_associated_units.update(units_generator)
+
     sorted_units = _sort_by_type(wanted.iterkeys())
     for unit_type, values in sorted_units.iteritems():
         model = plugin_api.get_unit_model_by_id(unit_type)
@@ -123,7 +129,7 @@ def check_all_and_associate(wanted, conduit, config, download_deferred, catalog)
         # fields = model.unit_key_fields + ('_storage_path',)
         unit_generator = (model(**unit_tuple._asdict()) for unit_tuple in values.copy())
         for unit in units_controller.find_units(unit_generator):
-            is_rpm_drpm_srpm = unit_type in (ids.TYPE_ID_RPM, ids.TYPE_ID_SRPM, ids.TYPE_ID_DRPM)
+            is_rpm_drpm_srpm = unit_type in rpm_drpm_srpm
             file_exists = unit._storage_path is not None and os.path.isfile(unit._storage_path)
             if is_rpm_drpm_srpm:
                 # no matter what is the download policy, if existing unit has a valid storage_path,
@@ -135,14 +141,15 @@ def check_all_and_associate(wanted, conduit, config, download_deferred, catalog)
                 # package file does not exist and downloading is not deferred.
                 if not download_deferred and not file_exists:
                     continue
-            catalog.add(unit, wanted[unit.unit_key_as_named_tuple].download_path)
-            if rpm_parse.signature_enabled(config):
-                try:
-                    rpm_parse.filter_signature(unit, config)
-                except PulpCodedException as e:
-                    _LOGGER.debug(e)
-                    continue
-            repo_controller.associate_single_unit(conduit.repo, unit)
+            if unit.id not in all_associated_units:
+                catalog.add(unit, wanted[unit.unit_key_as_named_tuple].download_path)
+                if rpm_parse.signature_enabled(config):
+                    try:
+                        rpm_parse.filter_signature(unit, config)
+                    except PulpCodedException as e:
+                        _LOGGER.debug(e)
+                        continue
+                repo_controller.associate_single_unit(conduit.repo, unit)
             values.discard(unit.unit_key_as_named_tuple)
     still_wanted = set()
     still_wanted.update(*sorted_units.values())
