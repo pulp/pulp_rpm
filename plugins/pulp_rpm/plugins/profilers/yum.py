@@ -322,12 +322,15 @@ class YumProfiler(Profiler):
                 available_errata_rpms.append(errata_rpm)
 
         # Check if any rpm from errata is applicable to the consumer
+        applicable = False
         for errata_rpm in available_errata_rpms:
-            if YumProfiler._is_rpm_applicable(errata_rpm, profile_lookup_table):
-                return True
+            if YumProfiler._is_rpm_conflicting(errata_rpm, profile_lookup_table):
+                return False
+            elif YumProfiler._is_rpm_applicable(errata_rpm, profile_lookup_table):
+                applicable = True
 
         # Return false if none of the errata rpms are applicable
-        return False
+        return applicable
 
     @staticmethod
     def _is_rpm_applicable(rpm_unit_key, profile_lookup_table):
@@ -479,3 +482,28 @@ class YumProfiler(Profiler):
 
         """
         return tuple(str(r[k]) for k in ('name', 'epoch', 'version', 'release', 'arch'))
+
+    @staticmethod
+    def _is_rpm_conflicting(rpm_unit_key, profile_lookup_table):
+        """
+        Checks whether given rpm conflicts with an rpm on the consumer.
+
+        :param rpm_unit_key:         An rpm's unit_key
+        :type  rpm_unit_key:         dict
+        :param profile_lookup_table: lookup table of consumer profile keyed by "name arch"
+        :type  profile_lookup_table: dict
+        :return:                     true if conflicting, false otherwise
+        :rtype:                      boolean
+        """
+        if not rpm_unit_key or not profile_lookup_table:
+            return False
+
+        key = YumProfiler._form_lookup_key(rpm_unit_key)
+
+        if key in profile_lookup_table:
+            installed_rpm = profile_lookup_table[key]
+            # If an rpm is found, check if it is older than the available rpm
+            if util.is_rpm_newer(rpm_unit_key, installed_rpm):
+                return False
+            return True
+        return False
