@@ -511,10 +511,10 @@ def _extract_rpm_data(type_id, rpm_filename):
     # rpm_data['requires'] = [(r,) for r in headers['requires']]
     # rpm_data['provides'] = [(p,) for p in headers['provides']]
 
-    rpm_data['buildhost'] = headers['buildhost']
-    rpm_data['license'] = headers['license']
-    rpm_data['vendor'] = headers['vendor']
-    rpm_data['description'] = headers['description']
+    rpm_data['buildhost'] = _encode_string_to_utf8(headers['buildhost'])
+    rpm_data['license'] = _encode_string_to_utf8(headers['license'])
+    rpm_data['vendor'] = _encode_string_to_utf8(headers['vendor'])
+    rpm_data['description'] = _encode_string_to_utf8(headers['description'])
     rpm_data['build_time'] = headers[rpm.RPMTAG_BUILDTIME]
     # Use the mtime of the file to match what is in the generated xml from
     # rpm_parse.get_package_xml(..)
@@ -522,6 +522,26 @@ def _extract_rpm_data(type_id, rpm_filename):
     rpm_data['time'] = file_stat[stat.ST_MTIME]
 
     return rpm_data
+
+
+def _encode_string_to_utf8(data):
+    """Recode iso8859-1 strings to utf-8.
+
+    :param data: The string to be reencoded, possibly ISO-8859-1 encoded.
+    :type  data: str
+
+    :return:     The input string reencoded to utf-8 (if possible)
+    :rtype:      str
+    """
+    if not data:
+        return data
+    encoded = None
+    try:
+        encoded = data.decode('iso-8859-1').encode('utf8')
+        return encoded
+    except UnicodeDecodeError:
+        pass
+    return data
 
 
 def _fail_report(message):
