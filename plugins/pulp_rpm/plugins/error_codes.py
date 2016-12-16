@@ -35,3 +35,4 @@ RPM1013 = Error("RPM1013", _('Cannot import unsigned Package "%(package)s".'), [
 RPM1014 = Error("RPM1014", _('Invalid signature key ID "%(key)s" found for Package: "%(package)s". '
                              'Allowed Signatures keys "%(allowed)s".'),
                 ['key', 'package', 'allowed'])
+RPM1015 = Error("RPM1015", _("Malformed repository: %(reason)s"), ['reason'])
