@@ -707,3 +707,8 @@ class TestUpdateProvidesRequires(unittest.TestCase):
         upload._update_provides_requires(self.unit)
         self.assertEqual(len(self.unit.provides), 1)
         self.assertEqual(len(self.unit.requires), 2)
+
+    def test_update_files(self):
+        upload._update_files(self.unit)
+        self.assertEqual(len(self.unit.files['file']), 1)
+        self.assertEqual(self.unit.files['file'][0], '/tmp/shark.txt')
