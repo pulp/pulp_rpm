@@ -1,5 +1,6 @@
 import contextlib
 import functools
+import itertools
 import logging
 import os
 import random
@@ -605,6 +606,8 @@ class RepoSync(object):
 
         :return:    tuple of (set(RPM.NAMEDTUPLEs), number of RPMs, total size in bytes)
         :rtype:     tuple
+
+        :raises PulpCodedException: if there is some inconsistency in metadata
         """
         if ids.TYPE_ID_RPM in self.config.get(constants.CONFIG_SKIP, []):
             _logger.debug('skipping RPM sync')
@@ -614,7 +617,16 @@ class RepoSync(object):
             # scan through all the metadata to decide which packages to download
             package_info_generator = packages.package_list_generator(
                 primary_file_handle, primary.PACKAGE_TAG, primary.process_package_element)
-            wanted = self._identify_wanted_versions(package_info_generator)
+
+            # count packages while iterating over primary metadata and deciding on wanted packages
+            counter = itertools.count()
+            wrapped_generator = itertools.imap(lambda x, y: x, package_info_generator, counter)
+            wanted = self._identify_wanted_versions(wrapped_generator)
+            primary_rpm_count = counter.next()
+            if primary_rpm_count != metadata_files.rpm_count:
+                reason = 'metadata is missing for some packages in filelists.xml and in other.xml'
+                raise PulpCodedException(error_code=error_codes.RPM1015, reason=reason)
+
             # check for the units that are not in the repo, but exist on the server
             # and associate them to the repo
             to_download = existing.check_all_and_associate(
