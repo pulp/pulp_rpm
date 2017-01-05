@@ -244,6 +244,12 @@ class ISOSyncRun(listener.DownloadEventListener):
         # Remove unwanted iso units
         if self._remove_missing_units:
             repo_controller.disassociate_units(self.sync_conduit.repo, remote_missing_isos)
+            for unit in remote_missing_isos:
+                qs = LazyCatalogEntry.objects.filter(
+                    importer_id=str(self.sync_conduit.importer_object_id),
+                    unit_id=unit.id,
+                    unit_type_id=unit.type_id)
+                qs.delete()
 
         # Report that we are finished. Note that setting the
         # state to STATE_ISOS_COMPLETE will automatically set the state to STATE_ISOS_FAILED if the

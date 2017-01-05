@@ -563,7 +563,7 @@ class RepoSync(object):
                             % failed_signature_check))
         self.conduit.build_success_report({}, {})
         # removes unwanted units according to the config settings
-        purge.purge_unwanted_units(metadata_files, self.conduit, self.config)
+        purge.purge_unwanted_units(metadata_files, self.conduit, self.config, catalog)
 
     def _decide_what_to_download(self, metadata_files, catalog):
         """
@@ -1120,3 +1120,16 @@ class PackageCatalog(object):
         entry.checksum = unit.checksum
         entry.checksum_algorithm = unit.checksumtype
         entry.save_revision()
+
+    def delete(self, unit):
+        """
+        Remove the catalog entry for the specified unit.
+
+        :param unit: A unit being added.
+        :type unit: pulp_rpm.plugins.db.models.RpmBase
+        """
+        qs = LazyCatalogEntry.objects.filter(
+            importer_id=str(self.importer_id),
+            unit_id=unit.id,
+            unit_type_id=unit.type_id)
+        qs.delete()
