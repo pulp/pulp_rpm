@@ -302,6 +302,9 @@ def _handle_group_category_comps(repo, type_id, unit_key, metadata, file_path, c
             unit.save()
         except NotUniqueError:
             unit = unit.__class__.objects.filter(**unit.unit_key).first()
+            for k, v in unit_data.items():
+                setattr(unit, k, v)
+            unit.save()
 
         repo_controller.associate_single_unit(repo, unit)
 
