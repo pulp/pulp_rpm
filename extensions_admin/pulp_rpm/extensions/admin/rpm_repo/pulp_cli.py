@@ -43,10 +43,6 @@ def initialize(context):
     copy_section.add_command(copy_commands.YumRepoMetadataFileCommand(context))
     copy_section.add_command(copy_commands.DrpmCopyCommand(context))
 
-    # Disabled as per 950690. We'll likely be able to add these back once the new
-    # yum importer is finished and DRPMs are properly handled.
-    # copy_section.add_command(copy_commands.DrpmCopyCommand(context))
-
     remove_section = structure.repo_remove_section(context.cli)
     remove_section.add_command(remove.RpmRemoveCommand(context))
     remove_section.add_command(remove.SrpmRemoveCommand(context))
@@ -80,6 +76,7 @@ def initialize(context):
     uploads_section = structure.repo_uploads_section(context.cli)
     uploads_section.add_command(package.CreateRpmCommand(context, upload_manager))
     uploads_section.add_command(package.CreateSrpmCommand(context, upload_manager))
+    uploads_section.add_command(package.CreateDrpmCommand(context, upload_manager))
     uploads_section.add_command(errata.CreateErratumCommand(context, upload_manager))
     uploads_section.add_command(package_group.CreatePackageGroupCommand(context, upload_manager))
     uploads_section.add_command(category.CreatePackageCategoryCommand(context, upload_manager))

@@ -1,6 +1,6 @@
 import os
 
-from pulp.plugins.util.metadata_writer import XmlFileContext
+from pulp.plugins.util.metadata_writer import FastForwardXmlFileContext
 from pulp.plugins.util.saxwriter import XMLWriter
 from pulp.server.exceptions import PulpCodedException
 
@@ -14,7 +14,7 @@ _logger = util.getLogger(__name__)
 UPDATE_INFO_XML_FILE_NAME = 'updateinfo.xml.gz'
 
 
-class UpdateinfoXMLFileContext(XmlFileContext):
+class UpdateinfoXMLFileContext(FastForwardXmlFileContext):
     def __init__(self, working_dir, nevra_in_repo, checksum_type=None, conduit=None,
                  updateinfo_checksum_type=None):
         """
@@ -35,8 +35,9 @@ class UpdateinfoXMLFileContext(XmlFileContext):
         metadata_file_path = os.path.join(working_dir, REPO_DATA_DIR_NAME,
                                           UPDATE_INFO_XML_FILE_NAME)
         self.conduit = conduit
+        root_tag, search_tag = 'updates', None
         super(UpdateinfoXMLFileContext, self).__init__(
-            metadata_file_path, 'updates', checksum_type=checksum_type)
+            metadata_file_path, root_tag, search_tag, checksum_type=checksum_type)
         self.updateinfo_checksum_type = updateinfo_checksum_type
         self.optional_errata_fields = ('title', 'release', 'rights', 'solution', 'severity',
                                        'summary', 'pushcount')
@@ -47,7 +48,7 @@ class UpdateinfoXMLFileContext(XmlFileContext):
         Open the metadata file handle, creating any missing parent directories.
         If the file already exists, this will overwrite it.
         """
-        super(XmlFileContext, self)._open_metadata_file_handle()
+        super(UpdateinfoXMLFileContext, self)._open_metadata_file_handle()
         self.xml_generator = XMLWriter(self.metadata_file_handle, short_empty_elements=True)
 
     def _get_repo_unit_nevra(self, erratum_unit):

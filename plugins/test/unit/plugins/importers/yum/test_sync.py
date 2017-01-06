@@ -49,9 +49,10 @@ class BaseSyncTest(unittest.TestCase):
                                                      return_value={})
         self.conduit.set_scratchpad = mock.MagicMock(spec_set=self.conduit.get_scratchpad)
         self.config = PluginCallConfiguration({}, {importer_constants.KEY_FEED: self.url})
+        self.downloader = Downloader(DownloaderConfig())
+
         with mock.patch('pulp.server.managers.repo._common.get_working_directory'):
             self.reposync = RepoSync(self.repo, self.conduit, self.config)
-        self.downloader = Downloader(DownloaderConfig())
 
 
 class TestAddRpmUnit(BaseSyncTest):
@@ -195,7 +196,6 @@ class TestEraseRepomdRevision(BaseSyncTest):
         self.conduit.set_scratchpad.assert_called_once_with({
             'a': 2,
             constants.REPOMD_REVISION_KEY: None,
-            constants.PREVIOUS_SKIP_LIST: [],
         })
 
 
@@ -208,7 +208,6 @@ class TestSaveRepomdRevision(BaseSyncTest):
 
         self.conduit.set_scratchpad.assert_called_once_with({
             constants.REPOMD_REVISION_KEY: 1234,
-            constants.PREVIOUS_SKIP_LIST: [],
         })
 
     def test_existing_scratchpad(self):
@@ -219,7 +218,6 @@ class TestSaveRepomdRevision(BaseSyncTest):
 
         expected = {
             constants.REPOMD_REVISION_KEY: 1234,
-            constants.PREVIOUS_SKIP_LIST: [],
             'a': 2,
         }
         self.conduit.set_scratchpad.assert_called_once_with(expected)
@@ -232,7 +230,6 @@ class TestSaveRepomdRevision(BaseSyncTest):
 
         self.conduit.set_scratchpad.assert_called_once_with({
             constants.REPOMD_REVISION_KEY: 1234,
-            constants.PREVIOUS_SKIP_LIST: [],
         })
 
     def test_with_errors(self):
@@ -283,12 +280,12 @@ class TestInit(BaseSyncTest):
         self.assertEqual(self.reposync.call_config.get(constants.CONFIG_SKIP, []), [])
 
 
-@skip_broken
+@mock.patch('tempfile.mkdtemp')
 class TestSyncFeed(BaseSyncTest):
 
     @mock.patch('pulp_rpm.plugins.importers.yum.sync.RepoSync.check_metadata',
                 spec_set=RepoSync.check_metadata)
-    def test_with_trailing_slash(self, mock_check_metadata):
+    def test_with_trailing_slash(self, mock_check_metadata, mock_mkdtemp):
 
         ret = self.reposync.sync_feed
 
@@ -296,7 +293,7 @@ class TestSyncFeed(BaseSyncTest):
 
     @mock.patch('pulp_rpm.plugins.importers.yum.sync.RepoSync.check_metadata',
                 spec_set=RepoSync.check_metadata)
-    def test_without_trailing_slash(self, mock_check_metadata):
+    def test_without_trailing_slash(self, mock_check_metadata, mock_mkdtemp):
 
         # it should add back the trailing slash if not present
         self.config.override_config[importer_constants.KEY_FEED] = self.url.rstrip('/')
@@ -307,7 +304,7 @@ class TestSyncFeed(BaseSyncTest):
 
     @mock.patch('pulp_rpm.plugins.importers.yum.sync.RepoSync.check_metadata',
                 spec_set=RepoSync.check_metadata)
-    def test_query_without_trailing_slash(self, mock_check_metadata):
+    def test_query_without_trailing_slash(self, mock_check_metadata, mock_mkdtemp):
         # it should add back the trailing slash if not present without changing the query string
         query = '?foo=bar'
         self.config.override_config[importer_constants.KEY_FEED] = self.url.rstrip('/') + query
@@ -317,7 +314,7 @@ class TestSyncFeed(BaseSyncTest):
 
         self.assertEqual(ret, expected)
 
-    def test_repo_url_is_none(self):
+    def test_repo_url_is_none(self, mock_mkdtemp):
 
         self.config.override_config[importer_constants.KEY_FEED] = None
 
@@ -329,7 +326,7 @@ class TestSyncFeed(BaseSyncTest):
                 spec_set=RepoSync._parse_as_mirrorlist)
     @mock.patch('pulp_rpm.plugins.importers.yum.sync.RepoSync.check_metadata',
                 spec_set=RepoSync.check_metadata)
-    def test_repo_url_is_url(self, mock_check_metadata, mock_parse_mirrorlist):
+    def test_repo_url_is_url(self, mock_check_metadata, mock_parse_mirrorlist, mock_mkdtemp):
 
         ret = self.reposync.sync_feed
 
@@ -342,7 +339,16 @@ class TestSyncFeed(BaseSyncTest):
                 spec_set=RepoSync.check_metadata)
     @mock.patch('pulp_rpm.plugins.importers.yum.sync.RepoSync._parse_as_mirrorlist',
                 spec_set=RepoSync._parse_as_mirrorlist)
-    def test_repo_url_is_mirror(self, mock_parse_mirrorlist, mock_check_metadata):
+    def test_repo_url_is_fedora_mirror(self, mock_parse_mirrorlist, mock_check_metadata,
+                                       mock_mkdtemp):
+        """
+        Fedora's mirror service has an unexpected behavior that even with a malformed path
+        such as this:
+        http://mirrors.fedoraproject.org/mirrorlist/BAD/DATA?repo=fedora-24&arch=x86_64
+        it will return the mirrorlist as if the path was just /mirrorlist/. That means
+        we won't get a Not Found error, but instead a parsing error, which shows up as
+        a PulpCodedException.
+        """
 
         mock_check_metadata.side_effect = PulpCodedException()
 
@@ -352,15 +358,44 @@ class TestSyncFeed(BaseSyncTest):
         mock_check_metadata.assert_called_once_with(self.url)
         mock_parse_mirrorlist.assert_called_once_with(self.url)
 
-    @mock.patch('shutil.rmtree', autospec=True)
-    @mock.patch('tempfile.mkdtemp', autospec=True)
     @mock.patch('pulp_rpm.plugins.importers.yum.sync.RepoSync.check_metadata',
                 spec_set=RepoSync.check_metadata)
-    def test_removes_tmp_dir(self, mock_check_matadata, mock_mkdtemp, mock_rmtree):
+    @mock.patch('pulp_rpm.plugins.importers.yum.sync.RepoSync._parse_as_mirrorlist',
+                spec_set=RepoSync._parse_as_mirrorlist)
+    def test_repo_url_is_mirror(self, mock_parse_mirrorlist, mock_check_metadata, mock_mkdtemp):
+        """
+        Tests the case where a connection error or 4xx is encountered trying to get
+        repodata/repomd.xml
+        """
 
-        self.reposync.sync_feed
+        mock_check_metadata.return_value = None
 
-        mock_rmtree.assert_called_with(mock_mkdtemp.return_value, ignore_errors=True)
+        ret = self.reposync.sync_feed
+        self.assertFalse(ret == [self.url])
+
+        mock_check_metadata.assert_called_once_with(self.url)
+        mock_parse_mirrorlist.assert_called_once_with(self.url)
+
+    @mock.patch('pulp_rpm.plugins.importers.yum.sync.RepoSync.check_metadata',
+                spec_set=RepoSync.check_metadata)
+    @mock.patch('pulp_rpm.plugins.importers.yum.sync.RepoSync._parse_as_mirrorlist',
+                spec_set=RepoSync._parse_as_mirrorlist)
+    def test_repo_url_has_no_yum_metadata(self, mock_parse_mirrorlist, mock_check_metadata,
+                                          mock_mkdtemp):
+        """
+        Test the case where the repo URL has no repomd.xml nor a mirrorlist.
+        """
+
+        mock_check_metadata.return_value = None
+        mock_parse_mirrorlist.return_value = []
+
+        ret = self.reposync.sync_feed
+        self.assertEqual(ret, [self.url])
+        # This must be set so the workflow skips ahead to the distribution sync attempt.
+        self.assertTrue(self.reposync.skip_repomd_steps)
+
+        mock_check_metadata.assert_called_once_with(self.url)
+        mock_parse_mirrorlist.assert_called_once_with(self.url)
 
 
 @skip_broken
@@ -540,8 +575,40 @@ class TestGetMetadata(BaseSyncTest):
         super(TestGetMetadata, self).setUp()
         self.reposync.tmp_dir = '/tmp'
 
+    @mock.patch('pulp_rpm.plugins.importers.yum.sync.repo_controller.check_perform_full_sync',
+                autospec=True)
     @mock.patch.object(metadata, 'MetadataFiles', autospec=True)
-    def test_metadata_unchanged(self, mock_metadata_files):
+    def test_platform_force_sync(self, mock_metadata_files, mock_check_sync):
+        """
+        Test that the sync is forced if the platform check_perform_full_sync() returns True
+        and metadata stays the same.
+        """
+        mock_check_sync.return_value = True
+
+        # Keep metadata the same
+        mock_metadata_instance = mock_metadata_files.return_value
+        mock_metadata_instance.revision = 1234
+        mock_metadata_instance.downloader = mock.MagicMock()
+        self.conduit.get_scratchpad.return_value = {constants.REPOMD_REVISION_KEY: 1234}
+        self.conduit.last_sync = mock.MagicMock(return_value=None)
+        self.reposync.import_unknown_metadata_files = mock.MagicMock(
+            spec_set=self.reposync.import_unknown_metadata_files)
+
+        self.reposync.get_metadata(self.reposync.check_metadata(self.url))
+
+        self.assertTrue(self.reposync.skip_repomd_steps is False)
+        self.assertEqual(mock_metadata_instance.download_metadata_files.call_count, 1)
+
+    @mock.patch('pulp_rpm.plugins.importers.yum.sync.repo_controller.check_perform_full_sync',
+                autospec=True)
+    @mock.patch.object(metadata, 'MetadataFiles', autospec=True)
+    def test_metadata_unchanged(self, mock_metadata_files, mock_check_sync):
+        """
+        Test that a full sync is not performed if the platform check_perform_full_sync()
+        returns False and the metadata remains unchanged from the previous sync.
+        """
+        mock_check_sync.return_value = False
+
         mock_metadata_instance = mock_metadata_files.return_value
         mock_metadata_instance.revision = 1234
         mock_metadata_instance.downloader = mock.MagicMock()
@@ -555,9 +622,15 @@ class TestGetMetadata(BaseSyncTest):
         self.assertEqual(mock_metadata_instance.download_metadata_files.call_count, 0)
         self.assertTrue(ret is mock_metadata_instance)
 
+    @mock.patch('pulp_rpm.plugins.importers.yum.sync.repo_controller.check_perform_full_sync',
+                autospec=True)
     @mock.patch.object(metadata, 'MetadataFiles', autospec=True)
-    def test_metadata_revision_zero(self, mock_metadata_files):
-        """In this case, with the default revision of 0, a full sync should be performed"""
+    def test_metadata_revision_zero(self, mock_metadata_files, mock_check_sync):
+        """
+        In this case, with the default revision of 0, a full sync should be performed.
+        """
+        mock_check_sync.return_value = False
+
         mock_metadata_instance = mock_metadata_files.return_value
         mock_metadata_instance.revision = 0
         mock_metadata_instance.downloader = mock.MagicMock()
@@ -573,65 +646,14 @@ class TestGetMetadata(BaseSyncTest):
         self.assertEqual(mock_metadata_instance.download_metadata_files.call_count, 1)
 
     @mock.patch.object(metadata, 'MetadataFiles', autospec=True)
-    def test_metadata_feed_override(self, mock_metadata_files):
-        """with feed override is set, a full sync should be performed"""
-        mock_metadata_instance = mock_metadata_files.return_value
-        mock_metadata_instance.revision = 1
-        mock_metadata_instance.downloader = mock.MagicMock()
-        mock_metadata_instance.save_repomd_version = mock.MagicMock()
-        self.config.override_config[importer_constants.KEY_FEED] = 'http://pulpproject.org'
-        self.conduit.get_scratchpad.return_value = {constants.REPOMD_REVISION_KEY: 1234}
-        self.conduit.last_sync = mock.MagicMock(return_value=None)
-        self.reposync.import_unknown_metadata_files = mock.MagicMock(
-            spec_set=self.reposync.import_unknown_metadata_files)
-
-        self.reposync.get_metadata(self.reposync.check_metadata(self.url))
-
-        self.assertTrue(self.reposync.skip_repomd_steps is False)
-
-    @mock.patch.object(metadata, 'MetadataFiles', autospec=True)
-    def test_metadata_unchanged_but_skip_list_shrank(self, mock_metadata_files):
-        """
-        Test the case where the metadata didn't change, but the skip list is
-        smaller. In that case, the full sync should happen even though the
-        metadata didn't change.
-        """
-        mock_metadata_instance = mock_metadata_files.return_value
-        mock_metadata_instance.revision = 1234
-        mock_metadata_instance.downloader = mock.MagicMock()
-        self.conduit.get_scratchpad.return_value = {
-            constants.REPOMD_REVISION_KEY: 1234,
-            constants.PREVIOUS_SKIP_LIST: ['foo', 'bar'],
-        }
-        self.config.override_config[constants.CONFIG_SKIP] = ['foo']
-        self.conduit.last_sync = mock.MagicMock(return_value=None)
-        self.reposync.import_unknown_metadata_files = mock.MagicMock(
-            spec_set=self.reposync.import_unknown_metadata_files)
-
-        self.reposync.get_metadata(self.reposync.check_metadata(self.url))
-
-        self.assertTrue(self.reposync.skip_repomd_steps is False)
-        self.assertEqual(mock_metadata_instance.download_metadata_files.call_count, 1)
-
-    @mock.patch.object(metadata, 'MetadataFiles', autospec=True)
-    def test_failed_download(self, mock_metadata_files):
-        mock_metadata_files.return_value = self.metadata_files
-        self.metadata_files.download_repomd = mock.MagicMock(side_effect=IOError, autospec=True)
-
-        with self.assertRaises(PulpCodedException) as e:
-            self.reposync.check_metadata(self.url)
-
-        self.assertEqual(e.exception.error_code, error_codes.RPM1004)
-
-    @mock.patch.object(metadata, 'MetadataFiles', autospec=True)
     def test_failed_download_repomd(self, mock_metadata_files):
         mock_metadata_files.return_value = self.metadata_files
-        self.metadata_files.download_repomd = mock.MagicMock(side_effect=IOError, autospec=True)
+        self.metadata_files.download_repomd = mock.MagicMock(side_effect=IOError('omg'),
+                                                             autospec=True)
 
-        with self.assertRaises(PulpCodedException) as e:
-            self.reposync.check_metadata(self.url)
+        self.reposync.check_metadata(self.url)
 
-        self.assertEqual(e.exception.error_code, error_codes.RPM1004)
+        self.assertEqual(self.reposync.repomd_not_found_reason, 'omg')
 
     @mock.patch.object(metadata, 'MetadataFiles', autospec=True)
     def test_failed_parse_repomd(self, mock_metadata_files):
@@ -644,8 +666,12 @@ class TestGetMetadata(BaseSyncTest):
 
         self.assertEqual(e.exception.error_code, error_codes.RPM1006)
 
+    @mock.patch('pulp_rpm.plugins.importers.yum.sync.repo_controller.check_perform_full_sync',
+                autospec=True)
     @mock.patch.object(metadata, 'MetadataFiles', autospec=True)
-    def test_success(self, mock_metadata_files):
+    def test_success(self, mock_metadata_files, mock_check_sync):
+        mock_check_sync.return_value = False
+
         mock_metadata_instance = mock_metadata_files.return_value
         mock_metadata_instance.revision = int(time.time()) + 60 * 60 * 24
         mock_metadata_instance.downloader = mock.MagicMock()

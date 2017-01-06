@@ -13,8 +13,8 @@
 # ---- Pulp (rpm) --------------------------------------------------------------
 
 Name: pulp-rpm
-Version: 2.10.3
-Release: 1%{?dist}
+Version: 2.11.0
+Release: 0.4.beta%{?dist}
 Summary: Support for RPM content in the Pulp platform
 Group: Development/Languages
 License: GPLv2
@@ -164,6 +164,8 @@ Requires: m2crypto
 Requires: python-lxml
 Requires: repoview
 Requires: rsync
+Requires: deltarpm
+Requires: python-deltarpm
 
 %description plugins
 Provides a collection of platform plugins that extend the Pulp platform
@@ -269,19 +271,13 @@ A collection of yum plugins supplementing Pulp consumer operations.
 
 
 %changelog
-* Thu Dec 01 2016 Sean Myers <sean.myers@redhat.com> 2.10.3-1
+* Wed Nov 23 2016 Sean Myers <sean.myers@redhat.com> 2.11.0-0.4.beta
 - Pulp rebuild
 
-* Tue Oct 18 2016 Sean Myers <sean.myers@redhat.com> 2.10.1-0.1.beta
+* Thu Nov 03 2016 Sean Myers <sean.myers@redhat.com> 2.11.0-0.2.beta
 - Pulp rebuild
 
-* Mon Aug 29 2016 Sean Myers <sean.myers@redhat.com> 2.10.0-0.4.beta
-- Pulp rebuild
-
-* Fri Aug 19 2016 Sean Myers <sean.myers@redhat.com> 2.10.0-0.3.beta
-- Pulp rebuild
-
-* Wed Aug 03 2016 Sean Myers <sean.myers@redhat.com> 2.10.0-0.1.beta
+* Tue Oct 25 2016 Sean Myers <sean.myers@redhat.com> 2.11.0-0.1.beta
 - added rsync distributor (jluza@redhat.com)
 - 1982 - --force-full option for yum importer (fdobrovo@redhat.com)
 - 1876 - Add in a sample program to generate the file (bkearney@redhat.com)

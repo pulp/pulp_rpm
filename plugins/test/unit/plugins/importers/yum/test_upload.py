@@ -62,6 +62,20 @@ class UploadDispatchTests(unittest.TestCase):
         self.assertTrue(report is not None)
         self.assertTrue(report['success_flag'])
 
+    @mock.patch('pulp_rpm.plugins.importers.yum.upload._handle_package')
+    def test_drpm(self, mock_handle):
+        """Test if upload function choose correct function to handle DRPM."""
+        # Test
+        report = upload.upload(None, models.DRPM.TYPE, self.unit_key, self.metadata,
+                               self.file_path, self.conduit, self.config)
+
+        # Verify
+        mock_handle.assert_called_once_with(None, models.DRPM.TYPE, self.unit_key, self.metadata,
+                                            self.file_path, self.conduit, self.config)
+
+        self.assertTrue(report is not None)
+        self.assertTrue(report['success_flag'])
+
     @mock.patch('pulp_rpm.plugins.importers.yum.upload._handle_group_category')
     def test_group(self, mock_handle):
         # Test
@@ -651,6 +665,59 @@ class UploadPackageTests(unittest.TestCase):
         self.assertEqual(metadata['vendor'], None)
 
 
+class UploadDRPMPackageTests(unittest.TestCase):
+    """
+    tests upload of DRPM package
+    """
+    def setUp(self):
+        super(UploadDRPMPackageTests, self).setUp()
+
+        sample_drpm_filename = os.path.join(DATA_DIR,
+                                            'yum-3.2.29-20.fc16_from_el6_3.4.3-8.fc16.noarch.drpm')
+
+        self.tmp_dir = tempfile.mkdtemp(prefix='pulp-rpm-upload-tests')
+
+        # The import moves the source into the destination, so copy the DRPM out of the
+        # git repository so we don't go breaking things.
+        shutil.copy(sample_drpm_filename, self.tmp_dir)
+
+        self.upload_src_filename = os.path.join(self.tmp_dir,
+                                                os.path.basename(sample_drpm_filename))
+        self.upload_dest_filename = os.path.join(self.tmp_dir, 'rpm-uploaded.drpm')
+
+    def tearDown(self):
+        super(UploadDRPMPackageTests, self).tearDown()
+
+        if os.path.exists(self.tmp_dir):
+            shutil.rmtree(self.tmp_dir)
+
+    def test_extract_drpm_data(self):
+        """
+        Test correctness of DRPM metadata extraction.
+        """
+        # Test
+        drpm_data = upload._extract_drpm_data(self.upload_src_filename)
+
+        # Verify
+        self.assertEqual(drpm_data['oldrelease'], '20.fc16_from_el6')
+        self.assertEqual(drpm_data['sequence'], (
+            'yum-3.2.29-20.fc16_from_el6-4d1beb61671e5cd33b731e1807e6bc7821114132124212122242121212'
+            '42421212724212121212124242121212b427212121230cd2109d210ec210bc210ab210de110ae110fd110c'
+            'd110ec1108c110db110ab110fa110ca1109a110b9110a8110f710c710e6108610d510a510f4109410d310a'
+            '310f2109210e11'))
+        self.assertEqual(drpm_data['oldepoch'], '0')
+        self.assertEqual(drpm_data['oldversion'], '3.2.29')
+        self.assertEqual(drpm_data['filename'],
+                         'drpms/yum-3.2.29-20.fc16_from_el6_3.4.3-8.fc16.noarch.drpm')
+        self.assertEqual(drpm_data['new_package'], 'yum')
+        self.assertEqual(drpm_data['epoch'], '0')
+        self.assertEqual(drpm_data['version'], '3.4.3')
+        self.assertEqual(drpm_data['signing_key'], None)
+        self.assertEqual(drpm_data['release'], '8.fc16')
+        self.assertEqual(drpm_data['arch'], 'noarch')
+        self.assertEqual(drpm_data['size'], 353265)
+
+
 class TestUpdateProvidesRequires(unittest.TestCase):
     # a snippet from repodata primary xml for a package
     # this snippet has been truncated to only provide the tags needed to test
@@ -707,3 +774,8 @@ class TestUpdateProvidesRequires(unittest.TestCase):
         upload._update_provides_requires(self.unit)
         self.assertEqual(len(self.unit.provides), 1)
         self.assertEqual(len(self.unit.requires), 2)
+
+    def test_update_files(self):
+        upload._update_files(self.unit)
+        self.assertEqual(len(self.unit.files['file']), 1)
+        self.assertEqual(self.unit.files['file'][0], '/tmp/shark.txt')

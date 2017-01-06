@@ -54,6 +54,7 @@ def associate(source_repo, dest_repo, import_conduit, config, units=None):
 
     # make a set from generator to be able to iterate through it several times
     units = set(units)
+    failed_units = set()
     # we need to filter out rpm units since in reality they were not associated
     associated_units = [_associate_unit(dest_repo, unit, config) for unit in units
                         if not isinstance(unit, models.RPM)]
@@ -67,12 +68,14 @@ def associate(source_repo, dest_repo, import_conduit, config, units=None):
         (unit for unit in units if isinstance(unit, models.RPM)),
         source_repo, dest_repo, import_conduit, config, recursive)
 
-    # allow garbage collection
-    units = None
-
     # return here if we shouldn't get child units
     if not recursive:
-        return list(associated_units)
+        failed_units = units - associated_units
+
+        # allow garbage collection
+        units = None
+
+        return (list(associated_units), list(failed_units))
 
     group_ids, rpm_names, rpm_search_dicts = identify_children_to_copy(associated_units)
 
@@ -96,7 +99,13 @@ def associate(source_repo, dest_repo, import_conduit, config, units=None):
     names_to_copy = get_rpms_to_copy_by_name(rpm_names, import_conduit, dest_repo)
     associated_units |= copy_rpms_by_name(names_to_copy, source_repo, dest_repo,
                                           import_conduit, config, recursive)
-    return list(associated_units)
+
+    failed_units = units - associated_units
+
+    # allow garbage collection
+    units = None
+
+    return (list(associated_units), list(failed_units))
 
 
 def get_rpms_to_copy_by_key(rpm_search_dicts, import_conduit, repo):

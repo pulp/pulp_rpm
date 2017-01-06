@@ -249,6 +249,30 @@ class NonMetadataPackage(UnitMixin, FileContentUnit):
 
         return value
 
+    def to_id_dict(self):
+        """
+        Overrides the platform method, whose purpose is to provide a minimal representation that
+        can be returned in a view. For example, the repo associate action represents units this
+        way.
+
+        For models where members of the unit key had to be renamed and must be serialized with the
+        original name for API compatibility, this method does that translation.
+
+        :return:    dictionary with key "type_id" and the value corresponding to the unit type;
+                    key "unit_key" whose value is the unit's translated unit key, key "signing_key"
+                    for RPM/SRPM/DRPM
+        :rtype:     dict
+        """
+        ret = super(NonMetadataPackage, self).to_id_dict()
+        if self.SERIALIZER is not None:
+            unit_key = ret['unit_key']
+            for new, old in self.SERIALIZER.Meta.remapped_fields.items():
+                if new in unit_key:
+                    unit_key[old] = unit_key[new]
+                    del unit_key[new]
+        ret['signing_key'] = self.signing_key
+        return ret
+
 
 class Distribution(UnitMixin, FileContentUnit):
     """
@@ -1189,8 +1213,10 @@ class Errata(UnitMixin, ContentUnit):
         # the pkglist, because mongoengine does not allow to modify existing items in the list
         # and add new items to the list at the same time.
         self.save()
-        self.pkglist += collections_to_add
-        self.save()
+
+        if collections_to_add:
+            self.pkglist += collections_to_add
+            self.save()
 
 
 class PackageGroup(UnitMixin, ContentUnit):

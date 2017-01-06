@@ -25,10 +25,15 @@ class ISODistributorConfigMixin(object):
         d = _('full path to the CA certificate that should be used to verify client authorization '
               'certificates; setting this turns on client authorization for the repository')
         self.opt_auth_ca = PulpCliOption('--auth-ca', d, required=False)
+        d = _(
+            'relative path the repository will be served from. Only alphanumeric characters, '
+            'forward slashes, underscores, and dashes are allowed.')
+        self.opt_relative_url = PulpCliOption('--relative-url', d, required=False)
 
         self.publishing_group.add_option(self.opt_http)
         self.publishing_group.add_option(self.opt_https)
         self.publishing_group.add_option(self.opt_auth_ca)
+        self.publishing_group.add_option(self.opt_relative_url)
 
         self.add_option_group(self.publishing_group)
 
@@ -43,6 +48,7 @@ class ISODistributorConfigMixin(object):
             (constants.CONFIG_SERVE_HTTP, self.opt_http.keyword),
             (constants.CONFIG_SERVE_HTTPS, self.opt_https.keyword),
             (constants.CONFIG_SSL_AUTH_CA_CERT, self.opt_auth_ca.keyword),
+            (constants.CONFIG_RELATIVE_URL, self.opt_relative_url.keyword),
         )
 
         config = {}

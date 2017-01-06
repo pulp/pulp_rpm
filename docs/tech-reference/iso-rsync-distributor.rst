@@ -19,17 +19,17 @@ the boolean is enabled. To enable it, you can do this::
 Here is an example iso_rsync_distributor configuration::
 
     {
-     "distributor_id": "my_iso_rsync_distributor",
-     "distributor_type_id": "iso_rsync_distributor",
-     "distributor_config": {
-        "remote": {
-            "auth_type": "publickey",
-            "ssh_user": "foo",
-            "ssh_identity_file": "/home/user/.ssh/id_rsa",
-            "host": "192.168.121.1",
-            "root": "/home/foo/pulp_root_dir"
-        },
-        "predistributor_id": "my_iso_distributor",
+        "distributor_id": "my_iso_rsync_distributor",
+        "distributor_type_id": "iso_rsync_distributor",
+        "distributor_config": {
+            "remote": {
+                "auth_type": "publickey",
+                "ssh_user": "foo",
+                "ssh_identity_file": "/home/user/.ssh/id_rsa",
+                "host": "192.168.121.1",
+                "root": "/home/foo/pulp_root_dir"
+            },
+            "predistributor_id": "my_iso_distributor"
         }
     }
 
@@ -57,8 +57,8 @@ The ``distributor_config`` contains a ``remote`` section with the following sett
 
 ``root``
   The absolute path to the remote root directory where all the data (content and published content)
-  lives. This is the remote equivalent to ``/var/lib/pulp``. The repo id is appended to the
-  ``root`` path to determine the location of published repository.
+  lives. This is the remote equivalent to ``/var/lib/pulp``. The ``relative_url`` of the
+  predistributor is appended to the ``root`` to determine the location of published repository.
 
 Optional configuration
 ----------------------

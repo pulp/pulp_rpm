@@ -104,6 +104,7 @@ CONFIG_SERVE_HTTPS = 'serve_https'
 CONFIG_SERVE_HTTPS_DEFAULT = True
 CONFIG_KEY_CHECKSUM_TYPE = 'checksum_type'
 CONFIG_DEFAULT_CHECKSUM = 'sha256'
+CONFIG_RELATIVE_URL = 'relative_url'
 
 # list of types to skip at sync time
 CONFIG_SKIP = 'type_skip_list'
@@ -191,7 +192,6 @@ REPO_AUTH_CONFIG_FILE = '/etc/pulp/repo_auth.conf'
 
 # used in the scratchpad
 REPOMD_REVISION_KEY = 'repomd_revision'
-PREVIOUS_SKIP_LIST = 'previous_skip_list'
 
 COMMON_NAMESPACE = 'http://linux.duke.edu/metadata/common'
 RPM_NAMESPACE = 'http://linux.duke.edu/metadata/rpm'

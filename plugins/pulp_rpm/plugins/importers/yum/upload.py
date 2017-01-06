@@ -16,7 +16,7 @@ from pulp_rpm.plugins.db import models
 from pulp_rpm.plugins import error_codes
 from pulp_rpm.plugins.importers.yum import purge, utils
 from pulp_rpm.plugins.importers.yum.parse import rpm as rpm_parse
-from pulp_rpm.plugins.importers.yum.repomd import primary, group, packages
+from pulp_rpm.plugins.importers.yum.repomd import primary, group, packages, filelists
 
 # Used when extracting metadata from an RPM
 RPMTAG_NOSOURCE = 1051
@@ -65,6 +65,10 @@ class PackageMetadataError(Exception):
     pass
 
 
+class RPMOnlyDRPMsAreNotSupported(Exception):
+    pass
+
+
 def upload(repo, type_id, unit_key, metadata, file_path, conduit, config):
     """
     :param repo: The repository to have the unit uploaded to
@@ -98,6 +102,7 @@ def upload(repo, type_id, unit_key, metadata, file_path, conduit, config):
     handlers = {
         models.RPM._content_type_id.default: _handle_package,
         models.SRPM._content_type_id.default: _handle_package,
+        models.DRPM._content_type_id.default: _handle_package,
         models.PackageGroup._content_type_id.default: _handle_group_category_comps,
         models.PackageCategory._content_type_id.default: _handle_group_category_comps,
         models.PackageEnvironment._content_type_id.default: _handle_group_category_comps,
@@ -122,6 +127,10 @@ def upload(repo, type_id, unit_key, metadata, file_path, conduit, config):
     except PackageMetadataError:
         msg = 'metadata for the given package could not be extracted'
         _LOGGER.exception(msg)
+        return _fail_report(msg)
+    except RPMOnlyDRPMsAreNotSupported:
+        msg = 'RPM only DRPMs are not supported'
+        _LOGGER.warning(msg)
         return _fail_report(msg)
     except PulpCodedException, e:
         _LOGGER.exception(e)
@@ -334,7 +343,7 @@ def _get_and_save_file_units(filename, processing_function, tag, conduit, repo):
 
 def _handle_package(repo, type_id, unit_key, metadata, file_path, conduit, config):
     """
-    Handles the upload for an RPM or SRPM.
+    Handles the upload for an RPM, SRPM or DRPM.
 
     This inspects the package contents to determine field values. The unit_key
     and metadata fields overwrite field values determined through package inspection.
@@ -364,7 +373,10 @@ def _handle_package(repo, type_id, unit_key, metadata, file_path, conduit, confi
     :raises PulpCodedException PLP1013: if the checksum value from the user does not validate
     """
     try:
-        rpm_data = _extract_rpm_data(type_id, file_path)
+        if type_id == models.DRPM._content_type_id.default:
+            rpm_data = _extract_drpm_data(file_path)
+        else:
+            rpm_data = _extract_rpm_data(type_id, file_path)
     except:
         _LOGGER.exception('Error extracting RPM metadata for [%s]' % file_path)
         raise
@@ -407,10 +419,12 @@ def _handle_package(repo, type_id, unit_key, metadata, file_path, conduit, confi
     except TypeError:
         raise ModelInstantiationError()
 
-    # Extract/adjust the repodata snippets
-    unit.repodata = rpm_parse.get_package_xml(file_path, sumtype=unit.checksumtype)
-    _update_provides_requires(unit)
-    unit.modify_xml()
+    if type_id != models.DRPM._content_type_id.default:
+        # Extract/adjust the repodata snippets
+        unit.repodata = rpm_parse.get_package_xml(file_path, sumtype=unit.checksumtype)
+        _update_provides_requires(unit)
+        _update_files(unit)
+        unit.modify_xml()
 
     # check if the unit has duplicate nevra
     purge.remove_unit_duplicate_nevra(unit, repo)
@@ -445,6 +459,20 @@ def _update_provides_requires(unit):
                         provides_element.findall('entry')) if provides_element else []
     unit.requires = map(primary._process_rpm_entry_element,
                         requires_element.findall('entry')) if requires_element else []
+
+
+def _update_files(unit):
+    """
+    Determines the files based on the RPM's XML snippet and updates the model
+    instance.
+
+    :param unit: the unit being added to Pulp; the metadata attribute must already have
+                 a key called 'repodata'
+    :type  unit: subclass of pulp.server.db.model.ContentUnit
+    """
+    fake_element = utils.fake_xml_element(unit.repodata['filelists'])
+    package_element = fake_element.find('package')
+    _, unit.files = filelists.process_package_element(package_element)
 
 
 def _extract_rpm_data(type_id, rpm_filename):
@@ -519,6 +547,54 @@ def _extract_rpm_data(type_id, rpm_filename):
     rpm_data['signing_key'] = rpm_parse.package_signature(headers)
 
     return rpm_data
+
+
+def _extract_drpm_data(drpm_filename):
+    """
+    Extract a dict of information for a given DRPM.
+
+    :param drpm_filename: full path to the package to analyze
+    :type  drpm_filename: str
+
+    :return: dict of data about the package
+    :rtype:  dict
+    """
+    drpm_data = dict()
+
+    headers = rpm_parse.drpm_package_info(drpm_filename)
+
+    try:  # "handle" rpm-only drpms (without rpm header)
+        rpm_headers = rpm_parse.package_headers(drpm_filename)
+    except rpm.error:
+        raise RPMOnlyDRPMsAreNotSupported(drpm_filename)
+
+    drpm_data['signing_key'] = rpm_parse.package_signature(rpm_headers)
+    drpm_data['arch'] = rpm_headers['arch']
+
+    old_nevr = old_name, old_epoch, old_version, old_release = rpm_parse.nevr(headers["old_nevr"])
+    new_nevr = new_name, new_epoch, new_version, new_release = rpm_parse.nevr(headers["nevr"])
+
+    drpm_data['sequence'] = headers["old_nevr"] + "-" + headers["seq"]
+
+    drpm_data['epoch'] = str(new_epoch)
+    drpm_data['oldepoch'] = str(old_epoch)
+
+    drpm_data['version'] = str(new_version)
+    drpm_data['oldversion'] = str(old_version)
+
+    drpm_data['release'] = new_release
+    drpm_data['oldrelease'] = old_release
+
+    drpm_data['new_package'] = new_name
+    drpm_data['size'] = os.stat(drpm_filename)[stat.ST_SIZE]
+
+    old_evr = rpm_parse.nevr_to_evr(*old_nevr)
+    new_evr = rpm_parse.nevr_to_evr(*new_nevr)
+    drpm_data['filename'] = "drpms/%s-%s_%s.%s.drpm" % (new_name, rpm_parse.evr_to_str(*old_evr),
+                                                        rpm_parse.evr_to_str(*new_evr),
+                                                        drpm_data['arch'])
+
+    return drpm_data
 
 
 def _fail_report(message):

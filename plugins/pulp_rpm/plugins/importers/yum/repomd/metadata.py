@@ -15,11 +15,13 @@ from xml.etree.cElementTree import iterparse
 from nectar.listener import AggregatingEventListener
 from nectar.request import DownloadRequest
 from pulp.server import util
+from pulp.server.exceptions import PulpCodedException
 
+from pulp_rpm.plugins import error_codes
 from pulp_rpm.plugins.db import models
 from pulp_rpm.plugins.importers.yum import utils
 from pulp_rpm.plugins.importers.yum.parse.rpm import change_location_tag
-from pulp_rpm.plugins.importers.yum.repomd import filelists, nectar_factory, other
+from pulp_rpm.plugins.importers.yum.repomd import filelists, nectar_factory, other, primary
 from pulp_rpm.plugins.importers.yum.repomd.packages import package_list_generator
 
 
@@ -104,6 +106,10 @@ class MetadataFiles(object):
                        'prestodelta',
                        'updateinfo', 'updateinfo_db'])
 
+    MANDATORY_METADATA_TYPES = (primary.METADATA_FILE_NAME,
+                                filelists.METADATA_FILE_NAME,
+                                other.METADATA_FILE_NAME)
+
     def __init__(self, repo_url, dst_dir, nectar_config, url_modify=None):
         """
         :param repo_url:        URL for the base of a yum repository
@@ -129,6 +135,7 @@ class MetadataFiles(object):
         self.revision = None
         self.metadata = {}
         self.dbs = {}
+        self.rpm_count = None
 
     def download_repomd(self):
         """
@@ -145,6 +152,8 @@ class MetadataFiles(object):
     def parse_repomd(self):
         """
         Parse the downloaded repomd.xml file and populate the metadata dictionary.
+
+        :raises PulpCodedException: if any of necessary metadata files are not found
         """
         repomd_file_path = os.path.join(self.dst_dir, REPOMD_FILE_NAME)
 
@@ -178,6 +187,11 @@ class MetadataFiles(object):
             if element.tag == DATA_TAG:
                 file_info = process_repomd_data_element(element)
                 self.metadata[file_info['name']] = file_info
+
+        for metadata_type in MetadataFiles.MANDATORY_METADATA_TYPES:
+            if metadata_type not in self.metadata:
+                reason = '"%s" metadata is not found in repomd.xml' % metadata_type
+                raise PulpCodedException(error_code=error_codes.RPM1015, reason=reason)
 
     def download_metadata_files(self):
         """
@@ -282,7 +296,10 @@ class MetadataFiles(object):
         For repo data files that contain data we need to access later for each
         unit in the repo, generate a local db file that gives us quick read
         access to each unit's data.
+
+        :raises PulpCodedException: if there is some inconsistency in metadata
         """
+        package_count = {}
         for filename, tag, process_func in (
             (filelists.METADATA_FILE_NAME,
              filelists.PACKAGE_TAG, filelists.process_package_element),
@@ -301,7 +318,13 @@ class MetadataFiles(object):
                         db_key = self.generate_db_key(unit_key)
                         db_file_handle[db_key] = raw_xml
                     db_file_handle.sync()
+                    package_count[filename] = len(db_file_handle)
             self.dbs[filename] = db_filename
+        if package_count[filelists.METADATA_FILE_NAME] != package_count[other.METADATA_FILE_NAME]:
+            reason = ('metadata is specified for different set of packages in filelists.xml'
+                      ' and in other.xml')
+            raise PulpCodedException(error_code=error_codes.RPM1015, reason=reason)
+        self.rpm_count = package_count[filelists.METADATA_FILE_NAME]
 
     @staticmethod
     def generate_db_key(unit_key):
