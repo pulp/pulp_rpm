@@ -303,4 +303,7 @@ class SyncProgressReport(ISOProgressReport):
 
         super(self.__class__, self)._set_state(new_state)
 
+        if new_state == self.STATE_ISOS_FAILED:
+            raise Exception(self.iso_error_messages)
+
     state = property(ISOProgressReport._get_state, _set_state)
