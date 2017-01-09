@@ -374,14 +374,14 @@ class TestSyncProgressReport(unittest.TestCase):
     def test__set_state_iso_errors(self):
         """
         Test the state property as a setter for the situation when the state is marked as COMPLETE,
-        but there are ISO errors. It should automatically get set to ISOS_FAILED instead.
+        but there are ISO errors. It should raise an exception with all the ISO errors.
         """
         report = progress.SyncProgressReport(
             self.conduit, iso_error_messages={'iso': 'error'},
             state=progress.SyncProgressReport.STATE_ISOS_IN_PROGRESS)
 
-        # This should trigger an automatic STATE_FAILED, since there are ISO errors
-        report.state = progress.SyncProgressReport.STATE_COMPLETE
+        # This should raise an Exception since there are ISO errors
+        self.assertRaises(Exception, report._set_state, progress.SyncProgressReport.STATE_COMPLETE)
 
         self.assertEqual(report._state, progress.SyncProgressReport.STATE_ISOS_FAILED)
         self.assertTrue(report._state in report.state_times)
