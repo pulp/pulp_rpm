@@ -435,11 +435,12 @@ class DistSync(object):
             root = tree.getroot()
             for file_element in root.findall('file'):
                 relative_path = file_element.text
-                files.append({
-                    RELATIVE_PATH: relative_path,
-                    CHECKSUM: None,
-                    CHECKSUM_TYPE: None,
-                })
+                if not relative_path.startswith('repodata/'):
+                    files.append({
+                        RELATIVE_PATH: relative_path,
+                        CHECKSUM: None,
+                        CHECKSUM_TYPE: None,
+                    })
 
             # Add the distribution file to the list of files
             files.append({
