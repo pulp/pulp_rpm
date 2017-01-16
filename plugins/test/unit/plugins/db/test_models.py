@@ -431,8 +431,8 @@ class TestErrata(unittest.TestCase):
         self.assertEqual(existing_erratum.pkglist[0]['_pulp_repo_id'],
                          uploaded_erratum.pkglist[0]['_pulp_repo_id'])
 
-        # make sure save() is called
-        self.assertEqual(mock_save.call_count, 2)
+        # make sure save() is called once since no collections were added
+        self.assertEqual(mock_save.call_count, 1)
 
     @mock.patch('pulp_rpm.plugins.db.models.Errata.save')
     def test_merge_pkglists_oldstyle_newstyle_different_collection(self, mock_save):
@@ -487,8 +487,8 @@ class TestErrata(unittest.TestCase):
         self.assertEqual(existing_erratum.pkglist[0]['packages'][0]['version'],
                          uploaded_erratum.pkglist[0]['packages'][0]['version'])
 
-        # make sure save() is called
-        self.assertEqual(mock_save.call_count, 2)
+        # make sure save() is called once since no collections were added
+        self.assertEqual(mock_save.call_count, 1)
 
     @mock.patch('pulp_rpm.plugins.db.models.Errata.save')
     @mock.patch('pulp_rpm.plugins.db.models.Errata.update_needed')

@@ -16,7 +16,7 @@ from pulp_rpm.plugins.db import models
 from pulp_rpm.plugins import error_codes
 from pulp_rpm.plugins.importers.yum import purge, utils
 from pulp_rpm.plugins.importers.yum.parse import rpm as rpm_parse
-from pulp_rpm.plugins.importers.yum.repomd import primary, group, packages
+from pulp_rpm.plugins.importers.yum.repomd import primary, group, packages, filelists
 
 # Used when extracting metadata from an RPM
 RPMTAG_NOSOURCE = 1051
@@ -302,6 +302,9 @@ def _handle_group_category_comps(repo, type_id, unit_key, metadata, file_path, c
             unit.save()
         except NotUniqueError:
             unit = unit.__class__.objects.filter(**unit.unit_key).first()
+            for k, v in unit_data.items():
+                setattr(unit, k, v)
+            unit.save()
 
         repo_controller.associate_single_unit(repo, unit)
 
@@ -420,6 +423,7 @@ def _handle_package(repo, type_id, unit_key, metadata, file_path, conduit, confi
         # Extract/adjust the repodata snippets
         unit.repodata = rpm_parse.get_package_xml(file_path, sumtype=unit.checksumtype)
         _update_provides_requires(unit)
+        _update_files(unit)
         unit.modify_xml()
 
     # check if the unit has duplicate nevra
@@ -455,6 +459,20 @@ def _update_provides_requires(unit):
                         provides_element.findall('entry')) if provides_element else []
     unit.requires = map(primary._process_rpm_entry_element,
                         requires_element.findall('entry')) if requires_element else []
+
+
+def _update_files(unit):
+    """
+    Determines the files based on the RPM's XML snippet and updates the model
+    instance.
+
+    :param unit: the unit being added to Pulp; the metadata attribute must already have
+                 a key called 'repodata'
+    :type  unit: subclass of pulp.server.db.model.ContentUnit
+    """
+    fake_element = utils.fake_xml_element(unit.repodata['filelists'])
+    package_element = fake_element.find('package')
+    _, unit.files = filelists.process_package_element(package_element)
 
 
 def _extract_rpm_data(type_id, rpm_filename):
