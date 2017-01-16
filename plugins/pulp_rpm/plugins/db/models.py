@@ -983,7 +983,7 @@ class RpmBase(NonMetadataPackage):
         :type  filename:        basestring
         """
         location_element = package_element.find('location')
-        location_element.set('href', filename)
+        location_element.set('href', file_utils.make_packages_relative_path(filename))
 
     def get_symlink_name(self):
         """
@@ -992,7 +992,7 @@ class RpmBase(NonMetadataPackage):
         :return: file name as it appears in a published repository
         :rtype: str
         """
-        return self.filename
+        return file_utils.make_packages_relative_path(self.filename)
 
     def verify_size(self, location):
         """

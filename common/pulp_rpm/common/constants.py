@@ -195,3 +195,5 @@ REPOMD_REVISION_KEY = 'repomd_revision'
 
 COMMON_NAMESPACE = 'http://linux.duke.edu/metadata/common'
 RPM_NAMESPACE = 'http://linux.duke.edu/metadata/rpm'
+
+PULP_PACKAGES_DIR = 'Packages'
