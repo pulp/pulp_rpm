@@ -12,7 +12,7 @@ from pulp.plugins.model import Unit
 from pulp_rpm.common.ids import TYPE_ID_RPM
 from pulp_rpm.devel.skip import skip_broken
 from pulp_rpm.plugins.distributors.yum.metadata.metadata import (
-    MetadataFileContext, PreGeneratedMetadataContext, REPO_DATA_DIR_NAME)
+    MetadataFileContext, REPO_DATA_DIR_NAME)
 from pulp_rpm.plugins.distributors.yum.metadata.prestodelta import (
     PrestodeltaXMLFileContext, PRESTO_DELTA_FILE_NAME)
 from pulp_rpm.plugins.distributors.yum.metadata.repomd import (
@@ -260,60 +260,6 @@ class YumDistributorMetadataTests(unittest.TestCase):
         context.finalize()
 
         self.assertEqual(context.metadata_file_path, path)
-
-    # -- pre-generated metadata context tests ----------------------------------
-
-    def test_pre_generated_metadata(self):
-
-        path = os.path.join(self.metadata_file_dir, 'pre-gen.xml')
-        context = PreGeneratedMetadataContext(path)
-        unit = self._generate_rpm('test_rpm')
-
-        context._open_metadata_file_handle()
-        context._add_unit_pre_generated_metadata('primary', unit)
-        context._close_metadata_file_handle()
-
-        self.assertEqual(os.path.getsize(path), len('PRIMARY'))
-
-    def test_pre_generated_metadata_no_repodata(self):
-
-        path = os.path.join(self.metadata_file_dir, 'no-repodata.xml')
-        context = PreGeneratedMetadataContext(path)
-        unit = self._generate_rpm('no_repodata')
-
-        unit.metadata.pop('repodata')
-
-        context._open_metadata_file_handle()
-        context._add_unit_pre_generated_metadata('primary', unit)
-        context._close_metadata_file_handle()
-
-        self.assertEqual(os.path.getsize(path), 0)
-
-    def test_pre_generated_metadata_wrong_category(self):
-
-        path = os.path.join(self.metadata_file_dir, 'wrong-category.xml')
-        context = PreGeneratedMetadataContext(path)
-        unit = self._generate_rpm('wrong_category')
-
-        context._open_metadata_file_handle()
-        context._add_unit_pre_generated_metadata('not_found', unit)
-        context._close_metadata_file_handle()
-
-        self.assertEqual(os.path.getsize(path), 0)
-
-    def test_pre_generated_metadata_not_string(self):
-
-        path = os.path.join(self.metadata_file_dir, 'not-string.xml')
-        context = PreGeneratedMetadataContext(path)
-        unit = self._generate_rpm('not_string')
-
-        unit.metadata['repodata']['whatisthis'] = 1
-
-        context._open_metadata_file_handle()
-        context._add_unit_pre_generated_metadata('whatisthis', unit)
-        context._close_metadata_file_handle()
-
-        self.assertEqual(os.path.getsize(path), 0)
 
     # -- updateinfo.xml testing ------------------------------------------------
 

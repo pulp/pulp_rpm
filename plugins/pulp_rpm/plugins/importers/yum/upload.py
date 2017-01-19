@@ -421,10 +421,10 @@ def _handle_package(repo, type_id, unit_key, metadata, file_path, conduit, confi
 
     if type_id != models.DRPM._content_type_id.default:
         # Extract/adjust the repodata snippets
-        unit.repodata = rpm_parse.get_package_xml(file_path, sumtype=unit.checksumtype)
-        _update_provides_requires(unit)
-        _update_files(unit)
-        unit.modify_xml()
+        repodata = rpm_parse.get_package_xml(file_path, sumtype=unit.checksumtype)
+        _update_provides_requires(unit, repodata)
+        _update_files(unit, repodata)
+        unit.modify_xml(repodata)
 
     # check if the unit has duplicate nevra
     purge.remove_unit_duplicate_nevra(unit, repo)
@@ -440,7 +440,7 @@ def _handle_package(repo, type_id, unit_key, metadata, file_path, conduit, confi
     repo_controller.associate_single_unit(repo, unit)
 
 
-def _update_provides_requires(unit):
+def _update_provides_requires(unit, repodata):
     """
     Determines the provides and requires fields based on the RPM's XML snippet and updates
     the model instance.
@@ -448,8 +448,10 @@ def _update_provides_requires(unit):
     :param unit: the unit being added to Pulp; the metadata attribute must already have
                  a key called 'repodata'
     :type  unit: subclass of pulp.server.db.model.ContentUnit
+    :param repodata: xml snippets to analyze
+    :type  repodata: dict
     """
-    fake_element = utils.fake_xml_element(unit.repodata['primary'])
+    fake_element = utils.fake_xml_element(repodata['primary'])
     utils.strip_ns(fake_element)
     primary_element = fake_element.find('package')
     format_element = primary_element.find('format')
@@ -461,7 +463,7 @@ def _update_provides_requires(unit):
                         requires_element.findall('entry')) if requires_element else []
 
 
-def _update_files(unit):
+def _update_files(unit, repodata):
     """
     Determines the files based on the RPM's XML snippet and updates the model
     instance.
@@ -469,8 +471,10 @@ def _update_files(unit):
     :param unit: the unit being added to Pulp; the metadata attribute must already have
                  a key called 'repodata'
     :type  unit: subclass of pulp.server.db.model.ContentUnit
+    :param repodata: xml snippets to analyze
+    :type  repodata: dict
     """
-    fake_element = utils.fake_xml_element(unit.repodata['filelists'])
+    fake_element = utils.fake_xml_element(repodata['filelists'])
     package_element = fake_element.find('package')
     _, unit.files = filelists.process_package_element(package_element)
 
