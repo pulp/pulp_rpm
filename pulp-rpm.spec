@@ -14,7 +14,7 @@
 
 Name: pulp-rpm
 Version: 2.12.0
-Release: 0.1.beta%{?dist}
+Release: 0.2.rc%{?dist}
 Summary: Support for RPM content in the Pulp platform
 Group: Development/Languages
 License: GPLv2
