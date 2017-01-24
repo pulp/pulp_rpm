@@ -271,6 +271,9 @@ A collection of yum plugins supplementing Pulp consumer operations.
 
 
 %changelog
+* Tue Jan 24 2017 Sean Myers <sean.myers@redhat.com> 2.12.0-0.2.rc
+- Pulp rebuild
+
 * Tue Jan 17 2017 Sean Myers <sean.myers@redhat.com> 2.12.0-0.1.beta
 - added rsync distributor (jluza@redhat.com)
 - 1982 - --force-full option for yum importer (fdobrovo@redhat.com)
