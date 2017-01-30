@@ -407,7 +407,9 @@ def _duplicate_key_id_generator_aggregation(unit, fields):
 
     # When aggregating over hundreds of thousands of packages, mongo can overflow
     # To prevent this, mongo needs to be allowed to temporarily use the disk for this transaction
-    aggregation = unit.objects.aggregate(sort, project, allowDiskUse=True)
+    # Set the batch size to 5 to prevent a cursor timeout
+    aggregation = unit.objects.aggregate(sort, project, allowDiskUse=True,
+                                         batchSize=5)
 
     # loop state tracking vars
     previous_nevra = None
