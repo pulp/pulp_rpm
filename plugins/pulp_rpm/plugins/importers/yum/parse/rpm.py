@@ -10,7 +10,7 @@ import rpmUtils
 from createrepo import yumbased
 from pulp.server import util
 from pulp.server.exceptions import PulpCodedException
-from pulp_rpm.common import constants
+from pulp_rpm.common import constants, file_utils
 from pulp_rpm.plugins import error_codes
 
 
@@ -55,8 +55,7 @@ def get_package_xml(pkg_path, sumtype=util.TYPE_SHA256):
 
 def change_location_tag(primary_xml_snippet, relpath):
     """
-    Transform the <location> tag to strip out leading directories so it
-    puts all rpms in same the directory as 'repodata'
+    Transform the <location> tag to strip out leading directories and add `Packages/<first_letter>`.
 
     :param primary_xml_snippet: snippet of primary xml text for a single package
     :type  primary_xml_snippet: str
@@ -65,13 +64,13 @@ def change_location_tag(primary_xml_snippet, relpath):
     :type  relpath: str
     """
 
-    basename = os.path.basename(relpath)
     start_index = primary_xml_snippet.find("<location ")
     end_index = primary_xml_snippet.find("/>", start_index) + 2  # adjust to end of closing tag
 
     first_portion = string_to_unicode(primary_xml_snippet[:start_index])
     end_portion = string_to_unicode(primary_xml_snippet[end_index:])
-    location = string_to_unicode("""<location href="%s"/>""" % (basename))
+    location = string_to_unicode("""<location href="%s"/>""" % (
+        file_utils.make_packages_relative_path(relpath)))
     return first_portion + location + end_portion
 
 

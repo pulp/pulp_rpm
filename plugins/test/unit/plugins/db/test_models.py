@@ -13,7 +13,7 @@ from pulp.common.compat import unittest
 import pulp.common.error_codes as platform_error_codes
 from pulp.server.exceptions import PulpCodedException
 
-from pulp_rpm.common import ids
+from pulp_rpm.common import ids, constants
 from pulp_rpm.devel.skip import skip_broken
 from pulp_rpm.plugins import error_codes
 from pulp_rpm.plugins.db import models
@@ -162,7 +162,7 @@ class TestRpmBaseModifyXML(unittest.TestCase):
         self.unit.modify_xml()
 
         self.assertTrue('fixme' not in self.unit.repodata['primary'])
-        self.assertTrue('<location href="fixed-filename.rpm"'
+        self.assertTrue('<location href="%s/f/fixed-filename.rpm"' % (constants.PULP_PACKAGES_DIR)
                         in self.unit.repodata['primary'])
 
     def test_checksum_template(self):
