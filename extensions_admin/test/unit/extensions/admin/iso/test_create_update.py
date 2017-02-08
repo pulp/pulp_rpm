@@ -322,7 +322,7 @@ class TestISORepoCreateCommand(PulpClientTests):
         self.assertEqual(args[5], expected_importer_config)
 
         # Inspect the distributors
-        expected_distributor_config = {}
+        expected_distributor_config = {'serve_http': False, 'serve_https': True}
         expected_distributor = {
             'distributor_type_id': ids.TYPE_ID_DISTRIBUTOR_ISO,
             'distributor_config': expected_distributor_config,
@@ -481,7 +481,8 @@ class TestISORepoUpdateCommand(PulpClientTests):
         self.assertEqual(args[4], expected_importer_config)
 
         # Inspect the distributors
-        expected_distributor = {ids.TYPE_ID_DISTRIBUTOR_ISO: {}}
+        expected_distributor = {ids.TYPE_ID_DISTRIBUTOR_ISO: {'serve_http': False,
+                                                              'serve_https': True}}
         self.assertEqual(args[5], expected_distributor)
 
         # We should have told the user that the repo was updated successfully
