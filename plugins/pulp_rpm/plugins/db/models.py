@@ -1190,9 +1190,9 @@ class Errata(UnitMixin, ContentUnit):
         """
         Merge pkglists of the two errata and save the result to the database.
 
-         - add _pulp_repo_id to old collection if packages are the same
          - update existing collection if the other collection is newer and from the same
            repository
+         - add _pulp_repo_id to old collection if packages are the same
          - otherwise add a new collection
 
         :param other: The erratum we are combining with the existing one
@@ -1210,8 +1210,15 @@ class Errata(UnitMixin, ContentUnit):
         for new_collection in other.pkglist:
             coll_name = new_collection['name']
 
+            # collection with such name and _pulp_repo_id already exists
+            if (coll_name, new_collection['_pulp_repo_id']) in existing_pkglist_map:
+                if self.update_needed(other):
+                    coll_idx = existing_pkglist_map[
+                        (coll_name, new_collection['_pulp_repo_id'])]
+                    self.pkglist[coll_idx]['packages'] = new_collection['packages']
+
             # collection with such name does not contain _pulp_repo_id
-            if (coll_name, None) in existing_pkglist_map:
+            elif (coll_name, None) in existing_pkglist_map:
                 coll_idx = existing_pkglist_map[(coll_name, None)]
                 existing_collection = self.pkglist[coll_idx]
                 if self._check_packages(existing_collection['packages'],
@@ -1219,13 +1226,6 @@ class Errata(UnitMixin, ContentUnit):
                     existing_collection['_pulp_repo_id'] = new_collection['_pulp_repo_id']
                 else:
                     collections_to_add.append(new_collection)
-
-            # collection with such name and _pulp_repo_id already exists
-            elif (coll_name, new_collection['_pulp_repo_id']) in existing_pkglist_map:
-                if self.update_needed(other):
-                    coll_idx = existing_pkglist_map[
-                        (coll_name, new_collection['_pulp_repo_id'])]
-                    self.pkglist[coll_idx]['packages'] = new_collection['packages']
 
             # no collection with such name or no collection with such name and _pulp_repo_id
             else:
