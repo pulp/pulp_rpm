@@ -115,6 +115,8 @@ class TestMigrate(unittest.TestCase):
         mock_repo_unit_collection.remove.assert_called_once_with({'unit_id': 'foo'})
 
     @mock.patch('pulp_rpm.plugins.migrations.0020_nested_drpm_directory.'
+                'get_collection')
+    @mock.patch('pulp_rpm.plugins.migrations.0020_nested_drpm_directory.'
                 '_remove_prestodelta_repo_units')
     @mock.patch('pulp_rpm.plugins.migrations.0020_nested_drpm_directory.'
                 '_remove_prestodelta_symlinks')
@@ -125,7 +127,8 @@ class TestMigrate(unittest.TestCase):
     @mock.patch('pulp_rpm.plugins.migrations.0020_nested_drpm_directory.'
                 'config')
     def test_migrate_workflow(self, mock_config, mock_directories, mock_move,
-                              mock_remove_symlinks, mock_remove_units):
+                              mock_remove_symlinks, mock_remove_units,
+                              mock_get_collection):
         """
         Test the overall workflow of the migration.
         1. Get the repos to migrate
@@ -135,6 +138,8 @@ class TestMigrate(unittest.TestCase):
 
         yum_publish_dir = os.path.join(self.working_dir, 'published', 'yum', 'master')
         os.makedirs(yum_publish_dir)
+        mock_count = mock_get_collection.count
+        mock_count.return_value = 5
         mock_config.get.return_value = self.working_dir
         mock_directories.return_value = ['foo']
 
@@ -143,7 +148,10 @@ class TestMigrate(unittest.TestCase):
         mock_move.assert_called_once_with('foo')
         mock_remove_symlinks.assert_called_once_with('foo')
         mock_remove_units.assert_called_once_with()
+        mock_get_collection.assert_called_once_with('units_drpm')
 
+    @mock.patch('pulp_rpm.plugins.migrations.0020_nested_drpm_directory.'
+                'get_collection')
     @mock.patch('pulp_rpm.plugins.migrations.0020_nested_drpm_directory.'
                 '_remove_prestodelta_repo_units')
     @mock.patch('pulp_rpm.plugins.migrations.0020_nested_drpm_directory.'
@@ -151,13 +159,16 @@ class TestMigrate(unittest.TestCase):
     @mock.patch('pulp_rpm.plugins.migrations.0020_nested_drpm_directory.'
                 'config')
     def test_migrate_workflow_no_published_repos(self, mock_config, mock_directories,
-                                                 mock_remove_units):
+                                                 mock_remove_units,
+                                                 mock_get_collection):
         """
         Test the overall workflow of the migration if the master dir exists but is empty.
         """
 
         yum_publish_dir = os.path.join(self.working_dir, 'published', 'yum', 'master')
         os.makedirs(yum_publish_dir)
+        mock_count = mock_get_collection.count
+        mock_count.return_value = 5
         mock_config.get.return_value = self.working_dir
         mock_directories.return_value = []
 
@@ -166,17 +177,37 @@ class TestMigrate(unittest.TestCase):
         mock_remove_units.assert_called_once_with()
 
     @mock.patch('pulp_rpm.plugins.migrations.0020_nested_drpm_directory.'
+                'get_collection')
+    @mock.patch('pulp_rpm.plugins.migrations.0020_nested_drpm_directory.'
                 '_remove_prestodelta_repo_units')
     @mock.patch('pulp_rpm.plugins.migrations.0020_nested_drpm_directory.'
                 'config')
-    def test_migrate_workflow_no_master_dir(self, mock_config, mock_remove_units):
+    def test_migrate_workflow_no_master_dir(self, mock_config,
+                                            mock_remove_units,
+                                            mock_get_collection):
         """
         Test the overall workflow of the migration if the published dir does not exist.
         In this case only the database cleaning will take place.
         """
 
+        mock_count = mock_get_collection.count
+        mock_count.return_value = 5
         mock_config.get.return_value = self.working_dir
 
         migration.migrate()
 
         mock_remove_units.assert_called_once_with()
+
+    @mock.patch('pulp_rpm.plugins.migrations.0020_nested_drpm_directory.'
+                'get_collection')
+    @mock.patch('pulp_rpm.plugins.migrations.0020_nested_drpm_directory.'
+                '_logger')
+    def test_migrate_no_drpms(self, mock_logger, mock_get_collection):
+        """
+        Test the migration if there are no drpms
+        """
+        mock_get_collection.count.return_value = 0
+
+        migration.migrate()
+
+        mock_logger.info.assert_called_once()

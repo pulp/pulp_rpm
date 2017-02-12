@@ -112,6 +112,12 @@ def migrate(*args, **kwargs):
     """
     Fix the drpm directories and broken repomd.xml files.
     """
+    # skip this migration if we have no drpm units
+    drpm_collection = get_collection('units_drpm')
+    if drpm_collection.count() == 0:
+        _logger.info('Skipping drpm directory migration since there are no drpm units')
+        return
+
     storage_dir = config.get('server', 'storage_dir')
     master_dir = os.path.join(storage_dir, 'published', 'yum', 'master')
 
