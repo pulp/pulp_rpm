@@ -243,6 +243,7 @@ class RepoSync(object):
         # was not able to find any valid url
         if not self.sync_feed:
             raise PulpCodedException(error_code=error_codes.RPM1004, reason='Not found')
+
         url_count = 0
         for url in self.sync_feed:
             # Verify that we have a feed url.
@@ -550,7 +551,9 @@ class RepoSync(object):
         failed_signature_check = 0
         new_report = []
         for error in self.progress_report['content']['error_details']:
-            if error[constants.ERROR_CODE] == constants.ERROR_KEY_ID_FILTER:
+            # Nectar doesn't return error reports in the same format as other parts of the code
+            # Use getattr() here to avoid KeyErrors
+            if getattr(error, constants.ERROR_CODE, None) == constants.ERROR_KEY_ID_FILTER:
                 failed_signature_check += 1
             else:
                 new_report.append(error)
