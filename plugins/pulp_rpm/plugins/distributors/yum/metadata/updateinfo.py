@@ -51,7 +51,7 @@ class UpdateinfoXMLFileContext(FastForwardXmlFileContext):
         super(UpdateinfoXMLFileContext, self)._open_metadata_file_handle()
         self.xml_generator = XMLWriter(self.metadata_file_handle, short_empty_elements=True)
 
-    def _get_repo_unit_nevra(self, erratum_unit):
+    def get_repo_unit_nevra(self, erratum_unit):
         """
         Return a list of NEVRA dicts for units in a single repo referenced by the given errata.
 
@@ -133,13 +133,16 @@ class UpdateinfoXMLFileContext(FastForwardXmlFileContext):
 
         return package_checksum_tuple
 
-    def add_unit_metadata(self, item):
+    def add_unit_metadata(self, item, filtered_pkglists):
         """
         Write the XML representation of erratum_unit to self.metadata_file_handle
         (updateinfo.xml.gx).
 
         :param item: The erratum unit that should be written to updateinfo.xml.
         :type  item: pulp_rpm.plugins.db.models.Errata
+        :param filtered_pkglists: The pkglists containing unique non-empty collections
+                                with packages which are present in repo.
+        :type filtered_pkglists: list of dicts
         """
         erratum_unit = item
         update_attributes = {'status': erratum_unit.status,
@@ -179,19 +182,7 @@ class UpdateinfoXMLFileContext(FastForwardXmlFileContext):
             self.xml_generator.completeElement('reference', reference_attributes, '')
         self.xml_generator.endElement('references')
 
-        # If we can pull a repo_id off the conduit, use that to generate repo-specific nevra
-        if self.conduit and hasattr(self.conduit, 'repo_id'):
-            repo_unit_nevra = self._get_repo_unit_nevra(erratum_unit)
-        else:
-            repo_unit_nevra = None
-
-        seen_pkglists = set()
-        for pkglist in erratum_unit.pkglist:
-            packages = tuple(sorted(p['filename'] for p in pkglist['packages']))
-            if packages in seen_pkglists:
-                continue
-            seen_pkglists.add(packages)
-
+        for pkglist in filtered_pkglists:
             self.xml_generator.startElement('pkglist')
             collection_attributes = {}
             short = pkglist.get('short')
@@ -207,15 +198,6 @@ class UpdateinfoXMLFileContext(FastForwardXmlFileContext):
                                       'epoch': package['epoch'] or '0',
                                       'arch': package['arch'],
                                       'src': package.get('src', '') or ''}
-                if repo_unit_nevra is not None:
-                    # If repo_unit_nevra can be used for comparison, take the src attr out of a
-                    # copy of this package's attrs to get a nevra dict for comparison
-                    package_nevra = package_attributes.copy()
-                    del(package_nevra['src'])
-                    if package_nevra not in repo_unit_nevra:
-                        # current package not in the specified repo, don't add it to the output
-                        continue
-
                 self.xml_generator.startElement('package', package_attributes)
                 self.xml_generator.completeElement('filename', {}, package['filename'])
 

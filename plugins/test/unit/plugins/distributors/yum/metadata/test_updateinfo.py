@@ -80,7 +80,7 @@ class UpdateinfoXMLFileContextTests(unittest.TestCase):
         erratum = self._generate_erratum_unit()
         erratum.description = 'A Description'
 
-        self.context.add_unit_metadata(erratum)
+        self.context.add_unit_metadata(erratum, erratum.pkglist)
 
         generated_xml = self.context.metadata_file_handle.getvalue()
         self.assertTrue('<pushcount>1</pushcount>' in generated_xml)
@@ -99,7 +99,7 @@ class UpdateinfoXMLFileContextTests(unittest.TestCase):
         """
         erratum = self._generate_erratum_unit()
 
-        self.context.add_unit_metadata(erratum)
+        self.context.add_unit_metadata(erratum, erratum.pkglist)
 
         generated_xml = self.context.metadata_file_handle.getvalue()
         self.assertTrue(re.search('<description */>', generated_xml) is not None)
@@ -111,7 +111,7 @@ class UpdateinfoXMLFileContextTests(unittest.TestCase):
         erratum = self._generate_erratum_unit()
         erratum.reboot_suggested = True
 
-        self.context.add_unit_metadata(erratum)
+        self.context.add_unit_metadata(erratum, erratum.pkglist)
 
         xml = self.context.metadata_file_handle.getvalue()
         self.assertTrue('reboot_suggested' in xml)
@@ -123,23 +123,10 @@ class UpdateinfoXMLFileContextTests(unittest.TestCase):
         erratum = self._generate_erratum_unit()
         erratum.reboot_suggested = False
 
-        self.context.add_unit_metadata(erratum)
+        self.context.add_unit_metadata(erratum, erratum.pkglist)
 
         xml = self.context.metadata_file_handle.getvalue()
         self.assertTrue('reboot_suggested' not in xml)
-
-    def test_no_duplicated_pkglists(self):
-        """
-        Test that no duplicated pkglists are generated.
-        """
-        erratum = self._generate_erratum_unit()
-        expected_pkg_str = '<package src="pulp-test-package-0.3.1-1.fc22.src.rpm" ' \
-                           'name="pulp-test-package" epoch="0" version="0.3.1" '\
-                           'release="1.fc22" arch="x86_64">'
-        self.context.add_unit_metadata(erratum)
-
-        generated_xml = self.context.metadata_file_handle.getvalue()
-        self.assertEqual(generated_xml.count(expected_pkg_str), 1)
 
     def test__get_package_checksum_tuple_sums_field(self):
         """
@@ -203,7 +190,8 @@ class UpdateinfoXMLFileContextTests(unittest.TestCase):
         Test the generation of erratum unit.
         """
         erratum = self._generate_erratum_unit()
-        self.context.add_unit_metadata(erratum)
+        filtered_pkglists = [erratum.pkglist[0]]
+        self.context.add_unit_metadata(erratum, filtered_pkglists)
         generated_xml = self.context.metadata_file_handle.getvalue()
         expected_xml = '<update status="symbol" from="" version="2.4.1" type="security">\n' \
                        '  <id>RHSA-2014:0042</id>\n' \

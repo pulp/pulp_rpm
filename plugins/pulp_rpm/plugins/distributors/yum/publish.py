@@ -589,7 +589,6 @@ class PublishErrataStep(platform_steps.UnitModelPluginStep):
                                                 **kwargs)
         self.context = None
         self.description = _('Publishing Errata')
-        self.process_main = None
 
     def initialize(self):
         """
@@ -611,9 +610,18 @@ class PublishErrataStep(platform_steps.UnitModelPluginStep):
                                                 updateinfo_checksum_type)
         self.context.initialize()
 
-        # set the self.process_unit method to the corresponding method on the
-        # UpdateInfoXMLFileContext as there is no other processing to be done for each unit.
-        self.process_main = self.context.add_unit_metadata
+    def process_main(self, item=None):
+        """
+        Publish errata only in case it is going to contain at least one package in its pkglist.
+
+        :param item: the erratum unit to process
+        :type item: pulp_rpm.plugins.db.models.Errata
+        """
+        erratum_unit = item
+        if erratum_unit:
+            pkglists_to_publish = self._get_pkglists_to_publish(erratum_unit)
+            if pkglists_to_publish:
+                self.context.add_unit_metadata(erratum_unit, pkglists_to_publish)
 
     def finalize(self):
         """
@@ -624,6 +632,58 @@ class PublishErrataStep(platform_steps.UnitModelPluginStep):
             self.parent.repomd_file_context.\
                 add_metadata_file_metadata('updateinfo', self.context.metadata_file_path,
                                            self.context.checksum)
+
+    def _get_pkglists_to_publish(self, erratum_unit):
+        """
+        Make a list of packages which will be listed in the published erratum.
+
+        It is possible to filter packages only if `repo_unit_nevra` is available,
+        otherwise publish everything except duplicated collections.
+
+        :param erratum_unit: the erratum unit to analyze
+        :param type: pulp_rpm.plugins.db.models.Errata
+        :return: list of pkglists to publish
+        :rtype: list of dicts
+        """
+        pkglists_to_publish = []
+
+        # If we can pull a repo_id off the conduit, use that to generate repo-specific nevra
+        if self.context.conduit and hasattr(self.context.conduit, 'repo_id'):
+            repo_unit_nevra = self.context.get_repo_unit_nevra(erratum_unit)
+        else:
+            repo_unit_nevra = None
+
+        seen_pkglists = set()
+        for pkglist in erratum_unit.pkglist:
+            packages = tuple(sorted(p['filename'] for p in pkglist['packages']))
+            if packages in seen_pkglists:
+                continue
+            seen_pkglists.add(packages)
+
+            if repo_unit_nevra is None:
+                pkglists_to_publish.append(pkglist)
+                continue
+
+            packages_to_publish = []
+            for package in pkglist['packages']:
+                package_nevra = {'name': package['name'],
+                                 'version': package['version'],
+                                 'release': package['release'],
+                                 'epoch': package['epoch'] or '0',
+                                 'arch': package['arch']}
+
+                if package_nevra not in repo_unit_nevra:
+                    # current package not in the specified repo, don't add it to the pkglist
+                    continue
+
+                packages_to_publish.append(package)
+
+            if packages_to_publish:
+                new_pkglist = dict((key, val) for key, val in pkglist.items() if key != 'packages')
+                new_pkglist['packages'] = packages_to_publish
+                pkglists_to_publish.append(new_pkglist)
+
+        return pkglists_to_publish
 
 
 class PublishRpmAndDrpmStepIncremental(platform_steps.UnitModelPluginStep):
