@@ -5,7 +5,7 @@ Pulp 2.8 Release Notes
 Pulp 2.8.6
 ==========
 
-See the list of :fixedbugs:`2.8.6`
+See the list of :fixedbugs_pulp_rpm:`2.8.6`
 
 In particular, issue 2032 fixed an incorrect publishing and parsing of Errata. The consequence was
 that yum might think an Erratum served by pulp suggests a reboot, when it actually does not. It is
@@ -17,7 +17,7 @@ Errata. This will fix any records that have an incorrect value for "reboot_sugge
 Pulp 2.8.5
 ==========
 
-Some of the improvements as result of :fixedbugs:`2.8.5` include:
+Some of the improvements as result of :fixedbugs_pulp_rpm:`2.8.5` include:
 
     * Errata installation on consumers occurs much faster. The behavior is equivalent to running
       `yum update-minimal --advisories=<errata_id>,<other_errata_id>` on the consumer. This
@@ -32,7 +32,7 @@ of Pulp.
 Bug Fixes
 ---------
 
-See the list of :fixedbugs:`2.8.4`
+See the list of :fixedbugs_pulp_rpm:`2.8.4`
 
 Pulp 2.8.3
 ==========
@@ -40,7 +40,7 @@ Pulp 2.8.3
 Bug Fixes
 ---------
 
-See the list of :fixedbugs:`2.8.3`
+See the list of :fixedbugs_pulp_rpm:`2.8.3`
 
 Pulp 2.8.2
 ==========
@@ -54,7 +54,7 @@ Pulp 2.8.1
 Bug Fixes
 ---------
 
-See the list of :fixedbugs:`2.8.1`
+See the list of :fixedbugs_pulp_rpm:`2.8.1`
 
 
 Pulp 2.8.0
