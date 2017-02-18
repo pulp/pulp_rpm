@@ -140,6 +140,13 @@ class _CreatePackageCommand(UploadCommand):
         else:
             super(_CreatePackageCommand, self).succeeded(task)
 
+    def _render_coded_error(self, e):
+        super(_CreatePackageCommand, self)._render_coded_error(e)
+
+        if "details" in e["data"]:
+            for i in e["data"]["details"].get("errors", []):
+                self.prompt.render_failure_message(i)
+
 
 class CreateRpmCommand(_CreatePackageCommand):
     def __init__(self, context, upload_manager, name=NAME_RPM, description=DESC_RPM):
@@ -160,6 +167,21 @@ class CreateDrpmCommand(_CreatePackageCommand):
         super(CreateDrpmCommand, self).__init__(context, upload_manager, TYPE_ID_DRPM,
                                                 SUFFIX_DRPM, name, description)
         self.add_option(OPT_CHECKSUM_TYPE)
+
+    def _render_coded_error(self, e):
+        """deltarpm library error note.
+
+        Official DRPM library we use for parsing deltarpm headers does not have
+        a python exception API and all errors get printed via fprintf to stderror.
+        Currently there is no known way to read it.
+
+        https://github.com/rpm-software-management/deltarpm/
+        """
+        super(CreateDrpmCommand, self)._render_coded_error(e)
+        msg = _("If you see an error that looks like \"(11, 'Resource temporarily unavailable')\" "
+                "then there is an error during DRPM metadata parsing. For more detail information "
+                "you have to take a look at celery logs.")
+        self.prompt.render_failure_message(msg)
 
 
 def _generate_unit_key(rpm_filename):
