@@ -18,7 +18,7 @@ an order of minutes to a few seconds.
 Bug Fixes
 ---------
 
-See the list of :fixedbugs:`2.6.2`
+See the list of :fixedbugs_pulp_rpm:`2.6.2`
 
 Pulp 2.6.1
 ==========
@@ -26,7 +26,7 @@ Pulp 2.6.1
 Bug Fixes
 ---------
 
-See the list of :fixedbugs:`2.6.1`
+See the list of :fixedbugs_pulp_rpm:`2.6.1`
 
 Pulp 2.6.0
 ==========
@@ -41,7 +41,7 @@ distribution-related files.
 Bug Fixes
 ---------
 
-See the list of :fixedbugs:`2.6.0`
+See the list of :fixedbugs_pulp_rpm:`2.6.0`
 
 `RHBZ #1153378 <https://bugzilla.redhat.com/show_bug.cgi?id=1153378>`_ was addressed in 2.6.0. If
 you have older (circa 2009) yum clients that fail in a way similar to what is described
