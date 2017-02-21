@@ -1,7 +1,6 @@
 import csv
 import errno
 import logging
-import re
 import os
 from collections import namedtuple
 from gettext import gettext as _
@@ -9,8 +8,6 @@ from operator import itemgetter
 from urlparse import urljoin
 
 import mongoengine
-from django.template import Context, Template
-from django.template.defaulttags import TemplateTagNode
 
 import pulp.common.error_codes as platform_error_codes
 import pulp.server.util as server_util
@@ -759,13 +756,10 @@ class RpmBase(NonMetadataPackage):
 
     SERIALIZER = serializers.RpmBase
 
-    CHECKSUM_TEMPLATE = '{{ checksum }}'
-    CHECKSUMTYPE_TEMPLATE = '{{ checksumtype }}'
-    PKGID_TEMPLATE = '{{ pkgid }}'
+    CHECKSUM_TEMPLATE = '%(checksum)s'
+    CHECKSUMTYPE_TEMPLATE = '%(checksumtype)s'
+    PKGID_TEMPLATE = '%(pkgid)s'
     DEFAULT_CHECKSUM_TYPES = (server_util.TYPE_MD5, server_util.TYPE_SHA1, server_util.TYPE_SHA256)
-    ESCAPE_TEMPLATE_VARS_TAGS = {
-        'primary': ('description', 'summary'),
-        'other': ('changelog',)}
 
     def __init__(self, *args, **kwargs):
         super(RpmBase, self).__init__(*args, **kwargs)
@@ -804,10 +798,8 @@ class RpmBase(NonMetadataPackage):
         :rtype:     basestring
         """
         metadata = self.repodata['primary']
-        for tag in self.ESCAPE_TEMPLATE_VARS_TAGS['primary']:
-            metadata = self._escape_django_syntax_chars(metadata, tag)
-        context = Context({'checksum': self.get_or_calculate_and_save_checksum(checksumtype),
-                           'checksumtype': checksumtype})
+        context = {'checksum': self.get_or_calculate_and_save_checksum(checksumtype),
+                   'checksumtype': checksumtype}
 
         return self._render(metadata, context)
 
@@ -822,9 +814,7 @@ class RpmBase(NonMetadataPackage):
         :rtype:     basestring
         """
         metadata = self.repodata['other']
-        for tag in self.ESCAPE_TEMPLATE_VARS_TAGS['other']:
-            metadata = self._escape_django_syntax_chars(metadata, tag)
-        context = Context({'pkgid': self.get_or_calculate_and_save_checksum(checksumtype)})
+        context = {'pkgid': self.get_or_calculate_and_save_checksum(checksumtype)}
         return self._render(metadata, context)
 
     def render_filelists(self, checksumtype):
@@ -838,7 +828,7 @@ class RpmBase(NonMetadataPackage):
         :rtype:     basestring
         """
         metadata = self.repodata['filelists']
-        context = Context({'pkgid': self.get_or_calculate_and_save_checksum(checksumtype)})
+        context = {'pkgid': self.get_or_calculate_and_save_checksum(checksumtype)}
         return self._render(metadata, context)
 
     @staticmethod
@@ -854,79 +844,28 @@ class RpmBase(NonMetadataPackage):
         :return:    string that is the result of rendering the template with the context
         :rtype:     basestring
         """
-        t = Template(template)
-        rendered = t.render(context)
+        rendered = template % context
         if isinstance(rendered, unicode):
             rendered = rendered.encode('utf-8')
 
         return rendered
 
-    @staticmethod
-    def _escape_django_syntax_chars(template, tag_name):
+    def escape_repodata(self):
         """
-        Escape Django syntax characters by replacing them with the corresponding templatetag.
-
-        NOTE: This function does not handle the following XML syntax:
-         - namespaces in the format of namespace_alias:tag_name
-         - nested tag with the same name, e.g. <a><a>...</a></a>
-         It is unlikely that the syntax above is used in the metadata of the content units.
-
-        :param template: a Django template
-        :type  template: basestring
-        :param tag_name: name of the element to wrap
-        :type  tag_name: basestring
-
-        :return: a Django template with the escaped syntax characters in the specified element
-        :rype: basestring
+        Escape % from repodata['primary'], repodata['other'] and repodata['filelists']
+        before templatetags are inserted.
         """
-        start_tag_pattern = r'<%s.*?(?<!/)>' % tag_name
-        end_tag_pattern = r'</%s>' % tag_name
-        complete_tag_pattern = r'(%s)(.*?)(%s)' % (start_tag_pattern, end_tag_pattern)
-        tag_re = re.compile(complete_tag_pattern, flags=re.DOTALL)
-        template = tag_re.sub(RpmBase._generate_tag_replacement_str, template)
-        return template
-
-    @staticmethod
-    def _generate_tag_replacement_str(mobj):
-        """
-        Generate replacement string for the matched XML element.
-
-        :param mobj: matched object consisted of 3 groups:
-                     opening tag, value and closing tag.
-        :type  mobj: _sre.SRE_Match
-
-        :return: replacement string for the given match object
-        :rtype: basestring
-        """
-        start_tag = mobj.group(1)
-        value = RpmBase._substitute_special_chars(mobj.group(2))
-        end_tag = mobj.group(3)
-        return start_tag + value + end_tag
-
-    @staticmethod
-    def _substitute_special_chars(template):
-        """
-        Make the substitution of the syntax characters with the corresponding templatetag.
-        The syntax characters to be substituted can be found in
-        django.template.defaulttags.TemplateTagNode.mapping.
-
-        :param template: a piece of the template in which substitution should happen
-        :type  template: basestring
-
-        :return: string with syntax characters substituted
-        :rtype: basestriing
-        """
-        templatetag_map = dict((sym, name) for name, sym in TemplateTagNode.mapping.items())
-        symbols_pattern = '(%s)' % '|'.join(templatetag_map.keys())
-        return re.sub(symbols_pattern,
-                      lambda mobj: '{%% templatetag %s %%}' % templatetag_map[mobj.group(1)],
-                      template)
+        self.repodata['primary'] = self.repodata['primary'].replace("%", "%%")
+        self.repodata['other'] = self.repodata['other'].replace("%", "%%")
+        self.repodata['filelists'] = self.repodata['filelists'].replace("%", "%%")
 
     def modify_xml(self):
         """
         Given a unit that has repodata XML snippets, modify them in several necessary ways. These
         include changing the location value and adding template strings to checksum elements.
         """
+        self.escape_repodata()
+
         faked_primary = utils.fake_xml_element(self.repodata['primary'])
         primary = faked_primary.find('package')
 
