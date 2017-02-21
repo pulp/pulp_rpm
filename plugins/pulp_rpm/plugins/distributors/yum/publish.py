@@ -106,17 +106,23 @@ class ExportRepoPublisher(BaseYumRepoPublisher):
         :param distributor_type: The type of the distributor that is being published
         :type distributor_type: str
         """
-        super(ExportRepoPublisher, self).__init__(repo, publish_conduit, config, distributor_type,
-                                                  **kwargs)
 
         date_q = export_utils.create_date_range_filter(config)
-        if date_q:
-            # Since this is a partial export we don't generate metadata
-            # we have to clear out the previously added steps
-            # we only need special version s of the rpm, drpm, and errata steps
-            self.clear_children()
-            self.add_child(PublishRpmAndDrpmStepIncremental(repo_content_unit_q=date_q))
-            self.add_child(PublishErrataStepIncremental(repo_content_unit_q=date_q))
+
+        if config.get_boolean(constants.INCREMENTAL_EXPORT_REPOMD_KEYWORD):
+            super(ExportRepoPublisher, self).__init__(repo, publish_conduit, config,
+                                                      distributor_type, association_filters=date_q,
+                                                      **kwargs)
+        else:
+            super(ExportRepoPublisher, self).__init__(repo, publish_conduit, config,
+                                                      distributor_type, **kwargs)
+            if date_q:
+                # Since this is a partial export we don't generate metadata
+                # we have to clear out the previously added steps
+                # we only need special version s of the rpm, drpm, and errata steps
+                self.clear_children()
+                self.add_child(PublishRpmAndDrpmStepIncremental(repo_content_unit_q=date_q))
+                self.add_child(PublishErrataStepIncremental(repo_content_unit_q=date_q))
 
         working_directory = self.get_working_dir()
         export_dir = config.get(constants.EXPORT_DIRECTORY_KEYWORD)
@@ -250,13 +256,17 @@ class Publisher(BaseYumRepoPublisher):
     of a yum repository over HTTP and/or HTTPS.
     """
 
-    def __init__(self, transfer_repo, publish_conduit, config, distributor_type, **kwargs):
+    def __init__(self, transfer_repo, publish_conduit, config, distributor_type,
+                 association_filters=None, **kwargs):
         """
         :param transfer_repo: repository being published
         :type  transfer_repo: pulp.plugins.db.model.Repository
         :param publish_conduit: Conduit providing access to relative Pulp functionality
         :type  publish_conduit: pulp.plugins.conduits.repo_publish.RepoPublishConduit
         :param config: Pulp configuration for the distributor
+        :type  config: pulp.plugins.config.PluginCallConfiguration
+        :param association_filters: Any filters to be applied to the list of RPMs being published
+        :type association_filters: mongoengine.Q
         :type  config: pulp.plugins.config.PluginCallConfiguration
         :param distributor_type: The type of the distributor that is being published
         :type distributor_type: str
@@ -267,10 +277,19 @@ class Publisher(BaseYumRepoPublisher):
 
         last_published = publish_conduit.last_publish()
         last_deleted = repo.last_unit_removed
-        date_filter = None
+
+        # if a filter is passed in, assume force_full and use the filter as the
+        # date filter
+        if association_filters:
+            force_full = True
+            date_filter = association_filters
+        else:
+            force_full = config.get('force_full', False)
+            date_filter = None
 
         if last_published and \
-                ((last_deleted and last_published > last_deleted) or not last_deleted):
+                (last_deleted is None or last_published > last_deleted) and \
+                not force_full:
             # Add the step to copy the current published directory into place
             specific_master = None
             if config.get(constants.PUBLISH_HTTPS_KEYWORD):
