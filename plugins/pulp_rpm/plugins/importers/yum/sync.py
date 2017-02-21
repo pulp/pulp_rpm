@@ -49,6 +49,17 @@ WantedUnitInfo = namedtuple('WantedUnitInfo', ('size', 'download_path'))
 
 
 class RepoSync(object):
+    """
+    :ivar skip_repomd_steps:    if True, all parts of the sync that depend on yum repo metadata
+                                will be skipped.
+    :type skip_repomd_steps:    bool
+    :ivar metadata_found:       if True, at least one type of repo metadata was found: either
+                                yum metadata, or a treeinfo file
+    :type metadata_found:       bool
+    :ivar repomd_not_found_reason:  The reason to show the user why the yum repo metadata could
+                                    not be found.
+    :type repomd_not_found_reason:  basestring
+    """
 
     def __init__(self, repo, conduit, config):
         """
@@ -80,6 +91,13 @@ class RepoSync(object):
         self.downloader = None
         self.tmp_dir = None
         self.force_full = config.get('force_full', False)
+        # Was any repo metadata found? Includes either yum metadata or a treeinfo file. If this is
+        # False at the end of the sync, then an error will be presented to the user.
+        self.metadata_found = False
+        # Store the reason that yum repo metadata was not found. In case a treeinfo file is also
+        # not found, this error will be the one presented to the user. That preserves pre-existing
+        # behavior that is yum-centric.
+        self.repomd_not_found_reason = ''
 
         url_modify_config = {}
         if config.get('query_auth_token'):
@@ -222,10 +240,11 @@ class RepoSync(object):
             try:
                 with self.update_state(self.progress_report['metadata']):
                     metadata_files = self.check_metadata(url)
-                    metadata_files = self.get_metadata(metadata_files)
+                    if not self.skip_repomd_steps:
+                        metadata_files = self.get_metadata(metadata_files)
 
-                    # Save the default checksum from the metadata
-                    self.save_default_metadata_checksum_on_repo(metadata_files)
+                        # Save the default checksum from the metadata
+                        self.save_default_metadata_checksum_on_repo(metadata_files)
 
                 with self.update_state(self.content_report) as skip:
                     if not (skip or self.skip_repomd_steps):
@@ -238,6 +257,7 @@ class RepoSync(object):
                     if not skip:
                         dist_sync = DistSync(self, url)
                         dist_sync.run()
+                        self.metadata_found |= dist_sync.metadata_found
 
                 with self.update_state(self.progress_report['errata'], ids.TYPE_ID_ERRATA) as skip:
                     if not (skip or self.skip_repomd_steps):
@@ -284,6 +304,11 @@ class RepoSync(object):
                 # clean up whatever we may have left behind
                 shutil.rmtree(self.tmp_dir, ignore_errors=True)
 
+            if not self.metadata_found:
+                # could not find yum repo metadata or a treeinfo file
+                raise PulpCodedException(error_code=error_codes.RPM1004,
+                                         reason=self.repomd_not_found_reason)
+
             if self.config.override_config.get(importer_constants.KEY_FEED):
                 self.erase_repomd_revision()
             else:
@@ -323,20 +348,33 @@ class RepoSync(object):
 
     def check_metadata(self, url):
         """
+        Download and parse repomd.xml
+
+        If the download fails, sets the "skip_repomd_steps" attribute to True and populates the
+        "repomd_not_found_reason" attribute.
+
         :param url: curret URL we should sync
         :type url: str
 
         :return:    instance of MetadataFiles
         :rtype:     pulp_rpm.plugins.importers.yum.repomd.metadata.MetadataFiles
+
+        :raises PulpCodedException: if the metadata cannot be parsed
         """
         _logger.info(_('Downloading metadata from %(feed)s.') % {'feed': url})
         metadata_files = metadata.MetadataFiles(url, self.tmp_dir, self.nectar_config,
                                                 self._url_modify)
         try:
             metadata_files.download_repomd()
-        except IOError, e:
-            raise PulpCodedException(error_code=error_codes.RPM1004, reason=str(e))
+        except IOError as e:
+            # Skip the rest of this method, and tell the rest of the repomd-dependent steps to
+            # also skip what they do.
+            self.skip_repomd_steps = True
+            self.repomd_not_found_reason = e.message
+            _logger.debug(_('No yum repo metadata found.'))
+            return
 
+        self.metadata_found = True
         _logger.info(_('Parsing metadata.'))
 
         try:
