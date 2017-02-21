@@ -351,7 +351,8 @@ def _associate_unit(dest_repo, unit, config):
 
     RPMs are convenient to do all as one block, for the purpose of dependency
     resolution. So this method skips RPMs and lets them be done together by
-    other means
+    other means. It does, however, return a minimal copy of the RPM rather than the full unit so as
+    to avoid using too much memory. See https://pulp.plan.io/issues/1662
 
     :param dest_repo:       destination repo
     :type  dest_repo:       pulp.server.db.model.Repository
@@ -374,8 +375,15 @@ def _associate_unit(dest_repo, unit, config):
     if isinstance(unit, types_to_be_copied):
         return associate_copy_for_repo(unit, dest_repo)
     elif isinstance(unit, models.RPM):
-        # copy will happen in one batch
-        return unit
+        # We will copy the RPMs in one batch in a later step, so we'll just return the RPM so it can
+        # be handled later. However, we don't need or want all the fields that the RPM has because
+        # each unit this function returns becomes part of a set and that will easily use too much
+        # RAM. Therefore, we will create a copy of the RPM that has the NEVRA, id, _ns,
+        # _content_type_id, and checksum data. This copy technique was used as a hack to fix #1662.
+        return models.RPM(
+            _ns=unit._ns, _content_type_id=unit._content_type_id, name=unit.name, epoch=unit.epoch,
+            version=unit.version, release=unit.release, arch=unit.arch, checksum=unit.checksum,
+            checksumtype=unit.checksumtype, id=unit.id)
     elif isinstance(unit, models.YumMetadataFile):
         return associate_copy_for_repo(unit, dest_repo, True)
     elif isinstance(unit, (models.DRPM, models.SRPM)):
