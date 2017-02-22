@@ -47,8 +47,8 @@ class TestMigrateErratum(unittest.TestCase):
                         {'name': 'some_name', '_pulp_repo_id': 'myrepo'},
                         {'name': 'coll_name', '_pulp_repo_id': 'myrepo', 'smth': 2}]
         }
-        mock_collection.update.assert_called_once_with({'_id': '1234'},
-                                                       {'$set': expected_delta})
+        mock_collection.update_one.assert_called_once_with({'_id': '1234'},
+                                                           {'$set': expected_delta})
 
     def test_calls_no_update(self):
         mock_collection = mock.MagicMock()
