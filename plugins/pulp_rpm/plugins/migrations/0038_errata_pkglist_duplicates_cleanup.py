@@ -44,5 +44,5 @@ def migrate_erratum(erratum_collection, erratum):
     # to keep the order of the original pkglist
     new_pkglist = new_pkglist[::-1]
     if pkglist != new_pkglist:
-        erratum_collection.update({'_id': erratum['_id']},
-                                  {'$set': {'pkglist': new_pkglist}})
+        erratum_collection.update_one({'_id': erratum['_id']},
+                                      {'$set': {'pkglist': new_pkglist}})
