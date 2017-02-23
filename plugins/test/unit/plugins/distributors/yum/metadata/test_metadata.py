@@ -378,7 +378,7 @@ class YumDistributorMetadataTests(unittest.TestCase):
 
         context = UpdateinfoXMLFileContext(self.metadata_file_dir, set(), checksum_type='md5')
         context._open_metadata_file_handle()
-        context.add_unit_metadata(erratum_unit)
+        context.add_unit_metadata(erratum_unit, erratum_unit.pkglist)
         context._close_metadata_file_handle()
 
         self.assertNotEqual(os.path.getsize(path), 0)
@@ -396,52 +396,6 @@ class YumDistributorMetadataTests(unittest.TestCase):
         self.assertEqual(content.count('<package'), 2)
         self.assertEqual(content.count('<sum type="md5">f3c197a29d9b66c5b65c5d62b25db5b4</sum>'), 1)
 
-    @patch.object(UpdateinfoXMLFileContext, '_get_repo_unit_nevra')
-    def test_updateinfo_unit_metadata_with_repo(self, mock__get_repo_unit_nevra):
-
-        path = os.path.join(self.metadata_file_dir,
-                            REPO_DATA_DIR_NAME,
-                            UPDATE_INFO_XML_FILE_NAME)
-
-        handle = open(os.path.join(DATA_DIR, 'updateinfo.xml'), 'r')
-        generator = packages.package_list_generator(handle, 'update',
-                                                    updateinfo.process_package_element)
-
-        # mock out the repo/unit nevra matcher so that only one unit in the referenced errata
-        # is included in the output updateinfo XML
-        mock__get_repo_unit_nevra.return_value = [
-            {'name': 'patb', 'epoch': '0', 'version': '0.1',
-             'release': '2', 'arch': 'x86_64'},
-        ]
-
-        erratum_unit = next(generator)
-
-        # just checking
-        self.assertEqual(erratum_unit.unit_key['errata_id'], 'RHEA-2010:9999')
-
-        mock_conduit = Mock()
-        mock_conduit.repo_id = 'mock_conduit_repo'
-        context = UpdateinfoXMLFileContext(self.metadata_file_dir, set(),
-                                           conduit=mock_conduit, checksum_type='md5')
-        context._open_metadata_file_handle()
-        context.add_unit_metadata(erratum_unit)
-        context._close_metadata_file_handle()
-
-        self.assertNotEqual(os.path.getsize(path), 0)
-
-        updateinfo_handle = gzip.open(path, 'r')
-        content = updateinfo_handle.read()
-        updateinfo_handle.close()
-
-        self.assertEqual(content.count('from="enhancements@redhat.com"'), 1)
-        self.assertEqual(content.count('status="final"'), 1)
-        self.assertEqual(content.count('type="enhancements"'), 1)
-        self.assertEqual(content.count('version="1"'), 1)
-        self.assertEqual(content.count('<id>RHEA-2010:9999</id>'), 1)
-        self.assertEqual(content.count('<collection short="F13PTP">'), 1)
-        self.assertEqual(content.count('<package'), 1)
-        self.assertEqual(content.count('<sum type="md5">f3c197a29d9b66c5b65c5d62b25db5b4</sum>'), 1)
-
     def test_updateinfo_get_repo_unit_nevra_return(self):
         nevra_fields = ('name', 'epoch', 'version', 'release', 'arch')
         unit1_nevra = ('n1', 'e1', 'v1', 'r1', 'a1')
@@ -456,7 +410,7 @@ class YumDistributorMetadataTests(unittest.TestCase):
         ]}]
 
         context = UpdateinfoXMLFileContext(self.metadata_file_dir, set([unit1_nevra]))
-        repo_unit_nevra = context._get_repo_unit_nevra(erratum_unit)
+        repo_unit_nevra = context.get_repo_unit_nevra(erratum_unit)
 
         self.assertEqual(len(repo_unit_nevra), 1)
         self.assertTrue(unit1_nevra_dict in repo_unit_nevra)
@@ -478,7 +432,7 @@ class YumDistributorMetadataTests(unittest.TestCase):
         ]}]
 
         context = UpdateinfoXMLFileContext(self.metadata_file_dir, set([rpm_unit_nevra]))
-        repo_unit_nevra = context._get_repo_unit_nevra(erratum_unit)
+        repo_unit_nevra = context.get_repo_unit_nevra(erratum_unit)
 
         self.assertEqual(len(repo_unit_nevra), 1)
         self.assertTrue(rpm_unit_nevra_dict in repo_unit_nevra)
