@@ -18,7 +18,7 @@ from pulp_rpm.plugins.importers.yum.repomd import packages, primary, presto, upd
 _logger = logging.getLogger(__name__)
 
 
-def purge_unwanted_units(metadata_files, conduit, config):
+def purge_unwanted_units(metadata_files, conduit, config, catalog):
     """
     START HERE - this is probably the method you want to call in this module
 
@@ -34,11 +34,13 @@ def purge_unwanted_units(metadata_files, conduit, config):
     :type  conduit:         pulp.plugins.conduits.repo_sync.RepoSyncConduit
     :param config:          config object for this plugin
     :type  config:          pulp.plugins.config.PluginCallConfiguration
+    :param catalog:         The deferred downloading catalog.
+    :type catalog:          pulp_rpm.plugins.importers.yum.sync.PackageCatalog
     """
     if config.get_boolean(importer_constants.KEY_UNITS_REMOVE_MISSING) is True:
         _logger.info(_('Removing missing units.'))
-        remove_missing_rpms(metadata_files, conduit)
-        remove_missing_drpms(metadata_files, conduit)
+        remove_missing_rpms(metadata_files, conduit, catalog)
+        remove_missing_drpms(metadata_files, conduit, catalog)
         remove_missing_errata(metadata_files, conduit)
         remove_missing_groups(metadata_files, conduit)
         remove_missing_categories(metadata_files, conduit)
@@ -48,10 +50,10 @@ def purge_unwanted_units(metadata_files, conduit, config):
     if retain_old_count is not None:
         _logger.info(_('Removing old units.'))
         num_to_keep = int(retain_old_count) + 1
-        remove_old_versions(num_to_keep, conduit)
+        remove_old_versions(num_to_keep, conduit, catalog)
 
 
-def remove_old_versions(num_to_keep, conduit):
+def remove_old_versions(num_to_keep, conduit, catalog):
     """
     For RPMs, and then separately DRPMs, this loads the unit key of each unit
     in the repo and organizes them by the non-version unique identifiers. For
@@ -63,6 +65,8 @@ def remove_old_versions(num_to_keep, conduit):
     :param conduit:     a conduit from the platform containing the get_units
                         and remove_unit methods.
     :type  conduit:     pulp.plugins.conduits.repo_sync.RepoSyncConduit
+    :param catalog:         The deferred downloading catalog.
+    :type catalog:          pulp_rpm.plugins.importers.yum.sync.PackageCatalog
     """
     for unit_type in (models.RPM, models.SRPM, models.DRPM):
         units = {}
@@ -76,10 +80,12 @@ def remove_old_versions(num_to_keep, conduit):
             # if we are over the limit, evict the oldest
             if len(versions) > num_to_keep:
                 oldest_version = min(versions)
-                conduit.remove_unit(versions.pop(oldest_version))
+                unwanted_unit = versions.pop(oldest_version)
+                conduit.remove_unit(unwanted_unit)
+                catalog.delete(unwanted_unit)
 
 
-def remove_missing_rpms(metadata_files, conduit):
+def remove_missing_rpms(metadata_files, conduit, catalog):
     """
     Remove RPMs from the local repository which do not exist in the remote
     repository.
@@ -89,15 +95,17 @@ def remove_missing_rpms(metadata_files, conduit):
     :param conduit:         a conduit from the platform containing the get_units
                             and remove_unit methods.
     :type  conduit:         pulp.plugins.conduits.repo_sync.RepoSyncConduit
+    :param catalog:         The deferred downloading catalog.
+    :type catalog:          pulp_rpm.plugins.importers.yum.sync.PackageCatalog
     """
     file_function = functools.partial(metadata_files.get_metadata_file_handle,
                                       primary.METADATA_FILE_NAME)
     remote_named_tuples = get_remote_units(file_function, primary.PACKAGE_TAG,
                                            primary.process_package_element)
-    remove_missing_units(conduit, models.RPM, remote_named_tuples)
+    remove_missing_units(conduit, models.RPM, remote_named_tuples, catalog)
 
 
-def remove_missing_drpms(metadata_files, conduit):
+def remove_missing_drpms(metadata_files, conduit, catalog):
     """
     Remove DRPMs from the local repository which do not exist in the remote
     repository.
@@ -107,6 +115,8 @@ def remove_missing_drpms(metadata_files, conduit):
     :param conduit:         a conduit from the platform containing the get_units
                             and remove_unit methods.
     :type  conduit:         pulp.plugins.conduits.repo_sync.RepoSyncConduit
+    :param catalog:         The deferred downloading catalog.
+    :type catalog:          pulp_rpm.plugins.importers.yum.sync.PackageCatalog
     """
     remote_named_tuples = set()
     for metadata_file_name in presto.METADATA_FILE_NAMES:
@@ -116,7 +126,7 @@ def remove_missing_drpms(metadata_files, conduit):
                                        presto.process_package_element)
         remote_named_tuples = remote_named_tuples.union(file_tuples)
 
-    remove_missing_units(conduit, models.DRPM, remote_named_tuples)
+    remove_missing_units(conduit, models.DRPM, remote_named_tuples, catalog)
 
 
 def remove_missing_errata(metadata_files, conduit):
@@ -188,7 +198,7 @@ def remove_missing_environments(metadata_files, conduit):
     remove_missing_units(conduit, models.PackageEnvironment, remote_named_tuples)
 
 
-def remove_missing_units(conduit, model, remote_named_tuples):
+def remove_missing_units(conduit, model, remote_named_tuples, catalog=None):
     """
     Generic method to remove units that are in the local repository but missing
     from the upstream repository. This consults the metadata and compares it with
@@ -202,6 +212,8 @@ def remove_missing_units(conduit, model, remote_named_tuples):
     :param remote_named_tuples: set of named tuples representing units in the
                                 remote repository
     :type  remote_named_tuples: set
+    :param catalog:         The deferred downloading catalog.
+    :type catalog:          pulp_rpm.plugins.importers.yum.sync.PackageCatalog
     """
     for unit in get_existing_units(model, conduit.get_units):
         named_tuple = model(**unit.unit_key).unit_key_as_named_tuple
@@ -210,6 +222,8 @@ def remove_missing_units(conduit, model, remote_named_tuples):
             remote_named_tuples.remove(named_tuple)
         except KeyError:
             conduit.remove_unit(unit)
+            if catalog:
+                catalog.delete(unit)
 
 
 def get_existing_units(model, unit_search_func):
@@ -393,7 +407,9 @@ def _duplicate_key_id_generator_aggregation(unit, fields):
 
     # When aggregating over hundreds of thousands of packages, mongo can overflow
     # To prevent this, mongo needs to be allowed to temporarily use the disk for this transaction
-    aggregation = unit.objects.aggregate(sort, project, allowDiskUse=True)
+    # Set the batch size to 5 to prevent a cursor timeout
+    aggregation = unit.objects.aggregate(sort, project, allowDiskUse=True,
+                                         batchSize=5)
 
     # loop state tracking vars
     previous_nevra = None
