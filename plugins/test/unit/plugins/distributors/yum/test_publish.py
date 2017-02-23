@@ -24,8 +24,8 @@ from pulp_rpm.common.ids import (
     TYPE_ID_PKG_GROUP, TYPE_ID_PKG_CATEGORY, TYPE_ID_DISTRO, TYPE_ID_DRPM, TYPE_ID_RPM,
     TYPE_ID_YUM_REPO_METADATA_FILE, YUM_DISTRIBUTOR_ID, EXPORT_DISTRIBUTOR_ID)
 from pulp_rpm.devel.skip import skip_broken
+from pulp_rpm.plugins.db.models import Errata
 from pulp_rpm.plugins.distributors.yum import configuration, publish
-
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), '../../../../data/')
 
@@ -1069,6 +1069,43 @@ class PublishErrataStepTests(BaseYumDistributorPublishStepTests):
                                                                               mock_models.RPM)
         mock_queryset.scalar.assert_called_once_with('name', 'epoch', 'version', 'release', 'arch')
 
+    @mock.patch('pulp_rpm.plugins.distributors.yum.publish.UpdateinfoXMLFileContext')
+    @mock.patch.object(publish.PublishErrataStep, '_get_pkglists_to_publish')
+    def test_process_main(self, mock_get_pkglist, mock_context):
+        """
+        Test that the erratum is published if pkglist is not empty.
+        """
+        self._init_publisher()
+        step = publish.PublishErrataStep()
+        erratum_unit = Errata(errata_id='some_id')
+        pkglist = [{'name': 'collection name',
+                    'packages': ['p1', 'p2']}]
+        mock_get_pkglist.return_value = pkglist
+        step.context = mock_context()
+
+        step.process_main(erratum_unit)
+
+        mock_get_pkglist.assert_called_once_with(erratum_unit)
+        step.context.add_unit_metadata.assert_called_once_with(erratum_unit, pkglist)
+
+    @mock.patch('pulp_rpm.plugins.distributors.yum.publish.UpdateinfoXMLFileContext')
+    @mock.patch.object(publish.PublishErrataStep, '_get_pkglists_to_publish')
+    def test_process_main_no_pkglist(self, mock_get_pkglist, mock_context):
+        """
+        Test that the erratum is not published if pkglist is empty.
+        """
+        self._init_publisher()
+        step = publish.PublishErrataStep()
+        erratum_unit = Errata(errata_id='some_id')
+        pkglist = []
+        mock_get_pkglist.return_value = pkglist
+        step.context = mock_context()
+
+        step.process_main(erratum_unit)
+
+        mock_get_pkglist.assert_called_once_with(erratum_unit)
+        self.assertFalse(step.context.add_unit_metadata.called)
+
     def test_finalize_metadata(self):
         self._init_publisher()
         step = publish.PublishErrataStep()
@@ -1088,6 +1125,65 @@ class PublishErrataStepTests(BaseYumDistributorPublishStepTests):
         step = publish.PublishErrataStep()
         step.parent = self.publisher
         step.finalize()
+
+    @mock.patch('pulp_rpm.plugins.distributors.yum.publish.UpdateinfoXMLFileContext')
+    def test__get_pkglists_to_publish(self, mock_context):
+        """
+        Test that packages not presented in repo are filtered out
+        """
+        self._init_publisher()
+        step = publish.PublishErrataStep()
+        step.context = mock_context
+        erratum_unit = Errata(errata_id='some_id')
+
+        pkg_fields = ('name', 'epoch', 'version', 'release', 'arch', 'filename')
+        pkg1_values = ('n1', 'e1', 'v1', 'r1', 'a1', 'f1')
+        pkg1 = dict(zip(pkg_fields, pkg1_values))
+        pkg2_values = ('n2', 'e2', 'v2', 'r2', 'a2', 'f2')
+        pkg2 = dict(zip(pkg_fields, pkg2_values))
+        erratum_unit.pkglist = [{'packages': [pkg1, pkg2]}]
+
+        repo_package = pkg1.copy()
+        del(repo_package['filename'])
+        mock_context.get_repo_unit_nevra.return_value = [repo_package]
+
+        pkglists_to_publish = step._get_pkglists_to_publish(erratum_unit)
+
+        # still one pkglist
+        self.assertTrue(len(pkglists_to_publish), 1)
+
+        # pkglist contains only one package, the second one was filtered out
+        self.assertTrue(len(pkglists_to_publish[0]['packages']), 1)
+        self.assertEqual(pkglists_to_publish[0]['packages'][0], pkg1)
+
+    @mock.patch('pulp_rpm.plugins.distributors.yum.publish.UpdateinfoXMLFileContext')
+    def test__get_pkglists_to_publish_duplicated(self, mock_context):
+        """
+        Test that duplicated pkglists are filtered out
+        """
+        self._init_publisher()
+        step = publish.PublishErrataStep()
+        step.context = mock_context
+        erratum_unit = Errata(errata_id='some_id')
+
+        pkg_fields = ('name', 'epoch', 'version', 'release', 'arch', 'filename')
+        pkg1_values = ('n1', 'e1', 'v1', 'r1', 'a1', 'f1')
+        pkg1 = dict(zip(pkg_fields, pkg1_values))
+
+        erratum_unit.pkglist = [{'packages': [pkg1]}, {'packages': [pkg1]}]
+
+        repo_package = pkg1.copy()
+        del(repo_package['filename'])
+        mock_context.get_repo_unit_nevra.return_value = [repo_package]
+
+        pkglists_to_publish = step._get_pkglists_to_publish(erratum_unit)
+
+        # only one pkglist
+        self.assertTrue(len(pkglists_to_publish), 1)
+
+        # pkglist contains one expected package
+        self.assertTrue(len(pkglists_to_publish[0]['packages']), 1)
+        self.assertEqual(pkglists_to_publish[0]['packages'][0], pkg1)
 
 
 class PublishMetadataStepTests(BaseYumDistributorPublishStepTests):
