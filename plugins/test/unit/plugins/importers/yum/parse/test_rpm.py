@@ -13,6 +13,8 @@ from pulp_rpm.plugins.importers.yum.parse import rpm
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), '../../../../../data')
 
+MODULE = 'pulp_rpm.plugins.importers.yum.parse.rpm'
+
 
 class TesGetPackageXml(unittest.TestCase):
     """
@@ -21,23 +23,100 @@ class TesGetPackageXml(unittest.TestCase):
     by the upload tests.
     """
 
-    @patch('createrepo.yumbased')
+    PRIMARY = u"""
+    <package type="rpm">
+      <name>rabbit</name>
+      <arch>noarch</arch>
+      <version epoch="0" ver="5.0.3" rel="1.fc22"/>
+      <checksum type="sha256" pkgid="YES">b88a43acd5c9239</checksum>
+      <summary>rabbit IDE</summary>
+      <description>The rabbit (professional) IDE.</description>
+      <packager>Frosty \u2603\x9a</packager>
+      <url>http://redhat.com</url>
+      <time file="1452798172" build="1452797732"/>
+      <size package="187399436" installed="187899535" archive="187899924"/>
+      <location href="rabbit-5.0.3-1.fc22.noarch.rpm"/>
+      <format>
+        <rpm:license>GPLv2</rpm:license>
+        <rpm:vendor/>
+        <rpm:group>Development/Tools</rpm:group>
+        <rpm:buildhost>localhost</rpm:buildhost>
+        <rpm:sourcerpm>rabbit-5.0.3-1.fc22.src.rpm</rpm:sourcerpm>
+        <rpm:header-range start="4392" end="6476"/>
+        <rpm:provides>
+          <rpm:entry name="rabbit" flags="EQ" epoch="0" ver="5.0.3" rel="1.fc22"/>
+        </rpm:provides>
+        <rpm:requires>
+        </rpm:requires>
+      </format>
+    </package>
+    """.encode('utf-8')
+
+    @patch(MODULE + '.yumbased')
+    @patch(MODULE + '.change_location_tag')
+    def test_get_package_xml(self, change_location_tag, yumbased):
+        package = Mock()
+        package.xml_dump_primary_metadata.return_value = self.PRIMARY
+        yumbased.CreateRepoPackage.return_value = package
+        rel_path = 'a/b/c/d/rabbit.rpm'
+
+        # test
+        md = rpm.get_package_xml(rel_path)
+
+        # validation
+        change_location_tag.assert_called_once_with(
+            self.PRIMARY.decode('utf-8', 'replace'),
+            rel_path)
+        self.assertEqual(md['primary'], change_location_tag.return_value)
+        self.assertEqual(md['filelists'], package.xml_dump_filelists_metadata.return_value)
+        self.assertEqual(md['other'], package.xml_dump_other_metadata.return_value)
+
+    @patch(MODULE + '.yumbased')
     def test_get_package_xml_yum_exception(self, mock_yumbased):
         mock_yumbased.CreateRepoPackage.side_effect = Exception()
         result = rpm.get_package_xml("/bad/package/path")
         util.compare_dict(result, {})
 
 
-class TestStringToUnicode(unittest.TestCase):
-    """
-    tests for the string_to_unicode
-    """
+class TestChangeLocationTag(unittest.TestCase):
 
-    def test_non_supported_encoding(self):
-        start_string = Mock()
-        start_string.decode.side_effect = UnicodeError()
-        result_string = rpm.string_to_unicode(start_string)
-        self.assertEquals(None, result_string)
+    PRIMARY = u"""
+    <package type="rpm">
+      <name>rabbit</name>
+      <arch>noarch</arch>
+      <version epoch="0" ver="5.0.3" rel="1.fc22"/>
+      <checksum type="sha256" pkgid="YES">b88a43acd5c9239</checksum>
+      <summary>rabbit IDE</summary>
+      <description>The rabbit (professional) IDE.</description>
+      <packager>Roger Rabbit</packager>
+      <url>http://redhat.com</url>
+      <time file="1452798172" build="1452797732"/>
+      <size package="187399436" installed="187899535" archive="187899924"/>
+      <location href="rabbit-5.0.3-1.fc22.noarch.rpm"/>
+      <format>
+        <rpm:license>GPLv2</rpm:license>
+        <rpm:vendor/>
+        <rpm:group>Development/Tools</rpm:group>
+        <rpm:buildhost>localhost</rpm:buildhost>
+        <rpm:sourcerpm>rabbit-5.0.3-1.fc22.src.rpm</rpm:sourcerpm>
+        <rpm:header-range start="4392" end="6476"/>
+        <rpm:provides>
+          <rpm:entry name="rabbit" flags="EQ" epoch="0" ver="5.0.3" rel="1.fc22"/>
+        </rpm:provides>
+        <rpm:requires>
+        </rpm:requires>
+      </format>
+    </package>
+    """.encode('utf-8')
+
+    def test_relocation(self):
+        rel_path = 'a/b/c/d/rabbit-5.0.3-1.fc22.noarch.rpm'
+        relocated = rpm.change_location_tag(self.PRIMARY, rel_path)
+        self.assertEqual(
+            relocated,
+            self.PRIMARY.replace(
+                '<location href="rabbit-5.0.3-1.fc22.noarch.rpm"/>',
+                '<location href="Packages/r/rabbit-5.0.3-1.fc22.noarch.rpm"/>'))
 
 
 class PackageHeaders(unittest.TestCase):
