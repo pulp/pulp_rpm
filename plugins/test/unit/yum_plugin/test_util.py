@@ -42,29 +42,6 @@ class TestUtil(rpm_support_base.PulpRPMTests):
         self.assertFalse(util.is_rpm_newer(newer_a, rpm_b))
 
 
-class TestStringToUnicode(unittest.TestCase):
-    def test_ascii(self):
-        result = util.string_to_unicode('abc')
-        self.assertTrue(isinstance(result, unicode))
-        self.assertEqual(result, u'abc')
-
-    def test_empty(self):
-        result = util.string_to_unicode('')
-        self.assertTrue(isinstance(result, unicode))
-        self.assertEqual(result, u'')
-
-    def test_latin1(self):
-        data = '/usr/share/doc/man-pages-da-0.1.1/l\xe6smig'
-        result = util.string_to_unicode(data)
-        self.assertTrue(isinstance(result, unicode))
-        self.assertEqual(result, data.decode('iso-8859-1'))
-
-    def test_utf8(self):
-        result = util.string_to_unicode(u'€'.encode('utf8'))
-        self.assertTrue(isinstance(result, unicode))
-        self.assertEqual(result, u'€')
-
-
 class TestGenerateListingFiles(unittest.TestCase):
     def test_repo_dir_not_descendant(self):
         self.assertRaises(ValueError, util.generate_listing_files, '/a/b/c', '/d/e/f')
