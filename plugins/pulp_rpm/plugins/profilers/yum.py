@@ -1,4 +1,5 @@
 from gettext import gettext as _
+from logging import DEBUG
 
 from pulp.plugins.profiler import Profiler, InvalidUnitsRequested
 from pulp.server.db.model.criteria import UnitAssociationCriteria
@@ -286,7 +287,7 @@ class YumProfiler(Profiler):
         """
         rpms = []
         if "pkglist" not in errata.metadata:
-            _logger.warning("metadata for errata <%s> lacks a 'pkglist'" % (
+            _logger.warning(_("metadata for errata <%s> lacks a 'pkglist'") % (
                             errata.unit_key.get('errata_id')))
             return rpms
         for pkgs in errata.metadata['pkglist']:
@@ -376,7 +377,7 @@ class YumProfiler(Profiler):
         older_rpms = {}
         if TYPE_ID_RPM not in consumer.profiles:
             _logger.warn(
-                "Consumer [%s] is missing profile information for [%s], found profiles are: %s" %
+                _("Consumer [%s] missing profile information for [%s], found profiles are: %s") %
                 (consumer.id, TYPE_ID_RPM, consumer.profiles.keys()))
             return applicable_rpms, older_rpms
         lookup = YumProfiler._form_lookup_table(consumer.profiles[TYPE_ID_RPM])
@@ -386,13 +387,14 @@ class YumProfiler(Profiler):
                 installed_rpm = lookup[key]
                 is_newer = util.is_rpm_newer(errata_rpm, installed_rpm)
                 _logger.debug(
-                    "Found a match of rpm <%s> installed on consumer, is %s newer than %s, %s" %
+                    _("Found a match of rpm <%s> installed on consumer, is %s newer than %s, %s") %
                     (key, errata_rpm, installed_rpm, is_newer))
                 if is_newer:
                     applicable_rpms.append(errata_rpm)
                     older_rpms[key] = {"installed": installed_rpm, "available": errata_rpm}
             else:
-                _logger.debug("rpm %s was not found in consumer profile of %s" % (key, consumer.id))
+                _logger.debug(
+                    _("rpm %s was not found in consumer profile of %s") % (key, consumer.id))
         return applicable_rpms, older_rpms
 
     @staticmethod
@@ -435,9 +437,14 @@ class YumProfiler(Profiler):
 
         # Get rpm dicts from errata
         errata_rpms = YumProfiler._get_rpms_from_errata(errata)
-        _logger.info(
-            "Errata <%s> refers to %s updated rpms of: %s" % (errata.unit_key.get('errata_id'),
-                                                              len(errata_rpms), errata_rpms))
+        if _logger.isEnabledFor(DEBUG):
+            _logger.debug(
+                _("Errata <%s> refers to %s updated rpms of: %s")
+                % (errata.unit_key.get('errata_id'), len(errata_rpms), errata_rpms))
+        else:
+            _logger.info(
+                _("Errata <%s> refers to %d updated rpms")
+                % (errata.unit_key.get('errata_id'), len(errata_rpms)))
 
         # filter out RPMs we don't have access to (https://pulp.plan.io/issues/770).
         updated_rpms = []
@@ -452,16 +459,22 @@ class YumProfiler(Profiler):
 
         applicable_rpms, upgrade_details = YumProfiler._rpms_applicable_to_consumer(consumer,
                                                                                     updated_rpms)
-        if applicable_rpms:
-            _logger.info(
-                "Rpms: <%s> were found to be related to errata <%s> and applicable to consumer <%s>"
+
+        if _logger.isEnabledFor(DEBUG):
+            _logger.debug(
+                _("RPMs: <%s> found to be related to errata <%s> and applicable to consumer <%s>")
                 % (applicable_rpms, errata, consumer.id))
+        else:
+            _logger.info(
+                _("<%d> RPMs found to be related to errata <%s> and applicable to consumer <%s>")
+                % (len(applicable_rpms), errata, consumer.id))
+
         # Return as list of name.arch values
         ret_val = []
         for applicable_rpm in applicable_rpms:
             applicable_rpm = {"unit_key": applicable_rpm, "type_id": TYPE_ID_RPM}
             ret_val.append(applicable_rpm)
-        _logger.info("Translated errata <%s> to <%s>" % (errata, ret_val))
+        _logger.info(_("Translated errata <%s> to <%s>") % (errata, ret_val))
         # Add applicable errata details to the applicability report
         errata_details = errata.metadata
         errata_details['id'] = errata.unit_key.get('errata_id')
