@@ -30,7 +30,28 @@ from pulp_rpm.yum_plugin import util
 _LOGGER = logging.getLogger(__name__)
 
 
-NEVRA = namedtuple('NEVRA', ['name', 'epoch', 'version', 'release', 'arch'])
+_NEVRA = namedtuple('NEVRA', ['name', 'epoch', 'version', 'release', 'arch'])
+
+
+class NEVRA(_NEVRA):
+    @classmethod
+    def _fromdict(cls, nevra_dict):
+        """
+        Given a dict with NEVRA keys, return a NEVRA namedtuple using its values.
+
+        Extra keys can be included, but will be ignored.
+
+        :param nevra_dict: dict with NEVRA keys (name, epoch, version, release, arch)
+        :type: dict of str
+        :return: NEVRA tuple made using the values passed in the nevra_dict
+        :rtype: NEVRA
+        """
+        # if epoch is Falsey, set to string '0' in a preprocessing step
+        if not nevra_dict['epoch']:
+            # make a shallow copy to avoid modifying the passed-in dict
+            nevra_dict = nevra_dict.copy()
+            nevra_dict['epoch'] = '0'
+        return cls(*[nevra_dict[field] for field in cls._fields])
 
 
 class UnitMixin(object):

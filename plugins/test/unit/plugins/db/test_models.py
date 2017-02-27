@@ -30,6 +30,46 @@ class TestNonMetadataModel(unittest.TestCase):
         models.NonMetadataPackage(version='1.0.0', release='2', checksumtype=None, checksum=None)
 
 
+class TestNEVRATuple(unittest.TestCase):
+    """Test that the NEVRA namedtuple properly converts to and from dictionaries"""
+    pkg_dict_noepoch = {
+        'name': 'package',
+        'version': '0.0',
+        'release': '0',
+        'arch': 'pulp',
+    }
+
+    # a tuple with correct values in the expected order
+    expected = (
+        pkg_dict_noepoch['name'],
+        '0',
+        pkg_dict_noepoch['version'],
+        pkg_dict_noepoch['release'],
+        pkg_dict_noepoch['arch'],
+    )
+
+    def _pkg_dict(self, epoch):
+        # package dict builder, DRYs inserting different values for the epoch field
+        pkg_dict = self.pkg_dict_noepoch.copy()
+        pkg_dict['epoch'] = epoch
+        return pkg_dict
+
+    def test_dict_conversion(self):
+        """ensure the correct field names are mapped to the correct values"""
+        pkg_dict = self._pkg_dict(epoch='0')
+        pkg_nevra = models.NEVRA._fromdict(pkg_dict)
+        self.assertEqual(pkg_nevra, self.expected)
+        self.assertEqual(pkg_nevra._asdict(), pkg_dict)
+
+    def test_dict_conversion_falsey_epoch(self):
+        """ensure the special handling for a "falsey" epoch (usually None) functions properly"""
+        # epoch should become string '0' in this case
+        for falsey in (0, None, False, ''):
+            pkg_dict = self._pkg_dict(epoch=falsey)
+            pkg_nevra = models.NEVRA._fromdict(pkg_dict)
+            self.assertEqual(pkg_nevra, self.expected)
+
+
 class TestNonMetadataGetOrCalculateChecksum(unittest.TestCase):
     def setUp(self):
         super(TestNonMetadataGetOrCalculateChecksum, self).setUp()
