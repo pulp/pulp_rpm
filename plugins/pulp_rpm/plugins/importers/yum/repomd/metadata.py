@@ -17,11 +17,12 @@ from nectar.request import DownloadRequest
 from pulp.server import util
 from pulp.server.exceptions import PulpCodedException
 
+from pulp_rpm.common import constants
 from pulp_rpm.plugins import error_codes
 from pulp_rpm.plugins.db import models
 from pulp_rpm.plugins.importers.yum import utils
 from pulp_rpm.plugins.importers.yum.parse.rpm import change_location_tag
-from pulp_rpm.plugins.importers.yum.repomd import filelists, nectar_factory, other, primary
+from pulp_rpm.plugins.importers.yum.repomd import filelists, nectar_factory, other
 from pulp_rpm.plugins.importers.yum.repomd.packages import package_list_generator
 
 
@@ -106,10 +107,6 @@ class MetadataFiles(object):
                        'prestodelta',
                        'updateinfo', 'updateinfo_db'])
 
-    MANDATORY_METADATA_TYPES = (primary.METADATA_FILE_NAME,
-                                filelists.METADATA_FILE_NAME,
-                                other.METADATA_FILE_NAME)
-
     def __init__(self, repo_url, dst_dir, nectar_config, url_modify=None):
         """
         :param repo_url:        URL for the base of a yum repository
@@ -188,7 +185,7 @@ class MetadataFiles(object):
                 file_info = process_repomd_data_element(element)
                 self.metadata[file_info['name']] = file_info
 
-        for metadata_type in MetadataFiles.MANDATORY_METADATA_TYPES:
+        for metadata_type in constants.MANDATORY_METADATA_TYPES:
             if metadata_type not in self.metadata:
                 reason = '"%s" metadata is not found in repomd.xml' % metadata_type
                 raise PulpCodedException(error_code=error_codes.RPM1015, reason=reason)
@@ -363,13 +360,13 @@ class MetadataFiles(object):
                 raw_xml = db_file[db_key]
             finally:
                 db_file.close()
-            model.repodata[filename] = raw_xml
+            model.set_repodata(filename, raw_xml)
             element = ElementTree.fromstring(raw_xml)
             unit_key, items = process_func(element)
             setattr(model, metadata_key, items)
 
-        raw_xml = model.raw_xml
-        model.repodata['primary'] = change_location_tag(raw_xml, model.filename)
+        primary_raw_xml = change_location_tag(model.raw_xml, model.filename)
+        model.set_repodata('primary', primary_raw_xml)
 
 
 def process_repomd_data_element(data_element):

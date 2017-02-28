@@ -1,5 +1,6 @@
 import csv
 import errno
+import gzip
 import logging
 import re
 import os
@@ -8,6 +9,7 @@ from gettext import gettext as _
 from operator import itemgetter
 from urlparse import urljoin
 
+import bson
 import mongoengine
 from django.template import Context, Template
 from django.template.defaulttags import TemplateTagNode
@@ -18,7 +20,7 @@ from pulp.plugins.util import verification
 from pulp.server.db.model import ContentUnit, FileContentUnit
 from pulp.server.exceptions import PulpCodedException
 
-from pulp_rpm.common import version_utils, file_utils
+from pulp_rpm.common import constants, version_utils, file_utils
 from pulp_rpm.plugins import error_codes, serializers
 from pulp_rpm.plugins.db.fields import ChecksumTypeStringField
 from pulp_rpm.plugins.importers.yum import utils
@@ -803,7 +805,7 @@ class RpmBase(NonMetadataPackage):
         :return:    primary XML for this unit
         :rtype:     basestring
         """
-        metadata = self.repodata['primary']
+        metadata = self.get_repodata('primary')
         for tag in self.ESCAPE_TEMPLATE_VARS_TAGS['primary']:
             metadata = self._escape_django_syntax_chars(metadata, tag)
         context = Context({'checksum': self.get_or_calculate_and_save_checksum(checksumtype),
@@ -821,7 +823,7 @@ class RpmBase(NonMetadataPackage):
         :return:    other XML for this unit
         :rtype:     basestring
         """
-        metadata = self.repodata['other']
+        metadata = self.get_repodata('other')
         for tag in self.ESCAPE_TEMPLATE_VARS_TAGS['other']:
             metadata = self._escape_django_syntax_chars(metadata, tag)
         context = Context({'pkgid': self.get_or_calculate_and_save_checksum(checksumtype)})
@@ -837,7 +839,7 @@ class RpmBase(NonMetadataPackage):
         :return:    filelists XML for this unit
         :rtype:     basestring
         """
-        metadata = self.repodata['filelists']
+        metadata = self.get_repodata('filelists')
         context = Context({'pkgid': self.get_or_calculate_and_save_checksum(checksumtype)})
         return self._render(metadata, context)
 
@@ -922,18 +924,21 @@ class RpmBase(NonMetadataPackage):
                       lambda mobj: '{%% templatetag %s %%}' % templatetag_map[mobj.group(1)],
                       template)
 
-    def modify_xml(self):
+    def modify_xml(self, repodata):
         """
-        Given a unit that has repodata XML snippets, modify them in several necessary ways. These
-        include changing the location value and adding template strings to checksum elements.
+        Given repodata XML snippets, modify them in several necessary ways. These include changing
+        the location value and adding template strings to checksum elements.
+
+        :param repodata: xml snippets to modify
+        :type  repodata: dict
         """
-        faked_primary = utils.fake_xml_element(self.repodata['primary'])
+        faked_primary = utils.fake_xml_element(repodata['primary'])
         primary = faked_primary.find('package')
 
-        faked_other = utils.fake_xml_element(self.repodata['other'])
+        faked_other = utils.fake_xml_element(repodata['other'])
         other = faked_other.find('package')
 
-        faked_filelists = utils.fake_xml_element(self.repodata['filelists'])
+        faked_filelists = utils.fake_xml_element(repodata['filelists'])
         filelists = faked_filelists.find('package')
 
         self._update_location(primary, self.filename)
@@ -941,9 +946,10 @@ class RpmBase(NonMetadataPackage):
         self._templatize_pkgid(other)
         self._templatize_pkgid(filelists)
 
-        self.repodata['primary'] = utils.remove_fake_element(utils.element_to_text(faked_primary))
-        self.repodata['other'] = utils.element_to_text(other)
-        self.repodata['filelists'] = utils.element_to_text(filelists)
+        self.set_repodata('primary',
+                          utils.remove_fake_element(utils.element_to_text(faked_primary)))
+        self.set_repodata('other', utils.element_to_text(other))
+        self.set_repodata('filelists', utils.element_to_text(filelists))
 
     @classmethod
     def _templatize_pkgid(cls, element):
@@ -1004,6 +1010,33 @@ class RpmBase(NonMetadataPackage):
         if self.size is not None:
             with open(location) as fp:
                 verification.verify_size(fp, self.size)
+
+    def set_repodata(self, metadata_type, xml_snippet):
+        """
+        Compress metadata and put it into `repodata` attribute which will be saved to the db later.
+
+        :param metadata_type: key for the `repodata` dictionary which indicates type of metadata
+        :type  metadata_type: str
+        :param xml_snippet: utf-8 string which will be compressed and put into `repodata` dictionary
+        :type  xml_snippet: str
+        """
+        if metadata_type in constants.MANDATORY_METADATA_TYPES:
+            if isinstance(xml_snippet, unicode):
+                xml_snippet = xml_snippet.encode('utf-8')
+            self.repodata[metadata_type] = bson.binary.Binary(gzip.zlib.compress(xml_snippet))
+
+    def get_repodata(self, metadata_type):
+        """
+        Get metadata from db and decompress it.
+
+        :param metadata_type: key for the `repodata` dictionary which indicates type of metadata
+        :type  metadata_type: str
+
+        :return: requested xml snippet
+        :rtype:  unicode
+        """
+        if metadata_type in constants.MANDATORY_METADATA_TYPES:
+            return gzip.zlib.decompress(self.repodata[metadata_type]).decode('utf-8')
 
 
 class RPM(RpmBase):
