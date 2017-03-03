@@ -1,6 +1,5 @@
 import contextlib
 import functools
-import itertools
 import logging
 import os
 import random
@@ -621,11 +620,7 @@ class RepoSync(object):
             package_info_generator = packages.package_list_generator(
                 primary_file_handle, primary.PACKAGE_TAG, primary.process_package_element)
 
-            # count packages while iterating over primary metadata and deciding on wanted packages
-            counter = itertools.count()
-            wrapped_generator = itertools.imap(lambda x, y: x, package_info_generator, counter)
-            wanted = self._identify_wanted_versions(wrapped_generator)
-            primary_rpm_count = counter.next()
+            wanted, primary_rpm_count = self._identify_wanted_versions(package_info_generator)
             if primary_rpm_count != metadata_files.rpm_count:
                 reason = 'metadata is missing for some packages in filelists.xml and in other.xml'
                 raise PulpCodedException(error_code=error_codes.RPM1015, reason=reason)
@@ -673,7 +668,7 @@ class RepoSync(object):
                         presto_file_handle,
                         presto.PACKAGE_TAG,
                         presto.process_package_element)
-                    wanted = self._identify_wanted_versions(package_info_generator)
+                    wanted, _ = self._identify_wanted_versions(package_info_generator)
                     # check for the units that are not in the repo, but exist on the server
                     # and associate them to the repo
                     to_download = existing.check_all_and_associate(
@@ -1022,9 +1017,10 @@ class RepoSync(object):
 
         :param package_info_generator:  iterator of pulp_rpm.plugins.db.models.Package
                                         instances
-        :return:    dict where keys are Packages as named tuples, and values
-                    are the size of each package
-        :rtype:     dict
+        :return:    tuple where first element is dict where keys are Packages as named tuples,
+                    and values are the size of each package and second element is number of unique
+                    packages
+        :rtype:     tuple(dict, int)
         """
         # keys are a model's key string minus any version info
         # values are dicts where keys are serialized versions, and values are
@@ -1033,29 +1029,34 @@ class RepoSync(object):
 
         number_old_versions_to_keep = \
             self.config.get(importer_constants.KEY_UNITS_RETAIN_OLD_COUNT)
+        number_of_unique_packages = 0
         for model in package_info_generator:
             versions = wanted.setdefault(model.key_string_without_version, {})
             serialized_version = model.complete_version_serialized
             info = WantedUnitInfo(model.size, model.download_path)
 
-            # if we are limited on the number of old versions we can have,
-            if number_old_versions_to_keep is not None:
-                number_to_keep = number_old_versions_to_keep + 1
-                if len(versions) < number_to_keep:
-                    versions[serialized_version] = (model.unit_key_as_named_tuple, info)
-                else:
-                    smallest_version = sorted(versions.keys(), reverse=True)[:number_to_keep][-1]
-                    if serialized_version > smallest_version:
-                        del versions[smallest_version]
+            if serialized_version not in versions:
+                number_of_unique_packages += 1
+                # if we are limited on the number of old versions we can have
+                if number_old_versions_to_keep is not None:
+                    number_to_keep = number_old_versions_to_keep + 1
+                    if len(versions) < number_to_keep:
                         versions[serialized_version] = (model.unit_key_as_named_tuple, info)
-            else:
-                versions[serialized_version] = (model.unit_key_as_named_tuple, info)
+                    else:
+                        smallest_version = sorted(versions.keys(),
+                                                  reverse=True)[:number_to_keep][-1]
+                        if serialized_version > smallest_version:
+                            del versions[smallest_version]
+                            versions[serialized_version] = (model.unit_key_as_named_tuple, info)
+                else:
+                    versions[serialized_version] = (model.unit_key_as_named_tuple, info)
+
         ret = {}
         for units in wanted.itervalues():
             for unit, info in units.itervalues():
                 ret[unit] = info
 
-        return ret
+        return ret, number_of_unique_packages
 
     @staticmethod
     def _filtered_unit_generator(units, to_download=None):
@@ -1080,6 +1081,8 @@ class RepoSync(object):
                 # assume we want to download everything
                 yield unit
             elif unit.unit_key_as_named_tuple in to_download:
+                # We don't need to download packages twice
+                to_download.remove(unit.unit_key_as_named_tuple)
                 yield unit
 
 
