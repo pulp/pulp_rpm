@@ -18,8 +18,7 @@ class UpdateinfoXMLFileContextTests(unittest.TestCase):
     """
     @mock.patch('pulp.plugins.util.metadata_writer.MetadataFileContext._open_metadata_file_handle')
     def setUp(self, mock_parent_open_file_handle):
-        nevra_in_repo = set([('pulp-test-package', '0', '0.3.1', '1.fc22', 'x86_64')])
-        self.context = UpdateinfoXMLFileContext('/foo', nevra_in_repo, checksum_type='sha256')
+        self.context = UpdateinfoXMLFileContext('/foo', checksum_type='sha256')
         self.context.metadata_file_handle = StringIO()
         self.context._open_metadata_file_handle()
 
@@ -66,6 +65,11 @@ class UpdateinfoXMLFileContextTests(unittest.TestCase):
                                  {'packages': packages, 'name': 'test-name', 'short': ''}]}
         return models.Errata(**unit_data)
 
+    def _filtered_pkglist(self, erratum_unit):
+        # Return a "filtered" pkglist. Since the test unit generated in _generate_erratum_unit
+        # contains two identical pkglists, return one of them to simulate it having been filtered.
+        return erratum_unit.pkglist[0]
+
     def test_handles_integer_pushcount(self):
         """
         Test that the pushcount of type integer handled well.
@@ -80,7 +84,7 @@ class UpdateinfoXMLFileContextTests(unittest.TestCase):
         erratum = self._generate_erratum_unit()
         erratum.description = 'A Description'
 
-        self.context.add_unit_metadata(erratum, erratum.pkglist)
+        self.context.add_unit_metadata(erratum, self._filtered_pkglist(erratum))
 
         generated_xml = self.context.metadata_file_handle.getvalue()
         self.assertTrue('<pushcount>1</pushcount>' in generated_xml)
@@ -99,7 +103,7 @@ class UpdateinfoXMLFileContextTests(unittest.TestCase):
         """
         erratum = self._generate_erratum_unit()
 
-        self.context.add_unit_metadata(erratum, erratum.pkglist)
+        self.context.add_unit_metadata(erratum, self._filtered_pkglist(erratum))
 
         generated_xml = self.context.metadata_file_handle.getvalue()
         self.assertTrue(re.search('<description */>', generated_xml) is not None)
@@ -111,7 +115,7 @@ class UpdateinfoXMLFileContextTests(unittest.TestCase):
         erratum = self._generate_erratum_unit()
         erratum.reboot_suggested = True
 
-        self.context.add_unit_metadata(erratum, erratum.pkglist)
+        self.context.add_unit_metadata(erratum, self._filtered_pkglist(erratum))
 
         xml = self.context.metadata_file_handle.getvalue()
         self.assertTrue('reboot_suggested' in xml)
@@ -123,7 +127,7 @@ class UpdateinfoXMLFileContextTests(unittest.TestCase):
         erratum = self._generate_erratum_unit()
         erratum.reboot_suggested = False
 
-        self.context.add_unit_metadata(erratum, erratum.pkglist)
+        self.context.add_unit_metadata(erratum, self._filtered_pkglist(erratum))
 
         xml = self.context.metadata_file_handle.getvalue()
         self.assertTrue('reboot_suggested' not in xml)
@@ -133,7 +137,7 @@ class UpdateinfoXMLFileContextTests(unittest.TestCase):
         Test that the `sums` package field is handled correctly.
         """
         erratum = self._generate_erratum_unit()
-        package_with_sums_field = erratum.pkglist[0]['packages'][0]
+        package_with_sums_field = self._filtered_pkglist(erratum)['packages'][0]
         result = self.context._get_package_checksum_tuple(package_with_sums_field)
         expected_checksum_tuple = ('sha256', 'sums')
         self.assertEqual(result, expected_checksum_tuple)
@@ -143,7 +147,7 @@ class UpdateinfoXMLFileContextTests(unittest.TestCase):
         Test that the package checksum of the distributor checksum type is published if available.
         """
         erratum = self._generate_erratum_unit()
-        package_with_multiple_checksums = erratum.pkglist[0]['packages'][1]
+        package_with_multiple_checksums = self._filtered_pkglist(erratum)['packages'][1]
         result = self.context._get_package_checksum_tuple(package_with_multiple_checksums)
         expected_checksum_tuple = ('sha256', 'sha256_checksum')
         self.assertEqual(result, expected_checksum_tuple)
@@ -155,7 +159,7 @@ class UpdateinfoXMLFileContextTests(unittest.TestCase):
         """
         erratum = self._generate_erratum_unit()
         self.context.checksum_type = 'unknown type #1'
-        package_with_multiple_checksums = erratum.pkglist[0]['packages'][1]
+        package_with_multiple_checksums = self._filtered_pkglist(erratum)['packages'][1]
         result = self.context._get_package_checksum_tuple(package_with_multiple_checksums)
         expected_checksum_tuple = ('sha256', 'sha256_checksum')
         self.assertEqual(result, expected_checksum_tuple)
@@ -168,7 +172,7 @@ class UpdateinfoXMLFileContextTests(unittest.TestCase):
         erratum = self._generate_erratum_unit()
         self.context.checksum_type = 'sha256'
         self.context.updateinfo_checksum_type = 'md5'
-        package_with_multiple_checksums = erratum.pkglist[0]['packages'][1]
+        package_with_multiple_checksums = self._filtered_pkglist(erratum)['packages'][1]
         result = self.context._get_package_checksum_tuple(package_with_multiple_checksums)
         expected_checksum_tuple = ('md5', 'md5_checksum')
         self.assertEqual(result, expected_checksum_tuple)
@@ -180,7 +184,7 @@ class UpdateinfoXMLFileContextTests(unittest.TestCase):
         erratum = self._generate_erratum_unit()
         self.context.checksum_type = 'sha256'
         self.context.updateinfo_checksum_type = 'unknown type'
-        package_with_multiple_checksums = erratum.pkglist[0]['packages'][1]
+        package_with_multiple_checksums = self._filtered_pkglist(erratum)['packages'][1]
         with self.assertRaises(PulpCodedException) as e:
             self.context._get_package_checksum_tuple(package_with_multiple_checksums)
         self.assertEqual(e.exception.error_code.code, 'RPM1012')
@@ -190,8 +194,7 @@ class UpdateinfoXMLFileContextTests(unittest.TestCase):
         Test the generation of erratum unit.
         """
         erratum = self._generate_erratum_unit()
-        filtered_pkglists = [erratum.pkglist[0]]
-        self.context.add_unit_metadata(erratum, filtered_pkglists)
+        self.context.add_unit_metadata(erratum, self._filtered_pkglist(erratum))
         generated_xml = self.context.metadata_file_handle.getvalue()
         expected_xml = '<update status="symbol" from="" version="2.4.1" type="security">\n' \
                        '  <id>RHSA-2014:0042</id>\n' \
