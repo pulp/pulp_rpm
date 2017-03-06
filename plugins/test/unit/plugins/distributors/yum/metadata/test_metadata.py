@@ -6,7 +6,7 @@ import tempfile
 import unittest
 from xml.etree import cElementTree as et
 
-from mock import Mock, patch
+from mock import patch
 from pulp.plugins.model import Unit
 
 from pulp_rpm.common.ids import TYPE_ID_RPM
@@ -269,7 +269,7 @@ class YumDistributorMetadataTests(unittest.TestCase):
                             REPO_DATA_DIR_NAME,
                             UPDATE_INFO_XML_FILE_NAME)
 
-        context = UpdateinfoXMLFileContext(self.metadata_file_dir, set())
+        context = UpdateinfoXMLFileContext(self.metadata_file_dir)
 
         context._open_metadata_file_handle()
         context._close_metadata_file_handle()
@@ -322,9 +322,9 @@ class YumDistributorMetadataTests(unittest.TestCase):
         # just checking
         self.assertEqual(erratum_unit.unit_key['errata_id'], 'RHEA-2010:9999')
 
-        context = UpdateinfoXMLFileContext(self.metadata_file_dir, set(), checksum_type='md5')
+        context = UpdateinfoXMLFileContext(self.metadata_file_dir, checksum_type='md5')
         context._open_metadata_file_handle()
-        context.add_unit_metadata(erratum_unit, erratum_unit.pkglist)
+        context.add_unit_metadata(erratum_unit, erratum_unit.pkglist[0])
         context._close_metadata_file_handle()
 
         self.assertNotEqual(os.path.getsize(path), 0)
@@ -339,49 +339,9 @@ class YumDistributorMetadataTests(unittest.TestCase):
         self.assertEqual(content.count('version="1"'), 1)
         self.assertEqual(content.count('<id>RHEA-2010:9999</id>'), 1)
         self.assertEqual(content.count('<collection short="F13PTP">'), 1)
+        self.assertEqual(content.count('<name>F13 Pulp Test Packages</name>'), 1)
         self.assertEqual(content.count('<package'), 2)
         self.assertEqual(content.count('<sum type="md5">f3c197a29d9b66c5b65c5d62b25db5b4</sum>'), 1)
-
-    def test_updateinfo_get_repo_unit_nevra_return(self):
-        nevra_fields = ('name', 'epoch', 'version', 'release', 'arch')
-        unit1_nevra = ('n1', 'e1', 'v1', 'r1', 'a1')
-        unit1_nevra_dict = dict(zip(nevra_fields, unit1_nevra))
-        unit2_nevra = ('n2', 'e2', 'v2', 'r2', 'a2')
-        unit2_nevra_dict = dict(zip(nevra_fields, unit2_nevra))
-
-        erratum_unit = Mock()
-        erratum_unit.pkglist = [{'packages': [
-            unit1_nevra_dict,
-            unit2_nevra_dict,
-        ]}]
-
-        context = UpdateinfoXMLFileContext(self.metadata_file_dir, set([unit1_nevra]))
-        repo_unit_nevra = context.get_repo_unit_nevra(erratum_unit)
-
-        self.assertEqual(len(repo_unit_nevra), 1)
-        self.assertTrue(unit1_nevra_dict in repo_unit_nevra)
-        self.assertTrue(unit2_nevra_dict not in repo_unit_nevra)
-
-    def test_updateinfo_get_repo_unit_nevra_no_epoch(self):
-        """
-        Test that epoch defaults to 0 and corresponding erratum and RPM unit match
-        """
-        nevra_fields = ('name', 'epoch', 'version', 'release', 'arch')
-        erratum_unit_nevra = ('n1', None, 'v1', 'r1', 'a1')
-        erratum_unit_nevra_dict = dict(zip(nevra_fields, erratum_unit_nevra))
-        rpm_unit_nevra = ('n1', '0', 'v1', 'r1', 'a1')
-        rpm_unit_nevra_dict = dict(zip(nevra_fields, rpm_unit_nevra))
-
-        erratum_unit = Mock()
-        erratum_unit.pkglist = [{'packages': [
-            erratum_unit_nevra_dict,
-        ]}]
-
-        context = UpdateinfoXMLFileContext(self.metadata_file_dir, set([rpm_unit_nevra]))
-        repo_unit_nevra = context.get_repo_unit_nevra(erratum_unit)
-
-        self.assertEqual(len(repo_unit_nevra), 1)
-        self.assertTrue(rpm_unit_nevra_dict in repo_unit_nevra)
 
     # -- prestodelta.xml testing -----------------------------------------------
 
