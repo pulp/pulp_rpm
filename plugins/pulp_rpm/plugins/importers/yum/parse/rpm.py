@@ -48,7 +48,7 @@ def get_package_xml(pkg_path, sumtype=util.TYPE_SHA256):
     primary_xml_snippet = primary_xml_snippet.decode('utf-8', 'replace')
     primary_xml_snippet = change_location_tag(primary_xml_snippet, pkg_path)
     metadata = {
-        'primary': primary_xml_snippet,
+        'primary': primary_xml_snippet.encode('utf-8'),
         'filelists': po.xml_dump_filelists_metadata(),
         'other': po.xml_dump_other_metadata(),
     }
@@ -65,7 +65,6 @@ def change_location_tag(primary_xml_snippet, relpath):
     :param relpath: Package's 'relativepath'
     :type  relpath: unicode
     """
-
     start_index = primary_xml_snippet.find("<location ")
     end_index = primary_xml_snippet.find("/>", start_index) + 2  # adjust to end of closing tag
 

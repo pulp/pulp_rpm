@@ -67,7 +67,7 @@ class TesGetPackageXml(unittest.TestCase):
         change_location_tag.assert_called_once_with(
             self.PRIMARY.decode('utf-8', 'replace'),
             rel_path)
-        self.assertEqual(md['primary'], change_location_tag.return_value)
+        self.assertEqual(md['primary'], change_location_tag.return_value.encode('utf-8'))
         self.assertEqual(md['filelists'], package.xml_dump_filelists_metadata.return_value)
         self.assertEqual(md['other'], package.xml_dump_other_metadata.return_value)
 
