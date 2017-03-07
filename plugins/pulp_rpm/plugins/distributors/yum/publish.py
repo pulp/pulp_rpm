@@ -588,6 +588,7 @@ class PublishErrataStep(platform_steps.UnitModelPluginStep):
         super(PublishErrataStep, self).__init__(constants.PUBLISH_ERRATA_STEP, [models.Errata],
                                                 **kwargs)
         self.context = None
+        self.repo_unit_nevra = None
         self.description = _('Publishing Errata')
 
     def initialize(self):
@@ -600,6 +601,7 @@ class PublishErrataStep(platform_steps.UnitModelPluginStep):
         self.context = UpdateinfoXMLFileContext(self.get_working_dir(), checksum_type,
                                                 self.get_conduit(), updateinfo_checksum_type)
         self.context.initialize()
+        self.repo_unit_nevra = self._get_repo_unit_nevra(self.get_repo().id)
 
     def process_main(self, item=None):
         """
@@ -661,7 +663,6 @@ class PublishErrataStep(platform_steps.UnitModelPluginStep):
         :rtype: dict
         """
         repo_id = self.get_repo().id
-        repo_unit_nevra = self._get_repo_unit_nevra(repo_id)
 
         new_pkglist = {
             # Due to a quirk in how yum merges pkglists in errata that appear in multiple
@@ -686,7 +687,7 @@ class PublishErrataStep(platform_steps.UnitModelPluginStep):
 
         }
 
-        if not repo_unit_nevra:
+        if not self.repo_unit_nevra:
             # if repo_unit_nevra is empty, this repo has no RPMs, which makes filtering easy:
             # no pkglist will ever contain packages, so short out and return the empty pkglist
             return new_pkglist
@@ -696,7 +697,7 @@ class PublishErrataStep(platform_steps.UnitModelPluginStep):
             for package in pkglist.get('packages', []):
                 if package['filename'] not in seen_packages:
                     seen_packages.add(package['filename'])
-                    if models.NEVRA._fromdict(package) in repo_unit_nevra:
+                    if models.NEVRA._fromdict(package) in self.repo_unit_nevra:
                         new_pkglist['packages'].append(package)
 
         return new_pkglist
