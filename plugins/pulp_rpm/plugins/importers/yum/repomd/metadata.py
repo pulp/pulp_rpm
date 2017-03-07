@@ -365,8 +365,9 @@ class MetadataFiles(object):
             unit_key, items = process_func(element)
             setattr(model, metadata_key, items)
 
-        primary_raw_xml = change_location_tag(model.raw_xml, model.filename)
-        model.set_repodata('primary', primary_raw_xml)
+        primary_raw_xml = model.raw_xml.decode('utf-8', 'replace')
+        primary_raw_xml = change_location_tag(primary_raw_xml, model.filename)
+        model.set_repodata('primary', primary_raw_xml.encode('utf-8'))
 
 
 def process_repomd_data_element(data_element):
