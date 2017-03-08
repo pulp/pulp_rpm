@@ -1051,8 +1051,9 @@ class PublishRpmStepTests(BaseYumDistributorPublishStepTests):
 
 class PublishErrataStepTests(BaseYumDistributorPublishStepTests):
 
+    @mock.patch.object(publish.PublishErrataStep, '_get_repo_unit_nevra')
     @mock.patch('pulp_rpm.plugins.distributors.yum.publish.UpdateinfoXMLFileContext')
-    def test_initialize_metadata(self, mock_context):
+    def test_initialize_metadata(self, mock_context, mock_grun):
         self._init_publisher()
         step = publish.PublishErrataStep()
         step.parent = self.publisher
@@ -1060,6 +1061,7 @@ class PublishErrataStepTests(BaseYumDistributorPublishStepTests):
         step.initialize()
 
         mock_context.return_value.initialize.assert_called_once_with()
+        mock_grun.assert_called_once_with('yum-distributor-publish-test')
 
     @mock.patch('pulp_rpm.plugins.distributors.yum.publish.UpdateinfoXMLFileContext')
     @mock.patch.object(publish.PublishErrataStep, '_get_pkglist_to_publish')
@@ -1133,8 +1135,7 @@ class PublishErrataStepTests(BaseYumDistributorPublishStepTests):
         expected = set([NEVRA(*values) for values in (mock_scalar_1, mock_scalar_2)])
         self.assertEqual(repo_unit_nevra, expected)
 
-    @mock.patch.object(publish.PublishErrataStep, '_get_repo_unit_nevra')
-    def test__get_pkglist_to_publish(self, mock_grun):
+    def test__get_pkglist_to_publish(self):
         """
         Test that packages not presented in repo are filtered out
         """
@@ -1151,7 +1152,7 @@ class PublishErrataStepTests(BaseYumDistributorPublishStepTests):
 
         repo_package = pkg1.copy()
         del(repo_package['filename'])
-        mock_grun.return_value = [NEVRA._fromdict(pkg1)]
+        step.repo_unit_nevra = set([NEVRA._fromdict(pkg1)])
 
         pkglist_to_publish = step._get_pkglist_to_publish(erratum_unit)
 
@@ -1162,11 +1163,9 @@ class PublishErrataStepTests(BaseYumDistributorPublishStepTests):
         self.assertTrue(len(pkglist_to_publish['packages']), 1)
         self.assertEqual(pkglist_to_publish['packages'][0], pkg1)
         self.assertEqual(pkglist_to_publish['name'], 'test_repo')
-        mock_grun.assert_called_once_with('test_repo')
 
     @mock.patch.object(publish.PublishErrataStep, 'get_repo')
-    @mock.patch.object(publish.PublishErrataStep, '_get_repo_unit_nevra')
-    def test__get_pkglist_to_publish_duplicated(self, mock_grun, mock_get_repo):
+    def test__get_pkglist_to_publish_duplicated(self, mock_get_repo):
         """
         Test that duplicated pkglists are filtered out
         """
@@ -1182,7 +1181,7 @@ class PublishErrataStepTests(BaseYumDistributorPublishStepTests):
 
         repo_package = pkg1.copy()
         del(repo_package['filename'])
-        mock_grun.return_value = [NEVRA._fromdict(pkg1)]
+        step.repo_unit_nevra = set([NEVRA._fromdict(pkg1)])
 
         pkglist_to_publish = step._get_pkglist_to_publish(erratum_unit)
 
@@ -1192,10 +1191,8 @@ class PublishErrataStepTests(BaseYumDistributorPublishStepTests):
         # pkglist contains one expected package
         self.assertTrue(len(pkglist_to_publish['packages']), 1)
         self.assertEqual(pkglist_to_publish['packages'][0], pkg1)
-        mock_grun.assert_called_once_with(mock_get_repo().id)
 
-    @mock.patch.object(publish.PublishErrataStep, '_get_repo_unit_nevra')
-    def test__get_pkglist_to_publish_merge(self, mock_grun):
+    def test__get_pkglist_to_publish_merge(self):
         """
         Test that multiple pkglists are merged into one
         """
@@ -1210,7 +1207,7 @@ class PublishErrataStepTests(BaseYumDistributorPublishStepTests):
         pkg2 = dict(zip(pkg_fields, pkg2_values))
         erratum_unit.pkglist = [{'packages': [pkg1]}, {'packages': [pkg2]}]
 
-        mock_grun.return_value = [NEVRA._fromdict(pkg1), NEVRA._fromdict(pkg2)]
+        step.repo_unit_nevra = set([NEVRA._fromdict(pkg1), NEVRA._fromdict(pkg2)])
 
         pkglist_to_publish = step._get_pkglist_to_publish(erratum_unit)
 
@@ -1222,7 +1219,6 @@ class PublishErrataStepTests(BaseYumDistributorPublishStepTests):
         self.assertTrue(pkg1 in pkglist_to_publish['packages'])
         self.assertTrue(pkg2 in pkglist_to_publish['packages'])
         self.assertEqual(pkglist_to_publish['name'], 'test_repo')
-        mock_grun.assert_called_once_with('test_repo')
 
 
 class PublishMetadataStepTests(BaseYumDistributorPublishStepTests):
