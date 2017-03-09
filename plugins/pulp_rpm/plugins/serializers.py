@@ -1,3 +1,5 @@
+import gzip
+
 from pulp.server.webservices.views import serializers as platform_serializers
 
 
@@ -23,6 +25,20 @@ class RpmBase(platform_serializers.ModelSerializer):
     """
     class Meta:
         remapped_fields = {}
+
+    def serialize(self, unit):
+        """
+        Convert a single unit to it's dictionary form.
+
+        Decompress values of the `repodata` dict field for RPM/SRPM units.
+
+        :param instance: The object to be converted
+        :type instance: object
+        """
+        for metadata_type in unit.get('repodata', {}):
+            metadata = unit['repodata'][metadata_type]
+            unit['repodata'][metadata_type] = gzip.zlib.decompress(metadata)
+        return super(RpmBase, self).serialize(unit)
 
 
 class Errata(platform_serializers.ModelSerializer):
