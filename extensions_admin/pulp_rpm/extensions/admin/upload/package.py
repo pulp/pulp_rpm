@@ -58,7 +58,7 @@ class _CreatePackageCommand(UploadCommand):
         # These are extracted server-side, so nothing to do here.
         metadata = {}
         if kwargs.get(OPT_CHECKSUM_TYPE.keyword, None) is not None:
-            metadata['checksum_type'] = kwargs[OPT_CHECKSUM_TYPE.keyword]
+            metadata['checksumtype'] = kwargs[OPT_CHECKSUM_TYPE.keyword]
         return {}, metadata
 
     def create_upload_list(self, file_bundles, **kwargs):
