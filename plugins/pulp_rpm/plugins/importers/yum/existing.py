@@ -141,8 +141,8 @@ def check_all_and_associate(wanted, conduit, config, download_deferred, catalog)
                 # package file does not exist and downloading is not deferred.
                 if not download_deferred and not file_exists:
                     continue
+            catalog.add(unit, wanted[unit.unit_key_as_named_tuple].download_path)
             if unit.id not in all_associated_units:
-                catalog.add(unit, wanted[unit.unit_key_as_named_tuple].download_path)
                 if rpm_parse.signature_enabled(config):
                     try:
                         rpm_parse.filter_signature(unit, config)
