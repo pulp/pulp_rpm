@@ -779,3 +779,29 @@ class TestUpdateProvidesRequires(unittest.TestCase):
         upload._update_files(self.unit, self.repodata)
         self.assertEqual(len(self.unit.files['file']), 1)
         self.assertEqual(self.unit.files['file'][0], '/tmp/shark.txt')
+
+
+class TestEncodeAsUtf8(unittest.TestCase):
+    # Tests for the upload._encode_as_utf8() function
+
+    def test_regular_ascii_untouched(self):
+        # regular ASCII strings are left untouched
+        self.assertEqual(upload._encode_as_utf8({'k': 'val'}), {'k': 'val'})
+
+    def test_non_strings_untouched(self):
+        # non-string values are left untouched
+        self.assertEqual(upload._encode_as_utf8({'k': 1}), {'k': 1})
+        self.assertEqual(upload._encode_as_utf8({'k': 1.0}), {'k': 1.0})
+        self.assertEqual(upload._encode_as_utf8({'k': u'val'}), {'k': u'val'})
+
+    def test_utf8_strings_untouched(self):
+        # already utf-8-encoded strings are left untouched.
+        # LATIN SMALL LETTER A WITH DIAERESIS
+        self.assertEqual(upload._encode_as_utf8({'k': '\xc3\xa4'}), {'k': '\xc3\xa4'})
+        # EURO SIGN
+        self.assertEqual(upload._encode_as_utf8({'k': '\xe2\x82\xac'}), {'k': '\xe2\x82\xac'})
+
+    def test_latin1_replaced_by_utf8_chars(self):
+        # contained latin1-chars are replaced by utf-8 encoded ones
+        # LATIN SMALL LETTER A WITH DIAERESIS
+        self.assertEqual(upload._encode_as_utf8({"k": "\xe4"}), {"k": "\xef\xbf\xbd"})
