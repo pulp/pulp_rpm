@@ -550,7 +550,7 @@ def _extract_rpm_data(type_id, rpm_filename):
     rpm_data['time'] = file_stat[stat.ST_MTIME]
     rpm_data['signing_key'] = rpm_parse.package_signature(headers)
 
-    return rpm_data
+    return _encode_as_utf8(rpm_data)
 
 
 def _extract_drpm_data(drpm_filename):
@@ -598,7 +598,7 @@ def _extract_drpm_data(drpm_filename):
                                                         rpm_parse.evr_to_str(*new_evr),
                                                         drpm_data['arch'])
 
-    return drpm_data
+    return _encode_as_utf8(drpm_data)
 
 
 def _fail_report(message):
@@ -606,3 +606,23 @@ def _fail_report(message):
     # anything is actually parsing it
     details = {'errors': [message]}
     return {'success_flag': False, 'summary': '', 'details': details}
+
+
+def _encode_as_utf8(data_dict):
+    """
+    Ensure all string values in `data_dict` are encoded as utf-8.
+
+    The dict is changed in place. Any strings that are not utf-8
+    encoded, will get replacements chars, so that the locations that
+    failed to be encoded will still be visible.
+
+    :param data_dict: A ordinary dictionary.
+    :type  data_dict: dict
+
+    :return: dict with all string values utf-8 encoded.
+    :rtype:  dict
+    """
+    for key, val in data_dict.items():
+        if isinstance(val, str):
+            data_dict[key] = val.decode('utf-8', 'replace').encode('utf-8')
+    return data_dict
