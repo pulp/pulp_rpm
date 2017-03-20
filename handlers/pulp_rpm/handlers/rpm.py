@@ -6,7 +6,13 @@ from rhsm.profile import get_profile
 from pulp.agent.lib.handler import ContentHandler
 from pulp.agent.lib.report import ProfileReport, ContentReport
 
-from pulp_rpm.handlers.rpmtools import Package, PackageGroup, ProgressReport
+import platform
+distribution = platform.linux_distribution()[0].upper()
+
+if "SUSE" in distribution:
+    from pulp_rpm.handlers.rpmtools_zypper import Package, PackageGroup, ProgressReport
+else:
+    from pulp_rpm.handlers.rpmtools_yum import Package, PackageGroup, ProgressReport
 
 log = getLogger(__name__)
 
