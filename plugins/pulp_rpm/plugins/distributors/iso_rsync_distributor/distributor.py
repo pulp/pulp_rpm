@@ -23,10 +23,10 @@ def entry_point():
 
 class ISORsyncDistributor(Distributor):
     """
-    Distributor class for publishing RPM repo to remote server.
+    Distributor class for publishing ISO repo to remote server.
 
     :ivar canceled: if true, the task has been canceled
-    :ivar _publisher: instance of RPMRsyncPublisher
+    :ivar _publisher: instance of ISORsyncPublisher
     """
 
     def __init__(self):
