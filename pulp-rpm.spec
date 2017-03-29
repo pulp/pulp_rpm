@@ -1,7 +1,7 @@
 %{!?python_sitelib: %global python_sitelib %(%{__python} -c "from distutils.sysconfig import get_python_lib; print(get_python_lib())")}
 %{!?python_sitearch: %global python_sitearch %(%{__python} -c "from distutils.sysconfig import get_python_lib; print(get_python_lib(1))")}
 
-%if 0%{?rhel} == 5
+%if 0%{?rhel} == 5 || 0%{?rhel} == 6
 %define pulp_admin 0
 %define pulp_server 0
 %else
