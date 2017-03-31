@@ -80,6 +80,8 @@ class ISOImporter(Importer):
             criteria = UnitAssociationCriteria(type_ids=[ids.TYPE_ID_ISO])
             units = import_conduit.get_source_units(criteria=criteria)
 
+        units = list(units)
+
         for u in units:
             import_conduit.associate_unit(u)
 
