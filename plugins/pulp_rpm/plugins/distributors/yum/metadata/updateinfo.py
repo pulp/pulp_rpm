@@ -5,7 +5,6 @@ from pulp.plugins.util.saxwriter import XMLWriter
 from pulp.server.exceptions import PulpCodedException
 
 from pulp_rpm.plugins import error_codes
-from pulp_rpm.plugins.db import models
 from pulp_rpm.plugins.distributors.yum.metadata.metadata import REPO_DATA_DIR_NAME
 from pulp_rpm.yum_plugin import util
 
@@ -15,15 +14,13 @@ UPDATE_INFO_XML_FILE_NAME = 'updateinfo.xml.gz'
 
 
 class UpdateinfoXMLFileContext(FastForwardXmlFileContext):
-    def __init__(self, working_dir, nevra_in_repo, checksum_type=None, conduit=None,
+    def __init__(self, working_dir, checksum_type=None, conduit=None,
                  updateinfo_checksum_type=None):
         """
         Creates and writes updateinfo XML data.
 
         :param working_dir: The working directory for the request
         :type working_dir:  basestring
-        :param nevra_in_repo: The nevra of all rpms in the repo.
-        :type nevra_in_repo:  set of models.NEVRA objects
         :param checksum_type: The type of checksum to be used
         :type checksum_type:  basestring
         :param conduit: A conduit to use
@@ -31,7 +28,6 @@ class UpdateinfoXMLFileContext(FastForwardXmlFileContext):
         :param updateinfo_checksum_type: The type of checksum to be used in the package list
         :type updateinfo_checksum_type:  basestring
         """
-        self.nevra_in_repo = nevra_in_repo
         metadata_file_path = os.path.join(working_dir, REPO_DATA_DIR_NAME,
                                           UPDATE_INFO_XML_FILE_NAME)
         self.conduit = conduit
@@ -50,37 +46,6 @@ class UpdateinfoXMLFileContext(FastForwardXmlFileContext):
         """
         super(UpdateinfoXMLFileContext, self)._open_metadata_file_handle()
         self.xml_generator = XMLWriter(self.metadata_file_handle, short_empty_elements=True)
-
-    def _get_repo_unit_nevra(self, erratum_unit):
-        """
-        Return a list of NEVRA dicts for units in a single repo referenced by the given errata.
-
-        Pulp errata units combine the known packages from all synced repos. Given an errata unit
-        and a repo, return a list of NEVRA dicts that can be used to filter out packages not
-        linked to that repo when generating a repo's updateinfo XML file.
-
-        :param erratum_unit: The erratum unit that should be written to updateinfo.xml.
-        :type erratum_unit: pulp_rpm.plugins.db.models.Errata
-
-        :return: a list of NEVRA dicts for units in a single repo referenced by the given errata
-        :rtype: list
-        """
-        nevra_in_repo_and_pkglist = []
-        for pkglist in erratum_unit.pkglist:
-            for pkg in pkglist['packages']:
-                pkg_nevra = models.NEVRA(name=pkg['name'], epoch=pkg['epoch'] or '0',
-                                         version=pkg['version'], release=pkg['release'],
-                                         arch=pkg['arch'])
-                if pkg_nevra in self.nevra_in_repo:
-                    pkg_dict = {
-                        'name': pkg_nevra.name,
-                        'epoch': pkg_nevra.epoch,
-                        'version': pkg_nevra.version,
-                        'release': pkg_nevra.release,
-                        'arch': pkg_nevra.arch,
-                    }
-                    nevra_in_repo_and_pkglist.append(pkg_dict)
-        return nevra_in_repo_and_pkglist
 
     def _get_package_checksum_tuple(self, package):
         """
@@ -133,13 +98,16 @@ class UpdateinfoXMLFileContext(FastForwardXmlFileContext):
 
         return package_checksum_tuple
 
-    def add_unit_metadata(self, item):
+    def add_unit_metadata(self, item, filtered_pkglist):
         """
         Write the XML representation of erratum_unit to self.metadata_file_handle
         (updateinfo.xml.gx).
 
         :param item: The erratum unit that should be written to updateinfo.xml.
         :type  item: pulp_rpm.plugins.db.models.Errata
+        :param filtered_pkglist: The pkglist containing unique non-empty collections
+                                with packages which are present in repo.
+        :type filtered_pkglist: dict
         """
         erratum_unit = item
         update_attributes = {'status': erratum_unit.status,
@@ -179,56 +147,34 @@ class UpdateinfoXMLFileContext(FastForwardXmlFileContext):
             self.xml_generator.completeElement('reference', reference_attributes, '')
         self.xml_generator.endElement('references')
 
-        # If we can pull a repo_id off the conduit, use that to generate repo-specific nevra
-        if self.conduit and hasattr(self.conduit, 'repo_id'):
-            repo_unit_nevra = self._get_repo_unit_nevra(erratum_unit)
-        else:
-            repo_unit_nevra = None
+        self.xml_generator.startElement('pkglist')
+        collection_attributes = {}
+        short = filtered_pkglist.get('short')
+        if short is not None:
+            collection_attributes['short'] = short
+        self.xml_generator.startElement('collection', collection_attributes)
+        self.xml_generator.completeElement('name', {}, filtered_pkglist['name'])
 
-        seen_pkglists = set()
-        for pkglist in erratum_unit.pkglist:
-            packages = tuple(sorted(p['filename'] for p in pkglist['packages']))
-            if packages in seen_pkglists:
-                continue
-            seen_pkglists.add(packages)
+        for package in filtered_pkglist['packages']:
+            package_attributes = {'name': package['name'],
+                                  'version': package['version'],
+                                  'release': package['release'],
+                                  'epoch': package['epoch'] or '0',
+                                  'arch': package['arch'],
+                                  'src': package.get('src', '') or ''}
+            self.xml_generator.startElement('package', package_attributes)
+            self.xml_generator.completeElement('filename', {}, package['filename'])
 
-            self.xml_generator.startElement('pkglist')
-            collection_attributes = {}
-            short = pkglist.get('short')
-            if short is not None:
-                collection_attributes['short'] = short
-            self.xml_generator.startElement('collection', collection_attributes)
-            self.xml_generator.completeElement('name', {}, pkglist['name'])
+            package_checksum_tuple = self._get_package_checksum_tuple(package)
+            if package_checksum_tuple:
+                checksum_type, checksum_value = package_checksum_tuple
+                sum_attributes = {'type': checksum_type}
+                self.xml_generator.completeElement('sum', sum_attributes, checksum_value)
 
-            for package in pkglist['packages']:
-                package_attributes = {'name': package['name'],
-                                      'version': package['version'],
-                                      'release': package['release'],
-                                      'epoch': package['epoch'] or '0',
-                                      'arch': package['arch'],
-                                      'src': package.get('src', '') or ''}
-                if repo_unit_nevra is not None:
-                    # If repo_unit_nevra can be used for comparison, take the src attr out of a
-                    # copy of this package's attrs to get a nevra dict for comparison
-                    package_nevra = package_attributes.copy()
-                    del(package_nevra['src'])
-                    if package_nevra not in repo_unit_nevra:
-                        # current package not in the specified repo, don't add it to the output
-                        continue
+            if package.get('reboot_suggested'):
+                self.xml_generator.completeElement('reboot_suggested', {}, 'True')
+            self.xml_generator.endElement('package')
 
-                self.xml_generator.startElement('package', package_attributes)
-                self.xml_generator.completeElement('filename', {}, package['filename'])
-
-                package_checksum_tuple = self._get_package_checksum_tuple(package)
-                if package_checksum_tuple:
-                    checksum_type, checksum_value = package_checksum_tuple
-                    sum_attributes = {'type': checksum_type}
-                    self.xml_generator.completeElement('sum', sum_attributes, checksum_value)
-
-                if package.get('reboot_suggested'):
-                    self.xml_generator.completeElement('reboot_suggested', {}, 'True')
-                self.xml_generator.endElement('package')
-
-            self.xml_generator.endElement('collection')
-            self.xml_generator.endElement('pkglist')
+        self.xml_generator.endElement('collection')
+        self.xml_generator.endElement('pkglist')
         self.xml_generator.endElement('update')

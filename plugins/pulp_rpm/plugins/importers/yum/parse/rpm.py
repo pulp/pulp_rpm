@@ -44,9 +44,11 @@ def get_package_xml(pkg_path, sumtype=util.TYPE_SHA256):
         return {}
     # RHEL6 createrepo throws a ValueError if _cachedir is not set
     po._cachedir = None
-    primary_xml_snippet = change_location_tag(po.xml_dump_primary_metadata(), pkg_path)
+    primary_xml_snippet = po.xml_dump_primary_metadata()
+    primary_xml_snippet = primary_xml_snippet.decode('utf-8', 'replace')
+    primary_xml_snippet = change_location_tag(primary_xml_snippet, pkg_path)
     metadata = {
-        'primary': primary_xml_snippet,
+        'primary': primary_xml_snippet.encode('utf-8'),
         'filelists': po.xml_dump_filelists_metadata(),
         'other': po.xml_dump_other_metadata(),
     }
@@ -58,45 +60,18 @@ def change_location_tag(primary_xml_snippet, relpath):
     Transform the <location> tag to strip out leading directories and add `Packages/<first_letter>`.
 
     :param primary_xml_snippet: snippet of primary xml text for a single package
-    :type  primary_xml_snippet: str
+    :type  primary_xml_snippet: unicode
 
     :param relpath: Package's 'relativepath'
-    :type  relpath: str
+    :type  relpath: unicode
     """
-
     start_index = primary_xml_snippet.find("<location ")
     end_index = primary_xml_snippet.find("/>", start_index) + 2  # adjust to end of closing tag
 
-    first_portion = string_to_unicode(primary_xml_snippet[:start_index])
-    end_portion = string_to_unicode(primary_xml_snippet[end_index:])
-    location = string_to_unicode("""<location href="%s"/>""" % (
-        file_utils.make_packages_relative_path(relpath)))
+    first_portion = primary_xml_snippet[:start_index]
+    end_portion = primary_xml_snippet[end_index:]
+    location = """<location href="%s"/>""" % file_utils.make_packages_relative_path(relpath)
     return first_portion + location + end_portion
-
-
-ENCODING_LIST = ('utf8', 'iso-8859-1')
-
-
-def string_to_unicode(data):
-    """
-    Make a best effort to decode a string, trying encodings in a sensible order
-    based on unscientific expectations of each one's probability of use.
-    ISO 8859-1 (aka latin1) will never fail, so this will always return some
-    unicode object. Lack of decoding error does not mean decoding was correct
-    though.
-
-    :param data:        string to decode
-    :type  data:        str
-
-    :return: data as a unicode object
-    :rtype:  unicode
-    """
-    for code in ENCODING_LIST:
-        try:
-            return data.decode(code)
-        except UnicodeError:
-            # try others
-            continue
 
 
 def package_headers(filename):

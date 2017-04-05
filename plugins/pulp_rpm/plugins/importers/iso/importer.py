@@ -1,5 +1,3 @@
-from gettext import gettext as _
-
 from mongoengine import NotUniqueError
 
 from pulp.common import config as config_utils
@@ -82,6 +80,8 @@ class ISOImporter(Importer):
             criteria = UnitAssociationCriteria(type_ids=[ids.TYPE_ID_ISO])
             units = import_conduit.get_source_units(criteria=criteria)
 
+        units = list(units)
+
         for u in units:
             import_conduit.associate_unit(u)
 
@@ -129,10 +129,14 @@ class ISOImporter(Importer):
         :param config: plugin configuration for the repository
         :type  config: pulp.plugins.config.PluginCallConfiguration
         """
-        if models.ISO.objects.filter(**unit_key).count() > 0:
-            return {'success_flag': False, 'summary': _('ISO already exists'), 'details': None}
+        qs = models.ISO.objects.filter(**unit_key)
+        if qs:
+            # iso with this key already exists, use it
+            iso = qs.first()
+        else:
+            # this is a new ISO, create it
+            iso = models.ISO(**unit_key)
 
-        iso = models.ISO(**unit_key)
         validate = config.get_boolean(importer_constants.KEY_VALIDATE)
         validate = validate if validate is not None else constants.CONFIG_VALIDATE_DEFAULT
         try:

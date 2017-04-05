@@ -6,13 +6,13 @@ import tempfile
 import unittest
 from xml.etree import cElementTree as et
 
-from mock import Mock, patch
+from mock import patch
 from pulp.plugins.model import Unit
 
 from pulp_rpm.common.ids import TYPE_ID_RPM
 from pulp_rpm.devel.skip import skip_broken
 from pulp_rpm.plugins.distributors.yum.metadata.metadata import (
-    MetadataFileContext, PreGeneratedMetadataContext, REPO_DATA_DIR_NAME)
+    MetadataFileContext, REPO_DATA_DIR_NAME)
 from pulp_rpm.plugins.distributors.yum.metadata.prestodelta import (
     PrestodeltaXMLFileContext, PRESTO_DELTA_FILE_NAME)
 from pulp_rpm.plugins.distributors.yum.metadata.repomd import (
@@ -261,60 +261,6 @@ class YumDistributorMetadataTests(unittest.TestCase):
 
         self.assertEqual(context.metadata_file_path, path)
 
-    # -- pre-generated metadata context tests ----------------------------------
-
-    def test_pre_generated_metadata(self):
-
-        path = os.path.join(self.metadata_file_dir, 'pre-gen.xml')
-        context = PreGeneratedMetadataContext(path)
-        unit = self._generate_rpm('test_rpm')
-
-        context._open_metadata_file_handle()
-        context._add_unit_pre_generated_metadata('primary', unit)
-        context._close_metadata_file_handle()
-
-        self.assertEqual(os.path.getsize(path), len('PRIMARY'))
-
-    def test_pre_generated_metadata_no_repodata(self):
-
-        path = os.path.join(self.metadata_file_dir, 'no-repodata.xml')
-        context = PreGeneratedMetadataContext(path)
-        unit = self._generate_rpm('no_repodata')
-
-        unit.metadata.pop('repodata')
-
-        context._open_metadata_file_handle()
-        context._add_unit_pre_generated_metadata('primary', unit)
-        context._close_metadata_file_handle()
-
-        self.assertEqual(os.path.getsize(path), 0)
-
-    def test_pre_generated_metadata_wrong_category(self):
-
-        path = os.path.join(self.metadata_file_dir, 'wrong-category.xml')
-        context = PreGeneratedMetadataContext(path)
-        unit = self._generate_rpm('wrong_category')
-
-        context._open_metadata_file_handle()
-        context._add_unit_pre_generated_metadata('not_found', unit)
-        context._close_metadata_file_handle()
-
-        self.assertEqual(os.path.getsize(path), 0)
-
-    def test_pre_generated_metadata_not_string(self):
-
-        path = os.path.join(self.metadata_file_dir, 'not-string.xml')
-        context = PreGeneratedMetadataContext(path)
-        unit = self._generate_rpm('not_string')
-
-        unit.metadata['repodata']['whatisthis'] = 1
-
-        context._open_metadata_file_handle()
-        context._add_unit_pre_generated_metadata('whatisthis', unit)
-        context._close_metadata_file_handle()
-
-        self.assertEqual(os.path.getsize(path), 0)
-
     # -- updateinfo.xml testing ------------------------------------------------
 
     def test_updateinfo_file_creation(self):
@@ -323,7 +269,7 @@ class YumDistributorMetadataTests(unittest.TestCase):
                             REPO_DATA_DIR_NAME,
                             UPDATE_INFO_XML_FILE_NAME)
 
-        context = UpdateinfoXMLFileContext(self.metadata_file_dir, set())
+        context = UpdateinfoXMLFileContext(self.metadata_file_dir)
 
         context._open_metadata_file_handle()
         context._close_metadata_file_handle()
@@ -376,9 +322,9 @@ class YumDistributorMetadataTests(unittest.TestCase):
         # just checking
         self.assertEqual(erratum_unit.unit_key['errata_id'], 'RHEA-2010:9999')
 
-        context = UpdateinfoXMLFileContext(self.metadata_file_dir, set(), checksum_type='md5')
+        context = UpdateinfoXMLFileContext(self.metadata_file_dir, checksum_type='md5')
         context._open_metadata_file_handle()
-        context.add_unit_metadata(erratum_unit)
+        context.add_unit_metadata(erratum_unit, erratum_unit.pkglist[0])
         context._close_metadata_file_handle()
 
         self.assertNotEqual(os.path.getsize(path), 0)
@@ -393,95 +339,9 @@ class YumDistributorMetadataTests(unittest.TestCase):
         self.assertEqual(content.count('version="1"'), 1)
         self.assertEqual(content.count('<id>RHEA-2010:9999</id>'), 1)
         self.assertEqual(content.count('<collection short="F13PTP">'), 1)
+        self.assertEqual(content.count('<name>F13 Pulp Test Packages</name>'), 1)
         self.assertEqual(content.count('<package'), 2)
         self.assertEqual(content.count('<sum type="md5">f3c197a29d9b66c5b65c5d62b25db5b4</sum>'), 1)
-
-    @patch.object(UpdateinfoXMLFileContext, '_get_repo_unit_nevra')
-    def test_updateinfo_unit_metadata_with_repo(self, mock__get_repo_unit_nevra):
-
-        path = os.path.join(self.metadata_file_dir,
-                            REPO_DATA_DIR_NAME,
-                            UPDATE_INFO_XML_FILE_NAME)
-
-        handle = open(os.path.join(DATA_DIR, 'updateinfo.xml'), 'r')
-        generator = packages.package_list_generator(handle, 'update',
-                                                    updateinfo.process_package_element)
-
-        # mock out the repo/unit nevra matcher so that only one unit in the referenced errata
-        # is included in the output updateinfo XML
-        mock__get_repo_unit_nevra.return_value = [
-            {'name': 'patb', 'epoch': '0', 'version': '0.1',
-             'release': '2', 'arch': 'x86_64'},
-        ]
-
-        erratum_unit = next(generator)
-
-        # just checking
-        self.assertEqual(erratum_unit.unit_key['errata_id'], 'RHEA-2010:9999')
-
-        mock_conduit = Mock()
-        mock_conduit.repo_id = 'mock_conduit_repo'
-        context = UpdateinfoXMLFileContext(self.metadata_file_dir, set(),
-                                           conduit=mock_conduit, checksum_type='md5')
-        context._open_metadata_file_handle()
-        context.add_unit_metadata(erratum_unit)
-        context._close_metadata_file_handle()
-
-        self.assertNotEqual(os.path.getsize(path), 0)
-
-        updateinfo_handle = gzip.open(path, 'r')
-        content = updateinfo_handle.read()
-        updateinfo_handle.close()
-
-        self.assertEqual(content.count('from="enhancements@redhat.com"'), 1)
-        self.assertEqual(content.count('status="final"'), 1)
-        self.assertEqual(content.count('type="enhancements"'), 1)
-        self.assertEqual(content.count('version="1"'), 1)
-        self.assertEqual(content.count('<id>RHEA-2010:9999</id>'), 1)
-        self.assertEqual(content.count('<collection short="F13PTP">'), 1)
-        self.assertEqual(content.count('<package'), 1)
-        self.assertEqual(content.count('<sum type="md5">f3c197a29d9b66c5b65c5d62b25db5b4</sum>'), 1)
-
-    def test_updateinfo_get_repo_unit_nevra_return(self):
-        nevra_fields = ('name', 'epoch', 'version', 'release', 'arch')
-        unit1_nevra = ('n1', 'e1', 'v1', 'r1', 'a1')
-        unit1_nevra_dict = dict(zip(nevra_fields, unit1_nevra))
-        unit2_nevra = ('n2', 'e2', 'v2', 'r2', 'a2')
-        unit2_nevra_dict = dict(zip(nevra_fields, unit2_nevra))
-
-        erratum_unit = Mock()
-        erratum_unit.pkglist = [{'packages': [
-            unit1_nevra_dict,
-            unit2_nevra_dict,
-        ]}]
-
-        context = UpdateinfoXMLFileContext(self.metadata_file_dir, set([unit1_nevra]))
-        repo_unit_nevra = context._get_repo_unit_nevra(erratum_unit)
-
-        self.assertEqual(len(repo_unit_nevra), 1)
-        self.assertTrue(unit1_nevra_dict in repo_unit_nevra)
-        self.assertTrue(unit2_nevra_dict not in repo_unit_nevra)
-
-    def test_updateinfo_get_repo_unit_nevra_no_epoch(self):
-        """
-        Test that epoch defaults to 0 and corresponding erratum and RPM unit match
-        """
-        nevra_fields = ('name', 'epoch', 'version', 'release', 'arch')
-        erratum_unit_nevra = ('n1', None, 'v1', 'r1', 'a1')
-        erratum_unit_nevra_dict = dict(zip(nevra_fields, erratum_unit_nevra))
-        rpm_unit_nevra = ('n1', '0', 'v1', 'r1', 'a1')
-        rpm_unit_nevra_dict = dict(zip(nevra_fields, rpm_unit_nevra))
-
-        erratum_unit = Mock()
-        erratum_unit.pkglist = [{'packages': [
-            erratum_unit_nevra_dict,
-        ]}]
-
-        context = UpdateinfoXMLFileContext(self.metadata_file_dir, set([rpm_unit_nevra]))
-        repo_unit_nevra = context._get_repo_unit_nevra(erratum_unit)
-
-        self.assertEqual(len(repo_unit_nevra), 1)
-        self.assertTrue(rpm_unit_nevra_dict in repo_unit_nevra)
 
     # -- prestodelta.xml testing -----------------------------------------------
 
