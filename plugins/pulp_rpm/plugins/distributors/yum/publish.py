@@ -16,7 +16,7 @@ from pulp.server.db import model
 from pulp.server.exceptions import InvalidValue, PulpCodedException
 from pulp.server.controllers import repository as repo_controller
 
-from pulp_rpm.common import constants, ids
+from pulp_rpm.common import constants, ids, file_utils
 from pulp_rpm.yum_plugin import util
 from pulp_rpm.plugins import error_codes
 from pulp_rpm.plugins.db import models
@@ -63,7 +63,6 @@ class BaseYumRepoPublisher(platform_steps.PluginStep):
         super(BaseYumRepoPublisher, self).__init__(constants.PUBLISH_REPO_STEP, repo,
                                                    publish_conduit, config,
                                                    plugin_type=distributor_type, **kwargs)
-
         self.repomd_file_context = None
         self.checksum_type = None
 
@@ -475,7 +474,8 @@ class PublishRpmStep(platform_steps.UnitModelPluginStep):
         """
         unit = item
         source_path = unit._storage_path
-        destination_path = os.path.join(self.get_working_dir(), unit.filename)
+        relative_path = file_utils.make_packages_relative_path(unit.filename)
+        destination_path = os.path.join(self.get_working_dir(), relative_path)
         plugin_misc.create_symlink(source_path, destination_path)
         for package_dir in self.dist_step.package_dirs:
             destination_path = os.path.join(package_dir, unit.filename)
@@ -588,32 +588,34 @@ class PublishErrataStep(platform_steps.UnitModelPluginStep):
         super(PublishErrataStep, self).__init__(constants.PUBLISH_ERRATA_STEP, [models.Errata],
                                                 **kwargs)
         self.context = None
+        self.repo_unit_nevra = None
         self.description = _('Publishing Errata')
-        self.process_main = None
 
     def initialize(self):
         """
         Initialize the UpdateInfo file and set the method used to process the unit to the
         one that is built into the UpdateinfoXMLFileContext
         """
-        repo_id = self.get_repo().id
-        nevra_fields = ('name', 'epoch', 'version', 'release', 'arch')
-        querysets = repo_controller.get_unit_model_querysets(repo_id, models.RPM)
-        nevra_scalars = itertools.chain(*[q.scalar(*nevra_fields) for q in querysets])
-        nevra_in_repo = set()
-        for scalar in nevra_scalars:
-            nevra_in_repo.add(models.NEVRA(*scalar))
-
         checksum_type = self.parent.get_checksum_type()
         updateinfo_checksum_type = self.get_config().get('updateinfo_checksum_type')
-        self.context = UpdateinfoXMLFileContext(self.get_working_dir(), nevra_in_repo,
-                                                checksum_type, self.get_conduit(),
-                                                updateinfo_checksum_type)
+        self.context = UpdateinfoXMLFileContext(self.get_working_dir(), checksum_type,
+                                                self.get_conduit(), updateinfo_checksum_type)
         self.context.initialize()
+        self.repo_unit_nevra = self._get_repo_unit_nevra(self.get_repo().id)
 
-        # set the self.process_unit method to the corresponding method on the
-        # UpdateInfoXMLFileContext as there is no other processing to be done for each unit.
-        self.process_main = self.context.add_unit_metadata
+    def process_main(self, item=None):
+        """
+        Publish errata only in case it is going to contain at least one package in its pkglist.
+
+        :param item: the erratum unit to process
+        :type item: pulp_rpm.plugins.db.models.Errata
+        """
+        erratum_unit = item
+        if erratum_unit:
+            pkglist_to_publish = self._get_pkglist_to_publish(erratum_unit)
+            if pkglist_to_publish.get('packages'):
+                # only publish this errata if it references packages in the repo being published
+                self.context.add_unit_metadata(erratum_unit, pkglist_to_publish)
 
     def finalize(self):
         """
@@ -624,6 +626,81 @@ class PublishErrataStep(platform_steps.UnitModelPluginStep):
             self.parent.repomd_file_context.\
                 add_metadata_file_metadata('updateinfo', self.context.metadata_file_path,
                                            self.context.checksum)
+
+    def _get_repo_unit_nevra(self, repo_id):
+        """
+        Return a set of NEVRA tuples for units in a single repo referenced by the given errata.
+
+        Pulp errata units combine the known packages from all synced repos. Given an errata unit
+        and a repo, return a set of NEVRA tuples that can be used to filter out packages not
+        linked to that repo when generating a repo's updateinfo XML file.
+
+        :param repo_id: Repository ID for which to return the set of nevra
+        :type repo_id: str
+
+        :return: a set of NEVRA dicts for units in a single repo referenced by the given errata
+        :rtype: set of pulp_rpm.plugins.models.NEVRA tuples
+        """
+        repo_unit_nevra = set()
+        querysets = repo_controller.get_unit_model_querysets(repo_id, models.RPM)
+        nevra_scalars = itertools.chain(*[q.scalar(*models.NEVRA._fields) for q in querysets])
+        for scalar in nevra_scalars:
+            repo_unit_nevra.add(models.NEVRA(*scalar))
+        return repo_unit_nevra
+
+    def _get_pkglist_to_publish(self, erratum_unit):
+        """
+        Make a list of packages which will be listed in the published erratum.
+
+        Only packages contained in the repository being published will be included in this
+        errata's pkglist.
+
+        This merges multiple Pulp pkglists into a single pkglist for publication.
+
+        :param erratum_unit: the erratum unit to analyze
+        :param type: pulp_rpm.plugins.db.models.Errata
+        :return: pkglist to publish
+        :rtype: dict
+        """
+        repo_id = self.get_repo().id
+
+        new_pkglist = {
+            # Due to a quirk in how yum merges pkglists in errata that appear in multiple
+            # repos, the pkglist collection name needs to be unique per-repo when published.
+            # repo_id is already unique and presumably validated, so use that. This is normally a
+            # human-readable string, like "A Human-Readable Repository Description". Pulp doesn't
+            # require storing that sort of string with a repo, so repo_id is the best we've got.
+            'name': repo_id,
+
+            # The repo "short name", like 'repo-name-short'. It also makes sense to use repo_id
+            # here. This appears to be unused by yum when parsing errata, but consistency with the
+            # "long" name field should help in the event that some consumer does use this field.
+            'short': repo_id,
+
+            # Related to the need for a unique collection name, errata should only contain one
+            # pkglist. While filtering packages to include in this errata, add them to this single
+            # list of packages. pkglists can contain multiple collections of packages, but limiting
+            # the published errata to one collection per pkglist and one pkglist per errata per
+            # repository makes the collection name uniqueness requirement easy to fulfill using
+            # the repo_id only.
+            'packages': [],
+
+        }
+
+        if not self.repo_unit_nevra:
+            # if repo_unit_nevra is empty, this repo has no RPMs, which makes filtering easy:
+            # no pkglist will ever contain packages, so short out and return the empty pkglist
+            return new_pkglist
+
+        seen_packages = set()
+        for pkglist in erratum_unit.pkglist:
+            for package in pkglist.get('packages', []):
+                if package['filename'] not in seen_packages:
+                    seen_packages.add(package['filename'])
+                    if models.NEVRA._fromdict(package) in self.repo_unit_nevra:
+                        new_pkglist['packages'].append(package)
+
+        return new_pkglist
 
 
 class PublishRpmAndDrpmStepIncremental(platform_steps.UnitModelPluginStep):
@@ -666,7 +743,7 @@ class PublishRpmAndDrpmStepIncremental(platform_steps.UnitModelPluginStep):
         """
         unit = item
         source_path = unit._storage_path
-        relative_path = unit.filename
+        relative_path = file_utils.make_packages_relative_path(unit.filename)
         destination_path = os.path.join(self.get_working_dir(), relative_path)
         plugin_misc.create_symlink(source_path, destination_path)
 

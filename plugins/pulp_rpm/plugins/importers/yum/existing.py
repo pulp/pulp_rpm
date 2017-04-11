@@ -100,8 +100,9 @@ def check_all_and_associate(wanted, conduit, config, download_deferred, catalog)
     also associates the unit to the given repo. Note that the check for the actual file
     is performed only for the supported unit types.
 
-    :param wanted:            iterable of units as namedtuples
-    :type  wanted:            iterable
+    :param wanted:            dict where keys are units as namedtuples, and values are
+                              WantedUnitInfo instances
+    :type  wanted:            dict
     :param conduit:           repo sync conduit
     :type  conduit:           pulp.plugins.conduits.repo_sync.RepoSync
     :param config:            configuration instance passed to the importer
@@ -115,27 +116,40 @@ def check_all_and_associate(wanted, conduit, config, download_deferred, catalog)
                 named tuples received as input were not found on the server.
     :rtype:     set
     """
-    sorted_units = _sort_by_type(wanted)
+    rpm_drpm_srpm = (ids.TYPE_ID_RPM, ids.TYPE_ID_SRPM, ids.TYPE_ID_DRPM)
+    all_associated_units = set()
+    for unit_type in rpm_drpm_srpm:
+        units_generator = repo_controller.get_associated_unit_ids(conduit.repo.repo_id, unit_type)
+        all_associated_units.update(units_generator)
+
+    sorted_units = _sort_by_type(wanted.iterkeys())
     for unit_type, values in sorted_units.iteritems():
         model = plugin_api.get_unit_model_by_id(unit_type)
         # FIXME "fields" does not get used, but it should
         # fields = model.unit_key_fields + ('_storage_path',)
         unit_generator = (model(**unit_tuple._asdict()) for unit_tuple in values.copy())
         for unit in units_controller.find_units(unit_generator):
-            # Existing RPMs, DRPMs and SRPMs are disqualified when the associated
-            # package file does not exist and downloading is not deferred.
-            if not download_deferred and unit_type in (
-                    ids.TYPE_ID_RPM, ids.TYPE_ID_SRPM, ids.TYPE_ID_DRPM):
-                if unit._storage_path is None or not os.path.isfile(unit._storage_path):
+            is_rpm_drpm_srpm = unit_type in rpm_drpm_srpm
+            file_exists = unit._storage_path is not None and os.path.isfile(unit._storage_path)
+            if is_rpm_drpm_srpm:
+                # no matter what is the download policy, if existing unit has a valid storage_path,
+                # we need to set the downloaded flag to True
+                if file_exists and not unit.downloaded:
+                    unit.downloaded = True
+                    unit.save()
+                # Existing RPMs, DRPMs and SRPMs are disqualified when the associated
+                # package file does not exist and downloading is not deferred.
+                if not download_deferred and not file_exists:
                     continue
-            catalog.add(unit)
-            if rpm_parse.signature_enabled(config):
-                try:
-                    rpm_parse.filter_signature(unit, config)
-                except PulpCodedException as e:
-                    _LOGGER.debug(e)
-                    continue
-            repo_controller.associate_single_unit(conduit.repo, unit)
+            catalog.add(unit, wanted[unit.unit_key_as_named_tuple].download_path)
+            if unit.id not in all_associated_units:
+                if rpm_parse.signature_enabled(config):
+                    try:
+                        rpm_parse.filter_signature(unit, config)
+                    except PulpCodedException as e:
+                        _LOGGER.debug(e)
+                        continue
+                repo_controller.associate_single_unit(conduit.repo, unit)
             values.discard(unit.unit_key_as_named_tuple)
     still_wanted = set()
     still_wanted.update(*sorted_units.values())

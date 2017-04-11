@@ -6,6 +6,8 @@ Contains logic surrounding which nectar downloader implementation to use.
 
 import urlparse
 
+from gettext import gettext as _
+
 from nectar.downloaders.local import LocalFileDownloader
 from nectar.downloaders.threaded import HTTPThreadedDownloader
 
@@ -38,6 +40,9 @@ def create_downloader(repo_url, nectar_config, event_listener=None):
     parsed = urlparse.urlparse(repo_url)
 
     if parsed.scheme not in SCHEME_DOWNLOADERS:
-        raise ValueError('Unsupported scheme: %s' % parsed.scheme)
+        supported = '|'.join(SCHEME_DOWNLOADERS.keys())
+        raise ValueError(
+            _('Invalid feed URL - scheme must be: ({s})').format(
+                s=supported))
 
     return SCHEME_DOWNLOADERS[parsed.scheme](nectar_config, event_listener=event_listener)

@@ -1,1 +1,1 @@
-<pulp_distribution version="1"><file>foo/bar.txt</file><file>baz/qux.txt</file></pulp_distribution>
+<pulp_distribution version="1"><file>foo/bar.txt</file><file>baz/qux.txt</file><file>repodata/abc.txt</file></pulp_distribution>

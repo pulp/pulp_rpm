@@ -1,5 +1,6 @@
 import contextlib
 import functools
+import itertools
 import logging
 import os
 import random
@@ -8,6 +9,7 @@ import shutil
 import tempfile
 import traceback
 
+from collections import namedtuple
 from gettext import gettext as _
 from cStringIO import StringIO
 from urlparse import urljoin
@@ -37,6 +39,13 @@ from pulp_rpm.plugins.importers.yum.utils import RepoURLModifier
 
 
 _logger = logging.getLogger(__name__)
+
+
+# Data about wanted units.
+# size - The size in bytes for the associated file.
+# download_path - The relative path within the upstream YUM repository
+#                 used to construct the download URL.
+WantedUnitInfo = namedtuple('WantedUnitInfo', ('size', 'download_path'))
 
 
 class RepoSync(object):
@@ -138,6 +147,9 @@ class RepoSync(object):
             # Try treating it as a mirrorlist.
             urls = self._parse_as_mirrorlist(repo_url)
             if urls:
+                # set flag to True so when we would iterate through list of urls
+                # we would not skip repomd steps
+                self.skip_repomd_steps = False
                 return urls
 
             # It's not a mirrorlist either, so skip all repomd steps.
@@ -231,6 +243,7 @@ class RepoSync(object):
         # was not able to find any valid url
         if not self.sync_feed:
             raise PulpCodedException(error_code=error_codes.RPM1004, reason='Not found')
+
         url_count = 0
         for url in self.sync_feed:
             # Verify that we have a feed url.
@@ -241,6 +254,7 @@ class RepoSync(object):
             # we delete below
             self.tmp_dir = tempfile.mkdtemp(dir=self.working_dir)
             url_count += 1
+            is_last_mirror = url_count == len(self.sync_feed)
             try:
                 with self.update_state(self.progress_report['metadata']):
                     metadata_files = self.check_metadata(url)
@@ -257,7 +271,7 @@ class RepoSync(object):
                 _logger.info(_('Downloading additional units.'))
 
                 with self.update_state(self.distribution_report,
-                                       models.Distribution._content_type_id) as skip:
+                                       ids.TYPE_ID_DISTRO) as skip:
                     if not skip:
                         dist_sync = DistSync(self, url)
                         dist_sync.run()
@@ -282,14 +296,20 @@ class RepoSync(object):
                     if not (skip or self.skip_repomd_steps):
                         purge.remove_repo_duplicate_nevra(self.conduit.repo_id)
 
+                # skip to the next URL in case:
+                #  - metadata was not found
+                #  - it was not possible to sync distribution that does not have yum repo metadata
+                #  - it was not the last mirror in the list
+                if not self.metadata_found and not is_last_mirror:
+                    continue
+
             except PulpCodedException, e:
                 # Check if the caught exception indicates that the mirror is bad.
                 # Try next mirror in the list without raising the exception.
                 # In case it was the last mirror in the list, raise the exception.
                 bad_mirror_exceptions = [error_codes.RPM1004, error_codes.RPM1006]
-                if (e.error_code in bad_mirror_exceptions) and \
-                        url_count != len(self.sync_feed):
-                            continue
+                if (e.error_code in bad_mirror_exceptions) and not is_last_mirror:
+                    continue
                 else:
                     self._set_failed_state(e)
                     raise
@@ -374,8 +394,11 @@ class RepoSync(object):
             # remember the reason so it can be reported to the user if no treeinfo is found either.
             self.repomd_not_found_reason = e.message
             _logger.debug(_('No yum repo metadata found.'))
+            # set flag to True in order to skip repomd steps, since metadata was not found
+            self.skip_repomd_steps = True
             return
 
+        self.skip_repomd_steps = False
         self.metadata_found = True
         _logger.info(_('Parsing metadata.'))
 
@@ -528,7 +551,9 @@ class RepoSync(object):
         failed_signature_check = 0
         new_report = []
         for error in self.progress_report['content']['error_details']:
-            if error[constants.ERROR_CODE] == constants.ERROR_KEY_ID_FILTER:
+            # Nectar doesn't return error reports in the same format as other parts of the code
+            # Use getattr() here to avoid KeyErrors
+            if getattr(error, constants.ERROR_CODE, None) == constants.ERROR_KEY_ID_FILTER:
                 failed_signature_check += 1
             else:
                 new_report.append(error)
@@ -541,7 +566,7 @@ class RepoSync(object):
                             % failed_signature_check))
         self.conduit.build_success_report({}, {})
         # removes unwanted units according to the config settings
-        purge.purge_unwanted_units(metadata_files, self.conduit, self.config)
+        purge.purge_unwanted_units(metadata_files, self.conduit, self.config, catalog)
 
     def _decide_what_to_download(self, metadata_files, catalog):
         """
@@ -584,6 +609,8 @@ class RepoSync(object):
 
         :return:    tuple of (set(RPM.NAMEDTUPLEs), number of RPMs, total size in bytes)
         :rtype:     tuple
+
+        :raises PulpCodedException: if there is some inconsistency in metadata
         """
         if ids.TYPE_ID_RPM in self.config.get(constants.CONFIG_SKIP, []):
             _logger.debug('skipping RPM sync')
@@ -593,15 +620,24 @@ class RepoSync(object):
             # scan through all the metadata to decide which packages to download
             package_info_generator = packages.package_list_generator(
                 primary_file_handle, primary.PACKAGE_TAG, primary.process_package_element)
-            wanted = self._identify_wanted_versions(package_info_generator)
+
+            # count packages while iterating over primary metadata and deciding on wanted packages
+            counter = itertools.count()
+            wrapped_generator = itertools.imap(lambda x, y: x, package_info_generator, counter)
+            wanted = self._identify_wanted_versions(wrapped_generator)
+            primary_rpm_count = counter.next()
+            if primary_rpm_count != metadata_files.rpm_count:
+                reason = 'metadata is missing for some packages in filelists.xml and in other.xml'
+                raise PulpCodedException(error_code=error_codes.RPM1015, reason=reason)
+
             # check for the units that are not in the repo, but exist on the server
             # and associate them to the repo
             to_download = existing.check_all_and_associate(
-                wanted.iterkeys(), self.conduit, self.config, self.download_deferred, catalog)
+                wanted, self.conduit, self.config, self.download_deferred, catalog)
             count = len(to_download)
             size = 0
             for unit in to_download:
-                size += wanted[unit]
+                size += wanted[unit].size
             return to_download, count, size
         finally:
             primary_file_handle.close()
@@ -641,11 +677,10 @@ class RepoSync(object):
                     # check for the units that are not in the repo, but exist on the server
                     # and associate them to the repo
                     to_download = existing.check_all_and_associate(
-                        wanted.iterkeys(), self.conduit, self.config, self.download_deferred,
-                        catalog)
+                        wanted, self.conduit, self.config, self.download_deferred, catalog)
                     count += len(to_download)
                     for unit in to_download:
-                        size += wanted[unit]
+                        size += wanted[unit].size
                 finally:
                     presto_file_handle.close()
 
@@ -744,7 +779,7 @@ class RepoSync(object):
                     unit.downloaded = False
                     unit = self.add_rpm_unit(metadata_files, unit)
                     self.associate_rpm_unit(unit)
-                    catalog.add(unit)
+                    catalog.add(unit, unit.download_path)
                 return
 
             download_wrapper = alternate.Packages(
@@ -800,7 +835,7 @@ class RepoSync(object):
                             unit.downloaded = False
                             unit = self.add_rpm_unit(metadata_files, unit)
                             self.associate_rpm_unit(unit)
-                            catalog.add(unit)
+                            catalog.add(unit, unit.download_path)
                         continue
 
                     download_wrapper = packages.Packages(
@@ -1001,28 +1036,29 @@ class RepoSync(object):
         for model in package_info_generator:
             versions = wanted.setdefault(model.key_string_without_version, {})
             serialized_version = model.complete_version_serialized
-            size = model.size
+            info = WantedUnitInfo(model.size, model.download_path)
 
             # if we are limited on the number of old versions we can have,
             if number_old_versions_to_keep is not None:
                 number_to_keep = number_old_versions_to_keep + 1
                 if len(versions) < number_to_keep:
-                    versions[serialized_version] = (model.unit_key_as_named_tuple, size)
+                    versions[serialized_version] = (model.unit_key_as_named_tuple, info)
                 else:
                     smallest_version = sorted(versions.keys(), reverse=True)[:number_to_keep][-1]
                     if serialized_version > smallest_version:
                         del versions[smallest_version]
-                        versions[serialized_version] = (model.unit_key_as_named_tuple, size)
+                        versions[serialized_version] = (model.unit_key_as_named_tuple, info)
             else:
-                versions[serialized_version] = (model.unit_key_as_named_tuple, size)
+                versions[serialized_version] = (model.unit_key_as_named_tuple, info)
         ret = {}
         for units in wanted.itervalues():
-            for unit, size in units.itervalues():
-                ret[unit] = size
+            for unit, info in units.itervalues():
+                ret[unit] = info
 
         return ret
 
-    def _filtered_unit_generator(self, units, to_download=None):
+    @staticmethod
+    def _filtered_unit_generator(units, to_download=None):
         """
         Given an iterator of Package instances and a collection (preferably a
         set for performance reasons) of Packages as named tuples, this returns
@@ -1067,12 +1103,15 @@ class PackageCatalog(object):
         self.importer_id = importer_id
         self.base_url = base_url
 
-    def add(self, unit):
+    def add(self, unit, path):
         """
         Add the specified content unit to the catalog.
 
         :param unit: A unit being added.
         :type unit: pulp_rpm.plugins.db.models.RpmBase
+        :param path: The relative path within the upstream YUM repository
+#           used to construct the download URL.
+        :type path: str
         """
         unit.set_storage_path(unit.filename)
         entry = LazyCatalogEntry()
@@ -1080,7 +1119,20 @@ class PackageCatalog(object):
         entry.importer_id = str(self.importer_id)
         entry.unit_id = unit.id
         entry.unit_type_id = unit.type_id
-        entry.url = urljoin(self.base_url, unit.download_path)
+        entry.url = urljoin(self.base_url, path)
         entry.checksum = unit.checksum
         entry.checksum_algorithm = unit.checksumtype
         entry.save_revision()
+
+    def delete(self, unit):
+        """
+        Remove the catalog entry for the specified unit.
+
+        :param unit: A unit being added.
+        :type unit: pulp_rpm.plugins.db.models.RpmBase
+        """
+        qs = LazyCatalogEntry.objects.filter(
+            importer_id=str(self.importer_id),
+            unit_id=unit.id,
+            unit_type_id=unit.type_id)
+        qs.delete()

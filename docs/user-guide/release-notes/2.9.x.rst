@@ -28,7 +28,7 @@ Known Issues
 ------------
 
 Several issues were reported against Pulp 2.8 that were not included in the Pulp 2.9.0 release
-as a result of release timing. The list of :fixedbugs:`2.8.6` outlines these bugs, but
+as a result of release timing. The list of :fixedbugs_pulp_rpm:`2.8.6` outlines these bugs, but
 there is one issue in particular that can potentially break RPM repository syncing after
 upgrading: :redmine:`2048`
 

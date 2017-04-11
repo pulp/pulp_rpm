@@ -57,13 +57,17 @@ class TestRemoveMissing(TestPurgeBase):
     @mock.patch.object(purge, 'get_remote_units', autospec=True)
     @mock.patch.object(purge, 'remove_missing_units', autospec=True)
     def test_remove_missing_rpms(self, mock_remove, mock_get_remote_units):
-        purge.remove_missing_rpms(self.metadata_files, self.conduit)
+        catalog = mock.Mock()
+        purge.remove_missing_rpms(self.metadata_files, self.conduit, catalog)
 
         mock_get_remote_units.assert_called_once_with(ANY,
                                                       primary.PACKAGE_TAG,
                                                       primary.process_package_element)
-        mock_remove.assert_called_once_with(self.conduit,
-                                            models.RPM, mock_get_remote_units.return_value)
+        mock_remove.assert_called_once_with(
+            self.conduit,
+            models.RPM,
+            mock_get_remote_units.return_value,
+            catalog)
 
     @mock.patch.object(purge, 'get_remote_units', autospec=True)
     @mock.patch.object(purge, 'remove_missing_units', autospec=True)
@@ -72,12 +76,13 @@ class TestRemoveMissing(TestPurgeBase):
         Test that the purge makes the appropriate calls and that it calls
         for both of the prestodelta files
         """
-        purge.remove_missing_drpms(self.metadata_files, self.conduit)
+        catalog = mock.Mock()
+        purge.remove_missing_drpms(self.metadata_files, self.conduit, catalog)
 
         mock_get_remote_units.assert_called_with(ANY, presto.PACKAGE_TAG,
                                                  presto.process_package_element)
         self.assertEquals(2, mock_get_remote_units.call_count)
-        mock_remove.assert_called_once_with(self.conduit, models.DRPM, set())
+        mock_remove.assert_called_once_with(self.conduit, models.DRPM, set(), catalog)
 
     @mock.patch.object(purge, 'get_remote_units', autospec=True)
     @mock.patch.object(purge, 'remove_missing_units', autospec=True)
@@ -237,13 +242,14 @@ class TestRemoveOldVersions(TestPurgeBase):
 
     @skip_broken
     def test_drpm_one(self):
+        catalog = mock.Mock()
         self.conduit.get_units = mock.MagicMock(
             spec_set=self.conduit.get_units,
             side_effect=lambda criteria: self.drpms if ids.TYPE_ID_DRPM in criteria.type_ids else []
         )
         self.conduit.remove_unit = mock.MagicMock(spec_set=self.conduit.remove_unit)
 
-        purge.remove_old_versions(1, self.conduit)
+        purge.remove_old_versions(1, self.conduit, catalog)
 
         self.conduit.remove_unit.assert_any_call(self.drpms[0])
         self.conduit.remove_unit.assert_any_call(self.drpms[1])
@@ -265,9 +271,10 @@ class TestRemoveOldVersions(TestPurgeBase):
 class TestPurgeUnwantedUnits(TestPurgeBase):
     @mock.patch.object(purge, 'get_remote_units', autospec=True)
     def test_remove_missing_false(self, mock_get_remote):
+        catalog = mock.Mock()
         self.config.plugin_config[importer_constants.KEY_UNITS_REMOVE_MISSING] = False
 
-        purge.purge_unwanted_units(self.metadata_files, self.conduit, self.config)
+        purge.purge_unwanted_units(self.metadata_files, self.conduit, self.config, catalog)
 
         # this verifies that no attempt was made to remove missing units, since
         # nobody looked for missing units.
@@ -282,12 +289,13 @@ class TestPurgeUnwantedUnits(TestPurgeBase):
     def test_remove_missing_true(self, mock_remove_categories, mock_remove_groups,
                                  mock_remove_errata, mock_remove_drpms, mock_remove_rpms,
                                  mock_remove_environments):
+        catalog = mock.Mock()
         self.config.plugin_config[importer_constants.KEY_UNITS_REMOVE_MISSING] = True
 
-        purge.purge_unwanted_units(self.metadata_files, self.conduit, self.config)
+        purge.purge_unwanted_units(self.metadata_files, self.conduit, self.config, catalog)
 
-        mock_remove_rpms.assert_called_once_with(self.metadata_files, self.conduit)
-        mock_remove_drpms.assert_called_once_with(self.metadata_files, self.conduit)
+        mock_remove_rpms.assert_called_once_with(self.metadata_files, self.conduit, catalog)
+        mock_remove_drpms.assert_called_once_with(self.metadata_files, self.conduit, catalog)
         mock_remove_errata.assert_called_once_with(self.metadata_files, self.conduit)
         mock_remove_groups.assert_called_once_with(self.metadata_files, self.conduit)
         mock_remove_categories.assert_called_once_with(self.metadata_files, self.conduit)
@@ -296,8 +304,8 @@ class TestPurgeUnwantedUnits(TestPurgeBase):
     @mock.patch.object(purge, 'remove_old_versions', autospec=True)
     def test_retain_old_none(self, mock_remove_old_versions):
         self.config.plugin_config[importer_constants.KEY_UNITS_REMOVE_MISSING] = False
-
-        purge.purge_unwanted_units(self.metadata_files, self.conduit, self.config)
+        catalog = mock.Mock()
+        purge.purge_unwanted_units(self.metadata_files, self.conduit, self.config, catalog)
 
         self.assertEqual(mock_remove_old_versions.call_count, 0)
 
@@ -305,10 +313,10 @@ class TestPurgeUnwantedUnits(TestPurgeBase):
     def test_retain_old(self, mock_remove_old_versions):
         self.config.plugin_config[importer_constants.KEY_UNITS_REMOVE_MISSING] = False
         self.config.plugin_config[importer_constants.KEY_UNITS_RETAIN_OLD_COUNT] = 2
+        catalog = mock.Mock()
+        purge.purge_unwanted_units(self.metadata_files, self.conduit, self.config, catalog)
 
-        purge.purge_unwanted_units(self.metadata_files, self.conduit, self.config)
-
-        mock_remove_old_versions.assert_called_once_with(3, self.conduit)
+        mock_remove_old_versions.assert_called_once_with(3, self.conduit, catalog)
 
 
 class RemoveUnitDuplicateNevra(TestPurgeBase):

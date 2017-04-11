@@ -159,7 +159,7 @@ EXPORT_HTTPS_DIR = '/var/lib/pulp/published/https/exports/repo'
 GROUP_EXPORT_HTTP_DIR = '/var/lib/pulp/published/http/exports/repo_group'
 GROUP_EXPORT_HTTPS_DIR = '/var/lib/pulp/published/https/exports/repo_group'
 
-# Keys used for reading & writing messages from server to clinet
+# Keys used for reading & writing messages from server to client
 UNIT_KEY = 'unit_key'
 ERROR_CODE = 'error_code'
 NAME = 'name'
@@ -195,3 +195,7 @@ REPOMD_REVISION_KEY = 'repomd_revision'
 
 COMMON_NAMESPACE = 'http://linux.duke.edu/metadata/common'
 RPM_NAMESPACE = 'http://linux.duke.edu/metadata/rpm'
+
+PULP_PACKAGES_DIR = 'Packages'
+
+MANDATORY_METADATA_TYPES = ('primary', 'filelists', 'other')

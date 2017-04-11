@@ -16,7 +16,7 @@ from pulp_rpm.plugins.db import models
 from pulp_rpm.plugins import error_codes
 from pulp_rpm.plugins.importers.yum import purge, utils
 from pulp_rpm.plugins.importers.yum.parse import rpm as rpm_parse
-from pulp_rpm.plugins.importers.yum.repomd import primary, group, packages
+from pulp_rpm.plugins.importers.yum.repomd import primary, group, packages, filelists
 
 # Used when extracting metadata from an RPM
 RPMTAG_NOSOURCE = 1051
@@ -302,6 +302,9 @@ def _handle_group_category_comps(repo, type_id, unit_key, metadata, file_path, c
             unit.save()
         except NotUniqueError:
             unit = unit.__class__.objects.filter(**unit.unit_key).first()
+            for k, v in unit_data.items():
+                setattr(unit, k, v)
+            unit.save()
 
         repo_controller.associate_single_unit(repo, unit)
 
@@ -418,9 +421,10 @@ def _handle_package(repo, type_id, unit_key, metadata, file_path, conduit, confi
 
     if type_id != models.DRPM._content_type_id.default:
         # Extract/adjust the repodata snippets
-        unit.repodata = rpm_parse.get_package_xml(file_path, sumtype=unit.checksumtype)
-        _update_provides_requires(unit)
-        unit.modify_xml()
+        repodata = rpm_parse.get_package_xml(file_path, sumtype=unit.checksumtype)
+        _update_provides_requires(unit, repodata)
+        _update_files(unit, repodata)
+        unit.modify_xml(repodata)
 
     # check if the unit has duplicate nevra
     purge.remove_unit_duplicate_nevra(unit, repo)
@@ -436,7 +440,7 @@ def _handle_package(repo, type_id, unit_key, metadata, file_path, conduit, confi
     repo_controller.associate_single_unit(repo, unit)
 
 
-def _update_provides_requires(unit):
+def _update_provides_requires(unit, repodata):
     """
     Determines the provides and requires fields based on the RPM's XML snippet and updates
     the model instance.
@@ -444,8 +448,10 @@ def _update_provides_requires(unit):
     :param unit: the unit being added to Pulp; the metadata attribute must already have
                  a key called 'repodata'
     :type  unit: subclass of pulp.server.db.model.ContentUnit
+    :param repodata: xml snippets to analyze
+    :type  repodata: dict
     """
-    fake_element = utils.fake_xml_element(unit.repodata['primary'])
+    fake_element = utils.fake_xml_element(repodata['primary'])
     utils.strip_ns(fake_element)
     primary_element = fake_element.find('package')
     format_element = primary_element.find('format')
@@ -455,6 +461,22 @@ def _update_provides_requires(unit):
                         provides_element.findall('entry')) if provides_element else []
     unit.requires = map(primary._process_rpm_entry_element,
                         requires_element.findall('entry')) if requires_element else []
+
+
+def _update_files(unit, repodata):
+    """
+    Determines the files based on the RPM's XML snippet and updates the model
+    instance.
+
+    :param unit: the unit being added to Pulp; the metadata attribute must already have
+                 a key called 'repodata'
+    :type  unit: subclass of pulp.server.db.model.ContentUnit
+    :param repodata: xml snippets to analyze
+    :type  repodata: dict
+    """
+    fake_element = utils.fake_xml_element(repodata['filelists'])
+    package_element = fake_element.find('package')
+    _, unit.files = filelists.process_package_element(package_element)
 
 
 def _extract_rpm_data(type_id, rpm_filename):
@@ -528,7 +550,7 @@ def _extract_rpm_data(type_id, rpm_filename):
     rpm_data['time'] = file_stat[stat.ST_MTIME]
     rpm_data['signing_key'] = rpm_parse.package_signature(headers)
 
-    return rpm_data
+    return _encode_as_utf8(rpm_data)
 
 
 def _extract_drpm_data(drpm_filename):
@@ -576,7 +598,7 @@ def _extract_drpm_data(drpm_filename):
                                                         rpm_parse.evr_to_str(*new_evr),
                                                         drpm_data['arch'])
 
-    return drpm_data
+    return _encode_as_utf8(drpm_data)
 
 
 def _fail_report(message):
@@ -584,3 +606,23 @@ def _fail_report(message):
     # anything is actually parsing it
     details = {'errors': [message]}
     return {'success_flag': False, 'summary': '', 'details': details}
+
+
+def _encode_as_utf8(data_dict):
+    """
+    Ensure all string values in `data_dict` are encoded as utf-8.
+
+    The dict is changed in place. Any strings that are not utf-8
+    encoded, will get replacements chars, so that the locations that
+    failed to be encoded will still be visible.
+
+    :param data_dict: A ordinary dictionary.
+    :type  data_dict: dict
+
+    :return: dict with all string values utf-8 encoded.
+    :rtype:  dict
+    """
+    for key, val in data_dict.items():
+        if isinstance(val, str):
+            data_dict[key] = val.decode('utf-8', 'replace').encode('utf-8')
+    return data_dict

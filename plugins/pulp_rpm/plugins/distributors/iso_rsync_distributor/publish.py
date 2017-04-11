@@ -33,7 +33,7 @@ class ISORsyncPublisher(Publisher):
         :return: absolute path to the master publish directory of predistributor
         :rtype: str
         """
-        if self.predistributor["config"].get("http", False):
+        if self.predistributor["config"].get("serve_http", False):
             return constants.ISO_HTTP_DIR
         else:
             return constants.ISO_HTTPS_DIR

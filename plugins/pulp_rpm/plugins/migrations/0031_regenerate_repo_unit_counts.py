@@ -44,7 +44,10 @@ def migrate(*args, **kwargs):
     :type  kwargs: dict
     """
     db = connection.get_database()
-    repos_collection = db['repos']
-    for repo in repos_collection.find():
-        repo_id = repo['repo_id']
+
+    # find repos but return only repo_id using projection
+    repos_queryset = db['repos'].find({}, {'repo_id': 1})
+
+    repo_ids = [x['repo_id'] for x in repos_queryset]
+    for repo_id in repo_ids:
         rebuild_content_unit_counts(db, repo_id)

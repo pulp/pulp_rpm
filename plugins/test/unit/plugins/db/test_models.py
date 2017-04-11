@@ -13,7 +13,7 @@ from pulp.common.compat import unittest
 import pulp.common.error_codes as platform_error_codes
 from pulp.server.exceptions import PulpCodedException
 
-from pulp_rpm.common import ids
+from pulp_rpm.common import ids, constants
 from pulp_rpm.devel.skip import skip_broken
 from pulp_rpm.plugins import error_codes
 from pulp_rpm.plugins.db import models
@@ -28,6 +28,46 @@ class TestNonMetadataModel(unittest.TestCase):
         https://pulp.plan.io/issues/1792
         """
         models.NonMetadataPackage(version='1.0.0', release='2', checksumtype=None, checksum=None)
+
+
+class TestNEVRATuple(unittest.TestCase):
+    """Test that the NEVRA namedtuple properly converts to and from dictionaries"""
+    pkg_dict_noepoch = {
+        'name': 'package',
+        'version': '0.0',
+        'release': '0',
+        'arch': 'pulp',
+    }
+
+    # a tuple with correct values in the expected order
+    expected = (
+        pkg_dict_noepoch['name'],
+        '0',
+        pkg_dict_noepoch['version'],
+        pkg_dict_noepoch['release'],
+        pkg_dict_noepoch['arch'],
+    )
+
+    def _pkg_dict(self, epoch):
+        # package dict builder, DRYs inserting different values for the epoch field
+        pkg_dict = self.pkg_dict_noepoch.copy()
+        pkg_dict['epoch'] = epoch
+        return pkg_dict
+
+    def test_dict_conversion(self):
+        """ensure the correct field names are mapped to the correct values"""
+        pkg_dict = self._pkg_dict(epoch='0')
+        pkg_nevra = models.NEVRA._fromdict(pkg_dict)
+        self.assertEqual(pkg_nevra, self.expected)
+        self.assertEqual(pkg_nevra._asdict(), pkg_dict)
+
+    def test_dict_conversion_falsey_epoch(self):
+        """ensure the special handling for a "falsey" epoch (usually None) functions properly"""
+        # epoch should become string '0' in this case
+        for falsey in (0, None, False, ''):
+            pkg_dict = self._pkg_dict(epoch=falsey)
+            pkg_nevra = models.NEVRA._fromdict(pkg_dict)
+            self.assertEqual(pkg_nevra, self.expected)
 
 
 class TestNonMetadataGetOrCalculateChecksum(unittest.TestCase):
@@ -146,11 +186,11 @@ class TestRpmBaseModifyXML(unittest.TestCase):
 
     def setUp(self):
         self.unit = models.RPM()
-        self.unit.repodata['primary'] = self.PRIMARY_EXCERPT
-        self.unit.repodata['filelists'] = self.FILELISTS_EXCERPT
-        self.unit.repodata['other'] = self.OTHER_EXCERPT
         self.unit.filename = 'fixed-filename.rpm'
         self.checksum = '951e0eacf3e6e6102b10acb2e689243b5866ec2c7720e783749dbd32f4a69ab3'
+        self.repodata = {'primary': self.PRIMARY_EXCERPT,
+                         'filelists': self.FILELISTS_EXCERPT,
+                         'other': self.OTHER_EXCERPT}
 
     def assertParsable(self, text):
         try:
@@ -159,29 +199,32 @@ class TestRpmBaseModifyXML(unittest.TestCase):
             self.fail('could not parse XML')
 
     def test_update_location(self):
-        self.unit.modify_xml()
-
-        self.assertTrue('fixme' not in self.unit.repodata['primary'])
-        self.assertTrue('<location href="fixed-filename.rpm"'
-                        in self.unit.repodata['primary'])
+        self.unit.modify_xml(self.repodata)
+        primary_xml = self.unit.get_repodata('primary')
+        self.assertTrue('fixme' not in primary_xml)
+        self.assertTrue('<location href="%s/f/fixed-filename.rpm"' % (constants.PULP_PACKAGES_DIR)
+                        in primary_xml)
 
     def test_checksum_template(self):
-        self.unit.modify_xml()
-        self.assertTrue('{{ checksum }}' in self.unit.repodata['primary'])
-        self.assertTrue('{{ checksumtype }}' in self.unit.repodata['primary'])
-        self.assertTrue(self.checksum not in self.unit.repodata['primary'])
+        self.unit.modify_xml(self.repodata)
+        primary_xml = self.unit.get_repodata('primary')
+        self.assertTrue('{{ checksum }}' in primary_xml)
+        self.assertTrue('{{ checksumtype }}' in primary_xml)
+        self.assertTrue(self.checksum not in primary_xml)
 
     def test_checksum_other_pkgid(self):
-        self.unit.modify_xml()
-        self.assertTrue('{{ pkgid }}' in self.unit.repodata['other'])
-        self.assertTrue(self.checksum not in self.unit.repodata['other'])
-        self.assertParsable(self.unit.repodata['other'])
+        self.unit.modify_xml(self.repodata)
+        other_xml = self.unit.get_repodata('other')
+        self.assertTrue('{{ pkgid }}' in other_xml)
+        self.assertTrue(self.checksum not in other_xml)
+        self.assertParsable(other_xml)
 
     def test_checksum_filelists_pkgid(self):
-        self.unit.modify_xml()
-        self.assertTrue('{{ pkgid }}' in self.unit.repodata['filelists'])
-        self.assertTrue(self.checksum not in self.unit.repodata['filelists'])
-        self.assertParsable(self.unit.repodata['filelists'])
+        self.unit.modify_xml(self.repodata)
+        filelists_xml = self.unit.get_repodata('filelists')
+        self.assertTrue('{{ pkgid }}' in filelists_xml)
+        self.assertTrue(self.checksum not in filelists_xml)
+        self.assertParsable(filelists_xml)
 
 
 class TestDistribution(unittest.TestCase):
@@ -222,7 +265,6 @@ class TestDistribution(unittest.TestCase):
                          str(d))
 
 
-@skip_broken
 class TestDRPM(unittest.TestCase):
     """
     This class contains tests for the DRPM class.
@@ -232,10 +274,17 @@ class TestDRPM(unittest.TestCase):
         """
         Ensure that __init__() calls sanitize_checksum_type correctly.
         """
-        # The sha should get changed to sha1
-        drpm = models.DRPM('epoch', 'version', 'release', 'filename', 'sha', 'checksum', {})
+        unit_metadata = {'epoch': 'epoch',
+                         'version': 'version',
+                         'release': 'release',
+                         'filename': 'filename',
+                         'checksumtype': 'sha',
+                         'checksum': 'checksum'}
 
-        self.assertEqual(drpm.unit_key['checksumtype'], 'sha1')
+        # The sha should get changed to sha1
+        drpm = models.DRPM(**unit_metadata)
+
+        self.assertEqual(drpm.checksumtype, 'sha1')
 
 
 class TestErrata(unittest.TestCase):
@@ -431,8 +480,8 @@ class TestErrata(unittest.TestCase):
         self.assertEqual(existing_erratum.pkglist[0]['_pulp_repo_id'],
                          uploaded_erratum.pkglist[0]['_pulp_repo_id'])
 
-        # make sure save() is called
-        self.assertEqual(mock_save.call_count, 2)
+        # make sure save() is called once since no collections were added
+        self.assertEqual(mock_save.call_count, 1)
 
     @mock.patch('pulp_rpm.plugins.db.models.Errata.save')
     def test_merge_pkglists_oldstyle_newstyle_different_collection(self, mock_save):
@@ -487,8 +536,8 @@ class TestErrata(unittest.TestCase):
         self.assertEqual(existing_erratum.pkglist[0]['packages'][0]['version'],
                          uploaded_erratum.pkglist[0]['packages'][0]['version'])
 
-        # make sure save() is called
-        self.assertEqual(mock_save.call_count, 2)
+        # make sure save() is called once since no collections were added
+        self.assertEqual(mock_save.call_count, 1)
 
     @mock.patch('pulp_rpm.plugins.db.models.Errata.save')
     @mock.patch('pulp_rpm.plugins.db.models.Errata.update_needed')
@@ -513,6 +562,33 @@ class TestErrata(unittest.TestCase):
 
         # make sure the existing collection is untouched
         self.assertEqual(existing_erratum.pkglist[0], self.collection_pulp_repo_id)
+
+    @mock.patch('pulp_rpm.plugins.db.models.Errata.save')
+    @mock.patch('pulp_rpm.plugins.db.models.Errata.update_needed')
+    def test_merge_pkglists_same_repo_Nth_merge(self, mock_update_needed, mock_save):
+        """
+        Assert that no new collection is added if newstyle collection for the repo exists.
+        """
+        existing_erratum, uploaded_erratum = models.Errata(), models.Errata()
+
+        existing_collection_wo_pulp_repo_id = copy.deepcopy(self.collection_wo_pulp_repo_id)
+        existing_collection_pulp_repo_id = copy.deepcopy(self.collection_pulp_repo_id)
+        collection_same_repo_id_different_packages = copy.deepcopy(self.collection_pulp_repo_id)
+        collection_same_repo_id_different_packages['packages'][0]['version'] = '2.0'
+
+        existing_erratum.pkglist = [existing_collection_wo_pulp_repo_id,
+                                    existing_collection_pulp_repo_id]
+        uploaded_erratum.pkglist = [collection_same_repo_id_different_packages]
+        mock_update_needed.return_value = True
+        existing_erratum.merge_pkglists_and_save(uploaded_erratum)
+
+        # make sure no additional collections are added
+        self.assertEqual(len(existing_erratum.pkglist), 2)
+        self.assertEqual(mock_save.call_count, 1)
+
+        # make sure the existing collection with _pulp_repo_id is updated
+        self.assertEqual(existing_erratum.pkglist[0], self.collection_wo_pulp_repo_id)
+        self.assertEqual(existing_erratum.pkglist[1], uploaded_erratum.pkglist[0])
 
     @mock.patch('pulp_rpm.plugins.db.models.Errata.save')
     def test_merge_pkglists_newstyle_new_collection(self, mock_save):
@@ -1062,36 +1138,35 @@ class TestRPM(unittest.TestCase):
     """
     This class contains tests for the RPM class.
     """
-
-    @skip_broken
     def test___init___sanitizes_checksum_type(self):
         """
         Ensure that __init__() calls sanitize_checksum_type correctly.
         """
-        # The sha should get changed to sha1
-        rpm = models.RPM('name', 'epoch', 'version', 'release', 'filename', 'sha', 'checksum', {})
+        unit_metadata = {'name': 'name',
+                         'epoch': 'epoch',
+                         'version': 'version',
+                         'release': 'release',
+                         'checksumtype': 'sha',
+                         'checksum': 'checksum'}
 
-        self.assertEqual(rpm.unit_key['checksumtype'], 'sha1')
+        # The sha should get changed to sha1
+        rpm = models.RPM(**unit_metadata)
+
+        self.assertEqual(rpm.checksumtype, 'sha1')
 
 
 class TestRpmBaseRender(unittest.TestCase):
-    def setUp(self):
-        super(TestRpmBaseRender, self).setUp()
-        self.unit = models.RPM(name='cat', epoch='0', version='1.0', release='1', arch='noarch')
-        self.unit.checksum = 'abc123'
-        self.unit.checksumtype = 'sha1'
-        self.unit.checksums = {'sha1': 'abc123'}
-        self.unit.repodata['filelists'] = '''
+    FILELISTS_EXCERPT = '''
 <package arch="noarch" name="cat" pkgid="{{ pkgid }}">
     <version epoch="0" rel="1" ver="1.0" />
     <file>/tmp/cat.txt</file>
 </package>'''
-        self.unit.repodata['other'] = '''
+    OTHER_EXCERPT = '''
 <package arch="noarch" name="cat" pkgid="{{ pkgid }}">
     <version epoch="0" rel="1" ver="1.0" />
     <changelog>Sometimes contains {{ template vars }} description</changelog>
 </package>'''
-        self.unit.repodata['primary'] = '''
+    PRIMARY_EXCERPT = '''
 <package type="rpm">
   <name>cat</name>
   <arch>noarch</arch>
@@ -1116,6 +1191,16 @@ class TestRpmBaseRender(unittest.TestCase):
     </rpm:provides>
   </format>
 </package>'''
+
+    def setUp(self):
+        super(TestRpmBaseRender, self).setUp()
+        self.unit = models.RPM(name='cat', epoch='0', version='1.0', release='1', arch='noarch')
+        self.unit.checksum = 'abc123'
+        self.unit.checksumtype = 'sha1'
+        self.unit.checksums = {'sha1': 'abc123'}
+        self.unit.set_repodata('primary', self.PRIMARY_EXCERPT)
+        self.unit.set_repodata('other', self.OTHER_EXCERPT)
+        self.unit.set_repodata('filelists', self.FILELISTS_EXCERPT)
 
     def test_render_filelists(self):
         ret = self.unit.render_filelists('sha1')

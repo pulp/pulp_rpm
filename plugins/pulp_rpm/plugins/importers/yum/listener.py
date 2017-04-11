@@ -1,4 +1,5 @@
 import logging
+
 from nectar.listener import DownloadEventListener, AggregatingEventListener
 from pulp.common.plugins import importer_constants
 from pulp.plugins.util import verification
@@ -79,9 +80,9 @@ class PackageListener(DownloadEventListener):
         :type  report: nectar.report.DownloadReport
         """
         unit = report.data
-        self._verify_size(unit, report)
+        self.verify_size(unit, report.destination)
         self._validate_checksumtype(unit)
-        self._verify_checksum(unit, report)
+        self._verify_checksum(unit, report.destination)
 
     def download_failed(self, report):
         """
@@ -95,7 +96,7 @@ class PackageListener(DownloadEventListener):
         self.sync.progress_report['content'].failure(unit, report.error_report)
         self.sync.set_progress()
 
-    def _verify_size(self, unit, report):
+    def verify_size(self, unit, location):
         """
         Verifies the size of the given unit if the sync is configured to do so.
         If the verification fails, the error is noted in this instance's progress
@@ -103,8 +104,8 @@ class PackageListener(DownloadEventListener):
 
         :param unit: domain model instance of the package that was downloaded
         :type  unit: pulp_rpm.plugins.db.models.RpmBase
-        :param report: report handed to this listener by the downloader
-        :type  report: nectar.report.DownloadReport
+        :param location: location of the unit that needs to be verified
+        :type  location: str
 
         :raises verification.VerificationException: if the size of the content is incorrect
         """
@@ -113,9 +114,7 @@ class PackageListener(DownloadEventListener):
             return
 
         try:
-            with open(report.destination) as fp:
-                verification.verify_size(fp, unit.size)
-
+            unit.verify_size(location)
         except verification.VerificationException, e:
             error_report = {
                 constants.NAME: unit.name,
@@ -127,7 +126,7 @@ class PackageListener(DownloadEventListener):
             self.sync.progress_report['content'].failure(unit, error_report)
             raise
 
-    def _verify_checksum(self, unit, report):
+    def _verify_checksum(self, unit, location):
         """
         Verifies the checksum of the given unit if the sync is configured to do so.
         If the verification fails, the error is noted in this instance's progress
@@ -135,8 +134,8 @@ class PackageListener(DownloadEventListener):
 
         :param unit: domain model instance of the package that was downloaded
         :type  unit: pulp_rpm.plugins.db.models.NonMetadataPackage
-        :param report: report handed to this listener by the downloader
-        :type  report: nectar.report.DownloadReport
+        :param location: location of the unit that needs to be verified
+        :type  location: str
 
         :raises verification.VerificationException: if the checksum of the content is incorrect
         """
@@ -144,7 +143,7 @@ class PackageListener(DownloadEventListener):
         if not self.sync.config.get(importer_constants.KEY_VALIDATE):
             return
 
-        with open(report.destination) as fp:
+        with open(location) as fp:
             sums = util.calculate_checksums(fp, [util.TYPE_MD5, util.TYPE_SHA1, util.TYPE_SHA256])
 
         if sums[unit.checksumtype] != unit.checksum:
@@ -202,7 +201,20 @@ class RPMListener(PackageListener):
             headers = rpm_parse.package_headers(report.destination)
             unit['signing_key'] = rpm_parse.package_signature(headers)
             added_unit = self.sync.add_rpm_unit(self.metadata_files, unit)
-            added_unit.safe_import_content(report.destination)
+
+            try:
+                added_unit.safe_import_content(report.destination)
+            except verification.VerificationException as e:
+                error_report = {
+                    constants.NAME: unit.name,
+                    constants.UNIT_KEY: unit.unit_key,
+                    constants.ERROR_CODE: constants.ERROR_SIZE_VERIFICATION,
+                    constants.ERROR_KEY_EXPECTED_SIZE: unit.size,
+                    constants.ERROR_KEY_ACTUAL_SIZE: e[0]
+                }
+                self.sync.progress_report['content'].failure(unit, error_report)
+                raise
+
             if self.sync.signature_filter_passed(added_unit):
                 self.sync.associate_rpm_unit(added_unit)
             if not added_unit.downloaded:

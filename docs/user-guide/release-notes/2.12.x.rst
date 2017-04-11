@@ -1,0 +1,24 @@
+=======================
+Pulp 2.12 Release Notes
+=======================
+
+Pulp 2.12.1
+===========
+
+Bug Fixes
+---------
+
+See the list of :fixedbugs_pulp_rpm:`2.12.1`
+
+Pulp 2.12.0
+===========
+
+New Features
+------------
+
+* RPMs are now being published into new folder structure e.g. "Packages/d/dnf.rpm". This applies
+  to all RPMs which will be published after this update, even during incremental publish in a repo
+  with the old folder structure. Incremental publishes will place newly-added RPMs into
+  the new folder structure while leaving previously-published RPMs in the old locations. This is
+  safe and correct. If you prefer to have all RPMs published in the new layout, simply perform
+  a full publish on each repository.

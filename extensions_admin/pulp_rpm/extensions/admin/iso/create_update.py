@@ -80,6 +80,14 @@ class ISORepoCreateUpdateMixin(ImporterConfigMixin, ISODistributorConfigMixin):
         """
         self.unit_policy_group.add_option(self.options_bundle.opt_remove_missing)
 
+    def process_iso_distributor_serve_protocol(self, iso_distributor_config):
+        """
+        Both http and https must be specified in the
+        distributor config, so make sure they are initially set here (default to only https).
+        """
+        iso_distributor_config['serve_https'] = iso_distributor_config.get('serve_https', True)
+        iso_distributor_config['serve_http'] = iso_distributor_config.get('serve_http', False)
+
     def run(self, **user_input):
         """
         Run the repository creation.
@@ -102,6 +110,10 @@ class ISORepoCreateUpdateMixin(ImporterConfigMixin, ISODistributorConfigMixin):
         except arg_utils.InvalidConfig, e:
             self.prompt.render_failure_message(str(e), tag='create-failed')
             return os.EX_DATAERR
+
+        # Special (temporary until we fix the distributor) distributor config
+        # handling
+        self.process_iso_distributor_serve_protocol(distributor_config)
 
         distributors = [
             {'distributor_type_id': ids.TYPE_ID_DISTRIBUTOR_ISO,
