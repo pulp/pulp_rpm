@@ -271,6 +271,9 @@ A collection of yum plugins supplementing Pulp consumer operations.
 
 
 %changelog
+* Wed Apr 12 2017 werwty <bihan.zh@gmail.com> 2.12.2-1
+- Pulp rebuild
+
 * Wed Apr 05 2017 werwty <bihan.zh@gmail.com> 2.12.2-0.2.beta
 - Pulp rebuild
 
