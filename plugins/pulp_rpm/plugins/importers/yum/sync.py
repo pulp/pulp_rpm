@@ -1113,7 +1113,8 @@ class PackageCatalog(object):
 #           used to construct the download URL.
         :type path: str
         """
-        unit.set_storage_path(unit.filename)
+        if not unit.storage_path:
+            unit.set_storage_path(unit.filename)
         entry = LazyCatalogEntry()
         entry.path = unit.storage_path
         entry.importer_id = str(self.importer_id)
