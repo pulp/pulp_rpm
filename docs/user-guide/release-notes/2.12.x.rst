@@ -2,6 +2,14 @@
 Pulp 2.12 Release Notes
 =======================
 
+Pulp 2.12.2
+===========
+
+Bug Fixes
+---------
+
+See the list of :fixedbugs_pulp_rpm:`2.12.2`
+
 Pulp 2.12.1
 ===========
 
