@@ -183,7 +183,8 @@ class ISOSyncRun(listener.DownloadEventListener):
             # Unit is from pulp manifest
             if not hasattr(unit, "url"):
                 continue
-            unit.set_storage_path(unit.name)
+            if not unit.storage_path:
+                unit.set_storage_path(unit.name)
             entry = LazyCatalogEntry()
             entry.path = unit.storage_path
             entry.importer_id = str(self.sync_conduit.importer_object_id)
