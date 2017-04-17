@@ -121,7 +121,7 @@ def add_distributor_config_to_command(command):
     # The server-side APIs don't allow this to be updated, so hide it as an
     # option entirely; RPM repos are always published automatically with our
     # CLI until we clean that up. jdob, Sept 24, 2012
-    # publish_group.add_option(OPT_AUTO_PUBLISH)
+    publish_group.add_option(OPT_AUTO_PUBLISH)
 
     publish_group.add_option(OPT_RELATIVE_URL)
     publish_group.add_option(OPT_SERVE_HTTP)
