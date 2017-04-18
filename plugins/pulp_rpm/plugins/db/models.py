@@ -6,7 +6,6 @@ import re
 import os
 from collections import namedtuple
 from gettext import gettext as _
-from operator import itemgetter
 from urlparse import urljoin
 
 import bson
@@ -17,7 +16,7 @@ from django.template.defaulttags import TemplateTagNode
 import pulp.common.error_codes as platform_error_codes
 import pulp.server.util as server_util
 from pulp.plugins.util import verification
-from pulp.server.db.model import ContentUnit, FileContentUnit
+from pulp.server.db.model import AutoRetryDocument, ContentUnit, FileContentUnit
 from pulp.server.exceptions import PulpCodedException
 
 from pulp_rpm.common import constants, version_utils, file_utils
@@ -1159,42 +1158,29 @@ class Errata(UnitMixin, ContentUnit):
                 ret.append(unit_key)
         return ret
 
-    @staticmethod
-    def _check_packages(existing_packages, new_packages):
+    def create_legacy_metadata_dict(self):
         """
-        Check if the new packages are the same as the existing ones.
+        Generate metadata dict and add erratum pkglist to it since it is stored
+        in a separate MongoDB collection.
 
-        :param existing_packages: list of packages presented in the existing erratum
-        :type  existing_packages: list of dicts
-
-        :param new_packages: list of packages presented in the new erratum
-        :type  new_packages: list of dicts
-
-        :return: True, if the lists of packages are equal
-        :rtype: bool
+        This dict is used during incremetal export of erratum in PublishErrataStepIncremental.
         """
-        if len(existing_packages) == len(new_packages):
-            existing_packages.sort(key=itemgetter('filename'))
-            new_packages.sort(key=itemgetter('filename'))
-            return existing_packages == new_packages
-        return False
+        metadata_dict = super(Errata, self).create_legacy_metadata_dict()
+        pkglists = ErratumPkglist.objects(errata_id=self.errata_id)
+        metadata_dict['pkglist'] = [pkglist['collections'] for pkglist in pkglists]
+        return metadata_dict
 
     def merge_errata(self, other):
         """
         Merge two errata with the same errata_id.
 
-        There are three parts:
-        - merging of the pkglists in case of the erratum with the same id in different repositories
+        There are two parts:
         - overwriting the erratum metadata based on the `updated` field
         - overwriting the "reboot_suggested" value because of https://pulp.plan.io/issues/2032
-
-        NOTE: The first part should be eliminated after we change the way erratum is stored in the
-        MongoDB.
 
         :param other: The erratum we are combining with this one
         :type  other: pulp_rpm.plugins.db.models.Errata
         """
-        self.merge_pkglists_and_save(other)
         if self.update_needed(other):
             for field_name in self.mutable_erratum_fields:
                 setattr(self, field_name, getattr(other, field_name))
@@ -1240,60 +1226,52 @@ class Errata(UnitMixin, ContentUnit):
         new_updated_dt = util.errata_format_to_datetime(other.updated, msg=other_err_msg)
         return new_updated_dt > existing_updated_dt
 
-    def merge_pkglists_and_save(self, other):
+    @classmethod
+    def do_post_delete_actions(cls, erratum):
         """
-        Merge pkglists of the two errata and save the result to the database.
+        Remove pkglists associated with deleted erratum
 
-         - update existing collection if the other collection is newer and from the same
-           repository
-         - add _pulp_repo_id to old collection if packages are the same
-         - otherwise add a new collection
-
-        :param other: The erratum we are combining with the existing one
-        :type  other: pulp_rpm.plugins.db.models.Errata
-
+        :param erratum: deleted erratum containing unit key as a minimum
+        :type  erratum: dict
         """
-        existing_pkglist_map = {}
-        for idx, p in enumerate(self.pkglist):
-            package_name = p['name']
-            package_repo_id = p.get('_pulp_repo_id')
-            pkglist_key = (package_name, package_repo_id)
-            existing_pkglist_map[pkglist_key] = idx
+        ErratumPkglist.objects(errata_id=erratum.get('errata_id')).delete()
 
-        collections_to_add = []
-        for new_collection in other.pkglist:
-            coll_name = new_collection['name']
 
-            # collection with such name and _pulp_repo_id already exists
-            if (coll_name, new_collection['_pulp_repo_id']) in existing_pkglist_map:
-                if self.update_needed(other):
-                    coll_idx = existing_pkglist_map[
-                        (coll_name, new_collection['_pulp_repo_id'])]
-                    self.pkglist[coll_idx]['packages'] = new_collection['packages']
+class ErratumPkglist(AutoRetryDocument):
+    """
+    Model for erratum pkglists.
 
-            # collection with such name does not contain _pulp_repo_id
-            elif (coll_name, None) in existing_pkglist_map:
-                coll_idx = existing_pkglist_map[(coll_name, None)]
-                existing_collection = self.pkglist[coll_idx]
-                if self._check_packages(existing_collection['packages'],
-                                        new_collection['packages']):
-                    existing_collection['_pulp_repo_id'] = new_collection['_pulp_repo_id']
-                else:
-                    collections_to_add.append(new_collection)
+    For each erratum there can be multiple pkglists but they refer to different repo_id's.
+    It is not guaranteed that for every repo containing an erratum there is a pkglist with
+    corresponding repo_id. If erratum is copied from one repo to the other (and not imported
+    via sync or upload), no new pkglist is created.
+    For a publish all the pkglists related to an erratum are used and filtered out accordingly.
 
-            # no collection with such name or no collection with such name and _pulp_repo_id
-            else:
-                collections_to_add.append(new_collection)
+    :ivar errata_id: Id of an erratum which pkglist belongs to
+    :type errata_id: mongoengine.StringField
+    :ivar repo_id: Id of a repo into which erratum was imported (via sync or upload)
+    :type repo_id: mongoengine.StringField
+    :ivar collections: Collections of packages referenced in an erratum
+    :type collections: mongoengine.ListField
+    """
+    errata_id = mongoengine.StringField(required=True)
+    repo_id = mongoengine.StringField(required=True)
+    collections = mongoengine.ListField()
 
-        # It is very important to call save() here to save recent modifications to the existing
-        # collections in the pkglist in the database before new collections will be added to
-        # the pkglist, because mongoengine does not allow to modify existing items in the list
-        # and add new items to the list at the same time.
-        self.save()
+    _ns = mongoengine.StringField(default='erratum_pkglists')
 
-        if collections_to_add:
-            self.pkglist += collections_to_add
-            self.save()
+    model_key_fields = ('errata_id', 'repo_id')
+    meta = {'collection': 'erratum_pkglists',
+            'allow_inheritance': False,
+            'indexes': ['errata_id',
+                        {'fields': model_key_fields, 'unique': True}]}
+
+    @property
+    def model_key(self):
+        """
+        Dictionary representation of the model key
+        """
+        return dict((key, getattr(self, key)) for key in self.model_key_fields)
 
 
 class PackageGroup(UnitMixin, ContentUnit):

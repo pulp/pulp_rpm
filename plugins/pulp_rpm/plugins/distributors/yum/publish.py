@@ -693,12 +693,16 @@ class PublishErrataStep(platform_steps.UnitModelPluginStep):
             return new_pkglist
 
         seen_packages = set()
-        for pkglist in erratum_unit.pkglist:
-            for package in pkglist.get('packages', []):
-                if package['filename'] not in seen_packages:
-                    seen_packages.add(package['filename'])
-                    if models.NEVRA._fromdict(package) in self.repo_unit_nevra:
-                        new_pkglist['packages'].append(package)
+
+        # find all pkglists for erratum despite the repo_id associated with pkglist
+        pkglists = models.ErratumPkglist.objects(errata_id=erratum_unit.errata_id)
+        for pkglist in pkglists:
+            for collection in pkglist['collections']:
+                for package in collection.get('packages', []):
+                    if package['filename'] not in seen_packages:
+                        seen_packages.add(package['filename'])
+                        if models.NEVRA._fromdict(package) in self.repo_unit_nevra:
+                            new_pkglist['packages'].append(package)
 
         return new_pkglist
 

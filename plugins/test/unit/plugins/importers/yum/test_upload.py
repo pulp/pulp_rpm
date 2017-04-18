@@ -200,6 +200,7 @@ class UploadDispatchTests(unittest.TestCase):
         self.assertTrue('unexpected' in report['details']['errors'][0])
 
 
+@mock.patch('pulp_rpm.plugins.importers.yum.upload.errata_controller')
 @mock.patch('pulp_rpm.plugins.importers.yum.upload.repo_controller')
 @mock.patch('pulp_rpm.plugins.importers.yum.upload.plugin_api.get_unit_model_by_id')
 @mock.patch('pulp_rpm.plugins.importers.yum.upload.update_fields_inbound')
@@ -208,7 +209,7 @@ class TestUploadErratum(unittest.TestCase):
     Tests for uploading erratum.
     """
 
-    def test_handle_with_link(self, m_update, m_model_by_id, m_repo_ctrl):
+    def test_handle_with_link(self, m_update, m_model_by_id, m_repo_ctrl, m_errata_ctrl):
         """
         Ensure that erratum uploaded without the skip erratum link flag are associated.
         """
@@ -224,7 +225,7 @@ class TestUploadErratum(unittest.TestCase):
                                mock_conduit, config)
         m_repo_ctrl.associate_single_unit.assert_called_once_with(mock_repo, m_unit)
 
-    def test_handle_with_no_link(self, m_update, m_model_by_id, m_repo_ctrl):
+    def test_handle_with_no_link(self, m_update, m_model_by_id, m_repo_ctrl, m_errata_ctrl):
         """
         Ensure that erratum uploaded with the skip erratum link flag are not associated.
         """
@@ -237,22 +238,6 @@ class TestUploadErratum(unittest.TestCase):
         upload._handle_erratum(mock_repo, 'm_type', unit_key, metadata, None,
                                mock_conduit, config)
         self.assertFalse(m_repo_ctrl.associate_single_unit.called)
-
-    def test_handle_erratum_same_id(self, m_update, m_model_by_id, m_repo_ctrl):
-        """
-        Ensure that the merge of errata is initiated if the erratum with the same id already exists.
-        """
-        unit_key = {'id': 'test-erratum'}
-        metadata = {'a': 'a'}
-        mock_repo = mock.MagicMock()
-        mock_conduit = mock.MagicMock()
-        config = PluginCallConfiguration({}, {})
-        m_unit = m_model_by_id.return_value.objects.filter.return_value.first.return_value
-
-        upload._handle_erratum(mock_repo, 'm_type', unit_key, metadata, None,
-                               mock_conduit, config)
-        self.assertEqual(m_unit.merge_errata.call_count, 1)
-        m_repo_ctrl.associate_single_unit.assert_called_once_with(mock_repo, m_unit)
 
 
 @skip_broken

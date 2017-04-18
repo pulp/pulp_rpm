@@ -26,6 +26,7 @@ from pulp.server.managers.repo import _common as common_utils
 
 from pulp_rpm.common import constants, ids
 from pulp_rpm.plugins import error_codes
+from pulp_rpm.plugins.controllers import errata as errata_controller
 from pulp_rpm.plugins.db import models
 from pulp_rpm.plugins.importers.yum import existing, purge
 from pulp_rpm.plugins.importers.yum.listener import RPMListener
@@ -945,10 +946,8 @@ class RepoSync(object):
 
         errata_could_not_be_merged_count = 0
         for model in package_info_generator:
-            # Add repo_id to each collection of the pkglist of the new erratum
             if isinstance(model, models.Errata):
-                for collection in model.pkglist:
-                    collection['_pulp_repo_id'] = self.repo.repo_id
+                errata_controller.create_or_update_pkglist(model, self.repo.repo_id)
 
             try:
                 model.save()
