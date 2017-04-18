@@ -32,8 +32,8 @@ class RpmBase(platform_serializers.ModelSerializer):
 
         Decompress values of the `repodata` dict field for RPM/SRPM units.
 
-        :param instance: The object to be converted
-        :type instance: object
+        :param unit: The object to be converted
+        :type unit: object
         """
         for metadata_type in unit.get('repodata', {}):
             metadata = unit['repodata'][metadata_type]
@@ -48,6 +48,21 @@ class Errata(platform_serializers.ModelSerializer):
     class Meta:
         remapped_fields = {'errata_from': 'from',
                            'errata_id': 'id'}
+
+    def serialize(self, unit):
+        """
+        Convert a single unit to it's dictionary form.
+
+        Add to errratum unit its pkglist.
+
+        :param unit: The object to be converted
+        :type unit: object
+        """
+        from pulp_rpm.plugins.db.models import ErratumPkglist
+
+        pkglists = ErratumPkglist.objects(errata_id=unit.get('errata_id'))
+        unit['pkglist'] = [coll for pkglist in pkglists for coll in pkglist['collections']]
+        return super(Errata, self).serialize(unit)
 
 
 class PackageGroup(platform_serializers.ModelSerializer):
