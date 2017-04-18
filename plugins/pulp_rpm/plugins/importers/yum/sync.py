@@ -954,10 +954,11 @@ class RepoSync(object):
             if isinstance(model, models.Errata):
                 for collection in model.pkglist:
                     collection['_pulp_repo_id'] = self.repo.repo_id
-            existing_unit = model.__class__.objects.filter(**model.unit_key).first()
-            if not existing_unit:
+
+            try:
                 model.save()
-            else:
+            except NotUniqueError:
+                existing_unit = model.__class__.objects.filter(**model.unit_key).first()
                 if additive_type:
                     try:
                         model = self._concatenate_units(existing_unit, model)
