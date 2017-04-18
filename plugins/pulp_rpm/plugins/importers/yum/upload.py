@@ -107,6 +107,7 @@ def upload(repo, type_id, unit_key, metadata, file_path, conduit, config):
         models.SRPM._content_type_id.default: _handle_package,
         models.PackageGroup._content_type_id.default: _handle_group_category_comps,
         models.PackageCategory._content_type_id.default: _handle_group_category_comps,
+        models.PackageEnvironment._content_type_id.default: _handle_group_category_comps,
         models.Errata._content_type_id.default: _handle_erratum,
         models.YumMetadataFile._content_type_id.default: _handle_yum_metadata_file,
     }
@@ -244,7 +245,7 @@ def _handle_yum_metadata_file(repo, type_id, unit_key, metadata, file_path, cond
 
 def _handle_group_category_comps(repo, type_id, unit_key, metadata, file_path, conduit, config):
     """
-    Handles the creation of a package group or category.
+    Handles the creation of a package group, category or environment.
 
     If a file was uploaded, treat this as upload of a comps.xml file. If no file was uploaded,
     the process only creates the unit.
@@ -283,7 +284,7 @@ def _handle_group_category_comps(repo, type_id, unit_key, metadata, file_path, c
         _get_and_save_file_units(file_path, group.process_environment_element,
                                  group.ENVIRONMENT_TAG, conduit, repo)
     else:
-        # uploading a package group or package category
+        # uploading a package group, package category or package environment
         unit_data = {}
         unit_data.update(metadata or {})
         unit_data.update(unit_key or {})
