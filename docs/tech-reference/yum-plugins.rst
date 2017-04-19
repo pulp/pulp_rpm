@@ -607,3 +607,8 @@ Optional Configuration Parameters
 ``force_full``
 Boolean flag to indicate whether or not publish should be done from scratch.
 If unspecified the incremental publish will be performed when possible.
+
+``packages_directory``
+ Indicates destination directory where packages should be located. This directory
+ is relative to repo root directory (see ``relative_url``). If not specified,
+ packages are located in 'Packages' directory.
