@@ -1,0 +1,12 @@
+=======================
+Pulp 2.14 Release Notes
+=======================
+
+Pulp 2.14.0
+===========
+
+New Features
+------------
+
+* New parameter for rsync distributor ``rsync_extra_args`` allows user to 
+  specify custom arguments for rsync call during publish operations.
