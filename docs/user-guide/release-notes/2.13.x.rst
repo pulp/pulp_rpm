@@ -3,7 +3,7 @@ Pulp 2.13 Release Notes
 =======================
 
 
-Pulp 2.12.1
+Pulp 2.13.1
 ===========
 
 Bug Fixes
@@ -11,7 +11,7 @@ Bug Fixes
 
 See the list of :fixedbugs_pulp_rpm:`2.13.1`
 
-Pulp 2.12.0
+Pulp 2.13.0
 ===========
 
 New Features
