@@ -883,7 +883,7 @@ class TestDecideRPMsToDownload(BaseSyncTest):
         self.metadata_files.metadata[primary.METADATA_FILE_NAME] = \
             {'local_path': '/path/to/primary'}
         mock_generator.return_value = [model.as_named_tuple]
-        mock_identify.return_value = {model.as_named_tuple: 1024}
+        mock_identify.return_value = ({model.as_named_tuple: 1024}, 1)
         mock_check_repo.return_value = set([model.as_named_tuple])
 
         with mock.patch.object(self.conduit, 'search_all_units'):
@@ -944,7 +944,7 @@ class TestDecideDRPMsToDownload(BaseSyncTest):
         self.metadata_files.metadata[presto.METADATA_FILE_NAMES[0]] = \
             {'local_path': '/path/to/presto'}
         mock_generator.return_value = [model.as_named_tuple]
-        mock_identify.return_value = {model.as_named_tuple: 1024}
+        mock_identify.return_value = ({model.as_named_tuple: 1024}, 1)
         mock_check_repo.return_value = set([model.as_named_tuple])
 
         with mock.patch.object(self.conduit, 'search_all_units'):
@@ -1643,7 +1643,8 @@ class TestIdentifyWantedVersions(BaseSyncTest):
         for unit in units:
             unit.metadata['size'] = 1024
 
-        result = sorted(self.reposync._identify_wanted_versions(units).keys())
+        wanted_versions, _ = self.reposync._identify_wanted_versions(units)
+        result = sorted(wanted_versions.keys())
 
         self.assertEqual([u.as_named_tuple for u in units], result)
 
@@ -1655,7 +1656,7 @@ class TestIdentifyWantedVersions(BaseSyncTest):
             unit.metadata['size'] = 1024
 
         # the generator can yield results out of their original order, which is ok
-        result = self.reposync._identify_wanted_versions(units)
+        result, _ = self.reposync._identify_wanted_versions(units)
 
         self.assertFalse(units[0].as_named_tuple in result)
         self.assertFalse(units[1].as_named_tuple in result)
@@ -1673,7 +1674,7 @@ class TestIdentifyWantedVersions(BaseSyncTest):
             unit.metadata['size'] = 1024
 
         # the generator can yield results out of their original order, which is ok
-        result = self.reposync._identify_wanted_versions(units)
+        result, _ = self.reposync._identify_wanted_versions(units)
 
         self.assertFalse(units[0].as_named_tuple in result)
         self.assertTrue(units[1].as_named_tuple in result)

@@ -80,6 +80,8 @@ class ISOSyncRun(listener.DownloadEventListener):
             'proxy_port': config.get(importer_constants.KEY_PROXY_PORT),
             'proxy_username': config.get(importer_constants.KEY_PROXY_USER),
             'proxy_password': config.get(importer_constants.KEY_PROXY_PASS),
+            'basic_auth_username': config.get(importer_constants.KEY_BASIC_AUTH_USER),
+            'basic_auth_password': config.get(importer_constants.KEY_BASIC_AUTH_PASS),
             'working_dir': common_utils.get_working_directory()}
         downloader_config = DownloaderConfig(**downloader_config)
 
@@ -183,7 +185,8 @@ class ISOSyncRun(listener.DownloadEventListener):
             # Unit is from pulp manifest
             if not hasattr(unit, "url"):
                 continue
-            unit.set_storage_path(unit.name)
+            if not unit.storage_path:
+                unit.set_storage_path(unit.name)
             entry = LazyCatalogEntry()
             entry.path = unit.storage_path
             entry.importer_id = str(self.sync_conduit.importer_object_id)
