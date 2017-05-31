@@ -9,17 +9,23 @@
 %define pulp_server 1
 %endif
 
+# The release number
+%global release_number 0.1.alpha
+
+# Create tag for the Source0 and setup
+%global git_tag %{name}-%{version}-%{release_number}
+
 
 # ---- Pulp (rpm) --------------------------------------------------------------
 
 Name: pulp-rpm
 Version: 2.14.0
-Release: 0.1.alpha%{?dist}
+Release: %{release_number}%{?dist}
 Summary: Support for RPM content in the Pulp platform
 Group: Development/Languages
 License: GPLv2
-URL: https://fedorahosted.org/pulp/
-Source0: https://github.com/pulp/pulp_rpm/archive/%{name}-%{version}.tar.gz
+URL: http://pulpproject.org/
+Source0: https://codeload.github.com/pulp/pulp_rpm/tar.gz/%{git_tag}#/%{name}-%{version}.tar.gz
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 BuildArch:      noarch
 BuildRequires:  python2-devel
@@ -31,7 +37,7 @@ Provides a collection of platform plugins, client extensions and agent
 handlers that provide RPM support.
 
 %prep
-%setup -q
+%setup -q -n pulp_rpm-%{git_tag}
 
 %build
 
