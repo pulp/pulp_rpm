@@ -81,3 +81,6 @@ Optional configuration
 
 ``remote_units_path``
   The relative path from the ``root`` where unit files should live. Defaults to ``content/units``.
+
+``rsync_extra_args``
+  list of strings that can be used to extend default arguments used for rsync call.
