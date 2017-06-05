@@ -1,6 +1,6 @@
 import os
 
-from pulp.plugins.rsync.publish import Publisher, RSyncPublishStep
+from pulp.plugins.rsync.publish import Publisher, RSyncPublishStep, UpdateLastPredistDateStep
 from pulp.plugins.util.publish_step import RSyncFastForwardUnitPublishStep
 from pulp.server.db.model import Distributor
 from pulp.server.exceptions import PulpCodedException
@@ -60,11 +60,8 @@ class RPMRsyncPublisher(Publisher):
         :type config: pulp.plugins.config.PluginCallConfiguration
         :return: None
         """
-
-        predistributor = self._get_predistributor()
-
         remote_repo_path = yum_config.get_repo_relative_path(self.repo.repo_obj,
-                                                             predistributor.config)
+                                                             self.predistributor.config)
 
         # Find all the units associated with repo before last publish with predistributor
         unit_types = ', '.join(RPMRsyncPublisher.REPO_CONTENT_TYPES)
@@ -109,3 +106,7 @@ class RPMRsyncPublisher(Publisher):
                                             exclude=[".*", "repodata.old"],
                                             config=config, links=True,
                                             delete=self.config.get("delete")))
+
+        if self.predistributor:
+            self.add_child(UpdateLastPredistDateStep(self.distributor,
+                                                     self.predistributor["last_publish"]))

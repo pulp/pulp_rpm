@@ -1,4 +1,4 @@
-from pulp.plugins.rsync.publish import Publisher, RSyncPublishStep
+from pulp.plugins.rsync.publish import Publisher, RSyncPublishStep, UpdateLastPredistDateStep
 from pulp.plugins.util.publish_step import RSyncFastForwardUnitPublishStep
 from pulp.server.db.model import Distributor
 from pulp.server.exceptions import PulpCodedException
@@ -56,8 +56,7 @@ class ISORsyncPublisher(Publisher):
         :param config: Pulp configuration for the distributor
         :type  config: pulp.plugins.config.PluginCallConfiguration
         """
-        predistributor = self._get_predistributor()
-        remote_repo_path = get_repo_relative_path(self.repo.repo_obj, predistributor.config)
+        remote_repo_path = get_repo_relative_path(self.repo.repo_obj, self.predistributor.config)
 
         # Find all the units associated with repo before last publish with predistributor
         gen_step = RSyncFastForwardUnitPublishStep("Unit query step (ISO)",
@@ -95,3 +94,7 @@ class ISORsyncPublisher(Publisher):
                                         ['PULP_MANIFEST'], predistributor_master_dir,
                                         remote_repo_path,
                                         config=config))
+
+        if self.predistributor:
+            self.add_child(UpdateLastPredistDateStep(self.distributor,
+                                                     self.predistributor["last_publish"]))
