@@ -1,8 +1,8 @@
 from setuptools import setup, find_packages
 
 setup(
-    name='pulp_rpm_common',
-    version='2.13a1',
+    name='pulp-rpm-common',
+    version='3.0.0a1.dev0',
     license='GPLv2+',
     packages=find_packages(exclude=['test', 'test.*']),
     author='Pulp Team',

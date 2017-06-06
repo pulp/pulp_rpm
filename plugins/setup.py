@@ -2,13 +2,20 @@
 
 from setuptools import setup, find_packages
 
+requirements = [
+    'pulpcore-plugin',
+    'pulp-rpm-common'
+]
+
 setup(
-    name='pulp_rpm_plugins',
-    version='2.13a1',
+    name='pulp-rpm',
+    version='3.0.0a1.dev0',
     license='GPLv2+',
-    packages=find_packages(exclude=['test', 'test.*']),
+    packages=find_packages(exclude=['test']),
     author='Pulp Team',
     author_email='pulp-list@redhat.com',
+    install_requires=requirements,
+    description='Plugin to enable RPM support in Pulp',
     entry_points={
         'pulp.importers': [
             'importer = pulp_rpm.plugins.importers.yum.importer:entry_point',

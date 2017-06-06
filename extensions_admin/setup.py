@@ -1,12 +1,17 @@
 from setuptools import setup, find_packages
 
+requirements = [
+    'pulp-rpm-common'
+]
+
 setup(
-    name='pulp_rpm_extensions_admin',
-    version='2.13a1',
+    name='pulp-rpm-cli',
+    version='3.0.0a1.dev0',
     license='GPLv2+',
-    packages=find_packages(exclude=['test', 'test.*']),
+    packages=find_packages(exclude=['test']),
     author='Pulp Team',
     author_email='pulp-list@redhat.com',
+    install_requires=requirements,
     entry_points={
         'pulp.extensions.admin': [
             'iso_admin = pulp_rpm.extensions.admin.iso.pulp_cli:initialize',
