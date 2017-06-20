@@ -13,8 +13,8 @@
 # ---- Pulp (rpm) --------------------------------------------------------------
 
 Name: pulp-rpm
-Version: 2.13.1
-Release: 1%{?dist}
+Version: 2.13.2
+Release: 0.1.beta%{?dist}
 Summary: Support for RPM content in the Pulp platform
 Group: Development/Languages
 License: GPLv2
@@ -132,6 +132,7 @@ rm -rf %{buildroot}
 Summary: Pulp RPM support common library
 Group: Development/Languages
 Provides: python2-pulp-rpm-common
+Obsoletes: python2-pulp-rpm-common < %{version}
 Requires: python-pulp-common = %{pulp_version}
 Obsoletes: python-pulp-rpm-extension <= 2.4.0
 
