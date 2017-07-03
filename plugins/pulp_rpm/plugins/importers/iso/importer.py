@@ -1,4 +1,4 @@
-from mongoengine import NotUniqueError
+from mongoengine import NotUniqueError, Q
 
 from pulp.common import config as config_utils
 from pulp.common.plugins import importer_constants
@@ -150,6 +150,12 @@ class ISOImporter(Importer):
             iso.save_and_import_content(file_path)
         except NotUniqueError:
             iso = iso.__class__.objects.get(**iso.unit_key)
+
+        # remove any existing units with the same name
+        units = repo_controller.find_repo_content_units(transfer_repo.repo_obj,
+                                                        units_q=Q(name=iso['name']),
+                                                        yield_content_unit=True)
+        repo_controller.disassociate_units(transfer_repo.repo_obj, units)
 
         repo_controller.associate_single_unit(transfer_repo.repo_obj, iso)
 
