@@ -72,9 +72,6 @@ class Requirement(object):
                       a positive value if self is greater than other.
         :rtype:       int
         """
-        if self.name != other.name:
-            raise ValueError('Comparison of objects with different names is not supported.')
-
         mine = [self.epoch, self.version, self.release]
         theirs = [other.epoch, other.version, other.release]
         # the encode function is rather picky about the type and length of its
@@ -100,11 +97,6 @@ class Requirement(object):
         :return:      True if self and other are equal, False otherwise
         :rtype:       bool
         """
-
-        # Simple case, they are entirely different
-        if self.name != other.name:
-            return False
-
         # Attempt to compare the version information
         mine_version = version_utils.encode(self.version)
         mine_release = version_utils.encode(self.release) if self.release else None
@@ -163,9 +155,6 @@ class Requirement(object):
         :return:        True if the unit satisfies the Requirement, False otherwise
         :rtype:         bool
         """
-        if self.name != unit.name:
-            return False
-
         # this is easier to use in the comparison than a full Unit object
         unit_as_namedtuple = unit.unit_key_as_named_tuple
 
@@ -404,19 +393,23 @@ class Solver(object):
         deps = set()
 
         for req in reqs:
-            # in order for a Requires: line to match a Provides, the requirement must
-            # not specify a version
+            # first look for exact name matches
+            named_units = packages_tree.get(req.name, [])
+            for unit in named_units:
+                deps.add(unit)
+            # then look for provides matches
+            providing_units = provides_tree.get(req.name, {})
             if not req.is_versioned:
-                providing_units = provides_tree.get(req.name, {})
                 for unit in providing_units.itervalues():
                     deps.add(unit)
-
-            # find in package names
-            unit_list = packages_tree.get(req.name, [])
-            applicable_units = filter(req.fills_requirement, unit_list)
-            if applicable_units:
-                newest = max(applicable_units)
-                deps.add(newest)
+            else:
+                unit_list = providing_units.values()
+                # filter out versions that don't match
+                applicable_units = filter(req.fills_requirement, unit_list)
+                if applicable_units:
+                    # add all applicable to get all arches
+                    for unit in applicable_units:
+                        deps.add(unit)
 
         return deps
 
