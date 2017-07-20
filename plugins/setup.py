@@ -4,7 +4,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='pulp_rpm_plugins',
-    version='2.13.2',
+    version='2.13.3b2',
     license='GPLv2+',
     packages=find_packages(exclude=['test', 'test.*']),
     author='Pulp Team',
@@ -50,6 +50,9 @@ setup(
             'package_langpacks=pulp_rpm.plugins.db.models:PackageLangpacks',
             'yum_repo_metadata_file=pulp_rpm.plugins.db.models:YumMetadataFile',
             'iso=pulp_rpm.plugins.db.models:ISO'
+        ],
+        'pulp.auxiliary_models': [
+            'erratum_pkglists=pulp_rpm.plugins.db.models:ErratumPkglist'
         ]
     }
 )

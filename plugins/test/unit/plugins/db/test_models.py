@@ -1,6 +1,5 @@
 from cStringIO import StringIO
 from urlparse import urljoin
-import copy
 import hashlib
 import math
 import os
@@ -9,6 +8,7 @@ import tempfile
 from xml.etree import ElementTree as ET
 
 import mock
+
 from pulp.common.compat import unittest
 import pulp.common.error_codes as platform_error_codes
 from pulp.server.exceptions import PulpCodedException
@@ -302,15 +302,10 @@ class TestErrata(unittest.TestCase):
              'version': '0.3.1',
              'release': '1.fc22',
              'type': 'sha256'}]
-        self.collection_wo_pulp_repo_id = {
+        self.collection = {
             'packages': self.existing_packages,
             'name': 'test-name',
             'short': ''}
-        self.collection_pulp_repo_id = {
-            'packages': self.existing_packages,
-            'name': 'test-name',
-            'short': '',
-            '_pulp_repo_id': 'test-repo'}
 
     def test_rpm_search_dicts_sanitizes_checksum_type_sum(self):
         """
@@ -362,31 +357,6 @@ class TestErrata(unittest.TestCase):
         self.assertEqual(ret[0]['name'], 'foo')
         # make sure this field is still not present
         self.assertTrue('checksumtype' not in ret[0])
-
-    def test_check_packages_equal(self):
-        """Assert that equal lists of packages are compared properly."""
-        erratum = models.Errata()
-        other_packages = copy.deepcopy(self.existing_packages)
-
-        ret = erratum._check_packages(self.existing_packages, other_packages)
-        self.assertTrue(ret)
-
-    def test_check_packages_not_equal(self):
-        """Assert that not equal lists of packages are compared properly."""
-        erratum = models.Errata()
-        other_packages = copy.deepcopy(self.existing_packages)
-        other_packages[0]["version"] = "0.3.2"
-
-        ret = erratum._check_packages(self.existing_packages, other_packages)
-        self.assertFalse(ret)
-
-    def test_check_packages_different_length(self):
-        """Assert that not equal lists of packages are compared properly."""
-        erratum = models.Errata()
-        other_packages = []
-
-        ret = erratum._check_packages(self.existing_packages, other_packages)
-        self.assertFalse(ret)
 
     def test_update_needed_newer_erratum(self):
         """
@@ -459,185 +429,8 @@ class TestErrata(unittest.TestCase):
         uploaded_erratum.updated = ''
         self.assertEqual(False, existing_erratum.update_needed(uploaded_erratum))
 
-    @mock.patch('pulp_rpm.plugins.db.models.Errata.save')
-    def test_merge_pkglists_oldstyle_newstyle_same_collection(self, mock_save):
-        """
-        Assert that _pulp_repo_id is added to the collection if it was absent and collection in the
-        uploaded erratum is the same as in the existing one.
-        """
-        existing_erratum, uploaded_erratum = models.Errata(), models.Errata()
-
-        # oldstyle erratum does not contain _pulp_repo_id, while the newstyle one does
-        collection_wo_pulp_repo_id = copy.deepcopy(self.collection_wo_pulp_repo_id)
-        existing_erratum.pkglist = [collection_wo_pulp_repo_id]
-        uploaded_erratum.pkglist = [self.collection_pulp_repo_id]
-        existing_erratum.merge_pkglists_and_save(uploaded_erratum)
-
-        # make sure no additional collections are added
-        self.assertEqual(len(existing_erratum.pkglist), 1)
-
-        # make sure _pulp_repo_id is added to the existing collection
-        self.assertEqual(existing_erratum.pkglist[0]['_pulp_repo_id'],
-                         uploaded_erratum.pkglist[0]['_pulp_repo_id'])
-
-        # make sure save() is called once since no collections were added
-        self.assertEqual(mock_save.call_count, 1)
-
-    @mock.patch('pulp_rpm.plugins.db.models.Errata.save')
-    def test_merge_pkglists_oldstyle_newstyle_different_collection(self, mock_save):
-        """
-        Assert that new collection is added to the pkglist if the collection is different from the
-        existing one where _pulp_repo_id is absent.
-        """
-        existing_erratum, uploaded_erratum = models.Errata(), models.Errata()
-
-        # oldstyle erratum does not contain _pulp_repo_id, while the newstyle one does
-        collection_wo_pulp_repo_id = copy.deepcopy(self.collection_wo_pulp_repo_id)
-        existing_erratum.pkglist = [collection_wo_pulp_repo_id]
-
-        different_collection = copy.deepcopy(self.collection_pulp_repo_id)
-        different_collection['packages'][0]['version'] = '2.0'
-        uploaded_erratum.pkglist = [different_collection]
-
-        existing_erratum.merge_pkglists_and_save(uploaded_erratum)
-
-        # make sure additional collection is added
-        self.assertEqual(len(existing_erratum.pkglist), 2)
-        self.assertEqual(existing_erratum.pkglist[1]['packages'][0]['version'],
-                         uploaded_erratum.pkglist[0]['packages'][0]['version'])
-        self.assertEqual(existing_erratum.pkglist[1]['_pulp_repo_id'],
-                         uploaded_erratum.pkglist[0]['_pulp_repo_id'])
-
-        # make sure _pulp_repo_id is not added to the existing collection
-        self.assertFalse('_pulp_repo_id' in existing_erratum.pkglist[0])
-
-    @mock.patch('pulp_rpm.plugins.db.models.Errata.save')
     @mock.patch('pulp_rpm.plugins.db.models.Errata.update_needed')
-    def test_merge_pkglists_newstyle_same_repo_newer(self, mock_update_needed, mock_save):
-        """
-        Assert that the existing collecton is overwritten, if the uploaded erratum is newer than
-        the existing one.
-        """
-        existing_erratum, uploaded_erratum = models.Errata(), models.Errata()
-
-        existing_collection = copy.deepcopy(self.collection_pulp_repo_id)
-        collection_same_repo_id_different_packages = copy.deepcopy(self.collection_pulp_repo_id)
-        collection_same_repo_id_different_packages['packages'][0]['version'] = '2.0'
-
-        existing_erratum.pkglist = [existing_collection]
-        uploaded_erratum.pkglist = [collection_same_repo_id_different_packages]
-        mock_update_needed.return_value = True
-        existing_erratum.merge_pkglists_and_save(uploaded_erratum)
-
-        # make sure no additional collections are added
-        self.assertEqual(len(existing_erratum.pkglist), 1)
-
-        # make sure the existing collection is changed
-        self.assertEqual(existing_erratum.pkglist[0]['packages'][0]['version'],
-                         uploaded_erratum.pkglist[0]['packages'][0]['version'])
-
-        # make sure save() is called once since no collections were added
-        self.assertEqual(mock_save.call_count, 1)
-
-    @mock.patch('pulp_rpm.plugins.db.models.Errata.save')
-    @mock.patch('pulp_rpm.plugins.db.models.Errata.update_needed')
-    def test_merge_pkglists_newstyle_same_repo_older(self, mock_update_needed, mock_save):
-        """
-        Assert that the existing collecton is untouched, if the uploaded erratum is older than
-        the existing one.
-        """
-        existing_erratum, uploaded_erratum = models.Errata(), models.Errata()
-
-        existing_collection = copy.deepcopy(self.collection_pulp_repo_id)
-        collection_same_repo_id_different_packages = copy.deepcopy(self.collection_pulp_repo_id)
-        collection_same_repo_id_different_packages['packages'][0]['version'] = '2.0'
-
-        existing_erratum.pkglist = [existing_collection]
-        uploaded_erratum.pkglist = [collection_same_repo_id_different_packages]
-        mock_update_needed.return_value = False
-        existing_erratum.merge_pkglists_and_save(uploaded_erratum)
-
-        # make sure no additional collections are added
-        self.assertEqual(len(existing_erratum.pkglist), 1)
-
-        # make sure the existing collection is untouched
-        self.assertEqual(existing_erratum.pkglist[0], self.collection_pulp_repo_id)
-
-    @mock.patch('pulp_rpm.plugins.db.models.Errata.save')
-    @mock.patch('pulp_rpm.plugins.db.models.Errata.update_needed')
-    def test_merge_pkglists_same_repo_Nth_merge(self, mock_update_needed, mock_save):
-        """
-        Assert that no new collection is added if newstyle collection for the repo exists.
-        """
-        existing_erratum, uploaded_erratum = models.Errata(), models.Errata()
-
-        existing_collection_wo_pulp_repo_id = copy.deepcopy(self.collection_wo_pulp_repo_id)
-        existing_collection_pulp_repo_id = copy.deepcopy(self.collection_pulp_repo_id)
-        collection_same_repo_id_different_packages = copy.deepcopy(self.collection_pulp_repo_id)
-        collection_same_repo_id_different_packages['packages'][0]['version'] = '2.0'
-
-        existing_erratum.pkglist = [existing_collection_wo_pulp_repo_id,
-                                    existing_collection_pulp_repo_id]
-        uploaded_erratum.pkglist = [collection_same_repo_id_different_packages]
-        mock_update_needed.return_value = True
-        existing_erratum.merge_pkglists_and_save(uploaded_erratum)
-
-        # make sure no additional collections are added
-        self.assertEqual(len(existing_erratum.pkglist), 2)
-        self.assertEqual(mock_save.call_count, 1)
-
-        # make sure the existing collection with _pulp_repo_id is updated
-        self.assertEqual(existing_erratum.pkglist[0], self.collection_wo_pulp_repo_id)
-        self.assertEqual(existing_erratum.pkglist[1], uploaded_erratum.pkglist[0])
-
-    @mock.patch('pulp_rpm.plugins.db.models.Errata.save')
-    def test_merge_pkglists_newstyle_new_collection(self, mock_save):
-        """
-        Assert that new collection is added to the pkglist if the collection has different name.
-        """
-        existing_erratum, uploaded_erratum = models.Errata(), models.Errata()
-
-        existing_collection = copy.deepcopy(self.collection_pulp_repo_id)
-        new_collection = copy.deepcopy(self.collection_pulp_repo_id)
-        new_collection['name'] = 'new test-name'
-
-        existing_erratum.pkglist = [existing_collection]
-        uploaded_erratum.pkglist = [new_collection]
-        existing_erratum.merge_pkglists_and_save(uploaded_erratum)
-
-        # make sure additional collection is added
-        self.assertEqual(len(existing_erratum.pkglist), 2)
-        self.assertEqual(existing_erratum.pkglist[0]['name'],
-                         self.collection_pulp_repo_id['name'])
-        self.assertEqual(existing_erratum.pkglist[1]['name'],
-                         uploaded_erratum.pkglist[0]['name'])
-
-    @mock.patch('pulp_rpm.plugins.db.models.Errata.save')
-    def test_merge_pkglists_newstyle_new_repo(self, mock_save):
-        """
-        Assert that new collection is added to the pkglist if the uploaded erratum is from
-        the different repository.
-        """
-        existing_erratum, uploaded_erratum = models.Errata(), models.Errata()
-
-        existing_collection = copy.deepcopy(self.collection_pulp_repo_id)
-        new_collection = copy.deepcopy(self.collection_pulp_repo_id)
-        new_collection['_pulp_repo_id'] = 'other test-repo'
-
-        existing_erratum.pkglist = [existing_collection]
-        uploaded_erratum.pkglist = [new_collection]
-        existing_erratum.merge_pkglists_and_save(uploaded_erratum)
-
-        # make sure additional collection is added
-        self.assertEqual(len(existing_erratum.pkglist), 2)
-        self.assertEqual(existing_erratum.pkglist[0]['_pulp_repo_id'],
-                         self.collection_pulp_repo_id['_pulp_repo_id'])
-        self.assertEqual(existing_erratum.pkglist[1]['_pulp_repo_id'],
-                         uploaded_erratum.pkglist[0]['_pulp_repo_id'])
-
-    @mock.patch('pulp_rpm.plugins.db.models.Errata.merge_pkglists_and_save')
-    @mock.patch('pulp_rpm.plugins.db.models.Errata.update_needed')
-    def test_merge_errata_newer_erratum(self, mock_update_needed, mock_merge_pkglists):
+    def test_merge_errata_newer_erratum(self, mock_update_needed):
         """
         Assert that the existing erratum is updated if the uploaded erratum is newer.
         """
@@ -654,9 +447,8 @@ class TestErrata(unittest.TestCase):
         self.assertEqual(existing_erratum.field1, uploaded_erratum.field1)
         self.assertEqual(existing_erratum.field2, uploaded_erratum.field2)
 
-    @mock.patch('pulp_rpm.plugins.db.models.Errata.merge_pkglists_and_save')
     @mock.patch('pulp_rpm.plugins.db.models.Errata.update_needed')
-    def test_merge_errata_older_erratum(self, mock_update_needed, mock_merge_pkglists):
+    def test_merge_errata_older_erratum(self, mock_update_needed):
         """
         Assert that the existing erratum is not updated if the uploaded erratum is older.
         """
@@ -673,9 +465,8 @@ class TestErrata(unittest.TestCase):
         self.assertNotEqual(existing_erratum.field1, uploaded_erratum.field1)
         self.assertNotEqual(existing_erratum.field2, uploaded_erratum.field2)
 
-    @mock.patch('pulp_rpm.plugins.db.models.Errata.merge_pkglists_and_save')
     @mock.patch('pulp_rpm.plugins.db.models.Errata.update_needed')
-    def test_merge_fixes_reboot_needed(self, mock_update_needed, mock_merge_pkglists):
+    def test_merge_fixes_reboot_needed(self, mock_update_needed):
         """
         Test that the reboot_suggested value is overwritten by the one on the erratum being merged.
         """
@@ -687,9 +478,8 @@ class TestErrata(unittest.TestCase):
 
         self.assertFalse(existing_erratum.reboot_suggested)
 
-    @mock.patch('pulp_rpm.plugins.db.models.Errata.merge_pkglists_and_save')
     @mock.patch('pulp_rpm.plugins.db.models.Errata.update_needed')
-    def test_merge_preserves_reboot_needed(self, mock_update_needed, mock_merge_pkglists):
+    def test_merge_preserves_reboot_needed(self, mock_update_needed):
         """
         Test that the reboot_suggested value is preserved when both are True.
         """

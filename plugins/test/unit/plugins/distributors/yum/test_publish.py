@@ -1135,20 +1135,22 @@ class PublishErrataStepTests(BaseYumDistributorPublishStepTests):
         expected = set([NEVRA(*values) for values in (mock_scalar_1, mock_scalar_2)])
         self.assertEqual(repo_unit_nevra, expected)
 
-    def test__get_pkglist_to_publish(self):
+    @mock.patch('pulp_rpm.plugins.db.models.ErratumPkglist.objects')
+    def test__get_pkglist_to_publish(self, mock_pkglist):
         """
         Test that packages not presented in repo are filtered out
         """
         self._init_publisher()
         step = publish.PublishErrataStep(repo=Repository(id='test_repo'))
         erratum_unit = Errata(errata_id='some_id')
+        erratum_unit._repo_id = 'test_repo'
 
         pkg_fields = ('name', 'epoch', 'version', 'release', 'arch', 'filename')
         pkg1_values = ('n1', 'e1', 'v1', 'r1', 'a1', 'f1')
         pkg1 = dict(zip(pkg_fields, pkg1_values))
         pkg2_values = ('n2', 'e2', 'v2', 'r2', 'a2', 'f2')
         pkg2 = dict(zip(pkg_fields, pkg2_values))
-        erratum_unit.pkglist = [{'packages': [pkg1, pkg2]}]
+        mock_pkglist.return_value = [{'collections': [{'packages': [pkg1, pkg2]}]}]
 
         repo_package = pkg1.copy()
         del(repo_package['filename'])
@@ -1164,20 +1166,22 @@ class PublishErrataStepTests(BaseYumDistributorPublishStepTests):
         self.assertEqual(pkglist_to_publish['packages'][0], pkg1)
         self.assertEqual(pkglist_to_publish['name'], 'test_repo')
 
+    @mock.patch('pulp_rpm.plugins.db.models.ErratumPkglist.objects')
     @mock.patch.object(publish.PublishErrataStep, 'get_repo')
-    def test__get_pkglist_to_publish_duplicated(self, mock_get_repo):
+    def test__get_pkglist_to_publish_duplicated(self, mock_get_repo, mock_pkglist):
         """
         Test that duplicated pkglists are filtered out
         """
         self._init_publisher()
         step = publish.PublishErrataStep()
         erratum_unit = Errata(errata_id='some_id')
+        erratum_unit._repo_id = 'test_repo'
 
         pkg_fields = ('name', 'epoch', 'version', 'release', 'arch', 'filename')
         pkg1_values = ('n1', 'e1', 'v1', 'r1', 'a1', 'f1')
         pkg1 = dict(zip(pkg_fields, pkg1_values))
 
-        erratum_unit.pkglist = [{'packages': [pkg1]}, {'packages': [pkg1]}]
+        mock_pkglist.return_value = [{'collections': [{'packages': [pkg1]}, {'packages': [pkg1]}]}]
 
         repo_package = pkg1.copy()
         del(repo_package['filename'])
@@ -1192,20 +1196,22 @@ class PublishErrataStepTests(BaseYumDistributorPublishStepTests):
         self.assertTrue(len(pkglist_to_publish['packages']), 1)
         self.assertEqual(pkglist_to_publish['packages'][0], pkg1)
 
-    def test__get_pkglist_to_publish_merge(self):
+    @mock.patch('pulp_rpm.plugins.db.models.ErratumPkglist.objects')
+    def test__get_pkglist_to_publish_merge(self, mock_pkglist):
         """
         Test that multiple pkglists are merged into one
         """
         self._init_publisher()
         step = publish.PublishErrataStep(repo=Repository(id='test_repo'))
         erratum_unit = Errata(errata_id='some_id')
+        erratum_unit._repo_id = 'test_repo'
 
         pkg_fields = ('name', 'epoch', 'version', 'release', 'arch', 'filename')
         pkg1_values = ('n1', 'e1', 'v1', 'r1', 'a1', 'f1')
         pkg1 = dict(zip(pkg_fields, pkg1_values))
         pkg2_values = ('n2', 'e2', 'v2', 'r2', 'a2', 'f2')
         pkg2 = dict(zip(pkg_fields, pkg2_values))
-        erratum_unit.pkglist = [{'packages': [pkg1]}, {'packages': [pkg2]}]
+        mock_pkglist.return_value = [{'collections': [{'packages': [pkg1]}, {'packages': [pkg2]}]}]
 
         step.repo_unit_nevra = set([NEVRA._fromdict(pkg1), NEVRA._fromdict(pkg2)])
 

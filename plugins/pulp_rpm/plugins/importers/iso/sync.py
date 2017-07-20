@@ -93,6 +93,8 @@ class ISOSyncRun(listener.DownloadEventListener):
             self.downloader = HTTPThreadedDownloader(downloader_config, self)
         self.progress_report = SyncProgressReport(sync_conduit)
 
+        self.repo_units = []
+
     @property
     def download_deferred(self):
         """
@@ -162,7 +164,7 @@ class ISOSyncRun(listener.DownloadEventListener):
                     iso.save()
                 except NotUniqueError:
                     iso = iso.__class__.objects.filter(**iso.unit_key).first()
-                repo_controller.associate_single_unit(self.sync_conduit.repo, iso)
+                self._associate_unit(self.sync_conduit.repo, iso)
                 iso.safe_import_content(report.destination)
 
                 # We can drop this ISO from the url --> ISO map
@@ -240,7 +242,7 @@ class ISOSyncRun(listener.DownloadEventListener):
                     iso = iso.__class__.objects.filter(**iso.unit_key).first()
                 else:
                     self.add_catalog_entries([iso])
-                repo_controller.associate_single_unit(self.sync_conduit.repo, iso)
+                self._associate_unit(self.sync_conduit.repo, iso)
         else:
             self._download_isos(local_missing_isos)
 
@@ -315,6 +317,25 @@ class ISOSyncRun(listener.DownloadEventListener):
             raise ValueError(self.progress_report.error_message)
 
         return manifest
+
+    def _associate_unit(self, repo, unit):
+        """
+        Associate an iso unit with a repository but first check if there's already any with the same
+        name and if so, remove them.
+
+        :param repo: An ISO repository that is being synced
+        :type  repo: pulp.server.db.model.Repository
+        :param unit: An ISO unit to associate with repo
+        :type  unit: pulp_rpm.plugins.db.models.ISO
+        """
+        if not self.repo_units:
+            # store the existing repo units to prevent querying mongo multiple times
+            self.repo_units = repo_controller.find_repo_content_units(repo, yield_content_unit=True)
+
+        units_to_remove = [iso for iso in self.repo_units if iso['name'] == unit['name']]
+
+        repo_controller.disassociate_units(repo, units_to_remove)
+        repo_controller.associate_single_unit(repo, unit)
 
     def _filter_missing_isos(self, manifest, download_deferred):
         """

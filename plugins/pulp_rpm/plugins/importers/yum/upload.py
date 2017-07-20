@@ -12,8 +12,9 @@ from pulp.server.exceptions import error_codes as platform_errors
 from pulp.server import util
 import rpm
 
-from pulp_rpm.plugins.db import models
 from pulp_rpm.plugins import error_codes
+from pulp_rpm.plugins.controllers import errata as errata_controller
+from pulp_rpm.plugins.db import models
 from pulp_rpm.plugins.importers.yum import purge, utils
 from pulp_rpm.plugins.importers.yum.parse import rpm as rpm_parse
 from pulp_rpm.plugins.importers.yum.repomd import primary, group, packages, filelists
@@ -186,19 +187,17 @@ def _handle_erratum(repo, type_id, unit_key, metadata, file_path, conduit, confi
     unit_data.update(metadata or {})
     unit_data.update(unit_key or {})
 
-    existing_unit = model_class.objects.filter(**unit_key).first()
-    new_unit = model_class(**unit_data)
+    unit = model_class(**unit_data)
+    errata_controller.create_or_update_pkglist(unit, repo.repo_id)
 
-    # Add repo_id to each collection of the pkglist of the new erratum
-    for collection in new_unit.pkglist:
-        collection['_pulp_repo_id'] = repo.repo_id
-
-    unit = new_unit
-    if existing_unit:
-        existing_unit.merge_errata(new_unit)
+    try:
+        unit.save()
+    except NotUniqueError:
+        existing_unit = model_class.objects.filter(**unit_key).first()
+        existing_unit.merge_errata(unit)
         unit = existing_unit
+        unit.save()
 
-    unit.save()
     if not config.get_boolean(CONFIG_SKIP_ERRATUM_LINK):
         repo_controller.associate_single_unit(repo, unit)
 
