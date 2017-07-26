@@ -755,11 +755,6 @@ class TestUpdateProvidesRequires(unittest.TestCase):
                          'filelists': self.FILELISTS_EXCERPT,
                          'other': self.OTHER_EXCERPT}
 
-    def test_update_provides_requires(self):
-        upload._update_provides_requires(self.unit, self.repodata)
-        self.assertEqual(len(self.unit.provides), 1)
-        self.assertEqual(len(self.unit.requires), 2)
-
     def test_update_files(self):
         upload._update_files(self.unit, self.repodata)
         self.assertEqual(len(self.unit.files['file']), 1)

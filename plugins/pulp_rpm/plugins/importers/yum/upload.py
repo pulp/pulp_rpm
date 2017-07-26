@@ -7,11 +7,12 @@ from mongoengine import NotUniqueError
 
 from pulp.plugins.loader import api as plugin_api
 from pulp.server.controllers import repository as repo_controller
-from pulp.server.exceptions import PulpCodedValidationException, PulpCodedException
+from pulp.server.exceptions import PulpCodedException
 from pulp.server.exceptions import error_codes as platform_errors
 from pulp.server import util
 import rpm
 
+from pulp_rpm.common import constants
 from pulp_rpm.plugins import error_codes
 from pulp_rpm.plugins.controllers import errata as errata_controller
 from pulp_rpm.plugins.db import models
@@ -373,9 +374,12 @@ def _handle_package(repo, type_id, unit_key, metadata, file_path, conduit, confi
     """
     try:
         if type_id == models.DRPM._content_type_id.default:
-            rpm_data = _extract_drpm_data(file_path)
+            unit = models.DRPM(**_extract_drpm_data(file_path))
         else:
-            rpm_data = _extract_rpm_data(type_id, file_path)
+            repodata = rpm_parse.get_package_xml(file_path, sumtype=util.TYPE_SHA256)
+            package_xml = (utils.fake_xml_element(repodata['primary'], constants.COMMON_NAMESPACE)
+                                .find(primary.PACKAGE_TAG))
+            unit = primary.process_package_element(package_xml)
     except:
         _LOGGER.exception('Error extracting RPM metadata for [%s]' % file_path)
         raise
@@ -402,26 +406,29 @@ def _handle_package(repo, type_id, unit_key, metadata, file_path, conduit, confi
 
     # Save all uploaded RPMs with sha256 in the unit key, since we can now publish with other
     # types, regardless of what is in the unit key.
-    rpm_data['checksumtype'] = util.TYPE_SHA256
-    rpm_data['checksum'] = sums[util.TYPE_SHA256]
+    unit.checksumtype = util.TYPE_SHA256
+    unit.checksum = sums[util.TYPE_SHA256]
     # keep all available checksum values on the model
-    rpm_data['checksums'] = sums
+    unit.checksums = sums
 
     # Update the RPM-extracted data with anything additional the user specified.
     # Allow the user-specified values to override the extracted ones.
-    rpm_data.update(metadata or {})
-    rpm_data.update(unit_key or {})
-
-    # Validate the user specified data by instantiating the model
-    try:
-        unit = model_class(**rpm_data)
-    except TypeError:
-        raise ModelInstantiationError()
+    for key, value in metadata.items():
+        setattr(unit, key, value)
+    for key, value in unit_key.items():
+        setattr(unit, key, value)
 
     if type_id != models.DRPM._content_type_id.default:
         # Extract/adjust the repodata snippets
-        repodata = rpm_parse.get_package_xml(file_path, sumtype=unit.checksumtype)
-        _update_provides_requires(unit, repodata)
+        unit.signing_key = rpm_parse.package_signature(rpm_parse.package_headers(file_path))
+        # construct filename from metadata (BZ #1101168)
+        if type_id == models.SRPM._content_type_id.default:
+            rpm_basefilename = "%s-%s-%s.src.rpm" % (unit.name, unit.version, unit.release)
+        else:
+            rpm_basefilename = "%s-%s-%s.%s.rpm" % (unit.name, unit.version, unit.release,
+                                                    unit.arch)
+        unit.relativepath = rpm_basefilename
+        unit.filename = rpm_basefilename
         _update_files(unit, repodata)
         unit.modify_xml(repodata)
 
@@ -431,35 +438,14 @@ def _handle_package(repo, type_id, unit_key, metadata, file_path, conduit, confi
     unit.set_storage_path(os.path.basename(file_path))
     try:
         unit.save_and_import_content(file_path)
+    except TypeError:
+        raise ModelInstantiationError()
     except NotUniqueError:
         unit = unit.__class__.objects.filter(**unit.unit_key).first()
 
     if rpm_parse.signature_enabled(config):
         rpm_parse.filter_signature(unit, config)
     repo_controller.associate_single_unit(repo, unit)
-
-
-def _update_provides_requires(unit, repodata):
-    """
-    Determines the provides and requires fields based on the RPM's XML snippet and updates
-    the model instance.
-
-    :param unit: the unit being added to Pulp; the metadata attribute must already have
-                 a key called 'repodata'
-    :type  unit: subclass of pulp.server.db.model.ContentUnit
-    :param repodata: xml snippets to analyze
-    :type  repodata: dict
-    """
-    fake_element = utils.fake_xml_element(repodata['primary'])
-    utils.strip_ns(fake_element)
-    primary_element = fake_element.find('package')
-    format_element = primary_element.find('format')
-    provides_element = format_element.find('provides')
-    requires_element = format_element.find('requires')
-    unit.provides = map(primary._process_rpm_entry_element,
-                        provides_element.findall('entry')) if provides_element else []
-    unit.requires = map(primary._process_rpm_entry_element,
-                        requires_element.findall('entry')) if requires_element else []
 
 
 def _update_files(unit, repodata):
@@ -476,80 +462,6 @@ def _update_files(unit, repodata):
     fake_element = utils.fake_xml_element(repodata['filelists'])
     package_element = fake_element.find('package')
     _, unit.files = filelists.process_package_element(package_element)
-
-
-def _extract_rpm_data(type_id, rpm_filename):
-    """
-    Extract a dict of information for a given RPM or SRPM.
-
-    :param type_id: The type of the unit that is being generated
-    :type  type_id: str
-
-    :param rpm_filename: full path to the package to analyze
-    :type  rpm_filename: str
-
-    :return: dict of data about the package
-    :rtype:  dict
-    """
-    rpm_data = dict()
-
-    # Read the RPM header attributes for use later
-    headers = rpm_parse.package_headers(rpm_filename)
-
-    for k in ['name', 'version', 'release', 'epoch']:
-        rpm_data[k] = headers[k]
-
-    if rpm_data['epoch'] is not None:
-        rpm_data['epoch'] = str(rpm_data['epoch'])
-    else:
-        rpm_data['epoch'] = str(0)
-
-    if headers['sourcepackage']:
-        if RPMTAG_NOSOURCE in headers.keys():
-            rpm_data['arch'] = 'nosrc'
-        else:
-            rpm_data['arch'] = 'src'
-    else:
-        rpm_data['arch'] = headers['arch']
-
-    # construct filename from metadata (BZ #1101168)
-    if headers[rpm.RPMTAG_SOURCEPACKAGE]:
-        if type_id != models.SRPM._content_type_id.default:
-            raise PulpCodedValidationException(error_code=error_codes.RPM1002)
-        rpm_basefilename = "%s-%s-%s.src.rpm" % (headers['name'],
-                                                 headers['version'],
-                                                 headers['release'])
-    else:
-        if type_id != models.RPM._content_type_id.default:
-            raise PulpCodedValidationException(error_code=error_codes.RPM1003)
-        rpm_basefilename = "%s-%s-%s.%s.rpm" % (headers['name'],
-                                                headers['version'],
-                                                headers['release'],
-                                                headers['arch'])
-
-    rpm_data['relativepath'] = rpm_basefilename
-    rpm_data['filename'] = rpm_basefilename
-
-    # This format is, and has always been, incorrect. As of the new yum importer, the
-    # plugin will generate these from the XML snippet because the API into RPM headers
-    # is atrocious. This is the end game for this functionality anyway, moving all of
-    # that metadata derivation into the plugin, so this is just a first step.
-    # I'm leaving these in and commented to show how not to do it.
-    # rpm_data['requires'] = [(r,) for r in headers['requires']]
-    # rpm_data['provides'] = [(p,) for p in headers['provides']]
-
-    rpm_data['buildhost'] = headers['buildhost']
-    rpm_data['license'] = headers['license']
-    rpm_data['vendor'] = headers['vendor']
-    rpm_data['description'] = headers['description']
-    rpm_data['build_time'] = headers[rpm.RPMTAG_BUILDTIME]
-    # Use the mtime of the file to match what is in the generated xml from
-    # rpm_parse.get_package_xml(..)
-    file_stat = os.stat(rpm_filename)
-    rpm_data['time'] = file_stat[stat.ST_MTIME]
-    rpm_data['signing_key'] = rpm_parse.package_signature(headers)
-
-    return _encode_as_utf8(rpm_data)
 
 
 def _extract_drpm_data(drpm_filename):
