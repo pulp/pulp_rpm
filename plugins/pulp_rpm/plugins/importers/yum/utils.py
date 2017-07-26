@@ -28,6 +28,8 @@ Namespace = namedtuple('Namespace', ['name', 'uri'])
 # namespace, which causes a parse error if that namespace isn't declared.
 FAKE_XML = '<?xml version="1.0" encoding="%(encoding)s"?><faketag ' \
            'xmlns:rpm="%(namespace)s">%(xml)s</faketag>'
+FAKE_XML_COMMON = '<?xml version="1.0" encoding="%(encoding)s"?><faketag ' \
+                  'xmlns="%(common_namespace)s" xmlns:rpm="%(rpm_namespace)s">%(xml)s</faketag>'
 
 
 def element_to_raw_xml(element, namespaces_to_register=None, default_namespace_uri=None):
@@ -111,17 +113,21 @@ def strip_ns(element, uri=None):
         strip_ns(child, uri)
 
 
-def fake_xml_element(repodata_snippet):
+def fake_xml_element(repodata_snippet, common=None):
     """
     Wrap a snippet of xml in a fake element so it can be coerced to an ElementTree Element
 
     :param repodata_snippet: Snippet of XML to be turn into an ElementTree Element
     :type  repodata_snippet: str
+    :param           common: The common namespace (e.g. xmlns=?)
+    :type            common: str (Default None)
 
     :return: Parsed ElementTree Element containing the parsed repodata snippet
     :rtype:  xml.etree.ElementTree.Element
     """
     register_namespace('rpm', constants.RPM_NAMESPACE)
+    if common:
+        register_namespace('', common)
     try:
         # make a guess at the encoding
         codec = 'UTF-8'
@@ -134,8 +140,13 @@ def fake_xml_element(repodata_snippet):
         # sometimes input contains non-ASCII characters and it is not in the unicode form
         # in this case the best guess is that it is encoded as UTF-8
         repodata_snippet = repodata_snippet.decode('UTF-8')
-    fake_xml = FAKE_XML % {'encoding': codec, 'xml': repodata_snippet,
-                           'namespace': constants.RPM_NAMESPACE}
+    if common:
+        fake_xml = FAKE_XML_COMMON % {'encoding': codec, 'xml': repodata_snippet,
+                                      'common_namespace': common,
+                                      'rpm_namespace': constants.RPM_NAMESPACE}
+    else:
+        fake_xml = FAKE_XML % {'encoding': codec, 'xml': repodata_snippet,
+                               'namespace': constants.RPM_NAMESPACE}
     # s/fromstring/phone_home/
     return ET.fromstring(fake_xml.encode(codec))
 
