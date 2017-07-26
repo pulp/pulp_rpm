@@ -37,7 +37,7 @@ Provides a collection of platform plugins, client extensions and agent
 handlers that provide RPM support.
 
 %prep
-%setup -q -n pulp_rpm-%{git_tag}
+%setup -q
 
 %build
 
