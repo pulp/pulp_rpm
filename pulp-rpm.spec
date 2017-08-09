@@ -10,7 +10,7 @@
 %endif
 
 # The release number
-%global release_number 0.3.rc
+%global release_number 1
 
 # Create tag for the Source0 and setup
 %global git_tag %{name}-%{version}-%{release_number}
