@@ -10,3 +10,7 @@ New Features
 
 * New parameter for rsync distributor ``rsync_extra_args`` allows user to 
   specify custom arguments for rsync call during publish operations.
+
+* New publish step RemoveOldRepodataStep removes repodata older than 14 days
+  at the end of publish operation. Configure this behavior with these options
+  ``remove_old_repodata_threshold`` and ``remove_old_repodata``.

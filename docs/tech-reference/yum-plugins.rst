@@ -627,3 +627,14 @@ Optional Configuration Parameters
 ``force_full``
 Boolean flag to indicate whether or not publish should be done from scratch.
 If unspecified the incremental publish will be performed when possible.
+
+``remove_old_repodata``
+Boolean flag to indicate whether or not repodata passed expiration are removed
+during publish. If not present it defaults to True. The default expiration is
+14 days. Files that present in repomd.xml are preserved no matter of 
+their age.
+
+``remove_old_repodata_threshold``
+If ``remove_old_repodata`` is true, this attribute specify maximal age of 
+repodata in seconds that are not removed during publish. This attribute defaults
+to 14 days.

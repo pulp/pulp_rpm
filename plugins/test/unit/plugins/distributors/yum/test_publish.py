@@ -11,7 +11,7 @@ from pulp.devel.unit.util import touch, compare_dict
 from pulp.plugins.conduits.repo_publish import RepoPublishConduit
 from pulp.plugins.config import PluginCallConfiguration
 from pulp.plugins.model import Repository, Unit
-from pulp.plugins.util.publish_step import PublishStep, CreatePulpManifestStep
+from pulp.plugins.util.publish_step import (PublishStep, CreatePulpManifestStep)
 from pulp.server import constants as server_constants
 from pulp.server.db import model
 from pulp.server.exceptions import InvalidValue, PulpCodedException
@@ -1331,6 +1331,64 @@ class GenerateSqliteForRepoStepTests(BaseYumDistributorPublishStepTests):
         self.publisher.add_child(step)
         self.publisher.get_config().default_config.update({'generate_sqlite': True})
         self.assertFalse(step.is_skipped())
+
+
+class RemoveOldRepodataStepTests(BaseYumDistributorPublishStepTests):
+    """
+    Test RepoOldRepodataStep of the publish process.
+    """
+
+    def setUp(self):
+        super(RemoveOldRepodataStepTests, self).setUp()
+        file_map = {"0abcde-primary.xml.gz": 1497601154,
+                    "1abcde-primary.xml.gz": 1496395553}
+
+        self.dtpatcher = mock.patch(
+            'pulp_rpm.plugins.distributors.yum.publish.datetime.datetime',
+            wraps=datetime.datetime
+        )
+        self.mtime_patcher = mock.patch(
+            'pulp_rpm.plugins.distributors.yum.publish.os.path.getmtime'
+        )
+        self.glob_patcher = mock.patch(
+            'pulp_rpm.plugins.distributors.yum.publish.glob.glob'
+        )
+
+        mocked_dt = self.dtpatcher.start()
+        mocked_mtime = self.mtime_patcher.start()
+        mocked_glob = self.glob_patcher.start()
+
+        mocked_dt.today.return_value = datetime.datetime.fromtimestamp(1497605154)
+        mocked_glob.return_value = file_map.keys()
+        mocked_mtime.side_effect = lambda x: file_map[x]
+
+    def test_process_main(self):
+        """
+        Test that repoview tool was called with proper parameters.
+        """
+        publisher_conf = {}
+
+        step = publish.RemoveOldRepodataStep('/foo')
+        step.config = publisher_conf
+        step.parent = mock.MagicMock()
+        step.parent.get_config.return_value.get.side_effect = publisher_conf.get
+
+        filter_old_repodata_mock = mock.Mock(side_effect=step.filter_old_repodata)
+        with mock.patch.multiple(
+            "pulp_rpm.plugins.distributors.yum.publish.RemoveOldRepodataStep",
+            remove_repodata_file=mock.DEFAULT,
+            filter_old_repodata=filter_old_repodata_mock
+        ) as mocked_step_dict:
+            step.process_main()
+            filter_old_repodata_mock.assert_called_with(
+                ['1abcde-primary.xml.gz', '0abcde-primary.xml.gz',
+                 '1abcde-primary.xml.gz', '0abcde-primary.xml.gz'])
+            mocked_step_dict["remove_repodata_file"].assert_called_with("1abcde-primary.xml.gz")
+
+    def tearDown(self):
+        self.dtpatcher.stop()
+        self.mtime_patcher.stop()
+        self.glob_patcher.stop()
 
 
 class GenerateRepoviewStepTests(BaseYumDistributorPublishStepTests):
