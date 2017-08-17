@@ -1,15 +1,12 @@
 =======================
-Pulp 2.14 Release Notes
+Pulp 2.15 Release Notes
 =======================
 
-Pulp 2.14.0
+Pulp 2.15.0
 ===========
 
 New Features
 ------------
-
-* New parameter for rsync distributor ``rsync_extra_args`` allows user to 
-  specify custom arguments for rsync call during publish operations.
 
 * New publish step RemoveOldRepodataStep removes repodata older than 14 days
   at the end of publish operation. Configure this behavior with these options
