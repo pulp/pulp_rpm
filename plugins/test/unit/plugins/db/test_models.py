@@ -307,48 +307,60 @@ class TestErrata(unittest.TestCase):
             'name': 'test-name',
             'short': ''}
 
-    def test_rpm_search_dicts_sanitizes_checksum_type_sum(self):
+    @mock.patch('pulp_rpm.plugins.db.models.ErratumPkglist.objects')
+    def test_rpm_search_dicts_sanitizes_checksum_type_sum(self, mock_erratumpkglist_objects):
         """
         Assert that the rpm_search_dicts() method properly sanitizes checksum types with the sum
         is specified with the 'sum' attribute.
         """
         errata = models.Errata()
-        errata.pkglist = [
+        errata_pkglist = models.ErratumPkglist()
+        errata_pkglist.collections = [
             {'packages': [
                 {'name': 'name', 'epoch': '0', 'version': '0.0', 'sum': ['sha', 'sum'],
                  'release': 'release', 'arch': 'arch'}]}]
+
+        mock_erratumpkglist_objects.return_value = [errata_pkglist]
 
         ret = errata.rpm_search_dicts
 
         self.assertEqual(len(ret), 1)
         self.assertEqual(ret[0]['checksumtype'], 'sha1')
 
-    def test_rpm_search_dicts_sanitizes_checksum_type_sums(self):
+    @mock.patch('pulp_rpm.plugins.db.models.ErratumPkglist.objects')
+    def test_rpm_search_dicts_sanitizes_checksum_type_sums(self, mock_erratumpkglist_objects):
         """
         Assert that the rpm_search_dicts() method properly sanitizes checksum types with the sum
         is specified with the 'type' attribute.
         """
         errata = models.Errata()
-        errata.pkglist = [
+        errata_pkglist = models.ErratumPkglist()
+        errata_pkglist.collections = [
             {'packages': [
                 {'name': 'name', 'epoch': '0', 'version': '0.0', 'sums': ['sum1', 'sum2'],
                  'release': 'release', 'arch': 'arch', 'type': 'sha'}]}]
+
+        mock_erratumpkglist_objects.return_value = [errata_pkglist]
 
         ret = errata.rpm_search_dicts
 
         self.assertEqual(len(ret), 1)
         self.assertEqual(ret[0]['checksumtype'], 'sha1')
 
-    def test_rpm_search_dicts_no_checksum(self):
+    @mock.patch('pulp_rpm.plugins.db.models.ErratumPkglist.objects')
+    def test_rpm_search_dicts_no_checksum(self, mock_erratumpkglist_objects):
         """
         Assert that the rpm_search_dicts() method tolerates a missing checksumtype, as is found
         when using this demo repo: https://repos.fedorapeople.org/repos/pulp/pulp/demo_repos/zoo/
         """
         errata = models.Errata()
-        errata.pkglist = [
+        errata_pkglist = models.ErratumPkglist()
+        errata_pkglist.collections = [
             {'packages': [
                 {'name': 'foo', 'epoch': '0', 'version': '0.0', 'sum': None,
                  'release': 'release', 'arch': 'arch'}]}]
+
+        mock_erratumpkglist_objects.return_value = [errata_pkglist]
 
         ret = errata.rpm_search_dicts
 
