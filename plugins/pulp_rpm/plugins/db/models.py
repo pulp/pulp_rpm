@@ -1134,28 +1134,30 @@ class Errata(UnitMixin, ContentUnit):
     @property
     def rpm_search_dicts(self):
         ret = []
-        for collection in self.pkglist:
-            for package in collection.get('packages', []):
-                if len(package.get('sum') or []) == 2:
-                    checksum = package['sum'][1]
-                    checksumtype = server_util.sanitize_checksum_type(package['sum'][0])
-                elif 'sums' in package and 'type' in package:
-                    # these are the field names we get from an erratum upload.
-                    # I have no idea why they are different.
-                    checksum = package['sums']
-                    checksumtype = server_util.sanitize_checksum_type(package['type'])
-                else:
-                    checksum = None
-                    checksumtype = None
-                rpm = RPM(name=package['name'], epoch=package['epoch'],
-                          version=package['version'], release=package['release'],
-                          arch=package['arch'], checksum=checksum,
-                          checksumtype=checksumtype)
-                unit_key = rpm.unit_key
-                for key in ['checksum', 'checksumtype']:
-                    if unit_key[key] is None:
-                        del unit_key[key]
-                ret.append(unit_key)
+        pkglists = ErratumPkglist.objects(errata_id=self.errata_id)
+        for pkglist in pkglists:
+            for collection in pkglist['collections']:
+                for package in collection.get('packages', []):
+                    if len(package.get('sum') or []) == 2:
+                        checksum = package['sum'][1]
+                        checksumtype = server_util.sanitize_checksum_type(package['sum'][0])
+                    elif 'sums' in package and 'type' in package:
+                        # these are the field names we get from an erratum upload.
+                        # I have no idea why they are different.
+                        checksum = package['sums']
+                        checksumtype = server_util.sanitize_checksum_type(package['type'])
+                    else:
+                        checksum = None
+                        checksumtype = None
+                    rpm = RPM(name=package['name'], epoch=package['epoch'],
+                              version=package['version'], release=package['release'],
+                              arch=package['arch'], checksum=checksum,
+                              checksumtype=checksumtype)
+                    unit_key = rpm.unit_key
+                    for key in ['checksum', 'checksumtype']:
+                        if unit_key[key] is None:
+                            del unit_key[key]
+                    ret.append(unit_key)
         return ret
 
     def create_legacy_metadata_dict(self):

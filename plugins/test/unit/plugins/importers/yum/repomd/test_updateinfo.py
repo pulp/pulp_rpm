@@ -55,17 +55,6 @@ issue, and add these enhancements.
         self.assertEqual(erratum.reboot_suggested, False)
         self.assertEqual(erratum.severity, '')
 
-        rpms = erratum.rpm_search_dicts
-        self.assertEqual(len(rpms), 4)
-        for rpm in rpms:
-            # make sure all of the correct keys are present
-            model = models.RPM(**rpm)
-            self.assertEqual(model.checksumtype, 'sha256')
-            self.assertTrue(len(model.checksum) > 0)
-            self.assertTrue(model.name.startswith('NetworkManager'))
-            self.assertEqual(model.version, '0.8.1')
-            self.assertEqual(model.release, '5.el6_0.1')
-
     def test_scientific_linux_real_data(self):
         with open(os.path.join(DATA_DIR, 'scientific_linux_erratum.xml')) as f:
             errata = packages.package_list_generator(f,
@@ -85,9 +74,6 @@ issue, and add these enhancements.
         self.assertEqual(erratum.updated, '')
         self.assertEqual(erratum.reboot_suggested, False)
         self.assertEqual(erratum.severity, '')
-
-        rpms = erratum.rpm_search_dicts
-        self.assertEqual(len(rpms), 14)
 
     def test_multiple_pkglist_multiple_collections(self):
         """
