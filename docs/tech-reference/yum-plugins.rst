@@ -391,7 +391,7 @@ Metadata
 
 .. note::
     Package_group, package_category and package environment elements can also be uploaded via comps file.
-    For more info see :ref:` upload_comps_xml_file`.
+    For more info see :ref:`upload_comps_xml_file`.
 
 
 Yum Repo Metadata File
@@ -596,9 +596,10 @@ Optional Configuration Parameters
  full path to the certificate.
 
 ``gpgkey``
- GPG key used to sign RPMs in this repository. This key will be made available
- to consumers to use in verifying content in the repository. The value to this
- option must be the full path to the GPG key file.
+ File containing GPG keys used to sign RPMs and metadata in this repository.
+ These keys will be made available to consumers to use for verifying content in
+ the repository. The value provided to this option must be the full path to a
+ GPG key file containing one or more ASCII armored public keys.
 
 ``generate_sqlite``
  Boolean flag to indicate whether or not sqlite files should be generated during
@@ -619,22 +620,71 @@ Optional Configuration Parameters
  Checksum type to use for updateinfo.xml generation. For each package listed in updateinfo.xml
  the checksum of this type will be published if available, otherwise ``checksum_type`` will be used.
 
+``gpg_sign_metadata``
+ Boolean flag to indicate whether or not a repomd.xml.asc file should be
+ generated during a repository publish. This file is used by yum when configured
+ with repo_gpgcheck=1. See `GPG Signing Key`_.
+
 ``skip``
  List of content types to skip during the repository publish.
  If unspecified, all types will be published. Valid values are: rpm, drpm,
  distribution, errata, packagegroup.
 
 ``force_full``
-Boolean flag to indicate whether or not publish should be done from scratch.
-If unspecified the incremental publish will be performed when possible.
+ Boolean flag to indicate whether or not publish should be done from scratch.
+ If unspecified the incremental publish will be performed when possible.
 
 ``remove_old_repodata``
-Boolean flag to indicate whether or not repodata passed expiration are removed
-during publish. If not present it defaults to True. The default expiration is
-14 days. Files that present in repomd.xml are preserved no matter of 
-their age.
+ Boolean flag to indicate whether or not repodata past expiration are removed
+ during publish. If not present it defaults to True. The default expiration is
+ 14 days. Files that present in repomd.xml are preserved no matter of
+ their age.
 
 ``remove_old_repodata_threshold``
-If ``remove_old_repodata`` is true, this attribute specify maximal age of 
-repodata in seconds that are not removed during publish. This attribute defaults
-to 14 days.
+ If ``remove_old_repodata`` is true, this attribute specify maximal age of
+ repodata in seconds that are not removed during publish. This attribute defaults
+ to 14 days.
+
+GPG Signing Key
+^^^^^^^^^^^^^^^
+
+If ``gpg_sign_metadata`` is ``True``, a Pulp worker process will use the ``gpg``
+command to generate the repomd.xml.asc file. By default, ``gpg`` will look for a
+GPG signing key under ``~/.gnupg/`` in the account that the Pulp worker process
+runs as. This path can be overridden by exporting a ``$GNUPGHOME`` environment
+variable in the pulp_workers startup script. The signing key must not be
+protected by a password. The public key associated with the signing key must be
+added to the ``gpgkey`` file configured on this distributor.
+
+To generate a GPG signing key under ``~/.gnupg/`` in the account that the Pulp
+worker process runs as::
+
+    $ sudo -u pulp -H -s
+    $ gpg --gen-key
+
+(Use the default ``RSA and RSA``, ``2048`` bits, and ``key does not expire``
+values, and simply press ``Enter`` when prompted for a password.)
+
+To generate a GPG signing key under a different directory::
+
+    $ mkdir -p /path/to/gnupg
+    $ gpg --homedir /path/to/gnupg --gen-key
+    $ chown -Rh pulp /path/to/gnupg
+
+To remove the password from an existing GPG signing key::
+
+    $ gpg --homedir /path/to/gnupg --list-keys
+    $ gpg --homedir /path/to/gnupg --edit-key <Key ID> passwd
+
+To export the public key associated with the GPG signing key::
+
+    $ sudo -u pulp -H \
+      gpg --homedir /path/to/gnupg --armor --export <Key ID> >> /path/to/gpgkey.file
+
+To test the generation of a .asc file::
+
+    $ sudo -u pulp -H -s
+    $ cd
+    $ touch test
+    $ gpg --yes --homedir /path/to/gnupg --detach-sign --armor test
+    $ rm test test.asc

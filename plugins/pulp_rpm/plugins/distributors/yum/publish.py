@@ -69,7 +69,7 @@ class BaseYumRepoPublisher(platform_steps.PluginStep):
         self.repomd_file_context = None
         self.checksum_type = None
 
-        self.add_child(InitRepoMetadataStep())
+        self.add_child(InitRepoMetadataStep(config.get_boolean('gpg_sign_metadata')))
         dist_step = PublishDistributionStep()
         self.add_child(dist_step)
         self.rpm_step = PublishRpmStep(dist_step, repo_content_unit_q=association_filters)
@@ -377,16 +377,18 @@ class GenerateListingFileStep(platform_steps.PluginStep):
 
 class InitRepoMetadataStep(platform_steps.PluginStep):
 
-    def __init__(self, step=constants.PUBLISH_INIT_REPOMD_STEP):
+    def __init__(self, gpg_sign=False, step=constants.PUBLISH_INIT_REPOMD_STEP):
         """
         Initialize and set the ID of the step
         """
         super(InitRepoMetadataStep, self).__init__(step)
         self.description = _("Initializing repo metadata")
+        self.gpg_sign = gpg_sign
 
     def initialize(self):
         self.parent.repomd_file_context = RepomdXMLFileContext(self.get_working_dir(),
-                                                               self.parent.get_checksum_type())
+                                                               self.parent.get_checksum_type(),
+                                                               self.gpg_sign)
         self.parent.repomd_file_context.initialize()
 
 

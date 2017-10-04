@@ -153,7 +153,7 @@ class TestRepoURLModify(unittest.TestCase):
         self.assertEqual(modified_url_path, '/path/appended')
 
     def test_query_auth_token(self):
-        # test the the query string is properly overwritten with the sles auth token
+        # test the query string is properly overwritten with the sles auth token
         url_modify = utils.RepoURLModifier(query_auth_token='gabbagabbahey')
         modified_url = url_modify(self.test_url)
         self.assertTrue(modified_url.endswith('?gabbagabbahey#fragment'))

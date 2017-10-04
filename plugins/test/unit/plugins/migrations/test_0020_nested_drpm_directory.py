@@ -85,7 +85,7 @@ class TestMigrate(unittest.TestCase):
 
     def test_remove_prestodelta_from_repomd(self):
         """
-        Make sure that the the removal of the prestodelta from the repomd.xml works properly.
+        Make sure that the removal of the prestodelta from the repomd.xml works properly.
         """
         migration._remove_prestodelta_from_repomd(self.working_dir, 'bad-prestodelta.xml.gz')
 
