@@ -596,10 +596,16 @@ Optional Configuration Parameters
  full path to the certificate.
 
 ``gpgkey``
- File containing GPG keys used to sign RPMs and metadata in this repository.
- These keys will be made available to consumers to use for verifying content in
- the repository. The value provided to this option must be the full path to a
- GPG key file containing one or more ASCII armored public keys.
+ File containing public GPG keys used to validate the signatures of RPMs and
+ metadata in this repository.  These keys will be made available to consumers
+ to use for verifying content in the repository. The value provided to this
+ option must be the full path to a GPG key file containing one or more ASCII
+ armored public keys.
+
+ Clients can be made aware of GPG public keys in three ways. They can set
+ ``gpgkey`` in their repo file, they can install via ``rpm --import
+ public.gpg.key``, or they can install a public key RPM that is provided with
+ some distributions.
 
 ``generate_sqlite``
  Boolean flag to indicate whether or not sqlite files should be generated during
