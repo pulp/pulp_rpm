@@ -11,3 +11,5 @@ New Features
 * New publish step RemoveOldRepodataStep removes repodata older than 14 days
   at the end of publish operation. Configure this behavior with these options
   ``remove_old_repodata_threshold`` and ``remove_old_repodata``.
+* Add support for yum repo_gpgcheck=1, enabled via the ``gpg_sign_metadata``
+  option to the Yum distributor config.

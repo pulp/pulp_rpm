@@ -169,7 +169,7 @@ class TestParseTreefile(unittest.TestCase):
     @patch('pulp_rpm.plugins.importers.yum.parse.treeinfo.Distribution')
     def test_sanitizes_checksum_type(self, Distribution, RawConfigParser):
         """
-        Ensure the the function properly sanitizes checksum types.
+        Ensure the function properly sanitizes checksum types.
         """
         parser = MagicMock()
         parser.has_section.return_value = True

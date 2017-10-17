@@ -22,7 +22,7 @@ REQUIRED_CONFIG_KEYS = ('relative_url', 'http', 'https')
 OPTIONAL_CONFIG_KEYS = ('gpgkey', 'auth_ca', 'auth_cert', 'https_ca', 'checksum_type',
                         'http_publish_dir', 'https_publish_dir', 'protected',
                         'skip', 'skip_pkg_tags', 'generate_sqlite', 'force_full',
-                        'repoview', 'updateinfo_checksum_type')
+                        'repoview', 'updateinfo_checksum_type', 'gpg_sign_metadata')
 
 ROOT_PUBLISH_DIR = '/var/lib/pulp/published/yum'
 MASTER_PUBLISH_DIR = os.path.join(ROOT_PUBLISH_DIR, 'master')
@@ -57,7 +57,7 @@ def load_config(config_file_path):
 
 def validate_config(repo, config, config_conduit):
     """
-    Validate the prospective configuration instance for the the give repository.
+    Validate the prospective configuration instance for the given repository.
 
     :param repo: repository to validate the config for
     :type  repo: pulp.server.db.model.Repository
