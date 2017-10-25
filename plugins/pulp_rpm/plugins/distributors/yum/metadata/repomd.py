@@ -38,6 +38,8 @@ class RepomdXMLFileContext(MetadataFileContext):
 
     def finalize(self):
 
+        super(RepomdXMLFileContext, self).finalize()
+
         if self.gpg_sign:
             command = ('gpg --yes --detach-sign --armor %(metadata_file_path)s' %
                        {'metadata_file_path': self.metadata_file_path})
