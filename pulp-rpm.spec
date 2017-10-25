@@ -10,7 +10,7 @@
 %endif
 
 # The release number
-%global release_number 1
+%global release_number 0.1.beta
 
 # Create tag for the Source0 and setup
 %global git_tag %{name}-%{version}-%{release_number}
@@ -19,7 +19,7 @@
 # ---- Pulp (rpm) --------------------------------------------------------------
 
 Name: pulp-rpm
-Version: 2.14.1
+Version: 2.14.2
 Release: %{release_number}%{?dist}
 Summary: Support for RPM content in the Pulp platform
 Group: Development/Languages
@@ -279,9 +279,6 @@ A collection of yum plugins supplementing Pulp consumer operations.
 
 
 %changelog
-* Thu Oct 05 2017 Patrick Creech <pcreech@redhat.com> 2.14.1-1
-- Pulp rebuild
-
 * Thu Feb 23 2017 werwty <bihan.zh@gmail.com> 2.12.1-1
 - Pulp rebuild
 
