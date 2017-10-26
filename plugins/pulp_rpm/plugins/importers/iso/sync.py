@@ -224,8 +224,8 @@ class ISOSyncRun(listener.DownloadEventListener):
 
         # Associate units that are already in Pulp
         if local_available_isos:
-            for iso in local_available_isos:
-                self._associate_unit(self.sync_conduit.repo, iso)
+            search_dicts = [unit.unit_key for unit in local_available_isos]
+            self.sync_conduit.associate_existing(models.ISO._content_type_id.default, search_dicts)
 
         # Deferred downloading (Lazy) entries.
         self.add_catalog_entries(local_available_isos)
