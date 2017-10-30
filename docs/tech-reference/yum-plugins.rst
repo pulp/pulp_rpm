@@ -500,9 +500,9 @@ configuration values are optional.
  all versions available.
 
 ``skip``
-  List of content types to be skipped during the repository synchronization.
-  If unspecified, all types will be synchronized. Valid values are: rpm, drpm,
-  distribution, erratum; default is [].
+ List of content types to be skipped during the repository synchronization.
+ If unspecified, all types will be synchronized. Valid values are: rpm, drpm,
+ distribution, erratum; default is [].
 
 ``checksum_type``
  checksum type to use for metadata generation; defaults to source checksum type of ``sha256``.
@@ -527,20 +527,20 @@ configuration values are optional.
  the content in the background. The content is available for client retrieval
  during this time.
 
- ``force_full``
+``force_full``
  Boolean flag. If true, full re-sync is triggered.
 
 ``require_signature``
-Requires that imported packages like RPM/DRPM/SRPM should be signed. Defaults to False.
-This does not trigger package signature verification, it only guarantees that the package
-is signed.
+ Requires that imported packages like RPM/DRPM/SRPM should be signed. Defaults to False.
+ This does not trigger package signature verification, it only guarantees that the package
+ is signed.
 
 ``allowed_keys``
-Comma-separated list of allowed signature key IDs that imported packages can be signed with.
-The key should be lowercase 8 character abbreviated fingerprint (the so-called short key ID).
-Since short key IDs are `easy to impersonate <https://evil32.com/>`_, this feature is intended to
-make it easy to filter packages based on their signing key and does not use these key IDs for
-package signature verification.
+ Comma-separated list of allowed signature key IDs that imported packages can be signed with.
+ The key should be lowercase 8 character abbreviated fingerprint (the so-called short key ID).
+ Since short key IDs are `easy to impersonate <https://evil32.com/>`_, this feature is intended to
+ make it easy to filter packages based on their signing key and does not use these key IDs for
+ package signature verification.
 
 
 Yum Distributor
@@ -622,8 +622,12 @@ Optional Configuration Parameters
 
 ``gpg_sign_metadata``
  Boolean flag to indicate whether or not a repomd.xml.asc file should be
- generated during a repository publish. This file is used by yum when configured
- with repo_gpgcheck=1. See `GPG Signing Key`_.
+ generated when the repository is published. If yum is configured with
+ repo_gpgcheck=1 then yum will use the repomd.xml.asc file to verify the
+ authenticity of the repomd.xml file. This flag defaults to ``False``, however
+ the default value can be overridden by creating a
+ ``/etc/pulp/server/plugins.conf.d/yum_distributor.json`` file containing
+ ``{ "gpg_sign_metadata": true }``.
 
 ``skip``
  List of content types to skip during the repository publish.
