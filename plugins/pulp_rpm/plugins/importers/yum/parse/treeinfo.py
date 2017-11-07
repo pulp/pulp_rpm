@@ -8,7 +8,7 @@ from gettext import gettext as _
 from lxml import etree as ET
 from urlparse import urljoin
 
-from mongoengine import Q
+from mongoengine import NotUniqueError, Q
 
 from nectar.listener import AggregatingEventListener
 from nectar.request import DownloadRequest
@@ -182,8 +182,10 @@ class DistSync(object):
             unit.downloaded = False
             downloaded = []
 
-        # Save the unit.
-        unit.save()
+        try:
+            unit.save()
+        except NotUniqueError:
+            unit = unit.__class__.objects.filter(**unit.unit_key).first()
 
         # Update deferred downloading catalog
         self.update_catalog_entries(unit, files)
