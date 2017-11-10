@@ -330,7 +330,8 @@ class ISOSyncRun(listener.DownloadEventListener):
         """
         if not self.repo_units:
             # store the existing repo units to prevent querying mongo multiple times
-            self.repo_units = repo_controller.find_repo_content_units(repo, yield_content_unit=True)
+            self.repo_units = list(repo_controller.find_repo_content_units(repo,
+                                                                           yield_content_unit=True))
 
         units_to_remove = [iso for iso in self.repo_units if iso['name'] == unit['name']]
 
