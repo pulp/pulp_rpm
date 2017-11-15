@@ -5,6 +5,8 @@ from pymongo.errors import DuplicateKeyError
 from pulp.server.db import connection
 from pulp.server.db.migrations.lib import utils
 
+from pulp_rpm.plugins.db.models import ErratumPkglist
+
 REPO_ID_KEY = '_pulp_repo_id'
 
 
@@ -19,6 +21,12 @@ def migrate(*args, **kwargs):
     :param kwargs: unused
     :type  kwargs: dict
     """
+    # create indexes for erratum_pkglists collection before migrating data,
+    # this is important if the migration was interrupted and then re-run again
+    indexes = ErratumPkglist._meta['indexes']
+    ErratumPkglist._meta['index_specs'] = ErratumPkglist._build_index_specs(indexes)
+    ErratumPkglist.ensure_indexes()
+
     db = connection.get_database()
     erratum_collection = db['units_erratum']
     pkglist_collection = db['erratum_pkglists']
