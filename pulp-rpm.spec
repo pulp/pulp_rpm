@@ -10,7 +10,7 @@
 %endif
 
 # The release number
-%global release_number 1
+%global release_number 0.1.beta
 
 # Create tag for the Source0 and setup
 %global git_tag %{name}-%{version}-%{release_number}
@@ -19,7 +19,7 @@
 # ---- Pulp (rpm) --------------------------------------------------------------
 
 Name: pulp-rpm
-Version: 2.14.2
+Version: 2.14.3
 Release: %{release_number}%{?dist}
 Summary: Support for RPM content in the Pulp platform
 Group: Development/Languages

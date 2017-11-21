@@ -134,9 +134,9 @@ def upload(repo, type_id, unit_key, metadata, file_path, conduit, config):
         msg = 'RPM only DRPMs are not supported'
         _LOGGER.warning(msg)
         return _fail_report(msg)
-    except PulpCodedException, e:
-        _LOGGER.exception(e)
-        return _fail_report(str(e))
+    except PulpCodedException:
+        # propagate coded exceptions.
+        raise
     except Exception as e:
         msg = 'unexpected error occurred importing uploaded file: %s' % e
         _LOGGER.exception(msg)
@@ -380,9 +380,8 @@ def _handle_package(repo, type_id, unit_key, metadata, file_path, conduit, confi
             package_xml = (utils.fake_xml_element(repodata['primary'], constants.COMMON_NAMESPACE)
                                 .find(primary.PACKAGE_TAG))
             unit = primary.process_package_element(package_xml)
-    except:
-        _LOGGER.exception('Error extracting RPM metadata for [%s]' % file_path)
-        raise
+    except Exception:
+        raise PulpCodedException(error_codes.RPM1016)
 
     # metadata can be None
     metadata = metadata or {}
