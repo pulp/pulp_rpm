@@ -1,6 +1,24 @@
+sudo: required
+# https://docs.travis-ci.com/user/trusty-ci-environment/
+dist: trusty
 language: python
 python:
-  - "2.6"
-  - "2.7"
-install: "pip install -r test_requirements.txt"
-script: flake8 --config=flake8.cfg  --exclude playpen,docs,pulp-dev.py .
+    # python versions used in el7 SCL & supported fedora
+    - "3.5"
+    - "3.6"
+env:
+  - DB=sqlite
+  - DB=postgres
+addons:
+    # postgres versions provided by el7 RHSCL (lowest supportable version)
+    postgresql: "9.5"
+services:
+    - postgresql
+    - rabbitmq
+install: source .travis/install.sh
+before_script: source .travis/before_script.sh
+script: source .travis/script.sh
+after_failure:
+  - sh -c "cat ~/django_runserver.log"
+  - sh -c "cat ~/resource_manager.log"
+  - sh -c "cat ~/reserved_workers-1.log"
