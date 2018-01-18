@@ -134,3 +134,15 @@ repository::
 
 You can now browse to http://<your-server>/pulp/isos/uploads/ and view the ISO you've uploaded, as
 well as the generated PULP_MANIFEST file.
+
+Creating a PULP_MANIFEST
+------------------------
+
+Pulp has a tool `pulp-manifest` that you can use to create a PULP_MANIFEST for a given directory.
+To install this tool run::
+
+    $ sudo dnf install python-pulp-manifest
+
+This tool can be used by calling::
+
+    $ pulp-manifest /path/to/directory/to/create/manifest

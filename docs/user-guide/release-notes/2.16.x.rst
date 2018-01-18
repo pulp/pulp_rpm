@@ -1,0 +1,12 @@
+=======================
+Pulp 2.16 Release Notes
+=======================
+
+Pulp 2.16.0
+===========
+
+New Features
+------------
+
+* A new pulp-manifest tool that can be used to create PULP_MANIFEST for a
+  directory that the user plans to use the iso importer with.
