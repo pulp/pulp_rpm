@@ -314,6 +314,19 @@ class TestSyncFeed(BaseSyncTest):
 
         self.assertEqual(ret, expected)
 
+    @mock.patch('pulp_rpm.plugins.importers.yum.sync.RepoSync.check_metadata',
+                spec_set=RepoSync.check_metadata)
+    def test_kickstart_without_trailing_slash(self, mock_check_metadata, mock_mkdtemp):
+        """
+        Test that trailing slash is added in case of a kickstart repository.
+        A kickstart repository does not have metadata.
+        """
+        self.config.override_config[importer_constants.KEY_FEED] = self.url.rstrip('/')
+        mock_check_metadata.side_effect = PulpCodedException()
+        ret = self.reposync.sync_feed
+
+        self.assertEqual(ret, [self.url])
+
     def test_repo_url_is_none(self, mock_mkdtemp):
 
         self.config.override_config[importer_constants.KEY_FEED] = None

@@ -127,14 +127,14 @@ class RepoSync(object):
         """
         repo_url = self.config.get(importer_constants.KEY_FEED)
         if repo_url:
-            repo_url_slash = self._url_modify(repo_url, ensure_trailing_slash=True)
+            repo_url = self._url_modify(repo_url, ensure_trailing_slash=True)
             self.tmp_dir = tempfile.mkdtemp(dir=self.working_dir)
 
             # Try getting and parsing repomd.xml. If it works, return the URL.
             try:
                 # it returns None if it can't download repomd.xml
-                if self.check_metadata(repo_url_slash):
-                    return [repo_url_slash]
+                if self.check_metadata(repo_url):
+                    return [repo_url]
             except PulpCodedException:
                 # Fedora's mirror service has an unexpected behavior that even with a malformed path
                 # such as this:
