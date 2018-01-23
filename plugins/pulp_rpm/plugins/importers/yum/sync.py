@@ -126,6 +126,7 @@ class RepoSync(object):
         :rtype:     list
         """
         repo_url = self.config.get(importer_constants.KEY_FEED)
+        mirrorlist_url = repo_url
         if repo_url:
             repo_url = self._url_modify(repo_url, ensure_trailing_slash=True)
             self.tmp_dir = tempfile.mkdtemp(dir=self.working_dir)
@@ -145,7 +146,7 @@ class RepoSync(object):
                 pass
 
             # Try treating it as a mirrorlist.
-            urls = self._parse_as_mirrorlist(repo_url)
+            urls = self._parse_as_mirrorlist(mirrorlist_url)
             if urls:
                 # set flag to True so when we would iterate through list of urls
                 # we would not skip repomd steps
