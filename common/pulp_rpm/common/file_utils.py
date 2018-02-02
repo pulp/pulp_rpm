@@ -1,7 +1,7 @@
 import hashlib
 import os
 
-from .constants import PULP_PACKAGES_DIR
+from pulp_rpm.common.constants import PULP_PACKAGES_DIR
 
 CHECKSUM_CHUNK_SIZE = 32 * 1024 * 1024
 
