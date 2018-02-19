@@ -14,7 +14,7 @@ Pulp's SELinux policy includes a ``pulp_manage_rsync`` boolean. When enabled, th
 disabled by default. The ISO Rsync distributor will fail to publish with SELinux Enforcing unless
 the boolean is enabled. To enable it, you can do this::
 
-    $ sudo semanage boolean --modify --on pulp_manage_rsync
+    $ sudo setsebool -P pulp_manage_rsync on
 
 Here is an example iso_rsync_distributor configuration::
 
