@@ -33,6 +33,35 @@ Administrators can also :ref:`upload <create-errata-recipe>` their own errata to
 a repository. Please see the :doc:`recipes` documentation to learn how to
 perform these operations.
 
+Modularity
+^^^^^^^^^^
+
+Pulp supports the following modularity_ repository mirroring use cases:
+
+* synchronization of the modularity metadata content, the
+  ``repodata/*modules.yaml.gz`` file, with either immediate or
+  on-demand synchronization
+
+* publication of the modularity metadata with the repository publication
+
+* copy of the modularity metadata with the repository copy
+
+* modules published through Pulp are consumable by the ``dnf`` client
+
+.. Note::
+
+  Filtering content types subsets might require one to explicitly include the
+  ``metafile`` in their copy filter criteria, should they want the resulting
+  content subset to include the modularity metadata.
+
+.. Note::
+
+  Because the modularity metadata is never processed by Pulp, it is possible for
+  a consumer to experience discrepancies between the available modules
+  (metadata) and the content available.
+
+.. _modularity: https://docs.pagure.org/modularity/
+
 Protected Repositories
 ----------------------
 
