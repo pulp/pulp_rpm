@@ -173,6 +173,13 @@ class UpdateinfoXMLFileContext(FastForwardXmlFileContext):
 
             if package.get('reboot_suggested'):
                 self.xml_generator.completeElement('reboot_suggested', {}, 'True')
+            if package.get('relogin_suggested'):
+                self.xml_generator.completeElement('relogin_suggested', {},
+                                                   package['relogin_suggested'])
+            if package.get('restart_suggested'):
+                self.xml_generator.completeElement('restart_suggested', {},
+                                                   package['restart_suggested'])
+
             self.xml_generator.endElement('package')
 
         self.xml_generator.endElement('collection')

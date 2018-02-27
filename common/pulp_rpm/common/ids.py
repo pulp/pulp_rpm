@@ -27,7 +27,8 @@ UNIT_KEY_ERRATA = ("id",)
 METADATA_ERRATA = (
     "title", "description", "version", "release", "type", "status", "updated",
     "issued", "severity", "references", "pkglist", "rights", "summary",
-    "solution", "from_str", "pushcount", "reboot_suggested")
+    "solution", "from_str", "pushcount", "reboot_suggested", "relogin_suggested",
+    "restart_suggested")
 
 TYPE_ID_PKG_GROUP = 'package_group'
 TYPE_ID_PKG_CATEGORY = 'package_category'
@@ -63,4 +64,4 @@ METADATA_DRPM = ("size", "sequence", "new_package", "relativepath")
 TYPE_ID_YUM_REPO_METADATA_FILE = 'yum_repo_metadata_file'
 
 # These types don't have support for the query-param auth token yet
-QUERY_AUTH_TOKEN_UNSUPPORTED = (TYPE_ID_ISO, TYPE_ID_ERRATA, TYPE_ID_DISTRO)
+QUERY_AUTH_TOKEN_UNSUPPORTED = (TYPE_ID_ISO, TYPE_ID_DISTRO)

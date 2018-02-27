@@ -186,3 +186,26 @@ def errata_format_to_datetime(datetime_str, msg):
     else:
         raise ValueError(msg)
     return datetime_obj
+
+
+def is_version_newer(new_version, old_version):
+    """
+    :param new_version
+    :type checksum_type str
+    :param old_version
+    :type checksum_type str
+    :return: true if version is a newer, false if it's not
+    :rtype bool
+
+    :raises ValueError: if a version cannot be converted to int
+    """
+    if not new_version:
+        return False
+
+    new = int(new_version)
+
+    if not old_version:
+        old = 0
+    else:
+        old = int(old_version)
+    return new > old

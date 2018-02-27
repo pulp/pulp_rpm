@@ -225,6 +225,14 @@ Metadata
 ``reboot_suggested``
  Flag indicating if this erratum is installed it will require a reboot of the system
 
+``relogin_suggested``
+ Flag indicating if this erratum is installed it will require a relogin of the system -
+ this flag exists only on SUSE erratum
+
+``restart_suggested``
+ Flag indicating if this erratum is installed it will require a restart of the system -
+ this flag exists only on SUSE erratum
+
 Distribution
 ------------
 
@@ -474,8 +482,8 @@ configuration values are optional.
 ``query_auth_token``
  An authorization token that will be added to every request made to the feed URL's
  server, which may be required to sync from repositories that use this method of
- authorization (SLES 12, for example). This mechanism only supports syncing RPM
- and deltarpm content.
+ authorization (SLES 12, for example). This mechanism only supports syncing RPM, deltarpm,
+ and errata content.
 
 ``max_speed``
  The maximum download speed in bytes/sec for a task (such as a sync);

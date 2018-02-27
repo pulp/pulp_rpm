@@ -57,6 +57,12 @@ OPT_PUSHCOUNT = PulpCliOption('--pushcount', d, required=False, default=1)
 d = _('if specified, the erratum will be marked as \'reboot-suggested\'')
 OPT_REBOOT = PulpCliFlag('--reboot-suggested', d)
 
+d = _('if specified, the erratum will be marked as \'restart-suggested\'')
+OPT_RESTART = PulpCliFlag('--restart-suggested', d)
+
+d = _('if specified, the erratum will be marked as \'relogin-suggested\'')
+OPT_RELOGIN = PulpCliFlag('--relogin-suggested', d)
+
 d = _('severity of the erratum')
 OPT_SEVERITY = PulpCliOption('--severity', d, required=False)
 
@@ -94,6 +100,8 @@ class CreateErratumCommand(UploadCommand):
         self.add_option(OPT_FROM)
         self.add_option(OPT_PUSHCOUNT)
         self.add_option(OPT_REBOOT)
+        self.add_option(OPT_RESTART)
+        self.add_option(OPT_RELOGIN)
         self.add_option(OPT_SEVERITY)
         self.add_option(OPT_RIGHTS)
         self.add_option(OPT_SUMMARY)
@@ -122,6 +130,8 @@ class CreateErratumCommand(UploadCommand):
         solution = kwargs[OPT_SOLUTION.keyword]
         from_str = kwargs[OPT_FROM.keyword]
         reboot_suggested = kwargs[OPT_REBOOT.keyword]
+        restart_suggested = kwargs[OPT_RESTART.keyword]
+        relogin_suggested = kwargs[OPT_RELOGIN.keyword]
 
         references = []
         try:
@@ -160,6 +170,8 @@ class CreateErratumCommand(UploadCommand):
             'from': from_str,
             'pushcount': pushcount_str,
             'reboot_suggested': reboot_suggested,
+            'restart_suggested': restart_suggested,
+            'relogin_suggested': relogin_suggested,
         }
 
         return metadata

@@ -30,7 +30,8 @@ class CreateRpmCommandTests(PulpClientTests):
                                 errata.OPT_VERSION, errata.OPT_RELEASE, errata.OPT_TYPE,
                                 errata.OPT_STATUS, errata.OPT_UPDATED, errata.OPT_ISSUED,
                                 errata.OPT_REFERENCE, errata.OPT_PKG_LIST, errata.OPT_FROM,
-                                errata.OPT_PUSHCOUNT, errata.OPT_REBOOT, errata.OPT_SEVERITY,
+                                errata.OPT_PUSHCOUNT, errata.OPT_REBOOT, errata.OPT_RESTART,
+                                errata.OPT_RELOGIN, errata.OPT_SEVERITY,
                                 errata.OPT_RIGHTS, errata.OPT_SUMMARY, errata.OPT_SOLUTION,
                                 FLAG_VERBOSE, OPTION_REPO_ID, FLAG_BACKGROUND])
         found_options = set(self.command.options)
@@ -68,6 +69,8 @@ class CreateRpmCommandTests(PulpClientTests):
             errata.OPT_SOLUTION.keyword: 'test-solution',
             errata.OPT_FROM.keyword: 'test-from',
             errata.OPT_REBOOT.keyword: 'test-reboot',
+            errata.OPT_RESTART.keyword: 'test-restart',
+            errata.OPT_RELOGIN.keyword: 'test-relogin',
             errata.OPT_PUSHCOUNT.keyword: '1',
         }
 
@@ -93,6 +96,8 @@ class CreateRpmCommandTests(PulpClientTests):
             'from': 'test-from',
             'pushcount': '1',
             'reboot_suggested': 'test-reboot',
+            'restart_suggested': 'test-restart',
+            'relogin_suggested': 'test-relogin',
             'pkglist': expected_package_list,
             'references': expected_reference_list,
         }
@@ -122,6 +127,8 @@ class CreateRpmCommandTests(PulpClientTests):
             errata.OPT_SOLUTION.keyword: 'test-solution',
             errata.OPT_FROM.keyword: 'test-from',
             errata.OPT_REBOOT.keyword: 'test-reboot',
+            errata.OPT_RESTART.keyword: 'test-restart',
+            errata.OPT_RELOGIN.keyword: 'test-relogin',
             errata.OPT_PUSHCOUNT.keyword: '1',
         }
 
@@ -152,6 +159,8 @@ class CreateRpmCommandTests(PulpClientTests):
             errata.OPT_SOLUTION.keyword: 'test-solution',
             errata.OPT_FROM.keyword: 'test-from',
             errata.OPT_REBOOT.keyword: 'test-reboot',
+            errata.OPT_RESTART.keyword: 'test-restart',
+            errata.OPT_RELOGIN.keyword: 'test-relogin',
             errata.OPT_PUSHCOUNT.keyword: '1',
         }
 

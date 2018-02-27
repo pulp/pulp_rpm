@@ -430,7 +430,7 @@ class TestErrata(unittest.TestCase):
         existing_erratum, uploaded_erratum = models.Errata(), models.Errata()
         existing_erratum.updated = ''
         uploaded_erratum.updated = '2016-04-01 00:00:00 UTC'
-        self.assertEqual(True, existing_erratum.update_needed(uploaded_erratum))
+        self.assertTrue(existing_erratum.update_needed(uploaded_erratum))
 
     def test_update_needed_empty_date_uploaded(self):
         """
@@ -439,7 +439,43 @@ class TestErrata(unittest.TestCase):
         existing_erratum, uploaded_erratum = models.Errata(), models.Errata()
         existing_erratum.updated = '2016-01-01 00:00:00 UTC'
         uploaded_erratum.updated = ''
-        self.assertEqual(False, existing_erratum.update_needed(uploaded_erratum))
+        self.assertFalse(existing_erratum.update_needed(uploaded_erratum))
+
+    def test_update_needed_empty_date_uploaded_newer_version(self):
+        """
+        Test that an empty uploaded erratum `updated` field, but a newer version
+        returns True
+        """
+        existing_erratum, uploaded_erratum = models.Errata(), models.Errata()
+        existing_erratum.updated = '2016-01-01 00:00:00 UTC'
+        existing_erratum.version = 1
+        uploaded_erratum.updated = ''
+        uploaded_erratum.version = 2
+        self.assertTrue(existing_erratum.update_needed(uploaded_erratum))
+
+    def test_update_needed_older_erratum_newer_version(self):
+        """
+        Assert that if the older erratum is uploaded, but has a newer version
+        then the update is not needed.
+        """
+        existing_erratum, uploaded_erratum = models.Errata(), models.Errata()
+        existing_erratum.updated = '2016-01-01 00:00:00 UTC'
+        existing_erratum.version = 1
+        uploaded_erratum.updated = '2015-01-01 00:00:00 UTC'
+        uploaded_erratum.version = 2
+        self.assertFalse(existing_erratum.update_needed(uploaded_erratum))
+
+    def test_update_needed_same_updated_erratum_newer_version(self):
+        """
+        Assert that if the updated times of 2 erratum are the same
+        but one has a newer version then the update is needed.
+        """
+        existing_erratum, uploaded_erratum = models.Errata(), models.Errata()
+        existing_erratum.updated = '2016-01-01 00:00:00 UTC'
+        existing_erratum.version = 1
+        uploaded_erratum.updated = '2016-01-01 00:00:00 UTC'
+        uploaded_erratum.version = 2
+        self.assertTrue(existing_erratum.update_needed(uploaded_erratum))
 
     @mock.patch('pulp_rpm.plugins.db.models.Errata.update_needed')
     def test_merge_errata_newer_erratum(self, mock_update_needed):
