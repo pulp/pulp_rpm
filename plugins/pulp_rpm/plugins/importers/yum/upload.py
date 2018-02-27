@@ -354,8 +354,8 @@ def _handle_package(repo, type_id, unit_key, metadata, file_path, conduit, confi
     :param type_id: The type_id of the package being uploaded
     :type  type_id: str
 
-    :param unit_key: A dictionary of fields to overwrite introspected field values
-    :type  unit_key: dict
+    :param unit_key: A dictionary of fields to overwrite introspected field values, or None
+    :type  unit_key: dict or None
 
     :param metadata: A dictionary of fields to overwrite introspected field values, or None
     :type  metadata: dict or None
@@ -383,12 +383,13 @@ def _handle_package(repo, type_id, unit_key, metadata, file_path, conduit, confi
     except Exception:
         raise PulpCodedException(error_codes.RPM1016)
 
-    # metadata can be None
+    # metadata and unit_key can be None
     metadata = metadata or {}
+    unit_key = unit_key or {}
 
     model_class = plugin_api.get_unit_model_by_id(type_id)
-    update_fields_inbound(model_class, unit_key or {})
-    update_fields_inbound(model_class, metadata or {})
+    update_fields_inbound(model_class, unit_key)
+    update_fields_inbound(model_class, metadata)
 
     with open(file_path) as fp:
         sums = util.calculate_checksums(fp, models.RpmBase.DEFAULT_CHECKSUM_TYPES)
