@@ -120,3 +120,16 @@ Bandwidth Throttling
 When downloading packages from a remote source, Pulp can limit the speed at which
 data is transferred. The number of downloader threads can also be specified.
 
+No Metalink Support
+-------------------
+
+Pulp RPM does not support any version of Metalink when syncing. Therefore for repositories that
+publish Metalink data such as EPEL or Fedora RPM repositories, you cannot use the metalink url as
+your feed url.
+
+.. warning::
+
+    Pulp is susceptible to a malicious mirror replay attack whereby a malicious mirror can force
+    Pulp to use older, legitimate packages. This forces Pulp to not receive package updates from a
+    malicious mirror. See `this blog post <https://patrick.uiterwijk.org/blog/2018/2/23/fedora-package-delivery-security>`_
+    for more details about how Metalink mitigates this.
