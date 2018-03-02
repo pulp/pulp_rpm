@@ -129,7 +129,8 @@ your feed url.
 
 .. warning::
 
-    Pulp is susceptible to a malicious mirror replay attack whereby a malicious mirror can force
-    Pulp to use older, legitimate packages. This forces Pulp to not receive package updates from a
-    malicious mirror. See `this blog post <https://patrick.uiterwijk.org/blog/2018/2/23/fedora-package-delivery-security>`_
-    for more details about how Metalink mitigates this.
+    Pulp is susceptible to a replay attack by either a malicious mirror or from a man-in-the-middle
+    attack (MITM) when TLS is not used. When attacked, Pulp is presented older, legitimate packages.
+    This forces Pulp to not receive package updates from either a malicious mirror or the non-TLS
+    MITM. See `this blog post <https://patrick.uiterwijk.org/blog/2018/2/23/fedora-package-delivery-security>`_
+    for more details about how Metalink would mitigate this.
