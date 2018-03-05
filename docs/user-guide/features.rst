@@ -62,6 +62,27 @@ Pulp supports the following modularity_ repository mirroring use cases:
 
 .. _modularity: https://docs.pagure.org/modularity/
 
+Boolean (rich) dependencies
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Pulp supports RPM content with `boolean dependencies
+<http://rpm.org/user_doc/boolean_dependencies.html>`_ in these basic repository
+and content management use cases:
+
+* synchronization, publication and content upload
+
+* copying content between repositories
+
+* displaying boolean dependencies
+
+* providing the content to the ``dnf`` client to process boolean dependencies
+
+.. Note::
+
+  Pulp doesn't actually process boolean dependencies. A `recursive copy
+  <https://docs.pulpproject.org/dev-guide/integration/rest-api/content/associate.html?highlight=recursive#copying-units-between-repositories>`_
+  might therefore not work properly for content that utilizes those.
+
 Protected Repositories
 ----------------------
 
