@@ -15,3 +15,8 @@ New Features
   fields on the Erratum model: `relogin_suggested` and `restart_suggested`.
   Errata update logic has been modified so that if two Errata has the same `updated`
   timestamp we also check to see if the `version` field has been updated.
+
+* Added the ability to use different GPG signing keys for repository metadata.
+  To accomplish this, users can specify a key in the distributor configuration
+  and change the GPG signing command to know how to process it.
+  More information can be found in `GPG Signing Key https://docs.pulpproject.org/plugins/pulp_rpm/tech-reference/yum-plugins.html#gpg-signing-key`

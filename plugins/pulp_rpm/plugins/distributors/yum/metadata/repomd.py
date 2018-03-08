@@ -1,16 +1,13 @@
 import gzip
 import os
 import time
-import subprocess
 from xml.etree import ElementTree
 
 from pulp_rpm.common.constants import CONFIG_DEFAULT_CHECKSUM
 from pulp_rpm.plugins.distributors.yum.metadata.metadata import (
     MetadataFileContext, REPO_DATA_DIR_NAME, REPOMD_FILE_NAME)
-from pulp.server.exceptions import PulpCodedException
 
 from pulp_rpm.yum_plugin import util
-from pulp_rpm.plugins import error_codes
 
 
 _LOG = util.getLogger(__name__)
@@ -20,11 +17,13 @@ RPM_XML_NAME_SPACE = 'http://linux.duke.edu/metadata/rpm'
 
 
 class RepomdXMLFileContext(MetadataFileContext):
-    def __init__(self, working_dir, checksum_type=CONFIG_DEFAULT_CHECKSUM, gpg_sign=False):
+    def __init__(self, working_dir, checksum_type=CONFIG_DEFAULT_CHECKSUM,
+                 gpg_sign=False, sign_options=None):
 
         metadata_file_path = os.path.join(working_dir, REPO_DATA_DIR_NAME, REPOMD_FILE_NAME)
         super(RepomdXMLFileContext, self).__init__(metadata_file_path, checksum_type)
         self.gpg_sign = gpg_sign
+        self.sign_options = sign_options
 
     def __exit__(self, exc_type, exc_val, exc_tb):
 
@@ -41,14 +40,9 @@ class RepomdXMLFileContext(MetadataFileContext):
         super(RepomdXMLFileContext, self).finalize()
 
         if self.gpg_sign:
-            command = ('gpg --yes --detach-sign --armor %(metadata_file_path)s' %
-                       {'metadata_file_path': self.metadata_file_path})
-            pipe = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE,
-                                    stderr=subprocess.PIPE)
-            stdout, stderr = pipe.communicate()
-            if pipe.returncode != 0:
-                raise PulpCodedException(error_codes.RPM0001, command=command,
-                                         stdout=stdout, stderr=stderr)
+            assert self.sign_options
+            signer = util.Signer(options=self.sign_options)
+            signer.sign(self.metadata_file_path)
 
     def _write_root_tag_open(self):
 

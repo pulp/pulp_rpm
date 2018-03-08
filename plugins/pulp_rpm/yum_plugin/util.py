@@ -2,7 +2,10 @@ import datetime
 import gettext
 import logging
 import os
+import shlex
 import shutil
+import subprocess
+import tempfile
 import uuid
 
 import yum
@@ -209,3 +212,108 @@ def is_version_newer(new_version, old_version):
     else:
         old = int(old_version)
     return new > old
+
+
+class SignerError(Exception):
+
+    def __init__(self, *args, **kwargs):
+        self.stdout = kwargs.pop('stdout', None)
+        self.stderr = kwargs.pop('stderr', None)
+        super(SignerError, self).__init__(*args, **kwargs)
+
+
+class SignOptions(object):
+    """
+    An object to configure the gpg signer.
+
+    A cmd is expected to be passed into the object. That is the command to
+    execute in order to sign the file.
+
+    The command should accept one argument, a path to a file.
+
+    This class' fields, prepended with GPG_ and upper-cased, will be
+    presented to the command as environment variables. The
+    command may determine which gpg key to use based on GPG_KEY_ID
+    or GPG_REPOSITORY_NAME
+    """
+
+    def __init__(self, cmd=None, key_id=None, **kwargs):
+        if not cmd:
+            raise SignerError("Command not specified")
+        self.cmd = cmd
+        self._cmdargs = shlex.split(cmd)
+        if not os.path.isfile(self._cmdargs[0]):
+            raise SignerError(
+                "Command %s is not a file" % (self._cmdargs[0], ))
+        if not os.access(self._cmdargs[0], os.X_OK):
+            raise SignerError("Command %s is not executable" %
+                              (self._cmdargs[0], ))
+
+        self.key_id = key_id
+        self.repository_name = None
+        self.extra = None
+
+        for k, v in kwargs.items():
+            setattr(self, k, v)
+
+    def as_environment(self):
+        env_dict = dict()
+        for k in self.__dict__:
+            v = getattr(self, k)
+            if k.startswith('_') or v is None:
+                continue
+            k = k.replace('-', '_').upper()
+            env_dict['GPG_%s' % k] = str(v)
+        return env_dict
+
+
+class Signer(object):
+    """
+    An object that abstracts out a signing interface
+
+    Example:
+      kwargs = dict(repository_name='foo', random_env_var='bar')
+      options = SignOptions(cmd=cmd, key_id=key_id, **kwargs)
+      signer = Signer(options=options)
+      signer.sign(path)
+
+    The sign command will be passed as environment variables all fields
+    from the SignOptions object, prefixed with GPG_ and upper-cased.
+    """
+
+    def __init__(self, options=None):
+        """
+        :param options: a SignOptions object to be passed to the sign command
+        :type  options: SignOptions
+        """
+
+        if options is not None:
+            if not isinstance(options, SignOptions):
+                raise ValueError(
+                    "Signer options: unexpected type %r" %
+                    (options, ))
+        self.options = options
+
+    def sign(self, path):
+        """
+        :param path: path to file to be signed
+        :type  path: str
+
+        :return: tuple of (stdout, stderr)
+        :rtype: tuple
+        :raises SignerError: if the sign command failed
+        """
+        if not self.options:
+            return
+        cmd = self.options._cmdargs
+        cmd.append(path)
+        stdout = tempfile.NamedTemporaryFile()
+        stderr = tempfile.NamedTemporaryFile()
+        pobj = subprocess.Popen(
+            cmd, env=self.options.as_environment(),
+            stdout=stdout, stderr=stderr)
+        ret = pobj.wait()
+        if ret != 0:
+            raise SignerError("Return code: %d" % ret,
+                              stdout=stdout, stderr=stderr)
+        return stdout, stderr

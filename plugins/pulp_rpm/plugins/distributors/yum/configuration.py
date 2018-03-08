@@ -9,7 +9,8 @@ from pulp.server.exceptions import MissingResource
 
 from pulp_rpm.common.constants import SCRATCHPAD_DEFAULT_METADATA_CHECKSUM, \
     CONFIG_DEFAULT_CHECKSUM, CONFIG_KEY_CHECKSUM_TYPE, REPO_AUTH_CONFIG_FILE, \
-    PUBLISH_HTTP_KEYWORD, PUBLISH_HTTPS_KEYWORD, RELATIVE_URL_KEYWORD
+    PUBLISH_HTTP_KEYWORD, PUBLISH_HTTPS_KEYWORD, RELATIVE_URL_KEYWORD, \
+    GPG_CMD, GPG_KEY_ID
 from pulp_rpm.common.ids import TYPE_ID_DISTRIBUTOR_YUM
 from pulp.repoauth import protected_repo_utils, repo_cert_utils
 from pulp_rpm.yum_plugin import util
@@ -23,7 +24,8 @@ OPTIONAL_CONFIG_KEYS = ('gpgkey', 'auth_ca', 'auth_cert', 'https_ca', 'checksum_
                         'http_publish_dir', 'https_publish_dir', 'protected',
                         'skip', 'skip_pkg_tags', 'generate_sqlite', 'force_full',
                         'repoview', 'updateinfo_checksum_type', 'gpg_sign_metadata',
-                        'remove_old_repodata', 'remove_old_repodata_threshold')
+                        'remove_old_repodata', 'remove_old_repodata_threshold',
+                        GPG_CMD, GPG_KEY_ID)
 
 ROOT_PUBLISH_DIR = '/var/lib/pulp/published/yum'
 MASTER_PUBLISH_DIR = os.path.join(ROOT_PUBLISH_DIR, 'master')
@@ -376,6 +378,17 @@ def get_repo_checksum_type(publish_conduit, config):
         checksum_type = CONFIG_DEFAULT_CHECKSUM
 
     return checksum_type
+
+
+def get_gpg_sign_options(repo=None, config=None):
+    cfg = config or {}
+    cmd = cfg.get(GPG_CMD)
+    if not cmd:
+        # Default to plain gpg
+        cmd = '/usr/bin/gpg --yes --detach-sign --armor'
+    key_id = cfg.get(GPG_KEY_ID)
+    repository_name = None if repo is None else repo.id
+    return util.SignOptions(cmd, repository_name=repository_name, key_id=key_id)
 
 
 # -- required config validation ------------------------------------------------

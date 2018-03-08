@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 
+import mock
 import os
 import shutil
 import tempfile
@@ -72,3 +73,92 @@ class TestGenerateListingFiles(unittest.TestCase):
 
         finally:
             shutil.rmtree(tmp_dir, ignore_errors=True)
+
+
+class SignerTest(rpm_support_base.PulpRPMTests):
+
+    def setUp(self):
+        super(SignerTest, self).setUp()
+        self.test_dir = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, self.test_dir, ignore_errors=True)
+
+        signme = ('#!/bin/bash -e\n'
+                  'echo $0\n'
+                  'echo GPG_KEYID=$GPG_KEYID\n'
+                  'echo GPG_REPOSITORY_NAME=$GPG_REPOSITORY_NAME\n'
+                  'echo GPG_DIST\n'
+                  'exit 0\n'
+                  )
+        self.sign_cmd = self.mkfile("signme", contents=signme)
+        os.chmod(self.sign_cmd, 0o755)
+        self.key_id = '8675309'
+        self.repository_name = 'jenny'
+        self.dist = 'tutone'
+
+    def mkfile(self, path, contents=None):
+        if contents is None:
+            contents = "\n"
+        fpath = os.path.join(self.test_dir, path)
+        if isinstance(contents, unicode):
+            mode = 'w'
+        else:
+            mode = 'wb'
+        with open(fpath, mode) as fh:
+            fh.write(contents)
+        return fpath
+
+    @mock.patch("pulp_rpm.yum_plugin.util.tempfile.NamedTemporaryFile")
+    @mock.patch("pulp_rpm.yum_plugin.util.subprocess.Popen")
+    def test_sign(self, _Popen, _NamedTemporaryFile):
+        filename = self.mkfile("Random_File", contents="Name: Random_File")
+        kwargs = dict(dist=self.dist, repository_name=self.repository_name)
+        so = util.SignOptions(cmd=self.sign_cmd, key_id=self.key_id, **kwargs)
+
+        _Popen.return_value.wait.return_value = 0
+        signer = util.Signer(options=so)
+        signer.sign(filename)
+
+        _Popen.assert_called_once_with(
+            [self.sign_cmd, filename],
+            env=dict(
+                GPG_CMD=self.sign_cmd,
+                GPG_KEY_ID=self.key_id,
+                GPG_REPOSITORY_NAME=self.repository_name,
+                GPG_DIST=self.dist,
+            ),
+            stdout=_NamedTemporaryFile.return_value,
+            stderr=_NamedTemporaryFile.return_value,
+        )
+
+    @mock.patch("pulp_rpm.yum_plugin.util.tempfile.NamedTemporaryFile")
+    @mock.patch("pulp_rpm.yum_plugin.util.subprocess.Popen")
+    def test_sign_error(self, _Popen, _NamedTemporaryFile):
+        filename = self.mkfile("Release", contents="Name: Release")
+        so = util.SignOptions(cmd=self.sign_cmd)
+
+        _Popen.return_value.wait.return_value = 2
+        signer = util.Signer(options=so)
+        with self.assertRaises(util.SignerError) as ctx:
+            signer.sign(filename)
+        self.assertEquals(
+            _NamedTemporaryFile.return_value,
+            ctx.exception.stdout)
+        self.assertEquals(
+            _NamedTemporaryFile.return_value,
+            ctx.exception.stderr)
+
+    def test_bad_signing_options(self):
+        bad_so = "SoWhat"
+        with self.assertRaises(ValueError) as ctx:
+            util.Signer(options=bad_so)
+        self.assertTrue(
+            str(ctx.exception).startswith('Signer options: unexpected type'))
+
+    def test_raise_errors(self):
+        err = dict(stdout='STDOUT', stderr='STDERR')
+        msg = "Signer Error"
+        with self.assertRaises(util.SignerError) as ctx:
+            raise util.SignerError(msg, **err)
+        self.assertTrue(msg in str(ctx.exception))
+        self.assertEquals(ctx.exception.stdout, err['stdout'])
+        self.assertEquals(ctx.exception.stderr, err['stderr'])

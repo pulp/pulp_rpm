@@ -384,11 +384,16 @@ class InitRepoMetadataStep(platform_steps.PluginStep):
         super(InitRepoMetadataStep, self).__init__(step)
         self.description = _("Initializing repo metadata")
         self.gpg_sign = gpg_sign
+        self.sign_options = None
 
     def initialize(self):
+        if self.gpg_sign:
+            self.sign_options = configuration.get_gpg_sign_options(
+                self.get_repo(), self.get_config())
         self.parent.repomd_file_context = RepomdXMLFileContext(self.get_working_dir(),
                                                                self.parent.get_checksum_type(),
-                                                               self.gpg_sign)
+                                                               self.gpg_sign,
+                                                               sign_options=self.sign_options)
         self.parent.repomd_file_context.initialize()
 
 
