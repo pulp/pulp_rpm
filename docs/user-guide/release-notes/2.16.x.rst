@@ -10,3 +10,8 @@ New Features
 
 * A new pulp-manifest tool that can be used to create PULP_MANIFEST for a
   directory that the user plans to use the iso importer with.
+
+* Add support for SUSE Errata format. This includes the addition of two new
+  fields on the Erratum model: `relogin_suggested` and `restart_suggested`.
+  Errata update logic has been modified so that if two Errata has the same `updated`
+  timestamp we also check to see if the `version` field has been updated.

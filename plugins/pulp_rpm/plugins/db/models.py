@@ -1099,6 +1099,8 @@ class Errata(UnitMixin, ContentUnit):
     pushcount = mongoengine.StringField()
     references = mongoengine.ListField()
     reboot_suggested = mongoengine.BooleanField()
+    relogin_suggested = mongoengine.BooleanField()
+    restart_suggested = mongoengine.BooleanField()
     errata_from = mongoengine.StringField(db_field='from')
     severity = mongoengine.StringField()
     rights = mongoengine.StringField()
@@ -1128,7 +1130,8 @@ class Errata(UnitMixin, ContentUnit):
     SERIALIZER = serializers.Errata
 
     mutable_erratum_fields = ('status', 'updated', 'description', 'pushcount', 'references',
-                              'reboot_suggested', 'errata_from', 'severity', 'rights', 'version',
+                              'reboot_suggested', 'relogin_suggested', 'restart_suggested',
+                              'errata_from', 'severity', 'rights', 'version',
                               'release', 'type', 'title', 'solution', 'summary')
 
     @property
@@ -1191,31 +1194,44 @@ class Errata(UnitMixin, ContentUnit):
         # value of True when it should have been False. The only way to correct that data in pulp
         # is to do so here, during a subsequent sync.
         self.reboot_suggested = other.reboot_suggested
+        self.relogin_suggested = other.relogin_suggested
+        self.restart_suggested = other.restart_suggested
 
     def update_needed(self, other):
         """
-        Decide based on the `updated` field if the update of the existing erratum is needed.
+        Decide if an update of the existing erratum is needed based on the `updated` and `version`
+        fields
+
+        Note: SUSE errata lacks the updated field, and rely only on version to determine if it
+        needs an update. yum/dnf errata only increments version when text in the errata changes;
+        so things like bug list, attached builds, rpm diff results, would trigger a change in the
+        updated timestamp and not the version.
 
         The `updated` field is just a string in the MongoDB, so there is no strict format for this
         date-time field. If we are not able to parse the `updated` field either in existing
-        erratum or in the new erratum, the metadata of existing erratum won't be updated.
+        erratum or in the new erratum,  we check to see if the version field has changed. If
+        neither has changed the metadata of existing erratum won't be updated. When two erratum
+        has the same updated time, we check the version to see if it needs an update.
 
-        When the other `updated` field is an empty string, False is returned. When the existing
-        `updated` field is an empty string, it is treated as the unix epoch. This allows erratum
-        published with an empty `updated` field to be updated later when the erratum is updated and
-        the `updated` field is set.
+        When the other `updated` field is an empty string, we assume updated has not changed.
+        When the existing `updated` field is an empty string, it is treated as the unix epoch.
+        This allows erratum published with an empty `updated` field to be updated later when the
+        erratum is updated and the `updated` field is set.
 
         :param other: potentially a newer version of the erratum
         :type  other: pulp_rpm.plugins.db.models.Errata
 
-        :return: True if the other erratum is newer than the existing one
+        :return: True if the other erratum is newer than the existing one, or if other erratum has a
+                 newer version than existing one
         :rtype:  bool
 
         :raises ValueError: If either self or other `updated` fields is not an parseable datetime
-                            format.
+                            format, or if version is not a parsable integer.
         """
+
         if other.updated == "":
-            return False
+            return util.is_version_newer(other.version, self.version)
+
         if self.updated == "":
             self_updated_field = '1970-01-01'
         else:
@@ -1226,6 +1242,10 @@ class Errata(UnitMixin, ContentUnit):
         existing_updated_dt = util.errata_format_to_datetime(self_updated_field,
                                                              msg=existing_err_msg)
         new_updated_dt = util.errata_format_to_datetime(other.updated, msg=other_err_msg)
+
+        if new_updated_dt == existing_updated_dt:
+            return util.is_version_newer(other.version, self.version)
+
         return new_updated_dt > existing_updated_dt
 
     @classmethod
