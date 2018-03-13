@@ -437,6 +437,7 @@ class CertFiles(object):
         '''
         self.rootdir = os.path.join(rootdir, repoid)
         self.clientcert = None
+        self.CLIENT = "{0}_client.crt".format(repoid)
 
     def update(self, clientcert):
         '''
