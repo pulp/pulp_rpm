@@ -200,3 +200,6 @@ RPM_NAMESPACE = 'http://linux.duke.edu/metadata/rpm'
 PULP_PACKAGES_DIR = 'Packages'
 
 MANDATORY_METADATA_TYPES = ('primary', 'filelists', 'other')
+
+GPG_CMD = "gpg_cmd"
+GPG_KEY_ID = "gpg_key_id"

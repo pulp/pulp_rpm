@@ -637,6 +637,28 @@ Optional Configuration Parameters
  ``/etc/pulp/server/plugins.conf.d/yum_distributor.json`` file containing
  ``{ "gpg_sign_metadata": true }``.
 
+``gpg_cmd``
+ Path to a signing command that will be used for signing repository
+ metadata, if ``gpg_sign_metadata`` is set.
+
+ The supplied signing command has to be an executable, accessible to the Apache
+ user.
+
+ The signing command will receive the name of the file to be signed as the first
+ positional argument.
+
+ Also, the signing command will be passed the name of the repository as the
+ ``GPG_REPOSITORY_NAME`` environment variable.
+
+ Additionally, if ``gpg_key_id`` is set (see below), its value will
+ be passed to the signing command as the ``GPG_KEY_ID`` environment variable.
+ This option should be added to the JSON configuration file described above,
+ or may be supplied in the distributor configuration.
+ Example: ``{ "gpg_sign_metadata": true, "gpg_cmd": "/usr/local/bin/sign.sh" }``
+
+``gpg_key_id``
+ Key ID to be used for signing. See ``gpg_cmd``.
+
 ``skip``
  List of content types to skip during the repository publish.
  If unspecified, all types will be published. Valid values are: rpm, drpm,
@@ -657,10 +679,11 @@ Optional Configuration Parameters
  repodata in seconds that are not removed during publish. This attribute defaults
  to 14 days.
 
-GPG Signing Key
-^^^^^^^^^^^^^^^
+GPG Signing of Repository Metadata
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-If ``gpg_sign_metadata`` is ``True``, a Pulp worker process will use the ``gpg``
+If ``gpg_sign_metadata`` is ``True``, and ``gpg_cmd`` is not set,
+a Pulp worker process will use the ``/usr/bin/gpg``
 command to generate the repomd.xml.asc file. By default, ``gpg`` will look for a
 GPG signing key under ``~/.gnupg/`` in the account that the Pulp worker process
 runs as. This path can be overridden by exporting a ``$GNUPGHOME`` environment
@@ -700,3 +723,45 @@ To test the generation of a .asc file::
     $ touch test
     $ gpg --yes --homedir /path/to/gnupg --detach-sign --armor test
     $ rm test test.asc
+
+**WARNING!** The example, as presented above, is not suitable for production
+use. Unprotected GPG keys may be easily stolen. You may want to consider
+more secure alternatives for your signing needs, like a dedicated server,
+potentially with a
+`Hardware Security Module <https://en.wikipedia.org/wiki/Hardware_security_module>`.
+
+GPG Signing Of Repository Metadata With An Alternate Command
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+In certain circumstances, using ``/usr/bin/gpg`` is not acceptable
+as a signing solution, given that private keys cannot be passphrase-protected.
+
+If a different signing command is necessary, one can set the ``gpg_cmd``
+configuration variable to point to such command.
+
+The signing command will be passed the following environment variables:
+* ``GPG_CMD``
+* ``GPG_KEY_ID`` (if specified in the configuration)
+* ``GPG_REPOSITORY_NAME``
+
+The signing command may decide on a key ID to use based on the repository name.
+
+A minimal signing command using GPG could be::
+
+    #!/usr/bin/python
+
+    import os, subprocess, sys
+
+    repo_id = os.environ.get("GPG_REPOSITORY_NAME", "")
+    key_id = "my-devel-key" if repo_id.endswith("-devel") else "my-key"
+
+    fname = sys.argv[1]
+
+    cmd = ["/usr/bin/gpg", "--homedir", "/var/lib/pulp/gpg-home",
+           "--detach-sign", "--default-key", key_id, "--armor",
+           "--output", fname + ".asc", fname]
+
+    sys.exit(subprocess.call(cmd))
+
+This hypothetical script selects the signing key ``my-devel-key`` if the
+repository name ends in ``-devel``, otherwise uses ``my-key``.

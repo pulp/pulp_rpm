@@ -478,6 +478,35 @@ class PublisherTests(BaseYumDistributorPublishStepTests):
                                  config, YUM_DISTRIBUTOR_ID, working_dir=self.working_dir)
         self.assertTrue(isinstance(step.children[0], publish.CopyDirectoryStep))
 
+    @mock.patch('pulp_rpm.plugins.distributors.yum.publish.RepomdXMLFileContext')
+    @mock.patch('pulp_rpm.plugins.distributors.yum.publish.configuration')
+    def test_gpg_signing(self, _configuration, _RepomdXMLFileContext):
+        config = PluginCallConfiguration(None, {
+            'gpg_sign_metadata': True,
+            constants.PUBLISH_HTTPS_KEYWORD: False,
+            constants.PUBLISH_HTTP_KEYWORD: True})
+
+        repo = self.publisher.get_repo()
+        delete_time = datetime.datetime(2017, 12, 24, tzinfo=isodate.UTC)
+        repo.repo_obj = mock.MagicMock(last_unit_removed=delete_time)
+
+        step = publish.Publisher(self.publisher.get_repo(),
+                                 self.publisher.get_conduit(),
+                                 config, YUM_DISTRIBUTOR_ID,
+                                 working_dir=self.working_dir)
+        substep = step.children[0]
+        self.assertTrue(isinstance(substep, publish.InitRepoMetadataStep))
+
+        substep.initialize()
+
+        self.assertEquals(_configuration.get_gpg_sign_options.return_value,
+                          substep.sign_options)
+        # Make sure we're assing the sign options to the xml file context
+        _RepomdXMLFileContext.assert_called_once_with(
+            self.working_dir,
+            _configuration.get_repo_checksum_type.return_value,
+            True, sign_options=substep.sign_options)
+
 
 class PublishRpmAndDrpmStepIncrementalTests(BaseYumDistributorPublishStepTests):
 

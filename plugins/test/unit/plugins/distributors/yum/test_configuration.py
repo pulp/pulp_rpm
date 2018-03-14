@@ -15,6 +15,7 @@ from pulp_rpm.common.constants import CONFIG_KEY_CHECKSUM_TYPE, \
 from pulp_rpm.common.ids import TYPE_ID_DISTRIBUTOR_YUM
 from pulp_rpm.common import constants
 from pulp_rpm.plugins.distributors.yum import configuration
+from pulp_rpm.yum_plugin import util
 
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), '../../../../data/')
@@ -23,6 +24,8 @@ DATA_DIR = os.path.join(os.path.dirname(__file__), '../../../../data/')
 class YumDistributorConfigurationTests(unittest.TestCase):
     def setUp(self):
         super(YumDistributorConfigurationTests, self).setUp()
+        self.test_dir = tempfile.mkdtemp(prefix='test_yum_distributor-')
+        self.addCleanup(shutil.rmtree, self.test_dir, ignore_errors=True)
 
     def tearDown(self):
         super(YumDistributorConfigurationTests, self).tearDown()
@@ -37,19 +40,13 @@ class YumDistributorConfigurationTests(unittest.TestCase):
 
     def test_usable_directory(self):
         error_messages = []
-        directory = tempfile.mkdtemp(prefix='test_yum_distributor-')
+        configuration._validate_usable_directory('directory', self.test_dir, error_messages)
 
-        try:
-            configuration._validate_usable_directory('directory', directory, error_messages)
-
-            self.assertEqual(len(error_messages), 0)
-
-        finally:
-            shutil.rmtree(directory)
+        self.assertEqual(len(error_messages), 0)
 
     def test_usable_directory_bad_permissions(self):
         error_messages = []
-        directory = tempfile.mkdtemp(prefix='test_yum_distributor-')
+        directory = self.test_dir
         os.chmod(directory, 0000)
 
         try:
@@ -59,7 +56,6 @@ class YumDistributorConfigurationTests(unittest.TestCase):
 
         finally:
             os.chmod(directory, 0777)
-            shutil.rmtree(directory)
 
     def test_usable_directory_missing(self):
         error_messages = []
@@ -601,6 +597,54 @@ class YumDistributorConfigurationTests(unittest.TestCase):
         configuration.remove_cert_based_auth(repo, config)
 
         mock_delete_protected_repo.assert_called_once_with(repo.repo_id)
+
+    # -- signing -------------------------------------------------
+    def test_get_gpg_sign_options(self):
+        repo = mock.MagicMock(id="myrepo")
+        cmd = os.path.join(self.test_dir, "sign.sh")
+        open(cmd, "w").write("#!/bin/bash")
+        os.chmod(cmd, 0755)
+
+        config = dict(gpg_cmd=cmd)
+        opts = configuration.get_gpg_sign_options(repo, config)
+        self.assertEqual(
+            dict(GPG_CMD=cmd, GPG_REPOSITORY_NAME="myrepo"),
+            opts.as_environment())
+
+    @mock.patch("pulp_rpm.yum_plugin.util.os.access")
+    def test_get_gpg_sign_options__default_cmd(self, _os_access):
+        "Make sure the test passes even if gpg is not installed"
+        _os_access.return_value = 1
+        opts = configuration.get_gpg_sign_options()
+        cmd = "/usr/bin/gpg --yes --detach-sign --armor"
+        self.assertEqual(
+            dict(GPG_CMD=cmd),
+            opts.as_environment())
+        _os_access.assert_called_once_with("/usr/bin/gpg", 1)
+
+    def test_get_gpg_sign_options__nonexec_cmd(self):
+        repo = mock.MagicMock(id="myrepo")
+        cmd = os.path.join(self.test_dir, "sign.sh")
+        open(cmd, "w").write("#!/bin/bash")
+        os.chmod(cmd, 0644)
+
+        config = dict(gpg_cmd=cmd)
+        with self.assertRaises(util.SignerError) as ctx:
+            configuration.get_gpg_sign_options(repo, config)
+        self.assertEqual(
+            "Command %s is not executable" % cmd,
+            str(ctx.exception))
+
+    def test_get_gpg_sign_options__missing_cmd(self):
+        repo = mock.MagicMock(id="myrepo")
+        cmd = os.path.join(self.test_dir, "sign.sh")
+
+        config = dict(gpg_cmd=cmd)
+        with self.assertRaises(util.SignerError) as ctx:
+            configuration.get_gpg_sign_options(repo, config)
+        self.assertEqual(
+            "Command %s is not a file" % cmd,
+            str(ctx.exception))
 
 
 class TestGetExportRepoPublishDirs(unittest.TestCase):

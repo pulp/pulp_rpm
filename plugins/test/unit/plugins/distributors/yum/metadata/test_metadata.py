@@ -6,7 +6,7 @@ import tempfile
 import unittest
 from xml.etree import cElementTree as et
 
-from mock import patch
+import mock
 from pulp.plugins.model import Unit
 
 from pulp_rpm.common.ids import TYPE_ID_RPM
@@ -443,7 +443,7 @@ class YumDistributorMetadataTests(unittest.TestCase):
             self.assertEqual(content.count('xmlns:rpm="%s"' % RPM_XML_NAME_SPACE), 1)
             self.assertEqual(content.count('<revision>'), 1)
 
-    @patch('os.path.getmtime')
+    @mock.patch('os.path.getmtime')
     def test_repomd_metadata_file_metadata(self, mock_getmtime):
 
         path = os.path.join(self.metadata_file_dir,
@@ -485,3 +485,14 @@ class YumDistributorMetadataTests(unittest.TestCase):
             self.assertEqual(
                 content.count('<open-size>%s</open-size>' % len(test_metadata_content)), 1)
             self.assertEqual(content.count('<open-checksum type="sha256">'), 1)
+
+    @mock.patch("pulp_rpm.yum_plugin.util.Signer")
+    def test_finalize_sign(self, _signer):
+        sign_options = mock.MagicMock()
+        context = RepomdXMLFileContext(self.metadata_file_dir,
+                                       gpg_sign=True,
+                                       sign_options=sign_options)
+        context.finalize()
+        _signer.assert_called_once_with(options=sign_options)
+        _signer.return_value.sign.assert_called_once_with(
+            os.path.join(self.metadata_file_dir, "repodata", "repomd.xml"))
