@@ -27,6 +27,8 @@ OPTIONAL_CONFIG_KEYS = ('gpgkey', 'auth_ca', 'auth_cert', 'https_ca', 'checksum_
                         'remove_old_repodata', 'remove_old_repodata_threshold',
                         GPG_CMD, GPG_KEY_ID)
 
+LOCAL_CONFIG_KEYS = [GPG_CMD]
+
 ROOT_PUBLISH_DIR = '/var/lib/pulp/published/yum'
 MASTER_PUBLISH_DIR = os.path.join(ROOT_PUBLISH_DIR, 'master')
 HTTP_PUBLISH_DIR = os.path.join(ROOT_PUBLISH_DIR, 'http', 'repos')
@@ -71,9 +73,17 @@ def validate_config(repo, config, config_conduit):
     :return: tuple of (bool, str) stating that the configuration is valid or not and why
     :rtype:  tuple of (bool, str or None)
     """
+    error_messages = []
+    msg = _('Configuration key [%(k)s] is not allowed in %(config)s configuration')
+    remote_configs = [
+        (config.repo_plugin_config, "repository plugin"),
+        (config.override_config, "override")]
+    for key in LOCAL_CONFIG_KEYS:
+        for cfgdict, cfgname in remote_configs:
+            if cfgdict.get(key):
+                error_messages.append(msg % dict(k=key, config=cfgname))
 
     config = config.flatten()  # squish it into a dictionary so we can manipulate it
-    error_messages = []
 
     configured_keys = set(config)
     required_keys = set(REQUIRED_CONFIG_KEYS)
