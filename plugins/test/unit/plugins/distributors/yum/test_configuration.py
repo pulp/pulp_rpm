@@ -470,6 +470,21 @@ class YumDistributorConfigurationTests(unittest.TestCase):
 
         self.assertEqual(mock_check.call_count, 1)
 
+    def test_validate_config__repocfg_gpg_cmd(self):
+        repo = Repository('test')
+        config = self._generate_call_config(http=False, https=True,
+                                            relative_url="a/b")
+        config.repo_plugin_config["gpg_cmd"] = "this should fail"
+        conduit = RepoConfigConduit(TYPE_ID_DISTRIBUTOR_YUM)
+
+        valid, reasons = configuration.validate_config(repo, config, conduit)
+
+        self.assertFalse(valid)
+
+        expected_reason = ('Configuration key [gpg_cmd] is not allowed '
+                           'in repository plugin configuration')
+        self.assertEqual(reasons, expected_reason)
+
     def test_load_config(self):
         config_handle, config_path = tempfile.mkstemp(prefix='test_yum_distributor-')
         os.close(config_handle)

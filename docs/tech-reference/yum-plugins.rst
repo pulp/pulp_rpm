@@ -656,6 +656,11 @@ Optional Configuration Parameters
  or may be supplied in the distributor configuration.
  Example: ``{ "gpg_sign_metadata": true, "gpg_cmd": "/usr/local/bin/sign.sh" }``
 
+.. note:: ``gpg_cmd`` can only be set in the plugin configuration file
+   ``/etc/pulp/server/plugins.conf.d/yum_distributor.json``. For security
+   reasons, it cannot be set in the distrirbutor configuration or as an
+   override option at publish time.
+
 ``gpg_key_id``
  Key ID to be used for signing. See ``gpg_cmd``.
 
@@ -738,6 +743,12 @@ as a signing solution, given that private keys cannot be passphrase-protected.
 
 If a different signing command is necessary, one can set the ``gpg_cmd``
 configuration variable to point to such command.
+
+.. note:: ``gpg_cmd`` can only be set in the plugin configuration file
+   ``/etc/pulp/server/plugins.conf.d/yum_distributor.json``. For security
+   reasons, it cannot be set in the distrirbutor configuration or as an
+   override option at publish time.
+
 
 The signing command will be passed the following environment variables:
 * ``GPG_CMD``
