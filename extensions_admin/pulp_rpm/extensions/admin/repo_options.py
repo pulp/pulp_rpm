@@ -12,7 +12,8 @@ from pulp_rpm.common import ids
 
 
 # Used to validate user entered skip types
-VALID_SKIP_TYPES = [ids.TYPE_ID_RPM, ids.TYPE_ID_DRPM, ids.TYPE_ID_DISTRO, ids.TYPE_ID_ERRATA]
+VALID_SKIP_TYPES = [ids.TYPE_ID_RPM, ids.TYPE_ID_DRPM, ids.TYPE_ID_SRPM, ids.TYPE_ID_DISTRO,
+                    ids.TYPE_ID_ERRATA]
 
 
 def parse_skip_types(t):
