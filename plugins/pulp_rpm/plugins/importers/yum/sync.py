@@ -1028,10 +1028,19 @@ class RepoSync(object):
         # a tuple of (model as named tuple, size in bytes)
         wanted = {}
 
+        skip_srpm = ids.TYPE_ID_SRPM in self.config.get(constants.CONFIG_SKIP, [])
         number_old_versions_to_keep = \
             self.config.get(importer_constants.KEY_UNITS_RETAIN_OLD_COUNT)
         number_of_unique_packages = 0
+
+        if skip_srpm:
+            _logger.debug('skipping SRPM sync')
+
         for model in package_info_generator:
+            if skip_srpm and isinstance(model, models.SRPM):
+                number_of_unique_packages += 1
+                continue
+
             versions = wanted.setdefault(model.key_string_without_version, {})
             serialized_version = model.complete_version_serialized
             info = WantedUnitInfo(model.size, model.download_path)
