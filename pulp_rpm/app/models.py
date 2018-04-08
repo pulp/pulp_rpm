@@ -1,6 +1,6 @@
 from logging import getLogger
 
-from pulpcore.plugin.models import Content, Importer, Publisher
+from pulpcore.plugin.models import Content, Remote, Publisher
 
 
 log = getLogger(__name__)
@@ -30,9 +30,9 @@ class RpmContent(Content):
     #     )
 
 
-class RpmImporter(Importer):
+class RpmRemote(Remote):
     """
-    Importer for "rpm" content.
+    Remote for "rpm" content.
     """
     TYPE = 'rpm'
 

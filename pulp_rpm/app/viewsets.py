@@ -7,13 +7,13 @@ from pulpcore.plugin.models import Repository, RepositoryVersion
 
 from pulpcore.plugin.viewsets import (
     ContentViewSet,
-    ImporterViewSet,
+    RemoteViewSet,
     OperationPostponedResponse,
     PublisherViewSet)
 
 from . import tasks
-from .models import RpmContent, RpmImporter, RpmPublisher
-from .serializers import RpmContentSerializer, RpmImporterSerializer, RpmPublisherSerializer
+from .models import RpmContent, RpmRemote, RpmPublisher
+from .serializers import RpmContentSerializer, RpmRemoteSerializer, RpmPublisherSerializer
 
 
 class RpmContentViewSet(ContentViewSet):
@@ -31,28 +31,28 @@ class RpmContentViewSet(ContentViewSet):
     serializer_class = RpmContentSerializer
 
 
-class RpmImporterViewSet(ImporterViewSet):
+class RpmRemoteViewSet(RemoteViewSet):
     """
-    A ViewSet for RpmImporter.
+    A ViewSet for RpmRemote.
     """
     endpoint_name = 'rpm'
-    queryset = RpmImporter.objects.all()
-    serializer_class = RpmImporterSerializer
+    queryset = RpmRemote.objects.all()
+    serializer_class = RpmRemoteSerializer
 
     @detail_route(methods=('post',))
-    def sync(self, request, pk):
-        importer = self.get_object()
+    def synchronize(self, request, pk):
+        remote = self.get_object()
         try:
             repository_uri = request.data['repository']
         except KeyError:
             raise serializers.ValidationError(detail=_('Repository URI must be specified.'))
         repository = self.get_resource(repository_uri, Repository)
-        if not importer.feed_url:
-            raise serializers.ValidationError(detail=_('A feed_url must be specified.'))
+        if not remote.url:
+            raise serializers.ValidationError(detail=_('A url must be specified.'))
         result = tasks.synchronize.apply_async_with_reservation(
-            [repository, importer],
+            [repository, remote],
             kwargs={
-                'importer_pk': importer.pk,
+                'remote_pk': remote.pk,
                 'repository_pk': repository.pk
             }
         )
