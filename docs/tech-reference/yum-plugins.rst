@@ -509,8 +509,9 @@ configuration values are optional.
 
 ``skip``
  List of content types to be skipped during the repository synchronization.
- If unspecified, all types will be synchronized. Valid values are: rpm, drpm,
- distribution, erratum; default is [].
+ If unspecified, all types will be synchronized. Valid values are: rpm, drpm, srpm,
+ distribution, erratum; default is []. If ``rpm`` is specified, ``srpm`` packages
+ will be skipped as well.
 
 ``checksum_type``
  checksum type to use for metadata generation; defaults to source checksum type of ``sha256``.
