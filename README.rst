@@ -75,23 +75,23 @@ Create a repository ``foo``
 
 ``$ export REPO_HREF=$(http :8000/api/v3/repositories/ | jq -r '.results[] | select(.name == "foo") | ._href')``
 
-Create a new importer ``bar``
+Create a new remote ``bar``
 -----------------------------
 
-``$ http POST http://localhost:8000/api/v3/importers/rpm/ name='bar' download_policy='immediate'
-sync_mode='mirror' feed_url='https://repos.fedorapeople.org/pulp/pulp/fixtures/rpm-unsigned/'``
+``$ http POST http://localhost:8000/api/v3/remotes/rpm/ name='bar' download_policy='immediate'
+sync_mode='mirror' url='https://repos.fedorapeople.org/pulp/pulp/fixtures/rpm-unsigned/'``
 
 .. code:: json
 
     {
-        "_href": "http://localhost:8000/api/v3/importers/rpm/13ac2d63-7b7b-401d-b71b-9a5af05aab3c/",
+        "_href": "http://localhost:8000/api/v3/remotes/rpm/13ac2d63-7b7b-401d-b71b-9a5af05aab3c/",
         ...
     }
 
-``$ export IMPORTER_HREF=$(http :8000/api/v3/importers/rpm/ | jq -r '.results[] | select(.name ==
+``$ export IMPORTER_HREF=$(http :8000/api/v3/remotes/rpm/ | jq -r '.results[] | select(.name ==
 "bar") | ._href')``
 
-Sync repository ``foo`` using importer ``bar``
+Sync repository ``foo`` using remote ``bar``
 ----------------------------------------------
 
 ``$ http POST $IMPORTER_HREF'sync/' repository=$REPO_HREF``
