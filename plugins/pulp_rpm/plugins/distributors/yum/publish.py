@@ -1,9 +1,7 @@
 import copy
 import datetime
-import glob
 import itertools
 import os
-import re
 import subprocess
 from gettext import gettext as _
 from xml.etree import cElementTree
@@ -1136,7 +1134,7 @@ class GenerateRepoviewStep(platform_steps.PluginStep):
 
 class RemoveOldRepodataStep(platform_steps.PluginStep):
     """
-    Remove repodata files that are not in repomd and are older then 14 day.
+    Remove repodata files that are not in repomd and are older than 14 days.
     """
     def __init__(self, content_dir, **kwargs):
         """
@@ -1155,7 +1153,8 @@ class RemoveOldRepodataStep(platform_steps.PluginStep):
     def is_skipped(self):
         """
         Check the repo for the config option to remove old repodata.
-        Skip clean up if retain_old_repodata is true
+        Clean up if remove_old_repodata is True, which is the default
+        behaviour.
 
         :returns: return if step should clean old repodata or not
         :rtype: bool
@@ -1168,50 +1167,34 @@ class RemoveOldRepodataStep(platform_steps.PluginStep):
         msg = _('Removed outdated %s' % os.path.basename(repodata_file))
         logger.info(msg)
 
-    def filter_old_repodata(self, files):
-        exp = re.compile("([a-z0-9A-Z]+)-([a-z]+)(\.xml|\.xml\.gz|\.sqlite.bz2)")
-        to_remove = {}
-        groupped = {}
-        for f in files:
-            fname = os.path.basename(f)
-            if fname in ["repodata.xml"]:
-                continue
-            matched = exp.match(fname)
-            if matched:
-                delta = datetime.datetime.today() -\
-                    datetime.datetime.fromtimestamp(os.path.getmtime(f))
+    def filter_old_repodata(self):
+        repomd = self.parent.repomd_file_context.metadata_file_path
+        repodata_dir = os.path.dirname(repomd)
 
-                groupped.setdefault(matched.group(2), [])
-                groupped[matched.group(2)].append((f, delta))
+        files_in_dir = [os.path.join(repodata_dir, f) for f in os.listdir(repodata_dir)
+                        if os.path.isfile(os.path.join(repodata_dir, f))]
 
-                threshold = self.get_config().get(
-                    'remove_old_repodata_threshold',
-                    1209600)
+        to_keep = self.parent.repomd_file_context.metadata_file_locations
 
-                # 2 weeks
-                if delta.days * 24 * 60 * 60 + delta.seconds > threshold:
-                    to_remove.setdefault(matched.group(2), [])
-                    # [type] = (filename, timedelta)
-                    to_remove[matched.group(2)].append((f, delta))
-        return groupped, to_remove
+        threshold = self.get_config().get(
+            'remove_old_repodata_threshold',
+            datetime.timedelta(days=14).total_seconds())
+
+        to_remove = []
+        for f in files_in_dir:
+            delta = datetime.datetime.today() - \
+                datetime.datetime.fromtimestamp(os.path.getmtime(f))
+            if delta.total_seconds() > threshold and f not in to_keep:
+                to_remove.append(f)
+
+        return to_remove
 
     def process_main(self):
         """
-        Check files times and remove ones older then 14 days.
+        Check files times and remove ones older than 14 days.
         """
-        files = glob.glob(os.path.join(self.content_dir, "repodata", "*.xml*")) +\
-            glob.glob(os.path.join(self.content_dir, "repodata", "*.sqlite*"))
-
-        groupped, to_remove = self.filter_old_repodata(files)
-
-        for xkey, val in to_remove.items():
-            to_remove[xkey] = sorted(val, key=lambda x: x[1], reverse=True)
-
-        for key, val in to_remove.iteritems():
-            # preserve at least one file of each kind - pop out latest
-            if not set(groupped[key]) - set(val):
-                val.pop(0)
-            for f in val:
-                self.remove_repodata_file(f[0])
+        to_remove = self.filter_old_repodata()
+        for f in to_remove:
+            self.remove_repodata_file(f)
 
         self.total_units = self.progress_successes
