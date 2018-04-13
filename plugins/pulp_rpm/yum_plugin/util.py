@@ -205,12 +205,12 @@ def is_version_newer(new_version, old_version):
     if not new_version:
         return False
 
-    new = int(new_version)
+    new = float(new_version)
 
     if not old_version:
         old = 0
     else:
-        old = int(old_version)
+        old = float(old_version)
     return new > old
 
 
