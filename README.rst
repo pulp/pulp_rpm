@@ -206,4 +206,4 @@ Create a Distribution for the Publication
 Download ``foo.rpm`` from Pulp
 ---------------------------------
 
-``$ http GET http://localhost:8000/content/foo/foo.rpm``
+``$ http GET http://localhost:8000/pulp/content/foo/foo.rpm``
