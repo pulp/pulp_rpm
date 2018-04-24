@@ -22,7 +22,7 @@ class RpmContentViewSet(ContentViewSet):
 
     Define endpoint name which will appear in the API endpoint for this content type.
     For example::
-        http://pulp.example.com/api/v3/content/rpm/
+        http://pulp.example.com/pulp/api/v3/content/rpm/
 
     Also specify queryset and serializer for RpmContent.
     """
