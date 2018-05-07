@@ -41,9 +41,9 @@ def migrate(*args, **kwargs):
     srpm_collection = db['units_srpm']
     drpm_collection = db['units_drpm']
 
-    for rpm in rpm_collection.find({}, ['checksum', 'checksumtype', 'repodata']):
+    for rpm in rpm_collection.find({}, ['checksum', 'checksumtype', 'repodata']).batch_size(100):
         migrate_rpm_base(rpm_collection, rpm)
-    for srpm in srpm_collection.find({}, ['checksum', 'checksumtype', 'repodata']):
+    for srpm in srpm_collection.find({}, ['checksum', 'checksumtype', 'repodata']).batch_size(100):
         migrate_rpm_base(srpm_collection, srpm)
 
     migrate_drpms(drpm_collection)
