@@ -18,9 +18,9 @@ class TestMigrate(unittest.TestCase):
         mock_db = mock_get_db.return_value
         mock_unit = mock.MagicMock()
         mock_rpm_collection = mock_db['units_rpm']
-        mock_rpm_collection.find.return_value = [mock_unit]
+        mock_rpm_collection.find.return_value.batch_size.return_value = [mock_unit]
         mock_srpm_collection = mock_db['units_srpm']
-        mock_srpm_collection.find.return_value = [mock_unit]
+        mock_srpm_collection.find.return_value.batch_size.return_value = [mock_unit]
 
         migration.migrate()
 
