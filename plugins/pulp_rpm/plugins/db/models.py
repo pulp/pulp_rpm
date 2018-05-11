@@ -1163,6 +1163,26 @@ class Errata(UnitMixin, ContentUnit):
                     ret.append(unit_key)
         return ret
 
+    @classmethod
+    def get_unique_pkglists(cls, errata_id):
+        """
+        Generate a list of unique pkglists for a specified erratum.
+
+        Those pkglists contain only information about packages.
+
+        :param errata_id: The erratum to generate a unique set of pkglists for
+        :type  errata_id: str
+        :return: unique pkglists for a specified erratum
+        :rtype: list of dicts
+        """
+        match_stage = {'$match': {'errata_id': errata_id}}
+        group_stage = {'$group': {'_id': '$errata_id',
+                                  'pkglists': {'$addToSet': '$collections.packages'}}}
+        pkglists = ErratumPkglist.objects.aggregate(match_stage, group_stage,
+                                                    allowDiskUse=True,
+                                                    batchSize=5).next()['pkglists']
+        return pkglists
+
     def create_legacy_metadata_dict(self):
         """
         Generate metadata dict and add erratum pkglist to it since it is stored
