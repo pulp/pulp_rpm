@@ -5,8 +5,8 @@ from pulp.plugins.profiler import Profiler, InvalidUnitsRequested
 from pulp.server.db.model.criteria import UnitAssociationCriteria
 
 from pulp_rpm.common.ids import TYPE_ID_ERRATA, TYPE_ID_RPM
+from pulp_rpm.plugins.db import models
 from pulp_rpm.yum_plugin import util
-
 
 _logger = util.getLogger(__name__)
 
@@ -309,24 +309,24 @@ class YumProfiler(Profiler):
         :param profile_lookup_table: lookup table of a unit profile keyed by "name arch"
         :type profile_lookup_table: dict
 
+        :param available_rpm_nevras: NEVRA of packages available in a repo
+        :type available_rpm_nevras: list of tuples
+
         :return: true if applicable, false otherwise
         :rtype: boolean
         """
         # Get rpms from errata
-        errata_rpms = YumProfiler._get_rpms_from_errata(errata)
+        pkglists = models.Errata.get_unique_pkglists(errata.unit_key.get('errata_id'))
 
         # RHBZ #1171280: ensure we are only checking applicability against RPMs
         # we have access to in the repo. This is to prevent a RHEL6 machine
         # from finding RHEL7 packages, for example.
-        available_errata_rpms = []
-        for errata_rpm in errata_rpms:
-            if YumProfiler._create_nevra(errata_rpm) in available_rpm_nevras:
-                available_errata_rpms.append(errata_rpm)
-
-        # Check if any rpm from errata is applicable to the consumer
-        for errata_rpm in available_errata_rpms:
-            if YumProfiler._is_rpm_applicable(errata_rpm, profile_lookup_table):
-                return True
+        for pkglist in pkglists:
+            for collection in pkglist:
+                for errata_rpm in collection:
+                    if YumProfiler._create_nevra(errata_rpm) in available_rpm_nevras and \
+                       YumProfiler._is_rpm_applicable(errata_rpm, profile_lookup_table):
+                        return True
 
         # Return false if none of the errata rpms are applicable
         return False

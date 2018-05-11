@@ -54,14 +54,15 @@ class Errata(platform_serializers.ModelSerializer):
         Convert a single unit to it's dictionary form.
 
         Add to errratum unit its pkglist.
+        Duplicated pkglists are eliminated.
 
         :param unit: The object to be converted
         :type unit: object
         """
-        from pulp_rpm.plugins.db.models import ErratumPkglist
+        from pulp_rpm.plugins.db import models
 
-        pkglists = ErratumPkglist.objects(errata_id=unit.get('errata_id'))
-        unit['pkglist'] = [coll for pkglist in pkglists for coll in pkglist['collections']]
+        pkglists = models.Errata.get_unique_pkglists(unit.get('errata_id'))
+        unit['pkglist'] = [coll for pkglist in pkglists for coll in pkglist]
         return super(Errata, self).serialize(unit)
 
 
