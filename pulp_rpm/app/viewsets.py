@@ -4,6 +4,7 @@ from rest_framework.decorators import detail_route
 from rest_framework import serializers
 
 from pulpcore.plugin.models import Repository, RepositoryVersion
+from pulpcore.plugin.tasking import enqueue_with_reservation
 
 from pulpcore.plugin.viewsets import (
     ContentViewSet,
@@ -49,7 +50,8 @@ class RpmRemoteViewSet(RemoteViewSet):
         repository = self.get_resource(repository_uri, Repository)
         if not remote.url:
             raise serializers.ValidationError(detail=_('A url must be specified.'))
-        result = tasks.synchronize.apply_async_with_reservation(
+        result = enqueue_with_reservation(
+            tasks.synchronize,
             [repository, remote],
             kwargs={
                 'remote_pk': remote.pk,
@@ -90,7 +92,8 @@ class RpmPublisherViewSet(PublisherViewSet):
         if not repository_version:
             repository_version = RepositoryVersion.latest(repository)
 
-        result = tasks.publish.apply_async_with_reservation(
+        result = enqueue_with_reservation(
+            tasks.publish,
             [repository_version.repository, publisher],
             kwargs={
                 'publisher_pk': str(publisher.pk),

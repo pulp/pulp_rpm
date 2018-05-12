@@ -40,7 +40,7 @@ Install ``pulp-rpm`` from source
 2)  source ~/pulpvenv/bin/activate
 3)  git clone https://github.com/pulp/pulp\_rpm.git
 4)  cd pulp\_rpm
-5)  python setup.py develop
+5)  pip install -e .
 6)  pulp-manager makemigrations pulp\_rpm
 7)  pulp-manager migrate pulp\_rpm
 8)  django-admin runserver
