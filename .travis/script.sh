@@ -22,6 +22,7 @@ if [ $? -ne 0 ]; then
 fi
 popd
 
+export DJANGO_SETTINGS_MODULE=pulpcore.app.settings
 pulp-manager reset-admin-password --password admin
 pulp-manager runserver >> ~/django_runserver.log 2>&1 &
 rq worker -n 'resource_manager@%h' -w 'pulpcore.tasking.worker.PulpWorker' >> ~/resource_manager.log 2>&1 &
