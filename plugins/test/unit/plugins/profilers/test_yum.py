@@ -221,16 +221,18 @@ class TestYumProfilerErrata(rpm_support_base.PulpRPMTests):
         self.assertEqual("emoticons", old_rpms["emoticons x86_64"]["installed"]["name"])
         self.assertEqual("0.1", old_rpms["emoticons x86_64"]["installed"]["version"])
 
-    def test_unit_not_applicable_not_in_repo(self):
+    @mock.patch('pulp_rpm.plugins.db.models.Errata.get_unique_pkglists')
+    def test_unit_not_applicable_not_in_repo(self, m_get_unique_pkglists):
         # Errata refers to RPMs which ARE part of our test consumer's profile,
         # but are not in the repo.
         errata_obj = self.get_test_errata_object()
         errata_unit = Unit(TYPE_ID_ERRATA, {"id": errata_obj["id"]}, errata_obj, None)
         errata_unit.id = 'an_errata'
+        errata_rpms = errata_obj.pkglist[0]['packages']
+        m_get_unique_pkglists.return_value = [[errata_rpms]]
         test_repo = profiler_mocks.get_repo("test_repo_id")
 
         prof = YumProfiler()
-        errata_rpms = prof._get_rpms_from_errata(errata_unit)
         conduit = profiler_mocks.get_profiler_conduit(repo_units=[errata_unit],
                                                       repo_bindings=[test_repo],
                                                       errata_rpms=errata_rpms)
@@ -239,12 +241,15 @@ class TestYumProfilerErrata(rpm_support_base.PulpRPMTests):
         report_list = prof.calculate_applicable_units(unit_profile, bound_repo_id, None, conduit)
         self.assertEqual(report_list, {TYPE_ID_RPM: [], TYPE_ID_ERRATA: []})
 
-    def test_unit_applicable(self):
+    @mock.patch('pulp_rpm.plugins.db.models.Errata.get_unique_pkglists')
+    def test_unit_applicable(self, m_get_unique_pkglists):
         # Errata refers to RPMs which ARE part of our test consumer's profile,
         # AND in the repo.
         errata_obj = self.get_test_errata_object()
         errata_unit = Unit(TYPE_ID_ERRATA, {"id": errata_obj["id"]}, errata_obj, None)
         errata_unit.id = 'an_errata'
+        errata_rpms = errata_obj.pkglist[0]['packages']
+        m_get_unique_pkglists.return_value = [[errata_rpms]]
 
         rpm_unit_key = self.create_profile_entry("emoticons", 0, "0.1", "2", "x86_64",
                                                  "Test Vendor")
@@ -255,7 +260,6 @@ class TestYumProfilerErrata(rpm_support_base.PulpRPMTests):
         test_repo = profiler_mocks.get_repo("test_repo_id")
 
         prof = YumProfiler()
-        errata_rpms = prof._get_rpms_from_errata(errata_unit)
         conduit = profiler_mocks.get_profiler_conduit(repo_units=[errata_unit, rpm_unit],
                                                       repo_bindings=[test_repo],
                                                       errata_rpms=errata_rpms)
@@ -264,16 +268,18 @@ class TestYumProfilerErrata(rpm_support_base.PulpRPMTests):
         report_list = prof.calculate_applicable_units(unit_profile, bound_repo_id, None, conduit)
         self.assertEqual(report_list, {TYPE_ID_RPM: ['a_test_id'], TYPE_ID_ERRATA: ['an_errata']})
 
-    def test_unit_applicable_same_name_diff_arch(self):
+    @mock.patch('pulp_rpm.plugins.db.models.Errata.get_unique_pkglists')
+    def test_unit_applicable_same_name_diff_arch(self, m_get_unique_pkglists):
         # Errata refers to RPMs that are x86_64, the test consumer is i386
         # the rpms installed share the same name as the errata, but the client arch is different
         # so this errata is marked as unapplicable
         errata_obj = self.get_test_errata_object()
         errata_unit = Unit(TYPE_ID_ERRATA, {"id": errata_obj["id"]}, errata_obj, None)
+        errata_rpms = errata_obj.pkglist[0]['packages']
+        m_get_unique_pkglists.return_value = [[errata_rpms]]
         test_repo = profiler_mocks.get_repo("test_repo_id")
 
         prof = YumProfiler()
-        errata_rpms = prof._get_rpms_from_errata(errata_unit)
         conduit = profiler_mocks.get_profiler_conduit(repo_units=[errata_unit],
                                                       repo_bindings=[test_repo],
                                                       errata_rpms=errata_rpms)
@@ -282,14 +288,16 @@ class TestYumProfilerErrata(rpm_support_base.PulpRPMTests):
         report_list = prof.calculate_applicable_units(unit_profile, bound_repo_id, None, conduit)
         self.assertEqual(report_list, {TYPE_ID_RPM: [], TYPE_ID_ERRATA: []})
 
-    def test_unit_applicable_updated_rpm_already_installed(self):
+    @mock.patch('pulp_rpm.plugins.db.models.Errata.get_unique_pkglists')
+    def test_unit_applicable_updated_rpm_already_installed(self, m_get_unique_pkglists):
         # Errata refers to RPMs already installed, i.e. the consumer has these exact NEVRA already
         errata_obj = self.get_test_errata_object()
         errata_unit = Unit(TYPE_ID_ERRATA, {"id": errata_obj["id"]}, errata_obj, None)
+        errata_rpms = errata_obj.pkglist[0]['packages']
+        m_get_unique_pkglists.return_value = [[errata_rpms]]
         test_repo = profiler_mocks.get_repo("test_repo_id")
 
         prof = YumProfiler()
-        errata_rpms = prof._get_rpms_from_errata(errata_unit)
         conduit = profiler_mocks.get_profiler_conduit(repo_units=[errata_unit],
                                                       repo_bindings=[test_repo],
                                                       errata_rpms=errata_rpms)
@@ -298,14 +306,16 @@ class TestYumProfilerErrata(rpm_support_base.PulpRPMTests):
         report_list = prof.calculate_applicable_units(unit_profile, bound_repo_id, None, conduit)
         self.assertEqual(report_list, {TYPE_ID_RPM: [], TYPE_ID_ERRATA: []})
 
-    def test_unit_applicable_false(self):
+    @mock.patch('pulp_rpm.plugins.db.models.Errata.get_unique_pkglists')
+    def test_unit_applicable_false(self, m_get_unique_pkglists):
         # Errata refers to RPMs which are NOT part of our test consumer's profile
         errata_obj = self.get_test_errata_object_unrelated()
         errata_unit = Unit(TYPE_ID_ERRATA, {"id": errata_obj["id"]}, errata_obj, None)
+        errata_rpms = errata_obj.pkglist[0]['packages']
+        m_get_unique_pkglists.return_value = [[errata_rpms]]
         test_repo = profiler_mocks.get_repo("test_repo_id")
 
         prof = YumProfiler()
-        errata_rpms = prof._get_rpms_from_errata(errata_unit)
         conduit = profiler_mocks.get_profiler_conduit(repo_units=[errata_unit],
                                                       repo_bindings=[test_repo],
                                                       errata_rpms=errata_rpms)
