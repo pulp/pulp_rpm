@@ -62,7 +62,18 @@ class Errata(platform_serializers.ModelSerializer):
         from pulp_rpm.plugins.db import models
 
         pkglists = models.Errata.get_unique_pkglists(unit.get('errata_id'))
-        unit['pkglist'] = [coll for pkglist in pkglists for coll in pkglist]
+        unit['pkglist'] = []
+        coll_num = 0
+        for pkglist in pkglists:
+            for coll in pkglist:
+                # To preserve the original format of a pkglist the 'short' and 'name'
+                # keys are added. 'short' can be an empty string, collection 'name'
+                # should be unique within an erratum.
+                unit['pkglist'].append({'packages': coll,
+                                        'short': '',
+                                        'name': 'collection-%s' % coll_num})
+                coll_num += 1
+
         return super(Errata, self).serialize(unit)
 
 
