@@ -1137,10 +1137,10 @@ class Errata(UnitMixin, ContentUnit):
     @property
     def rpm_search_dicts(self):
         ret = []
-        pkglists = ErratumPkglist.objects(errata_id=self.errata_id)
+        pkglists = Errata.get_unique_pkglists(errata_id=self.errata_id)
         for pkglist in pkglists:
-            for collection in pkglist['collections']:
-                for package in collection.get('packages', []):
+            for collection in pkglist:
+                for package in collection:
                     if len(package.get('sum') or []) == 2:
                         checksum = package['sum'][1]
                         checksumtype = server_util.sanitize_checksum_type(package['sum'][0])
@@ -1162,6 +1162,26 @@ class Errata(UnitMixin, ContentUnit):
                             del unit_key[key]
                     ret.append(unit_key)
         return ret
+
+    @classmethod
+    def get_unique_pkglists(cls, errata_id):
+        """
+        Generate a list of unique pkglists for a specified erratum.
+
+        Those pkglists contain only information about packages.
+
+        :param errata_id: The erratum to generate a unique set of pkglists for
+        :type  errata_id: str
+        :return: unique pkglists for a specified erratum
+        :rtype: list of lists of dicts
+        """
+        match_stage = {'$match': {'errata_id': errata_id}}
+        group_stage = {'$group': {'_id': '$errata_id',
+                                  'pkglists': {'$addToSet': '$collections.packages'}}}
+        pkglists = ErratumPkglist.objects.aggregate(match_stage, group_stage,
+                                                    allowDiskUse=True,
+                                                    batchSize=5).next()['pkglists']
+        return pkglists
 
     def create_legacy_metadata_dict(self):
         """
