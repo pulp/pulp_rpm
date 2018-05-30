@@ -53,7 +53,7 @@ class Errata(platform_serializers.ModelSerializer):
         """
         Convert a single unit to it's dictionary form.
 
-        Add to errratum unit its pkglist.
+        Add to errratum unit its pkglist if needed.
         Duplicated pkglists are eliminated.
 
         :param unit: The object to be converted
@@ -61,18 +61,28 @@ class Errata(platform_serializers.ModelSerializer):
         """
         from pulp_rpm.plugins.db import models
 
-        pkglists = models.Errata.get_unique_pkglists(unit.get('errata_id'))
-        unit['pkglist'] = []
-        coll_num = 0
-        for pkglist in pkglists:
-            for coll in pkglist:
-                # To preserve the original format of a pkglist the 'short' and 'name'
-                # keys are added. 'short' can be an empty string, collection 'name'
-                # should be unique within an erratum.
-                unit['pkglist'].append({'packages': coll,
-                                        'short': '',
-                                        'name': 'collection-%s' % coll_num})
-                coll_num += 1
+        # If pkglist field is absent, it's on purpose, e.g. not specified in the fields during
+        # search. So it should not be added during serialization.
+        # If pkglist field is present, it's always emtpy => it should be filled in.
+        if 'pkglist' in unit:
+            errata_id = unit.get('errata_id')
+
+            # If fields in search criteria don't include errata_id
+            if errata_id is None:
+                erratum_obj = models.Errata.objects.only('errata_id').get(id=unit.get('_id'))
+                errata_id = erratum_obj.errata_id
+
+            pkglists = models.Errata.get_unique_pkglists(errata_id)
+            coll_num = 0
+            for pkglist in pkglists:
+                for coll in pkglist:
+                    # To preserve the original format of a pkglist the 'short' and 'name'
+                    # keys are added. 'short' can be an empty string, collection 'name'
+                    # should be unique within an erratum.
+                    unit['pkglist'].append({'packages': coll,
+                                            'short': '',
+                                            'name': 'collection-%s' % coll_num})
+                    coll_num += 1
 
         return super(Errata, self).serialize(unit)
 
