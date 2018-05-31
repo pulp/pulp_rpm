@@ -12,9 +12,7 @@ pip install -r test_requirements.txt
 
 cd .. && git clone https://github.com/pulp/pulp.git
 
-if [ -z $PULP_PR_NUMBER ]; then
-  pushd pulp && git checkout 3.0-dev && popd
-else
+if [ -n $PULP_PR_NUMBER ]; then
   pushd pulp
   git fetch origin +refs/pull/$PULP_PR_NUMBER/merge
   git checkout FETCH_HEAD
