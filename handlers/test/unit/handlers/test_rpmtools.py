@@ -5,7 +5,7 @@ from yum import constants
 from yum.Errors import InstallError
 from yum.callbacks import PT_MESSAGES
 
-from pulp_rpm.handlers.rpmtools import (
+from pulp_rpm.handlers.rpmtools_yum import (
     Package,
     PackageGroup,
     ProcessTransCallback,
@@ -15,7 +15,7 @@ from pulp_rpm.handlers.rpmtools import (
     Yum)
 
 
-MODULE = 'pulp_rpm.handlers.rpmtools'
+MODULE = 'pulp_rpm.handlers.rpmtools_yum'
 
 
 class Pkg(object):
@@ -964,7 +964,7 @@ class TestYum(TestCase):
 
         # validation
         setup.assert_called_once_with(yum)
-        parser.return_value.parse_args.assert_once_called_with([])
+        parser.return_value.parse_args.assert_called_once_with([])
         yum.plugins.setCmdLine.assert_called_once_with(*parser.return_value.parse_args.return_value)
 
     def test_registerCommand(self):
