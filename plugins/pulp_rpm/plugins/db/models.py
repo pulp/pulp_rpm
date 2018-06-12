@@ -903,7 +903,7 @@ class RpmBase(NonMetadataPackage):
         """
         start_tag_pattern = r'<%s.*?(?<!/)>' % tag_name
         end_tag_pattern = r'</%s>' % tag_name
-        complete_tag_pattern = r'(%s)(.*?)(%s)' % (start_tag_pattern, end_tag_pattern)
+        complete_tag_pattern = r'(%s)(.*)(%s)' % (start_tag_pattern, end_tag_pattern)
         tag_re = re.compile(complete_tag_pattern, flags=re.DOTALL)
         template = tag_re.sub(RpmBase._generate_tag_replacement_str, template)
         return template
