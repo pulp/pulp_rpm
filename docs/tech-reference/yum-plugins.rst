@@ -701,6 +701,17 @@ To generate a GPG signing key under ``~/.gnupg/`` in the account that the Pulp
 worker process runs as::
 
     $ sudo -u pulp -H -s
+    $ mkdir ~/.gnupg/
+    $ cat <<END > ~/.gnupg/gpg.conf
+    # Digest algorithm used for creating and signing (certifying) keys
+    cert-digest-algo SHA512
+    # Default "setpref" setting for new keys
+    default-preference-list SHA512 SHA384 SHA256 AES256 AES192 AES ZLIB BZIP2 ZIP Uncompressed
+    # Digest algorithm preferences for signing/encrypting data
+    personal-digest-preferences SHA512 SHA384 SHA256
+    # Cipher algorithm preferences for signing/encrypting data
+    personal-cipher-preferences AES256 AES192 AES
+    END
     $ gpg --gen-key
 
 (Use the default ``RSA and RSA``, ``2048`` bits, and ``key does not expire``
@@ -709,6 +720,16 @@ values, and simply press ``Enter`` when prompted for a password.)
 To generate a GPG signing key under a different directory::
 
     $ mkdir -p /path/to/gnupg
+    $ cat <<END > /path/to/gnupg/gpg.conf
+    # Digest algorithm used for creating and signing (certifying) keys
+    cert-digest-algo SHA512
+    # Default "setpref" setting for new keys
+    default-preference-list SHA512 SHA384 SHA256 AES256 AES192 AES ZLIB BZIP2 ZIP Uncompressed
+    # Digest algorithm preferences for signing/encrypting data
+    personal-digest-preferences SHA512 SHA384 SHA256
+    # Cipher algorithm preferences for signing/encrypting data
+    personal-cipher-preferences AES256 AES192 AES
+    END
     $ gpg --homedir /path/to/gnupg --gen-key
     $ chown -Rh pulp /path/to/gnupg
 
@@ -734,7 +755,7 @@ To test the generation of a .asc file::
 use. Unprotected GPG keys may be easily stolen. You may want to consider
 more secure alternatives for your signing needs, like a dedicated server,
 potentially with a
-`Hardware Security Module <https://en.wikipedia.org/wiki/Hardware_security_module>`.
+`Hardware Security Module <https://en.wikipedia.org/wiki/Hardware_security_module>`_.
 
 GPG Signing Of Repository Metadata With An Alternate Command
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
