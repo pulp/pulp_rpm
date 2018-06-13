@@ -393,10 +393,12 @@ def get_repo_checksum_type(publish_conduit, config):
 def get_gpg_sign_options(repo=None, config=None):
     cfg = config or {}
     cmd = cfg.get(GPG_CMD)
+    key_id = cfg.get(GPG_KEY_ID)
     if not cmd:
         # Default to plain gpg
-        cmd = '/usr/bin/gpg --yes --detach-sign --armor'
-    key_id = cfg.get(GPG_KEY_ID)
+        cmd = ['/usr/bin/gpg', '--yes', '--detach-sign', '--armor']
+        if key_id:
+            cmd += ['--default-key', key_id]
     repository_name = None if repo is None else repo.id
     return util.SignOptions(cmd, repository_name=repository_name, key_id=key_id)
 

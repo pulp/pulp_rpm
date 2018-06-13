@@ -121,7 +121,6 @@ class SignerTest(rpm_support_base.PulpRPMTests):
         _Popen.assert_called_once_with(
             [self.sign_cmd, filename],
             env=dict(
-                GPG_CMD=self.sign_cmd,
                 GPG_KEY_ID=self.key_id,
                 GPG_REPOSITORY_NAME=self.repository_name,
                 GPG_DIST=self.dist,

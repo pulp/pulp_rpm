@@ -231,17 +231,16 @@ class SignOptions(object):
 
     The command should accept one argument, a path to a file.
 
-    This class' fields, prepended with GPG_ and upper-cased, will be
-    presented to the command as environment variables. The
-    command may determine which gpg key to use based on GPG_KEY_ID
-    or GPG_REPOSITORY_NAME
+    With the exception of cmd, this class' fields will be presented to the
+    command as environment variables with the name prepended with GPG_ and
+    upper-cased. The command may determine which gpg key to use based on
+    GPG_KEY_ID or GPG_REPOSITORY_NAME
     """
 
     def __init__(self, cmd=None, key_id=None, **kwargs):
         if not cmd:
             raise SignerError("Command not specified")
-        self.cmd = cmd
-        self._cmdargs = shlex.split(cmd)
+        self._cmdargs = (cmd if isinstance(cmd, list) else shlex.split(cmd))
         if not os.path.isfile(self._cmdargs[0]):
             raise SignerError(
                 "Command %s is not a file" % (self._cmdargs[0], ))

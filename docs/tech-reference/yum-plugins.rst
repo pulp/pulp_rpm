@@ -638,6 +638,9 @@ Optional Configuration Parameters
  ``/etc/pulp/server/plugins.conf.d/yum_distributor.json`` file containing
  ``{ "gpg_sign_metadata": true }``.
 
+``gpg_key_id``
+ GPG key ID to use for signing repository metadata.
+
 ``gpg_cmd``
  Path to a signing command that will be used for signing repository
  metadata, if ``gpg_sign_metadata`` is set.
@@ -651,7 +654,7 @@ Optional Configuration Parameters
  Also, the signing command will be passed the name of the repository as the
  ``GPG_REPOSITORY_NAME`` environment variable.
 
- Additionally, if ``gpg_key_id`` is set (see below), its value will
+ Additionally, if ``gpg_key_id`` is set (see above), its value will
  be passed to the signing command as the ``GPG_KEY_ID`` environment variable.
  This option should be added to the JSON configuration file described above,
  or may be supplied in the distributor configuration.
@@ -661,9 +664,6 @@ Optional Configuration Parameters
    ``/etc/pulp/server/plugins.conf.d/yum_distributor.json``. For security
    reasons, it cannot be set in the distrirbutor configuration or as an
    override option at publish time.
-
-``gpg_key_id``
- Key ID to be used for signing. See ``gpg_cmd``.
 
 ``skip``
  List of content types to skip during the repository publish.
