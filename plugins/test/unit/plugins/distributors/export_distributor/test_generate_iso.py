@@ -46,6 +46,12 @@ class TestMakeIso(unittest.TestCase):
     """
     Test the _make_iso helper method in generate_iso
     """
+    def setUp(self):
+        self.add_digest_file = generate_iso._add_digest_file
+        generate_iso._add_digest_file = mock.Mock(return_value=[])
+
+    def tearDown(self):
+        generate_iso._add_digest_file = self.add_digest_file
 
     @mock.patch('os.path.isdir', autospec=True, return_value=True)
     @mock.patch('os.close', autospec=True)

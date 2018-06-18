@@ -4,7 +4,9 @@ import os
 import commands
 import datetime
 import tempfile
+import hashlib
 from stat import ST_SIZE
+from pulp.server.util import md5 as pulp_md5
 
 from pulp_rpm.yum_plugin.util import getLogger
 
@@ -87,7 +89,38 @@ def _make_iso(file_list, target_dir, output_dir, filename):
     if status != 0:
         log.error("Error creating iso %s; status code: %d; output: %s" % (file_path, status, out))
     else:
+        _add_digest_file(file_path)
         log.info('Successfully created iso %s' % file_path)
+
+
+def _add_digest_file(file_path):
+    """
+    Parses each bit of the iso to generate a *.iso.DIGESTS file.
+
+    :param file_path: The file path to the ISO image file
+    :param file_path: str
+    """
+    exportedISO = open(file_path, "rb")
+    digestFile = open(file_path + ".DIGESTS", "w+")
+    hashers = {}
+    for hasher in hashlib.algorithms_guaranteed:
+        if hasher == 'md5':
+            hashers[hasher] = pulp_md5()
+        else:
+            hashers[hasher] = getattr(hashlib, hasher)()
+
+    chunk = exportedISO.read(1024)
+    while len(chunk) > 0:
+        for hasher in hashlib.algorithms_guaranteed:
+            hashers[hasher].update(chunk)
+        chunk = exportedISO.read(1024)
+
+    for hasher in hashers:
+        digestFile.write('{} *{}\n'.format(hashers[hasher].hexdigest(),
+                         os.path.basename(file_path)))
+
+    exportedISO.close()
+    digestFile.close()
 
 
 def _parse_image_size(image_size):

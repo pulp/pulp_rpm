@@ -8,7 +8,9 @@ images, or to the directory of your choice as one or more yum repositories. The 
 distributor uses the ID ``export_distributor``. The repository group distributor uses the ID
 ``group_export_distributor``. Exported repository ISOs will be published over HTTP or HTTPS at
 the path ``/pulp/exports/repo/<repo-id>/``, and exported repository group ISOs can be found at
-``/pulp/exports/repo_group/<group-id>/``.
+``/pulp/exports/repo_group/<group-id>/``. Along with the ISO there will also be a ``*.iso.DIGESTS``
+file published. This file will contain md5, sha1, sha224, sha256, sha384, and sha512 digests of the
+ISO.
 
 Configuration Parameters
 ========================

@@ -11,3 +11,6 @@ New Features
 * The `gpg_key_id` yum distributor configuration value was previously ignored
   unless `gpg_cmd` was configured.  It is now used with the default GPG signing
   command when `gpg_cmd` is not configured.
+
+* The export distributor now generates a ``*.iso.DIGESTS`` file along with the ISO.
+  This file will contain md5, sha1, sha224, sha256, sha384, and sha512 digests of the ISO.

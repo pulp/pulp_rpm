@@ -342,7 +342,9 @@ The general workflow is as follows:
 
 Which, if publishing over HTTP, could be found at
 `http://localhost/pulp/exports/repo/demo-repo/ <http://localhost/pulp/exports/repo/demo-repo/>`_
-(adjust hostname and repo-id as necessary.)
+(adjust hostname and repo-id as necessary). Along with the ISO there will also be a 
+``*.iso.DIGESTS`` file published. This file will contain md5, sha1, sha224, sha256, sha384,
+and sha512 digests of the ISO.
 
 3. Transport the ISOs to the disconnected Pulp server
 4. Mount each ISO and copy its contents to a directory on the disconnected Pulp server
