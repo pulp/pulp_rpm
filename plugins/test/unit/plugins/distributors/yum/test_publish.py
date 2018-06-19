@@ -501,7 +501,7 @@ class PublisherTests(BaseYumDistributorPublishStepTests):
 
         self.assertEquals(_configuration.get_gpg_sign_options.return_value,
                           substep.sign_options)
-        # Make sure we're assing the sign options to the xml file context
+        # Make sure we're passing the sign options to the xml file context
         _RepomdXMLFileContext.assert_called_once_with(
             self.working_dir,
             _configuration.get_repo_checksum_type.return_value,

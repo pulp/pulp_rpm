@@ -1,0 +1,13 @@
+=======================
+Pulp 2.17 Release Notes
+=======================
+
+Pulp 2.17.0
+===========
+
+New Features
+------------
+
+* The `gpg_key_id` yum distributor configuration value was previously ignored
+  unless `gpg_cmd` was configured.  It is now used with the default GPG signing
+  command when `gpg_cmd` is not configured.

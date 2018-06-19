@@ -623,7 +623,7 @@ class YumDistributorConfigurationTests(unittest.TestCase):
         config = dict(gpg_cmd=cmd)
         opts = configuration.get_gpg_sign_options(repo, config)
         self.assertEqual(
-            dict(GPG_CMD=cmd, GPG_REPOSITORY_NAME="myrepo"),
+            dict(GPG_REPOSITORY_NAME="myrepo"),
             opts.as_environment())
 
     @mock.patch("pulp_rpm.yum_plugin.util.os.access")
@@ -631,9 +631,18 @@ class YumDistributorConfigurationTests(unittest.TestCase):
         "Make sure the test passes even if gpg is not installed"
         _os_access.return_value = 1
         opts = configuration.get_gpg_sign_options()
-        cmd = "/usr/bin/gpg --yes --detach-sign --armor"
+        self.assertEqual(dict(), opts.as_environment())
+        _os_access.assert_called_once_with("/usr/bin/gpg", 1)
+
+    @mock.patch("pulp_rpm.yum_plugin.util.os.access")
+    def test_get_gpg_sign_options__default_cmd_with_key(self, _os_access):
+        "Make sure the test passes even if gpg is not installed"
+        _os_access.return_value = 1
+        repo = mock.MagicMock(id="myrepo")
+        config = dict(gpg_key_id='12345')
+        opts = configuration.get_gpg_sign_options(repo, config)
         self.assertEqual(
-            dict(GPG_CMD=cmd),
+            dict(GPG_KEY_ID='12345', GPG_REPOSITORY_NAME="myrepo"),
             opts.as_environment())
         _os_access.assert_called_once_with("/usr/bin/gpg", 1)
 
