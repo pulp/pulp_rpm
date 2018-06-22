@@ -133,3 +133,11 @@ class ISO(platform_serializers.ModelSerializer):
     """
     class Meta:
         remapped_fields = {}
+
+
+class Modulemd(platform_serializers.ModelSerializer):
+    """
+    Serializer for a Modulemd models
+    """
+    class Meta:
+        remapped_fields = {}

@@ -1610,3 +1610,83 @@ class ISOManifest(object):
         Return the number of ISOs in the manifest.
         """
         return len(self._isos)
+
+
+class Modulemd(FileContentUnit):
+    """
+    This model represents a Module metadata document.
+
+    :param name: Module name.
+    :type  name: mongoengine.StringField
+
+    :param stream: Module update stream.
+    :type  stream: mongoengine.StringField
+
+    :param version: Module version. Defines upgrade path for the particular update stream.
+    :type  version: mongoengine.IntField
+
+    :param context: Module context flag. Serves to distinguish module builds with the same name,
+                    stream and version.
+    :type  context: mongoengine.StringField
+
+    :param arch: Module aftifact architecture. Contains a string describing the module's artifacts'
+                 main hardware architecture compatibility, distinguishing the module artifact.
+                 Examples: i386, i486, armv7hl, x86_64.
+    :type  arch: mongoengine.StringField
+
+    :param summary: A short summary describing the module.
+    :type  summary: mongoengine.StringField
+
+    :param description: A verbose description of the module.
+    :type  description: mongoengine.StringField
+
+    :param profiles: Profiles define the end user's use cases for the module. They consist
+                     of package lists of components to be installed by default if the module is
+                     enabled.
+    :type  profiles: mongoengine.DictField
+
+    :param artifacts List of binary artifacts shipped with the module.
+    :type  artifacts: mongoengine.ListField
+
+    :param checksum: Checksum of the modulemd document.
+    :type  checksum: mongoengine.StringField
+    """
+
+    # Unit key fields NSVCA
+    name = mongoengine.StringField(required=True)
+    stream = mongoengine.StringField(required=True)
+    version = mongoengine.IntField(required=True)
+    context = mongoengine.StringField(required=True)
+    arch = mongoengine.StringField(required=True)
+
+    summary = mongoengine.StringField()
+    description = mongoengine.StringField()
+    profiles = mongoengine.DictField()
+    artifacts = mongoengine.ListField()
+    checksum = mongoengine.StringField()
+
+    # For backward compatibility
+    _ns = mongoengine.StringField(default='units_modulemd')
+    _content_type_id = mongoengine.StringField(required=True, default='modulemd')
+
+    unit_key_fields = ('name', 'stream', 'version', 'context', 'arch', )
+    unit_display_name = 'Modulemd'
+    unit_description = 'Modulemd'
+
+    meta = {'collection': 'units_modulemd',
+            'indexes': [],
+            'allow_inheritance': False}
+
+    SERIALIZER = serializers.Modulemd
+
+    @staticmethod
+    def calculate_checksum(file_handle):
+        """
+        Return the sha256 checksum of the given file-like object.
+
+        :param file_handle: A handle to an open file-like object
+        :type  file_handle: file-like object
+        :return:            The file's checksum
+        :rtype:             string
+        """
+        return file_utils.calculate_checksum(file_handle)

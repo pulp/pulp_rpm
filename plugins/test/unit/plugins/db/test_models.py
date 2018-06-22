@@ -1079,3 +1079,33 @@ class TestRpmBaseRender(unittest.TestCase):
                              '{% templatetag closecomment %} {% templatetag closebrace %}</tag>')
         result = self.unit._escape_django_syntax_chars(template, 'tag')
         self.assertEqual(result, expected_template)
+
+
+class TestModulemd(unittest.TestCase):
+    """
+    Test the Modulemd class.
+    """
+
+    def test___init__(self):
+        """
+        Make sure __init__() sets all the proper attributes.
+        """
+        unit_metadata = {'arch': 'x64_86',
+                         'artifacts': ['foo',
+                                       'bar'],
+                         'context': 'c2c572ec',
+                         'description': "Long description",
+                         'name': 'django',
+                         'profiles': {'default': ['python2-django'],
+                                      'python2_development': ['python2-django']},
+                         'stream': '1.6',
+                         'summary': 'Short summary',
+                         'version': 20180307130104L}
+
+        module = models.Modulemd(**unit_metadata)
+
+        self.assertEqual(module.name, 'django')
+        self.assertEqual(module.stream, '1.6')
+        self.assertEqual(module.version, 20180307130104L)
+        self.assertEqual(module.context, 'c2c572ec')
+        self.assertEqual(module.arch, 'x64_86')

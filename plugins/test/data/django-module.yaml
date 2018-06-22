@@ -1,0 +1,75 @@
+---
+document: modulemd
+version: 2
+data:
+  name: django
+  stream: 1.6
+  version: 20180307130104
+  context: c2c572ec
+  arch: x64_86
+  summary: A high-level Python Web framework
+  description: >-
+    Django is a high-level Python Web framework that encourages rapid development
+    and a clean, pragmatic design. It focuses on automating as much as possible and
+    adhering to the DRY (Don't Repeat Yourself) principle.
+  license:
+    module:
+    - MIT
+  xmd:
+    mbs:
+      scmurl: https://src.fedoraproject.org/modules/django.git?#90c50f8ad1cb5ca41d62632699c375dce6353adf
+      commit: 90c50f8ad1cb5ca41d62632699c375dce6353adf
+      buildrequires:
+        platform:
+          ref: virtual
+          stream: f28
+          filtered_rpms: []
+          version: 4
+      rpms:
+        python-django:
+          ref: 1c3a01558a435b56f8ef4f8fc0e5c1cd35f006a5
+      requires:
+        platform:
+          ref: virtual
+          stream: f28
+          filtered_rpms: []
+          version: 4
+  dependencies:
+  - buildrequires:
+      platform: [f28]
+    requires:
+      platform: [f28]
+  references:
+    community: https://www.djangoproject.com
+    documentation: https://docs.djangoproject.com
+    tracker: https://code.djangoproject.com/query
+  profiles:
+    default:
+      rpms:
+      - python2-django
+    python2_development:
+      rpms:
+      - python2-django
+  api:
+    rpms:
+    - python2-django
+  components:
+    rpms:
+      python-django:
+        rationale: The Django python web framework
+        repository: git://pkgs.fedoraproject.org/rpms/python-django
+        cache: http://pkgs.fedoraproject.org/repo/pkgs/python-django
+        ref: 1.6
+  artifacts:
+    rpms:
+    - python-django-bash-completion-0:1.6.11.7-1.module_1560+089ce146.noarch
+    - python2-django-0:1.6.11.7-1.module_1560+089ce146.noarch
+...
+---
+document: modulemd-defaults
+version: 1
+data:
+  module: django
+  profiles:
+    1.6: [default]
+...

@@ -49,7 +49,8 @@ setup(
             'package_environment=pulp_rpm.plugins.db.models:PackageEnvironment',
             'package_langpacks=pulp_rpm.plugins.db.models:PackageLangpacks',
             'yum_repo_metadata_file=pulp_rpm.plugins.db.models:YumMetadataFile',
-            'iso=pulp_rpm.plugins.db.models:ISO'
+            'iso=pulp_rpm.plugins.db.models:ISO',
+            'modulemd=pulp_rpm.plugins.db.models:Modulemd'
         ],
         'pulp.auxiliary_models': [
             'erratum_pkglists=pulp_rpm.plugins.db.models:ErratumPkglist'
