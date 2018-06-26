@@ -75,7 +75,7 @@ def associate(source_repo, dest_repo, import_conduit, config, units=None):
         # allow garbage collection
         units = None
 
-        return (list(associated_units), list(failed_units))
+        return associated_units, failed_units
 
     group_ids, rpm_names, rpm_search_dicts = identify_children_to_copy(associated_units)
 
@@ -84,8 +84,10 @@ def associate(source_repo, dest_repo, import_conduit, config, units=None):
         group_units = models.PackageGroup.objects.filter(repo_id=source_repo.repo_id,
                                                          package_group_id__in=page)
         if group_units.count() > 0:
-            associated_units |= set(
+            tmp_associated_units, tmp_failed_units = (
                 associate(source_repo, dest_repo, import_conduit, config, group_units))
+            associated_units |= tmp_associated_units
+            failed_units |= tmp_failed_units
 
     # ------ get RPM children of errata ------
     wanted_rpms = get_rpms_to_copy_by_key(rpm_search_dicts, import_conduit, source_repo)
@@ -100,12 +102,12 @@ def associate(source_repo, dest_repo, import_conduit, config, units=None):
     associated_units |= copy_rpms_by_name(names_to_copy, source_repo, dest_repo,
                                           import_conduit, config, recursive)
 
-    failed_units = units - associated_units
+    failed_units |= units - associated_units
 
     # allow garbage collection
     units = None
 
-    return (list(associated_units), list(failed_units))
+    return associated_units, failed_units
 
 
 def get_rpms_to_copy_by_key(rpm_search_dicts, import_conduit, repo):
