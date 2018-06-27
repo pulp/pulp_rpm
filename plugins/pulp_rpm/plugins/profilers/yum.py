@@ -503,4 +503,7 @@ class YumProfiler(Profiler):
         testing with real data.
 
         """
+        if 'epoch' not in r or r['epoch'] is None:
+            r['epoch'] = '0'
+
         return tuple(str(r[k]) for k in ('name', 'epoch', 'version', 'release', 'arch'))
