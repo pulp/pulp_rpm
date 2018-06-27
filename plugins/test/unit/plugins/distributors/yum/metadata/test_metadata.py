@@ -496,3 +496,46 @@ class YumDistributorMetadataTests(unittest.TestCase):
         _signer.assert_called_once_with(options=sign_options)
         _signer.return_value.sign.assert_called_once_with(
             os.path.join(self.metadata_file_dir, "repodata", "repomd.xml"))
+
+    @mock.patch("pulp_rpm.yum_plugin.util.Signer")
+    def test_signed_repomd_is_added_to_metadata_file_locations(self, _signer):
+        sign_options = mock.MagicMock()
+        context = RepomdXMLFileContext(self.metadata_file_dir,
+                                       gpg_sign=True,
+                                       sign_options=sign_options)
+        context.finalize()
+        expected_file_locations = ['repomd.xml', 'repomd.xml.asc']
+
+        self.assertEqual(expected_file_locations, context.metadata_file_locations)
+
+    @mock.patch('os.path.getmtime')
+    @mock.patch('os.path.getsize')
+    def test_repomd_metadata_adds_metadata_file_locations(self, mock_getmtime,
+                                                          mock_getsize):
+        """
+        Check that as add_metadata_file_metadata is called it adds the location
+        to metadata_file_locations.
+        """
+        path = os.path.join(self.metadata_file_dir,
+                            REPO_DATA_DIR_NAME,
+                            REPOMD_FILE_NAME)
+
+        file_list_name = os.path.basename(tempfile.NamedTemporaryFile().name)
+        update_list_name = os.path.basename(tempfile.NamedTemporaryFile().name)
+        file_list_path = os.path.join('repodata', file_list_name)
+        update_list_path = os.path.join('repodata', update_list_name)
+
+        # file_locations in RepomdXMLFileContext adds
+        expected_locations = [file_list_path, update_list_path]
+
+        context = RepomdXMLFileContext(path)
+        context.metadata_file_handle = mock.Mock()
+
+        # add supporting metadata files with arbitrary values for
+        # precalculated_checksum as we aren't interested in opening these files
+        context.add_metadata_file_metadata('file_list', file_list_path, 'bcc5c')
+        context.add_metadata_file_metadata('update', update_list_path, 'bcc5c')
+
+        # should contain 2 file_locations
+        self.assertEqual(len(context.metadata_file_locations), 2)
+        self.assertEqual(expected_locations, context.metadata_file_locations)

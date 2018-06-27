@@ -24,6 +24,7 @@ class RepomdXMLFileContext(MetadataFileContext):
         super(RepomdXMLFileContext, self).__init__(metadata_file_path, checksum_type)
         self.gpg_sign = gpg_sign
         self.sign_options = sign_options
+        self.metadata_file_locations = []
 
     def __exit__(self, exc_type, exc_val, exc_tb):
 
@@ -39,8 +40,11 @@ class RepomdXMLFileContext(MetadataFileContext):
 
         super(RepomdXMLFileContext, self).finalize()
 
+        repomd = os.path.basename(self.metadata_file_path)
+        self.metadata_file_locations.append(repomd)
         if self.gpg_sign:
             assert self.sign_options
+            self.metadata_file_locations.append(repomd + '.asc')
             signer = util.Signer(options=self.sign_options)
             signer.sign(self.metadata_file_path)
 
@@ -83,8 +87,10 @@ class RepomdXMLFileContext(MetadataFileContext):
         data_attributes = {'type': data_type}
         data_element = ElementTree.Element('data', data_attributes)
 
-        location_attributes = {'href': os.path.join(REPO_DATA_DIR_NAME, file_name)}
+        location = os.path.join(REPO_DATA_DIR_NAME, file_name)
+        location_attributes = {'href': location}
         ElementTree.SubElement(data_element, 'location', location_attributes)
+        self.metadata_file_locations.append(location)
 
         timestamp_element = ElementTree.SubElement(data_element, 'timestamp')
         # Convert the float mtime to an integer before stringifying since

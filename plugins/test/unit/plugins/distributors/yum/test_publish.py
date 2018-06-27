@@ -3,6 +3,8 @@ import datetime
 import os
 import shutil
 import tempfile
+import inspect
+import test
 from xml.etree import cElementTree as ET
 
 from pulp.common.compat import json, unittest
@@ -134,6 +136,7 @@ class BaseYumDistributorPublishStepTests(BaseYumDistributorPublishTests):
 
 class BaseYumRepoPublisherTests(BaseYumDistributorPublishTests):
 
+    @mock.patch('pulp_rpm.plugins.distributors.yum.publish.RemoveOldRepodataStep')
     @mock.patch('pulp_rpm.plugins.distributors.yum.publish.GenerateSqliteForRepoStep')
     @mock.patch('pulp_rpm.plugins.distributors.yum.publish.PublishCompsStep')
     @mock.patch('pulp_rpm.plugins.distributors.yum.publish.Publisher._build_final_report')
@@ -145,7 +148,7 @@ class BaseYumRepoPublisherTests(BaseYumDistributorPublishTests):
     def test_publish(self, mock_publish_distribution, mock_publish_rpms, mock_publish_drpms,
                      mock_publish_errata, mock_publish_metadata,
                      mock_build_final_report, mock_publish_comps,
-                     mock_generate_sqlite):
+                     mock_generate_sqlite, mock_remove_old_repodata):
 
         self._init_publisher()
         self.publisher.repo.content_unit_counts = {}
@@ -161,6 +164,7 @@ class BaseYumRepoPublisherTests(BaseYumDistributorPublishTests):
         mock_build_final_report.assert_called_once()
         mock_publish_comps.assert_called_once_with()
         mock_generate_sqlite.assert_called_once_with(self.working_dir)
+        mock_remove_old_repodata.assert_called_once_with(self.working_dir)
 
     @mock.patch('pulp_rpm.plugins.distributors.yum.publish.configuration.get_repo_checksum_type')
     def test_get_checksum_type(self, mock_get_checksum):
@@ -1364,13 +1368,17 @@ class GenerateSqliteForRepoStepTests(BaseYumDistributorPublishStepTests):
 
 class RemoveOldRepodataStepTests(BaseYumDistributorPublishStepTests):
     """
-    Test RepoOldRepodataStep of the publish process.
+    Test RemoveOldRepodataStep of the publish process.
     """
-
     def setUp(self):
         super(RemoveOldRepodataStepTests, self).setUp()
-        file_map = {"0abcde-primary.xml.gz": 1497601154,
-                    "1abcde-primary.xml.gz": 1496395553}
+
+        def fake_mtime(test_file):
+            if '-tmp' in os.path.basename(test_file):
+                # more than 14 days old
+                return 1496395553
+            else:
+                return 1497601154
 
         self.dtpatcher = mock.patch(
             'pulp_rpm.plugins.distributors.yum.publish.datetime.datetime',
@@ -1379,45 +1387,65 @@ class RemoveOldRepodataStepTests(BaseYumDistributorPublishStepTests):
         self.mtime_patcher = mock.patch(
             'pulp_rpm.plugins.distributors.yum.publish.os.path.getmtime'
         )
-        self.glob_patcher = mock.patch(
-            'pulp_rpm.plugins.distributors.yum.publish.glob.glob'
-        )
 
-        mocked_dt = self.dtpatcher.start()
-        mocked_mtime = self.mtime_patcher.start()
-        mocked_glob = self.glob_patcher.start()
+        self.mocked_dt = self.dtpatcher.start()
+        self.mocked_mtime = self.mtime_patcher.start()
 
-        mocked_dt.today.return_value = datetime.datetime.fromtimestamp(1497605154)
-        mocked_glob.return_value = file_map.keys()
-        mocked_mtime.side_effect = lambda x: file_map[x]
+        self.mocked_dt.today.return_value = datetime.datetime.fromtimestamp(1497605154)
+        self.mocked_mtime.side_effect = fake_mtime
 
-    def test_process_main(self):
+    def test_remove_old_repodata(self):
         """
-        Test that repoview tool was called with proper parameters.
+        Test that RemoveOldRepoData step is called with the correct filtered
+        repodata files to remove.
         """
-        publisher_conf = {}
+        def test_data_path():
+            return '%s/data' % os.path.dirname(inspect.getfile(test))
 
-        step = publish.RemoveOldRepodataStep('/foo')
-        step.config = publisher_conf
-        step.parent = mock.MagicMock()
-        step.parent.get_config.return_value.get.side_effect = publisher_conf.get
+        repo_root = os.path.join(test_data_path(), self._testMethodName)
 
-        filter_old_repodata_mock = mock.Mock(side_effect=step.filter_old_repodata)
-        with mock.patch.multiple(
-            "pulp_rpm.plugins.distributors.yum.publish.RemoveOldRepodataStep",
-            remove_repodata_file=mock.DEFAULT,
-            filter_old_repodata=filter_old_repodata_mock
-        ) as mocked_step_dict:
-            step.process_main()
-            filter_old_repodata_mock.assert_called_with(
-                ['1abcde-primary.xml.gz', '0abcde-primary.xml.gz',
-                 '1abcde-primary.xml.gz', '0abcde-primary.xml.gz'])
-            mocked_step_dict["remove_repodata_file"].assert_called_with("1abcde-primary.xml.gz")
+        self._init_publisher()
+        remove_step = publish.RemoveOldRepodataStep(repo_root)
+        remove_step.parent = self.publisher
+
+        metadata_file_path = os.path.join(repo_root, 'repodata', 'repomd.xml')
+
+        # file_paths under plugins/test/data/test_remove_old_repodata "to_keep"
+        metadata_file_locations = [
+            metadata_file_path,
+            os.path.join(repo_root, 'repodata', 'repomd-tmp.xml'),
+            os.path.join(repo_root, 'repodata', 'repomd.xml.asc'),
+            os.path.join(repo_root, 'repodata', 'repomd-tmp.xml.asc')
+        ]
+
+        self.publisher.repomd_file_context.metadata_file_path = metadata_file_path
+        self.publisher.repomd_file_context.metadata_file_locations = metadata_file_locations
+
+        with mock.patch(
+            'pulp_rpm.plugins.distributors.yum.publish.'
+            'RemoveOldRepodataStep.remove_repodata_file'
+        ) as mock_remove:
+            remove_step.process_main()
+            calls = mock_remove.mock_calls
+            # while repomd-tmp.xml and repomd-tmp.xml.asc have been patched with
+            # a modified timestamp, they are to be kept and should not be removed
+            expected_filenames = set([
+                'filelists-tmp.sqlite.bz2',
+                'primary-tmp.xml.gz',
+                '464c4a0ef57d030eff7d8700f8f26fd5c0b965449438cef3ea462adb21a055fa-tmp'])
+
+            self.assertEqual(len(calls), 3)
+
+            actual_filenames = set()
+            for call in calls:
+                _, args, kwargs = call
+                actual_filenames.add(os.path.basename(args[0]))
+
+            self.assertEqual(actual_filenames, expected_filenames)
 
     def tearDown(self):
         self.dtpatcher.stop()
         self.mtime_patcher.stop()
-        self.glob_patcher.stop()
 
 
 class GenerateRepoviewStepTests(BaseYumDistributorPublishStepTests):
