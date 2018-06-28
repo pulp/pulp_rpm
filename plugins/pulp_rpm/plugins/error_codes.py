@@ -37,4 +37,4 @@ RPM1014 = Error("RPM1014", _('Invalid signature key ID "%(key)s" found for Packa
                 ['key', 'package', 'allowed'])
 RPM1015 = Error("RPM1015", _("Malformed repository: %(reason)s"), ['reason'])
 
-RPM1016 = Error("RPM1016", _('Error reading uploaded package header.'), [])
+RPM1016 = Error("RPM1016", _('Uploaded file is not a valid RPM.'), [])
