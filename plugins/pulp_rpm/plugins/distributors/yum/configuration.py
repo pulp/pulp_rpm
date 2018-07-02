@@ -3,15 +3,10 @@ import os
 from ConfigParser import SafeConfigParser
 from gettext import gettext as _
 
-from pulp.server.db import model
-from pulp.server.controllers import distributor as dist_controller
-from pulp.server.exceptions import MissingResource
-
 from pulp_rpm.common.constants import SCRATCHPAD_DEFAULT_METADATA_CHECKSUM, \
     CONFIG_DEFAULT_CHECKSUM, CONFIG_KEY_CHECKSUM_TYPE, REPO_AUTH_CONFIG_FILE, \
     PUBLISH_HTTP_KEYWORD, PUBLISH_HTTPS_KEYWORD, RELATIVE_URL_KEYWORD, \
     GPG_CMD, GPG_KEY_ID
-from pulp_rpm.common.ids import TYPE_ID_DISTRIBUTOR_YUM
 from pulp.repoauth import protected_repo_utils, repo_cert_utils
 from pulp_rpm.yum_plugin import util
 
@@ -347,11 +342,6 @@ def get_repo_checksum_type(publish_conduit, config):
     Lookup checksum type on the repo to use for metadata generation;
     importer sets this value if available on the repo scratchpad.
 
-    WARNING: This method has a side effect of saving the checksum type on the distributor
-    config if a checksum has not already been set on the distributor config. However, it
-    will only save the checksum type if it was explicitly provided. It will not save a
-    checksum type to the distributor if the default was used.
-
     :param publish_conduit: publish conduit
     :type  publish_conduit: pulp.plugins.conduits.repo_publish.RepoPublishConduit
     :param config:          plugin configuration
@@ -369,19 +359,6 @@ def get_repo_checksum_type(publish_conduit, config):
 
     if checksum_type == 'sha':
         checksum_type = 'sha1'
-
-    distributor_config = config.repo_plugin_config
-    if CONFIG_KEY_CHECKSUM_TYPE not in distributor_config and checksum_type:
-        try:
-            dist = model.Distributor.objects.get_or_404(
-                repo_id=publish_conduit.repo_id, distributor_id=publish_conduit.distributor_id)
-            if dist.distributor_type_id == TYPE_ID_DISTRIBUTOR_YUM:
-                dist_controller.update(dist.repo_id, dist.distributor_id,
-                                       config={'checksum_type': checksum_type})
-        except MissingResource:
-            # If the distributor doesn't exist on the repo (such as with a group distributor
-            # this is ok
-            pass
 
     # If no checksum type is set, use the default
     if not checksum_type:
