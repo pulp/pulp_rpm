@@ -1,5 +1,5 @@
 import gi
-gi.require_version('Modulemd', '1.0')
+gi.require_version('Modulemd', '1.0')  # noqa
 from gi.repository import Modulemd
 
 from pulp_rpm.plugins.db import models
