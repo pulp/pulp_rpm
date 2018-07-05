@@ -1,0 +1,41 @@
+# The examples below are taken from
+# https://github.com/fedora-modularity/libmodulemd/tree/master/mod-defaults
+
+---
+# one default profile for one stream
+document: modulemd-defaults
+version: 1
+data:
+    module: postgresql
+    stream: '8.0'
+    profiles:
+        '8.0': [server]
+...
+---
+# defaults for multiple streams
+document: modulemd-defaults
+version: 1
+data:
+    module: nodejs
+    stream: '8.0'
+    profiles:
+        '6.0': [default]
+        '8.0': [super]
+...
+---
+# No default stream for this module
+# Multiple default profiles for a stream
+document: modulemd-defaults
+version: 1
+data:
+    module: httpd
+    profiles:
+        '2.6': [client, server]
+    # intents are optional
+    intents:
+        workstation:
+            stream: '2.2'
+            profiles:
+                '2.2': [client]
+                '2.6': [client, server, bindings]
+...
