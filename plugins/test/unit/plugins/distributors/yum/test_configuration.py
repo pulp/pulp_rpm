@@ -7,7 +7,6 @@ from ConfigParser import SafeConfigParser
 import mock
 from pulp.plugins.conduits.repo_config import RepoConfigConduit
 from pulp.plugins.config import PluginCallConfiguration
-from pulp.server.exceptions import MissingResource
 from pulp.server.db.model import Repository
 
 from pulp_rpm.common.constants import CONFIG_KEY_CHECKSUM_TYPE, \
@@ -727,85 +726,41 @@ class TestConfigurationValidationHelpers(unittest.TestCase):
         self.assertEquals(1, len(error_messages))
 
 
-@mock.patch('pulp_rpm.plugins.distributors.yum.configuration.dist_controller')
-@mock.patch('pulp_rpm.plugins.distributors.yum.configuration.model.Distributor.objects')
 class TestGetRepoChecksumType(unittest.TestCase):
     def setUp(self):
         self.config = PluginCallConfiguration({}, {})
         self.mock_conduit = mock.MagicMock()
 
-    def test_get_repo_checksum_from_config(self, m_dist_qs, m_dist_ctrl):
+    def test_get_repo_checksum_from_config(self):
         config_with_checksum = PluginCallConfiguration({}, {CONFIG_KEY_CHECKSUM_TYPE: 'sha1'})
         self.assertEquals('sha1', configuration.get_repo_checksum_type(self.mock_conduit,
                                                                        config_with_checksum))
 
-    def test_get_repo_checksum_from_scratchpad(self, m_dist_qs, m_dist_ctrl):
+    def test_get_repo_checksum_from_scratchpad(self):
         self.mock_conduit.get_repo_scratchpad.return_value = \
             {SCRATCHPAD_DEFAULT_METADATA_CHECKSUM: 'sha1'}
         self.assertEquals('sha1',
                           configuration.get_repo_checksum_type(self.mock_conduit, self.config))
 
-    def test_get_repo_checksum_not_in_scratchpad(self, m_dist_qs, m_dist_ctrl):
+    def test_get_repo_checksum_not_in_scratchpad(self):
         # Test with other data in the scratchpad
         self.mock_conduit.get_repo_scratchpad.return_value = \
             {'foo': 'bar'}
         self.assertEquals(CONFIG_DEFAULT_CHECKSUM,
                           configuration.get_repo_checksum_type(self.mock_conduit, self.config))
 
-    def test_get_repo_checksum_update_distributor_config(self, m_dist_qs, m_dist_ctrl):
-        self.mock_conduit.get_repo_scratchpad.return_value = \
-            {SCRATCHPAD_DEFAULT_METADATA_CHECKSUM: 'sha1'}
-
-        m_dist_qs.get_or_404.return_value.distributor_type_id = TYPE_ID_DISTRIBUTOR_YUM
-
-        self.assertEquals('sha1',
-                          configuration.get_repo_checksum_type(self.mock_conduit, self.config))
-        m_dist_ctrl.update.assert_called_with(mock.ANY, mock.ANY, config={'checksum_type': 'sha1'})
-
-    def test_get_repo_checksum_update_distributor_config_non_yum(self, m_dist_qs, m_dist_ctrl):
-        """
-        If this isn't a yum distributor the config should not be updated in the database
-        """
-        self.mock_conduit.get_repo_scratchpad.return_value = \
-            {SCRATCHPAD_DEFAULT_METADATA_CHECKSUM: 'sha1'}
-        self.assertEquals('sha1',
-                          configuration.get_repo_checksum_type(self.mock_conduit, self.config))
-        self.assertFalse(m_dist_ctrl.update.called)
-
-    def test_get_repo_checksum_from_default(self, m_dist_qs, m_dist_ctrl):
+    def test_get_repo_checksum_from_default(self):
         self.mock_conduit.get_repo_scratchpad.return_value = {'foo': 'value'}
         self.assertEquals(CONFIG_DEFAULT_CHECKSUM,
                           configuration.get_repo_checksum_type(self.mock_conduit, self.config))
 
-    def test_get_repo_checksum_default_no_update(self, m_dist_qs, m_dist_ctrl):
-        """
-        Tests that when the default checksum type is used, it does not update the
-        distributor config. This is because if a repository is created and then
-        published without syncing, it will force the checksum type to be the
-        default. When you later sync the repo and it has a checksum type that
-        isn't the default, it will break.
-        """
-        # Setup
-        self.mock_conduit.get_repo_scratchpad.return_value = {'foo': 'value'}
-
-        # Test
-        self.assertEquals(CONFIG_DEFAULT_CHECKSUM,
-                          configuration.get_repo_checksum_type(self.mock_conduit, self.config))
-        self.assertFalse(m_dist_ctrl.update.called)
-
-    def test_get_repo_checksum_convert_sha_to_sha1(self, m_dist_qs, m_dist_ctrl):
+    def test_get_repo_checksum_convert_sha_to_sha1(self):
         config_with_checksum = PluginCallConfiguration({}, {CONFIG_KEY_CHECKSUM_TYPE: 'sha'})
         self.assertEquals('sha1', configuration.get_repo_checksum_type(self.mock_conduit,
                                                                        config_with_checksum))
 
-    def test_get_repo_checksum_conduit_with_no_scratchpad(self, m_dist_qs, m_dist_ctrl):
+    def test_get_repo_checksum_conduit_with_no_scratchpad(self):
         self.mock_conduit.get_repo_scratchpad.return_value = None
-        self.assertEquals(CONFIG_DEFAULT_CHECKSUM,
-                          configuration.get_repo_checksum_type(self.mock_conduit, self.config))
-
-    def test_get_repo_checksum_distributor_id_not_yum_plugin(self, m_dist_qs, m_dist_ctrl):
-        self.mock_conduit.get_repo_scratchpad.return_value = None
-        m_dist_qs.get_or_404.side_effect = MissingResource()
         self.assertEquals(CONFIG_DEFAULT_CHECKSUM,
                           configuration.get_repo_checksum_type(self.mock_conduit, self.config))
 
