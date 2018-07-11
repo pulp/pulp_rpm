@@ -75,6 +75,27 @@ issue, and add these enhancements.
         self.assertEqual(erratum.reboot_suggested, False)
         self.assertEqual(erratum.severity, '')
 
+    def test_google_real_data(self):
+        with open(os.path.join(DATA_DIR, 'google-updateinfo.xml')) as f:
+            errata = packages.package_list_generator(f,
+                                                     updateinfo.PACKAGE_TAG,
+                                                     updateinfo.process_package_element)
+            errata = list(errata)
+
+        self.assertEqual(len(errata), 1)
+        erratum = errata[0]
+        self.assertTrue(isinstance(erratum, models.Errata))
+        self.assertEqual(erratum.rights, '')
+        self.assertEqual(erratum.description,
+                         'Updates for GCE Guest packages running on RedHat el7 on GCE.')
+        self.assertTrue(erratum.summary is not None)
+        self.assertEqual(erratum.errata_id, 'el7')
+        self.assertEqual(erratum.type, 'security')
+        self.assertEqual(erratum.issued, '2017-08-31 00:00:00')
+        self.assertEqual(erratum.updated, '')
+        self.assertEqual(erratum.reboot_suggested, False)
+        self.assertEqual(erratum.severity, 'Important')
+
     def test_multiple_pkglist_multiple_collections(self):
         """
         Test that multiple pkglist and collections in erratum are imported correctly
