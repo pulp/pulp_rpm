@@ -1690,3 +1690,65 @@ class Modulemd(FileContentUnit):
         :rtype:             string
         """
         return file_utils.calculate_checksum(file_handle)
+
+
+class ModulemdDefaults(FileContentUnit):
+    """
+    This model represents a Modulemd-defaults metadata document.
+
+    There could be only one modulemd-defaults per module name in one repo,
+    thus repo_id is a part of the unit_key.
+
+    :param name: Module name that the defaults are for
+    :type  name: mongoengine.StringField
+
+    :param repo_id: Id of a repository the modulemd-defaults belongs to
+    :type  repo_id: mongoengine.StringField
+
+    :param stream: Module stream that is the default for the module
+    :type  stream: mongoengine.StringField
+
+    :param profiles: Module profiles indexed by the stream name. This is a dictionary of stream
+                     names to a list of default profiles to be installed. This dictionary is
+                     encoded into BSON format because MongoDB doesn't allow keys to contain dots.
+                     When decoded back from BSON format it is a proper Python dict.
+    :type  profiles: mongoengine.StringField
+
+    :param checksum: Checksum of the modulemd-defaults document
+    :type  checksum: mongoengine.StringField
+    """
+
+    # Unit key fields
+    name = mongoengine.StringField(required=True)
+    repo_id = mongoengine.StringField(required=True)
+
+    stream = mongoengine.StringField()
+    profiles = mongoengine.StringField()
+
+    checksum = mongoengine.StringField()
+
+    # For backward compatibility
+    _ns = mongoengine.StringField(default='units_modulemd_defaults')
+    _content_type_id = mongoengine.StringField(required=True, default='modulemd_defaults')
+
+    unit_key_fields = ('name', 'repo_id')
+    unit_display_name = 'ModulemdDefaults'
+    unit_description = 'ModulemdDefaults'
+
+    meta = {'collection': 'units_modulemd_defaults',
+            'indexes': ['repo_id'],
+            'allow_inheritance': False}
+
+    SERIALIZER = serializers.ModulemdDefaults
+
+    @staticmethod
+    def calculate_checksum(file_handle):
+        """
+        Return the sha256 checksum of the given file-like object.
+
+        :param file_handle: A handle to an open file-like object
+        :type  file_handle: file-like object
+        :return:            The file's checksum
+        :rtype:             string
+        """
+        return file_utils.calculate_checksum(file_handle)

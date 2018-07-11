@@ -50,7 +50,8 @@ setup(
             'package_langpacks=pulp_rpm.plugins.db.models:PackageLangpacks',
             'yum_repo_metadata_file=pulp_rpm.plugins.db.models:YumMetadataFile',
             'iso=pulp_rpm.plugins.db.models:ISO',
-            'modulemd=pulp_rpm.plugins.db.models:Modulemd'
+            'modulemd=pulp_rpm.plugins.db.models:Modulemd',
+            'modulemd_defaults=pulp_rpm.plugins.db.models:ModulemdDefaults',
         ],
         'pulp.auxiliary_models': [
             'erratum_pkglists=pulp_rpm.plugins.db.models:ErratumPkglist'

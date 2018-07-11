@@ -1,3 +1,4 @@
+import bson
 import gi
 gi.require_version('Modulemd', '1.0')  # noqa
 from gi.repository import Modulemd
@@ -34,12 +35,21 @@ def process_defaults_document(module):
     """
     Process a parsed modules.yaml modulemd-defaults document into a model instance.
 
+    repo_id should be added during sync or upload before saving the unit.
+
     :param module: Modulemd-defaults metadata document object.
     :type module: gi.repository.Modulemd.Defaults
     :return: ModulemdDefaults model object.
     :rtype: pulp_rpm.plugins.db.models.ModulemdDefaults
     """
-    pass
+    modulemd_defaults_document = {
+        'name': module.peek_module_name(),
+        'repo_id': None,
+        'stream': module.peek_default_stream(),
+        'profiles': _get_profile_defaults(module),
+    }
+
+    return models.ModulemdDefaults(**modulemd_defaults_document)
 
 
 def _get_profiles(module):
@@ -56,6 +66,24 @@ def _get_profiles(module):
     for k, v in d.items():
         d[k] = v.peek_rpms().get()
     return d
+
+
+def _get_profile_defaults(module):
+    """
+    Parse stream profile defaults of a given modulemd-defaults document.
+
+    Dictionary has to be encoded due to MongoDB limitations for keys. MongoDB doesn't allow dots
+    in the keys but it's a very common case for stream names.
+
+    :param module: Modulemd-defaults metadata document object.
+    :type module: gi.repository.Modulemd.Defaults
+    :return: BSON encoded key:value, where key is a stream and value is a list of default profiles.
+    :rtype: bson.BSON
+    """
+    profile_defaults = {}
+    for stream, defaults in module.peek_profile_defaults().items():
+        profile_defaults[stream] = defaults.get()
+    return bson.BSON.encode(profile_defaults)
 
 
 def from_file(metadata_file):

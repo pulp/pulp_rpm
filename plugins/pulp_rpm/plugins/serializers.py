@@ -1,3 +1,4 @@
+import bson
 import gzip
 
 from pulp.server.webservices.views import serializers as platform_serializers
@@ -141,3 +142,23 @@ class Modulemd(platform_serializers.ModelSerializer):
     """
     class Meta:
         remapped_fields = {}
+
+
+class ModulemdDefaults(platform_serializers.ModelSerializer):
+    """
+    Serializer for ModulemdDefaults models
+    """
+    class Meta:
+        remapped_fields = {}
+
+    def serialize(self, unit):
+        """
+        Decode profiles field from BSON to JSON.
+
+        :param unit: The object to be converted
+        :type unit: object
+        """
+        profiles = bson.BSON(unit.get('profiles'))
+        unit['profiles'] = profiles.decode()
+
+        return super(ModulemdDefaults, self).serialize(unit)

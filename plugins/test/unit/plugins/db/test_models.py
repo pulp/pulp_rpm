@@ -1109,3 +1109,25 @@ class TestModulemd(unittest.TestCase):
         self.assertEqual(module.version, 20180307130104L)
         self.assertEqual(module.context, 'c2c572ec')
         self.assertEqual(module.arch, 'x64_86')
+
+
+class TestModulemdDefaults(unittest.TestCase):
+    """
+    Test the ModulemdDeaults class.
+    """
+
+    def test___init__(self):
+        """
+        Make sure __init__() sets all the proper attributes.
+        """
+        unit_metadata = {'name': 'nodejs',
+                         'profiles': {'6.0': ['default'],
+                                      '8.0': ['super', 'another one']},
+                         'stream': '8.0', }
+
+        module = models.ModulemdDefaults(**unit_metadata)
+
+        self.assertEqual(module.name, 'nodejs')
+        self.assertEqual(module.stream, '8.0')
+        self.assertEqual(module.profiles, {'6.0': ['default'],
+                                           '8.0': ['super', 'another one']})
