@@ -227,6 +227,7 @@ rpm_unit_solvable_factory = unit_solvable_converter_factory(
     plain_attribute_factory('vendor'),
     rpm_dependency_attribute_factory('requires'),
     rpm_dependency_attribute_factory('provides'),
+    rpm_dependency_attribute_factory('recommends'),
     rpm_filelist_conversion,
 )
 
