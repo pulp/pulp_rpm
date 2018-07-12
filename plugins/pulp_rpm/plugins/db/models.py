@@ -711,6 +711,10 @@ class RpmBase(NonMetadataPackage):
                     with the "release", "epoch", "version", "flags", and "name" field.
     :type requires: list of dict
 
+    :ivar recommends: List of weak dependencies of a package. Each entry is a dictionary
+                      with a mandatory "name" field.
+    :type recommends: list of dict
+
     :ivar sourcerpm: Name of the source package (srpm) the package was built from.
     :type sourcerpm: mongoengine.StringField
 
@@ -770,6 +774,7 @@ class RpmBase(NonMetadataPackage):
     summary = mongoengine.StringField()
     time = mongoengine.IntField()
     requires = mongoengine.ListField()
+    recommends = mongoengine.ListField()
 
     unit_key_fields = ('name', 'epoch', 'version', 'release', 'arch', 'checksumtype', 'checksum')
 

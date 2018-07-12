@@ -23,3 +23,6 @@ New Features
 
 * More conservative dependency solving is now supported when e.g recursively
   copying RPM content between repositories.
+
+* The weak forward dependency `recommends` is now processed when e.g recursively
+  copying RPM content between repositories.

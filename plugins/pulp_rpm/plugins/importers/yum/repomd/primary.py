@@ -42,6 +42,7 @@ RPM_SOURCERPM_TAG = '{%s}sourcerpm' % RPM_SPEC_URL
 RPM_HEADER_RANGE_TAG = '{%s}header-range' % RPM_SPEC_URL
 RPM_PROVIDES_TAG = '{%s}provides' % RPM_SPEC_URL
 RPM_REQUIRES_TAG = '{%s}requires' % RPM_SPEC_URL
+RPM_RECOMMENDS_TAG = '{%s}recommends' % RPM_SPEC_URL
 RPM_ENTRY_TAG = '{%s}entry' % RPM_SPEC_URL
 
 # package information dictionary -----------------------------------------------
@@ -216,6 +217,11 @@ def _process_format_element(format_element):
     if requires_element is not None:
         package_format['requires'] = \
             [_process_rpm_entry_element(e) for e in requires_element.findall(RPM_ENTRY_TAG)]
+
+    recommends_element = format_element.find(RPM_RECOMMENDS_TAG)
+    if recommends_element is not None:
+        package_format['recommends'] = \
+            [_process_rpm_entry_element(e) for e in recommends_element.findall(RPM_ENTRY_TAG)]
 
     package_format['files'] = \
         [_process_file_element(e) for e in format_element.findall(FILE_TAG)]
