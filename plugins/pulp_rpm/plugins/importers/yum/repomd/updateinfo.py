@@ -78,7 +78,11 @@ def process_package_element(element):
 
     issued_element = element.find('issued')
     if issued_element is not None:
-        package_info['issued'] = issued_element.attrib['date']
+        try:
+            package_info['issued'] = issued_element.attrib['date']
+        except KeyError:
+            # If there is a sub-element named 'date' instead of an attribute, use that
+            package_info['issued'] = issued_element.find('date').text
 
     updated_element = element.find('updated')
     if updated_element is not None:
