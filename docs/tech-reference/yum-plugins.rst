@@ -551,6 +551,9 @@ configuration values are optional.
  make it easy to filter packages based on their signing key and does not use these key IDs for
  package signature verification.
 
+``recursive`` Boolean flag. If true, units are copied together with their
+dependencies. False by default.
+
 
 Yum Distributor
 ===============
