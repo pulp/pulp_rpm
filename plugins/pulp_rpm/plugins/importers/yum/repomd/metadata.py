@@ -99,13 +99,20 @@ class MetadataFiles(object):
     # These are metadata file types listed in "repomd" that we do not want to store as units.
     # deltainfo and susedata are SUSE specific files that we need to ignore for now, as there's no
     # handling yet and copying them creates broken SUSE repos.
-    KNOWN_TYPES = set(['group', 'group_gz',
-                       'filelists', 'filelists_db',
-                       'other', 'other_db',
-                       'primary', 'primary_db',
-                       'deltainfo', 'susedata',
+    KNOWN_TYPES = set(['group',
+                       'group_gz',
+                       'filelists',
+                       'filelists_db',
+                       'other',
+                       'other_db',
+                       'primary',
+                       'primary_db',
+                       'deltainfo',
+                       'susedata',
                        'prestodelta',
-                       'updateinfo', 'updateinfo_db'])
+                       'updateinfo',
+                       'updateinfo_db',
+                       'modules'])
 
     def __init__(self, repo_url, dst_dir, nectar_config, url_modify=None):
         """

@@ -44,6 +44,8 @@ class YumImporter(Importer):
                 models.YumMetadataFile._content_type_id.default,
                 models.PackageEnvironment._content_type_id.default,
                 models.PackageLangpacks._content_type_id.default,
+                models.Modulemd._content_type_id.default,
+                models.ModulemdDefaults._content_type_id.default,
             ]
         }
 

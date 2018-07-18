@@ -1,9 +1,26 @@
 import bson
-import gi
-gi.require_version('Modulemd', '1.0')  # noqa
-from gi.repository import Modulemd
 
 from pulp_rpm.plugins.db import models
+
+
+METADATA_FILE_NAME = 'modules'
+
+
+Modulemd = None
+
+
+def load():
+    """
+    Load the gobject module and import the Modulemd (libmodulemd) lib.
+
+    The gobject module and underlying C lib is not fork-safe and
+    must be loaded after the WSGI process has forked.
+    """
+    import gi
+    global Modulemd
+    lib = 'Modulemd'
+    gi.require_version(lib, '1.0')
+    Modulemd = getattr(__import__('gi.repository', fromlist=[lib]), lib)
 
 
 def process_modulemd_document(module):
@@ -15,13 +32,13 @@ def process_modulemd_document(module):
     :return: Modulemd model object.
     :rtype: pulp_rpm.plugins.db.models.Modulemd
     """
-
+    load()
     modulemd_document = {
         'name': module.peek_name(),
         'stream': module.peek_stream(),
         'version': module.peek_version(),
         'context': module.peek_context(),
-        'arch': module.peek_arch(),
+        'arch': module.peek_arch() or 'noarch',
         'summary': module.peek_summary(),
         'description': module.peek_description(),
         'profiles': _get_profiles(module),
@@ -42,6 +59,7 @@ def process_defaults_document(module):
     :return: ModulemdDefaults model object.
     :rtype: pulp_rpm.plugins.db.models.ModulemdDefaults
     """
+    load()
     modulemd_defaults_document = {
         'name': module.peek_module_name(),
         'repo_id': None,
@@ -61,7 +79,7 @@ def _get_profiles(module):
     :return: key:value, where key is a profile name and value is set of packages.
     :rtype: dict
     """
-
+    load()
     d = module.peek_profiles()
     for k, v in d.items():
         d[k] = v.peek_rpms().get()
@@ -80,25 +98,26 @@ def _get_profile_defaults(module):
     :return: BSON encoded key:value, where key is a stream and value is a list of default profiles.
     :rtype: bson.BSON
     """
+    load()
     profile_defaults = {}
     for stream, defaults in module.peek_profile_defaults().items():
         profile_defaults[stream] = defaults.get()
     return bson.BSON.encode(profile_defaults)
 
 
-def from_file(metadata_file):
+def from_file(path):
     """
     Parse profiles of given modulemd document
 
-    :param metadata_file: path to the modules.yaml file
-    :type metadata_file: string
+    :param path: An optional path to the modules.yaml file
+    :type path: str
     :return: 2 lists of Modulemd.Module and Modulemd.Defaults
-    :rtype: list
+    :rtype: tuple
     """
-
-    modules = Modulemd.objects_from_file(metadata_file)
+    load()
     modulemd = []
     defaults = []
+    modules = Modulemd.objects_from_file(path)
     for module in modules:
         if isinstance(module, Modulemd.Module):
             modulemd.append(module)

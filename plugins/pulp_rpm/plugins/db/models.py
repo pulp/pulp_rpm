@@ -1062,9 +1062,11 @@ class RpmBase(NonMetadataPackage):
 class RPM(RpmBase):
     # TODO add docstring to this class
 
+    TYPE_ID = 'rpm'
+
     # For backward compatibility
     _ns = mongoengine.StringField(default='units_rpm')
-    _content_type_id = mongoengine.StringField(required=True, default='rpm')
+    _content_type_id = mongoengine.StringField(required=True, default=TYPE_ID)
 
     unit_display_name = 'RPM'
     unit_description = 'RPM'
@@ -1652,6 +1654,8 @@ class Modulemd(FileContentUnit):
     :type  checksum: mongoengine.StringField
     """
 
+    TYPE_ID = 'modulemd'
+
     # Unit key fields NSVCA
     name = mongoengine.StringField(required=True)
     stream = mongoengine.StringField(required=True)
@@ -1667,14 +1671,14 @@ class Modulemd(FileContentUnit):
 
     # For backward compatibility
     _ns = mongoengine.StringField(default='units_modulemd')
-    _content_type_id = mongoengine.StringField(required=True, default='modulemd')
+    _content_type_id = mongoengine.StringField(required=True, default=TYPE_ID)
 
     unit_key_fields = ('name', 'stream', 'version', 'context', 'arch', )
     unit_display_name = 'Modulemd'
     unit_description = 'Modulemd'
 
     meta = {'collection': 'units_modulemd',
-            'indexes': [],
+            'indexes': ['artifacts'],
             'allow_inheritance': False}
 
     SERIALIZER = serializers.Modulemd
@@ -1718,6 +1722,8 @@ class ModulemdDefaults(FileContentUnit):
     :type  checksum: mongoengine.StringField
     """
 
+    TYPE_ID = 'modulemd_defaults'
+
     # Unit key fields
     name = mongoengine.StringField(required=True)
     repo_id = mongoengine.StringField(required=True)
@@ -1729,7 +1735,7 @@ class ModulemdDefaults(FileContentUnit):
 
     # For backward compatibility
     _ns = mongoengine.StringField(default='units_modulemd_defaults')
-    _content_type_id = mongoengine.StringField(required=True, default='modulemd_defaults')
+    _content_type_id = mongoengine.StringField(required=True, default=TYPE_ID)
 
     unit_key_fields = ('name', 'repo_id')
     unit_display_name = 'ModulemdDefaults'
