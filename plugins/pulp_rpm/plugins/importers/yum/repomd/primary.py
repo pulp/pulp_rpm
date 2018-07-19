@@ -183,7 +183,7 @@ def _process_format_element(format_element):
 
     vendor_element = format_element.find(RPM_VENDOR_TAG)
     if vendor_element is not None:
-        package_format['vendor'] = None  # XXX figure out which attrib this is
+        package_format['vendor'] = vendor_element.text
 
     license_element = format_element.find(RPM_LICENSE_TAG)
     if license_element is not None:
