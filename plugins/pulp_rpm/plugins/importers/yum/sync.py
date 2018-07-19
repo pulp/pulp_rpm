@@ -28,7 +28,7 @@ from pulp_rpm.common import constants, ids
 from pulp_rpm.plugins import error_codes
 from pulp_rpm.plugins.controllers import errata as errata_controller
 from pulp_rpm.plugins.db import models
-from pulp_rpm.plugins.importers.yum import existing, purge
+from pulp_rpm.plugins.importers.yum import existing, purge, modularity
 from pulp_rpm.plugins.importers.yum.listener import RPMListener
 from pulp_rpm.plugins.importers.yum.parse import rpm as rpm_parse
 from pulp_rpm.plugins.importers.yum.parse.treeinfo import DistSync
@@ -79,6 +79,7 @@ class RepoSync(object):
             'distribution': self.distribution_report,
             'errata': {'state': 'NOT_STARTED'},
             'comps': {'state': 'NOT_STARTED'},
+            'modules': {'state': 'NOT_STARTED'},
             'purge_duplicates': {'state': 'NOT_STARTED'},
         }
         self.conduit = conduit
@@ -169,6 +170,18 @@ class RepoSync(object):
             importer_constants.DOWNLOAD_POLICY,
             importer_constants.DOWNLOAD_IMMEDIATE)
         return policy != importer_constants.DOWNLOAD_IMMEDIATE
+
+    @property
+    def mirror(self):
+        """
+        Mirror mode.
+
+        When enabled: content contained in the repository
+        that is not also contained in the metadata is removed.
+        :return: True when enabled.
+        :rtype: bool
+        """
+        return self.config.get_boolean(importer_constants.KEY_UNITS_REMOVE_MISSING)
 
     def _parse_as_mirrorlist(self, feed):
         """
@@ -277,6 +290,14 @@ class RepoSync(object):
                         dist_sync = DistSync(self, url)
                         dist_sync.run()
                         self.metadata_found |= dist_sync.metadata_found
+
+                # synchronize modularity content.
+                with self.update_state(self.progress_report['modules']) as skip:
+                    if not (skip or self.skip_repomd_steps):
+                        modularity.synchronize(
+                            self.repo,
+                            metadata_files,
+                            mirror=self.mirror)
 
                 with self.update_state(self.progress_report['errata'], ids.TYPE_ID_ERRATA) as skip:
                     if not (skip or self.skip_repomd_steps):

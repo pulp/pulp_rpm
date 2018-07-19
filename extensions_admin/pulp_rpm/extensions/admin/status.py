@@ -29,6 +29,7 @@ class RpmStatusRenderer(StatusRenderer):
         self.distribution_sync_last_state = constants.STATE_NOT_STARTED
         self.errata_last_state = constants.STATE_NOT_STARTED
         self.comps_last_state = constants.STATE_NOT_STARTED
+        self.modules_last_state = constants.STATE_NOT_STARTED
         self.purge_duplicates_last_state = constants.STATE_NOT_STARTED
 
         # Publish Steps
@@ -47,6 +48,7 @@ class RpmStatusRenderer(StatusRenderer):
         self.distribution_sync_bar = self.prompt.create_progress_bar()
         self.errata_spinner = self.prompt.create_spinner()
         self.comps_spinner = self.prompt.create_spinner()
+        self.modules_spinner = self.prompt.create_spinner()
         self.purge_duplicates_spinner = self.prompt.create_spinner()
 
         self.packages_bar = self.prompt.create_progress_bar()
@@ -71,6 +73,7 @@ class RpmStatusRenderer(StatusRenderer):
                 self.render_metadata_step(progress_report)
                 self.render_download_step(progress_report)
                 self.render_distribution_sync_step(progress_report)
+                self.render_modules_step(progress_report)
                 self.render_errata_step(progress_report)
                 self.render_comps_step(progress_report)
                 self.render_purge_duplicates_step(progress_report)
@@ -319,6 +322,28 @@ class RpmStatusRenderer(StatusRenderer):
 
         render_general_spinner_step(self.prompt, self.errata_spinner, current_state,
                                     self.errata_last_state, _('Importing errata...'), update_func)
+
+    def render_modules_step(self, progress_report):
+
+        # Example Data:
+        # 'modules': {
+        #   'state': 'FINISHED'
+        # }
+        state = progress_report['yum_importer']['modules']['state']
+        self.check_for_cancelled_state(state)
+        if state in (constants.STATE_NOT_STARTED, constants.STATE_SKIPPED):
+            return
+
+        def update(new_state):
+            self.modules_last_state = new_state
+
+        render_general_spinner_step(
+            self.prompt,
+            self.modules_spinner,
+            state,
+            self.modules_last_state,
+            _('Importing modules...'),
+            update)
 
     def render_comps_step(self, progress_report):
         # Example Data:
