@@ -108,7 +108,7 @@ class ISOSyncRun(listener.DownloadEventListener):
             importer_constants.DOWNLOAD_IMMEDIATE)
         return policy != importer_constants.DOWNLOAD_IMMEDIATE
 
-    def download_failed(self, report):
+    def download_failed(self, report, exception):
         """
         This is the callback that we will get from the downloader library when any individual
         download fails.
@@ -116,14 +116,14 @@ class ISOSyncRun(listener.DownloadEventListener):
         # If we have a download failure during the manifest phase, we should set the report to
         # failed for that phase.
         msg = _('Failed to download %(url)s: %(error_msg)s.')
-        msg = msg % {'url': report.url, 'error_msg': report.error_msg}
+        msg = msg % {'url': report.url, 'error_msg': exception}
         _logger.error(msg)
         if self.progress_report.state == self.progress_report.STATE_MANIFEST_IN_PROGRESS:
             self.progress_report.state = self.progress_report.STATE_MANIFEST_FAILED
-            self.progress_report.error_message = report.error_report
+            self.progress_report.error_message = exception
         elif self.progress_report.state == self.progress_report.STATE_ISOS_IN_PROGRESS:
             iso = report.data
-            self.progress_report.add_failed_iso(iso, report.error_report)
+            self.progress_report.add_failed_iso(iso, exception)
         self.progress_report.update_progress()
 
     def download_progress(self, report):
@@ -170,8 +170,8 @@ class ISOSyncRun(listener.DownloadEventListener):
                 # We can drop this ISO from the url --> ISO map
                 self.progress_report.num_isos_finished += 1
                 self.progress_report.update_progress()
-            except ValueError:
-                self.download_failed(report)
+            except ValueError as e:
+                self.download_failed(report, e)
 
     def add_catalog_entries(self, units):
         """
