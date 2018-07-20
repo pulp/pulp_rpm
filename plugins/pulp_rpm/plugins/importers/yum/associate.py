@@ -228,7 +228,7 @@ def copy_rpms(units, source_repo, dest_repo, import_conduit, config, solver=None
         unit_set |= deps
 
     failed_signature_check = 0
-    for unit in unit_set:
+    for unit in unit_set.copy():
         # we are passing in units that may have flattened "provides" metadata.
         # This flattened field is not used by associate_single_unit().
         if rpm_parse.signature_enabled(config):
