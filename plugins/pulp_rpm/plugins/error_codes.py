@@ -38,3 +38,8 @@ RPM1014 = Error("RPM1014", _('Invalid signature key ID "%(key)s" found for Packa
 RPM1015 = Error("RPM1015", _("Malformed repository: %(reason)s"), ['reason'])
 
 RPM1016 = Error("RPM1016", _('Uploaded file is not a valid RPM.'), [])
+
+RPM1017 = Error(
+    "RPM1017",
+    _('Publish modules.yaml failed: modulemd checksum mismatch detected.'),
+    [])
