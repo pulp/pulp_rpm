@@ -1,6 +1,7 @@
 from logging import getLogger
 
 from django.db import models
+
 from pulpcore.plugin.models import Content, Remote, Publisher
 
 from pulp_rpm.app.constants import CHECKSUM_CHOICES
@@ -11,7 +12,7 @@ log = getLogger(__name__)
 
 class RpmContent(Content):
     """
-    The "rpm" content type. Maps directly to the fields provided by createrepo_c
+    The "rpm" content type. Maps directly to the fields provided by createrepo_c.
 
     https://github.com/rpm-software-management/createrepo_c/
 
@@ -101,6 +102,7 @@ class RpmContent(Content):
             The mtime of the package file in seconds since the epoch; this is the 'file' time
             attribute in the primary XML.
     """
+
     TYPE = 'rpm'
 
     # Required metadata
@@ -173,14 +175,16 @@ class RpmContent(Content):
 
     @property
     def nevra(self):
-        """ Package NEVRA string (Name-Epoch-Version-Release-Architecture)
+        """
+        Package NEVRA string (Name-Epoch-Version-Release-Architecture).
         """
         return "{n}-{e}:{v}-{r}.{a}".format(
             n=self.name, e=self.epoch, v=self.version, r=self.release, a=self.arch)
 
     @property
     def nvra(self):
-        """ Package NVRA string (Name-Version-Release-Architecture)
+        """
+        Package NVRA string (Name-Version-Release-Architecture).
         """
         return "{n}-{v}-{r}.{a}".format(
             n=self.name, v=self.version, r=self.release, a=self.arch)
@@ -193,10 +197,11 @@ class RpmContent(Content):
 
 class SrpmContent(RpmContent):
     """
-    The "srpm" content type
+    The "srpm" content type.
 
     (same as the "rpm" content type)
     """
+
     TYPE = 'srpm'
 
 
@@ -204,6 +209,7 @@ class RpmRemote(Remote):
     """
     Remote for "rpm" content.
     """
+
     TYPE = 'rpm'
 
 
@@ -211,4 +217,5 @@ class RpmPublisher(Publisher):
     """
     Publisher for "rpm" content.
     """
+
     TYPE = 'rpm'
