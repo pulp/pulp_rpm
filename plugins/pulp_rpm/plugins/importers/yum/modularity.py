@@ -1,5 +1,6 @@
 import os
 
+from collections import namedtuple
 from hashlib import sha256
 from uuid import uuid4
 
@@ -13,6 +14,17 @@ from pulp_rpm.plugins.importers.yum.repomd import modules
 from pulp_rpm.plugins.importers.yum.parse import rpm
 
 
+# A lightweight (minimal) representation of
+# a Modulemd or ModulemdDefaults model contained in the DB.
+LiteModel = namedtuple(
+    'LiteModel',
+    ('id',
+     'checksum',
+     'storage_path',
+     'Model')
+)
+
+
 def get_inventory(repository, Model):
     """
     Get content that is already contained in the repository.
@@ -21,10 +33,14 @@ def get_inventory(repository, Model):
     :type repository: pulp.server.db.model.Repository
     :param Model: The content model class.
     :type Model: pulp.server.db.model.FileContent
-    :return: A dict keyed by the unit key tuple and a value of checksum.
+    :return: A dict keyed by the unit key tuple and a value of LiteModel.
     """
     inventory = {}
-    fields = ('id', 'checksum')
+    fields = (
+        'id',
+        'checksum',
+        '_storage_path',
+    )
     fields += Model.unit_key_fields
     q_set = repository_controller.find_repo_content_units(
         repository,
@@ -33,7 +49,11 @@ def get_inventory(repository, Model):
         yield_content_unit=True)
     for m in q_set:
         key = m.NAMED_TUPLE(**m.unit_key)
-        inventory[key] = m.checksum
+        inventory[key] = LiteModel(
+            id=m.id,
+            checksum=m.checksum,
+            storage_path=m.storage_path,
+            Model=Model)
     return inventory
 
 
@@ -64,7 +84,50 @@ def add_modulemd(repository, modulemd, model):
     repository_controller.associate_single_unit(repository, model)
 
 
-def add_modulemds(repository, modulemds):
+def repair_file(lite_model, document):
+    """
+    Repair the file stored for the modulemd or modulemd-defaults.
+
+    The stored file is replaced and the checksum is updated in the DB.
+
+    :param lite_model: A lite model fetched from inventory.
+    :type lite_model: LiteModel
+    :param document: The new file content.
+    :type document: str
+    :return: The repaired modulemd
+    :rtype: pulp_rpm.plugins.db.models.Modulemd
+    """
+    path = os.path.join(
+        get_working_directory(),
+        str(uuid4()))
+    with open(path, 'w+') as fp:
+        fp.write(document)
+    checksum = sha256(document).hexdigest()
+    repaired = lite_model.Model.objects.get(id=lite_model.id)
+    repaired.update(checksum=checksum)
+    repaired.safe_import_content(path)
+    return repaired
+
+
+def valid_file(lite_model):
+    """
+    Validate the stored modulemd/modulemd-defaults file using the checksum.
+
+    :param lite_model: A lite modulemd fetched from inventory.
+    :type lite_model: LiteModel
+    :return: True if valid.
+    :rtype: bool
+    """
+    try:
+        with open(lite_model.storage_path) as fp:
+            document = fp.read()
+    except IOError:
+        return False
+    else:
+        return lite_model.checksum == sha256(document).hexdigest()
+
+
+def add_modulemds(repository, modulemds, repair=False):
     """
     Add the collection of modulemd content to the repository.
 
@@ -74,6 +137,8 @@ def add_modulemds(repository, modulemds):
     :type repository: pulp.server.db.model.Repository
     :param modulemds: A list of gi.repository.Modulemd.Module.
     :type modulemds: collections.Iterable
+    :param repair: Validate the stored file using the checksum and repair as needed.
+    :type repair: bool
     :return: The set of content unit keys contained in the repository
              that are not contained in the collection of modulemds to be added.
     :rtype: set
@@ -84,7 +149,14 @@ def add_modulemds(repository, modulemds):
         model = modules.process_modulemd_document(modulemd)
         key = model.NAMED_TUPLE(**model.unit_key)
         wanted.add(key)
-        if key in inventory:
+        try:
+            lite_model = inventory[key]
+        except KeyError:
+            pass
+        else:
+            if repair and not valid_file(lite_model):
+                document = modulemd.dumps()
+                repair_file(lite_model, document)
             continue
         add_modulemd(repository, modulemd, model)
     remainder = set(inventory.iterkeys()).difference(wanted)
@@ -183,7 +255,7 @@ def add_default(repository, default, model):
     repository_controller.associate_single_unit(repository, model)
 
 
-def add_defaults(repository, defaults):
+def add_defaults(repository, defaults, repair=False):
     """
     Add the collection of modulemd-defaults content to the repository.
 
@@ -195,6 +267,8 @@ def add_defaults(repository, defaults):
     :type repository: pulp.server.db.model.Repository
     :param defaults: A list of gi.repository.Modulemd.Module.
     :type defaults: collections.Iterable
+    :param repair: Validate the stored file using the checksum and repair as needed.
+    :type repair: bool
     :return: The set of content unit keys contained in the repository
              that are not contained in the collection of defaults to be added.
     :rtype: set
@@ -207,13 +281,15 @@ def add_defaults(repository, defaults):
         key = model.NAMED_TUPLE(**model.unit_key)
         wanted.add(key)
         try:
-            checksum = inventory[key]
+            lite_model = inventory[key]
         except KeyError:
             pass
         else:
             document = default.dumps()
             model.checksum = sha256(document).hexdigest()
-            if checksum == model.checksum:
+            if lite_model.checksum == model.checksum:
+                if repair and not valid_file(lite_model):
+                    repair_file(lite_model, document)
                 continue
         add_default(repository, default, model)
     remainder = set(inventory.iterkeys()).difference(wanted)
@@ -245,14 +321,12 @@ def remove_defaults(repository, defaults):
     repository_controller.disassociate_units(repository, q_set)
 
 
-def load(metadata, working_dir):
+def load(metadata):
     """
     Load the "modules" metadata.
 
     :param metadata: The metadata downloaded from the remote repository.
     :type metadata: pulp_rpm.plugins.importers.yum.repomd.metadata.MetadataFiles
-    :param working_dir: Absolute path to a directory used for temporary files.
-    :type working_dir: str
     :return: Two lists of: Modulemd.Module and Modulemd.Defaults
     :rtype: tuple
     """
@@ -260,7 +334,7 @@ def load(metadata, working_dir):
     if not fp:
         return (), ()
     path = os.path.join(
-        working_dir,
+        get_working_directory(),
         str(uuid4()))
     with open(path, 'w+') as fp_w:
         while True:
@@ -274,7 +348,7 @@ def load(metadata, working_dir):
     return loaded
 
 
-def synchronize(repository, metadata, mirror=False):
+def synchronize(repository, metadata, mirror=False, repair=False):
     """
     Synchronize the modularity related content.
 
@@ -285,11 +359,13 @@ def synchronize(repository, metadata, mirror=False):
     :param mirror: Mirror mode. When enabled: content contained in the repository
          that is not also contained in the metadata is removed.
     :type mirror: bool
+    :param repair: Validate the stored file using the checksum and repair as needed.
+    :type repair: bool
     """
-    modulemds, defaults = load(metadata, get_working_directory())
-    remainder = add_modulemds(repository, modulemds)
+    modulemds, defaults = load(metadata)
+    remainder = add_modulemds(repository, modulemds, repair=repair)
     if mirror:
         remove_modulemds(repository, remainder)
-    remainder = add_defaults(repository, defaults)
+    remainder = add_defaults(repository, defaults, repair=repair)
     if mirror:
         remove_defaults(repository, remainder)
