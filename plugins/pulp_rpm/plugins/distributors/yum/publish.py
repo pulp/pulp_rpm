@@ -1,8 +1,11 @@
 import copy
 import datetime
+import hashlib
+import gzip
 import itertools
 import os
 import subprocess
+
 from gettext import gettext as _
 from xml.etree import cElementTree
 
@@ -23,6 +26,7 @@ from pulp_rpm.plugins import error_codes
 from pulp_rpm.plugins.db import models
 from pulp_rpm.plugins.distributors.export_distributor import export_utils
 from pulp_rpm.plugins.distributors.export_distributor import generate_iso
+from pulp_rpm.plugins.importers.yum.repomd import modules
 from pulp_rpm.plugins.importers.yum.parse.treeinfo import KEY_PACKAGEDIR
 from . import configuration
 from .metadata.filelists import FilelistsXMLFileContext
@@ -78,6 +82,7 @@ class BaseYumRepoPublisher(platform_steps.PluginStep):
             errata_step_kwargs['repo_content_unit_q'] = association_filters
         errata_step = PublishErrataStep(**errata_step_kwargs)
         self.add_child(errata_step)
+        self.add_child(PublishModulesStep())
         self.add_child(PublishCompsStep())
         self.add_child(PublishMetadataStep())
         self.add_child(CloseRepoMetadataStep())
@@ -795,6 +800,71 @@ class PublishErrataStepIncremental(platform_steps.UnitModelPluginStep):
         json_file_path = os.path.join(self.get_working_dir(), unit.errata_id + '.json')
         with open(json_file_path, 'w') as f:
             json.dump(errata_dict, f)
+
+
+class PublishModulesStep(platform_steps.UnitModelPluginStep):
+    """
+    Publish modularity artifacts.
+
+    :ivar fp_out: file-like used for writing the modules.yaml.
+    :type fp_out: file-like
+    """
+
+    FILE_NAME = 'modules.yaml.gz'
+
+    def __init__(self):
+        super(PublishModulesStep, self).__init__(
+            constants.PUBLISH_MODULES_STEP,
+            [
+                models.Modulemd,
+                models.ModulemdDefaults
+            ])
+        self.description = _('Publishing Modules')
+        self.fp_out = None
+
+    def initialize(self):
+        """
+        Create the directory and open fp_out for writing.
+        """
+        path = os.path.join(
+            self.get_working_dir(),
+            REPO_DATA_DIR_NAME,
+            self.FILE_NAME)
+        plugin_misc.mkdir(os.path.dirname(path))
+        self.fp_out = gzip.open(path, 'wb')
+
+    def process_main(self, item=None):
+        """
+        Append each yaml document to the modules.yaml.
+
+        :param item: Either Modulemd or ModulemdDefaults.
+        :type item: pulp.server.db.model.FileContent
+        """
+        with open(item.storage_path) as fp_in:
+            document = fp_in.read()
+            checksum = hashlib.sha256(document).hexdigest()
+            if checksum == item.checksum:
+                self.fp_out.write(document)
+            else:
+                raise PulpCodedException(error_codes.RPM1017)
+
+    def finalize(self):
+        """
+        Close the fp_out; rename the file to include the checksum;
+        and add to the repomd.
+        """
+        if self.fp_out:
+            self.fp_out.close()
+        with open(self.fp_out.name, 'rb') as fp_in:
+            checksum = file_utils.calculate_checksum(fp_in)
+        _dir, name = os.path.split(self.fp_out.name)
+        path = os.path.join(_dir, '-'.join([checksum, name]))
+        os.rename(self.fp_out.name, path)
+        repomd = self.parent.repomd_file_context
+        repomd.add_metadata_file_metadata(
+            data_type=modules.METADATA_FILE_NAME,
+            file_path=path,
+            precalculated_checksum=checksum)
 
 
 class PublishCompsStep(platform_steps.UnitModelPluginStep):
