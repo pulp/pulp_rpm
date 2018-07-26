@@ -183,6 +183,16 @@ class RepoSync(object):
         """
         return self.config.get_boolean(importer_constants.KEY_UNITS_REMOVE_MISSING)
 
+    @property
+    def validate(self):
+        """
+        Validate stored content.
+
+        :return: True when enabled.
+        :rtype: bool
+        """
+        return self.config.get_boolean(importer_constants.KEY_VALIDATE)
+
     def _parse_as_mirrorlist(self, feed):
         """
         Treats the provided feed as mirrorlist. Parses its content and extracts
@@ -297,7 +307,8 @@ class RepoSync(object):
                         modularity.synchronize(
                             self.repo,
                             metadata_files,
-                            mirror=self.mirror)
+                            mirror=self.mirror,
+                            repair=self.validate)
 
                 with self.update_state(self.progress_report['errata'], ids.TYPE_ID_ERRATA) as skip:
                     if not (skip or self.skip_repomd_steps):
