@@ -17,8 +17,9 @@ from pulp_rpm.plugins import error_codes
 from pulp_rpm.plugins.controllers import errata as errata_controller
 from pulp_rpm.plugins.db import models
 from pulp_rpm.plugins.importers.yum import purge, utils
+from pulp_rpm.plugins.importers.yum.modularity import add_modulemds, add_defaults
 from pulp_rpm.plugins.importers.yum.parse import rpm as rpm_parse
-from pulp_rpm.plugins.importers.yum.repomd import primary, group, packages, filelists
+from pulp_rpm.plugins.importers.yum.repomd import filelists, group, modules, packages, primary
 
 # Used when extracting metadata from an RPM
 RPMTAG_NOSOURCE = 1051
@@ -111,6 +112,8 @@ def upload(repo, type_id, unit_key, metadata, file_path, conduit, config):
         models.PackageLangpacks._content_type_id.default: _handle_group_category_comps,
         models.Errata._content_type_id.default: _handle_erratum,
         models.YumMetadataFile._content_type_id.default: _handle_yum_metadata_file,
+        models.Modulemd._content_type_id.default: _handle_modules,
+        models.ModulemdDefaults._content_type_id.default: _handle_modules,
     }
 
     if type_id not in handlers:
@@ -510,6 +513,36 @@ def _extract_drpm_data(drpm_filename):
                                                         drpm_data['arch'])
 
     return _encode_as_utf8(drpm_data)
+
+
+def _handle_modules(repo, type_id, unit_key, metadata, file_path, conduit, config):
+    """
+    Handles the upload of a modules.yaml file
+
+    :param repo: The repository to import the module data into
+    :type  repo: pulp.server.db.model.Repository
+
+    :param type_id: The type_id of the modulemd or modulemd-default being uploaded
+    :type  type_id: str
+
+    :param unit_key: A dictionary of fields to overwrite introspected field values
+    :type  unit_key: dict
+
+    :param metadata: A dictionary of fields to overwrite introspected field values, or None
+    :type  metadata: dict or None
+
+    :param file_path: The path to the uploaded modules.yaml file
+    :type  file_path: str
+
+    :param conduit: provides access to relevant Pulp functionality
+    :type  conduit: pulp.plugins.conduits.upload.UploadConduit
+
+    :param config: plugin configuration for the repository
+    :type  config: pulp.plugins.config.PluginCallConfiguration
+    """
+    modulemds, defaults = modules.from_file(file_path)
+    add_modulemds(repo, modulemds)
+    add_defaults(repo, defaults)
 
 
 def _fail_report(message):
