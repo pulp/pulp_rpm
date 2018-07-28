@@ -366,7 +366,7 @@ def _associate_unit(dest_repo, unit, config):
     elif isinstance(unit, models.RPM):
         # copy will happen in one batch
         return unit
-    elif isinstance(unit, models.YumMetadataFile):
+    elif isinstance(unit, (models.YumMetadataFile, models.ModulemdDefaults)):
         return associate_copy_for_repo(unit, dest_repo, True)
     elif isinstance(unit, (models.DRPM, models.SRPM)):
             if rpm_parse.signature_enabled(config):

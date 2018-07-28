@@ -1696,7 +1696,7 @@ class Modulemd(FileContentUnit):
         return file_utils.calculate_checksum(file_handle)
 
 
-class ModulemdDefaults(FileContentUnit):
+class ModulemdDefaults(UnitMixin, FileContentUnit):
     """
     This model represents a Modulemd-defaults metadata document.
 
