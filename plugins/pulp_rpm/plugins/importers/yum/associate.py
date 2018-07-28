@@ -93,7 +93,7 @@ def associate(source_repo, dest_repo, import_conduit, config, units=None):
             associated_units |= tmp_associated_units
             failed_units |= tmp_failed_units
 
-    # ------ get RPM children of errata ------
+    # ------ get RPM children of errata and modules ------
     wanted_rpms = get_rpms_to_copy_by_key(rpm_search_dicts, import_conduit, source_repo)
     rpm_search_dicts = None
     rpms_to_copy = filter_available_rpms(wanted_rpms, import_conduit, source_repo)
@@ -326,7 +326,7 @@ def identify_children_to_copy(units):
         elif isinstance(unit, models.PackageEnvironment):
             groups.update(unit.group_ids)
             groups.update(unit.optional_group_ids)
-        elif isinstance(unit, models.Errata):
+        elif isinstance(unit, (models.Errata, models.Modulemd)):
             rpm_search_dicts.extend(unit.rpm_search_dicts)
     return groups, rpm_names, rpm_search_dicts
 

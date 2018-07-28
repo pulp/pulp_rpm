@@ -1,7 +1,8 @@
 from pulp_rpm.common.ids import (TYPE_ID_RPM, TYPE_ID_SRPM, TYPE_ID_DRPM, TYPE_ID_ERRATA,
                                  TYPE_ID_DISTRO, TYPE_ID_PKG_GROUP, TYPE_ID_PKG_CATEGORY,
                                  TYPE_ID_PKG_ENVIRONMENT, TYPE_ID_PKG_LANGPACKS,
-                                 TYPE_ID_YUM_REPO_METADATA_FILE)
+                                 TYPE_ID_YUM_REPO_METADATA_FILE, TYPE_ID_MODULEMD,
+                                 TYPE_ID_MODULEMD_DEFAULTS)
 
 
 def get_formatter_for_type(type_id):
@@ -23,7 +24,10 @@ def get_formatter_for_type(type_id):
         TYPE_ID_PKG_ENVIRONMENT: lambda x: x.get('id'),
         TYPE_ID_PKG_LANGPACKS: lambda x: x.get('repo_id'),
         TYPE_ID_YUM_REPO_METADATA_FILE: _yum_repo_metadata_name_only,
+        TYPE_ID_MODULEMD: _details_modulemd,
+        TYPE_ID_MODULEMD_DEFAULTS: _details_modulemd_defaults,
     }
+
     return type_formatters[type_id]
 
 
@@ -79,3 +83,32 @@ def _yum_repo_metadata_name_only(unit):
     :rtype: str
     """
     return unit['data_type']
+
+
+def _details_modulemd(module):
+    """
+    A formatter for modulemd content units.
+
+    Format display with name, stream, version, context, arch
+
+    :param unit: The unit to have its formatting returned.
+    :type unit: dict
+    :return: The display string of the unit
+    :rtype: str
+    """
+    return '%s-%s-%s-%s-%s' % (module['name'], module['stream'], module['version'],
+                               module['context'], module['arch'])
+
+
+def _details_modulemd_defaults(default):
+    """
+    A formatter for modulemd defaults content units.
+
+    Format display with name.
+
+    :param unit: The unit to have its formatting returned.
+    :type unit: dict
+    :return: The display string of the unit
+    :rtype: str
+    """
+    return default['name']

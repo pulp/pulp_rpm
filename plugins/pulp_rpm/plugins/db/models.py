@@ -22,7 +22,7 @@ from pulp.server.exceptions import PulpCodedException
 from pulp_rpm.common import constants, version_utils, file_utils
 from pulp_rpm.plugins import error_codes, serializers
 from pulp_rpm.plugins.db.fields import ChecksumTypeStringField
-from pulp_rpm.plugins.importers.yum import utils
+from pulp_rpm.plugins.importers.yum import utils, parse
 from pulp_rpm.yum_plugin import util
 
 
@@ -1694,6 +1694,25 @@ class Modulemd(FileContentUnit):
         :rtype:             string
         """
         return file_utils.calculate_checksum(file_handle)
+
+    @property
+    def rpm_search_dicts(self):
+        """
+        Return a list of dictionaries with NEVRA data for each artifact (RPM) this modulemd includes
+
+        :return:            A list of of dicts that contain one NEVRA for each artifact
+        :rtype:             list
+        """
+        rpm_dicts = []
+        for artifact in self.artifacts:
+            nevra = parse.rpm.nevra(artifact)
+            rpm_dicts.append({'name': nevra[0],
+                              'epoch': unicode(nevra[1]),
+                              'version': nevra[2],
+                              'release': nevra[3],
+                              'arch': nevra[4]})
+
+        return rpm_dicts
 
 
 class ModulemdDefaults(UnitMixin, FileContentUnit):
