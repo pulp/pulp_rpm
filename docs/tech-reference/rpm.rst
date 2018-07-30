@@ -259,6 +259,14 @@ Each ``package`` element contains a ``filename`` element, and in RHEL errata, a
 ``sum`` element.
 
 
+modules.yaml
+^^^^^^^^^^^^
+
+modules.yaml can contain one or more modulemd and/or modulemd defaults documents.
+Each modulemd document describes the module's metadata. Each modulemd defaults document describes
+the modules' defaults, like stream and profiles for a certain module name.
+
+
 Organizing RPM Builds
 ---------------------
 
