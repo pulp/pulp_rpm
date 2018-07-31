@@ -424,6 +424,74 @@ Metadata
  The name of the algorithm used to calculate the ``checksum``
 
 
+Module metadata
+---------------
+
+The module's metadata ID is ``modulemd``.
+
+Unit Key
+^^^^^^^^
+
+``name``
+ Module name
+
+``stream``
+ Module update stream
+
+``version``
+ Module version. Defines upgrade path for the particular update stream
+
+``context``
+ Module context flag. Serves to distinguish module builds with the same name,
+ stream and version
+
+``arch``
+ Module aftifact architecture. Contains a string describing the module's artifacts'
+ main hardware architecture compatibility, distinguishing the module artifact
+
+Metadata
+^^^^^^^^
+
+``summary``
+ A short summary describing the module
+
+``description``
+ A verbose description of the module
+
+``profiles``
+ Profiles define the end user's use cases for the module. They consist
+ of package lists of components to be installed by default if the module is
+ enabled
+
+``artifacts``
+ List of binary artifacts shipped with the module
+
+
+Module metadata defaults
+------------------------
+
+The modules's metadata defaults ID is ``modulemd_defaults``.
+
+Unit Key
+^^^^^^^^
+
+``name``
+ Module name that the defaults are for
+
+``repo_id``
+ Id of the repository the modulemd-defaults belongs to
+
+Metadata
+^^^^^^^^
+
+``stream``
+ Module stream that is the default for the module
+
+``profiles``
+ Module profiles indexed by the stream name. This is a dictionary of stream
+ names to a list of default profiles to be installed
+
+
 Yum Importer
 ============
 
