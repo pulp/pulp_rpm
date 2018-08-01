@@ -187,7 +187,7 @@ def rpm_filelist_conversion(solvable, unit):
     unit_files.extend(unit.get('files', {}).get('dir', []))
     for filename in unit_files:
         dirname = os.path.dirname(filename).encode('utf-8')
-        dirname_id = repodata.str2dir(dirname, create=True)
+        dirname_id = repodata.str2dir(dirname)
         repodata.add_dirstr(solvable.id, solv.SOLVABLE_FILELIST,
                             dirname_id, os.path.basename(filename).encode('utf-8'))
 
