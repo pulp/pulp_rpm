@@ -1,20 +1,29 @@
-from gettext import gettext as _
+from gettext import gettext as _  # noqa:F401
 
+from drf_yasg.utils import swagger_auto_schema
 from rest_framework.decorators import detail_route
-from rest_framework import serializers
 
-from pulpcore.plugin.models import Repository, RepositoryVersion
+from pulpcore.plugin.models import RepositoryVersion
 from pulpcore.plugin.tasking import enqueue_with_reservation
-
+from pulpcore.plugin.serializers import (
+    AsyncOperationResponseSerializer,
+    RepositoryPublishURLSerializer,
+    RepositorySyncURLSerializer,
+)
 from pulpcore.plugin.viewsets import (
     ContentViewSet,
     RemoteViewSet,
     OperationPostponedResponse,
-    PublisherViewSet)
+    PublisherViewSet
+)
 
-from . import tasks
-from .models import RpmContent, RpmRemote, RpmPublisher
-from .serializers import RpmContentSerializer, RpmRemoteSerializer, RpmPublisherSerializer
+from pulp_rpm.app import tasks
+from pulp_rpm.app.models import RpmContent, RpmRemote, RpmPublisher
+from pulp_rpm.app.serializers import (
+    RpmContentSerializer,
+    RpmRemoteSerializer,
+    RpmPublisherSerializer
+)
 
 
 class RpmContentViewSet(ContentViewSet):
@@ -27,6 +36,7 @@ class RpmContentViewSet(ContentViewSet):
 
     Also specify queryset and serializer for RpmContent.
     """
+
     endpoint_name = 'rpm'
     queryset = RpmContent.objects.all()
     serializer_class = RpmContentSerializer
@@ -36,20 +46,28 @@ class RpmRemoteViewSet(RemoteViewSet):
     """
     A ViewSet for RpmRemote.
     """
+
     endpoint_name = 'rpm'
     queryset = RpmRemote.objects.all()
     serializer_class = RpmRemoteSerializer
 
-    @detail_route(methods=('post',))
+    @swagger_auto_schema(
+        operation_description="Trigger an asynchronous task to sync RPM content.",
+        responses={202: AsyncOperationResponseSerializer}
+    )
+    @detail_route(methods=('post',), serializer_class=RepositorySyncURLSerializer)
     def synchronize(self, request, pk):
+        """
+        Dispatches a sync task.
+        """
         remote = self.get_object()
-        try:
-            repository_uri = request.data['repository']
-        except KeyError:
-            raise serializers.ValidationError(detail=_('Repository URI must be specified.'))
-        repository = self.get_resource(repository_uri, Repository)
-        if not remote.url:
-            raise serializers.ValidationError(detail=_('A url must be specified.'))
+        serializer = RepositorySyncURLSerializer(
+            data=request.data,
+            context={'request': request}
+        )
+        serializer.is_valid(raise_exception=True)
+        repository = serializer.validated_data.get('repository')
+
         result = enqueue_with_reservation(
             tasks.synchronize,
             [repository, remote],
@@ -58,46 +76,46 @@ class RpmRemoteViewSet(RemoteViewSet):
                 'repository_pk': repository.pk
             }
         )
-        return OperationPostponedResponse([result], request)
+        return OperationPostponedResponse(result, request)
 
 
 class RpmPublisherViewSet(PublisherViewSet):
     """
     A ViewSet for RpmPublisher.
     """
+
     endpoint_name = 'rpm'
     queryset = RpmPublisher.objects.all()
     serializer_class = RpmPublisherSerializer
 
-    @detail_route(methods=('post',))
+    @swagger_auto_schema(
+        operation_description="Trigger an asynchronous task to publish RPM content.",
+        responses={202: AsyncOperationResponseSerializer}
+    )
+    @detail_route(methods=('post',), serializer_class=RepositoryPublishURLSerializer)
     def publish(self, request, pk):
+        """
+        Dispatches a publish task.
+        """
         publisher = self.get_object()
-        repository = None
-        repository_version = None
-        if 'repository' not in request.data and 'repository_version' not in request.data:
-            raise serializers.ValidationError(_("Either the 'repository' or 'repository_version' "
-                                              "need to be specified."))
+        serializer = RepositoryPublishURLSerializer(
+            data=request.data,
+            context={'request': request}
+        )
+        serializer.is_valid(raise_exception=True)
+        repository_version = serializer.validated_data.get('repository_version')
 
-        if 'repository' in request.data and request.data['repository']:
-            repository = self.get_resource(request.data['repository'], Repository)
-
-        if 'repository_version' in request.data and request.data['repository_version']:
-            repository_version = self.get_resource(request.data['repository_version'],
-                                                   RepositoryVersion)
-
-        if repository and repository_version:
-            raise serializers.ValidationError(_("Either the 'repository' or 'repository_version' "
-                                              "can be specified - not both."))
-
+        # Safe because version OR repository is enforced by serializer.
         if not repository_version:
+            repository = serializer.validated_data.get('repository')
             repository_version = RepositoryVersion.latest(repository)
 
         result = enqueue_with_reservation(
             tasks.publish,
             [repository_version.repository, publisher],
             kwargs={
-                'publisher_pk': str(publisher.pk),
-                'repository_version_pk': str(repository_version.pk)
+                'publisher_pk': publisher.pk,
+                'repository_version_pk': repository_version.pk
             }
         )
-        return OperationPostponedResponse([result], request)
+        return OperationPostponedResponse(result, request)
