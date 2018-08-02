@@ -4,7 +4,7 @@ import mock
 
 from pulp.server.db.migrate.models import _import_all_the_way
 
-migration = _import_all_the_way('pulp_rpm.plugins.migrations.0043_populate_recommends')
+migration = _import_all_the_way('pulp_rpm.plugins.migrations.0044_populate_recommends')
 
 
 class TestMigrate(unittest.TestCase):
@@ -76,8 +76,8 @@ class TestMigrateRpm(unittest.TestCase):
     @mock.patch.object(migration, 'ET')
     @mock.patch.object(migration, 'gzip')
     @mock.patch.object(migration, '_HEADER')
-    def test_no_update(self, _, __, mock_ET):
+    def test_update_when_no_recommends(self, _, __, mock_ET):
         root_element_mock = mock_ET.fromstring.return_value
         root_element_mock.iterfind.return_value = []
         migration.migrate_rpm(self.collection_mock, self.unit_mock)
-        self.collection_mock.update_one.assert_not_called()
+        self.collection_mock.update_one.assert_called_once()

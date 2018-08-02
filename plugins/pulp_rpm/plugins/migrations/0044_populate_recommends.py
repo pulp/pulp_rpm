@@ -43,10 +43,7 @@ def migrate_rpm(collection, unit):
         rpm_entry.attrib for rpm_entry in root_element.iterfind(
             './common:package/common:format/rpm:recommends/rpm:entry', _NAMESPACES)
     ]
-    if delta['recommends']:
-        # NOTE(performance): update just in case non-empty recommends; empty or None recommends
-        # will be handled by the model
-        collection.update_one({'_id': unit['_id']}, {'$set': delta})
+    collection.update_one({'_id': unit['_id']}, {'$set': delta})
 
 
 def migrate(*args, **kwargs):
