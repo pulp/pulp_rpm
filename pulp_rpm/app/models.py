@@ -1,7 +1,6 @@
 from logging import getLogger
 
 from django.db import models
-
 from pulpcore.plugin.models import Content, Remote, Publisher
 
 from pulp_rpm.app.constants import CHECKSUM_CHOICES
@@ -12,8 +11,9 @@ log = getLogger(__name__)
 
 class RpmContent(Content):
     """
-    The "rpm" content type. Maps directly to the fields provided by createrepo_c.
+    The "rpm" content type.
 
+    Maps directly to the fields provided by createrepo_c.
     https://github.com/rpm-software-management/createrepo_c/
 
     Fields:
@@ -112,7 +112,7 @@ class RpmContent(Content):
     release = models.TextField()
     arch = models.TextField()
 
-    pkgId = models.TextField(unique=True)  # formerly "checksum"
+    pkgId = models.TextField(unique=True)  # formerly "checksum" in Pulp 2
     checksum_type = models.TextField(choices=CHECKSUM_CHOICES)
 
     # Optional metadata
@@ -203,6 +203,165 @@ class SrpmContent(RpmContent):
     """
 
     TYPE = 'srpm'
+
+
+class UpdateRecord(Content):
+    """
+    The "UpdateRecord" content type, formerly "Errata" model in Pulp 2.
+
+    Maps directly to the fields provided by createrepo_c.
+    https://github.com/rpm-software-management/createrepo_c/
+
+    Fields:
+        id (Text):
+            Update id (short update name, e.g. RHEA-2013:1777)
+        updated_date (Text):
+            Date when the update was updated (e.g. "2013-12-02 00:00:00")
+
+        description (Text):
+            Update description
+        issued_date (Text):
+            Date when the update was issued (e.g. "2013-12-02 00:00:00")
+        fromstr (Text):
+            Source of the update (e.g. security@redhat.com)
+        status (Text):
+            Update status ("final", ...)
+        title (Text):
+            Update name
+        summary (Text):
+            Short summary
+        version (Text):
+            Update version (probably always an integer number)
+
+        type (Text):
+            Update type ("enhancement", "bugfix", ...)
+        severity (Text):
+            Severity
+        solution (Text):
+            Solution
+        release (Text):
+            Update release
+        rights (Text):
+            Copyrights
+
+        pushcount (Text):
+            Push count
+
+        references (Text):
+            List of UpdateReferences - see comments below
+
+    """
+
+    # Required metadata
+    errata_id = models.TextField()  # TODO: change field name?
+    updated_date = models.TextField()
+
+    # Optional metadata
+    description = models.TextField(blank=True)
+    issued_date = models.TextField(blank=True)
+    fromstr = models.TextField(blank=True)  # formerly "errata_from"
+    status = models.TextField(blank=True)
+    title = models.TextField(blank=True)
+    summary = models.TextField(blank=True)
+    version = models.TextField(blank=True)
+
+    update_type = models.TextField(blank=True)  # TODO: change field name?
+    severity = models.TextField(blank=True)
+    solution = models.TextField(blank=True)
+    release = models.TextField(blank=True)
+    rights = models.TextField(blank=True)
+
+    pushcount = models.TextField(blank=True)
+
+    # A string containing a JSON-encoded list of dictionaries, each of which represents an
+    # UpdateReference. Each UpdateReference dict contains the following fields:
+    #
+    #   href (str):         URL (e.g. to related bugzilla, errata, ...)
+    #   id (str):           Id (e.g. 1035288, NULL for errata, ...)
+    #   title (str):        Name of errata, name of bug, etc.
+    #   type (str):         Reference type ("self" for errata, "bugzilla", ...)
+    references = models.TextField(default='[]', blank=True)
+
+    class Meta:
+        unique_together = ()
+        # TODO: Find some way to enforce uniqueness per-repository
+        # make a hash of the natural key, store the hash?
+
+
+class UpdateCollection(models.Model):
+    """
+    A collection of UpdateCollectionPackages with an associated nametag.
+
+    Maps directly to the fields provided by createrepo_c.
+    https://github.com/rpm-software-management/createrepo_c/
+
+    Fields:
+
+        name (Text):
+            Name of the collection e.g. RHN Tools for RHEL AUS (v. 6.5 for 64-bit x86_64)
+        shortname (Text):
+            Short name e.g. rhn-tools-rhel-x86_64-server-6.5.aus
+
+    Relations:
+
+        update_record (models.ForeignKey): The associated UpdateRecord
+    """
+
+    name = models.TextField(blank=True)
+    shortname = models.TextField(blank=True)
+
+    update_record = models.ForeignKey(UpdateRecord, related_name="collections",
+                                      on_delete=models.CASCADE)
+
+
+class UpdateCollectionPackage(models.Model):
+    """
+    Part of an UpdateCollection, representing a package.
+
+    Maps directly to the fields provided by createrepo_c.
+    https://github.com/rpm-software-management/createrepo_c/
+
+    Fields:
+
+        arch (Text):
+            Arch
+        epoch (Text):
+            Epoch
+        filename (Text):
+            Filename
+        name (Text):
+            Name
+        reboot_suggested (Boolean):
+            Whether a reboot is suggested after package installation
+        release (Text):
+            Release
+        src (Text):
+            Source filename
+        sum (Text):
+            Checksum
+        sum_type (Text):
+            Checksum type
+        version (Text):
+            Version
+
+    Relations:
+
+        update_collection (models.ForeignKey): The associated UpdateCollection
+    """
+
+    arch = models.TextField(blank=True)
+    epoch = models.TextField(blank=True)
+    filename = models.TextField(blank=True)
+    name = models.TextField(blank=True)
+    reboot_suggested = models.BooleanField(blank=True)
+    release = models.TextField(blank=True)
+    src = models.TextField(blank=True)
+    sum = models.TextField(blank=True)
+    sum_type = models.TextField(blank=True)
+    version = models.TextField(blank=True)
+
+    update_collection = models.ForeignKey(UpdateCollection, related_name='packages',
+                                          on_delete=models.CASCADE)
 
 
 class RpmRemote(Remote):
