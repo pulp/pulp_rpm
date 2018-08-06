@@ -752,15 +752,15 @@ Optional Configuration Parameters
  If unspecified the incremental publish will be performed when possible.
 
 ``remove_old_repodata``
- Boolean flag to indicate whether or not repodata past expiration are removed
- during publish. If not present it defaults to True. The default expiration is
- 14 days. Files that present in repomd.xml are preserved no matter of
- their age.
+ Boolean flag to indicate whether or not repodata that is past expiration will
+ be removed during publish. The age at which repodata is considered "old" is set
+ by the value of ``remove_old_repodata``. If not present this value defaults
+ to True.
 
 ``remove_old_repodata_threshold``
- If ``remove_old_repodata`` is true, this attribute specify maximal age of
- repodata in seconds that are not removed during publish. This attribute defaults
- to 14 days.
+ If ``remove_old_repodata`` is True, this attribute specifies the maximal age in
+ days of repodata files that are not removed during publish. This attribute
+ defaults to 14 days.
 
 GPG Signing of Repository Metadata
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
