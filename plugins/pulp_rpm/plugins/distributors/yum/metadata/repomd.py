@@ -90,7 +90,7 @@ class RepomdXMLFileContext(MetadataFileContext):
         location = os.path.join(REPO_DATA_DIR_NAME, file_name)
         location_attributes = {'href': location}
         ElementTree.SubElement(data_element, 'location', location_attributes)
-        self.metadata_file_locations.append(location)
+        self.metadata_file_locations.append(file_name)
 
         timestamp_element = ElementTree.SubElement(data_element, 'timestamp')
         # Convert the float mtime to an integer before stringifying since
