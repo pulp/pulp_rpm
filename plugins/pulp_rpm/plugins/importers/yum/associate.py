@@ -17,7 +17,7 @@ from pulp_rpm.plugins.importers.yum.parse import rpm as rpm_parse
 _LOGGER = logging.getLogger(__name__)
 
 
-def associate(source_repo, dest_repo, import_conduit, config, units=None):
+def associate(source_repo, dest_repo, import_conduit, config, units=None, solver=None):
     """
     This is the primary method to call when a copy operation is desired. This
     gets called directly by the Importer
@@ -39,6 +39,8 @@ def associate(source_repo, dest_repo, import_conduit, config, units=None):
 
     :param units:           generator of ContentUnit objects to copy
     :type  units:           generator
+    :param solver:          a solver instance shared during a recursive call
+    :type solver:           pulp_solv.Solver
 
     :return:                List of associated units.
     """
@@ -50,11 +52,9 @@ def associate(source_repo, dest_repo, import_conduit, config, units=None):
     # get config items that we care about
     recursive = config.get(constants.CONFIG_RECURSIVE)
 
-    if recursive:
+    if recursive and not solver:
         solver = pulp_solv.Solver(source_repo, target_repo=dest_repo)
         solver.load()
-    else:
-        solver = None
 
     # make a set from generator to be able to iterate through it several times
     units = set(units)
@@ -89,7 +89,8 @@ def associate(source_repo, dest_repo, import_conduit, config, units=None):
                                                          package_group_id__in=page)
         if group_units.count() > 0:
             tmp_associated_units, tmp_failed_units = (
-                associate(source_repo, dest_repo, import_conduit, config, group_units))
+                associate(source_repo, dest_repo, import_conduit, config, group_units,
+                          solver=solver))
             associated_units |= tmp_associated_units
             failed_units |= tmp_failed_units
 
