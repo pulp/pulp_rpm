@@ -627,13 +627,14 @@ class TestRepoCertFiles(unittest.TestCase):
         repoid = 'repo1'
         client = 'MY-CLIENT-KEY_AND_CERT'
         cf = CertFiles(TEST_CERT_ROOT_DIR, repoid)
+        relative_cert_path = '{r}_{c}'.format(r=repoid, c=CertFiles.CLIENT)
 
         cf.update(client)
 
         clientpath = cf.apply()
         rootdir = os.path.join(TEST_CERT_ROOT_DIR, repoid)
         self.assertTrue(os.path.exists(rootdir))
-        self.assertEqual(clientpath, os.path.join(rootdir, CertFiles.CLIENT))
+        self.assertEqual(clientpath, os.path.join(rootdir, relative_cert_path))
         f = open(clientpath)
         pem = f.read()
         f.close()
@@ -644,13 +645,14 @@ class TestRepoCertFiles(unittest.TestCase):
         self.test_repo_first_time(repoid)
         client = 'MY-NEW-CLIENT-KEY_AND_CERT'
         cf = CertFiles(TEST_CERT_ROOT_DIR, repoid)
+        relative_cert_path = '{r}_{c}'.format(r=repoid, c=CertFiles.CLIENT)
 
         cf.update(client)
 
         clientpath = cf.apply()
         rootdir = os.path.join(TEST_CERT_ROOT_DIR, repoid)
         self.assertTrue(os.path.exists(rootdir))
-        self.assertEqual(clientpath, os.path.join(rootdir, CertFiles.CLIENT))
+        self.assertEqual(clientpath, os.path.join(rootdir, relative_cert_path))
         self.assertEqual(len(os.listdir(rootdir)), 1)
         f = open(clientpath)
         pem = f.read()
