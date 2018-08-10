@@ -69,6 +69,11 @@ Configuration Parameters
 The following configuration parameters are all optional, and can be used to determine the behavior of the ISO
 importer.
 
+``connect_timeout``
+ Number of seconds to wait for nectar to establish a connection with a remote machine. It’s a good
+ practice to set connect timeouts to slightly larger than a multiple of 3, which is the default TCP
+ packet retransmission window. Default is 6.05.
+
 ``feed``
  This should be a string that represents the URL to an upstream ISO repository that you would like this importer
  to be able to synchronize with. This parameter is optional because it is valid to create an ISO importer that
@@ -100,6 +105,10 @@ importer.
 ``proxy_username``
  A string representing the username that should be used to authenticate with the proxy server at ``proxy_host``.
  This parameter is required if the ``proxy_password`` is provided.
+
+``read_timeout``
+ The number of seconds the client will wait for the server to send a response after an initial
+ connection has already been made. Defaults to 27.
 
 ``remove_missing``
  This is a boolean value, or a string "True" or "False". If set to "True", the importer will remove any ISOs
