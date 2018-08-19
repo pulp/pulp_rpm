@@ -3,7 +3,10 @@ from logging import getLogger
 from django.db import models
 from pulpcore.plugin.models import Content, Remote, Publisher
 
-from pulp_rpm.app.constants import CHECKSUM_CHOICES
+from pulp_rpm.app.constants import (CHECKSUM_CHOICES, CREATEREPO_PACKAGE_ATTRS,
+                                    CREATEREPO_UPDATE_COLLECTION_ATTRS,
+                                    CREATEREPO_UPDATE_COLLECTION_PACKAGE_ATTRS,
+                                    CREATEREPO_UPDATE_RECORD_ATTRS)
 
 
 log = getLogger(__name__)
@@ -194,6 +197,56 @@ class Package(Content):
             'name', 'epoch', 'version', 'release', 'arch', 'checksum_type', 'pkgId'
         )
 
+    @classmethod
+    def createrepo_to_dict(cls, package):
+        """
+        Convert createrepo_c package object to dict for instantiating RpmContent/SrpmContent.
+
+        Args:
+            package(createrepo_c.Package): a RPM/SRPM package to convert
+
+        Returns:
+            dict: all data for RPM/SRPM content creation
+
+        """
+        return {
+            'arch': getattr(package, CREATEREPO_PACKAGE_ATTRS.ARCH),
+            'changelogs': getattr(package, CREATEREPO_PACKAGE_ATTRS.CHANGELOGS) or [],
+            'checksum_type': getattr(package, CREATEREPO_PACKAGE_ATTRS.CHECKSUM_TYPE),
+            'conflicts': getattr(package, CREATEREPO_PACKAGE_ATTRS.CONFLICTS) or [],
+            'description': getattr(package, CREATEREPO_PACKAGE_ATTRS.DESCRIPTION) or '',
+            'enhances': getattr(package, CREATEREPO_PACKAGE_ATTRS.ENHANCES) or [],
+            'epoch': getattr(package, CREATEREPO_PACKAGE_ATTRS.EPOCH) or '0',
+            'files': getattr(package, CREATEREPO_PACKAGE_ATTRS.FILES) or [],
+            'location_base': getattr(package, CREATEREPO_PACKAGE_ATTRS.LOCATION_BASE) or '',
+            'location_href': getattr(package, CREATEREPO_PACKAGE_ATTRS.LOCATION_HREF),
+            'name': getattr(package, CREATEREPO_PACKAGE_ATTRS.NAME),
+            'obsoletes': getattr(package, CREATEREPO_PACKAGE_ATTRS.OBSOLETES) or [],
+            'pkgId': getattr(package, CREATEREPO_PACKAGE_ATTRS.PKGID),
+            'provides': getattr(package, CREATEREPO_PACKAGE_ATTRS.PROVIDES) or [],
+            'recommends': getattr(package, CREATEREPO_PACKAGE_ATTRS.RECOMMENDS) or [],
+            'release': getattr(package, CREATEREPO_PACKAGE_ATTRS.RELEASE),
+            'requires': getattr(package, CREATEREPO_PACKAGE_ATTRS.REQUIRES) or [],
+            'rpm_buildhost': getattr(package, CREATEREPO_PACKAGE_ATTRS.RPM_BUILDHOST) or '',
+            'rpm_group': getattr(package, CREATEREPO_PACKAGE_ATTRS.RPM_GROUP) or '',
+            'rpm_header_end': getattr(package, CREATEREPO_PACKAGE_ATTRS.RPM_HEADER_END),
+            'rpm_header_start': getattr(package, CREATEREPO_PACKAGE_ATTRS.RPM_HEADER_START),
+            'rpm_license': getattr(package, CREATEREPO_PACKAGE_ATTRS.RPM_LICENSE) or '',
+            'rpm_packager': getattr(package, CREATEREPO_PACKAGE_ATTRS.RPM_PACKAGER) or '',
+            'rpm_sourcerpm': getattr(package, CREATEREPO_PACKAGE_ATTRS.RPM_SOURCERPM) or '',
+            'rpm_vendor': getattr(package, CREATEREPO_PACKAGE_ATTRS.RPM_VENDOR) or '',
+            'size_archive': getattr(package, CREATEREPO_PACKAGE_ATTRS.SIZE_ARCHIVE),
+            'size_installed': getattr(package, CREATEREPO_PACKAGE_ATTRS.SIZE_INSTALLED),
+            'size_package': getattr(package, CREATEREPO_PACKAGE_ATTRS.SIZE_PACKAGE),
+            'suggests': getattr(package, CREATEREPO_PACKAGE_ATTRS.SUGGESTS) or [],
+            'summary': getattr(package, CREATEREPO_PACKAGE_ATTRS.SUMMARY) or '',
+            'supplements': getattr(package, CREATEREPO_PACKAGE_ATTRS.SUPPLEMENTS) or [],
+            'time_build': getattr(package, CREATEREPO_PACKAGE_ATTRS.TIME_BUILD),
+            'time_file': getattr(package, CREATEREPO_PACKAGE_ATTRS.TIME_FILE),
+            'url': getattr(package, CREATEREPO_PACKAGE_ATTRS.URL) or '',
+            'version': getattr(package, CREATEREPO_PACKAGE_ATTRS.VERSION)
+        }
+
 
 class UpdateRecord(Content):
     """
@@ -242,6 +295,8 @@ class UpdateRecord(Content):
 
     """
 
+    TYPE = 'update'
+
     # Required metadata
     errata_id = models.TextField()  # TODO: change field name?
     updated_date = models.TextField()
@@ -263,19 +318,45 @@ class UpdateRecord(Content):
 
     pushcount = models.TextField(blank=True)
 
-    # A string containing a JSON-encoded list of dictionaries, each of which represents an
-    # UpdateReference. Each UpdateReference dict contains the following fields:
-    #
-    #   href (str):         URL (e.g. to related bugzilla, errata, ...)
-    #   id (str):           Id (e.g. 1035288, NULL for errata, ...)
-    #   title (str):        Name of errata, name of bug, etc.
-    #   type (str):         Reference type ("self" for errata, "bugzilla", ...)
-    references = models.TextField(default='[]', blank=True)
+    # A field that represents the hash digest of the update record. Used to track differences
+    # between two UpdateRecord objects without having to examine the associations like
+    # UpdateCollection or UpdateCollectionPackage.
+    digest = models.TextField()
 
     class Meta:
         unique_together = ()
         # TODO: Find some way to enforce uniqueness per-repository
         # make a hash of the natural key, store the hash?
+
+    @classmethod
+    def createrepo_to_dict(cls, update):
+        """
+        Convert createrepo_c update record object to dict for instantiating UpdateRecord.
+
+        Args:
+            update(createrepo_c.UpdateRecord): a UpdateRecord to convert
+
+        Returns:
+            dict: data for UpdateRecord content creation
+
+        """
+        return {
+            'errata_id': getattr(update, CREATEREPO_UPDATE_RECORD_ATTRS.ID),
+            'updated_date': getattr(update, CREATEREPO_UPDATE_RECORD_ATTRS.UPDATED_DATE) or '',
+            'description': getattr(update, CREATEREPO_UPDATE_RECORD_ATTRS.DESCRIPTION) or '',
+            'issued_date': getattr(update, CREATEREPO_UPDATE_RECORD_ATTRS.ISSUED_DATE) or '',
+            'fromstr': getattr(update, CREATEREPO_UPDATE_RECORD_ATTRS.FROMSTR) or '',
+            'status': getattr(update, CREATEREPO_UPDATE_RECORD_ATTRS.STATUS) or '',
+            'title': getattr(update, CREATEREPO_UPDATE_RECORD_ATTRS.TITLE) or '',
+            'summary': getattr(update, CREATEREPO_UPDATE_RECORD_ATTRS.SUMMARY) or '',
+            'version': getattr(update, CREATEREPO_UPDATE_RECORD_ATTRS.VERSION) or '',
+            'update_type': getattr(update, CREATEREPO_UPDATE_RECORD_ATTRS.TYPE) or '',
+            'severity': getattr(update, CREATEREPO_UPDATE_RECORD_ATTRS.SEVERITY) or '',
+            'solution': getattr(update, CREATEREPO_UPDATE_RECORD_ATTRS.SOLUTION) or '',
+            'release': getattr(update, CREATEREPO_UPDATE_RECORD_ATTRS.RELEASE) or '',
+            'rights': getattr(update, CREATEREPO_UPDATE_RECORD_ATTRS.RIGHTS) or '',
+            'pushcount': getattr(update, CREATEREPO_UPDATE_RECORD_ATTRS.PUSHCOUNT) or ''
+        }
 
 
 class UpdateCollection(models.Model):
@@ -302,6 +383,23 @@ class UpdateCollection(models.Model):
 
     update_record = models.ForeignKey(UpdateRecord, related_name="collections",
                                       on_delete=models.CASCADE)
+
+    @classmethod
+    def createrepo_to_dict(cls, collection):
+        """
+        Convert createrepo_c update collection object to dict for instantiating UpdateCollection.
+
+        Args:
+            collection(createrepo_c.UpdateCollection): a UpdateCollection to convert
+
+        Returns:
+            dict: data for UpdateCollection content creation
+
+        """
+        return {
+            'name': getattr(collection, CREATEREPO_UPDATE_COLLECTION_ATTRS.NAME),
+            'shortname': getattr(collection, CREATEREPO_UPDATE_COLLECTION_ATTRS.SHORTNAME)
+        }
 
 
 class UpdateCollectionPackage(models.Model):
@@ -352,6 +450,31 @@ class UpdateCollectionPackage(models.Model):
 
     update_collection = models.ForeignKey(UpdateCollection, related_name='packages',
                                           on_delete=models.CASCADE)
+
+    @classmethod
+    def createrepo_to_dict(cls, package):
+        """
+        Convert update collection package to dict for instantiating UpdateCollectionPackage.
+
+        Args:
+            package(createrepo_c.UpdateCollectionPackage): a UpdateCollectionPackage to convert
+
+        Returns:
+            dict: data for UpdateCollectionPackage content creation
+
+        """
+        return {
+            'arch': getattr(package, CREATEREPO_UPDATE_COLLECTION_PACKAGE_ATTRS.ARCH),
+            'epoch': getattr(package, CREATEREPO_UPDATE_COLLECTION_PACKAGE_ATTRS.EPOCH),
+            'filename': getattr(package, CREATEREPO_UPDATE_COLLECTION_PACKAGE_ATTRS.FILENAME),
+            'name': getattr(package, CREATEREPO_UPDATE_COLLECTION_PACKAGE_ATTRS.NAME),
+            'reboot_suggested': getattr(package, CREATEREPO_UPDATE_COLLECTION_PACKAGE_ATTRS.REBOOT_SUGGESTED),  # noqa
+            'release': getattr(package, CREATEREPO_UPDATE_COLLECTION_PACKAGE_ATTRS.RELEASE),
+            'src': getattr(package, CREATEREPO_UPDATE_COLLECTION_PACKAGE_ATTRS.SRC),
+            'sum': getattr(package, CREATEREPO_UPDATE_COLLECTION_PACKAGE_ATTRS.SUM),
+            'sum_type': getattr(package, CREATEREPO_UPDATE_COLLECTION_PACKAGE_ATTRS.SUM_TYPE),
+            'version': getattr(package, CREATEREPO_UPDATE_COLLECTION_PACKAGE_ATTRS.VERSION)
+        }
 
 
 class RpmRemote(Remote):

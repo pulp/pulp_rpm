@@ -56,7 +56,7 @@ class RpmRemoteViewSet(RemoteViewSet):
         responses={202: AsyncOperationResponseSerializer}
     )
     @detail_route(methods=('post',), serializer_class=RepositorySyncURLSerializer)
-    def synchronize(self, request, pk):
+    def sync(self, request, pk):
         """
         Dispatches a sync task.
         """
