@@ -9,9 +9,9 @@ from pulp_rpm.app.constants import CHECKSUM_CHOICES
 log = getLogger(__name__)
 
 
-class RpmContent(Content):
+class Package(Content):
     """
-    The "rpm" content type.
+    The "Package" content type. Formerly "rpm" in Pulp 2.
 
     Maps directly to the fields provided by createrepo_c.
     https://github.com/rpm-software-management/createrepo_c/
@@ -103,7 +103,7 @@ class RpmContent(Content):
             attribute in the primary XML.
     """
 
-    TYPE = 'rpm'
+    TYPE = 'package'
 
     # Required metadata
     name = models.TextField()
@@ -193,16 +193,6 @@ class RpmContent(Content):
         unique_together = (
             'name', 'epoch', 'version', 'release', 'arch', 'checksum_type', 'pkgId'
         )
-
-
-class SrpmContent(RpmContent):
-    """
-    The "srpm" content type.
-
-    (same as the "rpm" content type)
-    """
-
-    TYPE = 'srpm'
 
 
 class UpdateRecord(Content):

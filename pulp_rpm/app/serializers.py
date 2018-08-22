@@ -1,15 +1,14 @@
 from pulpcore.plugin.serializers import ContentSerializer, RemoteSerializer, PublisherSerializer
 
-from pulp_rpm.app.models import RpmContent, RpmRemote, RpmPublisher
+from pulp_rpm.app.models import Package, RpmRemote, RpmPublisher
 
 
-class RpmContentSerializer(ContentSerializer):
+class PackageSerializer(ContentSerializer):
     """
-    A Serializer for RpmContent.
+    A Serializer for Package.
 
-    Add serializers for the new fields defined in RpmContent and
-    add those fields to the Meta class keeping fields from the parent class as well.
-    Provide help_text.
+    Add serializers for the new fields defined in Package and add those fields to the Meta class
+    keeping fields from the parent class as well. Provide help_text.
 
     For example::
 
@@ -19,12 +18,12 @@ class RpmContentSerializer(ContentSerializer):
 
     class Meta:
         fields = ContentSerializer.Meta.fields + ('field1', 'field2', 'field3')
-        model = RpmContent
+        model = Package
     """
 
     class Meta:
         fields = ContentSerializer.Meta.fields
-        model = RpmContent
+        model = Package
 
 
 class RpmRemoteSerializer(RemoteSerializer):
@@ -32,7 +31,7 @@ class RpmRemoteSerializer(RemoteSerializer):
     A Serializer for RpmRemote.
 
     Add any new fields if defined on RpmRemote.
-    Similar to the example above, in RpmContentSerializer.
+    Similar to the example above, in PackageSerializer.
     Additional validators can be added to the parent validators list
 
     For example::
@@ -51,7 +50,7 @@ class RpmPublisherSerializer(PublisherSerializer):
     A Serializer for RpmPublisher.
 
     Add any new fields if defined on RpmPublisher.
-    Similar to the example above, in RpmContentSerializer.
+    Similar to the example above, in PackageSerializer.
     Additional validators can be added to the parent validators list
 
     For example::
