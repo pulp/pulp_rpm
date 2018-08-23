@@ -3,7 +3,7 @@ from logging import getLogger
 from django.db import models
 from pulpcore.plugin.models import Content, Remote, Publisher
 
-from pulp_rpm.app.constants import CHECKSUM_CHOICES
+from pulp_rpm.app.constants import CHECKSUM_CHOICES, CREATEREPO_PACKAGE_ATTRS
 
 
 log = getLogger(__name__)
@@ -194,6 +194,56 @@ class RpmContent(Content):
             'name', 'epoch', 'version', 'release', 'arch', 'checksum_type', 'pkgId'
         )
 
+    @classmethod
+    def createrepo_to_dict(cls, package):
+        """
+        Convert createrepo_c package object to dict for instantiating RpmContent/SrpmContent.
+
+        Args:
+            package(createrepo_c.Package): a RPM/SRPM package to convert
+
+        Returns:
+            dict: all data for RPM/SRPM content creation
+
+        """
+        return {
+            'arch': getattr(package, CREATEREPO_PACKAGE_ATTRS.ARCH),
+            'changelogs': getattr(package, CREATEREPO_PACKAGE_ATTRS.CHANGELOGS) or [],
+            'checksum_type': getattr(package, CREATEREPO_PACKAGE_ATTRS.CHECKSUM_TYPE),
+            'conflicts': getattr(package, CREATEREPO_PACKAGE_ATTRS.CONFLICTS) or [],
+            'description': getattr(package, CREATEREPO_PACKAGE_ATTRS.DESCRIPTION) or '',
+            'enhances': getattr(package, CREATEREPO_PACKAGE_ATTRS.ENHANCES) or [],
+            'epoch': getattr(package, CREATEREPO_PACKAGE_ATTRS.EPOCH) or '0',
+            'files': getattr(package, CREATEREPO_PACKAGE_ATTRS.FILES) or [],
+            'location_base': getattr(package, CREATEREPO_PACKAGE_ATTRS.LOCATION_BASE) or '',
+            'location_href': getattr(package, CREATEREPO_PACKAGE_ATTRS.LOCATION_HREF),
+            'name': getattr(package, CREATEREPO_PACKAGE_ATTRS.NAME),
+            'obsoletes': getattr(package, CREATEREPO_PACKAGE_ATTRS.OBSOLETES) or [],
+            'pkgId': getattr(package, CREATEREPO_PACKAGE_ATTRS.PKGID),
+            'provides': getattr(package, CREATEREPO_PACKAGE_ATTRS.PROVIDES) or [],
+            'recommends': getattr(package, CREATEREPO_PACKAGE_ATTRS.RECOMMENDS) or [],
+            'release': getattr(package, CREATEREPO_PACKAGE_ATTRS.RELEASE),
+            'requires': getattr(package, CREATEREPO_PACKAGE_ATTRS.REQUIRES) or [],
+            'rpm_buildhost': getattr(package, CREATEREPO_PACKAGE_ATTRS.RPM_BUILDHOST) or '',
+            'rpm_group': getattr(package, CREATEREPO_PACKAGE_ATTRS.RPM_GROUP) or '',
+            'rpm_header_end': getattr(package, CREATEREPO_PACKAGE_ATTRS.RPM_HEADER_END),
+            'rpm_header_start': getattr(package, CREATEREPO_PACKAGE_ATTRS.RPM_HEADER_START),
+            'rpm_license': getattr(package, CREATEREPO_PACKAGE_ATTRS.RPM_LICENSE) or '',
+            'rpm_packager': getattr(package, CREATEREPO_PACKAGE_ATTRS.RPM_PACKAGER) or '',
+            'rpm_sourcerpm': getattr(package, CREATEREPO_PACKAGE_ATTRS.RPM_SOURCERPM) or '',
+            'rpm_vendor': getattr(package, CREATEREPO_PACKAGE_ATTRS.RPM_VENDOR) or '',
+            'size_archive': getattr(package, CREATEREPO_PACKAGE_ATTRS.SIZE_ARCHIVE),
+            'size_installed': getattr(package, CREATEREPO_PACKAGE_ATTRS.SIZE_INSTALLED),
+            'size_package': getattr(package, CREATEREPO_PACKAGE_ATTRS.SIZE_PACKAGE),
+            'suggests': getattr(package, CREATEREPO_PACKAGE_ATTRS.SUGGESTS) or [],
+            'summary': getattr(package, CREATEREPO_PACKAGE_ATTRS.SUMMARY) or '',
+            'supplements': getattr(package, CREATEREPO_PACKAGE_ATTRS.SUPPLEMENTS) or [],
+            'time_build': getattr(package, CREATEREPO_PACKAGE_ATTRS.TIME_BUILD),
+            'time_file': getattr(package, CREATEREPO_PACKAGE_ATTRS.TIME_FILE),
+            'url': getattr(package, CREATEREPO_PACKAGE_ATTRS.URL) or '',
+            'version': getattr(package, CREATEREPO_PACKAGE_ATTRS.VERSION)
+        }
+
 
 class SrpmContent(RpmContent):
     """
@@ -203,6 +253,20 @@ class SrpmContent(RpmContent):
     """
 
     TYPE = 'srpm'
+
+    @classmethod
+    def is_srpm(cls, package):
+        """
+        Check if a package is a SRPM.
+
+        Args:
+            package: any object with attribute 'arch'
+
+        Returns:
+            bool: True when SRPM
+
+        """
+        return getattr(package, CREATEREPO_PACKAGE_ATTRS.ARCH, '') == 'src'
 
 
 class UpdateRecord(Content):
@@ -251,6 +315,8 @@ class UpdateRecord(Content):
             List of UpdateReferences - see comments below
 
     """
+
+    TYPE = 'update'
 
     # Required metadata
     errata_id = models.TextField()  # TODO: change field name?
