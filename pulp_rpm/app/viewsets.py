@@ -18,28 +18,28 @@ from pulpcore.plugin.viewsets import (
 )
 
 from pulp_rpm.app import tasks
-from pulp_rpm.app.models import RpmContent, RpmRemote, RpmPublisher
+from pulp_rpm.app.models import Package, RpmRemote, RpmPublisher
 from pulp_rpm.app.serializers import (
-    RpmContentSerializer,
+    PackageSerializer,
     RpmRemoteSerializer,
     RpmPublisherSerializer
 )
 
 
-class RpmContentViewSet(ContentViewSet):
+class PackageViewSet(ContentViewSet):
     """
-    A ViewSet for RpmContent.
+    A ViewSet for Package.
 
     Define endpoint name which will appear in the API endpoint for this content type.
     For example::
-        http://pulp.example.com/pulp/api/v3/content/rpm/
+        http://pulp.example.com/pulp/api/v3/content/rpm/packages/
 
-    Also specify queryset and serializer for RpmContent.
+    Also specify queryset and serializer for Package.
     """
 
-    endpoint_name = 'rpm'
-    queryset = RpmContent.objects.all()
-    serializer_class = RpmContentSerializer
+    endpoint_name = 'rpm/packages'
+    queryset = Package.objects.all()
+    serializer_class = PackageSerializer
 
 
 class RpmRemoteViewSet(RemoteViewSet):
