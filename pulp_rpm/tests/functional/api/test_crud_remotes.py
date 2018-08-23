@@ -1,5 +1,5 @@
 # coding=utf-8
-"""Tests that CRUD remotes."""
+"""Tests that CRUD rpm remotes."""
 from random import choice
 import unittest
 
@@ -7,14 +7,11 @@ from requests.exceptions import HTTPError
 
 from pulp_smash import api, config, utils
 from pulp_smash.pulp3.constants import REPO_PATH
-from pulp_smash.pulp3.utils import gen_remote, gen_repo
+from pulp_smash.pulp3.utils import gen_repo
 
-from pulp_rpm.tests.functional.constants import (
-    RPM_SIGNED_FIXTURE_URL,
-    RPM_REMOTE_PATH
-)
+from pulp_rpm.tests.functional.constants import RPM_REMOTE_PATH
+from pulp_rpm.tests.functional.utils import skip_if, gen_rpm_remote
 from pulp_rpm.tests.functional.utils import set_up_module as setUpModule  # noqa:F401
-from pulp_rpm.tests.functional.utils import skip_if
 
 
 class CRUDRemotesTestCase(unittest.TestCase):
@@ -24,7 +21,7 @@ class CRUDRemotesTestCase(unittest.TestCase):
     def setUpClass(cls):
         """Create class-wide variables.
 
-        In order to create an remote a repository has to be created first.
+        In order to create a remote a repository has to be created first.
         """
         cls.cfg = config.get_config()
         cls.client = api.Client(cls.cfg, api.json_handler)
@@ -53,14 +50,14 @@ class CRUDRemotesTestCase(unittest.TestCase):
         See: `Pulp Smash #1055
         <https://github.com/PulpQE/pulp-smash/issues/1055>`_.
         """
-        body = gen_remote(RPM_SIGNED_FIXTURE_URL)
+        body = gen_rpm_remote()
         body['name'] = self.remote['name']
         with self.assertRaises(HTTPError):
             self.client.post(RPM_REMOTE_PATH, body)
 
     @skip_if(bool, 'remote', False)
     def test_02_read_remote(self):
-        """Read an remote by its href."""
+        """Read a remote by its href."""
         remote = self.client.get(self.remote['_href'])
         for key, val in self.remote.items():
             with self.subTest(key=key):
@@ -68,7 +65,7 @@ class CRUDRemotesTestCase(unittest.TestCase):
 
     @skip_if(bool, 'remote', False)
     def test_02_read_remotes(self):
-        """Read an remote by its name."""
+        """Read a remote by its name."""
         page = self.client.get(RPM_REMOTE_PATH, params={
             'name': self.remote['name']
         })
@@ -79,7 +76,7 @@ class CRUDRemotesTestCase(unittest.TestCase):
 
     @skip_if(bool, 'remote', False)
     def test_03_partially_update(self):
-        """Update an remote using HTTP PATCH."""
+        """Update a remote using HTTP PATCH."""
         body = _gen_verbose_remote()
         self.client.patch(self.remote['_href'], body)
         for key in ('username', 'password'):
@@ -91,7 +88,7 @@ class CRUDRemotesTestCase(unittest.TestCase):
 
     @skip_if(bool, 'remote', False)
     def test_04_fully_update(self):
-        """Update an remote using HTTP PUT."""
+        """Update a remote using HTTP PUT."""
         body = _gen_verbose_remote()
         self.client.put(self.remote['_href'], body)
         for key in ('username', 'password'):
@@ -103,7 +100,7 @@ class CRUDRemotesTestCase(unittest.TestCase):
 
     @skip_if(bool, 'remote', False)
     def test_05_delete(self):
-        """Delete an remote."""
+        """Delete a remote."""
         self.client.delete(self.remote['_href'])
         with self.assertRaises(HTTPError):
             self.client.get(self.remote['_href'])
@@ -120,14 +117,14 @@ class CreateRemoteNoURLTestCase(unittest.TestCase):
         * `Pulp #3395 <https://pulp.plan.io/issues/3395>`_
         * `Pulp Smash #984 <https://github.com/PulpQE/pulp-smash/issues/984>`_
         """
-        body = gen_remote(utils.uuid4())
+        body = gen_rpm_remote()
         del body['url']
         with self.assertRaises(HTTPError):
             api.Client(config.get_config()).post(RPM_REMOTE_PATH, body)
 
 
 def _gen_verbose_remote():
-    """Return a semi-random dict for use in defining an remote.
+    """Return a semi-random dict for use in defining a remote.
 
     For most tests, it's desirable to create remotes with as few attributes
     as possible, so that the tests can specifically target and attempt to break
@@ -136,7 +133,7 @@ def _gen_verbose_remote():
 
     Note that 'username' and 'password' are write-only attributes.
     """
-    attrs = gen_remote(RPM_SIGNED_FIXTURE_URL)
+    attrs = gen_rpm_remote()
     attrs.update({
         'password': utils.uuid4(),
         'username': utils.uuid4(),

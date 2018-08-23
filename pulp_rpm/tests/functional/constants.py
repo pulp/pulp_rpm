@@ -2,19 +2,28 @@
 from types import MappingProxyType
 from urllib.parse import urljoin
 
-from pulp_smash.constants import PULP_FIXTURES_BASE_URL  # noqa:F401
+from pulp_smash.constants import PULP_FIXTURES_BASE_URL
 from pulp_smash.pulp3.constants import (
     BASE_PUBLISHER_PATH,
     BASE_REMOTE_PATH,
     CONTENT_PATH
 )
 
+
 RPM_CONTENT_PATH = urljoin(CONTENT_PATH, 'rpm/rpms/')
+SRPM_CONTENT_PATH = urljoin(CONTENT_PATH, 'rpm/srpms/')
 
 RPM_REMOTE_PATH = urljoin(BASE_REMOTE_PATH, 'rpm/')
-
 RPM_PUBLISHER_PATH = urljoin(BASE_PUBLISHER_PATH, 'rpm/')
 
+
+RPM_FIXTURE_URL = urljoin(PULP_FIXTURES_BASE_URL, 'rpm/')
+RPM_FIXTURE_COUNT = 35
+RPM_URL = urljoin(RPM_FIXTURE_URL, 'bear-4.1-1.noarch.rpm')
+
+SRPM_FIXTURE_URL = urljoin(PULP_FIXTURES_BASE_URL, 'srpm/')
+SRPM_FIXTURE_COUNT = 3
+SRPM_URL = urljoin(RPM_FIXTURE_URL, 'test-srpm01-1.0-1.src.rpm')
 
 RPM_DATA = MappingProxyType({
     'name': 'bear',
