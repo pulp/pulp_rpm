@@ -19,7 +19,6 @@ from pulp_rpm.tests.functional.utils import gen_rpm_remote
 from pulp_rpm.tests.functional.utils import set_up_module as setUpModule  # noqa:F401
 
 
-@unittest.skip("FIXME: Enable after adding sync support")
 class BasicSyncRpmRepoTestCase(unittest.TestCase):
     """Sync repositories with the rpm plugin."""
 

@@ -109,7 +109,6 @@ def _gen_content_unit_attrs(artifact):
     return {'artifact': artifact['_href']}
 
 
-@unittest.skip("FIXME: Re-enable once sync support is added")
 class DeleteContentUnitRepoVersionTestCase(unittest.TestCase):
     """Test whether content unit used by a repo version can be deleted.
 
