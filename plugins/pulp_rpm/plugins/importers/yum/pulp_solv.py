@@ -169,8 +169,8 @@ def rpm_dependency_conversion(solvable, unit_name, unit_flags, unit_evr,
             else:
                 raise ValueError('Unsupported dependency flags %s' % unit_flags)
             dep = dep.Rel(rel_flags, pool.Dep(unit_evr))
-        # register the constructed solvable dependency
-        solvable.add_deparray(keyname, dep)
+    # register the constructed solvable dependency
+    solvable.add_deparray(keyname, dep)
 
 
 def rpm_dependency_attribute_factory(attribute_name, dependency_key=None):
