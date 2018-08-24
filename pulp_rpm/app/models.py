@@ -297,6 +297,9 @@ class UpdateRecord(Content):
 
     TYPE = 'update'
 
+    # propery to temporarily store collections in memory
+    _collections = []
+
     # Required metadata
     errata_id = models.TextField()  # TODO: change field name?
     updated_date = models.TextField()
@@ -377,6 +380,9 @@ class UpdateCollection(models.Model):
 
         update_record (models.ForeignKey): The associated UpdateRecord
     """
+
+    # property to temporarily store packages in memory during sync
+    _packages = []
 
     name = models.TextField(blank=True)
     shortname = models.TextField(blank=True)
@@ -464,16 +470,16 @@ class UpdateCollectionPackage(models.Model):
 
         """
         return {
-            'arch': getattr(package, CREATEREPO_UPDATE_COLLECTION_PACKAGE_ATTRS.ARCH),
-            'epoch': getattr(package, CREATEREPO_UPDATE_COLLECTION_PACKAGE_ATTRS.EPOCH),
-            'filename': getattr(package, CREATEREPO_UPDATE_COLLECTION_PACKAGE_ATTRS.FILENAME),
-            'name': getattr(package, CREATEREPO_UPDATE_COLLECTION_PACKAGE_ATTRS.NAME),
-            'reboot_suggested': getattr(package, CREATEREPO_UPDATE_COLLECTION_PACKAGE_ATTRS.REBOOT_SUGGESTED),  # noqa
-            'release': getattr(package, CREATEREPO_UPDATE_COLLECTION_PACKAGE_ATTRS.RELEASE),
-            'src': getattr(package, CREATEREPO_UPDATE_COLLECTION_PACKAGE_ATTRS.SRC),
-            'sum': getattr(package, CREATEREPO_UPDATE_COLLECTION_PACKAGE_ATTRS.SUM),
-            'sum_type': getattr(package, CREATEREPO_UPDATE_COLLECTION_PACKAGE_ATTRS.SUM_TYPE),
-            'version': getattr(package, CREATEREPO_UPDATE_COLLECTION_PACKAGE_ATTRS.VERSION)
+            'arch': getattr(package, CREATEREPO_UPDATE_COLLECTION_PACKAGE_ATTRS.ARCH) or '',
+            'epoch': getattr(package, CREATEREPO_UPDATE_COLLECTION_PACKAGE_ATTRS.EPOCH) or '0',
+            'filename': getattr(package, CREATEREPO_UPDATE_COLLECTION_PACKAGE_ATTRS.FILENAME) or '',
+            'name': getattr(package, CREATEREPO_UPDATE_COLLECTION_PACKAGE_ATTRS.NAME) or '',
+            'reboot_suggested': getattr(package, CREATEREPO_UPDATE_COLLECTION_PACKAGE_ATTRS.REBOOT_SUGGESTED) or '',  # noqa
+            'release': getattr(package, CREATEREPO_UPDATE_COLLECTION_PACKAGE_ATTRS.RELEASE) or '',
+            'src': getattr(package, CREATEREPO_UPDATE_COLLECTION_PACKAGE_ATTRS.SRC) or '',
+            'sum': getattr(package, CREATEREPO_UPDATE_COLLECTION_PACKAGE_ATTRS.SUM) or '',
+            'sum_type': getattr(package, CREATEREPO_UPDATE_COLLECTION_PACKAGE_ATTRS.SUM_TYPE) or '',
+            'version': getattr(package, CREATEREPO_UPDATE_COLLECTION_PACKAGE_ATTRS.VERSION) or ''
         }
 
 
