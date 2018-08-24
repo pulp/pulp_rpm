@@ -327,9 +327,11 @@ class UpdateRecord(Content):
     digest = models.TextField()
 
     class Meta:
-        unique_together = ()
-        # TODO: Find some way to enforce uniqueness per-repository
-        # make a hash of the natural key, store the hash?
+        unique_together = (
+            'errata_id', 'updated_date', 'description', 'issued_date', 'fromstr', 'status', 'title',
+            'summary', 'version', 'update_type', 'severity', 'solution', 'release', 'rights',
+            'pushcount', 'digest'
+        )
 
     @classmethod
     def createrepo_to_dict(cls, update):
@@ -345,9 +347,9 @@ class UpdateRecord(Content):
         """
         return {
             'errata_id': getattr(update, CREATEREPO_UPDATE_RECORD_ATTRS.ID),
-            'updated_date': getattr(update, CREATEREPO_UPDATE_RECORD_ATTRS.UPDATED_DATE) or '',
+            'updated_date': str(getattr(update, CREATEREPO_UPDATE_RECORD_ATTRS.UPDATED_DATE)),
             'description': getattr(update, CREATEREPO_UPDATE_RECORD_ATTRS.DESCRIPTION) or '',
-            'issued_date': getattr(update, CREATEREPO_UPDATE_RECORD_ATTRS.ISSUED_DATE) or '',
+            'issued_date': str(getattr(update, CREATEREPO_UPDATE_RECORD_ATTRS.ISSUED_DATE)) or '',
             'fromstr': getattr(update, CREATEREPO_UPDATE_RECORD_ATTRS.FROMSTR) or '',
             'status': getattr(update, CREATEREPO_UPDATE_RECORD_ATTRS.STATUS) or '',
             'title': getattr(update, CREATEREPO_UPDATE_RECORD_ATTRS.TITLE) or '',
@@ -447,7 +449,7 @@ class UpdateCollectionPackage(models.Model):
     epoch = models.TextField(blank=True)
     filename = models.TextField(blank=True)
     name = models.TextField(blank=True)
-    reboot_suggested = models.BooleanField(blank=True)
+    reboot_suggested = models.BooleanField(default=False)
     release = models.TextField(blank=True)
     src = models.TextField(blank=True)
     sum = models.TextField(blank=True)
@@ -474,7 +476,7 @@ class UpdateCollectionPackage(models.Model):
             'epoch': getattr(package, CREATEREPO_UPDATE_COLLECTION_PACKAGE_ATTRS.EPOCH) or '0',
             'filename': getattr(package, CREATEREPO_UPDATE_COLLECTION_PACKAGE_ATTRS.FILENAME) or '',
             'name': getattr(package, CREATEREPO_UPDATE_COLLECTION_PACKAGE_ATTRS.NAME) or '',
-            'reboot_suggested': getattr(package, CREATEREPO_UPDATE_COLLECTION_PACKAGE_ATTRS.REBOOT_SUGGESTED) or '',  # noqa
+            'reboot_suggested': getattr(package, CREATEREPO_UPDATE_COLLECTION_PACKAGE_ATTRS.REBOOT_SUGGESTED),  # noqa
             'release': getattr(package, CREATEREPO_UPDATE_COLLECTION_PACKAGE_ATTRS.RELEASE) or '',
             'src': getattr(package, CREATEREPO_UPDATE_COLLECTION_PACKAGE_ATTRS.SRC) or '',
             'sum': getattr(package, CREATEREPO_UPDATE_COLLECTION_PACKAGE_ATTRS.SUM) or '',
