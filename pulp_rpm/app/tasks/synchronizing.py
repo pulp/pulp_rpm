@@ -16,7 +16,8 @@ from pulpcore.plugin.stages import (
 )
 
 from pulp_rpm.app.constants import CHECKSUM_TYPES, PACKAGE_REPODATA, UPDATE_REPODATA
-from pulp_rpm.app.models import Package, RpmRemote, UpdateRecord
+from pulp_rpm.app.models import (Package, RpmRemote, UpdateCollection,
+                                 UpdateCollectionPackage, UpdateRecord)
 
 log = logging.getLogger(__name__)
 
@@ -230,6 +231,17 @@ class RpmFirstStage(Stage):
                         for update in updates:
                             update_record = UpdateRecord(**UpdateRecord.createrepo_to_dict(update))
                             update_record.digest = hash_update_record(update)
+
+                            for collection in update.collections:
+                                coll_dict = UpdateCollection.createrepo_to_dict(collection)
+                                coll = UpdateCollection(**coll_dict)
+
+                                for package in collection.packages:
+                                    pkg_dict = UpdateCollectionPackage.createrepo_to_dict(package)
+                                    pkg = UpdateCollectionPackage(**pkg_dict)
+                                    coll._packages.append(pkg)
+
+                                update_record._collections.append(coll)
 
                             dc = DeclarativeContent(content=update_record)
                             await out_q.put(dc)
