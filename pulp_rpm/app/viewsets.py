@@ -20,10 +20,12 @@ from pulpcore.plugin.viewsets import (
 from pulp_rpm.app import tasks
 from pulp_rpm.app.models import Package, RpmRemote, RpmPublisher, UpdateRecord
 from pulp_rpm.app.serializers import (
+    MinimalPackageSerializer,
     PackageSerializer,
     RpmRemoteSerializer,
     RpmPublisherSerializer,
-    UpdateRecordSerializer
+    UpdateRecordSerializer,
+    MinimalUpdateRecordSerializer
 )
 
 
@@ -41,6 +43,7 @@ class PackageViewSet(ContentViewSet):
     endpoint_name = 'rpm/packages'
     queryset = Package.objects.all()
     serializer_class = PackageSerializer
+    minimal_serializer_class = MinimalPackageSerializer
 
 
 class RpmRemoteViewSet(RemoteViewSet):
@@ -136,3 +139,4 @@ class UpdateRecordViewSet(ContentViewSet):
     endpoint_name = 'rpm/errata'
     queryset = UpdateRecord.objects.all()
     serializer_class = UpdateRecordSerializer
+    minimal_serializer_class = MinimalUpdateRecordSerializer
