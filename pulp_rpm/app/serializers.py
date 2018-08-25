@@ -1,6 +1,6 @@
 from pulpcore.plugin.serializers import ContentSerializer, RemoteSerializer, PublisherSerializer
 
-from pulp_rpm.app.models import Package, RpmRemote, RpmPublisher
+from pulp_rpm.app.models import Package, RpmRemote, RpmPublisher, UpdateRecord
 
 
 class PackageSerializer(ContentSerializer):
@@ -9,16 +9,6 @@ class PackageSerializer(ContentSerializer):
 
     Add serializers for the new fields defined in Package and add those fields to the Meta class
     keeping fields from the parent class as well. Provide help_text.
-
-    For example::
-
-    field1 = serializers.TextField(help_text="field1 description")
-    field2 = serializers.IntegerField(help_text="field2 description")
-    field3 = serializers.CharField(help_text="field3 description")
-
-    class Meta:
-        fields = ContentSerializer.Meta.fields + ('field1', 'field2', 'field3')
-        model = Package
     """
 
     class Meta:
@@ -62,3 +52,16 @@ class RpmPublisherSerializer(PublisherSerializer):
     class Meta:
         fields = PublisherSerializer.Meta.fields
         model = RpmPublisher
+
+
+class UpdateRecordSerializer(ContentSerializer):
+    """
+    A Serializer for UpdateRecord.
+
+    Add serializers for the new fields defined in UpdateRecord and add those fields to the Meta
+    class keeping fields from the parent class as well. Provide help_text.
+    """
+
+    class Meta:
+        fields = ContentSerializer.Meta.fields
+        model = UpdateRecord

@@ -18,11 +18,12 @@ from pulpcore.plugin.viewsets import (
 )
 
 from pulp_rpm.app import tasks
-from pulp_rpm.app.models import Package, RpmRemote, RpmPublisher
+from pulp_rpm.app.models import Package, RpmRemote, RpmPublisher, UpdateRecord
 from pulp_rpm.app.serializers import (
     PackageSerializer,
     RpmRemoteSerializer,
-    RpmPublisherSerializer
+    RpmPublisherSerializer,
+    UpdateRecordSerializer
 )
 
 
@@ -119,3 +120,19 @@ class RpmPublisherViewSet(PublisherViewSet):
             }
         )
         return OperationPostponedResponse(result, request)
+
+
+class UpdateRecordViewSet(ContentViewSet):
+    """
+    A ViewSet for UpdateRecord.
+
+    Define endpoint name which will appear in the API endpoint for this content type.
+    For example::
+        http://pulp.example.com/pulp/api/v3/content/rpm/errata/
+
+    Also specify queryset and serializer for UpdateRecord.
+    """
+
+    endpoint_name = 'rpm/errata'
+    queryset = UpdateRecord.objects.all()
+    serializer_class = UpdateRecordSerializer

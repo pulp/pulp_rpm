@@ -7,12 +7,22 @@ from urllib.parse import urljoin
 
 import createrepo_c as cr
 
-from pulpcore.plugin.models import Artifact, ProgressBar, Repository
+from pulpcore.plugin.models import Artifact, ProgressBar, Repository, RepositoryVersion
 from pulpcore.plugin.stages import (
     DeclarativeArtifact,
     DeclarativeContent,
-    DeclarativeVersion,
     Stage
+)
+from pulpcore.plugin.tasking import WorkingDirectory
+from pulpcore.plugin.stages import (
+    ArtifactDownloader,
+    ArtifactSaver,
+    ContentUnitAssociation,
+    ContentUnitSaver,
+    create_pipeline,
+    EndStage,
+    QueryExistingArtifacts,
+    QueryExistingContentUnits
 )
 
 from pulp_rpm.app.constants import CHECKSUM_TYPES, PACKAGE_REPODATA, UPDATE_REPODATA
@@ -46,7 +56,17 @@ def synchronize(remote_pk, repository_pk):
         r=repository.name, p=remote.name))
 
     first_stage = RpmFirstStage(remote)
-    DeclarativeVersion(first_stage, repository).create()
+    with WorkingDirectory():
+        with RepositoryVersion.create(repository) as new_version:
+            loop = asyncio.get_event_loop()
+            stages = [
+                first_stage,
+                QueryExistingArtifacts(), ArtifactDownloader(), ArtifactSaver(),
+                QueryExistingContentUnits(), ContentUnitSaver(), ErrataRelatedModelSaver(),
+                ContentUnitAssociation(new_version), EndStage()
+            ]
+            pipeline = create_pipeline(stages)
+            loop.run_until_complete(pipeline)
 
 
 class RpmFirstStage(Stage):
@@ -67,6 +87,96 @@ class RpmFirstStage(Stage):
         """
         self.remote = remote
 
+    @staticmethod
+    async def parse_updateinfo(updateinfo_xml_path):
+        """
+        Parse updateinfo.xml to extact update info.
+
+        Args:
+            updateinfo_xml_path: a path to a downloaded updateinfo.xml
+
+        Returns:
+            :obj:`list` of :obj:`createrepo_c.UpdateRecord`: parsed update records
+
+        """
+        uinfo = cr.UpdateInfo()
+
+        # TODO: handle parsing errors/warnings, warningcb callback can be used
+        cr.xml_parse_updateinfo(updateinfo_xml_path, uinfo)
+        return uinfo.updates
+
+    @staticmethod
+    def hash_update_record(update):
+        """
+        Find the hex digest for an update record xml from creatrepo_c.
+
+        Args:
+            update(createrepo_c.UpdateRecord): update record
+
+        Returns:
+            str: a hex digest representing the update record
+
+        """
+        uinfo = cr.UpdateInfo()
+        uinfo.append(update)
+        return hashlib.sha256(uinfo.xml_dump().encode('utf-8')).hexdigest()
+
+    @staticmethod
+    async def parse_repodata(primary_xml_path, filelists_xml_path, other_xml_path):
+        """
+        Parse repodata to extract package info.
+
+        Args:
+            primary_xml_path(str): a path to a downloaded primary.xml
+            filelists_xml_path(str): a path to a downloaded filelists.xml
+            other_xml_path(str): a path to a downloaded other.xml
+
+        Returns:
+            dict: createrepo_c package objects with the pkgId as a key
+
+        """
+        def pkgcb(pkg):
+            """
+            A callback which is used when a whole package entry in xml is parsed.
+
+            Args:
+                pkg(preaterepo_c.Package): a parsed metadata for a package
+
+            """
+            packages[pkg.pkgId] = pkg
+
+        def newpkgcb(pkgId, name, arch):
+            """
+            A callback which is used when a new package entry is encountered.
+
+            Only opening <package> element is parsed at that moment.
+            This function has to return a package which parsed data will be added to
+            or None if a package should be skipped.
+
+            pkgId, name and arch of a package can be used to skip further parsing. Available
+            only for filelists.xml and other.xml.
+
+            Args:
+                pkgId(str): pkgId of a package
+                name(str): name of a package
+                arch(str): arch of a package
+
+            Returns:
+                createrepo_c.Package: a package which parsed data should be added to.
+
+                If None is returned, further parsing of a package will be skipped.
+
+            """
+            return packages.get(pkgId, None)
+
+        packages = {}
+
+        # TODO: handle parsing errors/warnings, warningcb callback can be used below
+        cr.xml_parse_primary(primary_xml_path, pkgcb=pkgcb, do_files=False)
+        cr.xml_parse_filelists(filelists_xml_path, newpkgcb=newpkgcb)
+        cr.xml_parse_other(other_xml_path, newpkgcb=newpkgcb)
+        return packages
+
     async def __call__(self, in_q, out_q):
         """
         Build `DeclarativeContent` from the repodata.
@@ -76,93 +186,6 @@ class RpmFirstStage(Stage):
             out_q (asyncio.Queue): The out_q to send `DeclarativeContent` objects to
 
         """
-        async def parse_repodata(primary_xml_path, filelists_xml_path, other_xml_path):
-            """
-            Parse repodata to extract package info.
-
-            Args:
-                primary_xml_path(str): a path to a downloaded primary.xml
-                filelists_xml_path(str): a path to a downloaded filelists.xml
-                other_xml_path(str): a path to a downloaded other.xml
-
-            Returns:
-                dict: createrepo_c package objects with the pkgId as a key
-
-            """
-            def pkgcb(pkg):
-                """
-                A callback which is used when a whole package entry in xml is parsed.
-
-                Args:
-                    pkg(preaterepo_c.Package): a parsed metadata for a package
-
-                """
-                packages[pkg.pkgId] = pkg
-
-            def newpkgcb(pkgId, name, arch):
-                """
-                A callback which is used when a new package entry is encountered.
-
-                Only opening <package> element is parsed at that moment.
-                This function has to return a package which parsed data will be added to
-                or None if a package should be skipped.
-
-                pkgId, name and arch of a package can be used to skip further parsing. Available
-                only for filelists.xml and other.xml.
-
-                Args:
-                    pkgId(str): pkgId of a package
-                    name(str): name of a package
-                    arch(str): arch of a package
-
-                Returns:
-                    createrepo_c.Package: a package which parsed data should be added to.
-
-                    If None is returned, further parsing of a package will be skipped.
-
-                """
-                return packages.get(pkgId, None)
-
-            packages = {}
-
-            # TODO: handle parsing errors/warnings, warningcb callback can be used below
-            cr.xml_parse_primary(primary_xml_path, pkgcb=pkgcb, do_files=False)
-            cr.xml_parse_filelists(filelists_xml_path, newpkgcb=newpkgcb)
-            cr.xml_parse_other(other_xml_path, newpkgcb=newpkgcb)
-            return packages
-
-        async def parse_updateinfo(updateinfo_xml_path):
-            """
-            Parse updateinfo.xml to extact update info.
-
-            Args:
-                updateinfo_xml_path: a path to a downloaded updateinfo.xml
-
-            Returns:
-                :obj:`list` of :obj:`createrepo_c.UpdateRecord`: parsed update records
-
-            """
-            uinfo = cr.UpdateInfo()
-
-            # TODO: handle parsing errors/warnings, warningcb callback can be used
-            cr.xml_parse_updateinfo(updateinfo_xml_path, uinfo)
-            return uinfo.updates
-
-        def hash_update_record(update):
-            """
-            Find the hex digest for an update record xml from creatrepo_c.
-
-            Args:
-                update(createrepo_c.UpdateRecord): update record
-
-            Returns:
-                str: a hex digest representing the update record
-
-            """
-            uinfo = cr.UpdateInfo()
-            uinfo.append(update)
-            return hashlib.sha256(uinfo.xml_dump().encode('utf-8')).hexdigest()
-
         with ProgressBar(message='Downloading and Parsing Metadata') as pb:
             downloader = self.remote.get_downloader(urljoin(self.remote.url,
                                                             'repodata/repomd.xml'))
@@ -209,9 +232,9 @@ class RpmFirstStage(Stage):
                         pb.done += 3
                         pb.save()
 
-                        packages = await parse_repodata(primary_xml_path,
-                                                        filelists_xml_path,
-                                                        other_xml_path)
+                        packages = await RpmFirstStage.parse_repodata(primary_xml_path,
+                                                                      filelists_xml_path,
+                                                                      other_xml_path)
                         for pkg in packages.values():
                             package = Package(**Package.createrepo_to_dict(pkg))
                             artifact = Artifact(size=package.size_package)
@@ -227,10 +250,10 @@ class RpmFirstStage(Stage):
                         updateinfo_xml_path = results[0].path
                         pb.increment()
 
-                        updates = await parse_updateinfo(updateinfo_xml_path)
+                        updates = await RpmFirstStage.parse_updateinfo(updateinfo_xml_path)
                         for update in updates:
                             update_record = UpdateRecord(**UpdateRecord.createrepo_to_dict(update))
-                            update_record.digest = hash_update_record(update)
+                            update_record.digest = RpmFirstStage.hash_update_record(update)
 
                             for collection in update.collections:
                                 coll_dict = UpdateCollection.createrepo_to_dict(collection)
@@ -245,5 +268,83 @@ class RpmFirstStage(Stage):
 
                             dc = DeclarativeContent(content=update_record)
                             await out_q.put(dc)
+
+        await out_q.put(None)
+
+
+class ErrataRelatedModelSaver(Stage):
+    """
+    A Stages API stage that saves UpdateCollection and UpdateCollectionPackage objects.
+
+    This stage expects :class:`~pulpcore.plugin.stages.DeclarativeContent` units from `in_q` and
+    only performs an action if the content type is :class:`~pulp_rpm.app.models.UpdateRecord`. All
+    other content types are immediately put to `out_q` to be passed down the pipeline.
+
+    This stage drains all available items from `in_q` and batches everything into one large call to
+    the db for efficiency.
+    """
+
+    async def __call__(self, in_q, out_q):
+        """
+        The coroutine for this stage.
+
+        Args:
+            in_q (:class:`asyncio.Queue`): The queue to receive
+                :class:`~pulpcore.plugin.stages.DeclarativeContent` objects from.
+            out_q (:class:`asyncio.Queue`): The queue to put
+                :class:`~pulpcore.plugin.stages.DeclarativeContent` into.
+
+        Returns:
+            The coroutine for this stage.
+
+        """
+        shutdown = False
+        batch = []
+        while not shutdown:
+            try:
+                content = in_q.get_nowait()
+            except asyncio.QueueEmpty:
+                if not batch:
+                    content = await in_q.get()
+                    batch.append(content)
+                    continue
+            else:
+                batch.append(content)
+                continue
+
+            update_collection_to_save = []
+            for declarative_content in batch:
+                if declarative_content is None:
+                    shutdown = True
+                    break
+                if not isinstance(declarative_content.content, UpdateRecord):
+                    await out_q.put(declarative_content)
+                update_record = declarative_content.content
+                try:
+                    update_collections = update_record._collections
+                except AttributeError:
+                    pass  # This UpdateRecord was found in the db or has no UpdateCollections
+                else:
+                    for update_collection in update_collections:
+                        update_collection.update_record = update_record
+                        update_collection_to_save.append(update_collection)
+
+            update_collection_packages_to_save = []
+            if update_collection_to_save:
+                saved_collections = UpdateCollection.objects.bulk_create(update_collection_to_save)
+                for update_collection in saved_collections:
+                    for update_collection_package in update_collection._packages:
+                        update_collection_package.update_collection = update_collection
+                        update_collection_packages_to_save.append(update_collection_package)
+
+                if update_collection_packages_to_save:
+                    UpdateCollectionPackage.objects.bulk_create(update_collection_packages_to_save)
+
+            for declarative_content in batch:
+                if declarative_content is None:
+                    continue
+                await out_q.put(declarative_content)
+
+            batch = []
 
         await out_q.put(None)

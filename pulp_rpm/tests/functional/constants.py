@@ -18,7 +18,7 @@ RPM_PUBLISHER_PATH = urljoin(BASE_PUBLISHER_PATH, 'rpm/')
 
 
 RPM_FIXTURE_URL = urljoin(PULP_FIXTURES_BASE_URL, 'rpm/')
-RPM_FIXTURE_COUNT = 35
+RPM_FIXTURE_COUNT = 39  # 35 Packages + 4 UpdateRecord units
 RPM_URL = urljoin(RPM_FIXTURE_URL, 'bear-4.1-1.noarch.rpm')
 
 SRPM_FIXTURE_URL = urljoin(PULP_FIXTURES_BASE_URL, 'srpm/')
