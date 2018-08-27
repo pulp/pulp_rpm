@@ -15,7 +15,7 @@ from pulp_smash.pulp3.utils import (
 )
 
 from pulp_rpm.tests.functional.constants import (
-    RPM_URL,
+    RPM_SIGNED_URL,
     RPM_CONTENT_PATH,
     RPM_REMOTE_PATH,
 )
@@ -41,7 +41,7 @@ class ContentUnitTestCase(unittest.TestCase):
         delete_orphans(cls.cfg)
         cls.content_unit = {}
         cls.client = api.Client(cls.cfg, api.json_handler)
-        files = {'file': utils.http_get(RPM_URL)}
+        files = {'file': utils.http_get(RPM_SIGNED_URL)}
         cls.artifact = cls.client.post(ARTIFACTS_PATH, files=files)
 
     @classmethod

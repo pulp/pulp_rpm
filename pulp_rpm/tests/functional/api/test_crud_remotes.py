@@ -10,7 +10,7 @@ from pulp_smash.pulp3.constants import REPO_PATH
 from pulp_smash.pulp3.utils import gen_repo
 
 from pulp_rpm.tests.functional.constants import RPM_REMOTE_PATH
-from pulp_rpm.tests.functional.utils import skip_if, gen_rpm_remote
+from pulp_rpm.tests.functional.utils import gen_rpm_remote, skip_if
 from pulp_rpm.tests.functional.utils import set_up_module as setUpModule  # noqa:F401
 
 
