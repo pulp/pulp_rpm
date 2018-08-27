@@ -29,8 +29,8 @@ ALL_TYPES = (TYPE_RPM, TYPE_SRPM, TYPE_DRPM, TYPE_ERRATUM, TYPE_PACKAGE_GROUP,
 
 # List of all fields that the user can elect to display for each supported type
 FIELDS_RPM = ('arch', 'buildhost', 'checksum', 'checksumtype', 'description',
-              'epoch', 'filename', 'license', 'name', 'provides', 'release',
-              'requires', 'vendor', 'version')
+              'epoch', 'filename', 'license', 'name', 'provides', 'recommends',
+              'release', 'requires', 'vendor', 'version')
 FIELDS_ERRATA = ('id', 'title', 'summary', 'severity', 'type', 'description')
 FIELDS_PACKAGE_GROUP = ('id', 'name', 'description', 'mandatory_package_names',
                         'conditional_package_names', 'optional_package_names',
@@ -225,7 +225,7 @@ class PackageSearchCommand(BaseSearchCommand):
     @staticmethod
     def _reformat_rpm_provides_requires(rpm):
         """
-        Condenses the dict version of the provides and requires lists into single strings
+        Condenses the dict version of the provides, requires and recommends into single strings
         for each entry. The specified RPM is updated.
 
         :param rpm: single RPM from the result of the search
@@ -256,7 +256,7 @@ class PackageSearchCommand(BaseSearchCommand):
 
             return start + middle + tail
 
-        for reformat_me in ['requires', 'provides']:
+        for reformat_me in ['requires', 'provides', 'recommends']:
             # First, check to see if the field has been included in --fields.
             if reformat_me in rpm or (ASSOCIATION_METADATA_KEYWORD in rpm and
                                       reformat_me in rpm[ASSOCIATION_METADATA_KEYWORD]):
