@@ -338,6 +338,116 @@ class PackageSearchCommandTests(PulpClientTests):
         self.assertFalse('provides' in test_rpm[contents.ASSOCIATION_METADATA_KEYWORD])
         self.assertFalse('requires' in test_rpm[contents.ASSOCIATION_METADATA_KEYWORD])
 
+    def test_reformat_rpm_recommends_and_requires(self):
+        """
+        The handling of the `recommends` field is the same as that of either the `requires` or
+        `provides` fields.
+        """
+
+        test_rpm = {contents.ASSOCIATION_METADATA_KEYWORD: {
+            'recommends': [
+                {'name': 'name.1',
+                 'version': 'version.1',
+                 'release': 'release.1',
+                 'epoch': 'epoch.1',
+                 'flags': 'GT'},
+            ],
+            'requires': [
+                {'name': 'name.2',
+                 'version': 'version.2',
+                 'release': 'release.2',
+                 'epoch': 'epoch.2',
+                 'flags': 'GT'},
+            ]
+        }}
+
+        # Test
+        command = contents.PackageSearchCommand(None, self.context)
+        command._reformat_rpm_provides_requires(test_rpm)
+
+        # Verify
+        self.assertTrue('recommends' in test_rpm[contents.ASSOCIATION_METADATA_KEYWORD])
+        self.assertTrue(isinstance(test_rpm[contents.ASSOCIATION_METADATA_KEYWORD]['recommends'][0],
+                                   basestring))
+        self.assertEqual(test_rpm[contents.ASSOCIATION_METADATA_KEYWORD]['recommends'][0],
+                         'name.1 > version.1-release.1-epoch.1')
+
+        self.assertTrue('requires' in test_rpm[contents.ASSOCIATION_METADATA_KEYWORD])
+        self.assertTrue(isinstance(test_rpm[contents.ASSOCIATION_METADATA_KEYWORD]['requires'][0],
+                                   basestring))
+        self.assertEqual(test_rpm[contents.ASSOCIATION_METADATA_KEYWORD]['requires'][0],
+                         'name.2 > version.2-release.2-epoch.2')
+        self.assertEqual(1, len(test_rpm[contents.ASSOCIATION_METADATA_KEYWORD]['recommends']))
+        self.assertEqual(1, len(test_rpm[contents.ASSOCIATION_METADATA_KEYWORD]['requires']))
+        self.assertFalse('provides' in test_rpm[contents.ASSOCIATION_METADATA_KEYWORD])
+
+    def test_reformat_rpm_multiple_recommends(self):
+        """
+        Check that multiple `recommends` fields can be used.
+        """
+
+        test_rpm = {contents.ASSOCIATION_METADATA_KEYWORD: {
+            'recommends': [
+                {'name': 'name.1',
+                 'version': 'version.1',
+                 'release': 'release.1',
+                 'epoch': 'epoch.1',
+                 'flags': 'GT'},
+                {'name': 'name.2',
+                 'version': 'version.2',
+                 'release': 'release.2',
+                 'epoch': 'epoch.2',
+                 'flags': 'GT'},
+            ],
+        }}
+
+        # Test
+        command = contents.PackageSearchCommand(None, self.context)
+        command._reformat_rpm_provides_requires(test_rpm)
+
+        # Verify
+        self.assertTrue('recommends' in test_rpm[contents.ASSOCIATION_METADATA_KEYWORD])
+        self.assertTrue(isinstance(test_rpm[contents.ASSOCIATION_METADATA_KEYWORD]['recommends'][0],
+                                   basestring))
+        self.assertEqual(test_rpm[contents.ASSOCIATION_METADATA_KEYWORD]['recommends'][0],
+                         'name.1 > version.1-release.1-epoch.1')
+
+        self.assertTrue(isinstance(test_rpm[contents.ASSOCIATION_METADATA_KEYWORD]['recommends'][1],
+                                   basestring))
+        self.assertEqual(test_rpm[contents.ASSOCIATION_METADATA_KEYWORD]['recommends'][1],
+                         'name.2 > version.2-release.2-epoch.2')
+        self.assertEqual(2, len(test_rpm[contents.ASSOCIATION_METADATA_KEYWORD]['recommends']))
+        self.assertFalse('requires' in test_rpm[contents.ASSOCIATION_METADATA_KEYWORD])
+        self.assertFalse('provides' in test_rpm[contents.ASSOCIATION_METADATA_KEYWORD])
+
+    def test_reformat_rpm_recommends_details(self):
+        """
+        Make sure `recommends` details formatting doesn't break with just the `name` field
+        populated.
+        """
+        test_rpm = {contents.ASSOCIATION_METADATA_KEYWORD: {
+            'recommends': [
+                {'name': '(foo if bar)',
+                 'version': None,
+                 'release': None,
+                 'epoch': None,
+                 'flags': None},
+            ]
+        }}
+
+        # Test
+        command = contents.PackageSearchCommand(None, self.context)
+        command._reformat_rpm_provides_requires(test_rpm)
+
+        # Verify
+        self.assertTrue('recommends' in test_rpm[contents.ASSOCIATION_METADATA_KEYWORD])
+        self.assertTrue(isinstance(test_rpm[contents.ASSOCIATION_METADATA_KEYWORD]['recommends'][0],
+                                   basestring))
+        self.assertEqual(test_rpm[contents.ASSOCIATION_METADATA_KEYWORD]['recommends'][0],
+                         '(foo if bar)')
+        self.assertFalse('requires' in test_rpm[contents.ASSOCIATION_METADATA_KEYWORD])
+        self.assertFalse('provides' in test_rpm[contents.ASSOCIATION_METADATA_KEYWORD])
+
 
 class SearchRpmsCommand(PulpClientTests):
     def test_structure(self):
