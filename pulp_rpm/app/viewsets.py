@@ -11,6 +11,7 @@ from pulpcore.plugin.serializers import (
     RepositorySyncURLSerializer,
 )
 from pulpcore.plugin.viewsets import (
+    BaseFilterSet,
     ContentViewSet,
     RemoteViewSet,
     OperationPostponedResponse,
@@ -29,6 +30,24 @@ from pulp_rpm.app.serializers import (
 )
 
 
+class PackageFilter(BaseFilterSet):
+    """
+    FilterSet for Package.
+    """
+
+    class Meta:
+        model = Package
+        fields = {
+            'name': ['exact', 'in'],
+            'epoch': ['exact', 'in'],
+            'version': ['exact', 'in'],
+            'release': ['exact', 'in'],
+            'arch': ['exact', 'in'],
+            'pkgId': ['exact', 'in'],
+            'checksum_type': ['exact', 'in'],
+        }
+
+
 class PackageViewSet(ContentViewSet):
     """
     A ViewSet for Package.
@@ -44,6 +63,7 @@ class PackageViewSet(ContentViewSet):
     queryset = Package.objects.all()
     serializer_class = PackageSerializer
     minimal_serializer_class = MinimalPackageSerializer
+    filterset_class = PackageFilter
 
 
 class RpmRemoteViewSet(RemoteViewSet):
@@ -125,6 +145,21 @@ class RpmPublisherViewSet(PublisherViewSet):
         return OperationPostponedResponse(result, request)
 
 
+class UpdateRecordFilter(BaseFilterSet):
+    """
+    FilterSet for UpdateRecord.
+    """
+
+    class Meta:
+        model = UpdateRecord
+        fields = {
+            'errata_id': ['exact', 'in'],
+            'status': ['exact', 'in'],
+            'severity': ['exact', 'in'],
+            'update_type': ['exact', 'in'],
+        }
+
+
 class UpdateRecordViewSet(ContentViewSet):
     """
     A ViewSet for UpdateRecord.
@@ -140,3 +175,4 @@ class UpdateRecordViewSet(ContentViewSet):
     queryset = UpdateRecord.objects.all()
     serializer_class = UpdateRecordSerializer
     minimal_serializer_class = MinimalUpdateRecordSerializer
+    filterset_class = UpdateRecordFilter
