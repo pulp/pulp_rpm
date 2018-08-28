@@ -87,7 +87,7 @@ class BaseYumRepoPublisher(platform_steps.PluginStep):
         self.add_child(PublishMetadataStep())
         self.add_child(CloseRepoMetadataStep())
         self.add_child(GenerateSqliteForRepoStep(self.get_working_dir()))
-        self.add_child(RemoveOldRepodataStep(self.get_working_dir()))
+        self.add_child(RemoveOldRepodataStep())
 
     def get_checksum_type(self):
         if not self.checksum_type:
@@ -1206,30 +1206,14 @@ class RemoveOldRepodataStep(platform_steps.PluginStep):
     """
     Remove repodata files that are not in repomd and are older than 14 days.
     """
-    def __init__(self, content_dir, **kwargs):
+    def __init__(self, **kwargs):
         """
-        Initialize the step for remove old repodata
-
-        :param content_dir: The base directory of the repository.  This directory should contain
-                            the repodata directory
-        :type content_dir: str
+        Initialize the step for removing old repodata
         """
         super(RemoveOldRepodataStep, self).__init__(
             constants.PUBLISH_REMOVE_OLD_REPODATA_STEP,
             **kwargs)
         self.description = _('Removing old repodata')
-        self.content_dir = content_dir
-
-    def is_skipped(self):
-        """
-        Check the repo for the config option to remove old repodata.
-        Clean up if remove_old_repodata is True, which is the default
-        behaviour.
-
-        :returns: return if step should clean old repodata or not
-        :rtype: bool
-        """
-        return not self.get_config().get('remove_old_repodata', True)
 
     def remove_repodata_file(self, repodata_file):
         os.remove(repodata_file)
@@ -1254,7 +1238,7 @@ class RemoveOldRepodataStep(platform_steps.PluginStep):
         for f in files_in_dir:
             delta = datetime.datetime.today() - \
                 datetime.datetime.fromtimestamp(os.path.getmtime(f))
-            if delta.total_seconds() > threshold and f not in to_keep:
+            if delta.total_seconds() > threshold and os.path.basename(f) not in to_keep:
                 to_remove.append(f)
 
         return to_remove
@@ -1263,8 +1247,10 @@ class RemoveOldRepodataStep(platform_steps.PluginStep):
         """
         Check files times and remove ones older than 14 days.
         """
-        to_remove = self.filter_old_repodata()
-        for f in to_remove:
-            self.remove_repodata_file(f)
+        remove_old_repodata = self.get_config().get('remove_old_repodata', True)
+        if remove_old_repodata:
+            to_remove = self.filter_old_repodata()
+            for f in to_remove:
+                self.remove_repodata_file(f)
 
         self.total_units = self.progress_successes

@@ -520,10 +520,8 @@ class YumDistributorMetadataTests(unittest.TestCase):
                             REPO_DATA_DIR_NAME,
                             REPOMD_FILE_NAME)
 
-        file_list_name = os.path.basename(tempfile.NamedTemporaryFile().name)
-        update_list_name = os.path.basename(tempfile.NamedTemporaryFile().name)
-        file_list_path = os.path.join('repodata', file_list_name)
-        update_list_path = os.path.join('repodata', update_list_name)
+        file_list_path = os.path.basename(tempfile.NamedTemporaryFile().name)
+        update_list_path = os.path.basename(tempfile.NamedTemporaryFile().name)
 
         # file_locations in RepomdXMLFileContext adds
         expected_locations = [file_list_path, update_list_path]

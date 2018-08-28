@@ -164,7 +164,7 @@ class BaseYumRepoPublisherTests(BaseYumDistributorPublishTests):
         mock_build_final_report.assert_called_once()
         mock_publish_comps.assert_called_once_with()
         mock_generate_sqlite.assert_called_once_with(self.working_dir)
-        mock_remove_old_repodata.assert_called_once_with(self.working_dir)
+        mock_remove_old_repodata.assert_called_once_with()
 
     @mock.patch('pulp_rpm.plugins.distributors.yum.publish.configuration.get_repo_checksum_type')
     def test_get_checksum_type(self, mock_get_checksum):
@@ -1405,18 +1405,13 @@ class RemoveOldRepodataStepTests(BaseYumDistributorPublishStepTests):
         repo_root = os.path.join(test_data_path(), self._testMethodName)
 
         self._init_publisher()
-        remove_step = publish.RemoveOldRepodataStep(repo_root)
+        remove_step = publish.RemoveOldRepodataStep()
         remove_step.parent = self.publisher
 
         metadata_file_path = os.path.join(repo_root, 'repodata', 'repomd.xml')
 
         # file_paths under plugins/test/data/test_remove_old_repodata "to_keep"
-        metadata_file_locations = [
-            metadata_file_path,
-            os.path.join(repo_root, 'repodata', 'repomd-tmp.xml'),
-            os.path.join(repo_root, 'repodata', 'repomd.xml.asc'),
-            os.path.join(repo_root, 'repodata', 'repomd-tmp.xml.asc')
-        ]
+        metadata_file_locations = ['repomd-tmp.xml', 'repomd.xml.asc', 'repomd-tmp.xml.asc']
 
         self.publisher.repomd_file_context.metadata_file_path = metadata_file_path
         self.publisher.repomd_file_context.metadata_file_locations = metadata_file_locations
