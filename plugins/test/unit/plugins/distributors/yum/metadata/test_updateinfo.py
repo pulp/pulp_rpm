@@ -62,13 +62,13 @@ class UpdateinfoXMLFileContextTests(unittest.TestCase):
                                      'title': 'some title'}],
                      'updated': '2014-05-28 00:00:00',
                      'pkglist': [{'packages': packages, 'name': 'test-name', 'short': ''},
-                                 {'packages': packages, 'name': 'test-name', 'short': ''}]}
+                                 ]}
         return models.Errata(**unit_data)
 
     def _filtered_pkglist(self, erratum_unit):
         # Return a "filtered" pkglist. Since the test unit generated in _generate_erratum_unit
         # contains two identical pkglists, return one of them to simulate it having been filtered.
-        return erratum_unit.pkglist[0]
+        return erratum_unit.pkglist
 
     def test_handles_integer_pushcount(self):
         """
@@ -137,7 +137,7 @@ class UpdateinfoXMLFileContextTests(unittest.TestCase):
         Test that the `sums` package field is handled correctly.
         """
         erratum = self._generate_erratum_unit()
-        package_with_sums_field = self._filtered_pkglist(erratum)['packages'][0]
+        package_with_sums_field = self._filtered_pkglist(erratum)[0]['packages'][0]
         result = self.context._get_package_checksum_tuple(package_with_sums_field)
         expected_checksum_tuple = ('sha256', 'sums')
         self.assertEqual(result, expected_checksum_tuple)
@@ -147,7 +147,7 @@ class UpdateinfoXMLFileContextTests(unittest.TestCase):
         Test that the package checksum of the distributor checksum type is published if available.
         """
         erratum = self._generate_erratum_unit()
-        package_with_multiple_checksums = self._filtered_pkglist(erratum)['packages'][1]
+        package_with_multiple_checksums = self._filtered_pkglist(erratum)[0]['packages'][1]
         result = self.context._get_package_checksum_tuple(package_with_multiple_checksums)
         expected_checksum_tuple = ('sha256', 'sha256_checksum')
         self.assertEqual(result, expected_checksum_tuple)
@@ -159,7 +159,7 @@ class UpdateinfoXMLFileContextTests(unittest.TestCase):
         """
         erratum = self._generate_erratum_unit()
         self.context.checksum_type = 'unknown type #1'
-        package_with_multiple_checksums = self._filtered_pkglist(erratum)['packages'][1]
+        package_with_multiple_checksums = self._filtered_pkglist(erratum)[0]['packages'][1]
         result = self.context._get_package_checksum_tuple(package_with_multiple_checksums)
         expected_checksum_tuple = ('sha256', 'sha256_checksum')
         self.assertEqual(result, expected_checksum_tuple)
@@ -172,7 +172,7 @@ class UpdateinfoXMLFileContextTests(unittest.TestCase):
         erratum = self._generate_erratum_unit()
         self.context.checksum_type = 'sha256'
         self.context.updateinfo_checksum_type = 'md5'
-        package_with_multiple_checksums = self._filtered_pkglist(erratum)['packages'][1]
+        package_with_multiple_checksums = self._filtered_pkglist(erratum)[0]['packages'][1]
         result = self.context._get_package_checksum_tuple(package_with_multiple_checksums)
         expected_checksum_tuple = ('md5', 'md5_checksum')
         self.assertEqual(result, expected_checksum_tuple)
@@ -184,7 +184,7 @@ class UpdateinfoXMLFileContextTests(unittest.TestCase):
         erratum = self._generate_erratum_unit()
         self.context.checksum_type = 'sha256'
         self.context.updateinfo_checksum_type = 'unknown type'
-        package_with_multiple_checksums = self._filtered_pkglist(erratum)['packages'][1]
+        package_with_multiple_checksums = self._filtered_pkglist(erratum)[0]['packages'][1]
         with self.assertRaises(PulpCodedException) as e:
             self.context._get_package_checksum_tuple(package_with_multiple_checksums)
         self.assertEqual(e.exception.error_code.code, 'RPM1012')
@@ -215,6 +215,116 @@ class UpdateinfoXMLFileContextTests(unittest.TestCase):
                        '  <pkglist>\n' \
                        '    <collection short="">\n' \
                        '      <name>test-name</name>\n' \
+                       '      <package src="pulp-test-package-0.3.1-1.fc22.src.rpm" ' \
+                       'name="pulp-test-package" epoch="0" version="0.3.1" release="1.fc22" ' \
+                       'arch="x86_64">\n' \
+                       '        <filename>pulp-test-package-0.3.1-1.fc22.x86_64.rpm</filename>\n' \
+                       '        <sum type="sha256">sums</sum>\n' \
+                       '      </package>\n' \
+                       '      <package src="another-test-package-3.2-1.fc22.src.rpm" ' \
+                       'name="another-test-package" epoch="0" version="3.2" release="1.fc22" ' \
+                       'arch="x86_64">\n' \
+                       '        <filename>another-test-package-0.3.1-1.fc22.x86_64.rpm' \
+                       '</filename>\n' \
+                       '        <sum type="sha256">sha256_checksum</sum>\n' \
+                       '      </package>\n' \
+                       '    </collection>\n' \
+                       '  </pkglist>\n' \
+                       '</update>\n'
+        self.assertEqual(generated_xml, expected_xml)
+
+    def test_add_errata_unit_metadata_multiple_collections(self):
+        erratum = self._generate_erratum_unit()
+        erratum.pkglist += erratum.pkglist
+        erratum.pkglist[1]['name'] += '1'
+        self.context.add_unit_metadata(erratum, self._filtered_pkglist(erratum))
+        generated_xml = self.context.metadata_file_handle.getvalue()
+        expected_xml = '<update status="symbol" from="" version="2.4.1" type="security">\n' \
+                       '  <id>RHSA-2014:0042</id>\n' \
+                       '  <issued date="2014-05-27 00:00:00" />\n' \
+                       '  <title>Some Title</title>\n' \
+                       '  <release>2</release>\n' \
+                       '  <rights>You have the right to remain silent.</rights>\n' \
+                       '  <solution>Open Source is the solution to your problems.</solution>\n' \
+                       '  <severity>High</severity>\n' \
+                       '  <summary>A Summary</summary>\n' \
+                       '  <pushcount>1</pushcount>\n' \
+                       '  <description />\n' \
+                       '  <updated date="2014-05-28 00:00:00" />\n' \
+                       '  <references>\n' \
+                       '    <reference href="https://bugzilla.hostname/bug.cgi?id=XXXXX" ' \
+                       'type="bugzilla" id="XXXXX" title="some title" />\n' \
+                       '  </references>\n' \
+                       '  <pkglist>\n' \
+                       '    <collection short="">\n' \
+                       '      <name>test-name</name>\n' \
+                       '      <package src="pulp-test-package-0.3.1-1.fc22.src.rpm" ' \
+                       'name="pulp-test-package" epoch="0" version="0.3.1" release="1.fc22" ' \
+                       'arch="x86_64">\n' \
+                       '        <filename>pulp-test-package-0.3.1-1.fc22.x86_64.rpm</filename>\n' \
+                       '        <sum type="sha256">sums</sum>\n' \
+                       '      </package>\n' \
+                       '      <package src="another-test-package-3.2-1.fc22.src.rpm" ' \
+                       'name="another-test-package" epoch="0" version="3.2" release="1.fc22" ' \
+                       'arch="x86_64">\n' \
+                       '        <filename>another-test-package-0.3.1-1.fc22.x86_64.rpm' \
+                       '</filename>\n' \
+                       '        <sum type="sha256">sha256_checksum</sum>\n' \
+                       '      </package>\n' \
+                       '    </collection>\n' \
+                       '    <collection short="">\n' \
+                       '      <name>test-name1</name>\n' \
+                       '      <package src="pulp-test-package-0.3.1-1.fc22.src.rpm" ' \
+                       'name="pulp-test-package" epoch="0" version="0.3.1" release="1.fc22" ' \
+                       'arch="x86_64">\n' \
+                       '        <filename>pulp-test-package-0.3.1-1.fc22.x86_64.rpm</filename>\n' \
+                       '        <sum type="sha256">sums</sum>\n' \
+                       '      </package>\n' \
+                       '      <package src="another-test-package-3.2-1.fc22.src.rpm" ' \
+                       'name="another-test-package" epoch="0" version="3.2" release="1.fc22" ' \
+                       'arch="x86_64">\n' \
+                       '        <filename>another-test-package-0.3.1-1.fc22.x86_64.rpm' \
+                       '</filename>\n' \
+                       '        <sum type="sha256">sha256_checksum</sum>\n' \
+                       '      </package>\n' \
+                       '    </collection>\n' \
+                       '  </pkglist>\n' \
+                       '</update>\n'
+        self.assertEqual(generated_xml, expected_xml)
+
+    def test_add_errata_unit_metadata_module_collection(self):
+        self.maxDiff = None
+        erratum = self._generate_erratum_unit()
+        erratum.pkglist[0]['module'] = {
+            'name': 'foo',
+            'stream': 'stable',
+            'version': "42",
+            'context': 'deadbeef',
+            'arch': 'noarch',
+        }
+        self.context.add_unit_metadata(erratum, self._filtered_pkglist(erratum))
+        generated_xml = self.context.metadata_file_handle.getvalue()
+        expected_xml = '<update status="symbol" from="" version="2.4.1" type="security">\n' \
+                       '  <id>RHSA-2014:0042</id>\n' \
+                       '  <issued date="2014-05-27 00:00:00" />\n' \
+                       '  <title>Some Title</title>\n' \
+                       '  <release>2</release>\n' \
+                       '  <rights>You have the right to remain silent.</rights>\n' \
+                       '  <solution>Open Source is the solution to your problems.</solution>\n' \
+                       '  <severity>High</severity>\n' \
+                       '  <summary>A Summary</summary>\n' \
+                       '  <pushcount>1</pushcount>\n' \
+                       '  <description />\n' \
+                       '  <updated date="2014-05-28 00:00:00" />\n' \
+                       '  <references>\n' \
+                       '    <reference href="https://bugzilla.hostname/bug.cgi?id=XXXXX" ' \
+                       'type="bugzilla" id="XXXXX" title="some title" />\n' \
+                       '  </references>\n' \
+                       '  <pkglist>\n' \
+                       '    <collection short="">\n' \
+                       '      <name>test-name</name>\n' \
+                       '      <module context="deadbeef" version="42" arch="noarch" name="foo" ' \
+                       'stream="stable" />\n' \
                        '      <package src="pulp-test-package-0.3.1-1.fc22.src.rpm" ' \
                        'name="pulp-test-package" epoch="0" version="0.3.1" release="1.fc22" ' \
                        'arch="x86_64">\n' \

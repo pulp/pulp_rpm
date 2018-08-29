@@ -105,9 +105,8 @@ class UpdateinfoXMLFileContext(FastForwardXmlFileContext):
 
         :param item: The erratum unit that should be written to updateinfo.xml.
         :type  item: pulp_rpm.plugins.db.models.Errata
-        :param filtered_pkglist: The pkglist containing unique non-empty collections
-                                with packages which are present in repo.
-        :type filtered_pkglist: dict
+        :param filtered_pkglist: The list of collections with packages which are present in a repo.
+        :type filtered_pkglist: a list of lists of dicts
         """
         erratum_unit = item
         update_attributes = {'status': erratum_unit.status,
@@ -148,40 +147,46 @@ class UpdateinfoXMLFileContext(FastForwardXmlFileContext):
         self.xml_generator.endElement('references')
 
         self.xml_generator.startElement('pkglist')
-        collection_attributes = {}
-        short = filtered_pkglist.get('short')
-        if short is not None:
-            collection_attributes['short'] = short
-        self.xml_generator.startElement('collection', collection_attributes)
-        self.xml_generator.completeElement('name', {}, filtered_pkglist['name'])
+        for collection in filtered_pkglist:
+            module = collection.get('module')
+            if not module and not collection['packages']:
+                # don't care about empty collections
+                continue
+            collection_attributes = {}
+            short = collection.get('short')
+            if short is not None:
+                collection_attributes['short'] = short
+            self.xml_generator.startElement('collection', collection_attributes)
+            self.xml_generator.completeElement('name', {}, collection['name'])
+            if module:
+                self.xml_generator.completeElement('module', module, '')
+            for package in collection['packages']:
+                package_attributes = {'name': package['name'],
+                                      'version': package['version'],
+                                      'release': package['release'],
+                                      'epoch': package['epoch'] or '0',
+                                      'arch': package['arch'],
+                                      'src': package.get('src', '') or ''}
+                self.xml_generator.startElement('package', package_attributes)
+                self.xml_generator.completeElement('filename', {}, package['filename'])
 
-        for package in filtered_pkglist['packages']:
-            package_attributes = {'name': package['name'],
-                                  'version': package['version'],
-                                  'release': package['release'],
-                                  'epoch': package['epoch'] or '0',
-                                  'arch': package['arch'],
-                                  'src': package.get('src', '') or ''}
-            self.xml_generator.startElement('package', package_attributes)
-            self.xml_generator.completeElement('filename', {}, package['filename'])
+                package_checksum_tuple = self._get_package_checksum_tuple(package)
+                if package_checksum_tuple:
+                    checksum_type, checksum_value = package_checksum_tuple
+                    sum_attributes = {'type': checksum_type}
+                    self.xml_generator.completeElement('sum', sum_attributes, checksum_value)
 
-            package_checksum_tuple = self._get_package_checksum_tuple(package)
-            if package_checksum_tuple:
-                checksum_type, checksum_value = package_checksum_tuple
-                sum_attributes = {'type': checksum_type}
-                self.xml_generator.completeElement('sum', sum_attributes, checksum_value)
+                if package.get('reboot_suggested'):
+                    self.xml_generator.completeElement('reboot_suggested', {}, 'True')
+                if package.get('relogin_suggested'):
+                    self.xml_generator.completeElement('relogin_suggested', {},
+                                                       package['relogin_suggested'])
+                if package.get('restart_suggested'):
+                    self.xml_generator.completeElement('restart_suggested', {},
+                                                       package['restart_suggested'])
 
-            if package.get('reboot_suggested'):
-                self.xml_generator.completeElement('reboot_suggested', {}, 'True')
-            if package.get('relogin_suggested'):
-                self.xml_generator.completeElement('relogin_suggested', {},
-                                                   package['relogin_suggested'])
-            if package.get('restart_suggested'):
-                self.xml_generator.completeElement('restart_suggested', {},
-                                                   package['restart_suggested'])
+                self.xml_generator.endElement('package')
 
-            self.xml_generator.endElement('package')
-
-        self.xml_generator.endElement('collection')
+            self.xml_generator.endElement('collection')
         self.xml_generator.endElement('pkglist')
         self.xml_generator.endElement('update')

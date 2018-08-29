@@ -1124,7 +1124,7 @@ class PublishErrataStepTests(BaseYumDistributorPublishStepTests):
         self._init_publisher()
         step = publish.PublishErrataStep()
         erratum_unit = Errata(errata_id='some_id')
-        pkglist = {}
+        pkglist = [{'packages': []}]
         mock_get_pkglist.return_value = pkglist
         step.context = mock_context()
 
@@ -1132,6 +1132,28 @@ class PublishErrataStepTests(BaseYumDistributorPublishStepTests):
 
         mock_get_pkglist.assert_called_once_with(erratum_unit)
         self.assertFalse(step.context.add_unit_metadata.called)
+
+    @mock.patch('pulp_rpm.plugins.distributors.yum.publish.UpdateinfoXMLFileContext')
+    @mock.patch.object(publish.PublishErrataStep, '_get_pkglist_to_publish')
+    def test_process_main_no_pkglist_but_module(self, mock_get_pkglist, mock_context):
+        """
+        Test that the erratum is published if pkglist is empty but there's a module.
+        """
+        self._init_publisher()
+        step = publish.PublishErrataStep()
+        erratum_unit = Errata(errata_id='some_id')
+        # please note that the first item is always non-modular
+        pkglist = [{'packages': []},
+                   {'module': {'name': 'foo', 'stream': 'stable', 'version': '42',
+                               'arch': 'noarch'}, 'packages': []}]
+
+        mock_get_pkglist.return_value = pkglist
+        step.context = mock_context()
+
+        step.process_main(erratum_unit)
+
+        mock_get_pkglist.assert_called_once_with(erratum_unit)
+        step.context.add_unit_metadata.assert_called_once_with(erratum_unit, pkglist)
 
     def test_finalize_metadata(self):
         self._init_publisher()
@@ -1168,6 +1190,21 @@ class PublishErrataStepTests(BaseYumDistributorPublishStepTests):
         expected = set([NEVRA(*values) for values in (mock_scalar_1, mock_scalar_2)])
         self.assertEqual(repo_unit_nevra, expected)
 
+    @mock.patch('pulp_rpm.plugins.distributors.yum.publish.repo_controller')
+    def test__get_repo_unit_nsvca(self, mock_repo_controller):
+        """Test that a set of NSVCA in a repo is correctly generated from a repo queryset"""
+        repo_id = 'test_repo'
+        step = publish.PublishErrataStep(repo=Repository(id=repo_id))
+        mock_scalar_1 = ('n1', 's1', 'v1', 'c1', 'a1')
+        mock_scalar_2 = ('n2', 's2', 'v2', 'c2', 'a2')
+        mock_queryset = mock.Mock()
+        mock_queryset.scalar.return_value = [mock_scalar_1, mock_scalar_2]
+        mock_repo_controller.get_unit_model_querysets.return_value = [mock_queryset]
+
+        repo_unit_nsvca = step._get_repo_module_nsvca(repo_id)
+        expected = set(mock_queryset.scalar.return_value)
+        self.assertEqual(repo_unit_nsvca, expected)
+
     @mock.patch('pulp_rpm.plugins.db.models.ErratumPkglist.objects')
     def test__get_pkglist_to_publish(self, mock_pkglist):
         """
@@ -1192,12 +1229,12 @@ class PublishErrataStepTests(BaseYumDistributorPublishStepTests):
         pkglist_to_publish = step._get_pkglist_to_publish(erratum_unit)
 
         # still one pkglist
-        self.assertTrue(len(pkglist_to_publish), 1)
+        self.assertTrue(len(pkglist_to_publish[0]), 1)
 
         # pkglist contains only one package, the second one was filtered out
-        self.assertTrue(len(pkglist_to_publish['packages']), 1)
-        self.assertEqual(pkglist_to_publish['packages'][0], pkg1)
-        self.assertEqual(pkglist_to_publish['name'], 'test_repo')
+        self.assertTrue(len(pkglist_to_publish[0]['packages']), 1)
+        self.assertEqual(pkglist_to_publish[0]['packages'][0], pkg1)
+        self.assertEqual(pkglist_to_publish[0]['name'], 'test_repo_0_default')
 
     @mock.patch('pulp_rpm.plugins.db.models.ErratumPkglist.objects')
     @mock.patch.object(publish.PublishErrataStep, 'get_repo')
@@ -1223,11 +1260,11 @@ class PublishErrataStepTests(BaseYumDistributorPublishStepTests):
         pkglist_to_publish = step._get_pkglist_to_publish(erratum_unit)
 
         # only one pkglist
-        self.assertTrue(len(pkglist_to_publish), 1)
+        self.assertTrue(len(pkglist_to_publish[0]), 1)
 
         # pkglist contains one expected package
-        self.assertTrue(len(pkglist_to_publish['packages']), 1)
-        self.assertEqual(pkglist_to_publish['packages'][0], pkg1)
+        self.assertTrue(len(pkglist_to_publish[0]['packages']), 1)
+        self.assertEqual(pkglist_to_publish[0]['packages'][0], pkg1)
 
     @mock.patch('pulp_rpm.plugins.db.models.ErratumPkglist.objects')
     def test__get_pkglist_to_publish_merge(self, mock_pkglist):
@@ -1251,13 +1288,139 @@ class PublishErrataStepTests(BaseYumDistributorPublishStepTests):
         pkglist_to_publish = step._get_pkglist_to_publish(erratum_unit)
 
         # one pkglist published
-        self.assertTrue(len(pkglist_to_publish), 1)
+        self.assertEqual(len(pkglist_to_publish), 1)
+        self.assertTrue(len(pkglist_to_publish[0]), 1)
 
         # pkglist contains both packages, since they were included in repo_unit_nevra
-        self.assertTrue(len(pkglist_to_publish['packages']), 2)
-        self.assertTrue(pkg1 in pkglist_to_publish['packages'])
-        self.assertTrue(pkg2 in pkglist_to_publish['packages'])
-        self.assertEqual(pkglist_to_publish['name'], 'test_repo')
+        self.assertTrue(len(pkglist_to_publish[0]['packages']), 2)
+        self.assertTrue(pkg1 in pkglist_to_publish[0]['packages'])
+        self.assertTrue(pkg2 in pkglist_to_publish[0]['packages'])
+        self.assertEqual(pkglist_to_publish[0]['name'], 'test_repo_0_default')
+
+    @mock.patch('pulp_rpm.plugins.db.models.ErratumPkglist.objects')
+    def test__get_pkglist_to_publish_with_module(self, mock_pkglist):
+        """
+        Test that module collection is processed.
+        """
+        self._init_publisher()
+        step = publish.PublishErrataStep(repo=Repository(id='test_repo'))
+        erratum_unit = Errata(errata_id='some_id')
+        erratum_unit._repo_id = 'test_repo'
+
+        pkg_fields = ('name', 'epoch', 'version', 'release', 'arch', 'filename')
+        pkg1_values = ('n1', 'e1', 'v1', 'r1', 'a1', 'f1')
+        pkg1 = dict(zip(pkg_fields, pkg1_values))
+        pkg2_values = ('n2', 'e2', 'v2', 'r2', 'a2', 'f2')
+        pkg2 = dict(zip(pkg_fields, pkg2_values))
+        module_fields = ('name', 'stream', 'version', 'context', 'arch')
+        module_values = ('foo', 'stable', 42, 'deadbeef', 'noarch')
+        module = dict(zip(module_fields, module_values))
+        mock_pkglist.return_value = [{'collections': [
+            {'packages': [pkg1], 'module': module},
+            {'packages': [pkg2]},
+        ]}]
+
+        step.repo_unit_nevra = set([NEVRA._fromdict(pkg1), NEVRA._fromdict(pkg2)])
+        step.repo_module_nsvca = set([module_values])
+
+        pkglist_to_publish = step._get_pkglist_to_publish(erratum_unit)
+
+        self.assertEqual(len(pkglist_to_publish), 2)
+        # one non-modular collections
+        self.assertEqual(pkglist_to_publish[0]['packages'], [pkg2])
+        self.assertNotIn('module', pkglist_to_publish[0])
+        self.assertEqual(pkglist_to_publish[0]['name'], 'test_repo_0_default')
+        # one modular collection published
+        self.assertEqual(pkglist_to_publish[1]['packages'], [pkg1])
+        self.assertIn('module', pkglist_to_publish[1])
+        self.assertEqual(pkglist_to_publish[1]['module'], module)
+        self.assertEqual(pkglist_to_publish[1]['name'], 'test_repo_1_foo')
+
+    @mock.patch('pulp_rpm.plugins.db.models.ErratumPkglist.objects')
+    def test__get_pkglist_to_publish_with_unrelated_module(self, mock_pkglist):
+        """
+        Test that module collection is processed only if related to a repo
+        """
+        self._init_publisher()
+        step = publish.PublishErrataStep(repo=Repository(id='test_repo'))
+        erratum_unit = Errata(errata_id='some_id')
+        erratum_unit._repo_id = 'test_repo'
+
+        pkg_fields = ('name', 'epoch', 'version', 'release', 'arch', 'filename')
+        pkg1_values = ('n1', 'e1', 'v1', 'r1', 'a1', 'f1')
+        pkg1 = dict(zip(pkg_fields, pkg1_values))
+        pkg2_values = ('n2', 'e2', 'v2', 'r2', 'a2', 'f2')
+        pkg2 = dict(zip(pkg_fields, pkg2_values))
+        module_fields = ('name', 'stream', 'version', 'context', 'arch')
+        module_values = ('foo', 'stable', 42, 'deadbeef', 'noarch')
+        module = dict(zip(module_fields, module_values))
+        mock_pkglist.return_value = [{'collections': [
+            {'packages': [pkg1], 'module': module},
+            {'packages': [pkg2]},
+        ]}]
+
+        step.repo_unit_nevra = set([NEVRA._fromdict(pkg1), NEVRA._fromdict(pkg2)])
+        step.repo_module_nsvca = set()
+
+        pkglist_to_publish = step._get_pkglist_to_publish(erratum_unit)
+
+        self.assertEqual(len(pkglist_to_publish), 1)
+        # one non-modular collections
+        self.assertEqual(pkglist_to_publish[0]['packages'], [pkg2])
+        self.assertNotIn('module', pkglist_to_publish[0])
+        self.assertEqual(pkglist_to_publish[0]['name'], 'test_repo_0_default')
+
+    @mock.patch('pulp_rpm.plugins.db.models.ErratumPkglist.objects')
+    def test__get_pkglist_to_publish_with_multiple_modules(self, mock_pkglist):
+        """
+        Test that each module gets its own collection.
+        """
+        self._init_publisher()
+        step = publish.PublishErrataStep(repo=Repository(id='test_repo'))
+        erratum_unit = Errata(errata_id='some_id')
+        erratum_unit._repo_id = 'test_repo'
+
+        pkg_fields = ('name', 'epoch', 'version', 'release', 'arch', 'filename')
+        pkg1_values = ('n1', 'e1', 'v1', 'r1', 'a1', 'f1')
+        pkg1 = dict(zip(pkg_fields, pkg1_values))
+        pkg2_values = ('n2', 'e2', 'v2', 'r2', 'a2', 'f2')
+        pkg2 = dict(zip(pkg_fields, pkg2_values))
+        pkg3_values = ('n3', 'e3', 'v3', 'r3', 'a3', 'f3')
+        pkg3 = dict(zip(pkg_fields, pkg3_values))
+        module_fields = ('name', 'stream', 'version', 'context', 'arch')
+        module1_values = ('foo', 'stable', 42, 'deadbeef', 'noarch')
+        module2_values = ('bar', 'stable', 42, 'deadbeef', 'noarch')
+        module1 = dict(zip(module_fields, module1_values))
+        module2 = dict(zip(module_fields, module2_values))
+        mock_pkglist.return_value = [{'collections': [
+            {'packages': [pkg1]},
+            {'packages': [pkg2], 'module': module1},
+            {'packages': [pkg3]},
+            {'packages': [], 'module': module2},
+        ]}]
+
+        step.repo_unit_nevra = set([NEVRA._fromdict(pkg1), NEVRA._fromdict(pkg2),
+                                    NEVRA._fromdict(pkg3)])
+        step.repo_module_nsvca = set([module1_values, module2_values])
+
+        pkglist_to_publish = step._get_pkglist_to_publish(erratum_unit)
+
+        self.assertEqual(len(pkglist_to_publish), 3)
+        # one non-modular collection, containing pkg1&pkg3
+        self.assertEqual(len(pkglist_to_publish[0]['packages']), 2)
+        self.assertIn(pkg1, pkglist_to_publish[0]['packages'])
+        self.assertIn(pkg3, pkglist_to_publish[0]['packages'])
+        self.assertNotIn('module', pkglist_to_publish[0])
+        self.assertEqual(pkglist_to_publish[0]['name'], 'test_repo_0_default')
+        # two modular collections published
+        self.assertEqual(pkglist_to_publish[1]['packages'], [pkg2])
+        self.assertIn('module', pkglist_to_publish[1])
+        self.assertEqual(pkglist_to_publish[1]['module'], module1)
+        self.assertEqual(pkglist_to_publish[1]['name'], 'test_repo_1_foo')
+        self.assertEqual(pkglist_to_publish[2]['packages'], [])
+        self.assertIn('module', pkglist_to_publish[2])
+        self.assertEqual(pkglist_to_publish[2]['module'], module2)
+        self.assertEqual(pkglist_to_publish[2]['name'], 'test_repo_2_bar')
 
 
 class PublishMetadataStepTests(BaseYumDistributorPublishStepTests):

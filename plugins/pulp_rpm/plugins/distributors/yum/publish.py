@@ -615,7 +615,9 @@ class PublishErrataStep(platform_steps.UnitModelPluginStep):
         self.context = UpdateinfoXMLFileContext(self.get_working_dir(), checksum_type,
                                                 self.get_conduit(), updateinfo_checksum_type)
         self.context.initialize()
-        self.repo_unit_nevra = self._get_repo_unit_nevra(self.get_repo().id)
+        repo_id = self.get_repo().id
+        self.repo_unit_nevra = self._get_repo_unit_nevra(repo_id)
+        self.repo_module_nsvca = self._get_repo_module_nsvca(repo_id)
 
     def process_main(self, item=None):
         """
@@ -626,10 +628,12 @@ class PublishErrataStep(platform_steps.UnitModelPluginStep):
         """
         erratum_unit = item
         if erratum_unit:
-            pkglist_to_publish = self._get_pkglist_to_publish(erratum_unit)
-            if pkglist_to_publish.get('packages'):
-                # only publish this errata if it references packages in the repo being published
-                self.context.add_unit_metadata(erratum_unit, pkglist_to_publish)
+            pkg_list = self._get_pkglist_to_publish(erratum_unit)
+            if len(pkg_list) == 1 and not pkg_list[0]['packages']:
+                # the aggregated, non-modular pkglist is empty and there are
+                # no modular pkglists; nothing to do
+                return
+        self.context.add_unit_metadata(erratum_unit, pkg_list)
 
     def finalize(self):
         """
@@ -662,63 +666,88 @@ class PublishErrataStep(platform_steps.UnitModelPluginStep):
             repo_unit_nevra.add(models.NEVRA(*scalar))
         return repo_unit_nevra
 
+    def _get_repo_module_nsvca(self, repo_id):
+        """
+        Return a set of NVSCA module tuples, associated with the repo_id, that the errata being
+        processed might affect
+        """
+        querysets = repo_controller.get_unit_model_querysets(repo_id, models.Modulemd)
+        return set(
+            itertools.chain(*[q.scalar(*models.Modulemd.unit_key_fields) for q in querysets]))
+
+    def _new_collection(self, repo_id, suffix):
+        # start a new pkglist collection (for a module)
+        proto_collection = {
+            # Due to a quirk in how yum merges pkglists in errata that appear in multiple
+            # repos, the pkglist collection names need to be unique per-repo when published.
+            # repo_id is already unique and presumably validated, so use that. This is normally a
+            # human-readable string, like "A Human-Readable Repository Description". Pulp doesn't
+            # require storing that sort of string with a repo, so repo_id amended with a custom
+            # suffix is the best we've got.
+            'name': '{}_{}'.format(repo_id, suffix),
+
+            # The repo "short name", like 'repo-name-short'. It also makes sense to use the
+            # amended repo_id here. This appears to be unused by yum when parsing errata, but
+            # consistency with the "long" name field should help in the event that some consumer
+            # does use this field.
+            'short': '{}_{}'.format(repo_id, suffix),
+            'packages': [],
+
+        }
+        return proto_collection
+
+    @staticmethod
+    def _module_dict_as_nsvca(md):
+        return (md['name'], md['stream'], int(md['version']), md['context'], md['arch'])
+
     def _get_pkglist_to_publish(self, erratum_unit):
         """
-        Make a list of packages which will be listed in the published erratum.
+        Make a lists of package collections which will be listed in the published erratum.
 
         Only packages contained in the repository being published will be included in this
         errata's pkglist.
 
-        This merges multiple Pulp pkglists into a single pkglist for publication.
+        This merges multiple Pulp pkglists into a single pkglist for publication, unless a
+        module happens. Then a fresh list is used for the module.
 
         :param erratum_unit: the erratum unit to analyze
         :param type: pulp_rpm.plugins.db.models.Errata
-        :return: pkglist to publish
-        :rtype: dict
+        :return: list of pkglist to publish
+        :rtype: list of lists of dicts
         """
+        collection_index = 0
         repo_id = self.get_repo().id
-
-        new_pkglist = {
-            # Due to a quirk in how yum merges pkglists in errata that appear in multiple
-            # repos, the pkglist collection name needs to be unique per-repo when published.
-            # repo_id is already unique and presumably validated, so use that. This is normally a
-            # human-readable string, like "A Human-Readable Repository Description". Pulp doesn't
-            # require storing that sort of string with a repo, so repo_id is the best we've got.
-            'name': repo_id,
-
-            # The repo "short name", like 'repo-name-short'. It also makes sense to use repo_id
-            # here. This appears to be unused by yum when parsing errata, but consistency with the
-            # "long" name field should help in the event that some consumer does use this field.
-            'short': repo_id,
-
-            # Related to the need for a unique collection name, errata should only contain one
-            # pkglist. While filtering packages to include in this errata, add them to this single
-            # list of packages. pkglists can contain multiple collections of packages, but limiting
-            # the published errata to one collection per pkglist and one pkglist per errata per
-            # repository makes the collection name uniqueness requirement easy to fulfill using
-            # the repo_id only.
-            'packages': [],
-
-        }
-
+        # the default, aggregated, non-modular rpms collection
+        new_collection = self._new_collection(repo_id, '{}_default'.format(collection_index))
+        ret = [new_collection]
         if not self.repo_unit_nevra:
             # if repo_unit_nevra is empty, this repo has no RPMs, which makes filtering easy:
             # no pkglist will ever contain packages, so short out and return the empty pkglist
-            return new_pkglist
-
+            return ret
         seen_packages = set()
-
         # find all pkglists for erratum despite the repo_id associated with pkglist
         pkglists = models.ErratumPkglist.objects(errata_id=erratum_unit.errata_id)
         for pkglist in pkglists:
             for collection in pkglist['collections']:
+                module = collection.get('module')
+                if module:
+                    # inside a modular collection
+                    if self._module_dict_as_nsvca(module) not in self.repo_module_nsvca:
+                        # not from the repo being published
+                        continue
+                    collection_index += 1
+                    new_collection = self._new_collection(
+                        repo_id, '{}_{}'.format(collection_index, module['name']))
+                    ret.append(new_collection)
+                    new_collection['module'] = module
                 for package in collection.get('packages', []):
                     if package['filename'] not in seen_packages:
                         seen_packages.add(package['filename'])
                         if models.NEVRA._fromdict(package) in self.repo_unit_nevra:
-                            new_pkglist['packages'].append(package)
-
-        return new_pkglist
+                            new_collection['packages'].append(package)
+                # ret[0] is special; all non-modular package collections are aggregated there
+                new_collection = ret[0]
+        return ret
 
 
 class PublishRpmAndDrpmStepIncremental(platform_steps.UnitModelPluginStep):
