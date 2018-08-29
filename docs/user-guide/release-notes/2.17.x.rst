@@ -34,3 +34,10 @@ New Features
   modular content.
   Technical refernce of newly added content types `modulemd` and `modulemd_defaults` is available
   `here <https://docs.pulpproject.org/plugins/pulp_rpm/tech-reference/yum-plugins.html#module-metadata>`_.
+
+Backwards-incompatible changes
+------------------------------
+
+* SSL client certificates of protected repositories were renamed from
+  `client.crt` to `<repo_id>_client.crt` to avoid the known SSL error `Error:
+  sslclientcert basename shared between foo and bar`
