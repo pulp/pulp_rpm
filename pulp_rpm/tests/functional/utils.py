@@ -19,7 +19,7 @@ from pulp_smash.pulp3.utils import (
 
 from pulp_rpm.tests.functional.constants import (
     RPM_CONTENT_PATH,
-    RPM_FIXTURE_URL,
+    RPM_SIGNED_FIXTURE_URL,
     RPM_REMOTE_PATH,
 )
 
@@ -30,7 +30,7 @@ def set_up_module():
     require_pulp_plugins({'pulp_rpm'}, SkipTest)
 
 
-def populate_pulp(cfg, url=RPM_FIXTURE_URL):
+def populate_pulp(cfg, url=RPM_SIGNED_FIXTURE_URL):
     """Add rpm contents to Pulp.
 
     :param pulp_smash.config.PulpSmashConfig: Information about a Pulp application.
@@ -58,7 +58,7 @@ def gen_rpm_remote(**kwargs):
 
     :param url: The URL of an external content source.
     """
-    remote = gen_remote(RPM_FIXTURE_URL)
+    remote = gen_remote(RPM_SIGNED_FIXTURE_URL)
     rpm_extra_fields = {
         **kwargs
     }
