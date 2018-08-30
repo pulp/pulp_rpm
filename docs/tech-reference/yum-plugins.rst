@@ -504,6 +504,11 @@ Configuration Parameters
 The following options are available to the yum importer configuration. All
 configuration values are optional.
 
+``connect_timeout``
+ Number of seconds to wait for nectar to establish a connection with a remote machine. It’s a good
+ practice to set connect timeouts to slightly larger than a multiple of 3, which is the default TCP
+ packet retransmission window. Default is 6.05.
+
 ``feed``
  URL where the repository's content will be synchronized from. This can be either
  an HTTP URL or a location on disk represented as a file URL.
@@ -566,6 +571,10 @@ configuration values are optional.
  Number of threads used when synchronizing the repository. This count controls
  the download threads themselves and has no bearing on the number of operations
  the Pulp server can execute at a given time; defaults to ``1``.
+
+``read_timeout``
+ The number of seconds the client will wait for the server to send a response after an initial
+ connection has already been made. Defaults to 27.
 
 ``remove_missing``
  If true, as the repository is synchronized, old rpms will be removed. Valid values
