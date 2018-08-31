@@ -41,6 +41,9 @@ RPM_SIGNED_URL = urljoin(RPM_SIGNED_FIXTURE_URL, 'bear-4.1-1.noarch.rpm')
 RPM_UNSIGNED_URL = urljoin(RPM_UNSIGNED_FIXTURE_URL, 'bear-4.1-1.noarch.rpm')
 """The path to a single unsigned RPM package."""
 
+RPM_PACKAGE_NAME = 'bear'
+"""The name of one RPM package."""
+
 
 RPM_UPDATED_UPDATEINFO_FIXTURE_URL = urljoin(
     PULP_FIXTURES_BASE_URL, 'rpm-updated-updateinfo/')
