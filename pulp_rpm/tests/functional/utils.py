@@ -23,7 +23,6 @@ from pulp_rpm.tests.functional.constants import (
     RPM_CONTENT_PATH,
     RPM_REMOTE_PATH,
     RPM_SIGNED_FIXTURE_URL,
-    RPM_UNSIGNED_FIXTURE_URL,
 )
 
 
@@ -33,37 +32,12 @@ def set_up_module():
     require_pulp_plugins({'pulp_rpm'}, SkipTest)
 
 
-def populate_pulp(cfg, url=RPM_SIGNED_FIXTURE_URL):
-    """Add rpm contents to Pulp.
-
-    :param pulp_smash.config.PulpSmashConfig: Information about a Pulp
-    application.
-    :param url: The rpm repository URL. Defaults to
-        :data:`pulp_smash.constants.RPM_FIXTURE_URL`
-    :returns: A list of dicts, where each dict describes one file content in
-    Pulp.
-    """
-    client = api.Client(cfg, api.json_handler)
-    remote = {}
-    repo = {}
-    try:
-        remote.update(client.post(RPM_REMOTE_PATH, gen_rpm_remote(url)))
-        repo.update(client.post(REPO_PATH, gen_repo()))
-        sync(cfg, remote, repo)
-    finally:
-        if remote:
-            client.delete(remote['_href'])
-        if repo:
-            client.delete(repo['_href'])
-    return client.get(RPM_CONTENT_PATH)['results']
-
-
 def gen_rpm_remote(**kwargs):
     """Return a semi-random dict for use in creating a rpm Remote.
 
     :param url: The URL of an external content source.
     """
-    remote = gen_remote(RPM_UNSIGNED_FIXTURE_URL)
+    remote = gen_remote(RPM_SIGNED_FIXTURE_URL)
     rpm_extra_fields = {
         **kwargs
     }
@@ -84,15 +58,55 @@ def gen_rpm_publisher(**kwargs):
     return publisher
 
 
-# FIXME: replace this boilerplate with a real implementation
-def get_rpm_content_unit_paths(repo):
+def get_rpm_package_paths(repo):
     """Return the relative path of content units present in a rpm repository.
 
     :param repo: A dict of information about the repository.
     :returns: A list with the paths of units present in a given repository.
     """
-    # The "relative_path" is actually a file path and name
-    return [content_unit['relative_path'] for content_unit in get_content(repo)]
+    return [gen_rpm_filename(content_unit) for content_unit in get_content(repo)]
+
+
+def gen_rpm_filename(package):
+    """Create a filename for a RPM based upon its NEVRA information.
+
+    :param package: Information about the content unit.
+    :type package: dict
+    :returns: The filename of the package.
+    :rtype: str
+    """
+    format_string = "{n}-{e}:{v}-{r}.{a}.rpm" if package['epoch'] else "{n}-{v}-{r}.{a}.rpm"
+
+    return format_string.format(
+        n=package['name'],
+        e=package['epoch'],
+        v=package['version'],
+        r=package['release'],
+        a=package['arch']
+    )
+
+
+def populate_pulp(cfg, url=RPM_SIGNED_FIXTURE_URL):
+    """Add rpm contents to Pulp.
+
+    :param pulp_smash.config.PulpSmashConfig: Information about a Pulp application.
+    :param url: The rpm repository URL. Defaults to
+        :data:`pulp_smash.constants.RPM_SIGNED_FIXTURE_URL`
+    :returns: A list of dicts, where each dict describes one file content in Pulp.
+    """
+    client = api.Client(cfg, api.json_handler)
+    remote = {}
+    repo = {}
+    try:
+        remote.update(client.post(RPM_REMOTE_PATH, gen_rpm_remote(url)))
+        repo.update(client.post(REPO_PATH, gen_repo()))
+        sync(cfg, remote, repo)
+    finally:
+        if remote:
+            client.delete(remote['_href'])
+        if repo:
+            client.delete(repo['_href'])
+    return client.get(RPM_CONTENT_PATH)['results']
 
 
 def gen_yum_config_file(cfg, repositoryid, baseurl, name, **kwargs):

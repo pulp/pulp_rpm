@@ -36,14 +36,34 @@ repositories, i.e. :data:`RPM_SIGNED_FIXTURE_URL` and :data:`RPM_UNSIGNED_FIXTUR
 This matches the format output by the "content_summary" field on "../repositories/../versions/../".
 """
 
-RPM_SIGNED_URL = urljoin(RPM_SIGNED_FIXTURE_URL, 'bear-4.1-1.noarch.rpm')
-"""The path to a single signed RPM package."""
-
-RPM_UNSIGNED_URL = urljoin(RPM_UNSIGNED_FIXTURE_URL, 'bear-4.1-1.noarch.rpm')
-"""The path to a single unsigned RPM package."""
 
 RPM_PACKAGE_NAME = 'bear'
 """The name of one RPM package."""
+
+RPM_PACKAGE_FILENAME = 'bear-4.1-1.noarch.rpm'
+"""The filename of one RPM package."""
+
+RPM_PACKAGE_DATA = {
+    'name': 'bear',
+    'epoch': '0',
+    'version': '4.1',
+    'release': '1',
+    'arch': 'noarch',
+    'description': 'A dummy package of bear',
+    'summary': 'A dummy package of bear',
+    'rpm_license': 'GPLv2',
+    'rpm_group': 'Internet/Applications',
+    'rpm_vendor': "",
+    # TODO: Complete this information once we figure out how to serialize everything nicely
+}
+"""The metadata for one RPM package."""
+
+RPM_SIGNED_URL = urljoin(RPM_SIGNED_FIXTURE_URL, RPM_PACKAGE_FILENAME)
+"""The path to a single signed RPM package."""
+
+RPM_UNSIGNED_URL = urljoin(RPM_UNSIGNED_FIXTURE_URL, RPM_PACKAGE_FILENAME)
+"""The path to a single unsigned RPM package."""
+
 
 RPM_UPDATED_UPDATEINFO_FIXTURE_URL = urljoin(
     PULP_FIXTURES_BASE_URL, 'rpm-updated-updateinfo/')

@@ -2,7 +2,13 @@ from gettext import gettext as _
 
 from rest_framework import serializers
 
-from pulpcore.plugin.serializers import ContentSerializer, RemoteSerializer, PublisherSerializer
+from pulpcore.plugin.models import Artifact, ContentArtifact
+from pulpcore.plugin.serializers import (
+    ContentSerializer,
+    RemoteSerializer,
+    RelatedField,
+    PublisherSerializer,
+)
 
 from pulp_rpm.app.models import Package, RpmRemote, RpmPublisher, UpdateRecord
 
@@ -15,11 +21,18 @@ class PackageSerializer(ContentSerializer):
     keeping fields from the parent class as well. Provide help_text.
     """
 
+    artifact = RelatedField(
+        view_name='artifacts-detail',
+        help_text="Artifact file representing the physical content",
+        queryset=Artifact.objects.all()
+    )
+
     name = serializers.CharField(
         help_text=_("Name of the package"),
     )
     epoch = serializers.CharField(
         help_text=_("The package's epoch"),
+        allow_blank=True, required=False,
     )
     version = serializers.CharField(
         help_text=_("The version of the package. For example, '2.8.0'"),
@@ -41,48 +54,62 @@ class PackageSerializer(ContentSerializer):
 
     summary = serializers.CharField(
         help_text=_("Short description of the packaged software"),
+        allow_blank=True, required=False,
     )
     description = serializers.CharField(
         help_text=_("In-depth description of the packaged software"),
+        allow_blank=True, required=False,
     )
     url = serializers.CharField(
         help_text=_("URL with more information about the packaged software"),
+        allow_blank=True, required=False,
     )
 
     changelogs = serializers.CharField(
         help_text=_("Changelogs that package contains"),
+        default="[]", required=False
     )
     files = serializers.CharField(
         help_text=_("Files that package contains"),
+        default="[]", required=False
     )
 
     requires = serializers.CharField(
         help_text=_("Capabilities the package requires"),
+        default="[]", required=False
     )
     provides = serializers.CharField(
         help_text=_("Capabilities the package provides"),
+        default="[]", required=False
     )
     conflicts = serializers.CharField(
         help_text=_("Capabilities the package conflicts"),
+        default="[]", required=False
     )
     obsoletes = serializers.CharField(
         help_text=_("Capabilities the package obsoletes"),
+        default="[]", required=False
     )
     suggests = serializers.CharField(
         help_text=_("Capabilities the package suggests"),
+        default="[]", required=False
     )
     enhances = serializers.CharField(
         help_text=_("Capabilities the package enhances"),
+        default="[]", required=False
     )
     recommends = serializers.CharField(
         help_text=_("Capabilities the package recommends"),
+        default="[]", required=False
     )
     supplements = serializers.CharField(
         help_text=_("Capabilities the package supplements"),
+        default="[]", required=False
     )
 
     location_base = serializers.CharField(
         help_text=_("Base location of this package"),
+        allow_blank=True, required=False
     )
     location_href = serializers.CharField(
         help_text=_("Relative location of package to the repodata"),
@@ -90,21 +117,27 @@ class PackageSerializer(ContentSerializer):
 
     rpm_buildhost = serializers.CharField(
         help_text=_("Hostname of the system that built the package"),
+        allow_blank=True, required=False
     )
     rpm_group = serializers.CharField(
         help_text=_("RPM group (See: http://fedoraproject.org/wiki/RPMGroups)"),
+        allow_blank=True, required=False
     )
     rpm_license = serializers.CharField(
         help_text=_("License term applicable to the package software (GPLv2, etc.)"),
+        allow_blank=True, required=False
     )
     rpm_packager = serializers.CharField(
         help_text=_("Person or persons responsible for creating the package"),
+        allow_blank=True, required=False
     )
     rpm_sourcerpm = serializers.CharField(
         help_text=_("Name of the source package (srpm) the package was built from"),
+        allow_blank=True, required=False
     )
     rpm_vendor = serializers.CharField(
         help_text=_("Name of the organization that produced the package"),
+        allow_blank=True, required=False
     )
     rpm_header_start = serializers.IntegerField(
         help_text=_("First byte of the header"),
@@ -131,8 +164,32 @@ class PackageSerializer(ContentSerializer):
                     "file mtime in seconds since the epoch.")
     )
 
+    def create(self, validated_data):
+        """
+        Create a Package.
+
+        Overriding default create() to deal with artifact properly.
+
+        Args:
+            validated_data (dict): Data used to create the Package
+
+        Returns:
+            models.Package: The created Package
+
+        """
+        artifact = validated_data.pop('artifact')
+
+        package = Package.objects.create(**validated_data)
+        ca = ContentArtifact(artifact=artifact,
+                             content=package,
+                             relative_path=package.filename)
+        ca.save()
+
+        return package
+
     class Meta:
-        fields = ContentSerializer.Meta.fields + (
+        fields = tuple(set(ContentSerializer.Meta.fields) - {'artifacts'}) + (
+            'artifact',
             'name', 'epoch', 'version', 'release', 'arch', 'pkgId', 'checksum_type',
             'summary', 'description', 'url', 'changelogs', 'files',
             'requires', 'provides', 'conflicts', 'obsoletes',
