@@ -62,7 +62,7 @@ def synchronize(remote_pk, repository_pk):
             stages = [
                 first_stage,
                 QueryExistingArtifacts(), ArtifactDownloader(), ArtifactSaver(),
-                QueryExistingContentUnits(), ContentUnitSaver(), ErrataRelatedModelSaver(),
+                QueryExistingContentUnits(), ErratumContentUnitSaver(),
                 ContentUnitAssociation(new_version), EndStage()
             ]
             pipeline = create_pipeline(stages)
@@ -272,79 +272,43 @@ class RpmFirstStage(Stage):
         await out_q.put(None)
 
 
-class ErrataRelatedModelSaver(Stage):
+class ErratumContentUnitSaver(ContentUnitSaver):
     """
     A Stages API stage that saves UpdateCollection and UpdateCollectionPackage objects.
-
-    This stage expects :class:`~pulpcore.plugin.stages.DeclarativeContent` units from `in_q` and
-    only performs an action if the content type is :class:`~pulp_rpm.app.models.UpdateRecord`. All
-    other content types are immediately put to `out_q` to be passed down the pipeline.
-
-    This stage drains all available items from `in_q` and batches everything into one large call to
-    the db for efficiency.
     """
 
-    async def __call__(self, in_q, out_q):
+    async def _post_save(self, batch):
         """
-        The coroutine for this stage.
+        Save a batch of UpdateCollection and UpdateCollectionPackage objects.
 
         Args:
-            in_q (:class:`asyncio.Queue`): The queue to receive
-                :class:`~pulpcore.plugin.stages.DeclarativeContent` objects from.
-            out_q (:class:`asyncio.Queue`): The queue to put
-                :class:`~pulpcore.plugin.stages.DeclarativeContent` into.
-
-        Returns:
-            The coroutine for this stage.
+            batch (list of :class:`~pulpcore.plugin.stages.DeclarativeContent`): The batch of
+                :class:`~pulpcore.plugin.stages.DeclarativeContent` objects to be saved.
 
         """
-        shutdown = False
-        batch = []
-        while not shutdown:
-            try:
-                content = in_q.get_nowait()
-            except asyncio.QueueEmpty:
-                if not batch:
-                    content = await in_q.get()
-                    batch.append(content)
-                    continue
-            else:
-                batch.append(content)
+        update_collection_to_save = []
+        for declarative_content in batch:
+            if declarative_content is None:
                 continue
+            if not isinstance(declarative_content.content, UpdateRecord):
+                continue
+            update_record = declarative_content.content
+            try:
+                update_collections = update_record._collections
+            except AttributeError:
+                pass  # This UpdateRecord was found in the db or has no UpdateCollections
+            else:
+                for update_collection in update_collections:
+                    update_collection.update_record = update_record
+                    update_collection_to_save.append(update_collection)
 
-            update_collection_to_save = []
-            for declarative_content in batch:
-                if declarative_content is None:
-                    shutdown = True
-                    break
-                if not isinstance(declarative_content.content, UpdateRecord):
-                    await out_q.put(declarative_content)
-                update_record = declarative_content.content
-                try:
-                    update_collections = update_record._collections
-                except AttributeError:
-                    pass  # This UpdateRecord was found in the db or has no UpdateCollections
-                else:
-                    for update_collection in update_collections:
-                        update_collection.update_record = update_record
-                        update_collection_to_save.append(update_collection)
+        update_collection_packages_to_save = []
+        if update_collection_to_save:
+            saved_collections = UpdateCollection.objects.bulk_create(update_collection_to_save)
+            for update_collection in saved_collections:
+                for update_collection_package in update_collection._packages:
+                    update_collection_package.update_collection = update_collection
+                    update_collection_packages_to_save.append(update_collection_package)
 
-            update_collection_packages_to_save = []
-            if update_collection_to_save:
-                saved_collections = UpdateCollection.objects.bulk_create(update_collection_to_save)
-                for update_collection in saved_collections:
-                    for update_collection_package in update_collection._packages:
-                        update_collection_package.update_collection = update_collection
-                        update_collection_packages_to_save.append(update_collection_package)
-
-                if update_collection_packages_to_save:
-                    UpdateCollectionPackage.objects.bulk_create(update_collection_packages_to_save)
-
-            for declarative_content in batch:
-                if declarative_content is None:
-                    continue
-                await out_q.put(declarative_content)
-
-            batch = []
-
-        await out_q.put(None)
+            if update_collection_packages_to_save:
+                UpdateCollectionPackage.objects.bulk_create(update_collection_packages_to_save)
