@@ -5,7 +5,11 @@ import unittest
 from requests.exceptions import HTTPError
 
 from pulp_smash import api, config
-from pulp_smash.pulp3.constants import DISTRIBUTION_PATH, PUBLICATIONS_PATH, REPO_PATH
+from pulp_smash.pulp3.constants import (
+    DISTRIBUTION_PATH,
+    PUBLICATIONS_PATH,
+    REPO_PATH,
+)
 from pulp_smash.pulp3.utils import (
     gen_distribution,
     gen_repo,
@@ -25,7 +29,7 @@ from pulp_rpm.tests.functional.utils import (
 from pulp_rpm.tests.functional.utils import set_up_module as setUpModule  # noqa:F401
 
 
-@unittest.skip("FIXME: Implement publish support")
+@unittest.skip('FIXME: Implement publish support')
 class PublicationsTestCase(unittest.TestCase):
     """Perform actions over publications."""
 

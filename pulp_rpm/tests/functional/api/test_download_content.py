@@ -15,20 +15,20 @@ from pulp_smash.pulp3.utils import (
 )
 
 from pulp_rpm.tests.functional.utils import (
-    gen_rpm_remote,
     gen_rpm_publisher,
+    gen_rpm_remote,
     get_rpm_content_unit_paths,
 )
 from pulp_rpm.tests.functional.constants import (
-    RPM_SIGNED_FIXTURE_URL,
-    RPM_REMOTE_PATH,
     RPM_PUBLISHER_PATH,
+    RPM_REMOTE_PATH,
+    RPM_SIGNED_FIXTURE_URL,
 )
 from pulp_rpm.tests.functional.utils import set_up_module as setUpModule  # noqa:F401
 
 
 # Define utils.get_rpm_content_unit_paths() before enabling this test
-@unittest.skip("FIXME: plugin writer action required")
+@unittest.skip('FIXME: plugin writer action required')
 class DownloadContentTestCase(unittest.TestCase):
     """Verify whether content served by pulp can be downloaded."""
 

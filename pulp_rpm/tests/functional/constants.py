@@ -1,4 +1,5 @@
 # coding=utf-8
+"""Constants for Pulp RPM plugin tests."""
 from urllib.parse import urljoin
 
 from pulp_smash.constants import PULP_FIXTURES_BASE_URL
@@ -8,15 +9,15 @@ from pulp_smash.pulp3.constants import (
     CONTENT_PATH
 )
 
-
 RPM_CONTENT_PATH = urljoin(CONTENT_PATH, 'rpm/packages/')
 """The location of RPM packages on the content endpoint."""
+
 UPDATERECORD_CONTENT_PATH = urljoin(CONTENT_PATH, 'rpm/updates/')
 """The location of RPM UpdateRecords on the content endpoint."""
 
 RPM_REMOTE_PATH = urljoin(BASE_REMOTE_PATH, 'rpm/')
-RPM_PUBLISHER_PATH = urljoin(BASE_PUBLISHER_PATH, 'rpm/')
 
+RPM_PUBLISHER_PATH = urljoin(BASE_PUBLISHER_PATH, 'rpm/')
 
 RPM_SIGNED_FIXTURE_URL = urljoin(PULP_FIXTURES_BASE_URL, 'rpm-signed/')
 """The URL to a repository with signed RPM packages."""
@@ -43,7 +44,6 @@ RPM_UNSIGNED_URL = urljoin(RPM_UNSIGNED_FIXTURE_URL, 'bear-4.1-1.noarch.rpm')
 
 RPM_PACKAGE_NAME = 'bear'
 """The name of one RPM package."""
-
 
 RPM_UPDATED_UPDATEINFO_FIXTURE_URL = urljoin(
     PULP_FIXTURES_BASE_URL, 'rpm-updated-updateinfo/')
