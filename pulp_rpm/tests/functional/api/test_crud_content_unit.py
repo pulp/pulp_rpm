@@ -15,16 +15,16 @@ from pulp_smash.pulp3.utils import (
 )
 
 from pulp_rpm.tests.functional.constants import (
-    RPM_SIGNED_URL,
     RPM_CONTENT_PATH,
     RPM_REMOTE_PATH,
+    RPM_SIGNED_URL,
 )
 from pulp_rpm.tests.functional.utils import gen_rpm_remote, skip_if
 from pulp_rpm.tests.functional.utils import set_up_module as setUpModule  # noqa:F401
 
 
 # Read the instructions provided below on the steps needed to enable this test.
-@unittest.skip("FIXME: plugin writer action required")
+@unittest.skip('FIXME: plugin writer action required')
 class ContentUnitTestCase(unittest.TestCase):
     """CRUD content unit.
 
@@ -68,8 +68,9 @@ class ContentUnitTestCase(unittest.TestCase):
     @skip_if(bool, 'content_unit', False)
     def test_02_read_content_units(self):
         """Read a content unit by its relative_path."""
-        # FIXME: 'relative_path' is an attribute specific to the File plugin. It is only an
-        # example. You should replace this with some other field specific to your content type.
+        # FIXME: 'relative_path' is an attribute specific to the File plugin.
+        # It is only an example. You should replace this with some other field
+        # specific to your content type.
         page = self.client.get(RPM_CONTENT_PATH, params={
             'relative_path': self.content_unit['relative_path']
         })

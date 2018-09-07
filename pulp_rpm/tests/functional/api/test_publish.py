@@ -16,18 +16,18 @@ from pulp_smash.pulp3.utils import (
 )
 
 from pulp_rpm.tests.functional.utils import (
-    gen_rpm_remote,
     gen_rpm_publisher,
+    gen_rpm_remote,
 )
 from pulp_rpm.tests.functional.constants import (
     RPM_CONTENT_PATH,
-    RPM_REMOTE_PATH,
     RPM_PUBLISHER_PATH,
+    RPM_REMOTE_PATH,
 )
 from pulp_rpm.tests.functional.utils import set_up_module as setUpModule  # noqa:F401
 
 
-@unittest.skip("FIXME: Implement publish support")
+@unittest.skip('FIXME: Implement publish support')
 class PublishAnyRepoVersionTestCase(unittest.TestCase):
     """Test whether a particular repository version can be published.
 

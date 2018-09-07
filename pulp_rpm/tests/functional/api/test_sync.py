@@ -13,11 +13,11 @@ from pulp_smash.pulp3.utils import (
 )
 
 from pulp_rpm.tests.functional.constants import (
-    RPM_FIXTURE_COUNT,
     RPM_FIXTURE_CONTENT_SUMMARY,
+    RPM_FIXTURE_COUNT,
+    RPM_PACKAGE_NAME,
     RPM_REMOTE_PATH,
     RPM_SIGNED_FIXTURE_URL,
-    RPM_PACKAGE_NAME,
     RPM_UNSIGNED_FIXTURE_URL,
     RPM_UPDATED_UPDATEINFO_FIXTURE_URL,
     RPM_UPDATERECORD_ID,
@@ -47,7 +47,8 @@ class BasicSyncTestCase(unittest.TestCase):
         2. Assert that repository version is None.
         3. Sync the remote.
         4. Assert that repository version is not None.
-        5. Assert that the correct number of units were added and are present in the repo.
+        5. Assert that the correct number of units were added and are present
+        in the repo.
         6. Sync the remote one more time.
         7. Assert that repository version is different from the previous one.
         8. Assert that the same number of are present and that no units were added.
@@ -168,11 +169,12 @@ class SyncMutatedUpdateRecordTestCase(unittest.TestCase):
         1. Create a repository and a remote.
         2. Sync the remote.
         3. Assert that the content summary matches what is expected.
-        4. Create a new remote w/ using fixture containing updated errata (updaterecords with the
-           ID as the existing updaterecord content, but different metadata)
+        4. Create a new remote w/ using fixture containing updated errata
+        (updaterecords with the ID as the existing updaterecord content, but
+        different metadata)
         5. Sync the remote again.
-        6. Assert that repository version is different from the previous one but has the same
-           content summary.
+        6. Assert that repository version is different from the previous one
+        but has the same content summary.
         7. Assert that the updaterecords have changed since the last sync.
         """
         client = api.Client(self.cfg, api.json_handler)
@@ -181,8 +183,9 @@ class SyncMutatedUpdateRecordTestCase(unittest.TestCase):
         self.addCleanup(client.delete, repo['_href'])
 
         # Create a remote with the unsigned RPM fixture url.
-        # We need to use the unsigned fixture because the one used down below has unsigned RPMs.
-        # Signed and unsigned units have different hashes, so they're seen as different units.
+        # We need to use the unsigned fixture because the one used down below
+        # has unsigned RPMs. Signed and unsigned units have different hashes,
+        # so they're seen as different units.
         body = gen_rpm_remote(url=RPM_UNSIGNED_FIXTURE_URL)
         remote = client.post(RPM_REMOTE_PATH, body)
         self.addCleanup(client.delete, remote['_href'])
@@ -191,7 +194,10 @@ class SyncMutatedUpdateRecordTestCase(unittest.TestCase):
         self.assertIsNone(repo['_latest_version_href'])
         sync(self.cfg, remote, repo)
         repo = client.get(repo['_href'])
-        self.assertDictEqual(get_content_summary(repo), RPM_FIXTURE_CONTENT_SUMMARY)
+        self.assertDictEqual(
+            get_content_summary(repo),
+            RPM_FIXTURE_CONTENT_SUMMARY
+        )
 
         # Save a copy of the original updateinfo
         original_updaterecords = {
@@ -199,7 +205,8 @@ class SyncMutatedUpdateRecordTestCase(unittest.TestCase):
             if content['type'] == 'update'
         }
 
-        # Create a remote with a different test fixture, one containing mutated updateinfo.
+        # Create a remote with a different test fixture, one containing mutated
+        # updateinfo.
         body = gen_rpm_remote(url=RPM_UPDATED_UPDATEINFO_FIXTURE_URL)
         remote = client.post(RPM_REMOTE_PATH, body)
         self.addCleanup(client.delete, remote['_href'])
@@ -207,7 +214,10 @@ class SyncMutatedUpdateRecordTestCase(unittest.TestCase):
         # Sync the repository again.
         sync(self.cfg, remote, repo)
         repo = client.get(repo['_href'])
-        self.assertDictEqual(get_content_summary(repo), RPM_FIXTURE_CONTENT_SUMMARY)
+        self.assertDictEqual(
+            get_content_summary(repo),
+            RPM_FIXTURE_CONTENT_SUMMARY
+        )
         self.assertEqual(len(get_added_content(repo)), 0)
 
         # Test that the updateinfo have been modified.
@@ -217,5 +227,8 @@ class SyncMutatedUpdateRecordTestCase(unittest.TestCase):
         }
 
         self.assertNotEqual(mutated_updaterecords, original_updaterecords)
-        self.assertEqual(mutated_updaterecords[RPM_UPDATERECORD_ID]['description'],
-                         "Updated Gorilla_Erratum and the updated date contains timezone")
+        self.assertEqual(
+            mutated_updaterecords[RPM_UPDATERECORD_ID]['description'],
+            "Updated Gorilla_Erratum and the updated date contains timezone",
+            mutated_updaterecords[RPM_UPDATERECORD_ID]
+        )
