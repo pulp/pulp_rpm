@@ -79,7 +79,7 @@ Create a repository ``foo``
 .. code:: json
 
     {
-        "_href": "http://localhost:8000/pulp/api/v3/repositories/8d7cd67a-9421-461f-9106-2df8e4854f5f/",
+        "_href": "/pulp/api/v3/repositories/1/",
         ...
     }
 
@@ -93,7 +93,7 @@ Create a new remote ``bar``
 .. code:: json
 
     {
-        "_href": "http://localhost:8000/pulp/api/v3/remotes/rpm/13ac2d63-7b7b-401d-b71b-9a5af05aab3c/",
+        "_href": "/pulp/api/v3/remotes/rpm/1/",
         ...
     }
 
@@ -103,22 +103,23 @@ Create a new remote ``bar``
 Sync repository ``foo`` using remote ``bar``
 ----------------------------------------------
 
-``$ http POST $remote_HREF'sync/' repository=$REPO_HREF``
+``$ http POST :8000${REMOTE_HREF}sync/ repository=$REPO_HREF``
 
 Look at the new Repository Version created
 ------------------------------------------
 
-``$ http GET $REPO_HREF'versions/1/'``
+``$ http GET :8000${REPO_HREF}versions/1/``
 
 .. code:: json
 
     {
-        "_added_href": "http://localhost:8000/pulp/api/v3/repositories/b787e6ad-d6b6-4e3d-ab12-73eba19b42fb/versions/1/added_content/",
-        "_content_href": "http://localhost:8000/pulp/api/v3/repositories/b787e6ad-d6b6-4e3d-ab12-73eba19b42fb/versions/1/content/",
-        "_href": "http://localhost:8000/pulp/api/v3/repositories/b787e6ad-d6b6-4e3d-ab12-73eba19b42fb/versions/1/",
-        "_removed_href": "http://localhost:8000/pulp/api/v3/repositories/b787e6ad-d6b6-4e3d-ab12-73eba19b42fb/versions/1/removed_content/",
+        "_added_href": "/pulp/api/v3/repositories/1/versions/1/added_content/",
+        "_content_href": "/pulp/api/v3/repositories/1/versions/1/content/",
+        "_href": "/pulp/api/v3/repositories/1/versions/1/",
+        "_removed_href": "/pulp/api/v3/repositories/1/versions/1/removed_content/",
         "content_summary": {
-            "rpm": 14
+            "package": 35,
+            "update": 4
         },
         "created": "2018-02-23T20:29:54.499055Z",
         "number": 1
@@ -135,7 +136,7 @@ Create an Artifact by uploading the file to Pulp.
 .. code:: json
 
     {
-        "_href": "http://localhost:8000/pulp/api/v3/artifacts/7d39e3f6-535a-4b6e-81e9-c83aa56aa19e/",
+        "_href": "/pulp/api/v3/artifacts/1/",
         ...
     }
 
@@ -144,26 +145,24 @@ Create ``rpm`` content from an Artifact
 
 Create a content unit and point it to your artifact
 
-``$ http POST http://localhost:8000/pulp/api/v3/content/rpm/ relative_path=foo.rpm
-artifact="http://localhost:8000/pulp/api/v3/artifacts/7d39e3f6-535a-4b6e-81e9-c83aa56aa19e/"``
+``$ http POST http://localhost:8000/pulp/api/v3/content/rpm/packages/ relative_path=foo.rpm artifact="/pulp/api/v3/artifacts/1/"``
 
 .. code:: json
 
     {
-        "_href": "http://localhost:8000/pulp/api/v3/content/rpm/a9578a5f-c59f-4920-9497-8d1699c112ff/",
-        "artifact": "http://localhost:8000/pulp/api/v3/artifacts/7d39e3f6-535a-4b6e-81e9-c83aa56aa19e/",
+        "_href": "/pulp/api/v3/content/rpm/packages/36/",
+        "artifact": "/pulp/api/v3/artifacts/1/",
         "relative_path": "foo.rpm",
         "type": "rpm"
     }
 
-``$ export CONTENT_HREF=$(http :8000/pulp/api/v3/content/rpm/ | jq -r '.results[] | select(
-.relative_path == "foo.rpm") | ._href')``
+``$ export CONTENT_HREF=$(http :8000/pulp/api/v3/content/rpm/packages/ | jq -r '.results[] | select( .relative_path == "foo.rpm") | ._href')``
 
 
 Add content to repository ``foo``
 ---------------------------------
 
-``$ http POST $REPO_HREF'versions/' add_content_units:="[\"$CONTENT_HREF\"]"``
+``$ http POST :8000${REPO_HREF}versions/ add_content_units:="[\"$CONTENT_HREF\"]"``
 
 
 Create a ``rpm`` Publisher
@@ -174,13 +173,11 @@ Create a ``rpm`` Publisher
 .. code:: json
 
     {
-        "_href": "http://localhost:8000/pulp/api/v3/publishers/rpm/fd4cbecd-6c6a-4197-9cbe
-        -4e45b0516309/",
+        "_href": "/pulp/api/v3/publishers/rpm/1/",
         ...
     }
 
-``$ export PUBLISHER_HREF=$(http :8000/pulp/api/v3/publishers/rpm/ | jq -r '.results[] | select(.name ==
- "bar") | ._href')``
+``$ export PUBLISHER_HREF=$(http :8000/pulp/api/v3/publishers/rpm/ | jq -r '.results[] | select(.name == "bar") | ._href')``
 
 
 Use the ``bar`` Publisher to create a Publication
@@ -192,7 +189,7 @@ Use the ``bar`` Publisher to create a Publication
 
     [
         {
-            "_href": "http://localhost:8000/pulp/api/v3/tasks/fd4cbecd-6c6a-4197-9cbe-4e45b0516309/",
+            "_href": "/pulp/api/v3/tasks/fd4cbecd-6c6a-4197-9cbe-4e45b0516309/",
             "task_id": "fd4cbecd-6c6a-4197-9cbe-4e45b0516309"
         }
     ]
@@ -208,7 +205,7 @@ Create a Distribution for the Publication
 .. code:: json
 
     {
-        "_href": "http://localhost:8000/pulp/api/v3/distributions/9b29f1b2-6726-40a2-988a-273d3f009a41/",
+        "_href": "/pulp/api/v3/distributions/1/",
        ...
     }
 
