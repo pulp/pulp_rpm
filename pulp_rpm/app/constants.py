@@ -99,3 +99,10 @@ CREATEREPO_UPDATE_COLLECTION_PACKAGE_ATTRS = SimpleNamespace(
     SUM_TYPE='sum_type',
     VERSION='version'
 )
+
+CREATEREPO_UPDATE_REFERENCE_ATTRS = SimpleNamespace(
+    HREF='href',
+    ID='id',
+    TITLE='title',
+    TYPE='type'
+)

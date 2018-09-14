@@ -6,7 +6,8 @@ from pulpcore.plugin.models import Content, Remote, Publisher
 from pulp_rpm.app.constants import (CHECKSUM_CHOICES, CREATEREPO_PACKAGE_ATTRS,
                                     CREATEREPO_UPDATE_COLLECTION_ATTRS,
                                     CREATEREPO_UPDATE_COLLECTION_PACKAGE_ATTRS,
-                                    CREATEREPO_UPDATE_RECORD_ATTRS)
+                                    CREATEREPO_UPDATE_RECORD_ATTRS,
+                                    CREATEREPO_UPDATE_REFERENCE_ATTRS)
 
 
 log = getLogger(__name__)
@@ -290,15 +291,14 @@ class UpdateRecord(Content):
         pushcount (Text):
             Push count
 
-        references (Text):
-            List of UpdateReferences - see comments below
-
     """
 
     TYPE = 'update'
 
-    # propery to temporarily store collections in memory
+    # property to temporarily store collections in memory
     _collections = []
+    # property to temporarily store references in memory
+    _references = []
 
     # Required metadata
     errata_id = models.TextField()  # TODO: change field name?
@@ -482,6 +482,57 @@ class UpdateCollectionPackage(models.Model):
             'sum': getattr(package, CREATEREPO_UPDATE_COLLECTION_PACKAGE_ATTRS.SUM) or '',
             'sum_type': getattr(package, CREATEREPO_UPDATE_COLLECTION_PACKAGE_ATTRS.SUM_TYPE) or '',
             'version': getattr(package, CREATEREPO_UPDATE_COLLECTION_PACKAGE_ATTRS.VERSION) or ''
+        }
+
+
+class UpdateReference(models.Model):
+    """
+    A reference to the additional information about the problem solved by an update.
+
+    To the extent possible, maps directly to the fields provided by createrepo_c.
+    https://github.com/rpm-software-management/createrepo_c/
+
+    Fields:
+
+        href (Text):
+            Reference URL, e.g. https://bugzilla.redhat.com/show_bug.cgi?id=1226339
+        ref_id (Text):
+            ID of the reference, e.g. 1226339
+        title (Text):
+            Title of the reference, e.g. php-Faker-v1.5.0 is available
+        ref_type (Text):
+            Type of the reference, e.g. bugzilla
+
+    Relations:
+
+        update_record (models.ForeignKey): The associated UpdateRecord
+    """
+
+    href = models.TextField(blank=True)
+    ref_id = models.TextField(blank=True)
+    title = models.TextField(blank=True)
+    ref_type = models.TextField(blank=True)
+
+    update_record = models.ForeignKey(UpdateRecord, related_name="references",
+                                      on_delete=models.CASCADE)
+
+    @classmethod
+    def createrepo_to_dict(cls, reference):
+        """
+        Convert createrepo_c update reference object to dict for instantiating UpdateReference.
+
+        Args:
+            reference(createrepo_c.UpdateReference): a UpdateReference to convert
+
+        Returns:
+            dict: data for UpdateReference content creation
+
+        """
+        return {
+            'href': getattr(reference, CREATEREPO_UPDATE_REFERENCE_ATTRS.HREF),
+            'ref_id': getattr(reference, CREATEREPO_UPDATE_REFERENCE_ATTRS.ID),
+            'title': getattr(reference, CREATEREPO_UPDATE_REFERENCE_ATTRS.TITLE),
+            'ref_type': getattr(reference, CREATEREPO_UPDATE_REFERENCE_ATTRS.TYPE)
         }
 
 
