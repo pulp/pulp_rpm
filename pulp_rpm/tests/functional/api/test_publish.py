@@ -27,7 +27,6 @@ from pulp_rpm.tests.functional.constants import (
 from pulp_rpm.tests.functional.utils import set_up_module as setUpModule  # noqa:F401
 
 
-@unittest.skip('FIXME: Implement publish support')
 class PublishAnyRepoVersionTestCase(unittest.TestCase):
     """Test whether a particular repository version can be published.
 

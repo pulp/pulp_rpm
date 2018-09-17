@@ -183,7 +183,7 @@ Create a ``rpm`` Publisher
 Use the ``bar`` Publisher to create a Publication
 -------------------------------------------------
 
-``$ http POST $PUBLISHER_HREF'publish/' repository=$REPO_HREF``
+``$ http POST ${PUBLISHER_HREF}publish/ repository=$REPO_HREF``
 
 .. code:: json
 
@@ -214,3 +214,20 @@ Download ``foo.rpm`` from Pulp
 ---------------------------------
 
 ``$ http GET http://localhost:8000/pulp/content/foo/foo.rpm``
+
+Install a package from Pulp
+---------------------------
+
+Open /etc/yum.repos.d/foo.repo and add the following:
+
+.. code::
+
+  [foo]
+  name = foo
+  baseurl = http://localhost:8000/pulp/content/foo
+  gpgcheck = 0
+
+
+Now use dnf to install a package:
+
+``$ sudo dnf install walrus``
