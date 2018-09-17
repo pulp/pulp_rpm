@@ -27,7 +27,7 @@ from pulpcore.plugin.stages import (
 
 from pulp_rpm.app.constants import CHECKSUM_TYPES, PACKAGE_REPODATA, UPDATE_REPODATA
 from pulp_rpm.app.models import (Package, RpmRemote, UpdateCollection,
-                                 UpdateCollectionPackage, UpdateRecord)
+                                 UpdateCollectionPackage, UpdateRecord, UpdateReference)
 
 log = logging.getLogger(__name__)
 
@@ -266,6 +266,10 @@ class RpmFirstStage(Stage):
 
                                 update_record._collections.append(coll)
 
+                            for reference in update.references:
+                                reference_dict = UpdateReference.createrepo_to_dict(reference)
+                                update_record._references.append(UpdateReference(**reference_dict))
+
                             dc = DeclarativeContent(content=update_record)
                             await out_q.put(dc)
 
@@ -274,12 +278,12 @@ class RpmFirstStage(Stage):
 
 class ErratumContentUnitSaver(ContentUnitSaver):
     """
-    A Stages API stage that saves UpdateCollection and UpdateCollectionPackage objects.
+    A Stages API stage that saves UpdateCollection,UpdateCollectionPackage,UpdateReference objects.
     """
 
     async def _post_save(self, batch):
         """
-        Save a batch of UpdateCollection and UpdateCollectionPackage objects.
+        Save a batch of UpdateCollection, UpdateCollectionPackage, UpdateReference objects.
 
         Args:
             batch (list of :class:`~pulpcore.plugin.stages.DeclarativeContent`): The batch of
@@ -287,6 +291,7 @@ class ErratumContentUnitSaver(ContentUnitSaver):
 
         """
         update_collection_to_save = []
+        update_references_to_save = []
         for declarative_content in batch:
             if declarative_content is None:
                 continue
@@ -296,11 +301,16 @@ class ErratumContentUnitSaver(ContentUnitSaver):
             try:
                 update_collections = update_record._collections
             except AttributeError:
-                pass  # This UpdateRecord was found in the db or has no UpdateCollections
+                pass  # This UpdateRecord was found in the db or has no collections or references
             else:
                 for update_collection in update_collections:
                     update_collection.update_record = update_record
                     update_collection_to_save.append(update_collection)
+
+                update_references = update_record._references
+                for update_reference in update_references:
+                    update_reference.update_record = update_record
+                    update_references_to_save.append(update_reference)
 
         update_collection_packages_to_save = []
         if update_collection_to_save:
@@ -312,3 +322,6 @@ class ErratumContentUnitSaver(ContentUnitSaver):
 
             if update_collection_packages_to_save:
                 UpdateCollectionPackage.objects.bulk_create(update_collection_packages_to_save)
+
+        if update_references_to_save:
+            UpdateReference.objects.bulk_create(update_references_to_save)
