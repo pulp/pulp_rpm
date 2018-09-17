@@ -43,7 +43,8 @@ class PublishAnyRepoVersionTestCase(unittest.TestCase):
         2. Create a publication by supplying the latest ``repository_version``.
         3. Assert that the publication ``repository_version`` attribute points
            to the latest repository version.
-        4. Create a publication by supplying the non-latest ``repository_version``.
+        4. Create a publication by supplying the non-latest
+        ``repository_version``.
         5. Assert that the publication ``repository_version`` attribute points
            to the supplied repository version.
         6. Assert that an exception is raised when providing two different
