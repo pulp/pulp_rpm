@@ -6,7 +6,7 @@ from pulp.server.db import model as platform_models
 
 from pulp_rpm.common import ids
 from pulp_rpm.plugins.db import models
-from pulp_rpm.plugins.importers.yum import sync, associate, upload, config_validate
+from pulp_rpm.plugins.importers.yum import sync, associate, upload, config_validate, modularity
 
 
 # The platform currently doesn't support automatic loading of conf files when the plugin
@@ -83,3 +83,23 @@ class YumImporter(Importer):
         self._current_sync = sync.RepoSync(repo, sync_conduit, call_config)
         report = self._current_sync.run()
         return report
+
+    def remove_units(self, transfer_repo, units, call_config):
+        """
+        Remove units which require plugin specific handling.
+
+        Remove Modulemd content units and modular RPMs which belong to them.
+        Other content unit types are removed by the core in a standard way.
+
+        :param transfer_repo:   metadata describing the repository
+        :type  trnasfer_repo:   pulp.plugins.model.Repository
+        :param units:  list of objects describing the units to remove
+        :type  units:  list of pulp.server.db.model.ContentUnit
+        :param call_config: plugin configuration
+        :type  call_config: pulp.plugins.config.PluginCallConfiguration
+        """
+        repo = transfer_repo.repo_obj
+        modulemds_to_remove = set(unit.unit_key_as_named_tuple for unit in units
+                                  if isinstance(unit, models.Modulemd))
+        if modulemds_to_remove:
+            modularity.remove_modulemds(repo, modulemds_to_remove)
