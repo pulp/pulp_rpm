@@ -324,7 +324,7 @@ class YumDistributorMetadataTests(unittest.TestCase):
 
         context = UpdateinfoXMLFileContext(self.metadata_file_dir, checksum_type='md5')
         context._open_metadata_file_handle()
-        context.add_unit_metadata(erratum_unit, erratum_unit.pkglist[0])
+        context.add_unit_metadata(erratum_unit, erratum_unit.pkglist)
         context._close_metadata_file_handle()
 
         self.assertNotEqual(os.path.getsize(path), 0)

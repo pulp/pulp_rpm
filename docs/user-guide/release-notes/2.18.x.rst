@@ -1,0 +1,12 @@
+=======================
+Pulp 2.18 Release Notes
+=======================
+
+Pulp 2.18.0
+===========
+
+New Features
+------------
+
+* Modular package collections in Errata are now supported
+* Modularity support is added for Errata content

@@ -106,6 +106,15 @@ def _parse_collection(element):
     ret = {
         'packages': map(_parse_package, element.findall('package')),
     }
+
+    # a module element indicates this erratum being part of a module
+    module_elements = element.findall('module')
+    module_elements_count = len(module_elements)
+    if module_elements_count:
+        if module_elements_count != 1:
+            raise ValueError('Collection contains multiple module elements')
+        ret['module'] = _parse_module(module_elements[0])
+
     # based on yum's parsing, this could be optional. See yum.update_md.UpdateNotice._parse_pkglist
     if 'short' in element.attrib:
         ret['short'] = element.attrib['short']
@@ -149,4 +158,20 @@ def _parse_package(element):
     if relogin_suggested is not None:
         ret['relogin_suggested'] = relogin_suggested.text
 
+    return ret
+
+
+def _parse_module(element):
+    # An example module element:
+    #   <module name="kangaroo" stream="0" version="20180730223407" context="deadbeef"
+    #    arch="noarch"/>
+    # The element attributes represent a primary key on the Modulemd model.
+    # All the fields are mandatory.
+    ret = {
+        'name': element.attrib['name'],
+        'stream': element.attrib['stream'],
+        'version': element.attrib['version'],
+        'context': element.attrib['context'],
+        'arch': element.attrib['arch'],
+    }
     return ret

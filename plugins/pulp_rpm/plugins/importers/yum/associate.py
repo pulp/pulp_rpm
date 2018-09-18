@@ -81,7 +81,8 @@ def associate(source_repo, dest_repo, import_conduit, config, units=None, solver
 
         return associated_units, failed_units
 
-    group_ids, rpm_names, rpm_search_dicts = identify_children_to_copy(associated_units)
+    (group_ids, rpm_names, rpm_search_dicts,
+        module_search_dicts) = identify_children_to_copy(associated_units)
 
     # ------ get group children of the categories ------
     for page in paginate(group_ids):
@@ -101,6 +102,17 @@ def associate(source_repo, dest_repo, import_conduit, config, units=None, solver
     associated_units |= copy_rpms(rpms_to_copy, source_repo, dest_repo, import_conduit, config,
                                   solver)
     rpms_to_copy = None
+
+    # ------ get Module children of Errata ------
+    source_repo_modules = set(existing.get_existing_units(
+        module_search_dicts, models.Modulemd, source_repo))
+    dest_repo_modules = set(existing.get_existing_units(
+        module_search_dicts, models.Modulemd, dest_repo))
+
+    module_search_dicts = None
+    associated_units |= source_repo_modules - dest_repo_modules
+    source_repo_modules = None
+    dest_repo_modules = None
 
     # ------ get RPM children of groups ------
     names_to_copy = get_rpms_to_copy_by_name(rpm_names, import_conduit, dest_repo)
@@ -314,11 +326,12 @@ def identify_children_to_copy(units):
     :param units:   iterable of Units
     :type  units:   iterable of pulp.server.db.model.ContentUnit
 
-    :return:    set(group names), set(rpm names), list(rpm search dicts)
+    :return:    set(group names), set(rpm names), list(rpm search dicts), list(module search dicts)
     """
     groups = set()
     rpm_names = set()
     rpm_search_dicts = []
+    module_search_dicts = []
     for unit in units:
         if isinstance(unit, models.PackageCategory):
             groups.update(unit.packagegroupids)
@@ -327,9 +340,13 @@ def identify_children_to_copy(units):
         elif isinstance(unit, models.PackageEnvironment):
             groups.update(unit.group_ids)
             groups.update(unit.optional_group_ids)
-        elif isinstance(unit, (models.Errata, models.Modulemd)):
+        elif isinstance(unit, models.Errata):
+            # Errata can refer to both RPM and Modulemd units
             rpm_search_dicts.extend(unit.rpm_search_dicts)
-    return groups, rpm_names, rpm_search_dicts
+            module_search_dicts.extend(unit.module_search_dicts)
+        elif isinstance(unit, models.Modulemd):
+            rpm_search_dicts.extend(unit.rpm_search_dicts)
+    return groups, rpm_names, rpm_search_dicts, module_search_dicts
 
 
 def _associate_unit(dest_repo, unit, config):

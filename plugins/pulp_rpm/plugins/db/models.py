@@ -1170,6 +1170,14 @@ class Errata(UnitMixin, ContentUnit):
                     ret.append(unit_key)
         return ret
 
+    @property
+    def module_search_dicts(self):
+        ret = self.get_unique_modules(errata_id=self.errata_id)
+        for sd in ret:
+            # FIXME: this is already a second place I need to cast, somthing's fishy
+            sd.update(version=int(sd['version']))
+        return ret
+
     @classmethod
     def get_unique_pkglists(cls, errata_id):
         """
@@ -1189,6 +1197,25 @@ class Errata(UnitMixin, ContentUnit):
                                                     allowDiskUse=True,
                                                     batchSize=5).next()['pkglists']
         return pkglists
+
+    @classmethod
+    def get_unique_modules(cls, errata_id):
+        """
+        Generate unique module search dicts for a specified erratum.
+
+        :param errata_id: The erratum to generate a unique set of modules for
+        :type errata_id: str
+        :return: unique modules for a specified erratum
+        :rtype: a generator of dicts
+        """
+        match_stage = {'$match': {'errata_id': errata_id, 'collections.module': {'$exists': True}}}
+        group_stage = {'$group': {'_id': '$errata_id',
+                                  'modules': {'$addToSet': '$collections.module'}}}
+        modules_collection = ErratumPkglist.objects.aggregate(
+            match_stage, group_stage, allowDiskUse=True).next()['modules']
+        for collection in modules_collection:
+            for module in collection:
+                yield module
 
     def create_legacy_metadata_dict(self):
         """
