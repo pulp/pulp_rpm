@@ -163,7 +163,7 @@ def publish(publisher_pk, repository_version_pk):
                 if (db_to_update):
                     db_to_update.dbinfo_update(record.checksum)
                     db_to_update.close()
-                    repomd.set_record(record)
+                repomd.set_record(record)
                 metadata = PublishedMetadata(
                     relative_path=os.path.join(REPODATA_PATH, os.path.basename(path)),
                     publication=publication,
