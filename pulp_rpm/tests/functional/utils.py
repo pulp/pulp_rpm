@@ -134,6 +134,7 @@ def gen_yum_config_file(cfg, repositoryid, baseurl, name, **kwargs):
         'sslverify', content_host.get('verify') and 'yes' or 'no'
     )
 
+    os.system('sudo mkdir -p /etc/yum.repos.d/')
     path = os.path.join('/etc/yum.repos.d/', repositoryid + '.repo')
     with StringIO() as section:
         section.write('[{}]\n'.format(repositoryid))

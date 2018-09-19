@@ -42,7 +42,7 @@ fi
 
 ### Install createrepo_c build deps ###
 sudo apt-get update -y
-sudo apt-get install -y gcc libbz2-dev cmake libexpat1-dev libmagic-dev libglib2.0-dev libcurl4-openssl-dev libxml2-dev libpython3-dev librpm-dev libssl-dev libsqlite3-dev liblzma-dev zlib1g-dev
+sudo apt-get install -y gcc libbz2-dev cmake libexpat1-dev libmagic-dev libglib2.0-dev libcurl4-openssl-dev libxml2-dev libpython3-dev librpm-dev libssl-dev libsqlite3-dev liblzma-dev zlib1g-dev yum
 pip install createrepo_c --install-option="--" --install-option="-DWITH_ZCHUNK:BOOL=OFF"
 #######################################
 
