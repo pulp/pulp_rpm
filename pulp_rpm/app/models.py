@@ -301,7 +301,7 @@ class UpdateRecord(Content):
     _references = []
 
     # Required metadata
-    errata_id = models.TextField()  # TODO: change field name?
+    errata_id = models.TextField(db_index=True)  # TODO: change field name?
     updated_date = models.TextField()
 
     # Optional metadata
@@ -324,14 +324,14 @@ class UpdateRecord(Content):
     # A field that represents the hash digest of the update record. Used to track differences
     # between two UpdateRecord objects without having to examine the associations like
     # UpdateCollection or UpdateCollectionPackage.
-    digest = models.TextField()
+    digest = models.TextField(unique=True)
 
-    class Meta:
-        unique_together = (
-            'errata_id', 'updated_date', 'description', 'issued_date', 'fromstr', 'status', 'title',
-            'summary', 'version', 'update_type', 'severity', 'solution', 'release', 'rights',
-            'pushcount', 'digest'
-        )
+    @classmethod
+    def natural_key_fields(cls):
+        """
+        Digest is used as a natural key for UpdateRecords.
+        """
+        return ('digest',)
 
     @classmethod
     def createrepo_to_dict(cls, update):
