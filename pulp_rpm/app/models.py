@@ -295,11 +295,6 @@ class UpdateRecord(Content):
 
     TYPE = 'update'
 
-    # property to temporarily store collections in memory
-    _collections = []
-    # property to temporarily store references in memory
-    _references = []
-
     # Required metadata
     errata_id = models.TextField(db_index=True)  # TODO: change field name?
     updated_date = models.TextField()
@@ -363,6 +358,14 @@ class UpdateRecord(Content):
             'pushcount': getattr(update, CREATEREPO_UPDATE_RECORD_ATTRS.PUSHCOUNT) or ''
         }
 
+    def __init__(self, *args, **kwargs):
+        """
+        Add attributes to the UpdateRecord instance to temporarily store some data in memory.
+        """
+        super().__init__(*args, **kwargs)
+        self._collections = []
+        self._references = []
+
 
 class UpdateCollection(models.Model):
     """
@@ -382,9 +385,6 @@ class UpdateCollection(models.Model):
 
         update_record (models.ForeignKey): The associated UpdateRecord
     """
-
-    # property to temporarily store packages in memory during sync
-    _packages = []
 
     name = models.TextField(blank=True)
     shortname = models.TextField(blank=True)
@@ -408,6 +408,13 @@ class UpdateCollection(models.Model):
             'name': getattr(collection, CREATEREPO_UPDATE_COLLECTION_ATTRS.NAME),
             'shortname': getattr(collection, CREATEREPO_UPDATE_COLLECTION_ATTRS.SHORTNAME)
         }
+
+    def __init__(self, *args, **kwargs):
+        """
+        Add attributes to the UpdateCollection instance to temporarily store some data in memory.
+        """
+        super().__init__(*args, **kwargs)
+        self._packages = []
 
 
 class UpdateCollectionPackage(models.Model):
