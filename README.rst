@@ -183,7 +183,7 @@ Create a ``rpm`` Publisher
 Use the ``bar`` Publisher to create a Publication
 -------------------------------------------------
 
-``$ http POST ${PUBLISHER_HREF}publish/ repository=$REPO_HREF``
+``$ http POST :8000${PUBLISHER_HREF}publish/ repository=$REPO_HREF``
 
 .. code:: json
 
