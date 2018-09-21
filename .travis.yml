@@ -13,7 +13,6 @@ addons:
     postgresql: "9.6"
 services:
     - postgresql
-    - rabbitmq
 install: source .travis/install.sh
 before_script: source .travis/before_script.sh
 script: source .travis/script.sh
@@ -21,3 +20,19 @@ after_failure:
   - sh -c "cat ~/django_runserver.log"
   - sh -c "cat ~/resource_manager.log"
   - sh -c "cat ~/reserved_workers-1.log"
+stages:
+  - name: test
+  - name: deploy
+    if: tag IS present
+jobs:
+  include:
+  - stage: deploy
+    script: skip
+    deploy:
+      provider: pypi
+      distributions: sdist bdist_wheel
+      user: pulp
+      password:
+        secure: C6xI8ZhjN6pqcDjYL9gXkEAyO9Z4KQjaEnFsyVTgPwm0aRDfnnFuFE9GnZoA7n4VbAUbtv/ZrPPfUoRAr+qbj2pAlY3M7Ua7PqzdprjM8KkQiqdaPDZO3kKiwkZ8bcGKt/6WOmQwb1QwgbJ5lKzu/ovn+0knSta3X7APOklImvI=
+      on:
+        tags: true
