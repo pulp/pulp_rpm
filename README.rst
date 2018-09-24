@@ -160,7 +160,7 @@ Upload ``foo.rpm`` to Pulp
 
 Create an Artifact by uploading the file to Pulp.
 
-``$ http --form POST http://localhost:8000/pulp/api/v3/artifacts/ file@./foo.rpm``
+``$ http --form POST http://localhost:8000/pulp/api/v3/artifacts/ file@./foo-4.1-1.noarch.rpm``
 
 .. code:: json
 
@@ -174,7 +174,7 @@ Create ``rpm`` content from an Artifact
 
 Create a content unit and point it to your artifact
 
-``$ http POST http://localhost:8000/pulp/api/v3/content/rpm/packages/ relative_path=foo.rpm artifact="/pulp/api/v3/artifacts/1/"``
+``$ http POST http://localhost:8000/pulp/api/v3/content/rpm/packages/ relative_path=foo.rpm artifact="/pulp/api/v3/artifacts/1/" filename=foo-4.1-1.noarch.rpm``
 
 .. code:: json
 

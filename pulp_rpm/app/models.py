@@ -1,7 +1,7 @@
 from logging import getLogger
 
 from django.db import models
-from pulpcore.plugin.models import Content, Remote, Publisher
+from pulpcore.plugin.models import Content, ContentArtifact, Remote, Publisher
 
 from pulp_rpm.app.constants import (CHECKSUM_CHOICES, CREATEREPO_PACKAGE_ATTRS,
                                     CREATEREPO_UPDATE_COLLECTION_ATTRS,
@@ -111,7 +111,7 @@ class Package(Content):
 
     # Required metadata
     name = models.TextField()
-    epoch = models.TextField()
+    epoch = models.TextField(blank=True)
     version = models.TextField()
     release = models.TextField()
     arch = models.TextField()
@@ -178,6 +178,34 @@ class Package(Content):
     time_file = models.BigIntegerField(null=True, blank=True)
 
     @property
+    def artifact(self):
+        """
+        Return the artifact id (there is only one for this content type).
+        """
+        return self.artifacts.get().pk
+
+    @artifact.setter
+    def artifact(self, artifact):
+        """
+        Set the artifact for this FileContent.
+        """
+        if self.pk:
+            ca = ContentArtifact(artifact=artifact,
+                                 content=self,
+                                 relative_path=self.filename)
+            ca.save()
+
+    @property
+    def filename(self):
+        """
+        Create a filename for an RPM based upon its NEVRA information.
+        """
+        if self.epoch:
+            return self.nevra + ".rpm"
+        else:
+            return self.nrva + ".rpm"
+
+    @property
     def nevra(self):
         """
         Package NEVRA string (Name-Epoch-Version-Release-Architecture).
@@ -217,7 +245,7 @@ class Package(Content):
             'conflicts': getattr(package, CREATEREPO_PACKAGE_ATTRS.CONFLICTS) or [],
             'description': getattr(package, CREATEREPO_PACKAGE_ATTRS.DESCRIPTION) or '',
             'enhances': getattr(package, CREATEREPO_PACKAGE_ATTRS.ENHANCES) or [],
-            'epoch': getattr(package, CREATEREPO_PACKAGE_ATTRS.EPOCH) or '0',
+            'epoch': getattr(package, CREATEREPO_PACKAGE_ATTRS.EPOCH) or '',
             'files': getattr(package, CREATEREPO_PACKAGE_ATTRS.FILES) or [],
             'location_base': getattr(package, CREATEREPO_PACKAGE_ATTRS.LOCATION_BASE) or '',
             'location_href': getattr(package, CREATEREPO_PACKAGE_ATTRS.LOCATION_HREF),

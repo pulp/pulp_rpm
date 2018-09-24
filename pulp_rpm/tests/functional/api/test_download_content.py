@@ -17,7 +17,7 @@ from pulp_smash.pulp3.utils import (
 from pulp_rpm.tests.functional.utils import (
     gen_rpm_publisher,
     gen_rpm_remote,
-    get_rpm_content_unit_paths,
+    get_rpm_package_paths,
 )
 from pulp_rpm.tests.functional.constants import (
     RPM_PUBLISHER_PATH,
@@ -86,7 +86,7 @@ class DownloadContentTestCase(unittest.TestCase):
         self.addCleanup(client.delete, distribution['_href'])
 
         # Pick a content unit, and download it from both Pulp Fixtures…
-        unit_path = choice(get_rpm_content_unit_paths(repo))
+        unit_path = choice(get_rpm_package_paths(repo))
         fixtures_hash = hashlib.sha256(
             utils.http_get(urljoin(RPM_SIGNED_FIXTURE_URL, unit_path))
         ).hexdigest()

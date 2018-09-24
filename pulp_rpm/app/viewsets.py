@@ -1,9 +1,17 @@
-from gettext import gettext as _  # noqa:F401
+from gettext import gettext as _
+import json
+import os
+import shutil
+import tempfile
 
+import createrepo_c
+from django.db import transaction
 from drf_yasg.utils import swagger_auto_schema
+from rest_framework import serializers, status
 from rest_framework.decorators import detail_route
+from rest_framework.response import Response
 
-from pulpcore.plugin.models import RepositoryVersion
+from pulpcore.plugin.models import Artifact, RepositoryVersion
 from pulpcore.plugin.tasking import enqueue_with_reservation
 from pulpcore.plugin.serializers import (
     AsyncOperationResponseSerializer,
@@ -64,6 +72,47 @@ class PackageViewSet(ContentViewSet):
     serializer_class = PackageSerializer
     minimal_serializer_class = MinimalPackageSerializer
     filterset_class = PackageFilter
+
+    @transaction.atomic
+    def create(self, request):
+        """
+        Create a new Package from a request.
+        """
+        try:
+            artifact = self.get_resource(request.data['artifact'], Artifact)
+        except KeyError:
+            raise serializers.ValidationError(detail={'artifact': _('This field is required')})
+
+        try:
+            filename = request.data['filename']
+        except KeyError:
+            raise serializers.ValidationError(detail={'filename': _('This field is required')})
+
+        # Copy file to a temp directory under the user provided filename
+        with tempfile.TemporaryDirectory() as td:
+            temp_path = os.path.join(td, filename)
+            shutil.copy2(artifact.file.path, temp_path)
+            cr_pkginfo = createrepo_c.package_from_rpm(temp_path)
+            package = Package.createrepo_to_dict(cr_pkginfo)
+
+        package['location_href'] = filename
+        package['artifact'] = request.data['artifact']
+
+        # TODO: Clean this up, maybe make a new function for the purpose of parsing it into
+        # a saveable format
+        new_pkg = {}
+        for key, value in package.items():
+            if isinstance(value, list):
+                new_pkg[key] = json.dumps(value)
+            else:
+                new_pkg[key] = value
+
+        serializer = self.get_serializer(data=new_pkg)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+
+        headers = self.get_success_headers(request.data)
+        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
 
 
 class RpmRemoteViewSet(RemoteViewSet):

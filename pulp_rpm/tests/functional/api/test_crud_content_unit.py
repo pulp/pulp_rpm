@@ -1,7 +1,8 @@
 # coding=utf-8
 """Tests that CRUD rpm content units."""
-import unittest
+import copy
 from random import choice
+import unittest
 
 from requests.exceptions import HTTPError
 
@@ -16,6 +17,8 @@ from pulp_smash.pulp3.utils import (
 
 from pulp_rpm.tests.functional.constants import (
     RPM_CONTENT_PATH,
+    RPM_PACKAGE_FILENAME,
+    RPM_PACKAGE_DATA,
     RPM_REMOTE_PATH,
     RPM_SIGNED_URL,
 )
@@ -23,8 +26,6 @@ from pulp_rpm.tests.functional.utils import gen_rpm_remote, skip_if
 from pulp_rpm.tests.functional.utils import set_up_module as setUpModule  # noqa:F401
 
 
-# Read the instructions provided below on the steps needed to enable this test.
-@unittest.skip('FIXME: plugin writer action required')
 class ContentUnitTestCase(unittest.TestCase):
     """CRUD content unit.
 
@@ -51,9 +52,13 @@ class ContentUnitTestCase(unittest.TestCase):
 
     def test_01_create_content_unit(self):
         """Create content unit."""
-        attrs = _gen_content_unit_attrs(self.artifact)
-        self.content_unit.update(self.client.post(RPM_CONTENT_PATH, attrs))
-        for key, val in attrs.items():
+        self.content_unit.update(
+            self.client.post(
+                RPM_CONTENT_PATH,
+                {'artifact': self.artifact['_href'], 'filename': RPM_PACKAGE_FILENAME}
+            )
+        )
+        for key, val in RPM_PACKAGE_DATA.items():
             with self.subTest(key=key):
                 self.assertEqual(self.content_unit[key], val)
 
@@ -67,12 +72,9 @@ class ContentUnitTestCase(unittest.TestCase):
 
     @skip_if(bool, 'content_unit', False)
     def test_02_read_content_units(self):
-        """Read a content unit by its relative_path."""
-        # FIXME: 'relative_path' is an attribute specific to the File plugin.
-        # It is only an example. You should replace this with some other field
-        # specific to your content type.
+        """Read a content unit by its pkgId."""
         page = self.client.get(RPM_CONTENT_PATH, params={
-            'relative_path': self.content_unit['relative_path']
+            'pkgId': self.content_unit['pkgId']
         })
         self.assertEqual(len(page['results']), 1)
         for key, val in self.content_unit.items():
@@ -85,7 +87,8 @@ class ContentUnitTestCase(unittest.TestCase):
 
         This HTTP method is not supported and a HTTP exception is expected.
         """
-        attrs = _gen_content_unit_attrs(self.artifact)
+        attrs = copy.deepcopy(RPM_PACKAGE_DATA)
+        attrs.update({'name': utils.uuid4()})
         with self.assertRaises(HTTPError):
             self.client.patch(self.content_unit['_href'], attrs)
 
@@ -95,19 +98,10 @@ class ContentUnitTestCase(unittest.TestCase):
 
         This HTTP method is not supported and a HTTP exception is expected.
         """
-        attrs = _gen_content_unit_attrs(self.artifact)
+        attrs = copy.deepcopy(RPM_PACKAGE_DATA)
+        attrs.update({'name': utils.uuid4()})
         with self.assertRaises(HTTPError):
             self.client.put(self.content_unit['_href'], attrs)
-
-
-def _gen_content_unit_attrs(artifact):
-    """Generate a dict with content unit attributes.
-
-    :param: artifact: A dict of info about the artifact.
-    :returns: A semi-random dict for use in creating a content unit.
-    """
-    # FIXME: add content specific metadata here
-    return {'artifact': artifact['_href']}
 
 
 class DeleteContentUnitRepoVersionTestCase(unittest.TestCase):
