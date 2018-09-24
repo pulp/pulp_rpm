@@ -33,7 +33,36 @@ Follow the `installation
 instructions <https://docs.pulpproject.org/en/3.0/nightly/installation/instructions.html>`__
 provided with pulpcore.
 
-Install ``pulp-rpm`` from source
+Install ``createrepo_c`` from source
+------------------------------------
+
+``pulp_rpm`` depends on a Python package named ``createrepo_c``, which is compiled from a C
+library. Unfortunately, this package is currently only available as a Python "source distribution",
+meaning that it must be compiled on your own machine. But, luckily, you won't have to do that yourself!
+Simply install the build dependencies on your machine and the build process itself will happen behind
+the scenes when you install the package.
+
+If you are on Fedora, install the build dependencies with this command:
+
+.. code-block:: bash
+
+   sudo dnf install -y gcc cmake bzip2-devel expat-devel file-devel glib2-devel libcurl-devel libxml2-devel python3-devel rpm-devel openssl-devel sqlite-devel xz-devel zlib-devel
+
+If you are on Ubuntu or Debian, install the build dependencies with this command:
+
+.. code-block:: bash
+
+   sudo apt install -y gcc cmake libbz2-dev libexpat1-dev libmagic-dev libglib2.0-dev libcurl4-openssl-dev libxml2-dev libpython3-dev librpm-dev libssl-dev libsqlite3-dev liblzma-dev zlib1g-dev
+
+Once the build deps are installed, you can simply install the ``createrepo_c`` package. It is not yet
+available on PyPI, so for the time being we have hosted it ourselves:
+
+.. code-block:: bash
+
+   pip install scikit-build
+   pip install https://repos.fedorapeople.org/pulp/pulp/python-packages/createrepo_c-0.11.1.tar.gz
+
+Install ``pulp_rpm`` from source
 --------------------------------
 
 .. code-block:: bash
