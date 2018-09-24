@@ -62,9 +62,10 @@ def update_record_xml(update_record):
             pkg.arch = package.arch
             pkg.src = package.src
             pkg.filename = package.filename
-            pkg.sum = package.sum
-            pkg.sum_type = int(package.sum_type or 0)
             pkg.reboot_suggested = package.reboot_suggested
+            if package.sum:
+                pkg.sum = package.sum
+                pkg.sum_type = int(package.sum_type or 0)
             col.append(pkg)
 
         rec.append_collection(col)
