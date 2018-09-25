@@ -36,8 +36,9 @@ class PackageManagerConsumeTestCase(unittest.TestCase):
         `Pulp #3204 <https://pulp.plan.io/issues/3204>`_
         """
         cfg = config.get_config()
+        pkg_mgr = cli.PackageManager(cfg)
         try:
-            cli.PackageManager._get_package_manager(cfg)  # pylint:disable=protected-access
+            pkg_mgr.name
         except NoKnownPackageManagerError:
             raise unittest.SkipTest('This test requires dnf or yum.')
         client = api.Client(cfg, api.json_handler)
@@ -74,7 +75,6 @@ class PackageManagerConsumeTestCase(unittest.TestCase):
         cli_client = cli.Client(cfg)
         self.addCleanup(cli_client.run, ('rm', repo_path), sudo=True)
         rpm_name = 'walrus'
-        pkg_mgr = cli.PackageManager(cfg)
         pkg_mgr.install(rpm_name)
         self.addCleanup(pkg_mgr.uninstall, rpm_name)
         rpm = cli_client.run(('rpm', '-q', rpm_name)).stdout.strip().split('-')
