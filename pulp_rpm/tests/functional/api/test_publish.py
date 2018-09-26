@@ -10,6 +10,7 @@ from pulp_smash import api, config
 from pulp_smash.pulp3.constants import REPO_PATH
 from pulp_smash.pulp3.utils import (
     gen_repo,
+    get_content_summary,
     get_versions,
     publish,
     sync,
@@ -21,7 +22,9 @@ from pulp_rpm.tests.functional.utils import (
 )
 from pulp_rpm.tests.functional.constants import (
     RPM_CONTENT_PATH,
+    RPM_FIXTURE_CONTENT_SUMMARY,
     RPM_PUBLISHER_PATH,
+    RPM_REFERENCES_UPDATEINFO_URL,
     RPM_REMOTE_PATH,
 )
 from pulp_rpm.tests.functional.utils import set_up_module as setUpModule  # noqa:F401
@@ -44,7 +47,7 @@ class PublishAnyRepoVersionTestCase(unittest.TestCase):
         3. Assert that the publication ``repository_version`` attribute points
            to the latest repository version.
         4. Create a publication by supplying the non-latest
-        ``repository_version``.
+           ``repository_version``.
         5. Assert that the publication ``repository_version`` attribute points
            to the supplied repository version.
         6. Assert that an exception is raised when providing two different
@@ -95,3 +98,42 @@ class PublishAnyRepoVersionTestCase(unittest.TestCase):
                 'repository_version': non_latest
             }
             client.post(urljoin(publisher['_href'], 'publish/'), body)
+
+
+class SyncPublishReferencesUpdateTestCase(unittest.TestCase):
+    """Sync/publish a repo that ``updateinfo.xml`` contains references."""
+
+    def test_all(self):
+        """Sync/publish a repo that ``updateinfo.xml`` contains references.
+
+        This test targets the following issue:
+
+        `Pulp #3998 <https://pulp.plan.io/issues/3998>`_.
+        """
+        cfg = config.get_config()
+        client = api.Client(cfg, api.json_handler)
+
+        repo = client.post(REPO_PATH, gen_repo())
+        self.addCleanup(client.delete, repo['_href'])
+
+        body = gen_rpm_remote(url=RPM_REFERENCES_UPDATEINFO_URL)
+        remote = client.post(RPM_REMOTE_PATH, body)
+        self.addCleanup(client.delete, remote['_href'])
+
+        sync(cfg, remote, repo)
+        repo = client.get(repo['_href'])
+
+        self.assertIsNotNone(repo['_latest_version_href'])
+
+        content_summary = get_content_summary(repo)
+        self.assertEqual(
+            content_summary,
+            RPM_FIXTURE_CONTENT_SUMMARY,
+            content_summary
+        )
+
+        publisher = client.post(RPM_PUBLISHER_PATH, gen_rpm_publisher())
+        self.addCleanup(client.delete, publisher['_href'])
+
+        publication = publish(cfg, publisher, repo)
+        self.addCleanup(client.delete, publication['_href'])

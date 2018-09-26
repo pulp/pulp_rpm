@@ -23,6 +23,7 @@ from pulp_rpm.tests.functional.constants import (
     RPM_CONTENT_PATH,
     RPM_REMOTE_PATH,
     RPM_SIGNED_FIXTURE_URL,
+    RPM_UNSIGNED_FIXTURE_URL,
 )
 
 
@@ -32,17 +33,15 @@ def set_up_module():
     require_pulp_plugins({'pulp_rpm'}, SkipTest)
 
 
-def gen_rpm_remote(**kwargs):
-    """Return a semi-random dict for use in creating a rpm Remote.
+def gen_rpm_remote(url=None, **kwargs):
+    """Return a semi-random dict for use in creating a RPM remote.
 
     :param url: The URL of an external content source.
     """
-    remote = gen_remote(RPM_SIGNED_FIXTURE_URL)
-    rpm_extra_fields = {
-        **kwargs
-    }
-    remote.update(rpm_extra_fields)
-    return remote
+    if url is None:
+        url = RPM_UNSIGNED_FIXTURE_URL
+
+    return gen_remote(url, **kwargs)
 
 
 def gen_rpm_publisher(**kwargs):
@@ -59,12 +58,14 @@ def gen_rpm_publisher(**kwargs):
 
 
 def get_rpm_package_paths(repo):
-    """Return the relative path of content units present in a rpm repository.
+    """Return the relative path of content units present in a RPM repository.
 
     :param repo: A dict of information about the repository.
     :returns: A list with the paths of units present in a given repository.
     """
-    return [gen_rpm_filename(content_unit) for content_unit in get_content(repo)]
+    return [
+        gen_rpm_filename(content_unit) for content_unit in get_content(repo)
+    ]
 
 
 def gen_rpm_filename(package):
@@ -75,7 +76,10 @@ def gen_rpm_filename(package):
     :returns: The filename of the package.
     :rtype: str
     """
-    format_string = "{n}-{e}:{v}-{r}.{a}.rpm" if package['epoch'] else "{n}-{v}-{r}.{a}.rpm"
+    format_string = (
+        '{n}-{e}:{v}-{r}.{a}.rpm'
+        if package['epoch'] else '{n}-{v}-{r}.{a}.rpm'
+    )
 
     return format_string.format(
         n=package['name'],
