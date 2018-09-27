@@ -2,6 +2,9 @@
 # coding=utf-8
 set -veuo pipefail
 
+# check the commit message
+./.travis/check_commit.sh
+
 # Lint code.
 flake8 --config flake8.cfg || exit 1
 
