@@ -1,0 +1,15 @@
+==========================
+pulp-rpm 3.0 Release Notes
+==========================
+
+pulp-rpm 3.0 is currently in Beta. Backwards incompatible changes
+might be made until Beta is over.
+
+3.0.0b1
+=======
+
+* Add support for basic sync/copy/publish of RPM packages and Errata content.
+
+  Check our documentation for the :doc:`basic workflows<../workflows/index>`.
+
+
