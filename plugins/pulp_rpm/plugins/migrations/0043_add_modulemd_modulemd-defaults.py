@@ -325,6 +325,15 @@ def load(metadata, working_dir):
 
 
 def migrate(*args, **kwargs):
+    """
+    Migrate modulemd and modulemd-defaults data to their own collections.
+    Build indexes before migrating data to avoid duplicates.
+    """
+
+    for model in (Modulemd, ModulemdDefaults):
+        indexes = model._meta['indexes']
+        model._meta['index_specs'] = model._build_index_specs(indexes)
+        model.ensure_indexes()
 
     plugin_api.initialize()
     db = connection.get_database()
