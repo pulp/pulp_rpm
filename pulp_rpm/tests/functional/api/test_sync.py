@@ -84,7 +84,7 @@ class BasicSyncTestCase(unittest.TestCase):
         self.assertEqual(len(get_added_content(repo)), 0)
 
 
-@unittest.skip("FIXME: Enable this test after we can throw out duplicate Packages")
+@unittest.skip('FIXME: Enable this test after we can throw out duplicate Packages')
 class SyncMutatedPackagesTestCase(unittest.TestCase):
     """Sync different packages with the same NEVRA as existing packages."""
 
@@ -152,7 +152,7 @@ class SyncMutatedPackagesTestCase(unittest.TestCase):
                             original_packages[RPM_PACKAGE_NAME]['pkgId'])
 
 
-@unittest.skip("FIXME: Enable this test after we can throw out duplicate UpdateRecords")
+@unittest.skip('FIXME: Enable this test after we can throw out duplicate UpdateRecords')
 class SyncMutatedUpdateRecordTestCase(unittest.TestCase):
     """Sync a new Erratum with the same ID."""
 
@@ -229,6 +229,6 @@ class SyncMutatedUpdateRecordTestCase(unittest.TestCase):
         self.assertNotEqual(mutated_updaterecords, original_updaterecords)
         self.assertEqual(
             mutated_updaterecords[RPM_UPDATERECORD_ID]['description'],
-            "Updated Gorilla_Erratum and the updated date contains timezone",
+            'Updated Gorilla_Erratum and the updated date contains timezone',
             mutated_updaterecords[RPM_UPDATERECORD_ID]
         )
