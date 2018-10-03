@@ -73,17 +73,22 @@ class Errata(platform_serializers.ModelSerializer):
                 erratum_obj = models.Errata.objects.only('errata_id').get(id=unit.get('_id'))
                 errata_id = erratum_obj.errata_id
 
-            pkglists = models.Errata.get_unique_pkglists(errata_id)
-            coll_num = 0
-            for pkglist in pkglists:
-                for coll in pkglist:
-                    # To preserve the original format of a pkglist the 'short' and 'name'
-                    # keys are added. 'short' can be an empty string, collection 'name'
-                    # should be unique within an erratum.
-                    unit['pkglist'].append({'packages': coll,
-                                            'short': '',
-                                            'name': 'collection-%s' % coll_num})
-                    coll_num += 1
+            match_stage = {'$match': {'errata_id': errata_id}}
+            unwind_stage = {'$unwind': '$collections'}
+            group_stage = {'$group': {'_id': '$collections.module',
+                                      'packages': {'$addToSet': '$collections.packages'}}}
+            collections = models.ErratumPkglist.objects.aggregate(
+                match_stage, unwind_stage, group_stage, allowDiskUse=True)
+            for collection_idx, collection in enumerate(collections):
+                # To preserve the original format of a pkglist the 'short' and 'name'
+                # keys are added. 'short' can be an empty string, collection 'name'
+                # should be unique within an erratum.
+                item = {'packages': collection['packages'][0],
+                        'short': '',
+                        'name': 'collection-%s' % collection_idx}
+                if collection['_id']:
+                        item['module'] = collection['_id']
+                unit['pkglist'].append(item)
 
         return super(Errata, self).serialize(unit)
 
