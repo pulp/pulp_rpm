@@ -754,7 +754,7 @@ Optional Configuration Parameters
 ``remove_old_repodata``
  Boolean flag to indicate whether or not repodata that is past expiration will
  be removed during publish. The age at which repodata is considered "old" is set
- by the value of ``remove_old_repodata``. If not present this value defaults
+ by the value of ``remove_old_repodata_threshold``. If not present this value defaults
  to True.
 
 ``remove_old_repodata_threshold``
