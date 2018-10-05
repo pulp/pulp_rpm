@@ -6,5 +6,5 @@ This is the ``pulp_rpm`` Plugin for `Pulp Project
 content types, similar to the ``pulp_rpm`` plugin for Pulp 2.
 
 For more information, please see the `documentation
-<http://pulp-rpm.readthedocs.io/en/3.0/>`_ or the `Pulp project page
+<http://pulp-rpm.readthedocs.io/en/latest/>`_ or the `Pulp project page
 <https://pulpproject.org>`_.
