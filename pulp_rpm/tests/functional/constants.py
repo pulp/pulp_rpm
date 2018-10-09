@@ -34,12 +34,6 @@ standard repositories, i.e. :data:`RPM_SIGNED_FIXTURE_URL` and
 "content_summary" field on "../repositories/../versions/../".
 """
 
-RPM_PACKAGE_NAME = 'bear'
-"""The name of one RPM package."""
-
-RPM_PACKAGE_FILENAME = 'bear-4.1-1.noarch.rpm'
-"""The filename of one RPM package."""
-
 RPM_PACKAGE_DATA = {
     'name': 'bear',
     'epoch': '0',
@@ -54,6 +48,17 @@ RPM_PACKAGE_DATA = {
     # TODO: Complete this information once we figure out how to serialize everything nicely
 }
 """The metadata for one RPM package."""
+
+RPM_PACKAGE_NAME = '{}'.format(RPM_PACKAGE_DATA['name'])
+"""The name of one RPM package."""
+
+RPM_PACKAGE_FILENAME = '{}-{}-{}.{}.rpm'.format(
+    RPM_PACKAGE_DATA['name'],
+    RPM_PACKAGE_DATA['version'],
+    RPM_PACKAGE_DATA['release'],
+    RPM_PACKAGE_DATA['arch'],
+)
+"""The filename of one RPM package."""
 
 RPM_REFERENCES_UPDATEINFO_URL = urljoin(
     PULP_FIXTURES_BASE_URL,
