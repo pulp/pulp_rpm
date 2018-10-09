@@ -22,13 +22,11 @@ from pulp_rpm.tests.functional.utils import (
 from pulp_rpm.tests.functional.constants import (
     RPM_PUBLISHER_PATH,
     RPM_REMOTE_PATH,
-    RPM_SIGNED_FIXTURE_URL,
+    RPM_UNSIGNED_FIXTURE_URL,
 )
 from pulp_rpm.tests.functional.utils import set_up_module as setUpModule  # noqa:F401
 
 
-# Define utils.get_rpm_content_unit_paths() before enabling this test
-@unittest.skip('FIXME: plugin writer action required')
 class DownloadContentTestCase(unittest.TestCase):
     """Verify whether content served by pulp can be downloaded."""
 
@@ -88,7 +86,7 @@ class DownloadContentTestCase(unittest.TestCase):
         # Pick a content unit, and download it from both Pulp Fixtures…
         unit_path = choice(get_rpm_package_paths(repo))
         fixtures_hash = hashlib.sha256(
-            utils.http_get(urljoin(RPM_SIGNED_FIXTURE_URL, unit_path))
+            utils.http_get(urljoin(RPM_UNSIGNED_FIXTURE_URL, unit_path))
         ).hexdigest()
 
         # …and Pulp.
