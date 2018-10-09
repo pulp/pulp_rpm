@@ -16,7 +16,7 @@ from pulp_smash.pulp3.utils import (
     get_content,
     require_pulp_3,
     require_pulp_plugins,
-    sync
+    sync,
 )
 
 from pulp_rpm.tests.functional.constants import (
@@ -64,30 +64,10 @@ def get_rpm_package_paths(repo):
     :returns: A list with the paths of units present in a given repository.
     """
     return [
-        gen_rpm_filename(content_unit) for content_unit in get_content(repo)
+        content_unit['location_href']
+        for content_unit in get_content(repo)
+        if 'location_href' in content_unit
     ]
-
-
-def gen_rpm_filename(package):
-    """Create a filename for a RPM based upon its NEVRA information.
-
-    :param package: Information about the content unit.
-    :type package: dict
-    :returns: The filename of the package.
-    :rtype: str
-    """
-    format_string = (
-        '{n}-{e}:{v}-{r}.{a}.rpm'
-        if package['epoch'] else '{n}-{v}-{r}.{a}.rpm'
-    )
-
-    return format_string.format(
-        n=package['name'],
-        e=package['epoch'],
-        v=package['version'],
-        r=package['release'],
-        a=package['arch']
-    )
 
 
 def populate_pulp(cfg, url=RPM_SIGNED_FIXTURE_URL):
