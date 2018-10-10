@@ -2,6 +2,7 @@ from __future__ import absolute_import
 
 import logging
 import os
+import re
 from gettext import gettext as _
 
 import deltarpm
@@ -84,7 +85,6 @@ def package_headers(filename):
     :return: package header
     :rtype: rpm.hdr
     """
-
     # Read the RPM header attributes for use later
     ts = rpm_module.TransactionSet()
     ts.setVSFlags(rpm_module._RPMVSF_NOSIGNATURES)
@@ -323,3 +323,21 @@ def evr_to_str(epoch, version, release):
         return "%s-%s" % (version, release)
     else:
         return "%s:%s-%s" % (epoch, version, release)
+
+
+def get_package_modular_flag(headers):
+    """
+    Look at package headers and decide if a package is modular or not.
+
+    DISTTAG tag should contain 'module(...)' substring for package to be a modular one.
+
+    :param headers: package headers
+    :type  headers: rpm.hdr
+
+    :return: True, if package is a modular one
+    :rtype: boolean
+    """
+    modular_flag = headers.get(rpm_module.RPMTAG_DISTTAG)
+    if modular_flag is None:
+        return False
+    return bool(re.match(r'module\(.*?\)', modular_flag))

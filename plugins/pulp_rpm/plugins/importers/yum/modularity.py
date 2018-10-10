@@ -82,6 +82,7 @@ def add_modulemd(repository, modulemd, model):
     except NotUniqueError:
         model = Modulemd.objects.get(**model.unit_key)
     repository_controller.associate_single_unit(repository, model)
+    set_modular_flag_on_artifacts(repository, model)
 
 
 def repair_file(lite_model, document):
@@ -125,6 +126,40 @@ def valid_file(lite_model):
         return False
     else:
         return lite_model.checksum == sha256(document).hexdigest()
+
+
+def set_modular_flag_on_artifacts(repository, modulemd_unit):
+    """
+    Marks related RPMs as modular ones.
+
+    If a non-modular package is specified among artifacts by mistake,
+    the is_modular flag is set incorrectly.
+
+    :param repository: A repository.
+    :type repository: pulp.server.db.model.Repository
+    :param modulemd_unit: module for which artifacts should be updated
+    :type  modulemd_unit: pulp_rpm.plugins.db.models.Modulemd
+    """
+    pq = Q()
+    for artifact in modulemd_unit.artifacts:
+        nevra = rpm.nevra(artifact)
+        pq |= Q(
+            name=nevra[0],
+            epoch=unicode(nevra[1]),
+            version=nevra[2],
+            release=nevra[3],
+            arch=nevra[4])
+
+    pq_set = repository_controller.find_repo_content_units(
+        repository,
+        units_q=pq,
+        repo_content_unit_q=Q(unit_type_id=RPM.TYPE_ID),
+        unit_fields=RPM.unit_key_fields + ('is_modular', '_storage_path'),
+        yield_content_unit=True)
+    for package in pq_set:
+        if not package.is_modular:
+            package.is_modular = True
+            package.save()
 
 
 def add_modulemds(repository, modulemds, repair=False):
