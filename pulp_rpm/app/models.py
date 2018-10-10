@@ -200,10 +200,7 @@ class Package(Content):
         """
         Create a filename for an RPM based upon its NEVRA information.
         """
-        if self.epoch:
-            return self.nevra + ".rpm"
-        else:
-            return self.nrva + ".rpm"
+        return self.nvra + ".rpm"
 
     @property
     def nevra(self):
