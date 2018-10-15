@@ -17,7 +17,7 @@ class RPMRsyncPublisher(Publisher):
 
     REPO_CONTENT_MODELS = [models.RPM, models.SRPM, models.DRPM]
 
-    UNIT_FIELDS = ["_storage_path", "filename"]
+    UNIT_FIELDS = ["_storage_path", "filename", "pulp_user_metadata"]
 
     def _get_predistributor(self):
         """
@@ -75,11 +75,10 @@ class RPMRsyncPublisher(Publisher):
         self.add_child(gen_step)
 
         dest_content_units_dir = self.get_units_directory_dest_path()
-        src_content_units_dir = self.get_units_src_path()
 
         # Rsync content units
         self.add_child(RSyncPublishStep("Rsync step (origin)", self.content_unit_file_list,
-                                        src_content_units_dir, dest_content_units_dir,
+                                        self.temp_dir_symlink, dest_content_units_dir,
                                         config=config, exclude=[".*", "repodata.old"]))
 
         # Stop here if distributor is only supposed to publish actual content
