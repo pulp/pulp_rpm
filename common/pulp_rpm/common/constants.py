@@ -204,3 +204,6 @@ MANDATORY_METADATA_TYPES = ('primary', 'filelists', 'other')
 
 GPG_CMD = "gpg_cmd"
 GPG_KEY_ID = "gpg_key_id"
+
+# used in profiler for applicability
+VIRTUAL_MODULEMDS = ['platform']
