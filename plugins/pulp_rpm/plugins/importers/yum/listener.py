@@ -6,6 +6,7 @@ from pulp.plugins.util import verification
 from pulp.server import util
 
 from pulp_rpm.common import constants
+from pulp_rpm.plugins.db import models
 from pulp_rpm.plugins.importers.yum.parse import rpm as rpm_parse
 
 
@@ -220,3 +221,11 @@ class RPMListener(PackageListener):
             if not added_unit.downloaded:
                 added_unit.downloaded = True
                 added_unit.save()
+
+            # the only reliable way to identify modular RPMs is to analyze headers
+            # which are available only upon successful download.
+            if isinstance(added_unit, models.RPM) and not added_unit.is_modular:
+                is_modular = rpm_parse.get_package_modular_flag(headers)
+                if is_modular:
+                    added_unit.is_modular = is_modular
+                    added_unit.save()

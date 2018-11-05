@@ -1077,6 +1077,8 @@ class RPM(RpmBase):
     unit_description = 'RPM'
     unit_referenced_types = ['erratum']
 
+    is_modular = mongoengine.BooleanField(default=False)
+
     meta = {'collection': 'units_rpm',
             'allow_inheritance': False}
 

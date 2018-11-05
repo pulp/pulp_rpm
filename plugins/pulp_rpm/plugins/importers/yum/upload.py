@@ -383,6 +383,10 @@ def _handle_package(repo, type_id, unit_key, metadata, file_path, conduit, confi
             package_xml = (utils.fake_xml_element(repodata['primary'], constants.COMMON_NAMESPACE)
                                 .find(primary.PACKAGE_TAG))
             unit = primary.process_package_element(package_xml)
+
+            package_headers = rpm_parse.package_headers(file_path)
+            unit.is_modular = rpm_parse.get_package_modular_flag(package_headers)
+
     except Exception:
         raise PulpCodedException(error_codes.RPM1016)
 
