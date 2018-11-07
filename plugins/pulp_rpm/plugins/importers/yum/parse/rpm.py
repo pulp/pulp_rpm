@@ -337,7 +337,7 @@ def get_package_modular_flag(headers):
     :return: True, if package is a modular one
     :rtype: boolean
     """
-    modular_flag = headers.get(rpm_module.RPMTAG_DISTTAG)
+    modular_flag = headers[rpm_module.RPMTAG_DISTTAG]
     if modular_flag is None:
         return False
     return bool(re.match(r'module\(.*?\)', modular_flag))
