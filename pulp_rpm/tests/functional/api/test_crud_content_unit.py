@@ -53,10 +53,10 @@ class ContentUnitTestCase(unittest.TestCase):
     def test_01_create_content_unit(self):
         """Create content unit."""
         self.content_unit.update(
-            self.client.post(
-                RPM_CONTENT_PATH,
-                {'artifact': self.artifact['_href'], 'filename': RPM_PACKAGE_FILENAME}
-            )
+            self.client.post(RPM_CONTENT_PATH, {
+                'artifact': self.artifact['_href'],
+                'filename': RPM_PACKAGE_FILENAME
+            })
         )
         for key, val in RPM_PACKAGE_DATA.items():
             with self.subTest(key=key):

@@ -71,12 +71,14 @@ def get_rpm_package_paths(repo):
 
 
 def populate_pulp(cfg, url=RPM_SIGNED_FIXTURE_URL):
-    """Add rpm contents to Pulp.
+    """Add RPM contents to Pulp.
 
-    :param pulp_smash.config.PulpSmashConfig: Information about a Pulp application.
-    :param url: The rpm repository URL. Defaults to
-        :data:`pulp_smash.constants.RPM_SIGNED_FIXTURE_URL`
-    :returns: A list of dicts, where each dict describes one file content in Pulp.
+    :param pulp_smash.config.PulpSmashConfig: Information about a Pulp
+        application.
+    :param url: The RPM repository URL. Defaults to
+        :data:`pulp_smash.constants.RPM_UNSIGNED_FIXTURE_URL`
+    :returns: A list of dicts, where each dict describes one RPM content in
+        Pulp.
     """
     client = api.Client(cfg, api.json_handler)
     remote = {}

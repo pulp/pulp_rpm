@@ -48,10 +48,11 @@ class BasicSyncTestCase(unittest.TestCase):
         3. Sync the remote.
         4. Assert that repository version is not None.
         5. Assert that the correct number of units were added and are present
-        in the repo.
+           in the repo.
         6. Sync the remote one more time.
         7. Assert that repository version is different from the previous one.
-        8. Assert that the same number of are present and that no units were added.
+        8. Assert that the same number of are present and that no units were
+           added.
         """
         client = api.Client(self.cfg, api.json_handler)
 
@@ -70,7 +71,10 @@ class BasicSyncTestCase(unittest.TestCase):
 
         # Check that we have the correct content counts.
         self.assertIsNotNone(repo['_latest_version_href'])
-        self.assertDictEqual(get_content_summary(repo), RPM_FIXTURE_CONTENT_SUMMARY)
+        self.assertDictEqual(
+            get_content_summary(repo),
+            RPM_FIXTURE_CONTENT_SUMMARY
+        )
         self.assertEqual(len(get_added_content(repo)), RPM_FIXTURE_COUNT)
 
         # Sync the repository again.
@@ -80,7 +84,10 @@ class BasicSyncTestCase(unittest.TestCase):
 
         # Check that nothing has changed since the last sync.
         self.assertNotEqual(latest_version_href, repo['_latest_version_href'])
-        self.assertDictEqual(get_content_summary(repo), RPM_FIXTURE_CONTENT_SUMMARY)
+        self.assertDictEqual(
+            get_content_summary(repo),
+            RPM_FIXTURE_CONTENT_SUMMARY
+        )
         self.assertEqual(len(get_added_content(repo)), 0)
 
 
@@ -94,18 +101,21 @@ class SyncMutatedPackagesTestCase(unittest.TestCase):
         cls.cfg = config.get_config()
 
     def test_all(self):
-        """Sync two copies of the same packages, make sure we end up with only one copy.
+        """Sync two copies of the same packages.
+
+        Make sure we end up with only one copy.
 
         Do the following:
 
         1. Create a repository and a remote.
         2. Sync the remote.
         3. Assert that the content summary matches what is expected.
-        4. Create a new remote w/ using fixture containing updated errata (packages with the same
-           NEVRA as the existing package content, but different pkgId)
+        4. Create a new remote w/ using fixture containing updated errata
+           (packages with the same NEVRA as the existing package content, but
+           different pkgId).
         5. Sync the remote again.
-        6. Assert that repository version is different from the previous one but has the same
-           content summary.
+        6. Assert that repository version is different from the previous one
+           but has the same content summary.
         7. Assert that the packages have changed since the last sync.
         """
         client = api.Client(self.cfg, api.json_handler)
@@ -122,7 +132,10 @@ class SyncMutatedPackagesTestCase(unittest.TestCase):
         self.assertIsNone(repo['_latest_version_href'])
         sync(self.cfg, remote, repo)
         repo = client.get(repo['_href'])
-        self.assertDictEqual(get_content_summary(repo), RPM_FIXTURE_CONTENT_SUMMARY)
+        self.assertDictEqual(
+            get_content_summary(repo),
+            RPM_FIXTURE_CONTENT_SUMMARY
+        )
 
         # Save a copy of the original packages.
         original_packages = {
@@ -130,7 +143,8 @@ class SyncMutatedPackagesTestCase(unittest.TestCase):
             if content['type'] == 'packages'
         }
 
-        # Create a remote with a different test fixture with the same NEVRA but different digests.
+        # Create a remote with a different test fixture with the same NEVRA but
+        # different digests.
         body = gen_rpm_remote(url=RPM_SIGNED_FIXTURE_URL)
         remote = client.post(RPM_REMOTE_PATH, body)
         self.addCleanup(client.delete, remote['_href'])
@@ -138,7 +152,10 @@ class SyncMutatedPackagesTestCase(unittest.TestCase):
         # Sync the repository again.
         sync(self.cfg, remote, repo)
         repo = client.get(repo['_href'])
-        self.assertDictEqual(get_content_summary(repo), RPM_FIXTURE_CONTENT_SUMMARY)
+        self.assertDictEqual(
+            get_content_summary(repo),
+            RPM_FIXTURE_CONTENT_SUMMARY
+        )
         self.assertEqual(len(get_added_content(repo)), 0)
 
         # Test that the packages have been modified.
@@ -148,8 +165,10 @@ class SyncMutatedPackagesTestCase(unittest.TestCase):
         }
 
         self.assertNotEqual(mutated_packages, original_packages)
-        self.assertNotEqual(mutated_packages[RPM_PACKAGE_NAME]['pkgId'],
-                            original_packages[RPM_PACKAGE_NAME]['pkgId'])
+        self.assertNotEqual(
+            mutated_packages[RPM_PACKAGE_NAME]['pkgId'],
+            original_packages[RPM_PACKAGE_NAME]['pkgId']
+        )
 
 
 @unittest.skip('FIXME: Enable this test after we can throw out duplicate UpdateRecords')
@@ -162,7 +181,9 @@ class SyncMutatedUpdateRecordTestCase(unittest.TestCase):
         cls.cfg = config.get_config()
 
     def test_all(self):
-        """Sync two copies of the same UpdateRecords, make sure we end up with only one copy.
+        """Sync two copies of the same UpdateRecords.
+
+        Make sure we end up with only one copy.
 
         Do the following:
 
@@ -170,11 +191,11 @@ class SyncMutatedUpdateRecordTestCase(unittest.TestCase):
         2. Sync the remote.
         3. Assert that the content summary matches what is expected.
         4. Create a new remote w/ using fixture containing updated errata
-        (updaterecords with the ID as the existing updaterecord content, but
-        different metadata)
+           (updaterecords with the ID as the existing updaterecord content, but
+           different metadata).
         5. Sync the remote again.
         6. Assert that repository version is different from the previous one
-        but has the same content summary.
+           but has the same content summary.
         7. Assert that the updaterecords have changed since the last sync.
         """
         client = api.Client(self.cfg, api.json_handler)

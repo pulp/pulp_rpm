@@ -9,6 +9,10 @@ from pulp_smash.pulp3.constants import (
     CONTENT_PATH,
 )
 
+
+RPM_ALT_LAYOUT_FIXTURE_URL = urljoin(PULP_FIXTURES_BASE_URL, 'rpm-alt-layout/')
+"""The URL to a signed RPM repository. See :data:`RPM_SIGNED_FIXTURE_URL`."""
+
 RPM_CONTENT_PATH = urljoin(CONTENT_PATH, 'rpm/packages/')
 """The location of RPM packages on the content endpoint."""
 
@@ -18,6 +22,9 @@ RPM_PUBLISHER_PATH = urljoin(BASE_PUBLISHER_PATH, 'rpm/')
 
 RPM_SIGNED_FIXTURE_URL = urljoin(PULP_FIXTURES_BASE_URL, 'rpm-signed/')
 """The URL to a repository with signed RPM packages."""
+
+RPM_SHA512_FIXTURE_URL = urljoin(PULP_FIXTURES_BASE_URL, 'rpm-with-sha-512/')
+"""The URL to an RPM repository with sha512 checksum."""
 
 RPM_UNSIGNED_FIXTURE_URL = urljoin(PULP_FIXTURES_BASE_URL, 'rpm-unsigned/')
 """The URL to a repository with unsigned RPM packages."""
@@ -34,6 +41,12 @@ standard repositories, i.e. :data:`RPM_SIGNED_FIXTURE_URL` and
 "content_summary" field on "../repositories/../versions/../".
 """
 
+RPM_LONG_UPDATEINFO_FIXTURE_URL = urljoin(
+    PULP_FIXTURES_BASE_URL,
+    'rpm-long-updateinfo/'
+)
+"""The URL to RPM with a long updateinfo.xml."""
+
 RPM_PACKAGE_DATA = {
     'name': 'bear',
     'epoch': '0',
@@ -45,7 +58,8 @@ RPM_PACKAGE_DATA = {
     'rpm_license': 'GPLv2',
     'rpm_group': 'Internet/Applications',
     'rpm_vendor': '',
-    # TODO: Complete this information once we figure out how to serialize everything nicely
+    # TODO: Complete this information once we figure out how to serialize
+    # everything nicely
 }
 """The metadata for one RPM package."""
 
@@ -70,15 +84,22 @@ This repository includes errata with reference element (0, 1 or 2 references)
 and without it.
 """
 
+RPM_RICH_WEAK_FIXTURE_URL = urljoin(
+    PULP_FIXTURES_BASE_URL,
+    'rpm-richnweak-deps/'
+)
+"""The URL to an RPM repository with weak and rich dependencies."""
+
 RPM_SIGNED_URL = urljoin(RPM_SIGNED_FIXTURE_URL, RPM_PACKAGE_FILENAME)
 """The path to a single signed RPM package."""
 
 RPM_UNSIGNED_URL = urljoin(RPM_UNSIGNED_FIXTURE_URL, RPM_PACKAGE_FILENAME)
 """The path to a single unsigned RPM package."""
 
-
 RPM_UPDATED_UPDATEINFO_FIXTURE_URL = urljoin(
-    PULP_FIXTURES_BASE_URL, 'rpm-updated-updateinfo/')
+    PULP_FIXTURES_BASE_URL,
+    'rpm-updated-updateinfo/'
+)
 """The URL to a repository containing UpdateRecords (Errata) with the same IDs
 as the ones in the standard repositories, but with different metadata.
 
