@@ -1681,8 +1681,11 @@ class Modulemd(FileContentUnit):
                      enabled.
     :type  profiles: mongoengine.DictField
 
-    :param artifacts List of binary artifacts shipped with the module.
+    :param artifacts: List of binary artifacts shipped with the module.
     :type  artifacts: mongoengine.ListField
+
+    :param dependencies: List of dictionaries containing runtime dependencies.
+    :type  dependencies: mongoengine.ListField
 
     :param checksum: Checksum of the modulemd document.
     :type  checksum: mongoengine.StringField
@@ -1702,6 +1705,7 @@ class Modulemd(FileContentUnit):
     profiles = mongoengine.DictField()
     artifacts = mongoengine.ListField()
     checksum = mongoengine.StringField()
+    dependencies = mongoengine.ListField()
 
     # For backward compatibility
     _ns = mongoengine.StringField(default='units_modulemd')

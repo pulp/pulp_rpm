@@ -43,6 +43,7 @@ def process_modulemd_document(module):
         'description': module.peek_description(),
         'profiles': _get_profiles(module),
         'artifacts': module.peek_rpm_artifacts().get(),
+        'dependencies': _get_dependencies(module),
     }
 
     return models.Modulemd(**modulemd_document)
@@ -103,6 +104,27 @@ def _get_profile_defaults(module):
     for stream, defaults in module.peek_profile_defaults().items():
         profile_defaults[stream] = defaults.get()
     return bson.BSON.encode(profile_defaults)
+
+
+def _get_dependencies(module):
+    """
+    Parse dependencies of given modulemd document
+
+    :param module: Modulemd metadata document object.
+    :type module: gi.repository.Modulemd.Module
+    :return: list of dictionaries, where for each dictionary, key is a module name and value
+             is a list of streams
+    :rtype: list
+    """
+    load()
+    res = []
+    deps = module.get_dependencies()
+    for dep in deps:
+        d = {}
+        for k, v in dep.get_requires().iteritems():
+            d[k] = v.get()
+            res.append(d)
+    return res
 
 
 def from_file(path):
