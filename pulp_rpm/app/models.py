@@ -111,7 +111,7 @@ class Package(Content):
 
     # Required metadata
     name = models.TextField()
-    epoch = models.TextField(blank=True)
+    epoch = models.TextField()
     version = models.TextField()
     release = models.TextField()
     arch = models.TextField()
@@ -120,9 +120,9 @@ class Package(Content):
     checksum_type = models.TextField(choices=CHECKSUM_CHOICES)
 
     # Optional metadata
-    summary = models.TextField(blank=True)
-    description = models.TextField(blank=True)
-    url = models.TextField(blank=True)
+    summary = models.TextField()
+    description = models.TextField()
+    url = models.TextField()
 
     # A string containing a JSON-encoded list of dictionaries, each of which represents a single
     # changelog. Each changelog dict contains the following fields:
@@ -130,7 +130,7 @@ class Package(Content):
     #   date (int):     date of changelog - seconds since epoch
     #   author (str):   author of the changelog
     #   changelog (str: changelog text
-    changelogs = models.TextField(default='[]', blank=True)
+    changelogs = models.TextField(default='[]')
 
     # A string containing a JSON-encoded list of dictionaries, each of which represents a single
     # file. Each file dict contains the following fields:
@@ -138,7 +138,7 @@ class Package(Content):
     #   type (str):     one of "" (regular file), "dir", "ghost"
     #   path (str):     path to file
     #   name (str):     filename
-    files = models.TextField(default='[]', blank=True)
+    files = models.TextField(default='[]')
 
     # Each of these is a string containing a JSON-encoded list of dictionaries, each of which
     # represents a dependency. Each dependency dict contains the following fields:
@@ -149,33 +149,33 @@ class Package(Content):
     #   version (str):  version
     #   release (str):  release
     #   pre (bool):     preinstall
-    requires = models.TextField(default='[]', blank=True)
-    provides = models.TextField(default='[]', blank=True)
-    conflicts = models.TextField(default='[]', blank=True)
-    obsoletes = models.TextField(default='[]', blank=True)
-    suggests = models.TextField(default='[]', blank=True)
-    enhances = models.TextField(default='[]', blank=True)
-    recommends = models.TextField(default='[]', blank=True)
-    supplements = models.TextField(default='[]', blank=True)
+    requires = models.TextField(default='[]')
+    provides = models.TextField(default='[]')
+    conflicts = models.TextField(default='[]')
+    obsoletes = models.TextField(default='[]')
+    suggests = models.TextField(default='[]')
+    enhances = models.TextField(default='[]')
+    recommends = models.TextField(default='[]')
+    supplements = models.TextField(default='[]')
 
-    location_base = models.TextField(blank=True)
-    location_href = models.TextField(blank=True)
+    location_base = models.TextField()
+    location_href = models.TextField()
 
-    rpm_buildhost = models.TextField(blank=True)
-    rpm_group = models.TextField(blank=True)
-    rpm_license = models.TextField(blank=True)
-    rpm_packager = models.TextField(blank=True)
-    rpm_sourcerpm = models.TextField(blank=True)
-    rpm_vendor = models.TextField(blank=True)
-    rpm_header_start = models.BigIntegerField(null=True, blank=True)
-    rpm_header_end = models.BigIntegerField(null=True, blank=True)
+    rpm_buildhost = models.TextField()
+    rpm_group = models.TextField()
+    rpm_license = models.TextField()
+    rpm_packager = models.TextField()
+    rpm_sourcerpm = models.TextField()
+    rpm_vendor = models.TextField()
+    rpm_header_start = models.BigIntegerField(null=True)
+    rpm_header_end = models.BigIntegerField(null=True)
 
-    size_archive = models.BigIntegerField(null=True, blank=True)
-    size_installed = models.BigIntegerField(null=True, blank=True)
-    size_package = models.BigIntegerField(null=True, blank=True)
+    size_archive = models.BigIntegerField(null=True)
+    size_installed = models.BigIntegerField(null=True)
+    size_package = models.BigIntegerField(null=True)
 
-    time_build = models.BigIntegerField(null=True, blank=True)
-    time_file = models.BigIntegerField(null=True, blank=True)
+    time_build = models.BigIntegerField(null=True)
+    time_file = models.BigIntegerField(null=True)
 
     @property
     def artifact(self):
@@ -325,19 +325,19 @@ class UpdateRecord(Content):
     updated_date = models.TextField()
 
     # Optional metadata
-    description = models.TextField(blank=True)
-    issued_date = models.TextField(blank=True)
-    fromstr = models.TextField(blank=True)  # formerly "errata_from"
-    status = models.TextField(blank=True)
-    title = models.TextField(blank=True)
-    summary = models.TextField(blank=True)
-    version = models.TextField(blank=True)
+    description = models.TextField()
+    issued_date = models.TextField()
+    fromstr = models.TextField()  # formerly "errata_from"
+    status = models.TextField()
+    title = models.TextField()
+    summary = models.TextField()
+    version = models.TextField()
 
-    type = models.TextField(blank=True)  # TODO: change field name?
-    severity = models.TextField(blank=True)
-    solution = models.TextField(blank=True)
-    release = models.TextField(blank=True)
-    rights = models.TextField(blank=True)
+    type = models.TextField()  # TODO: change field name?
+    severity = models.TextField()
+    solution = models.TextField()
+    release = models.TextField()
+    rights = models.TextField()
 
     pushcount = models.TextField(blank=True)
 
@@ -411,8 +411,8 @@ class UpdateCollection(models.Model):
         update_record (models.ForeignKey): The associated UpdateRecord
     """
 
-    name = models.TextField(blank=True)
-    shortname = models.TextField(blank=True)
+    name = models.TextField()
+    shortname = models.TextField()
 
     update_record = models.ForeignKey(UpdateRecord, related_name="collections",
                                       on_delete=models.CASCADE)
@@ -477,16 +477,16 @@ class UpdateCollectionPackage(models.Model):
         update_collection (models.ForeignKey): The associated UpdateCollection
     """
 
-    arch = models.TextField(blank=True)
-    epoch = models.TextField(blank=True)
-    filename = models.TextField(blank=True)
-    name = models.TextField(blank=True)
+    arch = models.TextField()
+    epoch = models.TextField()
+    filename = models.TextField()
+    name = models.TextField()
     reboot_suggested = models.BooleanField(default=False)
-    release = models.TextField(blank=True)
-    src = models.TextField(blank=True)
-    sum = models.TextField(blank=True)
-    sum_type = models.TextField(blank=True)
-    version = models.TextField(blank=True)
+    release = models.TextField()
+    src = models.TextField()
+    sum = models.TextField()
+    sum_type = models.TextField()
+    version = models.TextField()
 
     update_collection = models.ForeignKey(UpdateCollection, related_name='packages',
                                           on_delete=models.CASCADE)
@@ -540,10 +540,10 @@ class UpdateReference(models.Model):
         update_record (models.ForeignKey): The associated UpdateRecord
     """
 
-    href = models.TextField(blank=True)
-    ref_id = models.TextField(blank=True)
-    title = models.TextField(blank=True)
-    ref_type = models.TextField(blank=True)
+    href = models.TextField()
+    ref_id = models.TextField()
+    title = models.TextField()
+    ref_type = models.TextField()
 
     update_record = models.ForeignKey(UpdateRecord, related_name="references",
                                       on_delete=models.CASCADE)
