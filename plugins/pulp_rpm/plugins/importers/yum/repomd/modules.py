@@ -123,7 +123,7 @@ def _get_dependencies(module):
         d = {}
         for k, v in dep.get_requires().iteritems():
             d[k] = v.get()
-            res.append(d)
+        res.append(d)
     return res
 
 
