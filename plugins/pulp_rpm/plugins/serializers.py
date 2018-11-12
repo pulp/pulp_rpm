@@ -26,6 +26,7 @@ class RpmBase(platform_serializers.ModelSerializer):
     """
     class Meta:
         remapped_fields = {}
+        rewrite_fields = {('size', ): 'file_size', ('signing_key', ): 'signature'}
 
     def serialize(self, unit):
         """
@@ -39,6 +40,12 @@ class RpmBase(platform_serializers.ModelSerializer):
         for metadata_type in unit.get('repodata', {}):
             metadata = unit['repodata'][metadata_type]
             unit['repodata'][metadata_type] = gzip.zlib.decompress(metadata)
+        signature = unit.get('signing_key')
+        if signature:
+            unit['signature'] = signature
+        file_size = unit.get('size')
+        if file_size:
+            unit['file_size'] = file_size
         return super(RpmBase, self).serialize(unit)
 
 
@@ -67,7 +74,6 @@ class Errata(platform_serializers.ModelSerializer):
         # If pkglist field is present, it's always emtpy => it should be filled in.
         if 'pkglist' in unit:
             errata_id = unit.get('errata_id')
-
             # If fields in search criteria don't include errata_id
             if errata_id is None:
                 erratum_obj = models.Errata.objects.only('errata_id').get(id=unit.get('_id'))
@@ -139,6 +145,26 @@ class ISO(platform_serializers.ModelSerializer):
     """
     class Meta:
         remapped_fields = {}
+        #rewrite_fields = {'pulp_user_metadata.abstract': 'abstract', 'pulp_user_metadata.install_media': 'install_media'}
+        rewrite_fields = {('pulp_user_metadata', 'abstract'): 'abstract',
+                          ('pulp_user_metadata', 'install_media'): 'install_media'}
+
+    def serialize(self, unit):
+        """
+        Convert a single unit to it's dictionary form.
+
+        :param unit: The object to be converted
+        :type unit: object
+        """
+        pulp_user_metadata = unit.get('pulp_user_metadata')
+        if pulp_user_metadata:
+            abstract = pulp_user_metadata.get('abstract')
+            install_media = pulp_user_metadata.get('install_media')
+            if abstract is not None:
+                unit['abstract'] = abstract
+            if install_media is not None:
+                unit['install_media'] = install_media
+        return super(ISO, self).serialize(unit)
 
 
 class Modulemd(platform_serializers.ModelSerializer):
