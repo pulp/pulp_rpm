@@ -119,6 +119,8 @@ CONFIG_SSL_AUTH_CA_CERT = 'ssl_auth_ca_cert'
 
 # Copy operation config
 CONFIG_RECURSIVE = 'recursive'
+# use the conservative dependency solver to compute unit dependencies
+CONFIG_RECURSIVE_CONSERVATIVE = 'recursive_conservative'
 
 ISO_HTTP_DIR = "/var/lib/pulp/published/http/isos"
 ISO_HTTPS_DIR = "/var/lib/pulp/published/https/isos"

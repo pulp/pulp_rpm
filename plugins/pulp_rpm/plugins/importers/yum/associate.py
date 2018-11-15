@@ -50,10 +50,12 @@ def associate(source_repo, dest_repo, import_conduit, config, units=None, solver
         units = repo_controller.find_repo_content_units(source_repo, yield_content_unit=True)
 
     # get config items that we care about
-    recursive = config.get(constants.CONFIG_RECURSIVE)
+    recursive = config.get(constants.CONFIG_RECURSIVE) or \
+        config.get(constants.CONFIG_RECURSIVE_CONSERVATIVE)
 
     if recursive and not solver:
-        solver = pulp_solv.Solver(source_repo, target_repo=dest_repo)
+        solver = pulp_solv.Solver(source_repo, target_repo=dest_repo,
+                                  conservative=config.get(constants.CONFIG_RECURSIVE_CONSERVATIVE))
         solver.load()
 
     # make a set from generator to be able to iterate through it several times
