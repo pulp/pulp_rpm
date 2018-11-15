@@ -620,8 +620,11 @@ configuration values are optional.
  package signature verification.
 
 ``recursive`` Boolean flag. If true, units are copied together with their
-dependencies. False by default.
+"latest" dependencies. False by default.
 
+``recursive_conservative`` Boolean flag. If true, units are copied together with their
+dependencies, unless those are already satisfied by the content in the target repository.
+False by default.
 
 Yum Distributor
 ===============

@@ -236,15 +236,18 @@ class UnitSolvableMapping(object):
     def __init__(self, pool, type_factory_mapping):
         self.type_factory_mapping = type_factory_mapping
         self.pool = pool
-        self.mapping = {}
+        self.mapping_u = {}
+        self.mapping_s = {}
         self.repos = {}
 
-    def _register(self, unit, solvable):
-        self.mapping.setdefault(solvable.id, unit['id'])
-        self.mapping.setdefault(unit['id'], solvable)
-        _LOGGER.debug('Loaded unit %(u)s as %(s)s', {'u': unit['id'], 's': solvable})
+    def _register(self, unit, solvable, repo_id):
+        self.mapping_s.setdefault(solvable.id, (unit['id'], repo_id))
+        self.mapping_u.setdefault((unit['id'], repo_id), solvable)
+        _LOGGER.debug('Loaded unit %(u)s, %(r)s as %(s)s', {'u': unit['id'], 's': solvable,
+                                                            'r': repo_id})
 
-    def add_repo_units(self, units, repo_name, installed=False):
+    def add_repo_units(self, units, repo_id, installed=False):
+        repo_name = str(repo_id)
         repo = self.repos.get(repo_name)
         if not repo:
             repo = self.repos.setdefault(repo_name, self.pool.add_repo(repo_name))
@@ -258,7 +261,7 @@ class UnitSolvableMapping(object):
             except KeyError as err:
                 raise ValueError('Unsupported unit type: {}', err)
             solvable = factory(repo, unit)
-            self._register(unit, solvable)
+            self._register(unit, solvable, repo_id)
 
         if installed:
             self.pool.installed = repo
@@ -266,10 +269,10 @@ class UnitSolvableMapping(object):
         repodata.internalize()
 
     def get_unit_id(self, solvable):
-        return self.mapping.get(solvable.id)
+        return self.mapping_s.get(solvable.id)
 
-    def get_solvable(self, unit):
-        return self.mapping.get(unit['id'])
+    def get_solvable(self, unit, repo_id):
+        return self.mapping_u.get((unit['id'], repo_id))
 
 
 class Solver(object):
@@ -329,10 +332,11 @@ class Solver(object):
         'requires',
     ]) - rpm_fields
 
-    def __init__(self, source_repo, target_repo=None):
+    def __init__(self, source_repo, target_repo=None, conservative=False):
         super(Solver, self).__init__()
         self.source_repo = source_repo
         self.target_repo = target_repo
+        self.conservative = conservative
         self._loaded = False
         self.pool = solv.Pool()
         # prevent https://github.com/openSUSE/libsolv/issues/267
@@ -357,12 +361,12 @@ class Solver(object):
         if self._loaded:
             return
         self._loaded = True
-        repo_name = str(self.source_repo.repo_id)
-        self.mapping.add_repo_units(self._repo_units(repo_name), repo_name)
+        repo_id = self.source_repo.repo_id
+        self.mapping.add_repo_units(self._repo_units(repo_id), repo_id)
 
         if self.target_repo:
-            repo_name = str(self.target_repo.repo_id)
-            self.mapping.add_repo_units(self._repo_units(repo_name), repo_name, installed=True)
+            repo_id = self.target_repo.repo_id
+            self.mapping.add_repo_units(self._repo_units(repo_id), repo_id, installed=True)
 
         self.pool.addfileprovides()
         self.pool.createwhatprovides()
@@ -373,26 +377,127 @@ class Solver(object):
     def _units_jobs(self, units):
         flags = solv.Job.SOLVER_INSTALL | solv.Job.SOLVER_SOLVABLE
         for unit in units:
-            solvable = self.mapping.get_solvable(unit)
+            solvable = self.mapping.get_solvable(unit, self.source_repo.repo_id)
             if not solvable:
                 raise ValueError('Encountered an unknown unit {}'.format(unit))
             yield self.pool.Job(flags, solvable.id)
 
-    def find_dependent_rpms(self, units):
-        solver = self.pool.Solver()
-        problems = solver.solve(self._units_jobs(units))
+    def _handle_nothing_provides(self, info, jobs):
+        name = info.dep.str()
+        if not self.target_repo:
+            return
+        target_repo = self.mapping.repos[self.target_repo.repo_id]
+        dummy = target_repo.add_solvable()
+        dummy.add_deparray(solv.SOLVABLE_PROVIDES, info.dep)
+        _LOGGER.debug('Created dummy prv: %s', name)
+
+    def _locate_solvable_job(self, solvable, flags, jobs):
+        for idx, job in enumerate(jobs):
+            if job.what == solvable.id and job.how == flags:
+                _LOGGER.debug('Found job: %s', str(job))
+                return idx
+
+    def _enforce_solvable_job(self, solvable, flags, jobs):
+        idx = self._locate_solvable_job(solvable, flags, jobs)
+        if idx is not None:
+            return
+
+        enforce_job = self.pool.Job(flags, solvable.id)
+        jobs.append(enforce_job)
+        _LOGGER.debug('Added job %s', enforce_job)
+
+    def _handle_same_name(self, info, jobs):
+        install_flags = solv.Job.SOLVER_INSTALL | solv.Job.SOLVER_SOLVABLE
+        enforce_flags = install_flags | solv.Job.SOLVER_MULTIVERSION
+        self._enforce_solvable_job(info.solvable, enforce_flags, jobs)
+        self._enforce_solvable_job(info.othersolvable, enforce_flags, jobs)
+
+    def _handle_problems(self, problems, jobs):
+        # Convert missing dependency problems into new solvables to be able to retry the solving
+        # by pretending the missing dependencies are already installed
+        # Handle same-name problems by a multi-version install
+        for problem in problems:
+            for problem_rule in problem.findallproblemrules():
+                for info in problem_rule.allinfos():
+                    if info.type == solv.Solver.SOLVER_RULE_PKG_REQUIRES:
+                        continue
+                    elif info.type == solv.Solver.SOLVER_RULE_PKG_NOTHING_PROVIDES_DEP:
+                        self._handle_nothing_provides(info, jobs)
+                    elif info.type == solv.Solver.SOLVER_RULE_PKG_SAME_NAME:
+                        self._handle_same_name(info, jobs)
+                    else:
+                        _LOGGER.warning('No workaround available for problem type %s. '
+                                        'You may refer to the libsolv Solver class documetnation '
+                                        'for more details. See https://github.com/openSUSE/'
+                                        'libsolv/blob/master/doc/libsolv-bindings.txt'
+                                        '#the-solver-class.', info.type)
+        self.pool.createwhatprovides()
+
+    def _paginated_result(self, solvables):
+        ret = set()
+        for solvables in misc_utils.paginate(solvables):
+            unit_ids = [self.mapping.get_unit_id(solvable)[0] for solvable in solvables]
+            for unit in models.RPM.objects.filter(id__in=unit_ids).only(*self.rpm_key_fields):
+                ret.add(unit)
+        return ret
+
+    def find_dependent_rpms_conservative(self, units):
+        ret = set()
+        if not units:
+            return ret
+        previous_problems_ = set()
+        take = 0
+        jobs = list(self._units_jobs(units))
+        while True:
+            take += 1
+            _LOGGER.debug('Solver take %(t)s; jobs:\n%(j)s',
+                          {'t': take, 'j': '\n'.join(str(job) for job in jobs)})
+            solver = self.pool.Solver()
+            problems = solver.solve(jobs)
+            problems_ = set(str(problem) for problem in problems)
+            # assuming we won't be creating more and more problems all the time
+            _LOGGER.debug('Previous solver problems:\n%s', '\n'.join(previous_problems_))
+            _LOGGER.debug('Current solver problems:\n%s', '\n'.join(problems_))
+            if not problems or previous_problems_ == problems_:
+                break
+            self._handle_problems(problems, jobs)
+            previous_problems_ = problems_
         # The solver is simply ignoring the problems encountered and proceeds associating
         # any new solvables/units. This might be reported back to the user one day over
         # the REST API.
-        if problems:
-            _LOGGER.warning('Encountered problems solving: %s',
-                            ", ".join([str(problem) for problem in problems]))
-
+        if problems_:
+            _LOGGER.warning('Encountered problems solving: %s', ', '.join(problems_))
         transaction = solver.transaction()
-        ret = set()
-        for solvables in misc_utils.paginate(transaction.newsolvables()):
-            unit_ids = [self.mapping.get_unit_id(solvable) for solvable in solvables]
-            for unit in models.RPM.objects.filter(id__in=unit_ids).only(*self.rpm_key_fields):
-                ret.add(unit)
+        return self._paginated_result(transaction.newsolvables())
 
-        return ret
+    def find_dependent_rpms_relaxed(self, units):
+        pool = self.pool
+        seen = set()
+        # Please note that providers of the requirements can be found in both the target
+        # and source repo but each provider is a distinct solvable, so even though a particular
+        # unit can seem to appear twice in the pool.whatprovides() set, it's just a different
+        # solvable.
+        candq = set(self.mapping.get_solvable(unit, self.source_repo.repo_id) for unit in units)
+        while candq:
+            cand = candq.pop()
+            seen.add(cand)
+            for key in (solv.SOLVABLE_REQUIRES, solv.SOLVABLE_RECOMMENDS):
+                for req in cand.lookup_deparray(key):
+                    providers = sorted(pool.whatprovides(req), cmp=lambda x, y: x.evrcmp(y),
+                                       reverse=True)
+                    if not providers:
+                        continue
+                    p = providers[0]
+                    repo = self.mapping.get_unit_id(p)[1]
+                    if p in seen or repo != self.source_repo.repo_id:
+                        continue
+                    candq.add(p)
+        targets = set(unit_id for (unit_id, repo_id) in self.mapping.mapping_u.keys()
+                      if repo_id == self.target_repo.repo_id)
+        return self._paginated_result(s for s in seen
+                                      if self.mapping.get_unit_id(s)[0] not in targets)
+
+    def find_dependent_rpms(self, units):
+        if self.conservative:
+            return self.find_dependent_rpms_conservative(units)
+        return self.find_dependent_rpms_relaxed(units)

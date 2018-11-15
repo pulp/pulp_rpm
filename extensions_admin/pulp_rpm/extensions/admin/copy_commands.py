@@ -4,7 +4,8 @@ from pulp.client.commands.unit import UnitCopyCommand
 from pulp.client.extensions.extensions import PulpCliFlag
 
 from pulp_rpm.extensions.admin import units_display, criteria_utils
-from pulp_rpm.common.constants import DISPLAY_UNITS_THRESHOLD, CONFIG_RECURSIVE
+from pulp_rpm.common.constants import (DISPLAY_UNITS_THRESHOLD, CONFIG_RECURSIVE_CONSERVATIVE,
+                                       CONFIG_RECURSIVE)
 from pulp_rpm.common.ids import (TYPE_ID_RPM, TYPE_ID_SRPM, TYPE_ID_DRPM, TYPE_ID_ERRATA,
                                  TYPE_ID_DISTRO, TYPE_ID_PKG_GROUP, TYPE_ID_PKG_CATEGORY,
                                  TYPE_ID_PKG_ENVIRONMENT, TYPE_ID_PKG_LANGPACKS,
@@ -27,7 +28,12 @@ DESC_ALL = _('copy all content units from one repository to another')
 DESC_RECURSIVE = _(
     'if specified, any dependencies of units being copied that are in the source repo '
     'will be copied as well')
+DESC_RECURSIVE_CONSERVATIVE = _(
+    'if specified, a minimum set of dependencies of units being copied might be copied '
+    'in case no dependency issues were encountered while resolving the dependencies.'
+)
 FLAG_RECURSIVE = PulpCliFlag('--recursive', DESC_RECURSIVE)
+FLAG_RECURSIVE_CONSERVATIVE = PulpCliFlag('--recursive-conservative', DESC_RECURSIVE_CONSERVATIVE)
 
 # -- commands -----------------------------------------------------------------
 
@@ -65,12 +71,15 @@ class RecursiveCopyCommand(NonRecursiveCopyCommand):
                                                    type_id=type_id)
 
         self.add_flag(FLAG_RECURSIVE)
+        self.add_flag(FLAG_RECURSIVE_CONSERVATIVE)
 
     def generate_override_config(self, **kwargs):
         override_config = {}
 
         if kwargs[FLAG_RECURSIVE.keyword]:
             override_config[CONFIG_RECURSIVE] = True
+        elif kwargs.get(FLAG_RECURSIVE_CONSERVATIVE.keyword):
+            override_config[CONFIG_RECURSIVE_CONSERVATIVE] = True
 
         return override_config
 
