@@ -10,3 +10,16 @@ New Features
 
 * Modular package collections in Errata are now supported
 * Modularity support is added for Errata content
+* Applicability for modular content is now supported
+
+Bug Fixes
+---------
+
+See the list of :fixedbugs_pulp_rpm:`2.18.0`
+
+* Security fix: `Issue 3841 <https://pulp.plan.io/issues/3841>`_
+
+  * `CVE-2018-10917 <https://nvd.nist.gov/vuln/detail/CVE-2018-10917>`_
+  * A malicious user or a malicious iso feed repository can write to locations accessible
+    to the 'apache' user. This may lead to overwrite of published content on other
+    iso repositories. 
