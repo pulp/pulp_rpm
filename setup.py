@@ -11,7 +11,7 @@ with open('README.rst') as f:
 
 setup(
     name='pulp-rpm',
-    version='0.1.0b1',
+    version='3.0.0b1',
     description='RPM plugin for the Pulp Project',
     long_description=long_description,
     license='GPLv2+',
