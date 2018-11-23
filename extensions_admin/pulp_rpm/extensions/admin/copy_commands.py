@@ -9,7 +9,8 @@ from pulp_rpm.common.constants import (DISPLAY_UNITS_THRESHOLD, CONFIG_RECURSIVE
 from pulp_rpm.common.ids import (TYPE_ID_RPM, TYPE_ID_SRPM, TYPE_ID_DRPM, TYPE_ID_ERRATA,
                                  TYPE_ID_DISTRO, TYPE_ID_PKG_GROUP, TYPE_ID_PKG_CATEGORY,
                                  TYPE_ID_PKG_ENVIRONMENT, TYPE_ID_PKG_LANGPACKS,
-                                 TYPE_ID_YUM_REPO_METADATA_FILE, UNIT_KEY_RPM)
+                                 TYPE_ID_YUM_REPO_METADATA_FILE, UNIT_KEY_RPM,
+                                 TYPE_ID_MODULEMD)
 
 # -- constants ----------------------------------------------------------------
 
@@ -24,6 +25,7 @@ DESC_PKG_ENVIRONMENT = _('copy package environment from one repository to anothe
 DESC_PKG_LANGPACKS = _('copy package langpacks from one repository to another')
 DESC_METAFILE = _('copy yum repo metadata files from one repository to another')
 DESC_ALL = _('copy all content units from one repository to another')
+DESC_MODULEMD = _('copy a Module from one repository to another')
 
 DESC_RECURSIVE = _(
     'if specified, any dependencies of units being copied that are in the source repo '
@@ -164,3 +166,8 @@ class YumRepoMetadataFileCommand(NonRecursiveCopyCommand):
 class AllCopyCommand(NonRecursiveCopyCommand):
     def __init__(self, context):
         NonRecursiveCopyCommand.__init__(self, context, 'all', DESC_ALL, None)
+
+
+class ModulemdCopyCommand(RecursiveCopyCommand):
+    def __init__(self, context):
+        RecursiveCopyCommand.__init__(self, context, 'module', DESC_MODULEMD, TYPE_ID_MODULEMD)

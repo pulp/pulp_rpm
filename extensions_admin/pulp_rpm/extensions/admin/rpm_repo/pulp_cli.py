@@ -42,6 +42,7 @@ def initialize(context):
     copy_section.add_command(copy_commands.SrpmCopyCommand(context))
     copy_section.add_command(copy_commands.YumRepoMetadataFileCommand(context))
     copy_section.add_command(copy_commands.DrpmCopyCommand(context))
+    copy_section.add_command(copy_commands.ModulemdCopyCommand(context))
 
     remove_section = structure.repo_remove_section(context.cli)
     remove_section.add_command(remove.RpmRemoveCommand(context))
