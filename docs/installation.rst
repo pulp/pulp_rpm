@@ -34,14 +34,6 @@ If you are on Ubuntu or Debian, install the build dependencies with this command
 
    sudo apt install -y gcc make cmake libbz2-dev libexpat1-dev libmagic-dev libglib2.0-dev libcurl4-openssl-dev libxml2-dev libpython3-dev librpm-dev libssl-dev libsqlite3-dev liblzma-dev zlib1g-dev
 
-Once the build deps are installed, you can simply install the ``createrepo_c`` package. It is not yet
-available on PyPI, so for the time being we have hosted it ourselves:
-
-.. code-block:: bash
-
-   pip install scikit-build
-   pip install https://repos.fedorapeople.org/pulp/pulp/python-packages/createrepo_c-0.11.1.tar.gz
-
 Install ``pulp_rpm`` from source
 ********************************
 

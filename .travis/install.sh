@@ -22,9 +22,6 @@ pushd pulp/plugin/ && pip install -e .  && popd
 ### Install createrepo_c build deps ###
 sudo apt-get update -y
 sudo apt-get install -y gcc libbz2-dev cmake libexpat1-dev libmagic-dev libglib2.0-dev libcurl4-openssl-dev libxml2-dev libpython3-dev librpm-dev libssl-dev libsqlite3-dev liblzma-dev zlib1g-dev
-
-pip install scikit-build
-pip install https://repos.fedorapeople.org/pulp/pulp/python-packages/createrepo_c-0.11.1.tar.gz
 #######################################
 
 cd pulp_rpm
