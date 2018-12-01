@@ -7,7 +7,7 @@ from urllib.parse import urljoin
 
 import createrepo_c as cr
 
-from pulpcore.plugin.models import Artifact, ProgressBar, Repository, RepositoryVersion
+from pulpcore.plugin.models import Artifact, ProgressBar, Remote, Repository, RepositoryVersion
 from pulpcore.plugin.stages import (
     DeclarativeArtifact,
     DeclarativeContent,
@@ -59,17 +59,21 @@ def synchronize(remote_pk, repository_pk):
     log.info(_('Synchronizing: repository={r} remote={p}').format(
         r=repository.name, p=remote.name))
 
+    download_artifacts = (remote.policy == Remote.IMMEDIATE)
     first_stage = RpmFirstStage(remote)
     with WorkingDirectory():
         with RepositoryVersion.create(repository) as new_version:
             loop = asyncio.get_event_loop()
             remove_duplicates_stage = RemoveDuplicates(new_version, **dupe_criteria)
-            stages = [
-                first_stage,
-                QueryExistingArtifacts(), ArtifactDownloader(), ArtifactSaver(),
+            stages = [first_stage]
+
+            if download_artifacts:
+                stages.extend([QueryExistingArtifacts(), ArtifactDownloader(), ArtifactSaver()])
+
+            stages.extend([
                 QueryExistingContentUnits(), ErratumContentUnitSaver(), remove_duplicates_stage,
                 ContentUnitAssociation(new_version), EndStage()
-            ]
+            ])
             pipeline = create_pipeline(stages)
             loop.run_until_complete(pipeline)
 
@@ -192,8 +196,9 @@ class RpmFirstStage(Stage):
 
         """
         with ProgressBar(message='Downloading and Parsing Metadata') as pb:
-            downloader = self.remote.get_downloader(url=urljoin(self.remote.url,
-                                                                'repodata/repomd.xml'))
+            downloader = self.remote.get_downloader(
+                url=urljoin(self.remote.url, 'repodata/repomd.xml')
+            )
             # TODO: decide how to distinguish between a mirror list and a normal repo
             result = await downloader.run()
             pb.increment()
