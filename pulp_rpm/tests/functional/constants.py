@@ -9,7 +9,6 @@ from pulp_smash.pulp3.constants import (
     CONTENT_PATH,
 )
 
-
 RPM_ALT_LAYOUT_FIXTURE_URL = urljoin(PULP_FIXTURES_BASE_URL, 'rpm-alt-layout/')
 """The URL to a signed RPM repository. See :data:`RPM_SIGNED_FIXTURE_URL`."""
 
@@ -117,6 +116,22 @@ repositories, i.e. :data:`RPM_SIGNED_FIXTURE_URL` and
 
 RPM_UPDATERECORD_RPM_NAME = 'gorilla'
 """The name of the RPM named by :data:`RPM_UPDATERECORD_ID`."""
+
+RPM_WITH_NON_ASCII_NAME = 'rpm-with-non-ascii'
+
+RPM_WITH_NON_ASCII_URL = urljoin(
+    PULP_FIXTURES_BASE_URL,
+    'rpm-with-non-ascii/{}-1-1.fc25.noarch.rpm'.format(RPM_WITH_NON_ASCII_NAME)
+)
+"""The URL to an RPM with non-ascii metadata in its header."""
+
+RPM_WITH_NON_UTF_8_NAME = 'rpm-with-non-utf-8'
+
+RPM_WITH_NON_UTF_8_URL = urljoin(
+    PULP_FIXTURES_BASE_URL,
+    'rpm-with-non-utf-8/{}-1-1.fc25.noarch.rpm'.format(RPM_WITH_NON_UTF_8_NAME)
+)
+"""The URL to an RPM with non-UTF-8 metadata in its header."""
 
 UPDATERECORD_CONTENT_PATH = urljoin(CONTENT_PATH, 'rpm/updates/')
 """The location of RPM UpdateRecords on the content endpoint."""
