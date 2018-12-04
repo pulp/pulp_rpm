@@ -154,8 +154,8 @@ class ISOImporter(Importer):
         # remove any existing units with the same name
         unit_keys_same_name = models.ISO.objects(name=iso['name']).values_list('id')
         units = repo_controller.find_repo_content_units(transfer_repo.repo_obj,
-                                                        repo_content_unit_q=Q(unit_id__in
-                                                                              =unit_keys_same_name),
+                                                        repo_content_unit_q=Q(
+                                                            unit_id__in=unit_keys_same_name),
                                                         units_q=Q(name=iso['name']),
                                                         yield_content_unit=True)
         repo_controller.disassociate_units(transfer_repo.repo_obj, units)
