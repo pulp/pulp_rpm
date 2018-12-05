@@ -42,3 +42,11 @@ Add content to repository ``foo``
 
 ``$ http POST :8000${REPO_HREF}versions/ add_content_units:="[\"$CONTENT_HREF\"]"``
 
+
+One shot upload
+---------------
+
+You can use feature to upload one rpm directly to repository which substitute
+previous three steps (create artifact, content from artifact and add content to repo).
+
+``http --form POST http://localhost:8000/pulp/api/v3/rpm/upload/ file@./foo-1.0-1.noarch.rpm repository=/pulp/api/v3/repositories/1/``
