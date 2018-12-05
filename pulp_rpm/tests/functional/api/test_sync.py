@@ -2,8 +2,8 @@
 """Tests that sync rpm plugin repositories."""
 import unittest
 
-from pulp_smash import api, config
-from pulp_smash.pulp3.constants import REPO_PATH
+from pulp_smash import api, cli, config
+from pulp_smash.pulp3.constants import MEDIA_PATH, REPO_PATH
 from pulp_smash.pulp3.utils import (
     gen_repo,
     get_added_content,
@@ -33,6 +33,38 @@ class BasicSyncTestCase(unittest.TestCase):
     def setUpClass(cls):
         """Create class-wide variables."""
         cls.cfg = config.get_config()
+        cls.client = api.Client(cls.cfg, api.json_handler)
+
+    def test_file_decriptors(self):
+        """Test whether file descriptors are closed properly.
+
+        This test targets the following issue:
+        `Pulp #4073 <https://pulp.plan.io/issues/4073>`_
+
+        Do the following:
+        1. Check if 'lsof' is installed. If it is not, skip this test.
+        2. Create and sync a repo.
+        3. Run the 'lsof' command to verify that files in the
+           path ``/var/lib/pulp/`` are closed after the sync.
+        4. Assert that issued command returns `0` opened files.
+        """
+        cli_client = cli.Client(self.cfg, cli.echo_handler)
+
+        # check if 'lsof' is available
+        if cli_client.run(('which', 'lsof')).returncode != 0:
+            raise unittest.SkipTest('lsof package is not present')
+
+        repo = self.client.post(REPO_PATH, gen_repo())
+        self.addCleanup(self.client.delete, repo['_href'])
+
+        remote = self.client.post(RPM_REMOTE_PATH, gen_rpm_remote())
+        self.addCleanup(self.client.delete, remote['_href'])
+
+        sync(self.cfg, remote, repo)
+
+        cmd = 'lsof -t +D {}'.format(MEDIA_PATH).split()
+        response = cli_client.run(cmd).stdout
+        self.assertEqual(len(response), 0, response)
 
     def test_sync(self):
         """Sync repositories with the rpm plugin.
@@ -54,20 +86,18 @@ class BasicSyncTestCase(unittest.TestCase):
         8. Assert that the same number of are present and that no units were
            added.
         """
-        client = api.Client(self.cfg, api.json_handler)
-
-        repo = client.post(REPO_PATH, gen_repo())
-        self.addCleanup(client.delete, repo['_href'])
+        repo = self.client.post(REPO_PATH, gen_repo())
+        self.addCleanup(self.client.delete, repo['_href'])
 
         # Create a remote with the standard test fixture url.
         body = gen_rpm_remote()
-        remote = client.post(RPM_REMOTE_PATH, body)
-        self.addCleanup(client.delete, remote['_href'])
+        remote = self.client.post(RPM_REMOTE_PATH, body)
+        self.addCleanup(self.client.delete, remote['_href'])
 
         # Sync the repository.
         self.assertIsNone(repo['_latest_version_href'])
         sync(self.cfg, remote, repo)
-        repo = client.get(repo['_href'])
+        repo = self.client.get(repo['_href'])
 
         # Check that we have the correct content counts.
         self.assertIsNotNone(repo['_latest_version_href'])
@@ -80,7 +110,7 @@ class BasicSyncTestCase(unittest.TestCase):
         # Sync the repository again.
         latest_version_href = repo['_latest_version_href']
         sync(self.cfg, remote, repo)
-        repo = client.get(repo['_href'])
+        repo = self.client.get(repo['_href'])
 
         # Check that nothing has changed since the last sync.
         self.assertNotEqual(latest_version_href, repo['_latest_version_href'])
