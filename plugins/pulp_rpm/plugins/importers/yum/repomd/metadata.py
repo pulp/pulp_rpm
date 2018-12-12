@@ -3,6 +3,7 @@
 import contextlib
 from copy import deepcopy
 import gdbm
+from gettext import gettext as _
 import bz2
 import gzip
 import hashlib
@@ -200,6 +201,8 @@ class MetadataFiles(object):
     def download_metadata_files(self):
         """
         Download the remaining metadata files.
+
+        :raises PulpCodedException: if any of necessary metadata files are not fetched
         """
         if not self.metadata:
             raise RuntimeError('%s has not been parsed' % REPOMD_FILE_NAME)
@@ -221,7 +224,9 @@ class MetadataFiles(object):
         self.downloader.download(download_request_list)
         if self.event_listener.failed_reports:
             error_report = self.event_listener.failed_reports[0]
-            raise IOError(error_report.error_msg)
+            reason = _("Error '{error}' for {path}.").format(path=error_report.url,
+                                                             error=error_report.error_msg)
+            raise PulpCodedException(error_code=error_codes.RPM1004, reason=reason)
 
     def verify_metadata_files(self):
         """

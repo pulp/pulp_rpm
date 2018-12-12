@@ -10,6 +10,8 @@ import mock
 from nectar.config import DownloaderConfig
 from nectar.report import DownloadReport
 
+from pulp.server.exceptions import PulpCodedException
+
 from pulp_rpm.devel.skip import skip_broken
 from pulp_rpm.plugins.importers.yum.utils import RepoURLModifier
 from pulp_rpm.plugins.importers.yum.repomd import metadata
@@ -220,7 +222,7 @@ class TestDownloadMetadataFiles(unittest.TestCase):
         self.metadata_files.event_listener.failed_reports.append(report)
 
         # Ensure an exception is raised if the download failed
-        self.assertRaises(IOError, self.metadata_files.download_metadata_files)
+        self.assertRaises(PulpCodedException, self.metadata_files.download_metadata_files)
 
 
 class TestQueryAuthToken(unittest.TestCase):
