@@ -19,7 +19,7 @@ from pulpcore.plugin.serializers import (
     RepositorySyncURLSerializer,
 )
 from pulpcore.plugin.viewsets import (
-    BaseFilterSet,
+    ContentFilter,
     ContentViewSet,
     RemoteViewSet,
     OperationPostponedResponse,
@@ -38,7 +38,7 @@ from pulp_rpm.app.serializers import (
 )
 
 
-class PackageFilter(BaseFilterSet):
+class PackageFilter(ContentFilter):
     """
     FilterSet for Package.
     """
@@ -194,7 +194,7 @@ class RpmPublisherViewSet(PublisherViewSet):
         return OperationPostponedResponse(result, request)
 
 
-class UpdateRecordFilter(BaseFilterSet):
+class UpdateRecordFilter(ContentFilter):
     """
     FilterSet for UpdateRecord.
     """
