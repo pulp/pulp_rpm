@@ -4,7 +4,7 @@ from setuptools import setup, find_packages
 
 requirements = [
     'createrepo_c',
-    'pulpcore-plugin==0.1.0b13',
+    'pulpcore-plugin>=0.1.0b14',
 ]
 
 with open('README.rst') as f:
