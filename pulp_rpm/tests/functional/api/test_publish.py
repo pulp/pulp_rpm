@@ -10,6 +10,7 @@ from pulp_smash import api, config
 from pulp_smash.pulp3.constants import REPO_PATH
 from pulp_smash.pulp3.utils import (
     gen_repo,
+    get_content,
     get_content_summary,
     get_versions,
     publish,
@@ -22,9 +23,9 @@ from pulp_rpm.tests.functional.utils import (
 )
 from pulp_rpm.tests.functional.constants import (
     RPM_ALT_LAYOUT_FIXTURE_URL,
-    RPM_CONTENT_PATH,
-    RPM_FIXTURE_CONTENT_SUMMARY,
+    RPM_FIXTURE_SUMMARY,
     RPM_LONG_UPDATEINFO_FIXTURE_URL,
+    RPM_PACKAGE_CONTENT_NAME,
     RPM_PUBLISHER_PATH,
     RPM_REFERENCES_UPDATEINFO_URL,
     RPM_REMOTE_PATH,
@@ -43,6 +44,12 @@ class PublishAnyRepoVersionTestCase(unittest.TestCase):
     * `Pulp Smash #897 <https://github.com/PulpQE/pulp-smash/issues/897>`_
     """
 
+    @classmethod
+    def setUpClass(cls):
+        """Create class-wide variables."""
+        cls.cfg = config.get_config()
+        cls.client = api.Client(cls.cfg, api.json_handler)
+
     def test_all(self):
         """Test whether a particular repository version can be published.
 
@@ -57,26 +64,22 @@ class PublishAnyRepoVersionTestCase(unittest.TestCase):
         6. Assert that an exception is raised when providing two different
            repository versions to be published at same time.
         """
-        cfg = config.get_config()
-        client = api.Client(cfg, api.json_handler)
-
         body = gen_rpm_remote()
-        remote = client.post(RPM_REMOTE_PATH, body)
-        self.addCleanup(client.delete, remote['_href'])
+        remote = self.client.post(RPM_REMOTE_PATH, body)
+        self.addCleanup(self.client.delete, remote['_href'])
 
-        repo = client.post(REPO_PATH, gen_repo())
-        self.addCleanup(client.delete, repo['_href'])
+        repo = self.client.post(REPO_PATH, gen_repo())
+        self.addCleanup(self.client.delete, repo['_href'])
 
-        sync(cfg, remote, repo)
+        sync(self.cfg, remote, repo)
 
-        publisher = client.post(RPM_PUBLISHER_PATH, gen_rpm_publisher())
-        self.addCleanup(client.delete, publisher['_href'])
+        publisher = self.client.post(RPM_PUBLISHER_PATH, gen_rpm_publisher())
+        self.addCleanup(self.client.delete, publisher['_href'])
 
         # Step 1
-        repo = client.post(REPO_PATH, gen_repo())
-        self.addCleanup(client.delete, repo['_href'])
-        for rpm_content in client.get(RPM_CONTENT_PATH)['results']:
-            client.post(
+        repo = self.client.get(repo['_href'])
+        for rpm_content in get_content(repo)[RPM_PACKAGE_CONTENT_NAME]:
+            self.client.post(
                 repo['_versions_href'],
                 {'add_content_units': [rpm_content['_href']]}
             )
@@ -84,13 +87,13 @@ class PublishAnyRepoVersionTestCase(unittest.TestCase):
         non_latest = choice(version_hrefs[:-1])
 
         # Step 2
-        publication = publish(cfg, publisher, repo)
+        publication = publish(self.cfg, publisher, repo)
 
         # Step 3
         self.assertEqual(publication['repository_version'], version_hrefs[-1])
 
         # Step 4
-        publication = publish(cfg, publisher, repo, non_latest)
+        publication = publish(self.cfg, publisher, repo, non_latest)
 
         # Step 5
         self.assertEqual(publication['repository_version'], non_latest)
@@ -101,11 +104,17 @@ class PublishAnyRepoVersionTestCase(unittest.TestCase):
                 'repository': repo['_href'],
                 'repository_version': non_latest
             }
-            client.post(urljoin(publisher['_href'], 'publish/'), body)
+            self.client.post(urljoin(publisher['_href'], 'publish/'), body)
 
 
 class SyncPublishReferencesUpdateTestCase(unittest.TestCase):
     """Sync/publish a repo that ``updateinfo.xml`` contains references."""
+
+    @classmethod
+    def setUpClass(cls):
+        """Create class-wide variables."""
+        cls.cfg = config.get_config()
+        cls.client = api.Client(cls.cfg, api.json_handler)
 
     def test_all(self):
         """Sync/publish a repo that ``updateinfo.xml`` contains references.
@@ -114,33 +123,30 @@ class SyncPublishReferencesUpdateTestCase(unittest.TestCase):
 
         `Pulp #3998 <https://pulp.plan.io/issues/3998>`_.
         """
-        cfg = config.get_config()
-        client = api.Client(cfg, api.json_handler)
-
-        repo = client.post(REPO_PATH, gen_repo())
-        self.addCleanup(client.delete, repo['_href'])
+        repo = self.client.post(REPO_PATH, gen_repo())
+        self.addCleanup(self.client.delete, repo['_href'])
 
         body = gen_rpm_remote(url=RPM_REFERENCES_UPDATEINFO_URL)
-        remote = client.post(RPM_REMOTE_PATH, body)
-        self.addCleanup(client.delete, remote['_href'])
+        remote = self.client.post(RPM_REMOTE_PATH, body)
+        self.addCleanup(self.client.delete, remote['_href'])
 
-        sync(cfg, remote, repo)
-        repo = client.get(repo['_href'])
+        sync(self.cfg, remote, repo)
+        repo = self.client.get(repo['_href'])
 
         self.assertIsNotNone(repo['_latest_version_href'])
 
         content_summary = get_content_summary(repo)
-        self.assertEqual(
+        self.assertDictEqual(
             content_summary,
-            RPM_FIXTURE_CONTENT_SUMMARY,
+            RPM_FIXTURE_SUMMARY,
             content_summary
         )
 
-        publisher = client.post(RPM_PUBLISHER_PATH, gen_rpm_publisher())
-        self.addCleanup(client.delete, publisher['_href'])
+        publisher = self.client.post(RPM_PUBLISHER_PATH, gen_rpm_publisher())
+        self.addCleanup(self.client.delete, publisher['_href'])
 
-        publication = publish(cfg, publisher, repo)
-        self.addCleanup(client.delete, publication['_href'])
+        publication = publish(self.cfg, publisher, repo)
+        self.addCleanup(self.client.delete, publication['_href'])
 
 
 class SyncPublishTestCase(unittest.TestCase):

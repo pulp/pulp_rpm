@@ -21,6 +21,7 @@ from pulp_smash.pulp3.utils import (
 
 from pulp_rpm.tests.functional.constants import (
     RPM_CONTENT_PATH,
+    RPM_PACKAGE_CONTENT_NAME,
     RPM_REMOTE_PATH,
     RPM_SIGNED_FIXTURE_URL,
     RPM_UNSIGNED_FIXTURE_URL,
@@ -65,7 +66,7 @@ def get_rpm_package_paths(repo):
     """
     return [
         content_unit['location_href']
-        for content_unit in get_content(repo)
+        for content_unit in get_content(repo)[RPM_PACKAGE_CONTENT_NAME]
         if 'location_href' in content_unit
     ]
 
