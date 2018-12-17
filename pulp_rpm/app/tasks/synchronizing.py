@@ -187,8 +187,8 @@ class RpmFirstStage(Stage):
 
         """
         with ProgressBar(message='Downloading and Parsing Metadata') as pb:
-            downloader = self.remote.get_downloader(urljoin(self.remote.url,
-                                                            'repodata/repomd.xml'))
+            downloader = self.remote.get_downloader(url=urljoin(self.remote.url,
+                                                                'repodata/repomd.xml'))
             # TODO: decide how to distinguish between a mirror list and a normal repo
             result = await downloader.run()
             pb.increment()
@@ -204,7 +204,7 @@ class RpmFirstStage(Stage):
                                                                  record.location_href)
                 elif record.type in UPDATE_REPODATA:
                     updateinfo_url = urljoin(self.remote.url, record.location_href)
-                    downloader = self.remote.get_downloader(updateinfo_url)
+                    downloader = self.remote.get_downloader(url=updateinfo_url)
                     downloaders.append([downloader.run()])
                 else:
                     log.info(_('Unknown repodata type: {t}. Skipped.').format(t=record.type))
@@ -213,7 +213,7 @@ class RpmFirstStage(Stage):
             # to preserve order, downloaders are created after all repodata urls are identified
             package_repodata_downloaders = []
             for repodata_type in PACKAGE_REPODATA:
-                downloader = self.remote.get_downloader(package_repodata_urls[repodata_type])
+                downloader = self.remote.get_downloader(url=package_repodata_urls[repodata_type])
                 package_repodata_downloaders.append(downloader.run())
 
             downloaders.append(package_repodata_downloaders)
