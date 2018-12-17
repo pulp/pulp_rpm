@@ -9,6 +9,10 @@ from pulp_smash.pulp3.constants import (
     CONTENT_PATH,
 )
 
+RPM_PACKAGE_CONTENT_NAME = 'package'
+
+RPM_UPDATE_CONTENT_NAME = 'update'
+
 RPM_ALT_LAYOUT_FIXTURE_URL = urljoin(PULP_FIXTURES_BASE_URL, 'rpm-alt-layout/')
 """The URL to a signed RPM repository. See :data:`RPM_SIGNED_FIXTURE_URL`."""
 
@@ -33,7 +37,9 @@ RPM_FIXTURE_COUNT = 39  # 35 Packages + 4 UpdateRecord units
 :data:`RPM_SIGNED_FIXTURE_URL` and :data:`RPM_UNSIGNED_FIXTURE_URL`.
 """
 
-RPM_FIXTURE_CONTENT_SUMMARY = {'package': 35, 'update': 4}
+RPM_FIXTURE_SUMMARY = {
+    RPM_PACKAGE_CONTENT_NAME: 35, RPM_UPDATE_CONTENT_NAME: 4
+}
 """The breakdown of how many of each type of content unit are present in the
 standard repositories, i.e. :data:`RPM_SIGNED_FIXTURE_URL` and
 :data:`RPM_UNSIGNED_FIXTURE_URL`.  This matches the format output by the

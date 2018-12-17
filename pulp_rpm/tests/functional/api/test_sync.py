@@ -8,14 +8,15 @@ from pulp_smash.pulp3.utils import (
     gen_repo,
     get_added_content,
     get_content,
+    get_added_content_summary,
     get_content_summary,
     sync,
 )
 
 from pulp_rpm.tests.functional.constants import (
-    RPM_FIXTURE_CONTENT_SUMMARY,
-    RPM_FIXTURE_COUNT,
+    RPM_FIXTURE_SUMMARY,
     RPM_PACKAGE_NAME,
+    RPM_PACKAGE_CONTENT_NAME,
     RPM_REMOTE_PATH,
     RPM_SIGNED_FIXTURE_URL,
     RPM_UNSIGNED_FIXTURE_URL,
@@ -103,9 +104,12 @@ class BasicSyncTestCase(unittest.TestCase):
         self.assertIsNotNone(repo['_latest_version_href'])
         self.assertDictEqual(
             get_content_summary(repo),
-            RPM_FIXTURE_CONTENT_SUMMARY
+            RPM_FIXTURE_SUMMARY
         )
-        self.assertEqual(len(get_added_content(repo)), RPM_FIXTURE_COUNT)
+        self.assertDictEqual(
+            get_added_content_summary(repo),
+            RPM_FIXTURE_SUMMARY
+        )
 
         # Sync the repository again.
         latest_version_href = repo['_latest_version_href']
@@ -116,9 +120,9 @@ class BasicSyncTestCase(unittest.TestCase):
         self.assertNotEqual(latest_version_href, repo['_latest_version_href'])
         self.assertDictEqual(
             get_content_summary(repo),
-            RPM_FIXTURE_CONTENT_SUMMARY
+            RPM_FIXTURE_SUMMARY
         )
-        self.assertEqual(len(get_added_content(repo)), 0)
+        self.assertDictEqual(get_added_content_summary(repo), {})
 
 
 @unittest.skip('FIXME: Enable this test after we can throw out duplicate Packages')
@@ -129,6 +133,7 @@ class SyncMutatedPackagesTestCase(unittest.TestCase):
     def setUpClass(cls):
         """Create class-wide variables."""
         cls.cfg = config.get_config()
+        cls.client = api.Client(cls.cfg, api.json_handler)
 
     def test_all(self):
         """Sync two copies of the same packages.
@@ -148,49 +153,52 @@ class SyncMutatedPackagesTestCase(unittest.TestCase):
            but has the same content summary.
         7. Assert that the packages have changed since the last sync.
         """
-        client = api.Client(self.cfg, api.json_handler)
-
-        repo = client.post(REPO_PATH, gen_repo())
-        self.addCleanup(client.delete, repo['_href'])
+        repo = self.client.post(REPO_PATH, gen_repo())
+        self.addCleanup(self.client.delete, repo['_href'])
 
         # Create a remote with the unsigned RPM fixture url.
         body = gen_rpm_remote(url=RPM_UNSIGNED_FIXTURE_URL)
-        remote = client.post(RPM_REMOTE_PATH, body)
-        self.addCleanup(client.delete, remote['_href'])
+        remote = self.client.post(RPM_REMOTE_PATH, body)
+        self.addCleanup(self.client.delete, remote['_href'])
 
         # Sync the repository.
         self.assertIsNone(repo['_latest_version_href'])
         sync(self.cfg, remote, repo)
-        repo = client.get(repo['_href'])
+        repo = self.client.get(repo['_href'])
         self.assertDictEqual(
             get_content_summary(repo),
-            RPM_FIXTURE_CONTENT_SUMMARY
+            RPM_FIXTURE_SUMMARY
         )
 
         # Save a copy of the original packages.
         original_packages = {
-            content['errata_id']: content for content in get_content(repo)
+            content['errata_id']: content
+            for content in get_content(repo)[RPM_PACKAGE_CONTENT_NAME]
             if content['type'] == 'packages'
         }
 
         # Create a remote with a different test fixture with the same NEVRA but
         # different digests.
         body = gen_rpm_remote(url=RPM_SIGNED_FIXTURE_URL)
-        remote = client.post(RPM_REMOTE_PATH, body)
-        self.addCleanup(client.delete, remote['_href'])
+        remote = self.client.post(RPM_REMOTE_PATH, body)
+        self.addCleanup(self.client.delete, remote['_href'])
 
         # Sync the repository again.
         sync(self.cfg, remote, repo)
-        repo = client.get(repo['_href'])
+        repo = self.client.get(repo['_href'])
         self.assertDictEqual(
             get_content_summary(repo),
-            RPM_FIXTURE_CONTENT_SUMMARY
+            RPM_FIXTURE_SUMMARY
         )
-        self.assertEqual(len(get_added_content(repo)), 0)
+        self.assertEqual(
+            len(get_added_content(repo)[RPM_PACKAGE_CONTENT_NAME]),
+            0
+        )
 
         # Test that the packages have been modified.
         mutated_packages = {
-            content['errata_id']: content for content in get_content(repo)
+            content['errata_id']: content
+            for content in get_content(repo)[RPM_PACKAGE_CONTENT_NAME]
             if content['type'] == 'update'
         }
 
@@ -247,12 +255,13 @@ class SyncMutatedUpdateRecordTestCase(unittest.TestCase):
         repo = client.get(repo['_href'])
         self.assertDictEqual(
             get_content_summary(repo),
-            RPM_FIXTURE_CONTENT_SUMMARY
+            RPM_FIXTURE_SUMMARY
         )
 
         # Save a copy of the original updateinfo
         original_updaterecords = {
-            content['errata_id']: content for content in get_content(repo)
+            content['errata_id']: content
+            for content in get_content(repo)[RPM_PACKAGE_CONTENT_NAME]
             if content['type'] == 'update'
         }
 
@@ -267,13 +276,17 @@ class SyncMutatedUpdateRecordTestCase(unittest.TestCase):
         repo = client.get(repo['_href'])
         self.assertDictEqual(
             get_content_summary(repo),
-            RPM_FIXTURE_CONTENT_SUMMARY
+            RPM_FIXTURE_SUMMARY
         )
-        self.assertEqual(len(get_added_content(repo)), 0)
+        self.assertEqual(
+            len(get_added_content(repo)[RPM_PACKAGE_CONTENT_NAME]),
+            0
+        )
 
         # Test that the updateinfo have been modified.
         mutated_updaterecords = {
-            content['errata_id']: content for content in get_content(repo)
+            content['errata_id']: content
+            for content in get_content(repo)[RPM_PACKAGE_CONTENT_NAME]
             if content['type'] == 'update'
         }
 
