@@ -38,9 +38,9 @@ def update_record_xml(update_record):
     rec = cr.UpdateRecord()
     rec.fromstr = update_record.fromstr
     rec.status = update_record.status
-    rec.type = update_record.update_type
+    rec.type = update_record.type
     rec.version = update_record.version
-    rec.id = update_record.errata_id
+    rec.id = update_record.id
     rec.title = update_record.title
     rec.issued_date = parse_datetime(update_record.issued_date)
     rec.updated_date = parse_datetime(update_record.updated_date)

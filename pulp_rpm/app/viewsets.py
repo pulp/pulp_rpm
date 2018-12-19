@@ -202,10 +202,10 @@ class UpdateRecordFilter(ContentFilter):
     class Meta:
         model = UpdateRecord
         fields = {
-            'errata_id': ['exact', 'in'],
+            'id': ['exact', 'in'],
             'status': ['exact', 'in'],
             'severity': ['exact', 'in'],
-            'update_type': ['exact', 'in'],
+            'type': ['exact', 'in'],
         }
 
 

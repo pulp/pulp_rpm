@@ -172,7 +172,7 @@ class SyncMutatedPackagesTestCase(unittest.TestCase):
 
         # Save a copy of the original packages.
         original_packages = {
-            content['errata_id']: content
+            content['id']: content
             for content in get_content(repo)[RPM_PACKAGE_CONTENT_NAME]
             if content['type'] == 'packages'
         }
@@ -197,7 +197,7 @@ class SyncMutatedPackagesTestCase(unittest.TestCase):
 
         # Test that the packages have been modified.
         mutated_packages = {
-            content['errata_id']: content
+            content['id']: content
             for content in get_content(repo)[RPM_PACKAGE_CONTENT_NAME]
             if content['type'] == 'update'
         }
@@ -260,7 +260,7 @@ class SyncMutatedUpdateRecordTestCase(unittest.TestCase):
 
         # Save a copy of the original updateinfo
         original_updaterecords = {
-            content['errata_id']: content
+            content['id']: content
             for content in get_content(repo)[RPM_PACKAGE_CONTENT_NAME]
             if content['type'] == 'update'
         }
@@ -285,7 +285,7 @@ class SyncMutatedUpdateRecordTestCase(unittest.TestCase):
 
         # Test that the updateinfo have been modified.
         mutated_updaterecords = {
-            content['errata_id']: content
+            content['id']: content
             for content in get_content(repo)[RPM_PACKAGE_CONTENT_NAME]
             if content['type'] == 'update'
         }

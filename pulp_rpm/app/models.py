@@ -182,7 +182,7 @@ class Package(Content):
         """
         Return the artifact id (there is only one for this content type).
         """
-        return self.artifacts.get().pk
+        return self._artifacts.get().pk
 
     @artifact.setter
     def artifact(self, artifact):
@@ -321,7 +321,7 @@ class UpdateRecord(Content):
     TYPE = 'update'
 
     # Required metadata
-    errata_id = models.TextField(db_index=True)  # TODO: change field name?
+    id = models.TextField(db_index=True)
     updated_date = models.TextField()
 
     # Optional metadata
@@ -333,7 +333,7 @@ class UpdateRecord(Content):
     summary = models.TextField(blank=True)
     version = models.TextField(blank=True)
 
-    update_type = models.TextField(blank=True)  # TODO: change field name?
+    type = models.TextField(blank=True)  # TODO: change field name?
     severity = models.TextField(blank=True)
     solution = models.TextField(blank=True)
     release = models.TextField(blank=True)
@@ -366,7 +366,7 @@ class UpdateRecord(Content):
 
         """
         return {
-            'errata_id': getattr(update, CREATEREPO_UPDATE_RECORD_ATTRS.ID),
+            'id': getattr(update, CREATEREPO_UPDATE_RECORD_ATTRS.ID),
             'updated_date': str(getattr(update, CREATEREPO_UPDATE_RECORD_ATTRS.UPDATED_DATE)),
             'description': getattr(update, CREATEREPO_UPDATE_RECORD_ATTRS.DESCRIPTION) or '',
             'issued_date': str(getattr(update, CREATEREPO_UPDATE_RECORD_ATTRS.ISSUED_DATE)) or '',
@@ -375,7 +375,7 @@ class UpdateRecord(Content):
             'title': getattr(update, CREATEREPO_UPDATE_RECORD_ATTRS.TITLE) or '',
             'summary': getattr(update, CREATEREPO_UPDATE_RECORD_ATTRS.SUMMARY) or '',
             'version': getattr(update, CREATEREPO_UPDATE_RECORD_ATTRS.VERSION) or '',
-            'update_type': getattr(update, CREATEREPO_UPDATE_RECORD_ATTRS.TYPE) or '',
+            'type': getattr(update, CREATEREPO_UPDATE_RECORD_ATTRS.TYPE) or '',
             'severity': getattr(update, CREATEREPO_UPDATE_RECORD_ATTRS.SEVERITY) or '',
             'solution': getattr(update, CREATEREPO_UPDATE_RECORD_ATTRS.SOLUTION) or '',
             'release': getattr(update, CREATEREPO_UPDATE_RECORD_ATTRS.RELEASE) or '',
