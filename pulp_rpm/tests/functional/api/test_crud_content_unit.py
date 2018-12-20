@@ -85,7 +85,7 @@ class ContentUnitTestCase(unittest.TestCase):
         attrs.update({'name': utils.uuid4()})
         with self.assertRaises(HTTPError) as exc:
             self.client.patch(self.content_unit['_href'], attrs)
-        self.assertEquals(exc.exception.response.status_code, 405)
+        self.assertEqual(exc.exception.response.status_code, 405)
 
     @skip_if(bool, 'content_unit', False)
     def test_03_fully_update(self):
@@ -97,7 +97,7 @@ class ContentUnitTestCase(unittest.TestCase):
         attrs.update({'name': utils.uuid4()})
         with self.assertRaises(HTTPError) as exc:
             self.client.put(self.content_unit['_href'], attrs)
-        self.assertEquals(exc.exception.response.status_code, 405)
+        self.assertEqual(exc.exception.response.status_code, 405)
 
     @skip_if(bool, 'content_unit', False)
     def test_04_delete(self):
@@ -107,4 +107,4 @@ class ContentUnitTestCase(unittest.TestCase):
         """
         with self.assertRaises(HTTPError) as exc:
             self.client.delete(self.content_unit['_href'])
-        self.assertEquals(exc.exception.response.status_code, 405)
+        self.assertEqual(exc.exception.response.status_code, 405)
