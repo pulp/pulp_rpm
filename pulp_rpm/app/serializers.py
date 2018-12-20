@@ -188,7 +188,7 @@ class PackageSerializer(ContentSerializer):
         return package
 
     class Meta:
-        fields = tuple(set(ContentSerializer.Meta.fields) - {'artifacts'}) + (
+        fields = tuple(set(ContentSerializer.Meta.fields) - {'_artifacts'}) + (
             'artifact',
             'name', 'epoch', 'version', 'release', 'arch', 'pkgId', 'checksum_type',
             'summary', 'description', 'url', 'changelogs', 'files',
@@ -241,7 +241,7 @@ class UpdateRecordSerializer(ContentSerializer):
     A Serializer for UpdateRecord.
     """
 
-    errata_id = serializers.CharField(
+    id = serializers.CharField(
         help_text=_("Update id (short update name, e.g. RHEA-2013:1777)")
     )
     updated_date = serializers.CharField(
@@ -270,7 +270,7 @@ class UpdateRecordSerializer(ContentSerializer):
         help_text=_("Update version (probably always an integer number)")
     )
 
-    update_type = serializers.CharField(
+    type = serializers.CharField(
         help_text=_("Update type ('enhancement', 'bugfix', ...)")
     )
     severity = serializers.CharField(
@@ -292,9 +292,9 @@ class UpdateRecordSerializer(ContentSerializer):
 
     class Meta:
         fields = ContentSerializer.Meta.fields + (
-            'errata_id', 'updated_date', 'description', 'issued_date',
+            'id', 'updated_date', 'description', 'issued_date',
             'fromstr', 'status', 'title', 'summary', 'version',
-            'update_type', 'severity', 'solution', 'release', 'rights',
+            'type', 'severity', 'solution', 'release', 'rights',
             'pushcount'
         )
         model = UpdateRecord
@@ -307,6 +307,6 @@ class MinimalUpdateRecordSerializer(UpdateRecordSerializer):
 
     class Meta:
         fields = ContentSerializer.Meta.fields + (
-            'errata_id', 'title', 'severity', 'update_type'
+            'id', 'title', 'severity', 'type'
         )
         model = UpdateRecord
