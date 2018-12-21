@@ -158,12 +158,17 @@ class DistSync(object):
 
         # determine missing units
         missing_units = repo_controller.missing_unit_count(self.repo.repo_id)
+
+        force_full = self.parent.config.get('force_full', False)
         # Continue only when the distribution has changed.
         if len(existing_units) == 1 and \
                 self.existing_distribution_is_current(existing_units[0], unit) and \
-                (self.download_deferred or not missing_units):
-            _logger.info(_('upstream distribution unchanged; skipping'))
+                (self.download_deferred or not missing_units) and \
+                not force_full:
+            _logger.info(_('upstream distribution unchanged and force_full not set; skipping'))
             return
+
+        _logger.info(_('downloading distribution units'))
 
         # Process the distribution
         dist_files, pulp_dist_xml_path = self.process_distribution(tmp_dir)
