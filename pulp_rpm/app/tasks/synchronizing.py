@@ -21,6 +21,7 @@ from pulpcore.plugin.stages import (
     ContentUnitSaver,
     create_pipeline,
     EndStage,
+    RemoveDuplicates,
     QueryExistingArtifacts,
     QueryExistingContentUnits
 )
@@ -49,6 +50,9 @@ def synchronize(remote_pk, repository_pk):
     remote = RpmRemote.objects.get(pk=remote_pk)
     repository = Repository.objects.get(pk=repository_pk)
 
+    dupe_criteria = {'model': Package,
+                     'field_names': ['name', 'epoch', 'version', 'release', 'arch']}
+
     if not remote.url:
         raise ValueError(_('A remote must have a url specified to synchronize.'))
 
@@ -59,10 +63,11 @@ def synchronize(remote_pk, repository_pk):
     with WorkingDirectory():
         with RepositoryVersion.create(repository) as new_version:
             loop = asyncio.get_event_loop()
+            remove_duplicates_stage = RemoveDuplicates(new_version, **dupe_criteria)
             stages = [
                 first_stage,
                 QueryExistingArtifacts(), ArtifactDownloader(), ArtifactSaver(),
-                QueryExistingContentUnits(), ErratumContentUnitSaver(),
+                QueryExistingContentUnits(), ErratumContentUnitSaver(), remove_duplicates_stage,
                 ContentUnitAssociation(new_version), EndStage()
             ]
             pipeline = create_pipeline(stages)
