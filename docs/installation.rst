@@ -26,13 +26,15 @@ If you are on Fedora, install the build dependencies with this command:
 
 .. code-block:: bash
 
-   sudo dnf install -y gcc make cmake bzip2-devel expat-devel file-devel glib2-devel libcurl-devel libxml2-devel python3-devel rpm-devel openssl-devel sqlite-devel xz-devel zlib-devel
+   sudo dnf install -y gcc make cmake bzip2-devel expat-devel file-devel glib2-devel libcurl-devel libxml2-devel python3-devel rpm-devel openssl-devel sqlite-devel xz-devel zchunk-devel zlib-devel
 
-If you are on Ubuntu or Debian, install the build dependencies with this command:
+If you are on Ubuntu or Debian, install the build dependencies and build ``createrepo_c`` with these commands:
 
 .. code-block:: bash
 
    sudo apt install -y gcc make cmake libbz2-dev libexpat1-dev libmagic-dev libglib2.0-dev libcurl4-openssl-dev libxml2-dev libpython3-dev librpm-dev libssl-dev libsqlite3-dev liblzma-dev zlib1g-dev
+   pip install createrepo_c --install-option="--" --install-option="-DWITH_ZCHUNK:BOOL=OFF"
+
 
 Install ``pulp_rpm`` from source
 ********************************
