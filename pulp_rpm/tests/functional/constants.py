@@ -9,9 +9,9 @@ from pulp_smash.pulp3.constants import (
     CONTENT_PATH,
 )
 
-RPM_PACKAGE_CONTENT_NAME = 'package'
+RPM_PACKAGE_CONTENT_NAME = 'pulp_rpm.package'
 
-RPM_UPDATE_CONTENT_NAME = 'update'
+RPM_UPDATE_CONTENT_NAME = 'pulp_rpm.update'
 
 RPM_ALT_LAYOUT_FIXTURE_URL = urljoin(PULP_FIXTURES_BASE_URL, 'rpm-alt-layout/')
 """The URL to a signed RPM repository. See :data:`RPM_SIGNED_FIXTURE_URL`."""
