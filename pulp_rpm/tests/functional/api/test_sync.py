@@ -20,6 +20,7 @@ from pulp_rpm.tests.functional.constants import (
     RPM_REMOTE_PATH,
     RPM_SIGNED_FIXTURE_URL,
     RPM_UNSIGNED_FIXTURE_URL,
+    RPM_UPDATE_CONTENT_NAME,
     RPM_UPDATED_UPDATEINFO_FIXTURE_URL,
     RPM_UPDATERECORD_ID,
 )
@@ -174,7 +175,6 @@ class SyncMutatedPackagesTestCase(unittest.TestCase):
         original_packages = {
             content['id']: content
             for content in get_content(repo)[RPM_PACKAGE_CONTENT_NAME]
-            if content['type'] == 'packages'
         }
 
         # Create a remote with a different test fixture with the same NEVRA but
@@ -191,7 +191,7 @@ class SyncMutatedPackagesTestCase(unittest.TestCase):
             RPM_FIXTURE_SUMMARY
         )
         self.assertEqual(
-            len(get_added_content(repo)[RPM_PACKAGE_CONTENT_NAME]),
+            get_added_content_summary(repo)[RPM_PACKAGE_CONTENT_NAME],
             0
         )
 
@@ -199,7 +199,6 @@ class SyncMutatedPackagesTestCase(unittest.TestCase):
         mutated_packages = {
             content['id']: content
             for content in get_content(repo)[RPM_PACKAGE_CONTENT_NAME]
-            if content['type'] == 'update'
         }
 
         self.assertNotEqual(mutated_packages, original_packages)
@@ -261,8 +260,7 @@ class SyncMutatedUpdateRecordTestCase(unittest.TestCase):
         # Save a copy of the original updateinfo
         original_updaterecords = {
             content['id']: content
-            for content in get_content(repo)[RPM_PACKAGE_CONTENT_NAME]
-            if content['type'] == 'update'
+            for content in get_content(repo)[RPM_UPDATE_CONTENT_NAME]
         }
 
         # Create a remote with a different test fixture, one containing mutated
@@ -279,15 +277,14 @@ class SyncMutatedUpdateRecordTestCase(unittest.TestCase):
             RPM_FIXTURE_SUMMARY
         )
         self.assertEqual(
-            len(get_added_content(repo)[RPM_PACKAGE_CONTENT_NAME]),
+            get_added_content_summary(repo)[RPM_PACKAGE_CONTENT_NAME],
             0
         )
 
         # Test that the updateinfo have been modified.
         mutated_updaterecords = {
             content['id']: content
-            for content in get_content(repo)[RPM_PACKAGE_CONTENT_NAME]
-            if content['type'] == 'update'
+            for content in get_content(repo)[RPM_UPDATE_CONTENT_NAME]
         }
 
         self.assertNotEqual(mutated_updaterecords, original_updaterecords)
