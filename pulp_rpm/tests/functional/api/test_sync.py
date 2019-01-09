@@ -16,13 +16,14 @@ from pulp_smash.pulp3.utils import (
 
 from pulp_rpm.tests.functional.constants import (
     RPM_FIXTURE_SUMMARY,
+    RPM_PACKAGES_COUNT,
     RPM_PACKAGE_CONTENT_NAME,
     RPM_REMOTE_PATH,
     RPM_SIGNED_FIXTURE_URL,
     RPM_UNSIGNED_FIXTURE_URL,
-    RPM_UPDATE_CONTENT_NAME,
     RPM_UPDATED_UPDATEINFO_FIXTURE_URL,
     RPM_UPDATERECORD_ID,
+    RPM_UPDATE_CONTENT_NAME,
 )
 from pulp_rpm.tests.functional.utils import gen_rpm_remote
 from pulp_rpm.tests.functional.utils import set_up_module as setUpModule  # noqa:F401
@@ -194,15 +195,17 @@ class SyncMutatedPackagesTestCase(unittest.TestCase):
             RPM_FIXTURE_SUMMARY
         )
 
-        # In case of "duplicates" the most recent one is chosen, so the old package is removed from
-        # and the new one is added to a repo version.
+        # In case of "duplicates" the most recent one is chosen, so the old
+        # package is removed from and the new one is added to a repo version.
         self.assertEqual(
             len(get_added_content(repo)[RPM_PACKAGE_CONTENT_NAME]),
-            35
+            RPM_PACKAGES_COUNT,
+            get_added_content(repo)[RPM_PACKAGE_CONTENT_NAME]
         )
         self.assertEqual(
             len(get_removed_content(repo)[RPM_PACKAGE_CONTENT_NAME]),
-            35
+            RPM_PACKAGES_COUNT,
+            get_removed_content(repo)[RPM_PACKAGE_CONTENT_NAME]
         )
 
         # Test that the packages have been modified.
@@ -217,8 +220,11 @@ class SyncMutatedPackagesTestCase(unittest.TestCase):
 
         for nevra in original_packages:
             with self.subTest(pkg=nevra):
-                self.assertNotEqual(original_packages[nevra]['pkgId'],
-                                    mutated_packages[nevra]['pkgId'])
+                self.assertNotEqual(
+                    original_packages[nevra]['pkgId'],
+                    mutated_packages[nevra]['pkgId'],
+                    original_packages[nevra]['pkgId']
+                )
 
 
 @unittest.skip('FIXME: Enable this test after we can throw out duplicate UpdateRecords')
