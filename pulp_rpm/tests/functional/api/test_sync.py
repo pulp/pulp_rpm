@@ -7,19 +7,20 @@ from pulp_smash.pulp3.constants import MEDIA_PATH, REPO_PATH
 from pulp_smash.pulp3.utils import (
     gen_repo,
     get_added_content,
-    get_content,
     get_added_content_summary,
+    get_content,
     get_content_summary,
+    get_removed_content,
     sync,
 )
 
 from pulp_rpm.tests.functional.constants import (
     RPM_FIXTURE_SUMMARY,
-    RPM_PACKAGE_NAME,
     RPM_PACKAGE_CONTENT_NAME,
     RPM_REMOTE_PATH,
     RPM_SIGNED_FIXTURE_URL,
     RPM_UNSIGNED_FIXTURE_URL,
+    RPM_UPDATE_CONTENT_NAME,
     RPM_UPDATED_UPDATEINFO_FIXTURE_URL,
     RPM_UPDATERECORD_ID,
 )
@@ -125,7 +126,6 @@ class BasicSyncTestCase(unittest.TestCase):
         self.assertDictEqual(get_added_content_summary(repo), {})
 
 
-@unittest.skip('FIXME: Enable this test after we can throw out duplicate Packages')
 class SyncMutatedPackagesTestCase(unittest.TestCase):
     """Sync different packages with the same NEVRA as existing packages."""
 
@@ -172,9 +172,12 @@ class SyncMutatedPackagesTestCase(unittest.TestCase):
 
         # Save a copy of the original packages.
         original_packages = {
-            content['id']: content
+            (content['name'],
+             content['epoch'],
+             content['version'],
+             content['release'],
+             content['arch']): content
             for content in get_content(repo)[RPM_PACKAGE_CONTENT_NAME]
-            if content['type'] == 'packages'
         }
 
         # Create a remote with a different test fixture with the same NEVRA but
@@ -190,23 +193,32 @@ class SyncMutatedPackagesTestCase(unittest.TestCase):
             get_content_summary(repo),
             RPM_FIXTURE_SUMMARY
         )
+
+        # In case of "duplicates" the most recent one is chosen, so the old package is removed from
+        # and the new one is added to a repo version.
         self.assertEqual(
             len(get_added_content(repo)[RPM_PACKAGE_CONTENT_NAME]),
-            0
+            35
+        )
+        self.assertEqual(
+            len(get_removed_content(repo)[RPM_PACKAGE_CONTENT_NAME]),
+            35
         )
 
         # Test that the packages have been modified.
         mutated_packages = {
-            content['id']: content
+            (content['name'],
+             content['epoch'],
+             content['version'],
+             content['release'],
+             content['arch']): content
             for content in get_content(repo)[RPM_PACKAGE_CONTENT_NAME]
-            if content['type'] == 'update'
         }
 
-        self.assertNotEqual(mutated_packages, original_packages)
-        self.assertNotEqual(
-            mutated_packages[RPM_PACKAGE_NAME]['pkgId'],
-            original_packages[RPM_PACKAGE_NAME]['pkgId']
-        )
+        for nevra in original_packages:
+            with self.subTest(pkg=nevra):
+                self.assertNotEqual(original_packages[nevra]['pkgId'],
+                                    mutated_packages[nevra]['pkgId'])
 
 
 @unittest.skip('FIXME: Enable this test after we can throw out duplicate UpdateRecords')
@@ -261,8 +273,7 @@ class SyncMutatedUpdateRecordTestCase(unittest.TestCase):
         # Save a copy of the original updateinfo
         original_updaterecords = {
             content['id']: content
-            for content in get_content(repo)[RPM_PACKAGE_CONTENT_NAME]
-            if content['type'] == 'update'
+            for content in get_content(repo)[RPM_UPDATE_CONTENT_NAME]
         }
 
         # Create a remote with a different test fixture, one containing mutated
@@ -279,15 +290,18 @@ class SyncMutatedUpdateRecordTestCase(unittest.TestCase):
             RPM_FIXTURE_SUMMARY
         )
         self.assertEqual(
-            len(get_added_content(repo)[RPM_PACKAGE_CONTENT_NAME]),
-            0
+            len(get_added_content(repo)[RPM_UPDATE_CONTENT_NAME]),
+            4
+        )
+        self.assertEqual(
+            len(get_removed_content(repo)[RPM_UPDATE_CONTENT_NAME]),
+            4
         )
 
         # Test that the updateinfo have been modified.
         mutated_updaterecords = {
             content['id']: content
-            for content in get_content(repo)[RPM_PACKAGE_CONTENT_NAME]
-            if content['type'] == 'update'
+            for content in get_content(repo)[RPM_UPDATE_CONTENT_NAME]
         }
 
         self.assertNotEqual(mutated_updaterecords, original_updaterecords)
