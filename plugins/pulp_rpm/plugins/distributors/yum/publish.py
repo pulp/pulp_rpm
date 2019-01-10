@@ -1,7 +1,5 @@
 import copy
 import datetime
-import hashlib
-import gzip
 import itertools
 import os
 import subprocess
@@ -23,20 +21,22 @@ from pulp.server.controllers import repository as repo_controller
 from pulp_rpm.common import constants, ids, file_utils
 from pulp_rpm.yum_plugin import util
 from pulp_rpm.plugins import error_codes
+from pulp_rpm.plugins.importers.yum.repomd import modules
 from pulp_rpm.plugins.db import models
 from pulp_rpm.plugins.distributors.export_distributor import export_utils
 from pulp_rpm.plugins.distributors.export_distributor import generate_iso
-from pulp_rpm.plugins.importers.yum.repomd import modules
 from pulp_rpm.plugins.importers.yum.parse.treeinfo import KEY_PACKAGEDIR
+
 from . import configuration
 from .metadata.filelists import FilelistsXMLFileContext
 from .metadata.metadata import REPO_DATA_DIR_NAME
+from .metadata.modules import ModulesFileContext
 from .metadata.other import OtherXMLFileContext
 from .metadata.prestodelta import PrestodeltaXMLFileContext
+from .metadata.package import PackageXMLFileContext
 from .metadata.primary import PrimaryXMLFileContext
 from .metadata.repomd import RepomdXMLFileContext
 from .metadata.updateinfo import UpdateinfoXMLFileContext
-from .metadata.package import PackageXMLFileContext
 
 
 logger = util.getLogger(__name__)
@@ -511,7 +511,7 @@ class PublishMetadataStep(platform_steps.UnitModelPluginStep):
 
     def process_main(self, item=None):
         """
-        Copy the metadata file into place and add it tot he repomd file.
+        Copy the metadata file into place and add it to the repomd file.
 
         :param item: The unit to process
         :type item: pulp.server.db.model.ContentUnit
@@ -810,6 +810,7 @@ class PublishErrataStepIncremental(platform_steps.UnitModelPluginStep):
     """
     Publish all incremental errata
     """
+
     def __init__(self, **kwargs):
         super(PublishErrataStepIncremental, self).__init__(constants.PUBLISH_ERRATA_STEP,
                                                            [models.Errata], **kwargs)
@@ -834,12 +835,7 @@ class PublishErrataStepIncremental(platform_steps.UnitModelPluginStep):
 class PublishModulesStep(platform_steps.UnitModelPluginStep):
     """
     Publish modularity artifacts.
-
-    :ivar fp_out: file-like used for writing the modules.yaml.
-    :type fp_out: file-like
     """
-
-    FILE_NAME = 'modules.yaml.gz'
 
     def __init__(self):
         super(PublishModulesStep, self).__init__(
@@ -848,52 +844,53 @@ class PublishModulesStep(platform_steps.UnitModelPluginStep):
                 models.Modulemd,
                 models.ModulemdDefaults
             ])
+        self.context = None
         self.description = _('Publishing Modules')
-        self.fp_out = None
+
+    def is_skipped(self):
+        """
+        Test to find out if the step should be skipped.
+
+        :return: whether or not the step should be skipped
+        :rtype:  bool
+        """
+        # skip if there are no modules files.
+        if self.get_total() == 0:
+            return True
+
+        return super(PublishModulesStep, self).is_skipped()
 
     def initialize(self):
         """
         Create the directory and open fp_out for writing.
         """
-        path = os.path.join(
-            self.get_working_dir(),
-            REPO_DATA_DIR_NAME,
-            self.FILE_NAME)
-        plugin_misc.mkdir(os.path.dirname(path))
-        self.fp_out = gzip.open(path, 'wb')
+        checksum_type = self.parent.get_checksum_type()
+        self.context = ModulesFileContext(self.get_working_dir(), checksum_type=checksum_type)
+        self.context.initialize()
 
     def process_main(self, item=None):
         """
         Append each yaml document to the modules.yaml.
 
         :param item: Either Modulemd or ModulemdDefaults.
-        :type item: pulp.server.db.model.FileContent
+        :type item: pulp.server.db.model.FileContent (baseclass)
         """
         with open(item.storage_path) as fp_in:
             document = fp_in.read()
-            checksum = hashlib.sha256(document).hexdigest()
-            if checksum == item.checksum:
-                self.fp_out.write(document)
-            else:
-                raise PulpCodedException(error_codes.RPM1017)
+            self.context.add_document(document, doc_checksum=item.checksum)
 
     def finalize(self):
         """
         Close the fp_out; rename the file to include the checksum;
         and add to the repomd.
         """
-        if self.fp_out:
-            self.fp_out.close()
-        with open(self.fp_out.name, 'rb') as fp_in:
-            checksum = file_utils.calculate_checksum(fp_in)
-        _dir, name = os.path.split(self.fp_out.name)
-        path = os.path.join(_dir, '-'.join([checksum, name]))
-        os.rename(self.fp_out.name, path)
-        repomd = self.parent.repomd_file_context
-        repomd.add_metadata_file_metadata(
-            data_type=modules.METADATA_FILE_NAME,
-            file_path=path,
-            precalculated_checksum=checksum)
+        if self.context:
+            self.context.finalize()
+            self.parent.repomd_file_context.add_metadata_file_metadata(
+                data_type=modules.METADATA_FILE_NAME,
+                file_path=self.context.metadata_file_path,
+                precalculated_checksum=self.context.checksum
+            )
 
 
 class PublishCompsStep(platform_steps.UnitModelPluginStep):
