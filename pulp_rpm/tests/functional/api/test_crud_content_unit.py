@@ -11,9 +11,10 @@ from pulp_smash.pulp3.utils import delete_orphans
 
 from pulp_rpm.tests.functional.constants import (
     RPM_CONTENT_PATH,
-    RPM_PACKAGE_FILENAME,
     RPM_PACKAGE_DATA,
+    RPM_PACKAGE_FILENAME,
     RPM_SIGNED_URL,
+    RPM_UNSIGNED_URL,
 )
 from pulp_rpm.tests.functional.utils import skip_if
 from pulp_rpm.tests.functional.utils import set_up_module as setUpModule  # noqa:F401
@@ -108,3 +109,60 @@ class ContentUnitTestCase(unittest.TestCase):
         with self.assertRaises(HTTPError) as exc:
             self.client.delete(self.content_unit['_href'])
         self.assertEqual(exc.exception.response.status_code, 405)
+
+
+class DuplicateContentUnit(unittest.TestCase):
+    """Attempt to create a duplicate content unit.
+
+    This test targets the following issues:
+
+    *  `Pulp #4125 <https://pulp.plan.io/issue/4125>`_
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        """Create class-wide variables."""
+        cls.cfg = config.get_config()
+        cls.client = api.Client(cls.cfg, api.json_handler)
+
+    @classmethod
+    def tearDownClass(cls):
+        """Clean created resources."""
+        delete_orphans(cls.cfg)
+
+    def test_raise_error(self):
+        """Create a duplicate content unit using same artifact and filename."""
+        delete_orphans(self.cfg)
+        files = {'file': utils.http_get(RPM_UNSIGNED_URL)}
+        artifact = self.client.post(ARTIFACTS_PATH, files=files)
+        attrs = {
+            'artifact': artifact['_href'],
+            'filename': RPM_PACKAGE_FILENAME
+        }
+
+        # create first content unit.
+        self.client.post(RPM_CONTENT_PATH, attrs)
+
+        # using the same attrs used to create the first content unit.
+        response = api.Client(self.cfg, api.echo_handler).post(
+            RPM_CONTENT_PATH,
+            attrs
+        )
+
+        with self.assertRaises(HTTPError):
+            response.raise_for_status()
+        keywords = (
+            'name',
+            'epoch',
+            'version',
+            'release',
+            'arch',
+            'checksum_type',
+            'pkgId',
+        )
+        for key in keywords:
+            self.assertIn(
+                key.lower(),
+                response.json()['non_field_errors'][0].lower(),
+                response.json()
+            )
