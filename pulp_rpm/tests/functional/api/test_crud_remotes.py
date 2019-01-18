@@ -6,6 +6,7 @@ import unittest
 from requests.exceptions import HTTPError
 
 from pulp_smash import api, config, utils
+from pulp_smash.pulp3.constants import DOWNLOAD_POLICIES
 
 from pulp_rpm.tests.functional.constants import RPM_REMOTE_PATH
 from pulp_rpm.tests.functional.utils import gen_rpm_remote, skip_if
@@ -126,6 +127,7 @@ def _gen_verbose_remote():
     attrs.update({
         'password': utils.uuid4(),
         'username': utils.uuid4(),
+        'policy': choice(DOWNLOAD_POLICIES),
         'validate': choice((False, True)),
     })
     return attrs
