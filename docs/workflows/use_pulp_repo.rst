@@ -19,7 +19,7 @@ Open /etc/yum.repos.d/foo.repo and add the following:
 
   [foo]
   name = foo
-  baseurl = http://localhost:8000/pulp/content/foo
+  baseurl = http://localhost:8080/pulp/content/foo
   gpgcheck = 0
 
 
