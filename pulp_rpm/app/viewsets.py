@@ -67,7 +67,7 @@ class PackageViewSet(ContentViewSet):
     Also specify queryset and serializer for Package.
     """
 
-    endpoint_name = 'rpm/packages'
+    endpoint_name = 'packages'
     queryset = Package.objects.all()
     serializer_class = PackageSerializer
     minimal_serializer_class = MinimalPackageSerializer
@@ -220,7 +220,7 @@ class UpdateRecordViewSet(ContentViewSet):
     Also specify queryset and serializer for UpdateRecord.
     """
 
-    endpoint_name = 'rpm/errata'
+    endpoint_name = 'errata'
     queryset = UpdateRecord.objects.all()
     serializer_class = UpdateRecordSerializer
     minimal_serializer_class = MinimalUpdateRecordSerializer

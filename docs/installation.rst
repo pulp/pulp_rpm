@@ -61,8 +61,8 @@ Make and Run Migrations
 
 .. code-block:: bash
 
-   pulp-manager makemigrations pulp_rpm
-   pulp-manager migrate pulp_rpm
+   pulp-manager makemigrations rpm
+   pulp-manager migrate rpm
 
 Run Services
 ------------
