@@ -1,3 +1,4 @@
+import itertools
 import logging
 import os
 
@@ -8,6 +9,7 @@ from pulp.server.db import model as server_model
 
 from pulp_rpm.common import ids
 from pulp_rpm.plugins.db import models
+from pulp_rpm.plugins.importers.yum import parse
 
 
 _LOGGER = logging.getLogger(__name__)
@@ -192,6 +194,22 @@ def rpm_filelist_conversion(solvable, unit):
                             dirname_id, os.path.basename(filename).encode('utf-8'))
 
 
+@multiattr_conversion(
+    utf8_conversion(attr_conversion('name')()),
+    evr_unit_conversion,
+    utf8_conversion(attr_conversion('arch', default='noarch')()),
+)
+def rpm_basic_deps(solvable, name, evr, arch):
+    # Prv: $n . $a = $evr
+    pool = solvable.repo.pool
+    name_id = pool.str2id(name)
+    evr_id = pool.str2id(evr)
+    arch_id = pool.str2id(arch)
+    rel = pool.rel2id(name_id, arch_id, solv.REL_ARCH)
+    rel = pool.rel2id(rel, evr_id, solv.REL_EQ)
+    solvable.add_deparray(solv.SOLVABLE_PROVIDES, rel)
+
+
 def unit_solvable_converter(solv_repo, unit, *attribute_factories):
     """Create a factory of a content unit--solv.Solvable converter.
 
@@ -229,6 +247,226 @@ rpm_unit_solvable_factory = unit_solvable_converter_factory(
     rpm_dependency_attribute_factory('provides'),
     rpm_dependency_attribute_factory('recommends'),
     rpm_filelist_conversion,
+    rpm_basic_deps,
+)
+
+
+@utf8_conversion
+@multiattr_conversion(
+    attr_conversion('name')(),
+    attr_conversion('stream')(),
+    attr_conversion('version')(),
+    attr_conversion('context')()
+)
+def module_solvable_name(solvable, name, stream, version, context):
+    """
+    Create a solvable name from module attributes: module:<name>:<stream>:<version>:<context>
+    """
+    return 'module:{name}:{stream}:{version!s}:{context}'.format(
+        name=name,
+        stream=stream,
+        version=version,
+        context=context,
+    )
+
+
+module_name_attribute = setattr_conversion('name')(module_solvable_name)
+
+
+@multiattr_conversion(
+    module_solvable_name,
+    utf8_conversion(attr_conversion('name')()),
+    utf8_conversion(attr_conversion('stream')()),
+    attr_conversion('version')(),
+    utf8_conversion(attr_conversion('arch', default='noarch')())
+)
+def module_basic_deps(solvable, solvable_name, name, stream, version, arch):
+    """
+    Create the basic module `Provides:` and `Obsoletes:` relations
+    """
+    pool = solvable.repo.pool
+
+    # Prv: module:$n:$s:$v:$c . $a
+    solvable.nsvca_rel = pool.rel2id(
+        pool.str2id(solvable_name),
+        pool.str2id(arch), solv.REL_ARCH)
+    solvable.add_deparray(solv.SOLVABLE_PROVIDES, solvable.nsvca_rel)
+
+    # Prv: module()
+    dep = pool.Dep('module()')
+    solvable.add_deparray(solv.SOLVABLE_PROVIDES, dep)
+
+    # Prv: module($n)
+    dep_n = pool.Dep('module({})'.format(name))
+    solvable.add_deparray(solv.SOLVABLE_PROVIDES, dep_n)
+
+    # Obs: module($n)
+    # This is a bit of a hack; a weaker than `Conflicts` because same-name module streams should
+    # repulse each other.
+    solvable.add_deparray(solv.SOLVABLE_OBSOLETES, dep_n)
+
+    # Prv: module($n:$s)
+    dep_ns = pool.Dep('module({}:{})'.format(name, stream))
+    solvable.add_deparray(solv.SOLVABLE_PROVIDES, dep_ns)
+
+    # Prv: module($n:$s) = $v
+    dep_ns_v = dep_n.Rel(solv.REL_EQ, pool.Dep(str(version)))
+    solvable.add_deparray(solv.SOLVABLE_PROVIDES, dep_ns_v)
+
+
+def str_nevra_conversion(conversion):
+    def inner(solvable, unit):
+        nevra_tuple = parse.rpm.nevra(unit)
+        unit = {
+            'name': nevra_tuple[0],
+            'epoch': nevra_tuple[1],
+            'version': nevra_tuple[2],
+            'release': nevra_tuple[3],
+            'arch': nevra_tuple[4]
+        }
+        return conversion(solvable, unit)
+    return inner
+
+
+def create_whatprovides_conversion(conversion):
+    # for conversions that need to refresh the pool Provides: records
+    def inner(solvable, *args, **kwargs):
+        ret = conversion(solvable, *args, **kwargs)
+        pool = solvable.repo.pool
+        pool.createwhatprovides()
+        return ret
+    return inner
+
+
+@create_whatprovides_conversion
+@repeated_attr_conversion(attr_conversion('artifacts')())
+@str_nevra_conversion
+@multiattr_conversion(
+    utf8_conversion(attr_conversion('name')()),
+    evr_unit_conversion,
+    utf8_conversion(attr_conversion('arch', default='noarch')())
+)
+def module_artifacts_conversion(module_solvable, name, evr, arch):
+    # propagate Req: module:$n:$s:$v:$c . $a to the modular RPM i.e
+    # make the rpm require this module
+    pool = module_solvable.repo.pool
+    name_id = pool.str2id(name)
+    evr_id = pool.str2id(evr)
+    arch_id = pool.str2id(arch)
+
+    # $n.$a = $evr
+    rel = pool.rel2id(name_id, arch_id, solv.REL_ARCH)
+    rel = pool.rel2id(rel, evr_id, solv.REL_EQ)
+    selection = pool.matchdepid(
+        rel, solv.SOLVABLE_NAME | solv.SOLVABLE_ARCH | solv.SOLVABLE_EVR, solv.SOLVABLE_PROVIDES)
+
+    for rpm_solvable in selection.solvables():
+        # Make the artifact require this module
+        rpm_solvable.add_deparray(solv.SOLVABLE_REQUIRES, module_solvable.nsvca_rel)
+        # Prv: modular-package()
+        rpm_solvable.add_deparray(solv.SOLVABLE_PROVIDES, pool.Dep('modular-package()'))
+        # Make the module recommend this artifact too
+        module_solvable.add_deparray(solv.SOLVABLE_RECOMMENDS, rel)
+        _LOGGER.debug('link %(m)s <-rec-> %(r)s', {'m': module_solvable, 'r': rpm_solvable})
+
+
+def _dep_or_rel(pool, dep, rel, op):
+    # to "accumulate" stream relations (in a list of module dependencies)
+    # in case dep isn't populated yet, gives rel
+    return dep and pool.rel2id(dep, rel, op) or rel
+
+
+@repeated_attr_conversion(attr_conversion('dependencies')())
+def module_requrires_conversion(solvable, dependecy):
+    pool = solvable.repo.pool
+    require = None
+    for name, streams in dependecy.items():
+        if name == 'platform':
+            # no need to fake the platform (streams) later on
+            continue
+        name = name.encode('utf8')
+        rel = None
+        positive = False
+        negative = False
+        for stream in streams:
+            stream = stream.encode('utf8')
+            if stream.startswith('-'):
+                negative = True
+            else:
+                positive = True
+            rel = _dep_or_rel(pool, rel, pool.str2id('module({}:{})'.format(name, stream)),
+                              solv.REL_OR)
+        nprovide = pool.str2id('module({})'.format(name))
+        if positive:
+            rel = _dep_or_rel(pool, nprovide, rel, solv.REL_WITH)
+        if negative:
+            rel = _dep_or_rel(pool, nprovide, rel, solv.REL_WITHOUT)
+        require = _dep_or_rel(pool, require, rel, solv.REL_AND)
+
+    if require:
+        solvable.add_deparray(solv.SOLVABLE_REQUIRES, require)
+
+
+module_unit_solvable_factory = unit_solvable_converter_factory(
+    module_name_attribute,
+    setattr_conversion('evr')(lambda unit, solvable: ''),
+    plain_attribute_factory('arch'),
+    module_basic_deps,
+    module_artifacts_conversion,
+    module_requrires_conversion,
+    # NOTE: assuming profiles are subsets of module artifacts, no profiles processing is needed here
+)
+
+
+@setattr_conversion('name')
+@utf8_conversion
+@multiattr_conversion(
+    attr_conversion('name')(),
+    attr_conversion('stream')(),
+)
+def module_defaults_name_attr(solvable, name, stream):
+    if not stream:
+        return 'module-default({})'.format(name)
+    return 'module-default({}:{})'.format(name, stream)
+
+
+@multiattr_conversion(
+    utf8_conversion(attr_conversion('name')()),
+    utf8_conversion(attr_conversion('stream')())
+)
+def module_defaults_basic_deps(solvable, name, stream):
+    """
+    Creates basic dependencies between a module and its default by linking them with dependencies
+    """
+    pool = solvable.repo.pool
+    if stream:
+        module_depid = pool.Dep('module({}:{})'.format(name, stream), 0)
+        module_default_depid = pool.Dep('module-default({}:{})'.format(name, stream))
+    else:
+        module_depid = pool.Dep('module({})'.format(name), 0)
+        module_default_depid = pool.Dep('module-default({})'.format(name))
+    if not module_depid:
+        return
+    # tell solv this solvable provides a specific name:stream default so it can be pulled-in
+    # thru dependencies
+    solvable.add_deparray(solv.SOLVABLE_PROVIDES, module_default_depid)
+    solvable.add_deparray(solv.SOLVABLE_PROVIDES, pool.str2id('module-default()'))
+    for module in pool.whatprovides(module_depid):
+        # mark the related module so it can be queried as '(module() with module-default())'
+        # i.e such that it's easy visible thru a pool.whatprovides that it has a default
+        module.add_deparray(solv.SOLVABLE_PROVIDES, pool.Dep('module-default()'))
+        # mark the module such that it recommends its default i.e this solvable
+        module.add_deparray(solv.SOLVABLE_RECOMMENDS, module_default_depid)
+        # mark the module defaults require the module
+        rel = pool.rel2id(pool.str2id(module.name), pool.str2id(module.arch), solv.REL_ARCH)
+        solvable.add_deparray(solv.SOLVABLE_REQUIRES, rel)
+
+
+module_defaults_unit_solvable_factory = unit_solvable_converter_factory(
+    module_defaults_name_attr,
+    setattr_conversion('evr')(lambda unit, solvable: ''),
+    setattr_conversion('arch')(lambda unit, solvable: ''),
+    module_defaults_basic_deps,
 )
 
 
@@ -278,6 +516,8 @@ class UnitSolvableMapping(object):
 class Solver(object):
     type_factory_mapping = {
         'rpm': rpm_unit_solvable_factory,
+        'modulemd': module_unit_solvable_factory,
+        'modulemd_defaults': module_defaults_unit_solvable_factory,
     }
     rpm_key_fields = list(models.RPM.unit_key_fields)
     rpm_fields = set([
@@ -331,6 +571,63 @@ class Solver(object):
         'release',
         'requires',
     ]) - rpm_fields
+    module_fields = set([
+        'name',
+        'stream',
+        'version',
+        'context',
+        'arch',
+        '_content_type_id',
+        'id',
+        '_id',
+        'profiles',
+        'dependencies',
+        'artifacts',
+    ])
+    module_exclude_fields = set([
+        'name',
+        'stream',
+        'version',
+        'context',
+        'arch',
+        'summary',
+        'description',
+        'checksum',
+        'profiles',
+        'artifacts',
+        'checksum',
+        'dependencies',
+        '_content_type_id',
+        'id',
+        '_id',
+        '_ns',
+        '_storage_path',
+        '_last_updated',
+        'downloaded',
+        'pulp_user_metadata',
+    ]) - module_fields
+    module_defaults_fields = set([
+        'name',
+        'stream',
+        'repo_id',
+        '_id',
+        'id',
+        '_content_type_id',
+    ])
+    module_defaults_exclude_fields = set([
+        '_id',
+        'id',
+        'pulp_user_metadata',
+        '_last_updated',
+        '_storage_path',
+        'downloaded',
+        'name',
+        'repo_id',
+        'profiles',
+        'checksum',
+        '_ns',
+        '_content_type_id',
+    ]) - module_defaults_fields
 
     def __init__(self, source_repo, target_repo=None, conservative=False):
         super(Solver, self).__init__()
@@ -344,29 +641,39 @@ class Solver(object):
         self.mapping = UnitSolvableMapping(
             self.pool, self.type_factory_mapping)
 
-    def _repo_units(self, repo_id):
+    def _repo_units(self, repo_id, type_id, model, exclude_fields):
         # NOTE: optimization; the solver has to visit every unit of a repo.
         # Using a custom, as-pymongo query to load the units as fast as possible.
         rcuq = server_model.RepositoryContentUnit.objects.filter(
-            repo_id=repo_id, unit_type_id=ids.TYPE_ID_RPM).only('unit_id').as_pymongo()
+            repo_id=repo_id, unit_type_id=type_id).only('unit_id').as_pymongo()
 
         for rcu_batch in misc_utils.paginate(rcuq):
             rcu_ids = [rcu['unit_id'] for rcu in rcu_batch]
-            for rpm in models.RPM.objects.filter(id__in=rcu_ids).exclude(
-                    *self.rpm_exclude_fields).as_pymongo():
-                rpm['id'] = rpm['_id']
-                yield rpm
+            for unit in model.objects.filter(id__in=rcu_ids).exclude(*exclude_fields).as_pymongo():
+                if not unit.get('id'):
+                    unit['id'] = unit.get('_id')
+                yield unit
+
+    def _repo_iterator(self, repo_name):
+        # order matters; e.g module loading requires rpm loading
+        return itertools.chain(
+            self._repo_units(repo_name, ids.TYPE_ID_RPM, models.RPM, self.rpm_exclude_fields),
+            self._repo_units(
+                repo_name, ids.TYPE_ID_MODULEMD, models.Modulemd, self.module_exclude_fields),
+            self._repo_units(
+                repo_name, ids.TYPE_ID_MODULEMD_DEFAULTS, models.ModulemdDefaults,
+                self.module_defaults_exclude_fields),
+        )
 
     def load(self):
         if self._loaded:
             return
         self._loaded = True
         repo_id = self.source_repo.repo_id
-        self.mapping.add_repo_units(self._repo_units(repo_id), repo_id)
-
+        self.mapping.add_repo_units(self._repo_iterator(repo_id), repo_id)
         if self.target_repo:
             repo_id = self.target_repo.repo_id
-            self.mapping.add_repo_units(self._repo_units(repo_id), repo_id, installed=True)
+            self.mapping.add_repo_units(self._repo_iterator(repo_id), repo_id, installed=True)
 
         self.pool.addfileprovides()
         self.pool.createwhatprovides()
@@ -437,7 +744,13 @@ class Solver(object):
         ret = set()
         for solvables in misc_utils.paginate(solvables):
             unit_ids = [self.mapping.get_unit_id(solvable)[0] for solvable in solvables]
-            for unit in models.RPM.objects.filter(id__in=unit_ids).only(*self.rpm_key_fields):
+            iterator = itertools.chain(
+                models.RPM.objects.filter(id__in=unit_ids).only(*self.rpm_key_fields),
+                models.Modulemd.objects.filter(id__in=unit_ids).only(
+                    *models.Modulemd.unit_key_fields),
+                models.ModulemdDefaults.objects.filter(id__in=unit_ids).only(
+                    *models.ModulemdDefaults.unit_key_fields))
+            for unit in iterator:
                 ret.add(unit)
         return ret
 
