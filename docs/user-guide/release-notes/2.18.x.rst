@@ -2,6 +2,19 @@
 Pulp 2.18 Release Notes
 =======================
 
+
+Pulp 2.18.1
+===========
+
+Bug Fixes
+---------
+
+See the list of :fixedbugs_pulp_rpm:`2.18.1`
+
+* Regression fix: `Issue 4152 <https://pulp.plan.io/issues/4152>`_
+
+  * Recursive copy ignores dependencies that are not fully resolvable.
+
 Pulp 2.18.0
 ===========
 

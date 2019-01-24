@@ -37,10 +37,12 @@ def migrate_rpm(collection, unit):
     primary_xml = _HEADER.format(gzip.zlib.decompress(primary_xml))
     root_element = ET.fromstring(primary_xml)
     delta = {}
-    delta['vendor'] = root_element.find(
+    vendor_element = root_element.find(
         './common:package/common:format/rpm:vendor', _NAMESPACES
-    ).text
-    collection.update_one({'_id': unit['_id']}, {'$set': delta})
+    )
+    if vendor_element:
+        delta['vendor'] = vendor_element.text
+        collection.update_one({'_id': unit['_id']}, {'$set': delta})
 
 
 def migrate(*args, **kwargs):
