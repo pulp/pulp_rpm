@@ -11,7 +11,7 @@ flake8 --config flake8.cfg || exit 1
 # Run migrations.
 export DJANGO_SETTINGS_MODULE=pulpcore.app.settings
 export PULP_CONTENT_HOST=localhost:8080
-pulp-manager makemigrations pulp_rpm
+pulp-manager makemigrations rpm
 pulp-manager migrate --noinput
 
 # Run unit tests.

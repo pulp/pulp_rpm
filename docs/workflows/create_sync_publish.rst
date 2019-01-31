@@ -21,16 +21,16 @@ Create a repository ``foo``
 Create a new remote ``bar``
 ---------------------------
 
-``$ http POST http://localhost:8000/pulp/api/v3/remotes/rpm/ name='bar' url='https://repos.fedorapeople.org/pulp/pulp/fixtures/rpm-unsigned/' policy='on_demand'``
+``$ http POST http://localhost:8000/pulp/api/v3/remotes/rpm/rpm/ name='bar' url='https://repos.fedorapeople.org/pulp/pulp/fixtures/rpm-unsigned/' policy='on_demand'``
 
 .. code:: json
 
     {
-        "_href": "/pulp/api/v3/remotes/rpm/1/",
+        "_href": "/pulp/api/v3/remotes/rpm/rpm/1/",
         ...
     }
 
-``$ export REMOTE_HREF=$(http :8000/pulp/api/v3/remotes/rpm/ | jq -r '.results[] | select(.name == "bar") | ._href')``
+``$ export REMOTE_HREF=$(http :8000/pulp/api/v3/remotes/rpm/rpm/ | jq -r '.results[] | select(.name == "bar") | ._href')``
 
 Sync repository ``foo`` using remote ``bar``
 --------------------------------------------
@@ -61,16 +61,16 @@ Look at the new Repository Version created
 Create a ``rpm`` Publisher
 --------------------------
 
-``$ http POST http://localhost:8000/pulp/api/v3/publishers/rpm/ name=bar``
+``$ http POST http://localhost:8000/pulp/api/v3/publishers/rpm/rpm/ name=bar``
 
 .. code:: json
 
     {
-        "_href": "/pulp/api/v3/publishers/rpm/1/",
+        "_href": "/pulp/api/v3/publishers/rpm/rpm/1/",
         ...
     }
 
-``$ export PUBLISHER_HREF=$(http :8000/pulp/api/v3/publishers/rpm/ | jq -r '.results[] | select(.name == "bar") | ._href')``
+``$ export PUBLISHER_HREF=$(http :8000/pulp/api/v3/publishers/rpm/rpm/ | jq -r '.results[] | select(.name == "bar") | ._href')``
 
 
 Create a Publication using publisher `bar`

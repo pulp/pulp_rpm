@@ -7,4 +7,4 @@ class PulpRpmPluginAppConfig(PulpPluginAppConfig):
     """
 
     name = 'pulp_rpm.app'
-    label = 'pulp_rpm'
+    label = 'rpm'
