@@ -46,7 +46,7 @@ class UploadEncodingMetadataTestCase(unittest.TestCase):
         files = {'file': utils.http_get(url)}
         artifact = self.client.post(ARTIFACTS_PATH, files=files)
         content_unit = self.client.post(RPM_CONTENT_PATH, {
-            'artifact': artifact['_href'],
+            '_artifact': artifact['_href'],
             'filename': filename
         })
         repo = self.client.post(REPO_PATH, gen_repo())

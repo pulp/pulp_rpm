@@ -49,7 +49,7 @@ class ContentUnitTestCase(unittest.TestCase):
         """Create content unit."""
         self.content_unit.update(
             self.client.post(RPM_CONTENT_PATH, {
-                'artifact': self.artifact['_href'],
+                '_artifact': self.artifact['_href'],
                 'filename': RPM_PACKAGE_FILENAME
             })
         )
@@ -136,7 +136,7 @@ class DuplicateContentUnit(unittest.TestCase):
         files = {'file': utils.http_get(RPM_UNSIGNED_URL)}
         artifact = self.client.post(ARTIFACTS_PATH, files=files)
         attrs = {
-            'artifact': artifact['_href'],
+            '_artifact': artifact['_href'],
             'filename': RPM_PACKAGE_FILENAME
         }
 

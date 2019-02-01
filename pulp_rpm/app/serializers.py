@@ -2,30 +2,23 @@ from gettext import gettext as _
 
 from rest_framework import serializers
 
-from pulpcore.plugin.models import Artifact, ContentArtifact
 from pulpcore.plugin.serializers import (
-    ContentSerializer,
+    NoArtifactContentSerializer,
+    SingleArtifactContentSerializer,
     RemoteSerializer,
-    RelatedField,
     PublisherSerializer,
 )
 
 from pulp_rpm.app.models import Package, RpmRemote, RpmPublisher, UpdateRecord
 
 
-class PackageSerializer(ContentSerializer):
+class PackageSerializer(SingleArtifactContentSerializer):
     """
     A Serializer for Package.
 
     Add serializers for the new fields defined in Package and add those fields to the Meta class
     keeping fields from the parent class as well. Provide help_text.
     """
-
-    artifact = RelatedField(
-        view_name='artifacts-detail',
-        help_text="Artifact file representing the physical content",
-        queryset=Artifact.objects.all()
-    )
 
     name = serializers.CharField(
         help_text=_("Name of the package"),
@@ -164,32 +157,8 @@ class PackageSerializer(ContentSerializer):
                     "file mtime in seconds since the epoch.")
     )
 
-    def create(self, validated_data):
-        """
-        Create a Package.
-
-        Overriding default create() to deal with artifact properly.
-
-        Args:
-            validated_data (dict): Data used to create the Package
-
-        Returns:
-            models.Package: The created Package
-
-        """
-        artifact = validated_data.pop('artifact')
-
-        package = Package.objects.create(**validated_data)
-        ca = ContentArtifact(artifact=artifact,
-                             content=package,
-                             relative_path=package.filename)
-        ca.save()
-
-        return package
-
     class Meta:
-        fields = tuple(set(ContentSerializer.Meta.fields) - {'_artifacts'}) + (
-            'artifact',
+        fields = SingleArtifactContentSerializer.Meta.fields + (
             'name', 'epoch', 'version', 'release', 'arch', 'pkgId', 'checksum_type',
             'summary', 'description', 'url', 'changelogs', 'files',
             'requires', 'provides', 'conflicts', 'obsoletes',
@@ -210,7 +179,7 @@ class MinimalPackageSerializer(PackageSerializer):
     """
 
     class Meta:
-        fields = ContentSerializer.Meta.fields + (
+        fields = SingleArtifactContentSerializer.Meta.fields + (
             'name', 'epoch', 'version', 'release', 'arch', 'pkgId', 'checksum_type',
         )
         model = Package
@@ -236,7 +205,7 @@ class RpmPublisherSerializer(PublisherSerializer):
         model = RpmPublisher
 
 
-class UpdateRecordSerializer(ContentSerializer):
+class UpdateRecordSerializer(NoArtifactContentSerializer):
     """
     A Serializer for UpdateRecord.
     """
@@ -291,7 +260,7 @@ class UpdateRecordSerializer(ContentSerializer):
     )
 
     class Meta:
-        fields = ContentSerializer.Meta.fields + (
+        fields = NoArtifactContentSerializer.Meta.fields + (
             'id', 'updated_date', 'description', 'issued_date',
             'fromstr', 'status', 'title', 'summary', 'version',
             'type', 'severity', 'solution', 'release', 'rights',
@@ -306,7 +275,7 @@ class MinimalUpdateRecordSerializer(UpdateRecordSerializer):
     """
 
     class Meta:
-        fields = ContentSerializer.Meta.fields + (
+        fields = NoArtifactContentSerializer.Meta.fields + (
             'id', 'title', 'severity', 'type'
         )
         model = UpdateRecord

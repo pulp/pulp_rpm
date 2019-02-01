@@ -1,7 +1,7 @@
 from logging import getLogger
 
 from django.db import models
-from pulpcore.plugin.models import Content, ContentArtifact, Remote, Publisher
+from pulpcore.plugin.models import Content, Remote, Publisher
 
 from pulp_rpm.app.constants import (CHECKSUM_CHOICES, CREATEREPO_PACKAGE_ATTRS,
                                     CREATEREPO_UPDATE_COLLECTION_ATTRS,
@@ -176,24 +176,6 @@ class Package(Content):
 
     time_build = models.BigIntegerField(null=True)
     time_file = models.BigIntegerField(null=True)
-
-    @property
-    def artifact(self):
-        """
-        Return the artifact id (there is only one for this content type).
-        """
-        return self._artifacts.get().pk
-
-    @artifact.setter
-    def artifact(self, artifact):
-        """
-        Set the artifact for this FileContent.
-        """
-        if self.pk:
-            ca = ContentArtifact(artifact=artifact,
-                                 content=self,
-                                 relative_path=self.filename)
-            ca.save()
 
     @property
     def filename(self):
