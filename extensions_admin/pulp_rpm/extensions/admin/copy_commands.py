@@ -80,7 +80,8 @@ class RecursiveCopyCommand(NonRecursiveCopyCommand):
 
         if kwargs[FLAG_RECURSIVE.keyword]:
             override_config[CONFIG_RECURSIVE] = True
-        elif kwargs.get(FLAG_RECURSIVE_CONSERVATIVE.keyword):
+
+        if kwargs.get(FLAG_RECURSIVE_CONSERVATIVE.keyword):
             override_config[CONFIG_RECURSIVE_CONSERVATIVE] = True
 
         return override_config
