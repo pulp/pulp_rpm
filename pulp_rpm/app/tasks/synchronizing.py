@@ -17,18 +17,19 @@ from pulpcore.plugin.tasking import WorkingDirectory
 from pulpcore.plugin.stages import (
     ArtifactDownloader,
     ArtifactSaver,
-    ContentUnitAssociation,
-    ContentUnitSaver,
+    ContentAssociation,
+    ContentSaver,
     create_pipeline,
     EndStage,
     RemoveDuplicates,
     QueryExistingArtifacts,
-    QueryExistingContentUnits
+    QueryExistingContents
 )
 
 from pulp_rpm.app.constants import CHECKSUM_TYPES, PACKAGE_REPODATA, UPDATE_REPODATA
-from pulp_rpm.app.models import (Package, RpmRemote, UpdateCollection,
-                                 UpdateCollectionPackage, UpdateRecord, UpdateReference)
+from pulp_rpm.app.models import (
+    Package, RpmRemote, UpdateCollection, UpdateCollectionPackage, UpdateRecord, UpdateReference
+)
 
 log = logging.getLogger(__name__)
 
@@ -71,8 +72,8 @@ def synchronize(remote_pk, repository_pk):
                 stages.extend([QueryExistingArtifacts(), ArtifactDownloader(), ArtifactSaver()])
 
             stages.extend([
-                QueryExistingContentUnits(), ErratumContentUnitSaver(), remove_duplicates_stage,
-                ContentUnitAssociation(new_version), EndStage()
+                QueryExistingContents(), ErratumContentSaver(), remove_duplicates_stage,
+                ContentAssociation(new_version), EndStage()
             ])
             pipeline = create_pipeline(stages)
             loop.run_until_complete(pipeline)
@@ -94,6 +95,7 @@ class RpmFirstStage(Stage):
             remote (RpmRemote): The remote data to be used when syncing
 
         """
+        super().__init__()
         self.remote = remote
 
     @staticmethod
@@ -186,14 +188,9 @@ class RpmFirstStage(Stage):
         cr.xml_parse_other(other_xml_path, newpkgcb=newpkgcb)
         return packages
 
-    async def __call__(self, in_q, out_q):
+    async def run(self):
         """
         Build `DeclarativeContent` from the repodata.
-
-        Args:
-            in_q (asyncio.Queue): Unused because the first stage doesn't read from an input queue.
-            out_q (asyncio.Queue): The out_q to send `DeclarativeContent` objects to
-
         """
         with ProgressBar(message='Downloading and Parsing Metadata') as pb:
             downloader = self.remote.get_downloader(
@@ -254,7 +251,7 @@ class RpmFirstStage(Stage):
                             da = DeclarativeArtifact(artifact, url, package.location_href,
                                                      self.remote)
                             dc = DeclarativeContent(content=package, d_artifacts=[da])
-                            await out_q.put(dc)
+                            await self.put(dc)
 
                     elif results[0].url == updateinfo_url:
                         updateinfo_xml_path = results[0].path
@@ -281,12 +278,10 @@ class RpmFirstStage(Stage):
                                 update_record._references.append(UpdateReference(**reference_dict))
 
                             dc = DeclarativeContent(content=update_record)
-                            await out_q.put(dc)
-
-        await out_q.put(None)
+                            await self.put(dc)
 
 
-class ErratumContentUnitSaver(ContentUnitSaver):
+class ErratumContentSaver(ContentSaver):
     """
     A Stages API stage that saves UpdateCollection,UpdateCollectionPackage,UpdateReference objects.
     """
