@@ -487,11 +487,12 @@ class Solver(object):
                                        reverse=True)
                     if not providers:
                         continue
-                    p = providers[0]
-                    repo = self.mapping.get_unit_id(p)[1]
-                    if p in seen or repo != self.source_repo.repo_id:
-                        continue
-                    candq.add(p)
+
+                    for provider in providers:
+                        repo = self.mapping.get_unit_id(provider)[1]
+                        if provider in seen or repo != self.source_repo.repo_id:
+                            continue
+                        candq.add(provider)
         targets = set(unit_id for (unit_id, repo_id) in self.mapping.mapping_u.keys()
                       if repo_id == self.target_repo.repo_id)
         return self._paginated_result(s for s in seen
