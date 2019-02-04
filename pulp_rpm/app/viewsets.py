@@ -11,7 +11,7 @@ from rest_framework import serializers, status
 from rest_framework.decorators import detail_route
 from rest_framework.response import Response
 
-from pulpcore.plugin.models import Artifact, RepositoryVersion
+from pulpcore.plugin.models import Artifact, ContentArtifact, RepositoryVersion
 from pulpcore.plugin.tasking import enqueue_with_reservation
 from pulpcore.plugin.serializers import (
     AsyncOperationResponseSerializer,
@@ -79,9 +79,9 @@ class PackageViewSet(ContentViewSet):
         Create a new Package from a request.
         """
         try:
-            artifact = self.get_resource(request.data['artifact'], Artifact)
+            artifact = self.get_resource(request.data['_artifact'], Artifact)
         except KeyError:
-            raise serializers.ValidationError(detail={'artifact': _('This field is required')})
+            raise serializers.ValidationError(detail={'_artifact': _('This field is required')})
 
         try:
             filename = request.data['filename']
@@ -96,11 +96,12 @@ class PackageViewSet(ContentViewSet):
             package = Package.createrepo_to_dict(cr_pkginfo)
 
         package['location_href'] = filename
-        package['artifact'] = request.data['artifact']
 
         # TODO: Clean this up, maybe make a new function for the purpose of parsing it into
         # a saveable format
         new_pkg = {}
+        new_pkg['_artifact'] = request.data['_artifact']
+
         for key, value in package.items():
             if isinstance(value, list):
                 new_pkg[key] = json.dumps(value)
@@ -109,7 +110,14 @@ class PackageViewSet(ContentViewSet):
 
         serializer = self.get_serializer(data=new_pkg)
         serializer.is_valid(raise_exception=True)
-        self.perform_create(serializer)
+        serializer.validated_data.pop('_artifact')
+        package = serializer.save()
+        if package.pk:
+            ContentArtifact.objects.create(
+                artifact=artifact,
+                content=package,
+                relative_path=package.filename
+            )
 
         headers = self.get_success_headers(request.data)
         return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
