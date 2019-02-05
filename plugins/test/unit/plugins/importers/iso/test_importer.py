@@ -338,7 +338,7 @@ class TestISOImporter(PulpRPMTests):
         repo.working_dir = working_dir
         unit_key = {'name': 'test.iso', 'size': 16,
                     'checksum': 'f02d5a72cd2d57fa802840a76b44c6c6920a8b8e6b90b20e26c03876275069e0'}
-        metadata = {}
+        metadata = {'checksum_type': 'sha256'}
         temp_file_location = os.path.join(self.temp_dir, 'test.iso')
         with open(temp_file_location, 'w') as temp_file:
             temp_file.write(file_data)
