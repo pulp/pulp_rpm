@@ -1,3 +1,4 @@
+import collections
 import logging
 import os
 
@@ -482,21 +483,45 @@ class Solver(object):
             cand = candq.pop()
             seen.add(cand)
             for key in (solv.SOLVABLE_REQUIRES, solv.SOLVABLE_RECOMMENDS):
+                # iterate the dependencies
                 for req in cand.lookup_deparray(key):
-                    providers = sorted(pool.whatprovides(req), cmp=lambda x, y: x.evrcmp(y),
-                                       reverse=True)
+                    # "providers" is the list of packages that could possibly satisfy (provide) this
+                    # dependency. Usually, it is a list of all the versions of one package that will
+                    # satisfy it. Sometimes (rich deps), it can be a list of many different package
+                    # names that might satisfy it.
+                    providers = pool.whatprovides(req)
+
                     if not providers:
                         continue
 
+                    # Group them by name to make them easier to deal with. Each group is different
+                    # versions of one package.
+                    providers_grouped = collections.defaultdict(list)
                     for provider in providers:
+                        providers_grouped[provider.name].append(provider)
+
+                    # Sort each list of versions in-place, so that the first item in each list is
+                    # the newest version of that package.
+                    for group in providers_grouped.itervalues():
+                        group.sort(cmp=lambda x, y: x.evrcmp(y), reverse=True)
+
+                        # grab the newest version of the package
+                        provider = group[0]
+
                         repo = self.mapping.get_unit_id(provider)[1]
+
                         if provider in seen or repo != self.source_repo.repo_id:
                             continue
                         candq.add(provider)
-        targets = set(unit_id for (unit_id, repo_id) in self.mapping.mapping_u.keys()
-                      if repo_id == self.target_repo.repo_id)
-        return self._paginated_result(s for s in seen
-                                      if self.mapping.get_unit_id(s)[0] not in targets)
+        targets = set(
+            unit_id for (unit_id, repo_id) in self.mapping.mapping_u.keys()
+            if repo_id == self.target_repo.repo_id
+        )
+        results = self._paginated_result(
+            s for s in seen
+            if self.mapping.get_unit_id(s)[0] not in targets
+        )
+        return results
 
     def find_dependent_rpms(self, units):
         if self.conservative:
