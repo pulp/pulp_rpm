@@ -64,10 +64,10 @@ class PackageManagerConsumeTestCase(unittest.TestCase):
 
         repo_path = gen_yum_config_file(
             cfg,
-            baseurl=urljoin(cfg.get_base_url(), urljoin(
-                'pulp/content/',
-                distribution['base_path']
-            )),
+            baseurl=urljoin(
+                cfg.get_content_host_base_url(),
+                '//' + distribution['base_url']
+            ),
             name=repo['name'],
             repositoryid=repo['name']
         )

@@ -122,17 +122,23 @@ def gen_yum_config_file(cfg, repositoryid, baseurl, name, **kwargs):
     kwargs.setdefault('enabled', 1)
     kwargs.setdefault('gpgcheck', 0)
     kwargs.setdefault('metadata_expire', 0)  # force metadata load every time
+
+    # Check if the settings specifies a content host role else assume ``api``
+    try:
+        content_host = cfg.get_hosts('content')[0].roles['content']
+    except IndexError:
+        content_host = cfg.get_hosts('api')[0].roles['api']
+
     # if sslverify is not provided in kwargs it is inferred from cfg
     kwargs.setdefault(
-        'sslverify',
-        'yes' if cfg.get_hosts('api')[0].roles['api'].get('verify') else 'no'
+        'sslverify', content_host.get('verify') and 'yes' or 'no'
     )
 
     path = os.path.join('/etc/yum.repos.d/', repositoryid + '.repo')
     with StringIO() as section:
         section.write('[{}]\n'.format(repositoryid))
         for key, value in kwargs.items():
-            section.write('{}: {}\n'.format(key, value))
+            section.write('{} = {}\n'.format(key, value))
         # machine.session is used here to keep SSH session open
         cli.Client(cfg).machine.session().run(
             'echo "{}" | {}tee {} > /dev/null'.format(
