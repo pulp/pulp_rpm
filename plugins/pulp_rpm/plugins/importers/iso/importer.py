@@ -137,6 +137,11 @@ class ISOImporter(Importer):
             # this is a new ISO, create it
             iso = models.ISO(**unit_key)
 
+        # if metadata avaiable, set/update it
+        if metadata:
+            for key, value in metadata.iteritems():
+                setattr(iso, key, value)
+
         validate = config.get_boolean(importer_constants.KEY_VALIDATE)
         validate = validate if validate is not None else constants.CONFIG_VALIDATE_DEFAULT
         try:
