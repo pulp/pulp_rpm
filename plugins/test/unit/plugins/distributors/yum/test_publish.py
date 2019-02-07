@@ -1492,10 +1492,9 @@ class GenerateSqliteForRepoStepTests(BaseYumDistributorPublishStepTests):
         step.parent = mock.MagicMock()
         step.parent.get_checksum_type.return_value = 'sha1'
         step.process_main()
-        Popen.assert_called_once_with('createrepo_c -d --update --keep-all-metadata '
-                                      '--local-sqlite '
-                                      '-s sha1 '
-                                      '--skip-stat /foo',
+        Popen.assert_called_once_with('sqliterepo_c --local-sqlite -f '
+                                      '--checksum sha1 '
+                                      '/foo',
                                       shell=True, stderr=mock.ANY, stdout=mock.ANY)
 
     @mock.patch('pulp_rpm.plugins.distributors.yum.publish.subprocess.Popen')
