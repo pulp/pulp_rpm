@@ -1059,6 +1059,7 @@ class RepoSync(object):
         # values are dicts where keys are serialized versions, and values are
         # a tuple of (model as named tuple, size in bytes)
         wanted = {}
+        srpms = []  # keep track of srpms to avoid counting dupes
 
         skip_srpm = ids.TYPE_ID_SRPM in self.config.get(constants.CONFIG_SKIP, [])
         number_old_versions_to_keep = \
@@ -1070,7 +1071,10 @@ class RepoSync(object):
 
         for model in package_info_generator:
             if skip_srpm and isinstance(model, models.SRPM):
-                number_of_unique_packages += 1
+                unit_key = models.NEVRA._fromdict(model.unit_key)
+                if unit_key not in srpms:
+                    srpms.append(unit_key)
+                    number_of_unique_packages += 1
                 continue
 
             versions = wanted.setdefault(model.key_string_without_version, {})
