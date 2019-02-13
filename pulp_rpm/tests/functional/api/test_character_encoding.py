@@ -9,11 +9,14 @@ from pulp_smash.pulp3.utils import (
     gen_repo,
     get_versions,
 )
+from requests.exceptions import HTTPError
 
 from pulp_rpm.tests.functional.constants import (
     RPM_CONTENT_PATH,
     RPM_WITH_NON_ASCII_NAME,
     RPM_WITH_NON_ASCII_URL,
+    RPM_WITH_NON_UTF_8_NAME,
+    RPM_WITH_NON_UTF_8_URL,
 )
 from pulp_rpm.tests.functional.utils import set_up_module as setUpModule  # noqa:F401
 
@@ -24,6 +27,7 @@ class UploadEncodingMetadataTestCase(unittest.TestCase):
     This test targets the following issues:
 
     * `Pulp #4210 <https://pulp.plan.io/issues/4210>`_
+    * `Pulp #4215 <https://pulp.plan.io/issues/4215>`_
     """
 
     @classmethod
@@ -39,15 +43,11 @@ class UploadEncodingMetadataTestCase(unittest.TestCase):
 
     def test_upload_non_ascii(self):
         """Test whether one can upload an RPM with non-ascii metadata."""
-        self.do_test(RPM_WITH_NON_ASCII_URL, RPM_WITH_NON_ASCII_NAME)
-
-    def do_test(self, url, filename):
-        """Test whether one can upload an RPM."""
-        files = {'file': utils.http_get(url)}
+        files = {'file': utils.http_get(RPM_WITH_NON_ASCII_URL)}
         artifact = self.client.post(ARTIFACTS_PATH, files=files)
         content_unit = self.client.post(RPM_CONTENT_PATH, {
             '_artifact': artifact['_href'],
-            'filename': filename
+            'filename': RPM_WITH_NON_ASCII_NAME
         })
         repo = self.client.post(REPO_PATH, gen_repo())
         self.addCleanup(self.client.delete, repo['_href'])
@@ -59,3 +59,13 @@ class UploadEncodingMetadataTestCase(unittest.TestCase):
         )
         repo_versions = get_versions(repo)
         self.assertEqual(len(repo_versions), 1, repo_versions)
+
+    def test_upload_non_utf8(self):
+        """Test whether an exception is raised when non-utf-8 is uploaded."""
+        files = {'file': utils.http_get(RPM_WITH_NON_UTF_8_URL)}
+        artifact = self.client.post(ARTIFACTS_PATH, files=files)
+        with self.assertRaises(HTTPError):
+            self.client.post(RPM_CONTENT_PATH, {
+                '_artifact': artifact['_href'],
+                'filename': RPM_WITH_NON_UTF_8_NAME
+            })
