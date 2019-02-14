@@ -9,6 +9,9 @@ from pulp_smash.pulp3.constants import (
     CONTENT_PATH,
 )
 
+DRPM_UNSIGNED_FIXTURE_URL = urljoin(PULP_FIXTURES_BASE_URL, 'drpm-unsigned/')
+"""The URL to a repository with unsigned DRPM packages."""
+
 RPM_PACKAGE_CONTENT_NAME = 'rpm.package'
 
 RPM_UPDATE_CONTENT_NAME = 'rpm.update'
@@ -142,6 +145,9 @@ RPM_WITH_NON_UTF_8_URL = urljoin(
     'rpm-with-non-utf-8/{}-1-1.fc25.noarch.rpm'.format(RPM_WITH_NON_UTF_8_NAME)
 )
 """The URL to an RPM with non-UTF-8 metadata in its header."""
+
+SRPM_UNSIGNED_FIXTURE_URL = urljoin(PULP_FIXTURES_BASE_URL, 'srpm-unsigned/')
+"""The URL to a repository with unsigned SRPM packages."""
 
 UPDATERECORD_CONTENT_PATH = urljoin(CONTENT_PATH, 'rpm/updates/')
 """The location of RPM UpdateRecords on the content endpoint."""

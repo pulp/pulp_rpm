@@ -22,6 +22,7 @@ from pulp_rpm.tests.functional.utils import (
     gen_rpm_remote,
 )
 from pulp_rpm.tests.functional.constants import (
+    DRPM_UNSIGNED_FIXTURE_URL,
     RPM_ALT_LAYOUT_FIXTURE_URL,
     RPM_FIXTURE_SUMMARY,
     RPM_LONG_UPDATEINFO_FIXTURE_URL,
@@ -31,6 +32,7 @@ from pulp_rpm.tests.functional.constants import (
     RPM_REMOTE_PATH,
     RPM_RICH_WEAK_FIXTURE_URL,
     RPM_SHA512_FIXTURE_URL,
+    SRPM_UNSIGNED_FIXTURE_URL,
 )
 from pulp_rpm.tests.functional.utils import set_up_module as setUpModule  # noqa:F401
 
@@ -154,6 +156,7 @@ class SyncPublishTestCase(unittest.TestCase):
 
     This test targets the following issue:
 
+    `Pulp #4108 <https://pulp.plan.io/issues/4108>`_.
     `Pulp #4134 <https://pulp.plan.io/issues/4134>`_.
     """
 
@@ -178,6 +181,14 @@ class SyncPublishTestCase(unittest.TestCase):
     def test_rpm_sha512(self):
         """Sync and publish an RPM repository. See :meth: `do_test`."""
         self.do_test(RPM_SHA512_FIXTURE_URL)
+
+    def test_srpm(self):
+        """Sync and publish a SRPM repository. See :meth: `do_test`."""
+        self.do_test(SRPM_UNSIGNED_FIXTURE_URL)
+
+    def test_drpm(self):
+        """Sync and publish a DRPM repository. See :meth: `do_test`."""
+        self.do_test(DRPM_UNSIGNED_FIXTURE_URL)
 
     def do_test(self, url):
         """Sync and publish an RPM repository given a feed URL."""
