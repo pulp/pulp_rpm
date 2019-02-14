@@ -38,38 +38,7 @@ class BasicSyncTestCase(unittest.TestCase):
         cls.cfg = config.get_config()
         cls.client = api.Client(cls.cfg, api.json_handler)
 
-    def test_file_decriptors(self):
-        """Test whether file descriptors are closed properly.
-
-        This test targets the following issue:
-        `Pulp #4073 <https://pulp.plan.io/issues/4073>`_
-
-        Do the following:
-        1. Check if 'lsof' is installed. If it is not, skip this test.
-        2. Create and sync a repo.
-        3. Run the 'lsof' command to verify that files in the
-           path ``/var/lib/pulp/`` are closed after the sync.
-        4. Assert that issued command returns `0` opened files.
-        """
-        cli_client = cli.Client(self.cfg, cli.echo_handler)
-
-        # check if 'lsof' is available
-        if cli_client.run(('which', 'lsof')).returncode != 0:
-            raise unittest.SkipTest('lsof package is not present')
-
-        repo = self.client.post(REPO_PATH, gen_repo())
-        self.addCleanup(self.client.delete, repo['_href'])
-
-        remote = self.client.post(RPM_REMOTE_PATH, gen_rpm_remote())
-        self.addCleanup(self.client.delete, remote['_href'])
-
-        sync(self.cfg, remote, repo)
-
-        cmd = 'lsof -t +D {}'.format(MEDIA_PATH).split()
-        response = cli_client.run(cmd).stdout
-        self.assertEqual(len(response), 0, response)
-
-    def test_sync(self):
+    def test_rpm(self):
         """Sync repositories with the rpm plugin.
 
         In order to sync a repository a remote has to be associated within
@@ -125,6 +94,43 @@ class BasicSyncTestCase(unittest.TestCase):
             RPM_FIXTURE_SUMMARY
         )
         self.assertDictEqual(get_added_content_summary(repo), {})
+
+
+class FileDescriptorsTestCase(unittest.TestCase):
+    """Test whether file descriptors are closed properly after a sync."""
+
+    def test_file_decriptors(self):
+        """Test whether file descriptors are closed properly.
+
+        This test targets the following issue:
+        `Pulp #4073 <https://pulp.plan.io/issues/4073>`_
+
+        Do the following:
+        1. Check if 'lsof' is installed. If it is not, skip this test.
+        2. Create and sync a repo.
+        3. Run the 'lsof' command to verify that files in the
+           path ``/var/lib/pulp/`` are closed after the sync.
+        4. Assert that issued command returns `0` opened files.
+        """
+        cfg = config.get_config()
+        client = api.Client(cfg, api.json_handler)
+        cli_client = cli.Client(cfg, cli.echo_handler)
+
+        # check if 'lsof' is available
+        if cli_client.run(('which', 'lsof')).returncode != 0:
+            raise unittest.SkipTest('lsof package is not present')
+
+        repo = client.post(REPO_PATH, gen_repo())
+        self.addCleanup(client.delete, repo['_href'])
+
+        remote = client.post(RPM_REMOTE_PATH, gen_rpm_remote())
+        self.addCleanup(client.delete, remote['_href'])
+
+        sync(cfg, remote, repo)
+
+        cmd = 'lsof -t +D {}'.format(MEDIA_PATH).split()
+        response = cli_client.run(cmd).stdout
+        self.assertEqual(len(response), 0, response)
 
 
 class SyncMutatedPackagesTestCase(unittest.TestCase):
