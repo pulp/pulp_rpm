@@ -1,13 +1,9 @@
 from gettext import gettext as _
-import json
-import os
-import shutil
-import tempfile
 
-import createrepo_c
 from django.db import transaction
+from django.db.utils import IntegrityError
 from drf_yasg.utils import swagger_auto_schema
-from rest_framework import serializers, status
+from rest_framework import serializers, status, views
 from rest_framework.decorators import detail_route
 from rest_framework.response import Response
 
@@ -16,7 +12,7 @@ from pulpcore.plugin.tasking import enqueue_with_reservation
 from pulpcore.plugin.serializers import (
     AsyncOperationResponseSerializer,
     RepositoryPublishURLSerializer,
-    RepositorySyncURLSerializer,
+    RepositorySyncURLSerializer
 )
 from pulpcore.plugin.viewsets import (
     ContentFilter,
@@ -27,6 +23,7 @@ from pulpcore.plugin.viewsets import (
 )
 
 from pulp_rpm.app import tasks
+from pulp_rpm.app.shared_utils import _prepare_package
 from pulp_rpm.app.models import Package, RpmRemote, RpmPublisher, UpdateRecord
 from pulp_rpm.app.serializers import (
     MinimalPackageSerializer,
@@ -34,8 +31,11 @@ from pulp_rpm.app.serializers import (
     RpmRemoteSerializer,
     RpmPublisherSerializer,
     UpdateRecordSerializer,
-    MinimalUpdateRecordSerializer
+    MinimalUpdateRecordSerializer,
+    OneShotUploadSerializer,
 )
+
+from .upload import one_shot_upload
 
 
 class PackageFilter(ContentFilter):
@@ -88,25 +88,11 @@ class PackageViewSet(ContentViewSet):
         except KeyError:
             raise serializers.ValidationError(detail={'filename': _('This field is required')})
 
-        # Copy file to a temp directory under the user provided filename
-        with tempfile.TemporaryDirectory() as td:
-            temp_path = os.path.join(td, filename)
-            shutil.copy2(artifact.file.path, temp_path)
-            cr_pkginfo = createrepo_c.package_from_rpm(temp_path)
-            package = Package.createrepo_to_dict(cr_pkginfo)
-
-        package['location_href'] = filename
-
-        # TODO: Clean this up, maybe make a new function for the purpose of parsing it into
-        # a saveable format
-        new_pkg = {}
-        new_pkg['_artifact'] = request.data['_artifact']
-
-        for key, value in package.items():
-            if isinstance(value, list):
-                new_pkg[key] = json.dumps(value)
-            else:
-                new_pkg[key] = value
+        try:
+            new_pkg = _prepare_package(artifact, filename)
+            new_pkg['_artifact'] = request.data['_artifact']
+        except OSError:
+            return Response('RPM file cannot be parsed for metadata.')
 
         serializer = self.get_serializer(data=new_pkg)
         serializer.is_valid(raise_exception=True)
@@ -233,3 +219,41 @@ class UpdateRecordViewSet(ContentViewSet):
     serializer_class = UpdateRecordSerializer
     minimal_serializer_class = MinimalUpdateRecordSerializer
     filterset_class = UpdateRecordFilter
+
+
+class OneShotUploadView(views.APIView):
+    """
+    ViewSet for One Shot RPM Upload.
+
+    Args:
+        file@: package to upload
+    Optional:
+        repository: repository to update
+    """
+
+    def post(self, request):
+        """Upload an RPM package."""
+        serializer = OneShotUploadSerializer(
+            data=request.data, context={'request': request})
+        serializer.is_valid(raise_exception=True)
+
+        artifact = Artifact.init_and_validate(request.data['file'])
+
+        if 'repository' in request.data:
+            repository = serializer.validated_data['repository']
+        else:
+            repository = None
+
+        try:
+            artifact.save()
+        except IntegrityError:
+            # if artifact already exists, let's use it
+            artifact = Artifact.objects.get(sha256=artifact.sha256)
+
+        async_result = enqueue_with_reservation(
+            one_shot_upload, [artifact],
+            kwargs={
+                'artifact': artifact,
+                'repository': repository,
+            })
+        return OperationPostponedResponse(async_result, request)

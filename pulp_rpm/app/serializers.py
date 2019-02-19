@@ -2,6 +2,7 @@ from gettext import gettext as _
 
 from rest_framework import serializers
 
+from pulpcore.plugin.models import Repository
 from pulpcore.plugin.serializers import (
     NoArtifactContentSerializer,
     SingleArtifactContentSerializer,
@@ -279,3 +280,20 @@ class MinimalUpdateRecordSerializer(UpdateRecordSerializer):
             'id', 'title', 'severity', 'type'
         )
         model = UpdateRecord
+
+
+class OneShotUploadSerializer(serializers.Serializer):
+    """
+    A serializer for the One Shot Upload API.
+    """
+
+    repository = serializers.HyperlinkedRelatedField(
+        help_text=_('A URI of the repository.'),
+        required=False,
+        queryset=Repository.objects.all(),
+        view_name='repositories-detail',
+    )
+    file = serializers.FileField(
+        help_text=_("The rpm file."),
+        required=True,
+    )
