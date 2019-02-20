@@ -1,30 +1,29 @@
 import asyncio
 import hashlib
 import logging
+import os
 
 from gettext import gettext as _  # noqa:F401
 from urllib.parse import urljoin
 
 import createrepo_c as cr
 
-from pulpcore.plugin.models import Artifact, ProgressBar, Remote, Repository, RepositoryVersion
-from pulpcore.plugin.stages import (
-    DeclarativeArtifact,
-    DeclarativeContent,
-    Stage
-)
-from pulpcore.plugin.tasking import WorkingDirectory
+from pulpcore.plugin.models import Artifact, ProgressBar, Remote, Repository
+
 from pulpcore.plugin.stages import (
     ArtifactDownloader,
     ArtifactSaver,
-    ContentAssociation,
     ContentSaver,
-    create_pipeline,
-    EndStage,
+    DeclarativeArtifact,
+    DeclarativeContent,
+    DeclarativeVersion,
+    RemoteArtifactSaver,
     RemoveDuplicates,
+    Stage,
     QueryExistingArtifacts,
     QueryExistingContents
 )
+
 
 from pulp_rpm.app.constants import CHECKSUM_TYPES, PACKAGE_REPODATA, UPDATE_REPODATA
 from pulp_rpm.app.models import (
@@ -51,8 +50,8 @@ def synchronize(remote_pk, repository_pk):
     remote = RpmRemote.objects.get(pk=remote_pk)
     repository = Repository.objects.get(pk=repository_pk)
 
-    dupe_criteria = {'model': Package,
-                     'field_names': ['name', 'epoch', 'version', 'release', 'arch']}
+    package_dupe_criteria = {'model': Package,
+                             'field_names': ['name', 'epoch', 'version', 'release', 'arch']}
 
     if not remote.url:
         raise ValueError(_('A remote must have a url specified to synchronize.'))
@@ -60,23 +59,50 @@ def synchronize(remote_pk, repository_pk):
     log.info(_('Synchronizing: repository={r} remote={p}').format(
         r=repository.name, p=remote.name))
 
-    download_artifacts = (remote.policy == Remote.IMMEDIATE)
+    download = (remote.policy == Remote.IMMEDIATE)
     first_stage = RpmFirstStage(remote)
-    with WorkingDirectory():
-        with RepositoryVersion.create(repository) as new_version:
-            loop = asyncio.get_event_loop()
-            remove_duplicates_stage = RemoveDuplicates(new_version, **dupe_criteria)
-            stages = [first_stage]
+    dv = RpmDeclarativeVersion(first_stage=first_stage,
+                               repository=repository,
+                               download_artifacts=download,
+                               remove_duplicates=[package_dupe_criteria])
+    dv.create()
 
-            if download_artifacts:
-                stages.extend([QueryExistingArtifacts(), ArtifactDownloader(), ArtifactSaver()])
 
-            stages.extend([
-                QueryExistingContents(), ErratumContentSaver(), remove_duplicates_stage,
-                ContentAssociation(new_version), EndStage()
+class RpmDeclarativeVersion(DeclarativeVersion):
+    """
+    Subclassed Declarative version creates a custom pipeline for RPM sync.
+    """
+
+    def pipeline_stages(self, new_version):
+        """
+        Build a list of stages feeding into the ContentUnitAssociation stage.
+
+        This defines the "architecture" of the entire sync.
+
+        Args:
+            new_version (:class:`~pulpcore.plugin.models.RepositoryVersion`): The
+                new repository version that is going to be built.
+
+        Returns:
+            list: List of :class:`~pulpcore.plugin.stages.Stage` instances
+
+        """
+        pipeline = [self.first_stage]
+        if self.download_artifacts:
+            pipeline.extend([
+                QueryExistingArtifacts(),
+                ArtifactDownloader(),
+                ArtifactSaver(),
             ])
-            pipeline = create_pipeline(stages)
-            loop.run_until_complete(pipeline)
+        pipeline.extend([
+            QueryExistingContents(),
+            RpmContentSaver(),
+            RemoteArtifactSaver(),
+        ])
+        for dupe_query_dict in self.remove_duplicates:
+            pipeline.extend([RemoveDuplicates(new_version, **dupe_query_dict)])
+
+        return pipeline
 
 
 class RpmFirstStage(Stage):
@@ -248,8 +274,8 @@ class RpmFirstStage(Stage):
                             checksum_type = getattr(CHECKSUM_TYPES, package.checksum_type.upper())
                             setattr(artifact, checksum_type, package.pkgId)
                             url = urljoin(self.remote.url, package.location_href)
-                            da = DeclarativeArtifact(artifact, url, package.location_href,
-                                                     self.remote)
+                            filename = os.path.basename(package.location_href)
+                            da = DeclarativeArtifact(artifact, url, filename, self.remote)
                             dc = DeclarativeContent(content=package, d_artifacts=[da])
                             await self.put(dc)
 
@@ -281,9 +307,12 @@ class RpmFirstStage(Stage):
                             await self.put(dc)
 
 
-class ErratumContentSaver(ContentSaver):
+class RpmContentSaver(ContentSaver):
     """
-    A Stages API stage that saves UpdateCollection,UpdateCollectionPackage,UpdateReference objects.
+    A modification of ContentSaver stage that additionally saves RPM plugin specific items.
+
+    Saves UpdateCollection, UpdateCollectionPackage, UpdateReference objects related to
+    the UpdateRecord content unit.
     """
 
     async def _post_save(self, batch):
