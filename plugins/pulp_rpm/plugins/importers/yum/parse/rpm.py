@@ -7,8 +7,7 @@ from gettext import gettext as _
 
 import deltarpm
 import rpm as rpm_module
-import rpmUtils
-from createrepo import yumbased
+import createrepo_c
 from pulp.server import util
 from pulp.server.exceptions import PulpCodedException
 from pulp_rpm.common import constants, file_utils
@@ -16,6 +15,13 @@ from pulp_rpm.plugins import error_codes
 
 
 _LOGGER = logging.getLogger(__name__)
+
+_CREATEREPO_C_SUMTYPES = {
+    util.TYPE_SHA: createrepo_c.SHA,
+    util.TYPE_SHA1: createrepo_c.SHA1,
+    util.TYPE_SHA256: createrepo_c.SHA256,
+    util.TYPE_MD5: createrepo_c.MD5,
+}
 
 
 def get_package_xml(pkg_path, sumtype=util.TYPE_SHA256):
@@ -32,28 +38,24 @@ def get_package_xml(pkg_path, sumtype=util.TYPE_SHA256):
     :return:    rpm metadata dictionary or empty if rpm path doesnt exist
     :rtype:     dict
     """
-    ts = rpmUtils.transaction.initReadOnlyTransaction()
+    sumtype_as_int = _CREATEREPO_C_SUMTYPES.get(sumtype, createrepo_c.UNKNOWN_CHECKSUM)
+    href = file_utils.make_packages_relative_path(pkg_path)
+
     try:
-        # createrepo raises an exception if sumtype is unicode
-        # https://bugzilla.redhat.com/show_bug.cgi?id=1290021
-        sumtype_as_str = str(sumtype)
-        po = yumbased.CreateRepoPackage(ts, pkg_path, sumtype=sumtype_as_str)
-    except Exception, e:
-        # I hate this, but yum doesn't use reasonable exceptions like IOError
-        # and ValueError.
-        _LOGGER.error(str(e))
+        package = createrepo_c.package_from_rpm(
+            pkg_path,
+            checksum_type=sumtype_as_int,
+            location_href=href)
+
+        metadata = {
+            'primary': createrepo_c.xml_dump_primary(package).encode('utf-8'),
+            'filelists': createrepo_c.xml_dump_filelists(package).encode('utf-8'),
+            'other': createrepo_c.xml_dump_other(package).encode('utf-8'),
+        }
+        return metadata
+    except Exception:
+        _LOGGER.exception("Can't get package XML for %s", pkg_path)
         return {}
-    # RHEL6 createrepo throws a ValueError if _cachedir is not set
-    po._cachedir = None
-    primary_xml_snippet = po.xml_dump_primary_metadata()
-    primary_xml_snippet = primary_xml_snippet.decode('utf-8', 'replace')
-    primary_xml_snippet = change_location_tag(primary_xml_snippet, pkg_path)
-    metadata = {
-        'primary': primary_xml_snippet.encode('utf-8'),
-        'filelists': po.xml_dump_filelists_metadata(),
-        'other': po.xml_dump_other_metadata(),
-    }
-    return metadata
 
 
 def change_location_tag(primary_xml_snippet, relpath):

@@ -4,6 +4,7 @@ import os
 from gettext import gettext as _
 
 import rpm as rpm_module
+import createrepo_c
 
 from mock import Mock, patch
 from pulp.common.compat import unittest
@@ -52,28 +53,37 @@ class TesGetPackageXml(unittest.TestCase):
     </package>
     """.encode('utf-8')
 
-    @patch(MODULE + '.yumbased')
-    @patch(MODULE + '.change_location_tag')
-    def test_get_package_xml(self, change_location_tag, yumbased):
-        package = Mock()
-        package.xml_dump_primary_metadata.return_value = self.PRIMARY
-        yumbased.CreateRepoPackage.return_value = package
+    @patch(MODULE + '.createrepo_c')
+    def test_get_package_xml(self, mock_createrepo_c):
+        package = object()
+        mock_createrepo_c.package_from_rpm.return_value = package
+        mock_createrepo_c.xml_dump_primary.return_value = u'fake primary'
+        mock_createrepo_c.xml_dump_filelists.return_value = u'fake filelists'
+        mock_createrepo_c.xml_dump_other.return_value = u'fake other'
+
         rel_path = 'a/b/c/d/rabbit.rpm'
 
         # test
         md = rpm.get_package_xml(rel_path)
 
-        # validation
-        change_location_tag.assert_called_once_with(
-            self.PRIMARY.decode('utf-8', 'replace'),
-            rel_path)
-        self.assertEqual(md['primary'], change_location_tag.return_value.encode('utf-8'))
-        self.assertEqual(md['filelists'], package.xml_dump_filelists_metadata.return_value)
-        self.assertEqual(md['other'], package.xml_dump_other_metadata.return_value)
+        # It should have constructed a package from the RPM
+        mock_createrepo_c.package_from_rpm.assert_called_once_with(
+            rel_path,
+            checksum_type=createrepo_c.SHA256,
+            location_href='Packages/r/rabbit.rpm'
+        )
 
-    @patch(MODULE + '.yumbased')
-    def test_get_package_xml_yum_exception(self, mock_yumbased):
-        mock_yumbased.CreateRepoPackage.side_effect = Exception()
+        # It should have dumped the three different XML fragments
+        mock_createrepo_c.xml_dump_primary.assert_called_once_with(package)
+        mock_createrepo_c.xml_dump_filelists.assert_called_once_with(package)
+        mock_createrepo_c.xml_dump_other.assert_called_once_with(package)
+
+        # Returned values should be those returned by createrepo_c, encoded
+        self.assertEqual(md['primary'], b'fake primary')
+        self.assertEqual(md['filelists'], b'fake filelists')
+        self.assertEqual(md['other'], b'fake other')
+
+    def test_get_package_xml_exception(self):
         result = rpm.get_package_xml("/bad/package/path")
         util.compare_dict(result, {})
 
