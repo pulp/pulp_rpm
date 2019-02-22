@@ -9,6 +9,7 @@ help:
 	@echo "  lint-pylint     to run the pylint linter"
 
 # It is assumed that a virtualenv is available to install the required linters.
+# Trigger Travis
 install-linters:
 	pip install -q flake8 flake8-docstrings flake8-quotes pydocstyle pylint
 
