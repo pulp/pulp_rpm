@@ -1,5 +1,6 @@
 # coding=utf-8
 """Tests that sync rpm plugin repositories."""
+import os
 import unittest
 
 from pulp_smash import api, cli, config
@@ -15,6 +16,7 @@ from pulp_smash.pulp3.utils import (
 )
 
 from pulp_rpm.tests.functional.constants import (
+    RPM_EPEL_URL,
     RPM_FIXTURE_SUMMARY,
     RPM_PACKAGES_COUNT,
     RPM_PACKAGE_CONTENT_NAME,
@@ -25,7 +27,7 @@ from pulp_rpm.tests.functional.constants import (
     RPM_UPDATERECORD_ID,
     RPM_UPDATE_CONTENT_NAME,
 )
-from pulp_rpm.tests.functional.utils import gen_rpm_remote
+from pulp_rpm.tests.functional.utils import gen_rpm_remote, skip_if
 from pulp_rpm.tests.functional.utils import set_up_module as setUpModule  # noqa:F401
 
 
@@ -231,6 +233,46 @@ class SyncMutatedPackagesTestCase(unittest.TestCase):
                     mutated_packages[nevra]['pkgId'],
                     original_packages[nevra]['pkgId']
                 )
+
+
+class EPELSyncTestCase(unittest.TestCase):
+    """Sync large EPEL repository."""
+
+    @classmethod
+    def setUpClass(cls):
+        """Skip test if the test is running in Travis-CI.
+
+        See: https://docs.travis-ci.com/user/environment-variables/
+
+        TRAVIS environment variable is available to all builds.
+        """
+        cls.travis = 'TRAVIS' in os.environ
+
+    @skip_if(bool, 'travis', True)
+    def test_sync_large_repo(self):
+        """Sync large EPEL repository."""
+        cfg = config.get_config()
+        client = api.Client(cfg, api.page_handler)
+
+        repo = client.post(REPO_PATH, gen_repo())
+        self.addCleanup(client.delete, repo['_href'])
+
+        remote = client.post(
+            RPM_REMOTE_PATH,
+            gen_rpm_remote(url=RPM_EPEL_URL)
+        )
+        self.addCleanup(client.delete, remote['_href'])
+
+        # Sync the repository.
+        self.assertIsNone(repo['_latest_version_href'])
+        sync(cfg, remote, repo)
+        repo = client.get(repo['_href'])
+        content_summary = get_content_summary(repo)
+        self.assertGreater(
+            content_summary[RPM_PACKAGE_CONTENT_NAME],
+            0,
+            content_summary
+        )
 
 
 @unittest.skip('FIXME: Enable this test after we can throw out duplicate UpdateRecords')
