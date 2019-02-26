@@ -7,7 +7,7 @@ from rest_framework import serializers, status, views
 from rest_framework.decorators import detail_route
 from rest_framework.response import Response
 
-from pulpcore.plugin.models import Artifact, ContentArtifact, RepositoryVersion
+from pulpcore.plugin.models import Artifact, RepositoryVersion
 from pulpcore.plugin.tasking import enqueue_with_reservation
 from pulpcore.plugin.serializers import (
     AsyncOperationResponseSerializer,
@@ -91,19 +91,13 @@ class PackageViewSet(ContentViewSet):
         try:
             new_pkg = _prepare_package(artifact, filename)
             new_pkg['_artifact'] = request.data['_artifact']
+            new_pkg['relative_path'] = request.data.get('relative_path', '')
         except OSError:
             return Response('RPM file cannot be parsed for metadata.')
 
         serializer = self.get_serializer(data=new_pkg)
         serializer.is_valid(raise_exception=True)
-        serializer.validated_data.pop('_artifact')
-        package = serializer.save()
-        if package.pk:
-            ContentArtifact.objects.create(
-                artifact=artifact,
-                content=package,
-                relative_path=package.filename
-            )
+        serializer.save()
 
         headers = self.get_success_headers(request.data)
         return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
