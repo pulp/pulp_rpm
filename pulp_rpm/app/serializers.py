@@ -21,6 +21,14 @@ class PackageSerializer(SingleArtifactContentSerializer):
     keeping fields from the parent class as well. Provide help_text.
     """
 
+    relative_path = serializers.CharField(
+        help_text=_("File name of the package"),
+        required=False,
+        allow_null=True,
+        allow_blank=True,
+        write_only=True,
+    )
+
     name = serializers.CharField(
         help_text=_("Name of the package"),
     )
@@ -158,8 +166,25 @@ class PackageSerializer(SingleArtifactContentSerializer):
                     "file mtime in seconds since the epoch.")
     )
 
+    def validate(self, data):
+        """
+        Validate the rpm package data.
+
+        Args:
+            data (dict): Data to be validated
+
+        Returns:
+            dict: Data that has been validated
+
+        """
+        data = super().validate(data)
+
+        data['_relative_path'] = data.pop('relative_path')
+
+        return data
+
     class Meta:
-        fields = SingleArtifactContentSerializer.Meta.fields + (
+        fields = tuple(set(SingleArtifactContentSerializer.Meta.fields) - {'_relative_path'}) + (
             'name', 'epoch', 'version', 'release', 'arch', 'pkgId', 'checksum_type',
             'summary', 'description', 'url', 'changelogs', 'files',
             'requires', 'provides', 'conflicts', 'obsoletes',
@@ -169,7 +194,7 @@ class PackageSerializer(SingleArtifactContentSerializer):
             'rpm_packager', 'rpm_sourcerpm', 'rpm_vendor',
             'rpm_header_start', 'rpm_header_end',
             'size_archive', 'size_installed', 'size_package',
-            'time_build', 'time_file'
+            'time_build', 'time_file', 'relative_path'
         )
         model = Package
 
