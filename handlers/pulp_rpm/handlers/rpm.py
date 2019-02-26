@@ -7,7 +7,11 @@ from pulp.agent.lib.handler import ContentHandler
 from pulp.agent.lib.report import ProfileReport, ContentReport
 
 import platform
-distribution = platform.linux_distribution()[0].upper()
+import sys
+if sys.version_info < (2, 6):
+    distribution = platform.dist()[0].upper()
+else:
+    distribution = platform.linux_distribution()[0].upper()
 
 if "SUSE" in distribution:
     from pulp_rpm.handlers.rpmtools_zypper import Package, PackageGroup, ProgressReport
