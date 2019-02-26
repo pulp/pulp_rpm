@@ -59,11 +59,10 @@ def synchronize(remote_pk, repository_pk):
     log.info(_('Synchronizing: repository={r} remote={p}').format(
         r=repository.name, p=remote.name))
 
-    download = (remote.policy == Remote.IMMEDIATE)
-    first_stage = RpmFirstStage(remote)
+    deferred_download = (remote.policy != Remote.IMMEDIATE)  # Interpret download policy
+    first_stage = RpmFirstStage(remote, deferred_download)
     dv = RpmDeclarativeVersion(first_stage=first_stage,
                                repository=repository,
-                               download_artifacts=download,
                                remove_duplicates=[package_dupe_criteria])
     dv.create()
 
@@ -87,20 +86,17 @@ class RpmDeclarativeVersion(DeclarativeVersion):
             list: List of :class:`~pulpcore.plugin.stages.Stage` instances
 
         """
-        pipeline = [self.first_stage]
-        if self.download_artifacts:
-            pipeline.extend([
-                QueryExistingArtifacts(),
-                ArtifactDownloader(),
-                ArtifactSaver(),
-            ])
-        pipeline.extend([
+        pipeline = [
+            self.first_stage,
+            QueryExistingArtifacts(),
+            ArtifactDownloader(),
+            ArtifactSaver(),
             QueryExistingContents(),
             RpmContentSaver(),
             RemoteArtifactSaver(),
-        ])
+        ]
         for dupe_query_dict in self.remove_duplicates:
-            pipeline.extend([RemoveDuplicates(new_version, **dupe_query_dict)])
+            pipeline.append(RemoveDuplicates(new_version, **dupe_query_dict))
 
         return pipeline
 
@@ -113,16 +109,19 @@ class RpmFirstStage(Stage):
     that should exist in the new :class:`~pulpcore.plugin.models.RepositoryVersion`.
     """
 
-    def __init__(self, remote):
+    def __init__(self, remote, deferred_download):
         """
         The first stage of a pulp_rpm sync pipeline.
 
         Args:
             remote (RpmRemote): The remote data to be used when syncing
+            deferred_download (bool): if True the downloading will not happen now. If False, it will
+                happen immediately.
 
         """
         super().__init__()
         self.remote = remote
+        self.deferred_download = deferred_download
 
     @staticmethod
     async def parse_updateinfo(updateinfo_xml_path):
@@ -275,7 +274,13 @@ class RpmFirstStage(Stage):
                             setattr(artifact, checksum_type, package.pkgId)
                             url = urljoin(self.remote.url, package.location_href)
                             filename = os.path.basename(package.location_href)
-                            da = DeclarativeArtifact(artifact, url, filename, self.remote)
+                            da = DeclarativeArtifact(
+                                artifact=artifact,
+                                url=url,
+                                relative_path=filename,
+                                remote=self.remote,
+                                deferred_download=self.deferred_download
+                            )
                             dc = DeclarativeContent(content=package, d_artifacts=[da])
                             await self.put(dc)
 
