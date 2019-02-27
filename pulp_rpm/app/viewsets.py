@@ -93,7 +93,8 @@ class PackageViewSet(ContentViewSet):
             new_pkg['_artifact'] = request.data['_artifact']
             new_pkg['relative_path'] = request.data.get('relative_path', '')
         except OSError:
-            return Response('RPM file cannot be parsed for metadata.')
+            return Response('RPM file cannot be parsed for metadata.',
+                            status=status.HTTP_406_NOT_ACCEPTABLE)
 
         serializer = self.get_serializer(data=new_pkg)
         serializer.is_valid(raise_exception=True)
