@@ -15,7 +15,7 @@ pulp-manager makemigrations rpm
 pulp-manager migrate --noinput
 
 # Run unit tests.
-(cd ../pulp && coverage run manage.py test pulp_rpm.tests.unit)
+(cd ../pulpcore && coverage run manage.py test pulp_rpm.tests.unit)
 
 # Run functional tests.
 export DJANGO_SETTINGS_MODULE=pulpcore.app.settings
