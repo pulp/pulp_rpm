@@ -46,7 +46,10 @@ Pulp supports the following modularity_ repository content management use cases:
 * publication of the modularity metadata with the repository publication
 
 * copy of one or more modules and/or module defaults between the repositories
-* removal of one or more modules and/or module defaults from the repository
+
+* removal of one or more modules and/or module defaults from the repository;
+  RPMs related to a module are also removed to preserve consistency of a module
+
 * upload of one or more modules and/or module defaults into the repository
 
 * modules published through Pulp are consumable by the ``dnf`` client
@@ -68,11 +71,274 @@ and content management use cases:
 
 * providing the content to the ``dnf`` client to process boolean dependencies
 
-.. Note::
 
-  Pulp doesn't actually process boolean dependencies. A `recursive copy
-  <https://docs.pulpproject.org/dev-guide/integration/rest-api/content/associate.html?highlight=recursive#copying-units-between-repositories>`_
-  might therefore not work properly for content that utilizes those.
+.. _advanced_copy_between_repositories:
+
+Advanced copy between repositories
+----------------------------------
+
+There are content types in RPM plugin which relate to each other in some way,
+so there are use cases when not only a specific content unit should be copied
+but also content units related to it. In such cases a ``recursive`` flag should
+be used during `copy operation <https://docs.pulpproject.org/dev-guide/integration/rest-api/content/associate.html?highlight=recursive#copying-units-between-repositories>`_.
+
+In a simple case the result of such API call copies unit and units directly related to it.
+There are more complicated relations and behavior may vary depending on the content
+and the type of a recursive flag. More information about such cases below.
+
+RPM dependencies
+^^^^^^^^^^^^^^^^
+An RPM can depend on other RPMs. 
+
+::
+
+   dependencies: foo.rpm -> bar.rpm -> baz.rpm
+
+   repo A
+     |
+     |----foo-1.0.rpm
+     |----bar-1.0.rpm
+     |----baz-1.0.rpm
+
+
+   repo B
+     |
+     |----bar-0.7.rpm
+
+
+| Use case #1: copy RPM itself
+| Flag to use: None
+
+::
+
+    Result of copying foo-1.0.rpm from repo A to repo B:
+
+    repo B
+     |
+     |----foo-1.0.rpm
+     |----bar-0.7.rpm
+
+
+| Use case #2: copy RPM and *all* its *latest* RPM dependencies
+| Flag to use: ``recursive``
+
+::
+
+    Result of copying foo-1.0.rpm from repo A to repo B:
+
+    repo B
+     |
+     |----foo-1.0.rpm
+     |----bar-0.7.rpm
+     |----bar-1.0.rpm
+     |----baz-1.0.rpm
+
+
+| Use case #3: copy RPM and its *latest missing* RPM dependencies
+| Flag to use: ``recursive_conservative``
+
+::
+
+    Result of copying foo-1.0.rpm from repo A to repo B:
+
+    repo B
+     |
+     |----foo-1.0.rpm
+     |----bar-0.7.rpm
+     |----baz-1.0.rpm
+
+
+Modules and their artifacts (RPMs), simple case
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+| A Module lists artifacts it consists of.
+| Simple case (no RPM dependencies, no module dependencies).
+
+::
+
+   module-FOO: [foo-1.0.rpm]
+
+   repo A
+     |
+     |----module-FOO
+     |----foo-1.0.rpm
+
+
+   repo B
+     |
+     |----bar-0.7.rpm
+
+
+| Use case #1 (not recommended): copy module itself
+| Flag to use: None
+
+::
+
+    Result of copying module-FOO from repo A to repo B:
+
+    repo B
+     |
+     |----module-FOO
+     |----bar-0.7.rpm
+
+    Module is copied, while its related RPM is not!
+    Module lost its integrity!
+    Copy this way when ypu know what you are doing and why.
+
+
+| Use case #2: copy module and its artifacts
+| Flag to use: ``recursive`` or ``recursive_conservative``
+
+::
+
+    Result of copying module-FOO from repo A to repo B:
+
+    repo B
+     |
+     |----module-FOO
+     |----foo-1.0.rpm
+     |----bar-0.7.rpm
+
+
+Modules and their artifacts (RPMs), complicated case 1
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+| A Module lists artifacts it consists of.
+| Complicated case 1 (RPM dependencies, no module dependencies).
+
+::
+
+   dependencies: foo.rpm -> bar.rpm -> baz.rpm
+   module-FOO: [foo-1.0.rpm]
+
+   repo A
+     |
+     |----module-FOO
+     |----foo-1.0.rpm
+     |----bar-1.0.rpm
+     |----baz-1.0.rpm
+
+   repo B
+     |
+     |----bar-0.7.rpm
+
+
+| Use case #1: copy module and its artifacts and artifacts' *latest* dependencies
+| Flag to use: ``recursive``
+
+::
+
+    Result of copying module-FOO from repo A to repo B:
+
+    repo B
+     |
+     |----module-FOO
+     |----foo-1.0.rpm
+     |----bar-0.7.rpm
+     |----bar-1.0.rpm
+     |----baz-1.0.rpm
+
+| Use case #2: copy module and its artifacts and artifacts' *missing* RPM dependencies
+| Flag to use: ``recursive_conservative``
+
+::
+
+    Result of copying module-FOO from repo A to repo B:
+
+    repo B
+     |
+     |----module-FOO
+     |----foo-1.0.rpm
+     |----bar-0.7.rpm
+     |----baz-1.0.rpm
+
+
+Modules and their artifacts (RPMs), complicated case 2
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+| A Module lists artifacts it consists of.
+| A Module can depend on other Modules.
+| Complicated case 2 (RPM dependencies, module dependencies).
+
+::
+
+   dependencies: foo.rpm -> bar.rpm -> baz.rpm
+                 module-FOO -> module-XXX
+   module-FOO: [foo-1.0.rpm]
+   module-XXX: [xxx-1.0.rpm, yyy-1.0.rpm]
+
+   repo A
+     |
+     |----module-FOO
+     |----module-XXX
+     |----foo-1.0.rpm
+     |----bar-1.0.rpm
+     |----baz-1.0.rpm
+     |----xxx-1.0.rpm
+     |----yyy-1.0.rpm
+
+   repo B
+     |
+     |----bar-0.7.rpm
+
+
+| Use case #1: copy module and its artifacts
+|              and module dependencies
+|              and artifacts' *latest* dependencies
+| Flag to use: ``recursive``
+
+::
+
+    Result of copying module-FOO from repo A to repo B:
+
+    repo B
+     |
+     |----module-FOO
+     |----module-XXX
+     |----foo-1.0.rpm
+     |----bar-0.7.rpm
+     |----bar-1.0.rpm
+     |----baz-1.0.rpm
+     |----xxx-1.0.rpm
+     |----yyy-1.0.rpm
+
+
+| Use case #2: copy module and its artifacts
+|              and module dependencies
+|              and artifacts' *missing* dependencies
+| Flag to use: ``recursive_conservative``
+
+::
+
+    Result of copying module-FOO from repo A to repo B:
+
+    repo B
+     |
+     |----module-FOO
+     |----module-XXX
+     |----foo-1.0.rpm
+     |----bar-0.7.rpm
+     |----baz-1.0.rpm
+     |----xxx-1.0.rpm
+     |----yyy-1.0.rpm
+
+
+.. Note::
+   Irrespective of which flag is used and which RPMs are in a destination repo,
+   **all** module artifacts are copied. ``recursive`` and ``recursive_conservative``
+   process differently RPM-to-RPM dependencies only.
+   Flags ``recursive`` and ``recursive_conservative`` can be used together,
+   ``recursive_conservative`` takes precedence.
+
+
+Erratum and related RPMs
+^^^^^^^^^^^^^^^^^^^^^^^^
+
+Erratum references RPMs and/or Modules.
+
+In case of a recursive copy in addition to the copy of Erratum itself, referenced RPMs
+and Modules are copied as well according to the rules and examples explained in previous sections.
+
 
 Protected Repositories
 ----------------------
