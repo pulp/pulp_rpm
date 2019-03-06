@@ -13,7 +13,6 @@ def one_shot_upload(artifact, repository=None):
     Args:
         artifact: validated artifact for a file
         repository: repository to extend with new pkg
-        path: artifact href
     """
     filename = os.path.basename(artifact.file.path)
 
@@ -24,6 +23,9 @@ def one_shot_upload(artifact, repository=None):
         raise OSError('RPM file cannot be parsed for metadata.')
 
     pkg, created = Package.objects.get_or_create(**new_pkg)
+
+    if not created:
+        raise OSError('RPM package {} already exists.'.format(pkg.filename))
 
     ContentArtifact.objects.create(
         artifact=artifact,
