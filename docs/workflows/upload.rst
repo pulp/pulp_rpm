@@ -46,7 +46,7 @@ Add content to repository ``foo``
 One shot upload
 ---------------
 
-You can use feature to upload one rpm directly to repository which substitute
-previous three steps (create artifact, content from artifact and add content to repo).
+You can use one shot uploader to upload one rpm and optionally create new repository version with rpm you uploaded.
+With this call you can substitute previous two (or three) steps (create artifact, content from artifact and optionally add content to repo).
 
 ``http --form POST http://localhost:8000/pulp/api/v3/rpm/upload/ file@./foo-1.0-1.noarch.rpm repository=/pulp/api/v3/repositories/1/``
