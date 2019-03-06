@@ -2,6 +2,7 @@ import os
 
 from pulp_rpm.app.shared_utils import _prepare_package
 from pulp_rpm.app.models import Package
+from pulpcore.app.models.task import CreatedResource
 from pulpcore.app.models.content import ContentArtifact
 from pulpcore.app.models.repository import RepositoryVersion
 
@@ -32,6 +33,9 @@ def one_shot_upload(artifact, repository=None):
         content=pkg,
         relative_path=filename
     )
+
+    resource = CreatedResource(content_object=pkg)
+    resource.save()
 
     if repository:
         content_to_add = Package.objects.filter(pkgId=pkg.pkgId)
