@@ -619,12 +619,12 @@ configuration values are optional.
  make it easy to filter packages based on their signing key and does not use these key IDs for
  package signature verification.
 
-``recursive`` Boolean flag. If true, units are copied together with their
-"latest" dependencies. False by default.
+``recursive`` Boolean flag. If true, units are copied together with the latest versions
+of their dependencies. False by default. More information about its usage can be found in :ref:`advanced_copy_between_repositories`.
 
 ``recursive_conservative`` Boolean flag. If true, units are copied together with their
 dependencies, unless those are already satisfied by the content in the target repository.
-False by default.
+False by default. More information about its usage can be found in :ref:`advanced_copy_between_repositories`.
 
 Yum Distributor
 ===============
