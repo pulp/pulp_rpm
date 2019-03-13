@@ -1,4 +1,7 @@
+import json
 from logging import getLogger
+
+import createrepo_c as cr
 
 from django.db import models
 from pulpcore.plugin.models import Content, Remote, Publisher
@@ -208,7 +211,7 @@ class Package(Content):
     @classmethod
     def createrepo_to_dict(cls, package):
         """
-        Convert createrepo_c package object to dict for instantiating RpmContent/SrpmContent.
+        Convert createrepo_c package object to dict for instantiating Package object.
 
         Args:
             package(createrepo_c.Package): a RPM/SRPM package to convert
@@ -219,22 +222,22 @@ class Package(Content):
         """
         return {
             'arch': getattr(package, CREATEREPO_PACKAGE_ATTRS.ARCH),
-            'changelogs': getattr(package, CREATEREPO_PACKAGE_ATTRS.CHANGELOGS) or [],
+            'changelogs': json.dumps(getattr(package, CREATEREPO_PACKAGE_ATTRS.CHANGELOGS) or []),
             'checksum_type': getattr(package, CREATEREPO_PACKAGE_ATTRS.CHECKSUM_TYPE),
-            'conflicts': getattr(package, CREATEREPO_PACKAGE_ATTRS.CONFLICTS) or [],
+            'conflicts': json.dumps(getattr(package, CREATEREPO_PACKAGE_ATTRS.CONFLICTS) or []),
             'description': getattr(package, CREATEREPO_PACKAGE_ATTRS.DESCRIPTION) or '',
-            'enhances': getattr(package, CREATEREPO_PACKAGE_ATTRS.ENHANCES) or [],
+            'enhances': json.dumps(getattr(package, CREATEREPO_PACKAGE_ATTRS.ENHANCES) or []),
             'epoch': getattr(package, CREATEREPO_PACKAGE_ATTRS.EPOCH) or '',
-            'files': getattr(package, CREATEREPO_PACKAGE_ATTRS.FILES) or [],
+            'files': json.dumps(getattr(package, CREATEREPO_PACKAGE_ATTRS.FILES) or []),
             'location_base': getattr(package, CREATEREPO_PACKAGE_ATTRS.LOCATION_BASE) or '',
             'location_href': getattr(package, CREATEREPO_PACKAGE_ATTRS.LOCATION_HREF),
             'name': getattr(package, CREATEREPO_PACKAGE_ATTRS.NAME),
-            'obsoletes': getattr(package, CREATEREPO_PACKAGE_ATTRS.OBSOLETES) or [],
+            'obsoletes': json.dumps(getattr(package, CREATEREPO_PACKAGE_ATTRS.OBSOLETES) or []),
             'pkgId': getattr(package, CREATEREPO_PACKAGE_ATTRS.PKGID),
-            'provides': getattr(package, CREATEREPO_PACKAGE_ATTRS.PROVIDES) or [],
-            'recommends': getattr(package, CREATEREPO_PACKAGE_ATTRS.RECOMMENDS) or [],
+            'provides': json.dumps(getattr(package, CREATEREPO_PACKAGE_ATTRS.PROVIDES) or []),
+            'recommends': json.dumps(getattr(package, CREATEREPO_PACKAGE_ATTRS.RECOMMENDS) or []),
             'release': getattr(package, CREATEREPO_PACKAGE_ATTRS.RELEASE),
-            'requires': getattr(package, CREATEREPO_PACKAGE_ATTRS.REQUIRES) or [],
+            'requires': json.dumps(getattr(package, CREATEREPO_PACKAGE_ATTRS.REQUIRES) or []),
             'rpm_buildhost': getattr(package, CREATEREPO_PACKAGE_ATTRS.RPM_BUILDHOST) or '',
             'rpm_group': getattr(package, CREATEREPO_PACKAGE_ATTRS.RPM_GROUP) or '',
             'rpm_header_end': getattr(package, CREATEREPO_PACKAGE_ATTRS.RPM_HEADER_END),
@@ -246,14 +249,97 @@ class Package(Content):
             'size_archive': getattr(package, CREATEREPO_PACKAGE_ATTRS.SIZE_ARCHIVE),
             'size_installed': getattr(package, CREATEREPO_PACKAGE_ATTRS.SIZE_INSTALLED),
             'size_package': getattr(package, CREATEREPO_PACKAGE_ATTRS.SIZE_PACKAGE),
-            'suggests': getattr(package, CREATEREPO_PACKAGE_ATTRS.SUGGESTS) or [],
+            'suggests': json.dumps(getattr(package, CREATEREPO_PACKAGE_ATTRS.SUGGESTS) or []),
             'summary': getattr(package, CREATEREPO_PACKAGE_ATTRS.SUMMARY) or '',
-            'supplements': getattr(package, CREATEREPO_PACKAGE_ATTRS.SUPPLEMENTS) or [],
+            'supplements': json.dumps(getattr(package, CREATEREPO_PACKAGE_ATTRS.SUPPLEMENTS) or []),
             'time_build': getattr(package, CREATEREPO_PACKAGE_ATTRS.TIME_BUILD),
             'time_file': getattr(package, CREATEREPO_PACKAGE_ATTRS.TIME_FILE),
             'url': getattr(package, CREATEREPO_PACKAGE_ATTRS.URL) or '',
             'version': getattr(package, CREATEREPO_PACKAGE_ATTRS.VERSION)
         }
+
+    def to_createrepo_c(self):
+        """
+        Convert Package object to a createrepo_c package object.
+
+        Currently it works under assumption that Package attributes' names are exactly the same
+        as createrepo_c ones.
+
+        Returns:
+            createrepo_c.Package: package itself in a format of a createrepo_c package object
+
+        """
+        def str_list_to_createrepo_c(s):
+            """
+            Convert string representation of list to createrepo_c format.
+
+            Createrepo_c expects list of tuples, not list of lists.
+            The assumption is that there are no nested lists, which is true for the data on the
+            Package model at the moment.
+
+            Args:
+                s(str): string representation of a list
+
+            Returns:
+                list: list of strings and/or tuples
+
+            """
+            createrepo_c_list = []
+            for item in json.loads(s):
+                if isinstance(item, list):
+                    createrepo_c_list.append(tuple(item))
+                else:
+                    createrepo_c_list.append(item)
+
+            return createrepo_c_list
+
+        package = cr.Package()
+        package.arch = getattr(self, CREATEREPO_PACKAGE_ATTRS.ARCH)
+        package.changelogs = str_list_to_createrepo_c(
+            getattr(self, CREATEREPO_PACKAGE_ATTRS.CHANGELOGS))
+        package.checksum_type = getattr(self, CREATEREPO_PACKAGE_ATTRS.CHECKSUM_TYPE)
+        package.conflicts = str_list_to_createrepo_c(
+            getattr(self, CREATEREPO_PACKAGE_ATTRS.CONFLICTS))
+        package.description = getattr(self, CREATEREPO_PACKAGE_ATTRS.DESCRIPTION)
+        package.enhances = str_list_to_createrepo_c(
+            getattr(self, CREATEREPO_PACKAGE_ATTRS.ENHANCES))
+        package.epoch = getattr(self, CREATEREPO_PACKAGE_ATTRS.EPOCH)
+        package.files = str_list_to_createrepo_c(getattr(self, CREATEREPO_PACKAGE_ATTRS.FILES))
+        package.location_base = getattr(self, CREATEREPO_PACKAGE_ATTRS.LOCATION_BASE)
+        package.location_href = getattr(self, CREATEREPO_PACKAGE_ATTRS.LOCATION_HREF)
+        package.name = getattr(self, CREATEREPO_PACKAGE_ATTRS.NAME)
+        package.obsoletes = str_list_to_createrepo_c(
+            getattr(self, CREATEREPO_PACKAGE_ATTRS.OBSOLETES))
+        package.pkgId = getattr(self, CREATEREPO_PACKAGE_ATTRS.PKGID)
+        package.provides = str_list_to_createrepo_c(
+            getattr(self, CREATEREPO_PACKAGE_ATTRS.PROVIDES))
+        package.recommends = str_list_to_createrepo_c(
+            getattr(self, CREATEREPO_PACKAGE_ATTRS.RECOMMENDS))
+        package.release = getattr(self, CREATEREPO_PACKAGE_ATTRS.RELEASE)
+        package.requires = str_list_to_createrepo_c(
+            getattr(self, CREATEREPO_PACKAGE_ATTRS.REQUIRES))
+        package.rpm_buildhost = getattr(self, CREATEREPO_PACKAGE_ATTRS.RPM_BUILDHOST)
+        package.rpm_group = getattr(self, CREATEREPO_PACKAGE_ATTRS.RPM_GROUP)
+        package.rpm_header_end = getattr(self, CREATEREPO_PACKAGE_ATTRS.RPM_HEADER_END)
+        package.rpm_header_start = getattr(self, CREATEREPO_PACKAGE_ATTRS.RPM_HEADER_START)
+        package.rpm_license = getattr(self, CREATEREPO_PACKAGE_ATTRS.RPM_LICENSE)
+        package.rpm_packager = getattr(self, CREATEREPO_PACKAGE_ATTRS.RPM_PACKAGER)
+        package.rpm_sourcerpm = getattr(self, CREATEREPO_PACKAGE_ATTRS.RPM_SOURCERPM)
+        package.rpm_vendor = getattr(self, CREATEREPO_PACKAGE_ATTRS.RPM_VENDOR)
+        package.size_archive = getattr(self, CREATEREPO_PACKAGE_ATTRS.SIZE_ARCHIVE)
+        package.size_installed = getattr(self, CREATEREPO_PACKAGE_ATTRS.SIZE_INSTALLED)
+        package.size_package = getattr(self, CREATEREPO_PACKAGE_ATTRS.SIZE_PACKAGE)
+        package.suggests = str_list_to_createrepo_c(
+            getattr(self, CREATEREPO_PACKAGE_ATTRS.SUGGESTS))
+        package.summary = getattr(self, CREATEREPO_PACKAGE_ATTRS.SUMMARY)
+        package.supplements = str_list_to_createrepo_c(
+            getattr(self, CREATEREPO_PACKAGE_ATTRS.SUPPLEMENTS))
+        package.time_build = getattr(self, CREATEREPO_PACKAGE_ATTRS.TIME_BUILD)
+        package.time_file = getattr(self, CREATEREPO_PACKAGE_ATTRS.TIME_FILE)
+        package.url = getattr(self, CREATEREPO_PACKAGE_ATTRS.URL)
+        package.version = getattr(self, CREATEREPO_PACKAGE_ATTRS.VERSION)
+
+        return package
 
 
 class UpdateRecord(Content):

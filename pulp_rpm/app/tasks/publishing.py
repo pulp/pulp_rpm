@@ -128,8 +128,7 @@ def publish(publisher_pk, repository_version_pk):
 
             # Process all packages
             for artifact in artifacts:
-                # TODO: pass attributes from db rather than use the filesystem
-                pkg = cr.package_from_rpm(artifact.content_artifact.artifact.file.path)
+                pkg = artifact.content_artifact.content.cast().to_createrepo_c()
                 pkg.location_href = artifact.content_artifact.relative_path
                 pri_xml.add_pkg(pkg)
                 fil_xml.add_pkg(pkg)
