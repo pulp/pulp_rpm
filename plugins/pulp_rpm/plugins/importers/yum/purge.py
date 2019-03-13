@@ -5,6 +5,7 @@ from gettext import gettext as _
 from itertools import repeat
 
 from mongoengine import Q
+from pulp.plugins.loader import api as plugin_api
 from pulp.common.plugins import importer_constants
 from pulp.server.db import model
 from pulp.server.db.model.criteria import UnitAssociationCriteria
@@ -296,11 +297,10 @@ def remove_unit_duplicate_nevra(unit, repo):
     del nevra_filters['checksumtype']
     Q_filters = [Q(**{key: value}) for key, value in nevra_filters.iteritems()]
     Q_nevra_filter = reduce(operator.and_, Q_filters)
-    Q_type_filter = Q(unit_type_id=unit._content_type_id)
-    unit_iterator = repo_controller.find_repo_content_units(repo,
-                                                            repo_content_unit_q=Q_type_filter,
-                                                            units_q=Q_nevra_filter,
-                                                            yield_content_unit=True)
+
+    _model = plugin_api.get_unit_model_by_id(unit.type_id)
+    unit_iterator = _model.objects(q_obj=Q_nevra_filter)
+
     repo_controller.disassociate_units(repo, unit_iterator)
 
 
