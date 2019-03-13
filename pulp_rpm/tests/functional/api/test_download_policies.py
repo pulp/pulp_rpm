@@ -5,9 +5,11 @@ import unittest
 from pulp_smash import api, config
 from pulp_smash.pulp3.constants import REPO_PATH
 from pulp_smash.pulp3.utils import (
+    delete_orphans,
     gen_repo,
     get_added_content_summary,
     get_content_summary,
+    publish,
     sync,
 )
 
@@ -35,8 +37,9 @@ class SyncPublishDownloadPolicyTestCase(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        """Create class-wide variables."""
+        """Create class-wide variables, and clean orphan units."""
         cls.cfg = config.get_config()
+        delete_orphans(cls.cfg)
         cls.client = api.Client(cls.cfg, api.page_handler)
 
     def test_on_demand(self):
@@ -121,3 +124,6 @@ class SyncPublishDownloadPolicyTestCase(unittest.TestCase):
 
         publisher = self.client.post(RPM_PUBLISHER_PATH, gen_rpm_publisher())
         self.addCleanup(self.client.delete, publisher['_href'])
+
+        publication = publish(self.cfg, publisher, repo)
+        self.assertIsNotNone(publication['repository_version'], publication)
