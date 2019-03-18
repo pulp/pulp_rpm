@@ -1,0 +1,26 @@
+=======================
+Pulp 2.19 Release Notes
+=======================
+
+Pulp 2.19.0
+===========
+
+New Features
+------------
+
+* Module dependencies are now getting resolved during recursive copy.
+  More information about how recursive copy works for different RPM content types can be found
+  in the :ref:`advanced_copy_between_repositories` section of the docs.
+* Performance improvement for the RPM upload workflow.
+
+
+Bug Fixes
+---------
+
+* Various fixes for managing modularity content.
+* Account for duplicate SRPMs when skipping them, some SLES repos were affected.
+* force_full option is working correctly now for distribution units (kickstart trees).
+* Published structure is fixed for distribution units - it no longer contains packages in the
+  ``Packages/`` directory duplicated from the requested publish path.
+
+See the full list of :fixedbugs_pulp_rpm:`2.19.0`
