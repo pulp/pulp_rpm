@@ -724,7 +724,8 @@ class PublishErrataStep(platform_steps.UnitModelPluginStep):
             # if repo_unit_nevra is empty, this repo has no RPMs, which makes filtering easy:
             # no pkglist will ever contain packages, so short out and return the empty pkglist
             return ret
-        seen_packages = set()
+        seen_non_modular_packages = set()
+        seen_modules = set()
         # find all pkglists for erratum despite the repo_id associated with pkglist
         pkglists = models.ErratumPkglist.objects(errata_id=erratum_unit.errata_id)
         for pkglist in pkglists:
@@ -732,19 +733,26 @@ class PublishErrataStep(platform_steps.UnitModelPluginStep):
                 module = collection.get('module')
                 if module:
                     # inside a modular collection
-                    if self._module_dict_as_nsvca(module) not in self.repo_module_nsvca:
-                        # not from the repo being published
+                    nsvca = self._module_dict_as_nsvca(module)
+                    if nsvca in seen_modules or nsvca not in self.repo_module_nsvca:
+                        # already processed or not from the repo being published
                         continue
+                    seen_modules.add(nsvca)
                     collection_index += 1
                     new_collection = self._new_collection(
                         repo_id, '{}_{}'.format(collection_index, module['name']))
                     ret.append(new_collection)
                     new_collection['module'] = module
                 for package in collection.get('packages', []):
-                    if package['filename'] not in seen_packages:
-                        seen_packages.add(package['filename'])
-                        if models.NEVRA._fromdict(package) in self.repo_unit_nevra:
-                            new_collection['packages'].append(package)
+                    if not module:
+                        # only non-modular packages are tracked;
+                        # modular packages are not tracked because the same package can be present
+                        # in different modules and duplicated modules are already filtered out.
+                        if package['filename'] in seen_non_modular_packages:
+                            continue
+                        seen_non_modular_packages.add(package['filename'])
+                    if models.NEVRA._fromdict(package) in self.repo_unit_nevra:
+                        new_collection['packages'].append(package)
                 # ret[0] is special; all non-modular package collections are aggregated there
                 new_collection = ret[0]
         return ret
