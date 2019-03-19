@@ -61,15 +61,15 @@ Make and Run Migrations
 
 .. code-block:: bash
 
-   pulp-manager makemigrations rpm
-   pulp-manager migrate rpm
+   django-admin makemigrations rpm
+   django-admin migrate rpm
 
 Run Services
 ------------
 
 .. code-block:: bash
 
-   pulp-manager runserver
+   django-admin runserver
    gunicorn pulpcore.content:server --bind 'localhost:8080' --worker-class 'aiohttp.GunicornWebWorker' -w 2
    sudo systemctl restart pulp-resource-manager
    sudo systemctl restart pulp-worker@1
