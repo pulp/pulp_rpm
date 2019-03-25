@@ -158,13 +158,23 @@ def publish(publisher_pk, repository_version_pk):
                              ("other_db", oth_db_path, None),
                              ("updateinfo", upd_xml_path, None))
 
+            sqlite_files = ("primary_db", "filelists_db", "other_db")
             for name, path, db_to_update in repomdrecords:
                 record = cr.RepomdRecord(name, path)
-                record.fill(cr.SHA256)
-                if (db_to_update):
-                    db_to_update.dbinfo_update(record.checksum)
-                    db_to_update.close()
-                repomd.set_record(record)
+                if name in sqlite_files:
+                    record_bz = record.compress_and_fill(cr.SHA256, cr.BZ2)
+                    record_bz.type = name
+                    record_bz.rename_file()
+                    path = record_bz.location_href.split('/')[-1]
+                    repomd.set_record(record_bz)
+                else:
+                    record.fill(cr.SHA256)
+                    if (db_to_update):
+                        db_to_update.dbinfo_update(record.checksum)
+                        db_to_update.close()
+                    record.rename_file()
+                    path = record.location_href.split('/')[-1]
+                    repomd.set_record(record)
                 metadata = PublishedMetadata(
                     relative_path=os.path.join(REPODATA_PATH, os.path.basename(path)),
                     publication=publication,
@@ -172,7 +182,8 @@ def publish(publisher_pk, repository_version_pk):
                 )
                 metadata.save()
 
-            open(repomd_path, "w").write(repomd.xml_dump())
+            with open(repomd_path, "w") as repomd_f:
+                repomd_f.write(repomd.xml_dump())
 
             metadata = PublishedMetadata(
                 relative_path=os.path.join(REPODATA_PATH, os.path.basename(repomd_path)),
