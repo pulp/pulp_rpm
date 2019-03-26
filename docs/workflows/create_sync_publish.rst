@@ -12,7 +12,7 @@ Create a repository ``foo``
 .. code:: json
 
     {
-        "_href": "/pulp/api/v3/repositories/1/",
+        "_href": "/pulp/api/v3/repositories/5eeabc0b-3b86-4264-bb3a-5889530a6f5b/",
         ...
     }
 
@@ -26,7 +26,7 @@ Create a new remote ``bar``
 .. code:: json
 
     {
-        "_href": "/pulp/api/v3/remotes/rpm/rpm/1/",
+        "_href": "/pulp/api/v3/remotes/rpm/rpm/378711cd-1bee-4adc-8d9b-fe3bceaba39f/",
         ...
     }
 
@@ -45,10 +45,10 @@ Look at the new Repository Version created
 .. code:: json
 
     {
-        "_added_href": "/pulp/api/v3/repositories/1/versions/1/added_content/",
-        "_content_href": "/pulp/api/v3/repositories/1/versions/1/content/",
-        "_href": "/pulp/api/v3/repositories/1/versions/1/",
-        "_removed_href": "/pulp/api/v3/repositories/1/versions/1/removed_content/",
+        "_added_href": "/pulp/api/v3/repositories/5eeabc0b-3b86-4264-bb3a-5889530a6f5b/versions/1/added_content/",
+        "_content_href": "/pulp/api/v3/repositories/5eeabc0b-3b86-4264-bb3a-5889530a6f5b/versions/1/content/",
+        "_href": "/pulp/api/v3/repositories/5eeabc0b-3b86-4264-bb3a-5889530a6f5b/versions/1/",
+        "_removed_href": "/pulp/api/v3/repositories/5eeabc0b-3b86-4264-bb3a-5889530a6f5b/versions/1/removed_content/",
         "content_summary": {
             "package": 35,
             "update": 4
@@ -66,7 +66,7 @@ Create a ``rpm`` Publisher
 .. code:: json
 
     {
-        "_href": "/pulp/api/v3/publishers/rpm/rpm/1/",
+        "_href": "/pulp/api/v3/publishers/rpm/rpm/72f01cf0-3ab6-486c-bd76-38fdb3e295d4/",
         ...
     }
 
@@ -98,7 +98,7 @@ Create a Distribution for the Publication
 .. code:: json
 
     {
-        "_href": "/pulp/api/v3/distributions/1/",
+        "_href": "/pulp/api/v3/distributions/8f394d20-f6fb-49dd-af0e-778225d79442/",
        ...
     }
 
