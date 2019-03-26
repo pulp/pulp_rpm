@@ -524,7 +524,7 @@ class PublishMetadataStep(platform_steps.UnitModelPluginStep):
 
         metadata_file_name = os.path.basename(unit._storage_path)
         file_path = os.path.join(publish_location_relative_path, metadata_file_name)
-        shutil.copyfile(unit._storage_path, file_path)
+        shutil.copy2(unit._storage_path, file_path)
 
         # Add the proper relative reference to the metadata file to repomd
         self.parent.repomd_file_context.\
