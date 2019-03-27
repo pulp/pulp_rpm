@@ -2,7 +2,7 @@ Upload and Manage Content
 =========================
 
 Content can be added to a repository not only by synchronizing from a remote source but also by
- uploading.
+uploading.
 
 
 Upload ``foo.rpm``
@@ -24,17 +24,17 @@ Create ``rpm`` content from an Artifact
 
 Create a content unit and point it to your artifact
 
-``$ http POST http://localhost:8000/pulp/api/v3/content/rpm/packages/ relative_path=foo.rpm _artifact="/pulp/api/v3/artifacts/d1dd56aa-c236-414a-894f-b3d9334d2e73/" filename=foo-4.1-1.noarch.rpm``
+``$ http POST http://localhost:8000/pulp/api/v3/content/rpm/packages/ _artifact="/pulp/api/v3/artifacts/d1dd56aa-c236-414a-894f-b3d9334d2e73/" filename=foo-4.1-1.noarch.rpm``
 
 .. code:: json
 
     {
         "_href": "/pulp/api/v3/content/rpm/packages/2df123b2-0d38-4a43-9b21-a3e830ea1324/",
         "_artifact": "/pulp/api/v3/artifacts/d1dd56aa-c236-414a-894f-b3d9334d2e73/",
-        "relative_path": "foo.rpm",
+        ...
     }
 
-``$ export CONTENT_HREF=$(http :8000/pulp/api/v3/content/rpm/packages/ | jq -r '.results[] | select( .relative_path == "foo.rpm") | ._href')``
+``$ export CONTENT_HREF=$(http :8000/pulp/api/v3/content/rpm/packages/ | jq -r '.results[] | select( .location_href == "foo-4.1-1.noarch.rpm") | ._href')``
 
 
 Add content to repository ``foo``
@@ -50,3 +50,16 @@ You can use one shot uploader to upload one rpm and optionally create new reposi
 With this call you can substitute previous two (or three) steps (create artifact, content from artifact and optionally add content to repo).
 
 ``http --form POST http://localhost:8000/pulp/api/v3/rpm/upload/ file@./foo-1.0-1.noarch.rpm repository=${REPO_HREF}``
+
+.. code:: json
+
+    {
+       "_href": "/pulp/api/v3/tasks/f2b525e3-8d8f-4246-adab-2fabd2b089a8/",
+       "created_resources": [
+           "/pulp/api/v3/content/rpm/packages/1edf8d4e-4293-4b66-93cd-8e913731c87a/",
+           "/pulp/api/v3/repositories/64bdeb44-c6d3-4ed7-9c5a-94b264a6b7b5/versions/2/"
+       ],
+
+       ...
+    }
+
