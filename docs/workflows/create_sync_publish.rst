@@ -21,6 +21,10 @@ Create a repository ``foo``
 Create a new remote ``bar``
 ---------------------------
 
+By default ``policy='immediate`` which means that all the content is downloaded right away.
+Specify ``policy='on_demand'`` to make synchronization of a repository faster and only
+to download RPMs whenever they are requested by clients.
+
 ``$ http POST http://localhost:8000/pulp/api/v3/remotes/rpm/rpm/ name='bar' url='https://repos.fedorapeople.org/pulp/pulp/fixtures/rpm-unsigned/' policy='on_demand'``
 
 .. code:: json
