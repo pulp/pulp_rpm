@@ -233,6 +233,7 @@ class OneShotUploadView(views.APIView):
         serializer.is_valid(raise_exception=True)
 
         artifact = Artifact.init_and_validate(request.data['file'])
+        filename = request.data['file'].name
 
         if 'repository' in request.data:
             repository = serializer.validated_data['repository']
@@ -249,6 +250,7 @@ class OneShotUploadView(views.APIView):
             one_shot_upload, [artifact],
             kwargs={
                 'artifact': artifact,
+                'filename': filename,
                 'repository': repository,
             })
         return OperationPostponedResponse(async_result, request)
