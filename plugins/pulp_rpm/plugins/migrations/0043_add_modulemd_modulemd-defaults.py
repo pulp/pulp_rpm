@@ -336,14 +336,24 @@ def migrate(*args, **kwargs):
     repos_to_republish = set()
     for file in metadatafiles:
         repository = Repository.objects.get(repo_id=file.repo_id)
-        with gzip.open(file._storage_path, 'r') as fp:
-            working_dir = "/var/cache/pulp"
-            modulemds, defaults = load(fp, working_dir)
-            add_modulemds(repository, modulemds, working_dir)
-            add_defaults(repository, defaults, working_dir)
-            repository_controller.disassociate_units(repository, [file])
-            repository_controller.rebuild_content_unit_counts(repository)
-            repos_to_republish.add(file.repo_id)
+        try:
+            with gzip.open(file._storage_path, 'r') as fp:
+                working_dir = "/var/cache/pulp"
+                modulemds, defaults = load(fp, working_dir)
+                add_modulemds(repository, modulemds, working_dir)
+                add_defaults(repository, defaults, working_dir)
+                repository_controller.disassociate_units(repository, [file])
+                repository_controller.rebuild_content_unit_counts(repository)
+                repos_to_republish.add(file.repo_id)
+        except IOError:
+            with open(file._storage_path, 'r') as fp:
+                working_dir = "/var/cache/pulp"
+                modulemds, defaults = load(fp, working_dir)
+                add_modulemds(repository, modulemds, working_dir)
+                add_defaults(repository, defaults, working_dir)
+                repository_controller.disassociate_units(repository, [file])
+                repository_controller.rebuild_content_unit_counts(repository)
+                repos_to_republish.add(file.repo_id)
     if repos_to_republish:
         with open('/var/lib/pulp/0043_add_modulemd_modulemd-defaults.txt', 'w') as f:
             f.write(str(list(repos_to_republish)))
