@@ -59,7 +59,9 @@ class PackageManagerConsumeTestCase(unittest.TestCase):
 
         body = gen_distribution()
         body['publication'] = publication['_href']
-        distribution = client.post(DISTRIBUTION_PATH, body)
+        distribution = client.using_handler(api.task_handler).post(
+            DISTRIBUTION_PATH, body
+        )
         self.addCleanup(client.delete, distribution['_href'])
 
         repo_path = gen_yum_config_file(
