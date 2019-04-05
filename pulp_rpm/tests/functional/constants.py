@@ -4,6 +4,7 @@ from urllib.parse import urljoin
 
 from pulp_smash.constants import PULP_FIXTURES_BASE_URL
 from pulp_smash.pulp3.constants import (
+    BASE_PATH,
     BASE_PUBLISHER_PATH,
     BASE_REMOTE_PATH,
     CONTENT_PATH,
@@ -26,11 +27,13 @@ RPM_REMOTE_PATH = urljoin(BASE_REMOTE_PATH, 'rpm/rpm/')
 
 RPM_PUBLISHER_PATH = urljoin(BASE_PUBLISHER_PATH, 'rpm/rpm/')
 
+RPM_SHA512_FIXTURE_URL = urljoin(PULP_FIXTURES_BASE_URL, 'rpm-with-sha-512/')
+"""The URL to an RPM repository with sha512 checksum."""
+
 RPM_SIGNED_FIXTURE_URL = urljoin(PULP_FIXTURES_BASE_URL, 'rpm-signed/')
 """The URL to a repository with signed RPM packages."""
 
-RPM_SHA512_FIXTURE_URL = urljoin(PULP_FIXTURES_BASE_URL, 'rpm-with-sha-512/')
-"""The URL to an RPM repository with sha512 checksum."""
+RPM_SINGLE_REQUEST_UPLOAD = urljoin(BASE_PATH, 'rpm/upload/')
 
 RPM_UNSIGNED_FIXTURE_URL = urljoin(PULP_FIXTURES_BASE_URL, 'rpm-unsigned/')
 """The URL to a repository with unsigned RPM packages."""
