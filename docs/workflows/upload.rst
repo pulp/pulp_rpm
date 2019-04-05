@@ -5,6 +5,8 @@ Content can be added to a repository not only by synchronizing from a remote sou
 uploading.
 
 
+.. _upload-workflow:
+
 Upload ``foo.rpm``
 ------------------
 
@@ -42,6 +44,8 @@ Add content to repository ``foo``
 
 ``$ http POST :8000${REPO_HREF}versions/ add_content_units:="[\"$CONTENT_HREF\"]"``
 
+
+.. _one-shot-upload-workflow:
 
 One shot upload
 ---------------
