@@ -1,3 +1,5 @@
+.. _sync-publish-workflow:
+
 Create, Sync and Publish a Repository
 =====================================
 
@@ -17,6 +19,9 @@ Create a repository ``foo``
     }
 
 ``$ export REPO_HREF=$(http :8000/pulp/api/v3/repositories/ | jq -r '.results[] | select(.name == "foo") | ._href')``
+
+
+.. _create-remote:
 
 Create a new remote ``bar``
 ---------------------------
@@ -40,6 +45,9 @@ Sync repository ``foo`` using remote ``bar``
 --------------------------------------------
 
 ``$ http POST :8000${REMOTE_HREF}sync/ repository=$REPO_HREF``
+
+
+.. _versioned-repo-created:
 
 Look at the new Repository Version created
 ------------------------------------------
