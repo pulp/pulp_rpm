@@ -30,6 +30,11 @@ Community contributions are encouraged.
   <https://pulp.plan.io/projects/pulp_rpm/issues>`_.
 
 
+REST API
+--------
+
+REST API documentation for the RPM plugin can be found `here <restapi.html>`_
+
 Table of Contents
 -----------------
 
