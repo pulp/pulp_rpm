@@ -12,7 +12,7 @@ Upload ``foo.rpm``
 
 Create an Artifact by uploading the file to Pulp.
 
-``$ http --form POST http://localhost:8000/pulp/api/v3/artifacts/ file@./foo-4.1-1.noarch.rpm``
+``$ http --form POST http://localhost:24817/pulp/api/v3/artifacts/ file@./foo-4.1-1.noarch.rpm``
 
 .. code:: json
 
@@ -26,7 +26,7 @@ Create ``rpm`` content from an Artifact
 
 Create a content unit and point it to your artifact
 
-``$ http POST http://localhost:8000/pulp/api/v3/content/rpm/packages/ _artifact="/pulp/api/v3/artifacts/d1dd56aa-c236-414a-894f-b3d9334d2e73/" filename=foo-4.1-1.noarch.rpm``
+``$ http POST http://localhost:24817/pulp/api/v3/content/rpm/packages/ _artifact="/pulp/api/v3/artifacts/d1dd56aa-c236-414a-894f-b3d9334d2e73/" filename=foo-4.1-1.noarch.rpm``
 
 .. code:: json
 
@@ -36,13 +36,13 @@ Create a content unit and point it to your artifact
         ...
     }
 
-``$ export CONTENT_HREF=$(http :8000/pulp/api/v3/content/rpm/packages/ | jq -r '.results[] | select( .location_href == "foo-4.1-1.noarch.rpm") | ._href')``
+``$ export CONTENT_HREF=$(http :24817/pulp/api/v3/content/rpm/packages/ | jq -r '.results[] | select( .location_href == "foo-4.1-1.noarch.rpm") | ._href')``
 
 
 Add content to repository ``foo``
 ---------------------------------
 
-``$ http POST :8000${REPO_HREF}versions/ add_content_units:="[\"$CONTENT_HREF\"]"``
+``$ http POST :24817${REPO_HREF}versions/ add_content_units:="[\"$CONTENT_HREF\"]"``
 
 
 .. _one-shot-upload-workflow:
@@ -53,7 +53,7 @@ One shot upload
 You can use one shot uploader to upload one rpm and optionally create new repository version with rpm you uploaded.
 With this call you can substitute previous two (or three) steps (create artifact, content from artifact and optionally add content to repo).
 
-``http --form POST http://localhost:8000/pulp/api/v3/rpm/upload/ file@./foo-1.0-1.noarch.rpm repository=${REPO_HREF}``
+``http --form POST http://localhost:24817/pulp/api/v3/rpm/upload/ file@./foo-1.0-1.noarch.rpm repository=${REPO_HREF}``
 
 .. code:: json
 

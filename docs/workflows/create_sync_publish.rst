@@ -9,7 +9,7 @@ available for users.
 Create a repository ``foo``
 ---------------------------
 
-``$ http POST http://localhost:8000/pulp/api/v3/repositories/ name=foo``
+``$ http POST http://localhost:24817/pulp/api/v3/repositories/ name=foo``
 
 .. code:: json
 
@@ -18,7 +18,7 @@ Create a repository ``foo``
         ...
     }
 
-``$ export REPO_HREF=$(http :8000/pulp/api/v3/repositories/ | jq -r '.results[] | select(.name == "foo") | ._href')``
+``$ export REPO_HREF=$(http :24817/pulp/api/v3/repositories/ | jq -r '.results[] | select(.name == "foo") | ._href')``
 
 
 .. _create-remote:
@@ -30,7 +30,7 @@ By default ``policy='immediate`` which means that all the content is downloaded 
 Specify ``policy='on_demand'`` to make synchronization of a repository faster and only
 to download RPMs whenever they are requested by clients.
 
-``$ http POST http://localhost:8000/pulp/api/v3/remotes/rpm/rpm/ name='bar' url='https://repos.fedorapeople.org/pulp/pulp/fixtures/rpm-unsigned/' policy='on_demand'``
+``$ http POST http://localhost:24817/pulp/api/v3/remotes/rpm/rpm/ name='bar' url='https://repos.fedorapeople.org/pulp/pulp/fixtures/rpm-unsigned/' policy='on_demand'``
 
 .. code:: json
 
@@ -39,12 +39,12 @@ to download RPMs whenever they are requested by clients.
         ...
     }
 
-``$ export REMOTE_HREF=$(http :8000/pulp/api/v3/remotes/rpm/rpm/ | jq -r '.results[] | select(.name == "bar") | ._href')``
+``$ export REMOTE_HREF=$(http :24817/pulp/api/v3/remotes/rpm/rpm/ | jq -r '.results[] | select(.name == "bar") | ._href')``
 
 Sync repository ``foo`` using remote ``bar``
 --------------------------------------------
 
-``$ http POST :8000${REMOTE_HREF}sync/ repository=$REPO_HREF``
+``$ http POST :24817${REMOTE_HREF}sync/ repository=$REPO_HREF``
 
 
 .. _versioned-repo-created:
@@ -52,7 +52,7 @@ Sync repository ``foo`` using remote ``bar``
 Look at the new Repository Version created
 ------------------------------------------
 
-``$ http GET :8000${REPO_HREF}versions/1/``
+``$ http GET :24817${REPO_HREF}versions/1/``
 
 .. code:: json
 
@@ -73,7 +73,7 @@ Look at the new Repository Version created
 Create a ``rpm`` Publisher
 --------------------------
 
-``$ http POST http://localhost:8000/pulp/api/v3/publishers/rpm/rpm/ name=bar``
+``$ http POST http://localhost:24817/pulp/api/v3/publishers/rpm/rpm/ name=bar``
 
 .. code:: json
 
@@ -82,13 +82,13 @@ Create a ``rpm`` Publisher
         ...
     }
 
-``$ export PUBLISHER_HREF=$(http :8000/pulp/api/v3/publishers/rpm/rpm/ | jq -r '.results[] | select(.name == "bar") | ._href')``
+``$ export PUBLISHER_HREF=$(http :24817/pulp/api/v3/publishers/rpm/rpm/ | jq -r '.results[] | select(.name == "bar") | ._href')``
 
 
 Create a Publication using publisher `bar`
 ------------------------------------------
 
-``$ http POST :8000${PUBLISHER_HREF}publish/ repository=$REPO_HREF``
+``$ http POST :24817${PUBLISHER_HREF}publish/ repository=$REPO_HREF``
 
 .. code:: json
 
@@ -99,12 +99,12 @@ Create a Publication using publisher `bar`
         }
     ]
 
-``$ export PUBLICATION_HREF=$(http :8000/pulp/api/v3/publications/ | jq -r --arg PUBLISHER_HREF "$PUBLISHER_HREF" '.results[] | select(.publisher==$PUBLISHER_HREF) | ._href')``
+``$ export PUBLICATION_HREF=$(http :24817/pulp/api/v3/publications/ | jq -r --arg PUBLISHER_HREF "$PUBLISHER_HREF" '.results[] | select(.publisher==$PUBLISHER_HREF) | ._href')``
 
 Create a Distribution for the Publication
 -----------------------------------------
 
-``$ http POST http://localhost:8000/pulp/api/v3/distributions/ name='baz' base_path='foo' publication=$PUBLICATION_HREF``
+``$ http POST http://localhost:24817/pulp/api/v3/distributions/ name='baz' base_path='foo' publication=$PUBLICATION_HREF``
 
 
 .. code:: json
