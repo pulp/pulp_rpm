@@ -43,7 +43,7 @@ clean:
 
 html:
 	mkdir -p $(BUILDDIR)/html
-	curl -o _build/html/api.json "http://localhost:8000/pulp/api/v3/docs/api.json?plugin=pulp_rpm"
+	curl -o _build/html/api.json "https://repos.fedorapeople.org/pulp/pulp/openapi/pulp_rpm.json"
 	$(SPHINXBUILD) -b html $(ALLSPHINXOPTS) $(BUILDDIR)/html
 	@echo
 	@echo "Build finished. The HTML pages are in $(BUILDDIR)/html."
