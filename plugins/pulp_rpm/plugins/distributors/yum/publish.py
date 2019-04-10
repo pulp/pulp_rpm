@@ -524,6 +524,13 @@ class PublishMetadataStep(platform_steps.UnitModelPluginStep):
 
         metadata_file_name = os.path.basename(unit._storage_path)
         file_path = os.path.join(publish_location_relative_path, metadata_file_name)
+
+        # it is possible to have symlink pointing to the file which should be copied
+        # see https://pulp.plan.io/issues/4661
+        if os.path.samefile(unit._storage_path, file_path):
+            # it's an old way of publishing,
+            # symlink should be removed so file is copied instead
+            os.unlink(file_path)
         shutil.copy2(unit._storage_path, file_path)
 
         # Add the proper relative reference to the metadata file to repomd
