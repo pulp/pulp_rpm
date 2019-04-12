@@ -21,6 +21,7 @@ from pulp_rpm.tests.functional.constants import (
     RPM_PACKAGES_COUNT,
     RPM_PACKAGE_CONTENT_NAME,
     RPM_REMOTE_PATH,
+    RPM_SHA512_FIXTURE_URL,
     RPM_SIGNED_FIXTURE_URL,
     RPM_UNSIGNED_FIXTURE_URL,
     RPM_UPDATED_UPDATEINFO_FIXTURE_URL,
@@ -364,3 +365,70 @@ class SyncMutatedUpdateRecordTestCase(unittest.TestCase):
             'Updated Gorilla_Erratum and the updated date contains timezone',
             mutated_updaterecords[RPM_UPDATERECORD_ID]
         )
+
+
+class SyncDiffChecksumPackagesTestCase(unittest.TestCase):
+    """Syncing duplicate NEVRA with different checksums."""
+
+    @classmethod
+    def setUpClass(cls):
+        """Create class-wide variables."""
+        cls.cfg = config.get_config()
+        cls.client = api.Client(cls.cfg, api.json_handler)
+
+    def test_all(self):
+        """Sync two fixture content with same NEVRA and different checksum.
+
+        Make sure we end up with the most recently synced content.
+
+        Do the following:
+
+        1. Create a repository
+        2. Create two remotes with same content but different checksums.
+            Sync the remotes one after the other.
+               a. Sync remote with packages with SHA256: ``RPM_UNSIGNED_FIXTURE_URL``.
+               b. Sync remote with packages with SHA512: ``RPM_SHA512_FIXTURE_URL``.
+        3. Make sure the latest content is only kept.
+
+        This test targets the following issues:
+
+        * `Pulp #4297 <https://pulp.plan.io/issues/4297>`_
+        * `Pulp #3954 <https://pulp.plan.io/issues/3954>`_
+        """
+        # Step 1
+        repo = self.client.post(REPO_PATH, gen_repo())
+        self.addCleanup(self.client.delete, repo['_href'])
+
+        # Step 2.
+
+        for body in [
+            gen_rpm_remote(),
+            gen_rpm_remote(url=RPM_SHA512_FIXTURE_URL)
+        ]:
+            remote = self.client.post(RPM_REMOTE_PATH, body)
+            self.addCleanup(self.client.delete, remote['_href'])
+            # Sync the repository.
+            sync(self.cfg, remote, repo)
+
+        # Step 3
+        repo = self.client.get(repo['_href'])
+        added_content = get_content(repo)[RPM_PACKAGE_CONTENT_NAME]
+        removed_content = get_removed_content(repo)[RPM_PACKAGE_CONTENT_NAME]
+
+        # In case of "duplicates" the most recent one is chosen, so the old
+        # package is removed from and the new one is added to a repo version.
+        self.assertEqual(
+            len(added_content),
+            RPM_PACKAGES_COUNT,
+            added_content
+        )
+        self.assertEqual(
+            len(removed_content),
+            RPM_PACKAGES_COUNT,
+            removed_content
+        )
+
+        # Verifying whether the packages with first checksum is removed and second
+        # is added.
+        self.assertEqual(added_content[0]['checksum_type'], 'sha512')
+        self.assertEqual(removed_content[0]['checksum_type'], 'sha256')
