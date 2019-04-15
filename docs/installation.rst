@@ -11,7 +11,47 @@ provided with pulpcore.
 Install ``pulp_rpm``
 --------------------
 
-Users should install from **either** PyPI or source.
+Users should install from **either** PyPI or source or use ansible-pulp installer.
+
+Install with Ansible-pulp
+*************************
+
+With the use of the ``ansible-pulp`` installer you need to download a supportive
+role before you run installer.
+
+Only Fedora 29+ and CentOS 7 (with epel repository and python36) are supported.
+
+.. code-block:: bash
+
+   git clone https://github.com/pulp/ansible-pulp.git
+   cd ansible-pulp
+   ansible-galaxy install pulp.pulp_rpm_prerequisites -p ./roles/
+
+Then use role you downloaded **before** ansible-pulp installer roles.
+
+.. code-block:: yaml
+
+   ---
+   - hosts: all
+     vars:
+       pulp_secret_key: secret
+       pulp_default_admin_password: password
+       pulp_install_plugins:
+         pulp-rpm:
+           app_label: "rpm"
+     roles:
+       - pulp.pulp_rpm_prerequisites
+       - pulp-database
+       - pulp-workers
+       - pulp-resource-manager
+       - pulp-webserver
+       - pulp-content
+     environment:
+       DJANGO_SETTINGS_MODULE: pulpcore.app.settings
+
+Now you can run installer against your desired host following instructions
+in the ansible-pulp installer.
+
 
 Install ``createrepo_c`` from source
 ************************************
