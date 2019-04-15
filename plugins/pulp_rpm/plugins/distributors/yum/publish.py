@@ -527,7 +527,7 @@ class PublishMetadataStep(platform_steps.UnitModelPluginStep):
 
         # it is possible to have symlink pointing to the file which should be copied
         # see https://pulp.plan.io/issues/4661
-        if os.path.samefile(unit._storage_path, file_path):
+        if os.path.isfile(file_path) and os.path.samefile(unit._storage_path, file_path):
             # it's an old way of publishing,
             # symlink should be removed so file is copied instead
             os.unlink(file_path)
