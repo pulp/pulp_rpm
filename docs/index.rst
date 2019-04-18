@@ -42,6 +42,7 @@ Table of Contents
    :maxdepth: 1
 
    installation
+   quickstart
    workflows/index
    release-notes/3.0.z.rst
 

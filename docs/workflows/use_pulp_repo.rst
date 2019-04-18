@@ -1,3 +1,5 @@
+.. _get-content-workflow:
+
 Get content from Pulp
 =====================
 
