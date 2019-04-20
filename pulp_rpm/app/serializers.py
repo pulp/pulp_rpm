@@ -2,13 +2,15 @@ from gettext import gettext as _
 
 from rest_framework import serializers
 
-from pulpcore.plugin.models import Repository
+from pulpcore.plugin.models import Repository, RepositoryVersion
 from pulpcore.plugin.serializers import (
     NoArtifactContentSerializer,
     SingleArtifactContentSerializer,
     RemoteSerializer,
     PublicationSerializer,
     PublicationDistributionSerializer,
+    NestedRelatedField,
+    validate_unknown_fields,
 )
 
 from pulp_rpm.app.models import (
@@ -20,6 +22,9 @@ from pulp_rpm.app.models import (
 )
 
 from pulp_rpm.app.fields import UpdateCollectionField, UpdateReferenceField
+
+
+from pulp_rpm.app.constants import RPM_PLUGIN_TYPE_CHOICE_MAP
 
 
 class PackageSerializer(SingleArtifactContentSerializer):
@@ -350,3 +355,95 @@ class RpmDistributionSerializer(PublicationDistributionSerializer):
     class Meta:
         fields = PublicationDistributionSerializer.Meta.fields
         model = RpmDistribution
+
+
+class CopySerializer(serializers.Serializer):
+    """
+    A serializer for Content Copy API.
+    """
+
+    source_repo = serializers.HyperlinkedRelatedField(
+        help_text=_('A URI of the repository.'),
+        required=False,
+        queryset=Repository.objects.all(),
+        view_name='repositories-detail',
+    )
+    source_repo_version = NestedRelatedField(
+        help_text=_('A URI of the repository version'),
+        required=False,
+        queryset=RepositoryVersion.objects.all(),
+        parent_lookup_kwargs={'repository_pk': 'repository__pk'},
+        lookup_field='number',
+        view_name='versions-detail',
+    )
+    dest_repo = serializers.HyperlinkedRelatedField(
+        help_text=_('A URI of the repository.'),
+        required=True,
+        queryset=Repository.objects.all(),
+        view_name='repositories-detail',
+    )
+    types = serializers.ListField(
+        help_text=_('A list of types to copy ["package", "advisory"]'),
+        write_only=True,
+        default=['package', 'advisory']
+    )
+
+    def validate(self, data):
+        """
+        Validate that the Serializer contains valid data.
+
+        Set the Repository based on the RepositoryVersion if only the latter is provided.
+        Set the RepositoryVersion based on the Repository if only the latter is provied.
+        Convert the human-friendly names of the content types into what Pulp needs to query on.
+
+        """
+        super().validate(data)
+        if hasattr(self, 'initial_data'):
+            validate_unknown_fields(self.initial_data, self.fields)
+
+        new_data = {}
+        new_data.update(data)
+
+        source_repo = data.get('source_repo')
+        source_repo_version = data.get('source_repo_version')
+
+        if not source_repo and not source_repo_version:
+            raise serializers.ValidationError(
+                _("Either the 'source_repo' or 'source_repo_version' need to be specified"))
+
+        if source_repo and source_repo_version:
+            raise serializers.ValidationError(
+                _("Either the 'source_repo' or 'source_repo_version' need to be specified "
+                  "but not both.")
+            )
+
+        if not source_repo and source_repo_version:
+            repo = {'source_repo': source_repo_version.repository}
+            new_data.update(repo)
+
+        if source_repo and not source_repo_version:
+            version = RepositoryVersion.latest(source_repo)
+            if version:
+                repo_version = {'source_repo_version': version}
+                new_data.update(repo_version)
+            else:
+                raise serializers.ValidationError(
+                    detail=_('Repository has no version available to copy'))
+
+        types = data.get('types')
+        final_types = []
+
+        if types:
+            for t in types:
+                substitution = RPM_PLUGIN_TYPE_CHOICE_MAP.get(t)
+                if not substitution:
+                    raise serializers.ValidationError(_(
+                        "'{type}' is an invalid type, please use one of {choices}".format(
+                            type=t,
+                            choices=list(RPM_PLUGIN_TYPE_CHOICE_MAP.keys())
+                        ))
+                    )
+                final_types.append(substitution)
+            new_data.update({'types': final_types})
+
+        return new_data
