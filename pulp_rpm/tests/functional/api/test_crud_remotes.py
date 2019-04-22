@@ -109,8 +109,20 @@ class CreateRemoteNoURLTestCase(unittest.TestCase):
         """
         body = gen_rpm_remote()
         del body['url']
+        response = api.Client(config.get_config(), api.echo_handler).post(
+            RPM_REMOTE_PATH, body
+        )
         with self.assertRaises(HTTPError):
-            api.Client(config.get_config()).post(RPM_REMOTE_PATH, body)
+            response.raise_for_status()
+
+        self.assertTrue(
+            all(
+                [
+                    key in response.json()['url'][0]
+                    for key in ['field', 'required']
+                ]
+            ), response.json()
+        )
 
 
 def _gen_verbose_remote():
