@@ -14,7 +14,7 @@ installed.
     cd pulplift
 
 
-Create your pulp_rpm.yaml playbook with these contents::
+Create your pulp_rpm.yaml playbook with these contents:
 
 .. code-block:: yaml
 
@@ -37,7 +37,7 @@ Create your pulp_rpm.yaml playbook with these contents::
        DJANGO_SETTINGS_MODULE: pulpcore.app.settings
 
 
-Install the dependency bootstrapping role ````:
+Install the dependency bootstrapping role ``pulp.pulp_rpm_prerequisites``:
 
     ansible-galaxy install pulp.pulp_rpm_prerequisites -p ./roles/
 
@@ -47,7 +47,6 @@ Start your box, run ansible on it, ssh to your box::
     vagrant up fedora29
     ansible-playbook pulp_rpm.yaml -l fedora29
     vagrant ssh fedora29
-
 
 
 Check Pulp's Status
