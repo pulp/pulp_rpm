@@ -41,7 +41,15 @@ class PulpBindings(Bindings):
             cfg['filesystem']['id_cert_dir'],
             cfg['filesystem']['id_cert_filename'])
         ssl = cfg.parse_bool(cfg['server']['verify_ssl'])
-        connection = PulpConnection(host, port, cert_filename=cert, verify_ssl=ssl)
+        proxy_host = cfg['server']['proxy_host']
+        proxy_port = int(cfg['server']['proxy_port'])
+        connection = PulpConnection(
+            host,
+            port,
+            cert_filename=cert,
+            verify_ssl=ssl,
+            proxy_host=proxy_host,
+            proxy_port=proxy_port)
         Bindings.__init__(self, connection)
 
 
