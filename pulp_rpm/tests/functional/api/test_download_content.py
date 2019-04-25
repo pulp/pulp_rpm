@@ -11,17 +11,15 @@ from pulp_smash.pulp3.utils import (
     download_content_unit,
     gen_distribution,
     gen_repo,
-    publish,
     sync,
 )
 
 from pulp_rpm.tests.functional.utils import (
-    gen_rpm_publisher,
     gen_rpm_remote,
     get_rpm_package_paths,
+    publish,
 )
 from pulp_rpm.tests.functional.constants import (
-    RPM_PUBLISHER_PATH,
     RPM_REMOTE_PATH,
     RPM_UNSIGNED_FIXTURE_URL,
 )
@@ -70,12 +68,8 @@ class DownloadContentTestCase(unittest.TestCase):
         sync(cfg, remote, repo)
         repo = client.get(repo['_href'])
 
-        # Create a publisher.
-        publisher = client.post(RPM_PUBLISHER_PATH, gen_rpm_publisher())
-        self.addCleanup(client.delete, publisher['_href'])
-
         # Create a publication.
-        publication = publish(cfg, publisher, repo)
+        publication = publish(cfg, repo)
         self.addCleanup(client.delete, publication['_href'])
 
         # Create a distribution.

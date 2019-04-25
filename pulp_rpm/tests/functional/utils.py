@@ -10,7 +10,6 @@ from pulp_smash.pulp3.constants import (
     REPO_PATH
 )
 from pulp_smash.pulp3.utils import (
-    gen_publisher,
     gen_remote,
     gen_repo,
     get_content,
@@ -22,6 +21,7 @@ from pulp_smash.pulp3.utils import (
 from pulp_rpm.tests.functional.constants import (
     RPM_CONTENT_PATH,
     RPM_PACKAGE_CONTENT_NAME,
+    RPM_PUBLICATION_PATH,
     RPM_REMOTE_PATH,
     RPM_SIGNED_FIXTURE_URL,
     RPM_UNSIGNED_FIXTURE_URL,
@@ -43,19 +43,6 @@ def gen_rpm_remote(url=None, **kwargs):
         url = RPM_UNSIGNED_FIXTURE_URL
 
     return gen_remote(url, **kwargs)
-
-
-def gen_rpm_publisher(**kwargs):
-    """Return a semi-random dict for use in creating a Remote.
-
-    :param url: The URL of an external content source.
-    """
-    publisher = gen_publisher()
-    rpm_extra_fields = {
-        **kwargs
-    }
-    publisher.update(rpm_extra_fields)
-    return publisher
 
 
 def get_rpm_package_paths(repo):
@@ -148,6 +135,27 @@ def gen_yum_config_file(cfg, repositoryid, baseurl, name, **kwargs):
             )
         )
     return path
+
+
+def publish(cfg, repo, version_href=None):
+    """Publish a repository.
+
+    :param pulp_smash.config.PulpSmashConfig cfg: Information about the Pulp
+        host.
+    :param repo: A dict of information about the repository.
+    :param version_href: A href for the repo version to be published.
+    :returns: A publication. A dict of information about the just created
+        publication.
+    """
+    if version_href:
+        body = {"repository_version": version_href}
+    else:
+        body = {"repository": repo["_href"]}
+
+    client = api.Client(cfg, api.json_handler)
+    call_report = client.post(RPM_PUBLICATION_PATH, body)
+    tasks = tuple(api.poll_spawned_tasks(cfg, call_report))
+    return client.get(tasks[-1]["created_resources"][0])
 
 
 skip_if = partial(selectors.skip_if, exc=SkipTest)

@@ -9,7 +9,6 @@ from django.utils.dateparse import parse_datetime
 
 from pulpcore.plugin.models import (
     RepositoryVersion,
-    Publication,
     PublishedArtifact,
     PublishedMetadata,
     RemoteArtifact,
@@ -17,7 +16,7 @@ from pulpcore.plugin.models import (
 
 from pulpcore.plugin.tasking import WorkingDirectory
 
-from pulp_rpm.app.models import Package, RpmPublisher, UpdateRecord
+from pulp_rpm.app.models import Package, RpmPublication, UpdateRecord
 
 log = logging.getLogger(__name__)
 
@@ -82,25 +81,22 @@ def update_record_xml(update_record):
     return cr.xml_dump_updaterecord(rec)
 
 
-def publish(publisher_pk, repository_version_pk):
+def publish(repository_version_pk):
     """
-    Use provided publisher to create a Publication based on a RepositoryVersion.
+    Create a Publication based on a RepositoryVersion.
 
     Args:
-        publisher_pk (str): Use the publish settings provided by this publisher.
         repository_version_pk (str): Create a publication from this repository version.
     """
-    publisher = RpmPublisher.objects.get(pk=publisher_pk)
     repository_version = RepositoryVersion.objects.get(pk=repository_version_pk)
 
-    log.info(_('Publishing: repository={repo}, version={version}, publisher={publisher}').format(
+    log.info(_('Publishing: repository={repo}, version={version}').format(
         repo=repository_version.repository.name,
         version=repository_version.number,
-        publisher=publisher.name,
     ))
 
     with WorkingDirectory():
-        with Publication.create(repository_version, publisher) as publication:
+        with RpmPublication.create(repository_version) as publication:
             populate(publication)
 
             # Prepare metadata files

@@ -7,10 +7,10 @@ from pulpcore.plugin.serializers import (
     NoArtifactContentSerializer,
     SingleArtifactContentSerializer,
     RemoteSerializer,
-    PublisherSerializer,
+    PublicationSerializer,
 )
 
-from pulp_rpm.app.models import Package, RpmRemote, RpmPublisher, UpdateRecord
+from pulp_rpm.app.models import Package, RpmRemote, RpmPublication, UpdateRecord
 
 
 class PackageSerializer(SingleArtifactContentSerializer):
@@ -221,14 +221,14 @@ class RpmRemoteSerializer(RemoteSerializer):
         model = RpmRemote
 
 
-class RpmPublisherSerializer(PublisherSerializer):
+class RpmPublicationSerializer(PublicationSerializer):
     """
-    A Serializer for RpmPublisher.
+    A Serializer for RpmPublication.
     """
 
     class Meta:
-        fields = PublisherSerializer.Meta.fields
-        model = RpmPublisher
+        fields = PublicationSerializer.Meta.fields
+        model = RpmPublication
 
 
 class UpdateRecordSerializer(NoArtifactContentSerializer):

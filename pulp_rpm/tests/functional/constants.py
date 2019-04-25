@@ -5,7 +5,7 @@ from urllib.parse import urljoin
 from pulp_smash.constants import PULP_FIXTURES_BASE_URL
 from pulp_smash.pulp3.constants import (
     BASE_PATH,
-    BASE_PUBLISHER_PATH,
+    BASE_PUBLICATION_PATH,
     BASE_REMOTE_PATH,
     CONTENT_PATH,
 )
@@ -25,7 +25,7 @@ RPM_CONTENT_PATH = urljoin(CONTENT_PATH, 'rpm/packages/')
 
 RPM_REMOTE_PATH = urljoin(BASE_REMOTE_PATH, 'rpm/rpm/')
 
-RPM_PUBLISHER_PATH = urljoin(BASE_PUBLISHER_PATH, 'rpm/rpm/')
+RPM_PUBLICATION_PATH = urljoin(BASE_PUBLICATION_PATH, 'rpm/rpm/')
 
 RPM_SHA512_FIXTURE_URL = urljoin(PULP_FIXTURES_BASE_URL, 'rpm-with-sha-512/')
 """The URL to an RPM repository with sha512 checksum."""

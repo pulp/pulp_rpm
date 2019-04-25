@@ -7,11 +7,10 @@ from rest_framework import serializers, status, views
 from rest_framework.decorators import detail_route
 from rest_framework.response import Response
 
-from pulpcore.plugin.models import Artifact, RepositoryVersion
+from pulpcore.plugin.models import Artifact
 from pulpcore.plugin.tasking import enqueue_with_reservation
 from pulpcore.plugin.serializers import (
     AsyncOperationResponseSerializer,
-    RepositoryPublishURLSerializer,
     RepositorySyncURLSerializer
 )
 from pulpcore.plugin.viewsets import (
@@ -19,20 +18,20 @@ from pulpcore.plugin.viewsets import (
     ContentViewSet,
     RemoteViewSet,
     OperationPostponedResponse,
-    PublisherViewSet
+    PublicationViewSet
 )
 
 from pulp_rpm.app import tasks
 from pulp_rpm.app.shared_utils import _prepare_package
-from pulp_rpm.app.models import Package, RpmRemote, RpmPublisher, UpdateRecord
+from pulp_rpm.app.models import Package, RpmRemote, RpmPublication, UpdateRecord
 from pulp_rpm.app.serializers import (
     MinimalPackageSerializer,
-    PackageSerializer,
-    RpmRemoteSerializer,
-    RpmPublisherSerializer,
-    UpdateRecordSerializer,
     MinimalUpdateRecordSerializer,
     OneShotUploadSerializer,
+    PackageSerializer,
+    RpmRemoteSerializer,
+    RpmPublicationSerializer,
+    UpdateRecordSerializer,
 )
 
 from .upload import one_shot_upload
@@ -141,48 +140,6 @@ class RpmRemoteViewSet(RemoteViewSet):
         return OperationPostponedResponse(result, request)
 
 
-class RpmPublisherViewSet(PublisherViewSet):
-    """
-    A ViewSet for RpmPublisher.
-    """
-
-    endpoint_name = 'rpm'
-    queryset = RpmPublisher.objects.all()
-    serializer_class = RpmPublisherSerializer
-
-    @swagger_auto_schema(
-        operation_description="Trigger an asynchronous task to publish RPM content.",
-        responses={202: AsyncOperationResponseSerializer}
-    )
-    @detail_route(methods=('post',), serializer_class=RepositoryPublishURLSerializer)
-    def publish(self, request, pk):
-        """
-        Dispatches a publish task.
-        """
-        publisher = self.get_object()
-        serializer = RepositoryPublishURLSerializer(
-            data=request.data,
-            context={'request': request}
-        )
-        serializer.is_valid(raise_exception=True)
-        repository_version = serializer.validated_data.get('repository_version')
-
-        # Safe because version OR repository is enforced by serializer.
-        if not repository_version:
-            repository = serializer.validated_data.get('repository')
-            repository_version = RepositoryVersion.latest(repository)
-
-        result = enqueue_with_reservation(
-            tasks.publish,
-            [repository_version.repository, publisher],
-            kwargs={
-                'publisher_pk': publisher.pk,
-                'repository_version_pk': repository_version.pk
-            }
-        )
-        return OperationPostponedResponse(result, request)
-
-
 class UpdateRecordFilter(ContentFilter):
     """
     FilterSet for UpdateRecord.
@@ -254,3 +211,35 @@ class OneShotUploadView(views.APIView):
                 'repository': repository,
             })
         return OperationPostponedResponse(async_result, request)
+
+
+class RpmPublicationViewSet(PublicationViewSet):
+    """
+    ViewSet for Rpm Publications.
+    """
+
+    endpoint_name = 'rpm'
+    queryset = RpmPublication.objects.all()
+    serializer_class = RpmPublicationSerializer
+
+    @swagger_auto_schema(
+        operation_description="Trigger an asynchronous task to create a new RPM "
+                              "content publication.",
+        responses={202: AsyncOperationResponseSerializer}
+    )
+    def create(self, request):
+        """
+        Dispatches a publish task.
+        """
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        repository_version = serializer.validated_data.get('repository_version')
+
+        result = enqueue_with_reservation(
+            tasks.publish,
+            [repository_version.repository],
+            kwargs={
+                'repository_version_pk': repository_version.pk
+            }
+        )
+        return OperationPostponedResponse(result, request)

@@ -70,25 +70,10 @@ Look at the new Repository Version created
     }
 
 
-Create a ``rpm`` Publisher
---------------------------
+Create a Publication
+--------------------
 
-``$ http POST http://localhost:24817/pulp/api/v3/publishers/rpm/rpm/ name=bar``
-
-.. code:: json
-
-    {
-        "_href": "/pulp/api/v3/publishers/rpm/rpm/72f01cf0-3ab6-486c-bd76-38fdb3e295d4/",
-        ...
-    }
-
-``$ export PUBLISHER_HREF=$(http :24817/pulp/api/v3/publishers/rpm/rpm/ | jq -r '.results[] | select(.name == "bar") | ._href')``
-
-
-Create a Publication using publisher `bar`
-------------------------------------------
-
-``$ http POST :24817${PUBLISHER_HREF}publish/ repository=$REPO_HREF``
+``$ http POST :24817/pulp/api/v3/publications/rpm/rpm/ repository=$REPO_HREF``
 
 .. code:: json
 
@@ -99,7 +84,7 @@ Create a Publication using publisher `bar`
         }
     ]
 
-``$ export PUBLICATION_HREF=$(http :24817/pulp/api/v3/publications/ | jq -r --arg PUBLISHER_HREF "$PUBLISHER_HREF" '.results[] | select(.publisher==$PUBLISHER_HREF) | ._href')``
+``$ export PUBLICATION_HREF=$(http :24817/pulp/api/v3/publications/rpm/rpm/ | jq -r '.results[] | ._href')``
 
 Create a Distribution for the Publication
 -----------------------------------------

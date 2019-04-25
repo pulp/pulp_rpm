@@ -9,18 +9,16 @@ from pulp_smash.pulp3.utils import (
     gen_repo,
     get_added_content_summary,
     get_content_summary,
-    publish,
     sync,
 )
 
 from pulp_rpm.tests.functional.constants import (
     RPM_FIXTURE_SUMMARY,
-    RPM_PUBLISHER_PATH,
     RPM_REMOTE_PATH,
 )
 from pulp_rpm.tests.functional.utils import (
-    gen_rpm_publisher,
     gen_rpm_remote,
+    publish,
 )
 from pulp_rpm.tests.functional.utils import set_up_module as setUpModule  # noqa:F401
 
@@ -122,8 +120,5 @@ class SyncPublishDownloadPolicyTestCase(unittest.TestCase):
         sync(self.cfg, remote, repo)
         repo = self.client.get(repo['_href'])
 
-        publisher = self.client.post(RPM_PUBLISHER_PATH, gen_rpm_publisher())
-        self.addCleanup(self.client.delete, publisher['_href'])
-
-        publication = publish(self.cfg, publisher, repo)
+        publication = publish(self.cfg, repo)
         self.assertIsNotNone(publication['repository_version'], publication)
