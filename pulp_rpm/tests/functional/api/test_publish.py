@@ -2,7 +2,6 @@
 """Tests that publish rpm plugin repositories."""
 import unittest
 from random import choice
-from urllib.parse import urljoin
 
 from requests.exceptions import HTTPError
 
@@ -13,12 +12,10 @@ from pulp_smash.pulp3.utils import (
     get_content,
     get_content_summary,
     get_versions,
-    publish,
     sync,
 )
 
 from pulp_rpm.tests.functional.utils import (
-    gen_rpm_publisher,
     gen_rpm_remote,
 )
 from pulp_rpm.tests.functional.constants import (
@@ -26,14 +23,14 @@ from pulp_rpm.tests.functional.constants import (
     RPM_FIXTURE_SUMMARY,
     RPM_LONG_UPDATEINFO_FIXTURE_URL,
     RPM_PACKAGE_CONTENT_NAME,
-    RPM_PUBLISHER_PATH,
+    RPM_PUBLICATION_PATH,
     RPM_REFERENCES_UPDATEINFO_URL,
     RPM_REMOTE_PATH,
     RPM_RICH_WEAK_FIXTURE_URL,
     RPM_SHA512_FIXTURE_URL,
     SRPM_UNSIGNED_FIXTURE_URL,
 )
-from pulp_rpm.tests.functional.utils import set_up_module as setUpModule  # noqa:F401
+from pulp_rpm.tests.functional.utils import publish, set_up_module as setUpModule  # noqa:F401
 
 
 class PublishAnyRepoVersionTestCase(unittest.TestCase):
@@ -74,9 +71,6 @@ class PublishAnyRepoVersionTestCase(unittest.TestCase):
 
         sync(self.cfg, remote, repo)
 
-        publisher = self.client.post(RPM_PUBLISHER_PATH, gen_rpm_publisher())
-        self.addCleanup(self.client.delete, publisher['_href'])
-
         # Step 1
         repo = self.client.get(repo['_href'])
         for rpm_content in get_content(repo)[RPM_PACKAGE_CONTENT_NAME]:
@@ -88,13 +82,13 @@ class PublishAnyRepoVersionTestCase(unittest.TestCase):
         non_latest = choice(version_hrefs[:-1])
 
         # Step 2
-        publication = publish(self.cfg, publisher, repo)
+        publication = publish(self.cfg, repo)
 
         # Step 3
         self.assertEqual(publication['repository_version'], version_hrefs[-1])
 
         # Step 4
-        publication = publish(self.cfg, publisher, repo, non_latest)
+        publication = publish(self.cfg, repo, non_latest)
 
         # Step 5
         self.assertEqual(publication['repository_version'], non_latest)
@@ -105,7 +99,7 @@ class PublishAnyRepoVersionTestCase(unittest.TestCase):
                 'repository': repo['_href'],
                 'repository_version': non_latest
             }
-            self.client.post(urljoin(publisher['_href'], 'publish/'), body)
+            self.client.post(RPM_PUBLICATION_PATH, body)
 
 
 class SyncPublishReferencesUpdateTestCase(unittest.TestCase):
@@ -143,10 +137,7 @@ class SyncPublishReferencesUpdateTestCase(unittest.TestCase):
             content_summary
         )
 
-        publisher = self.client.post(RPM_PUBLISHER_PATH, gen_rpm_publisher())
-        self.addCleanup(self.client.delete, publisher['_href'])
-
-        publication = publish(self.cfg, publisher, repo)
+        publication = publish(self.cfg, repo)
         self.addCleanup(self.client.delete, publication['_href'])
 
 
@@ -198,8 +189,5 @@ class SyncPublishTestCase(unittest.TestCase):
 
         self.assertIsNotNone(repo['_latest_version_href'])
 
-        publisher = self.client.post(RPM_PUBLISHER_PATH, gen_rpm_publisher())
-        self.addCleanup(self.client.delete, publisher['_href'])
-
-        publication = publish(self.cfg, publisher, repo)
+        publication = publish(self.cfg, repo)
         self.addCleanup(self.client.delete, publication['_href'])

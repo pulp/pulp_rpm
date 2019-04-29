@@ -9,20 +9,17 @@ from pulp_smash.pulp3.constants import DISTRIBUTION_PATH, REPO_PATH
 from pulp_smash.pulp3.utils import (
     gen_distribution,
     gen_repo,
-    publish,
     sync,
 )
 
 from pulp_rpm.tests.functional.utils import (
-    gen_rpm_publisher,
     gen_rpm_remote,
 )
 from pulp_rpm.tests.functional.constants import (
-    RPM_PUBLISHER_PATH,
     RPM_REMOTE_PATH,
 )
 from pulp_rpm.tests.functional.utils import set_up_module as setUpModule  # noqa:F401
-from pulp_rpm.tests.functional.utils import gen_yum_config_file
+from pulp_rpm.tests.functional.utils import gen_yum_config_file, publish
 
 
 class PackageManagerConsumeTestCase(unittest.TestCase):
@@ -51,10 +48,7 @@ class PackageManagerConsumeTestCase(unittest.TestCase):
 
         sync(cfg, remote, repo)
 
-        publisher = client.post(RPM_PUBLISHER_PATH, gen_rpm_publisher())
-        self.addCleanup(client.delete, publisher['_href'])
-
-        publication = publish(cfg, publisher, repo)
+        publication = publish(cfg, repo)
         self.addCleanup(client.delete, publication['_href'])
 
         body = gen_distribution()
