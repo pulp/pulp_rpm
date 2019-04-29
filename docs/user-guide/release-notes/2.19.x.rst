@@ -2,6 +2,21 @@
 Pulp 2.19 Release Notes
 =======================
 
+Pulp 2.19.1
+===========
+
+Bug Fixes
+---------
+
+See the list of :fixedbugs_pulp_rpm:`2.19.1`
+
+* Upgrade (from <=2.16 to 2.17+) fix: `Issue 4741 <https://pulp.plan.io/issues/4741>`_
+
+  * Old experimental modular content which doesn't contain all the necessary information,
+    like in Fedora 26, is skipped during migration and unassociated from a repo. Such
+    content becomes orphaned and can be removed from Pulp with the orphan cleanup task.
+
+
 Pulp 2.19.0
 ===========
 
