@@ -6,7 +6,7 @@ from uuid import uuid4
 from hashlib import sha256
 
 import bson
-from mongoengine import Q, NotUniqueError
+from mongoengine import Q, NotUniqueError, ValidationError
 
 from pulp.plugins.loader import api as plugin_api
 from pulp.server.controllers import repository as repository_controller
@@ -164,6 +164,11 @@ def add_modulemd(repository, modulemd, model, working_dir):
         model.save_and_import_content(path)
     except NotUniqueError:
         model = Modulemd.objects.get(**model.unit_key)
+    except ValidationError as e:
+        _logger.warn("Modulemd content import failure. Repo: %s, content: %s, "
+                     "error: %s" % (repository.repo_id, model.unit_key, e))
+        return
+
     repository_controller.associate_single_unit(repository, model)
 
 
