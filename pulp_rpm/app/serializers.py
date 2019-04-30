@@ -10,7 +10,14 @@ from pulpcore.plugin.serializers import (
     PublicationSerializer,
 )
 
-from pulp_rpm.app.models import Package, RpmRemote, RpmPublication, UpdateRecord
+from pulp_rpm.app.models import (
+    Package,
+    RpmRemote,
+    RpmPublication,
+    UpdateRecord,
+)
+
+from pulp_rpm.app.fields import UpdateCollectionField, UpdateReferenceField
 
 
 class PackageSerializer(SingleArtifactContentSerializer):
@@ -285,12 +292,21 @@ class UpdateRecordSerializer(NoArtifactContentSerializer):
         help_text=_("Push count")
     )
 
+    pkglist = UpdateCollectionField(
+        source='pk', read_only=True,
+        help_text=_("List of packages")
+    )
+    references = UpdateReferenceField(
+        source='pk', read_only=True,
+        help_text=_("List of references")
+    )
+
     class Meta:
         fields = NoArtifactContentSerializer.Meta.fields + (
             'id', 'updated_date', 'description', 'issued_date',
             'fromstr', 'status', 'title', 'summary', 'version',
             'type', 'severity', 'solution', 'release', 'rights',
-            'pushcount'
+            'pushcount', 'pkglist', 'references'
         )
         model = UpdateRecord
 
