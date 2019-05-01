@@ -191,12 +191,12 @@ class TestEraseRepomdRevision(BaseSyncTest):
     def test_erase_scratchpad(self):
         self.conduit.get_scratchpad.return_value = {'a': 2}
 
-        self.reposync.erase_repomd_revision()
+        self.reposync.erase_repomd_details()
 
         self.conduit.set_scratchpad.assert_called_once_with({
             'a': 2,
             constants.REPOMD_REVISION_KEY: None,
-        })
+            constants.REPOMD_CHECKSUM_KEY: None})
 
 
 @skip_broken
@@ -204,7 +204,7 @@ class TestSaveRepomdRevision(BaseSyncTest):
     def test_empty_scratchpad(self):
         self.reposync.current_revision = 1234
 
-        self.reposync.save_repomd_revision()
+        self.reposync.save_repomd_details()
 
         self.conduit.set_scratchpad.assert_called_once_with({
             constants.REPOMD_REVISION_KEY: 1234,
@@ -214,7 +214,7 @@ class TestSaveRepomdRevision(BaseSyncTest):
         self.conduit.get_scratchpad.return_value = {'a': 2}
         self.reposync.current_revision = 1234
 
-        self.reposync.save_repomd_revision()
+        self.reposync.save_repomd_details()
 
         expected = {
             constants.REPOMD_REVISION_KEY: 1234,
@@ -226,7 +226,7 @@ class TestSaveRepomdRevision(BaseSyncTest):
         self.conduit.get_scratchpad.return_value = None
         self.reposync.current_revision = 1234
 
-        self.reposync.save_repomd_revision()
+        self.reposync.save_repomd_details()
 
         self.conduit.set_scratchpad.assert_called_once_with({
             constants.REPOMD_REVISION_KEY: 1234,
@@ -238,7 +238,7 @@ class TestSaveRepomdRevision(BaseSyncTest):
         """
         self.reposync.content_report['error_details'] = [{'a': 2}]
 
-        self.reposync.save_repomd_revision()
+        self.reposync.save_repomd_details()
 
         self.assertEqual(self.conduit.set_scratchpad.call_count, 0)
 
@@ -248,7 +248,7 @@ class TestSaveRepomdRevision(BaseSyncTest):
         """
         self.reposync.content_report[constants.PROGRESS_STATE_KEY] = constants.STATE_FAILED
 
-        self.reposync.save_repomd_revision()
+        self.reposync.save_repomd_details()
 
         self.assertEqual(self.conduit.set_scratchpad.call_count, 0)
 
@@ -258,7 +258,7 @@ class TestSaveRepomdRevision(BaseSyncTest):
         """
         self.reposync.content_report[constants.PROGRESS_STATE_KEY] = constants.STATE_CANCELLED
 
-        self.reposync.save_repomd_revision()
+        self.reposync.save_repomd_details()
 
         self.assertEqual(self.conduit.set_scratchpad.call_count, 0)
 
@@ -441,8 +441,8 @@ class TestRun(BaseSyncTest):
             spec_set=self.reposync.get_comps_file_units)
 
         self.reposync.set_progress = mock.MagicMock(spec_set=self.reposync.set_progress)
-        self.reposync.save_repomd_revision = mock.MagicMock(
-            spec_set=self.reposync.save_repomd_revision)
+        self.reposync.save_repomd_details = mock.MagicMock(
+            spec_set=self.reposync.save_repomd_details)
 
     def test_sync_feed_is_empty_list(self):
 
@@ -483,7 +483,7 @@ class TestRun(BaseSyncTest):
                            group.ENVIRONMENT_TAG),
                  mock.call(self.metadata_files, group.process_category_element, group.CATEGORY_TAG)]
         self.reposync.get_comps_file_units.assert_has_calls(calls, any_order=True)
-        self.reposync.save_repomd_revision.assert_called_once_with()
+        self.reposync.save_repomd_details.assert_called_once_with()
 
         mock_treeinfo_sync.assert_called_once_with(self.conduit, self.url,
                                                    mock_mkdtemp.return_value,
@@ -601,8 +601,11 @@ class TestGetMetadata(BaseSyncTest):
         # Keep metadata the same
         mock_metadata_instance = mock_metadata_files.return_value
         mock_metadata_instance.revision = 1234
+        mock_metadata_instance.repomd_checksum = 'abcdef0123456789'
         mock_metadata_instance.downloader = mock.MagicMock()
-        self.conduit.get_scratchpad.return_value = {constants.REPOMD_REVISION_KEY: 1234}
+        self.conduit.get_scratchpad.return_value = {
+            constants.REPOMD_REVISION_KEY: 1234,
+            constants.REPOMD_CHECKSUM_KEY: 'abcdef0123456789'}
         self.conduit.last_sync = mock.MagicMock(return_value=None)
         self.reposync.import_unknown_metadata_files = mock.MagicMock(
             spec_set=self.reposync.import_unknown_metadata_files)
@@ -624,8 +627,11 @@ class TestGetMetadata(BaseSyncTest):
 
         mock_metadata_instance = mock_metadata_files.return_value
         mock_metadata_instance.revision = 1234
+        mock_metadata_instance.repomd_checksum = 'abcdef0123456789'
         mock_metadata_instance.downloader = mock.MagicMock()
-        self.conduit.get_scratchpad.return_value = {constants.REPOMD_REVISION_KEY: 1234}
+        self.conduit.get_scratchpad.return_value = {
+            constants.REPOMD_REVISION_KEY: 1234,
+            constants.REPOMD_CHECKSUM_KEY: 'abcdef0123456789'}
         self.conduit.last_sync = mock.MagicMock(return_value=None)
 
         ret = self.reposync.get_metadata(self.reposync.check_metadata(self.url))
@@ -646,8 +652,11 @@ class TestGetMetadata(BaseSyncTest):
 
         mock_metadata_instance = mock_metadata_files.return_value
         mock_metadata_instance.revision = 0
+        mock_metadata_instance.repomd_checksum = ''
         mock_metadata_instance.downloader = mock.MagicMock()
-        self.conduit.get_scratchpad.return_value = {constants.REPOMD_REVISION_KEY: 0}
+        self.conduit.get_scratchpad.return_value = {
+            constants.REPOMD_REVISION_KEY: 0,
+            constants.REPOMD_CHECKSUM_KEY: ''}
         self.conduit.last_sync = mock.MagicMock(return_value=None)
         self.reposync.import_unknown_metadata_files = mock.MagicMock(
             spec_set=self.reposync.import_unknown_metadata_files)
@@ -687,6 +696,7 @@ class TestGetMetadata(BaseSyncTest):
 
         mock_metadata_instance = mock_metadata_files.return_value
         mock_metadata_instance.revision = int(time.time()) + 60 * 60 * 24
+        mock_metadata_instance.repomd_checksum = 'abcdef0123456789'
         mock_metadata_instance.downloader = mock.MagicMock()
         self.reposync.import_unknown_metadata_files = mock.MagicMock(
             spec_set=self.reposync.import_unknown_metadata_files)
