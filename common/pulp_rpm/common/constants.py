@@ -196,6 +196,7 @@ REPO_AUTH_CONFIG_FILE = '/etc/pulp/repo_auth.conf'
 
 # used in the scratchpad
 REPOMD_REVISION_KEY = 'repomd_revision'
+REPOMD_CHECKSUM_KEY = 'repomd_checksum'
 
 COMMON_NAMESPACE = 'http://linux.duke.edu/metadata/common'
 RPM_NAMESPACE = 'http://linux.duke.edu/metadata/rpm'
