@@ -395,10 +395,8 @@ Non-modular Errata and related RPMs, simple case
 
     Older version ``foo-0.7.rpm`` remains in the repo B. 
     Using either ``recursive`` or ``recursive_conservative`` flag
-    ``foo-1.0`.rpm`` is copied to repo B as well since 
+    ``foo-1.0.rpm`` is copied to repo B as well since
     ``erratum-FOO`` refers to it.
-    with any recursive flag foo-1.0 is copied anyway
-    because erratum-FOO refers to it.
 
 
 Non-modular Errata and related RPMs, complicated case
@@ -409,14 +407,15 @@ Non-modular Errata and related RPMs, complicated case
 
 ::
 
-   dependencies: foo.rpm -> bar.rpm -> baz.rpm
-   erratum-FOO: [foo-1.0.rpm]
+   dependencies: foo.rpm -> bar.rpm -> bax.rpm-> baz.rpm
+   erratum-FOO: [foo-1.0.rpm, bar-1.0.rpm]
 
    repo A
      |
      |----erratum-FOO
      |----foo-1.0.rpm
      |----bar-1.0.rpm
+     |----bax-1.0.rpm
      |----baz-1.0.rpm
 
 
@@ -424,6 +423,8 @@ Non-modular Errata and related RPMs, complicated case
      |
      |----foo-0.7.rpm
      |----bar-0.7.rpm
+     |----bax-0.7.rpm
+
 
 
 | Use case #1: copy erratum and related RPMs and RPMs' *latest* dependencies
@@ -438,24 +439,38 @@ Non-modular Errata and related RPMs, complicated case
      |----erratum-FOO
      |----foo-1.0.rpm
      |----bar-1.0.rpm
+     |----bax-1.0.rpm
      |----baz-1.0.rpm
      |----foo-0.7.rpm
      |----bar-0.7.rpm
+     |----bax-0.7.rpm
 
 | Use case #2: copy erratum and related RPMs and RPMs' *missing* dependencies
 | Flag to use: ``recursive_conservative``
 
 ::
 
-    Result of copying module-FOO from repo A to repo B:
+    Result of copying erratum-FOO from repo A to repo B:
 
     repo B
      |
      |----erratum-FOO
      |----foo-1.0.rpm
+     |----bar-1.0.rpm
      |----baz-1.0.rpm
      |----foo-0.7.rpm
      |----bar-0.7.rpm
+     |----bax-0.7.rpm
+
+    RPMs which are referred in an erratum are always copied.
+    ``foo-1.0.rpm``IS copied because it's referred in the erratum, even though ``foo-0.7.rpm``
+    is present in repo B.
+    ``bar.rpm`` is a dependency for ``foo.rpm``. ``bar-1.0.rpm`` IS copied because it's
+    referred in the erratum, even though ``bar-0.7.rpm`` is present in repo B.
+    ``bax.rpm`` is a dependency for ``bar.rpm``. ``bax-1.0.rpm`` is NOT copied because it's NOT
+    referred in the erratum, and ``bax-0.7.rpm`` is present in repo B.
+    ``baz.rpm`` is a dependency for ``bax.rpm``. ``baz-1.0.rpm`` IS copied because it's absent in
+    repo B.
 
 
 Modular Errata and related Modules/RPMs, simple case
