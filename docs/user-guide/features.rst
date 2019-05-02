@@ -393,7 +393,10 @@ Non-modular Errata and related RPMs, simple case
      |----foo-0.7.rpm
      |----bar-0.7.rpm
 
-    Even though older version of foo is in the repo B,
+    Older version ``foo-0.7.rpm`` remains in the repo B. 
+    Using either ``recursive`` or ``recursive_conservative`` flag
+    ``foo-1.0`.rpm`` is copied to repo B as well since 
+    ``erratum-FOO`` refers to it.
     with any recursive flag foo-1.0 is copied anyway
     because erratum-FOO refers to it.
 
