@@ -138,6 +138,7 @@ class MetadataFiles(object):
                                                            self.event_listener)
 
         self.revision = None
+        self.repomd_checksum = None
         self.metadata = {}
         self.dbs = {}
         self.rpm_count = None
@@ -158,12 +159,18 @@ class MetadataFiles(object):
         """
         Parse the downloaded repomd.xml file and populate the metadata dictionary.
 
+        Also calculates and saves checksum of repomd.xml for futher use during
+        sync optimization checks.
+
         :raises PulpCodedException: if any of necessary metadata files are not found
         """
         repomd_file_path = os.path.join(self.dst_dir, REPOMD_FILE_NAME)
 
         if not os.access(repomd_file_path, os.F_OK | os.R_OK):
             raise RuntimeError('%s has not been downloaded' % REPOMD_FILE_NAME)
+
+        with open(repomd_file_path) as f:
+            self.repomd_checksum = hashlib.sha256(f.read()).hexdigest()
 
         parser = iterparse(repomd_file_path, events=('start', 'end'))
         xml_iterator = iter(parser)
