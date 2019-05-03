@@ -547,11 +547,26 @@ class RepoSync(object):
         Import metadata files whose type is not known to us. These are any files
         that we are not already parsing.
 
+        Skip those which we don't support yet and which can break repo if not supported fully.
+
         :param metadata_files:  object containing access to all metadata files
         :type  metadata_files:  pulp_rpm.plugins.importers.yum.repomd.metadata.MetadataFiles
         """
+        def is_needed(metadata_type):
+            """
+            Decide if metadata should be processed or should be skipped.
+
+            Skip zchunk metadata.
+
+            :param metadata_type: type of metadata
+            :type  metadata_type: str
+            :return: True, if metadata should be processed, otherwise it is skipped
+            :rtype: bool
+            """
+            return not metadata_type.endswith('_zck')
+
         for metadata_type, file_info in metadata_files.metadata.iteritems():
-            if metadata_type not in metadata_files.KNOWN_TYPES:
+            if metadata_type not in metadata_files.KNOWN_TYPES and is_needed(metadata_type):
                 file_path = file_info['local_path']
                 checksum_type = file_info['checksum']['algorithm']
                 checksum_type = util.sanitize_checksum_type(checksum_type)
