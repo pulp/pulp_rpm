@@ -2,6 +2,7 @@
 """Tests that sync rpm plugin repositories."""
 import os
 import unittest
+from urllib.parse import urljoin
 
 from pulp_smash import api, cli, config
 from pulp_smash.pulp3.constants import MEDIA_PATH, REPO_PATH
@@ -20,6 +21,7 @@ from pulp_rpm.tests.functional.constants import (
     RPM_FIXTURE_SUMMARY,
     RPM_PACKAGES_COUNT,
     RPM_PACKAGE_CONTENT_NAME,
+    RPM_REFERENCES_UPDATEINFO_URL,
     RPM_REMOTE_PATH,
     RPM_SHA512_FIXTURE_URL,
     RPM_SIGNED_FIXTURE_URL,
@@ -106,6 +108,7 @@ class FileDescriptorsTestCase(unittest.TestCase):
         """Test whether file descriptors are closed properly.
 
         This test targets the following issue:
+
         `Pulp #4073 <https://pulp.plan.io/issues/4073>`_
 
         Do the following:
@@ -432,3 +435,47 @@ class SyncDiffChecksumPackagesTestCase(unittest.TestCase):
         # is added.
         self.assertEqual(added_content[0]['checksum_type'], 'sha512')
         self.assertEqual(removed_content[0]['checksum_type'], 'sha256')
+
+
+class ChecksumConstraintTestCase(unittest.TestCase):
+    """Verify checksum constraint test case.
+
+    Do the following:
+
+    1. Create and sync a repo using the following
+       url=RPM_REFERENCES_UPDATEINFO_URL.
+    2. Create and sync a secondary repo using the following
+       url=RPM_REFERENCES_UPDATEINFO_URL.
+       Those urls have RPM packages with the same name.
+    3. Assert that the task succeed.
+
+    This test targets the following issue:
+
+    * `Pulp #4170 <https://pulp.plan.io/issues/4170>`_
+    * `Pulp #4255 <https://pulp.plan.io/issues/4255>`_
+    """
+
+    def test_sync(self):
+        """Test duplicate content can be synced."""
+        cfg = config.get_config()
+        client = api.Client(cfg)
+
+        for url in [RPM_REFERENCES_UPDATEINFO_URL, RPM_UNSIGNED_FIXTURE_URL]:
+            remote = client.post(RPM_REMOTE_PATH, gen_rpm_remote(url=url))
+            self.addCleanup(client.delete, remote['_href'])
+
+            repo = client.post(REPO_PATH, gen_repo())
+            self.addCleanup(client.delete, repo['_href'])
+
+            client.post(urljoin(
+                remote['_href'], 'sync/'),
+                {'repository': repo['_href']}
+            )
+            repo = client.get(repo['_href'])
+
+            added_content_summary = get_added_content_summary(repo)
+            self.assertEqual(
+                added_content_summary,
+                RPM_FIXTURE_SUMMARY,
+                added_content_summary
+            )
