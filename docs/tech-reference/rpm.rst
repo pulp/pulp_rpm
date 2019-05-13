@@ -122,7 +122,17 @@ sadly a dead link) contains ``data`` elements with one attribute, ``type``. The
 ``data`` element refers to. Common values are ``group``, ``filelists``, ``group_gz``,
 ``primary``, ``other``, ``filelists_db``, ``primary_db``, and ``other_db``. ``<thing>_db``
 refer to SQLite versions of the metadata, while those sans ``_db`` refer to XML
-versions. Each ``data`` element contains several other elements describing the
+versions. Each metadata can be compressed, often the format of compression will be present in the
+``type`` attribute: ``<thing>_gz`` or ``<thing>_zck`` mean that metadata was compressed using
+gzip or zchunk format respectively.
+
+.. note::
+  Metadata compressed into `Zchunk format <https://fedoraproject
+  .org/wiki/Changes/Zchunk_Metadata>`_ is not synced and ignored by Pulp to avoid creating a
+  broken repository at publish time. Zchunk metadata is optional, metadata in other formats is
+  present as well, so all repositories are synced properly.
+
+Each ``data`` element contains several other elements describing the
 metadata and where it is located: ``checksum``, ``location``, ``timestamp``, and
 ``size`` seem to be always present, with ``open-size``, ``open-checksum``, and
 ``database_version`` potentially appearing as well.
