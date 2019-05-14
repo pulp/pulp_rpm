@@ -4,6 +4,7 @@ from urllib.parse import urljoin
 
 from pulp_smash.constants import PULP_FIXTURES_BASE_URL
 from pulp_smash.pulp3.constants import (
+    BASE_DISTRIBUTION_PATH,
     BASE_PATH,
     BASE_PUBLICATION_PATH,
     BASE_REMOTE_PATH,
@@ -50,6 +51,8 @@ metadata/repo
 metadata/rpm
     Used by ``repodata/repomd.xml``.
 """
+
+RPM_DISTRIBUTION_PATH = urljoin(BASE_DISTRIBUTION_PATH, 'rpm/rpm/')
 
 RPM_REMOTE_PATH = urljoin(BASE_REMOTE_PATH, 'rpm/rpm/')
 

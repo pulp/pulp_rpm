@@ -5,7 +5,7 @@ from urllib.parse import urljoin
 
 from pulp_smash import api, cli, config
 from pulp_smash.exceptions import NoKnownPackageManagerError
-from pulp_smash.pulp3.constants import DISTRIBUTION_PATH, REPO_PATH
+from pulp_smash.pulp3.constants import REPO_PATH
 from pulp_smash.pulp3.utils import (
     gen_distribution,
     gen_repo,
@@ -17,6 +17,7 @@ from pulp_rpm.tests.functional.utils import (
 )
 from pulp_rpm.tests.functional.constants import (
     RPM_REMOTE_PATH,
+    RPM_DISTRIBUTION_PATH,
 )
 from pulp_rpm.tests.functional.utils import set_up_module as setUpModule  # noqa:F401
 from pulp_rpm.tests.functional.utils import gen_yum_config_file, publish
@@ -54,7 +55,7 @@ class PackageManagerConsumeTestCase(unittest.TestCase):
         body = gen_distribution()
         body['publication'] = publication['_href']
         distribution = client.using_handler(api.task_handler).post(
-            DISTRIBUTION_PATH, body
+            RPM_DISTRIBUTION_PATH, body
         )
         self.addCleanup(client.delete, distribution['_href'])
 

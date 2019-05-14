@@ -89,7 +89,7 @@ Create a Publication
 Create a Distribution for the Publication
 -----------------------------------------
 
-``$ http POST http://localhost:24817/pulp/api/v3/distributions/ name='baz' base_path='foo' publication=$PUBLICATION_HREF``
+``$ http POST http://localhost:24817/pulp/api/v3/distributions/rpm/rpm/ name='baz' base_path='foo' publication=$PUBLICATION_HREF``
 
 
 .. code:: json
