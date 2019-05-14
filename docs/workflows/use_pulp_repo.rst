@@ -29,12 +29,12 @@ Now use dnf to install a package:
 
 ``$ sudo dnf install walrus``
 
-List and Install applicable Errata
-----------------------------------
+List and Install applicable Advisories
+--------------------------------------
 
-Make sure Pulp repo is configured in /etc/yum.repos.d/, then use dnf to work with Errata content.
+Make sure Pulp repo is configured in /etc/yum.repos.d/, then use dnf to work with Advisory content.
 
-List applicable Errata:
+List applicable Advisories:
 
 ``$ dnf list-sec``
 
