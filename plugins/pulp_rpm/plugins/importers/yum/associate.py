@@ -76,6 +76,17 @@ def associate(source_repo, dest_repo, import_conduit, config, units=None, solver
 
     # return here if we shouldn't get child units
     if not recursive:
+        # always copy module artifacts
+        (group_ids, rpm_names, rpm_search_dicts,
+         module_search_dicts) = identify_children_to_copy(associated_units,
+                                                          parent_type=models.Modulemd)
+        wanted_rpms = get_rpms_to_copy_by_key(rpm_search_dicts, import_conduit, source_repo)
+        rpm_search_dicts = None
+        rpms_to_copy = filter_available_rpms(wanted_rpms, import_conduit, source_repo)
+        associated_units |= copy_rpms(rpms_to_copy, source_repo, dest_repo, import_conduit, config,
+                                      solver)
+        rpms_to_copy = None
+
         failed_units = units - associated_units
 
         # allow garbage collection
@@ -320,13 +331,16 @@ def copy_rpms_by_name(names, source_repo, dest_repo, import_conduit, config, sol
     return copy_rpms(units, source_repo, dest_repo, import_conduit, config, solver=solver)
 
 
-def identify_children_to_copy(units):
+def identify_children_to_copy(units, parent_type=None):
     """
     Takes an iterable of Unit instances, and for each that is of a child-bearing
-    type (Group, Category, Errata), collects the child definitions.
+    type (Group, Category, Errata, Modulemd), collects the child definitions.
 
     :param units:   iterable of Units
     :type  units:   iterable of pulp.server.db.model.ContentUnit
+    :param parent_type: unit type for which children should be identified.
+                        If None, all types are processed.
+    :type  parent_type: pulp.server.db.model.ContentUnit
 
     :return:    set(group names), set(rpm names), list(rpm search dicts), list(module search dicts)
     """
@@ -335,18 +349,23 @@ def identify_children_to_copy(units):
     rpm_search_dicts = []
     module_search_dicts = []
     for unit in units:
-        if isinstance(unit, models.PackageCategory):
+        if isinstance(unit, models.PackageCategory) and \
+                (parent_type is None or parent_type is models.PackageCategory):
             groups.update(unit.packagegroupids)
-        elif isinstance(unit, models.PackageGroup):
+        elif isinstance(unit, models.PackageGroup) and \
+                (parent_type is None or parent_type is models.PackageGroup):
             rpm_names.update(unit.all_package_names)
-        elif isinstance(unit, models.PackageEnvironment):
+        elif isinstance(unit, models.PackageEnvironment) and \
+                (parent_type is None or parent_type is models.PackageEnvironment):
             groups.update(unit.group_ids)
             groups.update(unit.optional_group_ids)
-        elif isinstance(unit, models.Errata):
+        elif isinstance(unit, models.Errata) and \
+                (parent_type is None or parent_type is models.Errata):
             # Errata can refer to both RPM and Modulemd units
             rpm_search_dicts.extend(unit.rpm_search_dicts)
             module_search_dicts.extend(unit.module_search_dicts)
-        elif isinstance(unit, models.Modulemd):
+        elif isinstance(unit, models.Modulemd) and \
+                (parent_type is None or parent_type is models.Modulemd):
             rpm_search_dicts.extend(unit.rpm_search_dicts)
     return groups, rpm_names, rpm_search_dicts, module_search_dicts
 
