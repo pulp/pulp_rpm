@@ -1180,7 +1180,7 @@ class GenerateSqliteForRepoStep(platform_steps.PluginStep):
         checksum_type = self.parent.get_checksum_type()
         pipe = subprocess.Popen('sqliterepo_c --local-sqlite -f '
                                 '--checksum %(checksum_type)s '
-                                '%(content_dir)s' %
+                                '%(content_dir)s/scratch/' %
                                 {'checksum_type': checksum_type,
                                  'content_dir': self.content_dir},
                                 shell=True, stdout=subprocess.PIPE,
