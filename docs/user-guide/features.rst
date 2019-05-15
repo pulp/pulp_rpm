@@ -169,25 +169,8 @@ Modules and their artifacts (RPMs), simple case
      |----bar-0.7.rpm
 
 
-| Use case #1 (not recommended): copy module itself
+| Use case #1: copy module itself (and all its available artifacts are copied as well)
 | Flag to use: None
-
-::
-
-    Result of copying module-FOO from repo A to repo B:
-
-    repo B
-     |
-     |----module-FOO
-     |----bar-0.7.rpm
-
-    Module is copied, while its related RPM is not!
-    Module lost its integrity!
-    Copy this way when you know what you are doing and why.
-
-
-| Use case #2: copy module and its artifacts
-| Flag to use: ``recursive`` or ``recursive_conservative``
 
 ::
 
@@ -198,6 +181,9 @@ Modules and their artifacts (RPMs), simple case
      |----module-FOO
      |----foo-1.0.rpm
      |----bar-0.7.rpm
+
+    All available artifacts are copied, always. There is no way to copy just module on its own,
+    if any of its artifacts are present in a source repo (repo A).
 
 
 Modules and their artifacts (RPMs), complicated case 1
