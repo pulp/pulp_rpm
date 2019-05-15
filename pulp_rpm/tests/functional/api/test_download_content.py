@@ -6,7 +6,7 @@ from random import choice
 from urllib.parse import urljoin
 
 from pulp_smash import api, config, utils
-from pulp_smash.pulp3.constants import DISTRIBUTION_PATH, REPO_PATH
+from pulp_smash.pulp3.constants import REPO_PATH
 from pulp_smash.pulp3.utils import (
     download_content_unit,
     gen_distribution,
@@ -20,6 +20,7 @@ from pulp_rpm.tests.functional.utils import (
     publish,
 )
 from pulp_rpm.tests.functional.constants import (
+    RPM_DISTRIBUTION_PATH,
     RPM_REMOTE_PATH,
     RPM_UNSIGNED_FIXTURE_URL,
 )
@@ -76,7 +77,7 @@ class DownloadContentTestCase(unittest.TestCase):
         body = gen_distribution()
         body['publication'] = publication['_href']
         distribution = client.using_handler(api.task_handler).post(
-            DISTRIBUTION_PATH, body
+            RPM_DISTRIBUTION_PATH, body
         )
         self.addCleanup(client.delete, distribution['_href'])
 

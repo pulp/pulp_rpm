@@ -14,6 +14,7 @@ from pulpcore.plugin.serializers import (
     RepositorySyncURLSerializer
 )
 from pulpcore.plugin.viewsets import (
+    BaseDistributionViewSet,
     ContentFilter,
     ContentViewSet,
     RemoteViewSet,
@@ -23,12 +24,13 @@ from pulpcore.plugin.viewsets import (
 
 from pulp_rpm.app import tasks
 from pulp_rpm.app.shared_utils import _prepare_package
-from pulp_rpm.app.models import Package, RpmRemote, RpmPublication, UpdateRecord
+from pulp_rpm.app.models import Package, RpmDistribution, RpmRemote, RpmPublication, UpdateRecord
 from pulp_rpm.app.serializers import (
     MinimalPackageSerializer,
     MinimalUpdateRecordSerializer,
     OneShotUploadSerializer,
     PackageSerializer,
+    RpmDistributionSerializer,
     RpmRemoteSerializer,
     RpmPublicationSerializer,
     UpdateRecordSerializer,
@@ -243,3 +245,13 @@ class RpmPublicationViewSet(PublicationViewSet):
             }
         )
         return OperationPostponedResponse(result, request)
+
+
+class RpmDistributionViewSet(BaseDistributionViewSet):
+    """
+    ViewSet for RPM Distributions.
+    """
+
+    endpoint_name = 'rpm'
+    queryset = RpmDistribution.objects.all()
+    serializer_class = RpmDistributionSerializer

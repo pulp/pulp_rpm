@@ -7,7 +7,7 @@ from xml.etree import ElementTree
 from requests.exceptions import HTTPError
 
 from pulp_smash import api, config
-from pulp_smash.pulp3.constants import DISTRIBUTION_PATH, REPO_PATH
+from pulp_smash.pulp3.constants import REPO_PATH
 from pulp_smash.pulp3.utils import (
     download_content_unit,
     gen_distribution,
@@ -23,6 +23,7 @@ from pulp_rpm.tests.functional.utils import (
 )
 from pulp_rpm.tests.functional.constants import (
     RPM_ALT_LAYOUT_FIXTURE_URL,
+    RPM_DISTRIBUTION_PATH,
     RPM_FIXTURE_SUMMARY,
     RPM_LONG_UPDATEINFO_FIXTURE_URL,
     RPM_NAMESPACES,
@@ -240,7 +241,7 @@ class ValidateNoChecksumTagTestCase(unittest.TestCase):
         body = gen_distribution()
         body['publication'] = publication['_href']
         distribution = self.client.using_handler(api.task_handler).post(
-            DISTRIBUTION_PATH, body
+            RPM_DISTRIBUTION_PATH, body
         )
         self.addCleanup(self.client.delete, distribution['_href'])
         # Step 4

@@ -8,10 +8,12 @@ from pulpcore.plugin.serializers import (
     SingleArtifactContentSerializer,
     RemoteSerializer,
     PublicationSerializer,
+    PublicationDistributionSerializer,
 )
 
 from pulp_rpm.app.models import (
     Package,
+    RpmDistribution,
     RpmRemote,
     RpmPublication,
     UpdateRecord,
@@ -338,3 +340,13 @@ class OneShotUploadSerializer(serializers.Serializer):
         help_text=_("The rpm file."),
         required=True,
     )
+
+
+class RpmDistributionSerializer(PublicationDistributionSerializer):
+    """
+    Serializer for RPM Distributions.
+    """
+
+    class Meta:
+        fields = PublicationDistributionSerializer.Meta.fields
+        model = RpmDistribution

@@ -4,7 +4,7 @@ from logging import getLogger
 import createrepo_c as cr
 
 from django.db import models
-from pulpcore.plugin.models import Content, Remote, Publication
+from pulpcore.plugin.models import Content, Remote, Publication, PublicationDistribution
 
 from pulp_rpm.app.constants import (CHECKSUM_CHOICES, CREATEREPO_PACKAGE_ATTRS,
                                     CREATEREPO_UPDATE_COLLECTION_ATTRS,
@@ -647,6 +647,14 @@ class RpmRemote(Remote):
 class RpmPublication(Publication):
     """
     Publication for "rpm" content.
+    """
+
+    TYPE = 'rpm'
+
+
+class RpmDistribution(PublicationDistribution):
+    """
+    Distribution for "rpm" content.
     """
 
     TYPE = 'rpm'
