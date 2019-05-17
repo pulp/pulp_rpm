@@ -193,6 +193,7 @@ class OneShotUploadViewSet(viewsets.ViewSet):
         operation_description="Create an artifact and trigger an asynchronous"
                               "task to create RPM content from it, optionally"
                               "create new repository version.",
+        operation_summary="Upload a package",
         request_body=OneShotUploadSerializer,
         responses={202: AsyncOperationResponseSerializer}
 
