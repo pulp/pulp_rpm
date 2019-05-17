@@ -3,9 +3,10 @@ from gettext import gettext as _
 from django.db import transaction
 from django.db.utils import IntegrityError
 from drf_yasg.utils import swagger_auto_schema
-from rest_framework import serializers, status, views
+from rest_framework import serializers, status, viewsets
 from rest_framework.decorators import detail_route
 from rest_framework.response import Response
+from rest_framework.parsers import FormParser, MultiPartParser
 
 from pulpcore.plugin.models import Artifact
 from pulpcore.plugin.tasking import enqueue_with_reservation
@@ -175,7 +176,7 @@ class UpdateRecordViewSet(ContentViewSet):
     filterset_class = UpdateRecordFilter
 
 
-class OneShotUploadView(views.APIView):
+class OneShotUploadViewSet(viewsets.ViewSet):
     """
     ViewSet for One Shot RPM Upload.
 
@@ -185,16 +186,26 @@ class OneShotUploadView(views.APIView):
         repository: repository to update
     """
 
-    def post(self, request):
-        """Upload an RPM package."""
-        serializer = OneShotUploadSerializer(
-            data=request.data, context={'request': request})
-        serializer.is_valid(raise_exception=True)
+    serializer_class = OneShotUploadSerializer
+    parser_classes = (MultiPartParser, FormParser)
 
+    @swagger_auto_schema(
+        operation_description="Create an artifact and trigger an asynchronous"
+                              "task to create RPM content from it, optionally"
+                              "create new repository version.",
+        request_body=OneShotUploadSerializer,
+        responses={202: AsyncOperationResponseSerializer}
+
+    )
+    def retrieve(self, request):
+        """Upload an RPM package."""
         artifact = Artifact.init_and_validate(request.data['file'])
         filename = request.data['file'].name
 
         if 'repository' in request.data:
+            serializer = OneShotUploadSerializer(
+                data=request.data, context={'request': request})
+            serializer.is_valid(raise_exception=True)
             repository = serializer.validated_data['repository']
         else:
             repository = None
