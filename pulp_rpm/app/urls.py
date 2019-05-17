@@ -1,8 +1,8 @@
 from django.conf.urls import url
 
-from .viewsets import OneShotUploadView
+from .viewsets import OneShotUploadViewSet
 
 
 urlpatterns = [
-    url(r'rpm/upload/$', OneShotUploadView.as_view())
+    url(r'rpm/upload/$', OneShotUploadViewSet.as_view({'post': 'retrieve'}))
 ]
