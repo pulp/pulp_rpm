@@ -11,7 +11,6 @@ from pulpcore.plugin.models import (
     RepositoryVersion,
     PublishedArtifact,
     PublishedMetadata,
-    RemoteArtifact,
 )
 
 from pulpcore.plugin.tasking import WorkingDirectory
@@ -97,7 +96,7 @@ def publish(repository_version_pk):
 
     with WorkingDirectory():
         with RpmPublication.create(repository_version) as publication:
-            populate(publication)
+            packages = populate(publication)
 
             # Prepare metadata files
             repomd_path = os.path.join(os.getcwd(), "repomd.xml")
@@ -117,15 +116,14 @@ def publish(repository_version_pk):
             oth_db = cr.OtherSqlite(oth_db_path)
             upd_xml = cr.UpdateInfoXmlFile(upd_xml_path)
 
-            artifacts = publication.published_artifact.all()
-            pri_xml.set_num_of_pkgs(len(artifacts))
-            fil_xml.set_num_of_pkgs(len(artifacts))
-            oth_xml.set_num_of_pkgs(len(artifacts))
+            pri_xml.set_num_of_pkgs(len(packages))
+            fil_xml.set_num_of_pkgs(len(packages))
+            oth_xml.set_num_of_pkgs(len(packages))
 
             # Process all packages
-            for artifact in artifacts:
-                pkg = artifact.content_artifact.content.cast().to_createrepo_c()
-                pkg.location_href = artifact.content_artifact.relative_path
+            for package in packages:
+                pkg = package.to_createrepo_c()
+                pkg.location_href = package.contentartifact_set.first().relative_path
                 pri_xml.add_pkg(pkg)
                 fil_xml.add_pkg(pkg)
                 oth_xml.add_pkg(pkg)
@@ -197,17 +195,22 @@ def populate(publication):
     Args:
         publication (pulpcore.plugin.models.Publication): A Publication to populate.
 
-    """
-    def find_artifact():
-        _artifact = content_artifact.artifact
-        if not _artifact:
-            _artifact = RemoteArtifact.objects.filter(content_artifact=content_artifact).first()
-        return _artifact
+    Returns:
+        packages (pulp_rpm.models.Package): A list of published packages.
 
-    for package in Package.objects.filter(pk__in=publication.repository_version.content):
+    """
+    packages = Package.objects.filter(pk__in=publication.repository_version.content).\
+        prefetch_related('contentartifact_set')
+    published_artifacts = []
+
+    for package in packages:
         for content_artifact in package.contentartifact_set.all():
-            published_artifact = PublishedArtifact(
+            published_artifacts.append(PublishedArtifact(
                 relative_path=content_artifact.relative_path,
                 publication=publication,
                 content_artifact=content_artifact)
-            published_artifact.save()
+            )
+
+    PublishedArtifact.objects.bulk_create(published_artifacts)
+
+    return packages
