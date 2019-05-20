@@ -59,6 +59,7 @@ def initialize(context):
     contents_section = structure.repo_contents_section(context.cli)
     contents_section.add_command(contents.SearchRpmsCommand(context))
     contents_section.add_command(contents.SearchDrpmsCommand(context))
+    contents_section.add_command(contents.SearchModulemdCommand(context))
     contents_section.add_command(contents.SearchSrpmsCommand(context))
     contents_section.add_command(contents.SearchPackageGroupsCommand(context))
     contents_section.add_command(contents.SearchPackageCategoriesCommand(context))

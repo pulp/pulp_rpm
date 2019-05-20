@@ -17,6 +17,7 @@ TYPE_SRPM = 'srpm'
 TYPE_DRPM = 'drpm'
 TYPE_ERRATUM = 'erratum'
 TYPE_DISTRIBUTION = 'distribution'
+TYPE_MODULEMD = 'modulemd'
 TYPE_PACKAGE_GROUP = 'package_group'
 TYPE_PACKAGE_CATEGORY = 'package_category'
 TYPE_PACKAGE_ENVIRONMENT = 'package_environment'
@@ -128,6 +129,7 @@ DESC_ENVIRONMENTS = _('search for package environments (collections of package g
                       'in a repository')
 DESC_LANGPACKS = _('search for package langpacks in a repository')
 DESC_DISTRIBUTIONS = _('list distributions in a repository')
+DESC_MODULEMD = _('search for modules in a repository')
 DESC_ERRATA = _('search errata in a repository')
 DESC_YUM_METADATA_FILE = _('search for Yum Metadata Files in a repository')
 
@@ -294,6 +296,15 @@ class SearchDrpmsCommand(BaseSearchCommand):
 
     def drpm(self, **kwargs):
         self.run_search([TYPE_DRPM], **kwargs)
+
+
+class SearchModulemdCommand(BaseSearchCommand):
+    def __init__(self, context):
+        super(SearchModulemdCommand, self).__init__(self.modulemd, context, name='modulemd',
+                                                    description=DESC_MODULEMD)
+
+    def modulemd(self, **kwargs):
+        self.run_search([TYPE_MODULEMD], **kwargs)
 
 
 class SearchPackageGroupsCommand(BaseSearchCommand):
