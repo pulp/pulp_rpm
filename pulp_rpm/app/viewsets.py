@@ -117,6 +117,7 @@ class RpmRemoteViewSet(RemoteViewSet):
 
     @swagger_auto_schema(
         operation_description="Trigger an asynchronous task to sync RPM content.",
+        operation_summary="Sync from remote",
         responses={202: AsyncOperationResponseSerializer}
     )
     @detail_route(methods=('post',), serializer_class=RepositorySyncURLSerializer)
