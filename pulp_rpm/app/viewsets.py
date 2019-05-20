@@ -195,11 +195,12 @@ class OneShotUploadViewSet(viewsets.ViewSet):
                               "task to create RPM content from it, optionally"
                               "create new repository version.",
         operation_summary="Upload a package",
+        operation_id="upload_rpm_package",
         request_body=OneShotUploadSerializer,
         responses={202: AsyncOperationResponseSerializer}
 
     )
-    def retrieve(self, request):
+    def create(self, request):
         """Upload an RPM package."""
         artifact = Artifact.init_and_validate(request.data['file'])
         filename = request.data['file'].name
