@@ -13,6 +13,8 @@ Install ``pulp_rpm``
 
 Users should install from **either** PyPI or source or use ansible-pulp installer.
 
+.. _ansible-installation:
+
 Install with Ansible-pulp
 *************************
 
