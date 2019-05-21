@@ -2,6 +2,7 @@ import copy
 import datetime
 import itertools
 import os
+import shutil
 import subprocess
 
 from gettext import gettext as _
@@ -522,12 +523,19 @@ class PublishMetadataStep(platform_steps.UnitModelPluginStep):
                                                       REPO_DATA_DIR_NAME)
 
         metadata_file_name = os.path.basename(unit._storage_path)
-        link_path = os.path.join(publish_location_relative_path, metadata_file_name)
-        plugin_misc.create_symlink(unit._storage_path, link_path)
+        file_path = os.path.join(publish_location_relative_path, metadata_file_name)
+
+        # it is possible to have symlink already present. It's an old way of publishing, symlink
+        # should be removed so file is copied instead. See https://pulp.plan.io/issues/4661
+        try:
+            os.unlink(file_path)
+        except OSError:
+            pass
+        shutil.copy2(unit._storage_path, file_path)
 
         # Add the proper relative reference to the metadata file to repomd
         self.parent.repomd_file_context.\
-            add_metadata_file_metadata(unit.data_type, link_path)
+            add_metadata_file_metadata(unit.data_type, file_path)
 
 
 class PublishDrpmStep(platform_steps.UnitModelPluginStep):

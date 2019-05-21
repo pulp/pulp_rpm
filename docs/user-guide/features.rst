@@ -169,25 +169,8 @@ Modules and their artifacts (RPMs), simple case
      |----bar-0.7.rpm
 
 
-| Use case #1 (not recommended): copy module itself
+| Use case #1: copy module itself (and all its available artifacts are copied as well)
 | Flag to use: None
-
-::
-
-    Result of copying module-FOO from repo A to repo B:
-
-    repo B
-     |
-     |----module-FOO
-     |----bar-0.7.rpm
-
-    Module is copied, while its related RPM is not!
-    Module lost its integrity!
-    Copy this way when ypu know what you are doing and why.
-
-
-| Use case #2: copy module and its artifacts
-| Flag to use: ``recursive`` or ``recursive_conservative``
 
 ::
 
@@ -198,6 +181,9 @@ Modules and their artifacts (RPMs), simple case
      |----module-FOO
      |----foo-1.0.rpm
      |----bar-0.7.rpm
+
+    All available artifacts are copied, always. There is no way to copy just module on its own,
+    if any of its artifacts are present in a source repo (repo A).
 
 
 Modules and their artifacts (RPMs), complicated case 1
@@ -331,13 +317,320 @@ Modules and their artifacts (RPMs), complicated case 2
    ``recursive_conservative`` takes precedence.
 
 
-Erratum and related RPMs
-^^^^^^^^^^^^^^^^^^^^^^^^
+Erratum and related RPMs/Modules
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Erratum references RPMs and/or Modules.
+| Erratum references RPMs and/or Modules.
+| An Erratum lists RPMs which are suggested to be updated.
+| In case a Module should be updated, an Erratum lists a Module and all its artifacts.
 
 In case of a recursive copy in addition to the copy of Erratum itself, referenced RPMs
-and Modules are copied as well according to the rules and examples explained in previous sections.
+and Modules are copied as well similar to the rules and examples explained in previous sections.
+
+Non-modular Errata and related RPMs, simple case
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+| A non-modular Erratum lists RPMs which are suggested to be updated.
+| Simple case (no RPM dependencies).
+
+::
+
+   erratum-FOO: [foo-1.0.rpm]
+
+   repo A
+     |
+     |----erratum-FOO
+     |----foo-1.0.rpm
+
+
+   repo B
+     |
+     |----foo-0.7.rpm
+
+
+
+| Use case #1 (not recommended): copy erratum itself
+| Flag to use: None
+
+::
+
+    Result of copying erratum-FOO from repo A to repo B:
+
+    repo B
+     |
+     |----erratum-FOO
+     |----foo-0.7.rpm
+
+    Erratum is copied, while its related RPM is not!
+    RPMs which are suggested for update are not in repo B!
+    Copy this way when you know what you are doing and why.
+
+
+| Use case #2: copy erratum and its related RPMs
+| Flag to use: ``recursive`` or ``recursive_conservative``
+
+::
+
+    Result of copying erratum-FOO from repo A to repo B:
+
+    repo B
+     |
+     |----erratum-FOO
+     |----foo-1.0.rpm
+     |----foo-0.7.rpm
+     |----bar-0.7.rpm
+
+    Even though older version of foo is in the repo B,
+    with any recursive flag foo-1.0 is copied anyway
+    because erratum-FOO refers to it.
+
+
+Non-modular Errata and related RPMs, complicated case
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+| A non-modular Erratum lists RPMs which are suggested to be updated.
+| Complicated case (RPM dependencies).
+
+::
+
+   dependencies: foo.rpm -> bar.rpm -> baz.rpm
+   erratum-FOO: [foo-1.0.rpm]
+
+   repo A
+     |
+     |----erratum-FOO
+     |----foo-1.0.rpm
+     |----bar-1.0.rpm
+     |----baz-1.0.rpm
+
+
+   repo B
+     |
+     |----foo-0.7.rpm
+     |----bar-0.7.rpm
+
+
+| Use case #1: copy erratum and related RPMs and RPMs' *latest* dependencies
+| Flag to use: ``recursive``
+
+::
+
+    Result of copying erratum-FOO from repo A to repo B:
+
+    repo B
+     |
+     |----erratum-FOO
+     |----foo-1.0.rpm
+     |----bar-1.0.rpm
+     |----baz-1.0.rpm
+     |----foo-0.7.rpm
+     |----bar-0.7.rpm
+
+| Use case #2: copy erratum and related RPMs and RPMs' *missing* dependencies
+| Flag to use: ``recursive_conservative``
+
+::
+
+    Result of copying module-FOO from repo A to repo B:
+
+    repo B
+     |
+     |----erratum-FOO
+     |----foo-1.0.rpm
+     |----baz-1.0.rpm
+     |----foo-0.7.rpm
+     |----bar-0.7.rpm
+
+
+Modular Errata and related Modules/RPMs, simple case
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+| A modular Erratum lists a Module (which is suggested to be updated) and its artifacts.
+| Simple case (no RPM dependencies, no modular dependencies).
+
+::
+
+   erratum-FOO: module-FOO
+   module-FOO: [foo-1.0.rpm]
+
+   repo A
+     |
+     |----erratum-FOO
+     |----module-FOO
+     |----foo-1.0.rpm
+
+
+   repo B
+     |
+     |----foo-0.7.rpm
+
+
+| Use case #1 (not recommended): copy erratum itself
+| Flag to use: None
+
+::
+
+    Result of copying erratum-FOO from repo A to repo B:
+
+    repo B
+     |
+     |----erratum-FOO
+     |----foo-0.7.rpm
+
+    Erratum is copied, while its related Modules is not!
+    Module which is suggested for update is not in a repo B!
+    Copy this way when you know what you are doing and why.
+
+
+| Use case #2: copy erratum and its related Modules and Module's artifacts
+| Flag to use: ``recursive`` or ``recursive_conservative``
+
+::
+
+    Result of copying erratum-FOO from repo A to repo B:
+
+    repo B
+     |
+     |----erratum-FOO
+     |----module-FOO
+     |----foo-1.0.rpm
+     |----foo-0.7.rpm
+
+
+Modular Errata and related Modules/RPMs, complicated case 1
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+| A modular Erratum lists a Module (which is suggested to be updated) and its artifacts.
+| Complicated case 1 (RPM dependencies, no module dependencies).
+
+::
+
+   erratum-FOO: module-FOO
+   module-FOO: [foo-1.0.rpm]
+   dependencies: foo.rpm -> bar.rpm -> baz.rpm
+
+   repo A
+     |
+     |----erratum-FOO
+     |----module-FOO
+     |----foo-1.0.rpm
+     |----bar-1.0.rpm
+     |----baz-1.0.rpm
+
+   repo B
+     |
+     |----foo-0.7.rpm
+     |----bar-0.7.rpm
+
+
+| Use case #1: copy erratum and related module with its artifacts and artifacts' *latest* dependencies
+| Flag to use: ``recursive``
+
+::
+
+    Result of copying module-FOO from repo A to repo B:
+
+    repo B
+     |
+     |----erratum-FOO
+     |----module-FOO
+     |----foo-1.0.rpm
+     |----bar-1.0.rpm
+     |----baz-1.0.rpm
+     |----foo-0.7.rpm
+     |----bar-0.7.rpm
+
+| Use case #2: copy erratum and related module with its artifacts and artifacts' *missing* dependencies
+| Flag to use: ``recursive_conservative``
+
+::
+
+    Result of copying module-FOO from repo A to repo B:
+
+    repo B
+     |
+     |----erratum-FOO
+     |----module-FOO
+     |----foo-1.0.rpm
+     |----baz-1.0.rpm
+     |----foo-0.7.rpm
+     |----bar-0.7.rpm
+
+
+
+Modular Errata and related Modules/RPMs, complicated case 2
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+| A modular Erratum lists a Module (which is suggested to be updated) and its artifacts.
+| A Module can depend on other Modules.
+| Complicated case 2 (RPM dependencies, module dependencies).
+
+::
+
+   erratum-FOO: module-FOO
+   module-FOO: [foo-1.0.rpm]
+   module-XXX: [xxx-1.0.rpm, yyy-1.0.rpm]
+   dependencies: foo.rpm -> bar.rpm -> baz.rpm
+                 module-FOO -> module-XXX
+
+   repo A
+     |
+     |----erratum-FOO
+     |----module-FOO
+     |----module-XXX
+     |----foo-1.0.rpm
+     |----bar-1.0.rpm
+     |----baz-1.0.rpm
+     |----xxx-1.0.rpm
+     |----yyy-1.0.rpm
+
+   repo B
+     |
+     |----foo-0.7.rpm
+     |----bar-0.7.rpm
+
+
+| Use case #1: copy erratum and module with its artifacts
+|              and module dependencies
+|              and artifacts' *latest* dependencies
+| Flag to use: ``recursive``
+
+::
+
+    Result of copying module-FOO from repo A to repo B:
+
+    repo B
+     |
+     |----erratum-FOO
+     |----module-FOO
+     |----module-XXX
+     |----foo-1.0.rpm
+     |----bar-1.0.rpm
+     |----baz-1.0.rpm
+     |----xxx-1.0.rpm
+     |----yyy-1.0.rpm
+     |----foo-0.7.rpm
+     |----bar-0.7.rpm
+
+
+| Use case #2: copy erratum and module with its artifacts
+|              and module dependencies
+|              and artifacts' *missing* dependencies
+| Flag to use: ``recursive_conservative``
+
+::
+
+    Result of copying module-FOO from repo A to repo B:
+
+    repo B
+     |
+     |----erratum-FOO
+     |----module-FOO
+     |----module-XXX
+     |----foo-1.0.rpm
+     |----baz-1.0.rpm
+     |----xxx-1.0.rpm
+     |----yyy-1.0.rpm
+     |----foo-0.7.rpm
+     |----bar-0.7.rpm
 
 
 Protected Repositories

@@ -6,7 +6,7 @@ from uuid import uuid4
 from hashlib import sha256
 
 import bson
-from mongoengine import Q, NotUniqueError
+from mongoengine import Q, NotUniqueError, ValidationError
 
 from pulp.plugins.loader import api as plugin_api
 from pulp.server.controllers import repository as repository_controller
@@ -164,6 +164,11 @@ def add_modulemd(repository, modulemd, model, working_dir):
         model.save_and_import_content(path)
     except NotUniqueError:
         model = Modulemd.objects.get(**model.unit_key)
+    except ValidationError as e:
+        _logger.warn("Modulemd content import failure. Repo: %s, content: %s, "
+                     "error: %s" % (repository.repo_id, model.unit_key, e))
+        return
+
     repository_controller.associate_single_unit(repository, model)
 
 
@@ -336,14 +341,24 @@ def migrate(*args, **kwargs):
     repos_to_republish = set()
     for file in metadatafiles:
         repository = Repository.objects.get(repo_id=file.repo_id)
-        with gzip.open(file._storage_path, 'r') as fp:
-            working_dir = "/var/cache/pulp"
-            modulemds, defaults = load(fp, working_dir)
-            add_modulemds(repository, modulemds, working_dir)
-            add_defaults(repository, defaults, working_dir)
-            repository_controller.disassociate_units(repository, [file])
-            repository_controller.rebuild_content_unit_counts(repository)
-            repos_to_republish.add(file.repo_id)
+        try:
+            with gzip.open(file._storage_path, 'r') as fp:
+                working_dir = "/var/cache/pulp"
+                modulemds, defaults = load(fp, working_dir)
+                add_modulemds(repository, modulemds, working_dir)
+                add_defaults(repository, defaults, working_dir)
+                repository_controller.disassociate_units(repository, [file])
+                repository_controller.rebuild_content_unit_counts(repository)
+                repos_to_republish.add(file.repo_id)
+        except IOError:
+            with open(file._storage_path, 'r') as fp:
+                working_dir = "/var/cache/pulp"
+                modulemds, defaults = load(fp, working_dir)
+                add_modulemds(repository, modulemds, working_dir)
+                add_defaults(repository, defaults, working_dir)
+                repository_controller.disassociate_units(repository, [file])
+                repository_controller.rebuild_content_unit_counts(repository)
+                repos_to_republish.add(file.repo_id)
     if repos_to_republish:
         with open('/var/lib/pulp/0043_add_modulemd_modulemd-defaults.txt', 'w') as f:
             f.write(str(list(repos_to_republish)))

@@ -89,6 +89,7 @@ class RepoSync(object):
         self.nectar_config = nectar_utils.importer_config_to_nectar_config(config.flatten())
         self.skip_repomd_steps = False
         self.current_revision = 0
+        self.current_repomd_checksum = ''
         self.downloader = None
         self.tmp_dir = None
         # Was any repo metadata found? Includes either yum metadata or a treeinfo file. If this is
@@ -367,9 +368,9 @@ class RepoSync(object):
                                          reason=self.repomd_not_found_reason)
 
             if self.config.override_config.get(importer_constants.KEY_FEED):
-                self.erase_repomd_revision()
+                self.erase_repomd_details()
             else:
-                self.save_repomd_revision()
+                self.save_repomd_details()
 
             _logger.info(_('Sync complete.'))
             return self.conduit.build_success_report(self._progress_summary,
@@ -456,7 +457,9 @@ class RepoSync(object):
         self.downloader = metadata_files.downloader
         scratchpad = self.conduit.get_scratchpad() or {}
         previous_revision = scratchpad.get(constants.REPOMD_REVISION_KEY, 0)
+        previous_repomd_checksum = scratchpad.get(constants.REPOMD_CHECKSUM_KEY, '')
         self.current_revision = metadata_files.revision
+        self.current_repomd_checksum = metadata_files.repomd_checksum
         # determine missing units
         missing_units = repo_controller.missing_unit_count(self.repo.repo_id)
 
@@ -464,12 +467,17 @@ class RepoSync(object):
                                                                   self.conduit,
                                                                   self.config)
 
-        # if the platform does not prescribe forcing a full sync
+        metadata_only_changes = previous_revision == self.current_revision and \
+            previous_repomd_checksum != self.current_repomd_checksum
+
+        # if the platform does not prescribe forcing a full sync,
+        # there was no MD changes which doesn't change a revision number,
         # (due to removed unit, force_full flag, config change, etc.)
         # the current MD revision is not newer than the old one
         # and there are no missing units, or we have deferred download enabled
         # then skip fetching the repo MD :)
         skip_sync_steps = not force_full_sync and \
+            not metadata_only_changes and \
             0 < self.current_revision <= previous_revision and \
             (self.download_deferred or not missing_units)
 
@@ -486,28 +494,30 @@ class RepoSync(object):
             self.import_unknown_metadata_files(metadata_files)
             return metadata_files
 
-    def save_repomd_revision(self):
+    def save_repomd_details(self):
         """
         If there were no errors during the sync, save the repomd revision
-        number to the scratchpad along with the configured skip list used
-        by this run.
+        number and checksum to the scratchpad.
         """
         non_success_states = (constants.STATE_FAILED, constants.STATE_CANCELLED)
         if len(self.content_report['error_details']) == 0\
                 and self.content_report[constants.PROGRESS_STATE_KEY] not in non_success_states:
-            _logger.debug(_('saving repomd.xml revision number and skip list to scratchpad'))
+            _logger.debug(_('saving repomd.xml revision number and checksum to scratchpad'))
             scratchpad = self.conduit.get_scratchpad() or {}
             scratchpad[constants.REPOMD_REVISION_KEY] = self.current_revision
+            scratchpad[constants.REPOMD_CHECKSUM_KEY] = self.current_repomd_checksum
             self.conduit.set_scratchpad(scratchpad)
 
-    def erase_repomd_revision(self):
+    def erase_repomd_details(self):
         """
-        If we are syncing from a one-off URL, we should clobber the old repomd revision.
+        If we are syncing from a one-off URL, we should clobber the old repomd revision and
+        checksum.
         """
-        _logger.debug(_('erasing repomd.xml revision number and skip list from scratchpad'))
+        _logger.debug(_('erasing repomd.xml revision number and checksum from scratchpad'))
         scratchpad = self.conduit.get_scratchpad()
         if scratchpad:
             scratchpad[constants.REPOMD_REVISION_KEY] = None
+            scratchpad[constants.REPOMD_CHECKSUM_KEY] = None
             self.conduit.set_scratchpad(scratchpad)
 
     def save_default_metadata_checksum_on_repo(self, metadata_files):
@@ -537,11 +547,26 @@ class RepoSync(object):
         Import metadata files whose type is not known to us. These are any files
         that we are not already parsing.
 
+        Skip those which we don't support yet and which can break repo if not supported fully.
+
         :param metadata_files:  object containing access to all metadata files
         :type  metadata_files:  pulp_rpm.plugins.importers.yum.repomd.metadata.MetadataFiles
         """
+        def is_needed(metadata_type):
+            """
+            Decide if metadata should be processed or should be skipped.
+
+            Skip zchunk metadata.
+
+            :param metadata_type: type of metadata
+            :type  metadata_type: str
+            :return: True, if metadata should be processed, otherwise it is skipped
+            :rtype: bool
+            """
+            return not metadata_type.endswith('_zck')
+
         for metadata_type, file_info in metadata_files.metadata.iteritems():
-            if metadata_type not in metadata_files.KNOWN_TYPES:
+            if metadata_type not in metadata_files.KNOWN_TYPES and is_needed(metadata_type):
                 file_path = file_info['local_path']
                 checksum_type = file_info['checksum']['algorithm']
                 checksum_type = util.sanitize_checksum_type(checksum_type)
