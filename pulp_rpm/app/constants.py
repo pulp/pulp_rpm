@@ -1,5 +1,16 @@
 from types import SimpleNamespace
 
+
+RPM_PLUGIN_TYPES = SimpleNamespace(
+    PACKAGE='rpm.package',
+    ADVISORY='rpm.advisory'
+)
+
+RPM_PLUGIN_TYPE_CHOICE_MAP = {
+    'package': RPM_PLUGIN_TYPES.PACKAGE,
+    'advisory': RPM_PLUGIN_TYPES.ADVISORY
+}
+
 CHECKSUM_TYPES = SimpleNamespace(
     UNKNOWN='unknown',
     MD5='md5',

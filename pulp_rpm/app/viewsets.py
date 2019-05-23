@@ -27,6 +27,7 @@ from pulp_rpm.app import tasks
 from pulp_rpm.app.shared_utils import _prepare_package
 from pulp_rpm.app.models import Package, RpmDistribution, RpmRemote, RpmPublication, UpdateRecord
 from pulp_rpm.app.serializers import (
+    CopySerializer,
     MinimalPackageSerializer,
     MinimalUpdateRecordSerializer,
     OneShotUploadSerializer,
@@ -36,8 +37,6 @@ from pulp_rpm.app.serializers import (
     RpmPublicationSerializer,
     UpdateRecordSerializer,
 )
-
-from .upload import one_shot_upload
 
 
 class PackageFilter(ContentFilter):
@@ -198,7 +197,6 @@ class OneShotUploadViewSet(viewsets.ViewSet):
         operation_id="upload_rpm_package",
         request_body=OneShotUploadSerializer,
         responses={202: AsyncOperationResponseSerializer}
-
     )
     def create(self, request):
         """Upload an RPM package."""
@@ -220,7 +218,7 @@ class OneShotUploadViewSet(viewsets.ViewSet):
             artifact = Artifact.objects.get(sha256=artifact.sha256)
 
         async_result = enqueue_with_reservation(
-            one_shot_upload, [artifact],
+            tasks.one_shot_upload, [artifact],
             kwargs={
                 'artifact': artifact,
                 'filename': filename,
@@ -269,3 +267,38 @@ class RpmDistributionViewSet(BaseDistributionViewSet):
     endpoint_name = 'rpm'
     queryset = RpmDistribution.objects.all()
     serializer_class = RpmDistributionSerializer
+
+
+class CopyViewSet(viewsets.ViewSet):
+    """
+    ViewSet for Content Copy.
+    """
+
+    serializer_class = CopySerializer
+    parser_classes = (MultiPartParser, FormParser)
+
+    @swagger_auto_schema(
+        operation_description="Trigger an asynchronous task to copy RPM content"
+                              "from one repository into another, creating a new"
+                              "repository version.",
+        operation_summary="Copy content",
+        operation_id="copy_content",
+        request_body=CopySerializer,
+        responses={202: AsyncOperationResponseSerializer}
+    )
+    def create(self, request):
+        """Copy content."""
+        serializer = CopySerializer(data=request.data, context={'request': request})
+        serializer.is_valid(raise_exception=True)
+
+        source_repo = serializer.validated_data['source_repo']
+        source_repo_version = serializer.validated_data['source_repo_version']
+        dest_repo = serializer.validated_data['dest_repo']
+        types = serializer.validated_data['types']
+
+        async_result = enqueue_with_reservation(
+            tasks.copy_content, [source_repo, dest_repo],
+            args=[source_repo_version, dest_repo, types],
+            kwargs={}
+        )
+        return OperationPostponedResponse(async_result, request)
