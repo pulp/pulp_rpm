@@ -63,7 +63,7 @@ Look at the new Repository Version created
         "_removed_href": "/pulp/api/v3/repositories/5eeabc0b-3b86-4264-bb3a-5889530a6f5b/versions/1/removed_content/",
         "content_summary": {
             "package": 35,
-            "update": 4
+            "advisory": 4
         },
         "created": "2018-02-23T20:29:54.499055Z",
         "number": 1

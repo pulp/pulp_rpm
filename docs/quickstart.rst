@@ -44,9 +44,9 @@ Install the dependency bootstrapping role ``pulp.pulp_rpm_prerequisites``:
 
 Start your box, run ansible on it, ssh to your box::
 
-    vagrant up fedora29
-    ansible-playbook pulp_rpm.yaml -l fedora29
-    vagrant ssh fedora29
+    vagrant up fedora30
+    ansible-playbook pulp_rpm.yaml -l fedora30
+    vagrant ssh fedora30
 
 
 Check Pulp's Status

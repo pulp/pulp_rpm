@@ -386,7 +386,7 @@ class UpdateRecord(Content):
 
     """
 
-    TYPE = 'update'
+    TYPE = 'advisory'
 
     # Required metadata
     id = models.TextField(db_index=True)
@@ -401,7 +401,7 @@ class UpdateRecord(Content):
     summary = models.TextField()
     version = models.TextField()
 
-    type = models.TextField()  # TODO: change field name?
+    type = models.TextField()
     severity = models.TextField()
     solution = models.TextField()
     release = models.TextField()

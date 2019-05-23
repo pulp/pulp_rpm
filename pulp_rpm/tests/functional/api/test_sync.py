@@ -19,7 +19,7 @@ from pulp_smash.pulp3.utils import (
 from pulp_rpm.tests.functional.constants import (
     RPM_EPEL_URL,
     RPM_FIXTURE_SUMMARY,
-    RPM_PACKAGES_COUNT,
+    RPM_PACKAGE_COUNT,
     RPM_PACKAGE_CONTENT_NAME,
     RPM_REFERENCES_UPDATEINFO_URL,
     RPM_REMOTE_PATH,
@@ -28,7 +28,7 @@ from pulp_rpm.tests.functional.constants import (
     RPM_UNSIGNED_FIXTURE_URL,
     RPM_UPDATED_UPDATEINFO_FIXTURE_URL,
     RPM_UPDATERECORD_ID,
-    RPM_UPDATE_CONTENT_NAME,
+    RPM_ADVISORY_CONTENT_NAME,
 )
 from pulp_rpm.tests.functional.utils import gen_rpm_remote, skip_if
 from pulp_rpm.tests.functional.utils import set_up_module as setUpModule  # noqa:F401
@@ -211,12 +211,12 @@ class SyncMutatedPackagesTestCase(unittest.TestCase):
         # package is removed from and the new one is added to a repo version.
         self.assertEqual(
             len(get_added_content(repo)[RPM_PACKAGE_CONTENT_NAME]),
-            RPM_PACKAGES_COUNT,
+            RPM_PACKAGE_COUNT,
             get_added_content(repo)[RPM_PACKAGE_CONTENT_NAME]
         )
         self.assertEqual(
             len(get_removed_content(repo)[RPM_PACKAGE_CONTENT_NAME]),
-            RPM_PACKAGES_COUNT,
+            RPM_PACKAGE_COUNT,
             get_removed_content(repo)[RPM_PACKAGE_CONTENT_NAME]
         )
 
@@ -281,7 +281,7 @@ class EPELSyncTestCase(unittest.TestCase):
 
 @unittest.skip('FIXME: Enable this test after we can throw out duplicate UpdateRecords')
 class SyncMutatedUpdateRecordTestCase(unittest.TestCase):
-    """Sync a new Erratum with the same ID."""
+    """Sync a new UpdateRecord (Advisory / Erratum) with the same ID."""
 
     @classmethod
     def setUpClass(cls):
@@ -331,7 +331,7 @@ class SyncMutatedUpdateRecordTestCase(unittest.TestCase):
         # Save a copy of the original updateinfo
         original_updaterecords = {
             content['id']: content
-            for content in get_content(repo)[RPM_UPDATE_CONTENT_NAME]
+            for content in get_content(repo)[RPM_ADVISORY_CONTENT_NAME]
         }
 
         # Create a remote with a different test fixture, one containing mutated
@@ -348,18 +348,18 @@ class SyncMutatedUpdateRecordTestCase(unittest.TestCase):
             RPM_FIXTURE_SUMMARY
         )
         self.assertEqual(
-            len(get_added_content(repo)[RPM_UPDATE_CONTENT_NAME]),
+            len(get_added_content(repo)[RPM_ADVISORY_CONTENT_NAME]),
             4
         )
         self.assertEqual(
-            len(get_removed_content(repo)[RPM_UPDATE_CONTENT_NAME]),
+            len(get_removed_content(repo)[RPM_ADVISORY_CONTENT_NAME]),
             4
         )
 
         # Test that the updateinfo have been modified.
         mutated_updaterecords = {
             content['id']: content
-            for content in get_content(repo)[RPM_UPDATE_CONTENT_NAME]
+            for content in get_content(repo)[RPM_ADVISORY_CONTENT_NAME]
         }
 
         self.assertNotEqual(mutated_updaterecords, original_updaterecords)
@@ -422,12 +422,12 @@ class SyncDiffChecksumPackagesTestCase(unittest.TestCase):
         # package is removed from and the new one is added to a repo version.
         self.assertEqual(
             len(added_content),
-            RPM_PACKAGES_COUNT,
+            RPM_PACKAGE_COUNT,
             added_content
         )
         self.assertEqual(
             len(removed_content),
-            RPM_PACKAGES_COUNT,
+            RPM_PACKAGE_COUNT,
             removed_content
         )
 

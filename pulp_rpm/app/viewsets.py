@@ -165,12 +165,12 @@ class UpdateRecordViewSet(ContentViewSet):
 
     Define endpoint name which will appear in the API endpoint for this content type.
     For example::
-        http://pulp.example.com/pulp/api/v3/content/rpm/errata/
+        http://pulp.example.com/pulp/api/v3/content/rpm/advisories/
 
     Also specify queryset and serializer for UpdateRecord.
     """
 
-    endpoint_name = 'errata'
+    endpoint_name = 'advisories'
     queryset = UpdateRecord.objects.all()
     serializer_class = UpdateRecordSerializer
     minimal_serializer_class = MinimalUpdateRecordSerializer
