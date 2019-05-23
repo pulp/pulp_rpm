@@ -4,11 +4,7 @@ import unittest
 
 from pulp_smash import api, config, utils
 from pulp_smash.pulp3.constants import ARTIFACTS_PATH, REPO_PATH
-from pulp_smash.pulp3.utils import (
-    delete_orphans,
-    gen_repo,
-    get_versions,
-)
+from pulp_smash.pulp3.utils import delete_orphans, gen_repo, get_versions
 from requests.exceptions import HTTPError
 
 from pulp_rpm.tests.functional.constants import (
@@ -43,29 +39,25 @@ class UploadEncodingMetadataTestCase(unittest.TestCase):
 
     def test_upload_non_ascii(self):
         """Test whether one can upload an RPM with non-ascii metadata."""
-        files = {'file': utils.http_get(RPM_WITH_NON_ASCII_URL)}
+        files = {"file": utils.http_get(RPM_WITH_NON_ASCII_URL)}
         artifact = self.client.post(ARTIFACTS_PATH, files=files)
-        content_unit = self.client.post(RPM_CONTENT_PATH, {
-            '_artifact': artifact['_href'],
-            'filename': RPM_WITH_NON_ASCII_NAME
-        })
+        content_unit = self.client.post(
+            RPM_CONTENT_PATH, {"_artifact": artifact["_href"], "filename": RPM_WITH_NON_ASCII_NAME}
+        )
         repo = self.client.post(REPO_PATH, gen_repo())
-        self.addCleanup(self.client.delete, repo['_href'])
+        self.addCleanup(self.client.delete, repo["_href"])
         repo_versions = get_versions(repo)
         self.assertEqual(len(repo_versions), 0, repo_versions)
-        self.client.post(
-            repo['_versions_href'],
-            {'add_content_units': [content_unit['_href']]}
-        )
+        self.client.post(repo["_versions_href"], {"add_content_units": [content_unit["_href"]]})
         repo_versions = get_versions(repo)
         self.assertEqual(len(repo_versions), 1, repo_versions)
 
     def test_upload_non_utf8(self):
         """Test whether an exception is raised when non-utf-8 is uploaded."""
-        files = {'file': utils.http_get(RPM_WITH_NON_UTF_8_URL)}
+        files = {"file": utils.http_get(RPM_WITH_NON_UTF_8_URL)}
         artifact = self.client.post(ARTIFACTS_PATH, files=files)
         with self.assertRaises(HTTPError):
-            self.client.post(RPM_CONTENT_PATH, {
-                '_artifact': artifact['_href'],
-                'filename': RPM_WITH_NON_UTF_8_NAME
-            })
+            self.client.post(
+                RPM_CONTENT_PATH,
+                {"_artifact": artifact["_href"], "filename": RPM_WITH_NON_UTF_8_NAME},
+            )

@@ -7,11 +7,7 @@ import createrepo_c as cr
 from django.core.files import File
 from django.utils.dateparse import parse_datetime
 
-from pulpcore.plugin.models import (
-    RepositoryVersion,
-    PublishedArtifact,
-    PublishedMetadata,
-)
+from pulpcore.plugin.models import RepositoryVersion, PublishedArtifact, PublishedMetadata
 
 from pulpcore.plugin.tasking import WorkingDirectory
 
@@ -19,7 +15,7 @@ from pulp_rpm.app.models import Package, RpmPublication, UpdateRecord
 
 log = logging.getLogger(__name__)
 
-REPODATA_PATH = 'repodata'
+REPODATA_PATH = "repodata"
 
 
 def update_record_xml(update_record):
@@ -89,10 +85,11 @@ def publish(repository_version_pk):
     """
     repository_version = RepositoryVersion.objects.get(pk=repository_version_pk)
 
-    log.info(_('Publishing: repository={repo}, version={version}').format(
-        repo=repository_version.repository.name,
-        version=repository_version.number,
-    ))
+    log.info(
+        _("Publishing: repository={repo}, version={version}").format(
+            repo=repository_version.repository.name, version=repository_version.number
+        )
+    )
 
     with WorkingDirectory():
         with RpmPublication.create(repository_version) as publication:
@@ -133,7 +130,8 @@ def publish(repository_version_pk):
 
             # Process update records
             for update_record in UpdateRecord.objects.filter(
-                    pk__in=publication.repository_version.content):
+                pk__in=publication.repository_version.content
+            ):
                 upd_xml.add_chunk(update_record_xml(update_record))
 
             pri_xml.close()
@@ -143,13 +141,15 @@ def publish(repository_version_pk):
 
             repomd = cr.Repomd()
 
-            repomdrecords = (("primary", pri_xml_path, pri_db),
-                             ("filelists", fil_xml_path, fil_db),
-                             ("other", oth_xml_path, oth_db),
-                             ("primary_db", pri_db_path, None),
-                             ("filelists_db", fil_db_path, None),
-                             ("other_db", oth_db_path, None),
-                             ("updateinfo", upd_xml_path, None))
+            repomdrecords = (
+                ("primary", pri_xml_path, pri_db),
+                ("filelists", fil_xml_path, fil_db),
+                ("other", oth_xml_path, oth_db),
+                ("primary_db", pri_db_path, None),
+                ("filelists_db", fil_db_path, None),
+                ("other_db", oth_db_path, None),
+                ("updateinfo", upd_xml_path, None),
+            )
 
             sqlite_files = ("primary_db", "filelists_db", "other_db")
             for name, path, db_to_update in repomdrecords:
@@ -158,20 +158,20 @@ def publish(repository_version_pk):
                     record_bz = record.compress_and_fill(cr.SHA256, cr.BZ2)
                     record_bz.type = name
                     record_bz.rename_file()
-                    path = record_bz.location_href.split('/')[-1]
+                    path = record_bz.location_href.split("/")[-1]
                     repomd.set_record(record_bz)
                 else:
                     record.fill(cr.SHA256)
-                    if (db_to_update):
+                    if db_to_update:
                         db_to_update.dbinfo_update(record.checksum)
                         db_to_update.close()
                     record.rename_file()
-                    path = record.location_href.split('/')[-1]
+                    path = record.location_href.split("/")[-1]
                     repomd.set_record(record)
                 metadata = PublishedMetadata(
                     relative_path=os.path.join(REPODATA_PATH, os.path.basename(path)),
                     publication=publication,
-                    file=File(open(os.path.basename(path), 'rb'))
+                    file=File(open(os.path.basename(path), "rb")),
                 )
                 metadata.save()
 
@@ -181,7 +181,7 @@ def publish(repository_version_pk):
             metadata = PublishedMetadata(
                 relative_path=os.path.join(REPODATA_PATH, os.path.basename(repomd_path)),
                 publication=publication,
-                file=File(open(os.path.basename(repomd_path), 'rb'))
+                file=File(open(os.path.basename(repomd_path), "rb")),
             )
             metadata.save()
 
@@ -199,16 +199,19 @@ def populate(publication):
         packages (pulp_rpm.models.Package): A list of published packages.
 
     """
-    packages = Package.objects.filter(pk__in=publication.repository_version.content).\
-        prefetch_related('contentartifact_set')
+    packages = Package.objects.filter(
+        pk__in=publication.repository_version.content
+    ).prefetch_related("contentartifact_set")
     published_artifacts = []
 
     for package in packages:
         for content_artifact in package.contentartifact_set.all():
-            published_artifacts.append(PublishedArtifact(
-                relative_path=content_artifact.relative_path,
-                publication=publication,
-                content_artifact=content_artifact)
+            published_artifacts.append(
+                PublishedArtifact(
+                    relative_path=content_artifact.relative_path,
+                    publication=publication,
+                    content_artifact=content_artifact,
+                )
             )
 
     PublishedArtifact.objects.bulk_create(published_artifacts)

@@ -12,7 +12,7 @@ from pulpcore.plugin.models import Artifact
 from pulpcore.plugin.tasking import enqueue_with_reservation
 from pulpcore.plugin.serializers import (
     AsyncOperationResponseSerializer,
-    RepositorySyncURLSerializer
+    RepositorySyncURLSerializer,
 )
 from pulpcore.plugin.viewsets import (
     BaseDistributionViewSet,
@@ -20,7 +20,7 @@ from pulpcore.plugin.viewsets import (
     ContentViewSet,
     RemoteViewSet,
     OperationPostponedResponse,
-    PublicationViewSet
+    PublicationViewSet,
 )
 
 from pulp_rpm.app import tasks
@@ -47,13 +47,13 @@ class PackageFilter(ContentFilter):
     class Meta:
         model = Package
         fields = {
-            'name': ['exact', 'in'],
-            'epoch': ['exact', 'in'],
-            'version': ['exact', 'in'],
-            'release': ['exact', 'in'],
-            'arch': ['exact', 'in'],
-            'pkgId': ['exact', 'in'],
-            'checksum_type': ['exact', 'in'],
+            "name": ["exact", "in"],
+            "epoch": ["exact", "in"],
+            "version": ["exact", "in"],
+            "release": ["exact", "in"],
+            "arch": ["exact", "in"],
+            "pkgId": ["exact", "in"],
+            "checksum_type": ["exact", "in"],
         }
 
 
@@ -68,7 +68,7 @@ class PackageViewSet(ContentViewSet):
     Also specify queryset and serializer for Package.
     """
 
-    endpoint_name = 'packages'
+    endpoint_name = "packages"
     queryset = Package.objects.all()
     serializer_class = PackageSerializer
     minimal_serializer_class = MinimalPackageSerializer
@@ -80,22 +80,23 @@ class PackageViewSet(ContentViewSet):
         Create a new Package from a request.
         """
         try:
-            artifact = self.get_resource(request.data['_artifact'], Artifact)
+            artifact = self.get_resource(request.data["_artifact"], Artifact)
         except KeyError:
-            raise serializers.ValidationError(detail={'_artifact': _('This field is required')})
+            raise serializers.ValidationError(detail={"_artifact": _("This field is required")})
 
         try:
-            filename = request.data['filename']
+            filename = request.data["filename"]
         except KeyError:
-            raise serializers.ValidationError(detail={'filename': _('This field is required')})
+            raise serializers.ValidationError(detail={"filename": _("This field is required")})
 
         try:
             new_pkg = _prepare_package(artifact, filename)
-            new_pkg['_artifact'] = request.data['_artifact']
-            new_pkg['relative_path'] = request.data.get('relative_path', '')
+            new_pkg["_artifact"] = request.data["_artifact"]
+            new_pkg["relative_path"] = request.data.get("relative_path", "")
         except OSError:
-            return Response('RPM file cannot be parsed for metadata.',
-                            status=status.HTTP_406_NOT_ACCEPTABLE)
+            return Response(
+                "RPM file cannot be parsed for metadata.", status=status.HTTP_406_NOT_ACCEPTABLE
+            )
 
         serializer = self.get_serializer(data=new_pkg)
         serializer.is_valid(raise_exception=True)
@@ -110,35 +111,29 @@ class RpmRemoteViewSet(RemoteViewSet):
     A ViewSet for RpmRemote.
     """
 
-    endpoint_name = 'rpm'
+    endpoint_name = "rpm"
     queryset = RpmRemote.objects.all()
     serializer_class = RpmRemoteSerializer
 
     @swagger_auto_schema(
         operation_description="Trigger an asynchronous task to sync RPM content.",
         operation_summary="Sync from remote",
-        responses={202: AsyncOperationResponseSerializer}
+        responses={202: AsyncOperationResponseSerializer},
     )
-    @detail_route(methods=('post',), serializer_class=RepositorySyncURLSerializer)
+    @detail_route(methods=("post",), serializer_class=RepositorySyncURLSerializer)
     def sync(self, request, pk):
         """
         Dispatches a sync task.
         """
         remote = self.get_object()
-        serializer = RepositorySyncURLSerializer(
-            data=request.data,
-            context={'request': request}
-        )
+        serializer = RepositorySyncURLSerializer(data=request.data, context={"request": request})
         serializer.is_valid(raise_exception=True)
-        repository = serializer.validated_data.get('repository')
+        repository = serializer.validated_data.get("repository")
 
         result = enqueue_with_reservation(
             tasks.synchronize,
             [repository, remote],
-            kwargs={
-                'remote_pk': remote.pk,
-                'repository_pk': repository.pk
-            }
+            kwargs={"remote_pk": remote.pk, "repository_pk": repository.pk},
         )
         return OperationPostponedResponse(result, request)
 
@@ -151,10 +146,10 @@ class UpdateRecordFilter(ContentFilter):
     class Meta:
         model = UpdateRecord
         fields = {
-            'id': ['exact', 'in'],
-            'status': ['exact', 'in'],
-            'severity': ['exact', 'in'],
-            'type': ['exact', 'in'],
+            "id": ["exact", "in"],
+            "status": ["exact", "in"],
+            "severity": ["exact", "in"],
+            "type": ["exact", "in"],
         }
 
 
@@ -169,7 +164,7 @@ class UpdateRecordViewSet(ContentViewSet):
     Also specify queryset and serializer for UpdateRecord.
     """
 
-    endpoint_name = 'advisories'
+    endpoint_name = "advisories"
     queryset = UpdateRecord.objects.all()
     serializer_class = UpdateRecordSerializer
     minimal_serializer_class = MinimalUpdateRecordSerializer
@@ -191,23 +186,22 @@ class OneShotUploadViewSet(viewsets.ViewSet):
 
     @swagger_auto_schema(
         operation_description="Create an artifact and trigger an asynchronous"
-                              "task to create RPM content from it, optionally"
-                              "create new repository version.",
+        "task to create RPM content from it, optionally"
+        "create new repository version.",
         operation_summary="Upload a package",
         operation_id="upload_rpm_package",
         request_body=OneShotUploadSerializer,
-        responses={202: AsyncOperationResponseSerializer}
+        responses={202: AsyncOperationResponseSerializer},
     )
     def create(self, request):
         """Upload an RPM package."""
-        artifact = Artifact.init_and_validate(request.data['file'])
-        filename = request.data['file'].name
+        artifact = Artifact.init_and_validate(request.data["file"])
+        filename = request.data["file"].name
 
-        if 'repository' in request.data:
-            serializer = OneShotUploadSerializer(
-                data=request.data, context={'request': request})
+        if "repository" in request.data:
+            serializer = OneShotUploadSerializer(data=request.data, context={"request": request})
             serializer.is_valid(raise_exception=True)
-            repository = serializer.validated_data['repository']
+            repository = serializer.validated_data["repository"]
             repository_pk = repository.pk
         else:
             repository_pk = None
@@ -219,12 +213,14 @@ class OneShotUploadViewSet(viewsets.ViewSet):
             artifact = Artifact.objects.get(sha256=artifact.sha256)
 
         async_result = enqueue_with_reservation(
-            tasks.one_shot_upload, [artifact],
+            tasks.one_shot_upload,
+            [artifact],
             kwargs={
-                'artifact_pk': artifact.pk,
-                'filename': filename,
-                'repository_pk': repository_pk,
-            })
+                "artifact_pk": artifact.pk,
+                "filename": filename,
+                "repository_pk": repository_pk,
+            },
+        )
         return OperationPostponedResponse(async_result, request)
 
 
@@ -233,14 +229,14 @@ class RpmPublicationViewSet(PublicationViewSet):
     ViewSet for Rpm Publications.
     """
 
-    endpoint_name = 'rpm'
+    endpoint_name = "rpm"
     queryset = RpmPublication.objects.all()
     serializer_class = RpmPublicationSerializer
 
     @swagger_auto_schema(
         operation_description="Trigger an asynchronous task to create a new RPM "
-                              "content publication.",
-        responses={202: AsyncOperationResponseSerializer}
+        "content publication.",
+        responses={202: AsyncOperationResponseSerializer},
     )
     def create(self, request):
         """
@@ -248,14 +244,12 @@ class RpmPublicationViewSet(PublicationViewSet):
         """
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        repository_version = serializer.validated_data.get('repository_version')
+        repository_version = serializer.validated_data.get("repository_version")
 
         result = enqueue_with_reservation(
             tasks.publish,
             [repository_version.repository],
-            kwargs={
-                'repository_version_pk': repository_version.pk
-            }
+            kwargs={"repository_version_pk": repository_version.pk},
         )
         return OperationPostponedResponse(result, request)
 
@@ -265,7 +259,7 @@ class RpmDistributionViewSet(BaseDistributionViewSet):
     ViewSet for RPM Distributions.
     """
 
-    endpoint_name = 'rpm'
+    endpoint_name = "rpm"
     queryset = RpmDistribution.objects.all()
     serializer_class = RpmDistributionSerializer
 
@@ -280,26 +274,27 @@ class CopyViewSet(viewsets.ViewSet):
 
     @swagger_auto_schema(
         operation_description="Trigger an asynchronous task to copy RPM content"
-                              "from one repository into another, creating a new"
-                              "repository version.",
+        "from one repository into another, creating a new"
+        "repository version.",
         operation_summary="Copy content",
         operation_id="copy_content",
         request_body=CopySerializer,
-        responses={202: AsyncOperationResponseSerializer}
+        responses={202: AsyncOperationResponseSerializer},
     )
     def create(self, request):
         """Copy content."""
-        serializer = CopySerializer(data=request.data, context={'request': request})
+        serializer = CopySerializer(data=request.data, context={"request": request})
         serializer.is_valid(raise_exception=True)
 
-        source_repo = serializer.validated_data['source_repo']
-        source_repo_version = serializer.validated_data['source_repo_version']
-        dest_repo = serializer.validated_data['dest_repo']
-        types = serializer.validated_data['types']
+        source_repo = serializer.validated_data["source_repo"]
+        source_repo_version = serializer.validated_data["source_repo_version"]
+        dest_repo = serializer.validated_data["dest_repo"]
+        types = serializer.validated_data["types"]
 
         async_result = enqueue_with_reservation(
-            tasks.copy_content, [source_repo, dest_repo],
+            tasks.copy_content,
+            [source_repo, dest_repo],
             args=[source_repo_version.pk, dest_repo.pk, types],
-            kwargs={}
+            kwargs={},
         )
         return OperationPostponedResponse(async_result, request)

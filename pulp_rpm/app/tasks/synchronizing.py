@@ -21,13 +21,18 @@ from pulpcore.plugin.stages import (
     RemoveDuplicates,
     Stage,
     QueryExistingArtifacts,
-    QueryExistingContents
+    QueryExistingContents,
 )
 
 
 from pulp_rpm.app.constants import CHECKSUM_TYPES, PACKAGE_REPODATA, UPDATE_REPODATA
 from pulp_rpm.app.models import (
-    Package, RpmRemote, UpdateCollection, UpdateCollectionPackage, UpdateRecord, UpdateReference
+    Package,
+    RpmRemote,
+    UpdateCollection,
+    UpdateCollectionPackage,
+    UpdateRecord,
+    UpdateReference,
 )
 
 log = logging.getLogger(__name__)
@@ -50,20 +55,21 @@ def synchronize(remote_pk, repository_pk):
     remote = RpmRemote.objects.get(pk=remote_pk)
     repository = Repository.objects.get(pk=repository_pk)
 
-    package_dupe_criteria = {'model': Package,
-                             'field_names': ['name', 'epoch', 'version', 'release', 'arch']}
+    package_dupe_criteria = {
+        "model": Package,
+        "field_names": ["name", "epoch", "version", "release", "arch"],
+    }
 
     if not remote.url:
-        raise ValueError(_('A remote must have a url specified to synchronize.'))
+        raise ValueError(_("A remote must have a url specified to synchronize."))
 
-    log.info(_('Synchronizing: repository={r} remote={p}').format(
-        r=repository.name, p=remote.name))
+    log.info(_("Synchronizing: repository={r} remote={p}").format(r=repository.name, p=remote.name))
 
-    deferred_download = (remote.policy != Remote.IMMEDIATE)  # Interpret download policy
+    deferred_download = remote.policy != Remote.IMMEDIATE  # Interpret download policy
     first_stage = RpmFirstStage(remote, deferred_download)
-    dv = RpmDeclarativeVersion(first_stage=first_stage,
-                               repository=repository,
-                               remove_duplicates=[package_dupe_criteria])
+    dv = RpmDeclarativeVersion(
+        first_stage=first_stage, repository=repository, remove_duplicates=[package_dupe_criteria]
+    )
     dv.create()
 
 
@@ -155,7 +161,7 @@ class RpmFirstStage(Stage):
         """
         uinfo = cr.UpdateInfo()
         uinfo.append(update)
-        return hashlib.sha256(uinfo.xml_dump().encode('utf-8')).hexdigest()
+        return hashlib.sha256(uinfo.xml_dump().encode("utf-8")).hexdigest()
 
     @staticmethod
     async def parse_repodata(primary_xml_path, filelists_xml_path, other_xml_path):
@@ -171,6 +177,7 @@ class RpmFirstStage(Stage):
             dict: createrepo_c package objects with the pkgId as a key
 
         """
+
         def pkgcb(pkg):
             """
             A callback which is used when a whole package entry in xml is parsed.
@@ -217,15 +224,15 @@ class RpmFirstStage(Stage):
         """
         Build `DeclarativeContent` from the repodata.
         """
-        packages_pb = ProgressBar(message='Parsed Packages')
-        erratum_pb = ProgressBar(message='Parsed Erratum')
+        packages_pb = ProgressBar(message="Parsed Packages")
+        erratum_pb = ProgressBar(message="Parsed Erratum")
 
         packages_pb.save()
         erratum_pb.save()
 
-        with ProgressBar(message='Downloading Metadata Files') as metadata_pb:
+        with ProgressBar(message="Downloading Metadata Files") as metadata_pb:
             downloader = self.remote.get_downloader(
-                url=urljoin(self.remote.url, 'repodata/repomd.xml')
+                url=urljoin(self.remote.url, "repodata/repomd.xml")
             )
             # TODO: decide how to distinguish between a mirror list and a normal repo
             result = await downloader.run()
@@ -238,14 +245,15 @@ class RpmFirstStage(Stage):
 
             for record in repomd.records:
                 if record.type in PACKAGE_REPODATA:
-                    package_repodata_urls[record.type] = urljoin(self.remote.url,
-                                                                 record.location_href)
+                    package_repodata_urls[record.type] = urljoin(
+                        self.remote.url, record.location_href
+                    )
                 elif record.type in UPDATE_REPODATA:
                     updateinfo_url = urljoin(self.remote.url, record.location_href)
                     downloader = self.remote.get_downloader(url=updateinfo_url)
                     downloaders.append([downloader.run()])
                 else:
-                    log.info(_('Unknown repodata type: {t}. Skipped.').format(t=record.type))
+                    log.info(_("Unknown repodata type: {t}. Skipped.").format(t=record.type))
                     # TODO: skip databases, save unknown types to publish them as-is
 
             # to preserve order, downloaders are created after all repodata urls are identified
@@ -263,18 +271,18 @@ class RpmFirstStage(Stage):
                 done, pending = await asyncio.wait(pending, return_when=asyncio.FIRST_COMPLETED)
                 for downloader in done:
                     results = downloader.result()
-                    if results[0].url == package_repodata_urls['primary']:
+                    if results[0].url == package_repodata_urls["primary"]:
                         primary_xml_path = results[0].path
                         filelists_xml_path = results[1].path
                         other_xml_path = results[2].path
                         metadata_pb.done += 3
                         metadata_pb.save()
 
-                        packages = await RpmFirstStage.parse_repodata(primary_xml_path,
-                                                                      filelists_xml_path,
-                                                                      other_xml_path)
+                        packages = await RpmFirstStage.parse_repodata(
+                            primary_xml_path, filelists_xml_path, other_xml_path
+                        )
                         packages_pb.total = len(packages)
-                        packages_pb.state = 'running'
+                        packages_pb.state = "running"
                         packages_pb.save()
 
                         for pkg in packages.values():
@@ -289,7 +297,7 @@ class RpmFirstStage(Stage):
                                 url=url,
                                 relative_path=filename,
                                 remote=self.remote,
-                                deferred_download=self.deferred_download
+                                deferred_download=self.deferred_download,
                             )
                             dc = DeclarativeContent(content=package, d_artifacts=[da])
                             packages_pb.increment()
@@ -302,7 +310,7 @@ class RpmFirstStage(Stage):
                         updates = await RpmFirstStage.parse_updateinfo(updateinfo_xml_path)
 
                         erratum_pb.total = len(updates)
-                        erratum_pb.state = 'running'
+                        erratum_pb.state = "running"
                         erratum_pb.save()
 
                         for update in updates:
@@ -328,8 +336,8 @@ class RpmFirstStage(Stage):
                             dc = DeclarativeContent(content=update_record)
                             await self.put(dc)
 
-        packages_pb.state = 'completed'
-        erratum_pb.state = 'completed'
+        packages_pb.state = "completed"
+        erratum_pb.state = "completed"
         packages_pb.save()
         erratum_pb.save()
 

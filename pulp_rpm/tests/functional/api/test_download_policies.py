@@ -12,14 +12,8 @@ from pulp_smash.pulp3.utils import (
     sync,
 )
 
-from pulp_rpm.tests.functional.constants import (
-    RPM_FIXTURE_SUMMARY,
-    RPM_REMOTE_PATH,
-)
-from pulp_rpm.tests.functional.utils import (
-    gen_rpm_remote,
-    publish,
-)
+from pulp_rpm.tests.functional.constants import RPM_FIXTURE_SUMMARY, RPM_REMOTE_PATH
+from pulp_rpm.tests.functional.utils import gen_rpm_remote, publish
 from pulp_rpm.tests.functional.utils import set_up_module as setUpModule  # noqa:F401
 
 
@@ -46,8 +40,8 @@ class SyncPublishDownloadPolicyTestCase(unittest.TestCase):
         See :meth:`do_sync`.
         See :meth:`do_publish`.
         """
-        self.do_sync('on_demand')
-        self.do_publish('on_demand')
+        self.do_sync("on_demand")
+        self.do_publish("on_demand")
 
     def test_streamed(self):
         """Sync/Publish with ``streamend`` download policy.
@@ -55,8 +49,8 @@ class SyncPublishDownloadPolicyTestCase(unittest.TestCase):
         See :meth:`do_sync`.
         See :meth:`do_publish`.
         """
-        self.do_sync('streamed')
-        self.do_publish('streamed')
+        self.do_sync("streamed")
+        self.do_publish("streamed")
 
     def do_sync(self, download_policy):
         """Sync repositories with the different ``download_policy``.
@@ -77,48 +71,39 @@ class SyncPublishDownloadPolicyTestCase(unittest.TestCase):
            was synced again.
         """
         repo = self.client.post(REPO_PATH, gen_repo())
-        self.addCleanup(self.client.delete, repo['_href'])
+        self.addCleanup(self.client.delete, repo["_href"])
 
-        remote = self.client.post(
-            RPM_REMOTE_PATH,
-            gen_rpm_remote(policy=download_policy)
-        )
-        self.addCleanup(self.client.delete, remote['_href'])
+        remote = self.client.post(RPM_REMOTE_PATH, gen_rpm_remote(policy=download_policy))
+        self.addCleanup(self.client.delete, remote["_href"])
 
         # Sync the repository.
-        self.assertIsNone(repo['_latest_version_href'])
+        self.assertIsNone(repo["_latest_version_href"])
         sync(self.cfg, remote, repo)
-        repo = self.client.get(repo['_href'])
+        repo = self.client.get(repo["_href"])
 
-        self.assertIsNotNone(repo['_latest_version_href'])
+        self.assertIsNotNone(repo["_latest_version_href"])
         self.assertDictEqual(get_content_summary(repo), RPM_FIXTURE_SUMMARY)
-        self.assertDictEqual(
-            get_added_content_summary(repo),
-            RPM_FIXTURE_SUMMARY
-        )
+        self.assertDictEqual(get_added_content_summary(repo), RPM_FIXTURE_SUMMARY)
 
         # Sync the repository again.
-        latest_version_href = repo['_latest_version_href']
+        latest_version_href = repo["_latest_version_href"]
         sync(self.cfg, remote, repo)
-        repo = self.client.get(repo['_href'])
+        repo = self.client.get(repo["_href"])
 
-        self.assertNotEqual(latest_version_href, repo['_latest_version_href'])
+        self.assertNotEqual(latest_version_href, repo["_latest_version_href"])
         self.assertDictEqual(get_content_summary(repo), RPM_FIXTURE_SUMMARY)
         self.assertDictEqual(get_added_content_summary(repo), {})
 
     def do_publish(self, download_policy):
         """Publish repository synced with lazy ``download_policy``."""
         repo = self.client.post(REPO_PATH, gen_repo())
-        self.addCleanup(self.client.delete, repo['_href'])
+        self.addCleanup(self.client.delete, repo["_href"])
 
-        remote = self.client.post(
-            RPM_REMOTE_PATH,
-            gen_rpm_remote(policy=download_policy)
-        )
-        self.addCleanup(self.client.delete, remote['_href'])
+        remote = self.client.post(RPM_REMOTE_PATH, gen_rpm_remote(policy=download_policy))
+        self.addCleanup(self.client.delete, remote["_href"])
 
         sync(self.cfg, remote, repo)
-        repo = self.client.get(repo['_href'])
+        repo = self.client.get(repo["_href"])
 
         publication = publish(self.cfg, repo)
-        self.assertIsNotNone(publication['repository_version'], publication)
+        self.assertIsNotNone(publication["repository_version"], publication)

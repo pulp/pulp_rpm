@@ -7,18 +7,9 @@ from urllib.parse import urljoin
 
 from pulp_smash import api, config, utils
 from pulp_smash.pulp3.constants import REPO_PATH
-from pulp_smash.pulp3.utils import (
-    download_content_unit,
-    gen_distribution,
-    gen_repo,
-    sync,
-)
+from pulp_smash.pulp3.utils import download_content_unit, gen_distribution, gen_repo, sync
 
-from pulp_rpm.tests.functional.utils import (
-    gen_rpm_remote,
-    get_rpm_package_paths,
-    publish,
-)
+from pulp_rpm.tests.functional.utils import gen_rpm_remote, get_rpm_package_paths, publish
 from pulp_rpm.tests.functional.constants import (
     RPM_DISTRIBUTION_PATH,
     RPM_REMOTE_PATH,
@@ -60,26 +51,24 @@ class DownloadContentTestCase(unittest.TestCase):
         client = api.Client(cfg, api.json_handler)
 
         repo = client.post(REPO_PATH, gen_repo())
-        self.addCleanup(client.delete, repo['_href'])
+        self.addCleanup(client.delete, repo["_href"])
 
         body = gen_rpm_remote()
         remote = client.post(RPM_REMOTE_PATH, body)
-        self.addCleanup(client.delete, remote['_href'])
+        self.addCleanup(client.delete, remote["_href"])
 
         sync(cfg, remote, repo)
-        repo = client.get(repo['_href'])
+        repo = client.get(repo["_href"])
 
         # Create a publication.
         publication = publish(cfg, repo)
-        self.addCleanup(client.delete, publication['_href'])
+        self.addCleanup(client.delete, publication["_href"])
 
         # Create a distribution.
         body = gen_distribution()
-        body['publication'] = publication['_href']
-        distribution = client.using_handler(api.task_handler).post(
-            RPM_DISTRIBUTION_PATH, body
-        )
-        self.addCleanup(client.delete, distribution['_href'])
+        body["publication"] = publication["_href"]
+        distribution = client.using_handler(api.task_handler).post(RPM_DISTRIBUTION_PATH, body)
+        self.addCleanup(client.delete, distribution["_href"])
 
         # Pick a content unit, and download it from both Pulp Fixtures…
         unit_path = choice(get_rpm_package_paths(repo))

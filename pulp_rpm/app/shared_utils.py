@@ -29,7 +29,7 @@ def _prepare_package(artifact, filename):
 
         package = Package.createrepo_to_dict(cr_pkginfo)
 
-    package['location_href'] = filename
+    package["location_href"] = filename
 
     # parsing it into a saveable format
     new_pkg = {}

@@ -6,11 +6,14 @@ import createrepo_c as cr
 from django.db import models
 from pulpcore.plugin.models import Content, Remote, Publication, PublicationDistribution
 
-from pulp_rpm.app.constants import (CHECKSUM_CHOICES, CREATEREPO_PACKAGE_ATTRS,
-                                    CREATEREPO_UPDATE_COLLECTION_ATTRS,
-                                    CREATEREPO_UPDATE_COLLECTION_PACKAGE_ATTRS,
-                                    CREATEREPO_UPDATE_RECORD_ATTRS,
-                                    CREATEREPO_UPDATE_REFERENCE_ATTRS)
+from pulp_rpm.app.constants import (
+    CHECKSUM_CHOICES,
+    CREATEREPO_PACKAGE_ATTRS,
+    CREATEREPO_UPDATE_COLLECTION_ATTRS,
+    CREATEREPO_UPDATE_COLLECTION_PACKAGE_ATTRS,
+    CREATEREPO_UPDATE_RECORD_ATTRS,
+    CREATEREPO_UPDATE_REFERENCE_ATTRS,
+)
 
 
 log = getLogger(__name__)
@@ -110,7 +113,7 @@ class Package(Content):
             attribute in the primary XML.
     """
 
-    TYPE = 'package'
+    TYPE = "package"
 
     # Required metadata
     name = models.TextField()
@@ -133,7 +136,7 @@ class Package(Content):
     #   date (int):     date of changelog - seconds since epoch
     #   author (str):   author of the changelog
     #   changelog (str: changelog text
-    changelogs = models.TextField(default='[]')
+    changelogs = models.TextField(default="[]")
 
     # A string containing a JSON-encoded list of dictionaries, each of which represents a single
     # file. Each file dict contains the following fields:
@@ -141,7 +144,7 @@ class Package(Content):
     #   type (str):     one of "" (regular file), "dir", "ghost"
     #   path (str):     path to file
     #   name (str):     filename
-    files = models.TextField(default='[]')
+    files = models.TextField(default="[]")
 
     # Each of these is a string containing a JSON-encoded list of dictionaries, each of which
     # represents a dependency. Each dependency dict contains the following fields:
@@ -152,14 +155,14 @@ class Package(Content):
     #   version (str):  version
     #   release (str):  release
     #   pre (bool):     preinstall
-    requires = models.TextField(default='[]')
-    provides = models.TextField(default='[]')
-    conflicts = models.TextField(default='[]')
-    obsoletes = models.TextField(default='[]')
-    suggests = models.TextField(default='[]')
-    enhances = models.TextField(default='[]')
-    recommends = models.TextField(default='[]')
-    supplements = models.TextField(default='[]')
+    requires = models.TextField(default="[]")
+    provides = models.TextField(default="[]")
+    conflicts = models.TextField(default="[]")
+    obsoletes = models.TextField(default="[]")
+    suggests = models.TextField(default="[]")
+    enhances = models.TextField(default="[]")
+    recommends = models.TextField(default="[]")
+    supplements = models.TextField(default="[]")
 
     location_base = models.TextField()
     location_href = models.TextField()
@@ -193,20 +196,18 @@ class Package(Content):
         Package NEVRA string (Name-Epoch-Version-Release-Architecture).
         """
         return "{n}-{e}:{v}-{r}.{a}".format(
-            n=self.name, e=self.epoch, v=self.version, r=self.release, a=self.arch)
+            n=self.name, e=self.epoch, v=self.version, r=self.release, a=self.arch
+        )
 
     @property
     def nvra(self):
         """
         Package NVRA string (Name-Version-Release-Architecture).
         """
-        return "{n}-{v}-{r}.{a}".format(
-            n=self.name, v=self.version, r=self.release, a=self.arch)
+        return "{n}-{v}-{r}.{a}".format(n=self.name, v=self.version, r=self.release, a=self.arch)
 
     class Meta:
-        unique_together = (
-            'name', 'epoch', 'version', 'release', 'arch', 'checksum_type', 'pkgId'
-        )
+        unique_together = ("name", "epoch", "version", "release", "arch", "checksum_type", "pkgId")
 
     @classmethod
     def createrepo_to_dict(cls, package):
@@ -221,41 +222,41 @@ class Package(Content):
 
         """
         return {
-            'arch': getattr(package, CREATEREPO_PACKAGE_ATTRS.ARCH),
-            'changelogs': json.dumps(getattr(package, CREATEREPO_PACKAGE_ATTRS.CHANGELOGS) or []),
-            'checksum_type': getattr(package, CREATEREPO_PACKAGE_ATTRS.CHECKSUM_TYPE),
-            'conflicts': json.dumps(getattr(package, CREATEREPO_PACKAGE_ATTRS.CONFLICTS) or []),
-            'description': getattr(package, CREATEREPO_PACKAGE_ATTRS.DESCRIPTION) or '',
-            'enhances': json.dumps(getattr(package, CREATEREPO_PACKAGE_ATTRS.ENHANCES) or []),
-            'epoch': getattr(package, CREATEREPO_PACKAGE_ATTRS.EPOCH) or '',
-            'files': json.dumps(getattr(package, CREATEREPO_PACKAGE_ATTRS.FILES) or []),
-            'location_base': getattr(package, CREATEREPO_PACKAGE_ATTRS.LOCATION_BASE) or '',
-            'location_href': getattr(package, CREATEREPO_PACKAGE_ATTRS.LOCATION_HREF),
-            'name': getattr(package, CREATEREPO_PACKAGE_ATTRS.NAME),
-            'obsoletes': json.dumps(getattr(package, CREATEREPO_PACKAGE_ATTRS.OBSOLETES) or []),
-            'pkgId': getattr(package, CREATEREPO_PACKAGE_ATTRS.PKGID),
-            'provides': json.dumps(getattr(package, CREATEREPO_PACKAGE_ATTRS.PROVIDES) or []),
-            'recommends': json.dumps(getattr(package, CREATEREPO_PACKAGE_ATTRS.RECOMMENDS) or []),
-            'release': getattr(package, CREATEREPO_PACKAGE_ATTRS.RELEASE),
-            'requires': json.dumps(getattr(package, CREATEREPO_PACKAGE_ATTRS.REQUIRES) or []),
-            'rpm_buildhost': getattr(package, CREATEREPO_PACKAGE_ATTRS.RPM_BUILDHOST) or '',
-            'rpm_group': getattr(package, CREATEREPO_PACKAGE_ATTRS.RPM_GROUP) or '',
-            'rpm_header_end': getattr(package, CREATEREPO_PACKAGE_ATTRS.RPM_HEADER_END),
-            'rpm_header_start': getattr(package, CREATEREPO_PACKAGE_ATTRS.RPM_HEADER_START),
-            'rpm_license': getattr(package, CREATEREPO_PACKAGE_ATTRS.RPM_LICENSE) or '',
-            'rpm_packager': getattr(package, CREATEREPO_PACKAGE_ATTRS.RPM_PACKAGER) or '',
-            'rpm_sourcerpm': getattr(package, CREATEREPO_PACKAGE_ATTRS.RPM_SOURCERPM) or '',
-            'rpm_vendor': getattr(package, CREATEREPO_PACKAGE_ATTRS.RPM_VENDOR) or '',
-            'size_archive': getattr(package, CREATEREPO_PACKAGE_ATTRS.SIZE_ARCHIVE),
-            'size_installed': getattr(package, CREATEREPO_PACKAGE_ATTRS.SIZE_INSTALLED),
-            'size_package': getattr(package, CREATEREPO_PACKAGE_ATTRS.SIZE_PACKAGE),
-            'suggests': json.dumps(getattr(package, CREATEREPO_PACKAGE_ATTRS.SUGGESTS) or []),
-            'summary': getattr(package, CREATEREPO_PACKAGE_ATTRS.SUMMARY) or '',
-            'supplements': json.dumps(getattr(package, CREATEREPO_PACKAGE_ATTRS.SUPPLEMENTS) or []),
-            'time_build': getattr(package, CREATEREPO_PACKAGE_ATTRS.TIME_BUILD),
-            'time_file': getattr(package, CREATEREPO_PACKAGE_ATTRS.TIME_FILE),
-            'url': getattr(package, CREATEREPO_PACKAGE_ATTRS.URL) or '',
-            'version': getattr(package, CREATEREPO_PACKAGE_ATTRS.VERSION)
+            "arch": getattr(package, CREATEREPO_PACKAGE_ATTRS.ARCH),
+            "changelogs": json.dumps(getattr(package, CREATEREPO_PACKAGE_ATTRS.CHANGELOGS) or []),
+            "checksum_type": getattr(package, CREATEREPO_PACKAGE_ATTRS.CHECKSUM_TYPE),
+            "conflicts": json.dumps(getattr(package, CREATEREPO_PACKAGE_ATTRS.CONFLICTS) or []),
+            "description": getattr(package, CREATEREPO_PACKAGE_ATTRS.DESCRIPTION) or "",
+            "enhances": json.dumps(getattr(package, CREATEREPO_PACKAGE_ATTRS.ENHANCES) or []),
+            "epoch": getattr(package, CREATEREPO_PACKAGE_ATTRS.EPOCH) or "",
+            "files": json.dumps(getattr(package, CREATEREPO_PACKAGE_ATTRS.FILES) or []),
+            "location_base": getattr(package, CREATEREPO_PACKAGE_ATTRS.LOCATION_BASE) or "",
+            "location_href": getattr(package, CREATEREPO_PACKAGE_ATTRS.LOCATION_HREF),
+            "name": getattr(package, CREATEREPO_PACKAGE_ATTRS.NAME),
+            "obsoletes": json.dumps(getattr(package, CREATEREPO_PACKAGE_ATTRS.OBSOLETES) or []),
+            "pkgId": getattr(package, CREATEREPO_PACKAGE_ATTRS.PKGID),
+            "provides": json.dumps(getattr(package, CREATEREPO_PACKAGE_ATTRS.PROVIDES) or []),
+            "recommends": json.dumps(getattr(package, CREATEREPO_PACKAGE_ATTRS.RECOMMENDS) or []),
+            "release": getattr(package, CREATEREPO_PACKAGE_ATTRS.RELEASE),
+            "requires": json.dumps(getattr(package, CREATEREPO_PACKAGE_ATTRS.REQUIRES) or []),
+            "rpm_buildhost": getattr(package, CREATEREPO_PACKAGE_ATTRS.RPM_BUILDHOST) or "",
+            "rpm_group": getattr(package, CREATEREPO_PACKAGE_ATTRS.RPM_GROUP) or "",
+            "rpm_header_end": getattr(package, CREATEREPO_PACKAGE_ATTRS.RPM_HEADER_END),
+            "rpm_header_start": getattr(package, CREATEREPO_PACKAGE_ATTRS.RPM_HEADER_START),
+            "rpm_license": getattr(package, CREATEREPO_PACKAGE_ATTRS.RPM_LICENSE) or "",
+            "rpm_packager": getattr(package, CREATEREPO_PACKAGE_ATTRS.RPM_PACKAGER) or "",
+            "rpm_sourcerpm": getattr(package, CREATEREPO_PACKAGE_ATTRS.RPM_SOURCERPM) or "",
+            "rpm_vendor": getattr(package, CREATEREPO_PACKAGE_ATTRS.RPM_VENDOR) or "",
+            "size_archive": getattr(package, CREATEREPO_PACKAGE_ATTRS.SIZE_ARCHIVE),
+            "size_installed": getattr(package, CREATEREPO_PACKAGE_ATTRS.SIZE_INSTALLED),
+            "size_package": getattr(package, CREATEREPO_PACKAGE_ATTRS.SIZE_PACKAGE),
+            "suggests": json.dumps(getattr(package, CREATEREPO_PACKAGE_ATTRS.SUGGESTS) or []),
+            "summary": getattr(package, CREATEREPO_PACKAGE_ATTRS.SUMMARY) or "",
+            "supplements": json.dumps(getattr(package, CREATEREPO_PACKAGE_ATTRS.SUPPLEMENTS) or []),
+            "time_build": getattr(package, CREATEREPO_PACKAGE_ATTRS.TIME_BUILD),
+            "time_file": getattr(package, CREATEREPO_PACKAGE_ATTRS.TIME_FILE),
+            "url": getattr(package, CREATEREPO_PACKAGE_ATTRS.URL) or "",
+            "version": getattr(package, CREATEREPO_PACKAGE_ATTRS.VERSION),
         }
 
     def to_createrepo_c(self):
@@ -269,6 +270,7 @@ class Package(Content):
             createrepo_c.Package: package itself in a format of a createrepo_c package object
 
         """
+
         def str_list_to_createrepo_c(s):
             """
             Convert string representation of list to createrepo_c format.
@@ -296,28 +298,35 @@ class Package(Content):
         package = cr.Package()
         package.arch = getattr(self, CREATEREPO_PACKAGE_ATTRS.ARCH)
         package.changelogs = str_list_to_createrepo_c(
-            getattr(self, CREATEREPO_PACKAGE_ATTRS.CHANGELOGS))
+            getattr(self, CREATEREPO_PACKAGE_ATTRS.CHANGELOGS)
+        )
         package.checksum_type = getattr(self, CREATEREPO_PACKAGE_ATTRS.CHECKSUM_TYPE)
         package.conflicts = str_list_to_createrepo_c(
-            getattr(self, CREATEREPO_PACKAGE_ATTRS.CONFLICTS))
+            getattr(self, CREATEREPO_PACKAGE_ATTRS.CONFLICTS)
+        )
         package.description = getattr(self, CREATEREPO_PACKAGE_ATTRS.DESCRIPTION)
         package.enhances = str_list_to_createrepo_c(
-            getattr(self, CREATEREPO_PACKAGE_ATTRS.ENHANCES))
+            getattr(self, CREATEREPO_PACKAGE_ATTRS.ENHANCES)
+        )
         package.epoch = getattr(self, CREATEREPO_PACKAGE_ATTRS.EPOCH)
         package.files = str_list_to_createrepo_c(getattr(self, CREATEREPO_PACKAGE_ATTRS.FILES))
         package.location_base = getattr(self, CREATEREPO_PACKAGE_ATTRS.LOCATION_BASE)
         package.location_href = getattr(self, CREATEREPO_PACKAGE_ATTRS.LOCATION_HREF)
         package.name = getattr(self, CREATEREPO_PACKAGE_ATTRS.NAME)
         package.obsoletes = str_list_to_createrepo_c(
-            getattr(self, CREATEREPO_PACKAGE_ATTRS.OBSOLETES))
+            getattr(self, CREATEREPO_PACKAGE_ATTRS.OBSOLETES)
+        )
         package.pkgId = getattr(self, CREATEREPO_PACKAGE_ATTRS.PKGID)
         package.provides = str_list_to_createrepo_c(
-            getattr(self, CREATEREPO_PACKAGE_ATTRS.PROVIDES))
+            getattr(self, CREATEREPO_PACKAGE_ATTRS.PROVIDES)
+        )
         package.recommends = str_list_to_createrepo_c(
-            getattr(self, CREATEREPO_PACKAGE_ATTRS.RECOMMENDS))
+            getattr(self, CREATEREPO_PACKAGE_ATTRS.RECOMMENDS)
+        )
         package.release = getattr(self, CREATEREPO_PACKAGE_ATTRS.RELEASE)
         package.requires = str_list_to_createrepo_c(
-            getattr(self, CREATEREPO_PACKAGE_ATTRS.REQUIRES))
+            getattr(self, CREATEREPO_PACKAGE_ATTRS.REQUIRES)
+        )
         package.rpm_buildhost = getattr(self, CREATEREPO_PACKAGE_ATTRS.RPM_BUILDHOST)
         package.rpm_group = getattr(self, CREATEREPO_PACKAGE_ATTRS.RPM_GROUP)
         package.rpm_header_end = getattr(self, CREATEREPO_PACKAGE_ATTRS.RPM_HEADER_END)
@@ -330,10 +339,12 @@ class Package(Content):
         package.size_installed = getattr(self, CREATEREPO_PACKAGE_ATTRS.SIZE_INSTALLED)
         package.size_package = getattr(self, CREATEREPO_PACKAGE_ATTRS.SIZE_PACKAGE)
         package.suggests = str_list_to_createrepo_c(
-            getattr(self, CREATEREPO_PACKAGE_ATTRS.SUGGESTS))
+            getattr(self, CREATEREPO_PACKAGE_ATTRS.SUGGESTS)
+        )
         package.summary = getattr(self, CREATEREPO_PACKAGE_ATTRS.SUMMARY)
         package.supplements = str_list_to_createrepo_c(
-            getattr(self, CREATEREPO_PACKAGE_ATTRS.SUPPLEMENTS))
+            getattr(self, CREATEREPO_PACKAGE_ATTRS.SUPPLEMENTS)
+        )
         package.time_build = getattr(self, CREATEREPO_PACKAGE_ATTRS.TIME_BUILD)
         package.time_file = getattr(self, CREATEREPO_PACKAGE_ATTRS.TIME_FILE)
         package.url = getattr(self, CREATEREPO_PACKAGE_ATTRS.URL)
@@ -386,7 +397,7 @@ class UpdateRecord(Content):
 
     """
 
-    TYPE = 'advisory'
+    TYPE = "advisory"
 
     # Required metadata
     id = models.TextField(db_index=True)
@@ -419,7 +430,7 @@ class UpdateRecord(Content):
         """
         Digest is used as a natural key for UpdateRecords.
         """
-        return ('digest',)
+        return ("digest",)
 
     @classmethod
     def createrepo_to_dict(cls, update):
@@ -434,21 +445,21 @@ class UpdateRecord(Content):
 
         """
         return {
-            'id': getattr(update, CREATEREPO_UPDATE_RECORD_ATTRS.ID),
-            'updated_date': str(getattr(update, CREATEREPO_UPDATE_RECORD_ATTRS.UPDATED_DATE)),
-            'description': getattr(update, CREATEREPO_UPDATE_RECORD_ATTRS.DESCRIPTION) or '',
-            'issued_date': str(getattr(update, CREATEREPO_UPDATE_RECORD_ATTRS.ISSUED_DATE)) or '',
-            'fromstr': getattr(update, CREATEREPO_UPDATE_RECORD_ATTRS.FROMSTR) or '',
-            'status': getattr(update, CREATEREPO_UPDATE_RECORD_ATTRS.STATUS) or '',
-            'title': getattr(update, CREATEREPO_UPDATE_RECORD_ATTRS.TITLE) or '',
-            'summary': getattr(update, CREATEREPO_UPDATE_RECORD_ATTRS.SUMMARY) or '',
-            'version': getattr(update, CREATEREPO_UPDATE_RECORD_ATTRS.VERSION) or '',
-            'type': getattr(update, CREATEREPO_UPDATE_RECORD_ATTRS.TYPE) or '',
-            'severity': getattr(update, CREATEREPO_UPDATE_RECORD_ATTRS.SEVERITY) or '',
-            'solution': getattr(update, CREATEREPO_UPDATE_RECORD_ATTRS.SOLUTION) or '',
-            'release': getattr(update, CREATEREPO_UPDATE_RECORD_ATTRS.RELEASE) or '',
-            'rights': getattr(update, CREATEREPO_UPDATE_RECORD_ATTRS.RIGHTS) or '',
-            'pushcount': getattr(update, CREATEREPO_UPDATE_RECORD_ATTRS.PUSHCOUNT) or ''
+            "id": getattr(update, CREATEREPO_UPDATE_RECORD_ATTRS.ID),
+            "updated_date": str(getattr(update, CREATEREPO_UPDATE_RECORD_ATTRS.UPDATED_DATE)),
+            "description": getattr(update, CREATEREPO_UPDATE_RECORD_ATTRS.DESCRIPTION) or "",
+            "issued_date": str(getattr(update, CREATEREPO_UPDATE_RECORD_ATTRS.ISSUED_DATE)) or "",
+            "fromstr": getattr(update, CREATEREPO_UPDATE_RECORD_ATTRS.FROMSTR) or "",
+            "status": getattr(update, CREATEREPO_UPDATE_RECORD_ATTRS.STATUS) or "",
+            "title": getattr(update, CREATEREPO_UPDATE_RECORD_ATTRS.TITLE) or "",
+            "summary": getattr(update, CREATEREPO_UPDATE_RECORD_ATTRS.SUMMARY) or "",
+            "version": getattr(update, CREATEREPO_UPDATE_RECORD_ATTRS.VERSION) or "",
+            "type": getattr(update, CREATEREPO_UPDATE_RECORD_ATTRS.TYPE) or "",
+            "severity": getattr(update, CREATEREPO_UPDATE_RECORD_ATTRS.SEVERITY) or "",
+            "solution": getattr(update, CREATEREPO_UPDATE_RECORD_ATTRS.SOLUTION) or "",
+            "release": getattr(update, CREATEREPO_UPDATE_RECORD_ATTRS.RELEASE) or "",
+            "rights": getattr(update, CREATEREPO_UPDATE_RECORD_ATTRS.RIGHTS) or "",
+            "pushcount": getattr(update, CREATEREPO_UPDATE_RECORD_ATTRS.PUSHCOUNT) or "",
         }
 
     def __init__(self, *args, **kwargs):
@@ -482,8 +493,9 @@ class UpdateCollection(models.Model):
     name = models.TextField()
     shortname = models.TextField()
 
-    update_record = models.ForeignKey(UpdateRecord, related_name="collections",
-                                      on_delete=models.CASCADE)
+    update_record = models.ForeignKey(
+        UpdateRecord, related_name="collections", on_delete=models.CASCADE
+    )
 
     @classmethod
     def createrepo_to_dict(cls, collection):
@@ -498,8 +510,8 @@ class UpdateCollection(models.Model):
 
         """
         return {
-            'name': getattr(collection, CREATEREPO_UPDATE_COLLECTION_ATTRS.NAME),
-            'shortname': getattr(collection, CREATEREPO_UPDATE_COLLECTION_ATTRS.SHORTNAME)
+            "name": getattr(collection, CREATEREPO_UPDATE_COLLECTION_ATTRS.NAME),
+            "shortname": getattr(collection, CREATEREPO_UPDATE_COLLECTION_ATTRS.SHORTNAME),
         }
 
     def __init__(self, *args, **kwargs):
@@ -556,8 +568,9 @@ class UpdateCollectionPackage(models.Model):
     sum_type = models.TextField()
     version = models.TextField()
 
-    update_collection = models.ForeignKey(UpdateCollection, related_name='packages',
-                                          on_delete=models.CASCADE)
+    update_collection = models.ForeignKey(
+        UpdateCollection, related_name="packages", on_delete=models.CASCADE
+    )
 
     @classmethod
     def createrepo_to_dict(cls, package):
@@ -572,16 +585,18 @@ class UpdateCollectionPackage(models.Model):
 
         """
         return {
-            'arch': getattr(package, CREATEREPO_UPDATE_COLLECTION_PACKAGE_ATTRS.ARCH) or '',
-            'epoch': getattr(package, CREATEREPO_UPDATE_COLLECTION_PACKAGE_ATTRS.EPOCH) or '0',
-            'filename': getattr(package, CREATEREPO_UPDATE_COLLECTION_PACKAGE_ATTRS.FILENAME) or '',
-            'name': getattr(package, CREATEREPO_UPDATE_COLLECTION_PACKAGE_ATTRS.NAME) or '',
-            'reboot_suggested': getattr(package, CREATEREPO_UPDATE_COLLECTION_PACKAGE_ATTRS.REBOOT_SUGGESTED),  # noqa
-            'release': getattr(package, CREATEREPO_UPDATE_COLLECTION_PACKAGE_ATTRS.RELEASE) or '',
-            'src': getattr(package, CREATEREPO_UPDATE_COLLECTION_PACKAGE_ATTRS.SRC) or '',
-            'sum': getattr(package, CREATEREPO_UPDATE_COLLECTION_PACKAGE_ATTRS.SUM) or '',
-            'sum_type': getattr(package, CREATEREPO_UPDATE_COLLECTION_PACKAGE_ATTRS.SUM_TYPE) or '',
-            'version': getattr(package, CREATEREPO_UPDATE_COLLECTION_PACKAGE_ATTRS.VERSION) or ''
+            "arch": getattr(package, CREATEREPO_UPDATE_COLLECTION_PACKAGE_ATTRS.ARCH) or "",
+            "epoch": getattr(package, CREATEREPO_UPDATE_COLLECTION_PACKAGE_ATTRS.EPOCH) or "0",
+            "filename": getattr(package, CREATEREPO_UPDATE_COLLECTION_PACKAGE_ATTRS.FILENAME) or "",
+            "name": getattr(package, CREATEREPO_UPDATE_COLLECTION_PACKAGE_ATTRS.NAME) or "",
+            "reboot_suggested": getattr(
+                package, CREATEREPO_UPDATE_COLLECTION_PACKAGE_ATTRS.REBOOT_SUGGESTED
+            ),  # noqa
+            "release": getattr(package, CREATEREPO_UPDATE_COLLECTION_PACKAGE_ATTRS.RELEASE) or "",
+            "src": getattr(package, CREATEREPO_UPDATE_COLLECTION_PACKAGE_ATTRS.SRC) or "",
+            "sum": getattr(package, CREATEREPO_UPDATE_COLLECTION_PACKAGE_ATTRS.SUM) or "",
+            "sum_type": getattr(package, CREATEREPO_UPDATE_COLLECTION_PACKAGE_ATTRS.SUM_TYPE) or "",
+            "version": getattr(package, CREATEREPO_UPDATE_COLLECTION_PACKAGE_ATTRS.VERSION) or "",
         }
 
 
@@ -613,8 +628,9 @@ class UpdateReference(models.Model):
     title = models.TextField()
     ref_type = models.TextField()
 
-    update_record = models.ForeignKey(UpdateRecord, related_name="references",
-                                      on_delete=models.CASCADE)
+    update_record = models.ForeignKey(
+        UpdateRecord, related_name="references", on_delete=models.CASCADE
+    )
 
     @classmethod
     def createrepo_to_dict(cls, reference):
@@ -629,10 +645,10 @@ class UpdateReference(models.Model):
 
         """
         return {
-            'href': getattr(reference, CREATEREPO_UPDATE_REFERENCE_ATTRS.HREF),
-            'ref_id': getattr(reference, CREATEREPO_UPDATE_REFERENCE_ATTRS.ID),
-            'title': getattr(reference, CREATEREPO_UPDATE_REFERENCE_ATTRS.TITLE),
-            'ref_type': getattr(reference, CREATEREPO_UPDATE_REFERENCE_ATTRS.TYPE)
+            "href": getattr(reference, CREATEREPO_UPDATE_REFERENCE_ATTRS.HREF),
+            "ref_id": getattr(reference, CREATEREPO_UPDATE_REFERENCE_ATTRS.ID),
+            "title": getattr(reference, CREATEREPO_UPDATE_REFERENCE_ATTRS.TITLE),
+            "ref_type": getattr(reference, CREATEREPO_UPDATE_REFERENCE_ATTRS.TYPE),
         }
 
 
@@ -641,7 +657,7 @@ class RpmRemote(Remote):
     Remote for "rpm" content.
     """
 
-    TYPE = 'rpm'
+    TYPE = "rpm"
 
 
 class RpmPublication(Publication):
@@ -649,7 +665,7 @@ class RpmPublication(Publication):
     Publication for "rpm" content.
     """
 
-    TYPE = 'rpm'
+    TYPE = "rpm"
 
 
 class RpmDistribution(PublicationDistribution):
@@ -657,4 +673,4 @@ class RpmDistribution(PublicationDistribution):
     Distribution for "rpm" content.
     """
 
-    TYPE = 'rpm'
+    TYPE = "rpm"

@@ -21,24 +21,22 @@ class UpdateCollectionField(serializers.ListField):
         ret = []
         collections = UpdateCollection.objects.filter(update_record=value)
         for collection in collections:
-            coll_base = {
-                'name': collection.name,
-                'shortname': collection.shortname,
-                'packages': []
-            }
+            coll_base = {"name": collection.name, "shortname": collection.shortname, "packages": []}
             for pkg in collection.packages.values():
-                coll_base['packages'].append({
-                    'arch': pkg['arch'],
-                    'epoch': pkg['epoch'],
-                    'filename': pkg['filename'],
-                    'name': pkg['name'],
-                    'reboot_suggested': pkg['reboot_suggested'],
-                    'release': pkg['release'],
-                    'src': pkg['src'],
-                    'sum': pkg['sum'],
-                    'sum_type': pkg['sum_type'],
-                    'version': pkg['version'],
-                })
+                coll_base["packages"].append(
+                    {
+                        "arch": pkg["arch"],
+                        "epoch": pkg["epoch"],
+                        "filename": pkg["filename"],
+                        "name": pkg["name"],
+                        "reboot_suggested": pkg["reboot_suggested"],
+                        "release": pkg["release"],
+                        "src": pkg["src"],
+                        "sum": pkg["sum"],
+                        "sum_type": pkg["sum_type"],
+                        "version": pkg["version"],
+                    }
+                )
             ret.append(coll_base)
         return ret
 
@@ -62,10 +60,12 @@ class UpdateReferenceField(serializers.ListField):
         ret = []
         references = UpdateReference.objects.filter(update_record=value)
         for reference in references:
-            ret.append({
-                'href': reference.href,
-                'id': reference.ref_id,
-                'title': reference.title,
-                'type': reference.ref_type
-            })
+            ret.append(
+                {
+                    "href": reference.href,
+                    "id": reference.ref_id,
+                    "title": reference.title,
+                    "type": reference.ref_type,
+                }
+            )
         return ret

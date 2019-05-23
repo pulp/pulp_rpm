@@ -18,9 +18,7 @@ from pulp_smash.pulp3.utils import (
     sync,
 )
 
-from pulp_rpm.tests.functional.utils import (
-    gen_rpm_remote,
-)
+from pulp_rpm.tests.functional.utils import gen_rpm_remote
 from pulp_rpm.tests.functional.constants import (
     RPM_ALT_LAYOUT_FIXTURE_URL,
     RPM_DISTRIBUTION_PATH,
@@ -69,41 +67,35 @@ class PublishAnyRepoVersionTestCase(unittest.TestCase):
         """
         body = gen_rpm_remote()
         remote = self.client.post(RPM_REMOTE_PATH, body)
-        self.addCleanup(self.client.delete, remote['_href'])
+        self.addCleanup(self.client.delete, remote["_href"])
 
         repo = self.client.post(REPO_PATH, gen_repo())
-        self.addCleanup(self.client.delete, repo['_href'])
+        self.addCleanup(self.client.delete, repo["_href"])
 
         sync(self.cfg, remote, repo)
 
         # Step 1
-        repo = self.client.get(repo['_href'])
+        repo = self.client.get(repo["_href"])
         for rpm_content in get_content(repo)[RPM_PACKAGE_CONTENT_NAME]:
-            self.client.post(
-                repo['_versions_href'],
-                {'add_content_units': [rpm_content['_href']]}
-            )
-        version_hrefs = tuple(ver['_href'] for ver in get_versions(repo))
+            self.client.post(repo["_versions_href"], {"add_content_units": [rpm_content["_href"]]})
+        version_hrefs = tuple(ver["_href"] for ver in get_versions(repo))
         non_latest = choice(version_hrefs[:-1])
 
         # Step 2
         publication = publish(self.cfg, repo)
 
         # Step 3
-        self.assertEqual(publication['repository_version'], version_hrefs[-1])
+        self.assertEqual(publication["repository_version"], version_hrefs[-1])
 
         # Step 4
         publication = publish(self.cfg, repo, non_latest)
 
         # Step 5
-        self.assertEqual(publication['repository_version'], non_latest)
+        self.assertEqual(publication["repository_version"], non_latest)
 
         # Step 6
         with self.assertRaises(HTTPError):
-            body = {
-                'repository': repo['_href'],
-                'repository_version': non_latest
-            }
+            body = {"repository": repo["_href"], "repository_version": non_latest}
             self.client.post(RPM_PUBLICATION_PATH, body)
 
 
@@ -124,26 +116,22 @@ class SyncPublishReferencesUpdateTestCase(unittest.TestCase):
         `Pulp #3998 <https://pulp.plan.io/issues/3998>`_.
         """
         repo = self.client.post(REPO_PATH, gen_repo())
-        self.addCleanup(self.client.delete, repo['_href'])
+        self.addCleanup(self.client.delete, repo["_href"])
 
         body = gen_rpm_remote(url=RPM_REFERENCES_UPDATEINFO_URL)
         remote = self.client.post(RPM_REMOTE_PATH, body)
-        self.addCleanup(self.client.delete, remote['_href'])
+        self.addCleanup(self.client.delete, remote["_href"])
 
         sync(self.cfg, remote, repo)
-        repo = self.client.get(repo['_href'])
+        repo = self.client.get(repo["_href"])
 
-        self.assertIsNotNone(repo['_latest_version_href'])
+        self.assertIsNotNone(repo["_latest_version_href"])
 
         content_summary = get_content_summary(repo)
-        self.assertDictEqual(
-            content_summary,
-            RPM_FIXTURE_SUMMARY,
-            content_summary
-        )
+        self.assertDictEqual(content_summary, RPM_FIXTURE_SUMMARY, content_summary)
 
         publication = publish(self.cfg, repo)
-        self.addCleanup(self.client.delete, publication['_href'])
+        self.addCleanup(self.client.delete, publication["_href"])
 
 
 class SyncPublishTestCase(unittest.TestCase):
@@ -184,18 +172,18 @@ class SyncPublishTestCase(unittest.TestCase):
     def do_test(self, url):
         """Sync and publish an RPM repository given a feed URL."""
         repo = self.client.post(REPO_PATH, gen_repo())
-        self.addCleanup(self.client.delete, repo['_href'])
+        self.addCleanup(self.client.delete, repo["_href"])
 
         remote = self.client.post(RPM_REMOTE_PATH, gen_rpm_remote(url=url))
-        self.addCleanup(self.client.delete, remote['_href'])
+        self.addCleanup(self.client.delete, remote["_href"])
 
         sync(self.cfg, remote, repo)
-        repo = self.client.get(repo['_href'])
+        repo = self.client.get(repo["_href"])
 
-        self.assertIsNotNone(repo['_latest_version_href'])
+        self.assertIsNotNone(repo["_latest_version_href"])
 
         publication = publish(self.cfg, repo)
-        self.addCleanup(self.client.delete, publication['_href'])
+        self.addCleanup(self.client.delete, publication["_href"])
 
 
 class ValidateNoChecksumTagTestCase(unittest.TestCase):
@@ -224,39 +212,33 @@ class ValidateNoChecksumTagTestCase(unittest.TestCase):
         """Sync and publish an RPM repository and verify the checksum."""
         # Step 1
         repo = self.client.post(REPO_PATH, gen_repo())
-        self.addCleanup(self.client.delete, repo['_href'])
+        self.addCleanup(self.client.delete, repo["_href"])
 
         remote = self.client.post(RPM_REMOTE_PATH, gen_rpm_remote())
-        self.addCleanup(self.client.delete, remote['_href'])
+        self.addCleanup(self.client.delete, remote["_href"])
 
         # Step 2
         sync(self.cfg, remote, repo)
-        repo = self.client.get(repo['_href'])
+        repo = self.client.get(repo["_href"])
 
-        self.assertIsNotNone(repo['_latest_version_href'])
+        self.assertIsNotNone(repo["_latest_version_href"])
 
         # Step 3
         publication = publish(self.cfg, repo)
-        self.addCleanup(self.client.delete, publication['_href'])
+        self.addCleanup(self.client.delete, publication["_href"])
         body = gen_distribution()
-        body['publication'] = publication['_href']
-        distribution = self.client.using_handler(api.task_handler).post(
-            RPM_DISTRIBUTION_PATH, body
-        )
-        self.addCleanup(self.client.delete, distribution['_href'])
+        body["publication"] = publication["_href"]
+        distribution = self.client.using_handler(api.task_handler).post(RPM_DISTRIBUTION_PATH, body)
+        self.addCleanup(self.client.delete, distribution["_href"])
         # Step 4
         repo_md = ElementTree.fromstring(
-            download_content_unit(self.cfg, distribution, 'repodata/repomd.xml')
+            download_content_unit(self.cfg, distribution, "repodata/repomd.xml")
         )
         update_info_content = ElementTree.fromstring(
-            download_content_unit(
-                self.cfg,
-                distribution,
-                self._get_updateinfo_xml_path(repo_md)
-            )
+            download_content_unit(self.cfg, distribution, self._get_updateinfo_xml_path(repo_md))
         )
         tags = {elem.tag for elem in update_info_content.iter()}
-        self.assertNotIn('sum', tags, update_info_content)
+        self.assertNotIn("sum", tags, update_info_content)
 
     @staticmethod
     def _get_updateinfo_xml_path(root_elem):
@@ -272,10 +254,7 @@ class ValidateNoChecksumTagTestCase(unittest.TestCase):
         #         …
         #     </ns0:data>
         #     …
-        xpath = '{{{}}}data'.format(RPM_NAMESPACES['metadata/repo'])
-        data_elems = [
-            elem for elem in root_elem.findall(xpath)
-            if elem.get('type') == 'updateinfo'
-        ]
-        xpath = '{{{}}}location'.format(RPM_NAMESPACES['metadata/repo'])
-        return data_elems[0].find(xpath).get('href')
+        xpath = "{{{}}}data".format(RPM_NAMESPACES["metadata/repo"])
+        data_elems = [elem for elem in root_elem.findall(xpath) if elem.get("type") == "updateinfo"]
+        xpath = "{{{}}}location".format(RPM_NAMESPACES["metadata/repo"])
+        return data_elems[0].find(xpath).get("href")

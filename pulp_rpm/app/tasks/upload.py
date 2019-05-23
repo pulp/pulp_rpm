@@ -20,18 +20,14 @@ def one_shot_upload(artifact_pk, filename, repository_pk=None):
     try:
         new_pkg = _prepare_package(artifact, filename)
     except OSError:
-        raise OSError('RPM file cannot be parsed for metadata.')
+        raise OSError("RPM file cannot be parsed for metadata.")
 
     pkg, created = Package.objects.get_or_create(**new_pkg)
 
     if not created:
-        raise OSError('RPM package {} already exists.'.format(pkg.filename))
+        raise OSError("RPM package {} already exists.".format(pkg.filename))
 
-    ContentArtifact.objects.create(
-        artifact=artifact,
-        content=pkg,
-        relative_path=filename
-    )
+    ContentArtifact.objects.create(artifact=artifact, content=pkg, relative_path=filename)
 
     resource = CreatedResource(content_object=pkg)
     resource.save()

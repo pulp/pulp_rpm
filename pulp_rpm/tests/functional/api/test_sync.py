@@ -64,40 +64,31 @@ class BasicSyncTestCase(unittest.TestCase):
            added.
         """
         repo = self.client.post(REPO_PATH, gen_repo())
-        self.addCleanup(self.client.delete, repo['_href'])
+        self.addCleanup(self.client.delete, repo["_href"])
 
         # Create a remote with the standard test fixture url.
         body = gen_rpm_remote()
         remote = self.client.post(RPM_REMOTE_PATH, body)
-        self.addCleanup(self.client.delete, remote['_href'])
+        self.addCleanup(self.client.delete, remote["_href"])
 
         # Sync the repository.
-        self.assertIsNone(repo['_latest_version_href'])
+        self.assertIsNone(repo["_latest_version_href"])
         sync(self.cfg, remote, repo)
-        repo = self.client.get(repo['_href'])
+        repo = self.client.get(repo["_href"])
 
         # Check that we have the correct content counts.
-        self.assertIsNotNone(repo['_latest_version_href'])
-        self.assertDictEqual(
-            get_content_summary(repo),
-            RPM_FIXTURE_SUMMARY
-        )
-        self.assertDictEqual(
-            get_added_content_summary(repo),
-            RPM_FIXTURE_SUMMARY
-        )
+        self.assertIsNotNone(repo["_latest_version_href"])
+        self.assertDictEqual(get_content_summary(repo), RPM_FIXTURE_SUMMARY)
+        self.assertDictEqual(get_added_content_summary(repo), RPM_FIXTURE_SUMMARY)
 
         # Sync the repository again.
-        latest_version_href = repo['_latest_version_href']
+        latest_version_href = repo["_latest_version_href"]
         sync(self.cfg, remote, repo)
-        repo = self.client.get(repo['_href'])
+        repo = self.client.get(repo["_href"])
 
         # Check that nothing has changed since the last sync.
-        self.assertNotEqual(latest_version_href, repo['_latest_version_href'])
-        self.assertDictEqual(
-            get_content_summary(repo),
-            RPM_FIXTURE_SUMMARY
-        )
+        self.assertNotEqual(latest_version_href, repo["_latest_version_href"])
+        self.assertDictEqual(get_content_summary(repo), RPM_FIXTURE_SUMMARY)
         self.assertDictEqual(get_added_content_summary(repo), {})
 
 
@@ -123,18 +114,18 @@ class FileDescriptorsTestCase(unittest.TestCase):
         cli_client = cli.Client(cfg, cli.echo_handler)
 
         # check if 'lsof' is available
-        if cli_client.run(('which', 'lsof')).returncode != 0:
-            raise unittest.SkipTest('lsof package is not present')
+        if cli_client.run(("which", "lsof")).returncode != 0:
+            raise unittest.SkipTest("lsof package is not present")
 
         repo = client.post(REPO_PATH, gen_repo())
-        self.addCleanup(client.delete, repo['_href'])
+        self.addCleanup(client.delete, repo["_href"])
 
         remote = client.post(RPM_REMOTE_PATH, gen_rpm_remote())
-        self.addCleanup(client.delete, remote['_href'])
+        self.addCleanup(client.delete, remote["_href"])
 
         sync(cfg, remote, repo)
 
-        cmd = 'lsof -t +D {}'.format(MEDIA_PATH).split()
+        cmd = "lsof -t +D {}".format(MEDIA_PATH).split()
         response = cli_client.run(cmd).stdout
         self.assertEqual(len(response), 0, response)
 
@@ -167,29 +158,28 @@ class SyncMutatedPackagesTestCase(unittest.TestCase):
         7. Assert that the packages have changed since the last sync.
         """
         repo = self.client.post(REPO_PATH, gen_repo())
-        self.addCleanup(self.client.delete, repo['_href'])
+        self.addCleanup(self.client.delete, repo["_href"])
 
         # Create a remote with the unsigned RPM fixture url.
         body = gen_rpm_remote(url=RPM_UNSIGNED_FIXTURE_URL)
         remote = self.client.post(RPM_REMOTE_PATH, body)
-        self.addCleanup(self.client.delete, remote['_href'])
+        self.addCleanup(self.client.delete, remote["_href"])
 
         # Sync the repository.
-        self.assertIsNone(repo['_latest_version_href'])
+        self.assertIsNone(repo["_latest_version_href"])
         sync(self.cfg, remote, repo)
-        repo = self.client.get(repo['_href'])
-        self.assertDictEqual(
-            get_content_summary(repo),
-            RPM_FIXTURE_SUMMARY
-        )
+        repo = self.client.get(repo["_href"])
+        self.assertDictEqual(get_content_summary(repo), RPM_FIXTURE_SUMMARY)
 
         # Save a copy of the original packages.
         original_packages = {
-            (content['name'],
-             content['epoch'],
-             content['version'],
-             content['release'],
-             content['arch']): content
+            (
+                content["name"],
+                content["epoch"],
+                content["version"],
+                content["release"],
+                content["arch"],
+            ): content
             for content in get_content(repo)[RPM_PACKAGE_CONTENT_NAME]
         }
 
@@ -197,45 +187,44 @@ class SyncMutatedPackagesTestCase(unittest.TestCase):
         # different digests.
         body = gen_rpm_remote(url=RPM_SIGNED_FIXTURE_URL)
         remote = self.client.post(RPM_REMOTE_PATH, body)
-        self.addCleanup(self.client.delete, remote['_href'])
+        self.addCleanup(self.client.delete, remote["_href"])
 
         # Sync the repository again.
         sync(self.cfg, remote, repo)
-        repo = self.client.get(repo['_href'])
-        self.assertDictEqual(
-            get_content_summary(repo),
-            RPM_FIXTURE_SUMMARY
-        )
+        repo = self.client.get(repo["_href"])
+        self.assertDictEqual(get_content_summary(repo), RPM_FIXTURE_SUMMARY)
 
         # In case of "duplicates" the most recent one is chosen, so the old
         # package is removed from and the new one is added to a repo version.
         self.assertEqual(
             len(get_added_content(repo)[RPM_PACKAGE_CONTENT_NAME]),
             RPM_PACKAGE_COUNT,
-            get_added_content(repo)[RPM_PACKAGE_CONTENT_NAME]
+            get_added_content(repo)[RPM_PACKAGE_CONTENT_NAME],
         )
         self.assertEqual(
             len(get_removed_content(repo)[RPM_PACKAGE_CONTENT_NAME]),
             RPM_PACKAGE_COUNT,
-            get_removed_content(repo)[RPM_PACKAGE_CONTENT_NAME]
+            get_removed_content(repo)[RPM_PACKAGE_CONTENT_NAME],
         )
 
         # Test that the packages have been modified.
         mutated_packages = {
-            (content['name'],
-             content['epoch'],
-             content['version'],
-             content['release'],
-             content['arch']): content
+            (
+                content["name"],
+                content["epoch"],
+                content["version"],
+                content["release"],
+                content["arch"],
+            ): content
             for content in get_content(repo)[RPM_PACKAGE_CONTENT_NAME]
         }
 
         for nevra in original_packages:
             with self.subTest(pkg=nevra):
                 self.assertNotEqual(
-                    original_packages[nevra]['pkgId'],
-                    mutated_packages[nevra]['pkgId'],
-                    original_packages[nevra]['pkgId']
+                    original_packages[nevra]["pkgId"],
+                    mutated_packages[nevra]["pkgId"],
+                    original_packages[nevra]["pkgId"],
                 )
 
 
@@ -250,36 +239,29 @@ class EPELSyncTestCase(unittest.TestCase):
 
         TRAVIS environment variable is available to all builds.
         """
-        cls.travis = 'TRAVIS' in os.environ
+        cls.travis = "TRAVIS" in os.environ
 
-    @skip_if(bool, 'travis', True)
+    @skip_if(bool, "travis", True)
     def test_sync_large_repo(self):
         """Sync large EPEL repository."""
         cfg = config.get_config()
         client = api.Client(cfg, api.page_handler)
 
         repo = client.post(REPO_PATH, gen_repo())
-        self.addCleanup(client.delete, repo['_href'])
+        self.addCleanup(client.delete, repo["_href"])
 
-        remote = client.post(
-            RPM_REMOTE_PATH,
-            gen_rpm_remote(url=RPM_EPEL_URL)
-        )
-        self.addCleanup(client.delete, remote['_href'])
+        remote = client.post(RPM_REMOTE_PATH, gen_rpm_remote(url=RPM_EPEL_URL))
+        self.addCleanup(client.delete, remote["_href"])
 
         # Sync the repository.
-        self.assertIsNone(repo['_latest_version_href'])
+        self.assertIsNone(repo["_latest_version_href"])
         sync(cfg, remote, repo)
-        repo = client.get(repo['_href'])
+        repo = client.get(repo["_href"])
         content_summary = get_content_summary(repo)
-        self.assertGreater(
-            content_summary[RPM_PACKAGE_CONTENT_NAME],
-            0,
-            content_summary
-        )
+        self.assertGreater(content_summary[RPM_PACKAGE_CONTENT_NAME], 0, content_summary)
 
 
-@unittest.skip('FIXME: Enable this test after we can throw out duplicate UpdateRecords')
+@unittest.skip("FIXME: Enable this test after we can throw out duplicate UpdateRecords")
 class SyncMutatedUpdateRecordTestCase(unittest.TestCase):
     """Sync a new UpdateRecord (Advisory / Erratum) with the same ID."""
 
@@ -309,7 +291,7 @@ class SyncMutatedUpdateRecordTestCase(unittest.TestCase):
         client = api.Client(self.cfg, api.json_handler)
 
         repo = client.post(REPO_PATH, gen_repo())
-        self.addCleanup(client.delete, repo['_href'])
+        self.addCleanup(client.delete, repo["_href"])
 
         # Create a remote with the unsigned RPM fixture url.
         # We need to use the unsigned fixture because the one used down below
@@ -317,56 +299,42 @@ class SyncMutatedUpdateRecordTestCase(unittest.TestCase):
         # so they're seen as different units.
         body = gen_rpm_remote(url=RPM_UNSIGNED_FIXTURE_URL)
         remote = client.post(RPM_REMOTE_PATH, body)
-        self.addCleanup(client.delete, remote['_href'])
+        self.addCleanup(client.delete, remote["_href"])
 
         # Sync the repository.
-        self.assertIsNone(repo['_latest_version_href'])
+        self.assertIsNone(repo["_latest_version_href"])
         sync(self.cfg, remote, repo)
-        repo = client.get(repo['_href'])
-        self.assertDictEqual(
-            get_content_summary(repo),
-            RPM_FIXTURE_SUMMARY
-        )
+        repo = client.get(repo["_href"])
+        self.assertDictEqual(get_content_summary(repo), RPM_FIXTURE_SUMMARY)
 
         # Save a copy of the original updateinfo
         original_updaterecords = {
-            content['id']: content
-            for content in get_content(repo)[RPM_ADVISORY_CONTENT_NAME]
+            content["id"]: content for content in get_content(repo)[RPM_ADVISORY_CONTENT_NAME]
         }
 
         # Create a remote with a different test fixture, one containing mutated
         # updateinfo.
         body = gen_rpm_remote(url=RPM_UPDATED_UPDATEINFO_FIXTURE_URL)
         remote = client.post(RPM_REMOTE_PATH, body)
-        self.addCleanup(client.delete, remote['_href'])
+        self.addCleanup(client.delete, remote["_href"])
 
         # Sync the repository again.
         sync(self.cfg, remote, repo)
-        repo = client.get(repo['_href'])
-        self.assertDictEqual(
-            get_content_summary(repo),
-            RPM_FIXTURE_SUMMARY
-        )
-        self.assertEqual(
-            len(get_added_content(repo)[RPM_ADVISORY_CONTENT_NAME]),
-            4
-        )
-        self.assertEqual(
-            len(get_removed_content(repo)[RPM_ADVISORY_CONTENT_NAME]),
-            4
-        )
+        repo = client.get(repo["_href"])
+        self.assertDictEqual(get_content_summary(repo), RPM_FIXTURE_SUMMARY)
+        self.assertEqual(len(get_added_content(repo)[RPM_ADVISORY_CONTENT_NAME]), 4)
+        self.assertEqual(len(get_removed_content(repo)[RPM_ADVISORY_CONTENT_NAME]), 4)
 
         # Test that the updateinfo have been modified.
         mutated_updaterecords = {
-            content['id']: content
-            for content in get_content(repo)[RPM_ADVISORY_CONTENT_NAME]
+            content["id"]: content for content in get_content(repo)[RPM_ADVISORY_CONTENT_NAME]
         }
 
         self.assertNotEqual(mutated_updaterecords, original_updaterecords)
         self.assertEqual(
-            mutated_updaterecords[RPM_UPDATERECORD_ID]['description'],
-            'Updated Gorilla_Erratum and the updated date contains timezone',
-            mutated_updaterecords[RPM_UPDATERECORD_ID]
+            mutated_updaterecords[RPM_UPDATERECORD_ID]["description"],
+            "Updated Gorilla_Erratum and the updated date contains timezone",
+            mutated_updaterecords[RPM_UPDATERECORD_ID],
         )
 
 
@@ -400,41 +368,30 @@ class SyncDiffChecksumPackagesTestCase(unittest.TestCase):
         """
         # Step 1
         repo = self.client.post(REPO_PATH, gen_repo())
-        self.addCleanup(self.client.delete, repo['_href'])
+        self.addCleanup(self.client.delete, repo["_href"])
 
         # Step 2.
 
-        for body in [
-            gen_rpm_remote(),
-            gen_rpm_remote(url=RPM_SHA512_FIXTURE_URL)
-        ]:
+        for body in [gen_rpm_remote(), gen_rpm_remote(url=RPM_SHA512_FIXTURE_URL)]:
             remote = self.client.post(RPM_REMOTE_PATH, body)
-            self.addCleanup(self.client.delete, remote['_href'])
+            self.addCleanup(self.client.delete, remote["_href"])
             # Sync the repository.
             sync(self.cfg, remote, repo)
 
         # Step 3
-        repo = self.client.get(repo['_href'])
+        repo = self.client.get(repo["_href"])
         added_content = get_content(repo)[RPM_PACKAGE_CONTENT_NAME]
         removed_content = get_removed_content(repo)[RPM_PACKAGE_CONTENT_NAME]
 
         # In case of "duplicates" the most recent one is chosen, so the old
         # package is removed from and the new one is added to a repo version.
-        self.assertEqual(
-            len(added_content),
-            RPM_PACKAGE_COUNT,
-            added_content
-        )
-        self.assertEqual(
-            len(removed_content),
-            RPM_PACKAGE_COUNT,
-            removed_content
-        )
+        self.assertEqual(len(added_content), RPM_PACKAGE_COUNT, added_content)
+        self.assertEqual(len(removed_content), RPM_PACKAGE_COUNT, removed_content)
 
         # Verifying whether the packages with first checksum is removed and second
         # is added.
-        self.assertEqual(added_content[0]['checksum_type'], 'sha512')
-        self.assertEqual(removed_content[0]['checksum_type'], 'sha256')
+        self.assertEqual(added_content[0]["checksum_type"], "sha512")
+        self.assertEqual(removed_content[0]["checksum_type"], "sha256")
 
 
 class ChecksumConstraintTestCase(unittest.TestCase):
@@ -462,20 +419,13 @@ class ChecksumConstraintTestCase(unittest.TestCase):
 
         for url in [RPM_REFERENCES_UPDATEINFO_URL, RPM_UNSIGNED_FIXTURE_URL]:
             remote = client.post(RPM_REMOTE_PATH, gen_rpm_remote(url=url))
-            self.addCleanup(client.delete, remote['_href'])
+            self.addCleanup(client.delete, remote["_href"])
 
             repo = client.post(REPO_PATH, gen_repo())
-            self.addCleanup(client.delete, repo['_href'])
+            self.addCleanup(client.delete, repo["_href"])
 
-            client.post(urljoin(
-                remote['_href'], 'sync/'),
-                {'repository': repo['_href']}
-            )
-            repo = client.get(repo['_href'])
+            client.post(urljoin(remote["_href"], "sync/"), {"repository": repo["_href"]})
+            repo = client.get(repo["_href"])
 
             added_content_summary = get_added_content_summary(repo)
-            self.assertEqual(
-                added_content_summary,
-                RPM_FIXTURE_SUMMARY,
-                added_content_summary
-            )
+            self.assertEqual(added_content_summary, RPM_FIXTURE_SUMMARY, added_content_summary)

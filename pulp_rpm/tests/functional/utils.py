@@ -6,9 +6,7 @@ from io import StringIO
 from unittest import SkipTest
 
 from pulp_smash import api, cli, selectors
-from pulp_smash.pulp3.constants import (
-    REPO_PATH
-)
+from pulp_smash.pulp3.constants import REPO_PATH
 from pulp_smash.pulp3.utils import (
     gen_remote,
     gen_repo,
@@ -31,7 +29,7 @@ from pulp_rpm.tests.functional.constants import (
 def set_up_module():
     """Skip tests Pulp 3 isn't under test or if pulp_rpm isn't installed."""
     require_pulp_3(SkipTest)
-    require_pulp_plugins({'pulp_rpm'}, SkipTest)
+    require_pulp_plugins({"pulp_rpm"}, SkipTest)
 
 
 def gen_rpm_remote(url=None, **kwargs):
@@ -52,9 +50,9 @@ def get_rpm_package_paths(repo):
     :returns: A list with the paths of units present in a given repository.
     """
     return [
-        content_unit['location_href']
+        content_unit["location_href"]
         for content_unit in get_content(repo)[RPM_PACKAGE_CONTENT_NAME]
-        if 'location_href' in content_unit
+        if "location_href" in content_unit
     ]
 
 
@@ -77,10 +75,10 @@ def populate_pulp(cfg, url=RPM_SIGNED_FIXTURE_URL):
         sync(cfg, remote, repo)
     finally:
         if remote:
-            client.delete(remote['_href'])
+            client.delete(remote["_href"])
         if repo:
-            client.delete(repo['_href'])
-    return client.get(RPM_CONTENT_PATH)['results']
+            client.delete(repo["_href"])
+    return client.get(RPM_CONTENT_PATH)["results"]
 
 
 def gen_yum_config_file(cfg, repositoryid, baseurl, name, **kwargs):
@@ -103,35 +101,31 @@ def gen_yum_config_file(cfg, repositoryid, baseurl, name, **kwargs):
     :returns: The path to the yum configuration file.
     """
     # required repo options
-    kwargs.setdefault('name', name)
-    kwargs.setdefault('baseurl', baseurl)
+    kwargs.setdefault("name", name)
+    kwargs.setdefault("baseurl", baseurl)
     # assume some common used defaults
-    kwargs.setdefault('enabled', 1)
-    kwargs.setdefault('gpgcheck', 0)
-    kwargs.setdefault('metadata_expire', 0)  # force metadata load every time
+    kwargs.setdefault("enabled", 1)
+    kwargs.setdefault("gpgcheck", 0)
+    kwargs.setdefault("metadata_expire", 0)  # force metadata load every time
 
     # Check if the settings specifies a content host role else assume ``api``
     try:
-        content_host = cfg.get_hosts('content')[0].roles['content']
+        content_host = cfg.get_hosts("content")[0].roles["content"]
     except IndexError:
-        content_host = cfg.get_hosts('api')[0].roles['api']
+        content_host = cfg.get_hosts("api")[0].roles["api"]
 
     # if sslverify is not provided in kwargs it is inferred from cfg
-    kwargs.setdefault(
-        'sslverify', content_host.get('verify') and 'yes' or 'no'
-    )
+    kwargs.setdefault("sslverify", content_host.get("verify") and "yes" or "no")
 
-    path = os.path.join('/etc/yum.repos.d/', repositoryid + '.repo')
+    path = os.path.join("/etc/yum.repos.d/", repositoryid + ".repo")
     with StringIO() as section:
-        section.write('[{}]\n'.format(repositoryid))
+        section.write("[{}]\n".format(repositoryid))
         for key, value in kwargs.items():
-            section.write('{} = {}\n'.format(key, value))
+            section.write("{} = {}\n".format(key, value))
         # machine.session is used here to keep SSH session open
         cli.Client(cfg).machine.session().run(
             'echo "{}" | {}tee {} > /dev/null'.format(
-                section.getvalue(),
-                '' if cli.is_root(cfg) else 'sudo ',
-                path
+                section.getvalue(), "" if cli.is_root(cfg) else "sudo ", path
             )
         )
     return path
