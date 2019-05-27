@@ -84,7 +84,8 @@ Create a Publication
         }
     ]
 
-``$ export PUBLICATION_HREF=$(http :24817/pulp/api/v3/publications/rpm/rpm/ | jq -r '.results[] | ._href')``
+``$ export PUBLICATION_HREF=$(http :24817/pulp/api/v3/publications/rpm/rpm/ | jq -r '.results[] | select(.repository_version|test("'$REPO_HREF'.")) | ._href')``
+
 
 Create a Distribution for the Publication
 -----------------------------------------
