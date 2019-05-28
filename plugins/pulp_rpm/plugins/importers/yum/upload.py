@@ -235,17 +235,31 @@ def _handle_yum_metadata_file(repo, type_id, unit_key, metadata, file_path, cond
     update_fields_inbound(model_class, unit_key or {})
     update_fields_inbound(model_class, metadata or {})
 
-    unit_data = {}
-    unit_data.update(metadata or {})
-    unit_data.update(unit_key or {})
+    data_type = unit_key.get('data_type')
+    repo_id = unit_key.get('repo_id')
+    checksum = metadata.get('checksum')
+    checksum_type = metadata.get('checksum_type')
 
-    model = models.YumMetadataFile(**unit_data)
+    # Find an existing model
+    model = models.YumMetadataFile.objects.filter(
+        data_type=data_type,
+        repo_id=repo_id).first()
+    # If an existing model, use that
+    if model:
+        model.checksum = checksum
+        model.checksum_type = checksum_type
+    # Else, create a  new mode
+    else:
+        model = models.YumMetadataFile(
+            data_type=data_type,
+            repo_id=repo_id,
+            checksum=checksum,
+            checksum_type=checksum_type)
+
     model.set_storage_path(os.path.basename(file_path))
-    try:
-        model.save_and_import_content(file_path)
-    except NotUniqueError:
-        model = model.__class__.objects.get(**model.unit_key)
+    model.save_and_import_content(file_path)
 
+    # associate/re-ssociate model to the repo
     repo_controller.associate_single_unit(conduit.repo, model)
 
 
