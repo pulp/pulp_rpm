@@ -217,13 +217,19 @@ class RpmFirstStage(Stage):
         """
         Build `DeclarativeContent` from the repodata.
         """
-        with ProgressBar(message='Downloading and Parsing Metadata') as pb:
+        packages_pb = ProgressBar(message='Parsed Packages')
+        erratum_pb = ProgressBar(message='Parsed Erratum')
+
+        packages_pb.save()
+        erratum_pb.save()
+
+        with ProgressBar(message='Downloading Metadata Files') as metadata_pb:
             downloader = self.remote.get_downloader(
                 url=urljoin(self.remote.url, 'repodata/repomd.xml')
             )
             # TODO: decide how to distinguish between a mirror list and a normal repo
             result = await downloader.run()
-            pb.increment()
+            metadata_pb.increment()
 
             repomd_path = result.path
             repomd = cr.Repomd(repomd_path)
@@ -261,12 +267,16 @@ class RpmFirstStage(Stage):
                         primary_xml_path = results[0].path
                         filelists_xml_path = results[1].path
                         other_xml_path = results[2].path
-                        pb.done += 3
-                        pb.save()
+                        metadata_pb.done += 3
+                        metadata_pb.save()
 
                         packages = await RpmFirstStage.parse_repodata(primary_xml_path,
                                                                       filelists_xml_path,
                                                                       other_xml_path)
+                        packages_pb.total = len(packages)
+                        packages_pb.state = 'running'
+                        packages_pb.save()
+
                         for pkg in packages.values():
                             package = Package(**Package.createrepo_to_dict(pkg))
                             artifact = Artifact(size=package.size_package)
@@ -282,13 +292,19 @@ class RpmFirstStage(Stage):
                                 deferred_download=self.deferred_download
                             )
                             dc = DeclarativeContent(content=package, d_artifacts=[da])
+                            packages_pb.increment()
                             await self.put(dc)
 
                     elif results[0].url == updateinfo_url:
                         updateinfo_xml_path = results[0].path
-                        pb.increment()
+                        metadata_pb.increment()
 
                         updates = await RpmFirstStage.parse_updateinfo(updateinfo_xml_path)
+
+                        erratum_pb.total = len(updates)
+                        erratum_pb.state = 'running'
+                        erratum_pb.save()
+
                         for update in updates:
                             update_record = UpdateRecord(**UpdateRecord.createrepo_to_dict(update))
                             update_record.digest = RpmFirstStage.hash_update_record(update)
@@ -308,8 +324,14 @@ class RpmFirstStage(Stage):
                                 reference_dict = UpdateReference.createrepo_to_dict(reference)
                                 update_record._references.append(UpdateReference(**reference_dict))
 
+                            erratum_pb.increment()
                             dc = DeclarativeContent(content=update_record)
                             await self.put(dc)
+
+        packages_pb.state = 'completed'
+        erratum_pb.state = 'completed'
+        packages_pb.save()
+        erratum_pb.save()
 
 
 class RpmContentSaver(ContentSaver):
