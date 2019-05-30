@@ -114,13 +114,13 @@ class Package(Content):
 
     # Required metadata
     name = models.CharField(max_length=255)
-    epoch = models.CharField(max_length=255)
+    epoch = models.CharField(max_length=10)
     version = models.CharField(max_length=255)
     release = models.CharField(max_length=255)
-    arch = models.CharField(max_length=255)
+    arch = models.CharField(max_length=20)
 
-    pkgId = models.CharField(unique=True, max_length=255)  # formerly "checksum" in Pulp 2
-    checksum_type = models.CharField(choices=CHECKSUM_CHOICES, max_length=255)
+    pkgId = models.CharField(unique=True, max_length=128)  # formerly "checksum" in Pulp 2
+    checksum_type = models.CharField(choices=CHECKSUM_CHOICES, max_length=10)
 
     # Optional metadata
     summary = models.TextField()
