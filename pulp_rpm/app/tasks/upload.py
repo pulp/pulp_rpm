@@ -1,19 +1,21 @@
 from pulp_rpm.app.shared_utils import _prepare_package
 from pulp_rpm.app.models import Package
 from pulpcore.app.models.task import CreatedResource
-from pulpcore.app.models.content import ContentArtifact
-from pulpcore.app.models.repository import RepositoryVersion
+from pulpcore.app.models.content import Artifact, ContentArtifact
+from pulpcore.app.models.repository import Repository, RepositoryVersion
 
 
-def one_shot_upload(artifact, filename, repository=None):
+def one_shot_upload(artifact_pk, filename, repository_pk=None):
     """
     One shot upload for RPM package.
 
     Args:
-        artifact: validated artifact for a file
+        artifact_pk: validated artifact for a file
         filename : name of file
-        repository: repository to extend with new pkg
+        repository_pk: repository to extend with new pkg
     """
+    artifact = Artifact.objects.get(pk=artifact_pk)
+
     # export META from rpm and prepare dict as saveable format
     try:
         new_pkg = _prepare_package(artifact, filename)
@@ -34,7 +36,8 @@ def one_shot_upload(artifact, filename, repository=None):
     resource = CreatedResource(content_object=pkg)
     resource.save()
 
-    if repository:
+    if repository_pk:
+        repository = Repository.objects.get(pk=repository_pk)
         content_to_add = Package.objects.filter(pkgId=pkg.pkgId)
 
         # create new repo version with uploaded package

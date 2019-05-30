@@ -208,8 +208,9 @@ class OneShotUploadViewSet(viewsets.ViewSet):
                 data=request.data, context={'request': request})
             serializer.is_valid(raise_exception=True)
             repository = serializer.validated_data['repository']
+            repository_pk = repository.pk
         else:
-            repository = None
+            repository_pk = None
 
         try:
             artifact.save()
@@ -220,9 +221,9 @@ class OneShotUploadViewSet(viewsets.ViewSet):
         async_result = enqueue_with_reservation(
             tasks.one_shot_upload, [artifact],
             kwargs={
-                'artifact': artifact,
+                'artifact_pk': artifact.pk,
                 'filename': filename,
-                'repository': repository,
+                'repository_pk': repository_pk,
             })
         return OperationPostponedResponse(async_result, request)
 
@@ -298,7 +299,7 @@ class CopyViewSet(viewsets.ViewSet):
 
         async_result = enqueue_with_reservation(
             tasks.copy_content, [source_repo, dest_repo],
-            args=[source_repo_version, dest_repo, types],
+            args=[source_repo_version.pk, dest_repo.pk, types],
             kwargs={}
         )
         return OperationPostponedResponse(async_result, request)

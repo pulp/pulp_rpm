@@ -1,17 +1,20 @@
 from django.db.models import Q
 
-from pulpcore.app.models.repository import RepositoryVersion
+from pulpcore.app.models.repository import Repository, RepositoryVersion
 
 
-def copy_content(source_repo_version, dest_repo, types):
+def copy_content(source_repo_version_pk, dest_repo_pk, types):
     """
     Copy content from one repo to another.
 
     Args:
-        source_repo_version: repository version to copy units from
-        dest_repo: repository to copy units into
+        source_repo_version_pk: repository version primary key to copy units from
+        dest_repo_pk: repository primary key to copy units into
         types: a tuple of strings representing the '_type' values of types to include in the copy
     """
+    source_repo_version = RepositoryVersion.objects.get(pk=source_repo_version_pk)
+    dest_repo = Repository.objects.get(pk=dest_repo_pk)
+
     query = None
     for ptype in types:
         if query:
