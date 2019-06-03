@@ -300,7 +300,7 @@ class SearchDrpmsCommand(BaseSearchCommand):
 
 class SearchModulemdCommand(BaseSearchCommand):
     def __init__(self, context):
-        super(SearchModulemdCommand, self).__init__(self.modulemd, context, name='modulemd',
+        super(SearchModulemdCommand, self).__init__(self.modulemd, context, name='module',
                                                     description=DESC_MODULEMD)
 
     def modulemd(self, **kwargs):
