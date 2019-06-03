@@ -44,7 +44,8 @@ Table of Contents
    installation
    quickstart
    workflows/index
-   release-notes/3.0.z.rst
+   changes
+   contributing
 
 
 Indices and tables

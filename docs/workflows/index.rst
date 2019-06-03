@@ -27,3 +27,4 @@ library with:
    create_sync_publish
    upload
    use_pulp_repo
+   copy
