@@ -1,6 +1,4 @@
-import pkg_resources
-
-__version__ = pkg_resources.get_distribution("pulp_rpm").version
+__version__ = '3.0.0b3'
 
 
 default_app_config = 'pulp_rpm.app.PulpRpmPluginAppConfig'
