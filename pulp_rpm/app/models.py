@@ -4,7 +4,7 @@ from logging import getLogger
 import createrepo_c as cr
 
 from django.db import models
-from pulpcore.plugin.models import Content, Remote, Publication, PublicationDistribution
+from pulpcore.plugin.models import Content, Model, Remote, Publication, PublicationDistribution
 
 from pulp_rpm.app.constants import (CHECKSUM_CHOICES, CREATEREPO_PACKAGE_ATTRS,
                                     CREATEREPO_UPDATE_COLLECTION_ATTRS,
@@ -113,14 +113,14 @@ class Package(Content):
     TYPE = 'package'
 
     # Required metadata
-    name = models.TextField()
-    epoch = models.TextField()
-    version = models.TextField()
-    release = models.TextField()
-    arch = models.TextField()
+    name = models.CharField(max_length=255)
+    epoch = models.CharField(max_length=255)
+    version = models.CharField(max_length=255)
+    release = models.CharField(max_length=255)
+    arch = models.CharField(max_length=255)
 
-    pkgId = models.TextField(unique=True)  # formerly "checksum" in Pulp 2
-    checksum_type = models.TextField(choices=CHECKSUM_CHOICES)
+    pkgId = models.CharField(unique=True, max_length=255)  # formerly "checksum" in Pulp 2
+    checksum_type = models.CharField(choices=CHECKSUM_CHOICES, max_length=255)
 
     # Optional metadata
     summary = models.TextField()
@@ -389,7 +389,7 @@ class UpdateRecord(Content):
     TYPE = 'advisory'
 
     # Required metadata
-    id = models.TextField(db_index=True)
+    id = models.CharField(max_length=255, db_index=True)
     updated_date = models.TextField()
 
     # Optional metadata
@@ -412,7 +412,7 @@ class UpdateRecord(Content):
     # A field that represents the hash digest of the update record. Used to track differences
     # between two UpdateRecord objects without having to examine the associations like
     # UpdateCollection or UpdateCollectionPackage.
-    digest = models.TextField(unique=True)
+    digest = models.CharField(unique=True, max_length=64)
 
     @classmethod
     def natural_key_fields(cls):
@@ -460,7 +460,7 @@ class UpdateRecord(Content):
         self._references = []
 
 
-class UpdateCollection(models.Model):
+class UpdateCollection(Model):
     """
     A collection of UpdateCollectionPackages with an associated nametag.
 
@@ -510,7 +510,7 @@ class UpdateCollection(models.Model):
         self._packages = []
 
 
-class UpdateCollectionPackage(models.Model):
+class UpdateCollectionPackage(Model):
     """
     Part of an UpdateCollection, representing a package.
 
@@ -585,7 +585,7 @@ class UpdateCollectionPackage(models.Model):
         }
 
 
-class UpdateReference(models.Model):
+class UpdateReference(Model):
     """
     A reference to the additional information about the problem solved by an update.
 
