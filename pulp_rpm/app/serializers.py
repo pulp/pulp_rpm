@@ -37,7 +37,7 @@ class PackageSerializer(SingleArtifactContentSerializer):
 
     relative_path = serializers.CharField(
         help_text=_("File name of the package"),
-        required=False,
+        required=True,
         allow_null=True,
         allow_blank=True,
         write_only=True,
