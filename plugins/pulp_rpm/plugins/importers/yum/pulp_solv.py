@@ -15,6 +15,149 @@ from pulp_rpm.plugins.importers.yum import parse
 
 _LOGGER = logging.getLogger(__name__)
 
+# Constants for loading data from the database.
+# See: fetch_units_from_repo()
+RPM_FIELDS = set([
+    'name',
+    'version',
+    'release',
+    'epoch',
+    'arch',
+    'vendor',
+    'provides',
+    'requires',
+    'files',
+    '_content_type_id',
+    'id',
+])
+RPM_EXCLUDE_FIELDS = set([
+    'id',
+    'build_time',
+    'buildhost',
+    'pulp_user_metadata',
+    '_content_type_id',
+    'checksums',
+    'size',
+    'license',
+    'group',
+    '_ns',
+    'filename',
+    'epoch',
+    'version',
+    'version_sort_index',
+    'provides',
+    'files',
+    'repodata',
+    'description',
+    '_last_updated',
+    'time',
+    'downloaded',
+    'header_range',
+    'arch',
+    'name',
+    '_storage_path',
+    'sourcerpm',
+    'checksumtype',
+    'release_sort_index',
+    'changelog',
+    'url',
+    'checksum',
+    'signing_key',
+    'summary',
+    'relativepath',
+    'release',
+    'requires',
+]) - RPM_FIELDS
+MODULE_FIELDS = set([
+    'name',
+    'stream',
+    'version',
+    'context',
+    'arch',
+    '_content_type_id',
+    'id',
+    '_id',
+    'profiles',
+    'dependencies',
+    'artifacts',
+])
+MODULE_EXCLUDE_FIELDS = set([
+    'name',
+    'stream',
+    'version',
+    'context',
+    'arch',
+    'summary',
+    'description',
+    'checksum',
+    'profiles',
+    'artifacts',
+    'checksum',
+    'dependencies',
+    '_content_type_id',
+    'id',
+    '_id',
+    '_ns',
+    '_storage_path',
+    '_last_updated',
+    'downloaded',
+    'pulp_user_metadata',
+]) - MODULE_FIELDS
+MODULE_DEFAULTS_FIELDS = set([
+    'name',
+    'stream',
+    'repo_id',
+    '_id',
+    'id',
+    '_content_type_id',
+])
+MODULE_DEFAULTS_EXCLUDE_FIELDS = set([
+    '_id',
+    'id',
+    'pulp_user_metadata',
+    '_last_updated',
+    '_storage_path',
+    'downloaded',
+    'name',
+    'repo_id',
+    'profiles',
+    'checksum',
+    '_ns',
+    '_content_type_id',
+]) - MODULE_DEFAULTS_FIELDS
+
+
+def fetch_units_from_repo(repo_id):
+    """Load the units from a repository.
+
+    Extract all the content in the provided repository from the database and dump them to dicts.
+    For performance, we bypass the ORM and do raw mongo queries, because the extra overhead of
+    creating objects vs dicts wastes too much time and space.
+    """
+    def _repo_units(repo_id, type_id, model, exclude_fields):
+        # NOTE: optimization; the solver has to visit every unit of a repo.
+        # Using a custom, as-pymongo query to load the units as fast as possible.
+        rcuq = server_model.RepositoryContentUnit.objects.filter(
+            repo_id=repo_id, unit_type_id=type_id).only('unit_id').as_pymongo()
+
+        for rcu_batch in misc_utils.paginate(rcuq):
+            rcu_ids = [rcu['unit_id'] for rcu in rcu_batch]
+            for unit in model.objects.filter(id__in=rcu_ids).exclude(*exclude_fields).as_pymongo():
+                if not unit.get('id'):
+                    unit['id'] = unit.get('_id')
+                yield unit
+
+    # order matters; e.g module loading requires rpm loading
+    units = itertools.chain(
+        _repo_units(repo_id, ids.TYPE_ID_RPM, models.RPM, RPM_EXCLUDE_FIELDS),
+        _repo_units(
+            repo_id, ids.TYPE_ID_MODULEMD, models.Modulemd, MODULE_EXCLUDE_FIELDS),
+        _repo_units(
+            repo_id, ids.TYPE_ID_MODULEMD_DEFAULTS, models.ModulemdDefaults,
+            MODULE_DEFAULTS_EXCLUDE_FIELDS),
+    )
+    return units
+
 
 def setattr_conversion(attr_name, set_none=False):
     def outer(conversion):
@@ -138,7 +281,7 @@ def rpm_dependency_conversion(solvable, unit_name, unit_flags, unit_evr,
         solvable.add_deparray(solv.SOLVABLE_PROVIDES, dependency)
 
     :param solvable: a libsolv solvable object
-    :type solvable: a libsolv solvable
+    :type solv.Solvable: a libsolv solvable
     :param unit: the content unit to get the dependencies from
     :type unit: an object or a dictionary
     :returns: None
@@ -472,20 +615,31 @@ module_defaults_unit_solvable_factory = unit_solvable_converter_factory(
 
 
 class UnitSolvableMapping(object):
+    """Map libsolv solvables to Pulp units and repositories.
+
+    Translate between what libsolv understands, solvable IDs in a pool, and what Pulp understands,
+    units and repositories.
+    """
+
     def __init__(self, pool, type_factory_mapping):
         self.type_factory_mapping = type_factory_mapping
         self.pool = pool
-        self.mapping_u = {}
-        self.mapping_s = {}
+        self._mapping_unit = {}
+        self._mapping_solvable = {}
         self.repos = {}
 
     def _register(self, unit, solvable, repo_id):
-        self.mapping_s.setdefault(solvable.id, (unit['id'], repo_id))
-        self.mapping_u.setdefault((unit['id'], repo_id), solvable)
-        _LOGGER.debug('Loaded unit %(u)s, %(r)s as %(s)s', {'u': unit['id'], 's': solvable,
-                                                            'r': repo_id})
+        """Store the matching of a unit-repo pair to a solvable inside of the mapping.
+        """
+        self._mapping_solvable.setdefault(solvable.id, (unit['id'], repo_id))
+        self._mapping_unit.setdefault((unit['id'], repo_id), solvable)
+        _LOGGER.debug('Loaded unit {unit}, {repo} as {solvable}'.format(
+            unit=unit['id'], solvable=solvable, repo=repo_id
+        ))
 
     def add_repo_units(self, units, repo_id, installed=False):
+        """Add units to the mapping.
+        """
         repo_name = str(repo_id)
         repo = self.repos.get(repo_name)
         if not repo:
@@ -507,128 +661,52 @@ class UnitSolvableMapping(object):
 
         repodata.internalize()
 
+    def get_repo_units(self, repo_id):
+        """Get back all units that were in a repo based on the mapping.
+        """
+        return set(
+            unit_id for (unit_id, unit_repo_id) in self._mapping_unit.keys()
+            if unit_repo_id == repo_id
+        )
+
     def get_unit_id(self, solvable):
-        return self.mapping_s.get(solvable.id)
+        """Get the (unit, repo_id) pair for a given solvable.
+
+        :returns: A tuple of (unit, repo_id)
+        :rtype: tuple
+        """
+        return self._mapping_solvable.get(solvable.id)
 
     def get_solvable(self, unit, repo_id):
-        return self.mapping_u.get((unit['id'], repo_id))
+        """Fetch the libsolv solvable associated with a unit-repo pair.
+        """
+        return self._mapping_unit.get((unit['id'], repo_id))
+
+    def get_units_from_solvables(self, solvables):
+        """Map a whole list of solvables back into their Pulp units.
+        """
+        ret = set()
+        for solvables in misc_utils.paginate(solvables):
+            unit_ids = [self.get_unit_id(solvable)[0] for solvable in solvables]
+            iterator = itertools.chain(
+                models.RPM.objects.filter(id__in=unit_ids).only(
+                    *models.RPM.unit_key_fields),
+                models.Modulemd.objects.filter(id__in=unit_ids).only(
+                    *models.Modulemd.unit_key_fields),
+                models.ModulemdDefaults.objects.filter(id__in=unit_ids).only(
+                    *models.ModulemdDefaults.unit_key_fields))
+            for unit in iterator:
+                ret.add(unit)
+        return ret
 
 
 class Solver(object):
+
     type_factory_mapping = {
         'rpm': rpm_unit_solvable_factory,
         'modulemd': module_unit_solvable_factory,
         'modulemd_defaults': module_defaults_unit_solvable_factory,
     }
-    rpm_key_fields = list(models.RPM.unit_key_fields)
-    rpm_fields = set([
-        'name',
-        'version',
-        'release',
-        'epoch',
-        'arch',
-        'vendor',
-        'provides',
-        'requires',
-        'files',
-        '_content_type_id',
-        'id',
-    ])
-    rpm_exclude_fields = set([
-        'id',
-        'build_time',
-        'buildhost',
-        'pulp_user_metadata',
-        '_content_type_id',
-        'checksums',
-        'size',
-        'license',
-        'group',
-        '_ns',
-        'filename',
-        'epoch',
-        'version',
-        'version_sort_index',
-        'provides',
-        'files',
-        'repodata',
-        'description',
-        '_last_updated',
-        'time',
-        'downloaded',
-        'header_range',
-        'arch',
-        'name',
-        '_storage_path',
-        'sourcerpm',
-        'checksumtype',
-        'release_sort_index',
-        'changelog',
-        'url',
-        'checksum',
-        'signing_key',
-        'summary',
-        'relativepath',
-        'release',
-        'requires',
-    ]) - rpm_fields
-    module_fields = set([
-        'name',
-        'stream',
-        'version',
-        'context',
-        'arch',
-        '_content_type_id',
-        'id',
-        '_id',
-        'profiles',
-        'dependencies',
-        'artifacts',
-    ])
-    module_exclude_fields = set([
-        'name',
-        'stream',
-        'version',
-        'context',
-        'arch',
-        'summary',
-        'description',
-        'checksum',
-        'profiles',
-        'artifacts',
-        'checksum',
-        'dependencies',
-        '_content_type_id',
-        'id',
-        '_id',
-        '_ns',
-        '_storage_path',
-        '_last_updated',
-        'downloaded',
-        'pulp_user_metadata',
-    ]) - module_fields
-    module_defaults_fields = set([
-        'name',
-        'stream',
-        'repo_id',
-        '_id',
-        'id',
-        '_content_type_id',
-    ])
-    module_defaults_exclude_fields = set([
-        '_id',
-        'id',
-        'pulp_user_metadata',
-        '_last_updated',
-        '_storage_path',
-        'downloaded',
-        'name',
-        'repo_id',
-        'profiles',
-        'checksum',
-        '_ns',
-        '_content_type_id',
-    ]) - module_defaults_fields
 
     def __init__(self, source_repo, target_repo=None, conservative=False):
         super(Solver, self).__init__()
@@ -639,50 +717,49 @@ class Solver(object):
         self.pool = solv.Pool()
         # prevent https://github.com/openSUSE/libsolv/issues/267
         self.pool.setarch()
-        self.mapping = UnitSolvableMapping(
-            self.pool, self.type_factory_mapping)
-
-    def _repo_units(self, repo_id, type_id, model, exclude_fields):
-        # NOTE: optimization; the solver has to visit every unit of a repo.
-        # Using a custom, as-pymongo query to load the units as fast as possible.
-        rcuq = server_model.RepositoryContentUnit.objects.filter(
-            repo_id=repo_id, unit_type_id=type_id).only('unit_id').as_pymongo()
-
-        for rcu_batch in misc_utils.paginate(rcuq):
-            rcu_ids = [rcu['unit_id'] for rcu in rcu_batch]
-            for unit in model.objects.filter(id__in=rcu_ids).exclude(*exclude_fields).as_pymongo():
-                if not unit.get('id'):
-                    unit['id'] = unit.get('_id')
-                yield unit
-
-    def _repo_iterator(self, repo_name):
-        # order matters; e.g module loading requires rpm loading
-        return itertools.chain(
-            self._repo_units(repo_name, ids.TYPE_ID_RPM, models.RPM, self.rpm_exclude_fields),
-            self._repo_units(
-                repo_name, ids.TYPE_ID_MODULEMD, models.Modulemd, self.module_exclude_fields),
-            self._repo_units(
-                repo_name, ids.TYPE_ID_MODULEMD_DEFAULTS, models.ModulemdDefaults,
-                self.module_defaults_exclude_fields),
-        )
+        self.mapping = UnitSolvableMapping(self.pool, self.type_factory_mapping)
 
     def load(self):
+        """Prepare the solver.
+
+        Load units from the database into the mapping used by the solver, and do other init work.
+        """
         if self._loaded:
             return
         self._loaded = True
-        repo_id = self.source_repo.repo_id
-        self.mapping.add_repo_units(self._repo_iterator(repo_id), repo_id)
+        source_repo_id = self.source_repo.repo_id
+        source_units = fetch_units_from_repo(source_repo_id)
+        self.mapping.add_repo_units(source_units, source_repo_id)
+        _LOGGER.info('Loaded source repository %s', source_repo_id)
+
         if self.target_repo:
-            repo_id = self.target_repo.repo_id
-            self.mapping.add_repo_units(self._repo_iterator(repo_id), repo_id, installed=True)
+            target_repo_id = self.target_repo.repo_id
+            target_units = fetch_units_from_repo(target_repo_id)
+            self.mapping.add_repo_units(target_units, target_repo_id, installed=True)
+            _LOGGER.info('Loaded target repository %s', target_repo_id)
 
         self.pool.addfileprovides()
         self.pool.createwhatprovides()
-        _LOGGER.info('Loaded source repository %s', self.source_repo.repo_id)
-        if self.target_repo:
-            _LOGGER.info('Loaded target repository %s', self.target_repo.repo_id)
 
-    def _units_jobs(self, units):
+    def _create_unit_install_jobs(self, units):
+        """Create libsolv jobs for each one of the units passed in.
+
+        A libsolv "Job" is a request for the libsolv sat solver to process. For instance a job with
+        the flags SOLVER_INSTALL | SOLVER_SOLVABLE will tell libsolv to solve an installation of
+        a package which is specified by solvable ID, as opposed to by name, or by pattern, which
+        are other options available.
+
+        See: https://github.com/openSUSE/libsolv/blob/master/doc/libsolv-bindings.txt#the-job-class
+
+        :param units: An iterable of Pulp content units types supported by the type factory mapping.
+        :type units: An iterable of dictionaries
+
+        Yields:
+            A libsolv "Job" to "install" one of the units
+
+        Raises:
+            ValueError: If one of the units passed in does not have a matching solvable
+        """
         flags = solv.Job.SOLVER_INSTALL | solv.Job.SOLVER_SOLVABLE
         for unit in units:
             solvable = self.mapping.get_solvable(unit, self.source_repo.repo_id)
@@ -691,13 +768,23 @@ class Solver(object):
             yield self.pool.Job(flags, solvable.id)
 
     def _handle_nothing_provides(self, info, jobs):
-        name = info.dep.str()
+        """Handle a case where nothing provides a given requirement.
+
+        Some units may depend on other units outside the repo, and that will cause issues with the
+        solver. We need to create some dummy packages to fulfill those provides so that the
+        solver can continue. Essentially we pretend the missing dependencies are already installed.
+
+        :param info: A class describing why the rule was broken
+        :type info: solv.RuleInfo
+
+        TODO: why is "jobs" here? it is used in similar functions but not in this one. oversight?
+        """
         if not self.target_repo:
             return
         target_repo = self.mapping.repos[self.target_repo.repo_id]
         dummy = target_repo.add_solvable()
         dummy.add_deparray(solv.SOLVABLE_PROVIDES, info.dep)
-        _LOGGER.debug('Created dummy prv: %s', name)
+        _LOGGER.debug('Created dummy provides: {name}', name=info.dep.str())
 
     def _locate_solvable_job(self, solvable, flags, jobs):
         for idx, job in enumerate(jobs):
@@ -715,15 +802,19 @@ class Solver(object):
         _LOGGER.debug('Added job %s', enforce_job)
 
     def _handle_same_name(self, info, jobs):
+        """Handle a case where multiple versions of a package are "installed".
+
+        Libsolv by default will make the assumption that you can't "install" multiple versions of
+        a package, so in cases where we create that situation, we need to pass a special flag.
+        """
         install_flags = solv.Job.SOLVER_INSTALL | solv.Job.SOLVER_SOLVABLE
         enforce_flags = install_flags | solv.Job.SOLVER_MULTIVERSION
         self._enforce_solvable_job(info.solvable, enforce_flags, jobs)
         self._enforce_solvable_job(info.othersolvable, enforce_flags, jobs)
 
     def _handle_problems(self, problems, jobs):
-        # Convert missing dependency problems into new solvables to be able to retry the solving
-        # by pretending the missing dependencies are already installed
-        # Handle same-name problems by a multi-version install
+        """Handle problems libsolv finds during the depsolving process that can be worked around.
+        """
         for problem in problems:
             for problem_rule in problem.findallproblemrules():
                 for info in problem_rule.allinfos():
@@ -734,44 +825,38 @@ class Solver(object):
                     elif info.type == solv.Solver.SOLVER_RULE_PKG_SAME_NAME:
                         self._handle_same_name(info, jobs)
                     else:
-                        _LOGGER.warning('No workaround available for problem type %s. '
-                                        'You may refer to the libsolv Solver class documetnation '
-                                        'for more details. See https://github.com/openSUSE/'
-                                        'libsolv/blob/master/doc/libsolv-bindings.txt'
-                                        '#the-solver-class.', info.type)
+                        _LOGGER.warning(
+                            'No workaround available for problem type %s. '
+                            'You may refer to the libsolv Solver class documetnation '
+                            'for more details. See https://github.com/openSUSE/'
+                            'libsolv/blob/master/doc/libsolv-bindings.txt'
+                            '#the-solver-class.', info.type
+                        )
         self.pool.createwhatprovides()
 
-    def _paginated_result(self, solvables):
-        ret = set()
-        for solvables in misc_utils.paginate(solvables):
-            unit_ids = [self.mapping.get_unit_id(solvable)[0] for solvable in solvables]
-            iterator = itertools.chain(
-                models.RPM.objects.filter(id__in=unit_ids).only(*self.rpm_key_fields),
-                models.Modulemd.objects.filter(id__in=unit_ids).only(
-                    *models.Modulemd.unit_key_fields),
-                models.ModulemdDefaults.objects.filter(id__in=unit_ids).only(
-                    *models.ModulemdDefaults.unit_key_fields))
-            for unit in iterator:
-                ret.add(unit)
-        return ret
-
     def find_dependent_rpms_conservative(self, units):
-        ret = set()
+        """Find the RPM dependencies that need to be copied to satisfy copying the provided units,
+        taking into consideration what units are already present in the target repository.
+        """
         if not units:
-            return ret
+            return set()
         previous_problems_ = set()
-        take = 0
-        jobs = list(self._units_jobs(units))
+        attempt = 0
+        jobs = list(self._create_unit_install_jobs(units))
         while True:
-            take += 1
-            _LOGGER.debug('Solver take %(t)s; jobs:\n%(j)s',
-                          {'t': take, 'j': '\n'.join(str(job) for job in jobs)})
+            attempt += 1
+            _LOGGER.debug(
+                'Solver attempt {a}; jobs:\n{j}'.format(
+                    a=attempt,
+                    j='\n\t'.join(str(job) for job in jobs)
+                )
+            )
             solver = self.pool.Solver()
             problems = solver.solve(jobs)
             problems_ = set(str(problem) for problem in problems)
             # assuming we won't be creating more and more problems all the time
-            _LOGGER.debug('Previous solver problems:\n%s', '\n'.join(previous_problems_))
-            _LOGGER.debug('Current solver problems:\n%s', '\n'.join(problems_))
+            _LOGGER.debug('Previous solver problems:\n{}'.format('\n'.join(previous_problems_)))
+            _LOGGER.debug('Current solver problems:\n{}'.format('\n'.join(problems_)))
             if not problems or previous_problems_ == problems_:
                 break
             self._handle_problems(problems, jobs)
@@ -780,11 +865,15 @@ class Solver(object):
         # any new solvables/units. This might be reported back to the user one day over
         # the REST API.
         if problems_:
-            _LOGGER.warning('Encountered problems solving: %s', ', '.join(problems_))
+            _LOGGER.warning('Encountered problems solving: {}'.format(', '.join(problems_)))
         transaction = solver.transaction()
-        return self._paginated_result(transaction.newsolvables())
+        return self.mapping.get_units_from_solvables(transaction.newsolvables())
 
     def find_dependent_rpms_relaxed(self, units):
+        """Find the RPM dependencies that need to be copied to satisfy copying the provided units,
+        without taking into consideration the target repository. Just copy the most recent versions
+        of each.
+        """
         pool = self.pool
         seen = set()
         # Please note that providers of the requirements can be found in both the target
@@ -826,11 +915,8 @@ class Solver(object):
                         if provider in seen or repo != self.source_repo.repo_id:
                             continue
                         candq.add(provider)
-        targets = set(
-            unit_id for (unit_id, repo_id) in self.mapping.mapping_u.keys()
-            if repo_id == self.target_repo.repo_id
-        )
-        results = self._paginated_result(
+        targets = self.mapping.get_repo_units(self.target_repo.repo_id)
+        results = self.mapping.get_units_from_solvables(
             s for s in seen
             if self.mapping.get_unit_id(s)[0] not in targets
         )
