@@ -7,33 +7,67 @@ python:
     - "3.6"
     - "3.7"
 env:
-  - DB=postgres
-addons:
-    # postgres versions provided by el7 RHSCL (lowest supportable version)
-    postgresql: "9.6"
+  matrix:
+    - DB=postgres TEST=pulp
+    - DB=postgres TEST=docs
+    - DB=mariadb TEST=pulp
+    - DB=postgres TEST=bindings
+
+matrix:
+  exclude:
+    - python: '3.6'
+      env: DB=mariadb TEST=pulp
+    - python: '3.7'
+      env: DB=postgres TEST=bindings
+    - python: '3.6'
+      env: DB=postgres TEST=docs
+  fast_finish: true
 services:
     - postgresql
     - redis-server
-install: source .travis/install.sh
-before_script: source .travis/before_script.sh
-script: source .travis/script.sh
+    - mariadb
+addons:
+  apt:
+    packages:
+      - httpie
+      - jq
+  # postgres versions provided by el7 RHSCL (lowest supportable version)
+  postgresql: '9.6'
+  mariadb: '10.3'
+before_install: .travis/before_install.sh
+install: .travis/install.sh
+before_script: .travis/before_script.sh
+script: .travis/script.sh
 after_failure:
   - sh -c "cat ~/django_runserver.log"
   - sh -c "cat ~/resource_manager.log"
   - sh -c "cat ~/reserved_workers-1.log"
-stages:
-  - name: test
-  - name: deploy
-    if: tag IS present
 jobs:
   include:
-  - stage: deploy
-    script: skip
-    deploy:
-      provider: pypi
-      distributions: sdist bdist_wheel
-      user: pulp
-      password:
-        secure: C6xI8ZhjN6pqcDjYL9gXkEAyO9Z4KQjaEnFsyVTgPwm0aRDfnnFuFE9GnZoA7n4VbAUbtv/ZrPPfUoRAr+qbj2pAlY3M7Ua7PqzdprjM8KkQiqdaPDZO3kKiwkZ8bcGKt/6WOmQwb1QwgbJ5lKzu/ovn+0knSta3X7APOklImvI=
-      on:
-        tags: true
+  - stage: deploy-plugin-to-pypi
+    script:  bash .travis/publish_plugin_pypi.sh
+    if: tag IS present
+  - stage: publish-daily-client-gem
+    script: bash .travis/publish_client_gem.sh
+    env:
+      - DB=postgres
+      - TEST=bindings
+    if: type = cron
+  - stage: publish-daily-client-pypi
+    script: bash .travis/publish_client_pypi.sh
+    env:
+      - DB=postgres
+      - TEST=bindings
+    if: type = cron
+  - stage: publish-client-gem
+    script: bash .travis/publish_client_gem.sh
+    env:
+      - DB=postgres
+      - TEST=bindings
+    if: tag IS present
+  - stage: publish-client-pypi
+    script: bash .travis/publish_client_pypi.sh
+    env:
+      - DB=postgres
+      - TEST=bindings
+    if: tag IS present

@@ -1,14 +1,18 @@
 #!/usr/bin/env sh
 set -v
 
-psql -U postgres -c 'CREATE USER pulp WITH SUPERUSER LOGIN;'
-psql -U postgres -c 'CREATE DATABASE pulp OWNER pulp;'
+export PRE_BEFORE_SCRIPT=$TRAVIS_BUILD_DIR/.travis/pre_before_script.sh
+export POST_BEFORE_SCRIPT=$TRAVIS_BUILD_DIR/.travis/post_before_script.sh
+
+if [ -f $PRE_BEFORE_SCRIPT ]; then
+    $PRE_BEFORE_SCRIPT
+fi
+
 
 mkdir -p ~/.config/pulp_smash
 cp ../pulpcore/.travis/pulp-smash-config.json ~/.config/pulp_smash/settings.json
 
-sudo mkdir -p /var/lib/pulp/tmp
-sudo mkdir /etc/pulp/
-sudo chown -R travis:travis /var/lib/pulp
 
-echo "SECRET_KEY: \"$(cat /dev/urandom | tr -dc 'a-z0-9!@#$%^&*(\-_=+)' | head -c 50)\"" | sudo tee -a /etc/pulp/settings.py
+if [ -f $POST_BEFORE_SCRIPT ]; then
+    $POST_BEFORE_SCRIPT
+fi
