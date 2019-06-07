@@ -82,8 +82,13 @@ class ISOImporter(Importer):
 
         units = list(units)
 
+        # store the existing repo units to prevent querying mongo multiple times
+        repo_units = list(repo_controller.find_repo_content_units(dest_repo.repo_obj,
+                                                                  yield_content_unit=True))
         for u in units:
-            import_conduit.associate_unit(u)
+            units_to_remove = [iso for iso in repo_units if iso['name'] == u['name']]
+            repo_controller.disassociate_units(dest_repo.repo_obj, units_to_remove)
+            repo_controller.associate_single_unit(dest_repo.repo_obj, u)
 
         return units
 

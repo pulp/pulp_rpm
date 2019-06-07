@@ -40,7 +40,8 @@ class TestISOImporter(PulpRPMTests):
     def tearDown(self):
         shutil.rmtree(self.temp_dir)
 
-    def test_import_units__units_empty_list(self):
+    @mock.patch('pulp.server.controllers.repository.associate_single_unit')
+    def test_import_units__units_empty_list(self, mock_assoc):
         """
         Make sure that when an empty list is passed, we import zero units.
         """
@@ -48,21 +49,24 @@ class TestISOImporter(PulpRPMTests):
                         Unit(ids.TYPE_ID_ISO, {'name': 'test2.iso'}, {}, '/path/test2.iso'),
                         Unit(ids.TYPE_ID_ISO, {'name': 'test3.iso'}, {}, '/path/test3.iso')]
         import_conduit = importer_mocks.get_import_conduit(source_units=source_units)
+        repo = mock.MagicMock()
+        repo.repo_obj.repo_id = 'awesome_repo'
         # source_repo, dest_repo, and config aren't used by import_units, so we'll just set them to
         # None for simplicity. Let's pass an empty list as the units we want to import
         units_to_import = []
-        imported_units = self.iso_importer.import_units(None, None, import_conduit, None,
+        imported_units = self.iso_importer.import_units(None, repo, import_conduit, None,
                                                         units=units_to_import)
 
         # There should have been zero calls to the import_conduit. None to get_source_units(), and
         # none to associate units.
         self.assertEqual(len(import_conduit.get_source_units.call_args_list), 0)
-        self.assertEqual(len(import_conduit.associate_unit.call_args_list), 0)
+        self.assertEqual(len(mock_assoc.call_args_list), 0)
 
         # Make sure that the returned units are correct
         self.assertEqual(imported_units, units_to_import)
 
-    def test_import_units__units_none(self):
+    @mock.patch('pulp.server.controllers.repository.associate_single_unit')
+    def test_import_units__units_none(self, mock_assoc):
         """
         Make sure that when units=None, we import all units from the import_conduit.
         """
@@ -70,9 +74,11 @@ class TestISOImporter(PulpRPMTests):
                         Unit(ids.TYPE_ID_ISO, {'name': 'test2.iso'}, {}, '/path/test2.iso'),
                         Unit(ids.TYPE_ID_ISO, {'name': 'test3.iso'}, {}, '/path/test3.iso')]
         import_conduit = importer_mocks.get_import_conduit(source_units=source_units)
+        repo = mock.MagicMock()
+        repo.repo_obj.repo_id = 'awesome_repo'
         # source_repo, dest_repo, and config aren't used by import_units, so we'll just set them to
         # None for simplicity.
-        imported_units = self.iso_importer.import_units(None, None, import_conduit, None,
+        imported_units = self.iso_importer.import_units(None, repo, import_conduit, None,
                                                         units=None)
 
         # There should have been four calls to the import_conduit. One to get_source_units(), and
@@ -86,16 +92,17 @@ class TestISOImporter(PulpRPMTests):
         # There are three Units, so there should be three calls to associate_unit since we didn't
         # pass which units we wanted to import. Let's make sure the three calls were made with the
         # correct Units.
-        self.assertEqual(len(import_conduit.associate_unit.call_args_list), 3)
+        self.assertEqual(len(mock_assoc.call_args_list), 3)
         expected_unit_names = ['test.iso', 'test2.iso', 'test3.iso']
-        actual_unit_names = [tuple(call)[0][0].unit_key['name']
-                             for call in import_conduit.associate_unit.call_args_list]
+        actual_unit_names = [tuple(call)[0][1].unit_key['name']
+                             for call in mock_assoc.call_args_list]
         self.assertEqual(actual_unit_names, expected_unit_names)
 
         # The three Units should have been returned
         self.assertEqual(imported_units, source_units)
 
-    def test_import_units__units_some(self):
+    @mock.patch('pulp.server.controllers.repository.associate_single_unit')
+    def test_import_units__units_some(self, mock_assoc):
         """
         Make sure that when units are passed, we import only those units.
         """
@@ -103,10 +110,12 @@ class TestISOImporter(PulpRPMTests):
                         Unit(ids.TYPE_ID_ISO, {'name': 'test2.iso'}, {}, '/path/test2.iso'),
                         Unit(ids.TYPE_ID_ISO, {'name': 'test3.iso'}, {}, '/path/test3.iso')]
         import_conduit = importer_mocks.get_import_conduit(source_units=source_units)
+        repo = mock.MagicMock()
+        repo.repo_obj.repo_id = 'awesome_repo'
         # source_repo, dest_repo, and config aren't used by import_units, so we'll just set them to
         # None for simplicity. Let's use test.iso and test3.iso, leaving out test2.iso.
         units_to_import = [source_units[i] for i in range(0, 3, 2)]
-        imported_units = self.iso_importer.import_units(None, None, import_conduit, None,
+        imported_units = self.iso_importer.import_units(None, repo, import_conduit, None,
                                                         units=units_to_import)
 
         # There should have been two calls to the import_conduit. None to get_source_units(), and
@@ -116,10 +125,10 @@ class TestISOImporter(PulpRPMTests):
         # There are two Units, so there should be two calls to associate_unit since we passed which
         # units we wanted to import. Let's make sure the two calls were made with the
         # correct Units.
-        self.assertEqual(len(import_conduit.associate_unit.call_args_list), 2)
+        self.assertEqual(len(mock_assoc.call_args_list), 2)
         expected_unit_names = ['test.iso', 'test3.iso']
-        actual_unit_names = [tuple(call)[0][0].unit_key['name']
-                             for call in import_conduit.associate_unit.call_args_list]
+        actual_unit_names = [tuple(call)[0][1].unit_key['name']
+                             for call in mock_assoc.call_args_list]
         self.assertEqual(actual_unit_names, expected_unit_names)
 
         # Make sure that the returned units are correct
