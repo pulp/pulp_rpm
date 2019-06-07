@@ -38,7 +38,7 @@ def get_package_xml(pkg_path, sumtype=util.TYPE_SHA256):
         # https://bugzilla.redhat.com/show_bug.cgi?id=1290021
         sumtype_as_str = str(sumtype)
         po = yumbased.CreateRepoPackage(ts, pkg_path, sumtype=sumtype_as_str)
-    except Exception, e:
+    except Exception as e:
         # I hate this, but yum doesn't use reasonable exceptions like IOError
         # and ValueError.
         _LOGGER.error(str(e))
@@ -186,8 +186,8 @@ def filter_signature(unit, config):
     if allowed_keys:
         allowed_keys = [key.lower() for key in allowed_keys]
         if signing_key and signing_key not in allowed_keys:
-                raise PulpCodedException(error_code=error_codes.RPM1014, key=signing_key,
-                                         package=unit.filename, allowed=allowed_keys)
+            raise PulpCodedException(error_code=error_codes.RPM1014, key=signing_key,
+                                     package=unit.filename, allowed=allowed_keys)
 
 
 def nevra(name):
@@ -330,6 +330,8 @@ def get_package_modular_flag(headers):
     Look at package headers and decide if a package is modular or not.
 
     DISTTAG tag should contain 'module(...)' substring for package to be a modular one.
+    DISTTAG is no longer used, new tag MODULARITYLABEL is introduced for the purpose
+    of labeling modular RPMs. We should support both since old content still might be around.
 
     :param headers: package headers
     :type  headers: rpm.hdr
@@ -337,7 +339,8 @@ def get_package_modular_flag(headers):
     :return: True, if package is a modular one
     :rtype: boolean
     """
-    modular_flag = headers[rpm_module.RPMTAG_DISTTAG]
-    if modular_flag is None:
-        return False
-    return bool(re.match(r'module\(.*?\)', modular_flag))
+    disttag = bool(re.match(r'module\(.*?\)', headers[rpm_module.RPMTAG_DISTTAG] or ''))
+    modularitylabel = headers[constants.RPMTAG_MODULARITYLABEL]
+    if modularitylabel or disttag:
+        return True
+    return False
