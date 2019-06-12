@@ -44,6 +44,7 @@ Table of Contents
    installation
    quickstart
    workflows/index
+   bindings
    changes
    contributing
 
