@@ -210,3 +210,7 @@ GPG_KEY_ID = "gpg_key_id"
 
 # used in profiler for applicability
 VIRTUAL_MODULEMDS = ['platform']
+
+# Id of the tag which is used to analyze RPM headers at upload or download time.
+# It's availiable in rpm package in F30+ and Centos8+.
+RPMTAG_MODULARITYLABEL = 5096
