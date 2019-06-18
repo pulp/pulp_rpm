@@ -22,7 +22,7 @@ from pulp.server.exceptions import PulpCodedException
 from pulp_rpm.common import constants, version_utils, file_utils
 from pulp_rpm.plugins import error_codes, serializers
 from pulp_rpm.plugins.db.fields import ChecksumTypeStringField
-from pulp_rpm.plugins.importers.yum import utils, parse
+from pulp_rpm.plugins.importers.yum import utils, parse, existing
 from pulp_rpm.yum_plugin import util
 
 
@@ -1751,6 +1751,23 @@ class Modulemd(FileContentUnit):
                               'arch': nevra[4]})
 
         return rpm_dicts
+
+    def get_rpm_artifacts(self, repo):
+        """
+        Return a list of RPM units for each artifact (RPM) this modulemd includes
+
+        :param repo:        The repository object
+        :type repo:         Repo
+
+        :return:            A queryset of RPM models
+        :rtype:             queryset
+        """
+        for key in self.rpm_search_dicts:
+            # ignore checksum from updateinfo.xml
+            key['checksum'] = None
+            key['checksumtype'] = None
+
+        return existing.get_existing_units(self.rpm_search_dicts, RPM, repo)
 
 
 class ModulemdDefaults(UnitMixin, FileContentUnit):

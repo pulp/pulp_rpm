@@ -127,31 +127,46 @@ MODULE_DEFAULTS_EXCLUDE_FIELDS = set([
 ]) - MODULE_DEFAULTS_FIELDS
 
 
-def fetch_units_from_repo(repo_id):
-    """Load the units from a repository.
+def _repo_units(repo_id, type_id, model, exclude_fields, filters={}):
+    """A generator that loads units from a repository to a list of dicts.
 
     Extract all the content in the provided repository from the database and dump them to dicts.
     For performance, we bypass the ORM and do raw mongo queries, because the extra overhead of
     creating objects vs dicts wastes too much time and space.
     """
-    def _repo_units(repo_id, type_id, model, exclude_fields):
-        # NOTE: optimization; the solver has to visit every unit of a repo.
-        # Using a custom, as-pymongo query to load the units as fast as possible.
-        rcuq = server_model.RepositoryContentUnit.objects.filter(
-            repo_id=repo_id, unit_type_id=type_id).only('unit_id').as_pymongo()
+    # NOTE: optimization; the solver has to visit every unit of a repo.
+    # Using a custom, as-pymongo query to load the units as fast as possible.
+    rcuq = server_model.RepositoryContentUnit.objects.filter(
+        repo_id=repo_id, unit_type_id=type_id).only('unit_id').as_pymongo()
 
-        for rcu_batch in misc_utils.paginate(rcuq):
-            rcu_ids = [rcu['unit_id'] for rcu in rcu_batch]
-            for unit in model.objects.filter(id__in=rcu_ids).exclude(*exclude_fields).as_pymongo():
-                # Why does it use .exclude() instead of .only()? Wouldn't the latter be simpler?
-                # TODO: Investigate this
-                if not unit.get('id'):
-                    unit['id'] = unit.get('_id')
-                yield unit
+    for rcu_batch in misc_utils.paginate(rcuq):
+        rcu_ids = [rcu['unit_id'] for rcu in rcu_batch]
+        if filters:
+            units = model.objects.filter(id__in=rcu_ids, **filters).exclude(
+                *exclude_fields).as_pymongo()
+        else:
+            units = model.objects.filter(id__in=rcu_ids).exclude(*exclude_fields).as_pymongo()
 
-    # order matters; e.g module loading requires rpm loading
+        for unit in units:
+            # Why does it use .exclude() instead of .only()? Wouldn't the latter be simpler?
+            # TODO: Investigate this
+            if not unit.get('id'):
+                unit['id'] = unit.get('_id')
+            yield unit
+
+
+def fetch_nonmodular_units_from_repo(repo_id):
+    return _repo_units(
+        repo_id, ids.TYPE_ID_RPM, models.RPM, RPM_EXCLUDE_FIELDS,
+        filters={'is_modular': False}
+    )
+
+
+def fetch_modular_units_from_repo(repo_id):
     units = itertools.chain(
-        _repo_units(repo_id, ids.TYPE_ID_RPM, models.RPM, RPM_EXCLUDE_FIELDS),
+        _repo_units(
+            repo_id, ids.TYPE_ID_RPM, models.RPM, RPM_EXCLUDE_FIELDS,
+            filters={'is_modular': True}),
         _repo_units(
             repo_id, ids.TYPE_ID_MODULEMD, models.Modulemd, MODULE_EXCLUDE_FIELDS),
         _repo_units(
@@ -663,10 +678,10 @@ class UnitSolvableMapping(object):
         """
         return self._mapping_solvable.get(solvable.id)
 
-    def get_solvable(self, unit, repo_id):
+    def get_solvable(self, unit_id, repo_id):
         """Fetch the libsolv solvable associated with a unit-repo pair.
         """
-        return self._mapping_unit.get((unit['id'], repo_id))
+        return self._mapping_unit.get((unit_id, repo_id))
 
     def get_repo_units(self, repo_id):
         """Get back unit ids of all units that were in a repo based on the mapping.
@@ -702,7 +717,7 @@ class Solver(object):
         ids.TYPE_ID_MODULEMD_DEFAULTS: module_defaults_unit_solvable_factory,
     }
 
-    def __init__(self, source_repo, target_repo=None, conservative=False):
+    def __init__(self, source_repo, target_repo=None, conservative=False, enabled_modules=None):
         super(Solver, self).__init__()
         self.source_repo = source_repo
         self.target_repo = target_repo
@@ -711,6 +726,10 @@ class Solver(object):
         self._pool = solv.Pool()
         # prevent https://github.com/openSUSE/libsolv/issues/267
         self._pool.setarch()
+        # A list of modules that are to be enabled when the solver runs
+        self._enabled_modules = enabled_modules
+        # A list of solvable IDs that are to be enabled when the solver runs
+        self._considered_solvables = []
         self.mapping = UnitSolvableMapping()
 
     def load(self):
@@ -721,21 +740,65 @@ class Solver(object):
         if self._loaded:
             return
         self._loaded = True
+
         source_repo_id = self.source_repo.repo_id
-        source_units = fetch_units_from_repo(source_repo_id)
-        self.add_repo_units(source_units, source_repo_id)
+
+        nonmodular_source_units = fetch_nonmodular_units_from_repo(source_repo_id)
+        self.add_repo_units(nonmodular_source_units, source_repo_id)
+
+        modular_source_units = fetch_modular_units_from_repo(source_repo_id)
+        self.add_repo_units(modular_source_units, source_repo_id, considered=False)
+
         _LOGGER.info('Loaded source repository %s', source_repo_id)
 
         if self.target_repo:
             target_repo_id = self.target_repo.repo_id
-            target_units = fetch_units_from_repo(target_repo_id)
-            self.add_repo_units(target_units, target_repo_id, installed=True)
+
+            nonmodular_target_units = fetch_nonmodular_units_from_repo(target_repo_id)
+            self.add_repo_units(nonmodular_target_units, target_repo_id, installed=True)
+
+            modular_target_units = fetch_modular_units_from_repo(target_repo_id)
+            self.add_repo_units(
+                modular_target_units, target_repo_id,
+                installed=True, considered=False
+            )
+
             _LOGGER.info('Loaded target repository %s', target_repo_id)
+
+        for module in self._enabled_modules:
+            self.enable_module(module)
 
         self._pool.addfileprovides()
         self._pool.createwhatprovides()
 
-    def add_repo_units(self, units, repo_id, installed=False):
+    def enable_module(self, module):
+        """
+        By default all modules and module RPMs are not considered.
+
+        The module we actually want to copy (and all of its RPM dependencies) need to be considered,
+        as well as declared module dependencies (and their declared module dependencies).
+
+        Here we take a module name and figure out which solvables correspond to those modules and
+        module artifacts, and call the method on UnitSolvableMapping that will set them to
+        considered.
+        """
+        _LOGGER.debug('Enabling module {m}:{s}'.format(m=module.name, s=module.stream))
+
+        module_solvable = self.mapping.get_solvable(module.id, self.source_repo.repo_id)
+        solvables = [module_solvable]
+
+        artifacts = module.get_rpm_artifacts(self.source_repo)
+        for artifact in artifacts:
+            solvable = self.mapping.get_solvable(artifact.id, self.source_repo.repo_id)
+            solvables.append(solvable)
+
+        for solvable in solvables:
+            self._considered_solvables.append(solvable.id)
+
+        self._considered_solvables.sort()
+        self._pool.set_considered_list(self._considered_solvables)
+
+    def add_repo_units(self, units, repo_id, installed=False, considered=True):
         """Add units to the mapping.
         """
         repo_name = str(repo_id)
@@ -753,11 +816,14 @@ class Solver(object):
                 raise ValueError('Unsupported unit type: {}', err)
             solvable = factory(repo, unit)
             self.mapping.register(unit, solvable, repo_id)
+            if considered:
+                self._considered_solvables.append(solvable.id)
 
         if installed:
             self._pool.installed = repo
 
         repodata.internalize()
+        self._pool.set_considered_list(self._considered_solvables)
 
     def _create_unit_install_jobs(self, units):
         """Create libsolv jobs for each one of the units passed in.
@@ -780,7 +846,7 @@ class Solver(object):
         """
         flags = solv.Job.SOLVER_INSTALL | solv.Job.SOLVER_SOLVABLE
         for unit in units:
-            solvable = self.mapping.get_solvable(unit, self.source_repo.repo_id)
+            solvable = self.mapping.get_solvable(unit['id'], self.source_repo.repo_id)
             if not solvable:
                 raise ValueError('Encountered an unknown unit {}'.format(unit))
             yield self._pool.Job(flags, solvable.id)
@@ -885,7 +951,8 @@ class Solver(object):
         if problems_:
             _LOGGER.warning('Encountered problems solving: {}'.format(', '.join(problems_)))
         transaction = solver.transaction()
-        return self.mapping.get_units_from_solvables(transaction.newsolvables())
+        results = self.mapping.get_units_from_solvables(transaction.newsolvables())
+        return results
 
     def find_dependent_rpms_relaxed(self, units):
         """Find the RPM dependencies that need to be copied to satisfy copying the provided units,
@@ -898,7 +965,7 @@ class Solver(object):
         # and source repo but each provider is a distinct solvable, so even though a particular
         # unit can seem to appear twice in the pool.whatprovides() set, it's just a different
         # solvable.
-        candq = set(self.mapping.get_solvable(unit, self.source_repo.repo_id) for unit in units)
+        candq = set(self.mapping.get_solvable(unit['id'], self.source_repo.repo_id) for unit in units)
         while candq:
             cand = candq.pop()
             seen.add(cand)

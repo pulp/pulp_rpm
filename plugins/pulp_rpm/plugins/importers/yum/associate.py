@@ -39,6 +39,7 @@ def associate(source_repo, dest_repo, import_conduit, config, units=None, solver
 
     :param units:           generator of ContentUnit objects to copy
     :type  units:           generator
+
     :param solver:          a solver instance shared during a recursive call
     :type solver:           pulp_solv.Solver
 
@@ -53,15 +54,22 @@ def associate(source_repo, dest_repo, import_conduit, config, units=None, solver
     recursive = config.get(constants.CONFIG_RECURSIVE) or \
         config.get(constants.CONFIG_RECURSIVE_CONSERVATIVE)
 
-    if recursive and not solver:
-        solver = pulp_solv.Solver(source_repo, target_repo=dest_repo,
-                                  conservative=config.get(constants.CONFIG_RECURSIVE_CONSERVATIVE))
-        solver.load()
-
     # make a set from generator to be able to iterate through it several times
     units = set(units)
     failed_units = set()
+
+    modulemd_units = set(unit for unit in units if isinstance(unit, models.Modulemd))
+    modulemd_deps = get_recursive_module_deps(modulemd_units)
+    modules_to_enable = modulemd_deps | modulemd_units
+
+    if recursive and not solver:
+        solver = pulp_solv.Solver(source_repo, target_repo=dest_repo,
+                                  conservative=config.get(constants.CONFIG_RECURSIVE_CONSERVATIVE),
+                                  enabled_modules=modules_to_enable)
+        solver.load()
+
     # we need to filter out rpm units since in reality they were not associated
+    # they are associated in one batch later
     associated_units = [_associate_unit(dest_repo, unit, config) for unit in units
                         if not isinstance(unit, models.RPM)]
     if None in associated_units:
@@ -138,6 +146,54 @@ def associate(source_repo, dest_repo, import_conduit, config, units=None, solver
     units = None
 
     return associated_units, failed_units
+
+
+def get_recursive_module_deps(module_units):
+    """
+    Module Metadata specifies dependencies on other modules. This method is useful
+    for taking a set of Modulemd documents and returning the total set of module
+    dependencies for those units.
+
+    :param module_units: iterable of Modulemd
+    :type module_units: iterable
+
+    :return: set of Modulemd
+    :rtype: set
+    """
+    module_deps = set()
+    for unit in module_units:
+        for dependency in unit.dependencies:
+            # we're not a real client, so we don't care about the platform
+            # we need to copy all dependencies for any platform
+            dependency.pop("platform")
+
+            for name, streams in dependency.items():
+                all_module_streams = models.Modulemd.objects.filter(name=name)
+
+                streams = list(streams)
+                if streams:
+                    included_streams = []
+                    excluded_streams = []
+                    for stream in streams:
+                        if stream.startswith('-'):
+                            excluded_streams.append(stream.replace('-', ''))
+                        else:
+                            included_streams.append(stream)
+
+                    if excluded_streams:
+                        matching_modules = all_module_streams.filter(stream__nin=excluded_streams)
+                    elif included_streams:
+                        matching_modules = all_module_streams.filter(stream__in=included_streams)
+                else:
+                    matching_modules = all_module_streams
+
+                module_deps |= set(matching_modules)
+
+                extra_deps = get_recursive_module_deps(module_deps)
+                if extra_deps:
+                    module_deps |= extra_deps
+
+    return module_deps
 
 
 def get_rpms_to_copy_by_key(rpm_search_dicts, import_conduit, repo):
