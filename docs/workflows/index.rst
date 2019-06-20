@@ -7,7 +7,7 @@ in the home directory. The ``.netrc`` should have the following configuration::
 
     machine localhost
     login admin
-    password admin
+    password password
 
 If you configured the ``admin`` user with a different password, adjust the configuration
 accordingly. If you prefer to specify the username and password with each request, please see
