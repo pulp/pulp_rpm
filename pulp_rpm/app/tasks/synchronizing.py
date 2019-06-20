@@ -3,6 +3,7 @@ import hashlib
 import logging
 import os
 
+from collections import defaultdict
 from gettext import gettext as _  # noqa:F401
 from urllib.parse import urljoin
 
@@ -308,6 +309,7 @@ class RpmFirstStage(Stage):
                         for update in updates:
                             update_record = UpdateRecord(**UpdateRecord.createrepo_to_dict(update))
                             update_record.digest = RpmFirstStage.hash_update_record(update)
+                            future_relations = {'collections': defaultdict(list), 'references': []}
 
                             for collection in update.collections:
                                 coll_dict = UpdateCollection.createrepo_to_dict(collection)
@@ -316,16 +318,16 @@ class RpmFirstStage(Stage):
                                 for package in collection.packages:
                                     pkg_dict = UpdateCollectionPackage.createrepo_to_dict(package)
                                     pkg = UpdateCollectionPackage(**pkg_dict)
-                                    coll._packages.append(pkg)
-
-                                update_record._collections.append(coll)
+                                    future_relations['collections'][coll].append(pkg)
 
                             for reference in update.references:
                                 reference_dict = UpdateReference.createrepo_to_dict(reference)
-                                update_record._references.append(UpdateReference(**reference_dict))
+                                ref = UpdateReference(**reference_dict)
+                                future_relations['references'].append(ref)
 
                             erratum_pb.increment()
                             dc = DeclarativeContent(content=update_record)
+                            dc.extra_data = future_relations
                             await self.put(dc)
 
         packages_pb.state = 'completed'
@@ -351,38 +353,42 @@ class RpmContentSaver(ContentSaver):
                 :class:`~pulpcore.plugin.stages.DeclarativeContent` objects to be saved.
 
         """
-        update_collection_to_save = []
+        update_collections_to_save = []
         update_references_to_save = []
+        update_collection_packages_to_save = []
+
         for declarative_content in batch:
             if declarative_content is None:
                 continue
             if not isinstance(declarative_content.content, UpdateRecord):
                 continue
             update_record = declarative_content.content
-            try:
-                update_collections = update_record._collections
-            except AttributeError:
-                pass  # This UpdateRecord was found in the db or has no collections or references
-            else:
-                for update_collection in update_collections:
-                    update_collection.update_record = update_record
-                    update_collection_to_save.append(update_collection)
 
-                update_references = update_record._references
-                for update_reference in update_references:
-                    update_reference.update_record = update_record
-                    update_references_to_save.append(update_reference)
+            relations_exist = update_record.collections.count() or update_record.references.count()
+            if relations_exist:
+                # existing content which was retrieved from the db at earlier stages
+                continue
 
-        update_collection_packages_to_save = []
-        if update_collection_to_save:
-            saved_collections = UpdateCollection.objects.bulk_create(update_collection_to_save)
-            for update_collection in saved_collections:
-                for update_collection_package in update_collection._packages:
+            future_relations = declarative_content.extra_data
+            update_collections = future_relations.get('collections') or {}
+            update_references = future_relations.get('references') or []
+
+            for update_collection, packages in update_collections.items():
+                update_collection.update_record = update_record
+                update_collections_to_save.append(update_collection)
+                for update_collection_package in packages:
                     update_collection_package.update_collection = update_collection
                     update_collection_packages_to_save.append(update_collection_package)
 
-            if update_collection_packages_to_save:
-                UpdateCollectionPackage.objects.bulk_create(update_collection_packages_to_save)
+            for update_reference in update_references:
+                update_reference.update_record = update_record
+                update_references_to_save.append(update_reference)
+
+        if update_collections_to_save:
+            UpdateCollection.objects.bulk_create(update_collections_to_save)
+
+        if update_collection_packages_to_save:
+            UpdateCollectionPackage.objects.bulk_create(update_collection_packages_to_save)
 
         if update_references_to_save:
             UpdateReference.objects.bulk_create(update_references_to_save)

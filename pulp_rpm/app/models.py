@@ -12,7 +12,6 @@ from pulp_rpm.app.constants import (CHECKSUM_CHOICES, CREATEREPO_PACKAGE_ATTRS,
                                     CREATEREPO_UPDATE_RECORD_ATTRS,
                                     CREATEREPO_UPDATE_REFERENCE_ATTRS)
 
-
 log = getLogger(__name__)
 
 
@@ -451,14 +450,6 @@ class UpdateRecord(Content):
             'pushcount': getattr(update, CREATEREPO_UPDATE_RECORD_ATTRS.PUSHCOUNT) or ''
         }
 
-    def __init__(self, *args, **kwargs):
-        """
-        Add attributes to the UpdateRecord instance to temporarily store some data in memory.
-        """
-        super().__init__(*args, **kwargs)
-        self._collections = []
-        self._references = []
-
 
 class UpdateCollection(Model):
     """
@@ -501,13 +492,6 @@ class UpdateCollection(Model):
             'name': getattr(collection, CREATEREPO_UPDATE_COLLECTION_ATTRS.NAME),
             'shortname': getattr(collection, CREATEREPO_UPDATE_COLLECTION_ATTRS.SHORTNAME)
         }
-
-    def __init__(self, *args, **kwargs):
-        """
-        Add attributes to the UpdateCollection instance to temporarily store some data in memory.
-        """
-        super().__init__(*args, **kwargs)
-        self._packages = []
 
 
 class UpdateCollectionPackage(Model):
