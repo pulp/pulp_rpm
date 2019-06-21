@@ -1,8 +1,13 @@
+from pulpcore.plugin.models import (
+    Artifact,
+    ContentArtifact,
+    CreatedResource,
+    Repository,
+    RepositoryVersion
+)
+
 from pulp_rpm.app.shared_utils import _prepare_package
 from pulp_rpm.app.models import Package
-from pulpcore.app.models.task import CreatedResource
-from pulpcore.app.models.content import Artifact, ContentArtifact
-from pulpcore.app.models.repository import Repository, RepositoryVersion
 
 
 def one_shot_upload(artifact_pk, filename, repository_pk=None):
