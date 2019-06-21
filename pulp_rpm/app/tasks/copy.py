@@ -1,6 +1,6 @@
 from django.db.models import Q
 
-from pulpcore.app.models.repository import Repository, RepositoryVersion
+from pulpcore.plugin.models import Repository, RepositoryVersion
 
 
 def copy_content(source_repo_version_pk, dest_repo_pk, types):
