@@ -1,0 +1,16 @@
+=======================
+Pulp 2.20 Release Notes
+=======================
+
+Pulp 2.20.0
+===========
+
+Bug Fixes
+---------
+
+* Improved applicability calculation correctness for modularity content.
+* Improved modular RPM identification
+* Account for duplicated ISO content during copy operation.
+* Fixed the update case for custom yum repodata.
+
+See the full list of :fixedbugs_pulp_rpm:`2.20.0`
