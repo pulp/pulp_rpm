@@ -2,15 +2,16 @@ import logging
 import os
 
 import mongoengine
+from pulp.common.plugins import importer_constants
 from pulp.plugins.loader import api as plugin_api
 from pulp.plugins.util.misc import paginate
 from pulp.server.controllers import repository as repo_controller
 from pulp.server.controllers import units as units_controller
+from pulp.server.db.model import Importer
 from pulp.server.exceptions import PulpCodedException
 
 from pulp_rpm.common import ids
 from pulp_rpm.plugins.importers.yum.parse import rpm as rpm_parse
-
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -123,6 +124,13 @@ def check_all_and_associate(wanted, conduit, config, download_deferred, catalog)
         all_associated_units.update(units_generator)
 
     sorted_units = _sort_by_type(wanted.iterkeys())
+
+    importer = Importer.objects.get(id=conduit.importer_object_id)
+    # If UPDATED doesn't exist in the importer's config, or it exists but is false - feed-url
+    # hasn't changed since last sync
+    same_feed = importer_constants.KEY_FEED_UPDATED not in importer.config or \
+        not importer.config[importer_constants.KEY_FEED_UPDATED]
+
     for unit_type, values in sorted_units.iteritems():
         model = plugin_api.get_unit_model_by_id(unit_type)
         # FIXME "fields" does not get used, but it should
@@ -150,7 +158,10 @@ def check_all_and_associate(wanted, conduit, config, download_deferred, catalog)
                         _LOGGER.debug(e)
                         continue
                 repo_controller.associate_single_unit(conduit.repo, unit)
-            values.discard(unit.unit_key_as_named_tuple)
+            # If importer-url hasn't changed, we don't want to go looking for NEVRAs we already know
+            # If the URL *has* changed, then we will need to re-evaluate if
+            if same_feed:
+                values.discard(unit.unit_key_as_named_tuple)
     still_wanted = set()
     still_wanted.update(*sorted_units.values())
     return still_wanted

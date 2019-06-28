@@ -20,6 +20,7 @@ from pulp.common.plugins import importer_constants
 from pulp.plugins.util import nectar_config as nectar_utils
 from pulp.server import util
 from pulp.server.controllers import repository as repo_controller
+from pulp.server.db.model import Importer
 from pulp.server.db.model import LazyCatalogEntry
 from pulp.server.exceptions import PulpCodedException
 from pulp.server.managers.repo import _common as common_utils
@@ -367,6 +368,14 @@ class RepoSync(object):
                 raise PulpCodedException(error_code=error_codes.RPM1004,
                                          reason=self.repomd_not_found_reason)
 
+            # If we're here, sync was successful (for some definition of 'success')
+            # If feed-url had been updated, clear the flag set in config
+            importer = Importer.objects.get(id=self.conduit.importer_object_id)
+            if importer_constants.KEY_FEED_UPDATED in importer.config and \
+                    importer.config[importer_constants.KEY_FEED_UPDATED]:
+                importer.config[importer_constants.KEY_FEED_UPDATED] = False
+                importer.save()
+
             if self.config.override_config.get(importer_constants.KEY_FEED):
                 self.erase_repomd_details()
             else:
@@ -602,6 +611,7 @@ class RepoSync(object):
         :param url: curret URL we should sync
         :type: str
         """
+
         catalog = PackageCatalog(self.conduit.importer_object_id, url)
         rpms_to_download, drpms_to_download = self._decide_what_to_download(metadata_files, catalog)
         self.download_rpms(metadata_files, rpms_to_download, url)
@@ -817,7 +827,6 @@ class RepoSync(object):
         """
         event_listener = RPMListener(self, metadata_files)
         primary_file_handle = metadata_files.get_metadata_file_handle(primary.METADATA_FILE_NAME)
-
         try:
             package_model_generator = packages.package_list_generator(
                 primary_file_handle,
@@ -829,8 +838,24 @@ class RepoSync(object):
 
             if self.download_deferred:
                 catalog = PackageCatalog(self.conduit.importer_object_id, url)
+                importer = Importer.objects.get(id=self.conduit.importer_object_id)
+
                 for unit in units_to_download:
                     unit.downloaded = False
+                    # If feed-url has changed since last-sync, we need to:
+                    #   - delete existing matching-unit if there is one, and
+                    #   - delete existing LazyCatalogEntry if there is one,
+                    # in order to safely rebuild LCE with possibly-new download-urls
+                    # [NOTE: "if there is one" is almost certainly paranoia at this point in the
+                    # code-flow. Paranoia is not always invalid, however...]
+                    if importer_constants.KEY_FEED_UPDATED in importer.config and \
+                            importer.config[importer_constants.KEY_FEED_UPDATED]:
+                        units = unit.__class__.objects.filter(**unit.unit_key)
+                        repo_controller.disassociate_units(self.repo, units)
+                        for old_unit in units:
+                            old_unit.delete()
+                        catalog.delete(unit)
+
                     unit = self.add_rpm_unit(metadata_files, unit)
                     self.associate_rpm_unit(unit)
                     catalog.add(unit, unit.download_path)
@@ -885,8 +910,23 @@ class RepoSync(object):
 
                     if self.download_deferred:
                         catalog = PackageCatalog(self.conduit.importer_object_id, url)
+                        importer = Importer.objects.get(id=self.conduit.importer_object_id)
+
                         for unit in units_to_download:
                             unit.downloaded = False
+                            # If feed-url has changed since last-sync, we need to:
+                            #   - delete existing matching-unit if there is one, and
+                            #   - delete existing LazyCatalogEntry if there is one,
+                            # in order to safely rebuild LCE with possibly-new download-urls
+                            # [NOTE: "if there is one" is almost certainly paranoia at this point
+                            # in the code-flow. Paranoia is not always invalid, however...]
+                            if importer_constants.KEY_FEED_UPDATED in importer.config and \
+                                    importer.config[importer_constants.KEY_FEED_UPDATED]:
+                                units = unit.__class__.objects.filter(**unit.unit_key)
+                                repo_controller.disassociate_units(self.repo, units)
+                                for old_unit in units:
+                                    old_unit.delete()
+                                catalog.delete(unit)
                             unit = self.add_rpm_unit(metadata_files, unit)
                             self.associate_rpm_unit(unit)
                             catalog.add(unit, unit.download_path)
