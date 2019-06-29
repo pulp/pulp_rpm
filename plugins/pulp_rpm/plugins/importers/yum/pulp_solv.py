@@ -16,8 +16,10 @@ from pulp_rpm.plugins.importers.yum import parse
 _LOGGER = logging.getLogger(__name__)
 
 # Constants for loading data from the database.
-# See: fetch_units_from_repo()
-RPM_FIELDS = set([
+# 'pk' maps to 'id' in mongoengine, maps to '_id' in mongodb
+BASE_UNIT_FIELDS = set(['pk', '_content_type_id'])
+
+RPM_FIELDS = BASE_UNIT_FIELDS | set([
     'name',
     'version',
     'release',
@@ -27,104 +29,24 @@ RPM_FIELDS = set([
     'provides',
     'requires',
     'files',
-    '_content_type_id',
-    'id',
 ])
-RPM_EXCLUDE_FIELDS = set([
-    'id',
-    'build_time',
-    'buildhost',
-    'pulp_user_metadata',
-    '_content_type_id',
-    'checksums',
-    'size',
-    'license',
-    'group',
-    '_ns',
-    'filename',
-    'epoch',
-    'version',
-    'version_sort_index',
-    'provides',
-    'files',
-    'repodata',
-    'description',
-    '_last_updated',
-    'time',
-    'downloaded',
-    'header_range',
-    'arch',
-    'name',
-    '_storage_path',
-    'sourcerpm',
-    'checksumtype',
-    'release_sort_index',
-    'changelog',
-    'url',
-    'checksum',
-    'signing_key',
-    'summary',
-    'relativepath',
-    'release',
-    'requires',
-]) - RPM_FIELDS
-MODULE_FIELDS = set([
+
+MODULE_FIELDS = BASE_UNIT_FIELDS | set([
     'name',
     'stream',
     'version',
     'context',
     'arch',
-    '_content_type_id',
-    'id',
-    '_id',
     'profiles',
     'dependencies',
     'artifacts',
 ])
-MODULE_EXCLUDE_FIELDS = set([
-    'name',
-    'stream',
-    'version',
-    'context',
-    'arch',
-    'summary',
-    'description',
-    'checksum',
-    'profiles',
-    'artifacts',
-    'checksum',
-    'dependencies',
-    '_content_type_id',
-    'id',
-    '_id',
-    '_ns',
-    '_storage_path',
-    '_last_updated',
-    'downloaded',
-    'pulp_user_metadata',
-]) - MODULE_FIELDS
-MODULE_DEFAULTS_FIELDS = set([
+
+MODULE_DEFAULTS_FIELDS = BASE_UNIT_FIELDS | set([
     'name',
     'stream',
     'repo_id',
-    '_id',
-    'id',
-    '_content_type_id',
 ])
-MODULE_DEFAULTS_EXCLUDE_FIELDS = set([
-    '_id',
-    'id',
-    'pulp_user_metadata',
-    '_last_updated',
-    '_storage_path',
-    'downloaded',
-    'name',
-    'repo_id',
-    'profiles',
-    'checksum',
-    '_ns',
-    '_content_type_id',
-]) - MODULE_DEFAULTS_FIELDS
 
 
 def fetch_units_from_repo(repo_id):
@@ -134,7 +56,7 @@ def fetch_units_from_repo(repo_id):
     For performance, we bypass the ORM and do raw mongo queries, because the extra overhead of
     creating objects vs dicts wastes too much time and space.
     """
-    def _repo_units(repo_id, type_id, model, exclude_fields):
+    def _repo_units(repo_id, type_id, model, fields):
         # NOTE: optimization; the solver has to visit every unit of a repo.
         # Using a custom, as-pymongo query to load the units as fast as possible.
         rcuq = server_model.RepositoryContentUnit.objects.filter(
@@ -142,21 +64,19 @@ def fetch_units_from_repo(repo_id):
 
         for rcu_batch in misc_utils.paginate(rcuq):
             rcu_ids = [rcu['unit_id'] for rcu in rcu_batch]
-            for unit in model.objects.filter(id__in=rcu_ids).exclude(*exclude_fields).as_pymongo():
-                # Why does it use .exclude() instead of .only()? Wouldn't the latter be simpler?
-                # TODO: Investigate this
+            for unit in model.objects.filter(id__in=rcu_ids).only(*fields).as_pymongo():
                 if not unit.get('id'):
                     unit['id'] = unit.get('_id')
                 yield unit
 
     # order matters; e.g module loading requires rpm loading
     units = itertools.chain(
-        _repo_units(repo_id, ids.TYPE_ID_RPM, models.RPM, RPM_EXCLUDE_FIELDS),
+        _repo_units(repo_id, ids.TYPE_ID_RPM, models.RPM, RPM_FIELDS),
         _repo_units(
-            repo_id, ids.TYPE_ID_MODULEMD, models.Modulemd, MODULE_EXCLUDE_FIELDS),
+            repo_id, ids.TYPE_ID_MODULEMD, models.Modulemd, MODULE_FIELDS),
         _repo_units(
             repo_id, ids.TYPE_ID_MODULEMD_DEFAULTS, models.ModulemdDefaults,
-            MODULE_DEFAULTS_EXCLUDE_FIELDS),
+            MODULE_DEFAULTS_FIELDS),
     )
     return units
 
