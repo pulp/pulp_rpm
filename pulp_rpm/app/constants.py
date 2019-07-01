@@ -34,7 +34,7 @@ CHECKSUM_CHOICES = (
     (CHECKSUM_TYPES.SHA512, CHECKSUM_TYPES.SHA512)
 )
 
-CREATEREPO_PACKAGE_ATTRS = SimpleNamespace(
+CR_PACKAGE_ATTRS = SimpleNamespace(
     ARCH='arch',
     CHANGELOGS='changelogs',
     CHECKSUM_TYPE='checksum_type',
@@ -75,7 +75,7 @@ CREATEREPO_PACKAGE_ATTRS = SimpleNamespace(
 PACKAGE_REPODATA = ['primary', 'filelists', 'other']
 UPDATE_REPODATA = ['updateinfo']
 
-CREATEREPO_UPDATE_RECORD_ATTRS = SimpleNamespace(
+CR_UPDATE_RECORD_ATTRS = SimpleNamespace(
     ID='id',
     UPDATED_DATE='updated_date',
     DESCRIPTION='description',
@@ -93,12 +93,12 @@ CREATEREPO_UPDATE_RECORD_ATTRS = SimpleNamespace(
     PUSHCOUNT='pushcount'
 )
 
-CREATEREPO_UPDATE_COLLECTION_ATTRS = SimpleNamespace(
+CR_UPDATE_COLLECTION_ATTRS = SimpleNamespace(
     NAME='name',
     SHORTNAME='shortname'
 )
 
-CREATEREPO_UPDATE_COLLECTION_PACKAGE_ATTRS = SimpleNamespace(
+CR_UPDATE_COLLECTION_PACKAGE_ATTRS = SimpleNamespace(
     ARCH='arch',
     EPOCH='epoch',
     FILENAME='filename',
@@ -111,9 +111,21 @@ CREATEREPO_UPDATE_COLLECTION_PACKAGE_ATTRS = SimpleNamespace(
     VERSION='version'
 )
 
-CREATEREPO_UPDATE_REFERENCE_ATTRS = SimpleNamespace(
+CR_UPDATE_REFERENCE_ATTRS = SimpleNamespace(
     HREF='href',
     ID='id',
     TITLE='title',
     TYPE='type'
+)
+
+PULP_PACKAGE_ATTRS = CR_PACKAGE_ATTRS
+PULP_UPDATE_RECORD_ATTRS = CR_UPDATE_RECORD_ATTRS
+PULP_UPDATE_COLLECTION_ATTRS = CR_UPDATE_COLLECTION_ATTRS
+PULP_UPDATE_COLLECTION_PACKAGE_ATTRS = CR_UPDATE_COLLECTION_PACKAGE_ATTRS
+
+PULP_UPDATE_REFERENCE_ATTRS = SimpleNamespace(
+    HREF='href',
+    ID='ref_id',
+    TITLE='title',
+    TYPE='ref_type'
 )
