@@ -18,6 +18,7 @@ from pulpcore.plugin.serializers import (
 )
 
 from pulp_rpm.app.models import (
+    Modulemd,
     Package,
     RpmDistribution,
     RpmRemote,
@@ -165,6 +166,10 @@ class PackageSerializer(SingleArtifactContentSerializer):
     rpm_header_end = serializers.IntegerField(
         help_text=_("Last byte of the header"),
     )
+    is_modular = serializers.BooleanField(
+        help_text=_("Flag to identify if the package is modular"),
+        required=False
+    )
 
     size_archive = serializers.IntegerField(
         help_text=_("Size, in bytes, of the archive portion of the original package file")
@@ -210,7 +215,7 @@ class PackageSerializer(SingleArtifactContentSerializer):
             'location_base', 'location_href',
             'rpm_buildhost', 'rpm_group', 'rpm_license',
             'rpm_packager', 'rpm_sourcerpm', 'rpm_vendor',
-            'rpm_header_start', 'rpm_header_end',
+            'rpm_header_start', 'rpm_header_end', 'is_modular',
             'size_archive', 'size_installed', 'size_package',
             'time_build', 'time_file', 'relative_path'
         )
@@ -458,3 +463,47 @@ class CopySerializer(serializers.Serializer):
             new_data.update({'types': final_types})
 
         return new_data
+
+
+class ModulemdSerializer(SingleArtifactContentSerializer):
+    """
+    Modulemd serializer.
+    """
+
+    name = serializers.CharField(
+        help_text=_("Modulemd name."),
+    )
+    stream = serializers.CharField(
+        help_text=_("Stream name."),
+    )
+    version = serializers.CharField(
+        help_text=_("Modulemd version."),
+    )
+    context = serializers.CharField(
+        help_text=_("Modulemd context."),
+    )
+    arch = serializers.CharField(
+        help_text=_("Modulemd architecture."),
+    )
+    artifacts = serializers.CharField(
+        help_text=_("Modulemd artifacts."),
+        allow_null=True
+    )
+    dependencies = serializers.CharField(
+        help_text=_("Modulemd dependencies."),
+        allow_null=True
+    )
+    packages = serializers.PrimaryKeyRelatedField(
+        help_text=_("Modulemd artifacts' packages."),
+        allow_null=True,
+        required=False,
+        queryset=Package.objects.all(),
+        many=True
+    )
+
+    class Meta:
+        fields = (
+            'name', 'stream', 'version', 'context', 'arch',
+            'artifacts', 'dependencies', 'packages'
+        )
+        model = Modulemd

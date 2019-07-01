@@ -100,6 +100,8 @@ class Package(Content):
             First byte of the header
         rpm_header_end (BigInteger):
             Last byte of the header
+        is_modular (Bool):
+            Flag to identify if the package is modular
 
         size_archive (BigInteger):
             Size, in bytes, of the archive portion of the original package file
@@ -177,6 +179,8 @@ class Package(Content):
     rpm_vendor = models.TextField()
     rpm_header_start = models.BigIntegerField(null=True)
     rpm_header_end = models.BigIntegerField(null=True)
+
+    is_modular = models.BooleanField(default=False)
 
     size_archive = models.BigIntegerField(null=True)
     size_installed = models.BigIntegerField(null=True)
@@ -678,3 +682,42 @@ class RpmDistribution(PublicationDistribution):
     """
 
     TYPE = 'rpm'
+
+
+class Modulemd(Content):
+    """
+    The "Modulemd" content type. Modularity support.
+
+    Fields:
+        name (Text):
+            Name of the modulemd
+        stream (Text):
+            The modulemd's stream
+        version (Text):
+            The version of the modulemd.
+        context (Text):
+            The context flag serves to distinguish module builds with the
+            same name, stream and version and plays an important role in
+            future automatic module stream name expansion.
+        arch (Text):
+            Module artifact architecture.
+        dependencies (Text):
+            Module dependencies, if any.
+        artifacts (List):
+            Artifacts shipped with this module.
+        packages (List):
+            List of Packages connected to this modulemd.
+    """
+
+    TYPE = "modulemd"
+
+    # required metadata
+    name = models.CharField(max_length=255)
+    stream = models.CharField(max_length=255)
+    version = models.CharField(max_length=255)
+    context = models.CharField(max_length=255)
+    arch = models.CharField(max_length=255)
+
+    dependencies = models.TextField(default='[]')
+    artifacts = models.TextField(default='[]')
+    packages = models.ManyToManyField(Package)
