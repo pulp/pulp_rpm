@@ -2,7 +2,11 @@ from gettext import gettext as _
 
 from rest_framework import serializers
 
-from pulpcore.plugin.models import Repository, RepositoryVersion
+from pulpcore.plugin.models import (
+    Remote,
+    Repository,
+    RepositoryVersion
+)
 from pulpcore.plugin.serializers import (
     NoArtifactContentSerializer,
     SingleArtifactContentSerializer,
@@ -229,6 +233,13 @@ class RpmRemoteSerializer(RemoteSerializer):
     """
     A Serializer for RpmRemote.
     """
+
+    policy = serializers.ChoiceField(
+        help_text="The policy to use when downloading content. The possible values include: "
+                  "'immediate', 'on_demand', and 'streamed'. 'immediate' is the default.",
+        choices=Remote.POLICY_CHOICES,
+        default=Remote.IMMEDIATE
+    )
 
     class Meta:
         fields = RemoteSerializer.Meta.fields
