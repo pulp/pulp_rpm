@@ -340,64 +340,11 @@ def module_unit_to_solvable(solv_repo, unit):
         for rpm_solvable in selection.solvables():
             # Make the artifact require this module
             rpm_solvable.add_deparray(solv.SOLVABLE_REQUIRES, module_solvable.nsvca_rel)
-            # Prv: modular-package()
+            # Provide: modular-package()
             rpm_solvable.add_deparray(solv.SOLVABLE_PROVIDES, pool.Dep('modular-package()'))
             # Make the module recommend this artifact too
             module_solvable.add_deparray(solv.SOLVABLE_RECOMMENDS, rel)
             _LOGGER.debug('link {mod} <-rec-> {solv}', mod=module_solvable, solv=rpm_solvable)
-
-    def module_requires_conversion(pool, dependency_list):
-        # A direct copy of the algorithm here:
-        # https://github.com/fedora-modularity/fus/blob/
-        # 72a98d5feb42787813dd89a5915d5840ae514261/fus.c#L35-L66`
-        # assuming profiles are subsets of module artifacts, no profiles processing is needed here
-
-        def dep_or_rel(dep, rel, op):
-            """
-            There are relations between modules in `deps`. For example:
-              deps = [{'gtk': ['1'], 'foo': ['1']}]" means "gtk:1 and foo:1" are both required.
-              deps = [{'gtk': ['1', '2']}"] means "gtk:1 or gtk:2" are required.
-
-            This method helps creating such relations using following syntax:
-              rel_or_dep(solv.Dep, solve.REL_OR, stream_dep(name, stream))
-              rel_or_dep(solv.Dep, solve.REL_AND, stream_dep(name, stream))
-              rel_or_dep(solv.Dep, solve.REL_WITH, stream_dep(name, stream))
-              rel_or_dep(solv.Dep, solve.REL_WITHOUT, stream_dep(name, stream))
-            """
-            # to "accumulate" stream relations (in a list of module dependencies)
-            # in case dep isn't populated yet, gives relative dep
-            # A direct copy of the algorithm here:
-            # https://pagure.io/fm-orchestrator/blob/master/f/module_build_service/mmd_resolver.py
-            # Which was in turn ported from FUS
-            dep.Rel(op, rel) if dep is not None else rel
-
-        require = None
-        for name, streams in dependency_list.items():
-            if name == 'platform':
-                # no need to fake the platform (streams) later on
-                continue
-            name = name.encode('utf8')
-            rel = None
-            positive = False
-            negative = False
-
-            for stream in streams:
-                stream = stream.encode('utf8')
-                if stream.startswith('-'):
-                    negative = True
-                else:
-                    positive = True
-                rel = dep_or_rel(rel, pool.str2id('module({}:{})'.format(name, stream)), solv.REL_OR)
-            nprovide = pool.str2id('module({})'.format(name))
-            if positive:
-                rel = dep_or_rel(nprovide, rel, solv.REL_WITH)
-            if negative:
-                rel = dep_or_rel(nprovide, rel, solv.REL_WITHOUT)
-
-            require = dep_or_rel(require, rel, solv.REL_AND)
-
-        if require:
-            solvable.add_deparray(solv.SOLVABLE_REQUIRES, require)
 
     solvable_name = module_solvable_name(unit)
     solvable.name = solvable_name
@@ -439,12 +386,101 @@ def module_unit_to_solvable(solv_repo, unit):
 
         module_artifacts_conversion(pool, solvable, artifact_name, artifact_evr, artifact_arch)
 
-    pool.createwhatprovides()
-
-    for dependency in unit.get('dependencies', []):
-        module_requires_conversion(pool, dependency)
+    pool.createwhatprovides()  # TODO: It would be great to do this less often
+    module_dependencies_conversion(pool, solvable, unit.get('dependencies', []))
 
     return solvable
+
+
+def module_dependencies_conversion(pool, module_solvable, dependency_list):
+    """
+    Process the module dependency list.
+
+    So for example for following input:
+        dependency_list = [{'gtk': ['1'], 'foo': ['1']}]
+
+    The resulting solv.Dep expression will be:
+        ((module(gtk) with module(gtk:1)) and (module(foo) with module(foo:1)))
+
+    This Dep expression is then applied to the REQUIRES: deparray of the module solvable.
+
+    :param pool: The libsolv pool that owns the module
+    :type pool: solv.Pool
+    :param module_solvable: A solvable representing the module
+    :type module_solvable: solv.Solvable
+    :param dependency_list: List of dictionaries representing modulemd dependency data.
+    :type dependency_list: List
+    """
+    # A near exact copy of the algorithm here:
+    # https://pagure.io/fm-orchestrator/blob/master/f/module_build_service/mmd_resolver.py
+
+    def stream_dep(name, stream):
+        """
+        Every name:stream combination from dict in `deps` list is expressed as `solv.Dep`
+        instance and is represented internally in solv with "module(name:stream)".
+        This is parallel to RPM-world "Provides: perl(foo)" or "Requires: perl(foo)",
+        but in this method, we are only constructing the condition after the "Provides:"
+        or "Requires:". This method creates such solve.Dep().
+        """
+        return pool.Dep("module({}:{})".format(name, stream))
+
+    def dep_or_rel(dep, op, rel):
+        """
+        There are relations between modules in `deps`. For example:
+          deps = [{'gtk': ['1'], 'foo': ['1']}]" means "gtk:1 and foo:1" are both required.
+          deps = [{'gtk': ['1', '2']}"] means "gtk:1 or gtk:2" are required.
+
+        This method helps creating such relations using following syntax:
+          dep_or_rel(solv.Dep, solve.REL_OR, stream_dep(name, stream))
+          dep_or_rel(solv.Dep, solve.REL_AND, stream_dep(name, stream))
+          dep_or_rel(solv.Dep, solve.REL_WITH, stream_dep(name, stream))
+          dep_or_rel(solv.Dep, solve.REL_WITHOUT, stream_dep(name, stream))
+        """
+        dep.Rel(op, rel) if dep is not None else rel
+
+    # Check each dependency dict in dependency_list and generate the solv requirements.
+    reqs = None
+    for dep_dict in dependency_list:
+        require = None
+        for name, streams in dep_dict.items():
+            if name == 'platform':
+                # no need to fake the platform (streams) later on
+                continue
+            name = name.encode('utf8')
+
+            # The req_pos will store solv.Dep expression for "positive" requirements.
+            # That is the case of 'gtk': ['1', '2'].
+            # The req_neg will store negative requirements like 'gtk': ['-1', '-2'].
+            req_pos = req_neg = None
+
+            # For each stream in `streams` for this dependency, generate the
+            # module(name:stream) solv.Dep and add REL_OR relations between them.
+            for stream in streams:
+                stream = stream.encode('utf8')
+
+                if stream.startswith("-"):
+                    req_neg = dep_or_rel(req_neg, solv.REL_OR, stream_dep(name, stream[1:]))
+                else:
+                    req_pos = dep_or_rel(req_pos, solv.REL_OR, stream_dep(name, stream))
+
+            # Generate the module(name) solv.Dep.
+            req = pool.Dep("module({})".format(name))
+
+            # Use the REL_WITH for positive requirements and REL_WITHOUT for negative
+            # requirements.
+            if req_pos is not None:
+                req = req.Rel(solv.REL_WITH, req_pos)
+            elif req_neg is not None:
+                req = req.Rel(solv.REL_WITHOUT, req_neg)
+
+            # And in the end use AND between the last name:[streams] and the current one.
+            require = dep_or_rel(require, solv.REL_AND, req)
+
+        # NOTE: In the original algorithm, this was an OR operation. We don't want only one
+        # set of deps (for one platform), we want the deps for all platforms. Hence, solv.REL_AND.
+        reqs = dep_or_rel(reqs, solv.REL_AND, require)
+
+    module_solvable.add_deparray(solv.SOLVABLE_REQUIRES, reqs)
 
 
 def module_defaults_unit_to_solvable(solv_repo, unit):
