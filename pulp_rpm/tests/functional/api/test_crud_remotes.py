@@ -6,7 +6,10 @@ import unittest
 from requests.exceptions import HTTPError
 
 from pulp_smash import api, config, utils
-from pulp_smash.pulp3.constants import DOWNLOAD_POLICIES
+from pulp_smash.pulp3.constants import (
+    IMMEDIATE_DOWNLOAD_POLICIES,
+    ON_DEMAND_DOWNLOAD_POLICIES,
+)
 
 from pulp_rpm.tests.functional.constants import RPM_REMOTE_PATH
 from pulp_rpm.tests.functional.utils import gen_rpm_remote, skip_if
@@ -56,9 +59,9 @@ class CRUDRemotesTestCase(unittest.TestCase):
     @skip_if(bool, 'remote', False)
     def test_02_read_remotes(self):
         """Read a remote by its name."""
-        page = self.client.get(RPM_REMOTE_PATH, params={
-            'name': self.remote['name']
-        })
+        page = self.client.get(
+            RPM_REMOTE_PATH, params={'name': self.remote['name']}
+        )
         self.assertEqual(len(page['results']), 1)
         for key, val in self.remote.items():
             with self.subTest(key=key):
@@ -121,7 +124,8 @@ class CreateRemoteNoURLTestCase(unittest.TestCase):
                     key in response.json()['url'][0]
                     for key in ['field', 'required']
                 ]
-            ), response.json()
+            ),
+            response.json(),
         )
 
 
@@ -136,9 +140,13 @@ def _gen_verbose_remote():
     Note that 'username' and 'password' are write-only attributes.
     """
     attrs = gen_rpm_remote()
-    attrs.update({
-        'password': utils.uuid4(),
-        'username': utils.uuid4(),
-        'policy': choice(DOWNLOAD_POLICIES),
-    })
+    attrs.update(
+        {
+            'password': utils.uuid4(),
+            'username': utils.uuid4(),
+            'policy': choice(
+                IMMEDIATE_DOWNLOAD_POLICIES + ON_DEMAND_DOWNLOAD_POLICIES
+            ),
+        }
+    )
     return attrs

@@ -5,7 +5,7 @@ from urllib.parse import urljoin
 
 from pulp_smash import api, cli, config
 from pulp_smash.pulp3.constants import (
-    LAZY_DOWNLOAD_POLICIES,
+    ON_DEMAND_DOWNLOAD_POLICIES,
     REPO_PATH,
 )
 from pulp_smash.pulp3.utils import (
@@ -39,14 +39,14 @@ class PackageManagerConsumeTestCase(unittest.TestCase):
             'This test requires dnf or yum.'
         )
 
-    def test_lazy_policies(self):
-        """Verify whether content lazy synced can be consumed.
+    def test_on_demand_policies(self):
+        """Verify whether content on demand synced can be consumed.
 
         This test targets the following issue:
 
         `Pulp #4496 <https://pulp.plan.io/issues/4496>`_
         """
-        for policy in LAZY_DOWNLOAD_POLICIES:
+        for policy in ON_DEMAND_DOWNLOAD_POLICIES:
             delete_orphans(self.cfg)
             self.do_test(policy)
 
