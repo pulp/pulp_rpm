@@ -98,12 +98,11 @@ Install ``pulp-rpm`` From PyPI
    source ~/pulpvenv/bin/activate
    pip install pulp-rpm
 
-Make and Run Migrations
-***********************
+Run Migrations
+**************
 
 .. code-block:: bash
 
-   django-admin makemigrations rpm
    django-admin migrate rpm
 
 Run Services
