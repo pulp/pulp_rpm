@@ -1,0 +1,1 @@
+Fix migraitons failure by making models compatible with MariaDB.
