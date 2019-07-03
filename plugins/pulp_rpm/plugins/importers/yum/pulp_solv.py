@@ -137,7 +137,7 @@ def rpm_unit_to_solvable(solv_repo, unit):
         rel = pool.rel2id(rel, evr_id, solv.REL_EQ)
         solvable.add_deparray(solv.SOLVABLE_PROVIDES, rel)
 
-    name = unit.get('name', None).encode('utf-8')
+    name = unit.get('name').encode('utf-8')
     solvable.name = name
 
     evr = libsolv_formatted_evr(unit['epoch'], unit['version'], unit['arch'])
@@ -224,11 +224,11 @@ def rpm_dependency_conversion(solvable, unit, attr_name, dependency_key=None):
     :returns: None
     """
 
-    unit_name = unit.get('name', None)
+    unit_name = unit.get('name')
     if unit_name is not None:
         unit_name = unit_name.encode('utf-8')
 
-    unit_flags = unit.get('flags', None)
+    unit_flags = unit.get('flags')
     unit_evr = libsolv_formatted_evr(unit['epoch'], unit['version'], unit.get('arch'))
 
     # e.g SOLVABLE_PROVIDES, SOLVABLE_REQUIRES...
@@ -353,15 +353,15 @@ def module_unit_to_solvable(solv_repo, unit):
     arch = unit.get('arch', 'noarch').encode('utf-8')
     solvable.arch = arch
 
-    name = unit.get('name', None)
+    name = unit.get('name')
     if name:
         name = name.encode('utf-8')
 
-    stream = unit.get('stream', None)
+    stream = unit.get('stream')
     if stream:
         stream = stream.encode('utf-8')
 
-    version = unit.get('version', None)
+    version = unit.get('version')
 
     if not arch:
         arch = 'noarch'.encode('utf-8')
@@ -409,10 +409,11 @@ def module_dependencies_conversion(pool, module_solvable, dependency_list):
     :param module_solvable: A solvable representing the module
     :type module_solvable: solv.Solvable
     :param dependency_list: List of dictionaries representing modulemd dependency data.
-    :type dependency_list: List
+    :type dependency_list: list
     """
     # A near exact copy of the algorithm here:
-    # https://pagure.io/fm-orchestrator/blob/master/f/module_build_service/mmd_resolver.py
+    # https://pagure.io/fm-orchestrator/blob/db03f0a7f530cc2bf2f8971f085a9e6b71595d70/f/
+    # module_build_service/mmd_resolver.py#_53
 
     def stream_dep(name, stream):
         """
@@ -499,11 +500,11 @@ def module_defaults_unit_to_solvable(solv_repo, unit):
     solvable.evr = ''
     solvable.arch = ''
 
-    name = unit.get('name', None)
+    name = unit.get('name')
     if name is not None:
         name = name.encode('utf-8')
 
-    stream = unit.get('stream', None)
+    stream = unit.get('stream')
     if stream is not None:
         stream = stream.encode('utf-8')
 
@@ -626,6 +627,12 @@ class UnitSolvableMapping(object):
 
 class Solver(object):
 
+    type_factory_mapping = {
+        ids.TYPE_ID_RPM: rpm_unit_to_solvable,
+        ids.TYPE_ID_MODULEMD: module_unit_to_solvable,
+        ids.TYPE_ID_MODULEMD_DEFAULTS: module_defaults_unit_to_solvable,
+    }
+
     def __init__(self, source_repo, target_repo=None, conservative=False):
         super(Solver, self).__init__()
         self.source_repo = source_repo
@@ -696,12 +703,7 @@ class Solver(object):
 
         for unit in units:
             try:
-                type_factory_mapping = {
-                    ids.TYPE_ID_RPM: rpm_unit_to_solvable,
-                    ids.TYPE_ID_MODULEMD: module_unit_to_solvable,
-                    ids.TYPE_ID_MODULEMD_DEFAULTS: module_defaults_unit_to_solvable,
-                }
-                factory = type_factory_mapping[unit['_content_type_id']]
+                factory = self.type_factory_mapping[unit['_content_type_id']]
             except KeyError as err:
                 raise ValueError('Unsupported unit type: {}', err)
             solvable = factory(repo, unit)
