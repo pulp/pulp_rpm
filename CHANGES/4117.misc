@@ -1,1 +1,0 @@
-Stop using model attributes to carry related models, use DeclarativeContent extra_data attribute instead.
