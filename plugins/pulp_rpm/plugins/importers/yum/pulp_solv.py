@@ -151,25 +151,14 @@ def rpm_unit_to_solvable(solv_repo, unit):
         vendor = vendor.encode('utf-8')
         solvable.vendor = vendor
 
-    rpm_dependency_attribute_factory('requires', solvable, unit)
-    rpm_dependency_attribute_factory('provides', solvable, unit)
-    rpm_dependency_attribute_factory('recommends', solvable, unit)
+    for attribute_name in ('requires', 'provides', 'recommends'):
+        for depunit in unit.get(attribute_name, []):
+            rpm_dependency_conversion(solvable, depunit, attribute_name)
 
     rpm_filelist_conversion(solvable, unit)
     rpm_basic_deps(solvable, name, evr, arch)
 
     return solvable
-
-
-def rpm_dependency_attribute_factory(attribute_name, solvable, unit, dependency_key=None):
-    """Create a function that processes Pulp a dependency attribute on a unit.
-
-    e.g. "recommends", "requires", "provides"
-    """
-    for depunit in unit.get(attribute_name, []):
-        rpm_dependency_conversion(
-            solvable, depunit, attribute_name, dependency_key=dependency_key
-        )
 
 
 def rpm_dependency_conversion(solvable, unit, attr_name, dependency_key=None):
@@ -762,31 +751,33 @@ class Solver(object):
         dummy.add_deparray(solv.SOLVABLE_PROVIDES, info.dep)
         _LOGGER.debug('Created dummy provides: {name}', name=info.dep.str())
 
-    def _locate_solvable_job(self, solvable, flags, jobs):
-        for idx, job in enumerate(jobs):
-            if job.what == solvable.id and job.how == flags:
-                _LOGGER.debug('Found job: %s', str(job))
-                return idx
-
-    def _enforce_solvable_job(self, solvable, flags, jobs):
-        idx = self._locate_solvable_job(solvable, flags, jobs)
-        if idx is not None:
-            return
-
-        enforce_job = self._pool.Job(flags, solvable.id)
-        jobs.append(enforce_job)
-        _LOGGER.debug('Added job %s', enforce_job)
-
     def _handle_same_name(self, info, jobs):
         """Handle a case where multiple versions of a package are "installed".
 
         Libsolv by default will make the assumption that you can't "install" multiple versions of
         a package, so in cases where we create that situation, we need to pass a special flag.
         """
+
+        def locate_solvable_job(self, solvable, flags, jobs):
+            for idx, job in enumerate(jobs):
+                if job.what == solvable.id and job.how == flags:
+                    _LOGGER.debug('Found job: %s', str(job))
+                    return idx
+
+        def enforce_solvable_job(solvable, flags, jobs):
+            idx = locate_solvable_job(solvable, flags, jobs)
+            if idx is not None:
+                return
+
+            enforce_job = self._pool.Job(flags, solvable.id)
+            jobs.append(enforce_job)
+            _LOGGER.debug('Added job %s', enforce_job)
+
         install_flags = solv.Job.SOLVER_INSTALL | solv.Job.SOLVER_SOLVABLE
         enforce_flags = install_flags | solv.Job.SOLVER_MULTIVERSION
-        self._enforce_solvable_job(info.solvable, enforce_flags, jobs)
-        self._enforce_solvable_job(info.othersolvable, enforce_flags, jobs)
+
+        enforce_solvable_job(info.solvable, enforce_flags, jobs)
+        enforce_solvable_job(info.othersolvable, enforce_flags, jobs)
 
     def _handle_problems(self, problems, jobs):
         """Handle problems libsolv finds during the depsolving process that can be worked around.
