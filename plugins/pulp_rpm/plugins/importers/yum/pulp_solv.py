@@ -622,7 +622,7 @@ class Solver(object):
         ids.TYPE_ID_MODULEMD_DEFAULTS: module_defaults_unit_to_solvable,
     }
 
-    def __init__(self, source_repo, target_repo=None, conservative=False):
+    def __init__(self, source_repo, target_repo=None, conservative=False, ignore_missing=True):
         super(Solver, self).__init__()
         self.source_repo = source_repo
         self.target_repo = target_repo
@@ -633,6 +633,7 @@ class Solver(object):
         # prevent https://github.com/openSUSE/libsolv/issues/267
         self._pool.setarch()
         self.mapping = UnitSolvableMapping()
+        self.ignore_missing = ignore_missing
 
     def load(self):
         """Prepare the solver.
@@ -788,6 +789,9 @@ class Solver(object):
                     if info.type == solv.Solver.SOLVER_RULE_PKG_REQUIRES:
                         continue
                     elif info.type == solv.Solver.SOLVER_RULE_PKG_NOTHING_PROVIDES_DEP:
+                        if not self.ignore_missing:
+                            continue
+
                         self._handle_nothing_provides(info, jobs)
                     elif info.type == solv.Solver.SOLVER_RULE_PKG_SAME_NAME:
                         self._handle_same_name(info, jobs)
