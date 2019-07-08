@@ -331,13 +331,14 @@ def module_unit_to_solvable(solv_repo, unit):
             rpm_solvable.add_deparray(solv.SOLVABLE_REQUIRES, module_solvable.nsvca_rel)
             # Provide: modular-package()
             rpm_solvable.add_deparray(solv.SOLVABLE_PROVIDES, pool.Dep('modular-package()'))
-            # Make the module recommend this artifact too
-            module_solvable.add_deparray(solv.SOLVABLE_RECOMMENDS, rel)
-            _LOGGER.debug('link {mod} <-rec-> {solv}', mod=module_solvable, solv=rpm_solvable)
+            # # Make the module require this artifact too
+            # module_solvable.add_deparray(solv.SOLVABLE_REQUIRES, rel)
+            # _LOGGER.debug('link {mod} <-rec-> {solv}', mod=module_solvable, solv=rpm_solvable)
 
     solvable_name = module_solvable_name(unit)
     solvable.name = solvable_name
-    solvable.evr = ''
+    # there's no reasonable way to construct an EVR, but it has to be set, so use '0-1' (V-R)
+    solvable.evr = '0-1'
 
     arch = unit.get('arch', 'noarch').encode('utf-8')
     solvable.arch = arch
@@ -486,8 +487,10 @@ def module_defaults_unit_to_solvable(solv_repo, unit):
     :rtype: solv.Solvable
     """
     solvable = solv_repo.add_solvable()
-    solvable.evr = ''
-    solvable.arch = ''
+    # there's no reasonable way to construct an EVR, but it has to be set, so use '0-1' (V-R)
+    solvable.evr = '0-1'
+    # a module default has no arch, use 'noarch'
+    solvable.arch = 'noarch'
 
     name = unit.get('name')
     if name is not None:
