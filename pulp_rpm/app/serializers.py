@@ -1,5 +1,7 @@
 from gettext import gettext as _
 
+from django.db.models import ObjectDoesNotExist
+
 from rest_framework import serializers
 
 from pulpcore.plugin.models import (
@@ -37,7 +39,7 @@ from pulp_rpm.app.models import (
 from pulp_rpm.app.fields import UpdateCollectionField, UpdateReferenceField
 
 
-from pulp_rpm.app.constants import RPM_PLUGIN_TYPE_CHOICE_MAP
+from pulp_rpm.app.constants import PULP_PACKAGE_ATTRS, RPM_PLUGIN_TYPE_CHOICE_MAP
 
 
 class PackageSerializer(SingleArtifactContentSerializer):
@@ -505,8 +507,29 @@ class ModulemdSerializer(SingleArtifactContentSerializer):
         many=True
     )
 
+    def create(self, validated_data):
+        """Create modulemd and scan for artifacts present in Pulp."""
+        modulemd = super().create(validated_data)
+        pkgs = modulemd.deps_to_package()
+        missing = []
+        for pkg in pkgs:
+            try:
+                p = Package.objects.get(
+                    name=pkg[PULP_PACKAGE_ATTRS.NAME],
+                    epoch=pkg[PULP_PACKAGE_ATTRS.EPOCH],
+                    version=pkg[PULP_PACKAGE_ATTRS.VERSION],
+                    release=pkg[PULP_PACKAGE_ATTRS.RELEASE],
+                    arch=pkg[PULP_PACKAGE_ATTRS.ARCH]
+                )
+                modulemd._packages.add(p)
+                p.rpm_modular = True
+                p.save()
+            except ObjectDoesNotExist:
+                missing.append(pkg)
+        return modulemd
+
     class Meta:
-        fields = (
+        fields = SingleArtifactContentSerializer.Meta.fields + (
             'name', 'stream', 'version', 'context', 'arch',
             'artifacts', 'dependencies', 'packages'
         )
@@ -527,12 +550,16 @@ class ModulemdDefaultsSerializer(SingleArtifactContentSerializer):
     profiles = serializers.CharField(
         help_text=_("Default profiles for modulemd streams.")
     )
+    digest = serializers.CharField(
+        help_text=_("Digest for a default."),
+        write_only=True
+    )
 
     class Meta:
-        fields = (
-            'module', 'stream', 'profiles'
+        fields = SingleArtifactContentSerializer.Meta.fields + (
+            'module', 'stream', 'profiles', 'digest'
         )
-    model = ModulemdDefaults
+        model = ModulemdDefaults
 
 
 class AddonSerializer(serializers.ModelSerializer):

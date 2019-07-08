@@ -7,9 +7,9 @@ from django.db import models
 from pulpcore.plugin.models import (
     Content,
     ContentArtifact,
+    Repository,
     Model,
     Remote,
-    Repository,
     Publication,
     PublicationDistribution
 )
@@ -27,6 +27,8 @@ from pulp_rpm.app.constants import (CHECKSUM_CHOICES, CR_PACKAGE_ATTRS,
                                     PULP_UPDATE_RECORD_ATTRS,
                                     PULP_UPDATE_REFERENCE_ATTRS
                                     )
+
+from pulp_rpm.app.rpm_utils import nevra
 
 log = getLogger(__name__)
 
@@ -939,6 +941,14 @@ class Modulemd(Content):
     dependencies = models.TextField(default='[]')
     artifacts = models.TextField(default='[]')
     packages = models.ManyToManyField(Package)
+
+    def deps_to_package(self):
+        """Parse packages for package name and version."""
+        packages = json.loads(self.artifacts)
+        ret = []
+        for pkg in packages:
+            ret.append(nevra(pkg))
+        return ret
 
     class Meta:
         default_related_name = "%(app_label)s_%(model_name)s"

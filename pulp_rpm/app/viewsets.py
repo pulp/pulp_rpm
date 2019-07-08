@@ -26,8 +26,12 @@ from pulpcore.plugin.viewsets import (
 
 from pulp_rpm.app import tasks
 from pulp_rpm.app.shared_utils import _prepare_package
+from pulp_rpm.app.modulemd import create_modulemd
+
 from pulp_rpm.app.models import (
     DistributionTree,
+    Modulemd,
+    ModulemdDefaults,
     Package,
     RpmDistribution,
     RpmRemote,
@@ -41,6 +45,8 @@ from pulp_rpm.app.serializers import (
     MinimalPackageSerializer,
     MinimalUpdateRecordSerializer,
     OneShotUploadSerializer,
+    ModulemdSerializer,
+    ModulemdDefaultsSerializer,
     PackageSerializer,
     RpmDistributionSerializer,
     RpmRemoteSerializer,
@@ -327,3 +333,59 @@ class DistributionTreeViewSet(NamedModelViewSet,
     endpoint_name = 'distribution_trees'
     queryset = DistributionTree.objects.all()
     serializer_class = DistributionTreeSerializer
+
+
+class ModulemdViewSet(ContentViewSet):
+    """
+    ViewSet for One Shot Modulemd Upload.
+    """
+
+    endpoint_name = 'modulemd'
+    queryset = Modulemd.objects.all()
+    serializer_class = ModulemdSerializer
+
+
+class ModulemdDefaultsViewSet(ContentViewSet):
+    """
+    ViewSet for One Shot Modulemd Upload.
+    """
+
+    endpoint_name = 'modulemd-defaults'
+    queryset = ModulemdDefaults.objects.all()
+    serializer_class = ModulemdDefaultsSerializer
+
+
+class ModuleOneShotUpload(viewsets.ViewSet):
+    """
+    ViewSet for One Shot Modulemd Upload.
+    """
+
+    serializer_class = OneShotUploadSerializer
+    parser_classes = (MultiPartParser, FormParser)
+
+    @swagger_auto_schema(
+        operation_description="Create an artifact and trigger an asynchronous"
+                              "task to create Modulemd content from it and scan"
+                              "which modulemd artifacts (RPM packages) we already"
+                              "have in Pulp.",
+        operation_summary="Upload a modulemd",
+        operation_id="upload_modulemd_module",
+        request_body=ModulemdSerializer,
+        responses={202: AsyncOperationResponseSerializer}
+    )
+    def create(self, request):
+        """Create modulemd from uploaded yaml."""
+        artifact = Artifact.init_and_validate(request.data['file'])
+        try:
+            artifact.save()
+        except IntegrityError:
+            # if artifact already exists, let's use it
+            artifact = Artifact.objects.get(sha256=artifact.sha256)
+
+        async_result = enqueue_with_reservation(
+            create_modulemd, [],
+            kwargs={
+                'modulemd_artifact': artifact,
+                'filename': request.data['file'].name
+            })
+        return OperationPostponedResponse(async_result, request)
