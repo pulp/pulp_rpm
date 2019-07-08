@@ -645,9 +645,12 @@ class Solver(object):
         if self._loaded:
             return
 
-        self.load_source_repo(self.source_repo.repo_id)
+        self.load_repo(self.source_repo.repo_id)
         if self.target_repo:
-            self.load_target_repo(self.target_repo.repo_id)
+            target_repo_id = self.target_repo.repo_id
+
+            self.load_repo(target_repo_id)
+            self.set_target_repo(target_repo_id)
 
         self._loaded = True
         self.finalize()
@@ -663,26 +666,25 @@ class Solver(object):
         self._pool.createwhatprovides()
         self._finalized = True
 
-    def load_source_repo(self, repo_id):
+    def load_repo(self, repo_id):
         """Load the provided Pulp repo as a source repo.
 
         All units in the repo will be available to be "installed", or copied.
         """
         source_units = fetch_units_from_repo(repo_id)
         self.add_repo_units(source_units, repo_id)
-        _LOGGER.info('Loaded source repository %s', repo_id)
+        _LOGGER.info('Loaded repository %s', repo_id)
 
-    def load_target_repo(self, repo_id):
+    def set_target_repo(self, repo_id):
         """Load the provided Pulp repo as a target repo.
 
         All units in the repo are marked as "installed" inside libsolv, so that it knows they
         don't need to be "installed" (copied)
         """
-        target_units = fetch_units_from_repo(self.target_repo.repo_id)
-        self.add_repo_units(target_units, repo_id, installed=True)
-        _LOGGER.info('Loaded target repository %s', repo_id)
+        self._pool.installed = self.mapping.get_repo(str(repo_id))
+        _LOGGER.info('Target repository set to %s', repo_id)
 
-    def add_repo_units(self, units, repo_id, installed=False):
+    def add_repo_units(self, units, repo_id):
         """Generate solvables from Pulp units and add them to the mapping.
         """
         repo_name = str(repo_id)
@@ -700,9 +702,6 @@ class Solver(object):
                 raise ValueError('Unsupported unit type: {}', err)
             solvable = factory(repo, unit)
             self.mapping.register(unit, solvable, repo_id)
-
-        if installed:
-            self._pool.installed = repo
 
         # Need to call pool->addfileprovides(), pool->createwhatprovides() after loading new repo
         self._finalized = False
