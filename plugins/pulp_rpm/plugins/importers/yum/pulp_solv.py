@@ -375,8 +375,8 @@ def module_unit_to_solvable(solv_repo, unit):
 
         module_artifacts_conversion(pool, solvable, artifact_name, artifact_evr, artifact_arch)
 
-    pool.createwhatprovides()  # TODO: It would be great to do this less often
     module_dependencies_conversion(pool, solvable, unit.get('dependencies', []))
+    pool.createwhatprovides()  # TODO: It would be great to do this less often
 
     return solvable
 
@@ -520,6 +520,8 @@ def module_defaults_unit_to_solvable(solv_repo, unit):
         # thru dependencies
         solvable.add_deparray(solv.SOLVABLE_PROVIDES, module_default_depid)
         solvable.add_deparray(solv.SOLVABLE_PROVIDES, pool.str2id('module-default()'))
+
+        pool.createwhatprovides()
         for module in pool.whatprovides(module_depid):
             # mark the related module so it can be queried as '(module() with module-default())'
             # i.e such that it's easy visible thru a pool.whatprovides that it has a default
@@ -733,7 +735,7 @@ class Solver(object):
                 raise ValueError('Encountered an unknown unit {}'.format(unit))
             yield self._pool.Job(flags, solvable.id)
 
-    def _handle_nothing_provides(self, info, jobs):
+    def _handle_nothing_provides(self, info):
         """Handle a case where nothing provides a given requirement.
 
         Some units may depend on other units outside the repo, and that will cause issues with the
@@ -742,8 +744,6 @@ class Solver(object):
 
         :param info: A class describing why the rule was broken
         :type info: solv.RuleInfo
-
-        TODO: why is "jobs" here? it is used in similar functions but not in this one. oversight?
         """
         if not self.target_repo:
             return
@@ -792,7 +792,7 @@ class Solver(object):
                         if not self.ignore_missing:
                             continue
 
-                        self._handle_nothing_provides(info, jobs)
+                        self._handle_nothing_provides(info)
                     elif info.type == solv.Solver.SOLVER_RULE_PKG_SAME_NAME:
                         self._handle_same_name(info, jobs)
                     else:
@@ -805,7 +805,7 @@ class Solver(object):
                         )
         self._pool.createwhatprovides()
 
-    def find_dependent_rpms_conservative(self, units):
+    def find_dependent_units_conservative(self, units):
         """Find the RPM dependencies that need to be copied to satisfy copying the provided units,
         taking into consideration what units are already present in the target repository.
         """
@@ -814,6 +814,9 @@ class Solver(object):
         previous_problems_ = set()
         attempt = 0
         jobs = list(self._create_unit_install_jobs(units))
+        self._pool.createwhatprovides()
+        solver = self._pool.Solver()
+
         while True:
             attempt += 1
             _LOGGER.debug(
@@ -822,7 +825,6 @@ class Solver(object):
                     j='\n\t'.join(str(job) for job in jobs)
                 )
             )
-            solver = self._pool.Solver()
             problems = solver.solve(jobs)
             problems_ = set(str(problem) for problem in problems)
             # assuming we won't be creating more and more problems all the time
@@ -840,7 +842,7 @@ class Solver(object):
         transaction = solver.transaction()
         return self.mapping.get_units_from_solvables(transaction.newsolvables())
 
-    def find_dependent_rpms_relaxed(self, units):
+    def find_dependent_units_relaxed(self, units):
         """Find the RPM dependencies that need to be copied to satisfy copying the provided units,
         without taking into consideration the target repository. Just copy the most recent versions
         of each.
@@ -852,6 +854,7 @@ class Solver(object):
         # unit can seem to appear twice in the pool.whatprovides() set, it's just a different
         # solvable.
         candq = set(self.mapping.get_solvable(unit, self.source_repo.repo_id) for unit in units)
+        pool.createwhatprovides()
         while candq:
             cand = candq.pop()
             seen.add(cand)
@@ -897,5 +900,5 @@ class Solver(object):
         assert self._finalized, "Depsolver must be finalized before it can be used"
 
         if self.conservative:
-            return self.find_dependent_rpms_conservative(units)
-        return self.find_dependent_rpms_relaxed(units)
+            return self.find_dependent_units_conservative(units)
+        return self.find_dependent_units_relaxed(units)
