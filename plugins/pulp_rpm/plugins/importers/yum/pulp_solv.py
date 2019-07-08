@@ -281,7 +281,7 @@ def module_unit_to_solvable(solv_repo, unit):
 
     def module_basic_deps(pool, solvable, solvable_name, name, stream, version, arch):
         """
-        Create the basic module `Provides:` and `Obsoletes:` relations
+        Create the basic module `Provides:` relations
         """
         # Prv: module:$n:$s:$v:$c . $a
         solvable.nsvca_rel = pool.rel2id(
@@ -297,11 +297,6 @@ def module_unit_to_solvable(solv_repo, unit):
         # Prv: module($n)
         dep_n = pool.Dep('module({})'.format(name))
         solvable.add_deparray(solv.SOLVABLE_PROVIDES, dep_n)
-
-        # Obs: module($n)
-        # This is a bit of a hack; a weaker than `Conflicts` because same-name module streams should
-        # repulse each other.
-        solvable.add_deparray(solv.SOLVABLE_OBSOLETES, dep_n)
 
         # Prv: module($n:$s)
         dep_ns = pool.Dep('module({}:{})'.format(name, stream))
