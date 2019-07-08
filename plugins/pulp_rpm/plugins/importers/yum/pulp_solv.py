@@ -495,10 +495,7 @@ def module_defaults_unit_to_solvable(solv_repo, unit):
     if stream is not None:
         stream = stream.encode('utf-8')
 
-    if stream:
-        solvable.name = 'module-default({}:{})'.format(name, stream)
-    else:
-        solvable.name = 'module-default({})'.format(name)
+    solvable.name = 'module-default:{}'.format(name)
 
     pool = solvable.repo.pool
 
@@ -508,27 +505,34 @@ def module_defaults_unit_to_solvable(solv_repo, unit):
         """
         if stream:
             module_depid = pool.Dep('module({}:{})'.format(name, stream), 0)
-            module_default_depid = pool.Dep('module-default({}:{})'.format(name, stream))
         else:
             module_depid = pool.Dep('module({})'.format(name), 0)
-            module_default_depid = pool.Dep('module-default({})'.format(name))
+
+        module_default_depid = pool.Dep(solvable.name)
         if not module_depid:
             return
-        # tell solv this solvable provides a specific name:stream default so it can be pulled-in
-        # thru dependencies
+
+        # tell libsolv that this solvable provides the module-default for the module name
         solvable.add_deparray(solv.SOLVABLE_PROVIDES, module_default_depid)
-        solvable.add_deparray(solv.SOLVABLE_PROVIDES, pool.str2id('module-default()'))
 
         pool.createwhatprovides()
         for module in pool.whatprovides(module_depid):
-            # mark the related module so it can be queried as '(module() with module-default())'
-            # i.e such that it's easy visible thru a pool.whatprovides that it has a default
-            module.add_deparray(solv.SOLVABLE_PROVIDES, pool.Dep('module-default()'))
-            # mark the module such that it recommends its default i.e this solvable
-            module.add_deparray(solv.SOLVABLE_RECOMMENDS, module_default_depid)
-            # mark the module defaults require the module
-            rel = pool.rel2id(pool.str2id(module.name), pool.str2id(module.arch), solv.REL_ARCH)
-            solvable.add_deparray(solv.SOLVABLE_REQUIRES, rel)
+            # module default metadata doesn't have to specify a stream, we only want to make
+            # module:name:stream:{ver}:{ctx} provide the default when it does. However, in either
+            # case we want the modules to require the module-default because it can carry
+            # important profile information.
+            if stream:
+                # mark the related module so it can be queried as '(module() with module-default())'
+                # i.e such that it's easy visible thru a pool.whatprovides that it has a default
+                module.add_deparray(solv.SOLVABLE_PROVIDES, pool.Dep('module-default()'))
+
+            # mark the module such that it requires its default i.e this solvable
+            module.add_deparray(solv.SOLVABLE_REQUIRES, module_default_depid)
+
+        # TODO: Since we're copying the module default metadata as-is without modification or
+        # regeneration, do we need to add a "requires" for every stream for which there is a
+        # profile? Is it OK to have profiles for module streams that aren't present or is that
+        # as terrible an idea as it sounds?
 
     module_defaults_basic_deps(solvable, name, stream)
 
