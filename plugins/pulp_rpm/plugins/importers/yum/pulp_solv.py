@@ -140,7 +140,7 @@ def rpm_unit_to_solvable(solv_repo, unit):
     name = unit.get('name').encode('utf-8')
     solvable.name = name
 
-    evr = libsolv_formatted_evr(unit['epoch'], unit['version'], unit['arch'])
+    evr = libsolv_formatted_evr(unit.get('epoch'), unit.get('version'), unit.get('arch'))
     solvable.evr = evr
 
     arch = unit.get('arch', 'noarch').encode('utf-8')
@@ -218,7 +218,7 @@ def rpm_dependency_conversion(solvable, unit, attr_name, dependency_key=None):
         unit_name = unit_name.encode('utf-8')
 
     unit_flags = unit.get('flags')
-    unit_evr = libsolv_formatted_evr(unit['epoch'], unit['version'], unit.get('arch'))
+    unit_evr = libsolv_formatted_evr(unit.get('epoch'), unit.get('version'), unit.get('arch'))
 
     # e.g SOLVABLE_PROVIDES, SOLVABLE_REQUIRES...
     keyname = dependency_key or getattr(solv, 'SOLVABLE_{}'.format(attr_name.upper()))
