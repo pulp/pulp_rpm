@@ -326,9 +326,11 @@ def module_unit_to_solvable(solv_repo, unit):
             rpm_solvable.add_deparray(solv.SOLVABLE_REQUIRES, module_solvable.nsvca_rel)
             # Provide: modular-package()
             rpm_solvable.add_deparray(solv.SOLVABLE_PROVIDES, pool.Dep('modular-package()'))
-            # # Make the module require this artifact too
-            # module_solvable.add_deparray(solv.SOLVABLE_REQUIRES, rel)
-            # _LOGGER.debug('link {mod} <-rec-> {solv}', mod=module_solvable, solv=rpm_solvable)
+            # Provide: modular-package(name:stream:version:context)
+            rpm_solvable.add_deparray(
+                solv.SOLVABLE_PROVIDES,
+                pool.Dep('modular-package({})'.format(module_solvable.name))
+            )
 
     solvable_name = module_solvable_name(unit)
     solvable.name = solvable_name
@@ -710,32 +712,6 @@ class Solver(object):
 
         repodata.internalize()
 
-    def _create_unit_install_jobs(self, units):
-        """Create libsolv jobs for each one of the units passed in.
-
-        A libsolv "Job" is a request for the libsolv sat solver to process. For instance a job with
-        the flags SOLVER_INSTALL | SOLVER_SOLVABLE will tell libsolv to solve an installation of
-        a package which is specified by solvable ID, as opposed to by name, or by pattern, which
-        are other options available.
-
-        See: https://github.com/openSUSE/libsolv/blob/master/doc/libsolv-bindings.txt#the-job-class
-
-        :param units: An iterable of Pulp content units types supported by the type factory mapping.
-        :type units: An iterable of dictionaries
-
-        Yields:
-            A libsolv "Job" to "install" one of the units
-
-        Raises:
-            ValueError: If one of the units passed in does not have a matching solvable
-        """
-        flags = solv.Job.SOLVER_INSTALL | solv.Job.SOLVER_SOLVABLE
-        for unit in units:
-            solvable = self.mapping.get_solvable(unit, self.source_repo.repo_id)
-            if not solvable:
-                raise ValueError('Encountered an unknown unit {}'.format(unit))
-            yield self._pool.Job(flags, solvable.id)
-
     def _handle_nothing_provides(self, info, jobs):
         """Handle a case where nothing provides a given requirement.
 
@@ -789,15 +765,21 @@ class Solver(object):
         for problem in problems:
             for problem_rule in problem.findallproblemrules():
                 for info in problem_rule.allinfos():
-                    if info.type == solv.Solver.SOLVER_RULE_PKG_REQUIRES:
-                        continue
-                    elif info.type == solv.Solver.SOLVER_RULE_PKG_NOTHING_PROVIDES_DEP:
+                    if info.type == solv.Solver.SOLVER_RULE_PKG_NOTHING_PROVIDES_DEP:
+                        # No solvable provides the dep
                         if not self.ignore_missing:
                             continue
-
                         self._handle_nothing_provides(info, jobs)
+
+                    elif info.type == solv.Solver.SOLVER_RULE_PKG_REQUIRES:
+                        # A solvable provides the dep but could not be installed for some reason
+                        continue
+
                     elif info.type == solv.Solver.SOLVER_RULE_PKG_SAME_NAME:
+                        # The deps can only be fulfilled by multiple versions of a package,
+                        # but installing multiple versions of the same package is not allowed.
                         self._handle_same_name(info, jobs)
+
                     else:
                         _LOGGER.warning(
                             'No workaround available for problem type %s. '
@@ -811,39 +793,79 @@ class Solver(object):
     def find_dependent_units_conservative(self, units):
         """Find the RPM dependencies that need to be copied to satisfy copying the provided units,
         taking into consideration what units are already present in the target repository.
+
+        Create libsolv jobs to install each one of the units passed in, collect and combine the
+        results. For modules, libsolv jobs are created to install each of their artifacts separately.
+
+        A libsolv "Job" is a request for the libsolv sat solver to process. For instance a job with
+        the flags SOLVER_INSTALL | SOLVER_SOLVABLE will tell libsolv to solve an installation of
+        a package which is specified by solvable ID, as opposed to by name, or by pattern, which
+        are other options available.
+
+        See: https://github.com/openSUSE/libsolv/blob/master/doc/libsolv-bindings.txt#the-job-class
+
+        :param units: An iterable of Pulp content units types supported by the type factory mapping.
+        :type units: An iterable of dictionaries
         """
+
         if not units:
             return set()
-        previous_problems_ = set()
-        attempt = 0
-        jobs = list(self._create_unit_install_jobs(units))
+
+        result_solvables = set()
         self._pool.createwhatprovides()
         solver = self._pool.Solver()
+        flags = solv.Job.SOLVER_INSTALL | solv.Job.SOLVER_SOLVABLE
 
-        while True:
-            attempt += 1
-            _LOGGER.debug(
-                'Solver attempt {a}; jobs:\n{j}'.format(
-                    a=attempt,
-                    j='\n\t'.join(str(job) for job in jobs)
+        def run_solver_jobs(solver, jobs):
+            """ Take a list of jobs, get a solution, return the set of solvables that needed to
+            be installed.
+            """
+            previous_problems = set()
+            attempt = 0
+
+            while True:
+                raw_problems = solver.solve(jobs)
+                problems = set(str(problem) for problem in raw_problems)
+                if not problems or previous_problems == problems:
+                    break
+                self._handle_problems(problems, jobs)
+                previous_problems = problems
+                attempt += 1
+
+            if raw_problems:
+                # The solver is simply ignoring the problems encountered and proceeds associating
+                # any new solvables/units. This might be reported back to the user one day over
+                # the REST API.
+                _LOGGER.warning('Encountered problems solving: {}'.format(', '.join(raw_problems)))
+
+            transaction = solver.transaction()
+            return set(transaction.newsolvables())
+
+        for unit in units:
+            solvable = self.mapping.get_solvable(unit, self.source_repo.repo_id)
+            if not solvable:
+                raise ValueError('Encountered an unknown unit {}'.format(unit))
+
+            unit_install_job = self._pool.Job(flags, solvable.id)
+
+            # If the unit being copied is a module, go through the artifact solvables one by one
+            # and install each of them paired along with the module solvable. Take the results of
+            # each individual artifact installation and combine them together.
+            if unit['_content_type_id'] == ids.TYPE_ID_MODULEMD:
+                module_artifacts = self._pool.whatprovides(
+                    self._pool.Dep('modular-package({})'.format(solvable.name))
                 )
-            )
-            problems = solver.solve(jobs)
-            problems_ = set(str(problem) for problem in problems)
-            # assuming we won't be creating more and more problems all the time
-            _LOGGER.debug('Previous solver problems:\n{}'.format('\n'.join(previous_problems_)))
-            _LOGGER.debug('Current solver problems:\n{}'.format('\n'.join(problems_)))
-            if not problems or previous_problems_ == problems_:
-                break
-            self._handle_problems(problems, jobs)
-            previous_problems_ = problems_
-        # The solver is simply ignoring the problems encountered and proceeds associating
-        # any new solvables/units. This might be reported back to the user one day over
-        # the REST API.
-        if problems_:
-            _LOGGER.warning('Encountered problems solving: {}'.format(', '.join(problems_)))
-        transaction = solver.transaction()
-        return self.mapping.get_units_from_solvables(transaction.newsolvables())
+
+                for artifact_solvable in module_artifacts:
+                    artifact_install_job = self._pool.Job(flags, artifact_solvable.id)
+                    new_deps = run_solver_jobs(solver, [artifact_install_job, unit_install_job])
+                    result_solvables.update(new_deps)
+            # If the unit being copied is not a module, just install the one
+            else:
+                new_deps = run_solver_jobs(solver, [unit_install_job])
+                result_solvables.update(new_deps)
+
+        return self.mapping.get_units_from_solvables(result_solvables)
 
     def find_dependent_units_relaxed(self, units):
         """Find the RPM dependencies that need to be copied to satisfy copying the provided units,
