@@ -828,42 +828,55 @@ class Solver(object):
                 problems = set(str(problem) for problem in raw_problems)
                 if not problems or previous_problems == problems:
                     break
-                self._handle_problems(problems, jobs)
+                self._handle_problems(raw_problems, jobs)
                 previous_problems = problems
                 attempt += 1
 
-            if raw_problems:
+            if problems:
                 # The solver is simply ignoring the problems encountered and proceeds associating
                 # any new solvables/units. This might be reported back to the user one day over
                 # the REST API.
-                _LOGGER.warning('Encountered problems solving: {}'.format(', '.join(raw_problems)))
+                _LOGGER.warning('Encountered problems solving: {}'.format(', '.join(problems)))
 
             transaction = solver.transaction()
             return set(transaction.newsolvables())
+
+        def recurse_deps(solvable):
+            """ Recursively figure out dependencies for a solvable and add them
+            directly to result_solvables (no return value).
+            """
+            if solvable.name.startswith("module:"):
+                module_artifacts = self._pool.whatprovides(
+                    self._pool.Dep("modular-package({})".format(solvable.name))
+                )
+                # If the unit being copied is a module, go through the artifact solvables one by one
+                # and install each of them paired along with the module solvable. Take the results of
+                # each individual artifact installation and combine them together.
+                for artifact in module_artifacts:
+                    module_install_job = self._pool.Job(flags, solvable.id)
+                    artifact_install_job = self._pool.Job(flags, artifact.id)
+                    new_deps = run_solver_jobs(solver, [module_install_job, artifact_install_job])
+
+                    for dep in new_deps:
+                        recurse_deps(artifact)
+
+                    result_solvables.update(new_deps)
+
+            # If the unit being copied is not a module, just install the one
+            unit_install_job = self._pool.Job(flags, solvable.id)
+            new_deps = run_solver_jobs(solver, [unit_install_job])
+
+            for dep in new_deps:
+                recurse_deps(artifact)
+
+            result_solvables.update(new_deps)
 
         for unit in units:
             solvable = self.mapping.get_solvable(unit, self.source_repo.repo_id)
             if not solvable:
                 raise ValueError('Encountered an unknown unit {}'.format(unit))
 
-            unit_install_job = self._pool.Job(flags, solvable.id)
-
-            # If the unit being copied is a module, go through the artifact solvables one by one
-            # and install each of them paired along with the module solvable. Take the results of
-            # each individual artifact installation and combine them together.
-            if unit['_content_type_id'] == ids.TYPE_ID_MODULEMD:
-                module_artifacts = self._pool.whatprovides(
-                    self._pool.Dep('modular-package({})'.format(solvable.name))
-                )
-
-                for artifact_solvable in module_artifacts:
-                    artifact_install_job = self._pool.Job(flags, artifact_solvable.id)
-                    new_deps = run_solver_jobs(solver, [artifact_install_job, unit_install_job])
-                    result_solvables.update(new_deps)
-            # If the unit being copied is not a module, just install the one
-            else:
-                new_deps = run_solver_jobs(solver, [unit_install_job])
-                result_solvables.update(new_deps)
+            recurse_deps(solvable)
 
         return self.mapping.get_units_from_solvables(result_solvables)
 
