@@ -80,7 +80,10 @@ def associate(source_repo, dest_repo, import_conduit, config, units=None, solver
     associated_units = set(associated_units)
 
     associated_units |= copy_rpms(
-        (unit for unit in units if isinstance(unit, models.RPM)),
+        (
+            unit for unit in units
+            if unit._content_type_id in (ids.TYPE_ID_RPM, ids.TYPE_ID_MODULEMD)
+        ),
         source_repo, dest_repo, import_conduit, config, solver)
 
     # return here if we shouldn't get child units
@@ -231,8 +234,10 @@ def filter_available_rpms(rpms, import_conduit, repo):
 
 def copy_rpms(units, source_repo, dest_repo, import_conduit, config, solver=None):
     """
-    Copy RPMs from the source repo to the destination repo, and optionally copy
-    dependencies as well.
+    Copy RPMs (and modules) from the source repo to the destination repo,
+    and optionally copy dependencies as well.
+
+    Even though this function is named "copy_rpms", it accepts modules too.
 
     :param units:           iterable of Units
     :type  units:           iterable of pulp_rpm.plugins.db.models.RPM
@@ -267,7 +272,7 @@ def copy_rpms(units, source_repo, dest_repo, import_conduit, config, solver=None
     for unit in unit_set.copy():
         # we are passing in units that may have flattened "provides" metadata.
         # This flattened field is not used by associate_single_unit().
-        if rpm_parse.signature_enabled(config):
+        if unit._content_type_id == ids.TYPE_ID_RPM and rpm_parse.signature_enabled(config):
             if unit.downloaded:
                 try:
                     rpm_parse.filter_signature(unit, config)
