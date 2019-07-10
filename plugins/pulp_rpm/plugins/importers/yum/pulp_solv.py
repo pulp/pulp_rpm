@@ -140,7 +140,7 @@ def rpm_unit_to_solvable(solv_repo, unit):
     name = unit.get('name').encode('utf-8')
     solvable.name = name
 
-    evr = libsolv_formatted_evr(unit['epoch'], unit['version'], unit['arch'])
+    evr = libsolv_formatted_evr(unit.get('epoch'), unit.get('version'), unit.get('arch'))
     solvable.evr = evr
 
     arch = unit.get('arch', 'noarch').encode('utf-8')
@@ -151,25 +151,14 @@ def rpm_unit_to_solvable(solv_repo, unit):
         vendor = vendor.encode('utf-8')
         solvable.vendor = vendor
 
-    rpm_dependency_attribute_factory('requires', solvable, unit)
-    rpm_dependency_attribute_factory('provides', solvable, unit)
-    rpm_dependency_attribute_factory('recommends', solvable, unit)
+    for attribute_name in ('requires', 'provides', 'recommends'):
+        for depunit in unit.get(attribute_name, []):
+            rpm_dependency_conversion(solvable, depunit, attribute_name)
 
     rpm_filelist_conversion(solvable, unit)
     rpm_basic_deps(solvable, name, evr, arch)
 
     return solvable
-
-
-def rpm_dependency_attribute_factory(attribute_name, solvable, unit, dependency_key=None):
-    """Create a function that processes Pulp a dependency attribute on a unit.
-
-    e.g. "recommends", "requires", "provides"
-    """
-    for depunit in unit.get(attribute_name, []):
-        rpm_dependency_conversion(
-            solvable, depunit, attribute_name, dependency_key=dependency_key
-        )
 
 
 def rpm_dependency_conversion(solvable, unit, attr_name, dependency_key=None):
@@ -229,7 +218,7 @@ def rpm_dependency_conversion(solvable, unit, attr_name, dependency_key=None):
         unit_name = unit_name.encode('utf-8')
 
     unit_flags = unit.get('flags')
-    unit_evr = libsolv_formatted_evr(unit['epoch'], unit['version'], unit.get('arch'))
+    unit_evr = libsolv_formatted_evr(unit.get('epoch'), unit.get('version'), unit.get('arch'))
 
     # e.g SOLVABLE_PROVIDES, SOLVABLE_REQUIRES...
     keyname = dependency_key or getattr(solv, 'SOLVABLE_{}'.format(attr_name.upper()))
@@ -386,8 +375,8 @@ def module_unit_to_solvable(solv_repo, unit):
 
         module_artifacts_conversion(pool, solvable, artifact_name, artifact_evr, artifact_arch)
 
-    pool.createwhatprovides()  # TODO: It would be great to do this less often
     module_dependencies_conversion(pool, solvable, unit.get('dependencies', []))
+    pool.createwhatprovides()  # TODO: It would be great to do this less often
 
     return solvable
 
@@ -531,6 +520,8 @@ def module_defaults_unit_to_solvable(solv_repo, unit):
         # thru dependencies
         solvable.add_deparray(solv.SOLVABLE_PROVIDES, module_default_depid)
         solvable.add_deparray(solv.SOLVABLE_PROVIDES, pool.str2id('module-default()'))
+
+        pool.createwhatprovides()
         for module in pool.whatprovides(module_depid):
             # mark the related module so it can be queried as '(module() with module-default())'
             # i.e such that it's easy visible thru a pool.whatprovides that it has a default
@@ -633,7 +624,7 @@ class Solver(object):
         ids.TYPE_ID_MODULEMD_DEFAULTS: module_defaults_unit_to_solvable,
     }
 
-    def __init__(self, source_repo, target_repo=None, conservative=False):
+    def __init__(self, source_repo, target_repo=None, conservative=False, ignore_missing=True):
         super(Solver, self).__init__()
         self.source_repo = source_repo
         self.target_repo = target_repo
@@ -644,6 +635,7 @@ class Solver(object):
         # prevent https://github.com/openSUSE/libsolv/issues/267
         self._pool.setarch()
         self.mapping = UnitSolvableMapping()
+        self.ignore_missing = ignore_missing
 
     def load(self):
         """Prepare the solver.
@@ -653,9 +645,12 @@ class Solver(object):
         if self._loaded:
             return
 
-        self.load_source_repo(self.source_repo.repo_id)
+        self.load_repo(self.source_repo.repo_id)
         if self.target_repo:
-            self.load_target_repo(self.target_repo.repo_id)
+            target_repo_id = self.target_repo.repo_id
+
+            self.load_repo(target_repo_id)
+            self.set_target_repo(target_repo_id)
 
         self._loaded = True
         self.finalize()
@@ -671,26 +666,25 @@ class Solver(object):
         self._pool.createwhatprovides()
         self._finalized = True
 
-    def load_source_repo(self, repo_id):
+    def load_repo(self, repo_id):
         """Load the provided Pulp repo as a source repo.
 
         All units in the repo will be available to be "installed", or copied.
         """
         source_units = fetch_units_from_repo(repo_id)
         self.add_repo_units(source_units, repo_id)
-        _LOGGER.info('Loaded source repository %s', repo_id)
+        _LOGGER.info('Loaded repository %s', repo_id)
 
-    def load_target_repo(self, repo_id):
+    def set_target_repo(self, repo_id):
         """Load the provided Pulp repo as a target repo.
 
         All units in the repo are marked as "installed" inside libsolv, so that it knows they
         don't need to be "installed" (copied)
         """
-        target_units = fetch_units_from_repo(self.target_repo.repo_id)
-        self.add_repo_units(target_units, repo_id, installed=True)
-        _LOGGER.info('Loaded target repository %s', repo_id)
+        self._pool.installed = self.mapping.get_repo(str(repo_id))
+        _LOGGER.info('Target repository set to %s', repo_id)
 
-    def add_repo_units(self, units, repo_id, installed=False):
+    def add_repo_units(self, units, repo_id):
         """Generate solvables from Pulp units and add them to the mapping.
         """
         repo_name = str(repo_id)
@@ -708,9 +702,6 @@ class Solver(object):
                 raise ValueError('Unsupported unit type: {}', err)
             solvable = factory(repo, unit)
             self.mapping.register(unit, solvable, repo_id)
-
-        if installed:
-            self._pool.installed = repo
 
         # Need to call pool->addfileprovides(), pool->createwhatprovides() after loading new repo
         self._finalized = False
@@ -743,7 +734,7 @@ class Solver(object):
                 raise ValueError('Encountered an unknown unit {}'.format(unit))
             yield self._pool.Job(flags, solvable.id)
 
-    def _handle_nothing_provides(self, info, jobs):
+    def _handle_nothing_provides(self, info):
         """Handle a case where nothing provides a given requirement.
 
         Some units may depend on other units outside the repo, and that will cause issues with the
@@ -752,8 +743,6 @@ class Solver(object):
 
         :param info: A class describing why the rule was broken
         :type info: solv.RuleInfo
-
-        TODO: why is "jobs" here? it is used in similar functions but not in this one. oversight?
         """
         if not self.target_repo:
             return
@@ -762,31 +751,33 @@ class Solver(object):
         dummy.add_deparray(solv.SOLVABLE_PROVIDES, info.dep)
         _LOGGER.debug('Created dummy provides: {name}', name=info.dep.str())
 
-    def _locate_solvable_job(self, solvable, flags, jobs):
-        for idx, job in enumerate(jobs):
-            if job.what == solvable.id and job.how == flags:
-                _LOGGER.debug('Found job: %s', str(job))
-                return idx
-
-    def _enforce_solvable_job(self, solvable, flags, jobs):
-        idx = self._locate_solvable_job(solvable, flags, jobs)
-        if idx is not None:
-            return
-
-        enforce_job = self._pool.Job(flags, solvable.id)
-        jobs.append(enforce_job)
-        _LOGGER.debug('Added job %s', enforce_job)
-
     def _handle_same_name(self, info, jobs):
         """Handle a case where multiple versions of a package are "installed".
 
         Libsolv by default will make the assumption that you can't "install" multiple versions of
         a package, so in cases where we create that situation, we need to pass a special flag.
         """
+
+        def locate_solvable_job(self, solvable, flags, jobs):
+            for idx, job in enumerate(jobs):
+                if job.what == solvable.id and job.how == flags:
+                    _LOGGER.debug('Found job: %s', str(job))
+                    return idx
+
+        def enforce_solvable_job(solvable, flags, jobs):
+            idx = locate_solvable_job(solvable, flags, jobs)
+            if idx is not None:
+                return
+
+            enforce_job = self._pool.Job(flags, solvable.id)
+            jobs.append(enforce_job)
+            _LOGGER.debug('Added job %s', enforce_job)
+
         install_flags = solv.Job.SOLVER_INSTALL | solv.Job.SOLVER_SOLVABLE
         enforce_flags = install_flags | solv.Job.SOLVER_MULTIVERSION
-        self._enforce_solvable_job(info.solvable, enforce_flags, jobs)
-        self._enforce_solvable_job(info.othersolvable, enforce_flags, jobs)
+
+        enforce_solvable_job(info.solvable, enforce_flags, jobs)
+        enforce_solvable_job(info.othersolvable, enforce_flags, jobs)
 
     def _handle_problems(self, problems, jobs):
         """Handle problems libsolv finds during the depsolving process that can be worked around.
@@ -797,7 +788,10 @@ class Solver(object):
                     if info.type == solv.Solver.SOLVER_RULE_PKG_REQUIRES:
                         continue
                     elif info.type == solv.Solver.SOLVER_RULE_PKG_NOTHING_PROVIDES_DEP:
-                        self._handle_nothing_provides(info, jobs)
+                        if not self.ignore_missing:
+                            continue
+
+                        self._handle_nothing_provides(info)
                     elif info.type == solv.Solver.SOLVER_RULE_PKG_SAME_NAME:
                         self._handle_same_name(info, jobs)
                     else:
@@ -810,7 +804,7 @@ class Solver(object):
                         )
         self._pool.createwhatprovides()
 
-    def find_dependent_rpms_conservative(self, units):
+    def find_dependent_units_conservative(self, units):
         """Find the RPM dependencies that need to be copied to satisfy copying the provided units,
         taking into consideration what units are already present in the target repository.
         """
@@ -819,6 +813,9 @@ class Solver(object):
         previous_problems_ = set()
         attempt = 0
         jobs = list(self._create_unit_install_jobs(units))
+        self._pool.createwhatprovides()
+        solver = self._pool.Solver()
+
         while True:
             attempt += 1
             _LOGGER.debug(
@@ -827,7 +824,6 @@ class Solver(object):
                     j='\n\t'.join(str(job) for job in jobs)
                 )
             )
-            solver = self._pool.Solver()
             problems = solver.solve(jobs)
             problems_ = set(str(problem) for problem in problems)
             # assuming we won't be creating more and more problems all the time
@@ -845,7 +841,7 @@ class Solver(object):
         transaction = solver.transaction()
         return self.mapping.get_units_from_solvables(transaction.newsolvables())
 
-    def find_dependent_rpms_relaxed(self, units):
+    def find_dependent_units_relaxed(self, units):
         """Find the RPM dependencies that need to be copied to satisfy copying the provided units,
         without taking into consideration the target repository. Just copy the most recent versions
         of each.
@@ -857,6 +853,7 @@ class Solver(object):
         # unit can seem to appear twice in the pool.whatprovides() set, it's just a different
         # solvable.
         candq = set(self.mapping.get_solvable(unit, self.source_repo.repo_id) for unit in units)
+        pool.createwhatprovides()
         while candq:
             cand = candq.pop()
             seen.add(cand)
@@ -902,5 +899,5 @@ class Solver(object):
         assert self._finalized, "Depsolver must be finalized before it can be used"
 
         if self.conservative:
-            return self.find_dependent_rpms_conservative(units)
-        return self.find_dependent_rpms_relaxed(units)
+            return self.find_dependent_units_conservative(units)
+        return self.find_dependent_units_relaxed(units)
