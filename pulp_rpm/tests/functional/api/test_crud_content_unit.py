@@ -50,7 +50,7 @@ class ContentUnitTestCase(unittest.TestCase):
         self.content_unit.update(
             self.client.post(RPM_CONTENT_PATH, {
                 '_artifact': self.artifact['_href'],
-                'filename': RPM_PACKAGE_FILENAME
+                'relative_path': RPM_PACKAGE_FILENAME
             })
         )
         for key, val in RPM_PACKAGE_DATA.items():
@@ -137,7 +137,7 @@ class DuplicateContentUnit(unittest.TestCase):
         artifact = self.client.post(ARTIFACTS_PATH, files=files)
         attrs = {
             '_artifact': artifact['_href'],
-            'filename': RPM_PACKAGE_FILENAME
+            'relative_path': RPM_PACKAGE_FILENAME
         }
 
         # create first content unit.

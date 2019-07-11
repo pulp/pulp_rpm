@@ -26,7 +26,7 @@ Create ``rpm`` content from an Artifact
 
 Create a content unit and point it to your artifact
 
-``$ http POST http://localhost:24817/pulp/api/v3/content/rpm/packages/ _artifact="/pulp/api/v3/artifacts/d1dd56aa-c236-414a-894f-b3d9334d2e73/" filename=foo-4.1-1.noarch.rpm``
+``$ http POST http://localhost:24817/pulp/api/v3/content/rpm/packages/ _artifact="/pulp/api/v3/artifacts/d1dd56aa-c236-414a-894f-b3d9334d2e73/" relative_path=foo-4.1-1.noarch.rpm``
 
 .. code:: json
 
