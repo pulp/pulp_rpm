@@ -28,6 +28,7 @@ RPM_FIELDS = BASE_UNIT_FIELDS | set([
     'vendor',
     'provides',
     'requires',
+    'recommends',
     'files',
 ])
 
@@ -48,6 +49,81 @@ MODULE_DEFAULTS_FIELDS = BASE_UNIT_FIELDS | set([
     'repo_id',
 ])
 
+RPM_EXCLUDE_FIELDS = set([
+    'build_time',
+    'buildhost',
+    'pulp_user_metadata',
+    '_content_type_id',
+    'checksums',
+    'size',
+    'license',
+    'group',
+    '_ns',
+    'filename',
+    'epoch',
+    'version',
+    'version_sort_index',
+    'provides',
+    'files',
+    'repodata',
+    'description',
+    '_last_updated',
+    'time',
+    'downloaded',
+    'header_range',
+    'arch',
+    'name',
+    '_storage_path',
+    'sourcerpm',
+    'checksumtype',
+    'release_sort_index',
+    'changelog',
+    'url',
+    'checksum',
+    'signing_key',
+    'summary',
+    'relativepath',
+    'release',
+    'requires',
+    'pk'
+]) - RPM_FIELDS
+
+MODULE_EXCLUDE_FIELDS = set([
+    'name',
+    'stream',
+    'version',
+    'context',
+    'arch',
+    'summary',
+    'description',
+    'checksum',
+    'profiles',
+    'artifacts',
+    'checksum',
+    'dependencies',
+    '_content_type_id',
+    '_ns',
+    '_storage_path',
+    '_last_updated',
+    'downloaded',
+    'pulp_user_metadata',
+    'pk'
+]) - MODULE_FIELDS
+
+MODULE_DEFAULTS_EXCLUDE_FIELDS = set([
+    'pulp_user_metadata',
+    '_last_updated',
+    '_storage_path',
+    'downloaded',
+    'name',
+    'repo_id',
+    'profiles',
+    'checksum',
+    '_ns',
+    '_content_type_id',
+    'pk',
+]) - MODULE_DEFAULTS_FIELDS
+
 
 def fetch_units_from_repo(repo_id):
     """Load the units from a repository.
@@ -56,7 +132,7 @@ def fetch_units_from_repo(repo_id):
     For performance, we bypass the ORM and do raw mongo queries, because the extra overhead of
     creating objects vs dicts wastes too much time and space.
     """
-    def _repo_units(repo_id, type_id, model, fields):
+    def _repo_units(repo_id, type_id, model, excludes):
         # NOTE: optimization; the solver has to visit every unit of a repo.
         # Using a custom, as-pymongo query to load the units as fast as possible.
         rcuq = server_model.RepositoryContentUnit.objects.filter(
@@ -64,19 +140,20 @@ def fetch_units_from_repo(repo_id):
 
         for rcu_batch in misc_utils.paginate(rcuq):
             rcu_ids = [rcu['unit_id'] for rcu in rcu_batch]
-            for unit in model.objects.filter(id__in=rcu_ids).only(*fields).as_pymongo():
+            # Why use .excludes() instead of .only()? Because: https://pulp.plan.io/issues/5131
+            for unit in model.objects.filter(id__in=rcu_ids).exclude(*excludes).as_pymongo():
                 if not unit.get('id'):
                     unit['id'] = unit.get('_id')
                 yield unit
 
     # order matters; e.g module loading requires rpm loading
     units = itertools.chain(
-        _repo_units(repo_id, ids.TYPE_ID_RPM, models.RPM, RPM_FIELDS),
+        _repo_units(repo_id, ids.TYPE_ID_RPM, models.RPM, RPM_EXCLUDE_FIELDS),
         _repo_units(
-            repo_id, ids.TYPE_ID_MODULEMD, models.Modulemd, MODULE_FIELDS),
+            repo_id, ids.TYPE_ID_MODULEMD, models.Modulemd, MODULE_EXCLUDE_FIELDS),
         _repo_units(
             repo_id, ids.TYPE_ID_MODULEMD_DEFAULTS, models.ModulemdDefaults,
-            MODULE_DEFAULTS_FIELDS),
+            MODULE_DEFAULTS_EXCLUDE_FIELDS),
     )
     return units
 
