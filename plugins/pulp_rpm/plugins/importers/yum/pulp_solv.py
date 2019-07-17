@@ -845,6 +845,174 @@ class Solver(object):
         for solvable in solvables:
             yield self._pool.Job(flags, solvable.id)
 
+    def _disable_module(self, module):
+        """
+        Set the module and all packages in it as not considered. The packages would
+        not be pulled in anyway since that would require pulling in disabled module,
+        but if they are considered, it would cause problems with masking unavailable
+        packages since we wouldn't really know which modular packages are available.
+
+        :param module: solvable for the module to be disabled
+        """
+        self._disable_solvable(module)
+
+        dep = self._pool.rel2id(module.name, module.arch, solv.REL_ARCH, create=1)
+        module_artifacts = self._pool.whatcontainsdep(solv.SOLVABLE_REQUIRES, dep, marker=0)
+
+        for artifact in module_artifacts:
+            self._disable_solvable(artifact)
+
+    def _disable_solvables(self, solvables):
+        """
+        Disable solvables.
+        """
+        disabled_solvables = self._pool.get_disabled_list()
+        for solvable in solvables:
+            if solvable.id not in disabled_solvables:
+                disabled_solvables.append(solvable.id)
+        self._pool.set_disabled_list(disabled_solvables)
+        # whatprovides hashes need to be recomputed after changing 'considered'
+        self._pool.createwhatprovides()
+
+    def _mask_non_default_module_pkgs(self, whitelisted_modules):
+        """ Mask non-default modules and their packages
+
+        Returns a selection of non-default modules and packages
+        """
+        nondef_modules_rel = self._pool.rel2id(
+            self._pool.str2id('module()', create=True),
+            self._pool.str2id('module-default()', create=True),
+            solv.REL_WITHOUT,
+            create=True
+        )
+        nondef_modules = self._pool.whatprovides(nondef_modules_rel)
+        selection = self._pool.Selection()
+
+        for module in nondef_modules:
+            # not in original FUS algo
+            if module not in whitelisted_modules:
+                # /not in original FUS algo
+                dep = self._pool.rel2id(module.name, module.arch, solv.REL_ARCH, create=True)
+                module_artifacts = self._pool.whatcontainsdep(solv.SOLVABLE_REQUIRES, dep, marker=0)
+                # not in original FUS algo
+                sel = self._pool.select(str(module), solv.SELECTION_CANON)
+                selection.add(sel)
+                # /not in original FUS algo
+
+                for artifact in module_artifacts:
+                    sel = self._pool.select(str(artifact), solv.SELECTION_CANON)
+                    selection.add(sel)
+
+        return selection
+
+    # def _mask_bare_rpms(self, whitelisted_rpms):
+    #     """
+    #     For each available modular package, find all bare RPMs with the same name,
+    #     and mark them as not considered if they are not in the pile.
+
+    #     :param pile: a set of bare rpm package solvables that are excluded from being masked
+    #     """
+    #     # Get all existing modular package solvables
+    #     modular_packages = self._pool.whatprovides(
+    #         self._pool.Dep('modular-package()', create=True)
+    #     )
+
+    #     considered = set(self._pool.get_considered_list())
+    #     # Filter it to keep only available packages.
+    #     # A package that is not considered should not mask anything.
+    #     available_modular_pkgs = [
+    #         solvable for solvable in modular_packages
+    #         if solvable.id in considered
+    #     ]
+
+    #     for mod_pkg in available_modular_pkgs:
+    #         sel = self._pool.select("modular-package()", solv.SELECTION_NAME)
+
+    #         assert sel.count > 0, "At least one package should always match - the modular one"
+    #         # The original implementation did this instead of asserting, should we?
+    #         # if not sel.count > 0:
+    #         #     continue
+    #         # This seems a lot like a place for "assert" though
+
+    #         for solvable in sel.solvables():
+    #             # A bare RPM can be in the pile if, e.g, it was requested
+    #             # explicitly. In that case, we don't want to disconsider it,
+    #             # otherwise libsolv will report resolution problems
+    #             if solvable not in available_modular_pkgs and solvable not in whitelisted_rpms:
+    #                 self._disable_solvable(solvable)
+
+    def _mask_solvable_bare_rpms(self, whitelisted_rpms):
+        """
+        Mask bare rpms if any of the default modules provides them (even if older)
+        """
+        selection = self._pool.Selection()
+
+        def_modules_rel = self._pool.rel2id(
+            self._pool.str2id('module()', create=True),
+            self._pool.str2id('module-default()', create=True),
+            solv.REL_WITH,
+            create=True
+        )
+
+        default_modules = self._pool.whatprovides(def_modules_rel)
+        for module in default_modules:
+            dep = self._pool.rel2id(
+                self._pool.str2id(module.name),
+                self._pool.str2id(module.arch),
+                solv.REL_ARCH
+            )
+            modular_packages = self._pool.whatcontainsdep(solv.SOLVABLE_REQUIRES, dep, marker=0)
+            for mod_pkg in modular_packages:
+                bare_rpms_rel = self._pool.rel2id(
+                    self._pool.str2id(mod_pkg.name),
+                    self._pool.str2id('modular-package()', create=True),
+                    solv.REL_WITHOUT,
+                    create=True
+                )
+                nonmodular_packages = self._pool.whatprovides(bare_rpms_rel)
+                for pkg in nonmodular_packages:
+                    # not in original FUS algo
+                    if pkg not in whitelisted_rpms:
+                        # /not in original FUS algo
+                        pkg_sel = self._pool.select(str(pkg), solv.SELECTION_CANON)
+                        selection.add(pkg_sel)
+
+        return selection
+
+    def _modular_packages(self):
+        """ Returns a list of modular packages
+        """
+        modular_packages = self._pool.whatprovides(
+            self._pool.str2id('modular-package()', create=True)
+        )
+        return list(modular_packages)
+
+    def setup_solver(self, whitelisted_solvables):
+        """
+        default module artifacts mask nonmodular artifacts of the same name. in the event
+        that we actually do explicitly want to copy the nonmodular artifact, we need to
+        make sure that it's enabled. so, let's avoid masking those RPMs.
+        """
+        whitelisted_modules = [s for s in whitelisted_solvables if s.startswith("module:")]
+        whitelisted_nonmodules = [s for s in whitelisted_solvables if not s.startswith("module:")]
+
+        # Find packages from non-default modules
+        disconsider = self._mask_non_default_module_pkgs(whitelisted_modules)
+
+        # Find bare rpms masked by default modules
+        bare_rpms = self._mask_solvable_bare_rpms(whitelisted_nonmodules)
+
+        solvables_to_disable = self._pool.Selection()
+        solvables_to_disable.add(disconsider)
+        solvables_to_disable.add(bare_rpms)
+
+        self._disable_solvables(solvables_to_disable.solvables())
+
+    def reset(self):
+        """ Un-disable all of the disabled solvables.
+        """
+        self._pool.set_disabled_list([])
+
     def _handle_nothing_provides(self, info):
         """Handle a case where nothing provides a given requirement.
 
@@ -1019,9 +1187,15 @@ class Solver(object):
             self.mapping.get_solvable(unit, self.primary_source_repo.repo_id) for unit in units
         ]
 
+        # perform module-related package masking with a whitelist of solvables
+        self.setup_solver(solvables)
+
         if self.conservative:
             result_solvables = self.find_dependent_solvables_conservative(solvables)
         else:
             result_solvables = self.find_dependent_solvables_relaxed(solvables)
+
+        # reset whitelist
+        self.reset()
 
         return self.mapping.get_units_from_solvables(result_solvables)
