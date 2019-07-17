@@ -77,3 +77,7 @@ Optional Configuration Parameters
  Checksum type to use for metadata generation. For any units where the checksum of this type is not
  already known, it will be computed on-the-fly and saved for future use. If any such units have not
  been downloaded, then checksum calculation is impossible, and the publish will fail gracefully.
+
+``updateinfo_checksum_type``
+ Checksum type to use for updateinfo.xml generation. For each package listed in updateinfo.xml
+ the checksum of this type will be published if available, otherwise ``checksum_type`` will be used.
