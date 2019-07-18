@@ -85,14 +85,14 @@ class PackageViewSet(ContentViewSet):
             raise serializers.ValidationError(detail={'_artifact': _('This field is required')})
 
         try:
-            filename = request.data['filename']
+            relative_path = request.data['relative_path']
         except KeyError:
-            raise serializers.ValidationError(detail={'filename': _('This field is required')})
+            raise serializers.ValidationError(detail={'relative_path': _('This field is required')})
 
         try:
-            new_pkg = _prepare_package(artifact, filename)
+            new_pkg = _prepare_package(artifact, relative_path)
             new_pkg['_artifact'] = request.data['_artifact']
-            new_pkg['relative_path'] = request.data.get('relative_path', '')
+            new_pkg['relative_path'] = relative_path
         except OSError:
             return Response('RPM file cannot be parsed for metadata.',
                             status=status.HTTP_406_NOT_ACCEPTABLE)
