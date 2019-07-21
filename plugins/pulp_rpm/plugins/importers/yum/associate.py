@@ -57,7 +57,13 @@ def associate(source_repo, dest_repo, import_conduit, config, units=None, solver
         solver = pulp_solv.Solver(
             source_repo,
             target_repo=dest_repo,
-            conservative=config.get(constants.CONFIG_RECURSIVE_CONSERVATIVE)
+            conservative=config.get(constants.CONFIG_RECURSIVE_CONSERVATIVE),
+            ignore_missing=False
+            # the line above disables the code which injects "dummy solvables" to provide
+            # missing packages. it is not known whether that code is 100% necessary, but it
+            # is feeding invalid data to libsolv somehow resulting in a violated invariant
+            # and failure on an assert statement here
+            # https://github.com/openSUSE/libsolv/blob/master/src/solver.c#L1979-L1981
         )
         solver.load()
 
@@ -253,8 +259,9 @@ def copy_rpms(units, source_repo, dest_repo, import_conduit, config, solver=None
     if solver:
         # This returns units that have a flattened 'provides' metadata field
         # for memory purposes (RHBZ #1185868)
-        deps = solver.find_dependent_rpms(unit_set)
-        unit_set |= deps
+        repo_unit_set = solver.find_dependent_rpms(unit_set)
+        for repo, units in repo_unit_set.items():
+            unit_set |= units
 
     failed_signature_check = 0
     for unit in unit_set.copy():
