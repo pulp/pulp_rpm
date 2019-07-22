@@ -721,3 +721,23 @@ class Modulemd(Content):
     dependencies = models.TextField(default='[]')
     artifacts = models.TextField(default='[]')
     packages = models.ManyToManyField(Package)
+
+
+class ModulemdDefaults(Content):
+    """
+    The "Modulemd Defaults" content type. Modularity support.
+
+    Fields:
+        module (Text):
+            Modulemd name.
+        stream (Text):
+            Modulemd default stream.
+        profiles (List):
+            Default profiles for modulemd streams.
+    """
+
+    TYPE = "modulemd-defaults"
+
+    module = models.CharField(max_length=255)
+    stream = models.CharField(max_length=255)
+    profiles = models.TextField(default='[]')
