@@ -25,17 +25,28 @@ from pulpcore.plugin.viewsets import (
 
 from pulp_rpm.app import tasks
 from pulp_rpm.app.shared_utils import _prepare_package
-from pulp_rpm.app.models import Package, RpmDistribution, RpmRemote, RpmPublication, UpdateRecord
+from pulp_rpm.app.models import (
+    ModulemdDefaults,
+    Package,
+    RpmDistribution,
+    RpmRemote,
+    RpmPublication,
+    UpdateRecord
+)
 from pulp_rpm.app.serializers import (
     CopySerializer,
     MinimalPackageSerializer,
     MinimalUpdateRecordSerializer,
+    ModulemdDefaultsSerializer,
     OneShotUploadSerializer,
     PackageSerializer,
     RpmDistributionSerializer,
     RpmRemoteSerializer,
     RpmPublicationSerializer,
     UpdateRecordSerializer,
+)
+from pulp_rpm.app.modulemd import (
+    create_modulemd_defaults
 )
 
 
@@ -301,5 +312,39 @@ class CopyViewSet(viewsets.ViewSet):
             tasks.copy_content, [source_repo, dest_repo],
             args=[source_repo_version.pk, dest_repo.pk, types],
             kwargs={}
+        )
+        return OperationPostponedResponse(async_result, request)
+
+
+class ModulemdDefaultsView(ContentViewSet):
+    """
+    ViewSet for Modulemd-defaults content type.
+    """
+
+    endpoint_name = 'modulemd-defaults'
+    queryset = ModulemdDefaults.objects.all()
+    serializer_class = ModulemdDefaultsSerializer
+
+    @swagger_auto_schema(
+        operation_description="Create an artifact and trigger an asynchronous"
+                              "task to create Modulemd-defaults content.",
+        operation_summary="Upload a modulemd-defaults",
+        operation_id="upload_modulemd_defaults",
+        request_body=ModulemdDefaultsSerializer,
+        responses={202: AsyncOperationResponseSerializer}
+    )
+    def create(self, request):
+        """Upload modulemd-defaults YAML."""
+        try:
+            artifact = self.get_resource(request.data['_artifact'], Artifact)
+        except KeyError:
+            raise serializers.ValidationError(detail={'_artifact': _('This field is required')})
+
+        async_result = enqueue_with_reservation(
+            create_modulemd_defaults, [artifact],
+            kwargs={
+                'artifact': artifact,
+                'artifact_url': request.data['_artifact']
+            }
         )
         return OperationPostponedResponse(async_result, request)
