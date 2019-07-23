@@ -371,9 +371,8 @@ class RepoSync(object):
             # If we're here, sync was successful (for some definition of 'success')
             # If feed-url had been updated, clear the flag set in config
             importer = Importer.objects.get(id=self.conduit.importer_object_id)
-            if importer_constants.KEY_FEED_UPDATED in importer.config and \
-                    importer.config[importer_constants.KEY_FEED_UPDATED]:
-                importer.config[importer_constants.KEY_FEED_UPDATED] = False
+            if importer._get_scratchpad_entry(importer_constants.KEY_FEED_UPDATED):
+                importer._set_scratchpad_entry(importer_constants.KEY_FEED_UPDATED, False)
                 importer.save()
 
             if self.config.override_config.get(importer_constants.KEY_FEED):
@@ -827,6 +826,7 @@ class RepoSync(object):
         """
         event_listener = RPMListener(self, metadata_files)
         primary_file_handle = metadata_files.get_metadata_file_handle(primary.METADATA_FILE_NAME)
+
         try:
             package_model_generator = packages.package_list_generator(
                 primary_file_handle,
@@ -848,8 +848,7 @@ class RepoSync(object):
                     # in order to safely rebuild LCE with possibly-new download-urls
                     # [NOTE: "if there is one" is almost certainly paranoia at this point in the
                     # code-flow. Paranoia is not always invalid, however...]
-                    if importer_constants.KEY_FEED_UPDATED in importer.config and \
-                            importer.config[importer_constants.KEY_FEED_UPDATED]:
+                    if importer._get_scratchpad_entry(importer_constants.KEY_FEED_UPDATED):
                         units = unit.__class__.objects.filter(**unit.unit_key)
                         repo_controller.disassociate_units(self.repo, units)
                         for old_unit in units:
@@ -920,8 +919,7 @@ class RepoSync(object):
                             # in order to safely rebuild LCE with possibly-new download-urls
                             # [NOTE: "if there is one" is almost certainly paranoia at this point
                             # in the code-flow. Paranoia is not always invalid, however...]
-                            if importer_constants.KEY_FEED_UPDATED in importer.config and \
-                                    importer.config[importer_constants.KEY_FEED_UPDATED]:
+                            if importer._get_scratchpad_entry(importer_constants.KEY_FEED_UPDATED):
                                 units = unit.__class__.objects.filter(**unit.unit_key)
                                 repo_controller.disassociate_units(self.repo, units)
                                 for old_unit in units:

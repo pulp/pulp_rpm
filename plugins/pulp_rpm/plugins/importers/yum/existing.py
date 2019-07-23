@@ -128,8 +128,7 @@ def check_all_and_associate(wanted, conduit, config, download_deferred, catalog)
     importer = Importer.objects.get(id=conduit.importer_object_id)
     # If UPDATED doesn't exist in the importer's config, or it exists but is false - feed-url
     # hasn't changed since last sync
-    same_feed = importer_constants.KEY_FEED_UPDATED not in importer.config or \
-        not importer.config[importer_constants.KEY_FEED_UPDATED]
+    same_feed = not importer._get_scratchpad_entry(importer_constants.KEY_FEED_UPDATED)
 
     for unit_type, values in sorted_units.iteritems():
         model = plugin_api.get_unit_model_by_id(unit_type)
