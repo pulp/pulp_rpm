@@ -3,7 +3,7 @@
 from setuptools import setup, find_packages
 
 requirements = [
-    'createrepo_c',
+    'createrepo_c~=0.13',
     'pulpcore-plugin~=0.1rc3',
 ]
 

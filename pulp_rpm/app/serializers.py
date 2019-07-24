@@ -308,11 +308,9 @@ class UpdateRecordSerializer(NoArtifactContentSerializer):
     rights = serializers.CharField(
         help_text=_("Copyrights")
     )
-
     pushcount = serializers.CharField(
         help_text=_("Push count")
     )
-
     pkglist = UpdateCollectionField(
         source='pk', read_only=True,
         help_text=_("List of packages")

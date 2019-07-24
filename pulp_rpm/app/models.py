@@ -10,9 +10,11 @@ from pulp_rpm.app.constants import (CHECKSUM_CHOICES, CR_PACKAGE_ATTRS,
                                     CR_UPDATE_COLLECTION_ATTRS,
                                     CR_UPDATE_COLLECTION_PACKAGE_ATTRS,
                                     CR_UPDATE_RECORD_ATTRS,
+                                    CR_UPDATE_COLLECTION_ATTRS_MODULE,
                                     CR_UPDATE_REFERENCE_ATTRS,
                                     PULP_PACKAGE_ATTRS,
                                     PULP_UPDATE_COLLECTION_ATTRS,
+                                    PULP_UPDATE_COLLECTION_ATTRS_MODULE,
                                     PULP_UPDATE_COLLECTION_PACKAGE_ATTRS,
                                     PULP_UPDATE_RECORD_ATTRS,
                                     PULP_UPDATE_REFERENCE_ATTRS
@@ -501,6 +503,7 @@ class UpdateCollection(Model):
 
     name = models.TextField()
     shortname = models.TextField()
+    module = models.TextField(default='')
 
     update_record = models.ForeignKey(UpdateRecord, related_name="collections",
                                       on_delete=models.CASCADE)
@@ -517,11 +520,27 @@ class UpdateCollection(Model):
             dict: data for UpdateCollection content creation
 
         """
-        return {
+        ret = {
             PULP_UPDATE_COLLECTION_ATTRS.NAME: getattr(collection, CR_UPDATE_COLLECTION_ATTRS.NAME),
             PULP_UPDATE_COLLECTION_ATTRS.SHORTNAME: getattr(
                 collection, CR_UPDATE_COLLECTION_ATTRS.SHORTNAME)
         }
+        if collection.module:
+            ret[PULP_UPDATE_COLLECTION_ATTRS.MODULE] = json.dumps(
+                {
+                    PULP_UPDATE_COLLECTION_ATTRS_MODULE.NAME: getattr(
+                        collection.module, CR_UPDATE_COLLECTION_ATTRS_MODULE.NAME),
+                    PULP_UPDATE_COLLECTION_ATTRS_MODULE.STREAM: getattr(
+                        collection.module, CR_UPDATE_COLLECTION_ATTRS_MODULE.STREAM),
+                    PULP_UPDATE_COLLECTION_ATTRS_MODULE.VERSION: getattr(
+                        collection.module, CR_UPDATE_COLLECTION_ATTRS_MODULE.VERSION),
+                    PULP_UPDATE_COLLECTION_ATTRS_MODULE.CONTEXT: getattr(
+                        collection.module, CR_UPDATE_COLLECTION_ATTRS_MODULE.CONTEXT),
+                    PULP_UPDATE_COLLECTION_ATTRS_MODULE.ARCH: getattr(
+                        collection.module, CR_UPDATE_COLLECTION_ATTRS_MODULE.ARCH)
+                }
+            )
+        return ret
 
 
 class UpdateCollectionPackage(Model):
