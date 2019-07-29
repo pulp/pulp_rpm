@@ -4,7 +4,7 @@ from django.db import transaction
 from django.db.utils import IntegrityError
 from drf_yasg.utils import swagger_auto_schema
 from rest_framework import serializers, status, viewsets
-from rest_framework.decorators import detail_route
+from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.parsers import FormParser, MultiPartParser
 
@@ -119,7 +119,7 @@ class RpmRemoteViewSet(RemoteViewSet):
         operation_summary="Sync from remote",
         responses={202: AsyncOperationResponseSerializer}
     )
-    @detail_route(methods=('post',), serializer_class=RepositorySyncURLSerializer)
+    @action(detail=True, methods=['post'], serializer_class=RepositorySyncURLSerializer)
     def sync(self, request, pk):
         """
         Dispatches a sync task.
