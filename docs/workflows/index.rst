@@ -1,7 +1,7 @@
 Workflows
 =========
 
-All REST API examples bellow use `httpie <https://httpie.org/doc>`__ to perform the requests.
+All REST API examples below use `httpie <https://httpie.org/doc>`__ to perform the requests.
 The ``httpie`` commands below assume that the user executing the commands has a ``.netrc`` file
 in the home directory. The ``.netrc`` should have the following configuration::
 
