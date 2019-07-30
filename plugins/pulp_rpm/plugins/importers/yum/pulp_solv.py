@@ -930,11 +930,11 @@ class Solver(object):
             """ Take a list of jobs, get a solution, return the set of solvables that needed to
             be installed.
             """
-            solver = self._pool.Solver()
             previous_problems = set()
             attempt = 1
 
             while True:
+                solver = self._pool.Solver()
                 raw_problems = solver.solve(jobs)
                 problems = set(str(problem) for problem in raw_problems)
                 if not problems or previous_problems == problems:
