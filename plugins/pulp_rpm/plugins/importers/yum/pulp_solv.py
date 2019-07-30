@@ -413,8 +413,7 @@ def module_unit_to_solvable(solv_repo, unit):
 
     solvable_name = module_solvable_name(unit)
     solvable.name = solvable_name
-    # there's no reasonable way to construct an EVR, but it has to be set, so use '0-1' (V-R)
-    solvable.evr = '0-1'
+    solvable.evr = ''
 
     arch = unit.get('arch', 'noarch').encode('utf-8')
     solvable.arch = arch
@@ -563,8 +562,7 @@ def module_defaults_unit_to_solvable(solv_repo, unit):
     :rtype: solv.Solvable
     """
     solvable = solv_repo.add_solvable()
-    # there's no reasonable way to construct an EVR, but it has to be set, so use '0-1' (V-R)
-    solvable.evr = '0-1'
+    solvable.evr = ''
     # a module default has no arch, use 'noarch'
     solvable.arch = 'noarch'
 
@@ -837,7 +835,7 @@ class Solver(object):
         dummy = target_repo.add_solvable()
         dummy.name = 'dummy-provides:{}'.format(str(info.dep))
         dummy.arch = 'noarch'
-        dummy.evr = '0-1'
+        dummy.evr = ''
         dummy.add_deparray(solv.SOLVABLE_PROVIDES, info.dep)
         self._pool.createwhatprovides()
         _LOGGER.debug('Created dummy provides: {name}', name=info.dep.str())
@@ -947,7 +945,7 @@ class Solver(object):
                 # The solver is simply ignoring the problems encountered and proceeds associating
                 # any new solvables/units. This might be reported back to the user one day over
                 # the REST API.
-                _LOGGER.warning('Encountered problems solving: {}'.format(', '.join(problems)))
+                _LOGGER.debug('Encountered problems solving: {}'.format(', '.join(problems)))
 
             transaction = solver.transaction()
             return set(transaction.newsolvables())
