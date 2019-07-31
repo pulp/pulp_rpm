@@ -161,6 +161,7 @@ def errata_format_to_datetime(datetime_str, msg):
     Expected formats are:
     - '%Y-%m-%d %H:%M:%S UTC'
     - '%Y-%m-%d %H:%M:%S'
+    - '%Y-%m-%d %H:%M'
     - '%Y-%m-%d'
 
     :param datetime_str: date and time in errata specific format
@@ -174,6 +175,7 @@ def errata_format_to_datetime(datetime_str, msg):
     :raises ValueError: if the date and time are in unknown format
     """
     strptime_patterns = ['%Y-%m-%d %H:%M:%S',
+                         '%Y-%m-%d %H:%M',
                          '%Y-%m-%d']
     datetime_str = datetime_str.strip()
     if datetime_str.endswith(' UTC'):

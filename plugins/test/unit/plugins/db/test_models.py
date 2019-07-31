@@ -399,6 +399,9 @@ class TestErrata(unittest.TestCase):
         uploaded_erratum.updated = '2016-01-01 00:00:00'
         ret = existing_erratum.update_needed(uploaded_erratum)
         self.assertTrue(ret)
+        uploaded_erratum.updated = '2016-01-01 00:00'
+        ret = existing_erratum.update_needed(uploaded_erratum)
+        self.assertTrue(ret)
 
     def test_update_needed_bad_date_existing(self):
         """
