@@ -1,3 +1,4 @@
+import json
 from rest_framework import serializers
 from pulp_rpm.app.models import UpdateCollection, UpdateReference
 
@@ -39,6 +40,8 @@ class UpdateCollectionField(serializers.ListField):
                     'sum_type': pkg['sum_type'],
                     'version': pkg['version'],
                 })
+            if collection.module:
+                coll_base['module'] = json.loads(collection.module)
             ret.append(coll_base)
         return ret
 
