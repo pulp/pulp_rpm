@@ -19,6 +19,7 @@ from pulpcore.plugin.serializers import (
 
 from pulp_rpm.app.models import (
     Modulemd,
+    ModulemdDefaults,
     Package,
     RpmDistribution,
     RpmRemote,
@@ -505,3 +506,25 @@ class ModulemdSerializer(SingleArtifactContentSerializer):
             'artifacts', 'dependencies', 'packages'
         )
         model = Modulemd
+
+
+class ModulemdDefaultsSerializer(SingleArtifactContentSerializer):
+    """
+    ModulemdDefaults serializer.
+    """
+
+    module = serializers.CharField(
+        help_text=_("Modulemd name.")
+    )
+    stream = serializers.CharField(
+        help_text=_("Modulemd default stream.")
+    )
+    profiles = serializers.CharField(
+        help_text=_("Default profiles for modulemd streams.")
+    )
+
+    class Meta:
+        fields = (
+            'module', 'stream', 'profiles'
+        )
+    model = ModulemdDefaults
