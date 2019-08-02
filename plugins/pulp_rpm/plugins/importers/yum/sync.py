@@ -20,7 +20,6 @@ from pulp.common.plugins import importer_constants
 from pulp.plugins.util import nectar_config as nectar_utils
 from pulp.server import util
 from pulp.server.controllers import repository as repo_controller
-from pulp.server.db.model import Importer
 from pulp.server.db.model import LazyCatalogEntry
 from pulp.server.exceptions import PulpCodedException
 from pulp.server.managers.repo import _common as common_utils
@@ -370,10 +369,8 @@ class RepoSync(object):
 
             # If we're here, sync was successful (for some definition of 'success')
             # If feed-url had been updated, clear the flag set in config
-            importer = Importer.objects.get(id=self.conduit.importer_object_id)
-            if importer._get_scratchpad_entry(importer_constants.KEY_FEED_UPDATED):
-                importer._set_scratchpad_entry(importer_constants.KEY_FEED_UPDATED, False)
-                importer.save()
+            if self.conduit.get_scratchpad_entry(importer_constants.KEY_FEED_UPDATED):
+                self.conduit.set_scratchpad_entry(importer_constants.KEY_FEED_UPDATED, False)
 
             if self.config.override_config.get(importer_constants.KEY_FEED):
                 self.erase_repomd_details()
@@ -767,8 +764,10 @@ class RepoSync(object):
         try:
             unit.save()
         except NotUniqueError:
-            unit = unit.__class__.objects.filter(**unit.unit_key).first()
-
+            old_unit = unit.__class__.objects.filter(**unit.unit_key).first()
+            old_unit.relativepath = unit.relativepath
+            old_unit.save()
+            unit = old_unit
         return unit
 
     def signature_filter_passed(self, unit):
@@ -835,29 +834,24 @@ class RepoSync(object):
 
             units_to_download = self._filtered_unit_generator(package_model_generator,
                                                               rpms_to_download)
+            feed_updated = self.conduit.get_scratchpad_entry(importer_constants.KEY_FEED_UPDATED)
 
             if self.download_deferred:
                 catalog = PackageCatalog(self.conduit.importer_object_id, url)
-                importer = Importer.objects.get(id=self.conduit.importer_object_id)
 
                 for unit in units_to_download:
                     unit.downloaded = False
-                    # If feed-url has changed since last-sync, we need to:
-                    #   - delete existing matching-unit if there is one, and
-                    #   - delete existing LazyCatalogEntry if there is one,
-                    # in order to safely rebuild LCE with possibly-new download-urls
-                    # [NOTE: "if there is one" is almost certainly paranoia at this point in the
-                    # code-flow. Paranoia is not always invalid, however...]
-                    if importer._get_scratchpad_entry(importer_constants.KEY_FEED_UPDATED):
-                        units = unit.__class__.objects.filter(**unit.unit_key)
-                        repo_controller.disassociate_units(self.repo, units)
-                        for old_unit in units:
-                            old_unit.delete()
-                        catalog.delete(unit)
-
+                    # If feed-url has changed since last-sync, we need to delete existing
+                    # LazyCatalogEntry if there is one, in order to safely rebuild LCE with
+                    # possibly-new download-urls
+                    if feed_updated:
+                        num_unit_found = unit.__class__.objects.filter(**unit.unit_key).count()
+                        if num_unit_found > 0: # We have an LCE for this-nevra, punt it
+                            catalog.delete(unit)
                     unit = self.add_rpm_unit(metadata_files, unit)
                     self.associate_rpm_unit(unit)
                     catalog.add(unit, unit.download_path)
+                # we're done here, because we're not going to actually-download anything
                 return
 
             download_wrapper = alternate.Packages(
@@ -906,25 +900,21 @@ class RepoSync(object):
 
                     units_to_download = self._filtered_unit_generator(package_model_generator,
                                                                       drpms_to_download)
+                    feed_updated = \
+                        self.conduit.get_scratchpad_entry(importer_constants.KEY_FEED_UPDATED)
 
                     if self.download_deferred:
                         catalog = PackageCatalog(self.conduit.importer_object_id, url)
-                        importer = Importer.objects.get(id=self.conduit.importer_object_id)
 
                         for unit in units_to_download:
                             unit.downloaded = False
-                            # If feed-url has changed since last-sync, we need to:
-                            #   - delete existing matching-unit if there is one, and
-                            #   - delete existing LazyCatalogEntry if there is one,
-                            # in order to safely rebuild LCE with possibly-new download-urls
-                            # [NOTE: "if there is one" is almost certainly paranoia at this point
-                            # in the code-flow. Paranoia is not always invalid, however...]
-                            if importer._get_scratchpad_entry(importer_constants.KEY_FEED_UPDATED):
-                                units = unit.__class__.objects.filter(**unit.unit_key)
-                                repo_controller.disassociate_units(self.repo, units)
-                                for old_unit in units:
-                                    old_unit.delete()
-                                catalog.delete(unit)
+                            # If feed-url has changed since last-sync, we need to delete existing
+                            # LazyCatalogEntry if there is one, in order to safely rebuild LCE with
+                            # possibly-new download-urls
+                            if feed_updated:
+                                num_unit_found = unit.__class__.objects.filter(**unit.unit_key).count()
+                                if num_unit_found > 0:  # We have an LCE for this-nevra, punt it
+                                    catalog.delete(unit)
                             unit = self.add_rpm_unit(metadata_files, unit)
                             self.associate_rpm_unit(unit)
                             catalog.add(unit, unit.download_path)

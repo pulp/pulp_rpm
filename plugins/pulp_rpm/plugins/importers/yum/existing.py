@@ -7,7 +7,6 @@ from pulp.plugins.loader import api as plugin_api
 from pulp.plugins.util.misc import paginate
 from pulp.server.controllers import repository as repo_controller
 from pulp.server.controllers import units as units_controller
-from pulp.server.db.model import Importer
 from pulp.server.exceptions import PulpCodedException
 
 from pulp_rpm.common import ids
@@ -125,10 +124,9 @@ def check_all_and_associate(wanted, conduit, config, download_deferred, catalog)
 
     sorted_units = _sort_by_type(wanted.iterkeys())
 
-    importer = Importer.objects.get(id=conduit.importer_object_id)
     # If UPDATED doesn't exist in the importer's config, or it exists but is false - feed-url
     # hasn't changed since last sync
-    same_feed = not importer._get_scratchpad_entry(importer_constants.KEY_FEED_UPDATED)
+    same_feed = not conduit.get_scratchpad_entry(importer_constants.KEY_FEED_UPDATED)
 
     for unit_type, values in sorted_units.iteritems():
         model = plugin_api.get_unit_model_by_id(unit_type)
