@@ -846,7 +846,7 @@ class RepoSync(object):
                     # possibly-new download-urls
                     if feed_updated:
                         num_unit_found = unit.__class__.objects.filter(**unit.unit_key).count()
-                        if num_unit_found > 0: # We have an LCE for this-nevra, punt it
+                        if num_unit_found > 0:  # We have an LCE for this-nevra, punt it
                             catalog.delete(unit)
                     unit = self.add_rpm_unit(metadata_files, unit)
                     self.associate_rpm_unit(unit)
@@ -912,7 +912,8 @@ class RepoSync(object):
                             # LazyCatalogEntry if there is one, in order to safely rebuild LCE with
                             # possibly-new download-urls
                             if feed_updated:
-                                num_unit_found = unit.__class__.objects.filter(**unit.unit_key).count()
+                                num_unit_found = \
+                                    unit.__class__.objects.filter(**unit.unit_key).count()
                                 if num_unit_found > 0:  # We have an LCE for this-nevra, punt it
                                     catalog.delete(unit)
                             unit = self.add_rpm_unit(metadata_files, unit)
