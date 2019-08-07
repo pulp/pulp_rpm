@@ -608,10 +608,10 @@ def module_defaults_unit_to_solvable(solv_repo, unit):
             # mark the module such that it requires its default i.e this solvable
             module.add_deparray(solv.SOLVABLE_REQUIRES, module_default_depid)
 
-        # TODO: Since we're copying the module default metadata as-is without modification or
-        # regeneration, do we need to add a "requires" for every stream for which there is a
-        # profile? Is it OK to have profiles for module streams that aren't present or is that
-        # as terrible an idea as it sounds?
+        # Note: Since we're copying the module default metadata as-is without modification or
+        # regeneration, that means that "profiles" may be copied for streams that do not exist.
+        # We think this is probably OK but if it is not, the solution is to "require" all streams
+        # for which a profile exists.
 
     module_defaults_basic_deps(solvable, name, stream)
 
