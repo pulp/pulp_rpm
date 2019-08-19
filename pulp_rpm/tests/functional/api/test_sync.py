@@ -30,7 +30,7 @@ from pulp_rpm.tests.functional.constants import (
     RPM_UPDATERECORD_ID,
     RPM_ADVISORY_CONTENT_NAME,
 )
-from pulp_rpm.tests.functional.utils import gen_rpm_remote, skip_if
+from pulp_rpm.tests.functional.utils import gen_rpm_remote
 from pulp_rpm.tests.functional.utils import set_up_module as setUpModule  # noqa:F401
 
 
@@ -244,15 +244,10 @@ class EPELSyncTestCase(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        """Skip test if the test is running in Travis-CI.
+        """Skip test if the test is not running on Jenkins."""
+        if 'JENKINS_HOME' not in os.environ:
+            raise unittest.SkipTest('Slow test. It should only run on Jenkins')
 
-        See: https://docs.travis-ci.com/user/environment-variables/
-
-        TRAVIS environment variable is available to all builds.
-        """
-        cls.travis = 'TRAVIS' in os.environ
-
-    @skip_if(bool, 'travis', True)
     def test_sync_large_repo(self):
         """Sync large EPEL repository."""
         cfg = config.get_config()
