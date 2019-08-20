@@ -737,18 +737,16 @@ class Solver(object):
         if self._loaded:
             return
 
-        # Load the primary source and (if provided) target repos
-        self.load_source_repo(self.primary_source_repo.repo_id)
-        if self.primary_target_repo:
-            self.load_target_repo(self.primary_target_repo.repo_id)
+        source_repos = \
+            set([self.primary_source_repo.repo_id]) | set(self._additional_repo_mapping.keys())
+        target_repos = \
+            set([self.primary_target_repo.repo_id]) | set(self._additional_repo_mapping.values())
 
-        # Load the additional source and target repos, if provided
-        if self._additional_repo_mapping:
-            for source_repo_id in set(self._additional_repo_mapping.keys()):
-                self.load_source_repo(source_repo_id)
+        for source_repo_id in source_repos:
+            self.load_source_repo(source_repo_id)
 
-            for target_repo_id in set(self._additional_repo_mapping.values()):
-                self.load_target_repo(target_repo_id)
+        for target_repo_id in target_repos:
+            self.load_target_repo(target_repo_id)
 
         self._pool.installed = self.mapping.get_repo(COMBINED_TARGET_REPO_NAME)
 
