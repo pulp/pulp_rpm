@@ -118,6 +118,7 @@ CONFIG_SKIP = 'type_skip_list'
 CONFIG_SSL_AUTH_CA_CERT = 'ssl_auth_ca_cert'
 
 # Copy operation config
+CONFIG_ADDITIONAL_REPOS = 'additional_repos'
 CONFIG_RECURSIVE = 'recursive'
 # use the conservative dependency solver to compute unit dependencies
 CONFIG_RECURSIVE_CONSERVATIVE = 'recursive_conservative'
