@@ -741,6 +741,11 @@ class Modulemd(Content):
     artifacts = models.TextField(default='[]')
     packages = models.ManyToManyField(Package)
 
+    class Meta:
+        unique_together = (
+            'name', 'stream', 'version', 'context', 'arch'
+        )
+
 
 class ModulemdDefaults(Content):
     """
@@ -760,3 +765,5 @@ class ModulemdDefaults(Content):
     module = models.CharField(max_length=255)
     stream = models.CharField(max_length=255)
     profiles = models.TextField(default='[]')
+
+    digest = models.CharField(unique=True, max_length=64)
