@@ -683,6 +683,184 @@ class UpdateReference(Model):
         }
 
 
+class PackageGroup(Content):
+    """
+    The "PackageGroup" content type.
+
+    Maps directly to the fields provided by libcomps.
+    https://github.com/rpm-software-management/libcomps
+
+    Fields:
+
+        id (Text):
+            ID of the group
+        default (Bool):
+            Flag to identify whether the group is a default
+        user_visible (Bool):
+            Flag to identify if the group is visible to the user
+
+        display_order (Int):
+            Number representing the order of display
+        name (Text):
+            Name of the group
+        description (Text):
+            Description of the group
+        packages (Text):
+            The list of packages in this group
+        biarch_only (Bool):
+            Flag to identify whether the group is biarch
+        desc_by_lang (Text):
+            A dictionary of descriptions by language
+        name_by_lang (Text):
+            A dictionary of names by language
+        digest (Text):
+            A checksum for the group
+    """
+
+    TYPE = 'packagegroup'
+
+    # Required metadata
+    id = models.CharField(max_length=255)
+
+    default = models.BooleanField(default=False)
+    user_visible = models.BooleanField(default=False)
+
+    display_order = models.IntegerField()
+    name = models.CharField(max_length=255)
+    description = models.TextField()
+    packages = models.TextField()
+
+    biarch_only = models.BooleanField(default=False)
+
+    desc_by_lang = models.TextField()
+    name_by_lang = models.TextField()
+
+    digest = models.CharField(unique=True, max_length=64)
+
+    class Meta:
+        default_related_name = "%(app_label)s_%(model_name)s"
+
+
+class Category(Content):
+    """
+    The "Category" content type. Formerly "PackageCategory" in Pulp 2.
+
+    Maps directly to the fields provided by libcomps.
+    https://github.com/rpm-software-management/libcomps
+
+    Fields:
+
+        id (Text):
+            ID of the category
+        name (Text):
+            The name of the category
+        description (Text):
+            The description of the category
+        display_order (Int):
+            Number representing the order of display
+        group_ids (Text):
+            A list of group ids
+        desc_by_lang (Text):
+            A dictionary of descriptions by language
+        name_by_lang (Text):
+            A dictionary of names by language
+        digest (Text):
+            A checksum for the category
+    """
+
+    TYPE = 'category'
+
+    # Required metadata
+    id = models.CharField(max_length=255)
+
+    name = models.CharField(max_length=255)
+    description = models.TextField()
+    display_order = models.IntegerField()
+
+    group_ids = models.TextField(default='[]')
+
+    desc_by_lang = models.TextField()
+    name_by_lang = models.TextField()
+
+    digest = models.CharField(unique=True, max_length=64)
+
+    class Meta:
+        default_related_name = "%(app_label)s_%(model_name)s"
+
+
+class Environment(Content):
+    """
+    The "Environment" content type. Formerly "PackageEnvironment" in Pulp 2.
+
+    Maps directly to the fields provided by libcomps.
+    https://github.com/rpm-software-management/libcomps
+
+    Fields:
+
+        id (Text):
+            ID of the environment
+        name (Text):
+            The name of the environment
+        description (Text):
+            The description of the environment
+        display_order (Int):
+            Number representing the order of display
+        group_ids (Text):
+            A list of group ids
+        option_ids (Text):
+            A list of option ids
+        desc_by_lang (Text):
+            A dictionary of descriptions by language
+        name_by_lang (Text):
+            A dictionary of names by language
+        digest (Text):
+            A checksum for the environment
+    """
+
+    TYPE = 'environment'
+
+    # Required metadata
+    id = models.CharField(max_length=255)
+
+    name = models.CharField(max_length=255)
+    description = models.TextField()
+    display_order = models.IntegerField()
+
+    group_ids = models.TextField(default='[]')
+    option_ids = models.TextField(default='[]')
+
+    desc_by_lang = models.TextField()
+    name_by_lang = models.TextField()
+
+    digest = models.CharField(unique=True, max_length=64)
+
+    class Meta:
+        default_related_name = "%(app_label)s_%(model_name)s"
+
+
+class Langpacks(Content):
+    """
+    The "Langpacks" content type. Formerly "PackageLangpacks" in Pulp 2.
+
+    Maps directly to the fields provided by libcomps.
+    https://github.com/rpm-software-management/libcomps
+
+    Fields:
+
+        matches (Dict):
+            The langpacks dictionary
+    """
+
+    TYPE = 'langpacks'
+
+    matches = models.TextField()
+
+    digest = models.CharField(unique=True, max_length=64)
+
+    class Meta:
+        default_related_name = "%(app_label)s_%(model_name)s"
+
+
 class RpmRemote(Remote):
     """
     Remote for "rpm" content.
@@ -735,9 +913,9 @@ class Modulemd(Content):
             Module artifact architecture.
         dependencies (Text):
             Module dependencies, if any.
-        artifacts (List):
+        artifacts (Text):
             Artifacts shipped with this module.
-        packages (List):
+        packages (Text):
             List of Packages connected to this modulemd.
     """
 
@@ -770,8 +948,10 @@ class ModulemdDefaults(Content):
             Modulemd name.
         stream (Text):
             Modulemd default stream.
-        profiles (List):
+        profiles (Text):
             Default profiles for modulemd streams.
+        digest (Text):
+            Modulmd digest
     """
 
     TYPE = "modulemd-defaults"
