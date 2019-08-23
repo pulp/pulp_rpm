@@ -215,6 +215,7 @@ class Package(Content):
             n=self.name, v=self.version, r=self.release, a=self.arch)
 
     class Meta:
+        default_related_name = "%(app_label)s_%(model_name)s"
         unique_together = (
             'name', 'epoch', 'version', 'release', 'arch', 'checksum_type', 'pkgId'
         )
@@ -481,6 +482,9 @@ class UpdateRecord(Content):
                 update, CR_UPDATE_RECORD_ATTRS.PUSHCOUNT) or ''
         }
 
+    class Meta:
+        default_related_name = "%(app_label)s_%(model_name)s"
+
 
 class UpdateCollection(Model):
     """
@@ -686,6 +690,9 @@ class RpmRemote(Remote):
 
     TYPE = 'rpm'
 
+    class Meta:
+        default_related_name = "%(app_label)s_%(model_name)s"
+
 
 class RpmPublication(Publication):
     """
@@ -694,6 +701,9 @@ class RpmPublication(Publication):
 
     TYPE = 'rpm'
 
+    class Meta:
+        default_related_name = "%(app_label)s_%(model_name)s"
+
 
 class RpmDistribution(PublicationDistribution):
     """
@@ -701,6 +711,9 @@ class RpmDistribution(PublicationDistribution):
     """
 
     TYPE = 'rpm'
+
+    class Meta:
+        default_related_name = "%(app_label)s_%(model_name)s"
 
 
 class Modulemd(Content):
@@ -742,6 +755,7 @@ class Modulemd(Content):
     packages = models.ManyToManyField(Package)
 
     class Meta:
+        default_related_name = "%(app_label)s_%(model_name)s"
         unique_together = (
             'name', 'stream', 'version', 'context', 'arch'
         )
@@ -767,3 +781,6 @@ class ModulemdDefaults(Content):
     profiles = models.TextField(default='[]')
 
     digest = models.CharField(unique=True, max_length=64)
+
+    class Meta:
+        default_related_name = "%(app_label)s_%(model_name)s"

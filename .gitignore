@@ -5,6 +5,7 @@
 *.egg-info
 dist
 build
+pip-wheel-metadata/
 eggs
 parts
 bin
@@ -37,6 +38,9 @@ pip-log.txt
 # PyCharm
 .idea
 cover
+
+#VScode
+.vscode/
 
 # Ninja IDE
 *.nja
