@@ -5,8 +5,8 @@ import createrepo_c as cr
 
 from django.db import models
 from pulpcore.plugin.models import (
-    Artifact,
     Content,
+    ContentArtifact,
     Model,
     Remote,
     Repository,
@@ -1109,7 +1109,6 @@ class Image(Model):
     Relations:
 
         distribution_tree (models.ForeignKey): The associated DistributionTree
-        artifact (models.ForeignKey): The associated Artifact
 
     """
 
@@ -1119,9 +1118,20 @@ class Image(Model):
     distribution_tree = models.ForeignKey(
         DistributionTree, on_delete=models.CASCADE, related_name='images'
     )
-    artifact = models.ForeignKey(
-        Artifact, on_delete=models.PROTECT, related_name='+'
-    )
+
+    @property
+    def artifact(self):
+        """
+        Returns artifact object.
+        """
+        content_artifact = ContentArtifact.objects.filter(
+            content=self.distribution_tree,
+            relative_path=self.path,
+        ).first()
+
+        artifact = content_artifact.artifact if content_artifact else None
+
+        return artifact
 
     class Meta:
         unique_together = (
