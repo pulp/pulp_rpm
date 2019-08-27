@@ -691,13 +691,15 @@ class UnitSolvableMapping(object):
         ret = collections.defaultdict(set)
         for repo, unit_ids in repo_unit_map.items():
             for paginated_unit_ids in misc_utils.paginate(unit_ids):
+                modulemd_fields = ['_storage_path']
+                modulemd_fields.extend(models.ModulemdDefaults.unit_key_fields)
                 iterator = itertools.chain(
                     models.RPM.objects.filter(id__in=paginated_unit_ids).only(
                         *models.RPM.unit_key_fields),
                     models.Modulemd.objects.filter(id__in=paginated_unit_ids).only(
                         *models.Modulemd.unit_key_fields),
                     models.ModulemdDefaults.objects.filter(id__in=paginated_unit_ids).only(
-                        *models.ModulemdDefaults.unit_key_fields))
+                        *modulemd_fields))
                 for unit in iterator:
                     ret[repo].add(unit)
         return ret
