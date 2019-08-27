@@ -1,5 +1,7 @@
 import asyncio
+import gzip
 import hashlib
+import json
 import logging
 import os
 
@@ -27,7 +29,13 @@ from pulpcore.plugin.stages import (
 
 
 from pulp_rpm.app.constants import (
-    CHECKSUM_TYPES, PACKAGE_REPODATA, PACKAGE_DB_REPODATA, UPDATE_REPODATA
+    CHECKSUM_TYPES,
+    MODULAR_REPODATA,
+    PACKAGE_DB_REPODATA,
+    PACKAGE_REPODATA,
+    PULP_MODULE_ATTR,
+    PULP_MODULEDEFAULTS_ATTR,
+    UPDATE_REPODATA
 )
 from pulp_rpm.app.models import (
     Addon,
@@ -35,6 +43,8 @@ from pulp_rpm.app.models import (
     DistributionTree,
     Image,
     Variant,
+    Modulemd,
+    ModulemdDefaults,
     Package,
     RepoMetadataFile,
     RpmRemote,
@@ -44,6 +54,12 @@ from pulp_rpm.app.models import (
     UpdateReference,
 )
 from pulp_rpm.app.tasks.utils import get_kickstart_data, repodata_exists
+
+from pulp_rpm.app.modulemd import parse_defaults, parse_modulemd
+
+import gi
+gi.require_version('Modulemd', '2.0')
+from gi.repository import Modulemd as mmdlib  # noqa: E402
 
 log = logging.getLogger(__name__)
 
@@ -265,6 +281,9 @@ class RpmFirstStage(Stage):
         """
         packages_pb = ProgressBar(message='Parsed Packages', code='parsing.packages')
         errata_pb = ProgressBar(message='Parsed Erratum', code='parsing.errata')
+        modulemd_pb = ProgressBar(message='Parse Modulemd', code='parsing.modulemds')
+        modulemd_defaults_pb = ProgressBar(message='Parse Modulemd-defaults',
+                                           code='parsing.modulemddefaults')
 
         packages_pb.save()
         errata_pb.save()
@@ -304,6 +323,9 @@ class RpmFirstStage(Stage):
             repomd = cr.Repomd(repomd_path)
             package_repodata_urls = {}
             downloaders = []
+            modulemd_list = list()
+            nevra_to_module = defaultdict(dict)
+            modulemd_results = None
 
             for record in repomd.records:
                 if record.type in PACKAGE_REPODATA:
@@ -313,6 +335,10 @@ class RpmFirstStage(Stage):
                     updateinfo_url = urljoin(remote_url, record.location_href)
                     downloader = self.remote.get_downloader(url=updateinfo_url)
                     downloaders.append([downloader.run()])
+                elif record.type in MODULAR_REPODATA:
+                    modules_url = urljoin(self.remote.url, record.location_href)
+                    modulemd_downloader = self.remote.get_downloader(url=modules_url)
+                    modulemd_results = await modulemd_downloader.run()
                 elif record.type not in PACKAGE_DB_REPODATA:
                     file_data = {record.checksum_type: record.checksum, "size": record.size}
                     da = DeclarativeArtifact(
@@ -328,6 +354,65 @@ class RpmFirstStage(Stage):
                         checksum=record.checksum,
                     )
                     dc = DeclarativeContent(content=repo_metadata_file, d_artifacts=[da])
+                    await self.put(dc)
+
+            # we have to sync module.yaml first if it exists, to make relations to packages
+            if modulemd_results:
+                modulemd_index = mmdlib.ModuleIndex.new()
+                open_func = gzip.open if modulemd_results.url.endswith('.gz') else open
+                with open_func(modulemd_results.path, 'r') as moduleyaml:
+                    modulemd_index.update_from_string(
+                        moduleyaml.read().decode(), True
+                    )
+
+                modulemd_names = modulemd_index.get_module_names() or []
+                modulemd_all = parse_modulemd(modulemd_names, modulemd_index)
+
+                modulemd_pb.total = len(modulemd_all)
+                modulemd_pb.state = 'running'
+                modulemd_pb.save()
+
+                for modulemd in modulemd_all:
+                    artifact = modulemd.pop('artifact')
+                    relative_path = '{}{}{}{}{}snippet'.format(
+                        modulemd[PULP_MODULE_ATTR.NAME], modulemd[PULP_MODULE_ATTR.STREAM],
+                        modulemd[PULP_MODULE_ATTR.VERSION], modulemd[PULP_MODULE_ATTR.CONTEXT],
+                        modulemd[PULP_MODULE_ATTR.ARCH]
+                    )
+                    da = DeclarativeArtifact(
+                        artifact=artifact,
+                        relative_path=relative_path,
+                        url=modules_url
+                    )
+                    modulemd_content = Modulemd(**modulemd)
+                    dc = DeclarativeContent(content=modulemd_content, d_artifacts=[da])
+                    dc.extra_data = defaultdict(list)
+
+                    # dc.content.artifacts are Modulemd artifacts
+                    for artifact in json.loads(dc.content.artifacts):
+                        nevra_to_module.setdefault(artifact, set()).add(dc)
+                    modulemd_list.append(dc)
+
+                modulemd_default_names = parse_defaults(modulemd_index)
+
+                modulemd_defaults_pb.total = len(modulemd_default_names)
+                modulemd_defaults_pb.state = 'running'
+                modulemd_defaults_pb.save()
+
+                for default in modulemd_default_names:
+                    artifact = default.pop('artifact')
+                    relative_path = '{}{}snippet'.format(
+                        default[PULP_MODULEDEFAULTS_ATTR.MODULE],
+                        default[PULP_MODULEDEFAULTS_ATTR.STREAM]
+                    )
+                    da = DeclarativeArtifact(
+                        artifact=artifact,
+                        relative_path=relative_path,
+                        url=modules_url
+                    )
+                    default_content = ModulemdDefaults(**default)
+                    modulemd_defaults_pb.increment()
+                    dc = DeclarativeContent(content=default_content, d_artifacts=[da])
                     await self.put(dc)
 
             # to preserve order, downloaders are created after all repodata urls are identified
@@ -374,6 +459,15 @@ class RpmFirstStage(Stage):
                                 deferred_download=self.deferred_download
                             )
                             dc = DeclarativeContent(content=package, d_artifacts=[da])
+                            dc.extra_data = defaultdict(list)
+
+                            # find if a package relates to a modulemd
+                            if dc.content.nevra in nevra_to_module.keys():
+                                dc.content.is_modular = True
+                                for dc_modulemd in nevra_to_module[dc.content.nevra]:
+                                    dc.extra_data['modulemd_relation'].append(dc_modulemd)
+                                    dc_modulemd.extra_data['package_relation'].append(dc)
+
                             packages_pb.increment()
                             await self.put(dc)
 
@@ -411,10 +505,19 @@ class RpmFirstStage(Stage):
                             dc.extra_data = future_relations
                             await self.put(dc)
 
+            # now send modules down the pipeline since all relations have been set up
+            for modulemd in modulemd_list:
+                modulemd_pb.increment()
+                await self.put(modulemd)
+
         packages_pb.state = 'completed'
         errata_pb.state = 'completed'
+        modulemd_pb.state = 'completed'
+        modulemd_defaults_pb.state = 'completed'
         packages_pb.save()
         errata_pb.save()
+        modulemd_pb.save()
+        modulemd_defaults_pb.save()
 
 
 class RpmContentSaver(ContentSaver):
@@ -494,29 +597,44 @@ class RpmContentSaver(ContentSaver):
             if isinstance(declarative_content.content, DistributionTree):
                 _handle_distribution_tree(declarative_content)
                 continue
-            if not isinstance(declarative_content.content, UpdateRecord):
-                continue
-            update_record = declarative_content.content
+            elif isinstance(declarative_content.content, UpdateRecord):
+                update_record = declarative_content.content
 
-            relations_exist = update_record.collections.count() or update_record.references.count()
-            if relations_exist:
-                # existing content which was retrieved from the db at earlier stages
-                continue
+                relations_exist = (
+                    update_record.collections.count() or update_record.references.count()
+                )
+                if relations_exist:
+                    # existing content which was retrieved from the db at earlier stages
+                    continue
 
-            future_relations = declarative_content.extra_data
-            update_collections = future_relations.get('collections') or {}
-            update_references = future_relations.get('references') or []
+                future_relations = declarative_content.extra_data
+                update_collections = future_relations.get('collections') or {}
+                update_references = future_relations.get('references') or []
 
-            for update_collection, packages in update_collections.items():
-                update_collection.update_record = update_record
-                update_collections_to_save.append(update_collection)
-                for update_collection_package in packages:
-                    update_collection_package.update_collection = update_collection
-                    update_collection_packages_to_save.append(update_collection_package)
+                for update_collection, packages in update_collections.items():
+                    update_collection.update_record = update_record
+                    update_collections_to_save.append(update_collection)
+                    for update_collection_package in packages:
+                        update_collection_package.update_collection = update_collection
+                        update_collection_packages_to_save.append(update_collection_package)
 
-            for update_reference in update_references:
-                update_reference.update_record = update_record
-                update_references_to_save.append(update_reference)
+                for update_reference in update_references:
+                    update_reference.update_record = update_record
+                    update_references_to_save.append(update_reference)
+
+            elif isinstance(declarative_content.content, Modulemd):
+                for pkg in declarative_content.extra_data['package_relation']:
+                    try:
+                        declarative_content.content.packages.add(pkg.content)
+                    except ValueError:
+                        pass
+
+            elif isinstance(declarative_content.content, Package):
+                for modulemd in declarative_content.extra_data['modulemd_relation']:
+                    try:
+                        modulemd.content.packages.add(declarative_content.content)
+                    except ValueError:
+                        pass
 
         if update_collections_to_save:
             UpdateCollection.objects.bulk_create(update_collections_to_save)
