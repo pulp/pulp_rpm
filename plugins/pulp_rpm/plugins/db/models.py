@@ -1174,11 +1174,10 @@ class Errata(UnitMixin, ContentUnit):
 
     @property
     def module_search_dicts(self):
-        ret = self.get_unique_modules(errata_id=self.errata_id)
-        for sd in ret:
+        for mod in self.get_unique_modules(errata_id=self.errata_id):
             # FIXME: this is already a second place I need to cast, somthing's fishy
-            sd.update(version=int(sd['version']))
-        return ret
+            mod.update(version=int(mod['version']))
+            yield mod
 
     @classmethod
     def get_unique_pkglists(cls, errata_id):
