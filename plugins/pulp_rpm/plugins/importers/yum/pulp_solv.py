@@ -582,10 +582,9 @@ def module_defaults_unit_to_solvable(solv_repo, unit):
         """
         Links a module and its default with dependencies.
         """
-        if stream:
-            module_depid = pool.Dep('module({}:{})'.format(name, stream), 0)
-        else:
-            module_depid = pool.Dep('module({})'.format(name), 0)
+        # we are making all modules require the module-default regardless of they are default
+        # since the module-default can cary profile information
+        module_depid = pool.Dep('module({})'.format(name), 0)
 
         module_default_depid = pool.Dep(solvable.name)
         if not module_depid:
