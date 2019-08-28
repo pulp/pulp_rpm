@@ -23,7 +23,7 @@ from pulp_rpm.tests.functional.constants import (
     RPM_REMOTE_PATH,
 )
 from pulp_rpm.tests.functional.utils import set_up_module as setUpModule  # noqa:F401
-from pulp_rpm.tests.functional.utils import gen_yum_config_file, publish
+from pulp_rpm.tests.functional.utils import publish
 
 
 class PackageManagerConsumeTestCase(unittest.TestCase):
@@ -81,18 +81,14 @@ class PackageManagerConsumeTestCase(unittest.TestCase):
         )
         self.addCleanup(client.delete, distribution['_href'])
 
-        repo_path = gen_yum_config_file(
-            self.cfg,
-            baseurl=urljoin(
-                self.cfg.get_content_host_base_url(),
-                '//' + distribution['base_url']
-            ),
-            name=repo['name'],
-            repositoryid=repo['name']
-        )
-
+        baseurl = urljoin(self.cfg.get_content_host_base_url(),
+                          '//' + distribution['base_url'])
         cli_client = cli.Client(self.cfg)
-        self.addCleanup(cli_client.run, ('rm', repo_path), sudo=True)
+        cli_client.run(('dnf', 'config-manager', '--add-repo', baseurl))
+        repo_id = '*{}'.format(distribution['base_path'])
+        cli_client.run(('dnf', 'config-manager', '--save',
+                        '--setopt=gpgcheck=0', repo_id))
+        self.addCleanup(cli_client.run, ('dnf', 'config-manager', '--disable', repo_id), sudo=True)
         rpm_name = 'walrus'
         self.pkg_mgr.install(rpm_name)
         self.addCleanup(self.pkg_mgr.uninstall, rpm_name)
