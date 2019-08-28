@@ -202,17 +202,25 @@ def is_version_newer(new_version, old_version):
     :return: true if version is a newer, false if it's not
     :rtype bool
 
-    :raises ValueError: if a version cannot be converted to int
+    Compares versions as floating-point-numbers if possible.
+    If 'newer' is empty, ignore and assume not-newer.
+    If 'older' is empty, assume older-version of zero.
+    If either version is non-numeric, assume always-newer.
     """
     if not new_version:
         return False
 
-    new = float(new_version)
+    try:
+        new = float(new_version)
 
-    if not old_version:
-        old = 0
-    else:
-        old = float(old_version)
+        if not old_version:
+            old = 0
+        else:
+            old = float(old_version)
+    except ValueError:
+        # SOMEBODY isn't numeric - pick-newer
+        return True
+
     return new > old
 
 
