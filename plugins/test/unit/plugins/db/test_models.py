@@ -456,6 +456,51 @@ class TestErrata(unittest.TestCase):
         uploaded_erratum.version = 2
         self.assertTrue(existing_erratum.update_needed(uploaded_erratum))
 
+    def test_update_needed_non_numeric_version(self):
+        """
+        Assert that errata with non-numeric versions always take 'new'
+        """
+        existing_erratum, uploaded_erratum = models.Errata(), models.Errata()
+        existing_erratum.updated = '2019-01-01 00:00:00 UTC'
+        uploaded_erratum.updated = '2019-01-01 00:00:00 UTC'
+        # Should do numeric-compare
+        existing_erratum.version = "003"
+        uploaded_erratum.version = 1.0
+        self.assertFalse(existing_erratum.update_needed(uploaded_erratum))
+        existing_erratum.version = 1.0
+        uploaded_erratum.version = "003"
+        self.assertTrue(existing_erratum.update_needed(uploaded_erratum))
+        # Should give up and return update-needed
+        existing_erratum.version = 1
+        uploaded_erratum.version = "1-3"
+        self.assertTrue(existing_erratum.update_needed(uploaded_erratum))
+        existing_erratum.version = "1-2"
+        uploaded_erratum.version = 1
+        self.assertTrue(existing_erratum.update_needed(uploaded_erratum))
+        existing_erratum.version = "1-0"
+        uploaded_erratum.version = "003"
+        self.assertTrue(existing_erratum.update_needed(uploaded_erratum))
+        existing_erratum.version = "hhhh"
+        uploaded_erratum.version = "ihhh"
+        self.assertTrue(existing_erratum.update_needed(uploaded_erratum))
+        # empty-existing implies 0
+        existing_erratum.version = ""
+        uploaded_erratum.version = 1
+        self.assertTrue(existing_erratum.update_needed(uploaded_erratum))
+        existing_erratum.version = None
+        uploaded_erratum.version = 1
+        self.assertTrue(existing_erratum.update_needed(uploaded_erratum))
+        existing_erratum.version = None
+        uploaded_erratum.version = -1
+        self.assertFalse(existing_erratum.update_needed(uploaded_erratum))
+        # empty-new implies no-update
+        existing_erratum.version = 1
+        uploaded_erratum.version = ""
+        self.assertFalse(existing_erratum.update_needed(uploaded_erratum))
+        existing_erratum.version = 1
+        uploaded_erratum.version = None
+        self.assertFalse(existing_erratum.update_needed(uploaded_erratum))
+
     def test_update_needed_older_erratum_newer_version(self):
         """
         Assert that if the older erratum is uploaded, but has a newer version
