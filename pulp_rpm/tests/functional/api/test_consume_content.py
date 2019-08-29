@@ -84,7 +84,7 @@ class PackageManagerConsumeTestCase(unittest.TestCase):
         baseurl = urljoin(self.cfg.get_content_host_base_url(),
                           '//' + distribution['base_url'])
         cli_client = cli.Client(self.cfg)
-        cli_client.run(('dnf', 'config-manager', '--add-repo', baseurl))
+        cli_client.run(('dnf', 'config-manager', '--add-repo', baseurl), sudo=True)
         repo_id = '*{}'.format(distribution['base_path'])
         cli_client.run(('dnf', 'config-manager', '--save',
                         '--setopt=gpgcheck=0', repo_id))
