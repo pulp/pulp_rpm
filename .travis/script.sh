@@ -108,16 +108,13 @@ export CMD_PREFIX="sudo kubectl exec $PULP_API_POD --"
 # This has to be done after wait_for_pulp (although not at the very end of it.)
 $CMD_PREFIX pip3 install pytest mock
 # Many functional tests require these
-$CMD_PREFIX dnf install -y lsof which dnf-plugins-core
+$CMD_PREFIX dnf install -yq lsof which dnf-plugins-core
 # The alias does not seem to work in Travis / the scripting framework
 #alias pytest="$CMD_PREFIX pytest"
 
 # Run unit tests.
 $CMD_PREFIX bash -c "sed \"s/'USER': 'pulp'/'USER': 'postgres'/g\" /etc/pulp/settings.py > unit-test.py"
-# Temporarily continue here while we fix them under containers.
-set +e
 $CMD_PREFIX bash -c "PULP_SETTINGS=/unit-test.py django-admin test  --noinput /usr/local/lib/python${TRAVIS_PYTHON_VERSION}/site-packages/pulp_rpm/tests/unit/"
-set -e
 
 # Note: This function is in the process of being merged into after_failure
 show_logs_and_return_non_zero() {
@@ -129,6 +126,7 @@ show_logs_and_return_non_zero() {
   echo -en "travis_fold:end:$containerlog"'\\r'
   return "${rc}"
 }
+export -f show_logs_and_return_non_zero
 
 # Run functional tests
 set +u

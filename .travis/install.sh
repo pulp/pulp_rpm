@@ -7,7 +7,7 @@
 #
 # For more info visit https://github.com/pulp/plugin_template
 
-set -v
+set -euv
 
 if [ "$TEST" = 'docs' ]; then
 
@@ -80,6 +80,7 @@ spec:
     username: pulp
     password: pulp
     admin_password: pulp
+  content_host: $(hostname):24816
 CRYAML
 
 # Install k3s, lightweight Kubernetes
