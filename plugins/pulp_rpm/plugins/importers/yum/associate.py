@@ -182,7 +182,10 @@ def associate(source_repo, dest_repo, import_conduit, config, units=None):
         )
         failed_units |= units_to_copy - associated_units
 
-        if associated_units:
+        # Update content unit counts
+        # This is normally done by core for the destination repository, however, that will
+        # not update things for our additional repositories, so we have to do it ourself
+        if associated_units and dst_repo.repo_id != dest_repo.repo_id:
             repo_controller.update_last_unit_added(dst_repo.repo_id)
             repo_controller.rebuild_content_unit_counts(dst_repo)
 
