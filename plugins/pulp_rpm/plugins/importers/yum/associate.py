@@ -189,6 +189,16 @@ def associate(source_repo, dest_repo, import_conduit, config, units=None):
             repo_controller.update_last_unit_added(dst_repo.repo_id)
             repo_controller.rebuild_content_unit_counts(dst_repo)
 
+    # filter out these types from the set of failed units because they must be cloned, not
+    # simply copied, and the cloned units are not identical to the originals and thus
+    # get erroneously included in the set of failed units.
+    # this is not a good "solution" but a "good solution" is not forthcoming. this has also
+    # been a longstanding issue that went totally unnoticed for a long time.
+    failed_units = set([
+        unit for unit in failed_units if not
+        isinstance(unit, (models.YumMetadataFile, models.ModulemdDefaults))
+    ])
+
     # allow garbage collection
     del units
 
