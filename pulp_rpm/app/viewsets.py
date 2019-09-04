@@ -3,7 +3,7 @@ from gettext import gettext as _
 from django.db import transaction
 from django.db.utils import IntegrityError
 from drf_yasg.utils import swagger_auto_schema
-from rest_framework import serializers, status, viewsets
+from rest_framework import serializers, status, viewsets, mixins
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.parsers import FormParser, MultiPartParser
@@ -19,15 +19,25 @@ from pulpcore.plugin.viewsets import (
     ContentFilter,
     ContentViewSet,
     RemoteViewSet,
+    NamedModelViewSet,
     OperationPostponedResponse,
     PublicationViewSet
 )
 
 from pulp_rpm.app import tasks
 from pulp_rpm.app.shared_utils import _prepare_package
-from pulp_rpm.app.models import Package, RpmDistribution, RpmRemote, RpmPublication, UpdateRecord
+from pulp_rpm.app.models import (
+    DistributionTree,
+    Package,
+    RpmDistribution,
+    RpmRemote,
+    RpmPublication,
+    UpdateRecord
+)
+
 from pulp_rpm.app.serializers import (
     CopySerializer,
+    DistributionTreeSerializer,
     MinimalPackageSerializer,
     MinimalUpdateRecordSerializer,
     OneShotUploadSerializer,
@@ -303,3 +313,17 @@ class CopyViewSet(viewsets.ViewSet):
             kwargs={}
         )
         return OperationPostponedResponse(async_result, request)
+
+
+class DistributionTreeViewSet(NamedModelViewSet,
+                              mixins.RetrieveModelMixin,
+                              mixins.ListModelMixin,
+                              mixins.DestroyModelMixin):
+    """
+    Distribution Tree Viewset.
+
+    """
+
+    endpoint_name = 'distribution_trees'
+    queryset = DistributionTree.objects.all()
+    serializer_class = DistributionTreeSerializer

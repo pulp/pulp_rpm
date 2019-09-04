@@ -5,8 +5,9 @@ import unittest
 from urllib.parse import urljoin
 
 from pulp_smash import api, cli, config
-from pulp_smash.pulp3.constants import MEDIA_PATH, REPO_PATH
+from pulp_smash.pulp3.constants import MEDIA_PATH, REPO_PATH, ARTIFACTS_PATH
 from pulp_smash.pulp3.utils import (
+    delete_orphans,
     gen_repo,
     get_added_content,
     get_added_content_summary,
@@ -29,6 +30,9 @@ from pulp_rpm.tests.functional.constants import (
     RPM_UPDATED_UPDATEINFO_FIXTURE_URL,
     RPM_UPDATERECORD_ID,
     RPM_ADVISORY_CONTENT_NAME,
+    RPM_KICKSTART_CONTENT_NAME,
+    RPM_KICKSTART_FIXTURE_SUMMARY,
+    RPM_KICKSTART_FIXTURE_URL,
 )
 from pulp_rpm.tests.functional.utils import gen_rpm_remote
 from pulp_rpm.tests.functional.utils import set_up_module as setUpModule  # noqa:F401
@@ -42,6 +46,8 @@ class BasicSyncTestCase(unittest.TestCase):
         """Create class-wide variables."""
         cls.cfg = config.get_config()
         cls.client = api.Client(cls.cfg, api.json_handler)
+
+        delete_orphans(cls.cfg)
 
     def test_rpm(self):
         """Sync repositories with the rpm plugin.
@@ -97,6 +103,155 @@ class BasicSyncTestCase(unittest.TestCase):
         self.assertDictEqual(
             get_content_summary(repo),
             RPM_FIXTURE_SUMMARY
+        )
+        self.assertDictEqual(get_added_content_summary(repo), {})
+
+
+class KickstartSyncTestCase(unittest.TestCase):
+    """Sync repositories with the rpm plugin."""
+
+    @classmethod
+    def setUpClass(cls):
+        """Create class-wide variables."""
+        cls.cfg = config.get_config()
+        cls.client = api.Client(cls.cfg, api.json_handler)
+
+        delete_orphans(cls.cfg)
+
+    def test_rpm_kickstart(self):
+        """Sync repositories with the rpm plugin.
+
+        This test targets the following issue:
+
+
+        `Pulp #5202 <https://pulp.plan.io/issues/5202>`_
+
+        In order to sync a repository a remote has to be associated within
+        this repository. When a repository is created this version field is set
+        as None. After a sync the repository version is updated.
+
+        Do the following:
+
+        1. Create a repository and a remote.
+        2. Assert that repository version is None.
+        3. Sync the remote.
+        4. Assert that repository version is not None.
+        5. Assert that the correct number of units were added and are present
+           in the repo.
+        6. Sync the remote one more time.
+        7. Assert that repository version is different from the previous one.
+        8. Assert that the same number of are present and that no units were
+           added.
+        """
+        repo = self.client.post(REPO_PATH, gen_repo())
+        self.addCleanup(self.client.delete, repo['_href'])
+
+        # Create a remote with the standard test fixture url.
+        body = gen_rpm_remote(url=RPM_KICKSTART_FIXTURE_URL)
+        remote = self.client.post(RPM_REMOTE_PATH, body)
+        self.addCleanup(self.client.delete, remote['_href'])
+
+        # Sync the repository.
+        self.assertIsNone(repo['_latest_version_href'])
+        sync(self.cfg, remote, repo)
+        repo = self.client.get(repo['_href'])
+        for kickstart_content in get_content(repo)[RPM_KICKSTART_CONTENT_NAME]:
+            self.addCleanup(self.client.delete, kickstart_content['_href'])
+
+        # Check that we have the correct content counts.
+        self.assertIsNotNone(repo['_latest_version_href'])
+
+        self.assertDictEqual(
+            get_content_summary(repo),
+            RPM_KICKSTART_FIXTURE_SUMMARY
+        )
+        self.assertDictEqual(
+            get_added_content_summary(repo),
+            RPM_KICKSTART_FIXTURE_SUMMARY
+        )
+
+        # Sync the repository again.
+        latest_version_href = repo['_latest_version_href']
+        sync(self.cfg, remote, repo)
+        repo = self.client.get(repo['_href'])
+
+        artifacts = self.client.get(ARTIFACTS_PATH)
+        self.assertEqual(artifacts["count"], 3, artifacts)
+
+        # Check that nothing has changed since the last sync.
+        self.assertNotEqual(latest_version_href, repo['_latest_version_href'])
+        self.assertDictEqual(
+            get_content_summary(repo),
+            RPM_KICKSTART_FIXTURE_SUMMARY
+        )
+        self.assertDictEqual(get_added_content_summary(repo), {})
+
+    def test_rpm_kickstart_on_demand(self):
+        """Sync repositories with the rpm plugin.
+
+        This test targets the following issue:
+
+
+        `Pulp #5202 <https://pulp.plan.io/issues/5202>`_
+
+        In order to sync a repository a remote has to be associated within
+        this repository. When a repository is created this version field is set
+        as None. After a sync the repository version is updated.
+
+        Do the following:
+
+        1. Create a repository and a remote.
+        2. Assert that repository version is None.
+        3. Sync the remote.
+        4. Assert that repository version is not None.
+        5. Assert that the correct number of units were added and are present
+           in the repo.
+        6. Sync the remote one more time.
+        7. Assert that repository version is different from the previous one.
+        8. Assert that the same number of are present and that no units were
+           added.
+        """
+        delete_orphans(self.cfg)
+        repo = self.client.post(REPO_PATH, gen_repo())
+        self.addCleanup(self.client.delete, repo['_href'])
+
+        # Create a remote with the standard test fixture url.
+        body = gen_rpm_remote(url=RPM_KICKSTART_FIXTURE_URL, policy='on_demand')
+        remote = self.client.post(RPM_REMOTE_PATH, body)
+        self.addCleanup(self.client.delete, remote['_href'])
+
+        # Sync the repository.
+        self.assertIsNone(repo['_latest_version_href'])
+        sync(self.cfg, remote, repo)
+        repo = self.client.get(repo['_href'])
+        for kickstart_content in get_content(repo)[RPM_KICKSTART_CONTENT_NAME]:
+            self.addCleanup(self.client.delete, kickstart_content['_href'])
+
+        # Check that we have the correct content counts.
+        self.assertIsNotNone(repo['_latest_version_href'])
+
+        self.assertDictEqual(
+            get_content_summary(repo),
+            RPM_KICKSTART_FIXTURE_SUMMARY
+        )
+        self.assertDictEqual(
+            get_added_content_summary(repo),
+            RPM_KICKSTART_FIXTURE_SUMMARY
+        )
+
+        # Sync the repository again.
+        latest_version_href = repo['_latest_version_href']
+        sync(self.cfg, remote, repo)
+        repo = self.client.get(repo['_href'])
+
+        artifacts = self.client.get(ARTIFACTS_PATH)
+        self.assertEqual(artifacts["count"], 0, artifacts)
+
+        # Check that nothing has changed since the last sync.
+        self.assertNotEqual(latest_version_href, repo['_latest_version_href'])
+        self.assertDictEqual(
+            get_content_summary(repo),
+            RPM_KICKSTART_FIXTURE_SUMMARY
         )
         self.assertDictEqual(get_added_content_summary(repo), {})
 
