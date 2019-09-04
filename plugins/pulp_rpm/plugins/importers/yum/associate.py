@@ -43,11 +43,6 @@ def associate(source_repo, dest_repo, import_conduit, config, units=None):
 
     :return:                List of associated units.
     """
-    if units is None:
-        # this might use a lot of RAM since RPMs tend to have lots of metadata
-        # TODO: so we should probably do something about that
-        units = repo_controller.find_repo_content_units(source_repo, yield_content_unit=True)
-
     # get config items that we care about
     recursive = config.get(constants.CONFIG_RECURSIVE) or \
         config.get(constants.CONFIG_RECURSIVE_CONSERVATIVE)
@@ -59,21 +54,10 @@ def associate(source_repo, dest_repo, import_conduit, config, units=None):
     repo_map = additional_repos
     repo_map[source_repo.repo_id] = dest_repo.repo_id
 
-    if recursive:
-        solver = pulp_solv.Solver(
-            source_repo,
-            target_repo=dest_repo,
-            conservative=config.get(constants.CONFIG_RECURSIVE_CONSERVATIVE),
-            additional_repos=additional_repos,
-            ignore_missing=False
-            # the line above disables the code which injects "dummy solvables" to provide
-            # missing packages. it is not known whether that code is 100% necessary, but it
-            # is feeding invalid data to libsolv somehow resulting in a violated invariant
-            # and failure on an assert statement here
-            # https://github.com/openSUSE/libsolv/blob/master/src/solver.c#L1979-L1981
-        )
-        # Only loads the original source and destination repositories
-        solver.load()
+    if units is None:
+        # this might use a lot of RAM since RPMs tend to have lots of metadata
+        # TODO: so we should probably do something about that
+        units = repo_controller.find_repo_content_units(source_repo, yield_content_unit=True)
 
     # make a collection from generator to be able to iterate through it several times
     units = set(units)
@@ -112,6 +96,23 @@ def associate(source_repo, dest_repo, import_conduit, config, units=None):
         del units
 
         return associated_units, failed_units
+
+    # ========= recursive mode handling ========
+
+    solver = pulp_solv.Solver(
+        source_repo,
+        target_repo=dest_repo,
+        conservative=config.get(constants.CONFIG_RECURSIVE_CONSERVATIVE),
+        additional_repos=additional_repos,
+        ignore_missing=False
+        # the line above disables the code which injects "dummy solvables" to provide
+        # missing packages. it is not known whether that code is 100% necessary, but it
+        # is feeding invalid data to libsolv somehow resulting in a violated invariant
+        # and failure on an assert statement here
+        # https://github.com/openSUSE/libsolv/blob/master/src/solver.c#L1979-L1981
+    )
+    # Only loads the original source and destination repositories
+    solver.load()
 
     (group_ids, rpm_names, rpm_search_dicts,
         module_search_dicts) = identify_children_to_copy(units)
