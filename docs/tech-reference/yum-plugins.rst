@@ -619,12 +619,26 @@ configuration values are optional.
  make it easy to filter packages based on their signing key and does not use these key IDs for
  package signature verification.
 
-``recursive`` Boolean flag. If true, units are copied together with the latest versions
+``recursive``
+Boolean flag. If true, units are copied together with the latest versions
 of their dependencies. False by default. More information about its usage can be found in :ref:`advanced_copy_between_repositories`.
 
-``recursive_conservative`` Boolean flag. If true, units are copied together with their
+``recursive_conservative``
+Boolean flag. If true, units are copied together with their
 dependencies, unless those are already satisfied by the content in the target repository.
 False by default. More information about its usage can be found in :ref:`advanced_copy_between_repositories`.
+
+``additional_repos``
+Supported only as an override config option to a repository copy command, and must be used
+in conjunction with ``recursive`` or ``recursive_conservative`` options. This option allows
+for dependencies to be found in repositories ouside of the one the specified in the copy
+command, and copied to repositories apart from the one specified in the copy command. For
+example, you may have a repository whose units depend on RPMs in another repo,
+(e.g. a cloned modular repo) and want to maintain correctness when copying new modules into
+and out of that repository. Unlike other config options, ``additional_repos`` must be provided
+as a JSON object. In this object, the "key" should be the name of a repository to copy *from*,
+and the "value" should be the name of a repository to copy *to*.  Default is to not consider
+any additional repos.More information about its usage can be found in :ref:`advanced_copy_between_repositories`.
 
 Yum Distributor
 ===============
