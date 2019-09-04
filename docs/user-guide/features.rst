@@ -86,9 +86,20 @@ In a simple case the result of such API call copies unit and units directly rela
 There are more complicated relations and behavior may vary depending on the content
 and the type of a recursive flag. More information about such cases below.
 
+Additionally, newer versions of Fedora and RHEL/CentOS have introduced modular repositories, and
+the RPM artifacts of these modules may depend on other RPMs in a completely separate repository.
+In this circumstance the ``recursive`` or ``recursive_conservative`` copy operation is more
+complicated than simply one source repository and one destination repository - Pulp must know about
+all repositories involved. Example usage of this option is also demonstrated below. This use case
+will be referred to generally as "multi-repo copy" as it involves copying units from more than one repo.
+
+Be aware that some of the examples below assume that the source repository contains all of the dependencies and others
+are assuming a split-repo layout. In the latter case, the ``additional_repos`` option should be provided
+as part of the override config through a raw REST request to Pulp (there is no CLI support for this option).
+
 RPM dependencies
 ^^^^^^^^^^^^^^^^
-An RPM can depend on other RPMs. 
+An RPM can depend on other RPMs.
 
 ::
 
@@ -191,6 +202,7 @@ Modules and their artifacts (RPMs), complicated case 1
 
 | A Module lists artifacts it consists of.
 | Complicated case 1 (RPM dependencies, no module dependencies).
+| RPM dependencies are in the same repository as the modules and module artifacts.
 
 ::
 
@@ -245,6 +257,8 @@ Modules and their artifacts (RPMs), complicated case 2
 | A Module lists artifacts it consists of.
 | A Module can depend on other Modules.
 | Complicated case 2 (RPM dependencies, module dependencies).
+| RPM dependencies are in the same repository as the modules and module artifacts.
+
 
 ::
 
@@ -317,6 +331,75 @@ Modules and their artifacts (RPMs), complicated case 2
    ``recursive_conservative`` takes precedence.
 
 
+Modules and their artifacts (RPMs), complicated case 3
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+| A Module lists artifacts it consists of.
+| Complicated case 3 (RPM dependencies in a separate repository, no module dependencies).
+| RPM dependencies are *not* in the same repository as the modules and module artifacts.
+| i.e. "multi-repo-copy"
+
+::
+
+   dependencies: foo.rpm -> bar.rpm -> baz.rpm
+   module-FOO: [foo-1.0.rpm]
+
+   repo A
+     |
+     |----module-FOO
+     |----foo-1.0.rpm
+
+   repo B
+     |
+     |----bar-1.0.rpm
+     |----baz-1.0.rpm
+
+    repo C
+     |
+     | empty
+
+    repo D
+     |
+     |----bar-0.7.rpm
+
+
+| Use case #1: copy module and its artifacts and artifacts' *latest* dependencies
+| Flags to use: ``recursive``, ``additional_repos={"repo B": "repo D"}``
+
+::
+
+    Result of copying module-FOO from repo A to repo C:
+
+    repo C
+     |
+     |----module-FOO
+     |----foo-1.0.rpm
+
+    repo D
+     |
+     |----bar-0.7.rpm
+     |----bar-1.0.rpm
+     |----baz-1.0.rpm
+
+
+| Use case #2: copy module and its artifacts and artifacts' *missing* RPM dependencies
+| Flag to use: ``recursive_conservative``, ``additional_repos={"repo B": "repo D"}``
+
+::
+
+    Result of copying module-FOO from repo A to repo C:
+
+    repo C
+     |
+     |----module-FOO
+     |----foo-1.0.rpm
+
+    repo D
+     |
+     |----bar-0.7.rpm
+     |----baz-1.0.rpm
+
+
 Erratum and related RPMs/Modules
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -379,7 +462,7 @@ Non-modular Errata and related RPMs, simple case
      |----foo-0.7.rpm
      |----bar-0.7.rpm
 
-    Older version ``foo-0.7.rpm`` remains in the repo B. 
+    Older version ``foo-0.7.rpm`` remains in the repo B.
     Using either ``recursive`` or ``recursive_conservative`` flag
     ``foo-1.0.rpm`` is copied to repo B as well since
     ``erratum-FOO`` refers to it.
@@ -463,6 +546,7 @@ Modular Errata and related Modules/RPMs, simple case
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 | A modular Erratum lists a Module (which is suggested to be updated) and its artifacts.
 | Simple case (no RPM dependencies, no modular dependencies).
+| Errata, modules, and RPM dependencies are all in the same repository.
 
 ::
 
@@ -518,6 +602,8 @@ Modular Errata and related Modules/RPMs, complicated case 1
 
 | A modular Erratum lists a Module (which is suggested to be updated) and its artifacts.
 | Complicated case 1 (RPM dependencies, no module dependencies).
+| Errata, modules, and RPM dependencies are all in the same repository.
+
 
 ::
 
@@ -580,6 +666,8 @@ Modular Errata and related Modules/RPMs, complicated case 2
 | A modular Erratum lists a Module (which is suggested to be updated) and its artifacts.
 | A Module can depend on other Modules.
 | Complicated case 2 (RPM dependencies, module dependencies).
+| Errata, modules, and RPM dependencies are all in the same repository.
+
 
 ::
 
@@ -649,6 +737,99 @@ Modular Errata and related Modules/RPMs, complicated case 2
      |----yyy-1.0.rpm
      |----foo-0.7.rpm
      |----bar-0.7.rpm
+
+
+Modular Errata and related Modules/RPMs, complicated case 3
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+| A modular Erratum lists a Module (which is suggested to be updated) and its artifacts.
+| A Module can depend on other Modules.
+| Complicated case 2 (RPM dependencies, module dependencies).
+| RPM dependencies are *not* in the same repository as the modules and module artifacts and errata.
+| i.e. "multi-repo-copy"
+
+::
+
+   erratum-FOO: module-FOO
+   module-FOO: [foo-1.0.rpm]
+   module-XXX: [xxx-1.0.rpm, yyy-1.0.rpm]
+   dependencies: foo.rpm -> bar.rpm -> baz.rpm
+                 module-FOO -> module-XXX
+
+   repo A
+     |
+     |----erratum-FOO
+     |----module-FOO
+     |----module-XXX
+     |----foo-1.0.rpm
+     |----xxx-1.0.rpm
+     |----yyy-1.0.rpm
+
+   repo B
+     |----bar-1.0.rpm
+     |----baz-1.0.rpm
+
+   repo C
+     |
+     | empty
+
+   repo D
+     |
+     |----foo-0.7.rpm
+     |----bar-0.7.rpm
+
+
+| Use case #1: copy erratum and module with its artifacts
+|              and module dependencies
+|              and artifacts' *latest* dependencies
+|              where the artifact dependencies are copied into a secondary repo
+| Flag to use: ``recursive``, ``additional_repos={"repo B": "repo D"}``
+
+::
+
+    Result of copying module-FOO from repo A to repo C:
+
+    repo C
+      |
+      |----erratum-FOO
+      |----module-FOO
+      |----module-XXX
+      |----foo-1.0.rpm
+      |----xxx-1.0.rpm
+      |----yyy-1.0.rpm
+
+    repo D
+      |
+      |----foo-0.7.rpm
+      |----bar-0.7.rpm
+      |----bar-1.0.rpm
+      |----baz-1.0.rpm
+
+
+| Use case #2: copy erratum and module with its artifacts
+|              and module dependencies
+|              and artifacts' *missing* dependencies
+|              where the artifact dependencies are copied into a secondary repo
+| Flag to use: ``recursive_conservative``, ``additional_repos={"repo B": "repo D"}``
+
+::
+
+    Result of copying module-FOO from repo A to repo C:
+
+    repo C
+      |
+      |----erratum-FOO
+      |----module-FOO
+      |----module-XXX
+      |----foo-1.0.rpm
+      |----xxx-1.0.rpm
+      |----yyy-1.0.rpm
+
+    repo D
+      |
+      |----foo-0.7.rpm
+      |----bar-0.7.rpm
+      |----baz-1.0.rpm
 
 
 Protected Repositories
