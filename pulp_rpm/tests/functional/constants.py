@@ -100,10 +100,34 @@ RPM_EPEL_URL = 'https://dl.fedoraproject.org/pub/epel/7Server/x86_64/'
 """
 
 RPM_LONG_UPDATEINFO_FIXTURE_URL = urljoin(
-    PULP_FIXTURES_BASE_URL,
-    'rpm-long-updateinfo/'
+    PULP_FIXTURES_BASE_URL, 'rpm-long-updateinfo/'
 )
 """The URL to RPM with a long updateinfo.xml."""
+
+RPM_MODULAR_FIXTURE_URL = urljoin(PULP_FIXTURES_BASE_URL, 'rpm-with-modules/')
+"""The URL to a modular RPM repository."""
+
+RPM_MODULES_COUNT = 10
+"""The number of modules present on `RPM_MODULAR_FIXTURE_URL`."""
+
+RPM_MODULES_DEFAULTS_COUNT = 3
+"""The number of modules-default present on `RPM_MODULAR_FIXTURE_URL`."""
+
+RPM_MODULES_CONTENT_NAME = 'rpm.modulemd'
+
+RPM_MODULES_DEFAULTS_CONTENT_NAME = 'rpm.modulemd-defaults'
+
+RPM_ADVISORY_MODULAR_COUNT = 6
+
+RPM_MODULAR_FIXTURE_SUMMARY = {
+    RPM_PACKAGE_CONTENT_NAME: RPM_PACKAGE_COUNT,
+    RPM_ADVISORY_CONTENT_NAME: RPM_ADVISORY_MODULAR_COUNT,
+    RPM_METADATA_CONTENT_NAME: RPM_METADATA_COUNT,
+    RPM_MODULES_CONTENT_NAME: RPM_MODULES_COUNT,
+    RPM_MODULES_DEFAULTS_CONTENT_NAME: RPM_MODULES_DEFAULTS_COUNT
+}
+"""The breakdown of how many of each type of content unit are present in the
+i.e. :data:`RPM_MODULAR_FIXTURE_URL`."""
 
 RPM_PACKAGE_DATA = {
     'name': 'bear',
@@ -133,8 +157,7 @@ RPM_PACKAGE_FILENAME = '{}-{}-{}.{}.rpm'.format(
 """The filename of one RPM package."""
 
 RPM_REFERENCES_UPDATEINFO_URL = urljoin(
-    PULP_FIXTURES_BASE_URL,
-    'rpm-references-updateinfo/'
+    PULP_FIXTURES_BASE_URL, 'rpm-references-updateinfo/'
 )
 """The URL to a repository with ``updateinfo.xml`` containing references.
 
@@ -143,8 +166,7 @@ and without it.
 """
 
 RPM_RICH_WEAK_FIXTURE_URL = urljoin(
-    PULP_FIXTURES_BASE_URL,
-    'rpm-richnweak-deps/'
+    PULP_FIXTURES_BASE_URL, 'rpm-richnweak-deps/'
 )
 """The URL to an RPM repository with weak and rich dependencies."""
 
@@ -155,8 +177,7 @@ RPM_UNSIGNED_URL = urljoin(RPM_UNSIGNED_FIXTURE_URL, RPM_PACKAGE_FILENAME)
 """The path to a single unsigned RPM package."""
 
 RPM_UPDATED_UPDATEINFO_FIXTURE_URL = urljoin(
-    PULP_FIXTURES_BASE_URL,
-    'rpm-updated-updateinfo/'
+    PULP_FIXTURES_BASE_URL, 'rpm-updated-updateinfo/'
 )
 """The URL to a repository containing UpdateRecords (Errata) with the same IDs
 as the ones in the standard repositories, but with different metadata.
@@ -180,7 +201,9 @@ RPM_WITH_NON_ASCII_NAME = 'rpm-with-non-ascii'
 
 RPM_WITH_NON_ASCII_URL = urljoin(
     PULP_FIXTURES_BASE_URL,
-    'rpm-with-non-ascii/{}-1-1.fc25.noarch.rpm'.format(RPM_WITH_NON_ASCII_NAME)
+    'rpm-with-non-ascii/{}-1-1.fc25.noarch.rpm'.format(
+        RPM_WITH_NON_ASCII_NAME
+    ),
 )
 """The URL to an RPM with non-ascii metadata in its header."""
 
@@ -188,7 +211,9 @@ RPM_WITH_NON_UTF_8_NAME = 'rpm-with-non-utf-8'
 
 RPM_WITH_NON_UTF_8_URL = urljoin(
     PULP_FIXTURES_BASE_URL,
-    'rpm-with-non-utf-8/{}-1-1.fc25.noarch.rpm'.format(RPM_WITH_NON_UTF_8_NAME)
+    'rpm-with-non-utf-8/{}-1-1.fc25.noarch.rpm'.format(
+        RPM_WITH_NON_UTF_8_NAME
+    ),
 )
 """The URL to an RPM with non-UTF-8 metadata in its header."""
 
@@ -205,5 +230,5 @@ RPM_KICKSTART_CONTENT_NAME = 'rpm.distribution_tree'
 RPM_KICKSTART_COUNT = 1
 
 RPM_KICKSTART_FIXTURE_SUMMARY = {
-    RPM_KICKSTART_CONTENT_NAME: RPM_KICKSTART_COUNT,
+    RPM_KICKSTART_CONTENT_NAME: RPM_KICKSTART_COUNT
 }

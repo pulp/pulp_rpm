@@ -18,10 +18,16 @@ from pulp_smash.pulp3.utils import (
 )
 
 from pulp_rpm.tests.functional.constants import (
+    RPM_ADVISORY_CONTENT_NAME,
     RPM_EPEL_URL,
     RPM_FIXTURE_SUMMARY,
-    RPM_PACKAGE_COUNT,
+    RPM_KICKSTART_CONTENT_NAME,
+    RPM_KICKSTART_FIXTURE_SUMMARY,
+    RPM_KICKSTART_FIXTURE_URL,
+    RPM_MODULAR_FIXTURE_SUMMARY,
+    RPM_MODULAR_FIXTURE_URL,
     RPM_PACKAGE_CONTENT_NAME,
+    RPM_PACKAGE_COUNT,
     RPM_REFERENCES_UPDATEINFO_URL,
     RPM_REMOTE_PATH,
     RPM_SHA512_FIXTURE_URL,
@@ -29,10 +35,6 @@ from pulp_rpm.tests.functional.constants import (
     RPM_UNSIGNED_FIXTURE_URL,
     RPM_UPDATED_UPDATEINFO_FIXTURE_URL,
     RPM_UPDATERECORD_ID,
-    RPM_ADVISORY_CONTENT_NAME,
-    RPM_KICKSTART_CONTENT_NAME,
-    RPM_KICKSTART_FIXTURE_SUMMARY,
-    RPM_KICKSTART_FIXTURE_URL,
 )
 from pulp_rpm.tests.functional.utils import gen_rpm_remote
 from pulp_rpm.tests.functional.utils import set_up_module as setUpModule  # noqa:F401
@@ -84,13 +86,9 @@ class BasicSyncTestCase(unittest.TestCase):
 
         # Check that we have the correct content counts.
         self.assertIsNotNone(repo['_latest_version_href'])
+        self.assertDictEqual(get_content_summary(repo), RPM_FIXTURE_SUMMARY)
         self.assertDictEqual(
-            get_content_summary(repo),
-            RPM_FIXTURE_SUMMARY
-        )
-        self.assertDictEqual(
-            get_added_content_summary(repo),
-            RPM_FIXTURE_SUMMARY
+            get_added_content_summary(repo), RPM_FIXTURE_SUMMARY
         )
 
         # Sync the repository again.
@@ -100,10 +98,7 @@ class BasicSyncTestCase(unittest.TestCase):
 
         # Check that nothing has changed since the last sync.
         self.assertNotEqual(latest_version_href, repo['_latest_version_href'])
-        self.assertDictEqual(
-            get_content_summary(repo),
-            RPM_FIXTURE_SUMMARY
-        )
+        self.assertDictEqual(get_content_summary(repo), RPM_FIXTURE_SUMMARY)
         self.assertDictEqual(get_added_content_summary(repo), {})
 
 
@@ -162,12 +157,10 @@ class KickstartSyncTestCase(unittest.TestCase):
         self.assertIsNotNone(repo['_latest_version_href'])
 
         self.assertDictEqual(
-            get_content_summary(repo),
-            RPM_KICKSTART_FIXTURE_SUMMARY
+            get_content_summary(repo), RPM_KICKSTART_FIXTURE_SUMMARY
         )
         self.assertDictEqual(
-            get_added_content_summary(repo),
-            RPM_KICKSTART_FIXTURE_SUMMARY
+            get_added_content_summary(repo), RPM_KICKSTART_FIXTURE_SUMMARY
         )
 
         # Sync the repository again.
@@ -176,13 +169,12 @@ class KickstartSyncTestCase(unittest.TestCase):
         repo = self.client.get(repo['_href'])
 
         artifacts = self.client.get(ARTIFACTS_PATH)
-        self.assertEqual(artifacts["count"], 3, artifacts)
+        self.assertEqual(artifacts['count'], 3, artifacts)
 
         # Check that nothing has changed since the last sync.
         self.assertNotEqual(latest_version_href, repo['_latest_version_href'])
         self.assertDictEqual(
-            get_content_summary(repo),
-            RPM_KICKSTART_FIXTURE_SUMMARY
+            get_content_summary(repo), RPM_KICKSTART_FIXTURE_SUMMARY
         )
         self.assertDictEqual(get_added_content_summary(repo), {})
 
@@ -216,7 +208,9 @@ class KickstartSyncTestCase(unittest.TestCase):
         self.addCleanup(self.client.delete, repo['_href'])
 
         # Create a remote with the standard test fixture url.
-        body = gen_rpm_remote(url=RPM_KICKSTART_FIXTURE_URL, policy='on_demand')
+        body = gen_rpm_remote(
+            url=RPM_KICKSTART_FIXTURE_URL, policy='on_demand'
+        )
         remote = self.client.post(RPM_REMOTE_PATH, body)
         self.addCleanup(self.client.delete, remote['_href'])
 
@@ -231,12 +225,10 @@ class KickstartSyncTestCase(unittest.TestCase):
         self.assertIsNotNone(repo['_latest_version_href'])
 
         self.assertDictEqual(
-            get_content_summary(repo),
-            RPM_KICKSTART_FIXTURE_SUMMARY
+            get_content_summary(repo), RPM_KICKSTART_FIXTURE_SUMMARY
         )
         self.assertDictEqual(
-            get_added_content_summary(repo),
-            RPM_KICKSTART_FIXTURE_SUMMARY
+            get_added_content_summary(repo), RPM_KICKSTART_FIXTURE_SUMMARY
         )
 
         # Sync the repository again.
@@ -245,13 +237,12 @@ class KickstartSyncTestCase(unittest.TestCase):
         repo = self.client.get(repo['_href'])
 
         artifacts = self.client.get(ARTIFACTS_PATH)
-        self.assertEqual(artifacts["count"], 0, artifacts)
+        self.assertEqual(artifacts['count'], 0, artifacts)
 
         # Check that nothing has changed since the last sync.
         self.assertNotEqual(latest_version_href, repo['_latest_version_href'])
         self.assertDictEqual(
-            get_content_summary(repo),
-            RPM_KICKSTART_FIXTURE_SUMMARY
+            get_content_summary(repo), RPM_KICKSTART_FIXTURE_SUMMARY
         )
         self.assertDictEqual(get_added_content_summary(repo), {})
 
@@ -333,18 +324,17 @@ class SyncMutatedPackagesTestCase(unittest.TestCase):
         self.assertIsNone(repo['_latest_version_href'])
         sync(self.cfg, remote, repo)
         repo = self.client.get(repo['_href'])
-        self.assertDictEqual(
-            get_content_summary(repo),
-            RPM_FIXTURE_SUMMARY
-        )
+        self.assertDictEqual(get_content_summary(repo), RPM_FIXTURE_SUMMARY)
 
         # Save a copy of the original packages.
         original_packages = {
-            (content['name'],
-             content['epoch'],
-             content['version'],
-             content['release'],
-             content['arch']): content
+            (
+                content['name'],
+                content['epoch'],
+                content['version'],
+                content['release'],
+                content['arch'],
+            ): content
             for content in get_content(repo)[RPM_PACKAGE_CONTENT_NAME]
         }
 
@@ -357,31 +347,30 @@ class SyncMutatedPackagesTestCase(unittest.TestCase):
         # Sync the repository again.
         sync(self.cfg, remote, repo)
         repo = self.client.get(repo['_href'])
-        self.assertDictEqual(
-            get_content_summary(repo),
-            RPM_FIXTURE_SUMMARY
-        )
+        self.assertDictEqual(get_content_summary(repo), RPM_FIXTURE_SUMMARY)
 
         # In case of "duplicates" the most recent one is chosen, so the old
         # package is removed from and the new one is added to a repo version.
         self.assertEqual(
             len(get_added_content(repo)[RPM_PACKAGE_CONTENT_NAME]),
             RPM_PACKAGE_COUNT,
-            get_added_content(repo)[RPM_PACKAGE_CONTENT_NAME]
+            get_added_content(repo)[RPM_PACKAGE_CONTENT_NAME],
         )
         self.assertEqual(
             len(get_removed_content(repo)[RPM_PACKAGE_CONTENT_NAME]),
             RPM_PACKAGE_COUNT,
-            get_removed_content(repo)[RPM_PACKAGE_CONTENT_NAME]
+            get_removed_content(repo)[RPM_PACKAGE_CONTENT_NAME],
         )
 
         # Test that the packages have been modified.
         mutated_packages = {
-            (content['name'],
-             content['epoch'],
-             content['version'],
-             content['release'],
-             content['arch']): content
+            (
+                content['name'],
+                content['epoch'],
+                content['version'],
+                content['release'],
+                content['arch'],
+            ): content
             for content in get_content(repo)[RPM_PACKAGE_CONTENT_NAME]
         }
 
@@ -390,7 +379,7 @@ class SyncMutatedPackagesTestCase(unittest.TestCase):
                 self.assertNotEqual(
                     original_packages[nevra]['pkgId'],
                     mutated_packages[nevra]['pkgId'],
-                    original_packages[nevra]['pkgId']
+                    original_packages[nevra]['pkgId'],
                 )
 
 
@@ -411,10 +400,7 @@ class EPELSyncTestCase(unittest.TestCase):
         repo = client.post(REPO_PATH, gen_repo())
         self.addCleanup(client.delete, repo['_href'])
 
-        remote = client.post(
-            RPM_REMOTE_PATH,
-            gen_rpm_remote(url=RPM_EPEL_URL)
-        )
+        remote = client.post(RPM_REMOTE_PATH, gen_rpm_remote(url=RPM_EPEL_URL))
         self.addCleanup(client.delete, remote['_href'])
 
         # Sync the repository.
@@ -423,13 +409,13 @@ class EPELSyncTestCase(unittest.TestCase):
         repo = client.get(repo['_href'])
         content_summary = get_content_summary(repo)
         self.assertGreater(
-            content_summary[RPM_PACKAGE_CONTENT_NAME],
-            0,
-            content_summary
+            content_summary[RPM_PACKAGE_CONTENT_NAME], 0, content_summary
         )
 
 
-@unittest.skip('FIXME: Enable this test after we can throw out duplicate UpdateRecords')
+@unittest.skip(
+    'FIXME: Enable this test after we can throw out duplicate UpdateRecords'
+)
 class SyncMutatedUpdateRecordTestCase(unittest.TestCase):
     """Sync a new UpdateRecord (Advisory / Erratum) with the same ID."""
 
@@ -473,10 +459,7 @@ class SyncMutatedUpdateRecordTestCase(unittest.TestCase):
         self.assertIsNone(repo['_latest_version_href'])
         sync(self.cfg, remote, repo)
         repo = client.get(repo['_href'])
-        self.assertDictEqual(
-            get_content_summary(repo),
-            RPM_FIXTURE_SUMMARY
-        )
+        self.assertDictEqual(get_content_summary(repo), RPM_FIXTURE_SUMMARY)
 
         # Save a copy of the original updateinfo
         original_updaterecords = {
@@ -493,17 +476,12 @@ class SyncMutatedUpdateRecordTestCase(unittest.TestCase):
         # Sync the repository again.
         sync(self.cfg, remote, repo)
         repo = client.get(repo['_href'])
-        self.assertDictEqual(
-            get_content_summary(repo),
-            RPM_FIXTURE_SUMMARY
+        self.assertDictEqual(get_content_summary(repo), RPM_FIXTURE_SUMMARY)
+        self.assertEqual(
+            len(get_added_content(repo)[RPM_ADVISORY_CONTENT_NAME]), 4
         )
         self.assertEqual(
-            len(get_added_content(repo)[RPM_ADVISORY_CONTENT_NAME]),
-            4
-        )
-        self.assertEqual(
-            len(get_removed_content(repo)[RPM_ADVISORY_CONTENT_NAME]),
-            4
+            len(get_removed_content(repo)[RPM_ADVISORY_CONTENT_NAME]), 4
         )
 
         # Test that the updateinfo have been modified.
@@ -516,7 +494,7 @@ class SyncMutatedUpdateRecordTestCase(unittest.TestCase):
         self.assertEqual(
             mutated_updaterecords[RPM_UPDATERECORD_ID]['description'],
             'Updated Gorilla_Erratum and the updated date contains timezone',
-            mutated_updaterecords[RPM_UPDATERECORD_ID]
+            mutated_updaterecords[RPM_UPDATERECORD_ID],
         )
 
 
@@ -556,7 +534,7 @@ class SyncDiffChecksumPackagesTestCase(unittest.TestCase):
 
         for body in [
             gen_rpm_remote(),
-            gen_rpm_remote(url=RPM_SHA512_FIXTURE_URL)
+            gen_rpm_remote(url=RPM_SHA512_FIXTURE_URL),
         ]:
             remote = self.client.post(RPM_REMOTE_PATH, body)
             self.addCleanup(self.client.delete, remote['_href'])
@@ -570,15 +548,9 @@ class SyncDiffChecksumPackagesTestCase(unittest.TestCase):
 
         # In case of "duplicates" the most recent one is chosen, so the old
         # package is removed from and the new one is added to a repo version.
+        self.assertEqual(len(added_content), RPM_PACKAGE_COUNT, added_content)
         self.assertEqual(
-            len(added_content),
-            RPM_PACKAGE_COUNT,
-            added_content
-        )
-        self.assertEqual(
-            len(removed_content),
-            RPM_PACKAGE_COUNT,
-            removed_content
+            len(removed_content), RPM_PACKAGE_COUNT, removed_content
         )
 
         # Verifying whether the packages with first checksum is removed and second
@@ -617,9 +589,9 @@ class ChecksumConstraintTestCase(unittest.TestCase):
             repo = client.post(REPO_PATH, gen_repo())
             self.addCleanup(client.delete, repo['_href'])
 
-            client.post(urljoin(
-                remote['_href'], 'sync/'),
-                {'repository': repo['_href']}
+            client.post(
+                urljoin(remote['_href'], 'sync/'),
+                {'repository': repo['_href']},
             )
             repo = client.get(repo['_href'])
 
@@ -627,5 +599,38 @@ class ChecksumConstraintTestCase(unittest.TestCase):
             self.assertEqual(
                 added_content_summary,
                 RPM_FIXTURE_SUMMARY,
-                added_content_summary
+                added_content_summary,
             )
+
+
+class SyncModularContentTestCase(unittest.TestCase):
+    """Sync RPM modular content.
+
+    This test targets the following issue:
+
+    * `Pulp #5408 <https://pulp.plan.io/issues/5408>`_
+    """
+
+    def test_sync_modular_repo(self):
+        """Test RPM modular content can be synced."""
+        cfg = config.get_config()
+        client = api.Client(cfg)
+
+        remote = client.post(
+            RPM_REMOTE_PATH, gen_rpm_remote(url=RPM_MODULAR_FIXTURE_URL)
+        )
+        self.addCleanup(client.delete, remote['_href'])
+
+        repo = client.post(REPO_PATH, gen_repo())
+        self.addCleanup(client.delete, repo['_href'])
+
+        sync(cfg, remote, repo)
+        repo = client.get(repo['_href'])
+
+        added_content_summary = get_added_content_summary(repo)
+
+        self.assertEqual(
+            added_content_summary,
+            RPM_MODULAR_FIXTURE_SUMMARY,
+            added_content_summary
+        )
