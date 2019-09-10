@@ -104,14 +104,8 @@ def associate(source_repo, dest_repo, import_conduit, config, units=None):
         target_repo=dest_repo,
         conservative=config.get(constants.CONFIG_RECURSIVE_CONSERVATIVE),
         additional_repos=additional_repos,
-        ignore_missing=False
-        # the line above disables the code which injects "dummy solvables" to provide
-        # missing packages. it is not known whether that code is 100% necessary, but it
-        # is feeding invalid data to libsolv somehow resulting in a violated invariant
-        # and failure on an assert statement here
-        # https://github.com/openSUSE/libsolv/blob/master/src/solver.c#L1979-L1981
+        ignore_missing=True
     )
-    # Only loads the original source and destination repositories
     solver.load()
 
     (group_ids, rpm_names, rpm_search_dicts,
