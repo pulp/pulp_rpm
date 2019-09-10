@@ -257,15 +257,16 @@ class RpmFirstStage(Stage):
         """
         Build `DeclarativeContent` from the repodata.
         """
-        packages_pb = ProgressBar(message='Parsed Packages')
-        erratum_pb = ProgressBar(message='Parsed Erratum')
+        packages_pb = ProgressBar(message='Parsed Packages', code='parsing.packages')
+        errata_pb = ProgressBar(message='Parsed Erratum', code='parsing.errata')
 
         packages_pb.save()
-        erratum_pb.save()
+        errata_pb.save()
 
         remote_url = self.new_url or self.remote.url
 
-        with ProgressBar(message='Downloading Metadata Files') as metadata_pb:
+        progress_data = dict(message='Downloading Metadata Files', code='downloading.metadata')
+        with ProgressBar(**progress_data) as metadata_pb:
             downloader = self.remote.get_downloader(
                 url=urljoin(remote_url, 'repodata/repomd.xml')
             )
@@ -363,9 +364,9 @@ class RpmFirstStage(Stage):
 
                         updates = await RpmFirstStage.parse_updateinfo(updateinfo_xml_path)
 
-                        erratum_pb.total = len(updates)
-                        erratum_pb.state = 'running'
-                        erratum_pb.save()
+                        errata_pb.total = len(updates)
+                        errata_pb.state = 'running'
+                        errata_pb.save()
 
                         for update in updates:
                             update_record = UpdateRecord(**UpdateRecord.createrepo_to_dict(update))
@@ -386,15 +387,15 @@ class RpmFirstStage(Stage):
                                 ref = UpdateReference(**reference_dict)
                                 future_relations['references'].append(ref)
 
-                            erratum_pb.increment()
+                            errata_pb.increment()
                             dc = DeclarativeContent(content=update_record)
                             dc.extra_data = future_relations
                             await self.put(dc)
 
         packages_pb.state = 'completed'
-        erratum_pb.state = 'completed'
+        errata_pb.state = 'completed'
         packages_pb.save()
-        erratum_pb.save()
+        errata_pb.save()
 
 
 class RpmContentSaver(ContentSaver):
