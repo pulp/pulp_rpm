@@ -883,6 +883,11 @@ class Solver(object):
                         # A solvable provides the dep but could not be installed for some reason
                         continue
 
+                    elif info.type == solv.Solver.SOLVER_RULE_INFARCH:
+                        # The solver isn't allowed to rely on packages of an inferior architecture
+                        # ie. i686 when x86_64 is being solved for
+                        continue
+
                     elif info.type == solv.Solver.SOLVER_RULE_PKG_SAME_NAME:
                         # The deps can only be fulfilled by multiple versions of a package,
                         # but installing multiple versions of the same package is not allowed.
@@ -890,11 +895,11 @@ class Solver(object):
 
                     else:
                         _LOGGER.warning(
-                            'No workaround available for problem type %s. '
-                            'You may refer to the libsolv Solver class documetnation '
+                            'No workaround available for problem \'%s\'. '
+                            'You may refer to the libsolv Solver class documentation '
                             'for more details. See https://github.com/openSUSE/'
                             'libsolv/blob/master/doc/libsolv-bindings.txt'
-                            '#the-solver-class.', info.type
+                            '#the-solver-class.', problem_rule.info().problemstr()
                         )
         self._pool.createwhatprovides()
 
