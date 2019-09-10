@@ -455,8 +455,8 @@ def _handle_package(repo, type_id, unit_key, metadata, file_path, conduit, confi
 
     # check if the unit has duplicate nevra
     purge.remove_unit_duplicate_nevra(unit, repo)
+    unit.set_storage_path(unit.filename)
 
-    unit.set_storage_path(rpm_basefilename)
     try:
         unit.save_and_import_content(file_path)
     except TypeError:
