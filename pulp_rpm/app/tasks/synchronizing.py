@@ -26,7 +26,9 @@ from pulpcore.plugin.stages import (
 )
 
 
-from pulp_rpm.app.constants import CHECKSUM_TYPES, PACKAGE_REPODATA, UPDATE_REPODATA
+from pulp_rpm.app.constants import (
+    CHECKSUM_TYPES, PACKAGE_REPODATA, PACKAGE_DB_REPODATA, UPDATE_REPODATA
+)
 from pulp_rpm.app.models import (
     Addon,
     Checksum,
@@ -34,6 +36,7 @@ from pulp_rpm.app.models import (
     Image,
     Variant,
     Package,
+    RepoMetadataFile,
     RpmRemote,
     UpdateCollection,
     UpdateCollectionPackage,
@@ -62,9 +65,10 @@ def synchronize(remote_pk, repository_pk):
     remote = RpmRemote.objects.get(pk=remote_pk)
     repository = Repository.objects.get(pk=repository_pk)
 
-    package_dupe_criteria = {'model': Package,
-                             'field_names': ['name', 'epoch', 'version', 'release', 'arch']}
-
+    dupe_criteria = [
+        {'model': Package, 'field_names': ['name', 'epoch', 'version', 'release', 'arch']},
+        {'model': RepoMetadataFile, 'field_names': ['data_type']},
+    ]
     if not remote.url:
         raise ValueError(_('A remote must have a url specified to synchronize.'))
 
@@ -91,13 +95,13 @@ def synchronize(remote_pk, repository_pk):
                 stage = RpmFirstStage(remote, deferred_download, new_url=new_url)
                 dv = RpmDeclarativeVersion(first_stage=stage,
                                            repository=new_repository,
-                                           remove_duplicates=[package_dupe_criteria])
+                                           remove_duplicates=dupe_criteria)
                 dv.create()
 
     first_stage = RpmFirstStage(remote, deferred_download, kickstart=kickstart)
     dv = RpmDeclarativeVersion(first_stage=first_stage,
                                repository=repository,
-                               remove_duplicates=[package_dupe_criteria])
+                               remove_duplicates=dupe_criteria)
     dv.create()
 
 
@@ -307,9 +311,22 @@ class RpmFirstStage(Stage):
                     updateinfo_url = urljoin(remote_url, record.location_href)
                     downloader = self.remote.get_downloader(url=updateinfo_url)
                     downloaders.append([downloader.run()])
-                else:
-                    log.info(_('Unknown repodata type: {t}. Skipped.').format(t=record.type))
-                    # TODO: skip databases, save unknown types to publish them as-is
+                elif record.type not in PACKAGE_DB_REPODATA:
+                    file_data = {record.checksum_type: record.checksum, "size": record.size}
+                    da = DeclarativeArtifact(
+                        artifact=Artifact(**file_data),
+                        url=urljoin(remote_url, record.location_href),
+                        relative_path=record.location_href,
+                        remote=self.remote,
+                        deferred_download=False
+                    )
+                    repo_metadata_file = RepoMetadataFile(
+                        data_type=record.type,
+                        checksum_type=record.checksum_type,
+                        checksum=record.checksum,
+                    )
+                    dc = DeclarativeContent(content=repo_metadata_file, d_artifacts=[da])
+                    await self.put(dc)
 
             # to preserve order, downloaders are created after all repodata urls are identified
             package_repodata_downloaders = []

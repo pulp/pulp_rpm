@@ -29,6 +29,7 @@ from pulp_rpm.app.shared_utils import _prepare_package
 from pulp_rpm.app.models import (
     DistributionTree,
     Package,
+    RepoMetadataFile,
     RpmDistribution,
     RpmRemote,
     RpmPublication,
@@ -42,6 +43,7 @@ from pulp_rpm.app.serializers import (
     MinimalUpdateRecordSerializer,
     OneShotUploadSerializer,
     PackageSerializer,
+    RepoMetadataFileSerializer,
     RpmDistributionSerializer,
     RpmRemoteSerializer,
     RpmPublicationSerializer,
@@ -327,3 +329,17 @@ class DistributionTreeViewSet(NamedModelViewSet,
     endpoint_name = 'distribution_trees'
     queryset = DistributionTree.objects.all()
     serializer_class = DistributionTreeSerializer
+
+
+class RepoMetadataFileViewSet(NamedModelViewSet,
+                              mixins.RetrieveModelMixin,
+                              mixins.ListModelMixin,
+                              mixins.DestroyModelMixin):
+    """
+    RepoMetadataFile Viewset.
+
+    """
+
+    endpoint_name = 'repo_metadata_files'
+    queryset = RepoMetadataFile.objects.all()
+    serializer_class = RepoMetadataFileSerializer

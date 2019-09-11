@@ -28,6 +28,7 @@ from pulp_rpm.app.models import (
     Modulemd,
     ModulemdDefaults,
     Package,
+    RepoMetadataFile,
     RpmDistribution,
     RpmRemote,
     RpmPublication,
@@ -704,3 +705,25 @@ class DistributionTreeSerializer(MultipleArtifactContentSerializer):
             "base_product_version", "arch", "build_timestamp", "instimage", "mainimage",
             "discnum", "totaldiscs", "addons", "checksums", "images", "variants"
         )
+
+
+class RepoMetadataFileSerializer(SingleArtifactContentSerializer):
+    """
+    RepoMetadataFile serializer.
+    """
+
+    data_type = serializers.CharField(
+        help_text=_("Metadata type.")
+    )
+    checksum_type = serializers.CharField(
+        help_text=_("Checksum type for the file.")
+    )
+    checksum = serializers.CharField(
+        help_text=_("Checksum for the file.")
+    )
+
+    class Meta:
+        fields = SingleArtifactContentSerializer.Meta.fields + (
+            'data_type', 'checksum_type', 'checksum'
+        )
+        model = RepoMetadataFile
