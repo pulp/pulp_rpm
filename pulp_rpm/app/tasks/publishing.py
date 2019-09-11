@@ -1,6 +1,7 @@
 import os
 from gettext import gettext as _
 import logging
+import shutil
 
 import createrepo_c as cr
 
@@ -15,11 +16,77 @@ from pulpcore.plugin.models import (
 
 from pulpcore.plugin.tasking import WorkingDirectory
 
-from pulp_rpm.app.models import Package, RpmPublication, UpdateRecord
+from pulp_rpm.app.models import Package, RepoMetadataFile, RpmPublication, UpdateRecord
 
 log = logging.getLogger(__name__)
 
 REPODATA_PATH = 'repodata'
+
+
+class PublicationData:
+    """
+    Encapsulates data relative to publication.
+
+    Attributes:
+        publication (pulpcore.plugin.models.Publication): A Publication to populate.
+        packages (pulp_rpm.models.Package): A list of published packages.
+        repomdrecords (list): A list of tuples with repomdrecords data.
+
+    """
+
+    def __init__(self, publication):
+        """
+        Setting Publication data.
+
+        Args:
+            publication (pulpcore.plugin.models.Publication): A Publication to populate.
+
+        """
+        self.publication = publication
+        self.packages = []
+        self.repomdrecords = []
+
+    def prepare_metadata_files(self):
+        """
+        Copies metadata files from the Artifact storage.
+
+        """
+        publication = self.publication
+        repo_metadata_files = RepoMetadataFile.objects.filter(
+            pk__in=publication.repository_version.content).prefetch_related('contentartifact_set')
+
+        for repo_metadata_file in repo_metadata_files:
+            content_artifact = repo_metadata_file.contentartifact_set.get()
+            current_file = content_artifact.artifact.file.file
+            path = content_artifact.relative_path.split("/")[-1]
+            if repo_metadata_file.checksum in path:
+                path = path.split("-")[-1]
+            with open(path, "wb") as new_file:
+                shutil.copyfileobj(current_file, new_file)
+                self.repomdrecords.append((repo_metadata_file.data_type, new_file.name, None))
+
+    def populate(self):
+        """
+        Populate a publication.
+
+        Create published artifacts for a publication.
+
+        """
+        publication = self.publication
+
+        self.packages = Package.objects.filter(pk__in=publication.repository_version.content).\
+            prefetch_related('contentartifact_set')
+        published_artifacts = []
+
+        for package in self.packages:
+            for content_artifact in package.contentartifact_set.all():
+                published_artifacts.append(PublishedArtifact(
+                    relative_path=content_artifact.relative_path,
+                    publication=publication,
+                    content_artifact=content_artifact)
+                )
+
+        PublishedArtifact.objects.bulk_create(published_artifacts)
 
 
 def update_record_xml(update_record):
@@ -96,7 +163,9 @@ def publish(repository_version_pk):
 
     with WorkingDirectory():
         with RpmPublication.create(repository_version) as publication:
-            packages = populate(publication)
+            publication_data = PublicationData(publication)
+            publication_data.populate()
+            packages = publication_data.packages
 
             # Prepare metadata files
             repomd_path = os.path.join(os.getcwd(), "repomd.xml")
@@ -143,13 +212,17 @@ def publish(repository_version_pk):
 
             repomd = cr.Repomd()
 
-            repomdrecords = (("primary", pri_xml_path, pri_db),
+            publication_data.prepare_metadata_files()
+
+            repomdrecords = [("primary", pri_xml_path, pri_db),
                              ("filelists", fil_xml_path, fil_db),
                              ("other", oth_xml_path, oth_db),
                              ("primary_db", pri_db_path, None),
                              ("filelists_db", fil_db_path, None),
                              ("other_db", oth_db_path, None),
-                             ("updateinfo", upd_xml_path, None))
+                             ("updateinfo", upd_xml_path, None)]
+
+            repomdrecords.extend(publication_data.repomdrecords)
 
             sqlite_files = ("primary_db", "filelists_db", "other_db")
             for name, path, db_to_update in repomdrecords:
@@ -184,33 +257,3 @@ def publish(repository_version_pk):
                 file=File(open(os.path.basename(repomd_path), 'rb'))
             )
             metadata.save()
-
-
-def populate(publication):
-    """
-    Populate a publication.
-
-    Create published artifacts for a publication.
-
-    Args:
-        publication (pulpcore.plugin.models.Publication): A Publication to populate.
-
-    Returns:
-        packages (pulp_rpm.models.Package): A list of published packages.
-
-    """
-    packages = Package.objects.filter(pk__in=publication.repository_version.content).\
-        prefetch_related('contentartifact_set')
-    published_artifacts = []
-
-    for package in packages:
-        for content_artifact in package.contentartifact_set.all():
-            published_artifacts.append(PublishedArtifact(
-                relative_path=content_artifact.relative_path,
-                publication=publication,
-                content_artifact=content_artifact)
-            )
-
-    PublishedArtifact.objects.bulk_create(published_artifacts)
-
-    return packages
