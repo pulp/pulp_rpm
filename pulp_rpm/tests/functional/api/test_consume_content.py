@@ -84,11 +84,11 @@ class PackageManagerConsumeTestCase(unittest.TestCase):
         baseurl = urljoin(self.cfg.get_content_host_base_url(),
                           '//' + distribution['base_url'])
         cli_client = cli.Client(self.cfg)
-        cli_client.run(('dnf', 'config-manager', '--add-repo', baseurl), sudo=True)
+        cli_client.run(('sudo', 'dnf', 'config-manager', '--add-repo', baseurl))
         repo_id = '*{}'.format(distribution['base_path'])
-        cli_client.run(('dnf', 'config-manager', '--save',
-                        '--setopt=gpgcheck=0', repo_id))
-        self.addCleanup(cli_client.run, ('dnf', 'config-manager', '--disable', repo_id), sudo=True)
+        cli_client.run(('sudo', 'dnf', 'config-manager', '--save',
+                        '--setopt={}.gpgcheck=0'.format(repo_id), repo_id))
+        self.addCleanup(cli_client.run, ('sudo', 'dnf', 'config-manager', '--disable', repo_id))
         rpm_name = 'walrus'
         self.pkg_mgr.install(rpm_name)
         self.addCleanup(self.pkg_mgr.uninstall, rpm_name)
