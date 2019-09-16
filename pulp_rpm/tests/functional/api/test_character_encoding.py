@@ -46,7 +46,7 @@ class UploadEncodingMetadataTestCase(unittest.TestCase):
         files = {'file': utils.http_get(RPM_WITH_NON_ASCII_URL)}
         artifact = self.client.post(ARTIFACTS_PATH, files=files)
         content_unit = self.client.post(RPM_CONTENT_PATH, {
-            '_artifact': artifact['_href'],
+            'artifact': artifact['_href'],
             'relative_path': RPM_WITH_NON_ASCII_NAME
         })
         repo = self.client.post(REPO_PATH, gen_repo())
@@ -66,6 +66,6 @@ class UploadEncodingMetadataTestCase(unittest.TestCase):
         artifact = self.client.post(ARTIFACTS_PATH, files=files)
         with self.assertRaises(HTTPError):
             self.client.post(RPM_CONTENT_PATH, {
-                '_artifact': artifact['_href'],
+                'artifact': artifact['_href'],
                 'relative_path': RPM_WITH_NON_UTF_8_NAME
             })

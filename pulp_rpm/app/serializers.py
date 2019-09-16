@@ -208,12 +208,12 @@ class PackageSerializer(SingleArtifactContentSerializer):
         """
         data = super().validate(data)
 
-        data['_relative_path'] = data.pop('relative_path')
+        data['relative_path'] = data.pop('relative_path')
 
         return data
 
     class Meta:
-        fields = tuple(set(SingleArtifactContentSerializer.Meta.fields) - {'_relative_path'}) + (
+        fields = tuple(set(SingleArtifactContentSerializer.Meta.fields)) + (
             'name', 'epoch', 'version', 'release', 'arch', 'pkgId', 'checksum_type',
             'summary', 'description', 'url', 'changelogs', 'files',
             'requires', 'provides', 'conflicts', 'obsoletes',

@@ -90,9 +90,9 @@ class PackageViewSet(ContentViewSet):
         Create a new Package from a request.
         """
         try:
-            artifact = self.get_resource(request.data['_artifact'], Artifact)
+            artifact = self.get_resource(request.data['artifact'], Artifact)
         except KeyError:
-            raise serializers.ValidationError(detail={'_artifact': _('This field is required')})
+            raise serializers.ValidationError(detail={'artifact': _('This field is required')})
 
         try:
             relative_path = request.data['relative_path']
@@ -101,7 +101,7 @@ class PackageViewSet(ContentViewSet):
 
         try:
             new_pkg = _prepare_package(artifact, relative_path)
-            new_pkg['_artifact'] = request.data['_artifact']
+            new_pkg['artifact'] = request.data['artifact']
             new_pkg['relative_path'] = relative_path
         except OSError:
             return Response('RPM file cannot be parsed for metadata.',
