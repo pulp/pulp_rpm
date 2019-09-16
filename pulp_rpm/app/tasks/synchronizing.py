@@ -10,6 +10,7 @@ from gettext import gettext as _  # noqa:F401
 from urllib.parse import urljoin
 
 import createrepo_c as cr
+import libcomps
 
 from django.db import transaction
 
@@ -32,11 +33,13 @@ from pulpcore.plugin.stages import (
 
 from pulp_rpm.app.constants import (
     CHECKSUM_TYPES,
+    COMPS_REPODATA,
     MODULAR_REPODATA,
     PACKAGE_DB_REPODATA,
     PACKAGE_REPODATA,
     PULP_MODULE_ATTR,
     PULP_MODULEDEFAULTS_ATTR,
+    SKIP_REPODATA,
     UPDATE_REPODATA
 )
 from pulp_rpm.app.models import (
@@ -49,6 +52,10 @@ from pulp_rpm.app.models import (
     ModulemdDefaults,
     Package,
     RepoMetadataFile,
+    PackageGroup,
+    PackageCategory,
+    PackageEnvironment,
+    PackageLangpacks,
     RpmRemote,
     UpdateCollection,
     UpdateCollectionPackage,
@@ -58,6 +65,8 @@ from pulp_rpm.app.models import (
 from pulp_rpm.app.tasks.utils import get_kickstart_data, repodata_exists
 
 from pulp_rpm.app.modulemd import parse_defaults, parse_modulemd
+
+from pulp_rpm.app.comps import strdict_to_dict, dict_digest
 
 import gi
 gi.require_version('Modulemd', '2.0')
@@ -286,9 +295,11 @@ class RpmFirstStage(Stage):
         modulemd_pb = ProgressReport(message='Parse Modulemd', code='parsing.modulemds')
         modulemd_defaults_pb = ProgressReport(message='Parse Modulemd-defaults',
                                               code='parsing.modulemddefaults')
+        comps_pb = ProgressReport(message='Parsed Comps', code='parsing.comps')
 
         packages_pb.save()
         errata_pb.save()
+        comps_pb.save()
 
         remote_url = self.new_url or self.remote.url
         remote_url = remote_url if remote_url[-1] == "/" else f"{remote_url}/"
@@ -327,8 +338,16 @@ class RpmFirstStage(Stage):
             package_repodata_urls = {}
             downloaders = []
             modulemd_list = list()
+            dc_groups = []
+            dc_categories = []
+            dc_environments = []
             nevra_to_module = defaultdict(dict)
+            pkgname_to_groups = defaultdict(list)
+            group_to_categories = defaultdict(list)
+            group_to_environments = defaultdict(list)
+            optionalgroup_to_environments = defaultdict(list)
             modulemd_results = None
+            comps_downloader = None
 
             for record in repomd.records:
                 if record.type in PACKAGE_REPODATA:
@@ -338,10 +357,19 @@ class RpmFirstStage(Stage):
                     updateinfo_url = urljoin(remote_url, record.location_href)
                     downloader = self.remote.get_downloader(url=updateinfo_url)
                     downloaders.append([downloader.run()])
+
+                elif record.type in COMPS_REPODATA:
+                    comps_url = urljoin(remote_url, record.location_href)
+                    comps_downloader = self.remote.get_downloader(url=comps_url)
+
+                elif record.type in SKIP_REPODATA:
+                    continue
+
                 elif record.type in MODULAR_REPODATA:
                     modules_url = urljoin(remote_url, record.location_href)
                     modulemd_downloader = self.remote.get_downloader(url=modules_url)
                     modulemd_results = await modulemd_downloader.run()
+
                 elif record.type not in PACKAGE_DB_REPODATA:
                     file_data = {record.checksum_type: record.checksum, "size": record.size}
                     da = DeclarativeArtifact(
@@ -418,6 +446,96 @@ class RpmFirstStage(Stage):
                     dc = DeclarativeContent(content=default_content, d_artifacts=[da])
                     await self.put(dc)
 
+            if comps_downloader:
+                comps_result = await comps_downloader.run()
+
+                comps = libcomps.Comps()
+                comps.fromxml_f(comps_result.path)
+
+                comps_pb.total = (
+                    len(comps.groups) + len(comps.categories) + len(comps.environments)
+                )
+                comps_pb.state = 'running'
+                comps_pb.save()
+
+                if comps.langpacks:
+                    langpack_dict = PackageLangpacks.libcomps_to_dict(comps.langpacks)
+                    packagelangpack = PackageLangpacks(
+                        matches=strdict_to_dict(comps.langpacks),
+                        digest=dict_digest(langpack_dict)
+                    )
+                    dc = DeclarativeContent(content=packagelangpack)
+                    dc.extra_data = defaultdict(list)
+                    await self.put(dc)
+
+                if comps.categories:
+                    for category in comps.categories:
+                        category_dict = PackageCategory.libcomps_to_dict(category)
+                        category_dict['digest'] = dict_digest(category_dict)
+                        packagecategory = PackageCategory(**category_dict)
+                        dc = DeclarativeContent(content=packagecategory)
+                        dc.extra_data = defaultdict(list)
+
+                        if packagecategory.group_ids:
+                            for group_id in packagecategory.group_ids:
+                                group_to_categories[group_id['name']].append(dc)
+                        dc_categories.append(dc)
+
+                if comps.environments:
+                    for environment in comps.environments:
+                        environment_dict = PackageEnvironment.libcomps_to_dict(environment)
+                        environment_dict['digest'] = dict_digest(environment_dict)
+                        packageenvironment = PackageEnvironment(**environment_dict)
+                        dc = DeclarativeContent(content=packageenvironment)
+                        dc.extra_data = defaultdict(list)
+
+                        if packageenvironment.option_ids:
+                            for option_id in packageenvironment.option_ids:
+                                optionalgroup_to_environments[option_id['name']].append(dc)
+
+                        if packageenvironment.group_ids:
+                            for group_id in packageenvironment.group_ids:
+                                group_to_environments[group_id['name']].append(dc)
+
+                        dc_environments.append(dc)
+
+                if comps.groups:
+                    for group in comps.groups:
+                        group_dict = PackageGroup.libcomps_to_dict(group)
+                        group_dict['digest'] = dict_digest(group_dict)
+                        packagegroup = PackageGroup(**group_dict)
+                        dc = DeclarativeContent(content=packagegroup)
+                        dc.extra_data = defaultdict(list)
+
+                        if packagegroup.packages:
+                            for package in packagegroup.packages:
+                                pkgname_to_groups[package['name']].append(dc)
+
+                        if dc.content.id in group_to_categories.keys():
+                            for dc_category in group_to_categories[dc.content.id]:
+                                dc.extra_data['category_relations'].append(dc_category)
+                                dc_category.extra_data['packagegroups'].append(dc)
+
+                        if dc.content.id in group_to_environments.keys():
+                            for dc_environment in group_to_environments[dc.content.id]:
+                                dc.extra_data['environment_relations'].append(dc_environment)
+                                dc_environment.extra_data['packagegroups'].append(dc)
+
+                        if dc.content.id in optionalgroup_to_environments.keys():
+                            for dc_environment in optionalgroup_to_environments[dc.content.id]:
+                                dc.extra_data['env_relations_optional'].append(dc_environment)
+                                dc_environment.extra_data['optionalgroups'].append(dc)
+
+                        dc_groups.append(dc)
+
+                for dc_category in dc_categories:
+                    comps_pb.increment()
+                    await self.put(dc_category)
+
+                for dc_environment in dc_environments:
+                    comps_pb.increment()
+                    await self.put(dc_environment)
+
             # to preserve order, downloaders are created after all repodata urls are identified
             package_repodata_downloaders = []
             for repodata_type in PACKAGE_REPODATA:
@@ -471,6 +589,11 @@ class RpmFirstStage(Stage):
                                     dc.extra_data['modulemd_relation'].append(dc_modulemd)
                                     dc_modulemd.extra_data['package_relation'].append(dc)
 
+                            if dc.content.name in pkgname_to_groups.keys():
+                                for dc_group in pkgname_to_groups[dc.content.name]:
+                                    dc.extra_data['group_relations'].append(dc_group)
+                                    dc_group.extra_data['related_packages'].append(dc)
+
                             packages_pb.increment()
                             await self.put(dc)
 
@@ -513,14 +636,20 @@ class RpmFirstStage(Stage):
                 modulemd_pb.increment()
                 await self.put(modulemd)
 
+            for dc_group in dc_groups:
+                comps_pb.increment()
+                await self.put(dc_group)
+
         packages_pb.state = 'completed'
         errata_pb.state = 'completed'
         modulemd_pb.state = 'completed'
         modulemd_defaults_pb.state = 'completed'
+        comps_pb.state = 'completed'
         packages_pb.save()
         errata_pb.save()
         modulemd_pb.save()
         modulemd_defaults_pb.save()
+        comps_pb.save()
 
 
 class RpmContentSaver(ContentSaver):
@@ -633,11 +762,72 @@ class RpmContentSaver(ContentSaver):
                     except ValueError:
                         pass
 
+            elif isinstance(declarative_content.content, PackageCategory):
+                for grp in declarative_content.extra_data['packagegroups']:
+                    try:
+                        with transaction.atomic():
+                            declarative_content.content.packagegroups.add(grp.content)
+                    except ValueError:
+                        pass
+
+            elif isinstance(declarative_content.content, PackageEnvironment):
+                for grp in declarative_content.extra_data['packagegroups']:
+                    try:
+                        with transaction.atomic():
+                            declarative_content.content.packagegroups.add(grp.content)
+                    except ValueError:
+                        pass
+
+                for opt in declarative_content.extra_data['optionalgroups']:
+                    try:
+                        with transaction.atomic():
+                            declarative_content.content.optionalgroups.add(opt.content)
+                    except ValueError:
+                        pass
+
+            elif isinstance(declarative_content.content, PackageGroup):
+                for pkg in declarative_content.extra_data['related_packages']:
+                    try:
+                        with transaction.atomic():
+                            declarative_content.content.related_packages.add(pkg.content)
+                    except ValueError:
+                        pass
+
+                for packagecategory in declarative_content.extra_data['category_relations']:
+                    try:
+                        with transaction.atomic():
+                            packagecategory.content.packagegroups.add(declarative_content.content)
+                    except ValueError:
+                        pass
+
+                for packageenvironment in declarative_content.extra_data['environment_relations']:
+                    try:
+                        with transaction.atomic():
+                            packageenvironment.content.packagegroups.add(
+                                declarative_content.content)
+                    except ValueError:
+                        pass
+
+                for packageenvironment in declarative_content.extra_data['env_relations_optional']:
+                    try:
+                        with transaction.atomic():
+                            packageenvironment.content.optionalgroups.add(
+                                declarative_content.content)
+                    except ValueError:
+                        pass
+
             elif isinstance(declarative_content.content, Package):
                 for modulemd in declarative_content.extra_data['modulemd_relation']:
                     try:
                         with transaction.atomic():
                             modulemd.content.packages.add(declarative_content.content)
+                    except ValueError:
+                        pass
+
+                for packagegroup in declarative_content.extra_data['group_relations']:
+                    try:
+                        with transaction.atomic():
+                            packagegroup.content.related_packages.add(declarative_content.content)
                     except ValueError:
                         pass
 

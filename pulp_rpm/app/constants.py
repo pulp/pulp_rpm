@@ -76,6 +76,8 @@ PACKAGE_REPODATA = ['primary', 'filelists', 'other']
 PACKAGE_DB_REPODATA = ['primary_db', 'filelists_db', 'other_db']
 UPDATE_REPODATA = ['updateinfo']
 MODULAR_REPODATA = ['modules']
+COMPS_REPODATA = ['group']
+SKIP_REPODATA = ['group_gz']
 
 CR_UPDATE_RECORD_ATTRS = SimpleNamespace(
     ID='id',
@@ -167,3 +169,75 @@ PULP_MODULEDEFAULTS_ATTR = SimpleNamespace(
 )
 
 PULP_MODULE_ATTR = MODULEMD_MODULE_ATTR
+
+LIBCOMPS_GROUP_ATTRS = SimpleNamespace(
+    ID='id',
+    DEFAULT='default',
+    USER_VISIBLE='uservisible',
+    DISPLAY_ORDER='display_order',
+    NAME='name',
+    DESCRIPTION='desc',
+    PACKAGES='packages',
+    BIARCH_ONLY='biarchonly',
+    DESC_BY_LANG='desc_by_lang',
+    NAME_BY_LANG='name_by_lang'
+)
+
+LIBCOMPS_CATEGORY_ATTRS = SimpleNamespace(
+    ID='id',
+    NAME='name',
+    DESCRIPTION='desc',
+    DISPLAY_ORDER='display_order',
+    GROUP_IDS='group_ids',
+    DESC_BY_LANG='desc_by_lang',
+    NAME_BY_LANG='name_by_lang'
+)
+
+LIBCOMPS_ENVIRONMENT_ATTRS = SimpleNamespace(
+    ID='id',
+    NAME='name',
+    DESCRIPTION='desc',
+    DISPLAY_ORDER='display_order',
+    GROUP_IDS='group_ids',
+    OPTION_IDS='option_ids',
+    DESC_BY_LANG='desc_by_lang',
+    NAME_BY_LANG='name_by_lang'
+)
+
+PULP_LANGPACKS_ATTRS = SimpleNamespace(
+    MATCHES='matches'
+)
+
+PULP_GROUP_ATTRS = SimpleNamespace(
+    ID='id',
+    DEFAULT='default',
+    USER_VISIBLE='user_visible',
+    DISPLAY_ORDER='display_order',
+    NAME='name',
+    DESCRIPTION='description',
+    PACKAGES='packages',
+    BIARCH_ONLY='biarch_only',
+    DESC_BY_LANG='desc_by_lang',
+    NAME_BY_LANG='name_by_lang'
+)
+
+PULP_CATEGORY_ATTRS = SimpleNamespace(
+    ID='id',
+    NAME='name',
+    DESCRIPTION='description',
+    DISPLAY_ORDER='display_order',
+    GROUP_IDS='group_ids',
+    DESC_BY_LANG='desc_by_lang',
+    NAME_BY_LANG='name_by_lang'
+)
+
+PULP_ENVIRONMENT_ATTRS = SimpleNamespace(
+    ID='id',
+    NAME='name',
+    DESCRIPTION='description',
+    DISPLAY_ORDER='display_order',
+    GROUP_IDS='group_ids',
+    OPTION_IDS='option_ids',
+    DESC_BY_LANG='desc_by_lang',
+    NAME_BY_LANG='name_by_lang'
+)

@@ -22,6 +22,10 @@ from pulp_rpm.app import tasks
 from pulp_rpm.app.models import (
     DistributionTree,
     Package,
+    PackageCategory,
+    PackageEnvironment,
+    PackageGroup,
+    PackageLangpacks,
     RepoMetadataFile,
     RpmDistribution,
     RpmRemote,
@@ -38,6 +42,10 @@ from pulp_rpm.app.serializers import (
     ModulemdDefaultsSerializer,
     ModulemdSerializer,
     PackageSerializer,
+    PackageCategorySerializer,
+    PackageEnvironmentSerializer,
+    PackageGroupSerializer,
+    PackageLangpacksSerializer,
     RepoMetadataFileSerializer,
     RpmDistributionSerializer,
     RpmRemoteSerializer,
@@ -228,6 +236,50 @@ class CopyViewSet(viewsets.ViewSet):
             kwargs={}
         )
         return OperationPostponedResponse(async_result, request)
+
+
+class PackageGroupViewSet(ReadOnlyContentViewSet,
+                          mixins.DestroyModelMixin):
+    """
+    PackageGroup ViewSet.
+    """
+
+    endpoint_name = 'packagegroup'
+    queryset = PackageGroup.objects.all()
+    serializer_class = PackageGroupSerializer
+
+
+class PackageCategoryViewSet(ReadOnlyContentViewSet,
+                             mixins.DestroyModelMixin):
+    """
+    PackageCategory ViewSet.
+    """
+
+    endpoint_name = 'packagecategory'
+    queryset = PackageCategory.objects.all()
+    serializer_class = PackageCategorySerializer
+
+
+class PackageEnvironmentViewSet(ReadOnlyContentViewSet,
+                                mixins.DestroyModelMixin):
+    """
+    PackageEnvironment ViewSet.
+    """
+
+    endpoint_name = 'packageenvironment'
+    queryset = PackageEnvironment.objects.all()
+    serializer_class = PackageEnvironmentSerializer
+
+
+class PackageLangpacksViewSet(ReadOnlyContentViewSet,
+                              mixins.DestroyModelMixin):
+    """
+    PackageLangpacks ViewSet.
+    """
+
+    endpoint_name = 'packagelangpacks'
+    queryset = PackageLangpacks.objects.all()
+    serializer_class = PackageLangpacksSerializer
 
 
 class DistributionTreeViewSet(ReadOnlyContentViewSet,

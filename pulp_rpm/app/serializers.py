@@ -18,6 +18,7 @@ from pulpcore.plugin.serializers import (
     PublicationSerializer,
     PublicationDistributionSerializer,
     NestedRelatedField,
+    RelatedField,
     validate_unknown_fields,
 )
 
@@ -27,6 +28,10 @@ from pulp_rpm.app.models import (
     Image,
     Variant,
     DistributionTree,
+    PackageGroup,
+    PackageCategory,
+    PackageEnvironment,
+    PackageLangpacks,
     Modulemd,
     ModulemdDefaults,
     Package,
@@ -503,6 +508,213 @@ class CopySerializer(serializers.Serializer):
             new_data.update({'types': final_types})
 
         return new_data
+
+
+class PackageGroupSerializer(NoArtifactContentSerializer):
+    """
+    PackageGroup serializer.
+    """
+
+    id = serializers.CharField(
+        help_text=_("PackageGroup id."),
+    )
+    default = serializers.BooleanField(
+        help_text=_("PackageGroup default."),
+        required=False
+    )
+    user_visible = serializers.BooleanField(
+        help_text=_("PackageGroup user visibility."),
+        required=False
+    )
+    display_order = serializers.IntegerField(
+        help_text=_("PackageGroup display order."),
+        allow_null=True
+    )
+    name = serializers.CharField(
+        help_text=_("PackageGroup name."),
+        allow_null=True
+    )
+    description = serializers.CharField(
+        help_text=_("PackageGroup description."),
+        allow_null=True
+    )
+    packages = serializers.JSONField(
+        help_text=_("PackageGroup package list."),
+        allow_null=True
+    )
+    biarch_only = serializers.BooleanField(
+        help_text=_("PackageGroup biarch only."),
+        required=False
+    )
+    desc_by_lang = serializers.JSONField(
+        help_text=_("PackageGroup description by language."),
+        allow_null=True
+    )
+    name_by_lang = serializers.JSONField(
+        help_text=_("PackageGroup name by language."),
+        allow_null=True
+    )
+    digest = serializers.CharField(
+        help_text=_("PackageGroup digest."),
+        allow_null=True
+    )
+    related_packages = RelatedField(
+        help_text=_("Packages related to this PackageGroup."),
+        allow_null=True,
+        required=False,
+        queryset=Package.objects.all(),
+        many=True,
+        view_name='content-rpm/packages-detail'
+    )
+
+    class Meta:
+        fields = (
+            'id', 'default', 'user_visible', 'display_order',
+            'name', 'description', 'packages', 'biarch_only',
+            'desc_by_lang', 'name_by_lang', 'digest', 'related_packages'
+        )
+        model = PackageGroup
+
+
+class PackageCategorySerializer(NoArtifactContentSerializer):
+    """
+    PackageCategory serializer.
+    """
+
+    id = serializers.CharField(
+        help_text=_("Category id."),
+    )
+    name = serializers.CharField(
+        help_text=_("Category name."),
+        allow_null=True
+    )
+    description = serializers.CharField(
+        help_text=_("Category description."),
+        allow_null=True
+    )
+    display_order = serializers.IntegerField(
+        help_text=_("Category display order."),
+        allow_null=True
+    )
+    group_ids = serializers.JSONField(
+        help_text=_("Category group list."),
+        allow_null=True
+    )
+    desc_by_lang = serializers.JSONField(
+        help_text=_("Category description by language."),
+        allow_null=True
+    )
+    name_by_lang = serializers.JSONField(
+        help_text=_("Category name by language."),
+        allow_null=True
+    )
+    digest = serializers.CharField(
+        help_text=_("Category digest."),
+        allow_null=True
+    )
+    packagegroups = RelatedField(
+        help_text=_("PackageGroups related to this category."),
+        allow_null=True,
+        required=False,
+        queryset=PackageGroup.objects.all(),
+        many=True,
+        view_name='content-rpm/packagegroup-detail'
+    )
+
+    class Meta:
+        fields = (
+            'id', 'name', 'description', 'display_order',
+            'group_ids', 'desc_by_lang', 'name_by_lang', 'digest',
+            'packagegroups'
+        )
+        model = PackageCategory
+
+
+class PackageEnvironmentSerializer(NoArtifactContentSerializer):
+    """
+    PackageEnvironment serializer.
+    """
+
+    id = serializers.CharField(
+        help_text=_("Environment id."),
+    )
+    name = serializers.CharField(
+        help_text=_("Environment name."),
+        allow_null=True
+    )
+    description = serializers.CharField(
+        help_text=_("Environment description."),
+        allow_null=True
+    )
+    display_order = serializers.IntegerField(
+        help_text=_("Environment display order."),
+        allow_null=True
+    )
+    group_ids = serializers.JSONField(
+        help_text=_("Environment group list."),
+        allow_null=True
+    )
+    option_ids = serializers.JSONField(
+        help_text=_("Environment option ids"),
+        allow_null=True
+    )
+    desc_by_lang = serializers.JSONField(
+        help_text=_("Environment description by language."),
+        allow_null=True
+    )
+    name_by_lang = serializers.JSONField(
+        help_text=_("Environment name by language."),
+        allow_null=True
+    )
+    digest = serializers.CharField(
+        help_text=_("Environment digest."),
+        allow_null=True
+    )
+    packagegroups = RelatedField(
+        help_text=_("Groups related to this Environment."),
+        allow_null=True,
+        required=False,
+        queryset=PackageGroup.objects.all(),
+        many=True,
+        view_name='content-rpm/packagegroup-detail'
+    )
+    optionalgroups = RelatedField(
+        help_text=_("Groups optionally related to this Environment."),
+        allow_null=True,
+        required=False,
+        queryset=PackageGroup.objects.all(),
+        many=True,
+        view_name='content-rpm/packagegroup-detail'
+    )
+
+    class Meta:
+        fields = (
+            'id', 'name', 'description', 'display_order',
+            'group_ids', 'option_ids', 'desc_by_lang', 'name_by_lang',
+            'digest', 'packagegroups', 'optionalgroups'
+        )
+        model = PackageEnvironment
+
+
+class PackageLangpacksSerializer(NoArtifactContentSerializer):
+    """
+    PackageLangpacks serializer.
+    """
+
+    matches = serializers.JSONField(
+        help_text=_("Langpacks matches."),
+        allow_null=True
+    )
+    digest = serializers.CharField(
+        help_text=_("Langpacks digest."),
+        allow_null=True
+    )
+
+    class Meta:
+        fields = (
+            'matches', 'digest'
+        )
+        model = PackageLangpacks
 
 
 class ModulemdSerializer(SingleArtifactContentUploadSerializer):
