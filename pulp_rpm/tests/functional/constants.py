@@ -18,6 +18,8 @@ RPM_PACKAGE_CONTENT_NAME = 'rpm.package'
 
 RPM_ADVISORY_CONTENT_NAME = 'rpm.advisory'
 
+RPM_METADATA_CONTENT_NAME = 'rpm.repo_metadata_file'
+
 RPM_ALT_LAYOUT_FIXTURE_URL = urljoin(PULP_FIXTURES_BASE_URL, 'rpm-alt-layout/')
 """The URL to a signed RPM repository. See :data:`RPM_SIGNED_FIXTURE_URL`."""
 
@@ -77,9 +79,13 @@ RPM_PACKAGE_COUNT = 35
 RPM_ADVISORY_COUNT = 4
 """The number of updated record units."""
 
+RPM_METADATA_COUNT = 2
+"""The number of metadata file units."""
+
 RPM_FIXTURE_SUMMARY = {
     RPM_PACKAGE_CONTENT_NAME: RPM_PACKAGE_COUNT,
-    RPM_ADVISORY_CONTENT_NAME: RPM_ADVISORY_COUNT
+    RPM_ADVISORY_CONTENT_NAME: RPM_ADVISORY_COUNT,
+    RPM_METADATA_CONTENT_NAME: RPM_METADATA_COUNT,
 }
 """The breakdown of how many of each type of content unit are present in the
 standard repositories, i.e. :data:`RPM_SIGNED_FIXTURE_URL` and

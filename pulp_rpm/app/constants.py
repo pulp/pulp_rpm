@@ -73,6 +73,7 @@ CR_PACKAGE_ATTRS = SimpleNamespace(
 )
 
 PACKAGE_REPODATA = ['primary', 'filelists', 'other']
+PACKAGE_DB_REPODATA = ['primary_db', 'filelists_db', 'other_db']
 UPDATE_REPODATA = ['updateinfo']
 
 CR_UPDATE_RECORD_ATTRS = SimpleNamespace(
