@@ -13,6 +13,39 @@ Changelog
 
 .. towncrier release notes start
 
+3.0.0b5.dev (2019-09-17)
+========================
+
+
+Features
+--------
+
+- Setting `code` on `ProgressBar`.
+  `#5184 <https://pulp.plan.io/issues/5184>`_
+- Sync and Publish kickstart trees.
+  `#5206 <https://pulp.plan.io/issues/5206>`_
+- Sync and Publish custom/unknown repository metadata.
+  `#5432 <https://pulp.plan.io/issues/5432>`_
+
+
+Bugfixes
+--------
+
+- Use the field relative_path instead of filename in the API calls while creating a content from an artifact
+  `#4987 <https://pulp.plan.io/issues/4987>`_
+- Fixing sync task failure.
+  `#5285 <https://pulp.plan.io/issues/5285>`_
+
+
+Misc
+----
+
+- `#4681 <https://pulp.plan.io/issues/4681>`_, `#5201 <https://pulp.plan.io/issues/5201>`_, `#5202 <https://pulp.plan.io/issues/5202>`_, `#5331 <https://pulp.plan.io/issues/5331>`_, `#5430 <https://pulp.plan.io/issues/5430>`_, `#5431 <https://pulp.plan.io/issues/5431>`_, `#5438 <https://pulp.plan.io/issues/5438>`_
+
+
+----
+
+
 3.0.0b4 (2019-07-03)
 ====================
 
