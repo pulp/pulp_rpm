@@ -13,7 +13,7 @@ Changelog
 
 .. towncrier release notes start
 
-3.0.0b5.dev (2019-09-17)
+3.0.0b5 (2019-09-17)
 ========================
 
 
