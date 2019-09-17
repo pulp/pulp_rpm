@@ -85,7 +85,9 @@ def synchronize(remote_pk, repository_pk):
                 kickstart["repositories"].update({repodata: str(repository_pk)})
                 continue
             name = f"{repodata}-{kickstart['hash']}"
-            new_repository, created = Repository.objects.get_or_create(name=name)
+            new_repository, created = Repository.objects.get_or_create(
+                name=name, plugin_managed=True
+            )
             if created:
                 new_repository.save()
             kickstart["repositories"].update({repodata: str(new_repository.pk)})
