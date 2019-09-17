@@ -13,6 +13,7 @@ from pulp_smash.pulp3.utils import (
 
 from pulp_rpm.tests.functional.constants import (
     RPM_CONTENT_PATH,
+    RPM_PACKAGE_FILENAME,
     RPM_SINGLE_REQUEST_UPLOAD,
     RPM_UNSIGNED_URL,
 )
@@ -38,10 +39,10 @@ class SingleRequestUploadTestCase(unittest.TestCase):
         client = api.Client(cfg, api.page_handler)
         repo = client.post(REPO_PATH, gen_repo())
         self.addCleanup(client.delete, repo['_href'])
-        client.post(
+        client.using_handler(api.task_handler).post(
             RPM_SINGLE_REQUEST_UPLOAD,
             files=file,
-            data={'repository': repo['_href']}
+            data={'repository': repo['_href'], "relative_path": RPM_PACKAGE_FILENAME}
         )
         repo = client.get(repo['_href'])
 
@@ -85,7 +86,7 @@ class SingleRequestUploadDuplicateTestCase(unittest.TestCase):
         self.single_request_upload(repo)
         with self.assertRaises(TaskReportError) as ctx:
             self.single_request_upload(repo)
-        for key in ('already', 'exists'):
+        for key in RPM_PACKAGE_FILENAME.split("-")[:-1]:
             self.assertIn(
                 key,
                 ctx.exception.task['error']['description'].lower(),
@@ -94,8 +95,8 @@ class SingleRequestUploadDuplicateTestCase(unittest.TestCase):
 
     def single_request_upload(self, repo):
         """Create single request upload."""
-        self.client.post(
+        self.client.using_handler(api.task_handler).post(
             RPM_SINGLE_REQUEST_UPLOAD,
             files=self.file,
-            data={'repository': repo['_href']}
+            data={'repository': repo['_href'], "relative_path": RPM_PACKAGE_FILENAME}
         )
