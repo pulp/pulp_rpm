@@ -11,7 +11,7 @@ from urllib.parse import urljoin
 
 import createrepo_c as cr
 
-from pulpcore.plugin.models import Artifact, ProgressBar, Remote, Repository
+from pulpcore.plugin.models import Artifact, ProgressReport, Remote, Repository
 
 from pulpcore.plugin.stages import (
     ArtifactDownloader,
@@ -279,11 +279,11 @@ class RpmFirstStage(Stage):
         """
         Build `DeclarativeContent` from the repodata.
         """
-        packages_pb = ProgressBar(message='Parsed Packages', code='parsing.packages')
-        errata_pb = ProgressBar(message='Parsed Erratum', code='parsing.errata')
-        modulemd_pb = ProgressBar(message='Parse Modulemd', code='parsing.modulemds')
-        modulemd_defaults_pb = ProgressBar(message='Parse Modulemd-defaults',
-                                           code='parsing.modulemddefaults')
+        packages_pb = ProgressReport(message='Parsed Packages', code='parsing.packages')
+        errata_pb = ProgressReport(message='Parsed Erratum', code='parsing.errata')
+        modulemd_pb = ProgressReport(message='Parse Modulemd', code='parsing.modulemds')
+        modulemd_defaults_pb = ProgressReport(message='Parse Modulemd-defaults',
+                                              code='parsing.modulemddefaults')
 
         packages_pb.save()
         errata_pb.save()
@@ -291,7 +291,7 @@ class RpmFirstStage(Stage):
         remote_url = self.new_url or self.remote.url
 
         progress_data = dict(message='Downloading Metadata Files', code='downloading.metadata')
-        with ProgressBar(**progress_data) as metadata_pb:
+        with ProgressReport(**progress_data) as metadata_pb:
             downloader = self.remote.get_downloader(
                 url=urljoin(remote_url, 'repodata/repomd.xml')
             )
