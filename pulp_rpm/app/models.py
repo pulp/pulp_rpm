@@ -959,7 +959,7 @@ class ModulemdDefaults(Content):
         profiles (Text):
             Default profiles for modulemd streams.
         digest (Text):
-            Modulmd digest
+            Modulemd digest
     """
 
     TYPE = "modulemd-defaults"
@@ -969,6 +969,13 @@ class ModulemdDefaults(Content):
     profiles = models.TextField(default='[]')
 
     digest = models.CharField(unique=True, max_length=64)
+
+    @classmethod
+    def natural_key_fields(cls):
+        """
+        Digest is used as a natural key for ModulemdDefaults.
+        """
+        return ('digest',)
 
     class Meta:
         default_related_name = "%(app_label)s_%(model_name)s"

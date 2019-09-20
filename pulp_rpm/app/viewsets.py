@@ -33,14 +33,17 @@ from pulp_rpm.app.models import (
     RpmDistribution,
     RpmRemote,
     RpmPublication,
-    UpdateRecord
+    UpdateRecord,
+    Modulemd,
+    ModulemdDefaults
 )
-
 from pulp_rpm.app.serializers import (
     CopySerializer,
     DistributionTreeSerializer,
     MinimalPackageSerializer,
     MinimalUpdateRecordSerializer,
+    ModulemdDefaultsSerializer,
+    ModulemdSerializer,
     OneShotUploadSerializer,
     PackageSerializer,
     RepoMetadataFileSerializer,
@@ -343,3 +346,23 @@ class RepoMetadataFileViewSet(NamedModelViewSet,
     endpoint_name = 'repo_metadata_files'
     queryset = RepoMetadataFile.objects.all()
     serializer_class = RepoMetadataFileSerializer
+
+
+class ModulemdViewSet(ContentViewSet):
+    """
+    ViewSet for Modulemd.
+    """
+
+    endpoint_name = 'modulemd'
+    queryset = Modulemd.objects.all()
+    serializer_class = ModulemdSerializer
+
+
+class ModulemdDefaultsViewSet(ContentViewSet):
+    """
+    ViewSet for Modulemd.
+    """
+
+    endpoint_name = 'modulemd-defaults'
+    queryset = ModulemdDefaults.objects.all()
+    serializer_class = ModulemdDefaultsSerializer

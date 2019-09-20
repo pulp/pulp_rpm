@@ -533,7 +533,7 @@ class ModulemdDefaultsSerializer(SingleArtifactContentSerializer):
         fields = (
             'module', 'stream', 'profiles'
         )
-    model = ModulemdDefaults
+        model = ModulemdDefaults
 
 
 class AddonSerializer(serializers.ModelSerializer):

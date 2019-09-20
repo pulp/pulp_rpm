@@ -75,6 +75,7 @@ CR_PACKAGE_ATTRS = SimpleNamespace(
 PACKAGE_REPODATA = ['primary', 'filelists', 'other']
 PACKAGE_DB_REPODATA = ['primary_db', 'filelists_db', 'other_db']
 UPDATE_REPODATA = ['updateinfo']
+MODULAR_REPODATA = ['modules']
 
 CR_UPDATE_RECORD_ATTRS = SimpleNamespace(
     ID='id',
@@ -141,3 +142,28 @@ PULP_UPDATE_COLLECTION_ATTRS = CR_UPDATE_COLLECTION_ATTRS
 PULP_UPDATE_COLLECTION_PACKAGE_ATTRS = CR_UPDATE_COLLECTION_PACKAGE_ATTRS
 
 PULP_UPDATE_COLLECTION_ATTRS_MODULE = CR_UPDATE_COLLECTION_ATTRS_MODULE
+
+MODULEMD_MODULE_ATTR = SimpleNamespace(
+    ARCH='arch',
+    ARTIFACTS='artifacts',
+    CONTEXT='context',
+    NAME='name',
+    STREAM='stream',
+    VERSION='version',
+    DEPENDENCIES='dependencies'
+)
+
+MODULEMD_MODULEDEFAULTS_ATTR = SimpleNamespace(
+    MODULE='module',
+    STREAM='stream',
+    PROFILES='profiles'
+)
+
+PULP_MODULEDEFAULTS_ATTR = SimpleNamespace(
+    MODULE='module',
+    STREAM='stream',
+    PROFILES='profiles',
+    DIGEST='digest'
+)
+
+PULP_MODULE_ATTR = MODULEMD_MODULE_ATTR
