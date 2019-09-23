@@ -219,6 +219,7 @@ class ValidateNoChecksumTagTestCase(unittest.TestCase):
         """Create class-wide variables."""
         cls.cfg = config.get_config()
         cls.client = api.Client(cls.cfg, api.page_handler)
+        raise unittest.SkipTest('Skipping until we resolve https://pulp.plan.io/issues/5507')
 
     def test_all(self):
         """Sync and publish an RPM repository and verify the checksum."""

@@ -144,12 +144,10 @@ class PublicationData:
                     self.sub_repos.append((variant.variant_id, repository_version.content))
 
             treeinfo_file = create_treeinfo(distribution_tree)
-            metadata = PublishedMetadata(
-                relative_path=treeinfo_file.name,
+            PublishedMetadata.create_from_file(
                 publication=publication,
                 file=File(open(treeinfo_file.name, 'rb'))
             )
-            metadata.save()
 
         self.packages = self.get_packages(main_content)
         self.repomdrecords = self.prepare_metadata_files(main_content)
@@ -374,19 +372,17 @@ def create_rempomd_xml(packages, publication, extra_repomdrecords, sub_folder=No
             record.rename_file()
             path = record.location_href.split('/')[-1]
             repomd.set_record(record)
-        metadata = PublishedMetadata(
+        PublishedMetadata.create_from_file(
             relative_path=os.path.join(repodata_path, os.path.basename(path)),
             publication=publication,
             file=File(open(os.path.basename(path), 'rb'))
         )
-        metadata.save()
 
     with open(repomd_path, "w") as repomd_f:
         repomd_f.write(repomd.xml_dump())
 
-    metadata = PublishedMetadata(
+    PublishedMetadata.create_from_file(
         relative_path=os.path.join(repodata_path, os.path.basename(repomd_path)),
         publication=publication,
         file=File(open(os.path.basename(repomd_path), 'rb'))
     )
-    metadata.save()
