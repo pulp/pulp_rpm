@@ -1,0 +1,20 @@
+=======================
+Pulp 2.21 Release Notes
+=======================
+
+Pulp 2.21.0
+===========
+
+New Features
+------------
+
+* Module defaults are automatically copied during recursive copy operations
+* Multiple source/target repositories can be used for recursive copy (part of module support)
+
+Bug Fixes
+---------
+
+* Sync/update of errata from Amazon Linux fails due to unknown datetime format
+
+
+See the full list of :fixedbugs_pulp_rpm:`2.21.0`
