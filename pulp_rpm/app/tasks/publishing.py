@@ -18,6 +18,8 @@ from pulpcore.plugin.tasking import WorkingDirectory
 
 from pulp_rpm.app.models import (
     DistributionTree,
+    Modulemd,
+    ModulemdDefaults,
     Package,
     RepoMetadataFile,
     RpmPublication,
@@ -273,6 +275,7 @@ def create_rempomd_xml(packages, publication, extra_repomdrecords, sub_folder=No
     """
     cwd = os.getcwd()
     repodata_path = REPODATA_PATH
+    has_modules = False
 
     if sub_folder:
         cwd = os.path.join(cwd, sub_folder)
@@ -287,6 +290,7 @@ def create_rempomd_xml(packages, publication, extra_repomdrecords, sub_folder=No
     fil_db_path = os.path.join(cwd, "filelists.sqlite")
     oth_db_path = os.path.join(cwd, "other.sqlite")
     upd_xml_path = os.path.join(cwd, "updateinfo.xml.gz")
+    mod_yml_path = os.path.join(cwd, "modules.yaml")
 
     pri_xml = cr.PrimaryXmlFile(pri_xml_path)
     fil_xml = cr.FilelistsXmlFile(fil_xml_path)
@@ -316,6 +320,17 @@ def create_rempomd_xml(packages, publication, extra_repomdrecords, sub_folder=No
             pk__in=publication.repository_version.content):
         upd_xml.add_chunk(update_record_xml(update_record))
 
+    # Process modulemd and modulemd-defaults
+    with open(mod_yml_path, 'ab') as mod_yml:
+        for modulemd in Modulemd.objects.filter(
+                pk__in=publication.repository_version.content):
+            mod_yml.write(modulemd._artifacts.get().file.read())
+            has_modules = True
+        for default in ModulemdDefaults.objects.filter(
+                pk__in=publication.repository_version.content):
+            mod_yml.write(default._artifacts.get().file.read())
+            has_modules = True
+
     pri_xml.close()
     fil_xml.close()
     oth_xml.close()
@@ -331,6 +346,9 @@ def create_rempomd_xml(packages, publication, extra_repomdrecords, sub_folder=No
                      ("other_db", oth_db_path, None),
                      ("updateinfo", upd_xml_path, None)]
 
+    if has_modules:
+        repomdrecords.append(("modules", mod_yml_path, None))
+
     repomdrecords.extend(extra_repomdrecords)
 
     sqlite_files = ("primary_db", "filelists_db", "other_db")
@@ -342,6 +360,12 @@ def create_rempomd_xml(packages, publication, extra_repomdrecords, sub_folder=No
             record_bz.rename_file()
             path = record_bz.location_href.split('/')[-1]
             repomd.set_record(record_bz)
+        elif name == "modules":
+            record_md = record.compress_and_fill(cr.SHA256, cr.GZ)
+            record_md.type = name
+            record_md.rename_file()
+            path = record_md.location_href.split('/')[-1]
+            repomd.set_record(record_md)
         else:
             record.fill(cr.SHA256)
             if (db_to_update):
