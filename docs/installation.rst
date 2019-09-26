@@ -30,6 +30,7 @@ Only Fedora 29+ and CentOS 7 (with epel repository and python36) are supported.
    ansible-galaxy install pulp.pulp_rpm_prerequisites -p ./roles/
 
 Then use role you downloaded **before** ansible-pulp installer roles.
+Do not forget to set ``pulp_use_system_wide_pkgs`` to ``true``.
 
 .. code-block:: yaml
 
@@ -38,6 +39,7 @@ Then use role you downloaded **before** ansible-pulp installer roles.
      vars:
        pulp_secret_key: secret
        pulp_default_admin_password: password
+       pulp_use_system_wide_pkgs: true
        pulp_install_plugins:
          pulp-rpm:
            app_label: "rpm"
