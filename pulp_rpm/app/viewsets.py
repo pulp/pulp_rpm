@@ -1,14 +1,8 @@
-from gettext import gettext as _
-
-from django.db import transaction
-from django.db.utils import IntegrityError
 from drf_yasg.utils import swagger_auto_schema
-from rest_framework import serializers, status, viewsets, mixins
+from rest_framework import viewsets, mixins
 from rest_framework.decorators import action
-from rest_framework.response import Response
 from rest_framework.parsers import FormParser, MultiPartParser
 
-from pulpcore.plugin.models import Artifact
 from pulpcore.plugin.tasking import enqueue_with_reservation
 from pulpcore.plugin.serializers import (
     AsyncOperationResponseSerializer,
@@ -17,7 +11,7 @@ from pulpcore.plugin.serializers import (
 from pulpcore.plugin.viewsets import (
     BaseDistributionViewSet,
     ContentFilter,
-    ContentViewSet,
+    SingleArtifactContentUploadViewSet,
     RemoteViewSet,
     NamedModelViewSet,
     OperationPostponedResponse,
@@ -25,7 +19,6 @@ from pulpcore.plugin.viewsets import (
 )
 
 from pulp_rpm.app import tasks
-from pulp_rpm.app.shared_utils import _prepare_package
 from pulp_rpm.app.models import (
     DistributionTree,
     Package,
@@ -44,7 +37,6 @@ from pulp_rpm.app.serializers import (
     MinimalUpdateRecordSerializer,
     ModulemdDefaultsSerializer,
     ModulemdSerializer,
-    OneShotUploadSerializer,
     PackageSerializer,
     RepoMetadataFileSerializer,
     RpmDistributionSerializer,
@@ -72,7 +64,7 @@ class PackageFilter(ContentFilter):
         }
 
 
-class PackageViewSet(ContentViewSet):
+class PackageViewSet(SingleArtifactContentUploadViewSet):
     """
     A ViewSet for Package.
 
@@ -84,40 +76,10 @@ class PackageViewSet(ContentViewSet):
     """
 
     endpoint_name = 'packages'
-    queryset = Package.objects.all()
+    queryset = Package.objects.prefetch_related("_artifacts")
     serializer_class = PackageSerializer
     minimal_serializer_class = MinimalPackageSerializer
     filterset_class = PackageFilter
-
-    @transaction.atomic
-    def create(self, request):
-        """
-        Create a new Package from a request.
-        """
-        try:
-            artifact = self.get_resource(request.data['artifact'], Artifact)
-        except KeyError:
-            raise serializers.ValidationError(detail={'artifact': _('This field is required')})
-
-        try:
-            relative_path = request.data['relative_path']
-        except KeyError:
-            raise serializers.ValidationError(detail={'relative_path': _('This field is required')})
-
-        try:
-            new_pkg = _prepare_package(artifact, relative_path)
-            new_pkg['artifact'] = request.data['artifact']
-            new_pkg['relative_path'] = relative_path
-        except OSError:
-            return Response('RPM file cannot be parsed for metadata.',
-                            status=status.HTTP_406_NOT_ACCEPTABLE)
-
-        serializer = self.get_serializer(data=new_pkg)
-        serializer.is_valid(raise_exception=True)
-        serializer.save()
-
-        headers = self.get_success_headers(request.data)
-        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
 
 
 class RpmRemoteViewSet(RemoteViewSet):
@@ -173,7 +135,7 @@ class UpdateRecordFilter(ContentFilter):
         }
 
 
-class UpdateRecordViewSet(ContentViewSet):
+class UpdateRecordViewSet(SingleArtifactContentUploadViewSet):
     """
     A ViewSet for UpdateRecord.
 
@@ -189,58 +151,6 @@ class UpdateRecordViewSet(ContentViewSet):
     serializer_class = UpdateRecordSerializer
     minimal_serializer_class = MinimalUpdateRecordSerializer
     filterset_class = UpdateRecordFilter
-
-
-class OneShotUploadViewSet(viewsets.ViewSet):
-    """
-    ViewSet for One Shot RPM Upload.
-
-    Args:
-        file@: package to upload
-    Optional:
-        repository: repository to update
-    """
-
-    serializer_class = OneShotUploadSerializer
-    parser_classes = (MultiPartParser, FormParser)
-
-    @swagger_auto_schema(
-        operation_description="Create an artifact and trigger an asynchronous"
-                              "task to create RPM content from it, optionally"
-                              "create new repository version.",
-        operation_summary="Upload a package",
-        operation_id="upload_rpm_package",
-        request_body=OneShotUploadSerializer,
-        responses={202: AsyncOperationResponseSerializer}
-    )
-    def create(self, request):
-        """Upload an RPM package."""
-        artifact = Artifact.init_and_validate(request.data['file'])
-        filename = request.data['file'].name
-
-        if 'repository' in request.data:
-            serializer = OneShotUploadSerializer(
-                data=request.data, context={'request': request})
-            serializer.is_valid(raise_exception=True)
-            repository = serializer.validated_data['repository']
-            repository_pk = repository.pk
-        else:
-            repository_pk = None
-
-        try:
-            artifact.save()
-        except IntegrityError:
-            # if artifact already exists, let's use it
-            artifact = Artifact.objects.get(sha256=artifact.sha256)
-
-        async_result = enqueue_with_reservation(
-            tasks.one_shot_upload, [artifact],
-            kwargs={
-                'artifact_pk': artifact.pk,
-                'filename': filename,
-                'repository_pk': repository_pk,
-            })
-        return OperationPostponedResponse(async_result, request)
 
 
 class RpmPublicationViewSet(PublicationViewSet):
@@ -348,7 +258,7 @@ class RepoMetadataFileViewSet(NamedModelViewSet,
     serializer_class = RepoMetadataFileSerializer
 
 
-class ModulemdViewSet(ContentViewSet):
+class ModulemdViewSet(SingleArtifactContentUploadViewSet):
     """
     ViewSet for Modulemd.
     """
@@ -358,7 +268,7 @@ class ModulemdViewSet(ContentViewSet):
     serializer_class = ModulemdSerializer
 
 
-class ModulemdDefaultsViewSet(ContentViewSet):
+class ModulemdDefaultsViewSet(SingleArtifactContentUploadViewSet):
     """
     ViewSet for Modulemd.
     """

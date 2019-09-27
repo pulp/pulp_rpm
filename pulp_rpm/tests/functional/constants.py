@@ -66,7 +66,7 @@ RPM_SHA512_FIXTURE_URL = urljoin(PULP_FIXTURES_BASE_URL, 'rpm-with-sha-512/')
 RPM_SIGNED_FIXTURE_URL = urljoin(PULP_FIXTURES_BASE_URL, 'rpm-signed/')
 """The URL to a repository with signed RPM packages."""
 
-RPM_SINGLE_REQUEST_UPLOAD = urljoin(BASE_PATH, 'rpm/upload/')
+RPM_SINGLE_REQUEST_UPLOAD = urljoin(BASE_PATH, 'content/rpm/packages/')
 
 RPM_UNSIGNED_FIXTURE_URL = urljoin(PULP_FIXTURES_BASE_URL, 'rpm-unsigned/')
 """The URL to a repository with unsigned RPM packages."""

@@ -6,6 +6,7 @@ import unittest
 from requests.exceptions import HTTPError
 
 from pulp_smash import api, config, utils
+from pulp_smash.exceptions import TaskReportError
 from pulp_smash.pulp3.constants import ARTIFACTS_PATH
 from pulp_smash.pulp3.utils import delete_orphans
 
@@ -48,7 +49,7 @@ class ContentUnitTestCase(unittest.TestCase):
     def test_01_create_content_unit(self):
         """Create content unit."""
         self.content_unit.update(
-            self.client.post(RPM_CONTENT_PATH, {
+            self.client.using_handler(api.task_handler).post(RPM_CONTENT_PATH, {
                 'artifact': self.artifact['_href'],
                 'relative_path': RPM_PACKAGE_FILENAME
             })
@@ -141,16 +142,15 @@ class DuplicateContentUnit(unittest.TestCase):
         }
 
         # create first content unit.
-        self.client.post(RPM_CONTENT_PATH, attrs)
+        self.client.using_handler(api.task_handler).post(RPM_CONTENT_PATH, attrs)
 
-        # using the same attrs used to create the first content unit.
-        response = api.Client(self.cfg, api.echo_handler).post(
-            RPM_CONTENT_PATH,
-            attrs
-        )
+        with self.assertRaises(TaskReportError) as ctx:
+            # using the same attrs used to create the first content unit.
+            api.Client(self.cfg, api.task_handler).post(
+                RPM_CONTENT_PATH,
+                attrs
+            )
 
-        with self.assertRaises(HTTPError):
-            response.raise_for_status()
         keywords = (
             'name',
             'epoch',
@@ -160,9 +160,10 @@ class DuplicateContentUnit(unittest.TestCase):
             'checksum_type',
             'pkgId',
         )
+
         for key in keywords:
             self.assertIn(
                 key.lower(),
-                response.json()['non_field_errors'][0].lower(),
-                response.json()
+                ctx.exception.task['error']['description'].lower(),
+                ctx.exception.task['error']
             )

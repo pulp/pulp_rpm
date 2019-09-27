@@ -3,13 +3,13 @@
 import unittest
 
 from pulp_smash import api, config, utils
+from pulp_smash.exceptions import TaskReportError
 from pulp_smash.pulp3.constants import ARTIFACTS_PATH, REPO_PATH
 from pulp_smash.pulp3.utils import (
     delete_orphans,
     gen_repo,
     get_versions,
 )
-from requests.exceptions import HTTPError
 
 from pulp_rpm.tests.functional.constants import (
     RPM_CONTENT_PATH,
@@ -45,7 +45,7 @@ class UploadEncodingMetadataTestCase(unittest.TestCase):
         """Test whether one can upload an RPM with non-ascii metadata."""
         files = {'file': utils.http_get(RPM_WITH_NON_ASCII_URL)}
         artifact = self.client.post(ARTIFACTS_PATH, files=files)
-        content_unit = self.client.post(RPM_CONTENT_PATH, {
+        content_unit = self.client.using_handler(api.task_handler).post(RPM_CONTENT_PATH, {
             'artifact': artifact['_href'],
             'relative_path': RPM_WITH_NON_ASCII_NAME
         })
@@ -64,8 +64,8 @@ class UploadEncodingMetadataTestCase(unittest.TestCase):
         """Test whether an exception is raised when non-utf-8 is uploaded."""
         files = {'file': utils.http_get(RPM_WITH_NON_UTF_8_URL)}
         artifact = self.client.post(ARTIFACTS_PATH, files=files)
-        with self.assertRaises(HTTPError):
-            self.client.post(RPM_CONTENT_PATH, {
+        with self.assertRaises(TaskReportError):
+            self.client.using_handler(api.task_handler).post(RPM_CONTENT_PATH, {
                 'artifact': artifact['_href'],
                 'relative_path': RPM_WITH_NON_UTF_8_NAME
             })
