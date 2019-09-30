@@ -518,7 +518,7 @@ class ModulemdSerializer(SingleArtifactContentUploadSerializer):
     )
 
     class Meta:
-        fields = (
+        fields = SingleArtifactContentUploadSerializer.Meta.fields + (
             'name', 'stream', 'version', 'context', 'arch',
             'artifacts', 'dependencies', 'packages'
         )
@@ -541,7 +541,7 @@ class ModulemdDefaultsSerializer(SingleArtifactContentUploadSerializer):
     )
 
     class Meta:
-        fields = (
+        fields = SingleArtifactContentUploadSerializer.Meta.fields + (
             'module', 'stream', 'profiles'
         )
         model = ModulemdDefaults
