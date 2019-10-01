@@ -13,6 +13,42 @@ Changelog
 
 .. towncrier release notes start
 
+3.0.0b6 (2019-09-30)
+====================
+
+
+Features
+--------
+
+- Add upload functionality to the rpm contents endpoints.
+  `#5453 <https://pulp.plan.io/issues/5453>`_
+- Synchronize and publish modular content.
+  `#5493 <https://pulp.plan.io/issues/5493>`_
+
+
+Bugfixes
+--------
+
+- Add url prefix to plugin custom urls.
+  `#5330 <https://pulp.plan.io/issues/5330>`_
+
+
+Deprecations and Removals
+-------------------------
+
+- Removing `pulp/api/v3/rpm/upload/`
+  `#5453 <https://pulp.plan.io/issues/5453>`_
+
+
+Misc
+----
+
+- `#5172 <https://pulp.plan.io/issues/5172>`_, `#5304 <https://pulp.plan.io/issues/5304>`_, `#5408 <https://pulp.plan.io/issues/5408>`_, `#5421 <https://pulp.plan.io/issues/5421>`_, `#5469 <https://pulp.plan.io/issues/5469>`_, `#5493 <https://pulp.plan.io/issues/5493>`_
+
+
+----
+
+
 3.0.0b5 (2019-09-17)
 ========================
 
