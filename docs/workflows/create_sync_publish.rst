@@ -15,7 +15,6 @@ Create a repository ``foo``
 
     {
         "_href": "/pulp/api/v3/repositories/5eeabc0b-3b86-4264-bb3a-5889530a6f5b/",
-        ...
     }
 
 ``$ export REPO_HREF=$(http :24817/pulp/api/v3/repositories/ | jq -r '.results[] | select(.name == "foo") | ._href')``
@@ -36,7 +35,6 @@ to download RPMs whenever they are requested by clients.
 
     {
         "_href": "/pulp/api/v3/remotes/rpm/rpm/378711cd-1bee-4adc-8d9b-fe3bceaba39f/",
-        ...
     }
 
 ``$ export REMOTE_HREF=$(http :24817/pulp/api/v3/remotes/rpm/rpm/ | jq -r '.results[] | select(.name == "bar") | ._href')``
@@ -97,6 +95,5 @@ Create a Distribution for the Publication
 
     {
         "_href": "/pulp/api/v3/distributions/8f394d20-f6fb-49dd-af0e-778225d79442/",
-       ...
     }
 

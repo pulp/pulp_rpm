@@ -26,8 +26,6 @@ or
        "created_resources": [
            "/pulp/api/v3/content/rpm/packages/1edf8d4e-4293-4b66-93cd-8e913731c87a/",
        ],
-
-       ...
     }
 
 You can also specify which types of content you would like to copy by providing a value for the
