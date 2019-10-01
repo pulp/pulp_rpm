@@ -15,6 +15,8 @@ Bug Fixes
 ---------
 
 * Sync/update of errata from Amazon Linux fails due to unknown datetime format.
+* During rpm upload filename should be preserved in the storage path.
+* Allow versions in updateinfo to be non-numeric.
 
 
 See the full list of :fixedbugs_pulp_rpm:`2.21.0`
