@@ -18,7 +18,6 @@ Create an Artifact by uploading the file to Pulp.
 
     {
         "_href": "/pulp/api/v3/artifacts/d1dd56aa-c236-414a-894f-b3d9334d2e73/",
-        ...
     }
 
 Create ``rpm`` content from an Artifact
@@ -33,7 +32,6 @@ Create a content unit and point it to your artifact
     {
         "_href": "/pulp/api/v3/content/rpm/packages/2df123b2-0d38-4a43-9b21-a3e830ea1324/",
         "artifact": "/pulp/api/v3/artifacts/d1dd56aa-c236-414a-894f-b3d9334d2e73/",
-        ...
     }
 
 ``$ export CONTENT_HREF=$(http :24817/pulp/api/v3/content/rpm/packages/ | jq -r '.results[] | select( .location_href == "foo-4.1-1.noarch.rpm") | ._href')``
@@ -63,7 +61,5 @@ With this call you can substitute previous two (or three) steps (create artifact
            "/pulp/api/v3/content/rpm/packages/1edf8d4e-4293-4b66-93cd-8e913731c87a/",
            "/pulp/api/v3/repositories/64bdeb44-c6d3-4ed7-9c5a-94b264a6b7b5/versions/2/"
        ],
-
-       ...
     }
 
