@@ -239,7 +239,7 @@ class DistributionTreeViewSet(NamedModelViewSet,
 
     """
 
-    endpoint_name = 'distribution_trees'
+    endpoint_name = 'content/rpm/distribution_trees'
     queryset = DistributionTree.objects.all()
     serializer_class = DistributionTreeSerializer
 
@@ -253,7 +253,7 @@ class RepoMetadataFileViewSet(NamedModelViewSet,
 
     """
 
-    endpoint_name = 'repo_metadata_files'
+    endpoint_name = 'content/rpm/repo_metadata_files'
     queryset = RepoMetadataFile.objects.all()
     serializer_class = RepoMetadataFileSerializer
 
