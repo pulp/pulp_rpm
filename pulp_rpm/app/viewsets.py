@@ -1,3 +1,5 @@
+import gzip
+
 from drf_yasg.utils import swagger_auto_schema
 from rest_framework import viewsets, mixins
 from rest_framework.decorators import action
@@ -30,11 +32,13 @@ from pulp_rpm.app.models import (
     Modulemd,
     ModulemdDefaults
 )
+from pulp_rpm.app.modulemd import upload_modulemd
 from pulp_rpm.app.serializers import (
     CopySerializer,
     DistributionTreeSerializer,
     MinimalPackageSerializer,
     MinimalUpdateRecordSerializer,
+    ModularUploadSerializer,
     ModulemdDefaultsSerializer,
     ModulemdSerializer,
     PackageSerializer,
@@ -258,7 +262,10 @@ class RepoMetadataFileViewSet(NamedModelViewSet,
     serializer_class = RepoMetadataFileSerializer
 
 
-class ModulemdViewSet(SingleArtifactContentUploadViewSet):
+class ModulemdViewSet(NamedModelViewSet,
+                      mixins.RetrieveModelMixin,
+                      mixins.ListModelMixin,
+                      mixins.DestroyModelMixin):
     """
     ViewSet for Modulemd.
     """
@@ -268,7 +275,10 @@ class ModulemdViewSet(SingleArtifactContentUploadViewSet):
     serializer_class = ModulemdSerializer
 
 
-class ModulemdDefaultsViewSet(SingleArtifactContentUploadViewSet):
+class ModulemdDefaultsViewSet(NamedModelViewSet,
+                              mixins.RetrieveModelMixin,
+                              mixins.ListModelMixin,
+                              mixins.DestroyModelMixin):
     """
     ViewSet for Modulemd.
     """
@@ -276,3 +286,50 @@ class ModulemdDefaultsViewSet(SingleArtifactContentUploadViewSet):
     endpoint_name = 'modulemd-defaults'
     queryset = ModulemdDefaults.objects.all()
     serializer_class = ModulemdDefaultsSerializer
+
+
+class ModularUploadViewSet(viewsets.GenericViewSet,
+                           mixins.CreateModelMixin):
+    """Modular Upload ViewSet."""
+
+    parser_classes = (MultiPartParser, FormParser)
+    serializer_class = ModularUploadSerializer
+
+    @swagger_auto_schema(
+        operation_description="Trigger an asynchronous task to upload modular content.",
+        operation_summary="Upload modular content",
+        responses={202: AsyncOperationResponseSerializer}
+    )
+    def create(self, request, *args, **kwargs):
+        """Create modulemds and modulemd-defaults from uploaded file."""
+        serializer = ModularUploadSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        locked_resource = list()
+        if 'file' in request.data:
+            file_path = request.data['file'].temporary_file_path()
+        else:
+            file_path = serializer.validated_data['artifact'].file.path
+
+        # gzip.open fails on read() when the file is not a gzipped
+        try:
+            with gzip.open(file_path, 'rb') as modules_yaml:
+                yaml_string = modules_yaml.read().decode()
+        except OSError:
+            with open(file_path, 'rb') as modules_yaml:
+                yaml_string = modules_yaml.read().decode()
+
+        if 'repository' in request.data:
+            repository = serializer.validated_data['repository']
+            locked_resource.append(repository)
+        else:
+            repository = None
+
+        async_result = enqueue_with_reservation(
+            upload_modulemd, locked_resource,
+            kwargs={
+                'yaml_string': yaml_string,
+                'repository': repository
+            }
+        )
+
+        return OperationPostponedResponse(async_result, request)

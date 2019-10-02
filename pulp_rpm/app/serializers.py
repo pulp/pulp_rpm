@@ -1,9 +1,10 @@
 from gettext import gettext as _
 
 from rest_framework import serializers
-from rest_framework.exceptions import NotAcceptable
+from rest_framework.exceptions import NotAcceptable, ValidationError
 
 from pulpcore.plugin.models import (
+    Artifact,
     Remote,
     Repository,
     RepositoryVersion
@@ -35,10 +36,7 @@ from pulp_rpm.app.models import (
     RpmPublication,
     UpdateRecord,
 )
-
 from pulp_rpm.app.fields import UpdateCollectionField, UpdateReferenceField
-
-
 from pulp_rpm.app.constants import RPM_PLUGIN_TYPE_CHOICE_MAP
 from pulp_rpm.app.shared_utils import _prepare_package
 
@@ -488,33 +486,38 @@ class ModulemdSerializer(SingleArtifactContentUploadSerializer):
 
     name = serializers.CharField(
         help_text=_("Modulemd name."),
+        read_only=True,
     )
     stream = serializers.CharField(
         help_text=_("Stream name."),
+        read_only=True,
     )
     version = serializers.CharField(
         help_text=_("Modulemd version."),
+        read_only=True,
     )
     context = serializers.CharField(
         help_text=_("Modulemd context."),
+        read_only=True,
     )
     arch = serializers.CharField(
         help_text=_("Modulemd architecture."),
+        read_only=True,
     )
     artifacts = serializers.CharField(
         help_text=_("Modulemd artifacts."),
-        allow_null=True
+        allow_null=True, read_only=True,
     )
     dependencies = serializers.CharField(
         help_text=_("Modulemd dependencies."),
-        allow_null=True
+        allow_null=True, read_only=True,
     )
     packages = serializers.PrimaryKeyRelatedField(
         help_text=_("Modulemd artifacts' packages."),
         allow_null=True,
         required=False,
         queryset=Package.objects.all(),
-        many=True
+        many=True,
     )
 
     class Meta:
@@ -738,3 +741,41 @@ class RepoMetadataFileSerializer(SingleArtifactContentUploadSerializer):
             'data_type', 'checksum_type', 'checksum'
         )
         model = RepoMetadataFile
+
+
+class ModularUploadSerializer(serializers.Serializer):
+    """
+    Serializer for upload modules.yaml.
+    """
+
+    file = serializers.FileField(
+        help_text=_("An uploaded file."),
+        write_only=True,
+        required=False
+    )
+
+    artifact = serializers.HyperlinkedRelatedField(
+        help_text=_('A URI of the artifact.'),
+        required=False,
+        queryset=Artifact.objects.all(),
+        view_name='artifacts-detail',
+    )
+
+    repository = serializers.HyperlinkedRelatedField(
+        help_text=_('A URI of the repository.'),
+        required=False,
+        queryset=Repository.objects.all(),
+        view_name='repositories-detail',
+    )
+
+    def validate(self, data):
+        """Validation that only file or artifact is specified."""
+        data = super().validate(data)
+        if 'file' in data and 'artifact' in data:
+            raise ValidationError(
+                _('Only one of "file" and "artifact" may be specified.')
+            )
+        elif 'artifact' not in data and 'file' not in data:
+            raise ValidationError(_('One of "file" and "artifact" must be specified.'))
+
+        return data

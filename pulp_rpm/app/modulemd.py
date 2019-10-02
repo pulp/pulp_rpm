@@ -2,8 +2,11 @@ import json
 import os
 import tempfile
 
-from pulpcore.app.models.content import Artifact
+from pulpcore.app.models import CreatedResource
+from pulpcore.app.models.content import Artifact, ContentArtifact
+from pulpcore.app.models.repository import RepositoryVersion
 from pulp_rpm.app.constants import PULP_MODULE_ATTR, PULP_MODULEDEFAULTS_ATTR
+from pulp_rpm.app.models import Modulemd, ModulemdDefaults
 
 import gi
 gi.require_version('Modulemd', '2.0')
@@ -98,3 +101,91 @@ def parse_defaults(module_index):
                 'artifact': artifact
             })
     return ret
+
+
+def upload_modulemd(yaml_string, repository):
+    """
+    Parse modulemd and modulemd-defaults from uploaded file.
+
+    Args:
+        yaml_string (string):
+            content of modules.yaml
+        repository (pulpcore.app.models.Repository):
+            repository object
+
+    """
+    if repository:
+        content_to_add = list()
+
+    uploaded_index = mmdlib.ModuleIndex.new()
+    uploaded_index.update_from_string(yaml_string, True)
+
+    modulemd_names = uploaded_index.get_module_names()
+    modulemd_dict = parse_modulemd(modulemd_names, uploaded_index)
+
+    for modulemd in modulemd_dict:
+        artifact = modulemd.pop('artifact')
+        if len(Modulemd.objects.filter(**modulemd)):
+            continue
+        module = Modulemd(**modulemd)
+        module.save()
+
+        if len(Artifact.objects.filter(sha256=artifact.sha256)):
+            artifact = Artifact.objects.get(sha256=artifact.sha256)
+        artifact.save()
+
+        relative_path = '{}{}{}{}{}snippet'.format(
+            modulemd[PULP_MODULE_ATTR.NAME], modulemd[PULP_MODULE_ATTR.STREAM],
+            modulemd[PULP_MODULE_ATTR.VERSION], modulemd[PULP_MODULE_ATTR.CONTEXT],
+            modulemd[PULP_MODULE_ATTR.ARCH]
+        )
+
+        ca = ContentArtifact.objects.create(
+            artifact=artifact,
+            relative_path=relative_path,
+            content=module
+        )
+        ca.save()
+        resource_artifact = CreatedResource(content_object=module)
+        resource_modulemd = CreatedResource(content_object=artifact)
+        resource_artifact.save()
+        resource_modulemd.save()
+
+        if repository:
+            content_to_add.append(module.pk)
+
+    modulemd_defaults_all = parse_defaults(uploaded_index)
+    for default in modulemd_defaults_all:
+        artifact = default.pop('artifact')
+        if len(ModulemdDefaults.objects.filter(**default)):
+            continue
+        module_default = ModulemdDefaults(**default)
+        module_default.save()
+
+        if len(Artifact.objects.filter(sha256=artifact.sha256)):
+            artifact = Artifact.objects.get(sha256=artifact.sha256)
+        artifact.save()
+        relative_path = '{}{}snippet'.format(
+            default[PULP_MODULEDEFAULTS_ATTR.MODULE],
+            default[PULP_MODULEDEFAULTS_ATTR.STREAM]
+        )
+        ca = ContentArtifact.objects.create(
+            artifact=artifact,
+            relative_path=relative_path,
+            content=module_default
+        )
+        ca.save()
+        resource_artifact = CreatedResource(content_object=module_default)
+        resource_default = CreatedResource(content_object=artifact)
+        resource_artifact.save()
+        resource_default.save()
+
+        if repository:
+            content_to_add.append(module_default.pk)
+
+    if repository and content_to_add:
+        with RepositoryVersion.create(repository) as new_repository_version:
+            new_repository_version.add_content(Modulemd.objects.filter(pk__in=content_to_add))
+            new_repository_version.add_content(
+                ModulemdDefaults.objects.filter(pk__in=content_to_add)
+            )
