@@ -77,9 +77,9 @@ def populate_pulp(cfg, url=RPM_SIGNED_FIXTURE_URL):
         sync(cfg, remote, repo)
     finally:
         if remote:
-            client.delete(remote['_href'])
+            client.delete(remote['pulp_href'])
         if repo:
-            client.delete(repo['_href'])
+            client.delete(repo['pulp_href'])
     return client.get(RPM_CONTENT_PATH)['results']
 
 
@@ -150,7 +150,7 @@ def publish(cfg, repo, version_href=None):
     if version_href:
         body = {"repository_version": version_href}
     else:
-        body = {"repository": repo["_href"]}
+        body = {"repository": repo["pulp_href"]}
 
     client = api.Client(cfg, api.json_handler)
     call_report = client.post(RPM_PUBLICATION_PATH, body)

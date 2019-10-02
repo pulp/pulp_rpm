@@ -69,21 +69,21 @@ class PublishAnyRepoVersionTestCase(unittest.TestCase):
         """
         body = gen_rpm_remote()
         remote = self.client.post(RPM_REMOTE_PATH, body)
-        self.addCleanup(self.client.delete, remote['_href'])
+        self.addCleanup(self.client.delete, remote['pulp_href'])
 
         repo = self.client.post(REPO_PATH, gen_repo())
-        self.addCleanup(self.client.delete, repo['_href'])
+        self.addCleanup(self.client.delete, repo['pulp_href'])
 
         sync(self.cfg, remote, repo)
 
         # Step 1
-        repo = self.client.get(repo['_href'])
+        repo = self.client.get(repo['pulp_href'])
         for rpm_content in get_content(repo)[RPM_PACKAGE_CONTENT_NAME]:
             self.client.post(
                 repo['_versions_href'],
-                {'add_content_units': [rpm_content['_href']]}
+                {'add_content_units': [rpm_content['pulp_href']]}
             )
-        version_hrefs = tuple(ver['_href'] for ver in get_versions(repo))
+        version_hrefs = tuple(ver['pulp_href'] for ver in get_versions(repo))
         non_latest = choice(version_hrefs[:-1])
 
         # Step 2
@@ -101,7 +101,7 @@ class PublishAnyRepoVersionTestCase(unittest.TestCase):
         # Step 6
         with self.assertRaises(HTTPError):
             body = {
-                'repository': repo['_href'],
+                'repository': repo['pulp_href'],
                 'repository_version': non_latest
             }
             self.client.post(RPM_PUBLICATION_PATH, body)
@@ -124,14 +124,14 @@ class SyncPublishReferencesUpdateTestCase(unittest.TestCase):
         `Pulp #3998 <https://pulp.plan.io/issues/3998>`_.
         """
         repo = self.client.post(REPO_PATH, gen_repo())
-        self.addCleanup(self.client.delete, repo['_href'])
+        self.addCleanup(self.client.delete, repo['pulp_href'])
 
         body = gen_rpm_remote(url=RPM_REFERENCES_UPDATEINFO_URL)
         remote = self.client.post(RPM_REMOTE_PATH, body)
-        self.addCleanup(self.client.delete, remote['_href'])
+        self.addCleanup(self.client.delete, remote['pulp_href'])
 
         sync(self.cfg, remote, repo)
-        repo = self.client.get(repo['_href'])
+        repo = self.client.get(repo['pulp_href'])
 
         self.assertIsNotNone(repo['_latest_version_href'])
 
@@ -143,7 +143,7 @@ class SyncPublishReferencesUpdateTestCase(unittest.TestCase):
         )
 
         publication = publish(self.cfg, repo)
-        self.addCleanup(self.client.delete, publication['_href'])
+        self.addCleanup(self.client.delete, publication['pulp_href'])
 
 
 class SyncPublishTestCase(unittest.TestCase):
@@ -184,18 +184,18 @@ class SyncPublishTestCase(unittest.TestCase):
     def do_test(self, url):
         """Sync and publish an RPM repository given a feed URL."""
         repo = self.client.post(REPO_PATH, gen_repo())
-        self.addCleanup(self.client.delete, repo['_href'])
+        self.addCleanup(self.client.delete, repo['pulp_href'])
 
         remote = self.client.post(RPM_REMOTE_PATH, gen_rpm_remote(url=url))
-        self.addCleanup(self.client.delete, remote['_href'])
+        self.addCleanup(self.client.delete, remote['pulp_href'])
 
         sync(self.cfg, remote, repo)
-        repo = self.client.get(repo['_href'])
+        repo = self.client.get(repo['pulp_href'])
 
         self.assertIsNotNone(repo['_latest_version_href'])
 
         publication = publish(self.cfg, repo)
-        self.addCleanup(self.client.delete, publication['_href'])
+        self.addCleanup(self.client.delete, publication['pulp_href'])
 
 
 class ValidateNoChecksumTagTestCase(unittest.TestCase):
@@ -225,26 +225,26 @@ class ValidateNoChecksumTagTestCase(unittest.TestCase):
         """Sync and publish an RPM repository and verify the checksum."""
         # Step 1
         repo = self.client.post(REPO_PATH, gen_repo())
-        self.addCleanup(self.client.delete, repo['_href'])
+        self.addCleanup(self.client.delete, repo['pulp_href'])
 
         remote = self.client.post(RPM_REMOTE_PATH, gen_rpm_remote())
-        self.addCleanup(self.client.delete, remote['_href'])
+        self.addCleanup(self.client.delete, remote['pulp_href'])
 
         # Step 2
         sync(self.cfg, remote, repo)
-        repo = self.client.get(repo['_href'])
+        repo = self.client.get(repo['pulp_href'])
 
         self.assertIsNotNone(repo['_latest_version_href'])
 
         # Step 3
         publication = publish(self.cfg, repo)
-        self.addCleanup(self.client.delete, publication['_href'])
+        self.addCleanup(self.client.delete, publication['pulp_href'])
         body = gen_distribution()
-        body['publication'] = publication['_href']
+        body['publication'] = publication['pulp_href']
         distribution = self.client.using_handler(api.task_handler).post(
             RPM_DISTRIBUTION_PATH, body
         )
-        self.addCleanup(self.client.delete, distribution['_href'])
+        self.addCleanup(self.client.delete, distribution['pulp_href'])
         # Step 4
         repo_md = ElementTree.fromstring(
             download_content_unit(self.cfg, distribution, 'repodata/repomd.xml')
