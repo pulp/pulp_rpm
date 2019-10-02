@@ -5,7 +5,7 @@ from setuptools import setup, find_packages
 requirements = [
     'createrepo_c~=0.13',
     'productmd',
-    'pulpcore-plugin==0.1.0rc6',
+    'pulpcore-plugin~=0.1rc6',
 ]
 
 with open('README.rst') as f:
@@ -13,7 +13,7 @@ with open('README.rst') as f:
 
 setup(
     name='pulp-rpm',
-    version='3.0.0b6',
+    version='3.0.0b7.dev',
     description='RPM plugin for the Pulp Project',
     long_description=long_description,
     license='GPLv2+',
