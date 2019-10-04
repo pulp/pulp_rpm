@@ -11,11 +11,11 @@ from pulpcore.plugin.serializers import (
 from pulpcore.plugin.viewsets import (
     BaseDistributionViewSet,
     ContentFilter,
-    SingleArtifactContentUploadViewSet,
-    RemoteViewSet,
-    NamedModelViewSet,
     OperationPostponedResponse,
-    PublicationViewSet
+    PublicationViewSet,
+    ReadOnlyContentViewSet,
+    RemoteViewSet,
+    SingleArtifactContentUploadViewSet,
 )
 
 from pulp_rpm.app import tasks
@@ -230,9 +230,7 @@ class CopyViewSet(viewsets.ViewSet):
         return OperationPostponedResponse(async_result, request)
 
 
-class DistributionTreeViewSet(NamedModelViewSet,
-                              mixins.RetrieveModelMixin,
-                              mixins.ListModelMixin,
+class DistributionTreeViewSet(ReadOnlyContentViewSet,
                               mixins.DestroyModelMixin):
     """
     Distribution Tree Viewset.
@@ -244,9 +242,7 @@ class DistributionTreeViewSet(NamedModelViewSet,
     serializer_class = DistributionTreeSerializer
 
 
-class RepoMetadataFileViewSet(NamedModelViewSet,
-                              mixins.RetrieveModelMixin,
-                              mixins.ListModelMixin,
+class RepoMetadataFileViewSet(ReadOnlyContentViewSet,
                               mixins.DestroyModelMixin):
     """
     RepoMetadataFile Viewset.
