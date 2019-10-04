@@ -3,6 +3,7 @@ from logging import getLogger
 
 import createrepo_c as cr
 
+from django.contrib.postgres.fields import JSONField
 from django.db import models
 from pulpcore.plugin.models import (
     Content,
@@ -150,7 +151,7 @@ class Package(Content):
     #   date (int):     date of changelog - seconds since epoch
     #   author (str):   author of the changelog
     #   changelog (str: changelog text
-    changelogs = models.TextField(default='[]')
+    changelogs = JSONField(default=list)
 
     # A string containing a JSON-encoded list of dictionaries, each of which represents a single
     # file. Each file dict contains the following fields:
@@ -158,7 +159,7 @@ class Package(Content):
     #   type (str):     one of "" (regular file), "dir", "ghost"
     #   path (str):     path to file
     #   name (str):     filename
-    files = models.TextField(default='[]')
+    files = JSONField(default=list)
 
     # Each of these is a string containing a JSON-encoded list of dictionaries, each of which
     # represents a dependency. Each dependency dict contains the following fields:
@@ -169,14 +170,14 @@ class Package(Content):
     #   version (str):  version
     #   release (str):  release
     #   pre (bool):     preinstall
-    requires = models.TextField(default='[]')
-    provides = models.TextField(default='[]')
-    conflicts = models.TextField(default='[]')
-    obsoletes = models.TextField(default='[]')
-    suggests = models.TextField(default='[]')
-    enhances = models.TextField(default='[]')
-    recommends = models.TextField(default='[]')
-    supplements = models.TextField(default='[]')
+    requires = JSONField(default=list)
+    provides = JSONField(default=list)
+    conflicts = JSONField(default=list)
+    obsoletes = JSONField(default=list)
+    suggests = JSONField(default=list)
+    enhances = JSONField(default=list)
+    recommends = JSONField(default=list)
+    supplements = JSONField(default=list)
 
     location_base = models.TextField()
     location_href = models.TextField()
@@ -785,7 +786,7 @@ class Category(Content):
     description = models.TextField()
     display_order = models.IntegerField()
 
-    group_ids = models.TextField(default='[]')
+    group_ids = JSONField(default=list)
 
     desc_by_lang = models.TextField()
     name_by_lang = models.TextField()
@@ -834,8 +835,8 @@ class Environment(Content):
     description = models.TextField()
     display_order = models.IntegerField()
 
-    group_ids = models.TextField(default='[]')
-    option_ids = models.TextField(default='[]')
+    group_ids = JSONField(default=list)
+    option_ids = JSONField(default=list)
 
     desc_by_lang = models.TextField()
     name_by_lang = models.TextField()
@@ -936,8 +937,8 @@ class Modulemd(Content):
     context = models.CharField(max_length=255)
     arch = models.CharField(max_length=255)
 
-    dependencies = models.TextField(default='[]')
-    artifacts = models.TextField(default='[]')
+    dependencies = JSONField(default=list)
+    artifacts = JSONField(default=list)
     packages = models.ManyToManyField(Package)
 
     class Meta:
@@ -966,7 +967,7 @@ class ModulemdDefaults(Content):
 
     module = models.CharField(max_length=255)
     stream = models.CharField(max_length=255)
-    profiles = models.TextField(default='[]')
+    profiles = JSONField(default=list)
 
     digest = models.CharField(unique=True, max_length=64)
 

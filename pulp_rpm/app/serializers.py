@@ -95,44 +95,44 @@ class PackageSerializer(SingleArtifactContentUploadSerializer):
         allow_blank=True, required=False, read_only=True,
     )
 
-    changelogs = serializers.CharField(
+    changelogs = serializers.JSONField(
         help_text=_("Changelogs that package contains"),
         default="[]", required=False, read_only=True,
     )
-    files = serializers.CharField(
+    files = serializers.JSONField(
         help_text=_("Files that package contains"),
         default="[]", required=False, read_only=True,
     )
 
-    requires = serializers.CharField(
+    requires = serializers.JSONField(
         help_text=_("Capabilities the package requires"),
         default="[]", required=False, read_only=True,
     )
-    provides = serializers.CharField(
+    provides = serializers.JSONField(
         help_text=_("Capabilities the package provides"),
         default="[]", required=False, read_only=True,
     )
-    conflicts = serializers.CharField(
+    conflicts = serializers.JSONField(
         help_text=_("Capabilities the package conflicts"),
         default="[]", required=False, read_only=True,
     )
-    obsoletes = serializers.CharField(
+    obsoletes = serializers.JSONField(
         help_text=_("Capabilities the package obsoletes"),
         default="[]", required=False, read_only=True,
     )
-    suggests = serializers.CharField(
+    suggests = serializers.JSONField(
         help_text=_("Capabilities the package suggests"),
         default="[]", required=False, read_only=True,
     )
-    enhances = serializers.CharField(
+    enhances = serializers.JSONField(
         help_text=_("Capabilities the package enhances"),
         default="[]", required=False, read_only=True,
     )
-    recommends = serializers.CharField(
+    recommends = serializers.JSONField(
         help_text=_("Capabilities the package recommends"),
         default="[]", required=False, read_only=True,
     )
-    supplements = serializers.CharField(
+    supplements = serializers.JSONField(
         help_text=_("Capabilities the package supplements"),
         default="[]", required=False, read_only=True,
     )
@@ -501,11 +501,11 @@ class ModulemdSerializer(SingleArtifactContentUploadSerializer):
     arch = serializers.CharField(
         help_text=_("Modulemd architecture."),
     )
-    artifacts = serializers.CharField(
+    artifacts = serializers.JSONField(
         help_text=_("Modulemd artifacts."),
         allow_null=True
     )
-    dependencies = serializers.CharField(
+    dependencies = serializers.JSONField(
         help_text=_("Modulemd dependencies."),
         allow_null=True
     )
@@ -536,7 +536,7 @@ class ModulemdDefaultsSerializer(SingleArtifactContentUploadSerializer):
     stream = serializers.CharField(
         help_text=_("Modulemd default stream.")
     )
-    profiles = serializers.CharField(
+    profiles = serializers.JSONField(
         help_text=_("Default profiles for modulemd streams.")
     )
 
