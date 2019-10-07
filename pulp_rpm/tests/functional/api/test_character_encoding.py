@@ -54,7 +54,7 @@ class UploadEncodingMetadataTestCase(unittest.TestCase):
         repo_versions = get_versions(repo)
         self.assertEqual(len(repo_versions), 0, repo_versions)
         self.client.post(
-            repo['_versions_href'],
+            repo['versions_href'],
             {'add_content_units': [content_unit['pulp_href']]}
         )
         repo_versions = get_versions(repo)
