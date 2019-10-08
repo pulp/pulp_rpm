@@ -20,33 +20,54 @@ pip install -r test_requirements.txt
 
 cd $TRAVIS_BUILD_DIR/../pulpcore/containers/
 
+# Although the tag name is not used outside of this script, we might use it
+# later. And it is nice to have a friendly identifier for it.
+# So we use the branch preferably, but need to replace the "/" with the valid
+# character "_" .
+#
+# Note that there are lots of other valid git branch name special characters
+# that are invalid in image tag names. To try to convert them, this would be a
+# starting point:
+# https://stackoverflow.com/a/50687120
+#
+# If we are on a tag
+if [ -n "$TRAVIS_TAG" ]; then
+  TAG=$(echo $TRAVIS_TAG | tr / _)
 # If we are on a PR
-if [ -n "$TRAVIS_PULL_REQUEST_BRANCH" ]; then
-  TAG=$TRAVIS_PULL_REQUEST_BRANCH
-# For push builds, tag builds, and hopefully cron builds
+elif [ -n "$TRAVIS_PULL_REQUEST_BRANCH" ]; then
+  TAG=$(echo $TRAVIS_PULL_REQUEST_BRANCH | tr / _)
+# For push builds and hopefully cron builds
 elif [ -n "$TRAVIS_BRANCH" ]; then
-  TAG=$TRAVIS_BRANCH
+  TAG=$(echo $TRAVIS_BRANCH | tr / _)
   if [ "$TAG" = "master" ]; then
     TAG=latest
   fi
 else
   # Fallback
-  TAG=$(git rev-parse --abbrev-ref HEAD)
+  TAG=$(git rev-parse --abbrev-ref HEAD | tr / _)
 fi
 
 
 PLUGIN=pulp_rpm
 
 
-# For pulpcore, and any other repo that might check out a pulp-certguard PR
-if [ -e $TRAVIS_BUILD_DIR/../pulp-certguard ]; then
-  PULP_CERTGUARD=./pulp-certguard
-else
-  # Otherwise, master branch release
-  PULP_CERTGUARD=git+https://github.com/pulp/pulp-certguard.git
-fi
+# For pulpcore, and any other repo that might check out some plugin PR
 
-cat > vars/vars.yaml << VARSYAML
+
+if [ -n "$TRAVIS_TAG" ]; then
+  # Install the plugin only and use published PyPI packages for the rest
+  cat > vars/vars.yaml << VARSYAML
+---
+images:
+  - ${PLUGIN}-${TAG}:
+      image_name: $PLUGIN
+      tag: $TAG
+      plugins:
+        - ./$PLUGIN
+        
+VARSYAML
+else
+  cat > vars/vars.yaml << VARSYAML
 ---
 images:
   - ${PLUGIN}-${TAG}:
@@ -55,9 +76,10 @@ images:
       pulpcore: ./pulpcore
       pulpcore_plugin: ./pulpcore-plugin
       plugins:
-        - $PULP_CERTGUARD
         - ./$PLUGIN
+        
 VARSYAML
+fi
 
 ansible-playbook build.yaml
 
