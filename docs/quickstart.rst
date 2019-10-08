@@ -25,9 +25,8 @@ Create your pulp_rpm.yaml playbook with these contents:
        pulp_default_admin_password: password
        pulp_install_plugins:
          pulp-rpm:
-           app_label: "rpm"
+           prereq_role: "pulp.pulp_rpm_prerequisites"
      roles:
-       - pulp.pulp_rpm_prerequisites
        - pulp-database
        - pulp-workers
        - pulp-resource-manager
