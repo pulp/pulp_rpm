@@ -559,21 +559,11 @@ class AddonSerializer(serializers.ModelSerializer):
     packages = serializers.CharField(
         help_text=_("Relative path to directory with binary RPMs.")
     )
-    repository = serializers.HyperlinkedRelatedField(
-        required=True,
-        help_text=_('A URI of the repository containing the content for this Addon.'),
-        queryset=Repository.objects.all(),
-        view_name='repositories-detail',
-        label=_('Repository'),
-        error_messages={
-            'required': _('The repository URI must be specified.')
-        }
-    )
 
     class Meta:
         model = Addon
         fields = (
-            "addon_id", "uid", "name", "type", "packages", "repository"
+            "addon_id", "uid", "name", "type", "packages"
         )
 
 
@@ -617,16 +607,6 @@ class VariantSerializer(serializers.ModelSerializer):
     packages = serializers.CharField(
         help_text=_("Relative path to directory with binary RPMs.")
     )
-    repository = serializers.HyperlinkedRelatedField(
-        required=True,
-        help_text=_('A URI of the repository containing the content for this Variant.'),
-        queryset=Repository.objects.all(),
-        view_name='repositories-detail',
-        label=_('Repository'),
-        error_messages={
-            'required': _('The repository URI must be specified.')
-        }
-    )
     source_packages = serializers.CharField(
         help_text=_("Relative path to directory with source RPMs.")
     )
@@ -646,7 +626,7 @@ class VariantSerializer(serializers.ModelSerializer):
     class Meta:
         model = Variant
         fields = (
-            "variant_id", "uid", "name", "type", "packages", "repository",
+            "variant_id", "uid", "name", "type", "packages",
             "source_packages", "source_repository", "debug_packages",
             "debug_repository", "identity"
         )
