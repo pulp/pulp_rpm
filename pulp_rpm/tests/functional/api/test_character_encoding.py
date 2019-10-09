@@ -46,16 +46,16 @@ class UploadEncodingMetadataTestCase(unittest.TestCase):
         files = {'file': utils.http_get(RPM_WITH_NON_ASCII_URL)}
         artifact = self.client.post(ARTIFACTS_PATH, files=files)
         content_unit = self.client.using_handler(api.task_handler).post(RPM_CONTENT_PATH, {
-            'artifact': artifact['_href'],
+            'artifact': artifact['pulp_href'],
             'relative_path': RPM_WITH_NON_ASCII_NAME
         })
         repo = self.client.post(REPO_PATH, gen_repo())
-        self.addCleanup(self.client.delete, repo['_href'])
+        self.addCleanup(self.client.delete, repo['pulp_href'])
         repo_versions = get_versions(repo)
         self.assertEqual(len(repo_versions), 0, repo_versions)
         self.client.post(
             repo['_versions_href'],
-            {'add_content_units': [content_unit['_href']]}
+            {'add_content_units': [content_unit['pulp_href']]}
         )
         repo_versions = get_versions(repo)
         self.assertEqual(len(repo_versions), 1, repo_versions)
@@ -66,6 +66,6 @@ class UploadEncodingMetadataTestCase(unittest.TestCase):
         artifact = self.client.post(ARTIFACTS_PATH, files=files)
         with self.assertRaises(TaskReportError):
             self.client.using_handler(api.task_handler).post(RPM_CONTENT_PATH, {
-                'artifact': artifact['_href'],
+                'artifact': artifact['pulp_href'],
                 'relative_path': RPM_WITH_NON_UTF_8_NAME
             })

@@ -38,13 +38,13 @@ class SingleRequestUploadTestCase(unittest.TestCase):
         file = {'file': utils.http_get(RPM_UNSIGNED_URL)}
         client = api.Client(cfg, api.page_handler)
         repo = client.post(REPO_PATH, gen_repo())
-        self.addCleanup(client.delete, repo['_href'])
+        self.addCleanup(client.delete, repo['pulp_href'])
         client.using_handler(api.task_handler).post(
             RPM_SINGLE_REQUEST_UPLOAD,
             files=file,
-            data={'repository': repo['_href'], "relative_path": RPM_PACKAGE_FILENAME}
+            data={'repository': repo['pulp_href'], "relative_path": RPM_PACKAGE_FILENAME}
         )
-        repo = client.get(repo['_href'])
+        repo = client.get(repo['pulp_href'])
 
         # Assertion about repo version.
         self.assertIsNotNone(repo['_latest_version_href'], repo)
@@ -82,7 +82,7 @@ class SingleRequestUploadDuplicateTestCase(unittest.TestCase):
     def test_duplicate_unit(self):
         """Test single request upload for unit already present in Pulp."""
         repo = self.client.post(REPO_PATH, gen_repo())
-        self.addCleanup(self.client.delete, repo['_href'])
+        self.addCleanup(self.client.delete, repo['pulp_href'])
         self.single_request_upload(repo)
         with self.assertRaises(TaskReportError) as ctx:
             self.single_request_upload(repo)
@@ -98,5 +98,5 @@ class SingleRequestUploadDuplicateTestCase(unittest.TestCase):
         self.client.using_handler(api.task_handler).post(
             RPM_SINGLE_REQUEST_UPLOAD,
             files=self.file,
-            data={'repository': repo['_href'], "relative_path": RPM_PACKAGE_FILENAME}
+            data={'repository': repo['pulp_href'], "relative_path": RPM_PACKAGE_FILENAME}
         )

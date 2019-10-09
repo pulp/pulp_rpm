@@ -77,18 +77,18 @@ class SyncPublishDownloadPolicyTestCase(unittest.TestCase):
            was synced again.
         """
         repo = self.client.post(REPO_PATH, gen_repo())
-        self.addCleanup(self.client.delete, repo['_href'])
+        self.addCleanup(self.client.delete, repo['pulp_href'])
 
         remote = self.client.post(
             RPM_REMOTE_PATH,
             gen_rpm_remote(policy=download_policy)
         )
-        self.addCleanup(self.client.delete, remote['_href'])
+        self.addCleanup(self.client.delete, remote['pulp_href'])
 
         # Sync the repository.
         self.assertIsNone(repo['_latest_version_href'])
         sync(self.cfg, remote, repo)
-        repo = self.client.get(repo['_href'])
+        repo = self.client.get(repo['pulp_href'])
 
         self.assertIsNotNone(repo['_latest_version_href'])
         self.assertDictEqual(get_content_summary(repo), RPM_FIXTURE_SUMMARY)
@@ -100,7 +100,7 @@ class SyncPublishDownloadPolicyTestCase(unittest.TestCase):
         # Sync the repository again.
         latest_version_href = repo['_latest_version_href']
         sync(self.cfg, remote, repo)
-        repo = self.client.get(repo['_href'])
+        repo = self.client.get(repo['pulp_href'])
 
         self.assertNotEqual(latest_version_href, repo['_latest_version_href'])
         self.assertDictEqual(get_content_summary(repo), RPM_FIXTURE_SUMMARY)
@@ -109,16 +109,16 @@ class SyncPublishDownloadPolicyTestCase(unittest.TestCase):
     def do_publish(self, download_policy):
         """Publish repository synced with lazy ``download_policy``."""
         repo = self.client.post(REPO_PATH, gen_repo())
-        self.addCleanup(self.client.delete, repo['_href'])
+        self.addCleanup(self.client.delete, repo['pulp_href'])
 
         remote = self.client.post(
             RPM_REMOTE_PATH,
             gen_rpm_remote(policy=download_policy)
         )
-        self.addCleanup(self.client.delete, remote['_href'])
+        self.addCleanup(self.client.delete, remote['pulp_href'])
 
         sync(self.cfg, remote, repo)
-        repo = self.client.get(repo['_href'])
+        repo = self.client.get(repo['pulp_href'])
 
         publication = publish(self.cfg, repo)
         self.assertIsNotNone(publication['repository_version'], publication)

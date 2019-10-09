@@ -691,7 +691,7 @@ class DistributionTreeSerializer(MultipleArtifactContentSerializer):
     class Meta:
         model = DistributionTree
         fields = (
-            "_href", "header_version", "release_name", "release_short", "release_version",
+            "pulp_href", "header_version", "release_name", "release_short", "release_version",
             "release_is_layered", "base_product_name", "base_product_short",
             "base_product_version", "arch", "build_timestamp", "instimage", "mainimage",
             "discnum", "totaldiscs", "addons", "checksums", "images", "variants"

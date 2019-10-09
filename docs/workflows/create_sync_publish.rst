@@ -14,10 +14,10 @@ Create a repository ``foo``
 .. code:: json
 
     {
-        "_href": "/pulp/api/v3/repositories/5eeabc0b-3b86-4264-bb3a-5889530a6f5b/",
+        "pulp_href": "/pulp/api/v3/repositories/5eeabc0b-3b86-4264-bb3a-5889530a6f5b/",
     }
 
-``$ export REPO_HREF=$(http :24817/pulp/api/v3/repositories/ | jq -r '.results[] | select(.name == "foo") | ._href')``
+``$ export REPO_HREF=$(http :24817/pulp/api/v3/repositories/ | jq -r '.results[] | select(.name == "foo") | .pulp_href')``
 
 
 .. _create-remote:
@@ -34,10 +34,10 @@ to download RPMs whenever they are requested by clients.
 .. code:: json
 
     {
-        "_href": "/pulp/api/v3/remotes/rpm/rpm/378711cd-1bee-4adc-8d9b-fe3bceaba39f/",
+        "pulp_href": "/pulp/api/v3/remotes/rpm/rpm/378711cd-1bee-4adc-8d9b-fe3bceaba39f/",
     }
 
-``$ export REMOTE_HREF=$(http :24817/pulp/api/v3/remotes/rpm/rpm/ | jq -r '.results[] | select(.name == "bar") | ._href')``
+``$ export REMOTE_HREF=$(http :24817/pulp/api/v3/remotes/rpm/rpm/ | jq -r '.results[] | select(.name == "bar") | .pulp_href')``
 
 Sync repository ``foo`` using remote ``bar``
 --------------------------------------------
@@ -57,7 +57,7 @@ Look at the new Repository Version created
     {
         "_added_href": "/pulp/api/v3/repositories/5eeabc0b-3b86-4264-bb3a-5889530a6f5b/versions/1/added_content/",
         "_content_href": "/pulp/api/v3/repositories/5eeabc0b-3b86-4264-bb3a-5889530a6f5b/versions/1/content/",
-        "_href": "/pulp/api/v3/repositories/5eeabc0b-3b86-4264-bb3a-5889530a6f5b/versions/1/",
+        "pulp_href": "/pulp/api/v3/repositories/5eeabc0b-3b86-4264-bb3a-5889530a6f5b/versions/1/",
         "_removed_href": "/pulp/api/v3/repositories/5eeabc0b-3b86-4264-bb3a-5889530a6f5b/versions/1/removed_content/",
         "content_summary": {
             "package": 35,
@@ -77,12 +77,12 @@ Create a Publication
 
     [
         {
-            "_href": "/pulp/api/v3/tasks/fd4cbecd-6c6a-4197-9cbe-4e45b0516309/",
+            "pulp_href": "/pulp/api/v3/tasks/fd4cbecd-6c6a-4197-9cbe-4e45b0516309/",
             "task_id": "fd4cbecd-6c6a-4197-9cbe-4e45b0516309"
         }
     ]
 
-``$ export PUBLICATION_HREF=$(http :24817/pulp/api/v3/publications/rpm/rpm/ | jq -r '.results[] | select(.repository_version|test("'$REPO_HREF'.")) | ._href')``
+``$ export PUBLICATION_HREF=$(http :24817/pulp/api/v3/publications/rpm/rpm/ | jq -r '.results[] | select(.repository_version|test("'$REPO_HREF'.")) | .pulp_href')``
 
 
 Create a Distribution for the Publication
@@ -94,6 +94,6 @@ Create a Distribution for the Publication
 .. code:: json
 
     {
-        "_href": "/pulp/api/v3/distributions/8f394d20-f6fb-49dd-af0e-778225d79442/",
+        "pulp_href": "/pulp/api/v3/distributions/8f394d20-f6fb-49dd-af0e-778225d79442/",
     }
 

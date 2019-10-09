@@ -64,22 +64,22 @@ class PackageManagerConsumeTestCase(unittest.TestCase):
         client = api.Client(self.cfg, api.json_handler)
         body = gen_rpm_remote(policy=policy)
         remote = client.post(RPM_REMOTE_PATH, body)
-        self.addCleanup(client.delete, remote['_href'])
+        self.addCleanup(client.delete, remote['pulp_href'])
 
         repo = client.post(REPO_PATH, gen_repo())
-        self.addCleanup(client.delete, repo['_href'])
+        self.addCleanup(client.delete, repo['pulp_href'])
 
         sync(self.cfg, remote, repo)
 
         publication = publish(self.cfg, repo)
-        self.addCleanup(client.delete, publication['_href'])
+        self.addCleanup(client.delete, publication['pulp_href'])
 
         body = gen_distribution()
-        body['publication'] = publication['_href']
+        body['publication'] = publication['pulp_href']
         distribution = client.using_handler(api.task_handler).post(
             RPM_DISTRIBUTION_PATH, body
         )
-        self.addCleanup(client.delete, distribution['_href'])
+        self.addCleanup(client.delete, distribution['pulp_href'])
 
         baseurl = urljoin(self.cfg.get_content_host_base_url(),
                           '//' + distribution['base_url'])

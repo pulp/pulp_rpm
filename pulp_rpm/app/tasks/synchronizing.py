@@ -543,7 +543,7 @@ class RpmContentSaver(ContentSaver):
             distribution_tree = declarative_content.content
             kickstart_data = declarative_content.extra_data
 
-            if kickstart_data["created"] > distribution_tree._created:
+            if kickstart_data["created"] > distribution_tree.pulp_created:
                 return
 
             resources = ["addons", "variants"]

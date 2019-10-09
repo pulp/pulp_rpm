@@ -50,7 +50,7 @@ class ContentUnitTestCase(unittest.TestCase):
         """Create content unit."""
         self.content_unit.update(
             self.client.using_handler(api.task_handler).post(RPM_CONTENT_PATH, {
-                'artifact': self.artifact['_href'],
+                'artifact': self.artifact['pulp_href'],
                 'relative_path': RPM_PACKAGE_FILENAME
             })
         )
@@ -61,7 +61,7 @@ class ContentUnitTestCase(unittest.TestCase):
     @skip_if(bool, 'content_unit', False)
     def test_02_read_content_unit(self):
         """Read a content unit by its href."""
-        content_unit = self.client.get(self.content_unit['_href'])
+        content_unit = self.client.get(self.content_unit['pulp_href'])
         for key, val in self.content_unit.items():
             with self.subTest(key=key):
                 self.assertEqual(content_unit[key], val)
@@ -86,7 +86,7 @@ class ContentUnitTestCase(unittest.TestCase):
         attrs = copy.deepcopy(RPM_PACKAGE_DATA)
         attrs.update({'name': utils.uuid4()})
         with self.assertRaises(HTTPError) as exc:
-            self.client.patch(self.content_unit['_href'], attrs)
+            self.client.patch(self.content_unit['pulp_href'], attrs)
         self.assertEqual(exc.exception.response.status_code, 405)
 
     @skip_if(bool, 'content_unit', False)
@@ -98,7 +98,7 @@ class ContentUnitTestCase(unittest.TestCase):
         attrs = copy.deepcopy(RPM_PACKAGE_DATA)
         attrs.update({'name': utils.uuid4()})
         with self.assertRaises(HTTPError) as exc:
-            self.client.put(self.content_unit['_href'], attrs)
+            self.client.put(self.content_unit['pulp_href'], attrs)
         self.assertEqual(exc.exception.response.status_code, 405)
 
     @skip_if(bool, 'content_unit', False)
@@ -108,7 +108,7 @@ class ContentUnitTestCase(unittest.TestCase):
         This HTTP method is not supported and a HTTP exception is expected.
         """
         with self.assertRaises(HTTPError) as exc:
-            self.client.delete(self.content_unit['_href'])
+            self.client.delete(self.content_unit['pulp_href'])
         self.assertEqual(exc.exception.response.status_code, 405)
 
 
@@ -137,7 +137,7 @@ class DuplicateContentUnit(unittest.TestCase):
         files = {'file': utils.http_get(RPM_UNSIGNED_URL)}
         artifact = self.client.post(ARTIFACTS_PATH, files=files)
         attrs = {
-            'artifact': artifact['_href'],
+            'artifact': artifact['pulp_href'],
             'relative_path': RPM_PACKAGE_FILENAME
         }
 
