@@ -42,9 +42,8 @@ Do not forget to set ``pulp_use_system_wide_pkgs`` to ``true``.
        pulp_use_system_wide_pkgs: true
        pulp_install_plugins:
          pulp-rpm:
-           app_label: "rpm"
+           prereq_role: "pulp.pulp_rpm_prerequisites"
      roles:
-       - pulp.pulp_rpm_prerequisites
        - pulp-database
        - pulp-workers
        - pulp-resource-manager
