@@ -80,7 +80,7 @@ class PublishAnyRepoVersionTestCase(unittest.TestCase):
         repo = self.client.get(repo['pulp_href'])
         for rpm_content in get_content(repo)[RPM_PACKAGE_CONTENT_NAME]:
             self.client.post(
-                repo['_versions_href'],
+                repo['versions_href'],
                 {'add_content_units': [rpm_content['pulp_href']]}
             )
         version_hrefs = tuple(ver['pulp_href'] for ver in get_versions(repo))
@@ -133,7 +133,7 @@ class SyncPublishReferencesUpdateTestCase(unittest.TestCase):
         sync(self.cfg, remote, repo)
         repo = self.client.get(repo['pulp_href'])
 
-        self.assertIsNotNone(repo['_latest_version_href'])
+        self.assertIsNotNone(repo['latest_version_href'])
 
         content_summary = get_content_summary(repo)
         self.assertDictEqual(
@@ -192,7 +192,7 @@ class SyncPublishTestCase(unittest.TestCase):
         sync(self.cfg, remote, repo)
         repo = self.client.get(repo['pulp_href'])
 
-        self.assertIsNotNone(repo['_latest_version_href'])
+        self.assertIsNotNone(repo['latest_version_href'])
 
         publication = publish(self.cfg, repo)
         self.addCleanup(self.client.delete, publication['pulp_href'])
@@ -234,7 +234,7 @@ class ValidateNoChecksumTagTestCase(unittest.TestCase):
         sync(self.cfg, remote, repo)
         repo = self.client.get(repo['pulp_href'])
 
-        self.assertIsNotNone(repo['_latest_version_href'])
+        self.assertIsNotNone(repo['latest_version_href'])
 
         # Step 3
         publication = publish(self.cfg, repo)

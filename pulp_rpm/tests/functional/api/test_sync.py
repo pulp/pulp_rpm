@@ -80,24 +80,24 @@ class BasicSyncTestCase(unittest.TestCase):
         self.addCleanup(self.client.delete, remote['pulp_href'])
 
         # Sync the repository.
-        self.assertIsNone(repo['_latest_version_href'])
+        self.assertIsNone(repo['latest_version_href'])
         sync(self.cfg, remote, repo)
         repo = self.client.get(repo['pulp_href'])
 
         # Check that we have the correct content counts.
-        self.assertIsNotNone(repo['_latest_version_href'])
+        self.assertIsNotNone(repo['latest_version_href'])
         self.assertDictEqual(get_content_summary(repo), RPM_FIXTURE_SUMMARY)
         self.assertDictEqual(
             get_added_content_summary(repo), RPM_FIXTURE_SUMMARY
         )
 
         # Sync the repository again.
-        latest_version_href = repo['_latest_version_href']
+        latest_version_href = repo['latest_version_href']
         sync(self.cfg, remote, repo)
         repo = self.client.get(repo['pulp_href'])
 
         # Check that nothing has changed since the last sync.
-        self.assertNotEqual(latest_version_href, repo['_latest_version_href'])
+        self.assertNotEqual(latest_version_href, repo['latest_version_href'])
         self.assertDictEqual(get_content_summary(repo), RPM_FIXTURE_SUMMARY)
         self.assertDictEqual(get_added_content_summary(repo), {})
 
@@ -147,14 +147,14 @@ class KickstartSyncTestCase(unittest.TestCase):
         self.addCleanup(self.client.delete, remote['pulp_href'])
 
         # Sync the repository.
-        self.assertIsNone(repo['_latest_version_href'])
+        self.assertIsNone(repo['latest_version_href'])
         sync(self.cfg, remote, repo)
         repo = self.client.get(repo['pulp_href'])
         for kickstart_content in get_content(repo)[RPM_KICKSTART_CONTENT_NAME]:
             self.addCleanup(self.client.delete, kickstart_content['pulp_href'])
 
         # Check that we have the correct content counts.
-        self.assertIsNotNone(repo['_latest_version_href'])
+        self.assertIsNotNone(repo['latest_version_href'])
 
         self.assertDictEqual(
             get_content_summary(repo), RPM_KICKSTART_FIXTURE_SUMMARY
@@ -164,7 +164,7 @@ class KickstartSyncTestCase(unittest.TestCase):
         )
 
         # Sync the repository again.
-        latest_version_href = repo['_latest_version_href']
+        latest_version_href = repo['latest_version_href']
         sync(self.cfg, remote, repo)
         repo = self.client.get(repo['pulp_href'])
 
@@ -172,7 +172,7 @@ class KickstartSyncTestCase(unittest.TestCase):
         self.assertEqual(artifacts['count'], 3, artifacts)
 
         # Check that nothing has changed since the last sync.
-        self.assertNotEqual(latest_version_href, repo['_latest_version_href'])
+        self.assertNotEqual(latest_version_href, repo['latest_version_href'])
         self.assertDictEqual(
             get_content_summary(repo), RPM_KICKSTART_FIXTURE_SUMMARY
         )
@@ -215,14 +215,14 @@ class KickstartSyncTestCase(unittest.TestCase):
         self.addCleanup(self.client.delete, remote['pulp_href'])
 
         # Sync the repository.
-        self.assertIsNone(repo['_latest_version_href'])
+        self.assertIsNone(repo['latest_version_href'])
         sync(self.cfg, remote, repo)
         repo = self.client.get(repo['pulp_href'])
         for kickstart_content in get_content(repo)[RPM_KICKSTART_CONTENT_NAME]:
             self.addCleanup(self.client.delete, kickstart_content['pulp_href'])
 
         # Check that we have the correct content counts.
-        self.assertIsNotNone(repo['_latest_version_href'])
+        self.assertIsNotNone(repo['latest_version_href'])
 
         self.assertDictEqual(
             get_content_summary(repo), RPM_KICKSTART_FIXTURE_SUMMARY
@@ -232,7 +232,7 @@ class KickstartSyncTestCase(unittest.TestCase):
         )
 
         # Sync the repository again.
-        latest_version_href = repo['_latest_version_href']
+        latest_version_href = repo['latest_version_href']
         sync(self.cfg, remote, repo)
         repo = self.client.get(repo['pulp_href'])
 
@@ -240,7 +240,7 @@ class KickstartSyncTestCase(unittest.TestCase):
         self.assertEqual(artifacts['count'], 0, artifacts)
 
         # Check that nothing has changed since the last sync.
-        self.assertNotEqual(latest_version_href, repo['_latest_version_href'])
+        self.assertNotEqual(latest_version_href, repo['latest_version_href'])
         self.assertDictEqual(
             get_content_summary(repo), RPM_KICKSTART_FIXTURE_SUMMARY
         )
@@ -321,7 +321,7 @@ class SyncMutatedPackagesTestCase(unittest.TestCase):
         self.addCleanup(self.client.delete, remote['pulp_href'])
 
         # Sync the repository.
-        self.assertIsNone(repo['_latest_version_href'])
+        self.assertIsNone(repo['latest_version_href'])
         sync(self.cfg, remote, repo)
         repo = self.client.get(repo['pulp_href'])
         self.assertDictEqual(get_content_summary(repo), RPM_FIXTURE_SUMMARY)
@@ -404,7 +404,7 @@ class EPELSyncTestCase(unittest.TestCase):
         self.addCleanup(client.delete, remote['pulp_href'])
 
         # Sync the repository.
-        self.assertIsNone(repo['_latest_version_href'])
+        self.assertIsNone(repo['latest_version_href'])
         sync(cfg, remote, repo)
         repo = client.get(repo['pulp_href'])
         content_summary = get_content_summary(repo)
@@ -456,7 +456,7 @@ class SyncMutatedUpdateRecordTestCase(unittest.TestCase):
         self.addCleanup(client.delete, remote['pulp_href'])
 
         # Sync the repository.
-        self.assertIsNone(repo['_latest_version_href'])
+        self.assertIsNone(repo['latest_version_href'])
         sync(self.cfg, remote, repo)
         repo = client.get(repo['pulp_href'])
         self.assertDictEqual(get_content_summary(repo), RPM_FIXTURE_SUMMARY)
