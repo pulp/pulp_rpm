@@ -454,6 +454,8 @@ class UpdateRecord(Content):
     release = models.TextField()
     rights = models.TextField()
 
+    reboot_suggested = models.BooleanField(default=False)
+
     pushcount = models.TextField(blank=True)
 
     # A field that represents the hash digest of the update record. Used to track differences
