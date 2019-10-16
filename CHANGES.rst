@@ -13,6 +13,42 @@ Changelog
 
 .. towncrier release notes start
 
+3.0.0b7 (2019-10-16)
+====================
+
+
+Features
+--------
+
+- Convert all the TextFields which store JSON content into Django JSONFields.
+  `#5215 <https://pulp.plan.io/issues/5215>`_
+
+
+Improved Documentation
+----------------------
+
+- Change the prefix of Pulp services from pulp-* to pulpcore-*
+  `#4554 <https://pulp.plan.io/issues/4554>`_
+- Docs update to use `pulp_use_system_wide_pkgs`.
+  `#5488 <https://pulp.plan.io/issues/5488>`_
+
+
+Deprecations and Removals
+-------------------------
+
+- Change `_id`, `_created`, `_last_updated`, `_href` to `pulp_id`, `pulp_created`, `pulp_last_updated`, `pulp_href`
+  `#5457 <https://pulp.plan.io/issues/5457>`_
+- Removing `repository` from `Addon`/`Variant` serializers.
+  `#5516 <https://pulp.plan.io/issues/5516>`_
+- Moved endpoints for distribution trees and repo metadata files to /pulp/api/v3/content/rpm/distribution_trees/ and /pulp/api/v3/content/rpm/repo_metadata_files/ respectively.
+  `#5535 <https://pulp.plan.io/issues/5535>`_
+- Remove "_" from `_versions_href`, `_latest_version_href`
+  `#5548 <https://pulp.plan.io/issues/5548>`_
+
+
+----
+
+
 3.0.0b6 (2019-09-30)
 ====================
 
