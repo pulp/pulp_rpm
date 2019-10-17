@@ -96,7 +96,7 @@ def synchronize(remote_pk, repository_pk):
     kickstart = get_kickstart_data(remote)
     if kickstart:
         kickstart["repositories"] = {}
-        for repodata in kickstart["download"]["repodatas"]:
+        for repodata in set(kickstart["download"]["repodatas"]):
             if repodata == ".":
                 kickstart["repositories"].update({repodata: str(repository_pk)})
                 continue
@@ -336,7 +336,7 @@ class RpmFirstStage(Stage):
                     downloader = self.remote.get_downloader(url=updateinfo_url)
                     downloaders.append([downloader.run()])
                 elif record.type in MODULAR_REPODATA:
-                    modules_url = urljoin(self.remote.url, record.location_href)
+                    modules_url = urljoin(remote_url, record.location_href)
                     modulemd_downloader = self.remote.get_downloader(url=modules_url)
                     modulemd_results = await modulemd_downloader.run()
                 elif record.type not in PACKAGE_DB_REPODATA:
