@@ -232,3 +232,10 @@ RPM_KICKSTART_COUNT = 1
 RPM_KICKSTART_FIXTURE_SUMMARY = {
     RPM_KICKSTART_CONTENT_NAME: RPM_KICKSTART_COUNT
 }
+
+
+CENTOS7_URL = "http://mirror.linux.duke.edu/pub/centos/7/os/x86_64/"
+CENTOS8_KICKSTART_APP_URL = "http://mirror.linux.duke.edu/pub/centos/8/AppStream/x86_64/kickstart/"
+CENTOS8_KICKSTART_BASEOS_URL = "http://mirror.linux.duke.edu/pub/centos/8/BaseOS/x86_64/kickstart/"
+CENTOS8_APPSTREAM_URL = "http://mirror.linux.duke.edu/pub/centos/8/AppStream/x86_64/os/"
+CENTOS8_BASEOS_URL = "http://mirror.linux.duke.edu/pub/centos/8/BaseOS/x86_64/os/"
