@@ -109,7 +109,7 @@ set -u
 
 if [[ "$TEST" == "performance" ]]; then
   echo "--- Performance Tests ---"
-  pytest -vv -r sx --color=yes --pyargs --durations=0 pulp_rpm.tests.performance || show_logs_and_return_non_zero
+  pytest -vv -r sx --color=yes --pyargs --capture=no --durations=0 pulp_rpm.tests.performance || show_logs_and_return_non_zero
   exit
 fi
 

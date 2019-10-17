@@ -82,6 +82,11 @@ jobs:
         - DB=postgres
         - TEST=bindings
       if: tag IS present
+    - stage: daily-performance-test
+      env:
+        - DB=postgres
+        - TEST=performance
+      if: type = cron
 notifications: None
 
 ...

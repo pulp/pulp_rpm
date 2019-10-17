@@ -23,6 +23,5 @@ plugin_snake: pulp_rpm
 pydocstyle: true
 pypi_username: pulp
 test_bindings: true
-test_performance: false
+test_performance: true
 travis_notifications: None
-
