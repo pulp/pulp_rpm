@@ -88,7 +88,7 @@ class SyncTestCase(unittest.TestCase):
         finished_at = self.parse_date_from_string(sync_task["finished_at"])
         task_duration = finished_at - started_at
         waiting_time = started_at - created_at
-        print("-> Waiting time (s): {wait} | Service time (s): {service}".format(
+        print("\n->     Sync => Waiting time (s): {wait} | Service time (s): {service}".format(
             wait=waiting_time.total_seconds(),
             service=task_duration.total_seconds()
         ))
@@ -108,6 +108,31 @@ class SyncTestCase(unittest.TestCase):
             list(RPM_KICKSTART_FIXTURE_SUMMARY.items())[0],
             get_added_content_summary(repo).items(),
         )
+
+        # Sync the repository again.
+        latest_version_href = repo['latest_version_href']
+        response = self.client.using_handler(api.json_handler).post(
+            urljoin(remote["pulp_href"], "sync/"), data
+        )
+        sync_task = self.client.get(response["task"])
+        created_at = self.parse_date_from_string(sync_task["pulp_created"])
+        started_at = self.parse_date_from_string(sync_task["started_at"])
+        finished_at = self.parse_date_from_string(sync_task["finished_at"])
+        task_duration = finished_at - started_at
+        waiting_time = started_at - created_at
+        print("\n->  Re-sync => Waiting time (s): {wait} | Service time (s): {service}".format(
+            wait=waiting_time.total_seconds(),
+            service=task_duration.total_seconds()
+        ))
+        repo = self.client.get(repo['pulp_href'])
+
+        # Check that nothing has changed since the last sync.
+        self.assertNotEqual(latest_version_href, repo['latest_version_href'])
+        self.assertIn(
+            list(RPM_KICKSTART_FIXTURE_SUMMARY.items())[0],
+            get_content_summary(repo).items(),
+        )
+        self.assertDictEqual(get_added_content_summary(repo), {})
 
     def test_centos7_on_demand(self):
         """Sync CentOS 7."""
