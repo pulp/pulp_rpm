@@ -52,8 +52,6 @@ PLUGIN=pulp_rpm
 
 
 # For pulpcore, and any other repo that might check out some plugin PR
-
-
 if [ -n "$TRAVIS_TAG" ]; then
   # Install the plugin only and use published PyPI packages for the rest
   cat > vars/vars.yaml << VARSYAML
@@ -64,7 +62,6 @@ images:
       tag: $TAG
       plugins:
         - ./$PLUGIN
-        
 VARSYAML
 else
   cat > vars/vars.yaml << VARSYAML
@@ -74,13 +71,10 @@ images:
       image_name: $PLUGIN
       tag: $TAG
       pulpcore: ./pulpcore
-      pulpcore_plugin: ./pulpcore-plugin
       plugins:
         - ./$PLUGIN
-        
 VARSYAML
 fi
-
 ansible-playbook build.yaml
 
 cd $TRAVIS_BUILD_DIR/../pulp-operator
