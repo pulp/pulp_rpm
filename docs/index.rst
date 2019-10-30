@@ -17,6 +17,17 @@ Features
 * Host content either `locally or on S3 <https://docs.pulpproject.org/en/3.0/nightly/installation/
   storage.html>`_
 
+Requirements
+------------
+
+``pulp_rpm`` plugin requires some dependencies such as ``libsolv`` and ``libmodulemd``
+which is provided only by RedHat family distributions like Fedora.
+
+``pulp_rpm`` plugin requires either to be:
+
+* install on Fedora 29+, CentOS 7+ (with EPEL repository enabled)
+* install inside a container with ``pulplift``
+
 Get Started
 -----------
 
