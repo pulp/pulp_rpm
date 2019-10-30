@@ -324,7 +324,8 @@ class UpdateRecordSerializer(NoArtifactContentSerializer):
         help_text=_("Update name")
     )
     summary = serializers.CharField(
-        help_text=_("Short summary")
+        help_text=_("Short summary"),
+        allow_blank=True
     )
     version = serializers.CharField(
         help_text=_("Update version (probably always an integer number)")
@@ -334,19 +335,23 @@ class UpdateRecordSerializer(NoArtifactContentSerializer):
         help_text=_("Update type ('enhancement', 'bugfix', ...)")
     )
     severity = serializers.CharField(
-        help_text=_("Severity")
+        help_text=_("Severity"),
+        allow_blank=True
     )
     solution = serializers.CharField(
-        help_text=_("Solution")
+        help_text=_("Solution"),
+        allow_blank=True
     )
     release = serializers.CharField(
         help_text=_("Update release")
     )
     rights = serializers.CharField(
-        help_text=_("Copyrights")
+        help_text=_("Copyrights"),
+        allow_blank=True
     )
     pushcount = serializers.CharField(
-        help_text=_("Push count")
+        help_text=_("Push count"),
+        allow_blank=True
     )
     pkglist = UpdateCollectionField(
         source='pk', read_only=True,
