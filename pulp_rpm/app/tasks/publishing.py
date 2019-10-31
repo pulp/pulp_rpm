@@ -277,7 +277,7 @@ def create_rempomd_xml(packages, publication, extra_repomdrecords, sub_folder=No
 
     if sub_folder:
         cwd = os.path.join(cwd, sub_folder)
-        repodata_path = os.path.join(repodata_path, sub_folder)
+        repodata_path = os.path.join(sub_folder, repodata_path)
 
     # Prepare metadata files
     repomd_path = os.path.join(cwd, "repomd.xml")
@@ -372,10 +372,14 @@ def create_rempomd_xml(packages, publication, extra_repomdrecords, sub_folder=No
             record.rename_file()
             path = record.location_href.split('/')[-1]
             repomd.set_record(record)
+
+        if sub_folder:
+            path = os.path.join(sub_folder, path)
+
         PublishedMetadata.create_from_file(
             relative_path=os.path.join(repodata_path, os.path.basename(path)),
             publication=publication,
-            file=File(open(os.path.basename(path), 'rb'))
+            file=File(open(path, 'rb'))
         )
 
     with open(repomd_path, "w") as repomd_f:
@@ -384,5 +388,5 @@ def create_rempomd_xml(packages, publication, extra_repomdrecords, sub_folder=No
     PublishedMetadata.create_from_file(
         relative_path=os.path.join(repodata_path, os.path.basename(repomd_path)),
         publication=publication,
-        file=File(open(os.path.basename(repomd_path), 'rb'))
+        file=File(open(repomd_path, 'rb'))
     )
