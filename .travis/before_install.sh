@@ -39,9 +39,9 @@ else
   export PULP_OPERATOR_PR_NUMBER=
 fi
 
-# test_requirements contains tools needed for flake8, etc.
+# dev_requirements contains tools needed for flake8, etc.
 # So install them here rather than in install.sh
-pip install -r test_requirements.txt
+pip install -r dev_requirements.txt
 
 # check the commit message
 ./.travis/check_commit.sh
@@ -84,21 +84,22 @@ if [ -n "$PULP_PR_NUMBER" ]; then
 fi
 
 
+
 # When building a (release) tag, we don't need the development modules for the
 # build (they will be installed as dependencies of the plugin).
 if [ -z "$TRAVIS_TAG" ]; then
 
-git clone --depth=1 https://github.com/PulpQE/pulp-smash.git
+  git clone --depth=1 https://github.com/PulpQE/pulp-smash.git
 
-if [ -n "$PULP_SMASH_PR_NUMBER" ]; then
-  cd pulp-smash
-  git fetch --depth=1 origin +refs/pull/$PULP_SMASH_PR_NUMBER/merge
-  git checkout FETCH_HEAD
-  cd ..
-fi
+  if [ -n "$PULP_SMASH_PR_NUMBER" ]; then
+    cd pulp-smash
+    git fetch --depth=1 origin +refs/pull/$PULP_SMASH_PR_NUMBER/merge
+    git checkout FETCH_HEAD
+    cd ..
+  fi
 
-# pulp-smash already got installed via test_requirements.txt
-pip install --upgrade --force-reinstall ./pulp-smash
+  # pulp-smash already got installed via test_requirements.txt
+  pip install --upgrade --force-reinstall ./pulp-smash
 
 fi
 
