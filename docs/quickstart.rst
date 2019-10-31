@@ -8,50 +8,53 @@ Use pulplift to try out Pulp. From `their quickstart <https://github.com/pulp/pu
 pulplift uses `Vagrant <https://www.vagrantup.com/docs/installation/>`_ so you'll need to have that
 installed.
 
+Download pulplift and RPM plugin prerequisite role.
+
 ::
 
     git clone --recurse-submodules https://github.com/pulp/pulplift.git
     cd pulplift
+    ansible-galaxy install pulp.pulp_rpm_prerequisites -p ./ansible-pulp/roles/
 
 
-Create your pulp_rpm.yaml playbook with these contents:
+Use ``example.user-config.yml`` as a template for you config yaml file or directly edit that one.
+
+::
+
+    cp example.user-config.yml local.user-config.yml
+
+Edit the config file as show below.
+Do not forget to set up ``prereq_role`` to previously installed ``pulp.pulp_rpm_prerequisites`` and uncomment
+``pulp_use_system_wide_pkg`` as advised.
 
 .. code-block:: yaml
 
-   ---
-   - hosts: all
-     vars:
-       pulp_secret_key: secret
-       pulp_default_admin_password: password
-       pulp_install_plugins:
-         pulp-rpm:
-           prereq_role: "pulp.pulp_rpm_prerequisites"
-     roles:
-       - pulp-database
-       - pulp-workers
-       - pulp-resource-manager
-       - pulp-webserver
-       - pulp-content
-     environment:
-       DJANGO_SETTINGS_MODULE: pulpcore.app.settings
+    pulp_default_admin_password: password
+    pulp_install_plugins:
+      pulp-rpm:
+        prereq_role: "pulp.pulp_rpm_prerequisites"
+      pulp-file: {}
+
+    # Uncomment if using pulp-rpm
+    pulp_use_system_wide_pkgs: true
+    pulp_settings:
+      secret_key: "unsafe_default"
 
 
-Install the dependency bootstrapping role ``pulp.pulp_rpm_prerequisites``:
+Start your box and ssh to it
 
-    ansible-galaxy install pulp.pulp_rpm_prerequisites -p ./roles/
+::
 
-
-Start your box, run ansible on it, ssh to your box::
-
-    vagrant up fedora30
-    ansible-playbook pulp_rpm.yaml -l fedora30
-    vagrant ssh fedora30
+    vagrant up pulp3-sandbox-fedora30
+    vagrant ssh pulp3-sandbox-fedora30
 
 
 Check Pulp's Status
 -------------------
 
-Check the status API using ``httpie``::
+Check the status API using ``httpie``
+
+::
 
     sudo dnf install httpie -y
     http :24817/pulp/api/v3/status/  # This should show the status API
