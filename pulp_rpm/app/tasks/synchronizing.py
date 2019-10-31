@@ -11,6 +11,8 @@ from urllib.parse import urljoin
 
 import createrepo_c as cr
 
+from django.db import transaction
+
 from pulpcore.plugin.models import Artifact, ProgressReport, Remote, Repository
 
 from pulpcore.plugin.stages import (
@@ -632,7 +634,8 @@ class RpmContentSaver(ContentSaver):
             elif isinstance(declarative_content.content, Package):
                 for modulemd in declarative_content.extra_data['modulemd_relation']:
                     try:
-                        modulemd.content.packages.add(declarative_content.content)
+                        with transaction.atomic():
+                            modulemd.content.packages.add(declarative_content.content)
                     except ValueError:
                         pass
 
