@@ -1,14 +1,15 @@
-import json
 from rest_framework import serializers
-from pulp_rpm.app.models import UpdateCollection, UpdateReference
+from pulp_rpm.app.models import UpdateReference
 
 
-class UpdateCollectionField(serializers.ListField):
+class UpdateCollectionPackagesField(serializers.ListField):
     """
     A serializer field for the 'UpdateCollectionPackage' model.
     """
 
-    def to_representation(self, value):
+    child = serializers.DictField()
+
+    def to_representation(self, obj):
         """
         Get list of packages from UpdateCollections for UpdateRecord if any.
 
@@ -20,29 +21,20 @@ class UpdateCollectionField(serializers.ListField):
 
         """
         ret = []
-        collections = UpdateCollection.objects.filter(update_record=value)
-        for collection in collections:
-            coll_base = {
-                'name': collection.name,
-                'shortname': collection.shortname,
-                'packages': []
-            }
-            for pkg in collection.packages.values():
-                coll_base['packages'].append({
-                    'arch': pkg['arch'],
-                    'epoch': pkg['epoch'],
-                    'filename': pkg['filename'],
-                    'name': pkg['name'],
-                    'reboot_suggested': pkg['reboot_suggested'],
-                    'release': pkg['release'],
-                    'src': pkg['src'],
-                    'sum': pkg['sum'],
-                    'sum_type': pkg['sum_type'],
-                    'version': pkg['version'],
-                })
-            if collection.module:
-                coll_base['module'] = json.loads(collection.module)
-            ret.append(coll_base)
+        for pkg in obj.packages.values():
+            ret.append({
+                'arch': pkg['arch'],
+                'epoch': pkg['epoch'],
+                'filename': pkg['filename'],
+                'name': pkg['name'],
+                'reboot_suggested': pkg['reboot_suggested'],
+                'release': pkg['release'],
+                'src': pkg['src'],
+                'sum': pkg['sum'],
+                'sum_type': pkg['sum_type'],
+                'version': pkg['version'],
+            })
+
         return ret
 
 
@@ -50,6 +42,8 @@ class UpdateReferenceField(serializers.ListField):
     """
     A serializer field for the 'UpdateReference' model.
     """
+
+    child = serializers.DictField()
 
     def to_representation(self, value):
         """

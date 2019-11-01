@@ -12,6 +12,7 @@ from pulpcore.plugin.serializers import (
     ArtifactSerializer,
     NoArtifactContentSerializer,
     SingleArtifactContentUploadSerializer,
+    ModelSerializer,
     MultipleArtifactContentSerializer,
     RemoteSerializer,
     PublicationSerializer,
@@ -34,9 +35,10 @@ from pulp_rpm.app.models import (
     RpmRemote,
     RpmPublication,
     UpdateRecord,
+    UpdateCollection,
 )
 
-from pulp_rpm.app.fields import UpdateCollectionField, UpdateReferenceField
+from pulp_rpm.app.fields import UpdateCollectionPackagesField, UpdateReferenceField
 
 
 from pulp_rpm.app.constants import RPM_PLUGIN_TYPE_CHOICE_MAP
@@ -296,6 +298,23 @@ class RpmPublicationSerializer(PublicationSerializer):
         model = RpmPublication
 
 
+class UpdateCollectionSerializer(ModelSerializer):
+    """
+    A Serializer for UpdateCollection.
+    """
+
+    name = serializers.CharField(help_text=_("Collection name."))
+    shortname = serializers.CharField(help_text=_("Collection short name."), allow_blank=True)
+    packages = UpdateCollectionPackagesField(
+        source='*', read_only=True,
+        help_text=_("List of packages")
+    )
+
+    class Meta:
+        fields = ("name", "shortname", "packages")
+        model = UpdateCollection
+
+
 class UpdateRecordSerializer(NoArtifactContentSerializer):
     """
     A Serializer for UpdateRecord.
@@ -353,9 +372,9 @@ class UpdateRecordSerializer(NoArtifactContentSerializer):
         help_text=_("Push count"),
         allow_blank=True
     )
-    pkglist = UpdateCollectionField(
-        source='pk', read_only=True,
-        help_text=_("List of packages")
+    pkglist = UpdateCollectionSerializer(
+        source='collections', read_only=True,
+        many=True, help_text=_("List of packages")
     )
     references = UpdateReferenceField(
         source='pk', read_only=True,
