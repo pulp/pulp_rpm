@@ -20,8 +20,10 @@ plugin_dash: pulp-rpm
 plugin_dash_short: rpm
 plugin_name: pulp_rpm
 plugin_snake: pulp_rpm
+pulp_settings: null
 pydocstyle: true
 pypi_username: pulp
 test_bindings: true
 test_performance: true
 travis_notifications: None
+
