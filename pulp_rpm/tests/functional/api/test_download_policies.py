@@ -3,7 +3,6 @@
 import unittest
 
 from pulp_smash import api, config
-from pulp_smash.pulp3.constants import REPO_PATH
 from pulp_smash.pulp3.utils import (
     delete_orphans,
     gen_repo,
@@ -15,6 +14,7 @@ from pulp_smash.pulp3.utils import (
 from pulp_rpm.tests.functional.constants import (
     RPM_FIXTURE_SUMMARY,
     RPM_REMOTE_PATH,
+    RPM_REPO_PATH,
 )
 from pulp_rpm.tests.functional.utils import (
     gen_rpm_remote,
@@ -76,7 +76,7 @@ class SyncPublishDownloadPolicyTestCase(unittest.TestCase):
            second sync no extra units should be shown, since the same remote
            was synced again.
         """
-        repo = self.client.post(REPO_PATH, gen_repo())
+        repo = self.client.post(RPM_REPO_PATH, gen_repo())
         self.addCleanup(self.client.delete, repo['pulp_href'])
 
         remote = self.client.post(
@@ -108,7 +108,7 @@ class SyncPublishDownloadPolicyTestCase(unittest.TestCase):
 
     def do_publish(self, download_policy):
         """Publish repository synced with lazy ``download_policy``."""
-        repo = self.client.post(REPO_PATH, gen_repo())
+        repo = self.client.post(RPM_REPO_PATH, gen_repo())
         self.addCleanup(self.client.delete, repo['pulp_href'])
 
         remote = self.client.post(

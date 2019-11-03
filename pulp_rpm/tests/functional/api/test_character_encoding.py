@@ -2,9 +2,11 @@
 """Tests for Pulp's characters encoding."""
 import unittest
 
+from urllib.parse import urljoin
+
 from pulp_smash import api, config, utils
 from pulp_smash.exceptions import TaskReportError
-from pulp_smash.pulp3.constants import ARTIFACTS_PATH, REPO_PATH
+from pulp_smash.pulp3.constants import ARTIFACTS_PATH
 from pulp_smash.pulp3.utils import (
     delete_orphans,
     gen_repo,
@@ -13,6 +15,7 @@ from pulp_smash.pulp3.utils import (
 
 from pulp_rpm.tests.functional.constants import (
     RPM_CONTENT_PATH,
+    RPM_REPO_PATH,
     RPM_WITH_NON_ASCII_NAME,
     RPM_WITH_NON_ASCII_URL,
     RPM_WITH_NON_UTF_8_NAME,
@@ -49,12 +52,12 @@ class UploadEncodingMetadataTestCase(unittest.TestCase):
             'artifact': artifact['pulp_href'],
             'relative_path': RPM_WITH_NON_ASCII_NAME
         })
-        repo = self.client.post(REPO_PATH, gen_repo())
+        repo = self.client.post(RPM_REPO_PATH, gen_repo())
         self.addCleanup(self.client.delete, repo['pulp_href'])
         repo_versions = get_versions(repo)
         self.assertEqual(len(repo_versions), 0, repo_versions)
         self.client.post(
-            repo['versions_href'],
+            urljoin(repo['pulp_href'], 'modify/'),
             {'add_content_units': [content_unit['pulp_href']]}
         )
         repo_versions = get_versions(repo)

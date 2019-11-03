@@ -6,7 +6,6 @@ from random import choice
 from urllib.parse import urljoin
 
 from pulp_smash import api, config, utils
-from pulp_smash.pulp3.constants import REPO_PATH
 from pulp_smash.pulp3.utils import (
     download_content_unit,
     gen_distribution,
@@ -22,6 +21,7 @@ from pulp_rpm.tests.functional.utils import (
 from pulp_rpm.tests.functional.constants import (
     RPM_DISTRIBUTION_PATH,
     RPM_REMOTE_PATH,
+    RPM_REPO_PATH,
     RPM_UNSIGNED_FIXTURE_URL,
 )
 from pulp_rpm.tests.functional.utils import set_up_module as setUpModule  # noqa:F401
@@ -59,7 +59,7 @@ class DownloadContentTestCase(unittest.TestCase):
         cfg = config.get_config()
         client = api.Client(cfg, api.json_handler)
 
-        repo = client.post(REPO_PATH, gen_repo())
+        repo = client.post(RPM_REPO_PATH, gen_repo())
         self.addCleanup(client.delete, repo['pulp_href'])
 
         body = gen_rpm_remote()

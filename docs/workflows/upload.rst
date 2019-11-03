@@ -40,7 +40,7 @@ Create a content unit and point it to your artifact
 Add content to repository ``foo``
 ---------------------------------
 
-``$ http POST :24817${REPO_HREF}versions/ add_content_units:="[\"$CONTENT_HREF\"]"``
+``$ http POST :24817${REPO_HREF}modify/ add_content_units:="[\"$CONTENT_HREF\"]"``
 
 
 .. _one-shot-upload-workflow:
@@ -59,7 +59,7 @@ With this call you can substitute previous two (or three) steps (create artifact
        "pulp_href": "/pulp/api/v3/tasks/f2b525e3-8d8f-4246-adab-2fabd2b089a8/",
        "created_resources": [
            "/pulp/api/v3/content/rpm/packages/1edf8d4e-4293-4b66-93cd-8e913731c87a/",
-           "/pulp/api/v3/repositories/64bdeb44-c6d3-4ed7-9c5a-94b264a6b7b5/versions/2/"
+           "/pulp/api/v3/repositories/rpm/rpm/64bdeb44-c6d3-4ed7-9c5a-94b264a6b7b5/versions/2/"
        ],
     }
 

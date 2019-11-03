@@ -1079,6 +1079,17 @@ class PackageLangpacks(Content):
         }
 
 
+class RpmRepository(Repository):
+    """
+    Repository for "rpm" content.
+    """
+
+    TYPE = "rpm"
+
+    class Meta:
+        default_related_name = "%(app_label)s_%(model_name)s"
+
+
 class RpmRemote(Remote):
     """
     Remote for "rpm" content.

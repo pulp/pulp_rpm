@@ -6,9 +6,6 @@ from io import StringIO
 from unittest import SkipTest
 
 from pulp_smash import api, cli, selectors
-from pulp_smash.pulp3.constants import (
-    REPO_PATH
-)
 from pulp_smash.pulp3.utils import (
     gen_remote,
     gen_repo,
@@ -23,6 +20,7 @@ from pulp_rpm.tests.functional.constants import (
     RPM_PACKAGE_CONTENT_NAME,
     RPM_PUBLICATION_PATH,
     RPM_REMOTE_PATH,
+    RPM_REPO_PATH,
     RPM_SIGNED_FIXTURE_URL,
     RPM_UNSIGNED_FIXTURE_URL,
 )
@@ -73,7 +71,7 @@ def populate_pulp(cfg, url=RPM_SIGNED_FIXTURE_URL):
     repo = {}
     try:
         remote.update(client.post(RPM_REMOTE_PATH, gen_rpm_remote(url)))
-        repo.update(client.post(REPO_PATH, gen_repo()))
+        repo.update(client.post(RPM_REPO_PATH, gen_repo()))
         sync(cfg, remote, repo)
     finally:
         if remote:

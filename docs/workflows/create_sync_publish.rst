@@ -6,18 +6,19 @@ Create, Sync and Publish a Repository
 One of the most common workflows is a fetching content from a remote source and making it
 available for users.
 
-Create a repository ``foo``
----------------------------
+Create an RPM repository ``foo``
+--------------------------------
 
-``$ http POST http://localhost:24817/pulp/api/v3/repositories/ name=foo``
+``$ http POST http://localhost:24817/pulp/api/v3/repositories/rpm/rpm/ name=foo``
 
 .. code:: json
 
     {
-        "pulp_href": "/pulp/api/v3/repositories/5eeabc0b-3b86-4264-bb3a-5889530a6f5b/",
+        "pulp_href": "/pulp/api/v3/repositories/rpm/rpm/5eeabc0b-3b86-4264-bb3a-5889530a6f5b/",
     }
 
-``$ export REPO_HREF=$(http :24817/pulp/api/v3/repositories/ | jq -r '.results[] | select(.name == "foo") | .pulp_href')``
+``$ export REPO_HREF=$(http :24817/pulp/api/v3/repositories/rpm/rpm/ | jq -r '.results[] | select(
+.name == "foo") | .pulp_href')``
 
 
 .. _create-remote:
@@ -42,7 +43,7 @@ to download RPMs whenever they are requested by clients.
 Sync repository ``foo`` using remote ``bar``
 --------------------------------------------
 
-``$ http POST :24817${REMOTE_HREF}sync/ repository=$REPO_HREF``
+``$ http POST :24817${REPO_HREF}sync/ remote=$REMOTE_HREF``
 
 
 .. _versioned-repo-created:
@@ -55,10 +56,10 @@ Look at the new Repository Version created
 .. code:: json
 
     {
-        "_added_href": "/pulp/api/v3/repositories/5eeabc0b-3b86-4264-bb3a-5889530a6f5b/versions/1/added_content/",
-        "_content_href": "/pulp/api/v3/repositories/5eeabc0b-3b86-4264-bb3a-5889530a6f5b/versions/1/content/",
-        "pulp_href": "/pulp/api/v3/repositories/5eeabc0b-3b86-4264-bb3a-5889530a6f5b/versions/1/",
-        "_removed_href": "/pulp/api/v3/repositories/5eeabc0b-3b86-4264-bb3a-5889530a6f5b/versions/1/removed_content/",
+        "_added_href": "/pulp/api/v3/repositories/rpm/rpm/5eeabc0b-3b86-4264-bb3a-5889530a6f5b/versions/1/added_content/",
+        "_content_href": "/pulp/api/v3/repositories/5eeabc0b-3b86-4264-bb3a-5889530a6f5b/rpm/rpm/versions/1/content/",
+        "pulp_href": "/pulp/api/v3/repositories/5eeabc0b-3b86-4264-bb3a-5889530a6f5b/rpm/rpm/versions/1/",
+        "_removed_href": "/pulp/api/v3/repositories/5eeabc0b-3b86-4264-bb3a-5889530a6f5b/rpm/rpm/versions/1/removed_content/",
         "content_summary": {
             "package": 35,
             "advisory": 4

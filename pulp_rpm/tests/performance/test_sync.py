@@ -5,7 +5,6 @@ from datetime import datetime
 from urllib.parse import urljoin
 
 from pulp_smash import api, config
-from pulp_smash.pulp3.constants import REPO_PATH
 from pulp_smash.pulp3.utils import (
     delete_orphans,
     gen_repo,
@@ -19,6 +18,7 @@ from pulp_rpm.tests.functional.constants import (
     RPM_KICKSTART_FIXTURE_SUMMARY,
     RPM_KICKSTART_FIXTURE_URL,
     RPM_REMOTE_PATH,
+    RPM_REPO_PATH,
     CENTOS7_URL,
     CENTOS8_APPSTREAM_URL,
     CENTOS8_BASEOS_URL,
@@ -68,7 +68,7 @@ class SyncTestCase(unittest.TestCase):
         5. Assert that distribution_tree units were added and are present in the repo.
         """
         delete_orphans(self.cfg)
-        repo = self.client.post(REPO_PATH, gen_repo())
+        repo = self.client.post(RPM_REPO_PATH, gen_repo())
         self.addCleanup(self.client.delete, repo['pulp_href'])
 
         # Create a remote with the standard test fixture url.
@@ -78,9 +78,9 @@ class SyncTestCase(unittest.TestCase):
 
         # Sync the repository.
         self.assertIsNone(repo['latest_version_href'])
-        data = {"repository": repo["pulp_href"]}
+        data = {"remote": remote["pulp_href"]}
         response = self.client.using_handler(api.json_handler).post(
-            urljoin(remote["pulp_href"], "sync/"), data
+            urljoin(repo["pulp_href"], "sync/"), data
         )
         sync_task = self.client.get(response["task"])
         created_at = self.parse_date_from_string(sync_task["pulp_created"])
@@ -112,7 +112,7 @@ class SyncTestCase(unittest.TestCase):
         # Sync the repository again.
         latest_version_href = repo['latest_version_href']
         response = self.client.using_handler(api.json_handler).post(
-            urljoin(remote["pulp_href"], "sync/"), data
+            urljoin(repo["pulp_href"], "sync/"), data
         )
         sync_task = self.client.get(response["task"])
         created_at = self.parse_date_from_string(sync_task["pulp_created"])

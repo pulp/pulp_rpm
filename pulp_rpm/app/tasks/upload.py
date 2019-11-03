@@ -2,12 +2,13 @@ from pulpcore.plugin.models import (
     Artifact,
     ContentArtifact,
     CreatedResource,
-    Repository,
-    RepositoryVersion
 )
 
 from pulp_rpm.app.shared_utils import _prepare_package
-from pulp_rpm.app.models import Package
+from pulp_rpm.app.models import (
+    Package,
+    RpmRepository,
+)
 
 
 def one_shot_upload(artifact_pk, filename, repository_pk=None):
@@ -42,9 +43,9 @@ def one_shot_upload(artifact_pk, filename, repository_pk=None):
     resource.save()
 
     if repository_pk:
-        repository = Repository.objects.get(pk=repository_pk)
+        repository = RpmRepository.objects.get(pk=repository_pk)
         content_to_add = Package.objects.filter(pkgId=pkg.pkgId)
 
         # create new repo version with uploaded package
-        with RepositoryVersion.create(repository) as new_version:
+        with repository.new_version() as new_version:
             new_version.add_content(content_to_add)
