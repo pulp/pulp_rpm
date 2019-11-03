@@ -7,7 +7,7 @@ from unittest import SkipTest
 
 from pulp_smash import api, cli, selectors
 from pulp_smash.pulp3.constants import (
-    REPO_PATH
+    RPM_REPO_PATH
 )
 from pulp_smash.pulp3.utils import (
     gen_remote,
@@ -73,7 +73,7 @@ def populate_pulp(cfg, url=RPM_SIGNED_FIXTURE_URL):
     repo = {}
     try:
         remote.update(client.post(RPM_REMOTE_PATH, gen_rpm_remote(url)))
-        repo.update(client.post(REPO_PATH, gen_repo()))
+        repo.update(client.post(RPM_REPO_PATH, gen_repo()))
         sync(cfg, remote, repo)
     finally:
         if remote:

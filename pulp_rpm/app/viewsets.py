@@ -15,20 +15,22 @@ from pulpcore.plugin.viewsets import (
     PublicationViewSet,
     ReadOnlyContentViewSet,
     RemoteViewSet,
+    RepositoryViewSet,
     SingleArtifactContentUploadViewSet,
 )
 
 from pulp_rpm.app import tasks
 from pulp_rpm.app.models import (
     DistributionTree,
+    Modulemd,
+    ModulemdDefaults,
     Package,
     RepoMetadataFile,
     RpmDistribution,
     RpmRemote,
+    RpmRepository,
     RpmPublication,
     UpdateRecord,
-    Modulemd,
-    ModulemdDefaults
 )
 from pulp_rpm.app.serializers import (
     CopySerializer,
@@ -41,6 +43,7 @@ from pulp_rpm.app.serializers import (
     RepoMetadataFileSerializer,
     RpmDistributionSerializer,
     RpmRemoteSerializer,
+    RpmRepositorySerializer,
     RpmPublicationSerializer,
     UpdateRecordSerializer,
 )
@@ -82,14 +85,14 @@ class PackageViewSet(SingleArtifactContentUploadViewSet):
     filterset_class = PackageFilter
 
 
-class RpmRemoteViewSet(RemoteViewSet):
+class RpmRepositoryViewSet(RepositoryViewSet):
     """
-    A ViewSet for RpmRemote.
+    A ViewSet for RpmRepository.
     """
 
     endpoint_name = 'rpm'
-    queryset = RpmRemote.objects.all()
-    serializer_class = RpmRemoteSerializer
+    queryset = RpmRepository.objects.all()
+    serializer_class = RpmRepositorySerializer
 
     @swagger_auto_schema(
         operation_description="Trigger an asynchronous task to sync RPM content.",
@@ -101,13 +104,13 @@ class RpmRemoteViewSet(RemoteViewSet):
         """
         Dispatches a sync task.
         """
-        remote = self.get_object()
+        repository = self.get_object()
         serializer = RepositorySyncURLSerializer(
             data=request.data,
             context={'request': request}
         )
         serializer.is_valid(raise_exception=True)
-        repository = serializer.validated_data.get('repository')
+        remote = serializer.validated_data.get('remote')
 
         result = enqueue_with_reservation(
             tasks.synchronize,
@@ -118,6 +121,16 @@ class RpmRemoteViewSet(RemoteViewSet):
             }
         )
         return OperationPostponedResponse(result, request)
+
+
+class RpmRemoteViewSet(RemoteViewSet):
+    """
+    A ViewSet for RpmRemote.
+    """
+
+    endpoint_name = 'rpm'
+    queryset = RpmRemote.objects.all()
+    serializer_class = RpmRemoteSerializer
 
 
 class UpdateRecordFilter(ContentFilter):

@@ -5,43 +5,44 @@ from rest_framework.exceptions import NotAcceptable
 
 from pulpcore.plugin.models import (
     Remote,
-    Repository,
-    RepositoryVersion
+    RepositoryVersion,
 )
 from pulpcore.plugin.serializers import (
     ArtifactSerializer,
-    NoArtifactContentSerializer,
-    SingleArtifactContentUploadSerializer,
     ModelSerializer,
     MultipleArtifactContentSerializer,
-    RemoteSerializer,
-    PublicationSerializer,
-    PublicationDistributionSerializer,
     NestedRelatedField,
+    NoArtifactContentSerializer,
+    PublicationDistributionSerializer,
+    PublicationSerializer,
+    RemoteSerializer,
+    RepositorySerializer,
+    SingleArtifactContentUploadSerializer,
     validate_unknown_fields,
 )
 
+from pulp_rpm.app.constants import RPM_PLUGIN_TYPE_CHOICE_MAP
+from pulp_rpm.app.fields import (
+    UpdateCollectionPackagesField,
+    UpdateReferenceField,
+)
 from pulp_rpm.app.models import (
     Addon,
     Checksum,
-    Image,
-    Variant,
     DistributionTree,
+    Image,
     Modulemd,
     ModulemdDefaults,
     Package,
     RepoMetadataFile,
     RpmDistribution,
     RpmRemote,
+    RpmRepository,
     RpmPublication,
     UpdateRecord,
     UpdateCollection,
+    Variant,
 )
-
-from pulp_rpm.app.fields import UpdateCollectionPackagesField, UpdateReferenceField
-
-
-from pulp_rpm.app.constants import RPM_PLUGIN_TYPE_CHOICE_MAP
 from pulp_rpm.app.shared_utils import _prepare_package
 
 
@@ -271,6 +272,16 @@ class MinimalPackageSerializer(PackageSerializer):
         model = Package
 
 
+class RpmRepositorySerializer(RepositorySerializer):
+    """
+    Serializer for Rpm Repositories.
+    """
+
+    class Meta:
+        fields = RepositorySerializer.Meta.fields
+        model = RpmRepository
+
+
 class RpmRemoteSerializer(RemoteSerializer):
     """
     A Serializer for RpmRemote.
@@ -421,8 +432,8 @@ class CopySerializer(serializers.Serializer):
     source_repo = serializers.HyperlinkedRelatedField(
         help_text=_('A URI of the repository.'),
         required=False,
-        queryset=Repository.objects.all(),
-        view_name='repositories-detail',
+        queryset=RpmRepository.objects.all(),
+        view_name='repositories-rpm/rpm-detail',
     )
     source_repo_version = NestedRelatedField(
         help_text=_('A URI of the repository version'),
@@ -435,8 +446,8 @@ class CopySerializer(serializers.Serializer):
     dest_repo = serializers.HyperlinkedRelatedField(
         help_text=_('A URI of the repository.'),
         required=True,
-        queryset=Repository.objects.all(),
-        view_name='repositories-detail',
+        queryset=RpmRepository.objects.all(),
+        view_name='repositories-rpm/rpm-detail',
     )
     types = serializers.ListField(
         help_text=_('A list of types to copy ["package", "advisory"]'),
@@ -448,8 +459,8 @@ class CopySerializer(serializers.Serializer):
         """
         Validate that the Serializer contains valid data.
 
-        Set the Repository based on the RepositoryVersion if only the latter is provided.
-        Set the RepositoryVersion based on the Repository if only the latter is provied.
+        Set the RpmRepository based on the RepositoryVersion if only the latter is provided.
+        Set the RepositoryVersion based on the RpmRepository if only the latter is provided.
         Convert the human-friendly names of the content types into what Pulp needs to query on.
 
         """

@@ -5,7 +5,7 @@ import unittest
 
 from pulp_smash import api, config, utils
 from pulp_smash.exceptions import TaskReportError
-from pulp_smash.pulp3.constants import ARTIFACTS_PATH, REPO_PATH
+from pulp_smash.pulp3.constants import ARTIFACTS_PATH
 from pulp_smash.pulp3.utils import (
     delete_orphans,
     gen_repo,
@@ -14,6 +14,7 @@ from pulp_smash.pulp3.utils import (
 from pulp_rpm.tests.functional.constants import (
     RPM_CONTENT_PATH,
     RPM_PACKAGE_FILENAME,
+    RPM_REPO_PATH,
     RPM_SINGLE_REQUEST_UPLOAD,
     RPM_UNSIGNED_URL,
 )
@@ -37,7 +38,7 @@ class SingleRequestUploadTestCase(unittest.TestCase):
         delete_orphans(cfg)
         file = {'file': utils.http_get(RPM_UNSIGNED_URL)}
         client = api.Client(cfg, api.page_handler)
-        repo = client.post(REPO_PATH, gen_repo())
+        repo = client.post(RPM_REPO_PATH, gen_repo())
         self.addCleanup(client.delete, repo['pulp_href'])
         client.using_handler(api.task_handler).post(
             RPM_SINGLE_REQUEST_UPLOAD,
@@ -81,7 +82,7 @@ class SingleRequestUploadDuplicateTestCase(unittest.TestCase):
 
     def test_duplicate_unit(self):
         """Test single request upload for unit already present in Pulp."""
-        repo = self.client.post(REPO_PATH, gen_repo())
+        repo = self.client.post(RPM_REPO_PATH, gen_repo())
         self.addCleanup(self.client.delete, repo['pulp_href'])
         self.single_request_upload(repo)
         with self.assertRaises(TaskReportError) as ctx:

@@ -7,7 +7,6 @@ from xml.etree import ElementTree
 from requests.exceptions import HTTPError
 
 from pulp_smash import api, config
-from pulp_smash.pulp3.constants import REPO_PATH
 from pulp_smash.pulp3.utils import (
     download_content_unit,
     gen_distribution,
@@ -31,6 +30,7 @@ from pulp_rpm.tests.functional.constants import (
     RPM_PUBLICATION_PATH,
     RPM_REFERENCES_UPDATEINFO_URL,
     RPM_REMOTE_PATH,
+    RPM_REPO_PATH,
     RPM_RICH_WEAK_FIXTURE_URL,
     RPM_SHA512_FIXTURE_URL,
     SRPM_UNSIGNED_FIXTURE_URL,
@@ -71,7 +71,7 @@ class PublishAnyRepoVersionTestCase(unittest.TestCase):
         remote = self.client.post(RPM_REMOTE_PATH, body)
         self.addCleanup(self.client.delete, remote['pulp_href'])
 
-        repo = self.client.post(REPO_PATH, gen_repo())
+        repo = self.client.post(RPM_REPO_PATH, gen_repo())
         self.addCleanup(self.client.delete, repo['pulp_href'])
 
         sync(self.cfg, remote, repo)
@@ -123,7 +123,7 @@ class SyncPublishReferencesUpdateTestCase(unittest.TestCase):
 
         `Pulp #3998 <https://pulp.plan.io/issues/3998>`_.
         """
-        repo = self.client.post(REPO_PATH, gen_repo())
+        repo = self.client.post(RPM_REPO_PATH, gen_repo())
         self.addCleanup(self.client.delete, repo['pulp_href'])
 
         body = gen_rpm_remote(url=RPM_REFERENCES_UPDATEINFO_URL)
@@ -183,7 +183,7 @@ class SyncPublishTestCase(unittest.TestCase):
 
     def do_test(self, url):
         """Sync and publish an RPM repository given a feed URL."""
-        repo = self.client.post(REPO_PATH, gen_repo())
+        repo = self.client.post(RPM_REPO_PATH, gen_repo())
         self.addCleanup(self.client.delete, repo['pulp_href'])
 
         remote = self.client.post(RPM_REMOTE_PATH, gen_rpm_remote(url=url))
@@ -224,7 +224,7 @@ class ValidateNoChecksumTagTestCase(unittest.TestCase):
     def test_all(self):
         """Sync and publish an RPM repository and verify the checksum."""
         # Step 1
-        repo = self.client.post(REPO_PATH, gen_repo())
+        repo = self.client.post(RPM_REPO_PATH, gen_repo())
         self.addCleanup(self.client.delete, repo['pulp_href'])
 
         remote = self.client.post(RPM_REMOTE_PATH, gen_rpm_remote())
