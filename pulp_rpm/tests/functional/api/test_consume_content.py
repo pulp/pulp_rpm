@@ -5,7 +5,6 @@ import unittest
 from pulp_smash import api, cli, config
 from pulp_smash.pulp3.constants import (
     ON_DEMAND_DOWNLOAD_POLICIES,
-    REPO_PATH,
 )
 from pulp_smash.pulp3.utils import (
     delete_orphans,
@@ -20,6 +19,7 @@ from pulp_rpm.tests.functional.utils import (
 from pulp_rpm.tests.functional.constants import (
     RPM_DISTRIBUTION_PATH,
     RPM_REMOTE_PATH,
+    RPM_REPO_PATH,
 )
 from pulp_rpm.tests.functional.utils import set_up_module as setUpModule  # noqa:F401
 from pulp_rpm.tests.functional.utils import publish
@@ -65,7 +65,7 @@ class PackageManagerConsumeTestCase(unittest.TestCase):
         remote = client.post(RPM_REMOTE_PATH, body)
         self.addCleanup(client.delete, remote['pulp_href'])
 
-        repo = client.post(REPO_PATH, gen_repo())
+        repo = client.post(RPM_REPO_PATH, gen_repo())
         self.addCleanup(client.delete, repo['pulp_href'])
 
         sync(self.cfg, remote, repo)

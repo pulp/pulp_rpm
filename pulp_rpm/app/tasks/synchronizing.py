@@ -14,8 +14,11 @@ import libcomps
 
 from django.db import transaction
 
-from pulpcore.plugin.models import Artifact, ProgressReport, Remote, Repository
-
+from pulpcore.plugin.models import (
+    Artifact,
+    ProgressReport,
+    Remote,
+)
 from pulpcore.plugin.stages import (
     ArtifactDownloader,
     ArtifactSaver,
@@ -29,7 +32,6 @@ from pulpcore.plugin.stages import (
     QueryExistingArtifacts,
     QueryExistingContents
 )
-
 
 from pulp_rpm.app.constants import (
     CHECKSUM_TYPES,
@@ -57,14 +59,20 @@ from pulp_rpm.app.models import (
     PackageEnvironment,
     PackageLangpacks,
     RpmRemote,
+    RpmRepository,
     UpdateCollection,
     UpdateCollectionPackage,
     UpdateRecord,
     UpdateReference,
 )
-from pulp_rpm.app.tasks.utils import get_kickstart_data, repodata_exists
-
-from pulp_rpm.app.modulemd import parse_defaults, parse_modulemd
+from pulp_rpm.app.modulemd import (
+    parse_defaults,
+    parse_modulemd,
+)
+from pulp_rpm.app.tasks.utils import (
+    get_kickstart_data,
+    repodata_exists,
+)
 
 from pulp_rpm.app.comps import strdict_to_dict, dict_digest
 
@@ -90,7 +98,7 @@ def synchronize(remote_pk, repository_pk):
 
     """
     remote = RpmRemote.objects.get(pk=remote_pk)
-    repository = Repository.objects.get(pk=repository_pk)
+    repository = RpmRepository.objects.get(pk=repository_pk)
 
     dupe_criteria = [
         {'model': Package, 'field_names': ['name', 'epoch', 'version', 'release', 'arch']},
@@ -112,7 +120,7 @@ def synchronize(remote_pk, repository_pk):
                 kickstart["repositories"].update({repodata: str(repository_pk)})
                 continue
             name = f"{repodata}-{kickstart['hash']}"
-            new_repository, created = Repository.objects.get_or_create(
+            new_repository, created = RpmRepository.objects.get_or_create(
                 name=name, plugin_managed=True
             )
             if created:

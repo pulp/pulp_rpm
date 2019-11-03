@@ -5,7 +5,7 @@ import unittest
 from urllib.parse import urljoin
 
 from pulp_smash import api, cli, config
-from pulp_smash.pulp3.constants import MEDIA_PATH, REPO_PATH, ARTIFACTS_PATH
+from pulp_smash.pulp3.constants import MEDIA_PATH, ARTIFACTS_PATH
 from pulp_smash.pulp3.utils import (
     delete_orphans,
     gen_repo,
@@ -30,6 +30,7 @@ from pulp_rpm.tests.functional.constants import (
     RPM_PACKAGE_COUNT,
     RPM_REFERENCES_UPDATEINFO_URL,
     RPM_REMOTE_PATH,
+    RPM_REPO_PATH,
     RPM_SHA512_FIXTURE_URL,
     RPM_SIGNED_FIXTURE_URL,
     RPM_UNSIGNED_FIXTURE_URL,
@@ -71,7 +72,7 @@ class BasicSyncTestCase(unittest.TestCase):
         8. Assert that the same number of are present and that no units were
            added.
         """
-        repo = self.client.post(REPO_PATH, gen_repo())
+        repo = self.client.post(RPM_REPO_PATH, gen_repo())
         self.addCleanup(self.client.delete, repo['pulp_href'])
 
         # Create a remote with the standard test fixture url.
@@ -138,7 +139,7 @@ class KickstartSyncTestCase(unittest.TestCase):
         8. Assert that the same number of are present and that no units were
            added.
         """
-        repo = self.client.post(REPO_PATH, gen_repo())
+        repo = self.client.post(RPM_REPO_PATH, gen_repo())
         self.addCleanup(self.client.delete, repo['pulp_href'])
 
         # Create a remote with the standard test fixture url.
@@ -204,7 +205,7 @@ class KickstartSyncTestCase(unittest.TestCase):
            added.
         """
         delete_orphans(self.cfg)
-        repo = self.client.post(REPO_PATH, gen_repo())
+        repo = self.client.post(RPM_REPO_PATH, gen_repo())
         self.addCleanup(self.client.delete, repo['pulp_href'])
 
         # Create a remote with the standard test fixture url.
@@ -272,7 +273,7 @@ class FileDescriptorsTestCase(unittest.TestCase):
         if cli_client.run(('which', 'lsof')).returncode != 0:
             raise unittest.SkipTest('lsof package is not present')
 
-        repo = client.post(REPO_PATH, gen_repo())
+        repo = client.post(RPM_REPO_PATH, gen_repo())
         self.addCleanup(client.delete, repo['pulp_href'])
 
         remote = client.post(RPM_REMOTE_PATH, gen_rpm_remote())
@@ -312,7 +313,7 @@ class SyncMutatedPackagesTestCase(unittest.TestCase):
            but has the same content summary.
         7. Assert that the packages have changed since the last sync.
         """
-        repo = self.client.post(REPO_PATH, gen_repo())
+        repo = self.client.post(RPM_REPO_PATH, gen_repo())
         self.addCleanup(self.client.delete, repo['pulp_href'])
 
         # Create a remote with the unsigned RPM fixture url.
@@ -397,7 +398,7 @@ class EPELSyncTestCase(unittest.TestCase):
         cfg = config.get_config()
         client = api.Client(cfg, api.page_handler)
 
-        repo = client.post(REPO_PATH, gen_repo())
+        repo = client.post(RPM_REPO_PATH, gen_repo())
         self.addCleanup(client.delete, repo['pulp_href'])
 
         remote = client.post(RPM_REMOTE_PATH, gen_rpm_remote(url=RPM_EPEL_URL))
@@ -444,7 +445,7 @@ class SyncMutatedUpdateRecordTestCase(unittest.TestCase):
         """
         client = api.Client(self.cfg, api.json_handler)
 
-        repo = client.post(REPO_PATH, gen_repo())
+        repo = client.post(RPM_REPO_PATH, gen_repo())
         self.addCleanup(client.delete, repo['pulp_href'])
 
         # Create a remote with the unsigned RPM fixture url.
@@ -527,7 +528,7 @@ class SyncDiffChecksumPackagesTestCase(unittest.TestCase):
         * `Pulp #3954 <https://pulp.plan.io/issues/3954>`_
         """
         # Step 1
-        repo = self.client.post(REPO_PATH, gen_repo())
+        repo = self.client.post(RPM_REPO_PATH, gen_repo())
         self.addCleanup(self.client.delete, repo['pulp_href'])
 
         # Step 2.
@@ -586,12 +587,12 @@ class ChecksumConstraintTestCase(unittest.TestCase):
             remote = client.post(RPM_REMOTE_PATH, gen_rpm_remote(url=url))
             self.addCleanup(client.delete, remote['pulp_href'])
 
-            repo = client.post(REPO_PATH, gen_repo())
+            repo = client.post(RPM_REPO_PATH, gen_repo())
             self.addCleanup(client.delete, repo['pulp_href'])
 
             client.post(
-                urljoin(remote['pulp_href'], 'sync/'),
-                {'repository': repo['pulp_href']},
+                urljoin(repo['pulp_href'], 'sync/'),
+                {'remote': remote['pulp_href']},
             )
             repo = client.get(repo['pulp_href'])
 
@@ -621,7 +622,7 @@ class SyncModularContentTestCase(unittest.TestCase):
         )
         self.addCleanup(client.delete, remote['pulp_href'])
 
-        repo = client.post(REPO_PATH, gen_repo())
+        repo = client.post(RPM_REPO_PATH, gen_repo())
         self.addCleanup(client.delete, repo['pulp_href'])
 
         sync(cfg, remote, repo)

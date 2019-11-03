@@ -4,11 +4,12 @@ from urllib.parse import urljoin
 
 from pulp_smash.constants import PULP_FIXTURES_BASE_URL
 from pulp_smash.pulp3.constants import (
+    BASE_CONTENT_PATH,
     BASE_DISTRIBUTION_PATH,
+    BASE_REPO_PATH,
     BASE_PATH,
     BASE_PUBLICATION_PATH,
     BASE_REMOTE_PATH,
-    CONTENT_PATH,
 )
 
 DRPM_UNSIGNED_FIXTURE_URL = urljoin(PULP_FIXTURES_BASE_URL, 'drpm-unsigned/')
@@ -27,7 +28,7 @@ RPM_ADVISORY_CONTENT_NAME = 'rpm.advisory'
 RPM_ALT_LAYOUT_FIXTURE_URL = urljoin(PULP_FIXTURES_BASE_URL, 'rpm-alt-layout/')
 """The URL to a signed RPM repository. See :data:`RPM_SIGNED_FIXTURE_URL`."""
 
-RPM_CONTENT_PATH = urljoin(CONTENT_PATH, 'rpm/packages/')
+RPM_CONTENT_PATH = urljoin(BASE_CONTENT_PATH, 'rpm/packages/')
 """The location of RPM packages on the content endpoint."""
 
 RPM_NAMESPACES = {
@@ -61,6 +62,8 @@ metadata/rpm
 RPM_DISTRIBUTION_PATH = urljoin(BASE_DISTRIBUTION_PATH, 'rpm/rpm/')
 
 RPM_REMOTE_PATH = urljoin(BASE_REMOTE_PATH, 'rpm/rpm/')
+
+RPM_REPO_PATH = urljoin(BASE_REPO_PATH, 'rpm/rpm/')
 
 RPM_PUBLICATION_PATH = urljoin(BASE_PUBLICATION_PATH, 'rpm/rpm/')
 
@@ -234,7 +237,7 @@ RPM_WITH_NON_UTF_8_URL = urljoin(
 SRPM_UNSIGNED_FIXTURE_URL = urljoin(PULP_FIXTURES_BASE_URL, 'srpm-unsigned/')
 """The URL to a repository with unsigned SRPM packages."""
 
-UPDATERECORD_CONTENT_PATH = urljoin(CONTENT_PATH, 'rpm/updates/')
+UPDATERECORD_CONTENT_PATH = urljoin(BASE_CONTENT_PATH, 'rpm/updates/')
 """The location of RPM UpdateRecords on the content endpoint."""
 
 RPM_KICKSTART_FIXTURE_URL = urljoin(PULP_FIXTURES_BASE_URL, 'rpm-kickstart/')
