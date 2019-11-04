@@ -628,7 +628,8 @@ class RpmContentSaver(ContentSaver):
             elif isinstance(declarative_content.content, Modulemd):
                 for pkg in declarative_content.extra_data['package_relation']:
                     try:
-                        declarative_content.content.packages.add(pkg.content)
+                        with transaction.atomic():
+                            declarative_content.content.packages.add(pkg.content)
                     except ValueError:
                         pass
 
