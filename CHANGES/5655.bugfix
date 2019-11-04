@@ -1,0 +1,1 @@
+Fix 404 when repo remote URL is without trailing slash.
