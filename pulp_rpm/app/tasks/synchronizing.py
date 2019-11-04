@@ -291,6 +291,7 @@ class RpmFirstStage(Stage):
         errata_pb.save()
 
         remote_url = self.new_url or self.remote.url
+        remote_url = remote_url if remote_url[-1] == "/" else f"{remote_url}/"
 
         progress_data = dict(message='Downloading Metadata Files', code='downloading.metadata')
         with ProgressReport(**progress_data) as metadata_pb:
