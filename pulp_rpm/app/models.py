@@ -21,6 +21,13 @@ from pulp_rpm.app.constants import (CHECKSUM_CHOICES, CR_PACKAGE_ATTRS,
                                     CR_UPDATE_RECORD_ATTRS,
                                     CR_UPDATE_COLLECTION_ATTRS_MODULE,
                                     CR_UPDATE_REFERENCE_ATTRS,
+                                    LIBCOMPS_CATEGORY_ATTRS,
+                                    LIBCOMPS_ENVIRONMENT_ATTRS,
+                                    LIBCOMPS_GROUP_ATTRS,
+                                    PULP_CATEGORY_ATTRS,
+                                    PULP_ENVIRONMENT_ATTRS,
+                                    PULP_GROUP_ATTRS,
+                                    PULP_LANGPACKS_ATTRS,
                                     PULP_PACKAGE_ATTRS,
                                     PULP_UPDATE_COLLECTION_ATTRS,
                                     PULP_UPDATE_COLLECTION_ATTRS_MODULE,
@@ -28,6 +35,8 @@ from pulp_rpm.app.constants import (CHECKSUM_CHOICES, CR_PACKAGE_ATTRS,
                                     PULP_UPDATE_RECORD_ATTRS,
                                     PULP_UPDATE_REFERENCE_ATTRS
                                     )
+
+from pulp_rpm.app.comps import strdict_to_dict
 
 log = getLogger(__name__)
 
@@ -724,6 +733,8 @@ class PackageGroup(Content):
             A dictionary of names by language
         digest (Text):
             A checksum for the group
+        related_packages (ManyToMany):
+            Packages related to this PackageGroup
     """
 
     TYPE = 'packagegroup'
@@ -734,23 +745,82 @@ class PackageGroup(Content):
     default = models.BooleanField(default=False)
     user_visible = models.BooleanField(default=False)
 
-    display_order = models.IntegerField()
+    display_order = models.IntegerField(null=True)
     name = models.CharField(max_length=255)
-    description = models.TextField()
-    packages = models.TextField()
+    description = models.TextField(default='')
+    packages = JSONField(default=list)
 
     biarch_only = models.BooleanField(default=False)
 
-    desc_by_lang = models.TextField()
-    name_by_lang = models.TextField()
+    desc_by_lang = JSONField(default=dict)
+    name_by_lang = JSONField(default=dict)
 
     digest = models.CharField(unique=True, max_length=64)
+
+    related_packages = models.ManyToManyField(Package)
 
     class Meta:
         default_related_name = "%(app_label)s_%(model_name)s"
 
+    @classmethod
+    def natural_key_fields(cls):
+        """
+        Digest is used as a natural key for PackageGroups.
+        """
+        return ('digest',)
 
-class Category(Content):
+    @classmethod
+    def pkglist_to_lst(cls, value):
+        """
+        Convert libcomps PkgList to list.
+
+        Args:
+            value: a libcomps PkgList
+
+        Returns:
+            A list
+
+        """
+        package_list = []
+        for i in value:
+            package_list.append({'name': i.name,
+                                 'type': i.type,
+                                 'basearchonly': i.basearchonly,
+                                 'requires': i.requires})
+        return package_list
+
+    @classmethod
+    def libcomps_to_dict(cls, group):
+        """
+        Convert libcomps group object to dict for instantiating PackageGroup object.
+
+        Args:
+            group(libcomps.group): a RPM/SRPM group to convert
+
+        Returns:
+            dict: all data for RPM/SRPM group content creation
+
+        """
+        return {
+            PULP_GROUP_ATTRS.ID: getattr(group, LIBCOMPS_GROUP_ATTRS.ID),
+            PULP_GROUP_ATTRS.DEFAULT: getattr(group, LIBCOMPS_GROUP_ATTRS.DEFAULT),
+            PULP_GROUP_ATTRS.USER_VISIBLE: getattr(group, LIBCOMPS_GROUP_ATTRS.USER_VISIBLE),
+            PULP_GROUP_ATTRS.DISPLAY_ORDER: getattr(group, LIBCOMPS_GROUP_ATTRS.DISPLAY_ORDER),
+            PULP_GROUP_ATTRS.NAME: getattr(group, LIBCOMPS_GROUP_ATTRS.NAME),
+            PULP_GROUP_ATTRS.DESCRIPTION: getattr(group, LIBCOMPS_GROUP_ATTRS.DESCRIPTION) or '',
+            PULP_GROUP_ATTRS.PACKAGES: cls.pkglist_to_lst(getattr(group,
+                                                                  LIBCOMPS_GROUP_ATTRS.PACKAGES)),
+            PULP_GROUP_ATTRS.BIARCH_ONLY: getattr(group, LIBCOMPS_GROUP_ATTRS.BIARCH_ONLY),
+            PULP_GROUP_ATTRS.DESC_BY_LANG: strdict_to_dict(
+                getattr(group, LIBCOMPS_GROUP_ATTRS.DESC_BY_LANG)
+            ),
+            PULP_GROUP_ATTRS.NAME_BY_LANG: strdict_to_dict(
+                getattr(group, LIBCOMPS_GROUP_ATTRS.NAME_BY_LANG)
+            ),
+        }
+
+
+class PackageCategory(Content):
     """
     The "Category" content type. Formerly "PackageCategory" in Pulp 2.
 
@@ -775,29 +845,88 @@ class Category(Content):
             A dictionary of names by language
         digest (Text):
             A checksum for the category
+        packagegroups (ManyToMany):
+            PackageGroups related to this category
     """
 
-    TYPE = 'category'
+    TYPE = 'packagecategory'
 
     # Required metadata
     id = models.CharField(max_length=255)
 
     name = models.CharField(max_length=255)
-    description = models.TextField()
-    display_order = models.IntegerField()
+    description = models.TextField(default='')
+    display_order = models.IntegerField(null=True)
 
     group_ids = JSONField(default=list)
 
-    desc_by_lang = models.TextField()
-    name_by_lang = models.TextField()
+    desc_by_lang = JSONField(default=dict)
+    name_by_lang = JSONField(default=dict)
 
     digest = models.CharField(unique=True, max_length=64)
+
+    packagegroups = models.ManyToManyField(PackageGroup)
 
     class Meta:
         default_related_name = "%(app_label)s_%(model_name)s"
 
+    @classmethod
+    def natural_key_fields(cls):
+        """
+        Digest is used as a natural key for PackageCategory.
+        """
+        return ('digest',)
 
-class Environment(Content):
+    @classmethod
+    def grplist_to_lst(cls, value):
+        """
+        Convert libcomps GrpList to list.
+
+        Args:
+            value: a libcomps GrpList
+
+        Returns:
+            A list
+
+        """
+        grp_list = []
+        for i in value:
+            grp_list.append({'name': i.name,
+                             'default': i.default})
+        return grp_list
+
+    @classmethod
+    def libcomps_to_dict(cls, category):
+        """
+        Convert libcomps category object to dict for instantiating PackageCategory object.
+
+        Args:
+            category(libcomps.category): a RPM/SRPM category to convert
+
+        Returns:
+            dict: all data for RPM/SRPM category content creation
+
+        """
+        return {
+            PULP_CATEGORY_ATTRS.ID: getattr(category, LIBCOMPS_CATEGORY_ATTRS.ID),
+            PULP_CATEGORY_ATTRS.NAME: getattr(category, LIBCOMPS_CATEGORY_ATTRS.NAME),
+            PULP_CATEGORY_ATTRS.DESCRIPTION: getattr(category,
+                                                     LIBCOMPS_CATEGORY_ATTRS.DESCRIPTION) or '',
+            PULP_CATEGORY_ATTRS.DISPLAY_ORDER: getattr(category,
+                                                       LIBCOMPS_CATEGORY_ATTRS.DISPLAY_ORDER),
+            PULP_CATEGORY_ATTRS.GROUP_IDS: cls.grplist_to_lst(
+                getattr(category, LIBCOMPS_CATEGORY_ATTRS.GROUP_IDS)
+            ),
+            PULP_CATEGORY_ATTRS.DESC_BY_LANG: strdict_to_dict(
+                getattr(category, LIBCOMPS_CATEGORY_ATTRS.DESC_BY_LANG)
+            ),
+            PULP_CATEGORY_ATTRS.NAME_BY_LANG: strdict_to_dict(
+                getattr(category, LIBCOMPS_CATEGORY_ATTRS.NAME_BY_LANG)
+            ),
+        }
+
+
+class PackageEnvironment(Content):
     """
     The "Environment" content type. Formerly "PackageEnvironment" in Pulp 2.
 
@@ -824,30 +953,96 @@ class Environment(Content):
             A dictionary of names by language
         digest (Text):
             A checksum for the environment
+        packagegroups (ManyToMany):
+            PackageGroups related to this environment
+        optionalgroups (ManyToMany):
+            PackageGroups optionally related to this environment
     """
 
-    TYPE = 'environment'
+    TYPE = 'packageenvironment'
 
     # Required metadata
     id = models.CharField(max_length=255)
 
     name = models.CharField(max_length=255)
-    description = models.TextField()
-    display_order = models.IntegerField()
+    description = models.TextField(default='')
+    display_order = models.IntegerField(null=True)
 
     group_ids = JSONField(default=list)
     option_ids = JSONField(default=list)
 
-    desc_by_lang = models.TextField()
-    name_by_lang = models.TextField()
+    desc_by_lang = JSONField(default=dict)
+    name_by_lang = JSONField(default=dict)
 
     digest = models.CharField(unique=True, max_length=64)
+
+    packagegroups = models.ManyToManyField(PackageGroup, related_name='packagegroups_to_env')
+    optionalgroups = models.ManyToManyField(PackageGroup, related_name='optionalgroups_to_env')
 
     class Meta:
         default_related_name = "%(app_label)s_%(model_name)s"
 
+    @classmethod
+    def natural_key_fields(cls):
+        """
+        Digest is used as a natural key for PackageEnvironment.
+        """
+        return ('digest',)
 
-class Langpacks(Content):
+    @classmethod
+    def grplist_to_lst(cls, value):
+        """
+        Convert libcomps GrpList to list.
+
+        Args:
+            value: a libcomps GrpList
+
+        Returns:
+            A list
+
+        """
+        grp_list = []
+        for i in value:
+            grp_list.append({'name': i.name,
+                             'default': i.default})
+        return grp_list
+
+    @classmethod
+    def libcomps_to_dict(cls, environment):
+        """
+        Convert libcomps environment object to dict for instantiating PackageEnvironment object.
+
+        Args:
+            environment(libcomps.environment): a RPM/SRPM environment to convert
+
+        Returns:
+            dict: all data for RPM/SRPM environment content creation
+
+        """
+        return {
+            PULP_ENVIRONMENT_ATTRS.ID: getattr(environment, LIBCOMPS_ENVIRONMENT_ATTRS.ID),
+            PULP_ENVIRONMENT_ATTRS.NAME: getattr(environment, LIBCOMPS_ENVIRONMENT_ATTRS.NAME),
+            PULP_ENVIRONMENT_ATTRS.DESCRIPTION: getattr(
+                environment, LIBCOMPS_ENVIRONMENT_ATTRS.DESCRIPTION
+            ) or '',
+            PULP_ENVIRONMENT_ATTRS.DISPLAY_ORDER: getattr(environment,
+                                                          LIBCOMPS_ENVIRONMENT_ATTRS.DISPLAY_ORDER),
+            PULP_ENVIRONMENT_ATTRS.GROUP_IDS: cls.grplist_to_lst(
+                getattr(environment, LIBCOMPS_ENVIRONMENT_ATTRS.GROUP_IDS)
+            ),
+            PULP_ENVIRONMENT_ATTRS.OPTION_IDS: cls.grplist_to_lst(
+                getattr(environment, LIBCOMPS_ENVIRONMENT_ATTRS.OPTION_IDS)
+            ),
+            PULP_ENVIRONMENT_ATTRS.DESC_BY_LANG: strdict_to_dict(
+                getattr(environment, LIBCOMPS_ENVIRONMENT_ATTRS.DESC_BY_LANG)
+            ),
+            PULP_ENVIRONMENT_ATTRS.NAME_BY_LANG: strdict_to_dict(
+                getattr(environment, LIBCOMPS_ENVIRONMENT_ATTRS.NAME_BY_LANG)
+            ),
+        }
+
+
+class PackageLangpacks(Content):
     """
     The "Langpacks" content type. Formerly "PackageLangpacks" in Pulp 2.
 
@@ -860,14 +1055,37 @@ class Langpacks(Content):
             The langpacks dictionary
     """
 
-    TYPE = 'langpacks'
+    TYPE = 'packagelangpacks'
 
-    matches = models.TextField()
+    matches = JSONField(default=dict)
 
     digest = models.CharField(unique=True, max_length=64)
 
     class Meta:
         default_related_name = "%(app_label)s_%(model_name)s"
+
+    @classmethod
+    def natural_key_fields(cls):
+        """
+        Digest is used as a natural key for PackageLangpacks.
+        """
+        return ('digest',)
+
+    @classmethod
+    def libcomps_to_dict(cls, langpacks):
+        """
+        Convert libcomps langpacks object to dict for instantiating PackageLangpacks object.
+
+        Args:
+            langpacks(libcomps.langpacks): a RPM/SRPM langpacks to convert
+
+        Returns:
+            dict: all data for RPM/SRPM langpacks content creation
+
+        """
+        return {
+            PULP_LANGPACKS_ATTRS.MATCHES: strdict_to_dict(langpacks)
+        }
 
 
 class RpmRemote(Remote):
