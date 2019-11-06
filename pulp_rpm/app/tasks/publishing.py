@@ -6,7 +6,6 @@ import shutil
 import createrepo_c as cr
 
 from django.core.files import File
-from django.utils.dateparse import parse_datetime
 
 from pulpcore.plugin.models import (
     RepositoryVersion,
@@ -171,64 +170,6 @@ class PublicationData:
         PublishedArtifact.objects.bulk_create(self.published_artifacts)
 
 
-def update_record_xml(update_record):
-    """
-    Return xml for an UpdateRecord.
-
-    Args:
-        update_record (app.models.UpdateRecord): create xml from this record
-
-    Returns:
-        str: xml for the UpdateRecord
-
-    """
-    rec = cr.UpdateRecord()
-    rec.fromstr = update_record.fromstr
-    rec.status = update_record.status
-    rec.type = update_record.type
-    rec.version = update_record.version
-    rec.id = update_record.id
-    rec.title = update_record.title
-    rec.issued_date = parse_datetime(update_record.issued_date)
-    rec.updated_date = parse_datetime(update_record.updated_date)
-    rec.rights = update_record.rights
-    rec.summary = update_record.summary
-    rec.description = update_record.description
-
-    for collection in update_record.collections.all():
-        col = cr.UpdateCollection()
-        col.shortname = collection.shortname
-        col.name = collection.name
-
-        for package in collection.packages.all():
-            pkg = cr.UpdateCollectionPackage()
-            pkg.name = package.name
-            pkg.version = package.version
-            pkg.release = package.release
-            pkg.epoch = package.epoch
-            pkg.arch = package.arch
-            pkg.src = package.src
-            pkg.filename = package.filename
-            pkg.reboot_suggested = package.reboot_suggested
-            if package.sum:
-                pkg.sum = package.sum
-                pkg.sum_type = int(package.sum_type or 0)
-            col.append(pkg)
-
-        rec.append_collection(col)
-
-    for reference in update_record.references.all():
-        ref = cr.UpdateReference()
-        ref.href = reference.href
-        ref.id = reference.ref_id
-        ref.type = reference.ref_type
-        ref.title = reference.title
-
-        rec.append_reference(ref)
-
-    return cr.xml_dump_updaterecord(rec)
-
-
 def publish(repository_version_pk):
     """
     Create a Publication based on a RepositoryVersion.
@@ -251,16 +192,16 @@ def publish(repository_version_pk):
             packages = publication_data.packages
 
             # Main repo
-            create_rempomd_xml(packages, publication, publication_data.repomdrecords)
+            create_repomd_xml(packages, publication, publication_data.repomdrecords)
 
             for sub_repo in publication_data.sub_repos:
                 name = sub_repo[0]
                 packages = getattr(publication_data, f"{name}_packages")
                 extra_repomdrecords = getattr(publication_data, f"{name}_repomdrecords")
-                create_rempomd_xml(packages, publication, extra_repomdrecords, name)
+                create_repomd_xml(packages, publication, extra_repomdrecords, name)
 
 
-def create_rempomd_xml(packages, publication, extra_repomdrecords, sub_folder=None):
+def create_repomd_xml(packages, publication, extra_repomdrecords, sub_folder=None):
     """
     Creates a repomd.xml file.
 
@@ -316,7 +257,7 @@ def create_rempomd_xml(packages, publication, extra_repomdrecords, sub_folder=No
     # Process update records
     for update_record in UpdateRecord.objects.filter(
             pk__in=publication.repository_version.content):
-        upd_xml.add_chunk(update_record_xml(update_record))
+        upd_xml.add_chunk(cr.xml_dump_updaterecord(update_record.to_createrepo_c()))
 
     # Process modulemd and modulemd_defaults
     with open(mod_yml_path, 'ab') as mod_yml:

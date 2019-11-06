@@ -8,6 +8,7 @@ from django.db import (
     models,
     transaction,
 )
+from django.utils.dateparse import parse_datetime
 
 from pulpcore.plugin.models import (
     Content,
@@ -23,26 +24,28 @@ from pulpcore.plugin.models import (
 )
 from pulpcore.plugin.repo_version_utils import remove_duplicates
 
-from pulp_rpm.app.constants import (CHECKSUM_CHOICES, CR_PACKAGE_ATTRS,
-                                    CR_UPDATE_COLLECTION_ATTRS,
-                                    CR_UPDATE_COLLECTION_PACKAGE_ATTRS,
-                                    CR_UPDATE_RECORD_ATTRS,
-                                    CR_UPDATE_COLLECTION_ATTRS_MODULE,
-                                    CR_UPDATE_REFERENCE_ATTRS,
-                                    LIBCOMPS_CATEGORY_ATTRS,
-                                    LIBCOMPS_ENVIRONMENT_ATTRS,
-                                    LIBCOMPS_GROUP_ATTRS,
-                                    PULP_CATEGORY_ATTRS,
-                                    PULP_ENVIRONMENT_ATTRS,
-                                    PULP_GROUP_ATTRS,
-                                    PULP_LANGPACKS_ATTRS,
-                                    PULP_PACKAGE_ATTRS,
-                                    PULP_UPDATE_COLLECTION_ATTRS,
-                                    PULP_UPDATE_COLLECTION_ATTRS_MODULE,
-                                    PULP_UPDATE_COLLECTION_PACKAGE_ATTRS,
-                                    PULP_UPDATE_RECORD_ATTRS,
-                                    PULP_UPDATE_REFERENCE_ATTRS
-                                    )
+from pulp_rpm.app.constants import (
+    CHECKSUM_CHOICES,
+    CR_PACKAGE_ATTRS,
+    CR_UPDATE_COLLECTION_ATTRS,
+    CR_UPDATE_COLLECTION_PACKAGE_ATTRS,
+    CR_UPDATE_RECORD_ATTRS,
+    CR_UPDATE_COLLECTION_ATTRS_MODULE,
+    CR_UPDATE_REFERENCE_ATTRS,
+    LIBCOMPS_CATEGORY_ATTRS,
+    LIBCOMPS_ENVIRONMENT_ATTRS,
+    LIBCOMPS_GROUP_ATTRS,
+    PULP_CATEGORY_ATTRS,
+    PULP_ENVIRONMENT_ATTRS,
+    PULP_GROUP_ATTRS,
+    PULP_LANGPACKS_ATTRS,
+    PULP_PACKAGE_ATTRS,
+    PULP_UPDATE_COLLECTION_ATTRS,
+    PULP_UPDATE_COLLECTION_ATTRS_MODULE,
+    PULP_UPDATE_COLLECTION_PACKAGE_ATTRS,
+    PULP_UPDATE_RECORD_ATTRS,
+    PULP_UPDATE_REFERENCE_ATTRS,
+)
 
 from pulp_rpm.app.comps import strdict_to_dict
 
@@ -501,6 +504,56 @@ class UpdateRecord(Content):
                 update, CR_UPDATE_RECORD_ATTRS.PUSHCOUNT) or ''
         }
 
+    def to_createrepo_c(self, collections=[]):
+        """
+        Convert to a createrepo_c UpdateRecord object.
+
+        Args:
+            collections(): Collections to add to use for createrepo_c object
+
+        Returns:
+            rec(cr.UpdateRecord): createrepo_c representation of an advisory
+
+        """
+        rec = cr.UpdateRecord()
+        rec.fromstr = self.fromstr
+        rec.status = self.status
+        rec.type = self.type
+        rec.version = self.version
+        rec.id = self.id
+        rec.title = self.title
+        rec.issued_date = parse_datetime(self.issued_date)
+        rec.updated_date = parse_datetime(self.updated_date)
+        rec.rights = self.rights
+        rec.summary = self.summary
+        rec.description = self.description
+
+        if not collections:
+            collections = self.collections.all()
+
+        for collection in collections:
+            rec.append_collection(collection.to_createrepo_c())
+
+        for reference in self.references.all():
+            rec.append_reference(reference.to_createrepo_c())
+
+        return rec
+
+    def get_pkglist(self):
+        """
+        Return NEVRAs of all packages from advisory collections.
+
+        Returns:
+            pkglist(list): list of tuples with NEVRA info
+
+        """
+        pkglist = []
+        for collection in self.collections.all():
+            for pkg in collection.packages.all():
+                nevra = (pkg.name, pkg.epoch, pkg.version, pkg.release, pkg.arch)
+                pkglist.append(nevra)
+        return pkglist
+
     class Meta:
         default_related_name = "%(app_label)s_%(model_name)s"
 
@@ -528,8 +581,7 @@ class UpdateCollection(Model):
     shortname = models.TextField()
     module = models.TextField(default='')
 
-    update_record = models.ForeignKey(UpdateRecord, related_name="collections",
-                                      on_delete=models.CASCADE)
+    update_record = models.ManyToManyField(UpdateRecord, related_name="collections")
 
     @classmethod
     def createrepo_to_dict(cls, collection):
@@ -564,6 +616,23 @@ class UpdateCollection(Model):
                 }
             )
         return ret
+
+    def to_createrepo_c(self):
+        """
+        Convert to a createrepo_c UpdateColleciton object.
+
+        Returns:
+            col(cr.UpdateCollection): createrepo_c representation of a collection
+
+        """
+        col = cr.UpdateCollection()
+        col.shortname = self.shortname
+        col.name = self.name
+
+        for package in self.packages.all():
+            col.append(package.to_createrepo_c())
+
+        return col
 
 
 class UpdateCollectionPackage(Model):
@@ -650,6 +719,29 @@ class UpdateCollectionPackage(Model):
                 package, CR_UPDATE_COLLECTION_PACKAGE_ATTRS.VERSION) or ''
         }
 
+    def to_createrepo_c(self):
+        """
+        Convert to a createrepo_c UpdateCollectionPackage object.
+
+        Returns:
+            pkg(cr.UpdateCollectionPackage): createrepo_c representation of a collection package
+
+        """
+        pkg = cr.UpdateCollectionPackage()
+        pkg.name = self.name
+        pkg.version = self.version
+        pkg.release = self.release
+        pkg.epoch = self.epoch
+        pkg.arch = self.arch
+        pkg.src = self.src
+        pkg.filename = self.filename
+        pkg.reboot_suggested = self.reboot_suggested
+        if self.sum:
+            pkg.sum = self.sum
+            pkg.sum_type = int(self.sum_type or 0)
+
+        return pkg
+
 
 class UpdateReference(Model):
     """
@@ -700,6 +792,21 @@ class UpdateReference(Model):
             PULP_UPDATE_REFERENCE_ATTRS.TITLE: getattr(reference, CR_UPDATE_REFERENCE_ATTRS.TITLE),
             PULP_UPDATE_REFERENCE_ATTRS.TYPE: getattr(reference, CR_UPDATE_REFERENCE_ATTRS.TYPE)
         }
+
+    def to_createrepo_c(self):
+        """
+        Convert to a createrepo_c UpdateReference object.
+
+        Returns:
+            ref(cr.UpdateReference): createrepo_c representation of a reference
+
+        """
+        ref = cr.UpdateReference()
+        ref.href = self.href
+        ref.id = self.ref_id
+        ref.type = self.ref_type
+        ref.title = self.title
+        return ref
 
 
 class PackageGroup(Content):
@@ -1152,7 +1259,9 @@ class RpmRepository(Repository):
         Ensure there are no duplicates in a repo version and content is not broken.
 
         Remove duplicates based on repo_key_fields.
-        TODO: Resolve advisory conflicts when there is more than one advisory with the same id.
+        Ensure that modulemd is added with all its RPMs.
+        Ensure that modulemd is removed with all its RPMs.
+        Resolve advisory conflicts when there is more than one advisory with the same id.
 
         Args:
             new_version (pulpcore.app.models.RepositoryVersion): The incomplete RepositoryVersion to
@@ -1171,6 +1280,9 @@ class RpmRepository(Repository):
 
         from pulp_rpm.app.modulemd import resolve_module_packages  # avoid circular import
         resolve_module_packages(new_version, previous_version)
+
+        from pulp_rpm.app.advisory import resolve_advisories  # avoid circular import
+        resolve_advisories(new_version, previous_version)
 
 
 class RpmRemote(Remote):

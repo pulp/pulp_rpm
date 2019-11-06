@@ -1,6 +1,5 @@
 import asyncio
 import gzip
-import hashlib
 import json
 import logging
 import os
@@ -30,6 +29,7 @@ from pulpcore.plugin.stages import (
     QueryExistingContents
 )
 
+from pulp_rpm.app.advisory import hash_update_record
 from pulp_rpm.app.constants import (
     CHECKSUM_TYPES,
     COMPS_REPODATA,
@@ -211,22 +211,6 @@ class RpmFirstStage(Stage):
         return uinfo.updates
 
     @staticmethod
-    def hash_update_record(update):
-        """
-        Find the hex digest for an update record xml from creatrepo_c.
-
-        Args:
-            update(createrepo_c.UpdateRecord): update record
-
-        Returns:
-            str: a hex digest representing the update record
-
-        """
-        uinfo = cr.UpdateInfo()
-        uinfo.append(update)
-        return hashlib.sha256(uinfo.xml_dump().encode('utf-8')).hexdigest()
-
-    @staticmethod
     async def parse_repodata(primary_xml_path, filelists_xml_path, other_xml_path):
         """
         Parse repodata to extract package info.
@@ -287,14 +271,14 @@ class RpmFirstStage(Stage):
         Build `DeclarativeContent` from the repodata.
         """
         packages_pb = ProgressReport(message='Parsed Packages', code='parsing.packages')
-        errata_pb = ProgressReport(message='Parsed Erratum', code='parsing.errata')
+        advisories_pb = ProgressReport(message='Parsed Advisories', code='parsing.advisories')
         modulemd_pb = ProgressReport(message='Parse Modulemd', code='parsing.modulemds')
         modulemd_defaults_pb = ProgressReport(message='Parse Modulemd-defaults',
                                               code='parsing.modulemddefaults')
         comps_pb = ProgressReport(message='Parsed Comps', code='parsing.comps')
 
         packages_pb.save()
-        errata_pb.save()
+        advisories_pb.save()
         comps_pb.save()
 
         remote_url = self.new_url or self.remote.url
@@ -599,13 +583,13 @@ class RpmFirstStage(Stage):
 
                         updates = await RpmFirstStage.parse_updateinfo(updateinfo_xml_path)
 
-                        errata_pb.total = len(updates)
-                        errata_pb.state = 'running'
-                        errata_pb.save()
+                        advisories_pb.total = len(updates)
+                        advisories_pb.state = 'running'
+                        advisories_pb.save()
 
                         for update in updates:
                             update_record = UpdateRecord(**UpdateRecord.createrepo_to_dict(update))
-                            update_record.digest = RpmFirstStage.hash_update_record(update)
+                            update_record.digest = hash_update_record(update)
                             future_relations = {'collections': defaultdict(list), 'references': []}
 
                             for collection in update.collections:
@@ -622,7 +606,7 @@ class RpmFirstStage(Stage):
                                 ref = UpdateReference(**reference_dict)
                                 future_relations['references'].append(ref)
 
-                            errata_pb.increment()
+                            advisories_pb.increment()
                             dc = DeclarativeContent(content=update_record)
                             dc.extra_data = future_relations
                             await self.put(dc)
@@ -637,12 +621,12 @@ class RpmFirstStage(Stage):
                 await self.put(dc_group)
 
         packages_pb.state = 'completed'
-        errata_pb.state = 'completed'
+        advisories_pb.state = 'completed'
         modulemd_pb.state = 'completed'
         modulemd_defaults_pb.state = 'completed'
         comps_pb.state = 'completed'
         packages_pb.save()
-        errata_pb.save()
+        advisories_pb.save()
         modulemd_pb.save()
         modulemd_defaults_pb.save()
         comps_pb.save()
@@ -715,7 +699,6 @@ class RpmContentSaver(ContentSaver):
             if variants:
                 Variant.objects.bulk_create(variants)
 
-        update_collections_to_save = []
         update_references_to_save = []
         update_collection_packages_to_save = []
         modulemd_pkgs = []
@@ -753,8 +736,9 @@ class RpmContentSaver(ContentSaver):
                 update_references = future_relations.get('references') or []
 
                 for update_collection, packages in update_collections.items():
-                    update_collection.update_record = update_record
-                    update_collections_to_save.append(update_collection)
+                    # need to save a collection before adding a relation
+                    update_collection.save()
+                    update_record.collections.add(update_collection)
                     for update_collection_package in packages:
                         update_collection_package.update_collection = update_collection
                         update_collection_packages_to_save.append(update_collection_package)
@@ -864,9 +848,6 @@ class RpmContentSaver(ContentSaver):
             PackageEnvironment_optionalgroups.objects.bulk_create(
                 env_optgroups, ignore_conflicts=True
             )
-
-        if update_collections_to_save:
-            UpdateCollection.objects.bulk_create(update_collections_to_save)
 
         if update_collection_packages_to_save:
             UpdateCollectionPackage.objects.bulk_create(update_collection_packages_to_save)
