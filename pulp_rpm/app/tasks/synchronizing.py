@@ -12,8 +12,6 @@ from urllib.parse import urljoin
 import createrepo_c as cr
 import libcomps
 
-from django.db import transaction
-
 from pulpcore.plugin.models import (
     Artifact,
     ProgressReport,
@@ -730,10 +728,23 @@ class RpmContentSaver(ContentSaver):
         update_collections_to_save = []
         update_references_to_save = []
         update_collection_packages_to_save = []
+        modulemd_pkgs = []
+        group_pkgs = []
+        category_groups = []
+        env_groups = []
+        env_optgroups = []
+        ModulemdPackages = Modulemd.packages.through
+        PackageGroup_packages = PackageGroup.related_packages.through
+        PackageCategory_groups = PackageCategory.packagegroups.through
+        PackageEnvironment_groups = PackageEnvironment.packagegroups.through
+        PackageEnvironment_optionalgroups = PackageEnvironment.optionalgroups.through
 
         for declarative_content in batch:
             if declarative_content is None:
                 continue
+
+            content_already_saved = not declarative_content.content._state.adding
+
             if isinstance(declarative_content.content, DistributionTree):
                 _handle_distribution_tree(declarative_content)
                 continue
@@ -764,80 +775,105 @@ class RpmContentSaver(ContentSaver):
 
             elif isinstance(declarative_content.content, Modulemd):
                 for pkg in declarative_content.extra_data['package_relation']:
-                    try:
-                        with transaction.atomic():
-                            declarative_content.content.packages.add(pkg.content)
-                    except ValueError:
-                        pass
+                    if not pkg.content._state.adding and content_already_saved:
+                        module_package = ModulemdPackages(
+                            package_id=pkg.content.pk,
+                            modulemd_id=declarative_content.content.pk,
+                        )
+                        modulemd_pkgs.append(module_package)
 
             elif isinstance(declarative_content.content, PackageCategory):
                 for grp in declarative_content.extra_data['packagegroups']:
-                    try:
-                        with transaction.atomic():
-                            declarative_content.content.packagegroups.add(grp.content)
-                    except ValueError:
-                        pass
+                    if not grp.content._state.adding and content_already_saved:
+                        category_group = PackageCategory_groups(
+                            packagegroup_id=grp.content.pk,
+                            packagecategory_id=declarative_content.content.pk,
+                        )
+                        category_groups.append(category_group)
 
             elif isinstance(declarative_content.content, PackageEnvironment):
                 for grp in declarative_content.extra_data['packagegroups']:
-                    try:
-                        with transaction.atomic():
-                            declarative_content.content.packagegroups.add(grp.content)
-                    except ValueError:
-                        pass
+                    if not grp.content._state.adding and content_already_saved:
+                        env_group = PackageEnvironment_groups(
+                            packagegroup_id=grp.content.pk,
+                            packageenvironment_id=declarative_content.content.pk,
+                        )
+                        env_groups.append(env_group)
 
                 for opt in declarative_content.extra_data['optionalgroups']:
-                    try:
-                        with transaction.atomic():
-                            declarative_content.content.optionalgroups.add(opt.content)
-                    except ValueError:
-                        pass
+                    if not opt.content._state.adding and content_already_saved:
+                        env_optgroup = PackageEnvironment_optionalgroups(
+                            packagegroup_id=opt.content.pk,
+                            packageenvironment_id=declarative_content.content.pk,
+                        )
+                        env_optgroups.append(env_optgroup)
 
             elif isinstance(declarative_content.content, PackageGroup):
                 for pkg in declarative_content.extra_data['related_packages']:
-                    try:
-                        with transaction.atomic():
-                            declarative_content.content.related_packages.add(pkg.content)
-                    except ValueError:
-                        pass
+                    if not pkg.content._state.adding and content_already_saved:
+                        group_pkg = PackageGroup_packages(
+                            package_id=pkg.content.pk,
+                            packagegroup_id=declarative_content.content.pk
+                        )
+                        group_pkgs.append(group_pkg)
 
                 for packagecategory in declarative_content.extra_data['category_relations']:
-                    try:
-                        with transaction.atomic():
-                            packagecategory.content.packagegroups.add(declarative_content.content)
-                    except ValueError:
-                        pass
+                    if not packagecategory.content._state.adding and content_already_saved:
+                        category_group = PackageCategory_groups(
+                            packagegroup_id=declarative_content.content.pk,
+                            packagecategory_id=packagecategory.content.pk,
+                        )
+                        category_groups.append(category_group)
 
                 for packageenvironment in declarative_content.extra_data['environment_relations']:
-                    try:
-                        with transaction.atomic():
-                            packageenvironment.content.packagegroups.add(
-                                declarative_content.content)
-                    except ValueError:
-                        pass
+                    if not packageenvironment.content._state.adding and content_already_saved:
+                        env_group = PackageEnvironment_groups(
+                            packagegroup_id=declarative_content.content.pk,
+                            packageenvironment_id=packageenvironment.content.pk,
+                        )
+                        env_groups.append(env_group)
 
                 for packageenvironment in declarative_content.extra_data['env_relations_optional']:
-                    try:
-                        with transaction.atomic():
-                            packageenvironment.content.optionalgroups.add(
-                                declarative_content.content)
-                    except ValueError:
-                        pass
+                    if not packageenvironment.content._state.adding and content_already_saved:
+                        env_optgroup = PackageEnvironment_optionalgroups(
+                            packagegroup_id=declarative_content.content.pk,
+                            packageenvironment_id=packageenvironment.content.pk,
+                        )
+                        env_optgroups.append(env_optgroup)
 
             elif isinstance(declarative_content.content, Package):
                 for modulemd in declarative_content.extra_data['modulemd_relation']:
-                    try:
-                        with transaction.atomic():
-                            modulemd.content.packages.add(declarative_content.content)
-                    except ValueError:
-                        pass
+                    if not modulemd.content._state.adding and content_already_saved:
+                        module_package = ModulemdPackages(
+                            package_id=declarative_content.content.pk,
+                            modulemd_id=modulemd.content.pk,
+                        )
+                        modulemd_pkgs.append(module_package)
 
                 for packagegroup in declarative_content.extra_data['group_relations']:
-                    try:
-                        with transaction.atomic():
-                            packagegroup.content.related_packages.add(declarative_content.content)
-                    except ValueError:
-                        pass
+                    if not packagegroup.content._state.adding and content_already_saved:
+                        group_pkg = PackageGroup_packages(
+                            package_id=declarative_content.content.pk,
+                            packagegroup_id=packagegroup.content.pk,
+                        )
+                        group_pkgs.append(group_pkg)
+
+        if modulemd_pkgs:
+            ModulemdPackages.objects.bulk_create(modulemd_pkgs, ignore_conflicts=True)
+
+        if group_pkgs:
+            PackageGroup_packages.objects.bulk_create(group_pkgs, ignore_conflicts=True)
+
+        if category_groups:
+            PackageCategory_groups.objects.bulk_create(category_groups, ignore_conflicts=True)
+
+        if env_groups:
+            PackageEnvironment_groups.objects.bulk_create(env_groups, ignore_conflicts=True)
+
+        if env_optgroups:
+            PackageEnvironment_optionalgroups.objects.bulk_create(
+                env_optgroups, ignore_conflicts=True
+            )
 
         if update_collections_to_save:
             UpdateCollection.objects.bulk_create(update_collections_to_save)
