@@ -1,4 +1,26 @@
 import hashlib
+import libcomps
+
+
+def list_to_idlist(lst):
+    """
+    Convert list to libcomps IdList object.
+
+    Args:
+        list: a list
+
+    Returns:
+        idlist: a libcomps IdList
+
+    """
+    idlist = libcomps.IdList()
+
+    for i in lst:
+        group_id = libcomps.GroupId(i['name'], i['default'])
+        if group_id not in idlist:
+            idlist.append(group_id)
+
+    return idlist
 
 
 def strdict_to_dict(value):

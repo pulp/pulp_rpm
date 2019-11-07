@@ -4,6 +4,7 @@ import logging
 import shutil
 
 import createrepo_c as cr
+import libcomps
 
 from django.core.files import File
 
@@ -20,6 +21,10 @@ from pulp_rpm.app.models import (
     Modulemd,
     ModulemdDefaults,
     Package,
+    PackageCategory,
+    PackageEnvironment,
+    PackageGroup,
+    PackageLangpacks,
     RepoMetadataFile,
     RpmPublication,
     UpdateRecord,
@@ -215,6 +220,7 @@ def create_repomd_xml(packages, publication, extra_repomdrecords, sub_folder=Non
     cwd = os.getcwd()
     repodata_path = REPODATA_PATH
     has_modules = False
+    has_comps = False
 
     if sub_folder:
         cwd = os.path.join(cwd, sub_folder)
@@ -230,6 +236,7 @@ def create_repomd_xml(packages, publication, extra_repomdrecords, sub_folder=Non
     oth_db_path = os.path.join(cwd, "other.sqlite")
     upd_xml_path = os.path.join(cwd, "updateinfo.xml.gz")
     mod_yml_path = os.path.join(cwd, "modules.yaml")
+    comps_xml_path = os.path.join(cwd, "comps.xml")
 
     pri_xml = cr.PrimaryXmlFile(pri_xml_path)
     fil_xml = cr.FilelistsXmlFile(fil_xml_path)
@@ -270,6 +277,30 @@ def create_repomd_xml(packages, publication, extra_repomdrecords, sub_folder=Non
             mod_yml.write(default._artifacts.get().file.read())
             has_modules = True
 
+    # Process comps
+    comps = libcomps.Comps()
+    for pkg_grp in PackageGroup.objects.filter(
+            pk__in=publication.repository_version.content):
+        group = pkg_grp.pkg_grp_to_libcomps()
+        comps.groups.append(group)
+        has_comps = True
+    for pkg_cat in PackageCategory.objects.filter(
+            pk__in=publication.repository_version.content):
+        cat = pkg_cat.pkg_cat_to_libcomps()
+        comps.categories.append(cat)
+        has_comps = True
+    for pkg_env in PackageEnvironment.objects.filter(
+            pk__in=publication.repository_version.content):
+        env = pkg_env.pkg_env_to_libcomps()
+        comps.environments.append(env)
+        has_comps = True
+    for pkg_lng in PackageLangpacks.objects.filter(
+            pk__in=publication.repository_version.content):
+        comps.langpacks = libcomps.StrDict(**pkg_lng.matches)
+        has_comps = True
+
+    comps.toxml_f(comps_xml_path)
+
     pri_xml.close()
     fil_xml.close()
     oth_xml.close()
@@ -287,6 +318,9 @@ def create_repomd_xml(packages, publication, extra_repomdrecords, sub_folder=Non
 
     if has_modules:
         repomdrecords.append(("modules", mod_yml_path, None))
+
+    if has_comps:
+        repomdrecords.append(("comps", comps_xml_path, None))
 
     repomdrecords.extend(extra_repomdrecords)
 
