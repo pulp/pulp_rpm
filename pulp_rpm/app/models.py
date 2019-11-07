@@ -252,30 +252,23 @@ class Package(Content):
         """
         return {
             PULP_PACKAGE_ATTRS.ARCH: getattr(package, CR_PACKAGE_ATTRS.ARCH),
-            PULP_PACKAGE_ATTRS.CHANGELOGS: json.dumps(
-                getattr(package, CR_PACKAGE_ATTRS.CHANGELOGS) or []),
+            PULP_PACKAGE_ATTRS.CHANGELOGS: getattr(package, CR_PACKAGE_ATTRS.CHANGELOGS, []),
             PULP_PACKAGE_ATTRS.CHECKSUM_TYPE: getattr(package, CR_PACKAGE_ATTRS.CHECKSUM_TYPE),
-            PULP_PACKAGE_ATTRS.CONFLICTS: json.dumps(
-                getattr(package, CR_PACKAGE_ATTRS.CONFLICTS) or []),
+            PULP_PACKAGE_ATTRS.CONFLICTS: getattr(package, CR_PACKAGE_ATTRS.CONFLICTS, []),
             PULP_PACKAGE_ATTRS.DESCRIPTION: getattr(package, CR_PACKAGE_ATTRS.DESCRIPTION) or '',
-            PULP_PACKAGE_ATTRS.ENHANCES: json.dumps(
-                getattr(package, CR_PACKAGE_ATTRS.ENHANCES) or []),
+            PULP_PACKAGE_ATTRS.ENHANCES: getattr(package, CR_PACKAGE_ATTRS.ENHANCES, []),
             PULP_PACKAGE_ATTRS.EPOCH: getattr(package, CR_PACKAGE_ATTRS.EPOCH) or '',
-            PULP_PACKAGE_ATTRS.FILES: json.dumps(getattr(package, CR_PACKAGE_ATTRS.FILES) or []),
+            PULP_PACKAGE_ATTRS.FILES: getattr(package, CR_PACKAGE_ATTRS.FILES, []),
             PULP_PACKAGE_ATTRS.LOCATION_BASE: getattr(
                 package, CR_PACKAGE_ATTRS.LOCATION_BASE) or '',
             PULP_PACKAGE_ATTRS.LOCATION_HREF: getattr(package, CR_PACKAGE_ATTRS.LOCATION_HREF),
             PULP_PACKAGE_ATTRS.NAME: getattr(package, CR_PACKAGE_ATTRS.NAME),
-            PULP_PACKAGE_ATTRS.OBSOLETES: json.dumps(
-                getattr(package, CR_PACKAGE_ATTRS.OBSOLETES) or []),
+            PULP_PACKAGE_ATTRS.OBSOLETES: getattr(package, CR_PACKAGE_ATTRS.OBSOLETES, []),
             PULP_PACKAGE_ATTRS.PKGID: getattr(package, CR_PACKAGE_ATTRS.PKGID),
-            PULP_PACKAGE_ATTRS.PROVIDES: json.dumps(
-                getattr(package, CR_PACKAGE_ATTRS.PROVIDES) or []),
-            PULP_PACKAGE_ATTRS.RECOMMENDS: json.dumps(
-                getattr(package, CR_PACKAGE_ATTRS.RECOMMENDS) or []),
+            PULP_PACKAGE_ATTRS.PROVIDES: getattr(package, CR_PACKAGE_ATTRS.PROVIDES, []),
+            PULP_PACKAGE_ATTRS.RECOMMENDS: getattr(package, CR_PACKAGE_ATTRS.RECOMMENDS, []),
             PULP_PACKAGE_ATTRS.RELEASE: getattr(package, CR_PACKAGE_ATTRS.RELEASE),
-            PULP_PACKAGE_ATTRS.REQUIRES: json.dumps(
-                getattr(package, CR_PACKAGE_ATTRS.REQUIRES) or []),
+            PULP_PACKAGE_ATTRS.REQUIRES: getattr(package, CR_PACKAGE_ATTRS.REQUIRES, []),
             PULP_PACKAGE_ATTRS.RPM_BUILDHOST: getattr(
                 package, CR_PACKAGE_ATTRS.RPM_BUILDHOST) or '',
             PULP_PACKAGE_ATTRS.RPM_GROUP: getattr(package, CR_PACKAGE_ATTRS.RPM_GROUP) or '',
@@ -290,11 +283,9 @@ class Package(Content):
             PULP_PACKAGE_ATTRS.SIZE_ARCHIVE: getattr(package, CR_PACKAGE_ATTRS.SIZE_ARCHIVE),
             PULP_PACKAGE_ATTRS.SIZE_INSTALLED: getattr(package, CR_PACKAGE_ATTRS.SIZE_INSTALLED),
             PULP_PACKAGE_ATTRS.SIZE_PACKAGE: getattr(package, CR_PACKAGE_ATTRS.SIZE_PACKAGE),
-            PULP_PACKAGE_ATTRS.SUGGESTS: json.dumps(
-                getattr(package, CR_PACKAGE_ATTRS.SUGGESTS) or []),
+            PULP_PACKAGE_ATTRS.SUGGESTS: getattr(package, CR_PACKAGE_ATTRS.SUGGESTS, []),
             PULP_PACKAGE_ATTRS.SUMMARY: getattr(package, CR_PACKAGE_ATTRS.SUMMARY) or '',
-            PULP_PACKAGE_ATTRS.SUPPLEMENTS: json.dumps(
-                getattr(package, CR_PACKAGE_ATTRS.SUPPLEMENTS) or []),
+            PULP_PACKAGE_ATTRS.SUPPLEMENTS: getattr(package, CR_PACKAGE_ATTRS.SUPPLEMENTS, []),
             PULP_PACKAGE_ATTRS.TIME_BUILD: getattr(package, CR_PACKAGE_ATTRS.TIME_BUILD),
             PULP_PACKAGE_ATTRS.TIME_FILE: getattr(package, CR_PACKAGE_ATTRS.TIME_FILE),
             PULP_PACKAGE_ATTRS.URL: getattr(package, CR_PACKAGE_ATTRS.URL) or '',
@@ -312,23 +303,23 @@ class Package(Content):
             createrepo_c.Package: package itself in a format of a createrepo_c package object
 
         """
-        def str_list_to_createrepo_c(s):
+        def list_to_createrepo_c(l):
             """
-            Convert string representation of list to createrepo_c format.
+            Convert list to createrepo_c format.
 
             Createrepo_c expects list of tuples, not list of lists.
             The assumption is that there are no nested lists, which is true for the data on the
             Package model at the moment.
 
             Args:
-                s(str): string representation of a list
+                l(list): a list
 
             Returns:
                 list: list of strings and/or tuples
 
             """
             createrepo_c_list = []
-            for item in json.loads(s):
+            for item in l:
                 if isinstance(item, list):
                     createrepo_c_list.append(tuple(item))
                 else:
@@ -338,28 +329,28 @@ class Package(Content):
 
         package = cr.Package()
         package.arch = getattr(self, PULP_PACKAGE_ATTRS.ARCH)
-        package.changelogs = str_list_to_createrepo_c(
+        package.changelogs = list_to_createrepo_c(
             getattr(self, PULP_PACKAGE_ATTRS.CHANGELOGS))
         package.checksum_type = getattr(self, PULP_PACKAGE_ATTRS.CHECKSUM_TYPE)
-        package.conflicts = str_list_to_createrepo_c(
+        package.conflicts = list_to_createrepo_c(
             getattr(self, PULP_PACKAGE_ATTRS.CONFLICTS))
         package.description = getattr(self, PULP_PACKAGE_ATTRS.DESCRIPTION)
-        package.enhances = str_list_to_createrepo_c(
+        package.enhances = list_to_createrepo_c(
             getattr(self, PULP_PACKAGE_ATTRS.ENHANCES))
         package.epoch = getattr(self, PULP_PACKAGE_ATTRS.EPOCH)
-        package.files = str_list_to_createrepo_c(getattr(self, PULP_PACKAGE_ATTRS.FILES))
+        package.files = list_to_createrepo_c(getattr(self, PULP_PACKAGE_ATTRS.FILES))
         package.location_base = getattr(self, PULP_PACKAGE_ATTRS.LOCATION_BASE)
         package.location_href = getattr(self, PULP_PACKAGE_ATTRS.LOCATION_HREF)
         package.name = getattr(self, PULP_PACKAGE_ATTRS.NAME)
-        package.obsoletes = str_list_to_createrepo_c(
+        package.obsoletes = list_to_createrepo_c(
             getattr(self, PULP_PACKAGE_ATTRS.OBSOLETES))
         package.pkgId = getattr(self, PULP_PACKAGE_ATTRS.PKGID)
-        package.provides = str_list_to_createrepo_c(
+        package.provides = list_to_createrepo_c(
             getattr(self, PULP_PACKAGE_ATTRS.PROVIDES))
-        package.recommends = str_list_to_createrepo_c(
+        package.recommends = list_to_createrepo_c(
             getattr(self, PULP_PACKAGE_ATTRS.RECOMMENDS))
         package.release = getattr(self, PULP_PACKAGE_ATTRS.RELEASE)
-        package.requires = str_list_to_createrepo_c(
+        package.requires = list_to_createrepo_c(
             getattr(self, PULP_PACKAGE_ATTRS.REQUIRES))
         package.rpm_buildhost = getattr(self, PULP_PACKAGE_ATTRS.RPM_BUILDHOST)
         package.rpm_group = getattr(self, PULP_PACKAGE_ATTRS.RPM_GROUP)
@@ -372,10 +363,10 @@ class Package(Content):
         package.size_archive = getattr(self, PULP_PACKAGE_ATTRS.SIZE_ARCHIVE)
         package.size_installed = getattr(self, PULP_PACKAGE_ATTRS.SIZE_INSTALLED)
         package.size_package = getattr(self, PULP_PACKAGE_ATTRS.SIZE_PACKAGE)
-        package.suggests = str_list_to_createrepo_c(
+        package.suggests = list_to_createrepo_c(
             getattr(self, PULP_PACKAGE_ATTRS.SUGGESTS))
         package.summary = getattr(self, PULP_PACKAGE_ATTRS.SUMMARY)
-        package.supplements = str_list_to_createrepo_c(
+        package.supplements = list_to_createrepo_c(
             getattr(self, PULP_PACKAGE_ATTRS.SUPPLEMENTS))
         package.time_build = getattr(self, PULP_PACKAGE_ATTRS.TIME_BUILD)
         package.time_file = getattr(self, PULP_PACKAGE_ATTRS.TIME_FILE)
