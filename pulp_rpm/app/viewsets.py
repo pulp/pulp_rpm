@@ -244,7 +244,7 @@ class PackageGroupViewSet(ReadOnlyContentViewSet,
     PackageGroup ViewSet.
     """
 
-    endpoint_name = 'packagegroup'
+    endpoint_name = 'packagegroups'
     queryset = PackageGroup.objects.all()
     serializer_class = PackageGroupSerializer
 
@@ -255,7 +255,7 @@ class PackageCategoryViewSet(ReadOnlyContentViewSet,
     PackageCategory ViewSet.
     """
 
-    endpoint_name = 'packagecategory'
+    endpoint_name = 'packagecategories'
     queryset = PackageCategory.objects.all()
     serializer_class = PackageCategorySerializer
 
@@ -266,7 +266,7 @@ class PackageEnvironmentViewSet(ReadOnlyContentViewSet,
     PackageEnvironment ViewSet.
     """
 
-    endpoint_name = 'packageenvironment'
+    endpoint_name = 'packageenvironments'
     queryset = PackageEnvironment.objects.all()
     serializer_class = PackageEnvironmentSerializer
 
@@ -311,7 +311,7 @@ class ModulemdViewSet(SingleArtifactContentUploadViewSet):
     ViewSet for Modulemd.
     """
 
-    endpoint_name = 'modulemd'
+    endpoint_name = 'modulemds'
     queryset = Modulemd.objects.all()
     serializer_class = ModulemdSerializer
 

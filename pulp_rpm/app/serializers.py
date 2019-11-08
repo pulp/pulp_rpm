@@ -618,7 +618,7 @@ class PackageCategorySerializer(NoArtifactContentSerializer):
         required=False,
         queryset=PackageGroup.objects.all(),
         many=True,
-        view_name='content-rpm/packagegroup-detail'
+        view_name='content-rpm/packagegroups-detail'
     )
 
     class Meta:
@@ -676,7 +676,7 @@ class PackageEnvironmentSerializer(NoArtifactContentSerializer):
         required=False,
         queryset=PackageGroup.objects.all(),
         many=True,
-        view_name='content-rpm/packagegroup-detail'
+        view_name='content-rpm/packagegroups-detail'
     )
     optionalgroups = RelatedField(
         help_text=_("Groups optionally related to this Environment."),
@@ -684,7 +684,7 @@ class PackageEnvironmentSerializer(NoArtifactContentSerializer):
         required=False,
         queryset=PackageGroup.objects.all(),
         many=True,
-        view_name='content-rpm/packagegroup-detail'
+        view_name='content-rpm/packagegroups-detail'
     )
 
     class Meta:
