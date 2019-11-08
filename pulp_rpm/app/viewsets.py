@@ -321,6 +321,6 @@ class ModulemdDefaultsViewSet(SingleArtifactContentUploadViewSet):
     ViewSet for Modulemd.
     """
 
-    endpoint_name = 'modulemd-defaults'
+    endpoint_name = 'modulemd_defaults'
     queryset = ModulemdDefaults.objects.all()
     serializer_class = ModulemdDefaultsSerializer
