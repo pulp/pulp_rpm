@@ -1,7 +1,6 @@
 # coding=utf-8
 """Verify whether package manager, yum/dnf, can consume content from Pulp."""
 import unittest
-from urllib.parse import urljoin
 
 from pulp_smash import api, cli, config
 from pulp_smash.pulp3.constants import (
@@ -81,10 +80,8 @@ class PackageManagerConsumeTestCase(unittest.TestCase):
         )
         self.addCleanup(client.delete, distribution['pulp_href'])
 
-        baseurl = urljoin(self.cfg.get_content_host_base_url(),
-                          '//' + distribution['base_url'])
         cli_client = cli.Client(self.cfg)
-        cli_client.run(('sudo', 'dnf', 'config-manager', '--add-repo', baseurl))
+        cli_client.run(('sudo', 'dnf', 'config-manager', '--add-repo', distribution['base_url']))
         repo_id = '*{}'.format(distribution['base_path'])
         cli_client.run(('sudo', 'dnf', 'config-manager', '--save',
                         '--setopt={}.gpgcheck=0'.format(repo_id), repo_id))
