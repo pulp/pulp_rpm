@@ -110,9 +110,15 @@ export PYTHONPATH=$TRAVIS_BUILD_DIR:$TRAVIS_BUILD_DIR/../pulpcore:${PYTHONPATH}
 
 set -u
 
-if [[ "$TEST" == "performance" ]]; then
-  echo "--- Performance Tests ---"
-  pytest -vv -r sx --color=yes --pyargs --capture=no --durations=0 pulp_rpm.tests.performance || show_logs_and_return_non_zero
+if [[ "$TEST" == "sync-performance" ]]; then
+  echo "--- Sync Performance Tests ---"
+  pytest -vv -r sx --color=yes --pyargs --capture=no --durations=0 pulp_rpm.tests.performance.test_sync || show_logs_and_return_non_zero
+  exit
+fi
+
+if [[ "$TEST" == "publish-performance" ]]; then
+  echo "--- Publish Performance Tests ---"
+  pytest -vv -r sx --color=yes --pyargs --capture=no --durations=0 pulp_rpm.tests.performance.test_publish || show_logs_and_return_non_zero
   exit
 fi
 

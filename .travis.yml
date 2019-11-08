@@ -80,7 +80,11 @@ jobs:
       if: tag IS present
     - stage: daily-performance-test
       env:
-        - TEST=performance
+        - TEST=sync-performance
+      if: type = cron
+    - stage: daily-performance-test
+      env:
+        - TEST=publish-performance
       if: type = cron
 notifications: None
 
