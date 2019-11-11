@@ -78,9 +78,13 @@ jobs:
       env:
         - TEST=bindings
       if: tag IS present
-    - stage: daily-performance-test
+    - stage: daily-performance-sync-test
       env:
-        - TEST=performance
+        - TEST=performance PERFORMANCE_TEST=sync
+      if: type = cron
+    - stage: daily-performance-publish-test
+      env:
+        - TEST=performance PERFORMANCE_TEST=publish
       if: type = cron
 notifications: None
 
