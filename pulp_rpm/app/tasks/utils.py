@@ -4,7 +4,6 @@ from aiohttp import ClientResponseError
 from django.utils.timezone import now
 
 from productmd.common import SortedConfigParser
-from productmd.treeinfo import TreeInfo
 
 
 def get_kickstart_data(remote):
@@ -24,13 +23,12 @@ def get_kickstart_data(remote):
                 continue
             raise
 
-        kickstart = TreeInfo()
-        kickstart.load(f=result.path)
         parser = SortedConfigParser()
-        kickstart.serialize(parser)
-        kickstart_parsed = parser._sections
+        with open(result.path, "r") as treeinfo:
+            parser.read_file(treeinfo)
+        treeinfo_parsed = parser._sections
         sha256 = result.artifact_attributes["sha256"]
-        kickstart = KickstartData(kickstart_parsed).to_dict(hash=sha256)
+        kickstart = KickstartData(treeinfo_parsed).to_dict(hash=sha256)
         break
 
     return kickstart
@@ -207,15 +205,34 @@ class KickstartData:
             dict: distribution tree data
 
         """
-        distribution_tree = {
-            "header_version": self._data["header"]["version"],
-            "release_name": self._data["release"]["name"],
-            "release_short": self._data["release"]["short"],
-            "release_version": self._data["release"]["version"],
-            "release_is_layered": self._data["release"].get("is_layered", False),
-            "arch": self._data["tree"]["arch"],
-            "build_timestamp": self._data["tree"]["build_timestamp"],
-        }
+        distribution_tree = {}
+
+        if self._data.get("general"):
+            distribution_tree.update({
+                "release_name": self._data["general"]["family"],
+                "release_short": self._data["general"]["family"],
+                "release_version": self._data["general"]["version"],
+                "arch": self._data["general"]["arch"],
+                "build_timestamp": self._data["general"]["timestamp"],
+            })
+
+        distribution_tree.update(
+            {"header_version": self._data.get("header", {}).get("version", "1.2")}
+        )
+
+        if self._data.get("release"):
+            distribution_tree.update({
+                "release_name": self._data["release"]["name"],
+                "release_short": self._data["release"]["short"],
+                "release_version": self._data["release"]["version"],
+                "release_is_layered": self._data["release"].get("is_layered", False),
+            })
+
+        if self._data.get("tree"):
+            distribution_tree.update({
+                "arch": self._data["tree"]["arch"],
+                "build_timestamp": self._data["tree"]["build_timestamp"],
+            })
 
         if self._data.get("base_product"):
             distribution_tree.update({
@@ -225,12 +242,10 @@ class KickstartData:
             })
 
         if self._data.get("stage2"):
-            stage2 = {key: value for key, value in self._data.get("stage2").items()}
-            distribution_tree.update(stage2)
+            distribution_tree.update(self._data.get("stage2"))
 
         if self._data.get("media"):
-            media = {key: value for key, value in self._data.get("media").items()}
-            distribution_tree.update(media)
+            distribution_tree.update(self._data.get("media"))
 
         return distribution_tree
 
@@ -272,7 +287,8 @@ class KickstartData:
             list: List of image data
 
         """
-        platforms = self._data["tree"]["platforms"].split(",")
+        platforms = self._data.get("tree", {}).get("platforms")
+        platforms = platforms.split(",") if platforms else []
         images = []
         self._image_paths = {}
 
@@ -315,7 +331,8 @@ class KickstartData:
             list: List of variant data
 
         """
-        variant_uids = self._data["tree"]["variants"].split(",")
+        variant_uids = self._data.get("tree", {}).get("variants")
+        variant_uids = variant_uids.split(",") if variant_uids else []
         variants = []
 
         self._addon_uids = []
