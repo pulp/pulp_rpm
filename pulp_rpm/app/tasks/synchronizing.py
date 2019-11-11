@@ -25,7 +25,6 @@ from pulpcore.plugin.stages import (
     DeclarativeContent,
     DeclarativeVersion,
     RemoteArtifactSaver,
-    RemoveDuplicates,
     Stage,
     QueryExistingArtifacts,
     QueryExistingContents
@@ -98,10 +97,6 @@ def synchronize(remote_pk, repository_pk):
     remote = RpmRemote.objects.get(pk=remote_pk)
     repository = RpmRepository.objects.get(pk=repository_pk)
 
-    dupe_criteria = [
-        {'model': Package, 'field_names': ['name', 'epoch', 'version', 'release', 'arch']},
-        {'model': RepoMetadataFile, 'field_names': ['data_type']},
-    ]
     if not remote.url:
         raise ValueError(_('A remote must have a url specified to synchronize.'))
 
@@ -129,14 +124,12 @@ def synchronize(remote_pk, repository_pk):
             if repodata_exists(remote, new_url):
                 stage = RpmFirstStage(remote, deferred_download, new_url=new_url)
                 dv = RpmDeclarativeVersion(first_stage=stage,
-                                           repository=new_repository,
-                                           remove_duplicates=dupe_criteria)
+                                           repository=repository)
                 dv.create()
 
     first_stage = RpmFirstStage(remote, deferred_download, kickstart=kickstart)
     dv = RpmDeclarativeVersion(first_stage=first_stage,
-                               repository=repository,
-                               remove_duplicates=dupe_criteria)
+                               repository=repository)
     dv.create()
 
 
@@ -168,9 +161,6 @@ class RpmDeclarativeVersion(DeclarativeVersion):
             RpmContentSaver(),
             RemoteArtifactSaver(),
         ]
-        for dupe_query_dict in self.remove_duplicates:
-            pipeline.append(RemoveDuplicates(new_version, **dupe_query_dict))
-
         return pipeline
 
 
