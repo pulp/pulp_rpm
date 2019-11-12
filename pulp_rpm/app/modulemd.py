@@ -68,14 +68,14 @@ def parse_modulemd(module_names, module_index):
 
 def parse_defaults(module_index):
     """
-    Get modulemd-defaults.
+    Get modulemd_defaults.
 
     Args:
         module_index (mmdlib.ModuleIndex):
             libmodulemd index object
 
     Returns:
-        list of modulemd-defaults as dict
+        list of modulemd_defaults as dict
 
     """
     ret = list()

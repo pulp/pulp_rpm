@@ -1183,7 +1183,7 @@ class ModulemdDefaults(Content):
             Modulemd digest
     """
 
-    TYPE = "modulemd-defaults"
+    TYPE = "modulemd_defaults"
 
     module = models.CharField(max_length=255)
     stream = models.CharField(max_length=255)
