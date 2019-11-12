@@ -24,6 +24,6 @@ pulp_settings: null
 pydocstyle: true
 pypi_username: pulp
 test_bindings: true
-test_performance: true
+test_performance: ['sync', 'publish']
 travis_notifications: None
 
