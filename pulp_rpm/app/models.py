@@ -665,8 +665,8 @@ class UpdateReference(Model):
     """
 
     href = models.TextField()
-    ref_id = models.TextField()
-    title = models.TextField()
+    ref_id = models.TextField(null=True)
+    title = models.TextField(null=True)
     ref_type = models.TextField()
 
     update_record = models.ForeignKey(UpdateRecord, related_name="references",
