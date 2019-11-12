@@ -1,0 +1,4 @@
+Refactor models.py to directory with multiple files
+
+For better organization and ease of locating related models,
+move to directory with multiple files instead of only one.
