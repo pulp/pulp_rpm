@@ -100,7 +100,7 @@ class RpmRepositoryViewSet(RepositoryViewSet):
     """
 
     endpoint_name = 'rpm'
-    queryset = RpmRepository.objects.all()
+    queryset = RpmRepository.objects.exclude(sub_repo=True)
     serializer_class = RpmRepositorySerializer
 
     @swagger_auto_schema(
