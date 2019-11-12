@@ -1,0 +1,4 @@
+Remove /pulp/api/v3/rpm/copy/ endpoint
+
+Removed the /pulp/api/v3/rpm/copy/ endpoint. To copy all content now with typed repos, use the
+modify endpoint on a repository.
