@@ -4,15 +4,18 @@ from logging import getLogger
 import createrepo_c as cr
 
 from django.contrib.postgres.fields import JSONField
-from django.db import models
+from django.db import models, transaction
 from pulpcore.plugin.models import (
     Content,
     ContentArtifact,
+    CreatedResource,
     Model,
     Remote,
     Repository,
+    RepositoryVersion,
     Publication,
-    PublicationDistribution
+    PublicationDistribution,
+    Task,
 )
 
 from pulp_rpm.app.constants import (CHECKSUM_CHOICES, CR_PACKAGE_ATTRS,
@@ -1082,9 +1085,51 @@ class PackageLangpacks(Content):
 class RpmRepository(Repository):
     """
     Repository for "rpm" content.
+
+    Fields:
+
+        sub_repo (Boolean):
+            Whether is sub_repo or not
     """
 
     TYPE = "rpm"
+
+    sub_repo = models.BooleanField(default=False)
+
+    def new_version(self, base_version=None):
+        """
+        Create a new RepositoryVersion for this Repository.
+
+        Creation of a RepositoryVersion should be done in a RQ Job.
+
+        Args:
+            repository (pulpcore.app.models.Repository): to create a new version of
+            base_version (pulpcore.app.models.RepositoryVersion): an optional repository version
+                whose content will be used as the set of content for the new version
+
+        Returns:
+            pulpcore.app.models.RepositoryVersion: The Created RepositoryVersion
+
+        """
+        with transaction.atomic():
+            version = RepositoryVersion(
+                repository=self,
+                number=int(self.last_version) + 1,
+                base_version=base_version)
+            self.last_version = version.number
+            self.save()
+            version.save()
+
+            if base_version:
+                # first remove the content that isn't in the base version
+                version.remove_content(version.content.exclude(pk__in=base_version.content))
+                # now add any content that's in the base_version but not in version
+                version.add_content(base_version.content.exclude(pk__in=version.content))
+
+            if Task.current and not self.sub_repo:
+                resource = CreatedResource(content_object=version)
+                resource.save()
+            return version
 
     class Meta:
         default_related_name = "%(app_label)s_%(model_name)s"

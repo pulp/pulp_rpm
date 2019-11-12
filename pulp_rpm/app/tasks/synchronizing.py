@@ -119,7 +119,7 @@ def synchronize(remote_pk, repository_pk):
                 continue
             name = f"{repodata}-{kickstart['hash']}"
             new_repository, created = RpmRepository.objects.get_or_create(
-                name=name, plugin_managed=True
+                name=name, sub_repo=True
             )
             if created:
                 new_repository.save()
