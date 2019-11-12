@@ -318,7 +318,7 @@ def create_rempomd_xml(packages, publication, extra_repomdrecords, sub_folder=No
             pk__in=publication.repository_version.content):
         upd_xml.add_chunk(update_record_xml(update_record))
 
-    # Process modulemd and modulemd-defaults
+    # Process modulemd and modulemd_defaults
     with open(mod_yml_path, 'ab') as mod_yml:
         for modulemd in Modulemd.objects.filter(
                 pk__in=publication.repository_version.content):
