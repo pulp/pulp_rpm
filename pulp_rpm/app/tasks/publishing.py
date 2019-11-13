@@ -135,11 +135,11 @@ class PublicationData:
                     content_artifact=content_artifact)
                 )
             for addon in distribution_tree.addons.all():
-                repository_version = RepositoryVersion.latest(addon.repository)
+                repository_version = addon.repository.latest_version()
                 if repository_version and repository_version.content != main_content:
                     self.sub_repos.append((addon.addon_id, repository_version.content))
             for variant in distribution_tree.variants.all():
-                repository_version = RepositoryVersion.latest(variant.repository)
+                repository_version = variant.repository.latest_version()
                 if repository_version and repository_version.content != main_content:
                     self.sub_repos.append((variant.variant_id, repository_version.content))
 

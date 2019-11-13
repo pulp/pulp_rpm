@@ -160,7 +160,7 @@ def create_treeinfo(distribution_tree):
     treeinfo["tree"].update({"variants": ", ".join(variants)})
 
     variants = sorted(variants)
-    first_variant = treeinfo[f"variant-{variants[0]}"]
+    first_variant = treeinfo[f"variant-{variants[0]}"] if variants else {"packages": ".", "uid": ""}
     first_variant["repository"] = "."
     treeinfo["general"] = {
         "family": treeinfo["release"]["name"],
