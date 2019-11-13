@@ -12,9 +12,10 @@ def get_kickstart_data(remote):
 
     """
     kickstart = {}
+    remote_url = remote.url if remote.url[-1] == "/" else f"{remote.url}/"
     namespaces = [".treeinfo", "treeinfo"]
     for namespace in namespaces:
-        downloader = remote.get_downloader(url=urljoin(remote.url, namespace))
+        downloader = remote.get_downloader(url=urljoin(remote_url, namespace))
 
         try:
             result = downloader.fetch()
