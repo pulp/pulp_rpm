@@ -8,7 +8,8 @@ from collections import defaultdict
 from gettext import gettext as _  # noqa:F401
 from urllib.parse import urljoin
 
-from aiohttp import ClientResponseError
+from aiohttp.client_exceptions import ClientResponseError
+from aiohttp.web_exceptions import HTTPNotFound
 import createrepo_c as cr
 import libcomps
 
@@ -344,9 +345,11 @@ class RpmFirstStage(Stage):
             optionalgroup_to_environments = defaultdict(list)
             modulemd_results = None
             comps_downloader = None
+            main_types = set()
 
             for record in repomd.records:
                 if record.type in PACKAGE_REPODATA:
+                    main_types.update([record.type])
                     package_repodata_urls[record.type] = urljoin(remote_url,
                                                                  record.location_href)
                 elif record.type in UPDATE_REPODATA:
@@ -382,6 +385,11 @@ class RpmFirstStage(Stage):
                     )
                     dc = DeclarativeContent(content=repo_metadata_file, d_artifacts=[da])
                     await self.put(dc)
+
+            missing_type = set(PACKAGE_REPODATA) - main_types
+            if missing_type:
+                raise FileNotFoundError(_("XML file(s): {filename} not found").format(
+                    filename=", ".join(missing_type)))
 
             # we have to sync module.yaml first if it exists, to make relations to packages
             if modulemd_results:
@@ -546,7 +554,11 @@ class RpmFirstStage(Stage):
             while pending:
                 done, pending = await asyncio.wait(pending, return_when=asyncio.FIRST_COMPLETED)
                 for downloader in done:
-                    results = downloader.result()
+                    try:
+                        results = downloader.result()
+                    except ClientResponseError as exc:
+                        raise HTTPNotFound(reason=_("File not found: {filename}").format(
+                            filename=exc.request_info.url))
                     if results[0].url == package_repodata_urls['primary']:
                         primary_xml_path = results[0].path
                         filelists_xml_path = results[1].path
