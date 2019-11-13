@@ -3,6 +3,7 @@ from rest_framework import viewsets, mixins
 from rest_framework.decorators import action
 from rest_framework.parsers import FormParser, MultiPartParser
 
+from pulpcore.plugin.actions import ModifyRepositoryActionMixin
 from pulpcore.plugin.tasking import enqueue_with_reservation
 from pulpcore.plugin.serializers import (
     AsyncOperationResponseSerializer,
@@ -94,7 +95,7 @@ class PackageViewSet(SingleArtifactContentUploadViewSet):
     filterset_class = PackageFilter
 
 
-class RpmRepositoryViewSet(RepositoryViewSet):
+class RpmRepositoryViewSet(RepositoryViewSet, ModifyRepositoryActionMixin):
     """
     A ViewSet for RpmRepository.
     """

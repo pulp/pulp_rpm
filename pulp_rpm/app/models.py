@@ -4,7 +4,11 @@ from logging import getLogger
 import createrepo_c as cr
 
 from django.contrib.postgres.fields import JSONField
-from django.db import models, transaction
+from django.db import (
+    models,
+    transaction,
+)
+
 from pulpcore.plugin.models import (
     Content,
     ContentArtifact,
@@ -17,6 +21,7 @@ from pulpcore.plugin.models import (
     PublicationDistribution,
     Task,
 )
+from pulpcore.plugin.repo_version_utils import remove_duplicates
 
 from pulp_rpm.app.constants import (CHECKSUM_CHOICES, CR_PACKAGE_ATTRS,
                                     CR_UPDATE_COLLECTION_ATTRS,
@@ -211,6 +216,8 @@ class Package(Content):
 
     time_build = models.BigIntegerField(null=True)
     time_file = models.BigIntegerField(null=True)
+
+    repo_key_fields = ('name', 'epoch', 'version', 'release', 'arch')
 
     @property
     def filename(self):
@@ -753,6 +760,8 @@ class PackageGroup(Content):
 
     related_packages = models.ManyToManyField(Package)
 
+    repo_key_fields = ('id',)
+
     class Meta:
         default_related_name = "%(app_label)s_%(model_name)s"
 
@@ -860,6 +869,8 @@ class PackageCategory(Content):
     digest = models.CharField(unique=True, max_length=64)
 
     packagegroups = models.ManyToManyField(PackageGroup)
+
+    repo_key_fields = ('id',)
 
     class Meta:
         default_related_name = "%(app_label)s_%(model_name)s"
@@ -972,6 +983,8 @@ class PackageEnvironment(Content):
 
     packagegroups = models.ManyToManyField(PackageGroup, related_name='packagegroups_to_env')
     optionalgroups = models.ManyToManyField(PackageGroup, related_name='optionalgroups_to_env')
+
+    repo_key_fields = ('id',)
 
     class Meta:
         default_related_name = "%(app_label)s_%(model_name)s"
@@ -1134,6 +1147,21 @@ class RpmRepository(Repository):
     class Meta:
         default_related_name = "%(app_label)s_%(model_name)s"
 
+    def finalize_new_version(self, new_version):
+        """
+        Ensure there are no duplicates in a repo version and content is not broken.
+
+        Remove duplicates based on repo_key_fields.
+        TODO: Ensure that modulemd is added with all its RPMs.
+        TODO: Ensure that modulemd is removed with all its RPMs.
+        TODO: Resolve advisory conflicts when there is more than one advisory with the same id.
+
+        Args:
+            new_version (pulpcore.app.models.RepositoryVersion): The incomplete RepositoryVersion to
+                finalize.
+        """
+        remove_duplicates(new_version)
+
 
 class RpmRemote(Remote):
     """
@@ -1236,6 +1264,8 @@ class ModulemdDefaults(Content):
 
     digest = models.CharField(unique=True, max_length=64)
 
+    repo_key_fields = ('module',)
+
     @classmethod
     def natural_key_fields(cls):
         """
@@ -1320,6 +1350,15 @@ class DistributionTree(Content):
     # media
     discnum = models.IntegerField(null=True)
     totaldiscs = models.IntegerField(null=True)
+
+    repo_key_fields = (
+        "header_version",
+        "release_name",
+        "release_short",
+        "release_version",
+        "arch",
+        "build_timestamp",
+    )
 
     class Meta:
         default_related_name = "%(app_label)s_%(model_name)s"
@@ -1543,6 +1582,8 @@ class RepoMetadataFile(Content):
     data_type = models.CharField(max_length=20)
     checksum_type = models.CharField(max_length=6)
     checksum = models.CharField(max_length=128)
+
+    repo_key_fields = ('data_type',)
 
     class Meta:
         default_related_name = "%(app_label)s_%(model_name)s"
