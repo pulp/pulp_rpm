@@ -319,7 +319,7 @@ class UpdateCollectionSerializer(ModelSerializer):
     A Serializer for UpdateCollection.
     """
 
-    name = serializers.CharField(help_text=_("Collection name."))
+    name = serializers.CharField(help_text=_("Collection name."), allow_blank=True)
     shortname = serializers.CharField(help_text=_("Collection short name."), allow_blank=True)
     packages = UpdateCollectionPackagesField(
         source='*', read_only=True,
@@ -344,30 +344,36 @@ class UpdateRecordSerializer(NoArtifactContentSerializer):
     )
 
     description = serializers.CharField(
-        help_text=_("Update description")
+        help_text=_("Update description"),
+        allow_blank=True
     )
     issued_date = serializers.CharField(
         help_text=_("Date when the update was issued (e.g. '2013-12-02 00:00:00')")
     )
     fromstr = serializers.CharField(
-        help_text=_("Source of the update (e.g. security@redhat.com)")
+        help_text=_("Source of the update (e.g. security@redhat.com)"),
+        allow_blank=True
     )
     status = serializers.CharField(
-        help_text=_("Update status ('final', ...)")
+        help_text=_("Update status ('final', ...)"),
+        allow_blank=True
     )
     title = serializers.CharField(
-        help_text=_("Update name")
+        help_text=_("Update name"),
+        allow_blank=True
     )
     summary = serializers.CharField(
         help_text=_("Short summary"),
         allow_blank=True
     )
     version = serializers.CharField(
-        help_text=_("Update version (probably always an integer number)")
+        help_text=_("Update version (probably always an integer number)"),
+        allow_blank=True
     )
 
     type = serializers.CharField(
-        help_text=_("Update type ('enhancement', 'bugfix', ...)")
+        help_text=_("Update type ('enhancement', 'bugfix', ...)"),
+        allow_blank=True
     )
     severity = serializers.CharField(
         help_text=_("Severity"),
@@ -378,7 +384,8 @@ class UpdateRecordSerializer(NoArtifactContentSerializer):
         allow_blank=True
     )
     release = serializers.CharField(
-        help_text=_("Update release")
+        help_text=_("Update release"),
+        allow_blank=True
     )
     rights = serializers.CharField(
         help_text=_("Copyrights"),
