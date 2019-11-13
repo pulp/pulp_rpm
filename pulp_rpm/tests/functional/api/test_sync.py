@@ -68,9 +68,7 @@ class BasicSyncTestCase(unittest.TestCase):
         5. Assert that the correct number of units were added and are present
            in the repo.
         6. Sync the remote one more time.
-        7. Assert that repository version is different from the previous one.
-        8. Assert that the same number of are present and that no units were
-           added.
+        7. Assert that repository version is the same as the previous one.
         """
         repo = self.client.post(RPM_REPO_PATH, gen_repo())
         self.addCleanup(self.client.delete, repo['pulp_href'])
@@ -98,9 +96,7 @@ class BasicSyncTestCase(unittest.TestCase):
         repo = self.client.get(repo['pulp_href'])
 
         # Check that nothing has changed since the last sync.
-        self.assertNotEqual(latest_version_href, repo['latest_version_href'])
-        self.assertDictEqual(get_content_summary(repo), RPM_FIXTURE_SUMMARY)
-        self.assertDictEqual(get_added_content_summary(repo), {})
+        self.assertEqual(latest_version_href, repo['latest_version_href'])
 
 
 class KickstartSyncTestCase(unittest.TestCase):
@@ -135,9 +131,8 @@ class KickstartSyncTestCase(unittest.TestCase):
         5. Assert that the correct number of units were added and are present
            in the repo.
         6. Sync the remote one more time.
-        7. Assert that repository version is different from the previous one.
-        8. Assert that the same number of are present and that no units were
-           added.
+        7. Assert that repository version is the same the previous one.
+        8. Assert that the same number of packages are present.
         """
         repo = self.client.post(RPM_REPO_PATH, gen_repo())
         self.addCleanup(self.client.delete, repo['pulp_href'])
@@ -173,11 +168,10 @@ class KickstartSyncTestCase(unittest.TestCase):
         self.assertEqual(artifacts['count'], 3, artifacts)
 
         # Check that nothing has changed since the last sync.
-        self.assertNotEqual(latest_version_href, repo['latest_version_href'])
+        self.assertEqual(latest_version_href, repo['latest_version_href'])
         self.assertDictEqual(
             get_content_summary(repo), RPM_KICKSTART_FIXTURE_SUMMARY
         )
-        self.assertDictEqual(get_added_content_summary(repo), {})
 
     def test_rpm_kickstart_on_demand(self):
         """Sync repositories with the rpm plugin.
@@ -200,9 +194,8 @@ class KickstartSyncTestCase(unittest.TestCase):
         5. Assert that the correct number of units were added and are present
            in the repo.
         6. Sync the remote one more time.
-        7. Assert that repository version is different from the previous one.
-        8. Assert that the same number of are present and that no units were
-           added.
+        7. Assert that repository version is the same as the previous one.
+        8. Assert that the same number of packages are present
         """
         delete_orphans(self.cfg)
         repo = self.client.post(RPM_REPO_PATH, gen_repo())
@@ -241,11 +234,10 @@ class KickstartSyncTestCase(unittest.TestCase):
         self.assertEqual(artifacts['count'], 0, artifacts)
 
         # Check that nothing has changed since the last sync.
-        self.assertNotEqual(latest_version_href, repo['latest_version_href'])
+        self.assertEqual(latest_version_href, repo['latest_version_href'])
         self.assertDictEqual(
             get_content_summary(repo), RPM_KICKSTART_FIXTURE_SUMMARY
         )
-        self.assertDictEqual(get_added_content_summary(repo), {})
 
 
 class FileDescriptorsTestCase(unittest.TestCase):

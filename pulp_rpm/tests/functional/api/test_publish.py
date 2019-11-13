@@ -82,7 +82,7 @@ class PublishAnyRepoVersionTestCase(unittest.TestCase):
         for rpm_content in get_content(repo)[RPM_PACKAGE_CONTENT_NAME]:
             self.client.post(
                 urljoin(repo['pulp_href'], 'modify/'),
-                {'add_content_units': [rpm_content['pulp_href']]}
+                {'remove_content_units': [rpm_content['pulp_href']]}
             )
         version_hrefs = tuple(ver['pulp_href'] for ver in get_versions(repo))
         non_latest = choice(version_hrefs[:-1])
