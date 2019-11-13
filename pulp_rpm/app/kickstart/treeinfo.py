@@ -1,3 +1,5 @@
+from gettext import gettext as _
+from configparser import MissingSectionHeaderError
 from urllib.parse import urljoin
 
 from aiohttp import ClientResponseError
@@ -173,6 +175,16 @@ class PulpTreeInfo(TreeInfo):
     Extend TreeInfo for handling errors.
 
     """
+
+    def load(self, f):
+        """
+        Load data from a file.
+
+        """
+        try:
+            super().load(f)
+        except MissingSectionHeaderError:
+            raise TypeError(_("Treeinfo file should have INI format"))
 
     def deserialize(self, parser):
         """
