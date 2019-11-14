@@ -9,6 +9,7 @@ from collections import defaultdict
 from gettext import gettext as _  # noqa:F401
 from urllib.parse import urljoin
 
+from aiohttp import ClientResponseError
 import createrepo_c as cr
 import libcomps
 
@@ -66,10 +67,7 @@ from pulp_rpm.app.modulemd import (
     parse_defaults,
     parse_modulemd,
 )
-from pulp_rpm.app.tasks.utils import (
-    get_kickstart_data,
-    repodata_exists,
-)
+from pulp_rpm.app.kickstart.treeinfo import get_treeinfo_data
 
 from pulp_rpm.app.comps import strdict_to_dict, dict_digest
 
@@ -78,6 +76,22 @@ gi.require_version('Modulemd', '2.0')
 from gi.repository import Modulemd as mmdlib  # noqa: E402
 
 log = logging.getLogger(__name__)
+
+
+def repodata_exists(remote, url):
+    """
+    Check if repodata exists.
+
+    """
+    downloader = remote.get_downloader(url=urljoin(url, "repodata/repomd.xml"))
+
+    try:
+        downloader.fetch()
+    except ClientResponseError as exc:
+        if 404 == exc.status:
+            return False
+
+    return True
 
 
 def synchronize(remote_pk, repository_pk):
@@ -105,20 +119,20 @@ def synchronize(remote_pk, repository_pk):
 
     deferred_download = (remote.policy != Remote.IMMEDIATE)  # Interpret download policy
 
-    kickstart = get_kickstart_data(remote)
-    if kickstart:
-        kickstart["repositories"] = {}
-        for repodata in set(kickstart["download"]["repodatas"]):
+    treeinfo = get_treeinfo_data(remote)
+    if treeinfo:
+        treeinfo["repositories"] = {}
+        for repodata in set(treeinfo["download"]["repodatas"]):
             if repodata == ".":
-                kickstart["repositories"].update({repodata: str(repository_pk)})
+                treeinfo["repositories"].update({repodata: str(repository_pk)})
                 continue
-            name = f"{repodata}-{kickstart['hash']}"
+            name = f"{repodata}-{treeinfo['hash']}"
             new_repository, created = RpmRepository.objects.get_or_create(
                 name=name, sub_repo=True
             )
             if created:
                 new_repository.save()
-            kickstart["repositories"].update({repodata: str(new_repository.pk)})
+            treeinfo["repositories"].update({repodata: str(new_repository.pk)})
             path = f"{repodata}/"
             new_url = urljoin(remote.url, path)
             if repodata_exists(remote, new_url):
@@ -127,7 +141,7 @@ def synchronize(remote_pk, repository_pk):
                                            repository=repository)
                 dv.create()
 
-    first_stage = RpmFirstStage(remote, deferred_download, kickstart=kickstart)
+    first_stage = RpmFirstStage(remote, deferred_download, treeinfo=treeinfo)
     dv = RpmDeclarativeVersion(first_stage=first_stage,
                                repository=repository)
     dv.create()
@@ -172,7 +186,7 @@ class RpmFirstStage(Stage):
     that should exist in the new :class:`~pulpcore.plugin.models.RepositoryVersion`.
     """
 
-    def __init__(self, remote, deferred_download, new_url=None, kickstart=None):
+    def __init__(self, remote, deferred_download, new_url=None, treeinfo=None):
         """
         The first stage of a pulp_rpm sync pipeline.
 
@@ -183,14 +197,14 @@ class RpmFirstStage(Stage):
 
         Keyword Args:
             new_url(str): URL to replace remote url
-            kickstart(dict): Kickstart data
+            treeinfo(dict): Treeinfo data
 
         """
         super().__init__()
         self.remote = remote
         self.deferred_download = deferred_download
         self.new_url = new_url
-        self.kickstart = kickstart
+        self.treeinfo = treeinfo
 
     @staticmethod
     async def parse_updateinfo(updateinfo_xml_path):
@@ -309,9 +323,9 @@ class RpmFirstStage(Stage):
             result = await downloader.run()
             metadata_pb.increment()
 
-            if self.kickstart:
+            if self.treeinfo:
                 d_artifacts = []
-                for path, checksum in self.kickstart["download"]["images"].items():
+                for path, checksum in self.treeinfo["download"]["images"].items():
                     artifact = Artifact(**checksum)
 
                     da = DeclarativeArtifact(
@@ -324,9 +338,9 @@ class RpmFirstStage(Stage):
 
                     d_artifacts.append(da)
 
-                distribution_tree = DistributionTree(**self.kickstart["distribution_tree"])
+                distribution_tree = DistributionTree(**self.treeinfo["distribution_tree"])
                 dc = DeclarativeContent(content=distribution_tree, d_artifacts=d_artifacts)
-                dc.extra_data = self.kickstart
+                dc.extra_data = self.treeinfo
                 await self.put(dc)
 
             repomd_path = result.path
@@ -669,39 +683,39 @@ class RpmContentSaver(ContentSaver):
         """
         def _handle_distribution_tree(declarative_content):
             distribution_tree = declarative_content.content
-            kickstart_data = declarative_content.extra_data
+            treeinfo_data = declarative_content.extra_data
 
-            if kickstart_data["created"] > distribution_tree.pulp_created:
+            if treeinfo_data["created"] > distribution_tree.pulp_created:
                 return
 
             resources = ["addons", "variants"]
             for resource_name in resources:
-                for resource in kickstart_data[resource_name]:
+                for resource in treeinfo_data[resource_name]:
                     key = resource["repository"]
                     del resource["repository"]
-                    resource["repository_id"] = kickstart_data["repositories"][key]
+                    resource["repository_id"] = treeinfo_data["repositories"][key]
 
             addons = []
             checksums = []
             images = []
             variants = []
 
-            for addon in kickstart_data["addons"]:
+            for addon in treeinfo_data["addons"]:
                 instance = Addon(**addon)
                 instance.distribution_tree = distribution_tree
                 addons.append(instance)
 
-            for checksum in kickstart_data["checksums"]:
+            for checksum in treeinfo_data["checksums"]:
                 instance = Checksum(**checksum)
                 instance.distribution_tree = distribution_tree
                 checksums.append(instance)
 
-            for image in kickstart_data["images"]:
+            for image in treeinfo_data["images"]:
                 instance = Image(**image)
                 instance.distribution_tree = distribution_tree
                 images.append(instance)
 
-            for variant in kickstart_data["variants"]:
+            for variant in treeinfo_data["variants"]:
                 instance = Variant(**variant)
                 instance.distribution_tree = distribution_tree
                 variants.append(instance)

@@ -4,14 +4,15 @@ from aiohttp import ClientResponseError
 from django.utils.timezone import now
 
 from productmd.common import SortedConfigParser
+from productmd.treeinfo import TreeInfo
 
 
-def get_kickstart_data(remote):
+def get_treeinfo_data(remote):
     """
-    Get Kickstart data from remote.
+    Get Treeinfo data from remote.
 
     """
-    kickstart = {}
+    treeinfo_serialized = {}
     remote_url = remote.url if remote.url[-1] == "/" else f"{remote.url}/"
     namespaces = [".treeinfo", "treeinfo"]
     for namespace in namespaces:
@@ -24,31 +25,14 @@ def get_kickstart_data(remote):
                 continue
             raise
 
-        parser = SortedConfigParser()
-        with open(result.path, "r") as treeinfo:
-            parser.read_file(treeinfo)
-        treeinfo_parsed = parser._sections
+        treeinfo = PulpTreeInfo()
+        treeinfo.load(f=result.path)
+        treeinfo_parsed = treeinfo.parsed_sections()
         sha256 = result.artifact_attributes["sha256"]
-        kickstart = KickstartData(treeinfo_parsed).to_dict(hash=sha256)
+        treeinfo_serialized = TreeinfoData(treeinfo_parsed).to_dict(hash=sha256)
         break
 
-    return kickstart
-
-
-def repodata_exists(remote, url):
-    """
-    Check if repodata exists.
-
-    """
-    downloader = remote.get_downloader(url=urljoin(url, "repodata/repomd.xml"))
-
-    try:
-        downloader.fetch()
-    except ClientResponseError as exc:
-        if 404 == exc.status:
-            return False
-
-    return True
+    return treeinfo_serialized
 
 
 def create_treeinfo(distribution_tree):
@@ -127,7 +111,7 @@ def create_treeinfo(distribution_tree):
             current.update({image.name: image.path})
             treeinfo[f"images-{platform}"] = current
 
-    treeinfo["tree"].update({"platforms": ", ".join(tree_platforms)})
+    treeinfo["tree"].update({"platforms": ",".join(tree_platforms)})
 
     for addon in distribution_tree.addons.all():
         treeinfo[f"addon-{addon.uid}"] = {
@@ -182,15 +166,88 @@ def create_treeinfo(distribution_tree):
     return f
 
 
-class KickstartData:
+class PulpTreeInfo(TreeInfo):
     """
-    Treat parsed kickstart data.
+    Extend TreeInfo for handling errors.
+
+    """
+
+    def deserialize(self, parser):
+        """
+        Handle errors on deserialize TreeInfo.
+
+        """
+        try:
+            super().deserialize(parser)
+        except Exception:
+            sections = parser._sections.keys()
+
+            for section in sections:
+                if section.startswith("image"):
+                    section = "images"
+                if section.startswith("variant"):
+                    section = "variants"
+                current = getattr(self, section, None)
+
+                if current:
+                    current.deserialize(parser)
+
+                    if section == "release" and current.is_layered:
+                        self.base_product.deserialize(parser)
+
+            self.validate()
+            self.header.set_current_version()
+
+        self.original_parser = parser
+
+    def serialize(self, parser):
+        """
+        Handle errors on serialize TreeInfo.
+
+        """
+        try:
+            super().serialize(parser)
+        except Exception:
+            sections = set(self.original_parser._sections.keys()) - set(parser._sections.keys())
+            self.validate()
+
+            for section in sections:
+                if section.startswith("image"):
+                    section = "images"
+                if section.startswith("variant"):
+                    section = "variants"
+                current = getattr(self, section, None)
+
+                if current:
+                    current.serialize(parser)
+
+                    if section == "release" and current.is_layered:
+                        self.base_product.serialize(parser)
+
+    def parsed_sections(self):
+        """
+        Treeinfo parsed data.
+
+        """
+        parser = SortedConfigParser()
+        self.serialize(parser)
+
+        if "general" in self.original_parser._sections:
+            if "general" not in parser._sections:
+                parser._sections["general"] = self.original_parser._sections["general"]
+
+        return parser._sections
+
+
+class TreeinfoData:
+    """
+    Treat parsed treeinfo data.
 
     """
 
     def __init__(self, data):
         """
-        Setting Kickstart data.
+        Setting Treeinfo data.
 
         """
         self._data = data
@@ -288,22 +345,22 @@ class KickstartData:
             list: List of image data
 
         """
-        platforms = self._data.get("tree", {}).get("platforms")
-        platforms = platforms.split(",") if platforms else []
         images = []
         self._image_paths = {}
 
         temp = {}
-        for platform in platforms:
-            image_key = "images-" + platform
-            for key, value in self._data.get(image_key, {}).items():
-                temp.update({key: value})
+        for key in self._data.keys():
+            if key.startswith("images"):
+                image_key = key
+                platform = image_key.split("-")[1]
+                for key, value in self._data.get(image_key, {}).items():
+                    temp.update({key: value})
 
-                _platform = platform
-                if value in self._image_paths.keys():
-                    _platform = f"{self._image_paths[value]}, {platform}"
+                    _platform = platform
+                    if value in self._image_paths.keys():
+                        _platform = f"{self._image_paths[value]}, {platform}"
 
-                self._image_paths.update({value: _platform})
+                    self._image_paths.update({value: _platform})
 
         for key, value in temp.items():
             image = {}
@@ -402,10 +459,10 @@ class KickstartData:
 
     def to_dict(self, **kwargs):
         """
-        Kickstart data.
+        Treeinfo data.
 
         Returns:
-            dict: All kickstart data.
+            dict: All treeinfo data.
 
         """
         data = dict(

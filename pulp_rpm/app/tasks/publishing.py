@@ -25,7 +25,7 @@ from pulp_rpm.app.models import (
     RpmPublication,
     UpdateRecord,
 )
-from pulp_rpm.app.tasks.utils import create_treeinfo
+from pulp_rpm.app.kickstart.treeinfo import create_treeinfo
 
 log = logging.getLogger(__name__)
 
