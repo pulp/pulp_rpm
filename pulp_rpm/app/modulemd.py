@@ -3,11 +3,40 @@ import os
 import tempfile
 
 from pulpcore.app.models.content import Artifact
+from pulp_rpm.app.models import Modulemd
 from pulp_rpm.app.constants import PULP_MODULE_ATTR, PULP_MODULEDEFAULTS_ATTR
 
 import gi
 gi.require_version('Modulemd', '2.0')
 from gi.repository import Modulemd as mmdlib  # noqa: E402
+
+
+def resolve_module_packages(version, previous_version):
+    """
+    Decide which packages to add/remove based on modular data.
+
+    Args:
+        version (pulpcore.app.models.RepositoryVersion): current incomplete repository version
+    """
+    current_modules = Modulemd.objects \
+        .filter(pk__in=version.content.filter(pulp_type="rpm.modulemd"))
+
+    if previous_version:
+        previous_modules = Modulemd.objects \
+            .filter(pk__in=previous_version.content.filter(pulp_type="rpm.modulemd"))
+        added_modules = current_modules.difference(previous_modules)
+        removed_modules = previous_modules.difference(current_modules)
+        current_module_packages = current_modules.values_list("packages", flat=True)
+        removed_module_packages = removed_modules.values_list("packages", flat=True)
+        packages_to_remove = removed_module_packages.difference(current_module_packages)
+        version.remove_content(packages_to_remove)
+    else:
+        added_modules = current_modules
+
+    added_module_packages = added_modules.values_list("packages", flat=True)
+    current_packages = version.content.filter(pulp_type="rpm.package")
+    packages_to_add = added_module_packages.difference(current_packages)
+    version.add_content(packages_to_add)
 
 
 def _create_snippet(snippet_string):
