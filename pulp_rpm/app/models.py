@@ -1152,8 +1152,6 @@ class RpmRepository(Repository):
         Ensure there are no duplicates in a repo version and content is not broken.
 
         Remove duplicates based on repo_key_fields.
-        TODO: Ensure that modulemd is added with all its RPMs.
-        TODO: Ensure that modulemd is removed with all its RPMs.
         TODO: Resolve advisory conflicts when there is more than one advisory with the same id.
 
         Args:
@@ -1170,6 +1168,9 @@ class RpmRepository(Repository):
             ).order_by('-number').first()
 
         remove_duplicates(new_version)
+
+        from pulp_rpm.app.modulemd import resolve_module_packages  # avoid circular import
+        resolve_module_packages(new_version, previous_version)
 
 
 class RpmRemote(Remote):
