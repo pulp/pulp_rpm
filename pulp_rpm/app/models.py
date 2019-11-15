@@ -1160,6 +1160,15 @@ class RpmRepository(Repository):
             new_version (pulpcore.app.models.RepositoryVersion): The incomplete RepositoryVersion to
                 finalize.
         """
+        if new_version.base_version:
+            previous_version = new_version.base_version
+        else:
+            previous_version = RepositoryVersion.objects.filter(
+                repository=self,
+                number__lt=new_version.number,
+                complete=True
+            ).order_by('-number').first()
+
         remove_duplicates(new_version)
 
 
