@@ -43,6 +43,18 @@ Add content to repository ``foo``
 ``$ http POST :24817${REPO_HREF}modify/ add_content_units:="[\"$CONTENT_HREF\"]"``
 
 
+
+.. _advisory-upload-workflow:
+
+Advisory upload
+---------------
+
+Advisory upload requires a file or an artifact containing advisory information in the JSON format.
+Repository is an optional argument to create new repository version with uploaded advisory.
+
+``http --form POST :24817/pulp/api/v3/content/rpm/advisories/ file@./advisory.json relative_path="advisory.json" repository="/pulp/api/v3/repositories/1b9ffafc-8a5a-4e06-9f31-6de1d1632c4c/"``
+
+
 .. _one-shot-upload-workflow:
 
 One shot upload
