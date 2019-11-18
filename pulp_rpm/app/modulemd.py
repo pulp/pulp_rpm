@@ -26,14 +26,16 @@ def resolve_module_packages(version, previous_version):
             .filter(pk__in=previous_version.content.filter(pulp_type="rpm.modulemd"))
         added_modules = current_modules.difference(previous_modules)
         removed_modules = previous_modules.difference(current_modules)
-        current_module_packages = current_modules.values_list("packages", flat=True)
-        removed_module_packages = removed_modules.values_list("packages", flat=True)
+        current_module_packages = current_modules.exclude(packages=None). \
+            values_list("packages", flat=True)
+        removed_module_packages = removed_modules.exclude(packages=None). \
+            values_list("packages", flat=True)
         packages_to_remove = removed_module_packages.difference(current_module_packages)
         version.remove_content(packages_to_remove)
     else:
         added_modules = current_modules
 
-    added_module_packages = added_modules.values_list("packages", flat=True)
+    added_module_packages = added_modules.exclude(packages=None).values_list("packages", flat=True)
     current_packages = version.content.filter(pulp_type="rpm.package")
     packages_to_add = added_module_packages.difference(current_packages)
     version.add_content(packages_to_add)
