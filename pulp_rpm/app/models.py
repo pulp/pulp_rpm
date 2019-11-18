@@ -2,6 +2,7 @@ import json
 from logging import getLogger
 
 import createrepo_c as cr
+import libcomps
 
 from django.contrib.postgres.fields import JSONField
 from django.db import (
@@ -47,7 +48,7 @@ from pulp_rpm.app.constants import (
     PULP_UPDATE_REFERENCE_ATTRS,
 )
 
-from pulp_rpm.app.comps import strdict_to_dict
+from pulp_rpm.app.comps import strdict_to_dict, list_to_idlist
 
 log = getLogger(__name__)
 
@@ -900,6 +901,29 @@ class PackageGroup(Content):
         return package_list
 
     @classmethod
+    def list_to_pkglist(cls, lst):
+        """
+        Convert list of Packages to libcomps PackageList object.
+
+        Args:
+            list: a list of Packages
+
+        Returns:
+            pkglist: a libcomps PackageList
+
+        """
+        pkglist = libcomps.PackageList()
+        for pkg in lst:
+            lib_pkg = libcomps.Package()
+            lib_pkg.name = pkg['name']
+            lib_pkg.type = pkg['type']
+            lib_pkg.basearchonly = bool(pkg['basearchonly'])
+            lib_pkg.requires = pkg['requires']
+            pkglist.append(lib_pkg)
+
+        return pkglist
+
+    @classmethod
     def libcomps_to_dict(cls, group):
         """
         Convert libcomps group object to dict for instantiating PackageGroup object.
@@ -928,6 +952,29 @@ class PackageGroup(Content):
                 getattr(group, LIBCOMPS_GROUP_ATTRS.NAME_BY_LANG)
             ),
         }
+
+    def pkg_grp_to_libcomps(self):
+        """
+        Convert PackageGroup object to libcomps Group object.
+
+        Returns:
+            group: libcomps.Group object
+
+        """
+        group = libcomps.Group()
+
+        group.id = getattr(self, PULP_GROUP_ATTRS.ID)
+        group.default = getattr(self, PULP_GROUP_ATTRS.DEFAULT)
+        group.uservisible = getattr(self, PULP_GROUP_ATTRS.USER_VISIBLE)
+        group.display_order = getattr(self, PULP_GROUP_ATTRS.DISPLAY_ORDER)
+        group.name = getattr(self, PULP_GROUP_ATTRS.NAME)
+        group.desc = getattr(self, PULP_GROUP_ATTRS.DESCRIPTION)
+        group.packages = self.list_to_pkglist(getattr(self, PULP_GROUP_ATTRS.PACKAGES))
+        group.biarchonly = getattr(self, PULP_GROUP_ATTRS.BIARCH_ONLY)
+        group.desc_by_lang = libcomps.StrDict(**getattr(self, PULP_GROUP_ATTRS.DESC_BY_LANG))
+        group.name_by_lang = libcomps.StrDict(**getattr(self, PULP_GROUP_ATTRS.NAME_BY_LANG))
+
+        return group
 
 
 class PackageCategory(Content):
@@ -1036,6 +1083,26 @@ class PackageCategory(Content):
                 getattr(category, LIBCOMPS_CATEGORY_ATTRS.NAME_BY_LANG)
             ),
         }
+
+    def pkg_cat_to_libcomps(self):
+        """
+        Convert PackageCategory object to libcomps Category object.
+
+        Returns:
+            group: libcomps.Category object
+
+        """
+        cat = libcomps.Category()
+
+        cat.id = getattr(self, PULP_CATEGORY_ATTRS.ID)
+        cat.name = getattr(self, PULP_CATEGORY_ATTRS.NAME)
+        cat.desc = getattr(self, PULP_CATEGORY_ATTRS.DESCRIPTION)
+        cat.display_order = getattr(self, PULP_CATEGORY_ATTRS.DISPLAY_ORDER)
+        cat.group_ids = list_to_idlist(getattr(self, PULP_CATEGORY_ATTRS.GROUP_IDS))
+        cat.desc_by_lang = libcomps.StrDict(**getattr(self, PULP_CATEGORY_ATTRS.DESC_BY_LANG))
+        cat.name_by_lang = libcomps.StrDict(**getattr(self, PULP_CATEGORY_ATTRS.NAME_BY_LANG))
+
+        return cat
 
 
 class PackageEnvironment(Content):
@@ -1154,6 +1221,27 @@ class PackageEnvironment(Content):
                 getattr(environment, LIBCOMPS_ENVIRONMENT_ATTRS.NAME_BY_LANG)
             ),
         }
+
+    def pkg_env_to_libcomps(self):
+        """
+        Convert PackageEnvironment object to libcomps Environment object.
+
+        Returns:
+            group: libcomps.Environment object
+
+        """
+        env = libcomps.Environment()
+
+        env.id = getattr(self, PULP_ENVIRONMENT_ATTRS.ID)
+        env.name = getattr(self, PULP_ENVIRONMENT_ATTRS.NAME)
+        env.desc = getattr(self, PULP_ENVIRONMENT_ATTRS.DESCRIPTION)
+        env.display_order = getattr(self, PULP_ENVIRONMENT_ATTRS.DISPLAY_ORDER)
+        env.group_ids = list_to_idlist(getattr(self, PULP_ENVIRONMENT_ATTRS.GROUP_IDS))
+        env.option_ids = list_to_idlist(getattr(self, PULP_ENVIRONMENT_ATTRS.OPTION_IDS))
+        env.desc_by_lang = libcomps.StrDict(**getattr(self, PULP_ENVIRONMENT_ATTRS.DESC_BY_LANG))
+        env.name_by_lang = libcomps.StrDict(**getattr(self, PULP_ENVIRONMENT_ATTRS.NAME_BY_LANG))
+
+        return env
 
 
 class PackageLangpacks(Content):
