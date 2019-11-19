@@ -24,6 +24,8 @@ def get_treeinfo_data(remote):
             if 404 == exc.status:
                 continue
             raise
+        except FileNotFoundError:
+            continue
 
         treeinfo = PulpTreeInfo()
         treeinfo.load(f=result.path)
