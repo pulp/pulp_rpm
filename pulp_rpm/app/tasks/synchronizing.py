@@ -129,18 +129,18 @@ def synchronize(remote_pk, repository_pk):
                 treeinfo["repositories"].update({repodata: str(repository_pk)})
                 continue
             name = f"{repodata}-{treeinfo['hash']}"
-            new_repository, created = RpmRepository.objects.get_or_create(
+            sub_repo, created = RpmRepository.objects.get_or_create(
                 name=name, sub_repo=True
             )
             if created:
-                new_repository.save()
-            treeinfo["repositories"].update({repodata: str(new_repository.pk)})
+                sub_repo.save()
+            treeinfo["repositories"].update({repodata: str(sub_repo.pk)})
             path = f"{repodata}/"
             new_url = urljoin(remote.url, path)
             if repodata_exists(remote, new_url):
                 stage = RpmFirstStage(remote, deferred_download, new_url=new_url)
                 dv = RpmDeclarativeVersion(first_stage=stage,
-                                           repository=repository)
+                                           repository=sub_repo)
                 dv.create()
 
     first_stage = RpmFirstStage(remote, deferred_download, treeinfo=treeinfo)
