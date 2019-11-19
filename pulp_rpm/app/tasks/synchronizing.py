@@ -90,6 +90,8 @@ def repodata_exists(remote, url):
     except ClientResponseError as exc:
         if 404 == exc.status:
             return False
+    except FileNotFoundError:
+        return False
 
     return True
 
