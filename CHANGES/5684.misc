@@ -1,3 +1,0 @@
-Rename modulemd-defaults type to modulemd_defaults
-
-For consistency, change from using a dash to an underscore in the name.
