@@ -1,5 +1,0 @@
-Rename module-defaults content endpoint for consistency
-
-Endpoints removed -> added:
-
-/pulp/api/v3/content/rpm/modulemd-defaults/ -> /pulp/api/v3/content/rpm/modulemd_defaults/

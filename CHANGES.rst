@@ -13,6 +13,96 @@ Changelog
 
 .. towncrier release notes start
 
+3.0.0rc1 (2019-11-19)
+=====================
+
+
+Features
+--------
+
+- Support for advisory upload.
+  `#4012 <https://pulp.plan.io/issues/4012>`_
+- Ensure there are no advisories with the same id in a repo version.
+
+  In case where there are two advisories with the same id, either
+  one of them is chosen, or they are merged, or there is an error raised
+  if there is no way to resolve advisory conflict.
+  `#4295 <https://pulp.plan.io/issues/4295>`_
+- No duplicated content can be present in a repository version.
+  `#4898 <https://pulp.plan.io/issues/4898>`_
+- Added sync and publish support for comps.xml types.
+  `#5495 <https://pulp.plan.io/issues/5495>`_
+- Add/remove RPMs when a repo's modulemd gets added/removed
+  `#5526 <https://pulp.plan.io/issues/5526>`_
+- Make repositories "typed". Repositories now live at a detail endpoint. Sync is performed by POSTing to {repo_href}/sync/ remote={remote_href}.
+  `#5625 <https://pulp.plan.io/issues/5625>`_
+- Adding `sub_repo` field to `RpmRepository`
+  `#5627 <https://pulp.plan.io/issues/5627>`_
+
+
+Bugfixes
+--------
+
+- Fix publication for sub repos
+  `#5630 <https://pulp.plan.io/issues/5630>`_
+- Fix ruby bindings for UpdateRecord.
+  `#5650 <https://pulp.plan.io/issues/5650>`_
+- Fix sync of a repo which contains modules and advisories.
+  `#5652 <https://pulp.plan.io/issues/5652>`_
+- Fix 404 when repo remote URL is without trailing slash.
+  `#5655 <https://pulp.plan.io/issues/5655>`_
+- Check that sections exist before parsing them.
+  `#5669 <https://pulp.plan.io/issues/5669>`_
+- Stopping to save JSONFields as String.
+  `#5671 <https://pulp.plan.io/issues/5671>`_
+- Handling missing trailing slashes on kickstart tree fetching
+  `#5677 <https://pulp.plan.io/issues/5677>`_
+- Not require `ref_id` and `title` for `UpdateReference`
+  `#5692 <https://pulp.plan.io/issues/5692>`_
+- Refactor treeinfo handling and fix publication for kickstarts
+  `#5729 <https://pulp.plan.io/issues/5729>`_
+
+
+Deprecations and Removals
+-------------------------
+
+- Sync is no longer available at the {remote_href}/sync/ repository={repo_href} endpoint. Instead, use POST {repo_href}/sync/ remote={remote_href}.
+
+  Creating / listing / editing / deleting RPM repositories is now performed on /pulp/api/v3/rpm/rpm/ instead of /pulp/api/v3/repositories/. Only RPM content can be present in a RPM repository, and only a RPM repository can hold RPM content.
+  `#5625 <https://pulp.plan.io/issues/5625>`_
+- Remove plugin managed repos
+  `#5627 <https://pulp.plan.io/issues/5627>`_
+- Rename endpoints for content to be in plural form consistently
+
+  Endpoints removed -> added:
+
+  /pulp/api/v3/content/rpm/modulemd/ -> /pulp/api/v3/content/rpm/modulemds/
+  /pulp/api/v3/content/rpm/packagecategory/ -> /pulp/api/v3/content/rpm/packagecategories/
+  /pulp/api/v3/content/rpm/packageenvironment/ -> /pulp/api/v3/content/rpm/packageenvironments/
+  /pulp/api/v3/content/rpm/packagegroup/ -> /pulp/api/v3/content/rpm/packagegroups/
+  `#5679 <https://pulp.plan.io/issues/5679>`_
+- Rename module-defaults content endpoint for consistency
+
+  Endpoints removed -> added:
+
+  /pulp/api/v3/content/rpm/modulemd-defaults/ -> /pulp/api/v3/content/rpm/modulemd_defaults/
+  `#5680 <https://pulp.plan.io/issues/5680>`_
+- Remove /pulp/api/v3/rpm/copy/ endpoint
+
+  Removed the /pulp/api/v3/rpm/copy/ endpoint. To copy all content now with typed repos, use the
+  modify endpoint on a repository.
+  `#5681 <https://pulp.plan.io/issues/5681>`_
+
+
+Misc
+----
+
+- `#3308 <https://pulp.plan.io/issues/3308>`_, `#4295 <https://pulp.plan.io/issues/4295>`_, `#5423 <https://pulp.plan.io/issues/5423>`_, `#5461 <https://pulp.plan.io/issues/5461>`_, `#5495 <https://pulp.plan.io/issues/5495>`_, `#5506 <https://pulp.plan.io/issues/5506>`_, `#5580 <https://pulp.plan.io/issues/5580>`_, `#5611 <https://pulp.plan.io/issues/5611>`_, `#5663 <https://pulp.plan.io/issues/5663>`_, `#5672 <https://pulp.plan.io/issues/5672>`_, `#5684 <https://pulp.plan.io/issues/5684>`_
+
+
+----
+
+
 3.0.0b7 (2019-10-16)
 ====================
 
