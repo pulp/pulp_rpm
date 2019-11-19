@@ -3,7 +3,7 @@ import os
 import tempfile
 
 from pulpcore.app.models.content import Artifact
-from pulp_rpm.app.models import Modulemd
+from pulp_rpm.app.models import Modulemd, Package
 from pulp_rpm.app.constants import PULP_MODULE_ATTR, PULP_MODULEDEFAULTS_ATTR
 
 import gi
@@ -18,6 +18,12 @@ def resolve_module_packages(version, previous_version):
     Args:
         version (pulpcore.app.models.RepositoryVersion): current incomplete repository version
     """
+    def modules_packages(modules):
+        packages = set()
+        for module in modules:
+            packages.update(module.packages.all())
+        return packages
+
     current_modules = Modulemd.objects \
         .filter(pk__in=version.content.filter(pulp_type="rpm.modulemd"))
 
@@ -26,17 +32,17 @@ def resolve_module_packages(version, previous_version):
             .filter(pk__in=previous_version.content.filter(pulp_type="rpm.modulemd"))
         added_modules = current_modules.difference(previous_modules)
         removed_modules = previous_modules.difference(current_modules)
-        current_module_packages = current_modules.values_list("packages", flat=True)
-        removed_module_packages = removed_modules.values_list("packages", flat=True)
+        current_module_packages = modules_packages(current_modules)
+        removed_module_packages = modules_packages(removed_modules)
         packages_to_remove = removed_module_packages.difference(current_module_packages)
-        version.remove_content(packages_to_remove)
+        version.remove_content(Package.objects.filter(pk__in=packages_to_remove))
     else:
         added_modules = current_modules
 
-    added_module_packages = added_modules.values_list("packages", flat=True)
+    added_module_packages = modules_packages(added_modules)
     current_packages = version.content.filter(pulp_type="rpm.package")
     packages_to_add = added_module_packages.difference(current_packages)
-    version.add_content(packages_to_add)
+    version.add_content(Package.objects.filter(pk__in=packages_to_add))
 
 
 def _create_snippet(snippet_string):
