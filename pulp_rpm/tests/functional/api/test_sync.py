@@ -79,7 +79,7 @@ class BasicSyncTestCase(unittest.TestCase):
         self.addCleanup(self.client.delete, remote['pulp_href'])
 
         # Sync the repository.
-        self.assertIsNone(repo['latest_version_href'])
+        self.assertEqual(repo["latest_version_href"], f"{repo['pulp_href']}versions/0/")
         sync(self.cfg, remote, repo)
         repo = self.client.get(repo['pulp_href'])
 
@@ -143,7 +143,7 @@ class KickstartSyncTestCase(unittest.TestCase):
         self.addCleanup(self.client.delete, remote['pulp_href'])
 
         # Sync the repository.
-        self.assertIsNone(repo['latest_version_href'])
+        self.assertEqual(repo["latest_version_href"], f"{repo['pulp_href']}versions/0/")
         sync(self.cfg, remote, repo)
         repo = self.client.get(repo['pulp_href'])
         for kickstart_content in get_content(repo)[RPM_KICKSTART_CONTENT_NAME]:
@@ -209,7 +209,7 @@ class KickstartSyncTestCase(unittest.TestCase):
         self.addCleanup(self.client.delete, remote['pulp_href'])
 
         # Sync the repository.
-        self.assertIsNone(repo['latest_version_href'])
+        self.assertEqual(repo["latest_version_href"], f"{repo['pulp_href']}versions/0/")
         sync(self.cfg, remote, repo)
         repo = self.client.get(repo['pulp_href'])
         for kickstart_content in get_content(repo)[RPM_KICKSTART_CONTENT_NAME]:
@@ -314,7 +314,7 @@ class SyncMutatedPackagesTestCase(unittest.TestCase):
         self.addCleanup(self.client.delete, remote['pulp_href'])
 
         # Sync the repository.
-        self.assertIsNone(repo['latest_version_href'])
+        self.assertEqual(repo["latest_version_href"], f"{repo['pulp_href']}versions/0/")
         sync(self.cfg, remote, repo)
         repo = self.client.get(repo['pulp_href'])
         self.assertDictEqual(get_content_summary(repo), RPM_FIXTURE_SUMMARY)
@@ -397,7 +397,7 @@ class EPELSyncTestCase(unittest.TestCase):
         self.addCleanup(client.delete, remote['pulp_href'])
 
         # Sync the repository.
-        self.assertIsNone(repo['latest_version_href'])
+        self.assertEqual(repo["latest_version_href"], f"{repo['pulp_href']}versions/0/")
         sync(cfg, remote, repo)
         repo = client.get(repo['pulp_href'])
         content_summary = get_content_summary(repo)
@@ -449,7 +449,7 @@ class SyncMutatedUpdateRecordTestCase(unittest.TestCase):
         self.addCleanup(client.delete, remote['pulp_href'])
 
         # Sync the repository.
-        self.assertIsNone(repo['latest_version_href'])
+        self.assertEqual(repo["latest_version_href"], f"{repo['pulp_href']}versions/0/")
         sync(self.cfg, remote, repo)
         repo = client.get(repo['pulp_href'])
         self.assertDictEqual(get_content_summary(repo), RPM_FIXTURE_SUMMARY)

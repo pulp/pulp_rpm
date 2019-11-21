@@ -55,13 +55,13 @@ class UploadEncodingMetadataTestCase(unittest.TestCase):
         repo = self.client.post(RPM_REPO_PATH, gen_repo())
         self.addCleanup(self.client.delete, repo['pulp_href'])
         repo_versions = get_versions(repo)
-        self.assertEqual(len(repo_versions), 0, repo_versions)
+        self.assertEqual(len(repo_versions), 1, repo_versions)
         self.client.post(
             urljoin(repo['pulp_href'], 'modify/'),
             {'add_content_units': [content_unit['pulp_href']]}
         )
         repo_versions = get_versions(repo)
-        self.assertEqual(len(repo_versions), 1, repo_versions)
+        self.assertEqual(len(repo_versions), 2, repo_versions)
 
     def test_upload_non_utf8(self):
         """Test whether an exception is raised when non-utf-8 is uploaded."""

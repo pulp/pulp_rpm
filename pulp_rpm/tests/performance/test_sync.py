@@ -77,7 +77,7 @@ class SyncTestCase(unittest.TestCase):
         self.addCleanup(self.client.delete, remote['pulp_href'])
 
         # Sync the repository.
-        self.assertIsNone(repo['latest_version_href'])
+        self.assertEqual(repo["latest_version_href"], f"{repo['pulp_href']}versions/0/")
         data = {"remote": remote["pulp_href"]}
         response = self.client.using_handler(api.json_handler).post(
             urljoin(repo["pulp_href"], "sync/"), data
