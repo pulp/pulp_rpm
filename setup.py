@@ -5,7 +5,7 @@ from setuptools import setup, find_packages
 requirements = [
     'createrepo_c~=0.13',
     'productmd',
-    'pulpcore~=3.0rc8',
+    'pulpcore>=3.0.0rc8,<3.2',
 ]
 
 with open('README.rst') as f:
