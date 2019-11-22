@@ -17,6 +17,14 @@ Features
 * Host content either `locally or on S3 <https://docs.pulpproject.org/en/3.0/nightly/installation/
   storage.html>`_
 
+Tech Preview
+------------
+
+Some additional features are being supplied as a tech preview.  There is a possibility that
+backwards incompatible changes will be introduced for these particular features.  For a list of
+features currently being supplied as tech previews only, see the :doc:`tech preview page
+<tech-preview>`.
+
 Requirements
 ------------
 
@@ -57,6 +65,7 @@ Table of Contents
    workflows/index
    bindings
    changes
+   tech-preview
    contributing
 
 
