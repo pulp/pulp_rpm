@@ -11,7 +11,7 @@ Features
 * :ref:`sync-publish-workflow` with "RPM Content" including RPMs and Errata
 * :ref:`Versioned Repositories <versioned-repo-created>` so every operation is a restorable snapshot
 * :ref:`Download content on-demand <create-remote>` when requested by clients to reduce disk space.
-* Upload local RPM content :ref:`easily <one-shot-upload-workflow>`
+* Upload local RPM content in `chunks <https://docs.pulpproject.org/en/3.0/nightly/workflows/upload-publish.html#uploading-content>`__
 * Copy and organize RPM content into various repositories
 * De-duplication of all saved content
 * Host content either `locally or on S3 <https://docs.pulpproject.org/en/3.0/nightly/installation/

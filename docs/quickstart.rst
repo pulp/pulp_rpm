@@ -64,6 +64,5 @@ Next Steps
 ----------
 
 * Sync rpms from the zoo repo using the :ref:`sync-publish-workflow`.
-* Upload or mirror content using the :ref:`rpm one-shot uploader <one-shot-upload-workflow>`.
 * Configure a client to :ref:`download packages <get-content-workflow>` from a RPM repository hosted
   by Pulp.
