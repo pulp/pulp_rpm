@@ -4,6 +4,7 @@ from setuptools import setup, find_packages
 
 requirements = [
     'createrepo_c~=0.13',
+    'libcomps',
     'productmd',
     'pulpcore>=3.0.0rc8,<3.2',
 ]
