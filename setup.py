@@ -13,7 +13,7 @@ with open('README.rst') as f:
 
 setup(
     name='pulp-rpm',
-    version='3.0.0rc1',
+    version='3.0.0rc2.dev',
     description='RPM plugin for the Pulp Project',
     long_description=long_description,
     license='GPLv2+',
