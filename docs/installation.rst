@@ -12,6 +12,9 @@ Install ``pulp_rpm``
 --------------------
 
 Users should install from **either** PyPI or source or use ansible-pulp installer.
+In case of PyPI or source installation in virtual environment make sure the environment
+has enabled usage of system wide packages. You can achieve that with flag ``--system-site-packages``
+at environment creation time or with option in ``pyvenv.cfg`` file in root directory of virtual environment.
 
 .. _ansible-installation:
 
@@ -29,31 +32,41 @@ Only Fedora 29+ and CentOS 7 (with epel repository and python36) are supported.
    cd ansible-pulp
    ansible-galaxy install pulp.pulp_rpm_prerequisites -p ./roles/
 
-Then use role you downloaded **before** ansible-pulp installer roles.
-Do not forget to set ``pulp_use_system_wide_pkgs`` to ``true``.
+Create ``playbook.yml`` as example you can use ``example-use/playbook.yml`` from ``ansible-pulp`` directory.
+Do not forget about ``group_vars`` as dependency in same directory.
+
+Add ``pulp_use_system_wide_pkgs: true`` and ``pulp_rpm`` plugin with prereq role downloaded above under the ``vars``.
+
+Final ``playbook.yml`` can looks like:
 
 .. code-block:: yaml
 
-   ---
-   - hosts: all
-     vars:
-       pulp_secret_key: secret
-       pulp_default_admin_password: password
-       pulp_use_system_wide_pkgs: true
-       pulp_install_plugins:
-         pulp-rpm:
-           prereq_role: "pulp.pulp_rpm_prerequisites"
-     roles:
-       - pulp-database
-       - pulp-workers
-       - pulp-resource-manager
-       - pulp-webserver
-       - pulp-content
-     environment:
-       DJANGO_SETTINGS_MODULE: pulpcore.app.settings
+    ---
+    - hosts: all
+      vars:
+        pulp_use_system_wide_pkgs: true
+        pulp_install_plugins:
+          pulp-rpm:
+            prereq_role: "pulp.pulp_rpm_prerequisites"
+      pre_tasks:
+        # The version string below is the highest of all those in roles' metadata:
+        # "min_ansible_version". It needs to be kept manually up-to-date.
+        - name: Verify Ansible meets min required version
+          assert:
+            that: "ansible_version.full is version_compare('2.8', '>=')"
+            msg: >
+              "You must update Ansible to at least 2.8 to use this version of Pulp 3 Installer."
+      roles:
+        - pulp-database
+        - pulp-workers
+        - pulp-resource-manager
+        - pulp-webserver
+        - pulp-content
+      environment:
+        DJANGO_SETTINGS_MODULE: pulpcore.app.settings
 
 Now you can run installer against your desired host following instructions
-in the ansible-pulp installer.
+in the `ansible-pulp <https://github.com/pulp/ansible-pulp>`__ installer.
 
 
 Install ``createrepo_c`` from source
@@ -72,13 +85,30 @@ If you are on Fedora, install the build dependencies with this command:
 
 .. code-block:: bash
 
-   sudo dnf install -y gcc make cmake bzip2-devel expat-devel file-devel glib2-devel libcurl-devel libmodulemd-devel libxml2-devel python3-devel rpm-devel openssl-devel sqlite-devel xz-devel zchunk-devel zlib-devel
+   sudo dnf install -y gcc make cmake bzip2-devel expat-devel file-devel glib2-devel libcurl-devel libmodulemd-devel libxml2-devel python3-devel python3-gobject python3-libmodulemd rpm-devel openssl-devel sqlite-devel xz-devel zchunk-devel zlib-devel
 
-If on CentOS or RHEL, use this command:
+If on CentOS or RHEL, use this commands:
+
+Ensure you have enabled ``epel`` repository
 
 .. code-block:: bash
 
-   sudo yum install -y gcc make cmake bzip2-devel expat-devel file-devel glib2-devel libcurl-devel libmodulemd-devel libxml2-devel python36-devel rpm-devel openssl-devel sqlite-devel xz-devel zchunk-devel zlib-devel
+    sudo yum install -y epel-release
+
+.. code-block:: bash
+
+   sudo yum install -y gcc make cmake bzip2-devel expat-devel file-devel glib2-devel libcurl-devel libmodulemd2-devel ninja-build libxml2-devel python36-devel python36-gobject rpm-devel openssl-devel sqlite-devel xz-devel zchunk-devel zlib-devel
+
+Ensure your virtual environment uses system wide packages
+*********************************************************
+
+``pyevn.cfg`` can be found usually in ``/usr/local/lib/pulp/`` as root directory of virtual environment.
+
+.. code-block:: bash
+
+    grep "include-system-site-packages" pyvenv.cfg
+
+You should get ``include-system-site-packages = true``.
 
 Install ``pulp_rpm`` from source
 ********************************
