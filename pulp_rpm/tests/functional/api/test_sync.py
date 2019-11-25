@@ -297,7 +297,7 @@ class SyncMutatedPackagesTestCase(unittest.TestCase):
         1. Create a repository and a remote.
         2. Sync the remote.
         3. Assert that the content summary matches what is expected.
-        4. Create a new remote w/ using fixture containing updated errata
+        4. Create a new remote w/ using fixture containing updated advisory
            (packages with the same NEVRA as the existing package content, but
            different pkgId).
         5. Sync the remote again.
@@ -427,7 +427,7 @@ class SyncMutatedUpdateRecordTestCase(unittest.TestCase):
         1. Create a repository and a remote.
         2. Sync the remote.
         3. Assert that the content summary matches what is expected.
-        4. Create a new remote w/ using fixture containing updated errata
+        4. Create a new remote w/ using fixture containing updated advisory
            (updaterecords with the ID as the existing updaterecord content, but
            different metadata).
         5. Sync the remote again.
