@@ -29,7 +29,7 @@ log = getLogger(__name__)
 
 class UpdateRecord(Content):
     """
-    The "UpdateRecord" content type, formerly "Errata" model in Pulp 2.
+    The "UpdateRecord" content type, formerly "Errata" model in Pulp 2 now "Advisory".
 
     Maps directly to the fields provided by createrepo_c.
     https://github.com/rpm-software-management/createrepo_c/
