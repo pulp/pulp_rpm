@@ -4,9 +4,7 @@ Quickstart
 Run Pulplift
 ------------
 
-Use pulplift to try out Pulp. From `their quickstart <https://github.com/pulp/pulplift#quickstart>`_
-pulplift uses `Vagrant <https://www.vagrantup.com/docs/installation/>`_ so you'll need to have that
-installed.
+Use pulplift to try out Pulp. Pulplift uses `Vagrant <https://www.vagrantup.com/docs/installation/>`_ so you'll need to have that installed.
 
 Download pulplift and RPM plugin prerequisite role.
 
@@ -17,7 +15,7 @@ Download pulplift and RPM plugin prerequisite role.
     ansible-galaxy install pulp.pulp_rpm_prerequisites -p ./ansible-pulp/roles/
 
 
-Use ``example.user-config.yml`` as a template for you config yaml file or directly edit that one.
+Use ``example.user-config.yml`` as a template for your config yaml file or directly edit that one.
 
 ::
 
@@ -47,6 +45,13 @@ Start your box and ssh to it
 
     vagrant up pulp3-sandbox-fedora30
     vagrant ssh pulp3-sandbox-fedora30
+
+
+Be sure you are running your pulp environment
+
+::
+
+    workon pulp
 
 
 Check Pulp's Status
