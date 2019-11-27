@@ -74,7 +74,7 @@ if [ -n "$PULP_OPERATOR_PR_NUMBER" ]; then
 fi
 
 
-git clone --depth=1 https://github.com/pulp/pulpcore.git
+git clone --depth=1 https://github.com/pulp/pulpcore.git --branch master
 
 if [ -n "$PULP_PR_NUMBER" ]; then
   cd pulpcore
