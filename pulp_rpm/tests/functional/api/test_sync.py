@@ -79,7 +79,7 @@ class BasicSyncTestCase(unittest.TestCase):
         self.addCleanup(self.client.delete, remote['pulp_href'])
 
         # Sync the repository.
-        self.assertIsNone(repo['latest_version_href'])
+        self.assertEqual(repo["latest_version_href"], f"{repo['pulp_href']}versions/0/")
         sync(self.cfg, remote, repo)
         repo = self.client.get(repo['pulp_href'])
 
@@ -143,7 +143,7 @@ class KickstartSyncTestCase(unittest.TestCase):
         self.addCleanup(self.client.delete, remote['pulp_href'])
 
         # Sync the repository.
-        self.assertIsNone(repo['latest_version_href'])
+        self.assertEqual(repo["latest_version_href"], f"{repo['pulp_href']}versions/0/")
         sync(self.cfg, remote, repo)
         repo = self.client.get(repo['pulp_href'])
         for kickstart_content in get_content(repo)[RPM_KICKSTART_CONTENT_NAME]:
@@ -209,7 +209,7 @@ class KickstartSyncTestCase(unittest.TestCase):
         self.addCleanup(self.client.delete, remote['pulp_href'])
 
         # Sync the repository.
-        self.assertIsNone(repo['latest_version_href'])
+        self.assertEqual(repo["latest_version_href"], f"{repo['pulp_href']}versions/0/")
         sync(self.cfg, remote, repo)
         repo = self.client.get(repo['pulp_href'])
         for kickstart_content in get_content(repo)[RPM_KICKSTART_CONTENT_NAME]:
@@ -297,7 +297,7 @@ class SyncMutatedPackagesTestCase(unittest.TestCase):
         1. Create a repository and a remote.
         2. Sync the remote.
         3. Assert that the content summary matches what is expected.
-        4. Create a new remote w/ using fixture containing updated errata
+        4. Create a new remote w/ using fixture containing updated advisory
            (packages with the same NEVRA as the existing package content, but
            different pkgId).
         5. Sync the remote again.
@@ -314,7 +314,7 @@ class SyncMutatedPackagesTestCase(unittest.TestCase):
         self.addCleanup(self.client.delete, remote['pulp_href'])
 
         # Sync the repository.
-        self.assertIsNone(repo['latest_version_href'])
+        self.assertEqual(repo["latest_version_href"], f"{repo['pulp_href']}versions/0/")
         sync(self.cfg, remote, repo)
         repo = self.client.get(repo['pulp_href'])
         self.assertDictEqual(get_content_summary(repo), RPM_FIXTURE_SUMMARY)
@@ -397,7 +397,7 @@ class EPELSyncTestCase(unittest.TestCase):
         self.addCleanup(client.delete, remote['pulp_href'])
 
         # Sync the repository.
-        self.assertIsNone(repo['latest_version_href'])
+        self.assertEqual(repo["latest_version_href"], f"{repo['pulp_href']}versions/0/")
         sync(cfg, remote, repo)
         repo = client.get(repo['pulp_href'])
         content_summary = get_content_summary(repo)
@@ -427,7 +427,7 @@ class SyncMutatedUpdateRecordTestCase(unittest.TestCase):
         1. Create a repository and a remote.
         2. Sync the remote.
         3. Assert that the content summary matches what is expected.
-        4. Create a new remote w/ using fixture containing updated errata
+        4. Create a new remote w/ using fixture containing updated advisory
            (updaterecords with the ID as the existing updaterecord content, but
            different metadata).
         5. Sync the remote again.
@@ -449,7 +449,7 @@ class SyncMutatedUpdateRecordTestCase(unittest.TestCase):
         self.addCleanup(client.delete, remote['pulp_href'])
 
         # Sync the repository.
-        self.assertIsNone(repo['latest_version_href'])
+        self.assertEqual(repo["latest_version_href"], f"{repo['pulp_href']}versions/0/")
         sync(self.cfg, remote, repo)
         repo = client.get(repo['pulp_href'])
         self.assertDictEqual(get_content_summary(repo), RPM_FIXTURE_SUMMARY)

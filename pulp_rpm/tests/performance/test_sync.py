@@ -77,7 +77,7 @@ class SyncTestCase(unittest.TestCase):
         self.addCleanup(self.client.delete, remote['pulp_href'])
 
         # Sync the repository.
-        self.assertIsNone(repo['latest_version_href'])
+        self.assertEqual(repo["latest_version_href"], f"{repo['pulp_href']}versions/0/")
         data = {"remote": remote["pulp_href"]}
         response = self.client.using_handler(api.json_handler).post(
             urljoin(repo["pulp_href"], "sync/"), data
@@ -127,12 +127,7 @@ class SyncTestCase(unittest.TestCase):
         repo = self.client.get(repo['pulp_href'])
 
         # Check that nothing has changed since the last sync.
-        self.assertNotEqual(latest_version_href, repo['latest_version_href'])
-        self.assertIn(
-            list(RPM_KICKSTART_FIXTURE_SUMMARY.items())[0],
-            get_content_summary(repo).items(),
-        )
-        self.assertDictEqual(get_added_content_summary(repo), {})
+        self.assertEqual(latest_version_href, repo['latest_version_href'])
 
     def test_centos7_on_demand(self):
         """Sync CentOS 7."""

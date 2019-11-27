@@ -178,7 +178,7 @@ RPM_REFERENCES_UPDATEINFO_URL = urljoin(
 )
 """The URL to a repository with ``updateinfo.xml`` containing references.
 
-This repository includes errata with reference element (0, 1 or 2 references)
+This repository includes advisory with reference element (0, 1 or 2 references)
 and without it.
 """
 
@@ -196,7 +196,7 @@ RPM_UNSIGNED_URL = urljoin(RPM_UNSIGNED_FIXTURE_URL, RPM_PACKAGE_FILENAME)
 RPM_UPDATED_UPDATEINFO_FIXTURE_URL = urljoin(
     PULP_FIXTURES_BASE_URL, 'rpm-updated-updateinfo/'
 )
-"""The URL to a repository containing UpdateRecords (Errata) with the same IDs
+"""The URL to a repository containing UpdateRecords (Advisory) with the same IDs
 as the ones in the standard repositories, but with different metadata.
 
 Note: This repository uses unsigned RPMs.

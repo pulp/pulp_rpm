@@ -8,14 +8,34 @@ hosting RPM family content types.
 Features
 --------
 
-* :ref:`sync-publish-workflow` with "RPM Content" including RPMs and Errata
+* :ref:`sync-publish-workflow` with "RPM Content" including RPMs, Advisories, Modularity, and Comps
 * :ref:`Versioned Repositories <versioned-repo-created>` so every operation is a restorable snapshot
 * :ref:`Download content on-demand <create-remote>` when requested by clients to reduce disk space.
-* Upload local RPM content :ref:`easily <one-shot-upload-workflow>`
-* Copy and organize RPM content into various repositories
+* Upload local RPM content in `chunks <https://docs.pulpproject.org/en/3.0/nightly/workflows/upload-publish.html#uploading-content>`__
+* Add, remove, copy, and organize RPM content into various repositories
 * De-duplication of all saved content
 * Host content either `locally or on S3 <https://docs.pulpproject.org/en/3.0/nightly/installation/
   storage.html>`_
+* View distributions served by pulpcore-content in a browser
+
+Tech Preview
+------------
+
+Some additional features are being supplied as a tech preview.  There is a possibility that
+backwards incompatible changes will be introduced for these particular features.  For a list of
+features currently being supplied as tech previews only, see the :doc:`tech preview page
+<tech-preview>`.
+
+Requirements
+------------
+
+``pulp_rpm`` plugin requires some dependencies such as ``libsolv`` and ``libmodulemd``
+which is provided only by RedHat family distributions like Fedora.
+
+``pulp_rpm`` plugin requires either to be:
+
+* install on Fedora 29+, CentOS 7+ (with EPEL repository enabled)
+* install inside a container with ``pulplift``
 
 Get Started
 -----------
@@ -30,11 +50,6 @@ Community contributions are encouraged.
   <https://pulp.plan.io/projects/pulp_rpm/issues>`_.
 
 
-REST API
---------
-
-REST API documentation for the RPM plugin can be found `here <restapi.html>`_
-
 Table of Contents
 -----------------
 
@@ -45,7 +60,9 @@ Table of Contents
    quickstart
    workflows/index
    bindings
+   restapi
    changes
+   tech-preview
    contributing
 
 
