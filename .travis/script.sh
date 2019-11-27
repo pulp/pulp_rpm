@@ -114,10 +114,10 @@ set -u
 
 if [[ "$TEST" == "performance" ]]; then
   echo "--- Performance Tests ---"
-  if [[ -n $PERFORMANCE_TEST ]]; then
-    pytest -vv -r sx --color=yes --pyargs --capture=no --durations=0 pulp_rpm.tests.performance.test_$PERFORMANCE_TEST || show_logs_and_return_non_zero
-  else
+  if [[ -z "$PERFORMANCE_TEST" ]]; then
     pytest -vv -r sx --color=yes --pyargs --capture=no --durations=0 pulp_rpm.tests.performance || show_logs_and_return_non_zero
+  else
+    pytest -vv -r sx --color=yes --pyargs --capture=no --durations=0 pulp_rpm.tests.performance.test_$PERFORMANCE_TEST || show_logs_and_return_non_zero
   fi
   exit
 fi
