@@ -19,6 +19,8 @@ from pulpcore.plugin.models import (
 from pulpcore.plugin.tasking import WorkingDirectory
 
 from pulp_rpm.app.comps import dict_to_strdict
+from pulp_rpm.app.constants import PUBLICATION_TYPE
+
 from pulp_rpm.app.models import (
     DistributionTree,
     Modulemd,
@@ -93,20 +95,30 @@ class PublicationData:
 
         return repomdrecords
 
-    def publish_artifacts(self, content):
+    def publish_artifacts(self, content, publication_type):
         """
         Publish artifacts.
 
         Args:
             content (pulpcore.plugin.models.Content): content set.
+            publication_type (pulp_rpm.constants.PUBLICATION_TYPE): type of publication.
 
         """
         published_artifacts = []
         for content_artifact in ContentArtifact.objects.filter(
                 content__in=content.exclude(pulp_type="rpm.repo_metadata_file").distinct()
         ).iterator():
+            if publication_type == PUBLICATION_TYPE.ALPHA:
+                relative_path = os.path.join(
+                    "Packages",
+                    content_artifact.relative_path[0].lower(),
+                    content_artifact.relative_path
+                )
+            else:
+                relative_path = content_artifact.relative_path
+
             published_artifacts.append(PublishedArtifact(
-                relative_path=content_artifact.relative_path,
+                relative_path=relative_path,
                 publication=self.publication,
                 content_artifact=content_artifact)
             )
@@ -132,7 +144,7 @@ class PublicationData:
                     addon_or_variant_id = getattr(addon_or_variant, f"{relation}_id")
                     self.sub_repos.append((addon_or_variant_id, repository_version.content))
 
-    def populate(self):
+    def populate(self, publication_type):
         """
         Populate a publication.
 
@@ -161,14 +173,15 @@ class PublicationData:
             setattr(self, f"{name}_content", content)
             setattr(self, f"{name}_repomdrecords", self.prepare_metadata_files(content, name))
             all_content |= content
-        self.publish_artifacts(all_content)
+        self.publish_artifacts(all_content, publication_type)
 
 
-def publish(repository_version_pk, metadata_signing_service=None):
+def publish(repository_version_pk, publication_type, metadata_signing_service=None):
     """
     Create a Publication based on a RepositoryVersion.
 
     Args:
+        publication_type (str): Publication type.
         repository_version_pk (str): Create a publication from this repository version.
         metadata_signing_service (pulpcore.app.models.AsciiArmoredDetachedSigningService):
             A reference to an associated signing service.
@@ -184,14 +197,14 @@ def publish(repository_version_pk, metadata_signing_service=None):
     with WorkingDirectory():
         with RpmPublication.create(repository_version) as publication:
             publication_data = PublicationData(publication)
-            publication_data.populate()
+            publication_data.populate(publication_type)
 
             content = publication.repository_version.content
 
             # Main repo
             create_repomd_xml(
                 content, publication, publication_data.repomdrecords,
-                metadata_signing_service=metadata_signing_service
+                publication_type, metadata_signing_service=metadata_signing_service
             )
 
             for sub_repo in publication_data.sub_repos:
@@ -204,7 +217,7 @@ def publish(repository_version_pk, metadata_signing_service=None):
                 )
 
 
-def create_repomd_xml(content, publication, extra_repomdrecords,
+def create_repomd_xml(content, publication, extra_repomdrecords, publication_type,
                       sub_folder=None, metadata_signing_service=None):
     """
     Creates a repomd.xml file.
@@ -214,9 +227,9 @@ def create_repomd_xml(content, publication, extra_repomdrecords,
         publication(pulpcore.plugin.models.Publication): the publication
         extra_repomdrecords(list): list with data relative to repo metadata files
         sub_folder(str): name of the folder for sub repos
+        publication_type(str): type of published hierarchy
         metadata_signing_service (pulpcore.app.models.AsciiArmoredDetachedSigningService):
             A reference to an associated signing service.
-
     """
     cwd = os.getcwd()
     repodata_path = REPODATA_PATH
@@ -257,6 +270,14 @@ def create_repomd_xml(content, publication, extra_repomdrecords,
     # Process all packages
     for package in packages.iterator():
         pkg = package.to_createrepo_c()
+        if publication_type == PUBLICATION_TYPE.ALPHA:
+            relative_path = os.path.join(
+                "Packages", pkg.name[0].lower(),
+                package.contentartifact_set.first().relative_path
+            )
+            pkg.location_href = relative_path
+        else:
+            pkg.location_href = package.contentartifact_set.first().relative_path
         pri_xml.add_pkg(pkg)
         fil_xml.add_pkg(pkg)
         oth_xml.add_pkg(pkg)

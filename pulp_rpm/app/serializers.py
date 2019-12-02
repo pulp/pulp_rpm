@@ -338,8 +338,16 @@ class RpmPublicationSerializer(PublicationSerializer):
     A Serializer for RpmPublication.
     """
 
+    publication_type = serializers.CharField(
+        help_text=_("Type of publication."),
+        required=False,
+        default=None
+    )
+
     class Meta:
-        fields = PublicationSerializer.Meta.fields
+        fields = PublicationSerializer.Meta.fields + (
+            'publication_type',
+        )
         model = RpmPublication
 
 

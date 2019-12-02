@@ -218,13 +218,15 @@ class RpmPublicationViewSet(PublicationViewSet):
         serializer.is_valid(raise_exception=True)
         repository_version = serializer.validated_data.get('repository_version')
         repository = RpmRepository.objects.get(pk=repository_version.repository.pk)
+        publication_type = serializer.validated_data.get('publication_type')
 
         result = enqueue_with_reservation(
             tasks.publish,
             [repository_version.repository],
             kwargs={
                 'repository_version_pk': repository_version.pk,
-                'metadata_signing_service': repository.metadata_signing_service
+                'metadata_signing_service': repository.metadata_signing_service,
+                'publication_type': publication_type
             }
         )
         return OperationPostponedResponse(result, request)
