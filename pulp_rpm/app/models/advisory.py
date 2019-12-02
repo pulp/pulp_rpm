@@ -7,8 +7,8 @@ from django.db import models
 from django.utils.dateparse import parse_datetime
 
 from pulpcore.plugin.models import (
+    BaseModel,
     Content,
-    Model,
 )
 
 from pulp_rpm.app.constants import (
@@ -198,7 +198,7 @@ class UpdateRecord(Content):
         default_related_name = "%(app_label)s_%(model_name)s"
 
 
-class UpdateCollection(Model):
+class UpdateCollection(BaseModel):
     """
     A collection of UpdateCollectionPackages with an associated nametag.
 
@@ -275,7 +275,7 @@ class UpdateCollection(Model):
         return col
 
 
-class UpdateCollectionPackage(Model):
+class UpdateCollectionPackage(BaseModel):
     """
     Part of an UpdateCollection, representing a package.
 
@@ -383,7 +383,7 @@ class UpdateCollectionPackage(Model):
         return pkg
 
 
-class UpdateReference(Model):
+class UpdateReference(BaseModel):
     """
     A reference to the additional information about the problem solved by an update.
 
