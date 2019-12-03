@@ -446,7 +446,7 @@ class RpmFirstStage(Stage):
                         url=modules_url
                     )
                     default_content = ModulemdDefaults(**default)
-                    modulemd_defaults_pb.increment()
+                    modulemd_defaults_pb.increment(batch_interval=600)
                     dc = DeclarativeContent(content=default_content, d_artifacts=[da])
                     await self.put(dc)
 
@@ -533,11 +533,11 @@ class RpmFirstStage(Stage):
                         dc_groups.append(dc)
 
                 for dc_category in dc_categories:
-                    comps_pb.increment()
+                    comps_pb.increment(batch_interval=600)
                     await self.put(dc_category)
 
                 for dc_environment in dc_environments:
-                    comps_pb.increment()
+                    comps_pb.increment(batch_interval=600)
                     await self.put(dc_environment)
 
             # to preserve order, downloaders are created after all repodata urls are identified
@@ -602,7 +602,7 @@ class RpmFirstStage(Stage):
                                     dc.extra_data['group_relations'].append(dc_group)
                                     dc_group.extra_data['related_packages'].append(dc)
 
-                            packages_pb.increment()
+                            packages_pb.increment(batch_interval=5000)
                             await self.put(dc)
 
                     elif results[0].url == updateinfo_url:
@@ -634,18 +634,18 @@ class RpmFirstStage(Stage):
                                 ref = UpdateReference(**reference_dict)
                                 future_relations['references'].append(ref)
 
-                            advisories_pb.increment()
+                            advisories_pb.increment(batch_interval=600)
                             dc = DeclarativeContent(content=update_record)
                             dc.extra_data = future_relations
                             await self.put(dc)
 
             # now send modules down the pipeline since all relations have been set up
             for modulemd in modulemd_list:
-                modulemd_pb.increment()
+                modulemd_pb.increment(batch_interval=600)
                 await self.put(modulemd)
 
             for dc_group in dc_groups:
-                comps_pb.increment()
+                comps_pb.increment(batch_interval=600)
                 await self.put(dc_group)
 
         packages_pb.state = 'completed'
@@ -727,18 +727,22 @@ class RpmContentSaver(ContentSaver):
             if variants:
                 Variant.objects.bulk_create(variants)
 
-        update_references_to_save = []
-        update_collection_packages_to_save = []
-        modulemd_pkgs = []
-        group_pkgs = []
-        category_groups = []
-        env_groups = []
-        env_optgroups = []
+        UpdateRecordCollections = UpdateRecord.collections.through
         ModulemdPackages = Modulemd.packages.through
         PackageGroup_packages = PackageGroup.related_packages.through
         PackageCategory_groups = PackageCategory.packagegroups.through
         PackageEnvironment_groups = PackageEnvironment.packagegroups.through
         PackageEnvironment_optionalgroups = PackageEnvironment.optionalgroups.through
+
+        update_collection_to_save = []
+        update_record_collections_to_save = []
+        update_references_to_save = []
+        update_collection_packages_to_save = []
+        modulemd_pkgs_to_save = []
+        group_pkgs_to_save = []
+        category_groups_to_save = []
+        env_groups_to_save = []
+        env_optgroups_to_save = []
 
         for declarative_content in batch:
             if declarative_content is None:
@@ -760,13 +764,14 @@ class RpmContentSaver(ContentSaver):
                     continue
 
                 future_relations = declarative_content.extra_data
-                update_collections = future_relations.get('collections') or {}
-                update_references = future_relations.get('references') or []
+                update_collections = future_relations.get('collections', {})
+                update_references = future_relations.get('references', [])
 
                 for update_collection, packages in update_collections.items():
-                    # need to save a collection before adding a relation
-                    update_collection.save()
-                    update_record.collections.add(update_collection)
+                    update_collection_to_save.append(update_collection)
+                    update_record_collections_to_save.append(UpdateRecordCollections(
+                        updaterecord=update_record, updatecollection=update_collection
+                    ))
                     for update_collection_package in packages:
                         update_collection_package.update_collection = update_collection
                         update_collection_packages_to_save.append(update_collection_package)
@@ -782,7 +787,7 @@ class RpmContentSaver(ContentSaver):
                             package_id=pkg.content.pk,
                             modulemd_id=declarative_content.content.pk,
                         )
-                        modulemd_pkgs.append(module_package)
+                        modulemd_pkgs_to_save.append(module_package)
 
             elif isinstance(declarative_content.content, PackageCategory):
                 for grp in declarative_content.extra_data['packagegroups']:
@@ -791,7 +796,7 @@ class RpmContentSaver(ContentSaver):
                             packagegroup_id=grp.content.pk,
                             packagecategory_id=declarative_content.content.pk,
                         )
-                        category_groups.append(category_group)
+                        category_groups_to_save.append(category_group)
 
             elif isinstance(declarative_content.content, PackageEnvironment):
                 for grp in declarative_content.extra_data['packagegroups']:
@@ -800,7 +805,7 @@ class RpmContentSaver(ContentSaver):
                             packagegroup_id=grp.content.pk,
                             packageenvironment_id=declarative_content.content.pk,
                         )
-                        env_groups.append(env_group)
+                        env_groups_to_save.append(env_group)
 
                 for opt in declarative_content.extra_data['optionalgroups']:
                     if not opt.content._state.adding and content_already_saved:
@@ -808,7 +813,7 @@ class RpmContentSaver(ContentSaver):
                             packagegroup_id=opt.content.pk,
                             packageenvironment_id=declarative_content.content.pk,
                         )
-                        env_optgroups.append(env_optgroup)
+                        env_optgroups_to_save.append(env_optgroup)
 
             elif isinstance(declarative_content.content, PackageGroup):
                 for pkg in declarative_content.extra_data['related_packages']:
@@ -817,7 +822,7 @@ class RpmContentSaver(ContentSaver):
                             package_id=pkg.content.pk,
                             packagegroup_id=declarative_content.content.pk
                         )
-                        group_pkgs.append(group_pkg)
+                        group_pkgs_to_save.append(group_pkg)
 
                 for packagecategory in declarative_content.extra_data['category_relations']:
                     if not packagecategory.content._state.adding and content_already_saved:
@@ -825,7 +830,7 @@ class RpmContentSaver(ContentSaver):
                             packagegroup_id=declarative_content.content.pk,
                             packagecategory_id=packagecategory.content.pk,
                         )
-                        category_groups.append(category_group)
+                        category_groups_to_save.append(category_group)
 
                 for packageenvironment in declarative_content.extra_data['environment_relations']:
                     if not packageenvironment.content._state.adding and content_already_saved:
@@ -833,7 +838,7 @@ class RpmContentSaver(ContentSaver):
                             packagegroup_id=declarative_content.content.pk,
                             packageenvironment_id=packageenvironment.content.pk,
                         )
-                        env_groups.append(env_group)
+                        env_groups_to_save.append(env_group)
 
                 for packageenvironment in declarative_content.extra_data['env_relations_optional']:
                     if not packageenvironment.content._state.adding and content_already_saved:
@@ -841,7 +846,7 @@ class RpmContentSaver(ContentSaver):
                             packagegroup_id=declarative_content.content.pk,
                             packageenvironment_id=packageenvironment.content.pk,
                         )
-                        env_optgroups.append(env_optgroup)
+                        env_optgroups_to_save.append(env_optgroup)
 
             elif isinstance(declarative_content.content, Package):
                 for modulemd in declarative_content.extra_data['modulemd_relation']:
@@ -850,7 +855,7 @@ class RpmContentSaver(ContentSaver):
                             package_id=declarative_content.content.pk,
                             modulemd_id=modulemd.content.pk,
                         )
-                        modulemd_pkgs.append(module_package)
+                        modulemd_pkgs_to_save.append(module_package)
 
                 for packagegroup in declarative_content.extra_data['group_relations']:
                     if not packagegroup.content._state.adding and content_already_saved:
@@ -858,24 +863,32 @@ class RpmContentSaver(ContentSaver):
                             package_id=declarative_content.content.pk,
                             packagegroup_id=packagegroup.content.pk,
                         )
-                        group_pkgs.append(group_pkg)
+                        group_pkgs_to_save.append(group_pkg)
 
-        if modulemd_pkgs:
-            ModulemdPackages.objects.bulk_create(modulemd_pkgs, ignore_conflicts=True)
+        if modulemd_pkgs_to_save:
+            ModulemdPackages.objects.bulk_create(modulemd_pkgs_to_save, ignore_conflicts=True)
 
-        if group_pkgs:
-            PackageGroup_packages.objects.bulk_create(group_pkgs, ignore_conflicts=True)
+        if group_pkgs_to_save:
+            PackageGroup_packages.objects.bulk_create(group_pkgs_to_save, ignore_conflicts=True)
 
-        if category_groups:
-            PackageCategory_groups.objects.bulk_create(category_groups, ignore_conflicts=True)
-
-        if env_groups:
-            PackageEnvironment_groups.objects.bulk_create(env_groups, ignore_conflicts=True)
-
-        if env_optgroups:
-            PackageEnvironment_optionalgroups.objects.bulk_create(
-                env_optgroups, ignore_conflicts=True
+        if category_groups_to_save:
+            PackageCategory_groups.objects.bulk_create(
+                category_groups_to_save, ignore_conflicts=True
             )
+
+        if env_groups_to_save:
+            PackageEnvironment_groups.objects.bulk_create(env_groups_to_save, ignore_conflicts=True)
+
+        if env_optgroups_to_save:
+            PackageEnvironment_optionalgroups.objects.bulk_create(
+                env_optgroups_to_save, ignore_conflicts=True
+            )
+
+        if update_collection_to_save:
+            UpdateCollection.objects.bulk_create(update_collection_to_save)
+
+        if update_record_collections_to_save:
+            UpdateRecordCollections.objects.bulk_create(update_record_collections_to_save)
 
         if update_collection_packages_to_save:
             UpdateCollectionPackage.objects.bulk_create(update_collection_packages_to_save)
