@@ -3,9 +3,9 @@ from logging import getLogger
 from django.db import models
 
 from pulpcore.plugin.models import (
+    BaseModel,
     Content,
     ContentArtifact,
-    Model,
     Repository,
 )
 
@@ -107,7 +107,7 @@ class DistributionTree(Content):
         )
 
 
-class Checksum(Model):
+class Checksum(BaseModel):
     """
     Distribution Tree Checksum.
 
@@ -139,7 +139,7 @@ class Checksum(Model):
         )
 
 
-class Image(Model):
+class Image(BaseModel):
     """
     Distribution Tree Image.
 
@@ -189,7 +189,7 @@ class Image(Model):
         )
 
 
-class Addon(Model):
+class Addon(BaseModel):
     """
     Distribution Tree Addon.
 
@@ -237,7 +237,7 @@ class Addon(Model):
         )
 
 
-class Variant(Model):
+class Variant(BaseModel):
     """
     Distribution Tree Variant.
 
