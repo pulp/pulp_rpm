@@ -16,6 +16,19 @@ from pulpcore.plugin.models import (
 )
 from pulpcore.plugin.repo_version_utils import remove_duplicates
 
+from pulp_rpm.app.models import (
+    DistributionTree,
+    Package,
+    PackageCategory,
+    PackageGroup,
+    PackageEnvironment,
+    PackageLangpacks,
+    RepoMetadataFile,
+    Modulemd,
+    ModulemdDefaults,
+    UpdateRecord,
+)
+
 log = getLogger(__name__)
 
 
@@ -30,6 +43,12 @@ class RpmRepository(Repository):
     """
 
     TYPE = "rpm"
+    CONTENT_TYPES = [
+        Package, UpdateRecord,
+        PackageCategory, PackageGroup, PackageEnvironment, PackageLangpacks,
+        RepoMetadataFile, DistributionTree,
+        Modulemd, ModulemdDefaults
+    ]
 
     sub_repo = models.BooleanField(default=False)
 
