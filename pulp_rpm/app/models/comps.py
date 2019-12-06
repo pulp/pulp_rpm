@@ -107,10 +107,14 @@ class PackageGroup(Content):
         """
         package_list = []
         for i in value:
-            package_list.append({'name': i.name,
-                                 'type': i.type,
-                                 'basearchonly': i.basearchonly,
-                                 'requires': i.requires})
+            as_dict = {
+                'name': i.name,
+                'type': i.type,
+                'basearchonly': i.basearchonly,
+                'requires': i.requires
+            }
+            if as_dict not in package_list:
+                package_list.append(as_dict)
         return package_list
 
     @classmethod
