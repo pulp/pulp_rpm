@@ -287,17 +287,6 @@ class RpmFirstStage(Stage):
         """
         Build `DeclarativeContent` from the repodata.
         """
-        packages_pb = ProgressReport(message='Parsed Packages', code='parsing.packages')
-        advisories_pb = ProgressReport(message='Parsed Advisories', code='parsing.advisories')
-        modulemd_pb = ProgressReport(message='Parse Modulemd', code='parsing.modulemds')
-        modulemd_defaults_pb = ProgressReport(message='Parse Modulemd-defaults',
-                                              code='parsing.modulemddefaults')
-        comps_pb = ProgressReport(message='Parsed Comps', code='parsing.comps')
-
-        packages_pb.save()
-        advisories_pb.save()
-        comps_pb.save()
-
         remote_url = self.new_url or self.remote.url
         remote_url = remote_url if remote_url[-1] == "/" else f"{remote_url}/"
 
@@ -314,7 +303,6 @@ class RpmFirstStage(Stage):
                 d_artifacts = []
                 for path, checksum in self.treeinfo["download"]["images"].items():
                     artifact = Artifact(**checksum)
-
                     da = DeclarativeArtifact(
                         artifact=artifact,
                         url=urljoin(remote_url, path),
@@ -322,7 +310,6 @@ class RpmFirstStage(Stage):
                         remote=self.remote,
                         deferred_download=self.deferred_download
                     )
-
                     d_artifacts.append(da)
 
                 distribution_tree = DistributionTree(**self.treeinfo["distribution_tree"])
@@ -350,8 +337,8 @@ class RpmFirstStage(Stage):
             for record in repomd.records:
                 if record.type in PACKAGE_REPODATA:
                     main_types.update([record.type])
-                    package_repodata_urls[record.type] = urljoin(remote_url,
-                                                                 record.location_href)
+                    package_repodata_urls[record.type] = urljoin(remote_url, record.location_href)
+
                 elif record.type in UPDATE_REPODATA:
                     updateinfo_url = urljoin(remote_url, record.location_href)
                     downloader = self.remote.get_downloader(url=updateinfo_url)
@@ -403,9 +390,13 @@ class RpmFirstStage(Stage):
                 modulemd_names = modulemd_index.get_module_names() or []
                 modulemd_all = parse_modulemd(modulemd_names, modulemd_index)
 
-                modulemd_pb.total = len(modulemd_all)
-                modulemd_pb.state = 'running'
-                modulemd_pb.save()
+                # Parsing modules happens all in one go, and from here on no useful work happens.
+                # So just report that it finished this stage.
+                modulemd_pb_data = {'message': 'Parsed Modulemd', 'code': 'parsing.modulemds'}
+                with ProgressReport(**modulemd_pb_data) as modulemd_pb:
+                    modulemd_total = len(modulemd_all)
+                    modulemd_pb.total = modulemd_total
+                    modulemd_pb.done = modulemd_total
 
                 for modulemd in modulemd_all:
                     artifact = modulemd.pop('artifact')
@@ -430,9 +421,15 @@ class RpmFirstStage(Stage):
 
                 modulemd_default_names = parse_defaults(modulemd_index)
 
-                modulemd_defaults_pb.total = len(modulemd_default_names)
-                modulemd_defaults_pb.state = 'running'
-                modulemd_defaults_pb.save()
+                # Parsing module-defaults happens all in one go, and from here on no useful
+                # work happens. So just report that it finished this stage.
+                modulemd_defaults_pb_data = {
+                    'message': 'Parsed Modulemd-defaults', 'code': 'parsing.modulemd_defaults'
+                }
+                with ProgressReport(**modulemd_defaults_pb_data) as modulemd_defaults_pb:
+                    modulemd_defaults_total = len(modulemd_default_names)
+                    modulemd_defaults_pb.total = modulemd_defaults_total
+                    modulemd_defaults_pb.done = modulemd_defaults_total
 
                 for default in modulemd_default_names:
                     artifact = default.pop('artifact')
@@ -456,11 +453,14 @@ class RpmFirstStage(Stage):
                 comps = libcomps.Comps()
                 comps.fromxml_f(comps_result.path)
 
-                comps_pb.total = (
-                    len(comps.groups) + len(comps.categories) + len(comps.environments)
-                )
-                comps_pb.state = 'running'
-                comps_pb.save()
+                # Parsing comps happens all in one go, and from here on no useful work happens.
+                # So just report that it finished this stage.
+                with ProgressReport(message='Parsed Comps', code='parsing.comps') as comps_pb:
+                    comps_total = (
+                        len(comps.groups) + len(comps.categories) + len(comps.environments)
+                    )
+                    comps_pb.total = comps_total
+                    comps_pb.done = comps_total
 
                 if comps.langpacks:
                     langpack_dict = PackageLangpacks.libcomps_to_dict(comps.langpacks)
@@ -569,41 +569,46 @@ class RpmFirstStage(Stage):
                         packages = await RpmFirstStage.parse_repodata(primary_xml_path,
                                                                       filelists_xml_path,
                                                                       other_xml_path)
-                        packages_pb.total = len(packages)
-                        packages_pb.state = 'running'
-                        packages_pb.save()
 
-                        for pkg in packages.values():
-                            package = Package(**Package.createrepo_to_dict(pkg))
-                            artifact = Artifact(size=package.size_package)
-                            checksum_type = getattr(CHECKSUM_TYPES, package.checksum_type.upper())
-                            setattr(artifact, checksum_type, package.pkgId)
-                            url = urljoin(remote_url, package.location_href)
-                            filename = os.path.basename(package.location_href)
-                            da = DeclarativeArtifact(
-                                artifact=artifact,
-                                url=url,
-                                relative_path=filename,
-                                remote=self.remote,
-                                deferred_download=self.deferred_download
-                            )
-                            dc = DeclarativeContent(content=package, d_artifacts=[da])
-                            dc.extra_data = defaultdict(list)
+                        progress_data = {'message': 'Parsed Packages', 'code': 'parsing.packages'}
+                        with ProgressReport(**progress_data) as packages_pb:
+                            packages_pb.total = len(packages)
+                            packages_pb.state = 'running'
+                            packages_pb.save()
 
-                            # find if a package relates to a modulemd
-                            if dc.content.nevra in nevra_to_module.keys():
-                                dc.content.is_modular = True
-                                for dc_modulemd in nevra_to_module[dc.content.nevra]:
-                                    dc.extra_data['modulemd_relation'].append(dc_modulemd)
-                                    dc_modulemd.extra_data['package_relation'].append(dc)
+                            for pkg in packages.values():
+                                package = Package(**Package.createrepo_to_dict(pkg))
+                                artifact = Artifact(size=package.size_package)
+                                checksum_type = getattr(
+                                    CHECKSUM_TYPES, package.checksum_type.upper()
+                                )
+                                setattr(artifact, checksum_type, package.pkgId)
+                                url = urljoin(remote_url, package.location_href)
+                                filename = os.path.basename(package.location_href)
+                                da = DeclarativeArtifact(
+                                    artifact=artifact,
+                                    url=url,
+                                    relative_path=filename,
+                                    remote=self.remote,
+                                    deferred_download=self.deferred_download
+                                )
+                                dc = DeclarativeContent(content=package, d_artifacts=[da])
+                                dc.extra_data = defaultdict(list)
 
-                            if dc.content.name in pkgname_to_groups.keys():
-                                for dc_group in pkgname_to_groups[dc.content.name]:
-                                    dc.extra_data['group_relations'].append(dc_group)
-                                    dc_group.extra_data['related_packages'].append(dc)
+                                # find if a package relates to a modulemd
+                                if dc.content.nevra in nevra_to_module.keys():
+                                    dc.content.is_modular = True
+                                    for dc_modulemd in nevra_to_module[dc.content.nevra]:
+                                        dc.extra_data['modulemd_relation'].append(dc_modulemd)
+                                        dc_modulemd.extra_data['package_relation'].append(dc)
 
-                            packages_pb.increment()
-                            await self.put(dc)
+                                if dc.content.name in pkgname_to_groups.keys():
+                                    for dc_group in pkgname_to_groups[dc.content.name]:
+                                        dc.extra_data['group_relations'].append(dc_group)
+                                        dc_group.extra_data['related_packages'].append(dc)
+
+                                packages_pb.increment()
+                                await self.put(dc)
 
                     elif results[0].url == updateinfo_url:
                         updateinfo_xml_path = results[0].path
@@ -611,33 +616,44 @@ class RpmFirstStage(Stage):
 
                         updates = await RpmFirstStage.parse_updateinfo(updateinfo_xml_path)
 
-                        advisories_pb.total = len(updates)
-                        advisories_pb.state = 'running'
-                        advisories_pb.save()
+                        advisories_pb = {
+                            'message': 'Parsed Advisories', 'code': 'parsing.advisories'
+                        }
+                        with ProgressReport(**progress_data) as advisories_pb:
+                            advisories_pb_total = len(updates)
+                            advisories_pb.total = advisories_pb_total
+                            advisories_pb.state = 'running'
+                            advisories_pb.save()
 
-                        for update in updates:
-                            update_record = UpdateRecord(**UpdateRecord.createrepo_to_dict(update))
-                            update_record.digest = hash_update_record(update)
-                            future_relations = {'collections': defaultdict(list), 'references': []}
+                            for update in updates:
+                                update_record = UpdateRecord(
+                                    **UpdateRecord.createrepo_to_dict(update)
+                                )
+                                update_record.digest = hash_update_record(update)
+                                future_relations = {
+                                    'collections': defaultdict(list), 'references': []
+                                }
 
-                            for collection in update.collections:
-                                coll_dict = UpdateCollection.createrepo_to_dict(collection)
-                                coll = UpdateCollection(**coll_dict)
+                                for collection in update.collections:
+                                    coll_dict = UpdateCollection.createrepo_to_dict(collection)
+                                    coll = UpdateCollection(**coll_dict)
 
-                                for package in collection.packages:
-                                    pkg_dict = UpdateCollectionPackage.createrepo_to_dict(package)
-                                    pkg = UpdateCollectionPackage(**pkg_dict)
-                                    future_relations['collections'][coll].append(pkg)
+                                    for package in collection.packages:
+                                        pkg_dict = UpdateCollectionPackage.createrepo_to_dict(
+                                            package
+                                        )
+                                        pkg = UpdateCollectionPackage(**pkg_dict)
+                                        future_relations['collections'][coll].append(pkg)
 
-                            for reference in update.references:
-                                reference_dict = UpdateReference.createrepo_to_dict(reference)
-                                ref = UpdateReference(**reference_dict)
-                                future_relations['references'].append(ref)
+                                for reference in update.references:
+                                    reference_dict = UpdateReference.createrepo_to_dict(reference)
+                                    ref = UpdateReference(**reference_dict)
+                                    future_relations['references'].append(ref)
 
-                            advisories_pb.increment()
-                            dc = DeclarativeContent(content=update_record)
-                            dc.extra_data = future_relations
-                            await self.put(dc)
+                                advisories_pb.increment()
+                                dc = DeclarativeContent(content=update_record)
+                                dc.extra_data = future_relations
+                                await self.put(dc)
 
             # now send modules down the pipeline since all relations have been set up
             for modulemd in modulemd_list:
@@ -647,17 +663,6 @@ class RpmFirstStage(Stage):
             for dc_group in dc_groups:
                 comps_pb.increment()
                 await self.put(dc_group)
-
-        packages_pb.state = 'completed'
-        advisories_pb.state = 'completed'
-        modulemd_pb.state = 'completed'
-        modulemd_defaults_pb.state = 'completed'
-        comps_pb.state = 'completed'
-        packages_pb.save()
-        advisories_pb.save()
-        modulemd_pb.save()
-        modulemd_defaults_pb.save()
-        comps_pb.save()
 
 
 class RpmContentSaver(ContentSaver):
