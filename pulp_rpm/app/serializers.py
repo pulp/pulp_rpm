@@ -720,7 +720,7 @@ class PackageGroupSerializer(NoArtifactContentSerializer):
     )
 
     class Meta:
-        fields = (
+        fields = NoArtifactContentSerializer.Meta.fields + (
             'id', 'default', 'user_visible', 'display_order',
             'name', 'description', 'packages', 'biarch_only',
             'desc_by_lang', 'name_by_lang', 'digest', 'related_packages'
@@ -774,7 +774,7 @@ class PackageCategorySerializer(NoArtifactContentSerializer):
     )
 
     class Meta:
-        fields = (
+        fields = NoArtifactContentSerializer.Meta.fields + (
             'id', 'name', 'description', 'display_order',
             'group_ids', 'desc_by_lang', 'name_by_lang', 'digest',
             'packagegroups'
@@ -840,7 +840,7 @@ class PackageEnvironmentSerializer(NoArtifactContentSerializer):
     )
 
     class Meta:
-        fields = (
+        fields = NoArtifactContentSerializer.Meta.fields + (
             'id', 'name', 'description', 'display_order',
             'group_ids', 'option_ids', 'desc_by_lang', 'name_by_lang',
             'digest', 'packagegroups', 'optionalgroups'
@@ -863,7 +863,7 @@ class PackageLangpacksSerializer(NoArtifactContentSerializer):
     )
 
     class Meta:
-        fields = (
+        fields = NoArtifactContentSerializer.Meta.fields + (
             'matches', 'digest'
         )
         model = PackageLangpacks
