@@ -17,7 +17,7 @@ from pulp_rpm.app.constants import (
     PULP_LANGPACKS_ATTRS,
 )
 
-from pulp_rpm.app.comps import strdict_to_dict, list_to_idlist
+from pulp_rpm.app.comps import dict_to_strdict, list_to_idlist, strdict_to_dict
 from pulp_rpm.app.models.package import Package
 
 log = getLogger(__name__)
@@ -188,8 +188,8 @@ class PackageGroup(Content):
         group.desc = getattr(self, PULP_GROUP_ATTRS.DESCRIPTION)
         group.packages = self.list_to_pkglist(getattr(self, PULP_GROUP_ATTRS.PACKAGES))
         group.biarchonly = getattr(self, PULP_GROUP_ATTRS.BIARCH_ONLY)
-        group.desc_by_lang = libcomps.StrDict(**getattr(self, PULP_GROUP_ATTRS.DESC_BY_LANG))
-        group.name_by_lang = libcomps.StrDict(**getattr(self, PULP_GROUP_ATTRS.NAME_BY_LANG))
+        group.desc_by_lang = dict_to_strdict(getattr(self, PULP_GROUP_ATTRS.DESC_BY_LANG))
+        group.name_by_lang = dict_to_strdict(getattr(self, PULP_GROUP_ATTRS.NAME_BY_LANG))
 
         return group
 
@@ -316,8 +316,8 @@ class PackageCategory(Content):
         cat.desc = getattr(self, PULP_CATEGORY_ATTRS.DESCRIPTION)
         cat.display_order = getattr(self, PULP_CATEGORY_ATTRS.DISPLAY_ORDER)
         cat.group_ids = list_to_idlist(getattr(self, PULP_CATEGORY_ATTRS.GROUP_IDS))
-        cat.desc_by_lang = libcomps.StrDict(**getattr(self, PULP_CATEGORY_ATTRS.DESC_BY_LANG))
-        cat.name_by_lang = libcomps.StrDict(**getattr(self, PULP_CATEGORY_ATTRS.NAME_BY_LANG))
+        cat.desc_by_lang = dict_to_strdict(getattr(self, PULP_CATEGORY_ATTRS.DESC_BY_LANG))
+        cat.name_by_lang = dict_to_strdict(getattr(self, PULP_CATEGORY_ATTRS.NAME_BY_LANG))
 
         return cat
 
@@ -455,8 +455,8 @@ class PackageEnvironment(Content):
         env.display_order = getattr(self, PULP_ENVIRONMENT_ATTRS.DISPLAY_ORDER)
         env.group_ids = list_to_idlist(getattr(self, PULP_ENVIRONMENT_ATTRS.GROUP_IDS))
         env.option_ids = list_to_idlist(getattr(self, PULP_ENVIRONMENT_ATTRS.OPTION_IDS))
-        env.desc_by_lang = libcomps.StrDict(**getattr(self, PULP_ENVIRONMENT_ATTRS.DESC_BY_LANG))
-        env.name_by_lang = libcomps.StrDict(**getattr(self, PULP_ENVIRONMENT_ATTRS.NAME_BY_LANG))
+        env.desc_by_lang = dict_to_strdict(getattr(self, PULP_ENVIRONMENT_ATTRS.DESC_BY_LANG))
+        env.name_by_lang = dict_to_strdict(getattr(self, PULP_ENVIRONMENT_ATTRS.NAME_BY_LANG))
 
         return env
 

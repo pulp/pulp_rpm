@@ -41,6 +41,23 @@ def strdict_to_dict(value):
     return lang_dict
 
 
+def dict_to_strdict(value):
+    """
+    Convert standard dict object to libcomps StrDict type object.
+
+    Args:
+        value: a dict
+
+    Returns:
+        strdict: a libcomps StrDict
+
+    """
+    strdict = libcomps.StrDict()
+    for i, j in value.items():
+        strdict[i] = j
+    return strdict
+
+
 def dict_digest(dict):
     """
     Calculate a hexdigest for a given dictionary.

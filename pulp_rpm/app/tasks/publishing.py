@@ -17,6 +17,7 @@ from pulpcore.plugin.models import (
 
 from pulpcore.plugin.tasking import WorkingDirectory
 
+from pulp_rpm.app.comps import dict_to_strdict
 from pulp_rpm.app.models import (
     DistributionTree,
     Modulemd,
@@ -288,10 +289,12 @@ def create_repomd_xml(content, publication, extra_repomdrecords, sub_folder=None
         comps.environments.append(env)
         has_comps = True
     for pkg_lng in PackageLangpacks.objects.filter(pk__in=content).iterator():
-        comps.langpacks = libcomps.StrDict(**pkg_lng.matches)
+        comps.langpacks = dict_to_strdict(pkg_lng.matches)
         has_comps = True
 
-    comps.toxml_f(comps_xml_path)
+    comps.toxml_f(comps_xml_path, xml_options={"default_explicit": True,
+                                               "empty_groups": True,
+                                               "uservisible_explicit": True})
 
     pri_xml.close()
     fil_xml.close()
