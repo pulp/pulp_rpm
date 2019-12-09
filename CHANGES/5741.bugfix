@@ -1,0 +1,1 @@
+Fix comps.xml publish: missing group attributes desc_by_lang, name_by_lang, and default now appear properly.
