@@ -94,7 +94,8 @@ CR_UPDATE_RECORD_ATTRS = SimpleNamespace(
     SOLUTION='solution',
     RELEASE='release',
     RIGHTS='rights',
-    PUSHCOUNT='pushcount'
+    PUSHCOUNT='pushcount',
+    REBOOT_SUGGESTED='reboot_suggested'
 )
 
 CR_UPDATE_COLLECTION_ATTRS = SimpleNamespace(
