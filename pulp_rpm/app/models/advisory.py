@@ -141,7 +141,9 @@ class UpdateRecord(Content):
             PULP_UPDATE_RECORD_ATTRS.RELEASE: getattr(update, CR_UPDATE_RECORD_ATTRS.RELEASE) or '',
             PULP_UPDATE_RECORD_ATTRS.RIGHTS: getattr(update, CR_UPDATE_RECORD_ATTRS.RIGHTS) or '',
             PULP_UPDATE_RECORD_ATTRS.PUSHCOUNT: getattr(
-                update, CR_UPDATE_RECORD_ATTRS.PUSHCOUNT) or ''
+                update, CR_UPDATE_RECORD_ATTRS.PUSHCOUNT) or '',
+            PULP_UPDATE_RECORD_ATTRS.REBOOT_SUGGESTED: getattr(
+                update, CR_UPDATE_RECORD_ATTRS.REBOOT_SUGGESTED) or False
         }
 
     def to_createrepo_c(self, collections=[]):
@@ -167,6 +169,7 @@ class UpdateRecord(Content):
         rec.rights = self.rights
         rec.summary = self.summary
         rec.description = self.description
+        rec.reboot_suggested = self.reboot_suggested
 
         if not collections:
             collections = self.collections.all()
