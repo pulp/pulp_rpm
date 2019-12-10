@@ -13,18 +13,20 @@ If you configured the ``admin`` user with a different password, adjust the confi
 accordingly. If you prefer to specify the username and password with each request, please see
 ``httpie`` documentation on how to do that.
 
-This documentation makes use of the `jq library <https://stedolan.github.io/jq/>`_
+This documentation makes use of the curl and `jq library <https://stedolan.github.io/jq/>`_
 to parse the json received from requests, in order to get the unique urls generated
 when objects are created. To follow this documentation as-is please install the jq
 library with:
 
-``$ sudo dnf install jq``
+``$ sudo dnf install jq curl``
 
 
 .. toctree::
    :maxdepth: 2
 
+   scripting
    create_sync_publish
    upload
    use_pulp_repo
+   manage
    copy

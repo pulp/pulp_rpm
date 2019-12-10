@@ -9,6 +9,7 @@ import libcomps
 from django.core.files import File
 
 from pulpcore.plugin.models import (
+    ContentArtifact,
     RepositoryVersion,
     PublishedArtifact,
     PublishedMetadata,
@@ -16,6 +17,7 @@ from pulpcore.plugin.models import (
 
 from pulpcore.plugin.tasking import WorkingDirectory
 
+from pulp_rpm.app.comps import dict_to_strdict
 from pulp_rpm.app.models import (
     DistributionTree,
     Modulemd,
@@ -42,8 +44,6 @@ class PublicationData:
 
     Attributes:
         publication (pulpcore.plugin.models.Publication): A Publication to populate.
-        packages (pulp_rpm.models.Package): A list of published packages.
-        published_artifacts (pulpcore.plugin.models.PublishedArtifact): A published artifacts list.
         sub_repos (list): A list of tuples with sub_repos data.
         repomdrecords (list): A list of tuples with repomdrecords data.
 
@@ -58,17 +58,15 @@ class PublicationData:
 
         """
         self.publication = publication
-        self.packages = []
-        self.published_artifacts = []
         self.sub_repos = []
         self.repomdrecords = []
 
-    def prepare_metadata_files(self, contents, folder=None):
+    def prepare_metadata_files(self, content, folder=None):
         """
         Copies metadata files from the Artifact storage.
 
         Args:
-            contents (pulpcore.plugin.models.Content): A list of contents.
+            content (pulpcore.plugin.models.Content): content set.
 
         Keyword Args:
             folder(str): name of the directory.
@@ -79,7 +77,7 @@ class PublicationData:
         """
         repomdrecords = []
         repo_metadata_files = RepoMetadataFile.objects.filter(
-            pk__in=contents).prefetch_related('contentartifact_set')
+            pk__in=content).prefetch_related('contentartifact_set')
 
         for repo_metadata_file in repo_metadata_files:
             content_artifact = repo_metadata_file.contentartifact_set.get()
@@ -95,21 +93,48 @@ class PublicationData:
 
         return repomdrecords
 
-    def get_packages(self, contents):
+    def publish_artifacts(self, content):
         """
-        Get packages from content.
+        Publish artifacts.
 
         Args:
-            contents (pulpcore.plugin.models.Content): A list of contents.
-
-        Returns:
-            packages (pulp_rpm.models.Package): A list of packages.
+            content (pulpcore.plugin.models.Content): content set.
 
         """
-        packages = Package.objects.filter(pk__in=contents).\
-            prefetch_related('contentartifact_set')
+        published_artifacts = []
+        for content_artifact in ContentArtifact.objects.filter(content__in=content).iterator():
+            published_artifacts.append(PublishedArtifact(
+                relative_path=content_artifact.relative_path,
+                publication=self.publication,
+                content_artifact=content_artifact)
+            )
 
-        return packages
+        PublishedArtifact.objects.bulk_create(published_artifacts, batch_size=2000)
+
+    def handle_sub_repos(self, distribution_tree):
+        """
+        Get sub-repo content and publish them.
+
+        Args:
+            distribution_tree (pulp_rpm.models.DistributionTree): A distribution_tree object.
+
+        """
+        sub_repos_pks = []
+        relations = ["addon", "variant"]
+        for relation in relations:
+            addons_or_variants = getattr(distribution_tree, f"{relation}s").all()
+            for addon_or_variant in addons_or_variants:
+                repository = addon_or_variant.repository.cast()
+                repository_version = repository.latest_version()
+                repo_pk = str(repository.pk)
+                if repository_version and repository.sub_repo:
+                    addon_or_variant_id = getattr(addon_or_variant, f"{relation}_id")
+                    # exposing sub-repo content:
+                    self.sub_repos.append((addon_or_variant_id, repository_version.content))
+                    if repo_pk not in sub_repos_pks:
+                        # publishing sub-repo content:
+                        self.publish_artifacts(repository_version.content)
+                        sub_repos_pks.append(repo_pk)
 
     def populate(self):
         """
@@ -118,11 +143,12 @@ class PublicationData:
         Create published artifacts for a publication.
 
         """
-        publication = self.publication
-        main_content = publication.repository_version.content
+        content = self.publication.repository_version.content
+        self.repomdrecords = self.prepare_metadata_files(content)
+        self.publish_artifacts(content)
 
         distribution_trees = DistributionTree.objects.filter(
-            pk__in=publication.repository_version.content
+            pk__in=content
         ).prefetch_related(
             "addons",
             "variants",
@@ -132,47 +158,18 @@ class PublicationData:
         )
 
         for distribution_tree in distribution_trees:
-            for content_artifact in distribution_tree.contentartifact_set.all():
-                self.published_artifacts.append(PublishedArtifact(
-                    relative_path=content_artifact.relative_path,
-                    publication=publication,
-                    content_artifact=content_artifact)
-                )
-            for addon in distribution_tree.addons.all():
-                repository_version = addon.repository.latest_version()
-                if repository_version and repository_version.content != main_content:
-                    self.sub_repos.append((addon.addon_id, repository_version.content))
-            for variant in distribution_tree.variants.all():
-                repository_version = variant.repository.latest_version()
-                if repository_version and repository_version.content != main_content:
-                    self.sub_repos.append((variant.variant_id, repository_version.content))
+            self.handle_sub_repos(distribution_tree)
 
             treeinfo_file = create_treeinfo(distribution_tree)
             PublishedMetadata.create_from_file(
-                publication=publication,
+                publication=self.publication,
                 file=File(open(treeinfo_file.name, 'rb'))
             )
 
-        self.packages = self.get_packages(main_content)
-        self.repomdrecords = self.prepare_metadata_files(main_content)
-
-        all_packages = self.packages
         for name, content in self.sub_repos:
             os.mkdir(name)
-            sub_repo_packages = self.get_packages(content)
-            all_packages = all_packages | sub_repo_packages
-            setattr(self, f"{name}_packages", sub_repo_packages)
+            setattr(self, f"{name}_content", content)
             setattr(self, f"{name}_repomdrecords", self.prepare_metadata_files(content, name))
-
-        for package in all_packages.distinct():
-            for content_artifact in package.contentartifact_set.all():
-                self.published_artifacts.append(PublishedArtifact(
-                    relative_path=content_artifact.relative_path,
-                    publication=self.publication,
-                    content_artifact=content_artifact)
-                )
-
-        PublishedArtifact.objects.bulk_create(self.published_artifacts)
 
 
 def publish(repository_version_pk):
@@ -194,24 +191,24 @@ def publish(repository_version_pk):
             publication_data = PublicationData(publication)
             publication_data.populate()
 
-            packages = publication_data.packages
+            content = publication.repository_version.content
 
             # Main repo
-            create_repomd_xml(packages, publication, publication_data.repomdrecords)
+            create_repomd_xml(content, publication, publication_data.repomdrecords)
 
             for sub_repo in publication_data.sub_repos:
                 name = sub_repo[0]
-                packages = getattr(publication_data, f"{name}_packages")
+                content = getattr(publication_data, f"{name}_content")
                 extra_repomdrecords = getattr(publication_data, f"{name}_repomdrecords")
-                create_repomd_xml(packages, publication, extra_repomdrecords, name)
+                create_repomd_xml(content, publication, extra_repomdrecords, name)
 
 
-def create_repomd_xml(packages, publication, extra_repomdrecords, sub_folder=None):
+def create_repomd_xml(content, publication, extra_repomdrecords, sub_folder=None):
     """
     Creates a repomd.xml file.
 
     Args:
-        packages(app.models.Package): set of packages
+        content(app.models.Content): content set
         publication(pulpcore.plugin.models.Publication): the publication
         extra_repomdrecords(list): list with data relative to repo metadata files
         sub_folder(str): name of the folder for sub repos
@@ -246,14 +243,17 @@ def create_repomd_xml(packages, publication, extra_repomdrecords, sub_folder=Non
     oth_db = cr.OtherSqlite(oth_db_path)
     upd_xml = cr.UpdateInfoXmlFile(upd_xml_path)
 
-    pri_xml.set_num_of_pkgs(len(packages))
-    fil_xml.set_num_of_pkgs(len(packages))
-    oth_xml.set_num_of_pkgs(len(packages))
+    packages = Package.objects.filter(pk__in=content)
+    total_packages = packages.count()
+
+    pri_xml.set_num_of_pkgs(total_packages)
+    fil_xml.set_num_of_pkgs(total_packages)
+    oth_xml.set_num_of_pkgs(total_packages)
 
     # Process all packages
-    for package in packages:
+    for package in packages.iterator():
         pkg = package.to_createrepo_c()
-        pkg.location_href = package.contentartifact_set.first().relative_path
+        pkg.location_href = package.contentartifact_set.only('relative_path').first().relative_path
         pri_xml.add_pkg(pkg)
         fil_xml.add_pkg(pkg)
         oth_xml.add_pkg(pkg)
@@ -262,44 +262,39 @@ def create_repomd_xml(packages, publication, extra_repomdrecords, sub_folder=Non
         oth_db.add_pkg(pkg)
 
     # Process update records
-    for update_record in UpdateRecord.objects.filter(
-            pk__in=publication.repository_version.content):
+    for update_record in UpdateRecord.objects.filter(pk__in=content).iterator():
         upd_xml.add_chunk(cr.xml_dump_updaterecord(update_record.to_createrepo_c()))
 
     # Process modulemd and modulemd_defaults
     with open(mod_yml_path, 'ab') as mod_yml:
-        for modulemd in Modulemd.objects.filter(
-                pk__in=publication.repository_version.content):
+        for modulemd in Modulemd.objects.filter(pk__in=content).iterator():
             mod_yml.write(modulemd._artifacts.get().file.read())
             has_modules = True
-        for default in ModulemdDefaults.objects.filter(
-                pk__in=publication.repository_version.content):
+        for default in ModulemdDefaults.objects.filter(pk__in=content).iterator():
             mod_yml.write(default._artifacts.get().file.read())
             has_modules = True
 
     # Process comps
     comps = libcomps.Comps()
-    for pkg_grp in PackageGroup.objects.filter(
-            pk__in=publication.repository_version.content):
+    for pkg_grp in PackageGroup.objects.filter(pk__in=content).iterator():
         group = pkg_grp.pkg_grp_to_libcomps()
         comps.groups.append(group)
         has_comps = True
-    for pkg_cat in PackageCategory.objects.filter(
-            pk__in=publication.repository_version.content):
+    for pkg_cat in PackageCategory.objects.filter(pk__in=content).iterator():
         cat = pkg_cat.pkg_cat_to_libcomps()
         comps.categories.append(cat)
         has_comps = True
-    for pkg_env in PackageEnvironment.objects.filter(
-            pk__in=publication.repository_version.content):
+    for pkg_env in PackageEnvironment.objects.filter(pk__in=content).iterator():
         env = pkg_env.pkg_env_to_libcomps()
         comps.environments.append(env)
         has_comps = True
-    for pkg_lng in PackageLangpacks.objects.filter(
-            pk__in=publication.repository_version.content):
-        comps.langpacks = libcomps.StrDict(**pkg_lng.matches)
+    for pkg_lng in PackageLangpacks.objects.filter(pk__in=content).iterator():
+        comps.langpacks = dict_to_strdict(pkg_lng.matches)
         has_comps = True
 
-    comps.toxml_f(comps_xml_path)
+    comps.toxml_f(comps_xml_path, xml_options={"default_explicit": True,
+                                               "empty_groups": True,
+                                               "uservisible_explicit": True})
 
     pri_xml.close()
     fil_xml.close()

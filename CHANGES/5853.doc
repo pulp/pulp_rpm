@@ -1,0 +1,1 @@
+Declare dependency on libcomps & PyGObject in setup.py.

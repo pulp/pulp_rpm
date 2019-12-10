@@ -10,7 +10,34 @@ client tools to a repo distributed by Pulp.
 Download ``foo.rpm`` from Pulp
 ------------------------------
 
-``$ http GET http://localhost:24816/pulp/content/foo/foo.rpm``
+.. literalinclude:: ../_scripts/download.sh
+   :language: bash
+
+Download GET response:
+
+.. code:: shell
+
+    HTTP/1.1 200 OK
+    Accept-Ranges: bytes
+    AppTime: D=417
+    Cache-Control: max-age=1800
+    Connection: keep-alive
+    Content-Length: 2473
+    Content-Type: application/x-rpm
+    Date: Wed, 27 Nov 2019 14:17:43 GMT
+    Etag: "9a9-598026a4cfb06"
+    Expires: Wed, 27 Nov 2019 14:47:43 GMT
+    Last-Modified: Sat, 23 Nov 2019 12:10:24 GMT
+    Server: nginx/1.16.1
+    Strict-Transport-Security: max-age=31536000; includeSubDomains; preload
+    X-Fedora-AppServer: people02.fedoraproject.org
+    X-GitProject: (null)
+
+
+
+    +-----------------------------------------+
+    | NOTE: binary data not shown in terminal |
+    +-----------------------------------------+
 
 Install a package from Pulp
 ---------------------------

@@ -9,16 +9,21 @@ available for users.
 Create an RPM repository ``foo``
 --------------------------------
 
-``$ http POST http://localhost:24817/pulp/api/v3/repositories/rpm/rpm/ name=foo``
+.. literalinclude:: ../_scripts/repo.sh
+   :language: bash
+
+Repository GET response:
 
 .. code:: json
 
     {
-        "pulp_href": "/pulp/api/v3/repositories/rpm/rpm/5eeabc0b-3b86-4264-bb3a-5889530a6f5b/",
+        "description": null,
+        "latest_version_href": "/pulp/api/v3/repositories/rpm/rpm/a02ace53-d490-458d-8b93-604fbcd23a9c/versions/0/",
+        "name": "foo",
+        "pulp_created": "2019-11-27T13:30:28.159167Z",
+        "pulp_href": "/pulp/api/v3/repositories/rpm/rpm/a02ace53-d490-458d-8b93-604fbcd23a9c/",
+        "versions_href": "/pulp/api/v3/repositories/rpm/rpm/a02ace53-d490-458d-8b93-604fbcd23a9c/versions/"
     }
-
-``$ export REPO_HREF=$(http :24817/pulp/api/v3/repositories/rpm/rpm/ | jq -r '.results[] | select(
-.name == "foo") | .pulp_href')``
 
 
 .. _create-remote:
@@ -30,71 +35,131 @@ By default ``policy='immediate`` which means that all the content is downloaded 
 Specify ``policy='on_demand'`` to make synchronization of a repository faster and only
 to download RPMs whenever they are requested by clients.
 
-``$ http POST http://localhost:24817/pulp/api/v3/remotes/rpm/rpm/ name='bar' url='https://repos.fedorapeople.org/pulp/pulp/fixtures/rpm-unsigned/' policy='on_demand'``
+.. literalinclude:: ../_scripts/remote.sh
+   :language: bash
+
+Remote GET response:
 
 .. code:: json
 
     {
-        "pulp_href": "/pulp/api/v3/remotes/rpm/rpm/378711cd-1bee-4adc-8d9b-fe3bceaba39f/",
+        "ca_cert": null,
+        "client_cert": null,
+        "client_key": null,
+        "download_concurrency": 20,
+        "name": "bar",
+        "policy": "on_demand",
+        "proxy_url": null,
+        "pulp_created": "2019-11-27T13:30:29.199173Z",
+        "pulp_href": "/pulp/api/v3/remotes/rpm/rpm/2ceb5262-a5b2-4297-afdf-a31f7e46dfc5/",
+        "pulp_last_updated": "2019-11-27T13:30:29.199187Z",
+        "tls_validation": true,
+        "url": "https://repos.fedorapeople.org/pulp/pulp/fixtures/rpm/"
     }
 
-``$ export REMOTE_HREF=$(http :24817/pulp/api/v3/remotes/rpm/rpm/ | jq -r '.results[] | select(.name == "bar") | .pulp_href')``
+.. _versioned-repo-created:
 
 Sync repository ``foo`` using remote ``bar``
 --------------------------------------------
 
-``$ http POST :24817${REPO_HREF}sync/ remote=$REMOTE_HREF``
+.. literalinclude:: ../_scripts/sync.sh
+   :language: bash
 
-
-.. _versioned-repo-created:
-
-Look at the new Repository Version created
-------------------------------------------
-
-``$ http GET :24817${REPO_HREF}versions/1/``
+RepositoryVersion GET response (when sync task complete):
 
 .. code:: json
 
     {
-        "_added_href": "/pulp/api/v3/repositories/rpm/rpm/5eeabc0b-3b86-4264-bb3a-5889530a6f5b/versions/1/added_content/",
-        "_content_href": "/pulp/api/v3/repositories/5eeabc0b-3b86-4264-bb3a-5889530a6f5b/rpm/rpm/versions/1/content/",
-        "pulp_href": "/pulp/api/v3/repositories/5eeabc0b-3b86-4264-bb3a-5889530a6f5b/rpm/rpm/versions/1/",
-        "_removed_href": "/pulp/api/v3/repositories/5eeabc0b-3b86-4264-bb3a-5889530a6f5b/rpm/rpm/versions/1/removed_content/",
+        "base_version": null,
         "content_summary": {
-            "package": 35,
-            "advisory": 4
+            "added": {
+                "rpm.advisory": {
+                    "count": 4,
+                    "href": "/pulp/api/v3/content/rpm/advisories/?repository_version_added=/pulp/api/v3/repositories/rpm/rpm/a02ace53-d490-458d-8b93-604fbcd23a9c/versions/1/"
+                },
+                "rpm.package": {
+                    "count": 35,
+                    "href": "/pulp/api/v3/content/rpm/packages/?repository_version_added=/pulp/api/v3/repositories/rpm/rpm/a02ace53-d490-458d-8b93-604fbcd23a9c/versions/1/"
+                },
+                "rpm.packagecategory": {
+                    "count": 1,
+                    "href": "/pulp/api/v3/content/rpm/packagecategories/?repository_version_added=/pulp/api/v3/repositories/rpm/rpm/a02ace53-d490-458d-8b93-604fbcd23a9c/versions/1/"
+                },
+                "rpm.packagegroup": {
+                    "count": 2,
+                    "href": "/pulp/api/v3/content/rpm/packagegroups/?repository_version_added=/pulp/api/v3/repositories/rpm/rpm/a02ace53-d490-458d-8b93-604fbcd23a9c/versions/1/"
+                },
+                "rpm.packagelangpacks": {
+                    "count": 1,
+                    "href": "/pulp/api/v3/content/rpm/packagelangpacks/?repository_version_added=/pulp/api/v3/repositories/rpm/rpm/a02ace53-d490-458d-8b93-604fbcd23a9c/versions/1/"
+                }
+            },
+            "present": {
+                "rpm.advisory": {
+                    "count": 4,
+                    "href": "/pulp/api/v3/content/rpm/advisories/?repository_version=/pulp/api/v3/repositories/rpm/rpm/a02ace53-d490-458d-8b93-604fbcd23a9c/versions/1/"
+                },
+                "rpm.package": {
+                    "count": 35,
+                    "href": "/pulp/api/v3/content/rpm/packages/?repository_version=/pulp/api/v3/repositories/rpm/rpm/a02ace53-d490-458d-8b93-604fbcd23a9c/versions/1/"
+                },
+                "rpm.packagecategory": {
+                    "count": 1,
+                    "href": "/pulp/api/v3/content/rpm/packagecategories/?repository_version=/pulp/api/v3/repositories/rpm/rpm/a02ace53-d490-458d-8b93-604fbcd23a9c/versions/1/"
+                },
+                "rpm.packagegroup": {
+                    "count": 2,
+                    "href": "/pulp/api/v3/content/rpm/packagegroups/?repository_version=/pulp/api/v3/repositories/rpm/rpm/a02ace53-d490-458d-8b93-604fbcd23a9c/versions/1/"
+                },
+                "rpm.packagelangpacks": {
+                    "count": 1,
+                    "href": "/pulp/api/v3/content/rpm/packagelangpacks/?repository_version=/pulp/api/v3/repositories/rpm/rpm/a02ace53-d490-458d-8b93-604fbcd23a9c/versions/1/"
+                }
+            },
+            "removed": {}
         },
-        "created": "2018-02-23T20:29:54.499055Z",
-        "number": 1
+        "number": 1,
+        "pulp_created": "2019-11-27T13:30:31.961788Z",
+        "pulp_href": "/pulp/api/v3/repositories/rpm/rpm/a02ace53-d490-458d-8b93-604fbcd23a9c/versions/1/"
     }
 
 
 Create a Publication
 --------------------
 
-``$ http POST :24817/pulp/api/v3/publications/rpm/rpm/ repository=$REPO_HREF``
+.. literalinclude:: ../_scripts/publication.sh
+   :language: bash
+
+Publication GET response (when task complete):
 
 .. code:: json
 
-    [
-        {
-            "pulp_href": "/pulp/api/v3/tasks/fd4cbecd-6c6a-4197-9cbe-4e45b0516309/",
-            "task_id": "fd4cbecd-6c6a-4197-9cbe-4e45b0516309"
-        }
-    ]
-
-``$ export PUBLICATION_HREF=$(http :24817/pulp/api/v3/publications/rpm/rpm/ | jq -r '.results[] | select(.repository_version|test("'$REPO_HREF'.")) | .pulp_href')``
+    {
+        "publisher": null,
+        "pulp_created": "2019-11-27T13:30:36.006972Z",
+        "pulp_href": "/pulp/api/v3/publications/rpm/rpm/c90316fc-bf2a-458a-93b8-d3d75614572f/",
+        "repository": "/pulp/api/v3/repositories/rpm/rpm/a02ace53-d490-458d-8b93-604fbcd23a9c/",
+        "repository_version": "/pulp/api/v3/repositories/rpm/rpm/a02ace53-d490-458d-8b93-604fbcd23a9c/versions/1/"
+    }
 
 
 Create a Distribution for the Publication
 -----------------------------------------
 
-``$ http POST http://localhost:24817/pulp/api/v3/distributions/rpm/rpm/ name='baz' base_path='foo' publication=$PUBLICATION_HREF``
+.. literalinclude:: ../_scripts/distribution.sh
+   :language: bash
 
+Distribution GET response (when task complete):
 
 .. code:: json
 
     {
-        "pulp_href": "/pulp/api/v3/distributions/8f394d20-f6fb-49dd-af0e-778225d79442/",
+        "base_path": "foo",
+        "base_url": "http://pulp3-source-fedora30.pavels-macbook-pro.example.com/pulp/content/foo",
+        "content_guard": null,
+        "name": "baz",
+        "publication": "/pulp/api/v3/publications/rpm/rpm/c90316fc-bf2a-458a-93b8-d3d75614572f/",
+        "pulp_created": "2019-11-27T13:30:38.238857Z",
+        "pulp_href": "/pulp/api/v3/distributions/rpm/rpm/c1166d2d-0832-4e90-85fd-e34e94e6a156/"
     }
 

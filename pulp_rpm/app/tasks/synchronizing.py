@@ -287,17 +287,6 @@ class RpmFirstStage(Stage):
         """
         Build `DeclarativeContent` from the repodata.
         """
-        packages_pb = ProgressReport(message='Parsed Packages', code='parsing.packages')
-        advisories_pb = ProgressReport(message='Parsed Advisories', code='parsing.advisories')
-        modulemd_pb = ProgressReport(message='Parse Modulemd', code='parsing.modulemds')
-        modulemd_defaults_pb = ProgressReport(message='Parse Modulemd-defaults',
-                                              code='parsing.modulemddefaults')
-        comps_pb = ProgressReport(message='Parsed Comps', code='parsing.comps')
-
-        packages_pb.save()
-        advisories_pb.save()
-        comps_pb.save()
-
         remote_url = self.new_url or self.remote.url
         remote_url = remote_url if remote_url[-1] == "/" else f"{remote_url}/"
 
@@ -314,7 +303,6 @@ class RpmFirstStage(Stage):
                 d_artifacts = []
                 for path, checksum in self.treeinfo["download"]["images"].items():
                     artifact = Artifact(**checksum)
-
                     da = DeclarativeArtifact(
                         artifact=artifact,
                         url=urljoin(remote_url, path),
@@ -322,7 +310,6 @@ class RpmFirstStage(Stage):
                         remote=self.remote,
                         deferred_download=self.deferred_download
                     )
-
                     d_artifacts.append(da)
 
                 distribution_tree = DistributionTree(**self.treeinfo["distribution_tree"])
@@ -350,8 +337,8 @@ class RpmFirstStage(Stage):
             for record in repomd.records:
                 if record.type in PACKAGE_REPODATA:
                     main_types.update([record.type])
-                    package_repodata_urls[record.type] = urljoin(remote_url,
-                                                                 record.location_href)
+                    package_repodata_urls[record.type] = urljoin(remote_url, record.location_href)
+
                 elif record.type in UPDATE_REPODATA:
                     updateinfo_url = urljoin(remote_url, record.location_href)
                     downloader = self.remote.get_downloader(url=updateinfo_url)
@@ -403,9 +390,13 @@ class RpmFirstStage(Stage):
                 modulemd_names = modulemd_index.get_module_names() or []
                 modulemd_all = parse_modulemd(modulemd_names, modulemd_index)
 
-                modulemd_pb.total = len(modulemd_all)
-                modulemd_pb.state = 'running'
-                modulemd_pb.save()
+                # Parsing modules happens all in one go, and from here on no useful work happens.
+                # So just report that it finished this stage.
+                modulemd_pb_data = {'message': 'Parsed Modulemd', 'code': 'parsing.modulemds'}
+                with ProgressReport(**modulemd_pb_data) as modulemd_pb:
+                    modulemd_total = len(modulemd_all)
+                    modulemd_pb.total = modulemd_total
+                    modulemd_pb.done = modulemd_total
 
                 for modulemd in modulemd_all:
                     artifact = modulemd.pop('artifact')
@@ -430,9 +421,15 @@ class RpmFirstStage(Stage):
 
                 modulemd_default_names = parse_defaults(modulemd_index)
 
-                modulemd_defaults_pb.total = len(modulemd_default_names)
-                modulemd_defaults_pb.state = 'running'
-                modulemd_defaults_pb.save()
+                # Parsing module-defaults happens all in one go, and from here on no useful
+                # work happens. So just report that it finished this stage.
+                modulemd_defaults_pb_data = {
+                    'message': 'Parsed Modulemd-defaults', 'code': 'parsing.modulemd_defaults'
+                }
+                with ProgressReport(**modulemd_defaults_pb_data) as modulemd_defaults_pb:
+                    modulemd_defaults_total = len(modulemd_default_names)
+                    modulemd_defaults_pb.total = modulemd_defaults_total
+                    modulemd_defaults_pb.done = modulemd_defaults_total
 
                 for default in modulemd_default_names:
                     artifact = default.pop('artifact')
@@ -456,11 +453,14 @@ class RpmFirstStage(Stage):
                 comps = libcomps.Comps()
                 comps.fromxml_f(comps_result.path)
 
-                comps_pb.total = (
-                    len(comps.groups) + len(comps.categories) + len(comps.environments)
-                )
-                comps_pb.state = 'running'
-                comps_pb.save()
+                # Parsing comps happens all in one go, and from here on no useful work happens.
+                # So just report that it finished this stage.
+                with ProgressReport(message='Parsed Comps', code='parsing.comps') as comps_pb:
+                    comps_total = (
+                        len(comps.groups) + len(comps.categories) + len(comps.environments)
+                    )
+                    comps_pb.total = comps_total
+                    comps_pb.done = comps_total
 
                 if comps.langpacks:
                     langpack_dict = PackageLangpacks.libcomps_to_dict(comps.langpacks)
@@ -569,41 +569,46 @@ class RpmFirstStage(Stage):
                         packages = await RpmFirstStage.parse_repodata(primary_xml_path,
                                                                       filelists_xml_path,
                                                                       other_xml_path)
-                        packages_pb.total = len(packages)
-                        packages_pb.state = 'running'
-                        packages_pb.save()
 
-                        for pkg in packages.values():
-                            package = Package(**Package.createrepo_to_dict(pkg))
-                            artifact = Artifact(size=package.size_package)
-                            checksum_type = getattr(CHECKSUM_TYPES, package.checksum_type.upper())
-                            setattr(artifact, checksum_type, package.pkgId)
-                            url = urljoin(remote_url, package.location_href)
-                            filename = os.path.basename(package.location_href)
-                            da = DeclarativeArtifact(
-                                artifact=artifact,
-                                url=url,
-                                relative_path=filename,
-                                remote=self.remote,
-                                deferred_download=self.deferred_download
-                            )
-                            dc = DeclarativeContent(content=package, d_artifacts=[da])
-                            dc.extra_data = defaultdict(list)
+                        progress_data = {'message': 'Parsed Packages', 'code': 'parsing.packages'}
+                        with ProgressReport(**progress_data) as packages_pb:
+                            packages_pb.total = len(packages)
+                            packages_pb.state = 'running'
+                            packages_pb.save()
 
-                            # find if a package relates to a modulemd
-                            if dc.content.nevra in nevra_to_module.keys():
-                                dc.content.is_modular = True
-                                for dc_modulemd in nevra_to_module[dc.content.nevra]:
-                                    dc.extra_data['modulemd_relation'].append(dc_modulemd)
-                                    dc_modulemd.extra_data['package_relation'].append(dc)
+                            for pkg in packages.values():
+                                package = Package(**Package.createrepo_to_dict(pkg))
+                                artifact = Artifact(size=package.size_package)
+                                checksum_type = getattr(
+                                    CHECKSUM_TYPES, package.checksum_type.upper()
+                                )
+                                setattr(artifact, checksum_type, package.pkgId)
+                                url = urljoin(remote_url, package.location_href)
+                                filename = os.path.basename(package.location_href)
+                                da = DeclarativeArtifact(
+                                    artifact=artifact,
+                                    url=url,
+                                    relative_path=filename,
+                                    remote=self.remote,
+                                    deferred_download=self.deferred_download
+                                )
+                                dc = DeclarativeContent(content=package, d_artifacts=[da])
+                                dc.extra_data = defaultdict(list)
 
-                            if dc.content.name in pkgname_to_groups.keys():
-                                for dc_group in pkgname_to_groups[dc.content.name]:
-                                    dc.extra_data['group_relations'].append(dc_group)
-                                    dc_group.extra_data['related_packages'].append(dc)
+                                # find if a package relates to a modulemd
+                                if dc.content.nevra in nevra_to_module.keys():
+                                    dc.content.is_modular = True
+                                    for dc_modulemd in nevra_to_module[dc.content.nevra]:
+                                        dc.extra_data['modulemd_relation'].append(dc_modulemd)
+                                        dc_modulemd.extra_data['package_relation'].append(dc)
 
-                            packages_pb.increment()
-                            await self.put(dc)
+                                if dc.content.name in pkgname_to_groups.keys():
+                                    for dc_group in pkgname_to_groups[dc.content.name]:
+                                        dc.extra_data['group_relations'].append(dc_group)
+                                        dc_group.extra_data['related_packages'].append(dc)
+
+                                packages_pb.increment()
+                                await self.put(dc)
 
                     elif results[0].url == updateinfo_url:
                         updateinfo_xml_path = results[0].path
@@ -611,33 +616,44 @@ class RpmFirstStage(Stage):
 
                         updates = await RpmFirstStage.parse_updateinfo(updateinfo_xml_path)
 
-                        advisories_pb.total = len(updates)
-                        advisories_pb.state = 'running'
-                        advisories_pb.save()
+                        advisories_pb = {
+                            'message': 'Parsed Advisories', 'code': 'parsing.advisories'
+                        }
+                        with ProgressReport(**progress_data) as advisories_pb:
+                            advisories_pb_total = len(updates)
+                            advisories_pb.total = advisories_pb_total
+                            advisories_pb.state = 'running'
+                            advisories_pb.save()
 
-                        for update in updates:
-                            update_record = UpdateRecord(**UpdateRecord.createrepo_to_dict(update))
-                            update_record.digest = hash_update_record(update)
-                            future_relations = {'collections': defaultdict(list), 'references': []}
+                            for update in updates:
+                                update_record = UpdateRecord(
+                                    **UpdateRecord.createrepo_to_dict(update)
+                                )
+                                update_record.digest = hash_update_record(update)
+                                future_relations = {
+                                    'collections': defaultdict(list), 'references': []
+                                }
 
-                            for collection in update.collections:
-                                coll_dict = UpdateCollection.createrepo_to_dict(collection)
-                                coll = UpdateCollection(**coll_dict)
+                                for collection in update.collections:
+                                    coll_dict = UpdateCollection.createrepo_to_dict(collection)
+                                    coll = UpdateCollection(**coll_dict)
 
-                                for package in collection.packages:
-                                    pkg_dict = UpdateCollectionPackage.createrepo_to_dict(package)
-                                    pkg = UpdateCollectionPackage(**pkg_dict)
-                                    future_relations['collections'][coll].append(pkg)
+                                    for package in collection.packages:
+                                        pkg_dict = UpdateCollectionPackage.createrepo_to_dict(
+                                            package
+                                        )
+                                        pkg = UpdateCollectionPackage(**pkg_dict)
+                                        future_relations['collections'][coll].append(pkg)
 
-                            for reference in update.references:
-                                reference_dict = UpdateReference.createrepo_to_dict(reference)
-                                ref = UpdateReference(**reference_dict)
-                                future_relations['references'].append(ref)
+                                for reference in update.references:
+                                    reference_dict = UpdateReference.createrepo_to_dict(reference)
+                                    ref = UpdateReference(**reference_dict)
+                                    future_relations['references'].append(ref)
 
-                            advisories_pb.increment()
-                            dc = DeclarativeContent(content=update_record)
-                            dc.extra_data = future_relations
-                            await self.put(dc)
+                                advisories_pb.increment()
+                                dc = DeclarativeContent(content=update_record)
+                                dc.extra_data = future_relations
+                                await self.put(dc)
 
             # now send modules down the pipeline since all relations have been set up
             for modulemd in modulemd_list:
@@ -647,17 +663,6 @@ class RpmFirstStage(Stage):
             for dc_group in dc_groups:
                 comps_pb.increment()
                 await self.put(dc_group)
-
-        packages_pb.state = 'completed'
-        advisories_pb.state = 'completed'
-        modulemd_pb.state = 'completed'
-        modulemd_defaults_pb.state = 'completed'
-        comps_pb.state = 'completed'
-        packages_pb.save()
-        advisories_pb.save()
-        modulemd_pb.save()
-        modulemd_defaults_pb.save()
-        comps_pb.save()
 
 
 class RpmContentSaver(ContentSaver):
@@ -727,18 +732,22 @@ class RpmContentSaver(ContentSaver):
             if variants:
                 Variant.objects.bulk_create(variants)
 
+        UpdateRecordCollections = UpdateRecord.collections.through
+        ModulemdPackages = Modulemd.packages.through
+        PackageGroupPackages = PackageGroup.related_packages.through
+        PackageCategoryGroups = PackageCategory.packagegroups.through
+        PackageEnvironmentGroups = PackageEnvironment.packagegroups.through
+        PackageEnvironmentOptionalGroups = PackageEnvironment.optionalgroups.through
+
+        update_collection_to_save = []
+        update_record_collections_to_save = []
         update_references_to_save = []
         update_collection_packages_to_save = []
-        modulemd_pkgs = []
-        group_pkgs = []
-        category_groups = []
-        env_groups = []
-        env_optgroups = []
-        ModulemdPackages = Modulemd.packages.through
-        PackageGroup_packages = PackageGroup.related_packages.through
-        PackageCategory_groups = PackageCategory.packagegroups.through
-        PackageEnvironment_groups = PackageEnvironment.packagegroups.through
-        PackageEnvironment_optionalgroups = PackageEnvironment.optionalgroups.through
+        modulemd_pkgs_to_save = []
+        group_pkgs_to_save = []
+        category_groups_to_save = []
+        env_groups_to_save = []
+        env_optgroups_to_save = []
 
         for declarative_content in batch:
             if declarative_content is None:
@@ -760,13 +769,14 @@ class RpmContentSaver(ContentSaver):
                     continue
 
                 future_relations = declarative_content.extra_data
-                update_collections = future_relations.get('collections') or {}
-                update_references = future_relations.get('references') or []
+                update_collections = future_relations.get('collections', {})
+                update_references = future_relations.get('references', [])
 
                 for update_collection, packages in update_collections.items():
-                    # need to save a collection before adding a relation
-                    update_collection.save()
-                    update_record.collections.add(update_collection)
+                    update_collection_to_save.append(update_collection)
+                    update_record_collections_to_save.append(UpdateRecordCollections(
+                        updaterecord=update_record, updatecollection=update_collection
+                    ))
                     for update_collection_package in packages:
                         update_collection_package.update_collection = update_collection
                         update_collection_packages_to_save.append(update_collection_package)
@@ -782,66 +792,66 @@ class RpmContentSaver(ContentSaver):
                             package_id=pkg.content.pk,
                             modulemd_id=declarative_content.content.pk,
                         )
-                        modulemd_pkgs.append(module_package)
+                        modulemd_pkgs_to_save.append(module_package)
 
             elif isinstance(declarative_content.content, PackageCategory):
                 for grp in declarative_content.extra_data['packagegroups']:
                     if not grp.content._state.adding and content_already_saved:
-                        category_group = PackageCategory_groups(
+                        category_group = PackageCategoryGroups(
                             packagegroup_id=grp.content.pk,
                             packagecategory_id=declarative_content.content.pk,
                         )
-                        category_groups.append(category_group)
+                        category_groups_to_save.append(category_group)
 
             elif isinstance(declarative_content.content, PackageEnvironment):
                 for grp in declarative_content.extra_data['packagegroups']:
                     if not grp.content._state.adding and content_already_saved:
-                        env_group = PackageEnvironment_groups(
+                        env_group = PackageEnvironmentGroups(
                             packagegroup_id=grp.content.pk,
                             packageenvironment_id=declarative_content.content.pk,
                         )
-                        env_groups.append(env_group)
+                        env_groups_to_save.append(env_group)
 
                 for opt in declarative_content.extra_data['optionalgroups']:
                     if not opt.content._state.adding and content_already_saved:
-                        env_optgroup = PackageEnvironment_optionalgroups(
+                        env_optgroup = PackageEnvironmentOptionalGroups(
                             packagegroup_id=opt.content.pk,
                             packageenvironment_id=declarative_content.content.pk,
                         )
-                        env_optgroups.append(env_optgroup)
+                        env_optgroups_to_save.append(env_optgroup)
 
             elif isinstance(declarative_content.content, PackageGroup):
                 for pkg in declarative_content.extra_data['related_packages']:
                     if not pkg.content._state.adding and content_already_saved:
-                        group_pkg = PackageGroup_packages(
+                        group_pkg = PackageGroupPackages(
                             package_id=pkg.content.pk,
                             packagegroup_id=declarative_content.content.pk
                         )
-                        group_pkgs.append(group_pkg)
+                        group_pkgs_to_save.append(group_pkg)
 
                 for packagecategory in declarative_content.extra_data['category_relations']:
                     if not packagecategory.content._state.adding and content_already_saved:
-                        category_group = PackageCategory_groups(
+                        category_group = PackageCategoryGroups(
                             packagegroup_id=declarative_content.content.pk,
                             packagecategory_id=packagecategory.content.pk,
                         )
-                        category_groups.append(category_group)
+                        category_groups_to_save.append(category_group)
 
                 for packageenvironment in declarative_content.extra_data['environment_relations']:
                     if not packageenvironment.content._state.adding and content_already_saved:
-                        env_group = PackageEnvironment_groups(
+                        env_group = PackageEnvironmentGroups(
                             packagegroup_id=declarative_content.content.pk,
                             packageenvironment_id=packageenvironment.content.pk,
                         )
-                        env_groups.append(env_group)
+                        env_groups_to_save.append(env_group)
 
                 for packageenvironment in declarative_content.extra_data['env_relations_optional']:
                     if not packageenvironment.content._state.adding and content_already_saved:
-                        env_optgroup = PackageEnvironment_optionalgroups(
+                        env_optgroup = PackageEnvironmentOptionalGroups(
                             packagegroup_id=declarative_content.content.pk,
                             packageenvironment_id=packageenvironment.content.pk,
                         )
-                        env_optgroups.append(env_optgroup)
+                        env_optgroups_to_save.append(env_optgroup)
 
             elif isinstance(declarative_content.content, Package):
                 for modulemd in declarative_content.extra_data['modulemd_relation']:
@@ -850,32 +860,41 @@ class RpmContentSaver(ContentSaver):
                             package_id=declarative_content.content.pk,
                             modulemd_id=modulemd.content.pk,
                         )
-                        modulemd_pkgs.append(module_package)
+                        modulemd_pkgs_to_save.append(module_package)
 
                 for packagegroup in declarative_content.extra_data['group_relations']:
                     if not packagegroup.content._state.adding and content_already_saved:
-                        group_pkg = PackageGroup_packages(
+                        group_pkg = PackageGroupPackages(
                             package_id=declarative_content.content.pk,
                             packagegroup_id=packagegroup.content.pk,
                         )
-                        group_pkgs.append(group_pkg)
+                        group_pkgs_to_save.append(group_pkg)
 
-        if modulemd_pkgs:
-            ModulemdPackages.objects.bulk_create(modulemd_pkgs, ignore_conflicts=True)
+        if modulemd_pkgs_to_save:
+            ModulemdPackages.objects.bulk_create(modulemd_pkgs_to_save, ignore_conflicts=True)
 
-        if group_pkgs:
-            PackageGroup_packages.objects.bulk_create(group_pkgs, ignore_conflicts=True)
+        if group_pkgs_to_save:
+            PackageGroupPackages.objects.bulk_create(group_pkgs_to_save, ignore_conflicts=True)
 
-        if category_groups:
-            PackageCategory_groups.objects.bulk_create(category_groups, ignore_conflicts=True)
-
-        if env_groups:
-            PackageEnvironment_groups.objects.bulk_create(env_groups, ignore_conflicts=True)
-
-        if env_optgroups:
-            PackageEnvironment_optionalgroups.objects.bulk_create(
-                env_optgroups, ignore_conflicts=True
+        if category_groups_to_save:
+            PackageCategoryGroups.objects.bulk_create(
+                category_groups_to_save, ignore_conflicts=True
             )
+
+        if env_groups_to_save:
+            PackageEnvironmentGroups.objects.bulk_create(env_groups_to_save, ignore_conflicts=True)
+
+        if env_optgroups_to_save:
+            PackageEnvironmentOptionalGroups.objects.bulk_create(
+                env_optgroups_to_save, ignore_conflicts=True
+            )
+
+        if update_collection_to_save:
+            UpdateCollection.objects.bulk_create(update_collection_to_save)
+
+        if update_record_collections_to_save:
+            # Saving UpdateRecord -> UpdateCollection relations
+            UpdateRecordCollections.objects.bulk_create(update_record_collections_to_save)
 
         if update_collection_packages_to_save:
             UpdateCollectionPackage.objects.bulk_create(update_collection_packages_to_save)
