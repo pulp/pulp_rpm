@@ -616,7 +616,7 @@ class RpmFirstStage(Stage):
 
                         updates = await RpmFirstStage.parse_updateinfo(updateinfo_xml_path)
 
-                        advisories_pb = {
+                        progress_data = {
                             'message': 'Parsed Advisories', 'code': 'parsing.advisories'
                         }
                         with ProgressReport(**progress_data) as advisories_pb:

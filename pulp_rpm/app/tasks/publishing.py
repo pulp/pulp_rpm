@@ -102,7 +102,9 @@ class PublicationData:
 
         """
         published_artifacts = []
-        for content_artifact in ContentArtifact.objects.filter(content__in=content).iterator():
+        for content_artifact in ContentArtifact.objects.filter(
+                content__in=content.exclude(pulp_type="rpm.repo_metadata_file").distinct()
+        ).iterator():
             published_artifacts.append(PublishedArtifact(
                 relative_path=content_artifact.relative_path,
                 publication=self.publication,
@@ -119,22 +121,16 @@ class PublicationData:
             distribution_tree (pulp_rpm.models.DistributionTree): A distribution_tree object.
 
         """
-        sub_repos_pks = []
         relations = ["addon", "variant"]
         for relation in relations:
             addons_or_variants = getattr(distribution_tree, f"{relation}s").all()
             for addon_or_variant in addons_or_variants:
                 repository = addon_or_variant.repository.cast()
                 repository_version = repository.latest_version()
-                repo_pk = str(repository.pk)
+
                 if repository_version and repository.sub_repo:
                     addon_or_variant_id = getattr(addon_or_variant, f"{relation}_id")
-                    # exposing sub-repo content:
                     self.sub_repos.append((addon_or_variant_id, repository_version.content))
-                    if repo_pk not in sub_repos_pks:
-                        # publishing sub-repo content:
-                        self.publish_artifacts(repository_version.content)
-                        sub_repos_pks.append(repo_pk)
 
     def populate(self):
         """
@@ -143,12 +139,11 @@ class PublicationData:
         Create published artifacts for a publication.
 
         """
-        content = self.publication.repository_version.content
-        self.repomdrecords = self.prepare_metadata_files(content)
-        self.publish_artifacts(content)
+        main_content = self.publication.repository_version.content
+        self.repomdrecords = self.prepare_metadata_files(main_content)
 
         distribution_trees = DistributionTree.objects.filter(
-            pk__in=content
+            pk__in=main_content
         ).prefetch_related(
             "addons",
             "variants",
@@ -166,10 +161,13 @@ class PublicationData:
                 file=File(open(treeinfo_file.name, 'rb'))
             )
 
+        all_content = main_content
         for name, content in self.sub_repos:
             os.mkdir(name)
             setattr(self, f"{name}_content", content)
             setattr(self, f"{name}_repomdrecords", self.prepare_metadata_files(content, name))
+            all_content |= content
+        self.publish_artifacts(all_content)
 
 
 def publish(repository_version_pk):
