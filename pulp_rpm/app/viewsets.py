@@ -67,13 +67,13 @@ class PackageFilter(ContentFilter):
     class Meta:
         model = Package
         fields = {
-            'name': ['exact', 'in'],
-            'epoch': ['exact', 'in'],
-            'version': ['exact', 'in'],
-            'release': ['exact', 'in'],
-            'arch': ['exact', 'in'],
+            'name': ['exact', 'in', 'ne'],
+            'epoch': ['exact', 'in', 'ne'],
+            'version': ['exact', 'in', 'ne'],
+            'release': ['exact', 'in', 'ne'],
+            'arch': ['exact', 'in', 'ne'],
             'pkgId': ['exact', 'in'],
-            'checksum_type': ['exact', 'in'],
+            'checksum_type': ['exact', 'in', 'ne'],
         }
 
 
@@ -160,9 +160,9 @@ class UpdateRecordFilter(ContentFilter):
         model = UpdateRecord
         fields = {
             'id': ['exact', 'in'],
-            'status': ['exact', 'in'],
-            'severity': ['exact', 'in'],
-            'type': ['exact', 'in'],
+            'status': ['exact', 'in', 'ne'],
+            'severity': ['exact', 'in', 'ne'],
+            'type': ['exact', 'in', 'ne'],
         }
 
 
