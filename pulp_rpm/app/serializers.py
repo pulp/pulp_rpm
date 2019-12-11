@@ -684,11 +684,11 @@ class PackageGroupSerializer(NoArtifactContentSerializer):
     )
     name = serializers.CharField(
         help_text=_("PackageGroup name."),
-        allow_null=True
+        allow_blank=True
     )
     description = serializers.CharField(
         help_text=_("PackageGroup description."),
-        allow_null=True
+        allow_blank=True
     )
     packages = serializers.JSONField(
         help_text=_("PackageGroup package list."),
@@ -708,7 +708,6 @@ class PackageGroupSerializer(NoArtifactContentSerializer):
     )
     digest = serializers.CharField(
         help_text=_("PackageGroup digest."),
-        allow_null=True
     )
     related_packages = RelatedField(
         help_text=_("Packages related to this PackageGroup."),
@@ -738,11 +737,11 @@ class PackageCategorySerializer(NoArtifactContentSerializer):
     )
     name = serializers.CharField(
         help_text=_("Category name."),
-        allow_null=True
+        allow_blank=True
     )
     description = serializers.CharField(
         help_text=_("Category description."),
-        allow_null=True
+        allow_blank=True
     )
     display_order = serializers.IntegerField(
         help_text=_("Category display order."),
@@ -762,7 +761,6 @@ class PackageCategorySerializer(NoArtifactContentSerializer):
     )
     digest = serializers.CharField(
         help_text=_("Category digest."),
-        allow_null=True
     )
     packagegroups = RelatedField(
         help_text=_("PackageGroups related to this category."),
@@ -792,11 +790,11 @@ class PackageEnvironmentSerializer(NoArtifactContentSerializer):
     )
     name = serializers.CharField(
         help_text=_("Environment name."),
-        allow_null=True
+        allow_blank=True
     )
     description = serializers.CharField(
         help_text=_("Environment description."),
-        allow_null=True
+        allow_blank=True
     )
     display_order = serializers.IntegerField(
         help_text=_("Environment display order."),
@@ -819,8 +817,7 @@ class PackageEnvironmentSerializer(NoArtifactContentSerializer):
         allow_null=True
     )
     digest = serializers.CharField(
-        help_text=_("Environment digest."),
-        allow_null=True
+        help_text=_("Environment digest.")
     )
     packagegroups = RelatedField(
         help_text=_("Groups related to this Environment."),
