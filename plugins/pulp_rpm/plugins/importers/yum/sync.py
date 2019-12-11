@@ -318,11 +318,14 @@ class RepoSync(object):
                 with self.update_state(self.progress_report['comps']) as skip:
                     if not (skip or self.skip_repomd_steps):
                         self.get_comps_file_units(metadata_files, group.process_group_element,
-                                                  group.GROUP_TAG)
+                                                  group.GROUP_TAG,
+                                                  unit_class=models.PackageGroup)
                         self.get_comps_file_units(metadata_files, group.process_category_element,
-                                                  group.CATEGORY_TAG)
+                                                  group.CATEGORY_TAG,
+                                                  unit_class=models.PackageCategory)
                         self.get_comps_file_units(metadata_files, group.process_environment_element,
-                                                  group.ENVIRONMENT_TAG)
+                                                  group.ENVIRONMENT_TAG,
+                                                  unit_class=models.PackageEnvironment)
                         self.get_comps_file_units(metadata_files, group.process_langpacks_element,
                                                   group.LANGPACKS_TAG)
 
@@ -603,9 +606,9 @@ class RepoSync(object):
         :type: str
         """
         catalog = PackageCatalog(self.conduit.importer_object_id, url)
-        rpms_to_download, drpms_to_download = self._decide_what_to_download(metadata_files, catalog)
-        self.download_rpms(metadata_files, rpms_to_download, url)
-        self.download_drpms(metadata_files, drpms_to_download, url)
+        decision = self._decide_what_to_download(metadata_files, catalog)
+        self.download_rpms(metadata_files, decision[ids.TYPE_ID_RPM]["to_download"], url)
+        self.download_drpms(metadata_files, decision[ids.TYPE_ID_DRPM]["to_download"], url)
         failed_signature_check = 0
         new_report = []
         for error in self.progress_report['content']['error_details']:
@@ -623,8 +626,8 @@ class RepoSync(object):
             _logger.warning(_('%s packages failed signature filter and were not imported.'
                             % failed_signature_check))
         self.conduit.build_success_report({}, {})
-        # removes unwanted units according to the config settings
-        purge.purge_unwanted_units(metadata_files, self.conduit, self.config, catalog)
+        # removes unwanted contents according to the config settings
+        purge.purge_unwanted_contents(decision, self.conduit, self.config, catalog)
 
     def _decide_what_to_download(self, metadata_files, catalog):
         """
@@ -641,19 +644,21 @@ class RepoSync(object):
         :rtype:     tuple
         """
         _logger.info(_('Determining which units need to be downloaded.'))
-        rpms_to_download, rpms_count, rpms_total_size = \
-            self._decide_rpms_to_download(metadata_files, catalog)
-        drpms_to_download, drpms_count, drpms_total_size = \
-            self._decide_drpms_to_download(metadata_files, catalog)
+        rpms_decision = self._decide_rpms_to_download(metadata_files, catalog)
+        drpms_decision = self._decide_drpms_to_download(metadata_files, catalog)
 
         unit_counts = {
-            'rpm': rpms_count,
-            'drpm': drpms_count,
+            'rpm': rpms_decision["count"],
+            'drpm': drpms_decision["count"],
         }
-        total_size = sum((rpms_total_size, drpms_total_size))
+        total_size = sum((rpms_decision["size"], drpms_decision["size"]))
         self.content_report.set_initial_values(unit_counts, total_size)
         self.set_progress()
-        return rpms_to_download, drpms_to_download
+        decision = {
+            ids.TYPE_ID_RPM: rpms_decision,
+            ids.TYPE_ID_DRPM: drpms_decision,
+        }
+        return decision
 
     def _decide_rpms_to_download(self, metadata_files, catalog):
         """
@@ -686,13 +691,18 @@ class RepoSync(object):
 
             # check for the units that are not in the repo, but exist on the server
             # and associate them to the repo
-            to_download = existing.check_all_and_associate(
+            to_download, count, size, missing = existing.check_all_and_associate(
                 wanted, self.conduit, self.config, self.download_deferred, catalog)
             count = len(to_download)
-            size = 0
-            for unit in to_download:
-                size += wanted[unit].size
-            return to_download, count, size
+
+            decision = {
+                "to_download": to_download,
+                "count": count,
+                "size": size,
+                "missing": missing,
+            }
+
+            return decision
         finally:
             primary_file_handle.close()
 
@@ -714,6 +724,7 @@ class RepoSync(object):
             return set(), 0, 0
 
         to_download = set()
+        missing = set()
         count = 0
         size = 0
 
@@ -730,15 +741,21 @@ class RepoSync(object):
                     wanted, _ = self._identify_wanted_versions(package_info_generator)
                     # check for the units that are not in the repo, but exist on the server
                     # and associate them to the repo
-                    to_download = existing.check_all_and_associate(
+                    to_download, sub_count, sub_size, missing = existing.check_all_and_associate(
                         wanted, self.conduit, self.config, self.download_deferred, catalog)
-                    count += len(to_download)
-                    for unit in to_download:
-                        size += wanted[unit].size
+                    count += sub_count
+                    size += sub_size
                 finally:
                     presto_file_handle.close()
 
-        return to_download, count, size
+        decision = {
+            "to_download": to_download,
+            "count": count,
+            "size": size,
+            "missing": missing,
+        }
+
+        return decision
 
     def add_rpm_unit(self, metadata_files, unit):
         """
@@ -815,6 +832,10 @@ class RepoSync(object):
         :param url: current URL we should sync
         :type: str
         """
+
+        if rpms_to_download is not None and len(rpms_to_download) <= 0:
+            return
+
         event_listener = RPMListener(self, metadata_files)
         primary_file_handle = metadata_files.get_metadata_file_handle(primary.METADATA_FILE_NAME)
 
@@ -869,6 +890,10 @@ class RepoSync(object):
         :param url: current URL we should sync
         :type: str
         """
+
+        if drpms_to_download is not None and len(drpms_to_download) <= 0:
+            return
+
         event_listener = RPMListener(self, metadata_files)
 
         for presto_file_name in presto.METADATA_FILE_NAMES:
@@ -921,11 +946,12 @@ class RepoSync(object):
             return
         try:
             self.save_fileless_units(errata_file_handle, updateinfo.PACKAGE_TAG,
-                                     updateinfo.process_package_element, additive_type=True)
+                                     updateinfo.process_package_element, additive_type=True,
+                                     unit_class=models.Errata)
         finally:
             errata_file_handle.close()
 
-    def get_comps_file_units(self, metadata_files, processing_function, tag):
+    def get_comps_file_units(self, metadata_files, processing_function, tag, unit_class=None):
         """
         Given repo metadata files, decides which groups to get and gets them
         based on importer config settings.
@@ -938,6 +964,9 @@ class RepoSync(object):
 
         :param tag:  the name of the xml tag containing each unit
         :type  tag:  str
+
+        :param unit_class:  subclass of pulp_rpm.plugins.db.models.Package
+        :type  unit_class:  pulp_rpm.plugins.db.models.Package
         """
         group_file_handle = metadata_files.get_group_file_handle()
         if group_file_handle is None:
@@ -947,12 +976,13 @@ class RepoSync(object):
         try:
             process_func = functools.partial(processing_function, self.repo.repo_id)
 
-            self.save_fileless_units(group_file_handle, tag, process_func, mutable_type=True)
+            self.save_fileless_units(group_file_handle, tag, process_func, mutable_type=True,
+                                     unit_class=unit_class)
         finally:
             group_file_handle.close()
 
     def save_fileless_units(self, file_handle, tag, process_func, mutable_type=False,
-                            additive_type=False):
+                            additive_type=False, unit_class=None):
         """
         Generic method for saving units parsed from a repo metadata file where
         the units do not have files to store on disk. For example, groups.
@@ -977,6 +1007,9 @@ class RepoSync(object):
                                 existing errata, you'd set this. Note that mutable_type
                                 and additive_type are mutually exclusive.
         :type  additive_type:   bool
+
+        :param unit_class:      subclass of pulp_rpm.plugins.db.models.Package
+        :type  unit_class:      pulp_rpm.plugins.db.models.Package
         """
 
         if mutable_type and additive_type:
@@ -987,12 +1020,13 @@ class RepoSync(object):
         package_info_generator = packages.package_list_generator(file_handle,
                                                                  tag,
                                                                  process_func)
+        existing_units = set()
         # if units aren't mutable, we don't need to attempt saving units that
         # we already have
         if not mutable_type and not additive_type:
             wanted = (model.unit_key_as_named_tuple for model in package_info_generator)
             # given what we want, filter out what we already have
-            to_save = existing.check_repo(wanted)
+            to_save, existing_units = existing.check_repo(wanted)
 
             # rewind, iterate again through the file, and save what we need
             file_handle.seek(0)
@@ -1032,10 +1066,20 @@ class RepoSync(object):
                     model = existing_unit
 
             repo_controller.associate_single_unit(self.repo, model)
+            existing_units.add(model.id)
         if errata_could_not_be_merged_count != 0:
             msg = _('There were %(count)d Errata units which could not be merged. This is likely '
                     'due to Errata in this repo not containing valid `updated` fields.')
             _logger.warn(msg % {'count': errata_could_not_be_merged_count})
+
+        if unit_class:
+            all_associated_units = set()
+            units_generator = \
+                repo_controller.get_associated_unit_ids(self.repo.repo_id, unit_class().type_id)
+            all_associated_units.update(units_generator)
+
+            missing_units = all_associated_units - existing_units
+            purge.remove_missing_units(self.conduit, unit_class, missing_units, self.config)
 
     def _concatenate_units(self, existing_unit, new_unit):
         """
@@ -1155,6 +1199,8 @@ class RepoSync(object):
                 # We don't need to download packages twice
                 to_download.remove(unit.unit_key_as_named_tuple)
                 yield unit
+            elif len(to_download) <= 0:
+                break
 
 
 class PackageCatalog(object):

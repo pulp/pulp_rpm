@@ -39,6 +39,7 @@ def check_repo(wanted):
     """
     # sort by type
     sorted_units = _sort_by_type(wanted)
+    existing_units = set()
     # UAQ for each type
     for unit_type, values in sorted_units.iteritems():
         model = plugin_api.get_unit_model_by_id(unit_type)
@@ -57,10 +58,11 @@ def check_repo(wanted):
                 if unit._storage_path is None or not os.path.isfile(unit._storage_path):
                     continue
             values.discard(unit.unit_key_as_named_tuple)
+            existing_units.add(unit.id)
 
     ret = set()
     ret.update(*sorted_units.values())
-    return ret
+    return ret, existing_units
 
 
 def get_existing_units(search_dicts, unit_class, repo):
@@ -118,6 +120,7 @@ def check_all_and_associate(wanted, conduit, config, download_deferred, catalog)
     """
     rpm_drpm_srpm = (ids.TYPE_ID_RPM, ids.TYPE_ID_SRPM, ids.TYPE_ID_DRPM)
     all_associated_units = set()
+    existing_units = set()
     for unit_type in rpm_drpm_srpm:
         units_generator = repo_controller.get_associated_unit_ids(conduit.repo.repo_id, unit_type)
         all_associated_units.update(units_generator)
@@ -129,6 +132,7 @@ def check_all_and_associate(wanted, conduit, config, download_deferred, catalog)
         # fields = model.unit_key_fields + ('_storage_path',)
         unit_generator = (model(**unit_tuple._asdict()) for unit_tuple in values.copy())
         for unit in units_controller.find_units(unit_generator):
+            existing_units.add(unit.id)
             is_rpm_drpm_srpm = unit_type in rpm_drpm_srpm
             file_exists = unit._storage_path is not None and os.path.isfile(unit._storage_path)
             if is_rpm_drpm_srpm:
@@ -151,9 +155,18 @@ def check_all_and_associate(wanted, conduit, config, download_deferred, catalog)
                         continue
                 repo_controller.associate_single_unit(conduit.repo, unit)
             values.discard(unit.unit_key_as_named_tuple)
+
+    missing_units = all_associated_units - existing_units
     still_wanted = set()
-    still_wanted.update(*sorted_units.values())
-    return still_wanted
+    count = 0
+    size = 0
+    for unit_type, units in sorted_units.iteritems():
+        for unit in units:
+            still_wanted.add(unit)
+            count += 1
+            size += wanted[unit].size
+
+    return still_wanted, count, size, missing_units
 
 
 def _sort_by_type(wanted):

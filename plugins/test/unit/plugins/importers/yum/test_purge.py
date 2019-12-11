@@ -1,8 +1,4 @@
-from cStringIO import StringIO
-import functools
-
 import mock
-from mock import ANY
 from nectar.config import DownloaderConfig
 from pulp.common import dateutils
 from pulp.common.compat import unittest
@@ -20,7 +16,7 @@ from pulp_rpm.common import ids
 from pulp_rpm.devel.skip import skip_broken
 from pulp_rpm.plugins.db import models
 from pulp_rpm.plugins.importers.yum import purge
-from pulp_rpm.plugins.importers.yum.repomd import metadata, primary, presto, updateinfo, group
+from pulp_rpm.plugins.importers.yum.repomd import metadata
 import model_factory
 
 
@@ -34,95 +30,33 @@ class TestPurgeBase(unittest.TestCase):
         self.repo = Repository('repo1')
         self.config = PluginCallConfiguration({}, {})
         self.conduit = RepoSyncConduit(self.repo.id, 'yum_importer', 'abc123')
+        self.missing_rpm_ids = ['rpm-id-1', 'rpm-id-2']
+        self.missing_drpm_ids = ['drpm-id-1', 'drpm-id-2']
+        self.decision = {
+            ids.TYPE_ID_RPM: {
+                "missing": self.missing_rpm_ids,
+            },
+            ids.TYPE_ID_DRPM: {
+                "missing": self.missing_drpm_ids,
+            },
+        }
 
 
 class TestRemoveMissing(TestPurgeBase):
-    @skip_broken
-    @mock.patch.object(purge, 'get_existing_units', autospec=True)
-    def test_remove_missing_units(self, mock_get_existing):
+    def test_remove_missing_units(self):
+        catalog = mock.Mock()
+        model = models.RPM
         self.conduit.remove_unit = mock.MagicMock(spec_set=self.conduit.remove_unit)
-        # setup such that only one of the 2 existing units appears to be present
-        # in the remote repo, thus the other unit should be purged
-        mock_get_existing.return_value = model_factory.rpm_units(2)
-        remote_named_tuples = set(model.as_named_tuple for model in model_factory.rpm_models(2))
-        common_unit = mock_get_existing.return_value[1]
-        common_named_tuple = models.RPM.NAMEDTUPLE(**common_unit.unit_key)
-        remote_named_tuples.add(common_named_tuple)
+        self.config.plugin_config[importer_constants.KEY_UNITS_REMOVE_MISSING] = True
 
-        purge.remove_missing_units(self.conduit, models.RPM, remote_named_tuples)
+        purge.remove_missing_units(self.conduit, model, self.missing_rpm_ids, self.config, catalog)
 
-        mock_get_existing.assert_called_once_with(models.RPM, self.conduit.get_units)
-        self.conduit.remove_unit.assert_called_once_with(mock_get_existing.return_value[0])
+        for unit_id in self.missing_rpm_ids:
+            unit = model(id=unit_id)
+            self.conduit.remove_unit.assert_any_call(unit)
 
-    @mock.patch.object(purge, 'get_remote_units', autospec=True)
-    @mock.patch.object(purge, 'remove_missing_units', autospec=True)
-    def test_remove_missing_rpms(self, mock_remove, mock_get_remote_units):
-        catalog = mock.Mock()
-        purge.remove_missing_rpms(self.metadata_files, self.conduit, catalog)
-
-        mock_get_remote_units.assert_called_once_with(ANY,
-                                                      primary.PACKAGE_TAG,
-                                                      primary.process_package_element)
-        mock_remove.assert_called_once_with(
-            self.conduit,
-            models.RPM,
-            mock_get_remote_units.return_value,
-            catalog)
-
-    @mock.patch.object(purge, 'get_remote_units', autospec=True)
-    @mock.patch.object(purge, 'remove_missing_units', autospec=True)
-    def test_remove_missing_drpms(self, mock_remove, mock_get_remote_units):
-        """
-        Test that the purge makes the appropriate calls and that it calls
-        for both of the prestodelta files
-        """
-        catalog = mock.Mock()
-        purge.remove_missing_drpms(self.metadata_files, self.conduit, catalog)
-
-        mock_get_remote_units.assert_called_with(ANY, presto.PACKAGE_TAG,
-                                                 presto.process_package_element)
-        self.assertEquals(2, mock_get_remote_units.call_count)
-        mock_remove.assert_called_once_with(self.conduit, models.DRPM, set(), catalog)
-
-    @mock.patch.object(purge, 'get_remote_units', autospec=True)
-    @mock.patch.object(purge, 'remove_missing_units', autospec=True)
-    def test_remove_missing_errata(self, mock_remove, mock_get_remote_units):
-        purge.remove_missing_errata(self.metadata_files, self.conduit)
-
-        mock_get_remote_units.assert_called_once_with(ANY,
-                                                      updateinfo.PACKAGE_TAG,
-                                                      updateinfo.process_package_element)
-        mock_remove.assert_called_once_with(self.conduit,
-                                            models.Errata, mock_get_remote_units.return_value)
-
-    @mock.patch.object(purge, 'get_remote_units', autospec=True)
-    @mock.patch.object(purge, 'remove_missing_units', autospec=True)
-    def test_remove_missing_groups(self, mock_remove, mock_get_remote_units):
-        purge.remove_missing_groups(self.metadata_files, self.conduit)
-
-        mock_get_remote_units.assert_called_once_with(ANY, group.GROUP_TAG, ANY)
-        mock_remove.assert_called_once_with(self.conduit,
-                                            models.PackageGroup, mock_get_remote_units.return_value)
-
-    @mock.patch.object(purge, 'get_remote_units', autospec=True)
-    @mock.patch.object(purge, 'remove_missing_units', autospec=True)
-    def test_remove_missing_categories(self, mock_remove, mock_get_remote_units):
-        purge.remove_missing_categories(self.metadata_files, self.conduit)
-
-        mock_get_remote_units.assert_called_once_with(ANY, group.CATEGORY_TAG, ANY)
-        mock_remove.assert_called_once_with(self.conduit,
-                                            models.PackageCategory,
-                                            mock_get_remote_units.return_value)
-
-    @mock.patch.object(purge, 'get_remote_units', autospec=True)
-    @mock.patch.object(purge, 'remove_missing_units', autospec=True)
-    def test_remove_missing_environments(self, mock_remove, mock_get_remote_units):
-        purge.remove_missing_environments(self.metadata_files, self.conduit)
-
-        mock_get_remote_units.assert_called_once_with(ANY, group.ENVIRONMENT_TAG, ANY)
-        mock_remove.assert_called_once_with(self.conduit,
-                                            models.PackageEnvironment,
-                                            mock_get_remote_units.return_value)
+        expected_count = len(self.missing_rpm_ids)
+        self.assertEqual(self.conduit.remove_unit.call_count, expected_count)
 
 
 class TestGetExistingUnits(TestPurgeBase):
@@ -141,43 +75,6 @@ class TestGetExistingUnits(TestPurgeBase):
         self.assertEqual(criteria.type_ids, [models.RPM.TYPE])
         # limit the query to keys in the unit key, to conserve RAM
         self.assertEqual(criteria.unit_fields, models.RPM.UNIT_KEY_NAMES)
-
-
-class TestGetRemoteUnits(TestPurgeBase):
-    FAKE_TYPE = 'fake_type'
-
-    def setUp(self):
-        super(TestGetRemoteUnits, self).setUp()
-        self.metadata_files.metadata[self.FAKE_TYPE] = {'local_path': '/a/b/c'}
-
-    def test_no_units(self):
-        file_function = mock.Mock(return_value=None)
-        ret = purge.get_remote_units(file_function, 'bar', lambda x: x)
-
-        self.assertEqual(ret, set())
-
-    @skip_broken
-    @mock.patch('pulp_rpm.plugins.importers.yum.repomd.packages.package_list_generator',
-                autospec=True)
-    @mock.patch('__builtin__.open', autospec=True)
-    def test_rpm(self, mock_open, mock_package_list_generator):
-        rpms = model_factory.rpm_models(2)
-        mock_package_list_generator.return_value = rpms
-        fake_file = StringIO()
-        mock_open.return_value = fake_file
-
-        def process_func(x):
-            return x
-        file_function = functools.partial(self.metadata_files.get_metadata_file_handle,
-                                          self.FAKE_TYPE)
-        ret = purge.get_remote_units(file_function, 'bar', process_func)
-
-        mock_open.assert_called_once_with('/a/b/c', 'r')
-        self.assertTrue(fake_file.closed)
-        mock_package_list_generator.assert_called_once_with(fake_file, 'bar', process_func)
-        self.assertEqual(len(rpms), len(ret))
-        for model in rpms:
-            self.assertTrue(model.as_named_tuple in ret)
 
 
 class TestRemoveOldVersions(TestPurgeBase):
@@ -269,43 +166,40 @@ class TestRemoveOldVersions(TestPurgeBase):
 
 
 class TestPurgeUnwantedUnits(TestPurgeBase):
-    @mock.patch.object(purge, 'get_remote_units', autospec=True)
-    def test_remove_missing_false(self, mock_get_remote):
+    def test_remove_missing_false(self):
         catalog = mock.Mock()
+        self.conduit.remove_unit = mock.MagicMock(spec_set=self.conduit.remove_unit)
         self.config.plugin_config[importer_constants.KEY_UNITS_REMOVE_MISSING] = False
 
-        purge.purge_unwanted_units(self.metadata_files, self.conduit, self.config, catalog)
+        purge.purge_unwanted_contents(self.decision, self.conduit, self.config, catalog)
 
         # this verifies that no attempt was made to remove missing units, since
         # nobody looked for missing units.
-        self.assertEqual(mock_get_remote.call_count, 0)
+        self.assertEqual(self.conduit.remove_unit.call_count, 0)
 
-    @mock.patch.object(purge, 'remove_missing_environments', autospec=True)
-    @mock.patch.object(purge, 'remove_missing_rpms', autospec=True)
-    @mock.patch.object(purge, 'remove_missing_drpms', autospec=True)
-    @mock.patch.object(purge, 'remove_missing_errata', autospec=True)
-    @mock.patch.object(purge, 'remove_missing_groups', autospec=True)
-    @mock.patch.object(purge, 'remove_missing_categories', autospec=True)
-    def test_remove_missing_true(self, mock_remove_categories, mock_remove_groups,
-                                 mock_remove_errata, mock_remove_drpms, mock_remove_rpms,
-                                 mock_remove_environments):
+    def test_remove_missing_true(self):
         catalog = mock.Mock()
+        self.conduit.remove_unit = mock.MagicMock(spec_set=self.conduit.remove_unit)
         self.config.plugin_config[importer_constants.KEY_UNITS_REMOVE_MISSING] = True
 
-        purge.purge_unwanted_units(self.metadata_files, self.conduit, self.config, catalog)
+        purge.purge_unwanted_contents(self.decision, self.conduit, self.config, catalog)
 
-        mock_remove_rpms.assert_called_once_with(self.metadata_files, self.conduit, catalog)
-        mock_remove_drpms.assert_called_once_with(self.metadata_files, self.conduit, catalog)
-        mock_remove_errata.assert_called_once_with(self.metadata_files, self.conduit)
-        mock_remove_groups.assert_called_once_with(self.metadata_files, self.conduit)
-        mock_remove_categories.assert_called_once_with(self.metadata_files, self.conduit)
-        mock_remove_environments.assert_called_once_with(self.metadata_files, self.conduit)
+        for unit_id in self.missing_rpm_ids:
+            unit = models.RPM(id=unit_id)
+            self.conduit.remove_unit.assert_any_call(unit)
+
+        for unit_id in self.missing_drpm_ids:
+            unit = models.DRPM(id=unit_id)
+            self.conduit.remove_unit.assert_any_call(unit)
+
+        expected_count = len(self.missing_rpm_ids) + len(self.missing_drpm_ids)
+        self.assertEqual(self.conduit.remove_unit.call_count, expected_count)
 
     @mock.patch.object(purge, 'remove_old_versions', autospec=True)
     def test_retain_old_none(self, mock_remove_old_versions):
         self.config.plugin_config[importer_constants.KEY_UNITS_REMOVE_MISSING] = False
         catalog = mock.Mock()
-        purge.purge_unwanted_units(self.metadata_files, self.conduit, self.config, catalog)
+        purge.purge_unwanted_contents(self.decision, self.conduit, self.config, catalog)
 
         self.assertEqual(mock_remove_old_versions.call_count, 0)
 
@@ -314,7 +208,7 @@ class TestPurgeUnwantedUnits(TestPurgeBase):
         self.config.plugin_config[importer_constants.KEY_UNITS_REMOVE_MISSING] = False
         self.config.plugin_config[importer_constants.KEY_UNITS_RETAIN_OLD_COUNT] = 2
         catalog = mock.Mock()
-        purge.purge_unwanted_units(self.metadata_files, self.conduit, self.config, catalog)
+        purge.purge_unwanted_contents(self.decision, self.conduit, self.config, catalog)
 
         mock_remove_old_versions.assert_called_once_with(3, self.conduit, catalog)
 
