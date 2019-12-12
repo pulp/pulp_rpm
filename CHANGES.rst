@@ -13,6 +13,82 @@ Changelog
 
 .. towncrier release notes start
 
+3.0.0 (2019-12-12)
+==================
+
+
+Bugfixes
+--------
+
+- Providing a descriptive error message for RPM repos with invalid metadata
+  `#4424 <https://pulp.plan.io/issues/4424>`_
+- Improve memory performance on syncing.
+  `#5688 <https://pulp.plan.io/issues/5688>`_
+- Improve memory performance on publishing.
+  `#5689 <https://pulp.plan.io/issues/5689>`_
+- Resolve the issue which disallowed users to publish uploaded content
+  `#5699 <https://pulp.plan.io/issues/5699>`_
+- Provide a descriptive error for invalid treeinfo files
+  `#5709 <https://pulp.plan.io/issues/5709>`_
+- Properly handling syncing when there is no treeinfo file
+  `#5732 <https://pulp.plan.io/issues/5732>`_
+- Fix comps.xml publish: missing group attributes desc_by_lang, name_by_lang, and default now appear properly.
+  `#5741 <https://pulp.plan.io/issues/5741>`_
+- Fix error when adding/removing modules to/from a repository.
+  `#5746 <https://pulp.plan.io/issues/5746>`_
+- Splitting content between repo and sub-repo
+  `#5761 <https://pulp.plan.io/issues/5761>`_
+- Allow empty string for optional fields for comps.xml content.
+  `#5856 <https://pulp.plan.io/issues/5856>`_
+- Adds fields from the inherited serializer to comps.xml content types' displayed fields
+  `#5857 <https://pulp.plan.io/issues/5857>`_
+- Assuring uniqueness on publishing.
+  `#5861 <https://pulp.plan.io/issues/5861>`_
+
+
+Improved Documentation
+----------------------
+
+- Document that sync must complete before kicking off a publish
+  `#5006 <https://pulp.plan.io/issues/5006>`_
+- Add requirements to docs.
+  `#5228 <https://pulp.plan.io/issues/5228>`_
+- Update installation docs to use system-wide-packages.
+  `#5564 <https://pulp.plan.io/issues/5564>`_
+- Remove one shot uploader references and info.
+  `#5747 <https://pulp.plan.io/issues/5747>`_
+- Add 'Rest API' to menu.
+  `#5749 <https://pulp.plan.io/issues/5749>`_
+- Refactor workflow commands to small scripts.
+  `#5750 <https://pulp.plan.io/issues/5750>`_
+- Rename 'Errata' to 'Advisory' for consistency.
+  `#5751 <https://pulp.plan.io/issues/5751>`_
+- Update docs to include modularity and comps support to features.
+  Include core-provided browseable distributions in features.
+  `#5752 <https://pulp.plan.io/issues/5752>`_
+- Update docs to include Tech Preview section
+  `#5753 <https://pulp.plan.io/issues/5753>`_
+- Update Quickstart page
+  `#5754 <https://pulp.plan.io/issues/5754>`_
+- Rearrange installation page and add missing information
+  `#5755 <https://pulp.plan.io/issues/5755>`_
+- Rearrange workflows section to have individual menu items for each content type.
+  `#5758 <https://pulp.plan.io/issues/5758>`_
+- Add content type descriptions and their specifics.
+  `#5759 <https://pulp.plan.io/issues/5759>`_
+- Document python build dependencies that must be installed on CentOS / RHEL.
+  `#5841 <https://pulp.plan.io/issues/5841>`_
+
+
+Misc
+----
+
+- `#5325 <https://pulp.plan.io/issues/5325>`_, `#5693 <https://pulp.plan.io/issues/5693>`_, `#5701 <https://pulp.plan.io/issues/5701>`_, `#5757 <https://pulp.plan.io/issues/5757>`_, `#5853 <https://pulp.plan.io/issues/5853>`_
+
+
+----
+
+
 3.0.0rc1 (2019-11-19)
 =====================
 
