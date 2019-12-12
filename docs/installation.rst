@@ -112,6 +112,17 @@ You should get ``include-system-site-packages = true``.
 This is a necessary prerequisite for ``libmodulemd`` and ``libcomps`` along with the build dependencies listed
 above for ``createrepo_c``.
 
+Install Python build dependencies (CentOS / RHEL only)
+######################################################
+
+Users on CentOS or RHEL must manually install the Python build dependencies for createrepo_c and libcomps.
+
+.. code-block:: bash
+
+   sudo -u pulp -i
+   source ~/pulpvenv/bin/activate
+   pip install scikit-build nose
+
 Install ``pulp_rpm``
 ********************
 
