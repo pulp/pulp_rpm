@@ -524,9 +524,9 @@ class UpdateRecordSerializer(SingleArtifactContentUploadSerializer):
             'updated', update_record_data.get(PULP_UPDATE_RECORD_ATTRS.UPDATED_DATE, "")
         )
 
-        if PULP_UPDATE_RECORD_ATTRS.ID not in update_record_data or \
-                PULP_UPDATE_RECORD_ATTRS.UPDATED_DATE not in update_record_data or \
-                PULP_UPDATE_RECORD_ATTRS.ISSUED_DATE not in update_record_data:
+        if not update_record_data.get(PULP_UPDATE_RECORD_ATTRS.ID) or \
+           not update_record_data.get(PULP_UPDATE_RECORD_ATTRS.UPDATED_DATE) or \
+           not update_record_data.get(PULP_UPDATE_RECORD_ATTRS.ISSUED_DATE):
             raise serializers.ValidationError(
                 "All '{}', '{}' and '{}' must be specified.".format(
                     PULP_UPDATE_RECORD_ATTRS.ID,
