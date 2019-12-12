@@ -390,7 +390,7 @@ class RpmFirstStage(Stage):
                 modulemd_names = modulemd_index.get_module_names() or []
                 modulemd_all = parse_modulemd(modulemd_names, modulemd_index)
 
-                # Parsing modules happens all in one go, and from here on no useful work happens.
+                # Parsing modules happens all at one time, and from here on no useful work happens.
                 # So just report that it finished this stage.
                 modulemd_pb_data = {'message': 'Parsed Modulemd', 'code': 'parsing.modulemds'}
                 with ProgressReport(**modulemd_pb_data) as modulemd_pb:
@@ -419,9 +419,12 @@ class RpmFirstStage(Stage):
                         nevra_to_module.setdefault(artifact, set()).add(dc)
                     modulemd_list.append(dc)
 
+                # delete list now that we're done with it for memory savings
+                del modulemd_all
+
                 modulemd_default_names = parse_defaults(modulemd_index)
 
-                # Parsing module-defaults happens all in one go, and from here on no useful
+                # Parsing module-defaults happens all at one time, and from here on no useful
                 # work happens. So just report that it finished this stage.
                 modulemd_defaults_pb_data = {
                     'message': 'Parsed Modulemd-defaults', 'code': 'parsing.modulemd_defaults'
@@ -443,9 +446,11 @@ class RpmFirstStage(Stage):
                         url=modules_url
                     )
                     default_content = ModulemdDefaults(**default)
-                    modulemd_defaults_pb.increment()
                     dc = DeclarativeContent(content=default_content, d_artifacts=[da])
                     await self.put(dc)
+
+                # delete list now that we're done with it for memory savings
+                del modulemd_default_names
 
             if comps_downloader:
                 comps_result = await comps_downloader.run()
@@ -453,8 +458,6 @@ class RpmFirstStage(Stage):
                 comps = libcomps.Comps()
                 comps.fromxml_f(comps_result.path)
 
-                # Parsing comps happens all in one go, and from here on no useful work happens.
-                # So just report that it finished this stage.
                 with ProgressReport(message='Parsed Comps', code='parsing.comps') as comps_pb:
                     comps_total = (
                         len(comps.groups) + len(comps.categories) + len(comps.environments)
@@ -533,12 +536,14 @@ class RpmFirstStage(Stage):
                         dc_groups.append(dc)
 
                 for dc_category in dc_categories:
-                    comps_pb.increment()
                     await self.put(dc_category)
 
                 for dc_environment in dc_environments:
-                    comps_pb.increment()
                     await self.put(dc_environment)
+
+            # delete lists now that we're done with them for memory savings
+            del dc_environments
+            del dc_categories
 
             # to preserve order, downloaders are created after all repodata urls are identified
             package_repodata_downloaders = []
@@ -570,12 +575,12 @@ class RpmFirstStage(Stage):
                                                                       filelists_xml_path,
                                                                       other_xml_path)
 
-                        progress_data = {'message': 'Parsed Packages', 'code': 'parsing.packages'}
+                        progress_data = {
+                            'message': 'Parsed Packages',
+                            'code': 'parsing.packages',
+                            'total': len(packages),
+                        }
                         with ProgressReport(**progress_data) as packages_pb:
-                            packages_pb.total = len(packages)
-                            packages_pb.state = 'running'
-                            packages_pb.save()
-
                             for pkg in packages.values():
                                 package = Package(**Package.createrepo_to_dict(pkg))
                                 artifact = Artifact(size=package.size_package)
@@ -616,15 +621,12 @@ class RpmFirstStage(Stage):
 
                         updates = await RpmFirstStage.parse_updateinfo(updateinfo_xml_path)
 
-                        advisories_pb = {
-                            'message': 'Parsed Advisories', 'code': 'parsing.advisories'
+                        progress_data = {
+                            'message': 'Parsed Advisories',
+                            'code': 'parsing.advisories',
+                            'total': len(updates),
                         }
                         with ProgressReport(**progress_data) as advisories_pb:
-                            advisories_pb_total = len(updates)
-                            advisories_pb.total = advisories_pb_total
-                            advisories_pb.state = 'running'
-                            advisories_pb.save()
-
                             for update in updates:
                                 update_record = UpdateRecord(
                                     **UpdateRecord.createrepo_to_dict(update)
@@ -657,11 +659,9 @@ class RpmFirstStage(Stage):
 
             # now send modules down the pipeline since all relations have been set up
             for modulemd in modulemd_list:
-                modulemd_pb.increment()
                 await self.put(modulemd)
 
             for dc_group in dc_groups:
-                comps_pb.increment()
                 await self.put(dc_group)
 
 

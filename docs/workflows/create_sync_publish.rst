@@ -127,6 +127,8 @@ RepositoryVersion GET response (when sync task complete):
 Create a Publication
 --------------------
 
+A publication can only be created once a sync task completes.
+
 .. literalinclude:: ../_scripts/publication.sh
    :language: bash
 
