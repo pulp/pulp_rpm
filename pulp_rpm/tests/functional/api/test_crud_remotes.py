@@ -41,7 +41,7 @@ class CRUDRemotesTestCase(unittest.TestCase):
         """Try to create a second remote with an identical name.
 
         See: `Pulp Smash #1055
-        <https://github.com/PulpQE/pulp-smash/issues/1055>`_.
+        <https://github.com/pulp/pulp-smash/issues/1055>`_.
         """
         body = gen_rpm_remote()
         body['name'] = self.remote['name']
@@ -108,7 +108,7 @@ class CreateRemoteNoURLTestCase(unittest.TestCase):
         This test targets the following issues:
 
         * `Pulp #3395 <https://pulp.plan.io/issues/3395>`_
-        * `Pulp Smash #984 <https://github.com/PulpQE/pulp-smash/issues/984>`_
+        * `Pulp Smash #984 <https://github.com/pulp/pulp-smash/issues/984>`_
         """
         body = gen_rpm_remote()
         del body['url']
