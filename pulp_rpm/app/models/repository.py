@@ -82,7 +82,7 @@ class RpmRepository(Repository):
                 # now add any content that's in the base_version but not in version
                 version.add_content(base_version.content.exclude(pk__in=version.content))
 
-            if Task.current and not self.sub_repo:
+            if Task.current() and not self.sub_repo:
                 resource = CreatedResource(content_object=version)
                 resource.save()
             return version
