@@ -86,6 +86,12 @@ jobs:
       env:
         - TEST=performance PERFORMANCE_TEST=publish
       if: type = cron
+    - stage: cherry-pick
+      if: type = cron
+      before_install: skip
+      install: skip
+      before_script: skip
+      script: bash .travis/cherrypick.sh
 notifications: None
 
 ...
