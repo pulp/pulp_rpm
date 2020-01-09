@@ -150,16 +150,17 @@ def set_modular_flag_on_artifacts(repository, modulemd_unit):
             release=nevra[3],
             arch=nevra[4])
 
-    pq_set = repository_controller.find_repo_content_units(
-        repository,
-        units_q=pq,
-        repo_content_unit_q=Q(unit_type_id=RPM.TYPE_ID),
-        unit_fields=RPM.unit_key_fields + ('is_modular', '_storage_path'),
-        yield_content_unit=True)
-    for package in pq_set:
-        if not package.is_modular:
-            package.is_modular = True
-            package.save()
+    if not pq.empty:
+        pq_set = repository_controller.find_repo_content_units(
+            repository,
+            units_q=pq,
+            repo_content_unit_q=Q(unit_type_id=RPM.TYPE_ID),
+            unit_fields=RPM.unit_key_fields + ('is_modular', '_storage_path'),
+            yield_content_unit=True)
+        for package in pq_set:
+            if not package.is_modular:
+                package.is_modular = True
+                package.save()
 
 
 def add_modulemds(repository, modulemds, repair=False):
