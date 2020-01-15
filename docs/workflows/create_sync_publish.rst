@@ -65,6 +65,10 @@ Sync repository ``foo`` using remote ``bar``
 .. literalinclude:: ../_scripts/sync.sh
    :language: bash
 
+You can specify ``mirror=True`` for a mirror mode. It means Pulp won't update
+repository using previous repository version but create a new copy of remote
+repository as a new repository version.
+
 RepositoryVersion GET response (when sync task complete):
 
 .. code:: json
