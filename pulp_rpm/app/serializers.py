@@ -6,21 +6,18 @@ from django.db import IntegrityError
 from rest_framework import serializers
 from rest_framework.exceptions import NotAcceptable
 
-from pulpcore.plugin.models import (
-    Remote,
-    RepositoryVersion,
-)
+from pulpcore.plugin.models import Remote
 from pulpcore.plugin.serializers import (
     ArtifactSerializer,
     DetailRelatedField,
     ModelSerializer,
     MultipleArtifactContentSerializer,
-    NestedRelatedField,
     NoArtifactContentSerializer,
     PublicationDistributionSerializer,
     PublicationSerializer,
     RepositorySyncURLSerializer,
     RelatedField,
+    DetailRelatedField,
     RemoteSerializer,
     RepositorySerializer,
     SingleArtifactContentUploadSerializer,
@@ -39,7 +36,6 @@ from pulp_rpm.app.constants import (
     PULP_UPDATE_COLLECTION_ATTRS,
     PULP_UPDATE_RECORD_ATTRS,
     PULP_UPDATE_REFERENCE_ATTRS,
-    RPM_PLUGIN_TYPE_CHOICE_MAP,
     SKIP_TYPES
 )
 
@@ -588,36 +584,51 @@ class RpmRepositorySyncURLSerializer(RepositorySyncURLSerializer):
         )
     )
 
+# SCHEMA = '''{
+#     "$schema": "http://json-schema.org/draft-07/schema#",
+#     "title": "CopyPlan",
+#     "type": "object",
+#     "properties": {
+#         "type": "object",
+#         "minItems": 1,
+#         "additionalProperties": false
+#         }
+#     },
+#     "additionalProperties": false
+# }'''
+
 
 class CopySerializer(serializers.Serializer):
     """
     A serializer for Content Copy API.
     """
 
-    source_repo = serializers.HyperlinkedRelatedField(
-        help_text=_('A URI of the repository.'),
-        required=False,
+    source_repo = DetailRelatedField(
+        help_text=_('A URI of the repository to copy from.'),
         queryset=RpmRepository.objects.all(),
-        view_name='repositories-rpm/rpm-detail',
     )
-    source_repo_version = NestedRelatedField(
-        help_text=_('A URI of the repository version'),
-        required=False,
-        queryset=RepositoryVersion.objects.all(),
-        parent_lookup_kwargs={'repository_pk': 'repository__pk'},
-        lookup_field='number',
-        view_name='versions-detail',
-    )
-    dest_repo = serializers.HyperlinkedRelatedField(
-        help_text=_('A URI of the repository.'),
-        required=True,
+
+    dest_repo = DetailRelatedField(
+        help_text=_('A URI of the repository to copy to.'),
         queryset=RpmRepository.objects.all(),
-        view_name='repositories-rpm/rpm-detail',
     )
-    types = serializers.ListField(
-        help_text=_('A list of types to copy ["package", "advisory"]'),
-        write_only=True,
-        default=['package', 'advisory']
+
+    # source_repo_version = NestedRelatedField(
+    #     help_text=_('A URI of the repository version'),
+    #     required=False,
+    #     queryset=RepositoryVersion.objects.all(),
+    #     parent_lookup_kwargs={'repository_pk': 'repository__pk'},
+    #     lookup_field='number',
+    #     view_name='versions-detail',
+    # )
+
+    criteria = serializers.JSONField(
+        help_text=_('A JSON document describing what content you want to be copied'),
+    )
+
+    dependency_solving = serializers.BooleanField(
+        help_text=_('Also copy dependencies of the content being copied.'),
+        default=True
     )
 
     def validate(self, data):
@@ -630,55 +641,55 @@ class CopySerializer(serializers.Serializer):
 
         """
         super().validate(data)
+
+        # schema = json.loads(SCHEMA)
+        # validator = Draft7Validator(schema)
+
         if hasattr(self, 'initial_data'):
             validate_unknown_fields(self.initial_data, self.fields)
 
-        new_data = {}
-        new_data.update(data)
+        # criteria = data.get('criteria')
 
-        source_repo = data.get('source_repo')
-        source_repo_version = data.get('source_repo_version')
+        # err = []
+        # for error in sorted(validator.iter_errors(criteria), key=str):
+        #     err.append(error.message)
+        # if err:
+        #     raise serializers.ValidationError(
+        #         _("Provided copy criteria is invalid:'{}'".format(err))
+        #     )
 
-        if not source_repo and not source_repo_version:
-            raise serializers.ValidationError(
-                _("Either the 'source_repo' or 'source_repo_version' need to be specified"))
+        return data
 
-        if source_repo and source_repo_version:
-            raise serializers.ValidationError(
-                _("Either the 'source_repo' or 'source_repo_version' need to be specified "
-                  "but not both.")
-            )
+        # new_data = {}
+        # new_data.update(data)
 
-        if not source_repo and source_repo_version:
-            repo = {'source_repo': source_repo_version.repository}
-            new_data.update(repo)
+        # source_repo = data.get('source_repo')
+        # source_repo_version = data.get('source_repo_version')
 
-        if source_repo and not source_repo_version:
-            version = RepositoryVersion.latest(source_repo)
-            if version:
-                repo_version = {'source_repo_version': version}
-                new_data.update(repo_version)
-            else:
-                raise serializers.ValidationError(
-                    detail=_('Repository has no version available to copy'))
+        # if not source_repo and not source_repo_version:
+        #     raise serializers.ValidationError(
+        #         _("Either the 'source_repo' or 'source_repo_version' need to be specified"))
 
-        types = data.get('types')
-        final_types = []
+        # if source_repo and source_repo_version:
+        #     raise serializers.ValidationError(
+        #         _("Either the 'source_repo' or 'source_repo_version' need to be specified "
+        #           "but not both.")
+        #     )
 
-        if types:
-            for t in types:
-                substitution = RPM_PLUGIN_TYPE_CHOICE_MAP.get(t)
-                if not substitution:
-                    raise serializers.ValidationError(_(
-                        "'{type}' is an invalid type, please use one of {choices}".format(
-                            type=t,
-                            choices=list(RPM_PLUGIN_TYPE_CHOICE_MAP.keys())
-                        ))
-                    )
-                final_types.append(substitution)
-            new_data.update({'types': final_types})
+        # if not source_repo and source_repo_version:
+        #     repo = {'source_repo': source_repo_version.repository}
+        #     new_data.update(repo)
 
-        return new_data
+        # if source_repo and not source_repo_version:
+        #     version = RepositoryVersion.latest(source_repo)
+        #     if version:
+        #         repo_version = {'source_repo_version': version}
+        #         new_data.update(repo_version)
+        #     else:
+        #         raise serializers.ValidationError(
+        #             detail=_('Repository has no version available to copy'))
+
+        # return new_data
 
 
 class PackageGroupSerializer(NoArtifactContentSerializer):

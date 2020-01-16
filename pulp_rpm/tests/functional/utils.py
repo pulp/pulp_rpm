@@ -20,6 +20,7 @@ from pulp_smash.pulp3.utils import (
 
 from pulp_rpm.tests.functional.constants import (
     RPM_CONTENT_PATH,
+    RPM_COPY_PATH,
     RPM_PACKAGE_CONTENT_NAME,
     RPM_PUBLICATION_PATH,
     RPM_REMOTE_PATH,
@@ -102,6 +103,28 @@ def populate_pulp(cfg, url=RPM_SIGNED_FIXTURE_URL):
         if repo:
             client.delete(repo['pulp_href'])
     return client.get(RPM_CONTENT_PATH)['results']
+
+
+def rpm_copy(cfg, source_repo, dest_repo, criteria, recursive=True):
+    """Sync a repository.
+
+    :param pulp_smash.config.PulpSmashConfig cfg: Information about the Pulp
+        host.
+    :param remote: A dict of information about the remote of the repository
+        to be synced.
+    :param repo: A dict of information about the repository.
+    :param kwargs: Keyword arguments to be merged in to the request data.
+    :returns: The server's response. A dict of information about the just
+        created sync.
+    """
+    client = api.Client(cfg)
+    data = {
+        'source_repo': source_repo['pulp_href'],
+        'dest_repo': dest_repo['pulp_href'],
+        'criteria': criteria,
+        'dependency_solving': True,
+    }
+    return client.post(RPM_COPY_PATH, data)
 
 
 def gen_yum_config_file(cfg, repositoryid, baseurl, name, **kwargs):
