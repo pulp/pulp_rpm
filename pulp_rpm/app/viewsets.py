@@ -1,7 +1,6 @@
 from drf_yasg.utils import swagger_auto_schema
 from rest_framework import viewsets, mixins
 from rest_framework.decorators import action
-from rest_framework.parsers import FormParser, MultiPartParser
 
 from pulpcore.plugin.actions import ModifyRepositoryActionMixin
 from pulpcore.plugin.tasking import enqueue_with_reservation
@@ -232,7 +231,6 @@ class CopyViewSet(viewsets.ViewSet):
     """
 
     serializer_class = CopySerializer
-    parser_classes = (MultiPartParser, FormParser)
 
     @swagger_auto_schema(
         operation_description="Trigger an asynchronous task to copy RPM content"
@@ -249,13 +247,17 @@ class CopyViewSet(viewsets.ViewSet):
         serializer.is_valid(raise_exception=True)
 
         source_repo = serializer.validated_data['source_repo']
-        source_repo_version = serializer.validated_data['source_repo_version']
+        # source_repo_version = serializer.validated_data['source_repo_version']
         dest_repo = serializer.validated_data['dest_repo']
-        types = serializer.validated_data['types']
+        criteria = serializer.validated_data['criteria']
+        dependency_solving = serializer.validated_data['dependency_solving']
+
+        source_repos = [source_repo]
+        dest_repos = [dest_repo]
 
         async_result = enqueue_with_reservation(
-            tasks.copy_content, [source_repo, dest_repo],
-            args=[source_repo_version.pk, dest_repo.pk, types],
+            tasks.copy_content, [*source_repos, *dest_repos],
+            args=[source_repo.latest_version().pk, dest_repo.pk, criteria, dependency_solving],
             kwargs={}
         )
         return OperationPostponedResponse(async_result, request)
