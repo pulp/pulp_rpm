@@ -12,10 +12,10 @@ from pulp_smash.pulp3.constants import (
     BASE_REMOTE_PATH,
 )
 
-PULP_FIXTURES_BASE_URL = config.get_config().get_fixtures_url()
+RPM_COPY_PATH = urljoin(BASE_PATH, 'rpm/copy/')
+"""The URL used for copying RPM content between repos."""
 
-DRPM_UNSIGNED_FIXTURE_URL = urljoin(PULP_FIXTURES_BASE_URL, 'drpm-unsigned/')
-"""The URL to a repository with unsigned DRPM packages."""
+PULP_FIXTURES_BASE_URL = config.get_config().get_fixtures_url()
 
 RPM_PACKAGE_CONTENT_NAME = 'rpm.package'
 
