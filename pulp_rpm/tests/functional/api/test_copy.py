@@ -51,18 +51,17 @@ class BasicCopyTestCase(unittest.TestCase):
 
         delete_orphans(cls.cfg)
 
-    def test_copy_all(self):
-        """Copy all content units with the RPM plugin.
+    def _do_test(self, criteria, expected_results):
+        """Test copying content units with the RPM plugin.
 
         Do the following:
 
         1. Create two repositories and a remote.
         2. Sync the remote.
         3. Assert that repository version is not None.
-        4. Assert that the correct number of units were added and are present
-           in the repo.
-        5. Use the RPM copy API to copy all units from the repo to the empty repo.
-        7. Assert that repository version is the same as the previous one.
+        4. Assert that the correct number of units were added and are present in the repo.
+        5. Use the RPM copy API to units from the repo to the empty repo.
+        7. Assert that the correct number of units were added and are present in the dest repo.
         """
         source_repo = self.client.post(RPM_REPO_PATH, gen_repo())
         self.addCleanup(self.client.delete, source_repo['pulp_href'])
@@ -92,7 +91,17 @@ class BasicCopyTestCase(unittest.TestCase):
         dest_repo = self.client.get(source_repo['pulp_href'])
 
         # Check that we have the correct content counts.
-        self.assertDictEqual(get_content_summary(dest_repo), RPM_FIXTURE_SUMMARY)
+        self.assertDictEqual(get_content_summary(dest_repo), expected_results)
         self.assertDictEqual(
-            get_added_content_summary(dest_repo), RPM_FIXTURE_SUMMARY,
+            get_added_content_summary(dest_repo), expected_results,
         )
+
+    def test_copy_all(self):
+        criteria = {}
+        results = RPM_FIXTURE_SUMMARY
+        self._do_test(criteria, results)
+
+    # def test_copy_by_href(self):
+    #     criteria = {}
+    #     results = {}
+    #     self._do_test(criteria, results)
