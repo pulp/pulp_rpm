@@ -34,7 +34,6 @@ from pulp_rpm.app.fields import (
 )
 
 from pulp_rpm.app.constants import (
-    RPM_PLUGIN_TYPE_CHOICE_MAP,
     PULP_UPDATE_RECORD_ATTRS,
     PULP_UPDATE_REFERENCE_ATTRS,
     PULP_UPDATE_COLLECTION_ATTRS,

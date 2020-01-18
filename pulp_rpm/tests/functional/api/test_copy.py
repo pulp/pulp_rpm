@@ -12,7 +12,6 @@ from pulp_smash.pulp3.utils import (
     get_added_content_summary,
     get_content,
     get_content_summary,
-    get_removed_content,
     sync,
 )
 
