@@ -8,6 +8,7 @@ requirements = [
     'productmd',
     'pulpcore>=3.2',
     'PyGObject~=3.22',
+    'solv'
 ]
 
 with open('README.rst') as f:
