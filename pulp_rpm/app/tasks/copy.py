@@ -1,7 +1,8 @@
 from django.db.models import Q
 
-from pulpcore.plugin.models import Repository, RepositoryVersion
+from pulpcore.plugin.models import Content, RepositoryVersion
 
+from pulp_rpm.app.depsolving import Solver
 from pulp_rpm.app.models import RpmRepository
 
 
@@ -38,9 +39,43 @@ def copy_content(source_repo_version_pk, dest_repo_pk, criteria, dependency_solv
             criteria MUST be validated before being passed to this task.
     """
     source_repo_version = RepositoryVersion.objects.get(pk=source_repo_version_pk)
+    # source_repo = RpmRepository.objects.get(pk=source_repo_version.repository)
+
     dest_repo = RpmRepository.objects.get(pk=dest_repo_pk)
+    dest_repo_version = dest_repo.latest_version()
 
-    content_to_copy = _filter_content(source_repo_version.content, criteria)
+    if not dependency_solving:
+        content_to_copy = _filter_content(source_repo_version.content, criteria)
 
-    with dest_repo.new_version() as new_version:
-        new_version.add_content(content_to_copy)
+        with dest_repo.new_version() as new_version:
+            new_version.add_content(content_to_copy)
+
+        return
+
+    # Dependency Solving Branch
+    # =========================
+    content_to_copy = {}
+
+    # TODO: add lookaside repos here
+    repo_mapping = {source_repo_version: dest_repo_version}
+    libsolv_repo_names = {}
+
+    solver = Solver()
+
+    for src in repo_mapping.keys():
+        repo_name = solver.load_source_repo(src)
+        libsolv_repo_names[repo_name] = src
+        content_to_copy[repo_name] = _filter_content(src.content, criteria)
+
+    for tgt in repo_mapping.values():
+        solver.load_target_repo(tgt)
+
+    solver.finalize()
+
+    content_to_copy = solver.resolve_dependencies(content_to_copy)
+
+    for from_repo, units in content_to_copy.items():
+        src_repo_version = libsolv_repo_names[from_repo]
+        dest_repo_version = repo_mapping[src_repo_version]
+        with dest_repo_version.repository.new_version() as new_version:
+            new_version.add_content(Content.objects.filter(pk__in=units))
