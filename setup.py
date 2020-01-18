@@ -8,6 +8,7 @@ requirements = [
     'productmd',
     'pulpcore>=3.0,<3.3',
     'PyGObject~=3.22',
+    'solv @ git+http://github.com/dralley/libsolv.git@python-package'
 ]
 
 with open('README.rst') as f:
