@@ -105,7 +105,7 @@ def populate_pulp(cfg, url=RPM_SIGNED_FIXTURE_URL):
     return client.get(RPM_CONTENT_PATH)['results']
 
 
-def rpm_copy(cfg, source_repo, dest_repo, criteria, recursive=True):
+def rpm_copy(cfg, source_repo, dest_repo, criteria, recursive=False):
     """Sync a repository.
 
     :param pulp_smash.config.PulpSmashConfig cfg: Information about the Pulp
