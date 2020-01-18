@@ -175,14 +175,15 @@ class Package(Content):
     rpm_header_start = models.BigIntegerField(null=True)
     rpm_header_end = models.BigIntegerField(null=True)
 
-    is_modular = models.BooleanField(default=False)
-
     size_archive = models.BigIntegerField(null=True)
     size_installed = models.BigIntegerField(null=True)
     size_package = models.BigIntegerField(null=True)
 
     time_build = models.BigIntegerField(null=True)
     time_file = models.BigIntegerField(null=True)
+
+    # not part of createrepo_c metadata
+    is_modular = models.BooleanField(default=False)
 
     repo_key_fields = ('name', 'epoch', 'version', 'release', 'arch')
 
