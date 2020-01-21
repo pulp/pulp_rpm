@@ -39,7 +39,11 @@ def resolve_advisories(version, previous_version):
         pk__in=version.content.filter(pulp_type="rpm.advisory"))
     added_advisories = current_advisories
     advisory_conflicts = []
-    if previous_version:
+    # check for IDs if any conflict
+    # e.g. mirror mode can already removed advisories with same ID
+    current_ids = [adv.id for adv in current_advisories]
+
+    if previous_version and len(current_ids) != len(set(current_ids)):
         previous_advisories = UpdateRecord.objects.filter(
             pk__in=previous_version.content.filter(pulp_type="rpm.advisory"))
         previous_advisory_ids = set(previous_advisories.values_list('id', flat=True))
@@ -53,14 +57,16 @@ def resolve_advisories(version, previous_version):
         added_advisory_ids = set(adv.id for adv in added_advisories)
         advisory_conflicts = added_advisory_ids.intersection(previous_advisory_ids)
 
-    added_advisory_pks = [adv.pk for adv in added_advisories]
-    for advisory_id in advisory_conflicts:
-        previous_advisory = previous_advisories.get(id=advisory_id)
-        added_advisory = UpdateRecord.objects.get(id=advisory_id, pk__in=added_advisory_pks)
-        to_add, to_remove, to_exclude = resolve_advisory_conflict(previous_advisory, added_advisory)
-        content_pks_to_add.update(to_add)
-        content_pks_to_remove.update(to_remove)
-        content_pks_to_exclude.update(to_exclude)
+        added_advisory_pks = [adv.pk for adv in added_advisories]
+        for advisory_id in advisory_conflicts:
+            previous_advisory = previous_advisories.get(id=advisory_id)
+            added_advisory = UpdateRecord.objects.get(id=advisory_id, pk__in=added_advisory_pks)
+            to_add, to_remove, to_exclude = resolve_advisory_conflict(
+                previous_advisory, added_advisory
+            )
+            content_pks_to_add.update(to_add)
+            content_pks_to_remove.update(to_remove)
+            content_pks_to_exclude.update(to_exclude)
 
     if content_pks_to_add:
         version.add_content(Content.objects.filter(pk__in=content_pks_to_add))
