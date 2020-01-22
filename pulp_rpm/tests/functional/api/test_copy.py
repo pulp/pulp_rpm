@@ -68,10 +68,8 @@ class BasicCopyTestCase(unittest.TestCase):
             get_added_content_summary(source_repo), RPM_FIXTURE_SUMMARY
         )
 
-        # Copy all RPMs
-        criteria = {}
         rpm_copy(self.cfg, source_repo, dest_repo, criteria)
-        dest_repo = self.client.get(source_repo['pulp_href'])
+        dest_repo = self.client.get(dest_repo['pulp_href'])
 
         # Check that we have the correct content counts.
         self.assertDictEqual(get_content_summary(dest_repo), expected_results)
@@ -89,3 +87,13 @@ class BasicCopyTestCase(unittest.TestCase):
     #     criteria = {}
     #     results = {}
     #     self._do_test(criteria, results)
+
+    def test_copy_by_advisory_id(self):
+        """Test copying an advisory by its id."""
+        criteria = {
+            'advisory': [{'id': 'RHEA-2012:0056'}]
+        }
+        results = {
+            RPM_ADVISORY_CONTENT_NAME: 1
+        }
+        self._do_test(criteria, results)
